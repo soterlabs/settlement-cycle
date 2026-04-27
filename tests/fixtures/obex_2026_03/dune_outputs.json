@@ -1,0 +1,124 @@
+{
+  "_about": "OBEX 2026-03 settlement fixture, captured 2026-04-27 via MCP from the four shared SQL queries. Pin block ETH = 24781026 (= 2026-03-31 23:59:59 UTC).",
+  "pin_block_eom_ethereum": 24781026,
+  "pin_block_som_ethereum": 24558867,
+
+  "debt_timeseries": {
+    "_query": "queries/debt_timeseries.sql",
+    "_source_query_id": 7382077,
+    "rows": [
+      {"block_date": "2025-11-18", "daily_dart": 50000000, "cum_debt": 50000000},
+      {"block_date": "2025-11-19", "daily_dart": 20000000, "cum_debt": 70000000},
+      {"block_date": "2025-11-20", "daily_dart": 20000000, "cum_debt": 90000000},
+      {"block_date": "2025-11-21", "daily_dart": 20000000, "cum_debt": 110000000},
+      {"block_date": "2025-11-24", "daily_dart": 20000000, "cum_debt": 130000000},
+      {"block_date": "2025-11-25", "daily_dart": 20000000, "cum_debt": 150000000},
+      {"block_date": "2025-11-28", "daily_dart": 20000000, "cum_debt": 170000000},
+      {"block_date": "2025-12-01", "daily_dart": 30000000, "cum_debt": 200000000},
+      {"block_date": "2025-12-03", "daily_dart": 20000000, "cum_debt": 220000000},
+      {"block_date": "2025-12-04", "daily_dart": 20000000, "cum_debt": 240000000},
+      {"block_date": "2025-12-05", "daily_dart": 20000000, "cum_debt": 260000000},
+      {"block_date": "2025-12-08", "daily_dart": 20000000, "cum_debt": 280000000},
+      {"block_date": "2025-12-09", "daily_dart": 20000000, "cum_debt": 300000000},
+      {"block_date": "2025-12-10", "daily_dart": 20000000, "cum_debt": 320000000},
+      {"block_date": "2025-12-12", "daily_dart": 40000000, "cum_debt": 360000000},
+      {"block_date": "2025-12-16", "daily_dart": 40000000, "cum_debt": 400000000},
+      {"block_date": "2025-12-30", "daily_dart": 50000000, "cum_debt": 450000000},
+      {"block_date": "2025-12-31", "daily_dart": 20000000, "cum_debt": 470000000},
+      {"block_date": "2026-01-01", "daily_dart": 20000000, "cum_debt": 490000000},
+      {"block_date": "2026-01-02", "daily_dart": 20000000, "cum_debt": 510000000},
+      {"block_date": "2026-01-03", "daily_dart": 20000000, "cum_debt": 530000000},
+      {"block_date": "2026-01-04", "daily_dart": 20000000, "cum_debt": 550000000},
+      {"block_date": "2026-01-05", "daily_dart": 20000000, "cum_debt": 570000000},
+      {"block_date": "2026-01-06", "daily_dart": 30000000, "cum_debt": 600000000}
+    ]
+  },
+
+  "subproxy_usds_timeseries": {
+    "_holder": "0x8be042581f581E3620e29F213EA8b94afA1C8071",
+    "_token": "USDS (0xdc035d45...)",
+    "rows": [
+      {"block_date": "2025-11-17", "daily_net": 21000000, "cum_balance": 21000000},
+      {"block_date": "2026-02-02", "daily_net": 442327,   "cum_balance": 21442327},
+      {"block_date": "2026-03-02", "daily_net": 71342,    "cum_balance": 21513669},
+      {"block_date": "2026-03-30", "daily_net": 65719,    "cum_balance": 21579388}
+    ]
+  },
+
+  "subproxy_susds_timeseries": {
+    "_holder": "0x8be042581f581E3620e29F213EA8b94afA1C8071",
+    "_token": "sUSDS (0xa3931d71...)",
+    "rows": []
+  },
+
+  "alm_usds_timeseries": {
+    "_holder": "0xb6dD7ae22C9922AFEe0642f9Ac13e58633f715A2",
+    "_token": "USDS",
+    "_note": "All daily_net = 0 — USDS flows through ALM atomically (mint→swap to USDC→deposit). Net balance always zero.",
+    "rows": []
+  },
+
+  "ssr_history": {
+    "_note": "Full SSR change history per RULES.md Rule 2, captured 2026-04-27. Production now queries from SSR_HISTORY_ANCHOR=2024-09-01 (domain/sky_tokens.py), so the fixture must include all changes since the anchor — not just those overlapping the settlement period.",
+    "rows": [
+      {"effective_date": "2024-09-17", "ssr_apy": 0.0625},
+      {"effective_date": "2024-10-07", "ssr_apy": 0.0650},
+      {"effective_date": "2024-11-18", "ssr_apy": 0.0851},
+      {"effective_date": "2024-11-30", "ssr_apy": 0.0951},
+      {"effective_date": "2024-12-08", "ssr_apy": 0.1251},
+      {"effective_date": "2025-02-10", "ssr_apy": 0.0876},
+      {"effective_date": "2025-02-24", "ssr_apy": 0.0650},
+      {"effective_date": "2025-03-24", "ssr_apy": 0.0450},
+      {"effective_date": "2025-08-04", "ssr_apy": 0.0475},
+      {"effective_date": "2025-10-27", "ssr_apy": 0.0450},
+      {"effective_date": "2025-11-07", "ssr_apy": 0.0425},
+      {"effective_date": "2025-11-11", "ssr_apy": 0.0450},
+      {"effective_date": "2025-12-02", "ssr_apy": 0.0425},
+      {"effective_date": "2025-12-16", "ssr_apy": 0.0400},
+      {"effective_date": "2026-03-09", "ssr_apy": 0.0375}
+    ]
+  },
+
+  "venue_inflow_timeseries": {
+    "_from_addr": "0xb6dD7ae22C9922AFEe0642f9Ac13e58633f715A2 (OBEX ALM)",
+    "_to_addr": "0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b (Maple syrupUSDC vault)",
+    "_token": "USDC",
+    "_note": "cum_inflow plateaus at 600M on 2026-01-06. Zero inflow during March 2026.",
+    "rows": [
+      {"block_date": "2025-11-18", "daily_inflow": 50000000, "cum_inflow": 50000000},
+      {"block_date": "2025-11-19", "daily_inflow": 20000000, "cum_inflow": 70000000},
+      {"block_date": "2025-11-20", "daily_inflow": 20000000, "cum_inflow": 90000000},
+      {"block_date": "2025-11-21", "daily_inflow": 20000000, "cum_inflow": 110000000},
+      {"block_date": "2025-11-24", "daily_inflow": 20000000, "cum_inflow": 130000000},
+      {"block_date": "2025-11-25", "daily_inflow": 20000000, "cum_inflow": 150000000},
+      {"block_date": "2025-11-28", "daily_inflow": 20000000, "cum_inflow": 170000000},
+      {"block_date": "2025-12-01", "daily_inflow": 30000000, "cum_inflow": 200000000},
+      {"block_date": "2025-12-03", "daily_inflow": 20000000, "cum_inflow": 220000000},
+      {"block_date": "2025-12-04", "daily_inflow": 20000000, "cum_inflow": 240000000},
+      {"block_date": "2025-12-05", "daily_inflow": 20000000, "cum_inflow": 260000000},
+      {"block_date": "2025-12-08", "daily_inflow": 20000000, "cum_inflow": 280000000},
+      {"block_date": "2025-12-09", "daily_inflow": 20000000, "cum_inflow": 300000000},
+      {"block_date": "2025-12-10", "daily_inflow": 20000000, "cum_inflow": 320000000},
+      {"block_date": "2025-12-12", "daily_inflow": 40000000, "cum_inflow": 360000000},
+      {"block_date": "2025-12-16", "daily_inflow": 40000000, "cum_inflow": 400000000},
+      {"block_date": "2025-12-30", "daily_inflow": 50000000, "cum_inflow": 450000000},
+      {"block_date": "2025-12-31", "daily_inflow": 20000000, "cum_inflow": 470000000},
+      {"block_date": "2026-01-01", "daily_inflow": 20000000, "cum_inflow": 490000000},
+      {"block_date": "2026-01-02", "daily_inflow": 20000000, "cum_inflow": 510000000},
+      {"block_date": "2026-01-03", "daily_inflow": 20000000, "cum_inflow": 530000000},
+      {"block_date": "2026-01-04", "daily_inflow": 20000000, "cum_inflow": 550000000},
+      {"block_date": "2026-01-05", "daily_inflow": 20000000, "cum_inflow": 570000000},
+      {"block_date": "2026-01-06", "daily_inflow": 30000000, "cum_inflow": 600000000}
+    ]
+  },
+
+  "rpc_position_values": {
+    "_about": "Captured live via Alchemy ETH RPC at the SoM/EoM blocks.",
+    "som_block": 24558867,
+    "eom_block": 24781026,
+    "syrupUSDC_balance_raw_at_som": 525698254197051,
+    "syrupUSDC_balance_raw_at_eom": 525698254197051,
+    "convert_to_assets_1share_at_som": 1153592,
+    "convert_to_assets_1share_at_eom": 1157829
+  }
+}

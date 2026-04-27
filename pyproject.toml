@@ -1,0 +1,57 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "settle"
+version = "0.1.0"
+description = "MSC monthly settlement pipeline for Sky prime agents"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "lakonema2000" }]
+license = { text = "MIT" }
+dependencies = [
+    "requests>=2.31",
+    "pyyaml>=6.0",
+    "pandas>=2.1",
+    "pydantic>=2.5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-mock>=3.12",
+    "ruff>=0.1",
+    "mypy>=1.7",
+    "types-requests",
+    "types-pyyaml",
+]
+
+[project.scripts]
+settle = "settle.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/settle"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra --strict-markers"
+markers = [
+    "live: tests that hit live RPC / Dune / API (skipped by default)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "RUF"]
+ignore = ["E501"]  # line length handled by formatter
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true

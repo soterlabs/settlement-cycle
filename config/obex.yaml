@@ -1,0 +1,50 @@
+# OBEX prime agent — single venue (Maple syrupUSDC) on Ethereum.
+# Source of truth for OBEX-specific addresses, ilk, venues.
+
+id: obex
+ilk_bytes32: '0x414c4c4f4341544f522d4f4245582d4100000000000000000000000000000000'  # ALLOCATOR-OBEX-A
+start_date: '2025-11-17'  # OBEX calendar_start_date
+
+addresses:
+  ethereum:
+    subproxy: '0x8be042581f581E3620e29F213EA8b94afA1C8071'
+    alm:      '0xb6dD7ae22C9922AFEe0642f9Ac13e58633f715A2'
+
+venues:
+  - id: V1
+    chain: ethereum
+    label: 'Maple syrupUSDC (Category B — ERC-4626 vault)'
+    pricing_category: B
+    token:
+      address: '0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b'
+      symbol: 'syrupUSDC'
+      decimals: 6
+    underlying:
+      address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+      symbol: 'USDC'
+      decimals: 6
+
+sources:
+  debt: dune
+  subproxy_balances: dune
+  alm_balances: dune
+  ssr: dune
+  inflows: dune
+  position_balances:
+    A: dune
+    B: rpc
+    C: rpc
+    D: rpc
+    E: rpc
+    F: rpc
+    G: rpc
+    H: dune
+  prices:
+    A: const_one
+    B: rpc_convert_to_assets
+    C: const_one
+    D: const_one
+    E: api_centrifuge
+    F: rpc_curve_reserves
+    G: coingecko
+    H: dune_prices_minute

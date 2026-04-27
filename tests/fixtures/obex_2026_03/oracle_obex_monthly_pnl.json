@@ -1,0 +1,43 @@
+{
+  "_about": "OBEX Dune-oracle results from agents/obex/queries/obex_monthly_pnl.sql (lakonema2000/msc), captured via MCP on 2026-04-27 — used as the reconciliation target for Phase 1 step 9.",
+  "_oracle_query_id": 7382870,
+
+  "by_month": {
+    "2025-11": {
+      "days_pnl": 13, "days_rate": 14, "agent_demand": 149000000,
+      "prime_agent_revenue": 220235.41668702662, "agent_rate": 36997.138561452484,
+      "obex_revenue_total": 257232.5552484791, "sky_revenue": 174315.37598085086,
+      "monthly_pnl": 82917.17926762823
+    },
+    "2025-12": {
+      "days_pnl": 31, "days_rate": 31, "agent_demand": 449000000,
+      "prime_agent_revenue": 1263359.2397663593, "agent_rate": 75589.2180182003,
+      "obex_revenue_total": 1338948.4577845596, "sky_revenue": 1200330.396914347,
+      "monthly_pnl": 138618.0608702125
+    },
+    "2026-01": {
+      "days_pnl": 31, "days_rate": 31, "agent_demand": 579000000,
+      "prime_agent_revenue": 2450905.482421994, "agent_rate": 73383.32778829074,
+      "obex_revenue_total": 2524288.810210285, "sky_revenue": 2030085.8365043947,
+      "monthly_pnl": 494202.9737058901
+    },
+    "2026-02": {
+      "days_pnl": 28, "days_rate": 28, "agent_demand": 579000000,
+      "prime_agent_revenue": 1996987.116425395, "agent_rate": 67627.95894737547,
+      "obex_revenue_total": 2064615.0753727704, "sky_revenue": 1868714.5072679466,
+      "monthly_pnl": 195900.56810482382
+    },
+    "2026-03": {
+      "days_pnl": 31, "days_rate": 31, "agent_demand": 578557673,
+      "prime_agent_revenue": 2007260.1364754438, "agent_rate": 71927.42694544284,
+      "obex_revenue_total": 2079187.5634208866, "sky_revenue": 1981127.2481706245,
+      "monthly_pnl": 98060.31525026215
+    }
+  },
+
+  "_phase_1_target_month": "2026-03",
+  "_methodology_notes": [
+    "Oracle uses prices.day for syrupUSDC valuation (DEX VWAP). Our pipeline uses convertToAssets (canonical NAV).",
+    "Both pipelines use APY with per-second compounding (POWER((1 + apy), 1/365) - 1)."
+  ]
+}
