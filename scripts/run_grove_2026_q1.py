@@ -22,10 +22,23 @@ sys.path.insert(0, str(_REPO))
 
 from settle.compute import compute_monthly_pnl
 from settle.domain import Chain, Month
+from settle.load import write_settlement
 from tests.fixtures.grove_fixture_loader import (
     build_grove_sources,
     load_grove_and_fixtures,
 )
+
+_SETTLEMENT_SOURCES = {
+    "debt": "DuneDebtSource (MCP fixture: dune_outputs.json)",
+    "balance": "DuneBalanceSource (MCP fixture)",
+    "ssr": "DuneSSRSource (MCP fixture)",
+    "position_balance": "RPCPositionBalanceSource (Alchemy)",
+    "convert_to_assets": "RPCConvertToAssetsSource (Alchemy)",
+    "nav_oracle (chronicle)": "ChronicleNavSource (Alchemy) + nav_overrides for pre-deployment blocks",
+    "nav_oracle (const_one)": "ConstOneNavSource (in-process)",
+    "lp_curve": "CurvePoolSource (Alchemy)",
+    "lp_uniswap_v3": "RPCUniswapV3PositionSource + Dune-fixture events",
+}
 
 # Pin blocks per (month, chain). EoM block = last block ≤ <last day of month> 23:59:59 UTC.
 PIN_BLOCKS_BY_MONTH = {
@@ -60,6 +73,7 @@ def main() -> int:
     print("-" * 100)
 
     results = {}
+    written_paths: dict[tuple[int, int], dict] = {}
     for (y, m) in [(2026, 1), (2026, 2), (2026, 3)]:
         # Rebuild Sources per month so each MockBalanceSource has a fresh
         # call-recording slate (avoids leaking state across months).
@@ -77,6 +91,14 @@ def main() -> int:
               f"${float(result.sky_revenue):>19,.2f} "
               f"${float(result.sky_direct_shortfall):>21,.2f} "
               f"${float(result.monthly_pnl):>15,.2f}")
+
+        # Persist the headline + per-venue breakdown + provenance for each month.
+        # Same artifact set as the single-month acceptance script writes — auditors
+        # / downstream rollups consume these regardless of which entry point ran.
+        out_dir = _REPO / "settlements" / "grove" / label
+        written_paths[(y, m)] = write_settlement(
+            result, out_dir, sources=_SETTLEMENT_SOURCES,
+        )
 
     print("-" * 100)
     print()
@@ -111,6 +133,15 @@ def main() -> int:
                   f"{float(vr.value_som):>14,.0f} {float(vr.value_eom):>14,.0f} {float(vr.period_inflow):>14,.0f} "
                   f"{float(vr.actual_revenue):>12,.0f} {float(vr.br_charge):>12,.0f} "
                   f"{float(vr.sky_direct_shortfall):>11,.0f} {float(vr.revenue):>12,.0f}")
+
+    print()
+    print("Artifacts written:")
+    print("=" * 110)
+    for (y, m), paths in written_paths.items():
+        label = f"{y}-{m:02d}"
+        print(f"\n  {label}:")
+        for k, p in paths.items():
+            print(f"    {k:11s} {p.relative_to(_REPO)}")
 
     return 0
 

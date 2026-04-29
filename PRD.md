@@ -670,4 +670,41 @@ Reference docs: `prime-settlement-methodology.md` (5-step framework) and `debt-r
 1. **V3 events fixture** widened from `[Feb 28, Mar 31]` to `[Dec 31 2025, Mar 31 2026]`, capturing the Feb 4 IncreaseLiquidity event ($25M USDC into the AUSD/USDC LP).
 2. **`nav_overrides`** fixture key (in `dune_outputs.json`) provides explicit Chronicle NAVs for two `(oracle, block)` pairs where Chronicle had not yet started writing: E7 STAC at block 24136052 → $1000.00 (deposit-time par), E22 ACRDX at block 24136052 → $1.00 (deposit-time par). Without these, the prime_agent_revenue for January would include a phantom $100M jump on E7.
 
-Tests: 192 unit + 8 integration passing, no regressions vs the post-Sky-Direct state.
+Tests: 211 unit + 8 integration passing, no regressions vs the post-Sky-Direct state.
+
+### 17.9 Operational checks (recurring)
+
+These are not blockers for the current pipeline but should be periodic operational audits. They protect against silent drift between the codebase, the Atlas spec, and on-chain reality.
+
+#### Sky Direct exposure list — track Atlas changes
+The set of exposures that qualify for Step 4 reimbursement is governed by Sky governance and recorded in the Sky Atlas (see [`sky-ecosystem/next-gen-atlas`](https://github.com/sky-ecosystem/next-gen-atlas)). Today the list is hardcoded in our config (`sky_direct: true` flag per venue in `<prime>.yaml`). When a new exposure type is approved or an existing one is removed, the YAML must be updated.
+
+- **Recurring check (manual):** before each settlement cycle, diff the Atlas's Sky Direct exposures section against `config/<prime>.yaml`. Note the Atlas commit/date when the current list was last reconciled, e.g.: "Sky Direct list as of Atlas commit `<sha>` (`<date>`): Treasury Bills on Ethereum (BUIDL, JTRSY, USTB); USDC in PSM3 on non-Ethereum chains; USDT in sUSDS/USDT Curve pools."
+- **Future automation:** parse the Atlas repo (presumably structured Markdown/YAML) and surface diffs vs. our config in a CI check, or generate the venue-level `sky_direct: true` flags directly from the Atlas as the source of truth.
+
+#### On-chain flow-of-funds reconciliation — coverage check
+The current venue list per prime is built by hand (PRD §3, §4) and cross-checked against external sources (e.g., BA Labs `stars-api.blockanalitica.com` — which surfaced the missing E23 Steakhouse Prime Instant on Base in this cycle). It's possible to miss a venue that the prime started using between settlements.
+
+- **Recurring check:** trace USDS / underlying-asset flows out of the ALM proxy on each chain, follow them through swaps / deposits, and verify every destination contract is present in `config/<prime>.yaml` (or explicitly classified as a swap/PSM conduit, not a venue). The fixture `inflow_by_counterparty_e15` already captures the per-counterparty flow at one ALM (Grove Ethereum, USDC); the same Dune query parameterized by token + holder gives full coverage per (chain, ALM) pair.
+- **Output:** a list of "addresses that received material funds but are not in the venue list", flagged for review.
+- **Future automation:** add a `settle audit flow-of-funds --prime <id> --month <YYYY-MM>` subcommand that runs this diff and fails if any unrecognized counterparty crossed a configurable USD threshold.
+
+### 17.10 Future work
+
+Tracked but not blocking the current pipeline.
+
+#### Review the Compute formulas
+`compute/sky_revenue.py`, `compute/agent_rate.py`, `compute/prime_agent_revenue.py`, and `compute/monthly_pnl.py` together encode the methodology in §17.7. They've been adjusted multiple times (Cat A polarity flip, sUSDS cost basis, PSM term, Sky Direct Step 4) and warrant a fresh end-to-end methodology review:
+- Verify each formula against `prime-settlement-methodology.md` + `debt-rate-methodology.md` after the refactors.
+- Confirm sign conventions (inflow signs across the four payable/receivable terms are consistent).
+- Confirm rate compounding (per-second APR vs daily APY) is applied uniformly.
+- Reconcile residual gap with Sky's reported Sky Share (~$1.13M for Grove March 2026 — methodology is correct; "Asset Value" definition for BR_charge is the open question).
+
+#### Per-venue revenue review
+Today we report `prime_agent_revenue = Σ venue.revenue` and trust the per-venue computation end-to-end. Each venue's revenue should be independently audited:
+- For Cat C (Aave) / Cat D (Spark): cross-check `scaledBalance × Δindex / RAY` against Aave/Spark's emitted yield events.
+- For Cat B (Morpho 4626): cross-check `shares × ΔconvertToAssets` against the vault's NAV growth as reported by Morpho's API.
+- For Cat E (RWA): cross-check `Δvalue − inflow` against the RWA issuer's published monthly returns (Centrifuge dashboard, BlackRock IDLF NAV report, etc.).
+- For Cat F (LP): cross-check Curve `virtual_price` and Uniswap V3 fee accrual against pool-level NAV growth.
+
+The output of this review would be a per-venue confidence rating: which venues we can trust the calc for unconditionally, which need an additional cross-check, and which need a different methodology.
