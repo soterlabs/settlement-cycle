@@ -18,13 +18,15 @@ def write_csv(pnl: MonthlyPnL, dest: Path) -> Path:
     dest.parent.mkdir(parents=True, exist_ok=True)
     headers = [
         "prime_id", "month", "period_start", "period_end", "n_days",
-        "sky_revenue", "agent_rate", "prime_agent_revenue", "monthly_pnl",
+        "prime_agent_revenue", "agent_rate", "distribution_rewards",
+        "prime_agent_total_revenue", "sky_revenue", "sky_direct_shortfall",
     ]
     row = [
         pnl.prime_id, str(pnl.month),
         pnl.period.start.isoformat(), pnl.period.end.isoformat(), pnl.period.n_days,
-        f"{pnl.sky_revenue}", f"{pnl.agent_rate}",
-        f"{pnl.prime_agent_revenue}", f"{pnl.monthly_pnl}",
+        f"{pnl.prime_agent_revenue}", f"{pnl.agent_rate}",
+        f"{pnl.distribution_rewards}", f"{pnl.prime_agent_total_revenue}",
+        f"{pnl.sky_revenue}", f"{pnl.sky_direct_shortfall}",
     ]
     with dest.open("w", newline="") as f:
         w = csv.writer(f)
@@ -38,7 +40,10 @@ def write_venues_csv(pnl: MonthlyPnL, dest: Path) -> Path | None:
     if not pnl.venue_breakdown:
         return None
     dest.parent.mkdir(parents=True, exist_ok=True)
-    headers = ["venue_id", "label", "value_som", "value_eom", "period_inflow", "revenue"]
+    headers = [
+        "venue_id", "label", "value_som", "value_eom", "period_inflow",
+        "revenue", "actual_revenue", "br_charge", "sky_direct_shortfall",
+    ]
     with dest.open("w", newline="") as f:
         w = csv.writer(f)
         w.writerow(headers)
@@ -47,5 +52,7 @@ def write_venues_csv(pnl: MonthlyPnL, dest: Path) -> Path | None:
                 v.venue_id, v.label,
                 f"{v.value_som}", f"{v.value_eom}",
                 f"{v.period_inflow}", f"{v.revenue}",
+                f"{v.actual_revenue}", f"{v.br_charge}",
+                f"{v.sky_direct_shortfall}",
             ])
     return dest

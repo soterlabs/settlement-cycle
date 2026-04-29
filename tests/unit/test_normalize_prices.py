@@ -6,7 +6,7 @@ from decimal import Decimal
 
 import pytest
 
-from settle.domain import Address, Chain, PricingCategory, Token, Venue
+from settle.domain import Address, Chain, NavOracle, PricingCategory, Token, Venue
 from settle.normalize.prices import (
     UnsupportedPricingError,
     get_unit_price,
@@ -14,7 +14,7 @@ from settle.normalize.prices import (
     par_stable_price,
 )
 
-from ..fixtures.mock_sources import MockConvertToAssetsSource
+from ..fixtures.mock_sources import MockConvertToAssetsSource, MockNavOracleSource
 
 
 def _addr(seed: str) -> Address:
@@ -118,11 +118,210 @@ def test_unit_price_aave_atoken_requires_underlying():
         get_unit_price(venue, block=0)
 
 
-# --- Categories E/F/G/H: not implemented in Phase 1 -------------------------
+# --- Category E (RWA NAV) — Phase 2.A.3 -------------------------------------
+
+def _rwa_venue(nav_oracle: NavOracle | None = None) -> Venue:
+    return Venue(
+        id="E9",
+        chain=Chain.ETHEREUM,
+        token=_token("JTRSY", 6),
+        pricing_category=PricingCategory.RWA_TRANCHE,
+        nav_oracle=nav_oracle,
+    )
+
+
+def test_cat_e_uses_primary_oracle_when_it_succeeds():
+    venue = _rwa_venue(NavOracle(kind="chronicle", address=_addr("aa")))
+    src = MockNavOracleSource(nav=Decimal("1.103456"))
+    price = get_unit_price(
+        venue, block=24971074,
+        nav_oracle_resolver=lambda kind: src,
+    )
+    assert price == Decimal("1.103456")
+    assert len(src.calls) == 1
+
+
+def test_cat_e_falls_back_when_primary_raises():
+    """Primary (chronicle) reverts → caller-allowlist; fallback (redstone) succeeds."""
+    from settle.extract.oracles.chronicle import ChronicleReadError
+    venue = _rwa_venue(NavOracle(
+        kind="chronicle", address=_addr("aa"),
+        fallback="redstone", fallback_address=_addr("bb"),
+    ))
+    # Typed oracle failure (matches what live ChronicleNavSource raises on
+    # allowlist-revert / empty-data return). The fallback logic in
+    # ``_resolve_rwa_nav`` only catches known oracle-failure types; bugs
+    # like ``RuntimeError`` from a programming error propagate so they
+    # don't masquerade as an oracle revert.
+    primary = MockNavOracleSource(nav=ChronicleReadError)
+    fallback = MockNavOracleSource(nav=Decimal("1.0312"))
+
+    def _resolver(kind):
+        return primary if kind == "chronicle" else fallback
+
+    price = get_unit_price(venue, block=24971074, nav_oracle_resolver=_resolver)
+    assert price == Decimal("1.0312")
+    assert len(primary.calls) == 1
+    assert len(fallback.calls) == 1
+
+
+def test_cat_e_raises_when_all_candidates_fail():
+    """No silent $1 fall-through — caller wants a clear failure."""
+    venue = _rwa_venue(NavOracle(
+        kind="chronicle", address=_addr("aa"),
+        fallback="redstone", fallback_address=_addr("bb"),
+    ))
+    from settle.extract.oracles.chronicle import ChronicleReadError
+    failing = MockNavOracleSource(nav=ChronicleReadError)
+    with pytest.raises(UnsupportedPricingError, match="All NAV oracles failed"):
+        get_unit_price(venue, block=0, nav_oracle_resolver=lambda _: failing)
+
+
+def test_cat_e_const_one_kind():
+    """BUIDL-I config: nav_oracle.kind = 'const_one' returns $1.00 with no I/O."""
+    from settle.normalize.sources.oracles import ConstOneNavSource
+    venue = _rwa_venue(NavOracle(kind="const_one"))
+    price = get_unit_price(
+        venue, block=0,
+        nav_oracle_resolver=lambda _: ConstOneNavSource(),
+    )
+    assert price == Decimal("1.00")
+
+
+def test_cat_e_requires_nav_oracle_config():
+    venue = _rwa_venue(nav_oracle=None)
+    with pytest.raises(ValueError, match="no nav_oracle config"):
+        get_unit_price(venue, block=0)
+
+
+# --- Category F.curve_stableswap — Phase 2.A.4 ------------------------------
+
+def _curve_venue(pool_addr: str = "ee") -> Venue:
+    return Venue(
+        id="E11",
+        chain=Chain.ETHEREUM,
+        token=Token(Chain.ETHEREUM, _addr(pool_addr), "AUSDUSDC-CRV", 18),
+        pricing_category=PricingCategory.LP_POOL,
+        lp_kind="curve_stableswap",
+    )
+
+
+def test_curve_lp_unit_price_with_par_stable_coins():
+    """Pool: 12.46M USDC + 12.55M AUSD, totalSupply 25M LP. Both coins are
+    par stables → unit price = (12.46 + 12.55) / 25 ≈ $1.0004 per LP."""
+    from settle.normalize.sources.curve_pool import CurvePoolState
+
+    USDC = bytes.fromhex("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
+    AUSD = bytes.fromhex("00000000efe302beaa2b3e6e1b18d08d69a9012a")
+
+    class _MockPool:
+        def __init__(self): self.calls = []
+        def read_pool(self, chain, pool, block):
+            self.calls.append((chain, pool, block))
+            return CurvePoolState(
+                virtual_price_raw=10**18,
+                total_supply=25_000_000 * 10**18,
+                coins=[Address(USDC), Address(AUSD)],
+                balances=[12_460_000 * 10**6, 12_540_000 * 10**6],   # 6 decimals each
+            )
+
+    venue = _curve_venue()
+    src = _MockPool()
+    price = get_unit_price(venue, block=24971074, curve_pool_source=src)
+    expected = Decimal("25000000") / Decimal("25000000")  # = $1.00 in this rounded case
+    assert price == expected
+    assert len(src.calls) == 1
+
+
+def test_curve_lp_unit_price_above_one_when_pool_holds_yield():
+    """If the pool reserves exceed total supply (in $ terms), unit price > $1.
+    Mimics sUSDS-bearing pools; here we just inflate USDC reserves."""
+    from settle.normalize.sources.curve_pool import CurvePoolState
+
+    USDC = bytes.fromhex("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
+    AUSD = bytes.fromhex("00000000efe302beaa2b3e6e1b18d08d69a9012a")
+
+    class _MockPool:
+        def read_pool(self, chain, pool, block):
+            # 25.5M of $-equivalent reserves backing 25M LP → price $1.02
+            return CurvePoolState(
+                virtual_price_raw=10**18,
+                total_supply=25_000_000 * 10**18,
+                coins=[Address(USDC), Address(AUSD)],
+                balances=[13_000_000 * 10**6, 12_500_000 * 10**6],
+            )
+
+    price = get_unit_price(_curve_venue(), block=0, curve_pool_source=_MockPool())
+    assert price == Decimal("25500000") / Decimal("25000000") == Decimal("1.02")
+
+
+def test_curve_lp_raises_when_coin_not_in_par_stable_registry():
+    """A pool with a non-par-stable coin (e.g. sUSDS) must raise — recursive
+    pricing of yield-bearing LP underlyings is Phase 2.B+."""
+    from settle.normalize.sources.curve_pool import CurvePoolState
+
+    USDC = bytes.fromhex("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
+    SUSDS = bytes.fromhex("a3931d71877c0e7a3148cb7eb4463524fec27fbd")    # sUSDS — yield-bearing
+
+    class _MockPool:
+        def read_pool(self, chain, pool, block):
+            return CurvePoolState(
+                virtual_price_raw=10**18, total_supply=10**18,
+                coins=[Address(SUSDS), Address(USDC)],
+                balances=[5_000_000 * 10**18, 5_000_000 * 10**6],
+            )
+
+    with pytest.raises(UnsupportedPricingError, match="par-stable registry"):
+        get_unit_price(_curve_venue(), block=0, curve_pool_source=_MockPool())
+
+
+def test_curve_lp_zero_supply_returns_zero():
+    """Empty pool — unit price defined as 0, not divide-by-zero."""
+    from settle.normalize.sources.curve_pool import CurvePoolState
+
+    USDC = bytes.fromhex("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
+    AUSD = bytes.fromhex("00000000efe302beaa2b3e6e1b18d08d69a9012a")
+
+    class _MockPool:
+        def read_pool(self, chain, pool, block):
+            return CurvePoolState(
+                virtual_price_raw=10**18, total_supply=0,
+                coins=[Address(USDC), Address(AUSD)],
+                balances=[0, 0],
+            )
+
+    assert get_unit_price(_curve_venue(), block=0, curve_pool_source=_MockPool()) == Decimal("0")
+
+
+# --- Category F.uniswap_v3 — Phase 2.A.5 -----------------------------------
+
+def test_uniswap_v3_unit_price_not_defined():
+    """V3 positions are non-fungible — there's no meaningful unit price.
+    Callers must use ``get_position_value`` which has a dedicated NFT-enum branch."""
+    venue = Venue(
+        id="E12", chain=Chain.ETHEREUM,
+        token=_token("AUSDUSDC-UNI3", 0),
+        pricing_category=PricingCategory.LP_POOL,
+        lp_kind="uniswap_v3",
+    )
+    with pytest.raises(UnsupportedPricingError, match="get_position_value"):
+        get_unit_price(venue, block=0)
+
+
+def test_curve_lp_unknown_lp_kind_raises():
+    venue = Venue(
+        id="EX", chain=Chain.ETHEREUM,
+        token=_token("WHATEVER", 18),
+        pricing_category=PricingCategory.LP_POOL,
+        lp_kind="balancer",        # not yet implemented
+    )
+    with pytest.raises(UnsupportedPricingError, match="lp_kind"):
+        get_unit_price(venue, block=0)
+
+
+# --- Categories G/H: not implemented in Phase 2 -----------------------------
 
 @pytest.mark.parametrize("cat", [
-    PricingCategory.RWA_TRANCHE,
-    PricingCategory.LP_POOL,
     PricingCategory.NATIVE_GAS,
     PricingCategory.GOVERNANCE,
 ])

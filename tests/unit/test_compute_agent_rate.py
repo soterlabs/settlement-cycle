@@ -9,8 +9,8 @@ import pandas as pd
 
 from settle.compute._helpers import daily_compounding_factor
 from settle.compute.agent_rate import (
-    SUBPROXY_SUSDS_FLAT_APY,
-    SUBPROXY_USDS_SPREAD,
+    AGENT_RATE_OVER_SSR,
+    AGENT_RATE_SUSDS_ONLY,
     compute_agent_rate,
 )
 from settle.domain import Chain, Period
@@ -39,10 +39,11 @@ def test_zero_subproxy_balances_zero_rate():
     assert rate == Decimal("0")
 
 
-def test_constants_match_rules_md():
-    """RULES.md Rule 3: USDS earns SSR+0.20%; sUSDS earns flat 0.20%."""
-    assert SUBPROXY_USDS_SPREAD == Decimal("0.002")
-    assert SUBPROXY_SUSDS_FLAT_APY == Decimal("0.002")
+def test_constants_match_methodology():
+    """Agent rate = SSR + 20bps. For sUSDS, SSR is in the index → only the
+    +20bps applies."""
+    assert AGENT_RATE_OVER_SSR == Decimal("0.002")
+    assert AGENT_RATE_SUSDS_ONLY == Decimal("0.002")
 
 
 def test_usds_only_for_31_days():
@@ -67,7 +68,7 @@ def test_susds_only_uses_flat_two_pct():
         subproxy_susds=pd.DataFrame({"block_date": [date(2025, 12, 1)], "cum_balance": [5_000_000.0]}),
         ssr=_ssr_const(0.99),                                # SSR is irrelevant for sUSDS
     )
-    expected = Decimal("5000000") * daily_compounding_factor(SUBPROXY_SUSDS_FLAT_APY)
+    expected = Decimal("5000000") * daily_compounding_factor(AGENT_RATE_SUSDS_ONLY)
     assert rate == expected
 
 

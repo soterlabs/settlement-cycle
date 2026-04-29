@@ -19,6 +19,24 @@ from .primes import Address, Chain, Token
 # logic. A prime with an earlier `start_date` would need this anchor moved back.
 SSR_HISTORY_ANCHOR: date = date(2024, 9, 1)
 
+
+# Address-to-(symbol, decimals) registry for par-stable tokens used as LP
+# underlyings. Used by Cat F (Curve / Uni V3) pricing to resolve
+# `pool.coins(i)` addresses into priced underlyings without an extra RPC call.
+#
+# Only par-stables included — yield-bearing LP underlyings (sUSDS, sUSDe) need
+# recursive pricing (Phase 2.B+) and aren't valid here.
+KNOWN_PAR_STABLES_ETHEREUM: dict[bytes, tuple[str, int]] = {
+    bytes.fromhex("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"): ("USDC", 6),
+    bytes.fromhex("dc035d45d973e3ec169d2276ddab16f1e407384f"): ("USDS", 18),
+    bytes.fromhex("6b175474e89094c44da98b954eedeac495271d0f"): ("DAI", 18),
+    bytes.fromhex("dac17f958d2ee523a2206206994597c13d831ec7"): ("USDT", 6),
+    bytes.fromhex("6c3ea9036406852006290770bedfcaba0e23a0e8"): ("PYUSD", 6),
+    bytes.fromhex("8292bb45bf1ee4d140127049757c2e0ff06317ed"): ("RLUSD", 18),
+    bytes.fromhex("00000000efe302beaa2b3e6e1b18d08d69a9012a"): ("AUSD",  6),
+    bytes.fromhex("4c9edd5852cd905f086c759e8383e09bff1e68b3"): ("USDe", 18),
+}
+
 USDS_ETHEREUM = Token(
     chain=Chain.ETHEREUM,
     address=Address.from_str("0xdc035d45d973e3ec169d2276ddab16f1e407384f"),

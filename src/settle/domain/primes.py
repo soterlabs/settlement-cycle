@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date
+from decimal import Decimal
 from enum import StrEnum
 from typing import Self
 
@@ -72,6 +73,29 @@ class Token:
 
 
 @dataclass(frozen=True, slots=True)
+class NavOracle:
+    """Off-/on-chain NAV-feed config for a Category E venue.
+
+    `kind` selects the reader implementation: ``chronicle``, ``chainlink``,
+    ``redstone``, ``pyth``, or ``const_one`` (always returns $1.00, used when
+    the issuer publishes yield via rewards rather than via NAV — e.g. BUIDL-I).
+
+    ``oracle_chain`` defaults to ``venue.chain`` but can be overridden when the
+    same venue exists on multiple chains and the canonical NAV oracle lives on
+    only one (e.g., Centrifuge JTRSY/JAAA — the Chronicle feed is on Ethereum
+    even though the tranche token is also issued on Avalanche). The compute
+    layer translates the venue-chain block to the equivalent oracle-chain
+    block via the block resolver before reading.
+    """
+
+    kind: str
+    address: Address | None = None
+    fallback: str | None = None
+    fallback_address: Address | None = None
+    oracle_chain: "Chain | None" = None
+
+
+@dataclass(frozen=True, slots=True)
 class Venue:
     """One allocation venue for a prime — a position-bearing token, with pricing rules."""
 
@@ -81,6 +105,26 @@ class Venue:
     pricing_category: PricingCategory
     underlying: Token | None = None      # for B/C/D/F where price chains via underlying
     label: str = ""                      # human-readable (e.g. 'Maple syrupUSDC')
+    nav_oracle: NavOracle | None = None  # Category E only — see NavOracle
+    lp_kind: str | None = None           # Category F only: 'curve_stableswap' | 'uniswap_v3'
+    nft_position_manager: Address | None = None  # Category F (uniswap_v3) only
+    # Per-venue minimum transfer threshold (USD-equivalent). Drops transfers
+    # below this amount from the cumulative-balance pull so daily
+    # yield-distribution mints (BUIDL-style) don't contaminate the
+    # capital-inflow stream. Plumbed to
+    # ``IBalanceSource.cumulative_balance_timeseries(min_transfer_amount=…)``.
+    # ``None`` means no filter (default).
+    min_transfer_amount_usd: Decimal | None = None
+    # Sky Direct flag (per prime-settlement-methodology Step 4).
+    # When True: prime's revenue from this venue is floored at zero
+    # (max(0, ActualRev − BR_charge)); Sky books BR_charge as revenue and
+    # absorbs the shortfall when the venue underperforms BR. When False
+    # (default): full venue revenue flows to prime; sky_revenue unchanged.
+    # Eligible exposures per Sky governance:
+    #   * Treasury Bills on Ethereum: BUIDL, JTRSY, USTB (Grove)
+    #   * USDC in PSM3 on non-Ethereum chains (Spark, Grove)
+    #   * USDT in sUSDS/USDT Curve pools (Spark only)
+    sky_direct: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,6 +137,14 @@ class Prime:
     subproxy: dict[Chain, Address] = field(default_factory=dict)
     alm: dict[Chain, Address] = field(default_factory=dict)
     venues: list[Venue] = field(default_factory=list)
+    # Addresses whose transfers TO the ALM count as Cat A revenue (off-chain
+    # custodian distributions, e.g. Anchorage sending realized yield directly
+    # to the ALM). Anything NOT in this list is treated as value-preserving
+    # capital flow (PSM swap legs, venue contract allocations/withdrawals,
+    # AllocatorBuffer top-ups, mint/burn). Empty by default — flag a counterparty
+    # only after confirming it sends true off-chain yield, since misclassification
+    # inflates revenue.
+    external_alm_sources: dict[Chain, list[Address]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if len(self.ilk_bytes32) != 32:

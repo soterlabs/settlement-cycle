@@ -4,7 +4,7 @@ Usage:
     settle version
     settle config check --prime <id>
     settle debug rpc-balance --chain <c> --token <addr> --holder <addr> [--block <n>]
-    settle run --prime <id> --month <YYYY-MM>           (stub — not yet implemented)
+    settle run --prime <id> --month <YYYY-MM> [--output-dir <path>]
 """
 
 from __future__ import annotations

@@ -194,6 +194,32 @@ FROM balance;
 - `USDe` drifts ±0.5%. If MtM precision matters, swap the `1.00` for a `prices.minute` join.
 - Stablecoin depegs (USDC Mar-2023, USDe briefly) are not captured by this approach.
 
+### 1.a Why the par-stable shortcut, even though oracles exist
+
+`docs/pricing/allocation_pricing.csv` lists Chainlink + Chronicle (+ Pyth /
+Redstone fallback) feeds for every token in `PAR_STABLE_SYMBOLS`
+(`USDC, USDS, DAI, USDT, PYUSD, RLUSD, AUSD, USDe`). The pipeline does not
+read those feeds; every par-stable is hardcoded to `$1.00`. Three reasons:
+
+1. **The drift is below the settlement tolerance.** Each token here trades
+   within ±0.5% of $1.00 over any month's settlement window. The largest
+   historical sustained drift was post-depeg USDC in March 2023 (one-week
+   event). The cost-basis invariant tolerance is 1% (Q6); below that, oracle
+   prices add noise without signal.
+
+2. **Cost.** Reading 8 oracles per chain per snapshot adds ~16 RPC calls per
+   settlement run with no measurable accuracy gain.
+
+3. **Symmetry with upstream Sky math.** The SSR yield engine is denominated
+   in $-equivalent USDS, not in oracle-priced USDS. Using oracle prices for
+   USDS here would create a USDS↔oracle drift artifact that's not actually
+   part of the agent's PnL — only an oracle-implementation choice.
+
+If a future depeg event lasts long enough to matter (settlement-grade
+threshold: ~50bps × ~30 days), drop the symbol from `PAR_STABLE_SYMBOLS` in
+`src/settle/normalize/prices.py` and add a Source impl that reads the
+relevant oracle.
+
 ---
 
 ## 2. Category B — ERC-4626 vault share

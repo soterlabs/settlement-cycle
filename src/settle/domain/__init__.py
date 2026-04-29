@@ -3,13 +3,14 @@
 from .monthly_pnl import MonthlyPnL, VenueRevenue
 from .period import Month, Period
 from .pricing import PricingCategory
-from .primes import Address, Chain, Prime, Token, Venue
+from .primes import Address, Chain, NavOracle, Prime, Token, Venue
 
 __all__ = [
     "Address",
     "Chain",
     "Month",
     "MonthlyPnL",
+    "NavOracle",
     "Period",
     "Prime",
     "PricingCategory",

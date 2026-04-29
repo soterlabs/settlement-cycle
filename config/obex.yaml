@@ -24,27 +24,5 @@ venues:
       symbol: 'USDC'
       decimals: 6
 
-sources:
-  debt: dune
-  subproxy_balances: dune
-  alm_balances: dune
-  ssr: dune
-  inflows: dune
-  position_balances:
-    A: dune
-    B: rpc
-    C: rpc
-    D: rpc
-    E: rpc
-    F: rpc
-    G: rpc
-    H: dune
-  prices:
-    A: const_one
-    B: rpc_convert_to_assets
-    C: const_one
-    D: const_one
-    E: api_centrifuge
-    F: rpc_curve_reserves
-    G: coingecko
-    H: dune_prices_minute
+# Source dispatch (debt → Dune, prices → RPC + on-chain oracles, etc.) is
+# resolved by `src/settle/normalize/registry.py`, not by this file.

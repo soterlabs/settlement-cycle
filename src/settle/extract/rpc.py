@@ -20,8 +20,7 @@ SEL_BALANCE_OF = "0x70a08231"           # balanceOf(address)
 SEL_DECIMALS = "0x313ce567"             # decimals()
 SEL_TOTAL_SUPPLY = "0x18160ddd"         # totalSupply()
 SEL_CONVERT_TO_ASSETS = "0x07a2d13a"    # convertToAssets(uint256)
-SEL_GET_VIRTUAL_PRICE = "0xbb7b8b80"    # get_virtual_price()
-SEL_BALANCES_UINT256 = "0x4903b0d1"     # balances(uint256) — Curve
+# Curve-specific selectors (get_virtual_price, balances) live in extract/curve.py.
 
 DEFAULT_TIMEOUT = 30
 
@@ -60,24 +59,43 @@ def rpc_url(chain: Chain) -> str:
     return url
 
 
+DEFAULT_RETRY_ATTEMPTS = 3
+DEFAULT_RETRY_BACKOFF_SEC = 0.5
+
+
 def _post(url: str, method: str, params: list[Any]) -> Any:
+    """JSON-RPC POST with bounded retry on transient transport errors.
+
+    Retries ``Timeout``, ``ConnectionError`` and HTTP 5xx — typical flaky-node
+    failures. JSON-RPC application errors (the ``"error"`` field on a 200 OK
+    response) are NOT retried since they reflect deterministic call problems
+    (revert, bad params, etc.).
+    """
+    import time as _time
     body = {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
-    r = requests.post(url, json=body, timeout=DEFAULT_TIMEOUT)
-    r.raise_for_status()
-    payload = r.json()
-    if "error" in payload:
-        raise RPCError(f"{method} error: {payload['error']}")
-    return payload["result"]
+    last_exc: Exception | None = None
+    for attempt in range(DEFAULT_RETRY_ATTEMPTS):
+        try:
+            r = requests.post(url, json=body, timeout=DEFAULT_TIMEOUT)
+            if 500 <= r.status_code < 600:
+                last_exc = requests.HTTPError(
+                    f"{r.status_code} {r.reason}", response=r,
+                )
+            else:
+                r.raise_for_status()
+                payload = r.json()
+                if "error" in payload:
+                    raise RPCError(f"{method} error: {payload['error']}")
+                return payload["result"]
+        except (requests.Timeout, requests.ConnectionError) as e:
+            last_exc = e
+        if attempt < DEFAULT_RETRY_ATTEMPTS - 1:
+            _time.sleep(DEFAULT_RETRY_BACKOFF_SEC * (2 ** attempt))
+    assert last_exc is not None
+    raise last_exc
 
 
-def _pad_address(a: Address) -> str:
-    return a.value.hex().rjust(64, "0")
-
-
-def _pad_uint(n: int) -> str:
-    if n < 0:
-        raise ValueError("only unsigned ints supported")
-    return hex(n)[2:].rjust(64, "0")
+from ._abi import pad_address as _pad_address, pad_uint as _pad_uint  # noqa: E402
 
 
 # ----------------------------------------------------------------------------
@@ -94,11 +112,51 @@ def eth_call(chain: Chain, contract: Address, data: str, block: int) -> str:
     )
 
 
+def _decode_uint(raw: str) -> int:
+    """Decode a uint256 eth_call return. Treats empty/zero-length results as 0
+    (token contract didn't exist at this block, or the call reverted)."""
+    if raw is None or raw in ("0x", "0x0"):
+        return 0
+    try:
+        return int(raw, 16)
+    except ValueError:
+        return 0
+
+
 @cached(source_id="rpc.balance_of")
 def balance_of(chain: Chain, token: Address, holder: Address, block: int) -> int:
-    """ERC-20 `balanceOf(holder)` at a specific block."""
+    """ERC-20 `balanceOf(holder)` at a specific block. Returns 0 if the token
+    contract didn't exist at this block (RPC reverts with 0x or rejects the
+    call). The caller may need to distinguish "non-existent contract" from
+    "real 0 balance" — for settlement, treating both as 0 is correct."""
     data = SEL_BALANCE_OF + _pad_address(holder)
-    return int(eth_call(chain, token, data, block), 16)
+    try:
+        return _decode_uint(eth_call(chain, token, data, block))
+    except (RPCError, requests.HTTPError):
+        return 0
+
+
+SEL_SCALED_BALANCE_OF = "0x1da24f3e"   # scaledBalanceOf(address)
+
+
+@cached(source_id="rpc.scaled_balance_of")
+def scaled_balance_of(chain: Chain, token: Address, holder: Address, block: int) -> int:
+    """``scaledBalanceOf(holder)`` for Aave V3 aTokens / SparkLend spTokens.
+
+    Returns the *un-rebased* principal in scaled units. Combined with
+    ``balanceOf`` (rebased), it lets us derive the liquidity index per holder:
+    ``index = balanceOf × RAY / scaledBalanceOf`` — and from there the rebase
+    yield over a period: ``yield = scaled_som × (index_eom − index_som) / RAY``.
+
+    The model is exact for Aave V3 / SparkLend (which expose ``scaledBalanceOf``).
+    Tokens without a scaled-balance accessor will revert; the caller must
+    catch and fall back to face-value inflow accounting.
+    """
+    data = SEL_SCALED_BALANCE_OF + _pad_address(holder)
+    try:
+        return _decode_uint(eth_call(chain, token, data, block))
+    except (RPCError, requests.HTTPError):
+        return 0
 
 
 @cached(source_id="rpc.native_balance")
@@ -121,9 +179,12 @@ def decimals_of(chain: Chain, token: Address, block: int) -> int:
 
 @cached(source_id="rpc.convert_to_assets")
 def convert_to_assets(chain: Chain, vault: Address, shares: int, block: int) -> int:
-    """ERC-4626 `convertToAssets(shares)`."""
+    """ERC-4626 `convertToAssets(shares)`. Returns 0 if vault didn't exist at this block."""
     data = SEL_CONVERT_TO_ASSETS + _pad_uint(shares)
-    return int(eth_call(chain, vault, data, block), 16)
+    try:
+        return _decode_uint(eth_call(chain, vault, data, block))
+    except (RPCError, requests.HTTPError):
+        return 0
 
 
 # ----------------------------------------------------------------------------
@@ -140,10 +201,54 @@ def block_timestamp(chain: Chain, block: int) -> int:
     return int(raw["timestamp"], 16)
 
 
+# Default chunk for `eth_getLogs` pagination — Alchemy free tier caps at 10k
+# blocks per call. Override via the kwarg if a provider supports more.
+LOGS_CHUNK_BLOCKS = 10_000
+
+
+def eth_get_logs(
+    chain: Chain,
+    address: Address,
+    topics: list[str | None],
+    from_block: int,
+    to_block: int,
+    *,
+    chunk_blocks: int = LOGS_CHUNK_BLOCKS,
+) -> list[dict]:
+    """Paginated ``eth_getLogs``.
+
+    ``topics`` matches Ethereum filter semantics: ``None`` for wildcard, a
+    single 0x-prefixed 32-byte hex string for a fixed match. Length up to 4.
+
+    Returns the raw log dicts (block_number, transaction_hash, topics, data, …)
+    in chronological order. Pagination splits the requested range into
+    ``chunk_blocks`` windows so requests stay within Alchemy's free-tier limit.
+    """
+    if from_block > to_block:
+        return []
+    out: list[dict] = []
+    cursor = from_block
+    while cursor <= to_block:
+        end = min(cursor + chunk_blocks - 1, to_block)
+        params = [{
+            "address": address.hex,
+            "topics": topics,
+            "fromBlock": hex(cursor),
+            "toBlock": hex(end),
+        }]
+        out.extend(_post(rpc_url(chain), "eth_getLogs", params))
+        cursor = end + 1
+    return out
+
+
 def find_block_at_or_before(chain: Chain, ts: datetime) -> int:
     """Binary search for the highest block whose timestamp ≤ `ts` (UTC).
 
     Used by `Period.from_month` to resolve `pin_blocks`. Roughly 25 RPC calls per chain.
+
+    Note: this function intentionally does NOT pin to a specific block (it's
+    deciding *which* block to pin to). All other reads in this module enforce
+    block-pinning per PRD §10 conv. 1.
     """
     if ts.tzinfo is None:
         ts = ts.replace(tzinfo=timezone.utc)
@@ -152,6 +257,16 @@ def find_block_at_or_before(chain: Chain, ts: datetime) -> int:
     high = latest_block(chain)
     if block_timestamp(chain, high) <= target:
         return high
+
+    # Reject targets that precede genesis — otherwise the search collapses to
+    # block 0 and silently pins every downstream RPC call to genesis (zero
+    # balances, no error).
+    if block_timestamp(chain, 0) > target:
+        raise ValueError(
+            f"find_block_at_or_before({chain}, {ts.isoformat()}): target precedes "
+            f"genesis (block 0 timestamp = {block_timestamp(chain, 0)}). "
+            "Likely a wrong settlement period or chain mismatch."
+        )
 
     low = 0
     while low < high:

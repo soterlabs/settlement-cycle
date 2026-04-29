@@ -3,16 +3,12 @@
 from __future__ import annotations
 
 from datetime import date
-from decimal import Decimal
 
 import pandas as pd
 
 from ...extract.dune import execute_query
+from ._dune_decode import to_decimal as _to_decimal
 from ._paths import QUERIES_DIR
-
-
-def _to_decimal(v: object) -> Decimal:
-    return Decimal(str(v))
 
 
 class DuneSSRSource:

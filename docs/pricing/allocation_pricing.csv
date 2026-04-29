@@ -1,0 +1,58 @@
+Star,Protocol,Network,Symbol,Name,Token Address,Underlying Address,Held Address,Oracle1,Address,Oracle2,Address,AlternativePricing,Notes,API Instructions,CoingeckoId
+spark,curve,ethereum,sUSDSUSDT,Spark.fi USDT Reserve,0x00836Fe54625BE242BcFA286207795405ca4fD10,,spark.ethereum.alm,n/a,,,,,,,n/a
+spark,sparklend,ethereum,spUSDC,Spark USDC,0x377C3bd93f2a2984E1E7bE6A5C22c525eD4A4815,0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,spark.ethereum.alm,core,,,,,,,n/a
+spark,sparklend,ethereum,spUSDS,Spark USDS,0xC02aB1A5eaA8d1B114EF786D9bde108cD4364359,0xdC035D45d973E3EC169d2276DDab16f1e407384F,spark.ethereum.alm,core,,,,,,,n/a
+spark,sparklend,ethereum,spUSDT,Spark USDT,0xe7dF13b8e3d6740fe17CBE928C7334243d86c92f,0xdAC17F958D2ee523a2206206994597C13D831ec7,spark.ethereum.alm,core,,,,,,,n/a
+spark,sparklend,ethereum,spDAI,Spark DAI,0x4DEDf26112B3Ec8eC46e7E31EA5e123490B05B8B,0x6B175474E89094C44Da98b954EedeAC495271d0F,spark.ethereum.alm,core,,,,,,,n/a
+spark,arkis,ethereum,sparkPrimeUSDC1,Spark Prime USDC 1,0x38464507E02c983F20428a6E8566693fE9e422a9,,spark.ethereum.alm,none,,,,erc4626 totalAssets,API is also available,"Arkis API docs: https://docs.arkis.xyz/home/for-developers
+
+Only relevant endpoints are https://api.arkis.xyz/e/v1/vaults to fetch vault ids associated to particular Prime Agent's API key, and https://api.arkis.xyz/e/v1/vaults/{vault_id} to fetch current exposures for each vault.
+
+Unfortunately, I lost Spark's Arkis API Key, so it will need to be requested again.",none
+spark,anchorage,ethereum,Anchorage,Anchorage,none,,spark.ethereum.anchorage,none,,,,,pricing only available via API,"Anchorage API docs: https://developers.anchorage.com/ (password is ""anchor"")
+
+Routes applicable to Prime Agent allocations are found under ""Vaults"" and within the ""Atlas"" category, under ""Collateral Management"".
+
+We can retrieve the principals of all loans for a particular Prime Agent, given their read-only API key ${AGENT_KEY}, with the following:
+curl -X GET ""https://api.anchorage.com/v2/collateral_management/exposures"" \
+  -H ""Api-Access-Key: ${AGENT_KEY}"" \
+  -H ""Accept: application/json""",none
+spark,aave,avalanche,aAvaUSDC,Aave Avalanche USDC,0x625e7708f30ca75bfd92586e17077590c60eb4cd,0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e,spark.avalanche.alm,core,,,,,,,n/a
+spark,maple,ethereum,syrupUSDC,Syrup USDC,0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b,,spark.ethereum.alm,pyth,pythId:0xe616297dab48626eaacf6d030717b25823b13ae6520b83f4735bf8deec8e2c9a,maple API,,erc4626 totalAssets,Chonicle and Chainlink (on Ethereum) oracles do not exist for syrupUSDC. Chainlink pull oracle appears to have existed but not any longer.,Maple GraphQL API docs: https://studio.apollographql.com/public/maple-api/variant/mainnet/home,syrupusdc
+spark,curve,ethereum,PYUSDUSDS,Spark.fi PYUSD Reserve,0xA632D59b9B804a956BfaA9b48Af3A1b74808FC1f,,spark.ethereum.alm,n/a,,,,,,,n/a
+spark,sparklend,ethereum,spPYUSD,Spark PYUSD,0x779224df1c756b4EDD899854F32a53E8c2B2ce5d,0x6c3ea9036406852006290770BEdFcAbA0e23A0e8,spark.ethereum.alm,chainlink pull,chainlinkId:0x0003313e5ba57741dd23e2e239730977b3a2a65fcdca08a8609c6e5bac09f88f,pyth,pythId:0xc1da1b73d7f01e7ddd54b3766cf7fcd644395ad14f70aa706ec5384c59e76692,,,,n/a
+spark,paypal,ethereum,PYUSD,PayPal USD,0x6c3ea9036406852006290770BEdFcAbA0e23A0e8,,spark.ethereum.alm,chainlink pull,chainlinkId:0x0003313e5ba57741dd23e2e239730977b3a2a65fcdca08a8609c6e5bac09f88f,pyth,pythId:0xc1da1b73d7f01e7ddd54b3766cf7fcd644395ad14f70aa706ec5384c59e76692,,"Only pull oracles have been found, so we may continue looking for an alternative source.",,paypal-usd
+,,,,,,,,,,,,,,,
+grove,centrifuge,ethereum,JTRSY,Janus Henderson Anemoy Treasury Fund,0x8c213ee79581Ff4984583C6a801e5263418C4b86,,grove.ethereum.alm,chronicle,0x59ef4BE3eDDF0270c4878b7B945bbeE13fb33d0D,centrifuge API,,erc4626 totalAssets from vault contract (not token contract),,GraphQL API endpoint: https://api.centrifuge.io/,janus-henderson-anemoy-treasury-fund
+grove,centrifuge,plume,ACRDX,Anemoy Tokenized Apollo Diversified Credit Fund Token,0x9477724Bb54AD5417de8Baff29e59DF3fB4DA74f,,grove.plume.alm,chronicle,0x51cC9463788b870D1e9Bacd111a9bbB2C9820c7e,centrifuge API,,erc4626 totalAssets from vault contract (not token contract),,,anemoy-tokenized-apollo-diversified-credit-fund
+grove,inx,avalanche,GACLO-1,Galaxy Arch CLO Token,0x2C0aDFF8e114f3cA106051144353aC703D24B901,,grove.avalanche.alm,none,,,,,pricing only available via API,"There should be APIs available for Galaxy both via Accountable (the dashboard platform) and Anchorage (the custodian). But I do not have access to either, for Spark, access to the API will need to be requested from either Spark or BA.",none
+grove,aave,ethereum,aEthRLUSD,Aave Ethereum RLUSD,0xFa82580c16A31D0c1bC632A36F82e83EfEF3Eec0,0x8292Bb45bf1Ee4d140127049757C2E0fF06317eD,grove.ethereum.alm,chainlink,0x26C46B7aD0012cA71F2298ada567dC9Af14E7f2A,pyth,pythId:0x65652029e7acde632e80192dcaa6ea88e61d84a4c78a982a63e98f4bbcb288d5,,,,n/a
+grove,centrifuge,avalanche,JAAA,Janus Henderson Anemoy AAA CLO Fund Token,0x58F93d6b1EF2F44eC379Cb975657C132CBeD3B6b,,grove.avalanche.alm,chronicle,0x02cf8C9fBa24d79886dAc40cb620f0930C6E8eC0,centrifuge API,,erc4626 totalAssets from vault contract (not token contract),,,janus-henderson-anemoy-aaa-clo-fund
+grove,morpho,monad,grove-bbqAUSD,Grove x Steakhouse High Yield AUSD,0x32841A8511D5c2c5b253f45668780B99139e476D,,grove.monad.eoa,none,,,,,,,none
+grove,curve,ethereum,AUSDUSDC-CRV,CURVE LP AUSD/USDC,0xe79c1c7e24755574438a26d5e062ad2626c04662,,grove.ethereum.alm,n/a,,,,,,,n/a
+grove,blackrock,ethereum,BUIDL-I,BlackRock USD Institutional Digital Liquidity Fund - I Class,0x6a9DA2D710BB9B700acde7Cb81F10F1fF8C89041,,grove.ethereum.alm,redstone,0xb9BD795BB71012c0F3cd1D9c9A4c686F2d3524A4,securitize API,,,"Securitize API is private, but Stablewatch has a key.
+For pricing, the asset is hardcoded at $1, it doesn't matter if fetch the price via oracle or not.
+For revenues, the yield can be retrieved via API, but we should calculate revenue based on actual rewards received by ALM, not the API.","API endpoint that gives yield data for all BUIDL variants is
+curl -s ""https://partners-api.securitize.io/asset-metrics/api/v1/assets"" \
+  -H ""accept: application/json"" \
+  -H ""apikey: 4QT2DdXvjya1VKS17uNmV4r8pGpbTyRc"" \
+  -H ""clientID: 982a3f15-e75f-45da-883f-36ca78bec205""",blackrock-usd-institutional-digital-liquidity-fund-i-class
+grove,aave,ethereum,aHorRwaRLUSD,Aave Horizon RWA RLUSD,0xE3190143Eb552456F88464662f0c0C4aC67A77eB,0x8292Bb45bf1Ee4d140127049757C2E0fF06317eD,grove.ethereum.alm,chainlink,0x26C46B7aD0012cA71F2298ada567dC9Af14E7f2A,pyth,pythId:0x65652029e7acde632e80192dcaa6ea88e61d84a4c78a982a63e98f4bbcb288d5,,,,n/a
+grove,centrifuge,ethereum,JAAA,Janus Henderson Anemoy AAA CLO Fund Token,0x5a0F93D040De44e78F251b03c43be9CF317Dcf64,,grove.ethereum.alm,chronicle,0x02cf8C9fBa24d79886dAc40cb620f0930C6E8eC0,centrifuge API,,erc4626 totalAssets from vault contract (not token contract),,,janus-henderson-anemoy-aaa-clo-fund
+grove,aave,ethereum,aHorRwaUSDC,Aave Horizon RWA USDC,0x68215B6533c47ff9f7125aC95adf00fE4a62f79e,0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,grove.ethereum.alm,core,,,,,,,n/a
+grove,morpho,base,grove-bbqUSDC,Grove x Steakhouse USDC High Yield,0xBeEf2d50B428675a1921bC6bBF4bfb9D8cF1461A,,grove.base.alm,none,,,,,,,none
+grove,morpho,ethereum,grove-bbqUSDC-V2,Grove x Steakhouse USDC,0xBeefF08dF54897e7544aB01d0e86f013DA354111,,grove.ethereum.alm,none,,,,,,,none
+grove,morpho,ethereum,grove-bbqUSDC-HY,Grove x Steakhouse USDC High Yield,0xBeef2b5fD3D94469B7782Aebe6364E6e6FB1B709,,grove.ethereum.alm,none,,,,,erc4626 convertToAssets,Added 2026-04-27 — same Morpho 4626 methodology as grove-bbqUSDC-V2; distinct vault address.,none
+grove,morpho,ethereum,grove-bbqAUSD,Grove x Steakhouse AUSD,0xBeefF0d672ab7f5018DfB614C93981045D4aA98a,,grove.ethereum.alm,none,,,,,erc4626 convertToAssets,Added 2026-04-27 — Morpho 4626 with AUSD underlying.,none
+grove,securitize,ethereum,STAC,Securitize Tokenized AAA CLO Fund,0x51C2d74017390CbBd30550179A16A1c28F7210fc,,grove.ethereum.alm,chronicle,0x9D77E4cA90E25114AFb24dF908f5918f572D958B,redstone,0xEdC6287D3D41b322AF600317628D7E226DD3add4,,,,securitize-tokenized-aaa-clo-fund
+grove,uniswap,ethereum,AUSDUSDC-UNI3,Uniswap V3 Pool AUSD/USDC,0xbAFeAd7c60Ea473758ED6c6021505E8BBd7e8E5d,,grove.ethereum.alm,n/a,,,,,Held as NFT positions via NonfungiblePositionManager 0xC36442b4a4522E871399CD717aBDD847Ab11FE88; tick math required.,,n/a
+,,,,,,,,,,,,,,,
+obex,maple,ethereum,syrupUSDC,Syrup USDC,0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b,,obex.ethereum.alm,pyth,pythId:0xe616297dab48626eaacf6d030717b25823b13ae6520b83f4735bf8deec8e2c9a,maple API,,erc4626 totalAssets,Chonicle and Chainlink (on Ethereum) oracles do not exist for syrupUSDC. Chainlink pull oracle appears to have existed before but not any longer.,,syrupusdc
+,,,,,,,,,,,,,,,
+CORE ASSETS,N/A,ethereum,USDS,,0xdc035d45d973e3ec169d2276ddab16f1e407384f,,n/a,chronicle,0x74661a9ea74fD04975c6eBc6B155Abf8f885636c,chainlink,0xfF30586cD0F29eD462364C7e81375FC0C71219b1,,,,usds
+,,ethereum,DAI,,0x6b175474e89094c44da98b954eedeac495271d0f,,n/a,unknown,,chainlink,0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9,,"Chronicle, Redstone, and Pyth all do not have oracles for DAI on Ethereum.",,dai
+,,ethereum,USDC,,0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48,,n/a,chronicle,0xCe701340261a3dc3541C5f8A6d2bE689381C8fCC,chainlink,0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6,,,,usd-coin
+,,ethereum,USDT,,0xdac17f958d2ee523a2206206994597c13d831ec7,,n/a,chronicle,0x7084a627a22b2de99E18733DC5aAF40993FA405C,chainlink,0x3E7d1eAB13ad0104d2750B8863b489D65364e32D,,,,tether
+,,ethereum,BTC/WBTC,,0x2260fac5e5542a773aa44fbcfedf7c193bc2c599,,n/a,chronicle,0x286204401e0C1E63043E95a8DE93236B735d4BF2,chainlink,0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c,,,,bitcoin
+,,ethereum,ETH/WETH,,0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2,,n/a,chronicle,0xb074EEE1F1e66650DA49A4d96e255c8337A272a9,chainlink,0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419,,,,ethereum
+,,ethereum,wstETH,,0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0,,n/a,chronicle,0xA770582353b573CbfdCC948751750EeB3Ccf23CF,redstone,0xe4aE88743c3834d0c492eAbC47384c84BcADC6a6,pyth,Chainlink does not have oracle for wstETH on Ethereum.,,wrapped-steth

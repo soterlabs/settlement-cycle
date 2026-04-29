@@ -12,10 +12,15 @@
 -- (signed debt delta) sits at offset 165 = 4 (selector) + 32×5 (i, u, v, dink).
 -- Cumulative dart is in 1e18 units (USDS).
 
+-- DECIMAL(38,18) preserves int256/1e18 exactly up to ~9.2e18 USDS — DOUBLE
+-- (53-bit mantissa) loses precision at the ULP-of-1e26 level (~$11K per frob
+-- at 100M USDS positions), and the loss propagates through `_to_decimal(str(v))`
+-- in the Python source. Using DECIMAL keeps every dart byte-exact end to end.
 WITH frobs AS (
   SELECT
     tr.block_date,
-    CAST(bytearray_to_int256(substr(tr.input, 165, 32)) AS DOUBLE) / 1e18 AS dart
+    CAST(bytearray_to_int256(substr(tr.input, 165, 32)) AS DECIMAL(38, 0))
+      / CAST(1000000000000000000 AS DECIMAL(38, 0)) AS dart
   FROM ethereum.traces tr
   WHERE tr."to"          = 0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B
     AND substr(tr.input, 1, 4)  = 0x76088703

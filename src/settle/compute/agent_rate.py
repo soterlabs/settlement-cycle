@@ -1,12 +1,21 @@
-"""Agent rate — earnings owed to the prime on its subproxy's idle holdings.
+"""Agent rate — what the prime EARNS on its subproxy's idle holdings.
 
-Per RULES.md §3:
+The agent rate is **SSR + 20bps**. Two equivalent expressions:
 
-    daily_agent_rate = subproxy_usds  × [(1 + SSR + 0.20%)^(1/365) - 1]
-                     + subproxy_susds × [(1.002)^(1/365)        - 1]
+* USDS in subproxy: rate = SSR + 20bps APY (full agent rate).
+* sUSDS in subproxy: SSR is already received via the token's index growth,
+  so we only pay the 20bps on top.
 
-USDS in the subproxy earns SSR + 0.20% APY.
-sUSDS in the subproxy earns a flat 0.20% APY (NOT SSR-based).
+Caveat: the 20bps for sUSDS is applied to the **cost-basis principal**
+(``shares × entry_pps``), NOT to the current balance. ``shares × current_pps``
+would double-count SSR — the index already reflects the SSR accrual the prime
+keeps. The orchestrator (compute_monthly_pnl) is responsible for converting
+share-balances to cost-basis USDS before passing in.
+
+NOTE on naming: prior versions called the 20bps an "agent spread" — that's a
+misnomer. The agent rate is *SSR + 20bps* uniformly. The "+20bps" is just the
+component above SSR; in the sUSDS case it's the only component because SSR
+already accrued via the token index.
 """
 
 from __future__ import annotations
@@ -19,11 +28,15 @@ import pandas as pd
 from ..domain.period import Period
 from ._helpers import cum_at_or_before, daily_compounding_factor, ssr_at_or_before
 
-SUBPROXY_USDS_SPREAD = Decimal("0.002")    # SSR + 0.20%
-SUBPROXY_SUSDS_FLAT_APY = Decimal("0.002")  # flat 0.20% on sUSDS
+# +20bps over SSR — the agent rate's component above SSR. For USDS in subproxy:
+# rate = SSR + 20bps. For sUSDS in subproxy: rate = 20bps (SSR already accrues
+# via the token index, kept by the prime — applying SSR again would double-
+# count). NOT two separate rates; the same agent rate, viewed differently.
+AGENT_RATE_OVER_SSR = Decimal("0.002")
+AGENT_RATE_SUSDS_ONLY = AGENT_RATE_OVER_SSR  # alias for readability at the call site
 
 # Pre-compute the sUSDS daily factor — it doesn't depend on SSR.
-_SUSDS_DAILY_FACTOR = daily_compounding_factor(SUBPROXY_SUSDS_FLAT_APY)
+_SUSDS_DAILY_FACTOR = daily_compounding_factor(AGENT_RATE_SUSDS_ONLY)
 
 
 def compute_agent_rate(
@@ -39,10 +52,10 @@ def compute_agent_rate(
         cum_usds = cum_at_or_before(subproxy_usds, "cum_balance", current)
         cum_susds = cum_at_or_before(subproxy_susds, "cum_balance", current)
 
-        # USDS earns SSR + 0.20%; only need the SSR if we have USDS.
+        # USDS earns the full agent rate = SSR + 20bps.
         if cum_usds > 0:
             ssr_apy = ssr_at_or_before(ssr, current)
-            usds_apy = ssr_apy + SUBPROXY_USDS_SPREAD
+            usds_apy = ssr_apy + AGENT_RATE_OVER_SSR
             total += cum_usds * daily_compounding_factor(usds_apy)
 
         if cum_susds > 0:

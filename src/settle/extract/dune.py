@@ -14,6 +14,7 @@ Requires env var ``DUNE_API_KEY``.
 from __future__ import annotations
 
 import datetime as dt
+import errno
 import hashlib
 import json
 import os
@@ -59,7 +60,53 @@ def _load_registry() -> dict[str, int]:
 
 
 def _save_registry(reg: dict[str, int]) -> None:
-    _registry_path().write_text(json.dumps(reg, indent=2, sort_keys=True))
+    """Atomic write: tmp file + ``replace``. Caller is expected to hold
+    the registry lock while doing the read-modify-write."""
+    p = _registry_path()
+    tmp = p.with_suffix(p.suffix + ".tmp")
+    tmp.write_text(json.dumps(reg, indent=2, sort_keys=True))
+    tmp.replace(p)
+
+
+class _RegistryLock:
+    """Cross-process exclusive lock on the registry file.
+
+    Uses ``O_EXCL`` on a sentinel ``.lock`` file rather than pulling in a third-
+    party dep. Two parallel ``settle run`` processes resolving the same SQL
+    won't both create their own Dune queries — the loser waits, then re-reads
+    the registry and finds the winner's mapping.
+    """
+
+    def __init__(self, path: Path):
+        self._lock_path = path.with_suffix(path.suffix + ".lock")
+
+    def __enter__(self) -> "_RegistryLock":
+        deadline = time.time() + 30
+        while True:
+            try:
+                fd = os.open(self._lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                os.write(fd, str(os.getpid()).encode())
+                os.close(fd)
+                return self
+            except OSError as e:
+                if e.errno != errno.EEXIST:
+                    raise
+                if time.time() > deadline:
+                    # Stale lock — best-effort takeover. Acceptable since the
+                    # only side-effect is re-creating a Dune query already
+                    # registered under a now-orphaned hash entry.
+                    try:
+                        self._lock_path.unlink()
+                    except FileNotFoundError:
+                        pass
+                    continue
+                time.sleep(0.1)
+
+    def __exit__(self, *_: object) -> None:
+        try:
+            self._lock_path.unlink()
+        except FileNotFoundError:
+            pass
 
 
 def _sql_hash(sql: str) -> str:
@@ -79,15 +126,27 @@ def _create_query(sql: str, name: str) -> int:
 
 
 def _resolve_query_id(sql_path: Path) -> int:
-    """Get-or-create the Dune query ID for this SQL file. Cached by SQL content hash."""
+    """Get-or-create the Dune query ID for this SQL file. Cached by SQL content hash.
+
+    Holds a cross-process lock around the read-modify-write so two parallel
+    runs don't both create their own Dune query for the same SQL and then race
+    on the registry write.
+    """
     sql = sql_path.read_text()
     sha = _sql_hash(sql)
+    # Quick path: hit the cache before acquiring the lock.
     reg = _load_registry()
     if sha in reg:
         return reg[sha]
-    query_id = _create_query(sql, name=f"settle/{sql_path.name}")
-    reg[sha] = query_id
-    _save_registry(reg)
+    with _RegistryLock(_registry_path()):
+        # Re-read inside the lock — another process may have created the
+        # mapping while we were waiting.
+        reg = _load_registry()
+        if sha in reg:
+            return reg[sha]
+        query_id = _create_query(sql, name=f"settle/{sql_path.name}")
+        reg[sha] = query_id
+        _save_registry(reg)
     return query_id
 
 
@@ -134,15 +193,16 @@ def _format_param(value: Any) -> dict[str, Any]:
     Convention (validated via MCP, 2026-04-27):
     - ``bytes`` (e.g. ilk_bytes32, addresses) → ``text`` with ``0x...`` value;
       Dune substitutes the literal text and the SQL parser interprets it as varbinary.
-    - ``int`` / ``float`` → ``number``.
+    - ``int`` / ``float`` / ``Decimal`` → ``number``.
     - ``datetime`` (with tzinfo) → Dune ``datetime``.
     - ``date`` → ``text`` (so SQL templates can wrap it as ``DATE '{{x}}'``).
     - everything else → ``text`` via ``str()``.
     """
+    from decimal import Decimal as _Dec
     # bool must come before int (bool is a subclass of int)
     if isinstance(value, bool):
         return {"type": "text", "value": str(value).lower()}
-    if isinstance(value, (int, float)):
+    if isinstance(value, (int, float, _Dec)):
         return {"type": "number", "value": str(value)}
     if isinstance(value, bytes | bytearray):
         return {"type": "text", "value": "0x" + bytes(value).hex()}
@@ -153,6 +213,32 @@ def _format_param(value: Any) -> dict[str, Any]:
     return {"type": "text", "value": str(value)}
 
 
+def _fetch_all_rows(execution_id: str) -> list[dict]:
+    """Pull every row from a completed execution, following Dune's pagination
+    cursor. Long-running queries (multi-year debt timeseries, large inflow
+    histories) can exceed the per-call row cap; without this the tail is
+    silently dropped and downstream sums are wrong.
+    """
+    body = _poll_results(execution_id)
+    rows: list[dict] = list(body.get("result", {}).get("rows", []) or [])
+    metadata = body.get("result", {}).get("metadata", {}) or {}
+    expected = metadata.get("total_row_count")
+    next_uri = body.get("next_uri")
+    while next_uri:
+        r = requests.get(next_uri, headers=_headers(), timeout=30)
+        r.raise_for_status()
+        body = r.json()
+        page = body.get("result", {}).get("rows", []) or []
+        rows.extend(page)
+        next_uri = body.get("next_uri")
+    if expected is not None and len(rows) != expected:
+        raise DuneError(
+            f"Dune execution {execution_id} pagination mismatch: "
+            f"got {len(rows)} rows, expected {expected}"
+        )
+    return rows
+
+
 @cached(source_id="dune.execute")
 def execute_query(sql_path: Path, params: dict[str, Any], pin_block: int,
                   performance: str = DEFAULT_PERFORMANCE) -> pd.DataFrame:
@@ -160,7 +246,13 @@ def execute_query(sql_path: Path, params: dict[str, Any], pin_block: int,
 
     `pin_block` is folded into the param set as `pin_block` and is also part of the
     cache key. `params` keys must match named parameters declared in the SQL file.
+    Callers MUST NOT pass ``pin_block`` inside ``params`` — that's an alias for
+    the positional argument and would silently get overwritten.
     """
+    if "pin_block" in params:
+        raise ValueError(
+            "execute_query: pass pin_block as the positional arg, not via params"
+        )
     query_id = _resolve_query_id(sql_path)
 
     full_params = {**params, "pin_block": pin_block}
@@ -169,7 +261,5 @@ def execute_query(sql_path: Path, params: dict[str, Any], pin_block: int,
     ]
 
     execution_id = _execute_query(query_id, dune_params, performance)
-    body = _poll_results(execution_id)
-
-    rows = body.get("result", {}).get("rows", [])
+    rows = _fetch_all_rows(execution_id)
     return pd.DataFrame(rows)

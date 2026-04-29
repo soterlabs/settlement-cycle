@@ -1,0 +1,1297 @@
+{
+  "_about": "Avalanche-C last-block-per-day for Grove's lifetime. Captured 2026-04-28 via MCP from Dune query 7388570.",
+  "_chain": "avalanche_c",
+  "_dune_query_id": 7388570,
+  "_dune_execution_id": "01KQ9SBBB9PS42F9HVSSC0PAD7",
+  "_total_row_count": 322,
+  "rows": [
+    {
+      "block_date": "2025-05-14",
+      "block_number": 62048333
+    },
+    {
+      "block_date": "2025-05-15",
+      "block_number": 62107732
+    },
+    {
+      "block_date": "2025-05-16",
+      "block_number": 62175121
+    },
+    {
+      "block_date": "2025-05-17",
+      "block_number": 62235941
+    },
+    {
+      "block_date": "2025-05-18",
+      "block_number": 62295003
+    },
+    {
+      "block_date": "2025-05-19",
+      "block_number": 62355384
+    },
+    {
+      "block_date": "2025-05-20",
+      "block_number": 62416403
+    },
+    {
+      "block_date": "2025-05-21",
+      "block_number": 62476823
+    },
+    {
+      "block_date": "2025-05-22",
+      "block_number": 62541136
+    },
+    {
+      "block_date": "2025-05-23",
+      "block_number": 62603595
+    },
+    {
+      "block_date": "2025-05-24",
+      "block_number": 62660568
+    },
+    {
+      "block_date": "2025-05-25",
+      "block_number": 62716019
+    },
+    {
+      "block_date": "2025-05-26",
+      "block_number": 62776833
+    },
+    {
+      "block_date": "2025-05-27",
+      "block_number": 62837858
+    },
+    {
+      "block_date": "2025-05-28",
+      "block_number": 62902160
+    },
+    {
+      "block_date": "2025-05-29",
+      "block_number": 62969743
+    },
+    {
+      "block_date": "2025-05-30",
+      "block_number": 63032257
+    },
+    {
+      "block_date": "2025-05-31",
+      "block_number": 63089701
+    },
+    {
+      "block_date": "2025-06-01",
+      "block_number": 63144734
+    },
+    {
+      "block_date": "2025-06-02",
+      "block_number": 63203121
+    },
+    {
+      "block_date": "2025-06-03",
+      "block_number": 63259957
+    },
+    {
+      "block_date": "2025-06-04",
+      "block_number": 63316331
+    },
+    {
+      "block_date": "2025-06-05",
+      "block_number": 63368969
+    },
+    {
+      "block_date": "2025-06-06",
+      "block_number": 63422003
+    },
+    {
+      "block_date": "2025-06-07",
+      "block_number": 63484120
+    },
+    {
+      "block_date": "2025-06-08",
+      "block_number": 63542103
+    },
+    {
+      "block_date": "2025-06-09",
+      "block_number": 63602539
+    },
+    {
+      "block_date": "2025-06-10",
+      "block_number": 63656183
+    },
+    {
+      "block_date": "2025-06-11",
+      "block_number": 63709911
+    },
+    {
+      "block_date": "2025-06-12",
+      "block_number": 63761229
+    },
+    {
+      "block_date": "2025-06-13",
+      "block_number": 63813174
+    },
+    {
+      "block_date": "2025-06-14",
+      "block_number": 63869674
+    },
+    {
+      "block_date": "2025-06-15",
+      "block_number": 63924576
+    },
+    {
+      "block_date": "2025-06-16",
+      "block_number": 63976464
+    },
+    {
+      "block_date": "2025-06-17",
+      "block_number": 64029163
+    },
+    {
+      "block_date": "2025-06-18",
+      "block_number": 64084698
+    },
+    {
+      "block_date": "2025-06-19",
+      "block_number": 64142746
+    },
+    {
+      "block_date": "2025-06-20",
+      "block_number": 64200184
+    },
+    {
+      "block_date": "2025-06-21",
+      "block_number": 64258701
+    },
+    {
+      "block_date": "2025-06-22",
+      "block_number": 64313650
+    },
+    {
+      "block_date": "2025-06-23",
+      "block_number": 64364888
+    },
+    {
+      "block_date": "2025-06-24",
+      "block_number": 64418386
+    },
+    {
+      "block_date": "2025-06-25",
+      "block_number": 64473327
+    },
+    {
+      "block_date": "2025-06-26",
+      "block_number": 64527368
+    },
+    {
+      "block_date": "2025-06-27",
+      "block_number": 64582049
+    },
+    {
+      "block_date": "2025-06-28",
+      "block_number": 64637543
+    },
+    {
+      "block_date": "2025-06-29",
+      "block_number": 64690434
+    },
+    {
+      "block_date": "2025-06-30",
+      "block_number": 64744892
+    },
+    {
+      "block_date": "2025-07-01",
+      "block_number": 64799756
+    },
+    {
+      "block_date": "2025-07-02",
+      "block_number": 64854665
+    },
+    {
+      "block_date": "2025-07-03",
+      "block_number": 64907961
+    },
+    {
+      "block_date": "2025-07-04",
+      "block_number": 64959019
+    },
+    {
+      "block_date": "2025-07-05",
+      "block_number": 65007741
+    },
+    {
+      "block_date": "2025-07-06",
+      "block_number": 65058122
+    },
+    {
+      "block_date": "2025-07-07",
+      "block_number": 65108218
+    },
+    {
+      "block_date": "2025-07-08",
+      "block_number": 65155766
+    },
+    {
+      "block_date": "2025-07-09",
+      "block_number": 65205716
+    },
+    {
+      "block_date": "2025-07-10",
+      "block_number": 65254875
+    },
+    {
+      "block_date": "2025-07-11",
+      "block_number": 65310129
+    },
+    {
+      "block_date": "2025-07-12",
+      "block_number": 65358780
+    },
+    {
+      "block_date": "2025-07-13",
+      "block_number": 65408527
+    },
+    {
+      "block_date": "2025-07-14",
+      "block_number": 65460038
+    },
+    {
+      "block_date": "2025-07-15",
+      "block_number": 65519199
+    },
+    {
+      "block_date": "2025-07-16",
+      "block_number": 65579345
+    },
+    {
+      "block_date": "2025-07-17",
+      "block_number": 65640562
+    },
+    {
+      "block_date": "2025-07-18",
+      "block_number": 65694994
+    },
+    {
+      "block_date": "2025-07-19",
+      "block_number": 65754908
+    },
+    {
+      "block_date": "2025-07-20",
+      "block_number": 65811624
+    },
+    {
+      "block_date": "2025-07-21",
+      "block_number": 65863489
+    },
+    {
+      "block_date": "2025-07-22",
+      "block_number": 65914478
+    },
+    {
+      "block_date": "2025-07-23",
+      "block_number": 65967138
+    },
+    {
+      "block_date": "2025-07-24",
+      "block_number": 66021433
+    },
+    {
+      "block_date": "2025-07-25",
+      "block_number": 66073341
+    },
+    {
+      "block_date": "2025-07-26",
+      "block_number": 66120063
+    },
+    {
+      "block_date": "2025-07-27",
+      "block_number": 66167434
+    },
+    {
+      "block_date": "2025-07-28",
+      "block_number": 66218653
+    },
+    {
+      "block_date": "2025-07-29",
+      "block_number": 66267356
+    },
+    {
+      "block_date": "2025-07-30",
+      "block_number": 66316996
+    },
+    {
+      "block_date": "2025-07-31",
+      "block_number": 66369420
+    },
+    {
+      "block_date": "2025-08-01",
+      "block_number": 66419991
+    },
+    {
+      "block_date": "2025-08-02",
+      "block_number": 66470431
+    },
+    {
+      "block_date": "2025-08-03",
+      "block_number": 66521200
+    },
+    {
+      "block_date": "2025-08-04",
+      "block_number": 66573026
+    },
+    {
+      "block_date": "2025-08-05",
+      "block_number": 66624613
+    },
+    {
+      "block_date": "2025-08-06",
+      "block_number": 66676269
+    },
+    {
+      "block_date": "2025-08-07",
+      "block_number": 66728672
+    },
+    {
+      "block_date": "2025-08-08",
+      "block_number": 66779208
+    },
+    {
+      "block_date": "2025-08-09",
+      "block_number": 66831126
+    },
+    {
+      "block_date": "2025-08-10",
+      "block_number": 66882609
+    },
+    {
+      "block_date": "2025-08-11",
+      "block_number": 66933116
+    },
+    {
+      "block_date": "2025-08-12",
+      "block_number": 66981781
+    },
+    {
+      "block_date": "2025-08-13",
+      "block_number": 67031447
+    },
+    {
+      "block_date": "2025-08-14",
+      "block_number": 67082417
+    },
+    {
+      "block_date": "2025-08-15",
+      "block_number": 67133877
+    },
+    {
+      "block_date": "2025-08-16",
+      "block_number": 67180174
+    },
+    {
+      "block_date": "2025-08-17",
+      "block_number": 67230369
+    },
+    {
+      "block_date": "2025-08-18",
+      "block_number": 67283768
+    },
+    {
+      "block_date": "2025-08-19",
+      "block_number": 67336466
+    },
+    {
+      "block_date": "2025-08-20",
+      "block_number": 67388373
+    },
+    {
+      "block_date": "2025-08-21",
+      "block_number": 67440471
+    },
+    {
+      "block_date": "2025-08-22",
+      "block_number": 67491042
+    },
+    {
+      "block_date": "2025-08-23",
+      "block_number": 67540806
+    },
+    {
+      "block_date": "2025-08-24",
+      "block_number": 67592127
+    },
+    {
+      "block_date": "2025-08-25",
+      "block_number": 67645376
+    },
+    {
+      "block_date": "2025-08-26",
+      "block_number": 67698234
+    },
+    {
+      "block_date": "2025-08-27",
+      "block_number": 67750084
+    },
+    {
+      "block_date": "2025-08-28",
+      "block_number": 67802367
+    },
+    {
+      "block_date": "2025-08-29",
+      "block_number": 67855874
+    },
+    {
+      "block_date": "2025-08-30",
+      "block_number": 67908226
+    },
+    {
+      "block_date": "2025-08-31",
+      "block_number": 67960986
+    },
+    {
+      "block_date": "2025-09-01",
+      "block_number": 68016493
+    },
+    {
+      "block_date": "2025-09-02",
+      "block_number": 68078145
+    },
+    {
+      "block_date": "2025-09-03",
+      "block_number": 68147073
+    },
+    {
+      "block_date": "2025-09-04",
+      "block_number": 68207448
+    },
+    {
+      "block_date": "2025-09-05",
+      "block_number": 68273590
+    },
+    {
+      "block_date": "2025-09-06",
+      "block_number": 68335921
+    },
+    {
+      "block_date": "2025-09-07",
+      "block_number": 68385246
+    },
+    {
+      "block_date": "2025-09-08",
+      "block_number": 68444324
+    },
+    {
+      "block_date": "2025-09-09",
+      "block_number": 68500341
+    },
+    {
+      "block_date": "2025-09-10",
+      "block_number": 68551285
+    },
+    {
+      "block_date": "2025-09-11",
+      "block_number": 68602443
+    },
+    {
+      "block_date": "2025-09-12",
+      "block_number": 68651822
+    },
+    {
+      "block_date": "2025-09-13",
+      "block_number": 68702246
+    },
+    {
+      "block_date": "2025-09-14",
+      "block_number": 68752656
+    },
+    {
+      "block_date": "2025-09-15",
+      "block_number": 68803058
+    },
+    {
+      "block_date": "2025-09-16",
+      "block_number": 68852572
+    },
+    {
+      "block_date": "2025-09-17",
+      "block_number": 68901688
+    },
+    {
+      "block_date": "2025-09-18",
+      "block_number": 68948812
+    },
+    {
+      "block_date": "2025-09-19",
+      "block_number": 68996857
+    },
+    {
+      "block_date": "2025-09-20",
+      "block_number": 69043546
+    },
+    {
+      "block_date": "2025-09-21",
+      "block_number": 69088839
+    },
+    {
+      "block_date": "2025-09-22",
+      "block_number": 69139852
+    },
+    {
+      "block_date": "2025-09-23",
+      "block_number": 69191186
+    },
+    {
+      "block_date": "2025-09-24",
+      "block_number": 69244221
+    },
+    {
+      "block_date": "2025-09-25",
+      "block_number": 69300216
+    },
+    {
+      "block_date": "2025-09-26",
+      "block_number": 69354112
+    },
+    {
+      "block_date": "2025-09-27",
+      "block_number": 69406893
+    },
+    {
+      "block_date": "2025-09-28",
+      "block_number": 69458951
+    },
+    {
+      "block_date": "2025-09-29",
+      "block_number": 69512642
+    },
+    {
+      "block_date": "2025-09-30",
+      "block_number": 69566447
+    },
+    {
+      "block_date": "2025-10-01",
+      "block_number": 69619728
+    },
+    {
+      "block_date": "2025-10-02",
+      "block_number": 69674268
+    },
+    {
+      "block_date": "2025-10-03",
+      "block_number": 69727931
+    },
+    {
+      "block_date": "2025-10-04",
+      "block_number": 69780153
+    },
+    {
+      "block_date": "2025-10-05",
+      "block_number": 69833908
+    },
+    {
+      "block_date": "2025-10-06",
+      "block_number": 69888728
+    },
+    {
+      "block_date": "2025-10-07",
+      "block_number": 69942879
+    },
+    {
+      "block_date": "2025-10-08",
+      "block_number": 69997721
+    },
+    {
+      "block_date": "2025-10-09",
+      "block_number": 70052430
+    },
+    {
+      "block_date": "2025-10-10",
+      "block_number": 70106361
+    },
+    {
+      "block_date": "2025-10-11",
+      "block_number": 70162721
+    },
+    {
+      "block_date": "2025-10-12",
+      "block_number": 70217771
+    },
+    {
+      "block_date": "2025-10-13",
+      "block_number": 70272670
+    },
+    {
+      "block_date": "2025-10-14",
+      "block_number": 70326469
+    },
+    {
+      "block_date": "2025-10-15",
+      "block_number": 70378289
+    },
+    {
+      "block_date": "2025-10-16",
+      "block_number": 70430151
+    },
+    {
+      "block_date": "2025-10-17",
+      "block_number": 70485243
+    },
+    {
+      "block_date": "2025-10-18",
+      "block_number": 70536956
+    },
+    {
+      "block_date": "2025-10-19",
+      "block_number": 70589113
+    },
+    {
+      "block_date": "2025-10-20",
+      "block_number": 70643993
+    },
+    {
+      "block_date": "2025-10-21",
+      "block_number": 70700261
+    },
+    {
+      "block_date": "2025-10-22",
+      "block_number": 70754781
+    },
+    {
+      "block_date": "2025-10-23",
+      "block_number": 70805832
+    },
+    {
+      "block_date": "2025-10-24",
+      "block_number": 70855896
+    },
+    {
+      "block_date": "2025-10-25",
+      "block_number": 70904346
+    },
+    {
+      "block_date": "2025-10-26",
+      "block_number": 70955913
+    },
+    {
+      "block_date": "2025-10-27",
+      "block_number": 71009821
+    },
+    {
+      "block_date": "2025-10-28",
+      "block_number": 71061674
+    },
+    {
+      "block_date": "2025-10-29",
+      "block_number": 71113427
+    },
+    {
+      "block_date": "2025-10-30",
+      "block_number": 71167396
+    },
+    {
+      "block_date": "2025-10-31",
+      "block_number": 71220907
+    },
+    {
+      "block_date": "2025-11-01",
+      "block_number": 71270130
+    },
+    {
+      "block_date": "2025-11-02",
+      "block_number": 71320812
+    },
+    {
+      "block_date": "2025-11-03",
+      "block_number": 71374963
+    },
+    {
+      "block_date": "2025-11-04",
+      "block_number": 71430095
+    },
+    {
+      "block_date": "2025-11-05",
+      "block_number": 71485611
+    },
+    {
+      "block_date": "2025-11-06",
+      "block_number": 71542110
+    },
+    {
+      "block_date": "2025-11-07",
+      "block_number": 71598797
+    },
+    {
+      "block_date": "2025-11-08",
+      "block_number": 71652665
+    },
+    {
+      "block_date": "2025-11-09",
+      "block_number": 71706577
+    },
+    {
+      "block_date": "2025-11-10",
+      "block_number": 71761594
+    },
+    {
+      "block_date": "2025-11-11",
+      "block_number": 71817612
+    },
+    {
+      "block_date": "2025-11-12",
+      "block_number": 71869717
+    },
+    {
+      "block_date": "2025-11-13",
+      "block_number": 71920786
+    },
+    {
+      "block_date": "2025-11-14",
+      "block_number": 71974606
+    },
+    {
+      "block_date": "2025-11-15",
+      "block_number": 72027578
+    },
+    {
+      "block_date": "2025-11-16",
+      "block_number": 72082163
+    },
+    {
+      "block_date": "2025-11-17",
+      "block_number": 72140044
+    },
+    {
+      "block_date": "2025-11-18",
+      "block_number": 72200882
+    },
+    {
+      "block_date": "2025-11-19",
+      "block_number": 72254046
+    },
+    {
+      "block_date": "2025-11-20",
+      "block_number": 72304062
+    },
+    {
+      "block_date": "2025-11-21",
+      "block_number": 72359577
+    },
+    {
+      "block_date": "2025-11-22",
+      "block_number": 72417687
+    },
+    {
+      "block_date": "2025-11-23",
+      "block_number": 72475068
+    },
+    {
+      "block_date": "2025-11-24",
+      "block_number": 72532489
+    },
+    {
+      "block_date": "2025-11-25",
+      "block_number": 72589113
+    },
+    {
+      "block_date": "2025-11-26",
+      "block_number": 72647657
+    },
+    {
+      "block_date": "2025-11-27",
+      "block_number": 72705834
+    },
+    {
+      "block_date": "2025-11-28",
+      "block_number": 72764324
+    },
+    {
+      "block_date": "2025-11-29",
+      "block_number": 72822282
+    },
+    {
+      "block_date": "2025-11-30",
+      "block_number": 72880994
+    },
+    {
+      "block_date": "2025-12-01",
+      "block_number": 72940044
+    },
+    {
+      "block_date": "2025-12-02",
+      "block_number": 72998673
+    },
+    {
+      "block_date": "2025-12-03",
+      "block_number": 73057111
+    },
+    {
+      "block_date": "2025-12-04",
+      "block_number": 73119419
+    },
+    {
+      "block_date": "2025-12-05",
+      "block_number": 73183606
+    },
+    {
+      "block_date": "2025-12-06",
+      "block_number": 73245781
+    },
+    {
+      "block_date": "2025-12-07",
+      "block_number": 73308660
+    },
+    {
+      "block_date": "2025-12-08",
+      "block_number": 73372489
+    },
+    {
+      "block_date": "2025-12-09",
+      "block_number": 73435431
+    },
+    {
+      "block_date": "2025-12-10",
+      "block_number": 73499128
+    },
+    {
+      "block_date": "2025-12-11",
+      "block_number": 73562520
+    },
+    {
+      "block_date": "2025-12-12",
+      "block_number": 73625708
+    },
+    {
+      "block_date": "2025-12-13",
+      "block_number": 73688733
+    },
+    {
+      "block_date": "2025-12-14",
+      "block_number": 73751930
+    },
+    {
+      "block_date": "2025-12-15",
+      "block_number": 73815136
+    },
+    {
+      "block_date": "2025-12-16",
+      "block_number": 73877175
+    },
+    {
+      "block_date": "2025-12-17",
+      "block_number": 73939821
+    },
+    {
+      "block_date": "2025-12-18",
+      "block_number": 74002554
+    },
+    {
+      "block_date": "2025-12-19",
+      "block_number": 74064603
+    },
+    {
+      "block_date": "2025-12-20",
+      "block_number": 74125531
+    },
+    {
+      "block_date": "2025-12-21",
+      "block_number": 74187683
+    },
+    {
+      "block_date": "2025-12-22",
+      "block_number": 74251237
+    },
+    {
+      "block_date": "2025-12-23",
+      "block_number": 74314123
+    },
+    {
+      "block_date": "2025-12-24",
+      "block_number": 74377029
+    },
+    {
+      "block_date": "2025-12-25",
+      "block_number": 74439323
+    },
+    {
+      "block_date": "2025-12-26",
+      "block_number": 74504035
+    },
+    {
+      "block_date": "2025-12-27",
+      "block_number": 74568596
+    },
+    {
+      "block_date": "2025-12-28",
+      "block_number": 74632462
+    },
+    {
+      "block_date": "2025-12-29",
+      "block_number": 74696702
+    },
+    {
+      "block_date": "2025-12-30",
+      "block_number": 74761229
+    },
+    {
+      "block_date": "2025-12-31",
+      "block_number": 74824633
+    },
+    {
+      "block_date": "2026-01-01",
+      "block_number": 74886543
+    },
+    {
+      "block_date": "2026-01-02",
+      "block_number": 74950433
+    },
+    {
+      "block_date": "2026-01-03",
+      "block_number": 75013976
+    },
+    {
+      "block_date": "2026-01-04",
+      "block_number": 75076702
+    },
+    {
+      "block_date": "2026-01-05",
+      "block_number": 75139940
+    },
+    {
+      "block_date": "2026-01-06",
+      "block_number": 75202655
+    },
+    {
+      "block_date": "2026-01-07",
+      "block_number": 75269670
+    },
+    {
+      "block_date": "2026-01-08",
+      "block_number": 75339576
+    },
+    {
+      "block_date": "2026-01-09",
+      "block_number": 75412081
+    },
+    {
+      "block_date": "2026-01-10",
+      "block_number": 75484214
+    },
+    {
+      "block_date": "2026-01-11",
+      "block_number": 75555184
+    },
+    {
+      "block_date": "2026-01-12",
+      "block_number": 75623301
+    },
+    {
+      "block_date": "2026-01-13",
+      "block_number": 75696282
+    },
+    {
+      "block_date": "2026-01-14",
+      "block_number": 75767417
+    },
+    {
+      "block_date": "2026-01-15",
+      "block_number": 75841382
+    },
+    {
+      "block_date": "2026-01-16",
+      "block_number": 75912269
+    },
+    {
+      "block_date": "2026-01-17",
+      "block_number": 75982022
+    },
+    {
+      "block_date": "2026-01-18",
+      "block_number": 76052435
+    },
+    {
+      "block_date": "2026-01-19",
+      "block_number": 76122773
+    },
+    {
+      "block_date": "2026-01-20",
+      "block_number": 76193385
+    },
+    {
+      "block_date": "2026-01-21",
+      "block_number": 76265387
+    },
+    {
+      "block_date": "2026-01-22",
+      "block_number": 76340283
+    },
+    {
+      "block_date": "2026-01-23",
+      "block_number": 76413851
+    },
+    {
+      "block_date": "2026-01-24",
+      "block_number": 76483035
+    },
+    {
+      "block_date": "2026-01-25",
+      "block_number": 76547732
+    },
+    {
+      "block_date": "2026-01-26",
+      "block_number": 76613477
+    },
+    {
+      "block_date": "2026-01-27",
+      "block_number": 76682496
+    },
+    {
+      "block_date": "2026-01-28",
+      "block_number": 76757735
+    },
+    {
+      "block_date": "2026-01-29",
+      "block_number": 76833610
+    },
+    {
+      "block_date": "2026-01-30",
+      "block_number": 76910472
+    },
+    {
+      "block_date": "2026-01-31",
+      "block_number": 76986991
+    },
+    {
+      "block_date": "2026-02-01",
+      "block_number": 77063326
+    },
+    {
+      "block_date": "2026-02-02",
+      "block_number": 77139068
+    },
+    {
+      "block_date": "2026-02-03",
+      "block_number": 77214281
+    },
+    {
+      "block_date": "2026-02-04",
+      "block_number": 77289220
+    },
+    {
+      "block_date": "2026-02-05",
+      "block_number": 77366383
+    },
+    {
+      "block_date": "2026-02-06",
+      "block_number": 77445912
+    },
+    {
+      "block_date": "2026-02-07",
+      "block_number": 77525438
+    },
+    {
+      "block_date": "2026-02-08",
+      "block_number": 77604033
+    },
+    {
+      "block_date": "2026-02-09",
+      "block_number": 77683637
+    },
+    {
+      "block_date": "2026-02-10",
+      "block_number": 77764825
+    },
+    {
+      "block_date": "2026-02-11",
+      "block_number": 77846086
+    },
+    {
+      "block_date": "2026-02-12",
+      "block_number": 77928834
+    },
+    {
+      "block_date": "2026-02-13",
+      "block_number": 78008969
+    },
+    {
+      "block_date": "2026-02-14",
+      "block_number": 78091471
+    },
+    {
+      "block_date": "2026-02-15",
+      "block_number": 78172775
+    },
+    {
+      "block_date": "2026-02-16",
+      "block_number": 78254126
+    },
+    {
+      "block_date": "2026-02-17",
+      "block_number": 78335448
+    },
+    {
+      "block_date": "2026-02-18",
+      "block_number": 78418100
+    },
+    {
+      "block_date": "2026-02-19",
+      "block_number": 78500123
+    },
+    {
+      "block_date": "2026-02-20",
+      "block_number": 78583477
+    },
+    {
+      "block_date": "2026-02-21",
+      "block_number": 78667480
+    },
+    {
+      "block_date": "2026-02-22",
+      "block_number": 78750994
+    },
+    {
+      "block_date": "2026-02-23",
+      "block_number": 78833955
+    },
+    {
+      "block_date": "2026-02-24",
+      "block_number": 78918063
+    },
+    {
+      "block_date": "2026-02-25",
+      "block_number": 79001166
+    },
+    {
+      "block_date": "2026-02-26",
+      "block_number": 79084435
+    },
+    {
+      "block_date": "2026-02-27",
+      "block_number": 79167674
+    },
+    {
+      "block_date": "2026-02-28",
+      "block_number": 79250451
+    },
+    {
+      "block_date": "2026-03-01",
+      "block_number": 79331615
+    },
+    {
+      "block_date": "2026-03-02",
+      "block_number": 79414308
+    },
+    {
+      "block_date": "2026-03-03",
+      "block_number": 79496509
+    },
+    {
+      "block_date": "2026-03-04",
+      "block_number": 79579870
+    },
+    {
+      "block_date": "2026-03-05",
+      "block_number": 79663826
+    },
+    {
+      "block_date": "2026-03-06",
+      "block_number": 79748121
+    },
+    {
+      "block_date": "2026-03-07",
+      "block_number": 79832305
+    },
+    {
+      "block_date": "2026-03-08",
+      "block_number": 79915823
+    },
+    {
+      "block_date": "2026-03-09",
+      "block_number": 79998824
+    },
+    {
+      "block_date": "2026-03-10",
+      "block_number": 80081614
+    },
+    {
+      "block_date": "2026-03-11",
+      "block_number": 80164709
+    },
+    {
+      "block_date": "2026-03-12",
+      "block_number": 80244990
+    },
+    {
+      "block_date": "2026-03-13",
+      "block_number": 80319285
+    },
+    {
+      "block_date": "2026-03-14",
+      "block_number": 80392344
+    },
+    {
+      "block_date": "2026-03-15",
+      "block_number": 80466478
+    },
+    {
+      "block_date": "2026-03-16",
+      "block_number": 80540423
+    },
+    {
+      "block_date": "2026-03-17",
+      "block_number": 80615939
+    },
+    {
+      "block_date": "2026-03-18",
+      "block_number": 80698488
+    },
+    {
+      "block_date": "2026-03-19",
+      "block_number": 80781234
+    },
+    {
+      "block_date": "2026-03-20",
+      "block_number": 80865200
+    },
+    {
+      "block_date": "2026-03-21",
+      "block_number": 80950171
+    },
+    {
+      "block_date": "2026-03-22",
+      "block_number": 81032604
+    },
+    {
+      "block_date": "2026-03-23",
+      "block_number": 81117021
+    },
+    {
+      "block_date": "2026-03-24",
+      "block_number": 81201389
+    },
+    {
+      "block_date": "2026-03-25",
+      "block_number": 81284586
+    },
+    {
+      "block_date": "2026-03-26",
+      "block_number": 81367528
+    },
+    {
+      "block_date": "2026-03-27",
+      "block_number": 81451750
+    },
+    {
+      "block_date": "2026-03-28",
+      "block_number": 81536252
+    },
+    {
+      "block_date": "2026-03-29",
+      "block_number": 81621107
+    },
+    {
+      "block_date": "2026-03-30",
+      "block_number": 81704865
+    },
+    {
+      "block_date": "2026-03-31",
+      "block_number": 81789468
+    }
+  ]
+}

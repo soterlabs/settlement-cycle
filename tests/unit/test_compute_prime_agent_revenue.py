@@ -15,7 +15,7 @@ from settle.compute.prime_agent_revenue import (
 from settle.domain import Address, Chain, Period, PricingCategory, Token, Venue
 
 
-def _venue(vid: str = "V1") -> Venue:
+def _venue(vid: str = "V1", *, sky_direct: bool = False) -> Venue:
     return Venue(
         id=vid,
         chain=Chain.ETHEREUM,
@@ -23,6 +23,7 @@ def _venue(vid: str = "V1") -> Venue:
         pricing_category=PricingCategory.ERC4626_VAULT,
         underlying=Token(Chain.ETHEREUM, Address.from_str("0x" + "bb" * 20), "USDC", 6),
         label="Test Venue",
+        sky_direct=sky_direct,
     )
 
 
@@ -155,3 +156,89 @@ def test_prime_revenue_empty_venue_list_yields_zero():
     total, breakdown = compute_prime_agent_revenue(_period(), [])
     assert total == Decimal("0")
     assert breakdown == []
+
+
+# --- Sky Direct Step 4 floor ------------------------------------------------
+
+def test_sky_direct_outperformer_keeps_surplus():
+    """ActualRev > BR_charge → prime keeps (ActualRev − BR_charge); shortfall = 0."""
+    inputs = VenueRevenueInputs(
+        venue=_venue("SD-out", sky_direct=True),
+        value_som=Decimal("100_000_000"), value_eom=Decimal("110_000_000"),
+        inflow_timeseries=_empty_inflow(),
+        br_charge=Decimal("3_000_000"),
+    )
+    vr = compute_venue_revenue(_period(), inputs)
+    assert vr.actual_revenue == Decimal("10_000_000")
+    assert vr.br_charge == Decimal("3_000_000")
+    assert vr.revenue == Decimal("7_000_000")
+    assert vr.sky_direct_shortfall == Decimal("0")
+
+
+def test_sky_direct_underperformer_floored_at_zero():
+    """ActualRev < BR_charge → prime gets 0; Sky absorbs the shortfall."""
+    inputs = VenueRevenueInputs(
+        venue=_venue("SD-under", sky_direct=True),
+        value_som=Decimal("100_000_000"), value_eom=Decimal("102_000_000"),
+        inflow_timeseries=_empty_inflow(),
+        br_charge=Decimal("3_500_000"),
+    )
+    vr = compute_venue_revenue(_period(), inputs)
+    assert vr.actual_revenue == Decimal("2_000_000")
+    assert vr.revenue == Decimal("0")
+    assert vr.sky_direct_shortfall == Decimal("1_500_000")
+
+
+def test_sky_direct_negative_actual_revenue_floored_at_zero():
+    """Venue lost money (NAV drop) → prime still gets 0 (not negative); Sky
+    absorbs the full shortfall = BR_charge − (negative_actual)."""
+    inputs = VenueRevenueInputs(
+        venue=_venue("SD-loss", sky_direct=True),
+        value_som=Decimal("100_000_000"), value_eom=Decimal("99_000_000"),
+        inflow_timeseries=_empty_inflow(),
+        br_charge=Decimal("3_500_000"),
+    )
+    vr = compute_venue_revenue(_period(), inputs)
+    assert vr.actual_revenue == Decimal("-1_000_000")
+    assert vr.revenue == Decimal("0")
+    assert vr.sky_direct_shortfall == Decimal("4_500_000")  # 3.5M - (-1M)
+
+
+def test_non_sky_direct_venue_ignores_br_charge_field():
+    """A non-Sky-Direct venue (default) keeps full revenue regardless of any
+    accidentally-passed br_charge."""
+    inputs = VenueRevenueInputs(
+        venue=_venue("Normal", sky_direct=False),
+        value_som=Decimal("100"), value_eom=Decimal("110"),
+        inflow_timeseries=_empty_inflow(),
+        br_charge=Decimal("5"),  # ignored — sky_direct=False
+    )
+    vr = compute_venue_revenue(_period(), inputs)
+    assert vr.revenue == Decimal("10")
+    assert vr.sky_direct_shortfall == Decimal("0")
+    # actual_revenue still populated for downstream provenance / audit.
+    assert vr.actual_revenue == Decimal("10")
+
+
+def test_sky_direct_total_shortfall_aggregates_across_venues():
+    """compute_prime_agent_revenue's total nets per-venue floors; orchestrator
+    sums sky_direct_shortfall separately."""
+    inputs = [
+        VenueRevenueInputs(
+            venue=_venue("SD1", sky_direct=True),
+            value_som=Decimal("100"), value_eom=Decimal("105"),
+            inflow_timeseries=_empty_inflow(),
+            br_charge=Decimal("8"),  # underperforms by 3
+        ),
+        VenueRevenueInputs(
+            venue=_venue("SD2", sky_direct=True),
+            value_som=Decimal("200"), value_eom=Decimal("220"),
+            inflow_timeseries=_empty_inflow(),
+            br_charge=Decimal("10"),  # outperforms by 10
+        ),
+    ]
+    total, breakdown = compute_prime_agent_revenue(_period(), inputs)
+    # SD1 floored at 0, SD2 keeps 10 (= 20 − 10).
+    assert total == Decimal("10")
+    shortfall_total = sum((v.sky_direct_shortfall for v in breakdown), Decimal(0))
+    assert shortfall_total == Decimal("3")

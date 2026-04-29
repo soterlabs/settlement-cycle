@@ -1,0 +1,392 @@
+# Grove prime agent — multi-venue, multi-asset, RWA + on-chain credit book.
+# Phase 2.A scope: Ethereum venues only (12 yield-bearing positions).
+# Cross-chain (Base, Avalanche, Plume, Monad) deferred to Phase 2.B+.
+#
+# Sources:
+# - Token addresses + oracles: docs/pricing/allocation_pricing.csv
+# - ALM addresses: docs/pricing/holding_addresses.csv
+# - Ilk + subproxy + start dates: docs/grove/PRD.md §3
+# - Venue inventory: docs/grove/PRD.md §4.1 (E1–E18, with E5/E6/E18 notes below)
+
+id: grove
+ilk_bytes32: '0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000'  # ALLOCATOR-BLOOM-A
+start_date: '2025-05-14'  # First frob (test mint, unwound 2025-06-25)
+
+addresses:
+  ethereum:
+    subproxy: '0x1369f7b2b38c76B6478c0f0E66D94923421891Ba'    # holds idle USDS / sUSDS — earns agent rate
+    alm:      '0x491edfb0b8b608044e227225c715981a30f3a44e'    # holds all allocation positions
+  base:
+    alm:      '0x9b746dbc5269e1df6e4193bcb441c0fbbf1cecee'    # Grove Base ALM (per docs/pricing/holding_addresses.csv)
+  avalanche_c:
+    alm:      '0x7107dd8f56642327945294a18a4280c78e153644'    # Grove Avalanche-C ALM (verified on-chain via JAAA holdings)
+  plume:
+    alm:      '0x1db91ad50446a671e2231f77e00948e68876f812'    # Grove Plume ALM (per docs/pricing/holding_addresses.csv)
+
+# Phase 2.A — 12 yield-bearing venues.
+#
+# Excluded for now (PRD E13–E18 = raw stables sitting in ALM):
+#   * E13 RLUSD raw, E14 AUSD raw, E15 USDC raw, E16 DAI raw, E17 USDS raw, E18 sUSDS dust
+#   These are operational liquidity, not yield-bearing — they affect the
+#   cost-basis invariant (Grove PRD §5.2) but contribute no PnL signal.
+#   They'll be tracked separately in Phase 2.A.6 acceptance.
+venues:
+  # ─────────────────────────────────────────────────────────────
+  # Category C — Aave v3 aTokens (rebasing; balanceOf is nominal)
+  # ─────────────────────────────────────────────────────────────
+  - id: E1
+    chain: ethereum
+    label: 'Aave Horizon RWA RLUSD (aToken)'
+    pricing_category: C
+    token:
+      address: '0xe3190143eb552456f88464662f0c0c4ac67a77eb'
+      symbol: 'aHorRwaRLUSD'
+      decimals: 18
+    underlying:
+      address: '0x8292bb45bf1ee4d140127049757c2e0ff06317ed'
+      symbol: 'RLUSD'
+      decimals: 18
+
+  - id: E2
+    chain: ethereum
+    label: 'Aave Horizon RWA USDC (aToken)'
+    pricing_category: C
+    token:
+      address: '0x68215b6533c47ff9f7125ac95adf00fe4a62f79e'
+      symbol: 'aHorRwaUSDC'
+      decimals: 6
+    underlying:
+      address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+      symbol: 'USDC'
+      decimals: 6
+
+  - id: E3
+    chain: ethereum
+    label: 'Aave Ethereum RLUSD (aToken)'
+    pricing_category: C
+    token:
+      address: '0xfa82580c16a31d0c1bc632a36f82e83efef3eec0'
+      symbol: 'aEthRLUSD'
+      decimals: 18
+    underlying:
+      address: '0x8292bb45bf1ee4d140127049757c2e0ff06317ed'
+      symbol: 'RLUSD'
+      decimals: 18
+
+  # ─────────────────────────────────────────────────────────────
+  # Category B — Morpho ERC-4626 (Steakhouse-curated)
+  # ─────────────────────────────────────────────────────────────
+  - id: E4
+    chain: ethereum
+    label: 'Grove x Steakhouse USDC (Morpho 4626)'
+    pricing_category: B
+    token:
+      address: '0xbeeff08df54897e7544ab01d0e86f013da354111'
+      symbol: 'grove-bbqUSDC-V2'
+      decimals: 18
+    underlying:
+      address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+      symbol: 'USDC'
+      decimals: 6
+
+  - id: E5
+    chain: ethereum
+    label: 'Grove x Steakhouse USDC High Yield (Morpho 4626)'
+    pricing_category: B
+    token:
+      address: '0xbeef2b5fd3d94469b7782aebe6364e6e6fb1b709'
+      symbol: 'grove-bbqUSDC-HY'
+      decimals: 18
+    underlying:
+      address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+      symbol: 'USDC'
+      decimals: 6
+
+  - id: E6
+    chain: ethereum
+    label: 'Grove x Steakhouse AUSD (Morpho 4626)'
+    pricing_category: B
+    token:
+      address: '0xbeeff0d672ab7f5018dfb614c93981045d4aa98a'
+      symbol: 'grove-bbqAUSD'
+      decimals: 18
+    underlying:
+      address: '0x00000000efe302beaa2b3e6e1b18d08d69a9012a'
+      symbol: 'AUSD'
+      decimals: 6
+
+  # ─────────────────────────────────────────────────────────────
+  # Category E — RWA tranche / issuer tokens
+  # Phase 2.A: Chronicle oracle primary, $1 placeholder fallback.
+  # ─────────────────────────────────────────────────────────────
+  - id: E7
+    chain: ethereum
+    label: 'Securitize Tokenized AAA CLO Fund (STAC)'
+    pricing_category: E
+    token:
+      address: '0x51c2d74017390cbbd30550179a16a1c28f7210fc'
+      symbol: 'STAC'
+      decimals: 6
+    # Underlying value = $1-equivalent USDC; NAV via Chronicle oracle.
+    nav_oracle:
+      kind: chronicle
+      address: '0x9d77e4ca90e25114afb24df908f5918f572d958b'
+      # Redstone fallback (0xedc6287d...) lives on-chain but the redstone
+      # NavOracleSource is not registered yet — until it lands, fall back to
+      # const_one so a Chronicle revert doesn't abort the run.
+      fallback: const_one
+
+  - id: E8
+    chain: ethereum
+    label: 'Janus Henderson Anemoy AAA CLO (JAAA)'
+    pricing_category: E
+    token:
+      address: '0x5a0f93d040de44e78f251b03c43be9cf317dcf64'
+      symbol: 'JAAA'
+      decimals: 6
+    nav_oracle:
+      kind: chronicle
+      address: '0x02cf8c9fba24d79886dac40cb620f0930c6e8ec0'
+      # Chronicle was deployed mid-2025; reads at pre-deployment blocks
+      # revert. Fallback keeps inflow tracking from aborting (const_one is
+      # a reasonable approximation: tranche NAV starts near $1).
+      fallback: const_one
+
+  - id: E9
+    chain: ethereum
+    label: 'Janus Henderson Anemoy Treasury Fund (JTRSY)'
+    pricing_category: E
+    sky_direct: true   # Sky Direct: Treasury Bill on Ethereum (Grove)
+    token:
+      address: '0x8c213ee79581ff4984583c6a801e5263418c4b86'
+      symbol: 'JTRSY'
+      decimals: 6
+    nav_oracle:
+      kind: chronicle
+      address: '0x59ef4be3eddf0270c4878b7b945bbee13fb33d0d'
+      fallback: const_one
+
+  - id: E10
+    chain: ethereum
+    label: 'BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I)'
+    pricing_category: E
+    sky_direct: true   # Sky Direct: Treasury Bill on Ethereum (Grove)
+    token:
+      address: '0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041'
+      symbol: 'BUIDL-I'
+      decimals: 6
+    # Per docs/pricing/allocation_pricing.csv row 33: BUIDL-I is hardcoded
+    # at $1.00. Issuer publishes NAV but for settlement we pin to $1 — yield
+    # is captured via the actual rewards received by the ALM, not via MtM.
+    nav_oracle:
+      kind: const_one
+    # BlackRock's BUIDL contract mints both capital subscriptions AND yield
+    # distributions to ALM (both arrive as ERC-20 mints from 0x0). A bimodal
+    # histogram on observed amounts (Dune query 7387737) shows a clean gap
+    # between yield (<$1M, dozens per period) and capital (≥$10M, a few
+    # large round-number mints). Filter at $1M to isolate capital flow for
+    # cost-basis tracking — sub-threshold mints contribute to revenue.
+    min_transfer_amount_usd: 1000000
+
+  # ─────────────────────────────────────────────────────────────
+  # Category F — LP positions
+  # ─────────────────────────────────────────────────────────────
+  - id: E11
+    chain: ethereum
+    label: 'Curve AUSD/USDC stableswap LP'
+    pricing_category: F
+    lp_kind: curve_stableswap
+    token:
+      # Curve pool address — also the LP token address.
+      address: '0xe79c1c7e24755574438a26d5e062ad2626c04662'
+      symbol: 'AUSDUSDC-CRV'
+      decimals: 18
+    # Underlyings filled in dynamically from pool.coins(0)/coins(1) — both
+    # are par-stables ($1 each).
+
+  - id: E12
+    chain: ethereum
+    label: 'Uniswap V3 AUSD/USDC pool (NFT positions)'
+    pricing_category: F
+    lp_kind: uniswap_v3
+    token:
+      # Uni V3 POOL address; ALM holds liquidity via NFT positions tracked
+      # by the NonfungiblePositionManager (0xC36442b4a4522E871399CD717aBDD847Ab11FE88).
+      address: '0xbafead7c60ea473758ed6c6021505e8bbd7e8e5d'
+      symbol: 'AUSDUSDC-UNI3'
+      decimals: 0    # not an ERC-20; positions are NFTs
+    nft_position_manager: '0xc36442b4a4522e871399cd717abdd847ab11fe88'
+
+  # ---- E13–E18 : raw idle holdings on the ALM proxy ----
+  # PRD §4.1: anything Grove holds outside an active venue still belongs to
+  # the prime's book. Without these, Σ value < cum_debt by ~13% (Phase 2.A.6
+  # cost-basis miss). Cat A par-stables price at $1; Cat B sUSDS uses
+  # convertToAssets via the existing Phase 1 pipeline.
+
+  - id: E13
+    chain: ethereum
+    label: 'RLUSD raw (ALM idle)'
+    pricing_category: A
+    token:
+      address: '0x8292bb45bf1ee4d140127049757c2e0ff06317ed'
+      symbol: 'RLUSD'
+      decimals: 18
+
+  - id: E14
+    chain: ethereum
+    label: 'AUSD raw (ALM idle)'
+    pricing_category: A
+    token:
+      address: '0x00000000efe302beaa2b3e6e1b18d08d69a9012a'
+      symbol: 'AUSD'
+      decimals: 6
+
+  - id: E15
+    chain: ethereum
+    label: 'USDC raw (ALM idle)'
+    pricing_category: A
+    token:
+      address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+      symbol: 'USDC'
+      decimals: 6
+
+  - id: E16
+    chain: ethereum
+    label: 'DAI raw (ALM idle)'
+    pricing_category: A
+    token:
+      address: '0x6b175474e89094c44da98b954eedeac495271d0f'
+      symbol: 'DAI'
+      decimals: 18
+
+  - id: E17
+    chain: ethereum
+    label: 'USDS raw / POL (ALM idle — already netted out of utilized)'
+    pricing_category: A
+    token:
+      address: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'
+      symbol: 'USDS'
+      decimals: 18
+    # NB: this balance is also subtracted from `utilized` in sky_revenue
+    # (cum_alm_usds), so it lowers Sky's interest claim. Including it as a
+    # venue does not double-count — both effects reflect "USDS minted but
+    # not yet deployed."
+
+  - id: E18
+    chain: ethereum
+    label: 'sUSDS raw / POL (ALM idle — Cat B 4626)'
+    pricing_category: B
+    token:
+      address: '0xa3931d71877c0e7a3148cb7eb4463524fec27fbd'
+      symbol: 'sUSDS'
+      decimals: 18
+    underlying:
+      address: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'
+      symbol: 'USDS'
+      decimals: 18
+
+  # ─────────────────────────────────────────────────────────────
+  # Base — Phase 2.B (multi-chain rollout)
+  # ─────────────────────────────────────────────────────────────
+  - id: E19
+    chain: base
+    label: 'Grove x Steakhouse USDC High Yield (Base, Morpho 4626)'
+    pricing_category: B
+    token:
+      address: '0xbeef2d50b428675a1921bc6bbf4bfb9d8cf1461a'
+      symbol: 'grove-bbqUSDC'
+      decimals: 18
+    underlying:
+      address: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+      symbol: 'USDC'
+      decimals: 6
+
+  - id: E23
+    chain: base
+    label: 'Steakhouse Prime Instant (Base, Morpho V2)'
+    pricing_category: B
+    token:
+      address: '0xbeef0e0834849acc03f0089f01f4f1eeb06873c9'
+      symbol: 'steakUSDC'
+      decimals: 18
+    underlying:
+      address: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+      symbol: 'USDC'
+      decimals: 6
+
+  # ─────────────────────────────────────────────────────────────
+  # Avalanche-C — Phase 2.B (multi-chain rollout)
+  # ─────────────────────────────────────────────────────────────
+  - id: E20
+    chain: avalanche_c
+    label: 'Janus Henderson Anemoy AAA CLO (JAAA-avalanche)'
+    pricing_category: E
+    token:
+      address: '0x58f93d6b1ef2f44ec379cb975657c132cbed3b6b'
+      symbol: 'JAAA-avax'
+      decimals: 6
+    nav_oracle:
+      kind: chronicle
+      # Chronicle's JAAA NAV feed lives only on Ethereum mainnet (no
+      # Avalanche deployment at the same address). NAV is global per
+      # tranche so we cross-chain-read: oracle_chain=ethereum, address as
+      # in ETH JAAA E8.
+      address: '0x02cf8c9fba24d79886dac40cb620f0930c6e8ec0'
+      oracle_chain: ethereum
+      fallback: const_one
+
+  - id: E21
+    chain: avalanche_c
+    label: 'Galaxy Arch CLO Token (GACLO-1)'
+    pricing_category: E
+    token:
+      address: '0x2c0adff8e114f3ca106051144353ac703d24b901'
+      symbol: 'GACLO-1'
+      decimals: 6
+    nav_oracle:
+      # Galaxy provides API-only pricing (no on-chain oracle). Phase 2.B
+      # uses const_one as a documented approximation — under-counts any
+      # NAV-based yield. Refining requires an off-chain Galaxy/Anchorage
+      # API integration.
+      kind: const_one
+
+  # ─────────────────────────────────────────────────────────────
+  # Plume — Phase 2.B (multi-chain rollout)
+  # ─────────────────────────────────────────────────────────────
+  - id: E22
+    chain: plume
+    label: 'Anemoy Tokenized Apollo Diversified Credit Fund (ACRDX)'
+    pricing_category: E
+    token:
+      address: '0x9477724bb54ad5417de8baff29e59df3fb4da74f'
+      symbol: 'ACRDX'
+      decimals: 18
+    nav_oracle:
+      # ACRDX Chronicle feed lives on Ethereum mainnet only — cross-chain
+      # read same pattern as JAAA-avax. NAV moves slowly per credit-fund
+      # cycle (was DOWN 0.69% in March 2026 — real loss month).
+      kind: chronicle
+      address: '0x51cc9463788b870d1e9bacd111a9bbb2c9820c7e'
+      oracle_chain: ethereum
+      fallback: const_one
+
+# Source dispatch (debt → Dune, prices → RPC + on-chain oracles, etc.) is
+# resolved by `src/settle/normalize/registry.py`, not by this file.
+# Per-venue oracle choices are encoded in each venue's `nav_oracle` block.
+
+# Cat A inflow source-tagging — addresses whose transfers to/from the ALM are
+# considered INTERNAL (not yield). Compute auto-adds every venue's
+# token.address on the same chain to this list, so we only need to enumerate
+# Sky-side infrastructure + protocol-level pools (Aave) here. Inflows from
+# any address NOT in this list (after auto-augmentation) are treated as
+# revenue — captures off-chain Anchorage-style yields.
+# Cat A revenue allowlist — counterparties that send REALIZED YIELD directly
+# to the ALM proxy (off-chain custodian distributions, e.g. Anchorage). Their
+# inflows pass through to revenue. Anything NOT listed here is treated as
+# value-preserving capital movement (PSM swap legs, venue allocations, etc.)
+# and netted out. Default empty → revenue_E_x = 0 for par-stables.
+# Add an entry like the example below when an off-chain yield source lands:
+#
+# external_alm_sources:
+#   ethereum:
+#     - '0x...'   # Anchorage custodian for token X

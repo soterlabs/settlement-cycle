@@ -12,12 +12,14 @@ from .protocols import (
     IBlockResolver,
     IConvertToAssetsSource,
     IDebtSource,
+    INavOracleSource,
     IPositionBalanceSource,
     ISSRSource,
 )
 from .sources.dune_balances import DuneBalanceSource
 from .sources.dune_debt import DuneDebtSource
 from .sources.dune_ssr import DuneSSRSource
+from .sources.oracles import ChronicleNavSource, ConstOneNavSource
 from .sources.rpc_block_resolver import RPCBlockResolver
 from .sources.rpc_position import RPCConvertToAssetsSource, RPCPositionBalanceSource
 
@@ -43,6 +45,17 @@ _CONVERT_TO_ASSETS_SOURCES: dict[str, type[IConvertToAssetsSource]] = {
 
 _BLOCK_RESOLVER_SOURCES: dict[str, type[IBlockResolver]] = {
     "rpc": RPCBlockResolver,
+    # ``dune`` requires a date range at construction time — instantiated by
+    # the caller with explicit (chain, start_date, end_date, pin_block), not
+    # via the no-arg ``get_block_resolver()`` factory. See
+    # ``DuneBlockResolver`` docstring.
+}
+
+# NAV oracles — keyed by ``Venue.nav_oracle.kind`` from per-prime YAML.
+# Phase 2.A: chronicle + const_one only. Phase 2.B+ adds chainlink / pyth / redstone.
+_NAV_ORACLE_SOURCES: dict[str, type[INavOracleSource]] = {
+    "chronicle": ChronicleNavSource,
+    "const_one": ConstOneNavSource,
 }
 
 
@@ -99,3 +112,18 @@ def get_block_resolver(name: str = "rpc") -> IBlockResolver:
             f"Available: {sorted(_BLOCK_RESOLVER_SOURCES)}"
         )
     return _BLOCK_RESOLVER_SOURCES[name]()
+
+
+def get_nav_oracle_source(kind: str) -> INavOracleSource:
+    """Lookup a NAV-oracle Source by ``kind`` (Venue.nav_oracle.kind from YAML).
+
+    Raises ``UnknownSourceError`` if the kind isn't registered. The Cat E branch
+    in ``normalize.prices`` catches this so an unknown fallback kind triggers
+    the next candidate in the chain instead of crashing the run.
+    """
+    if kind not in _NAV_ORACLE_SOURCES:
+        raise UnknownSourceError(
+            f"Unknown NAV-oracle kind {kind!r}. "
+            f"Available: {sorted(_NAV_ORACLE_SOURCES)}"
+        )
+    return _NAV_ORACLE_SOURCES[kind]()

@@ -28,4 +28,4 @@ def config_dir(repo_root: Path) -> Path:
 
 @pytest.fixture
 def queries_dir(repo_root: Path) -> Path:
-    return repo_root / "queries"
+    return repo_root / "src" / "settle" / "queries"

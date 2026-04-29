@@ -23,9 +23,21 @@ WITH file_calls AS (
     AND tr.success       = true
     AND tr.block_date  >= DATE '{{start_date}}'
     AND tr.block_number <= {{pin_block}}
+),
+-- Multiple file() calls can land on the same UTC day (rate change followed
+-- by an immediate correction, etc.). Keep only the chronologically last call
+-- per day — that's the rate in effect at end-of-day, which is what the
+-- downstream `ssr_at_or_before` resolver assumes.
+deduped AS (
+  SELECT
+    block_date,
+    rate_per_second_ray,
+    ROW_NUMBER() OVER (PARTITION BY block_date ORDER BY block_time DESC) AS rn
+  FROM file_calls
 )
 SELECT
   block_date AS effective_date,
   POWER(rate_per_second_ray / 1e27, 31536000) - 1 AS ssr_apy
-FROM file_calls
-ORDER BY block_time
+FROM deduped
+WHERE rn = 1
+ORDER BY block_date

@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 
 from settle.compute._helpers import daily_compounding_factor
-from settle.compute.sky_revenue import BORROW_RATE_SPREAD, compute_sky_revenue
+from settle.compute.sky_revenue import BASE_RATE_OVER_SSR, compute_sky_revenue
 from settle.domain import Chain, Period
 
 
@@ -29,17 +29,38 @@ def _ssr_const(rate: float, since: date = date(2025, 1, 1)) -> pd.DataFrame:
 
 
 def test_zero_debt_zero_revenue():
-    """If utilized = 0 every day, revenue = 0."""
+    """A non-empty debt timeseries pinned to ``cum_debt=0`` expresses
+    "no debt activity" → zero revenue. Distinct from a *missing* debt
+    timeseries, which now raises (see ``test_empty_debt_raises``)."""
     period = _period(date(2026, 3, 1), date(2026, 3, 31))
+    zero_debt = pd.DataFrame({
+        "block_date": [date(2025, 11, 17)], "cum_debt": [0.0],
+    })
     rev = compute_sky_revenue(
         period,
-        debt=_empty(["block_date", "cum_debt"]),
+        debt=zero_debt,
         subproxy_usds=_empty(["block_date", "cum_balance"]),
-        subproxy_susds=_empty(["block_date", "cum_balance"]),
+        subproxy_susds_principal=_empty(["block_date", "cum_balance"]),
         alm_usds=_empty(["block_date", "cum_balance"]),
         ssr=_ssr_const(0.04),
     )
     assert rev == Decimal("0")
+
+
+def test_empty_debt_raises():
+    """An empty debt timeseries almost certainly signals a misconfigured Dune
+    source (wrong ``ilk_bytes32``, query failure). The compute layer must fail
+    loud rather than silently produce ``$0`` of sky revenue."""
+    period = _period(date(2026, 3, 1), date(2026, 3, 31))
+    with pytest.raises(ValueError, match="debt timeseries is empty"):
+        compute_sky_revenue(
+            period,
+            debt=_empty(["block_date", "cum_debt"]),
+            subproxy_usds=_empty(["block_date", "cum_balance"]),
+            subproxy_susds_principal=_empty(["block_date", "cum_balance"]),
+            alm_usds=_empty(["block_date", "cum_balance"]),
+            ssr=_ssr_const(0.04),
+        )
 
 
 def test_constant_debt_constant_ssr_31_days():
@@ -51,7 +72,7 @@ def test_constant_debt_constant_ssr_31_days():
         period,
         debt=debt_df,
         subproxy_usds=_empty(["block_date", "cum_balance"]),
-        subproxy_susds=_empty(["block_date", "cum_balance"]),
+        subproxy_susds_principal=_empty(["block_date", "cum_balance"]),
         alm_usds=_empty(["block_date", "cum_balance"]),
         ssr=_ssr_const(0.047),                                 # borrow = 5.0%
     )
@@ -69,7 +90,7 @@ def test_subtracts_subproxy_balances_from_utilized():
         period,
         debt=pd.DataFrame({"block_date": [date(2026, 1, 1)], "cum_debt": [100_000_000.0]}),
         subproxy_usds=pd.DataFrame({"block_date": [date(2026, 1, 1)], "cum_balance": [10_000_000.0]}),
-        subproxy_susds=pd.DataFrame({"block_date": [date(2026, 1, 1)], "cum_balance": [5_000_000.0]}),
+        subproxy_susds_principal=pd.DataFrame({"block_date": [date(2026, 1, 1)], "cum_balance": [5_000_000.0]}),
         alm_usds=pd.DataFrame({"block_date": [date(2026, 1, 1)], "cum_balance": [3_000_000.0]}),
         ssr=_ssr_const(0.047),
     )
@@ -91,13 +112,13 @@ def test_handles_ssr_change_mid_period():
         period,
         debt=debt_df,
         subproxy_usds=_empty(["block_date", "cum_balance"]),
-        subproxy_susds=_empty(["block_date", "cum_balance"]),
+        subproxy_susds_principal=_empty(["block_date", "cum_balance"]),
         alm_usds=_empty(["block_date", "cum_balance"]),
         ssr=ssr_df,
     )
 
-    f1 = daily_compounding_factor(Decimal("0.0400") + BORROW_RATE_SPREAD)
-    f2 = daily_compounding_factor(Decimal("0.0375") + BORROW_RATE_SPREAD)
+    f1 = daily_compounding_factor(Decimal("0.0400") + BASE_RATE_OVER_SSR)
+    f2 = daily_compounding_factor(Decimal("0.0375") + BASE_RATE_OVER_SSR)
     # March 1-8 at 4.00% + spread = 4.30% → 8 days
     # March 9-31 at 3.75% + spread = 4.05% → 23 days
     expected = Decimal("100000000") * (8 * f1 + 23 * f2)
@@ -112,7 +133,7 @@ def test_skips_days_when_utilized_is_negative():
         period,
         debt=pd.DataFrame({"block_date": [date(2025, 12, 1)], "cum_debt": [100_000_000.0]}),
         subproxy_usds=pd.DataFrame({"block_date": [date(2025, 12, 1)], "cum_balance": [200_000_000.0]}),
-        subproxy_susds=_empty(["block_date", "cum_balance"]),
+        subproxy_susds_principal=_empty(["block_date", "cum_balance"]),
         alm_usds=_empty(["block_date", "cum_balance"]),
         ssr=_ssr_const(0.04),
     )
@@ -121,4 +142,4 @@ def test_skips_days_when_utilized_is_negative():
 
 def test_borrow_rate_spread_is_30_bps():
     """Constant from RULES.md Rule 4: borrow rate = SSR + 0.30%."""
-    assert BORROW_RATE_SPREAD == Decimal("0.003")
+    assert BASE_RATE_OVER_SSR == Decimal("0.003")

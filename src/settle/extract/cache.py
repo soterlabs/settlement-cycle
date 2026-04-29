@@ -20,10 +20,32 @@ R = TypeVar("R")
 
 
 def cache_dir() -> Path:
+    """Resolve and create the cache directory with owner-only permissions.
+
+    The cache holds pickle blobs that are deserialized on read; if any user on
+    the system can write into this directory, they can drop a malicious pickle
+    and get arbitrary code execution next time the pipeline runs. Lock the
+    directory down to mode ``0o700`` so only the owning user can read/write.
+    """
     base = os.environ.get("SETTLE_CACHE_DIR", "~/.cache/msc-settle")
     p = Path(base).expanduser()
     p.mkdir(parents=True, exist_ok=True)
+    try:
+        p.chmod(0o700)
+    except OSError:
+        # Some filesystems (e.g. shared NFS, Windows) don't honor chmod.
+        # The chmod is defense-in-depth, not a hard requirement.
+        pass
     return p
+
+
+def _is_owned_by_current_user(path: Path) -> bool:
+    """True if ``path`` is owned by the current user. On platforms without
+    POSIX ownership semantics (Windows), assume True."""
+    try:
+        return path.stat().st_uid == os.getuid()
+    except (AttributeError, OSError):
+        return True
 
 
 def _hash_args(source_id: str, args: tuple, kwargs: dict) -> str:
@@ -69,8 +91,14 @@ def cached(source_id: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
             key = _hash_args(source_id, args, kwargs)
             path = cache_dir() / f"{source_id}_{key}.pkl"
             if path.exists():
+                # Only deserialize a pickle file we know we wrote — guards
+                # against a tampered cache file dropped by another user.
+                if not _is_owned_by_current_user(path):
+                    raise RuntimeError(
+                        f"Refusing to load cache file not owned by current user: {path}"
+                    )
                 with path.open("rb") as f:
-                    return pickle.load(f)  # noqa: S301 — internal cache, trusted bytes
+                    return pickle.load(f)  # noqa: S301 — owner-verified cache
             result = fn(*args, **kwargs)
             tmp = path.with_suffix(".pkl.tmp")
             with tmp.open("wb") as f:

@@ -8,11 +8,9 @@ from decimal import Decimal
 import pandas as pd
 
 from ...extract.dune import execute_query
+from ._dune_decode import to_addr_bytes as _to_addr_bytes, to_decimal as _to_decimal
 from ._paths import QUERIES_DIR
 
-
-def _to_decimal(v: object) -> Decimal:
-    return Decimal(str(v))
 
 
 class DuneBalanceSource:
@@ -25,6 +23,7 @@ class DuneBalanceSource:
         holder: bytes,
         start: date,
         pin_block: int,
+        min_transfer_amount: Decimal = Decimal(0),
     ) -> pd.DataFrame:
         df = execute_query(
             QUERIES_DIR / "transfer_timeseries.sql",
@@ -33,6 +32,10 @@ class DuneBalanceSource:
                 "token": token,
                 "holder": holder,
                 "start_date": start.isoformat(),
+                # Pass as Decimal so ``_format_param`` types it as ``number``
+                # — the SQL uses it in a numeric comparison
+                # (``AND amount >= {{min_transfer_amount}}``).
+                "min_transfer_amount": min_transfer_amount,
             },
             pin_block=pin_block,
         )
@@ -70,4 +73,30 @@ class DuneBalanceSource:
         df["daily_inflow"] = df["daily_inflow"].apply(_to_decimal)
         df["cum_inflow"] = df["cum_inflow"].apply(_to_decimal)
         df = df.sort_values("block_date").reset_index(drop=True)
+        return df
+
+    def inflow_by_counterparty(
+        self,
+        chain: str,
+        token: bytes,
+        holder: bytes,
+        start: date,
+        pin_block: int,
+    ) -> pd.DataFrame:
+        df = execute_query(
+            QUERIES_DIR / "inflow_by_counterparty.sql",
+            params={
+                "chain": chain,
+                "token": token,
+                "holder": holder,
+                "start_date": start.isoformat(),
+            },
+            pin_block=pin_block,
+        )
+        if df.empty:
+            return df
+        df["block_date"] = pd.to_datetime(df["block_date"]).dt.date
+        df["counterparty"] = df["counterparty"].apply(_to_addr_bytes)
+        df["signed_amount"] = df["signed_amount"].apply(_to_decimal)
+        df = df.sort_values(["block_date"]).reset_index(drop=True)
         return df

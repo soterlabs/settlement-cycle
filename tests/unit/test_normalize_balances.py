@@ -44,7 +44,7 @@ def test_subproxy_balance_uses_prime_subproxy_address(config_dir: Path):
     df = get_subproxy_balance_timeseries(obex, Chain.ETHEREUM, underlying, _period(), source=src)
     assert df.iloc[0].cum_balance == 21_000_000.0
 
-    chain, token, holder, start, pin = src.cumulative_calls[0]
+    chain, token, holder, start, pin, _min_transfer = src.cumulative_calls[0]
     assert chain == "ethereum"
     assert holder == obex.subproxy[Chain.ETHEREUM].value
     assert token == underlying.address.value
@@ -59,7 +59,7 @@ def test_alm_balance_uses_prime_alm_address(config_dir: Path):
 
     get_alm_balance_timeseries(obex, Chain.ETHEREUM, venue.token, _period(), source=src)
 
-    chain, token, holder, _, _ = src.cumulative_calls[0]
+    chain, token, holder, _, _, _ = src.cumulative_calls[0]
     assert holder == obex.alm[Chain.ETHEREUM].value
     assert token == venue.token.address.value
 

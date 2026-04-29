@@ -1,0 +1,228 @@
+{
+  "generated_at_utc": "2026-04-28T22:25:11+00:00",
+  "month": "2026-03",
+  "period": {
+    "end": "2026-03-31",
+    "n_days": 31,
+    "start": "2026-03-01"
+  },
+  "pin_blocks_eom": {
+    "avalanche_c": 81789468,
+    "base": 44106126,
+    "ethereum": 24781026,
+    "plume": 58679343
+  },
+  "pin_blocks_som": {
+    "avalanche_c": 79250451,
+    "base": 42766926,
+    "ethereum": 24558867,
+    "plume": 52322002
+  },
+  "prime_id": "grove",
+  "results": {
+    "agent_rate": "6275.42501162098737657516",
+    "distribution_rewards": "0",
+    "monthly_pnl": "-4106451.574291524996428324381",
+    "prime_agent_revenue": "4080590.203670152036751594429",
+    "prime_agent_total_revenue": "4086865.628681773024128169589",
+    "sky_revenue": "8193317.202973298020556493970"
+  },
+  "settle_version": "0.1.0",
+  "sources": {
+    "balance": "DuneBalanceSource (MCP fixture)",
+    "convert_to_assets": "RPCConvertToAssetsSource (Alchemy)",
+    "debt": "DuneDebtSource (MCP fixture: dune_outputs.json)",
+    "lp_curve": "CurvePoolSource (Alchemy)",
+    "lp_uniswap_v3": "RPCUniswapV3PositionSource (Alchemy)",
+    "nav_oracle (chronicle)": "ChronicleNavSource (Alchemy)",
+    "nav_oracle (const_one)": "ConstOneNavSource (in-process)",
+    "position_balance": "RPCPositionBalanceSource (Alchemy)",
+    "ssr": "DuneSSRSource (MCP fixture)"
+  },
+  "venue_breakdown": [
+    {
+      "label": "Aave Horizon RWA RLUSD (aToken)",
+      "period_inflow": "-5005078.229623196496178461",
+      "revenue": "148261.1462111419218436960",
+      "value_eom": "135317040.9826294351150130440",
+      "value_som": "140173858.0660414896893478090",
+      "venue_id": "E1"
+    },
+    {
+      "label": "Aave Horizon RWA USDC (aToken)",
+      "period_inflow": "0",
+      "revenue": "0E-8",
+      "value_eom": "0.00000100",
+      "value_som": "0.00000100",
+      "venue_id": "E2"
+    },
+    {
+      "label": "Aave Ethereum RLUSD (aToken)",
+      "period_inflow": "-125064023.854724322385122355",
+      "revenue": "206732.9930784410780470660",
+      "value_eom": "138267796.4244791151080042960",
+      "value_som": "263125087.2861249964150795850",
+      "venue_id": "E3"
+    },
+    {
+      "label": "Grove x Steakhouse USDC (Morpho 4626)",
+      "period_inflow": "2935334.3795127200",
+      "revenue": "16557.163973395170792888289",
+      "value_eom": "3954260.398216645214883518357",
+      "value_som": "1002368.854730530044090630068",
+      "venue_id": "E4"
+    },
+    {
+      "label": "Grove x Steakhouse USDC High Yield (Morpho 4626)",
+      "period_inflow": "-1014076.2117985200",
+      "revenue": "1750.534960008126179610310",
+      "value_eom": "0E-8",
+      "value_som": "1012325.676838511873820389690",
+      "venue_id": "E5"
+    },
+    {
+      "label": "Grove x Steakhouse AUSD (Morpho 4626)",
+      "period_inflow": "2800015.3661029000",
+      "revenue": "40043.57426360840380314631",
+      "value_eom": "18646064.03664091757474164158",
+      "value_som": "15806005.09627440917093849527",
+      "venue_id": "E6"
+    },
+    {
+      "label": "Securitize Tokenized AAA CLO Fund (STAC)",
+      "period_inflow": "0.00",
+      "revenue": "127923.800000",
+      "value_eom": "100932589.900000",
+      "value_som": "100804666.100000",
+      "venue_id": "E7"
+    },
+    {
+      "label": "Janus Henderson Anemoy AAA CLO (JAAA)",
+      "period_inflow": "-327176624.41732580",
+      "revenue": "52418.950217064322",
+      "value_eom": "128240953.654654101054",
+      "value_som": "455365159.121762836732",
+      "venue_id": "E8"
+    },
+    {
+      "label": "Janus Henderson Anemoy Treasury Fund (JTRSY)",
+      "period_inflow": "596049191.95004544",
+      "revenue": "2151505.437218055130",
+      "value_eom": "1160073937.731621115642",
+      "value_som": "561873240.344357620512",
+      "venue_id": "E9"
+    },
+    {
+      "label": "BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I)",
+      "period_inflow": "274985000.0000",
+      "revenue": "1557782.2900",
+      "value_eom": "706747881.3200",
+      "value_som": "430205099.0300",
+      "venue_id": "E10"
+    },
+    {
+      "label": "Curve AUSD/USDC stableswap LP",
+      "period_inflow": "0E-44",
+      "revenue": "494.1707932989666180655400000",
+      "value_eom": "25000938.94809113655967149288",
+      "value_som": "25000444.77729783759305342734",
+      "venue_id": "E11"
+    },
+    {
+      "label": "Uniswap V3 AUSD/USDC pool (NFT positions)",
+      "period_inflow": "0",
+      "revenue": "7243.545074",
+      "value_eom": "25015282.512565",
+      "value_som": "25008038.967491",
+      "venue_id": "E12"
+    },
+    {
+      "label": "RLUSD raw (ALM idle)",
+      "period_inflow": "0",
+      "revenue": "0.00",
+      "value_eom": "0.00",
+      "value_som": "0.00",
+      "venue_id": "E13"
+    },
+    {
+      "label": "AUSD raw (ALM idle)",
+      "period_inflow": "0",
+      "revenue": "0.00",
+      "value_eom": "0.00",
+      "value_som": "0.00",
+      "venue_id": "E14"
+    },
+    {
+      "label": "USDC raw (ALM idle)",
+      "period_inflow": "9999494.26549101250",
+      "revenue": "-1.250E-8",
+      "value_eom": "9999494.26549100",
+      "value_som": "0.00",
+      "venue_id": "E15"
+    },
+    {
+      "label": "DAI raw (ALM idle)",
+      "period_inflow": "0",
+      "revenue": "0.00",
+      "value_eom": "0.00",
+      "value_som": "0.00",
+      "venue_id": "E16"
+    },
+    {
+      "label": "USDS raw / POL (ALM idle \u2014 already netted out of utilized)",
+      "period_inflow": "0",
+      "revenue": "0.00",
+      "value_eom": "0.00",
+      "value_som": "0.00",
+      "venue_id": "E17"
+    },
+    {
+      "label": "sUSDS raw / POL (ALM idle \u2014 Cat B 4626)",
+      "period_inflow": "0",
+      "revenue": "0E-20",
+      "value_eom": "0E-20",
+      "value_som": "0E-20",
+      "venue_id": "E18"
+    },
+    {
+      "label": "Grove x Steakhouse USDC High Yield (Base, Morpho 4626)",
+      "period_inflow": "0E-18",
+      "revenue": "3151.172132183078255847530",
+      "value_eom": "1007405.415147632110886514155",
+      "value_som": "1004254.243015449032630666625",
+      "venue_id": "E19"
+    },
+    {
+      "label": "Steakhouse Prime Instant (Base, Morpho V2)",
+      "period_inflow": "15993565.70818382232003000",
+      "revenue": "13175.41942808946960911569",
+      "value_eom": "16006741.12761191178963911569",
+      "value_som": "0E-8",
+      "venue_id": "E23"
+    },
+    {
+      "label": "Janus Henderson Anemoy AAA CLO (JAAA-avalanche)",
+      "period_inflow": "0.00",
+      "revenue": "105000.000000",
+      "value_eom": "256878500.000000",
+      "value_som": "256773500.000000",
+      "venue_id": "E20"
+    },
+    {
+      "label": "Galaxy Arch CLO Token (GACLO-1)",
+      "period_inflow": "0.00",
+      "revenue": "0.00",
+      "value_eom": "49900000.00",
+      "value_som": "49900000.00",
+      "venue_id": "E21"
+    },
+    {
+      "label": "Anemoy Tokenized Apollo Diversified Credit Fund (ACRDX)",
+      "period_inflow": "0E-11",
+      "revenue": "-351449.99367912113039784124",
+      "value_eom": "50674767.85906379438835997345",
+      "value_som": "51026217.85274291551875781469",
+      "venue_id": "E22"
+    }
+  ]
+}

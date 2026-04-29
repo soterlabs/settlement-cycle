@@ -66,8 +66,15 @@ def test_fmt_usd_zero():
 def test_render_markdown_contains_headline():
     md = render_markdown(_sample_pnl())
     assert "# OBEX — Monthly settlement 2026-03" in md
-    assert "monthly_pnl" in md
-    assert "$6,611,111.64" in md  # = prime_rev + agent - sky
+    # New headline shape: total revenue + components, no monthly_pnl row.
+    assert "prime_agent_total_revenue" in md
+    assert "prime_agent_revenue" in md
+    assert "agent_rate" in md
+    assert "distribution_rewards" in md
+    assert "sky_revenue" in md
+    # The netted monthly_pnl is no longer reported in the markdown headline
+    # (it stays in provenance.json for audit, see test_provenance_*).
+    assert "**monthly_pnl**" not in md
 
 
 def test_render_markdown_contains_pin_blocks():
@@ -120,7 +127,12 @@ def test_write_csv_headline_format(tmp_path: Path):
     assert row["n_days"] == "31"
     # Decimal precision preserved (no float rounding)
     assert row["sky_revenue"] == "123456.78"
-    assert row["monthly_pnl"] == str(_sample_pnl().monthly_pnl)
+    # monthly_pnl is no longer in the CSV (it's still in provenance.json).
+    assert "monthly_pnl" not in row
+    # New columns: distribution_rewards (default 0) + the bold-line total.
+    assert row["distribution_rewards"] == "0"
+    sample = _sample_pnl()
+    assert row["prime_agent_total_revenue"] == str(sample.prime_agent_total_revenue)
 
 
 def test_write_venues_csv_emits_per_venue_rows(tmp_path: Path):

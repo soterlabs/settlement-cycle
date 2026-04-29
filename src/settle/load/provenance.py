@@ -35,8 +35,12 @@ def render_provenance(
         "pin_blocks_som": {c.value: blk for c, blk in pnl.pin_blocks_som.items()},
         "results": {
             "sky_revenue": str(pnl.sky_revenue),
+            "sky_direct_shortfall": str(pnl.sky_direct_shortfall),
             "agent_rate": str(pnl.agent_rate),
             "prime_agent_revenue": str(pnl.prime_agent_revenue),
+            "distribution_rewards": str(pnl.distribution_rewards),
+            "prime_agent_total_revenue": str(pnl.prime_agent_total_revenue),
+            # Kept for audit / cross-check; not in the markdown headline or CSV.
             "monthly_pnl": str(pnl.monthly_pnl),
         },
         "venue_breakdown": [
@@ -47,6 +51,13 @@ def render_provenance(
                 "value_eom": str(v.value_eom),
                 "period_inflow": str(v.period_inflow),
                 "revenue": str(v.revenue),
+                # Sky Direct fields — zero for non-Sky-Direct venues. Captured
+                # so an auditor can reconstruct sky_revenue from the breakdown:
+                #   sky_revenue = utilized × BR − Σ sky_direct_shortfall
+                # and prime's per-venue revenue: max(0, actual_revenue − br_charge).
+                "actual_revenue": str(v.actual_revenue),
+                "br_charge": str(v.br_charge),
+                "sky_direct_shortfall": str(v.sky_direct_shortfall),
             }
             for v in pnl.venue_breakdown
         ],
