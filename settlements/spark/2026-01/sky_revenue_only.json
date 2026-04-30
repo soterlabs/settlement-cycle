@@ -1,0 +1,20 @@
+{
+  "prime": "spark",
+  "month": "2026-01",
+  "period_start": "2026-01-01",
+  "period_end": "2026-01-31",
+  "pin_blocks_eom": {
+    "ethereum": 24358292,
+    "base": 41557326,
+    "arbitrum": 427315178,
+    "optimism": 147152611,
+    "unichain": 39155640
+  },
+  "totals": {
+    "cum_debt_eom": "3162882936.208096",
+    "cum_psm_usds_eom": "465560019.710471465585706973",
+    "utilized_eom": "2697322916.497624534414293027",
+    "sky_revenue": "9077589.866520521128970905965"
+  },
+  "_disclaimer": "Sky-revenue only. prime_agent_total_revenue not computed (Spark venue-pricing paths not yet implemented). Idle subproxy/ALM USDS and Eth directed_flow PSM treated as $0 (confirmed via Dune queries 7399654 + 7401552 \u2014 Spark doesn't hold dust at subproxy/ALM and doesn't route through Sky LITE-PSM-USDC). ALM sUSDS is treated as a Cat B venue (not a utilized-reduction term per methodology). PSM3 USDS-equivalent on Base/Arbitrum/Optimism/Unichain is read live via RPC (cached)."
+}

@@ -91,6 +91,12 @@ def get_position_value(
         return _uniswap_v3_value(prime, venue, block, source=v3_position_source)
 
     balance = get_position_balance(prime, venue, block, source=balance_source)
+    if balance == 0:
+        # Short-circuit: zero balance × any unit price = $0. Skipping the
+        # unit_price call avoids an unnecessary failure on venues with
+        # exotic pricing paths (e.g. recursive 4626 underlyings) that
+        # aren't fully wired up but happen to hold $0 in this period.
+        return Decimal("0")
     price = get_unit_price(
         venue, block,
         erc4626_source=erc4626_source,
@@ -359,7 +365,34 @@ def _cat_a_capital_inflow_timeseries(
         "block_date": [], "daily_inflow": [], "cum_inflow": [],
     })
     if detail.empty:
-        return empty
+        if external_sources:
+            # External yield source registered but no per-counterparty data
+            # available — can't classify; refuse to guess. Caller sees
+            # period_inflow = 0 and revenue = Δvalue, which is wrong but
+            # explicit (vs. silently zeroing real yield).
+            return empty
+        # No registered external yield source AND no per-counterparty data.
+        # Methodology: par-stables don't generate yield by themselves; any
+        # balance change at the ALM must be value-preserving capital movement
+        # (PSM swap, allocator buffer, etc.) → capital_net = Δvalue → revenue
+        # = 0. Fall back to the cumulative-balance timeseries: every balance
+        # change becomes capital. For par-stables, 1 token unit = $1 so
+        # daily_net is already $-equivalent.
+        cum_df = balance_source.cumulative_balance_timeseries(
+            chain=venue.chain.value,
+            token=venue.token.address.value,
+            holder=holder.value,
+            start=prime.start_date,
+            pin_block=pin_block,
+        )
+        if cum_df.empty:
+            return empty
+        out = pd.DataFrame({
+            "block_date": cum_df["block_date"],
+            "daily_inflow": cum_df["daily_net"],
+        })
+        out["cum_inflow"] = out["daily_inflow"].cumsum()
+        return out
 
     # Counterparties may arrive as bytes / bytearray / memoryview (Dune
     # varbinary, possibly with leading zeros stripped) or as a "0x"-prefixed
@@ -586,7 +619,7 @@ def _curve_lp_index_weighted_inflow(
     template (NextGen 2-coin, Plain 3pool, Vyper variants).
     """
     import pandas as pd
-    from ..domain.sky_tokens import KNOWN_PAR_STABLES_ETHEREUM
+    from ..domain.sky_tokens import KNOWN_PAR_STABLES_ETHEREUM, KNOWN_YIELD_BEARING_ETHEREUM
     from .prices import _curve_lp_unit_price
 
     if venue.chain.value != "ethereum":
@@ -612,10 +645,13 @@ def _curve_lp_index_weighted_inflow(
             f"stableswap pools (got {len(state_eom.coins)})"
         )
     for coin in state_eom.coins:
-        if coin.value not in KNOWN_PAR_STABLES_ETHEREUM:
+        if (
+            coin.value not in KNOWN_PAR_STABLES_ETHEREUM
+            and coin.value not in KNOWN_YIELD_BEARING_ETHEREUM
+        ):
             raise UnsupportedPricingError(
-                f"Venue {venue.id}: Curve coin {coin.hex} not in par-stable "
-                "registry — recursive pricing is Phase 2.B+."
+                f"Venue {venue.id}: Curve coin {coin.hex} not in par-stable or "
+                "yield-bearing-4626 registries."
             )
 
     unit_price_som = _curve_lp_unit_price(venue, som_block, pool_source=pool_source)

@@ -14,6 +14,7 @@ from .protocols import (
     IDebtSource,
     INavOracleSource,
     IPositionBalanceSource,
+    IPsm3Source,
     ISSRSource,
 )
 from .sources.dune_balances import DuneBalanceSource
@@ -21,7 +22,11 @@ from .sources.dune_debt import DuneDebtSource
 from .sources.dune_ssr import DuneSSRSource
 from .sources.oracles import ChronicleNavSource, ConstOneNavSource
 from .sources.rpc_block_resolver import RPCBlockResolver
-from .sources.rpc_position import RPCConvertToAssetsSource, RPCPositionBalanceSource
+from .sources.rpc_position import (
+    RPCConvertToAssetsSource,
+    RPCPositionBalanceSource,
+    RPCPsm3Source,
+)
 
 _DEBT_SOURCES: dict[str, type[IDebtSource]] = {
     "dune": DuneDebtSource,
@@ -41,6 +46,10 @@ _POSITION_BALANCE_SOURCES: dict[str, type[IPositionBalanceSource]] = {
 
 _CONVERT_TO_ASSETS_SOURCES: dict[str, type[IConvertToAssetsSource]] = {
     "rpc": RPCConvertToAssetsSource,
+}
+
+_PSM3_SOURCES: dict[str, type[IPsm3Source]] = {
+    "rpc": RPCPsm3Source,
 }
 
 _BLOCK_RESOLVER_SOURCES: dict[str, type[IBlockResolver]] = {
@@ -103,6 +112,15 @@ def get_convert_to_assets_source(name: str = "rpc") -> IConvertToAssetsSource:
             f"Available: {sorted(_CONVERT_TO_ASSETS_SOURCES)}"
         )
     return _CONVERT_TO_ASSETS_SOURCES[name]()
+
+
+def get_psm3_source(name: str = "rpc") -> IPsm3Source:
+    if name not in _PSM3_SOURCES:
+        raise UnknownSourceError(
+            f"Unknown PSM3 source {name!r}. "
+            f"Available: {sorted(_PSM3_SOURCES)}"
+        )
+    return _PSM3_SOURCES[name]()
 
 
 def get_block_resolver(name: str = "rpc") -> IBlockResolver:

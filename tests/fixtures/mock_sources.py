@@ -113,6 +113,34 @@ class MockConvertToAssetsSource:
 
 
 @dataclass
+class MockPsm3Source:
+    """In-memory `IPsm3Source`. Mock both reads independently:
+
+    - ``shares_by_block`` maps ``(chain, block)`` → raw share count
+    - ``rate_by_block`` maps ``(chain, block)`` → raw asset-value per share
+      (the ``convertToAssetValue(1e18)`` rate). Defaults to 1e18 (1:1).
+    """
+
+    shares_by_block: dict[tuple[str, int], int] = field(default_factory=dict)
+    default_shares: int = 0
+    rate_by_block: dict[tuple[str, int], int] = field(default_factory=dict)
+    default_rate: int = 10**18
+    shares_calls: list[tuple] = field(default_factory=list)
+    value_calls: list[tuple] = field(default_factory=list)
+
+    def shares_of(self, chain: str, psm3: bytes, holder: bytes, block: int) -> int:
+        self.shares_calls.append((chain, psm3, holder, block))
+        return self.shares_by_block.get((chain, block), self.default_shares)
+
+    def convert_to_asset_value(
+        self, chain: str, psm3: bytes, num_shares: int, block: int,
+    ) -> int:
+        self.value_calls.append((chain, psm3, num_shares, block))
+        rate = self.rate_by_block.get((chain, block), self.default_rate)
+        return num_shares * rate // 10**18
+
+
+@dataclass
 class MockBlockResolver:
     """In-memory `IBlockResolver`. Returns canned block per (chain, anchor)
     and canned date per (chain, block)."""

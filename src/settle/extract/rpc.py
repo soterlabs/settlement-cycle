@@ -20,6 +20,11 @@ SEL_BALANCE_OF = "0x70a08231"           # balanceOf(address)
 SEL_DECIMALS = "0x313ce567"             # decimals()
 SEL_TOTAL_SUPPLY = "0x18160ddd"         # totalSupply()
 SEL_CONVERT_TO_ASSETS = "0x07a2d13a"    # convertToAssets(uint256)
+# PSM3 (Spark) — non-standard ABI: shares are internal accounting (no Transfer
+# events) and the rate uses ``convertToAssetValue(uint256)`` rather than the
+# ERC-4626 ``convertToAssets(uint256)``.
+SEL_PSM3_SHARES = "0xce7c2ac2"          # shares(address)
+SEL_PSM3_CONVERT_TO_ASSET_VALUE = "0x41c094e0"  # convertToAssetValue(uint256)
 # Curve-specific selectors (get_virtual_price, balances) live in extract/curve.py.
 
 DEFAULT_TIMEOUT = 30
@@ -59,17 +64,44 @@ def rpc_url(chain: Chain) -> str:
     return url
 
 
-DEFAULT_RETRY_ATTEMPTS = 3
-DEFAULT_RETRY_BACKOFF_SEC = 0.5
+DEFAULT_RETRY_ATTEMPTS = 60
+DEFAULT_RETRY_BACKOFF_SEC = 0.3
+RETRY_BACKOFF_CAP_SEC = 3.0
+
+# JSON-RPC error codes/messages that indicate a transient upstream failure
+# rather than a deterministic call problem. drpc surfaces upstream-node
+# flakiness as ``-32001`` ("wrong json-rpc response") and ``19`` ("Temporary
+# internal error"). Retrying these is safe because the call itself is
+# well-formed; the load balancer just hit a bad node.
+_TRANSIENT_RPC_CODES = {-32001, 19}
+_TRANSIENT_RPC_MSG_FRAGMENTS = (
+    "wrong json-rpc response",
+    "temporary internal error",
+    "rate limit",
+)
+
+
+def _is_transient_rpc_error(err: Any) -> bool:
+    """True if a JSON-RPC ``error`` payload reflects provider/load-balancer
+    flakiness (drpc upstream issues, rate limits) rather than a deterministic
+    call problem (revert, bad params).
+    """
+    if isinstance(err, dict):
+        if err.get("code") in _TRANSIENT_RPC_CODES:
+            return True
+        msg = err.get("message", "").lower()
+    else:
+        msg = str(err).lower()
+    return any(frag in msg for frag in _TRANSIENT_RPC_MSG_FRAGMENTS)
 
 
 def _post(url: str, method: str, params: list[Any]) -> Any:
     """JSON-RPC POST with bounded retry on transient transport errors.
 
-    Retries ``Timeout``, ``ConnectionError`` and HTTP 5xx — typical flaky-node
-    failures. JSON-RPC application errors (the ``"error"`` field on a 200 OK
-    response) are NOT retried since they reflect deterministic call problems
-    (revert, bad params, etc.).
+    Retries on ``Timeout``, ``ConnectionError``, HTTP 5xx, and a small set of
+    JSON-RPC error codes/messages known to be transient at provider load
+    balancers (drpc upstream-node flakiness, rate-limits). Other JSON-RPC
+    application errors (revert, bad params) are NOT retried.
     """
     import time as _time
     body = {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
@@ -77,20 +109,29 @@ def _post(url: str, method: str, params: list[Any]) -> Any:
     for attempt in range(DEFAULT_RETRY_ATTEMPTS):
         try:
             r = requests.post(url, json=body, timeout=DEFAULT_TIMEOUT)
-            if 500 <= r.status_code < 600:
+            # 408 (Request Timeout) and 429 (Too Many Requests) are
+            # provider-level transients; treat like 5xx for retry purposes.
+            if 500 <= r.status_code < 600 or r.status_code in (408, 429):
                 last_exc = requests.HTTPError(
                     f"{r.status_code} {r.reason}", response=r,
                 )
             else:
                 r.raise_for_status()
                 payload = r.json()
-                if "error" in payload:
-                    raise RPCError(f"{method} error: {payload['error']}")
-                return payload["result"]
+                if "error" not in payload:
+                    return payload["result"]
+                err = payload["error"]
+                if not _is_transient_rpc_error(err):
+                    raise RPCError(f"{method} error: {err}")
+                last_exc = RPCError(f"{method} transient error: {err}")
         except (requests.Timeout, requests.ConnectionError) as e:
             last_exc = e
         if attempt < DEFAULT_RETRY_ATTEMPTS - 1:
-            _time.sleep(DEFAULT_RETRY_BACKOFF_SEC * (2 ** attempt))
+            backoff = min(
+                DEFAULT_RETRY_BACKOFF_SEC * (2 ** attempt),
+                RETRY_BACKOFF_CAP_SEC,
+            )
+            _time.sleep(backoff)
     assert last_exc is not None
     raise last_exc
 
@@ -185,6 +226,28 @@ def convert_to_assets(chain: Chain, vault: Address, shares: int, block: int) -> 
         return _decode_uint(eth_call(chain, vault, data, block))
     except (RPCError, requests.HTTPError):
         return 0
+
+
+@cached(source_id="rpc.psm3_shares")
+def psm3_shares(chain: Chain, psm3: Address, holder: Address, block: int) -> int:
+    """Spark PSM3 ``shares(holder)``. PSM3 shares are internal accounting (no
+    ERC-20 Transfer events), so we read them from the contract directly.
+    Raises on persistent transport/RPC failure — a missing contract returns
+    ``0x`` from ``eth_call`` which decodes to 0; an exception means the call
+    couldn't complete and silently returning 0 would corrupt the timeseries."""
+    data = SEL_PSM3_SHARES + _pad_address(holder)
+    return _decode_uint(eth_call(chain, psm3, data, block))
+
+
+@cached(source_id="rpc.psm3_convert_to_asset_value")
+def psm3_convert_to_asset_value(chain: Chain, psm3: Address, num_shares: int, block: int) -> int:
+    """Spark PSM3 ``convertToAssetValue(numShares)`` — returns the USDS-
+    equivalent value (18 decimals) of ``numShares`` PSM3 shares at ``block``.
+    Distinct from ERC-4626 ``convertToAssets`` (which PSM3 also exposes but
+    requires an asset address). Raises on persistent transport/RPC failure
+    (see ``psm3_shares`` for rationale)."""
+    data = SEL_PSM3_CONVERT_TO_ASSET_VALUE + _pad_uint(num_shares)
+    return _decode_uint(eth_call(chain, psm3, data, block))
 
 
 # ----------------------------------------------------------------------------

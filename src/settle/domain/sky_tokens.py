@@ -37,6 +37,22 @@ KNOWN_PAR_STABLES_ETHEREUM: dict[bytes, tuple[str, int]] = {
     bytes.fromhex("4c9edd5852cd905f086c759e8383e09bff1e68b3"): ("USDe", 18),
 }
 
+
+# Yield-bearing ERC-4626 tokens used as Curve / Uni V3 pool coins. Maps the
+# 4626 vault address to (symbol, share_decimals, underlying_par_stable_address,
+# underlying_decimals). Recursive pricing: ``convertToAssets(10**share_decimals)
+# / 10**underlying_decimals * par_price_of_underlying``. Used by
+# ``_curve_lp_unit_price`` so pools containing these (Spark sUSDSUSDT) can be
+# priced without manual exclusion.
+KNOWN_YIELD_BEARING_ETHEREUM: dict[bytes, tuple[str, int, bytes, int]] = {
+    # sUSDS — Sky Savings vault (4626 over USDS). Used in S24 sUSDSUSDT Curve.
+    bytes.fromhex("a3931d71877c0e7a3148cb7eb4463524fec27fbd"): (
+        "sUSDS", 18,
+        bytes.fromhex("dc035d45d973e3ec169d2276ddab16f1e407384f"),  # USDS
+        18,
+    ),
+}
+
 USDS_ETHEREUM = Token(
     chain=Chain.ETHEREUM,
     address=Address.from_str("0xdc035d45d973e3ec169d2276ddab16f1e407384f"),

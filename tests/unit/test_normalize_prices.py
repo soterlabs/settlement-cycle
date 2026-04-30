@@ -255,23 +255,25 @@ def test_curve_lp_unit_price_above_one_when_pool_holds_yield():
     assert price == Decimal("25500000") / Decimal("25000000") == Decimal("1.02")
 
 
-def test_curve_lp_raises_when_coin_not_in_par_stable_registry():
-    """A pool with a non-par-stable coin (e.g. sUSDS) must raise — recursive
-    pricing of yield-bearing LP underlyings is Phase 2.B+."""
+def test_curve_lp_raises_when_coin_in_neither_registry():
+    """A pool with a coin missing from BOTH the par-stable and yield-bearing
+    4626 registries must raise — recursive pricing of unknown LP underlyings
+    is Phase 2.B+. (sUSDS itself is now in the yield-bearing registry and
+    prices via convertToAssets — see the dedicated sUSDS test.)"""
     from settle.normalize.sources.curve_pool import CurvePoolState
 
     USDC = bytes.fromhex("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
-    SUSDS = bytes.fromhex("a3931d71877c0e7a3148cb7eb4463524fec27fbd")    # sUSDS — yield-bearing
+    UNKNOWN = bytes.fromhex("0123456789abcdef0123456789abcdef01234567")  # not registered
 
     class _MockPool:
         def read_pool(self, chain, pool, block):
             return CurvePoolState(
                 virtual_price_raw=10**18, total_supply=10**18,
-                coins=[Address(SUSDS), Address(USDC)],
+                coins=[Address(UNKNOWN), Address(USDC)],
                 balances=[5_000_000 * 10**18, 5_000_000 * 10**6],
             )
 
-    with pytest.raises(UnsupportedPricingError, match="par-stable registry"):
+    with pytest.raises(UnsupportedPricingError, match="par-stable or yield-bearing"):
         get_unit_price(_curve_venue(), block=0, curve_pool_source=_MockPool())
 
 

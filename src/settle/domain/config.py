@@ -9,7 +9,7 @@ from pathlib import Path
 import yaml
 
 from .pricing import PricingCategory
-from .primes import Address, Chain, NavOracle, Prime, Token, Venue
+from .primes import Address, Chain, NavOracle, Prime, PsmConfig, PsmKind, Token, Venue
 
 
 def _parse_ilk_bytes32(s: str) -> bytes:
@@ -39,12 +39,20 @@ def load_prime(config_path: Path) -> Prime:
 
     subproxy = {}
     alm = {}
+    psm: dict[Chain, PsmConfig] = {}
     for chain_str, addrs in cfg.get("addresses", {}).items():
         chain = Chain(chain_str)
         if "subproxy" in addrs:
             subproxy[chain] = Address.from_str(addrs["subproxy"])
         if "alm" in addrs:
             alm[chain] = Address.from_str(addrs["alm"])
+        if "psm" in addrs:
+            p = addrs["psm"]
+            psm[chain] = PsmConfig(
+                kind=PsmKind(p["kind"]),
+                address=Address.from_str(p["address"]),
+                token=Address.from_str(p["token"]) if p.get("token") else None,
+            )
 
     venues: list[Venue] = []
     for v in cfg.get("venues", []):
@@ -100,6 +108,7 @@ def load_prime(config_path: Path) -> Prime:
         start_date=date.fromisoformat(cfg["start_date"]),
         subproxy=subproxy,
         alm=alm,
+        psm=psm,
         venues=venues,
         external_alm_sources=external_alm_sources,
     )

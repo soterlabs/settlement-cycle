@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 import pickle
+import threading
 from collections.abc import Callable
 from functools import wraps
 from pathlib import Path
@@ -100,7 +101,11 @@ def cached(source_id: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
                 with path.open("rb") as f:
                     return pickle.load(f)  # noqa: S301 — owner-verified cache
             result = fn(*args, **kwargs)
-            tmp = path.with_suffix(".pkl.tmp")
+            # Per-(pid, tid) tmp suffix avoids two threads writing the same
+            # cache key from clobbering each other's partial pickle dump.
+            # Concurrent writes happen in flows like the Spark Q1 runner that
+            # parallelizes RPC reads across chains via ThreadPoolExecutor.
+            tmp = path.with_suffix(f".pkl.{os.getpid()}.{threading.get_ident()}.tmp")
             with tmp.open("wb") as f:
                 pickle.dump(result, f)
             tmp.replace(path)

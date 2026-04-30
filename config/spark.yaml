@@ -1,0 +1,717 @@
+# Spark prime agent — multi-chain (Ethereum, Base, Arbitrum, Optimism,
+# Unichain, Avalanche-C) ALM + Anchorage off-chain custodial position.
+#
+# Source of truth for Spark-specific addresses, ilk, venues. Venue list seeded
+# from BA Labs `stars-api.blockanalitica.com/allocations/?star=spark` snapshot
+# (2026-04-29) and cross-checked against `docs/ALM_COUNTERPARTIES.md` +
+# `docs/pricing/allocation_pricing.csv`.
+#
+# Status (2026-04-29): scaffolding pass. Many venues are wired with the
+# correct addresses + pricing category, but two pricing paths are NOT yet
+# implemented:
+#   * PSM3 (Spark's Peg Stability Module on non-Ethereum chains): the contract
+#     is a basket holder (USDC + USDS + sUSDS shares); needs a dedicated source
+#     and oracle kind. Marked `pricing_category: E` with `kind: psm3` for now;
+#     the runtime will reject these until the source is registered.
+#   * Anchorage (off-chain custodial $150M position on Ethereum): API-only;
+#     requires Anchorage developer credentials. Marked `pricing_category: E`
+#     with `kind: anchorage`; same TODO.
+
+id: spark
+ilk_bytes32: '0x414c4c4f4341544f522d535041524b2d41000000000000000000000000000000'  # ALLOCATOR-SPARK-A
+start_date: '2024-11-18'   # first frob on ALLOCATOR-SPARK-A (Dune query 7399640)
+
+addresses:
+  ethereum:
+    subproxy: '0x691a6c29e9e96dd897718305427ad5d534db16ba'    # urn for ALLOCATOR-SPARK-A; 49,789 frob calls (most active allocator)
+    alm:      '0x1601843c5e9bc251a3272907010afa41fa18347e'    # Spark Ethereum ALM (cross-chain hub)
+    psm:
+      kind: directed_flow                                     # Sky LITE-PSM-USDC: USDS swap conduit (shared across primes)
+      address: '0x37305b1cd40574e4c5ce33f8e8306be057fd7341'
+      token:   '0xdc035d45d973e3ec169d2276ddab16f1e407384f'   # USDS
+  base:
+    alm:      '0x2917956eff0b5eaf030abdb4ef4296df775009ca'    # Spark Base ALM
+    psm:
+      kind: erc4626_shares                                    # PSM3: ALM holds shares; USDS-equiv via convertToAssets
+      address: '0x1601843c5e9bc251a3272907010afa41fa18347e'   # PSM3 Base (CREATE2 — same address as Spark Eth-ALM)
+  arbitrum:
+    alm:      '0x92afd6f2385a90e44da3a8b60fe36f6cbe1d8709'    # Spark Arbitrum ALM
+    psm:
+      kind: erc4626_shares
+      address: '0x2b05f8e1cacc6974fd79a673a341fe1f58d27266'   # PSM3 Arbitrum
+  optimism:
+    alm:      '0x876664f0c9ff24d1aa355ce9f1680ae1a5bf36fb'    # Spark Optimism ALM
+    psm:
+      kind: erc4626_shares
+      address: '0xe0f9978b907853f354d79188a3defbd41978af62'   # PSM3 Optimism
+  unichain:
+    alm:      '0x345e368fccd62266b3f5f37c9a131fd1c39f5869'    # Spark Unichain ALM
+    psm:
+      kind: erc4626_shares
+      address: '0x7b42ed932f26509465f7ce3faf76ffce1275312f'   # PSM3 Unichain
+  avalanche_c:
+    alm:      '0xece6b0e8a54c2f44e066fbb9234e7157b15b7fec'    # Spark Avalanche-C ALM
+
+venues:
+  # ─────────────────────────────────────────────────────────────
+  # Ethereum — SparkLend spTokens (Cat C, rebasing aToken-style)
+  # ─────────────────────────────────────────────────────────────
+  - id: S1
+    chain: ethereum
+    label: 'Spark USDS (SparkLend spToken)'
+    pricing_category: C
+    token:
+      address: '0xc02ab1a5eaa8d1b114ef786d9bde108cd4364359'
+      symbol: 'spUSDS'
+      decimals: 18
+    underlying:
+      address: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'
+      symbol: 'USDS'
+      decimals: 18
+
+  - id: S2
+    chain: ethereum
+    label: 'Spark USDC (SparkLend spToken)'
+    pricing_category: C
+    token:
+      address: '0x377c3bd93f2a2984e1e7be6a5c22c525ed4a4815'
+      symbol: 'spUSDC'
+      decimals: 6
+    underlying:
+      address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+      symbol: 'USDC'
+      decimals: 6
+
+  - id: S3
+    chain: ethereum
+    label: 'Spark USDT (SparkLend spToken)'
+    pricing_category: C
+    token:
+      address: '0xe7df13b8e3d6740fe17cbe928c7334243d86c92f'
+      symbol: 'spUSDT'
+      decimals: 6
+    underlying:
+      address: '0xdac17f958d2ee523a2206206994597c13d831ec7'
+      symbol: 'USDT'
+      decimals: 6
+
+  - id: S4
+    chain: ethereum
+    label: 'Spark DAI (SparkLend spToken)'
+    pricing_category: C
+    token:
+      address: '0x4dedf26112b3ec8ec46e7e31ea5e123490b05b8b'
+      symbol: 'spDAI'
+      decimals: 18
+    underlying:
+      address: '0x6b175474e89094c44da98b954eedeac495271d0f'
+      symbol: 'DAI'
+      decimals: 18
+
+  - id: S5
+    chain: ethereum
+    label: 'Spark PYUSD (SparkLend spToken)'
+    pricing_category: C
+    token:
+      address: '0x779224df1c756b4edd899854f32a53e8c2b2ce5d'
+      symbol: 'spPYUSD'
+      decimals: 6
+    underlying:
+      address: '0x6c3ea9036406852006290770bedfcaba0e23a0e8'
+      symbol: 'PYUSD'
+      decimals: 6
+
+  # ─────────────────────────────────────────────────────────────
+  # Ethereum — Aave V3 aTokens (Cat C)
+  # ─────────────────────────────────────────────────────────────
+  - id: S6
+    chain: ethereum
+    label: 'Aave Ethereum Lido USDS (aToken)'
+    pricing_category: C
+    token:
+      address: '0x09aa30b182488f769a9824f15e6ce58591da4781'
+      symbol: 'aEthLidoUSDS'
+      decimals: 18
+    underlying:
+      address: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'
+      symbol: 'USDS'
+      decimals: 18
+
+  - id: S7
+    chain: ethereum
+    label: 'Aave Ethereum USDS (aToken)'
+    pricing_category: C
+    token:
+      address: '0x32a6268f9ba3642dda7892add74f1d34469a4259'
+      symbol: 'aEthUSDS'
+      decimals: 18
+    underlying:
+      address: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'
+      symbol: 'USDS'
+      decimals: 18
+
+  - id: S8
+    chain: ethereum
+    label: 'Aave Ethereum USDC (aToken)'
+    pricing_category: C
+    token:
+      address: '0x98c23e9d8f34fefb1b7bd6a91b7ff122f4e16f5c'
+      symbol: 'aEthUSDC'
+      decimals: 6
+    underlying:
+      address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+      symbol: 'USDC'
+      decimals: 6
+
+  - id: S9
+    chain: ethereum
+    label: 'Aave Ethereum USDT (aToken)'
+    pricing_category: C
+    token:
+      address: '0x23878914efe38d27c4d67ab83ed1b93a74d4086a'
+      symbol: 'aEthUSDT'
+      decimals: 6
+    underlying:
+      address: '0xdac17f958d2ee523a2206206994597c13d831ec7'
+      symbol: 'USDT'
+      decimals: 6
+
+  # ─────────────────────────────────────────────────────────────
+  # Ethereum — Morpho ERC-4626 vaults (Cat B)
+  # ─────────────────────────────────────────────────────────────
+  - id: S10
+    chain: ethereum
+    label: 'Spark Blue Chip USDC Vault (Morpho)'
+    pricing_category: B
+    token:
+      address: '0x56a76b428244a50513ec81e225a293d128fd581d'
+      symbol: 'sparkUSDCbc'
+      decimals: 18
+    underlying:
+      address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+      symbol: 'USDC'
+      decimals: 6
+
+  - id: S11
+    chain: ethereum
+    label: 'Spark Blue Chip USDT Vault (Morpho V2)'
+    pricing_category: B
+    token:
+      address: '0xc7cdcfdefc64631ed6799c95e3b110cd42f2bd22'
+      symbol: 'sparkUSDTbc'
+      decimals: 18
+    underlying:
+      address: '0xdac17f958d2ee523a2206206994597c13d831ec7'
+      symbol: 'USDT'
+      decimals: 6
+
+  - id: S12
+    chain: ethereum
+    label: 'Spark DAI Vault (Morpho)'
+    pricing_category: B
+    token:
+      address: '0x73e65dbd630f90604062f6e02fab9138e713edd9'
+      symbol: 'spDAI-morpho'
+      decimals: 18
+    underlying:
+      address: '0x6b175474e89094c44da98b954eedeac495271d0f'
+      symbol: 'DAI'
+      decimals: 18
+
+  - id: S13
+    chain: ethereum
+    label: 'Spark USDS Vault (Morpho)'
+    pricing_category: B
+    token:
+      address: '0xe41a0583334f0dc4e023acd0bfef3667f6fe0597'
+      symbol: 'sparkUSDS'
+      decimals: 18
+    underlying:
+      address: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'
+      symbol: 'USDS'
+      decimals: 18
+
+  # ─────────────────────────────────────────────────────────────
+  # Ethereum — other 4626 vaults (Maple, Ethena, Fluid, Arkis)
+  # ─────────────────────────────────────────────────────────────
+  - id: S14
+    chain: ethereum
+    label: 'Maple syrupUSDC (ERC-4626)'
+    pricing_category: B
+    token:
+      address: '0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b'
+      symbol: 'syrupUSDC'
+      decimals: 6
+    underlying:
+      address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+      symbol: 'USDC'
+      decimals: 6
+
+  - id: S15
+    chain: ethereum
+    label: 'Maple syrupUSDT (ERC-4626)'
+    pricing_category: B
+    token:
+      address: '0x356b8d89c1e1239cbbb9de4815c39a1474d5ba7d'
+      symbol: 'syrupUSDT'
+      decimals: 6
+    underlying:
+      address: '0xdac17f958d2ee523a2206206994597c13d831ec7'
+      symbol: 'USDT'
+      decimals: 6
+
+  - id: S16
+    chain: ethereum
+    label: 'Ethena Staked USDe (sUSDe)'
+    pricing_category: B
+    token:
+      address: '0x9d39a5de30e57443bff2a8307a4256c8797a3497'
+      symbol: 'sUSDe'
+      decimals: 18
+    underlying:
+      address: '0x4c9edd5852cd905f086c759e8383e09bff1e68b3'
+      symbol: 'USDe'
+      decimals: 18
+
+  - id: S17
+    chain: ethereum
+    label: 'Fluid Savings USDS (fsUSDS)'
+    pricing_category: B
+    token:
+      address: '0x2bbe31d63e6813e3ac858c04dae43fb2a72b0d11'
+      symbol: 'fsUSDS'
+      decimals: 18
+    underlying:
+      address: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'
+      symbol: 'USDS'
+      decimals: 18
+
+  - id: S18
+    chain: ethereum
+    label: 'Arkis Spark Prime USDC 1 (ERC-4626)'
+    pricing_category: B
+    token:
+      address: '0x38464507e02c983f20428a6e8566693fe9e422a9'
+      symbol: 'sparkPrimeUSDC1'
+      decimals: 6   # Verified on-chain: ``decimals() = 6`` (matches USDC).
+    underlying:
+      address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+      symbol: 'USDC'
+      decimals: 6
+    # Per docs/pricing/allocation_pricing.csv: Arkis API needed for accurate
+    # pricing; ERC-4626 totalAssets() is the runtime fallback.
+
+  # ─────────────────────────────────────────────────────────────
+  # Ethereum — RWA / off-chain (Cat E)
+  # ─────────────────────────────────────────────────────────────
+  - id: S19
+    chain: ethereum
+    label: 'BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I)'
+    pricing_category: E
+    sky_direct: true   # Sky Direct: Treasury Bill on Ethereum
+    token:
+      address: '0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041'
+      symbol: 'BUIDL-I'
+      decimals: 6
+    nav_oracle:
+      kind: const_one   # BUIDL pinned to $1; yield arrives as ALM ERC-20 mints
+    # Same bimodal capital/yield-distribution mint pattern as Grove E10.
+    min_transfer_amount_usd: 1000000
+
+  - id: S20
+    chain: ethereum
+    label: 'Janus Henderson Anemoy Treasury Fund (JTRSY)'
+    pricing_category: E
+    sky_direct: true   # Sky Direct: Treasury Bill on Ethereum
+    token:
+      address: '0x8c213ee79581ff4984583c6a801e5263418c4b86'
+      symbol: 'JTRSY'
+      decimals: 6
+    nav_oracle:
+      kind: chronicle
+      address: '0x59ef4be3eddf0270c4878b7b945bbee13fb33d0d'   # same as Grove E9
+      fallback: const_one
+
+  - id: S21
+    chain: ethereum
+    label: 'Superstate Short Duration US Government Securities Fund (USTB)'
+    pricing_category: E
+    sky_direct: true   # Sky Direct: Treasury Bill on Ethereum
+    token:
+      address: '0x43415eb6ff9db7e26a15b704e7a3edce97d31c4e'
+      symbol: 'USTB'
+      decimals: 6
+    nav_oracle:
+      kind: const_one
+    # TODO: USTB-specific oracle (Superstate publishes NAV API). Currently $0
+    # held; pin to const_one until activity resumes and a real oracle lands.
+
+  - id: S22
+    chain: ethereum
+    label: 'Superstate Crypto Carry Fund (USCC)'
+    pricing_category: E
+    token:
+      address: '0x14d60e7fdc0d71d8611742720e4c50e7a974020c'
+      symbol: 'USCC'
+      decimals: 6
+    nav_oracle:
+      kind: const_one
+    # Currently $0 held. Same NAV-source TODO as USTB.
+
+  - id: S23
+    chain: ethereum
+    label: 'Anchorage off-chain custodial position'
+    pricing_category: E
+    token:
+      address: '0x49506c3aa028693458d6ee816b2ec28522946872'   # custodial proxy on-chain
+      symbol: 'ANCHORAGE'
+      decimals: 6
+    nav_oracle:
+      kind: const_one
+    # ⚠ Off-chain $150M position. NAV is API-only via Anchorage developer
+    # endpoint; no on-chain oracle. Marked const_one so the YAML loads;
+    # implementation is blocked on Anchorage credentials. Verify before
+    # running settlement — this venue currently produces wrong revenue.
+
+  # ─────────────────────────────────────────────────────────────
+  # Ethereum — Curve LP (Cat F)
+  # ─────────────────────────────────────────────────────────────
+  - id: S24
+    chain: ethereum
+    label: 'Spark.fi USDT Reserve Curve (sUSDS/USDT)'
+    pricing_category: F
+    sky_direct: true   # Sky Direct: USDT in sUSDS/USDT Curve pool (Spark only)
+    lp_kind: curve_stableswap
+    token:
+      address: '0x00836fe54625be242bcfa286207795405ca4fd10'
+      symbol: 'sUSDSUSDT'
+      decimals: 18
+
+  - id: S25
+    chain: ethereum
+    label: 'Spark.fi PYUSD Reserve Curve (PYUSD/USDS)'
+    pricing_category: F
+    lp_kind: curve_stableswap
+    token:
+      address: '0xa632d59b9b804a956bfaa9b48af3a1b74808fc1f'
+      symbol: 'PYUSDUSDS'
+      decimals: 18
+
+  # ─────────────────────────────────────────────────────────────
+  # Ethereum — idle ALM stables (Cat A)
+  # Same role as Grove E13–E17: holdings sitting at the ALM proxy. Subtracted
+  # from utilized via the Cat A inflow accounting (external_alm_sources).
+  # ─────────────────────────────────────────────────────────────
+  - id: S26
+    chain: ethereum
+    label: 'USDC raw (ALM idle)'
+    pricing_category: A
+    token:
+      address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+      symbol: 'USDC'
+      decimals: 6
+
+  - id: S27
+    chain: ethereum
+    label: 'USDT raw (ALM idle — $442M as of 2026-04)'
+    pricing_category: A
+    token:
+      address: '0xdac17f958d2ee523a2206206994597c13d831ec7'
+      symbol: 'USDT'
+      decimals: 6
+
+  - id: S28
+    chain: ethereum
+    label: 'PYUSD raw (ALM idle — $677M as of 2026-04)'
+    pricing_category: A
+    token:
+      address: '0x6c3ea9036406852006290770bedfcaba0e23a0e8'
+      symbol: 'PYUSD'
+      decimals: 6
+
+  - id: S29
+    chain: ethereum
+    label: 'DAI raw (ALM idle)'
+    pricing_category: A
+    token:
+      address: '0x6b175474e89094c44da98b954eedeac495271d0f'
+      symbol: 'DAI'
+      decimals: 18
+
+  - id: S30
+    chain: ethereum
+    label: 'USDe raw (ALM idle)'
+    pricing_category: A
+    token:
+      address: '0x4c9edd5852cd905f086c759e8383e09bff1e68b3'
+      symbol: 'USDe'
+      decimals: 18
+
+  - id: S31
+    chain: ethereum
+    label: 'USDS raw / POL (ALM idle — already netted out of utilized)'
+    pricing_category: A
+    token:
+      address: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'
+      symbol: 'USDS'
+      decimals: 18
+
+  - id: S32
+    chain: ethereum
+    label: 'sUSDS raw / POL (ALM — Cat B 4626, $1.59B)'
+    pricing_category: B
+    token:
+      address: '0xa3931d71877c0e7a3148cb7eb4463524fec27fbd'
+      symbol: 'sUSDS'
+      decimals: 18
+    underlying:
+      address: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'
+      symbol: 'USDS'
+      decimals: 18
+
+  # ─────────────────────────────────────────────────────────────
+  # Base
+  # ─────────────────────────────────────────────────────────────
+  # PSM3 (Base/Arbitrum/Optimism/Unichain) is NOT a Cat E venue — it's
+  # tracked via ``addresses.<chain>.psm`` and contributes to the utilized
+  # reimbursement (compute_sky_revenue Step 2), same pattern as Grove's PSM
+  # entry on Ethereum. Kept as a comment so the venue id space stays gap-free
+  # and reviewers can see this was a deliberate choice, not an omission.
+
+  - id: S34
+    chain: base
+    label: 'Spark USDC Vault (Morpho, Base)'
+    pricing_category: B
+    token:
+      address: '0x7bfa7c4f149e7415b73bdedfe609237e29cbf34a'
+      symbol: 'sparkUSDC-base'
+      decimals: 18
+    underlying:
+      address: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+      symbol: 'USDC'
+      decimals: 6
+
+  - id: S35
+    chain: base
+    label: 'Aave Base USDC (aBasUSDC)'
+    pricing_category: C
+    token:
+      address: '0x4e65fe4dba92790696d040ac24aa414708f5c0ab'
+      symbol: 'aBasUSDC'
+      decimals: 6
+    underlying:
+      address: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+      symbol: 'USDC'
+      decimals: 6
+
+  - id: S36
+    chain: base
+    label: 'Fluid Savings USDS (fsUSDS, Base)'
+    pricing_category: B
+    token:
+      address: '0xf62e339f21d8018940f188f6987bcdf02a849619'
+      symbol: 'fsUSDS-base'
+      decimals: 18
+    underlying:
+      address: '0x5875eee11cf8398102fdad704c9e96607675467a'   # Base sUSDS proxy
+      symbol: 'sUSDS'
+      decimals: 18
+
+  - id: S37
+    chain: base
+    label: 'Savings USDS / sUSDS proxy (Base — POL)'
+    pricing_category: B
+    token:
+      address: '0x5875eee11cf8398102fdad704c9e96607675467a'
+      symbol: 'sUSDS-base'
+      decimals: 18
+    underlying:
+      address: '0x820c137fa70c8691f0e44dc420a5e53c168921dc'
+      symbol: 'USDS'
+      decimals: 18
+
+  - id: S38
+    chain: base
+    label: 'USDS raw (Base — POL)'
+    pricing_category: A
+    token:
+      address: '0x820c137fa70c8691f0e44dc420a5e53c168921dc'
+      symbol: 'USDS'
+      decimals: 18
+
+  - id: S39
+    chain: base
+    label: 'USDC raw (Base — ALM idle)'
+    pricing_category: A
+    token:
+      address: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+      symbol: 'USDC'
+      decimals: 6
+
+  # ─────────────────────────────────────────────────────────────
+  # Arbitrum
+  # ─────────────────────────────────────────────────────────────
+  # S40 PSM3-Arbitrum: see comment above S34. Tracked via addresses.arbitrum.psm.
+
+  - id: S41
+    chain: arbitrum
+    label: 'Aave Arbitrum USDCn (aArbUSDCn)'
+    pricing_category: C
+    token:
+      address: '0x724dc807b04555b71ed48a6896b6f41593b8c637'
+      symbol: 'aArbUSDCn'
+      decimals: 6
+    underlying:
+      address: '0xaf88d065e77c8cc2239327c5edb3a432268e5831'
+      symbol: 'USDC'
+      decimals: 6
+
+  - id: S42
+    chain: arbitrum
+    label: 'Fluid Savings USDS (fsUSDS, Arbitrum)'
+    pricing_category: B
+    token:
+      address: '0x3459fcc94390c3372c0f7b4cd3f8795f0e5afe96'
+      symbol: 'fsUSDS-arb'
+      decimals: 18
+    underlying:
+      address: '0xddb46999f8891663a8f2828d25298f70416d7610'   # Arbitrum sUSDS proxy
+      symbol: 'sUSDS'
+      decimals: 18
+
+  - id: S43
+    chain: arbitrum
+    label: 'Savings USDS / sUSDS proxy (Arbitrum — POL)'
+    pricing_category: B
+    token:
+      address: '0xddb46999f8891663a8f2828d25298f70416d7610'
+      symbol: 'sUSDS-arb'
+      decimals: 18
+    underlying:
+      address: '0x6491c05a82219b8d1479057361ff1654749b876b'
+      symbol: 'USDS'
+      decimals: 18
+
+  - id: S44
+    chain: arbitrum
+    label: 'USDS raw (Arbitrum — POL)'
+    pricing_category: A
+    token:
+      address: '0x6491c05a82219b8d1479057361ff1654749b876b'
+      symbol: 'USDS'
+      decimals: 18
+
+  - id: S45
+    chain: arbitrum
+    label: 'USDC raw (Arbitrum — ALM idle)'
+    pricing_category: A
+    token:
+      address: '0xaf88d065e77c8cc2239327c5edb3a432268e5831'
+      symbol: 'USDC'
+      decimals: 6
+
+  # ─────────────────────────────────────────────────────────────
+  # Optimism
+  # ─────────────────────────────────────────────────────────────
+  # S46 PSM3-Optimism: see comment above S34. Tracked via addresses.optimism.psm.
+
+  - id: S47
+    chain: optimism
+    label: 'Savings USDS / sUSDS proxy (Optimism — POL)'
+    pricing_category: B
+    token:
+      address: '0xb5b2dc7fd34c249f4be7fb1fcea07950784229e0'
+      symbol: 'sUSDS-op'
+      decimals: 18
+    underlying:
+      address: '0x4f13a96ec5c4cf34e442b46bbd98a0791f20edc3'
+      symbol: 'USDS'
+      decimals: 18
+
+  - id: S48
+    chain: optimism
+    label: 'USDS raw (Optimism — POL)'
+    pricing_category: A
+    token:
+      address: '0x4f13a96ec5c4cf34e442b46bbd98a0791f20edc3'
+      symbol: 'USDS'
+      decimals: 18
+
+  - id: S49
+    chain: optimism
+    label: 'USDC raw (Optimism — ALM idle)'
+    pricing_category: A
+    token:
+      address: '0x0b2c639c533813f4aa9d7837caf62653d097ff85'
+      symbol: 'USDC'
+      decimals: 6
+
+  # ─────────────────────────────────────────────────────────────
+  # Unichain
+  # ─────────────────────────────────────────────────────────────
+  # S50 PSM3-Unichain: see comment above S34. Tracked via addresses.unichain.psm.
+
+  - id: S51
+    chain: unichain
+    label: 'Savings USDS / sUSDS proxy (Unichain — POL)'
+    pricing_category: B
+    token:
+      address: '0xa06b10db9f390990364a3984c04fadf1c13691b5'
+      symbol: 'sUSDS-uni'
+      decimals: 18
+    underlying:
+      address: '0x7e10036acc4b56d4dfca3b77810356ce52313f9c'
+      symbol: 'USDS'
+      decimals: 18
+
+  - id: S52
+    chain: unichain
+    label: 'USDS raw (Unichain — POL)'
+    pricing_category: A
+    token:
+      address: '0x7e10036acc4b56d4dfca3b77810356ce52313f9c'
+      symbol: 'USDS'
+      decimals: 18
+
+  - id: S53
+    chain: unichain
+    label: 'USDC raw (Unichain — ALM idle)'
+    pricing_category: A
+    token:
+      address: '0x078d782b760474a361dda0af3839290b0ef57ad6'
+      symbol: 'USDC'
+      decimals: 6
+
+  # ─────────────────────────────────────────────────────────────
+  # Avalanche-C
+  # ─────────────────────────────────────────────────────────────
+  - id: S54
+    chain: avalanche_c
+    label: 'Aave Avalanche USDC (aAvaUSDC)'
+    pricing_category: C
+    token:
+      address: '0x625e7708f30ca75bfd92586e17077590c60eb4cd'
+      symbol: 'aAvaUSDC'
+      decimals: 6
+    underlying:
+      address: '0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e'
+      symbol: 'USDC'
+      decimals: 6
+
+  - id: S55
+    chain: avalanche_c
+    label: 'USDC raw (Avalanche-C — ALM idle)'
+    pricing_category: A
+    token:
+      address: '0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e'
+      symbol: 'USDC'
+      decimals: 6
+
+# Cat A revenue allowlist — counterparties that send REALIZED YIELD directly
+# to the ALM proxy. Empty by default (no off-chain custodian senders today
+# beyond the special-cased Anchorage venue S23, which is tracked as Cat E).
+# Add an entry like the example below when an off-chain yield source lands:
+#
+# external_alm_sources:
+#   ethereum:
+#     - '0x...'

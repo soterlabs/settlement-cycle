@@ -16,6 +16,10 @@ addresses:
   ethereum:
     subproxy: '0x1369f7b2b38c76B6478c0f0E66D94923421891Ba'    # holds idle USDS / sUSDS — earns agent rate
     alm:      '0x491edfb0b8b608044e227225c715981a30f3a44e'    # holds all allocation positions
+    psm:
+      kind: directed_flow                                     # Sky LITE-PSM-USDC: USDS swap conduit, no shares
+      address: '0x37305b1cd40574e4c5ce33f8e8306be057fd7341'
+      token:   '0xdc035d45d973e3ec169d2276ddab16f1e407384f'   # USDS — what we track flowing in/out
   base:
     alm:      '0x9b746dbc5269e1df6e4193bcb441c0fbbf1cecee'    # Grove Base ALM (per docs/pricing/holding_addresses.csv)
   avalanche_c:

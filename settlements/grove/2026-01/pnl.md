@@ -1,6 +1,6 @@
 # GROVE — Monthly settlement 2026-01
 
-- **Generated:** 2026-04-29T09:45:32+00:00
+- **Generated:** 2026-04-29T12:18:33+00:00
 - **Pipeline:** `settle` v0.1.0
 - **Period:** 2026-01-01 → 2026-01-31 (31 days)
 

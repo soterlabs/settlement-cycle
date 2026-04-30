@@ -139,9 +139,8 @@ def test_psm_usds_no_flows_returns_empty(config_dir: Path):
     """Grove's mock with no directed-inflow fixtures → empty timeseries."""
     grove = _grove(config_dir)
     src = MockBalanceSource()  # default: directed_inflow returns empty
-    from settle.domain.sky_tokens import USDS_ETHEREUM
     out = get_psm_usds_timeseries(
-        grove, Chain.ETHEREUM, USDS_ETHEREUM, _period(), source=src,
+        grove, Chain.ETHEREUM, _period(), balance_source=src,
     )
     assert out.empty
 
@@ -150,9 +149,8 @@ def test_psm_usds_aggregates_deposits_minus_withdrawals(config_dir: Path):
     """Deposits (subproxy → PSM, ALM → PSM) sum to positive PSM balance;
     withdrawals (PSM → subproxy, PSM → ALM) flip sign."""
     grove = _grove(config_dir)
-    from settle.domain.sky_tokens import USDS_ETHEREUM
 
-    # PSM is at 0x37305b1c... per compute/_psm.py for Ethereum.
+    # PSM is at 0x37305b1c... per grove.yaml's addresses.ethereum.psm block.
     routes = {}
 
     def _df(rows):
@@ -178,7 +176,7 @@ def test_psm_usds_aggregates_deposits_minus_withdrawals(config_dir: Path):
     ]
 
     out = get_psm_usds_timeseries(
-        grove, Chain.ETHEREUM, USDS_ETHEREUM, _period(), source=_RoutedSrc(),
+        grove, Chain.ETHEREUM, _period(), balance_source=_RoutedSrc(),
     )
     assert len(out) == 2
     # Day 5: +1M, Day 20: −300K → cum_balance = [1M, 700K]

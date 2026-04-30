@@ -110,6 +110,23 @@ class IConvertToAssetsSource(Protocol):
         ...
 
 
+class IPsm3Source(Protocol):
+    """Spark PSM3 reads. PSM3 has a non-standard ABI: shares are internal
+    accounting (no ERC-20 Transfer events) and the rate uses
+    ``convertToAssetValue(uint256)`` returning the USDS-equivalent value
+    directly (18 decimals). Both reads are pinned to a block.
+    """
+
+    def shares_of(self, chain: str, psm3: bytes, holder: bytes, block: int) -> int:
+        """PSM3 ``shares(holder)`` — internal share balance."""
+        ...
+
+    def convert_to_asset_value(self, chain: str, psm3: bytes, num_shares: int, block: int) -> int:
+        """PSM3 ``convertToAssetValue(numShares)`` — USDS-equivalent value
+        (18-decimal raw integer)."""
+        ...
+
+
 class IBlockResolver(Protocol):
     """Resolve block numbers ↔ UTC dates.
 

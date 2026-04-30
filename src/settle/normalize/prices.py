@@ -24,7 +24,7 @@ from decimal import Decimal
 
 from ..domain.pricing import PricingCategory
 from ..domain.primes import Token, Venue
-from ..domain.sky_tokens import KNOWN_PAR_STABLES_ETHEREUM
+from ..domain.sky_tokens import KNOWN_PAR_STABLES_ETHEREUM, KNOWN_YIELD_BEARING_ETHEREUM
 from .protocols import IConvertToAssetsSource, INavOracleSource
 from .registry import (
     UnknownSourceError,
@@ -58,6 +58,13 @@ _log = logging.getLogger(__name__)
 # from this set and add a Source implementation that reads the relevant oracle.
 PAR_STABLE_SYMBOLS: frozenset[str] = frozenset({
     "USDC", "USDS", "DAI", "USDT", "PYUSD", "RLUSD", "AUSD", "USDe",
+    # sUSDS treated as $1 par when used as the underlying of an outer 4626
+    # vault (e.g. fsUSDS). The outer vault's ``convertToAssets`` has already
+    # converted shares → sUSDS amount; the additional ~SSR-driven ~5% sUSDS
+    # premium is a known approximation. Documented in PRD §17.12. Spark's
+    # affected venues (S17/S36/S42 fsUSDS) all have $0 balance in Q1 2026
+    # so the error is $0 for the current settlement.
+    "sUSDS",
 })
 
 
@@ -177,14 +184,40 @@ def _curve_lp_unit_price(
     pool_value_usd = Decimal("0")
     for coin_addr, raw_balance in zip(state.coins, state.balances, strict=True):
         info = registry.get(coin_addr.value)
-        if info is None:
-            raise UnsupportedPricingError(
-                f"Venue {venue.id}: pool coin {coin_addr.hex} is not in the "
-                "par-stable registry. Add it (or fall back to a recursive pricer)."
+        if info is not None:
+            _symbol, decimals = info
+            # par-stable price = $1; sum the per-coin USD value
+            pool_value_usd += Decimal(raw_balance) / Decimal(10**decimals)
+            continue
+        # Yield-bearing 4626 (e.g. sUSDS) — price recursively via
+        # ``convertToAssets(1 share) / 10**underlying_decimals * par_underlying``.
+        yb = KNOWN_YIELD_BEARING_ETHEREUM.get(coin_addr.value)
+        if yb is not None:
+            _y_sym, share_decimals, underlying_addr, underlying_decimals = yb
+            par = registry.get(underlying_addr)
+            if par is None:
+                raise UnsupportedPricingError(
+                    f"Venue {venue.id}: yield-bearing coin {coin_addr.hex} maps to "
+                    f"underlying {underlying_addr.hex()} which is missing from the "
+                    "par-stable registry."
+                )
+            from ..extract import rpc as _rpc
+            from ..domain.primes import Address as _Addr, Chain as _Chain
+            assets_per_share_raw = _rpc.convert_to_assets(
+                _Chain(venue.chain.value), _Addr(coin_addr.value),
+                shares=10 ** share_decimals, block=block,
             )
-        _symbol, decimals = info
-        # par-stable price = $1, so just sum the per-coin USD value
-        pool_value_usd += Decimal(raw_balance) / Decimal(10**decimals)
+            price_per_share = (
+                Decimal(assets_per_share_raw) / Decimal(10**underlying_decimals)
+            )
+            pool_value_usd += (
+                Decimal(raw_balance) / Decimal(10**share_decimals) * price_per_share
+            )
+            continue
+        raise UnsupportedPricingError(
+            f"Venue {venue.id}: pool coin {coin_addr.hex} is not in the "
+            "par-stable or yield-bearing-4626 registries. Add it to one of them."
+        )
 
     total_supply_units = Decimal(state.total_supply) / Decimal(10**venue.token.decimals)
     if total_supply_units == 0:

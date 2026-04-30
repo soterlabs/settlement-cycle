@@ -127,6 +127,39 @@ class Venue:
     sky_direct: bool = False
 
 
+class PsmKind(StrEnum):
+    """How USDS-equivalent value at a PSM is computed.
+
+    * ``directed_flow`` — Sky LITE-PSM-USDC pattern (used by Grove/OBEX/Spark
+      on Ethereum). PSM is a swap conduit holding USDS at par; we track net
+      USDS flow ``(subproxy + ALM) → PSM − PSM → (subproxy + ALM)``. The
+      ``token`` field names what's tracked (USDS).
+    * ``erc4626_shares`` — Spark PSM3 pattern (used on Base/Arbitrum/Optimism
+      /Unichain). PSM3 has a non-standard ABI: shares are *internal accounting*
+      (no ERC-20 Transfer events) and the rate uses
+      ``convertToAssetValue(uint256)`` returning the USDS-equivalent value
+      directly. We snapshot ``convertToAssetValue(shares(alm, b), b)`` at each
+      day's EoD block. The ``token`` field is unused.
+    """
+
+    DIRECTED_FLOW = "directed_flow"
+    ERC4626_SHARES = "erc4626_shares"
+
+
+@dataclass(frozen=True, slots=True)
+class PsmConfig:
+    """Per-chain PSM configuration. Holdings are subtracted from ``utilized``
+    in ``compute_sky_revenue`` so the prime is reimbursed BR on the parked
+    capital (prime-settlement-methodology Step 2)."""
+
+    kind: PsmKind
+    address: Address
+    # Only meaningful for ``kind=directed_flow`` — names the underlying token
+    # whose flows we track (e.g. USDS for Sky LITE-PSM). Ignored when shares-
+    # based since the share token IS the PSM contract address.
+    token: Address | None = None
+
+
 @dataclass(frozen=True, slots=True)
 class Prime:
     """A Sky prime agent — ilk, addresses per chain, allocation venues."""
@@ -137,6 +170,10 @@ class Prime:
     subproxy: dict[Chain, Address] = field(default_factory=dict)
     alm: dict[Chain, Address] = field(default_factory=dict)
     venues: list[Venue] = field(default_factory=list)
+    # Per-chain PSM config (replaces the old hardcoded ``compute._psm.PSM_BY_CHAIN``
+    # dict). Each chain may have at most one PSM today; if a future prime needs
+    # multiple, this becomes ``dict[Chain, list[PsmConfig]]``.
+    psm: dict[Chain, PsmConfig] = field(default_factory=dict)
     # Addresses whose transfers TO the ALM count as Cat A revenue (off-chain
     # custodian distributions, e.g. Anchorage sending realized yield directly
     # to the ALM). Anything NOT in this list is treated as value-preserving
