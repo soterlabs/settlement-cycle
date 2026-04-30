@@ -190,7 +190,10 @@ def _curve_lp_unit_price(
             pool_value_usd += Decimal(raw_balance) / Decimal(10**decimals)
             continue
         # Yield-bearing 4626 (e.g. sUSDS) — price recursively via
-        # ``convertToAssets(1 share) / 10**underlying_decimals * par_underlying``.
+        # ``convertToAssets(1 share) / 10**underlying_decimals × par_underlying``.
+        # The underlying must be a par-stable so the recursion bottoms out at
+        # a $1 fixed price; chained yield-bearing wrappers (4626-on-4626) are
+        # unsupported.
         yb = KNOWN_YIELD_BEARING_ETHEREUM.get(coin_addr.value)
         if yb is not None:
             _y_sym, share_decimals, underlying_addr, underlying_decimals = yb
@@ -207,9 +210,14 @@ def _curve_lp_unit_price(
                 _Chain(venue.chain.value), _Addr(coin_addr.value),
                 shares=10 ** share_decimals, block=block,
             )
-            price_per_share = (
+            assets_per_share = (
                 Decimal(assets_per_share_raw) / Decimal(10**underlying_decimals)
             )
+            # Underlying par price is $1 by definition of being in the
+            # par-stable registry. Multiply explicitly so the math is
+            # auditable and survives any future change to par_stable_price.
+            par_underlying_usd = Decimal("1")
+            price_per_share = assets_per_share * par_underlying_usd
             pool_value_usd += (
                 Decimal(raw_balance) / Decimal(10**share_decimals) * price_per_share
             )

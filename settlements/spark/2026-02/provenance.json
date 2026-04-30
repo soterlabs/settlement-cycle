@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-04-30T08:58:37+00:00",
+  "generated_at_utc": "2026-04-30T12:05:26+00:00",
   "month": "2026-02",
   "period": {
     "end": "2026-02-28",
@@ -400,7 +400,7 @@
       "actual_revenue": "433.5638359571086670340067660",
       "br_charge": "0",
       "label": "Spark USDC Vault (Morpho, Base)",
-      "period_inflow": "0E-10",
+      "period_inflow": "0",
       "revenue": "433.5638359571086670340067660",
       "sky_direct_shortfall": "0",
       "value_eom": "494.7150552250027240720362460",
@@ -488,7 +488,7 @@
       "actual_revenue": "0E-20",
       "br_charge": "0",
       "label": "Savings USDS / sUSDS proxy (Arbitrum \u2014 POL)",
-      "period_inflow": "0.0000",
+      "period_inflow": "0",
       "revenue": "0E-20",
       "sky_direct_shortfall": "0",
       "value_eom": "0E-20",
@@ -521,7 +521,7 @@
       "actual_revenue": "0E-20",
       "br_charge": "0",
       "label": "Savings USDS / sUSDS proxy (Optimism \u2014 POL)",
-      "period_inflow": "0.0000",
+      "period_inflow": "0",
       "revenue": "0E-20",
       "sky_direct_shortfall": "0",
       "value_eom": "0E-20",

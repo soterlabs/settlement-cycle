@@ -83,7 +83,11 @@ def load_spark_and_fixtures(repo: Path):
     return spark, fixtures
 
 
-def build_spark_sources(spark, fixtures: dict, *, pin_blocks_som=None, pin_blocks_eom=None) -> Sources:
+def build_spark_sources(
+    spark, fixtures: dict, *,
+    pin_blocks_som=None, pin_blocks_eom=None,
+    period_start=None, period_end=None,
+) -> Sources:
     """Assemble the Spark ``Sources`` bundle from captured fixtures.
 
     Routing strategy (per-venue):
@@ -117,8 +121,13 @@ def build_spark_sources(spark, fixtures: dict, *, pin_blocks_som=None, pin_block
     # which dies on cross-chain binary search starting at block 0. Pre-period
     # flows don't affect period revenue (the period's value_som already absorbs
     # them via RPC balance_at), so dropping them is safe.
-    from datetime import date as _date
-    Q1_PERIOD_START = _date(2025, 12, 31)  # earliest date in block fixtures
+    from datetime import date as _date, timedelta as _td
+    # SoM anchor for the synthetic Cat B mint/burn frames: the day before
+    # period.start. _shares_to_usd_inflow_timeseries iterates EVERY mint/burn
+    # date so pre-period rows would force block_resolver fallback to RPC
+    # (broken for some L2s and unnecessary). Pre-period flows don't affect
+    # period revenue (RPC balance_at at SoM block already absorbs them).
+    period_filter_start = (period_start - _td(days=1)) if period_start else _date(2025, 12, 31)
     ZERO = b"\x00" * 20
     cat_b_directed: dict[tuple[bytes, bytes, bytes], pd.DataFrame] = {}
     cat_b_cum_by_token_holder: dict[tuple[bytes, bytes], pd.DataFrame] = {}
@@ -144,7 +153,7 @@ def build_spark_sources(spark, fixtures: dict, *, pin_blocks_som=None, pin_block
         cum_mint = _D(0)
         cum_burn = _D(0)
         for _, r in df.iterrows():
-            if r["block_date"] < Q1_PERIOD_START:
+            if r["block_date"] < period_filter_start:
                 continue
             net = r["daily_net"]
             if net > 0:
@@ -173,65 +182,87 @@ def build_spark_sources(spark, fixtures: dict, *, pin_blocks_som=None, pin_block
     # correct behavior for par-stables held at the ALM with no off-chain
     # yield source. Spark has no external_alm_sources, so all Cat A balance
     # changes are value-preserving (PSM swap, allocator buffer, etc.).
+    # Coverage assertion: for any Cat B venue with a non-zero EoM cum_balance
+    # in the fixture, demand at least one row dated >= period_filter_start.
+    # Otherwise the synthesized mint/burn frames are empty for that venue,
+    # period_inflow defaults to 0, and revenue silently equals Δvalue (often
+    # a phantom yield). Fixtures with only pre-period anchor rows must be
+    # extended OR confirmed to have $0 mid-period activity before the run.
+    if period_start is not None:
+        for v in spark.venues:
+            if v.pricing_category.value != "B":
+                continue
+            alm = spark.alm[v.chain].value
+            cum_df = cat_b_cum_by_token_holder.get((v.token.address.value, alm))
+            if cum_df is None or cum_df.empty:
+                continue
+            cum_eom = cum_df["cum_balance"].iloc[-1]
+            # Materiality threshold: $10K. Below this, missing in-period rows
+            # produce at most ~$10K of phantom revenue (bounded by the EoM
+            # value), which is below the precision we report at.
+            if abs(cum_eom) < _D(10_000):
+                continue
+            in_period = cum_df[cum_df["block_date"] >= period_filter_start]
+            if in_period.empty:
+                # No mid-period rows but the venue has a balance — flag.
+                # Acceptable if the team has confirmed no Q1 flows; in that
+                # case set SETTLE_SPARK_ALLOW_PRE_PERIOD_ANCHOR=1 to bypass.
+                import os as _os
+                if _os.environ.get("SETTLE_SPARK_ALLOW_PRE_PERIOD_ANCHOR") != "1":
+                    raise ValueError(
+                        f"Spark Cat B venue {v.id} ({v.token.symbol}, {v.chain.value}) "
+                        f"has cum_balance ≈ ${cum_eom:,.0f} at fixture EoM but no "
+                        f"rows >= {period_filter_start} in cat_b_cum_balance.json. "
+                        f"period_inflow would default to 0 → revenue = Δvalue (phantom yield). "
+                        "Verify with the Dune source that no mid-period flows occurred "
+                        "and set SETTLE_SPARK_ALLOW_PRE_PERIOD_ANCHOR=1 to bypass, or "
+                        "extend the fixture."
+                    )
+
     cat_a_cum_by_token_holder: dict[tuple[bytes, bytes], pd.DataFrame] = {}
     if pin_blocks_som and pin_blocks_eom:
-        from datetime import date as _date
+        if period_start is None or period_end is None:
+            raise ValueError(
+                "build_spark_sources(pin_blocks_som=…, pin_blocks_eom=…) also "
+                "requires period_start and period_end (the calendar dates of "
+                "the month being settled). Refusing to silently skip Cat A "
+                "synthesis based on hard-coded block heuristics — that produced "
+                "phantom revenue in earlier versions."
+            )
         from settle.extract import rpc as _rpc
         from settle.domain.primes import Address as _Addr, Chain as _Chain
-        # Use the prior-month-end date for the SoM anchor row so cum_at_or_before
-        # returns the SoM balance for any day in [period.start, period.end - 1].
-        # The actual date used by compute_prime_agent_revenue is period.start - 1.
-        # Hardcoded for Q1 2026; if extended, derive from the period.
-        som_eom_dates = {
-            (24136052, 24358292): (_date(2025, 12, 31), _date(2026, 1, 31)),
-            (24358292, 24558867): (_date(2026, 1, 31), _date(2026, 2, 28)),
-            (24558867, 24781026): (_date(2026, 2, 28), _date(2026, 3, 31)),
-            # Per-chain mappings — Eth blocks above key into the same period.
-        }
+
+        # SoM anchor date is the prior-month-end (period.start - 1) so
+        # cum_at_or_before returns the SoM balance for any day in
+        # [period.start, period.end - 1]. EoM anchor date = period_end.
+        som_date = period_start - _td(days=1)
+        eom_date = period_end
 
         def _balance_decimal(chain, token, holder, block, decimals):
             raw = _rpc.balance_of(_Chain(chain), _Addr(token), _Addr(holder), block)
             return _D(raw) / _D(10 ** decimals)
 
-        def _eom_date(year: int, month: int) -> _date:
-            from datetime import timedelta as _td
-            first_next = _date(year + 1, 1, 1) if month == 12 else _date(year, month + 1, 1)
-            return first_next - _td(days=1)
-
-        # Determine which (year, month) we're building for from the Eth pin
-        # blocks (cheaper than threading period through every caller).
-        eth_eom = pin_blocks_eom.get(Chain.ETHEREUM)
-        if eth_eom == 24358292:
-            ym, som_date, eom_date = (2026, 1), _date(2025, 12, 31), _date(2026, 1, 31)
-        elif eth_eom == 24558867:
-            ym, som_date, eom_date = (2026, 2), _date(2026, 1, 31), _date(2026, 2, 28)
-        elif eth_eom == 24781026:
-            ym, som_date, eom_date = (2026, 3), _date(2026, 2, 28), _date(2026, 3, 31)
-        else:
-            ym, som_date, eom_date = None, None, None
-
-        if som_date is not None:
-            for v in spark.venues:
-                if v.pricing_category.value != "A":
-                    continue
-                if v.chain not in pin_blocks_som or v.chain not in pin_blocks_eom:
-                    continue
-                som_blk = pin_blocks_som[v.chain]
-                eom_blk = pin_blocks_eom[v.chain]
-                bal_som = _balance_decimal(
-                    v.chain.value, v.token.address.value,
-                    spark.alm[v.chain].value, som_blk, v.token.decimals,
-                )
-                bal_eom = _balance_decimal(
-                    v.chain.value, v.token.address.value,
-                    spark.alm[v.chain].value, eom_blk, v.token.decimals,
-                )
-                rows = [
-                    {"block_date": som_date, "daily_net": bal_som, "cum_balance": bal_som},
-                    {"block_date": eom_date, "daily_net": bal_eom - bal_som, "cum_balance": bal_eom},
-                ]
-                df = pd.DataFrame(rows)
-                cat_a_cum_by_token_holder[(v.token.address.value, spark.alm[v.chain].value)] = df
+        for v in spark.venues:
+            if v.pricing_category.value != "A":
+                continue
+            if v.chain not in pin_blocks_som or v.chain not in pin_blocks_eom:
+                continue
+            som_blk = pin_blocks_som[v.chain]
+            eom_blk = pin_blocks_eom[v.chain]
+            bal_som = _balance_decimal(
+                v.chain.value, v.token.address.value,
+                spark.alm[v.chain].value, som_blk, v.token.decimals,
+            )
+            bal_eom = _balance_decimal(
+                v.chain.value, v.token.address.value,
+                spark.alm[v.chain].value, eom_blk, v.token.decimals,
+            )
+            rows = [
+                {"block_date": som_date, "daily_net": bal_som, "cum_balance": bal_som},
+                {"block_date": eom_date, "daily_net": bal_eom - bal_som, "cum_balance": bal_eom},
+            ]
+            df = pd.DataFrame(rows)
+            cat_a_cum_by_token_holder[(v.token.address.value, spark.alm[v.chain].value)] = df
 
     # Cat E routing: only Eth ALM holders.
     cat_e_by_token: dict[bytes, pd.DataFrame] = {}

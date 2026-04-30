@@ -32,6 +32,8 @@ _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO / "src"))
 sys.path.insert(0, str(_REPO))
 
+from datetime import date, timedelta  # noqa: E402
+
 from settle.compute import compute_monthly_pnl  # noqa: E402
 from settle.domain import Chain, Month  # noqa: E402
 from settle.load import write_settlement  # noqa: E402
@@ -39,6 +41,13 @@ from tests.fixtures.spark_fixture_loader import (  # noqa: E402
     build_spark_sources,
     load_spark_and_fixtures,
 )
+
+
+def _period_dates(year: int, month: int) -> tuple[date, date]:
+    """First and last calendar day of (year, month)."""
+    period_start = date(year, month, 1)
+    first_next = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
+    return period_start, first_next - timedelta(days=1)
 
 _SETTLEMENT_SOURCES = {
     "debt": "MockDebtSource backed by tests/fixtures/spark_2026_q1/debt_timeseries.json",
@@ -104,9 +113,11 @@ def main() -> int:
         # call-recording slate (avoids leaking state across months). Cat A
         # cum_balance is synthesized via RPC at the per-month SoM/EoM blocks.
         pins = PIN_BLOCKS_BY_MONTH[ym]
+        period_start, period_end = _period_dates(*ym)
         sources = build_spark_sources(
             spark, fixtures,
             pin_blocks_som=pins["som"], pin_blocks_eom=pins["eom"],
+            period_start=period_start, period_end=period_end,
         )
 
         result = compute_monthly_pnl(

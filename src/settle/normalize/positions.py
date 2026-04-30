@@ -378,6 +378,18 @@ def _cat_a_capital_inflow_timeseries(
         # = 0. Fall back to the cumulative-balance timeseries: every balance
         # change becomes capital. For par-stables, 1 token unit = $1 so
         # daily_net is already $-equivalent.
+        # Guard: this fallback equates token units with USD which is only
+        # valid for par-stable tokens. Refuse non-par tokens loudly rather
+        # than silently mispricing balance changes (config bug surface).
+        from .prices import is_par_stable
+        if not is_par_stable(venue.token):
+            raise ValueError(
+                f"Cat A fallback to cumulative_balance reached for non-par-stable "
+                f"token {venue.token.symbol!r} (venue {venue.id}). The fallback "
+                "treats balance as $1/unit which is only valid for par-stables; "
+                "either add the token to PAR_STABLE_SYMBOLS or provide "
+                "inflow_by_counterparty data."
+            )
         cum_df = balance_source.cumulative_balance_timeseries(
             chain=venue.chain.value,
             token=venue.token.address.value,

@@ -1,6 +1,6 @@
 # SPARK — Monthly settlement 2026-03
 
-- **Generated:** 2026-04-30T08:58:43+00:00
+- **Generated:** 2026-04-30T12:05:32+00:00
 - **Pipeline:** `settle` v0.1.0
 - **Period:** 2026-03-01 → 2026-03-31 (31 days)
 

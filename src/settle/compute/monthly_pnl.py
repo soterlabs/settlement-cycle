@@ -359,29 +359,53 @@ def get_psm_usds_timeseries(
         scale = Decimal(10**18)
         holder = prime.alm[chain].value
 
-        def _value_at(day) -> Decimal:
-            eod = datetime.combine(day, time.max, tzinfo=timezone.utc)
-            block = block_resolver.block_at_or_before(chain.value, eod)
-            shares = psm3.shares_of(
-                chain=chain.value, psm3=cfg.address.value,
-                holder=holder, block=block,
-            )
-            if shares <= 0:
-                return Decimal(0)
-            raw = psm3.convert_to_asset_value(
-                chain=chain.value, psm3=cfg.address.value,
-                num_shares=shares, block=block,
-            )
-            return Decimal(raw) / scale
+        # Per-day RPC failures (drpc upstream flake, contract-not-yet-deployed
+        # at very early blocks) shouldn't kill the whole chain's PSM3
+        # timeseries — that would silently inflate sky_revenue by the missing
+        # PSM holdings. Treat a failed day as "carry forward yesterday's
+        # value" (no movement) and log the gap so it's auditable.
+        from ..extract.rpc import RPCError
+        import requests as _requests
+        import logging as _logging
+        _log = _logging.getLogger(__name__)
 
-        # One snapshot per day across [period.start, period.end].
+        def _value_at(day, fallback: Decimal | None = None) -> Decimal:
+            eod = datetime.combine(day, time.max, tzinfo=timezone.utc)
+            try:
+                block = block_resolver.block_at_or_before(chain.value, eod)
+                shares = psm3.shares_of(
+                    chain=chain.value, psm3=cfg.address.value,
+                    holder=holder, block=block,
+                )
+                if shares <= 0:
+                    return Decimal(0)
+                raw = psm3.convert_to_asset_value(
+                    chain=chain.value, psm3=cfg.address.value,
+                    num_shares=shares, block=block,
+                )
+                return Decimal(raw) / scale
+            except (RPCError, _requests.HTTPError, _requests.ConnectionError, _requests.Timeout) as e:
+                if fallback is None:
+                    raise
+                _log.warning(
+                    "PSM3 read failed on %s for %s @ %s; carrying forward "
+                    "$%s (error: %s). PSM USDS-equiv may be slightly stale "
+                    "for this day.",
+                    chain.value, cfg.address.value.hex(), day,
+                    f"{fallback:,.2f}", type(e).__name__,
+                )
+                return fallback
+
+        # One snapshot per day across [period.start, period.end]. The init
+        # read (period.start - 1) cannot fall back — a missing baseline
+        # means we can't compute period flows correctly, so let it raise.
         days = [period.start + timedelta(days=i) for i in range((period.end - period.start).days + 1)]
         cur_value = _value_at(period.start - timedelta(days=1))
         block_dates: list = []
         daily_net: list[Decimal] = []
         cum_balance: list[Decimal] = []
         for day in days:
-            value = _value_at(day)
+            value = _value_at(day, fallback=cur_value)
             block_dates.append(day)
             daily_net.append(value - cur_value)
             cum_balance.append(value)
