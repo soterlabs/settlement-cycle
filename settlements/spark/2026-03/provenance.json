@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-04-30T12:05:32+00:00",
+  "generated_at_utc": "2026-05-04T11:22:33+00:00",
   "month": "2026-03",
   "period": {
     "end": "2026-03-31",
@@ -26,11 +26,11 @@
   "results": {
     "agent_rate": "0",
     "distribution_rewards": "0",
-    "monthly_pnl": "-4088728.007649515921501714050",
-    "prime_agent_revenue": "5710660.728145517389025050812",
-    "prime_agent_total_revenue": "5710660.728145517389025050812",
+    "monthly_pnl": "-4446485.456136152421447167408",
+    "prime_agent_revenue": "5436378.798363220640333741202",
+    "prime_agent_total_revenue": "5436378.798363220640333741202",
     "sky_direct_shortfall": "0",
-    "sky_revenue": "9799388.735795033310526764862"
+    "sky_revenue": "9882864.254499373061780908610"
   },
   "settle_version": "0.1.0",
   "sources": {
@@ -56,11 +56,11 @@
       "venue_id": "S1"
     },
     {
-      "actual_revenue": "160183.59048600",
+      "actual_revenue": "0E-8",
       "br_charge": "0",
       "label": "Spark USDC (SparkLend spToken)",
-      "period_inflow": "-48081075.899733",
-      "revenue": "160183.59048600",
+      "period_inflow": "-47920892.309247",
+      "revenue": "0E-8",
       "sky_direct_shortfall": "0",
       "value_eom": "37220.75620400",
       "value_som": "47958113.06545100",
@@ -244,10 +244,10 @@
     },
     {
       "actual_revenue": "0.00",
-      "br_charge": "-30622.82059195699743716586200",
+      "br_charge": "0",
       "label": "BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I)",
       "period_inflow": "0.00",
-      "revenue": "30622.82059195699743716586200",
+      "revenue": "0.00",
       "sky_direct_shortfall": "0",
       "value_eom": "0",
       "value_som": "0",
@@ -258,7 +258,7 @@
       "br_charge": "0",
       "label": "Janus Henderson Anemoy Treasury Fund (JTRSY)",
       "period_inflow": "0.000000",
-      "revenue": "0",
+      "revenue": "0.000000",
       "sky_direct_shortfall": "0",
       "value_eom": "0",
       "value_som": "0",
@@ -269,7 +269,7 @@
       "br_charge": "0",
       "label": "Superstate Short Duration US Government Securities Fund (USTB)",
       "period_inflow": "0.000000",
-      "revenue": "0",
+      "revenue": "0.000000",
       "sky_direct_shortfall": "0",
       "value_eom": "0",
       "value_som": "0",
@@ -302,7 +302,7 @@
       "br_charge": "0",
       "label": "Spark.fi USDT Reserve Curve (sUSDS/USDT)",
       "period_inflow": "-82936.30931626884478224383813",
-      "revenue": "83475.51870433975125414374813",
+      "revenue": "0E-23",
       "sky_direct_shortfall": "0",
       "value_eom": "50000879.85586480846928050163",
       "value_som": "50000340.64647673756280860172",

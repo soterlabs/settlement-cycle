@@ -10,6 +10,7 @@ import yaml
 
 from .pricing import PricingCategory
 from .primes import Address, Chain, NavOracle, Prime, PsmConfig, PsmKind, Token, Venue
+from .subsidy import SubsidyConfig
 
 
 def _parse_ilk_bytes32(s: str) -> bytes:
@@ -94,6 +95,12 @@ def load_prime(config_path: Path) -> Prime:
                 ),
                 min_transfer_amount_usd=_parse_min_transfer(v),
                 sky_direct=bool(v.get("sky_direct", False)),
+                holder_override=(
+                    Address.from_str(v["holder_override"])
+                    if v.get("holder_override")
+                    else None
+                ),
+                skip=bool(v.get("skip", False)),
             )
         )
 
@@ -111,6 +118,7 @@ def load_prime(config_path: Path) -> Prime:
         psm=psm,
         venues=venues,
         external_alm_sources=external_alm_sources,
+        subsidy=SubsidyConfig.from_dict(cfg.get("subsidy")),
     )
 
 

@@ -23,6 +23,7 @@ import pandas as pd
 from ..domain.monthly_pnl import VenueRevenue
 from ..domain.period import Period
 from ..domain.primes import Venue
+from ..domain.sde import SDEEntry
 from ._helpers import cum_at_or_before
 
 
@@ -34,20 +35,37 @@ class VenueRevenueInputs:
     value_som: Decimal
     value_eom: Decimal
     inflow_timeseries: pd.DataFrame   # [block_date, daily_inflow, cum_inflow]
-    # Only populated for Sky Direct venues (venue.sky_direct=True). The total
-    # base-rate charge over the period: ``∫ AV(t) × apr_per_sec(t) dt``,
-    # computed daily-precise by the orchestrator.
-    br_charge: Decimal | None = None
+    # Set when the venue is in an active SDE entry (kind=fixed or capped).
+    # None means the venue is not Sky-Direct → all revenue to prime.
+    sde_entry: SDEEntry | None = None
+
+
+def _sd_share_at_som(
+    sde_entry: SDEEntry | None, value_som: Decimal,
+) -> Decimal:
+    """Sky-direct slice as a fraction of value_som (0 for non-SDE; 1 for
+    fixed; ``min(cap, value_som) / value_som`` for capped, locked at SoM).
+    """
+    if sde_entry is None:
+        return Decimal("0")
+    if sde_entry.kind == "fixed":
+        return Decimal("1")
+    if sde_entry.kind == "capped" and value_som > 0:
+        return min(sde_entry.cap_usd, value_som) / value_som
+    return Decimal("0")
 
 
 def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRevenue:
-    """One venue's contribution to prime_agent_revenue.
+    """One venue's contribution to prime_agent_revenue under the SDE-split model.
 
-    For non-Sky-Direct venues: ``revenue = Δvalue − period_inflow``.
+    actual_revenue = (value_eom − value_som) − period_inflow
+    sd_share       = (set per SDE entry; 0 for non-SDE)
+    sd_revenue     = actual_revenue × sd_share        (to Sky)
+    revenue        = actual_revenue × (1 − sd_share)  (to prime)
 
-    For Sky Direct venues (per prime-settlement-methodology Step 4):
-    ``revenue = max(0, ActualRev − BR_charge)`` — prime is floored at zero,
-    Sky books BR_charge and absorbs the shortfall when the venue underperforms.
+    Loss handling: a negative actual_revenue is split the same way — Sky
+    absorbs sd_share of the loss, prime absorbs the rest. This matches Grove
+    team's PnL workbook (no floor, no shortfall).
     """
     inflow_df = inputs.inflow_timeseries
 
@@ -58,14 +76,9 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
     period_inflow = cum_eom - cum_som
 
     actual_revenue = (inputs.value_eom - inputs.value_som) - period_inflow
-
-    if inputs.venue.sky_direct and inputs.br_charge is not None:
-        # Floored at zero: prime keeps only the surplus above BR_charge.
-        revenue = max(Decimal("0"), actual_revenue - inputs.br_charge)
-        sky_direct_shortfall = max(Decimal("0"), inputs.br_charge - actual_revenue)
-    else:
-        revenue = actual_revenue
-        sky_direct_shortfall = Decimal("0")
+    sd_share = _sd_share_at_som(inputs.sde_entry, inputs.value_som)
+    sd_revenue = actual_revenue * sd_share
+    prime_revenue = actual_revenue - sd_revenue
 
     return VenueRevenue(
         venue_id=inputs.venue.id,
@@ -73,10 +86,10 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
         value_som=inputs.value_som,
         value_eom=inputs.value_eom,
         period_inflow=period_inflow,
-        revenue=revenue,
+        revenue=prime_revenue,
         actual_revenue=actual_revenue,
-        br_charge=inputs.br_charge or Decimal("0"),
-        sky_direct_shortfall=sky_direct_shortfall,
+        sd_share=sd_share,
+        sd_revenue=sd_revenue,
     )
 
 
@@ -84,9 +97,12 @@ def compute_prime_agent_revenue(
     period: Period,
     venue_inputs: list[VenueRevenueInputs],
 ) -> tuple[Decimal, list[VenueRevenue]]:
-    """Sum of all venue revenues (after Sky Direct floor). Returns
-    ``(total, per_venue_breakdown)``. Total Sky Direct shortfall (absorbed by
-    Sky) is the sum of ``vr.sky_direct_shortfall`` in the breakdown."""
+    """Sum of prime-side venue revenue (= Σ actual × (1 − sd_share)).
+
+    Returns ``(total, per_venue_breakdown)``. Sky's claim from SDE positions
+    is the sum of ``vr.sd_revenue`` in the breakdown, added to sky_revenue
+    by the orchestrator.
+    """
     breakdown = [compute_venue_revenue(period, inp) for inp in venue_inputs]
     total = sum((vr.revenue for vr in breakdown), Decimal("0"))
     return total, breakdown

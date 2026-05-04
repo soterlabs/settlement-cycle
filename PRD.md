@@ -576,39 +576,34 @@ Resolutions land as ADRs in `adr/` at the root of this repo.
 - ❌ **Re-pricing / re-snapshot mechanism** if NAV oracles update retroactively.
 - ❌ **Audit-quality input archival** (the exact Dune query results, RPC responses, cache state) for byte-identical third-party verification.
 
-### 17.3 Headline numbers — Grove Q1 2026 (current)
+### 17.3 Headline numbers — Grove Q1 2026 (post 2026-05-02 reconciliation)
 
 The reported headline is `prime_agent_total_revenue` (what the prime is owed) and `sky_revenue` (what the prime owes Sky), reported **separately** — they're not netted at this layer. The previously-emitted `monthly_pnl = prime_agent_revenue + agent_rate + distribution_rewards − sky_revenue` is kept for audit (`provenance.json`) but no longer displayed in the markdown headline or `pnl.csv`.
 
-`sky_revenue` here is the **net** value after Sky absorbs the Step 4 shortfall on Sky Direct underperformers. `sky_direct_shortfall` is reported separately as a line item.
+After the 2026-05-02 refactors (subsidised rate, SDE config table with capped JAAA, Net-Subs base, Centrifuge `pricePerShareFeed`, E2 dust fix, Avalanche venues skipped), the Q1 2026 numbers are:
 
-| Month | prime_agent_total_revenue | sky_revenue (net) | sky_direct_shortfall | monthly_pnl |
+| Month | prime_agent_total_revenue | sky_revenue | sky_direct_shortfall (legacy) | monthly_pnl |
 |---|---:|---:|---:|---:|
-| 2026-01 | $5,876,810 | $6,526,238 | $532,390 | −$649,428 |
-| 2026-02 | $1,572,546 | $6,217,052 | $418,738 | −$4,644,506 |
-| 2026-03 |   $377,578 | $7,422,472 | $770,845 | −$7,044,895 |
-| **Q1 total** | **$7,826,933** | **$20,165,762** | **$1,721,973** | **−$12,338,828** |
+| 2026-01 | $3,294,342 | $5,825,250 | $0 | −$2,524,644 |
+| 2026-02 |   $865,528 | $5,640,013 | $0 | −$4,768,685 |
+| 2026-03 |   $129,496 | $6,302,405 | $0 | −$6,166,635 |
+| **Q1 total** | **$4,289,366** | **$17,767,668** | **$0** | **−$13,459,964** |
 
 Reproduce: `python3 scripts/run_grove_2026_q1.py` (lifetime Dune fixtures cover all three months; pin blocks per month are hardcoded in `PIN_BLOCKS_BY_MONTH`).
 
-**Cost-basis (March 2026):** **+0.63%** (Σ value $2.827B vs. cum_debt $2.809B across 23 venues, with E23 Steakhouse Prime Instant on Base added). The increment over the prior +0.06% reflects E23's $16M EoM value not yet fully tracked in cum_debt.
+`sky_direct_shortfall` is now always 0 — under the new SDE-split model Sky takes the actual venue revenue (no more floor / shortfall absorption). The legacy field is preserved for provenance round-trip on settlements written under the old model.
 
-**Reconciliation vs Sky's reported Sky Share for March 2026:** Sky reports $6,290,684; our calc gives $7,422,472. The +$1.13M residual remains unexplained — methodology (Step 1 BR on utilized, Step 4 shortfall on JTRSY+BUIDL) is correct, but Sky's exact "Asset Value" definition for BR_charge differs from any single approach we tried (midpoint, daily time-weighted, EoM). See §17.7 for hypothesis space.
+**Reconciliation vs Grove team's Feb 2026 PnL workbook (`data/grove/feb_2026.xlsx`):**
+
+| | Grove team | Ours | Diff |
+|---|---:|---:|---:|
+| JAAA_ETH actual_revenue | $1,388,581 | $1,388,517 | −$64 |
+| JTRSY_ETH actual_revenue | $1,437,927 | $1,437,959 | +$32 |
+| **Total Profit to Sky** | **$6,042,238** | **$5,640,013** | **−$402,225** |
+
+The $402K residual is dominated by **E1 aHorRwaRLUSD off-pool yield** (~$430K/month) — see §17.13 high-priority entry: Grove team accrues this off-chain, no equivalent feed in our pipeline yet.
 
 `distribution_rewards` is a default-zero placeholder for referral / liquidity-program payouts (e.g. skybase referral codes). Field exists on `MonthlyPnL` and flows through to all output formats; populated when the source lands (Phase 3+).
-
-Per-venue revenue summary (March 2026, post Sky Direct floor):
-- E22 ACRDX (Plume): −$351,450 (NAV dropped 0.69%)
-- E3 Aave Ethereum aRLUSD: +$206,733
-- E1 Aave Horizon aRwaRLUSD: +$148,261
-- E7 STAC: +$127,924
-- E20 JAAA-avax: +$105,000
-- E8 JAAA-eth: +$52,419
-- E6 grove-bbqAUSD: +$40,044
-- E4/E5/E19/E23 Morpho 4626 (combined): +$34,634
-- E11 Curve LP, E12 V3 LP: +$7,738
-- **E9 JTRSY, E10 BUIDL (Sky Direct, floored)**: $0 each (Sky absorbs $580K + $191K shortfall)
-- **Total prime_agent_revenue**: $371,302
 
 ### 17.5 Cat A inflow accounting — design note
 
@@ -642,10 +637,17 @@ Reference docs: `prime-settlement-methodology.md` (5-step framework) and `debt-r
 - **Multi-month support.** `scripts/run_grove_2026_q1.py` runs Jan/Feb/Mar 2026 against the same lifetime fixtures (different pin_blocks per month). Required gating fixes: extended V3 events query (Dec 31 2025 → Mar 31 2026, captured the Feb 4 LP creation) and Chronicle NAV overrides for E7 STAC + E22 ACRDX at Dec 31 2025 (oracle pre-deployment).
 - **RPC defensive coding.** `balance_of` / `scaled_balance_of` / `convert_to_assets` now treat empty (`0x`) returns and HTTP 4xx as zero — required for venues that didn't exist at older SoM blocks (E23 Steakhouse Prime Instant created mid-March; querying Feb SoM returns empty without this).
 
+**Recently shipped (2026-05-02 — Grove team workbook reconciliation):**
+- **Subsidised borrowing rate** — implemented per debt-rate-methodology Step 1.b. Formula: `subsidised_apy_d = ref_rate_d + (BR_d − ref_rate_d) × T / 24`, where T = months elapsed since 2026-01-01 (Sky governance program start), capped at 24. Applied to first `subsidy.cap_usd` of utilized USDS ($1B per prime); excess at full BR. Per-prime config in `{prime}.yaml::subsidy`. **Per Sky governance: Grove uses 3M T-Bill; Spark uses EFFR.** Daily rates in `config/subsidy_reference_rates.yaml` (carries both columns; per-prime `subsidy.ref_rate_kind` selects the series).
+- **SDE config table (`config/sky_direct_exposures.yaml`)** — replaces the per-venue `Venue.sky_direct: bool` flag with a time-bounded table supporting `kind: fixed|capped|pattern`. Active entries: Treasury Bills on Eth (BUIDL/JTRSY/USTB), PSM3 USDC non-Eth, Spark USDT/Curve. Historical: JAAA on Eth capped at $325M (2025-10-23 → 2026-03-12).
+- **Capped SDE** — for `kind: capped`, sd_share locked at SoM = `min(cap_usd, value_som) / value_som`. Sky takes `actual_revenue × sd_share`, prime keeps the rest. JAAA Feb 2026: prime $241K, Sky $611K (was $0/$853K under the legacy floor model).
+- **Net Subs base refactor** — SDE asset values are subtracted from utilized in `compute_sky_revenue` (so Grove pays BR only on non-SDE allocations); SDE actual revenue flows directly to Sky on top. The legacy "shortfall floor" concept is retired (always 0 under the new model).
+- **Centrifuge `pricePerShareFeed` NAV oracle** — new `INavOracleSource` kind backed by `convertToAssets(1e18)` on the per-tranche feed contracts (per `docs/pricing/allocation_pricing.csv` "Oracle2: centrifuge API" notes). E8 JAAA → `0x4880…0B`, E9 JTRSY → `0xFE69…77A`. Both reproduce Grove team's actual_revenue within $100/month (vs ~$535K/$146K diffs under the previous Chronicle path). Chronicle remains documented as a secondary feed but not auto-fallback.
+- **Venue `skip: true` flag** — venues whose oracle/underlying is too volatile or too unreliable to include in MSC are skipped at compute time but kept in YAML for documentation. E20 (JAAA-avalanche) + E21 (GACLO-1) marked skip per Sky/Grove decision (cross-chain Avalanche oracles untrusted).
+- **E2 aHorRwaUSDC dust fix** — Aave V3's full-exit dust (1 raw unit remains after burn) blew up the closed-form `bal_eom × scaled_som / scaled_eom`, producing a phantom −$232K loss in Feb 2026. Threshold widened to detect post-burn dust under 0.1% of entry-time scaled balance.
+
 **Deferred (PRD-flagged):**
-- **Subsidised rate ramp (debt-rate-methodology)** — first 24 months from prime start, rate linearly interpolates from `tbill_3m` → full base rate. Not implemented; we charge full BR. Grove is currently ~11.5 months in (start 2025-05-14), so would be at the midpoint between t-bill and BR. **Needs:** t-bill data source (Dune feed? config?) and per-prime opt-in flag.
 - **Idle USDS/DAI in lending pools / AMMs (doc Step 2)** — doc lists Aave/SparkLend/Compound and Curve/Uniswap/Balancer USDS holdings as idle credit. No Grove venue currently holds USDS this way ($0 gap for Grove); scaffolding to be added when first prime needs it.
-- **Sky Direct exposure scaffolding for non-Grove primes** — Spark's USDT in sUSDS/USDT Curve pools (Spark is unique in being USDT-denominated for some allocations). Not relevant for Grove; needed when Spark prime gets onboarded.
 - **Reconciliation gap with Sky's reported Sky Share** (~$1.13M for Grove March 2026). The methodology + Sky Direct set are correct; the residual implies Sky uses a specific BR_charge "Asset Value" formula we haven't matched. Three approximations bracketed the answer (midpoint avg, daily time-weighted, EoM-only); next step would be either Sky's exact spec or per-tx pricing across the period.
 - **Chronicle adapter robustness** — currently silently falls back to `const_one` ($1) when Chronicle returns `0x`, which can produce phantom revenue at SoM blocks before the oracle was deployed. Mitigated by `nav_overrides` fixture for known-historical NAVs at affected blocks, but the adapter itself should distinguish "pre-deployment" from "real $1" and refuse the const_one fallback for venues whose actual NAV is far from $1.
 
@@ -679,10 +681,12 @@ Tests: 211 unit + 8 integration passing, no regressions vs the post-Sky-Direct s
 These are not blockers for the current pipeline but should be periodic operational audits. They protect against silent drift between the codebase, the Atlas spec, and on-chain reality.
 
 #### Sky Direct exposure list — track Atlas changes
-The set of exposures that qualify for Step 4 reimbursement is governed by Sky governance and recorded in the Sky Atlas (see [`sky-ecosystem/next-gen-atlas`](https://github.com/sky-ecosystem/next-gen-atlas)). Today the list is hardcoded in our config (`sky_direct: true` flag per venue in `<prime>.yaml`). When a new exposure type is approved or an existing one is removed, the YAML must be updated.
+The set of exposures that qualify for Step 4 reimbursement is governed by Sky governance and recorded in the Sky Atlas (see [`sky-ecosystem/next-gen-atlas`](https://github.com/sky-ecosystem/next-gen-atlas)). Today the list is hardcoded in `config/sky_direct_exposures.yaml` (a time-bounded SDE config table; see PRD §3, "Step 4"). When a new exposure type is approved or an existing one is removed, this file must be updated.
 
-- **Recurring check (manual):** before each settlement cycle, diff the Atlas's Sky Direct exposures section against `config/<prime>.yaml`. Note the Atlas commit/date when the current list was last reconciled, e.g.: "Sky Direct list as of Atlas commit `<sha>` (`<date>`): Treasury Bills on Ethereum (BUIDL, JTRSY, USTB); USDC in PSM3 on non-Ethereum chains; USDT in sUSDS/USDT Curve pools."
-- **Future automation:** parse the Atlas repo (presumably structured Markdown/YAML) and surface diffs vs. our config in a CI check, or generate the venue-level `sky_direct: true` flags directly from the Atlas as the source of truth.
+> **Note (2026-05-04):** the older per-venue `sky_direct: true` flag in `<prime>.yaml` is **deprecated** — it's preserved for legacy YAML round-trip but ignored by compute. SDE classification is driven entirely by `config/sky_direct_exposures.yaml`. Adding `sky_direct: true` to a venue today is a silent no-op.
+
+- **Recurring check (manual):** before each settlement cycle, diff the Atlas's Sky Direct exposures section against `config/sky_direct_exposures.yaml`. Note the Atlas commit/date when the current list was last reconciled, e.g.: "Sky Direct list as of Atlas commit `<sha>` (`<date>`): Treasury Bills on Ethereum (BUIDL, JTRSY, USTB); USDC in PSM3 on non-Ethereum chains; USDT in sUSDS/USDT Curve pools."
+- **Future automation:** parse the Atlas repo (presumably structured Markdown/YAML) and surface diffs vs. our config in a CI check, or generate `config/sky_direct_exposures.yaml` directly from the Atlas as the source of truth.
 
 #### On-chain flow-of-funds reconciliation — coverage check
 The current venue list per prime is built by hand (PRD §3, §4) and cross-checked against external sources (e.g., BA Labs `stars-api.blockanalitica.com` — which surfaced the missing E23 Steakhouse Prime Instant on Base in this cycle). It's possible to miss a venue that the prime started using between settlements.
@@ -872,26 +876,309 @@ Top venue contributors (Q1 average):
 * **Subsidised rate ramp not applied**: Spark is ~17/24 months into the ramp; applying it would lower Sky_revenue per debt-rate-methodology file 2.
 * **PSM3 USDS-equivalent sampled at month boundaries** with linear interp (drpc Arbitrum was too flaky for daily reads).
 * **fsUSDS pricing approximation**: S17/S36/S42 use sUSDS as underlying; sUSDS is treated as $1 par (small understate). All three venues hold $0 in Q1 2026 so the error is $0 in practice.
-* **Anchorage S23**: $150M off-chain custodial position is invisible on-chain. Treated as principal-sent-out; yield would arrive as a future ALM transfer (none seen in Q1).
+* **Anchorage S23 — $150M tri-party loan, intentionally skipped (2026-05-01).** Investigation confirmed the position has **no on-chain footprint we can read via `balanceOf`**: the proxy `0x4950…6872` is an EOA with ~$0 USDC balance throughout Q1 2026, no $150M USDC outflow ever leaves the Spark Eth ALM toward Anchorage on-chain (every >$50M USDC outflow Oct 2025 → Jan 2026 went to Sky LITE-PSM for routine swaps). The $150M is a fully off-chain contractual relationship: Spark wires fiat/USDC to Anchorage's custodial account, Anchorage runs a "Anchorage BTC 6M 7%" loan strategy (start 2025-12-19, end 2026-06-16, fixed 6.5% APR principal × time × rate), interest payments arrive periodically as small (~$116K) USDC sweeps to the proxy. Spark's `dune.sparkdotfi.result_spark_anchorage_usdc` materialised view publishes the $150M as manually-entered loan terms. **Impact:** our `prime_agent_revenue` is understated by ~$0.8M/month (6.5% × $150M / 12), and our `sky_revenue` is correspondingly NOT charged the offsetting BR on $150M (utilized excludes the loan principal because we never see it disbursed). Net `monthly_pnl` is biased by ~+$0.4M/month vs Spark's view (Spark's spread is yield − BR ≈ 2.5% × $150M / 12 ≈ $0.3M/month positive contribution). Tracked as TODO; needs either a `TRI_PARTY_LOAN` pricing category fed from YAML loan terms or a Spark-team-confirmed off-chain feed.
+
+**Reconciliation against Spark's `dune.sparkdotfi.result_spark_*` materialised views (2026-05-01):**
+
+Compared every per-venue value_eom for Q1 2026 against the equivalent row in Spark's materialised tables. **Most venues reconcile within $1K (sub-0.001%)**. Specific findings:
+
+* ✅ **Cat A par-stables** (S28/S38/S39/S44/S45/S48/S49/S52/S53/S55): exact match on RPC `balanceOf` ↔ Spark's `alm_supply_amount`.
+* ✅ **Cat C SparkLend** (S1–S5): match within ±$1K (sub-0.001%) at all 3 EoM dates. Tiny diffs are block-timing dust.
+* ✅ **Cat C Aave** (S6/S7/S8 zero, S9 = $495,610,844 vs Spark $495,610,814 in March, S54 Avalanche $10M): match within ±$30.
+* ✅ **Cat B Morpho/Maple/sUSDS variants** (S10/S12/S13/S14/S15/S32/S34/S37/S43/S47/S51): match within ±$5K (~0.001%). S32 Eth ALM Jan: ours $393.52M vs Spark `362.7M raw × 1.08497 conversion = $393.52M`.
+* ✅ **PSM3 holdings** (utilized reduction): per-leg breakdown in Spark's view (USDC/USDS/sUSDS) sums to our aggregated USDS-equivalent within ±0.01%.
+* ✅ **Cat F Curve LPs** (S24/S25): per-leg amounts in Spark's `result_spark_curve_pool_apr` reconcile to our LP-share value via reserves × per-coin price.
+* ⚠ **Cat B Arkis sparkPrimeUSDC1 (S18) — persistent ~0.7% drift** at all 3 EoM dates (Jan +$105K / +0.70%, Feb +$15K / +0.14%, Mar +$58K / +0.57%). Spark's reported values are suspiciously round ($15.00M / $10.10M / $10.10M), suggesting their view consumes Arkis's API NAV directly while we use the on-chain `convertToAssets()` fallback. **Direction:** ask Spark/Arkis whether the on-chain `convertToAssets` is authoritative or if the API publishes a different NAV; the drift biases our prime_agent_revenue +$60–100K/quarter. **See QUESTIONS.md S14.**
+* 🆕 **Foundation USDS — accounting construct, ~$0 P&L impact.** Spark's table publishes a "Foundation" row at $1.1M (Apr 2026 onward; was $400K earlier) with `gross_yield_apr ≈ borrow_cost_apr` by construction → net P&L is zero by design (Spark gets reimbursed at base rate for this position). It's NOT a logical sum of unutilized USDS across PSM/PSM3/Curve (size is too small to be that aggregate); rather a small designated operational treasury entry where the rates cancel. Safe to ignore in our compute. **No action needed.**
+
+**Methodology observations from the Spark Dune comparison (no action needed but documented):**
+
+* Spark publishes **a daily sUSDS conversion-rate view** (`result_daily_token_conversion_rates`). We compute it on-the-fly from `convertToAssets(1 share, block)` — same number within ~0.001% (block-time vs midnight-UTC snapshot drift).
+* Spark splits **PSM3 holdings into 3 legs** (USDC/USDS/sUSDS) per chain. We aggregate to a single USDS-equivalent. The per-leg breakdown matters if Sky Direct treatment differs (USDC in PSM3 on non-Eth IS Sky Direct per methodology) — currently this isn't load-bearing because all our PSM3 USDS-equivalents flow into utilized reduction without per-leg differentiation.
+* Spark's **per-table column conventions vary** (`alm_supply_amount` for lending, `amount` for Maple/Arkis, `spark_holdings` for Ethena where the table publishes Spark+Grove combined, `sll_allocated_assets_balance` for Curve). Reading the right column per table matters; we cross-checked each.
+* Spark's **deployment-efficiency formula is `allocated / (liabilities − idle)`** (subtracts idle from denominator). Our utilized formula subtracts idle from numerator (`utilized = debt − sub_usds − sub_susds − alm_usds − psm_usds`). Mathematically equivalent for headline; framing differs.
+* Spark's view tracks **Aave Ethereum aUSDT first appearing 2026-03-31 ($495M)** — matches our S9 EoM exactly. No data pre-March (the position opened that month).
+
+**Decision (2026-05-01):** treat Spark's Dune tables as a **reconciliation reference only**, not as a data source. Our pipeline reads on-chain + raw Dune `tokens.transfers` independently; we cross-check against Spark's tables when investigating discrepancies. This keeps us methodologically sovereign while leveraging Spark's view for sanity checks.
+
+#### Spark Dune dashboard re-review (2026-05-04) — improvement areas surfaced
+
+Spark's [SLL Assets to Liabilities dashboard](https://dune.com/sparkdotfi/spark-sll-nav-to-liabilities) is now public (daily 05:00-05:30 UTC update cadence). The underlying queries are private — we can read the dashboard's public visualization metadata (column shapes) but not their SQL. From the column shapes we extracted:
+
+**Top-line (SLL — main USD-denominated balance sheet)** — 6 counters at row 3 + row 7. We can't see field names directly (queries private) but the layout maps cleanly to: total assets, total liabilities, surplus, allocated, idle, deployment efficiency.
+
+**Per-protocol breakdown** (query 5776184, public visualization metadata):
+```
+blockchain | protocol | token | original_balance | susds_conversion_rate
+| usds_equivalent_balance | SLL_allocated_assets_balance
+| total_assets_balance | total_assets_usds_equivalent_balance
+| idle_balance | idle_usds_equivalent_balance
+```
+Spark's table **splits each protocol holding into `allocated` vs `idle`** — within a single venue, some balance is in-use, some pending allocation. Our pipeline collapses this to a single `value_usd` per venue.
+
+**spETH section (NEW)** — entirely separate ETH-denominated balance sheet (query 6866703, full column shape visible):
+```
+total_assets_eth | allocated_assets_eth | idle_assets_eth
+| liabilities_sky_eth | liabilities_savings_v2_eth | total_liabilities_eth
+| net_surplus_eth | deployment_efficiency_ratio
+| eth_price | net_surplus_eth_usd | surplus_eth | surplus_eth_usd
+```
+
+**Three improvement areas surfaced — none of which we could see when we last reconciled (2026-05-01):**
+
+1. **Spark Savings V2 (`pricing_category: S2`) has no compute path.** S56–S60 in `config/spark.yaml` are catalogued (spUSDC, spUSDT, spETH, spPYUSD on Eth + spUSDC on Avalanche) but the compute layer skips them with a warning per `domain/pricing.py:20-27`. That's ~**$2.3B+ of vault TVL** (per docstring: spUSDC ~$1B + spUSDT ~$1.13B + spETH ~$185M + spPYUSD ~$1M + spUSDC-avax ~$37M) currently invisible to our snapshot. Spark's dashboard explicitly tracks each as a separate balance sheet (vault's `totalAssets` deployed, `totalSupply × pps` owed to depositors, surplus = the spread). Resolution path documented as Q for Spark in QUESTIONS.md (Spark section).
+
+2. **`liabilities` should = debt + savings_v2_liabilities.** Spark's spETH columns confirm a two-source liability model (`liabilities_sky` + `liabilities_savings_v2`). We already noted this pattern from BA labs (`liabilities = debt + sUSDS_POL` for Spark) — the dashboard now confirms it's a **published Spark methodology, not a BA quirk**. Our snapshot currently reports `liabilities = debt` only; should extend.
+
+3. **Per-asset-class native-unit balance sheet.** Spark publishes spETH in ETH-units (with USD conversion at the headline only via `eth_price`). Other vaults in USD. Our snapshot uses USD-only across the board. For spETH this introduces price-translation noise that Spark doesn't have. To match: per-asset-class accounting + WETH oracle for the headline conversion. Lower priority since spETH is small ($185M) and the existing `nav_oracle_resolver` could carry an ETH-priced variant.
+
+**Minor observations (no action needed)**:
+- Spark exposes `susds_conversion_rate` as a first-class column (we compute on-the-fly via `convertToAssets(1, block)` — same value, different presentation).
+- Spark's "idle vs allocated within a single venue" split is a nice-to-have but doesn't change headline numbers; we'd add it if BA / Sky governance asked.
+- Daily-update cadence (05:00-05:30 UTC) confirms snapshot semantics — our `python -m settle snapshot --prime spark` produces the equivalent at any block.
+
+**Decision (2026-05-04):** open three follow-up questions to Spark in QUESTIONS.md (Spark section) before any implementation. The Savings V2 surplus formula in particular hinges on what "Spark's seed principal" is per vault — need confirmation before the compute path lands.
+
+#### Spark `result_*` table catalog (2026-05-04 update)
+
+Spark publishes 44+ materialized views under the `dune.sparkdotfi.result_*`
+namespace — these are public and queryable, even when their backing SQL is
+private. Cataloged via Dune's `searchTables`; the table below lists the
+**settlement-relevant subset** (~36 named tables, including a handful of
+suffixed series like `result_target_depositor_daily_*` and `result_benmo_*`).
+The remainder are dashboard-internal helpers (renderer outputs, KPI rollups)
+not load-bearing for our reverse-engineering. Per the operating principle
+(PRD §17.12 "treat as reconciliation reference, not data source"), we
+**don't consume these at runtime**, but their public column shapes resolve
+several open questions left over from the dashboard
+re-review.
+
+**Per-protocol "idle vs allocated" (answers Q S8):** every
+`result_spark_*_by_alm_proxy` table exposes the same shape:
+```
+dt, blockchain, protocol_name, token_symbol, supply_index, borrow_index,
+supply_rate_apr, borrow_rate_apr,
+alm_supply_amount, supply_amount, borrow_amount, utilization,
+idle_amount,                                   ← protocol-level idle (un-borrowed)
+alm_share,                                     ← Spark's fraction of supply
+alm_idle (= alm_share × idle_amount),          ← Spark's slice of the idle
+borrow_cost_code, borrow_cost_apr,             ← Sky borrow rate Spark pays
+[interest_amount, sparklend_revenue, ...]
+```
+The `alm_idle` column makes the idle/allocated distinction
+**economically meaningful** — Spark's lending-pool supply that hasn't
+been borrowed by counterparties earns the supply rate but is at risk of
+de-allocation. Our `Venue` should expose `alm_supply_amount` and
+`alm_idle` separately rather than a single value.
+
+**Savings V2 vault surplus (answers Q S6):**
+`result_savings_v_2_deployment_metrics` (`dt, token_symbol, total_amount,
+holding_amount, deployed_amount, apr, borrow_cost`) gives the canonical
+formula for spX vault accounting:
+- `total_amount = holding_amount + deployed_amount`
+- daily Spark surplus = `deployed_amount × (apr − borrow_cost) / 365`
+- vault liabilities to depositors accrue at `borrow_cost`
+
+Companion table `result_spark_savings_v_2_vaults_holdings` exposes
+per-user balances by `(blockchain, vault_symbol, user_addr, dt)` for
+referral attribution.
+
+**BA `idle_assets` source (likely answer to Q B1):** sum
+`alm_idle` across all `result_spark_*_by_alm_proxy` and
+`result_spark_curve_pool_apr` tables likely reconstructs BA's
+$720M `idle_assets` figure exactly. Pending confirmation, this means
+we can compute it ourselves by reading per-protocol utilization + ALM
+share via on-chain RPC for each lending pool.
+
+**Anchorage off-chain feed (refines Q S3):**
+`result_spark_anchorage_usdc` exposes `loan_name, loan_start_date,
+loan_end_date, supply_rate_apr, alm_supply_amount, sky_borrow_amount,
+gross_yield_formula, borrow_cost_formula, loan_status`. Either we
+consume this table directly or ask Spark for the loan-terms YAML they
+manually populate.
+
+**Ethena S16 has Spark+Grove-shared accounting (NEW Q S9b):**
+`result_spark_ethena_payout_apy` shows `total_holdings, grove_holdings,
+spark_holdings, spark_share` — Spark and Grove share the Ethena
+position. Our pipeline treats S16 as a flat Cat B venue without share
+apportionment. Needs investigation.
+
+**Liabilities = sky_debt + savings_v2_borrow (answers Q S7):**
+`result_spark_sll_revenue_projection_raw_1` separates
+`sky_borrow_cost_proj_usd` and `saving_v2_borrow_cost_proj_usd` as
+distinct projection lines. Combined with the `borrow_cost_apr` column
+present in every per-protocol table, this confirms a unified liability
+model: `total_liabilities = sky_debt × subsidised_BR + Σ_v vault_borrow_cost`.
+
+**Full table inventory (44 result_* tables in `dune.sparkdotfi`):**
+
+| table | purpose |
+|---|---|
+| `result_spark_idle_dai_usds_in_sparklend_by_alm_proxy` | Spark's idle in SparkLend |
+| `result_spark_idle_dai_usdc_in_morpho_by_alm_proxy` | Spark's idle in Morpho |
+| `result_spark_idle_usds_in_aave_by_alm_proxy` | Spark's idle in Aave |
+| `result_spark_aave_usdc_by_alm_proxy` | Aave USDC position |
+| `result_spark_aave_ethereum_a_usdt_by_alm_proxy` | Aave aUSDT (S9) |
+| `result_spark_aave_avalanche_a_usdc_by_alm_proxy` | Aave Avalanche aUSDC (S54) |
+| `result_spark_arkis_spark_prime_usdc_1_by_alm_proxy` | Arkis Prime (S18) |
+| `result_spark_maple_syrup_usdc_by_alm_proxy` | Maple syrupUSDC (S14) |
+| `result_spark_maple_syrup_usdt_by_alm_proxy` | Maple syrupUSDT (S15) |
+| `result_spark_anchorage_usdc` | Anchorage off-chain loan (S23) |
+| `result_spark_morpho_markets` | Morpho market detail |
+| `result_spark_pendle_farms` | Pendle positions |
+| `result_spark_curve_pool_apr` | Curve LPs (S24/S25) |
+| `result_spark_ethena_payout_apy` | Ethena S16 (Spark+Grove shared) |
+| `result_spark_superstate_ussc` | Superstate USCC (S22) |
+| `result_spark_savings_v_2_vaults_holdings` | Per-user spX holdings (S56–S60) |
+| `result_spark_savings_v_2_vaults_time_weighted_average_holdings` | Per-user TW spX |
+| `result_savings_v_2_deployment_metrics` | spX vault surplus formula |
+| `result_spark_sp_usdc_sp_usdt_sp_eth_daily_balance` | spX daily TVL |
+| `result_spark_sp_usdc_sp_usdt_sp_eth_time_weighted_average_balance` | spX TW per ref_code |
+| `result_spark_spark_savings_balance_raw` | sUSDS/sUSDC raw event log |
+| `result_spark_s_usds_s_usdc_time_weighted_average_balance` | sUSDS/sUSDC TW per ref_code |
+| `result_spark_staked_usds_balances_by_referrals` | stUSDS by referral |
+| `result_daily_token_conversion_rates` | Daily sUSDS↔USDS rate |
+| `result_usds_total_deposits` | USDS total deposits (Sky-wide) |
+| `result_aave_usdc_usdt_total_deposits` | Aave USDC/USDT totals |
+| `result_us_de_total_deposits` | USDe totals |
+| `result_spark_usds_s_usds_usdc_in_psm_3_curve_psm_3_proxy_foundation_aave` | PSM3 holdings (resolved earlier) |
+| `result_spark_lend_time_weighted_average_borrow_amount_raw` | Borrowed amounts TW |
+| `result_spark_sll_actual_revenue_daily` | Daily SLL revenue (different dashboard) |
+| `result_spark_sll_actual_revenue_daily_raw_data_1` | Same, raw |
+| `result_spark_sll_revenue_projection_raw_1` | Revenue projection (confirms liabilities split) |
+| `result_spark_sll_revenue_projection_raw_2` | Same, raw |
+| `result_target_depositor_daily_*` (4 tables) | Targeted depositor lists (referral) |
+| `result_avalanche_sp_usdc_latest_depositor_list` | Avalanche spUSDC depositors |
+| `result_s_2_points_claimed_spk_destinations` | SPK reward destinations |
+| `result_benmo_*` (2 tables) | Misc — referral aggregations |
+
+**Decision (unchanged):** still treat the `result_*` tables as
+**reconciliation reference + reverse-engineering aid**, not as a
+runtime data source. The catalog above closes Q S6, Q S7, Q S8 (move to
+"internal todo"), reframes Q S3, and likely answers Q B1 (pending BA
+confirmation).
 
 Artifacts: `settlements/spark/{2026-01,02,03}/{pnl.md,pnl.csv,venues.csv,provenance.json}`.
 
+### 17.12.1 Cross-prime methodology insights (2026-05-04)
+
+Audit pass after the Spark `result_*` table catalog work: every methodology
+improvement made for one prime should propagate to the others when the
+underlying fact-pattern is shared. Conclusions per fact-pattern:
+
+| Pattern | Source | Applies to | Status |
+|---|---|---|---|
+| Subsidised borrowing rate | debt-rate-methodology | Grove + Spark + future primes | ✅ already cross-prime (Grove `tbill_3m`, Spark `effr`) |
+| SDE config table | Sky governance | All primes | ✅ already cross-prime (`config/sky_direct_exposures.yaml`) |
+| Centrifuge `pricePerShareFeed` for JTRSY/JAAA/ACRDX | Grove team workbook | Any prime holding Centrifuge tranches | ✅ Grove E9 (2026-05-02) → **Spark S20 aligned 2026-05-04** |
+| `skip: true` for untrusted-oracle venues | Sky/Grove decision | All primes | ✅ already cross-prime |
+| Aave V3 post-burn dust handling (E2 fix) | Grove | All primes with Aave V3 / SparkLend | ✅ shared via `_atoken_index_weighted_inflow` |
+| Per-protocol `alm_idle = alm_share × protocol_idle` | Spark dashboard | Grove E1/E2/E3 + Spark S1–S15 + others | ⚠️ **field not yet on `Snapshot.types.VenueSnapshot`**. Grove E1 has 46% idle ($135M of $251M); Spark idle ≈ $465M visible across 13 venues. Visibility-only (no impact on monthly settlement); add as a new `VenueSnapshot.alm_idle` field when convenient. |
+| `liabilities = debt + sUSDS_POL_value` | Spark dashboard / BA labs | Both primes when sUSDS POL > 0 | ⚠️ Grove E18 sUSDS POL = $0 today, so no current numerical impact. Snapshot's `liabilities_usd` should include `sUSDS_POL × $1` when non-zero. Cross-prime fix deferred until Grove holds sUSDS at the ALM. |
+| Spark+Grove shared Ethena position via `spark_share` | `result_spark_ethena_payout_apy` | Both primes | Grove ALM holds **$0 USDe / $0 sUSDe** (verified on-chain 2026-05-04). Currently no Grove-side handling needed; if Grove adds Ethena exposure later, the apportionment logic should be ported. |
+| Subproxy USDC reading | Grove (~$0.75M idle) | Both primes | ✅ Snapshot reads USDC at all subproxies cross-prime since 2026-05-02. |
+
+**Concrete change (2026-05-04):** Spark S20 JTRSY oracle switched from
+Chronicle (`0x59ef…3d0d`) to Centrifuge `pricePerShareFeed`
+(`0xFE69…77A`), mirroring Grove E9. Spark holds $0 JTRSY today (per BA
+`/allocations`) so zero numerical impact, but if any volume lands the
+methodology now agrees with Grove's workbook ($32 drift vs Grove team's
+canonical pricing).
+
+**Deferred but documented:**
+- `alm_idle` snapshot field (Spark dashboard's per-protocol idle/allocated
+  split) — economically meaningful, cross-prime applicable, but not
+  required for monthly settlement. Worth adding when we revisit
+  `Snapshot.types.VenueSnapshot` for any reason.
+- `liabilities = debt + Σ vault_borrow_cost` (BA labs / Spark
+  unification) — applies the moment Grove holds sUSDS POL or Spark spX
+  vaults grow. Today Grove E18 = $0 and Spark spX skip-flagged, so
+  current numbers unchanged. Add to `Snapshot.liabilities_usd` once
+  there's a non-zero case.
+
 ### 17.13 Open questions (priority-ordered)
+
+#### High priority (Grove Q1 — added 2026-05-02 after Grove team workbook reconciliation)
+**E1 aHorRwaRLUSD off-pool yield channel.** Aave Horizon's on-chain `liquidityIndex` only grows ~0.87% APY (matches our $67K Feb 2026 revenue exactly); the remaining $447K of Grove team's $514K is **off-chain rewards accrual** (Holdings sheet `Rewards` column grew +$431K with `claimed` flat). Most likely fed from Merkl (`MERKL_DISTRIBUTOR = 0x3Ef3D8bA38EBe18DB133cEc108f4D14CE00Dd9Ae` in Grove address registry) or Aave Horizon's own RWA-fund accrual API. Until Grove confirms the canonical feed we won't integrate (mis-attribution risk). **See QUESTIONS.md G3.**
 
 #### High priority (Spark Q1 — most resolved 2026-04-30)
 1. **L2 RPC endpoints + Dune key** — *resolved*. drpc URLs for Arbitrum / Optimism / Unichain were added to `.env`. `DUNE_API_KEY` not set, but Dune access via MCP unblocked the captures.
-2. **Spark `start_date` boundary** — first frob is 2024-11-18; could differ from Sky's billing anchor. Verify with Spark/Sky team. **See QUESTIONS_SPARK.md Q1.**
+2. **Spark `start_date` boundary** — first frob is 2024-11-18; could differ from Sky's billing anchor. Verify with Spark/Sky team. **See QUESTIONS.md S1.**
 3. **PSM3 ABI** — *resolved*. Confirmed on Base + Optimism live; Arbitrum + Unichain assumed same ABI (CREATE2-deployed by Spark). Selectors `0xce7c2ac2` (`shares`) + `0x41c094e0` (`convertToAssetValue`). Implementation updated.
 4. **Spark Sky Direct list** — *resolved*. Flagging S19/S20/S21/S24. PSM3 holdings handled via PSM mechanic. Anchorage = principal-sent-out.
 5. **Cat A revenue methodology** — *resolved 2026-04-30*. `_cat_a_capital_inflow_timeseries` falls back to `cumulative_balance_timeseries` when both `inflow_by_counterparty` and `external_alm_sources` are empty → revenue = 0 (correct for par-stables with no off-chain yield source). Spark has empty `external_alm_sources`, so its Cat A revenue is $0.
-6. **Hardcoded period detection in `spark_fixture_loader.py`** — **NEW (from review):** the loader's `eth_eom`-block branch only handles Q1 2026 (Jan/Feb/Mar). Any other month silently skips Cat A `cumulative_balance_timeseries` synthesis → revenue overstate. Fix needed before re-running for Q2+. **See QUESTIONS_SPARK.md Q9.**
-7. **PSM3 daily RPC error isolation** — **NEW (from review):** `_value_at` propagates exceptions per-day; one failed RPC kills the whole chain's PSM3 timeseries → utilized over-stated. Wrap with per-day try/except + log. **See QUESTIONS_SPARK.md Q10.**
+6. **Hardcoded period detection in `spark_fixture_loader.py`** — **NEW (from review):** the loader's `eth_eom`-block branch only handles Q1 2026 (Jan/Feb/Mar). Any other month silently skips Cat A `cumulative_balance_timeseries` synthesis → revenue overstate. Fix needed before re-running for Q2+. *(Internal — tracked here, not in QUESTIONS.md, since it's our code, not a Spark-team question.)*
+7. **PSM3 daily RPC error isolation** — **NEW (from review):** `_value_at` propagates exceptions per-day; one failed RPC kills the whole chain's PSM3 timeseries → utilized over-stated. Wrap with per-day try/except + log. *(Internal — tracked here, not in QUESTIONS.md.)*
 
 #### Medium priority (affect numerical accuracy)
-5. **Reconciliation gap with Sky's reported Sky Share for Grove** (~$1.13M for Mar 2026). Methodology + Sky Direct set are correct; the residual is in BR_charge "Asset Value" definition. **Need:** Sky's exact spec for Asset Value in Step 4 calc.
-6. **Subsidised rate ramp** (debt-rate-methodology, file 2). Linearly interp from `tbill_3m` to BR over 0–24 months from prime start. Spark is currently ~17 months in (Nov 2024 → Apr 2026), so rate would be ~70% of the way to full BR. Material impact on Spark's Sky revenue. **Need:** t-bill data source + per-prime opt-in flag in YAML.
+5. **Reconciliation gap with Sky's reported Sky Share for Grove** (~$1.13M for Mar 2026 under the pre-subsidy model). Largely closed by 2026-05-02 work (subsidy + SDE refactor + pricePerShareFeed NAV); Feb 2026 residual is now ~$45K excluding the E1 Horizon rewards channel. **Need:** Sky to confirm whether Asset Value definition for BR_charge differs from `subscription − SDE_value` time-weighted (the formula we now match per Grove team's workbook).
+6. **Subsidised rate ramp** — *resolved 2026-05-02*. Implemented per Sky governance: program_start 2026-01-01, T = months elapsed, formula `ref_rate + (BR − ref_rate) × T/24`, cap at first $1B utilized. Grove uses 3M T-Bill, Spark uses EFFR. Daily rates carried in `config/subsidy_reference_rates.yaml`.
 7. **Sky Direct exposure list — automation** — manual diff against `sky-ecosystem/next-gen-atlas` is the current process. As the list grows beyond Treasury Bills + PSM3 + Spark Curve, this becomes load-bearing.
 8. **Chronicle adapter robustness** — silently falls back to const_one ($1) when oracle returns 0x. Mitigated by `nav_overrides` fixture but the adapter itself should be tightened (distinguish "pre-deployment" from "real $1").
+
+#### Code-review acks (2026-05-04 — two-reviewer pass)
+
+Two parallel full-codebase reviews on 2026-05-04. Material findings have been fixed; the items below are intentional trade-offs documented for future maintainers.
+
+**Fixed:**
+- **Layer violation in `_curve_lp_unit_price`** — Curve yield-bearing-coin branch now routes through `IConvertToAssetsSource` (test mocks honored) instead of importing `extract.rpc` directly.
+- **Stale `br_charge` sentinels in acceptance scripts** — `scripts/run_grove_2026_q1.py` and `run_spark_2026_q1_full.py` now check `vr.sd_share > 0` (the post-refactor SDE flag) instead of the always-zero legacy `vr.br_charge`.
+- **Loud-warning on RPC silent-zero** — `balance_of` and `scaled_balance_of` now `logging.warning` when retries exhaust before returning 0, so a transient RPC outage stops being silently indistinguishable from a non-existent contract.
+- **Deprecated `scripts/run_spark_2026_q1.py`** — guards at module-load with a `sys.exit(2)` and a clear "use run_spark_2026_q1_full.py" message; older script used a linearly-interpolated PSM3 timeseries that drifts ~$11K/mo.
+- **USDS Unichain address bug (2026-05-04 review)** — `USDS_BY_CHAIN[Chain.UNICHAIN]` in `src/settle/snapshot/compute.py` was set to `0x078d…7ad6`, which on-chain probe confirmed is **USDC**. Same address was correctly under `USDC_BY_CHAIN[Chain.UNICHAIN]`. Fixed to the canonical USDS bridge `0x7e10036acc4b56d4dfca3b77810356ce52313f9c` (matches `config/spark.yaml` S52). No live impact prior to fix because Spark's Unichain subproxy isn't a USDS holding-point under the current configuration; would have been a bug the moment a subproxy USDS balance accrued there.
+- **`/1e27` typo in snapshot debt-formula comment** — `src/settle/snapshot/types.py` and the header of `src/settle/snapshot/compute.py` said "Vat.ilks…rate / 1e27" while the code correctly does `/1e45` (rad scaling). Comments updated.
+- **Snapshot → compute layer violation (PRD §4)** — `compute_snapshot` was lazily importing `compute.monthly_pnl.Sources` to materialize a default. Replaced with a local `_DefaultSources` carrier (same field shape, duck-typed compatible). Snapshot is now a clean peer of compute (no inbound `compute` imports).
+- **Block-resolver silent drop in `compute_snapshot`** — when chain-block resolution failed, every venue on that chain was zeroed (note=`"no pin_block for chain"`) and the zeros were silently summed into `venues_total_usd`. Now emits a `_log.warning` listing all chains that lost their pin block, so operators see the failure rather than misinterpret the zero.
+- **`_dune_get` poll-loop opaque 429s** — `tests/integration/test_spark_dune_parity.py:_dune_get` raised raw `urllib.error.HTTPError` on rate-limit, masking the actual code/body. Now wrapped to surface `(code, body[:200])` like `_dune_post`.
+- **`KNOWN_NAV_DIVERGENCES` whitelist policy** — `tests/integration/test_ba_parity.py` now carries an explicit inclusion-policy docstring (criteria, audit sign-off, QUESTIONS.md cross-link requirement) so future additions can't slip in silently.
+- **Inline Dune client justification** — added an explicit comment on `tests/integration/test_spark_dune_parity.py` explaining why the inline urllib client exists rather than reusing `extract.dune` (production targets stored-query reads; this test needs the temp-create / execute / archive flow). Documents the duplication as a deliberate, scoped trade-off pending a `extract.dune.execute_inline_sql` helper.
+- **PRD §17.12.1 `alm_idle` row clarity** — table cell now says "field not yet on `Snapshot.types.VenueSnapshot`" rather than "applies to Grove but not implemented", so a reader knows the gap is a missing dataclass field, not a missing code path.
+- **PRD §17.12 `result_*` table count framing** — opening sentence now scopes the catalog as the "settlement-relevant subset (~36 named tables)" instead of claiming a 44-table inventory the table below didn't reconcile with.
+
+**Acknowledged trade-offs (no fix):**
+- **`Venue.sky_direct: bool`** — kept on the dataclass as a no-op for legacy YAML compatibility but ignored by compute (SDE classification driven entirely by `config/sky_direct_exposures.yaml`). Will be removed once all `{prime}.yaml` files have migrated to omit the field.
+- **`VenueRevenue.br_charge` and `sky_direct_shortfall`** — always emit `0` under the SDE-split model. Kept in `VenueRevenue` and the Load layer (`provenance.json`, `pnl.csv`) for round-trip compatibility with settlements written under the older floor model. New runs report the same data via `sd_share` and `sd_revenue`. The Load layer should add `sd_share` / `sd_revenue` columns alongside the legacy fields.
+- **`sd_share = 0` when `value_som = 0`** (capped SDE venue opening mid-month) — current implementation locks share at SoM and gives Sky $0 of that venue's first-partial-month revenue. Per Grove team's PnL workbook convention; documented as the deliberate choice. If a venue is opened mid-month with significant inflow before EoM, Sky's claim for that month is forfeited; the next month re-anchors at SoM with the proper share.
+- **`kind=pattern` SDE entries (PSM3 USDC non-Eth)** — present in `config/sky_direct_exposures.yaml` but `compute_sky_revenue` does not yet honor them; loud `_log.warning` emitted at config load. Resolved when the PSM3-as-SDE accounting layer lands. **No live impact for Spark today** because Spark's PSM3 USDC holdings are already netted out of `utilized` via `psm_usds`, so the prime is reimbursed BR; the only difference is the missing direct revenue claim for Sky.
+- **PSM chains not in `prime.alm`/`subproxy`** — `_resolve_pin_blocks` only resolves chains in `prime.chains` (= alm ∪ subproxy keys). If a future prime adds a PSM-only chain, the PSM contribution would silently skip and inflate `sky_revenue`. **No live impact** — every current prime has the PSM chain in `prime.alm` (Spark + Grove). Add a coverage assertion in `_aggregate_psm_usds` if this topology becomes possible.
+- **`tests/fixtures/grove_fixture_loader.py` hits live RPC** for position-balance / convert-to-assets / NAV oracles when `Sources` overrides are not provided. Acknowledged: acceptance scripts are designed to run with live RPC env vars set (`ETH_RPC` / `BASE_RPC` / etc.); pure unit tests inject mocks. Future: add `pytest.mark.integration` to acceptance-style tests so CI without env vars cleanly skips.
+- **Dune query-result cache invalidation by SQL content** — `@cached(source_id="dune.execute")` keys on (`sql_path`, `params`, `pin_block`). Editing a SQL file creates a new Dune query ID via `dune_ids.json` but the cached pickle for the old SQL keyed on the same path is still served. Mitigation today: `SETTLE_NO_CACHE=1` after SQL changes. Document loudly; future fix is to fold `sha256(sql_text)` into the cache key.
+- **`parents[3]` config path resolution** in `domain/sde.py`, `domain/subsidy.py`, `domain/config.py` — assumes the package is a clone of the repo, not a wheel install. Acceptable for this project; flag if MSC is ever packaged.
+
+#### Snapshot module (2026-05-04) — point-in-time balance sheet vs BA labs
+
+The standalone `data/recompute/` work folded back into the production `settle/` package as a new `src/settle/snapshot/` module. Distinct from monthly settlement (which computes period revenue), a snapshot is the prime's balance sheet at one block — same shape as BA labs' `stars-api.blockanalitica.com`.
+
+```bash
+python -m settle snapshot --prime grove
+python -m settle snapshot --prime spark [--block N] [--json]
+```
+
+**What's reused** (no new pricing math): the snapshot calls `normalize.positions.get_position_value()` for every venue — same code path as the monthly settlement. V3 NFT pricing, Curve LP, RWA NAV oracles, ERC-4626 vaults all share the production primitives. The new code in `src/settle/snapshot/` is just (a) per-chain "now" block resolution, (b) idle/treasury aggregation at the subproxy, (c) the Vat.ilks() debt read, (d) BA-shaped output assembly.
+
+**Validated against BA labs (live)**:
+- **Grove debt** = $3,181,207,993.75 (snapshot, via `Vat.ilks(BLOOM-A)`) === BA `debt` field. Bit-exact match.
+- **Spark debt** = $4,299,055,290.13 (snapshot) === BA `debt`. Bit-exact.
+- **Treasury** (subproxy USDS via `balanceOf`) = $22,818,516.00 (Grove) === BA `treasury_balance`. Bit-exact.
+- **Per-venue pricing**: at every address BA also indexes (16 venues across both primes), our value drift vs BA is **<0.26%** — well under the 0.5% test tolerance. Categories validated: A (par-stable), B (4626), C (aToken), E (RWA — Chronicle + pricePerShareFeed), F (Curve LP + V3 NFT). Includes E12 Uniswap V3 NFT pricing ($25M) which the existing `_uniswap_v3_value` already supports.
+
+**Headline aggregates that intentionally differ from BA** (BA's decomposition uses opaque protocol-level rules we can't fully reverse-engineer):
+- **`assets`**: BA's `/stars/{prime}/ assets` is bigger than our position-sum (Grove +$325M, Spark +$1B). BA aggregates at the Sky-protocol level (likely `urn.ink × spot` or a Sky-internal "total deployed" metric), not by summing on-chain positions. Our `assets` is the verifiable on-chain sum.
+- **`idle_assets`** + **`treasury_balance`**: BA's classification (Spark $720M idle + $37M treasury) is opaque — addresses they include aren't documented. Ours reports subproxy-only (avoids double-counting venues that already track ALM-side holdings).
+- **`liabilities`**: BA's `liabilities` for Spark = `debt + sUSDS_POL` ($6.77B = $4.30B + $2.47B). Ours = debt only. Open question: is BA's `liabilities` a Sky-savings-system accounting choice or specific to Spark's sUSDS exposure?
+- **`nav`**: derived from above, drifts accordingly. Ours reports the on-chain truth (Grove ~−$318M deficit on positions vs debt, Spark ~$1.46B surplus); BA shows both at near-zero, consistent with their inflated `assets`/`liabilities`.
+
+**Parity test**: `tests/integration/test_ba_parity.py` runs live (gated by `@pytest.mark.live`):
+- Hard-asserts: debt within $100, Grove treasury within $100, per-venue values within 0.5% drift on every BA-indexed venue.
+- Soft-reports (printed): full top-line side-by-side, per-venue table with absolute + % diff. RPC-erroring venues (drpc free-tier rate limits on L2s) skipped, not failed.
+
+Run with: `pytest tests/integration/test_ba_parity.py -m live -v -s`.
+
+**Open questions** — full text moved to `QUESTIONS.md` (BA labs section, B1-B6) on 2026-05-04. Summary: (1) what addresses make up BA's Spark `idle_assets` $720M + `treasury` $37M, (2) is BA's `liabilities = debt + sUSDS_POL` intentional, (3) how does BA derive `assets` (which exceeds our position-sum by ~$325M Grove / ~$1B Spark), (4) which NAV oracle is canonical for STAC (E7 drift ~1.5% — Chronicle vs const_one).
+
+**Operational known-divergences** (reported by parity test, not failed):
+- **E7 STAC ~1.5% drift** — Chronicle vs const_one (whitelisted in `KNOWN_NAV_DIVERGENCES = {"E7"}`).
+- **S37 / S47 sUSDS proxies on L2** — drpc free-tier rate-limits the `balanceOf` reads; snapshot returns $0 with a WARNING log; test treats as `SKIP`. Resolves with paid drpc/Alchemy or an Alchemy fallback in the `extract.rpc` retry chain.
 
 #### Low priority (operational)
 9. **Monad RPC archival window** — both Alchemy and drpc Monad endpoints have ~3.8M-block archival caps. Grove's E25 candidate venue on Monad (~$6.5M EoM) is unblocked from this issue. **Need:** dedicated archival Monad node OR Dune-cum-balance × const-pps approximation in the value path.

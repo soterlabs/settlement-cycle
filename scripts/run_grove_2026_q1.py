@@ -112,7 +112,7 @@ def main() -> int:
         for vr in sorted_venues:
             if abs(float(vr.revenue)) < 1000 and abs(float(vr.actual_revenue)) < 1000:
                 continue
-            sd = " [SD]" if vr.br_charge > 0 else ""
+            sd = " [SD]" if vr.sd_share > 0 else ""
             print(f"    {vr.venue_id:<5} {vr.label[:40]:<40}{sd:<5} "
                   f"value_som={float(vr.value_som):>14,.0f}  value_eom={float(vr.value_eom):>14,.0f}  "
                   f"inflow={float(vr.period_inflow):>14,.0f}  actual_rev={float(vr.actual_revenue):>13,.0f}  "
@@ -123,7 +123,7 @@ def main() -> int:
     print("=" * 110)
     for (y, m), result in results.items():
         label = f"{y}-{m:02d}"
-        sd_venues = [vr for vr in result.venue_breakdown if vr.br_charge > 0]
+        sd_venues = [vr for vr in result.venue_breakdown if vr.sd_share > 0]
         if not sd_venues:
             continue
         print(f"\n  {label}:")
@@ -131,7 +131,7 @@ def main() -> int:
         for vr in sd_venues:
             print(f"    {vr.venue_id + ' ' + vr.label[:18]:<22} "
                   f"{float(vr.value_som):>14,.0f} {float(vr.value_eom):>14,.0f} {float(vr.period_inflow):>14,.0f} "
-                  f"{float(vr.actual_revenue):>12,.0f} {float(vr.br_charge):>12,.0f} "
+                  f"{float(vr.actual_revenue):>12,.0f} {float(vr.sd_revenue):>12,.0f} "
                   f"{float(vr.sky_direct_shortfall):>11,.0f} {float(vr.revenue):>12,.0f}")
 
     print()

@@ -149,7 +149,7 @@ def main() -> int:
         for vr in sorted_venues:
             if abs(float(vr.revenue)) < 1000 and abs(float(vr.actual_revenue)) < 1000:
                 continue
-            sd = " [SD]" if vr.br_charge > 0 else ""
+            sd = " [SD]" if vr.sd_share > 0 else ""
             print(f"    {vr.venue_id:<5} {vr.label[:42]:<42}{sd:<5} "
                   f"value_som={float(vr.value_som):>14,.0f}  value_eom={float(vr.value_eom):>14,.0f}  "
                   f"inflow={float(vr.period_inflow):>14,.0f}  actual_rev={float(vr.actual_revenue):>13,.0f}  "

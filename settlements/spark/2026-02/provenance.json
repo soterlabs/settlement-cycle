@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-04-30T12:05:26+00:00",
+  "generated_at_utc": "2026-05-04T11:22:28+00:00",
   "month": "2026-02",
   "period": {
     "end": "2026-02-28",
@@ -26,11 +26,11 @@
   "results": {
     "agent_rate": "0",
     "distribution_rewards": "0",
-    "monthly_pnl": "-4774370.344940156736495721105",
-    "prime_agent_revenue": "5078985.280826377194404110233",
-    "prime_agent_total_revenue": "5078985.280826377194404110233",
+    "monthly_pnl": "-4871753.261828063174522825197",
+    "prime_agent_revenue": "5015853.428623761159483332855",
+    "prime_agent_total_revenue": "5015853.428623761159483332855",
     "sky_direct_shortfall": "0",
-    "sky_revenue": "9853355.625766533930899831338"
+    "sky_revenue": "9887606.690451824334006158052"
   },
   "settle_version": "0.1.0",
   "sources": {
@@ -244,10 +244,10 @@
     },
     {
       "actual_revenue": "0.00",
-      "br_charge": "-28880.78751732563181445066400",
+      "br_charge": "0",
       "label": "BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I)",
       "period_inflow": "0.00",
-      "revenue": "28880.78751732563181445066400",
+      "revenue": "0.00",
       "sky_direct_shortfall": "0",
       "value_eom": "0",
       "value_som": "0",
@@ -258,7 +258,7 @@
       "br_charge": "0",
       "label": "Janus Henderson Anemoy Treasury Fund (JTRSY)",
       "period_inflow": "0.000000",
-      "revenue": "0",
+      "revenue": "0.000000",
       "sky_direct_shortfall": "0",
       "value_eom": "0",
       "value_som": "0",
@@ -269,7 +269,7 @@
       "br_charge": "0",
       "label": "Superstate Short Duration US Government Securities Fund (USTB)",
       "period_inflow": "0.000000",
-      "revenue": "0",
+      "revenue": "0.000000",
       "sky_direct_shortfall": "0",
       "value_eom": "0",
       "value_som": "0",
@@ -302,7 +302,7 @@
       "br_charge": "0",
       "label": "Spark.fi USDT Reserve Curve (sUSDS/USDT)",
       "period_inflow": "-33822.16786895915602416749449",
-      "revenue": "34251.06468529040310632671449",
+      "revenue": "0E-23",
       "sky_direct_shortfall": "0",
       "value_eom": "50000340.64647673756280860172",
       "value_som": "49999911.74966040631572644250",

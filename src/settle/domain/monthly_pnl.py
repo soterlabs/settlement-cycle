@@ -17,15 +17,20 @@ from .primes import Chain
 class VenueRevenue:
     """Per-venue contribution to prime_agent_revenue.
 
-    For non-Sky-Direct venues:
+    For non-SDE venues:
         actual_revenue = (value_eom − value_som) − period_inflow
-        revenue = actual_revenue
-        br_charge = 0,  sky_direct_shortfall = 0
+        revenue = actual_revenue (everything to prime)
+        sd_share = 0, sd_revenue = 0
 
-    For Sky Direct venues (Step 4 of prime-settlement-methodology):
+    For SDE venues (Step 4 of prime-settlement-methodology, kind=fixed|capped):
         actual_revenue = (value_eom − value_som) − period_inflow
-        revenue = max(0, actual_revenue − br_charge)
-        sky_direct_shortfall = max(0, br_charge − actual_revenue)
+        sd_share = min(cap_usd, value_som) / value_som   (= 1 for kind=fixed)
+        sd_revenue = actual_revenue × sd_share           (flows to Sky)
+        revenue = actual_revenue × (1 − sd_share)        (flows to prime)
+
+    The SDE position's asset value is also excluded from the prime's
+    utilized-USDS BR base — handled by the orchestrator passing the
+    daily SDE-asset-value timeseries into ``compute_sky_revenue``.
     """
 
     venue_id: str
@@ -33,10 +38,12 @@ class VenueRevenue:
     value_som: Decimal
     value_eom: Decimal
     period_inflow: Decimal
-    revenue: Decimal
-    # New fields for Sky Direct accounting. Default to zero / actual_revenue
-    # for non-Sky-Direct venues so the dataclass stays drop-in compatible.
-    actual_revenue: Decimal = Decimal("0")
+    revenue: Decimal                            # to prime (after SDE split)
+    actual_revenue: Decimal = Decimal("0")      # whole-venue (pre-split)
+    sd_share: Decimal = Decimal("0")            # 0 = non-SDE; 1 = full SDE; in (0,1) = capped
+    sd_revenue: Decimal = Decimal("0")          # to Sky from this venue (= actual × sd_share)
+    # Legacy fields kept for provenance round-trip on existing settlements
+    # written under the old shortfall model. New runs always emit 0 for these.
     br_charge: Decimal = Decimal("0")
     sky_direct_shortfall: Decimal = Decimal("0")
 
@@ -69,11 +76,12 @@ class MonthlyPnL:
     # this rolls out.
     distribution_rewards: Decimal = Decimal("0")
 
-    # Total base-rate shortfall absorbed by Sky on Sky Direct venues
-    # (= Σ max(0, BR_charge_v − ActualRev_v) over sky_direct=True venues).
-    # Sky books BR_charge as revenue but gives up the shortfall — so this
-    # amount is subtracted from sky_revenue to get Sky's actual cash claim.
+    # Legacy: kept for provenance round-trip. Always 0 under the SDE-config
+    # model (Sky takes actual SDE revenue; no floor → no shortfall).
     sky_direct_shortfall: Decimal = Decimal("0")
+    # Sum of SDE revenue across the breakdown (=Σ vr.sd_revenue). Already
+    # included in sky_revenue; reported separately for transparency.
+    sde_revenue: Decimal = Decimal("0")
 
     @property
     def prime_agent_total_revenue(self) -> Decimal:

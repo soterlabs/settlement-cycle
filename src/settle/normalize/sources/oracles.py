@@ -1,20 +1,21 @@
-"""``INavOracleSource`` implementations — Chronicle (on-chain) + ConstOne (config).
-
-Phase 2.A scope: Chronicle + ConstOne. Redstone / Chainlink / Pyth implementations
-follow in Phase 2.B; until then they're absent from the registry and trigger
-``UnknownSourceError`` if a YAML lists them.
-"""
+"""``INavOracleSource`` implementations — Chronicle, PricePerShare, ConstOne."""
 
 from __future__ import annotations
 
 from decimal import Decimal
 
 from ...domain.primes import Address, Chain
-from ...extract.oracles import chronicle
+from ...extract.oracles import chronicle, price_per_share
 
 
 class ChronicleNavSource:
-    """``INavOracleSource`` backed by ``extract.oracles.chronicle.read``."""
+    """``INavOracleSource`` backed by ``extract.oracles.chronicle.read``.
+
+    NB (2026-05-02): for Centrifuge tranche tokens (JAAA, JTRSY, ACRDX),
+    the canonical NAV feed has moved to ``price_per_share_feed`` per Grove
+    team's PnL workbook. Chronicle is kept for legacy venues and as a
+    fallback.
+    """
 
     def nav_at(
         self,
@@ -25,6 +26,24 @@ class ChronicleNavSource:
         if oracle_address is None:
             raise ValueError("ChronicleNavSource requires an oracle address")
         return chronicle.read(Chain(chain), Address(oracle_address), block)
+
+
+class PricePerShareNavSource:
+    """``INavOracleSource`` backed by ``convertToAssets(1e18)`` on a feed
+    contract. Canonical NAV source for Centrifuge tranche tokens (per Grove
+    team's Feb 2026 PnL workbook). The feed's underlying is USDC at $1, so
+    the returned value is dollar-denominated NAV directly.
+    """
+
+    def nav_at(
+        self,
+        chain: str,
+        oracle_address: bytes | None,
+        block: int,
+    ) -> Decimal:
+        if oracle_address is None:
+            raise ValueError("PricePerShareNavSource requires an oracle address")
+        return price_per_share.read(Chain(chain), Address(oracle_address), block)
 
 
 class ConstOneNavSource:

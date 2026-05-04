@@ -98,6 +98,74 @@ def _cmd_debug_position_value(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_snapshot(args: argparse.Namespace) -> int:
+    """Live point-in-time balance sheet for a prime — parity target is BA labs
+    `stars-api.blockanalitica.com/stars/{prime}/`.
+    """
+    import json as _json
+    from .snapshot import compute_snapshot
+
+    prime = load_prime_by_id(args.prime)
+    pin_blocks = {Chain.ETHEREUM: args.block} if args.block else None
+    snap = compute_snapshot(prime, pin_blocks=pin_blocks)
+
+    if args.json:
+        out = {
+            "prime_id": snap.prime_id,
+            "generated_at_utc": snap.generated_at_utc.isoformat(),
+            "pin_blocks": {c.value: b for c, b in snap.pin_blocks.items()},
+            "venues_total_usd": str(snap.venues_total_usd),
+            "treasury_balance_usd": str(snap.treasury_balance_usd),
+            "idle_assets_usd": str(snap.idle_assets_usd),
+            "in_transit_assets_usd": str(snap.in_transit_assets_usd),
+            "assets_usd": str(snap.assets_usd),
+            "debt_usd": str(snap.debt_usd) if snap.debt_usd is not None else None,
+            "liabilities_usd": str(snap.liabilities_usd),
+            "nav_usd": str(snap.nav_usd),
+            "venues": [
+                {"venue_id": v.venue_id, "label": v.label, "chain": v.chain.value,
+                 "value_usd": str(v.value_usd), "shares": str(v.shares),
+                 "block": v.block, "note": v.note}
+                for v in snap.venues
+            ],
+            "idle": [
+                {"label": h.label, "category": h.category, "shares": str(h.shares),
+                 "value_usd": str(h.value_usd), "block": h.block}
+                for h in snap.idle
+            ],
+        }
+        print(_json.dumps(out, indent=2))
+        return 0
+
+    print("=" * 78)
+    print(f"SNAPSHOT — {snap.prime_id} — {snap.generated_at_utc.isoformat(timespec='seconds')}")
+    print("=" * 78)
+    print(f"  pin_blocks:           {dict((c.value, b) for c, b in snap.pin_blocks.items())}")
+    print()
+    print(f"  Venues ({sum(1 for v in snap.venues if v.value_usd > 0)} non-zero / {len(snap.venues)} total):")
+    for v in sorted(snap.venues, key=lambda x: -x.value_usd):
+        if v.value_usd == 0 and not v.note:
+            continue
+        flag = "" if not v.note else f"  [{v.note[:40]}]"
+        print(f"    {v.venue_id:5s} {v.chain.value:11s} {v.label[:40]:40s} ${v.value_usd:>16,.2f}{flag}")
+    print()
+    print(f"  Idle / treasury holdings:")
+    for h in snap.idle:
+        print(f"    {h.label:25s} ({h.category:9s})  ${h.value_usd:>16,.2f}")
+    print()
+    print(f"  ─── Aggregates ─────────────────────────────────────────────")
+    print(f"    venues_total:       ${snap.venues_total_usd:>20,.2f}")
+    print(f"    treasury_balance:   ${snap.treasury_balance_usd:>20,.2f}")
+    print(f"    idle_assets:        ${snap.idle_assets_usd:>20,.2f}")
+    print(f"    in_transit_assets:  ${snap.in_transit_assets_usd:>20,.2f}")
+    print(f"    ─────────────────────────────────────")
+    print(f"    assets:             ${snap.assets_usd:>20,.2f}")
+    print(f"    debt (Vat.ilks):    ${(snap.debt_usd or 0):>20,.2f}")
+    print(f"    liabilities:        ${snap.liabilities_usd:>20,.2f}")
+    print(f"    nav:                ${snap.nav_usd:>20,.2f}")
+    return 0
+
+
 def _cmd_run(args: argparse.Namespace) -> int:
     """End-to-end settlement run: Extract → Normalize → Compute → Load."""
     from pathlib import Path
@@ -181,6 +249,15 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Override output directory (default: <repo>/settlements/<prime>/<month>/)",
     )
     p_run.set_defaults(func=_cmd_run)
+
+    p_snap = sub.add_parser(
+        "snapshot",
+        help="Live point-in-time balance sheet (parity target: BA labs stars-api)",
+    )
+    p_snap.add_argument("--prime", required=True, help="Prime id (e.g. 'grove' / 'spark')")
+    p_snap.add_argument("--block", type=int, help="Pin Eth block (default: latest per chain)")
+    p_snap.add_argument("--json", action="store_true", help="Emit JSON instead of human-readable table")
+    p_snap.set_defaults(func=_cmd_snapshot)
 
     return p
 

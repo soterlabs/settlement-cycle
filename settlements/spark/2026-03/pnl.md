@@ -1,6 +1,6 @@
 # SPARK — Monthly settlement 2026-03
 
-- **Generated:** 2026-04-30T12:05:32+00:00
+- **Generated:** 2026-05-04T11:22:33+00:00
 - **Pipeline:** `settle` v0.1.0
 - **Period:** 2026-03-01 → 2026-03-31 (31 days)
 
@@ -8,11 +8,11 @@
 
 | Component | Amount (USD) |
 |---|---:|
-| prime_agent_revenue           | $5,710,660.73 |
+| prime_agent_revenue           | $5,436,378.80 |
 | agent_rate                    | $0.00 |
 | distribution_rewards          | $0.00 |
-| **prime_agent_total_revenue** | **$5,710,660.73** |
-| sky_revenue (net)             | $9,799,388.74 |
+| **prime_agent_total_revenue** | **$5,436,378.80** |
+| sky_revenue (net)             | $9,882,864.25 |
 
 `prime_agent_total_revenue = prime_agent_revenue + agent_rate + distribution_rewards`.
 Settlement reports the prime's total revenue (positive cash to the prime) and `sky_revenue` (cost owed to Sky) separately — they're not netted at this layer.
@@ -33,7 +33,7 @@ Settlement reports the prime's total revenue (positive cash to the prime) and `s
 | Venue | Label | value_som | value_eom | period_inflow | revenue |
 |---|---|---:|---:|---:|---:|
 | S1 | Spark USDS (SparkLend spToken) | $275,418,608.32 | $150,752,807.53 | -$125,270,347.52 | $604,546.72 |
-| S2 | Spark USDC (SparkLend spToken) | $47,958,113.07 | $37,220.76 | -$48,081,075.90 | $160,183.59 |
+| S2 | Spark USDC (SparkLend spToken) | $47,958,113.07 | $37,220.76 | -$47,920,892.31 | $0.00 |
 | S3 | Spark USDT (SparkLend spToken) | $334,974,961.95 | $282,411,706.54 | -$53,138,486.11 | $575,230.70 |
 | S4 | Spark DAI (SparkLend spToken) | $246,097,994.85 | $252,839,704.15 | $6,171,379.73 | $570,329.57 |
 | S5 | Spark PYUSD (SparkLend spToken) | $100,000,062.96 | $100,000,230.67 | -$71,291.74 | $71,459.45 |
@@ -50,12 +50,12 @@ Settlement reports the prime's total revenue (positive cash to the prime) and `s
 | S16 | Ethena Staked USDe (sUSDe) | $98.88 | $99.17 | $0.00 | $0.29 |
 | S17 | Fluid Savings USDS (fsUSDS) | $0.00 | $0.00 | $0.00 | $0.00 |
 | S18 | Arkis Spark Prime USDC 1 (ERC-4626) | $10,113,369.18 | $10,156,910.09 | $0.00 | $43,540.91 |
-| S19 | BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I) | $0.00 | $0.00 | $0.00 | $30,622.82 |
+| S19 | BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I) | $0.00 | $0.00 | $0.00 | $0.00 |
 | S20 | Janus Henderson Anemoy Treasury Fund (JTRSY) | $0.00 | $0.00 | $0.00 | $0.00 |
 | S21 | Superstate Short Duration US Government Securities Fund (USTB) | $0.00 | $0.00 | $0.00 | $0.00 |
 | S22 | Superstate Crypto Carry Fund (USCC) | $0.00 | $0.00 | $0.00 | $0.00 |
 | S23 | Anchorage off-chain custodial position | $0.00 | $0.00 | $0.00 | $0.00 |
-| S24 | Spark.fi USDT Reserve Curve (sUSDS/USDT) | $50,000,340.65 | $50,000,879.86 | -$82,936.31 | $83,475.52 |
+| S24 | Spark.fi USDT Reserve Curve (sUSDS/USDT) | $50,000,340.65 | $50,000,879.86 | -$82,936.31 | $0.00 |
 | S25 | Spark.fi PYUSD Reserve Curve (PYUSD/USDS) | $100,000,617.74 | $100,000,454.45 | -$9,546.01 | $9,382.72 |
 | S26 | USDC raw (ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 |
 | S27 | USDT raw (ALM idle — $442M as of 2026-04) | $1,868.74 | $0.00 | -$1,868.74 | $0.00 |
@@ -83,14 +83,6 @@ Settlement reports the prime's total revenue (positive cash to the prime) and `s
 | S53 | USDC raw (Unichain — ALM idle) | $4,997,665.83 | $4,987,120.65 | -$10,545.18 | $0.00 |
 | S54 | Aave Avalanche USDC (aAvaUSDC) | $10,000,143.51 | $10,000,122.64 | -$19,331.28 | $19,310.41 |
 | S55 | USDC raw (Avalanche-C — ALM idle) | $0.00 | $10.26 | $10.26 | $0.00 |
-
-## Sky Direct (Step 4) breakdown
-
-Per the prime-settlement-methodology, Sky Direct venues book BR_charge to Sky and floor the prime's revenue at zero. When the venue underperforms BR, Sky absorbs the shortfall.
-
-| Venue | actual_revenue | BR_charge | sky_direct_shortfall | prime_keeps |
-|---|---:|---:|---:|---:|
-| S19 BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I) | $0.00 | -$30,622.82 | $0.00 | $30,622.82 |
 
 ## Formula reference
 

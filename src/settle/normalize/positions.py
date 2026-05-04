@@ -296,9 +296,14 @@ def _atoken_index_weighted_inflow(
     scaled_eom = scaled_balance_at(chain_value, token_addr, holder.value, eom_block)
 
     # Derive yield in raw token units (later divided by token.decimals).
-    # If scaled_eom == 0 (position fully exited), there's no held-balance
-    # yield in the period — all of the EoM value is "external" inflow.
-    if scaled_eom == 0:
+    # Aave V3 never burns the last raw unit on full exit, so a fully
+    # withdrawn position presents as scaled_eom ≈ 0..tiny dust. Without a
+    # guard, ``bal_eom × scaled_som / scaled_eom`` would divide by ~1 and
+    # report a phantom multi-hundred-K loss on a clean withdrawal (Feb 2026
+    # E2 aHorRwaUSDC saw −$232K). Treat scaled_eom < 0.1% of scaled_som as
+    # a clean exit (yield=0). The lost true yield is bounded by ~one Aave
+    # month, ≈$20K/mo for an $11M Horizon-sized position.
+    if scaled_eom == 0 or (scaled_som > 0 and scaled_eom * 1000 < scaled_som):
         yield_raw = 0
     else:
         # Round-half-even on the Decimal remainder. ``int()`` truncates toward

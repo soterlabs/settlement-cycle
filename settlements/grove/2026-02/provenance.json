@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-04-29T12:18:36+00:00",
+  "generated_at_utc": "2026-05-04T11:22:06+00:00",
   "month": "2026-02",
   "period": {
     "end": "2026-02-28",
@@ -22,11 +22,11 @@
   "results": {
     "agent_rate": "5799.04905583202067190828",
     "distribution_rewards": "0",
-    "monthly_pnl": "-4644505.710613689966805903767",
-    "prime_agent_revenue": "1566746.856674214469831876247",
-    "prime_agent_total_revenue": "1572545.905730046490503784527",
-    "sky_direct_shortfall": "418737.9451127790622968389684",
-    "sky_revenue": "6217051.616343736457309688294"
+    "monthly_pnl": "-4774484.290698658504051303235",
+    "prime_agent_revenue": "859729.2539978886980663941804",
+    "prime_agent_total_revenue": "865528.3030537207187383024604",
+    "sky_direct_shortfall": "0",
+    "sky_revenue": "5640012.593752379222789605695"
   },
   "settle_version": "0.1.0",
   "sources": {
@@ -53,11 +53,11 @@
       "venue_id": "E1"
     },
     {
-      "actual_revenue": "-232046.54820100",
+      "actual_revenue": "0E-8",
       "br_charge": "0",
       "label": "Aave Horizon RWA USDC (aToken)",
-      "period_inflow": "-11368456.197562",
-      "revenue": "-232046.54820100",
+      "period_inflow": "-11600502.745763",
+      "revenue": "0E-8",
       "sky_direct_shortfall": "0",
       "value_eom": "0.00000100",
       "value_som": "11600502.74576400",
@@ -82,7 +82,7 @@
       "revenue": "2335.900436310044090630068",
       "sky_direct_shortfall": "0",
       "value_eom": "1002368.854730530044090630068",
-      "value_som": "0E-8",
+      "value_som": "0",
       "venue_id": "E4"
     },
     {
@@ -104,7 +104,7 @@
       "revenue": "5696.25810577917093849527",
       "sky_direct_shortfall": "0",
       "value_eom": "15806005.09627440917093849527",
-      "value_som": "0E-8",
+      "value_som": "0",
       "venue_id": "E6"
     },
     {
@@ -119,34 +119,34 @@
       "venue_id": "E7"
     },
     {
-      "actual_revenue": "853011.083844586472",
+      "actual_revenue": "1388517.1600181685425436307",
       "br_charge": "0",
       "label": "Janus Henderson Anemoy AAA CLO (JAAA)",
       "period_inflow": "0.00",
-      "revenue": "853011.083844586472",
+      "revenue": "394946.9329672607002345179334",
       "sky_direct_shortfall": "0",
-      "value_eom": "455365159.121762836732",
-      "value_som": "454512148.03791825026",
+      "value_eom": "455576922.4882939972118750427",
+      "value_som": "454188405.3282758286693314120",
       "venue_id": "E8"
     },
     {
-      "actual_revenue": "1584434.159509845648",
-      "br_charge": "1812204.673753392321491231714",
+      "actual_revenue": "1437958.9127491793959524028",
+      "br_charge": "0",
       "label": "Janus Henderson Anemoy Treasury Fund (JTRSY)",
       "period_inflow": "0.00",
-      "revenue": "0",
-      "sky_direct_shortfall": "227770.514243546673491231714",
-      "value_eom": "561873240.344357620512",
-      "value_som": "560288806.184847774864",
+      "revenue": "0E-19",
+      "sky_direct_shortfall": "0",
+      "value_eom": "561291355.3833480516773520059",
+      "value_som": "559853396.4705988722813996031",
       "venue_id": "E9"
     },
     {
       "actual_revenue": "784129.0500",
-      "br_charge": "975096.4808692323888056072544",
+      "br_charge": "0",
       "label": "BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I)",
       "period_inflow": "249925000.000",
-      "revenue": "0",
-      "sky_direct_shortfall": "190967.4308692323888056072544",
+      "revenue": "0.0000",
+      "sky_direct_shortfall": "0",
       "value_eom": "430205099.0300",
       "value_som": "179495969.9800",
       "venue_id": "E10"
@@ -159,7 +159,7 @@
       "revenue": "0E-20",
       "sky_direct_shortfall": "0",
       "value_eom": "25000444.77729783759305342734",
-      "value_som": "0E-8",
+      "value_som": "0",
       "venue_id": "E11"
     },
     {
@@ -174,25 +174,25 @@
       "venue_id": "E12"
     },
     {
-      "actual_revenue": "0.00",
+      "actual_revenue": "0",
       "br_charge": "0",
       "label": "RLUSD raw (ALM idle)",
       "period_inflow": "0",
-      "revenue": "0.00",
+      "revenue": "0",
       "sky_direct_shortfall": "0",
-      "value_eom": "0.00",
-      "value_som": "0.00",
+      "value_eom": "0",
+      "value_som": "0",
       "venue_id": "E13"
     },
     {
-      "actual_revenue": "0.00",
+      "actual_revenue": "0",
       "br_charge": "0",
       "label": "AUSD raw (ALM idle)",
       "period_inflow": "0",
-      "revenue": "0.00",
+      "revenue": "0",
       "sky_direct_shortfall": "0",
-      "value_eom": "0.00",
-      "value_som": "0.00",
+      "value_eom": "0",
+      "value_som": "0",
       "venue_id": "E14"
     },
     {
@@ -202,41 +202,41 @@
       "period_inflow": "-8.0E-10",
       "revenue": "8.0E-10",
       "sky_direct_shortfall": "0",
-      "value_eom": "0.00",
-      "value_som": "0.00",
+      "value_eom": "0",
+      "value_som": "0",
       "venue_id": "E15"
     },
     {
-      "actual_revenue": "0.00",
+      "actual_revenue": "0",
       "br_charge": "0",
       "label": "DAI raw (ALM idle)",
       "period_inflow": "0",
-      "revenue": "0.00",
+      "revenue": "0",
       "sky_direct_shortfall": "0",
-      "value_eom": "0.00",
-      "value_som": "0.00",
+      "value_eom": "0",
+      "value_som": "0",
       "venue_id": "E16"
     },
     {
-      "actual_revenue": "0.00",
+      "actual_revenue": "0",
       "br_charge": "0",
       "label": "USDS raw / POL (ALM idle \u2014 already netted out of utilized)",
       "period_inflow": "0",
-      "revenue": "0.00",
+      "revenue": "0",
       "sky_direct_shortfall": "0",
-      "value_eom": "0.00",
-      "value_som": "0.00",
+      "value_eom": "0",
+      "value_som": "0",
       "venue_id": "E17"
     },
     {
-      "actual_revenue": "0E-20",
+      "actual_revenue": "0",
       "br_charge": "0",
       "label": "sUSDS raw / POL (ALM idle \u2014 Cat B 4626)",
       "period_inflow": "0",
-      "revenue": "0E-20",
+      "revenue": "0",
       "sky_direct_shortfall": "0",
-      "value_eom": "0E-20",
-      "value_som": "0E-20",
+      "value_eom": "0",
+      "value_som": "0",
       "venue_id": "E18"
     },
     {
@@ -251,37 +251,15 @@
       "venue_id": "E19"
     },
     {
-      "actual_revenue": "0E-8",
+      "actual_revenue": "0",
       "br_charge": "0",
       "label": "Steakhouse Prime Instant (Base, Morpho V2)",
       "period_inflow": "0",
-      "revenue": "0E-8",
+      "revenue": "0",
       "sky_direct_shortfall": "0",
-      "value_eom": "0E-8",
-      "value_som": "0E-8",
+      "value_eom": "0",
+      "value_som": "0",
       "venue_id": "E23"
-    },
-    {
-      "actual_revenue": "481000.000000",
-      "br_charge": "0",
-      "label": "Janus Henderson Anemoy AAA CLO (JAAA-avalanche)",
-      "period_inflow": "0",
-      "revenue": "481000.000000",
-      "sky_direct_shortfall": "0",
-      "value_eom": "256773500.000000",
-      "value_som": "256292500.00000",
-      "venue_id": "E20"
-    },
-    {
-      "actual_revenue": "0.00",
-      "br_charge": "0",
-      "label": "Galaxy Arch CLO Token (GACLO-1)",
-      "period_inflow": "0",
-      "revenue": "0.00",
-      "sky_direct_shortfall": "0",
-      "value_eom": "49900000.00",
-      "value_som": "49900000.00",
-      "venue_id": "E21"
     },
     {
       "actual_revenue": "4001.13839395612500808699",
@@ -293,6 +271,39 @@
       "value_eom": "51026217.85274291551875781469",
       "value_som": "51022216.71434895939374972770",
       "venue_id": "E22"
+    },
+    {
+      "actual_revenue": "0",
+      "br_charge": "0",
+      "label": "Steakhouse High Yield PYUSD (Morpho 4626)",
+      "period_inflow": "0",
+      "revenue": "0",
+      "sky_direct_shortfall": "0",
+      "value_eom": "0",
+      "value_som": "0",
+      "venue_id": "E24"
+    },
+    {
+      "actual_revenue": "0",
+      "br_charge": "0",
+      "label": "PYUSD raw (ALM idle)",
+      "period_inflow": "0",
+      "revenue": "0",
+      "sky_direct_shortfall": "0",
+      "value_eom": "0",
+      "value_som": "0",
+      "venue_id": "E26"
+    },
+    {
+      "actual_revenue": "0",
+      "br_charge": "0",
+      "label": "USDC raw on Base (ALM idle)",
+      "period_inflow": "0",
+      "revenue": "0",
+      "sky_direct_shortfall": "0",
+      "value_eom": "0",
+      "value_som": "0",
+      "venue_id": "E27"
     }
   ]
 }

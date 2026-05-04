@@ -1,0 +1,107 @@
+# Sky Direct Exposures (SDE) — Active and historical entries from the Atlas.
+#
+# Replaces the per-venue `sky_direct: bool` flag in {prime}.yaml with a single
+# time-bounded table. The compute pipeline iterates this list to determine,
+# per (prime, venue, date), whether SDE rules apply.
+#
+# Atlas references:
+#   A.2.2.9.1.1.1.1.* — Sky Direct Exposures (Active)
+#   A.2.2.9.1.1.1.1.3 — Historical Sky Direct Exposures
+#
+# SDE semantics (post 2026-05-02 refactor, matches Grove team's PnL workbook):
+#   - Sky takes ``actual_revenue × sd_share`` directly (no floor, no shortfall).
+#   - Prime keeps ``actual_revenue × (1 − sd_share)``.
+#   - sd_share is locked at SoM:
+#       fixed  → sd_share = 1
+#       capped → sd_share = min(cap_usd, value_som) / value_som
+#   - The Sky-direct slice's asset value is excluded from the prime's
+#     subsidised CoF base (= Grove team's Net_Subs).
+#   - Losses split proportionally between prime and Sky.
+#
+# Entry shape:
+#   - prime:        prime_id this exposure applies to
+#   - venue_id:     venue ID in `config/{prime}.yaml`
+#   - chain:        chain name (matches Chain enum)
+#   - kind:         'fixed' | 'capped' | 'pattern'
+#                     fixed   = whole venue is SDE (e.g. BUIDL, JTRSY)
+#                     capped  = first $N USDC/USDS of position is SDE
+#                     pattern = applies to any venue matching a tag (e.g. PSM3 USDC non-Eth)
+#   - cap_usd:      (optional) for kind=capped — Sky-direct slice in USD
+#   - start_date:   date ≥ when SDE rules begin to apply (inclusive)
+#   - end_date:     date ≤ when SDE rules end (inclusive); null = still active
+#   - source:       Atlas section UUID for traceability
+
+active:
+  # Treasury Bills on Ethereum — full Sky Direct on the whole position.
+  - prime: grove
+    venue_id: E10
+    chain: ethereum
+    kind: fixed
+    start_date: '2025-10-30'
+    end_date: null
+    label: 'BUIDL on Eth'
+    source: 'Atlas A.2.2.9.1.1.1.1.1 — Treasury Bills'
+
+  - prime: grove
+    venue_id: E9
+    chain: ethereum
+    kind: fixed
+    start_date: '2025-10-30'
+    end_date: null
+    label: 'JTRSY on Eth'
+    source: 'Atlas A.2.2.9.1.1.1.1.1 — Treasury Bills'
+
+  # USTB — Spark venue S21. No Grove holding today.
+  - prime: spark
+    venue_id: S21
+    chain: ethereum
+    kind: fixed
+    start_date: '2025-10-30'
+    end_date: null
+    label: 'USTB on Eth'
+    source: 'Atlas A.2.2.9.1.1.1.1.1 — Treasury Bills'
+
+  # PSM3 USDC on non-Eth chains (Spark + Grove). The PSM3 holdings are
+  # tracked at the prime level (not as venues), so this is encoded as a
+  # pattern that the compute layer applies to per-chain PSM3 USDS-equivalent.
+  - prime: spark
+    kind: pattern
+    pattern: 'psm3_usdc_non_ethereum'
+    start_date: '2025-11-13'
+    end_date: null
+    label: 'USDC in PSM3 on non-Eth chains'
+    source: 'Atlas A.2.2.9.1.1.1.1.2 — Peg Stability Modules'
+
+  - prime: grove
+    kind: pattern
+    pattern: 'psm3_usdc_non_ethereum'
+    start_date: '2025-11-13'
+    end_date: null
+    label: 'USDC in PSM3 on non-Eth chains'
+    source: 'Atlas A.2.2.9.1.1.1.1.2 — Peg Stability Modules'
+
+  # Spark USDT in sUSDS/USDT Curve pools (S24 sUSDSUSDT).
+  - prime: spark
+    venue_id: S24
+    chain: ethereum
+    kind: fixed
+    start_date: '2025-11-13'
+    end_date: null
+    label: 'USDT in sUSDS/USDT Curve'
+    source: 'Atlas A.2.2.9.1.1.1.1.3 — Curve Pools'
+
+historical:
+  # JAAA on Eth — capped at $325M. SDE during 2025-10-23 → 2026-03-12.
+  # Grove team's Feb 2026 PnL workbook treats this as 71.85% Sky Direct
+  # (Grove weight 0.2815 = 1 − 325M / observed_position_value), with the
+  # Grove slice of revenue = position_revenue × Grove_weight and the
+  # Sky-direct slice's revenue floored to Sky.
+  - prime: grove
+    venue_id: E8
+    chain: ethereum
+    kind: capped
+    cap_usd: 325000000
+    start_date: '2025-10-23'
+    end_date: '2026-03-12'
+    label: 'JAAA on Eth (≤ $325M)'
+    source: 'Atlas A.2.2.9.1.1.1.1.3.0.6.1 — Historical SDE'

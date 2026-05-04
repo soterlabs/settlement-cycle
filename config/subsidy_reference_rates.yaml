@@ -1,0 +1,122 @@
+# Subsidy reference rate — daily values used in the subsidised borrowing
+# rate formula (debt-rate-methodology):
+#
+#   subsidised_apy_d = ref_rate_d + (base_apy − ref_rate_d) × T / 24
+#
+# where T is the number of months elapsed since the subsidy program start
+# (2026-01-01 per Sky governance — i.e. T=1 for Feb 2026, T=2 for Mar, …).
+#
+# Sky's spec names this the EFFR (Effective Federal Funds Rate, NY Fed:
+# https://www.newyorkfed.org/markets/reference-rates/effr). For Feb 2026
+# EFFR ≈ 4.33%, which is ~ at-or-above BR (SSR+30bps ≈ 4.30%) — under that
+# rate the subsidy yields ≈ 0 benefit.
+#
+# Grove team's Feb 2026 PnL workbook (data/grove/feb_2026.xlsx) uses the
+# 3-month T-Bill rate (~3.67–3.74%) instead, producing a ~26bps subsidy
+# below BR. This file records BOTH series so reproductions are explicit;
+# the per-prime ``subsidy.ref_rate_kind`` selects which column to read:
+#
+#   tbill_3m_apy:  treasury.gov 3M T-Bill (matches Grove sheet)
+#   effr_apy:      NY Fed EFFR
+#
+# Source URLs:
+#   EFFR:    https://markets.newyorkfed.org/api/rates/unsecured/effr/last/N.json
+#   T-Bill:  https://home.treasury.gov/resource-center/data-chart-center/
+#            interest-rates/TextView?type=daily_treasury_yield_curve
+
+# Per Sky governance (2026-05-02): Grove uses tbill_3m, Spark uses effr.
+# Each prime's ``subsidy.ref_rate_kind`` in its own YAML drives the lookup
+# against the per-rate columns below.
+
+# Use the most-recent rate ≤ the target date (carry-forward, like SSR).
+# Weekend/holiday gaps fall through to the previous business-day rate.
+rates:
+  # 2026-01 — T-Bill 3M (carry-forward to fill weekends; values from
+  # treasury.gov daily yield curve. Used to verify Grove sheet methodology.)
+  - effective_date: '2026-01-01'
+    tbill_3m_apy: 0.0367
+    effr_apy: 0.0433
+  - effective_date: '2026-01-31'
+    tbill_3m_apy: 0.0367
+    effr_apy: 0.0433
+
+  # 2026-02 — daily T-Bill 3M readings (from Grove sheet Treasury Rate tab,
+  # exact match for empirical reproduction).
+  - effective_date: '2026-02-02'
+    tbill_3m_apy: 0.0369
+    effr_apy: 0.0433
+  - effective_date: '2026-02-03'
+    tbill_3m_apy: 0.0369
+    effr_apy: 0.0433
+  - effective_date: '2026-02-04'
+    tbill_3m_apy: 0.0369
+    effr_apy: 0.0433
+  - effective_date: '2026-02-05'
+    tbill_3m_apy: 0.0367
+    effr_apy: 0.0433
+  - effective_date: '2026-02-06'
+    tbill_3m_apy: 0.0368
+    effr_apy: 0.0433
+  - effective_date: '2026-02-09'
+    tbill_3m_apy: 0.0369
+    effr_apy: 0.0433
+  - effective_date: '2026-02-10'
+    tbill_3m_apy: 0.0369
+    effr_apy: 0.0433
+  - effective_date: '2026-02-11'
+    tbill_3m_apy: 0.0370
+    effr_apy: 0.0433
+  - effective_date: '2026-02-12'
+    tbill_3m_apy: 0.0370
+    effr_apy: 0.0433
+  - effective_date: '2026-02-13'
+    tbill_3m_apy: 0.0368
+    effr_apy: 0.0433
+  - effective_date: '2026-02-17'
+    tbill_3m_apy: 0.0369
+    effr_apy: 0.0433
+  - effective_date: '2026-02-18'
+    tbill_3m_apy: 0.0370
+    effr_apy: 0.0433
+  - effective_date: '2026-02-19'
+    tbill_3m_apy: 0.0369
+    effr_apy: 0.0433
+  - effective_date: '2026-02-20'
+    tbill_3m_apy: 0.0369
+    effr_apy: 0.0433
+  - effective_date: '2026-02-23'
+    tbill_3m_apy: 0.0369
+    effr_apy: 0.0433
+  - effective_date: '2026-02-24'
+    tbill_3m_apy: 0.0369
+    effr_apy: 0.0433
+  - effective_date: '2026-02-25'
+    tbill_3m_apy: 0.0369
+    effr_apy: 0.0433
+  - effective_date: '2026-02-26'
+    tbill_3m_apy: 0.0368
+    effr_apy: 0.0433
+  - effective_date: '2026-02-27'
+    tbill_3m_apy: 0.0367
+    effr_apy: 0.0433
+
+  # March 2026 (treasury.gov daily yield curve + NY Fed EFFR; carry-forward
+  # fills weekend/holiday gaps). Update as new months are settled.
+  - effective_date: '2026-03-02'
+    tbill_3m_apy: 0.0366
+    effr_apy: 0.0433
+  - effective_date: '2026-03-09'
+    tbill_3m_apy: 0.0364
+    effr_apy: 0.0433
+  - effective_date: '2026-03-16'
+    tbill_3m_apy: 0.0362
+    effr_apy: 0.0433
+  - effective_date: '2026-03-23'
+    tbill_3m_apy: 0.0360
+    effr_apy: 0.0433
+  - effective_date: '2026-03-30'
+    tbill_3m_apy: 0.0358
+    effr_apy: 0.0433
+  # NB: April–May 2026 not yet populated. Settlement runs covering those
+  # months will carry-forward the 2026-03-30 rate (loud warning emitted by
+  # ReferenceRateHistory.at when carry-forward span exceeds 21 days).

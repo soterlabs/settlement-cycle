@@ -157,12 +157,12 @@ def test_load_prime_grove(config_dir: Path):
     # Category breakdown.
     by_cat = {c: [v for v in grove.venues if v.pricing_category.value == c]
               for c in ["A", "B", "C", "D", "E", "F"]}
-    assert len(grove.venues) == 23
+    assert len(grove.venues) == 26
     assert len(by_cat["C"]) == 3, "E1+E2+E3 Aave aTokens"
-    assert len(by_cat["B"]) == 6, "E4+E5+E6 Morpho 4626 + E18 sUSDS + E19 Base + E23 steakUSDC-PrimeInstant Base"
+    assert len(by_cat["B"]) == 7, "E4+E5+E6 Morpho 4626 + E18 sUSDS + E19 Base + E23 steakUSDC-PrimeInstant Base + E24 bbqPYUSD-V2"
     assert len(by_cat["E"]) == 7, "E7-E10 ETH RWA + E20 JAAA-avax + E21 GACLO-1 + E22 ACRDX-plume"
     assert len(by_cat["F"]) == 2, "E11 Curve LP + E12 Uni V3"
-    assert len(by_cat["A"]) == 5, "E13 RLUSD + E14 AUSD + E15 USDC + E16 DAI + E17 USDS"
+    assert len(by_cat["A"]) == 7, "E13 RLUSD + E14 AUSD + E15 USDC + E16 DAI + E17 USDS + E26 PYUSD + E27 USDC-Base"
 
     # Multi-chain: E19 is on Base; E20/E21 on Avalanche.
     e19 = next(v for v in grove.venues if v.id == "E19")
@@ -191,12 +191,13 @@ def test_load_prime_grove_nav_oracles(config_dir: Path):
     grove = load_prime(config_dir / "grove.yaml")
     by_id = {v.id: v for v in grove.venues}
 
-    # JTRSY → Chronicle primary + const_one fallback (Chronicle deployed
-    # mid-2025 so pre-deployment-block reads need a fallback).
+    # JTRSY → Centrifuge pricePerShareFeed primary + const_one fallback
+    # (canonical per Grove team's Feb 2026 PnL workbook; Chronicle was the
+    # previous primary, kept as documented secondary).
     jtrsy = by_id["E9"]
     assert jtrsy.nav_oracle is not None
-    assert jtrsy.nav_oracle.kind == "chronicle"
-    assert jtrsy.nav_oracle.address.hex == "0x59ef4be3eddf0270c4878b7b945bbee13fb33d0d"
+    assert jtrsy.nav_oracle.kind == "price_per_share_feed"
+    assert jtrsy.nav_oracle.address.hex == "0xfe6920eb6c421f1179ca8c8d4170530cdbdfd77a"
     assert jtrsy.nav_oracle.fallback == "const_one"
 
     # STAC → Chronicle primary + const_one fallback. The redstone fallback

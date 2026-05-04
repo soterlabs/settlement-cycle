@@ -1,6 +1,6 @@
 # SPARK — Monthly settlement 2026-01
 
-- **Generated:** 2026-04-30T12:05:21+00:00
+- **Generated:** 2026-05-04T11:22:22+00:00
 - **Pipeline:** `settle` v0.1.0
 - **Period:** 2026-01-01 → 2026-01-31 (31 days)
 
@@ -8,11 +8,11 @@
 
 | Component | Amount (USD) |
 |---|---:|
-| prime_agent_revenue           | $5,721,163.89 |
+| prime_agent_revenue           | $5,661,691.70 |
 | agent_rate                    | $0.00 |
 | distribution_rewards          | $0.00 |
-| **prime_agent_total_revenue** | **$5,721,163.89** |
-| sky_revenue (net)             | $10,449,914.23 |
+| **prime_agent_total_revenue** | **$5,661,691.70** |
+| sky_revenue (net)             | $10,477,411.26 |
 
 `prime_agent_total_revenue = prime_agent_revenue + agent_rate + distribution_rewards`.
 Settlement reports the prime's total revenue (positive cash to the prime) and `sky_revenue` (cost owed to Sky) separately — they're not netted at this layer.
@@ -50,12 +50,12 @@ Settlement reports the prime's total revenue (positive cash to the prime) and `s
 | S16 | Ethena Staked USDe (sUSDe) | $98.22 | $98.61 | $0.00 | $0.39 |
 | S17 | Fluid Savings USDS (fsUSDS) | $0.00 | $0.00 | $0.00 | $0.00 |
 | S18 | Arkis Spark Prime USDC 1 (ERC-4626) | $15,024,030.59 | $15,106,645.24 | $0.00 | $82,614.64 |
-| S19 | BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I) | $0.00 | $0.00 | $0.00 | $31,975.16 |
+| S19 | BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I) | $0.00 | $0.00 | $0.00 | $0.00 |
 | S20 | Janus Henderson Anemoy Treasury Fund (JTRSY) | $0.00 | $0.00 | $0.00 | $0.00 |
 | S21 | Superstate Short Duration US Government Securities Fund (USTB) | $0.00 | $0.00 | $0.00 | $0.00 |
 | S22 | Superstate Crypto Carry Fund (USCC) | $0.00 | $0.00 | $0.00 | $0.00 |
 | S23 | Anchorage off-chain custodial position | $0.00 | $0.00 | $0.00 | $0.00 |
-| S24 | Spark.fi USDT Reserve Curve (sUSDS/USDT) | $50,000,864.48 | $49,999,911.75 | -$28,449.77 | $27,497.03 |
+| S24 | Spark.fi USDT Reserve Curve (sUSDS/USDT) | $50,000,864.48 | $49,999,911.75 | -$28,449.77 | $0.00 |
 | S25 | Spark.fi PYUSD Reserve Curve (PYUSD/USDS) | $100,000,415.95 | $100,000,425.55 | -$7,422.05 | $7,431.66 |
 | S26 | USDC raw (ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 |
 | S27 | USDT raw (ALM idle — $442M as of 2026-04) | $0.00 | $0.00 | $0.00 | $0.00 |
@@ -83,14 +83,6 @@ Settlement reports the prime's total revenue (positive cash to the prime) and `s
 | S53 | USDC raw (Unichain — ALM idle) | $5,000,000.00 | $5,000,000.00 | $0.00 | $0.00 |
 | S54 | Aave Avalanche USDC (aAvaUSDC) | $10,000,438.06 | $10,000,965.04 | -$31,069.97 | $31,596.95 |
 | S55 | USDC raw (Avalanche-C — ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 |
-
-## Sky Direct (Step 4) breakdown
-
-Per the prime-settlement-methodology, Sky Direct venues book BR_charge to Sky and floor the prime's revenue at zero. When the venue underperforms BR, Sky absorbs the shortfall.
-
-| Venue | actual_revenue | BR_charge | sky_direct_shortfall | prime_keeps |
-|---|---:|---:|---:|---:|
-| S19 BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I) | $0.00 | -$31,975.16 | $0.00 | $31,975.16 |
 
 ## Formula reference
 

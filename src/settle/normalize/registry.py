@@ -20,7 +20,11 @@ from .protocols import (
 from .sources.dune_balances import DuneBalanceSource
 from .sources.dune_debt import DuneDebtSource
 from .sources.dune_ssr import DuneSSRSource
-from .sources.oracles import ChronicleNavSource, ConstOneNavSource
+from .sources.oracles import (
+    ChronicleNavSource,
+    ConstOneNavSource,
+    PricePerShareNavSource,
+)
 from .sources.rpc_block_resolver import RPCBlockResolver
 from .sources.rpc_position import (
     RPCConvertToAssetsSource,
@@ -65,6 +69,7 @@ _BLOCK_RESOLVER_SOURCES: dict[str, type[IBlockResolver]] = {
 _NAV_ORACLE_SOURCES: dict[str, type[INavOracleSource]] = {
     "chronicle": ChronicleNavSource,
     "const_one": ConstOneNavSource,
+    "price_per_share_feed": PricePerShareNavSource,
 }
 
 

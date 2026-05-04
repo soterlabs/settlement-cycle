@@ -7,15 +7,20 @@ timeseries before composing the three revenue components.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 from decimal import Decimal
+
+import pandas as pd
 
 from ..domain.monthly_pnl import MonthlyPnL
 from ..domain.period import Month, Period
 from ..domain.pricing import PricingCategory
 from ..domain.primes import Chain, Prime
+from ..domain.sde import load_sde_table
 from ..domain.sky_tokens import USDS_ETHEREUM, sUSDS_ETHEREUM
+from ..domain.subsidy import load_reference_rates
 from ..normalize import (
     get_alm_balance_timeseries,
     get_debt_timeseries,
@@ -24,6 +29,7 @@ from ..normalize import (
     get_subproxy_balance_timeseries,
     get_venue_inflow_timeseries,
 )
+from ..normalize.prices import _resolve_rwa_nav
 from ..normalize.protocols import (
     IBalanceSource,
     IBlockResolver,
@@ -35,10 +41,17 @@ from ..normalize.protocols import (
     ISSRSource,
     IV3PositionSource,
 )
-from ..normalize.registry import get_block_resolver
+from ..normalize.registry import (
+    get_balance_source,
+    get_block_resolver,
+    get_convert_to_assets_source,
+)
+from ._helpers import cum_at_or_before
 from .agent_rate import compute_agent_rate
 from .prime_agent_revenue import VenueRevenueInputs, compute_prime_agent_revenue
 from .sky_revenue import compute_sky_revenue
+
+_log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,7 +86,7 @@ def _resolve_pin_blocks(
     return {chain: resolver.block_at_or_before(chain.value, anchor_utc) for chain in chains}
 
 
-def _sky_direct_br_charge(
+def _sde_asset_value_timeseries(
     prime: Prime,
     venue,
     period: Period,
@@ -81,50 +94,42 @@ def _sky_direct_br_charge(
     balance_source,
     block_resolver,
     nav_at_block,
-    ssr_history,
-) -> Decimal:
-    """Daily-precise BR_charge for a Sky Direct venue over ``period``.
+    cap_usd: Decimal | None = None,
+) -> pd.DataFrame:
+    """Daily SDE asset value (USD) per venue. Returns a level series with
+    columns ``[block_date, cum_value]`` (the "cum_" prefix is API parity
+    with cum_balance/cum_inflow; this is a daily snapshot, not a sum).
 
-    BR is conceptually a per-second APR (matching SSR's on-chain accrual).
-    Integrating ``AV(t) × apr_per_sec(t)`` across the period at daily
-    resolution: ``Σ_d AV_d × ((1+SSR_d+30bps)^(1/365) - 1)``.
-
-    AV_d = ``balance_at_day(d) × NAV(eod_block_d)`` — daily share count from
-    the cumulative-balance fixture, NAV from the venue's oracle at the day's
-    EoD block. For par-stable Sky Direct (BUIDL), pass ``nav_at_block`` that
-    returns ``Decimal("1")``.
+    AV_d = balance_at_day(d) × NAV(EoD block d), capped at ``cap_usd`` for
+    ``kind=capped`` SDE. Consumed by ``compute_sky_revenue`` for utilized
+    exclusion.
     """
-    from ._helpers import cum_at_or_before, daily_compounding_factor, ssr_at_or_before
-    from datetime import date as _date, timedelta as _td
-
-    holder = prime.alm[venue.chain]
+    holder = venue.holder_override or prime.alm[venue.chain]
     pin_block = period.pin_blocks[venue.chain]
-    # Mirror the inflow side's filter so BR_charge AV matches inflow-tracked
-    # capital. Without this, BUIDL-I's BR_charge would include sub-$1M daily
-    # yield-distribution mints that the Cat-E inflow path filters out.
-    min_transfer = venue.min_transfer_amount_usd or Decimal(0)
     bal_df = balance_source.cumulative_balance_timeseries(
         chain=venue.chain.value,
         token=venue.token.address.value,
         holder=holder.value,
         start=prime.start_date,
         pin_block=pin_block,
-        min_transfer_amount=min_transfer,
+        min_transfer_amount=venue.min_transfer_amount_usd or Decimal(0),
     )
 
-    total = Decimal("0")
+    rows = []
     current = period.start
     while current <= period.end:
         bal = cum_at_or_before(bal_df, "cum_balance", current)
-        if bal != 0:
+        if bal == 0:
+            value = Decimal("0")
+        else:
             eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
             block = block_resolver.block_at_or_before(venue.chain.value, eod)
-            nav = nav_at_block(block)
-            ssr = ssr_at_or_before(ssr_history, current)
-            base_apy = ssr + Decimal("0.003")
-            total += bal * nav * daily_compounding_factor(base_apy)
+            value = bal * nav_at_block(block)
+            if cap_usd is not None and value > cap_usd:
+                value = cap_usd
+        rows.append({"block_date": current, "cum_value": value})
         current = current + timedelta(days=1)
-    return total
+    return pd.DataFrame(rows)
 
 
 def _susds_shares_to_principal(
@@ -134,31 +139,20 @@ def _susds_shares_to_principal(
     block_resolver: IBlockResolver,
     chain: Chain,
 ):
-    """Convert a sUSDS-shares timeseries into a USDS-denominated cost-basis
-    principal timeseries.
+    """Convert a sUSDS-shares timeseries to USDS-denominated cost-basis
+    principal (``Σ shares × entry_pps``).
 
-    Per debt-rate-methodology: ``principal = shares × entry_pps``. The cost
-    basis at any time t is ``Σ_{deposits ≤ t} shares × pps_at_deposit
-    − Σ_{withdrawals ≤ t} shares × pps_at_withdrawal`` — the cumulative USDS
-    cost of building up the share balance, NOT the current value
-    (``shares × current_pps``, which double-counts SSR).
-
-    Approximation: each day's signed share-flow is priced at that day's
-    end-of-day pps (one ``convertToAssets`` RPC per active day). This is a
-    daily-resolution proxy for entry pps, accurate to the daily SSR drift.
+    Each day's signed share-flow is priced at that day's EoD pps (one
+    ``convertToAssets`` RPC per active day). This is the deposit-time value,
+    NOT the current value (``shares × current_pps``, which double-counts SSR).
     """
-    import pandas as pd
-    from datetime import datetime, time, timezone
-    from ..normalize.registry import get_convert_to_assets_source
-
     if sub_susds_shares is None or sub_susds_shares.empty:
         return sub_susds_shares
     if not (sub_susds_shares["daily_net"] != 0).any():
         return sub_susds_shares  # no activity → all-zero is the same in shares/USDS
 
-    # The vault address is currently hardcoded to Ethereum's sUSDS. Multi-chain
-    # sUSDS (Base, Arbitrum) would need a per-chain vault map; assert here so a
-    # future caller passing a non-Ethereum chain fails loudly instead of silently
+    # The vault address is hardcoded to Ethereum's sUSDS. Multi-chain sUSDS
+    # would need a per-chain vault map; fail loudly rather than silently
     # reading the wrong contract.
     if chain != Chain.ETHEREUM:
         raise NotImplementedError(
@@ -170,9 +164,6 @@ def _susds_shares_to_principal(
         if sources.convert_to_assets is not None
         else get_convert_to_assets_source()
     )
-    # ``cached(...)`` on ``rpc.convert_to_assets`` already memoizes
-    # (chain, vault, shares, block) so repeat calls on the same day across
-    # multiple monthly runs share the disk cache; no per-call cache needed.
 
     def _pps_for_day(d) -> Decimal:
         eod = datetime.combine(d, time.max, tzinfo=timezone.utc)
@@ -185,11 +176,10 @@ def _susds_shares_to_principal(
         )
         return Decimal(raw) / Decimal(10**18)
 
+    # Build daily principal flow + cumulative in pure-Python Decimals —
+    # pandas' cumsum on object-dtype Decimal silently falls back to Python
+    # reduction; explicit running-sum keeps the dtype contract intact.
     out = sub_susds_shares.copy()
-    # Build daily principal flow + cumulative in pure Python Decimals — pandas'
-    # cumsum on object-dtype Decimal series silently falls back to Python-level
-    # reduction, which works in current pandas but is fragile against version
-    # changes. Explicit running-sum keeps the dtype contract intact.
     daily_usds: list[Decimal] = []
     cum_usds: list[Decimal] = []
     running = Decimal("0")
@@ -198,11 +188,7 @@ def _susds_shares_to_principal(
         if shares_flow == 0:
             d_usds = Decimal("0")
         else:
-            shares_d = (
-                shares_flow if isinstance(shares_flow, Decimal)
-                else Decimal(str(shares_flow))
-            )
-            d_usds = shares_d * _pps_for_day(row["block_date"])
+            d_usds = _to_decimal(shares_flow) * _pps_for_day(row["block_date"])
         running += d_usds
         daily_usds.append(d_usds)
         cum_usds.append(running)
@@ -211,8 +197,7 @@ def _susds_shares_to_principal(
     return out
 
 
-def _empty_psm_df():
-    import pandas as pd
+def _empty_psm_df() -> pd.DataFrame:
     return pd.DataFrame({"block_date": [], "daily_net": [], "cum_balance": []})
 
 
@@ -222,11 +207,9 @@ def _to_decimal(v) -> Decimal:
     return v if isinstance(v, Decimal) else Decimal(str(v))
 
 
-def _df_from_daily_dict(daily_by_date: dict) -> "pd.DataFrame":
-    """Build the ``[block_date, daily_net, cum_balance]`` DataFrame from a
-    ``{date: Decimal}`` map. Returns the empty-shape frame if the map is empty."""
-    import pandas as pd
-
+def _df_from_daily_dict(daily_by_date: dict) -> pd.DataFrame:
+    """``[block_date, daily_net, cum_balance]`` DataFrame from a ``{date: Decimal}``
+    map. Returns the empty-shape frame if the map is empty."""
     if not daily_by_date:
         return _empty_psm_df()
     rows = sorted(daily_by_date.items(), key=lambda kv: kv[0])
@@ -303,7 +286,6 @@ def get_psm_usds_timeseries(
       ``cum_balance`` as the running USDS-equivalent.
     """
     import pandas as pd
-    from ..normalize.registry import get_balance_source as _get_balance_source
     from ..domain.primes import PsmKind
 
     cfg = prime.psm.get(chain)
@@ -321,7 +303,7 @@ def get_psm_usds_timeseries(
                 "(e.g. USDS for the Sky LITE-PSM)"
             )
         pin_block = period.pin_blocks[chain]
-        bsrc = balance_source if balance_source is not None else _get_balance_source()
+        bsrc = balance_source if balance_source is not None else get_balance_source()
         holders = [prime.subproxy[chain]] if chain in prime.subproxy else []
         holders.append(prime.alm[chain])
 
@@ -491,9 +473,40 @@ def compute_monthly_pnl(
     )
     ssr = get_ssr_history(prime, period, source=sources.ssr)
 
+    # SDE table — config-driven Sky Direct exposures (replaces the legacy
+    # ``Venue.sky_direct: bool`` flag). Empty table = no venues are SDE.
+    sde_table = load_sde_table()
+    sde_asset_value_per_venue: list = []
+
     # 3. Per-venue: value at SoM + EoM, inflow timeseries.
     venue_inputs: list[VenueRevenueInputs] = []
     for venue in prime.venues:
+        if venue.skip:
+            # Excluded from MSC — typically venues whose NAV oracle is
+            # untrusted or whose underlying is too volatile (e.g. Avalanche
+            # cross-chain RWAs without a reliable feed). Logged once for
+            # provenance.
+            import logging as _logging
+            _logging.getLogger(__name__).info(
+                "Skipping venue %s (%s, %s) — venue.skip=True.",
+                venue.id, venue.token.symbol, venue.chain.value,
+            )
+            continue
+        if venue.pricing_category == PricingCategory.SPARK_SAVINGS_V2:
+            # Spark Savings V2 vaults aren't held at the prime ALM — the
+            # vault contract custodies underlying for retail depositors and
+            # the prime earns the yield spread (vault_yield − share_rate).
+            # Computing this requires a separate assets-vs-liabilities
+            # accounting layer (vault underlying balance ↔ share supply ×
+            # pps) that doesn't fit the standard Cat A/B/C/E/F flow.
+            # Skip with a warning until that layer lands.
+            import logging as _logging
+            _logging.getLogger(__name__).warning(
+                "Skipping Spark Savings V2 venue %s (%s, %s) — compute path "
+                "for spread accounting not yet implemented.",
+                venue.id, venue.token.symbol, venue.chain.value,
+            )
+            continue
         if venue.chain not in pin_blocks_som:
             raise ValueError(
                 f"Missing SoM pin_block for chain {venue.chain.value} "
@@ -597,10 +610,6 @@ def compute_monthly_pnl(
             from decimal import Decimal as _Dec
             from ..normalize.positions import _shares_to_usd_inflow_timeseries
             from ..normalize.prices import par_stable_price
-            from ..normalize.registry import (
-                get_balance_source,
-                get_convert_to_assets_source,
-            )
             balance_src = sources.balance if sources.balance is not None else get_balance_source()
             erc4626_src = (
                 sources.convert_to_assets if sources.convert_to_assets is not None
@@ -639,7 +648,6 @@ def compute_monthly_pnl(
             # revenue = 0, which is correct for par-stables with no
             # off-chain yield source.
             from ..normalize.positions import _cat_a_capital_inflow_timeseries
-            from ..normalize.registry import get_balance_source
             balance_src = sources.balance if sources.balance is not None else get_balance_source()
             external = {
                 addr.value
@@ -655,8 +663,6 @@ def compute_monthly_pnl(
             # Tracks cumulative balance into the ALM (any sender) since
             # tranche tokens often arrive via issuer custodians, not from 0x0.
             from ..normalize.positions import _rwa_inflow_timeseries
-            from ..normalize.prices import _resolve_rwa_nav
-            from ..normalize.registry import get_balance_source
             balance_src = sources.balance if sources.balance is not None else get_balance_source()
 
             def _cat_e_nav(block, _v=venue, _br=resolver, _nr=sources.nav_oracle_resolver):
@@ -679,42 +685,68 @@ def compute_monthly_pnl(
                 source=sources.balance,
             )
 
-        # For Sky Direct venues, compute the per-period BR_charge with
-        # daily-precise time-weighting and per-second APR compounding.
-        br_charge = None
-        if venue.sky_direct:
-            from ..normalize.prices import _resolve_rwa_nav
-            from ..normalize.registry import get_balance_source as _get_bal
-            bsrc = sources.balance if sources.balance is not None else _get_bal()
+        # SDE classification — if the venue has an active Sky Direct entry
+        # overlapping the period, build its daily asset-value timeseries
+        # (capped if kind=capped) for utilized exclusion in compute_sky_revenue.
+        sde_entry = sde_table.overlaps_venue(
+            prime.id, venue.id, period.start, period.end,
+        )
+        if sde_entry is not None:
+            bsrc = sources.balance if sources.balance is not None else get_balance_source()
 
             def _sd_nav(block, _v=venue, _br=resolver, _nr=sources.nav_oracle_resolver):
                 return _resolve_rwa_nav(_v, block, block_resolver=_br, resolver=_nr)
 
-            br_charge = _sky_direct_br_charge(
+            sde_asset_value_per_venue.append(_sde_asset_value_timeseries(
                 prime, venue, period,
                 balance_source=bsrc,
                 block_resolver=resolver,
                 nav_at_block=_sd_nav,
-                ssr_history=ssr,
-            )
+                cap_usd=sde_entry.cap_usd,
+            ))
 
         venue_inputs.append(VenueRevenueInputs(
             venue=venue, value_som=value_som, value_eom=value_eom,
             inflow_timeseries=inflow_ts,
-            br_charge=br_charge,
+            sde_entry=sde_entry,
         ))
 
     # 4. Compute three revenue components.
     agent_rate = compute_agent_rate(period, sub_usds, sub_susds, ssr)
     prime_rev, breakdown = compute_prime_agent_revenue(period, venue_inputs)
-    # Total Sky Direct shortfall (Sky absorbs this — reduces Sky's net claim).
-    sky_direct_shortfall = sum(
-        (vr.sky_direct_shortfall for vr in breakdown), Decimal("0"),
+    # SDE revenue (Σ actual × sd_share across venues) flows directly to Sky.
+    sde_revenue = sum((vr.sd_revenue for vr in breakdown), Decimal("0"))
+
+    # Aggregate per-venue daily SDE asset-value into one frame so
+    # compute_sky_revenue can subtract it from utilized (SDE positions
+    # already pay Sky directly via sde_revenue; charging BR would double-bill).
+    if sde_asset_value_per_venue:
+        sde_av_total = (
+            pd.concat(sde_asset_value_per_venue)
+              .groupby("block_date", as_index=False)["cum_value"].sum()
+              .sort_values("block_date").reset_index(drop=True)
+        )
+    else:
+        sde_av_total = None
+
+    # Subsidised borrowing rate (debt-rate-methodology Step 1.b). When
+    # ``prime.subsidy.enabled`` is False this collapses to full-BR and
+    # ``ref_rate_history`` is never read.
+    ref_rate_history = (
+        load_reference_rates(kind=prime.subsidy.ref_rate_kind)
+        if prime.subsidy.enabled else None
     )
-    sky_rev_gross = compute_sky_revenue(
+    sky_rev_br = compute_sky_revenue(
         period, debt, sub_usds, sub_susds, alm_usds, ssr, psm_usds=psm_usds,
+        subsidy_config=prime.subsidy,
+        ref_rate_history=ref_rate_history,
+        sde_asset_value=sde_av_total,
     )
-    sky_rev = sky_rev_gross - sky_direct_shortfall
+    # Sky's full claim: BR on (utilized − SDE) + actual SDE revenue.
+    sky_rev = sky_rev_br + sde_revenue
+    # Legacy field — always 0 under the SDE-split model (Sky takes actual
+    # revenue, not floored).
+    sky_direct_shortfall = Decimal("0")
 
     # ``monthly_pnl`` is an audit-only invariant (kept for provenance round-trip,
     # not displayed in the markdown headline or pnl.csv). The ``__post_init__``
@@ -732,4 +764,5 @@ def compute_monthly_pnl(
         venue_breakdown=breakdown,
         pin_blocks_som=pin_blocks_som,
         sky_direct_shortfall=sky_direct_shortfall,
+        sde_revenue=sde_revenue,
     )

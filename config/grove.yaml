@@ -12,6 +12,23 @@ id: grove
 ilk_bytes32: '0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000'  # ALLOCATOR-BLOOM-A
 start_date: '2025-05-14'  # First frob (test mint, unwound 2025-06-25)
 
+# Subsidised borrowing rate (debt-rate-methodology Step 1.b).
+# Sky charges `ref_rate + (BR − ref_rate) × T/24` on the first cap_usd of
+# utilized USDS, where T = months elapsed since program_start (2026-01-01).
+# For Feb 2026 → T=1 → subsidy ≈ ref_rate + (BR−ref_rate)/24, matching the
+# Grove team's PnL workbook exactly. Reference rate values live in
+# config/subsidy_reference_rates.yaml.
+#
+# ref_rate_kind: per Sky governance (2026-05-02), Grove uses 3-month T-Bill,
+# Spark uses EFFR. Both daily series are stored in
+# config/subsidy_reference_rates.yaml.
+subsidy:
+  enabled: true
+  cap_usd: 1000000000      # First $1B at subsidised rate; excess at full BR
+  program_start: '2026-01-01'
+  ramp_months: 24
+  ref_rate_kind: tbill_3m
+
 addresses:
   ethereum:
     subproxy: '0x1369f7b2b38c76B6478c0f0E66D94923421891Ba'    # holds idle USDS / sUSDS — earns agent rate
@@ -148,33 +165,39 @@ venues:
       address: '0x5a0f93d040de44e78f251b03c43be9cf317dcf64'
       symbol: 'JAAA'
       decimals: 6
+    # NAV: switched 2026-05-02 from Chronicle to Centrifuge's
+    # pricePerShareFeed (canonical per Grove team's PnL workbook). The feed
+    # implements ERC-4626 ``convertToAssets(uint256)`` returning 18-decimal
+    # USDC-denominated NAV. Chronicle remains the documented secondary; we
+    # don't auto-fall through to it because the two feeds can disagree by
+    # ~30bps and silent fallback would mask oracle issues. Fallback is
+    # const_one, which only kicks in for pre-deployment blocks (handled via
+    # nav_overrides in the test fixtures).
     nav_oracle:
-      kind: chronicle
-      address: '0x02cf8c9fba24d79886dac40cb620f0930c6e8ec0'
-      # Chronicle was deployed mid-2025; reads at pre-deployment blocks
-      # revert. Fallback keeps inflow tracking from aborting (const_one is
-      # a reasonable approximation: tranche NAV starts near $1).
+      kind: price_per_share_feed
+      address: '0x4880799eE5200fC58DA299e965df644fBf46780B'
       fallback: const_one
+      fallback_address: null
 
   - id: E9
     chain: ethereum
     label: 'Janus Henderson Anemoy Treasury Fund (JTRSY)'
     pricing_category: E
-    sky_direct: true   # Sky Direct: Treasury Bill on Ethereum (Grove)
     token:
       address: '0x8c213ee79581ff4984583c6a801e5263418c4b86'
       symbol: 'JTRSY'
       decimals: 6
+    # NAV: switched 2026-05-02 from Chronicle to Centrifuge's
+    # pricePerShareFeed (canonical per Grove team's PnL workbook).
     nav_oracle:
-      kind: chronicle
-      address: '0x59ef4be3eddf0270c4878b7b945bbee13fb33d0d'
+      kind: price_per_share_feed
+      address: '0xFE6920eB6C421f1179cA8c8d4170530CDBdfd77A'
       fallback: const_one
 
   - id: E10
     chain: ethereum
     label: 'BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I)'
     pricing_category: E
-    sky_direct: true   # Sky Direct: Treasury Bill on Ethereum (Grove)
     token:
       address: '0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041'
       symbol: 'BUIDL-I'
@@ -321,20 +344,23 @@ venues:
   # ─────────────────────────────────────────────────────────────
   # Avalanche-C — Phase 2.B (multi-chain rollout)
   # ─────────────────────────────────────────────────────────────
+  # E20 + E21 (Avalanche-chain RWA venues) are excluded from MSC by
+  # decision (2026-05-02): the cross-chain NAV oracles for JAAA-avax and
+  # GACLO-1 are unreliable enough that we'd misprice the position by ~30%
+  # in a typical month. Until a trusted feed lands (Chronicle on Avalanche,
+  # or a Galaxy/Anchorage API integration), keep them in YAML for
+  # documentation but `skip: true` excludes them from compute.
   - id: E20
     chain: avalanche_c
     label: 'Janus Henderson Anemoy AAA CLO (JAAA-avalanche)'
     pricing_category: E
+    skip: true
     token:
       address: '0x58f93d6b1ef2f44ec379cb975657c132cbed3b6b'
       symbol: 'JAAA-avax'
       decimals: 6
     nav_oracle:
       kind: chronicle
-      # Chronicle's JAAA NAV feed lives only on Ethereum mainnet (no
-      # Avalanche deployment at the same address). NAV is global per
-      # tranche so we cross-chain-read: oracle_chain=ethereum, address as
-      # in ETH JAAA E8.
       address: '0x02cf8c9fba24d79886dac40cb620f0930c6e8ec0'
       oracle_chain: ethereum
       fallback: const_one
@@ -343,15 +369,12 @@ venues:
     chain: avalanche_c
     label: 'Galaxy Arch CLO Token (GACLO-1)'
     pricing_category: E
+    skip: true
     token:
       address: '0x2c0adff8e114f3ca106051144353ac703d24b901'
       symbol: 'GACLO-1'
       decimals: 6
     nav_oracle:
-      # Galaxy provides API-only pricing (no on-chain oracle). Phase 2.B
-      # uses const_one as a documented approximation — under-counts any
-      # NAV-based yield. Refining requires an off-chain Galaxy/Anchorage
-      # API integration.
       kind: const_one
 
   # ─────────────────────────────────────────────────────────────
@@ -373,6 +396,66 @@ venues:
       address: '0x51cc9463788b870d1e9bacd111a9bbb2c9820c7e'
       oracle_chain: ethereum
       fallback: const_one
+
+  # ─────────────────────────────────────────────────────────────
+  # Venues observed in Grove team's Feb 2026 PnL workbook but not
+  # yet in our inventory. Addresses verified from data/grove/feb_2026.xlsx
+  # (Grove Exposures sheet) where available.
+  # ─────────────────────────────────────────────────────────────
+
+  - id: E24
+    chain: ethereum
+    label: 'Steakhouse High Yield PYUSD (Morpho 4626)'
+    pricing_category: B
+    token:
+      address: '0xd8a6511979d9c5d387c819e9f8ed9f3a5c6c5379'
+      symbol: 'bbqPYUSD-V2'
+      decimals: 18
+    underlying:
+      address: '0x6c3ea9036406852006290770bedfcaba0e23a0e8'
+      symbol: 'PYUSD'
+      decimals: 6
+
+  - id: E26
+    chain: ethereum
+    label: 'PYUSD raw (ALM idle)'
+    pricing_category: A
+    token:
+      address: '0x6c3ea9036406852006290770bedfcaba0e23a0e8'
+      symbol: 'PYUSD'
+      decimals: 6
+
+  - id: E27
+    chain: base
+    label: 'USDC raw on Base (ALM idle)'
+    pricing_category: A
+    token:
+      address: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+      symbol: 'USDC'
+      decimals: 6
+
+  # Plume venues — held $0 throughout Q1 2026 (wound down Oct 2025) but
+  # listed for completeness with Grove team's inventory. Bridged-token
+  # addresses on Plume need on-chain verification before re-activation.
+  # Until then, leaving as commented-out stubs so the YAML parses cleanly
+  # and we don't silently mis-price.
+  # - id: E28
+  #   chain: plume
+  #   label: 'Janus Henderson Anemoy Treasury (JTRSY-plume) — wound down'
+  #   pricing_category: E
+  #   token:
+  #     address: '0x...TBD'   # Plume-bridged JTRSY
+  #     symbol: 'JTRSY-plume'
+  #     decimals: 6
+  #
+  # - id: E29
+  #   chain: plume
+  #   label: 'USDC raw on Plume (ALM idle) — wound down'
+  #   pricing_category: A
+  #   token:
+  #     address: '0x...TBD'   # Plume-canonical USDC
+  #     symbol: 'USDC'
+  #     decimals: 6
 
 # Source dispatch (debt → Dune, prices → RPC + on-chain oracles, etc.) is
 # resolved by `src/settle/normalize/registry.py`, not by this file.

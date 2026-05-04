@@ -1,3 +1,21 @@
+"""DEPRECATED 2026-05-04 — superseded by ``scripts/run_spark_2026_q1_full.py``.
+
+This older script computes only ``sky_revenue`` (no ``prime_agent_revenue``)
+using a linearly-interpolated PSM3 timeseries that can be off by ~$11K/month
+at $100M PSM swings. The full script does daily PSM3 snapshots correctly.
+
+Kept in-tree for historical reproducibility but should not be run for new
+settlements — runtime guard below makes that explicit.
+"""
+
+import sys as _sys
+print(
+    "ERROR: scripts/run_spark_2026_q1.py is deprecated — use "
+    "scripts/run_spark_2026_q1_full.py for production Spark Q1 settlement.",
+    file=_sys.stderr,
+)
+_sys.exit(2)
+
 """Spark Q1 2026 sky-revenue (only) — Jan / Feb / Mar 2026.
 
 Scope (per user request 2026-04-28): compute ONLY ``sky_revenue`` for Spark.

@@ -21,6 +21,19 @@ id: spark
 ilk_bytes32: '0x414c4c4f4341544f522d535041524b2d41000000000000000000000000000000'  # ALLOCATOR-SPARK-A
 start_date: '2024-11-18'   # first frob on ALLOCATOR-SPARK-A (Dune query 7399640)
 
+# Subsidised borrowing rate (debt-rate-methodology Step 1.b). Same program
+# parameters as Grove. Daily reference rates in
+# config/subsidy_reference_rates.yaml.
+#
+# ref_rate_kind: per Sky governance (2026-05-02), Spark uses EFFR (NY Fed
+# Effective Federal Funds Rate). Grove uses 3M T-Bill instead.
+subsidy:
+  enabled: true
+  cap_usd: 1000000000      # First $1B at subsidised rate; excess at full BR
+  program_start: '2026-01-01'
+  ramp_months: 24
+  ref_rate_kind: effr
+
 addresses:
   ethereum:
     subproxy: '0x691a6c29e9e96dd897718305427ad5d534db16ba'    # urn for ALLOCATOR-SPARK-A; 49,789 frob calls (most active allocator)
@@ -308,7 +321,6 @@ venues:
     chain: ethereum
     label: 'BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I)'
     pricing_category: E
-    sky_direct: true   # Sky Direct: Treasury Bill on Ethereum
     token:
       address: '0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041'
       symbol: 'BUIDL-I'
@@ -322,21 +334,24 @@ venues:
     chain: ethereum
     label: 'Janus Henderson Anemoy Treasury Fund (JTRSY)'
     pricing_category: E
-    sky_direct: true   # Sky Direct: Treasury Bill on Ethereum
     token:
       address: '0x8c213ee79581ff4984583c6a801e5263418c4b86'
       symbol: 'JTRSY'
       decimals: 6
+    # NAV: aligned 2026-05-04 with Grove's E9 — switched from Chronicle to
+    # Centrifuge's pricePerShareFeed (canonical per Grove team's PnL workbook;
+    # Grove now matches within $32). Same JTRSY token across primes, so the
+    # same oracle should drive both. Today Spark holds $0 JTRSY so no
+    # numerical impact, but methodologically aligned.
     nav_oracle:
-      kind: chronicle
-      address: '0x59ef4be3eddf0270c4878b7b945bbee13fb33d0d'   # same as Grove E9
+      kind: price_per_share_feed
+      address: '0xFE6920eB6C421f1179cA8c8d4170530CDBdfd77A'
       fallback: const_one
 
   - id: S21
     chain: ethereum
     label: 'Superstate Short Duration US Government Securities Fund (USTB)'
     pricing_category: E
-    sky_direct: true   # Sky Direct: Treasury Bill on Ethereum
     token:
       address: '0x43415eb6ff9db7e26a15b704e7a3edce97d31c4e'
       symbol: 'USTB'
@@ -380,7 +395,6 @@ venues:
     chain: ethereum
     label: 'Spark.fi USDT Reserve Curve (sUSDS/USDT)'
     pricing_category: F
-    sky_direct: true   # Sky Direct: USDT in sUSDS/USDT Curve pool (Spark only)
     lp_kind: curve_stableswap
     token:
       address: '0x00836fe54625be242bcfa286207795405ca4fd10'
@@ -703,6 +717,98 @@ venues:
     label: 'USDC raw (Avalanche-C — ALM idle)'
     pricing_category: A
     token:
+      address: '0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e'
+      symbol: 'USDC'
+      decimals: 6
+
+  # ─────────────────────────────────────────────────────────────
+  # Spark Savings V2 vaults (S2 — pricing_category)
+  # ─────────────────────────────────────────────────────────────
+  # Retail-facing 4626 vaults. The vault contracts (referenced via
+  # ``holder_override``) custody the underlying USDC/USDT/WETH/PYUSD on
+  # behalf of depositors, who hold spX shares. Spark earns the spread
+  # between vault yield (deployed to lending protocols / PSM3 / sUSDS) and
+  # the rate paid to depositors via share-pps growth.
+  #
+  # NOT held at the prime's ALMProxy → ``holder_override`` points to the
+  # vault contract directly. ``pricing_category: S2`` is currently SKIPPED
+  # in compute_monthly_pnl with a warning; a proper compute path needs:
+  #   - Asset side:   sum of vault's underlying balance across days
+  #   - Liability side: share_supply × convertToAssets(1 share)
+  #   - Revenue:      Δ(asset − liability) over the period (the spread)
+  # Verified on-chain 2026-05-01: all five contracts implement standard
+  # ERC-4626 (decimals + asset + convertToAssets). Q1 2026 EoM sizes:
+  #   - spUSDC (eth):  ~$575M underlying  | 782 holders
+  #   - spUSDT (eth):  ~$1133M underlying | 690 holders
+  #   - spETH  (eth):  ~81.6K WETH ≈ $185M | 243 holders
+  #   - spPYUSD(eth):  ~$1.07M underlying | 13 holders
+  #   - spUSDC (ava):  ~$37M underlying   | 87 holders
+  - id: S56
+    chain: ethereum
+    label: 'Spark Savings V2 — spUSDC vault'
+    pricing_category: S2
+    holder_override: '0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d'
+    token:
+      address: '0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d'
+      symbol: 'spUSDC'
+      decimals: 6
+    underlying:
+      address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+      symbol: 'USDC'
+      decimals: 6
+
+  - id: S57
+    chain: ethereum
+    label: 'Spark Savings V2 — spUSDT vault'
+    pricing_category: S2
+    holder_override: '0xe2e7a17dff93280dec073c995595155283e3c372'
+    token:
+      address: '0xe2e7a17dff93280dec073c995595155283e3c372'
+      symbol: 'spUSDT'
+      decimals: 6
+    underlying:
+      address: '0xdac17f958d2ee523a2206206994597c13d831ec7'
+      symbol: 'USDT'
+      decimals: 6
+
+  - id: S58
+    chain: ethereum
+    label: 'Spark Savings V2 — spETH vault'
+    pricing_category: S2
+    holder_override: '0xfe6eb3b609a7c8352a241f7f3a21cea4e9209b8f'
+    token:
+      address: '0xfe6eb3b609a7c8352a241f7f3a21cea4e9209b8f'
+      symbol: 'spETH'
+      decimals: 18
+    underlying:
+      address: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
+      symbol: 'WETH'
+      decimals: 18
+
+  - id: S59
+    chain: ethereum
+    label: 'Spark Savings V2 — spPYUSD vault'
+    pricing_category: S2
+    holder_override: '0x80128dbb9f07b93dde62a6daeadb69ed14a7d354'
+    token:
+      address: '0x80128dbb9f07b93dde62a6daeadb69ed14a7d354'
+      symbol: 'spPYUSD'
+      decimals: 6
+    underlying:
+      address: '0x6c3ea9036406852006290770bedfcaba0e23a0e8'
+      symbol: 'PYUSD'
+      decimals: 6
+
+  - id: S60
+    chain: avalanche_c
+    label: 'Spark Savings V2 — spUSDC vault (Avalanche-C, CREATE2 same address)'
+    pricing_category: S2
+    holder_override: '0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d'
+    token:
+      address: '0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d'
+      symbol: 'spUSDC'
+      decimals: 6
+    underlying:
       address: '0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e'
       symbol: 'USDC'
       decimals: 6

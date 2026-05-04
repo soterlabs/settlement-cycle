@@ -167,13 +167,24 @@ def _decode_uint(raw: str) -> int:
 @cached(source_id="rpc.balance_of")
 def balance_of(chain: Chain, token: Address, holder: Address, block: int) -> int:
     """ERC-20 `balanceOf(holder)` at a specific block. Returns 0 if the token
-    contract didn't exist at this block (RPC reverts with 0x or rejects the
-    call). The caller may need to distinguish "non-existent contract" from
-    "real 0 balance" — for settlement, treating both as 0 is correct."""
+    contract didn't exist at this block (RPC reverts with 0x — handled inside
+    ``_decode_uint`` without raising).
+
+    On exhausted-retry RPC failure (RPCError / HTTPError after all attempts in
+    ``eth_call``) the return is also 0, but a loud WARNING is logged so the
+    silent-zero doesn't mask a transient RPC outage that would otherwise
+    silently zero out a venue's value. Settlement scripts should fail or
+    re-run on these warnings rather than accept the 0.
+    """
     data = SEL_BALANCE_OF + _pad_address(holder)
     try:
         return _decode_uint(eth_call(chain, token, data, block))
-    except (RPCError, requests.HTTPError):
+    except (RPCError, requests.HTTPError) as e:
+        import logging
+        logging.getLogger(__name__).warning(
+            "balance_of(%s, token=%s, holder=%s, block=%d) failed after retries: %s — returning 0",
+            chain.value, token.hex, holder.hex, block, e,
+        )
         return 0
 
 
@@ -196,7 +207,15 @@ def scaled_balance_of(chain: Chain, token: Address, holder: Address, block: int)
     data = SEL_SCALED_BALANCE_OF + _pad_address(holder)
     try:
         return _decode_uint(eth_call(chain, token, data, block))
-    except (RPCError, requests.HTTPError):
+    except (RPCError, requests.HTTPError) as e:
+        # Tokens without a scaledBalanceOf accessor revert; that's the design
+        # intent for return-0 here. But "RPC down" is a different failure mode
+        # — log loud so the caller can distinguish.
+        import logging
+        logging.getLogger(__name__).warning(
+            "scaled_balance_of(%s, token=%s, holder=%s, block=%d) failed: %s — returning 0",
+            chain.value, token.hex, holder.hex, block, e,
+        )
         return 0
 
 

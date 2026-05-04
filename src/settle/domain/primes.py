@@ -13,6 +13,7 @@ from enum import StrEnum
 from typing import Self
 
 from .pricing import PricingCategory
+from .subsidy import SubsidyConfig
 
 
 class Chain(StrEnum):
@@ -115,16 +116,23 @@ class Venue:
     # ``IBalanceSource.cumulative_balance_timeseries(min_transfer_amount=…)``.
     # ``None`` means no filter (default).
     min_transfer_amount_usd: Decimal | None = None
-    # Sky Direct flag (per prime-settlement-methodology Step 4).
-    # When True: prime's revenue from this venue is floored at zero
-    # (max(0, ActualRev − BR_charge)); Sky books BR_charge as revenue and
-    # absorbs the shortfall when the venue underperforms BR. When False
-    # (default): full venue revenue flows to prime; sky_revenue unchanged.
-    # Eligible exposures per Sky governance:
-    #   * Treasury Bills on Ethereum: BUIDL, JTRSY, USTB (Grove)
-    #   * USDC in PSM3 on non-Ethereum chains (Spark, Grove)
-    #   * USDT in sUSDS/USDT Curve pools (Spark only)
+    # DEPRECATED 2026-05-02 — superseded by ``config/sky_direct_exposures.yaml``
+    # (loaded as ``SDETable`` in ``compute.monthly_pnl``). Retained as a YAML
+    # sink for legacy configs but ignored by compute. Will be removed once
+    # all {prime}.yaml files have dropped the field.
     sky_direct: bool = False
+    # Override for the address that holds this venue's tokens. Default None
+    # means use ``prime.alm[venue.chain]`` (the standard case). Set to a
+    # specific contract address for venues like Spark Savings V2 vaults
+    # where the prime's ALM does NOT custody the position; instead the
+    # vault contract custodies underlying tokens on behalf of retail
+    # depositors and the prime earns the yield spread.
+    holder_override: Address | None = None
+    # Skip flag: when True, the venue is excluded from compute (no value, no
+    # revenue, no inflow tracking). Use for venues whose underlying is too
+    # volatile or whose oracle isn't trustworthy to include in MSC. The venue
+    # stays in YAML for documentation and historical reproducibility.
+    skip: bool = False
 
 
 class PsmKind(StrEnum):
@@ -182,6 +190,10 @@ class Prime:
     # only after confirming it sends true off-chain yield, since misclassification
     # inflates revenue.
     external_alm_sources: dict[Chain, list[Address]] = field(default_factory=dict)
+    # Subsidised borrowing rate config. Default = disabled (legacy behavior:
+    # full BR on utilized). When enabled, Sky charges subsidised rate on the
+    # first ``cap_usd`` of utilized USDS; any excess at full BR.
+    subsidy: SubsidyConfig = field(default_factory=lambda: SubsidyConfig(enabled=False))
 
     def __post_init__(self) -> None:
         if len(self.ilk_bytes32) != 32:

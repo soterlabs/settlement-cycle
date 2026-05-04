@@ -134,6 +134,7 @@ def get_unit_price(
             return _curve_lp_unit_price(
                 venue, block,
                 pool_source=curve_pool_source if curve_pool_source else CurvePoolSource(),
+                erc4626_source=erc4626_source,
             )
         if venue.lp_kind == "uniswap_v3":
             # Uni V3 positions are non-fungible NFTs — no meaningful unit price.
@@ -158,6 +159,7 @@ def _curve_lp_unit_price(
     block: int,
     *,
     pool_source: CurvePoolSource,
+    erc4626_source: IConvertToAssetsSource | None = None,
 ) -> Decimal:
     """USD price per LP unit for a Curve stableswap pool (Method B per
     VALUATION_METHODOLOGY §6.a — reserves × per-coin price).
@@ -204,11 +206,18 @@ def _curve_lp_unit_price(
                     f"underlying {underlying_addr.hex()} which is missing from the "
                     "par-stable registry."
                 )
-            from ..extract import rpc as _rpc
-            from ..domain.primes import Address as _Addr, Chain as _Chain
-            assets_per_share_raw = _rpc.convert_to_assets(
-                _Chain(venue.chain.value), _Addr(coin_addr.value),
-                shares=10 ** share_decimals, block=block,
+            # Route via the IConvertToAssetsSource protocol so unit tests can
+            # inject a mock instead of hitting live RPC. Only fall through to
+            # the registry default when no source was supplied (acceptance scripts).
+            c2a = (
+                erc4626_source if erc4626_source is not None
+                else get_convert_to_assets_source()
+            )
+            assets_per_share_raw = c2a.convert_to_assets(
+                chain=venue.chain.value,
+                vault=coin_addr.value,
+                shares=10 ** share_decimals,
+                block=block,
             )
             assets_per_share = (
                 Decimal(assets_per_share_raw) / Decimal(10**underlying_decimals)

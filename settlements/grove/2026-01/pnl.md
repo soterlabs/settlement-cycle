@@ -1,6 +1,6 @@
 # GROVE — Monthly settlement 2026-01
 
-- **Generated:** 2026-04-29T12:18:33+00:00
+- **Generated:** 2026-05-04T11:22:04+00:00
 - **Pipeline:** `settle` v0.1.0
 - **Period:** 2026-01-01 → 2026-01-31 (31 days)
 
@@ -8,12 +8,11 @@
 
 | Component | Amount (USD) |
 |---|---:|
-| prime_agent_revenue           | $5,870,545.78 |
+| prime_agent_revenue           | $3,288,078.51 |
 | agent_rate                    | $6,263.84 |
 | distribution_rewards          | $0.00 |
-| **prime_agent_total_revenue** | **$5,876,809.61** |
-| sky_revenue (net)             | $6,526,237.69 |
-| ↳ sky_direct_shortfall (absorbed) | $532,390.02 |
+| **prime_agent_total_revenue** | **$3,294,342.35** |
+| sky_revenue (net)             | $5,825,249.71 |
 
 `prime_agent_total_revenue = prime_agent_revenue + agent_rate + distribution_rewards`.
 Settlement reports the prime's total revenue (positive cash to the prime) and `sky_revenue` (cost owed to Sky) separately — they're not netted at this layer.
@@ -38,8 +37,8 @@ Settlement reports the prime's total revenue (positive cash to the prime) and `s
 | E5 | Grove x Steakhouse USDC High Yield (Morpho 4626) | $0.00 | $1,009,793.26 | $999,752.65 | $10,040.61 |
 | E6 | Grove x Steakhouse AUSD (Morpho 4626) | $0.00 | $0.00 | $0.00 | $0.00 |
 | E7 | Securitize Tokenized AAA CLO Fund (STAC) | $100,000,000.00 | $100,616,387.90 | $0.00 | $616,387.90 |
-| E8 | Janus Henderson Anemoy AAA CLO (JAAA) | $751,935,242.23 | $454,512,148.04 | -$300,086,264.88 | $2,663,170.69 |
-| E9 | Janus Henderson Anemoy Treasury Fund (JTRSY) | $259,049,453.22 | $560,288,806.18 | $300,225,591.59 | $0.00 |
+| E8 | Janus Henderson Anemoy AAA CLO (JAAA) | $751,935,537.90 | $454,188,405.33 | -$300,050,751.20 | $1,307,953.42 |
+| E9 | Janus Henderson Anemoy Treasury Fund (JTRSY) | $258,849,970.75 | $559,853,396.47 | $300,015,212.89 | $0.00 |
 | E10 | BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I) | $178,974,854.01 | $179,495,969.98 | $0.00 | $0.00 |
 | E11 | Curve AUSD/USDC stableswap LP | $0.00 | $0.00 | $0.00 | $0.00 |
 | E12 | Uniswap V3 AUSD/USDC pool (NFT positions) | $0.00 | $0.00 | $0.00 | $0.00 |
@@ -51,18 +50,10 @@ Settlement reports the prime's total revenue (positive cash to the prime) and `s
 | E18 | sUSDS raw / POL (ALM idle — Cat B 4626) | $0.00 | $0.00 | $0.00 | $0.00 |
 | E19 | Grove x Steakhouse USDC High Yield (Base, Morpho 4626) | $0.00 | $1,001,359.02 | $1,000,018.22 | $1,340.80 |
 | E23 | Steakhouse Prime Instant (Base, Morpho V2) | $0.00 | $0.00 | $0.00 | $0.00 |
-| E20 | Janus Henderson Anemoy AAA CLO (JAAA-avalanche) | $255,065,250.00 | $256,292,500.00 | $0.00 | $1,227,250.00 |
-| E21 | Galaxy Arch CLO Token (GACLO-1) | $49,900,000.00 | $49,900,000.00 | $0.00 | $0.00 |
 | E22 | Anemoy Tokenized Apollo Diversified Credit Fund (ACRDX) | $50,014,229.92 | $51,022,216.71 | $0.00 | $1,007,986.79 |
-
-## Sky Direct (Step 4) breakdown
-
-Per the prime-settlement-methodology, Sky Direct venues book BR_charge to Sky and floor the prime's revenue at zero. When the venue underperforms BR, Sky absorbs the shortfall.
-
-| Venue | actual_revenue | BR_charge | sky_direct_shortfall | prime_keeps |
-|---|---:|---:|---:|---:|
-| E9 Janus Henderson Anemoy Treasury Fund (JTRSY) | $1,013,761.38 | $1,447,319.81 | $433,558.43 | $0.00 |
-| E10 BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I) | $521,115.97 | $619,947.56 | $98,831.59 | $0.00 |
+| E24 | Steakhouse High Yield PYUSD (Morpho 4626) | $0.00 | $0.00 | $0.00 | $0.00 |
+| E26 | PYUSD raw (ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 |
+| E27 | USDC raw on Base (ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 |
 
 ## Formula reference
 

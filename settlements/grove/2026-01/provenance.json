@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-04-29T12:18:33+00:00",
+  "generated_at_utc": "2026-05-04T11:22:04+00:00",
   "month": "2026-01",
   "period": {
     "end": "2026-01-31",
@@ -22,11 +22,11 @@
   "results": {
     "agent_rate": "6263.83662203273056384763",
     "distribution_rewards": "0",
-    "monthly_pnl": "-649428.078858327676767243869",
-    "prime_agent_revenue": "5870545.777329855674365755096",
-    "prime_agent_total_revenue": "5876809.613951888404929602726",
-    "sky_direct_shortfall": "532390.0236790520947604089858",
-    "sky_revenue": "6526237.692810216081696846595"
+    "monthly_pnl": "-2530907.364472552925152372949",
+    "prime_agent_revenue": "3288078.509490934038138084333",
+    "prime_agent_total_revenue": "3294342.346112966768701931963",
+    "sky_direct_shortfall": "0",
+    "sky_revenue": "5825249.710585519693854304912"
   },
   "settle_version": "0.1.0",
   "sources": {
@@ -75,14 +75,14 @@
       "venue_id": "E3"
     },
     {
-      "actual_revenue": "0E-8",
+      "actual_revenue": "0",
       "br_charge": "0",
       "label": "Grove x Steakhouse USDC (Morpho 4626)",
       "period_inflow": "0",
-      "revenue": "0E-8",
+      "revenue": "0",
       "sky_direct_shortfall": "0",
-      "value_eom": "0E-8",
-      "value_som": "0.00",
+      "value_eom": "0",
+      "value_som": "0",
       "venue_id": "E4"
     },
     {
@@ -93,18 +93,18 @@
       "revenue": "10040.610658744008513056706",
       "sky_direct_shortfall": "0",
       "value_eom": "1009793.258152034008513056706",
-      "value_som": "0E-8",
+      "value_som": "0",
       "venue_id": "E5"
     },
     {
-      "actual_revenue": "0E-8",
+      "actual_revenue": "0",
       "br_charge": "0",
       "label": "Grove x Steakhouse AUSD (Morpho 4626)",
       "period_inflow": "0",
-      "revenue": "0E-8",
+      "revenue": "0",
       "sky_direct_shortfall": "0",
-      "value_eom": "0E-8",
-      "value_som": "0.00",
+      "value_eom": "0",
+      "value_som": "0",
       "venue_id": "E6"
     },
     {
@@ -119,47 +119,47 @@
       "venue_id": "E7"
     },
     {
-      "actual_revenue": "2663170.690459947038",
+      "actual_revenue": "2303618.6334528380410107509",
       "br_charge": "0",
       "label": "Janus Henderson Anemoy AAA CLO (JAAA)",
-      "period_inflow": "-300086264.87994765",
-      "revenue": "2663170.690459947038",
+      "period_inflow": "-300050751.2022005269586890112",
+      "revenue": "1307953.422621025401772329237",
       "sky_direct_shortfall": "0",
-      "value_eom": "454512148.03791825026",
-      "value_som": "751935242.227405953222",
+      "value_eom": "454188405.3282758286693314120",
+      "value_som": "751935537.8970235175870096723",
       "venue_id": "E8"
     },
     {
-      "actual_revenue": "1013761.378602835302",
-      "br_charge": "1447319.810613278686865458097",
+      "actual_revenue": "988212.8300820492654244904",
+      "br_charge": "0",
       "label": "Janus Henderson Anemoy Treasury Fund (JTRSY)",
-      "period_inflow": "300225591.59107905",
-      "revenue": "0",
-      "sky_direct_shortfall": "433558.432010443384865458097",
-      "value_eom": "560288806.184847774864",
-      "value_som": "259049453.215165889562",
+      "period_inflow": "300015212.8938632519610268184",
+      "revenue": "0E-19",
+      "sky_direct_shortfall": "0",
+      "value_eom": "559853396.4705988722813996031",
+      "value_som": "258849970.7466535710549482943",
       "venue_id": "E9"
     },
     {
       "actual_revenue": "521115.9700",
-      "br_charge": "619947.5616686087098949508888",
+      "br_charge": "0",
       "label": "BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I)",
       "period_inflow": "0.00",
-      "revenue": "0",
-      "sky_direct_shortfall": "98831.5916686087098949508888",
+      "revenue": "0.0000",
+      "sky_direct_shortfall": "0",
       "value_eom": "179495969.9800",
       "value_som": "178974854.0100",
       "venue_id": "E10"
     },
     {
-      "actual_revenue": "0E-27",
+      "actual_revenue": "0E-8",
       "br_charge": "0",
       "label": "Curve AUSD/USDC stableswap LP",
       "period_inflow": "0E-8",
-      "revenue": "0E-27",
+      "revenue": "0E-8",
       "sky_direct_shortfall": "0",
-      "value_eom": "0E-8",
-      "value_som": "0E-27",
+      "value_eom": "0",
+      "value_som": "0",
       "venue_id": "E11"
     },
     {
@@ -174,25 +174,25 @@
       "venue_id": "E12"
     },
     {
-      "actual_revenue": "0.00",
+      "actual_revenue": "0",
       "br_charge": "0",
       "label": "RLUSD raw (ALM idle)",
       "period_inflow": "0",
-      "revenue": "0.00",
+      "revenue": "0",
       "sky_direct_shortfall": "0",
-      "value_eom": "0.00",
-      "value_som": "0.00",
+      "value_eom": "0",
+      "value_som": "0",
       "venue_id": "E13"
     },
     {
-      "actual_revenue": "0.00",
+      "actual_revenue": "0",
       "br_charge": "0",
       "label": "AUSD raw (ALM idle)",
       "period_inflow": "0",
-      "revenue": "0.00",
+      "revenue": "0",
       "sky_direct_shortfall": "0",
-      "value_eom": "0.00",
-      "value_som": "0.00",
+      "value_eom": "0",
+      "value_som": "0",
       "venue_id": "E14"
     },
     {
@@ -202,41 +202,41 @@
       "period_inflow": "-1.50E-9",
       "revenue": "1.50E-9",
       "sky_direct_shortfall": "0",
-      "value_eom": "0.00",
-      "value_som": "0.00",
+      "value_eom": "0",
+      "value_som": "0",
       "venue_id": "E15"
     },
     {
-      "actual_revenue": "0.00",
+      "actual_revenue": "0",
       "br_charge": "0",
       "label": "DAI raw (ALM idle)",
       "period_inflow": "0",
-      "revenue": "0.00",
+      "revenue": "0",
       "sky_direct_shortfall": "0",
-      "value_eom": "0.00",
-      "value_som": "0.00",
+      "value_eom": "0",
+      "value_som": "0",
       "venue_id": "E16"
     },
     {
-      "actual_revenue": "0.00",
+      "actual_revenue": "0",
       "br_charge": "0",
       "label": "USDS raw / POL (ALM idle \u2014 already netted out of utilized)",
       "period_inflow": "0",
-      "revenue": "0.00",
+      "revenue": "0",
       "sky_direct_shortfall": "0",
-      "value_eom": "0.00",
-      "value_som": "0.00",
+      "value_eom": "0",
+      "value_som": "0",
       "venue_id": "E17"
     },
     {
-      "actual_revenue": "0E-20",
+      "actual_revenue": "0",
       "br_charge": "0",
       "label": "sUSDS raw / POL (ALM idle \u2014 Cat B 4626)",
       "period_inflow": "0",
-      "revenue": "0E-20",
+      "revenue": "0",
       "sky_direct_shortfall": "0",
-      "value_eom": "0E-20",
-      "value_som": "0E-20",
+      "value_eom": "0",
+      "value_som": "0",
       "venue_id": "E18"
     },
     {
@@ -247,41 +247,19 @@
       "revenue": "1340.798639185727378072690",
       "sky_direct_shortfall": "0",
       "value_eom": "1001359.023633771296563672690",
-      "value_som": "0E-8",
+      "value_som": "0",
       "venue_id": "E19"
     },
     {
-      "actual_revenue": "0E-8",
+      "actual_revenue": "0",
       "br_charge": "0",
       "label": "Steakhouse Prime Instant (Base, Morpho V2)",
       "period_inflow": "0",
-      "revenue": "0E-8",
+      "revenue": "0",
       "sky_direct_shortfall": "0",
-      "value_eom": "0E-8",
-      "value_som": "0E-8",
+      "value_eom": "0",
+      "value_som": "0",
       "venue_id": "E23"
-    },
-    {
-      "actual_revenue": "1227250.000000",
-      "br_charge": "0",
-      "label": "Janus Henderson Anemoy AAA CLO (JAAA-avalanche)",
-      "period_inflow": "0",
-      "revenue": "1227250.000000",
-      "sky_direct_shortfall": "0",
-      "value_eom": "256292500.00000",
-      "value_som": "255065250.000000",
-      "venue_id": "E20"
-    },
-    {
-      "actual_revenue": "0.00",
-      "br_charge": "0",
-      "label": "Galaxy Arch CLO Token (GACLO-1)",
-      "period_inflow": "0",
-      "revenue": "0.00",
-      "sky_direct_shortfall": "0",
-      "value_eom": "49900000.00",
-      "value_som": "49900000.00",
-      "venue_id": "E21"
     },
     {
       "actual_revenue": "1007986.78989739679266231570",
@@ -293,6 +271,39 @@
       "value_eom": "51022216.71434895939374972770",
       "value_som": "50014229.92445156260108741200",
       "venue_id": "E22"
+    },
+    {
+      "actual_revenue": "0",
+      "br_charge": "0",
+      "label": "Steakhouse High Yield PYUSD (Morpho 4626)",
+      "period_inflow": "0",
+      "revenue": "0",
+      "sky_direct_shortfall": "0",
+      "value_eom": "0",
+      "value_som": "0",
+      "venue_id": "E24"
+    },
+    {
+      "actual_revenue": "0",
+      "br_charge": "0",
+      "label": "PYUSD raw (ALM idle)",
+      "period_inflow": "0",
+      "revenue": "0",
+      "sky_direct_shortfall": "0",
+      "value_eom": "0",
+      "value_som": "0",
+      "venue_id": "E26"
+    },
+    {
+      "actual_revenue": "0",
+      "br_charge": "0",
+      "label": "USDC raw on Base (ALM idle)",
+      "period_inflow": "0",
+      "revenue": "0",
+      "sky_direct_shortfall": "0",
+      "value_eom": "0",
+      "value_som": "0",
+      "venue_id": "E27"
     }
   ]
 }

@@ -13,9 +13,10 @@ from settle.compute.prime_agent_revenue import (
     compute_venue_revenue,
 )
 from settle.domain import Address, Chain, Period, PricingCategory, Token, Venue
+from settle.domain.sde import SDEEntry
 
 
-def _venue(vid: str = "V1", *, sky_direct: bool = False) -> Venue:
+def _venue(vid: str = "V1") -> Venue:
     return Venue(
         id=vid,
         chain=Chain.ETHEREUM,
@@ -23,7 +24,24 @@ def _venue(vid: str = "V1", *, sky_direct: bool = False) -> Venue:
         pricing_category=PricingCategory.ERC4626_VAULT,
         underlying=Token(Chain.ETHEREUM, Address.from_str("0x" + "bb" * 20), "USDC", 6),
         label="Test Venue",
-        sky_direct=sky_direct,
+    )
+
+
+def _sde_fixed(venue_id: str = "SD") -> SDEEntry:
+    return SDEEntry(
+        prime_id="grove", venue_id=venue_id, chain="ethereum",
+        kind="fixed", cap_usd=None, pattern=None,
+        start_date=date(2025, 10, 30), end_date=None,
+        label="test fixed", source="",
+    )
+
+
+def _sde_capped(venue_id: str, cap_usd: Decimal) -> SDEEntry:
+    return SDEEntry(
+        prime_id="grove", venue_id=venue_id, chain="ethereum",
+        kind="capped", cap_usd=cap_usd, pattern=None,
+        start_date=date(2025, 10, 23), end_date=None,
+        label="test capped", source="",
     )
 
 
@@ -158,87 +176,100 @@ def test_prime_revenue_empty_venue_list_yields_zero():
     assert breakdown == []
 
 
-# --- Sky Direct Step 4 floor ------------------------------------------------
+# --- SDE split (kind=fixed) -------------------------------------------------
 
-def test_sky_direct_outperformer_keeps_surplus():
-    """ActualRev > BR_charge → prime keeps (ActualRev − BR_charge); shortfall = 0."""
+def test_sde_fixed_all_revenue_to_sky():
+    """kind=fixed → sd_share=1; prime keeps 0, Sky takes full actual_revenue."""
     inputs = VenueRevenueInputs(
-        venue=_venue("SD-out", sky_direct=True),
+        venue=_venue("SD-out"),
         value_som=Decimal("100_000_000"), value_eom=Decimal("110_000_000"),
         inflow_timeseries=_empty_inflow(),
-        br_charge=Decimal("3_000_000"),
+        sde_entry=_sde_fixed("SD-out"),
     )
     vr = compute_venue_revenue(_period(), inputs)
     assert vr.actual_revenue == Decimal("10_000_000")
-    assert vr.br_charge == Decimal("3_000_000")
-    assert vr.revenue == Decimal("7_000_000")
-    assert vr.sky_direct_shortfall == Decimal("0")
-
-
-def test_sky_direct_underperformer_floored_at_zero():
-    """ActualRev < BR_charge → prime gets 0; Sky absorbs the shortfall."""
-    inputs = VenueRevenueInputs(
-        venue=_venue("SD-under", sky_direct=True),
-        value_som=Decimal("100_000_000"), value_eom=Decimal("102_000_000"),
-        inflow_timeseries=_empty_inflow(),
-        br_charge=Decimal("3_500_000"),
-    )
-    vr = compute_venue_revenue(_period(), inputs)
-    assert vr.actual_revenue == Decimal("2_000_000")
+    assert vr.sd_share == Decimal("1")
+    assert vr.sd_revenue == Decimal("10_000_000")
     assert vr.revenue == Decimal("0")
-    assert vr.sky_direct_shortfall == Decimal("1_500_000")
 
 
-def test_sky_direct_negative_actual_revenue_floored_at_zero():
-    """Venue lost money (NAV drop) → prime still gets 0 (not negative); Sky
-    absorbs the full shortfall = BR_charge − (negative_actual)."""
+def test_sde_fixed_negative_actual_revenue_absorbed_by_sky():
+    """Loss on a fixed-SDE venue: Sky absorbs the full negative number."""
     inputs = VenueRevenueInputs(
-        venue=_venue("SD-loss", sky_direct=True),
+        venue=_venue("SD-loss"),
         value_som=Decimal("100_000_000"), value_eom=Decimal("99_000_000"),
         inflow_timeseries=_empty_inflow(),
-        br_charge=Decimal("3_500_000"),
+        sde_entry=_sde_fixed("SD-loss"),
     )
     vr = compute_venue_revenue(_period(), inputs)
     assert vr.actual_revenue == Decimal("-1_000_000")
+    assert vr.sd_revenue == Decimal("-1_000_000")
     assert vr.revenue == Decimal("0")
-    assert vr.sky_direct_shortfall == Decimal("4_500_000")  # 3.5M - (-1M)
 
 
-def test_non_sky_direct_venue_ignores_br_charge_field():
-    """A non-Sky-Direct venue (default) keeps full revenue regardless of any
-    accidentally-passed br_charge."""
+def test_non_sde_venue_keeps_full_revenue():
+    """No SDE entry → sd_share=0, prime keeps full actual_revenue."""
     inputs = VenueRevenueInputs(
-        venue=_venue("Normal", sky_direct=False),
+        venue=_venue("Normal"),
         value_som=Decimal("100"), value_eom=Decimal("110"),
         inflow_timeseries=_empty_inflow(),
-        br_charge=Decimal("5"),  # ignored — sky_direct=False
+        sde_entry=None,
     )
     vr = compute_venue_revenue(_period(), inputs)
     assert vr.revenue == Decimal("10")
-    assert vr.sky_direct_shortfall == Decimal("0")
-    # actual_revenue still populated for downstream provenance / audit.
+    assert vr.sd_share == Decimal("0")
+    assert vr.sd_revenue == Decimal("0")
     assert vr.actual_revenue == Decimal("10")
 
 
-def test_sky_direct_total_shortfall_aggregates_across_venues():
-    """compute_prime_agent_revenue's total nets per-venue floors; orchestrator
-    sums sky_direct_shortfall separately."""
+# --- SDE split (kind=capped) ------------------------------------------------
+
+def test_sde_capped_splits_revenue_proportionally():
+    """JAAA-style: cap=$325M on a $454M position → sd_share = 325/454.
+    Revenue split applies that ratio."""
+    inputs = VenueRevenueInputs(
+        venue=_venue("JAAA"),
+        value_som=Decimal("454_000_000"), value_eom=Decimal("455_388_581"),
+        inflow_timeseries=_empty_inflow(),
+        sde_entry=_sde_capped("JAAA", Decimal("325_000_000")),
+    )
+    vr = compute_venue_revenue(_period(), inputs)
+    expected_share = Decimal("325_000_000") / Decimal("454_000_000")
+    assert vr.actual_revenue == Decimal("1_388_581")
+    assert vr.sd_share == expected_share
+    assert vr.sd_revenue == Decimal("1_388_581") * expected_share
+    assert vr.revenue == Decimal("1_388_581") * (Decimal("1") - expected_share)
+
+
+def test_sde_capped_when_value_below_cap_is_fully_sd():
+    """Position below cap → sd_share = 1 (everything is Sky's)."""
+    inputs = VenueRevenueInputs(
+        venue=_venue("JAAA-small"),
+        value_som=Decimal("100_000_000"), value_eom=Decimal("101_000_000"),
+        inflow_timeseries=_empty_inflow(),
+        sde_entry=_sde_capped("JAAA-small", Decimal("325_000_000")),
+    )
+    vr = compute_venue_revenue(_period(), inputs)
+    assert vr.sd_share == Decimal("1")
+    assert vr.sd_revenue == Decimal("1_000_000")
+    assert vr.revenue == Decimal("0")
+
+
+def test_compute_prime_revenue_sums_only_prime_share():
+    """Total prime_agent_revenue = Σ revenue (already net of SDE split)."""
     inputs = [
         VenueRevenueInputs(
-            venue=_venue("SD1", sky_direct=True),
-            value_som=Decimal("100"), value_eom=Decimal("105"),
+            venue=_venue("V1"),
+            value_som=Decimal("100"), value_eom=Decimal("110"),
             inflow_timeseries=_empty_inflow(),
-            br_charge=Decimal("8"),  # underperforms by 3
         ),
         VenueRevenueInputs(
-            venue=_venue("SD2", sky_direct=True),
-            value_som=Decimal("200"), value_eom=Decimal("220"),
+            venue=_venue("SD1"),
+            value_som=Decimal("100"), value_eom=Decimal("105"),
             inflow_timeseries=_empty_inflow(),
-            br_charge=Decimal("10"),  # outperforms by 10
+            sde_entry=_sde_fixed("SD1"),
         ),
     ]
     total, breakdown = compute_prime_agent_revenue(_period(), inputs)
-    # SD1 floored at 0, SD2 keeps 10 (= 20 − 10).
-    assert total == Decimal("10")
-    shortfall_total = sum((v.sky_direct_shortfall for v in breakdown), Decimal(0))
-    assert shortfall_total == Decimal("3")
+    assert total == Decimal("10")  # V1's $10; SD1 contributes 0 to prime
+    assert sum((v.sd_revenue for v in breakdown), Decimal(0)) == Decimal("5")
