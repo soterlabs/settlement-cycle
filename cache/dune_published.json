@@ -1,0 +1,9 @@
+{
+  "src/settle/queries/blocks_at_eod.sql": 7432792,
+  "src/settle/queries/debt_timeseries.sql": 7432795,
+  "src/settle/queries/inflow_by_counterparty.sql": 7432797,
+  "src/settle/queries/ssr_history.sql": 7432798,
+  "src/settle/queries/transfer_timeseries.sql": 7432800,
+  "src/settle/queries/v3_liquidity_events.sql": 7432801,
+  "src/settle/queries/venue_inflow.sql": 7432803
+}
