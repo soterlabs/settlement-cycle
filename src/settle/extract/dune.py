@@ -113,16 +113,44 @@ def _sql_hash(sql: str) -> str:
     return hashlib.sha256(sql.strip().encode()).hexdigest()
 
 
-def _create_query(sql: str, name: str) -> int:
-    """POST a new saved query to Dune. Returns the new query_id."""
+def _create_query(sql: str, name: str, *, is_private: bool = True) -> int:
+    """POST a new saved query to Dune. Returns the new query_id.
+
+    Defaults to ``is_private=True`` to match the runtime cache path's
+    behaviour (queries auto-created by ``_resolve_query_id`` are
+    ephemeral helpers, not for sharing). Pass ``is_private=False`` from
+    the publish workflow when creating the canonical, shareable
+    versions of these SQL files.
+    """
     r = requests.post(
         f"{DUNE_API_BASE}/query",
         headers=_headers(),
-        json={"name": name, "query_sql": sql, "is_private": True, "is_temp": False},
+        json={"name": name, "query_sql": sql, "is_private": is_private, "is_temp": False},
         timeout=30,
     )
     r.raise_for_status()
     return int(r.json()["query_id"])
+
+
+def _update_query_sql(
+    query_id: int, sql: str, *, is_private: bool | None = None,
+) -> None:
+    """PATCH an existing Dune query's SQL (and optionally flip visibility).
+
+    Preserves the ``query_id`` (and therefore the shareable URL). Used
+    by the publish workflow's ``--force`` mode to push local SQL edits
+    to the canonical Dune copy without breaking previously-shared links.
+    """
+    body: dict[str, Any] = {"query_sql": sql}
+    if is_private is not None:
+        body["is_private"] = is_private
+    r = requests.patch(
+        f"{DUNE_API_BASE}/query/{query_id}",
+        headers=_headers(),
+        json=body,
+        timeout=30,
+    )
+    r.raise_for_status()
 
 
 def _resolve_query_id(sql_path: Path) -> int:
