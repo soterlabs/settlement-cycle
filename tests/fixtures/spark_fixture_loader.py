@@ -180,8 +180,11 @@ def build_spark_sources(
     # external_alm_sources is empty AND inflow_by_counterparty returns empty)
     # consumes this to set capital_net = Δvalue, producing revenue = 0 — the
     # correct behavior for par-stables held at the ALM with no off-chain
-    # yield source. Spark has no external_alm_sources, so all Cat A balance
-    # changes are value-preserving (PSM swap, allocator buffer, etc.).
+    # yield source. Spark's `external_alm_sources` lists only the Anchorage
+    # escrow EOA (PR 1, 2026-05-05) — that affects S26 USDC raw via the
+    # main classifier path; the other Cat A venues (USDT/PYUSD/DAI/USDe/USDS
+    # raw) have no registered external sender, so this fallback still
+    # produces revenue = 0 for them.
     # Coverage assertion: for any Cat B venue with a non-zero EoM cum_balance
     # in the fixture, demand at least one row dated >= period_filter_start.
     # Otherwise the synthesized mint/burn frames are empty for that venue,
@@ -293,9 +296,9 @@ def build_spark_sources(
             if holder == eth_alm and token in cat_e_by_token:
                 return cat_e_by_token[token]
             # Cat A routing: synthesized SoM/EoM 2-row frame so the compute-
-            # layer Cat A fallback (when both inflow_by_counterparty and
-            # external_alm_sources are empty) treats balance changes as
-            # value-preserving capital → revenue = 0.
+            # layer Cat A fallback (when inflow_by_counterparty returns
+            # empty rows below) treats balance changes as value-preserving
+            # capital → revenue = 0.
             df = cat_a_cum_by_token_holder.get((token, holder))
             if df is not None:
                 return df
@@ -312,7 +315,13 @@ def build_spark_sources(
             return _empty_directed_df()
 
         def inflow_by_counterparty(self, chain, token, holder, start, pin_block):
-            # Spark.external_alm_sources is empty → Cat A revenue = 0.
+            # Test fixture limitation: returns empty rows for every venue.
+            # Live `inflow_by_counterparty` (Dune) would return per-counterparty
+            # transfers, including Anchorage interest sweeps to S26 USDC raw
+            # (PR 1, 2026-05-05) — to exercise that path in tests, add the
+            # actual Transfer rows to a fixture and load them here. Until
+            # then the offline fixture produces pre-PR-1 numbers (Cat A
+            # revenue = 0 for every par-stable venue via the fallback path).
             return pd.DataFrame({
                 "block_date": [], "counterparty": [], "signed_amount": [],
             })

@@ -375,18 +375,64 @@ venues:
 
   - id: S23
     chain: ethereum
-    label: 'Anchorage off-chain custodial position'
+    label: 'Anchorage tri-party loan escrow (USDC pass-through, ~$0 balance)'
     pricing_category: E
     token:
-      address: '0x49506c3aa028693458d6ee816b2ec28522946872'   # custodial proxy on-chain
-      symbol: 'ANCHORAGE'
+      address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'   # USDC (real ERC20)
+      symbol: 'USDC'
       decimals: 6
+    holder_override: '0x49506c3aa028693458d6ee816b2ec28522946872'   # Anchorage Spark escrow EOA
     nav_oracle:
       kind: const_one
-    # ⚠ Off-chain $150M position. NAV is API-only via Anchorage developer
-    # endpoint; no on-chain oracle. Marked const_one so the YAML loads;
-    # implementation is blocked on Anchorage credentials. Verify before
-    # running settlement — this venue currently produces wrong revenue.
+    # ─────────────────────────────────────────────────────────────────
+    # Anchorage tri-party loan — $150M USDC, fixed-rate, BTC-backed
+    # ─────────────────────────────────────────────────────────────────
+    # Loan term:        2025-12-19 → 2026-06-16  (per result_spark_anchorage_usdc)
+    # Principal:        $150,000,000 USDC
+    # Realised APR:     ~7.13% (observed monthly sweeps annualised on $150M)
+    # Counterparty:     Anchorage Digital. Strategy "Anchorage BTC 6M 7%".
+    #
+    # Address trail:
+    #   SLL ALM proxy (0x1601843c…347e)
+    #     → Anchorage Spark escrow (0x49506C3Aa028693458d6eE816b2EC28522946872)
+    #       → downstream holding wallet (0x8149c53ea54de2a62c9e4caef29478f1af4c7bd3)
+    #         → off-chain BTC custody (Anchorage)
+    #
+    # ── How this venue contributes to monthly settlement ──
+    #
+    # S23 itself contributes ~$0 to prime_agent_revenue: it tracks USDC at
+    # the escrow EOA, which is a near-instantaneous pass-through (Anchorage
+    # forwards funds to the holding wallet within minutes, then to off-chain
+    # BTC custody). Cat E inflow accounting nets the in/out flows to ≈ 0 over
+    # any settlement period.
+    #
+    # The actual revenue capture happens on **S26 USDC raw (ALM idle)** via
+    # the Cat A `external_alm_sources` mechanism: the Anchorage escrow EOA
+    # is registered as an external yield source (bottom of this file), so
+    # the monthly USDC interest sweeps escrow→SLL flow through Cat A par-stable
+    # accounting into prime_agent_revenue. Principal-correction events on
+    # the same address (the $5M return on 2025-12-19; the future 2026-06-16
+    # termination) are listed in `principal_return_overrides` so they're
+    # not mis-classified as yield.
+    #
+    # Sky's BR charge on the funding is handled by the standard
+    # `compute_sky_revenue` mechanic: Spark drew the USDS to fund Anchorage
+    # from Sky (Vat.ilks(ALLOCATOR-SPARK-A).Art jumped +$208M during the
+    # 2025-12-14 → 2025-12-19 disbursement window), and Anchorage is
+    # neither PSM-netted nor SDE-reimbursed in `utilized`, so BR has been
+    # charging on it cleanly the whole time — no per-venue work needed.
+    #
+    # Q1 2026 net effect (PR 1, 2026-05-05): prime_agent_revenue +$2.59M
+    # from the three Q1 interest sweeps ($891K + $891K + $805K). Sky
+    # revenue unchanged (was already correct). monthly_pnl on Anchorage
+    # now matches Spark's view.
+    #
+    # Open follow-ups (issue #17, balance-sheet refinements, NOT numbers):
+    #   - snapshot-module position value (today $0 because the escrow holds
+    #     ~$0 USDC; a future TRI_PARTY_LOAN pricing path would surface
+    #     `principal_at_block` so the $150M shows up in Snapshot.assets_usd)
+    #   - accrual-vs-cash methodology agreement with Spark
+    #   - automated principal/interest split at loan termination
 
   # ─────────────────────────────────────────────────────────────
   # Ethereum — Curve LP (Cat F)
@@ -814,10 +860,35 @@ venues:
       decimals: 6
 
 # Cat A revenue allowlist — counterparties that send REALIZED YIELD directly
-# to the ALM proxy. Empty by default (no off-chain custodian senders today
-# beyond the special-cased Anchorage venue S23, which is tracked as Cat E).
-# Add an entry like the example below when an off-chain yield source lands:
-#
-# external_alm_sources:
-#   ethereum:
-#     - '0x...'
+# to the ALM proxy.
+external_alm_sources:
+  ethereum:
+    # Anchorage Spark escrow EOA — sends monthly USDC interest sweeps from
+    # the $150M tri-party loan (S23). The principal-out side is NOT priced
+    # by this mechanism (the principal lives off-chain in BTC custody);
+    # only the realized interest inflows are captured. See PRD §17.13 and
+    # issue #17 / Q-ID S3.
+    - '0x49506c3aa028693458d6ee816b2ec28522946872'
+
+# Per-(chain, source) overrides for inflows that arrive from an
+# `external_alm_sources` address but should NOT be classified as yield
+# (e.g. tri-party loan principal corrections or loan-termination returns).
+# The Cat A classifier matches by (date, amount within $1) and reclassifies
+# matching inflows as capital. Amounts in whole USD (par-stable assumption).
+principal_return_overrides:
+  ethereum:
+    '0x49506c3aa028693458d6ee816b2ec28522946872':   # Anchorage Spark escrow
+      # 2025-12-19: $5M USDC sent back to the SLL the day after one of the
+      # initial disbursement transfers — recorded by Spark's accounting as
+      # a partial-principal correction, not interest. Without this override
+      # any retroactive Q4 2025 settlement would over-count yield by $5M.
+      - date: '2025-12-19'
+        amount: 5000000
+        token: 'USDC'
+        note: 'partial-principal correction during initial Dec disbursement window'
+      # 2026-06-16 loan termination: when the loan unwinds, Anchorage will
+      # sweep back the $150M principal (likely as one or two transfers,
+      # plus a final-interest stub). Add the principal entry here once the
+      # transfer is observed on-chain — splitting principal vs final
+      # interest by the actual amounts. Until that happens, retroactive
+      # June 2026 settlement would mis-classify the $150M as yield.

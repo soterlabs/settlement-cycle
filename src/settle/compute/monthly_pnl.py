@@ -653,10 +653,18 @@ def compute_monthly_pnl(
                 addr.value
                 for addr in prime.external_alm_sources.get(venue.chain, [])
             }
+            # Map override list keyed by raw 20-byte address (matches the
+            # ``_to_bytes`` normalisation inside the helper).
+            overrides_for_chain = prime.principal_return_overrides.get(venue.chain, {})
+            overrides_by_bytes = {
+                addr.value: [(o.date, o.amount) for o in entries]
+                for addr, entries in overrides_for_chain.items()
+            }
             inflow_ts = _cat_a_capital_inflow_timeseries(
                 prime, venue, period,
                 balance_source=balance_src,
                 external_sources=external,
+                principal_return_overrides=overrides_by_bytes,
             )
         elif venue.pricing_category == PricingCategory.RWA_TRANCHE:
             # Cat E — RWA tranche net flow × NAV oracle at day-end block.

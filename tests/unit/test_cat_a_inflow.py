@@ -149,6 +149,115 @@ def test_cat_a_memoryview_counterparty_normalizes(config_dir: Path):
     assert out.empty
 
 
+def test_cat_a_principal_return_override_reclassifies_external_as_capital(
+    config_dir: Path,
+):
+    """An inflow nominally from an external source whose (date, amount)
+    matches a principal-return override is reclassified as capital, not
+    yield. This is how tri-party loan principal corrections (e.g., the
+    Anchorage S23 $5M Dec-19-2025 partial-principal return) avoid being
+    over-counted as off-pool yield."""
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()
+    cp_external = _bytes20("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+
+    # Two inflows from the same external source on different dates:
+    #   - 2026-03-05: $891,780 (interest sweep — should remain yield)
+    #   - 2026-03-15: $5,000,000 (principal return — overridden to capital)
+    src = MockBalanceSource()
+    src.inflow_by_counterparty = lambda **_: pd.DataFrame({
+        "block_date":   [date(2026, 3, 5),   date(2026, 3, 15)],
+        "counterparty": [cp_external,        cp_external],
+        "signed_amount":[Decimal("891780"),  Decimal("5000000")],
+    })
+    overrides = {cp_external: [(date(2026, 3, 15), Decimal("5000000"))]}
+
+    out = _cat_a_capital_inflow_timeseries(
+        grove, venue, period,
+        balance_source=src,
+        external_sources={cp_external},
+        principal_return_overrides=overrides,
+    )
+    # Only the $5M principal-return row is capital; the $890K interest sweep
+    # stays excluded (passes through as yield/revenue).
+    assert out["daily_inflow"].sum() == Decimal("5000000")
+
+
+def test_cat_a_principal_return_override_within_dollar_tolerance(
+    config_dir: Path,
+):
+    """Match tolerates ±$1 of rounding noise (per-token decimal scaling
+    from on-chain data). $5,000,000.50 vs override $5,000,000 still
+    matches."""
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()
+    cp_external = _bytes20("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+
+    src = MockBalanceSource()
+    src.inflow_by_counterparty = lambda **_: pd.DataFrame({
+        "block_date":   [date(2026, 3, 15)],
+        "counterparty": [cp_external],
+        "signed_amount":[Decimal("5000000.50")],
+    })
+    overrides = {cp_external: [(date(2026, 3, 15), Decimal("5000000"))]}
+
+    out = _cat_a_capital_inflow_timeseries(
+        grove, venue, period,
+        balance_source=src,
+        external_sources={cp_external},
+        principal_return_overrides=overrides,
+    )
+    assert out["daily_inflow"].sum() == Decimal("5000000.50")
+
+
+def test_cat_a_principal_return_override_misses_on_amount_mismatch(
+    config_dir: Path,
+):
+    """Override does NOT match if the amount is too different — the inflow
+    stays classified as yield (excluded from capital). Guards against
+    accidentally swallowing an unexpected inflow."""
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()
+    cp_external = _bytes20("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+
+    src = MockBalanceSource()
+    src.inflow_by_counterparty = lambda **_: pd.DataFrame({
+        "block_date":   [date(2026, 3, 15)],
+        "counterparty": [cp_external],
+        "signed_amount":[Decimal("4500000")],   # $4.5M, not $5M
+    })
+    overrides = {cp_external: [(date(2026, 3, 15), Decimal("5000000"))]}
+
+    out = _cat_a_capital_inflow_timeseries(
+        grove, venue, period,
+        balance_source=src,
+        external_sources={cp_external},
+        principal_return_overrides=overrides,
+    )
+    # No match → flow is treated as yield (excluded from capital).
+    assert out.empty
+
+
+def test_load_prime_parses_principal_return_overrides_from_spark_yaml(
+    config_dir: Path,
+):
+    """Spark's spark.yaml registers a principal-return override for the
+    Anchorage escrow's 2025-12-19 $5M correction. Verify the loader
+    surfaces it on the Prime value object so the compute layer can pass
+    it into the Cat A classifier."""
+    spark = load_prime(config_dir / "spark.yaml")
+    eth_overrides = spark.principal_return_overrides[Chain.ETHEREUM]
+    anchorage_escrow = next(
+        a for a in spark.external_alm_sources[Chain.ETHEREUM]
+        if str(a) == "0x49506c3aa028693458d6ee816b2ec28522946872"
+    )
+    entries = eth_overrides[anchorage_escrow]
+    assert len(entries) >= 1
+    dec_19 = next(e for e in entries if e.date == date(2025, 12, 19))
+    assert dec_19.amount == Decimal("5000000")
+    assert dec_19.token == "USDC"
+
+
 def test_cat_a_empty_inflow_returns_empty(config_dir: Path):
     """No transfers in the period → empty result."""
     grove, venue = _grove_e15(config_dir)

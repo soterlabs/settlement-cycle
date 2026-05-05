@@ -38,3 +38,6 @@ out.json
 # Environment
 .env
 .env.local
+
+# Data
+data

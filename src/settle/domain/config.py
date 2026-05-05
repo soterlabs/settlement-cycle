@@ -9,7 +9,17 @@ from pathlib import Path
 import yaml
 
 from .pricing import PricingCategory
-from .primes import Address, Chain, NavOracle, Prime, PsmConfig, PsmKind, Token, Venue
+from .primes import (
+    Address,
+    Chain,
+    NavOracle,
+    Prime,
+    PrincipalReturnOverride,
+    PsmConfig,
+    PsmKind,
+    Token,
+    Venue,
+)
 from .subsidy import SubsidyConfig
 
 
@@ -109,6 +119,24 @@ def load_prime(config_path: Path) -> Prime:
         chain = Chain(chain_str)
         external_alm_sources[chain] = [Address.from_str(a) for a in addrs]
 
+    principal_return_overrides: dict[
+        Chain, dict[Address, list[PrincipalReturnOverride]]
+    ] = {}
+    for chain_str, by_addr in cfg.get("principal_return_overrides", {}).items():
+        chain = Chain(chain_str)
+        principal_return_overrides[chain] = {}
+        for addr_str, entries in by_addr.items():
+            addr = Address.from_str(addr_str)
+            principal_return_overrides[chain][addr] = [
+                PrincipalReturnOverride(
+                    date=date.fromisoformat(e["date"]),
+                    amount=Decimal(str(e["amount"])),
+                    token=e.get("token", ""),
+                    note=e.get("note", ""),
+                )
+                for e in entries
+            ]
+
     return Prime(
         id=cfg["id"],
         ilk_bytes32=_parse_ilk_bytes32(cfg["ilk_bytes32"]),
@@ -118,6 +146,7 @@ def load_prime(config_path: Path) -> Prime:
         psm=psm,
         venues=venues,
         external_alm_sources=external_alm_sources,
+        principal_return_overrides=principal_return_overrides,
         subsidy=SubsidyConfig.from_dict(cfg.get("subsidy")),
     )
 

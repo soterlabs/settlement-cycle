@@ -169,6 +169,24 @@ class PsmConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class PrincipalReturnOverride:
+    """A single inflow that arrives FROM an `external_alm_sources` address
+    but should NOT be classified as yield (it's a principal-return event
+    on a tri-party loan or similar instrument). Matched by (date, amount)
+    against on-chain Transfer rows during Cat A inflow classification.
+
+    Amounts are in whole USD units (par-stable assumption — same scaling
+    as ``inflow_by_counterparty.signed_amount``). Matching tolerates ±$1
+    of rounding noise.
+    """
+
+    date: date
+    amount: Decimal
+    token: str = ""    # token symbol — sanity check for human readers
+    note: str = ""
+
+
+@dataclass(frozen=True, slots=True)
 class Prime:
     """A Sky prime agent — ilk, addresses per chain, allocation venues."""
 
@@ -190,6 +208,15 @@ class Prime:
     # only after confirming it sends true off-chain yield, since misclassification
     # inflates revenue.
     external_alm_sources: dict[Chain, list[Address]] = field(default_factory=dict)
+    # Per-(chain, source) overrides for inflows that arrive from an external
+    # ALM source but should NOT be counted as yield (e.g., a tri-party loan
+    # principal correction or final principal return at maturity). The Cat A
+    # classifier matches by (date, amount within $1) and reclassifies matching
+    # inflows as capital.  See ``PrincipalReturnOverride`` and
+    # ``_cat_a_capital_inflow_timeseries``.
+    principal_return_overrides: dict[
+        Chain, dict[Address, list["PrincipalReturnOverride"]]
+    ] = field(default_factory=dict)
     # Subsidised borrowing rate config. Default = disabled (legacy behavior:
     # full BR on utilized). When enabled, Sky charges subsidised rate on the
     # first ``cap_usd`` of utilized USDS; any excess at full BR.
