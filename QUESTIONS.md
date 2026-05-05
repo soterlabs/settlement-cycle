@@ -179,26 +179,47 @@ $891,780 (2026-01-22) + $891,780 (2026-02-23) + $805,479 (2026-03-24) +
 $891,780 (2026-05-04) — ≈ 7.13% APR on $150M, matches the
 `result_spark_anchorage_usdc` "Anchorage BTC 6M 7%" loan name.
 
-**Implication:** we no longer need a separate off-chain feed. Build TODO
-is now a `TRI_PARTY_LOAN` pricing category that consumes:
-- principal-out timeseries: cumulative `Transfer(SLL → 0x49506C3A…6872)`
-  minus `Transfer(0x49506C3A…6872 → SLL)` for USDC.
-- interest realised: same `Transfer(0x49506C3A…6872 → SLL)` flow,
-  classified as Cat C off-pool yield.
-- accrued unrealised: `principal × loan_apr × Δt_since_last_sweep`
-  (loan APR + start/end from `result_spark_anchorage_usdc` or YAML).
+**Methodology — what we actually need on-chain.** Every input the
+monthly settlement needs is readable from on-chain Transfer events:
 
-**Build progress (2026-05-05, partial — issue still open):** PR 1 wired
-the *interest-capture* half of the methodology — the Anchorage escrow is
-now in Spark's `external_alm_sources` and the monthly USDC sweeps land
-in `prime_agent_revenue` via the Cat A par-stable path. A new
-`principal_return_overrides` config block protects retroactive Q4 2025
-runs (the $5M 2025-12-19 partial-principal correction is registered
-there) and provides the hook for the upcoming 2026-06-16 termination.
-Q1 2026 Spark `prime_agent_revenue` gains +$2,589,039 from this change.
-**Still pending:** the principal-out / Sky BR-charge half — implementing
-the full `TRI_PARTY_LOAN` pricing category. That's PR 2, which closes
-the issue.
+- **Realized interest** (prime side): the escrow→SLL flow, classified
+  as Cat A par-stable yield via `external_alm_sources`. Wired up in
+  PR 1 (2026-05-05). Q1 2026 captured = $891,780 + $891,780 + $805,479
+  = **+$2,589,039**.
+- **Sky BR on the funding**: handled by the standard `compute_sky_revenue`
+  mechanic. Spark drew USDS from Sky to fund Anchorage (verified
+  on-chain: `Vat.ilks(ALLOCATOR-SPARK-A).Art` jumped +$208M during the
+  2025-12-14 → 2025-12-19 disbursement window). Spark's Art has stayed
+  ≥ $3.0B throughout Q1 2026, well above the $150M Anchorage
+  commitment; Anchorage is neither PSM-netted nor SDE-reimbursed in
+  `utilized`, so BR has been charging on it cleanly the whole time.
+  **No new code needed for the Sky side.**
+- **Principal-correction events** (e.g., the $5M return on 2025-12-19):
+  registered in `principal_return_overrides` so the Cat A classifier
+  doesn't mis-classify them as yield. Wired up in PR 1.
+
+**PR 1 closes the monthly-settlement bias on Anchorage** —
+`prime_agent_revenue` now captures the interest, `sky_revenue` was
+already correct via the ilk mechanic, so `monthly_pnl` on this venue
+matches Spark's view.
+
+**Open follow-ups (refinements, NOT numbers gaps for monthly settlement)** —
+these would land via a future `TRI_PARTY_LOAN` pricing category if we
+want them:
+
+- **Snapshot-module position value.** Today S23 reports `$0` in
+  `Snapshot.assets_usd` because the escrow EOA holds ~$0 USDC at any
+  given block (the principal lives off-chain in BTC custody). A future
+  `TRI_PARTY_LOAN` path would return `principal_at_block` (cumulative
+  SLL→escrow flow net of returns) so the $150M shows up in the balance
+  sheet during the loan term.
+- **Accrual vs. cash basis.** Today we recognise interest the day the
+  sweep arrives. Confirm with Spark whether their PnL workbook accrues
+  continuously (`principal × APR × Δt`); if so we'd want to align.
+- **Automated principal/interest split at loan termination.** Today the
+  operator manually adds an entry to `principal_return_overrides` when
+  the unwind transfer lands. A `TRI_PARTY_LOAN` classifier with
+  termination-date awareness would do this automatically.
 
 **Smaller asks for Spark:**
 1. Confirm `0x49506C3Aa028693458d6eE816b2EC28522946872` is the canonical
@@ -290,10 +311,18 @@ share-of-pool concept and no four-state lifecycle. **Q for Spark:**
   our pricing (i.e. do they affect what we'd report as the venue's USD
   value at a given block)?
 
-#### S2. Cat A par-stable holdings — revenue=0 by default
-PYUSD/USDC/USDT/etc. held at Eth ALM generate **$0** prime_agent_revenue
-(no off-chain yield source registered for Spark). Confirm Spark isn't
-earning yield from any off-chain custodian on these holdings.
+#### S2. Cat A par-stable holdings — any other off-chain yield sources?
+After PR 1 (2026-05-05), the only Cat A venue earning revenue is **S26
+USDC raw at ALM**, via the Anchorage escrow registered in
+`external_alm_sources` (~$891K/mo from interest sweeps). The other Cat A
+venues — **PYUSD** (S28), **USDT** (S27), **DAI** (S29), **USDe** (S30),
+**USDS raw** (S31) — still generate **$0** `prime_agent_revenue`
+because no off-chain yield source is registered for them.
+
+Confirm Spark isn't earning yield from any off-chain custodian on those
+other par-stable holdings (i.e., is the current `external_alm_sources`
+allowlist for Spark — just the Anchorage escrow — complete, or are
+there other addresses we should add?).
 
 #### S14. sparkPrimeUSDC1 (S18) — Arkis API NAV vs on-chain `convertToAssets()`
 Persistent ~0.7% drift vs Spark's view at all 3 EoM dates. Spark's

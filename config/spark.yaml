@@ -375,14 +375,15 @@ venues:
 
   - id: S23
     chain: ethereum
-    label: 'Anchorage tri-party loan ($150M USDC, ~7% APR)'
+    label: 'Anchorage tri-party loan escrow (USDC pass-through, ~$0 balance)'
     pricing_category: E
-    skip: true
     token:
-      address: '0x49506c3aa028693458d6ee816b2ec28522946872'   # Anchorage Spark escrow EOA
-      symbol: 'ANCHORAGE'
+      address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'   # USDC (real ERC20)
+      symbol: 'USDC'
       decimals: 6
     holder_override: '0x49506c3aa028693458d6ee816b2ec28522946872'   # Anchorage Spark escrow EOA
+    nav_oracle:
+      kind: const_one
     # ─────────────────────────────────────────────────────────────────
     # Anchorage tri-party loan — $150M USDC, fixed-rate, BTC-backed
     # ─────────────────────────────────────────────────────────────────
@@ -396,31 +397,42 @@ venues:
     #     → Anchorage Spark escrow (0x49506C3Aa028693458d6eE816b2EC28522946872)
     #       → downstream holding wallet (0x8149c53ea54de2a62c9e4caef29478f1af4c7bd3)
     #         → off-chain BTC custody (Anchorage)
-    # Both EOAs hold ~$0 USDC at any given block (principal swapped to BTC),
-    # so balance-of pricing returns $0. The position is reconstructed from
-    # the FLOW history instead.
     #
-    # Methodology (deferred — TRI_PARTY_LOAN pricing category, see PRD §17.12,
-    # §17.13, and issue #17):
-    #   - principal_at_block(b)  = cumul Transfer(SLL → escrow) for USDC up to b
-    #                              − cumul Transfer(escrow → SLL) excluding interest
-    #   - realised_interest(b)   = cumul Transfer(escrow → SLL) classified as Cat C
-    #                              off-pool yield (the monthly sweeps)
-    #   - accrued_interest(b)    = principal × loan_apr × Δt_since_last_sweep
+    # ── How this venue contributes to monthly settlement ──
     #
-    # Until the full TRI_PARTY_LOAN pricing path lands, S23 is `skip: true`
-    # so the Cat E path doesn't produce wrong revenue. **Realised interest
-    # IS captured separately** by adding the Anchorage escrow address to
-    # `external_alm_sources` (bottom of this file) — the monthly USDC
-    # sweeps from the escrow flow through to Cat A `prime_agent_revenue`
-    # against par-stable holdings. Principal-correction events on the
-    # same address are listed in `principal_return_overrides` so they're
+    # S23 itself contributes ~$0 to prime_agent_revenue: it tracks USDC at
+    # the escrow EOA, which is a near-instantaneous pass-through (Anchorage
+    # forwards funds to the holding wallet within minutes, then to off-chain
+    # BTC custody). Cat E inflow accounting nets the in/out flows to ≈ 0 over
+    # any settlement period.
+    #
+    # The actual revenue capture happens on **S26 USDC raw (ALM idle)** via
+    # the Cat A `external_alm_sources` mechanism: the Anchorage escrow EOA
+    # is registered as an external yield source (bottom of this file), so
+    # the monthly USDC interest sweeps escrow→SLL flow through Cat A par-stable
+    # accounting into prime_agent_revenue. Principal-correction events on
+    # the same address (the $5M return on 2025-12-19; the future 2026-06-16
+    # termination) are listed in `principal_return_overrides` so they're
     # not mis-classified as yield.
     #
-    # Net effect today (PR 1, partial close on issue #17):
-    #   - prime_agent_revenue captures the $890K/mo interest sweeps ✓
-    #   - sky_revenue does NOT yet charge BR on the $150M principal-out
-    #     (the missing piece — comes with the full TRI_PARTY_LOAN path)
+    # Sky's BR charge on the funding is handled by the standard
+    # `compute_sky_revenue` mechanic: Spark drew the USDS to fund Anchorage
+    # from Sky (Vat.ilks(ALLOCATOR-SPARK-A).Art jumped +$208M during the
+    # 2025-12-14 → 2025-12-19 disbursement window), and Anchorage is
+    # neither PSM-netted nor SDE-reimbursed in `utilized`, so BR has been
+    # charging on it cleanly the whole time — no per-venue work needed.
+    #
+    # Q1 2026 net effect (PR 1, 2026-05-05): prime_agent_revenue +$2.59M
+    # from the three Q1 interest sweeps ($891K + $891K + $805K). Sky
+    # revenue unchanged (was already correct). monthly_pnl on Anchorage
+    # now matches Spark's view.
+    #
+    # Open follow-ups (issue #17, balance-sheet refinements, NOT numbers):
+    #   - snapshot-module position value (today $0 because the escrow holds
+    #     ~$0 USDC; a future TRI_PARTY_LOAN pricing path would surface
+    #     `principal_at_block` so the $150M shows up in Snapshot.assets_usd)
+    #   - accrual-vs-cash methodology agreement with Spark
+    #   - automated principal/interest split at loan termination
 
   # ─────────────────────────────────────────────────────────────
   # Ethereum — Curve LP (Cat F)
