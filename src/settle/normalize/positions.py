@@ -337,6 +337,7 @@ def _cat_a_capital_inflow_timeseries(
     *,
     balance_source,
     external_sources: set,
+    principal_return_overrides: dict | None = None,
 ):
     """Cat A par-stable capital-flow accounting with external-source allowlist.
 
@@ -347,6 +348,13 @@ def _cat_a_capital_inflow_timeseries(
     - everything else → value-preserving capital movement (PSM swap, venue
       contract allocation/withdrawal, mint/burn, allocator buffer); netted
       out of revenue, included here
+
+    ``principal_return_overrides``: optional ``{address_bytes:
+    [(date, amount), …]}`` map. When set, an inflow whose ``(counterparty,
+    block_date, signed_amount)`` matches an entry is reclassified as
+    capital instead of yield — used for tri-party loan principal-correction
+    or loan-termination events that arrive from an `external_alm_sources`
+    address but represent a capital movement rather than yield.
 
     Returns DataFrame ``[block_date, daily_inflow, cum_inflow]`` of the
     capital portion. The compute layer subtracts this from Δvalue, leaving
@@ -439,7 +447,35 @@ def _cat_a_capital_inflow_timeseries(
     # the zero address ``b"\x00" * 20``) compare incorrectly. Use ``apply``
     # with Python ``in`` for correct bytes equality.
     norm = detail["counterparty"].map(_to_bytes)
-    capital = detail[~norm.apply(lambda b: b in external_sources)]
+    is_external = norm.apply(lambda b: b in external_sources)
+
+    # Apply principal-return overrides: an inflow that's nominally from an
+    # external source but matches a registered (date, amount) override is
+    # reclassified as capital (e.g., a tri-party loan principal correction
+    # or loan-termination return). Match tolerance: ±$1.
+    if principal_return_overrides:
+        from decimal import Decimal as _Decimal
+        def _is_override(row):
+            cp = row["_cp_bytes"]
+            if cp not in external_sources:
+                return False
+            entries = principal_return_overrides.get(cp, [])
+            sa = abs(_Decimal(str(row["signed_amount"])))
+            bd = row["block_date"]
+            for entry_date, entry_amount in entries:
+                if bd == entry_date and abs(sa - entry_amount) <= 1:
+                    return True
+            return False
+
+        # Annotate rows for the closure
+        detail = detail.copy()
+        detail["_cp_bytes"] = norm
+        is_principal_return = detail.apply(_is_override, axis=1)
+        # Capital = (not external) OR (external AND override-matched)
+        capital_mask = ~is_external | is_principal_return
+        capital = detail[capital_mask].drop(columns="_cp_bytes")
+    else:
+        capital = detail[~is_external]
     if capital.empty:
         return empty
 

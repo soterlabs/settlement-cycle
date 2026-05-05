@@ -375,18 +375,52 @@ venues:
 
   - id: S23
     chain: ethereum
-    label: 'Anchorage off-chain custodial position'
+    label: 'Anchorage tri-party loan ($150M USDC, ~7% APR)'
     pricing_category: E
+    skip: true
     token:
-      address: '0x49506c3aa028693458d6ee816b2ec28522946872'   # custodial proxy on-chain
+      address: '0x49506c3aa028693458d6ee816b2ec28522946872'   # Anchorage Spark escrow EOA
       symbol: 'ANCHORAGE'
       decimals: 6
-    nav_oracle:
-      kind: const_one
-    # ⚠ Off-chain $150M position. NAV is API-only via Anchorage developer
-    # endpoint; no on-chain oracle. Marked const_one so the YAML loads;
-    # implementation is blocked on Anchorage credentials. Verify before
-    # running settlement — this venue currently produces wrong revenue.
+    holder_override: '0x49506c3aa028693458d6ee816b2ec28522946872'   # Anchorage Spark escrow EOA
+    # ─────────────────────────────────────────────────────────────────
+    # Anchorage tri-party loan — $150M USDC, fixed-rate, BTC-backed
+    # ─────────────────────────────────────────────────────────────────
+    # Loan term:        2025-12-19 → 2026-06-16  (per result_spark_anchorage_usdc)
+    # Principal:        $150,000,000 USDC
+    # Realised APR:     ~7.13% (observed monthly sweeps annualised on $150M)
+    # Counterparty:     Anchorage Digital. Strategy "Anchorage BTC 6M 7%".
+    #
+    # Address trail:
+    #   SLL ALM proxy (0x1601843c…347e)
+    #     → Anchorage Spark escrow (0x49506C3Aa028693458d6eE816b2EC28522946872)
+    #       → downstream holding wallet (0x8149c53ea54de2a62c9e4caef29478f1af4c7bd3)
+    #         → off-chain BTC custody (Anchorage)
+    # Both EOAs hold ~$0 USDC at any given block (principal swapped to BTC),
+    # so balance-of pricing returns $0. The position is reconstructed from
+    # the FLOW history instead.
+    #
+    # Methodology (deferred — TRI_PARTY_LOAN pricing category, see PRD §17.12,
+    # §17.13, and issue #17):
+    #   - principal_at_block(b)  = cumul Transfer(SLL → escrow) for USDC up to b
+    #                              − cumul Transfer(escrow → SLL) excluding interest
+    #   - realised_interest(b)   = cumul Transfer(escrow → SLL) classified as Cat C
+    #                              off-pool yield (the monthly sweeps)
+    #   - accrued_interest(b)    = principal × loan_apr × Δt_since_last_sweep
+    #
+    # Until the full TRI_PARTY_LOAN pricing path lands, S23 is `skip: true`
+    # so the Cat E path doesn't produce wrong revenue. **Realised interest
+    # IS captured separately** by adding the Anchorage escrow address to
+    # `external_alm_sources` (bottom of this file) — the monthly USDC
+    # sweeps from the escrow flow through to Cat A `prime_agent_revenue`
+    # against par-stable holdings. Principal-correction events on the
+    # same address are listed in `principal_return_overrides` so they're
+    # not mis-classified as yield.
+    #
+    # Net effect today (PR 1, partial close on issue #17):
+    #   - prime_agent_revenue captures the $890K/mo interest sweeps ✓
+    #   - sky_revenue does NOT yet charge BR on the $150M principal-out
+    #     (the missing piece — comes with the full TRI_PARTY_LOAN path)
 
   # ─────────────────────────────────────────────────────────────
   # Ethereum — Curve LP (Cat F)
@@ -814,10 +848,35 @@ venues:
       decimals: 6
 
 # Cat A revenue allowlist — counterparties that send REALIZED YIELD directly
-# to the ALM proxy. Empty by default (no off-chain custodian senders today
-# beyond the special-cased Anchorage venue S23, which is tracked as Cat E).
-# Add an entry like the example below when an off-chain yield source lands:
-#
-# external_alm_sources:
-#   ethereum:
-#     - '0x...'
+# to the ALM proxy.
+external_alm_sources:
+  ethereum:
+    # Anchorage Spark escrow EOA — sends monthly USDC interest sweeps from
+    # the $150M tri-party loan (S23). The principal-out side is NOT priced
+    # by this mechanism (the principal lives off-chain in BTC custody);
+    # only the realized interest inflows are captured. See PRD §17.13 and
+    # issue #17 / Q-ID S3.
+    - '0x49506c3aa028693458d6ee816b2ec28522946872'
+
+# Per-(chain, source) overrides for inflows that arrive from an
+# `external_alm_sources` address but should NOT be classified as yield
+# (e.g. tri-party loan principal corrections or loan-termination returns).
+# The Cat A classifier matches by (date, amount within $1) and reclassifies
+# matching inflows as capital. Amounts in whole USD (par-stable assumption).
+principal_return_overrides:
+  ethereum:
+    '0x49506c3aa028693458d6ee816b2ec28522946872':   # Anchorage Spark escrow
+      # 2025-12-19: $5M USDC sent back to the SLL the day after one of the
+      # initial disbursement transfers — recorded by Spark's accounting as
+      # a partial-principal correction, not interest. Without this override
+      # any retroactive Q4 2025 settlement would over-count yield by $5M.
+      - date: '2025-12-19'
+        amount: 5000000
+        token: 'USDC'
+        note: 'partial-principal correction during initial Dec disbursement window'
+      # 2026-06-16 loan termination: when the loan unwinds, Anchorage will
+      # sweep back the $150M principal (likely as one or two transfers,
+      # plus a final-interest stub). Add the principal entry here once the
+      # transfer is observed on-chain — splitting principal vs final
+      # interest by the actual amounts. Until that happens, retroactive
+      # June 2026 settlement would mis-classify the $150M as yield.
