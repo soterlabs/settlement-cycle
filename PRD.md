@@ -1137,6 +1137,36 @@ canonical pricing).
 7. **Sky Direct exposure list — automation** — manual diff against `sky-ecosystem/next-gen-atlas` is the current process. As the list grows beyond Treasury Bills + PSM3 + Spark Curve, this becomes load-bearing.
 8. **Chronicle adapter robustness** — silently falls back to const_one ($1) when oracle returns 0x. Mitigated by `nav_overrides` fixture but the adapter itself should be tightened (distinguish "pre-deployment" from "real $1").
 
+#### BA Labs call #1 — methodology + documentation
+
+First Q&A session with the BA Labs team reviewing PnL calculations for Spark on Oct 2025 and the `blockanalitica/sky` repo (commit `4eda36a`). Captured here as: methodology resolutions (apply directly), documentation cross-references (existing PRD coverage), and follow-up open questions (tracked in `QUESTIONS.md` under `B7`–`B13`).
+
+**Methodology resolutions** (apply directly — no further BA confirmation needed):
+
+- **Offchain-transfer accounting (call item 1).** BA confirmed the prime balance-sheet approach: total NAV is computed from assets at the ALM Proxy. Offchain transfers (Anchorage interest sweeps, Merkl rewards, BUIDL yield mints) reach the ALM Proxy as ordinary token transfers and are picked up by the existing `external_alm_sources` allowlist on Cat A par-stable accounting (PRD §17.5). **Operational requirement BA flagged**: prime agents should swap volatile reward tokens to a stable asset *before* they hit the ALM Proxy (otherwise the par-stable accounting double-prices). This is a prime-side discipline, not pipeline code.
+- **LP token PnL — split into constituents, event-by-event (call item 3).** For Curve / AMM venues holding USDS + a counterpart token, BA's recommended methodology is to split the LP into its constituent tokens and account for inflows event-by-event (rather than `balance_of(LP) × virtual_price`, which doesn't separate the idle USDS leg from the actively earning leg). Today our `_curve_lp_index_weighted_inflow` (PRD §17.4 Cat F) uses RPC reserves × underlying prices (POC Method B) which captures total LP value but NOT the idle/active split per leg. Worth revisiting when an LP venue has a meaningful idle USDS share — Spark S24 (sUSDS/USDT) and S25 (PYUSD/USDS) are candidates. Tracked as an internal TODO; opening as a question to BA isn't needed since the methodology direction is clear.
+- **"Snapshot" terminology in BA's code (call item 6).** BA flagged a misnomer: in `blockanalitica/sky`, "snapshot" does NOT mean `balanceOf(token, holder)` at a moment in time — it means **the output of a daily calculation**. Different concept from our own `Snapshot` module (in `src/settle/snapshot/`, which IS a point-in-time balance sheet). Worth being explicit about this when reading BA's source for cross-checks. No code change needed in our pipeline; awareness only.
+
+**Documentation cross-reference table** ("Elements to document properly" from the call):
+
+| Topic | PRD coverage | Status |
+|---|---|---|
+| Idle USDS/DAI in lending markets | §17.7 (deferred entry); §17.12 covers the Spark side via `alm_idle = alm_share × protocol_idle_amount` | ✅ covered for Spark; Grove section can absorb the same pattern when needed |
+| Idle USDS/DAI in AMM pools | §17.4 Cat F (LP) — `_curve_lp_index_weighted_inflow` via RPC reserves; **idle/active split per leg NOT yet implemented** | ⚠️ partial — see "LP token PnL" methodology resolution above; new internal TODO |
+| Aave / SparkLend / Morpho position values + revenues | §17.4 Cat C (`_atoken_index_weighted_inflow` — `scaledBalanceOf × liquidityIndex`); Cat B 4626 (`shares × convertToAssets`) | ✅ fully covered |
+| Offchain-transfer communication from primes | §17.5 + §17.12 (`external_alm_sources` + `principal_return_overrides`); BA's "swap volatile to stable before ALM Proxy" note above | ✅ pipeline side covered; prime-side discipline is operational guidance, not code |
+| Realised gains mid-month — should the prime repay debt to Sky? | The full-PnL approach we're adopting (assets + liabilities + revenue, with `Vat.ilks.Art` covering the borrow side end-to-end) means realised gains accrue to the prime balance sheet without needing an intra-month debt-repayment step. sUSDS modelling is settled: allocation venue on the asset side AND USDS-equivalent netted out of `utilized` (PSM3 `erc4626_shares` + `cum_sub_susds`); no double-count. | ✅ resolved internally; no QUESTIONS.md entry needed |
+
+**Open follow-ups** (`QUESTIONS.md`):
+
+| Q-ID | Class | Priority | Why open |
+|---|---|---|---|
+| **B7** | partially answered | P2 | Need the actual list of historical offchain transfers from Miha. Operational, not methodology-blocking. |
+| **B8** | partially answered | P2 | Confirm the enumeration of "edge case" venues (USDe, Superstate, BUIDL) is exhaustive. |
+| **B9** | partially answered | P2 | BA's Aave/SparkLend method is `accrued × (1 − utilization) × BR`; "improve via events, or live with the small differences?" |
+| **B10** | unanswered | P1 | Why does `Sky + Prime ≠ Total` for USDe / Superstate / BUIDL? Currently flagged as "manual calculations per private deal"; we need to know if MSC should replicate the manual math or treat these as audit exceptions. |
+| **B13** | unanswered | P1 | SDE — (a) canonical list + Atlas version, AND (b) settlement-semantics confirmation: the Nov-2025 Atlas edit says Sky-takes-all on SDEs, but `laniakea-docs/accounting/prime-settlement-methodology.md` Step 4 still leaves the prime with the surplus-over-BR. Need definitive answer; our MSC behaviour matches Sky-takes-all. |
+
 #### Code-review acks (2026-05-04 — two-reviewer pass)
 
 Two parallel full-codebase reviews on 2026-05-04. Material findings have been fixed; the items below are intentional trade-offs documented for future maintainers.
