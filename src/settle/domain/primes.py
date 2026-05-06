@@ -133,6 +133,38 @@ class Venue:
     # volatile or whose oracle isn't trustworthy to include in MSC. The venue
     # stays in YAML for documentation and historical reproducibility.
     skip: bool = False
+    # Curve pool USDS-idle tracking. When set, the compute layer reads the
+    # prime's proportional share of the named coin's reserve daily (via RPC
+    # ``read_pool`` + ``balanceOf`` + optionally ``convertToAssets`` for 4626
+    # underlyings) and subtracts it from ``utilized`` in ``compute_sky_revenue``
+    # (prime-settlement-methodology Step 2 — idle USDS in AMM pools).
+    # Only meaningful for ``lp_kind=curve_stableswap`` venues.
+    curve_idle_usds: CurveIdleUsdsConfig | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CurveIdleUsdsConfig:
+    """Track the prime's proportional USDS-equivalent inside a Curve pool and
+    subtract it from ``utilized`` in ``compute_sky_revenue``.
+
+    ``coin`` is the address of the pool coin whose balance represents idle
+    USDS (or USDS-convertible) capital:
+
+    * **Par-stable** (e.g. USDS, USDC) — balance used at face value ($1 per
+      unit), scaled by the token's decimals.
+    * **Yield-bearing ERC-4626** (e.g. sUSDS) — balance converted to USDS via
+      ``convertToAssets(balance, block)`` so the deduction is in USDS principal,
+      consistent with the rest of the utilized formula.
+
+    The prime's share of the pool's idle USDS is computed daily as::
+
+        prime_usds_d = (alm_lp_balance_d / pool_total_supply_d) × coin_usds_d
+
+    where ``coin_usds_d`` is the above par-stable or 4626 value of the target
+    coin's reserve at day ``d``'s EoD block.
+    """
+
+    coin: Address  # address of the target coin in the Curve pool
 
 
 class PsmKind(StrEnum):

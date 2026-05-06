@@ -11,11 +11,22 @@ Per the prime-settlement-methodology and debt-rate-methodology docs:
                       − subproxy_susds_principal       ←  prime doesn't pay base on subproxy holdings
                       − alm_proxy_usds                 ←  Step 2 (idle USDS at ALM proxy)
                       − psm_usds                       ←  Step 2 (idle USDS in PSM3)
+                      − curve_idle_usds                ←  Step 2 (prime's USDS share in Curve pools)
 
 ``subproxy_susds_principal`` is the cost basis (``shares × entry_pps``), NOT
 the current value — using current value would double-count SSR (the index
 already reflects accrued savings the prime keeps). The orchestrator converts
 shares → principal before passing in.
+
+``curve_idle_usds`` is the prime's proportional USDS-equivalent held inside
+configured Curve pools, computed daily as::
+
+    prime_usds_d = (alm_lp_balance_d / pool_total_supply_d) × coin_usds_value_d
+
+where ``coin_usds_value_d`` is the par-stable reserve at face value (for USDS)
+or the 4626-converted USDS principal (for sUSDS via ``convertToAssets``).
+This is enabled per-venue via ``curve_idle_usds:`` in the prime YAML config.
+The orchestrator builds the timeseries daily via RPC and passes it in.
 
 When ``subsidy_config.enabled`` is True:
 * The first ``subsidy_config.cap_usd`` of utilized is charged at the
@@ -29,8 +40,8 @@ NOTE on what this function does NOT compute:
   per-venue breakdown (Σ ``vr.sd_revenue``) and added to this function's
   return value. This function returns BR on (utilized − SDE asset value);
   the caller composes it with sde_revenue to form gross sky_revenue.
-* Idle USDS/DAI in lending pools / AMMs (doc Step 2) is not yet plumbed — no
-  Grove venue currently holds USDS this way, so it's a $0 gap for Grove.
+* Idle USDS/DAI in non-Curve AMMs (e.g. Uniswap V3) is not yet plumbed.
+  Curve coverage is handled via ``curve_idle_usds`` (see above).
 
 This function is pure — takes Normalize timeseries + period, returns USD `Decimal`.
 The orchestrator (compute_monthly_pnl) is responsible for gathering inputs.
@@ -74,6 +85,7 @@ def compute_sky_revenue(
     subsidy_config: SubsidyConfig | None = None,
     ref_rate_history: ReferenceRateHistory | None = None,
     sde_asset_value: pd.DataFrame | None = None,
+    curve_idle_usds: pd.DataFrame | None = None,
 ) -> Decimal:
     """Sum of daily Sky revenue over ``period``.
 
@@ -87,6 +99,13 @@ def compute_sky_revenue(
     * ``psm_usds``                   optional DataFrame[block_date, daily_net, cum_balance] of USDS
                                      the prime has parked at PSM; subtracted from utilized so the
                                      prime is reimbursed BR on those holdings.
+    * ``curve_idle_usds``            optional DataFrame[block_date, daily_net, cum_balance] of the
+                                     prime's proportional USDS-equivalent inside configured Curve
+                                     pools (prime-settlement-methodology Step 2 — AMM idle USDS).
+                                     Built daily by the orchestrator via RPC ``read_pool`` +
+                                     ``balanceOf`` + ``convertToAssets`` (for sUSDS legs).
+                                     ``cum_balance`` is a daily snapshot (not a running total),
+                                     matching the PSM3 ERC4626-shares convention.
     """
     # Hard-fail on empty debt/ssr — without these, utilized would silently be
     # ≤ 0 every day and sky_revenue would return $0. Loud error pointing at
@@ -121,8 +140,17 @@ def compute_sky_revenue(
         # ``cum_at_or_before`` returns 0 for None / empty inputs.
         cum_psm_usds = cum_at_or_before(psm_usds, "cum_balance", current)
         cum_sde = cum_at_or_before(sde_asset_value, "cum_value", current)
+        # Prime's proportional USDS-equivalent in Curve pools — Step 2 idle AMM.
+        cum_curve_usds = cum_at_or_before(curve_idle_usds, "cum_balance", current)
 
-        utilized = cum_debt - cum_sub_usds - cum_sub_susds - cum_alm_usds - cum_psm_usds - cum_sde
+        utilized = (
+            cum_debt
+            - cum_sub_usds - cum_sub_susds
+            - cum_alm_usds
+            - cum_psm_usds
+            - cum_sde
+            - cum_curve_usds
+        )
 
         if utilized > 0:
             ssr_apy = ssr_at_or_before(ssr, current)

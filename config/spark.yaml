@@ -446,6 +446,13 @@ venues:
       address: '0x00836fe54625be242bcfa286207795405ca4fd10'
       symbol: 'sUSDSUSDT'
       decimals: 18
+    # Track Spark's proportional sUSDS in this pool as idle USDS-equivalent.
+    # sUSDS is yield-bearing (ERC-4626 over USDS) so the balance is converted
+    # via convertToAssets(balance, block) to USDS principal before deducting
+    # from utilized. The conversion infra is the same IConvertToAssetsSource
+    # already used by _curve_lp_unit_price for this venue's pricing.
+    curve_idle_usds:
+      coin: '0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD'  # sUSDS → USDS via convertToAssets
 
   - id: S25
     chain: ethereum
@@ -456,6 +463,10 @@ venues:
       address: '0xa632d59b9b804a956bfaa9b48af3a1b74808fc1f'
       symbol: 'PYUSDUSDS'
       decimals: 18
+    # Track Spark's proportional USDS in this pool as idle USDS.
+    # USDS is a par-stable so the pool reserve is used at face value ($1/token).
+    curve_idle_usds:
+      coin: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'  # USDS — par-stable, $1
 
   # ─────────────────────────────────────────────────────────────
   # Ethereum — idle ALM stables (Cat A)

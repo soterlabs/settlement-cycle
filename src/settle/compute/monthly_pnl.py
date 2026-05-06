@@ -404,6 +404,159 @@ def get_psm_usds_timeseries(
     raise ValueError(f"Unknown PSM kind: {cfg.kind!r}")
 
 
+def _aggregate_curve_idle_usds(
+    prime: Prime,
+    period: Period,
+    *,
+    curve_pool_source,
+    block_resolver,
+    convert_to_assets_source,
+) -> pd.DataFrame:
+    """Daily USDS-equivalent held by the prime inside Curve pools configured
+    with ``curve_idle_usds``, summed across all such venues.
+
+    For each configured venue the prime's proportional share of the target
+    coin's reserve is computed at every day's EoD block::
+
+        prime_usds_d = (alm_lp_balance_d / pool_total_supply_d) × coin_usds_d
+
+    where ``coin_usds_d`` is:
+
+    * **Par-stable** (USDS, USDC, …) — raw reserve in ``KNOWN_PAR_STABLES_ETHEREUM``
+      divided by the coin's decimals. $1 per unit.
+    * **Yield-bearing 4626** (sUSDS, …) — raw reserve converted to USDS via
+      ``convertToAssets(raw_balance, block)`` then scaled by 10^share_decimals.
+      The returned value is USDS principal (avoids double-counting SSR that
+      accrues via the sUSDS index).
+
+    Returns a ``[block_date, daily_net, cum_balance]`` DataFrame where
+    ``cum_balance`` is the daily snapshot value (not a running total), matching
+    the PSM3 ``erc4626_shares`` convention consumed by ``compute_sky_revenue``.
+    Returns an empty DataFrame if no venue has ``curve_idle_usds`` set.
+    """
+    from datetime import time
+    from ..domain.sky_tokens import KNOWN_PAR_STABLES_ETHEREUM, KNOWN_YIELD_BEARING_ETHEREUM
+    from ..extract.rpc import balance_of as _balance_of
+    from ..normalize.registry import get_convert_to_assets_source as _get_c2a
+    from ..normalize.sources.curve_pool import CurvePoolSource
+
+    venues_with_config = [v for v in prime.venues if v.curve_idle_usds is not None]
+    if not venues_with_config:
+        return _empty_psm_df()
+
+    pool_src = curve_pool_source if curve_pool_source is not None else CurvePoolSource()
+    c2a = convert_to_assets_source if convert_to_assets_source is not None else _get_c2a()
+
+    import requests as _requests
+    import logging as _logging
+    _log = _logging.getLogger(__name__)
+
+    def _coin_usds_value(coin_addr: bytes, raw_balance: int, block: int) -> Decimal:
+        """Convert raw pool reserve to USDS-equivalent at ``block``."""
+        par = KNOWN_PAR_STABLES_ETHEREUM.get(coin_addr)
+        if par is not None:
+            _sym, decimals = par
+            return Decimal(raw_balance) / Decimal(10 ** decimals)
+        yb = KNOWN_YIELD_BEARING_ETHEREUM.get(coin_addr)
+        if yb is not None:
+            _sym, share_decimals, underlying_addr, underlying_decimals = yb
+            # convertToAssets(1 share_unit) → assets_per_share in underlying decimals
+            assets_per_share_raw = c2a.convert_to_assets(
+                chain=Chain.ETHEREUM.value,
+                vault=coin_addr,
+                shares=10 ** share_decimals,
+                block=block,
+            )
+            assets_per_share = Decimal(assets_per_share_raw) / Decimal(10 ** underlying_decimals)
+            # raw_balance is in share_decimals; multiply by pps to get underlying
+            return (Decimal(raw_balance) / Decimal(10 ** share_decimals)) * assets_per_share
+        raise ValueError(
+            f"_aggregate_curve_idle_usds: coin {coin_addr.hex()} is not in "
+            "KNOWN_PAR_STABLES_ETHEREUM or KNOWN_YIELD_BEARING_ETHEREUM. "
+            "Add it to sky_tokens.py before using curve_idle_usds."
+        )
+
+    # One timeseries per day across the period. Build as a dict[date, Decimal]
+    # summed across all configured venues.
+    daily_by_date: dict = {}
+
+    for venue in venues_with_config:
+        cfg = venue.curve_idle_usds
+        target_coin = cfg.coin.value       # bytes
+        pool_addr = venue.token.address.value
+        holder = (venue.holder_override or prime.alm[venue.chain]).value
+        chain_str = venue.chain.value
+
+        current = period.start
+        while current <= period.end:
+            eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
+            try:
+                block = block_resolver.block_at_or_before(chain_str, eod)
+                pool_state = pool_src.read_pool(chain_str, pool_addr, block)
+                total_supply = pool_state.total_supply
+                if total_supply == 0:
+                    current = current + timedelta(days=1)
+                    continue
+
+                # Find the target coin's index in the pool.
+                coin_idx = next(
+                    (i for i, c in enumerate(pool_state.coins) if c.value == target_coin),
+                    None,
+                )
+                if coin_idx is None:
+                    _log.warning(
+                        "curve_idle_usds: venue %s pool %s does not contain coin %s "
+                        "at block %d — skipping day %s.",
+                        venue.id, pool_addr.hex(), target_coin.hex(), block, current,
+                    )
+                    current = current + timedelta(days=1)
+                    continue
+
+                raw_coin_balance = pool_state.balances[coin_idx]
+                coin_usds = _coin_usds_value(target_coin, raw_coin_balance, block)
+
+                # ALM's LP balance at this block.
+                from ..domain.primes import Address as _Addr
+                alm_lp_raw = _balance_of(
+                    venue.chain,
+                    venue.token.address,
+                    _Addr(holder),
+                    block,
+                )
+                alm_lp = Decimal(alm_lp_raw) / Decimal(10 ** venue.token.decimals)
+                pool_total = Decimal(total_supply) / Decimal(10 ** venue.token.decimals)
+
+                prime_usds = (alm_lp / pool_total) * coin_usds if pool_total > 0 else Decimal(0)
+
+            except Exception as exc:
+                _log.warning(
+                    "curve_idle_usds: RPC error for venue %s on %s; carrying forward "
+                    "prior value (error: %s).",
+                    venue.id, current, type(exc).__name__,
+                )
+                prime_usds = daily_by_date.get(current - timedelta(days=1), Decimal(0))
+
+            daily_by_date[current] = daily_by_date.get(current, Decimal(0)) + prime_usds
+            current = current + timedelta(days=1)
+
+    if not daily_by_date:
+        return _empty_psm_df()
+
+    # Build [block_date, daily_net, cum_balance] where cum_balance is the
+    # daily snapshot value (PSM3 erc4626_shares convention).
+    days_sorted = sorted(daily_by_date)
+    block_dates = days_sorted
+    cum_balance = [daily_by_date[d] for d in days_sorted]
+    daily_net = [cum_balance[0]] + [
+        cum_balance[i] - cum_balance[i - 1] for i in range(1, len(cum_balance))
+    ]
+    return pd.DataFrame({
+        "block_date": block_dates,
+        "daily_net": daily_net,
+        "cum_balance": cum_balance,
+    })
+
+
 def compute_monthly_pnl(
     prime: Prime,
     month: Month,
@@ -470,6 +623,16 @@ def compute_monthly_pnl(
         balance_source=sources.balance,
         psm3_source=sources.psm3,
         block_resolver=resolver,
+    )
+    # Prime's proportional USDS-equivalent in configured Curve pools — Step 2
+    # idle AMM USDS. Computed daily via RPC (``read_pool`` + ``balanceOf`` +
+    # ``convertToAssets`` for sUSDS legs). Returns empty frame if no venue has
+    # ``curve_idle_usds`` set (e.g. Grove, OBEX — $0, no cost).
+    curve_idle_usds = _aggregate_curve_idle_usds(
+        prime, period,
+        curve_pool_source=sources.curve_pool,
+        block_resolver=resolver,
+        convert_to_assets_source=sources.convert_to_assets,
     )
     ssr = get_ssr_history(prime, period, source=sources.ssr)
 
@@ -749,6 +912,7 @@ def compute_monthly_pnl(
         subsidy_config=prime.subsidy,
         ref_rate_history=ref_rate_history,
         sde_asset_value=sde_av_total,
+        curve_idle_usds=curve_idle_usds,
     )
     # Sky's full claim: BR on (utilized − SDE) + actual SDE revenue.
     sky_rev = sky_rev_br + sde_revenue
