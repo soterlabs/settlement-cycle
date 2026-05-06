@@ -29,10 +29,9 @@ Inputs (no DUNE_API_KEY needed — fixture-based):
   2026-03-31 EoM, 452 rows)
 * ``ssr`` — reused from ``tests/fixtures/grove_2026_03/dune_outputs.json``
   (SSR is Sky-wide; identical across primes)
-* ``subproxy_usds`` / ``alm_usds`` / ``subproxy_susds_principal`` — confirmed
-  $0 from Dune query 7399654 (Spark holds dust amounts of USDS; the ALM
-  holds millions of sUSDS but those are tracked as a Cat B venue, not a
-  utilized-reduction term).
+* ``alm_usds`` — confirmed $0 from Dune query 7399654 (Spark ALM holds sUSDS
+  as a Cat B venue; USDS balance is $0). Subproxy USDS/sUSDS are no longer
+  subtracted from utilized (treasury/risk capital, not ilk-debt proceeds).
 * ``Eth directed-flow PSM`` — confirmed $0 (Dune query 7401552 returned 0
   rows; Spark does not transfer USDS through the Sky LITE-PSM-USDC).
 * ``L2 PSM3 holdings`` — read live via RPC (one ``shares`` + one
@@ -296,14 +295,12 @@ def main() -> int:
         period_start = period_end.replace(day=1)
         period = Period(start=period_start, end=period_end, pin_blocks=pins)
 
-        # Compute sky_revenue with $0 idle subproxy/ALM USDS + sUSDS-principal.
-        # PSM USDS-equivalent uses the pre-built daily timeseries (boundary
-        # snapshots + linear interpolation across the full Q1).
+        # Compute sky_revenue. Spark ALM USDS = $0 (all deployed). Subproxy
+        # balances are treasury/risk capital and no longer subtracted from utilized.
+        # PSM USDS-equivalent uses the pre-built daily timeseries.
         sky_rev = compute_sky_revenue(
             period=period,
             debt=debt_df,
-            subproxy_usds=_empty_balance_df(),
-            subproxy_susds_principal=_empty_balance_df(),
             alm_usds=_empty_balance_df(),
             ssr=ssr_df,
             psm_usds=psm_usds_full,

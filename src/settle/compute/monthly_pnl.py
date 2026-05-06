@@ -450,8 +450,9 @@ def compute_monthly_pnl(
     # Convert sUSDS shares → USDS-denominated cost-basis principal:
     # ``principal = Σ daily_net_shares × pps_at_that_day's_eod_block``. This is
     # the deposit-time value, NOT the current value (which includes accrued
-    # SSR — using current value would double-count savings). Used by both
-    # sky_revenue (subtracted from utilized) and agent_rate (earning base).
+    # SSR — using current value would double-count savings). Used by
+    # agent_rate (earning base); NOT passed to sky_revenue (subproxy balances
+    # are treasury/risk capital, not pure ilk-debt proceeds).
     sub_susds = _susds_shares_to_principal(
         sub_susds_shares,
         sources=sources,
@@ -745,7 +746,7 @@ def compute_monthly_pnl(
         if prime.subsidy.enabled else None
     )
     sky_rev_br = compute_sky_revenue(
-        period, debt, sub_usds, sub_susds, alm_usds, ssr, psm_usds=psm_usds,
+        period, debt, alm_usds, ssr, psm_usds=psm_usds,
         subsidy_config=prime.subsidy,
         ref_rate_history=ref_rate_history,
         sde_asset_value=sde_av_total,

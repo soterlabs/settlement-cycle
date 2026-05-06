@@ -58,7 +58,7 @@ Discovered via Etherscan + Alchemy RPC on 2026-04-21. All on Ethereum mainnet un
 | ALM Proxy | `0x491edfb0b8b608044e227225c715981a30f3a44e` | Holds all allocation positions |
 | MainnetController | `0xB111E07c8B939b0Fe701710b365305F7F23B0edd` | Relayer / rate-limit policy |
 | PSM | `0xf6e72db5454dd049d0788e411b06cfaf16853042` | USDS↔DAI↔USDC conversion |
-| Subproxy | `0x1369f7b2b38c76B6478c0f0E66D94923421891Ba` | Holds idle USDS / sUSDS (earns agent rate) |
+| Subproxy | `0x1369f7b2b38c76B6478c0f0E66D94923421891Ba` | Holds treasury/risk capital USDS / sUSDS (earns agent rate) |
 
 ### Stables
 | Token | Address |
