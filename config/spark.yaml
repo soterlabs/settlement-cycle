@@ -81,6 +81,11 @@ venues:
       address: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'
       symbol: 'USDS'
       decimals: 18
+    # Subtract Spark's share of unborrowed USDS in the SparkLend pool from
+    # utilized daily. Computed as:
+    #   (balanceOf(ALM, spUSDS) / totalSupply(spUSDS)) × balanceOf(spUSDS_contract, USDS)
+    # The unborrowed underlying is the USDS balance sitting in the spUSDS contract.
+    lending_idle_usds: true
 
   - id: S2
     chain: ethereum
@@ -120,6 +125,11 @@ venues:
       address: '0x6b175474e89094c44da98b954eedeac495271d0f'
       symbol: 'DAI'
       decimals: 18
+    # Subtract Spark's share of unborrowed DAI in the SparkLend pool from
+    # utilized daily. DAI is a par-stable ($1) so the deduction is direct.
+    # Computed as:
+    #   (balanceOf(ALM, spDAI) / totalSupply(spDAI)) × balanceOf(spDAI_contract, DAI)
+    lending_idle_usds: true
 
   - id: S5
     chain: ethereum

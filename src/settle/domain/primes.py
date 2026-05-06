@@ -140,6 +140,16 @@ class Venue:
     # (prime-settlement-methodology Step 2 — idle USDS in AMM pools).
     # Only meaningful for ``lp_kind=curve_stableswap`` venues.
     curve_idle_usds: CurveIdleUsdsConfig | None = None
+    # Lending pool idle underlying tracking. When True, the compute layer
+    # reads the prime's proportional share of the unborrowed underlying sitting
+    # in the lending pool contract daily via:
+    #   prime_idle = (balanceOf(alm, spToken) / totalSupply(spToken))
+    #              × balanceOf(spToken_contract, underlying)
+    # and subtracts the USDS-equivalent from ``utilized``
+    # (prime-settlement-methodology Step 2 — idle underlying in lending pools).
+    # The underlying must be a par-stable (USDS, DAI, USDC at $1).
+    # Only meaningful for Cat C/D (Aave aToken / SparkLend spToken) venues.
+    lending_idle_usds: bool = False
 
 
 @dataclass(frozen=True, slots=True)

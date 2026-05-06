@@ -557,6 +557,109 @@ def _aggregate_curve_idle_usds(
     })
 
 
+def _aggregate_lending_idle_usds(
+    prime: Prime,
+    period: Period,
+    *,
+    block_resolver,
+) -> pd.DataFrame:
+    """Daily USDS-equivalent of unborrowed underlying inside lending pools,
+    summed across all venues with ``lending_idle_usds=True``.
+
+    For each such venue (Cat C/D — Aave aToken / SparkLend spToken) the
+    prime's proportional share of the pool's idle underlying is::
+
+        prime_idle_d = (balanceOf(alm, spToken_d) / totalSupply(spToken_d))
+                     × balanceOf(spToken_contract, underlying_d)
+
+    ``balanceOf(alm, spToken)`` is the rebased balance (includes accrued
+    interest), and ``totalSupply(spToken)`` is the rebased total — so the
+    ratio is equivalent to using the scaled (un-rebased) values, which avoids
+    needing a separate ``scaledTotalSupply`` call.
+
+    ``balanceOf(spToken_contract, underlying)`` is the balance of the raw
+    underlying token (USDS, DAI) sitting idle in the spToken contract — i.e.
+    the unborrowed portion of the pool. Deposited capital that has been
+    borrowed out is NOT reflected here, so this is exactly the prime-
+    settlement-methodology Step 2 "idle underlying in lending pool" deduction.
+
+    The underlying must be a par-stable (USDS, DAI, USDC at $1 per unit).
+    Deduction is in USDS-equivalent at face value (divided by underlying decimals).
+
+    Returns a ``[block_date, daily_net, cum_balance]`` DataFrame where
+    ``cum_balance`` is a daily snapshot matching the PSM3 convention.
+    Returns an empty DataFrame if no venue has ``lending_idle_usds=True``.
+    """
+    from datetime import time
+    from ..extract.rpc import balance_of as _balance_of, total_supply_of as _total_supply_of
+
+    venues = [v for v in prime.venues if v.lending_idle_usds]
+    if not venues:
+        return _empty_psm_df()
+
+    import logging as _logging
+    _log = _logging.getLogger(__name__)
+
+    daily_by_date: dict = {}
+
+    for venue in venues:
+        if venue.underlying is None:
+            _log.warning(
+                "lending_idle_usds: venue %s has no `underlying` configured — skipping.",
+                venue.id,
+            )
+            continue
+
+        alm_addr = venue.holder_override or prime.alm[venue.chain]
+        sptoken_addr = venue.token.address
+        underlying_addr = venue.underlying.address
+        underlying_decimals = venue.underlying.decimals
+        chain = venue.chain
+
+        current = period.start
+        while current <= period.end:
+            eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
+            try:
+                block = block_resolver.block_at_or_before(chain.value, eod)
+
+                alm_sptoken_raw = _balance_of(chain, sptoken_addr, alm_addr, block)
+                total_supply_raw = _total_supply_of(chain, sptoken_addr, block)
+
+                if total_supply_raw == 0:
+                    prime_idle = Decimal(0)
+                else:
+                    # Pool's idle underlying = underlying balance in the spToken contract
+                    pool_idle_raw = _balance_of(chain, underlying_addr, sptoken_addr, block)
+                    alm_share = Decimal(alm_sptoken_raw) / Decimal(total_supply_raw)
+                    pool_idle_usds = Decimal(pool_idle_raw) / Decimal(10 ** underlying_decimals)
+                    prime_idle = alm_share * pool_idle_usds
+
+            except Exception as exc:
+                _log.warning(
+                    "lending_idle_usds: RPC error for venue %s on %s; carrying forward "
+                    "prior value (error: %s).",
+                    venue.id, current, type(exc).__name__,
+                )
+                prime_idle = daily_by_date.get(current - timedelta(days=1), Decimal(0))
+
+            daily_by_date[current] = daily_by_date.get(current, Decimal(0)) + prime_idle
+            current = current + timedelta(days=1)
+
+    if not daily_by_date:
+        return _empty_psm_df()
+
+    days_sorted = sorted(daily_by_date)
+    cum_balance = [daily_by_date[d] for d in days_sorted]
+    daily_net = [cum_balance[0]] + [
+        cum_balance[i] - cum_balance[i - 1] for i in range(1, len(cum_balance))
+    ]
+    return pd.DataFrame({
+        "block_date": days_sorted,
+        "daily_net": daily_net,
+        "cum_balance": cum_balance,
+    })
+
+
 def compute_monthly_pnl(
     prime: Prime,
     month: Month,
@@ -633,6 +736,13 @@ def compute_monthly_pnl(
         curve_pool_source=sources.curve_pool,
         block_resolver=resolver,
         convert_to_assets_source=sources.convert_to_assets,
+    )
+    # Prime's share of unborrowed underlying in configured lending pools — Step 2
+    # idle lending pool USDS. Computed daily via ``balanceOf`` + ``totalSupply``.
+    # Returns empty frame if no venue has ``lending_idle_usds=True``.
+    lending_idle_usds = _aggregate_lending_idle_usds(
+        prime, period,
+        block_resolver=resolver,
     )
     ssr = get_ssr_history(prime, period, source=sources.ssr)
 
@@ -913,6 +1023,7 @@ def compute_monthly_pnl(
         ref_rate_history=ref_rate_history,
         sde_asset_value=sde_av_total,
         curve_idle_usds=curve_idle_usds,
+        lending_idle_usds=lending_idle_usds,
     )
     # Sky's full claim: BR on (utilized − SDE) + actual SDE revenue.
     sky_rev = sky_rev_br + sde_revenue

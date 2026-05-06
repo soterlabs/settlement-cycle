@@ -119,6 +119,7 @@ def load_prime(config_path: Path) -> Prime:
                 ),
                 skip=bool(v.get("skip", False)),
                 curve_idle_usds=curve_idle_usds,
+                lending_idle_usds=bool(v.get("lending_idle_usds", False)),
             )
         )
 
