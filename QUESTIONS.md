@@ -10,9 +10,10 @@ and ordered by priority within each group:
 - **P3** — future-proofing, operational, or dormant (venue holds $0)
 
 Question IDs (G1, S6, B4, …) are stable and cross-referenced from `PRD.md §17`.
-Last consolidated: 2026-05-04. Resolved questions (subsidised rate, PSM3
-daily sampling, hardcoded EoM blocks, Foundation USDS, GACLO-1 valuation,
-~$1.13M Sky-Share residual) are dropped here but tracked in `PRD.md §17`.
+Last consolidated: 2026-05-06. Pre-Q-ID resolutions (subsidised rate,
+PSM3 daily sampling, hardcoded EoM blocks, Foundation USDS, GACLO-1
+valuation, ~$1.13M Sky-Share residual) are tracked under `## Resolved`
+below as compact pointers; the full narrative lives in `PRD.md §17`.
 
 ---
 
@@ -31,7 +32,48 @@ Grove address registry lists `MERKL_DISTRIBUTOR =
 sourced from (a) Merkl's `userRewards` API, (b) Aave Horizon's RWA-fund
 accrual API, (c) Janus / Anemoy pool reporting, or (d) something else?
 Once confirmed we'll add a new `IRewardsSource` and pipe through Cat C
-revenue. Until then E1 revenue is under-counted by ~$430K/month.
+revenue. Until Grove identifies the canonical feed, E1 revenue is
+under-counted by ~$430K/month going forward; historical back-fill is
+unlikely to be reliable (see BA-call-#2 note below).
+
+**Update from BA call #2** (see PRD §17.13): BA flagged that historical
+Merkl reconstruction is "not possible" in their experience — payment
+token varies (sometimes paid in volatile tokens), reporting is
+inconsistent. BA's preferred approach is to capture rewards only once
+they hit the ALM as a stable token (same boundary rule as volatile
+tokens generally). This doesn't resolve G3 — Grove still needs to
+identify which feed populates their `Rewards` column going forward —
+but it sets expectations that any historical back-fill from Merkl
+itself will be approximate at best, so the resolution will likely be
+forward-only via ALM ingress capture rather than retroactive
+correction of pre-2026-05 settlements.
+
+#### G19. Agora — 8% on deployed AUSD, split between native yield and an undefined component
+Raised in Grove team interview (2026-05-06). Grove described an
+ongoing partnership with Agora paying **8% on amount deployed**,
+split between native yield (presumably the AUSD-position yield) and
+a secondary component that wasn't specified. Likely affects E11
+(Curve AUSD/USDC LP) and/or E12 (Uni V3 NFT with AUSD), but the
+reward attribution rule (per-position vs pooled at ALM) was left
+open in the interview.
+
+**Q for Grove:**
+1. What is the secondary component of the 8% split — issuer rebate,
+   referral payment, distribution-reward bonus, something else?
+2. Is the 8% an APY on deployed principal, or a one-off rebate per
+   subscription period?
+3. Does it land in the ALM Proxy as a stable token (USDC / AUSD /
+   USDS) — in which case the existing `external_alm_sources`
+   plumbing captures it under Cat A — or per-venue? Per BA call #2
+   Q5, MSC won't try to apportion per-position even if the source is
+   technically traceable, so the right place to capture the 8% is
+   at ALM ingress.
+
+If the second component is being paid out today and we're not
+capturing it, Grove `prime_agent_revenue` is being under-counted by
+the applicable share of 8% × deployed AUSD — material until Grove
+identifies the secondary component and either confirms it's already
+flowing through ALM ingress or names a new source we need to plumb.
 
 ### P1 — methodology unknowns affecting accuracy
 
@@ -61,6 +103,30 @@ failure mode. Does Securitize publish NAV anywhere we can consume
 programmatically (REST API, IPFS, signed JSON)? Redstone has a feed at
 `0xedc6…d7d` but our `NavOracleSource` doesn't speak Redstone yet.
 
+#### G20. FundingMorpho contract — DR-eligible per Grove, but feed mechanism unspecified
+Raised in Grove team interview (2026-05-06). Grove confirmed a
+**FundingMorpho** contract is now part of their distribution-rewards
+sources, alongside the legacy ref-code mechanism. Today MSC reports
+`MonthlyPnL.distribution_rewards = $0` for Grove (Phase-3 placeholder
+per PRD §17.6, populated only when a real source lands —
+historically only for Skybase). Lighting up FundingMorpho requires:
+
+**Q for Grove:**
+1. **Contract address** of the FundingMorpho instance.
+2. **Read semantics** — are rewards (a) accrued via a `claimable()`
+   view function, (b) emitted as `Transfer` / custom events, (c)
+   periodically swept on-chain to the ALM Proxy as a stable token,
+   or (d) tracked off-chain and posted to a dashboard?
+3. **Eligibility window** — was Grove eligible from a specific date
+   (e.g. 2026-01 MSC start), or does it start later, or is it
+   retroactive?
+
+If (c) — sweeps to ALM Proxy as a stable token — the existing
+`external_alm_sources` plumbing handles it natively and the reward
+flows through Cat A `prime_agent_revenue`, no new
+`distribution_rewards` reader needed. If (a) or (b), MSC needs a
+new `IDistributionRewardsSource` adapter.
+
 ### P2 — sanity checks / confirmations
 
 #### G4. Sky Direct venue set re-confirmation
@@ -73,12 +139,23 @@ and ignored by compute). Confirm no other Grove venue should be Sky
 Direct as of today, and please flag this list for re-review whenever
 the Atlas Sky Direct section changes.
 
-#### G5. Subsidy reference rate — confirm Grove uses 3M T-Bill (not EFFR)
+#### G5. Subsidy ramp — '3-month windows' note (quarterly settlement vs. daily compound?)
 We've configured Grove with `ref_rate_kind: tbill_3m` per your guidance,
 matching what the Feb 2026 PnL workbook empirically used (3.67–3.74%
 range, vs EFFR's ~4.33%). Confirm this is the long-term spec, not just a
 Feb-2026 implementation choice. Same question for Spark (currently using
 EFFR per same guidance).
+
+**Update from Grove interview (2026-05-06):** Grove reconfirmed **3M
+T-Bill** + 2026-01-01 anchor for the subsidy ramp — resolves the
+tenor sub-question for Grove. One ambiguous side note from the
+interview: "send value calculations for 3-month windows." Possible
+readings: (a) Grove computes the subsidy in 3-month buckets and
+settles quarterly rather than the daily compound MSC currently uses,
+or (b) it's just a reference to the 3M T-Bill rate tenor and not a
+statement about settlement frequency. Worth a one-line confirmation
+from Grove on which they meant. Cross-ref **B15** (T-Bill sampling
+frequency, still open with BA / Sky).
 
 #### G1. Subproxy idle USDC — should it earn agent rate?
 Grove's subproxy `0x1369…91Ba` holds ~$0.75M USDC. Today it does **not**
@@ -127,6 +204,28 @@ or off-chain API) we could fall through to if `pricePerShareFeed` goes
 down? ACRDX dropped −0.69% in March 2026 — silently falling through to
 const_one would mask a real loss month.
 
+#### G18. E8 JAAA / E9 JTRSY — Jan 1 dates don't match Atlas
+Raised in Grove team interview (2026-05-06). Grove flagged that the
+Jan 1 dates associated with JAAA / JTRSY (E8 / E9) don't match what
+Atlas records. Rune confirmed Atlas is the authoritative source, so
+the mismatch needs reconciliation in Grove's direction.
+
+What's unclear from the interview note: which "Jan 1 date" is
+mismatched — pricing inception (when the NAV oracle starts publishing
+meaningful values), Sky Direct classification start (when the venue
+became flagged SDE in `config/sky_direct_exposures.yaml`), or the
+debt-accounting boundary?
+
+**Q for Grove:**
+1. Which date is mismatched, and by how much (JAAA earlier than
+   Atlas, or later)?
+2. Does the mismatch affect the SDE-flag window for E8/E9? If so,
+   `config/sky_direct_exposures.yaml` time-bounds may need an update
+   — material because Sky-takes-all on SDE revenue, so a wider
+   window shifts more revenue from prime to Sky.
+3. Same question for any other Centrifuge-priced venue (E22 ACRDX
+   uses Centrifuge `pricePerShareFeed` too).
+
 ### P3 — future-proofing / operational
 
 #### G9. BUIDL-I (E10) — mint-pattern threshold confirmation
@@ -151,6 +250,26 @@ Dune-cum-balance × const-pps approximation.
 E1/E2/E3 venues). Any plans to migrate to Aave V4 or another rebase-model
 lending market? A migration mid-period would require a separate code
 path. None of the current Grove venues trip this today.
+
+#### G17. Historical "lesser of (debt to Sky, NAV)" payment pattern — pre-MSC settlements
+Raised in Grove team interview (2026-05-06). Grove indicated that in
+some pre-MSC months they paid Sky the **lesser of (debt owed to
+Sky, current NAV)**, and in some months they didn't — i.e. the cap
+on monthly payment was inconsistent. Specific concern raised in the
+interview: months where the prime ran a **negative PnL** would
+otherwise force a transfer above NAV without this cap.
+
+**Status: informational only.** This question doesn't affect MSC's
+forward methodology — the MSC monthly cycle starts 2026-01 and uses
+a different payment formula (`compute/sky_revenue.py`: full
+`sky_revenue` per the SDE-split model, no NAV cap). It's only
+relevant if MSC ever needs to reproduce pre-2026-01 settlements for
+historical Sky-vs-Grove reconciliation.
+
+**Q for Grove (low priority, for completeness):** can Grove document
+which pre-MSC months applied the cap and which didn't, and what
+triggered it? Useful context for any historical reconciliation; not
+blocking any current work.
 
 ---
 
@@ -250,6 +369,16 @@ other par-stable holdings (i.e., is the current `external_alm_sources`
 allowlist for Spark — just the Anchorage escrow — complete, or are
 there other addresses we should add?).
 
+**Update from Spark interview (2026-05-06):** Spark confirmed that
+"some venues send gains directly to the ALM Proxy" beyond just
+Anchorage — i.e. the current single-address allowlist is almost
+certainly incomplete. Sharpened ask: please **enumerate** the venues
+whose gains arrive at the ALM directly, and provide the **sender
+address(es)** for each so we can extend `external_alm_sources`. Until
+this list is in hand, every par-stable inflow we can't trace to a
+known capital flow is ambiguous between yield (should count as Cat A
+revenue) and capital movement (should NOT).
+
 #### S14. sparkPrimeUSDC1 (S18) — Arkis API NAV vs on-chain `convertToAssets()`
 Persistent ~0.7% drift vs Spark's view at all 3 EoM dates. Spark's
 amounts are suspiciously round ($15.00M / $10.10M / $10.10M), suggesting
@@ -258,11 +387,88 @@ for revenue recognition, or should we consume Arkis's API NAV (which
 Spark uses)? Bias on our prime_agent_revenue: +$60–100K/quarter
 over-statement.
 
+**Update from BA call #2** (see PRD §17.13): BA themselves don't
+currently consume the Arkis API directly — Arkis exposes total
+position value via API but BA needs Spark to facilitate access.
+Implication: BA's own Arkis numbers may also be derived from the
+on-chain `convertToAssets()` (or from Spark's manually-shared
+workbook), not from Arkis directly, so BA isn't an independent
+authority for this venue. Treat the Arkis-vs-on-chain question as
+needing direct input from Spark / Arkis rather than from BA.
+
+#### S21. Distribution rewards — Cowswap ref code 1003 + in-range Spark codes (100–999)
+Raised in Spark team interview (2026-05-06). Spark identified two
+distribution-rewards streams:
+
+- **Cowswap reference code 1003** — outside Spark's normal ref-code
+  range (i.e. assigned to Cowswap as a distinct program).
+- **Spark codes in range 100–999** — Spark's own in-range ref codes
+  (mechanism not detailed in the interview — presumably referral /
+  liquidity incentive codes earned by Spark on third-party
+  platforms).
+
+Today MSC reports `MonthlyPnL.distribution_rewards = $0` for Spark
+(Phase-3 placeholder per PRD §17.6, populated only when a real
+source lands — historically only for Skybase). Lighting these up
+requires:
+
+**Q for Spark (counterpart of Grove's G20 FundingMorpho ask):**
+
+1. **Cowswap (code 1003):**
+   - Contract address(es) where Cowswap accrues / distributes
+     rewards to Spark.
+   - Read semantics — `claimable()` view, `Transfer` events,
+     periodic on-chain sweeps to ALM Proxy as a stable token, or
+     off-chain dashboard?
+   - Eligibility window — was Spark eligible from a specific date
+     (2026-01 MSC start? earlier?) and any termination date?
+
+2. **In-range codes (100–999):**
+   - Are these all the same mechanism with different IDs (in which
+     case one feed covers them), or distinct programs that need
+     separate readers?
+   - List the codes that have actually accrued non-zero rewards in
+     2026-Q1 + the corresponding payer addresses / contracts.
+   - Same read-semantics question as above.
+
+If any stream sweeps to ALM Proxy as a stable token, the existing
+`external_alm_sources` plumbing handles it under Cat A (no new code).
+If accrual lives at a contract that needs to be queried (claimable /
+events), MSC needs a new `IDistributionRewardsSource` adapter — same
+shape as G20.
+
 ### P2 — sanity checks / confirmations
 
-#### S5. Subsidy reference rate — confirm EFFR
-Configured with `ref_rate_kind: effr` per your guidance. Confirm this is
-the long-term spec.
+#### S5. Subsidy reference rate — Atlas says T-Bill, current config says EFFR
+Spark is currently configured with `ref_rate_kind: effr` per a 2026-05-02
+governance note (also reflected in `config/subsidy_reference_rates.yaml`
+header), but the canonical Atlas text (A.2.8.2.2.2.2.2 — Borrow Rate
+Mechanism) says BOTH Spark and Grove are subsidised at:
+`t-bill_rate + (base_rate − t-bill_rate) × T/24` over the first $1B of
+USDS for 24 months from 2026-01-01.
+
+That phrasing reads "t-bill" for both primes — i.e. EFFR isn't named
+in Atlas at all. **Q for Spark (and BA/Sky for arbitration):** which
+is canonical for Spark — Atlas's `t-bill_rate` (in which case our
+EFFR config is wrong and Q1 2026 Spark numbers must be re-run with
+T-Bill, materially changing the subsidy benefit since EFFR Q1 2026
+≈ 4.33% sat at-or-above BR and gave ~0 subsidy, whereas 3M T-Bill
+≈ 3.67–3.74% gives ~26bps subsidy below BR), or the EFFR governance
+note (in which case Atlas needs an edit to name EFFR explicitly for
+Spark, or document the carve-out).
+
+If T-Bill is confirmed canonical, then S5 collapses into G5 (same
+question for both primes); otherwise we need a documentation pointer
+explaining the Spark-specific EFFR override.
+
+**Update from Spark interview (2026-05-06):** Spark **reaffirmed
+EFFR** as their expectation for the subsidy reference rate (their
+note: rate source = "EFRR" with link to
+`newyorkfed.org/markets/reference-rates/effr`). This stacks against
+Atlas's "t-bill_rate" text — i.e. the contradiction is now confirmed
+from Spark's side as a real disagreement, not a documentation
+mistake. Resolution still needs Sky / BA to arbitrate which is
+canonical for Spark.
 
 #### S10. L2 sUSDS proxies (S37 Base, S43 Arbitrum, S47 Optimism, S51 Unichain) — Q1 flow confirmation
 Each has only one row in our captured fixture (pre-period anchor only).
@@ -281,6 +487,61 @@ spTokens, sUSDS, syrup. Does this match Spark's internal accounting?
 #### S17. PSM3 holdings grew $378M → $509M during Q1
 Major contributor to the utilized reduction. Is this growth from new Sky
 borrowing (capital deployment) or from PSM3 yield accrual?
+
+#### S19. SparkLend reserve factor — confirm 10% stays at protocol level (not Prime Agent revenue)
+Raised in Spark team interview (2026-05-06). Spark stated "10% of
+the yield goes to reserve factor" on USDS supply to SparkLend
+(spUSDS / spUSDT / spDAI / spPYUSD venues — S1 / S3 / S4 / S5).
+Recurrent reserve-factor actions are executed via spells.
+
+Our reading: the reserve factor is **SparkLend protocol** income —
+not Spark Prime Agent income. The supply rate Spark receives on its
+spTokens is already the **net** of the reserve factor (Aave-style
+accounting: `supply_rate = borrow_rate × utilization × (1 −
+reserve_factor)`), so MSC's existing Cat C `scaledBalanceOf ×
+liquidityIndex` accounting captures Spark's prime-agent share
+correctly. The 10% accrued to the reserve factor stays at the
+protocol level and does NOT flow back to Spark's prime-agent
+revenue.
+
+**Q for Spark (confirmation):** is the above reading correct? In
+particular:
+
+1. The reserve factor accrues to the SparkLend protocol treasury,
+   not to Spark's ALM Proxy or subproxy — i.e. it should NOT appear
+   anywhere in Spark Prime Agent revenue accounting.
+2. There's no separate "reserve factor distribution" event later
+   that returns the accrued amount to the prime.
+
+If either is wrong (i.e. the reserve factor IS flowing back to the
+prime), MSC under-counts Spark prime revenue today by ~10% × yield
+across S1 / S3 / S4 / S5.
+
+#### S20. SparkLend "large positions trigger negative returns" — at what threshold?
+Raised in Spark team interview (2026-05-06). Spark noted that
+**large positions on SparkLend trigger negative returns** for the
+supplier, but the reserve factor still gains. Mechanism unclear from
+the interview note — could be (a) the supply-rate utilisation curve
+flips below the reserve-factor cut at low utilisation, (b) a
+borrow-rate cap mechanism that creates negative net yield for the
+supplier, or (c) a position-size-specific penalty in SparkLend's
+rate model.
+
+**Q for Spark:**
+
+1. What's the precise mechanism — utilisation curve, rate cap,
+   position-size penalty, or something else?
+2. At what threshold (position size in USD, utilisation %, or other
+   trigger) does this kick in?
+3. Are any of Spark's current spToken positions (S1 spUSDS $156M,
+   S3 spUSDT $616M, S4 spDAI $257M, S5 spPYUSD $100M) close to that
+   threshold — i.e. should MSC expect negative-return periods on
+   any of these in the near term?
+
+Material if a Q1/Q2 month sees a negative supply rate on one of the
+large spTokens — our `scaledBalanceOf × liquidityIndex` accounting
+would correctly reflect the loss, but operators should know to
+expect it rather than treat it as an anomaly.
 
 ### P3 — future-proofing / operational / dormant
 
@@ -352,6 +613,26 @@ position since query IDs aren't exposed for private viz.)
 
 Already-public queries (no action needed): `5747940`, `5776184`,
 `6866703`.
+
+#### S22. Anchorage fee structure — what does Anchorage charge before sweeping to ALM?
+Raised in Spark team interview (2026-05-06). Spark confirmed
+Anchorage charges fees on the principal-allocated position (S23 in
+config — registered escrow at
+`0x49506C3Aa028693458d6eE816b2EC28522946872`), but the fee structure
+wasn't detailed. Yield arrives on-chain as USDC sweeps from the
+escrow to the SLL ALM, already net-of-fee.
+
+**Status: operational, doesn't shift numbers today.** Our existing
+`external_alm_sources` accounting captures the **net** USDC arriving
+at the ALM, which already reflects whatever fees Anchorage has
+deducted upstream. MSC's `prime_agent_revenue` is correct as long as
+the fee is taken pre-sweep.
+
+**Q for Spark (low priority, for completeness):** what's
+Anchorage's fee structure (% of yield, % of AUM, flat fee)? Useful
+for projecting expected sweep size relative to the principal × APR
+(~7.13% gross APR observed Q1) and for spotting any month where the
+sweep deviates materially from the expected net.
 
 ---
 
@@ -453,7 +734,236 @@ If Sky-takes-all is confirmed, we'll keep our current MSC behaviour
 and document the laniakea-docs formula gap as known divergence
 pending a docs update.
 
+#### B14. Gain-realization double-counting — does Atlas need a "delay realisation" rule?
+Raised in BA call #2 (see PRD §17.13). Concern: under daily-NAV
+accounting, unrealised gains on a position are recognised period after
+period as the venue's mark-to-market value rises. When the position is
+finally unwound (sold / redeemed at a different price than the last
+NAV), the realised PnL is recognised AGAIN against the same economic
+gain, giving Sky two bites at the same revenue.
+
+BA acknowledged the risk but didn't give a closed answer: their note
+was "Atlas changes/rules possibly needed here, delay of realising
+gains" — i.e. an Atlas-level policy fix to defer revenue recognition
+for unrealised gains until the unwind would be the cleaner solution,
+but no such rule exists today. This isn't a bug in our pipeline (we
+faithfully execute the documented NAV methodology); it's a
+methodology-level open question that affects every NAV-priced venue
+(RWA tranches, vault shares with non-par PPS, LP positions priced via
+oracles).
+
+**Q for BA / Sky:**
+1. Is an Atlas update on gain-realisation timing on the roadmap, and
+   if so, what's the expected semantics — period-by-period NAV (status
+   quo, accepts the double-count risk) vs. cost-basis-until-unwind
+   (defers recognition) vs. some hybrid?
+2. In the meantime, should MSC flag any month where a previously-NAV-
+   priced position is unwound, so the realisation event can be
+   reconciled manually against prior monthly recognitions?
+
+Material whenever a Cat E (RWA NAV) or Cat F (LP) position is
+liquidated mid-cycle. Not yet observed in Q1 2026 (no major unwinds);
+becomes load-bearing the first time it happens.
+
+Cross-reference: **B17** asks a related-but-distinct question — when
+a NAV gain materialises into stable USDS at the ALM, is BR charged
+on the enlarged USDS position (i.e. is Sky paid yield on already-
+recognised yield)? B14 is about whether the gain is recognised
+twice; B17 is about whether BR applies to the realised gain once.
+
+#### B15. T-Bill rate — tenor + sampling frequency unspecified in Atlas
+Atlas A.2.8.2.2.2.2.2 (Borrow Rate Mechanism) specifies the subsidy
+formula as:
+```
+subsidised_rate = t-bill_rate + (base_rate − t-bill_rate) × T/24
+```
+over the first $1B of utilized USDS for 24 months from 2026-01-01 (T =
+elapsed months). Two parameters are NOT defined in the spec text:
+
+**(a) T-Bill tenor.** The US Treasury publishes daily yield curve points
+at 4-week, 1M, 3M, 6M, 1Y, 2Y, … which differ by tens of bps. Grove's
+Feb 2026 PnL workbook empirically used **3M T-Bill** (3.67–3.74%)
+matching `treasury.gov/daily_treasury_yield_curve`'s `bc_3month` field.
+Is 3M canonical for both primes, or does Sky intend a different tenor
+(e.g. 1M for short-end alignment with overnight borrowing, 1Y for
+duration-matched against the 24-month subsidy program)? The choice
+shifts the subsidy ~10–30bps per year.
+
+**(b) Sampling frequency.** The Atlas formula reads `t-bill_rate` as
+a single symbol. Three plausible interpretations:
+
+1. **Daily** — read fresh from the Treasury daily yield curve each
+   settlement day; matches `subsidised_apy_d = ref_rate_d + (base_apy
+   − ref_rate_d) × T/24` in `config/subsidy_reference_rates.yaml`
+   (current MSC behaviour).
+2. **Monthly snapshot** — read once at the start of each settlement
+   period and held constant for the month.
+3. **Program-start snapshot** — read once on 2026-01-01 and held
+   constant for the entire 24-month subsidy program. Frozen value
+   simplifies disputes but ignores rate moves.
+
+Q1 2026 Treasury 3M T-Bill moved ~7bps (3.67% → 3.74% → 3.67% range);
+small for Q1 but a regime change later in the 24-month window could
+diverge materially across the three interpretations.
+
+**Q for BA / Sky:** what tenor and sampling frequency does Sky
+intend? If Atlas is silent by design (both left to discretion), MSC
+will pin to 3M / daily and document the choice; if Sky has a specific
+intent, it should be added to the Atlas text.
+
+Coupled with **S5** (whether Spark uses T-Bill at all, vs the EFFR
+note) — these three together are the full subsidy-reference-rate
+specification gap.
+
+**Update from Grove interview (2026-05-06):** Grove reconfirmed **3M
+T-Bill** as the tenor on their side, which (a) matches our existing
+config and (b) suggests 3M is canonical for both primes (still needs
+Sky's confirmation that it's the universal default vs. per-prime
+choice). Sampling frequency (daily / monthly snapshot / program-start
+snapshot) remains unresolved. The Grove interview also surfaced an
+ambiguous "send value calculations for 3-month windows" note — see
+**G5** for the open question on whether that means quarterly
+settlement of the subsidy.
+
+#### B16. TGE Penalty — when and how was it applied to Grove?
+Per Atlas A.2.8.2.2.2.7.1.1 (Prime Token Generation Event) +
+A.2.8.2.2.2.7.6 (Income Definition) + A.2.8.2.2.2.7.1.2 (Token Launch
+Penalty Settlement): if a Prime did not complete its TGE by
+**2025-07-01**, a **30%** penalty applies on the Prime's "income"
+accruing until TGE happens. "Income" is defined as:
+
+- (i) Distribution Rewards (A.2.8.2.2.2.3.1)
+- (ii) Distribution Reward Bonus for 2025 (A.2.8.2.2.2.3.2)
+- (iii) Platform Fees charged to users
+- (iv) Real World Asset fees (origination, servicing, related)
+- (v) Blended cost of allocation spread between Junior and Senior
+  Risk Capital
+
+Spark completed its TGE before the deadline; **Grove has not** as
+of today (2026-05-06), so the 30% penalty has been accruing for
+~10 months when MSC settles Q1 2026. MSC's current pipeline does
+**not** model this penalty — `prime_agent_total_revenue` is
+reported gross (no 30% deduction). If BA's published Grove numbers
+DO apply the penalty, our reconciliation will be off by ~30% of the
+applicable income components every settlement until Grove TGEs.
+
+**Q for BA:**
+
+1. Has the penalty been applied to any settlement so far? Which
+   periods, and from what start date — was it (a) accruing from
+   2025-07-02 with retroactive recognition once MSC started, (b)
+   only from the 2026-01 MSC start, or (c) deferred to a separate
+   "Token Launch Penalty Settlement" (per A.2.8.2.2.2.7.1.2) outside
+   the monthly cycle?
+2. **How is "income" mapped to MSC line items?** Specifically: does
+   the 30% apply to (a) just `distribution_rewards` (today $0 for
+   Grove — the field is a Phase-3 placeholder), (b) all of
+   `prime_agent_total_revenue`, (c) only the components Atlas
+   enumerates that map to actual revenue on Grove (Platform Fees,
+   RWA fees), or (d) something else? The "blended cost of allocation
+   spread between Junior and Senior Risk Capital" component
+   (Atlas (v)) doesn't have an obvious mapping to our pipeline —
+   we'd need BA's interpretation.
+3. Where does the penalty appear in BA's settlement output —
+   netted from `prime_revenue`, added to `sky_revenue`, or surfaced
+   as a separate line item? (Affects how MSC reports it once we
+   model it.)
+4. Is there a known TGE target date for Grove that would let us
+   project when the penalty stops accruing?
+
+If BA confirms the penalty IS being applied, this becomes P0 —
+MSC needs a `tge_penalty` line item on `MonthlyPnL` (Grove only,
+date-bounded against TGE completion) and a re-run of all Grove
+settlements since 2026-01.
+
+#### B17. Base rate on realised gains — does BR apply to NAV-derived USDS?
+Raised in Spark team interview (2026-05-06) as an open methodology
+question on Spark's side ("Pay base rate on realised gains?"). When
+a NAV-priced position (Cat E RWA tranche, Cat F LP, Cat C
+principal-bearing aToken with index growth) appreciates over a
+period and is then realised into stable USDS at the ALM Proxy, the
+prime's USDS holdings grow by the realised gain. That gain is
+**already** recognised as `prime_agent_revenue` in the period it
+materialised (per the NAV methodology). Question: in the **next**
+period, does Sky charge BR on the larger USDS position — including
+the portion that came from already-recognised yield?
+
+The two readings:
+
+- **(a) BR on full ledger debt.** Sky charges BR on `cum_debt`
+  (every USDS the prime has drawn against the ilk), period. Realised
+  gains net to `utilized` only via the "idle USDS at subproxy/ALM
+  netted from utilized" mechanic, so BR applies only to deployed
+  capital, not to gains that sit idle. **Matches MSC pipeline today.**
+- **(b) BR on realised gains explicitly.** Sky charges BR on the
+  enlarged USDS holding regardless of where it came from — i.e. the
+  realised gain creates a new BR liability the moment it lands.
+  Would mean MSC is under-counting `sky_revenue` after any
+  significant gain realisation.
+
+**Q for BA / Sky (arbitrating):** which is canonical?
+
+Cross-reference: **B14** is the sibling question on whether the
+gain itself is recognised twice (period-by-period NAV vs.
+cost-basis-until-unwind). B17 is about whether the *already-
+recognised* gain attracts BR going forward. Both close to a clean
+answer once Sky picks a position on gain-realisation timing — but
+they're independently load-bearing.
+
+Material whenever Cat E / Cat F positions accrue meaningful gains
+that are then realised into the ALM. Q1 2026 had no large
+realisations; becomes load-bearing the first quarter that does.
+
 ### P2 — sanity checks / confirmations
+
+#### B11. Agent rate — does BA include an equivalent component in prime revenue?
+MSC reports `prime_agent_total_revenue = prime_agent_revenue + agent_rate +
+distribution_rewards`, where `agent_rate` is what the prime EARNS on its
+subproxy's idle USDS/sUSDS. Formula (`src/settle/compute/agent_rate.py`):
+
+- USDS in subproxy: rate = **SSR + 20bps** APY, applied daily to
+  cumulative USDS balance.
+- sUSDS in subproxy: rate = **20bps** APY only, applied daily to the
+  **cost-basis principal** (`shares × entry_pps`) — SSR is already
+  earned via the sUSDS index growth, so applying SSR again would
+  double-count.
+- Daily compounding, summed over the settlement period.
+
+For Q1 2026 this is a small but non-zero contributor to the headline
+(idle subproxy holdings × ~20bps over the period). Two things to
+confirm with BA:
+
+1. Do BA's reported prime-revenue numbers include an analogous "agent
+   rate" component for subproxy idle USDS/sUSDS, or is prime revenue in
+   BA's view limited to per-venue yield?
+2. If included, does the formula match — specifically, is the sUSDS
+   leg priced on **cost-basis principal** (no SSR double-count) and
+   is the rate-over-SSR component **20bps**?
+
+If BA omits this component or uses a different rate, our headline
+`prime_agent_total_revenue` will diverge from BA's published prime
+revenue by the agent-rate amount each month.
+
+**Update from BA call #2** (see PRD §17.13): BA's Q1/Q2 answers said
+that "idle assets count only Sky side" (i.e. idle USDS / sUSDS is
+netted out of `utilized` so the prime is reimbursed BR, but does NOT
+generate Prime Agent revenue in BA's view). This is in apparent
+tension with the prime-settlement-methodology Step 3 agent-rate stream
+that our pipeline implements. Two possible reconciliations:
+
+- **(a)** BA's "idle" refers only to **ALM-side** idle holdings (which
+  we also don't credit as prime revenue — we only credit subproxy-side
+  USDS/sUSDS per the methodology doc). In that case there's no
+  conflict and B11 is purely a confirmation question.
+- **(b)** BA's "idle" includes **subproxy-side** holdings too — in
+  which case BA's Prime Agent revenue is structurally ~`agent_rate`
+  smaller than ours and we have a real divergence.
+
+Sharpened ask for BA: please disambiguate (a) vs (b) explicitly.
+Specifically, for the SLL subproxy on Ethereum holding USDS / sUSDS
+during Q1 2026, did BA's reported Prime Agent revenue include the
+SSR+20bps (USDS) / 20bps-on-cost-basis (sUSDS) accrual on those
+balances, or did it skip that component entirely?
 
 #### B1. Spark `idle_assets` ($720M) — informational; reconstructable from public tables
 
@@ -566,4 +1076,40 @@ trail (Q-ID, title, close date, issue link).
 
 ### S3. Anchorage S23 — $150M tri-party loan, on-chain addresses confirmed
 **Resolved 2026-05-05** via [#17](https://github.com/soterlabs/settlement-cycle/issues/17). See `PRD.md §17.13`.
+
+### Pre-Q-ID resolutions
+
+These predate the stable Q-ID scheme; tracked here as compact pointers,
+full narrative in `PRD.md §17`.
+
+- **Subsidised borrowing rate (formula + ramp).** Resolved 2026-05-02
+  per Sky governance — formula `ref_rate + (BR − ref_rate) × T/24`,
+  program start 2026-01-01, cap at first $1B utilized. See
+  `PRD.md §17.13` (medium-priority list, item 6). Residual
+  reference-rate questions are open as **G5** / **S5** / **B15**.
+- **PSM3 daily sampling (Spark non-Eth chains).** Resolved 2026-04-30
+  — Base + Optimism live ABI confirmed; Arbitrum + Unichain assumed
+  same shape; selectors `0xce7c2ac2` (`shares`) + `0x41c094e0`
+  (`convertToAssetValue`) plumbed. See `PRD.md §17.13` (Spark Q1
+  resolved list, item 3).
+- **Hardcoded EoM blocks (`spark_fixture_loader.py`).** Identified
+  2026-05-04 as a Q1-2026-only code path that silently skips Cat A
+  for any other month. Tracked as internal TODO, not a counterparty
+  question. See `PRD.md §17.13` (Spark Q1 resolved list, item 6).
+- **Foundation USDS holdings.** Resolved during 2026-05-04 dashboard
+  re-review — Foundation appears in
+  `result_spark_usds_s_usds_usdc_in_psm_3_curve_psm_3_proxy_foundation_aave`
+  (Eth, ~$1.1M) and is captured implicitly via existing PSM/ALM-raw
+  reads. See `PRD.md §17.13` Code-review acks (B1 reverse-engineering)
+  and **B1** for the residual `idle_assets` mapping question.
+- **GACLO-1 valuation.** Resolved earlier — Galaxy CLO position
+  priced via the standard Cat A par-stable accounting on the USDC
+  sweep that lands at the ALM on the 10th of each month (no
+  on-chain principal-side feed needed). See `PRD.md §17.13` Grove
+  team interview (2026-05-06) edge-cases.
+- **~$1.13M Sky-Share residual (Grove Mar 2026).** Largely closed
+  by 2026-05-02 work (subsidy + SDE refactor + `pricePerShareFeed`
+  NAV); residual ~$45K excluding the E1 Horizon rewards channel
+  (tracked under **G3**). See `PRD.md §17.13` (medium-priority list,
+  item 5).
 
