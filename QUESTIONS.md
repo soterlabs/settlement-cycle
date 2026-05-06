@@ -158,80 +158,6 @@ path. None of the current Grove venues trip this today.
 
 ### P0 — material numerical gaps
 
-#### S3. Anchorage S23 — $150M tri-party loan, on-chain addresses confirmed
-**Update 2026-05-05:** the position **is fully on-chain visible**, contrary
-to our earlier note. The flow trail:
-
-- **Anchorage Spark escrow (EOA):** `0x49506C3Aa028693458d6eE816b2EC28522946872`.
-  Receives all SLL-side disbursements; originates all interest-payment
-  sweeps back to the SLL.
-- **Anchorage holding wallet (EOA, downstream):** `0x8149c53ea54de2a62c9e4caef29478f1af4c7bd3`.
-  Received exactly **$150,000,000** in 4 transfers from the escrow on
-  2025-12-18 / 2025-12-19 (loan-start day).
-
-Both addresses currently show ~$0 in `balanceOf(USDC)` because Anchorage
-swaps the principal into off-chain BTC custody for the strategy — but
-the principal-out trail and the interest sweeps back are both fully
-readable on-chain.
-
-**Q1 2026 interest sweeps (on-chain, escrow → SLL):**
-$891,780 (2026-01-22) + $891,780 (2026-02-23) + $805,479 (2026-03-24) +
-$891,780 (2026-05-04) — ≈ 7.13% APR on $150M, matches the
-`result_spark_anchorage_usdc` "Anchorage BTC 6M 7%" loan name.
-
-**Methodology — what we actually need on-chain.** Every input the
-monthly settlement needs is readable from on-chain Transfer events:
-
-- **Realized interest** (prime side): the escrow→SLL flow, classified
-  as Cat A par-stable yield via `external_alm_sources`. Wired up in
-  PR 1 (2026-05-05). Q1 2026 captured = $891,780 + $891,780 + $805,479
-  = **+$2,589,039**.
-- **Sky BR on the funding**: handled by the standard `compute_sky_revenue`
-  mechanic. Spark drew USDS from Sky to fund Anchorage (verified
-  on-chain: `Vat.ilks(ALLOCATOR-SPARK-A).Art` jumped +$208M during the
-  2025-12-14 → 2025-12-19 disbursement window). Spark's Art has stayed
-  ≥ $3.0B throughout Q1 2026, well above the $150M Anchorage
-  commitment; Anchorage is neither PSM-netted nor SDE-reimbursed in
-  `utilized`, so BR has been charging on it cleanly the whole time.
-  **No new code needed for the Sky side.**
-- **Principal-correction events** (e.g., the $5M return on 2025-12-19):
-  registered in `principal_return_overrides` so the Cat A classifier
-  doesn't mis-classify them as yield. Wired up in PR 1.
-
-**PR 1 closes the monthly-settlement bias on Anchorage** —
-`prime_agent_revenue` now captures the interest, `sky_revenue` was
-already correct via the ilk mechanic, so `monthly_pnl` on this venue
-matches Spark's view.
-
-**Open follow-ups (refinements, NOT numbers gaps for monthly settlement)** —
-these would land via a future `TRI_PARTY_LOAN` pricing category if we
-want them:
-
-- **Snapshot-module position value.** Today S23 reports `$0` in
-  `Snapshot.assets_usd` because the escrow EOA holds ~$0 USDC at any
-  given block (the principal lives off-chain in BTC custody). A future
-  `TRI_PARTY_LOAN` path would return `principal_at_block` (cumulative
-  SLL→escrow flow net of returns) so the $150M shows up in the balance
-  sheet during the loan term.
-- **Accrual vs. cash basis.** Today we recognise interest the day the
-  sweep arrives. Confirm with Spark whether their PnL workbook accrues
-  continuously (`principal × APR × Δt`); if so we'd want to align.
-- **Automated principal/interest split at loan termination.** Today the
-  operator manually adds an entry to `principal_return_overrides` when
-  the unwind transfer lands. A `TRI_PARTY_LOAN` classifier with
-  termination-date awareness would do this automatically.
-
-**Smaller asks for Spark:**
-1. Confirm `0x49506C3Aa028693458d6eE816b2EC28522946872` is the canonical
-   Anchorage Spark escrow (the single counterparty for the tri-party
-   loan disbursement and interest sweeps).
-2. Confirm `0x8149c53ea54de2a62c9e4caef29478f1af4c7bd3` is also Anchorage-
-   controlled (downstream of the escrow), not a third party.
-3. The loan APR in `result_spark_anchorage_usdc` is published as 6.5%,
-   but the realised interest sweeps annualise to ~7.13%. Is the 6.5%
-   figure net of an Anchorage fee, or are the sweeps net (i.e. the
-   gross APR is higher)? Knowing this lets us pick the right rate for
-   the YAML.
 
 #### S6. spUSDC / spUSDT / spETH / spPYUSD — surplus formula (~ANSWERED via `dune.sparkdotfi.result_savings_v_2_deployment_metrics`)
 
@@ -469,6 +395,64 @@ Are you using Redstone, const_one, or a different feed? If const_one is
 canonical, we should switch our NAV path to match (currently whitelisted
 as "known divergence" — drift ~1.5%).
 
+#### B10. Why does Sky + Prime ≠ Total for USDe / Superstate / BUIDL?
+Raised in BA call #1 (see PRD §17.13). For these three venues the
+settlement we observed had `Sky Revenue + Prime Revenue ≠ Total Revenue`.
+BA's explanation: manual calculations using formulas from a private deal
+(USDe, no on-chain interest), or manual NAV updates (Superstate Crypto
+Carry Fund, BUIDL).
+
+For MSC: should we replicate the manual math in code (i.e. add a
+`MANUAL_OFFCHAIN` pricing category fed from a YAML / Dune feed of
+operator-supplied values), or treat these venues as audit exceptions
+that MSC reports separately and reconciles against BA's published
+output? The choice affects whether MSC can fully close `monthly_pnl`
+without external inputs.
+
+#### B13. SDE — current list, version, AND settlement semantics
+Raised in BA call #1 (see PRD §17.13). Two related asks bundled
+together because they need the same conversation with Sky/BA:
+
+**(a) Canonical list / Atlas version.** Our
+`config/sky_direct_exposures.yaml` is hand-maintained against the Sky
+Atlas spec; the latest snapshot recorded there is from 2026-04-29.
+Could BA share:
+- the canonical list of SDEs as of today,
+- the Atlas commit / version that list was derived from, and
+- any expected near-term changes (new entries, terminations, cap
+  adjustments)?
+
+We need this before re-running settlements for any month after April
+2026 to avoid silent drift between our SDE table and Sky's intent.
+
+**(b) Settlement semantics — Sky-takes-all vs. prime-keeps-surplus.**
+There's a documented discrepancy between two sources:
+
+- The Nov-2025 Atlas edit changed SDE settlement so the Prime Agent
+  no longer retains the surplus revenue over BR — instead Sky receives
+  **all** SDE revenue. Source: [Atlas Edit, Weekly Cycle Proposal
+  Week of 2025-11-17](https://forum.skyeco.com/t/atlas-edit-weekly-cycle-proposal-week-of-2025-11-17/27421).
+- The current `prime-settlement-methodology.md` in `laniakea-docs`
+  (and any code derived from it) qualitatively says "Sky receives
+  all revenue" in the Step 4 Rules, but the worked formula leaves the
+  prime with the surplus over BR. Source:
+  [`sky-ecosystem/laniakea-docs/blob/main/accounting/prime-settlement-methodology.md`](https://github.com/sky-ecosystem/laniakea-docs/blob/main/accounting/prime-settlement-methodology.md).
+
+Our current MSC working methodology attributes **all SDE revenue to
+Sky** (matching the Atlas edit + the qualitative Rules text). Two
+things to confirm:
+
+1. Is the Atlas edit definitive — i.e. Prime Agents are to receive
+   **no** revenue from SDEs going forward?
+2. Are the prime-agent teams aware the methodology change was made?
+   (Their internal accounting may still match the laniakea-docs
+   formula, in which case our MSC numbers will diverge from their
+   workbooks on every SDE venue.)
+
+If Sky-takes-all is confirmed, we'll keep our current MSC behaviour
+and document the laniakea-docs formula gap as known divergence
+pending a docs update.
+
 ### P2 — sanity checks / confirmations
 
 #### B1. Spark `idle_assets` ($720M) — informational; reconstructable from public tables
@@ -515,6 +499,47 @@ primitives (we already read every address in this table — per-chain
 PSM3 reads via `compute._psm`, ALM-side raw balances via the venue
 inventory and `_read_idle_holdings`).
 
+#### B7. List of historical offchain transfers + revenue exceptions
+Raised in BA call #1 (see PRD §17.13). BA confirmed that offchain
+transfers (Anchorage interest sweeps, Merkl rewards, BUIDL yield mints,
+AVAX-side rewards, etc.) reach the ALM Proxy as ordinary token
+transfers and are picked up by `external_alm_sources` accounting on the
+pipeline side.
+
+What we still need: the **enumerated list** of all such transfers /
+exception streams to date — Miha mentioned BA can pull this by walking
+ALM Proxy inflows. Useful for:
+- validating our `external_alm_sources` allowlist is complete
+  (Spark currently only registers the Anchorage escrow),
+- spotting any stream we're silently missing,
+- back-filling historical settlements where applicable.
+
+Operational, not methodology-blocking.
+
+#### B8. Enumeration of "edge case" venues — exhaustive?
+Raised in BA call #1 (see PRD §17.13). BA flagged USDe, Superstate
+Crypto Carry Fund, and BUIDL as "edge cases" where settlement uses
+manual calculations. Confirm the enumeration is exhaustive — i.e. no
+other Spark / Grove / OBEX venue has the same kind of offchain-formula
+or manual-NAV treatment that we should be aware of? If others exist,
+list them so we can flag them in our YAML configs and avoid silent
+mis-pricing.
+
+#### B9. Aave / SparkLend principal-vs-accrued — improve via events or accept differences?
+Raised in BA call #1 (see PRD §17.13). BA's current method for
+separating principal from accrued interest is:
+`accrued_over_day × (1 − utilization) × BR`. Our pipeline uses the
+closed-form `scaledBalanceOf × liquidityIndex` route (Cat C, see PRD
+§17.4) which doesn't reuse BA's formula but is exact for Aave V3 +
+SparkLend (each `scaled_balance_at × index` is the principal-bearing
+view).
+
+Worth confirming: is the small difference between our value and BA's
+expected (BA's quote: "should we improve, or live with small
+differences?") explained by the formula gap, by indexing precision, or
+by something else? And which is the canonical reference for
+reconciliation?
+
 #### B6. `/allocations/?star={prime}` is incomplete — by design or omission?
 Several of our venues are missing from your `/allocations` endpoint
 even though their value rolls into your `/stars/{prime}/ assets`:
@@ -539,4 +564,6 @@ issue is closed. The full resolution narrative lives in
 `PRD.md §17.13` (review-acks); this section keeps a compact pointer
 trail (Q-ID, title, close date, issue link).
 
-_None yet._
+### S3. Anchorage S23 — $150M tri-party loan, on-chain addresses confirmed
+**Resolved 2026-05-05** via [#17](https://github.com/soterlabs/settlement-cycle/issues/17). See `PRD.md §17.13`.
+
