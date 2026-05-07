@@ -399,16 +399,30 @@ def get_psm_usds_timeseries(
         # read (period.start - 1) cannot fall back — a missing baseline
         # means we can't compute period flows correctly, so let it raise.
         days = [period.start + timedelta(days=i) for i in range((period.end - period.start).days + 1)]
+        import time as _time
+        _log.info(
+            "    PSM3 %s/%s: fetching baseline + %d daily snapshots sequentially...",
+            chain.value, cfg.address.value.hex()[:10], len(days),
+        )
+        _t0 = _time.monotonic()
         cur_value = _value_at(period.start - timedelta(days=1))
+        _log.info("    PSM3 baseline done in %.1fs", _time.monotonic() - _t0)
         block_dates: list = []
         daily_net: list[Decimal] = []
         cum_balance: list[Decimal] = []
-        for day in days:
+        for i, day in enumerate(days):
+            _td = _time.monotonic()
             value = _value_at(day, fallback=cur_value)
+            _elapsed = _time.monotonic() - _td
+            if _elapsed > 2:
+                _log.info("    PSM3 day %d/%d (%s) took %.1fs", i + 1, len(days), day, _elapsed)
+            elif i % 7 == 0:
+                _log.info("    PSM3 day %d/%d (%s) ✓ %.1fs", i + 1, len(days), day, _elapsed)
             block_dates.append(day)
             daily_net.append(value - cur_value)
             cum_balance.append(value)
             cur_value = value
+        _log.info("    PSM3 %s done in %.1fs total", chain.value, _time.monotonic() - _t0)
 
         if all(v == 0 for v in cum_balance):
             return _empty_psm_df()
