@@ -89,7 +89,7 @@ def test_monthly_pnl_obex_synthetic_one_venue(obex, fixed_pin_blocks):
 
     Setup (constant throughout March 2026):
       cum_debt           = 100_000_000   USDS
-      subproxy_usds      =  20_000_000   USDS  (earns SSR + 0.20%)
+      subproxy_usds      =  20_000_000   USDS  (earns SSR + 0.20% via agent_rate)
       subproxy_susds     =          0
       alm_usds           =          0
       ssr                = 4.00%
@@ -100,9 +100,9 @@ def test_monthly_pnl_obex_synthetic_one_venue(obex, fixed_pin_blocks):
       no inflows during the period
 
     Expected (Decimal arithmetic):
-      utilized           = 100M − 20M = 80M
+      utilized           = 100M (subproxy USDS is treasury/risk capital — not deducted)
       borrow_apy         = 4.00% + 0.30% = 4.30%
-      sky_revenue        = 31 × 80M × ((1.043)^(1/365) − 1)
+      sky_revenue        = 31 × 100M × ((1.043)^(1/365) − 1)
       agent_rate         = 31 × 20M × ((1.042)^(1/365) − 1)
       prime_revenue      = (105M − 104M) − 0 = 1M
       monthly_pnl        = prime_revenue + agent_rate − sky_revenue
@@ -179,7 +179,9 @@ def test_monthly_pnl_obex_synthetic_one_venue(obex, fixed_pin_blocks):
     days = 31
     sky_factor = daily_compounding_factor(Decimal("0.04") + BASE_RATE_OVER_SSR)
     agent_factor = daily_compounding_factor(Decimal("0.04") + AGENT_RATE_OVER_SSR)
-    expected_sky = Decimal("80000000") * days * sky_factor
+    # Utilized = full 100M debt; subproxy USDS is treasury/risk capital and is NOT
+    # deducted from utilized — it earns agent_rate instead.
+    expected_sky = Decimal("100000000") * days * sky_factor
     expected_agent = Decimal("20000000") * days * agent_factor
 
     assert result.sky_revenue == expected_sky
