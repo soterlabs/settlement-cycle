@@ -82,8 +82,25 @@ def _resolve_pin_blocks(
     chains: set[Chain],
     resolver: IBlockResolver,
 ) -> dict[Chain, int]:
-    """Resolve ``last block_number with timestamp ≤ anchor_utc`` per chain via Protocol."""
-    return {chain: resolver.block_at_or_before(chain.value, anchor_utc) for chain in chains}
+    """Resolve ``last block_number with timestamp ≤ anchor_utc`` per chain.
+
+    Chains are resolved in parallel (ThreadPoolExecutor) to amortise the
+    ~25 binary-search RPC calls each one requires. For Spark (6 chains) this
+    cuts wall-clock time from ~6× to ~1× the single-chain cost.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    if not chains:
+        return {}
+
+    def _one(chain: Chain) -> tuple[Chain, int]:
+        block = resolver.block_at_or_before(chain.value, anchor_utc)
+        _log.info("  pin block resolved: %s → %d", chain.value, block)
+        return chain, block
+
+    with ThreadPoolExecutor(max_workers=min(len(chains), 8)) as pool:
+        futures = [pool.submit(_one, c) for c in chains]
+        return dict(f.result() for f in as_completed(futures))
 
 
 def _sde_asset_value_timeseries(
@@ -428,17 +445,76 @@ def compute_monthly_pnl(
         else get_block_resolver()
     )
     period_unpinned = Period.from_month(month)
-    if pin_blocks_eom is None:
-        pin_blocks_eom = _resolve_pin_blocks(
-            period_unpinned.end_eod_utc, prime.chains, resolver,
+
+    # Resolve EoM and SoM pin blocks for all chains in parallel (two concurrent
+    # ThreadPoolExecutors, one per anchor). Each pool already parallelises across
+    # chains internally, so for Spark (6 chains × 2 anchors) this cuts ~300
+    # sequential RPC calls down to the cost of ~25 (one chain, one anchor).
+    if pin_blocks_eom is None or pin_blocks_som is None:
+        from concurrent.futures import ThreadPoolExecutor as _TPE, as_completed as _ac
+        _log.info(
+            "resolving pin blocks for %d chain(s) (EoM + SoM in parallel)...",
+            len(prime.chains),
         )
-    if pin_blocks_som is None:
-        pin_blocks_som = _resolve_pin_blocks(
-            _previous_day_eod_utc(period_unpinned.start), prime.chains, resolver,
-        )
+        eom_anchor = period_unpinned.end_eod_utc
+        som_anchor = _previous_day_eod_utc(period_unpinned.start)
+        with _TPE(max_workers=2) as _outer:
+            _fut_eom = (
+                _outer.submit(_resolve_pin_blocks, eom_anchor, prime.chains, resolver)
+                if pin_blocks_eom is None else None
+            )
+            _fut_som = (
+                _outer.submit(_resolve_pin_blocks, som_anchor, prime.chains, resolver)
+                if pin_blocks_som is None else None
+            )
+            if _fut_eom is not None:
+                pin_blocks_eom = _fut_eom.result()
+            if _fut_som is not None:
+                pin_blocks_som = _fut_som.result()
+        _log.info("pin blocks resolved: eom=%s  som=%s", pin_blocks_eom, pin_blocks_som)
+
+    # 1b. Upgrade to DuneBlockResolver for Ethereum once we have the EoM pin
+    # block. One Dune query replaces every subsequent per-day binary-search RPC
+    # call on Ethereum (pricing loops, inflow timeseries, PSM, etc. — potentially
+    # hundreds of calls for a multi-venue prime over a full month). Falls back to
+    # the existing RPC resolver silently if Dune is unavailable.
+    if sources.block_resolver is None and Chain.ETHEREUM in (pin_blocks_eom or {}):
+        import os as _os
+        if _os.environ.get("DUNE_API_KEY"):
+            try:
+                from ..normalize.sources.dune_block_resolver import (
+                    DuneBlockResolver as _DBR,
+                    MultiChainBlockResolver as _MCR,
+                )
+                from ..normalize.sources.rpc_block_resolver import RPCBlockResolver as _RBR
+                _log.info("upgrading Ethereum resolver to DuneBlockResolver (bulk block lookup)...")
+                eth_resolver = _DBR(
+                    chain="ethereum",
+                    start_date=prime.start_date,
+                    end_date=period_unpinned.end,
+                    pin_block=pin_blocks_eom[Chain.ETHEREUM],
+                )
+                non_eth = {c for c in prime.chains if c != Chain.ETHEREUM}
+                if non_eth:
+                    _rpc = _RBR()
+                    resolver = _MCR({
+                        "ethereum": eth_resolver,
+                        **{c.value: _rpc for c in non_eth},
+                    })
+                else:
+                    resolver = eth_resolver
+                _log.info(
+                    "DuneBlockResolver ready (%d dates, %s → %s)",
+                    len(eth_resolver._dates),
+                    eth_resolver._dates[0],
+                    eth_resolver._dates[-1],
+                )
+            except Exception as _e:
+                _log.warning("DuneBlockResolver init failed (%s) — falling back to RPC", _e)
 
     period = Period(period_unpinned.start, period_unpinned.end, pin_blocks=pin_blocks_eom)
 
+    _log.info("step 2: gathering Dune/normalize inputs (debt, balances, SSR)...")
     # 2. Gather Normalize inputs for sky_revenue + agent_rate (Ethereum-only).
     debt = get_debt_timeseries(prime, period, source=sources.debt)
     sub_usds = get_subproxy_balance_timeseries(
@@ -479,6 +555,8 @@ def compute_monthly_pnl(
     sde_table = load_sde_table()
     sde_asset_value_per_venue: list = []
 
+    n_venues = sum(1 for v in prime.venues if not v.skip)
+    _log.info("step 3: per-venue pricing for %d venue(s)...", n_venues)
     # 3. Per-venue: value at SoM + EoM, inflow timeseries.
     venue_inputs: list[VenueRevenueInputs] = []
     for venue in prime.venues:
@@ -720,6 +798,7 @@ def compute_monthly_pnl(
             sde_entry=sde_entry,
         ))
 
+    _log.info("step 4: computing revenue components...")
     # 4. Compute three revenue components.
     agent_rate = compute_agent_rate(period, sub_usds, sub_susds, ssr)
     prime_rev, breakdown = compute_prime_agent_revenue(period, venue_inputs)
