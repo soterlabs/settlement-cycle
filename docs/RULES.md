@@ -80,17 +80,23 @@ daily_sky_revenue = utilized_usds × [(1 + borrow_rate)^(1/365) - 1]
 - Subproxy USDS and subproxy sUSDS are **not** deducted from utilized. They are treasury/risk capital that does not correspond solely to ilk debt.
 - The MSC settlement figures imply a slightly higher effective demand than our "utilized USDS" (~1-2% gap growing over time), possibly due to accumulated Vat rate on the ilk art. This is flagged in findings.
 
-## Rule 5: sUSDS held at the ALM (yield-bearing 4626 at ALM)
+## Rule 5: All held sUSDS — 30 bps spread is Prime Revenue
 
-For sUSDS (or any yield-bearing ERC-4626 token) held **directly at the ALM** (not in a Curve pool):
+For **all** sUSDS holdings (raw at ALM or inside LP pools), the SSR appreciation belongs to Sky, not the Prime. Prime Revenue is the **30 bps spread** (BR − SSR) only.
 
-- sUSDS is **not** deducted from `utilized`. Sky charges BR on the full debt.
-- The organic SSR appreciation (via `convertToAssets` index growth) is **not** Prime Revenue — it flows back to Sky via the BR charge.
-- Prime's revenue for this position is only the **30 bps spread** (BR − SSR) per day:
+Governed by the `sky_savings_token` flag in the prime YAML config — set explicitly per venue, not inferred from the token address.
 
-  ```
-  prime_revenue_d = alm_susds_value_d × ((1 + 0.30%)^(1/365) − 1)
-  ```
+**Raw sUSDS at ALM** (`pricing_category: B` venues, flag at venue level):
 
-- This is computed at the **start-of-month USDS value** (`shares × convertToAssets(som_block)`) times 30 bps daily for `n_days`. Mid-month balance changes are captured via the SoM value.
-- Net accounting: Sky earns SSR × value (the savings mechanism funds the yield); Prime earns 30 bps spread net.
+- Not deducted from `utilized`.
+- `prime_revenue = value_som × ((1 + 0.30%)^(1/365) − 1) × n_days`
+- Computed at SoM USDS value (`shares × convertToAssets(som_block)`).
+
+**sUSDS inside Curve LP pools** (`curve_idle_usds.sky_savings_token: true`):
+
+- Not deducted from `utilized`.
+- `prime_revenue_d = (alm_lp_d / pool_total_d) × (sUSDS_reserve_d × pps_d) × 30bps_daily`
+- Summed across the period and added to `prime_agent_revenue`.
+- `pps_d = convertToAssets(1 share, block_d)` to convert sUSDS→USDS.
+
+Net accounting for both cases: Sky earns SSR × value (via the savings mechanism and the BR charge); Prime earns the 30 bps spread.

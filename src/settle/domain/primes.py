@@ -164,27 +164,23 @@ class Venue:
 
 @dataclass(frozen=True, slots=True)
 class CurveIdleUsdsConfig:
-    """Track the prime's proportional USDS-equivalent inside a Curve pool and
-    subtract it from ``utilized`` in ``compute_sky_revenue``.
+    """Per-venue config for tracking a specific coin inside a Curve LP pool.
 
-    ``coin`` is the address of the pool coin whose balance represents idle
-    USDS (or USDS-convertible) capital:
+    Two behaviours depending on ``sky_savings_token``:
 
-    * **Par-stable** (e.g. USDS, USDC) — balance used at face value ($1 per
-      unit), scaled by the token's decimals.
-    * **Yield-bearing ERC-4626** (e.g. sUSDS) — balance converted to USDS via
-      ``convertToAssets(balance, block)`` so the deduction is in USDS principal,
-      consistent with the rest of the utilized formula.
+    * **Par-stable coin** (``sky_savings_token=False``, e.g. USDS, USDC):
+      prime's proportional share of the pool's coin reserve is computed daily
+      and subtracted from ``utilized`` at face value ($1 per unit).
 
-    The prime's share of the pool's idle USDS is computed daily as::
-
-        prime_usds_d = (alm_lp_balance_d / pool_total_supply_d) × coin_usds_d
-
-    where ``coin_usds_d`` is the above par-stable or 4626 value of the target
-    coin's reserve at day ``d``'s EoD block.
+    * **sUSDS / Sky Savings Token** (``sky_savings_token=True``):
+      The coin balance is NOT subtracted from ``utilized`` — the yield flows
+      back to Sky via the borrow-rate charge. Instead the prime earns only the
+      30 bps spread on its sUSDS-equivalent daily value, which is added to
+      Prime Revenue. Requires ``convertToAssets`` to price sUSDS→USDS.
     """
 
-    coin: Address  # address of the target coin in the Curve pool
+    coin: Address          # address of the target coin in the Curve pool
+    sky_savings_token: bool = False  # True → 30bps spread to Prime Revenue; no utilized deduction
 
 
 class PsmKind(StrEnum):

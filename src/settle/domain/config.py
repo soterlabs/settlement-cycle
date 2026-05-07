@@ -93,6 +93,7 @@ def load_prime(config_path: Path) -> Prime:
         if "curve_idle_usds" in v:
             curve_idle_usds = CurveIdleUsdsConfig(
                 coin=Address.from_str(v["curve_idle_usds"]["coin"]),
+                sky_savings_token=bool(v["curve_idle_usds"].get("sky_savings_token", False)),
             )
 
         venues.append(

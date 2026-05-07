@@ -456,14 +456,13 @@ venues:
       address: '0x00836fe54625be242bcfa286207795405ca4fd10'
       symbol: 'sUSDSUSDT'
       decimals: 18
-    # Track Spark's proportional sUSDS balance in this pool at every daily
-    # snapshot. The data (pool state + ALM LP share) is fetched and cached for
-    # use in a future Prime Revenue calculation.
-    # NOTE: sUSDS is yield-bearing, so this balance is NOT converted to USDS
-    # and NOT subtracted from utilized — that would be incorrect. Only the
-    # coin address is configured here so the pipeline knows which reserve to read.
+    # Prime's proportional sUSDS in this pool earns the 30bps spread
+    # (BR - SSR) as Prime Revenue. sUSDS is NOT subtracted from utilized —
+    # the SSR flows back to Sky via the BR charge.
+    # sky_savings_token: true triggers the spread-only revenue path.
     curve_idle_usds:
-      coin: '0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD'  # sUSDS — tracked only, not deducted from utilized
+      coin: '0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD'  # sUSDS
+      sky_savings_token: true
 
   - id: S25
     chain: ethereum

@@ -61,7 +61,20 @@ This matches "Method 2" from the accounting equivalence below:
 
 Both formulations give the same economic outcome (Sky earns SSR net; prime pays SSR net). Method 2 re-uses the existing `utilized`-based BR charge and adds the 30bps spread as prime revenue.
 
-**Current `sky_savings_token` venues (Spark):** S32 (Ethereum), S37 (Base), S43 (Arbitrum), S47 (Optimism), S51 (Unichain) — all raw sUSDS proxy POL positions. LP-embedded sUSDS (e.g. the sUSDS leg of an sUSDS/USDT Curve pool, S24) will be added once the prime-revenue addition path for that case is implemented.
+**Current `sky_savings_token` venues (Spark):**
+
+| Venue | Chain | Type |
+|---|---|---|
+| S32 | Ethereum | Raw sUSDS POL at ALM — `pricing_category: B` |
+| S37 | Base | sUSDS proxy POL — `pricing_category: B` |
+| S43 | Arbitrum | sUSDS proxy POL — `pricing_category: B` |
+| S47 | Optimism | sUSDS proxy POL — `pricing_category: B` |
+| S51 | Unichain | sUSDS proxy POL — `pricing_category: B` |
+| S24 | Ethereum | sUSDS leg of sUSDS/USDT Curve pool — `curve_idle_usds.sky_savings_token: true` |
+
+For raw sUSDS venues (Cat B): `actual_revenue_override = value_som × 30bps_daily × n_days`.
+
+For LP-embedded sUSDS venues (Curve `curve_idle_usds`): `spread_d = prime_sUSDS_value_d × 30bps_daily`, summed across the period and added to `prime_agent_revenue` outside the per-venue loop.
 
 ---
 
