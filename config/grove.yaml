@@ -344,17 +344,16 @@ venues:
   # ─────────────────────────────────────────────────────────────
   # Avalanche-C — Phase 2.B (multi-chain rollout)
   # ─────────────────────────────────────────────────────────────
-  # E20 + E21 (Avalanche-chain RWA venues) are excluded from MSC by
-  # decision (2026-05-02): the cross-chain NAV oracles for JAAA-avax and
-  # GACLO-1 are unreliable enough that we'd misprice the position by ~30%
-  # in a typical month. Until a trusted feed lands (Chronicle on Avalanche,
-  # or a Galaxy/Anchorage API integration), keep them in YAML for
-  # documentation but `skip: true` excludes them from compute.
+  # E20: Chronicle NAV oracle lives on Ethereum (oracle_chain: ethereum);
+  # the pipeline translates the Avalanche EoD block to the corresponding
+  # Ethereum block automatically. Verified working Dec-2025 onward
+  # (NAV ~$1.020–$1.028, slowly appreciating CLO tranche).
+  # E21 (GACLO-1) remains skipped — no reliable NAV feed; Galaxy yield
+  # recognized via USDC sweep to ALM per BA decision.
   - id: E20
     chain: avalanche_c
     label: 'Janus Henderson Anemoy AAA CLO (JAAA-avalanche)'
     pricing_category: E
-    skip: true
     token:
       address: '0x58f93d6b1ef2f44ec379cb975657c132cbed3b6b'
       symbol: 'JAAA-avax'
