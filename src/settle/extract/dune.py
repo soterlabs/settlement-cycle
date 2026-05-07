@@ -180,7 +180,7 @@ def _resolve_query_id(sql_path: Path) -> int:
 
 def _execute_query(
     query_id: int,
-    parameters: list[dict[str, Any]],
+    parameters: dict[str, Any],
     performance: str,
 ) -> str:
     body: dict[str, Any] = {"performance": performance}
@@ -192,7 +192,10 @@ def _execute_query(
         json=body,
         timeout=30,
     )
-    r.raise_for_status()
+    if not r.ok:
+        raise DuneError(
+            f"Dune execute {query_id} → HTTP {r.status_code}: {r.text[:400]}"
+        )
     return r.json()["execution_id"]
 
 
@@ -215,30 +218,34 @@ def _poll_results(execution_id: str, timeout: int = DEFAULT_POLL_TIMEOUT_SEC) ->
     raise DuneError(f"Dune execution {execution_id} timed out after {timeout}s")
 
 
-def _format_param(value: Any) -> dict[str, Any]:
-    """Format a Python value as a Dune query parameter dict.
+def _format_param(value: Any) -> Any:
+    """Convert a Python value to a JSON-native type for Dune's execute payload.
 
-    Convention (validated via MCP, 2026-04-27):
-    - ``bytes`` (e.g. ilk_bytes32, addresses) → ``text`` with ``0x...`` value;
-      Dune substitutes the literal text and the SQL parser interprets it as varbinary.
-    - ``int`` / ``float`` / ``Decimal`` → ``number``.
-    - ``datetime`` (with tzinfo) → Dune ``datetime``.
-    - ``date`` → ``text`` (so SQL templates can wrap it as ``DATE '{{x}}'``).
-    - everything else → ``text`` via ``str()``.
+    Dune's /execute endpoint accepts ``query_parameters`` as a plain dict
+    ``{param_name: value}`` where values must be JSON primitives:
+    - ``bytes`` / ``bytearray`` → hex string with ``0x`` prefix (Dune parses
+      this as varbinary in the SQL template).
+    - ``bool`` → boolean (must come before int; bool is a subclass of int).
+    - ``int`` / ``float`` / ``Decimal`` → number (int preferred for block
+      numbers; Decimal converted to float — acceptable precision for params).
+    - ``datetime`` (aware or naive) → ISO-8601 string.
+    - ``date`` → ISO-8601 string (SQL templates wrap as ``DATE '{{x}}'``).
+    - everything else → ``str()``.
     """
     from decimal import Decimal as _Dec
-    # bool must come before int (bool is a subclass of int)
     if isinstance(value, bool):
-        return {"type": "text", "value": str(value).lower()}
-    if isinstance(value, (int, float, _Dec)):
-        return {"type": "number", "value": str(value)}
-    if isinstance(value, bytes | bytearray):
-        return {"type": "text", "value": "0x" + bytes(value).hex()}
-    if isinstance(value, dt.datetime):
-        return {"type": "datetime", "value": value.isoformat()}
-    if isinstance(value, dt.date):
-        return {"type": "text", "value": value.isoformat()}
-    return {"type": "text", "value": str(value)}
+        return value
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return value
+    if isinstance(value, _Dec):
+        return float(value)
+    if isinstance(value, (bytes, bytearray)):
+        return "0x" + bytes(value).hex()
+    if isinstance(value, (dt.datetime, dt.date)):
+        return value.isoformat()
+    return str(value)
 
 
 def _fetch_all_rows(execution_id: str) -> list[dict]:
@@ -284,9 +291,7 @@ def execute_query(sql_path: Path, params: dict[str, Any], pin_block: int,
     query_id = _resolve_query_id(sql_path)
 
     full_params = {**params, "pin_block": pin_block}
-    dune_params = [
-        {"key": k, **_format_param(v)} for k, v in full_params.items()
-    ]
+    dune_params = {k: _format_param(v) for k, v in full_params.items()}
 
     execution_id = _execute_query(query_id, dune_params, performance)
     rows = _fetch_all_rows(execution_id)
