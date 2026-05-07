@@ -18,6 +18,7 @@ import errno
 import hashlib
 import json
 import os
+import re
 import time
 from pathlib import Path
 from typing import Any
@@ -113,6 +114,29 @@ def _sql_hash(sql: str) -> str:
     return hashlib.sha256(sql.strip().encode()).hexdigest()
 
 
+def _infer_parameters(sql: str) -> list[dict[str, str]]:
+    """Extract ``{{param}}`` placeholders from SQL and build Dune parameter defs.
+
+    Dune's create-query endpoint requires every ``{{param}}`` used in the SQL to
+    have a matching parameter definition in the request body — otherwise it returns
+    400 "invalid query parameters". Type is inferred from context:
+    - bare ``{{pin_block}}`` adjacent to a numeric comparison → ``number``
+    - everything else → ``text``
+    """
+    names = list(dict.fromkeys(re.findall(r"\{\{(\w+)\}\}", sql)))
+    result = []
+    for name in names:
+        # Heuristic: if the placeholder appears directly adjacent to a numeric
+        # operator (<=, >=, =, <, >) without surrounding quotes, treat as number.
+        in_numeric_ctx = bool(re.search(r"[<>=!]\s*\{\{" + name + r"\}\}", sql))
+        result.append({
+            "key": name,
+            "type": "number" if in_numeric_ctx else "text",
+            "value": "0" if in_numeric_ctx else "",
+        })
+    return result
+
+
 def _create_query(sql: str, name: str, *, is_private: bool = True) -> int:
     """POST a new saved query to Dune. Returns the new query_id.
 
@@ -125,10 +149,18 @@ def _create_query(sql: str, name: str, *, is_private: bool = True) -> int:
     r = requests.post(
         f"{DUNE_API_BASE}/query",
         headers=_headers(),
-        json={"name": name, "query_sql": sql, "is_private": is_private, "is_temp": False},
+        json={
+            "name": name,
+            "query_sql": sql,
+            "is_private": is_private,
+            "parameters": _infer_parameters(sql),
+        },
         timeout=30,
     )
-    r.raise_for_status()
+    if not r.ok:
+        raise DuneError(
+            f"Dune create query '{name}' → HTTP {r.status_code}: {r.text[:400]}"
+        )
     return int(r.json()["query_id"])
 
 
@@ -150,19 +182,52 @@ def _update_query_sql(
         json=body,
         timeout=30,
     )
-    r.raise_for_status()
+    if not r.ok:
+        raise DuneError(
+            f"Dune update query {query_id} → HTTP {r.status_code}: {r.text[:400]}"
+        )
+
+
+def _published_query_ids() -> dict[str, int]:
+    """Load ``cache/dune_published.json`` from the repo root (keyed by relative path).
+
+    This file is committed to the repo and maps each SQL file's repo-relative
+    path to a canonical public Dune query ID. Checking it first means no
+    Dune API calls are needed on a fresh clone — no auto-create, no local
+    registry bootstrap.
+    """
+    # sql_path lives at <repo>/src/settle/queries/<name>.sql
+    # → go up 4 levels from this file: extract → settle → src → repo root
+    repo_root = Path(__file__).resolve().parents[3]
+    published = repo_root / "cache" / "dune_published.json"
+    if published.exists():
+        return json.loads(published.read_text())
+    return {}
 
 
 def _resolve_query_id(sql_path: Path) -> int:
     """Get-or-create the Dune query ID for this SQL file. Cached by SQL content hash.
 
-    Holds a cross-process lock around the read-modify-write so two parallel
-    runs don't both create their own Dune query for the same SQL and then race
-    on the registry write.
+    Lookup order:
+    1. ``cache/dune_published.json`` (in-repo, keyed by repo-relative path) —
+       no API call needed, works on a fresh clone.
+    2. User-level registry at ``~/.cache/msc-settle/dune_ids.json`` (keyed by
+       SQL content hash) — picks up any auto-created private copies.
+    3. Auto-create a new private Dune query and cache the result.
     """
+    # 1. Check the committed published-IDs file first.
+    try:
+        repo_root = Path(__file__).resolve().parents[3]
+        rel_key = str(sql_path.resolve().relative_to(repo_root)).replace("\\", "/")
+        published = _published_query_ids()
+        if rel_key in published:
+            return int(published[rel_key])
+    except (ValueError, KeyError):
+        pass
+
     sql = sql_path.read_text()
     sha = _sql_hash(sql)
-    # Quick path: hit the cache before acquiring the lock.
+    # 2. Quick path: hit the user cache before acquiring the lock.
     reg = _load_registry()
     if sha in reg:
         return reg[sha]
@@ -172,6 +237,7 @@ def _resolve_query_id(sql_path: Path) -> int:
         reg = _load_registry()
         if sha in reg:
             return reg[sha]
+        # 3. Auto-create a private Dune query.
         query_id = _create_query(sql, name=f"settle/{sql_path.name}")
         reg[sha] = query_id
         _save_registry(reg)
