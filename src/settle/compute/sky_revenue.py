@@ -9,12 +9,43 @@ Per the prime-settlement-methodology and debt-rate-methodology docs:
     utilized          = cum_debt
                       − alm_proxy_usds                 ←  Step 2 (idle USDS at ALM proxy)
                       − psm_usds                       ←  Step 2 (idle USDS in PSM3)
+                      − curve_idle_usds                ←  Step 2 (prime's USDS share in Curve pools)
+                      − lending_idle_usds              ←  Step 2 (prime's share of unborrowed underlying in lending pools)
 
 Subproxy USDS and sUSDS are NOT subtracted from utilized. The subproxy holds
 a mix of genesis capital, treasury holdings, risk capital, and realized
 revenue that does not all correspond to ilk debt — deducting it from utilized
 would over-reimburse the prime for capital it did not borrow from Sky.
 Subproxy balances earn the agent rate instead (see ``compute_agent_rate``).
+
+sUSDS venues (``sky_savings_token: true`` in the prime YAML config) are also
+NOT subtracted from utilized. The prime earns only the 30 bps spread (BR − SSR)
+on these positions — the SSR appreciation flows back to Sky via this
+borrow-rate charge. The spread is computed in ``compute_monthly_pnl`` and
+injected as ``VenueRevenueInputs.actual_revenue_override``; sky_revenue
+itself sees the full utilized unchanged.
+
+``curve_idle_usds`` is the prime's proportional USDS held inside Curve pools
+configured with a **par-stable** ``curve_idle_usds:`` coin (USDS, USDC, …),
+computed daily as::
+
+    prime_usds_d = (alm_lp_balance_d / pool_total_supply_d) × coin_reserve_d
+
+Only par-stable coin reserves are deducted. Venues where the configured coin
+is yield-bearing (sUSDS, …) are tracked in the pipeline for future Prime
+Revenue use but contribute zero here — converting yield-bearing balances to
+USDS and subtracting from utilized is incorrect.
+
+``lending_idle_usds`` is the prime's proportional share of unborrowed underlying
+inside configured lending pools (``lending_idle_usds: true`` YAML flag), computed
+daily as::
+
+    prime_idle_d = (balanceOf(alm, spToken_d) / totalSupply(spToken_d))
+                 × balanceOf(spToken_contract, underlying_d)
+
+where ``spToken`` is the venue's rebasing lending token (spUSDS, spDAI) and the
+underlying (USDS, DAI) is a par-stable at $1. This covers unborrowed capital
+that hasn't left the pool — the prime is reimbursed BR on this idle portion.
 
 When ``subsidy_config.enabled`` is True:
 * The first ``subsidy_config.cap_usd`` of utilized is charged at the
@@ -28,8 +59,8 @@ NOTE on what this function does NOT compute:
   per-venue breakdown (Σ ``vr.sd_revenue``) and added to this function's
   return value. This function returns BR on (utilized − SDE asset value);
   the caller composes it with sde_revenue to form gross sky_revenue.
-* Idle USDS/DAI in lending pools / AMMs (doc Step 2) is not yet plumbed — no
-  Grove venue currently holds USDS this way, so it's a $0 gap for Grove.
+* Idle USDS/DAI in non-Curve AMMs (e.g. Uniswap V3) is not yet plumbed.
+  Curve coverage is handled via ``curve_idle_usds`` (see above).
 
 This function is pure — takes Normalize timeseries + period, returns USD `Decimal`.
 The orchestrator (compute_monthly_pnl) is responsible for gathering inputs.
@@ -71,16 +102,30 @@ def compute_sky_revenue(
     subsidy_config: SubsidyConfig | None = None,
     ref_rate_history: ReferenceRateHistory | None = None,
     sde_asset_value: pd.DataFrame | None = None,
+    curve_idle_usds: pd.DataFrame | None = None,
+    lending_idle_usds: pd.DataFrame | None = None,
 ) -> Decimal:
     """Sum of daily Sky revenue over ``period``.
 
     Inputs (all Normalize outputs):
-    * ``debt``     DataFrame[block_date, daily_dart, cum_debt]
-    * ``alm_usds`` DataFrame[block_date, daily_net, cum_balance] — idle USDS at ALM proxy
-    * ``ssr``      DataFrame[effective_date, ssr_apy] — SP-BEAM changes
-    * ``psm_usds`` optional DataFrame[block_date, daily_net, cum_balance] of USDS
-                   the prime has parked at PSM; subtracted from utilized so the
-                   prime is reimbursed BR on those holdings.
+
+    * ``debt``                       DataFrame[block_date, daily_dart, cum_debt]
+    * ``alm_usds``                   DataFrame[block_date, daily_net, cum_balance] — idle USDS at ALM proxy
+    * ``ssr``                        DataFrame[effective_date, ssr_apy] — SP-BEAM changes
+    * ``psm_usds``                   optional DataFrame[block_date, daily_net, cum_balance] of USDS
+                                     the prime has parked at PSM; subtracted from utilized so the
+                                     prime is reimbursed BR on those holdings.
+    * ``curve_idle_usds``            optional DataFrame[block_date, daily_net, cum_balance] of the
+                                     prime's proportional USDS-equivalent inside configured Curve
+                                     pools (prime-settlement-methodology Step 2 — AMM idle USDS).
+                                     Built daily by the orchestrator via RPC ``read_pool`` +
+                                     ``balanceOf`` + ``convertToAssets`` (for sUSDS legs).
+                                     ``cum_balance`` is a daily snapshot (not a running total),
+                                     matching the PSM3 ERC4626-shares convention.
+    * ``lending_idle_usds``          optional DataFrame[block_date, daily_net, cum_balance] of the
+                                     prime's proportional share of unborrowed underlying in
+                                     configured lending pools (``lending_idle_usds: true``).
+                                     Built daily via ``balanceOf`` + ``totalSupply``.
 
     Subproxy USDS/sUSDS are NOT passed here — they earn the agent rate
     (``compute_agent_rate``) but are not subtracted from utilized because the
@@ -117,8 +162,19 @@ def compute_sky_revenue(
         # ``cum_at_or_before`` returns 0 for None / empty inputs.
         cum_psm_usds = cum_at_or_before(psm_usds, "cum_balance", current)
         cum_sde = cum_at_or_before(sde_asset_value, "cum_value", current)
+        # Prime's proportional USDS-equivalent in Curve pools — Step 2 idle AMM.
+        cum_curve_usds = cum_at_or_before(curve_idle_usds, "cum_balance", current)
+        # Prime's share of unborrowed underlying in lending pools — Step 2 idle lending.
+        cum_lending_idle = cum_at_or_before(lending_idle_usds, "cum_balance", current)
 
-        utilized = cum_debt - cum_alm_usds - cum_psm_usds - cum_sde
+        utilized = (
+            cum_debt
+            - cum_alm_usds
+            - cum_psm_usds
+            - cum_sde
+            - cum_curve_usds
+            - cum_lending_idle
+        )
 
         if utilized > 0:
             ssr_apy = ssr_at_or_before(ssr, current)

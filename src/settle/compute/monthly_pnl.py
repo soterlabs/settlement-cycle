@@ -404,6 +404,286 @@ def get_psm_usds_timeseries(
     raise ValueError(f"Unknown PSM kind: {cfg.kind!r}")
 
 
+def _aggregate_curve_idle_usds(
+    prime: Prime,
+    period: Period,
+    *,
+    curve_pool_source,
+    block_resolver,
+    convert_to_assets_source=None,
+) -> tuple[pd.DataFrame, Decimal]:
+    """Daily data for Curve pool coins configured via ``curve_idle_usds``.
+
+    Returns a **tuple** ``(utilized_deduction_df, susds_spread)``:
+
+    * ``utilized_deduction_df`` — ``[block_date, daily_net, cum_balance]`` frame
+      of the daily USDS deduction from ``utilized`` (par-stable coin venues only).
+    * ``susds_spread`` — total Decimal Prime Revenue from the 30 bps spread on
+      sUSDS inside LP pools (``sky_savings_token=True`` venues only).
+
+    **Par-stable coin venues** (``sky_savings_token=False``):
+    Prime's proportional share of the coin reserve is deducted from ``utilized``::
+
+        prime_usds_d = (alm_lp_d / pool_total_d) × coin_reserve_d
+
+    **sUSDS / sky-savings-token venues** (``sky_savings_token=True``):
+    No ``utilized`` deduction. Instead the prime earns the 30 bps spread::
+
+        spread_d = (alm_lp_d / pool_total_d) × (sUSDS_reserve_d × pps_d) × 30bps_daily
+
+    where ``pps_d = convertToAssets(1 share, block_d) / 10**underlying_decimals``.
+    """
+    from datetime import time
+    from ..domain.sky_tokens import KNOWN_PAR_STABLES_ETHEREUM, KNOWN_YIELD_BEARING_ETHEREUM
+    from ..extract.rpc import balance_of as _balance_of
+    from ..normalize.sources.curve_pool import CurvePoolSource
+    from .sky_revenue import BASE_RATE_OVER_SSR
+    from ._helpers import daily_compounding_factor
+
+    venues_with_config = [v for v in prime.venues if v.curve_idle_usds is not None]
+    if not venues_with_config:
+        return _empty_psm_df(), Decimal("0")
+
+    pool_src = curve_pool_source if curve_pool_source is not None else CurvePoolSource()
+
+    # c2a is only needed for sky_savings_token venues.
+    has_sky_savings = any(v.curve_idle_usds.sky_savings_token for v in venues_with_config)
+    c2a = None
+    if has_sky_savings:
+        from ..normalize.registry import get_convert_to_assets_source as _get_c2a
+        c2a = convert_to_assets_source if convert_to_assets_source is not None else _get_c2a()
+
+    # Spread = BR − SSR = BASE_RATE_OVER_SSR (30bps).
+    spread_daily_factor = daily_compounding_factor(BASE_RATE_OVER_SSR)
+
+    import logging as _logging
+    _log = _logging.getLogger(__name__)
+
+    def _par_stable_usds(coin_addr: bytes, raw_balance: int) -> Decimal:
+        par = KNOWN_PAR_STABLES_ETHEREUM.get(coin_addr)
+        if par is None:
+            raise ValueError(
+                f"_aggregate_curve_idle_usds: coin {coin_addr.hex()} is not in "
+                "KNOWN_PAR_STABLES_ETHEREUM. Use sky_savings_token=True for "
+                "yield-bearing coins."
+            )
+        _sym, decimals = par
+        return Decimal(raw_balance) / Decimal(10 ** decimals)
+
+    # Separate accumulators for par-stable (utilized deduction) and
+    # sky-savings-token (spread revenue).
+    daily_util: dict = {}
+    daily_spread: dict = {}
+
+    for venue in venues_with_config:
+        cfg = venue.curve_idle_usds
+        target_coin = cfg.coin.value
+        pool_addr = venue.token.address.value
+        holder = (venue.holder_override or prime.alm[venue.chain]).value
+        chain_str = venue.chain.value
+
+        current = period.start
+        while current <= period.end:
+            eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
+            prime_usds = Decimal(0)
+            prime_spread = Decimal(0)
+            try:
+                block = block_resolver.block_at_or_before(chain_str, eod)
+                pool_state = pool_src.read_pool(chain_str, pool_addr, block)
+                total_supply = pool_state.total_supply
+                if total_supply == 0:
+                    current = current + timedelta(days=1)
+                    continue
+
+                coin_idx = next(
+                    (i for i, c in enumerate(pool_state.coins) if c.value == target_coin),
+                    None,
+                )
+                if coin_idx is None:
+                    _log.warning(
+                        "curve_idle_usds: venue %s pool %s does not contain coin %s "
+                        "at block %d — skipping day %s.",
+                        venue.id, pool_addr.hex(), target_coin.hex(), block, current,
+                    )
+                    current = current + timedelta(days=1)
+                    continue
+
+                raw_coin_balance = pool_state.balances[coin_idx]
+                from ..domain.primes import Address as _Addr
+                alm_lp_raw = _balance_of(
+                    venue.chain, venue.token.address, _Addr(holder), block,
+                )
+                alm_lp = Decimal(alm_lp_raw) / Decimal(10 ** venue.token.decimals)
+                pool_total = Decimal(total_supply) / Decimal(10 ** venue.token.decimals)
+
+                if cfg.sky_savings_token:
+                    # sUSDS in LP: earn 30bps spread on prime's USDS-equivalent share.
+                    # No utilized deduction.
+                    yb = KNOWN_YIELD_BEARING_ETHEREUM.get(target_coin)
+                    if yb is None:
+                        raise ValueError(
+                            f"curve_idle_usds sky_savings_token=True for coin "
+                            f"{target_coin.hex()} but it is not in "
+                            "KNOWN_YIELD_BEARING_ETHEREUM — add it to sky_tokens.py."
+                        )
+                    _sym, share_decimals, _und, underlying_decimals = yb
+                    pps_raw = c2a.convert_to_assets(
+                        chain=chain_str, vault=target_coin,
+                        shares=10 ** share_decimals, block=block,
+                    )
+                    pps = Decimal(pps_raw) / Decimal(10 ** underlying_decimals)
+                    prime_susds_usds = (
+                        (alm_lp / pool_total)
+                        * (Decimal(raw_coin_balance) / Decimal(10 ** share_decimals))
+                        * pps
+                    ) if pool_total > 0 else Decimal(0)
+                    prime_spread = prime_susds_usds * spread_daily_factor
+                elif target_coin in KNOWN_YIELD_BEARING_ETHEREUM:
+                    # Yield-bearing but not sky_savings_token: data fetched for
+                    # future use; no utilized deduction and no spread revenue yet.
+                    pass
+                else:
+                    coin_usds = _par_stable_usds(target_coin, raw_coin_balance)
+                    prime_usds = (
+                        (alm_lp / pool_total) * coin_usds if pool_total > 0 else Decimal(0)
+                    )
+
+            except Exception as exc:
+                _log.warning(
+                    "curve_idle_usds: RPC error for venue %s on %s; carrying forward "
+                    "prior value (error: %s).",
+                    venue.id, current, type(exc).__name__,
+                )
+                prev = current - timedelta(days=1)
+                prime_usds = daily_util.get(prev, Decimal(0))
+                prime_spread = daily_spread.get(prev, Decimal(0))
+
+            daily_util[current] = daily_util.get(current, Decimal(0)) + prime_usds
+            daily_spread[current] = daily_spread.get(current, Decimal(0)) + prime_spread
+            current = current + timedelta(days=1)
+
+    # Build utilized deduction DataFrame (par-stable coins).
+    if daily_util:
+        days_sorted = sorted(daily_util)
+        cum_balance = [daily_util[d] for d in days_sorted]
+        daily_net = [cum_balance[0]] + [
+            cum_balance[i] - cum_balance[i - 1] for i in range(1, len(cum_balance))
+        ]
+        util_df = pd.DataFrame({
+            "block_date": days_sorted,
+            "daily_net": daily_net,
+            "cum_balance": cum_balance,
+        })
+    else:
+        util_df = _empty_psm_df()
+
+    susds_spread = sum(daily_spread.values(), Decimal("0"))
+    return util_df, susds_spread
+
+
+def _aggregate_lending_idle_usds(
+    prime: Prime,
+    period: Period,
+    *,
+    block_resolver,
+) -> pd.DataFrame:
+    """Daily USDS-equivalent of unborrowed underlying inside lending pools,
+    summed across all venues with ``lending_idle_usds=True``.
+
+    For each such venue (Cat C/D — Aave aToken / SparkLend spToken) the
+    prime's proportional share of the pool's idle underlying is::
+
+        prime_idle_d = (balanceOf(alm, spToken_d) / totalSupply(spToken_d))
+                     × balanceOf(spToken_contract, underlying_d)
+
+    ``balanceOf(alm, spToken)`` is the rebased balance (includes accrued
+    interest), and ``totalSupply(spToken)`` is the rebased total — so the
+    ratio is equivalent to using the scaled (un-rebased) values, which avoids
+    needing a separate ``scaledTotalSupply`` call.
+
+    ``balanceOf(spToken_contract, underlying)`` is the balance of the raw
+    underlying token (USDS, DAI) sitting idle in the spToken contract — i.e.
+    the unborrowed portion of the pool. Deposited capital that has been
+    borrowed out is NOT reflected here, so this is exactly the prime-
+    settlement-methodology Step 2 "idle underlying in lending pool" deduction.
+
+    The underlying must be a par-stable (USDS, DAI, USDC at $1 per unit).
+    Deduction is in USDS-equivalent at face value (divided by underlying decimals).
+
+    Returns a ``[block_date, daily_net, cum_balance]`` DataFrame where
+    ``cum_balance`` is a daily snapshot matching the PSM3 convention.
+    Returns an empty DataFrame if no venue has ``lending_idle_usds=True``.
+    """
+    from datetime import time
+    from ..extract.rpc import balance_of as _balance_of, total_supply_of as _total_supply_of
+
+    venues = [v for v in prime.venues if v.lending_idle_usds]
+    if not venues:
+        return _empty_psm_df()
+
+    import logging as _logging
+    _log = _logging.getLogger(__name__)
+
+    daily_by_date: dict = {}
+
+    for venue in venues:
+        if venue.underlying is None:
+            _log.warning(
+                "lending_idle_usds: venue %s has no `underlying` configured — skipping.",
+                venue.id,
+            )
+            continue
+
+        alm_addr = venue.holder_override or prime.alm[venue.chain]
+        sptoken_addr = venue.token.address
+        underlying_addr = venue.underlying.address
+        underlying_decimals = venue.underlying.decimals
+        chain = venue.chain
+
+        current = period.start
+        while current <= period.end:
+            eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
+            try:
+                block = block_resolver.block_at_or_before(chain.value, eod)
+
+                alm_sptoken_raw = _balance_of(chain, sptoken_addr, alm_addr, block)
+                total_supply_raw = _total_supply_of(chain, sptoken_addr, block)
+
+                if total_supply_raw == 0:
+                    prime_idle = Decimal(0)
+                else:
+                    # Pool's idle underlying = underlying balance in the spToken contract
+                    pool_idle_raw = _balance_of(chain, underlying_addr, sptoken_addr, block)
+                    alm_share = Decimal(alm_sptoken_raw) / Decimal(total_supply_raw)
+                    pool_idle_usds = Decimal(pool_idle_raw) / Decimal(10 ** underlying_decimals)
+                    prime_idle = alm_share * pool_idle_usds
+
+            except Exception as exc:
+                _log.warning(
+                    "lending_idle_usds: RPC error for venue %s on %s; carrying forward "
+                    "prior value (error: %s).",
+                    venue.id, current, type(exc).__name__,
+                )
+                prime_idle = daily_by_date.get(current - timedelta(days=1), Decimal(0))
+
+            daily_by_date[current] = daily_by_date.get(current, Decimal(0)) + prime_idle
+            current = current + timedelta(days=1)
+
+    if not daily_by_date:
+        return _empty_psm_df()
+
+    days_sorted = sorted(daily_by_date)
+    cum_balance = [daily_by_date[d] for d in days_sorted]
+    daily_net = [cum_balance[0]] + [
+        cum_balance[i] - cum_balance[i - 1] for i in range(1, len(cum_balance))
+    ]
+    return pd.DataFrame({
+        "block_date": days_sorted,
+        "daily_net": daily_net,
+        "cum_balance": cum_balance,
+    })
+
+
 def compute_monthly_pnl(
     prime: Prime,
     month: Month,
@@ -470,6 +750,26 @@ def compute_monthly_pnl(
         prime, period,
         balance_source=sources.balance,
         psm3_source=sources.psm3,
+        block_resolver=resolver,
+    )
+    # Prime's proportional USDS-equivalent in configured Curve pools — Step 2
+    # idle AMM USDS. Computed daily via RPC (``read_pool`` + ``balanceOf`` +
+    # ``convertToAssets`` for sUSDS legs). Returns empty frame if no venue has
+    # ``curve_idle_usds`` set (e.g. Grove, OBEX — $0, no cost).
+    # Returns (utilized_deduction_df, curve_susds_spread).
+    # curve_susds_spread is the total 30bps Prime Revenue from sUSDS held inside
+    # Curve LP pools (sky_savings_token=True venues); added to prime_rev below.
+    curve_idle_usds, curve_susds_spread = _aggregate_curve_idle_usds(
+        prime, period,
+        curve_pool_source=sources.curve_pool,
+        block_resolver=resolver,
+        convert_to_assets_source=sources.convert_to_assets,
+    )
+    # Prime's share of unborrowed underlying in configured lending pools — Step 2
+    # idle lending pool USDS. Computed daily via ``balanceOf`` + ``totalSupply``.
+    # Returns empty frame if no venue has ``lending_idle_usds=True``.
+    lending_idle_usds = _aggregate_lending_idle_usds(
+        prime, period,
         block_resolver=resolver,
     )
     ssr = get_ssr_history(prime, period, source=sources.ssr)
@@ -545,6 +845,11 @@ def compute_monthly_pnl(
         #    means period revenue collapses to MtM Δ.
         # 3. Default (Cat A/B/C/D with a known underlying) — Dune `tokens.transfers`
         #    directed flow from ALM to venue address.
+        #
+        # susds_spread is set to a Decimal for Cat B yield-bearing venues (sUSDS)
+        # and remains None for all other venues. It is threaded into
+        # VenueRevenueInputs.actual_revenue_override below.
+        susds_spread: Decimal | None = None
         if venue.lp_kind == "uniswap_v3":
             from ..normalize.positions import _uniswap_v3_inflow_timeseries
             v3_src = sources.v3_position
@@ -607,37 +912,64 @@ def compute_monthly_pnl(
                 ),
             )
         elif venue.pricing_category == PricingCategory.ERC4626_VAULT:
-            # Cat B — share mint/burn × convertToAssets at day-end block.
+            # Cat B — two sub-cases:
+            #
+            # (a) Sky-yield-bearing 4626 at ALM (e.g. sUSDS POL, S32):
+            #     The SSR appreciation flows back to Sky via the borrow-rate
+            #     charge on utilized. Prime earns only the 30bps spread
+            #     (BR − SSR) per day on the SoM USDS value. We override
+            #     actual_revenue with this spread rather than using the MtM
+            #     Δvalue (which would count SSR as Prime Revenue).
+            #
+            # (b) All other Cat B vaults (Morpho, syrupUSDC, …):
+            #     Standard MtM approach — share mint/burn × convertToAssets.
             from decimal import Decimal as _Dec
             from ..normalize.positions import _shares_to_usd_inflow_timeseries
             from ..normalize.prices import par_stable_price
-            balance_src = sources.balance if sources.balance is not None else get_balance_source()
-            erc4626_src = (
-                sources.convert_to_assets if sources.convert_to_assets is not None
-                else get_convert_to_assets_source()
-            )
-            if venue.underlying is None:
-                raise ValueError(f"Venue {venue.id} (Cat B) requires `underlying`")
-            shares_unit = 10 ** venue.token.decimals
-            underlying_scale = _Dec(10 ** venue.underlying.decimals)
-            par_price = par_stable_price(venue.underlying)
+            from .agent_rate import AGENT_RATE_OVER_SSR
+            from ._helpers import daily_compounding_factor
 
-            def _cat_b_price(block, _v=venue, _erc=erc4626_src,
-                             _shares=shares_unit, _scale=underlying_scale,
-                             _par=par_price):
-                raw = _erc.convert_to_assets(
-                    chain=_v.chain.value,
-                    vault=_v.token.address.value,
-                    shares=_shares, block=block,
+            if venue.sky_savings_token:
+                # Sub-case (a): yield-bearing token (sUSDS) at ALM.
+                # Prime Revenue = (BR − SSR) × value_som × n_days = 30bps spread.
+                # `value_som` already computed above via convertToAssets at SoM block.
+                from .sky_revenue import BASE_RATE_OVER_SSR
+                spread_daily = daily_compounding_factor(BASE_RATE_OVER_SSR)
+                n_days = _Dec(str((period.end - period.start).days + 1))
+                susds_spread = value_som * spread_daily * n_days
+                inflow_ts = pd.DataFrame({
+                    "block_date": [], "daily_inflow": [], "cum_inflow": [],
+                })
+            else:
+                # Sub-case (b): normal Cat B MtM.
+                susds_spread = None
+                balance_src = sources.balance if sources.balance is not None else get_balance_source()
+                erc4626_src = (
+                    sources.convert_to_assets if sources.convert_to_assets is not None
+                    else get_convert_to_assets_source()
                 )
-                return (_Dec(raw) / _scale) * _par
+                if venue.underlying is None:
+                    raise ValueError(f"Venue {venue.id} (Cat B) requires `underlying`")
+                shares_unit = 10 ** venue.token.decimals
+                underlying_scale = _Dec(10 ** venue.underlying.decimals)
+                par_price = par_stable_price(venue.underlying)
 
-            inflow_ts = _shares_to_usd_inflow_timeseries(
-                prime, venue, period,
-                balance_source=balance_src,
-                block_resolver=resolver,
-                price_at_block=_cat_b_price,
-            )
+                def _cat_b_price(block, _v=venue, _erc=erc4626_src,
+                                 _shares=shares_unit, _scale=underlying_scale,
+                                 _par=par_price):
+                    raw = _erc.convert_to_assets(
+                        chain=_v.chain.value,
+                        vault=_v.token.address.value,
+                        shares=_shares, block=block,
+                    )
+                    return (_Dec(raw) / _scale) * _par
+
+                inflow_ts = _shares_to_usd_inflow_timeseries(
+                    prime, venue, period,
+                    balance_source=balance_src,
+                    block_resolver=resolver,
+                    price_at_block=_cat_b_price,
+                )
         elif venue.pricing_category == PricingCategory.PAR_STABLE:
             # Cat A — raw par-stable holdings on the ALM. Source-tagged
             # inflow netting with an EXTERNAL allowlist: counterparties in
@@ -718,11 +1050,16 @@ def compute_monthly_pnl(
             venue=venue, value_som=value_som, value_eom=value_eom,
             inflow_timeseries=inflow_ts,
             sde_entry=sde_entry,
+            actual_revenue_override=susds_spread,
         ))
 
     # 4. Compute three revenue components.
     agent_rate = compute_agent_rate(period, sub_usds, sub_susds, ssr)
     prime_rev, breakdown = compute_prime_agent_revenue(period, venue_inputs)
+    # Add 30bps spread on sUSDS held inside Curve LP pools. This is computed
+    # separately from the venue loop because the data comes from the Curve
+    # pool daily snapshots, not from the venue's SoM/EoM position values.
+    prime_rev = prime_rev + curve_susds_spread
     # SDE revenue (Σ actual × sd_share across venues) flows directly to Sky.
     sde_revenue = sum((vr.sd_revenue for vr in breakdown), Decimal("0"))
 
@@ -750,6 +1087,8 @@ def compute_monthly_pnl(
         subsidy_config=prime.subsidy,
         ref_rate_history=ref_rate_history,
         sde_asset_value=sde_av_total,
+        curve_idle_usds=curve_idle_usds,
+        lending_idle_usds=lending_idle_usds,
     )
     # Sky's full claim: BR on (utilized − SDE) + actual SDE revenue.
     sky_rev = sky_rev_br + sde_revenue

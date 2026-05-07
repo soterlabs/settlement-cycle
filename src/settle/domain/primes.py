@@ -133,6 +133,55 @@ class Venue:
     # volatile or whose oracle isn't trustworthy to include in MSC. The venue
     # stays in YAML for documentation and historical reproducibility.
     skip: bool = False
+    # Curve pool USDS-idle tracking. When set, the compute layer reads the
+    # prime's proportional share of the named coin's reserve daily (via RPC
+    # ``read_pool`` + ``balanceOf`` + optionally ``convertToAssets`` for 4626
+    # underlyings) and subtracts it from ``utilized`` in ``compute_sky_revenue``
+    # (prime-settlement-methodology Step 2 — idle USDS in AMM pools).
+    # Only meaningful for ``lp_kind=curve_stableswap`` venues.
+    curve_idle_usds: CurveIdleUsdsConfig | None = None
+    # Lending pool idle underlying tracking. When True, the compute layer
+    # reads the prime's proportional share of the unborrowed underlying sitting
+    # in the lending pool contract daily via:
+    #   prime_idle = (balanceOf(alm, spToken) / totalSupply(spToken))
+    #              × balanceOf(spToken_contract, underlying)
+    # and subtracts the USDS-equivalent from ``utilized``
+    # (prime-settlement-methodology Step 2 — idle underlying in lending pools).
+    # The underlying must be a par-stable (USDS, DAI, USDC at $1).
+    # Only meaningful for Cat C/D (Aave aToken / SparkLend spToken) venues.
+    lending_idle_usds: bool = False
+    # Sky Savings Token flag. When True, the venue token is the Sky Savings
+    # vault (sUSDS or a per-chain canonical wrapper) and its revenue treatment
+    # differs from normal Cat B:
+    #   prime_revenue = value_som × 30bps_daily × n_days  (spread only)
+    # The SSR appreciation is NOT Prime Revenue — the prime already receives
+    # SSR through the sUSDS share price, so also crediting it in the settlement
+    # model would double-count (total = 2×SSR − BR > 0, overcrediting by ~3.7%/yr).
+    # Economic intent: net = SSR (token gain) + 30bps (Prime Rev) − BR (Sky Rev) = 0.
+    # Applies to all direct sUSDS holdings regardless of chain or venue type
+    # (raw ALM, LP token, etc.). Set explicitly in the prime YAML config.
+    sky_savings_token: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class CurveIdleUsdsConfig:
+    """Per-venue config for tracking a specific coin inside a Curve LP pool.
+
+    Two behaviours depending on ``sky_savings_token``:
+
+    * **Par-stable coin** (``sky_savings_token=False``, e.g. USDS, USDC):
+      prime's proportional share of the pool's coin reserve is computed daily
+      and subtracted from ``utilized`` at face value ($1 per unit).
+
+    * **sUSDS / Sky Savings Token** (``sky_savings_token=True``):
+      The coin balance is NOT subtracted from ``utilized`` — the yield flows
+      back to Sky via the borrow-rate charge. Instead the prime earns only the
+      30 bps spread on its sUSDS-equivalent daily value, which is added to
+      Prime Revenue. Requires ``convertToAssets`` to price sUSDS→USDS.
+    """
+
+    coin: Address          # address of the target coin in the Curve pool
+    sky_savings_token: bool = False  # True → 30bps spread to Prime Revenue; no utilized deduction
 
 
 class PsmKind(StrEnum):
