@@ -806,6 +806,11 @@ def compute_monthly_pnl(
         #    means period revenue collapses to MtM Δ.
         # 3. Default (Cat A/B/C/D with a known underlying) — Dune `tokens.transfers`
         #    directed flow from ALM to venue address.
+        #
+        # susds_spread is set to a Decimal for Cat B yield-bearing venues (sUSDS)
+        # and remains None for all other venues. It is threaded into
+        # VenueRevenueInputs.actual_revenue_override below.
+        susds_spread: Decimal | None = None
         if venue.lp_kind == "uniswap_v3":
             from ..normalize.positions import _uniswap_v3_inflow_timeseries
             v3_src = sources.v3_position
@@ -868,37 +873,64 @@ def compute_monthly_pnl(
                 ),
             )
         elif venue.pricing_category == PricingCategory.ERC4626_VAULT:
-            # Cat B — share mint/burn × convertToAssets at day-end block.
+            # Cat B — two sub-cases:
+            #
+            # (a) Sky-yield-bearing 4626 at ALM (e.g. sUSDS POL, S32):
+            #     The SSR appreciation flows back to Sky via the borrow-rate
+            #     charge on utilized. Prime earns only the 30bps spread
+            #     (BR − SSR) per day on the SoM USDS value. We override
+            #     actual_revenue with this spread rather than using the MtM
+            #     Δvalue (which would count SSR as Prime Revenue).
+            #
+            # (b) All other Cat B vaults (Morpho, syrupUSDC, …):
+            #     Standard MtM approach — share mint/burn × convertToAssets.
             from decimal import Decimal as _Dec
             from ..normalize.positions import _shares_to_usd_inflow_timeseries
             from ..normalize.prices import par_stable_price
-            balance_src = sources.balance if sources.balance is not None else get_balance_source()
-            erc4626_src = (
-                sources.convert_to_assets if sources.convert_to_assets is not None
-                else get_convert_to_assets_source()
-            )
-            if venue.underlying is None:
-                raise ValueError(f"Venue {venue.id} (Cat B) requires `underlying`")
-            shares_unit = 10 ** venue.token.decimals
-            underlying_scale = _Dec(10 ** venue.underlying.decimals)
-            par_price = par_stable_price(venue.underlying)
+            from .agent_rate import AGENT_RATE_OVER_SSR
+            from ._helpers import daily_compounding_factor
 
-            def _cat_b_price(block, _v=venue, _erc=erc4626_src,
-                             _shares=shares_unit, _scale=underlying_scale,
-                             _par=par_price):
-                raw = _erc.convert_to_assets(
-                    chain=_v.chain.value,
-                    vault=_v.token.address.value,
-                    shares=_shares, block=block,
+            if venue.sky_savings_token:
+                # Sub-case (a): yield-bearing token (sUSDS) at ALM.
+                # Prime Revenue = 30bps × value_som × n_days (spread only).
+                # `value_som` is already computed above via convertToAssets at
+                # SoM block — no new RPC calls needed.
+                spread_daily = daily_compounding_factor(AGENT_RATE_OVER_SSR)
+                n_days = _Dec(str((period.end - period.start).days + 1))
+                susds_spread = value_som * spread_daily * n_days
+                inflow_ts = pd.DataFrame({
+                    "block_date": [], "daily_inflow": [], "cum_inflow": [],
+                })
+            else:
+                # Sub-case (b): normal Cat B MtM.
+                susds_spread = None
+                balance_src = sources.balance if sources.balance is not None else get_balance_source()
+                erc4626_src = (
+                    sources.convert_to_assets if sources.convert_to_assets is not None
+                    else get_convert_to_assets_source()
                 )
-                return (_Dec(raw) / _scale) * _par
+                if venue.underlying is None:
+                    raise ValueError(f"Venue {venue.id} (Cat B) requires `underlying`")
+                shares_unit = 10 ** venue.token.decimals
+                underlying_scale = _Dec(10 ** venue.underlying.decimals)
+                par_price = par_stable_price(venue.underlying)
 
-            inflow_ts = _shares_to_usd_inflow_timeseries(
-                prime, venue, period,
-                balance_source=balance_src,
-                block_resolver=resolver,
-                price_at_block=_cat_b_price,
-            )
+                def _cat_b_price(block, _v=venue, _erc=erc4626_src,
+                                 _shares=shares_unit, _scale=underlying_scale,
+                                 _par=par_price):
+                    raw = _erc.convert_to_assets(
+                        chain=_v.chain.value,
+                        vault=_v.token.address.value,
+                        shares=_shares, block=block,
+                    )
+                    return (_Dec(raw) / _scale) * _par
+
+                inflow_ts = _shares_to_usd_inflow_timeseries(
+                    prime, venue, period,
+                    balance_source=balance_src,
+                    block_resolver=resolver,
+                    price_at_block=_cat_b_price,
+                )
         elif venue.pricing_category == PricingCategory.PAR_STABLE:
             # Cat A — raw par-stable holdings on the ALM. Source-tagged
             # inflow netting with an EXTERNAL allowlist: counterparties in
@@ -979,6 +1011,7 @@ def compute_monthly_pnl(
             venue=venue, value_som=value_som, value_eom=value_eom,
             inflow_timeseries=inflow_ts,
             sde_entry=sde_entry,
+            actual_revenue_override=susds_spread,
         ))
 
     # 4. Compute three revenue components.

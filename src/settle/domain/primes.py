@@ -150,6 +150,16 @@ class Venue:
     # The underlying must be a par-stable (USDS, DAI, USDC at $1).
     # Only meaningful for Cat C/D (Aave aToken / SparkLend spToken) venues.
     lending_idle_usds: bool = False
+    # Sky Savings Token flag. When True, the venue token is the Sky Savings
+    # vault (sUSDS or a per-chain canonical wrapper) and its revenue treatment
+    # differs from normal Cat B:
+    #   prime_revenue = value_som × 30bps_daily × n_days  (spread only)
+    # The SSR appreciation is NOT Prime Revenue — it accrues via the token
+    # index and is returned to Sky through the borrow-rate charge on
+    # ``utilized`` (the venue is not deducted from utilized).
+    # Applies to all direct sUSDS holdings regardless of chain or venue type
+    # (raw ALM, LP token, etc.). Set explicitly in the prime YAML config.
+    sky_savings_token: bool = False
 
 
 @dataclass(frozen=True, slots=True)

@@ -538,10 +538,18 @@ venues:
       symbol: 'USDS'
       decimals: 18
 
+  # sUSDS POL held directly at the Spark ETH ALM (~$2.25B).
+  # Pricing category B (ERC-4626): value_som/eom = shares × convertToAssets(block).
+  # Revenue treatment: SPREAD ONLY (30 bps = BR − SSR), not the full SSR appreciation.
+  # The SSR accrues via the token index and is returned to Sky via the BR charge on
+  # utilized (sUSDS is NOT deducted from utilized). Prime earns only the spread:
+  #   prime_revenue_d = value_som × ((1 + 0.30%)^(1/365) − 1) × n_days
+  # See docs/METHODOLOGY.md §1 special-case and docs/RULES.md Rule 5.
   - id: S32
     chain: ethereum
-    label: 'sUSDS raw / POL (ALM — Cat B 4626, $1.59B)'
+    label: 'sUSDS raw / POL (ALM — Cat B 4626, spread-only revenue)'
     pricing_category: B
+    sky_savings_token: true   # 30bps spread only — SSR returns to Sky via BR charge
     token:
       address: '0xa3931d71877c0e7a3148cb7eb4463524fec27fbd'
       symbol: 'sUSDS'
@@ -603,6 +611,7 @@ venues:
     chain: base
     label: 'Savings USDS / sUSDS proxy (Base — POL)'
     pricing_category: B
+    sky_savings_token: true   # 30bps spread only — SSR returns to Sky via BR charge
     token:
       address: '0x5875eee11cf8398102fdad704c9e96607675467a'
       symbol: 'sUSDS-base'
@@ -665,6 +674,7 @@ venues:
     chain: arbitrum
     label: 'Savings USDS / sUSDS proxy (Arbitrum — POL)'
     pricing_category: B
+    sky_savings_token: true   # 30bps spread only — SSR returns to Sky via BR charge
     token:
       address: '0xddb46999f8891663a8f2828d25298f70416d7610'
       symbol: 'sUSDS-arb'
@@ -701,6 +711,7 @@ venues:
     chain: optimism
     label: 'Savings USDS / sUSDS proxy (Optimism — POL)'
     pricing_category: B
+    sky_savings_token: true   # 30bps spread only — SSR returns to Sky via BR charge
     token:
       address: '0xb5b2dc7fd34c249f4be7fb1fcea07950784229e0'
       symbol: 'sUSDS-op'
@@ -737,6 +748,7 @@ venues:
     chain: unichain
     label: 'Savings USDS / sUSDS proxy (Unichain — POL)'
     pricing_category: B
+    sky_savings_token: true   # 30bps spread only — SSR returns to Sky via BR charge
     token:
       address: '0xa06b10db9f390990364a3984c04fadf1c13691b5'
       symbol: 'sUSDS-uni'

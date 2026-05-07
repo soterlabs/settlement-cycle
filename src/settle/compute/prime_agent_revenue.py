@@ -38,6 +38,12 @@ class VenueRevenueInputs:
     # Set when the venue is in an active SDE entry (kind=fixed or capped).
     # None means the venue is not Sky-Direct → all revenue to prime.
     sde_entry: SDEEntry | None = None
+    # When set, bypasses the (value_eom − value_som) − period_inflow formula
+    # and uses this value directly as actual_revenue. Used for yield-bearing
+    # ERC-4626 tokens at the ALM (e.g. sUSDS POL) where the SSR appreciation
+    # flows back to Sky via the borrow-rate charge and only the 30bps spread
+    # (BR − SSR) is Prime Revenue.
+    actual_revenue_override: Decimal | None = None
 
 
 def _sd_share_at_som(
@@ -67,15 +73,17 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
     absorbs sd_share of the loss, prime absorbs the rest. This matches Grove
     team's PnL workbook (no floor, no shortfall).
     """
-    inflow_df = inputs.inflow_timeseries
-
-    cum_som = cum_at_or_before(
-        inflow_df, "cum_inflow", period.start - timedelta(days=1),
-    )
-    cum_eom = cum_at_or_before(inflow_df, "cum_inflow", period.end)
-    period_inflow = cum_eom - cum_som
-
-    actual_revenue = (inputs.value_eom - inputs.value_som) - period_inflow
+    if inputs.actual_revenue_override is not None:
+        actual_revenue = inputs.actual_revenue_override
+        period_inflow = Decimal("0")
+    else:
+        inflow_df = inputs.inflow_timeseries
+        cum_som = cum_at_or_before(
+            inflow_df, "cum_inflow", period.start - timedelta(days=1),
+        )
+        cum_eom = cum_at_or_before(inflow_df, "cum_inflow", period.end)
+        period_inflow = cum_eom - cum_som
+        actual_revenue = (inputs.value_eom - inputs.value_som) - period_inflow
     sd_share = _sd_share_at_som(inputs.sde_entry, inputs.value_som)
     sd_revenue = actual_revenue * sd_share
     prime_revenue = actual_revenue - sd_revenue

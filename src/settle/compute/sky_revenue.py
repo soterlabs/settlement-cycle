@@ -18,6 +18,13 @@ revenue that does not all correspond to ilk debt — deducting it from utilized
 would over-reimburse the prime for capital it did not borrow from Sky.
 Subproxy balances earn the agent rate instead (see ``compute_agent_rate``).
 
+sUSDS venues (``sky_savings_token: true`` in the prime YAML config) are also
+NOT subtracted from utilized. The prime earns only the 30 bps spread (BR − SSR)
+on these positions — the SSR appreciation flows back to Sky via this
+borrow-rate charge. The spread is computed in ``compute_monthly_pnl`` and
+injected as ``VenueRevenueInputs.actual_revenue_override``; sky_revenue
+itself sees the full utilized unchanged.
+
 ``curve_idle_usds`` is the prime's proportional USDS held inside Curve pools
 configured with a **par-stable** ``curve_idle_usds:`` coin (USDS, USDC, …),
 computed daily as::
