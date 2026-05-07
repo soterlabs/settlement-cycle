@@ -1141,7 +1141,7 @@ canonical pricing).
 
 #### BA Labs call #1 — methodology + documentation
 
-First Q&A session with the BA Labs team reviewing PnL calculations for Spark on Oct 2025 and the `blockanalitica/sky` repo (commit `4eda36a`). Captured here as: methodology resolutions (apply directly), documentation cross-references (existing PRD coverage), and follow-up open questions (tracked in `QUESTIONS.md` under `B7`–`B13`).
+First Q&A session with the BA Labs team reviewing PnL calculations for Spark on Oct 2025 and the `blockanalitica/sky` repo (commit `4eda36a`). Captured here as: methodology resolutions (apply directly), documentation cross-references (existing PRD coverage), and follow-up open questions (tracked in `QUESTIONS.md` as `B7`, `B8`, `B9`, `B10`, `B13` — note `B12` is intentionally unused).
 
 **Methodology resolutions** (apply directly — no further BA confirmation needed):
 
@@ -1168,6 +1168,85 @@ First Q&A session with the BA Labs team reviewing PnL calculations for Spark on 
 | **B9** | partially answered | P2 | BA's Aave/SparkLend method is `accrued × (1 − utilization) × BR`; "improve via events, or live with the small differences?" |
 | **B10** | unanswered | P1 | Why does `Sky + Prime ≠ Total` for USDe / Superstate / BUIDL? Currently flagged as "manual calculations per private deal"; we need to know if MSC should replicate the manual math or treat these as audit exceptions. |
 | **B13** | unanswered | P1 | SDE — (a) canonical list + Atlas version, AND (b) settlement-semantics confirmation: the Nov-2025 Atlas edit says Sky-takes-all on SDEs, but `laniakea-docs/accounting/prime-settlement-methodology.md` Step 4 still leaves the prime with the surplus-over-BR. Need definitive answer; our MSC behaviour matches Sky-takes-all. |
+
+#### BA Labs call #2 — methodology + documentation
+
+Second Q&A session with the BA Labs team — a 12-question review of the existing-venue accounting methodology. Source: BA's `ba_review_2` doc ("Questions to BA Labs #2: Review of existing venues to allocate"). Captured here in the same shape as call #1: methodology resolutions (apply directly), partial answers that update existing open questions, and new open questions (tracked in `QUESTIONS.md`).
+
+**Methodology resolutions** (apply directly — no further BA confirmation needed):
+
+- **NAV is the canonical framework over PnL (Q8).** BA confirmed the choice: revenue recognition is driven by NAV deltas (period-end value − period-start value − inflows), not by event-by-event PnL aggregation. Our compute layer is already aligned (see `compute/monthly_pnl.py` — `actual_revenue = (value_eom − value_som) − period_inflow` per `VenueRevenue`).
+- **Principal is excluded from Prime Agent revenue under the NAV approach (Q3).** BA's clean rule: "no [principal in Prime Agent calc], as long as we are using NAV." Already aligned — `prime_agent_revenue` sums the NAV-based `VenueRevenue.revenue` field across venues, never the gross principal.
+- **Non-yielding stablecoins (RLUSD, USDC, AUSD) are tracked as part of NAV (Q4).** BA confirmed: even venues with no direct yield must contribute to NAV. Already aligned — Cat A par-stable accounting in PRD §17.5 tracks every idle holding regardless of whether it generates revenue, so positions like RLUSD raw / USDC raw / AUSD raw on the asset side cleanly anchor NAV even when their own contribution to `prime_agent_revenue` is $0.
+- **Multi-position rewards (Curve, Morpho, Uni v3/v4) — capture at ALM, no per-venue assignment (Q5).** BA's clean rule: "particular position assignment doesn't matter, only effect on NAV." This extends call #1's `external_alm_sources` finding to multi-position venues — when a single reward stream funds rewards traceable to several venues (e.g. AUSD rewards across Grove's Curve / V3 / Morpho positions, AVAX rewards across Spark's Avalanche venues), MSC should NOT try to apportion per-venue. Capture once at the ALM Proxy ingress and let the NAV reflect the aggregate. Today our pipeline is already ALM-centric for these flows; the resolution is to NOT add per-venue attribution complexity even when the reward source is technically known.
+- **Volatile reward tokens (ETH, AVAX, MORPHO) — counted at ALM-deposit boundary, post-swap (Q6).** Restates the call #1 operational rule: primes must swap volatile reward tokens to a stable asset BEFORE they hit the ALM Proxy. MSC then captures them as ordinary par-stable inflows under Cat A. Pipeline already aligned; this is prime-side discipline, not pipeline code.
+- **Galaxy / Anchorage with no yield API — wait for ALM arrival, no API-based principal-only calc (Q11).** BA's rule: when a venue has principal data but no yield feed, do NOT estimate accruals. Wait until yield reaches the ALM and recognise it then. Anchorage S23 is already implemented this way (escrow + monthly USDC sweeps via `external_alm_sources`); the same pattern applies forward to Galaxy CLO (GACLO-1) and any future API-incomplete venue. Recognition lag is acceptable; estimation drift is not.
+- **In-transition assets need DAILY NAV accounting (Q9).** BA's instruction: assets in escrow / RWA withdrawal / cross-chain bridge transit must contribute to NAV at daily granularity, not aggregated weekly/monthly. Examples flagged: Centrifuge subscription/redemption queues, Anchorage escrow disbursements, bridge transactions in flight. Pipeline check: Centrifuge ✅ (pricePerShareFeed read daily for E8 JAAA / E9 JTRSY), Anchorage S23 ✅ (escrow tracked as a Cat E venue with daily reads). Bridge-in-transit — not currently a tracked state for any venue (no L2-bridge transitions cross EoM in Q1 2026 fixtures); flag for verification before Q2+.
+
+**Partial answers that update existing open questions:**
+
+- **Q1+Q2 → updates B11 (idle-asset / agent-rate accounting).** BA: "idle assets count only Sky side" (and "same handling" for sUSDS). This may resolve B11 if BA's "idle" means ALM-side only (no conflict, our `agent_rate` is subproxy-side per the methodology doc). It would create a real divergence if BA's "idle" also covers subproxy-side holdings, in which case BA's Prime Agent revenue is structurally `agent_rate` smaller than ours. B11 sharpened to ask BA for explicit (a)/(b) disambiguation.
+- **Q7 → updates G3 (Grove Merkl / off-pool yield).** BA: historical Merkl reconstruction is "not possible" — payment token varies (sometimes volatile), reporting inconsistent. Same handling as Q6 (ALM-deposit boundary). Doesn't resolve G3 (Grove still needs to identify the canonical feed for the `Rewards` column going forward), but lowers expectations for any historical back-fill from Merkl directly.
+- **Q12 → updates S14 (Spark sparkPrimeUSDC1 / Arkis).** BA flagged that they don't currently have direct Arkis API access — Arkis exposes total position value but BA needs Spark to facilitate. Implication: BA isn't an independent reference for this venue. The on-chain `convertToAssets()` vs Arkis-API authority question still needs to come from Spark / Arkis directly.
+
+**Open follow-ups** (`QUESTIONS.md`):
+
+| Q-ID | Class | Priority | Why open |
+|---|---|---|---|
+| **B11** | partially answered | P2 | Q1/Q2 ambiguous on whether "idle" includes subproxy-side. Sharpened to ask: did BA's Q1 2026 Prime Agent revenue include the SSR+20bps (USDS) / 20bps-on-cost-basis (sUSDS) component on the SLL subproxy, or skip it? |
+| **B14** | unanswered | P1 | Gain-realization double-counting (Q10). BA acknowledged the risk but punted to "Atlas changes/rules possibly needed here, delay of realising gains." Material whenever a Cat E (RWA NAV) / Cat F (LP) position is unwound mid-cycle; not yet observed in Q1 2026. |
+
+#### Grove team interview (2026-05-06) — methodology + documentation
+
+Q&A session with the Grove team covering historical accounting, edge-case venues, distribution-reward eligibility, and the subsidy ramp. Captured here in the same shape as the BA Labs calls.
+
+**Methodology resolutions** (apply directly):
+
+- **Galaxy CLO — onchain USDC payment on the 10th of each month.** Grove's Galaxy CLO position pays out via on-chain USDC transfers to the ALM Proxy on or around the 10th of each calendar month. Pipeline action: ensure the Galaxy payer address is registered in `config/grove.yaml::external_alm_sources` so the monthly sweep is captured as Cat A par-stable revenue, mirroring the Anchorage S23 pattern. Aligns with BA call #2 Q11 ("wait for it to hit ALM") for venues without a yield API.
+- **FundingMorpho contract is DR-eligible for Grove.** A FundingMorpho contract has been added to Grove's distribution-rewards source list alongside the legacy ref-code mechanism. Pipeline impact: `MonthlyPnL.distribution_rewards` (today a $0 placeholder per §17.6) needs a real reader for Grove. Contract address + read semantics still open — see QUESTIONS.md **G20**.
+- **Volatile tokens at the subproxy are skipped** (re-confirmation). Example: AVAX held in an Avalanche subproxy. Aligns with BA call #2 Q6 (count at the ALM-as-stable boundary). No code change today; relevant when Grove allocates on Avalanche.
+- **BUIDL hits the ALM Proxy daily** (re-confirmation). Already handled by the `min_transfer_amount_usd: 1000000` bimodal filter on E10 BUIDL.
+- **Subsidy ramp — 3M T-Bill, start 2026-01-01** (re-confirmation, partial answer to G5/B15). Grove confirmed the 3M tenor and 2026-01-01 anchor. Side note from the interview — "send value calculations for 3-month windows" — leaves open whether the subsidy itself is settled in 3-month buckets vs. the daily compound MSC currently uses; sampling frequency for the rate (daily / monthly / one-shot snapshot) is also still unresolved with BA / Sky. See **G5** + **B15**.
+- **TGE status — Spark completed before the 2025-07-01 deadline; Grove has not** as of 2026-05-06. Reaffirms the framing in **B16**; penalty calculation methodology still open with BA.
+
+**Open follow-ups** (`QUESTIONS.md`):
+
+| Q-ID | Class | Priority | Why open |
+|---|---|---|---|
+| **G19** | unanswered | P1 | Agora — 8% on deployed AUSD split between native yield and an undefined secondary component. Likely affects E11 / E12; if the second component is being paid out and we're not capturing it, Grove `prime_agent_revenue` is under-counted today. |
+| **G20** | unanswered | P1 | FundingMorpho DR feed — contract address + read semantics required to move Grove's `distribution_rewards` from $0 placeholder to a real number. |
+| **G18** | unanswered | P2 | E8 JAAA / E9 JTRSY Jan 1 dates don't match Atlas — Rune confirmed Atlas authoritative; reconciliation pending. May shift SDE-flag windows. |
+| **G17** | unanswered | P3 | Historical "lesser of (debt to Sky, NAV)" payment pattern noted by Grove for pre-MSC months. Informational; only relevant for historical reconciliation, not the forward MSC cycle. |
+
+#### Spark team interview (2026-05-06) — methodology + documentation
+
+Q&A session with the Spark team covering distribution rewards, SparkLend reserve mechanics, the par-stable yield-source allowlist, and the subsidy reference-rate dispute. Captured here in the same shape as the BA Labs calls and Grove interview.
+
+**Methodology resolutions** (apply directly):
+
+- **SparkLend reserve factor — 10% of yield, kept at protocol level.** Spark stated "10% of the yield goes to reserve factor" on USDS supply to SparkLend; recurrent reserve-factor actions are executed via spells. **MSC reading: this is SparkLend protocol income, not Spark Prime Agent income.** The supply rate Spark receives on its spTokens (S1 spUSDS / S3 spUSDT / S4 spDAI / S5 spPYUSD) is already net of the reserve factor (Aave-style: `supply_rate = borrow_rate × utilization × (1 − reserve_factor)`), so MSC's existing Cat C `scaledBalanceOf × liquidityIndex` accounting captures the prime-agent share correctly without needing to add the 10% back in. Confirmation pending — see QUESTIONS.md **S19**.
+- **Distribution rewards — Cowswap (ref code 1003) + Spark in-range codes (100–999).** Two distribution-rewards streams identified: a Cowswap program at code 1003 (outside Spark's normal range) and Spark's own in-range codes. `MonthlyPnL.distribution_rewards` (today $0 placeholder per §17.6) needs real readers for Spark — same shape as Grove's FundingMorpho ask. Contract addresses and read semantics still open — see QUESTIONS.md **S21**.
+- **PYUSD multi-venue holdings reaffirmed** — PYUSD held simultaneously as SparkLend reserve (S5 spPYUSD), in the PYUSDUSDS Curve pool (S25), and as raw at the Eth ALM (S28). Direct transfer pathway to ALM Proxy confirmed. No new fact — reaffirms our existing config split.
+- **Anchorage S23 reaffirmation** — Anchorage publishes a "principal amount allocated" API on its side; yield arrives on-chain at the SLL ALM as USDC sweeps (already implemented — escrow `0x49506C3Aa028693458d6eE816b2EC28522946872`, `external_alm_sources` capture). Anchorage charges fees pre-sweep — fee structure not detailed, see QUESTIONS.md **S22** (low priority, doesn't shift numbers since net-of-fee is what MSC sees).
+- **AVAX → USDC pre-ALM swap (re-confirmation).** Aligns with BA call #2 Q6 + Grove interview. No code change.
+- **Two-tier rate timeline (re-confirmation).** Spark confirmed the same timeline already in our config: **base rate** Jul 1–Dec 31, 2025; **subsidised rate** from Jan 1, 2026 onwards. Spark's stated reference rate for the subsidy is **EFFR** (linking `newyorkfed.org/markets/reference-rates/effr`). This **reaffirms current Spark config** but **stacks against Atlas's "t-bill_rate" text** — see QUESTIONS.md **S5**, now confirmed as a real disagreement (not a documentation typo) requiring Sky / BA arbitration.
+- **fsUSDS dormant** — Spark confirmed the previous 100k USDS Fluid Savings position is closed; matches our existing read ($0 across S17 / S36 / S42). Already covered in §17.13 S12 note.
+
+**Partial answers that update existing open questions:**
+
+- **→ S2 (par-stable yield sources allowlist).** Spark confirmed "some venues send gains directly to the ALM Proxy" beyond just Anchorage, i.e. the current single-address `external_alm_sources` is almost certainly incomplete. Sharpened ask: enumerate the venues + sender addresses so we can extend the allowlist.
+- **→ S5 (subsidy reference rate).** Spark reaffirmed EFFR — confirmed as a real disagreement with Atlas (see above).
+- **→ B14 (gain-realisation double-counting).** Spark surfaced a related-but-distinct question — "Pay BR on realised gains?" — which became its own open follow-up as **B17** rather than folding into B14.
+
+**Open follow-ups** (`QUESTIONS.md`):
+
+| Q-ID | Class | Priority | Why open |
+|---|---|---|---|
+| **S21** | unanswered | P1 | Cowswap (1003) + in-range Spark codes (100–999) — DR feed details required to move Spark `distribution_rewards` from $0 placeholder to a real number. |
+| **B17** | unanswered | P1 | "BR on realised gains" — when a NAV gain materialises into USDS at the ALM, does Sky charge BR on the enlarged USDS position? Sibling to B14; load-bearing the first quarter with significant Cat E / Cat F realisations. |
+| **S19** | unanswered | P2 | Confirm 10% reserve factor stays at SparkLend protocol level (matches our reading + current pipeline). If it flows back to the prime, MSC under-counts ~10% × yield across S1/S3/S4/S5. |
+| **S20** | unanswered | P2 | SparkLend "large positions trigger negative returns" — mechanism + threshold. Operators-context, not a numerical correction. |
+| **S22** | unanswered | P3 | Anchorage fee structure — operational only, doesn't shift numbers (sweeps arrive net-of-fee). |
 
 #### Code-review acks (2026-05-04 — two-reviewer pass)
 
@@ -1230,7 +1309,7 @@ python -m settle snapshot --prime spark [--block N] [--json]
 
 Run with: `pytest tests/integration/test_ba_parity.py -m live -v -s`.
 
-**Open questions** — full text moved to `QUESTIONS.md` (BA labs section, B1-B6) on 2026-05-04. Summary: (1) what addresses make up BA's Spark `idle_assets` $720M + `treasury` $37M, (2) is BA's `liabilities = debt + sUSDS_POL` intentional, (3) how does BA derive `assets` (which exceeds our position-sum by ~$325M Grove / ~$1B Spark), (4) which NAV oracle is canonical for STAC (E7 drift ~1.5% — Chronicle vs const_one).
+**Open questions** — full text in `QUESTIONS.md` (BA labs section). Summary: (1) what addresses make up BA's Spark `idle_assets` $720M + `treasury` $37M (**B1**), (2) is BA's `liabilities = debt + sUSDS_POL` intentional (**B3**), (3) how does BA derive `assets` (which exceeds our position-sum by ~$325M Grove / ~$1B Spark — **B4**, currently the only P0 in the BA section), (4) which NAV oracle is canonical for STAC (E7 drift ~1.5% — Chronicle vs const_one — **B5**).
 
 **Operational known-divergences** (reported by parity test, not failed):
 - **E7 STAC ~1.5% drift** — Chronicle vs const_one (whitelisted in `KNOWN_NAV_DIVERGENCES = {"E7"}`).
