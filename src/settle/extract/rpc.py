@@ -213,6 +213,30 @@ def balance_of(chain: Chain, token: Address, holder: Address, block: int) -> int
         return 0
 
 
+@cached(source_id="rpc.total_supply_of")
+def total_supply_of(chain: Chain, token: Address, block: int) -> int:
+    """ERC-20 ``totalSupply()`` at a specific block.
+
+    For Aave V3 aTokens and SparkLend spTokens this returns the *rebased*
+    total supply (the sum of all depositors' ``balanceOf`` values), denominated
+    in underlying token units. Combined with ``balance_of(token, holder, block)``
+    it gives the holder's proportional share of the pool:
+    ``share = balanceOf(holder) / totalSupply()``.
+
+    Returns 0 if the token didn't exist at this block or on RPC error
+    (logged as WARNING so silent zeros are auditable).
+    """
+    try:
+        return _decode_uint(eth_call(chain, token, SEL_TOTAL_SUPPLY, block))
+    except (RPCError, requests.HTTPError) as e:
+        import logging
+        logging.getLogger(__name__).warning(
+            "total_supply_of(%s, token=%s, block=%d) failed: %s — returning 0",
+            chain.value, token.hex, block, e,
+        )
+        return 0
+
+
 SEL_SCALED_BALANCE_OF = "0x1da24f3e"   # scaledBalanceOf(address)
 
 

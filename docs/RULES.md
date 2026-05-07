@@ -64,7 +64,39 @@ Subproxy balance histories are tracked per agent — see each agent's README und
 daily_sky_revenue = utilized_usds × [(1 + borrow_rate)^(1/365) - 1]
 ```
 
-- **Borrow rate = SSR + 0.30%**
-- **Utilized USDS = Vat ilk debt (cumulative frobs) - subproxy USDS - subproxy sUSDS - ALM proxy USDS**
+- **Borrow rate = SSR + 0.30%** (a subsidised step-down applies — see PRD §17.7)
+- **Utilized USDS = cum_debt − alm_proxy_usds − psm_usds − sde_asset_value − curve_idle_usds − lending_idle_usds**
+
+  | Term | Description |
+  |---|---|
+  | `cum_debt` | Vat ilk debt (Σ frob `dart` from prime start → EoM pin block) |
+  | `alm_proxy_usds` | Idle raw USDS at the ALM proxy |
+  | `psm_usds` | Idle USDS deposited in PSM3 (any chain) |
+  | `sde_asset_value` | Daily NAV of Sky Direct Exposure positions (BUIDL, JTRSY, JAAA-cap…); Sky collects their yield directly via `sde_revenue` so charging BR on top would double-bill |
+  | `curve_idle_usds` | Prime's proportional USDS in Curve LP pools (par-stable coin leg only; yield-bearing legs such as sUSDS are tracked separately — see Rule 5) |
+  | `lending_idle_usds` | Prime's proportional share of unborrowed underlying in SparkLend / Aave pools: `(alm_spToken / totalSupply) × underlying_in_contract` |
+
 - Vat debt changes via frob transactions AND MSC settlement debt minting. Both must be tracked.
+- Subproxy USDS and subproxy sUSDS are **not** deducted from utilized. They are treasury/risk capital that does not correspond solely to ilk debt.
 - The MSC settlement figures imply a slightly higher effective demand than our "utilized USDS" (~1-2% gap growing over time), possibly due to accumulated Vat rate on the ilk art. This is flagged in findings.
+
+## Rule 5: All held sUSDS — 30 bps spread is Prime Revenue
+
+For **all** sUSDS holdings (raw at ALM or inside LP pools), crediting the SSR appreciation as Prime Revenue double-counts: the prime already receives SSR through the sUSDS share price, so an additional model credit would yield `(2×SSR − BR) × V > 0` — an overcredit of ~3.7%/yr. The intent is economic neutrality (net = 0). Prime Revenue is therefore the **30 bps spread** (BR − SSR) only.
+
+Governed by the `sky_savings_token` flag in the prime YAML config — set explicitly per venue, not inferred from the token address.
+
+**Raw sUSDS at ALM** (`pricing_category: B` venues, flag at venue level):
+
+- Not deducted from `utilized`.
+- `prime_revenue = value_som × ((1 + 0.30%)^(1/365) − 1) × n_days`
+- Computed at SoM USDS value (`shares × convertToAssets(som_block)`).
+
+**sUSDS inside Curve LP pools** (`curve_idle_usds.sky_savings_token: true`):
+
+- Not deducted from `utilized`.
+- `prime_revenue_d = (alm_lp_d / pool_total_d) × (sUSDS_reserve_d × pps_d) × 30bps_daily`
+- Summed across the period and added to `prime_agent_revenue`.
+- `pps_d = convertToAssets(1 share, block_d)` to convert sUSDS→USDS.
+
+Net economic outcome for both cases: `SSR × V` (actual token gain) `+ 30bps × V` (Prime Revenue) `− BR × V` (Sky Revenue) = 0. Sky earns the net SSR; Prime is economically neutral.
