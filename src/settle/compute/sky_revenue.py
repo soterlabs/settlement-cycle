@@ -7,17 +7,16 @@ Per the prime-settlement-methodology and debt-rate-methodology docs:
     base_apy          = SSR + 30bps
     subsidised_apy    = ref_rate + (base − ref_rate) × T / 24    [Step 1.b]
     utilized          = cum_debt
-                      − subproxy_usds                  ←  Step 2 (idle USDS at subproxy)
-                      − subproxy_susds_principal       ←  prime doesn't pay base on subproxy holdings
                       − alm_proxy_usds                 ←  Step 2 (idle USDS at ALM proxy)
                       − psm_usds                       ←  Step 2 (idle USDS in PSM3)
                       − curve_idle_usds                ←  Step 2 (prime's USDS share in Curve pools)
                       − lending_idle_usds              ←  Step 2 (prime's share of unborrowed underlying in lending pools)
 
-``subproxy_susds_principal`` is the cost basis (``shares × entry_pps``), NOT
-the current value — using current value would double-count SSR (the index
-already reflects accrued savings the prime keeps). The orchestrator converts
-shares → principal before passing in.
+Subproxy USDS and sUSDS are NOT subtracted from utilized. The subproxy holds
+a mix of genesis capital, treasury holdings, risk capital, and realized
+revenue that does not all correspond to ilk debt — deducting it from utilized
+would over-reimburse the prime for capital it did not borrow from Sky.
+Subproxy balances earn the agent rate instead (see ``compute_agent_rate``).
 
 ``curve_idle_usds`` is the prime's proportional USDS held inside Curve pools
 configured with a **par-stable** ``curve_idle_usds:`` coin (USDS, USDC, …),
@@ -89,8 +88,6 @@ BASE_RATE_OVER_SSR = Decimal("0.003")
 def compute_sky_revenue(
     period: Period,
     debt: pd.DataFrame,
-    subproxy_usds: pd.DataFrame,
-    subproxy_susds_principal: pd.DataFrame,
     alm_usds: pd.DataFrame,
     ssr: pd.DataFrame,
     psm_usds: pd.DataFrame | None = None,
@@ -104,11 +101,9 @@ def compute_sky_revenue(
     """Sum of daily Sky revenue over ``period``.
 
     Inputs (all Normalize outputs):
+
     * ``debt``                       DataFrame[block_date, daily_dart, cum_debt]
-    * ``subproxy_usds``              DataFrame[block_date, daily_net, cum_balance] — USDS in subproxy
-    * ``subproxy_susds_principal``   ditto for sUSDS, in **USDS-equivalent cost basis**
-                                     (``shares × entry_pps``), pre-converted by the orchestrator.
-    * ``alm_usds``                   ditto for USDS in ALM proxy
+    * ``alm_usds``                   DataFrame[block_date, daily_net, cum_balance] — idle USDS at ALM proxy
     * ``ssr``                        DataFrame[effective_date, ssr_apy] — SP-BEAM changes
     * ``psm_usds``                   optional DataFrame[block_date, daily_net, cum_balance] of USDS
                                      the prime has parked at PSM; subtracted from utilized so the
@@ -124,6 +119,10 @@ def compute_sky_revenue(
                                      prime's proportional share of unborrowed underlying in
                                      configured lending pools (``lending_idle_usds: true``).
                                      Built daily via ``balanceOf`` + ``totalSupply``.
+
+    Subproxy USDS/sUSDS are NOT passed here — they earn the agent rate
+    (``compute_agent_rate``) but are not subtracted from utilized because the
+    subproxy holds treasury/risk capital beyond pure ilk-debt proceeds.
     """
     # Hard-fail on empty debt/ssr — without these, utilized would silently be
     # ≤ 0 every day and sky_revenue would return $0. Loud error pointing at
@@ -149,8 +148,6 @@ def compute_sky_revenue(
     current = period.start
     while current <= period.end:
         cum_debt = cum_at_or_before(debt, "cum_debt", current)
-        cum_sub_usds = cum_at_or_before(subproxy_usds, "cum_balance", current)
-        cum_sub_susds = cum_at_or_before(subproxy_susds_principal, "cum_balance", current)
         cum_alm_usds = cum_at_or_before(alm_usds, "cum_balance", current)
         # SDE positions (BUIDL, JTRSY, USTB, JAAA-cap, …) — Sky books their
         # actual revenue directly via ``sd_revenue`` in the venue breakdown,
@@ -165,7 +162,6 @@ def compute_sky_revenue(
 
         utilized = (
             cum_debt
-            - cum_sub_usds - cum_sub_susds
             - cum_alm_usds
             - cum_psm_usds
             - cum_sde

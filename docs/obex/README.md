@@ -7,7 +7,7 @@ OBEX is a prime agent in the Sky ecosystem that mints USDS debt via the allocato
 | Contract | Address | Role |
 |----------|---------|------|
 | ALM Proxy | `0xb6dD7ae22C9922AFEe0642f9Ac13e58633f715A2` | Holds syrupUSDC position, routes USDS/USDC |
-| Subproxy | `0x8be042581f581E3620e29F213EA8b94afA1C8071` | Holds idle USDS (earns agent rate) |
+| Subproxy | `0x8be042581f581E3620e29F213EA8b94afA1C8071` | Holds treasury/risk capital USDS (earns agent rate) |
 | syrupUSDC (Maple) | `0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b` | Yield-bearing vault token |
 
 ## Ilk

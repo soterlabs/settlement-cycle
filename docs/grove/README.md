@@ -11,7 +11,7 @@ See [PRD.md](PRD.md) for the full design and [QUESTIONS.md](QUESTIONS.md) for op
 | Contract | Address | Role |
 |----------|---------|------|
 | ALM Proxy | `0x491edfb0b8b608044e227225c715981a30f3a44e` | Holds all allocation positions |
-| Subproxy | `0x1369f7b2b38c76B6478c0f0E66D94923421891Ba` | Holds idle USDS / sUSDS (earns agent rate) |
+| Subproxy | `0x1369f7b2b38c76B6478c0f0E66D94923421891Ba` | Holds treasury/risk capital USDS / sUSDS (earns agent rate) |
 | AllocatorVault | `0x26512a41c8406800f21094a7a7a0f980f6e25d43` | Calls `frob` on the Vat |
 | AllocatorBuffer | `0x629ad4d779f46b8a1491d3f76f7e97cb04d8b1cd` | Intermediate USDS buffer |
 | MainnetController | `0xB111E07c8B939b0Fe701710b365305F7F23B0edd` | Relayer / rate-limit policy |

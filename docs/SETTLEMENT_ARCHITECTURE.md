@@ -143,7 +143,8 @@ def get_debt_timeseries(prime: Prime, period: Period) -> pd.DataFrame:
 
 # silver/balances.py
 def get_subproxy_balance_timeseries(prime: Prime, token: Token, period: Period) -> pd.DataFrame:
-    """Daily cum balance of `token` in subproxy. Source: Dune transfers."""
+    """Daily cum balance of `token` in subproxy (treasury/risk capital — earns agent rate).
+    Source: Dune transfers. NOT subtracted from utilized in sky_revenue."""
 
 def get_position_balance(prime: Prime, venue: Venue, block: int) -> Decimal:
     """Current balance of `venue.token` held by the ALM.
