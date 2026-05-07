@@ -437,7 +437,7 @@ def _aggregate_curve_idle_usds(
     from ..domain.sky_tokens import KNOWN_PAR_STABLES_ETHEREUM, KNOWN_YIELD_BEARING_ETHEREUM
     from ..extract.rpc import balance_of as _balance_of
     from ..normalize.sources.curve_pool import CurvePoolSource
-    from .agent_rate import AGENT_RATE_OVER_SSR
+    from .sky_revenue import BASE_RATE_OVER_SSR
     from ._helpers import daily_compounding_factor
 
     venues_with_config = [v for v in prime.venues if v.curve_idle_usds is not None]
@@ -453,7 +453,8 @@ def _aggregate_curve_idle_usds(
         from ..normalize.registry import get_convert_to_assets_source as _get_c2a
         c2a = convert_to_assets_source if convert_to_assets_source is not None else _get_c2a()
 
-    spread_daily_factor = daily_compounding_factor(AGENT_RATE_OVER_SSR)
+    # Spread = BR − SSR = BASE_RATE_OVER_SSR (30bps).
+    spread_daily_factor = daily_compounding_factor(BASE_RATE_OVER_SSR)
 
     import logging as _logging
     _log = _logging.getLogger(__name__)
@@ -930,10 +931,10 @@ def compute_monthly_pnl(
 
             if venue.sky_savings_token:
                 # Sub-case (a): yield-bearing token (sUSDS) at ALM.
-                # Prime Revenue = 30bps × value_som × n_days (spread only).
-                # `value_som` is already computed above via convertToAssets at
-                # SoM block — no new RPC calls needed.
-                spread_daily = daily_compounding_factor(AGENT_RATE_OVER_SSR)
+                # Prime Revenue = (BR − SSR) × value_som × n_days = 30bps spread.
+                # `value_som` already computed above via convertToAssets at SoM block.
+                from .sky_revenue import BASE_RATE_OVER_SSR
+                spread_daily = daily_compounding_factor(BASE_RATE_OVER_SSR)
                 n_days = _Dec(str((period.end - period.start).days + 1))
                 susds_spread = value_som * spread_daily * n_days
                 inflow_ts = pd.DataFrame({
