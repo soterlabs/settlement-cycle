@@ -192,9 +192,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
     print()
     print(f"  prime_agent_revenue:      ${result.prime_agent_revenue:>20,.2f}")
     print(f"  agent_rate:               ${result.agent_rate:>20,.2f}")
-    print(f"  sky_revenue:             -${result.sky_revenue:>20,.2f}")
-    print(f"  -------------------------------------------")
-    print(f"  monthly_pnl:              ${result.monthly_pnl:>20,.2f}")
+    print(f"  sky_revenue:              ${result.sky_revenue:>20,.2f}")
     print()
     if result.venue_breakdown:
         print("  Per-venue breakdown:")
