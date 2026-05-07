@@ -154,9 +154,10 @@ class Venue:
     # vault (sUSDS or a per-chain canonical wrapper) and its revenue treatment
     # differs from normal Cat B:
     #   prime_revenue = value_som × 30bps_daily × n_days  (spread only)
-    # The SSR appreciation is NOT Prime Revenue — it accrues via the token
-    # index and is returned to Sky through the borrow-rate charge on
-    # ``utilized`` (the venue is not deducted from utilized).
+    # The SSR appreciation is NOT Prime Revenue — the prime already receives
+    # SSR through the sUSDS share price, so also crediting it in the settlement
+    # model would double-count (total = 2×SSR − BR > 0, overcrediting by ~3.7%/yr).
+    # Economic intent: net = SSR (token gain) + 30bps (Prime Rev) − BR (Sky Rev) = 0.
     # Applies to all direct sUSDS holdings regardless of chain or venue type
     # (raw ALM, LP token, etc.). Set explicitly in the prime YAML config.
     sky_savings_token: bool = False

@@ -82,7 +82,7 @@ daily_sky_revenue = utilized_usds × [(1 + borrow_rate)^(1/365) - 1]
 
 ## Rule 5: All held sUSDS — 30 bps spread is Prime Revenue
 
-For **all** sUSDS holdings (raw at ALM or inside LP pools), the SSR appreciation belongs to Sky, not the Prime. Prime Revenue is the **30 bps spread** (BR − SSR) only.
+For **all** sUSDS holdings (raw at ALM or inside LP pools), crediting the SSR appreciation as Prime Revenue double-counts: the prime already receives SSR through the sUSDS share price, so an additional model credit would yield `(2×SSR − BR) × V > 0` — an overcredit of ~3.7%/yr. The intent is economic neutrality (net = 0). Prime Revenue is therefore the **30 bps spread** (BR − SSR) only.
 
 Governed by the `sky_savings_token` flag in the prime YAML config — set explicitly per venue, not inferred from the token address.
 
@@ -99,4 +99,4 @@ Governed by the `sky_savings_token` flag in the prime YAML config — set explic
 - Summed across the period and added to `prime_agent_revenue`.
 - `pps_d = convertToAssets(1 share, block_d)` to convert sUSDS→USDS.
 
-Net accounting for both cases: Sky earns SSR × value (via the savings mechanism and the BR charge); Prime earns the 30 bps spread.
+Net economic outcome for both cases: `SSR × V` (actual token gain) `+ 30bps × V` (Prime Revenue) `− BR × V` (Sky Revenue) = 0. Sky earns the net SSR; Prime is economically neutral.
