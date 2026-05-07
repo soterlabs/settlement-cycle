@@ -64,7 +64,33 @@ Subproxy balance histories are tracked per agent — see each agent's README und
 daily_sky_revenue = utilized_usds × [(1 + borrow_rate)^(1/365) - 1]
 ```
 
-- **Borrow rate = SSR + 0.30%**
-- **Utilized USDS = Vat ilk debt (cumulative frobs) - subproxy USDS - subproxy sUSDS - ALM proxy USDS**
+- **Borrow rate = SSR + 0.30%** (a subsidised step-down applies — see PRD §17.7)
+- **Utilized USDS = cum_debt − alm_proxy_usds − psm_usds − sde_asset_value − curve_idle_usds − lending_idle_usds**
+
+  | Term | Description |
+  |---|---|
+  | `cum_debt` | Vat ilk debt (Σ frob `dart` from prime start → EoM pin block) |
+  | `alm_proxy_usds` | Idle raw USDS at the ALM proxy |
+  | `psm_usds` | Idle USDS deposited in PSM3 (any chain) |
+  | `sde_asset_value` | Daily NAV of Sky Direct Exposure positions (BUIDL, JTRSY, JAAA-cap…); Sky collects their yield directly via `sde_revenue` so charging BR on top would double-bill |
+  | `curve_idle_usds` | Prime's proportional USDS in Curve LP pools (par-stable coin leg only; yield-bearing legs such as sUSDS are tracked separately — see Rule 5) |
+  | `lending_idle_usds` | Prime's proportional share of unborrowed underlying in SparkLend / Aave pools: `(alm_spToken / totalSupply) × underlying_in_contract` |
+
 - Vat debt changes via frob transactions AND MSC settlement debt minting. Both must be tracked.
+- Subproxy USDS and subproxy sUSDS are **not** deducted from utilized. They are treasury/risk capital that does not correspond solely to ilk debt.
 - The MSC settlement figures imply a slightly higher effective demand than our "utilized USDS" (~1-2% gap growing over time), possibly due to accumulated Vat rate on the ilk art. This is flagged in findings.
+
+## Rule 5: sUSDS held at the ALM (yield-bearing 4626 at ALM)
+
+For sUSDS (or any yield-bearing ERC-4626 token) held **directly at the ALM** (not in a Curve pool):
+
+- sUSDS is **not** deducted from `utilized`. Sky charges BR on the full debt.
+- The organic SSR appreciation (via `convertToAssets` index growth) is **not** Prime Revenue — it flows back to Sky via the BR charge.
+- Prime's revenue for this position is only the **30 bps spread** (BR − SSR) per day:
+
+  ```
+  prime_revenue_d = alm_susds_value_d × ((1 + 0.30%)^(1/365) − 1)
+  ```
+
+- This is computed at the **start-of-month USDS value** (`shares × convertToAssets(som_block)`) times 30 bps daily for `n_days`. Mid-month balance changes are captured via the SoM value.
+- Net accounting: Sky earns SSR × value (the savings mechanism funds the yield); Prime earns 30 bps spread net.
