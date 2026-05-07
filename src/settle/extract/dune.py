@@ -17,8 +17,11 @@ import datetime as dt
 import errno
 import hashlib
 import json
+import logging
 import os
 import re
+
+_log = logging.getLogger(__name__)
 import time
 from pathlib import Path
 from typing import Any
@@ -267,6 +270,7 @@ def _execute_query(
 
 def _poll_results(execution_id: str, timeout: int = DEFAULT_POLL_TIMEOUT_SEC) -> dict:
     deadline = time.time() + timeout
+    elapsed = 0.0
     while time.time() < deadline:
         r = requests.get(
             f"{DUNE_API_BASE}/execution/{execution_id}/results",
@@ -277,10 +281,16 @@ def _poll_results(execution_id: str, timeout: int = DEFAULT_POLL_TIMEOUT_SEC) ->
         body = r.json()
         state = body.get("state")
         if state == "QUERY_STATE_COMPLETED":
+            _log.info("  Dune %s completed in %.1fs", execution_id[:12], elapsed)
             return body
         if state in {"QUERY_STATE_FAILED", "QUERY_STATE_CANCELLED", "QUERY_STATE_EXPIRED"}:
             raise DuneError(f"Dune execution {execution_id} ended in state {state}: {body}")
+        if elapsed == 0:
+            _log.info("  Dune %s running... (state: %s)", execution_id[:12], state)
+        elif elapsed % 15 < DEFAULT_POLL_INTERVAL_SEC:
+            _log.info("  Dune %s still running after %.0fs (state: %s)", execution_id[:12], elapsed, state)
         time.sleep(DEFAULT_POLL_INTERVAL_SEC)
+        elapsed += DEFAULT_POLL_INTERVAL_SEC
     raise DuneError(f"Dune execution {execution_id} timed out after {timeout}s")
 
 
@@ -355,10 +365,12 @@ def execute_query(sql_path: Path, params: dict[str, Any], pin_block: int,
             "execute_query: pass pin_block as the positional arg, not via params"
         )
     query_id = _resolve_query_id(sql_path)
+    _log.info("Dune query %s (id=%d) submitting...", sql_path.name, query_id)
 
     full_params = {**params, "pin_block": pin_block}
     dune_params = {k: _format_param(v) for k, v in full_params.items()}
 
     execution_id = _execute_query(query_id, dune_params, performance)
     rows = _fetch_all_rows(execution_id)
+    _log.info("Dune query %s → %d rows", sql_path.name, len(rows))
     return pd.DataFrame(rows)

@@ -516,10 +516,13 @@ def compute_monthly_pnl(
 
     _log.info("step 2: gathering Dune/normalize inputs (debt, balances, SSR)...")
     # 2. Gather Normalize inputs for sky_revenue + agent_rate (Ethereum-only).
+    _log.info("  2a: debt timeseries...")
     debt = get_debt_timeseries(prime, period, source=sources.debt)
+    _log.info("  2b: subproxy USDS balance...")
     sub_usds = get_subproxy_balance_timeseries(
         prime, Chain.ETHEREUM, USDS_ETHEREUM, period, source=sources.balance,
     )
+    _log.info("  2c: subproxy sUSDS shares...")
     sub_susds_shares = get_subproxy_balance_timeseries(
         prime, Chain.ETHEREUM, sUSDS_ETHEREUM, period, source=sources.balance,
     )
@@ -529,12 +532,14 @@ def compute_monthly_pnl(
     # SSR — using current value would double-count savings). Used by
     # agent_rate (earning base); NOT passed to sky_revenue (subproxy balances
     # are treasury/risk capital, not pure ilk-debt proceeds).
+    _log.info("  2d: sUSDS → principal conversion (RPC per day)...")
     sub_susds = _susds_shares_to_principal(
         sub_susds_shares,
         sources=sources,
         block_resolver=resolver,
         chain=Chain.ETHEREUM,
     )
+    _log.info("  2e: ALM USDS balance...")
     alm_usds = get_alm_balance_timeseries(
         prime, Chain.ETHEREUM, USDS_ETHEREUM, period, source=sources.balance,
     )
@@ -542,13 +547,16 @@ def compute_monthly_pnl(
     # configured. The prime's debt (cum_debt) is Ethereum-only (Vat), but
     # USDS-equivalent capital parked at any PSM (Sky LITE-PSM on Eth, Spark
     # PSM3 on L2s) was funded from that debt and reduces utilized.
+    _log.info("  2f: PSM USDS aggregate...")
     psm_usds = _aggregate_psm_usds(
         prime, period,
         balance_source=sources.balance,
         psm3_source=sources.psm3,
         block_resolver=resolver,
     )
+    _log.info("  2g: SSR history...")
     ssr = get_ssr_history(prime, period, source=sources.ssr)
+    _log.info("  step 2 complete.")
 
     # SDE table — config-driven Sky Direct exposures (replaces the legacy
     # ``Venue.sky_direct: bool`` flag). Empty table = no venues are SDE.
