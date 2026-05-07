@@ -410,24 +410,21 @@ def _aggregate_curve_idle_usds(
     *,
     curve_pool_source,
     block_resolver,
-    convert_to_assets_source,
 ) -> pd.DataFrame:
     """Daily USDS-equivalent held by the prime inside Curve pools configured
     with ``curve_idle_usds``, summed across all such venues.
 
-    For each configured venue the prime's proportional share of the target
-    coin's reserve is computed at every day's EoD block::
+    Only **par-stable** coin venues (USDS, USDC, … at $1) contribute to the
+    return value. For each such venue the prime's proportional USDS share is::
 
-        prime_usds_d = (alm_lp_balance_d / pool_total_supply_d) × coin_usds_d
+        prime_usds_d = (alm_lp_balance_d / pool_total_supply_d) × coin_reserve_d
 
-    where ``coin_usds_d`` is:
-
-    * **Par-stable** (USDS, USDC, …) — raw reserve in ``KNOWN_PAR_STABLES_ETHEREUM``
-      divided by the coin's decimals. $1 per unit.
-    * **Yield-bearing 4626** (sUSDS, …) — raw reserve converted to USDS via
-      ``convertToAssets(raw_balance, block)`` then scaled by 10^share_decimals.
-      The returned value is USDS principal (avoids double-counting SSR that
-      accrues via the sUSDS index).
+    **Yield-bearing coin venues** (sUSDS, …): the pool state and ALM LP balance
+    are still fetched and cached at every snapshot — this data feeds a future
+    Prime Revenue calculation — but they contribute **zero** to the ``utilized``
+    deduction returned here. Converting sUSDS→USDS and subtracting from
+    utilized is incorrect because the sUSDS in the pool accrues yield that is
+    already accounted for separately.
 
     Returns a ``[block_date, daily_net, cum_balance]`` DataFrame where
     ``cum_balance`` is the daily snapshot value (not a running total), matching
@@ -437,7 +434,6 @@ def _aggregate_curve_idle_usds(
     from datetime import time
     from ..domain.sky_tokens import KNOWN_PAR_STABLES_ETHEREUM, KNOWN_YIELD_BEARING_ETHEREUM
     from ..extract.rpc import balance_of as _balance_of
-    from ..normalize.registry import get_convert_to_assets_source as _get_c2a
     from ..normalize.sources.curve_pool import CurvePoolSource
 
     venues_with_config = [v for v in prime.venues if v.curve_idle_usds is not None]
@@ -445,36 +441,21 @@ def _aggregate_curve_idle_usds(
         return _empty_psm_df()
 
     pool_src = curve_pool_source if curve_pool_source is not None else CurvePoolSource()
-    c2a = convert_to_assets_source if convert_to_assets_source is not None else _get_c2a()
 
-    import requests as _requests
     import logging as _logging
     _log = _logging.getLogger(__name__)
 
-    def _coin_usds_value(coin_addr: bytes, raw_balance: int, block: int) -> Decimal:
-        """Convert raw pool reserve to USDS-equivalent at ``block``."""
+    def _par_stable_usds(coin_addr: bytes, raw_balance: int) -> Decimal:
+        """Raw reserve → USDS at face value. Only call for par-stable coins."""
         par = KNOWN_PAR_STABLES_ETHEREUM.get(coin_addr)
-        if par is not None:
-            _sym, decimals = par
-            return Decimal(raw_balance) / Decimal(10 ** decimals)
-        yb = KNOWN_YIELD_BEARING_ETHEREUM.get(coin_addr)
-        if yb is not None:
-            _sym, share_decimals, underlying_addr, underlying_decimals = yb
-            # convertToAssets(1 share_unit) → assets_per_share in underlying decimals
-            assets_per_share_raw = c2a.convert_to_assets(
-                chain=Chain.ETHEREUM.value,
-                vault=coin_addr,
-                shares=10 ** share_decimals,
-                block=block,
+        if par is None:
+            raise ValueError(
+                f"_aggregate_curve_idle_usds: coin {coin_addr.hex()} is not in "
+                "KNOWN_PAR_STABLES_ETHEREUM. Yield-bearing coins must not be "
+                "passed here — fetch their balance separately."
             )
-            assets_per_share = Decimal(assets_per_share_raw) / Decimal(10 ** underlying_decimals)
-            # raw_balance is in share_decimals; multiply by pps to get underlying
-            return (Decimal(raw_balance) / Decimal(10 ** share_decimals)) * assets_per_share
-        raise ValueError(
-            f"_aggregate_curve_idle_usds: coin {coin_addr.hex()} is not in "
-            "KNOWN_PAR_STABLES_ETHEREUM or KNOWN_YIELD_BEARING_ETHEREUM. "
-            "Add it to sky_tokens.py before using curve_idle_usds."
-        )
+        _sym, decimals = par
+        return Decimal(raw_balance) / Decimal(10 ** decimals)
 
     # One timeseries per day across the period. Build as a dict[date, Decimal]
     # summed across all configured venues.
@@ -513,9 +494,9 @@ def _aggregate_curve_idle_usds(
                     continue
 
                 raw_coin_balance = pool_state.balances[coin_idx]
-                coin_usds = _coin_usds_value(target_coin, raw_coin_balance, block)
 
-                # ALM's LP balance at this block.
+                # ALM's LP balance at this block (fetched for all venues so the
+                # value is cached and available for future Prime Revenue calculations).
                 from ..domain.primes import Address as _Addr
                 alm_lp_raw = _balance_of(
                     venue.chain,
@@ -523,10 +504,18 @@ def _aggregate_curve_idle_usds(
                     _Addr(holder),
                     block,
                 )
-                alm_lp = Decimal(alm_lp_raw) / Decimal(10 ** venue.token.decimals)
-                pool_total = Decimal(total_supply) / Decimal(10 ** venue.token.decimals)
 
-                prime_usds = (alm_lp / pool_total) * coin_usds if pool_total > 0 else Decimal(0)
+                if target_coin in KNOWN_YIELD_BEARING_ETHEREUM:
+                    # Yield-bearing coins (e.g. sUSDS): pool state and LP balance
+                    # are fetched above for future use, but they do NOT reduce
+                    # utilized — converting to USDS-equivalent and subtracting
+                    # would be incorrect (the yield accrues separately).
+                    prime_usds = Decimal(0)
+                else:
+                    alm_lp = Decimal(alm_lp_raw) / Decimal(10 ** venue.token.decimals)
+                    pool_total = Decimal(total_supply) / Decimal(10 ** venue.token.decimals)
+                    coin_usds = _par_stable_usds(target_coin, raw_coin_balance)
+                    prime_usds = (alm_lp / pool_total) * coin_usds if pool_total > 0 else Decimal(0)
 
             except Exception as exc:
                 _log.warning(
@@ -735,7 +724,6 @@ def compute_monthly_pnl(
         prime, period,
         curve_pool_source=sources.curve_pool,
         block_resolver=resolver,
-        convert_to_assets_source=sources.convert_to_assets,
     )
     # Prime's share of unborrowed underlying in configured lending pools — Step 2
     # idle lending pool USDS. Computed daily via ``balanceOf`` + ``totalSupply``.

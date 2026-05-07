@@ -456,13 +456,14 @@ venues:
       address: '0x00836fe54625be242bcfa286207795405ca4fd10'
       symbol: 'sUSDSUSDT'
       decimals: 18
-    # Track Spark's proportional sUSDS in this pool as idle USDS-equivalent.
-    # sUSDS is yield-bearing (ERC-4626 over USDS) so the balance is converted
-    # via convertToAssets(balance, block) to USDS principal before deducting
-    # from utilized. The conversion infra is the same IConvertToAssetsSource
-    # already used by _curve_lp_unit_price for this venue's pricing.
+    # Track Spark's proportional sUSDS balance in this pool at every daily
+    # snapshot. The data (pool state + ALM LP share) is fetched and cached for
+    # use in a future Prime Revenue calculation.
+    # NOTE: sUSDS is yield-bearing, so this balance is NOT converted to USDS
+    # and NOT subtracted from utilized — that would be incorrect. Only the
+    # coin address is configured here so the pipeline knows which reserve to read.
     curve_idle_usds:
-      coin: '0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD'  # sUSDS → USDS via convertToAssets
+      coin: '0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD'  # sUSDS — tracked only, not deducted from utilized
 
   - id: S25
     chain: ethereum

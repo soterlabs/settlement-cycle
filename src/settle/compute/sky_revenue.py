@@ -19,14 +19,16 @@ the current value — using current value would double-count SSR (the index
 already reflects accrued savings the prime keeps). The orchestrator converts
 shares → principal before passing in.
 
-``curve_idle_usds`` is the prime's proportional USDS-equivalent held inside
-configured Curve pools (``curve_idle_usds:`` YAML field), computed daily as::
+``curve_idle_usds`` is the prime's proportional USDS held inside Curve pools
+configured with a **par-stable** ``curve_idle_usds:`` coin (USDS, USDC, …),
+computed daily as::
 
-    prime_usds_d = (alm_lp_balance_d / pool_total_supply_d) × coin_usds_value_d
+    prime_usds_d = (alm_lp_balance_d / pool_total_supply_d) × coin_reserve_d
 
-where ``coin_usds_value_d`` is the par-stable reserve at face value (for USDS)
-or the 4626-converted USDS principal (for sUSDS via ``convertToAssets``).
-Enabled per-venue via ``curve_idle_usds:`` in the prime YAML config.
+Only par-stable coin reserves are deducted. Venues where the configured coin
+is yield-bearing (sUSDS, …) are tracked in the pipeline for future Prime
+Revenue use but contribute zero here — converting yield-bearing balances to
+USDS and subtracting from utilized is incorrect.
 
 ``lending_idle_usds`` is the prime's proportional share of unborrowed underlying
 inside configured lending pools (``lending_idle_usds: true`` YAML flag), computed
