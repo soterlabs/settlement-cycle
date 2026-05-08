@@ -3,7 +3,14 @@
 -- Used by ``DuneBlockResolver`` to bulk-load (date → max_block) mappings for
 -- a prime's lifetime in one shot, replacing per-day RPC binary searches.
 --
+-- Uses ``evms.blocks`` (the unified cross-chain Dune spellbook table) so that
+-- ``chain`` is a standard text value parameter rather than a table-name
+-- substitution — Dune does not support {{param}} in FROM identifiers reliably.
+--
 -- Parameters:
+--   {{chain}}        text       — Dune blockchain name (e.g. 'ethereum', 'base',
+--                                 'arbitrum', 'optimism', 'avalanche_c').
+--                                 Matched against evms.blocks.blockchain column.
 --   {{start_date}}   text       — 'YYYY-MM-DD', inclusive
 --   {{end_date}}     text       — 'YYYY-MM-DD', inclusive
 --   {{pin_block}}    number     — upper-bound cutoff (also part of cache key)
@@ -13,8 +20,9 @@
 SELECT
   CAST(time AS DATE) AS block_date,
   MAX(number)        AS block_number
-FROM ethereum.blocks
-WHERE time     >= DATE '{{start_date}}'
+FROM evms.blocks
+WHERE blockchain = '{{chain}}'
+  AND time     >= DATE '{{start_date}}'
   AND time     <  DATE '{{end_date}}' + INTERVAL '1' DAY
   AND number   <= {{pin_block}}
 GROUP BY CAST(time AS DATE)
