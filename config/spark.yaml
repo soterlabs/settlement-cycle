@@ -460,9 +460,23 @@ venues:
     # (BR - SSR) as Prime Revenue. sUSDS is NOT subtracted from utilized —
     # the SSR flows back to Sky via the BR charge.
     # sky_savings_token: true triggers the spread-only revenue path.
+    #
+    # sde_coin: the USDT leg of this pool is a Sky Direct Exposure (SDE)
+    # per Atlas A.2.2.9.1.1.1.1.3 (active from 2025-11-13, see
+    # config/sky_direct_exposures.yaml). The SDE asset value is computed
+    # as (alm_lp / pool_total) × USDT_reserve at par ($1/unit).
+    #
+    # LIMITATION — mid-period SDE activation not pro-rated: if the SDE
+    # start_date (2025-11-13) falls within a settlement month the compute
+    # layer applies the SDE rule for the full month or skips it entirely
+    # (based on whether start_date ≤ period_start). Pro-rating of the first
+    # partial month has not been implemented. Impact: Nov 2025 is skipped
+    # entirely (start_date > 2025-11-01 = period_start), so the first month
+    # where USDT SDE asset value is counted is Dec 2025.
     curve_idle_usds:
-      coin: '0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD'  # sUSDS
+      coin: '0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD'  # sUSDS — spread revenue path
       sky_savings_token: true
+      sde_coin: '0xdac17f958d2ee523a2206206994597c13d831ec7'  # USDT — SDE asset value (par)
 
   - id: S25
     chain: ethereum

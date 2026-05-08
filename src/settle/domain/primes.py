@@ -178,10 +178,26 @@ class CurveIdleUsdsConfig:
       back to Sky via the borrow-rate charge. Instead the prime earns only the
       30 bps spread on its sUSDS-equivalent daily value, which is added to
       Prime Revenue. Requires ``convertToAssets`` to price sUSDS→USDS.
+
+    ``sde_coin`` is optional and independent of the above. When set, the named
+    coin's balance (par-stable, priced at $1/unit) is used as the SDE asset
+    value for ``compute_sky_revenue`` utilisation exclusion, in place of the
+    RWA NAV-oracle path. Use when the SDE exposure is a *different* coin from
+    ``coin`` (e.g. S24: ``coin``=sUSDS for spread revenue, ``sde_coin``=USDT
+    for the Sky Direct exposure). The coin must be in
+    ``KNOWN_PAR_STABLES_ETHEREUM``.
+
+    NOTE — mid-period SDE activation not yet pro-rated: if the SDE entry's
+    ``start_date`` falls within a settlement month the SDE is either active for
+    the full period (start_date ≤ period_start) or skipped entirely (start_date
+    > period_start). Daily pro-rating within the first partial month has not
+    been implemented. See ``config/sky_direct_exposures.yaml`` for the full
+    caveat.
     """
 
     coin: Address          # address of the target coin in the Curve pool
     sky_savings_token: bool = False  # True → 30bps spread to Prime Revenue; no utilized deduction
+    sde_coin: "Address | None" = None  # par-stable coin that is the SDE exposure (optional)
 
 
 class PsmKind(StrEnum):
