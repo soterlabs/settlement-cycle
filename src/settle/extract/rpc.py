@@ -65,7 +65,7 @@ def rpc_url(chain: Chain) -> str:
     return url
 
 
-DEFAULT_RETRY_ATTEMPTS = 60
+DEFAULT_RETRY_ATTEMPTS = 10
 DEFAULT_RETRY_BACKOFF_SEC = 0.3
 RETRY_BACKOFF_CAP_SEC = 3.0
 

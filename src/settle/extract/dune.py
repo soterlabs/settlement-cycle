@@ -241,7 +241,7 @@ def _resolve_query_id(sql_path: Path) -> int:
         if sha in reg:
             return reg[sha]
         # 3. Auto-create a private Dune query.
-        query_id = _create_query(sql, name=f"settle/{sql_path.name}")
+        query_id = _create_query(sql, name=f"settle/{sql_path.name}", is_private=False)
         reg[sha] = query_id
         _save_registry(reg)
     return query_id
