@@ -110,7 +110,7 @@ def load_sde_table(config_path: Path | None = None) -> SDETable:
             config_path,
         )
         return SDETable(entries=())
-    with config_path.open() as f:
+    with config_path.open(encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
 
     raw_entries = [
