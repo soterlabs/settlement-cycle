@@ -71,7 +71,7 @@ daily_sky_revenue = utilized_usds × [(1 + borrow_rate)^(1/365) - 1]
   |---|---|
   | `cum_debt` | Vat ilk debt (Σ frob `dart` from prime start → EoM pin block) |
   | `alm_proxy_usds` | Idle raw USDS at the ALM proxy |
-  | `psm_usds` | Idle USDS deposited in PSM3 (any chain) |
+  | `psm_usds` | Idle USDS-equivalent at any PSM (any chain, any `PsmKind`). Two mechanics dispatched per-config: `directed_flow` (Ethereum LITE-PSM — net `ALM → PSM − PSM → ALM` USDS Transfer flow) and `erc4626_shares` (Spark PSM3 on L2s — `convertToAssetValue(shares(alm, b), b)` daily snapshot). See PRD §17.11. Today: Ethereum directed_flow returns $0 for Grove + Spark (mainnet LITE-PSM is non-custodial — defensively configured); L2 PSM3 holdings ~$544M total for Spark as of 2026-05. |
   | `sde_asset_value` | Daily NAV of Sky Direct Exposure positions (BUIDL, JTRSY, JAAA-cap…); Sky collects their yield directly via `sde_revenue` so charging BR on top would double-bill |
   | `curve_idle_usds` | Prime's proportional USDS in Curve LP pools (par-stable coin leg only; yield-bearing legs such as sUSDS are tracked separately — see Rule 5) |
   | `lending_idle_usds` | Prime's proportional share of unborrowed underlying in SparkLend / Aave pools: `(alm_spToken / totalSupply) × underlying_in_contract` |

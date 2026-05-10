@@ -121,7 +121,7 @@ sde_revenue = Σ_venues sd_revenue
 ```
 utilized_d = cum_debt_d
            − alm_proxy_usds_d         ← idle raw USDS at the ALM proxy
-           − psm_usds_d               ← idle USDS deposited in PSM3 (any chain)
+           − psm_usds_d               ← idle USDS-equivalent at any PSM (any chain, any kind)
            − sde_asset_value_d        ← daily NAV of SDE positions (BUIDL, JTRSY, JAAA-cap…)
            − curve_idle_usds_d        ← USDS leg of Curve LP pools (par-stable coins only)
            − lending_idle_usds_d      ← prime's proportional idle underlying in lending pools
@@ -131,7 +131,11 @@ utilized_d = cum_debt_d
 
 `alm_proxy_usds` — raw USDS sitting idle at the ALM proxy address; subtracted because it is not earning anything and should not be billed the borrow rate.
 
-`psm_usds` — USDS deposited into PSM3 (Sky's Peg Stability Module); behaves as idle USDS for the prime's purposes.
+`psm_usds` — USDS-equivalent value the prime has parked at any PSM (Sky's Peg Stability Module family). Two mechanics dispatched per `PsmKind`:
+- **`directed_flow`** (mainnet LITE-PSM-USDC): track net USDS flow `ALM → PSM − PSM → ALM` via Transfer events. Today $0 for Grove + Spark — mainnet PSMs are non-custodial swap conduits; USDS never settles there. Path is configured defensively for any future custodial form.
+- **`erc4626_shares`** (Spark PSM3 on Base/Arbitrum/Optimism/Unichain): daily snapshot `convertToAssetValue(shares(alm, b), b)` via RPC. ~$544M USDS-equivalent total for Spark across the 4 L2s as of 2026-05.
+
+In both cases the timeseries is consumed as a "value-as-of-date" reading on the `cum_balance` column, so the meaning is consistent at the consumer despite different mechanics inside.
 
 `sde_asset_value` — SDE positions pay Sky directly via `sde_revenue`; charging BR on top would double-bill.
 

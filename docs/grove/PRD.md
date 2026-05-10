@@ -57,7 +57,7 @@ Discovered via Etherscan + Alchemy RPC on 2026-04-21. All on Ethereum mainnet un
 | AllocatorBuffer | `0x629ad4d779f46b8a1491d3f76f7e97cb04d8b1cd` | Intermediate USDS buffer |
 | ALM Proxy | `0x491edfb0b8b608044e227225c715981a30f3a44e` | Holds all allocation positions |
 | MainnetController | `0xB111E07c8B939b0Fe701710b365305F7F23B0edd` | Relayer / rate-limit policy |
-| PSM | `0xf6e72db5454dd049d0788e411b06cfaf16853042` | USDS↔DAI↔USDC conversion |
+| LITE-PSM (DAI) | `0xf6e72db5454dd049d0788e411b06cfaf16853042` | Maker `DssLitePsm` — DAI↔USDC leg. USDS↔USDC for Grove routes through the `UsdsPsmWrapper` (`0xa188eec…f98c`) which invokes the `DaiUsds` converter (`0x3225737a…276a`) for the USDS↔DAI 1:1 leg, then this contract for DAI↔USDC. |
 | Subproxy | `0x1369f7b2b38c76B6478c0f0E66D94923421891Ba` | Holds treasury/risk capital USDS / sUSDS (earns agent rate) |
 
 ### Stables

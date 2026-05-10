@@ -203,16 +203,29 @@ class CurveIdleUsdsConfig:
 class PsmKind(StrEnum):
     """How USDS-equivalent value at a PSM is computed.
 
-    * ``directed_flow`` — Sky LITE-PSM-USDC pattern (used by Grove/OBEX/Spark
-      on Ethereum). PSM is a swap conduit holding USDS at par; we track net
-      USDS flow ``(subproxy + ALM) → PSM − PSM → (subproxy + ALM)``. The
-      ``token`` field names what's tracked (USDS).
+    * ``directed_flow`` — Sky LITE-PSM-USDC pattern (configured for Grove and
+      Spark on Ethereum; would also fit OBEX). We track net flow of ``token``
+      ``ALM → PSM − PSM → ALM`` and treat the running cumulative as "USDS the
+      prime has parked at the PSM". Today (2026-05) mainnet LITE-PSM is
+      non-custodial for USDS, so this returns $0; the path is kept live for
+      any future custodial behavior. Subproxy flows are NOT tracked — subproxy
+      holds treasury / risk capital / realized revenue (PRD §17.7), which is
+      NOT part of cum_debt; including it would over-reimburse BR. Empirically
+      verified: zero subproxy→PSM USDS flow over Grove + Spark full lifetimes.
     * ``erc4626_shares`` — Spark PSM3 pattern (used on Base/Arbitrum/Optimism
       /Unichain). PSM3 has a non-standard ABI: shares are *internal accounting*
       (no ERC-20 Transfer events) and the rate uses
       ``convertToAssetValue(uint256)`` returning the USDS-equivalent value
       directly. We snapshot ``convertToAssetValue(shares(alm, b), b)`` at each
       day's EoD block. The ``token`` field is unused.
+
+    Note on ``cum_balance`` semantics across kinds (relevant if a new kind is
+    ever added): for ``directed_flow`` it is a running cumulative sum of
+    daily net flows; for ``erc4626_shares`` it is a daily snapshot of the
+    USDS-equivalent valuation. Both are consumed via ``cum_at_or_before`` in
+    ``compute_sky_revenue`` which reads "value-as-of-date" — equivalent for
+    that consumer, but a future PsmKind must produce something that has the
+    same "value-as-of-date" reading semantics on the ``cum_balance`` column.
     """
 
     DIRECTED_FLOW = "directed_flow"
@@ -261,9 +274,8 @@ class Prime:
     subproxy: dict[Chain, Address] = field(default_factory=dict)
     alm: dict[Chain, Address] = field(default_factory=dict)
     venues: list[Venue] = field(default_factory=list)
-    # Per-chain PSM config (replaces the old hardcoded ``compute._psm.PSM_BY_CHAIN``
-    # dict). Each chain may have at most one PSM today; if a future prime needs
-    # multiple, this becomes ``dict[Chain, list[PsmConfig]]``.
+    # Per-chain PSM config. Each chain may have at most one PSM today; if a
+    # future prime needs multiple, this becomes ``dict[Chain, list[PsmConfig]]``.
     psm: dict[Chain, PsmConfig] = field(default_factory=dict)
     # Addresses whose transfers TO the ALM count as Cat A revenue (off-chain
     # custodian distributions, e.g. Anchorage sending realized yield directly

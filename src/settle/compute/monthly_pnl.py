@@ -17,7 +17,7 @@ import pandas as pd
 from ..domain.monthly_pnl import MonthlyPnL
 from ..domain.period import Month, Period
 from ..domain.pricing import PricingCategory
-from ..domain.primes import Chain, Prime
+from ..domain.primes import Chain, Prime, PsmKind
 from ..domain.sde import load_sde_table
 from ..domain.sky_tokens import USDS_ETHEREUM, sUSDS_ETHEREUM
 from ..domain.subsidy import load_reference_rates
@@ -335,10 +335,23 @@ def _aggregate_psm_usds(
     if not prime.psm:
         return _empty_psm_df()
 
+    # Coverage assertion (PRD §17.10): if a PSM is configured for a chain that
+    # the orchestrator didn't resolve a pin_block for, the prior behavior was
+    # to silently `continue` — which would silently inflate ``utilized`` (the
+    # PSM holdings on that chain would be ignored, so the prime would be
+    # charged BR on capital that's actually parked). Fail fast instead — a
+    # missing pin_block here means the orchestrator's chain set is out of sync
+    # with the YAML, and the only correct action is to fix the config.
+    missing = [c.value for c in prime.psm if c not in period.pin_blocks]
+    if missing:
+        raise ValueError(
+            f"PSM configured for chain(s) {missing} but no pin_block resolved "
+            f"for them in this Period. Add the chain to the orchestrator's "
+            f"chain set or remove the `psm:` block from the prime YAML."
+        )
+
     daily_by_date: dict = {}
     for chain in prime.psm:
-        if chain not in period.pin_blocks:
-            continue
         per_chain = get_psm_usds_timeseries(
             prime, chain, period,
             balance_source=balance_source,
@@ -371,9 +384,10 @@ def get_psm_usds_timeseries(
 
     Two PSM mechanics, dispatched on ``prime.psm[chain].kind``:
 
-    * ``DIRECTED_FLOW`` (Sky LITE-PSM-USDC): track net USDS flow from
-      ``(subproxy + ALM) → PSM`` minus ``PSM → (subproxy + ALM)``. USDS is
-      par-stable so the raw flow IS the USDS-equivalent.
+    * ``DIRECTED_FLOW`` (Sky LITE-PSM-USDC): track net ``token`` flow
+      ``ALM → PSM`` minus ``PSM → ALM``. USDS is par-stable so the raw flow
+      IS the USDS-equivalent. The subproxy is intentionally NOT a tracked
+      holder — see ``PsmKind.DIRECTED_FLOW`` for rationale.
     * ``ERC4626_SHARES`` (Spark PSM3): the ALM holds PSM3 shares which are
       *internal accounting* (no ERC-20 Transfer events) and the rate uses a
       non-standard ``convertToAssetValue(uint256)``. We snapshot
@@ -381,18 +395,22 @@ def get_psm_usds_timeseries(
       diff it across days to produce ``daily_net``, and surface
       ``cum_balance`` as the running USDS-equivalent.
     """
-    import pandas as pd
-    from ..domain.primes import PsmKind
 
     cfg = prime.psm.get(chain)
     if cfg is None or chain not in prime.alm:
         return _empty_psm_df()
 
     if cfg.kind == PsmKind.DIRECTED_FLOW:
-        # Sky LITE-PSM pattern. Track ``token`` flow in/out of PSM from both
-        # the subproxy and the ALM. ``pin_block`` is only resolved here
-        # because the ERC4626_SHARES path resolves blocks per-day via the
-        # block_resolver and doesn't need a period-level pin.
+        # Sky LITE-PSM pattern. Track ``token`` flow in/out of PSM from the
+        # ALM only. The subproxy holds treasury / risk capital / realized
+        # revenue (PRD §17.7) that is NOT part of cum_debt; if those balances
+        # were ever routed through the PSM, subtracting them from utilized
+        # would over-reimburse the prime (BR is forgiven on capital that was
+        # never borrowed). Empirically (verified on Dune across Grove + Spark
+        # full lifetimes) no subproxy USDS has ever flowed to the PSM.
+        # ``pin_block`` is only resolved here because the ERC4626_SHARES path
+        # resolves blocks per-day via the block_resolver and doesn't need a
+        # period-level pin.
         if cfg.token is None:
             raise ValueError(
                 f"PSM config for {chain} (kind=directed_flow) requires a token "
@@ -400,8 +418,7 @@ def get_psm_usds_timeseries(
             )
         pin_block = period.pin_blocks[chain]
         bsrc = balance_source if balance_source is not None else get_balance_source()
-        holders = [prime.subproxy[chain]] if chain in prime.subproxy else []
-        holders.append(prime.alm[chain])
+        holders = [prime.alm[chain]]
 
         def _flow(from_addr, to_addr):
             return bsrc.directed_inflow_timeseries(
@@ -418,7 +435,24 @@ def get_psm_usds_timeseries(
             for _, r in _flow(cfg.address.value, holder.value).iterrows():
                 d = r["block_date"]
                 daily_by_date[d] = daily_by_date.get(d, Decimal(0)) - _to_decimal(r["daily_inflow"])
-        return _df_from_daily_dict(daily_by_date)
+        result = _df_from_daily_dict(daily_by_date)
+        # Defensive: cum_balance can legitimately go negative if the prime
+        # extracted more USDS from the PSM than it deposited (e.g., yield
+        # distribution, refund). The downstream formula in compute_sky_revenue
+        # handles negatives correctly IF cum_alm_usds and cum_psm_usds were
+        # built from symmetric data; asymmetric capture would silently inflate
+        # ``utilized``. Tolerance is $1 to absorb rounding.
+        if not result.empty:
+            min_cum = result["cum_balance"].min()
+            if min_cum < Decimal("-1"):
+                _log.warning(
+                    "directed_flow PSM cum_balance went negative for prime=%s "
+                    "chain=%s (min=$%s) — prime extracted more from PSM than "
+                    "deposited. Verify symmetry with cum_alm_usds before "
+                    "trusting compute_sky_revenue output.",
+                    prime.id, chain.value, f"{min_cum:,.2f}",
+                )
+        return result
 
     if cfg.kind == PsmKind.ERC4626_SHARES:
         # Spark PSM3. Shares are internal accounting (no Transfer events), so

@@ -1115,7 +1115,8 @@ are summed into `idle_assets`, vs. which get folded into `liabilities`,
 `in_transit_assets`, or per-venue `/allocations`? With that mapping plus
 Layer 1's `Σ alm_idle`, we can reproduce `idle_assets` from on-chain
 primitives (we already read every address in this table — per-chain
-PSM3 reads via `compute._psm`, ALM-side raw balances via the venue
+PSM3 reads via `IPsm3Source` (`extract/rpc.py::psm3_shares` +
+`psm3_convert_to_asset_value`), ALM-side raw balances via the venue
 inventory and `_read_idle_holdings`).
 
 #### B7. List of historical offchain transfers + revenue exceptions

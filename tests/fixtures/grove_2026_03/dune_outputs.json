@@ -2965,14 +2965,14 @@
     ]
   },
   "psm_usds": {
-    "_about": "USDS Grove parked at Spark PSM (subproxy + ALM proxy → PSM, net of withdrawals). Returned zero rows — Grove uses the PSM as a USDS↔USDC swap conduit, not as an idle deposit. Contribution to utilized = $0 for March 2026.",
+    "_about": "USDS Grove parked at the configured Ethereum PSM (`directed_flow` probe — net ALM → PSM minus PSM → ALM, in USDS). Returns zero rows: mainnet PSMs (LITE-PSM-USDC + UsdsPsmWrapper) are non-custodial — USDS never settles at the LITE-PSM contract (DAI↔USDC leg). USDS↔USDC instead routes via UsdsPsmWrapper + DaiUsds converter. Contribution to utilized = $0 for March 2026; path is kept configured defensively.",
     "_chain": "ethereum",
     "_token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
     "_psm": "0x37305b1cd40574e4c5ce33f8e8306be057fd7341",
     "_holders": [
-      "0x1369f7b2b38c76b6478c0f0e66d94923421891ba",
       "0x491edfb0b8b608044e227225c715981a30f3a44e"
     ],
+    "_holders_note": "ALM only — subproxy is intentionally excluded; it holds treasury / risk capital that isn't part of cum_debt (PRD §17.7).",
     "_dune_query_id": 7396569,
     "_dune_execution_id": "01KQB31Q44YSQWG1PHH2MHCSV0",
     "rows": []
