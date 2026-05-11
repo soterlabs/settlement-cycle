@@ -628,7 +628,7 @@ Reference docs: `prime-settlement-methodology.md` (5-step framework) and `debt-r
 
 **Implemented (matches doc):**
 - Step 1 base rate = `SSR + 30bps`, continuously compounded per-second (`apr_per_sec = ln(1+APY)/SECONDS_PER_YEAR`); daily summing per RULES §1.
-- Step 2 idle USDS in ALM proxy + **PSM** subtracted from `utilized` so prime is reimbursed BR. PSM term added Phase 2.B.7. The Ethereum directed_flow probe (LITE-PSM-USDC) returns $0 for both Grove and Spark today because the mainnet PSMs are non-custodial swap conduits — USDS↔USDC routes through UsdsPsmWrapper + DaiUsds converter + LITE-PSM (DAI↔USDC leg), and USDS never settles at the LITE-PSM contract. Verified empirically on Dune (2026-05): zero USDS Transfer events between either prime's ALM/subproxy and either Sky mainnet PSM (`0x37305b…7341` LITE-PSM, `0xa188eec…f98c` UsdsPsmWrapper). The `psm:` block is kept configured defensively so the path activates without further config if Sky ever flips a PSM into a custodial form for USDS. Subproxy USDS/sUSDS are NOT subtracted from utilized — the subproxy holds a mix of genesis capital, treasury holdings, risk capital, and realized revenue that does not all correspond to ilk debt; these balances earn the agent rate instead. For the same reason, the subproxy is **not** a tracked holder in the `directed_flow` PSM probe (§17.11).
+- Step 2 idle USDS in ALM proxy + **PSM** subtracted from `utilized` so prime is reimbursed BR. PSM term added Phase 2.B.7. **No Ethereum PSM is tracked** — the mainnet PSM stack (LITE-PSM `DssLitePsm` + USDC pocket EOA + `DaiUsds` converter + retail `UsdsPsmWrapper`) is non-custodial; every prime↔PSM interaction completes atomically in a single swap tx, no balances accumulate. Verified on-chain via a Spark trace (Dune tx `0x2c81d2de…42c0b6`): USDS → DAI (via DaiUsds mint/burn) → USDC (`DssLitePsm.buyGem` transfers USDC from pocket to ALM). An earlier `directed_flow` PsmKind probed USDS flow at the pocket — removed 2026-05-11 (see §17.11) because USDS never touches the pocket; the pocket only holds USDC. Only the L2 **PSM3** (custodial, share-based) is tracked. Subproxy USDS/sUSDS are NOT subtracted from utilized — the subproxy holds a mix of genesis capital, treasury holdings, risk capital, and realized revenue that does not all correspond to ilk debt; these balances earn the agent rate instead.
 - **Step 2 Curve pool idle USDS** subtracted from `utilized` via `curve_idle_usds` venue config, **par-stable coins only**. For each configured venue the prime's proportional share of the coin reserve is computed daily via RPC (`read_pool` + `balanceOf`). Enabled for Spark S25 (USDS leg of PYUSD/USDS pool) at $1/unit. S24 (sUSDS leg) is tracked in the pipeline for future Prime Revenue use but does **not** reduce `utilized` — subtracting a yield-bearing balance as USDS-equivalent is incorrect.
 - **Step 2 Lending pool idle underlying** subtracted from `utilized` via `lending_idle_usds: true` venue flag (Cat C/D only). For each configured spToken/aToken venue the prime's proportional share of the unborrowed underlying is computed daily via RPC: `(balanceOf(ALM, spToken) / totalSupply(spToken)) × balanceOf(spToken_contract, underlying)`. Enabled for Spark S1 (spUSDS/USDS) and S4 (spDAI/DAI — par-stable at $1). `utilized = cum_debt − ALM − PSM − Σ curve_idle_usds − Σ lending_idle_usds`.
 - sUSDS in subproxy treated as cost basis (`shares × entry_pps`, daily-resolution proxy via `convertToAssets` at each active day's EoD block). Avoids double-counting SSR.
@@ -654,7 +654,7 @@ Reference docs: `prime-settlement-methodology.md` (5-step framework) and `debt-r
 - **Reconciliation gap with Sky's reported Sky Share** (~$1.13M for Grove March 2026). The methodology + Sky Direct set are correct; the residual implies Sky uses a specific BR_charge "Asset Value" formula we haven't matched. Three approximations bracketed the answer (midpoint avg, daily time-weighted, EoM-only); next step would be either Sky's exact spec or per-tx pricing across the period.
 - **Chronicle adapter robustness** — currently silently falls back to `const_one` ($1) when Chronicle returns `0x`, which can produce phantom revenue at SoM blocks before the oracle was deployed. Mitigated by `nav_overrides` fixture for known-historical NAVs at affected blocks, but the adapter itself should distinguish "pre-deployment" from "real $1" and refuse the const_one fallback for venues whose actual NAV is far from $1.
 
-**Diverges from Maker's official query (`6954386_daily_utilized_usds`):** the official Maker query does not include the PSM term. Our `utilized` formula is more generous to the prime when PSM holdings exist. For **Grove** March 2026 the values match because Grove has nothing parked at any PSM (Ethereum directed_flow returns $0; Grove has no L2 PSM3). For **Spark** the L2 PSM3 holdings are material (~$544M USDS-equivalent as of 2026-05 across Base / Arbitrum / Optimism / Unichain — verified via `psm3_shares` + `convertToAssetValue` RPC calls), so Spark's `utilized` is lower than Maker's official query would compute, and Sky-side BR revenue is lower by ~`$544M × subsidised_BR` until Maker's spec is reconciled or our PSM3 USDC slice is moved into the SDE flow (see §17.13 — currently a documented gap).
+**Diverges from Maker's official query (`6954386_daily_utilized_usds`):** the official Maker query does not include the PSM term. Our `utilized` formula is more generous to the prime when PSM holdings exist. For **Grove** the values match — Grove has no L2 PSM3 and no Ethereum PSM is tracked (mainnet stack is non-custodial). For **Spark** the L2 PSM3 holdings are material (~$544M USDS-equivalent as of 2026-05 across Base / Arbitrum / Optimism / Unichain — verified via `psm3_shares` + `convertToAssetValue` RPC calls). Of the three legs (see §17.11), only the **USDS leg** is subtracted from `utilized` directly; the **USDC leg** is routed into `sde_asset_value` (which is also excluded from BR base, but separately attributed to Sky as Sky Direct revenue); the **sUSDS leg** stays in the BR base — the prime pays full BR on it and is credited 30 bps as Prime Revenue to neutralise the SSR-via-share-price + BR-charge composite. Net divergence vs. Maker: Sky-side BR revenue is lower by ~`(USDS leg) × subsidised_BR + (USDC leg × subsidised_BR − USDC_SDE_yield)`; the sUSDS leg is BR-neutral on both sides.
 
 ### 17.4 Migration plan delta (vs. §13 above)
 
@@ -665,8 +665,8 @@ Reference docs: `prime-settlement-methodology.md` (5-step framework) and `debt-r
 | 2.B — Grove Base + Avalanche + Plume | rolled into above | ✅ shipped — cost-basis +0.06% in March (within tolerance); +0.63% with E23 added |
 | 2.C — Grove Monad | rolled into above | ⚠️ partial — venue identified but RPC archival outside available range |
 | 2.D — Methodology alignment (Cat A polarity, sUSDS cost basis, PSM, Step 4 Sky Direct) | (added late) | ✅ shipped — all in §17.7. Q1 2026 Grove numbers reproducible |
-| 2.E — PSM3 mechanics + per-prime PSM config (Spark prerequisite) | (added late) | ✅ shipped — `PsmKind.{DIRECTED_FLOW,ERC4626_SHARES}` + per-chain `Prime.psm`. See §17.11. |
-| 3.A — Spark scaffolding | planned | ⚠️ **partial** — `config/spark.yaml` (51 venues + 5 PSMs across 6 chains), ilk + subproxy verified, start_date confirmed (2024-11-18). Q1 2026 numbers NOT yet computed — see §17.12 for remaining work. |
+| 2.E — PSM3 mechanics + per-prime PSM config (Spark prerequisite) | (added late) | ✅ shipped — `PsmKind.ERC4626_SHARES` + per-chain `Prime.psm` (L2 PSM3 only; mainnet PSM is non-custodial, not tracked). See §17.11. |
+| 3.A — Spark scaffolding | planned | ⚠️ **partial** — `config/spark.yaml` (51 venues + 4 PSM3 stanzas across 6 chains; Eth has no PSM stanza), ilk + subproxy verified, start_date confirmed (2024-11-18). Q1 2026 numbers NOT yet computed — see §17.12 for remaining work. |
 | 3.B — Skybase | planned | ❌ not started |
 | 4 — Indexer alternative | planned | ❌ not started |
 
@@ -699,10 +699,13 @@ The current venue list per prime is built by hand (PRD §3, §4) and cross-check
 - **Future automation:** add a `settle audit flow-of-funds --prime <id> --month <YYYY-MM>` subcommand that runs this diff and fails if any unrecognized counterparty crossed a configurable USD threshold.
 
 #### Mainnet PSM non-custodial assumption — periodic sanity check
-The Ethereum `directed_flow` PSM entry in each prime's YAML (Grove + Spark) is configured against the Sky `LITE-PSM-USDC` (`0x37305b…7341`), with `token: USDS`. Today this probe returns $0 because the mainnet PSMs (LITE-PSM-USDC + UsdsPsmWrapper) are **non-custodial swap conduits** — USDS never settles at the LITE-PSM contract; USDS↔USDC routes through `UsdsPsmWrapper` (`0xa188eec…f98c`) → `DaiUsds` converter (`0x3225737a…276a`) → `LITE-PSM-USDC` (DAI↔USDC leg). The path is kept live defensively in case Sky ever flips a PSM into a custodial form for USDS.
+Today no Ethereum PSM is tracked in either prime's YAML. This rests on the empirical fact (verified 2026-05 on Dune + end-to-end tx trace) that Sky's mainnet PSM stack — `DssLitePsm` orchestrator (`0xf6e72db5…3042`), USDC pocket EOA (`0x37305b1c…7341`), `DaiUsds` converter (`0x3225737a…276a`), and retail `UsdsPsmWrapper` (`0xa188eec…f98c`) — is **non-custodial for any prime**: primes transit through it as atomic swaps within a single tx and accumulate no balances at any of those addresses. If Sky ever flips this assumption (a new custodial PSM that holds USDS, USDC, or sUSDS on a prime's behalf), the pipeline silently under-tracks the prime's idle capital until we add the new contract.
 
-- **Recurring check (manual, every settlement cycle):** verify the assumption still holds with a one-shot Dune query — `SELECT SUM(amount) FROM tokens.transfers WHERE token = USDS AND ("to" = LITE_PSM OR "to" = UsdsPsmWrapper) AND block_date >= period_start` — and `balanceOf(USDS, LITE_PSM)` / `balanceOf(USDS, UsdsPsmWrapper)` at the period's EoM pin block. Both should remain ≈ 0 (the wrapper retains ≤ ~$10K rounding dust each month per our 2026-05 audit). If either jumps, the swap-conduit assumption has broken — the `directed_flow` term will start producing non-zero values for affected primes, and we need to verify that (a) the prime's ALM is actually parking capital there, not the protocol holding it on behalf of unrelated users; (b) the USDS sitting at the PSM is indeed BR-reimbursable for the prime.
-- **Future automation:** add a `settle audit psm-custodial --month <YYYY-MM>` subcommand that runs both the Dune flow check and the on-chain `balanceOf` snapshot, fails if either non-zero amount exceeds a configurable threshold (~$10K dust by default).
+- **Recurring check (manual, every settlement cycle):** verify the assumption with two one-shot probes:
+  - **USDS-at-PSM Dune query:** `SELECT SUM(amount) FROM tokens.transfers WHERE token = USDS AND "to" = UsdsPsmWrapper AND block_date >= period_start` plus the reverse; net should be ≈ 0 (dust). Same for direct interaction with the LITE-PSM pocket if a USDS leg ever appears.
+  - **On-chain `balanceOf` snapshot at EoM:** `balanceOf(USDS, LITE_PSM | UsdsPsmWrapper | pocket)` and the equivalent for DAI / USDC. Both LITE-PSM internal DAI buffer (~$400M) and pocket USDC reserves (~$3.9B) should remain protocol-owned, not flagged as any specific prime's claim.
+  - If either probe surfaces a per-prime accumulating balance, **re-introduce per-prime PSM tracking** as a new YAML kind (likely share-based, like PSM3 — not the old directed_flow).
+- **Future automation:** add a `settle audit psm-custodial --month <YYYY-MM>` subcommand that runs both probes and fails if any per-prime balance exceeds a configurable threshold (~$10K dust by default).
 
 ### 17.10 Future work
 
@@ -724,14 +727,15 @@ Today we report `prime_agent_revenue = Σ venue.revenue` and trust the per-venue
 
 The output of this review would be a per-venue confidence rating: which venues we can trust the calc for unconditionally, which need an additional cross-check, and which need a different methodology.
 
-### 17.11 PSM mechanics refactor (per-prime, per-chain)
+### 17.11 PSM mechanics (custodial PSM3 only; mainnet has no per-prime tracking)
 
-Historically there was a hardcoded `compute._psm.PSM_BY_CHAIN` dict (since removed); PSMs are now declared per-prime in YAML under `addresses.<chain>.psm:`, with two supported mechanics dispatched by `PsmKind`:
+PSMs are declared per-prime in YAML under `addresses.<chain>.psm:`. Today only one mechanic is supported:
 
 | Mechanic | When | How USDS-equivalent is computed |
 |---|---|---|
-| `directed_flow` | Sky LITE-PSM-USDC pattern (Grove + Spark on Ethereum) | Net token flow `ALM → PSM` minus `PSM → ALM`. Token is USDS, par-stable. **Subproxy is intentionally not a tracked holder** — subproxy holds treasury / risk capital / realized revenue (§17.7) that is NOT part of cum_debt; including it would over-reimburse BR. Verified empirically on Dune that zero subproxy USDS has ever flowed to the PSM over Grove + Spark full lifetimes (2024-09 → 2026-05). The current `directed_flow` USDS-flow probe returns $0 because mainnet PSMs (LITE-PSM-USDC + UsdsPsmWrapper) are non-custodial swap conduits — USDS↔USDC routes through UsdsPsmWrapper + DaiUsds converter + LITE-PSM (DAI↔USDC leg); USDS never settles at the LITE-PSM contract. Configured defensively so the path activates without further config if Sky ever flips a PSM into a custodial form for USDS. |
-| `erc4626_shares` | Spark PSM3 pattern (Base / Arbitrum / Optimism / Unichain) | PSM3 has a **non-standard ABI**: shares are *internal accounting* (no ERC-20 Transfer events) and the rate uses `convertToAssetValue(uint256)` (selector `0x41c094e0`), distinct from ERC-4626 `convertToAssets(uint256)`. We snapshot `convertToAssetValue(shares(alm, b), b)` at each day's EoD block; daily-net is the diff across days. **Per-leg split**: PSM3 holds three reserves — USDC + USDS + sUSDS — that are treated differently by the methodology (see "Per-leg split" below). |
+| `erc4626_shares` | Spark PSM3 (Base / Arbitrum / Optimism / Unichain) | PSM3 is **custodial**: the prime's ALM holds shares against a basket of USDC + USDS + sUSDS reserves. Shares are *internal accounting* (no ERC-20 Transfer events), and the rate uses `convertToAssetValue(uint256)` (selector `0x41c094e0`) which returns the USDS-equivalent value of N shares directly. We snapshot `convertToAssetValue(shares(alm, b), b)` at each day's EoD block, then **decompose into the three legs** for per-leg routing below. |
+
+**Why no Ethereum PSM entry.** Sky's mainnet PSM stack (`DssLitePsm` orchestrator at `0xf6e72db5…3042`, USDC pocket EOA at `0x37305b1c…7341`, `DaiUsds` converter at `0x3225737a…276a`, retail-facing `UsdsPsmWrapper` at `0xa188eec…f98c`) is **non-custodial** — every prime↔PSM interaction completes atomically in a single swap tx. Verified end-to-end on Dune (Spark tx `0x2c81d2de…42c0b6`): the prime ALM transits USDS → DAI (via DaiUsds mint/burn) → USDC (transferred from the pocket via `DssLitePsm.buyGem`), with no balances accumulating at any of those addresses. Pocket USDC reserves and `DssLitePsm` DAI buffer are Sky's protocol working capital, not per-prime claims. An earlier `directed_flow` PsmKind tracked net USDS flow at the pocket — it was removed (2026-05-11) once we confirmed USDS doesn't touch the pocket at all (it only handles USDC); the tracker was looking at the wrong token at the wrong address. If a future Sky PSM ever becomes custodial for USDS, that's a new contract with a likely-different mechanism (almost certainly share-based like PSM3, not directed-flow), so re-introducing the pattern wouldn't be by reviving this enum value.
 
 #### Per-leg split for `erc4626_shares` (PSM3) — implemented 2026-05-11
 
@@ -745,9 +749,7 @@ Same shape as the existing rule for sUSDS held inside Curve LP pools (RULES §5 
 
 Decomposition is per-day: at each EoD block we read `balanceOf(token, psm3)` for each leg, translate the sUSDS face balance to USDS-equivalent via Ethereum sUSDS `convertToAssets(1e18)` at the matching EoD block (the L2 sUSDS is a 1:1 bridge of mainnet sUSDS — verified to 4 decimals across all 4 L2 chains), then apportion Spark's claim via `spark_share = convertToAssetValue(spark_shares) / pool_total_usds_eq`.
 
-Token addresses for the per-leg reads live in `settle.domain.sky_tokens.PSM3_LEG_TOKENS` (discovered via Dune queries 7468346 + 7468351). The `get_psm_usds_timeseries` ERC4626_SHARES branch returns a 6-column frame: `[block_date, daily_net, cum_balance, cum_usdc, cum_usds_leg, cum_susds]`. The aggregator forward-fills per-chain per-leg cumulatives so a chain with no row on a given date contributes its last known value.
-
-For the `directed_flow` path, `cum_usds_leg = cum_balance` and the other leg columns are zero — preserving identical math for primes that don't have a PSM3.
+Token addresses for the per-leg reads live in `settle.domain.sky_tokens.PSM3_LEG_TOKENS` (discovered via Dune queries 7468346 + 7468351). `get_psm_usds_timeseries` returns a 6-column frame: `[block_date, daily_net, cum_balance, cum_usdc, cum_usds_leg, cum_susds]`.
 
 Per-chain timeseries are summed by `_aggregate_psm_usds` into a single 6-column `psm_usds` DataFrame fed into `compute_sky_revenue`. For multi-chain primes (Spark), L2 PSM3 holdings reduce the Ethereum-denominated `utilized` since they were funded from Eth-borrowed USDS that was bridged over.
 
@@ -755,10 +757,8 @@ YAML snippet (Spark):
 ```yaml
 addresses:
   ethereum:
-    psm:
-      kind: directed_flow
-      address: '0x37305b1cd40574e4c5ce33f8e8306be057fd7341'   # Sky LITE-PSM-USDC
-      token:   '0xdc035d45d973e3ec169d2276ddab16f1e407384f'   # USDS
+    # No psm: block — mainnet PSM stack is non-custodial, no per-prime
+    # balances to track.
   base:
     psm:
       kind: erc4626_shares
@@ -771,7 +771,7 @@ Grove numbers preserved exactly across this refactor (regression-checked). The 4
 ### 17.12 Spark — current status (2026-04-29)
 
 #### Done
-- **Config scaffolding** (`config/spark.yaml`): 51 venues (Cat A: 15, Cat B: 17, Cat C: 12, Cat E: 5, Cat F: 2) across 6 chains (Ethereum, Base, Arbitrum, Optimism, Unichain, Avalanche-C). Per-chain PSM stanzas (5 — Eth `directed_flow` + 4 L2 `erc4626_shares`).
+- **Config scaffolding** (`config/spark.yaml`): 51 venues (Cat A: 15, Cat B: 17, Cat C: 12, Cat E: 5, Cat F: 2) across 6 chains (Ethereum, Base, Arbitrum, Optimism, Unichain, Avalanche-C). Per-chain PSM stanzas (4 — L2 `erc4626_shares` only; Ethereum has no PSM stanza since mainnet PSM is non-custodial, see §17.11).
 - **Identifiers verified via Dune** (query 7399640): ilk = `ALLOCATOR-SPARK-A` = `0x414c4c…000000`, subproxy (urn) = `0x691a6c29e9e96dd897718305427ad5d534db16ba`, first frob = 2024-11-18 (block 21,215,063), 49,794 frobs through 2026-04-29 (most active allocator across all primes).
 - **Sky Direct flags**: 4 venues confirmed Sky Direct (S19 BUIDL-I, S20 JTRSY, S21 USTB on Ethereum + S24 sUSDSUSDT Curve). PSM3 holdings are NOT venues so the prior 4 Sky-Direct flags on the PSM3 venues went away with the refactor.
 - **PSM3 ABI validated** (2026-04-29). On-chain probes of Base PSM3 (`0x1601843c…`) and Optimism PSM3 (`0xe0f9978b…`) confirm PSM3 does **not** implement standard ERC-4626 `convertToAssets(uint256)`. The contract exposes:
@@ -780,7 +780,7 @@ Grove numbers preserved exactly across this refactor (regression-checked). The 4
     * `convertToAssets(address asset, uint256 numShares)` — different signature than ERC-4626's; not used here
   
   Code now uses the correct ABI: new `IPsm3Source` protocol + `RPCPsm3Source` impl + `psm3_shares` / `psm3_convert_to_asset_value` in `extract.rpc`. The `erc4626_shares` branch of `get_psm_usds_timeseries` reads daily snapshots `convertToAssetValue(shares(alm, b), b)` for each day in the period.
-- **Spark sky-revenue runner** (`scripts/run_spark_2026_q1.py`) built. Computes ONLY `sky_revenue` (per user direction 2026-04-28). Loads Spark prime config, resolves EoM blocks per chain, fetches debt + Eth-side balances + SSR via Dune, builds PSM USDS-equivalent timeseries (Eth directed-flow + L2 PSM3 RPC), runs `compute_sky_revenue` for each of Jan/Feb/Mar 2026, persists per-month JSON to `settlements/spark/<YYYY-MM>/`.
+- **Spark sky-revenue runner** (`scripts/run_spark_2026_q1.py`) built — now deprecated (`sys.exit(2)` guard) and superseded by `run_spark_2026_q1_full.py`. The deprecated script's PSM timeseries was Eth directed-flow + L2 PSM3 RPC; today only L2 PSM3 is tracked (mainnet PSM stack is non-custodial, see §17.11) and is built from the full per-leg snapshot via `compute_monthly_pnl` → `_aggregate_psm_usds`.
 
 #### Pending fixture captures (Dune)
 Query IDs created and partially executed; pagination + JSON-write not yet completed (see `tests/fixtures/spark_2026_q1/MANIFEST.json` for IDs):

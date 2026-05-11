@@ -203,32 +203,28 @@ class CurveIdleUsdsConfig:
 class PsmKind(StrEnum):
     """How USDS-equivalent value at a PSM is computed.
 
-    * ``directed_flow`` — Sky LITE-PSM-USDC pattern (configured for Grove and
-      Spark on Ethereum; would also fit OBEX). We track net flow of ``token``
-      ``ALM → PSM − PSM → ALM`` and treat the running cumulative as "USDS the
-      prime has parked at the PSM". Today (2026-05) mainnet LITE-PSM is
-      non-custodial for USDS, so this returns $0; the path is kept live for
-      any future custodial behavior. Subproxy flows are NOT tracked — subproxy
-      holds treasury / risk capital / realized revenue (PRD §17.7), which is
-      NOT part of cum_debt; including it would over-reimburse BR. Empirically
-      verified: zero subproxy→PSM USDS flow over Grove + Spark full lifetimes.
-    * ``erc4626_shares`` — Spark PSM3 pattern (used on Base/Arbitrum/Optimism
-      /Unichain). PSM3 has a non-standard ABI: shares are *internal accounting*
-      (no ERC-20 Transfer events) and the rate uses
-      ``convertToAssetValue(uint256)`` returning the USDS-equivalent value
-      directly. We snapshot ``convertToAssetValue(shares(alm, b), b)`` at each
-      day's EoD block. The ``token`` field is unused.
+    Single supported kind today:
 
-    Note on ``cum_balance`` semantics across kinds (relevant if a new kind is
-    ever added): for ``directed_flow`` it is a running cumulative sum of
-    daily net flows; for ``erc4626_shares`` it is a daily snapshot of the
-    USDS-equivalent valuation. Both are consumed via ``cum_at_or_before`` in
-    ``compute_sky_revenue`` which reads "value-as-of-date" — equivalent for
-    that consumer, but a future PsmKind must produce something that has the
-    same "value-as-of-date" reading semantics on the ``cum_balance`` column.
+    * ``erc4626_shares`` — Spark PSM3 pattern (used on Base / Arbitrum /
+      Optimism / Unichain). PSM3 is custodial: the prime's ALM holds shares
+      against a basket of USDC + USDS + sUSDS reserves. PSM3 has a
+      non-standard ABI: shares are *internal accounting* (no ERC-20 Transfer
+      events) and the rate uses ``convertToAssetValue(uint256)`` returning
+      the USDS-equivalent value of N shares directly. We snapshot
+      ``convertToAssetValue(shares(alm, b), b)`` at each day's EoD block,
+      then decompose into per-leg values (USDC / USDS / sUSDS) for the
+      methodology routing in PRD §17.11.
+
+    History note: an earlier ``directed_flow`` kind was deprecated and
+    removed (2026-05-11) after the on-chain mechanics for Sky's mainnet
+    LITE-PSM stack (DssLitePsm + DaiUsds converter + USDC pocket EOA +
+    UsdsPsmWrapper) were traced end-to-end. The mainnet stack is
+    non-custodial — no per-prime balances accumulate at any contract or
+    pocket; primes only transit through it as atomic swaps. There's
+    nothing to "track" on mainnet that the venue/Cat-A paths don't
+    already cover. See PRD §17.11.
     """
 
-    DIRECTED_FLOW = "directed_flow"
     ERC4626_SHARES = "erc4626_shares"
 
 
@@ -240,9 +236,10 @@ class PsmConfig:
 
     kind: PsmKind
     address: Address
-    # Only meaningful for ``kind=directed_flow`` — names the underlying token
-    # whose flows we track (e.g. USDS for Sky LITE-PSM). Ignored when shares-
-    # based since the share token IS the PSM contract address.
+    # Currently unused — historical field from the deprecated ``directed_flow``
+    # kind which tracked a specific token's flow in/out of a PSM. Retained as
+    # an optional config slot in case a future PsmKind needs to name a
+    # specific underlying token.
     token: Address | None = None
 
 

@@ -38,15 +38,12 @@ addresses:
   ethereum:
     subproxy: '0x691a6c29e9e96dd897718305427ad5d534db16ba'    # urn for ALLOCATOR-SPARK-A; 49,789 frob calls (most active allocator)
     alm:      '0x1601843c5e9bc251a3272907010afa41fa18347e'    # Spark Ethereum ALM (cross-chain hub)
-    # PSM tracking is configured defensively. Today the LITE-PSM-USDC is non-custodial
-    # for USDS (USDS↔USDC routes through UsdsPsmWrapper + DaiUsds converter + LITE-PSM
-    # for DAI↔USDC), so the directed_flow probe of USDS in/out of this address returns
-    # $0. If Sky ever flips LITE-PSM (or a successor) into a custodial form that holds
-    # USDS on the prime's behalf, the path activates without further config. See PRD §17.7.
-    psm:
-      kind: directed_flow                                     # Sky LITE-PSM-USDC (defensive — see comment above)
-      address: '0x37305b1cd40574e4c5ce33f8e8306be057fd7341'
-      token:   '0xdc035d45d973e3ec169d2276ddab16f1e407384f'   # USDS — tracked in/out of PSM
+    # No PSM tracking on Ethereum. Sky's mainnet PSM stack (DssLitePsm +
+    # DaiUsds converter + LITE-PSM-USDC pocket EOA + retail UsdsPsmWrapper)
+    # is non-custodial — no per-prime balances accumulate at any contract or
+    # pocket. Spark transits USDS↔USDC through this stack as atomic swaps
+    # within a single tx (verified on Dune via tx 0x2c81d2de…42c0b6 trace).
+    # See PRD §17.11.
   base:
     alm:      '0x2917956eff0b5eaf030abdb4ef4296df775009ca'    # Spark Base ALM
     psm:
@@ -582,9 +579,11 @@ venues:
   # ─────────────────────────────────────────────────────────────
   # PSM3 (Base/Arbitrum/Optimism/Unichain) is NOT a Cat E venue — it's
   # tracked via ``addresses.<chain>.psm`` and contributes to the utilized
-  # reimbursement (compute_sky_revenue Step 2), same pattern as Grove's PSM
-  # entry on Ethereum. Kept as a comment so the venue id space stays gap-free
-  # and reviewers can see this was a deliberate choice, not an omission.
+  # reimbursement (compute_sky_revenue Step 2). PRD §17.11 details the
+  # per-leg routing (USDS → utilized reduction; USDC → SDE; sUSDS → BR base
+  # + 30 bps credit-back). Kept as a comment so the venue id space stays
+  # gap-free and reviewers can see this was a deliberate choice, not an
+  # omission.
 
   - id: S34
     chain: base

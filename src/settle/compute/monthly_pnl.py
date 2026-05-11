@@ -296,12 +296,9 @@ def _susds_shares_to_principal(
 def _empty_psm_df() -> pd.DataFrame:
     """Empty 6-column PSM timeseries frame.
 
-    ``cum_balance`` = USDS-equivalent total (kept for backward compatibility
-    with the directed_flow path and any external consumer). For erc4626_shares
-    the per-leg columns (``cum_usdc``, ``cum_usds_leg``, ``cum_susds``) are
-    populated and ``cum_balance = cum_usdc + cum_usds_leg + cum_susds``; for
-    directed_flow only ``cum_balance`` and ``cum_usds_leg`` are populated
-    (= same value) and the other legs are zero.
+    ``cum_balance`` = USDS-equivalent total = ``cum_usdc + cum_usds_leg +
+    cum_susds`` (kept on the frame for at-a-glance reads / any external
+    consumer that doesn't need the per-leg breakdown).
     """
     return pd.DataFrame({
         "block_date": [], "daily_net": [], "cum_balance": [],
@@ -344,29 +341,6 @@ def _psm3_susds_spread(psm_usds: pd.DataFrame | None, period: Period) -> Decimal
             total += cum_susds * spread_factor
         current = current + timedelta(days=1)
     return total
-
-
-def _df_from_daily_dict(daily_by_date: dict) -> pd.DataFrame:
-    """Build the 6-column PSM timeseries from a ``{date: Decimal}`` map of
-    daily-net values (used by the directed_flow path — no per-leg split).
-
-    The directed_flow probe tracks net USDS flow only, so ``cum_usds_leg``
-    duplicates ``cum_balance`` and the other leg columns are zero. The PSM3
-    (erc4626_shares) path constructs its frame directly with proper per-leg
-    columns rather than going through this helper.
-    """
-    if not daily_by_date:
-        return _empty_psm_df()
-    rows = sorted(daily_by_date.items(), key=lambda kv: kv[0])
-    df = pd.DataFrame({
-        "block_date":   [r[0] for r in rows],
-        "daily_net":    [r[1] for r in rows],
-    })
-    df["cum_balance"]  = df["daily_net"].cumsum()
-    df["cum_usds_leg"] = df["cum_balance"]
-    df["cum_usdc"]     = Decimal(0)
-    df["cum_susds"]    = Decimal(0)
-    return df
 
 
 def _aggregate_psm_usds(
@@ -477,85 +451,23 @@ def get_psm_usds_timeseries(
 ):
     """USDS-equivalent the prime has parked at the PSM on ``chain``, per day.
 
-    Treated as idle USDS in ``compute_sky_revenue.utilized``: the prime is
-    reimbursed BR on the parked balance, matching prime-settlement-methodology
-    Step 2 (idle USDS in PSM / PSM3).
+    Returns a 6-column DataFrame ``[block_date, daily_net, cum_balance,
+    cum_usdc, cum_usds_leg, cum_susds]``. Returns empty DataFrame if the
+    prime has no PSM configured on this chain.
 
-    Returns a DataFrame ``[block_date, daily_net, cum_balance]`` matching the
-    other balance timeseries. Returns empty DataFrame if the prime has no PSM
-    configured on this chain.
-
-    Two PSM mechanics, dispatched on ``prime.psm[chain].kind``:
-
-    * ``DIRECTED_FLOW`` (Sky LITE-PSM-USDC): track net ``token`` flow
-      ``ALM → PSM`` minus ``PSM → ALM``. USDS is par-stable so the raw flow
-      IS the USDS-equivalent. The subproxy is intentionally NOT a tracked
-      holder — see ``PsmKind.DIRECTED_FLOW`` for rationale.
-    * ``ERC4626_SHARES`` (Spark PSM3): the ALM holds PSM3 shares which are
-      *internal accounting* (no ERC-20 Transfer events) and the rate uses a
-      non-standard ``convertToAssetValue(uint256)``. We snapshot
-      ``convertToAssetValue(shares(alm, b), b)`` at each day's EoD block,
-      diff it across days to produce ``daily_net``, and surface
-      ``cum_balance`` as the running USDS-equivalent.
+    Single supported mechanic today (``PsmKind.ERC4626_SHARES``, Spark PSM3):
+    the ALM holds PSM3 shares which are *internal accounting* (no ERC-20
+    Transfer events) and the rate uses a non-standard
+    ``convertToAssetValue(uint256)``. We snapshot
+    ``convertToAssetValue(shares(alm, b), b)`` at each day's EoD block,
+    decompose into per-leg values (USDC / USDS / sUSDS) by reading reserve
+    balances at the PSM3 contract and applying mainnet sUSDS pps for the
+    sUSDS leg, then route each leg per PRD §17.11.
     """
 
     cfg = prime.psm.get(chain)
     if cfg is None or chain not in prime.alm:
         return _empty_psm_df()
-
-    if cfg.kind == PsmKind.DIRECTED_FLOW:
-        # Sky LITE-PSM pattern. Track ``token`` flow in/out of PSM from the
-        # ALM only. The subproxy holds treasury / risk capital / realized
-        # revenue (PRD §17.7) that is NOT part of cum_debt; if those balances
-        # were ever routed through the PSM, subtracting them from utilized
-        # would over-reimburse the prime (BR is forgiven on capital that was
-        # never borrowed). Empirically (verified on Dune across Grove + Spark
-        # full lifetimes) no subproxy USDS has ever flowed to the PSM.
-        # ``pin_block`` is only resolved here because the ERC4626_SHARES path
-        # resolves blocks per-day via the block_resolver and doesn't need a
-        # period-level pin.
-        if cfg.token is None:
-            raise ValueError(
-                f"PSM config for {chain} (kind=directed_flow) requires a token "
-                "(e.g. USDS for the Sky LITE-PSM)"
-            )
-        pin_block = period.pin_blocks[chain]
-        bsrc = balance_source if balance_source is not None else get_balance_source()
-        holders = [prime.alm[chain]]
-
-        def _flow(from_addr, to_addr):
-            return bsrc.directed_inflow_timeseries(
-                chain=chain.value, token=cfg.token.value,
-                from_addr=from_addr, to_addr=to_addr,
-                start=prime.start_date, pin_block=pin_block,
-            )
-
-        daily_by_date: dict = {}
-        for holder in holders:
-            for _, r in _flow(holder.value, cfg.address.value).iterrows():
-                d = r["block_date"]
-                daily_by_date[d] = daily_by_date.get(d, Decimal(0)) + _to_decimal(r["daily_inflow"])
-            for _, r in _flow(cfg.address.value, holder.value).iterrows():
-                d = r["block_date"]
-                daily_by_date[d] = daily_by_date.get(d, Decimal(0)) - _to_decimal(r["daily_inflow"])
-        result = _df_from_daily_dict(daily_by_date)
-        # Defensive: cum_balance can legitimately go negative if the prime
-        # extracted more USDS from the PSM than it deposited (e.g., yield
-        # distribution, refund). The downstream formula in compute_sky_revenue
-        # handles negatives correctly IF cum_alm_usds and cum_psm_usds were
-        # built from symmetric data; asymmetric capture would silently inflate
-        # ``utilized``. Tolerance is $1 to absorb rounding.
-        if not result.empty:
-            min_cum = result["cum_balance"].min()
-            if min_cum < Decimal("-1"):
-                _log.warning(
-                    "directed_flow PSM cum_balance went negative for prime=%s "
-                    "chain=%s (min=$%s) — prime extracted more from PSM than "
-                    "deposited. Verify symmetry with cum_alm_usds before "
-                    "trusting compute_sky_revenue output.",
-                    prime.id, chain.value, f"{min_cum:,.2f}",
-                )
-        return result
 
     if cfg.kind == PsmKind.ERC4626_SHARES:
         # Spark PSM3. The pool holds three reserves — USDC, USDS, sUSDS — that
@@ -1148,8 +1060,10 @@ def compute_monthly_pnl(
     )
     # Sum PSM USDS-equivalent across ALL chains where the prime has a PSM
     # configured. The prime's debt (cum_debt) is Ethereum-only (Vat), but
-    # USDS-equivalent capital parked at any PSM (Sky LITE-PSM on Eth, Spark
-    # PSM3 on L2s) was funded from that debt and reduces utilized.
+    # USDS-equivalent capital parked at L2 PSM3 (Spark on Base / Arbitrum /
+    # Optimism / Unichain) was funded from that debt and reduces utilized.
+    # Sky's mainnet PSM stack is non-custodial and is intentionally NOT
+    # configured (see PRD §17.11) — primes never accumulate balances there.
     _log.info("  2f: PSM USDS aggregate...")
     psm_usds = _aggregate_psm_usds(
         prime, period,

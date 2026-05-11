@@ -131,9 +131,10 @@ utilized_d = cum_debt_d
 
 `alm_proxy_usds` — raw USDS sitting idle at the ALM proxy address; subtracted because it is not earning anything and should not be billed the borrow rate.
 
-`psm_usds` — USDS-equivalent value the prime has parked at any PSM (Sky's Peg Stability Module family). Two mechanics dispatched per `PsmKind`:
-- **`directed_flow`** (mainnet LITE-PSM-USDC): track net USDS flow `ALM → PSM − PSM → ALM` via Transfer events. Today $0 for Grove + Spark — mainnet PSMs are non-custodial swap conduits; USDS never settles there. Path is configured defensively for any future custodial form.
+`psm_usds` — USDS-equivalent value the prime has parked at any PSM. Today only one PSM mechanic is tracked:
 - **`erc4626_shares`** (Spark PSM3 on Base/Arbitrum/Optimism/Unichain): daily snapshot `convertToAssetValue(shares(alm, b), b)` via RPC. ~$544M USDS-equivalent total for Spark across the 4 L2s as of 2026-05.
+
+Sky's mainnet PSM stack (`DssLitePsm` + `DaiUsds` converter + USDC pocket EOA + `UsdsPsmWrapper`) is non-custodial — primes transit through it as atomic swaps without accumulating balances. No per-prime tracking is needed on Ethereum; this was an earlier `directed_flow` PsmKind which was removed on 2026-05-11 after on-chain verification. See PRD §17.11.
 
 **PSM3 leg-split** (since 2026-05-11): the ERC4626_SHARES path decomposes the total per-day into three legs — USDC + USDS + sUSDS reserves. Each leg is routed differently to keep the prime economically neutral on idle PSM3 capital ("primes should neither pay interest nor earn money for idle USDS / sUSDS"):
 - **USDS leg** is subtracted from `utilized` (BR-reimbursed). No SSR is paid on USDS, so just zeroing the BR charge is sufficient for neutrality.

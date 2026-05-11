@@ -70,9 +70,10 @@ sUSDS_ETHEREUM = Token(
 
 # ---------------------------------------------------------------------------
 # Per-L2 token registry — USDC + USDS + sUSDS on each chain that hosts a Spark
-# PSM3. Used by ``psm3_leg_breakdown`` (see ``compute/monthly_pnl.py``) to
-# decompose PSM3's USDS-equivalent value into its three constituent reserves
-# (USDC / USDS / sUSDS) for the leg-split rules in PRD §17.11:
+# PSM3. Used by the inline ``_legs_at`` helper inside
+# ``compute/monthly_pnl.py::get_psm_usds_timeseries`` to decompose PSM3's
+# USDS-equivalent value into its three constituent reserves (USDC / USDS /
+# sUSDS) for the leg-split rules in PRD §17.11:
 #   - USDS leg  → subtracted from utilized (BR-reimbursed)
 #   - USDC leg  → Sky Direct Exposure (Sky takes actual yield, prime keeps 0;
 #                 utilized NOT reduced for this slice)

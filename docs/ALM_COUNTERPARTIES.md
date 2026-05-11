@@ -34,11 +34,13 @@ These three addresses appear across **every** Ethereum ALM (OBEX + Grove + Spark
 
 | Address | Role | Evidence |
 |---|---|---|
-| `0x37305b1cd40574e4c5ce33f8e8306be057fd7341` | LitePSM-USDC (USDC ↔ DAI atomic swap) | inbound USDC + equal outbound across all three primes |
-| `0xf6e72db5454dd049d0788e411b06cfaf16853042` | DaiUsds converter (DAI ↔ USDS) | inbound DAI + equal outbound USDS |
-| `0x3225737a9bbb6473cb4a45b7244aca2befdb276a` | AllocatorVault USDS dispenser | outbound-only, matches `frob` mint volumes |
+| `0x37305b1cd40574e4c5ce33f8e8306be057fd7341` | **LITE-PSM-USDC pocket (EOA)** — holds the USDC reserves backing `DssLitePsm`. EOA, not a contract; non-custodial for primes. | inbound USDC + equal outbound across all three primes |
+| `0xf6e72db5454dd049d0788e411b06cfaf16853042` | **DssLitePsm** (Maker LITE-PSM-USDC orchestrator, DAI↔USDC). Decoded: `maker_ethereum.dsslitepsm_*` | inbound DAI + outbound USDC (via pocket) |
+| `0x3225737a9bbb6473cb4a45b7244aca2befdb276a` | **DaiUsds converter** (Sky 1:1 mint/burn between DAI and USDS). Decoded: `usds_ethereum.daiusds_*` | inbound DAI burnt + outbound USDS minted (and reverse for the other direction) |
 
-Cross-prime overlap confirms these are not venue-specific.
+**Important** — the three rows above were previously labelled with `0xf6e72db5…` as the "DaiUsds converter" and `0x3225737a…` as the "AllocatorVault dispenser". Both labels were wrong: on-chain decoding (Dune `searchTablesByContractAddress`) confirms `0xf6e72db5…` is `DssLitePsm` and `0x3225737a…` is `DaiUsds`. The actual Spark-specific AllocatorBuffer is `0xc395d150e71378b47a1b8e9de0c1a83b75a08324` (see Spark row 159 below) and Grove's is `0x629ad4d779f46b8a1491d3f76f7e97cb04d8b1cd`. Corrected 2026-05-11 after end-to-end tx-trace verification.
+
+Cross-prime overlap confirms these are not venue-specific. **No prime accumulates any balance at any of these three addresses** — every prime↔mainnet PSM interaction completes atomically in a single tx (see PRD §17.11). The inbound/outbound numbers below are flow volumes, not custodial holdings.
 
 ## Labelled counterparties
 
@@ -48,8 +50,8 @@ Known labels derived from stars-api allocation addresses, ALM address table, and
 |---|---|
 | `0x0000000000000000000000000000000000000000` | ERC-20 mint/burn (issuance, redemption) |
 | `0x37305b1cd40574e4c5ce33f8e8306be057fd7341` | Sky LitePSM-USDC |
-| `0xf6e72db5454dd049d0788e411b06cfaf16853042` | Sky DaiUsds converter |
-| `0x3225737a9bbb6473cb4a45b7244aca2befdb276a` | Sky AllocatorVault USDS dispenser |
+| `0xf6e72db5454dd049d0788e411b06cfaf16853042` | DssLitePsm (Maker LITE-PSM-USDC, DAI↔USDC) |
+| `0x3225737a9bbb6473cb4a45b7244aca2befdb276a` | DaiUsds converter (Sky DAI↔USDS) |
 | `0x629ad4d779f46b8a1491d3f76f7e97cb04d8b1cd` | Grove AllocatorBuffer (from [grove/README.md](grove/README.md)) |
 | `0x51e9681d7a05abfd33efafd43e5dd3afc0093f1d` | OBEX AllocatorBuffer (symmetric to Grove) |
 | `0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b` | Maple syrupUSDC vault (OBEX venue) |
@@ -68,8 +70,8 @@ Known labels derived from stars-api allocation addresses, ALM address table, and
 | `0x37305b1cd40574e4c5ce33f8e8306be057fd7341` | LitePSM-USDC | 600,148,672 | 0 | USDC |
 | `0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b` | Maple syrupUSDC vault | 0 | 600,148,672 | USDC |
 | `0x0000…0000` | mint (DAI↔USDS, syrupUSDC shares) | 600,146,427 | 0 | DAI, syrupUSDC |
-| `0xf6e72db5454dd049d0788e411b06cfaf16853042` | DaiUsds converter | 0 | 600,146,427 | DAI |
-| `0x3225737a9bbb6473cb4a45b7244aca2befdb276a` | AllocatorVault dispenser | 0 | 600,124,560 | USDS |
+| `0xf6e72db5454dd049d0788e411b06cfaf16853042` | DssLitePsm (DAI↔USDC) | 0 | 600,146,427 | DAI |
+| `0x3225737a9bbb6473cb4a45b7244aca2befdb276a` | DaiUsds converter | 0 | 600,124,560 | USDS |
 | `0x51e9681d7a05abfd33efafd43e5dd3afc0093f1d` | OBEX AllocatorBuffer | 600,124,560 | 0 | USDS |
 
 6 counterparties. Closed-loop: single venue (Maple syrupUSDC), all flows tied to the same $600M peak debt.
@@ -82,9 +84,9 @@ Known labels derived from stars-api allocation addresses, ALM address table, and
 |---|---|---:|---:|---|
 | `0x0000…0000` | mint/burn | 4,957,719,777 | 0 | 15 tokens (AUSD, BUIDL-I, JAAA, JTRSY, STAC, USDC, USDS, aEth*, grove-bbq*, AUSDUSDC, …) |
 | `0x37305b1cd40574e4c5ce33f8e8306be057fd7341` | LitePSM-USDC | 3,671,516,011 | 1,267,274,732 | USDC |
-| `0xf6e72db5454dd049d0788e411b06cfaf16853042` | DaiUsds converter | 1,267,206,222 | 3,671,462,241 | DAI |
+| `0xf6e72db5454dd049d0788e411b06cfaf16853042` | DssLitePsm (DAI↔USDC) | 1,267,206,222 | 3,671,462,241 | DAI |
 | `0x629ad4d779f46b8a1491d3f76f7e97cb04d8b1cd` | Grove AllocatorBuffer | 3,671,223,636 | 1,267,249,267 | USDS |
-| `0x3225737a9bbb6473cb4a45b7244aca2befdb276a` | AllocatorVault dispenser | 0 | 4,938,429,858 | DAI, USDS |
+| `0x3225737a9bbb6473cb4a45b7244aca2befdb276a` | DaiUsds converter | 0 | 4,938,429,858 | DAI, USDS |
 | `0x0665fde254598e307b63f3aae3ccd881a62d4be3` | JTRSY/USDC redemption endpoint | 0 | 940,477,241 | JTRSY, USDC |
 | `0xd001ae433f254283fece51d4acce8c53263aa186` | RLUSD/USDC routing | 439,252,875 | 439,486,117 | RLUSD, USDC |
 | `0x0000000005f458fd6ba9eeb5f365d83b7da913dd` | Janus Anemoy issuer (JAAA/JTRSY) | 50,141,352 | 750,026,176 | JAAA, JTRSY, USDC |
@@ -156,11 +158,11 @@ Largest counterparty set (55 rows after filter). Sorted by total_usd descending.
 
 | Counterparty | Label | In (USD) | Out (USD) | Tokens |
 |---|---|---:|---:|---|
-| `0xc395d150e71378b47a1b8e9de0c1a83b75a08324` | sUSDS staking vault or similar (USDS hub) | 30,283,514,977 | 26,791,734,301 | USDS |
+| `0xc395d150e71378b47a1b8e9de0c1a83b75a08324` | **Spark AllocatorBuffer** (mint sink for `ALLOCATOR-SPARK-A` `Vat.frob`; forwards USDS to Spark ALM + subproxy). Verified 2026-05-11 via Dune trace — 100% of outbound USDS goes to Spark-controlled addresses. | 30,283,514,977 | 26,791,734,301 | USDS |
 | `0x0000…0000` | mint/burn (29 tokens — sp*, aEth*, syrup*, spark*) | 48,467,819,847 | 8,375,789,282 | 29 tokens |
-| `0x3225737a9bbb6473cb4a45b7244aca2befdb276a` | AllocatorVault dispenser | 0 | 32,749,599,610 | DAI, USDS |
+| `0x3225737a9bbb6473cb4a45b7244aca2befdb276a` | DaiUsds converter | 0 | 32,749,599,610 | DAI, USDS |
 | `0x37305b1cd40574e4c5ce33f8e8306be057fd7341` | LitePSM-USDC | 13,475,118,987 | 12,186,072,771 | USDC |
-| `0xf6e72db5454dd049d0788e411b06cfaf16853042` | DaiUsds converter | 12,185,918,580 | 13,475,002,035 | DAI |
+| `0xf6e72db5454dd049d0788e411b06cfaf16853042` | DssLitePsm (DAI↔USDC) | 12,185,918,580 | 13,475,002,035 | DAI |
 | `0xe7df13b8e3d6740fe17cbe928c7334243d86c92f` | USDT routing (Aave / Spark Liquidity market) | 6,044,138,866 | 6,602,437,949 | USDT |
 | `0xc02ab1a5eaa8d1b114ef786d9bde108cd4364359` | USDS routing | 5,869,066,488 | 6,148,765,400 | USDS |
 | `0xa3931d71877c0e7a3148cb7eb4463524fec27fbd` | USDS routing | 4,819,175,727 | 5,831,392,062 | USDS |

@@ -142,146 +142,16 @@ def _period() -> Period:
     )
 
 
-def test_psm_usds_no_flows_returns_empty(config_dir: Path):
-    """Grove's mock with no directed-inflow fixtures → empty timeseries."""
+def test_psm_usds_returns_empty_when_no_psm_configured(config_dir: Path):
+    """Grove has no PSM on Ethereum (mainnet PSM stack is non-custodial —
+    nothing to track; see PRD §17.11). The function must return an empty
+    frame rather than raising."""
     grove = _grove(config_dir)
-    src = MockBalanceSource()  # default: directed_inflow returns empty
+    src = MockBalanceSource()
     out = get_psm_usds_timeseries(
         grove, Chain.ETHEREUM, _period(), balance_source=src,
     )
     assert out.empty
-
-
-def test_psm_usds_aggregates_deposits_minus_withdrawals(config_dir: Path):
-    """ALM → PSM deposits sum to a positive PSM balance; PSM → ALM withdrawals
-    flip sign. Subproxy flows are NOT tracked (PRD §17.7 — subproxy holds
-    treasury / risk capital that isn't part of cum_debt; tracking would
-    over-reimburse). Verified empirically on Dune across Grove + Spark
-    full lifetimes: zero subproxy USDS has ever flowed to the PSM."""
-    grove = _grove(config_dir)
-    routes = {}
-
-    def _df(rows):
-        return pd.DataFrame(rows) if rows else pd.DataFrame({
-            "block_date": [], "daily_inflow": [], "cum_inflow": [],
-        })
-
-    class _RoutedSrc(MockBalanceSource):
-        def directed_inflow_timeseries(self, chain, token, from_addr, to_addr, start, pin_block):
-            df = routes.get((from_addr, to_addr))
-            return _df(df) if df is not None else _df([])
-
-    subproxy = grove.subproxy[Chain.ETHEREUM].value
-    alm = grove.alm[Chain.ETHEREUM].value
-    psm = grove.psm[Chain.ETHEREUM].address.value
-
-    # ALM → PSM = $1M deposit on day 5; PSM → ALM = $300K withdraw on day 20.
-    routes[(alm, psm)] = [
-        {"block_date": date(2026, 3, 5), "daily_inflow": 1_000_000.0, "cum_inflow": 1_000_000.0},
-    ]
-    routes[(psm, alm)] = [
-        {"block_date": date(2026, 3, 20), "daily_inflow": 300_000.0, "cum_inflow": 300_000.0},
-    ]
-    # Subproxy flows must be IGNORED — set fixtures that would otherwise
-    # contaminate the result if the code regressed to including the subproxy.
-    routes[(subproxy, psm)] = [
-        {"block_date": date(2026, 3, 10), "daily_inflow": 999_999.0, "cum_inflow": 999_999.0},
-    ]
-    routes[(psm, subproxy)] = [
-        {"block_date": date(2026, 3, 25), "daily_inflow": 999_999.0, "cum_inflow": 999_999.0},
-    ]
-
-    out = get_psm_usds_timeseries(
-        grove, Chain.ETHEREUM, _period(), balance_source=_RoutedSrc(),
-    )
-    assert len(out) == 2
-    # Day 5: +1M, Day 20: −300K → cum_balance = [1M, 700K]
-    assert out["daily_net"].iloc[0] == Decimal("1000000")
-    assert out["daily_net"].iloc[1] == Decimal("-300000")
-    assert out["cum_balance"].iloc[1] == Decimal("700000")
-
-
-def test_psm_usds_warns_when_cum_balance_goes_negative(config_dir: Path, caplog):
-    """If withdrawals outpace deposits, cum_balance goes negative — the
-    pipeline doesn't clamp (the math is symmetric with cum_alm_usds) but it
-    must surface a WARNING so operators can verify data symmetry. A negative
-    cum_balance silently inflates ``utilized`` in compute_sky_revenue if the
-    underlying Transfer captures are asymmetric."""
-    import logging
-
-    grove = _grove(config_dir)
-    routes = {}
-
-    def _df(rows):
-        return pd.DataFrame(rows) if rows else pd.DataFrame({
-            "block_date": [], "daily_inflow": [], "cum_inflow": [],
-        })
-
-    class _RoutedSrc(MockBalanceSource):
-        def directed_inflow_timeseries(self, chain, token, from_addr, to_addr, start, pin_block):
-            df = routes.get((from_addr, to_addr))
-            return _df(df) if df is not None else _df([])
-
-    alm = grove.alm[Chain.ETHEREUM].value
-    psm = grove.psm[Chain.ETHEREUM].address.value
-
-    # Deposit $1M day 5, withdraw $5M day 10 → cum on day 10 = −$4M.
-    routes[(alm, psm)] = [
-        {"block_date": date(2026, 3, 5), "daily_inflow": 1_000_000.0, "cum_inflow": 1_000_000.0},
-    ]
-    routes[(psm, alm)] = [
-        {"block_date": date(2026, 3, 10), "daily_inflow": 5_000_000.0, "cum_inflow": 5_000_000.0},
-    ]
-
-    with caplog.at_level(logging.WARNING, logger="settle.compute.monthly_pnl"):
-        out = get_psm_usds_timeseries(
-            grove, Chain.ETHEREUM, _period(), balance_source=_RoutedSrc(),
-        )
-
-    # Output is NOT clamped — preserve symmetry with cum_alm_usds.
-    assert out["cum_balance"].iloc[1] == Decimal("-4000000")
-    # And the WARNING fired with prime id + chain + min value.
-    warns = [r for r in caplog.records if r.levelno == logging.WARNING]
-    assert any("cum_balance went negative" in r.getMessage() for r in warns)
-    assert any("grove" in r.getMessage() for r in warns)
-    assert any("ethereum" in r.getMessage() for r in warns)
-
-
-def test_psm_usds_no_warning_when_within_rounding_tolerance(config_dir: Path, caplog):
-    """A trivially-negative cum_balance (e.g. floating-point dust) within
-    the $1 tolerance must NOT trigger the warning — otherwise normal runs
-    would log false positives."""
-    import logging
-
-    grove = _grove(config_dir)
-    psm = grove.psm[Chain.ETHEREUM].address.value
-    alm = grove.alm[Chain.ETHEREUM].value
-
-    routes = {
-        (alm, psm): [
-            {"block_date": date(2026, 3, 5), "daily_inflow": 1_000_000.0, "cum_inflow": 1_000_000.0},
-        ],
-        (psm, alm): [
-            # $1M deposit, $1M + $0.25 withdraw → cum = −$0.25 (under tolerance).
-            {"block_date": date(2026, 3, 10), "daily_inflow": 1_000_000.25, "cum_inflow": 1_000_000.25},
-        ],
-    }
-
-    class _RoutedSrc(MockBalanceSource):
-        def directed_inflow_timeseries(self, chain, token, from_addr, to_addr, start, pin_block):
-            df = routes.get((from_addr, to_addr))
-            return pd.DataFrame(df) if df else pd.DataFrame({
-                "block_date": [], "daily_inflow": [], "cum_inflow": [],
-            })
-
-    with caplog.at_level(logging.WARNING, logger="settle.compute.monthly_pnl"):
-        get_psm_usds_timeseries(
-            grove, Chain.ETHEREUM, _period(), balance_source=_RoutedSrc(),
-        )
-
-    warns = [r for r in caplog.records
-             if r.levelno == logging.WARNING and "cum_balance went negative" in r.getMessage()]
-    assert warns == []
 
 
 # ----------------------------------------------------------------------------
@@ -492,7 +362,8 @@ def test_psm3_susds_spread_30bps_daily():
 
 def test_psm3_susds_spread_empty_returns_zero():
     """Missing input or absent ``cum_susds`` column ⇒ $0 spread.
-    Directed_flow producers don't emit cum_susds → no credit (correctly)."""
+    A frame in the legacy 3-column shape (no per-leg columns) returns 0 —
+    defensive, since the production producer always emits the 6-column shape."""
     period = Period(start=date(2026, 3, 1), end=date(2026, 3, 31),
                     pin_blocks={Chain.ETHEREUM: 1})
     assert _psm3_susds_spread(None, period) == Decimal(0)
