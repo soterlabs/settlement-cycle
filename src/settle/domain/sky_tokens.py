@@ -60,6 +60,38 @@ USDS_ETHEREUM = Token(
     decimals=18,
 )
 
+# Canonical USDS token addresses on each EVM chain where USDS is deployed.
+# Used by _aggregate_alm_usds to query the idle USDS balance at ALM proxies
+# across all chains. New chains should be added here when a prime gains an ALM
+# on that chain. Chains not present → balance treated as zero (warning logged).
+USDS_BY_CHAIN: dict[Chain, Token] = {
+    Chain.ETHEREUM: USDS_ETHEREUM,
+    Chain.BASE: Token(
+        chain=Chain.BASE,
+        address=Address.from_str("0x820c137fa70c8691f0e44dc420a5e53c168921dc"),
+        symbol="USDS",
+        decimals=18,
+    ),
+    Chain.ARBITRUM: Token(
+        chain=Chain.ARBITRUM,
+        address=Address.from_str("0x6491c05a82219b8d1479057361ff1654749b876b"),
+        symbol="USDS",
+        decimals=18,
+    ),
+    Chain.OPTIMISM: Token(
+        chain=Chain.OPTIMISM,
+        address=Address.from_str("0x4f13a96ec5c4cf34e442b46bbd98a0791f20edc3"),
+        symbol="USDS",
+        decimals=18,
+    ),
+    Chain.UNICHAIN: Token(
+        chain=Chain.UNICHAIN,
+        address=Address.from_str("0x7e10036acc4b56d4dfca3b77810356ce52313f9c"),
+        symbol="USDS",
+        decimals=18,
+    ),
+}
+
 sUSDS_ETHEREUM = Token(
     chain=Chain.ETHEREUM,
     address=Address.from_str("0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD"),

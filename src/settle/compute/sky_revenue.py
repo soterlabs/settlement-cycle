@@ -105,35 +105,60 @@ def compute_sky_revenue(
     curve_idle_usds: pd.DataFrame | None = None,
     lending_idle_usds: pd.DataFrame | None = None,
 ) -> Decimal:
-    """Sum of daily Sky revenue over ``period``.
+    """Sum of daily Sky revenue over ``period``.  See ``compute_sky_revenue_daily``
+    for the full docstring and per-day breakdown."""
+    total, _ = compute_sky_revenue_daily(
+        period, debt, alm_usds, ssr, psm_usds,
+        subsidy_config=subsidy_config,
+        ref_rate_history=ref_rate_history,
+        sde_asset_value=sde_asset_value,
+        curve_idle_usds=curve_idle_usds,
+        lending_idle_usds=lending_idle_usds,
+    )
+    return total
+
+
+def compute_sky_revenue_daily(
+    period: Period,
+    debt: pd.DataFrame,
+    alm_usds: pd.DataFrame,
+    ssr: pd.DataFrame,
+    psm_usds: pd.DataFrame | None = None,
+    *,
+    subsidy_config: SubsidyConfig | None = None,
+    ref_rate_history: ReferenceRateHistory | None = None,
+    sde_asset_value: pd.DataFrame | None = None,
+    curve_idle_usds: pd.DataFrame | None = None,
+    lending_idle_usds: pd.DataFrame | None = None,
+) -> tuple[Decimal, pd.DataFrame]:
+    """Sum of daily Sky revenue over ``period`` plus a full day-by-day breakdown.
+
+    Returns ``(total, daily_df)`` where ``daily_df`` has one row per calendar
+    day in the period with columns::
+
+        date            — calendar date
+        cum_debt        — gross ilk debt (USDS) at that day's EoD block
+        alm_usds        — ALM-proxy idle USDS deducted from debt
+        psm_usds        — PSM3 / lite-PSM idle USDS deducted
+        sde_av          — SDE asset value deducted (BR not charged; actual
+                          revenue charged separately via sd_revenue)
+        curve_idle      — Curve pool idle USDS-equivalent deducted
+        lending_idle    — lending pool idle USDS deducted
+        utilized        — net charged base  (= cum_debt − all deductions above)
+        ssr_apy         — Sky Savings Rate APY on that day (float, e.g. 0.1250)
+        base_apy        — borrow rate APY  (= ssr_apy + 30bps)
+        daily_sky_rev   — BR revenue for that day (Decimal)
 
     Inputs (all Normalize outputs):
 
-    * ``debt``                       DataFrame[block_date, daily_dart, cum_debt]
-    * ``alm_usds``                   DataFrame[block_date, daily_net, cum_balance] — idle USDS at ALM proxy
-    * ``ssr``                        DataFrame[effective_date, ssr_apy] — SP-BEAM changes
-    * ``psm_usds``                   optional DataFrame[block_date, daily_net, cum_balance] of USDS
-                                     the prime has parked at PSM; subtracted from utilized so the
-                                     prime is reimbursed BR on those holdings.
-    * ``curve_idle_usds``            optional DataFrame[block_date, daily_net, cum_balance] of the
-                                     prime's proportional USDS-equivalent inside configured Curve
-                                     pools (prime-settlement-methodology Step 2 — AMM idle USDS).
-                                     Built daily by the orchestrator via RPC ``read_pool`` +
-                                     ``balanceOf`` + ``convertToAssets`` (for sUSDS legs).
-                                     ``cum_balance`` is a daily snapshot (not a running total),
-                                     matching the PSM3 ERC4626-shares convention.
-    * ``lending_idle_usds``          optional DataFrame[block_date, daily_net, cum_balance] of the
-                                     prime's proportional share of unborrowed underlying in
-                                     configured lending pools (``lending_idle_usds: true``).
-                                     Built daily via ``balanceOf`` + ``totalSupply``.
-
-    Subproxy USDS/sUSDS are NOT passed here — they earn the agent rate
-    (``compute_agent_rate``) but are not subtracted from utilized because the
-    subproxy holds treasury/risk capital beyond pure ilk-debt proceeds.
+    * ``debt``            DataFrame[block_date, cum_debt]
+    * ``alm_usds``        DataFrame[block_date, cum_balance]
+    * ``ssr``             DataFrame[effective_date, ssr_apy]
+    * ``psm_usds``        optional DataFrame[block_date, cum_balance]
+    * ``sde_asset_value`` optional DataFrame[block_date, cum_value]
+    * ``curve_idle_usds`` optional DataFrame[block_date, cum_balance]
+    * ``lending_idle_usds`` optional DataFrame[block_date, cum_balance]
     """
-    # Hard-fail on empty debt/ssr — without these, utilized would silently be
-    # ≤ 0 every day and sky_revenue would return $0. Loud error pointing at
-    # the likely misconfig (ilk_bytes32 / SSR source) beats silent zero.
     require_non_empty(
         debt, name="debt",
         hint="Check `prime.ilk_bytes32` in the YAML and the IDebtSource impl.",
@@ -151,50 +176,52 @@ def compute_sky_revenue(
             "config/subsidy_reference_rates.yaml."
         )
 
+    rows: list[dict] = []
     total = Decimal("0")
     current = period.start
     while current <= period.end:
-        cum_debt = cum_at_or_before(debt, "cum_debt", current)
-        cum_alm_usds = cum_at_or_before(alm_usds, "cum_balance", current)
-        # SDE positions (BUIDL, JTRSY, USTB, JAAA-cap, …) — Sky books their
-        # actual revenue directly via ``sd_revenue`` in the venue breakdown,
-        # so they're excluded from BR base here to avoid double-charging.
-        # ``cum_at_or_before`` returns 0 for None / empty inputs.
-        cum_psm_usds = cum_at_or_before(psm_usds, "cum_balance", current)
-        cum_sde = cum_at_or_before(sde_asset_value, "cum_value", current)
-        # Prime's proportional USDS-equivalent in Curve pools — Step 2 idle AMM.
-        cum_curve_usds = cum_at_or_before(curve_idle_usds, "cum_balance", current)
-        # Prime's share of unborrowed underlying in lending pools — Step 2 idle lending.
-        cum_lending_idle = cum_at_or_before(lending_idle_usds, "cum_balance", current)
+        cum_debt      = cum_at_or_before(debt,             "cum_debt",     current)
+        cum_alm_usds  = cum_at_or_before(alm_usds,         "cum_balance",  current)
+        cum_psm_usds  = cum_at_or_before(psm_usds,         "cum_balance",  current)
+        cum_sde       = cum_at_or_before(sde_asset_value,  "cum_value",    current)
+        cum_curve     = cum_at_or_before(curve_idle_usds,  "cum_balance",  current)
+        cum_lending   = cum_at_or_before(lending_idle_usds,"cum_balance",  current)
 
-        utilized = (
-            cum_debt
-            - cum_alm_usds
-            - cum_psm_usds
-            - cum_sde
-            - cum_curve_usds
-            - cum_lending_idle
-        )
+        utilized = cum_debt - cum_alm_usds - cum_psm_usds - cum_sde - cum_curve - cum_lending
 
+        daily_rev = Decimal("0")
+        ssr_apy   = Decimal("0")
+        base_apy  = Decimal("0")
         if utilized > 0:
-            ssr_apy = ssr_at_or_before(ssr, current)
+            ssr_apy  = ssr_at_or_before(ssr, current)
             base_apy = ssr_apy + BASE_RATE_OVER_SSR
             if use_subsidy:
-                # Split utilized: first cap_usd at subsidised, excess at full BR.
-                cap = subsidy_config.cap_usd
-                subsidised_part = min(utilized, cap)
-                excess_part = max(Decimal("0"), utilized - cap)
-                ref_rate = ref_rate_history.at(current)
-                t = months_elapsed_since(current, subsidy_config.program_start)
-                sub_apy = subsidised_apy(
-                    base_apy, ref_rate, t, subsidy_config.ramp_months
-                )
-                total += subsidised_part * daily_compounding_factor(sub_apy)
+                cap              = subsidy_config.cap_usd
+                subsidised_part  = min(utilized, cap)
+                excess_part      = max(Decimal("0"), utilized - cap)
+                ref_rate         = ref_rate_history.at(current)
+                t                = months_elapsed_since(current, subsidy_config.program_start)
+                sub_apy          = subsidised_apy(base_apy, ref_rate, t, subsidy_config.ramp_months)
+                daily_rev        = subsidised_part * daily_compounding_factor(sub_apy)
                 if excess_part > 0:
-                    total += excess_part * daily_compounding_factor(base_apy)
+                    daily_rev += excess_part * daily_compounding_factor(base_apy)
             else:
-                total += utilized * daily_compounding_factor(base_apy)
+                daily_rev = utilized * daily_compounding_factor(base_apy)
 
+        total += daily_rev
+        rows.append({
+            "date":          current,
+            "cum_debt":      cum_debt,
+            "alm_usds":      cum_alm_usds,
+            "psm_usds":      cum_psm_usds,
+            "sde_av":        cum_sde,
+            "curve_idle":    cum_curve,
+            "lending_idle":  cum_lending,
+            "utilized":      utilized,
+            "ssr_apy":       float(ssr_apy),
+            "base_apy":      float(base_apy),
+            "daily_sky_rev": daily_rev,
+        })
         current = current + timedelta(days=1)
 
-    return total
+    return total, pd.DataFrame(rows)

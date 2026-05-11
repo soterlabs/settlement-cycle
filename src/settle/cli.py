@@ -177,24 +177,28 @@ def _cmd_run(args: argparse.Namespace) -> int:
     month = Month.parse(args.month)
 
     n_chains = len(prime.chains)
+    sky_only = getattr(args, "sky_only", False)
+    mode_note = "  [sky_only: skipping per-venue pricing]" if sky_only else \
+                "  [use --log-level INFO for step-by-step progress]"
     print(f"settle run {prime.id} {month}")
-    print(f"  resolving pin blocks ({n_chains} chain(s), EoM + SoM in parallel)..."
-          f"  [use --log-level INFO for step-by-step progress]")
-    result = compute_monthly_pnl(prime, month)
+    print(f"  resolving pin blocks ({n_chains} chain(s), EoM + SoM in parallel)...{mode_note}")
+    result = compute_monthly_pnl(prime, month, sky_only=sky_only)
 
     print()
     print("=" * 70)
-    print(f"MONTHLY PnL -- {prime.id} -- {month}")
+    mode_tag = " [sky_only]" if sky_only else ""
+    print(f"MONTHLY PnL -- {prime.id} -- {month}{mode_tag}")
     print("=" * 70)
     print(f"  Period:                   {result.period.start} -> {result.period.end}")
     print(f"  EoM block (ethereum):     {result.period.pin_blocks.get(Chain.ETHEREUM)}")
     print(f"  SoM block (ethereum):     {result.pin_blocks_som.get(Chain.ETHEREUM)}")
     print()
-    print(f"  prime_agent_revenue:      ${result.prime_agent_revenue:>20,.2f}")
-    print(f"  agent_rate:               ${result.agent_rate:>20,.2f}")
+    if not sky_only:
+        print(f"  prime_agent_revenue:      ${result.prime_agent_revenue:>20,.2f}")
+        print(f"  agent_rate:               ${result.agent_rate:>20,.2f}")
     print(f"  sky_revenue:              ${result.sky_revenue:>20,.2f}")
     print()
-    if result.venue_breakdown:
+    if result.venue_breakdown and not sky_only:
         print("  Per-venue breakdown:")
         for v in result.venue_breakdown:
             print(f"    {v.venue_id:5s}  som=${v.value_som:>15,.2f}  "
@@ -253,6 +257,16 @@ def _build_parser() -> argparse.ArgumentParser:
     p_run.add_argument(
         "--output-dir",
         help="Override output directory (default: <repo>/settlements/<prime>/<month>/)",
+    )
+    p_run.add_argument(
+        "--sky-only",
+        action="store_true",
+        default=False,
+        help=(
+            "Skip per-venue pricing; compute only sky_revenue. "
+            "Much faster — useful for debugging the daily utilized/SDE breakdown "
+            "without waiting for the full venue pricing loop."
+        ),
     )
     p_run.set_defaults(func=_cmd_run)
 

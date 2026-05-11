@@ -203,18 +203,20 @@ class CurveIdleUsdsConfig:
 class PsmKind(StrEnum):
     """How USDS-equivalent value at a PSM is computed.
 
-    * ``directed_flow`` — Sky LITE-PSM-USDC pattern (used by Grove/OBEX/Spark
-      on Ethereum). PSM is a swap conduit holding USDS at par; we track net
-      USDS flow ``(subproxy + ALM) → PSM − PSM → (subproxy + ALM)``. The
-      ``token`` field names what's tracked (USDS).
-    * ``erc4626_shares`` — Spark PSM3 pattern (used on Base/Arbitrum/Optimism
-      /Unichain). PSM3 has a non-standard ABI: shares are *internal accounting*
-      (no ERC-20 Transfer events) and the rate uses
-      ``convertToAssetValue(uint256)`` returning the USDS-equivalent value
-      directly. We snapshot ``convertToAssetValue(shares(alm, b), b)`` at each
-      day's EoD block. The ``token`` field is unused.
+    * ``balance_snapshot`` — **Default for L2 PSMs.** The PSM address holds
+      USDS that is entirely attributable to this prime (no other primes share
+      the address). We snapshot ``balanceOf(psm_address, USDS_on_chain)`` at
+      each day's EoD block. Simple, unambiguous, cannot go negative.
+    * ``directed_flow`` — Ethereum LITE-PSM exception. The LITE-PSM is shared
+      across primes so a direct balance read would over-attribute. We track net
+      USDS flow ``(subproxy + ALM) → PSM − PSM → (subproxy + ALM)`` instead.
+      The ``token`` field names what's tracked (USDS).
+    * ``erc4626_shares`` — Legacy Spark PSM3 pattern (pre-balance_snapshot).
+      Retained for backward compatibility. Snapshots
+      ``convertToAssetValue(shares(alm, b), b)`` at each day's EoD block.
     """
 
+    BALANCE_SNAPSHOT = "balance_snapshot"
     DIRECTED_FLOW = "directed_flow"
     ERC4626_SHARES = "erc4626_shares"
 
