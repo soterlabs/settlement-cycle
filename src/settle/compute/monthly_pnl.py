@@ -17,7 +17,7 @@ import pandas as pd
 from ..domain.monthly_pnl import MonthlyPnL
 from ..domain.period import Month, Period
 from ..domain.pricing import PricingCategory
-from ..domain.primes import Chain, Prime
+from ..domain.primes import Chain, Prime, PsmKind
 from ..domain.sde import load_sde_table
 from ..domain.sky_tokens import USDS_ETHEREUM, sUSDS_ETHEREUM
 from ..domain.subsidy import load_reference_rates
@@ -294,7 +294,16 @@ def _susds_shares_to_principal(
 
 
 def _empty_psm_df() -> pd.DataFrame:
-    return pd.DataFrame({"block_date": [], "daily_net": [], "cum_balance": []})
+    """Empty 6-column PSM timeseries frame.
+
+    ``cum_balance`` = USDS-equivalent total = ``cum_usdc + cum_usds_leg +
+    cum_susds`` (kept on the frame for at-a-glance reads / any external
+    consumer that doesn't need the per-leg breakdown).
+    """
+    return pd.DataFrame({
+        "block_date": [], "daily_net": [], "cum_balance": [],
+        "cum_usdc": [], "cum_usds_leg": [], "cum_susds": [],
+    })
 
 
 def _to_decimal(v) -> Decimal:
@@ -303,18 +312,35 @@ def _to_decimal(v) -> Decimal:
     return v if isinstance(v, Decimal) else Decimal(str(v))
 
 
-def _df_from_daily_dict(daily_by_date: dict) -> pd.DataFrame:
-    """``[block_date, daily_net, cum_balance]`` DataFrame from a ``{date: Decimal}``
-    map. Returns the empty-shape frame if the map is empty."""
-    if not daily_by_date:
-        return _empty_psm_df()
-    rows = sorted(daily_by_date.items(), key=lambda kv: kv[0])
-    df = pd.DataFrame({
-        "block_date": [r[0] for r in rows],
-        "daily_net":  [r[1] for r in rows],
-    })
-    df["cum_balance"] = df["daily_net"].cumsum()
-    return df
+def _psm3_susds_spread(psm_usds: pd.DataFrame | None, period: Period) -> Decimal:
+    """30 bps daily-compounded Prime Revenue credit on the sUSDS slice of
+    PSM3 holdings.
+
+    The sUSDS leg of PSM3 is yield-bearing — the prime captures SSR
+    automatically via ``convertToAssetValue`` growth of its PSM3 share. To
+    keep the prime economically neutral on idle sUSDS (it shouldn't earn
+    money for just parking capital), ``compute_sky_revenue`` charges full
+    BR on this slice (no ``utilized`` reduction for the sUSDS leg), and
+    this function credits back the 30 bps spread so the
+    SSR-+-BR-charge-+-30-bps-credit composite nets to zero. See PRD §17.11.
+
+    Formula: ``Σ_d cum_susds_d × daily_compounding_factor(BASE_RATE_OVER_SSR)``
+    where d ranges over days in ``[period.start, period.end]``.
+    """
+    if psm_usds is None or psm_usds.empty or "cum_susds" not in psm_usds.columns:
+        return Decimal("0")
+    # Lazy import to avoid module-cycle (sky_revenue imports from _helpers).
+    from ._helpers import daily_compounding_factor
+    from .sky_revenue import BASE_RATE_OVER_SSR
+    spread_factor = daily_compounding_factor(BASE_RATE_OVER_SSR)
+    total = Decimal("0")
+    current = period.start
+    while current <= period.end:
+        cum_susds = cum_at_or_before(psm_usds, "cum_susds", current)
+        if cum_susds > 0:
+            total += cum_susds * spread_factor
+        current = current + timedelta(days=1)
+    return total
 
 
 def _aggregate_psm_usds(
@@ -324,32 +350,94 @@ def _aggregate_psm_usds(
     balance_source,
     psm3_source=None,
     block_resolver=None,
+    position_balance_source=None,
+    convert_to_assets_source=None,
 ):
     """Sum PSM USDS-equivalent timeseries across every chain in
-    ``prime.psm``. Per-chain timeseries are produced by
-    ``get_psm_usds_timeseries``; this aggregates them into a single daily
-    series consumable by ``compute_sky_revenue``.
+    ``prime.psm``, per leg. Per-chain timeseries are produced by
+    ``get_psm_usds_timeseries``; this aggregates them into a single 6-column
+    daily series (``[block_date, daily_net, cum_balance, cum_usdc,
+    cum_usds_leg, cum_susds]``) consumable by ``compute_sky_revenue``.
+
+    Each per-leg cumulative is forward-filled per chain across the full date
+    set, so a chain that has no row on a given date contributes its last
+    known value — preserving the "value-as-of-date" reading semantics that
+    ``cum_at_or_before`` relies on.
 
     Returns an empty DataFrame if the prime has no PSM configured anywhere.
     """
     if not prime.psm:
         return _empty_psm_df()
 
-    daily_by_date: dict = {}
+    # Coverage assertion (PRD §17.10): if a PSM is configured for a chain that
+    # the orchestrator didn't resolve a pin_block for, the prior behavior was
+    # to silently `continue` — which would silently inflate ``utilized`` (the
+    # PSM holdings on that chain would be ignored, so the prime would be
+    # charged BR on capital that's actually parked). Fail fast instead — a
+    # missing pin_block here means the orchestrator's chain set is out of sync
+    # with the YAML, and the only correct action is to fix the config.
+    missing = [c.value for c in prime.psm if c not in period.pin_blocks]
+    if missing:
+        raise ValueError(
+            f"PSM configured for chain(s) {missing} but no pin_block resolved "
+            f"for them in this Period. Add the chain to the orchestrator's "
+            f"chain set or remove the `psm:` block from the prime YAML."
+        )
+
+    per_chain_frames = []
     for chain in prime.psm:
-        if chain not in period.pin_blocks:
-            continue
         per_chain = get_psm_usds_timeseries(
             prime, chain, period,
             balance_source=balance_source,
             psm3_source=psm3_source,
             block_resolver=block_resolver,
+            position_balance_source=position_balance_source,
+            convert_to_assets_source=convert_to_assets_source,
         )
-        for _, row in per_chain.iterrows():
-            d = row["block_date"]
-            daily_by_date[d] = daily_by_date.get(d, Decimal(0)) + _to_decimal(row["daily_net"])
+        if not per_chain.empty:
+            per_chain_frames.append(per_chain[
+                ["block_date", "cum_usdc", "cum_usds_leg", "cum_susds"]
+            ])
 
-    return _df_from_daily_dict(daily_by_date)
+    if not per_chain_frames:
+        return _empty_psm_df()
+
+    # Build the union of dates, forward-fill each chain's per-leg cum_X across
+    # the full set, then sum across chains.
+    all_dates = sorted({d for f in per_chain_frames for d in f["block_date"]})
+    summed: dict = {
+        d: {"cum_usdc": Decimal(0), "cum_usds_leg": Decimal(0), "cum_susds": Decimal(0)}
+        for d in all_dates
+    }
+    for chain_df in per_chain_frames:
+        chain_rows = {
+            row["block_date"]: {
+                "cum_usdc":     _to_decimal(row["cum_usdc"]),
+                "cum_usds_leg": _to_decimal(row["cum_usds_leg"]),
+                "cum_susds":    _to_decimal(row["cum_susds"]),
+            }
+            for _, row in chain_df.iterrows()
+        }
+        last = {"cum_usdc": Decimal(0), "cum_usds_leg": Decimal(0), "cum_susds": Decimal(0)}
+        for d in all_dates:
+            if d in chain_rows:
+                last = chain_rows[d]
+            for k in last:
+                summed[d][k] += last[k]
+
+    rows = sorted(summed.items())
+    df = pd.DataFrame({
+        "block_date":   [d for d, _ in rows],
+        "cum_usdc":     [v["cum_usdc"]     for _, v in rows],
+        "cum_usds_leg": [v["cum_usds_leg"] for _, v in rows],
+        "cum_susds":    [v["cum_susds"]    for _, v in rows],
+    })
+    df["cum_balance"] = df["cum_usdc"] + df["cum_usds_leg"] + df["cum_susds"]
+    if len(df) > 0:
+        df["daily_net"] = df["cum_balance"].diff().fillna(df["cum_balance"].iloc[0])
+    else:
+        df["daily_net"] = Decimal(0)
+    return df[["block_date", "daily_net", "cum_balance", "cum_usdc", "cum_usds_leg", "cum_susds"]]
 
 
 def get_psm_usds_timeseries(
@@ -358,84 +446,81 @@ def get_psm_usds_timeseries(
     balance_source,
     psm3_source=None,
     block_resolver=None,
+    position_balance_source=None,
+    convert_to_assets_source=None,
 ):
     """USDS-equivalent the prime has parked at the PSM on ``chain``, per day.
 
-    Treated as idle USDS in ``compute_sky_revenue.utilized``: the prime is
-    reimbursed BR on the parked balance, matching prime-settlement-methodology
-    Step 2 (idle USDS in PSM / PSM3).
+    Returns a 6-column DataFrame ``[block_date, daily_net, cum_balance,
+    cum_usdc, cum_usds_leg, cum_susds]``. Returns empty DataFrame if the
+    prime has no PSM configured on this chain.
 
-    Returns a DataFrame ``[block_date, daily_net, cum_balance]`` matching the
-    other balance timeseries. Returns empty DataFrame if the prime has no PSM
-    configured on this chain.
-
-    Two PSM mechanics, dispatched on ``prime.psm[chain].kind``:
-
-    * ``DIRECTED_FLOW`` (Sky LITE-PSM-USDC): track net USDS flow from
-      ``(subproxy + ALM) → PSM`` minus ``PSM → (subproxy + ALM)``. USDS is
-      par-stable so the raw flow IS the USDS-equivalent.
-    * ``ERC4626_SHARES`` (Spark PSM3): the ALM holds PSM3 shares which are
-      *internal accounting* (no ERC-20 Transfer events) and the rate uses a
-      non-standard ``convertToAssetValue(uint256)``. We snapshot
-      ``convertToAssetValue(shares(alm, b), b)`` at each day's EoD block,
-      diff it across days to produce ``daily_net``, and surface
-      ``cum_balance`` as the running USDS-equivalent.
+    Single supported mechanic today (``PsmKind.ERC4626_SHARES``, Spark PSM3):
+    the ALM holds PSM3 shares which are *internal accounting* (no ERC-20
+    Transfer events) and the rate uses a non-standard
+    ``convertToAssetValue(uint256)``. We snapshot
+    ``convertToAssetValue(shares(alm, b), b)`` at each day's EoD block,
+    decompose into per-leg values (USDC / USDS / sUSDS) by reading reserve
+    balances at the PSM3 contract and applying mainnet sUSDS pps for the
+    sUSDS leg, then route each leg per PRD §17.11.
     """
-    import pandas as pd
-    from ..domain.primes import PsmKind
 
     cfg = prime.psm.get(chain)
     if cfg is None or chain not in prime.alm:
         return _empty_psm_df()
 
-    if cfg.kind == PsmKind.DIRECTED_FLOW:
-        # Sky LITE-PSM pattern. Track ``token`` flow in/out of PSM from both
-        # the subproxy and the ALM. ``pin_block`` is only resolved here
-        # because the ERC4626_SHARES path resolves blocks per-day via the
-        # block_resolver and doesn't need a period-level pin.
-        if cfg.token is None:
-            raise ValueError(
-                f"PSM config for {chain} (kind=directed_flow) requires a token "
-                "(e.g. USDS for the Sky LITE-PSM)"
-            )
-        pin_block = period.pin_blocks[chain]
-        bsrc = balance_source if balance_source is not None else get_balance_source()
-        holders = [prime.subproxy[chain]] if chain in prime.subproxy else []
-        holders.append(prime.alm[chain])
-
-        def _flow(from_addr, to_addr):
-            return bsrc.directed_inflow_timeseries(
-                chain=chain.value, token=cfg.token.value,
-                from_addr=from_addr, to_addr=to_addr,
-                start=prime.start_date, pin_block=pin_block,
-            )
-
-        daily_by_date: dict = {}
-        for holder in holders:
-            for _, r in _flow(holder.value, cfg.address.value).iterrows():
-                d = r["block_date"]
-                daily_by_date[d] = daily_by_date.get(d, Decimal(0)) + _to_decimal(r["daily_inflow"])
-            for _, r in _flow(cfg.address.value, holder.value).iterrows():
-                d = r["block_date"]
-                daily_by_date[d] = daily_by_date.get(d, Decimal(0)) - _to_decimal(r["daily_inflow"])
-        return _df_from_daily_dict(daily_by_date)
-
     if cfg.kind == PsmKind.ERC4626_SHARES:
-        # Spark PSM3. Shares are internal accounting (no Transfer events), so
-        # the only way to know the ALM's holding is to read ``shares(alm, b)``
-        # at each block. We snapshot the USDS-equivalent value
-        # ``convertToAssetValue(shares(alm, b), b)`` at each day's EoD across
-        # the period, diff across days to get ``daily_net``, and surface the
-        # snapshot itself as ``cum_balance``.
-        from ..normalize.registry import get_psm3_source as _get_psm3
+        # Spark PSM3. The pool holds three reserves — USDC, USDS, sUSDS — that
+        # are treated differently by the settlement methodology (PRD §17.11):
+        #
+        #   USDS leg  → BR-reimbursed (subtracted from utilized) — the prime
+        #               borrowed USDS, parked it at PSM3 ⇒ this slice is idle
+        #   USDC leg  → Sky Direct Exposure (Atlas §A.2.3.2.2.3) — Sky takes
+        #               the actual yield (≈ $0 for passive USDC reserves);
+        #               utilized NOT reduced for this slice
+        #   sUSDS leg → utilized NOT reduced; prime earns 30 bps spread
+        #               (= BR − SSR) on its USDS-equivalent value — the sUSDS
+        #               share price already returns SSR to the prime, so
+        #               crediting full BR-reimbursement on top would double-
+        #               count (same rule as sUSDS in regular allocations,
+        #               PRD §17.7 + RULES §5).
+        #
+        # To apply these rules we decompose Spark's claim per day into the 3
+        # legs by reading ``balanceOf(token, psm3)`` for each leg and using
+        # mainnet sUSDS pps (the L2 sUSDS is a 1:1 bridge — verified to 4
+        # decimals against Ethereum sUSDS ``convertToAssets(1e18)``):
+        #
+        #   pool_total_usds_eq = USDC_face + USDS_face + sUSDS_face × sUSDS_pps
+        #   spark_share        = convertToAssetValue(spark_shares) / pool_total
+        #   spark_per_leg      = spark_share × leg_value
+        from ..normalize.registry import (
+            get_psm3_source as _get_psm3,
+            get_position_balance_source as _get_pos_bal,
+            get_convert_to_assets_source as _get_c2a,
+        )
+        from ..domain.sky_tokens import PSM3_LEG_TOKENS, sUSDS_ETHEREUM
         if block_resolver is None:
             raise ValueError(
                 "get_psm_usds_timeseries(kind=erc4626_shares) requires a "
                 "block_resolver to read PSM3 shares at each day's EoD block"
             )
+        if chain not in PSM3_LEG_TOKENS:
+            raise ValueError(
+                f"PSM3 leg-token registry has no entry for {chain.value}. "
+                f"Add USDC/USDS/sUSDS addresses for the chain to "
+                f"settle.domain.sky_tokens.PSM3_LEG_TOKENS."
+            )
         psm3 = psm3_source if psm3_source is not None else _get_psm3()
+        pos_bal = position_balance_source if position_balance_source is not None else _get_pos_bal()
+        c2a = convert_to_assets_source if convert_to_assets_source is not None else _get_c2a()
         scale = Decimal(10**18)
+        usdc_scale = Decimal(10**6)
         holder = prime.alm[chain].value
+        leg_tokens = PSM3_LEG_TOKENS[chain]
+        usdc_addr = leg_tokens["USDC"].address.value
+        usds_addr = leg_tokens["USDS"].address.value
+        susds_addr = leg_tokens["sUSDS"].address.value
+        psm3_addr = cfg.address.value
 
         # Per-day RPC failures (drpc upstream flake, contract-not-yet-deployed
         # at very early blocks) shouldn't kill the whole chain's PSM3
@@ -445,30 +530,77 @@ def get_psm_usds_timeseries(
         from ..extract.rpc import RPCError
         import requests as _requests
 
-        def _value_at(day, fallback: Decimal | None = None) -> Decimal:
+        _ZERO_LEGS = (Decimal(0), Decimal(0), Decimal(0))
+
+        def _legs_at(
+            day,
+            fallback: tuple[Decimal, Decimal, Decimal] | None = None,
+        ) -> tuple[Decimal, Decimal, Decimal]:
+            """Spark's USDS-equivalent claim split into (usdc, usds, susds)
+            at this day's EoD block."""
             eod = datetime.combine(day, time.max, tzinfo=timezone.utc)
             try:
                 block = block_resolver.block_at_or_before(chain.value, eod)
                 shares = psm3.shares_of(
-                    chain=chain.value, psm3=cfg.address.value,
+                    chain=chain.value, psm3=psm3_addr,
                     holder=holder, block=block,
                 )
                 if shares <= 0:
-                    return Decimal(0)
-                raw = psm3.convert_to_asset_value(
-                    chain=chain.value, psm3=cfg.address.value,
+                    return _ZERO_LEGS
+                spark_claim_raw = psm3.convert_to_asset_value(
+                    chain=chain.value, psm3=psm3_addr,
                     num_shares=shares, block=block,
                 )
-                return Decimal(raw) / scale
+                spark_claim = Decimal(spark_claim_raw) / scale
+
+                # PSM3 leg reserves at this block. USDC is 6-decimal; USDS,
+                # sUSDS are 18-decimal.
+                usdc_raw  = pos_bal.balance_at(chain.value, usdc_addr,  psm3_addr, block)
+                usds_raw  = pos_bal.balance_at(chain.value, usds_addr,  psm3_addr, block)
+                susds_raw = pos_bal.balance_at(chain.value, susds_addr, psm3_addr, block)
+                usdc_val   = Decimal(usdc_raw)  / usdc_scale
+                usds_val   = Decimal(usds_raw)  / scale
+                susds_face = Decimal(susds_raw) / scale
+
+                # sUSDS pps from Ethereum (L2 sUSDS is a 1:1 bridge of mainnet
+                # sUSDS — only mainnet exposes ``convertToAssets``).
+                eth_block = block_resolver.block_at_or_before(Chain.ETHEREUM.value, eod)
+                susds_pps_raw = c2a.convert_to_assets(
+                    chain=Chain.ETHEREUM.value, vault=sUSDS_ETHEREUM.address.value,
+                    shares=10**18, block=eth_block,
+                )
+                susds_pps = Decimal(susds_pps_raw) / scale
+                susds_val = susds_face * susds_pps
+
+                pool_total = usdc_val + usds_val + susds_val
+                if pool_total <= 0:
+                    # Pool has zero reserves but Spark has a non-zero claim
+                    # → impossible. Fall back to assigning the entire claim
+                    # to the USDS leg (safest classification: pretend it's
+                    # plain idle USDS).
+                    _log.warning(
+                        "PSM3 pool_total=0 but spark_claim=$%s on %s @ %s; "
+                        "classifying full claim as USDS leg.",
+                        f"{spark_claim:,.2f}", chain.value, day,
+                    )
+                    return (Decimal(0), spark_claim, Decimal(0))
+
+                spark_share = spark_claim / pool_total
+                return (
+                    spark_share * usdc_val,
+                    spark_share * usds_val,
+                    spark_share * susds_val,
+                )
             except (RPCError, _requests.HTTPError, _requests.ConnectionError, _requests.Timeout) as e:
                 if fallback is None:
                     raise
                 _log.warning(
                     "PSM3 read failed on %s for %s @ %s; carrying forward "
-                    "$%s (error: %s). PSM USDS-equiv may be slightly stale "
-                    "for this day.",
-                    chain.value, cfg.address.value.hex(), day,
-                    f"{fallback:,.2f}", type(e).__name__,
+                    "legs=(usdc=$%s, usds=$%s, susds=$%s) (error: %s). PSM "
+                    "USDS-equiv may be slightly stale for this day.",
+                    chain.value, psm3_addr.hex(), day,
+                    f"{fallback[0]:,.2f}", f"{fallback[1]:,.2f}", f"{fallback[2]:,.2f}",
+                    type(e).__name__,
                 )
                 return fallback
 
@@ -476,24 +608,37 @@ def get_psm_usds_timeseries(
         # read (period.start - 1) cannot fall back — a missing baseline
         # means we can't compute period flows correctly, so let it raise.
         days = [period.start + timedelta(days=i) for i in range((period.end - period.start).days + 1)]
-        cur_value = _value_at(period.start - timedelta(days=1))
+        cur_legs = _legs_at(period.start - timedelta(days=1))
         block_dates: list = []
         daily_net: list[Decimal] = []
-        cum_balance: list[Decimal] = []
+        cum_usdc: list[Decimal] = []
+        cum_usds_leg: list[Decimal] = []
+        cum_susds: list[Decimal] = []
         for day in days:
-            value = _value_at(day, fallback=cur_value)
+            legs = _legs_at(day, fallback=cur_legs)
             block_dates.append(day)
-            daily_net.append(value - cur_value)
-            cum_balance.append(value)
-            cur_value = value
+            cum_balance_today = sum(legs)
+            cum_balance_yday = sum(cur_legs)
+            daily_net.append(cum_balance_today - cum_balance_yday)
+            cum_usdc.append(legs[0])
+            cum_usds_leg.append(legs[1])
+            cum_susds.append(legs[2])
+            cur_legs = legs
 
-        if all(v == 0 for v in cum_balance):
+        if all(u == 0 and s == 0 and z == 0 for u, s, z in zip(cum_usdc, cum_usds_leg, cum_susds)):
             return _empty_psm_df()
-        return pd.DataFrame({
-            "block_date": block_dates,
-            "daily_net": daily_net,
-            "cum_balance": cum_balance,
+        df = pd.DataFrame({
+            "block_date":   block_dates,
+            "daily_net":    daily_net,
+            "cum_usdc":     cum_usdc,
+            "cum_usds_leg": cum_usds_leg,
+            "cum_susds":    cum_susds,
         })
+        # ``cum_balance`` = total USDS-equivalent (sum of the 3 legs). Kept for
+        # backward compatibility with any consumer that doesn't yet know about
+        # the legs; new consumers should read the per-leg columns directly.
+        df["cum_balance"] = df["cum_usdc"] + df["cum_usds_leg"] + df["cum_susds"]
+        return df
 
     raise ValueError(f"Unknown PSM kind: {cfg.kind!r}")
 
@@ -915,15 +1060,25 @@ def compute_monthly_pnl(
     )
     # Sum PSM USDS-equivalent across ALL chains where the prime has a PSM
     # configured. The prime's debt (cum_debt) is Ethereum-only (Vat), but
-    # USDS-equivalent capital parked at any PSM (Sky LITE-PSM on Eth, Spark
-    # PSM3 on L2s) was funded from that debt and reduces utilized.
+    # USDS-equivalent capital parked at L2 PSM3 (Spark on Base / Arbitrum /
+    # Optimism / Unichain) was funded from that debt and reduces utilized.
+    # Sky's mainnet PSM stack is non-custodial and is intentionally NOT
+    # configured (see PRD §17.11) — primes never accumulate balances there.
     _log.info("  2f: PSM USDS aggregate...")
     psm_usds = _aggregate_psm_usds(
         prime, period,
         balance_source=sources.balance,
         psm3_source=sources.psm3,
         block_resolver=resolver,
+        position_balance_source=sources.position_balance,
+        convert_to_assets_source=sources.convert_to_assets,
     )
+    # Neutralising 30 bps spread credit on the sUSDS slice of PSM3 holdings
+    # (PRD §17.11). Sky charges full BR on this slice (utilized NOT reduced
+    # for sUSDS in compute_sky_revenue) AND pays SSR to sUSDS holders
+    # (= prime via PSM3 share appreciation). Crediting 30 bps back keeps the
+    # composite (+SSR − BR + 30 bps = 0) economically neutral on idle sUSDS.
+    psm3_susds_spread = _psm3_susds_spread(psm_usds, period)
     # Prime's proportional USDS-equivalent in configured Curve pools — Step 2
     # idle AMM USDS. Computed daily via RPC (``read_pool`` + ``balanceOf`` +
     # ``convertToAssets`` for sUSDS legs). Returns empty frame if no venue has
@@ -1270,6 +1425,10 @@ def compute_monthly_pnl(
     # separately from the venue loop because the data comes from the Curve
     # pool daily snapshots, not from the venue's SoM/EoM position values.
     prime_rev = prime_rev + curve_susds_spread
+    # Same shape, different source: 30 bps spread on the sUSDS slice of PSM3
+    # holdings (PRD §17.11) — neutralises the SSR + BR-charge composite on
+    # the sUSDS leg so the prime nets to zero on idle sUSDS.
+    prime_rev = prime_rev + psm3_susds_spread
     # SDE revenue (Σ actual × sd_share across venues) flows directly to Sky.
     sde_revenue = sum((vr.sd_revenue for vr in breakdown), Decimal("0"))
 

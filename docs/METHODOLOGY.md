@@ -121,7 +121,7 @@ sde_revenue = Σ_venues sd_revenue
 ```
 utilized_d = cum_debt_d
            − alm_proxy_usds_d         ← idle raw USDS at the ALM proxy
-           − psm_usds_d               ← idle USDS deposited in PSM3 (any chain)
+           − psm_usds_d               ← idle USDS-equivalent at any PSM (any chain, any kind)
            − sde_asset_value_d        ← daily NAV of SDE positions (BUIDL, JTRSY, JAAA-cap…)
            − curve_idle_usds_d        ← USDS leg of Curve LP pools (par-stable coins only)
            − lending_idle_usds_d      ← prime's proportional idle underlying in lending pools
@@ -131,7 +131,21 @@ utilized_d = cum_debt_d
 
 `alm_proxy_usds` — raw USDS sitting idle at the ALM proxy address; subtracted because it is not earning anything and should not be billed the borrow rate.
 
-`psm_usds` — USDS deposited into PSM3 (Sky's Peg Stability Module); behaves as idle USDS for the prime's purposes.
+`psm_usds` — USDS-equivalent value the prime has parked at any PSM. Today only one PSM mechanic is tracked:
+- **`erc4626_shares`** (Spark PSM3 on Base/Arbitrum/Optimism/Unichain): daily snapshot `convertToAssetValue(shares(alm, b), b)` via RPC. ~$544M USDS-equivalent total for Spark across the 4 L2s as of 2026-05.
+
+Sky's mainnet PSM stack (`DssLitePsm` + `DaiUsds` converter + USDC pocket EOA + `UsdsPsmWrapper`) is non-custodial — primes transit through it as atomic swaps without accumulating balances. No per-prime tracking is needed on Ethereum; this was an earlier `directed_flow` PsmKind which was removed on 2026-05-11 after on-chain verification. See PRD §17.11.
+
+**PSM3 leg-split** (since 2026-05-11): the ERC4626_SHARES path decomposes the total per-day into three legs — USDC + USDS + sUSDS reserves. Each leg is routed differently to keep the prime economically neutral on idle PSM3 capital ("primes should neither pay interest nor earn money for idle USDS / sUSDS"):
+- **USDS leg** is subtracted from `utilized` (BR-reimbursed). No SSR is paid on USDS, so just zeroing the BR charge is sufficient for neutrality.
+- **USDC leg** is treated as Sky Direct Exposure per Atlas §A.2.3.2.2.3 (added to `sde_asset_value`; Sky takes the actual yield, ≈ $0 for passive reserves; prime is NOT BR-reimbursed on this slice).
+- **sUSDS leg** is **not** subtracted from `utilized` (prime pays full BR on this slice). The orchestrator credits back a 30 bps spread × value × n_days as Prime Revenue via `_psm3_susds_spread`. Why: the sUSDS share-price appreciation pays the prime `+SSR` automatically (via `convertToAssetValue` growth); charging full BR `−(SSR + 30 bps)` and crediting `+30 bps` makes the composite `+SSR − (SSR + 30 bps) + 30 bps = 0`. Both sides net to zero. Subtracting sUSDS from `utilized` without crediting back would leave Sky paying SSR with no offset (an unintended subsidy).
+
+Same shape as the rule for sUSDS held inside Curve LP pools (RULES §5).
+
+Apportionment per day: `spark_share_of_pool = convertToAssetValue(spark_shares) / pool_total_usds_eq`, where `pool_total_usds_eq = USDC_reserve + USDS_reserve + sUSDS_reserve × sUSDS_pps`. sUSDS pps is read from the Ethereum sUSDS vault (the L2 sUSDS is a 1:1 bridge — verified to 4 decimals).
+
+In both PSM mechanics the timeseries is consumed as a "value-as-of-date" reading on the per-leg cum_X columns, so the meaning is consistent at the consumer despite different mechanics inside.
 
 `sde_asset_value` — SDE positions pay Sky directly via `sde_revenue`; charging BR on top would double-bill.
 

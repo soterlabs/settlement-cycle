@@ -9,6 +9,12 @@ addresses:
   ethereum:
     subproxy: '0x8be042581f581E3620e29F213EA8b94afA1C8071'
     alm:      '0xb6dD7ae22C9922AFEe0642f9Ac13e58633f715A2'
+    # No PSM tracking. Sky's mainnet PSM stack (DssLitePsm + DaiUsds converter
+    # + LITE-PSM-USDC pocket EOA + UsdsPsmWrapper) is non-custodial — no
+    # per-prime balances accumulate at any contract or pocket. OBEX transits
+    # USDS↔USDC through this stack as atomic swaps within a single tx, same
+    # as Grove and Spark. See PRD §17.11. OBEX has no L2 PSM3 either (single-
+    # chain prime).
 
 venues:
   - id: V1

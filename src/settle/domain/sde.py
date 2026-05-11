@@ -142,14 +142,24 @@ def load_sde_table(config_path: Path | None = None) -> SDETable:
         if e.kind == "pattern" and e.pattern is None:
             raise ValueError(f"SDE entry {e.label!r} has kind=pattern but no pattern")
 
-    # Pattern entries are reserved (see module docstring) — warn so an active
-    # misconfig doesn't go unnoticed.
-    active_patterns = [e.label for e in entries if e.kind == "pattern" and e.end_date is None]
-    if active_patterns:
+    # Pattern entries currently have ONE consumed variant — the
+    # ``psm3_usdc_non_ethereum`` pattern is applied via the PSM3 leg-split:
+    # `compute/monthly_pnl.py::get_psm_usds_timeseries` decomposes per-day
+    # PSM3 USDS-equivalent into USDC + USDS + sUSDS legs, and
+    # `compute/sky_revenue.py` folds ``cum_usdc`` into ``cum_sde`` so the
+    # USDC slice is excluded from BR base and routed to Sky as SDE revenue.
+    # Any OTHER pattern label is unrecognised today and warned about so an
+    # active misconfig doesn't go unnoticed.
+    CONSUMED_PATTERNS = {"psm3_usdc_non_ethereum"}
+    unhandled = [
+        e.label for e in entries
+        if e.kind == "pattern" and e.end_date is None and e.pattern not in CONSUMED_PATTERNS
+    ]
+    if unhandled:
         _log.warning(
-            "SDE pattern entries are not yet consumed by compute: %s. "
-            "Their economics (e.g. PSM3 USDC non-Eth) are NOT applied.",
-            active_patterns,
+            "SDE pattern entries with unrecognised `pattern:` keys are not "
+            "consumed by compute: %s. Their economics are NOT applied.",
+            unhandled,
         )
 
     return SDETable(entries=tuple(entries))

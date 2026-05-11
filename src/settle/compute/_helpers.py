@@ -55,7 +55,12 @@ def cum_at_or_before(
 ) -> Decimal:
     """Carry-forward lookup: most recent ``value_col`` whose ``date_col`` ≤ ``target``.
 
-    Returns ``Decimal('0')`` if the timeseries is empty or has no rows ≤ target.
+    Returns ``Decimal('0')`` if the timeseries is empty, has no rows ≤ target,
+    or doesn't have ``value_col``. The missing-column fallback exists so that
+    new per-leg PSM columns (``cum_usds_leg``, ``cum_usdc``, ``cum_susds``)
+    degrade gracefully when consumers are handed an older-shape frame —
+    pre-PSM3-leg-split test fixtures, in particular.
+
     Lookup is by date-max (`idxmax`), so a non-sorted DataFrame still returns
     the correct row — robustness against any source that doesn't pre-sort.
 
@@ -65,6 +70,8 @@ def cum_at_or_before(
     fail loudly on a misconfigured source instead of silently zeroing out.
     """
     if timeseries is None or timeseries.empty:
+        return Decimal("0")
+    if value_col not in timeseries.columns:
         return Decimal("0")
     eligible = timeseries[timeseries[date_col] <= target]
     if eligible.empty:

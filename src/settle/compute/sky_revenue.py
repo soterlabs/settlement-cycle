@@ -112,9 +112,17 @@ def compute_sky_revenue(
     * ``debt``                       DataFrame[block_date, daily_dart, cum_debt]
     * ``alm_usds``                   DataFrame[block_date, daily_net, cum_balance] — idle USDS at ALM proxy
     * ``ssr``                        DataFrame[effective_date, ssr_apy] — SP-BEAM changes
-    * ``psm_usds``                   optional DataFrame[block_date, daily_net, cum_balance] of USDS
-                                     the prime has parked at PSM; subtracted from utilized so the
-                                     prime is reimbursed BR on those holdings.
+    * ``psm_usds``                   optional 6-column DataFrame[block_date, daily_net, cum_balance,
+                                     cum_usdc, cum_usds_leg, cum_susds] of the prime's PSM holdings.
+                                     Per PRD §17.11 the three legs are routed separately:
+                                       - USDS leg  → subtracted from ``utilized`` (BR-reimbursed)
+                                       - USDC leg  → added to ``sde_asset_value`` (Sky Direct
+                                                     Exposure per Atlas §A.2.3.2.2.3)
+                                       - sUSDS leg → NOT subtracted here; the orchestrator credits
+                                                     the prime ``30 bps × value × n_days`` as Prime
+                                                     Revenue so the SSR-via-share-price + BR-charge
+                                                     + 30 bps-credit composite nets to zero
+                                                     (economic neutrality on idle sUSDS).
     * ``curve_idle_usds``            optional DataFrame[block_date, daily_net, cum_balance] of the
                                      prime's proportional USDS-equivalent inside configured Curve
                                      pools (prime-settlement-methodology Step 2 — AMM idle USDS).
@@ -160,8 +168,22 @@ def compute_sky_revenue(
         # actual revenue directly via ``sd_revenue`` in the venue breakdown,
         # so they're excluded from BR base here to avoid double-charging.
         # ``cum_at_or_before`` returns 0 for None / empty inputs.
-        cum_psm_usds = cum_at_or_before(psm_usds, "cum_balance", current)
-        cum_sde = cum_at_or_before(sde_asset_value, "cum_value", current)
+        # PSM3 leg-split (PRD §17.11), three different treatments:
+        #   - USDS  leg → subtracted from utilized (idle USDS at PSM3, no SSR
+        #                 to offset, prime simply doesn't pay BR on this slice)
+        #   - USDC  leg → SDE per Atlas §A.2.3.2.2.3 (Sky takes the actual
+        #                 yield, ≈ $0 for passive reserves); folded into
+        #                 ``cum_sde`` so it's excluded from BR base
+        #   - sUSDS leg → NOT subtracted here. The prime captures SSR via the
+        #                 share-price appreciation of its PSM3 claim; charging
+        #                 full BR on this slice and crediting the prime 30 bps
+        #                 as Prime Revenue (in the orchestrator) makes the
+        #                 SSR / BR / 30 bps composite net to zero. Subtracting
+        #                 here would give the prime SSR for free at Sky's
+        #                 expense.
+        cum_psm_usds_leg  = cum_at_or_before(psm_usds, "cum_usds_leg", current)
+        cum_psm_usdc_sde  = cum_at_or_before(psm_usds, "cum_usdc",     current)
+        cum_sde = cum_at_or_before(sde_asset_value, "cum_value", current) + cum_psm_usdc_sde
         # Prime's proportional USDS-equivalent in Curve pools — Step 2 idle AMM.
         cum_curve_usds = cum_at_or_before(curve_idle_usds, "cum_balance", current)
         # Prime's share of unborrowed underlying in lending pools — Step 2 idle lending.
@@ -170,7 +192,7 @@ def compute_sky_revenue(
         utilized = (
             cum_debt
             - cum_alm_usds
-            - cum_psm_usds
+            - cum_psm_usds_leg
             - cum_sde
             - cum_curve_usds
             - cum_lending_idle
