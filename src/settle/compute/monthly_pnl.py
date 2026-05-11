@@ -479,59 +479,29 @@ def get_psm_usds_timeseries(
         # means we can't compute period flows correctly, so let it raise.
         days = [period.start + timedelta(days=i) for i in range((period.end - period.start).days + 1)]
         import time as _time
-        from concurrent.futures import ThreadPoolExecutor as _TPE
-
         _log.info(
-            "    PSM3 %s/%s: fetching baseline + %d daily snapshots in parallel...",
+            "    PSM3 %s/%s: fetching baseline + %d daily snapshots sequentially...",
             chain.value, cfg.address.value.hex()[:10], len(days),
         )
         _t0 = _time.monotonic()
         cur_value = _value_at(period.start - timedelta(days=1))
         _log.info("    PSM3 baseline done in %.1fs", _time.monotonic() - _t0)
-
-        # Fetch all in-period snapshots in parallel. Each day is independent;
-        # carry-forward fallback (which depends on the previous day's value) is
-        # applied in the sequential diff pass below.
-        def _try_value_at(day):
-            eod = datetime.combine(day, time.max, tzinfo=timezone.utc)
-            try:
-                block = block_resolver.block_at_or_before(chain.value, eod)
-                shares = psm3.shares_of(
-                    chain=chain.value, psm3=cfg.address.value,
-                    holder=holder, block=block,
-                )
-                if shares <= 0:
-                    return day, Decimal(0), None
-                raw = psm3.convert_to_asset_value(
-                    chain=chain.value, psm3=cfg.address.value,
-                    num_shares=shares, block=block,
-                )
-                return day, Decimal(raw) / scale, None
-            except (RPCError, _requests.HTTPError, _requests.ConnectionError, _requests.Timeout) as e:
-                return day, None, e
-
-        with _TPE(max_workers=8) as _ex:
-            fetched: dict = {d: (v, e) for d, v, e in _ex.map(_try_value_at, days)}
-        _log.info("    PSM3 %s: parallel fetch done in %.1fs", chain.value, _time.monotonic() - _t0)
-
         block_dates: list = []
         daily_net: list[Decimal] = []
         cum_balance: list[Decimal] = []
-        for day in days:
-            value, err = fetched[day]
-            if value is None:
-                _log.warning(
-                    "PSM3 read failed on %s for %s @ %s; carrying forward "
-                    "$%s (error: %s). PSM USDS-equiv may be slightly stale "
-                    "for this day.",
-                    chain.value, cfg.address.value.hex(), day,
-                    f"{cur_value:,.2f}", type(err).__name__,
-                )
-                value = cur_value
+        for i, day in enumerate(days):
+            _td = _time.monotonic()
+            value = _value_at(day, fallback=cur_value)
+            _elapsed = _time.monotonic() - _td
+            if _elapsed > 2:
+                _log.info("    PSM3 day %d/%d (%s) took %.1fs", i + 1, len(days), day, _elapsed)
+            elif i % 7 == 0:
+                _log.info("    PSM3 day %d/%d (%s) ✓ %.1fs", i + 1, len(days), day, _elapsed)
             block_dates.append(day)
             daily_net.append(value - cur_value)
             cum_balance.append(value)
             cur_value = value
+        _log.info("    PSM3 %s done in %.1fs total", chain.value, _time.monotonic() - _t0)
 
         if all(v == 0 for v in cum_balance):
             return _empty_psm_df()
