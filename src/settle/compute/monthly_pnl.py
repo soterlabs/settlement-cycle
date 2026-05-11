@@ -444,8 +444,6 @@ def get_psm_usds_timeseries(
         # value" (no movement) and log the gap so it's auditable.
         from ..extract.rpc import RPCError
         import requests as _requests
-        import logging as _logging
-        _log = _logging.getLogger(__name__)
 
         def _value_at(day, fallback: Decimal | None = None) -> Decimal:
             eod = datetime.combine(day, time.max, tzinfo=timezone.utc)
@@ -551,9 +549,6 @@ def _aggregate_curve_idle_usds(
 
     # Spread = BR − SSR = BASE_RATE_OVER_SSR (30bps).
     spread_daily_factor = daily_compounding_factor(BASE_RATE_OVER_SSR)
-
-    import logging as _logging
-    _log = _logging.getLogger(__name__)
 
     def _par_stable_usds(coin_addr: bytes, raw_balance: int) -> Decimal:
         par = KNOWN_PAR_STABLES_ETHEREUM.get(coin_addr)
@@ -716,9 +711,6 @@ def _aggregate_lending_idle_usds(
     venues = [v for v in prime.venues if v.lending_idle_usds]
     if not venues:
         return _empty_psm_df()
-
-    import logging as _logging
-    _log = _logging.getLogger(__name__)
 
     daily_by_date: dict = {}
 
