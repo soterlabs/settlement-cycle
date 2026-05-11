@@ -731,9 +731,25 @@ Historically there was a hardcoded `compute._psm.PSM_BY_CHAIN` dict (since remov
 | Mechanic | When | How USDS-equivalent is computed |
 |---|---|---|
 | `directed_flow` | Sky LITE-PSM-USDC pattern (Grove + Spark on Ethereum) | Net token flow `ALM → PSM` minus `PSM → ALM`. Token is USDS, par-stable. **Subproxy is intentionally not a tracked holder** — subproxy holds treasury / risk capital / realized revenue (§17.7) that is NOT part of cum_debt; including it would over-reimburse BR. Verified empirically on Dune that zero subproxy USDS has ever flowed to the PSM over Grove + Spark full lifetimes (2024-09 → 2026-05). The current `directed_flow` USDS-flow probe returns $0 because mainnet PSMs (LITE-PSM-USDC + UsdsPsmWrapper) are non-custodial swap conduits — USDS↔USDC routes through UsdsPsmWrapper + DaiUsds converter + LITE-PSM (DAI↔USDC leg); USDS never settles at the LITE-PSM contract. Configured defensively so the path activates without further config if Sky ever flips a PSM into a custodial form for USDS. |
-| `erc4626_shares` | Spark PSM3 pattern (Base / Arbitrum / Optimism / Unichain) | PSM3 has a **non-standard ABI**: shares are *internal accounting* (no ERC-20 Transfer events) and the rate uses `convertToAssetValue(uint256)` (selector `0x41c094e0`), distinct from ERC-4626 `convertToAssets(uint256)`. We snapshot `convertToAssetValue(shares(alm, b), b)` at each day's EoD block; daily-net is the diff across days. |
+| `erc4626_shares` | Spark PSM3 pattern (Base / Arbitrum / Optimism / Unichain) | PSM3 has a **non-standard ABI**: shares are *internal accounting* (no ERC-20 Transfer events) and the rate uses `convertToAssetValue(uint256)` (selector `0x41c094e0`), distinct from ERC-4626 `convertToAssets(uint256)`. We snapshot `convertToAssetValue(shares(alm, b), b)` at each day's EoD block; daily-net is the diff across days. **Per-leg split**: PSM3 holds three reserves — USDC + USDS + sUSDS — that are treated differently by the methodology (see "Per-leg split" below). |
 
-Per-chain timeseries are summed by `_aggregate_psm_usds` into a single `psm_usds` DataFrame fed into `compute_sky_revenue`. For multi-chain primes (Spark), L2 PSM3 holdings reduce the Ethereum-denominated `utilized` since they were funded from Eth-borrowed USDS that was bridged over.
+#### Per-leg split for `erc4626_shares` (PSM3) — implemented 2026-05-11
+
+`convertToAssetValue(shares)` returns one number that bundles all three reserves. The methodology treats each leg differently, so we decompose Spark's claim per-day into:
+
+- **USDS leg** → subtracted from `utilized` (BR-reimbursed). No SSR is paid on USDS, so simply zeroing the BR charge produces economic neutrality: net to prime = net to Sky = 0.
+- **USDC leg** → **Sky Direct Exposure** per Atlas §A.2.3.2.2.3 *"USDC in PSM3 on non-Eth chains"*. The asset value is added to `cum_sde` in `compute_sky_revenue` (so the prime pays BR on that slice, not reimbursed); the actual yield (~$0 for passive USDC reserves) flows to Sky. This implements **Q-S23**.
+- **sUSDS leg** → **not** subtracted from `utilized` (prime pays full BR on this slice), AND the orchestrator credits the prime `30 bps × value × n_days` as Prime Revenue via `_psm3_susds_spread`. Economic intent: the sUSDS share-price appreciation pays the prime `+SSR` automatically (the PSM3 holds sUSDS, so `convertToAssetValue` grows at SSR for the sUSDS slice); charging full BR `−(SSR + 30 bps)` and reimbursing `+30 bps` makes the composite `+SSR − (SSR + 30 bps) + 30 bps = 0`. Both prime and Sky net to zero on the sUSDS slice — neutrality on idle capital, matching the principle that "primes should neither pay interest nor earn money for idle USDS / sUSDS". Subtracting the sUSDS leg from `utilized` (without the spread credit) would instead leave Sky paying SSR with no offset — a subsidy.
+
+Same shape as the existing rule for sUSDS held inside Curve LP pools (RULES §5 / `_aggregate_curve_idle_usds` → `curve_susds_spread`).
+
+Decomposition is per-day: at each EoD block we read `balanceOf(token, psm3)` for each leg, translate the sUSDS face balance to USDS-equivalent via Ethereum sUSDS `convertToAssets(1e18)` at the matching EoD block (the L2 sUSDS is a 1:1 bridge of mainnet sUSDS — verified to 4 decimals across all 4 L2 chains), then apportion Spark's claim via `spark_share = convertToAssetValue(spark_shares) / pool_total_usds_eq`.
+
+Token addresses for the per-leg reads live in `settle.domain.sky_tokens.PSM3_LEG_TOKENS` (discovered via Dune queries 7468346 + 7468351). The `get_psm_usds_timeseries` ERC4626_SHARES branch returns a 6-column frame: `[block_date, daily_net, cum_balance, cum_usdc, cum_usds_leg, cum_susds]`. The aggregator forward-fills per-chain per-leg cumulatives so a chain with no row on a given date contributes its last known value.
+
+For the `directed_flow` path, `cum_usds_leg = cum_balance` and the other leg columns are zero — preserving identical math for primes that don't have a PSM3.
+
+Per-chain timeseries are summed by `_aggregate_psm_usds` into a single 6-column `psm_usds` DataFrame fed into `compute_sky_revenue`. For multi-chain primes (Spark), L2 PSM3 holdings reduce the Ethereum-denominated `utilized` since they were funded from Eth-borrowed USDS that was bridged over.
 
 YAML snippet (Spark):
 ```yaml

@@ -66,3 +66,43 @@ sUSDS_ETHEREUM = Token(
     symbol="sUSDS",
     decimals=18,
 )
+
+
+# ---------------------------------------------------------------------------
+# Per-L2 token registry — USDC + USDS + sUSDS on each chain that hosts a Spark
+# PSM3. Used by ``psm3_leg_breakdown`` (see ``compute/monthly_pnl.py``) to
+# decompose PSM3's USDS-equivalent value into its three constituent reserves
+# (USDC / USDS / sUSDS) for the leg-split rules in PRD §17.11:
+#   - USDS leg  → subtracted from utilized (BR-reimbursed)
+#   - USDC leg  → Sky Direct Exposure (Sky takes actual yield, prime keeps 0;
+#                 utilized NOT reduced for this slice)
+#   - sUSDS leg → utilized NOT reduced; prime earns 30 bps spread Prime Revenue
+#                 on its USDS-equivalent value (sUSDS already returns SSR via
+#                 share price; BR = SSR + 30 bps, so 30 bps is the residual)
+#
+# Discovered via Dune queries 7468346 + 7468351 (Sky-decoded tables + tokens.transfers).
+# sUSDS on L2s does NOT expose ``convertToAssets`` — pps is read from the
+# Ethereum sUSDS at the matching EoD block (the L2 sUSDS is a 1:1 bridge of
+# Ethereum sUSDS; verified to 4 decimals across all 4 L2 chains).
+PSM3_LEG_TOKENS: dict[Chain, dict[str, Token]] = {
+    Chain.BASE: {
+        "USDC":  Token(Chain.BASE, Address.from_str("0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"), "USDC",  6),
+        "USDS":  Token(Chain.BASE, Address.from_str("0x820c137fa70c8691f0e44dc420a5e53c168921dc"), "USDS",  18),
+        "sUSDS": Token(Chain.BASE, Address.from_str("0x5875eee11cf8398102fdad704c9e96607675467a"), "sUSDS", 18),
+    },
+    Chain.ARBITRUM: {
+        "USDC":  Token(Chain.ARBITRUM, Address.from_str("0xaf88d065e77c8cc2239327c5edb3a432268e5831"), "USDC",  6),
+        "USDS":  Token(Chain.ARBITRUM, Address.from_str("0x6491c05a82219b8d1479057361ff1654749b876b"), "USDS",  18),
+        "sUSDS": Token(Chain.ARBITRUM, Address.from_str("0xddb46999f8891663a8f2828d25298f70416d7610"), "sUSDS", 18),
+    },
+    Chain.OPTIMISM: {
+        "USDC":  Token(Chain.OPTIMISM, Address.from_str("0x0b2c639c533813f4aa9d7837caf62653d097ff85"), "USDC",  6),
+        "USDS":  Token(Chain.OPTIMISM, Address.from_str("0x4f13a96ec5c4cf34e442b46bbd98a0791f20edc3"), "USDS",  18),
+        "sUSDS": Token(Chain.OPTIMISM, Address.from_str("0xb5b2dc7fd34c249f4be7fb1fcea07950784229e0"), "sUSDS", 18),
+    },
+    Chain.UNICHAIN: {
+        "USDC":  Token(Chain.UNICHAIN, Address.from_str("0x078d782b760474a361dda0af3839290b0ef57ad6"), "USDC",  6),
+        "USDS":  Token(Chain.UNICHAIN, Address.from_str("0x7e10036acc4b56d4dfca3b77810356ce52313f9c"), "USDS",  18),
+        "sUSDS": Token(Chain.UNICHAIN, Address.from_str("0xa06b10db9f390990364a3984c04fadf1c13691b5"), "sUSDS", 18),
+    },
+}

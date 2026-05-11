@@ -509,6 +509,21 @@ split is the right implementation. Until then Spark Q1 2026 numbers
 are computed with the full PSM3 holdings BR-reimbursed (i.e. Spark
 favorable, Sky under-credited).
 
+**Implementation landed 2026-05-11 (issue reopened — pending Spark/BA/Sky
+methodology sign-off):** per-leg split now live in
+`get_psm_usds_timeseries` (ERC4626_SHARES branch). PSM3's
+`convertToAssetValue(spark_shares)` is decomposed daily into USDC + USDS
++ sUSDS legs and routed per PRD §17.11:
+- USDS  leg → subtracted from `utilized` (BR-reimbursed)
+- USDC  leg → added to `sde_asset_value` (Atlas SDE — Sky takes actual yield)
+- sUSDS leg → stays in BR base; orchestrator credits 30 bps × value
+  × n_days as Prime Revenue, neutralising the SSR + BR composite
+  (Rule 5 same shape — economic neutrality on idle sUSDS)
+
+Resolution will move this entry to `## Resolved` once Spark / BA / Sky
+confirm the leg-split routing matches their reading of Atlas
+§A.2.3.2.2.3 + the neutrality intent for idle sUSDS.
+
 #### S24. SDE mid-period activation — full-month vs day-level pro-rating
 Raised in PR #67 review (2026-05-11). The PR documents (in
 `config/sky_direct_exposures.yaml`) a known limitation: the compute
