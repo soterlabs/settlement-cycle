@@ -6,6 +6,7 @@ that take a `block` parameter pin to that block; never use "latest" in productio
 
 from __future__ import annotations
 
+import logging
 import os
 from datetime import datetime, timezone
 from typing import Any
@@ -64,7 +65,7 @@ def rpc_url(chain: Chain) -> str:
     return url
 
 
-DEFAULT_RETRY_ATTEMPTS = 60
+DEFAULT_RETRY_ATTEMPTS = 10
 DEFAULT_RETRY_BACKOFF_SEC = 0.3
 RETRY_BACKOFF_CAP_SEC = 3.0
 
@@ -95,6 +96,9 @@ def _is_transient_rpc_error(err: Any) -> bool:
     return any(frag in msg for frag in _TRANSIENT_RPC_MSG_FRAGMENTS)
 
 
+_rpc_log = logging.getLogger(__name__)
+
+
 def _post(url: str, method: str, params: list[Any]) -> Any:
     """JSON-RPC POST with bounded retry on transient transport errors.
 
@@ -106,6 +110,8 @@ def _post(url: str, method: str, params: list[Any]) -> Any:
     import time as _time
     body = {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
     last_exc: Exception | None = None
+    # Mask the API key in log output (last path segment of the URL).
+    _url_label = url.rsplit("/", 1)[-1][:12] + "…"
     for attempt in range(DEFAULT_RETRY_ATTEMPTS):
         try:
             r = requests.post(url, json=body, timeout=DEFAULT_TIMEOUT)
@@ -126,12 +132,31 @@ def _post(url: str, method: str, params: list[Any]) -> Any:
                 last_exc = RPCError(f"{method} transient error: {err}")
         except (requests.Timeout, requests.ConnectionError) as e:
             last_exc = e
+
+        # Log on first failure so it's immediately visible, then every 10
+        # attempts so we can see that the retry loop is spinning.
+        if attempt == 0:
+            _rpc_log.warning(
+                "RPC transient failure (attempt 1/%d) — %s %s: %s",
+                DEFAULT_RETRY_ATTEMPTS, method, _url_label, last_exc,
+            )
+        elif attempt % 10 == 0:
+            _rpc_log.warning(
+                "RPC still retrying (attempt %d/%d) — %s %s: %s",
+                attempt + 1, DEFAULT_RETRY_ATTEMPTS, method, _url_label, last_exc,
+            )
+
         if attempt < DEFAULT_RETRY_ATTEMPTS - 1:
             backoff = min(
                 DEFAULT_RETRY_BACKOFF_SEC * (2 ** attempt),
                 RETRY_BACKOFF_CAP_SEC,
             )
             _time.sleep(backoff)
+
+    _rpc_log.error(
+        "RPC exhausted all %d retries — %s %s: %s",
+        DEFAULT_RETRY_ATTEMPTS, method, _url_label, last_exc,
+    )
     assert last_exc is not None
     raise last_exc
 

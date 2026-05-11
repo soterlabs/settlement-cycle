@@ -132,5 +132,5 @@ def render_markdown(pnl: MonthlyPnL, *, rules_url: str = DEFAULT_RULES_URL) -> s
 
 def write_markdown(pnl: MonthlyPnL, dest: Path, *, rules_url: str = DEFAULT_RULES_URL) -> Path:
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(render_markdown(pnl, rules_url=rules_url))
+    dest.write_text(render_markdown(pnl, rules_url=rules_url), encoding="utf-8")
     return dest

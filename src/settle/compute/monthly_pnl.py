@@ -82,8 +82,104 @@ def _resolve_pin_blocks(
     chains: set[Chain],
     resolver: IBlockResolver,
 ) -> dict[Chain, int]:
-    """Resolve ``last block_number with timestamp ≤ anchor_utc`` per chain via Protocol."""
-    return {chain: resolver.block_at_or_before(chain.value, anchor_utc) for chain in chains}
+    """Resolve ``last block_number with timestamp ≤ anchor_utc`` per chain.
+
+    Chains are resolved in parallel (ThreadPoolExecutor) to amortise the
+    ~25 binary-search RPC calls each one requires. For Spark (6 chains) this
+    cuts wall-clock time from ~6× to ~1× the single-chain cost.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    if not chains:
+        return {}
+
+    def _one(chain: Chain) -> tuple[Chain, int]:
+        block = resolver.block_at_or_before(chain.value, anchor_utc)
+        _log.info("  pin block resolved: %s → %d", chain.value, block)
+        return chain, block
+
+    with ThreadPoolExecutor(max_workers=min(len(chains), 8)) as pool:
+        futures = [pool.submit(_one, c) for c in chains]
+        return dict(f.result() for f in as_completed(futures))
+
+
+def _curve_sde_asset_value_timeseries(
+    prime: Prime,
+    venue,
+    period: Period,
+    *,
+    sde_coin,
+    curve_pool_source,
+    block_resolver,
+    cap_usd: Decimal | None = None,
+) -> "pd.DataFrame":
+    """Daily SDE asset value for a Curve LP pool venue (par-stable SDE coin).
+
+    Computes prime's proportional share of the named par-stable coin's reserve:
+
+        value_d = (alm_lp_d / pool_total_d) × coin_reserve_d   (at $1/unit)
+
+    Used instead of the RWA NAV-oracle path for Cat F venues where the SDE
+    exposure is a par-stable coin (e.g. USDT in the sUSDS/USDT pool, S24).
+    ``sde_coin`` must be in ``KNOWN_PAR_STABLES_ETHEREUM``.
+    """
+    from datetime import time
+    from ..extract.rpc import balance_of as _balance_of
+    from ..domain.primes import Address as _Addr
+    from ..domain.sky_tokens import KNOWN_PAR_STABLES_ETHEREUM
+
+    sde_coin_bytes = sde_coin.value
+    par = KNOWN_PAR_STABLES_ETHEREUM.get(sde_coin_bytes)
+    if par is None:
+        raise ValueError(
+            f"_curve_sde_asset_value_timeseries: SDE coin {sde_coin.hex} for venue "
+            f"{venue.id} is not in KNOWN_PAR_STABLES_ETHEREUM — add it to sky_tokens.py."
+        )
+    _sym, coin_decimals = par
+
+    pool_addr = venue.token.address.value
+    holder = (venue.holder_override or prime.alm[venue.chain]).value
+    chain_str = venue.chain.value
+
+    rows = []
+    current = period.start
+    while current <= period.end:
+        eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
+        value = Decimal("0")
+        try:
+            block = block_resolver.block_at_or_before(chain_str, eod)
+            pool_state = curve_pool_source.read_pool(chain_str, pool_addr, block)
+            total_supply = pool_state.total_supply
+            if total_supply > 0:
+                coin_idx = next(
+                    (i for i, c in enumerate(pool_state.coins) if c.value == sde_coin_bytes),
+                    None,
+                )
+                if coin_idx is not None:
+                    raw_coin = pool_state.balances[coin_idx]
+                    alm_lp_raw = _balance_of(
+                        venue.chain, venue.token.address, _Addr(holder), block,
+                    )
+                    alm_lp = Decimal(alm_lp_raw) / Decimal(10 ** venue.token.decimals)
+                    pool_total = Decimal(total_supply) / Decimal(10 ** venue.token.decimals)
+                    coin_usds = Decimal(raw_coin) / Decimal(10 ** coin_decimals)
+                    value = (alm_lp / pool_total) * coin_usds
+                    if cap_usd is not None and value > cap_usd:
+                        value = cap_usd
+                else:
+                    _log.warning(
+                        "curve SDE: venue %s pool %s does not contain SDE coin %s "
+                        "at block %d — $0 for day %s.",
+                        venue.id, pool_addr.hex(), sde_coin.hex, block, current,
+                    )
+        except Exception as exc:
+            _log.warning(
+                "curve SDE: RPC error for venue %s on %s; using $0 (error: %s).",
+                venue.id, current, type(exc).__name__,
+            )
+        rows.append({"block_date": current, "cum_value": value})
+        current = current + timedelta(days=1)
+    return pd.DataFrame(rows)
 
 
 def _sde_asset_value_timeseries(
@@ -348,8 +444,6 @@ def get_psm_usds_timeseries(
         # value" (no movement) and log the gap so it's auditable.
         from ..extract.rpc import RPCError
         import requests as _requests
-        import logging as _logging
-        _log = _logging.getLogger(__name__)
 
         def _value_at(day, fallback: Decimal | None = None) -> Decimal:
             eod = datetime.combine(day, time.max, tzinfo=timezone.utc)
@@ -455,9 +549,6 @@ def _aggregate_curve_idle_usds(
 
     # Spread = BR − SSR = BASE_RATE_OVER_SSR (30bps).
     spread_daily_factor = daily_compounding_factor(BASE_RATE_OVER_SSR)
-
-    import logging as _logging
-    _log = _logging.getLogger(__name__)
 
     def _par_stable_usds(coin_addr: bytes, raw_balance: int) -> Decimal:
         par = KNOWN_PAR_STABLES_ETHEREUM.get(coin_addr)
@@ -621,9 +712,6 @@ def _aggregate_lending_idle_usds(
     if not venues:
         return _empty_psm_df()
 
-    import logging as _logging
-    _log = _logging.getLogger(__name__)
-
     daily_by_date: dict = {}
 
     for venue in venues:
@@ -708,22 +796,103 @@ def compute_monthly_pnl(
         else get_block_resolver()
     )
     period_unpinned = Period.from_month(month)
-    if pin_blocks_eom is None:
-        pin_blocks_eom = _resolve_pin_blocks(
-            period_unpinned.end_eod_utc, prime.chains, resolver,
+
+    # Resolve EoM and SoM pin blocks for all chains in parallel (two concurrent
+    # ThreadPoolExecutors, one per anchor). Each pool already parallelises across
+    # chains internally, so for Spark (6 chains × 2 anchors) this cuts ~300
+    # sequential RPC calls down to the cost of ~25 (one chain, one anchor).
+    if pin_blocks_eom is None or pin_blocks_som is None:
+        from concurrent.futures import ThreadPoolExecutor as _TPE, as_completed as _ac
+        _log.info(
+            "resolving pin blocks for %d chain(s) (EoM + SoM in parallel)...",
+            len(prime.chains),
         )
-    if pin_blocks_som is None:
-        pin_blocks_som = _resolve_pin_blocks(
-            _previous_day_eod_utc(period_unpinned.start), prime.chains, resolver,
-        )
+        eom_anchor = period_unpinned.end_eod_utc
+        som_anchor = _previous_day_eod_utc(period_unpinned.start)
+        with _TPE(max_workers=2) as _outer:
+            _fut_eom = (
+                _outer.submit(_resolve_pin_blocks, eom_anchor, prime.chains, resolver)
+                if pin_blocks_eom is None else None
+            )
+            _fut_som = (
+                _outer.submit(_resolve_pin_blocks, som_anchor, prime.chains, resolver)
+                if pin_blocks_som is None else None
+            )
+            if _fut_eom is not None:
+                pin_blocks_eom = _fut_eom.result()
+            if _fut_som is not None:
+                pin_blocks_som = _fut_som.result()
+        _log.info("pin blocks resolved: eom=%s  som=%s", pin_blocks_eom, pin_blocks_som)
+
+    # 1b. Upgrade to DuneBlockResolver for every chain that has Dune coverage.
+    # One Dune query per chain replaces every per-day RPC binary-search (~25
+    # eth_getBlockByNumber calls per anchor). For Spark (6 chains × 28 days ×
+    # multiple timeseries per chain), this eliminates thousands of RPC calls.
+    # Chains without a Dune blocks table fall back silently to RPCBlockResolver.
+    # Queries are issued in parallel via a ThreadPoolExecutor.
+    #
+    # Dune chain → blocks table coverage (as of 2026-05):
+    _DUNE_BLOCK_CHAINS = frozenset({
+        "ethereum", "base", "arbitrum", "optimism", "avalanche_c",
+        # unichain, plume, monad: not yet in Dune spellbook — use RPC
+    })
+    if sources.block_resolver is None and pin_blocks_eom:
+        import os as _os
+        if _os.environ.get("DUNE_API_KEY"):
+            try:
+                from concurrent.futures import ThreadPoolExecutor as _TPE2, as_completed as _ac2
+                from ..normalize.sources.dune_block_resolver import (
+                    DuneBlockResolver as _DBR,
+                    MultiChainBlockResolver as _MCR,
+                )
+                from ..normalize.sources.rpc_block_resolver import RPCBlockResolver as _RBR
+                dune_chains = {c for c in prime.chains if c.value in _DUNE_BLOCK_CHAINS}
+                rpc_chains  = prime.chains - dune_chains
+                _log.info(
+                    "upgrading block resolver: DuneBlockResolver for %s, "
+                    "RPCBlockResolver for %s",
+                    sorted(c.value for c in dune_chains),
+                    sorted(c.value for c in rpc_chains),
+                )
+                def _make_dune_resolver(chain: "Chain") -> "tuple[Chain, _DBR]":
+                    dbr = _DBR(
+                        chain=chain.value,
+                        start_date=prime.start_date,
+                        end_date=period_unpinned.end,
+                        pin_block=pin_blocks_eom[chain],
+                    )
+                    return chain, dbr
+                with _TPE2(max_workers=len(dune_chains) or 1) as _pool2:
+                    _futs = {_pool2.submit(_make_dune_resolver, c): c for c in dune_chains}
+                    per_chain: dict[str, object] = {}
+                    for _f in _ac2(_futs):
+                        _chain, _dbr = _f.result()
+                        per_chain[_chain.value] = _dbr
+                        _log.info(
+                            "  DuneBlockResolver(%s): %d dates, %s → %s",
+                            _chain.value, len(_dbr._dates),
+                            _dbr._dates[0], _dbr._dates[-1],
+                        )
+                _rpc_fallback = _RBR()
+                for c in rpc_chains:
+                    per_chain[c.value] = _rpc_fallback
+                resolver = _MCR(per_chain)
+            except Exception as _e:
+                _log.warning(
+                    "DuneBlockResolver init failed (%s) — falling back to RPC for all chains", _e
+                )
 
     period = Period(period_unpinned.start, period_unpinned.end, pin_blocks=pin_blocks_eom)
 
+    _log.info("step 2: gathering Dune/normalize inputs (debt, balances, SSR)...")
     # 2. Gather Normalize inputs for sky_revenue + agent_rate (Ethereum-only).
+    _log.info("  2a: debt timeseries...")
     debt = get_debt_timeseries(prime, period, source=sources.debt)
+    _log.info("  2b: subproxy USDS balance...")
     sub_usds = get_subproxy_balance_timeseries(
         prime, Chain.ETHEREUM, USDS_ETHEREUM, period, source=sources.balance,
     )
+    _log.info("  2c: subproxy sUSDS shares...")
     sub_susds_shares = get_subproxy_balance_timeseries(
         prime, Chain.ETHEREUM, sUSDS_ETHEREUM, period, source=sources.balance,
     )
@@ -733,12 +902,14 @@ def compute_monthly_pnl(
     # SSR — using current value would double-count savings). Used by
     # agent_rate (earning base); NOT passed to sky_revenue (subproxy balances
     # are treasury/risk capital, not pure ilk-debt proceeds).
+    _log.info("  2d: sUSDS → principal conversion (RPC per day)...")
     sub_susds = _susds_shares_to_principal(
         sub_susds_shares,
         sources=sources,
         block_resolver=resolver,
         chain=Chain.ETHEREUM,
     )
+    _log.info("  2e: ALM USDS balance...")
     alm_usds = get_alm_balance_timeseries(
         prime, Chain.ETHEREUM, USDS_ETHEREUM, period, source=sources.balance,
     )
@@ -746,6 +917,7 @@ def compute_monthly_pnl(
     # configured. The prime's debt (cum_debt) is Ethereum-only (Vat), but
     # USDS-equivalent capital parked at any PSM (Sky LITE-PSM on Eth, Spark
     # PSM3 on L2s) was funded from that debt and reduces utilized.
+    _log.info("  2f: PSM USDS aggregate...")
     psm_usds = _aggregate_psm_usds(
         prime, period,
         balance_source=sources.balance,
@@ -772,24 +944,29 @@ def compute_monthly_pnl(
         prime, period,
         block_resolver=resolver,
     )
+    _log.info("  2g: SSR history...")
     ssr = get_ssr_history(prime, period, source=sources.ssr)
+    _log.info("  step 2 complete.")
 
     # SDE table — config-driven Sky Direct exposures (replaces the legacy
     # ``Venue.sky_direct: bool`` flag). Empty table = no venues are SDE.
     sde_table = load_sde_table()
     sde_asset_value_per_venue: list = []
 
+    import time as _time
+    n_venues = sum(1 for v in prime.venues if not v.skip)
+    _log.info("step 3: per-venue pricing for %d venue(s)...", n_venues)
     # 3. Per-venue: value at SoM + EoM, inflow timeseries.
     venue_inputs: list[VenueRevenueInputs] = []
+    _venue_idx = 0
     for venue in prime.venues:
         if venue.skip:
             # Excluded from MSC — typically venues whose NAV oracle is
             # untrusted or whose underlying is too volatile (e.g. Avalanche
             # cross-chain RWAs without a reliable feed). Logged once for
             # provenance.
-            import logging as _logging
-            _logging.getLogger(__name__).info(
-                "Skipping venue %s (%s, %s) — venue.skip=True.",
+            _log.info(
+                "  [skip] %s (%s, %s) — venue.skip=True.",
                 venue.id, venue.token.symbol, venue.chain.value,
             )
             continue
@@ -801,13 +978,18 @@ def compute_monthly_pnl(
             # accounting layer (vault underlying balance ↔ share supply ×
             # pps) that doesn't fit the standard Cat A/B/C/E/F flow.
             # Skip with a warning until that layer lands.
-            import logging as _logging
-            _logging.getLogger(__name__).warning(
-                "Skipping Spark Savings V2 venue %s (%s, %s) — compute path "
-                "for spread accounting not yet implemented.",
+            _log.warning(
+                "  [skip] %s (%s, %s) — Spark Savings V2 compute path not yet implemented.",
                 venue.id, venue.token.symbol, venue.chain.value,
             )
             continue
+        _venue_idx += 1
+        _venue_t0 = _time.monotonic()
+        _log.info(
+            "  [%d/%d] %s  %s/%s  starting...",
+            _venue_idx, n_venues, venue.id, venue.chain.value,
+            venue.pricing_category.value,
+        )
         if venue.chain not in pin_blocks_som:
             raise ValueError(
                 f"Missing SoM pin_block for chain {venue.chain.value} "
@@ -1033,19 +1215,46 @@ def compute_monthly_pnl(
             prime.id, venue.id, period.start, period.end,
         )
         if sde_entry is not None:
-            bsrc = sources.balance if sources.balance is not None else get_balance_source()
+            ciuc = venue.curve_idle_usds
+            if ciuc is not None and ciuc.sde_coin is not None:
+                # Curve LP pool SDE: the exposure is a par-stable coin in the pool
+                # (e.g. USDT in sUSDS/USDT). Use pool-state coin balance rather than
+                # an RWA NAV oracle. See CurveIdleUsdsConfig.sde_coin for details.
+                from ..normalize.sources.curve_pool import CurvePoolSource as _CPS
+                _curve_src = (
+                    sources.curve_pool
+                    if sources.curve_pool is not None
+                    else _CPS()
+                )
+                sde_asset_value_per_venue.append(_curve_sde_asset_value_timeseries(
+                    prime, venue, period,
+                    sde_coin=ciuc.sde_coin,
+                    curve_pool_source=_curve_src,
+                    block_resolver=resolver,
+                    cap_usd=sde_entry.cap_usd,
+                ))
+            else:
+                # Cat E (RWA tranche) path — requires nav_oracle on the venue.
+                bsrc = sources.balance if sources.balance is not None else get_balance_source()
 
-            def _sd_nav(block, _v=venue, _br=resolver, _nr=sources.nav_oracle_resolver):
-                return _resolve_rwa_nav(_v, block, block_resolver=_br, resolver=_nr)
+                def _sd_nav(block, _v=venue, _br=resolver, _nr=sources.nav_oracle_resolver):
+                    return _resolve_rwa_nav(_v, block, block_resolver=_br, resolver=_nr)
 
-            sde_asset_value_per_venue.append(_sde_asset_value_timeseries(
-                prime, venue, period,
-                balance_source=bsrc,
-                block_resolver=resolver,
-                nav_at_block=_sd_nav,
-                cap_usd=sde_entry.cap_usd,
-            ))
+                sde_asset_value_per_venue.append(_sde_asset_value_timeseries(
+                    prime, venue, period,
+                    balance_source=bsrc,
+                    block_resolver=resolver,
+                    nav_at_block=_sd_nav,
+                    cap_usd=sde_entry.cap_usd,
+                ))
 
+        _log.info(
+            "  [%d/%d] %s  done in %.1fs  som=$%.0f  eom=$%.0f%s",
+            _venue_idx, n_venues, venue.id,
+            _time.monotonic() - _venue_t0,
+            value_som, value_eom,
+            "  [SDE]" if sde_entry is not None else "",
+        )
         venue_inputs.append(VenueRevenueInputs(
             venue=venue, value_som=value_som, value_eom=value_eom,
             inflow_timeseries=inflow_ts,
@@ -1053,6 +1262,7 @@ def compute_monthly_pnl(
             actual_revenue_override=susds_spread,
         ))
 
+    _log.info("step 4: computing revenue components...")
     # 4. Compute three revenue components.
     agent_rate = compute_agent_rate(period, sub_usds, sub_susds, ssr)
     prime_rev, breakdown = compute_prime_agent_revenue(period, venue_inputs)

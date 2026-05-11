@@ -127,6 +127,49 @@ flows through Cat A `prime_agent_revenue`, no new
 `distribution_rewards` reader needed. If (a) or (b), MSC needs a
 new `IDistributionRewardsSource` adapter.
 
+#### G21. Galaxy Arch CLO (GACLO-1, E21) — confirm USDC distribution payer + cadence
+Raised in PR #67 review (2026-05-11). The PR un-skips E20 (JAAA-avax,
+Chronicle on Eth verified) but keeps E21 (GACLO-1) `skip: true`, with
+the design that the yield is captured via monthly USDC sweeps from
+Galaxy to the Grove ALM, recognized as Cat A revenue via
+`external_alm_sources`.
+
+**On-chain finding (Dune verified 2026-05-11):** no USDC sweep from
+Galaxy has been observed to date. Trace:
+
+1. The GACLO-1 issuer is **`0x5ee36f573f0e543f905796c0e697caa7e984e0c8`**.
+   It minted GACLO-1 to three holders on a single day (2025-12-16):
+   - Grove ALM Avalanche `0x7107dd8f…3644` — 49.9M GACLO-1
+   - `0x05855717…ae3b` — 100M GACLO-1
+   - `0xe58e386d…56f4` — 0.1M GACLO-1
+2. Since 2025-12-16, the issuer has sent **zero USDC** to any address
+   on any chain. Lifetime outbound from this address is GACLO-1 mints
+   + airdrop-style spam tokens; no stablecoin distributions.
+3. Grove ALM Avalanche has received only three token kinds since
+   inception: JAAA (subscriptions Aug-Sep 2025), AVAX (gas
+   replenishment), and GACLO-1 (the single 2025-12-16 subscription).
+   **No USDC received, ever.**
+
+So as of 2026-05-11, ~5 months after subscription, no monthly Galaxy
+distribution mechanism is empirically visible on-chain.
+
+**Q for Grove:**
+1. **Has Galaxy made any distribution since 2025-12-16?** If so, on
+   what chain, in what token, to what Grove address?
+2. **Confirm the payer address** if distributions are still pending —
+   is it the issuer (`0x5ee36f57…0c8`), a separate treasury / paying
+   agent multisig, or paid out-of-band?
+3. **Cadence** — monthly on the 10th as the PR comment assumes, or
+   different (quarterly, annual coupon)?
+4. **Settlement asset** — USDC on Avalanche, USDC on Ethereum, or AVAX?
+
+Until distributions land, E21 contributes $0 to revenue (correct
+under the current `skip: true` + empty `external_alm_sources` config).
+Numerical impact when distributions begin: depends on coupon size.
+Galaxy publishes CLO trances with ~3-7% APY on the underlying — so a
+$49.9M position could pay $1.5-3.5M/yr split into ~12 monthly
+sweeps if the cadence assumption holds.
+
 ### P2 — sanity checks / confirmations
 
 #### G4. Sky Direct venue set re-confirmation
@@ -305,11 +348,6 @@ We'll add the compute path once these three confirmations land.
 
 ### P1 — methodology unknowns affecting accuracy
 
-#### S1. Confirm `2024-11-18` is Spark's billing anchor
-That's the date of the first frob on `ALLOCATOR-SPARK-A`. If Sky bills
-from a different anchor (e.g., earlier KYC date), `cum_debt` and
-downstream `sky_revenue` would shift.
-
 #### S4. Multi-chain ALM netting in sky_revenue
 `compute_sky_revenue` currently nets only **USDS** at the Eth ALM/subproxy
 + PSM USDS-equivalent. PYUSD/USDC/USDT held at Eth ALM are NOT netted
@@ -436,6 +474,77 @@ If any stream sweeps to ALM Proxy as a stable token, the existing
 If accrual lives at a contract that needs to be queried (claimable /
 events), MSC needs a new `IDistributionRewardsSource` adapter — same
 shape as G20.
+
+#### S23. PSM3-USDC SDE pattern — implement per-leg split or accept the gap?
+`config/sky_direct_exposures.yaml` declares both Spark and Grove as SDE
+on the **USDC leg** of L2 PSM3 holdings (`pattern: 'psm3_usdc_non_ethereum'`,
+matching Atlas §A.2.3.2.2.3 *"USDC in PSM3 on non-Eth chains"*). But
+`src/settle/domain/sde.py` logs a WARN at load that pattern entries are
+not consumed by `compute_sky_revenue` — they only document the methodology
+intent. PRD §17.10 acknowledges this as an accepted gap, but it is
+**Spark-material**:
+
+- **Today's pipeline**: Spark's full L2 PSM3 USDS-equivalent (~$544M as
+  of 2026-05) is subtracted from `utilized` in `compute_sky_revenue`,
+  so Spark gets full BR-reimbursement on the entire amount and Sky
+  collects no SDE-direct revenue on the USDC slice.
+- **If Atlas is canonical**: the USDC slice should be SDE — Sky takes
+  the actual yield on that capital, and `utilized` should only deduct
+  the non-USDC slice (USDS + sUSDS holdings inside PSM3).
+
+To implement the split correctly we need:
+1. Per-leg balance read inside PSM3 (`USDC`, `USDS`, `sUSDS` reserves
+   separately — PSM3 has `totalAssets()` + per-asset methods, or we
+   can read each underlying token's `balanceOf(psm3)` and apportion
+   the prime's `shares × convertToAssetValue` across legs by reserve
+   weight).
+2. New `IPsm3LegReader` source (or extension to `IPsm3Source`) that
+   surfaces the 3 legs.
+3. SDE pattern handler in `compute_sky_revenue` that reads the USDC
+   slice and routes it to `sde_asset_value` instead of `psm_usds`.
+
+**Q for Spark/BA/Sky:** confirm Atlas §A.2.3.2.2.3 is the canonical
+intent (Sky claims actual yield on PSM3 USDC), and that the per-leg
+split is the right implementation. Until then Spark Q1 2026 numbers
+are computed with the full PSM3 holdings BR-reimbursed (i.e. Spark
+favorable, Sky under-credited).
+
+#### S24. SDE mid-period activation — full-month vs day-level pro-rating
+Raised in PR #67 review (2026-05-11). The PR documents (in
+`config/sky_direct_exposures.yaml`) a known limitation: the compute
+layer queries `SDETable.is_active_on(period_start)`, so an SDE entry
+whose `start_date` falls inside a month is either applied for the
+**full month** or **skipped entirely** — never pro-rated from the
+actual start_date to month-end.
+
+**Concrete impact today:** Spark S24 USDT SDE (start 2025-11-13). Per
+`is_active_on(2025-11-01)` the entry is not active at SoM → Nov 2025
+is treated as fully non-SDE. First counted SDE month: Dec 2025. Sky
+is under-charged ~13 days of USDT SDE utilisation in Nov 2025
+(roughly: position_value × subsidised_BR × 13/365).
+
+The PR comment intentionally **defers the fix** (PR scope is logging
+/ extraction optimisations, not methodology). The dedicated SDE-
+alignment branch is the right place to land day-level pro-rating.
+
+**Q for Spark / Sky governance / BA:**
+1. **Authoritative semantic** — is the canonical methodology
+   "full-month if active at SoM" (matches Grove team's workbook
+   `sd_share` lock-at-SoM convention) or "day-level pro-rating from
+   the actual start_date"? Atlas branch `add-sky-direct-exposure-
+   start-dates` lists start dates without saying which convention
+   to apply.
+2. **Symmetric for end_date** — if pro-rating is canonical, does it
+   apply on the closing side too (Historical JAAA on Eth ended
+   2026-03-12, mid-month; today Mar 2026 is fully SDE since the
+   entry was active at SoM Mar 2026).
+3. **Retro impact** — if day-level is canonical, do prior settlements
+   (Nov 2025, Mar 2026 for JAAA-end) need to be re-issued, or is the
+   prospective fix sufficient?
+
+If day-level is confirmed, the fix is ~10 lines in `compute_sky_
+revenue` plus a regression test that covers a SoM-not-yet-active
+venue + a within-month end_date.
 
 ### P2 — sanity checks / confirmations
 
@@ -1073,6 +1182,9 @@ Resolved questions move here from their open section when their GitHub
 issue is closed. The full resolution narrative lives in
 `PRD.md §17.13` (review-acks); this section keeps a compact pointer
 trail (Q-ID, title, close date, issue link).
+
+### S1. Confirm `2024-11-18` is Spark's billing anchor
+**Resolved 2026-05-07** via [#19](https://github.com/soterlabs/settlement-cycle/issues/19). See `PRD.md §17.13`.
 
 ### S3. Anchorage S23 — $150M tri-party loan, on-chain addresses confirmed
 **Resolved 2026-05-05** via [#17](https://github.com/soterlabs/settlement-cycle/issues/17). See `PRD.md §17.13`.

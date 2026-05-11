@@ -40,8 +40,6 @@ def render_provenance(
             "prime_agent_revenue": str(pnl.prime_agent_revenue),
             "distribution_rewards": str(pnl.distribution_rewards),
             "prime_agent_total_revenue": str(pnl.prime_agent_total_revenue),
-            # Kept for audit / cross-check; not in the markdown headline or CSV.
-            "monthly_pnl": str(pnl.monthly_pnl),
         },
         "venue_breakdown": [
             {

@@ -344,17 +344,29 @@ venues:
   # ─────────────────────────────────────────────────────────────
   # Avalanche-C — Phase 2.B (multi-chain rollout)
   # ─────────────────────────────────────────────────────────────
-  # E20 + E21 (Avalanche-chain RWA venues) are excluded from MSC by
-  # decision (2026-05-02): the cross-chain NAV oracles for JAAA-avax and
-  # GACLO-1 are unreliable enough that we'd misprice the position by ~30%
-  # in a typical month. Until a trusted feed lands (Chronicle on Avalanche,
-  # or a Galaxy/Anchorage API integration), keep them in YAML for
-  # documentation but `skip: true` excludes them from compute.
+  # E20: Chronicle NAV oracle lives on Ethereum (oracle_chain: ethereum);
+  # the pipeline translates the Avalanche EoD block to the corresponding
+  # Ethereum block automatically. Verified working Dec-2025 onward
+  # (NAV ~$1.020–$1.028, slowly appreciating CLO tranche).
+  # E21 (GACLO-1): skip: true is correct and intentional (BA decision).
+  #
+  # Pricing model: const_one ($1/token). Un-skipping E21 would produce
+  # balance × $1 = principal deployed, which contributes $0 to revenue.
+  # skip: true and un-skip are therefore revenue-equivalent.
+  #
+  # Revenue capture: Galaxy distributes CLO yield as monthly USDC sweeps to
+  # the Grove ALM proxy (~10th of each month). That USDC inflow is Cat A
+  # prime_agent_revenue — the same pattern as Spark S23 (Anchorage loan).
+  # To capture it, the Galaxy payer address must be added to the
+  # `external_alm_sources` section at the bottom of this file.
+  #
+  # TODO: register the Galaxy USDC payer address in external_alm_sources
+  # (avalanche_c chain) once the address is confirmed, so the monthly
+  # sweeps are classified as yield rather than capital movement.
   - id: E20
     chain: avalanche_c
     label: 'Janus Henderson Anemoy AAA CLO (JAAA-avalanche)'
     pricing_category: E
-    skip: true
     token:
       address: '0x58f93d6b1ef2f44ec379cb975657c132cbed3b6b'
       symbol: 'JAAA-avax'
@@ -369,13 +381,13 @@ venues:
     chain: avalanche_c
     label: 'Galaxy Arch CLO Token (GACLO-1)'
     pricing_category: E
-    skip: true
+    skip: true  # intentional — see comment above; revenue captured via Cat A USDC sweeps
     token:
       address: '0x2c0adff8e114f3ca106051144353ac703d24b901'
       symbol: 'GACLO-1'
       decimals: 6
     nav_oracle:
-      kind: const_one
+      kind: const_one  # correct: CLO tokens issued/redeemed at $1; yield is a separate cash distribution
 
   # ─────────────────────────────────────────────────────────────
   # Plume — Phase 2.B (multi-chain rollout)
@@ -461,19 +473,19 @@ venues:
 # resolved by `src/settle/normalize/registry.py`, not by this file.
 # Per-venue oracle choices are encoded in each venue's `nav_oracle` block.
 
-# Cat A inflow source-tagging — addresses whose transfers to/from the ALM are
-# considered INTERNAL (not yield). Compute auto-adds every venue's
-# token.address on the same chain to this list, so we only need to enumerate
-# Sky-side infrastructure + protocol-level pools (Aave) here. Inflows from
-# any address NOT in this list (after auto-augmentation) are treated as
-# revenue — captures off-chain Anchorage-style yields.
-# Cat A revenue allowlist — counterparties that send REALIZED YIELD directly
-# to the ALM proxy (off-chain custodian distributions, e.g. Anchorage). Their
-# inflows pass through to revenue. Anything NOT listed here is treated as
-# value-preserving capital movement (PSM swap legs, venue allocations, etc.)
-# and netted out. Default empty → revenue_E_x = 0 for par-stables.
-# Add an entry like the example below when an off-chain yield source lands:
+# Cat A revenue allowlist — addresses that send REALIZED YIELD directly to
+# the ALM proxy (off-chain custodian distributions, Anchorage-style). Their
+# inflows are classified as prime_agent_revenue. Inflows from any address NOT
+# listed here are treated as value-preserving capital movement (PSM swap legs,
+# venue allocations, redemptions) and netted out.
 #
+# Default: empty → revenue_E_x = 0 for par-stables.
+#
+# Pending: Galaxy Arch CLO (E21) distributes yield as monthly USDC sweeps to
+# this ALM proxy. Register the Galaxy payer address here (avalanche_c chain)
+# once confirmed to capture those as Cat A revenue. See E21 comment above.
+#
+# Example (add when payer address is known):
 # external_alm_sources:
-#   ethereum:
-#     - '0x...'   # Anchorage custodian for token X
+#   avalanche_c:
+#     - '0x...'   # Galaxy payer for GACLO-1 monthly USDC distributions (E21)

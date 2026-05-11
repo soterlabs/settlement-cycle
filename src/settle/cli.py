@@ -176,23 +176,23 @@ def _cmd_run(args: argparse.Namespace) -> int:
     prime = load_prime_by_id(args.prime)
     month = Month.parse(args.month)
 
+    n_chains = len(prime.chains)
     print(f"settle run {prime.id} {month}")
-    print("  resolving pin blocks via RPC (~50 calls per chain)…")
+    print(f"  resolving pin blocks ({n_chains} chain(s), EoM + SoM in parallel)..."
+          f"  [use --log-level INFO for step-by-step progress]")
     result = compute_monthly_pnl(prime, month)
 
     print()
     print("=" * 70)
-    print(f"MONTHLY PnL — {prime.id} — {month}")
+    print(f"MONTHLY PnL -- {prime.id} -- {month}")
     print("=" * 70)
-    print(f"  Period:                   {result.period.start} → {result.period.end}")
+    print(f"  Period:                   {result.period.start} -> {result.period.end}")
     print(f"  EoM block (ethereum):     {result.period.pin_blocks.get(Chain.ETHEREUM)}")
     print(f"  SoM block (ethereum):     {result.pin_blocks_som.get(Chain.ETHEREUM)}")
     print()
     print(f"  prime_agent_revenue:      ${result.prime_agent_revenue:>20,.2f}")
     print(f"  agent_rate:               ${result.agent_rate:>20,.2f}")
-    print(f"  sky_revenue:             −${result.sky_revenue:>20,.2f}")
-    print(f"  ─────────────────────────────────────────────")
-    print(f"  monthly_pnl:              ${result.monthly_pnl:>20,.2f}")
+    print(f"  sky_revenue:              ${result.sky_revenue:>20,.2f}")
     print()
     if result.venue_breakdown:
         print("  Per-venue breakdown:")
@@ -213,6 +213,12 @@ def _cmd_run(args: argparse.Namespace) -> int:
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="settle", description="MSC monthly settlement pipeline")
+    p.add_argument(
+        "--log-level",
+        default="WARNING",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+        help="Logging verbosity (default: WARNING). Use INFO to see per-chain timing.",
+    )
     sub = p.add_subparsers(dest="cmd", required=True)
 
     sub.add_parser("version", help="Print version").set_defaults(func=_cmd_version)
@@ -263,8 +269,15 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    import logging as _logging
     parser = _build_parser()
     args = parser.parse_args(argv)
+    level = getattr(_logging, args.log_level.upper(), _logging.WARNING)
+    _logging.basicConfig(
+        format="%(asctime)s %(levelname)-8s %(name)s — %(message)s",
+        datefmt="%H:%M:%S",
+        level=level,
+    )
     return int(args.func(args))
 
 

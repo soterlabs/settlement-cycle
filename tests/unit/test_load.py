@@ -170,7 +170,7 @@ def test_render_provenance_records_pin_blocks_and_results():
     assert p["pin_blocks_eom"] == {"ethereum": 24971074}
     assert p["pin_blocks_som"] == {"ethereum": 24700000}
     assert p["results"]["sky_revenue"] == "123456.78"
-    assert p["results"]["monthly_pnl"] == str(_sample_pnl().monthly_pnl)
+    assert "monthly_pnl" not in p["results"]
     assert p["sources"] == {"debt": "DuneDebtSource"}
     assert len(p["venue_breakdown"]) == 1
 

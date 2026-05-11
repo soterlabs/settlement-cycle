@@ -42,31 +42,26 @@ class DuneBlockResolver:
 
         Pre-fetched mode lets offline acceptance scripts load the mapping
         from a captured fixture without needing ``DUNE_API_KEY`` at run time.
+
+        ``chain`` must be a Dune chain namespace that has a ``blocks`` table
+        (e.g. ``'ethereum'``, ``'base'``, ``'arbitrum'``, ``'optimism'``,
+        ``'avalanche_c'``). The value is substituted into the SQL as
+        ``FROM {{chain}}.blocks``. Chains without Dune coverage should fall
+        back to ``RPCBlockResolver`` at the call site.
         """
         self._chain = chain
         if prefetched_rows is not None:
             rows = prefetched_rows
         else:
-            # The shared `blocks_at_eod.sql` template hardcodes
-            # ``ethereum.blocks``. Live (non-prefetched) construction for any
-            # other chain would silently load Ethereum blocks under the wrong
-            # chain label — refuse instead. Per-chain runs must use
-            # ``prefetched_rows=`` from a chain-specific captured fixture
-            # until the SQL is re-templated for cross-chain lookup.
-            if chain != "ethereum":
-                raise ValueError(
-                    f"DuneBlockResolver: live construction supported only for "
-                    f"chain='ethereum' (got {chain!r}); pass prefetched_rows "
-                    "for non-Ethereum chains."
-                )
             if start_date is None or end_date is None or pin_block is None:
                 raise ValueError(
                     "DuneBlockResolver: must pass either prefetched_rows or "
-                    "(start_date, end_date, pin_block)."
+                    "(chain, start_date, end_date, pin_block)."
                 )
             df = execute_query(
                 QUERIES_DIR / "blocks_at_eod.sql",
                 params={
+                    "chain": chain,
                     "start_date": start_date.isoformat(),
                     "end_date": end_date.isoformat(),
                 },

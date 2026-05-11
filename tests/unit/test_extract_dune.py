@@ -3,6 +3,10 @@
 The 4 SQL files were validated end-to-end against live Dune via MCP on 2026-04-27
 (see PRD §13). This module ensures the param encoder still produces the shape Dune
 expects and that the SQL files exist where the code expects them.
+
+NOTE: Dune's /execute endpoint uses a plain dict ``{param_name: value}`` format
+where values are JSON primitives (not the old ``{"type": ..., "value": ...}`` format).
+``_format_param`` returns the raw JSON-native value for each Python type.
 """
 
 from __future__ import annotations
@@ -14,52 +18,48 @@ from settle.extract.dune import _format_param
 
 
 # ----------------------------------------------------------------------------
-# _format_param — encoder for Dune `query_parameters` items
+# _format_param — encoder for Dune `query_parameters` values (JSON primitives)
 # ----------------------------------------------------------------------------
 
 def test_format_param_int():
-    assert _format_param(24971074) == {"type": "number", "value": "24971074"}
+    assert _format_param(24971074) == 24971074
 
 
 def test_format_param_float():
-    assert _format_param(1.5) == {"type": "number", "value": "1.5"}
+    assert _format_param(1.5) == 1.5
 
 
 def test_format_param_bool_does_not_route_to_number():
     """`bool` is a subclass of `int` — must be matched first."""
-    assert _format_param(True) == {"type": "text", "value": "true"}
-    assert _format_param(False) == {"type": "text", "value": "false"}
+    assert _format_param(True) is True
+    assert _format_param(False) is False
 
 
 def test_format_param_bytes_renders_as_0x_text():
-    """Validated via MCP: passing varbinary as `text` with `0x...` works."""
+    """Validated via MCP: passing varbinary as hex string with `0x` prefix works."""
     out = _format_param(bytes.fromhex("414c4c4f4341544f522d4f4245582d41" + "00" * 16))
-    assert out["type"] == "text"
-    assert out["value"].startswith("0x414c4c4f4341544f522d4f4245582d41")
+    assert isinstance(out, str)
+    assert out.startswith("0x414c4c4f4341544f522d4f4245582d41")
 
 
 def test_format_param_bytearray():
-    out = _format_param(bytearray(b"\x01\x02\x03"))
-    assert out == {"type": "text", "value": "0x010203"}
+    assert _format_param(bytearray(b"\x01\x02\x03")) == "0x010203"
 
 
-def test_format_param_date_is_text_not_datetime():
-    """`date` → text so SQL templates can wrap as `DATE '{{x}}'`."""
-    assert _format_param(date(2026, 4, 27)) == {
-        "type": "text",
-        "value": "2026-04-27",
-    }
+def test_format_param_date_is_iso_string():
+    """`date` → ISO-8601 string so SQL templates can wrap as ``DATE '{{x}}'``."""
+    assert _format_param(date(2026, 4, 27)) == "2026-04-27"
 
 
-def test_format_param_datetime_is_datetime():
+def test_format_param_datetime_is_iso_string():
     ts = datetime(2026, 4, 27, 22, 22, 23, tzinfo=timezone.utc)
     out = _format_param(ts)
-    assert out["type"] == "datetime"
-    assert out["value"].startswith("2026-04-27T22:22:23")
+    assert isinstance(out, str)
+    assert out.startswith("2026-04-27T22:22:23")
 
 
 def test_format_param_string_passthrough():
-    assert _format_param("ethereum") == {"type": "text", "value": "ethereum"}
+    assert _format_param("ethereum") == "ethereum"
 
 
 # ----------------------------------------------------------------------------
@@ -67,9 +67,12 @@ def test_format_param_string_passthrough():
 # ----------------------------------------------------------------------------
 
 EXPECTED_SQL_FILES = [
+    "blocks_at_eod.sql",
     "debt_timeseries.sql",
-    "transfer_timeseries.sql",
+    "inflow_by_counterparty.sql",
     "ssr_history.sql",
+    "transfer_timeseries.sql",
+    "v3_liquidity_events.sql",
     "venue_inflow.sql",
 ]
 

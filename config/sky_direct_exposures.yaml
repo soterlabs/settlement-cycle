@@ -18,6 +18,25 @@
 #     subsidised CoF base (= Grove team's Net_Subs).
 #   - Losses split proportionally between prime and Sky.
 #
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │  KNOWN LIMITATION — Mid-period SDE activation is NOT pro-rated          │
+# │                                                                         │
+# │  The compute layer checks `is_active_on(period_start)` (i.e. the first  │
+# │  day of the settlement month). If an entry's start_date falls within    │
+# │  a month (e.g. 2025-11-13 within Nov 2025), the SDE is either applied  │
+# │  for the full month OR skipped entirely — never pro-rated from the      │
+# │  actual start_date.                                                     │
+# │                                                                         │
+# │  Concrete impact today:                                                 │
+# │    - Spark S24 USDT SDE (start 2025-11-13): Nov 2025 is skipped in     │
+# │      full (start_date > 2025-11-01). First counted month: Dec 2025.    │
+# │                                                                         │
+# │  This means Sky is under-charged ~13 days of USDT SDE utilisation      │
+# │  in Nov 2025. Acceptable for initial results review; implement          │
+# │  day-level pro-rating before any settlement period that starts mid-     │
+# │  month or where material SDE amounts activate mid-month.               │
+# └─────────────────────────────────────────────────────────────────────────┘
+#
 # Entry shape:
 #   - prime:        prime_id this exposure applies to
 #   - venue_id:     venue ID in `config/{prime}.yaml`
