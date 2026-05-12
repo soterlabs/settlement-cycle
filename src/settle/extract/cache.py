@@ -2,6 +2,17 @@
 
 The pin block is part of the cache key — re-runs at the same pin hit the cache.
 Cache lives under `~/.cache/msc-settle/` by default; override via `SETTLE_CACHE_DIR`.
+
+Layered storage (when ``DATABASE_URL`` is set):
+
+    read:  pickle hit → return
+           pickle miss → Postgres check
+                         hit  → write pickle, return
+                         miss → fetch upstream, write pickle + Postgres
+
+The Postgres layer is the durable source of truth; the local pickle is a
+fast LRU on top. With ``DATABASE_URL`` unset the pipeline behaves exactly
+as before (pickle-only). See ``postgres_store.py``.
 """
 
 from __future__ import annotations
@@ -15,6 +26,8 @@ from collections.abc import Callable
 from functools import wraps
 from pathlib import Path
 from typing import Any, ParamSpec, TypeVar
+
+from . import postgres_store
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -78,10 +91,22 @@ def _jsonify(x: Any) -> Any:
     return f"<{type(x).__name__}:{x!r}>"
 
 
-def cached(source_id: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
-    """Decorator: cache return value to disk by SHA256 of (source_id, args, kwargs).
+def _write_pickle(path: Path, value: Any) -> None:
+    """Atomic pickle write — per-(pid, tid) tmp suffix avoids two threads
+    clobbering each other's partial dump (e.g. ThreadPoolExecutor in the
+    Spark Q1 runner)."""
+    tmp = path.with_suffix(f".pkl.{os.getpid()}.{threading.get_ident()}.tmp")
+    with tmp.open("wb") as f:
+        pickle.dump(value, f)
+    tmp.replace(path)
 
-    Cache disabled by env var ``SETTLE_NO_CACHE=1``.
+
+def cached(source_id: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    """Decorator: cache return value by SHA256 of (source_id, args, kwargs).
+
+    Lookup order: local pickle → Postgres (if ``DATABASE_URL`` set) →
+    upstream fetch. Fresh fetches are written to both layers. Cache disabled
+    entirely by env var ``SETTLE_NO_CACHE=1``.
     """
 
     def decorator(fn: Callable[P, R]) -> Callable[P, R]:
@@ -91,6 +116,7 @@ def cached(source_id: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
                 return fn(*args, **kwargs)
             key = _hash_args(source_id, args, kwargs)
             path = cache_dir() / f"{source_id}_{key}.pkl"
+            # 1. Local pickle hit.
             if path.exists():
                 # Only deserialize a pickle file we know we wrote — guards
                 # against a tampered cache file dropped by another user.
@@ -99,16 +125,21 @@ def cached(source_id: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
                         f"Refusing to load cache file not owned by current user: {path}"
                     )
                 with path.open("rb") as f:
-                    return pickle.load(f)  # noqa: S301 — owner-verified cache
+                    return pickle.load(f)
+            # 2. Postgres hit — populate the local LRU and return.
+            pg_value = postgres_store.get(source_id, key)
+            if pg_value is not postgres_store.MISS:
+                _write_pickle(path, pg_value)
+                return pg_value  # type: ignore[no-any-return]
+            # 3. Upstream fetch + dual-write.
             result = fn(*args, **kwargs)
-            # Per-(pid, tid) tmp suffix avoids two threads writing the same
-            # cache key from clobbering each other's partial pickle dump.
-            # Concurrent writes happen in flows like the Spark Q1 runner that
-            # parallelizes RPC reads across chains via ThreadPoolExecutor.
-            tmp = path.with_suffix(f".pkl.{os.getpid()}.{threading.get_ident()}.tmp")
-            with tmp.open("wb") as f:
-                pickle.dump(result, f)
-            tmp.replace(path)
+            _write_pickle(path, result)
+            postgres_store.put(
+                source_id, key,
+                args={"args": [_jsonify(a) for a in args],
+                      "kwargs": {k: _jsonify(v) for k, v in sorted(kwargs.items())}},
+                payload=result,
+            )
             return result
 
         return wrapper
