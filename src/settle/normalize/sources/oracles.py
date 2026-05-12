@@ -58,3 +58,32 @@ class ConstOneNavSource:
         block: int,                     # ignored
     ) -> Decimal:
         return Decimal("1.00")
+
+
+class ConstNavSource:
+    """``INavOracleSource`` that always returns a fixed USD NAV. Instantiated
+    by ``get_nav_oracle_source`` when the kind string matches ``const_<value>``
+    (e.g. ``const_1000`` returns $1,000.00).
+
+    Use as a fallback for Cat E venues whose primary oracle (Chronicle, etc.)
+    was not yet deployed or funded at the SoM block of an early settlement
+    period. The constant should approximate the token's NAV at that time so
+    that revenue = (eom_price − fallback_price) × balance tracks the actual
+    in-period appreciation rather than the full value from inception.
+
+    Example: E7 (STAC) was issued at $1,000/token in Dec 2025; the Chronicle
+    oracle was deployed Jan 9 2026. Setting ``fallback: const_1000`` avoids
+    the phantom $100M revenue that would arise from a $1 const_one fallback
+    at SoM producing a near-zero starting value against a $1,006 EoM price.
+    """
+
+    def __init__(self, value: Decimal) -> None:
+        self._value = value
+
+    def nav_at(
+        self,
+        chain: str,                     # ignored
+        oracle_address: bytes | None,   # ignored
+        block: int,                     # ignored
+    ) -> Decimal:
+        return self._value

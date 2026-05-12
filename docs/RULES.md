@@ -71,7 +71,7 @@ daily_sky_revenue = utilized_usds × [(1 + borrow_rate)^(1/365) - 1]
   |---|---|
   | `cum_debt` | Vat ilk debt (Σ frob `dart` from prime start → EoM pin block) |
   | `alm_proxy_usds` | Idle raw USDS at the ALM proxy |
-  | `psm_usds` | Idle USDS deposited in PSM3 (any chain) |
+  | `psm_usds` | Idle USDS-equivalent at any PSM. Only the **L2 PSM3** (Spark Base / Arbitrum / Optimism / Unichain) is tracked today — Sky's mainnet PSM stack is non-custodial and primes don't accumulate balances there. For PSM3 the basket is split per leg: the **USDS leg** reduces `utilized` directly; the **USDC leg** is added to `sde_asset_value` (Sky Direct Exposure per Atlas §A.2.3.2.2.3 — also excluded from BR base, with actual yield routed to Sky); the **sUSDS leg** stays in the BR base and the prime is credited 30 bps × value × n_days as Prime Revenue (Rule 5 — neutralises the SSR-via-share-price + BR-charge composite). See PRD §17.11. L2 PSM3 holdings ~$544M total for Spark as of 2026-05 (≈ 8% USDC SDE, 20% USDS reimbursed, 72% sUSDS BR-charged-with-30bps-credit-back). |
   | `sde_asset_value` | Daily NAV of Sky Direct Exposure positions (BUIDL, JTRSY, JAAA-cap…); Sky collects their yield directly via `sde_revenue` so charging BR on top would double-bill |
   | `curve_idle_usds` | Prime's proportional USDS in Curve LP pools (par-stable coin leg only; yield-bearing legs such as sUSDS are tracked separately — see Rule 5) |
   | `lending_idle_usds` | Prime's proportional share of unborrowed underlying in SparkLend / Aave pools: `(alm_spToken / totalSupply) × underlying_in_contract` |

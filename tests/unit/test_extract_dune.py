@@ -67,9 +67,12 @@ def test_format_param_string_passthrough():
 # ----------------------------------------------------------------------------
 
 EXPECTED_SQL_FILES = [
+    "blocks_at_eod.sql",
     "debt_timeseries.sql",
-    "transfer_timeseries.sql",
+    "inflow_by_counterparty.sql",
     "ssr_history.sql",
+    "transfer_timeseries.sql",
+    "v3_liquidity_events.sql",
     "venue_inflow.sql",
 ]
 

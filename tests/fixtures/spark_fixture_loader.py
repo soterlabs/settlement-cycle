@@ -310,8 +310,8 @@ def build_spark_sources(
             df = cat_b_directed.get((token, from_addr, to_addr))
             if df is not None:
                 return df
-            # Spark's Eth directed_flow PSM = $0 (Dune query 7401552 verified
-            # zero rows). All other directed paths default to empty.
+            # No PSM directed_flow on Ethereum any more (removed 2026-05-11,
+            # see PRD §17.11). All other directed paths default to empty.
             return _empty_directed_df()
 
         def inflow_by_counterparty(self, chain, token, holder, start, pin_block):

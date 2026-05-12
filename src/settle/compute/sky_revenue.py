@@ -151,13 +151,35 @@ def compute_sky_revenue_daily(
 
     Inputs (all Normalize outputs):
 
-    * ``debt``            DataFrame[block_date, cum_debt]
-    * ``alm_usds``        DataFrame[block_date, cum_balance]
-    * ``ssr``             DataFrame[effective_date, ssr_apy]
-    * ``psm_usds``        optional DataFrame[block_date, cum_balance]
-    * ``sde_asset_value`` optional DataFrame[block_date, cum_value]
-    * ``curve_idle_usds`` optional DataFrame[block_date, cum_balance]
-    * ``lending_idle_usds`` optional DataFrame[block_date, cum_balance]
+    * ``debt``                       DataFrame[block_date, daily_dart, cum_debt]
+    * ``alm_usds``                   DataFrame[block_date, daily_net, cum_balance] — idle USDS at ALM proxy
+    * ``ssr``                        DataFrame[effective_date, ssr_apy] — SP-BEAM changes
+    * ``psm_usds``                   optional 6-column DataFrame[block_date, daily_net, cum_balance,
+                                     cum_usdc, cum_usds_leg, cum_susds] of the prime's PSM holdings.
+                                     Per PRD §17.11 the three legs are routed separately:
+                                       - USDS leg  → subtracted from ``utilized`` (BR-reimbursed)
+                                       - USDC leg  → added to ``sde_asset_value`` (Sky Direct
+                                                     Exposure per Atlas §A.2.3.2.2.3)
+                                       - sUSDS leg → NOT subtracted here; the orchestrator credits
+                                                     the prime ``30 bps × value × n_days`` as Prime
+                                                     Revenue so the SSR-via-share-price + BR-charge
+                                                     + 30 bps-credit composite nets to zero
+                                                     (economic neutrality on idle sUSDS).
+    * ``curve_idle_usds``            optional DataFrame[block_date, daily_net, cum_balance] of the
+                                     prime's proportional USDS-equivalent inside configured Curve
+                                     pools (prime-settlement-methodology Step 2 — AMM idle USDS).
+                                     Built daily by the orchestrator via RPC ``read_pool`` +
+                                     ``balanceOf`` + ``convertToAssets`` (for sUSDS legs).
+                                     ``cum_balance`` is a daily snapshot (not a running total),
+                                     matching the PSM3 ERC4626-shares convention.
+    * ``lending_idle_usds``          optional DataFrame[block_date, daily_net, cum_balance] of the
+                                     prime's proportional share of unborrowed underlying in
+                                     configured lending pools (``lending_idle_usds: true``).
+                                     Built daily via ``balanceOf`` + ``totalSupply``.
+
+    Subproxy USDS/sUSDS are NOT passed here — they earn the agent rate
+    (``compute_agent_rate``) but are not subtracted from utilized because the
+    subproxy holds treasury/risk capital beyond pure ilk-debt proceeds.
     """
     require_non_empty(
         debt, name="debt",
@@ -180,14 +202,41 @@ def compute_sky_revenue_daily(
     total = Decimal("0")
     current = period.start
     while current <= period.end:
-        cum_debt      = cum_at_or_before(debt,             "cum_debt",     current)
-        cum_alm_usds  = cum_at_or_before(alm_usds,         "cum_balance",  current)
-        cum_psm_usds  = cum_at_or_before(psm_usds,         "cum_balance",  current)
-        cum_sde       = cum_at_or_before(sde_asset_value,  "cum_value",    current)
-        cum_curve     = cum_at_or_before(curve_idle_usds,  "cum_balance",  current)
-        cum_lending   = cum_at_or_before(lending_idle_usds,"cum_balance",  current)
+        cum_debt = cum_at_or_before(debt, "cum_debt", current)
+        cum_alm_usds = cum_at_or_before(alm_usds, "cum_balance", current)
+        # SDE positions (BUIDL, JTRSY, USTB, JAAA-cap, …) — Sky books their
+        # actual revenue directly via ``sd_revenue`` in the venue breakdown,
+        # so they're excluded from BR base here to avoid double-charging.
+        # ``cum_at_or_before`` returns 0 for None / empty inputs.
+        # PSM3 leg-split (PRD §17.11), three different treatments:
+        #   - USDS  leg → subtracted from utilized (idle USDS at PSM3, no SSR
+        #                 to offset, prime simply doesn't pay BR on this slice)
+        #   - USDC  leg → SDE per Atlas §A.2.3.2.2.3 (Sky takes the actual
+        #                 yield, ≈ $0 for passive reserves); folded into
+        #                 ``cum_sde`` so it's excluded from BR base
+        #   - sUSDS leg → NOT subtracted here. The prime captures SSR via the
+        #                 share-price appreciation of its PSM3 claim; charging
+        #                 full BR on this slice and crediting the prime 30 bps
+        #                 as Prime Revenue (in the orchestrator) makes the
+        #                 SSR / BR / 30 bps composite net to zero. Subtracting
+        #                 here would give the prime SSR for free at Sky's
+        #                 expense.
+        cum_psm_usds_leg  = cum_at_or_before(psm_usds, "cum_usds_leg", current)
+        cum_psm_usdc_sde  = cum_at_or_before(psm_usds, "cum_usdc",     current)
+        cum_sde = cum_at_or_before(sde_asset_value, "cum_value", current) + cum_psm_usdc_sde
+        # Prime's proportional USDS-equivalent in Curve pools — Step 2 idle AMM.
+        cum_curve_usds = cum_at_or_before(curve_idle_usds, "cum_balance", current)
+        # Prime's share of unborrowed underlying in lending pools — Step 2 idle lending.
+        cum_lending_idle = cum_at_or_before(lending_idle_usds, "cum_balance", current)
 
-        utilized = cum_debt - cum_alm_usds - cum_psm_usds - cum_sde - cum_curve - cum_lending
+        utilized = (
+            cum_debt
+            - cum_alm_usds
+            - cum_psm_usds_leg
+            - cum_sde
+            - cum_curve_usds
+            - cum_lending_idle
+        )
 
         daily_rev = Decimal("0")
         ssr_apy   = Decimal("0")

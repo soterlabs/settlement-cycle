@@ -51,7 +51,7 @@ def _period_dates(year: int, month: int) -> tuple[date, date]:
 
 _SETTLEMENT_SOURCES = {
     "debt": "MockDebtSource backed by tests/fixtures/spark_2026_q1/debt_timeseries.json",
-    "balance": "Routed MockBalanceSource (Cat B + Cat E from spark_2026_q1 fixtures; Cat A stubbed; PSM directed-flow stubbed)",
+    "balance": "Routed MockBalanceSource (Cat B + Cat E from spark_2026_q1 fixtures; Cat A stubbed; Ethereum `directed_flow` PSM returns empty — mainnet LITE-PSM is non-custodial for USDS, see PRD §17.11)",
     "ssr": "MockSSRSource (reused from grove_2026_03 — Sky-wide)",
     "position_balance": "RPCPositionBalanceSource (Alchemy/drpc)",
     "convert_to_assets": "RPCConvertToAssetsSource (Alchemy/drpc)",

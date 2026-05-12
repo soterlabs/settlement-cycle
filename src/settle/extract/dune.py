@@ -240,8 +240,14 @@ def _resolve_query_id(sql_path: Path) -> int:
         reg = _load_registry()
         if sha in reg:
             return reg[sha]
-        # 3. Auto-create a private Dune query.
-        query_id = _create_query(sql, name=f"settle/{sql_path.name}", is_private=False)
+        # 3. Auto-create a private Dune query (the ``_create_query`` default
+        #    is ``is_private=True``; auto-created queries are ephemeral
+        #    helpers keyed by SQL-content hash, not for sharing). The
+        #    public-publish flow lives in ``scripts/publish_dune_queries.py``,
+        #    which sets ``is_private=False`` explicitly and registers the
+        #    result in ``cache/dune_published.json`` so other team members
+        #    don't re-create the same query.
+        query_id = _create_query(sql, name=f"settle/{sql_path.name}")
         reg[sha] = query_id
         _save_registry(reg)
     return query_id
