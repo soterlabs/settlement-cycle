@@ -91,8 +91,14 @@ class NavOracle:
 
     kind: str
     address: Address | None = None
+    # ``asset_decimals`` is required for the ``erc4626`` kind and ignored by
+    # all others. It specifies the decimal count of the vault's underlying
+    # asset (e.g. 6 for USDC, 18 for DAI/USDS), used to scale the raw
+    # ``convertToAssets(1e18)`` return value to a dollar NAV.
+    asset_decimals: int | None = None
     fallback: str | None = None
     fallback_address: Address | None = None
+    fallback_asset_decimals: int | None = None
     oracle_chain: "Chain | None" = None
 
 

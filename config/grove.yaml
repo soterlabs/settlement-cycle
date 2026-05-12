@@ -429,14 +429,13 @@ venues:
       kind: chronicle
       address: '0x51cc9463788b870d1e9bacd111a9bbb2c9820c7e'
       oracle_chain: ethereum
-      # ACRDX was deposited at $1.00 par (PRD §17.13 nav_override at block
-      # 24,136,052 = $1.00). The Chronicle oracle above was deployed
-      # between blocks 24M and 24.3M, shortly after token deposit. For
-      # SoM blocks before the oracle's first published price, const_one
-      # ≈ $1 matches actual deposit-time NAV — same pattern as JAAA-avax.
-      # Today's live NAV ≈ $1.016 so the misprice surface is ~1.6% of
-      # position; modest vs E7's 99.9% catastrophic shape.
-      fallback: const_one
+      # Fallback: ACRDX vault on Ethereum (erc4626, asset_decimals=6).
+      # Covers SoM blocks before Chronicle's first published price (~block
+      # 24,300,000). Vault live from ~block 24,050,000; returns totalAssets NAV
+      # (e.g. $1.01877 at deposit block 24,136,052). See PRD §17.13 item 8.
+      fallback: erc4626
+      fallback_address: '0x74A739EA1Dc67c5a0179ebad665D1D3c4b80B712'
+      fallback_asset_decimals: 6
 
   # ─────────────────────────────────────────────────────────────
   # Venues observed in Grove team's Feb 2026 PnL workbook but not

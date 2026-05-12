@@ -284,17 +284,36 @@ def _resolve_rwa_nav(
     else:
         oracle_block = block
 
+    def _nav_oracle_kind(kind: str, asset_decimals: int | None) -> str:
+        """Encode ``asset_decimals`` into the kind string for ``erc4626``.
+
+        For the ``erc4626`` kind the registry dispatches on ``erc4626_<N>``
+        (e.g. ``erc4626_6``, ``erc4626_18``), where N comes from the YAML
+        ``asset_decimals`` / ``fallback_asset_decimals`` field. All other kinds
+        pass through unchanged, keeping the resolver to a single-argument
+        interface so existing test lambdas (``lambda kind: src``) don't break.
+        """
+        if kind == "erc4626":
+            if asset_decimals is None:
+                raise ValueError(
+                    f"Venue {venue.id}: nav_oracle kind 'erc4626' requires "
+                    "'asset_decimals' to be set in the YAML config."
+                )
+            return f"erc4626_{asset_decimals}"
+        return kind
+
     candidates: list[tuple[str, bytes | None]] = [
-        (venue.nav_oracle.kind,
+        (_nav_oracle_kind(venue.nav_oracle.kind, venue.nav_oracle.asset_decimals),
          venue.nav_oracle.address.value if venue.nav_oracle.address else None),
     ]
     if venue.nav_oracle.fallback:
         candidates.append((
-            venue.nav_oracle.fallback,
+            _nav_oracle_kind(venue.nav_oracle.fallback, venue.nav_oracle.fallback_asset_decimals),
             venue.nav_oracle.fallback_address.value if venue.nav_oracle.fallback_address else None,
         ))
 
     from ..extract.oracles.chronicle import ChronicleReadError
+    from ..extract.oracles.erc4626 import ERC4626ReadError
     from ..extract.oracles.price_per_share import PricePerShareReadError
     from ..extract.oracles.redstone import RedstoneReadError
     from ..extract.rpc import RPCError
@@ -306,7 +325,8 @@ def _resolve_rwa_nav(
     # etc.), making "all oracles failed" a catch-all hiding real bugs.
     _ORACLE_FAILURES: tuple[type[BaseException], ...] = (
         UnknownSourceError, NotImplementedError, ValueError,
-        ChronicleReadError, PricePerShareReadError, RedstoneReadError, RPCError,
+        ChronicleReadError, ERC4626ReadError, PricePerShareReadError,
+        RedstoneReadError, RPCError,
     )
     for i, (kind, addr) in enumerate(candidates):
         try:

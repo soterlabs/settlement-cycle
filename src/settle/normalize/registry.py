@@ -26,6 +26,7 @@ from .sources.oracles import (
     ChronicleNavSource,
     ConstNavSource,
     ConstOneNavSource,
+    ERC4626NavSource,
     PricePerShareNavSource,
     RedstoneNavSource,
 )
@@ -69,6 +70,8 @@ _BLOCK_RESOLVER_SOURCES: dict[str, type[IBlockResolver]] = {
 }
 
 # NAV oracles — keyed by ``Venue.nav_oracle.kind`` from per-prime YAML.
+# Note: ``erc4626`` is NOT in this dict — it is dispatched dynamically below
+# via the ``erc4626_<asset_decimals>`` encoded kind string.
 _NAV_ORACLE_SOURCES: dict[str, type[INavOracleSource]] = {
     "chronicle": ChronicleNavSource,
     "const_one": ConstOneNavSource,
@@ -166,7 +169,19 @@ def get_nav_oracle_source(kind: str) -> INavOracleSource:
         except Exception:
             pass  # fall through to UnknownSourceError
 
+    # Dynamic erc4626_<asset_decimals> — e.g. "erc4626_6", "erc4626_18".
+    # The decimals are encoded into the kind string by ``normalize.prices``
+    # from the YAML ``nav_oracle.asset_decimals`` / ``fallback_asset_decimals``
+    # field, so callers (including test resolvers) keep a single-arg interface.
+    if kind.startswith("erc4626_"):
+        suffix = kind[len("erc4626_"):]
+        try:
+            return ERC4626NavSource(asset_decimals=int(suffix))
+        except ValueError:
+            pass  # fall through to UnknownSourceError
+
     raise UnknownSourceError(
         f"Unknown NAV-oracle kind {kind!r}. "
-        f"Available: {sorted(_NAV_ORACLE_SOURCES)} or const_<decimal_value>."
+        f"Available: {sorted(_NAV_ORACLE_SOURCES)}, const_<decimal_value>, "
+        f"or erc4626_<asset_decimals> (e.g. erc4626_6, erc4626_18)."
     )
