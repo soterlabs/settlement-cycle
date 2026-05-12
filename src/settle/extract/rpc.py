@@ -6,6 +6,7 @@ that take a `block` parameter pin to that block; never use "latest" in productio
 
 from __future__ import annotations
 
+import logging
 import os
 from datetime import datetime, timezone
 from typing import Any
@@ -64,7 +65,7 @@ def rpc_url(chain: Chain) -> str:
     return url
 
 
-DEFAULT_RETRY_ATTEMPTS = 60
+DEFAULT_RETRY_ATTEMPTS = 10
 DEFAULT_RETRY_BACKOFF_SEC = 0.3
 RETRY_BACKOFF_CAP_SEC = 3.0
 
@@ -95,6 +96,9 @@ def _is_transient_rpc_error(err: Any) -> bool:
     return any(frag in msg for frag in _TRANSIENT_RPC_MSG_FRAGMENTS)
 
 
+_rpc_log = logging.getLogger(__name__)
+
+
 def _post(url: str, method: str, params: list[Any]) -> Any:
     """JSON-RPC POST with bounded retry on transient transport errors.
 
@@ -106,6 +110,8 @@ def _post(url: str, method: str, params: list[Any]) -> Any:
     import time as _time
     body = {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
     last_exc: Exception | None = None
+    # Mask the API key in log output (last path segment of the URL).
+    _url_label = url.rsplit("/", 1)[-1][:12] + "…"
     for attempt in range(DEFAULT_RETRY_ATTEMPTS):
         try:
             r = requests.post(url, json=body, timeout=DEFAULT_TIMEOUT)
@@ -126,12 +132,31 @@ def _post(url: str, method: str, params: list[Any]) -> Any:
                 last_exc = RPCError(f"{method} transient error: {err}")
         except (requests.Timeout, requests.ConnectionError) as e:
             last_exc = e
+
+        # Log on first failure so it's immediately visible, then every 10
+        # attempts so we can see that the retry loop is spinning.
+        if attempt == 0:
+            _rpc_log.warning(
+                "RPC transient failure (attempt 1/%d) — %s %s: %s",
+                DEFAULT_RETRY_ATTEMPTS, method, _url_label, last_exc,
+            )
+        elif attempt % 10 == 0:
+            _rpc_log.warning(
+                "RPC still retrying (attempt %d/%d) — %s %s: %s",
+                attempt + 1, DEFAULT_RETRY_ATTEMPTS, method, _url_label, last_exc,
+            )
+
         if attempt < DEFAULT_RETRY_ATTEMPTS - 1:
             backoff = min(
                 DEFAULT_RETRY_BACKOFF_SEC * (2 ** attempt),
                 RETRY_BACKOFF_CAP_SEC,
             )
             _time.sleep(backoff)
+
+    _rpc_log.error(
+        "RPC exhausted all %d retries — %s %s: %s",
+        DEFAULT_RETRY_ATTEMPTS, method, _url_label, last_exc,
+    )
     assert last_exc is not None
     raise last_exc
 
@@ -184,6 +209,30 @@ def balance_of(chain: Chain, token: Address, holder: Address, block: int) -> int
         logging.getLogger(__name__).warning(
             "balance_of(%s, token=%s, holder=%s, block=%d) failed after retries: %s — returning 0",
             chain.value, token.hex, holder.hex, block, e,
+        )
+        return 0
+
+
+@cached(source_id="rpc.total_supply_of")
+def total_supply_of(chain: Chain, token: Address, block: int) -> int:
+    """ERC-20 ``totalSupply()`` at a specific block.
+
+    For Aave V3 aTokens and SparkLend spTokens this returns the *rebased*
+    total supply (the sum of all depositors' ``balanceOf`` values), denominated
+    in underlying token units. Combined with ``balance_of(token, holder, block)``
+    it gives the holder's proportional share of the pool:
+    ``share = balanceOf(holder) / totalSupply()``.
+
+    Returns 0 if the token didn't exist at this block or on RPC error
+    (logged as WARNING so silent zeros are auditable).
+    """
+    try:
+        return _decode_uint(eth_call(chain, token, SEL_TOTAL_SUPPLY, block))
+    except (RPCError, requests.HTTPError) as e:
+        import logging
+        logging.getLogger(__name__).warning(
+            "total_supply_of(%s, token=%s, block=%d) failed: %s — returning 0",
+            chain.value, token.hex, block, e,
         )
         return 0
 

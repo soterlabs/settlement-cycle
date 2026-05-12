@@ -12,6 +12,7 @@ from .pricing import PricingCategory
 from .primes import (
     Address,
     Chain,
+    CurveIdleUsdsConfig,
     NavOracle,
     Prime,
     PrincipalReturnOverride,
@@ -88,6 +89,15 @@ def load_prime(config_path: Path) -> Prime:
                 oracle_chain=Chain(no["oracle_chain"]) if no.get("oracle_chain") else None,
             )
 
+        curve_idle_usds = None
+        if "curve_idle_usds" in v:
+            ciu = v["curve_idle_usds"]
+            curve_idle_usds = CurveIdleUsdsConfig(
+                coin=Address.from_str(ciu["coin"]),
+                sky_savings_token=bool(ciu.get("sky_savings_token", False)),
+                sde_coin=Address.from_str(ciu["sde_coin"]) if ciu.get("sde_coin") else None,
+            )
+
         venues.append(
             Venue(
                 id=v["id"],
@@ -111,6 +121,9 @@ def load_prime(config_path: Path) -> Prime:
                     else None
                 ),
                 skip=bool(v.get("skip", False)),
+                curve_idle_usds=curve_idle_usds,
+                lending_idle_usds=bool(v.get("lending_idle_usds", False)),
+                sky_savings_token=bool(v.get("sky_savings_token", False)),
             )
         )
 

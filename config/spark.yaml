@@ -38,10 +38,12 @@ addresses:
   ethereum:
     subproxy: '0x691a6c29e9e96dd897718305427ad5d534db16ba'    # urn for ALLOCATOR-SPARK-A; 49,789 frob calls (most active allocator)
     alm:      '0x1601843c5e9bc251a3272907010afa41fa18347e'    # Spark Ethereum ALM (cross-chain hub)
-    psm:
-      kind: directed_flow                                     # Sky LITE-PSM-USDC: USDS swap conduit (shared across primes)
-      address: '0x37305b1cd40574e4c5ce33f8e8306be057fd7341'
-      token:   '0xdc035d45d973e3ec169d2276ddab16f1e407384f'   # USDS
+    # No PSM tracking on Ethereum. Sky's mainnet PSM stack (DssLitePsm +
+    # DaiUsds converter + LITE-PSM-USDC pocket EOA + retail UsdsPsmWrapper)
+    # is non-custodial — no per-prime balances accumulate at any contract or
+    # pocket. Spark transits USDS↔USDC through this stack as atomic swaps
+    # within a single tx (verified on Dune via tx 0x2c81d2de…42c0b6 trace).
+    # See PRD §17.11.
   base:
     alm:      '0x2917956eff0b5eaf030abdb4ef4296df775009ca'    # Spark Base ALM
     psm:
@@ -81,6 +83,11 @@ venues:
       address: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'
       symbol: 'USDS'
       decimals: 18
+    # Subtract Spark's share of unborrowed USDS in the SparkLend pool from
+    # utilized daily. Computed as:
+    #   (balanceOf(ALM, spUSDS) / totalSupply(spUSDS)) × balanceOf(spUSDS_contract, USDS)
+    # The unborrowed underlying is the USDS balance sitting in the spUSDS contract.
+    lending_idle_usds: true
 
   - id: S2
     chain: ethereum
@@ -120,6 +127,11 @@ venues:
       address: '0x6b175474e89094c44da98b954eedeac495271d0f'
       symbol: 'DAI'
       decimals: 18
+    # Subtract Spark's share of unborrowed DAI in the SparkLend pool from
+    # utilized daily. DAI is a par-stable ($1) so the deduction is direct.
+    # Computed as:
+    #   (balanceOf(ALM, spDAI) / totalSupply(spDAI)) × balanceOf(spDAI_contract, DAI)
+    lending_idle_usds: true
 
   - id: S5
     chain: ethereum
@@ -446,6 +458,27 @@ venues:
       address: '0x00836fe54625be242bcfa286207795405ca4fd10'
       symbol: 'sUSDSUSDT'
       decimals: 18
+    # Prime's proportional sUSDS in this pool earns the 30bps spread
+    # (BR - SSR) as Prime Revenue. sUSDS is NOT subtracted from utilized —
+    # the SSR flows back to Sky via the BR charge.
+    # sky_savings_token: true triggers the spread-only revenue path.
+    #
+    # sde_coin: the USDT leg of this pool is a Sky Direct Exposure (SDE)
+    # per Atlas A.2.2.9.1.1.1.1.3 (active from 2025-11-13, see
+    # config/sky_direct_exposures.yaml). The SDE asset value is computed
+    # as (alm_lp / pool_total) × USDT_reserve at par ($1/unit).
+    #
+    # LIMITATION — mid-period SDE activation not pro-rated: if the SDE
+    # start_date (2025-11-13) falls within a settlement month the compute
+    # layer applies the SDE rule for the full month or skips it entirely
+    # (based on whether start_date ≤ period_start). Pro-rating of the first
+    # partial month has not been implemented. Impact: Nov 2025 is skipped
+    # entirely (start_date > 2025-11-01 = period_start), so the first month
+    # where USDT SDE asset value is counted is Dec 2025.
+    curve_idle_usds:
+      coin: '0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD'  # sUSDS — spread revenue path
+      sky_savings_token: true
+      sde_coin: '0xdac17f958d2ee523a2206206994597c13d831ec7'  # USDT — SDE asset value (par)
 
   - id: S25
     chain: ethereum
@@ -456,6 +489,10 @@ venues:
       address: '0xa632d59b9b804a956bfaa9b48af3a1b74808fc1f'
       symbol: 'PYUSDUSDS'
       decimals: 18
+    # Track Spark's proportional USDS in this pool as idle USDS.
+    # USDS is a par-stable so the pool reserve is used at face value ($1/token).
+    curve_idle_usds:
+      coin: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'  # USDS — par-stable, $1
 
   # ─────────────────────────────────────────────────────────────
   # Ethereum — idle ALM stables (Cat A)
@@ -516,10 +553,18 @@ venues:
       symbol: 'USDS'
       decimals: 18
 
+  # sUSDS POL held directly at the Spark ETH ALM (~$2.25B).
+  # Pricing category B (ERC-4626): value_som/eom = shares × convertToAssets(block).
+  # Revenue treatment: SPREAD ONLY (30 bps = BR − SSR), not the full SSR appreciation.
+  # The SSR accrues via the token index and is returned to Sky via the BR charge on
+  # utilized (sUSDS is NOT deducted from utilized). Prime earns only the spread:
+  #   prime_revenue_d = value_som × ((1 + 0.30%)^(1/365) − 1) × n_days
+  # See docs/METHODOLOGY.md §1 special-case and docs/RULES.md Rule 5.
   - id: S32
     chain: ethereum
-    label: 'sUSDS raw / POL (ALM — Cat B 4626, $1.59B)'
+    label: 'sUSDS raw / POL (ALM — Cat B 4626, spread-only revenue)'
     pricing_category: B
+    sky_savings_token: true   # 30bps spread only — SSR returns to Sky via BR charge
     token:
       address: '0xa3931d71877c0e7a3148cb7eb4463524fec27fbd'
       symbol: 'sUSDS'
@@ -534,9 +579,11 @@ venues:
   # ─────────────────────────────────────────────────────────────
   # PSM3 (Base/Arbitrum/Optimism/Unichain) is NOT a Cat E venue — it's
   # tracked via ``addresses.<chain>.psm`` and contributes to the utilized
-  # reimbursement (compute_sky_revenue Step 2), same pattern as Grove's PSM
-  # entry on Ethereum. Kept as a comment so the venue id space stays gap-free
-  # and reviewers can see this was a deliberate choice, not an omission.
+  # reimbursement (compute_sky_revenue Step 2). PRD §17.11 details the
+  # per-leg routing (USDS → utilized reduction; USDC → SDE; sUSDS → BR base
+  # + 30 bps credit-back). Kept as a comment so the venue id space stays
+  # gap-free and reviewers can see this was a deliberate choice, not an
+  # omission.
 
   - id: S34
     chain: base
@@ -581,6 +628,7 @@ venues:
     chain: base
     label: 'Savings USDS / sUSDS proxy (Base — POL)'
     pricing_category: B
+    sky_savings_token: true   # 30bps spread only — SSR returns to Sky via BR charge
     token:
       address: '0x5875eee11cf8398102fdad704c9e96607675467a'
       symbol: 'sUSDS-base'
@@ -643,6 +691,7 @@ venues:
     chain: arbitrum
     label: 'Savings USDS / sUSDS proxy (Arbitrum — POL)'
     pricing_category: B
+    sky_savings_token: true   # 30bps spread only — SSR returns to Sky via BR charge
     token:
       address: '0xddb46999f8891663a8f2828d25298f70416d7610'
       symbol: 'sUSDS-arb'
@@ -679,6 +728,7 @@ venues:
     chain: optimism
     label: 'Savings USDS / sUSDS proxy (Optimism — POL)'
     pricing_category: B
+    sky_savings_token: true   # 30bps spread only — SSR returns to Sky via BR charge
     token:
       address: '0xb5b2dc7fd34c249f4be7fb1fcea07950784229e0'
       symbol: 'sUSDS-op'
@@ -715,6 +765,7 @@ venues:
     chain: unichain
     label: 'Savings USDS / sUSDS proxy (Unichain — POL)'
     pricing_category: B
+    sky_savings_token: true   # 30bps spread only — SSR returns to Sky via BR charge
     token:
       address: '0xa06b10db9f390990364a3984c04fadf1c13691b5'
       symbol: 'sUSDS-uni'

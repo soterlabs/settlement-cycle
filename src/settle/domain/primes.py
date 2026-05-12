@@ -133,24 +133,98 @@ class Venue:
     # volatile or whose oracle isn't trustworthy to include in MSC. The venue
     # stays in YAML for documentation and historical reproducibility.
     skip: bool = False
+    # Curve pool USDS-idle tracking. When set, the compute layer reads the
+    # prime's proportional share of the named coin's reserve daily (via RPC
+    # ``read_pool`` + ``balanceOf`` + optionally ``convertToAssets`` for 4626
+    # underlyings) and subtracts it from ``utilized`` in ``compute_sky_revenue``
+    # (prime-settlement-methodology Step 2 — idle USDS in AMM pools).
+    # Only meaningful for ``lp_kind=curve_stableswap`` venues.
+    curve_idle_usds: CurveIdleUsdsConfig | None = None
+    # Lending pool idle underlying tracking. When True, the compute layer
+    # reads the prime's proportional share of the unborrowed underlying sitting
+    # in the lending pool contract daily via:
+    #   prime_idle = (balanceOf(alm, spToken) / totalSupply(spToken))
+    #              × balanceOf(spToken_contract, underlying)
+    # and subtracts the USDS-equivalent from ``utilized``
+    # (prime-settlement-methodology Step 2 — idle underlying in lending pools).
+    # The underlying must be a par-stable (USDS, DAI, USDC at $1).
+    # Only meaningful for Cat C/D (Aave aToken / SparkLend spToken) venues.
+    lending_idle_usds: bool = False
+    # Sky Savings Token flag. When True, the venue token is the Sky Savings
+    # vault (sUSDS or a per-chain canonical wrapper) and its revenue treatment
+    # differs from normal Cat B:
+    #   prime_revenue = value_som × 30bps_daily × n_days  (spread only)
+    # The SSR appreciation is NOT Prime Revenue — the prime already receives
+    # SSR through the sUSDS share price, so also crediting it in the settlement
+    # model would double-count (total = 2×SSR − BR > 0, overcrediting by ~3.7%/yr).
+    # Economic intent: net = SSR (token gain) + 30bps (Prime Rev) − BR (Sky Rev) = 0.
+    # Applies to all direct sUSDS holdings regardless of chain or venue type
+    # (raw ALM, LP token, etc.). Set explicitly in the prime YAML config.
+    sky_savings_token: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class CurveIdleUsdsConfig:
+    """Per-venue config for tracking a specific coin inside a Curve LP pool.
+
+    Two behaviours depending on ``sky_savings_token``:
+
+    * **Par-stable coin** (``sky_savings_token=False``, e.g. USDS, USDC):
+      prime's proportional share of the pool's coin reserve is computed daily
+      and subtracted from ``utilized`` at face value ($1 per unit).
+
+    * **sUSDS / Sky Savings Token** (``sky_savings_token=True``):
+      The coin balance is NOT subtracted from ``utilized`` — the yield flows
+      back to Sky via the borrow-rate charge. Instead the prime earns only the
+      30 bps spread on its sUSDS-equivalent daily value, which is added to
+      Prime Revenue. Requires ``convertToAssets`` to price sUSDS→USDS.
+
+    ``sde_coin`` is optional and independent of the above. When set, the named
+    coin's balance (par-stable, priced at $1/unit) is used as the SDE asset
+    value for ``compute_sky_revenue`` utilisation exclusion, in place of the
+    RWA NAV-oracle path. Use when the SDE exposure is a *different* coin from
+    ``coin`` (e.g. S24: ``coin``=sUSDS for spread revenue, ``sde_coin``=USDT
+    for the Sky Direct exposure). The coin must be in
+    ``KNOWN_PAR_STABLES_ETHEREUM``.
+
+    NOTE — mid-period SDE activation not yet pro-rated: if the SDE entry's
+    ``start_date`` falls within a settlement month the SDE is either active for
+    the full period (start_date ≤ period_start) or skipped entirely (start_date
+    > period_start). Daily pro-rating within the first partial month has not
+    been implemented. See ``config/sky_direct_exposures.yaml`` for the full
+    caveat.
+    """
+
+    coin: Address          # address of the target coin in the Curve pool
+    sky_savings_token: bool = False  # True → 30bps spread to Prime Revenue; no utilized deduction
+    sde_coin: "Address | None" = None  # par-stable coin that is the SDE exposure (optional)
 
 
 class PsmKind(StrEnum):
     """How USDS-equivalent value at a PSM is computed.
 
-    * ``directed_flow`` — Sky LITE-PSM-USDC pattern (used by Grove/OBEX/Spark
-      on Ethereum). PSM is a swap conduit holding USDS at par; we track net
-      USDS flow ``(subproxy + ALM) → PSM − PSM → (subproxy + ALM)``. The
-      ``token`` field names what's tracked (USDS).
-    * ``erc4626_shares`` — Spark PSM3 pattern (used on Base/Arbitrum/Optimism
-      /Unichain). PSM3 has a non-standard ABI: shares are *internal accounting*
-      (no ERC-20 Transfer events) and the rate uses
-      ``convertToAssetValue(uint256)`` returning the USDS-equivalent value
-      directly. We snapshot ``convertToAssetValue(shares(alm, b), b)`` at each
-      day's EoD block. The ``token`` field is unused.
+    Single supported kind today:
+
+    * ``erc4626_shares`` — Spark PSM3 pattern (used on Base / Arbitrum /
+      Optimism / Unichain). PSM3 is custodial: the prime's ALM holds shares
+      against a basket of USDC + USDS + sUSDS reserves. PSM3 has a
+      non-standard ABI: shares are *internal accounting* (no ERC-20 Transfer
+      events) and the rate uses ``convertToAssetValue(uint256)`` returning
+      the USDS-equivalent value of N shares directly. We snapshot
+      ``convertToAssetValue(shares(alm, b), b)`` at each day's EoD block,
+      then decompose into per-leg values (USDC / USDS / sUSDS) for the
+      methodology routing in PRD §17.11.
+
+    History note: an earlier ``directed_flow`` kind was deprecated and
+    removed (2026-05-11) after the on-chain mechanics for Sky's mainnet
+    LITE-PSM stack (DssLitePsm + DaiUsds converter + USDC pocket EOA +
+    UsdsPsmWrapper) were traced end-to-end. The mainnet stack is
+    non-custodial — no per-prime balances accumulate at any contract or
+    pocket; primes only transit through it as atomic swaps. There's
+    nothing to "track" on mainnet that the venue/Cat-A paths don't
+    already cover. See PRD §17.11.
     """
 
-    DIRECTED_FLOW = "directed_flow"
     ERC4626_SHARES = "erc4626_shares"
 
 
@@ -162,9 +236,10 @@ class PsmConfig:
 
     kind: PsmKind
     address: Address
-    # Only meaningful for ``kind=directed_flow`` — names the underlying token
-    # whose flows we track (e.g. USDS for Sky LITE-PSM). Ignored when shares-
-    # based since the share token IS the PSM contract address.
+    # Currently unused — historical field from the deprecated ``directed_flow``
+    # kind which tracked a specific token's flow in/out of a PSM. Retained as
+    # an optional config slot in case a future PsmKind needs to name a
+    # specific underlying token.
     token: Address | None = None
 
 
@@ -196,9 +271,8 @@ class Prime:
     subproxy: dict[Chain, Address] = field(default_factory=dict)
     alm: dict[Chain, Address] = field(default_factory=dict)
     venues: list[Venue] = field(default_factory=list)
-    # Per-chain PSM config (replaces the old hardcoded ``compute._psm.PSM_BY_CHAIN``
-    # dict). Each chain may have at most one PSM today; if a future prime needs
-    # multiple, this becomes ``dict[Chain, list[PsmConfig]]``.
+    # Per-chain PSM config. Each chain may have at most one PSM today; if a
+    # future prime needs multiple, this becomes ``dict[Chain, list[PsmConfig]]``.
     psm: dict[Chain, PsmConfig] = field(default_factory=dict)
     # Addresses whose transfers TO the ALM count as Cat A revenue (off-chain
     # custodian distributions, e.g. Anchorage sending realized yield directly
