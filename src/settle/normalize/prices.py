@@ -306,10 +306,16 @@ def _resolve_rwa_nav(
         UnknownSourceError, NotImplementedError, ValueError,
         ChronicleReadError, RPCError,
     )
-    for kind, addr in candidates:
+    for i, (kind, addr) in enumerate(candidates):
         try:
             src: INavOracleSource = _resolve(kind)
-            return src.nav_at(oracle_chain.value, addr, oracle_block)
+            nav = src.nav_at(oracle_chain.value, addr, oracle_block)
+            if i > 0:
+                _log.info(
+                    "NAV oracle fallback %r returned %.6f for venue %s block %d",
+                    kind, nav, venue.id, oracle_block,
+                )
+            return nav
         except _ORACLE_FAILURES as e:
             _log.warning("NAV oracle %r failed for venue %s: %s", kind, venue.id, e)
             last_err = e
