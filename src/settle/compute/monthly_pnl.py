@@ -1132,8 +1132,8 @@ def _log_sky_revenue_debug(
         lines += [
             "",
             f"  ── SDE asset value per venue (daily, $M) ──",
-            f"  {sde_hdr}",
-            "  " + "─" * len(sde_hdr),
+            sde_hdr,
+            "  " + "─" * (len(sde_hdr) - 2),
         ]
         for dt, wrow in wide.iterrows():
             row_str = f"  {str(dt):10s}  "
@@ -1692,17 +1692,11 @@ def compute_monthly_pnl(
 
     _log.info("step 4: computing revenue components...")
     # 4. Compute revenue components.
-    #
-    # compute_prime_agent_revenue is always called so that sd_revenue (the Sky
-    # share of SDE venue revenue) is correctly summed. In sky_only mode,
-    # venue_inputs contains only SDE venues (non-SDE were skipped in step 3).
-    _, breakdown = compute_prime_agent_revenue(period, venue_inputs)
-    sde_revenue = sum((vr.sd_revenue for vr in breakdown), Decimal("0"))
-
     if sky_only:
         # subproxy balances were not fetched — agent_rate is meaningless.
-        # prime_agent_revenue is also zero because the non-SDE venue loop was
-        # skipped; prime-side SDE revenue is small / usually zero (fixed SDE).
+        # venue_inputs contains only SDE venues (non-SDE skipped in step 3),
+        # so prime-side revenue is small / usually zero and we set it to 0.
+        _, breakdown = compute_prime_agent_revenue(period, venue_inputs)
         agent_rate = Decimal("0")
         prime_rev = Decimal("0")
     else:
@@ -1711,12 +1705,10 @@ def compute_monthly_pnl(
         # Add 30bps spread on sUSDS held inside Curve LP pools. This is computed
         # separately from the venue loop because the data comes from the Curve
         # pool daily snapshots, not from the venue's SoM/EoM position values.
-        prime_rev = prime_rev + curve_susds_spread
         # Same shape, different source: 30 bps spread on the sUSDS slice of PSM3
         # holdings (PRD §17.11) — neutralises the SSR + BR-charge composite on
         # the sUSDS leg so the prime nets to zero on idle sUSDS.
-        prime_rev = prime_rev + psm3_susds_spread
-        sde_revenue = sum((vr.sd_revenue for vr in breakdown), Decimal("0"))
+        prime_rev = prime_rev + curve_susds_spread + psm3_susds_spread
     # SDE revenue (Σ actual × sd_share across venues) flows directly to Sky.
     sde_revenue = sum((vr.sd_revenue for vr in breakdown), Decimal("0"))
 
