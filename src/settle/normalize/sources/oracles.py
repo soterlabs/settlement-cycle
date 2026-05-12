@@ -5,7 +5,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 from ...domain.primes import Address, Chain
-from ...extract.oracles import chronicle, price_per_share
+from ...extract.oracles import chronicle, price_per_share, redstone
 
 
 class ChronicleNavSource:
@@ -44,6 +44,26 @@ class PricePerShareNavSource:
         if oracle_address is None:
             raise ValueError("PricePerShareNavSource requires an oracle address")
         return price_per_share.read(Chain(chain), Address(oracle_address), block)
+
+
+class RedstoneNavSource:
+    """``INavOracleSource`` backed by ``extract.oracles.redstone.read``.
+
+    Reads a Chainlink-AggregatorV3-compatible Redstone PriceFeed adapter
+    (``latestRoundData()`` + ``decimals()``). Suitable as primary or fallback
+    for Cat E venues where the issuer publishes a Redstone feed (e.g. E7
+    STAC at ``0xEdC6287D…3add4``).
+    """
+
+    def nav_at(
+        self,
+        chain: str,
+        oracle_address: bytes | None,
+        block: int,
+    ) -> Decimal:
+        if oracle_address is None:
+            raise ValueError("RedstoneNavSource requires an oracle address")
+        return redstone.read(Chain(chain), Address(oracle_address), block)
 
 
 class ConstOneNavSource:

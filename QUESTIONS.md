@@ -239,6 +239,13 @@ Our `utilized` formula subtracts PSM3 USDS-equivalent; Maker's official
 because Grove holds $0 in PSM3. Confirm Grove never expects to park USDS
 at PSM3 long-term.
 
+#### G22. E9 JTRSY NAV — BA Labs indexer prices ~2% lower than Centrifuge pricePerShareFeed
+Raised by the BA-parity integration test (`tests/integration/test_ba_parity.py::test_grove_parity`, 2026-05-12 run). MSC prices E9 at ~$1.099B EoM (Centrifuge `pricePerShareFeed` at `0xFE6920eB6C421f1179cA8c8d4170530CDBdfd77A`); BA Labs' indexer reports ~$1.122B, a ~$22.6M / 2.02% gap. The MSC value matches the Grove team's own PnL workbook actual_revenue within ~$100/month (vs Chronicle's ~$146K/mo divergence) — see PRD §17.7's 2026-05-02 oracle-switch entry; BA Labs hasn't migrated to `pricePerShareFeed`.
+
+Same shape as E7 STAC where MSC uses Chronicle (~$1.017 NAV) vs BA's const $1.00 — both whitelisted in `KNOWN_NAV_DIVERGENCES` so the integration test reports "(known NAV oracle divergence)" rather than failing. Real NAV growth, not a methodology bug.
+
+**Q for BA Labs:** Migrate the JTRSY indexer to read Centrifuge's `pricePerShareFeed` (or surface the underlying NAV from the Pool Manager contract) so the stars-api `assets` field tracks actual NAV growth. Until then MSC and BA disagree by 1–2% on JTRSY EoM positions, with MSC matching Grove's workbook.
+
 #### G8. Centrifuge tranche tokens — backup NAV feed
 Switched 2026-05-02 from Chronicle to Centrifuge `pricePerShareFeed`
 (`0x4880…0B` for E8 JAAA, `0xFE69…77A` for E9 JTRSY) per Grove team's PnL
@@ -792,13 +799,23 @@ field intentionally `debt + sUSDS_POL` for Spark, and would you extend
 it to `debt + Σ savings_v2_liabilities` once spX vaults grow?
 
 #### B5. STAC (E7) NAV — which oracle is canonical?
-Our snapshot reads STAC at $1.0157 via Chronicle (`0x9d77…58b`,
+Our snapshot reads STAC at $1.0172 via Chronicle (`0x9d77…58b`,
 reflecting real CLO yield accrual). Your `/allocations/?star=grove`
 reports STAC at $1.00 flat. Per `docs/pricing/allocation_pricing.csv`
 STAC has Chronicle as Oracle1 and Redstone (`0xedc6…d7d`) as Oracle2.
 Are you using Redstone, const_one, or a different feed? If const_one is
 canonical, we should switch our NAV path to match (currently whitelisted
-as "known divergence" — drift ~1.5%).
+as "known divergence" — drift ~1.7%).
+
+**Update 2026-05-12:** Read both Chronicle and Redstone at block
+25,078,418 — Chronicle returns **$1,017.2039**, Redstone returns
+**$1,017.6458** (delta 4 bps, well within feed-noise). Both agree that
+STAC is currently ~1.7% above $1,000 par. BA's const $1.00 is the
+outlier; MSC has wired up Redstone as a registered NAV source
+(`RedstoneNavSource`) and switched E7's fallback chain from
+`const_1000` to `redstone` to remove the static-placeholder risk. The
+remaining open question is whether BA intends to migrate to one of the
+on-chain feeds or keep const_one as policy.
 
 #### B10. Why does Sky + Prime ≠ Total for USDe / Superstate / BUIDL?
 Raised in BA call #1 (see PRD §17.13). For these three venues the

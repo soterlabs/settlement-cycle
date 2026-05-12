@@ -27,6 +27,7 @@ from .sources.oracles import (
     ConstNavSource,
     ConstOneNavSource,
     PricePerShareNavSource,
+    RedstoneNavSource,
 )
 from .sources.rpc_block_resolver import RPCBlockResolver
 from .sources.rpc_position import (
@@ -68,11 +69,11 @@ _BLOCK_RESOLVER_SOURCES: dict[str, type[IBlockResolver]] = {
 }
 
 # NAV oracles — keyed by ``Venue.nav_oracle.kind`` from per-prime YAML.
-# Phase 2.A: chronicle + const_one only. Phase 2.B+ adds chainlink / pyth / redstone.
 _NAV_ORACLE_SOURCES: dict[str, type[INavOracleSource]] = {
     "chronicle": ChronicleNavSource,
     "const_one": ConstOneNavSource,
     "price_per_share_feed": PricePerShareNavSource,
+    "redstone": RedstoneNavSource,
 }
 
 

@@ -1342,10 +1342,10 @@ python -m settle snapshot --prime spark [--block N] [--json]
 
 Run with: `pytest tests/integration/test_ba_parity.py -m live -v -s`.
 
-**Open questions** — full text in `QUESTIONS.md` (BA labs section). Summary: (1) what addresses make up BA's Spark `idle_assets` $720M + `treasury` $37M (**B1**), (2) is BA's `liabilities = debt + sUSDS_POL` intentional (**B3**), (3) how does BA derive `assets` (which exceeds our position-sum by ~$325M Grove / ~$1B Spark — **B4**, currently the only P0 in the BA section), (4) which NAV oracle is canonical for STAC (E7 drift ~1.5% — Chronicle vs const_one — **B5**).
+**Open questions** — full text in `QUESTIONS.md` (BA labs section). Summary: (1) what addresses make up BA's Spark `idle_assets` $720M + `treasury` $37M (**B1**), (2) is BA's `liabilities = debt + sUSDS_POL` intentional (**B3**), (3) how does BA derive `assets` (which exceeds our position-sum by ~$325M Grove / ~$1B Spark — **B4**, currently the only P0 in the BA section), (4) which NAV oracle is canonical for STAC (E7 drift ~1.7% — Chronicle vs const_one, with Redstone independently confirming Chronicle within 4 bps — **B5**).
 
 **Operational known-divergences** (reported by parity test, not failed):
-- **E7 STAC ~1.5% drift** — Chronicle vs const_one (whitelisted in `KNOWN_NAV_DIVERGENCES = {"E7"}`).
+- **E7 STAC ~1.7% drift** — Chronicle vs const_one (whitelisted in `KNOWN_NAV_DIVERGENCES = {"E7"}`); Redstone (`0xedc6…3add4`) cross-checked 2026-05-12 and agrees with Chronicle within 4 bps, so the drift is genuine NAV growth and BA's const_one is the outlier.
 - **S37 / S47 sUSDS proxies on L2** — drpc free-tier rate-limits the `balanceOf` reads; snapshot returns $0 with a WARNING log; test treats as `SKIP`. Resolves with paid drpc/Alchemy or an Alchemy fallback in the `extract.rpc` retry chain.
 
 #### Low priority (operational)
