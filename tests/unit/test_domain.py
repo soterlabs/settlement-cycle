@@ -200,12 +200,18 @@ def test_load_prime_grove_nav_oracles(config_dir: Path):
     assert jtrsy.nav_oracle.address.hex == "0xfe6920eb6c421f1179ca8c8d4170530cdbdfd77a"
     assert jtrsy.nav_oracle.fallback == "const_one"
 
-    # STAC → Chronicle primary + const_one fallback. The redstone fallback
-    # address is documented in YAML but the redstone source isn't registered
-    # yet; falling back to const_one keeps the pipeline live if Chronicle reverts.
+    # STAC → Chronicle primary + Redstone fallback. Redstone publishes the
+    # same Securitize NAV via a Chainlink-AggregatorV3 adapter and has been
+    # active continuously since early Dec 2025 (before any settlement SoM),
+    # agreeing with Chronicle within ~4 bps at recent blocks. Replaces the
+    # prior const_1000 static placeholder so pre-deployment reads get the
+    # live NAV at the pin block instead of a fixed issue-time estimate.
     stac = by_id["E7"]
     assert stac.nav_oracle.kind == "chronicle"
-    assert stac.nav_oracle.fallback == "const_one"
+    assert stac.nav_oracle.fallback == "redstone"
+    assert stac.nav_oracle.fallback_address is not None
+    assert stac.nav_oracle.fallback_address.hex == \
+        "0xedc6287d3d41b322af600317628d7e226dd3add4"
 
     # BUIDL-I → const_one (yield via rewards, NAV pinned at $1).
     buidl = by_id["E10"]

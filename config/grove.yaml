@@ -156,18 +156,20 @@ venues:
       address: '0x9d77e4ca90e25114afb24df908f5918f572d958b'
       # STAC tokens were received 2025-12-16 at ~$1,000/token (issue price).
       # The Chronicle oracle above was deployed 2026-01-09 (block 24 195 721)
-      # and returns the live 18-decimal NAV (currently ~$1,017). For any SoM
-      # block before that deployment the pipeline gets empty bytes from
-      # read(), treats it as an oracle failure, and falls back here.
+      # — pre-deployment reads return empty bytes from read(), surfacing as
+      # an oracle failure that triggers the fallback below.
       #
-      # const_1000 ($1,000.00) is critical: the wrong const_one ($1.00)
-      # fallback caused a ~$100 M phantom revenue in the Jan 2026 settlement
-      # — SoM was priced at $1 while EoM used the live $1,006 oracle price,
-      # producing a ~$100 M delta on a 100 k-token position.
-      #
-      # Redstone fallback (0xedc6287d...) lives on-chain but its
-      # NavOracleSource is not registered yet — const_1000 bridges that gap.
-      fallback: const_1000
+      # Redstone fallback: the same NAV feed published by Securitize via a
+      # Chainlink-compatible AggregatorV3 adapter (single-round-overwrite
+      # pattern; roundId stays 1 while answer/updatedAt advance). Verified
+      # 2026-05-12 to publish live STAC NAV continuously since at least
+      # block 24,100,000 (early Dec 2025) — i.e. before the earliest
+      # settlement SoM — and agrees with Chronicle within ~4 bps at recent
+      # blocks ($1017.20 vs $1017.65). Replaces the prior const_1000
+      # placeholder, which was a static guess that drifted as NAV grew;
+      # redstone returns the live value at the exact pin block instead.
+      fallback: redstone
+      fallback_address: '0xedc6287d3d41b322af600317628d7e226dd3add4'
 
   - id: E8
     chain: ethereum
@@ -387,6 +389,14 @@ venues:
       kind: chronicle
       address: '0x02cf8c9fba24d79886dac40cb620f0930c6e8ec0'
       oracle_chain: ethereum
+      # JAAA-avax was issued at $1.00 par (Aug-Sep 2025); the Chronicle
+      # oracle above was deployed between blocks 23.5M and 24M (≈ Sep-Oct
+      # 2025), shortly after token issuance. For SoM blocks before the
+      # oracle's first published price, const_one ≈ $1 matches actual
+      # issue-time NAV — same pattern as E7 but at a $1 denomination so
+      # the misprice surface is ~3% of position (today's live NAV ≈ $1.034)
+      # rather than the 99.9% catastrophic shape that motivated E7's
+      # const_1000 fix.
       fallback: const_one
 
   - id: E21
@@ -419,6 +429,13 @@ venues:
       kind: chronicle
       address: '0x51cc9463788b870d1e9bacd111a9bbb2c9820c7e'
       oracle_chain: ethereum
+      # ACRDX was deposited at $1.00 par (PRD §17.13 nav_override at block
+      # 24,136,052 = $1.00). The Chronicle oracle above was deployed
+      # between blocks 24M and 24.3M, shortly after token deposit. For
+      # SoM blocks before the oracle's first published price, const_one
+      # ≈ $1 matches actual deposit-time NAV — same pattern as JAAA-avax.
+      # Today's live NAV ≈ $1.016 so the misprice surface is ~1.6% of
+      # position; modest vs E7's 99.9% catastrophic shape.
       fallback: const_one
 
   # ─────────────────────────────────────────────────────────────

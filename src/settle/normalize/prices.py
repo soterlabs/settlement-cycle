@@ -295,6 +295,8 @@ def _resolve_rwa_nav(
         ))
 
     from ..extract.oracles.chronicle import ChronicleReadError
+    from ..extract.oracles.price_per_share import PricePerShareReadError
+    from ..extract.oracles.redstone import RedstoneReadError
     from ..extract.rpc import RPCError
 
     _resolve = resolver if resolver is not None else get_nav_oracle_source
@@ -304,7 +306,7 @@ def _resolve_rwa_nav(
     # etc.), making "all oracles failed" a catch-all hiding real bugs.
     _ORACLE_FAILURES: tuple[type[BaseException], ...] = (
         UnknownSourceError, NotImplementedError, ValueError,
-        ChronicleReadError, RPCError,
+        ChronicleReadError, PricePerShareReadError, RedstoneReadError, RPCError,
     )
     for i, (kind, addr) in enumerate(candidates):
         try:

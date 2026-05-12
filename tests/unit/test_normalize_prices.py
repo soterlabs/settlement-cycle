@@ -188,6 +188,47 @@ def test_cat_e_const_one_kind():
     assert price == Decimal("1.00")
 
 
+def test_get_nav_oracle_source_parses_const_integer_suffix():
+    """``const_1000`` → ConstNavSource returning Decimal('1000'). Pins the E7
+    STAC fallback wiring against future refactors of the registry parser."""
+    from settle.normalize.registry import get_nav_oracle_source
+    src = get_nav_oracle_source("const_1000")
+    assert src.nav_at("ethereum", None, 0) == Decimal("1000")
+
+
+def test_get_nav_oracle_source_parses_const_fractional_suffix():
+    """``const_1000.50`` → Decimal('1000.50'). Confirms decimal points parse."""
+    from settle.normalize.registry import get_nav_oracle_source
+    src = get_nav_oracle_source("const_1000.50")
+    assert src.nav_at("ethereum", None, 0) == Decimal("1000.50")
+
+
+def test_get_nav_oracle_source_rejects_non_decimal_const_suffix():
+    """``const_<garbage>`` should raise UnknownSourceError, not silently return 0."""
+    from settle.normalize.registry import UnknownSourceError, get_nav_oracle_source
+    with pytest.raises(UnknownSourceError, match="const_xyz"):
+        get_nav_oracle_source("const_xyz")
+
+
+def test_cat_e_falls_back_to_const_value():
+    """E7 STAC pattern: chronicle reverts pre-deployment, ``const_1000``
+    fallback returns Decimal('1000'). Integration through the registry's
+    dynamic ``const_<value>`` parser."""
+    from settle.extract.oracles.chronicle import ChronicleReadError
+    from settle.normalize.registry import get_nav_oracle_source
+    venue = _rwa_venue(NavOracle(
+        kind="chronicle", address=_addr("aa"),
+        fallback="const_1000",
+    ))
+    primary = MockNavOracleSource(nav=ChronicleReadError)
+
+    def _resolver(kind):
+        return primary if kind == "chronicle" else get_nav_oracle_source(kind)
+
+    price = get_unit_price(venue, block=0, nav_oracle_resolver=_resolver)
+    assert price == Decimal("1000")
+
+
 def test_cat_e_requires_nav_oracle_config():
     venue = _rwa_venue(nav_oracle=None)
     with pytest.raises(ValueError, match="no nav_oracle config"):
