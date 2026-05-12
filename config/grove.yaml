@@ -140,8 +140,8 @@ venues:
 
   # ─────────────────────────────────────────────────────────────
   # Category E — RWA tranche / issuer tokens
-  # Phase 2.A: Chronicle oracle primary, $1 placeholder fallback.
-  # ─────────────────────────────────────────────────────────────
+  # Phase 2.A: Chronicle oracle primary, $1000 pre-deploy fallback.
+  # ──────────────────────────────────────────────────────────────
   - id: E7
     chain: ethereum
     label: 'Securitize Tokenized AAA CLO Fund (STAC)'
@@ -154,10 +154,20 @@ venues:
     nav_oracle:
       kind: chronicle
       address: '0x9d77e4ca90e25114afb24df908f5918f572d958b'
-      # Redstone fallback (0xedc6287d...) lives on-chain but the redstone
-      # NavOracleSource is not registered yet — until it lands, fall back to
-      # const_one so a Chronicle revert doesn't abort the run.
-      fallback: const_one
+      # STAC tokens were received 2025-12-16 at ~$1,000/token (issue price).
+      # The Chronicle oracle above was deployed 2026-01-09 (block 24 195 721)
+      # and returns the live 18-decimal NAV (currently ~$1,017). For any SoM
+      # block before that deployment the pipeline gets empty bytes from
+      # read(), treats it as an oracle failure, and falls back here.
+      #
+      # const_1000 ($1,000.00) is critical: the wrong const_one ($1.00)
+      # fallback caused a ~$100 M phantom revenue in the Jan 2026 settlement
+      # — SoM was priced at $1 while EoM used the live $1,006 oracle price,
+      # producing a ~$100 M delta on a 100 k-token position.
+      #
+      # Redstone fallback (0xedc6287d...) lives on-chain but its
+      # NavOracleSource is not registered yet — const_1000 bridges that gap.
+      fallback: const_1000
 
   - id: E8
     chain: ethereum

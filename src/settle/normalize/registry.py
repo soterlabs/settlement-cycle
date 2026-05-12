@@ -7,6 +7,8 @@ plugs in via this registry without touching Compute or Load.
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 from .protocols import (
     IBalanceSource,
     IBlockResolver,
@@ -22,6 +24,7 @@ from .sources.dune_debt import DuneDebtSource
 from .sources.dune_ssr import DuneSSRSource
 from .sources.oracles import (
     ChronicleNavSource,
+    ConstNavSource,
     ConstOneNavSource,
     PricePerShareNavSource,
 )
@@ -140,13 +143,29 @@ def get_block_resolver(name: str = "rpc") -> IBlockResolver:
 def get_nav_oracle_source(kind: str) -> INavOracleSource:
     """Lookup a NAV-oracle Source by ``kind`` (Venue.nav_oracle.kind from YAML).
 
-    Raises ``UnknownSourceError`` if the kind isn't registered. The Cat E branch
-    in ``normalize.prices`` catches this so an unknown fallback kind triggers
-    the next candidate in the chain instead of crashing the run.
+    In addition to the registered kinds, supports ``const_<value>`` where
+    ``<value>`` is any decimal number (e.g. ``const_1000`` returns $1,000.00
+    for every block). This lets YAML configs pin a flat fallback NAV without
+    registering a new class per value — useful for Cat E venues whose primary
+    oracle was not yet deployed at the start of an early settlement period.
+
+    Raises ``UnknownSourceError`` if the kind isn't registered and doesn't
+    match the ``const_<value>`` pattern. The Cat E branch in
+    ``normalize.prices`` catches this so an unknown fallback kind triggers the
+    next candidate in the chain instead of crashing the run.
     """
-    if kind not in _NAV_ORACLE_SOURCES:
-        raise UnknownSourceError(
-            f"Unknown NAV-oracle kind {kind!r}. "
-            f"Available: {sorted(_NAV_ORACLE_SOURCES)}"
-        )
-    return _NAV_ORACLE_SOURCES[kind]()
+    if kind in _NAV_ORACLE_SOURCES:
+        return _NAV_ORACLE_SOURCES[kind]()
+
+    # Dynamic const_<value> — e.g. "const_1000", "const_1000.50"
+    if kind.startswith("const_"):
+        suffix = kind[len("const_"):]
+        try:
+            return ConstNavSource(Decimal(suffix))
+        except Exception:
+            pass  # fall through to UnknownSourceError
+
+    raise UnknownSourceError(
+        f"Unknown NAV-oracle kind {kind!r}. "
+        f"Available: {sorted(_NAV_ORACLE_SOURCES)} or const_<decimal_value>."
+    )
