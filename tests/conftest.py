@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import pytest
@@ -10,8 +9,16 @@ import pytest
 
 @pytest.fixture
 def tmp_cache_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Override the on-disk cache to a per-test temp dir."""
+    """Override the on-disk cache to a per-test temp dir.
+
+    Also disables the Postgres cache layer so unit tests of the cache
+    decorator don't pick up state from a real DB — they should be hermetic
+    against the local pickle only. Integration tests that exercise the PG
+    layer set their own ``DATABASE_URL`` explicitly."""
     monkeypatch.setenv("SETTLE_CACHE_DIR", str(tmp_path))
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    from settle.extract import postgres_store
+    postgres_store._reset_for_tests()
     return tmp_path
 
 
