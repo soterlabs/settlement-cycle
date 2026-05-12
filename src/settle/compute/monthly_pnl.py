@@ -421,13 +421,10 @@ def _aggregate_psm_usds(
     Returns an empty DataFrame if the prime has no PSM configured anywhere.
 
     Aggregation uses ``cum_balance`` (absolute snapshot/position) per chain,
-    not ``daily_net``. This is correct for all PSM kinds:
-    - ``balance_snapshot`` / ``erc4626_shares``: cum_balance is the actual
-      balance at each day's EoD block; daily_net is just the in-period delta.
-      Summing daily_net and rebuilding a cumsum would omit the pre-period
-      baseline balance (which can be $100M+) and produce a near-zero result.
-    - ``directed_flow``: cum_balance is the running net from prime.start_date,
-      which IS the absolute position; summing it directly is equivalent.
+    not ``daily_net``. For ``erc4626_shares``, cum_balance is the actual
+    USDS-equivalent at each day's EoD block; daily_net is just the in-period
+    delta. Summing daily_net and rebuilding a cumsum would omit the pre-period
+    baseline balance (which can be $100M+) and produce a near-zero result.
     """
     if not prime.psm:
         return _empty_psm_df()
@@ -531,93 +528,6 @@ def get_psm_usds_timeseries(
     cfg = prime.psm.get(chain)
     if cfg is None or chain not in prime.alm:
         return _empty_psm_df()
-
-    if cfg.kind == PsmKind.BALANCE_SNAPSHOT:
-        # Default L2 PSM path. The PSM address exclusively holds USDS for this
-        # prime (no other primes share the address), so a simple
-        # balanceOf(psm_address, USDS_on_chain) is the prime's full position.
-        # One RPC snapshot per day, parallelised across the period.
-        #
-        # All balance is classified as the USDS leg (cum_usds_leg) —
-        # cum_usdc and cum_susds are always zero for this kind.
-        from ..domain.sky_tokens import USDS_BY_CHAIN
-        from ..extract import rpc as _rpc
-        from ..extract.rpc import RPCError
-        import requests as _requests
-        import time as _time2
-        from concurrent.futures import ThreadPoolExecutor as _TPE2
-
-        usds_token = USDS_BY_CHAIN.get(chain)
-        if usds_token is None:
-            raise ValueError(
-                f"PSM balance_snapshot on {chain.value}: no USDS address in "
-                "USDS_BY_CHAIN. Add it to src/settle/domain/sky_tokens.py."
-            )
-        if block_resolver is None:
-            raise ValueError(
-                f"get_psm_usds_timeseries(kind=balance_snapshot, chain={chain.value}) "
-                "requires a block_resolver."
-            )
-
-        scale = Decimal(10 ** usds_token.decimals)
-        days = [period.start + timedelta(days=i) for i in range((period.end - period.start).days + 1)]
-
-        _log.info(
-            "    PSM balance_snapshot %s/%s: fetching baseline + %d daily snapshots...",
-            chain.value, cfg.address.value.hex()[:10], len(days),
-        )
-        _t0_snap = _time2.monotonic()
-
-        _baseline_day = period.start - timedelta(days=1)
-        _baseline_eod = datetime.combine(_baseline_day, time.max, tzinfo=timezone.utc)
-        _baseline_block = block_resolver.block_at_or_before(chain.value, _baseline_eod)
-        _baseline_raw = _rpc.balance_of(chain, usds_token.address, cfg.address, _baseline_block)
-        cur_value = Decimal(_baseline_raw) / scale
-
-        def _snap_day(day):
-            eod = datetime.combine(day, time.max, tzinfo=timezone.utc)
-            try:
-                block = block_resolver.block_at_or_before(chain.value, eod)
-                raw = _rpc.balance_of(chain, usds_token.address, cfg.address, block)
-                return day, Decimal(raw) / scale, None
-            except (RPCError, _requests.HTTPError, _requests.ConnectionError, _requests.Timeout) as e:
-                return day, None, e
-
-        with _TPE2(max_workers=8) as _ex2:
-            fetched_snap: dict = {d: (v, e) for d, v, e in _ex2.map(_snap_day, days)}
-        _log.info(
-            "    PSM balance_snapshot %s: done in %.1fs",
-            chain.value, _time2.monotonic() - _t0_snap,
-        )
-
-        block_dates_snap: list = []
-        daily_net_snap: list[Decimal] = []
-        cum_usds_leg_snap: list[Decimal] = []
-        for day in days:
-            value, err = fetched_snap[day]
-            if value is None:
-                _log.warning(
-                    "PSM balance_snapshot read failed on %s for %s @ %s; "
-                    "carrying forward $%s (error: %s).",
-                    chain.value, cfg.address.value.hex(), day,
-                    f"{cur_value:,.2f}", type(err).__name__,
-                )
-                value = cur_value
-            block_dates_snap.append(day)
-            daily_net_snap.append(value - cur_value)
-            cum_usds_leg_snap.append(value)
-            cur_value = value
-
-        _zero = [Decimal(0)] * len(block_dates_snap)
-        df = pd.DataFrame({
-            "block_date":   block_dates_snap,
-            "daily_net":    daily_net_snap,
-            "cum_usdc":     _zero,
-            "cum_usds_leg": cum_usds_leg_snap,
-            "cum_susds":    _zero,
-        })
-        df["cum_balance"] = df["cum_usds_leg"]
-        return df[["block_date", "daily_net", "cum_balance", "cum_usdc", "cum_usds_leg", "cum_susds"]]
 
     if cfg.kind == PsmKind.ERC4626_SHARES:
         # Spark PSM3. The pool holds three reserves — USDC, USDS, sUSDS — that

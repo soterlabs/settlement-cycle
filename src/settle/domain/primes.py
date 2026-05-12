@@ -203,10 +203,6 @@ class CurveIdleUsdsConfig:
 class PsmKind(StrEnum):
     """How USDS-equivalent value at a PSM is computed.
 
-    * ``balance_snapshot`` — **Default for L2 PSMs.** The PSM address holds
-      USDS that is entirely attributable to this prime (no other primes share
-      the address). We snapshot ``balanceOf(psm_address, USDS_on_chain)`` at
-      each day's EoD block. Simple, unambiguous, cannot go negative.
     * ``erc4626_shares`` — Spark PSM3 pattern (Base / Arbitrum / Optimism /
       Unichain). PSM3 is custodial: the prime's ALM holds shares against a
       basket of USDC + USDS + sUSDS reserves. PSM3 has a non-standard ABI:
@@ -227,7 +223,6 @@ class PsmKind(StrEnum):
     already cover. See PRD §17.11.
     """
 
-    BALANCE_SNAPSHOT = "balance_snapshot"
     ERC4626_SHARES = "erc4626_shares"
 
 
