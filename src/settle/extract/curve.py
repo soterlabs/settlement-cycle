@@ -63,6 +63,7 @@ def balance_at(chain: Chain, pool: Address, idx: int, block: int) -> int:
         return int(eth_call(chain, pool, SEL_BALANCES_INT128 + arg, block), 16)
 
 
+@cached(source_id="curve.n_coins")
 def n_coins(chain: Chain, pool: Address, block: int, *, max_probe: int = 4) -> int:
     """Probe how many coins the pool holds. Walks `coin_at(i)` until reverting.
 

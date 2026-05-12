@@ -48,38 +48,104 @@ MISS = _Miss()
 
 # --------------------------------------------------------------------------
 # Connection management — lazy, single per-process, autocommit.
+#
+# Two flavours of "unavailable":
+#   * Permanently disabled (``_state["disabled"] is True``) — DATABASE_URL
+#     unset or ``psycopg`` not installed. Will never recover within this
+#     process; ``get``/``put`` become no-ops.
+#   * Transient failure (conn closed by server / network blip) — cached
+#     connection is dropped, next ``_get_conn`` reconnects. Server-side
+#     idle timeouts hit this path during long settlement runs.
 # --------------------------------------------------------------------------
 
 _lock = threading.Lock()
 _state: dict[str, Any] = {"conn": None, "disabled": None}
 
 
+def _is_healthy(conn: Any) -> bool:
+    """Cheap liveness check on a cached psycopg connection.
+
+    ``psycopg.Connection`` exposes ``.closed`` (bool: client-side close) and
+    ``.broken`` (bool: server hung up). Either flag means we must reconnect
+    before the next query. We avoid issuing a ``SELECT 1`` round-trip here —
+    server-side state is the source of truth for ``.broken``.
+    """
+    if conn is None:
+        return False
+    try:
+        if getattr(conn, "broken", False):
+            return False
+        if getattr(conn, "closed", False):
+            return False
+    except Exception:
+        return False
+    return True
+
+
+def _drop_conn(reason: str) -> None:
+    """Invalidate the cached connection so the next ``_get_conn`` reconnects.
+    Safe to call from any thread / from inside ``get``/``put`` on error."""
+    with _lock:
+        conn = _state["conn"]
+        _state["conn"] = None
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+            _log.info("Postgres connection dropped (%s) — will reconnect on next call", reason)
+
+
 def _get_conn() -> Any:
-    """Lazy connect to DATABASE_URL. Returns None when disabled."""
+    """Lazy connect (or reconnect) to ``DATABASE_URL``.
+
+    Returns ``None`` if Postgres is permanently disabled (no env var or no
+    ``psycopg``). For transient failures — server idle-timeout, network
+    blip — drops the dead connection and reconnects on the next call.
+    """
     if _state["disabled"]:
         return None
+
+    # Fast path: cached, healthy. Avoid taking the lock for the common case.
+    conn = _state["conn"]
+    if conn is not None and _is_healthy(conn):
+        return conn
+
     with _lock:
         if _state["disabled"] is True:
             return None
-        if _state["conn"] is not None:
-            return _state["conn"]
+
+        # Double-check under the lock — another thread may have already
+        # reconnected, or invalidated the dead connection.
+        conn = _state["conn"]
+        if conn is not None and _is_healthy(conn):
+            return conn
+        if conn is not None and not _is_healthy(conn):
+            try:
+                conn.close()
+            except Exception:
+                pass
+            _state["conn"] = None
+            _log.info("Postgres connection went stale (closed/broken) — reconnecting")
+
         url = os.environ.get("DATABASE_URL")
         if not url:
+            # Permanent: no DATABASE_URL means the user never opted in.
             _state["disabled"] = True
             return None
         try:
             import psycopg  # type: ignore[import-untyped]
         except ImportError:
+            # Permanent: psycopg not installed in this env.
             _log.info("psycopg not installed — Postgres cache layer disabled")
             _state["disabled"] = True
             return None
         try:
             _state["conn"] = psycopg.connect(url, autocommit=True)
         except Exception as e:
-            _log.warning("Postgres connect failed (%s) — disabling PG cache layer", e)
-            _state["disabled"] = True
+            # Transient: don't flip ``disabled``. Next call retries.
+            _log.warning("Postgres connect failed (%s) — will retry on next call", e)
             return None
-        _state["disabled"] = False
         return _state["conn"]
 
 
@@ -205,6 +271,7 @@ def get(source: str, args_hash: str) -> Any:
 
     Returns ``MISS`` if the row doesn't exist, Postgres is unavailable, or
     the read fails (we never error-out the calling pipeline for a cache miss).
+    A failure invalidates the cached connection so the *next* call reconnects.
     """
     conn = _get_conn()
     if conn is None:
@@ -218,6 +285,7 @@ def get(source: str, args_hash: str) -> Any:
             row = cur.fetchone()
     except Exception as e:
         _log.warning("Postgres read failed for %s/%s: %s", source, args_hash[:12], e)
+        _drop_conn(f"read failure: {type(e).__name__}")
         return MISS
     if row is None:
         return MISS
@@ -245,6 +313,7 @@ def put(source: str, args_hash: str, args: Any, payload: Any) -> None:
             )
     except Exception as e:
         _log.warning("Postgres write failed for %s/%s: %s", source, args_hash[:12], e)
+        _drop_conn(f"write failure: {type(e).__name__}")
 
 
 def put_many(items: list[tuple[str, str, Any, Any]]) -> None:
@@ -277,6 +346,7 @@ def put_many(items: list[tuple[str, str, Any, Any]]) -> None:
             )
     except Exception as e:
         _log.warning("Postgres put_many failed (%d rows): %s", len(items), e)
+        _drop_conn(f"put_many failure: {type(e).__name__}")
 
 
 # --------------------------------------------------------------------------
