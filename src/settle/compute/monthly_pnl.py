@@ -311,6 +311,20 @@ def _to_decimal(v) -> Decimal:
     return v if isinstance(v, Decimal) else Decimal(str(v))
 
 
+def _df_from_daily_dict(daily_by_date: dict) -> pd.DataFrame:
+    """``[block_date, daily_net, cum_balance]`` DataFrame from a ``{date: Decimal}``
+    map. Returns the empty-shape frame if the map is empty."""
+    if not daily_by_date:
+        return _empty_psm_df()
+    rows = sorted(daily_by_date.items(), key=lambda kv: kv[0])
+    df = pd.DataFrame({
+        "block_date": [r[0] for r in rows],
+        "daily_net":  [r[1] for r in rows],
+    })
+    df["cum_balance"] = df["daily_net"].cumsum()
+    return df
+
+
 def _psm3_susds_spread(psm_usds: pd.DataFrame | None, period: Period) -> Decimal:
     """30 bps daily-compounded Prime Revenue credit on the sUSDS slice of
     PSM3 holdings.
