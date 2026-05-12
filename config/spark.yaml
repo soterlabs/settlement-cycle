@@ -47,22 +47,22 @@ addresses:
   base:
     alm:      '0x2917956eff0b5eaf030abdb4ef4296df775009ca'    # Spark Base ALM
     psm:
-      kind: balance_snapshot                                  # Direct balanceOf(psm, USDS) — PSM exclusively holds Spark's USDS
-      address: '0x1601843c5e9bc251a3272907010afa41fa18347e'   # PSM3 Base
+      kind: erc4626_shares                                    # PSM3: ALM holds shares; USDS-equiv via convertToAssets
+      address: '0x1601843c5e9bc251a3272907010afa41fa18347e'   # PSM3 Base (CREATE2 — same address as Spark Eth-ALM)
   arbitrum:
     alm:      '0x92afd6f2385a90e44da3a8b60fe36f6cbe1d8709'    # Spark Arbitrum ALM
     psm:
-      kind: balance_snapshot                                  # Direct balanceOf(psm, USDS) — PSM exclusively holds Spark's USDS
+      kind: erc4626_shares                                    # PSM3: ALM holds shares; USDS-equiv via convertToAssets
       address: '0x2b05f8e1cacc6974fd79a673a341fe1f58d27266'   # PSM3 Arbitrum
   optimism:
     alm:      '0x876664f0c9ff24d1aa355ce9f1680ae1a5bf36fb'    # Spark Optimism ALM
     psm:
-      kind: balance_snapshot                                  # Direct balanceOf(psm, USDS) — PSM exclusively holds Spark's USDS
+      kind: erc4626_shares                                    # PSM3: ALM holds shares; USDS-equiv via convertToAssets
       address: '0xe0f9978b907853f354d79188a3defbd41978af62'   # PSM3 Optimism
   unichain:
     alm:      '0x345e368fccd62266b3f5f37c9a131fd1c39f5869'    # Spark Unichain ALM
     psm:
-      kind: balance_snapshot                                  # Direct balanceOf(psm, USDS) — PSM exclusively holds Spark's USDS
+      kind: erc4626_shares                                    # PSM3: ALM holds shares; USDS-equiv via convertToAssets
       address: '0x7b42ed932f26509465f7ce3faf76ffce1275312f'   # PSM3 Unichain
   avalanche_c:
     alm:      '0xece6b0e8a54c2f44e066fbb9234e7157b15b7fec'    # Spark Avalanche-C ALM
