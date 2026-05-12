@@ -21,8 +21,11 @@ Schema in ``db/schema.sql``; apply with::
 
 from __future__ import annotations
 
+import base64
 import logging
+import math
 import os
+import pickle as _pickle
 import threading
 from datetime import date, datetime
 from decimal import Decimal
@@ -89,15 +92,41 @@ def is_enabled() -> bool:
 # Lossless JSON encoding for arbitrary Python payloads.
 #
 # Each cached source returns one of: Decimal, int, str, bytes, datetime/date,
-# list/tuple, dict (with the above as leaves). Postgres JSONB stores JSON
-# natively, so we wrap non-JSON types in single-key envelopes like
-# ``{"$decimal": "1017.65"}`` that round-trip losslessly.
+# list/tuple, dict, or pandas.DataFrame (Dune query results). Postgres JSONB
+# stores JSON natively, so we wrap non-JSON types in single-key envelopes
+# like ``{"$decimal": "1017.65"}`` that round-trip losslessly.
+#
+# pandas.DataFrame is encoded via ``to_dict(orient="split")`` so that empty
+# DataFrames preserve their column metadata (``orient="records"`` would
+# silently drop columns when there are no rows). NaN / Inf floats are
+# coerced to ``None`` — JSON has no NaN and psycopg's Jsonb adapter rejects
+# them; ``None`` round-trips back to NaN inside the reconstructed DataFrame.
+#
+# ``Address`` (domain type) is encoded readably as ``{"$address": "<hex>"}``
+# so SQL queries can match on it (e.g. ``payload->>'$address' = '…'``).
+#
+# Anything else (e.g. frozen dataclasses like ``V3PoolState``) falls through
+# to a base64-pickle envelope ``{"$pickle": "<base64>"}``. Opaque in SQL
+# but lossless; same trust model as the local pickle cache (only our code
+# writes to this DB, so we trust the bytes we read back).
 # --------------------------------------------------------------------------
+
+
+def _address_cls() -> type:
+    """Lazy import of the ``Address`` domain type to avoid coupling at
+    module-load time (postgres_store sits below domain in the layering)."""
+    from ..domain.primes import Address
+    return Address
+
 
 def encode_payload(value: Any) -> Any:
     """Recursively convert ``value`` into JSON-serializable form."""
-    if value is None or isinstance(value, (bool, int, float, str)):
+    if value is None or isinstance(value, (bool, int, str)):
         return value
+    if isinstance(value, float):
+        # JSON has no NaN / Inf — coerce to None. Reconstructing a DataFrame
+        # from None values yields NaN again, so it round-trips cleanly.
+        return None if (math.isnan(value) or math.isinf(value)) else value
     if isinstance(value, Decimal):
         return {"$decimal": str(value)}
     if isinstance(value, bytes | bytearray):
@@ -107,13 +136,29 @@ def encode_payload(value: Any) -> Any:
         return {"$datetime": value.isoformat()}
     if isinstance(value, date):
         return {"$date": value.isoformat()}
+    if isinstance(value, _address_cls()):
+        return {"$address": value.value.hex()}
     if isinstance(value, tuple):
         return {"$tuple": [encode_payload(v) for v in value]}
+    # pandas.DataFrame — duck-typed to avoid a hard pandas import at module
+    # load time. The ``columns`` + ``to_dict`` check is specific enough that
+    # no other commonly-cached type matches.
+    if type(value).__name__ == "DataFrame" and hasattr(value, "to_dict") and hasattr(value, "columns"):
+        return {"$dataframe": encode_payload(value.to_dict(orient="split"))}
     if isinstance(value, list):
         return [encode_payload(v) for v in value]
     if isinstance(value, dict):
         return {str(k): encode_payload(v) for k, v in value.items()}
-    raise TypeError(f"encode_payload: unsupported type {type(value).__name__}: {value!r}")
+    # Generic fallback: pickle any other type (frozen dataclasses, custom
+    # domain objects, etc.). Opaque in SQL but lossless. Pickle.loads on
+    # decode is safe under our trust model — only our code writes here.
+    try:
+        return {"$pickle": base64.b64encode(_pickle.dumps(value)).decode("ascii")}
+    except Exception as e:
+        raise TypeError(
+            f"encode_payload: cannot encode type {type(value).__name__} "
+            f"(pickle fallback also failed: {e}): {value!r}"
+        ) from e
 
 
 _DECODERS = {
@@ -133,6 +178,18 @@ def decode_payload(obj: Any) -> Any:
                 return _DECODERS[k](obj[k])
             if k == "$tuple":
                 return tuple(decode_payload(v) for v in obj[k])
+            if k == "$dataframe":
+                import pandas as pd  # lazy import — only needed when decoding a DF
+                spec = decode_payload(obj[k])
+                return pd.DataFrame(
+                    data=spec.get("data", []),
+                    columns=spec.get("columns", []),
+                    index=spec.get("index") or None,
+                )
+            if k == "$address":
+                return _address_cls()(bytes.fromhex(obj[k]))
+            if k == "$pickle":
+                return _pickle.loads(base64.b64decode(obj[k]))
         return {k: decode_payload(v) for k, v in obj.items()}
     if isinstance(obj, list):
         return [decode_payload(v) for v in obj]
@@ -188,6 +245,38 @@ def put(source: str, args_hash: str, args: Any, payload: Any) -> None:
             )
     except Exception as e:
         _log.warning("Postgres write failed for %s/%s: %s", source, args_hash[:12], e)
+
+
+def put_many(items: list[tuple[str, str, Any, Any]]) -> None:
+    """Bulk-insert version of :func:`put`. Each item is ``(source, args_hash,
+    args, payload)``.
+
+    Uses ``executemany`` so 500+ inserts hit Postgres in one round-trip
+    instead of N — important when the DB is behind a public proxy (Railway's
+    TCP proxy adds ~50 ms per round-trip from local dev). Same idempotency
+    and graceful-degradation contract as ``put()``.
+    """
+    conn = _get_conn()
+    if conn is None or not items:
+        return
+    try:
+        from psycopg.types.json import Jsonb  # type: ignore[import-untyped]
+    except ImportError:
+        return
+    params = [
+        (s, h, Jsonb(encode_payload(a)), Jsonb(encode_payload(p)))
+        for s, h, a, p in items
+    ]
+    try:
+        with conn.cursor() as cur:
+            cur.executemany(
+                "INSERT INTO raw_data (source, args_hash, args, payload) "
+                "VALUES (%s, %s, %s, %s) "
+                "ON CONFLICT (source, args_hash) DO NOTHING",
+                params,
+            )
+    except Exception as e:
+        _log.warning("Postgres put_many failed (%d rows): %s", len(items), e)
 
 
 # --------------------------------------------------------------------------

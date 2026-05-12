@@ -7,6 +7,7 @@ is exercised exhaustively; the connection layer is exercised via the
 
 from __future__ import annotations
 
+import math
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
@@ -85,14 +86,50 @@ def test_nested_dict_roundtrip():
     assert decode_payload(encode_payload(payload)) == payload
 
 
-def test_encode_rejects_unknown_type():
-    """Silent fallback (e.g. ``repr(obj)``) would lose data on round-trip —
-    encoder must raise so unknown payloads become a code-time error, not a
-    silent corruption when reading back from Postgres."""
-    class Custom:
-        pass
-    with pytest.raises(TypeError, match="unsupported type"):
-        encode_payload(Custom())
+def test_address_roundtrip():
+    """Domain ``Address`` round-trips as a readable hex string in JSONB."""
+    from settle.domain.primes import Address
+    addr = Address(bytes.fromhex("9d77e4ca90e25114afb24df908f5918f572d958b"))
+    encoded = encode_payload(addr)
+    assert encoded == {"$address": "9d77e4ca90e25114afb24df908f5918f572d958b"}
+    decoded = decode_payload(encoded)
+    assert isinstance(decoded, Address)
+    assert decoded == addr
+
+
+def test_frozen_dataclass_roundtrip_via_pickle_fallback():
+    """Custom frozen dataclasses (e.g. ``V3PoolState`` from uniswap_v3.slot0)
+    ride the generic pickle envelope. Lossless but opaque in SQL —
+    acceptable for low-volume domain types. Uses the real production
+    dataclass so the test exercises the actual cache shape, not a synthetic
+    locally-defined class (which pickle can't serialise anyway)."""
+    from settle.domain.primes import Address
+    from settle.extract.uniswap_v3 import V3PoolState
+
+    state = V3PoolState(
+        sqrt_price_x96=79_222_002_826_459_735_285_203_905_516,
+        current_tick=-2,
+        token0=Address(bytes.fromhex("9d77e4ca90e25114afb24df908f5918f572d958b")),
+        token1=Address(bytes.fromhex("a0b8 6991 c621 8b36 c1d1 9d4a 2e9e b0ce 3606 eb48".replace(" ", ""))),
+        fee=500,
+        fee_growth_global_0_x128=0,
+        fee_growth_global_1_x128=0,
+    )
+    encoded = encode_payload(state)
+    assert isinstance(encoded, dict) and "$pickle" in encoded
+    decoded = decode_payload(encoded)
+    assert decoded == state
+    # Nested Address survives via pickle (not the $address envelope, since
+    # the outer object is pickled whole).
+    assert isinstance(decoded.token0, Address)
+
+
+def test_encode_truly_unpicklable_raises():
+    """Pickle fallback is the catch-all, but truly unpicklable values
+    (lambdas, generators, open files) still raise so the call site sees
+    them as a code-time error rather than a silent data loss."""
+    with pytest.raises(TypeError, match="cannot encode"):
+        encode_payload(lambda x: x)
 
 
 def test_bool_encodes_as_bool_not_int():
@@ -101,6 +138,77 @@ def test_bool_encodes_as_bool_not_int():
     assert encode_payload(True) is True
     assert encode_payload(False) is False
     assert decode_payload(True) is True
+
+
+def test_nan_and_inf_coerce_to_none():
+    """JSON has no NaN/Inf; psycopg's Jsonb adapter would reject them.
+    Round-trip via None so DataFrames with NaN cells re-materialise as NaN
+    (pandas converts None back to NaN inside numeric columns)."""
+    assert encode_payload(float("nan")) is None
+    assert encode_payload(float("inf")) is None
+    assert encode_payload(float("-inf")) is None
+    # Regular finite floats pass through unchanged.
+    assert encode_payload(1.5) == 1.5
+
+
+# --- pandas.DataFrame roundtrip ---------------------------------------------
+
+def test_dataframe_roundtrip_basic():
+    """Dune-shape DataFrame (string + int columns) round-trips with column
+    names + values preserved."""
+    import pandas as pd
+    df = pd.DataFrame({
+        "block_date": ["2025-11-18", "2025-11-19"],
+        "cum_balance": [0, 0],
+    })
+    encoded = encode_payload(df)
+    assert isinstance(encoded, dict) and "$dataframe" in encoded
+    decoded = decode_payload(encoded)
+    assert isinstance(decoded, pd.DataFrame)
+    assert list(decoded.columns) == ["block_date", "cum_balance"]
+    assert decoded["block_date"].tolist() == ["2025-11-18", "2025-11-19"]
+    assert decoded["cum_balance"].tolist() == [0, 0]
+
+
+def test_empty_dataframe_preserves_columns():
+    """Empty DataFrame with named columns must keep those columns on
+    reconstruction (``orient='records'`` would drop them — this is why we
+    use ``orient='split'`` instead)."""
+    import pandas as pd
+    df = pd.DataFrame(columns=["a", "b"])
+    decoded = decode_payload(encode_payload(df))
+    assert isinstance(decoded, pd.DataFrame)
+    assert list(decoded.columns) == ["a", "b"]
+    assert len(decoded) == 0
+
+
+def test_fully_empty_dataframe_roundtrip():
+    """``pd.DataFrame()`` with no columns and no rows — should not raise."""
+    import pandas as pd
+    df = pd.DataFrame()
+    decoded = decode_payload(encode_payload(df))
+    assert isinstance(decoded, pd.DataFrame)
+    assert len(decoded) == 0
+
+
+def test_dataframe_with_decimal_column_roundtrip():
+    """Decimal cells (Dune numeric columns) must survive the round-trip
+    without coercion to float."""
+    import pandas as pd
+    df = pd.DataFrame({"v": [Decimal("1.5"), Decimal("2.75")]})
+    decoded = decode_payload(encode_payload(df))
+    assert decoded["v"].tolist() == [Decimal("1.5"), Decimal("2.75")]
+
+
+def test_dataframe_with_nan_roundtrip():
+    """NaN cells encode as None and re-materialise as NaN on reconstruction."""
+    import pandas as pd
+    df = pd.DataFrame({"x": [1.0, float("nan"), 3.0]})
+    decoded = decode_payload(encode_payload(df))
+    vals = decoded["x"].tolist()
+    assert vals[0] == 1.0
+    assert math.isnan(vals[1])  # type: ignore[arg-type]
+    assert vals[2] == 3.0
 
 
 # --- Graceful degradation when DATABASE_URL is unset ------------------------

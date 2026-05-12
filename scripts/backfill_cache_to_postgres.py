@@ -56,6 +56,12 @@ def _count_rows() -> int | None:
     return int(row[0]) if row else None
 
 
+# Bulk inserts in chunks so 500+ files hit Postgres in ~10 round-trips
+# instead of 500. Tuned for the Railway public TCP proxy where each round-trip
+# adds ~50ms. Smaller batches reduce memory pressure if a payload is large.
+_BATCH_SIZE = 50
+
+
 def main() -> int:
     if not os.environ.get("DATABASE_URL"):
         print("DATABASE_URL not set — aborting (this script targets Postgres).")
@@ -64,26 +70,37 @@ def main() -> int:
     if not cache_dir.is_dir():
         print(f"Cache dir {cache_dir} does not exist — nothing to backfill.")
         return 1
+
+    print(f"Cache dir: {cache_dir}", flush=True)
+    files = sorted(cache_dir.glob("*.pkl"))
+    print(f"Scanning {len(files)} pickle file(s)", flush=True)
+
+    print("Connecting to Postgres ...", flush=True)
     if not postgres_store.is_enabled():
         print("Postgres unreachable — check DATABASE_URL / network.")
         return 1
-
-    files = sorted(cache_dir.glob("*.pkl"))
-    print(f"Cache dir: {cache_dir}")
-    print(f"Scanning {len(files)} pickle file(s)")
+    rows_before = _count_rows()
+    print(f"raw_data rows before backfill: {rows_before}", flush=True)
     print()
 
-    rows_before = _count_rows()
     n_attempted = 0
     n_unparseable = 0
     n_unpickle_err = 0
     n_encode_err = 0
     by_source: dict[str, int] = {}
+    batch: list[tuple[str, str, dict, object]] = []
 
-    for path in files:
+    def _flush(label: str) -> None:
+        if not batch:
+            return
+        postgres_store.put_many(batch)
+        print(f"  flushed {len(batch):>3} row(s) ({label})", flush=True)
+        batch.clear()
+
+    for idx, path in enumerate(files, start=1):
         m = _FILENAME_RE.match(path.stem)
         if not m:
-            print(f"  skip (unparseable filename): {path.name}")
+            print(f"  skip (unparseable filename): {path.name}", flush=True)
             n_unparseable += 1
             continue
         source = m.group("source")
@@ -94,16 +111,16 @@ def main() -> int:
             with path.open("rb") as f:
                 payload = pickle.load(f)
         except Exception as e:
-            print(f"  unpickle failed for {path.name}: {type(e).__name__}: {e}")
+            print(f"  unpickle failed for {path.name}: {type(e).__name__}: {e}", flush=True)
             n_unpickle_err += 1
             continue
 
         # Encode upfront so unsupported types fail loudly here instead of
-        # being swallowed by ``put()``'s broad exception handler.
+        # being swallowed by ``put_many()``'s broad exception handler.
         try:
             postgres_store.encode_payload(payload)
         except TypeError as e:
-            print(f"  encode failed for {path.name}: {e}")
+            print(f"  encode failed for {path.name}: {e}", flush=True)
             n_encode_err += 1
             continue
 
@@ -112,9 +129,14 @@ def main() -> int:
             "_source_id": source,
             "_args_hash": args_hash,
         }
-        postgres_store.put(source, args_hash, args, payload)
+        batch.append((source, args_hash, args, payload))
         n_attempted += 1
         by_source[source] = by_source.get(source, 0) + 1
+
+        if len(batch) >= _BATCH_SIZE:
+            _flush(f"after file {idx}/{len(files)} — {n_attempted} attempted")
+
+    _flush(f"final — {n_attempted}/{len(files)} attempted")
 
     rows_after = _count_rows()
     inserted = (rows_after or 0) - (rows_before or 0)
