@@ -67,18 +67,18 @@ class RedstoneNavSource:
 
 
 class ERC4626NavSource:
-    """``INavOracleSource`` backed by ``convertToAssets(1e18)`` on any ERC-4626
-    vault.
+    """``INavOracleSource`` backed by ``convertToAssets(10**share_decimals)``
+    on any ERC-4626 vault.
 
-    ``asset_decimals`` must match the vault's underlying asset (e.g. 6 for
-    USDC-backed, 18 for DAI/USDS-backed). It is supplied at construction time
-    from the ``nav_oracle.asset_decimals`` or ``nav_oracle.fallback_asset_decimals``
-    field in the prime YAML config, encoded into the kind string by the dispatch
-    layer (see ``normalize.prices._nav_oracle_kind``).
+    Both ``share_decimals`` (exponent for the call input) and
+    ``underlying_decimals`` (divisor for the raw return value) are supplied at
+    construction time from the prime YAML config fields, encoded into the
+    dispatch kind string by ``normalize.prices._nav_oracle_kind``.
     """
 
-    def __init__(self, asset_decimals: int) -> None:
-        self._asset_decimals = asset_decimals
+    def __init__(self, share_decimals: int, underlying_decimals: int) -> None:
+        self._share_decimals = share_decimals
+        self._underlying_decimals = underlying_decimals
 
     def nav_at(
         self,
@@ -90,7 +90,8 @@ class ERC4626NavSource:
             raise ValueError("ERC4626NavSource requires a vault address")
         return erc4626.read(
             Chain(chain), Address(oracle_address), block,
-            asset_decimals=self._asset_decimals,
+            share_decimals=self._share_decimals,
+            underlying_decimals=self._underlying_decimals,
         )
 
 
