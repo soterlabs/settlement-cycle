@@ -138,3 +138,111 @@ def test_raises_on_non_par_stable_underlying(monkeypatch):
     venue = _grove_atoken_venue(par_underlying=False)
     with pytest.raises(UnsupportedPricingError, match="not par-stable"):
         _atoken_external_revenue_usd(prime, venue, _period())
+
+
+# --- Sender dispatch (Merkl Claimed-event vs generic Transfer) ----------
+#
+# The helper dispatches per sender: addresses in ``_MERKL_DISTRIBUTORS``
+# route to ``_merkl_claims_revenue_usd`` (Claimed event source); everything
+# else routes to ``_atoken_transfer_revenue_usd`` (generic ERC20 Transfer
+# source). The pure-dispatch behaviour is unit-testable by stubbing
+# ``execute_query`` and asserting which SQL path the helper exercised.
+
+def _merkl_eth() -> Address:
+    """The address registered in ``_MERKL_DISTRIBUTORS[Chain.ETHEREUM]``."""
+    return Address.from_str("0x3ef3d8ba38ebe18db133cec108f4d14ce00dd9ae")
+
+
+def test_merkl_sender_uses_claimed_event_sql(monkeypatch):
+    """A sender that matches ``_MERKL_DISTRIBUTORS[Chain.ETHEREUM]`` should
+    cause the helper to fire the ``merkl_claims_*.sql`` query, NOT the
+    generic ``atoken_external_inflow.sql``. We stub ``execute_query`` and
+    record the SQL filename + params hit on each call — including a check
+    that ``atoken`` is passed (used by the SQL's Mint-event JOIN to attribute
+    the Claimed amount to this venue without configuring the staticAToken
+    address)."""
+    import pandas as pd
+    monkeypatch.setenv("DUNE_API_KEY", "stub")
+    prime = _prime(external_sources=[_merkl_eth()])
+    venue = _grove_atoken_venue()
+
+    hits: list[tuple[str, dict]] = []
+
+    def _stub(sql_path, *, params, pin_block):
+        hits.append((sql_path.name, params))
+        # Return one row with a known raw uint256 — 1.5 aToken = $1.5 USD
+        # for an 18-decimal token. (Just a sentinel; this test cares about
+        # routing, not the value math.)
+        return pd.DataFrame({"total_amount_raw": [int(Decimal("1.5") * 10**18)]})
+
+    from settle.normalize import positions
+    monkeypatch.setattr(positions, "execute_query", _stub)
+
+    out = _atoken_external_revenue_usd(prime, venue, _period())
+    assert [name for name, _ in hits] == ["merkl_claims_ethereum.sql"]
+    # JOIN-attribution param contract: ``atoken`` carries the venue's
+    # aToken address (raw 20-byte value), no padded-hex token field.
+    _, params = hits[0]
+    assert params["atoken"] == venue.token.address.value
+    assert "token_padded_hex" not in params
+    assert out == Decimal("1.5")
+
+
+def test_non_merkl_sender_uses_transfer_sql(monkeypatch):
+    """A sender NOT in ``_MERKL_DISTRIBUTORS`` should fall through to the
+    generic Transfer-based helper — suitable for direct-sweep flows like
+    Anchorage / BUIDL yield mints."""
+    import pandas as pd
+    monkeypatch.setenv("DUNE_API_KEY", "stub")
+    # An arbitrary non-Merkl address (Anchorage-style direct-sweep stand-in).
+    not_merkl = Address.from_str("0x" + "ab" * 20)
+    prime = _prime(external_sources=[not_merkl])
+    venue = _grove_atoken_venue()
+
+    hits: list[str] = []
+
+    def _stub(sql_path, *, params, pin_block):
+        hits.append(sql_path.name)
+        # Generic path returns a decimal-adjusted ``total_amount`` (NOT
+        # raw uint256), per the existing ``atoken_external_inflow.sql``
+        # output contract.
+        return pd.DataFrame({"total_amount": [Decimal("42")]})
+
+    from settle.normalize import positions
+    monkeypatch.setattr(positions, "execute_query", _stub)
+
+    out = _atoken_external_revenue_usd(prime, venue, _period())
+    assert hits == ["atoken_external_inflow.sql"]
+    assert out == Decimal("42")
+
+
+def test_mixed_senders_run_both_paths(monkeypatch):
+    """Two senders in the allowlist, one Merkl + one direct-sweep → the
+    helper runs BOTH paths and sums the results. Sanity check for the
+    per-sender dispatch loop."""
+    import pandas as pd
+    monkeypatch.setenv("DUNE_API_KEY", "stub")
+    not_merkl = Address.from_str("0x" + "cd" * 20)
+    prime = _prime(external_sources=[_merkl_eth(), not_merkl])
+    venue = _grove_atoken_venue()
+
+    hits: list[tuple[str, dict]] = []
+
+    def _stub(sql_path, *, params, pin_block):
+        hits.append((sql_path.name, params))
+        if sql_path.name == "merkl_claims_ethereum.sql":
+            return pd.DataFrame({"total_amount_raw": [10 * 10**18]})  # $10
+        return pd.DataFrame({"total_amount": [Decimal("5")]})         # $5
+
+    from settle.normalize import positions
+    monkeypatch.setattr(positions, "execute_query", _stub)
+
+    out = _atoken_external_revenue_usd(prime, venue, _period())
+    assert {name for name, _ in hits} == {
+        "merkl_claims_ethereum.sql", "atoken_external_inflow.sql",
+    }
+    # Merkl path receives the aToken address (used by the Mint-event JOIN);
+    # the generic path receives ``token`` instead (legacy contract).
+    merkl_params = next(p for n, p in hits if n == "merkl_claims_ethereum.sql")
+    assert merkl_params["atoken"] == venue.token.address.value
+    assert out == Decimal("15")

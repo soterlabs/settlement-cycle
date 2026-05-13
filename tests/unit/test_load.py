@@ -91,6 +91,50 @@ def test_render_markdown_contains_venue_row():
     assert "$604,000,000.12" in md
 
 
+def test_render_markdown_omits_external_revenue_note_when_all_zero():
+    """The `period_inflow vs external_revenue` footnote is conditional —
+    silent for primes/months with no Cat C external rewards so the typical
+    pnl.md doesn't carry a paragraph explaining a column that's $0
+    everywhere. The sample fixture has external_revenue=0 (default)."""
+    md = render_markdown(_sample_pnl())
+    assert "Note on `period_inflow`" not in md
+
+
+def test_render_markdown_includes_external_revenue_note_when_nonzero():
+    """When a venue carries a Merkl-style external_revenue, the per-venue
+    table is annotated so an auditor knows `period_inflow` additively
+    contains the Merkl drop (closed-form yield buckets mid-period mints
+    as principal injection). Pins the wording the auditor would `grep`
+    for, not the full paragraph."""
+    base = _sample_pnl()
+    # VenueRevenue is frozen — clone with the Merkl-drop fields set instead
+    # of mutating in place.
+    v = base.venue_breakdown[0]
+    v_with_merkl = VenueRevenue(
+        venue_id=v.venue_id,
+        label=v.label,
+        value_som=v.value_som,
+        value_eom=v.value_eom,
+        period_inflow=Decimal("821306"),  # the Merkl drop bucketed as inflow
+        revenue=v.revenue,
+        external_revenue=Decimal("821306"),
+    )
+    pnl = type(base)(
+        prime_id=base.prime_id, month=base.month, period=base.period,
+        sky_revenue=base.sky_revenue, agent_rate=base.agent_rate,
+        prime_agent_revenue=base.prime_agent_revenue,
+        monthly_pnl=base.monthly_pnl,
+        venue_breakdown=[v_with_merkl],
+        pin_blocks_som=base.pin_blocks_som,
+    )
+    md = render_markdown(pnl)
+    assert "Note on `period_inflow`" in md
+    assert "external_revenue" in md
+    # The identity is what an auditor will use to reconstruct true principal
+    # injection from the surfaced columns — pin its exact form.
+    assert "period_inflow − external_revenue" in md
+
+
 def test_render_markdown_skips_venue_section_when_empty():
     pnl = _sample_pnl()
     pnl_no_venues = type(pnl)(

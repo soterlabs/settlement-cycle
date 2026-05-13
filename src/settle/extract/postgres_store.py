@@ -61,6 +61,35 @@ MISS = _Miss()
 _lock = threading.Lock()
 _state: dict[str, Any] = {"conn": None, "disabled": None}
 
+# Connection-level timeouts. Without these, a half-open TCP connection to
+# Railway's Postgres proxy (yamabiko.proxy.rlwy.net:10660) wedges the
+# pipeline in ``do_poll`` indefinitely — observed >1h hangs during a
+# multi-hour Spark run. The ``_is_healthy`` check only catches connections
+# the client *knows* are dead (``.closed`` / ``.broken``); silent socket
+# half-opens slip through. These four options force the kernel to
+# terminate dead sockets within ~30 s so the next call gets a clean
+# exception and our ``_drop_conn`` reconnect path kicks in.
+_PG_CONNECT_KWARGS: dict[str, Any] = {
+    "autocommit": True,
+    # Bound the connect phase itself (libpq default is unlimited).
+    "connect_timeout": 10,
+    # TCP keepalives: probe after 30 s idle, 10 s between probes,
+    # 3 failed probes → drop. Worst case: 30 + 3×10 = 60 s before kill.
+    "keepalives": 1,
+    "keepalives_idle": 30,
+    "keepalives_interval": 10,
+    "keepalives_count": 3,
+    # Linux-only kernel option: if any sent data is unacked for 30 s, the
+    # kernel terminates the connection — catches half-open states faster
+    # than keepalives alone, which only probe on *idle* sockets.
+    "tcp_user_timeout": 30000,
+}
+
+# Server-side query timeout. Set with SET ... once per fresh connection.
+# 60 s is generous for our read/write footprint (single-row INSERT /
+# point-lookup SELECT) while still failing fast on stuck queries.
+_PG_STATEMENT_TIMEOUT_MS = 60000
+
 
 def _is_healthy(conn: Any) -> bool:
     """Cheap liveness check on a cached psycopg connection.
@@ -141,7 +170,12 @@ def _get_conn() -> Any:
             _state["disabled"] = True
             return None
         try:
-            _state["conn"] = psycopg.connect(url, autocommit=True)
+            conn = psycopg.connect(url, **_PG_CONNECT_KWARGS)
+            # Per-session statement timeout — bounds query execution on the
+            # server side. Belt-and-suspenders alongside kernel TCP timeouts.
+            with conn.cursor() as cur:
+                cur.execute(f"SET statement_timeout = {_PG_STATEMENT_TIMEOUT_MS}")
+            _state["conn"] = conn
         except Exception as e:
             # Transient: don't flip ``disabled``. Next call retries.
             _log.warning("Postgres connect failed (%s) — will retry on next call", e)

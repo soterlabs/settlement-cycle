@@ -20,7 +20,6 @@ import json
 import logging
 import os
 import re
-import threading
 
 _log = logging.getLogger(__name__)
 import time
@@ -45,62 +44,22 @@ DUNE_429_MAX_ATTEMPTS = 8
 DUNE_429_BASE_BACKOFF_SEC = 2.0   # 2, 4, 8, 16, 32, 60 (capped), 60, 60
 DUNE_429_BACKOFF_CAP_SEC = 60.0
 
-# Hard wall-clock ceiling for any single requests call. The native ``timeout=``
-# kwarg passed to ``requests`` doesn't cover DNS resolution (glibc
-# ``getaddrinfo`` is uninterruptible from Python) and we've observed
-# ``do_poll`` hangs >1h on ESTABLISHED sockets where the kernel-level
-# select/poll never returns. Wrap every call in a daemon thread and abandon
-# it on timeout; the leaked thread eventually dies at OS level.
-DUNE_HARD_TIMEOUT_SEC = 120
-
 
 class DuneError(RuntimeError):
     """Raised on Dune API failures or query execution errors."""
 
 
-def _hard_timeout_request(method: str, url: str, **kwargs) -> requests.Response:
-    """``requests.{get,post}`` with a wall-clock guard on top of the native
-    ``timeout=`` kwarg. Belt-and-suspenders against socket hangs that ignore
-    requests' timeout (DNS resolution, certain kernel poll() states).
-
-    Runs the call in a daemon thread; if it doesn't complete in
-    ``DUNE_HARD_TIMEOUT_SEC``, raises ``requests.exceptions.Timeout`` so the
-    retry path in ``_request_with_429_retry`` catches it. The orphaned thread
-    keeps consuming kernel resources until TCP/DNS times out at OS level, but
-    the main process keeps making progress.
-    """
-    box: dict[str, Any] = {}
-    done = threading.Event()
-
-    def runner() -> None:
-        try:
-            box["resp"] = requests.request(method.upper(), url, **kwargs)
-        except BaseException as exc:  # noqa: BLE001 — propagate to caller
-            box["exc"] = exc
-        finally:
-            done.set()
-
-    t = threading.Thread(target=runner, daemon=True)
-    t.start()
-    if not done.wait(DUNE_HARD_TIMEOUT_SEC):
-        raise requests.exceptions.Timeout(
-            f"Dune {method.upper()} {url[:80]} exceeded hard wall-clock timeout "
-            f"of {DUNE_HARD_TIMEOUT_SEC}s (abandoning thread)"
-        )
-    if "exc" in box:
-        raise box["exc"]
-    return box["resp"]  # type: ignore[no-any-return]
-
-
 def _request_with_429_retry(method: str, url: str, **kwargs) -> requests.Response:
     """``requests.{get,post}`` wrapper with retry on 429, ``ConnectionError``,
-    and ``Timeout`` (including the hard wall-clock guard). Exponential
-    backoff; respects ``Retry-After`` on 429.
+    and ``Timeout``. Exponential backoff; respects ``Retry-After`` on 429.
 
-    Network flakes — DNS resolution failures, edge socket hangs, transient
-    TCP resets — get the same backoff treatment as 429s. Without this, a
-    one-off ``Failed to resolve api.dune.com`` crashes the whole monthly
-    cell, even though a 2s sleep would have let the resolver recover.
+    Network flakes — DNS resolution failures, transient TCP resets, read
+    timeouts on slow Dune responses — get the same backoff treatment as
+    429s. Without this, a one-off ``Failed to resolve api.dune.com``
+    crashes the whole monthly cell, even though a 2 s sleep would have
+    let the resolver recover. The native ``timeout=`` kwarg passed by
+    callers (typically 30 s) bounds the per-attempt wait; ``requests``
+    raises ``ReadTimeout`` / ``ConnectionError`` when it fires.
 
     All other HTTP statuses (including 5xx) return after the first attempt —
     those are surfaced to callers via the usual ``raise_for_status`` /
@@ -112,7 +71,7 @@ def _request_with_429_retry(method: str, url: str, **kwargs) -> requests.Respons
     short_url = url.rsplit("/", 2)[-2] + "/" + url.rsplit("/", 1)[-1]
     for attempt in range(DUNE_429_MAX_ATTEMPTS):
         try:
-            r = _hard_timeout_request(method, url, **kwargs)
+            r = requests.request(method.upper(), url, **kwargs)
         except (requests.exceptions.ConnectionError,
                 requests.exceptions.Timeout) as exc:
             if attempt == DUNE_429_MAX_ATTEMPTS - 1:
@@ -281,8 +240,7 @@ def _create_query(sql: str, name: str, *, is_private: bool = True) -> int:
     the publish workflow when creating the canonical, shareable
     versions of these SQL files.
     """
-    r = _hard_timeout_request(
-        "POST",
+    r = requests.post(
         f"{DUNE_API_BASE}/query",
         headers=_headers(),
         json={
@@ -312,8 +270,7 @@ def _update_query_sql(
     body: dict[str, Any] = {"query_sql": sql}
     if is_private is not None:
         body["is_private"] = is_private
-    r = _hard_timeout_request(
-        "PATCH",
+    r = requests.patch(
         f"{DUNE_API_BASE}/query/{query_id}",
         headers=_headers(),
         json=body,

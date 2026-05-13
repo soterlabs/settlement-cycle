@@ -71,11 +71,21 @@ _SOURCES_LIVE = {
     # to ``RPCPsm3Source`` only on Dune failure. Recorded here so the
     # settlement-artifact provenance matches what actually ran.
     "psm3":              "DunePsm3Source (orchestrator-upgraded) + RPCPsm3Source fallback",
-    # Cat C / D off-pool rewards (Merkl-style aToken drops). Activated when
-    # ``prime.external_alm_sources[venue.chain]`` is non-empty; queries
-    # Dune ``tokens.transfers`` per (chain, token, sender). Currently active
-    # only for Grove on Ethereum (Merkl distributor → aHorRwaRLUSD + aEthRLUSD).
-    "atoken_external_rewards": "DuneExternalInflow via _atoken_external_revenue_usd (Cat C/D only)",
+    # Cat C / D off-pool rewards. Activated when
+    # ``prime.external_alm_sources[venue.chain]`` is non-empty. Dispatched
+    # per-sender inside ``_atoken_external_revenue_usd``:
+    #   * Merkl distributors → ``merkl_claims_ethereum.sql`` (Claimed +
+    #     aToken-Mint JOIN on raw ``ethereum.logs``; venue attribution via
+    #     ``Mint.contract_address``)
+    #   * Other senders → ``atoken_external_inflow.sql`` (generic
+    #     ``Transfer(from=sender, to=ALM)`` sum on ``tokens.transfers``)
+    # Currently active only for Grove on Ethereum (Merkl → aHorRwaRLUSD +
+    # aEthRLUSD).
+    "atoken_external_rewards": (
+        "_atoken_external_revenue_usd dispatcher (Cat C/D); "
+        "Merkl: Claimed+Mint JOIN on ethereum.logs (merkl_claims_*.sql); "
+        "other senders: Transfer events on tokens.transfers (atoken_external_inflow.sql)"
+    ),
     "block_resolver":    "DuneBlockResolver (orchestrator-upgraded) + RPC fallback",
     "curve_pool":        "CurvePoolSource (lazy)",
     "v3_position":       "DuneV3InflowSource (orchestrator-upgraded) + RPC fallback",

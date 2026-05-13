@@ -249,19 +249,44 @@ def test_apply_schema_raises_when_postgres_unavailable(monkeypatch):
 # every subsequent ``get``/``put`` would log a warning forever. New
 # behaviour: detect closed/broken on next ``_get_conn``, drop, reconnect.
 
+class _FakeCursor:
+    """Minimal context-manager cursor stub. ``_get_conn`` runs
+    ``cur.execute("SET statement_timeout = …")`` on every fresh connection
+    after the connect-kwargs change — the stub just records the SQL."""
+
+    def __init__(self) -> None:
+        self.executed: list[str] = []
+
+    def __enter__(self) -> "_FakeCursor":
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        return None
+
+    def execute(self, sql: str) -> None:
+        self.executed.append(sql)
+
+
 class _FakeConn:
     """Minimal stand-in for ``psycopg.Connection`` — exposes the ``.closed``
     and ``.broken`` flags that ``_is_healthy`` inspects, plus a ``close()``
-    that ``_drop_conn`` calls."""
+    that ``_drop_conn`` calls and a ``cursor()`` context manager so the
+    per-session ``SET statement_timeout`` runs cleanly."""
 
     def __init__(self, *, closed: bool = False, broken: bool = False) -> None:
         self.closed = closed
         self.broken = broken
         self.close_calls = 0
+        self.cursors: list[_FakeCursor] = []
 
     def close(self) -> None:
         self.close_calls += 1
         self.closed = True
+
+    def cursor(self) -> _FakeCursor:
+        c = _FakeCursor()
+        self.cursors.append(c)
+        return c
 
 
 def test_is_healthy_none_is_unhealthy():
@@ -341,7 +366,11 @@ def test_get_conn_reconnects_after_drop(monkeypatch):
 
     class _StubPsycopg:
         @staticmethod
-        def connect(url, autocommit=False):
+        def connect(url, **kwargs):
+            # ``_get_conn`` passes ``autocommit`` + the kernel-timeout kwargs
+            # (``connect_timeout``, ``keepalives``, ``tcp_user_timeout``, …).
+            # The stub accepts whatever's thrown at it so the test doesn't
+            # need to track every new tuning knob.
             call_count["n"] += 1
             return new_conn
 
@@ -376,7 +405,7 @@ def test_get_conn_does_not_permanently_disable_on_connect_failure(monkeypatch):
 
     class _FailingPsycopg:
         @staticmethod
-        def connect(url, autocommit=False):
+        def connect(url, **kwargs):
             raise RuntimeError("simulated network blip")
 
     import sys
