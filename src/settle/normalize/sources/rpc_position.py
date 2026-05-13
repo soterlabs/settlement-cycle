@@ -21,11 +21,16 @@ class RPCConvertToAssetsSource:
 
 
 class RPCPsm3Source:
-    """Spark PSM3 reads via `eth_call`: `shares(holder)` and
-    `convertToAssetValue(numShares)`."""
+    """Spark PSM3 reads via `eth_call`: `shares(holder)`,
+    `convertToAssetValue(numShares)`, and `convertToShares(asset, amount)`."""
 
     def shares_of(self, chain: str, psm3: bytes, holder: bytes, block: int) -> int:
         return rpc.psm3_shares(Chain(chain), Address(psm3), Address(holder), block)
 
     def convert_to_asset_value(self, chain: str, psm3: bytes, num_shares: int, block: int) -> int:
         return rpc.psm3_convert_to_asset_value(Chain(chain), Address(psm3), num_shares, block)
+
+    def convert_to_shares(self, chain: str, psm3: bytes, asset: bytes, amount: int, block: int) -> int:
+        return rpc.psm3_convert_to_shares(
+            Chain(chain), Address(psm3), Address(asset), amount, block,
+        )

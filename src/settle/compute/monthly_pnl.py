@@ -1696,6 +1696,59 @@ def compute_monthly_pnl(
                 # Prime Revenue = (BR − SSR) × value_som × n_days = 30bps spread.
                 # `value_som` already computed above via convertToAssets at SoM block.
                 from .sky_revenue import BASE_RATE_OVER_SSR
+
+                # On Ethereum the bridged sUSDS is ERC-4626 so ``value_som``
+                # from ``get_position_value`` has the right SoM pps. On L2
+                # the sUSDS deployment is a 1:1 ERC-20 with no
+                # ``convertToAssets`` — that call reverts and we silently
+                # got ``value_som = 0``, so the 30 bps credit collapsed to
+                # $0 even though the prime is holding hundreds of millions
+                # of sUSDS at the L2 ALM (Q-S25 / #75). Recompute via the
+                # local L2 PSM3 contract's two-call recipe
+                # ``convertToShares(sUSDS, 1e18) → convertToAssetValue``
+                # whenever the prime has a PSM3 configured on this chain.
+                if (
+                    venue.chain != Chain.ETHEREUM
+                    and venue.chain in prime.psm
+                    and value_som == 0
+                ):
+                    from ..normalize.positions import get_position_balance
+                    from ..normalize.registry import get_psm3_source
+                    psm3_src = (
+                        sources.psm3 if sources.psm3 is not None
+                        else get_psm3_source()
+                    )
+                    psm3_addr = prime.psm[venue.chain].address.value
+                    balance_som = get_position_balance(
+                        prime, venue, som_block,
+                        source=sources.position_balance,
+                    )
+                    if balance_som > 0:
+                        unit = 10 ** venue.token.decimals
+                        n_shares = psm3_src.convert_to_shares(
+                            chain=venue.chain.value,
+                            psm3=psm3_addr,
+                            asset=venue.token.address.value,
+                            amount=unit,
+                            block=som_block,
+                        )
+                        if n_shares > 0:
+                            # PSM3 quotes USDS-equivalent value at 18 decimals.
+                            usds_raw = psm3_src.convert_to_asset_value(
+                                chain=venue.chain.value,
+                                psm3=psm3_addr,
+                                num_shares=n_shares,
+                                block=som_block,
+                            )
+                            pps = _Dec(usds_raw) / _Dec(10**18)
+                            value_som = balance_som * pps
+                            _log.info(
+                                "  Cat B sub-case (a) L2 sUSDS pricing via PSM3 "
+                                "for %s on %s: balance=%s pps=%s value_som=$%s",
+                                venue.id, venue.chain.value,
+                                balance_som, pps, value_som,
+                            )
+
                 spread_daily = daily_compounding_factor(BASE_RATE_OVER_SSR)
                 n_days = _Dec(str((period.end - period.start).days + 1))
                 susds_spread = value_som * spread_daily * n_days

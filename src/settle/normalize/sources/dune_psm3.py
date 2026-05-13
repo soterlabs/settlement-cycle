@@ -284,6 +284,19 @@ class DunePsm3Source:
         total_assets  = usdc_usds_eq + usds_usds_eq + susds_usds_eq
         return int(Decimal(num_shares) * total_assets / Decimal(pool_total))
 
+    def convert_to_shares(
+        self, chain: str, psm3: bytes, asset: bytes, amount: int, block: int,
+    ) -> int:
+        """Point read — no Dune preload covers this call, so we delegate to
+        the cached RPC helper. PSM3 ``convertToShares`` is called once per
+        (chain, asset, block) for L2 sUSDS pricing in compute, which hits
+        the on-disk + Postgres caches on rerun."""
+        from ...extract import rpc
+        from ...domain.primes import Address, Chain
+        return rpc.psm3_convert_to_shares(
+            Chain(chain), Address(psm3), Address(asset), amount, block,
+        )
+
     # ----------------------------------------------------------------------
     # Loaders
     # ----------------------------------------------------------------------

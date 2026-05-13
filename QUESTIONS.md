@@ -657,6 +657,59 @@ If day-level is confirmed, the fix is ~10 lines in `compute_sky_
 revenue` plus a regression test that covers a SoM-not-yet-active
 venue + a within-month end_date.
 
+#### S25. L2 sUSDS spread-credit silently $0 (S37/S43/S47/S51) — Prime Revenue under-count
+Discovered while wiring the multi-chain ALM-USDS aggregator
+(`compute_monthly_pnl._aggregate_alm_usds`, 2026-05-12). The L2 sUSDS
+proxies on Base / Arbitrum / Optimism / Unichain do NOT expose ERC-4626
+`convertToAssets` — the sUSDS deployment on each L2 is a 1:1 bridged
+balance whose price-per-share lives only on Ethereum. The pipeline's
+RPC layer (`extract/rpc.convert_to_assets`) returns 0 silently on revert,
+so `value_som = 0` → `susds_spread = 0` for these venues today.
+
+**Concrete impact (Dune query 7474562, 2026-05-12):** Spark holds
+~294M sUSDS shares at L2 ALMs (~$314M at the current ~$1.069 pps —
+130.9M arb + 93.2M op + 69.2M base + 0.9M uni). At 30 bps the missing
+Prime Revenue is roughly `$314M × 0.003 / 365 ≈ $2,580/day ≈ $77K/mo`.
+Sky-side BR charge is **already correct** on these positions (utilized
+not reduced for `sky_savings_token: true` venues, full BR charged).
+
+To fix, the Cat B sub-case (a) pricing for L2 sUSDS needs a working
+sUSDS→USDS rate. The cleanest source is the **local L2 PSM3 contract**
+itself — verified 2026-05-12 against the Spark PSM3 source
+(`marsfoundation/spark-psm` `src/PSM3.sol`). Every L2 PSM3 exposes:
+
+- `convertToShares(address asset, uint256 amount)` (selector `0xc6e6f592`)
+  → PSM3 shares for `amount` of `asset`
+- `convertToAssetValue(uint256 shares)` (selector `0x41c094e0`)
+  → USDS-equivalent value of those shares (18 dec)
+
+Two-call recipe to price 1 sUSDS in USDS on any L2 PSM3 host chain:
+```
+shares_per_sUSDS = PSM3.convertToShares(sUSDS_address, 1e18)
+usds_per_sUSDS   = PSM3.convertToAssetValue(shares_per_sUSDS)
+```
+
+This is much cleaner than reading Ethereum sUSDS pps at a cross-chain
+block — no Chronicle-style oracle bridge needed; pipeline already calls
+`convertToAssetValue` in the PSM3 leg-split path. Concrete plan:
+
+1. Add `psm3_convert_to_shares(chain, psm3, asset, amount, block)` to
+   `extract/rpc.py` (selector `0xc6e6f592`).
+2. Extend `IPsm3Source` with a `convert_to_shares` method; route Cat B
+   sub-case (a) sUSDS-at-L2 pricing through it when the venue's chain
+   has a PSM3 configured on the prime.
+3. Regression test: Q1 2026 monthly run before/after — expect
+   ~$77K/mo Prime Revenue uplift for Spark.
+
+Edge case: a prime might hold L2 sUSDS on a chain where it has no PSM3
+(e.g. a future Avalanche-C deployment). For that case the fallback IS
+the Ethereum-sUSDS cross-chain read; defer until a real venue triggers it.
+
+**Q for Spark/BA:** Confirm the 30 bps spread credit should also apply
+to idle sUSDS held at L2 ALMs (not just Ethereum) — this is the same
+economic neutrality argument as the Ethereum POL position (S32) and
+the PSM3 sUSDS leg, just on L2. Resolution: implement and close.
+
 ### P2 — sanity checks / confirmations
 
 #### S5. Subsidy reference rate — Atlas says T-Bill, current config says EFFR
