@@ -80,16 +80,18 @@ def load_prime(config_path: Path) -> Prime:
             nav_oracle = NavOracle(
                 kind=no["kind"],
                 address=Address.from_str(no["address"]) if no.get("address") else None,
-                asset_decimals=int(no["asset_decimals"]) if no.get("asset_decimals") else None,
+                underlying_decimals=(
+                    int(no["underlying_decimals"]) if no.get("underlying_decimals") else None
+                ),
                 fallback=no.get("fallback"),
                 fallback_address=(
                     Address.from_str(no["fallback_address"])
                     if no.get("fallback_address")
                     else None
                 ),
-                fallback_asset_decimals=(
-                    int(no["fallback_asset_decimals"])
-                    if no.get("fallback_asset_decimals")
+                fallback_underlying_decimals=(
+                    int(no["fallback_underlying_decimals"])
+                    if no.get("fallback_underlying_decimals")
                     else None
                 ),
                 oracle_chain=Chain(no["oracle_chain"]) if no.get("oracle_chain") else None,

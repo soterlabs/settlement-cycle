@@ -169,10 +169,10 @@ def get_nav_oracle_source(kind: str) -> INavOracleSource:
         except Exception:
             pass  # fall through to UnknownSourceError
 
-    # Dynamic erc4626_<asset_decimals>_<share_decimals>
+    # Dynamic erc4626_<underlying_decimals>_<share_decimals>
     # e.g. "erc4626_6_18" (USDC underlying, 18-decimal shares).
     # Encoded by ``normalize.prices._nav_oracle_kind`` from the YAML
-    # ``[fallback_]asset_decimals`` field + ``venue.token.decimals``
+    # ``[fallback_]underlying_decimals`` field + ``venue.token.decimals``
     # (share decimals are not a separate config field — see NavOracle docstring).
     if kind.startswith("erc4626_"):
         parts = kind[len("erc4626_"):].split("_")
@@ -188,5 +188,5 @@ def get_nav_oracle_source(kind: str) -> INavOracleSource:
     raise UnknownSourceError(
         f"Unknown NAV-oracle kind {kind!r}. "
         f"Available: {sorted(_NAV_ORACLE_SOURCES)}, const_<decimal_value>, "
-        f"or erc4626_<asset_decimals>_<share_decimals> (e.g. erc4626_6_18)."
+        f"or erc4626_<underlying_decimals>_<share_decimals> (e.g. erc4626_6_18)."
     )
