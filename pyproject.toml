@@ -16,6 +16,10 @@ dependencies = [
     "pandas>=2.1",
     "pydantic>=2.5",
     "python-dotenv>=1.0",
+    # Postgres driver for the optional raw-data store (src/settle/extract/postgres_store.py).
+    # The cache layer no-ops when DATABASE_URL is unset, so this is a hard dep
+    # only because we don't want a separate install path for CI/local parity.
+    "psycopg[binary]>=3.1",
 ]
 
 [project.optional-dependencies]

@@ -1,0 +1,66 @@
+# DISABLED — re-enable after the initial backfill.
+#
+# The workflow body below is commented out so GitHub doesn't load it
+# (invalid YAML when fully commented; Actions silently skips invalid
+# workflows). To reactivate: delete the leading `# ` from every body
+# line below, or restore from git history.
+#
+# Why disabled: we're pre-populating Postgres from the local pickle
+# cache via `scripts/backfill_cache_to_postgres.py`. Triggering the live
+# upstream sync before backfill would re-fetch ~500 keys we already have
+# cached locally, burning Dune + RPC quota for no benefit.
+
+# name: Sync raw data to Postgres
+#
+# # Runs the extract pipeline against live RPC + Dune, populating the Railway
+# # Postgres ``raw_data`` table via the read-through cache. Idempotent — a
+# # re-run when nothing has changed hits every key in the cache and is a
+# # fast no-op. Adding a new venue / oracle / month produces new
+# # ``(source, args_hash)`` keys that get inserted; existing rows are never
+# # mutated (``ON CONFLICT (source, args_hash) DO NOTHING``).
+#
+# on:
+#   push:
+#     branches: [main]
+#     # Trigger only when files that define what gets fetched change. Edits
+#     # outside these paths (docs, tests, compute logic) don't change the set
+#     # of raw-data keys, so they don't need a sync run.
+#     paths:
+#       - 'src/settle/extract/**'
+#       - 'src/settle/queries/**'
+#       - 'config/*.yaml'
+#       - 'scripts/sync_raw_data.py'
+#       - 'db/schema.sql'
+#   workflow_dispatch: {}
+#
+# # Serialize runs so two pushes in quick succession don't race on the same
+# # (source, args_hash) keys (the DB's UNIQUE constraint handles correctness,
+# # but back-to-back runs would waste RPC quota re-fetching the same data).
+# concurrency:
+#   group: sync-raw-data
+#   cancel-in-progress: false
+#
+# jobs:
+#   sync:
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 30
+#     env:
+#       DATABASE_URL:    ${{ secrets.DATABASE_URL }}
+#       DUNE_API_KEY:    ${{ secrets.DUNE_API_KEY }}
+#       ETH_RPC:         ${{ secrets.ETH_RPC }}
+#       BASE_RPC:        ${{ secrets.BASE_RPC }}
+#       ARBITRUM_RPC:    ${{ secrets.ARBITRUM_RPC }}
+#       OPTIMISM_RPC:    ${{ secrets.OPTIMISM_RPC }}
+#       UNICHAIN_RPC:    ${{ secrets.UNICHAIN_RPC }}
+#       AVALANCHE_C_RPC: ${{ secrets.AVALANCHE_C_RPC }}
+#       PLUME_RPC:       ${{ secrets.PLUME_RPC }}
+#     steps:
+#       - uses: actions/checkout@v4
+#       - uses: actions/setup-python@v5
+#         with:
+#           python-version: '3.11'
+#           cache: pip
+#       - name: Install package
+#         run: pip install -e .
+#       - name: Sync
+#         run: python scripts/sync_raw_data.py --apply-schema

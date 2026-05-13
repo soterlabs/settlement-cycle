@@ -70,15 +70,17 @@ class ERC4626NavSource:
     """``INavOracleSource`` backed by ``convertToAssets(10**share_decimals)``
     on any ERC-4626 vault.
 
-    Both ``share_decimals`` (exponent for the call input) and
-    ``underlying_decimals`` (divisor for the raw return value) are supplied at
-    construction time from the prime YAML config fields, encoded into the
-    dispatch kind string by ``normalize.prices._nav_oracle_kind``.
+    ``asset_decimals`` is the decimal count of the vault's *underlying* asset
+    (e.g. 6 for USDC) — the divisor applied to the raw return value.
+    ``share_decimals`` is the decimal count of the vault's share token — the
+    exponent for the ``convertToAssets`` input. It is derived from
+    ``venue.token.decimals`` by the dispatch layer and encoded into the registry
+    kind string; callers do not need to supply it separately.
     """
 
-    def __init__(self, share_decimals: int, underlying_decimals: int) -> None:
+    def __init__(self, asset_decimals: int, share_decimals: int) -> None:
+        self._asset_decimals = asset_decimals
         self._share_decimals = share_decimals
-        self._underlying_decimals = underlying_decimals
 
     def nav_at(
         self,
@@ -91,7 +93,7 @@ class ERC4626NavSource:
         return erc4626.read(
             Chain(chain), Address(oracle_address), block,
             share_decimals=self._share_decimals,
-            underlying_decimals=self._underlying_decimals,
+            underlying_decimals=self._asset_decimals,
         )
 
 

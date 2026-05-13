@@ -1,0 +1,30 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request: {}
+
+# Cancel superseded PR runs so only the latest commit gets a verdict.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install package + dev extras
+        run: pip install -e ".[dev]"
+      - name: Run pytest (unit tests only)
+        # Live-marked tests hit real RPC / Dune / API and are skipped by
+        # default; they're not safe to run in CI without credentials.
+        # ``-m "not live"`` is a belt-and-braces filter on top of the
+        # default deselection.
+        run: pytest tests/unit -m "not live" -q

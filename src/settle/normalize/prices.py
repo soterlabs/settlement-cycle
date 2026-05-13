@@ -284,47 +284,37 @@ def _resolve_rwa_nav(
     else:
         oracle_block = block
 
-    def _nav_oracle_kind(
-        kind: str,
-        underlying_decimals: int | None,
-        share_decimals: int | None,
-    ) -> str:
-        """Encode ``underlying_decimals`` and ``share_decimals`` into the kind
-        string for the ``erc4626`` oracle kind.
+    def _nav_oracle_kind(kind: str, asset_decimals: int | None) -> str:
+        """Encode decimals into the kind string for the ``erc4626`` oracle kind.
 
-        The registry dispatches on ``erc4626_<underlying>_<share>``
+        The registry dispatches on ``erc4626_<asset>_<share>``
         (e.g. ``erc4626_6_18`` for a USDC-backed vault with 18-decimal shares).
-        Both values come from the YAML ``[fallback_]underlying_decimals`` and
-        ``[fallback_]share_decimals`` fields. All other oracle kinds pass
-        through unchanged, keeping the resolver to a single-argument interface
-        so existing test lambdas (``lambda kind: src``) need no changes.
+        ``asset_decimals`` comes from the YAML ``[fallback_]asset_decimals`` field.
+        ``share_decimals`` is taken from ``venue.token.decimals`` — for cross-chain
+        RWA vaults the share token IS the venue token, so its decimal count is
+        already recorded there and does not need a separate config field.
+        All other oracle kinds pass through unchanged, keeping the resolver to a
+        single-argument interface so existing test lambdas (``lambda kind: src``)
+        need no changes.
         """
         if kind == "erc4626":
-            if underlying_decimals is None or share_decimals is None:
+            if asset_decimals is None:
                 raise ValueError(
-                    f"Venue {venue.id}: nav_oracle kind 'erc4626' requires both "
-                    "'underlying_decimals' and 'share_decimals' in the YAML config."
+                    f"Venue {venue.id}: nav_oracle kind 'erc4626' requires "
+                    "'asset_decimals' to be set in the YAML config."
                 )
-            return f"erc4626_{underlying_decimals}_{share_decimals}"
+            return f"erc4626_{asset_decimals}_{venue.token.decimals}"
         return kind
 
     candidates: list[tuple[str, bytes | None]] = [
         (
-            _nav_oracle_kind(
-                venue.nav_oracle.kind,
-                venue.nav_oracle.underlying_decimals,
-                venue.nav_oracle.share_decimals,
-            ),
+            _nav_oracle_kind(venue.nav_oracle.kind, venue.nav_oracle.asset_decimals),
             venue.nav_oracle.address.value if venue.nav_oracle.address else None,
         ),
     ]
     if venue.nav_oracle.fallback:
         candidates.append((
-            _nav_oracle_kind(
-                venue.nav_oracle.fallback,
-                venue.nav_oracle.fallback_underlying_decimals,
-                venue.nav_oracle.fallback_share_decimals,
-            ),
+            _nav_oracle_kind(venue.nav_oracle.fallback, venue.nav_oracle.fallback_asset_decimals),
             venue.nav_oracle.fallback_address.value if venue.nav_oracle.fallback_address else None,
         ))
 
