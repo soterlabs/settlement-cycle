@@ -74,6 +74,25 @@ class Token:
 
 
 @dataclass(frozen=True, slots=True)
+class CashDistributionSource:
+    """A specific (payer, token, chain) that distributes realized yield to the ALM.
+
+    Used for venues where the position itself has no MtM revenue but the
+    issuer periodically sweeps cash yield to the prime's ALM proxy — e.g.
+    CLO tranches paying monthly USDC distributions.
+
+    ``chain`` defaults to ``venue.chain`` when ``None``, but can be overridden
+    when the yield distribution lands on a *different* chain from the position
+    (e.g. GACLO-1 is an Avalanche token but Galaxy's USDC sweep targets the
+    Ethereum ALM).
+    """
+
+    payer: Address    # address that sends the cash yield to the ALM
+    token: Address    # ERC-20 token being distributed (e.g. USDC)
+    chain: "Chain | None" = None  # chain of the distribution; defaults to venue.chain
+
+
+@dataclass(frozen=True, slots=True)
 class NavOracle:
     """Off-/on-chain NAV-feed config for a Category E venue.
 
@@ -142,6 +161,11 @@ class Venue:
     # volatile or whose oracle isn't trustworthy to include in MSC. The venue
     # stays in YAML for documentation and historical reproducibility.
     skip: bool = False
+    # Realized cash yield streams paid directly to the ALM by a known payer —
+    # e.g. monthly USDC distributions from CLO issuers. The compute layer sums
+    # actual on-chain transfers and records the total as ``actual_revenue_override``
+    # (prime-only; no sky-revenue or capital-inflow effect).
+    cash_distributions: "list[CashDistributionSource]" = field(default_factory=list)
     # Curve pool USDS-idle tracking. When set, the compute layer reads the
     # prime's proportional share of the named coin's reserve daily (via RPC
     # ``read_pool`` + ``balanceOf`` + optionally ``convertToAssets`` for 4626

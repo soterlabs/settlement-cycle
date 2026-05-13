@@ -1153,6 +1153,44 @@ def _log_sky_revenue_debug(
     _log.info("\n".join(lines))
 
 
+def _compute_cash_dist_revenue(
+    venue,
+    prime: Prime,
+    period: Period,
+    balance_src: IBalanceSource,
+) -> Decimal:
+    """Sum actual on-chain inflows from configured cash-distribution payers.
+
+    For each ``CashDistributionSource`` on the venue, queries
+    ``directed_inflow_timeseries`` (payer → ALM) and accumulates the
+    period-end cumulative inflow minus the pre-period cumulative inflow.
+    Returns the total USD amount received during the period.
+    """
+    total = Decimal("0")
+    for src in venue.cash_distributions:
+        chain = src.chain if src.chain is not None else venue.chain
+        if chain not in prime.alm:
+            _log.warning(
+                "  [cash_dist] %s — no ALM address for chain %s; skipping payer %s",
+                venue.id, chain.value, src.payer.value.hex(),
+            )
+            continue
+        alm = prime.alm[chain]
+        pin_block = period.pin_blocks[chain]
+        df = balance_src.directed_inflow_timeseries(
+            chain=chain.value,
+            token=src.token.value,
+            from_addr=src.payer.value,
+            to_addr=alm.value,
+            start=prime.start_date,
+            pin_block=pin_block,
+        )
+        cum_eom = cum_at_or_before(df, "cum_inflow", period.end)
+        cum_pre = cum_at_or_before(df, "cum_inflow", period.start - timedelta(days=1))
+        total += cum_eom - cum_pre
+    return total
+
+
 def compute_monthly_pnl(
     prime: Prime,
     month: Month,
@@ -1363,8 +1401,43 @@ def compute_monthly_pnl(
     _log.info("step 3: per-venue pricing for %d venue(s)...", n_venues)
     # 3. Per-venue: value at SoM + EoM, inflow timeseries.
     venue_inputs: list[VenueRevenueInputs] = []
+
+    # 3a. Cash-distribution venues — attributed directly as prime revenue,
+    # bypassing the standard SoM/EoM formula and the sky-revenue path.
+    # Must run before the main loop so skipped venues (e.g. E21 GACLO-1,
+    # which has no reliable NAV oracle) are still included in the output.
+    _cash_dist_balance_src = (
+        sources.balance if sources.balance is not None else get_balance_source()
+    )
+    for venue in prime.venues:
+        if not venue.cash_distributions:
+            continue
+        _log.info(
+            "  [cash_dist] %s — computing cash-distribution revenue (%d source(s))...",
+            venue.id, len(venue.cash_distributions),
+        )
+        cash_rev = _compute_cash_dist_revenue(
+            venue, prime, period, _cash_dist_balance_src
+        )
+        _log.info("  [cash_dist] %s — total cash revenue: %s", venue.id, cash_rev)
+        venue_inputs.append(VenueRevenueInputs(
+            venue=venue,
+            value_som=Decimal("0"),
+            value_eom=Decimal("0"),
+            inflow_timeseries=pd.DataFrame(
+                columns=["block_date", "daily_inflow", "cum_inflow"]
+            ),
+            sde_entry=None,
+            actual_revenue_override=cash_rev,
+        ))
+
     _venue_idx = 0
     for venue in prime.venues:
+        if venue.cash_distributions:
+            # Already handled by the cash-distribution pass above — skip here
+            # to avoid double-counting. A venue with cash_distributions should
+            # not also run through the standard SoM/EoM compute path.
+            continue
         if venue.skip:
             # Excluded from MSC — typically venues whose NAV oracle is
             # untrusted or whose underlying is too volatile (e.g. Avalanche
@@ -1682,6 +1755,12 @@ def compute_monthly_pnl(
             sde_entry=sde_entry,
             actual_revenue_override=susds_spread,
         ))
+
+    # Re-sort venue_inputs to match the declaration order in prime.venues so
+    # the per-venue breakdown is always printed in config order, regardless of
+    # which pass (cash-dist pre-pass or main loop) populated each entry.
+    _venue_order = {v.id: i for i, v in enumerate(prime.venues)}
+    venue_inputs.sort(key=lambda vi: _venue_order.get(vi.venue.id, 9999))
 
     _log.info("step 4: computing revenue components...")
     # 4. Compute revenue components.

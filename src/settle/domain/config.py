@@ -11,6 +11,7 @@ import yaml
 from .pricing import PricingCategory
 from .primes import (
     Address,
+    CashDistributionSource,
     Chain,
     CurveIdleUsdsConfig,
     NavOracle,
@@ -129,6 +130,14 @@ def load_prime(config_path: Path) -> Prime:
                     else None
                 ),
                 skip=bool(v.get("skip", False)),
+                cash_distributions=[
+                    CashDistributionSource(
+                        payer=Address.from_str(d["payer"]),
+                        token=Address.from_str(d["token"]),
+                        chain=Chain(d["chain"]) if d.get("chain") else None,
+                    )
+                    for d in v.get("cash_distributions", [])
+                ],
                 curve_idle_usds=curve_idle_usds,
                 lending_idle_usds=bool(v.get("lending_idle_usds", False)),
                 sky_savings_token=bool(v.get("sky_savings_token", False)),

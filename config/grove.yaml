@@ -369,14 +369,9 @@ venues:
   # skip: true and un-skip are therefore revenue-equivalent.
   #
   # Revenue capture: Galaxy distributes CLO yield as monthly USDC sweeps to
-  # the Grove ALM proxy (~10th of each month). That USDC inflow is Cat A
-  # prime_agent_revenue — the same pattern as Spark S23 (Anchorage loan).
-  # To capture it, the Galaxy payer address must be added to the
-  # `external_alm_sources` section at the bottom of this file.
-  #
-  # TODO: register the Galaxy USDC payer address in external_alm_sources
-  # (avalanche_c chain) once the address is confirmed, so the monthly
-  # sweeps are classified as yield rather than capital movement.
+  # the Grove Ethereum ALM (~10th of each month). Attributed directly to E21
+  # via the venue's cash_distributions config (payer → ALM on Ethereum).
+  # This does not affect E15 (USDC raw) or Sky revenue.
   - id: E20
     chain: avalanche_c
     label: 'Janus Henderson Anemoy AAA CLO (JAAA-avalanche)'
@@ -403,13 +398,22 @@ venues:
     chain: avalanche_c
     label: 'Galaxy Arch CLO Token (GACLO-1)'
     pricing_category: E
-    skip: true  # intentional — see comment above; revenue captured via Cat A USDC sweeps
+    # skip: true is intentional (BA decision). CLO tokens issued/redeemed at $1;
+    # un-skipping would produce balance × $1 = principal, contributing $0 revenue.
+    # Revenue capture: Galaxy distributes CLO yield as monthly USDC sweeps (~10th
+    # of each month) to the Grove Ethereum ALM. Attributed directly to E21 via
+    # cash_distributions below — does not affect E15 (USDC raw) or Sky revenue.
+    skip: true
     token:
       address: '0x2c0adff8e114f3ca106051144353ac703d24b901'
       symbol: 'GACLO-1'
       decimals: 6
     nav_oracle:
       kind: const_one  # correct: CLO tokens issued/redeemed at $1; yield is a separate cash distribution
+    cash_distributions:
+      - payer: '0xaC3D86f9840A8bE07dE5F67d6427983B7009DF1B'  # Galaxy sweep address
+        token: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'   # USDC on Ethereum
+        chain: ethereum  # distributions land on the Ethereum ALM, not Avalanche
 
   # ─────────────────────────────────────────────────────────────
   # Plume — Phase 2.B (multi-chain rollout)
@@ -508,12 +512,5 @@ venues:
 # venue allocations, redemptions) and netted out.
 #
 # Default: empty → revenue_E_x = 0 for par-stables.
-#
-# Pending: Galaxy Arch CLO (E21) distributes yield as monthly USDC sweeps to
-# this ALM proxy. Register the Galaxy payer address here (avalanche_c chain)
-# once confirmed to capture those as Cat A revenue. See E21 comment above.
-#
-# Example (add when payer address is known):
-# external_alm_sources:
-#   avalanche_c:
-#     - '0x...'   # Galaxy payer for GACLO-1 monthly USDC distributions (E21)
+# Note: Galaxy GACLO-1 (E21) yield is captured via per-venue cash_distributions,
+# not via this allowlist.
