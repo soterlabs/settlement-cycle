@@ -611,11 +611,17 @@ def get_psm_usds_timeseries(
                         pin_block=period.pin_blocks[chain],
                         psm3=cfg.address.value,
                     )
-                except (_DuneError, _requests.HTTPError) as _e:
+                except (
+                    _DuneError,
+                    _requests.HTTPError,
+                    _requests.ConnectionError,
+                    _requests.Timeout,
+                ) as _e:
                     _log.warning(
                         "DunePsm3Source.preload failed on %s (%s) — falling "
                         "back to per-day RPC for PSM3 reads (carry-forward on "
-                        "failure). Add Dune credits to eliminate this path.",
+                        "failure). Common causes: Dune credits exhausted "
+                        "(402), throttling (429), or transient network / DNS.",
                         chain.value, _e,
                     )
             else:
