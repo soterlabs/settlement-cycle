@@ -49,7 +49,6 @@ from settle.normalize.registry import (  # noqa: E402
     get_convert_to_assets_source,
     get_debt_source,
     get_position_balance_source,
-    get_psm3_source,
     get_ssr_source,
 )
 
@@ -66,10 +65,15 @@ _SOURCES_LIVE = {
     "ssr":               "DuneSSRSource",
     "position_balance":  "RPCPositionBalanceSource",
     "convert_to_assets": "RPCConvertToAssetsSource",
-    "psm3":              "RPCPsm3Source",
+    # ``psm3`` is left None in ``_live_sources()`` so the orchestrator
+    # upgrades it to ``DunePsm3Source`` when ``DUNE_API_KEY`` is set; that
+    # source bulk-loads share + reserve histories from Dune and falls back
+    # to ``RPCPsm3Source`` only on Dune failure. Recorded here so the
+    # settlement-artifact provenance matches what actually ran.
+    "psm3":              "DunePsm3Source (orchestrator-upgraded) + RPCPsm3Source fallback",
     "block_resolver":    "DuneBlockResolver (orchestrator-upgraded) + RPC fallback",
     "curve_pool":        "CurvePoolSource (lazy)",
-    "v3_position":       "RPCUniswapV3PositionSource (lazy)",
+    "v3_position":       "DuneV3InflowSource (orchestrator-upgraded) + RPC fallback",
 }
 
 
@@ -94,15 +98,21 @@ def _check_env() -> None:
 
 
 def _live_sources() -> Sources:
-    """Live sources, but with ``block_resolver=None`` so the orchestrator can
-    upgrade it to ``DuneBlockResolver`` for the per-day block lookups."""
+    """Live sources with intentional ``None`` defaults for the sources whose
+    Dune-backed variant the orchestrator picks based on ``DUNE_API_KEY``:
+
+      * ``block_resolver`` → upgraded to ``DuneBlockResolver`` per chain.
+      * ``psm3``           → upgraded to ``DunePsm3Source`` for Spark L2 PSMs.
+      * ``v3_position``    → upgraded to ``DuneV3InflowSource`` for V3 events.
+
+    Passing concrete RPC sources here would short-circuit those upgrades.
+    """
     return Sources(
         debt=get_debt_source(),
         balance=get_balance_source(),
         ssr=get_ssr_source(),
         position_balance=get_position_balance_source(),
         convert_to_assets=get_convert_to_assets_source(),
-        psm3=get_psm3_source(),
     )
 
 

@@ -570,7 +570,56 @@ def get_psm_usds_timeseries(
                 f"Add USDC/USDS/sUSDS addresses for the chain to "
                 f"settle.domain.sky_tokens.PSM3_LEG_TOKENS."
             )
-        psm3 = psm3_source if psm3_source is not None else _get_psm3()
+        # Prefer the Dune-backed PSM3 source when DUNE_API_KEY is set —
+        # ``RPCPsm3Source`` issues two RPC calls per (chain, day) for the
+        # non-standard ``shares()`` + ``convertToAssetValue()`` on the PSM3
+        # contract; Alchemy / drpc Arbitrum + Unichain return intermittent
+        # 500s on these, triggering 10-retry chains that dominate Spark
+        # cell wall time. Dune backs both calls from decoded
+        # ``spark_protocol_multichain.psm3_evt_{deposit,withdraw}`` events.
+        if psm3_source is not None:
+            psm3 = psm3_source
+        else:
+            import os as _os
+            if _os.environ.get("DUNE_API_KEY"):
+                from ..normalize.sources.dune_psm3 import DunePsm3Source
+                psm3 = DunePsm3Source(
+                    position_balance_source=position_balance_source,
+                    convert_to_assets_source=convert_to_assets_source,
+                    block_resolver=block_resolver,
+                )
+                # Bulk-load the entire settlement period in one query per
+                # (chain, holder) — otherwise each day's ``shares_of`` would
+                # re-fetch with its own pin_block (~31× redundant Dune calls
+                # per chain per cell). See ``DunePsm3Source.preload`` docstring.
+                # Preload everything from Dune: ALM shares, pool totals,
+                # and per-token reserves (USDC/USDS/sUSDS). Per-day calls in
+                # ``_legs_at`` then become constant-time dict bisects, with
+                # zero RPC reads for the PSM3 stack.
+                #
+                # Wrapped in try/except so that a Dune credit exhaustion
+                # (HTTP 402 on community-tier monthly cap) gracefully
+                # degrades to the per-day RPC carry-forward path — the run
+                # continues with slightly stale leg values rather than
+                # crashing. Add credits and re-run for clean numbers.
+                from ..extract.dune import DuneError as _DuneError
+                import requests as _requests
+                try:
+                    psm3.preload(
+                        chain=chain.value,
+                        holder=prime.alm[chain].value,
+                        pin_block=period.pin_blocks[chain],
+                        psm3=cfg.address.value,
+                    )
+                except (_DuneError, _requests.HTTPError) as _e:
+                    _log.warning(
+                        "DunePsm3Source.preload failed on %s (%s) — falling "
+                        "back to per-day RPC for PSM3 reads (carry-forward on "
+                        "failure). Add Dune credits to eliminate this path.",
+                        chain.value, _e,
+                    )
+            else:
+                psm3 = _get_psm3()
         pos_bal = position_balance_source if position_balance_source is not None else _get_pos_bal()
         c2a = convert_to_assets_source if convert_to_assets_source is not None else _get_c2a()
         scale = Decimal(10**18)
@@ -587,6 +636,12 @@ def get_psm_usds_timeseries(
         # timeseries — that would silently inflate sky_revenue by the missing
         # PSM holdings. Treat a failed day as "carry forward yesterday's
         # value" (no movement) and log the gap so it's auditable.
+        # ``DuneError`` is also caught: when the orchestrator-level
+        # ``preload()`` fully succeeded but a later Dune call inside
+        # ``convert_to_asset_value`` fails (e.g., a mid-run 402 / 429),
+        # the carry-forward path keeps the day going instead of crashing
+        # the whole chain's PSM3 timeseries.
+        from ..extract.dune import DuneError
         from ..extract.rpc import RPCError
         import requests as _requests
 
@@ -614,10 +669,21 @@ def get_psm_usds_timeseries(
                 spark_claim = Decimal(spark_claim_raw) / scale
 
                 # PSM3 leg reserves at this block. USDC is 6-decimal; USDS,
-                # sUSDS are 18-decimal.
-                usdc_raw  = pos_bal.balance_at(chain.value, usdc_addr,  psm3_addr, block)
-                usds_raw  = pos_bal.balance_at(chain.value, usds_addr,  psm3_addr, block)
-                susds_raw = pos_bal.balance_at(chain.value, susds_addr, psm3_addr, block)
+                # sUSDS are 18-decimal. Prefer the Dune-preloaded reserves
+                # (constant-time dict lookup) over per-day RPC ``balanceOf``
+                # — Alchemy / drpc on Arbitrum + Unichain intermittently
+                # fails balanceOf calls and the carry-forward fallback
+                # produces stale leg values on failed days.
+                def _reserve_at(addr: bytes, dec: int) -> int:
+                    pra = getattr(psm3, "pool_reserve_at", None)
+                    if pra is not None:
+                        r = pra(chain.value, addr, psm3_addr, block, decimals=dec)
+                        if r is not None:
+                            return r
+                    return pos_bal.balance_at(chain.value, addr, psm3_addr, block)
+                usdc_raw  = _reserve_at(usdc_addr,  6)
+                usds_raw  = _reserve_at(usds_addr,  18)
+                susds_raw = _reserve_at(susds_addr, 18)
                 usdc_val   = Decimal(usdc_raw)  / usdc_scale
                 usds_val   = Decimal(usds_raw)  / scale
                 susds_face = Decimal(susds_raw) / scale
@@ -651,7 +717,7 @@ def get_psm_usds_timeseries(
                     spark_share * usds_val,
                     spark_share * susds_val,
                 )
-            except (RPCError, _requests.HTTPError, _requests.ConnectionError, _requests.Timeout) as e:
+            except (RPCError, DuneError, _requests.HTTPError, _requests.ConnectionError, _requests.Timeout) as e:
                 if fallback is None:
                     raise
                 _log.warning(
