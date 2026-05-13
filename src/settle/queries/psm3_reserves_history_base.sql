@@ -1,6 +1,6 @@
 -- PSM3 pool reserves per token per event-block (cumulative) on Base.
 --
--- See the sibling files for Base / Optimism / Unichain — same body, only
+-- See the sibling files for Arbitrum / Optimism / Unichain — same body, only
 -- the FROM table changes. Dune doesn't support ``{{param}}`` substitution
 -- in FROM identifiers, so the per-chain split is the cleanest path.
 --

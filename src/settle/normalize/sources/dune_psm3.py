@@ -114,6 +114,21 @@ class DunePsm3Source:
 
         If ``psm3`` is given, also bulk-loads pool reserves (USDC/USDS/sUSDS)
         for that PSM3 contract — enables ``pool_reserve_at`` to bypass RPC.
+
+        **Known limitation — partial-failure state is not transactional.**
+        The three underlying loaders (holder / pool / reserves) fire
+        sequentially. A mid-call failure on, say, the pool loader leaves
+        ``_holder_history`` populated but ``_pool_history`` empty. The
+        orchestrator catches the exception once at this boundary and logs
+        once, then per-day reads continue: ``shares_of`` will hit the
+        cached holder history (fast), but ``convert_to_asset_value`` will
+        re-attempt ``_load_pool_history`` for every day — and if Dune is
+        still degraded, every day fails again silently. Behaviour is
+        correct (RPC fallback works downstream), but log noise scales with
+        the period length. Tracked for a follow-up: either cache empty
+        sentinels per-loader so per-day reads short-circuit, or make
+        ``preload`` transactional (rollback all three caches on any
+        single-loader failure).
         """
         self._load_holder_history(chain, holder, pin_block=pin_block)
         self._load_pool_history(chain, pin_block=pin_block)

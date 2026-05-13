@@ -239,3 +239,153 @@ def test_apply_schema_raises_when_postgres_unavailable(monkeypatch):
     postgres_store._reset_for_tests()
     with pytest.raises(RuntimeError, match="Postgres unavailable"):
         postgres_store.apply_schema("SELECT 1;")
+
+
+# --- Auto-reconnect on stale/broken connection ------------------------------
+#
+# These tests pin the new ``_is_healthy`` + ``_drop_conn`` behaviour added
+# to fix the "connection is closed" log-spam we hit during the long-running
+# Spark settlement: a single cached conn would server-idle-timeout, then
+# every subsequent ``get``/``put`` would log a warning forever. New
+# behaviour: detect closed/broken on next ``_get_conn``, drop, reconnect.
+
+class _FakeConn:
+    """Minimal stand-in for ``psycopg.Connection`` — exposes the ``.closed``
+    and ``.broken`` flags that ``_is_healthy`` inspects, plus a ``close()``
+    that ``_drop_conn`` calls."""
+
+    def __init__(self, *, closed: bool = False, broken: bool = False) -> None:
+        self.closed = closed
+        self.broken = broken
+        self.close_calls = 0
+
+    def close(self) -> None:
+        self.close_calls += 1
+        self.closed = True
+
+
+def test_is_healthy_none_is_unhealthy():
+    assert postgres_store._is_healthy(None) is False
+
+
+def test_is_healthy_alive_conn_is_healthy():
+    assert postgres_store._is_healthy(_FakeConn()) is True
+
+
+def test_is_healthy_closed_conn_is_unhealthy():
+    """Client-side close → ``.closed=True`` → must reconnect on next call."""
+    assert postgres_store._is_healthy(_FakeConn(closed=True)) is False
+
+
+def test_is_healthy_broken_conn_is_unhealthy():
+    """Server-side hang-up (idle timeout, restart) sets ``.broken=True``."""
+    assert postgres_store._is_healthy(_FakeConn(broken=True)) is False
+
+
+def test_is_healthy_swallows_attribute_errors():
+    """A pathological object that raises on attribute access shouldn't crash
+    the health check — we just consider it unhealthy and reconnect."""
+    class _Pathological:
+        @property
+        def broken(self):
+            raise RuntimeError("oops")
+    assert postgres_store._is_healthy(_Pathological()) is False
+
+
+def test_drop_conn_closes_and_clears_state(monkeypatch):
+    """``_drop_conn`` should call ``close()`` on the cached conn and clear
+    ``_state["conn"]`` so the next ``_get_conn`` reconnects."""
+    fake = _FakeConn()
+    postgres_store._reset_for_tests()
+    postgres_store._state["conn"] = fake
+    postgres_store._state["disabled"] = False
+
+    postgres_store._drop_conn("test")
+
+    assert fake.close_calls == 1
+    assert postgres_store._state["conn"] is None
+    # ``disabled`` is left untouched — a transient drop should let the next
+    # call retry connecting.
+    assert postgres_store._state["disabled"] is False
+
+
+def test_drop_conn_tolerates_close_error(monkeypatch):
+    """If the underlying conn raises on ``close()`` (e.g. already closed by
+    libpq), ``_drop_conn`` should still clear the cache rather than
+    propagating the exception — the alternative is a permanently-broken
+    cache entry."""
+    class _NoisyCloseConn(_FakeConn):
+        def close(self) -> None:
+            super().close()
+            raise RuntimeError("already closed by libpq")
+
+    fake = _NoisyCloseConn()
+    postgres_store._reset_for_tests()
+    postgres_store._state["conn"] = fake
+
+    postgres_store._drop_conn("test")  # should not raise
+
+    assert postgres_store._state["conn"] is None
+
+
+def test_get_conn_reconnects_after_drop(monkeypatch):
+    """End-to-end: a broken conn → ``_get_conn`` should detect, drop, and
+    call ``psycopg.connect`` again. Uses a stub ``psycopg`` so the test
+    runs without a real Postgres."""
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake/")
+    postgres_store._reset_for_tests()
+
+    # Stub ``psycopg.connect`` to count calls and return a fresh fake.
+    call_count = {"n": 0}
+    new_conn = _FakeConn()
+
+    class _StubPsycopg:
+        @staticmethod
+        def connect(url, autocommit=False):
+            call_count["n"] += 1
+            return new_conn
+
+    import sys
+    monkeypatch.setitem(sys.modules, "psycopg", _StubPsycopg)
+
+    # Inject a broken cached conn so the fast path falls through and
+    # ``_get_conn`` decides to reconnect.
+    broken = _FakeConn(broken=True)
+    postgres_store._state["conn"] = broken
+    postgres_store._state["disabled"] = False
+
+    out = postgres_store._get_conn()
+
+    # 1) The broken conn was closed (cleanup), 2) ``psycopg.connect`` was
+    # called exactly once to reconnect, 3) the new conn is now cached.
+    assert broken.close_calls == 1
+    assert call_count["n"] == 1
+    assert out is new_conn
+    assert postgres_store._state["conn"] is new_conn
+
+    postgres_store._reset_for_tests()
+
+
+def test_get_conn_does_not_permanently_disable_on_connect_failure(monkeypatch):
+    """Pre-PR: a single ``psycopg.connect`` failure would set
+    ``disabled=True`` permanently — every subsequent call returned None
+    even after the network recovered. Post-PR: a connect failure leaves
+    ``disabled=None`` so the NEXT call retries."""
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake/")
+    postgres_store._reset_for_tests()
+
+    class _FailingPsycopg:
+        @staticmethod
+        def connect(url, autocommit=False):
+            raise RuntimeError("simulated network blip")
+
+    import sys
+    monkeypatch.setitem(sys.modules, "psycopg", _FailingPsycopg)
+
+    assert postgres_store._get_conn() is None
+    # Critical post-PR behaviour: transient failures must NOT flip
+    # ``disabled`` permanently. The previous attempt left it at None /
+    # False so the next call retries.
+    assert postgres_store._state["disabled"] is not True
+
+    postgres_store._reset_for_tests()
