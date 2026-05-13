@@ -91,8 +91,17 @@ class NavOracle:
 
     kind: str
     address: Address | None = None
+    # ``underlying_decimals`` is required when ``kind == "erc4626"`` and ignored
+    # by all other oracle kinds. It is the decimal count of the vault's
+    # underlying asset (e.g. 6 for USDC, 18 for DAI/USDS) — the divisor applied
+    # to the raw ``convertToAssets`` return value to produce a dollar NAV.
+    # The share-token decimal count (the ``convertToAssets`` input exponent) is
+    # taken from ``venue.token.decimals`` automatically, since for cross-chain
+    # RWA vaults the share token on-chain IS the venue token.
+    underlying_decimals: int | None = None
     fallback: str | None = None
     fallback_address: Address | None = None
+    fallback_underlying_decimals: int | None = None
     oracle_chain: "Chain | None" = None
 
 

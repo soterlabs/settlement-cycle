@@ -284,17 +284,46 @@ def _resolve_rwa_nav(
     else:
         oracle_block = block
 
+    def _nav_oracle_kind(kind: str, underlying_decimals: int | None) -> str:
+        """Encode decimals into the kind string for the ``erc4626`` oracle kind.
+
+        The registry dispatches on ``erc4626_<asset>_<share>``
+        (e.g. ``erc4626_6_18`` for a USDC-backed vault with 18-decimal shares).
+        ``underlying_decimals`` comes from the YAML ``[fallback_]underlying_decimals`` field.
+        ``share_decimals`` is taken from ``venue.token.decimals`` — for cross-chain
+        RWA vaults the share token IS the venue token, so its decimal count is
+        already recorded there and does not need a separate config field.
+        All other oracle kinds pass through unchanged, keeping the resolver to a
+        single-argument interface so existing test lambdas (``lambda kind: src``)
+        need no changes.
+        """
+        if kind == "erc4626":
+            if underlying_decimals is None:
+                raise ValueError(
+                    f"Venue {venue.id}: nav_oracle kind 'erc4626' requires "
+                    "'underlying_decimals' to be set in the YAML config."
+                )
+            return f"erc4626_{underlying_decimals}_{venue.token.decimals}"
+        return kind
+
     candidates: list[tuple[str, bytes | None]] = [
-        (venue.nav_oracle.kind,
-         venue.nav_oracle.address.value if venue.nav_oracle.address else None),
+        (
+            _nav_oracle_kind(
+                venue.nav_oracle.kind, venue.nav_oracle.underlying_decimals
+            ),
+            venue.nav_oracle.address.value if venue.nav_oracle.address else None,
+        ),
     ]
     if venue.nav_oracle.fallback:
         candidates.append((
-            venue.nav_oracle.fallback,
+            _nav_oracle_kind(
+                venue.nav_oracle.fallback, venue.nav_oracle.fallback_underlying_decimals
+            ),
             venue.nav_oracle.fallback_address.value if venue.nav_oracle.fallback_address else None,
         ))
 
     from ..extract.oracles.chronicle import ChronicleReadError
+    from ..extract.oracles.erc4626 import ERC4626ReadError
     from ..extract.oracles.price_per_share import PricePerShareReadError
     from ..extract.oracles.redstone import RedstoneReadError
     from ..extract.rpc import RPCError
@@ -306,7 +335,8 @@ def _resolve_rwa_nav(
     # etc.), making "all oracles failed" a catch-all hiding real bugs.
     _ORACLE_FAILURES: tuple[type[BaseException], ...] = (
         UnknownSourceError, NotImplementedError, ValueError,
-        ChronicleReadError, PricePerShareReadError, RedstoneReadError, RPCError,
+        ChronicleReadError, ERC4626ReadError, PricePerShareReadError,
+        RedstoneReadError, RPCError,
     )
     for i, (kind, addr) in enumerate(candidates):
         try:

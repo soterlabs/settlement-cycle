@@ -5,7 +5,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 from ...domain.primes import Address, Chain
-from ...extract.oracles import chronicle, price_per_share, redstone
+from ...extract.oracles import chronicle, erc4626, price_per_share, redstone
 
 
 class ChronicleNavSource:
@@ -64,6 +64,37 @@ class RedstoneNavSource:
         if oracle_address is None:
             raise ValueError("RedstoneNavSource requires an oracle address")
         return redstone.read(Chain(chain), Address(oracle_address), block)
+
+
+class ERC4626NavSource:
+    """``INavOracleSource`` backed by ``convertToAssets(10**share_decimals)``
+    on any ERC-4626 vault.
+
+    ``asset_decimals`` is the decimal count of the vault's *underlying* asset
+    (e.g. 6 for USDC) — the divisor applied to the raw return value.
+    ``share_decimals`` is the decimal count of the vault's share token — the
+    exponent for the ``convertToAssets`` input. It is derived from
+    ``venue.token.decimals`` by the dispatch layer and encoded into the registry
+    kind string; callers do not need to supply it separately.
+    """
+
+    def __init__(self, asset_decimals: int, share_decimals: int) -> None:
+        self._asset_decimals = asset_decimals
+        self._share_decimals = share_decimals
+
+    def nav_at(
+        self,
+        chain: str,
+        oracle_address: bytes | None,
+        block: int,
+    ) -> Decimal:
+        if oracle_address is None:
+            raise ValueError("ERC4626NavSource requires a vault address")
+        return erc4626.read(
+            Chain(chain), Address(oracle_address), block,
+            share_decimals=self._share_decimals,
+            underlying_decimals=self._asset_decimals,
+        )
 
 
 class ConstOneNavSource:

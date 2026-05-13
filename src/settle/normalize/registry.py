@@ -26,6 +26,7 @@ from .sources.oracles import (
     ChronicleNavSource,
     ConstNavSource,
     ConstOneNavSource,
+    ERC4626NavSource,
     PricePerShareNavSource,
     RedstoneNavSource,
 )
@@ -69,6 +70,8 @@ _BLOCK_RESOLVER_SOURCES: dict[str, type[IBlockResolver]] = {
 }
 
 # NAV oracles — keyed by ``Venue.nav_oracle.kind`` from per-prime YAML.
+# Note: ``erc4626`` is NOT in this dict — it is dispatched dynamically below
+# via the ``erc4626_<asset_decimals>`` encoded kind string.
 _NAV_ORACLE_SOURCES: dict[str, type[INavOracleSource]] = {
     "chronicle": ChronicleNavSource,
     "const_one": ConstOneNavSource,
@@ -166,7 +169,24 @@ def get_nav_oracle_source(kind: str) -> INavOracleSource:
         except Exception:
             pass  # fall through to UnknownSourceError
 
+    # Dynamic erc4626_<underlying_decimals>_<share_decimals>
+    # e.g. "erc4626_6_18" (USDC underlying, 18-decimal shares).
+    # Encoded by ``normalize.prices._nav_oracle_kind`` from the YAML
+    # ``[fallback_]underlying_decimals`` field + ``venue.token.decimals``
+    # (share decimals are not a separate config field — see NavOracle docstring).
+    if kind.startswith("erc4626_"):
+        parts = kind[len("erc4626_"):].split("_")
+        if len(parts) == 2:
+            try:
+                return ERC4626NavSource(
+                    asset_decimals=int(parts[0]),
+                    share_decimals=int(parts[1]),
+                )
+            except ValueError:
+                pass  # fall through to UnknownSourceError
+
     raise UnknownSourceError(
         f"Unknown NAV-oracle kind {kind!r}. "
-        f"Available: {sorted(_NAV_ORACLE_SOURCES)} or const_<decimal_value>."
+        f"Available: {sorted(_NAV_ORACLE_SOURCES)}, const_<decimal_value>, "
+        f"or erc4626_<underlying_decimals>_<share_decimals> (e.g. erc4626_6_18)."
     )
