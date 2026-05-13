@@ -36,9 +36,62 @@ DEFAULT_PERFORMANCE = "medium"
 DEFAULT_POLL_TIMEOUT_SEC = 300
 DEFAULT_POLL_INTERVAL_SEC = 3
 
+# Retry-on-429 policy. Dune throttles bursty workloads with HTTP 429 +
+# (sometimes) a ``Retry-After`` header. Without retry, a single 429 mid-run
+# cascades: DuneBlockResolver init fails → orchestrator falls back to RPC →
+# every per-day block lookup becomes its own Dune query → 100× slowdown.
+DUNE_429_MAX_ATTEMPTS = 8
+DUNE_429_BASE_BACKOFF_SEC = 2.0   # 2, 4, 8, 16, 32, 60 (capped), 60, 60
+DUNE_429_BACKOFF_CAP_SEC = 60.0
+
 
 class DuneError(RuntimeError):
     """Raised on Dune API failures or query execution errors."""
+
+
+def _request_with_429_retry(method: str, url: str, **kwargs) -> requests.Response:
+    """``requests.{get,post}`` wrapper that retries on HTTP 429 with
+    exponential backoff. Respects ``Retry-After`` (seconds) when present.
+
+    All other HTTP statuses (including 5xx) return after the first attempt —
+    those are surfaced to callers via the usual ``raise_for_status`` /
+    ``r.ok`` checks. We don't retry 5xx here because Dune's pattern is
+    deterministic ``query-failed → expired/cancelled`` rather than
+    transient transport flakes.
+    """
+    import time as _time
+    fn = requests.post if method.upper() == "POST" else requests.get
+    last_resp: requests.Response | None = None
+    for attempt in range(DUNE_429_MAX_ATTEMPTS):
+        r = fn(url, **kwargs)
+        if r.status_code != 429:
+            return r
+        last_resp = r
+        # Honor Retry-After when present, otherwise exponential backoff.
+        retry_after = r.headers.get("Retry-After")
+        if retry_after is not None:
+            try:
+                wait_sec = float(retry_after)
+            except ValueError:
+                wait_sec = DUNE_429_BASE_BACKOFF_SEC
+        else:
+            wait_sec = min(
+                DUNE_429_BASE_BACKOFF_SEC * (2 ** attempt),
+                DUNE_429_BACKOFF_CAP_SEC,
+            )
+        if attempt == 0:
+            _log.warning(
+                "Dune 429 Too Many Requests on %s %s — waiting %.1fs (attempt 1/%d)",
+                method.upper(), url.rsplit("/", 2)[-2] + "/" + url.rsplit("/", 1)[-1],
+                wait_sec, DUNE_429_MAX_ATTEMPTS,
+            )
+        elif attempt == DUNE_429_MAX_ATTEMPTS - 1:
+            _log.warning(
+                "Dune still 429ing after %d attempts — giving up; caller will see HTTP 429",
+                DUNE_429_MAX_ATTEMPTS,
+            )
+        _time.sleep(wait_sec)
+    return last_resp  # type: ignore[return-value]
 
 
 def _api_key() -> str:
@@ -121,21 +174,36 @@ def _infer_parameters(sql: str) -> list[dict[str, str]]:
     """Extract ``{{param}}`` placeholders from SQL and build Dune parameter defs.
 
     Dune's create-query endpoint requires every ``{{param}}`` used in the SQL to
-    have a matching parameter definition in the request body — otherwise it returns
-    400 "invalid query parameters". Type is inferred from context:
-    - bare ``{{pin_block}}`` adjacent to a numeric comparison → ``number``
-    - everything else → ``text``
+    have a matching parameter definition in the request body — otherwise it
+    returns 400 "invalid query parameters".
+
+    Type is inferred from the parameter **name** rather than its surrounding
+    SQL context — the latter heuristic was fragile (it treated
+    ``WHERE addr_col = {{holder}}`` as numeric because of the ``=``, then
+    Dune rejected the address value at runtime). Block / amount / numeric-
+    looking names → ``number``; everything else (addresses, hex, dates,
+    timestamps, chain names, raw strings) → ``text``, which is the safe
+    default for the Sources in this codebase.
+
+    If you need to override for a specific param, pre-publish the query
+    manually and add its ID to ``cache/dune_published.json``.
     """
     names = list(dict.fromkeys(re.findall(r"\{\{(\w+)\}\}", sql)))
+    # Param-name patterns that should be typed as ``number`` on Dune.
+    # Covers ``pin_block``, ``from_block``, ``to_block``, ``min_transfer_amount``,
+    # ``max_count``, ``threshold``, ``limit``, etc. — and stays text for
+    # addresses (``holder``, ``token``, ``nfpm``, ``from_addr``), dates, ISO
+    # timestamps (``ts``, ``start_date``), and chain names.
+    _NUMERIC_NAME = re.compile(
+        r"(?:^|_)block$|^block_|amount$|amount_|_amount|count$|threshold$|^limit$|^min_|^max_"
+    )
     result = []
     for name in names:
-        # Heuristic: if the placeholder appears directly adjacent to a numeric
-        # operator (<=, >=, =, <, >) without surrounding quotes, treat as number.
-        in_numeric_ctx = bool(re.search(r"[<>=!]\s*\{\{" + name + r"\}\}", sql))
+        is_number = bool(_NUMERIC_NAME.search(name))
         result.append({
             "key": name,
-            "type": "number" if in_numeric_ctx else "text",
-            "value": "0" if in_numeric_ctx else "",
+            "type": "number" if is_number else "text",
+            "value": "0" if is_number else "",
         })
     return result
 
@@ -261,7 +329,8 @@ def _execute_query(
     body: dict[str, Any] = {"performance": performance}
     if parameters:
         body["query_parameters"] = parameters
-    r = requests.post(
+    r = _request_with_429_retry(
+        "POST",
         f"{DUNE_API_BASE}/query/{query_id}/execute",
         headers=_headers(),
         json=body,
@@ -278,7 +347,8 @@ def _poll_results(execution_id: str, timeout: int = DEFAULT_POLL_TIMEOUT_SEC) ->
     deadline = time.time() + timeout
     elapsed = 0.0
     while time.time() < deadline:
-        r = requests.get(
+        r = _request_with_429_retry(
+            "GET",
             f"{DUNE_API_BASE}/execution/{execution_id}/results",
             headers=_headers(),
             timeout=30,
@@ -342,7 +412,7 @@ def _fetch_all_rows(execution_id: str) -> list[dict]:
     expected = metadata.get("total_row_count")
     next_uri = body.get("next_uri")
     while next_uri:
-        r = requests.get(next_uri, headers=_headers(), timeout=30)
+        r = _request_with_429_retry("GET", next_uri, headers=_headers(), timeout=30)
         r.raise_for_status()
         body = r.json()
         page = body.get("result", {}).get("rows", []) or []

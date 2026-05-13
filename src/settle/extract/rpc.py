@@ -326,8 +326,14 @@ def latest_block(chain: Chain) -> int:
     return int(_post(rpc_url(chain), "eth_blockNumber", []), 16)
 
 
+@cached(source_id="rpc.block_timestamp")
 def block_timestamp(chain: Chain, block: int) -> int:
-    """UNIX timestamp of the given block."""
+    """UNIX timestamp of the given block.
+
+    Deterministic given (chain, block) so it caches cleanly — used by the
+    binary search in ``find_block_at_or_before`` and by ``DuneBlockResolver``
+    fallback paths.
+    """
     raw = _post(rpc_url(chain), "eth_getBlockByNumber", [hex(block), False])
     return int(raw["timestamp"], 16)
 
@@ -372,19 +378,18 @@ def eth_get_logs(
     return out
 
 
-def find_block_at_or_before(chain: Chain, ts: datetime) -> int:
-    """Binary search for the highest block whose timestamp ≤ `ts` (UTC).
+# Chains for which we trust ``evms.blocks`` on Dune to answer "highest block
+# at or before <ts>" — mirrors the orchestrator's ``_DUNE_BLOCK_CHAINS``
+# whitelist. Unichain / Plume / Monad fall back to RPC binary search.
+_DUNE_TIMESTAMP_CHAINS = frozenset({
+    Chain.ETHEREUM, Chain.BASE, Chain.ARBITRUM,
+    Chain.OPTIMISM, Chain.AVALANCHE_C,
+})
 
-    Used by `Period.from_month` to resolve `pin_blocks`. Roughly 25 RPC calls per chain.
 
-    Note: this function intentionally does NOT pin to a specific block (it's
-    deciding *which* block to pin to). All other reads in this module enforce
-    block-pinning per PRD §10 conv. 1.
-    """
-    if ts.tzinfo is None:
-        ts = ts.replace(tzinfo=timezone.utc)
-    target = int(ts.timestamp())
-
+def _find_block_at_or_before_rpc(chain: Chain, ts: datetime, target: int) -> int:
+    """RPC binary search — ~25 ``block_timestamp`` calls (cached) plus one
+    ``latest_block`` call (intrinsically non-deterministic, never cached)."""
     high = latest_block(chain)
     if block_timestamp(chain, high) <= target:
         return high
@@ -408,3 +413,66 @@ def find_block_at_or_before(chain: Chain, ts: datetime) -> int:
         else:
             high = mid - 1
     return low
+
+
+def _find_block_at_or_before_dune(chain: Chain, ts: datetime) -> int | None:
+    """One-shot Dune query against ``evms.blocks``. Returns ``None`` if Dune
+    returned no row (e.g. ts precedes the chain's earliest indexed block)
+    or if Dune isn't available — caller falls back to RPC."""
+    import os
+    if not os.environ.get("DUNE_API_KEY"):
+        return None
+    # Local imports — keeps the module import-time graph clean (extract.dune
+    # has its own top-level imports and we don't want a hard cycle).
+    from pathlib import Path as _Path
+    from .dune import execute_query
+    queries_dir = _Path(__file__).resolve().parent.parent / "queries"
+    # ``pin_block=0`` — this query is parameter-deterministic on (chain, ts);
+    # we don't need a snapshot anchor here. The 0 keeps the cache key stable.
+    try:
+        df = execute_query(
+            queries_dir / "block_at_or_before.sql",
+            params={"chain": chain.value, "ts": ts.replace(tzinfo=None).isoformat(sep=" ")},
+            pin_block=0,
+        )
+    except Exception as e:
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "Dune block_at_or_before(%s, %s) failed (%s) — falling back to RPC binary search",
+            chain.value, ts.isoformat(), e,
+        )
+        return None
+    if df.empty or df["block_number"].iloc[0] is None:
+        return None
+    return int(df["block_number"].iloc[0])
+
+
+@cached(source_id="rpc.find_block_at_or_before")
+def find_block_at_or_before(chain: Chain, ts: datetime) -> int:
+    """Highest block on ``chain`` whose timestamp ≤ ``ts`` (UTC).
+
+    Used by ``Period.from_month`` to resolve pin blocks. Result is
+    deterministic given (chain, ts) so it's wrapped in ``@cached`` —
+    re-runs at the same anchor hit cache.
+
+    Strategy:
+      * For chains in ``_DUNE_TIMESTAMP_CHAINS`` and when ``DUNE_API_KEY`` is
+        set: single Dune query against ``evms.blocks`` (one round-trip,
+        cached after).
+      * Otherwise: RPC binary search (~25 ``block_timestamp`` calls — each
+        cached individually — plus one ``latest_block`` call).
+
+    Note: this function intentionally does NOT pin to a specific block (it's
+    deciding *which* block to pin to). All other reads in this module enforce
+    block-pinning per PRD §10 conv. 1.
+    """
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=timezone.utc)
+    target = int(ts.timestamp())
+
+    if chain in _DUNE_TIMESTAMP_CHAINS:
+        dune_result = _find_block_at_or_before_dune(chain, ts)
+        if dune_result is not None:
+            return dune_result
+
+    return _find_block_at_or_before_rpc(chain, ts, target)
