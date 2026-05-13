@@ -42,3 +42,6 @@ out.json
 # Data
 data
 settlements
+
+# Claude
+.claude

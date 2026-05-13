@@ -48,6 +48,49 @@ itself will be approximate at best, so the resolution will likely be
 forward-only via ALM ingress capture rather than retroactive
 correction of pre-2026-05 settlements.
 
+**Update 2026-05-13 — partially resolved via Option A (Cat C external-rewards path).**
+Dune verification (query 7489308) confirmed Merkl IS the source: two
+claim events delivered aTokens (NOT the underlying RLUSD) to the Grove
+ALM on Ethereum — Feb 6 2026 (`aEthRLUSD` ≈$2.96M + `aHorRwaRLUSD`
+≈$821K, tx `0x8a81d6dd…704a`) and Apr 24 2026 (`aEthRLUSD` ≈$1.41M +
+`aHorRwaRLUSD` ≈$979K, tx `0xd374d598…e3e7`). Both were initiated via
+a Grove Gnosis Safe (`0x0eec…f85f`) calling Merkl's `claim()`. The
+Merkl distributor is `0x3Ef3D8bA38EBe18DB133cEc108f4D14CE00Dd9Ae` —
+verified on-chain as the canonical Angle Labs / Merkl
+DistributionCreator proxy (EIP-1967 transparent proxy, implementation
+at `0x33cc998fd4af3b6be42bac9a67fe97e9e275d2ae`).
+
+What this implementation does: a new
+`_atoken_external_revenue_usd` helper queries Dune for transfers
+from `prime.external_alm_sources[chain]` into the ALM for each Cat C
+venue's aToken, sums × $1 (par-stable underlying assumed; raises
+otherwise), and routes the result to a new `VenueRevenue.external_revenue`
+field. The field flows 100 % to prime (not subject to SDE-splitting).
+Grove's `external_alm_sources.ethereum` now lists the Merkl proxy. The
+new SQL (`queries/atoken_external_inflow.sql`) is one query per
+(chain, token, sender) triple, cached via the existing
+`@cached(source_id="dune.execute")` decorator.
+
+What remains open:
+- **Accrued-but-unclaimed**: Grove's PnL workbook credits monthly
+  accrual (Rewards column grows daily; `claimed` only updates when a
+  Safe tx fires Merkl's claim). Our approach matches BA's
+  ALM-ingress-boundary preference, so we differ from Grove on the
+  *timing* of revenue attribution: Grove sees ~$447K/month accrued on
+  E1; we see $821K landing in Feb (the claim of Jan + early-Feb
+  accrual) and $979K landing in Apr. The lifetime totals match;
+  per-month numbers will differ until Grove either claims monthly or
+  switches their workbook to ingress-boundary accounting.
+- **Non-aToken Merkl drops**: if a future Merkl campaign distributes
+  the underlying token (RLUSD) instead of the aToken, the Cat A path
+  (`_cat_a_capital_inflow_timeseries`) already handles that via the
+  same `external_alm_sources` allowlist (the two categories are
+  orthogonal — Cat A filters its venue's stable-token transfers;
+  Cat C filters its venue's aToken transfers).
+- **Other primes**: Spark / Obex don't have any documented Merkl
+  campaigns today. If they appear, add an entry to that prime's
+  `external_alm_sources` and the same path applies.
+
 #### G19. Agora — 8% on deployed AUSD, split between native yield and an undefined component
 Raised in Grove team interview (2026-05-06). Grove described an
 ongoing partnership with Agora paying **8% on amount deployed**,

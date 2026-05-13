@@ -253,6 +253,120 @@ def _uniswap_v3_inflow_timeseries(
     return daily
 
 
+def _atoken_external_revenue_usd(prime: Prime, venue: Venue, period) -> Decimal:
+    """Cat C / D external-rewards revenue, in USD.
+
+    Sum of decimal-adjusted aToken transfers from any address in
+    ``prime.external_alm_sources[venue.chain]`` INTO the prime's ALM for
+    ``venue.token`` during ``period``. Used to credit off-pool yield
+    distributions that the closed-form ``_atoken_index_weighted_inflow``
+    formula buckets as principal injection rather than revenue.
+
+    Two concrete examples in scope today (Grove on Ethereum):
+      * Merkl distributor ``0x3Ef3D8bA…D9Ae`` dropping ``aHorRwaRLUSD``
+        (E1) + ``aEthRLUSD`` (E3) on the ALM (Feb 6 + Apr 24 2026).
+      * Future Anchorage-style sweeps of aToken receipts.
+
+    Valuation: the rebased aToken ``amount`` field on the Transfer event
+    is the value in the underlying's units at the transfer block (Aave's
+    aToken contract handles rebasing internally on transfer). For par-
+    stable underlyings (RLUSD, USDC, …), underlying-units × $1 = USD,
+    so the sum is the USD revenue directly.
+
+    Non-par-stable underlyings raise ``UnsupportedPricingError``: we
+    refuse to silently misprice. Add a price oracle for the underlying
+    or extend this helper to multiply by it.
+
+    Returns Decimal("0") when:
+      * No ``external_alm_sources`` are configured for ``venue.chain``
+        (default for primes that don't have an off-pool yield channel).
+      * ``DUNE_API_KEY`` is unset — the helper logs once at WARNING and
+        returns 0 rather than crashing. Caller's existing closed-form
+        revenue still applies; only the external stream is missed.
+
+    Performance: one Dune query per ``(chain, token, sender)`` tuple per
+    period. With Grove's current config (1 sender × 3 Cat C venues on
+    Ethereum) that's 3 single-row queries per cell, all hitting the
+    ``@cached(source_id="dune.execute")`` decorator on second runs. If a
+    prime ever registers multiple external_alm_sources or many more Cat C
+    venues, consider batching with a single SQL using ``"from" IN (...)``.
+    """
+    from pathlib import Path as _Path
+    from decimal import Decimal as _Decimal
+    import logging as _logging
+    import os as _os
+
+    # Category guard — the rebased-amount = USD shortcut only holds for
+    # Aave aTokens / SparkLend spTokens (Cat C/D). A non-aToken venue
+    # passing through here would silently misprice its inflows: bail loudly.
+    from ..domain.primes import PricingCategory as _PC
+    if venue.pricing_category not in (_PC.AAVE_ATOKEN, _PC.SPARKLEND_SPTOKEN):
+        raise UnsupportedPricingError(
+            f"_atoken_external_revenue_usd: venue {venue.id} category "
+            f"{venue.pricing_category.value!r} is not Cat C/D — helper is "
+            "specific to Aave aToken / SparkLend spToken transfer semantics. "
+            "Route through the Cat A `_cat_a_capital_inflow_timeseries` path "
+            "or extend this module for the new category."
+        )
+    senders = prime.external_alm_sources.get(venue.chain, [])
+    if not senders:
+        return _Decimal("0")
+    if not _os.environ.get("DUNE_API_KEY"):
+        _logging.getLogger(__name__).warning(
+            "_atoken_external_revenue_usd: DUNE_API_KEY unset — skipping external "
+            "rewards for venue %s (would have queried %d sender(s)).",
+            venue.id, len(senders),
+        )
+        return _Decimal("0")
+    # Par-stability check on the UNDERLYING — that's what determines whether
+    # the rebased aToken amount equals USD. The aToken contract itself is
+    # never a par-stable in our config.
+    if venue.underlying is None:
+        raise UnsupportedPricingError(
+            f"_atoken_external_revenue_usd: venue {venue.id} has no underlying — "
+            "can't classify rebased aToken transfer amount without knowing the "
+            "underlying token. Set venue.underlying in the prime YAML."
+        )
+    from .prices import is_par_stable
+    if not is_par_stable(venue.underlying):
+        raise UnsupportedPricingError(
+            f"_atoken_external_revenue_usd: venue {venue.id} underlying "
+            f"{venue.underlying.symbol!r} is not par-stable — refusing to "
+            "treat rebased aToken transfer amount as USD. Add the underlying "
+            "to PAR_STABLE_SYMBOLS or extend this helper with a price oracle."
+        )
+
+    from ..extract.dune import execute_query
+    queries_dir = _Path(__file__).resolve().parent.parent / "queries"
+    pin_block = period.pin_blocks[venue.chain]
+    total = _Decimal("0")
+    for sender in senders:
+        df = execute_query(
+            queries_dir / "atoken_external_inflow.sql",
+            params={
+                "chain":      venue.chain.value,
+                "token":      venue.token.address.value,
+                "holder":     prime.alm[venue.chain].value,
+                "sender":     sender.value,
+                "start_date": period.start.isoformat(),
+                "end_date":   period.end.isoformat(),
+            },
+            pin_block=pin_block,
+        )
+        if df is None or df.empty:
+            continue
+        raw = df["total_amount"].iloc[0]
+        # Dune returns numeric columns as Decimal; defensive coercion guards
+        # against pickle round-trips that flatten to str.
+        if isinstance(raw, _Decimal):
+            total += raw
+        elif isinstance(raw, (int, float)):
+            total += _Decimal(raw)
+        else:
+            total += _Decimal(str(raw))
+    return total
+
+
 def _atoken_index_weighted_inflow(
     prime: Prime,
     venue: Venue,

@@ -54,6 +54,12 @@ def render_provenance(
                 #   sky_revenue = utilized × BR − Σ sky_direct_shortfall
                 # and prime's per-venue revenue: max(0, actual_revenue − br_charge).
                 "actual_revenue": str(v.actual_revenue),
+                # Off-pool rewards (Merkl drops, Anchorage sweeps, …) — flows
+                # 100% to prime, NOT subject to SDE-splitting. Already rolled
+                # into ``revenue`` above; surfaced separately so an auditor can
+                # see the breakdown between closed-form yield and external
+                # rewards. See ``normalize.positions._atoken_external_revenue_usd``.
+                "external_revenue": str(v.external_revenue),
                 "br_charge": str(v.br_charge),
                 "sky_direct_shortfall": str(v.sky_direct_shortfall),
             }

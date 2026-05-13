@@ -75,13 +75,14 @@ def render_markdown(pnl: MonthlyPnL, *, rules_url: str = DEFAULT_RULES_URL) -> s
     if pnl.venue_breakdown:
         p("## Per-venue breakdown")
         p("")
-        p("| Venue | Label | value_som | value_eom | period_inflow | revenue |")
-        p("|---|---|---:|---:|---:|---:|")
+        p("| Venue | Label | value_som | value_eom | period_inflow | revenue | external_revenue |")
+        p("|---|---|---:|---:|---:|---:|---:|")
         for v in pnl.venue_breakdown:
             p(
                 f"| {v.venue_id} | {v.label} "
                 f"| {_fmt_usd(v.value_som)} | {_fmt_usd(v.value_eom)} "
-                f"| {_fmt_usd(v.period_inflow)} | {_fmt_usd(v.revenue)} |"
+                f"| {_fmt_usd(v.period_inflow)} | {_fmt_usd(v.revenue)} "
+                f"| {_fmt_usd(v.external_revenue)} |"
             )
         p("")
 

@@ -146,6 +146,39 @@ def test_write_venues_csv_emits_per_venue_rows(tmp_path: Path):
     assert rows[0]["label"] == "Maple syrupUSDC"
 
 
+def test_venues_csv_includes_external_revenue_column(tmp_path: Path):
+    """External rewards (Merkl-style aToken drops) flow into ``vr.revenue``
+    via the per-venue rollup but should ALSO be surfaced as a standalone
+    column so an auditor can attribute prime_agent_revenue between
+    closed-form yield and off-pool rewards. Without this, the Feb 2026
+    Grove cell would show "E1 revenue: $888K" with no way to see that
+    ~$821K of it was the Feb-6 Merkl claim. See PR Round-2 audit."""
+    dest = tmp_path / "venues.csv"
+    write_venues_csv(_sample_pnl(), dest)
+    with dest.open() as f:
+        reader = csv.DictReader(f)
+        cols = reader.fieldnames or []
+        rows = list(reader)
+    assert "external_revenue" in cols, (
+        "external_revenue column missing from venues.csv — auditors won't "
+        "be able to split revenue into closed-form yield vs off-pool rewards."
+    )
+    # Default (no external_alm_sources configured) → 0 in the column.
+    assert rows[0]["external_revenue"] == "0"
+
+
+def test_provenance_includes_external_revenue_per_venue(tmp_path: Path):
+    """Same shape concern as the CSV test — provenance.json is the audit
+    record and must show the external_revenue stream per venue."""
+    from settle.load.provenance import render_provenance
+    payload = render_provenance(_sample_pnl())
+    for v in payload["venue_breakdown"]:
+        assert "external_revenue" in v, (
+            f"venue {v['venue_id']} missing external_revenue in provenance.json"
+        )
+        assert v["external_revenue"] == "0"
+
+
 def test_write_venues_csv_returns_none_when_no_venues(tmp_path: Path):
     pnl = _sample_pnl()
     pnl_no_venues = type(pnl)(
