@@ -192,12 +192,15 @@ def _sde_asset_value_timeseries(
     cap_usd: Decimal | None = None,
 ) -> pd.DataFrame:
     """Daily SDE asset value (USD) per venue. Returns a level series with
-    columns ``[block_date, cum_value]`` (the "cum_" prefix is API parity
-    with cum_balance/cum_inflow; this is a daily snapshot, not a sum).
+    columns ``[block_date, cum_value, uncapped_value]``.
 
-    AV_d = balance_at_day(d) × NAV(EoD block d), capped at ``cap_usd`` for
-    ``kind=capped`` SDE. Consumed by ``compute_sky_revenue`` for utilized
-    exclusion.
+    ``cum_value`` is the capped value (≤ ``cap_usd`` for ``kind=capped`` SDE)
+    consumed by ``compute_sky_revenue`` for utilized exclusion.
+
+    ``uncapped_value`` is the raw position value before the cap, used by
+    ``compute_venue_revenue`` to compute daily ``sd_share_d`` for capped
+    venues — so mid-month capital movements shift the Sky/prime split
+    proportionally rather than being locked at SoM.
     """
     holder = venue.holder_override or prime.alm[venue.chain]
     pin_block = period.pin_blocks[venue.chain]
@@ -215,14 +218,21 @@ def _sde_asset_value_timeseries(
     while current <= period.end:
         bal = cum_at_or_before(bal_df, "cum_balance", current)
         if bal == 0:
-            value = Decimal("0")
+            raw_value = Decimal("0")
         else:
             eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
             block = block_resolver.block_at_or_before(venue.chain.value, eod)
-            value = bal * nav_at_block(block)
-            if cap_usd is not None and value > cap_usd:
-                value = cap_usd
-        rows.append({"block_date": current, "cum_value": value})
+            raw_value = bal * nav_at_block(block)
+        capped_value = (
+            min(raw_value, cap_usd)
+            if cap_usd is not None and raw_value > cap_usd
+            else raw_value
+        )
+        rows.append({
+            "block_date": current,
+            "cum_value": capped_value,
+            "uncapped_value": raw_value,
+        })
         current = current + timedelta(days=1)
     return pd.DataFrame(rows)
 
@@ -1129,23 +1139,23 @@ def _log_sky_revenue_debug(
         lines += [
             "",
             f"  ── SDE revenue by venue (period totals) ──",
-            f"  {'venue':6s}  {'label':30s}  {'sd_share':>8s}  {'value_som':>14s}  {'sd_revenue':>14s}",
-            "  " + "─" * 80,
+            f"  {'venue':6s}  {'label':30s}  {'sd_share_avg':>12s}  {'value_som':>14s}  {'sd_revenue':>14s}",
+            "  " + "─" * 84,
         ]
         for vr in sde_venues:
             lines.append(
                 f"  {vr.venue_id:6s}  {(vr.label or '')[:30]:30s}  "
-                f"{float(vr.sd_share)*100:>7.1f}%  "
+                f"{float(vr.sd_share)*100:>11.1f}%  "
                 f"${float(vr.value_som):>13,.2f}  "
                 f"${float(vr.sd_revenue):>13,.2f}"
             )
-        lines.append("  " + "─" * 80)
-        lines.append(f"  {'SDE total':>52s}  ${float(sde_revenue):>13,.2f}")
+        lines.append("  " + "─" * 84)
+        lines.append(f"  {'SDE total':>56s}  ${float(sde_revenue):>13,.2f}")
 
     lines += [
         "",
         f"  sky_rev_br (BR on utilized−SDE):  ${float(sky_rev_br):>14,.2f}",
-        f"  sde_revenue (Σ actual × sd_share): ${float(sde_revenue):>14,.2f}",
+        f"  sde_revenue (Σ daily sd_share_d × daily_rev): ${float(sde_revenue):>14,.2f}",
         f"  sky_revenue total:                 ${float(sky_rev_br + sde_revenue):>14,.2f}",
         "  ╚══════════════════════════════════════════════════════════════════════════════════════════════╝",
         "",
@@ -1739,6 +1749,11 @@ def compute_monthly_pnl(
         # SDE classification — already resolved above as _early_sde (before the
         # sky_only early-exit). Reuse it here to avoid a second table lookup.
         sde_entry = _early_sde
+        # Daily uncapped position values for capped SDE venues — enables
+        # compute_venue_revenue to use per-day sd_share instead of locking at
+        # SoM. Set below for the NAV-oracle path; stays None for Curve LP SDE
+        # (no clean uncapped value available from the Curve pool path).
+        _sde_ts: pd.DataFrame | None = None
         if sde_entry is not None:
             ciuc = venue.curve_idle_usds
             if ciuc is not None and ciuc.sde_coin is not None:
@@ -1765,13 +1780,14 @@ def compute_monthly_pnl(
                 def _sd_nav(block, _v=venue, _br=resolver, _nr=sources.nav_oracle_resolver):
                     return _resolve_rwa_nav(_v, block, block_resolver=_br, resolver=_nr)
 
-                sde_asset_value_per_venue.append((venue.id, _sde_asset_value_timeseries(
+                _sde_ts = _sde_asset_value_timeseries(
                     prime, venue, period,
                     balance_source=bsrc,
                     block_resolver=resolver,
                     nav_at_block=_sd_nav,
                     cap_usd=sde_entry.cap_usd,
-                )))
+                )
+                sde_asset_value_per_venue.append((venue.id, _sde_ts))
 
         _log.info(
             "  [%d/%d] %s  done in %.1fs  som=$%.0f  eom=$%.0f%s",
@@ -1786,6 +1802,7 @@ def compute_monthly_pnl(
             sde_entry=sde_entry,
             actual_revenue_override=susds_spread,
             external_revenue=external_revenue_for_venue,
+            sde_daily_values=_sde_ts,
         ))
 
     # Re-sort venue_inputs to match the declaration order in prime.venues so
