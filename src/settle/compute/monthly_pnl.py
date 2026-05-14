@@ -1518,6 +1518,12 @@ def compute_monthly_pnl(
         # and remains None for all other venues. It is threaded into
         # VenueRevenueInputs.actual_revenue_override below.
         susds_spread: Decimal | None = None
+        # external_revenue_for_venue is set to a non-zero Decimal in the Cat C
+        # branch when ``prime.external_alm_sources[venue.chain]`` is populated
+        # — captures Merkl-style aToken drops as a separate revenue stream
+        # outside the closed-form pool-native yield formula. Stays at 0 for
+        # all other pricing categories (today only Cat C has the path wired).
+        external_revenue_for_venue: Decimal = Decimal("0")
         if venue.lp_kind == "uniswap_v3":
             from ..normalize.positions import _uniswap_v3_inflow_timeseries
             v3_src = sources.v3_position
@@ -1578,7 +1584,10 @@ def compute_monthly_pnl(
             # at progressively higher liquidity indices: the simple model
             # under-counts yield by Σ(burn × index_growth_remaining).
             from ..extract.rpc import balance_of, scaled_balance_of
-            from ..normalize.positions import _atoken_index_weighted_inflow
+            from ..normalize.positions import (
+                _atoken_external_revenue_usd,
+                _atoken_index_weighted_inflow,
+            )
             from ..domain.primes import Address as _Addr, Chain as _Chain
             inflow_ts = _atoken_index_weighted_inflow(
                 prime, venue, som_block, eom_block,
@@ -1589,6 +1598,28 @@ def compute_monthly_pnl(
                 scaled_balance_at=lambda c, t, h, b: scaled_balance_of(
                     _Chain(c), _Addr(t), _Addr(h), b,
                 ),
+            )
+            # Off-pool aToken rewards (Merkl, Anchorage, …). The closed-form
+            # ``yield = scaled(SoM) × Δindex / RAY`` formula above only
+            # captures pool-native yield on entering-period principal — any
+            # aToken delivered mid-period from an external_alm_sources
+            # address gets bucketed as principal injection, not revenue.
+            # ``_atoken_external_revenue_usd`` queries Dune for those
+            # transfers and returns their USD value (par-stable underlying
+            # assumed; helper raises otherwise). Default 0 for venues with
+            # no allowlist entries on this chain.
+            #
+            # Note: ``external_alm_sources`` is also consumed by the Cat A
+            # path (``_cat_a_capital_inflow_timeseries``) with different
+            # semantics — there it's an allowlist that reclassifies
+            # par-stable transfers FROM that address as revenue instead of
+            # capital. The two uses are orthogonal: Cat A filters on its
+            # venue's stable-token transfers; Cat C/D filters on its
+            # venue's aToken transfers. The same allowlist entry can drive
+            # both behaviours if the sender genuinely sends both stables
+            # and aTokens to the ALM (Merkl today is aTokens-only).
+            external_revenue_for_venue = _atoken_external_revenue_usd(
+                prime, venue, period,
             )
         elif venue.pricing_category == PricingCategory.ERC4626_VAULT:
             # Cat B — two sub-cases:
@@ -1754,6 +1785,7 @@ def compute_monthly_pnl(
             inflow_timeseries=inflow_ts,
             sde_entry=sde_entry,
             actual_revenue_override=susds_spread,
+            external_revenue=external_revenue_for_venue,
         ))
 
     # Re-sort venue_inputs to match the declaration order in prime.venues so

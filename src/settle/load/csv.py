@@ -42,7 +42,8 @@ def write_venues_csv(pnl: MonthlyPnL, dest: Path) -> Path | None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     headers = [
         "venue_id", "label", "value_som", "value_eom", "period_inflow",
-        "revenue", "actual_revenue", "br_charge", "sky_direct_shortfall",
+        "revenue", "actual_revenue", "external_revenue",
+        "br_charge", "sky_direct_shortfall",
     ]
     with dest.open("w", newline="") as f:
         w = csv.writer(f)
@@ -52,7 +53,7 @@ def write_venues_csv(pnl: MonthlyPnL, dest: Path) -> Path | None:
                 v.venue_id, v.label,
                 f"{v.value_som}", f"{v.value_eom}",
                 f"{v.period_inflow}", f"{v.revenue}",
-                f"{v.actual_revenue}", f"{v.br_charge}",
-                f"{v.sky_direct_shortfall}",
+                f"{v.actual_revenue}", f"{v.external_revenue}",
+                f"{v.br_charge}", f"{v.sky_direct_shortfall}",
             ])
     return dest

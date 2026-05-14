@@ -12,8 +12,9 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from ..domain.primes import Prime, Venue
+from ..domain.primes import Chain, Prime, Venue
 from ..domain.sky_tokens import KNOWN_PAR_STABLES_ETHEREUM
+from ..extract.dune import execute_query
 from .prices import UnsupportedPricingError, get_unit_price
 from .protocols import IConvertToAssetsSource, IPositionBalanceSource, IV3PositionSource
 from .registry import get_position_balance_source
@@ -253,6 +254,244 @@ def _uniswap_v3_inflow_timeseries(
     return daily
 
 
+# Merkl distributors per chain. These contracts emit a per-claim
+# ``Claimed(address indexed user, address indexed token, uint256 amount)``
+# event — we read those events directly (via ``merkl_claims_<chain>.sql``)
+# instead of chasing the post-claim internal Transfer routing, which Merkl
+# fans out across multiple intermediaries (Aave pool proxy, static-aToken
+# wrapper, etc.) that can't safely be added to ``external_alm_sources``
+# without false-positiving ordinary Grove-initiated Aave deposits.
+#
+# Add more chains here if Merkl is enabled on them for any prime. Senders
+# that DON'T match an entry here fall through to the generic Transfer-event
+# path (``_atoken_transfer_revenue_usd``) — suitable for direct-sweep
+# channels like Anchorage interest or BUIDL yield mints, where the sender
+# IS the ALM-ingress address.
+_MERKL_DISTRIBUTORS: dict[Chain, set[bytes]] = {
+    Chain.ETHEREUM: {
+        bytes.fromhex("3ef3d8ba38ebe18db133cec108f4d14ce00dd9ae"),
+    },
+}
+
+
+def _atoken_external_revenue_usd(prime: Prime, venue: Venue, period) -> Decimal:
+    """Cat C / D external-rewards revenue, in USD.
+
+    Sum of off-pool aToken rewards arriving at ``prime.alm[venue.chain]``
+    for ``venue.token`` during ``period``. Used to credit yield
+    distributions that the closed-form ``_atoken_index_weighted_inflow``
+    formula buckets as principal injection rather than revenue.
+
+    **Sender dispatch.** Each entry in ``prime.external_alm_sources[venue.chain]``
+    is routed by data source:
+
+      * **Merkl distributors** (per ``_MERKL_DISTRIBUTORS``) → JOIN the
+        distributor's ``Claimed(user, token, amount)`` event with the
+        aToken's ``Mint(caller, onBehalfOf, value, …)`` event in the same
+        tx, where ``caller = Claimed.token`` (the staticAToken wrapper)
+        and ``onBehalfOf = user = ALM``. The aToken venue is identified by
+        ``Mint.contract_address``, so no Merkl-internal addresses ever
+        touch the YAML — only ``venue.token.address``. Robust against
+        Merkl's wrapper routing where ``Claimed.token`` is the staticAToken
+        (not the aToken) and the aToken Transfer's ``from`` is the Aave
+        pool proxy (used for every Aave operation, so unsafe to allowlist).
+      * **Generic senders** (everything else) → sum aToken
+        ``Transfer(from=sender, to=ALM)`` events. Suitable for direct
+        sweeps (Anchorage interest, BUIDL yield mints) where the sender
+        IS the ALM-ingress address.
+
+    Both paths share the same value semantics:
+
+    * The ``Claimed.amount`` / ``Transfer.amount`` field is the value in the
+      underlying's units (Aave's aToken rebases on transfer/mint).
+    * For **par-stable underlyings** (RLUSD, USDC, …), underlying-units ×
+      $1 = USD, so the sum is the USD revenue directly.
+    * Non-par-stable underlyings raise ``UnsupportedPricingError`` — no
+      silent mispricing.
+
+    Returns ``Decimal("0")`` when:
+      * No ``external_alm_sources`` are configured for ``venue.chain``
+        (default for primes with no off-pool yield channel).
+      * ``DUNE_API_KEY`` is unset — logs once at WARNING and returns 0
+        rather than crashing the run.
+
+    Performance: one Dune query per ``(chain, token, sender)`` tuple per
+    period. Grove's current config has 1 sender (Merkl) × 3 Cat C venues
+    on Ethereum = 3 single-row queries per cell, all cached via
+    ``@cached(source_id="dune.execute")``.
+    """
+    from decimal import Decimal as _Decimal
+    import logging as _logging
+    import os as _os
+
+    # Category guard — the rebased-amount = USD shortcut only holds for
+    # Aave aTokens / SparkLend spTokens (Cat C/D). A non-aToken venue
+    # passing through here would silently misprice its inflows: bail loudly.
+    from ..domain.primes import PricingCategory as _PC
+    if venue.pricing_category not in (_PC.AAVE_ATOKEN, _PC.SPARKLEND_SPTOKEN):
+        raise UnsupportedPricingError(
+            f"_atoken_external_revenue_usd: venue {venue.id} category "
+            f"{venue.pricing_category.value!r} is not Cat C/D — helper is "
+            "specific to Aave aToken / SparkLend spToken transfer semantics. "
+            "Route through the Cat A `_cat_a_capital_inflow_timeseries` path "
+            "or extend this module for the new category."
+        )
+    senders = prime.external_alm_sources.get(venue.chain, [])
+    if not senders:
+        return _Decimal("0")
+    if not _os.environ.get("DUNE_API_KEY"):
+        _logging.getLogger(__name__).warning(
+            "_atoken_external_revenue_usd: DUNE_API_KEY unset — skipping external "
+            "rewards for venue %s (would have queried %d sender(s)).",
+            venue.id, len(senders),
+        )
+        return _Decimal("0")
+    # Par-stability check on the UNDERLYING — that's what determines whether
+    # the rebased aToken amount equals USD. The aToken contract itself is
+    # never a par-stable in our config.
+    if venue.underlying is None:
+        raise UnsupportedPricingError(
+            f"_atoken_external_revenue_usd: venue {venue.id} has no underlying — "
+            "can't classify rebased aToken transfer amount without knowing the "
+            "underlying token. Set venue.underlying in the prime YAML."
+        )
+    from .prices import is_par_stable
+    if not is_par_stable(venue.underlying):
+        raise UnsupportedPricingError(
+            f"_atoken_external_revenue_usd: venue {venue.id} underlying "
+            f"{venue.underlying.symbol!r} is not par-stable — refusing to "
+            "treat rebased aToken transfer amount as USD. Add the underlying "
+            "to PAR_STABLE_SYMBOLS or extend this helper with a price oracle."
+        )
+
+    merkl_set = _MERKL_DISTRIBUTORS.get(venue.chain, set())
+    total = _Decimal("0")
+    for sender in senders:
+        if sender.value in merkl_set:
+            total += _merkl_claims_revenue_usd(prime, venue, period, sender)
+        else:
+            total += _atoken_transfer_revenue_usd(prime, venue, period, sender)
+    return total
+
+
+def _merkl_claims_revenue_usd(
+    prime: Prime, venue: Venue, period, distributor,
+) -> Decimal:
+    """Read the Merkl distributor's ``Claimed(user, token, amount)`` events
+    for ``user = ALM`` in the period, attributed to ``venue.token`` via a
+    JOIN to the Aave V3 aToken ``Mint`` event in the same tx.
+
+    Why the JOIN: Merkl's ``Claimed.token`` is the *Merkl reward token*
+    (Aave's staticAToken / LM wrapper), NOT the underlying aToken the ALM
+    actually receives. Filtering on the aToken address against Claimed
+    returns zero rows. The aToken's own ``Mint(caller, onBehalfOf, …)``
+    event fires in the same tx with ``caller = staticAToken = Claimed.token``
+    and ``onBehalfOf = ALM``, so the JOIN
+    ``(c.tx_hash, c.topic2) == (m.tx_hash, m.topic1) AND
+    m.contract_address = venue.token`` deterministically routes each Claimed
+    amount to its venue — even when a single tx claims rewards for multiple
+    aTokens, each Claimed pairs with exactly one Mint. See
+    ``queries/merkl_claims_ethereum.sql`` for the full SQL.
+
+    Returns the sum × 10**-decimals in the underlying's units (= USD for
+    par-stable underlyings, which the caller has already validated).
+    Per-chain SQL because Dune doesn't allow chain interpolation in
+    ``FROM``; see ``_MERKL_DISTRIBUTORS`` for the address list and
+    ``queries/merkl_claims_<chain>.sql`` for the queries.
+    """
+    from pathlib import Path as _Path
+    from decimal import Decimal as _Decimal
+
+    _SQL_BY_CHAIN = {Chain.ETHEREUM: "merkl_claims_ethereum.sql"}
+    sql_name = _SQL_BY_CHAIN.get(venue.chain)
+    if sql_name is None:
+        # Merkl deployed on a chain we don't have SQL for yet. Treat as 0
+        # rather than crash — operator should add the per-chain SQL file
+        # and update ``_MERKL_DISTRIBUTORS``.
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "_merkl_claims_revenue_usd: no Merkl SQL for chain %s — skipping. "
+            "Add queries/merkl_claims_%s.sql to enable.",
+            venue.chain.value, venue.chain.value,
+        )
+        return _Decimal("0")
+
+    # ``user_padded_hex`` is a 32-byte left-padded address for indexed-topic
+    # comparison (topic1 / topic2 in event logs). Pass as hex without the
+    # ``0x`` prefix; the SQL applies ``from_hex(...)`` to land back at
+    # varbinary. ``atoken`` is the raw venue.token address — the SQL JOINs
+    # against ``ethereum.logs.contract_address`` on the Mint side to attribute
+    # the Claimed amount to this venue without needing the (Merkl-internal)
+    # staticAToken address in config.
+    user_padded_hex = "00" * 12 + prime.alm[venue.chain].value.hex()
+
+    queries_dir = _Path(__file__).resolve().parent.parent / "queries"
+    df = execute_query(
+        queries_dir / sql_name,
+        params={
+            "distributor":     distributor.value,
+            "user_padded_hex": user_padded_hex,
+            "atoken":          venue.token.address.value,
+            "start_date":      period.start.isoformat(),
+            "end_date":        period.end.isoformat(),
+        },
+        pin_block=period.pin_blocks[venue.chain],
+    )
+    if df is None or df.empty:
+        return _Decimal("0")
+    raw = df["total_amount_raw"].iloc[0]
+    if isinstance(raw, _Decimal):
+        raw_int = int(raw)
+    elif isinstance(raw, (int, float)):
+        raw_int = int(raw)
+    else:
+        raw_int = int(_Decimal(str(raw)))
+    # Convert from token raw units to underlying-equivalent (= USD for
+    # par-stable underlyings; caller has already validated this).
+    return _Decimal(raw_int) / _Decimal(10 ** venue.token.decimals)
+
+
+def _atoken_transfer_revenue_usd(
+    prime: Prime, venue: Venue, period, sender,
+) -> Decimal:
+    """Generic per-sender Transfer-event sum (the old path).
+
+    Suitable for **direct-sweep** off-pool yield channels: the sender's
+    address itself transfers the aToken to the ALM, and we can attribute
+    the full transfer amount as revenue. Examples: Anchorage interest
+    sweeps, BUIDL yield mints (when paid as aTokens), any custodian
+    that drops aToken receipts directly.
+
+    NOT suitable for Merkl-style flows that route through Aave pool /
+    static-wrapper intermediaries — use ``_merkl_claims_revenue_usd`` for
+    those (dispatched on ``_MERKL_DISTRIBUTORS`` membership upstream).
+    """
+    from pathlib import Path as _Path
+    from decimal import Decimal as _Decimal
+
+    queries_dir = _Path(__file__).resolve().parent.parent / "queries"
+    df = execute_query(
+        queries_dir / "atoken_external_inflow.sql",
+        params={
+            "chain":      venue.chain.value,
+            "token":      venue.token.address.value,
+            "holder":     prime.alm[venue.chain].value,
+            "sender":     sender.value,
+            "start_date": period.start.isoformat(),
+            "end_date":   period.end.isoformat(),
+        },
+        pin_block=period.pin_blocks[venue.chain],
+    )
+    if df is None or df.empty:
+        return _Decimal("0")
+    raw = df["total_amount"].iloc[0]
+    if isinstance(raw, _Decimal):
+        return raw
+    if isinstance(raw, (int, float)):
+        return _Decimal(raw)
+    return _Decimal(str(raw))
+
+
 def _atoken_index_weighted_inflow(
     prime: Prime,
     venue: Venue,
@@ -283,6 +522,21 @@ def _atoken_index_weighted_inflow(
     period_inflow = Δvalue − yield, returned as a single-row DataFrame at the
     period end so the compute layer's ``cum_at_or_before`` machinery works
     uniformly.
+
+    **Approximation when external rewards arrive mid-period.** The two
+    closed-form expressions are mathematically identical only when no
+    scaled-balance changes happen between SoM and EoM. A mid-period Aave
+    mint of ``Δscaled`` (e.g. a Merkl claim redeeming through the
+    staticAToken wrapper, captured separately via ``_atoken_external_
+    revenue_usd``) makes the second form report yield on the
+    *end-of-period* scaled basis rather than the entering principal,
+    introducing an error of order ``Δscaled / (scaled_som + Δscaled) ×
+    pool_yield``. For Grove Feb 2026 (≈$40M position, $2.96M Merkl drop,
+    ≈$67K pool yield on aEthRLUSD), this is ≈5 % of pool yield but only
+    ~$3.4K absolute — negligible relative to the $2.96M external_revenue
+    that's added on top. Promote to per-event index reads (or scale the
+    Merkl drop's scaled-balance contribution out of ``scaled_eom``) if
+    the relative error ever becomes material on a settlement.
     """
     import pandas as pd
 

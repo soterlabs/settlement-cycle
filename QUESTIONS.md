@@ -48,6 +48,95 @@ itself will be approximate at best, so the resolution will likely be
 forward-only via ALM ingress capture rather than retroactive
 correction of pre-2026-05 settlements.
 
+**Update 2026-05-13 — partially resolved via Option A (Cat C external-rewards path).**
+Dune verification (query 7489308) confirmed Merkl IS the source: two
+claim events delivered aTokens (NOT the underlying RLUSD) to the Grove
+ALM on Ethereum — Feb 6 2026 (`aEthRLUSD` ≈$2.96M + `aHorRwaRLUSD`
+≈$821K, tx `0x8a81d6dd…704a`) and Apr 24 2026 (`aEthRLUSD` ≈$1.41M +
+`aHorRwaRLUSD` ≈$979K, tx `0xd374d598…e3e7`). Both were initiated via
+a Grove Gnosis Safe (`0x0eec…f85f`) calling Merkl's `claim()`. The
+Merkl distributor is `0x3Ef3D8bA38EBe18DB133cEc108f4D14CE00Dd9Ae` —
+verified on-chain as the canonical Angle Labs / Merkl
+DistributionCreator proxy (EIP-1967 transparent proxy, implementation
+at `0x33cc998fd4af3b6be42bac9a67fe97e9e275d2ae`).
+
+What this implementation does: a new `_atoken_external_revenue_usd`
+helper dispatches per sender. For Merkl distributors (currently just
+`0x3Ef3D8bA…D9Ae` on Ethereum, tracked in `_MERKL_DISTRIBUTORS`) it
+reads the on-chain `Claimed(user, token, amount)` event the distributor
+emits — one canonical event per (user, token) per claim, independent of
+Merkl's post-claim Aave/wrapper routing. For other senders it falls
+through to a generic per-sender `Transfer(from=…, to=ALM)` reader
+suitable for direct sweeps (Anchorage interest, BUIDL yield mints). The
+result × 10**-decimals (par-stable underlying assumed; raises otherwise)
+is routed to a new `VenueRevenue.external_revenue` field that flows
+100 % to prime (not subject to SDE-splitting). Grove's
+`external_alm_sources.ethereum` lists the Merkl proxy. SQL files:
+`queries/merkl_claims_ethereum.sql` (Claimed events) and
+`queries/atoken_external_inflow.sql` (generic Transfer events) — both
+cached via the existing `@cached(source_id="dune.execute")` decorator.
+
+**Why Claimed instead of Transfer.** The first iteration used the
+generic Transfer-based path for all senders. Inspecting the actual
+claim tx (`0x8a81d6dd…704a`) showed Merkl's Aave flow has THREE
+addresses per claim per token: the Aave pool proxy (which mints + sends
+the real aToken), the Merkl distributor (which moves a separate static-
+aToken wrapper), and the `0x0` mint event. The configured Merkl address
+matched none of the transfers of the actual venue aTokens — the
+pool-proxy address was the right `from`, but pool addresses can't be
+allowlisted without classifying ordinary deposits as revenue. The
+Claimed event sidesteps all of this and stays robust to Merkl rotating
+intermediary contracts.
+
+**Why the SQL JOINs to the aToken `Mint` event (and not just filters on
+`Claimed.token`).** Merkl's `Claimed(user, token, amount)` event records
+`token` as the *Merkl reward token* — Aave's staticAToken / LM wrapper
+(e.g. `0x72eeed80…` for aEthRLUSD, `0x503d751b…` for aHorRwaRLUSD),
+NOT the underlying aToken the ALM ends up holding. Filtering on
+`venue.token.address` against `Claimed.topic2` returns zero rows
+(discovered during the 2026-05-14 verification). The Aave V3 aToken
+contract emits `Mint(caller, onBehalfOf, value, …)` alongside the
+staticAToken's redeem inside the same tx, with `caller = staticAToken`
+(= `Claimed.token`) and `onBehalfOf = ALM` (= `Claimed.user`). So
+`queries/merkl_claims_ethereum.sql` pairs the two via
+`(c.tx_hash, c.topic2) == (m.tx_hash, m.topic1) AND m.contract_address
+= {{atoken}}` and uses `Claimed.amount` as the canonical value. When a
+single tx claims rewards for multiple aTokens (the Feb 6 tx claims for
+BOTH aHorRwaRLUSD and aEthRLUSD), each Claimed pairs with exactly one
+Mint — no double-counting. The operator-facing surface stays clean:
+`grove.yaml` only specifies the Merkl distributor address (in
+`external_alm_sources`) and the venue aToken address (in `venue.token`).
+Merkl-internal addresses (staticAToken wrappers) are derived per-tx via
+the JOIN.
+
+**Live verification (2026-05-14).** End-to-end call to
+`_merkl_claims_revenue_usd` against Dune through the real
+`load_prime("config/grove.yaml")` + `Period` objects returned:
+Feb 2026 E1=$821,306.03 / E3=$2,963,561.64 (subtotal $3,784,867.67) and
+Apr 2026 E1=$978,913.67 / E3=$1,411,897.31 (subtotal $2,390,810.98) —
+grand total $6,175,678.65. Matches the expected per-claim amounts from
+the original Dune verification (query 7489308) to the cent.
+
+What remains open:
+- **Accrued-but-unclaimed**: Grove's PnL workbook credits monthly
+  accrual (Rewards column grows daily; `claimed` only updates when a
+  Safe tx fires Merkl's claim). Our approach matches BA's
+  ALM-ingress-boundary preference, so we differ from Grove on the
+  *timing* of revenue attribution: Grove sees ~$447K/month accrued on
+  E1; we see $821K landing in Feb (the claim of Jan + early-Feb
+  accrual) and $979K landing in Apr. The lifetime totals match;
+  per-month numbers will differ until Grove either claims monthly or
+  switches their workbook to ingress-boundary accounting.
+- **Non-aToken Merkl drops**: if a future Merkl campaign distributes
+  the underlying token (RLUSD) instead of the aToken, the Cat A path
+  (`_cat_a_capital_inflow_timeseries`) already handles that via the
+  same `external_alm_sources` allowlist (the two categories are
+  orthogonal — Cat A filters its venue's stable-token transfers;
+  Cat C filters its venue's aToken transfers).
+- **Other primes**: Spark / Obex don't have any documented Merkl
+  campaigns today. If they appear, add an entry to that prime's
+  `external_alm_sources` and the same path applies.
+
 #### G19. Agora — 8% on deployed AUSD, split between native yield and an undefined component
 Raised in Grove team interview (2026-05-06). Grove described an
 ongoing partnership with Agora paying **8% on amount deployed**,

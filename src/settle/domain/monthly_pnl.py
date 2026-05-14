@@ -19,18 +19,22 @@ class VenueRevenue:
 
     For non-SDE venues:
         actual_revenue = (value_eom − value_som) − period_inflow
-        revenue = actual_revenue (everything to prime)
+        revenue = actual_revenue + external_revenue (everything to prime)
         sd_share = 0, sd_revenue = 0
 
     For SDE venues (Step 4 of prime-settlement-methodology, kind=fixed|capped):
         actual_revenue = (value_eom − value_som) − period_inflow
         sd_share = min(cap_usd, value_som) / value_som   (= 1 for kind=fixed)
         sd_revenue = actual_revenue × sd_share           (flows to Sky)
-        revenue = actual_revenue × (1 − sd_share)        (flows to prime)
+        revenue = actual_revenue × (1 − sd_share) + external_revenue   (to prime)
 
     The SDE position's asset value is also excluded from the prime's
     utilized-USDS BR base — handled by the orchestrator passing the
     daily SDE-asset-value timeseries into ``compute_sky_revenue``.
+
+    ``external_revenue`` is a separate revenue stream that is NOT subject to
+    SDE-splitting — see field doc below. Used today by the Cat C aToken path
+    to credit Merkl-style aToken drops from allowlisted senders.
     """
 
     venue_id: str
@@ -38,10 +42,18 @@ class VenueRevenue:
     value_som: Decimal
     value_eom: Decimal
     period_inflow: Decimal
-    revenue: Decimal                            # to prime (after SDE split)
-    actual_revenue: Decimal = Decimal("0")      # whole-venue (pre-split)
+    revenue: Decimal                            # to prime (after SDE split + external_revenue)
+    actual_revenue: Decimal = Decimal("0")      # whole-venue (pre-split, EXCLUDES external_revenue)
     sd_share: Decimal = Decimal("0")            # 0 = non-SDE; 1 = full SDE; in (0,1) = capped
     sd_revenue: Decimal = Decimal("0")          # to Sky from this venue (= actual × sd_share)
+    # External rewards received from `prime.external_alm_sources` addresses
+    # for THIS venue's token during the period. Always goes 100 % to prime
+    # (not subject to SDE-splitting): the SDE deal terms cover the pool-
+    # native yield, not off-pool reward distributions (Merkl, Anchorage,
+    # etc.). Computed in USD; zero for venues whose pricing category has no
+    # external-rewards path wired up yet. See `normalize.positions.
+    # _atoken_external_revenue_usd` for the Cat C implementation.
+    external_revenue: Decimal = Decimal("0")
     # Legacy fields kept for provenance round-trip on existing settlements
     # written under the old shortfall model. New runs always emit 0 for these.
     br_charge: Decimal = Decimal("0")
@@ -88,6 +100,11 @@ class MonthlyPnL:
         """Sum of all revenue streams to the prime — the reported headline.
 
         ``= prime_agent_revenue + agent_rate + distribution_rewards``
+
+        Note: per-venue ``external_revenue`` (off-pool rewards like Merkl
+        drops on aTokens) is already folded into ``prime_agent_revenue``
+        via ``vr.revenue`` in the per-venue rollup — this property doesn't
+        add it again.
         """
         return self.prime_agent_revenue + self.agent_rate + self.distribution_rewards
 
@@ -96,7 +113,9 @@ class MonthlyPnL:
         # decision) even though monthly_pnl isn't a reported number; serves as
         # a cross-check that the components add up consistently. Includes
         # ``distribution_rewards`` so the invariant stays correct once that
-        # field is populated in Phase 3+.
+        # field is populated in Phase 3+. ``external_revenue`` is summed into
+        # ``prime_agent_revenue`` upstream (per-venue) so it doesn't appear
+        # explicitly here.
         expected = (
             self.prime_agent_revenue
             + self.agent_rate

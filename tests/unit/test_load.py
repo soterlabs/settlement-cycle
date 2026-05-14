@@ -91,6 +91,50 @@ def test_render_markdown_contains_venue_row():
     assert "$604,000,000.12" in md
 
 
+def test_render_markdown_omits_external_revenue_note_when_all_zero():
+    """The `period_inflow vs external_revenue` footnote is conditional —
+    silent for primes/months with no Cat C external rewards so the typical
+    pnl.md doesn't carry a paragraph explaining a column that's $0
+    everywhere. The sample fixture has external_revenue=0 (default)."""
+    md = render_markdown(_sample_pnl())
+    assert "Note on `period_inflow`" not in md
+
+
+def test_render_markdown_includes_external_revenue_note_when_nonzero():
+    """When a venue carries a Merkl-style external_revenue, the per-venue
+    table is annotated so an auditor knows `period_inflow` additively
+    contains the Merkl drop (closed-form yield buckets mid-period mints
+    as principal injection). Pins the wording the auditor would `grep`
+    for, not the full paragraph."""
+    base = _sample_pnl()
+    # VenueRevenue is frozen — clone with the Merkl-drop fields set instead
+    # of mutating in place.
+    v = base.venue_breakdown[0]
+    v_with_merkl = VenueRevenue(
+        venue_id=v.venue_id,
+        label=v.label,
+        value_som=v.value_som,
+        value_eom=v.value_eom,
+        period_inflow=Decimal("821306"),  # the Merkl drop bucketed as inflow
+        revenue=v.revenue,
+        external_revenue=Decimal("821306"),
+    )
+    pnl = type(base)(
+        prime_id=base.prime_id, month=base.month, period=base.period,
+        sky_revenue=base.sky_revenue, agent_rate=base.agent_rate,
+        prime_agent_revenue=base.prime_agent_revenue,
+        monthly_pnl=base.monthly_pnl,
+        venue_breakdown=[v_with_merkl],
+        pin_blocks_som=base.pin_blocks_som,
+    )
+    md = render_markdown(pnl)
+    assert "Note on `period_inflow`" in md
+    assert "external_revenue" in md
+    # The identity is what an auditor will use to reconstruct true principal
+    # injection from the surfaced columns — pin its exact form.
+    assert "period_inflow − external_revenue" in md
+
+
 def test_render_markdown_skips_venue_section_when_empty():
     pnl = _sample_pnl()
     pnl_no_venues = type(pnl)(
@@ -144,6 +188,39 @@ def test_write_venues_csv_emits_per_venue_rows(tmp_path: Path):
     assert len(rows) == 1
     assert rows[0]["venue_id"] == "V1"
     assert rows[0]["label"] == "Maple syrupUSDC"
+
+
+def test_venues_csv_includes_external_revenue_column(tmp_path: Path):
+    """External rewards (Merkl-style aToken drops) flow into ``vr.revenue``
+    via the per-venue rollup but should ALSO be surfaced as a standalone
+    column so an auditor can attribute prime_agent_revenue between
+    closed-form yield and off-pool rewards. Without this, the Feb 2026
+    Grove cell would show "E1 revenue: $888K" with no way to see that
+    ~$821K of it was the Feb-6 Merkl claim. See PR Round-2 audit."""
+    dest = tmp_path / "venues.csv"
+    write_venues_csv(_sample_pnl(), dest)
+    with dest.open() as f:
+        reader = csv.DictReader(f)
+        cols = reader.fieldnames or []
+        rows = list(reader)
+    assert "external_revenue" in cols, (
+        "external_revenue column missing from venues.csv — auditors won't "
+        "be able to split revenue into closed-form yield vs off-pool rewards."
+    )
+    # Default (no external_alm_sources configured) → 0 in the column.
+    assert rows[0]["external_revenue"] == "0"
+
+
+def test_provenance_includes_external_revenue_per_venue(tmp_path: Path):
+    """Same shape concern as the CSV test — provenance.json is the audit
+    record and must show the external_revenue stream per venue."""
+    from settle.load.provenance import render_provenance
+    payload = render_provenance(_sample_pnl())
+    for v in payload["venue_breakdown"]:
+        assert "external_revenue" in v, (
+            f"venue {v['venue_id']} missing external_revenue in provenance.json"
+        )
+        assert v["external_revenue"] == "0"
 
 
 def test_write_venues_csv_returns_none_when_no_venues(tmp_path: Path):

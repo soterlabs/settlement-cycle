@@ -75,15 +75,36 @@ def render_markdown(pnl: MonthlyPnL, *, rules_url: str = DEFAULT_RULES_URL) -> s
     if pnl.venue_breakdown:
         p("## Per-venue breakdown")
         p("")
-        p("| Venue | Label | value_som | value_eom | period_inflow | revenue |")
-        p("|---|---|---:|---:|---:|---:|")
+        p("| Venue | Label | value_som | value_eom | period_inflow | revenue | external_revenue |")
+        p("|---|---|---:|---:|---:|---:|---:|")
         for v in pnl.venue_breakdown:
             p(
                 f"| {v.venue_id} | {v.label} "
                 f"| {_fmt_usd(v.value_som)} | {_fmt_usd(v.value_eom)} "
-                f"| {_fmt_usd(v.period_inflow)} | {_fmt_usd(v.revenue)} |"
+                f"| {_fmt_usd(v.period_inflow)} | {_fmt_usd(v.revenue)} "
+                f"| {_fmt_usd(v.external_revenue)} |"
             )
         p("")
+        # Surface the period_inflow vs external_revenue interaction only when
+        # it's actually load-bearing — silent for primes/months with no Cat C
+        # external rewards. Without this note, an auditor seeing `+$821K` in
+        # period_inflow on a Cat C row would reasonably read it as a real
+        # principal injection rather than a Merkl drop bucketed by the
+        # closed-form yield formula.
+        if any(v.external_revenue != 0 for v in pnl.venue_breakdown):
+            p(
+                "> **Note on `period_inflow` for Cat C aTokens with external rewards.** "
+                "The closed-form yield formula "
+                "`yield = bal_eom × scaled_som / scaled_eom − bal_som` "
+                "buckets mid-period Merkl-style drops as principal injection, "
+                "so they appear additively inside `period_inflow` alongside any "
+                "true capital moves. The same amount is then credited back to "
+                "the prime as `external_revenue` (100 % to prime, not SDE-split), "
+                "so the math `revenue = Δvalue − period_inflow + external_revenue` "
+                "still resolves to pool-native yield + off-pool rewards. "
+                "True principal injection ≈ `period_inflow − external_revenue`."
+            )
+            p("")
 
         # Sky Direct breakdown — only if any venue has a non-zero BR_charge.
         sd_venues = [v for v in pnl.venue_breakdown if v.br_charge != 0]

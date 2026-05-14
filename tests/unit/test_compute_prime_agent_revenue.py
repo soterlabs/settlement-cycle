@@ -126,7 +126,7 @@ def test_inflow_straddling_period_counts_only_within():
         inflow_timeseries=inflow_df,
     )
     vr = compute_venue_revenue(_period(), inputs)
-    # cum at Feb 28 = 10M (= som_anchor since period.start − 1 = Feb 28)
+    # cum at Feb 28 = 10M (= som_anchor since period.start - 1 = Feb 28)
     # cum at Mar 31 = 13M
     # period_inflow = 3M
     assert vr.period_inflow == Decimal("3000000.0")
@@ -273,3 +273,105 @@ def test_compute_prime_revenue_sums_only_prime_share():
     total, breakdown = compute_prime_agent_revenue(_period(), inputs)
     assert total == Decimal("10")  # V1's $10; SD1 contributes 0 to prime
     assert sum((v.sd_revenue for v in breakdown), Decimal(0)) == Decimal("5")
+
+
+# --- external_revenue ------------------------------------------------------
+#
+# Cat C aToken Merkl-style drops arrive as a separate revenue stream that
+# the closed-form ``yield = scaled(SoM) x dindex / RAY`` formula doesn't
+# capture. The orchestrator computes it via ``_atoken_external_revenue_usd``
+# and threads it through ``VenueRevenueInputs.external_revenue``. These
+# tests pin the propagation + SDE-interaction semantics.
+
+def test_external_revenue_defaults_to_zero():
+    """No external_alm_sources configured → field stays 0 and revenue is
+    unchanged vs the pre-Option-A behaviour."""
+    inputs = VenueRevenueInputs(
+        venue=_venue(),
+        value_som=Decimal("100_000_000"), value_eom=Decimal("110_000_000"),
+        inflow_timeseries=_empty_inflow(),
+    )
+    vr = compute_venue_revenue(_period(), inputs)
+    assert vr.external_revenue == Decimal("0")
+    assert vr.revenue == Decimal("10_000_000")
+
+
+def test_external_revenue_adds_to_prime_revenue_non_sde():
+    """For a non-SDE venue: revenue = actual_revenue + external_revenue.
+    Mirrors Grove E1 / E3 receiving Merkl drops outside the pool-native yield."""
+    inputs = VenueRevenueInputs(
+        venue=_venue(),
+        value_som=Decimal("100_000_000"), value_eom=Decimal("101_000_000"),
+        inflow_timeseries=_empty_inflow(),
+        external_revenue=Decimal("821_306"),
+    )
+    vr = compute_venue_revenue(_period(), inputs)
+    assert vr.actual_revenue == Decimal("1_000_000")      # closed-form yield
+    assert vr.external_revenue == Decimal("821_306")      # Merkl-style drop
+    assert vr.revenue == Decimal("1_821_306")             # both to prime
+
+
+def test_external_revenue_bypasses_sde_split():
+    """SDE venues split ``actual_revenue`` between Sky and prime, but the
+    ``external_revenue`` stream goes 100% to prime — off-pool rewards aren't
+    part of the SDE deal terms."""
+    inputs = VenueRevenueInputs(
+        venue=_venue("SD"),
+        value_som=Decimal("100"), value_eom=Decimal("200"),
+        inflow_timeseries=_empty_inflow(),
+        sde_entry=_sde_fixed("SD"),
+        external_revenue=Decimal("50"),
+    )
+    vr = compute_venue_revenue(_period(), inputs)
+    # SDE fixed → sd_share = 1 → all actual_revenue (100) goes to Sky
+    assert vr.actual_revenue == Decimal("100")
+    assert vr.sd_share == Decimal("1")
+    assert vr.sd_revenue == Decimal("100")
+    # Prime still gets the full external_revenue
+    assert vr.external_revenue == Decimal("50")
+    assert vr.revenue == Decimal("50")
+
+
+def test_external_revenue_with_capped_sde():
+    """Capped SDE: SDE portion of actual_revenue routes to Sky proportionally,
+    external_revenue still 100% to prime."""
+    inputs = VenueRevenueInputs(
+        venue=_venue("SD"),
+        value_som=Decimal("100"), value_eom=Decimal("200"),
+        inflow_timeseries=_empty_inflow(),
+        sde_entry=_sde_capped("SD", Decimal("50")),  # sd_share = 50/100 = 0.5
+        external_revenue=Decimal("30"),
+    )
+    vr = compute_venue_revenue(_period(), inputs)
+    # actual_revenue = 100, sd_share = 0.5 → Sky gets 50, prime gets 50 + 30 = 80
+    assert vr.actual_revenue == Decimal("100")
+    assert vr.sd_share == Decimal("0.5")
+    assert vr.sd_revenue == Decimal("50")
+    assert vr.external_revenue == Decimal("30")
+    assert vr.revenue == Decimal("80")
+
+
+def test_external_revenue_rolls_up_to_prime_total():
+    """Sanity: across multiple venues, prime_agent_revenue == sum of per-venue
+    ``revenue`` fields (which already include external_revenue)."""
+    inputs = [
+        VenueRevenueInputs(
+            venue=_venue("V1"),
+            value_som=Decimal("100"), value_eom=Decimal("110"),
+            inflow_timeseries=_empty_inflow(),
+            external_revenue=Decimal("5"),
+        ),
+        VenueRevenueInputs(
+            venue=_venue("V2"),
+            value_som=Decimal("100"), value_eom=Decimal("100"),
+            inflow_timeseries=_empty_inflow(),
+            external_revenue=Decimal("3"),
+        ),
+    ]
+    total, breakdown = compute_prime_agent_revenue(_period(), inputs)
+    # V1: actual_revenue 10 + external 5 = 15
+    # V2: actual_revenue 0  + external 3 =  3
+    assert total == Decimal("18")
+    assert {vr.venue_id: vr.external_revenue for vr in breakdown} == {
+        "V1": Decimal("5"), "V2": Decimal("3"),
+    }

@@ -44,6 +44,14 @@ class VenueRevenueInputs:
     # flows back to Sky via the borrow-rate charge and only the 30bps spread
     # (BR − SSR) is Prime Revenue.
     actual_revenue_override: Decimal | None = None
+    # USD value of external rewards arriving at the ALM for this venue's
+    # token during the period — yield delivered off-pool (Merkl drops,
+    # Anchorage sweeps, BUIDL yield mints) that the closed-form per-venue
+    # revenue formula does NOT capture. Flows 100% to the prime (not
+    # SDE-split) since these are typically outside the SDE deal terms.
+    # Zero for venues whose pricing category has no external-rewards path
+    # wired up yet (today: Cat C aTokens only).
+    external_revenue: Decimal = Decimal("0")
 
 
 def _sd_share_at_som(
@@ -64,10 +72,15 @@ def _sd_share_at_som(
 def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRevenue:
     """One venue's contribution to prime_agent_revenue under the SDE-split model.
 
-    actual_revenue = (value_eom − value_som) − period_inflow
-    sd_share       = (set per SDE entry; 0 for non-SDE)
-    sd_revenue     = actual_revenue × sd_share        (to Sky)
-    revenue        = actual_revenue × (1 − sd_share)  (to prime)
+    actual_revenue   = (value_eom − value_som) − period_inflow
+    sd_share         = (set per SDE entry; 0 for non-SDE)
+    sd_revenue       = actual_revenue × sd_share                                   (to Sky)
+    prime_revenue    = actual_revenue × (1 − sd_share) + external_revenue          (to prime)
+
+    The ``external_revenue`` stream — off-pool rewards (Merkl, Anchorage,
+    etc.) — is added AFTER the SDE split because it doesn't belong to the
+    Sky-Direct deal terms (the SDE covers pool-native yield only). For a
+    non-SDE venue this is equivalent to ``actual_revenue + external_revenue``.
 
     Loss handling: a negative actual_revenue is split the same way — Sky
     absorbs sd_share of the loss, prime absorbs the rest. This matches Grove
@@ -86,7 +99,7 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
         actual_revenue = (inputs.value_eom - inputs.value_som) - period_inflow
     sd_share = _sd_share_at_som(inputs.sde_entry, inputs.value_som)
     sd_revenue = actual_revenue * sd_share
-    prime_revenue = actual_revenue - sd_revenue
+    prime_revenue = (actual_revenue - sd_revenue) + inputs.external_revenue
 
     return VenueRevenue(
         venue_id=inputs.venue.id,
@@ -98,6 +111,7 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
         actual_revenue=actual_revenue,
         sd_share=sd_share,
         sd_revenue=sd_revenue,
+        external_revenue=inputs.external_revenue,
     )
 
 

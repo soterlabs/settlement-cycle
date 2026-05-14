@@ -514,3 +514,16 @@ venues:
 # Default: empty → revenue_E_x = 0 for par-stables.
 # Note: Galaxy GACLO-1 (E21) yield is captured via per-venue cash_distributions,
 # not via this allowlist.
+#
+# Active entries — known off-pool yield channels routed to the ALM:
+external_alm_sources:
+  ethereum:
+    # Merkl distributor (Angle Labs DistributionCreator proxy). Verified via
+    # Dune 2026-05-13 (query 7489308): two claim events to the Grove ALM in
+    # 2026 — Feb 6 (≈$3.78M aTokens) and Apr 24 (≈$2.39M aTokens). Drops
+    # arrive as aToken receipts (aEthRLUSD + aHorRwaRLUSD), so they're
+    # consumed by the Cat C external-rewards path in
+    # ``_atoken_external_revenue_usd``. Without this entry the Cat C
+    # closed-form yield formula treats the drops as principal injection
+    # and the off-pool yield is uncredited (PRD §17.13 / QUESTIONS.md G3).
+    - '0x3ef3d8ba38ebe18db133cec108f4d14ce00dd9ae'
