@@ -485,7 +485,333 @@ def test_atoken_index_weighted_inflow(fixed_pin_blocks, monkeypatch):
     assert v.revenue < Decimal("1300000")
 
 
-def test_curve_lp_index_weighted_inflow(fixed_pin_blocks, monkeypatch):
+def test_atoken_clean_exit_binary_searches_withdrawal_block(fixed_pin_blocks, monkeypatch):
+    """Mid-period full withdrawal — partial-period yield via binary search.
+
+    The closed-form ``bal_eom × scaled_som / scaled_eom − bal_som`` degenerates
+    when ``scaled_eom`` collapses to dust (Aave V3 leaves 1 wei on full exit):
+    the ratio becomes ≈1, the formula simplifies to ``scaled_som − bal_som``,
+    and we get a phantom *negative* equal to the pre-period yield already
+    embedded in ``bal_som``. For E2 aHorRwaUSDC Feb 2026 (bal_som $11.6M,
+    index_som ≈1.020), that's a phantom −$232K with zero economic basis.
+
+    Fix: when ``scaled_eom < 0.1% × scaled_som``, binary-search on
+    ``scaled_balance_at`` to find the withdrawal block ``W`` (first block
+    where scaled drops to dust), then read ``balance_at(W − 1)`` to get
+    the rebased pre-withdrawal balance — the on-chain rebase has already
+    folded the correct ``index_W`` into that read. Yield = bal_pre − bal_som.
+
+    Aave's standard ``Transfer`` event emits the *scaled* amount (per its
+    ``_burn`` / ``_mint`` override), so the events-sum path used by Cat A
+    would NOT reconcile against rebased boundary balances — that's why we
+    use balance reads, not event sums.
+
+    Scenario: $11.6M aHorRwaUSDC (6-dec), withdrawn at block ``W`` with
+    bal_W ≈ $11.62M (partial-period yield $20K already accrued); after
+    withdrawal scaled balance → 1 wei dust. Expected: revenue = $20K.
+    """
+    from datetime import date as _d
+    from settle.domain import Address, PricingCategory, Token
+    from settle.domain.primes import Prime, Venue
+
+    USDC = Address.from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
+    aHorRwaUSDC = Address.from_str("0x68215b6533c47ff9f7125ac95adf00fe4a62f79e")
+    alm = Address.from_str("0x491edfb0b8b608044e227225c715981a30f3a44e")
+
+    venue = Venue(
+        id="E2", chain=Chain.ETHEREUM,
+        token=Token(Chain.ETHEREUM, aHorRwaUSDC, "aHorRwaUSDC", 6),
+        pricing_category=PricingCategory.AAVE_ATOKEN,
+        underlying=Token(Chain.ETHEREUM, USDC, "USDC", 6),
+    )
+    prime = Prime(
+        id="grove-e2-only", ilk_bytes32=b"\x00" * 32,
+        start_date=_d(2025, 5, 14),
+        alm={Chain.ETHEREUM: alm},
+        subproxy={Chain.ETHEREUM: alm},
+        venues=[venue],
+    )
+
+    som_block = fixed_pin_blocks["som"][Chain.ETHEREUM]
+    eom_block = fixed_pin_blocks["eom"][Chain.ETHEREUM]
+    # Pin a synthetic withdrawal block between SoM and EoM. The binary
+    # search must converge to this block.
+    withdrawal_block = (som_block + eom_block) // 2
+
+    # On-chain shape: pre-period yield embedded (bal_som > scaled_som,
+    # index_som ≈ 1.020), small partial-period yield earned to W,
+    # then dust after withdrawal.
+    bal_som     = 11_600_000 * 10**6     # $11.6M aHorRwaUSDC (rebased at SoM)
+    scaled_som  = 11_372_549 * 10**6     # ≈ bal_som / 1.020
+    bal_pre_W   = 11_620_000 * 10**6     # bal at W-1: $11.62M (+$20K accrued)
+    bal_dust    = 1                      # 1 wei × index_eom/RAY ≈ 1
+    scaled_dust = 1
+
+    # Stub: scaled_balance is scaled_som while pre-withdrawal, dust after.
+    def fake_scaled(c, t, h, b):
+        if b < withdrawal_block:
+            return scaled_som
+        return scaled_dust
+
+    # Stub: balance is bal_som at som_block; bal_pre_W at the block right
+    # before the withdrawal; dust at eom and after.
+    def fake_balance(c, t, h, b):
+        if b == som_block:
+            return bal_som
+        if b == withdrawal_block - 1:
+            return bal_pre_W
+        if b >= withdrawal_block:
+            return bal_dust
+        # In-between blocks before withdrawal: extrapolate linearly between
+        # bal_som and bal_pre_W (irrelevant to the test outcome but keeps
+        # the stub well-defined).
+        return bal_som + (bal_pre_W - bal_som) * (b - som_block) // (withdrawal_block - 1 - som_block)
+
+    from settle.extract import rpc as _rpc
+    monkeypatch.setattr(_rpc, "balance_of", fake_balance)
+    monkeypatch.setattr(_rpc, "scaled_balance_of", fake_scaled)
+
+    class _ValueByBlock(MockPositionBalanceSource):
+        def balance_at(self, chain, token, holder, block):
+            self.calls.append((chain, token, holder, block))
+            return fake_balance(chain, token, holder, block)
+
+    sources = Sources(
+        debt=MockDebtSource(_zero_debt_df()),
+        balance=MockBalanceSource(),
+        ssr=MockSSRSource(pd.DataFrame({
+            "effective_date": [date(2025, 12, 16)], "ssr_apy": [0.04],
+        })),
+        position_balance=_ValueByBlock(),
+    )
+
+    result = compute_monthly_pnl(
+        prime, Month(2026, 3), sources=sources,
+        pin_blocks_eom=fixed_pin_blocks["eom"],
+        pin_blocks_som=fixed_pin_blocks["som"],
+    )
+
+    v = result.venue_breakdown[0]
+    # value_som = $11.6M, value_eom ≈ $0 (1 wei dust).
+    assert v.value_som == Decimal("11600000")
+    assert v.value_eom < Decimal("0.01")
+    # revenue = bal_pre_W − bal_som = +$20K (the real partial-period yield).
+    # NOT the phantom −$232K the closed-form would have produced.
+    assert abs(v.revenue - Decimal("20000")) < Decimal("0.01")
+    assert v.revenue > Decimal("0")
+
+
+def test_atoken_multi_withdrawal_falls_back_to_zero_yield(fixed_pin_blocks, monkeypatch):
+    """Multi-withdrawal sentinel — when the position is drained in stages
+    rather than a single burn, the binary-search-for-W approach lands on
+    the LAST burn block where ``bal_pre_W`` is just a residual, producing
+    a large *negative* phantom (E2 Feb 2026 saw $11.37M → $6.48M → 0 in
+    two withdrawals; binary search alone gave −$4.98M revenue).
+
+    We detect multi-withdrawal by reading scaled_balance at the period
+    midpoint *before* the search: if scaled is neither ≈ scaled_som nor
+    ≈ dust, the position is being drained in stages and we fall back to
+    yield = 0 (same conservative behaviour as the dust guard). Properly
+    attributing yield across multi-segment withdrawals requires per-event
+    index reads — deferred. The lost yield (~$20K/mo for Horizon-sized
+    positions) is the acceptable cost of refusing to publish nonsense.
+
+    Scenario mirroring real E2 Feb 2026: scaled drops from $11.37M to
+    $6.48M (block ~W1, mid-period), then to dust (block ~W2 in the
+    second half). Midpoint read shows scaled = $6.48M (~57% of scaled_som,
+    intermediate). Expected: revenue = $0 (fallback), period_inflow =
+    delta_value = −$11.6M (all classified as capital out).
+    """
+    from datetime import date as _d
+    from settle.domain import Address, PricingCategory, Token
+    from settle.domain.primes import Prime, Venue
+
+    USDC = Address.from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
+    aHorRwaUSDC = Address.from_str("0x68215b6533c47ff9f7125ac95adf00fe4a62f79e")
+    alm = Address.from_str("0x491edfb0b8b608044e227225c715981a30f3a44e")
+
+    venue = Venue(
+        id="E2", chain=Chain.ETHEREUM,
+        token=Token(Chain.ETHEREUM, aHorRwaUSDC, "aHorRwaUSDC", 6),
+        pricing_category=PricingCategory.AAVE_ATOKEN,
+        underlying=Token(Chain.ETHEREUM, USDC, "USDC", 6),
+    )
+    prime = Prime(
+        id="grove-e2-only", ilk_bytes32=b"\x00" * 32,
+        start_date=_d(2025, 5, 14),
+        alm={Chain.ETHEREUM: alm},
+        subproxy={Chain.ETHEREUM: alm},
+        venues=[venue],
+    )
+
+    som_block = fixed_pin_blocks["som"][Chain.ETHEREUM]
+    eom_block = fixed_pin_blocks["eom"][Chain.ETHEREUM]
+    mid_block = (som_block + eom_block) // 2
+
+    bal_som     = 11_600_000 * 10**6
+    scaled_som  = 11_372_549 * 10**6
+    # First withdrawal at W1 (mid-period); intermediate balance afterward.
+    scaled_mid  = 6_480_000 * 10**6     # ~57% of scaled_som
+    # Final withdrawal in second half; dust at EoM.
+    bal_dust, scaled_dust = 1, 1
+
+    def fake_scaled(c, t, h, b):
+        if b == som_block:
+            return scaled_som
+        if b == mid_block:
+            return scaled_mid                 # intermediate — multi-withdrawal sentinel
+        if b == eom_block:
+            return scaled_dust
+        # Other blocks irrelevant to the test outcome (sentinel triggers
+        # before any binary-search read).
+        return scaled_dust
+
+    monkeypatch.setattr("settle.extract.rpc.balance_of",
+                        lambda c, t, h, b: bal_som if b == som_block else bal_dust)
+    monkeypatch.setattr("settle.extract.rpc.scaled_balance_of", fake_scaled)
+
+    class _ValueByBlock(MockPositionBalanceSource):
+        def balance_at(self, chain, token, holder, block):
+            self.calls.append((chain, token, holder, block))
+            return bal_som if block == som_block else bal_dust
+
+    sources = Sources(
+        debt=MockDebtSource(_zero_debt_df()),
+        balance=MockBalanceSource(),
+        ssr=MockSSRSource(pd.DataFrame({
+            "effective_date": [date(2025, 12, 16)], "ssr_apy": [0.04],
+        })),
+        position_balance=_ValueByBlock(),
+    )
+
+    result = compute_monthly_pnl(
+        prime, Month(2026, 3), sources=sources,
+        pin_blocks_eom=fixed_pin_blocks["eom"],
+        pin_blocks_som=fixed_pin_blocks["som"],
+    )
+
+    v = result.venue_breakdown[0]
+    # value_som = $11.6M, value_eom ≈ $0.
+    assert v.value_som == Decimal("11600000")
+    assert v.value_eom < Decimal("0.01")
+    # Fallback: yield = 0 → revenue = 0. period_inflow = full delta_value
+    # (= all classified as capital, no yield credited).
+    assert v.revenue == Decimal("0") or abs(v.revenue) < Decimal("0.01")
+    assert abs(v.period_inflow - (v.value_eom - v.value_som)) < Decimal("0.01")
+
+
+def test_erc4626_closed_form_inflow_for_non_dune_chain(fixed_pin_blocks, monkeypatch):
+    """Cat B closed-form path on Monad — uses only ``balanceOf`` +
+    ``convertToAssets`` at SoM/EoM (no event scanning, since Monad's public
+    RPC limits ``eth_getLogs`` to 100-block windows).
+
+    Mirrors the math of ``_atoken_index_weighted_inflow`` for ERC-4626::
+
+        yield         = shares_som × (pps_eom − pps_som)
+        period_inflow = (shares_eom − shares_som) × pps_eom
+
+    Scenario: 25M shares @ pps $1.00188 SoM → 10.24M shares @ pps $1.00333
+    EoM (the real Grove Monad position for Feb 2026 — partial bridge to
+    Ethereum). Expected: ``actual_revenue ≈ +$36K`` of legitimate
+    monthly yield, ``period_inflow ≈ −$14.81M`` of principal outflow.
+    Grove's spreadsheet books this as a phantom −$14.7M "loss" because
+    their methodology doesn't classify cross-chain transfers as capital
+    — we explicitly do.
+    """
+    from decimal import Decimal as _D
+    from datetime import date as _d
+    from settle.domain import Address, PricingCategory, Token
+    from settle.domain.primes import Prime, Venue
+
+    AUSD = Address.from_str("0x00000000efe302beaa2b3e6e1b18d08d69a9012a")
+    VAULT = Address.from_str("0x32841a8511d5c2c5b253f45668780b99139e476d")
+    alm = Address.from_str("0x94b398acb2fce988871218221ea6a4a2b26cccbc")
+
+    # 18-dec vault token, 6-dec AUSD underlying.
+    venue = Venue(
+        id="E25", chain=Chain.MONAD,
+        token=Token(Chain.MONAD, VAULT, "grove-bbqAUSD-mon", 18),
+        pricing_category=PricingCategory.ERC4626_VAULT,
+        underlying=Token(Chain.MONAD, AUSD, "AUSD", 6),
+    )
+    # The orchestrator always reads the Ethereum debt timeseries regardless
+    # of where venues live — include an Ethereum ALM entry so that part of
+    # ``compute_monthly_pnl`` runs cleanly. The venue itself is Monad-only.
+    eth_alm = Address.from_str("0x491edfb0b8b608044e227225c715981a30f3a44e")
+    prime = Prime(
+        id="grove-mon-only", ilk_bytes32=b"\x00" * 32,
+        start_date=_d(2025, 5, 14),
+        alm={Chain.MONAD: alm, Chain.ETHEREUM: eth_alm},
+        subproxy={Chain.ETHEREUM: eth_alm},
+        venues=[venue],
+    )
+
+    SOM_BLOCK = 52_416_879   # Monad block at Jan 31 EoD UTC
+    EOM_BLOCK = 58_446_079   # Monad block at Feb 28 EoD UTC
+    SHARES_SOM_RAW = 24_999_431_830_772_855_197_030_144   # 25.00M × 10^18
+    SHARES_EOM_RAW = 10_236_654_652_928_429_901_551_536   # 10.24M × 10^18
+    PPS_SOM_AUSD_RAW = 1_001_879                          # $1.00188 (AUSD 6-dec)
+    PPS_EOM_AUSD_RAW = 1_003_330                          # $1.00333
+
+    # Stub balanceOf + convertToAssets at the RPC layer. Avoid involving
+    # ``fixed_pin_blocks`` for Monad — the fixture's blocks are Ethereum
+    # block numbers; here we override pin_blocks_som / pin_blocks_eom for
+    # Monad specifically.
+    from settle.extract import rpc as _rpc
+
+    def fake_balance_of(chain, token, holder, block):
+        return SHARES_SOM_RAW if block == SOM_BLOCK else SHARES_EOM_RAW
+
+    def fake_convert(chain, vault, shares, block):
+        # convertToAssets(1e18) returns AUSD-raw at this pps.
+        pps_raw = PPS_SOM_AUSD_RAW if block == SOM_BLOCK else PPS_EOM_AUSD_RAW
+        return shares * pps_raw // (10**18)
+
+    monkeypatch.setattr(_rpc, "balance_of", fake_balance_of)
+    monkeypatch.setattr(_rpc, "convert_to_assets", fake_convert)
+
+    class _RPCBal(MockPositionBalanceSource):
+        def balance_at(self, chain, token, holder, block):
+            self.calls.append((chain, token, holder, block))
+            return fake_balance_of(chain, token, holder, block)
+
+    class _RPC4626(MockConvertToAssetsSource):
+        def convert_to_assets(self, chain, vault, shares, block):
+            return fake_convert(chain, vault, shares, block)
+
+    sources = Sources(
+        debt=MockDebtSource(_zero_debt_df()),
+        balance=MockBalanceSource(),
+        ssr=MockSSRSource(pd.DataFrame({
+            "effective_date": [date(2025, 12, 16)], "ssr_apy": [0.04],
+        })),
+        position_balance=_RPCBal(),
+        convert_to_assets=_RPC4626(),
+    )
+
+    result = compute_monthly_pnl(
+        prime, Month(2026, 3), sources=sources,
+        pin_blocks_eom={
+            Chain.MONAD: EOM_BLOCK,
+            Chain.ETHEREUM: fixed_pin_blocks["eom"][Chain.ETHEREUM],
+        },
+        pin_blocks_som={
+            Chain.MONAD: SOM_BLOCK,
+            Chain.ETHEREUM: fixed_pin_blocks["som"][Chain.ETHEREUM],
+        },
+    )
+
+    v = result.venue_breakdown[0]
+    # value_som = 25M × $1.00188 ≈ $25,046,406
+    # value_eom = 10.24M × $1.00333 ≈ $10,270,743
+    assert abs(v.value_som - _D("25046405.76")) < _D("1")
+    assert abs(v.value_eom - _D("10270742.71")) < _D("1")
+    # yield = shares_som × (pps_eom − pps_som) = 25M × $0.00145 ≈ $36.3K
+    # period_inflow = Δvalue − yield = -$14.78M - $36.3K ≈ -$14.81M
+    # revenue = yield (Cat B is non-SDE for E25)
+    assert abs(v.revenue - _D("36275")) < _D("100")
+    assert v.period_inflow < _D("-14000000")  # large principal outflow
+    assert v.period_inflow > _D("-15000000")
     """Curve LP inflow via closed-form ``balance × unit_price`` (analogous to
     Aave's scaledBalance × index). Avoids decoding the diverse Curve event
     signatures (NextGen vs. Plain Pool vs. Vyper variants).

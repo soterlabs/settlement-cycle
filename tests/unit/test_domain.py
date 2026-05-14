@@ -157,9 +157,10 @@ def test_load_prime_grove(config_dir: Path):
     # Category breakdown.
     by_cat = {c: [v for v in grove.venues if v.pricing_category.value == c]
               for c in ["A", "B", "C", "D", "E", "F"]}
-    assert len(grove.venues) == 26
+    assert len(grove.venues) == 27
     assert len(by_cat["C"]) == 3, "E1+E2+E3 Aave aTokens"
-    assert len(by_cat["B"]) == 7, "E4+E5+E6 Morpho 4626 + E18 sUSDS + E19 Base + E23 steakUSDC-PrimeInstant Base + E24 bbqPYUSD-V2"
+    # E25 (grove-bbqAUSD on Monad) joins Cat B as of 2026-05-14.
+    assert len(by_cat["B"]) == 8, "E4+E5+E6 Morpho 4626 + E18 sUSDS + E19 Base + E23 steakUSDC Base + E24 bbqPYUSD-V2 + E25 Monad bbqAUSD"
     assert len(by_cat["E"]) == 7, "E7-E10 ETH RWA + E20 JAAA-avax + E21 GACLO-1 + E22 ACRDX-plume"
     assert len(by_cat["F"]) == 2, "E11 Curve LP + E12 Uni V3"
     assert len(by_cat["A"]) == 7, "E13 RLUSD + E14 AUSD + E15 USDC + E16 DAI + E17 USDS + E26 PYUSD + E27 USDC-Base"
@@ -171,9 +172,13 @@ def test_load_prime_grove(config_dir: Path):
 
     e20 = next(v for v in grove.venues if v.id == "E20")
     assert e20.chain == Chain.AVALANCHE_C
-    # JAAA-avax NAV is read cross-chain from the Ethereum Chronicle oracle.
+    # JAAA-avax NAV is read cross-chain from the Ethereum Centrifuge
+    # pricePerShareFeed (same address as E8 JAAA_ETH). Switched 2026-05-14
+    # from Chronicle — see grove.yaml E20 comment for the rationale and
+    # the verified Feb 2026 boundary-block match within $200.
     assert e20.nav_oracle.oracle_chain == Chain.ETHEREUM
-    assert e20.nav_oracle.kind == "chronicle"
+    assert e20.nav_oracle.kind == "price_per_share_feed"
+    assert e20.nav_oracle.address.hex == "0x4880799ee5200fc58da299e965df644fbf46780b"
 
     e21 = next(v for v in grove.venues if v.id == "E21")
     assert e21.chain == Chain.AVALANCHE_C
