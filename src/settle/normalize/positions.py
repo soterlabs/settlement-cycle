@@ -523,22 +523,58 @@ def _atoken_index_weighted_inflow(
     period end so the compute layer's ``cum_at_or_before`` machinery works
     uniformly.
 
-    **Approximation when external rewards arrive mid-period.** The two
-    closed-form expressions are mathematically identical only when no
-    scaled-balance changes happen between SoM and EoM. A mid-period Aave
-    mint of ``Δscaled`` (e.g. a Merkl claim redeeming through the
-    staticAToken wrapper, captured separately via ``_atoken_external_
-    revenue_usd``) makes the second form report yield on the
-    *end-of-period* scaled basis rather than the entering principal,
-    introducing an error of order ``Δscaled / (scaled_som + Δscaled) ×
-    pool_yield``. For Grove Feb 2026 (≈$40M position, $2.96M Merkl drop,
-    ≈$67K pool yield on aEthRLUSD), this is ≈5 % of pool yield but only
-    ~$3.4K absolute — negligible relative to the $2.96M external_revenue
-    that's added on top. Promote to per-event index reads (or scale the
-    Merkl drop's scaled-balance contribution out of ``scaled_eom``) if
-    the relative error ever becomes material on a settlement.
+    **Clean exit (mid-period full withdrawal) — partial-period yield via
+    binary search on the withdrawal block, with multi-withdrawal fallback.**
+    Aave V3 leaves 1 wei dust on full exit; the closed-form's
+    ``bal_eom × scaled_som / scaled_eom`` term then collapses to ≈scaled_som
+    (1 × scaled_som / 1) and the formula degenerates to ``scaled_som −
+    bal_som``, which equals minus the *pre-period* yield embedded in
+    ``bal_som``. For E2 aHorRwaUSDC Feb 2026 (bal_som $11.6M, index_som
+    ≈1.020), that's a phantom −$232K "loss" with zero economic basis.
+
+    When ``scaled_eom < 0.1% × scaled_som`` (clean exit), we attempt a
+    binary-search recovery: find the block ``W`` where scaled_balance
+    first drops to dust and read ``balance_at(W − 1)`` — the rebased
+    pre-withdrawal balance with the correct ``index_W`` folded in by
+    the on-chain rebase. Then ``yield_raw = bal_pre_W − bal_som``.
+
+    Sanity check: this only works for a **single** withdrawal (clean drop
+    from scaled_som to dust). If the position was drained in multiple
+    partial withdrawals, the binary search converges to the last burn
+    block, where ``bal_pre_W`` is just a residual — yielding a large
+    *negative* phantom (E2 Feb 2026 saw two withdrawals: $11.37M →
+    $6.48M → 0; binary search alone gives revenue = −$4.98M). We detect
+    this by reading the midpoint of the search range BEFORE the loop:
+    if scaled at the period midpoint is neither ≈ scaled_som nor ≈ dust,
+    the position is being drained in stages and we fall back to
+    ``yield = 0`` (the conservative dust-guard behaviour) rather than
+    reporting a misleading partial result. Properly attributing yield
+    across multiple withdrawal segments requires per-event index reads,
+    which is deferred — the lost yield is bounded by ~$20K/mo for
+    typical Horizon-sized positions.
+
+    Aave's standard ``Transfer`` event emits the *scaled* amount (per its
+    ``_burn``/``_mint`` override), so the events-sum path used elsewhere
+    (Cat A) doesn't reconcile cleanly against the rebased boundary
+    balances we read here. The RPC binary search avoids that mismatch
+    entirely and costs ~20 ``eth_call`` reads per clean-exit cell — all
+    cached via ``@cached(source_id="rpc.scaled_balance_of")``.
+
+    **Approximation when external rewards arrive mid-period.** Even without
+    clean exit, the closed-form is exact only when scaled balance is
+    constant from SoM to EoM. A mid-period Aave mint of ``Δscaled`` (e.g.
+    a Merkl claim redeeming through the staticAToken wrapper, captured
+    separately via ``_atoken_external_revenue_usd``) makes the formula
+    report yield on the *end-of-period* scaled basis rather than the
+    entering principal, with relative error ``Δscaled / (scaled_som +
+    Δscaled) × pool_yield``. For Grove Feb 2026 (≈$40M position, $2.96M
+    Merkl drop, ≈$67K pool yield on aEthRLUSD), this is ≈5% of pool
+    yield but only ~$3.4K absolute — negligible relative to the $2.96M
+    external_revenue added on top. Promote to per-event index reads if
+    this ever becomes material on a settlement.
     """
     import pandas as pd
+    from decimal import Decimal as _D
 
     holder = prime.alm[venue.chain]
     chain_value = venue.chain.value
@@ -549,38 +585,165 @@ def _atoken_index_weighted_inflow(
     scaled_som = scaled_balance_at(chain_value, token_addr, holder.value, som_block)
     scaled_eom = scaled_balance_at(chain_value, token_addr, holder.value, eom_block)
 
-    # Derive yield in raw token units (later divided by token.decimals).
-    # Aave V3 never burns the last raw unit on full exit, so a fully
-    # withdrawn position presents as scaled_eom ≈ 0..tiny dust. Without a
-    # guard, ``bal_eom × scaled_som / scaled_eom`` would divide by ~1 and
-    # report a phantom multi-hundred-K loss on a clean withdrawal (Feb 2026
-    # E2 aHorRwaUSDC saw −$232K). Treat scaled_eom < 0.1% of scaled_som as
-    # a clean exit (yield=0). The lost true yield is bounded by ~one Aave
-    # month, ≈$20K/mo for an $11M Horizon-sized position.
-    if scaled_eom == 0 or (scaled_som > 0 and scaled_eom * 1000 < scaled_som):
-        yield_raw = 0
+    delta_raw = bal_eom - bal_som
+    scale = Decimal(10 ** venue.token.decimals)
+
+    is_clean_exit = (scaled_eom == 0 or
+                     (scaled_som > 0 and scaled_eom * 1000 < scaled_som))
+
+    if is_clean_exit and som_block < eom_block:
+        # Two recovery paths for the closed-form degeneration:
+        #   (1) Single mid-period withdrawal — binary-search for the burn
+        #       block, then read rebased balance just before it.
+        #   (2) Multiple partial withdrawals — give up and return yield=0,
+        #       since the binary search would land on the LAST burn and
+        #       ``bal_pre_W`` would only reflect the residual.
+        #
+        # We discriminate by reading scaled_balance at the period midpoint
+        # *before* running the search. If it's still ≈ scaled_som the
+        # withdrawal happened in the second half; if it's ≈ dust the
+        # withdrawal happened in the first half — either way single
+        # withdrawal. If it's anywhere in between (10-90% of scaled_som),
+        # the position is being drained in stages and we bail out.
+        if scaled_som == 0:
+            yield_raw = 0
+        else:
+            mid_block = (som_block + eom_block) // 2
+            sb_mid = scaled_balance_at(chain_value, token_addr, holder.value, mid_block)
+            # Multi-withdrawal sentinel: midpoint is intermediate.
+            dust_threshold  = scaled_som // 1000   # 0.1%
+            stable_threshold = (scaled_som * 9) // 10  # 90%
+            if dust_threshold < sb_mid < stable_threshold:
+                # Multi-withdrawal detected. Conservative fallback.
+                yield_raw = 0
+                import logging as _logging
+                _logging.getLogger(__name__).warning(
+                    "_atoken_index_weighted_inflow: venue %s drained in "
+                    "stages (scaled at midpoint = %s, scaled_som = %s); "
+                    "falling back to yield=0. Multi-segment yield "
+                    "attribution requires per-event index reads — "
+                    "deferred.", venue.id, sb_mid, scaled_som,
+                )
+            else:
+                # Single withdrawal — binary-search for the burn block.
+                lo, hi = som_block + 1, eom_block
+                threshold = scaled_som // 10
+                while lo < hi:
+                    mid = (lo + hi) // 2
+                    sb = scaled_balance_at(chain_value, token_addr, holder.value, mid)
+                    if sb <= threshold:
+                        hi = mid
+                    else:
+                        lo = mid + 1
+                withdrawal_block = lo
+                # bal at the block right before withdrawal = pre-withdrawal
+                # rebased value with the correct ``index_W`` folded in.
+                bal_pre_W = balance_at(chain_value, token_addr, holder.value,
+                                       withdrawal_block - 1)
+                candidate_yield = bal_pre_W - bal_som
+                # Final safety check: yield must be non-negative for an
+                # accruing token. If negative, the search converged
+                # unexpectedly — fall back to yield=0.
+                if candidate_yield < 0:
+                    yield_raw = 0
+                    import logging as _logging
+                    _logging.getLogger(__name__).warning(
+                        "_atoken_index_weighted_inflow: venue %s binary "
+                        "search produced negative yield (bal_pre=%s, "
+                        "bal_som=%s); falling back to yield=0.",
+                        venue.id, bal_pre_W, bal_som,
+                    )
+                else:
+                    yield_raw = candidate_yield
+        period_inflow_raw = delta_raw - yield_raw
+        period_inflow_usd = Decimal(period_inflow_raw) / scale
+    elif is_clean_exit:
+        # Degenerate case (som_block == eom_block, single-block period —
+        # only possible in tests). Yield = 0; everything is capital.
+        period_inflow_usd = Decimal(delta_raw) / scale
     else:
-        # Round-half-even on the Decimal remainder. ``int()`` truncates toward
-        # zero, biasing a slightly-negative result up by one raw unit (e.g.
-        # -0.7 → 0 instead of -1) under partial-withdrawal precision noise.
-        from decimal import Decimal as _D
+        # Closed-form path (the common case). Round-half-even on the Decimal
+        # remainder. ``int()`` truncates toward zero, biasing a slightly-
+        # negative result up by one raw unit under partial-withdrawal
+        # precision noise.
         yield_raw = int(
             (_D(bal_eom) * _D(scaled_som) / _D(scaled_eom) - _D(bal_som))
             .to_integral_value(rounding="ROUND_HALF_EVEN")
         )
-
-    delta_raw = bal_eom - bal_som
-    period_inflow_raw = delta_raw - yield_raw
-
-    # Convert to USD. For Cat C/D the token rebases to the underlying par
-    # stable, so 1 raw unit = 1 underlying unit; multiply by $1.
-    scale = Decimal(10 ** venue.token.decimals)
-    period_inflow_usd = Decimal(period_inflow_raw) / scale
+        period_inflow_raw = delta_raw - yield_raw
+        period_inflow_usd = Decimal(period_inflow_raw) / scale
 
     return pd.DataFrame([{
         "block_date": period_end_date,
         "daily_inflow": period_inflow_usd,
         "cum_inflow": period_inflow_usd,
+    }])
+
+
+def _erc4626_shares_weighted_inflow(
+    prime: Prime,
+    venue: Venue,
+    som_block: int,
+    eom_block: int,
+    *,
+    period_end_date,
+    balance_at,
+    price_at_block,
+):
+    """Closed-form Cat B (ERC-4626) inflow for chains without event-scanning
+    support.
+
+    For chains in Dune's spellbook the standard
+    ``_shares_to_usd_inflow_timeseries`` reads per-day mint/burn events
+    and prices each at that day's ``convertToAssets``. On chains the
+    public RPC won't scan (Monad's public endpoint limits
+    ``eth_getLogs`` to a 100-block window, making a year-long scan
+    infeasible), we fall back to this closed-form analog of
+    ``_atoken_index_weighted_inflow``::
+
+        yield         = shares_som × (pps_eom − pps_som)
+        period_inflow = Δvalue − yield
+                      = (shares_eom − shares_som) × pps_eom
+
+    where ``pps_block = convertToAssets(1e^vault.decimals, block) ×
+    par_underlying_price / 10^underlying.decimals``. Exact when no
+    mid-period mint/burn happens; mid-period activity is priced at
+    ``pps_eom`` (treats new principal as if added at EoM), same
+    approximation as the Cat C closed-form. Returns a single-row
+    DataFrame at ``period_end_date`` matching the per-day shape the
+    compute layer's ``cum_at_or_before`` machinery expects.
+
+    ``price_at_block(block) -> Decimal`` is injected by the caller and
+    encapsulates ``convertToAssets`` × par-stable lookup — same
+    callable shape used by ``_shares_to_usd_inflow_timeseries``.
+    ``balance_at`` reads the on-chain share balance (rebased = scaled
+    for ERC-4626) at the boundary blocks.
+
+    Used for the Monad ``grove-bbqAUSD`` venue today; extends naturally
+    to Unichain and Plume if Cat B venues appear there.
+    """
+    import pandas as pd
+    from decimal import Decimal as _D
+
+    holder = prime.alm[venue.chain]
+    chain_value = venue.chain.value
+    token_addr = venue.token.address.value
+
+    shares_som = balance_at(chain_value, token_addr, holder.value, som_block)
+    shares_eom = balance_at(chain_value, token_addr, holder.value, eom_block)
+    pps_som = price_at_block(som_block)
+    pps_eom = price_at_block(eom_block)
+
+    scale = _D(10 ** venue.token.decimals)
+    value_som = _D(shares_som) * pps_som / scale
+    value_eom = _D(shares_eom) * pps_eom / scale
+    yield_usd = _D(shares_som) * (pps_eom - pps_som) / scale
+    period_inflow_usd = (value_eom - value_som) - yield_usd
+
+    return pd.DataFrame([{
+        "block_date":   period_end_date,
+        "daily_inflow": period_inflow_usd,
+        "cum_inflow":   period_inflow_usd,
     }])
 
 

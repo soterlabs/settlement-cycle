@@ -45,6 +45,8 @@ addresses:
     alm:      '0x7107dd8f56642327945294a18a4280c78e153644'    # Grove Avalanche-C ALM (verified on-chain via JAAA holdings)
   plume:
     alm:      '0x1db91ad50446a671e2231f77e00948e68876f812'    # Grove Plume ALM (per docs/pricing/holding_addresses.csv)
+  monad:
+    alm:      '0x94b398acb2fce988871218221ea6a4a2b26cccbc'    # Grove Monad ALM EOA (per docs/pricing/holding_addresses.csv)
 
 # Phase 2.A — 12 yield-bearing venues.
 #
@@ -380,18 +382,22 @@ venues:
       address: '0x58f93d6b1ef2f44ec379cb975657c132cbed3b6b'
       symbol: 'JAAA-avax'
       decimals: 6
+    # NAV: switched 2026-05-14 from Chronicle to Centrifuge's
+    # pricePerShareFeed (canonical per Grove team's PnL workbook, same as
+    # E8). JAAA-avax is a bridged representation of the same Centrifuge
+    # vault share as JAAA_ETH, so the per-share NAV is unified — both
+    # legs use the Ethereum-deployed feed. Verified on-chain 2026-05-14
+    # at Feb 1 + Feb 28 boundary blocks: 250M JAAA-avax × pps gives
+    # $256,109,946 / $256,892,910, matching Grove sheet ($256,109,750 /
+    # $256,892,750) within $200 (<1bps). Previously used Chronicle on
+    # Ethereum, which diverged ~30bps from the canonical Centrifuge feed
+    # and produced a ~$302K Feb revenue gap vs Grove's workbook.
+    # Chronicle remains the documented secondary; const_one fallback
+    # handles pre-deployment SoM blocks (issued at $1 par Aug-Sep 2025).
     nav_oracle:
-      kind: chronicle
-      address: '0x02cf8c9fba24d79886dac40cb620f0930c6e8ec0'
+      kind: price_per_share_feed
+      address: '0x4880799eE5200fC58DA299e965df644fBf46780B'
       oracle_chain: ethereum
-      # JAAA-avax was issued at $1.00 par (Aug-Sep 2025); the Chronicle
-      # oracle above was deployed between blocks 23.5M and 24M (≈ Sep-Oct
-      # 2025), shortly after token issuance. For SoM blocks before the
-      # oracle's first published price, const_one ≈ $1 matches actual
-      # issue-time NAV — same pattern as E7 but at a $1 denomination so
-      # the misprice surface is ~3% of position (today's live NAV ≈ $1.034)
-      # rather than the 99.9% catastrophic shape that motivated E7's
-      # const_1000 fix.
       fallback: const_one
 
   - id: E21
@@ -476,6 +482,40 @@ venues:
     token:
       address: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
       symbol: 'USDC'
+      decimals: 6
+
+  # Monad — grove-bbqAUSD held at the Monad ALM EOA. Activated 2026-05-14
+  # alongside the closed-form Cat B inflow path (``_erc4626_shares_weighted_
+  # inflow``) because Monad isn't in Dune's spellbook AND public RPCs cap
+  # ``eth_getLogs`` ranges so tight (rpc.monad.xyz: 100 blocks) that an
+  # event-scan-based ``IBalanceSource`` isn't viable. The closed-form
+  # variant needs only ``balanceOf`` + ``convertToAssets`` at SoM/EoM — see
+  # ``src/settle/normalize/positions.py::_erc4626_shares_weighted_inflow``.
+  #
+  # Verified 2026-05-14 via Monad archive RPC (rpc-mainnet.monadinfra.com):
+  #   Jan 31 EoD: ALM held 25.0M shares × pps $1.00188 ≈ $25,046,406
+  #   Feb 28 EoD: ALM held 10.24M shares × pps $1.00333 ≈ $10,270,743
+  # Δ = −$14.78M = the bridge migration to Ethereum E6 that Grove's sheet
+  # books as a -$14.7M phantom "loss" on the Monad row (their methodology
+  # quirk — see PRD §17.13). Our closed-form correctly classifies the
+  # share-count decrease as principal outflow; ``actual_revenue`` =
+  # shares_som × Δpps ≈ +$36K of legitimate monthly yield.
+  #
+  # RPC requirement: archive node + eth_call support. ``MONAD_RPC`` in
+  # ``.env`` must point to an archive endpoint; the free
+  # ``rpc-mainnet.monadinfra.com`` works as of 2026-05-14. The drpc free
+  # public endpoint blocks ``eth_call`` entirely and won't work here.
+  - id: E25
+    chain: monad
+    label: 'Grove x Steakhouse High Yield AUSD (Monad, Morpho 4626)'
+    pricing_category: B
+    token:
+      address: '0x32841a8511d5c2c5b253f45668780b99139e476d'
+      symbol: 'grove-bbqAUSD-mon'
+      decimals: 18
+    underlying:
+      address: '0x00000000efe302beaa2b3e6e1b18d08d69a9012a'
+      symbol: 'AUSD'
       decimals: 6
 
   # Plume venues — held $0 throughout Q1 2026 (wound down Oct 2025) but

@@ -1319,6 +1319,48 @@ def compute_monthly_pnl(
                     "DuneBlockResolver init failed (%s) — falling back to RPC for all chains", _e
                 )
 
+    # 1c. Upgrade ``sources.balance`` to a per-chain dispatcher for chains
+    # where ``RPCBalanceSource`` (``eth_getLogs``-based) is known to be
+    # viable. NOT every non-Dune chain qualifies: Plume's public RPC and
+    # Monad's free public RPC (``rpc.monad.xyz``) both cap
+    # ``eth_getLogs`` ranges so tight (~100 blocks) that a year-long
+    # Transfer scan would take 300K+ requests. For those chains the
+    # ``DuneBalanceSource`` returns empty silently (no chain coverage in
+    # ``tokens.transfers``) which is the right default for venues that
+    # use the closed-form helper (Cat B → ``_erc4626_shares_weighted_inflow``;
+    # Cat C → ``_atoken_index_weighted_inflow``).
+    #
+    # Add a chain here once its RPC supports eth_getLogs over a useful
+    # range (e.g. an archive endpoint with no 100-block ceiling) AND the
+    # prime has Cat A / Cat E venues that need event-based inflow tracking.
+    _RPC_BALANCE_CHAINS: frozenset[str] = frozenset()  # none viable today
+    _rpc_balance_chains = {
+        c for c in prime.chains
+        if c.value in _RPC_BALANCE_CHAINS and c.value not in _DUNE_BLOCK_CHAINS
+    }
+    if sources.balance is not None and _rpc_balance_chains:
+        try:
+            import dataclasses as _dc
+            from ..normalize.sources.multi_chain_balance import MultiChainBalanceSource as _MCBS
+            from ..normalize.sources.rpc_balances import RPCBalanceSource as _RBS
+            _rpc_balance = _RBS(block_resolver=resolver)
+            _per_chain_balance: dict[str, object] = {
+                c.value: sources.balance for c in prime.chains if c.value in _DUNE_BLOCK_CHAINS
+            }
+            for c in _rpc_balance_chains:
+                _per_chain_balance[c.value] = _rpc_balance
+            sources = _dc.replace(sources, balance=_MCBS(_per_chain_balance))
+            _log.info(
+                "upgraded balance source: Dune for %s, RPC for %s",
+                sorted(c.value for c in prime.chains if c.value in _DUNE_BLOCK_CHAINS),
+                sorted(c.value for c in _rpc_balance_chains),
+            )
+        except Exception as _e:  # noqa: BLE001 — best-effort; keep going on the original source
+            _log.warning(
+                "balance-source upgrade failed (%s) — keeping single-backend source",
+                _e,
+            )
+
     period = Period(period_unpinned.start, period_unpinned.end, pin_blocks=pin_blocks_eom)
 
     _log.info("step 2: gathering Dune/normalize inputs (debt, balances, SSR)...")
@@ -1684,12 +1726,32 @@ def compute_monthly_pnl(
                     )
                     return (_Dec(raw) / _scale) * _par
 
-                inflow_ts = _shares_to_usd_inflow_timeseries(
-                    prime, venue, period,
-                    balance_source=balance_src,
-                    block_resolver=resolver,
-                    price_at_block=_cat_b_price,
-                )
+                # Chains without Dune event coverage need the closed-form
+                # share-weighted helper — public RPCs (Monad notably) cap
+                # ``eth_getLogs`` ranges so tight that a year-long Transfer
+                # scan isn't viable. The closed-form needs only ``balanceOf``
+                # + ``convertToAssets`` at SoM/EoM (same shape as the Cat C
+                # rebasing helper). Approximation: mid-period mints/burns
+                # priced at ``pps_eom`` — negligible vs slow-moving NAV.
+                if venue.chain.value not in _DUNE_BLOCK_CHAINS:
+                    from ..normalize.positions import _erc4626_shares_weighted_inflow
+                    from ..extract.rpc import balance_of as _bal_of
+                    from ..domain.primes import Address as _Addr_b, Chain as _Chain_b
+                    inflow_ts = _erc4626_shares_weighted_inflow(
+                        prime, venue, som_block, eom_block,
+                        period_end_date=period.end,
+                        balance_at=lambda c, t, h, b: _bal_of(
+                            _Chain_b(c), _Addr_b(t), _Addr_b(h), b,
+                        ),
+                        price_at_block=_cat_b_price,
+                    )
+                else:
+                    inflow_ts = _shares_to_usd_inflow_timeseries(
+                        prime, venue, period,
+                        balance_source=balance_src,
+                        block_resolver=resolver,
+                        price_at_block=_cat_b_price,
+                    )
         elif venue.pricing_category == PricingCategory.PAR_STABLE:
             # Cat A — raw par-stable holdings on the ALM. Source-tagged
             # inflow netting with an EXTERNAL allowlist: counterparties in
