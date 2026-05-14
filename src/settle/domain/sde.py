@@ -72,10 +72,9 @@ class SDETable:
         """Venue's SDE entry active at ``period_start``, or None; raises on
         ambiguous (multiple active) config.
 
-        Per Grove team's PnL workbook convention ``sd_share`` is locked at
-        SoM and held constant for the whole month, so only the SoM-active
-        entry is needed. ``period_end`` is accepted for symmetry with the
-        general "overlap" semantics but is not consulted today.
+        Only the SoM-active entry is consulted; ``period_end`` is accepted
+        for symmetry with the general "overlap" semantics but is not
+        consulted today (mid-month SDE activation is not yet pro-rated).
         """
         matches = [
             e for e in self.entries

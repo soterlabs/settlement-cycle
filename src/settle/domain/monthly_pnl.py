@@ -24,9 +24,10 @@ class VenueRevenue:
 
     For SDE venues (Step 4 of prime-settlement-methodology, kind=fixed|capped):
         actual_revenue = (value_eom − value_som) − period_inflow
-        sd_share = min(cap_usd, value_som) / value_som   (= 1 for kind=fixed)
-        sd_revenue = actual_revenue × sd_share           (flows to Sky)
-        revenue = actual_revenue × (1 − sd_share) + external_revenue   (to prime)
+        sd_revenue = Σ_d daily_rev_d × sd_share_d        (capped, daily snapshots)
+                     or actual_revenue × 1               (fixed, sd_share = 1)
+        sd_share   = sd_revenue / actual_revenue         (effective avg, display only)
+        revenue = actual_revenue − sd_revenue + external_revenue   (to prime)
 
     The SDE position's asset value is also excluded from the prime's
     utilized-USDS BR base — handled by the orchestrator passing the
@@ -44,7 +45,7 @@ class VenueRevenue:
     period_inflow: Decimal
     revenue: Decimal                            # to prime (after SDE split + external_revenue)
     actual_revenue: Decimal = Decimal("0")      # whole-venue (pre-split, EXCLUDES external_revenue)
-    sd_share: Decimal = Decimal("0")            # 0 = non-SDE; 1 = full SDE; in (0,1) = capped
+    sd_share: Decimal = Decimal("0")            # effective avg = sd_revenue/actual_revenue; 0 = non-SDE; 1 = fixed SDE
     sd_revenue: Decimal = Decimal("0")          # to Sky from this venue (= actual × sd_share)
     # External rewards received from `prime.external_alm_sources` addresses
     # for THIS venue's token during the period. Always goes 100 % to prime

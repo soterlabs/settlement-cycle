@@ -20,20 +20,32 @@ actual_revenue = (value_eom − value_som) − period_inflow
 
 **SDE split (Sky Direct Exposure venues):**
 
+- `kind = fixed`: 100 % of `actual_revenue` goes to Sky.
+- `kind = capped`: computed daily using end-of-day position snapshots.
+
+For `kind = capped`, the split accumulates day by day:
+
 ```
-sd_revenue    = actual_revenue × sd_share   → to Sky
-prime_revenue = actual_revenue × (1 − sd_share)  → to prime
+For each day d in [period.start, period.end]:
+    sd_share_d  = min(cap_usd, v_d) / v_d   (0 if v_d = 0)
+    daily_rev_d = (v_d − v_{d−1}) − inflow_d
+    sd_rev_d    = daily_rev_d × sd_share_d
+
+sd_revenue    = Σ_d sd_rev_d                              → to Sky
+prime_revenue = actual_revenue − sd_revenue + external_revenue → to prime
 ```
 
-- `kind = fixed`: `sd_share = 1` (e.g. JTRSY, BUIDL — all yield to Sky)
-- `kind = capped`: `sd_share = min(cap_usd, value_som) / value_som` (e.g. JAAA capped at a dollar limit)
-- `sd_share` is locked at SoM for the whole month
+where `v_d` is the daily end-of-day position value (from the same balance ×
+NAV oracle timeseries used for `sde_asset_value`), and `v_0 = value_som`.
+
+`sd_share_avg = sd_revenue / actual_revenue` is reported as a period summary
+figure (the weighted-average sky share for the month).
 
 ```
 prime_agent_revenue = Σ_venues prime_revenue
 ```
 
-Non-SDE venues contribute their full `actual_revenue`. SDE venues contribute only `(1 − sd_share)` of it.
+Non-SDE venues contribute their full `actual_revenue`. SDE venues contribute only `actual_revenue − sd_revenue` of it.
 
 ### Special case — all held sUSDS (`sky_savings_token: true` venues)
 

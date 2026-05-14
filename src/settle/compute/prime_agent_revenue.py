@@ -52,6 +52,13 @@ class VenueRevenueInputs:
     # Zero for venues whose pricing category has no external-rewards path
     # wired up yet (today: Cat C aTokens only).
     external_revenue: Decimal = Decimal("0")
+    # Daily position value (pre-cap) from ``_sde_asset_value_timeseries``.
+    # Columns: ``[block_date, uncapped_value]``. When provided for a
+    # ``kind=capped`` SDE venue, ``compute_venue_revenue`` computes a daily
+    # sd_share_d = min(cap, v_d)/v_d and accumulates sd_revenue daily instead
+    # of locking sd_share at SoM. Ignored for ``kind=fixed`` (sd_share is
+    # always 1). None falls back to the SoM-locked behaviour.
+    sde_daily_values: pd.DataFrame | None = None
 
 
 def _sd_share_at_som(
@@ -59,6 +66,7 @@ def _sd_share_at_som(
 ) -> Decimal:
     """Sky-direct slice as a fraction of value_som (0 for non-SDE; 1 for
     fixed; ``min(cap, value_som) / value_som`` for capped, locked at SoM).
+    Used as the fallback when no daily timeseries is available.
     """
     if sde_entry is None:
         return Decimal("0")
@@ -69,13 +77,65 @@ def _sd_share_at_som(
     return Decimal("0")
 
 
+def _daily_capped_sd_revenue(
+    cap_usd: Decimal,
+    value_som: Decimal,
+    sde_daily_values: pd.DataFrame,
+    inflow_timeseries: pd.DataFrame,
+) -> Decimal:
+    """Accumulate sd_revenue using per-day position snapshots.
+
+    For each day ``d`` in the period:
+
+        sd_share_d  = min(cap_usd, v_d) / v_d    (0 if v_d == 0)
+        daily_rev_d = (v_d − v_{d−1}) − inflow_d
+        sd_rev_d    = daily_rev_d × sd_share_d
+
+    ``v_0`` (the "previous value" for day 1) is ``value_som`` from RPC so
+    that ``Σ daily_rev_d`` telescopes to ``actual_revenue``.
+
+    ``inflow_d`` is looked up from ``inflow_timeseries.daily_inflow`` by date;
+    days with no row contribute zero inflow.
+    """
+    inflow_by_date: dict = {}
+    if inflow_timeseries is not None and not inflow_timeseries.empty:
+        for _, row in inflow_timeseries.iterrows():
+            v = row["daily_inflow"]
+            inflow_by_date[row["block_date"]] = (
+                v if isinstance(v, Decimal) else Decimal(str(v))
+            )
+
+    total = Decimal("0")
+    prev = value_som
+    for _, row in sde_daily_values.sort_values("block_date").iterrows():
+        v_raw = row["uncapped_value"]
+        v = v_raw if isinstance(v_raw, Decimal) else Decimal(str(v_raw))
+        inflow_d = inflow_by_date.get(row["block_date"], Decimal("0"))
+        daily_rev = (v - prev) - inflow_d
+        if v > 0:
+            sd_share_d = min(cap_usd, v) / v
+            total += daily_rev * sd_share_d
+        # v == 0 → sd_share_d = 0 → daily_rev contributes 0 to Sky
+        prev = v
+    return total
+
+
 def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRevenue:
     """One venue's contribution to prime_agent_revenue under the SDE-split model.
 
     actual_revenue   = (value_eom − value_som) − period_inflow
-    sd_share         = (set per SDE entry; 0 for non-SDE)
-    sd_revenue       = actual_revenue × sd_share                                   (to Sky)
-    prime_revenue    = actual_revenue × (1 − sd_share) + external_revenue          (to prime)
+    sd_revenue       = Σ_d daily_rev_d × sd_share_d      (daily for capped SDE)
+                       or actual_revenue × sd_share_som   (fallback / fixed)
+    sd_share         = sd_revenue / actual_revenue        (effective average, display only)
+    prime_revenue    = actual_revenue − sd_revenue + external_revenue
+
+    For ``kind=capped`` SDE venues with ``sde_daily_values`` supplied: each
+    day's ``sd_share_d = min(cap, v_d) / v_d`` is applied to that day's
+    revenue increment, so capital flows mid-month are reflected in the split
+    rather than being locked at SoM. See ``_daily_capped_sd_revenue``.
+
+    For ``kind=fixed`` or when no ``sde_daily_values`` is provided: falls back
+    to locking ``sd_share`` at SoM via ``_sd_share_at_som``.
 
     The ``external_revenue`` stream — off-pool rewards (Merkl, Anchorage,
     etc.) — is added AFTER the SDE split because it doesn't belong to the
@@ -97,8 +157,28 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
         cum_eom = cum_at_or_before(inflow_df, "cum_inflow", period.end)
         period_inflow = cum_eom - cum_som
         actual_revenue = (inputs.value_eom - inputs.value_som) - period_inflow
-    sd_share = _sd_share_at_som(inputs.sde_entry, inputs.value_som)
-    sd_revenue = actual_revenue * sd_share
+
+    entry = inputs.sde_entry
+    if (
+        entry is not None
+        and entry.kind == "capped"
+        and inputs.sde_daily_values is not None
+        and not inputs.sde_daily_values.empty
+    ):
+        sd_revenue = _daily_capped_sd_revenue(
+            entry.cap_usd,
+            inputs.value_som,
+            inputs.sde_daily_values,
+            inputs.inflow_timeseries,
+        )
+        # Effective (average) sd_share for display — sd_revenue / actual_revenue.
+        sd_share = (
+            sd_revenue / actual_revenue if actual_revenue != 0 else Decimal("0")
+        )
+    else:
+        sd_share = _sd_share_at_som(entry, inputs.value_som)
+        sd_revenue = actual_revenue * sd_share
+
     prime_revenue = (actual_revenue - sd_revenue) + inputs.external_revenue
 
     return VenueRevenue(
