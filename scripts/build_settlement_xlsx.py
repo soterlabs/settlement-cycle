@@ -1,0 +1,395 @@
+"""Render an MSC-native settlement xlsx from a settlement output.
+
+Four tabs:
+
+  1. Summary           — Prime side / Sky side / Grove-comparable Σ P2G / period info
+  2. Venues            — per-venue P&L breakdown with CoF re-attribution
+  3. Sky Revenue       — how sky_revenue is built (CoF + SDE) + subsidy params
+  4. Sky Direct        — active Sky-Direct entries this period
+
+Inputs:
+  settlements/{prime}/{month}/venues.csv
+  settlements/{prime}/{month}/provenance.json
+  settlements/{prime}/{month}/grove_sheet.csv   (post-processor output: P2S/P2G/CoF alloc)
+  config/{prime}.yaml
+  config/sky_direct_exposures.yaml
+  config/subsidy_reference_rates.yaml (for the ref-rate readout in Sky Revenue tab)
+
+Output:
+  settlements/{prime}/{month}/{prime}_settlement_{month_name}_{year}.xlsx
+  e.g. grove_settlement_april_2026.xlsx
+"""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import json
+from datetime import date
+from decimal import Decimal
+from pathlib import Path
+
+import yaml
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.utils import get_column_letter
+
+_REPO = Path(__file__).resolve().parent.parent
+
+# Styling.
+_BOLD   = Font(bold=True)
+_TITLE  = Font(bold=True, size=14)
+_MUTED  = Font(color="666666", italic=True)
+_HEADER_FILL = PatternFill("solid", fgColor="DDE6F1")
+_SUBTLE_FILL = PatternFill("solid", fgColor="F4F7FB")
+_USD     = '"$"#,##0.00;"−$"#,##0.00;"$"0.00'
+_USD0    = '"$"#,##0;"−$"#,##0;"$"0'
+_PCT     = '0.000%'
+_THIN    = Side(style="thin", color="C5C9CC")
+_BOX     = Border(left=_THIN, right=_THIN, top=_THIN, bottom=_THIN)
+
+
+def _D(x) -> Decimal:
+    if x is None or x == "":
+        return Decimal("0")
+    if isinstance(x, Decimal):
+        return x
+    return Decimal(str(x))
+
+
+def _set_widths(ws, widths: dict[int, int]) -> None:
+    for col, w in widths.items():
+        ws.column_dimensions[get_column_letter(col)].width = w
+
+
+def _header_row(ws, row: int, ncols: int) -> None:
+    for c in range(1, ncols + 1):
+        cell = ws.cell(row, c)
+        cell.font = _BOLD
+        cell.fill = _HEADER_FILL
+
+
+# --------------------------------------------------------------------------
+# IO
+# --------------------------------------------------------------------------
+
+def _read_provenance(cell: Path) -> dict:
+    with (cell / "provenance.json").open() as f:
+        return json.load(f)
+
+
+def _read_venues(cell: Path) -> list[dict]:
+    with (cell / "venues.csv").open() as f:
+        return list(csv.DictReader(f))
+
+
+def _read_grove_sheet(cell: Path) -> list[dict]:
+    p = cell / "grove_sheet.csv"
+    if not p.exists():
+        return []
+    with p.open() as f:
+        return list(csv.DictReader(f))
+
+
+def _read_prime_yaml(prime_id: str) -> dict:
+    with (_REPO / "config" / f"{prime_id}.yaml").open() as f:
+        return yaml.safe_load(f)
+
+
+def _read_sde(prime_id: str, period_start: date) -> list[dict]:
+    with (_REPO / "config" / "sky_direct_exposures.yaml").open() as f:
+        cfg = yaml.safe_load(f)
+    out: list[dict] = []
+    for section in ("active", "historical"):
+        for e in cfg.get(section, []) or []:
+            if e.get("prime") != prime_id:
+                continue
+            if e.get("kind") == "pattern":
+                # Pattern entries apply at the prime/PSM3 level — not per-venue.
+                # Skipping here keeps the SDE tab focused on venue-level entries.
+                continue
+            start = e["start_date"]
+            end = e.get("end_date")
+            if isinstance(start, str): start = date.fromisoformat(start)
+            if isinstance(end, str):   end   = date.fromisoformat(end)
+            active = start <= period_start and (end is None or end >= period_start)
+            out.append({**e, "_start": start, "_end": end, "_active": active})
+    return out
+
+
+# --------------------------------------------------------------------------
+# Tab writers
+# --------------------------------------------------------------------------
+
+def _write_summary(ws, prov: dict, sheet_rows: list[dict]) -> None:
+    ws.title = "Summary"
+    prime = prov["prime_id"].upper()
+    month = prov["month"]
+    res   = prov["results"]
+    par   = _D(res["prime_agent_revenue"])
+    ar    = _D(res["agent_rate"])
+    par_t = _D(res.get("prime_agent_total_revenue", par + ar))
+    sky   = _D(res["sky_revenue"])
+    sd    = sum((_D(r["sd_revenue"]) for r in sheet_rows), Decimal("0"))
+    cof   = sky - sd
+    sum_p2g = sum((_D(r["profit_to_grove"]) for r in sheet_rows), Decimal("0"))
+    monthly_pnl = par + ar - sky
+
+    ws.append([f"{prime} — Monthly settlement {month}"])
+    ws["A1"].font = _TITLE
+    ws.append([])
+
+    def _block(title: str, rows: list[tuple[str, Decimal]], total: Decimal) -> None:
+        """Three-block layout: header → addends → blank-label total row."""
+        ws.append([title, "USD"])
+        _header_row(ws, ws.max_row, 2)
+        for lbl, val in rows:
+            ws.append([lbl, float(val)])
+            ws.cell(ws.max_row, 2).number_format = _USD
+        # Total row — no label (matches the cleaned reference layout)
+        ws.append(["", float(total)])
+        cell = ws.cell(ws.max_row, 2)
+        cell.number_format = _USD
+        cell.font = _BOLD
+        cell.border = Border(top=_THIN)
+
+    _block(
+        "Prime side",
+        rows=[
+            ("prime_agent_revenue (gross venue yield to prime)", par),
+            ("+ agent_rate (subproxy USDS / sUSDS yield)",       ar),
+        ],
+        total=par_t,
+    )
+    ws.append([])
+
+    _block(
+        "Sky side",
+        rows=[
+            ("CoF on utilized (BR × Net_Subs)",          cof),
+            ("+ SDE revenue (Sky-Direct, full to Sky)",  sd),
+        ],
+        total=sky,
+    )
+    ws.append([])
+
+    _block(
+        'Comparison (Grove-style "Profit to Grove")',
+        rows=[
+            ("prime_agent_revenue",                    par),
+            ("− CoF (deducted per-venue in display)",  -cof),
+        ],
+        total=sum_p2g,
+    )
+    ws.append([])
+
+    # Period info
+    ws.append(["Period",     f"{prov['period']['start']} → {prov['period']['end']} "
+                              f"({prov['period']['n_days']} days)"])
+    ws.append(["Pin blocks", ", ".join(f"{k}={v}" for k, v in (prov.get('pin_blocks_eom') or {}).items())])
+    ws.append(["Generated",  prov.get("generated_at_utc", "")])
+    ws.append(["Pipeline",   prov.get("settle_version", "")])
+
+    _set_widths(ws, {1: 60, 2: 22})
+
+
+def _write_venues(ws, sheet_rows: list[dict], prime_cfg: dict) -> None:
+    ws.title = "Venues"
+    # Index venues from prime config to enrich with chain + category.
+    by_id = {v.get("id"): v for v in prime_cfg.get("venues", []) or []}
+
+    cols = [
+        "Venue", "Label", "Chain", "Pricing cat.",
+        "Position SoM", "Position EoM", "Period inflow",
+        "actual_revenue", "external_revenue", "revenue (to prime)",
+        "sd_revenue (to Sky)",
+        "Avg value", "Weight", "CoF alloc", "Profit to Sky", "Profit to Grove",
+        "Notes",
+    ]
+    ws.append(cols)
+    _header_row(ws, 1, len(cols))
+
+    # Sort by absolute Profit to Sky desc so Grove-large positions surface first.
+    for r in sorted(sheet_rows, key=lambda x: abs(float(x["profit_to_sky"])), reverse=True):
+        vid = r["venue_id"]
+        v = by_id.get(vid, {})
+        ws.append([
+            vid,
+            r["label"],
+            v.get("chain", ""),
+            v.get("pricing_category", ""),
+            float(r["value_som"]),
+            float(r["value_eom"]),
+            float(_D(r["value_eom"]) - _D(r["value_som"])),   # period_inflow proxy
+            float(r["actual_rev"]),
+            float(r["external"]),
+            float(r["revenue"]),
+            float(r["sd_revenue"]),
+            float(r["avg_value"]),
+            float(r["weight"]),
+            float(r["cof_alloc"]),
+            float(r["profit_to_sky"]),
+            float(r["profit_to_grove"]),
+            r.get("note", ""),
+        ])
+
+    # Number formats
+    for row in range(2, ws.max_row + 1):
+        for c in (5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16):
+            ws.cell(row, c).number_format = _USD0
+        ws.cell(row, 13).number_format = _PCT
+
+    _set_widths(ws, {
+        1: 7, 2: 50, 3: 11, 4: 13,
+        5: 16, 6: 16, 7: 16, 8: 14, 9: 14, 10: 16, 11: 16,
+        12: 16, 13: 9, 14: 14, 15: 16, 16: 16, 17: 30,
+    })
+    ws.freeze_panes = "C2"
+
+
+def _write_sky_revenue(ws, prov: dict, sheet_rows: list[dict], prime_cfg: dict) -> None:
+    ws.title = "Sky Revenue"
+    res = prov["results"]
+    sky = _D(res["sky_revenue"])
+    sd  = sum((_D(r["sd_revenue"]) for r in sheet_rows), Decimal("0"))
+    cof = sky - sd
+
+    ws.append(["How Sky's monthly take is built"])
+    ws["A1"].font = _TITLE
+    ws.append([])
+
+    ws.append(["Component", "USD"])
+    _header_row(ws, ws.max_row, 2)
+    rows = [
+        ("CoF on utilized debt (= Σ_d max(utilized_d,0) × (1+BR_d)^(1/365)−1)", cof),
+        ("+ Sky-Direct revenue (full venue yield on fixed/capped SDE)",         sd),
+        ("= sky_revenue (total Sky take this month)",                            sky),
+    ]
+    for lbl, val in rows:
+        ws.append([lbl, float(val)])
+        ws.cell(ws.max_row, 2).number_format = _USD
+
+    ws.append([])
+    ws.append(["Utilized base = cum_debt − idle USDS − PSM USDS − Σ SDE asset value − Curve idle − lending idle"])
+    ws.cell(ws.max_row, 1).font = _MUTED
+    ws.append([])
+
+    # Subsidy params if enabled.
+    sub_cfg = prime_cfg.get("subsidy") or {}
+    if sub_cfg.get("enabled"):
+        ws.append(["Subsidy", "Value"])
+        _header_row(ws, ws.max_row, 2)
+        ws.append(["enabled",        "true"])
+        ws.append(["cap_usd",        sub_cfg.get("cap_usd", "")])
+        ws.cell(ws.max_row, 2).number_format = _USD0
+        ws.append(["program_start",  sub_cfg.get("program_start", "")])
+        ws.append(["ramp_months",    sub_cfg.get("ramp_months", "")])
+        ws.append(["ref_rate_kind",  sub_cfg.get("ref_rate_kind", "")])
+
+        # T value for this period
+        from settle.domain.subsidy import months_elapsed_since
+        pstart = sub_cfg.get("program_start")
+        if isinstance(pstart, str):
+            pstart = date.fromisoformat(pstart)
+        period_start = date.fromisoformat(prov["period"]["start"])
+        period_end   = date.fromisoformat(prov["period"]["end"])
+        t_start = months_elapsed_since(period_start, pstart)
+        t_end   = months_elapsed_since(period_end,   pstart)
+        ws.append(["T this period",  f"{t_start} (SoM) → {t_end} (EoM)"])
+        ws.append([
+            "Formula",
+            "subsidised_apy = ref_rate + (base_apy − ref_rate) × min(T, 24) / 24, "
+            "applied to first cap_usd of utilized; excess at full base_apy",
+        ])
+        ws.cell(ws.max_row, 1).font = _MUTED
+
+    ws.append([])
+    ws.append(["Base rate composition: base_apy = (1 + SSR)(1 + 30bps) − 1 (multiplicative)"])
+    ws.cell(ws.max_row, 1).font = _MUTED
+
+    _set_widths(ws, {1: 80, 2: 22})
+
+
+def _write_sde(ws, sde: list[dict], sheet_rows: list[dict]) -> None:
+    ws.title = "Sky Direct"
+    ws.append(["Sky-Direct Exposures applied this period"])
+    ws["A1"].font = _TITLE
+    ws.append([])
+
+    cols = ["Venue", "Kind", "Cap (USD)", "Start", "End", "Active?", "Source", "Label",
+            "actual_revenue", "sd_revenue (to Sky)"]
+    ws.append(cols)
+    _header_row(ws, ws.max_row, len(cols))
+
+    by_id = {r["venue_id"]: r for r in sheet_rows}
+    for e in sde:
+        vid = e.get("venue_id", "")
+        row = by_id.get(vid, {})
+        ws.append([
+            vid,
+            e.get("kind", ""),
+            e.get("cap_usd", "") or "",
+            str(e["_start"]) if e.get("_start") else "",
+            str(e["_end"]) if e.get("_end") else "—",
+            "YES" if e["_active"] else "no",
+            e.get("source", ""),
+            e.get("label", ""),
+            float(_D(row.get("actual_rev", 0))) if row else 0,
+            float(_D(row.get("sd_revenue", 0))) if row else 0,
+        ])
+        if isinstance(e.get("cap_usd"), (int, float)):
+            ws.cell(ws.max_row, 3).number_format = _USD0
+        ws.cell(ws.max_row, 9).number_format  = _USD0
+        ws.cell(ws.max_row, 10).number_format = _USD0
+
+    _set_widths(ws, {1: 8, 2: 8, 3: 14, 4: 12, 5: 12, 6: 8, 7: 50, 8: 25, 9: 16, 10: 18})
+
+
+# --------------------------------------------------------------------------
+# Entrypoint
+# --------------------------------------------------------------------------
+
+_MONTH_NAMES = (
+    "january", "february", "march", "april", "may", "june",
+    "july", "august", "september", "october", "november", "december",
+)
+
+
+def _output_filename(prime_id: str, month: str) -> str:
+    """Return ``{prime}_settlement_{month_name}_{year}.xlsx``."""
+    year, m = month.split("-")
+    return f"{prime_id}_settlement_{_MONTH_NAMES[int(m) - 1]}_{year}.xlsx"
+
+
+def build_xlsx(prime_id: str, month: str) -> Path:
+    cell_dir = _REPO / "settlements" / prime_id / month
+    prov     = _read_provenance(cell_dir)
+    sheet    = _read_grove_sheet(cell_dir)
+    cfg      = _read_prime_yaml(prime_id)
+    sde      = _read_sde(prime_id, date.fromisoformat(prov["period"]["start"]))
+
+    wb = Workbook()
+    _write_summary(wb.active, prov, sheet)
+    _write_venues(wb.create_sheet(), sheet, cfg)
+    _write_sky_revenue(wb.create_sheet(), prov, sheet, cfg)
+    _write_sde(wb.create_sheet(), sde, sheet)
+
+    out = cell_dir / _output_filename(prime_id, month)
+    wb.save(out)
+    return out
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--prime", default="grove")
+    parser.add_argument("--month", default="2026-04")
+    args = parser.parse_args()
+    import sys
+    sys.path.insert(0, str(_REPO / "src"))
+    out = build_xlsx(args.prime, args.month)
+    print(f"Wrote {out}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

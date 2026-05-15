@@ -32,6 +32,25 @@ def apy_to_apr_per_second(apy: Decimal) -> Decimal:
     return Decimal(str(apr / SECONDS_PER_YEAR))
 
 
+def combine_apys(*apys: Decimal) -> Decimal:
+    """Combine APY-quoted rates multiplicatively.
+
+    Two APYs add as ``(1 + APY_1) × (1 + APY_2) − 1``, not as ``APY_1 + APY_2``
+    — the latter loses the cross-term ``APY_1 × APY_2``. For typical Sky
+    values (SSR ≈ 4 %, spread = 30 bps) the naive sum is off by ~1.2 bps,
+    which is ~$14K/month on Grove's $1.4B utilized.
+
+    Equivalent continuous form: ``ln(1+APY_combined) = Σ ln(1+APY_i)``.
+    Used to compose:
+      * Base rate    = SSR ⊕ 30bps   (sky_revenue's BR charge on utilized)
+      * Agent rate   = SSR ⊕ 20bps   (USDS in subproxy)
+    """
+    factor = Decimal("1")
+    for a in apys:
+        factor *= (Decimal("1") + a)
+    return factor - Decimal("1")
+
+
 def daily_compounding_factor(apy: Decimal) -> Decimal:
     """One-day growth factor for an APY-quoted rate.
 
