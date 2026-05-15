@@ -37,6 +37,21 @@ KNOWN_PAR_STABLES_ETHEREUM: dict[bytes, tuple[str, int]] = {
     bytes.fromhex("4c9edd5852cd905f086c759e8383e09bff1e68b3"): ("USDe", 18),
 }
 
+# Par-stable tokens on Monad mainnet. AUSD shares the same address as
+# Ethereum (same deployer salt); USDC is a distinct Monad-native deployment.
+KNOWN_PAR_STABLES_MONAD: dict[bytes, tuple[str, int]] = {
+    bytes.fromhex("00000000efe302beaa2b3e6e1b18d08d69a9012a"): ("AUSD", 6),
+    bytes.fromhex("754704bc059f8c67012fed69bc8a327a5aafb603"): ("USDC", 6),
+}
+
+# Per-chain par-stable registry. Used by Cat F (Uni V3) pricing to resolve
+# pool token addresses into (symbol, decimals) without a price oracle.
+# Add an entry here when a new chain hosts V3 venues with par-stable underlyings.
+PAR_STABLES_BY_CHAIN: "dict[Chain, dict[bytes, tuple[str, int]]]" = {
+    Chain.ETHEREUM: KNOWN_PAR_STABLES_ETHEREUM,
+    Chain.MONAD:    KNOWN_PAR_STABLES_MONAD,
+}
+
 
 # Yield-bearing ERC-4626 tokens used as Curve / Uni V3 pool coins. Maps the
 # 4626 vault address to (symbol, share_decimals, underlying_par_stable_address,
