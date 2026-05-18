@@ -9,10 +9,43 @@ import pandas as pd
 import pytest
 
 from settle.compute._helpers import (
+    combine_apys,
     cum_at_or_before,
     daily_compounding_factor,
     ssr_at_or_before,
 )
+
+
+# --- combine_apys ---------------------------------------------------------
+
+def test_combine_apys_identity():
+    assert combine_apys(Decimal("0")) == Decimal("0")
+    assert combine_apys(Decimal("0.05")) == Decimal("0.05")
+
+
+def test_combine_apys_zero_drops_out():
+    assert combine_apys(Decimal("0.04"), Decimal("0")) == Decimal("0.04")
+
+
+def test_combine_apys_two_rates_multiplicative():
+    """(1.04 × 1.003) − 1 = 0.04312 (NOT 0.043)."""
+    out = combine_apys(Decimal("0.04"), Decimal("0.003"))
+    assert out == Decimal("0.04312")
+
+
+def test_combine_apys_order_independent():
+    a, b, c = Decimal("0.04"), Decimal("0.003"), Decimal("0.002")
+    assert combine_apys(a, b, c) == combine_apys(c, a, b)
+
+
+def test_combine_apys_differs_from_naive_sum_by_cross_term():
+    """At SSR=4%, spread=30bps the cross-term ssr × spread = 0.04 × 0.003 =
+    1.2 bps — the difference between the proper compose and naive addition."""
+    proper = combine_apys(Decimal("0.04"), Decimal("0.003"))
+    naive  = Decimal("0.04") + Decimal("0.003")
+    delta  = proper - naive
+    # 1.2 bps == 0.00012
+    assert Decimal("0.00011") < delta < Decimal("0.00013")
 
 
 # --- daily_compounding_factor ---------------------------------------------

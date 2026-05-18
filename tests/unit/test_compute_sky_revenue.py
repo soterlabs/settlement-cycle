@@ -8,7 +8,7 @@ from decimal import Decimal
 import pandas as pd
 import pytest
 
-from settle.compute._helpers import daily_compounding_factor
+from settle.compute._helpers import combine_apys, daily_compounding_factor
 from settle.compute.sky_revenue import BASE_RATE_OVER_SSR, compute_sky_revenue
 from settle.domain import Chain, Period
 
@@ -70,7 +70,9 @@ def test_constant_debt_constant_ssr_31_days():
         alm_usds=_empty(["block_date", "cum_balance"]),
         ssr=_ssr_const(0.047),                                 # borrow = 5.0%
     )
-    expected_daily = Decimal("100000000") * daily_compounding_factor(Decimal("0.05"))
+    expected_daily = Decimal("100000000") * daily_compounding_factor(
+        combine_apys(Decimal("0.047"), BASE_RATE_OVER_SSR)
+    )
     expected = expected_daily * 31
     assert rev == expected
     # ~$100M × 31 × 0.0001337 ≈ $414K — sanity bound
@@ -88,7 +90,9 @@ def test_subtracts_alm_balance_from_utilized():
         ssr=_ssr_const(0.047),
     )
     utilized = Decimal("100000000") - Decimal("3000000")
-    expected = utilized * daily_compounding_factor(Decimal("0.05"))
+    expected = utilized * daily_compounding_factor(
+        combine_apys(Decimal("0.047"), BASE_RATE_OVER_SSR)
+    )
     assert rev == expected
 
 
@@ -108,8 +112,8 @@ def test_handles_ssr_change_mid_period():
         ssr=ssr_df,
     )
 
-    f1 = daily_compounding_factor(Decimal("0.0400") + BASE_RATE_OVER_SSR)
-    f2 = daily_compounding_factor(Decimal("0.0375") + BASE_RATE_OVER_SSR)
+    f1 = daily_compounding_factor(combine_apys(Decimal("0.0400"), BASE_RATE_OVER_SSR))
+    f2 = daily_compounding_factor(combine_apys(Decimal("0.0375"), BASE_RATE_OVER_SSR))
     # March 1-8 at 4.00% + spread = 4.30% → 8 days
     # March 9-31 at 3.75% + spread = 4.05% → 23 days
     expected = Decimal("100000000") * (8 * f1 + 23 * f2)

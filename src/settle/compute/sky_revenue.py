@@ -81,6 +81,7 @@ from ..domain.subsidy import (
     subsidised_apy,
 )
 from ._helpers import (
+    combine_apys,
     cum_at_or_before,
     daily_compounding_factor,
     require_non_empty,
@@ -243,7 +244,10 @@ def compute_sky_revenue_daily(
         base_apy  = Decimal("0")
         if utilized > 0:
             ssr_apy  = ssr_at_or_before(ssr, current)
-            base_apy = ssr_apy + BASE_RATE_OVER_SSR
+            # APYs combine multiplicatively, not additively: naive
+            # ``ssr_apy + 30bps`` loses the cross-term ``ssr_apy × 30bps``
+            # (~1.2 bps at SSR=4%). See ``combine_apys`` in ``_helpers.py``.
+            base_apy = combine_apys(ssr_apy, BASE_RATE_OVER_SSR)
             if use_subsidy:
                 cap              = subsidy_config.cap_usd
                 subsidised_part  = min(utilized, cap)

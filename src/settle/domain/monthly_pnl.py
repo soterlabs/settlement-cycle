@@ -55,6 +55,13 @@ class VenueRevenue:
     # external-rewards path wired up yet. See `normalize.positions.
     # _atoken_external_revenue_usd` for the Cat C implementation.
     external_revenue: Decimal = Decimal("0")
+    # Time-weighted average principal across the period:
+    #   tw_avg = mean(value_som + cum_inflow_d for d in period.start..end)
+    # Used by post-hoc reporting (build_grove_sheet, build_settlement_xlsx)
+    # to allocate the CoF charge across venues. SoM/EoM averaging mis-states
+    # this materially when inflows are concentrated mid-month — see
+    # ``_time_weighted_avg_value`` in compute.prime_agent_revenue.
+    tw_avg_value: Decimal = Decimal("0")
     # Legacy fields kept for provenance round-trip on existing settlements
     # written under the old shortfall model. New runs always emit 0 for these.
     br_charge: Decimal = Decimal("0")

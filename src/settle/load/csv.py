@@ -43,6 +43,7 @@ def write_venues_csv(pnl: MonthlyPnL, dest: Path) -> Path | None:
     headers = [
         "venue_id", "label", "value_som", "value_eom", "period_inflow",
         "revenue", "actual_revenue", "external_revenue",
+        "tw_avg_value_usd",
         "br_charge", "sky_direct_shortfall",
     ]
     with dest.open("w", newline="") as f:
@@ -54,6 +55,7 @@ def write_venues_csv(pnl: MonthlyPnL, dest: Path) -> Path | None:
                 f"{v.value_som}", f"{v.value_eom}",
                 f"{v.period_inflow}", f"{v.revenue}",
                 f"{v.actual_revenue}", f"{v.external_revenue}",
+                f"{v.tw_avg_value}",
                 f"{v.br_charge}", f"{v.sky_direct_shortfall}",
             ])
     return dest
