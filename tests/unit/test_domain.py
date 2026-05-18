@@ -145,8 +145,8 @@ def test_load_prime_obex(config_dir: Path):
 
 
 def test_load_prime_grove(config_dir: Path):
-    """Grove ETH config: 12 active venues (E1–E12) across B/C/E/F + 6 idle
-    holdings (E13–E18) across A/B per the PRD §4.1 layout."""
+    """Grove config: 12 original venues (E1–E12) + 9 idle/multi-chain holdings
+    (E13–E18, E26, E27, E25) + 6 alt-holder venues (E30–E35) = 33 total."""
     grove = load_prime(config_dir / "grove.yaml")
     assert grove.id == "grove"
     assert grove.start_date == date(2025, 5, 14)
@@ -157,13 +157,13 @@ def test_load_prime_grove(config_dir: Path):
     # Category breakdown.
     by_cat = {c: [v for v in grove.venues if v.pricing_category.value == c]
               for c in ["A", "B", "C", "D", "E", "F"]}
-    assert len(grove.venues) == 27
+    assert len(grove.venues) == 33
     assert len(by_cat["C"]) == 3, "E1+E2+E3 Aave aTokens"
     # E25 (grove-bbqAUSD on Monad) joins Cat B as of 2026-05-14.
     assert len(by_cat["B"]) == 8, "E4+E5+E6 Morpho 4626 + E18 sUSDS + E19 Base + E23 steakUSDC Base + E24 bbqPYUSD-V2 + E25 Monad bbqAUSD"
     assert len(by_cat["E"]) == 7, "E7-E10 ETH RWA + E20 JAAA-avax + E21 GACLO-1 + E22 ACRDX-plume"
-    assert len(by_cat["F"]) == 2, "E11 Curve LP + E12 Uni V3"
-    assert len(by_cat["A"]) == 7, "E13 RLUSD + E14 AUSD + E15 USDC + E16 DAI + E17 USDS + E26 PYUSD + E27 USDC-Base"
+    assert len(by_cat["F"]) == 4, "E11 Curve LP + E12 Uni V3 + E30 Uni V3 alt-holder (ETH) + E33 Uni V3 alt-holder (Monad)"
+    assert len(by_cat["A"]) == 11, "E13 RLUSD + E14 AUSD + E15 USDC + E16 DAI + E17 USDS + E26 PYUSD + E27 USDC-Base + E31/E32 alt-holder ETH + E34/E35 alt-holder Monad"
 
     # Multi-chain: E19 is on Base; E20/E21 on Avalanche.
     e19 = next(v for v in grove.venues if v.id == "E19")
