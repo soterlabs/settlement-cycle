@@ -442,6 +442,83 @@ deployed_amount, apr, borrow_cost)` per vault per day. Implied accounting:
 
 We'll add the compute path once these three confirmations land.
 
+#### S26. Maple syrupUSD vaults (S14, S15) — defensive unwind misclassified as yield loss (LayerZero hack)
+
+**Concrete impact (Spark Apr 2026):** S14 (Maple syrupUSDC) shows
+`revenue = −$100.27M` on a position that went `value_som $100.0M →
+value_eom $105.3M` (a +$5.3M Δ). S15 (Maple syrupUSDT) shows
+`revenue = −$301.35M` on a position that went `$100.0M → $76.9M`
+(a −$23.1M Δ). Net Apr drag: ~$400M of fictitious loss, the single
+largest contributor to Spark Apr's −$494M `prime_agent_revenue`.
+
+**Root cause — confirmed 2026-05-17.** Spark defensively unwound /
+churned both Maple positions in mid-April 2026 (likely **2026-04-19
+or 2026-04-20**) in response to the LayerZero hack. The Maple vault
+emits a Transfer of the underlying (USDC / USDT) back to the ALM on
+redemption; the closed-form yield formula `revenue = Δvalue −
+period_inflow` treats those redemption Transfers as principal
+**injection** (subtracted from Δvalue) instead of principal
+**return**, producing a phantom loss equal to the gross redemption
+amount. For S15 specifically: ~$278M of period_inflow on syrupUSDT
+shares accounts for the −$301M phantom — Spark cycled (deposit +
+redeem) ~$278M defensively through the vault, ending the month with
+a smaller net position.
+
+Same root cause as the Grove E2 aHorRwaUSDC phantom-loss patched
+2026-04 (`feb_2026_comparison.md` §F5): redemption transfers
+misclassified as inflow.
+
+**Methodology fix (no counterparty question).** Mirror the E2 patch:
+- Add the Maple vault contract addresses (syrupUSDC, syrupUSDT) to
+  Spark's `principal_return_overrides` config so redemption
+  Transfers from those addresses are tagged as principal returns,
+  not inflows.
+- Or detect "redemption" via the share-burn signature on Maple and
+  net the underlying-Transfer against it inside the inflow
+  classifier.
+
+After the fix, S14 and S15's "revenue" should reduce to actual
+pps-driven yield (low single-digit basis points) rather than a
+hundred-million-dollar phantom.
+
+**One follow-up Q for Spark/BA (smaller scope):** confirm the
+2026-04-19/20 unwind tx hashes so we can pin the
+`principal_return_overrides` config to specific events rather than
+a blanket vault-address allowlist.
+
+#### S27. Arbitrum POL Cat A — phantom $95M drop turned out to be an RPC archive bug, not a methodology gap
+
+**Original observation (Spark Apr 2026):** S44 (USDS raw Arbitrum POL)
+appeared to go `$90.00M → $0` (revenue −$90.00M) and S45 (USDC raw
+Arbitrum POL) `$4.44M → $0` (revenue −$5.01M) in our settlement
+output.
+
+**Root cause — diagnosed 2026-05-17.** The Spark Arbitrum ALM
+(`0x92afd6f2…8709`) actually held **$0 USDS + $0 USDC throughout all
+of April 2026**. The $90M USDS / $5M USDC only landed at the ALM on
+**2026-05-14 to 2026-05-17** (verified against `arb1.arbitrum.io/rpc`
+official endpoint at Apr SoM block 447736930, Apr EoM block
+458085623, and intermediate dates 2026-05-02 / 2026-05-12 — all
+returned 0 balance). So there was no position drop and no missing
+inflow record.
+
+The phantom −$95M came from the **`ARBITRUM_RPC = lb.drpc.live` free
+tier returning the CURRENT balance for historical-block
+`balanceOf` calls**, instead of the actual historical balance.
+Identical pathology to the `MONAD_RPC = lb.drpc.live` issue tracked
+earlier — drpc's free tier lacks archive depth and silently returns
+"latest" data for any historical block request.
+
+**Fix:** point `ARBITRUM_RPC` at an archive endpoint (e.g.
+`https://arb1.arbitrum.io/rpc` for free, or an Alchemy / Infura
+archive URL). After the swap + cache invalidation, a Spark Apr
+re-run should show S44/S45 at $0 / $0 / $0 and the headline
+`prime_agent_revenue` should rise by ~$95M (still leaves the S26
+LayerZero withdrawal drag, see Q-S26).
+
+**Not a Spark/BA question** — this is purely on the MSC side. Closing
+via the resolved-pointer flow once the RPC swap lands.
+
 ### P1 — methodology unknowns affecting accuracy
 
 #### S4. Multi-chain ALM netting in sky_revenue

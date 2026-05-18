@@ -3,7 +3,9 @@
 Covers:
 
 1. ``rpc.psm3_convert_to_shares`` encodes the right ``eth_call`` calldata
-   (selector ``0xc6e6f592`` followed by padded address + uint).
+   (selector ``0x3e5541f1`` for ``convertToShares(address,uint256)`` —
+   NOT ``0xc6e6f592`` which is the 1-arg ERC-4626 form — followed by
+   padded address + uint).
 2. Both ``RPCPsm3Source.convert_to_shares`` and
    ``DunePsm3Source.convert_to_shares`` delegate to the cached RPC helper —
    point reads at a single block, no Dune preload required.

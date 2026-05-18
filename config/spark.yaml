@@ -264,26 +264,49 @@ venues:
     label: 'Maple syrupUSDC (ERC-4626)'
     pricing_category: B
     token:
-      address: '0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b'
+      address: '0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b'      # PoolV2 = syrupUSDC vault
       symbol: 'syrupUSDC'
       decimals: 6
     underlying:
-      address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+      address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'      # USDC
       symbol: 'USDC'
       decimals: 6
+    # Maple uses a withdrawal-queue pattern: redemptions Transfer shares
+    # from the ALM to the queue contract before the actual burn happens
+    # in-tx. Treat the queue address as a burn destination so the Cat B
+    # closed-form inflow classifier nets redemptions against deposits.
+    # Without this, Spark Apr 2026 S14 shows revenue = −$100M phantom
+    # (the LayerZero-hack-triggered defensive unwind on 2026-04-19/20).
+    # See Q-S26 in QUESTIONS.md.
+    share_burn_destinations:
+      # Maple's documented WithdrawalManagerQueue is 0x1bc47a0d…, but Spark's
+      # Apr 2026 redemption Transfers actually went to 0x7ad5ffa5… (verified
+      # via Dune: 46 transfers totalling 86.6M syrupUSDC from Spark ALM in
+      # Apr 2026 → this address). Likely a Maple internal escrow / upgraded
+      # queue contract that fronts the public WithdrawalManagerQueue.
+      - '0x7ad5ffa5fdf509e30186f4609c2f6269f4b6158f'   # actual syrupUSDC redemption escrow
+      - '0x1bc47a0dd0fdab96e9ef982fdf1f34dc6207cfe3'   # public WithdrawalManagerQueue (kept for safety)
 
   - id: S15
     chain: ethereum
     label: 'Maple syrupUSDT (ERC-4626)'
     pricing_category: B
     token:
-      address: '0x356b8d89c1e1239cbbb9de4815c39a1474d5ba7d'
+      address: '0x356b8d89c1e1239cbbb9de4815c39a1474d5ba7d'      # PoolV2 = syrupUSDT vault
       symbol: 'syrupUSDT'
       decimals: 6
     underlying:
-      address: '0xdac17f958d2ee523a2206206994597c13d831ec7'
+      address: '0xdac17f958d2ee523a2206206994597c13d831ec7'      # USDT
       symbol: 'USDT'
       decimals: 6
+    # See S14 comment block for the rationale; same withdrawal-queue
+    # pattern. Spark Apr 2026 S15 revenue = −$301M phantom without this.
+    share_burn_destinations:
+      # See S14 note: documented queue is 0x86ebdf90… but Spark's actual Apr
+      # 2026 redemption Transfers (58 transfers, 289.9M shares) went to
+      # 0x0cda32e0…. Most likely a Maple-internal redemption escrow.
+      - '0x0cda32e08b48bfddbc7ee96b44b09cf286f9e21a'   # actual syrupUSDT redemption escrow
+      - '0x86ebdf902d800f2a82038290b6dbb2a5ee29eb8c'   # public WithdrawalManagerQueue (kept for safety)
 
   - id: S16
     chain: ethereum

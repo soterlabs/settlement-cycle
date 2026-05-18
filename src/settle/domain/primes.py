@@ -194,6 +194,16 @@ class Venue:
     # Applies to all direct sUSDS holdings regardless of chain or venue type
     # (raw ALM, LP token, etc.). Set explicitly in the prime YAML config.
     sky_savings_token: bool = False
+    # Additional addresses to treat as "burn destinations" when classifying
+    # share Transfers for Cat B inflow accounting. ERC-4626 vaults with a
+    # withdrawal-queue pattern (Maple PoolV2 etc.) Transfer the user's
+    # shares to a queue contract before the actual share burn happens
+    # in-tx — without this list the inflow classifier sees only the gross
+    # deposit (Transfer from 0x0 → ALM) and misses the redemption
+    # (Transfer from ALM → queue), producing a phantom loss equal to the
+    # gross redeem amount. See Q-S26 in QUESTIONS.md for the Maple case
+    # (Spark Apr 2026: ~$400M of phantom loss on S14/S15).
+    share_burn_destinations: list[Address] = field(default_factory=list)
 
 
 @dataclass(frozen=True, slots=True)

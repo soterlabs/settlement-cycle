@@ -26,7 +26,12 @@ SEL_CONVERT_TO_ASSETS = "0x07a2d13a"    # convertToAssets(uint256)
 # ERC-4626 ``convertToAssets(uint256)``.
 SEL_PSM3_SHARES = "0xce7c2ac2"          # shares(address)
 SEL_PSM3_CONVERT_TO_ASSET_VALUE = "0x41c094e0"  # convertToAssetValue(uint256)
-SEL_PSM3_CONVERT_TO_SHARES = "0xc6e6f592"  # convertToShares(address,uint256)
+SEL_PSM3_CONVERT_TO_SHARES = "0x3e5541f1"  # convertToShares(address,uint256)
+# NB: 0xc6e6f592 is the ERC-4626 1-arg form ``convertToShares(uint256)``. PSM3
+# defines a 2-arg overload taking ``(asset, amount)`` whose selector is the
+# value above (0x3e5541f1). Mixing them silently returns garbage — the
+# 1-arg overload happens to exist on PSM3, decodes calldata as a single
+# uint256, and returns a value off by ~10**30.
 # Curve-specific selectors (get_virtual_price, balances) live in extract/curve.py.
 
 DEFAULT_TIMEOUT = 30
@@ -69,6 +74,12 @@ def rpc_url(chain: Chain) -> str:
 DEFAULT_RETRY_ATTEMPTS = 10
 DEFAULT_RETRY_BACKOFF_SEC = 0.3
 RETRY_BACKOFF_CAP_SEC = 3.0
+# Null-block retry is shorter than the transport-level retry: a null result
+# is a node-lag artifact that resolves in seconds, not a transport outage.
+# Keeping this tight avoids compound stalls when nested with ``_post``'s
+# own retry loop (each iteration here can already absorb 10 transport
+# retries).
+_NULL_BLOCK_RETRY_ATTEMPTS = 5
 
 # JSON-RPC error codes/messages that indicate a transient upstream failure
 # rather than a deterministic call problem. drpc surfaces upstream-node
@@ -348,9 +359,49 @@ def block_timestamp(chain: Chain, block: int) -> int:
     Deterministic given (chain, block) so it caches cleanly — used by the
     binary search in ``find_block_at_or_before`` and by ``DuneBlockResolver``
     fallback paths.
+
+    JSON-RPC returns ``{"result": null}`` (not an error) when a load-balanced
+    node hasn't synced the requested block yet — observed on Monad / Plume /
+    Unichain in the binary-search ``mid`` queries that approach
+    ``latest_block``. Treat ``None`` as transient and retry a few times
+    before surfacing a clear error; the outer retry loop in ``_post`` already
+    covers timeouts / 5xx / known transient JSON-RPC error codes.
+
+    The null-retry budget is capped at ``_NULL_BLOCK_RETRY_ATTEMPTS`` (5)
+    rather than ``DEFAULT_RETRY_ATTEMPTS`` (10). Each iteration here calls
+    ``_post`` which has its OWN 10-retry loop for transport errors; a deeper
+    null-retry budget would compound into ~50-minute worst-case stalls per
+    ThreadPoolExecutor worker. Node-lag (the actual cause of a null result)
+    resolves in seconds; 5 attempts with exponential backoff is enough.
     """
-    raw = _post(rpc_url(chain), "eth_getBlockByNumber", [hex(block), False])
-    return int(raw["timestamp"], 16)
+    import time as _time
+    for attempt in range(_NULL_BLOCK_RETRY_ATTEMPTS):
+        raw = _post(rpc_url(chain), "eth_getBlockByNumber", [hex(block), False])
+        if raw is not None:
+            return int(raw["timestamp"], 16)
+        if attempt == 0:
+            _rpc_log.warning(
+                "block_timestamp(%s, %d) returned null (attempt 1/%d) — "
+                "load-balancer node lacks state; retrying",
+                chain.value, block, _NULL_BLOCK_RETRY_ATTEMPTS,
+            )
+        elif attempt == _NULL_BLOCK_RETRY_ATTEMPTS - 1:
+            _rpc_log.warning(
+                "block_timestamp(%s, %d) still null on attempt %d/%d — "
+                "about to raise",
+                chain.value, block, attempt + 1, _NULL_BLOCK_RETRY_ATTEMPTS,
+            )
+        if attempt < _NULL_BLOCK_RETRY_ATTEMPTS - 1:
+            backoff = min(
+                DEFAULT_RETRY_BACKOFF_SEC * (2 ** attempt),
+                RETRY_BACKOFF_CAP_SEC,
+            )
+            _time.sleep(backoff)
+    raise RPCError(
+        f"eth_getBlockByNumber({chain.value}, {block}) returned null after "
+        f"{_NULL_BLOCK_RETRY_ATTEMPTS} attempts — block likely past the chain's "
+        f"synced head on every load-balanced node we tried."
+    )
 
 
 # Default chunk for `eth_getLogs` pagination — Alchemy free tier caps at 10k
