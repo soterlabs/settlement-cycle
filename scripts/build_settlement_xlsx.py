@@ -263,7 +263,7 @@ def _write_sky_revenue(ws, prov: dict, sheet_rows: list[dict], prime_cfg: dict) 
     rows = [
         ("CoF on utilized debt (= Σ_d max(utilized_d,0) × (1+BR_d)^(1/365)−1)", cof),
         ("+ Sky-Direct revenue (full venue yield on fixed/capped SDE)",         sd),
-        ("= sky_revenue (total Sky take this month)",                            sky),
+        ("equals sky_revenue (total Sky take this month)",                       sky),
     ]
     for lbl, val in rows:
         ws.append([lbl, float(val)])

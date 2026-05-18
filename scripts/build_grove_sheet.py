@@ -35,6 +35,22 @@ Per-venue math:
     profit_to_grove_v = revenue_v − cof_alloc_v          # revenue already
                                                           # excludes SDE part
 
+``avg_value_v`` — time-weighted vs SoM/EoM-avg:
+    Reads ``tw_avg_value_usd`` from venues.csv when present — the true
+    time-weighted mean of daily principal computed by the compute layer
+    (``_time_weighted_avg_value`` in compute.prime_agent_revenue). Falls
+    back to the SoM/EoM average for legacy venues.csv files written
+    before that column was added. The fallback is inaccurate for venues
+    with concentrated mid-month inflows/outflows — a $300M deposit on
+    day 28 produces a true time-weighted avg of ~$38M but a SoM/EoM avg
+    of $150M (3.9× over-stated), inflating that venue's CoF allocation
+    and deflating others'. Σ-totals (sky_revenue, prime_agent_revenue,
+    sum_p2s, sum_p2g) stay exact regardless — only the per-venue split
+    is approximate. Rows using the fallback are tagged ``(CoF approx)``.
+
+    The fallback path can be removed (along with the ``(CoF approx)`` tag)
+    once all historical venues.csv files on disk have been regenerated.
+
 Limitations:
 * Capped SDE windows (e.g. JAAA E8 ≤ 2026-03-12) are not handled here —
   for those months the daily ``sd_share_d = min(cap, v_d)/v_d`` matters and
@@ -183,7 +199,16 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
     enriched: list[dict] = []
     for r in rows:
         sd_share, sd_revenue, note = _classify(r, sde)
-        avg_value = (_D(r["value_som"]) + _D(r["value_eom"])) / Decimal("2")
+        # Prefer the compute-layer-written time-weighted average; fall back
+        # to SoM/EoM avg on legacy venues.csv files. See module docstring
+        # "avg_value_v — time-weighted vs SoM/EoM-avg" section for the
+        # accuracy implications of the fallback.
+        tw_raw = r.get("tw_avg_value_usd")
+        if tw_raw not in (None, ""):
+            avg_value = _D(tw_raw)
+        else:
+            avg_value = (_D(r["value_som"]) + _D(r["value_eom"])) / Decimal("2")
+            note = (note + " " if note else "") + "(CoF approx)"
         weight = Decimal("1") - sd_share
         enriched.append({
             "venue_id":   r["venue_id"],
@@ -312,7 +337,8 @@ def _emit_markdown(
         "```\n"
         "sd_share_v        = 1.0 for fixed SDE; daily-derived for capped (post-hoc)\n"
         "weight_v          = 1 − sd_share_v\n"
-        "avg_value_v       = (value_som + value_eom) / 2\n"
+        "avg_value_v       = venues.csv:tw_avg_value_usd        # time-weighted (preferred)\n"
+        "                    or  (value_som + value_eom) / 2    # legacy fallback (CoF approx)\n"
         "sd_revenue_v      = actual_revenue + external_revenue − revenue\n"
         "cof_total         = sky_revenue − Σ_v sd_revenue_v\n"
         "cof_alloc_v       = avg_value_v × weight_v / Σ_v(avg × weight) × cof_total\n"

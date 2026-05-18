@@ -60,6 +60,10 @@ def render_provenance(
                 # see the breakdown between closed-form yield and external
                 # rewards. See ``normalize.positions._atoken_external_revenue_usd``.
                 "external_revenue": str(v.external_revenue),
+                # Time-weighted average daily principal across the period
+                # (mean of value_som + cum_inflow_d). Surfaced for post-hoc
+                # CoF allocation in reporting sheets.
+                "tw_avg_value_usd": str(v.tw_avg_value),
                 "br_charge": str(v.br_charge),
                 "sky_direct_shortfall": str(v.sky_direct_shortfall),
             }

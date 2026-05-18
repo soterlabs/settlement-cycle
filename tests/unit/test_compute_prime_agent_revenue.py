@@ -9,6 +9,7 @@ import pandas as pd
 
 from settle.compute.prime_agent_revenue import (
     VenueRevenueInputs,
+    _time_weighted_avg_value,
     compute_prime_agent_revenue,
     compute_venue_revenue,
 )
@@ -375,3 +376,90 @@ def test_external_revenue_rolls_up_to_prime_total():
     assert {vr.venue_id: vr.external_revenue for vr in breakdown} == {
         "V1": Decimal("5"), "V2": Decimal("3"),
     }
+
+
+# --- _time_weighted_avg_value -----------------------------------------------
+#
+# The simple (value_som + value_eom)/2 average is wrong when inflows are
+# concentrated in time. These tests pin the time-weighted helper so a
+# regression to SoM/EoM averaging would fail loudly. The "day-28 spike"
+# scenario is what motivated the helper (real Maple/sUSDS-at-ALM flows
+# pattern).
+
+def test_tw_avg_flat_venue_returns_value_som():
+    """No inflows, stable position → tw_avg ≡ value_som."""
+    out = _time_weighted_avg_value(
+        _period(), Decimal("100000000"), _empty_inflow(),
+    )
+    assert out == Decimal("100000000")
+
+
+def test_tw_avg_day_28_spike_is_not_som_eom_avg():
+    """$300M deposited on day 28 of a 31-day month.
+
+    SoM/EoM avg = $150M. True time-weighted avg = 300M × 4 / 31 ≈ $38.7M.
+    The helper must return ~$38.7M, not $150M — the latter would inflate
+    this venue's CoF allocation by ~3.9× in the reporting sheet.
+    """
+    # Single inflow row on 2026-03-28; cum_inflow stays at 300M after.
+    inflow = pd.DataFrame({
+        "block_date":   [date(2026, 3, 28)],
+        "daily_inflow": [Decimal("300000000")],
+        "cum_inflow":   [Decimal("300000000")],
+    })
+    out = _time_weighted_avg_value(
+        _period(), Decimal("0"), inflow,
+    )
+    # Days 1–27 → $0; days 28–31 → $300M. Mean = 300M × 4 / 31.
+    expected = Decimal("300000000") * Decimal("4") / Decimal("31")
+    assert out == expected
+    # And not even close to SoM/EoM avg ($150M).
+    assert out < Decimal("50000000")
+
+
+def test_tw_avg_day_3_deposit_matches_long_duration():
+    """Mirror case: $300M deposited on day 3 → ~$280M tw_avg (not $150M)."""
+    inflow = pd.DataFrame({
+        "block_date":   [date(2026, 3, 3)],
+        "daily_inflow": [Decimal("300000000")],
+        "cum_inflow":   [Decimal("300000000")],
+    })
+    out = _time_weighted_avg_value(
+        _period(), Decimal("0"), inflow,
+    )
+    # Days 1–2 → $0; days 3–31 → $300M. Mean = 300M × 29 / 31.
+    expected = Decimal("300000000") * Decimal("29") / Decimal("31")
+    assert out == expected
+
+
+def test_tw_avg_outflow_mid_month():
+    """Position fully exits on day 15 — tw_avg should reflect the half-month presence."""
+    inflow = pd.DataFrame({
+        "block_date":   [date(2026, 3, 15)],
+        "daily_inflow": [Decimal("-100000000")],
+        "cum_inflow":   [Decimal("-100000000")],
+    })
+    out = _time_weighted_avg_value(
+        _period(), Decimal("100000000"), inflow,
+    )
+    # Days 1–14 → $100M; days 15–31 → $0. Mean = 100M × 14 / 31.
+    expected = Decimal("100000000") * Decimal("14") / Decimal("31")
+    assert out == expected
+
+
+def test_tw_avg_baseline_subtracted_for_pre_period_flows():
+    """Inflows before period.start are baseline, not counted in this period.
+
+    Reproduction: a venue with $50M deposited on Feb 20 (pre-period) and
+    no new flows in March should produce tw_avg = value_som ($50M) — the
+    Feb deposit is the SoM state, not a March flow.
+    """
+    inflow = pd.DataFrame({
+        "block_date":   [date(2026, 2, 20)],
+        "daily_inflow": [Decimal("50000000")],
+        "cum_inflow":   [Decimal("50000000")],
+    })
+    out = _time_weighted_avg_value(
+        _period(), Decimal("50000000"), inflow,
+    )
+    assert out == Decimal("50000000")

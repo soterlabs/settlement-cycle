@@ -27,6 +27,45 @@ from ..domain.sde import SDEEntry
 from ._helpers import cum_at_or_before
 
 
+def _time_weighted_avg_value(
+    period: Period,
+    value_som: Decimal,
+    inflow_timeseries: pd.DataFrame,
+) -> Decimal:
+    """Mean of daily principal across the period.
+
+        daily_position_d = value_som + (cum_inflow_d − cum_inflow_{som-1})
+        tw_avg = Σ_{d=start..end} daily_position_d / n_days
+
+    Captures the time-shape of principal flows (mid-month deposits and
+    withdrawals) that the simple ``(value_som + value_eom) / 2`` misses.
+    Downstream reporting uses this to allocate the CoF charge across venues
+    — a $300M deposit on day 28 of a 30-day month has a time-weighted avg
+    of ~$38M (not $150M), so its CoF share is 4× smaller than SoM/EoM avg
+    would suggest. Σ-totals are unaffected; only per-venue split changes.
+
+    Yield-driven token-price drift within the period is treated as
+    negligible (~0.3–0.7% / month at Sky-relevant rates) — only principal
+    flows are reflected here. Returns ``value_som`` if there are no
+    inflow rows (degenerate case: stable position throughout).
+    """
+    n_days = period.n_days
+    if n_days <= 0:
+        return value_som
+    if inflow_timeseries is None or inflow_timeseries.empty:
+        return value_som
+    cum_baseline = cum_at_or_before(
+        inflow_timeseries, "cum_inflow", period.start - timedelta(days=1),
+    )
+    total = Decimal("0")
+    d = period.start
+    while d <= period.end:
+        cum_d = cum_at_or_before(inflow_timeseries, "cum_inflow", d)
+        total += value_som + (cum_d - cum_baseline)
+        d += timedelta(days=1)
+    return total / Decimal(n_days)
+
+
 @dataclass(frozen=True, slots=True)
 class VenueRevenueInputs:
     """All Compute-layer inputs needed to value one venue across `period`."""
@@ -149,6 +188,10 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
     if inputs.actual_revenue_override is not None:
         actual_revenue = inputs.actual_revenue_override
         period_inflow = Decimal("0")
+        # Override venues (sUSDS spread at ALM) have a stable position
+        # roughly at value_som; the simple value_som is the best avg
+        # available without a daily series.
+        tw_avg_value = inputs.value_som
     else:
         inflow_df = inputs.inflow_timeseries
         cum_som = cum_at_or_before(
@@ -157,6 +200,9 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
         cum_eom = cum_at_or_before(inflow_df, "cum_inflow", period.end)
         period_inflow = cum_eom - cum_som
         actual_revenue = (inputs.value_eom - inputs.value_som) - period_inflow
+        tw_avg_value = _time_weighted_avg_value(
+            period, inputs.value_som, inflow_df,
+        )
 
     entry = inputs.sde_entry
     if (
@@ -192,6 +238,7 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
         sd_share=sd_share,
         sd_revenue=sd_revenue,
         external_revenue=inputs.external_revenue,
+        tw_avg_value=tw_avg_value,
     )
 
 
