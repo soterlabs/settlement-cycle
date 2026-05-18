@@ -331,7 +331,11 @@ def test_compute_sky_revenue_subtracts_usds_leg_only_routes_usdc_to_sde():
     # utilized = 100M − 0 − 30M (USDS leg) − 30M (USDC via SDE) = $40M
     # sUSDS leg ($30M) stays in the BR base; the prime gets a separate
     # 30 bps credit through ``_psm3_susds_spread`` (tested below).
-    expected = Decimal("40000000") * daily_compounding_factor(Decimal("0.05"))
+    from settle.compute._helpers import combine_apys
+    from settle.compute.sky_revenue import BASE_RATE_OVER_SSR as _BR_SPREAD
+    expected = Decimal("40000000") * daily_compounding_factor(
+        combine_apys(Decimal("0.047"), _BR_SPREAD)
+    )
     assert rev == expected
 
 

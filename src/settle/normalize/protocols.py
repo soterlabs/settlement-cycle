@@ -126,6 +126,12 @@ class IPsm3Source(Protocol):
         (18-decimal raw integer)."""
         ...
 
+    def convert_to_shares(self, chain: str, psm3: bytes, asset: bytes, amount: int, block: int) -> int:
+        """PSM3 ``convertToShares(asset, amount)`` — PSM3-share quantity for
+        ``amount`` (raw token units) of ``asset``. Used to price L2 sUSDS
+        against USDS by composing with ``convert_to_asset_value``."""
+        ...
+
 
 class IBlockResolver(Protocol):
     """Resolve block numbers ↔ UTC dates.

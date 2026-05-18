@@ -26,7 +26,12 @@ from decimal import Decimal
 import pandas as pd
 
 from ..domain.period import Period
-from ._helpers import cum_at_or_before, daily_compounding_factor, ssr_at_or_before
+from ._helpers import (
+    combine_apys,
+    cum_at_or_before,
+    daily_compounding_factor,
+    ssr_at_or_before,
+)
 
 # +20bps over SSR — the agent rate's component above SSR. For USDS in subproxy:
 # rate = SSR + 20bps. For sUSDS in subproxy: rate = 20bps (SSR already accrues
@@ -55,7 +60,9 @@ def compute_agent_rate(
         # USDS earns the full agent rate = SSR + 20bps.
         if cum_usds > 0:
             ssr_apy = ssr_at_or_before(ssr, current)
-            usds_apy = ssr_apy + AGENT_RATE_OVER_SSR
+            # APYs combine multiplicatively, not additively. See
+            # ``combine_apys`` in ``_helpers.py``.
+            usds_apy = combine_apys(ssr_apy, AGENT_RATE_OVER_SSR)
             total += cum_usds * daily_compounding_factor(usds_apy)
 
         if cum_susds > 0:

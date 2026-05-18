@@ -860,71 +860,89 @@ def _aggregate_curve_idle_usds(
         holder = (venue.holder_override or prime.alm[venue.chain]).value
         chain_str = venue.chain.value
 
+        # Per-VENUE last-known carry-forward state. Reading from the shared
+        # ``daily_util`` / ``daily_spread`` dicts would (a) carry the
+        # cross-venue aggregate, not this venue's prior value, and (b)
+        # compound on consecutive failures into a zero or doubled value.
+        # Keep per-venue state local to the venue's day loop.
+        venue_last_usds = Decimal(0)
+        venue_last_spread = Decimal(0)
+
         current = period.start
         while current <= period.end:
             eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
             prime_usds = Decimal(0)
             prime_spread = Decimal(0)
+            # Sentinel: when True, the day's computation produced no data
+            # (pool not yet seeded, configured coin absent), so we treat it
+            # as $0 deduction AND reset the venue carry-forward state to 0.
+            # Falling through to the accumulator at the bottom of the loop
+            # ensures the day is recorded in ``daily_util`` and not later
+            # filled by ``cum_at_or_before`` with a stale prior value.
+            zero_day = False
             try:
                 block = block_resolver.block_at_or_before(chain_str, eod)
                 pool_state = pool_src.read_pool(chain_str, pool_addr, block)
                 total_supply = pool_state.total_supply
+                coin_idx = None
                 if total_supply == 0:
-                    current = current + timedelta(days=1)
-                    continue
-
-                coin_idx = next(
-                    (i for i, c in enumerate(pool_state.coins) if c.value == target_coin),
-                    None,
-                )
-                if coin_idx is None:
-                    _log.warning(
-                        "curve_idle_usds: venue %s pool %s does not contain coin %s "
-                        "at block %d — skipping day %s.",
-                        venue.id, pool_addr.hex(), target_coin.hex(), block, current,
-                    )
-                    current = current + timedelta(days=1)
-                    continue
-
-                raw_coin_balance = pool_state.balances[coin_idx]
-                from ..domain.primes import Address as _Addr
-                alm_lp_raw = _balance_of(
-                    venue.chain, venue.token.address, _Addr(holder), block,
-                )
-                alm_lp = Decimal(alm_lp_raw) / Decimal(10 ** venue.token.decimals)
-                pool_total = Decimal(total_supply) / Decimal(10 ** venue.token.decimals)
-
-                if cfg.sky_savings_token:
-                    # sUSDS in LP: earn 30bps spread on prime's USDS-equivalent share.
-                    # No utilized deduction.
-                    yb = KNOWN_YIELD_BEARING_ETHEREUM.get(target_coin)
-                    if yb is None:
-                        raise ValueError(
-                            f"curve_idle_usds sky_savings_token=True for coin "
-                            f"{target_coin.hex()} but it is not in "
-                            "KNOWN_YIELD_BEARING_ETHEREUM — add it to sky_tokens.py."
-                        )
-                    _sym, share_decimals, _und, underlying_decimals = yb
-                    pps_raw = c2a.convert_to_assets(
-                        chain=chain_str, vault=target_coin,
-                        shares=10 ** share_decimals, block=block,
-                    )
-                    pps = Decimal(pps_raw) / Decimal(10 ** underlying_decimals)
-                    prime_susds_usds = (
-                        (alm_lp / pool_total)
-                        * (Decimal(raw_coin_balance) / Decimal(10 ** share_decimals))
-                        * pps
-                    ) if pool_total > 0 else Decimal(0)
-                    prime_spread = prime_susds_usds * spread_daily_factor
-                elif target_coin in KNOWN_YIELD_BEARING_ETHEREUM:
-                    # Yield-bearing but not sky_savings_token: data fetched for
-                    # future use; no utilized deduction and no spread revenue yet.
-                    pass
+                    zero_day = True
                 else:
-                    coin_usds = _par_stable_usds(target_coin, raw_coin_balance)
-                    prime_usds = (
-                        (alm_lp / pool_total) * coin_usds if pool_total > 0 else Decimal(0)
+                    coin_idx = next(
+                        (i for i, c in enumerate(pool_state.coins) if c.value == target_coin),
+                        None,
                     )
+                    if coin_idx is None:
+                        _log.warning(
+                            "curve_idle_usds: venue %s pool %s does not contain coin %s "
+                            "at block %d — recording $0 deduction for day %s.",
+                            venue.id, pool_addr.hex(), target_coin.hex(), block, current,
+                        )
+                        zero_day = True
+
+                if not zero_day:
+                    # Full success path: pool is seeded AND the configured
+                    # coin is in it. Compute the prime's share of the coin
+                    # reserve (par-stable) or the 30bps spread (sUSDS).
+                    raw_coin_balance = pool_state.balances[coin_idx]
+                    from ..domain.primes import Address as _Addr
+                    alm_lp_raw = _balance_of(
+                        venue.chain, venue.token.address, _Addr(holder), block,
+                    )
+                    alm_lp = Decimal(alm_lp_raw) / Decimal(10 ** venue.token.decimals)
+                    pool_total = Decimal(total_supply) / Decimal(10 ** venue.token.decimals)
+
+                    if cfg.sky_savings_token:
+                        # sUSDS in LP: earn 30bps spread on prime's USDS-equivalent share.
+                        # No utilized deduction.
+                        yb = KNOWN_YIELD_BEARING_ETHEREUM.get(target_coin)
+                        if yb is None:
+                            raise ValueError(
+                                f"curve_idle_usds sky_savings_token=True for coin "
+                                f"{target_coin.hex()} but it is not in "
+                                "KNOWN_YIELD_BEARING_ETHEREUM — add it to sky_tokens.py."
+                            )
+                        _sym, share_decimals, _und, underlying_decimals = yb
+                        pps_raw = c2a.convert_to_assets(
+                            chain=chain_str, vault=target_coin,
+                            shares=10 ** share_decimals, block=block,
+                        )
+                        pps = Decimal(pps_raw) / Decimal(10 ** underlying_decimals)
+                        prime_susds_usds = (
+                            (alm_lp / pool_total)
+                            * (Decimal(raw_coin_balance) / Decimal(10 ** share_decimals))
+                            * pps
+                        ) if pool_total > 0 else Decimal(0)
+                        prime_spread = prime_susds_usds * spread_daily_factor
+                    elif target_coin in KNOWN_YIELD_BEARING_ETHEREUM:
+                        # Yield-bearing but not sky_savings_token: data fetched for
+                        # future use; no utilized deduction and no spread revenue yet.
+                        pass
+                    else:
+                        coin_usds = _par_stable_usds(target_coin, raw_coin_balance)
+                        prime_usds = (
+                            (alm_lp / pool_total) * coin_usds if pool_total > 0 else Decimal(0)
+                        )
 
             except Exception as exc:
                 _log.warning(
@@ -932,9 +950,15 @@ def _aggregate_curve_idle_usds(
                     "prior value (error: %s).",
                     venue.id, current, type(exc).__name__,
                 )
-                prev = current - timedelta(days=1)
-                prime_usds = daily_util.get(prev, Decimal(0))
-                prime_spread = daily_spread.get(prev, Decimal(0))
+                # Use the THIS-VENUE's last-known successful value, not the
+                # cross-venue aggregate in ``daily_util`` — that was the
+                # source of the consecutive-failure → zero-out bug.
+                prime_usds = venue_last_usds
+                prime_spread = venue_last_spread
+            else:
+                # On success, update this venue's running carry-forward.
+                venue_last_usds = prime_usds
+                venue_last_spread = prime_spread
 
             daily_util[current] = daily_util.get(current, Decimal(0)) + prime_usds
             daily_spread[current] = daily_spread.get(current, Decimal(0)) + prime_spread
@@ -1015,6 +1039,12 @@ def _aggregate_lending_idle_usds(
         underlying_decimals = venue.underlying.decimals
         chain = venue.chain
 
+        # Per-venue carry-forward state (mirrors the fix in
+        # ``_aggregate_curve_idle_usds``): the shared ``daily_by_date`` is a
+        # cross-venue aggregate, so reading from it on failure would either
+        # zero-out (consecutive failures) or over-count (cross-venue pickup).
+        venue_last_idle = Decimal(0)
+
         current = period.start
         while current <= period.end:
             eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
@@ -1039,7 +1069,9 @@ def _aggregate_lending_idle_usds(
                     "prior value (error: %s).",
                     venue.id, current, type(exc).__name__,
                 )
-                prime_idle = daily_by_date.get(current - timedelta(days=1), Decimal(0))
+                prime_idle = venue_last_idle
+            else:
+                venue_last_idle = prime_idle
 
             daily_by_date[current] = daily_by_date.get(current, Decimal(0)) + prime_idle
             current = current + timedelta(days=1)
@@ -1713,6 +1745,93 @@ def compute_monthly_pnl(
                 # Prime Revenue = (BR − SSR) × value_som × n_days = 30bps spread.
                 # `value_som` already computed above via convertToAssets at SoM block.
                 from .sky_revenue import BASE_RATE_OVER_SSR
+
+                # On Ethereum the bridged sUSDS is ERC-4626 so ``value_som``
+                # from ``get_position_value`` has the right SoM pps. On L2
+                # the sUSDS deployment is a 1:1 ERC-20 with no
+                # ``convertToAssets`` — that call reverts and we silently
+                # got ``value_som = 0``, so the 30 bps credit collapsed to
+                # $0 even though the prime is holding hundreds of millions
+                # of sUSDS at the L2 ALM (Q-S25 / #75). Recompute via the
+                # local L2 PSM3 contract's two-call recipe
+                # ``convertToShares(sUSDS, 1e18) → convertToAssetValue``
+                # whenever the prime has a PSM3 configured on this chain.
+                #
+                # Note on the ``value_som == 0`` gate: ``get_position_value``
+                # short-circuits to ``Decimal(0)`` when balance is 0 OR when
+                # convertToAssets reverts. Both cases produce a value of 0;
+                # the inner ``balance_som > 0`` guard below routes the
+                # genuine-zero case (no L2 sUSDS held) past the recompute,
+                # leaving ``value_som = 0``. So the gate is correct for
+                # both situations even though it doesn't distinguish them.
+                if (
+                    venue.chain != Chain.ETHEREUM
+                    and venue.chain in prime.psm
+                    and value_som == 0
+                ):
+                    from ..normalize.positions import get_position_balance
+                    from ..normalize.registry import get_psm3_source
+                    # PSM3 ``convertToAssetValue`` always returns 18-decimal
+                    # USDS-equivalent regardless of input asset decimals.
+                    # Keep this scale next to the divisor to make the
+                    # dimensional reasoning obvious for future readers.
+                    _USDS_RAW_SCALE = Decimal(10**18)
+                    psm3_src = (
+                        sources.psm3 if sources.psm3 is not None
+                        else get_psm3_source()
+                    )
+                    psm3_addr = prime.psm[venue.chain].address.value
+                    balance_som = get_position_balance(
+                        prime, venue, som_block,
+                        source=sources.position_balance,
+                    )
+                    if balance_som > 0:
+                        # Wrap the PSM3 reads so a transient RPC failure
+                        # (or PSM3-contract revert at som_block) degrades to
+                        # the legacy ``value_som = 0`` rather than crashing
+                        # the entire cell. Logs the venue/chain so the
+                        # operator can see which L2 lost the credit.
+                        # ``DuneError`` is included because the active
+                        # ``IPsm3Source`` may be ``DunePsm3Source`` whose
+                        # ``convert_to_asset_value`` falls back to a Dune
+                        # query when the in-process pool history isn't
+                        # warm — a 402 mid-run would otherwise abort.
+                        from ..extract.dune import DuneError as _DuneError
+                        from ..extract.rpc import RPCError as _RPCError
+                        import requests as _requests
+                        try:
+                            unit = 10 ** venue.token.decimals
+                            n_shares = psm3_src.convert_to_shares(
+                                chain=venue.chain.value,
+                                psm3=psm3_addr,
+                                asset=venue.token.address.value,
+                                amount=unit,
+                                block=som_block,
+                            )
+                            if n_shares > 0:
+                                usds_raw = psm3_src.convert_to_asset_value(
+                                    chain=venue.chain.value,
+                                    psm3=psm3_addr,
+                                    num_shares=n_shares,
+                                    block=som_block,
+                                )
+                                pps = _Dec(usds_raw) / _USDS_RAW_SCALE
+                                value_som = balance_som * pps
+                                _log.info(
+                                    "  Cat B sub-case (a) L2 sUSDS pricing via PSM3 "
+                                    "for %s on %s: balance=%s pps=%s value_som=$%s",
+                                    venue.id, venue.chain.value,
+                                    balance_som, pps, value_som,
+                                )
+                        except (_RPCError, _DuneError, _requests.HTTPError,
+                                _requests.ConnectionError, _requests.Timeout) as _e:
+                            _log.warning(
+                                "  Cat B sub-case (a) L2 sUSDS pricing failed for "
+                                "%s on %s at block %d (%s) — leaving value_som=0; "
+                                "30bps credit silently dropped for this period.",
+                                venue.id, venue.chain.value, som_block, _e,
+                            )
+
                 spread_daily = daily_compounding_factor(BASE_RATE_OVER_SSR)
                 n_days = _Dec(str((period.end - period.start).days + 1))
                 susds_spread = value_som * spread_daily * n_days

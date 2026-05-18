@@ -146,6 +146,9 @@ def load_prime(config_path: Path) -> Prime:
                 curve_idle_usds=curve_idle_usds,
                 lending_idle_usds=bool(v.get("lending_idle_usds", False)),
                 sky_savings_token=bool(v.get("sky_savings_token", False)),
+                share_burn_destinations=[
+                    Address.from_str(a) for a in v.get("share_burn_destinations", [])
+                ],
             )
         )
 
