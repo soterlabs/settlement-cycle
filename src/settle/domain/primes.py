@@ -156,14 +156,6 @@ class Venue:
     # vault contract custodies underlying tokens on behalf of retail
     # depositors and the prime earns the yield spread.
     holder_override: Address | None = None
-    # Optional venue-level activation date. When set:
-    #   - If start_date > period.end   → venue is skipped entirely for that period.
-    #   - If start_date > period.start → value_som is forced to $0 (no SoM RPC
-    #     call) and the venue only contributes from start_date onward.
-    # Use for venues deployed mid-history where the RPC can't serve blocks
-    # predating deployment (e.g. new Monad pools run against a non-archive node).
-    # Defaults to None = active for the full prime history (prime.start_date).
-    start_date: "date | None" = None
     # Skip flag: when True, the venue is excluded from compute (no value, no
     # revenue, no inflow tracking). Use for venues whose underlying is too
     # volatile or whose oracle isn't trustworthy to include in MSC. The venue

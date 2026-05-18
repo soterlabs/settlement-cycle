@@ -1545,20 +1545,6 @@ def compute_monthly_pnl(
                 venue.id, venue.token.symbol, venue.chain.value,
             )
             continue
-        # Venue-level start_date: skip entirely if the venue hadn't been
-        # deployed by the end of this period; force value_som=$0 (no RPC call)
-        # if it was deployed after the period start (e.g. a new pool whose
-        # contract didn't exist at the SoM block).
-        if venue.start_date is not None and venue.start_date > period.end:
-            _log.info(
-                "  [skip] %s — venue.start_date %s is after period end %s.",
-                venue.id, venue.start_date, period.end,
-            )
-            continue
-        _venue_som_is_zero = (
-            venue.start_date is not None and venue.start_date > period.start
-        )
-
         # In sky_only mode, check the SDE table up-front so we can skip all
         # non-SDE venues before doing any RPC / pricing work.
         _early_sde = sde_table.overlaps_venue(prime.id, venue.id, period.start, period.end)
@@ -1566,13 +1552,13 @@ def compute_monthly_pnl(
             _log.info("  [sky_only] skipping %s (no active SDE entry)", venue.id)
             continue
 
+
         _venue_idx += 1
         _venue_t0 = _time.monotonic()
         _log.info(
-            "  [%d/%d] %s  %s/%s  starting...%s",
+            "  [%d/%d] %s  %s/%s  starting...",
             _venue_idx, n_venues, venue.id, venue.chain.value,
             venue.pricing_category.value,
-            f"  [start_date={venue.start_date}, som=$0]" if _venue_som_is_zero else "",
         )
         if venue.chain not in pin_blocks_som:
             raise ValueError(
@@ -1582,18 +1568,15 @@ def compute_monthly_pnl(
         som_block = pin_blocks_som[venue.chain]
         eom_block = pin_blocks_eom[venue.chain]
 
-        if _venue_som_is_zero:
-            value_som = Decimal("0")
-        else:
-            value_som = get_position_value(
-                prime, venue, som_block,
-                balance_source=sources.position_balance,
-                erc4626_source=sources.convert_to_assets,
-                v3_position_source=sources.v3_position,
-                curve_pool_source=sources.curve_pool,
-                block_resolver=resolver,
-                nav_oracle_resolver=sources.nav_oracle_resolver,
-            )
+        value_som = get_position_value(
+            prime, venue, som_block,
+            balance_source=sources.position_balance,
+            erc4626_source=sources.convert_to_assets,
+            v3_position_source=sources.v3_position,
+            curve_pool_source=sources.curve_pool,
+            block_resolver=resolver,
+            nav_oracle_resolver=sources.nav_oracle_resolver,
+        )
         value_eom = get_position_value(
             prime, venue, eom_block,
             balance_source=sources.position_balance,

@@ -129,11 +129,6 @@ def load_prime(config_path: Path) -> Prime:
                     if v.get("holder_override")
                     else None
                 ),
-                start_date=(
-                    date.fromisoformat(v["start_date"])
-                    if v.get("start_date")
-                    else None
-                ),
                 skip=bool(v.get("skip", False)),
                 cash_distributions=[
                     CashDistributionSource(
