@@ -426,17 +426,35 @@ def _merkl_claims_revenue_usd(
     user_padded_hex = "00" * 12 + prime.alm[venue.chain].value.hex()
 
     queries_dir = _Path(__file__).resolve().parent.parent / "queries"
-    df = execute_query(
-        queries_dir / sql_name,
-        params={
-            "distributor":     distributor.value,
-            "user_padded_hex": user_padded_hex,
-            "atoken":          venue.token.address.value,
-            "start_date":      period.start.isoformat(),
-            "end_date":        period.end.isoformat(),
-        },
-        pin_block=period.pin_blocks[venue.chain],
-    )
+    # Wrap the Dune call so a 402 / network blip degrades the venue to $0
+    # external revenue instead of crashing the whole cell — same pattern as
+    # the DunePsm3Source preload guard. Under-counts (a real Merkl claim is
+    # silently dropped) but the alternative is total failure of every
+    # downstream venue. Logged loud so the operator notices.
+    from ..extract.dune import DuneError as _DuneError
+    import requests as _requests
+    import logging as _logging
+    try:
+        df = execute_query(
+            queries_dir / sql_name,
+            params={
+                "distributor":     distributor.value,
+                "user_padded_hex": user_padded_hex,
+                "atoken":          venue.token.address.value,
+                "start_date":      period.start.isoformat(),
+                "end_date":        period.end.isoformat(),
+            },
+            pin_block=period.pin_blocks[venue.chain],
+        )
+    except (_DuneError, _requests.HTTPError, _requests.ConnectionError,
+            _requests.Timeout) as _e:
+        _logging.getLogger(__name__).warning(
+            "_merkl_claims_revenue_usd: Dune query failed for venue %s on %s "
+            "(%s) — returning $0 external revenue. Common causes: Dune credits "
+            "exhausted (402), throttling (429), or transient network / DNS.",
+            venue.id, venue.chain.value, _e,
+        )
+        return _Decimal("0")
     if df is None or df.empty:
         return _Decimal("0")
     raw = df["total_amount_raw"].iloc[0]
@@ -470,18 +488,34 @@ def _atoken_transfer_revenue_usd(
     from decimal import Decimal as _Decimal
 
     queries_dir = _Path(__file__).resolve().parent.parent / "queries"
-    df = execute_query(
-        queries_dir / "atoken_external_inflow.sql",
-        params={
-            "chain":      venue.chain.value,
-            "token":      venue.token.address.value,
-            "holder":     prime.alm[venue.chain].value,
-            "sender":     sender.value,
-            "start_date": period.start.isoformat(),
-            "end_date":   period.end.isoformat(),
-        },
-        pin_block=period.pin_blocks[venue.chain],
-    )
+    # Same Dune-degradation guard as ``_merkl_claims_revenue_usd``: a 402 or
+    # transient transport error returns $0 instead of crashing the cell.
+    from ..extract.dune import DuneError as _DuneError
+    import requests as _requests
+    import logging as _logging
+    try:
+        df = execute_query(
+            queries_dir / "atoken_external_inflow.sql",
+            params={
+                "chain":      venue.chain.value,
+                "token":      venue.token.address.value,
+                "holder":     prime.alm[venue.chain].value,
+                "sender":     sender.value,
+                "start_date": period.start.isoformat(),
+                "end_date":   period.end.isoformat(),
+            },
+            pin_block=period.pin_blocks[venue.chain],
+        )
+    except (_DuneError, _requests.HTTPError, _requests.ConnectionError,
+            _requests.Timeout) as _e:
+        _logging.getLogger(__name__).warning(
+            "_atoken_transfer_revenue_usd: Dune query failed for venue %s on %s "
+            "(sender=%s, %s) — returning $0 external revenue. Common causes: "
+            "Dune credits exhausted (402), throttling (429), or transient "
+            "network / DNS.",
+            venue.id, venue.chain.value, sender.value.hex(), _e,
+        )
+        return _Decimal("0")
     if df is None or df.empty:
         return _Decimal("0")
     raw = df["total_amount"].iloc[0]
@@ -1026,11 +1060,58 @@ def _shares_to_usd_inflow_timeseries(
         from_addr=holder.value, to_addr=zero_addr,
         start=prime.start_date, pin_block=pin_block,
     )
+    # Withdrawal-queue Transfers: vaults with a cooldown queue (Maple PoolV2,
+    # any ERC-4626 with deferred redemptions) Transfer the user's shares to
+    # a queue contract before the in-tx burn. Without netting these against
+    # the gross-mint side, the inflow classifier sees a phantom loss equal
+    # to the gross redeem amount. See ``Venue.share_burn_destinations`` and
+    # Q-S26 in QUESTIONS.md.
+    # Wrap each burn-destination query in a Dune-degradation guard: if the
+    # underlying source 402s / times out, fall back to an empty frame for
+    # that destination (i.e. don't net the redemption, accept the phantom
+    # loss for that month rather than crash the cell).
+    #
+    # Net BOTH directions: ALM→queue is a burn (sign=−1) AND queue→ALM is
+    # a refund (sign=+1, cancelled/partial-fulfillment redemptions). Without
+    # the symmetric refund leg the closed-form formula over-debits any month
+    # where Maple returns shares to the ALM (verified for Spark S15 in
+    # 2026-04: 21.5M syrupUSDT shares came back from the queue, which we
+    # must add to the inflow side or revenue is over-credited by ~$23M).
+    from ..extract.dune import DuneError as _DuneError
+    import requests as _requests
+    import logging as _logging
+    queue_flow_dfs: list = []  # list of (df, sign)
+    for q in venue.share_burn_destinations:
+        for (frm, to, sign, _label) in (
+            (holder.value, q.value,      -1, "ALM→queue (burn)"),
+            (q.value,      holder.value, +1, "queue→ALM (refund)"),
+        ):
+            try:
+                qdf = balance_source.directed_inflow_timeseries(
+                    chain=venue.chain.value, token=venue.token.address.value,
+                    from_addr=frm, to_addr=to,
+                    start=prime.start_date, pin_block=pin_block,
+                )
+            except (_DuneError, _requests.HTTPError, _requests.ConnectionError,
+                    _requests.Timeout) as _e:
+                _logging.getLogger(__name__).warning(
+                    "_shares_to_usd_inflow_timeseries: %s query failed for "
+                    "venue %s (queue=%s, %s) — accepting partial accounting "
+                    "for this period. Cause: Dune credits exhausted (402) / "
+                    "throttling / transient network.",
+                    _label, venue.id, q.hex, _e,
+                )
+                qdf = pd.DataFrame(
+                    {"block_date": [], "daily_inflow": [], "cum_inflow": []},
+                )
+            queue_flow_dfs.append((qdf, sign))
 
     # Per-day signed share net = mints − burns. Coerce both sides to Decimal
     # so the running cumsum stays on the Decimal contract.
     by_date: dict = {}
-    for df, sign in ((mint_df, 1), (burn_df, -1)):
+    burn_sources: list = [(mint_df, 1), (burn_df, -1)]
+    burn_sources.extend(queue_flow_dfs)
+    for df, sign in burn_sources:
         if df.empty:
             continue
         for _, row in df.iterrows():

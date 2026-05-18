@@ -117,6 +117,9 @@ rates:
   - effective_date: '2026-03-30'
     tbill_3m_apy: 0.0358
     effr_apy: 0.0433
-  # NB: April–May 2026 not yet populated. Settlement runs covering those
-  # months will carry-forward the 2026-03-30 rate (loud warning emitted by
-  # ReferenceRateHistory.at when carry-forward span exceeds 21 days).
+  # NB: April–May 2026 not yet populated.
+  #   * April: settlement carries forward the 2026-03-30 rate (up to 31
+  #     days stale → loud WARNING from ReferenceRateHistory.at).
+  #   * May:   carry-forward exceeds 45 days mid-month → FATAL
+  #     ValueError raised in compute_sky_revenue_daily. Populate before
+  #     running May 2026 settlement (see _STALE_CARRY_FORWARD_FATAL_DAYS).

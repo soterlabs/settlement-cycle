@@ -88,6 +88,11 @@ class ReferenceRateHistory:
     # rates moved often enough that quietly using a 3-week-old value is
     # almost always a forgotten config update, not an intentional choice.
     _STALE_CARRY_FORWARD_DAYS = 21
+    # Beyond this span, fail loud rather than silently feed a stale rate
+    # into the subsidy formula — a 30+-day-old reference rate is almost
+    # certainly a forgotten YAML update and silently using it produces a
+    # materially wrong sky_revenue for the entire month.
+    _STALE_CARRY_FORWARD_FATAL_DAYS = 45
 
     def at(self, target: date) -> Decimal:
         eligible = self.rates[self.rates["effective_date"] <= target]
@@ -99,6 +104,15 @@ class ReferenceRateHistory:
         idx = eligible["effective_date"].idxmax()
         latest = eligible.loc[idx, "effective_date"]
         stale_days = (target - latest).days
+        if stale_days > self._STALE_CARRY_FORWARD_FATAL_DAYS:
+            raise ValueError(
+                f"Reference rate ({self.kind}) for {target} carried forward "
+                f"from {latest} ({stale_days} days stale, > "
+                f"{self._STALE_CARRY_FORWARD_FATAL_DAYS}d fatal threshold). "
+                "Update config/subsidy_reference_rates.yaml with rates for "
+                "the missing days — silently using a month-old rate would "
+                "materially mis-price the subsidy."
+            )
         if stale_days > self._STALE_CARRY_FORWARD_DAYS:
             _log.warning(
                 "Reference rate (%s) for %s carried forward from %s "
