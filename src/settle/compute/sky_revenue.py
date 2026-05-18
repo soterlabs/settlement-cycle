@@ -248,7 +248,7 @@ def compute_sky_revenue_daily(
             # ``ssr_apy + 30bps`` loses the cross-term ``ssr_apy × 30bps``
             # (~1.2 bps at SSR=4%). See ``combine_apys`` in ``_helpers.py``.
             base_apy = combine_apys(ssr_apy, BASE_RATE_OVER_SSR)
-            if use_subsidy:
+            if use_subsidy and current >= subsidy_config.program_start:
                 cap              = subsidy_config.cap_usd
                 subsidised_part  = min(utilized, cap)
                 excess_part      = max(Decimal("0"), utilized - cap)

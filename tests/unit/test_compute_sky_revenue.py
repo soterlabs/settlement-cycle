@@ -11,6 +11,7 @@ import pytest
 from settle.compute._helpers import combine_apys, daily_compounding_factor
 from settle.compute.sky_revenue import BASE_RATE_OVER_SSR, compute_sky_revenue
 from settle.domain import Chain, Period
+from settle.domain.subsidy import ReferenceRateHistory, SubsidyConfig
 
 
 def _period(start: date, end: date) -> Period:
@@ -136,3 +137,46 @@ def test_skips_days_when_utilized_is_negative():
 def test_borrow_rate_spread_is_30_bps():
     """Constant from RULES.md Rule 4: borrow rate = SSR + 0.30%."""
     assert BASE_RATE_OVER_SSR == Decimal("0.003")
+
+
+def test_subsidy_enabled_but_period_before_program_start():
+    """Periods before program_start (2026-01-01) must not call ref_rate_history.at
+    and must fall back to full BR — the subsidy hadn't started yet.
+
+    Regression for: ValueError: No reference rate found ≤ 2025-12-01.
+    The ref_rate_history here intentionally has no entries before 2026-01-01
+    to confirm the guard prevents the lookup.
+    """
+    period = _period(date(2025, 12, 1), date(2025, 12, 31))
+    debt_df = pd.DataFrame({"block_date": [date(2025, 11, 1)], "cum_debt": [100_000_000.0]})
+    ssr_df  = _ssr_const(0.04)
+
+    subsidy = SubsidyConfig(
+        enabled=True,
+        program_start=date(2026, 1, 1),
+        cap_usd=Decimal("1000000000"),
+        ramp_months=24,
+        ref_rate_kind="tbill_3m",
+    )
+    # Intentionally empty before 2026-01-01 — the fix must not reach .at()
+    ref_rates = ReferenceRateHistory(
+        rates=pd.DataFrame({
+            "effective_date": [date(2026, 1, 1)],
+            "ref_rate_apy":   [Decimal("0.0367")],
+        }),
+        kind="tbill_3m",
+    )
+
+    rev = compute_sky_revenue(
+        period,
+        debt=debt_df,
+        alm_usds=_empty(["block_date", "cum_balance"]),
+        ssr=ssr_df,
+        subsidy_config=subsidy,
+        ref_rate_history=ref_rates,
+    )
+
+    # Expect full BR (no subsidy) for all 31 days of Dec 2025.
+    base_apy = combine_apys(Decimal("0.04"), BASE_RATE_OVER_SSR)
+    expected = Decimal("100000000") * 31 * daily_compounding_factor(base_apy)
+    assert rev == expected
