@@ -40,6 +40,12 @@ def render_provenance(
             "prime_agent_revenue": str(pnl.prime_agent_revenue),
             "distribution_rewards": str(pnl.distribution_rewards),
             "prime_agent_total_revenue": str(pnl.prime_agent_total_revenue),
+            # 30 bps Prime Revenue components computed outside the venue loop
+            # (PRD §17.11). Surfaced here so downstream reporting can
+            # reconcile Σ venue.revenue with prime_agent_revenue. Both are
+            # zero for primes without sUSDS-in-Curve or PSM3 positions.
+            "curve_susds_spread": str(pnl.curve_susds_spread),
+            "psm3_susds_spread": str(pnl.psm3_susds_spread),
         },
         "venue_breakdown": [
             {

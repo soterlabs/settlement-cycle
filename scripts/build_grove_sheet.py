@@ -191,6 +191,13 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
     headline_sky    = _D(prov["results"]["sky_revenue"])
     headline_prime  = _D(prov["results"]["prime_agent_revenue"])
     headline_agent  = _D(prov["results"]["agent_rate"])
+    # 30 bps Prime Revenue components computed outside the venue loop
+    # (PRD §17.11). Missing on settlements written before
+    # ``curve_susds_spread`` / ``psm3_susds_spread`` were surfaced in
+    # provenance.json — fall back to 0 for those legacy files.
+    curve_spread = _D(prov["results"].get("curve_susds_spread") or 0)
+    psm3_spread  = _D(prov["results"].get("psm3_susds_spread")  or 0)
+    aggregate_susds_spread = curve_spread + psm3_spread
 
     sde = _load_sde_entries(prime_id, period_start)
     rows = _read_venues(venues_csv)
@@ -223,6 +230,29 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
             "revenue":    _D(r["revenue"]),       # already net of SDE
             "sd_revenue": sd_revenue,
             "note":       note,
+        })
+
+    # Synthetic row: 30 bps Prime Revenue components computed outside the
+    # venue loop (Curve LP sUSDS + PSM3 sUSDS leg). Required so that
+    # Σ vr.revenue ≡ prime_agent_revenue — without it the reconciliation
+    # footer drifts by the spread amount for any prime holding sUSDS in
+    # Curve LP pools or PSM3 (Spark today; future primes likewise).
+    # Weight=0 keeps it out of the CoF allocation pool. Note column flags
+    # the aggregate so the row's prime-only attribution is explicit.
+    if aggregate_susds_spread != 0:
+        enriched.append({
+            "venue_id":   "SPREAD",
+            "label":      "30bps sUSDS spread (Curve LP + PSM3 aggregate)",
+            "value_som":  Decimal("0"),
+            "value_eom":  Decimal("0"),
+            "avg_value":  Decimal("0"),
+            "sd_share":   Decimal("0"),
+            "weight":     Decimal("0"),
+            "actual_rev": aggregate_susds_spread,
+            "external":   Decimal("0"),
+            "revenue":    aggregate_susds_spread,
+            "sd_revenue": Decimal("0"),
+            "note":       "prime-only (no CoF; computed outside venue loop)",
         })
 
     # CoF on Net_Subs = sky_revenue minus the SDE-revenue portion that flows
