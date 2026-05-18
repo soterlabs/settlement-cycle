@@ -130,7 +130,7 @@ def _classify(row: dict, sde: dict[str, dict]) -> tuple[Decimal, Decimal, str]:
     venue_id = row["venue_id"]
     actual = _D(row["actual_revenue"])
     revenue = _D(row["revenue"])
-    external = _D(row["external_revenue"])
+    external = _D(row.get("external_revenue") or 0)
     # revenue = actual − sd_revenue + external_revenue  (post-2026-05-02 model)
     # → sd_revenue = actual + external − revenue
     inferred_sd_revenue = actual + external - revenue
@@ -194,7 +194,7 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
             "sd_share":   sd_share,
             "weight":     weight,
             "actual_rev": _D(r["actual_revenue"]),
-            "external":   _D(r["external_revenue"]),
+            "external":   _D(r.get("external_revenue") or 0),
             "revenue":    _D(r["revenue"]),       # already net of SDE
             "sd_revenue": sd_revenue,
             "note":       note,
