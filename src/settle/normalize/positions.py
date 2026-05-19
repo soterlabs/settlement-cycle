@@ -13,7 +13,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 from ..domain.primes import Chain, Prime, Venue
-from ..domain.sky_tokens import KNOWN_PAR_STABLES_ETHEREUM
+from ..domain.sky_tokens import KNOWN_PAR_STABLES_ETHEREUM, PAR_STABLES_BY_CHAIN
 from ..extract.dune import execute_query
 from .prices import UnsupportedPricingError, get_unit_price
 from .protocols import IConvertToAssetsSource, IPositionBalanceSource, IV3PositionSource
@@ -48,7 +48,7 @@ def get_position_balance(
             f"Venue {venue.id} (Uni V3): no scalar balance defined for non-fungible "
             "NFT positions. Call get_position_value(prime, venue, block) instead."
         )
-    holder = prime.alm[venue.chain]
+    holder = venue.holder_override or prime.alm[venue.chain]
     src = source if source is not None else get_position_balance_source()
     raw = src.balance_at(
         chain=venue.chain.value,
@@ -124,12 +124,14 @@ def _uniswap_v3_value(
     Phase 2.A.5 only handles par-stable underlyings on Ethereum. Pools with
     yield-bearing or non-par tokens raise ``UnsupportedPricingError``.
     """
-    if venue.chain.value != "ethereum":
+    registry = PAR_STABLES_BY_CHAIN.get(venue.chain)
+    if registry is None:
         raise UnsupportedPricingError(
-            f"Venue {venue.id}: V3 pricing only registered for ethereum in Phase 2.A "
-            f"(needed: par-stable registry for chain {venue.chain.value!r})"
+            f"Venue {venue.id}: no par-stable registry for chain {venue.chain.value!r} "
+            "— add the chain's par-stable token addresses to PAR_STABLES_BY_CHAIN "
+            "in sky_tokens.py."
         )
-    holder = prime.alm[venue.chain]
+    holder = venue.holder_override or prime.alm[venue.chain]
     positions = source.positions_in_pool(
         chain=venue.chain.value,
         owner=holder.value,
@@ -138,8 +140,6 @@ def _uniswap_v3_value(
     )
     if not positions:
         return Decimal("0")
-
-    registry = KNOWN_PAR_STABLES_ETHEREUM
     total = Decimal("0")
     for p in positions:
         for token, amount_raw in ((p.token0, p.amount0), (p.token1, p.amount1)):
@@ -181,11 +181,7 @@ def _uniswap_v3_inflow_timeseries(
     """
     import pandas as pd
 
-    if venue.chain.value != "ethereum":
-        raise UnsupportedPricingError(
-            f"Venue {venue.id}: V3 inflow only registered for ethereum in Phase 2.A"
-        )
-    holder = prime.alm[venue.chain]
+    holder = venue.holder_override or prime.alm[venue.chain]
     events = source.liquidity_events_in_pool(
         chain=venue.chain.value,
         owner=holder.value,
@@ -223,12 +219,14 @@ def _uniswap_v3_inflow_timeseries(
             "found at from_block or to_block — pool-token lookup unsupported."
         )
     ref = snapshot[0]
-    info0 = KNOWN_PAR_STABLES_ETHEREUM.get(ref.token0.value)
-    info1 = KNOWN_PAR_STABLES_ETHEREUM.get(ref.token1.value)
+    _registry = PAR_STABLES_BY_CHAIN.get(venue.chain, KNOWN_PAR_STABLES_ETHEREUM)
+    info0 = _registry.get(ref.token0.value)
+    info1 = _registry.get(ref.token1.value)
     if info0 is None or info1 is None:
         raise UnsupportedPricingError(
-            f"Venue {venue.id}: V3 pool tokens not in par-stable registry — "
-            "recursive pricing is Phase 2.B+."
+            f"Venue {venue.id}: V3 pool tokens not in par-stable registry for "
+            f"chain {venue.chain.value!r} — add them to PAR_STABLES_BY_CHAIN "
+            "in sky_tokens.py."
         )
     _, dec0 = info0
     _, dec1 = info1
@@ -423,7 +421,7 @@ def _merkl_claims_revenue_usd(
     # against ``ethereum.logs.contract_address`` on the Mint side to attribute
     # the Claimed amount to this venue without needing the (Merkl-internal)
     # staticAToken address in config.
-    user_padded_hex = "00" * 12 + prime.alm[venue.chain].value.hex()
+    user_padded_hex = "00" * 12 + (venue.holder_override or prime.alm[venue.chain]).value.hex()
 
     queries_dir = _Path(__file__).resolve().parent.parent / "queries"
     # Wrap the Dune call so a 402 / network blip degrades the venue to $0
@@ -499,7 +497,7 @@ def _atoken_transfer_revenue_usd(
             params={
                 "chain":      venue.chain.value,
                 "token":      venue.token.address.value,
-                "holder":     prime.alm[venue.chain].value,
+                "holder":     (venue.holder_override or prime.alm[venue.chain]).value,
                 "sender":     sender.value,
                 "start_date": period.start.isoformat(),
                 "end_date":   period.end.isoformat(),
@@ -610,7 +608,7 @@ def _atoken_index_weighted_inflow(
     import pandas as pd
     from decimal import Decimal as _D
 
-    holder = prime.alm[venue.chain]
+    holder = venue.holder_override or prime.alm[venue.chain]
     chain_value = venue.chain.value
     token_addr = venue.token.address.value
 
@@ -759,7 +757,7 @@ def _erc4626_shares_weighted_inflow(
     import pandas as pd
     from decimal import Decimal as _D
 
-    holder = prime.alm[venue.chain]
+    holder = venue.holder_override or prime.alm[venue.chain]
     chain_value = venue.chain.value
     token_addr = venue.token.address.value
 
@@ -815,7 +813,7 @@ def _cat_a_capital_inflow_timeseries(
     """
     import pandas as pd
 
-    holder = prime.alm[venue.chain]
+    holder = venue.holder_override or prime.alm[venue.chain]
     pin_block = period.pin_blocks[venue.chain]
 
     detail = balance_source.inflow_by_counterparty(
@@ -971,7 +969,7 @@ def _rwa_inflow_timeseries(
     import pandas as pd
     from datetime import datetime, time, timezone
 
-    holder = prime.alm[venue.chain]
+    holder = venue.holder_override or prime.alm[venue.chain]
     pin_block = period.pin_blocks[venue.chain]
 
     # Optional per-venue filter: drop sub-threshold transfers (e.g. BUIDL-I
@@ -1046,7 +1044,7 @@ def _shares_to_usd_inflow_timeseries(
     import pandas as pd
     from datetime import datetime, time, timezone
 
-    holder = prime.alm[venue.chain]
+    holder = venue.holder_override or prime.alm[venue.chain]
     zero_addr = b"\x00" * 20
     pin_block = period.pin_blocks[venue.chain]
 
@@ -1178,7 +1176,7 @@ def _curve_lp_index_weighted_inflow(
             f"Venue {venue.id}: Curve inflow only registered for ethereum in Phase 2.A"
         )
 
-    holder = prime.alm[venue.chain]
+    holder = venue.holder_override or prime.alm[venue.chain]
     chain_value = venue.chain.value
     pool_addr = venue.token.address.value
 

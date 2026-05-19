@@ -260,6 +260,38 @@ venues:
       decimals: 0    # not an ERC-20; positions are NFTs
     nft_position_manager: '0xc36442b4a4522e871399cd717abdd847ab11fe88'
 
+  - id: E30
+    chain: ethereum
+    label: 'Uniswap V3 AUSD/USDC pool (NFT positions — alt holder)'
+    pricing_category: F
+    lp_kind: uniswap_v3
+    token:
+      address: '0xbafead7c60ea473758ed6c6021505e8bbd7e8e5d'
+      symbol: 'AUSDUSDC-UNI3'
+      decimals: 0    # not an ERC-20; positions are NFTs
+    nft_position_manager: '0xc36442b4a4522e871399cd717abdd847ab11fe88'
+    holder_override: '0x94b398acb2fce988871218221ea6a4a2b26cccbc'
+
+  - id: E33
+    chain: monad
+    label: 'Uniswap V3 AUSD/USDC pool (Monad, NFT positions)'
+    pricing_category: F
+    lp_kind: uniswap_v3
+    token:
+      # Uni V3 pool address on Monad; positions are NFTs tracked by the NFPM below.
+      # AUSD: 0x00000000efe302beaa2b3e6e1b18d08d69a9012a (same deployer salt as Eth)
+      # USDC: 0x754704bc059f8c67012fed69bc8a327a5aafb603 (Monad-native)
+      address: '0x6b405dca74897c9442d369dcf6c0ec230f7e1c7c'
+      symbol: 'AUSDUSDC-UNI3-MON'
+      decimals: 0    # not an ERC-20; positions are NFTs
+    nft_position_manager: '0x7197e214c0b767cfb76fb734ab638e2c192f4e53'
+    holder_override: '0x94b398acb2fce988871218221ea6a4a2b26cccbc'
+    # Note: Monad is not in Dune's spellbook, so liquidity-event inflow
+    # tracking is not viable (the V3 inflow path relies on Dune's
+    # uniswap_v3.liquidity_events spell). The pipeline falls back to
+    # revenue = Δvalue (value_eom − value_som), which is exact when
+    # there are no add/remove events during the period.
+
   # ---- E13–E18 : raw idle holdings on the ALM proxy ----
   # PRD §4.1: anything Grove holds outside an active venue still belongs to
   # the prime's book. Without these, Σ value < cum_debt by ~13% (Phase 2.A.6
@@ -284,6 +316,16 @@ venues:
       symbol: 'AUSD'
       decimals: 6
 
+  - id: E31
+    chain: ethereum
+    label: 'AUSD raw (alt holder idle)'
+    pricing_category: A
+    token:
+      address: '0x00000000efe302beaa2b3e6e1b18d08d69a9012a'
+      symbol: 'AUSD'
+      decimals: 6
+    holder_override: '0x94b398acb2fce988871218221ea6a4a2b26cccbc'
+
   - id: E15
     chain: ethereum
     label: 'USDC raw (ALM idle)'
@@ -292,6 +334,16 @@ venues:
       address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
       symbol: 'USDC'
       decimals: 6
+
+  - id: E32
+    chain: ethereum
+    label: 'USDC raw (alt holder idle)'
+    pricing_category: A
+    token:
+      address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+      symbol: 'USDC'
+      decimals: 6
+    holder_override: '0x94b398acb2fce988871218221ea6a4a2b26cccbc'
 
   - id: E16
     chain: ethereum
@@ -517,6 +569,26 @@ venues:
       address: '0x00000000efe302beaa2b3e6e1b18d08d69a9012a'
       symbol: 'AUSD'
       decimals: 6
+
+  - id: E34
+    chain: monad
+    label: 'AUSD raw (Monad, alt holder idle)'
+    pricing_category: A
+    token:
+      address: '0x00000000efe302beaa2b3e6e1b18d08d69a9012a'
+      symbol: 'AUSD'
+      decimals: 6
+    holder_override: '0x94b398acb2fce988871218221ea6a4a2b26cccbc'
+
+  - id: E35
+    chain: monad
+    label: 'USDC raw (Monad, alt holder idle)'
+    pricing_category: A
+    token:
+      address: '0x754704bc059f8c67012fed69bc8a327a5aafb603'
+      symbol: 'USDC'
+      decimals: 6
+    holder_override: '0x94b398acb2fce988871218221ea6a4a2b26cccbc'
 
   # Plume venues — held $0 throughout Q1 2026 (wound down Oct 2025) but
   # listed for completeness with Grove team's inventory. Bridged-token
