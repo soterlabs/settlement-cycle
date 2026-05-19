@@ -74,25 +74,25 @@ def _bold_header(ws, row: int, ncols: int) -> None:
 
 def _read_grove_sheet_csv(cell_dir: Path) -> list[dict]:
     rows: list[dict] = []
-    with (cell_dir / "grove_sheet.csv").open() as f:
+    with (cell_dir / "grove_sheet.csv").open(encoding="utf-8") as f:
         for r in csv.DictReader(f):
             rows.append(r)
     return rows
 
 
 def _read_provenance(cell_dir: Path) -> dict:
-    with (cell_dir / "provenance.json").open() as f:
+    with (cell_dir / "provenance.json").open(encoding="utf-8") as f:
         return json.load(f)
 
 
 def _read_prime_config(prime_id: str) -> dict:
     p = _REPO / "config" / f"{prime_id}.yaml"
-    with p.open() as f:
+    with p.open(encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
 def _read_sde(prime_id: str, period_start: date) -> dict[str, dict]:
-    with (_REPO / "config" / "sky_direct_exposures.yaml").open() as f:
+    with (_REPO / "config" / "sky_direct_exposures.yaml").open(encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
     out: dict[str, dict] = {}
     for section in ("active", "historical"):
@@ -132,13 +132,13 @@ def _write_headline(ws, prov: dict, sheet_rows: list[dict]) -> None:
         ("Σ Profit to Sky ≡ sky_revenue",                                 sky),
         ("    ↳ CoF on Net_Subs (BR × utilized)",                         cof),
         ("    ↳ SDE revenue (full flow to Sky)",                          sd),
-        ("Σ Profit to Grove (= prime_agent_revenue − CoF)",               p2g_sum),
+        ("Σ Grove Net Payment (= prime_agent_revenue − CoF)",             p2g_sum),
         ("    ↳ prime_agent_revenue (per-venue gross venue yield total)", par),
         ("    ↳ CoF deducted by Grove (= CoF above)",                     -cof),
         ("agent_rate (subproxy yield, off-sheet)",                        ar),
         ("",                                                              None),
         ("Reconciliation drift Σ P2S − sky_revenue (must be ~0)",         sum((_D(r["profit_to_sky"]) for r in sheet_rows), Decimal("0")) - sky),
-        ("Reconciliation drift (Σ P2G + CoF) − prime_agent_revenue",      p2g_sum + cof - par),
+        ("Reconciliation drift (Σ GNP + CoF) − prime_agent_revenue",      p2g_sum + cof - par),
     ]
     for label, val in rows:
         ws.append([label, float(val) if val is not None else None])
@@ -155,7 +155,7 @@ def _write_headline(ws, prov: dict, sheet_rows: list[dict]) -> None:
 def _write_summary_comp(ws, sheet_rows: list[dict]) -> None:
     ws.title = "Summary Comp"
     cols = ["Venue ID", "Label", "Avg Value", "Weight", "Profit to Sky",
-            "Profit to Grove", "CoF Allocation", "SDE Revenue",
+            "Revenue", "Grove Net Payment", "CoF Allocation", "SDE Revenue",
             "Position (SoM)", "Position (EoM)", "Notes"]
     ws.append(cols)
     _bold_header(ws, 1, len(cols))
@@ -168,6 +168,7 @@ def _write_summary_comp(ws, sheet_rows: list[dict]) -> None:
             float(r["avg_value"]),
             float(r["weight"]),
             float(r["profit_to_sky"]),
+            float(r["revenue"]),
             float(r["profit_to_grove"]),
             float(r["cof_alloc"]),
             float(r["sd_revenue"]),
@@ -175,13 +176,13 @@ def _write_summary_comp(ws, sheet_rows: list[dict]) -> None:
             float(r["value_eom"]),
             r.get("note", ""),
         ])
-    # Apply formats
+    # Apply formats — cols: 3=AvgVal, 5=P2S, 6=Revenue, 7=GNP, 8=CoF, 9=SDE, 10=SoM, 11=EoM
     for row in range(2, ws.max_row + 1):
-        for c in (3, 5, 6, 7, 8, 9, 10):
+        for c in (3, 5, 6, 7, 8, 9, 10, 11):
             ws.cell(row, c).number_format = _USD_FMT
         ws.cell(row, 4).number_format = _PCT_FMT
 
-    _set_widths(ws, {1: 8, 2: 55, 3: 17, 4: 9, 5: 17, 6: 17, 7: 17, 8: 17, 9: 17, 10: 17, 11: 40})
+    _set_widths(ws, {1: 8, 2: 55, 3: 17, 4: 9, 5: 17, 6: 17, 7: 17, 8: 17, 9: 17, 10: 17, 11: 17, 12: 40})
 
 
 def _write_grove_exposures(ws, prime_cfg: dict, sde_active: dict) -> None:
