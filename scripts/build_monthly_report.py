@@ -93,7 +93,7 @@ def _load_sde_entries(prime_id: str, period_start: date) -> dict[str, dict]:
     active on ``period_start`` for ``prime_id``. Active = ``start_date <=
     period_start <= end_date`` (end_date null treated as +∞)."""
     path = _REPO / "config" / "sky_direct_exposures.yaml"
-    with path.open() as f:
+    with path.open(encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
     out: dict[str, dict] = {}
     for section in ("active", "historical"):
@@ -127,7 +127,7 @@ def _load_sde_entries(prime_id: str, period_start: date) -> dict[str, dict]:
 
 
 def _read_venues(path: Path) -> list[dict]:
-    with path.open() as f:
+    with path.open(encoding="utf-8") as f:
         reader = csv.DictReader(f)
         return list(reader)
 
@@ -185,12 +185,19 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
     if not venues_csv.exists() or not prov_json.exists():
         raise SystemExit(f"Missing artifacts under {cell}")
 
-    with prov_json.open() as f:
+    with prov_json.open(encoding="utf-8") as f:
         prov = json.load(f)
     period_start = date.fromisoformat(prov["period"]["start"])
     headline_sky    = _D(prov["results"]["sky_revenue"])
     headline_prime  = _D(prov["results"]["prime_agent_revenue"])
     headline_agent  = _D(prov["results"]["agent_rate"])
+    # 30 bps Prime Revenue components computed outside the venue loop
+    # (PRD §17.11). Missing on settlements written before
+    # ``curve_susds_spread`` / ``psm3_susds_spread`` were surfaced in
+    # provenance.json — fall back to 0 for those legacy files.
+    curve_spread = _D(prov["results"].get("curve_susds_spread") or 0)
+    psm3_spread  = _D(prov["results"].get("psm3_susds_spread")  or 0)
+    aggregate_susds_spread = curve_spread + psm3_spread
 
     sde = _load_sde_entries(prime_id, period_start)
     rows = _read_venues(venues_csv)
@@ -223,6 +230,29 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
             "revenue":    _D(r["revenue"]),       # already net of SDE
             "sd_revenue": sd_revenue,
             "note":       note,
+        })
+
+    # Synthetic row: 30 bps Prime Revenue components computed outside the
+    # venue loop (Curve LP sUSDS + PSM3 sUSDS leg). Required so that
+    # Σ vr.revenue ≡ prime_agent_revenue — without it the reconciliation
+    # footer drifts by the spread amount for any prime holding sUSDS in
+    # Curve LP pools or PSM3 (Spark today; future primes likewise).
+    # Weight=0 keeps it out of the CoF allocation pool. Note column flags
+    # the aggregate so the row's prime-only attribution is explicit.
+    if aggregate_susds_spread != 0:
+        enriched.append({
+            "venue_id":   "SPREAD",
+            "label":      "30bps sUSDS spread (Curve LP + PSM3 aggregate)",
+            "value_som":  Decimal("0"),
+            "value_eom":  Decimal("0"),
+            "avg_value":  Decimal("0"),
+            "sd_share":   Decimal("0"),
+            "weight":     Decimal("0"),
+            "actual_rev": aggregate_susds_spread,
+            "external":   Decimal("0"),
+            "revenue":    aggregate_susds_spread,
+            "sd_revenue": Decimal("0"),
+            "note":       "prime-only (no CoF; computed outside venue loop)",
         })
 
     # CoF on Net_Subs = sky_revenue minus the SDE-revenue portion that flows
@@ -263,7 +293,7 @@ def _emit_csv(rows: list[dict], out: Path) -> None:
         "sd_share", "weight", "actual_rev", "external", "revenue",
         "sd_revenue", "cof_alloc", "profit_to_sky", "profit_to_grove", "note",
     ]
-    with out.open("w") as f:
+    with out.open("w", encoding="utf-8", newline="") as f:
         w = csv.DictWriter(f, fieldnames=cols)
         w.writeheader()
         for r in rows:
@@ -295,7 +325,7 @@ def _emit_markdown(
     lines.append(f"| Σ Profit to Sky ≡ `sky_revenue` | {_fmt_usd(totals['sky_revenue'])} |")
     lines.append(f"| &nbsp;&nbsp;↳ CoF on Net_Subs (BR × utilized) | {_fmt_usd(totals['cof_total'])} |")
     lines.append(f"| &nbsp;&nbsp;↳ SDE revenue (full flow to Sky) | {_fmt_usd(totals['sd_revenue_total'])} |")
-    lines.append(f"| Σ Profit to Grove (= `prime_agent_revenue` − CoF) | {_fmt_usd(sum_p2g)} |")
+    lines.append(f"| Σ Grove Net Payment (= `prime_agent_revenue` − CoF) | {_fmt_usd(sum_p2g)} |")
     lines.append(f"| &nbsp;&nbsp;↳ `prime_agent_revenue` (per-venue revenue total) | {_fmt_usd(totals['prime_agent_revenue'])} |")
     lines.append(f"| &nbsp;&nbsp;↳ CoF deducted by Grove (= cof_total above) | -{_fmt_usd(totals['cof_total'])} |")
     lines.append(f"| `agent_rate` (subproxy yield, off-sheet) | {_fmt_usd(totals['agent_rate'])} |")
@@ -309,10 +339,10 @@ def _emit_markdown(
     drift_p2g = totals["sum_p2g"] + totals["cof_total"] - totals["prime_agent_revenue"]
     lines.append("**Reconciliation (totals exact by construction):**")
     lines.append(f"- Σ Profit to Sky ≡ sky_revenue → drift {_fmt_usd(drift_p2s)} {'✓' if abs(drift_p2s) < Decimal('0.01') else '✗'}")
-    lines.append(f"- Σ Profit to Grove + CoF_total ≡ prime_agent_revenue → drift {_fmt_usd(drift_p2g)} {'✓' if abs(drift_p2g) < Decimal('0.01') else '✗'}")
+    lines.append(f"- Σ Grove Net Payment + CoF_total ≡ prime_agent_revenue → drift {_fmt_usd(drift_p2g)} {'✓' if abs(drift_p2g) < Decimal('0.01') else '✗'}")
     lines.append("")
     lines.append(
-        "_Note: Grove's \"Net to Grove\" (Σ P2G) is **after** subtracting the "
+        "_Note: Grove's \"Grove Net Payment\" (Σ GNP) is **after** subtracting the "
         "per-venue CoF allocation. Adding back `cof_total` returns the canonical "
         "`prime_agent_revenue` from `pnl.md`._"
     )
@@ -320,15 +350,16 @@ def _emit_markdown(
 
     lines.append("## Per-venue breakdown\n")
     lines.append(
-        "| Venue | Label | avg_value | weight | Profit to Sky | Profit to Grove | CoF alloc | SDE rev | Note |"
+        "| Venue | Label | avg_value | weight | Profit to Sky | Revenue | Grove Net Payment | CoF alloc | SDE rev | Note |"
     )
-    lines.append("|---|---|---:|---:|---:|---:|---:|---:|---|")
+    lines.append("|---|---|---:|---:|---:|---:|---:|---:|---:|---|")
     # Sort by Profit to Sky desc to make the sheet read like Grove's.
     for r in sorted(rows, key=lambda v: float(v["profit_to_sky"]), reverse=True):
         lines.append(
             f"| {r['venue_id']} | {r['label']} | {_fmt_usd(r['avg_value'])} | "
             f"{_fmt_pct(r['weight'])} | {_fmt_usd(r['profit_to_sky'])} | "
-            f"{_fmt_usd(r['profit_to_grove'])} | {_fmt_usd(r['cof_alloc'])} | "
+            f"{_fmt_usd(r['revenue'])} | {_fmt_usd(r['profit_to_grove'])} | "
+            f"{_fmt_usd(r['cof_alloc'])} | "
             f"{_fmt_usd(r['sd_revenue'])} | {r['note']} |"
         )
     lines.append("")
@@ -342,11 +373,11 @@ def _emit_markdown(
         "sd_revenue_v      = actual_revenue + external_revenue − revenue\n"
         "cof_total         = sky_revenue − Σ_v sd_revenue_v\n"
         "cof_alloc_v       = avg_value_v × weight_v / Σ_v(avg × weight) × cof_total\n"
-        "profit_to_sky_v   = cof_alloc_v + sd_revenue_v\n"
-        "profit_to_grove_v = revenue_v − cof_alloc_v\n"
+        "profit_to_sky_v      = cof_alloc_v + sd_revenue_v\n"
+        "grove_net_payment_v  = revenue_v − cof_alloc_v\n"
         "```\n"
     )
-    out.write_text("\n".join(lines))
+    out.write_text("\n".join(lines), encoding="utf-8")
 
 
 def main() -> int:

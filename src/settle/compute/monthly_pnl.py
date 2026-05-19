@@ -2039,4 +2039,6 @@ def compute_monthly_pnl(
         pin_blocks_som=pin_blocks_som,
         sky_direct_shortfall=sky_direct_shortfall,
         sde_revenue=sde_revenue,
+        curve_susds_spread=curve_susds_spread if not sky_only else Decimal("0"),
+        psm3_susds_spread=psm3_susds_spread if not sky_only else Decimal("0"),
     )

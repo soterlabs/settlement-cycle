@@ -57,7 +57,7 @@ class VenueRevenue:
     external_revenue: Decimal = Decimal("0")
     # Time-weighted average principal across the period:
     #   tw_avg = mean(value_som + cum_inflow_d for d in period.start..end)
-    # Used by post-hoc reporting (build_grove_sheet, build_settlement_xlsx)
+    # Used by post-hoc reporting (build_monthly_report, build_settlement_xlsx)
     # to allocate the CoF charge across venues. SoM/EoM averaging mis-states
     # this materially when inflows are concentrated mid-month — see
     # ``_time_weighted_avg_value`` in compute.prime_agent_revenue.
@@ -102,6 +102,16 @@ class MonthlyPnL:
     # Sum of SDE revenue across the breakdown (=Σ vr.sd_revenue). Already
     # included in sky_revenue; reported separately for transparency.
     sde_revenue: Decimal = Decimal("0")
+    # 30 bps spread Prime Revenue on sUSDS held inside Curve LP pools — added
+    # to ``prime_agent_revenue`` outside the venue loop (PRD §17.11). Surfaced
+    # here so downstream reporting can attribute the missing revenue back
+    # (without it, Σ vr.revenue < prime_agent_revenue for any prime holding
+    # sUSDS in a Curve pool). Zero for primes with no such positions.
+    curve_susds_spread: Decimal = Decimal("0")
+    # 30 bps spread Prime Revenue on the sUSDS slice of PSM3 holdings — same
+    # shape, different source (PSM3 daily totals, not venue rows). Zero for
+    # primes with no PSM3 leg configured.
+    psm3_susds_spread: Decimal = Decimal("0")
 
     @property
     def prime_agent_total_revenue(self) -> Decimal:
