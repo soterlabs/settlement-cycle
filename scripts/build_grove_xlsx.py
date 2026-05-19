@@ -1,6 +1,6 @@
 """Render a Grove-spreadsheet-shaped multi-tab xlsx from a settlement output.
 
-Companion to ``build_grove_sheet.py`` (which writes a `grove_sheet.md` +
+Companion to ``build_monthly_report.py`` (which writes a `grove_sheet.md` +
 `grove_sheet.csv`). This script reads those same artifacts plus the
 prime-config files and emits a single ``grove_sheet.xlsx`` with several
 tabs that mirror the layout of Grove's PnL workbook so the recipient can
