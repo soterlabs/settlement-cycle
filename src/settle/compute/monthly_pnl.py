@@ -1730,27 +1730,15 @@ def compute_monthly_pnl(
                 from .sky_revenue import BASE_RATE_OVER_SSR
 
                 # On Ethereum the bridged sUSDS is ERC-4626 so ``value_som``
-                # from ``get_position_value`` has the right SoM pps. On L2
-                # the sUSDS deployment is a 1:1 ERC-20 with no
-                # ``convertToAssets`` — that call reverts and we silently
-                # got ``value_som = 0``, so the 30 bps credit collapsed to
-                # $0 even though the prime is holding hundreds of millions
-                # of sUSDS at the L2 ALM (Q-S25 / #75). Recompute via the
-                # local L2 PSM3 contract's two-call recipe
-                # ``convertToShares(sUSDS, 1e18) → convertToAssetValue``
-                # whenever the prime has a PSM3 configured on this chain.
-                #
-                # Note on the ``value_som == 0`` gate: ``get_position_value``
-                # short-circuits to ``Decimal(0)`` when balance is 0 OR when
-                # convertToAssets reverts. Both cases produce a value of 0;
-                # the inner ``balance_som > 0`` guard below routes the
-                # genuine-zero case (no L2 sUSDS held) past the recompute,
-                # leaving ``value_som = 0``. So the gate is correct for
-                # both situations even though it doesn't distinguish them.
+                # and ``value_eom`` from ``get_position_value`` already carry
+                # the right pps via ``convertToAssets``. On L2 the sUSDS
+                # deployment is a plain ERC-20 with no ``convertToAssets`` —
+                # that call reverts and we get 0. Recompute both values via
+                # the Ethereum sUSDS pps (same token, same accrual rate) when
+                # the prime has a PSM3 configured on this chain (Q-S25 / #75).
                 if (
                     venue.chain != Chain.ETHEREUM
                     and venue.chain in prime.psm
-                    and value_som == 0
                 ):
                     from ..normalize.positions import get_position_balance
                     from ..normalize.registry import get_psm3_source
@@ -1763,57 +1751,24 @@ def compute_monthly_pnl(
                         sources.psm3 if sources.psm3 is not None
                         else get_psm3_source()
                     )
-                    psm3_addr = prime.psm[venue.chain].address.value
-                    balance_som = get_position_balance(
-                        prime, venue, som_block,
-                        source=sources.position_balance,
+
+                    def _l2_susds_value(block: int) -> _Dec:
+                        bal = get_position_balance(
+                            prime, venue, block,
+                            source=sources.position_balance,
+                        )
+                        if bal <= 0:
+                            return _Dec(0)
+                        pps_raw = psm3_src.susds_pps(venue.chain.value, block)
+                        return bal * _Dec(pps_raw) / _Dec(10**18)
+
+                    value_som = _l2_susds_value(som_block)
+                    value_eom = _l2_susds_value(eom_block)
+                    _log.info(
+                        "  Cat B L2 sUSDS (ETH pps) %s on %s: "
+                        "value_som=$%s value_eom=$%s",
+                        venue.id, venue.chain.value, value_som, value_eom,
                     )
-                    if balance_som > 0:
-                        # Wrap the PSM3 reads so a transient RPC failure
-                        # (or PSM3-contract revert at som_block) degrades to
-                        # the legacy ``value_som = 0`` rather than crashing
-                        # the entire cell. Logs the venue/chain so the
-                        # operator can see which L2 lost the credit.
-                        # ``DuneError`` is included because the active
-                        # ``IPsm3Source`` may be ``DunePsm3Source`` whose
-                        # ``convert_to_asset_value`` falls back to a Dune
-                        # query when the in-process pool history isn't
-                        # warm — a 402 mid-run would otherwise abort.
-                        from ..extract.dune import DuneError as _DuneError
-                        from ..extract.rpc import RPCError as _RPCError
-                        import requests as _requests
-                        try:
-                            unit = 10 ** venue.token.decimals
-                            n_shares = psm3_src.convert_to_shares(
-                                chain=venue.chain.value,
-                                psm3=psm3_addr,
-                                asset=venue.token.address.value,
-                                amount=unit,
-                                block=som_block,
-                            )
-                            if n_shares > 0:
-                                usds_raw = psm3_src.convert_to_asset_value(
-                                    chain=venue.chain.value,
-                                    psm3=psm3_addr,
-                                    num_shares=n_shares,
-                                    block=som_block,
-                                )
-                                pps = _Dec(usds_raw) / _USDS_RAW_SCALE
-                                value_som = balance_som * pps
-                                _log.info(
-                                    "  Cat B sub-case (a) L2 sUSDS pricing via PSM3 "
-                                    "for %s on %s: balance=%s pps=%s value_som=$%s",
-                                    venue.id, venue.chain.value,
-                                    balance_som, pps, value_som,
-                                )
-                        except (_RPCError, _DuneError, _requests.HTTPError,
-                                _requests.ConnectionError, _requests.Timeout) as _e:
-                            _log.warning(
-                                "  Cat B sub-case (a) L2 sUSDS pricing failed for "
-                                "%s on %s at block %d (%s) — leaving value_som=0; "
-                                "30bps credit silently dropped for this period.",
-                                venue.id, venue.chain.value, som_block, _e,
-                            )
 
                 spread_daily = daily_compounding_factor(BASE_RATE_OVER_SSR)
                 n_days = _Dec(str((period.end - period.start).days + 1))

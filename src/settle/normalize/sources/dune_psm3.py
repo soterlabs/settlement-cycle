@@ -284,17 +284,28 @@ class DunePsm3Source:
         total_assets  = usdc_usds_eq + usds_usds_eq + susds_usds_eq
         return int(Decimal(num_shares) * total_assets / Decimal(pool_total))
 
-    def convert_to_shares(
-        self, chain: str, psm3: bytes, asset: bytes, amount: int, block: int,
-    ) -> int:
-        """Point read — no Dune preload covers this call, so we delegate to
-        the cached RPC helper. PSM3 ``convertToShares`` is called once per
-        (chain, asset, block) for L2 sUSDS pricing in compute, which hits
-        the on-disk + Postgres caches on rerun."""
-        from ...extract import rpc
-        from ...domain.primes import Address, Chain
-        return rpc.psm3_convert_to_shares(
-            Chain(chain), Address(psm3), Address(asset), amount, block,
+    def susds_pps(self, chain: str, block: int) -> int:
+        """USDS value of 1e18 sUSDS at ``block`` (18-decimal raw integer).
+
+        Fetches the Ethereum sUSDS ``convertToAssets(1e18)`` at the Ethereum
+        block matching ``block``'s date — the same rate already computed
+        inside ``convert_to_asset_value``. Cached end-to-end via ``@cached``
+        on the underlying RPC call."""
+        if self._c2a is None:
+            from ..registry import get_convert_to_assets_source
+            self._c2a = get_convert_to_assets_source()
+        if self._block_resolver is None:
+            from ..registry import get_block_resolver
+            self._block_resolver = get_block_resolver()
+        from datetime import datetime, time, timezone
+        l2_date = self._block_resolver.block_to_date(chain, block)
+        eod = datetime.combine(l2_date, time.max, tzinfo=timezone.utc)
+        eth_block = self._block_resolver.block_at_or_before(Chain.ETHEREUM.value, eod)
+        return self._c2a.convert_to_assets(
+            chain=Chain.ETHEREUM.value,
+            vault=sUSDS_ETHEREUM.address.value,
+            shares=10**18,
+            block=eth_block,
         )
 
     # ----------------------------------------------------------------------
