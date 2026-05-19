@@ -132,7 +132,14 @@ class IPsm3Source(Protocol):
         Resolves via the Ethereum sUSDS ERC-4626 ``convertToAssets(1e18)``
         at the Ethereum block that corresponds to ``block``'s timestamp.
         Used to price L2 sUSDS holdings where the bridged ERC-20 has no
-        local ``convertToAssets``."""
+        local ``convertToAssets``.
+
+        Block resolution uses end-of-day (23:59:59 UTC) of the date for
+        ``block``. This is exact for SoM/EoM settlement blocks (which are
+        pinned to end-of-day snapshots) but would introduce a small error
+        (~hours of sUSDS accrual) for intra-day block queries. If sub-day
+        accuracy is ever needed, pass the block's precise timestamp instead
+        of collapsing it to end-of-day."""
         ...
 
 

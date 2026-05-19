@@ -1762,13 +1762,25 @@ def compute_monthly_pnl(
                         pps_raw = psm3_src.susds_pps(venue.chain.value, block)
                         return bal * _Dec(pps_raw) / _Dec(10**18)
 
-                    value_som = _l2_susds_value(som_block)
-                    value_eom = _l2_susds_value(eom_block)
-                    _log.info(
-                        "  Cat B L2 sUSDS (ETH pps) %s on %s: "
-                        "value_som=$%s value_eom=$%s",
-                        venue.id, venue.chain.value, value_som, value_eom,
-                    )
+                    from ..extract.dune import DuneError as _DuneError
+                    from ..extract.rpc import RPCError as _RPCError
+                    import requests as _requests
+                    try:
+                        value_som = _l2_susds_value(som_block)
+                        value_eom = _l2_susds_value(eom_block)
+                        _log.info(
+                            "  Cat B L2 sUSDS (ETH pps) %s on %s: "
+                            "value_som=$%s value_eom=$%s",
+                            venue.id, venue.chain.value, value_som, value_eom,
+                        )
+                    except (_RPCError, _DuneError, _requests.HTTPError,
+                            _requests.ConnectionError, _requests.Timeout) as _e:
+                        _log.warning(
+                            "  Cat B L2 sUSDS pricing failed for %s on %s "
+                            "(%s) — keeping get_position_value result; "
+                            "30bps credit may be wrong for this period.",
+                            venue.id, venue.chain.value, _e,
+                        )
 
                 spread_daily = daily_compounding_factor(BASE_RATE_OVER_SSR)
                 n_days = _Dec(str((period.end - period.start).days + 1))
