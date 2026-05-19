@@ -26,12 +26,6 @@ SEL_CONVERT_TO_ASSETS = "0x07a2d13a"    # convertToAssets(uint256)
 # ERC-4626 ``convertToAssets(uint256)``.
 SEL_PSM3_SHARES = "0xce7c2ac2"          # shares(address)
 SEL_PSM3_CONVERT_TO_ASSET_VALUE = "0x41c094e0"  # convertToAssetValue(uint256)
-SEL_PSM3_CONVERT_TO_SHARES = "0x3e5541f1"  # convertToShares(address,uint256)
-# NB: 0xc6e6f592 is the ERC-4626 1-arg form ``convertToShares(uint256)``. PSM3
-# defines a 2-arg overload taking ``(asset, amount)`` whose selector is the
-# value above (0x3e5541f1). Mixing them silently returns garbage — the
-# 1-arg overload happens to exist on PSM3, decodes calldata as a single
-# uint256, and returns a value off by ~10**30.
 # Curve-specific selectors (get_virtual_price, balances) live in extract/curve.py.
 
 DEFAULT_TIMEOUT = 30
@@ -329,19 +323,6 @@ def psm3_convert_to_asset_value(chain: Chain, psm3: Address, num_shares: int, bl
     data = SEL_PSM3_CONVERT_TO_ASSET_VALUE + _pad_uint(num_shares)
     return _decode_uint(eth_call(chain, psm3, data, block))
 
-
-@cached(source_id="rpc.psm3_convert_to_shares")
-def psm3_convert_to_shares(
-    chain: Chain, psm3: Address, asset: Address, amount: int, block: int,
-) -> int:
-    """Spark PSM3 ``convertToShares(asset, amount)`` — returns the PSM3-share
-    quantity equivalent to ``amount`` (raw token units) of ``asset`` at
-    ``block``. Bridges external assets (USDC / USDS / sUSDS) into PSM3's
-    internal share accounting; pair with ``psm3_convert_to_asset_value`` to
-    derive a USDS-denominated price for any of the three legs (used for
-    pricing L2 sUSDS where the bridged ERC-20 doesn't expose ``convertToAssets``)."""
-    data = SEL_PSM3_CONVERT_TO_SHARES + _pad_address(asset) + _pad_uint(amount)
-    return _decode_uint(eth_call(chain, psm3, data, block))
 
 
 # ----------------------------------------------------------------------------

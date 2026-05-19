@@ -21,8 +21,8 @@ class RPCConvertToAssetsSource:
 
 
 class RPCPsm3Source:
-    """Spark PSM3 reads via `eth_call`: `shares(holder)`,
-    `convertToAssetValue(numShares)`, and `convertToShares(asset, amount)`."""
+    """Spark PSM3 reads via `eth_call`: `shares(holder)` and
+    `convertToAssetValue(numShares)`."""
 
     def shares_of(self, chain: str, psm3: bytes, holder: bytes, block: int) -> int:
         return rpc.psm3_shares(Chain(chain), Address(psm3), Address(holder), block)
@@ -30,7 +30,22 @@ class RPCPsm3Source:
     def convert_to_asset_value(self, chain: str, psm3: bytes, num_shares: int, block: int) -> int:
         return rpc.psm3_convert_to_asset_value(Chain(chain), Address(psm3), num_shares, block)
 
-    def convert_to_shares(self, chain: str, psm3: bytes, asset: bytes, amount: int, block: int) -> int:
-        return rpc.psm3_convert_to_shares(
-            Chain(chain), Address(psm3), Address(asset), amount, block,
+    def susds_pps(self, chain: str, block: int) -> int:
+        """USDS value of 1e18 sUSDS at ``block`` (18-decimal raw integer).
+
+        Resolves the Ethereum block for ``block``'s date, then calls
+        ``rpc.convert_to_assets`` on the Ethereum sUSDS vault."""
+        from datetime import datetime, time, timezone
+        from ...domain.sky_tokens import sUSDS_ETHEREUM
+        from ..registry import get_block_resolver, get_convert_to_assets_source
+        br = get_block_resolver()
+        c2a = get_convert_to_assets_source()
+        l2_date = br.block_to_date(chain, block)
+        eod = datetime.combine(l2_date, time.max, tzinfo=timezone.utc)
+        eth_block = br.block_at_or_before(Chain.ETHEREUM.value, eod)
+        return c2a.convert_to_assets(
+            chain=Chain.ETHEREUM.value,
+            vault=sUSDS_ETHEREUM.address.value,
+            shares=10**18,
+            block=eth_block,
         )

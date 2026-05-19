@@ -126,10 +126,20 @@ class IPsm3Source(Protocol):
         (18-decimal raw integer)."""
         ...
 
-    def convert_to_shares(self, chain: str, psm3: bytes, asset: bytes, amount: int, block: int) -> int:
-        """PSM3 ``convertToShares(asset, amount)`` — PSM3-share quantity for
-        ``amount`` (raw token units) of ``asset``. Used to price L2 sUSDS
-        against USDS by composing with ``convert_to_asset_value``."""
+    def susds_pps(self, chain: str, block: int) -> int:
+        """USDS value of 1e18 sUSDS at ``block`` (18-decimal raw integer).
+
+        Resolves via the Ethereum sUSDS ERC-4626 ``convertToAssets(1e18)``
+        at the Ethereum block that corresponds to ``block``'s timestamp.
+        Used to price L2 sUSDS holdings where the bridged ERC-20 has no
+        local ``convertToAssets``.
+
+        Block resolution uses end-of-day (23:59:59 UTC) of the date for
+        ``block``. This is exact for SoM/EoM settlement blocks (which are
+        pinned to end-of-day snapshots) but would introduce a small error
+        (~hours of sUSDS accrual) for intra-day block queries. If sub-day
+        accuracy is ever needed, pass the block's precise timestamp instead
+        of collapsing it to end-of-day."""
         ...
 
 
