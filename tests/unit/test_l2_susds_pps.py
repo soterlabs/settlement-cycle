@@ -171,13 +171,15 @@ def test_l2_susds_value_known_fixture():
 # ---------------------------------------------------------------------------
 
 def test_both_som_and_eom_repriced():
-    """The fix must update value_som AND value_eom.  Before the fix, only
-    value_som was corrected (PR #84 Bug 2) — value_eom remained at whatever
-    get_position_value returned, making revenue = Δvalue − inflow wrong.
+    """Regression for PR-#84 Bug 2: value_eom was never repriced, only value_som.
 
-    This test exercises the _l2_susds_value helper at two different blocks
-    (SoM / EoM) and asserts both results differ from the 'raw' garbage value
-    that get_position_value would return on L2.
+    Note: _l2_susds_value is a closure inside compute_monthly_pnl and cannot
+    be imported directly without running the full orchestrator. This test
+    exercises the *formula* (bal × pps / 1e18) at two separate blocks using
+    the local re-implementation defined above, confirming the arithmetic is
+    correct and that both SoM and EoM blocks produce sane values. The
+    structural guard — that the production code actually calls the helper for
+    both blocks — is enforced by code review of the monthly_pnl.py diff.
     """
     _SOM_BLOCK = 11_000_000
     _EOM_BLOCK = 12_000_000
