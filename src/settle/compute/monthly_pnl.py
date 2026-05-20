@@ -1532,6 +1532,9 @@ def compute_monthly_pnl(
                 venue.id, venue.token.symbol, venue.chain.value,
             )
             continue
+        # Initialised here; Cat E ERC-4626 venues set this to the exact vault-
+        # event USDC period inflow before the VenueRevenueInputs append below.
+        _erc4626_period_inflow: "Decimal | None" = None
         if venue.pricing_category == PricingCategory.SPARK_SAVINGS_V2:
             # Spark Savings V2 vaults aren't held at the prime ALM — the
             # vault contract custodies underlying for retail depositors and
@@ -1868,12 +1871,102 @@ def compute_monthly_pnl(
                 principal_return_overrides=overrides_by_bytes,
             )
         elif venue.pricing_category == PricingCategory.RWA_TRANCHE:
-            # Cat E — RWA tranche net flow × NAV oracle at day-end block.
-            # Tracks cumulative balance into the ALM (any sender) since
-            # tranche tokens often arrive via issuer custodians, not from 0x0.
-            from ..normalize.positions import _rwa_inflow_timeseries
+            from ..normalize.positions import (
+                _rwa_inflow_timeseries,
+                _erc4626_event_inflow_timeseries,
+            )
             balance_src = sources.balance if sources.balance is not None else get_balance_source()
 
+            if venue.centrifuge_vault is not None:
+                _ev_ts = _erc4626_event_inflow_timeseries(
+                    prime, venue, period,
+                    block_resolver=resolver,
+                )
+
+                # Extract vault-event period inflow (exact USDC from events).
+                _period_mask = _ev_ts["block_date"].apply(
+                    lambda d: period.start <= d <= period.end
+                )
+                _erc4626_period_inflow = Decimal(str(
+                    _ev_ts.loc[_period_mask, "daily_inflow"].sum()
+                ))
+
+                # ── Share-balance sanity check ────────────────────────────
+                # Verify that the cumulative share flow from events reconciles
+                # with the on-chain share balance.  A mismatch means there are
+                # share movements not captured as Deposit/Withdraw (e.g. direct
+                # ERC-20 transfers) and the event-sourced flows are incomplete.
+                if (
+                    not _ev_ts.empty
+                    and "daily_net_shares_raw" in _ev_ts.columns
+                ):
+                    _holder_addr = (
+                        venue.holder_override or prime.alm[venue.chain]
+                    )
+                    try:
+                        from ..extract.rpc import balance_of as _rpc_bal
+                        _som_shares_raw = Decimal(str(
+                            _rpc_bal(
+                                venue.chain,
+                                venue.token.address,
+                                _holder_addr,
+                                som_block,
+                            )
+                        ))
+                        _eom_shares_raw = Decimal(str(
+                            _rpc_bal(
+                                venue.chain,
+                                venue.token.address,
+                                _holder_addr,
+                                eom_block,
+                            )
+                        ))
+                        _period_net_shares = Decimal(str(
+                            _ev_ts.loc[_period_mask, "daily_net_shares_raw"].sum()
+                        ))
+                        _expected_eom = _som_shares_raw + _period_net_shares
+
+                        if _eom_shares_raw != 0:
+                            _share_drift_pct = abs(
+                                (_expected_eom - _eom_shares_raw) / _eom_shares_raw
+                            ) * 100
+                            if _share_drift_pct > Decimal("0.5"):
+                                _log.warning(
+                                    "  Cat E ERC-4626 %s: share-balance drift "
+                                    "%.4f%% — events may not capture all share "
+                                    "movements (expected EOM shares from events: "
+                                    "%s, on-chain: %s). Inflow figures may be "
+                                    "incomplete.",
+                                    venue.id, float(_share_drift_pct),
+                                    _expected_eom, _eom_shares_raw,
+                                )
+                            else:
+                                _log.debug(
+                                    "  Cat E ERC-4626 %s: share balance OK "
+                                    "(drift %.4f%%)",
+                                    venue.id, float(_share_drift_pct),
+                                )
+
+                        _implied_yield = value_eom - value_som - _erc4626_period_inflow
+                        _log.info(
+                            "  Cat E ERC-4626 %s: SOM=$%s  EOM=$%s  "
+                            "net_capital=$%s  implied_yield=$%s",
+                            venue.id,
+                            f"{float(value_som):,.2f}",
+                            f"{float(value_eom):,.2f}",
+                            f"{float(_erc4626_period_inflow):,.2f}",
+                            f"{float(_implied_yield):,.2f}",
+                        )
+                    except Exception as _e:
+                        _log.warning(
+                            "  Cat E ERC-4626 %s: share sanity check failed"
+                            " (%s) — skipping.",
+                            venue.id, _e,
+                        )
+
+            # All Cat E venues: token-transfer inflow_ts for _daily_capped_sd_revenue.
+            # This keeps the SDE calculation consistent with _sde_asset_value_timeseries
+            # (both timed by ERC-20 transfers, not vault events).
             def _cat_e_nav(block, _v=venue, _br=resolver, _nr=sources.nav_oracle_resolver):
                 return _resolve_rwa_nav(_v, block, block_resolver=_br, resolver=_nr)
 
@@ -1951,6 +2044,7 @@ def compute_monthly_pnl(
             actual_revenue_override=susds_spread,
             external_revenue=external_revenue_for_venue,
             sde_daily_values=_sde_ts,
+            erc4626_period_inflow=_erc4626_period_inflow,
         ))
 
     # Re-sort venue_inputs to match the declaration order in prime.venues so

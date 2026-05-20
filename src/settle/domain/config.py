@@ -144,6 +144,11 @@ def load_prime(config_path: Path) -> Prime:
                 share_burn_destinations=[
                     Address.from_str(a) for a in v.get("share_burn_destinations", [])
                 ],
+                centrifuge_vault=(
+                    Address.from_str(v["centrifuge_vault"])
+                    if v.get("centrifuge_vault")
+                    else None
+                ),
             )
         )
 

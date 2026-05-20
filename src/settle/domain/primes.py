@@ -204,6 +204,22 @@ class Venue:
     # gross redeem amount. See Q-S26 in QUESTIONS.md for the Maple case
     # (Spark Apr 2026: ~$400M of phantom loss on S14/S15).
     share_burn_destinations: list[Address] = field(default_factory=list)
+    # ERC-4626 vault contract address for Centrifuge (and similar) venues where
+    # the ALM deposits / withdraws via a vault rather than secondary-market
+    # transfers.  When set, the Cat E inflow path uses ``Deposit`` /
+    # ``Withdraw`` event ``assets`` amounts (exact USDC in/out) instead of
+    # ``net_token_balance × NAV``.  This matches the external-party cash-flow
+    # methodology and keeps capital inflows free of intra-day NAV noise.
+    #
+    # Revenue = EOM − SOM − inflow correctly captures yield accrual as the
+    # residual — no separate yield calculation is needed.
+    #
+    # Sanity check: the pipeline verifies that the share balance implied by the
+    # events (SOM shares + Σdeposit_shares − Σwithdraw_shares) matches the
+    # actual on-chain EOM balance.  A mismatch signals share movements not
+    # emitted as Deposit/Withdraw (e.g. direct ERC-20 transfers), and a warning
+    # is logged.
+    centrifuge_vault: "Address | None" = None
 
 
 @dataclass(frozen=True, slots=True)

@@ -181,6 +181,10 @@ venues:
       address: '0x5a0f93d040de44e78f251b03c43be9cf317dcf64'
       symbol: 'JAAA'
       decimals: 6
+    underlying:
+      address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+      symbol: 'USDC'
+      decimals: 6
     # NAV: switched 2026-05-02 from Chronicle to Centrifuge's
     # pricePerShareFeed (canonical per Grove team's PnL workbook). The feed
     # implements ERC-4626 ``convertToAssets(uint256)`` returning 18-decimal
@@ -191,6 +195,13 @@ venues:
       address: '0x4880799eE5200fC58DA299e965df644fBf46780B'
       fallback: chronicle
       fallback_address: '0x02cf8C9fBa24d79886dAc40cb620f0930C6E8eC0'
+    # ERC-4626 vault the ALM deposits into / withdraws from. Emits
+    # Deposit(sender, owner, assets, shares) and Withdraw(sender, receiver,
+    # owner, assets, shares) events whose `assets` field is the exact USDC
+    # amount — used instead of token-transfer × NAV to match external-party
+    # cash-flow accounting. Same address as nav_oracle (the Centrifuge vault
+    # serves as both the pricePerShareFeed and the deposit gateway).
+    centrifuge_vault: '0x4880799eE5200fC58DA299e965df644fBf46780B'
 
   - id: E9
     chain: ethereum
@@ -200,6 +211,10 @@ venues:
       address: '0x8c213ee79581ff4984583c6a801e5263418c4b86'
       symbol: 'JTRSY'
       decimals: 6
+    underlying:
+      address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+      symbol: 'USDC'
+      decimals: 6
     # NAV: switched 2026-05-02 from Chronicle to Centrifuge's
     # pricePerShareFeed (canonical per Grove team's PnL workbook).
     # Chronicle is the fallback on primary failure.
@@ -208,6 +223,10 @@ venues:
       address: '0xFE6920eB6C421f1179cA8c8d4170530CDBdfd77A'
       fallback: chronicle
       fallback_address: '0x59ef4BE3eDDF0270c4878b7B945bbeE13fb33d0D'
+    # ERC-4626 vault (same address as nav_oracle for JTRSY). Confirmed via
+    # on-chain event inspection: Grove ALM 0x491edf... deposits/withdraws
+    # directly with this contract.
+    centrifuge_vault: '0xFE6920eB6C421f1179cA8c8d4170530CDBdfd77A'
 
   - id: E10
     chain: ethereum

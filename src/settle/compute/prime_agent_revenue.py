@@ -98,6 +98,17 @@ class VenueRevenueInputs:
     # of locking sd_share at SoM. Ignored for ``kind=fixed`` (sd_share is
     # always 1). None falls back to the SoM-locked behaviour.
     sde_daily_values: pd.DataFrame | None = None
+    # For ERC-4626 Centrifuge venues: the exact period inflow derived from
+    # on-chain Deposit/Withdraw event ``assets`` amounts (USDC exact).  When
+    # set, this value overrides the ``period_inflow`` displayed in the output
+    # and the ``actual_revenue`` formula, while ``inflow_timeseries`` (which
+    # is the token-transfer-based timeseries, consistent in timing with
+    # ``_sde_asset_value_timeseries``) is still passed to
+    # ``_daily_capped_sd_revenue`` so the SDE cap-weighting uses a consistent
+    # clock.  Without this split the two timeseries would be on different
+    # clocks (ERC-20 transfer day vs. Withdraw event day) and the asymmetric
+    # cap-weighting would misstate sd_revenue.
+    erc4626_period_inflow: "Decimal | None" = None
 
 
 def _sd_share_at_som(
@@ -185,6 +196,7 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
     absorbs sd_share of the loss, prime absorbs the rest. This matches Grove
     team's PnL workbook (no floor, no shortfall).
     """
+    _rwa_actual_revenue: Decimal | None = None  # set only in erc4626_period_inflow branch
     if inputs.actual_revenue_override is not None:
         actual_revenue = inputs.actual_revenue_override
         period_inflow = Decimal("0")
@@ -192,6 +204,28 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
         # roughly at value_som; the simple value_som is the best avg
         # available without a daily series.
         tw_avg_value = inputs.value_som
+    elif inputs.erc4626_period_inflow is not None:
+        # ERC-4626 Centrifuge venues: use exact vault-event USDC amounts for
+        # the period inflow and revenue formula; inflow_timeseries (token-
+        # transfer based, same clock as _sde_ts) is still used below by
+        # _daily_capped_sd_revenue so the daily cap-weighting is consistent.
+        period_inflow = inputs.erc4626_period_inflow
+        actual_revenue = (inputs.value_eom - inputs.value_som) - period_inflow
+        inflow_df = inputs.inflow_timeseries
+        tw_avg_value = _time_weighted_avg_value(
+            period, inputs.value_som, inflow_df,
+        )
+        # Also compute the token-transfer actual_revenue (denominator for
+        # sd_share scaling below).  This is needed so the effective sd_share
+        # from _daily_capped_sd_revenue (which ran against the rwa inflow_ts)
+        # can be re-applied to the vault-event actual_revenue.
+        _rwa_cum_som = cum_at_or_before(
+            inflow_df, "cum_inflow", period.start - timedelta(days=1),
+        )
+        _rwa_cum_eom = cum_at_or_before(inflow_df, "cum_inflow", period.end)
+        _rwa_actual_revenue = (
+            (inputs.value_eom - inputs.value_som) - (_rwa_cum_eom - _rwa_cum_som)
+        )
     else:
         inflow_df = inputs.inflow_timeseries
         cum_som = cum_at_or_before(
@@ -217,6 +251,26 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
             inputs.sde_daily_values,
             inputs.inflow_timeseries,
         )
+        # For ERC-4626 Centrifuge venues: _daily_capped_sd_revenue ran against
+        # the token-transfer inflow_ts (consistent clock with _sde_ts), but
+        # actual_revenue uses vault-event flows.  The two methodologies can
+        # differ slightly in the period inflow (and therefore actual_revenue)
+        # because the vault-event ``assets`` field captures exact USDC amounts
+        # while the token-transfer path reprices net share movements at NAV.
+        #
+        # Choice (validated for Jan 2026; may need iteration for other months):
+        #   prime_revenue is pinned to what _daily_capped_sd_revenue assigned
+        #   under the rwa (token-transfer) methodology; the entire delta between
+        #   vault-event and rwa actual_revenue is attributed to sd_revenue.
+        #
+        # Rationale: for a capped SDE the deal terms assign ALL yield above the
+        # prime slice to Sky regardless of the measurement method.  Routing the
+        # small additional yield captured by precise USDC event tracking to Sky
+        # (rather than splitting it at the current prime/SDE ratio) avoids
+        # misattribution when the venue is well above the cap.  This
+        # simplification is intentional and documented here for reviewers.
+        if _rwa_actual_revenue is not None:
+            sd_revenue = sd_revenue + (actual_revenue - _rwa_actual_revenue)
         # Effective (average) sd_share for display — sd_revenue / actual_revenue.
         sd_share = (
             sd_revenue / actual_revenue if actual_revenue != 0 else Decimal("0")
