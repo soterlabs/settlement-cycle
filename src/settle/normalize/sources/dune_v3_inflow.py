@@ -38,7 +38,10 @@ class DuneV3InflowSource(RPCUniswapV3PositionSource):
 
         # 1. Discover tokenIds at both period boundaries (positions open at
         #    SoM, EoM, or both — captures positions that survived the period).
-        pool_state = v3.read_pool_state(chain_e, pool_a, to_block)
+        try:
+            pool_state = v3.read_pool_state(chain_e, pool_a, to_block)
+        except v3.PoolNotDeployedError:
+            return []
         pool_target = (pool_state.token0.value, pool_state.token1.value, pool_state.fee)
 
         token_ids: set[int] = set()
