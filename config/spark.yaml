@@ -381,7 +381,8 @@ venues:
     nav_oracle:
       kind: price_per_share_feed
       address: '0xFE6920eB6C421f1179cA8c8d4170530CDBdfd77A'
-      fallback: const_one
+      fallback: chronicle
+      fallback_address: '0x59ef4BE3eDDF0270c4878b7B945bbeE13fb33d0D'
 
   - id: S21
     chain: ethereum

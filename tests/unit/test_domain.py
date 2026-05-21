@@ -196,14 +196,13 @@ def test_load_prime_grove_nav_oracles(config_dir: Path):
     grove = load_prime(config_dir / "grove.yaml")
     by_id = {v.id: v for v in grove.venues}
 
-    # JTRSY → Centrifuge pricePerShareFeed primary + const_one fallback
-    # (canonical per Grove team's Feb 2026 PnL workbook; Chronicle was the
-    # previous primary, kept as documented secondary).
+    # JTRSY → Centrifuge pricePerShareFeed primary + Chronicle fallback.
     jtrsy = by_id["E9"]
     assert jtrsy.nav_oracle is not None
     assert jtrsy.nav_oracle.kind == "price_per_share_feed"
     assert jtrsy.nav_oracle.address.hex == "0xfe6920eb6c421f1179ca8c8d4170530cdbdfd77a"
-    assert jtrsy.nav_oracle.fallback == "const_one"
+    assert jtrsy.nav_oracle.fallback == "chronicle"
+    assert jtrsy.nav_oracle.fallback_address.hex == "0x59ef4be3eddf0270c4878b7b945bbee13fb33d0d"
 
     # STAC → Chronicle primary + Redstone fallback. Redstone publishes the
     # same Securitize NAV via a Chainlink-AggregatorV3 adapter and has been
