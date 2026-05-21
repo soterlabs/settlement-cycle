@@ -27,6 +27,11 @@ SEL_CONVERT_TO_ASSETS = "0x07a2d13a"    # convertToAssets(uint256)
 SEL_PSM3_SHARES = "0xce7c2ac2"          # shares(address)
 SEL_PSM3_CONVERT_TO_ASSET_VALUE = "0x41c094e0"  # convertToAssetValue(uint256)
 # Curve-specific selectors (get_virtual_price, balances) live in extract/curve.py.
+# ERC-7540 async vault in-flight request queries (request_id=0 per standard).
+SEL_PENDING_DEPOSIT_REQUEST   = "0x26c6f96c"   # pendingDepositRequest(uint256,address)
+SEL_CLAIMABLE_DEPOSIT_REQUEST = "0x995ea21a"   # claimableDepositRequest(uint256,address)
+SEL_PENDING_REDEEM_REQUEST    = "0xf5a23d8d"   # pendingRedeemRequest(uint256,address)
+SEL_CLAIMABLE_REDEEM_REQUEST  = "0xeaed1d07"   # claimableRedeemRequest(uint256,address)
 
 DEFAULT_TIMEOUT = 30
 
@@ -193,6 +198,17 @@ def _decode_uint(raw: str) -> int:
         return int(raw, 16)
     except ValueError:
         return 0
+
+
+@cached(source_id="rpc.is_contract_deployed")
+def is_contract_deployed(chain: Chain, contract: Address, block: int) -> bool:
+    """Return True if *contract* has non-empty bytecode at *block*.
+
+    Uses ``eth_getCode`` so it works correctly for contracts not yet deployed
+    at the SoM block (e.g. a vault first deployed mid-period).
+    """
+    raw = _post(rpc_url(chain), "eth_getCode", [contract.hex, hex(block)])
+    return bool(raw) and raw != "0x"
 
 
 @cached(source_id="rpc.balance_of")

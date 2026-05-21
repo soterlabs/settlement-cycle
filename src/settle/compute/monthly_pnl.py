@@ -76,6 +76,94 @@ def _previous_day_eod_utc(d) -> datetime:
     return datetime.combine(d - timedelta(days=1), time.max, tzinfo=timezone.utc)
 
 
+def _check_centrifuge_in_flight(
+    prime: "Prime",
+    pin_blocks_som: dict["Chain", int],
+    pin_blocks_eom: dict["Chain", int],
+) -> None:
+    """Warn if any Centrifuge vault has pending/claimable deposit or redeem
+    requests in-flight at the SoM or EoM pin block.
+
+    ERC-7540 async vaults split every deposit or redemption into two steps:
+    *request* → epoch processing → *claim*.  If a request is in-flight at a
+    settlement boundary the SoM/EoM share balance is incorrect — shares or
+    assets are held in the vault's escrow rather than in the prime ALM wallet,
+    and the pipeline cannot automatically account for them.  This check logs a
+    loud WARNING so the operator can manually verify and correct the numbers.
+
+    Contracts not yet deployed at a given block are silently skipped to handle
+    venues that were onboarded mid-period.
+    """
+    from ..extract.rpc import (
+        eth_call as _eth_call,
+        is_contract_deployed as _is_deployed,
+        SEL_PENDING_DEPOSIT_REQUEST as _SEL_PD,
+        SEL_CLAIMABLE_DEPOSIT_REQUEST as _SEL_CD,
+        SEL_PENDING_REDEEM_REQUEST as _SEL_PR,
+        SEL_CLAIMABLE_REDEEM_REQUEST as _SEL_CR,
+    )
+
+    _selectors: list[tuple[str, str]] = [
+        ("PENDING DEPOSIT",   _SEL_PD),
+        ("CLAIMABLE DEPOSIT", _SEL_CD),
+        ("PENDING REDEEM",    _SEL_PR),
+        ("CLAIMABLE REDEEM",  _SEL_CR),
+    ]
+
+    # ERC-7540 uses a single request-ID per (vault, controller).
+    _REQUEST_ID = 0
+
+    def _query_uint(vault: "Address", holder: "Address", chain: "Chain",
+                    selector: str, block: int) -> int:
+        from ..extract._abi import pad_uint as _pu, pad_address as _pa
+        data = selector + _pu(_REQUEST_ID) + _pa(holder)
+        try:
+            raw = _eth_call(chain, vault, data, block)
+            return int(raw, 16) if raw and raw not in ("0x", "0x0") else 0
+        except Exception:  # noqa: BLE001
+            return 0
+
+    for venue in prime.venues:
+        if venue.centrifuge_vault is None or venue.skip:
+            continue
+        chain = venue.chain
+        if chain not in pin_blocks_som or chain not in pin_blocks_eom:
+            continue
+        holder = venue.holder_override or prime.alm.get(chain)
+        if holder is None:
+            continue
+
+        vault = venue.centrifuge_vault
+
+        for block_label, block in [("SoM", pin_blocks_som[chain]),
+                                    ("EoM", pin_blocks_eom[chain])]:
+            if not _is_deployed(chain, vault, block):
+                _log.info(
+                    "  centrifuge check: %s vault %s not yet deployed at %s block %d — skipping",
+                    venue.id, vault.hex, block_label, block,
+                )
+                continue
+
+            for label, selector in _selectors:
+                amount = _query_uint(vault, holder, chain, selector, block)
+                if amount:
+                    # Use a dedicated asset decimals field if available; default
+                    # to 6 (USDC) which is correct for all current Centrifuge
+                    # venues (JAAA, JTRSY) — update if 18-decimal underlyings
+                    # are added.
+                    decimals = getattr(venue, "underlying_decimals", None) or 6
+                    amount_fmt = f"{amount / 10**decimals:,.6f}"
+                    _log.warning(
+                        "IN-FLIGHT CENTRIFUGE REQUEST — MANUAL REVIEW REQUIRED: "
+                        "venue %s (%s) has a %s of %s at the %s pin block (%d). "
+                        "THE %s VALUE AND INFLOW FOR THIS VENUE MAY BE INCORRECT "
+                        "AND MAY REQUIRE MANUAL CORRECTION.",
+                        venue.id, venue.token.symbol,
+                        label.upper(), amount_fmt, block_label, block,
+                        block_label.upper(),
+                    )
+
+
 def _resolve_pin_blocks(
     anchor_utc: datetime,
     chains: set[Chain],
@@ -1471,6 +1559,8 @@ def compute_monthly_pnl(
     )
     _log.info("  2g: SSR history...")
     ssr = get_ssr_history(prime, period, source=sources.ssr)
+    _log.info("  2h: Centrifuge vault in-flight request check...")
+    _check_centrifuge_in_flight(prime, pin_blocks_som, pin_blocks_eom)
     _log.info("  step 2 complete.")
 
     # SDE table — config-driven Sky Direct exposures (replaces the legacy
