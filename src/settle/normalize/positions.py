@@ -132,12 +132,29 @@ def _uniswap_v3_value(
             "in sky_tokens.py."
         )
     holder = venue.holder_override or prime.alm[venue.chain]
-    positions = source.positions_in_pool(
-        chain=venue.chain.value,
-        owner=holder.value,
-        pool=venue.token.address.value,
-        block=block,
-    )
+    # Wrap the V3 pool read so a chain whose RPC blocks historical eth_call
+    # (drpc free tier on Monad in particular) degrades to value=$0 with a
+    # WARNING rather than aborting the run. Compute layer treats $0 the
+    # same as "venue empty / not yet funded" — which is the correct
+    # economic value for newly-added venues that aren't live yet.
+    from ..extract.rpc import RPCError as _RPCError
+    import requests as _requests
+    try:
+        positions = source.positions_in_pool(
+            chain=venue.chain.value,
+            owner=holder.value,
+            pool=venue.token.address.value,
+            block=block,
+        )
+    except (_RPCError, _requests.HTTPError, _requests.ConnectionError,
+            _requests.Timeout) as _e:
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "_uniswap_v3_value: V3 pool read failed for %s on %s at block %d "
+            "(%s) — degrading to value=$0. Inflow timeseries will also degrade.",
+            venue.id, venue.chain.value, block, _e,
+        )
+        return Decimal("0")
     if not positions:
         return Decimal("0")
     total = Decimal("0")
@@ -182,16 +199,33 @@ def _uniswap_v3_inflow_timeseries(
     import pandas as pd
 
     holder = venue.holder_override or prime.alm[venue.chain]
-    events = source.liquidity_events_in_pool(
-        chain=venue.chain.value,
-        owner=holder.value,
-        pool=venue.token.address.value,
-        from_block=from_block,
-        to_block=to_block,
-    )
     empty = pd.DataFrame({
         "block_date": [], "daily_inflow": [], "cum_inflow": [],
     })
+    # Same degrade-to-$0 contract as `_uniswap_v3_value`: if the chain's
+    # RPC / Dune source can't serve historical V3 reads (Monad on drpc
+    # free tier today), surface a WARN and return an empty inflow frame
+    # so the downstream venue degrades to revenue=$0 cleanly.
+    from ..extract.rpc import RPCError as _RPCError
+    from ..extract.dune import DuneError as _DuneError
+    import requests as _requests
+    try:
+        events = source.liquidity_events_in_pool(
+            chain=venue.chain.value,
+            owner=holder.value,
+            pool=venue.token.address.value,
+            from_block=from_block,
+            to_block=to_block,
+        )
+    except (_RPCError, _DuneError, _requests.HTTPError,
+            _requests.ConnectionError, _requests.Timeout) as _e:
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "_uniswap_v3_inflow_timeseries: liquidity-events read failed for "
+            "%s on %s [from %d to %d] (%s) — degrading to empty inflow.",
+            venue.id, venue.chain.value, from_block, to_block, _e,
+        )
+        return empty
     if not events:
         return empty
 
@@ -200,19 +234,29 @@ def _uniswap_v3_inflow_timeseries(
     # from_block (where positions had to exist for the events to fire). The
     # math is well-defined either way — events carry signed amounts; we only
     # need a position snapshot to look up token0/token1 decimals.
-    snapshot = source.positions_in_pool(
-        chain=venue.chain.value,
-        owner=holder.value,
-        pool=venue.token.address.value,
-        block=to_block,
-    )
-    if not snapshot:
+    try:
         snapshot = source.positions_in_pool(
             chain=venue.chain.value,
             owner=holder.value,
             pool=venue.token.address.value,
-            block=from_block,
+            block=to_block,
         )
+        if not snapshot:
+            snapshot = source.positions_in_pool(
+                chain=venue.chain.value,
+                owner=holder.value,
+                pool=venue.token.address.value,
+                block=from_block,
+            )
+    except (_RPCError, _requests.HTTPError, _requests.ConnectionError,
+            _requests.Timeout) as _e:
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "_uniswap_v3_inflow_timeseries: pool-token snapshot read failed "
+            "for %s on %s (%s) — degrading to empty inflow.",
+            venue.id, venue.chain.value, _e,
+        )
+        return empty
     if not snapshot:
         raise UnsupportedPricingError(
             f"Venue {venue.id}: V3 inflow events present but no positions "
