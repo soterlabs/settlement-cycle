@@ -121,6 +121,9 @@ class NavOracle:
     fallback: str | None = None
     fallback_address: Address | None = None
     fallback_underlying_decimals: int | None = None
+    fallback2: str | None = None
+    fallback2_address: Address | None = None
+    fallback2_underlying_decimals: int | None = None
     oracle_chain: "Chain | None" = None
 
 

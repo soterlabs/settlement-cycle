@@ -498,6 +498,13 @@ venues:
       fallback: erc4626
       fallback_address: '0x74A739EA1Dc67c5a0179ebad665D1D3c4b80B712'
       fallback_underlying_decimals: 6
+      # Fallback2: const_one — covers SoM/EoM blocks before the ERC-4626 vault
+      # was deployed (~block 24,050,000, early Jan 2026). ACRDX token was
+      # deployed Sep 2025 and issued at $1 par; at the Oct/Nov month boundaries
+      # (Oct 31, Nov 1, Nov 30, Dec 1) the NAV was never more than 0.17% away
+      # from $1, so const_one is an accurate approximation for those pre-vault
+      # SoM/EoM blocks.
+      fallback2: const_one
 
   # ─────────────────────────────────────────────────────────────
   # Venues observed in Grove team's Feb 2026 PnL workbook but not
