@@ -1337,20 +1337,22 @@ def _erc4626_event_inflow_timeseries(
             venue.id, exc,
         )
         return pd.DataFrame({
-            "block_date":          pd.Series(dtype="object"),
-            "daily_inflow":        pd.Series(dtype="object"),
-            "cum_inflow":          pd.Series(dtype="object"),
+            "block_date":           pd.Series(dtype="object"),
+            "daily_inflow":         pd.Series(dtype="object"),
+            "daily_assets_out":     pd.Series(dtype="object"),
+            "cum_inflow":           pd.Series(dtype="object"),
             "daily_net_shares_raw": pd.Series(dtype="object"),
-            "cum_net_shares_raw":  pd.Series(dtype="object"),
+            "cum_net_shares_raw":   pd.Series(dtype="object"),
         })
 
     if df.empty:
         return pd.DataFrame({
-            "block_date":          pd.Series(dtype="object"),
-            "daily_inflow":        pd.Series(dtype="object"),
-            "cum_inflow":          pd.Series(dtype="object"),
+            "block_date":           pd.Series(dtype="object"),
+            "daily_inflow":         pd.Series(dtype="object"),
+            "daily_assets_out":     pd.Series(dtype="object"),
+            "cum_inflow":           pd.Series(dtype="object"),
             "daily_net_shares_raw": pd.Series(dtype="object"),
-            "cum_net_shares_raw":  pd.Series(dtype="object"),
+            "cum_net_shares_raw":   pd.Series(dtype="object"),
         })
 
     df["block_date"] = pd.to_datetime(df["block_date"]).dt.date
@@ -1365,12 +1367,17 @@ def _erc4626_event_inflow_timeseries(
         shares_in  = _to_dec(row.get("shares_in_raw",  0))
         shares_out = _to_dec(row.get("shares_out_raw", 0))
 
-        daily_inflow_usd = (assets_in - assets_out) / underlying_divisor
-        daily_net_shares = shares_in - shares_out
+        daily_inflow_usd  = (assets_in - assets_out) / underlying_divisor
+        # Gross USDC withdrawn this day — kept separately so callers can
+        # weight sd_share computations by redemption size rather than using
+        # the net inflow (which would cancel deposits against withdrawals).
+        daily_assets_out_usd = assets_out / underlying_divisor
+        daily_net_shares      = shares_in - shares_out
 
         rows.append({
-            "block_date":          row["block_date"],
-            "daily_inflow":        daily_inflow_usd,
+            "block_date":           row["block_date"],
+            "daily_inflow":         daily_inflow_usd,
+            "daily_assets_out":     daily_assets_out_usd,
             "daily_net_shares_raw": daily_net_shares,
         })
 

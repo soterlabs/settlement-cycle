@@ -114,6 +114,8 @@ def test_happy_path_usdc_decimals_and_cumulative_sums(monkeypatch, tmp_cache_dir
     # shares are returned raw (no decimal scaling) for the share-balance check
     assert list(out["daily_net_shares_raw"]) == [Decimal("100000000"), Decimal("-80000000")]
     assert list(out["cum_net_shares_raw"])   == [Decimal("100000000"), Decimal("20000000")]
+    # daily_assets_out is gross withdrawals (not net) — used for sd_share weighting
+    assert list(out["daily_assets_out"]) == [Decimal("0"), Decimal("80")]
 
 
 def test_dai_underlying_uses_18_decimal_divisor(monkeypatch, tmp_cache_dir):
@@ -166,8 +168,8 @@ def test_empty_dune_result_returns_empty_with_expected_columns(monkeypatch, tmp_
     )
     assert out.empty
     expected_cols = {
-        "block_date", "daily_inflow", "cum_inflow",
-        "daily_net_shares_raw", "cum_net_shares_raw",
+        "block_date", "daily_inflow", "daily_assets_out",
+        "cum_inflow", "daily_net_shares_raw", "cum_net_shares_raw",
     }
     assert expected_cols.issubset(set(out.columns))
 

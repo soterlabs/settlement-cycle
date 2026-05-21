@@ -325,6 +325,85 @@ def _sde_asset_value_timeseries(
     return pd.DataFrame(rows)
 
 
+def _compute_centrifuge_intra_epoch_sd_share(
+    cap_usd: Decimal,
+    ev_ts: pd.DataFrame,
+    sde_daily_values: pd.DataFrame,
+    period: "Period",
+) -> "Decimal | None":
+    """Withdrawal-weighted average sd_share for the intra-epoch yield delta.
+
+    For Centrifuge ERC-7540 venues the vault-event (claimRedeem) and the
+    token-transfer (requestRedeem) are separate transactions.  The delta
+    between vault-event actual_revenue and RWA actual_revenue is intra-epoch
+    yield earned on the redeemed shares.  To split it correctly between Sky
+    and Prime we need the sd_share at the time those shares were still in the
+    ALM — i.e. at requestRedeem time.
+
+    Since we don't track requestRedeem events directly we use the best
+    available proxy: on each claimRedeem day D the token-transfer series has
+    already removed the shares (at requestRedeem), so
+    ``sde_daily_values[D].uncapped_value`` is the post-requestRedeem position.
+    Adding back the gross USDC withdrawn gives an estimate of the
+    pre-requestRedeem position, and therefore the correct sd_share for that
+    redemption.
+
+    Returns the assets_out-weighted average of per-day sd_shares, or None if
+    there are no period withdrawals (caller falls back to SOM sd_share).
+    """
+    if "daily_assets_out" not in ev_ts.columns or ev_ts.empty:
+        return None
+
+    mask = ev_ts["block_date"].apply(lambda d: period.start <= d <= period.end)
+    ev_period = ev_ts.loc[mask].copy()
+    ev_period = ev_period[ev_period["daily_assets_out"] > Decimal("0")]
+    if ev_period.empty:
+        return None
+
+    # Build a {date: uncapped_value} dict from the daily SDE timeseries.
+    # _sde_asset_value_timeseries produces one row per day, so every period
+    # date is present — but guard with a nearest-prior fallback for safety.
+    sde_by_date: dict = {}
+    for _, r in sde_daily_values.iterrows():
+        d = r["block_date"]
+        v = r["uncapped_value"]
+        sde_by_date[d] = v if isinstance(v, Decimal) else Decimal(str(v))
+
+    sorted_sde_dates = sorted(sde_by_date)
+
+    def _lookup_pos(date) -> "Decimal | None":
+        if date in sde_by_date:
+            return sde_by_date[date]
+        prior = [d for d in sorted_sde_dates if d <= date]
+        return sde_by_date[prior[-1]] if prior else None
+
+    total_weight = Decimal("0")
+    total_sd     = Decimal("0")
+
+    for _, row in ev_period.iterrows():
+        assets_out = row["daily_assets_out"]
+        if not isinstance(assets_out, Decimal):
+            assets_out = Decimal(str(assets_out))
+        if assets_out <= 0:
+            continue
+
+        pos_after = _lookup_pos(row["block_date"])
+        if pos_after is None:
+            continue
+        if not isinstance(pos_after, Decimal):
+            pos_after = Decimal(str(pos_after))
+
+        pos_before = pos_after + assets_out
+        sd_share = (
+            min(cap_usd, pos_before) / pos_before
+            if pos_before > 0 else Decimal("0")
+        )
+        total_weight += assets_out
+        total_sd     += assets_out * sd_share
+
+    return (total_sd / total_weight) if total_weight > 0 else None
+
+
 def _susds_shares_to_principal(
     sub_susds_shares,
     *,
@@ -1622,9 +1701,11 @@ def compute_monthly_pnl(
                 venue.id, venue.token.symbol, venue.chain.value,
             )
             continue
-        # Initialised here; Cat E ERC-4626 venues set this to the exact vault-
-        # event USDC period inflow before the VenueRevenueInputs append below.
+        # Initialised here; Cat E ERC-4626 venues set these before the
+        # VenueRevenueInputs append below.
         _erc4626_period_inflow: "Decimal | None" = None
+        _ev_ts: "pd.DataFrame | None" = None
+        _erc4626_intra_epoch_sd_share: "Decimal | None" = None
         if venue.pricing_category == PricingCategory.SPARK_SAVINGS_V2:
             # Spark Savings V2 vaults aren't held at the prime ALM — the
             # vault contract custodies underlying for retail depositors and
@@ -1968,7 +2049,7 @@ def compute_monthly_pnl(
             balance_src = sources.balance if sources.balance is not None else get_balance_source()
 
             if venue.centrifuge_vault is not None:
-                _ev_ts = _erc4626_event_inflow_timeseries(
+                _ev_ts = _erc4626_event_inflow_timeseries(   # noqa: F841 (used below)
                     prime, venue, period,
                     block_resolver=resolver,
                 )
@@ -2120,6 +2201,24 @@ def compute_monthly_pnl(
                 )
                 sde_asset_value_per_venue.append((venue.id, _sde_ts))
 
+        # For Centrifuge capped SDE venues: compute the withdrawal-weighted
+        # sd_share for the intra-epoch yield delta.  Both _ev_ts (vault-event
+        # inflows with daily_assets_out) and _sde_ts (daily position values)
+        # must be available.  Falls back to SOM sd_share inside
+        # compute_venue_revenue when this is None.
+        if (
+            venue.centrifuge_vault is not None
+            and sde_entry is not None
+            and sde_entry.kind == "capped"
+            and _ev_ts is not None
+            and not _ev_ts.empty
+            and _sde_ts is not None
+            and not _sde_ts.empty
+        ):
+            _erc4626_intra_epoch_sd_share = _compute_centrifuge_intra_epoch_sd_share(
+                sde_entry.cap_usd, _ev_ts, _sde_ts, period,
+            )
+
         _log.info(
             "  [%d/%d] %s  done in %.1fs  som=$%.0f  eom=$%.0f%s",
             _venue_idx, n_venues, venue.id,
@@ -2135,6 +2234,7 @@ def compute_monthly_pnl(
             external_revenue=external_revenue_for_venue,
             sde_daily_values=_sde_ts,
             erc4626_period_inflow=_erc4626_period_inflow,
+            erc4626_intra_epoch_sd_share=_erc4626_intra_epoch_sd_share,
         ))
 
     # Re-sort venue_inputs to match the declaration order in prime.venues so

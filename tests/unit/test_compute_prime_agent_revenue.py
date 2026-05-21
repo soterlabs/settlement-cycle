@@ -661,3 +661,168 @@ def test_erc4626_capped_without_daily_values_falls_back_to_som_locked():
     assert vr.sd_share == expected_share
     assert vr.sd_revenue == Decimal("30") * expected_share
     assert vr.revenue == Decimal("30") * (Decimal("1") - expected_share)
+
+
+# --- erc4626_intra_epoch_sd_share (per-event weighted split) ---------------
+
+
+def test_erc4626_intra_epoch_sd_share_overrides_som_fallback():
+    """When erc4626_intra_epoch_sd_share is provided it is used to split the
+    intra-epoch yield delta instead of the SOM sd_share fallback.
+
+    Setup: same numbers as test_erc4626_capped_sde_extra_delta_splits_at_som_sd_share
+    but with an explicit intra_epoch_sd_share = 0.52 (distinct from both
+    SOM sd_share = 0.6 and period-average).
+
+    delta = 10
+    intra_epoch_sd_share = 0.52
+    sd_revenue = sd_revenue_rwa + 10 × 0.52
+    prime_revenue = (30 − sd_revenue_rwa) + 10 × 0.48
+    """
+    period = _period()
+    cap = Decimal("600")
+    som = Decimal("1000")
+    intra_epoch_sd_share = Decimal("0.52")
+
+    inputs = VenueRevenueInputs(
+        venue=_venue("E8"),
+        value_som=som,
+        value_eom=Decimal("1030"),
+        inflow_timeseries=_empty_inflow(),
+        sde_entry=_sde_capped("E8", cap),
+        sde_daily_values=_daily_sde_values(period, Decimal("1030")),
+        erc4626_period_inflow=Decimal("-10"),
+        erc4626_intra_epoch_sd_share=intra_epoch_sd_share,
+    )
+    vr = compute_venue_revenue(period, inputs)
+
+    assert vr.actual_revenue == Decimal("40")
+
+    expected_sd_rwa = Decimal("30") * cap / Decimal("1030")
+    expected_sd = expected_sd_rwa + Decimal("10") * intra_epoch_sd_share
+    assert vr.sd_revenue == expected_sd
+
+    expected_prime = Decimal("30") - expected_sd_rwa + Decimal("10") * (1 - intra_epoch_sd_share)
+    assert vr.revenue == expected_prime
+
+
+def test_erc4626_intra_epoch_sd_share_none_falls_back_to_som():
+    """erc4626_intra_epoch_sd_share=None → falls back to SOM sd_share.
+    Pins the fallback path so a future refactor doesn't accidentally break it.
+
+    SOM sd_share = min(600, 1000) / 1000 = 0.6
+    """
+    period = _period()
+    cap = Decimal("600")
+    som = Decimal("1000")
+
+    inputs = VenueRevenueInputs(
+        venue=_venue("E8"),
+        value_som=som,
+        value_eom=Decimal("1030"),
+        inflow_timeseries=_empty_inflow(),
+        sde_entry=_sde_capped("E8", cap),
+        sde_daily_values=_daily_sde_values(period, Decimal("1030")),
+        erc4626_period_inflow=Decimal("-10"),
+        erc4626_intra_epoch_sd_share=None,  # explicit None → SOM fallback
+    )
+    vr = compute_venue_revenue(period, inputs)
+
+    som_sd_share = min(cap, som) / som                  # 0.6
+    expected_sd_rwa = Decimal("30") * cap / Decimal("1030")
+    expected_sd = expected_sd_rwa + Decimal("10") * som_sd_share
+    assert vr.sd_revenue == expected_sd
+
+
+# --- _compute_centrifuge_intra_epoch_sd_share --------------------------------
+
+def test_compute_intra_epoch_sd_share_weighted_by_redemption_size():
+    """Multiple withdrawals on different days → weighted-average sd_share.
+
+    The sde_daily_values represents the post-requestRedeem position (token-
+    transfer clock; shares already left the ALM).  Adding back daily_assets_out
+    gives the pre-requestRedeem position used to determine the correct sd_share.
+
+    Setup: two $50M withdrawals; cap = $325M.
+    Day 5:  sde_daily_values[5] = $650M (post-requestRedeem for day 5)
+             pre-requestRedeem = 650 + 50 = $700M
+             sd_share_5 = min(325, 700) / 700 = 325/700
+    Day 20: sde_daily_values[20] = $600M (position after day-5 exit, pre-day-20 exit)
+             pre-requestRedeem = 600 + 50 = $650M
+             sd_share_20 = min(325, 650) / 650 = 325/650 = 0.5
+
+    Weighted average = (50 × 325/700 + 50 × 325/650) / 100
+    """
+    from datetime import timedelta
+    from settle.compute.monthly_pnl import _compute_centrifuge_intra_epoch_sd_share
+
+    period = _period()  # 2026-03-01 → 2026-03-31
+    cap = Decimal("325")
+
+    ev_ts = pd.DataFrame({
+        "block_date":       [date(2026, 3, 5), date(2026, 3, 20)],
+        "daily_inflow":     [Decimal("-50"), Decimal("-50")],
+        "daily_assets_out": [Decimal("50"),  Decimal("50")],
+    })
+
+    # sde_daily_values has one row per day (output of _sde_asset_value_timeseries).
+    # Values represent the position after any requestRedeems that day.
+    # Day 5:  position = $650M (was $700M before $50M requestRedeem on day 5)
+    # Day 20: position = $600M (was $650M before $50M requestRedeem on day 20)
+    sde_rows = []
+    d = period.start
+    while d <= period.end:
+        if d <= date(2026, 3, 5):
+            val = Decimal("650")   # post-day-5 requestRedeem
+        elif d <= date(2026, 3, 20):
+            val = Decimal("600")   # post-day-20 requestRedeem
+        else:
+            val = Decimal("550")   # after both exits
+        sde_rows.append({"block_date": d, "uncapped_value": val})
+        d += timedelta(days=1)
+    sde_daily = pd.DataFrame(sde_rows)
+
+    result = _compute_centrifuge_intra_epoch_sd_share(cap, ev_ts, sde_daily, period)
+    assert result is not None
+
+    sd5  = min(cap, Decimal("650") + Decimal("50")) / (Decimal("650") + Decimal("50"))
+    sd20 = min(cap, Decimal("600") + Decimal("50")) / (Decimal("600") + Decimal("50"))
+    expected = (Decimal("50") * sd5 + Decimal("50") * sd20) / Decimal("100")
+    assert result == expected
+
+
+def test_compute_intra_epoch_sd_share_no_withdrawals_returns_none():
+    """Period with only deposits → no withdrawals → returns None (caller falls
+    back to SOM sd_share)."""
+    from settle.compute.monthly_pnl import _compute_centrifuge_intra_epoch_sd_share
+
+    period = _period()
+    cap = Decimal("325")
+
+    ev_ts = pd.DataFrame({
+        "block_date":       [date(2026, 3, 10)],
+        "daily_inflow":     [Decimal("100")],
+        "daily_assets_out": [Decimal("0")],
+    })
+    sde_daily = pd.DataFrame({"block_date": [date(2026, 3, 10)], "uncapped_value": [Decimal("500")]})
+
+    result = _compute_centrifuge_intra_epoch_sd_share(cap, ev_ts, sde_daily, period)
+    assert result is None
+
+
+def test_compute_intra_epoch_sd_share_missing_column_returns_none():
+    """ev_ts without daily_assets_out column → returns None gracefully."""
+    from settle.compute.monthly_pnl import _compute_centrifuge_intra_epoch_sd_share
+
+    period = _period()
+    cap = Decimal("325")
+
+    # Old-format ev_ts without daily_assets_out
+    ev_ts = pd.DataFrame({
+        "block_date":   [date(2026, 3, 10)],
+        "daily_inflow": [Decimal("-50")],
+    })
+    sde_daily = pd.DataFrame({"block_date": [date(2026, 3, 10)], "uncapped_value": [Decimal("500")]})
+
+    result = _compute_centrifuge_intra_epoch_sd_share(cap, ev_ts, sde_daily, period)
+    assert result is None

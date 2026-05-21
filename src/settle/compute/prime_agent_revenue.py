@@ -109,6 +109,12 @@ class VenueRevenueInputs:
     # clocks (ERC-20 transfer day vs. Withdraw event day) and the asymmetric
     # cap-weighting would misstate sd_revenue.
     erc4626_period_inflow: "Decimal | None" = None
+    # Pre-computed withdrawal-weighted average sd_share for splitting the
+    # intra-epoch yield delta (vault-event actual_revenue − RWA actual_revenue).
+    # Computed in monthly_pnl._compute_centrifuge_intra_epoch_sd_share from the
+    # per-day vault-event inflows and the daily SDE position timeseries.
+    # When None, compute_venue_revenue falls back to min(cap, SOM) / SOM.
+    erc4626_intra_epoch_sd_share: "Decimal | None" = None
 
 
 def _sd_share_at_som(
@@ -276,11 +282,18 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
         # fix (see PR description).
         if _rwa_actual_revenue is not None:
             _delta = actual_revenue - _rwa_actual_revenue
-            _som_sd_share = (
-                min(entry.cap_usd, inputs.value_som) / inputs.value_som
-                if inputs.value_som > 0 else Decimal("0")
-            )
-            sd_revenue = sd_revenue + _delta * _som_sd_share
+            # Prefer the pre-computed per-event weighted sd_share when available
+            # (handles multiple redemptions at different cap ratios correctly).
+            # Fall back to SOM sd_share as an approximation when not provided
+            # (sufficient for single-redemption months).
+            if inputs.erc4626_intra_epoch_sd_share is not None:
+                _epoch_sd_share = inputs.erc4626_intra_epoch_sd_share
+            else:
+                _epoch_sd_share = (
+                    min(entry.cap_usd, inputs.value_som) / inputs.value_som
+                    if inputs.value_som > 0 else Decimal("0")
+                )
+            sd_revenue = sd_revenue + _delta * _epoch_sd_share
         # Effective (average) sd_share for display — sd_revenue / actual_revenue.
         sd_share = (
             sd_revenue / actual_revenue if actual_revenue != 0 else Decimal("0")
