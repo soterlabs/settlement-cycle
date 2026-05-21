@@ -184,16 +184,13 @@ venues:
     # NAV: switched 2026-05-02 from Chronicle to Centrifuge's
     # pricePerShareFeed (canonical per Grove team's PnL workbook). The feed
     # implements ERC-4626 ``convertToAssets(uint256)`` returning 18-decimal
-    # USDC-denominated NAV. Chronicle remains the documented secondary; we
-    # don't auto-fall through to it because the two feeds can disagree by
-    # ~30bps and silent fallback would mask oracle issues. Fallback is
-    # const_one, which only kicks in for pre-deployment blocks (handled via
-    # nav_overrides in the test fixtures).
+    # USDC-denominated NAV. Chronicle is the fallback; the two feeds can
+    # disagree by ~30bps so fallback fires only on primary failure, not on drift.
     nav_oracle:
       kind: price_per_share_feed
       address: '0x4880799eE5200fC58DA299e965df644fBf46780B'
-      fallback: const_one
-      fallback_address: null
+      fallback: chronicle
+      fallback_address: '0x02cf8C9fBa24d79886dAc40cb620f0930C6E8eC0'
 
   - id: E9
     chain: ethereum
@@ -205,10 +202,12 @@ venues:
       decimals: 6
     # NAV: switched 2026-05-02 from Chronicle to Centrifuge's
     # pricePerShareFeed (canonical per Grove team's PnL workbook).
+    # Chronicle is the fallback on primary failure.
     nav_oracle:
       kind: price_per_share_feed
       address: '0xFE6920eB6C421f1179cA8c8d4170530CDBdfd77A'
-      fallback: const_one
+      fallback: chronicle
+      fallback_address: '0x59ef4BE3eDDF0270c4878b7B945bbeE13fb33d0D'
 
   - id: E10
     chain: ethereum
@@ -444,13 +443,13 @@ venues:
     # $256,892,750) within $200 (<1bps). Previously used Chronicle on
     # Ethereum, which diverged ~30bps from the canonical Centrifuge feed
     # and produced a ~$302K Feb revenue gap vs Grove's workbook.
-    # Chronicle remains the documented secondary; const_one fallback
-    # handles pre-deployment SoM blocks (issued at $1 par Aug-Sep 2025).
+    # Chronicle is the fallback on primary failure (same oracle as E8 ETH leg).
     nav_oracle:
       kind: price_per_share_feed
       address: '0x4880799eE5200fC58DA299e965df644fBf46780B'
       oracle_chain: ethereum
-      fallback: const_one
+      fallback: chronicle
+      fallback_address: '0x02cf8C9fBa24d79886dAc40cb620f0930C6E8eC0'
 
   - id: E21
     chain: avalanche_c
