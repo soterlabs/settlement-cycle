@@ -552,10 +552,10 @@ def test_erc4626_negative_implied_yield():
     assert vr.revenue == Decimal("-6")           # no SDE → prime absorbs loss
 
 
-def test_erc4626_capped_sde_extra_delta_routes_entirely_to_sky():
+def test_erc4626_capped_sde_extra_delta_splits_at_som_sd_share():
     """For capped SDE + erc4626_period_inflow: the delta between vault-event
-    actual_revenue and the RWA (token-transfer) actual_revenue is attributed
-    100% to sd_revenue, leaving prime_revenue unchanged.
+    actual_revenue and the RWA (token-transfer) actual_revenue is split using
+    the SOM sd_share (= min(cap, value_som) / value_som).
 
     Setup
     -----
@@ -575,16 +575,17 @@ def test_erc4626_capped_sde_extra_delta_routes_entirely_to_sky():
     ~~~~~~~~~~~~~~~~
     actual_revenue = 1030 − 1000 − (−10) = 40
     delta = 40 − 30 = 10
-    sd_revenue = sd_revenue_rwa + 10
-
-    Invariant: prime_revenue = 40 − sd_revenue = 30 − sd_revenue_rwa
-    (identical to the all-RWA result — the extra $10 goes entirely to Sky).
+    SOM sd_share = min(600, 1000) / 1000 = 0.6
+    sd_revenue = sd_revenue_rwa + 10 × 0.6 = sd_revenue_rwa + 6
+    prime_revenue = 40 − sd_revenue = 34 − sd_revenue_rwa
+    (prime gets 40% of the $10 delta = $4; Sky gets 60% = $6)
     """
     period = _period()
     cap = Decimal("600")
+    som = Decimal("1000")
     inputs = VenueRevenueInputs(
         venue=_venue("E8"),
-        value_som=Decimal("1000"),
+        value_som=som,
         value_eom=Decimal("1030"),
         inflow_timeseries=_empty_inflow(),
         sde_entry=_sde_capped("E8", cap),
@@ -595,13 +596,15 @@ def test_erc4626_capped_sde_extra_delta_routes_entirely_to_sky():
 
     assert vr.actual_revenue == Decimal("40")   # vault-event based
 
+    # SOM sd_share = min(600, 1000) / 1000 = 0.6
+    som_sd_share = min(cap, som) / som
     # sd_revenue_rwa: only the day-1 jump contributes (days 2–31 flat)
     expected_sd_rwa = Decimal("30") * cap / Decimal("1030")
-    expected_sd = expected_sd_rwa + Decimal("10")  # delta → entirely to SDE
+    expected_sd = expected_sd_rwa + Decimal("10") * som_sd_share
     assert vr.sd_revenue == expected_sd
 
-    # prime_revenue is pinned to its RWA-computed value
-    expected_prime = Decimal("30") - expected_sd_rwa
+    # prime gets its RWA share plus (1 − SOM sd_share) × delta
+    expected_prime = Decimal("30") - expected_sd_rwa + Decimal("10") * (1 - som_sd_share)
     assert vr.revenue == expected_prime
 
 

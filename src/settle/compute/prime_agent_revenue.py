@@ -254,23 +254,33 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
         # For ERC-4626 Centrifuge venues: _daily_capped_sd_revenue ran against
         # the token-transfer inflow_ts (consistent clock with _sde_ts), but
         # actual_revenue uses vault-event flows.  The two methodologies can
-        # differ slightly in the period inflow (and therefore actual_revenue)
-        # because the vault-event ``assets`` field captures exact USDC amounts
-        # while the token-transfer path reprices net share movements at NAV.
+        # differ because vault-event ``assets`` is exact USDC while the token-
+        # transfer path reprices net share movements at the end-of-day NAV.
+        # For Centrifuge ERC-7540 the transfer (requestRedeem) and the USDC
+        # receipt (claimRedeem) happen in different transactions: the delta
+        # represents intra-epoch yield that accrued on the redeemed shares inside
+        # the vault, never captured by the NAV-repricing path.
         #
-        # Choice (validated for Jan 2026; may need iteration for other months):
-        #   prime_revenue is pinned to what _daily_capped_sd_revenue assigned
-        #   under the rwa (token-transfer) methodology; the entire delta between
-        #   vault-event and rwa actual_revenue is attributed to sd_revenue.
+        # Split this delta using the SOM sd_share (= min(cap, SOM) / SOM).
+        # The redeemed shares were part of the pre-redemption position; their
+        # Sky/Prime attribution is determined by where they sat relative to the
+        # cap at that time.  SOM is the best available proxy for the
+        # pre-redemption position when a single large redemption dominates the
+        # period (as is typical for Cat E venues).  Using the period-average
+        # sd_share would over-weight post-redemption days where the lower
+        # remaining position inflates sd_share and over-attributes to Sky.
         #
-        # Rationale: for a capped SDE the deal terms assign ALL yield above the
-        # prime slice to Sky regardless of the measurement method.  Routing the
-        # small additional yield captured by precise USDC event tracking to Sky
-        # (rather than splitting it at the current prime/SDE ratio) avoids
-        # misattribution when the venue is well above the cap.  This
-        # simplification is intentional and documented here for reviewers.
+        # Known limitation: if multiple redemptions occurred at different times,
+        # or if the position changed significantly before the requestRedeem, the
+        # SOM sd_share is stale.  Track requestRedeem Transfer dates for a full
+        # fix (see PR description).
         if _rwa_actual_revenue is not None:
-            sd_revenue = sd_revenue + (actual_revenue - _rwa_actual_revenue)
+            _delta = actual_revenue - _rwa_actual_revenue
+            _som_sd_share = (
+                min(entry.cap_usd, inputs.value_som) / inputs.value_som
+                if inputs.value_som > 0 else Decimal("0")
+            )
+            sd_revenue = sd_revenue + _delta * _som_sd_share
         # Effective (average) sd_share for display — sd_revenue / actual_revenue.
         sd_share = (
             sd_revenue / actual_revenue if actual_revenue != 0 else Decimal("0")
