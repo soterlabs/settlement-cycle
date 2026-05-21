@@ -943,6 +943,17 @@ external_alm_sources:
     # only the realized interest inflows are captured. See PRD §17.13 and
     # issue #17 / Q-ID S3.
     - '0x49506c3aa028693458d6ee816b2ec28522946872'
+    # PayPal / Paxos PYUSD reward payer — sends realized PayPal-PYUSD
+    # rewards to the Spark ALM proxy roughly monthly (weekly since Mar
+    # 2026). Cached pipeline data (token=PYUSD, holder=Spark ALM) shows
+    # 15 payments Sep 2025 → Apr 2026 totaling ~$18.5M. Without this
+    # entry, PYUSD ingress to S28 (PYUSD raw / ALM idle) is classified
+    # as principal injection and the realized yield (~$2.5–3.2M/month
+    # in 2026 Q1+Apr) is silently uncredited. Spark Dune query 6217235
+    # computes the same yield synthetically as
+    # ``amount × (DFEDTARL − 62.5bps + 1.8% APY) / 365``; the on-chain
+    # leg captured here is the realized settlement of that accrual.
+    - '0xfc0539d019482d311c161ae3b756cdccdec45e87'
 
 # Per-(chain, source) overrides for inflows that arrive from an
 # `external_alm_sources` address but should NOT be classified as yield
