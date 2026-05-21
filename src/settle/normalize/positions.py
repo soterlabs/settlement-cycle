@@ -1297,6 +1297,7 @@ def _erc4626_event_inflow_timeseries(
     The extra ``*_shares_raw`` columns (integer, not decimal-adjusted) are
     consumed by the caller for the share-balance sanity check.
     """
+    import logging as _logging
     import pandas as pd
     from decimal import Decimal
     from pathlib import Path as _Path
