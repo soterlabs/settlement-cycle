@@ -463,3 +463,198 @@ def test_tw_avg_baseline_subtracted_for_pre_period_flows():
         _period(), Decimal("50000000"), inflow,
     )
     assert out == Decimal("50000000")
+
+
+# --- erc4626_period_inflow (Centrifuge vault-event inflow) ------------------
+#
+# For Cat E (RWA_TRANCHE) Centrifuge venues the pipeline derives inflows from
+# on-chain ERC-4626 Deposit/Withdraw ``assets`` fields rather than ERC-20
+# token-transfer repricing.  The resulting value is stored in
+# ``VenueRevenueInputs.erc4626_period_inflow`` and overrides the standard
+# ``inflow_timeseries``-based period_inflow and actual_revenue formula.
+# The ``inflow_timeseries`` (token-transfer clock) is still passed to
+# ``_daily_capped_sd_revenue`` so SDE cap-weighting uses a consistent clock.
+
+
+def _daily_sde_values(period: Period, value: Decimal) -> pd.DataFrame:
+    """Constant daily position value for the full period — minimal sde_daily_values stub."""
+    from datetime import timedelta
+    dates, vals = [], []
+    d = period.start
+    while d <= period.end:
+        dates.append(d)
+        vals.append(value)
+        d += timedelta(days=1)
+    return pd.DataFrame({"block_date": dates, "uncapped_value": vals})
+
+
+def test_erc4626_inflow_overrides_timeseries_for_period_inflow():
+    """erc4626_period_inflow replaces the inflow_timeseries cumulative value.
+
+    The token-transfer timeseries shows no movement, but vault events recorded
+    a $15 deposit.  period_inflow and actual_revenue should use the vault-event
+    amount, not the timeseries zero.
+    """
+    inputs = VenueRevenueInputs(
+        venue=_venue("E8"),
+        value_som=Decimal("1_000"),
+        value_eom=Decimal("1_020"),
+        inflow_timeseries=_empty_inflow(),       # RWA: no movement seen
+        erc4626_period_inflow=Decimal("15"),     # vault event: $15 deposit
+    )
+    vr = compute_venue_revenue(_period(), inputs)
+    assert vr.period_inflow == Decimal("15")     # from erc4626_period_inflow
+    assert vr.actual_revenue == Decimal("5")     # 1020 − 1000 − 15
+    assert vr.revenue == Decimal("5")            # no SDE → all to prime
+
+
+def test_erc4626_period_inflow_none_falls_back_to_timeseries():
+    """erc4626_period_inflow=None → standard path; inflow_timeseries drives period_inflow."""
+    inflow_df = pd.DataFrame({
+        "block_date":   [date(2026, 3, 10)],
+        "daily_inflow": [Decimal("-100")],
+        "cum_inflow":   [Decimal("-100")],
+    })
+    inputs = VenueRevenueInputs(
+        venue=_venue("E8"),
+        value_som=Decimal("1_000"),
+        value_eom=Decimal("950"),
+        inflow_timeseries=inflow_df,
+        erc4626_period_inflow=None,              # explicit None → standard path
+    )
+    vr = compute_venue_revenue(_period(), inputs)
+    assert vr.period_inflow == Decimal("-100")   # from timeseries
+    assert vr.actual_revenue == Decimal("50")    # 950 − 1000 − (−100)
+
+
+def test_erc4626_negative_implied_yield():
+    """A large withdrawal at an intra-period NAV below the SoM NAV produces
+    genuine negative implied yield — modelling the March 2026 E8 scenario.
+
+    Mechanism: SOM holds 1000 shares at $1.00 = $1000.
+    On day 15, 800 shares exit at $0.99/share → $792 USDC received (exact).
+    Remaining 200 shares appreciate to $1.01/share → EOM $202.
+
+    implied_yield = EOM − SOM − inflow = 202 − 1000 − (−792) = −6.
+    The $6 loss is because the withdrawn shares were priced at $1.00 at SoM
+    but only returned $0.99 each — the NAV slipped slightly before exit.
+    """
+    inputs = VenueRevenueInputs(
+        venue=_venue("E8"),
+        value_som=Decimal("1_000"),
+        value_eom=Decimal("202"),
+        inflow_timeseries=_empty_inflow(),
+        erc4626_period_inflow=Decimal("-792"),   # vault event: exact USDC out
+    )
+    vr = compute_venue_revenue(_period(), inputs)
+    assert vr.period_inflow == Decimal("-792")
+    assert vr.actual_revenue == Decimal("-6")    # genuine loss
+    assert vr.revenue == Decimal("-6")           # no SDE → prime absorbs loss
+
+
+def test_erc4626_capped_sde_extra_delta_routes_entirely_to_sky():
+    """For capped SDE + erc4626_period_inflow: the delta between vault-event
+    actual_revenue and the RWA (token-transfer) actual_revenue is attributed
+    100% to sd_revenue, leaving prime_revenue unchanged.
+
+    Setup
+    -----
+    value_som=1000, value_eom=1030, cap=600
+    inflow_timeseries: empty (token-transfer sees no flows)
+    erc4626_period_inflow=−10 (vault events record a $10 net withdrawal)
+    sde_daily_values: constant 1030 across all 31 days
+
+    RWA path (what _daily_capped_sd_revenue sees)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    _rwa_actual_revenue = 1030 − 1000 − 0 = 30
+    _daily_capped_sd_revenue: only day 1 has daily_rev=30 (1030−1000),
+    subsequent days are flat; sd_share_1 = 600/1030
+    → sd_revenue_rwa = 30 × 600/1030
+
+    Vault-event path
+    ~~~~~~~~~~~~~~~~
+    actual_revenue = 1030 − 1000 − (−10) = 40
+    delta = 40 − 30 = 10
+    sd_revenue = sd_revenue_rwa + 10
+
+    Invariant: prime_revenue = 40 − sd_revenue = 30 − sd_revenue_rwa
+    (identical to the all-RWA result — the extra $10 goes entirely to Sky).
+    """
+    period = _period()
+    cap = Decimal("600")
+    inputs = VenueRevenueInputs(
+        venue=_venue("E8"),
+        value_som=Decimal("1000"),
+        value_eom=Decimal("1030"),
+        inflow_timeseries=_empty_inflow(),
+        sde_entry=_sde_capped("E8", cap),
+        sde_daily_values=_daily_sde_values(period, Decimal("1030")),
+        erc4626_period_inflow=Decimal("-10"),
+    )
+    vr = compute_venue_revenue(period, inputs)
+
+    assert vr.actual_revenue == Decimal("40")   # vault-event based
+
+    # sd_revenue_rwa: only the day-1 jump contributes (days 2–31 flat)
+    expected_sd_rwa = Decimal("30") * cap / Decimal("1030")
+    expected_sd = expected_sd_rwa + Decimal("10")  # delta → entirely to SDE
+    assert vr.sd_revenue == expected_sd
+
+    # prime_revenue is pinned to its RWA-computed value
+    expected_prime = Decimal("30") - expected_sd_rwa
+    assert vr.revenue == expected_prime
+
+
+def test_erc4626_with_fixed_sde_uses_som_locked_share():
+    """erc4626_period_inflow + kind=fixed SDE → all revenue routes to Sky.
+
+    The capped/daily branch is only taken when ``kind == 'capped'`` AND
+    ``sde_daily_values`` is provided.  Fixed SDE falls through to
+    ``_sd_share_at_som`` which returns 1.0, so the entire vault-event-based
+    actual_revenue goes to Sky and prime_revenue is zero.
+
+    This pins that the erc4626 branch composes correctly with fixed SDE:
+    the inflow override still applies, but the split rule is unchanged.
+    """
+    inputs = VenueRevenueInputs(
+        venue=_venue("E8"),
+        value_som=Decimal("1_000"),
+        value_eom=Decimal("1_050"),
+        inflow_timeseries=_empty_inflow(),
+        sde_entry=_sde_fixed("E8"),
+        erc4626_period_inflow=Decimal("20"),   # $20 deposit via vault event
+    )
+    vr = compute_venue_revenue(_period(), inputs)
+    assert vr.period_inflow == Decimal("20")
+    assert vr.actual_revenue == Decimal("30")     # 1050 − 1000 − 20
+    assert vr.sd_share == Decimal("1")            # fixed → 100% Sky
+    assert vr.sd_revenue == Decimal("30")
+    assert vr.revenue == Decimal("0")             # prime gets nothing
+
+
+def test_erc4626_capped_without_daily_values_falls_back_to_som_locked():
+    """erc4626_period_inflow + capped SDE but NO sde_daily_values → SoM-locked
+    share.  Without the per-day timeseries the function can't run the daily
+    cap-weighting; the fallback locks sd_share at SoM (= cap/value_som).
+
+    The vault-event inflow override still applies to actual_revenue, but the
+    split uses the simple SoM share rather than the special "all delta to SDE"
+    routing from the daily branch.
+    """
+    inputs = VenueRevenueInputs(
+        venue=_venue("E8"),
+        value_som=Decimal("1_000"),
+        value_eom=Decimal("1_050"),
+        inflow_timeseries=_empty_inflow(),
+        sde_entry=_sde_capped("E8", Decimal("400")),
+        sde_daily_values=None,                  # ← explicit None → fallback
+        erc4626_period_inflow=Decimal("20"),
+    )
+    vr = compute_venue_revenue(_period(), inputs)
+    assert vr.actual_revenue == Decimal("30")    # 1050 − 1000 − 20
+
+    # sd_share locked at SoM: min(400, 1000) / 1000 = 0.4
+    expected_share = Decimal("400") / Decimal("1000")
+    assert vr.sd_share == expected_share
+    assert vr.sd_revenue == Decimal("30") * expected_share
+    assert vr.revenue == Decimal("30") * (Decimal("1") - expected_share)
