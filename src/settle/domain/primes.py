@@ -140,6 +140,11 @@ class Venue:
     nav_oracle: NavOracle | None = None  # Category E only — see NavOracle
     lp_kind: str | None = None           # Category F only: 'curve_stableswap' | 'uniswap_v3'
     nft_position_manager: Address | None = None  # Category F (uniswap_v3) only
+    # When True, skip V3 liquidity-event scanning entirely and synthesise
+    # inflow = Δvalue (value_eom − value_som), making revenue = 0. Use for
+    # chains where eth_getLogs over a full month is impractical (e.g. Monad:
+    # ~500 ms/block → ~5M blocks/month → ~500 paginated RPC requests).
+    v3_inflow_delta_value: bool = False
     # Per-venue minimum transfer threshold (USD-equivalent). Drops transfers
     # below this amount from the cumulative-balance pull so daily
     # yield-distribution mints (BUIDL-style) don't contaminate the

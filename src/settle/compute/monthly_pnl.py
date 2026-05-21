@@ -1608,24 +1608,40 @@ def compute_monthly_pnl(
         # outside the closed-form pool-native yield formula. Stays at 0 for
         # all other pricing categories (today only Cat C has the path wired).
         external_revenue_for_venue: Decimal = Decimal("0")
-        if venue.lp_kind == "uniswap_v3":
+        if venue.lp_kind == "uniswap_v3" and venue.v3_inflow_delta_value:
+            # Skip event scanning entirely — synthesise inflow = Δvalue so
+            # that revenue = 0.  Used for chains where eth_getLogs over a
+            # full settlement month is impractical (e.g. Monad ~5M blocks).
+            import pandas as _pd2
+            _delta = value_eom - value_som
+            inflow_ts = _pd2.DataFrame({
+                "block_date": [period.end],
+                "daily_inflow": [_delta],
+                "cum_inflow":   [_delta],
+            })
+        elif venue.lp_kind == "uniswap_v3":
             from ..normalize.positions import _uniswap_v3_inflow_timeseries
             v3_src = sources.v3_position
             if v3_src is None:
-                # Prefer the Dune-backed source when DUNE_API_KEY is set —
-                # Alchemy's free-tier ``eth_getLogs`` caps at 10K blocks /
-                # 10K logs per call and rejects wider scans with HTTP 400 on
-                # busy pools (Grove E12 AUSD/USDC). The Dune variant reads
-                # the same liquidity events from ``ethereum.logs`` in one
-                # query regardless of range.
+                # Prefer the Dune-backed source for Ethereum when DUNE_API_KEY
+                # is set — Alchemy's free-tier ``eth_getLogs`` caps at 10K
+                # blocks / 10K logs per call and rejects wider scans with
+                # HTTP 400 on busy pools (Grove E12 AUSD/USDC). The Dune
+                # variant reads the same liquidity events from
+                # ``ethereum.logs`` in one query regardless of range.
+                #
+                # DuneV3InflowSource is Ethereum-only: its SQL hardcodes
+                # ``FROM ethereum.logs``. For chains not indexed by Dune
+                # (Monad, Plume, Unichain) fall back to RPC eth_getLogs.
                 import os as _os
+                from ..domain.primes import Chain as _Chain
                 from ..normalize.sources.uniswap_v3 import RPCUniswapV3PositionSource
                 overrides = (
                     {venue.chain: venue.nft_position_manager}
                     if venue.nft_position_manager is not None
                     else None
                 )
-                if _os.environ.get("DUNE_API_KEY"):
+                if _os.environ.get("DUNE_API_KEY") and venue.chain == _Chain.ETHEREUM:
                     from ..normalize.sources.dune_v3_inflow import DuneV3InflowSource
                     v3_src = DuneV3InflowSource(nfpm_per_chain=overrides)
                 else:
