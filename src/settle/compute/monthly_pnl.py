@@ -151,7 +151,7 @@ def _check_centrifuge_in_flight(
                     # to 6 (USDC) which is correct for all current Centrifuge
                     # venues (JAAA, JTRSY) — update if 18-decimal underlyings
                     # are added.
-                    decimals = getattr(venue, "underlying_decimals", None) or 6
+                    decimals = getattr(getattr(venue, "underlying", None), "decimals", None) or 6
                     amount_fmt = f"{amount / 10**decimals:,.6f}"
                     _log.warning(
                         "IN-FLIGHT CENTRIFUGE REQUEST — MANUAL REVIEW REQUIRED: "
