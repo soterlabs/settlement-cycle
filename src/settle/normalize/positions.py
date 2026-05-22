@@ -1266,3 +1266,128 @@ def _curve_lp_index_weighted_inflow(
     }])
 
 
+def _erc4626_event_inflow_timeseries(
+    prime: "Prime",
+    venue: "Venue",
+    period,
+    *,
+    block_resolver,
+) -> "pd.DataFrame":
+    """Cat E (Centrifuge / ERC-4626 vault) inflow via Deposit / Withdraw events.
+
+    Replaces ``_rwa_inflow_timeseries`` for venues that have
+    ``centrifuge_vault`` set.  Instead of tracking net token-balance changes
+    and re-pricing them at NAV, this function reads the exact underlying-asset
+    (e.g. USDC) amounts from ERC-4626 events on the vault contract.
+
+    Accounting identity::
+
+        revenue = EOM_usd − SOM_usd − inflow_usd
+                = (SOM + net_capital + yield_accrual) − SOM − net_capital
+                = yield_accrual
+
+    so the existing revenue formula naturally isolates yield accrual once the
+    inflow is sourced from events.
+
+    Returns
+    -------
+    DataFrame  [block_date, daily_inflow, cum_inflow, daily_net_shares_raw,
+                cum_net_shares_raw]
+
+    The extra ``*_shares_raw`` columns (integer, not decimal-adjusted) are
+    consumed by the caller for the share-balance sanity check.
+    """
+    import logging as _logging
+    import pandas as pd
+    from decimal import Decimal
+    from pathlib import Path as _Path
+
+    from ..extract.dune import execute_query, DuneError
+
+    assert venue.centrifuge_vault is not None, (
+        "_erc4626_event_inflow_timeseries called without centrifuge_vault"
+    )
+
+    # Underlying decimals (e.g. 6 for USDC).  Prefer venue.underlying when
+    # present; fall back to 6 (safe for all current Centrifuge USDC vaults).
+    underlying_dec = (
+        venue.underlying.decimals if venue.underlying is not None else 6
+    )
+    underlying_divisor = Decimal(10 ** underlying_dec)
+
+    holder = venue.holder_override or prime.alm[venue.chain]
+    pin_block = period.pin_blocks[venue.chain]
+
+    queries_dir = _Path(__file__).resolve().parent.parent / "queries"
+
+    try:
+        df = execute_query(
+            queries_dir / "erc4626_centrifuge_flow.sql",
+            params={
+                "vault":      venue.centrifuge_vault.value,
+                "holder":     holder.value,
+                "start_date": str(prime.start_date),
+            },
+            pin_block=pin_block,
+        )
+    except DuneError as exc:
+        _logging.getLogger(__name__).warning(
+            "_erc4626_event_inflow_timeseries: Dune query failed for venue %s"
+            " — falling back to empty inflow (revenue = Δvalue). Cause: %s",
+            venue.id, exc,
+        )
+        return pd.DataFrame({
+            "block_date":           pd.Series(dtype="object"),
+            "daily_inflow":         pd.Series(dtype="object"),
+            "daily_assets_out":     pd.Series(dtype="object"),
+            "cum_inflow":           pd.Series(dtype="object"),
+            "daily_net_shares_raw": pd.Series(dtype="object"),
+            "cum_net_shares_raw":   pd.Series(dtype="object"),
+        })
+
+    if df.empty:
+        return pd.DataFrame({
+            "block_date":           pd.Series(dtype="object"),
+            "daily_inflow":         pd.Series(dtype="object"),
+            "daily_assets_out":     pd.Series(dtype="object"),
+            "cum_inflow":           pd.Series(dtype="object"),
+            "daily_net_shares_raw": pd.Series(dtype="object"),
+            "cum_net_shares_raw":   pd.Series(dtype="object"),
+        })
+
+    df["block_date"] = pd.to_datetime(df["block_date"]).dt.date
+
+    def _to_dec(x) -> Decimal:
+        return Decimal(str(x)) if x is not None else Decimal(0)
+
+    rows = []
+    for _, row in df.iterrows():
+        assets_in  = _to_dec(row.get("assets_in_raw",  0))
+        assets_out = _to_dec(row.get("assets_out_raw", 0))
+        shares_in  = _to_dec(row.get("shares_in_raw",  0))
+        shares_out = _to_dec(row.get("shares_out_raw", 0))
+
+        daily_inflow_usd  = (assets_in - assets_out) / underlying_divisor
+        # Gross USDC withdrawn this day — kept separately so callers can
+        # weight sd_share computations by redemption size rather than using
+        # the net inflow (which would cancel deposits against withdrawals).
+        daily_assets_out_usd = assets_out / underlying_divisor
+        daily_net_shares      = shares_in - shares_out
+
+        rows.append({
+            "block_date":           row["block_date"],
+            "daily_inflow":         daily_inflow_usd,
+            "daily_assets_out":     daily_assets_out_usd,
+            "daily_net_shares_raw": daily_net_shares,
+        })
+
+    out = (
+        pd.DataFrame(rows)
+        .sort_values("block_date")
+        .reset_index(drop=True)
+    )
+    out["cum_inflow"]          = out["daily_inflow"].cumsum()
+    out["cum_net_shares_raw"]  = out["daily_net_shares_raw"].cumsum()
+    return out
+
+

@@ -98,6 +98,23 @@ class VenueRevenueInputs:
     # of locking sd_share at SoM. Ignored for ``kind=fixed`` (sd_share is
     # always 1). None falls back to the SoM-locked behaviour.
     sde_daily_values: pd.DataFrame | None = None
+    # For ERC-4626 Centrifuge venues: the exact period inflow derived from
+    # on-chain Deposit/Withdraw event ``assets`` amounts (USDC exact).  When
+    # set, this value overrides the ``period_inflow`` displayed in the output
+    # and the ``actual_revenue`` formula, while ``inflow_timeseries`` (which
+    # is the token-transfer-based timeseries, consistent in timing with
+    # ``_sde_asset_value_timeseries``) is still passed to
+    # ``_daily_capped_sd_revenue`` so the SDE cap-weighting uses a consistent
+    # clock.  Without this split the two timeseries would be on different
+    # clocks (ERC-20 transfer day vs. Withdraw event day) and the asymmetric
+    # cap-weighting would misstate sd_revenue.
+    erc4626_period_inflow: "Decimal | None" = None
+    # Pre-computed withdrawal-weighted average sd_share for splitting the
+    # intra-epoch yield delta (vault-event actual_revenue − RWA actual_revenue).
+    # Computed in monthly_pnl._compute_centrifuge_intra_epoch_sd_share from the
+    # per-day vault-event inflows and the daily SDE position timeseries.
+    # When None, compute_venue_revenue falls back to min(cap, SOM) / SOM.
+    erc4626_intra_epoch_sd_share: "Decimal | None" = None
 
 
 def _sd_share_at_som(
@@ -185,6 +202,7 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
     absorbs sd_share of the loss, prime absorbs the rest. This matches Grove
     team's PnL workbook (no floor, no shortfall).
     """
+    _rwa_actual_revenue: Decimal | None = None  # set only in erc4626_period_inflow branch
     if inputs.actual_revenue_override is not None:
         actual_revenue = inputs.actual_revenue_override
         period_inflow = Decimal("0")
@@ -192,6 +210,28 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
         # roughly at value_som; the simple value_som is the best avg
         # available without a daily series.
         tw_avg_value = inputs.value_som
+    elif inputs.erc4626_period_inflow is not None:
+        # ERC-4626 Centrifuge venues: use exact vault-event USDC amounts for
+        # the period inflow and revenue formula; inflow_timeseries (token-
+        # transfer based, same clock as _sde_ts) is still used below by
+        # _daily_capped_sd_revenue so the daily cap-weighting is consistent.
+        period_inflow = inputs.erc4626_period_inflow
+        actual_revenue = (inputs.value_eom - inputs.value_som) - period_inflow
+        inflow_df = inputs.inflow_timeseries
+        tw_avg_value = _time_weighted_avg_value(
+            period, inputs.value_som, inflow_df,
+        )
+        # Also compute the token-transfer actual_revenue (denominator for
+        # sd_share scaling below).  This is needed so the effective sd_share
+        # from _daily_capped_sd_revenue (which ran against the rwa inflow_ts)
+        # can be re-applied to the vault-event actual_revenue.
+        _rwa_cum_som = cum_at_or_before(
+            inflow_df, "cum_inflow", period.start - timedelta(days=1),
+        )
+        _rwa_cum_eom = cum_at_or_before(inflow_df, "cum_inflow", period.end)
+        _rwa_actual_revenue = (
+            (inputs.value_eom - inputs.value_som) - (_rwa_cum_eom - _rwa_cum_som)
+        )
     else:
         inflow_df = inputs.inflow_timeseries
         cum_som = cum_at_or_before(
@@ -217,6 +257,43 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
             inputs.sde_daily_values,
             inputs.inflow_timeseries,
         )
+        # For ERC-4626 Centrifuge venues: _daily_capped_sd_revenue ran against
+        # the token-transfer inflow_ts (consistent clock with _sde_ts), but
+        # actual_revenue uses vault-event flows.  The two methodologies can
+        # differ because vault-event ``assets`` is exact USDC while the token-
+        # transfer path reprices net share movements at the end-of-day NAV.
+        # For Centrifuge ERC-7540 the transfer (requestRedeem) and the USDC
+        # receipt (claimRedeem) happen in different transactions: the delta
+        # represents intra-epoch yield that accrued on the redeemed shares inside
+        # the vault, never captured by the NAV-repricing path.
+        #
+        # Split this delta using the SOM sd_share (= min(cap, SOM) / SOM).
+        # The redeemed shares were part of the pre-redemption position; their
+        # Sky/Prime attribution is determined by where they sat relative to the
+        # cap at that time.  SOM is the best available proxy for the
+        # pre-redemption position when a single large redemption dominates the
+        # period (as is typical for Cat E venues).  Using the period-average
+        # sd_share would over-weight post-redemption days where the lower
+        # remaining position inflates sd_share and over-attributes to Sky.
+        #
+        # Known limitation: if multiple redemptions occurred at different times,
+        # or if the position changed significantly before the requestRedeem, the
+        # SOM sd_share is stale.  Track requestRedeem Transfer dates for a full
+        # fix (see PR description).
+        if _rwa_actual_revenue is not None:
+            _delta = actual_revenue - _rwa_actual_revenue
+            # Prefer the pre-computed per-event weighted sd_share when available
+            # (handles multiple redemptions at different cap ratios correctly).
+            # Fall back to SOM sd_share as an approximation when not provided
+            # (sufficient for single-redemption months).
+            if inputs.erc4626_intra_epoch_sd_share is not None:
+                _epoch_sd_share = inputs.erc4626_intra_epoch_sd_share
+            else:
+                _epoch_sd_share = (
+                    min(entry.cap_usd, inputs.value_som) / inputs.value_som
+                    if inputs.value_som > 0 else Decimal("0")
+                )
+            sd_revenue = sd_revenue + _delta * _epoch_sd_share
         # Effective (average) sd_share for display — sd_revenue / actual_revenue.
         sd_share = (
             sd_revenue / actual_revenue if actual_revenue != 0 else Decimal("0")

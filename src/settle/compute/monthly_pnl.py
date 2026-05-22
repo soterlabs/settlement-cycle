@@ -76,6 +76,94 @@ def _previous_day_eod_utc(d) -> datetime:
     return datetime.combine(d - timedelta(days=1), time.max, tzinfo=timezone.utc)
 
 
+def _check_centrifuge_in_flight(
+    prime: "Prime",
+    pin_blocks_som: dict["Chain", int],
+    pin_blocks_eom: dict["Chain", int],
+) -> None:
+    """Warn if any Centrifuge vault has pending/claimable deposit or redeem
+    requests in-flight at the SoM or EoM pin block.
+
+    ERC-7540 async vaults split every deposit or redemption into two steps:
+    *request* → epoch processing → *claim*.  If a request is in-flight at a
+    settlement boundary the SoM/EoM share balance is incorrect — shares or
+    assets are held in the vault's escrow rather than in the prime ALM wallet,
+    and the pipeline cannot automatically account for them.  This check logs a
+    loud WARNING so the operator can manually verify and correct the numbers.
+
+    Contracts not yet deployed at a given block are silently skipped to handle
+    venues that were onboarded mid-period.
+    """
+    from ..extract.rpc import (
+        eth_call as _eth_call,
+        is_contract_deployed as _is_deployed,
+        SEL_PENDING_DEPOSIT_REQUEST as _SEL_PD,
+        SEL_CLAIMABLE_DEPOSIT_REQUEST as _SEL_CD,
+        SEL_PENDING_REDEEM_REQUEST as _SEL_PR,
+        SEL_CLAIMABLE_REDEEM_REQUEST as _SEL_CR,
+    )
+
+    _selectors: list[tuple[str, str]] = [
+        ("PENDING DEPOSIT",   _SEL_PD),
+        ("CLAIMABLE DEPOSIT", _SEL_CD),
+        ("PENDING REDEEM",    _SEL_PR),
+        ("CLAIMABLE REDEEM",  _SEL_CR),
+    ]
+
+    # ERC-7540 uses a single request-ID per (vault, controller).
+    _REQUEST_ID = 0
+
+    def _query_uint(vault: "Address", holder: "Address", chain: "Chain",
+                    selector: str, block: int) -> int:
+        from ..extract._abi import pad_uint as _pu, pad_address as _pa
+        data = selector + _pu(_REQUEST_ID) + _pa(holder)
+        try:
+            raw = _eth_call(chain, vault, data, block)
+            return int(raw, 16) if raw and raw not in ("0x", "0x0") else 0
+        except Exception:  # noqa: BLE001
+            return 0
+
+    for venue in prime.venues:
+        if venue.centrifuge_vault is None or venue.skip:
+            continue
+        chain = venue.chain
+        if chain not in pin_blocks_som or chain not in pin_blocks_eom:
+            continue
+        holder = venue.holder_override or prime.alm.get(chain)
+        if holder is None:
+            continue
+
+        vault = venue.centrifuge_vault
+
+        for block_label, block in [("SoM", pin_blocks_som[chain]),
+                                    ("EoM", pin_blocks_eom[chain])]:
+            if not _is_deployed(chain, vault, block):
+                _log.info(
+                    "  centrifuge check: %s vault %s not yet deployed at %s block %d — skipping",
+                    venue.id, vault.hex, block_label, block,
+                )
+                continue
+
+            for label, selector in _selectors:
+                amount = _query_uint(vault, holder, chain, selector, block)
+                if amount:
+                    # Use a dedicated asset decimals field if available; default
+                    # to 6 (USDC) which is correct for all current Centrifuge
+                    # venues (JAAA, JTRSY) — update if 18-decimal underlyings
+                    # are added.
+                    decimals = getattr(getattr(venue, "underlying", None), "decimals", None) or 6
+                    amount_fmt = f"{amount / 10**decimals:,.6f}"
+                    _log.warning(
+                        "IN-FLIGHT CENTRIFUGE REQUEST — MANUAL REVIEW REQUIRED: "
+                        "venue %s (%s) has a %s of %s at the %s pin block (%d). "
+                        "THE %s VALUE AND INFLOW FOR THIS VENUE MAY BE INCORRECT "
+                        "AND MAY REQUIRE MANUAL CORRECTION.",
+                        venue.id, venue.token.symbol,
+                        label.upper(), amount_fmt, block_label, block,
+                        block_label.upper(),
+                    )
+
+
 def _resolve_pin_blocks(
     anchor_utc: datetime,
     chains: set[Chain],
@@ -235,6 +323,85 @@ def _sde_asset_value_timeseries(
         })
         current = current + timedelta(days=1)
     return pd.DataFrame(rows)
+
+
+def _compute_centrifuge_intra_epoch_sd_share(
+    cap_usd: Decimal,
+    ev_ts: pd.DataFrame,
+    sde_daily_values: pd.DataFrame,
+    period: "Period",
+) -> "Decimal | None":
+    """Withdrawal-weighted average sd_share for the intra-epoch yield delta.
+
+    For Centrifuge ERC-7540 venues the vault-event (claimRedeem) and the
+    token-transfer (requestRedeem) are separate transactions.  The delta
+    between vault-event actual_revenue and RWA actual_revenue is intra-epoch
+    yield earned on the redeemed shares.  To split it correctly between Sky
+    and Prime we need the sd_share at the time those shares were still in the
+    ALM — i.e. at requestRedeem time.
+
+    Since we don't track requestRedeem events directly we use the best
+    available proxy: on each claimRedeem day D the token-transfer series has
+    already removed the shares (at requestRedeem), so
+    ``sde_daily_values[D].uncapped_value`` is the post-requestRedeem position.
+    Adding back the gross USDC withdrawn gives an estimate of the
+    pre-requestRedeem position, and therefore the correct sd_share for that
+    redemption.
+
+    Returns the assets_out-weighted average of per-day sd_shares, or None if
+    there are no period withdrawals (caller falls back to SOM sd_share).
+    """
+    if "daily_assets_out" not in ev_ts.columns or ev_ts.empty:
+        return None
+
+    mask = ev_ts["block_date"].apply(lambda d: period.start <= d <= period.end)
+    ev_period = ev_ts.loc[mask].copy()
+    ev_period = ev_period[ev_period["daily_assets_out"] > Decimal("0")]
+    if ev_period.empty:
+        return None
+
+    # Build a {date: uncapped_value} dict from the daily SDE timeseries.
+    # _sde_asset_value_timeseries produces one row per day, so every period
+    # date is present — but guard with a nearest-prior fallback for safety.
+    sde_by_date: dict = {}
+    for _, r in sde_daily_values.iterrows():
+        d = r["block_date"]
+        v = r["uncapped_value"]
+        sde_by_date[d] = v if isinstance(v, Decimal) else Decimal(str(v))
+
+    sorted_sde_dates = sorted(sde_by_date)
+
+    def _lookup_pos(date) -> "Decimal | None":
+        if date in sde_by_date:
+            return sde_by_date[date]
+        prior = [d for d in sorted_sde_dates if d <= date]
+        return sde_by_date[prior[-1]] if prior else None
+
+    total_weight = Decimal("0")
+    total_sd     = Decimal("0")
+
+    for _, row in ev_period.iterrows():
+        assets_out = row["daily_assets_out"]
+        if not isinstance(assets_out, Decimal):
+            assets_out = Decimal(str(assets_out))
+        if assets_out <= 0:
+            continue
+
+        pos_after = _lookup_pos(row["block_date"])
+        if pos_after is None:
+            continue
+        if not isinstance(pos_after, Decimal):
+            pos_after = Decimal(str(pos_after))
+
+        pos_before = pos_after + assets_out
+        sd_share = (
+            min(cap_usd, pos_before) / pos_before
+            if pos_before > 0 else Decimal("0")
+        )
+        total_weight += assets_out
+        total_sd     += assets_out * sd_share
+
+    return (total_sd / total_weight) if total_weight > 0 else None
 
 
 def _susds_shares_to_principal(
@@ -1471,6 +1638,8 @@ def compute_monthly_pnl(
     )
     _log.info("  2g: SSR history...")
     ssr = get_ssr_history(prime, period, source=sources.ssr)
+    _log.info("  2h: Centrifuge vault in-flight request check...")
+    _check_centrifuge_in_flight(prime, pin_blocks_som, pin_blocks_eom)
     _log.info("  step 2 complete.")
 
     # SDE table — config-driven Sky Direct exposures (replaces the legacy
@@ -1532,6 +1701,11 @@ def compute_monthly_pnl(
                 venue.id, venue.token.symbol, venue.chain.value,
             )
             continue
+        # Initialised here; Cat E ERC-4626 venues set these before the
+        # VenueRevenueInputs append below.
+        _erc4626_period_inflow: "Decimal | None" = None
+        _ev_ts: "pd.DataFrame | None" = None
+        _erc4626_intra_epoch_sd_share: "Decimal | None" = None
         if venue.pricing_category == PricingCategory.SPARK_SAVINGS_V2:
             # Spark Savings V2 vaults aren't held at the prime ALM — the
             # vault contract custodies underlying for retail depositors and
@@ -1868,12 +2042,102 @@ def compute_monthly_pnl(
                 principal_return_overrides=overrides_by_bytes,
             )
         elif venue.pricing_category == PricingCategory.RWA_TRANCHE:
-            # Cat E — RWA tranche net flow × NAV oracle at day-end block.
-            # Tracks cumulative balance into the ALM (any sender) since
-            # tranche tokens often arrive via issuer custodians, not from 0x0.
-            from ..normalize.positions import _rwa_inflow_timeseries
+            from ..normalize.positions import (
+                _rwa_inflow_timeseries,
+                _erc4626_event_inflow_timeseries,
+            )
             balance_src = sources.balance if sources.balance is not None else get_balance_source()
 
+            if venue.centrifuge_vault is not None:
+                _ev_ts = _erc4626_event_inflow_timeseries(   # noqa: F841 (used below)
+                    prime, venue, period,
+                    block_resolver=resolver,
+                )
+
+                # Extract vault-event period inflow (exact USDC from events).
+                _period_mask = _ev_ts["block_date"].apply(
+                    lambda d: period.start <= d <= period.end
+                )
+                _erc4626_period_inflow = Decimal(str(
+                    _ev_ts.loc[_period_mask, "daily_inflow"].sum()
+                ))
+
+                # ── Share-balance sanity check ────────────────────────────
+                # Verify that the cumulative share flow from events reconciles
+                # with the on-chain share balance.  A mismatch means there are
+                # share movements not captured as Deposit/Withdraw (e.g. direct
+                # ERC-20 transfers) and the event-sourced flows are incomplete.
+                if (
+                    not _ev_ts.empty
+                    and "daily_net_shares_raw" in _ev_ts.columns
+                ):
+                    _holder_addr = (
+                        venue.holder_override or prime.alm[venue.chain]
+                    )
+                    try:
+                        from ..extract.rpc import balance_of as _rpc_bal
+                        _som_shares_raw = Decimal(str(
+                            _rpc_bal(
+                                venue.chain,
+                                venue.token.address,
+                                _holder_addr,
+                                som_block,
+                            )
+                        ))
+                        _eom_shares_raw = Decimal(str(
+                            _rpc_bal(
+                                venue.chain,
+                                venue.token.address,
+                                _holder_addr,
+                                eom_block,
+                            )
+                        ))
+                        _period_net_shares = Decimal(str(
+                            _ev_ts.loc[_period_mask, "daily_net_shares_raw"].sum()
+                        ))
+                        _expected_eom = _som_shares_raw + _period_net_shares
+
+                        if _eom_shares_raw != 0:
+                            _share_drift_pct = abs(
+                                (_expected_eom - _eom_shares_raw) / _eom_shares_raw
+                            ) * 100
+                            if _share_drift_pct > Decimal("0.5"):
+                                _log.warning(
+                                    "  Cat E ERC-4626 %s: share-balance drift "
+                                    "%.4f%% — events may not capture all share "
+                                    "movements (expected EOM shares from events: "
+                                    "%s, on-chain: %s). Inflow figures may be "
+                                    "incomplete.",
+                                    venue.id, float(_share_drift_pct),
+                                    _expected_eom, _eom_shares_raw,
+                                )
+                            else:
+                                _log.debug(
+                                    "  Cat E ERC-4626 %s: share balance OK "
+                                    "(drift %.4f%%)",
+                                    venue.id, float(_share_drift_pct),
+                                )
+
+                        _implied_yield = value_eom - value_som - _erc4626_period_inflow
+                        _log.info(
+                            "  Cat E ERC-4626 %s: SOM=$%s  EOM=$%s  "
+                            "net_capital=$%s  implied_yield=$%s",
+                            venue.id,
+                            f"{float(value_som):,.2f}",
+                            f"{float(value_eom):,.2f}",
+                            f"{float(_erc4626_period_inflow):,.2f}",
+                            f"{float(_implied_yield):,.2f}",
+                        )
+                    except Exception as _e:
+                        _log.warning(
+                            "  Cat E ERC-4626 %s: share sanity check failed"
+                            " (%s) — skipping.",
+                            venue.id, _e,
+                        )
+
+            # All Cat E venues: token-transfer inflow_ts for _daily_capped_sd_revenue.
+            # This keeps the SDE calculation consistent with _sde_asset_value_timeseries
+            # (both timed by ERC-20 transfers, not vault events).
             def _cat_e_nav(block, _v=venue, _br=resolver, _nr=sources.nav_oracle_resolver):
                 return _resolve_rwa_nav(_v, block, block_resolver=_br, resolver=_nr)
 
@@ -1937,6 +2201,24 @@ def compute_monthly_pnl(
                 )
                 sde_asset_value_per_venue.append((venue.id, _sde_ts))
 
+        # For Centrifuge capped SDE venues: compute the withdrawal-weighted
+        # sd_share for the intra-epoch yield delta.  Both _ev_ts (vault-event
+        # inflows with daily_assets_out) and _sde_ts (daily position values)
+        # must be available.  Falls back to SOM sd_share inside
+        # compute_venue_revenue when this is None.
+        if (
+            venue.centrifuge_vault is not None
+            and sde_entry is not None
+            and sde_entry.kind == "capped"
+            and _ev_ts is not None
+            and not _ev_ts.empty
+            and _sde_ts is not None
+            and not _sde_ts.empty
+        ):
+            _erc4626_intra_epoch_sd_share = _compute_centrifuge_intra_epoch_sd_share(
+                sde_entry.cap_usd, _ev_ts, _sde_ts, period,
+            )
+
         _log.info(
             "  [%d/%d] %s  done in %.1fs  som=$%.0f  eom=$%.0f%s",
             _venue_idx, n_venues, venue.id,
@@ -1951,6 +2233,8 @@ def compute_monthly_pnl(
             actual_revenue_override=susds_spread,
             external_revenue=external_revenue_for_venue,
             sde_daily_values=_sde_ts,
+            erc4626_period_inflow=_erc4626_period_inflow,
+            erc4626_intra_epoch_sd_share=_erc4626_intra_epoch_sd_share,
         ))
 
     # Re-sort venue_inputs to match the declaration order in prime.venues so
