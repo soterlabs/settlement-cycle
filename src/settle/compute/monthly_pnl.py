@@ -1764,6 +1764,7 @@ def compute_monthly_pnl(
         value_som = get_position_value(
             prime, venue, som_block,
             balance_source=sources.position_balance,
+            flow_source=sources.balance,
             erc4626_source=sources.convert_to_assets,
             v3_position_source=sources.v3_position,
             curve_pool_source=sources.curve_pool,
@@ -1773,6 +1774,7 @@ def compute_monthly_pnl(
         value_eom = get_position_value(
             prime, venue, eom_block,
             balance_source=sources.position_balance,
+            flow_source=sources.balance,
             erc4626_source=sources.convert_to_assets,
             v3_position_source=sources.v3_position,
             curve_pool_source=sources.curve_pool,
@@ -2065,6 +2067,35 @@ def compute_monthly_pnl(
                 external_sources=external,
                 principal_return_overrides=overrides_by_bytes,
             )
+        elif venue.pricing_category == PricingCategory.EOA:
+            # Cat EOA — Off-protocol relay/staging address. The venue tracks
+            # outstanding ALM principal that's sitting at an EOA waiting for
+            # the return leg to land at the paired anchor venue. There is no
+            # native yield mechanism: every balance change is either fresh
+            # principal-out (ALM → holder) or a drain triggered by the paired
+            # anchor receiving a return (paired_source → ALM). Both are
+            # value-preserving capital movement, so we set ``inflow_ts =
+            # Δvalue`` and ``revenue = Δvalue − inflow`` collapses to 0 every
+            # period — Cat EOA never contributes to Prime Revenue.
+            #
+            # ⚠ Important: the economic "spread" (e.g. $50M USDC out →
+            # $50.12M anchor-asset back, where the +$120k is a mint/swap
+            # advantage captured during the OOB acquisition) will NOT appear
+            # in Prime Revenue. It persists as this venue's terminal negative
+            # balance (e.g. −$120k) once the drain exceeds the principal-out,
+            # and that residual is what makes the PRD §5.2 cost-basis
+            # invariant balance (Σ venue values = cum_debt − allocator returns).
+            # Booking the spread as venue revenue here would either
+            # double-count the anchor's downstream MtM (if the anchor is a
+            # raw stable that itself feeds a Cat B vault — e.g. E14 → E6) or
+            # mis-attribute capital flow as yield. Surfacing the spread as
+            # Prime Revenue requires a separate accounting layer; deferred.
+            import pandas as _pd
+            inflow_ts = _pd.DataFrame([{
+                "block_date": period.end,
+                "daily_inflow": value_eom - value_som,
+                "cum_inflow": value_eom - value_som,
+            }])
         elif venue.pricing_category == PricingCategory.RWA_TRANCHE:
             from ..normalize.positions import (
                 _rwa_inflow_timeseries,

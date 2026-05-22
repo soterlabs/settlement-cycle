@@ -100,6 +100,20 @@ def get_unit_price(
     if cat == PricingCategory.PAR_STABLE:
         return par_stable_price(venue.token)
 
+    if cat == PricingCategory.EOA:
+        # EOA venues track principal sent to an off-protocol address. The
+        # principal is denominated in the venue's token (typically USDC) and
+        # marked at par — same pricing rule as Cat A, but the balance comes
+        # from flow accounting rather than on-chain balanceOf. The token MUST
+        # be a par-stable; non-par tokens would silently misprice.
+        if not is_par_stable(venue.token):
+            raise UnsupportedPricingError(
+                f"Venue {venue.id} (Cat EOA): token {venue.token.symbol!r} is "
+                "not par-stable. EOA venues price principal at par; add the "
+                "token to PAR_STABLE_SYMBOLS or use a different category."
+            )
+        return par_stable_price(venue.token)
+
     if cat == PricingCategory.ERC4626_VAULT:
         if venue.underlying is None:
             raise ValueError(f"Venue {venue.id} (cat B) requires `underlying`")

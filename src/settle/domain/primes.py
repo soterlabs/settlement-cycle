@@ -229,6 +229,23 @@ class Venue:
     # emitted as Deposit/Withdraw (e.g. direct ERC-20 transfers), and a warning
     # is logged.
     centrifuge_vault: "Address | None" = None
+    # Category EOA only — pairing config for the "principal-out / return-in"
+    # roundtrip pattern (see PricingCategory.EOA docstring).
+    #
+    # ``paired_with`` is the venue id of the *anchor* venue where the return
+    # asset lands at the ALM proxy (typically a Cat B / Cat E venue tracking
+    # the returned asset). ``paired_source`` is the address that, when seen
+    # as the *sender* of a credit to the anchor venue's holder, triggers a
+    # paired drain on this venue's balance.
+    #
+    # Together they implement:
+    #   balance(this) = Σ(ALM→holder outflows in venue.token)
+    #                 − Σ(paired_source → anchor.holder inflows in anchor.token,
+    #                     converted to venue.token units at par)
+    #
+    # Both fields are required for category EOA and ignored elsewhere.
+    paired_with: str | None = None
+    paired_source: Address | None = None
 
 
 @dataclass(frozen=True, slots=True)
