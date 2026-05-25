@@ -384,6 +384,7 @@ venues:
     # (cum_alm_usds), so it lowers Sky's interest claim. Including it as a
     # venue does not double-count — both effects reflect "USDS minted but
     # not yet deployed."
+    cof_excluded: true   # already deducted from utilized via cum_alm_usds
 
   - id: E18
     chain: ethereum

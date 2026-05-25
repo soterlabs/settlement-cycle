@@ -62,6 +62,11 @@ class VenueRevenue:
     # this materially when inflows are concentrated mid-month — see
     # ``_time_weighted_avg_value`` in compute.prime_agent_revenue.
     tw_avg_value: Decimal = Decimal("0")
+    # When True, this venue's avg_value is excluded from the CoF allocation
+    # denominator in post-hoc reporting (build_monthly_report). Mirrors the
+    # same flag on Venue — propagated here so the CSV carries it forward
+    # without requiring the reporting script to re-load the config YAML.
+    cof_excluded: bool = False
     # Legacy fields kept for provenance round-trip on existing settlements
     # written under the old shortfall model. New runs always emit 0 for these.
     br_charge: Decimal = Decimal("0")

@@ -216,7 +216,14 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
         else:
             avg_value = (_D(r["value_som"]) + _D(r["value_eom"])) / Decimal("2")
             note = (note + " " if note else "") + "(CoF approx)"
-        weight = Decimal("1") - sd_share
+        # cof_excluded venues (idle USDS/USDC at the ALM proxy) are already
+        # deducted from `utilized` via cum_alm_usds, so they owe no CoF.
+        # Setting weight=0 keeps them out of the allocation denominator,
+        # producing profit_to_sky=0 and profit_to_grove=revenue (≈0 for idle).
+        cof_excluded = r.get("cof_excluded", "").lower() == "true"
+        weight = Decimal("0") if cof_excluded else Decimal("1") - sd_share
+        if cof_excluded and not note:
+            note = "CoF excluded (already deducted from utilized)"
         enriched.append({
             "venue_id":   r["venue_id"],
             "label":      r["label"],
