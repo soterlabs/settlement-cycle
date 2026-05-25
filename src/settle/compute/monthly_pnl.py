@@ -2035,12 +2035,19 @@ def compute_monthly_pnl(
                 addr.value: [(o.date, o.amount) for o in entries]
                 for addr, entries in overrides_for_chain.items()
             }
-            inflow_ts = _cat_a_capital_inflow_timeseries(
+            inflow_ts, _cat_a_ext_yield = _cat_a_capital_inflow_timeseries(
                 prime, venue, period,
                 balance_source=balance_src,
                 external_sources=external,
                 principal_return_overrides=overrides_by_bytes,
             )
+            # Carry external yield into the explicit external_revenue bucket
+            # (100 % prime, no SDE split), consistent with Cat C/D treatment of
+            # Merkl drops and Anchorage sweeps.  The closed-form formula
+            # actual_revenue = Δvalue − period_inflow correctly evaluates to 0
+            # for a par-stable; the yield is now credited here rather than being
+            # embedded implicitly in the capital-exclusion mechanism.
+            external_revenue_for_venue = _cat_a_ext_yield
         elif venue.pricing_category == PricingCategory.RWA_TRANCHE:
             from ..normalize.positions import (
                 _rwa_inflow_timeseries,

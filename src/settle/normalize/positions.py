@@ -832,33 +832,73 @@ def _cat_a_capital_inflow_timeseries(
     external_sources: set,
     principal_return_overrides: dict | None = None,
 ):
-    """Cat A par-stable capital-flow accounting with external-source allowlist.
+    """Cat A par-stable inflow accounting with explicit external-yield tracking.
 
-    Each transfer to/from the ALM is classified by counterparty:
-    - **external** (in ``external_sources``) → off-chain custodian sending
-      realized yield directly to the ALM (Anchorage-style); flows through
-      to revenue, NOT included here
-    - everything else → value-preserving capital movement (PSM swap, venue
-      contract allocation/withdrawal, mint/burn, allocator buffer); netted
-      out of revenue, included here
+    Returns a 2-tuple ``(inflow_ts, external_yield_usd)`` where:
+
+    ``inflow_ts``
+        DataFrame ``[block_date, daily_inflow, cum_inflow]`` of **all**
+        signed token flows at the holder (PSM swaps, venue allocations,
+        external-source inflows, principal returns — everything). This is
+        used for the time-weighted-average-value calculation and for
+        computing ``period_inflow`` in the revenue formula.
+
+    ``external_yield_usd``
+        ``Decimal`` — sum of positive (inbound to ALM) signed amounts
+        whose counterparty is in ``external_sources`` and which are *not*
+        matched by a ``principal_return_override``. Caller adds this as
+        ``external_revenue`` (100 % prime, no SDE split) so that the
+        closed-form formula ``actual_revenue = Δvalue − period_inflow``
+        correctly yields 0 for a par-stable and the yield is attributed
+        separately.
+
+    **Why all flows in inflow_ts?**
+    The previous model excluded external-source rows from ``inflow_ts``
+    so that ``actual_revenue = Δvalue − capital_net = external_net``.
+    That worked for revenue but broke the time-weighted-average when
+    external yield transited the ALM (arrive → redeploy in same period):
+    the arrival (+$X from Anchorage) was invisible to ``inflow_ts`` but
+    the redeployment (−$X to another venue) was not, producing a negative
+    cumulative inflow and a negative ``tw_avg`` that corrupted CoF splits.
+
+    The new model uses ALL flows for ``inflow_ts``:
+    - transit case   : +X (arrival) − X (redeploy) = 0 → tw_avg ≈ SoM ✓
+    - stays at ALM   : +X (arrival) only           → tw_avg rises ✓
+    - loan disburse  : −X (to Anchorage) + X (PSM) = 0 → tw_avg ≈ 0 ✓
+    External yield is then counted explicitly in ``external_yield_usd``
+    so total revenue = 0 + external_yield, which is identical to the
+    old model's result but produced by explicit separation instead of
+    implicit exclusion.
+
+    This mirrors the Cat C / Cat D pattern where Merkl / Anchorage drops
+    are credited via ``_atoken_external_revenue_usd`` rather than being
+    embedded in the closed-form formula.
 
     ``principal_return_overrides``: optional ``{address_bytes:
-    [(date, amount), …]}`` map. When set, an inflow whose ``(counterparty,
-    block_date, signed_amount)`` matches an entry is reclassified as
-    capital instead of yield — used for tri-party loan principal-correction
-    or loan-termination events that arrive from an `external_alm_sources`
-    address but represent a capital movement rather than yield.
+    [(date, amount), …]}`` map. Matching inflows from an external-source
+    address are treated as capital (not yield): they appear in
+    ``inflow_ts`` normally and are excluded from ``external_yield_usd``.
 
-    Returns DataFrame ``[block_date, daily_inflow, cum_inflow]`` of the
-    capital portion. The compute layer subtracts this from Δvalue, leaving
-    ``revenue = Δvalue − capital_net = external_net``. With an empty
-    ``external_sources`` set the entire Δvalue is netted, so revenue = 0
-    — the correct default for par-stables with no off-chain yield source.
+    **Unrelated gap — S23 loan principal**: the Anchorage tri-party loan
+    disbursement (ALM → Anchorage escrow, Dec 2025) is a negative outflow
+    in ``inflow_ts`` that correctly nets against the PSM-swap inflow that
+    funded it, so S26 shows revenue = 0 for that month. The $150 M
+    principal is NOT surfaced on S23 however, because S23 tracks the
+    on-chain escrow balance which is ~$0 (pass-through). A future
+    ``pricing_category: tri_party_loan`` pricing path will capture the
+    principal explicitly via ``principal_at_block`` (see S23 config
+    comments). This is orthogonal to the transit fix above.
     """
     import pandas as pd
+    from decimal import Decimal as _Decimal
 
     holder = venue.holder_override or prime.alm[venue.chain]
     pin_block = period.pin_blocks[venue.chain]
+
+    empty_ts = pd.DataFrame({
+        "block_date": [], "daily_inflow": [], "cum_inflow": [],
+    })
+    zero_yield = _Decimal("0")
 
     detail = balance_source.inflow_by_counterparty(
         chain=venue.chain.value,
@@ -867,16 +907,13 @@ def _cat_a_capital_inflow_timeseries(
         start=prime.start_date,
         pin_block=pin_block,
     )
-    empty = pd.DataFrame({
-        "block_date": [], "daily_inflow": [], "cum_inflow": [],
-    })
     if detail.empty:
         if external_sources:
             # External yield source registered but no per-counterparty data
             # available — can't classify; refuse to guess. Caller sees
             # period_inflow = 0 and revenue = Δvalue, which is wrong but
             # explicit (vs. silently zeroing real yield).
-            return empty
+            return empty_ts, zero_yield
         # No registered external yield source AND no per-counterparty data.
         # Methodology: par-stables don't generate yield by themselves; any
         # balance change at the ALM must be value-preserving capital movement
@@ -904,13 +941,13 @@ def _cat_a_capital_inflow_timeseries(
             pin_block=pin_block,
         )
         if cum_df.empty:
-            return empty
+            return empty_ts, zero_yield
         out = pd.DataFrame({
             "block_date": cum_df["block_date"],
             "daily_inflow": cum_df["daily_net"],
         })
         out["cum_inflow"] = out["daily_inflow"].cumsum()
-        return out
+        return out, zero_yield
 
     # Counterparties may arrive as bytes / bytearray / memoryview (Dune
     # varbinary, possibly with leading zeros stripped) or as a "0x"-prefixed
@@ -939,15 +976,13 @@ def _cat_a_capital_inflow_timeseries(
     # known quirk where bytes values containing leading null bytes (notably
     # the zero address ``b"\x00" * 20``) compare incorrectly. Use ``apply``
     # with Python ``in`` for correct bytes equality.
+    detail = detail.copy()
     norm = detail["counterparty"].map(_to_bytes)
     is_external = norm.apply(lambda b: b in external_sources)
 
-    # Apply principal-return overrides: an inflow that's nominally from an
-    # external source but matches a registered (date, amount) override is
-    # reclassified as capital (e.g., a tri-party loan principal correction
-    # or loan-termination return). Match tolerance: ±$1.
+    # Determine which external inflows are principal returns (not yield).
+    # Match tolerance: ±$1.
     if principal_return_overrides:
-        from decimal import Decimal as _Decimal
         def _is_override(row):
             cp = row["_cp_bytes"]
             if cp not in external_sources:
@@ -960,28 +995,42 @@ def _cat_a_capital_inflow_timeseries(
                     return True
             return False
 
-        # Annotate rows for the closure
-        detail = detail.copy()
         detail["_cp_bytes"] = norm
         is_principal_return = detail.apply(_is_override, axis=1)
-        # Capital = (not external) OR (external AND override-matched)
-        capital_mask = ~is_external | is_principal_return
-        capital = detail[capital_mask].drop(columns="_cp_bytes")
+        detail = detail.drop(columns="_cp_bytes")
     else:
-        capital = detail[~is_external]
-    if capital.empty:
-        return empty
+        is_principal_return = pd.Series(False, index=detail.index)
 
+    # External yield = positive inflows from external addresses that are NOT
+    # principal returns. Negative flows to external addresses (e.g. loan
+    # disbursements ALM → Anchorage) are capital deployments and contribute
+    # to inflow_ts but not to external_yield_usd.
+    is_external_yield = (
+        is_external
+        & (detail["signed_amount"] > 0)
+        & ~is_principal_return
+    )
+    if is_external_yield.any():
+        external_yield_usd = _Decimal(str(
+            detail.loc[is_external_yield, "signed_amount"].sum()
+        ))
+    else:
+        external_yield_usd = zero_yield
+
+    # Full inflow timeseries: ALL counterparties (capital + external).
+    # Using all flows keeps tw_avg correct when external yield transits the
+    # ALM in the same period it is redeployed — the arrival and redeployment
+    # legs cancel to zero, preventing spurious negative tw_avg values.
+    # Par-stable: each unit is $1, so signed_amount is already USD-equivalent.
     daily = (
-        capital.groupby("block_date", as_index=False)["signed_amount"]
+        detail.groupby("block_date", as_index=False)["signed_amount"]
         .sum()
         .rename(columns={"signed_amount": "daily_inflow"})
         .sort_values("block_date")
         .reset_index(drop=True)
     )
-    # Par-stable: each unit is $1, so signed_amount is already USD-equivalent.
     daily["cum_inflow"] = daily["daily_inflow"].cumsum()
-    return daily
+    return daily, external_yield_usd
 
 
 def _rwa_inflow_timeseries(
