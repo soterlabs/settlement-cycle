@@ -67,6 +67,13 @@ class VenueRevenue:
     # same flag on Venue — propagated here so the CSV carries it forward
     # without requiring the reporting script to re-load the config YAML.
     cof_excluded: bool = False
+    # Time-weighted average of this venue's daily lending-idle deduction
+    # (prime's pro-rata share of unborrowed underlying in SparkLend / Aave
+    # pools). Non-zero only for venues with ``lending_idle_usds: true``.
+    # Post-hoc reporting deducts this from tw_avg_value before computing the
+    # CoF-eligible average, since the idle portion is already subtracted from
+    # ``utilized`` and should not carry a CoF share.
+    lending_idle_tw_avg_usd: Decimal = Decimal("0")
     # Legacy fields kept for provenance round-trip on existing settlements
     # written under the old shortfall model. New runs always emit 0 for these.
     br_charge: Decimal = Decimal("0")
