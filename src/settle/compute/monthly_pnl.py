@@ -2330,9 +2330,87 @@ def compute_monthly_pnl(
                 spread_daily = daily_compounding_factor(BASE_RATE_OVER_SSR)
                 n_days = _Dec(str((period.end - period.start).days + 1))
                 susds_spread = value_som * spread_daily * n_days
-                inflow_ts = pd.DataFrame({
-                    "block_date": [], "daily_inflow": [], "cum_inflow": [],
-                })
+                # Build the inflow timeseries for tw_avg_value accuracy.
+                # Revenue is still value_som-based (spread formula above); the
+                # inflow_ts is used only to compute an accurate time-weighted
+                # average for CoF allocation display in the report scripts.
+                # NOTE: the spread formula itself should also be updated to use
+                # the daily-position timeseries (Σ_d value_d × spread_daily)
+                # rather than value_som × n_days — that change is deferred to a
+                # separate PR because it alters sky_revenue totals, not just the
+                # per-venue CoF attribution display.
+                if venue.chain == Chain.ETHEREUM:
+                    # True ERC-4626: convertToAssets works — same infra as sub-case (b).
+                    _susds_erc4626_src = (
+                        sources.convert_to_assets
+                        if sources.convert_to_assets is not None
+                        else get_convert_to_assets_source()
+                    )
+                    _susds_balance_src = (
+                        sources.balance
+                        if sources.balance is not None
+                        else get_balance_source()
+                    )
+                    _susds_shares = 10 ** venue.token.decimals
+                    _susds_scale = _Dec(10 ** venue.underlying.decimals)
+                    _susds_par = par_stable_price(venue.underlying)
+
+                    def _susds_price(
+                        block,
+                        _v=venue, _erc=_susds_erc4626_src,
+                        _sh=_susds_shares, _sc=_susds_scale, _par=_susds_par,
+                    ):
+                        raw = _erc.convert_to_assets(
+                            chain=_v.chain.value,
+                            vault=_v.token.address.value,
+                            shares=_sh, block=block,
+                        )
+                        return (_Dec(raw) / _sc) * _par
+
+                    inflow_ts = _shares_to_usd_inflow_timeseries(
+                        prime, venue, period,
+                        balance_source=_susds_balance_src,
+                        block_resolver=resolver,
+                        price_at_block=_susds_price,
+                    )
+                elif venue.chain in prime.psm:
+                    # L2: plain ERC-20 sUSDS — price via PSM3 pps.
+                    # psm3_src is already set in the L2 revaluation block above.
+                    from ..normalize.positions import _erc4626_shares_weighted_inflow
+                    from ..extract.rpc import balance_of as _bal_of
+                    from ..domain.primes import Address as _Addr_b, Chain as _Chain_b
+
+                    def _susds_price(
+                        block, _psm=psm3_src, _chain=venue.chain.value,
+                    ):
+                        pps_raw = _psm.susds_pps(_chain, block)
+                        return _Dec(pps_raw) / _Dec(10**18)
+
+                    if venue.chain.value in _DUNE_BLOCK_CHAINS:
+                        _susds_balance_src = (
+                            sources.balance
+                            if sources.balance is not None
+                            else get_balance_source()
+                        )
+                        inflow_ts = _shares_to_usd_inflow_timeseries(
+                            prime, venue, period,
+                            balance_source=_susds_balance_src,
+                            block_resolver=resolver,
+                            price_at_block=_susds_price,
+                        )
+                    else:
+                        inflow_ts = _erc4626_shares_weighted_inflow(
+                            prime, venue, som_block, eom_block,
+                            period_end_date=period.end,
+                            balance_at=lambda c, t, h, b: _bal_of(
+                                _Chain_b(c), _Addr_b(t), _Addr_b(h), b,
+                            ),
+                            price_at_block=_susds_price,
+                        )
+                else:
+                    inflow_ts = pd.DataFrame({
+                        "block_date": [], "daily_inflow": [], "cum_inflow": [],
+                    })
             else:
                 # Sub-case (b): normal Cat B MtM.
                 susds_spread = None

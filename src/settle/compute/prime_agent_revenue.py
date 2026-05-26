@@ -332,10 +332,9 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
         )
         actual_revenue = inputs.actual_revenue_override
         period_inflow = Decimal("0")
-        # Override venues (sUSDS spread at ALM) have a stable position
-        # roughly at value_som; the simple value_som is the best avg
-        # available without a daily series.
-        tw_avg_value = inputs.value_som
+        tw_avg_value = _time_weighted_avg_value(
+            period, inputs.value_som, inputs.inflow_timeseries,
+        )
     elif inputs.erc4626_period_inflow is not None:
         # ERC-4626 Centrifuge venues: use exact vault-event USDC amounts for
         # the period inflow and revenue formula. With EoM-locked sd_share
