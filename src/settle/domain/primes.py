@@ -240,6 +240,12 @@ class Venue:
     # Applies to all direct sUSDS holdings regardless of chain or venue type
     # (raw ALM, LP token, etc.). Set explicitly in the prime YAML config.
     sky_savings_token: bool = False
+    # When True, subtract the daily Savings V2 deployed_amount from this
+    # venue's USD value (value_som, value_eom, tw_avg). Used for S32
+    # (sUSDS raw / POL at Spark ETH ALM) where the ALM's sUSDS balance
+    # includes shares deployed into Savings V2 that are not truly held
+    # at the ALM proxy. Requires sky_savings_token: true.
+    deduct_savings_v2_deployed: bool = False
     # Additional addresses to treat as "burn destinations" when classifying
     # share Transfers for Cat B inflow accounting. ERC-4626 vaults with a
     # withdrawal-queue pattern (Maple PoolV2 etc.) Transfer the user's

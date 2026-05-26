@@ -90,6 +90,14 @@ class ISSRSource(Protocol):
         ...
 
 
+class ISavingsV2DeployedSource(Protocol):
+    """Daily sUSDS amount deployed from the Spark ALM into Savings V2."""
+
+    def savings_v2_deployed(self, pin_block: int) -> pd.DataFrame:
+        """Returns DataFrame[dt (date), susds_deployed_usd (Decimal)]."""
+        ...
+
+
 class IPositionBalanceSource(Protocol):
     """Snapshot ERC-20 balance at a specific block.
 

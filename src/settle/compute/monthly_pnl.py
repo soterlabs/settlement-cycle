@@ -37,6 +37,7 @@ from ..normalize.protocols import (
     IDebtSource,
     IPositionBalanceSource,
     IPsm3Source,
+    ISavingsV2DeployedSource,
     ISSRSource,
     IV3PositionSource,
 )
@@ -44,6 +45,7 @@ from ..normalize.registry import (
     get_balance_source,
     get_block_resolver,
     get_convert_to_assets_source,
+    get_savings_v2_deployed_source,
 )
 from ._helpers import cum_at_or_before
 from .agent_rate import compute_agent_rate
@@ -66,6 +68,7 @@ class Sources:
     block_resolver: IBlockResolver | None = None
     v3_position: IV3PositionSource | None = None
     curve_pool: ICurvePoolSource | None = None
+    savings_v2_deployed: ISavingsV2DeployedSource | None = None
     # Optional NAV-oracle resolver: ``Callable[[str], INavOracleSource]`` that
     # overrides the registry lookup. Used by acceptance scripts to inject
     # historical-NAV overrides without monkey-patching ``_NAV_ORACLE_SOURCES``.
@@ -2325,6 +2328,39 @@ def compute_monthly_pnl(
                         )
 
                 susds_spread = _Dec("0")
+
+                # Subtract Savings V2 deployed_amount from value_som and value_eom
+                # when the venue is flagged deduct_savings_v2_deployed. The ALM's
+                # sUSDS balance includes shares deployed into Savings V2 that are
+                # not held at the proxy. Carry-forward: use the most recent day's
+                # deployed_amount at or before each period boundary.
+                if venue.deduct_savings_v2_deployed:
+                    _sv2_src = (
+                        sources.savings_v2_deployed
+                        if sources.savings_v2_deployed is not None
+                        else get_savings_v2_deployed_source()
+                    )
+                    _sv2_ts = _sv2_src.savings_v2_deployed(
+                        pin_block=period.pin_blocks[Chain.ETHEREUM],
+                    )
+                    if not _sv2_ts.empty:
+                        def _sv2_at(target_date):
+                            eligible = _sv2_ts[_sv2_ts["dt"] <= target_date]
+                            if eligible.empty:
+                                return _Dec("0")
+                            return _Dec(str(eligible.loc[eligible["dt"].idxmax(), "susds_deployed_usd"]))
+
+                        _deduct_som = _sv2_at(period.start)
+                        _deduct_eom = _sv2_at(period.end)
+                        value_som = max(_Dec("0"), value_som - _deduct_som)
+                        value_eom = max(_Dec("0"), value_eom - _deduct_eom)
+                        _log.info(
+                            "  S2V2 deduction %s: som −$%.0f → $%.0f  eom −$%.0f → $%.0f",
+                            venue.id,
+                            float(_deduct_som), float(value_som),
+                            float(_deduct_eom), float(value_eom),
+                        )
+
                 # Build the inflow timeseries for tw_avg_value accuracy.
                 # Revenue is still value_som-based (spread formula above); the
                 # inflow_ts is used only to compute an accurate time-weighted
