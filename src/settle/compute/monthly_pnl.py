@@ -2265,14 +2265,11 @@ def compute_monthly_pnl(
             from decimal import Decimal as _Dec
             from ..normalize.positions import _shares_to_usd_inflow_timeseries
             from ..normalize.prices import par_stable_price
-            from .agent_rate import AGENT_RATE_OVER_SSR
-            from ._helpers import daily_compounding_factor
 
             if venue.sky_savings_token:
                 # Sub-case (a): yield-bearing token (sUSDS) at ALM.
-                # Prime Revenue = (BR − SSR) × value_som × n_days = 30bps spread.
-                # `value_som` already computed above via convertToAssets at SoM block.
-                from .sky_revenue import BASE_RATE_OVER_SSR
+                # Prime Revenue = 0 (spread reimbursement removed; SSR returns to
+                # Sky via the BR charge on utilized as before).
 
                 # On Ethereum the bridged sUSDS is ERC-4626 so ``value_som``
                 # and ``value_eom`` from ``get_position_value`` already carry
@@ -2327,9 +2324,7 @@ def compute_monthly_pnl(
                             venue.id, venue.chain.value, _e,
                         )
 
-                spread_daily = daily_compounding_factor(BASE_RATE_OVER_SSR)
-                n_days = _Dec(str((period.end - period.start).days + 1))
-                susds_spread = value_som * spread_daily * n_days
+                susds_spread = _Dec("0")
                 # Build the inflow timeseries for tw_avg_value accuracy.
                 # Revenue is still value_som-based (spread formula above); the
                 # inflow_ts is used only to compute an accurate time-weighted

@@ -319,10 +319,12 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
     team's PnL workbook (no floor, no shortfall).
     """
     if inputs.actual_revenue_override is not None:
-        # Override venues (sUSDS spread at ALM) compute revenue closed-form
-        # without using ``inflow_timeseries``, so the fee-detection heuristic
-        # below can't be applied here. Today no override-path venue has the
-        # fee field set — the two are mutually exclusive by configuration.
+        # Used for sky_savings_token venues where prime revenue is set
+        # explicitly (currently 0 — spread reimbursement removed). The
+        # fee-detection heuristic below cannot be applied to override
+        # venues because they don't consume ``inflow_timeseries`` for
+        # actual_revenue. Today no override-path venue has the fee field
+        # set — the two are mutually exclusive by configuration.
         assert inputs.venue.fixed_fee_per_capital_event_usd is None, (
             f"venue {inputs.venue.id}: actual_revenue_override and "
             "fixed_fee_per_capital_event_usd are mutually exclusive (the fee "
@@ -332,6 +334,10 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
         )
         actual_revenue = inputs.actual_revenue_override
         period_inflow = Decimal("0")
+        # sky_savings_token venues can have material mid-period inflows; use
+        # the daily time-weighted avg over ``inflow_timeseries`` rather than
+        # the SoM-only approximation. See PR ``fix/susds-methodology`` /
+        # commit 520c278 for the rationale.
         tw_avg_value = _time_weighted_avg_value(
             period, inputs.value_som, inputs.inflow_timeseries,
         )
