@@ -53,25 +53,26 @@ For any venue where the prime holds **sUSDS** (the Sky Savings vault token or a 
 
 This applies to **all direct sUSDS holdings** — raw ALM/POL positions today, and (when implemented) sUSDS legs inside LP tokens. It is governed by the `sky_savings_token: true` flag in the prime YAML config rather than inferred from the token address, so coverage is explicit and per-prime.
 
-**Correct treatment — 30 bps spread only:**
+**Correct treatment — 30 bps spread deducted from Sky Revenue:**
 
 ```
-prime_revenue_sUSDS = value_som × ((1 + 0.30%)^(1/365) − 1) × n_days
+sky_revenue_reduction_sUSDS = value_som × ((1 + 0.30%)^(1/365) − 1) × n_days
+prime_revenue_sUSDS = 0
 ```
 
-- `value_som` = shares × `convertToAssets(som_block)` — the USDS-equivalent at SoM
+- `value_som` = shares × `convertToAssets(som_block)` — the USDS-equivalent at SoM (after Savings V2 deduction where applicable)
 - `0.30%` = BR − SSR = the spread the prime earns above the savings rate
 - `n_days` = calendar days in the settlement period
 
-This matches "Method 2" from the accounting equivalence below:
+This is equivalent to Method 1 (exact accounting):
 
-| | Method 1 (exact) | Method 2 (simplification, implemented) |
+| | Method 1 (exact, **implemented**) | ~~Method 2 (removed)~~ |
 |---|---|---|
-| Sky Revenue | SSR × V | BR × V |
-| Prime Revenue | 0 | (BR − SSR) × V = 30bps × V |
-| **Net to Prime** | **−SSR × V** | **30bps × V − BR × V = −SSR × V** ✓ |
+| Sky Revenue | (BR − 30bps) × V = SSR × V | ~~BR × V~~ |
+| Prime Revenue | 0 | ~~(BR − SSR) × V = 30bps × V~~ |
+| **Net to Prime** | **0 − SSR × V = −SSR × V** ✓ | ~~30bps × V − BR × V = −SSR × V~~ |
 
-Both formulations give the same economic outcome (Sky earns SSR net; prime pays SSR net). Method 2 re-uses the existing `utilized`-based BR charge and adds the 30bps spread as prime revenue.
+Sky charges full BR on `utilized`, then reduces its invoice by `30bps × value_som × n_days` per sky_savings_token venue. The reduction is surfaced as `susds_spread_reimbursement` — a per-venue column in `venues.csv` and `grove_sheet.csv`, and a headline sub-row in the monthly report.
 
 **Current `sky_savings_token` venues (Spark):**
 
@@ -84,9 +85,9 @@ Both formulations give the same economic outcome (Sky earns SSR net; prime pays 
 | S51 | Unichain | sUSDS proxy POL — `pricing_category: B` |
 | S24 | Ethereum | sUSDS leg of sUSDS/USDT Curve pool — `curve_idle_usds.sky_savings_token: true` |
 
-For raw sUSDS venues (Cat B): `actual_revenue_override = value_som × 30bps_daily × n_days`.
+For raw sUSDS venues (Cat B): `susds_spread_reimbursement = value_som × 30bps_daily × n_days` deducted from `sky_revenue`; prime revenue = 0.
 
-For LP-embedded sUSDS venues (Curve `curve_idle_usds`): `spread_d = prime_sUSDS_value_d × 30bps_daily`, summed across the period and added to `prime_agent_revenue` outside the per-venue loop.
+For LP-embedded sUSDS venues (Curve `curve_idle_usds`): `spread_d = prime_sUSDS_value_d × 30bps_daily`, summed across the period and added to `prime_agent_revenue` outside the per-venue loop (unchanged — see `curve_susds_spread` in provenance).
 
 ---
 

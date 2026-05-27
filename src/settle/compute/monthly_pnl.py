@@ -1899,6 +1899,10 @@ def compute_monthly_pnl(
         ))
 
     _venue_idx = 0
+    # Populated in the sky_savings_token Cat B sub-case; injected into
+    # VenueRevenue after compute_prime_agent_revenue and summed to reduce
+    # sky_rev (see step 4 below).
+    _susds_spread_reimbs: dict[str, Decimal] = {}
     for venue in prime.venues:
         if venue.cash_distributions:
             # Already handled by the cash-distribution pass above — skip here
@@ -2327,7 +2331,7 @@ def compute_monthly_pnl(
                             venue.id, venue.chain.value, _e,
                         )
 
-                susds_spread = _Dec("0")
+                susds_spread = _Dec("0")  # prime earns 0; spread deducted from Sky Revenue below
 
                 # Subtract Savings V2 deployed_amount from value_som and value_eom
                 # when the venue is flagged deduct_savings_v2_deployed. The ALM's
@@ -2361,8 +2365,22 @@ def compute_monthly_pnl(
                             float(_deduct_eom), float(value_eom),
                         )
 
+                # 30 bps spread deducted from Sky Revenue (not Prime Revenue).
+                # The prime earns SSR via the sUSDS share price; Sky charges
+                # full BR on the utilized base, then reduces its invoice by
+                # 30 bps × value_som × n_days so the prime's net cost = SSR × V
+                # (economic neutrality). value_som has all adjustments applied
+                # (Savings V2 deduction above) at this point.
+                from .sky_revenue import BASE_RATE_OVER_SSR as _BROSS
+                from ._helpers import daily_compounding_factor as _dcf
+                # daily_compounding_factor returns (1+APY)^(1/365) − 1,
+                # i.e. the per-day rate directly — do NOT subtract 1 again.
+                _spread_daily = _dcf(_BROSS)
+                _susds_spread_reimbs[venue.id] = (
+                    value_som * _spread_daily * _Dec(str(period.n_days))
+                )
+
                 # Build the inflow timeseries for tw_avg_value accuracy.
-                # Revenue is still value_som-based (spread formula above); the
                 # inflow_ts is used only to compute an accurate time-weighted
                 # average for CoF allocation display in the report scripts.
                 # NOTE: the spread formula itself should also be updated to use
@@ -2886,17 +2904,23 @@ def compute_monthly_pnl(
         # holdings (PRD §17.11) — neutralises the SSR + BR-charge composite on
         # the sUSDS leg so the prime nets to zero on idle sUSDS.
         prime_rev = prime_rev + curve_susds_spread + psm3_susds_spread
-    # Annotate each venue's VenueRevenue with its lending-idle tw_avg so the
-    # post-hoc report scripts can deduct it from avg_value for CoF allocation
-    # (the idle portion is already subtracted from utilized, so it should not
-    # carry a CoF share).
-    if _lending_idle_tw_avg:
-        import dataclasses as _dc
-        breakdown = [
-            _dc.replace(vr, lending_idle_tw_avg_usd=_lending_idle_tw_avg[vr.venue_id])
-            if vr.venue_id in _lending_idle_tw_avg else vr
-            for vr in breakdown
-        ]
+    # Annotate each venue's VenueRevenue with (a) its lending-idle tw_avg —
+    # post-hoc report scripts deduct it from avg_value for CoF allocation
+    # since the idle portion is already subtracted from utilized — and
+    # (b) its susds_spread_reimbursement (30bps × value_som × n_days for
+    # sky_savings_token Cat B venues; zero otherwise). Both go through the
+    # same dataclasses.replace pass to avoid re-iterating.
+    import dataclasses as _dc
+    breakdown = [
+        _dc.replace(
+            vr,
+            lending_idle_tw_avg_usd=_lending_idle_tw_avg.get(vr.venue_id, vr.lending_idle_tw_avg_usd),
+            susds_spread_reimbursement=_susds_spread_reimbs.get(vr.venue_id, vr.susds_spread_reimbursement),
+        )
+        for vr in breakdown
+    ]
+    total_susds_spread_reimb = sum(_susds_spread_reimbs.values(), Decimal("0"))
+
 
     # SDE revenue (Σ actual × sd_share across venues) flows directly to Sky.
     sde_revenue = sum((vr.sd_revenue for vr in breakdown), Decimal("0"))
@@ -2929,13 +2953,14 @@ def compute_monthly_pnl(
         lending_idle_usds=lending_idle_usds,
     )
     # Sky's full claim: BR on (utilized − SDE − idle deductions) + actual
-    # SDE revenue. The 30 bps sUSDS spread (Curve LP + PSM3 sUSDS leg) is
-    # credited to ``prime_rev``, not deducted from ``sky_rev`` — Sky still
-    # charges full BR on the underlying utilized, and the spread is the
-    # prime's net pickup on the share-price-appreciation accounting. The
-    # economic neutrality (SSR via share-price + BR + 30bps Prime = 0)
-    # holds at the COMBINED level; sky_revenue stays gross of the spread.
-    sky_rev = sky_rev_br + sde_revenue
+    # SDE revenue, minus the 30 bps spread reimbursement for sky_savings_token
+    # Cat B venues (Σ vr.susds_spread_reimbursement). The reimbursement
+    # neutralises the SSR-via-share-price + BR-on-utilized composite on
+    # sky_savings_token positions: Sky charges full BR then refunds 30bps,
+    # so the prime's net cost is SSR × V (economic neutrality). The Curve LP
+    # and PSM3 sUSDS-leg spreads are still credited to ``prime_rev``
+    # (those positions don't surface as venue rows the same way).
+    sky_rev = sky_rev_br + sde_revenue - total_susds_spread_reimb
     # Pure BR × cum_debt (no idle / SDE / PSM / Curve / lending deductions).
     # Display-only. NOT the gross analog of sky_revenue: ``sky_revenue``
     # also adds ``sde_revenue`` on top of the BR-on-utilized base, so for
@@ -3006,6 +3031,6 @@ def compute_monthly_pnl(
         psm3_susds_spread=psm3_susds_spread if not sky_only else Decimal("0"),
         display_only_breakdown=display_only_breakdown,
         sde_daily_breakdown=sde_daily_breakdown_out,
-        susds_spread_reimbursement=curve_susds_spread + psm3_susds_spread,
+        susds_spread_reimbursement=total_susds_spread_reimb,
         sky_revenue_gross=sky_rev_gross,
     )

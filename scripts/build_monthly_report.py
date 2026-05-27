@@ -9,7 +9,7 @@ see, per venue, "what did Sky take" and "what did Grove keep".
 This script derives that view post-hoc, read-only. No methodology changes —
 totals are exact by construction:
 
-    Σ_v Profit_to_Sky_v   ≡ sky_revenue
+    Σ_v Profit_to_Sky_v   ≡ sky_revenue (net, after sUSDS spread reimbursements)
     Σ_v Profit_to_Grove_v ≡ prime_agent_revenue
 
 Inputs:
@@ -39,9 +39,13 @@ Per-venue math:
     sd_revenue_v      = actual_revenue                       (fixed)
                         actual + external − revenue           (capped, post-hoc)
                         0                                    (non-SDE)
-    CoF_total         = sky_revenue − Σ_v sd_revenue_v   # BR on Net_Subs
+    spread_reimb_v    = 30bps × value_som × n_days for sky_savings_token Cat B
+                        venues; 0 otherwise (per-venue susds_spread_reimbursement)
+    CoF_total         = sky_revenue + Σ spread_reimb_v − Σ sd_revenue_v
+                        # sky_revenue is net of the spread reimbursement; add it
+                        # back to recover the gross-BR base for allocation
     cof_alloc_v       = avg_value_v × weight_v / Σ_v(avg × weight) × CoF_total
-    profit_to_sky_v   = cof_alloc_v + sd_revenue_v
+    profit_to_sky_v   = cof_alloc_v + sd_revenue_v − spread_reimb_v
     profit_to_grove_v = revenue_v − cof_alloc_v          # revenue already
                                                           # excludes SDE part
 
@@ -255,21 +259,22 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
     # sky_revenue_gross: what sky_revenue would be with utilized = cum_debt.
     # Zero on legacy provenance files that pre-date this field.
     headline_sky_gross = _D(prov["results"].get("sky_revenue_gross") or 0)
-    # Total 30 bps spread deducted from sky_revenue across ALL sky_savings_token
-    # venues (Cat B ALM + Curve LP sUSDS + PSM3 sUSDS leg). headline_sky is
-    # already net of this deduction, so we add it back when computing cof_total
-    # to recover the gross-BR allocation base.
-    # Falls back to 0 on legacy provenance files written before this field was
-    # introduced; also backfill curve+psm3 components if present separately.
+    # 30 bps Prime Revenue components computed outside the venue loop
+    # (PRD §17.11) — Curve LP sUSDS + PSM3 sUSDS leg. These are credited to
+    # ``prime_agent_revenue`` (NOT deducted from sky_revenue). Used to render
+    # a synthetic PSM/Curve row in the per-venue display.
+    curve_spread = _D(prov["results"].get("curve_susds_spread") or 0)
+    psm3_spread  = _D(prov["results"].get("psm3_susds_spread")  or 0)
+    aggregate_susds_spread = curve_spread + psm3_spread
+    # Total 30 bps spread deducted from sky_revenue for sky_savings_token Cat B
+    # venues (Σ vr.susds_spread_reimbursement). headline_sky is already net of
+    # this deduction; we add it back when computing cof_total to preserve the
+    # gross-BR allocation base. Legacy provenance files (pre-this-PR) only
+    # carried curve+psm3 components, so we fall back to those if the new
+    # aggregate field is missing.
     susds_spread_total = _D(prov["results"].get("susds_spread_reimbursement") or 0)
     if susds_spread_total == 0:
-        curve_spread = _D(prov["results"].get("curve_susds_spread") or 0)
-        psm3_spread  = _D(prov["results"].get("psm3_susds_spread")  or 0)
-        susds_spread_total = curve_spread + psm3_spread
-    aggregate_susds_spread = (
-        _D(prov["results"].get("curve_susds_spread") or 0)
-        + _D(prov["results"].get("psm3_susds_spread") or 0)
-    )
+        susds_spread_total = aggregate_susds_spread
 
     sde = _load_sde_entries(prime_id, period_start)
     rows = _read_venues(venues_csv)
@@ -426,15 +431,10 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
             "external":      _D(r.get("external_revenue") or 0),
             "revenue":       _D(r["revenue"]),       # already net of SDE
             "sd_revenue":    sd_revenue,
-            # Per-venue 30 bps spread reimbursement is NOT currently plumbed
-            # through ``VenueRevenue`` / ``venues.csv`` — the compute layer
-            # only retains the prime-level aggregate on ``MonthlyPnL.
-            # susds_spread_reimbursement``. Per-venue rows therefore show 0;
-            # the synthetic SPREAD row below carries the aggregate so the
-            # markdown table's column total still reconciles. If finer
-            # attribution is needed in the future, add the field to
-            # ``VenueRevenue`` + ``write_venues_csv`` and read it here.
-            "spread_reimb":  Decimal("0"),
+            # 30 bps spread deducted from Sky Revenue for this venue.
+            # Non-zero only for sky_savings_token Cat B venues; read from
+            # venues.csv where the compute layer plumbed it through.
+            "spread_reimb":  _D(r.get("susds_spread_reimbursement") or 0),
             "deduction_avg": deduction_avg,   # avg amount reducing utilized
             "note":          note,
         })
@@ -465,15 +465,22 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
             "external":      Decimal("0"),
             "revenue":       aggregate_susds_spread,
             "sd_revenue":    Decimal("0"),
-            "spread_reimb":  aggregate_susds_spread,
+            # Curve+PSM3 spread is a Prime Revenue credit (NOT a Sky-Revenue
+            # deduction): it doesn't appear in the per-venue
+            # ``susds_spread_reimbursement`` column. Setting spread_reimb=0
+            # on this synthetic row keeps the column total = Σ Cat B Sky
+            # deduction (matches ``susds_spread_total``).
+            "spread_reimb":  Decimal("0"),
             "deduction_avg": Decimal("0"),  # sUSDS not deducted from utilized
             "note":          "Prime Revenue (sUSDS spread, no CoF; computed outside venue loop)",
-        })
 
-    # CoF on Net_Subs = sky_revenue minus the SDE-revenue portion that flows
-    # to Sky directly. Allocated proportionally to (avg_value × weight).
+
+    # CoF on Net_Subs = gross BR base minus SDE revenue.
+    # headline_sky is net of the sUSDS spread reimbursement; add it back to
+    # recover the gross-BR allocation base (spread_reimb is a Sky-Revenue
+    # reduction applied after CoF calculation, not a reduction of the base).
     total_sd_revenue = sum((v["sd_revenue"] for v in enriched), Decimal("0"))
-    cof_total = headline_sky - total_sd_revenue
+    cof_total = headline_sky + susds_spread_total - total_sd_revenue
 
     total_weighted = sum(
         (v["avg_value"] * v["weight"] for v in enriched), Decimal("0"),
@@ -487,7 +494,9 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
             )
         else:
             v["cof_alloc"] = Decimal("0")
-        v["profit_to_sky"]   = v["cof_alloc"] + v["sd_revenue"]
+        # profit_to_sky = CoF share + SDE revenue − 30bps spread reimbursement.
+        # Σ profit_to_sky ≡ headline_sky (net sky_revenue) by construction.
+        v["profit_to_sky"]   = v["cof_alloc"] + v["sd_revenue"] - v["spread_reimb"]
         v["profit_to_grove"] = v["revenue"] - v["cof_alloc"]
 
     totals = {
@@ -540,13 +549,13 @@ def _emit_markdown(
     lines.append("## Headline\n")
     lines.append("| Component | Amount (USD) |")
     lines.append("|---|---:|")
-    lines.append(f"| Σ Profit to Sky ≡ `sky_revenue` | {_fmt_usd(totals['sky_revenue'])} |")
+    lines.append(f"| Σ Profit to Sky ≡ `sky_revenue` (net) | {_fmt_usd(totals['sky_revenue'])} |")
     lines.append(f"| &nbsp;&nbsp;↳ CoF on Net_Subs (BR × utilized) | {_fmt_usd(totals['cof_total'])} |")
     lines.append(f"| &nbsp;&nbsp;↳ SDE revenue (full flow to Sky) | {_fmt_usd(totals['sd_revenue_total'])} |")
     if totals["susds_spread_reimb_total"] != 0:
         lines.append(
-            f"| `sUSDS spread (Curve LP + PSM3) — credited to prime_revenue, not deducted from sky_revenue` "
-            f"| {_fmt_usd(totals['susds_spread_reimb_total'])} |"
+            f"| &nbsp;&nbsp;↳ sUSDS spread reimb. (−Sky Revenue, sky_savings_token Cat B) "
+            f"| −{_fmt_usd(totals['susds_spread_reimb_total'])} |"
         )
     if totals["sky_revenue_gross"] > 0:
         lines.append(f"| **Sky Revenue (max) — BR × full ilk debt, no deductions** | **{_fmt_usd(totals['sky_revenue_gross'])}** |")
@@ -603,9 +612,11 @@ def _emit_markdown(
         "avg_value_v       = venues.csv:tw_avg_value_usd        # time-weighted (preferred)\n"
         "                    or  (value_som + value_eom) / 2    # legacy fallback (CoF approx)\n"
         "sd_revenue_v      = actual_revenue + external_revenue − revenue\n"
-        "cof_total         = sky_revenue − Σ_v sd_revenue_v\n"
+        "spread_reimb_v    = venues.csv:susds_spread_reimbursement   # non-zero for sky_savings_token Cat B only\n"
+        "cof_total         = sky_revenue + Σ_v spread_reimb_v − Σ_v sd_revenue_v\n"
+        "                    # (sky_revenue is net; add back spread to recover gross-BR base)\n"
         "cof_alloc_v       = avg_value_v × weight_v / Σ_v(avg × weight) × cof_total\n"
-        "profit_to_sky_v      = cof_alloc_v + sd_revenue_v\n"
+        "profit_to_sky_v      = cof_alloc_v + sd_revenue_v − spread_reimb_v\n"
         "grove_net_payment_v  = revenue_v − cof_alloc_v\n"
         "# Invariants: Σ profit_to_sky ≡ sky_revenue   Σ GNP + cof_total ≡ prime_agent_revenue\n"
         "\n"

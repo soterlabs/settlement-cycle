@@ -119,7 +119,8 @@ def _write_headline(ws, prov: dict, sheet_rows: list[dict]) -> None:
     ar  = _D(prov["results"]["agent_rate"])
     sky = _D(prov["results"]["sky_revenue"])
     sd  = sum((_D(r["sd_revenue"]) for r in sheet_rows), Decimal("0"))
-    cof = sky - sd
+    spread_reimb = _D(prov["results"].get("susds_spread_reimbursement") or 0)
+    cof = sky + spread_reimb - sd
     p2g_sum = sum((_D(r["profit_to_grove"]) for r in sheet_rows), Decimal("0"))
 
     sky_gross    = _D(prov["results"].get("sky_revenue_gross") or 0)
@@ -132,9 +133,10 @@ def _write_headline(ws, prov: dict, sheet_rows: list[dict]) -> None:
     ws.append(["Component", "USD"])
     _bold_header(ws, 3, 2)
     rows = [
-        ("Σ Profit to Sky ≡ sky_revenue",                                 sky),
+        ("Σ Profit to Sky ≡ sky_revenue (net)",                           sky),
         ("    ↳ CoF on Net_Subs (BR × utilized)",                         cof),
         ("    ↳ SDE revenue (full flow to Sky)",                          sd),
+        ("    ↳ sUSDS spread reimb. (−Sky Revenue, sky_savings_token Cat B)", -spread_reimb),
         ("",                                                              None),
         ("Sky Revenue (max) — BR × full ilk debt, no deductions",          sky_gross),
         ("    ↳ CoF on Net_Subs (actual BR × utilized)",                  cof),

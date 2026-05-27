@@ -101,6 +101,9 @@ def render_provenance(
                 # The CoF allocator uses max(tw_avg_value, tw_avg_notional)
                 # as the effective avg.
                 "tw_avg_notional_usd": str(v.tw_avg_notional),
+                # 30 bps spread deducted from sky_revenue for this venue.
+                # Non-zero only for sky_savings_token Cat B venues.
+                "susds_spread_reimbursement": str(v.susds_spread_reimbursement),
                 "br_charge": str(v.br_charge),
                 "sky_direct_shortfall": str(v.sky_direct_shortfall),
             }
