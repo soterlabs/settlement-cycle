@@ -39,12 +39,17 @@ class SDEEntry:
     pattern: str | None        # only for kind=pattern
     start_date: date
     end_date: date | None      # None = open-ended (still active)
-    # Optional: date on which Sky's economic exposure (the SDE-capped slice)
-    # was destroyed on-chain — e.g., a tranche burn that precedes the USDC
-    # redemption / Atlas record date. Retained for Atlas documentation; the
-    # current compute path (EoM-locked sd_share, see
-    # ``_capped_sd_revenue_eom_locked``) does not read this field — the
-    # period-end snapshot naturally absorbs the burn.
+    # Optional: date on which Sky's on-chain tranche exposure (the SDE-capped
+    # slice) was destroyed but the USDC redemption hasn't yet landed at the
+    # Atlas record date. Consumed by ``_sde_asset_value_timeseries`` to keep
+    # ``cum_value = cap_usd`` for days in ``[burn_date, end_date]`` so the
+    # in-flight window doesn't inflate ``utilized`` (which would route phantom
+    # BR to Sky — see Grove E8 Mar 9–12 for the canonical case).
+    # NOT consumed by ``_capped_sd_revenue_eom_locked`` (the EoM snapshot
+    # of value_eom naturally absorbs the burn for sd_share purposes).
+    # ``end_date`` is currently overloaded as the Atlas record date for this
+    # gating window; see the call-site comment in ``compute_monthly_pnl``
+    # for the convention.
     burn_date: date | None = None
     label: str = ""
     source: str = ""

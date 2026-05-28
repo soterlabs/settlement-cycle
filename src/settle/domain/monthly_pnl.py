@@ -24,9 +24,11 @@ class VenueRevenue:
 
     For SDE venues (Step 4 of prime-settlement-methodology, kind=fixed|capped):
         actual_revenue = (value_eom − value_som) − period_inflow
-        sd_revenue = Σ_d daily_rev_d × sd_share_d        (capped, daily snapshots)
-                     or actual_revenue × 1               (fixed, sd_share = 1)
-        sd_share   = sd_revenue / actual_revenue         (effective avg, display only)
+        sd_revenue = actual_revenue × min(cap_usd, value_eom) / value_eom
+                                                          (capped, EoM-locked;
+                                                           see _capped_sd_revenue_eom_locked)
+                     or actual_revenue × 1                (fixed, sd_share = 1)
+        sd_share   = min(cap_usd, value_eom) / value_eom (capped)  | 1 (fixed)
         revenue = actual_revenue − sd_revenue + external_revenue   (to prime)
 
     The SDE position's asset value is also excluded from the prime's
