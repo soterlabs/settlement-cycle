@@ -39,8 +39,15 @@ class SDEEntry:
     pattern: str | None        # only for kind=pattern
     start_date: date
     end_date: date | None      # None = open-ended (still active)
-    label: str
-    source: str
+    # Optional: date on which Sky's economic exposure (the SDE-capped slice)
+    # was destroyed on-chain — e.g., a tranche burn that precedes the USDC
+    # redemption / Atlas record date. Retained for Atlas documentation; the
+    # current compute path (EoM-locked sd_share, see
+    # ``_capped_sd_revenue_eom_locked``) does not read this field — the
+    # period-end snapshot naturally absorbs the burn.
+    burn_date: date | None = None
+    label: str = ""
+    source: str = ""
 
     def is_active_on(self, d: date) -> bool:
         if d < self.start_date:
@@ -121,6 +128,7 @@ def load_sde_table(config_path: Path | None = None) -> SDETable:
     entries: list[SDEEntry] = []
     for r in raw_entries:
         end_raw = r.get("end_date")
+        burn_raw = r.get("burn_date")
         cap_raw = r.get("cap_usd")
         entries.append(SDEEntry(
             prime_id=r["prime"],
@@ -131,6 +139,7 @@ def load_sde_table(config_path: Path | None = None) -> SDETable:
             pattern=r.get("pattern"),
             start_date=date.fromisoformat(r["start_date"]),
             end_date=date.fromisoformat(end_raw) if end_raw else None,
+            burn_date=date.fromisoformat(burn_raw) if burn_raw else None,
             label=r.get("label", ""),
             source=r.get("source", ""),
         ))

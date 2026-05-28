@@ -121,5 +121,12 @@ historical:
     cap_usd: 325000000
     start_date: '2025-10-23'
     end_date: '2026-03-12'
+    # Sky's $325M slice was destroyed on-chain on 2026-03-09 (the JAAA
+    # tranche burn); USDC redemption settled 2026-03-12 (= end_date, the
+    # Atlas-record date). Retained for Atlas documentation only — under the
+    # current EoM-locked compute path the burn-month economics are
+    # attributed via the period-end snapshot rather than this date itself.
+    # See ``_capped_sd_revenue_eom_locked``.
+    burn_date: '2026-03-09'
     label: 'JAAA on Eth (≤ $325M)'
     source: 'Atlas A.2.2.9.1.1.1.1.3.0.6.1 — Historical SDE'

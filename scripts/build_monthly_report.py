@@ -23,12 +23,22 @@ Outputs (alongside the inputs):
 
 Per-venue math:
 
-    sd_share_v        = 1.0 for fixed SDE; 0.0 otherwise (capped SDE not active
-                        for Grove in 2026-04 — the only historical capped
-                        entry was JAAA E8 ending 2026-03-12).
+    sd_share_v        = 1.0                                 (fixed SDE)
+                        min(cap, value_eom) / value_eom     (capped SDE,
+                                                             EoM-locked —
+                                                             read post-hoc as
+                                                             sd_revenue / actual)
+                        0.0                                 (non-SDE)
     weight_v          = 1 − sd_share_v
-    avg_value_v       = (value_som + value_eom) / 2     # SoM/EoM avg
-    sd_revenue_v      = actual_revenue for fixed SDE; 0 otherwise
+    avg_value_v       = max(tw_avg_value_usd,               # principal
+                            tw_avg_notional_usd)            # max() picks
+                                                            # off-chain notional
+                                                            # for cash-distribution
+                                                            # venues whose ALM
+                                                            # holds $0 on-chain
+    sd_revenue_v      = actual_revenue                       (fixed)
+                        actual + external − revenue           (capped, post-hoc)
+                        0                                    (non-SDE)
     CoF_total         = sky_revenue − Σ_v sd_revenue_v   # BR on Net_Subs
     cof_alloc_v       = avg_value_v × weight_v / Σ_v(avg × weight) × CoF_total
     profit_to_sky_v   = cof_alloc_v + sd_revenue_v
@@ -52,12 +62,11 @@ Per-venue math:
     once all historical venues.csv files on disk have been regenerated.
 
 Limitations:
-* Capped SDE windows (e.g. JAAA E8 ≤ 2026-03-12) are not handled here —
-  for those months the daily ``sd_share_d = min(cap, v_d)/v_d`` matters and
-  the right number to plug in is ``actual_revenue × sd_share_avg`` which the
-  upstream compute layer already wrote to ``provenance.json``. Falls back
-  to using ``actual_revenue − revenue`` as ``sd_revenue_v`` when the
-  SDE entry kind is capped, which is exact post-hoc.
+* For capped SDE the ``sd_revenue_v`` is read back exactly from
+  ``actual + external − revenue`` (the upstream compute layer's EoM-locked
+  result, see ``_capped_sd_revenue_eom_locked``). Negative values are
+  preserved — e.g. when a capped tranche is destroyed mid-period, Sky
+  absorbs the loss and an earlier neg-clamp would have hidden it.
 * No SDE inputs from ``sky_direct_exposures.yaml`` are *required* to run —
   the SDE slice can also be inferred as ``sd_revenue_v = actual_revenue_v
   − revenue_v`` (the part of pool yield that didn't flow to the prime).
@@ -150,19 +159,20 @@ def _classify(row: dict, sde: dict[str, dict]) -> tuple[Decimal, Decimal, str]:
     # revenue = actual − sd_revenue + external_revenue  (post-2026-05-02 model)
     # → sd_revenue = actual + external − revenue
     inferred_sd_revenue = actual + external - revenue
-    if inferred_sd_revenue < 0:
-        # Numerical noise on a non-SDE venue. Clamp to 0.
-        inferred_sd_revenue = Decimal("0")
 
     entry = sde.get(venue_id)
     if entry is None:
-        # No SDE record in YAML for this venue × period.
-        if inferred_sd_revenue > Decimal("0.01"):
-            # Compute layer claims some SDE revenue but the YAML doesn't —
-            # flag in the output rather than silently hide.
-            return inferred_sd_revenue / actual if actual > 0 else Decimal("0"), \
-                   inferred_sd_revenue, "(SDE inferred from numbers; not in YAML)"
-        return Decimal("0"), Decimal("0"), ""
+        # Non-SDE venue: any non-zero inferred sd_revenue is either numerical
+        # noise (clamp silently if tiny) or an indication the compute layer
+        # produced SDE revenue without a matching YAML entry (surface as a
+        # tagged row so the inconsistency is visible).
+        if abs(inferred_sd_revenue) <= Decimal("0.01"):
+            return Decimal("0"), Decimal("0"), ""
+        return (
+            inferred_sd_revenue / actual if actual != 0 else Decimal("0"),
+            inferred_sd_revenue,
+            "(SDE inferred from numbers; not in YAML)",
+        )
 
     kind = entry["kind"]
     if kind == "fixed":
@@ -170,8 +180,11 @@ def _classify(row: dict, sde: dict[str, dict]) -> tuple[Decimal, Decimal, str]:
         return Decimal("1"), actual, "SDE (fixed)"
     if kind == "capped":
         # Use compute layer's already-daily-resolved number; derive effective
-        # sd_share post-hoc for display.
-        share = inferred_sd_revenue / actual if actual > 0 else Decimal("0")
+        # sd_share post-hoc for display. Preserve negative sd_revenue —
+        # legitimate when the capped position took a loss (e.g., a tranche
+        # was burned mid-period). Earlier versions clamped negatives to 0,
+        # which hid Sky's loss in the rendered output.
+        share = inferred_sd_revenue / actual if actual != 0 else Decimal("0")
         return share, inferred_sd_revenue, f"SDE (capped @ ${entry['cap_usd']:,.0f})"
     # Unknown kind — be conservative and treat as 0.
     return Decimal("0"), Decimal("0"), f"(unknown SDE kind: {kind})"
@@ -216,6 +229,22 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
         else:
             avg_value = (_D(r["value_som"]) + _D(r["value_eom"])) / Decimal("2")
             note = (note + " " if note else "") + "(CoF approx)"
+        # Cash-distribution-only venues (E21 Galaxy CLO, etc.) have
+        # ``tw_avg_value_usd = $0`` on-chain but Sky still charges interest
+        # on the off-chain notional principal funding them. Use the larger
+        # of on-chain tw_avg and the configured time-weighted notional so
+        # those venues participate in the CoF allocation pool.
+        #
+        # Σ-invariance: this only shifts the per-venue CoF split — sky_revenue,
+        # prime_agent_revenue, and monthly_pnl come from the upstream compute
+        # layer (which never reads ``tw_avg_notional_usd``) and stay exact
+        # whether the field is configured or not.
+        notional_raw = r.get("tw_avg_notional_usd")
+        if notional_raw not in (None, ""):
+            tw_notional = _D(notional_raw)
+            if tw_notional > avg_value:
+                avg_value = tw_notional
+                note = (note + " " if note else "") + "(off-chain notional)"
         # Deduct the lending-idle portion from avg_value before CoF allocation.
         # For Cat C/D venues with lending_idle_usds=true (e.g. S1 spUSDS, S4
         # spDAI), the prime's share of unborrowed underlying is already subtracted

@@ -519,6 +519,13 @@ venues:
       decimals: 6
     nav_oracle:
       kind: const_one  # correct: CLO tokens issued/redeemed at $1; yield is a separate cash distribution
+    # Off-chain notional principal funding the CLO loan (USDS minted from
+    # Sky → swapped to USDC → sent to Galaxy). The ALM holds $0 on-chain
+    # but Sky still charges BR on this $50M (it's part of utilized). Without
+    # this field the per-venue CoF allocation gives E21 a $0 share and the
+    # ~$150K/month of CoF that should attribute to E21 silently spreads
+    # across other venues' rows. Scalar form = constant for the loan term.
+    notional_principal_usd: 50000000
     cash_distributions:
       - payer: '0xaC3D86f9840A8bE07dE5F67d6427983B7009DF1B'  # Galaxy sweep address
         token: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'   # USDC on Ethereum

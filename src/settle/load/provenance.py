@@ -66,10 +66,26 @@ def render_provenance(
                 # see the breakdown between closed-form yield and external
                 # rewards. See ``normalize.positions._atoken_external_revenue_usd``.
                 "external_revenue": str(v.external_revenue),
+                # Sky-direct slice of actual_revenue. For capped SDE venues
+                # this is the daily-resolved ``Σ daily_rev_d × sd_share_d``;
+                # for fixed SDE it equals actual_revenue. Can be negative
+                # when a capped SDE position takes a loss (e.g., the JAAA
+                # E8 Mar 2026 tranche burn). Reporting layers should display
+                # the value as-is without clamping to zero.
+                "sd_revenue": str(v.sd_revenue),
+                # Effective per-period sd_share = sd_revenue / actual_revenue
+                # (display-only, undefined when actual_revenue == 0).
+                "sd_share": str(v.sd_share),
                 # Time-weighted average daily principal across the period
                 # (mean of value_som + cum_inflow_d). Surfaced for post-hoc
                 # CoF allocation in reporting sheets.
                 "tw_avg_value_usd": str(v.tw_avg_value),
+                # Time-weighted average of the off-chain notional principal
+                # (from ``Venue.notional_principal_usd``). Non-zero only for
+                # cash-distribution-only venues (E21 Galaxy CLO, etc.).
+                # The CoF allocator uses max(tw_avg_value, tw_avg_notional)
+                # as the effective avg.
+                "tw_avg_notional_usd": str(v.tw_avg_notional),
                 "br_charge": str(v.br_charge),
                 "sky_direct_shortfall": str(v.sky_direct_shortfall),
             }

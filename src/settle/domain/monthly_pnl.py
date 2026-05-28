@@ -74,6 +74,21 @@ class VenueRevenue:
     # CoF-eligible average, since the idle portion is already subtracted from
     # ``utilized`` and should not carry a CoF share.
     lending_idle_tw_avg_usd: Decimal = Decimal("0")
+    # Time-weighted average of the venue's off-chain notional principal,
+    # for cash-distribution-only venues where the on-chain ``tw_avg_value``
+    # is $0 but Sky is implicitly charging interest on the funded principal
+    # (e.g. Galaxy CLO E21 = $50M off-chain loan, Anchorage tri-party).
+    #
+    # **Display / reconciliation-only.** Not consumed by
+    # ``compute_prime_agent_revenue`` or ``compute_sky_revenue`` — headline
+    # numbers (``sky_revenue``, ``prime_agent_revenue``, ``monthly_pnl``,
+    # ``agent_rate``, ``sky_direct_shortfall``) are mathematically
+    # independent of whether ``notional_principal_usd`` is configured on
+    # any venue. Only the per-venue CoF split in
+    # ``scripts/build_monthly_report.py`` reads this field (via
+    # ``max(tw_avg_value, tw_avg_notional)``); Σ-totals stay exact
+    # regardless. Zero when no ``notional_principal_usd`` is set.
+    tw_avg_notional: Decimal = Decimal("0")
     # Legacy fields kept for provenance round-trip on existing settlements
     # written under the old shortfall model. New runs always emit 0 for these.
     br_charge: Decimal = Decimal("0")

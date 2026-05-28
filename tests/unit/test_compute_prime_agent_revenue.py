@@ -10,10 +10,19 @@ import pandas as pd
 from settle.compute.prime_agent_revenue import (
     VenueRevenueInputs,
     _time_weighted_avg_value,
+    _time_weighted_notional,
     compute_prime_agent_revenue,
     compute_venue_revenue,
 )
-from settle.domain import Address, Chain, Period, PricingCategory, Token, Venue
+from settle.domain import (
+    Address,
+    Chain,
+    NotionalScheduleEntry,
+    Period,
+    PricingCategory,
+    Token,
+    Venue,
+)
 from settle.domain.sde import SDEEntry
 
 
@@ -226,16 +235,19 @@ def test_non_sde_venue_keeps_full_revenue():
 # --- SDE split (kind=capped) ------------------------------------------------
 
 def test_sde_capped_splits_revenue_proportionally():
-    """JAAA-style: cap=$325M on a $454M position → sd_share = 325/454.
-    Revenue split applies that ratio."""
+    """JAAA-style: cap=$325M on a ~$455M EoM position → EoM-locked
+    sd_share = 325 / value_eom (matches Grove team's PnL workbook
+    methodology; see ``_capped_sd_revenue_eom_locked``)."""
+    eom = Decimal("455_388_581")
+    cap = Decimal("325_000_000")
     inputs = VenueRevenueInputs(
         venue=_venue("JAAA"),
-        value_som=Decimal("454_000_000"), value_eom=Decimal("455_388_581"),
+        value_som=Decimal("454_000_000"), value_eom=eom,
         inflow_timeseries=_empty_inflow(),
-        sde_entry=_sde_capped("JAAA", Decimal("325_000_000")),
+        sde_entry=_sde_capped("JAAA", cap),
     )
     vr = compute_venue_revenue(_period(), inputs)
-    expected_share = Decimal("325_000_000") / Decimal("454_000_000")
+    expected_share = cap / eom
     assert vr.actual_revenue == Decimal("1_388_581")
     assert vr.sd_share == expected_share
     assert vr.sd_revenue == Decimal("1_388_581") * expected_share
@@ -334,22 +346,23 @@ def test_external_revenue_bypasses_sde_split():
 
 
 def test_external_revenue_with_capped_sde():
-    """Capped SDE: SDE portion of actual_revenue routes to Sky proportionally,
-    external_revenue still 100% to prime."""
+    """Capped SDE under EoM-locked: sd_share = min(cap, value_eom) / value_eom
+    applies to actual_revenue; external_revenue still 100% to prime."""
     inputs = VenueRevenueInputs(
         venue=_venue("SD"),
         value_som=Decimal("100"), value_eom=Decimal("200"),
         inflow_timeseries=_empty_inflow(),
-        sde_entry=_sde_capped("SD", Decimal("50")),  # sd_share = 50/100 = 0.5
+        sde_entry=_sde_capped("SD", Decimal("50")),  # EoM-locked sd_share = 50/200 = 0.25
         external_revenue=Decimal("30"),
     )
     vr = compute_venue_revenue(_period(), inputs)
-    # actual_revenue = 100, sd_share = 0.5 → Sky gets 50, prime gets 50 + 30 = 80
+    # actual_revenue = 100, sd_share = 50/200 = 0.25
+    #   → Sky gets 25, prime gets 75 + 30 external = 105
     assert vr.actual_revenue == Decimal("100")
-    assert vr.sd_share == Decimal("0.5")
-    assert vr.sd_revenue == Decimal("50")
+    assert vr.sd_share == Decimal("0.25")
+    assert vr.sd_revenue == Decimal("25")
     assert vr.external_revenue == Decimal("30")
-    assert vr.revenue == Decimal("80")
+    assert vr.revenue == Decimal("105")
 
 
 def test_external_revenue_rolls_up_to_prime_total():
@@ -476,18 +489,6 @@ def test_tw_avg_baseline_subtracted_for_pre_period_flows():
 # ``_daily_capped_sd_revenue`` so SDE cap-weighting uses a consistent clock.
 
 
-def _daily_sde_values(period: Period, value: Decimal) -> pd.DataFrame:
-    """Constant daily position value for the full period — minimal sde_daily_values stub."""
-    from datetime import timedelta
-    dates, vals = [], []
-    d = period.start
-    while d <= period.end:
-        dates.append(d)
-        vals.append(value)
-        d += timedelta(days=1)
-    return pd.DataFrame({"block_date": dates, "uncapped_value": vals})
-
-
 def test_erc4626_inflow_overrides_timeseries_for_period_inflow():
     """erc4626_period_inflow replaces the inflow_timeseries cumulative value.
 
@@ -552,72 +553,35 @@ def test_erc4626_negative_implied_yield():
     assert vr.revenue == Decimal("-6")           # no SDE → prime absorbs loss
 
 
-def test_erc4626_capped_sde_extra_delta_splits_at_som_sd_share():
-    """For capped SDE + erc4626_period_inflow: the delta between vault-event
-    actual_revenue and the RWA (token-transfer) actual_revenue is split using
-    the SOM sd_share (= min(cap, value_som) / value_som).
-
-    Setup
-    -----
-    value_som=1000, value_eom=1030, cap=600
-    inflow_timeseries: empty (token-transfer sees no flows)
-    erc4626_period_inflow=−10 (vault events record a $10 net withdrawal)
-    sde_daily_values: constant 1030 across all 31 days
-
-    RWA path (what _daily_capped_sd_revenue sees)
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    _rwa_actual_revenue = 1030 − 1000 − 0 = 30
-    _daily_capped_sd_revenue: only day 1 has daily_rev=30 (1030−1000),
-    subsequent days are flat; sd_share_1 = 600/1030
-    → sd_revenue_rwa = 30 × 600/1030
-
-    Vault-event path
-    ~~~~~~~~~~~~~~~~
-    actual_revenue = 1030 − 1000 − (−10) = 40
-    delta = 40 − 30 = 10
-    SOM sd_share = min(600, 1000) / 1000 = 0.6
-    sd_revenue = sd_revenue_rwa + 10 × 0.6 = sd_revenue_rwa + 6
-    prime_revenue = 40 − sd_revenue = 34 − sd_revenue_rwa
-    (prime gets 40% of the $10 delta = $4; Sky gets 60% = $6)
+def test_erc4626_capped_sde_uses_eom_locked_share():
+    """ERC-4626 + capped SDE under EoM-locked: vault-event actual_revenue
+    is split at sd_share = min(cap, value_eom) / value_eom.
     """
-    period = _period()
     cap = Decimal("600")
     som = Decimal("1000")
+    eom = Decimal("1030")
     inputs = VenueRevenueInputs(
         venue=_venue("E8"),
         value_som=som,
-        value_eom=Decimal("1030"),
+        value_eom=eom,
         inflow_timeseries=_empty_inflow(),
         sde_entry=_sde_capped("E8", cap),
-        sde_daily_values=_daily_sde_values(period, Decimal("1030")),
         erc4626_period_inflow=Decimal("-10"),
     )
-    vr = compute_venue_revenue(period, inputs)
+    vr = compute_venue_revenue(_period(), inputs)
 
-    assert vr.actual_revenue == Decimal("40")   # vault-event based
-
-    # SOM sd_share = min(600, 1000) / 1000 = 0.6
-    som_sd_share = min(cap, som) / som
-    # sd_revenue_rwa: only the day-1 jump contributes (days 2–31 flat)
-    expected_sd_rwa = Decimal("30") * cap / Decimal("1030")
-    expected_sd = expected_sd_rwa + Decimal("10") * som_sd_share
-    assert vr.sd_revenue == expected_sd
-
-    # prime gets its RWA share plus (1 − SOM sd_share) × delta
-    expected_prime = Decimal("30") - expected_sd_rwa + Decimal("10") * (1 - som_sd_share)
-    assert vr.revenue == expected_prime
+    # actual_revenue = 1030 − 1000 − (−10) = 40 (vault-event based)
+    assert vr.actual_revenue == Decimal("40")
+    # EoM-locked sd_share = min(600, 1030) / 1030 = 600/1030 (exact Decimal).
+    expected_share = cap / eom
+    assert vr.sd_share == expected_share
+    assert vr.sd_revenue == Decimal("40") * expected_share
+    assert vr.revenue == Decimal("40") * (Decimal("1") - expected_share)
 
 
-def test_erc4626_with_fixed_sde_uses_som_locked_share():
+def test_erc4626_with_fixed_sde_routes_all_to_sky():
     """erc4626_period_inflow + kind=fixed SDE → all revenue routes to Sky.
-
-    The capped/daily branch is only taken when ``kind == 'capped'`` AND
-    ``sde_daily_values`` is provided.  Fixed SDE falls through to
-    ``_sd_share_at_som`` which returns 1.0, so the entire vault-event-based
-    actual_revenue goes to Sky and prime_revenue is zero.
-
-    This pins that the erc4626 branch composes correctly with fixed SDE:
-    the inflow override still applies, but the split rule is unchanged.
+    Fixed SDE has sd_share = 1 regardless of the EoM-locked branch.
     """
     inputs = VenueRevenueInputs(
         venue=_venue("E8"),
@@ -635,194 +599,175 @@ def test_erc4626_with_fixed_sde_uses_som_locked_share():
     assert vr.revenue == Decimal("0")             # prime gets nothing
 
 
-def test_erc4626_capped_without_daily_values_falls_back_to_som_locked():
-    """erc4626_period_inflow + capped SDE but NO sde_daily_values → SoM-locked
-    share.  Without the per-day timeseries the function can't run the daily
-    cap-weighting; the fallback locks sd_share at SoM (= cap/value_som).
+# --- _capped_sd_revenue_eom_locked degenerate / display cases --------------
 
-    The vault-event inflow override still applies to actual_revenue, but the
-    split uses the simple SoM share rather than the special "all delta to SDE"
-    routing from the daily branch.
+def test_capped_sde_full_redemption_falls_back_to_som_locked_share():
+    """value_eom = 0 with value_som > 0 (entire capped position redeemed
+    mid-period): EoM-locked is undefined (min(cap, 0)/0), fall back to
+    SoM-locked share so the loss is attributed proportionally rather than
+    silently dropping it all on Prime. See ``_capped_sd_revenue_eom_locked``.
     """
+    cap = Decimal("600")
+    som = Decimal("1_000")
+    inputs = VenueRevenueInputs(
+        venue=_venue("E8"),
+        value_som=som,
+        value_eom=Decimal("0"),                  # full redemption
+        inflow_timeseries=_empty_inflow(),
+        sde_entry=_sde_capped("E8", cap),
+        erc4626_period_inflow=Decimal("-990"),   # $990 out via vault events
+    )
+    vr = compute_venue_revenue(_period(), inputs)
+    # actual_revenue = 0 − 1000 − (−990) = −10 (small intra-period loss)
+    assert vr.actual_revenue == Decimal("-10")
+    # Falls back to SoM-locked: min(600, 1000) / 1000 = 0.6.
+    assert vr.sd_share == Decimal("0.6")
+    assert vr.sd_revenue == Decimal("-10") * Decimal("0.6")
+    assert vr.revenue == Decimal("-10") * Decimal("0.4")
+
+
+def test_capped_sde_display_share_nonzero_when_actual_revenue_is_zero():
+    """A capped position that happens to break even (actual_revenue = 0)
+    should still report its EoM-locked sd_share for display, not 0. The
+    Sky/Prime split is well-defined even when the magnitude is zero.
+    """
+    cap = Decimal("600")
     inputs = VenueRevenueInputs(
         venue=_venue("E8"),
         value_som=Decimal("1_000"),
-        value_eom=Decimal("1_050"),
+        value_eom=Decimal("1_000"),              # flat
         inflow_timeseries=_empty_inflow(),
-        sde_entry=_sde_capped("E8", Decimal("400")),
-        sde_daily_values=None,                  # ← explicit None → fallback
-        erc4626_period_inflow=Decimal("20"),
+        sde_entry=_sde_capped("E8", cap),
     )
     vr = compute_venue_revenue(_period(), inputs)
-    assert vr.actual_revenue == Decimal("30")    # 1050 − 1000 − 20
-
-    # sd_share locked at SoM: min(400, 1000) / 1000 = 0.4
-    expected_share = Decimal("400") / Decimal("1000")
-    assert vr.sd_share == expected_share
-    assert vr.sd_revenue == Decimal("30") * expected_share
-    assert vr.revenue == Decimal("30") * (Decimal("1") - expected_share)
+    assert vr.actual_revenue == Decimal("0")
+    assert vr.sd_share == cap / Decimal("1_000")  # 0.6, not 0
+    assert vr.sd_revenue == Decimal("0")
 
 
-# --- erc4626_intra_epoch_sd_share (per-event weighted split) ---------------
+# --- _time_weighted_notional ------------------------------------------------
 
-
-def test_erc4626_intra_epoch_sd_share_overrides_som_fallback():
-    """When erc4626_intra_epoch_sd_share is provided it is used to split the
-    intra-epoch yield delta instead of the SOM sd_share fallback.
-
-    Setup: same numbers as test_erc4626_capped_sde_extra_delta_splits_at_som_sd_share
-    but with an explicit intra_epoch_sd_share = 0.52 (distinct from both
-    SOM sd_share = 0.6 and period-average).
-
-    delta = 10
-    intra_epoch_sd_share = 0.52
-    sd_revenue = sd_revenue_rwa + 10 × 0.52
-    prime_revenue = (30 − sd_revenue_rwa) + 10 × 0.48
-    """
-    period = _period()
-    cap = Decimal("600")
-    som = Decimal("1000")
-    intra_epoch_sd_share = Decimal("0.52")
-
-    inputs = VenueRevenueInputs(
-        venue=_venue("E8"),
-        value_som=som,
-        value_eom=Decimal("1030"),
-        inflow_timeseries=_empty_inflow(),
-        sde_entry=_sde_capped("E8", cap),
-        sde_daily_values=_daily_sde_values(period, Decimal("1030")),
-        erc4626_period_inflow=Decimal("-10"),
-        erc4626_intra_epoch_sd_share=intra_epoch_sd_share,
+def _venue_with_notional(
+    vid: str,
+    schedule: tuple[NotionalScheduleEntry, ...] | None,
+) -> Venue:
+    base = _venue(vid)
+    return Venue(
+        id=base.id,
+        chain=base.chain,
+        token=base.token,
+        pricing_category=base.pricing_category,
+        underlying=base.underlying,
+        label=base.label,
+        notional_principal_usd=schedule,
     )
-    vr = compute_venue_revenue(period, inputs)
-
-    assert vr.actual_revenue == Decimal("40")
-
-    expected_sd_rwa = Decimal("30") * cap / Decimal("1030")
-    expected_sd = expected_sd_rwa + Decimal("10") * intra_epoch_sd_share
-    assert vr.sd_revenue == expected_sd
-
-    expected_prime = Decimal("30") - expected_sd_rwa + Decimal("10") * (1 - intra_epoch_sd_share)
-    assert vr.revenue == expected_prime
 
 
-def test_erc4626_intra_epoch_sd_share_none_falls_back_to_som():
-    """erc4626_intra_epoch_sd_share=None → falls back to SOM sd_share.
-    Pins the fallback path so a future refactor doesn't accidentally break it.
+def test_time_weighted_notional_none_returns_zero():
+    assert _time_weighted_notional(None, _period()) == Decimal("0")
 
-    SOM sd_share = min(600, 1000) / 1000 = 0.6
-    """
-    period = _period()
-    cap = Decimal("600")
-    som = Decimal("1000")
 
-    inputs = VenueRevenueInputs(
-        venue=_venue("E8"),
-        value_som=som,
-        value_eom=Decimal("1030"),
-        inflow_timeseries=_empty_inflow(),
-        sde_entry=_sde_capped("E8", cap),
-        sde_daily_values=_daily_sde_values(period, Decimal("1030")),
-        erc4626_period_inflow=Decimal("-10"),
-        erc4626_intra_epoch_sd_share=None,  # explicit None → SOM fallback
+def test_time_weighted_notional_scalar_constant_through_period():
+    """Scalar form (single entry at date.min): constant notional across
+    every settlement period."""
+    schedule = (NotionalScheduleEntry(start_date=date.min, amount=Decimal("50_000_000")),)
+    assert _time_weighted_notional(schedule, _period()) == Decimal("50_000_000")
+
+
+def test_time_weighted_notional_step_activates_mid_period():
+    """Schedule activates mid-period (start_date inside [period.start,
+    period.end]). The avg = applicable_days × amount / n_days, where
+    applicable_days counts days >= start_date."""
+    # Period is 2026-03-01 → 2026-03-31 (31 days).
+    # Schedule: $0 before 2026-03-11; $31M from 2026-03-11 onward (21 days).
+    schedule = (
+        NotionalScheduleEntry(start_date=date(2026, 3, 11), amount=Decimal("31_000_000")),
     )
-    vr = compute_venue_revenue(period, inputs)
-
-    som_sd_share = min(cap, som) / som                  # 0.6
-    expected_sd_rwa = Decimal("30") * cap / Decimal("1030")
-    expected_sd = expected_sd_rwa + Decimal("10") * som_sd_share
-    assert vr.sd_revenue == expected_sd
+    # Expected: 21 days × 31M / 31 days = 21_000_000.
+    assert _time_weighted_notional(schedule, _period()) == Decimal("21_000_000")
 
 
-# --- _compute_centrifuge_intra_epoch_sd_share --------------------------------
+def test_time_weighted_notional_step_down_inside_period():
+    """Two-step schedule with a drop mid-period (loan termination). Notional
+    is 31M for days 1–10 and 0 from day 11 onward."""
+    schedule = (
+        NotionalScheduleEntry(start_date=date(2025, 12, 1), amount=Decimal("31_000_000")),
+        NotionalScheduleEntry(start_date=date(2026, 3, 11), amount=Decimal("0")),
+    )
+    # 10 days × 31M + 21 days × 0 = 310M; / 31 days = 10_000_000.
+    assert _time_weighted_notional(schedule, _period()) == Decimal("10_000_000")
 
-def test_compute_intra_epoch_sd_share_weighted_by_redemption_size():
-    """Multiple withdrawals on different days → weighted-average sd_share.
 
-    The sde_daily_values represents the post-requestRedeem position (token-
-    transfer clock; shares already left the ALM).  Adding back daily_assets_out
-    gives the pre-requestRedeem position used to determine the correct sd_share.
+def test_time_weighted_notional_schedule_after_period_returns_zero():
+    """Schedule starts entirely after the period — no notional applies."""
+    schedule = (
+        NotionalScheduleEntry(start_date=date(2026, 6, 1), amount=Decimal("50_000_000")),
+    )
+    assert _time_weighted_notional(schedule, _period()) == Decimal("0")
 
-    Setup: two $50M withdrawals; cap = $325M.
-    Day 5:  sde_daily_values[5] = $650M (post-requestRedeem for day 5)
-             pre-requestRedeem = 650 + 50 = $700M
-             sd_share_5 = min(325, 700) / 700 = 325/700
-    Day 20: sde_daily_values[20] = $600M (position after day-5 exit, pre-day-20 exit)
-             pre-requestRedeem = 600 + 50 = $650M
-             sd_share_20 = min(325, 650) / 650 = 325/650 = 0.5
 
-    Weighted average = (50 × 325/700 + 50 × 325/650) / 100
+def test_compute_venue_revenue_emits_tw_avg_notional_from_venue_config():
+    """End-to-end: a venue with notional_principal_usd configured sees the
+    time-weighted value surface on VenueRevenue.tw_avg_notional."""
+    schedule = (NotionalScheduleEntry(start_date=date.min, amount=Decimal("50_000_000")),)
+    inputs = VenueRevenueInputs(
+        venue=_venue_with_notional("E21", schedule),
+        value_som=Decimal("0"),
+        value_eom=Decimal("0"),
+        inflow_timeseries=_empty_inflow(),
+    )
+    vr = compute_venue_revenue(_period(), inputs)
+    assert vr.tw_avg_notional == Decimal("50_000_000")
+
+
+def test_notional_principal_usd_does_not_change_headline_fields():
+    """Headline invariance: configuring ``notional_principal_usd`` on a venue
+    must NOT change any number that feeds sky_revenue, prime_agent_revenue,
+    or monthly_pnl. The field is display-only — it only affects per-venue
+    CoF allocation downstream in ``build_monthly_report.py``.
+
+    Pins this by running ``compute_prime_agent_revenue`` on the same venue
+    twice — once with notional configured, once without — and asserting every
+    headline-relevant field on the resulting VenueRevenue is bit-identical.
     """
-    from datetime import timedelta
-    from settle.compute.monthly_pnl import _compute_centrifuge_intra_epoch_sd_share
+    schedule = (
+        NotionalScheduleEntry(start_date=date.min, amount=Decimal("50_000_000")),
+    )
+    # A venue with a non-trivial revenue profile to give the assertions
+    # something substantive to compare.
+    value_som = Decimal("1_000_000")
+    value_eom = Decimal("1_050_000")
 
-    period = _period()  # 2026-03-01 → 2026-03-31
-    cap = Decimal("325")
+    def _run(notional: tuple | None) -> tuple:
+        venue = _venue_with_notional("E21", notional)
+        inputs = [VenueRevenueInputs(
+            venue=venue,
+            value_som=value_som,
+            value_eom=value_eom,
+            inflow_timeseries=_empty_inflow(),
+        )]
+        total, breakdown = compute_prime_agent_revenue(_period(), inputs)
+        return total, breakdown[0]
 
-    ev_ts = pd.DataFrame({
-        "block_date":       [date(2026, 3, 5), date(2026, 3, 20)],
-        "daily_inflow":     [Decimal("-50"), Decimal("-50")],
-        "daily_assets_out": [Decimal("50"),  Decimal("50")],
-    })
+    total_a, vr_a = _run(None)
+    total_b, vr_b = _run(schedule)
 
-    # sde_daily_values has one row per day (output of _sde_asset_value_timeseries).
-    # Values represent the position after any requestRedeems that day.
-    # Day 5:  position = $650M (was $700M before $50M requestRedeem on day 5)
-    # Day 20: position = $600M (was $650M before $50M requestRedeem on day 20)
-    sde_rows = []
-    d = period.start
-    while d <= period.end:
-        if d <= date(2026, 3, 5):
-            val = Decimal("650")   # post-day-5 requestRedeem
-        elif d <= date(2026, 3, 20):
-            val = Decimal("600")   # post-day-20 requestRedeem
-        else:
-            val = Decimal("550")   # after both exits
-        sde_rows.append({"block_date": d, "uncapped_value": val})
-        d += timedelta(days=1)
-    sde_daily = pd.DataFrame(sde_rows)
+    # Headline aggregate (= prime_agent_revenue) is identical.
+    assert total_a == total_b
 
-    result = _compute_centrifuge_intra_epoch_sd_share(cap, ev_ts, sde_daily, period)
-    assert result is not None
+    # Every field that flows into sky_revenue / prime_agent_revenue /
+    # monthly_pnl is identical between the two runs.
+    for field_name in (
+        "venue_id", "label",
+        "value_som", "value_eom", "period_inflow",
+        "revenue", "actual_revenue", "external_revenue",
+        "sd_share", "sd_revenue",
+        "br_charge", "sky_direct_shortfall",
+    ):
+        assert getattr(vr_a, field_name) == getattr(vr_b, field_name), (
+            f"{field_name} drifted between notional=None and notional=schedule"
+        )
 
-    sd5  = min(cap, Decimal("650") + Decimal("50")) / (Decimal("650") + Decimal("50"))
-    sd20 = min(cap, Decimal("600") + Decimal("50")) / (Decimal("600") + Decimal("50"))
-    expected = (Decimal("50") * sd5 + Decimal("50") * sd20) / Decimal("100")
-    assert result == expected
-
-
-def test_compute_intra_epoch_sd_share_no_withdrawals_returns_none():
-    """Period with only deposits → no withdrawals → returns None (caller falls
-    back to SOM sd_share)."""
-    from settle.compute.monthly_pnl import _compute_centrifuge_intra_epoch_sd_share
-
-    period = _period()
-    cap = Decimal("325")
-
-    ev_ts = pd.DataFrame({
-        "block_date":       [date(2026, 3, 10)],
-        "daily_inflow":     [Decimal("100")],
-        "daily_assets_out": [Decimal("0")],
-    })
-    sde_daily = pd.DataFrame({"block_date": [date(2026, 3, 10)], "uncapped_value": [Decimal("500")]})
-
-    result = _compute_centrifuge_intra_epoch_sd_share(cap, ev_ts, sde_daily, period)
-    assert result is None
-
-
-def test_compute_intra_epoch_sd_share_missing_column_returns_none():
-    """ev_ts without daily_assets_out column → returns None gracefully."""
-    from settle.compute.monthly_pnl import _compute_centrifuge_intra_epoch_sd_share
-
-    period = _period()
-    cap = Decimal("325")
-
-    # Old-format ev_ts without daily_assets_out
-    ev_ts = pd.DataFrame({
-        "block_date":   [date(2026, 3, 10)],
-        "daily_inflow": [Decimal("-50")],
-    })
-    sde_daily = pd.DataFrame({"block_date": [date(2026, 3, 10)], "uncapped_value": [Decimal("500")]})
-
-    result = _compute_centrifuge_intra_epoch_sd_share(cap, ev_ts, sde_daily, period)
-    assert result is None
+    # The only field that differs is the display one.
+    assert vr_a.tw_avg_notional == Decimal("0")
+    assert vr_b.tw_avg_notional == Decimal("50_000_000")

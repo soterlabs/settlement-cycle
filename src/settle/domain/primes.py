@@ -128,6 +128,18 @@ class NavOracle:
 
 
 @dataclass(frozen=True, slots=True)
+class NotionalScheduleEntry:
+    """One step of a venue's off-chain notional-principal schedule.
+
+    Used by ``Venue.notional_principal_usd`` for cash-distribution-only venues
+    where the ALM's on-chain balance is $0 but Sky is charging interest on
+    a real off-chain principal (loan, tri-party escrow, etc.).
+    """
+    start_date: date
+    amount: Decimal
+
+
+@dataclass(frozen=True, slots=True)
 class Venue:
     """One allocation venue for a prime — a position-bearing token, with pricing rules."""
 
@@ -261,6 +273,33 @@ class Venue:
     # FalconX) for an OOB acquisition; the cash settlement at the ALM is the
     # realization event for any spread captured during the trip.
     display_only: bool = False
+    # Off-chain notional principal used by the CoF allocation when on-chain
+    # ``tw_avg_value_usd`` doesn't reflect the principal Sky is implicitly
+    # charging interest on. Primary use case: cash-distribution-only venues
+    # (e.g. Galaxy CLO E21, Anchorage tri-party S23 yield routing through S26)
+    # where the ALM's on-chain balance is $0 but the funded USDS principal
+    # ($50M loan, $150M tri-party) is still part of utilized.
+    #
+    # Two forms accepted in YAML:
+    #
+    #   notional_principal_usd: 50000000              # constant scalar
+    #
+    # OR (date-ranged schedule for time-varying notional, e.g. partial
+    # repayments, drawdowns, term-end retirement):
+    #
+    #   notional_principal_usd:
+    #     - start_date: '2025-12-19'  # initial disbursement
+    #       amount: 50000000
+    #     - start_date: '2026-06-16'  # loan termination
+    #       amount: 0
+    #
+    # Each entry sets the notional from ``start_date`` onward (step function).
+    # The compute layer computes a time-weighted average across the settlement
+    # period; the sheet builder uses ``max(tw_avg_value_usd, tw_avg_notional_usd)``
+    # as the effective avg for CoF allocation. For venues where on-chain value
+    # tracks the real notional (the typical case), this field is None and the
+    # effective avg = tw_avg_value_usd unchanged.
+    notional_principal_usd: tuple[NotionalScheduleEntry, ...] | None = None
 
 
 @dataclass(frozen=True, slots=True)
