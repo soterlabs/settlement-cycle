@@ -389,6 +389,12 @@ def block_timestamp(chain: Chain, block: int) -> int:
 # blocks per call. Override via the kwarg if a provider supports more.
 LOGS_CHUNK_BLOCKS = 10_000
 
+# Per-chain overrides. Monad's public RPC (rpc.monad.xyz) rejects ranges
+# larger than 100 blocks; use that as a safe hardcoded limit.
+_LOGS_CHUNK_BY_CHAIN: dict[Chain, int] = {
+    Chain.MONAD: 100,
+}
+
 
 def eth_get_logs(
     chain: Chain,
@@ -397,7 +403,7 @@ def eth_get_logs(
     from_block: int,
     to_block: int,
     *,
-    chunk_blocks: int = LOGS_CHUNK_BLOCKS,
+    chunk_blocks: int | None = None,
 ) -> list[dict]:
     """Paginated ``eth_getLogs``.
 
@@ -406,8 +412,12 @@ def eth_get_logs(
 
     Returns the raw log dicts (block_number, transaction_hash, topics, data, …)
     in chronological order. Pagination splits the requested range into
-    ``chunk_blocks`` windows so requests stay within Alchemy's free-tier limit.
+    ``chunk_blocks`` windows so requests stay within the provider's limit.
+    When ``chunk_blocks`` is not supplied, ``_LOGS_CHUNK_BY_CHAIN`` is
+    consulted first, falling back to ``LOGS_CHUNK_BLOCKS``.
     """
+    if chunk_blocks is None:
+        chunk_blocks = _LOGS_CHUNK_BY_CHAIN.get(chain, LOGS_CHUNK_BLOCKS)
     if from_block > to_block:
         return []
     out: list[dict] = []

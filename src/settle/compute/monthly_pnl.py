@@ -1608,18 +1608,7 @@ def compute_monthly_pnl(
         # outside the closed-form pool-native yield formula. Stays at 0 for
         # all other pricing categories (today only Cat C has the path wired).
         external_revenue_for_venue: Decimal = Decimal("0")
-        if venue.lp_kind == "uniswap_v3" and venue.v3_inflow_delta_value:
-            # Skip event scanning entirely — synthesise inflow = Δvalue so
-            # that revenue = 0.  Used for chains where eth_getLogs over a
-            # full settlement month is impractical (e.g. Monad ~5M blocks).
-            import pandas as _pd2
-            _delta = value_eom - value_som
-            inflow_ts = _pd2.DataFrame({
-                "block_date": [period.end],
-                "daily_inflow": [_delta],
-                "cum_inflow":   [_delta],
-            })
-        elif venue.lp_kind == "uniswap_v3":
+        if venue.lp_kind == "uniswap_v3":
             from ..normalize.positions import _uniswap_v3_inflow_timeseries
             v3_src = sources.v3_position
             if v3_src is None:
