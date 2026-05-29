@@ -33,12 +33,44 @@ def _parse_ilk_bytes32(s: str) -> bytes:
     return bytes.fromhex(s)
 
 
+def _parse_usd_amount(raw, field_name: str) -> Decimal:
+    """Parse a YAML scalar as a whole-dollar USD amount.
+
+    Accepts only ``int`` (YAML ``50000000`` → Python int). Rejects:
+    * ``bool`` (subclass of int — YAML ``true``/``false`` would silently
+      become Decimal(1)/(0))
+    * ``float`` — YAML ``50000000.0`` parses as Python float;
+      ``Decimal(str(float))`` is exact for integer-valued floats but
+      introduces representation noise for fractional values (e.g.
+      ``Decimal(str(50123456.78))`` has trailing rep digits). For
+      whole-dollar amounts an int is unambiguous; for fractional amounts
+      the operator should use a quoted string and a richer schema.
+
+    ``field_name`` appears in the error message so the operator knows
+    which YAML key produced the rejection.
+    """
+    if isinstance(raw, bool):
+        raise ValueError(
+            f"{field_name}: bool is not a valid USD amount (got {raw!r})"
+        )
+    if isinstance(raw, int):
+        return Decimal(raw)
+    if isinstance(raw, float):
+        raise ValueError(
+            f"{field_name}: float values are not accepted (got {raw!r}) — "
+            "use a plain integer for whole-dollar amounts."
+        )
+    raise ValueError(
+        f"{field_name}: must be an integer (got {type(raw).__name__}: {raw!r})"
+    )
+
+
 def _parse_notional_principal(raw) -> "tuple[NotionalScheduleEntry, ...] | None":
     """Parse a venue's ``notional_principal_usd`` field.
 
-    Two YAML forms supported:
+    Three YAML forms supported:
 
-    Scalar (constant notional):
+    Scalar (always-on, constant notional):
         ``notional_principal_usd: 50000000``  →  one entry, ``start_date``
         set to ``date.min`` so it's active for every settlement period.
 
@@ -51,35 +83,25 @@ def _parse_notional_principal(raw) -> "tuple[NotionalScheduleEntry, ...] | None"
         Each entry sets the notional from ``start_date`` onward. The
         compute layer time-weights across the settlement period. Duplicate
         ``start_date`` values are rejected to avoid an ambiguous tie-break.
+
+    Single-entry date-ranged (notional activates from a specific date,
+    $0 before that — semantically different from the scalar form):
+        ``notional_principal_usd:
+              - start_date: '2026-02-01'
+                amount: 25000000``
+        Use this when Grove (or the prime team) started tracking off-chain
+        notional on a specific date that isn't ``date.min``. Periods
+        entirely before ``start_date`` get $0 notional, not ``amount``.
     """
     if raw is None:
         return None
-    if isinstance(raw, bool):
-        # bool is a subclass of int — reject explicitly before the int branch
-        # so YAML ``true``/``false`` doesn't quietly become Decimal("1")/("0").
-        raise ValueError(
-            f"notional_principal_usd: bool is not a valid notional amount "
-            f"(got {raw!r})"
-        )
-    if isinstance(raw, int):
+    if isinstance(raw, (bool, int, float)):
+        amount = _parse_usd_amount(raw, "notional_principal_usd")
         return (
             NotionalScheduleEntry(
                 start_date=date.min,
-                amount=Decimal(raw),
+                amount=amount,
             ),
-        )
-    if isinstance(raw, float):
-        # YAML ``50000000.0`` parses as Python float — Decimal(str(float))
-        # is exact for integer-valued floats but introduces representation
-        # noise for fractional values (e.g. Decimal(str(0.1)) is "0.1" but
-        # Decimal(str(50123456.78)) has trailing float-rep digits). Refuse
-        # rather than silently corrupt notional amounts. Operators wanting
-        # fractional notional should use the list form with an explicit
-        # string amount, or wrap the scalar in quotes.
-        raise ValueError(
-            f"notional_principal_usd: float values are not accepted (got "
-            f"{raw!r}) — use a plain integer for whole-dollar amounts, or "
-            "the list form with a quoted string amount for fractional."
         )
     if isinstance(raw, list):
         entries = tuple(
@@ -207,6 +229,14 @@ def load_prime(config_path: Path) -> Prime:
                 ),
                 cof_excluded=bool(v.get("cof_excluded", False)),
                 min_transfer_amount_usd=_parse_min_transfer(v),
+                fixed_fee_per_capital_event_usd=(
+                    _parse_usd_amount(
+                        v["fixed_fee_per_capital_event_usd"],
+                        "fixed_fee_per_capital_event_usd",
+                    )
+                    if v.get("fixed_fee_per_capital_event_usd") is not None
+                    else None
+                ),
                 sky_direct=bool(v.get("sky_direct", False)),
                 holder_override=(
                     Address.from_str(v["holder_override"])

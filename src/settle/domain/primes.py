@@ -165,6 +165,31 @@ class Venue:
     # ``IBalanceSource.cumulative_balance_timeseries(min_transfer_amount=…)``.
     # ``None`` means no filter (default).
     min_transfer_amount_usd: Decimal | None = None
+    # Off-chain administrative fee charged by the issuer on some capital
+    # operations. Today used by BlackRock BUIDL-I (E10, Grove): the issuer
+    # takes $15K per fee-charged operation, baked into the on-chain mint
+    # amount at source.
+    #
+    # The compute layer detects fee-charged events by the "shaved-amount"
+    # signature on each in-period row of ``inflow_timeseries``:
+    #
+    #   * Shaved (fee charged): ``49,985,000 + 15,000 = 50,000,000``  →
+    #     divisible by $1M → counted as a fee event.
+    #   * Clean (no fee):       ``50,000,000 + 15,000 = 50,015,000``  →
+    #     NOT divisible by $1M → skipped.
+    #
+    # Detection is direction-agnostic via ``abs(daily_inflow)`` — works for
+    # both subscriptions and redemptions when fee-charged. ``fee × n_events``
+    # is subtracted from ``actual_revenue`` before the SDE split; for fixed-
+    # SDE venues (BUIDL is) the fee flows entirely to Sky. The $1M rounding
+    # constant lives in ``compute_venue_revenue`` and matches BlackRock's
+    # institutional subscription denomination — re-validate if a future
+    # venue adopts a different one.
+    #
+    # ``None`` means no fee. Setting this without a positive
+    # ``min_transfer_amount_usd`` raises — the unfiltered daily yield mints
+    # would corrupt the detection.
+    fixed_fee_per_capital_event_usd: Decimal | None = None
     # DEPRECATED 2026-05-02 — superseded by ``config/sky_direct_exposures.yaml``
     # (loaded as ``SDETable`` in ``compute.monthly_pnl``). Retained as a YAML
     # sink for legacy configs but ignored by compute. Will be removed once

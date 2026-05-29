@@ -6,6 +6,7 @@ from datetime import date
 from decimal import Decimal
 
 import pandas as pd
+import pytest
 
 from settle.compute.prime_agent_revenue import (
     VenueRevenueInputs,
@@ -773,3 +774,255 @@ def test_notional_principal_usd_does_not_change_headline_fields():
     # The only field that differs is the display one.
     assert vr_a.tw_avg_notional == Decimal("0")
     assert vr_b.tw_avg_notional == Decimal("50_000_000")
+
+
+# --- fixed_fee_per_capital_event_usd (off-chain redemption fee) ------------
+
+def _venue_with_fee(fee: Decimal, min_transfer: Decimal | None = Decimal("1000000")) -> Venue:
+    base = _venue("E10")
+    return Venue(
+        id=base.id,
+        chain=base.chain,
+        token=base.token,
+        pricing_category=base.pricing_category,
+        underlying=base.underlying,
+        label=base.label,
+        min_transfer_amount_usd=min_transfer,
+        fixed_fee_per_capital_event_usd=fee,
+    )
+
+
+def _inflow_with_events(events: list[tuple[date, Decimal]]) -> pd.DataFrame:
+    """Build an inflow_timeseries for the test. ``events`` is a list of
+    (date, daily_inflow) — cum_inflow is the running sum."""
+    cum = Decimal("0")
+    rows = []
+    for d, v in events:
+        cum += v
+        rows.append({"block_date": d, "daily_inflow": v, "cum_inflow": cum})
+    return pd.DataFrame(rows)
+
+
+def test_fee_subtracts_15k_per_shaved_amount_event_in_period():
+    """BUIDL pattern: subscription minted at $50M − $15K = $49,985K because
+    BlackRock takes the $15K fee at the source. Detect via the "shaved
+    amount" signature: ``|amount| + fee`` divides cleanly by $1M.
+    """
+    period = _period()  # 2026-03-01 → 2026-03-31
+    # 5 fee-charged subs ($49,985K = clean $50M − $15K) + 2 clean subs
+    # (no fee). The clean ones add up to round numbers; the shaved ones do
+    # not. Only the shaved ones trigger the fee deduction.
+    events = [
+        (date(2026, 3, 3),  Decimal("49985000")),    # SHAVED — fee charged
+        (date(2026, 3, 7),  Decimal("49985000")),    # SHAVED
+        (date(2026, 3, 10), Decimal("50000000")),    # clean — no fee
+        (date(2026, 3, 14), Decimal("49985000")),    # SHAVED
+        (date(2026, 3, 20), Decimal("49985000")),    # SHAVED
+        (date(2026, 3, 25), Decimal("25000000")),    # clean — no fee
+        (date(2026, 3, 28), Decimal("49985000")),    # SHAVED
+    ]
+    inflow = _inflow_with_events(events)
+    inputs = VenueRevenueInputs(
+        venue=_venue_with_fee(Decimal("15000")),
+        value_som=Decimal("0"),
+        value_eom=Decimal("324_850_000"),   # value_eom = period_inflow exactly
+        inflow_timeseries=inflow,
+    )
+    vr = compute_venue_revenue(period, inputs)
+    # period_inflow = 5×49,985,000 + 50,000,000 + 25,000,000 = $324,925,000
+    assert vr.period_inflow == Decimal("324_925_000")
+    # gross actual_revenue = 324.85M − 0 − 324.925M = −$75K
+    # MINUS 5 × $15K fee = −$75K − $75K = −$150K
+    assert vr.actual_revenue == Decimal("-150000")
+
+
+def test_fee_outside_period_does_not_count():
+    """Events outside the settlement period are ignored — only in-period
+    fee events count."""
+    period = _period()  # 2026-03-01 → 2026-03-31
+    events = [
+        (date(2026, 2, 5),  Decimal("49985000")),    # pre-period
+        (date(2026, 3, 15), Decimal("49985000")),    # in-period — fee
+        (date(2026, 4, 12), Decimal("49985000")),    # post-period
+    ]
+    inflow = _inflow_with_events(events)
+    inputs = VenueRevenueInputs(
+        venue=_venue_with_fee(Decimal("15000")),
+        value_som=Decimal("0"),
+        value_eom=Decimal("49_985_000"),
+        inflow_timeseries=inflow,
+    )
+    vr = compute_venue_revenue(period, inputs)
+    # period_inflow = only the in-period row = $49.985M
+    assert vr.period_inflow == Decimal("49_985_000")
+    # gross actual = 49.985M − 0 − 49.985M = $0, MINUS 1 × $15K fee = −$15K
+    assert vr.actual_revenue == Decimal("-15000")
+
+
+def test_fee_skips_clean_round_amounts():
+    """Clean round-number mints (no fee charged at source) → no fee
+    deduction even though they're in-period capital events."""
+    period = _period()
+    events = [
+        (date(2026, 3, 5),  Decimal("50000000")),
+        (date(2026, 3, 12), Decimal("25000000")),
+        (date(2026, 3, 22), Decimal("10000000")),
+    ]
+    inflow = _inflow_with_events(events)
+    inputs = VenueRevenueInputs(
+        venue=_venue_with_fee(Decimal("15000")),
+        value_som=Decimal("0"),
+        value_eom=Decimal("85_000_000"),
+        inflow_timeseries=inflow,
+    )
+    vr = compute_venue_revenue(period, inputs)
+    # All amounts are clean → no fee detected → actual_revenue = $0
+    assert vr.actual_revenue == Decimal("0")
+
+
+def test_fee_without_min_transfer_raises():
+    """Configuring a per-event fee without min_transfer_amount_usd would
+    over-count fees on the unfiltered daily yield mints — refuse the call."""
+    period = _period()
+    inputs = VenueRevenueInputs(
+        venue=_venue_with_fee(Decimal("15000"), min_transfer=None),
+        value_som=Decimal("0"),
+        value_eom=Decimal("0"),
+        inflow_timeseries=_empty_inflow(),
+    )
+    with pytest.raises(ValueError, match="min_transfer_amount_usd"):
+        compute_venue_revenue(period, inputs)
+
+
+def test_fee_with_no_events_in_period_is_a_noop():
+    """No redemption events in the period → no fee deduction."""
+    period = _period()
+    inputs = VenueRevenueInputs(
+        venue=_venue_with_fee(Decimal("15000")),
+        value_som=Decimal("100_000_000"),
+        value_eom=Decimal("100_500_000"),
+        inflow_timeseries=_empty_inflow(),
+    )
+    vr = compute_venue_revenue(period, inputs)
+    assert vr.actual_revenue == Decimal("500_000")
+
+
+def test_fee_routes_to_sky_for_fixed_sde_venue():
+    """For fixed-SDE venues (sd_share = 1) the fee flows entirely to Sky.
+    Pins the BUIDL economics: Grove pays the fee implicitly via reduced
+    Sky-Direct revenue."""
+    period = _period()
+    # One fee-charged event ($50M sub minted as $49,985K).
+    events = [(date(2026, 3, 10), Decimal("49985000"))]
+    inputs = VenueRevenueInputs(
+        venue=_venue_with_fee(Decimal("15000")),
+        value_som=Decimal("100_000_000"),
+        value_eom=Decimal("155_100_000"),    # +$5.115M MtM after capital
+        inflow_timeseries=_inflow_with_events(events),
+        sde_entry=_sde_fixed("E10"),
+    )
+    vr = compute_venue_revenue(period, inputs)
+    # gross actual = 155.1M − 100M − 49.985M = $5,115,000
+    # fee = 1 × $15K → actual_revenue = $5,100,000
+    # fixed SDE → sd_share = 1 → sd_revenue = $5,100,000 (Sky absorbs the fee)
+    assert vr.actual_revenue == Decimal("5_100_000")
+    assert vr.sd_revenue == Decimal("5_100_000")
+    assert vr.revenue == Decimal("0")
+
+
+def test_fee_detects_shaved_redemption_event():
+    """The shaved-amount heuristic is direction-agnostic — a negative
+    daily_inflow with the same signature (|amount| + fee divisible by $1M)
+    triggers the fee deduction. Pins that ``abs(amount)`` correctly captures
+    both subscription-direction and redemption-direction fee events.
+    """
+    period = _period()
+    # One redemption-direction fee event: ALM gave up $50M of position,
+    # received $49,985K back (the $15K fee was shaved at source).
+    events = [(date(2026, 3, 10), Decimal("-49985000"))]
+    inputs = VenueRevenueInputs(
+        venue=_venue_with_fee(Decimal("15000")),
+        value_som=Decimal("50_000_000"),
+        value_eom=Decimal("0"),
+        inflow_timeseries=_inflow_with_events(events),
+    )
+    vr = compute_venue_revenue(period, inputs)
+    # period_inflow = -49,985,000
+    # gross actual_revenue = 0 − 50M − (−49,985K) = −$15,000
+    # fee = 1 × $15K → actual_revenue = −$30,000
+    assert vr.period_inflow == Decimal("-49985000")
+    assert vr.actual_revenue == Decimal("-30000")
+
+
+def test_fee_skips_clean_round_redemption():
+    """A clean round-number redemption (no fee charged at source) → no
+    fee deduction. Mirrors ``test_fee_skips_clean_round_amounts`` but in
+    the negative direction."""
+    period = _period()
+    events = [(date(2026, 3, 10), Decimal("-50000000"))]
+    inputs = VenueRevenueInputs(
+        venue=_venue_with_fee(Decimal("15000")),
+        value_som=Decimal("50_000_000"),
+        value_eom=Decimal("0"),
+        inflow_timeseries=_inflow_with_events(events),
+    )
+    vr = compute_venue_revenue(period, inputs)
+    # gross actual = 0 − 50M − (−50M) = $0, NO fee → actual_revenue = $0
+    assert vr.actual_revenue == Decimal("0")
+
+
+def test_fee_with_zero_min_transfer_raises():
+    """``min_transfer_amount_usd = 0`` satisfies ``is not None`` but defeats
+    the heuristic's intent — the guard must reject it just like None,
+    otherwise yield mints in the timeseries could accidentally satisfy the
+    shaved-amount test."""
+    period = _period()
+    inputs = VenueRevenueInputs(
+        venue=_venue_with_fee(Decimal("15000"), min_transfer=Decimal("0")),
+        value_som=Decimal("0"),
+        value_eom=Decimal("0"),
+        inflow_timeseries=_empty_inflow(),
+    )
+    with pytest.raises(ValueError, match="min_transfer_amount_usd"):
+        compute_venue_revenue(period, inputs)
+
+
+def test_fee_and_actual_revenue_override_are_mutually_exclusive():
+    """A venue cannot simultaneously have ``actual_revenue_override`` (used
+    by the sUSDS-spread closed-form path) and ``fixed_fee_per_capital_event_usd``
+    set — the fee heuristic depends on the inflow timeseries that the
+    override path doesn't consume. Refuse explicitly via assertion."""
+    period = _period()
+    inputs = VenueRevenueInputs(
+        venue=_venue_with_fee(Decimal("15000")),
+        value_som=Decimal("0"),
+        value_eom=Decimal("0"),
+        inflow_timeseries=_empty_inflow(),
+        actual_revenue_override=Decimal("1000"),
+    )
+    with pytest.raises(AssertionError, match="mutually exclusive"):
+        compute_venue_revenue(period, inputs)
+
+
+def test_fee_with_erc4626_period_inflow_branch():
+    """ERC-4626 Centrifuge venues use ``erc4626_period_inflow`` to override
+    the period_inflow formula. The fee detection still reads
+    ``inputs.inflow_timeseries`` (token-transfer clock) — the two paths
+    coexist. Pins that the fee fires from the timeseries even when
+    actual_revenue is computed via the vault-event override."""
+    period = _period()
+    # Token-transfer timeseries has one fee-charged event (Mar 10 $49,985K).
+    events = [(date(2026, 3, 10), Decimal("49985000"))]
+    inputs = VenueRevenueInputs(
+        venue=_venue_with_fee(Decimal("15000")),
+        value_som=Decimal("100_000_000"),
+        value_eom=Decimal("150_000_000"),
+        inflow_timeseries=_inflow_with_events(events),
+        erc4626_period_inflow=Decimal("49985000"),   # vault-event matches
+    )
+    vr = compute_venue_revenue(period, inputs)
+    # period_inflow uses the vault-event value ($49,985K).
+    # gross actual = 150M − 100M − 49.985M = $15,000
+    # fee = 1 × $15K → actual_revenue = $0
+    assert vr.period_inflow == Decimal("49985000")
+    assert vr.actual_revenue == Decimal("0")

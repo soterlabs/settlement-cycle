@@ -317,7 +317,7 @@ def _sde_asset_value_timeseries(
     on the frame for diagnostics — not consumed by the EoM-locked compute
     path. Always reflects the actual balance × NAV.
 
-    Parameter contract:
+    Daily branching — first matching rule wins:
 
     * ``cap_usd = None``: ``cum_value = raw_value`` every day (no cap, no
       in-flight handling).
@@ -409,9 +409,8 @@ def _sde_asset_value_timeseries(
     ):
         # Inverted active window — a YAML misconfiguration where the SDE
         # entry's start_date and end_date are swapped would silently zero
-        # out cum_value for every day in the period (the gate inside the
-        # daily loop would always fire). Refuse loudly so the operator
-        # gets a clear error instead of wrong sky_revenue numbers.
+        # out cum_value for every day in the period. Refuse loudly so the
+        # operator gets a clear error instead of wrong sky_revenue numbers.
         raise ValueError(
             f"_sde_asset_value_timeseries({venue.id}): start_date "
             f"({start_date.isoformat()}) is after end_date "
@@ -2414,21 +2413,22 @@ def compute_monthly_pnl(
                     return _resolve_rwa_nav(_v, block, block_resolver=_br, resolver=_nr)
 
                 # UTILIZED EXCLUSION path — feeds ``compute_sky_revenue`` via
-                # ``sde_av_total``. Independent of the SDE revenue *split*: the
-                # sd_share / sd_revenue computation runs in
+                # ``sde_av_total``. Independent of the SDE revenue *split*:
+                # the sd_share / sd_revenue computation runs in
                 # ``compute_venue_revenue`` using ``value_eom`` directly
-                # (EoM-locked, see ``_capped_sd_revenue_eom_locked``) and is
-                # not sensitive to the mid-period on-chain drop.
+                # (EoM-locked, see ``_capped_sd_revenue_eom_locked``).
                 #
                 # **Gating asymmetry between the two paths.** This call's
-                # daily gate (``current < start_date`` or ``current > end_date``
-                # → cum_value=0) suppresses pre-start and post-end days from
-                # the utilized exclusion. ``compute_venue_revenue``'s
-                # EoM-locked sd_share applies to the FULL period's
-                # actual_revenue regardless of intra-period activity — it
-                # uses only the SoM/EoM snapshots and naturally reflects
-                # whatever the on-chain state was at period end. So an SDE
-                # entry that's only active for part of the period correctly
+                # daily gate (pre-start / post-burn / post-end → cum_value=0)
+                # suppresses inactive days from the utilized exclusion —
+                # critically including the burn day onwards (Grove's "SKY
+                # EXPOSURE" workbook tab shows Sky's per-venue Asset Value
+                # dropping to $0 on burn day, not at end_date). Meanwhile
+                # ``compute_venue_revenue``'s EoM-locked sd_share applies to
+                # the FULL period's actual_revenue regardless of intra-period
+                # activity — it uses only the SoM/EoM snapshots and naturally
+                # reflects the on-chain state at period end. So an SDE entry
+                # that's only active for part of the period correctly
                 # contributes zero utilized exclusion on inactive days
                 # (path 1) while still attributing its EoM sd_share to the
                 # period's actual_revenue (path 2). Both behaviours are
