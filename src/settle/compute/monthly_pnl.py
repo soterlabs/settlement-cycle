@@ -302,6 +302,7 @@ def _sde_asset_value_timeseries(
     block_resolver,
     nav_at_block,
     cap_usd: Decimal | None = None,
+    start_date: "date | None" = None,
     burn_date: "date | None" = None,
     end_date: "date | None" = None,
 ) -> pd.DataFrame:
@@ -325,6 +326,13 @@ def _sde_asset_value_timeseries(
       window (see below). ``burn_date <= end_date`` is required.
     * ``burn_date`` set without ``end_date``, or without ``cap_usd``, or
       with ``burn_date > end_date`` → ``ValueError``.
+    * ``start_date`` / ``end_date`` (when set): days strictly before
+      ``start_date`` or strictly after ``end_date`` are SDE-inactive and
+      return ``cum_value = 0`` regardless of on-chain balance. The orchestrator
+      attaches an SDE entry to a venue if it's active for ANY day of the
+      period; this per-day gate ensures cum_value is zero on days the entry
+      isn't actually live. ``uncapped_value`` keeps tracking on-chain
+      balance × NAV throughout for diagnostics.
 
     **In-flight redemption window (capped SDE with ``burn_date`` set).** When
     a capped tranche is destroyed on-chain on ``burn_date`` but the USDC
@@ -375,7 +383,14 @@ def _sde_asset_value_timeseries(
             eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
             block = block_resolver.block_at_or_before(venue.chain.value, eod)
             raw_value = bal * nav_at_block(block)
-        if (
+        if (start_date is not None and current < start_date) or (
+            end_date is not None and current > end_date
+        ):
+            # SDE not active on this day — entry is either pre-start or
+            # post-end. cum_value is 0 (no utilized exclusion); uncapped_value
+            # still tracks the on-chain residual for diagnostics.
+            capped_value = Decimal("0")
+        elif (
             cap_usd is not None
             and burn_date is not None
             and burn_date <= current <= end_date
@@ -2344,6 +2359,7 @@ def compute_monthly_pnl(
                     block_resolver=resolver,
                     nav_at_block=_sd_nav,
                     cap_usd=sde_entry.cap_usd,
+                    start_date=sde_entry.start_date,
                     burn_date=sde_entry.burn_date,
                     end_date=sde_entry.end_date,
                 )

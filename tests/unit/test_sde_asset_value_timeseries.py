@@ -122,9 +122,13 @@ def test_capped_sde_in_flight_window_keeps_cap_coverage():
         assert by_date[d]["cum_value"]      == cap, f"in-flight day {d}"
         assert by_date[d]["uncapped_value"] == post_burn, f"in-flight day {d}"
 
-    # Post end_date: cum_value tracks the on-chain (uncapped, below cap).
+    # Post end_date: SDE entry is inactive, so cum_value drops to 0 even
+    # though the on-chain residual ($128M) still exists. uncapped_value
+    # keeps tracking the on-chain residual for diagnostics. See
+    # ``test_post_end_date_cum_value_is_zero_even_when_on_chain_residual_exists``
+    # for the dedicated post-end-date test.
     for d in (date(2026, 3, 13), date(2026, 3, 14), date(2026, 3, 31)):
-        assert by_date[d]["cum_value"]      == post_burn, f"post-end {d}"
+        assert by_date[d]["cum_value"]      == Decimal("0"), f"post-end {d}"
         assert by_date[d]["uncapped_value"] == post_burn, f"post-end {d}"
 
 
@@ -167,10 +171,14 @@ def test_burn_date_without_end_date_raises():
         )
 
 
-def test_in_flight_window_outside_period_is_a_noop():
-    """Burn occurred before the settlement period — every period day is
-    post-end_date, so cum_value tracks on-chain throughout."""
-    # Period: April 2026. Burn happened in March (pre-period).
+def test_period_entirely_after_end_date_yields_zero_cum_value():
+    """SDE entry's end_date precedes the settlement period entirely (e.g.
+    April 2026 settlement of an SDE that ended March 12). The entry is
+    inactive every day — cum_value = 0 throughout. ``uncapped_value`` still
+    tracks the on-chain residual for diagnostics. In practice the
+    orchestrator would not attach the entry to a venue at all in this case
+    (matching is gated by ``SDEEntry.is_active_on(period.start)``), but we
+    pin the function-level invariant defensively."""
     period = _period(date(2026, 4, 1), date(2026, 4, 30))
     cap = Decimal("325_000_000")
     post = Decimal("128_000_000")
@@ -185,7 +193,7 @@ def test_in_flight_window_outside_period_is_a_noop():
         end_date=date(2026, 3, 12),
     )
     for _, row in df.iterrows():
-        assert row["cum_value"] == post
+        assert row["cum_value"] == Decimal("0")
         assert row["uncapped_value"] == post
 
 
@@ -239,3 +247,91 @@ def test_cap_usd_none_returns_raw_uncapped_values():
     for _, row in df.iterrows():
         assert row["cum_value"] == raw
         assert row["uncapped_value"] == raw
+
+
+def test_post_end_date_cum_value_is_zero_even_when_on_chain_residual_exists():
+    """Reproduces the Grove E8 Mar 13–31 bug: after the SDE end_date the
+    entry is inactive — even though the on-chain residual ($128M Grove slice)
+    still exists, cum_value must be 0 so it's not deducted from utilized.
+    Pre-fix this returned $128M every post-end-date day, routing ~$22K/day
+    of phantom utilized-exclusion to Sky."""
+    period = _period(date(2026, 3, 1), date(2026, 3, 31))
+    cap = Decimal("325_000_000")
+    pre_burn = Decimal("454_000_000")
+    post_burn = Decimal("128_000_000")
+    burn = date(2026, 3, 9)
+    sde_end = date(2026, 3, 12)
+
+    bs = _StepBalanceSource(pre=pre_burn, post=post_burn, drop_date=burn)
+    df = _sde_asset_value_timeseries(
+        _prime(), _venue(), period,
+        balance_source=bs,
+        block_resolver=_StaticBlockResolver(),
+        nav_at_block=_const_nav,
+        cap_usd=cap,
+        start_date=date(2025, 10, 23),   # well before period
+        burn_date=burn,
+        end_date=sde_end,
+    )
+    by_date = {r["block_date"]: r for _, r in df.iterrows()}
+
+    # Sanity: pre-end-date follows the existing cap / in-flight rules.
+    assert by_date[date(2026, 3, 12)]["cum_value"] == cap
+    # Post-end-date: cum_value must drop to 0 (entry inactive), but
+    # uncapped_value keeps tracking the on-chain residual for diagnostics.
+    for d in (date(2026, 3, 13), date(2026, 3, 20), date(2026, 3, 31)):
+        assert by_date[d]["cum_value"] == Decimal("0"), f"post-end-date {d}"
+        assert by_date[d]["uncapped_value"] == post_burn, f"post-end-date {d}"
+
+
+def test_pre_start_date_cum_value_is_zero():
+    """An SDE entry that starts mid-period: days before start_date are
+    inactive — cum_value = 0 even when on-chain balance exists."""
+    # Period = March 2026; SDE starts 2026-03-15.
+    period = _period(date(2026, 3, 1), date(2026, 3, 31))
+    cap = Decimal("325_000_000")
+    raw = Decimal("400_000_000")
+    bs = _ConstBalanceSource(raw)
+    df = _sde_asset_value_timeseries(
+        _prime(), _venue(), period,
+        balance_source=bs,
+        block_resolver=_StaticBlockResolver(),
+        nav_at_block=_const_nav,
+        cap_usd=cap,
+        start_date=date(2026, 3, 15),
+    )
+    by_date = {r["block_date"]: r for _, r in df.iterrows()}
+
+    # Pre-start-date: inactive → 0.
+    for d in (date(2026, 3, 1), date(2026, 3, 14)):
+        assert by_date[d]["cum_value"] == Decimal("0")
+        assert by_date[d]["uncapped_value"] == raw
+    # From start_date onward: normal capping (raw > cap → cap).
+    assert by_date[date(2026, 3, 15)]["cum_value"] == cap
+    assert by_date[date(2026, 3, 31)]["cum_value"] == cap
+
+
+def test_end_date_alone_without_burn_date_still_gates_post_end_days():
+    """An SDE entry with end_date but no burn_date (the typical "deal ends
+    cleanly" case): post-end-date days must still be 0. This catches
+    end_dates that aren't paired with a burn (the common case)."""
+    period = _period(date(2026, 3, 1), date(2026, 3, 31))
+    cap = Decimal("325_000_000")
+    raw = Decimal("100_000_000")
+    bs = _ConstBalanceSource(raw)
+    df = _sde_asset_value_timeseries(
+        _prime(), _venue(), period,
+        balance_source=bs,
+        block_resolver=_StaticBlockResolver(),
+        nav_at_block=_const_nav,
+        cap_usd=cap,
+        end_date=date(2026, 3, 15),  # no burn_date
+    )
+    by_date = {r["block_date"]: r for _, r in df.iterrows()}
+    # Through end_date: normal capping.
+    for d in (date(2026, 3, 1), date(2026, 3, 15)):
+        assert by_date[d]["cum_value"] == raw
+    # After end_date: 0.
+    for d in (date(2026, 3, 16), date(2026, 3, 31)):
+        assert by_date[d]["cum_value"] == Decimal("0")
+        assert by_date[d]["uncapped_value"] == raw
