@@ -63,6 +63,8 @@ class VenueRevenue:
     # to allocate the CoF charge across venues. SoM/EoM averaging mis-states
     # this materially when inflows are concentrated mid-month — see
     # ``_time_weighted_avg_value`` in compute.prime_agent_revenue.
+    # Serialized as ``tw_avg_value_usd`` in venues.csv and provenance.json
+    # (dataclass field drops the ``_usd`` suffix; serialized artifact keeps it).
     tw_avg_value: Decimal = Decimal("0")
     # When True, this venue's avg_value is excluded from the CoF allocation
     # denominator in post-hoc reporting (build_monthly_report). Mirrors the
@@ -90,6 +92,8 @@ class VenueRevenue:
     # ``scripts/build_monthly_report.py`` reads this field (via
     # ``max(tw_avg_value, tw_avg_notional)``); Σ-totals stay exact
     # regardless. Zero when no ``notional_principal_usd`` is set.
+    # Serialized as ``tw_avg_notional_usd`` in venues.csv and
+    # provenance.json (same field-name convention as ``tw_avg_value``).
     tw_avg_notional: Decimal = Decimal("0")
     # Legacy fields kept for provenance round-trip on existing settlements
     # written under the old shortfall model. New runs always emit 0 for these.

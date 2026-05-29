@@ -8,14 +8,22 @@
 #   A.2.2.9.1.1.1.1.* — Sky Direct Exposures (Active)
 #   A.2.2.9.1.1.1.1.3 — Historical Sky Direct Exposures
 #
-# SDE semantics (post 2026-05-02 refactor, matches Grove team's PnL workbook):
+# SDE semantics (post 2026-05-28 refactor, matches Grove team's PnL workbook):
 #   - fixed  → 100 % of actual_revenue goes to Sky.
-#   - capped → sd_share computed daily: sd_share_d = min(cap_usd, v_d) / v_d,
-#              sd_revenue = Σ_d daily_rev_d × sd_share_d.
-#              sd_share_avg = sd_revenue / actual_revenue (reported as summary).
+#   - capped → sd_share = min(cap_usd, value_eom) / value_eom (EoM-locked).
+#              sd_revenue = actual_revenue × sd_share applied once to the
+#              full period. Falls back to SoM-locked share when value_eom = 0
+#              (full redemption mid-period). See ``_capped_sd_revenue_eom_locked``
+#              for rationale and the daily-resolved → EoM-locked transition.
 #   - The Sky-direct slice's asset value is excluded from the prime's
-#     subsidised CoF base (= Grove team's Net_Subs).
-#   - Losses split proportionally between prime and Sky.
+#     subsidised CoF base (= Grove team's Net_Subs) for every day the entry
+#     is active. Days strictly before ``start_date`` or strictly after
+#     ``end_date`` contribute 0 to the exclusion.
+#   - Capped entries that experience a mid-period burn (Sky's tranche is
+#     destroyed on-chain before the USDC redemption settles) should set
+#     ``burn_date`` so the cap-coverage is preserved through ``end_date``
+#     during the in-flight window — see ``_sde_asset_value_timeseries``.
+#   - Losses split proportionally between prime and Sky via the same share.
 #
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │  KNOWN LIMITATION — Mid-period SDE activation is NOT pro-rated          │

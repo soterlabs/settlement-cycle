@@ -54,12 +54,32 @@ def _parse_notional_principal(raw) -> "tuple[NotionalScheduleEntry, ...] | None"
     """
     if raw is None:
         return None
-    if isinstance(raw, (int, float)):
+    if isinstance(raw, bool):
+        # bool is a subclass of int — reject explicitly before the int branch
+        # so YAML ``true``/``false`` doesn't quietly become Decimal("1")/("0").
+        raise ValueError(
+            f"notional_principal_usd: bool is not a valid notional amount "
+            f"(got {raw!r})"
+        )
+    if isinstance(raw, int):
         return (
             NotionalScheduleEntry(
                 start_date=date.min,
-                amount=Decimal(str(raw)),
+                amount=Decimal(raw),
             ),
+        )
+    if isinstance(raw, float):
+        # YAML ``50000000.0`` parses as Python float — Decimal(str(float))
+        # is exact for integer-valued floats but introduces representation
+        # noise for fractional values (e.g. Decimal(str(0.1)) is "0.1" but
+        # Decimal(str(50123456.78)) has trailing float-rep digits). Refuse
+        # rather than silently corrupt notional amounts. Operators wanting
+        # fractional notional should use the list form with an explicit
+        # string amount, or wrap the scalar in quotes.
+        raise ValueError(
+            f"notional_principal_usd: float values are not accepted (got "
+            f"{raw!r}) — use a plain integer for whole-dollar amounts, or "
+            "the list form with a quoted string amount for fractional."
         )
     if isinstance(raw, list):
         entries = tuple(

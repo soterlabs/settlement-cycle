@@ -411,7 +411,9 @@ def _emit_markdown(
     lines.append("## Formulas\n")
     lines.append(
         "```\n"
-        "sd_share_v        = 1.0 for fixed SDE; daily-derived for capped (post-hoc)\n"
+        "sd_share_v        = 1.0 for fixed SDE; for capped SDE inferred\n"
+        "                     post-hoc as sd_revenue / actual_revenue (EoM-locked\n"
+        "                     upstream — see _capped_sd_revenue_eom_locked)\n"
         "weight_v          = 1 − sd_share_v\n"
         "avg_value_v       = venues.csv:tw_avg_value_usd        # time-weighted (preferred)\n"
         "                    or  (value_som + value_eom) / 2    # legacy fallback (CoF approx)\n"

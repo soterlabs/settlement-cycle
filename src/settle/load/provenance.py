@@ -67,14 +67,20 @@ def render_provenance(
                 # rewards. See ``normalize.positions._atoken_external_revenue_usd``.
                 "external_revenue": str(v.external_revenue),
                 # Sky-direct slice of actual_revenue. For capped SDE venues
-                # this is the daily-resolved ``Σ daily_rev_d × sd_share_d``;
-                # for fixed SDE it equals actual_revenue. Can be negative
-                # when a capped SDE position takes a loss (e.g., the JAAA
-                # E8 Mar 2026 tranche burn). Reporting layers should display
-                # the value as-is without clamping to zero.
+                # this is ``actual_revenue × min(cap_usd, value_eom) / value_eom``
+                # (EoM-locked — see ``_capped_sd_revenue_eom_locked``). Falls
+                # back to SoM-locked share when value_eom = 0. For fixed SDE
+                # it equals actual_revenue. Can be negative when a capped SDE
+                # position takes a loss (e.g., the JAAA E8 Mar 2026 tranche
+                # burn). Reporting layers display the value as-is without
+                # clamping to zero.
                 "sd_revenue": str(v.sd_revenue),
-                # Effective per-period sd_share = sd_revenue / actual_revenue
-                # (display-only, undefined when actual_revenue == 0).
+                # Theoretical sd_share for the period — for capped SDE this
+                # is ``min(cap_usd, value_eom) / value_eom`` (or SoM-locked
+                # fallback). For fixed SDE always 1. Display-only; recomputed
+                # from cap_usd + value_eom + value_som rather than derived
+                # from sd_revenue / actual_revenue (so a break-even period
+                # still reports a meaningful share rather than 0).
                 "sd_share": str(v.sd_share),
                 # Time-weighted average daily principal across the period
                 # (mean of value_som + cum_inflow_d). Surfaced for post-hoc

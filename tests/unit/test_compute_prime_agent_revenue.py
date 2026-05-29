@@ -485,8 +485,10 @@ def test_tw_avg_baseline_subtracted_for_pre_period_flows():
 # token-transfer repricing.  The resulting value is stored in
 # ``VenueRevenueInputs.erc4626_period_inflow`` and overrides the standard
 # ``inflow_timeseries``-based period_inflow and actual_revenue formula.
-# The ``inflow_timeseries`` (token-transfer clock) is still passed to
-# ``_daily_capped_sd_revenue`` so SDE cap-weighting uses a consistent clock.
+# Under EoM-locked capped SDE (see ``_capped_sd_revenue_eom_locked``) the
+# sd_share is computed from ``value_eom`` directly — the ``inflow_timeseries``
+# is no longer involved in the SDE split. It still feeds
+# ``_time_weighted_avg_value`` for the CoF-allocation ``tw_avg_value`` field.
 
 
 def test_erc4626_inflow_overrides_timeseries_for_period_inflow():

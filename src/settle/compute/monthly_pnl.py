@@ -320,8 +320,12 @@ def _sde_asset_value_timeseries(
 
     * ``cap_usd = None``: ``cum_value = raw_value`` every day (no cap, no
       in-flight handling).
-    * ``cap_usd`` set, ``burn_date = None``: standard daily capping
-      ``cum_value = min(raw_value, cap_usd)``.
+    * ``cap_usd`` set, ``burn_date = None``, ``end_date = None``: standard
+      daily capping ``cum_value = min(raw_value, cap_usd)`` — entry treated
+      as open-ended.
+    * ``cap_usd`` set, ``end_date`` set, ``burn_date = None`` (clean expiry):
+      capped through ``end_date``; days strictly after ``end_date`` return
+      ``cum_value = 0`` (entry inactive).
     * ``cap_usd`` set, ``burn_date`` and ``end_date`` both set: in-flight
       window (see below). ``burn_date <= end_date`` is required.
     * ``burn_date`` set without ``end_date``, or without ``cap_usd``, or
@@ -333,6 +337,7 @@ def _sde_asset_value_timeseries(
       period; this per-day gate ensures cum_value is zero on days the entry
       isn't actually live. ``uncapped_value`` keeps tracking on-chain
       balance × NAV throughout for diagnostics.
+    * ``start_date > end_date`` (both set) → ``ValueError``.
 
     **In-flight redemption window (capped SDE with ``burn_date`` set).** When
     a capped tranche is destroyed on-chain on ``burn_date`` but the USDC
@@ -361,6 +366,20 @@ def _sde_asset_value_timeseries(
             f"_sde_asset_value_timeseries({venue.id}): burn_date "
             f"({burn_date.isoformat()}) is after end_date "
             f"({end_date.isoformat()}) — inverted in-flight window."
+        )
+    if (
+        start_date is not None and end_date is not None
+        and start_date > end_date
+    ):
+        # Inverted active window — a YAML misconfiguration where the SDE
+        # entry's start_date and end_date are swapped would silently zero
+        # out cum_value for every day in the period (the gate inside the
+        # daily loop would always fire). Refuse loudly so the operator
+        # gets a clear error instead of wrong sky_revenue numbers.
+        raise ValueError(
+            f"_sde_asset_value_timeseries({venue.id}): start_date "
+            f"({start_date.isoformat()}) is after end_date "
+            f"({end_date.isoformat()}) — inverted active window."
         )
     holder = venue.holder_override or prime.alm[venue.chain]
     pin_block = period.pin_blocks[venue.chain]
@@ -2348,6 +2367,21 @@ def compute_monthly_pnl(
                 # ``compute_venue_revenue`` using ``value_eom`` directly
                 # (EoM-locked, see ``_capped_sd_revenue_eom_locked``) and is
                 # not sensitive to the mid-period on-chain drop.
+                #
+                # **Gating asymmetry between the two paths.** This call's
+                # daily gate (``current < start_date`` or ``current > end_date``
+                # → cum_value=0) suppresses pre-start and post-end days from
+                # the utilized exclusion. ``compute_venue_revenue``'s
+                # EoM-locked sd_share applies to the FULL period's
+                # actual_revenue regardless of intra-period activity — it
+                # uses only the SoM/EoM snapshots and naturally reflects
+                # whatever the on-chain state was at period end. So an SDE
+                # entry that's only active for part of the period correctly
+                # contributes zero utilized exclusion on inactive days
+                # (path 1) while still attributing its EoM sd_share to the
+                # period's actual_revenue (path 2). Both behaviours are
+                # intentional and complementary.
+                #
                 # ``end_date`` reuses ``SDEEntry.end_date`` because for the
                 # current Grove E8 burn the SDE deal end coincides with the
                 # Atlas USDC-record date (both 2026-03-12). If a future entry

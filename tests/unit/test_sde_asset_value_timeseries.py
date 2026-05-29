@@ -335,3 +335,98 @@ def test_end_date_alone_without_burn_date_still_gates_post_end_days():
     for d in (date(2026, 3, 16), date(2026, 3, 31)):
         assert by_date[d]["cum_value"] == Decimal("0")
         assert by_date[d]["uncapped_value"] == raw
+
+
+def test_inverted_active_window_raises():
+    """start_date > end_date is a YAML misconfiguration that would silently
+    zero every day. Refuse at the boundary so the operator gets a clear
+    error instead of wrong sky_revenue."""
+    period = _period(date(2026, 3, 1), date(2026, 3, 31))
+    with pytest.raises(ValueError, match="inverted active window"):
+        _sde_asset_value_timeseries(
+            _prime(), _venue(), period,
+            balance_source=_ConstBalanceSource(Decimal("100")),
+            block_resolver=_StaticBlockResolver(),
+            nav_at_block=_const_nav,
+            cap_usd=Decimal("50"),
+            start_date=date(2026, 3, 20),
+            end_date=date(2026, 3, 10),   # before start_date
+        )
+
+
+def test_realistic_grove_e8_march_2026_full_param_combination():
+    """End-to-end: the exact four-param signature used at the
+    ``compute_monthly_pnl`` call site for the Grove E8 March 2026 case
+    (start_date=2025-10-23, burn_date=2026-03-09, end_date=2026-03-12,
+    cap_usd=$325M). Pins the priority ordering of the four branching
+    conditions — pre-start, in-flight, normal-cap, post-end — exercised
+    together in one test, mirroring production exactly."""
+    period = _period(date(2026, 3, 1), date(2026, 3, 31))
+    cap = Decimal("325_000_000")
+    pre_burn = Decimal("454_000_000")
+    post_burn = Decimal("128_000_000")
+    bs = _StepBalanceSource(pre=pre_burn, post=post_burn, drop_date=date(2026, 3, 9))
+    df = _sde_asset_value_timeseries(
+        _prime(), _venue(), period,
+        balance_source=bs,
+        block_resolver=_StaticBlockResolver(),
+        nav_at_block=_const_nav,
+        cap_usd=cap,
+        start_date=date(2025, 10, 23),   # SDE start (pre-period)
+        burn_date=date(2026, 3, 9),
+        end_date=date(2026, 3, 12),
+    )
+    by_date = {r["block_date"]: r for _, r in df.iterrows()}
+
+    # Pre-burn (period.start through Mar 8): position uncapped > cap → cap.
+    for d in (date(2026, 3, 1), date(2026, 3, 8)):
+        assert by_date[d]["cum_value"] == cap, f"pre-burn {d}"
+    # In-flight (Mar 9-12): cap-coverage held even though on-chain dropped.
+    for d in (date(2026, 3, 9), date(2026, 3, 12)):
+        assert by_date[d]["cum_value"] == cap, f"in-flight {d}"
+        assert by_date[d]["uncapped_value"] == post_burn, f"in-flight {d}"
+    # Post-end-date (Mar 13-31): SDE inactive → 0.
+    for d in (date(2026, 3, 13), date(2026, 3, 31)):
+        assert by_date[d]["cum_value"] == Decimal("0"), f"post-end {d}"
+        assert by_date[d]["uncapped_value"] == post_burn, f"post-end {d}"
+
+
+def test_february_period_unchanged_by_start_end_params_when_fully_inside_window():
+    """Cross-month Σ-invariance: when the period falls entirely INSIDE
+    [start_date, end_date] (no burn, no expiry effects), passing
+    start_date/end_date must not change cum_value vs the un-gated baseline.
+    Pins that adding the gating parameters didn't regress Jan/Feb/Apr 2026
+    (months where the SDE is active for the full period)."""
+    # Feb 2026, E8 SDE active 2025-10-23 → 2026-03-12 (covers all of Feb).
+    period = _period(date(2026, 2, 1), date(2026, 2, 28))
+    cap = Decimal("325_000_000")
+    raw = Decimal("454_000_000")
+    bs = _ConstBalanceSource(raw)
+
+    df_baseline = _sde_asset_value_timeseries(
+        _prime(), _venue(), period,
+        balance_source=bs,
+        block_resolver=_StaticBlockResolver(),
+        nav_at_block=_const_nav,
+        cap_usd=cap,
+        # No start_date / burn_date / end_date — un-gated baseline.
+    )
+    df_gated = _sde_asset_value_timeseries(
+        _prime(), _venue(), period,
+        balance_source=bs,
+        block_resolver=_StaticBlockResolver(),
+        nav_at_block=_const_nav,
+        cap_usd=cap,
+        start_date=date(2025, 10, 23),
+        end_date=date(2026, 3, 12),
+    )
+
+    # Every day's cum_value AND uncapped_value identical between baseline
+    # and gated — the gate has no effect when the period is fully inside
+    # the active window. Σ-invariance for non-burn months is structural.
+    baseline_by_date = {r["block_date"]: r for _, r in df_baseline.iterrows()}
+    gated_by_date = {r["block_date"]: r for _, r in df_gated.iterrows()}
+    assert set(baseline_by_date) == set(gated_by_date)
+    for d, baseline_row in baseline_by_date.items():
+        assert baseline_row["cum_value"] == gated_by_date[d]["cum_value"]
+        assert baseline_row["uncapped_value"] == gated_by_date[d]["uncapped_value"]
