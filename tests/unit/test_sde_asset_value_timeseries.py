@@ -87,10 +87,10 @@ def _const_nav(_block: int) -> Decimal:
 
 
 def test_capped_sde_in_flight_window_keeps_cap_coverage():
-    """Reproduces the Grove E8 Mar 2026 bug: cap = $325M, on-chain value
-    drops from $325M to $128M on the burn date, then SDE end_date is 3
-    days later. Before the fix, cum_value followed the on-chain drop;
-    after the fix, cum_value stays at the cap through end_date."""
+    """Legacy semantics (no usdc_settlement_date): in-flight window runs
+    through end_date. Reproduces the Grove E8 Mar 2026 bug: cap = $325M,
+    on-chain value drops from $325M to $128M on the burn date, then SDE
+    end_date is 3 days later. cum_value stays at the cap through end_date."""
     period = _period(date(2026, 3, 1), date(2026, 3, 31))
     cap = Decimal("325_000_000")
     pre_burn = Decimal("454_000_000")
@@ -130,6 +130,52 @@ def test_capped_sde_in_flight_window_keeps_cap_coverage():
     for d in (date(2026, 3, 13), date(2026, 3, 14), date(2026, 3, 31)):
         assert by_date[d]["cum_value"]      == Decimal("0"), f"post-end {d}"
         assert by_date[d]["uncapped_value"] == post_burn, f"post-end {d}"
+
+
+def test_usdc_settlement_date_bounds_in_flight_window():
+    """Reproduces the Grove E8 production case post-Option-C: burn 2026-03-09,
+    USDC actually lands at ALM 2026-03-11, Atlas record date 2026-03-12.
+    Cap-preservation holds through Mar 11 (settlement). Mar 12 — although
+    still inside [start_date, end_date] — must drop to 0 because the SDE-
+    capped slice no longer ties up Grove capital after the USDC has landed."""
+    period = _period(date(2026, 3, 1), date(2026, 3, 31))
+    cap = Decimal("325_000_000")
+    pre_burn = Decimal("454_000_000")
+    post_burn = Decimal("128_000_000")
+    burn = date(2026, 3, 9)
+    settle = date(2026, 3, 11)
+    sde_end = date(2026, 3, 12)
+
+    bs = _StepBalanceSource(pre=pre_burn, post=post_burn, drop_date=burn)
+    df = _sde_asset_value_timeseries(
+        _prime(), _venue(), period,
+        balance_source=bs,
+        block_resolver=_StaticBlockResolver(),
+        nav_at_block=_const_nav,
+        cap_usd=cap,
+        start_date=date(2025, 10, 23),
+        burn_date=burn,
+        usdc_settlement_date=settle,
+        end_date=sde_end,
+    )
+    by_date = {r["block_date"]: r for _, r in df.iterrows()}
+
+    # Pre-burn: normal cap.
+    assert by_date[date(2026, 3, 8)]["cum_value"] == cap
+
+    # Burn day → usdc_settlement_date inclusive: cap-preserved.
+    for d in (date(2026, 3, 9), date(2026, 3, 10), date(2026, 3, 11)):
+        assert by_date[d]["cum_value"] == cap, f"in-flight {d}"
+        assert by_date[d]["uncapped_value"] == post_burn
+
+    # Mar 12: USDC has settled, but we're still inside [start_date, end_date].
+    # Must be 0 — no longer cap-preserved.
+    assert by_date[date(2026, 3, 12)]["cum_value"] == Decimal("0")
+    assert by_date[date(2026, 3, 12)]["uncapped_value"] == post_burn
+
+    # Mar 13+: post-end_date, also 0.
+    for d in (date(2026, 3, 13), date(2026, 3, 31)):
+        assert by_date[d]["cum_value"] == Decimal("0"), f"post-end {d}"
 
 
 def test_capped_sde_without_burn_date_uses_on_chain_value():
@@ -355,12 +401,13 @@ def test_inverted_active_window_raises():
 
 
 def test_realistic_grove_e8_march_2026_full_param_combination():
-    """End-to-end: the exact four-param signature used at the
+    """End-to-end: the exact five-param signature used at the
     ``compute_monthly_pnl`` call site for the Grove E8 March 2026 case
-    (start_date=2025-10-23, burn_date=2026-03-09, end_date=2026-03-12,
-    cap_usd=$325M). Pins the priority ordering of the four branching
-    conditions — pre-start, in-flight, normal-cap, post-end — exercised
-    together in one test, mirroring production exactly."""
+    (start_date=2025-10-23, burn_date=2026-03-09, usdc_settlement_date=
+    2026-03-11, end_date=2026-03-12, cap_usd=$325M). Pins the priority
+    ordering of the branching conditions — pre-start, in-flight, post-
+    settlement (still pre-end), post-end — exercised together in one
+    test, mirroring production exactly."""
     period = _period(date(2026, 3, 1), date(2026, 3, 31))
     cap = Decimal("325_000_000")
     pre_burn = Decimal("454_000_000")
@@ -374,6 +421,7 @@ def test_realistic_grove_e8_march_2026_full_param_combination():
         cap_usd=cap,
         start_date=date(2025, 10, 23),   # SDE start (pre-period)
         burn_date=date(2026, 3, 9),
+        usdc_settlement_date=date(2026, 3, 11),
         end_date=date(2026, 3, 12),
     )
     by_date = {r["block_date"]: r for _, r in df.iterrows()}
@@ -381,14 +429,107 @@ def test_realistic_grove_e8_march_2026_full_param_combination():
     # Pre-burn (period.start through Mar 8): position uncapped > cap → cap.
     for d in (date(2026, 3, 1), date(2026, 3, 8)):
         assert by_date[d]["cum_value"] == cap, f"pre-burn {d}"
-    # In-flight (Mar 9-12): cap-coverage held even though on-chain dropped.
-    for d in (date(2026, 3, 9), date(2026, 3, 12)):
+    # In-flight (Mar 9-11 inclusive): cap-coverage held even though on-chain
+    # dropped, because USDC hasn't reached the ALM yet.
+    for d in (date(2026, 3, 9), date(2026, 3, 10), date(2026, 3, 11)):
         assert by_date[d]["cum_value"] == cap, f"in-flight {d}"
         assert by_date[d]["uncapped_value"] == post_burn, f"in-flight {d}"
+    # Mar 12: post-settlement but still ≤ end_date. SDE-capped slice no
+    # longer ties up Grove capital → 0.
+    assert by_date[date(2026, 3, 12)]["cum_value"] == Decimal("0")
+    assert by_date[date(2026, 3, 12)]["uncapped_value"] == post_burn
     # Post-end-date (Mar 13-31): SDE inactive → 0.
     for d in (date(2026, 3, 13), date(2026, 3, 31)):
         assert by_date[d]["cum_value"] == Decimal("0"), f"post-end {d}"
         assert by_date[d]["uncapped_value"] == post_burn, f"post-end {d}"
+
+
+def test_usdc_settlement_date_without_burn_date_raises():
+    """usdc_settlement_date is meaningless without burn_date — there's no
+    in-flight window to bound. Refuse the call so the operator can't
+    accidentally configure a half-set redemption."""
+    period = _period(date(2026, 3, 1), date(2026, 3, 31))
+    with pytest.raises(ValueError, match="burn_date is None"):
+        _sde_asset_value_timeseries(
+            _prime(), _venue(), period,
+            balance_source=_ConstBalanceSource(Decimal("100")),
+            block_resolver=_StaticBlockResolver(),
+            nav_at_block=_const_nav,
+            cap_usd=Decimal("50"),
+            usdc_settlement_date=date(2026, 3, 11),
+            end_date=date(2026, 3, 12),
+        )
+
+
+def test_usdc_settlement_date_before_burn_date_raises():
+    """usdc_settlement_date < burn_date is physically impossible (settlement
+    can't precede the burn). Refuse loudly so YAML typos surface."""
+    period = _period(date(2026, 3, 1), date(2026, 3, 31))
+    with pytest.raises(ValueError, match="after usdc_settlement_date"):
+        _sde_asset_value_timeseries(
+            _prime(), _venue(), period,
+            balance_source=_ConstBalanceSource(Decimal("100")),
+            block_resolver=_StaticBlockResolver(),
+            nav_at_block=_const_nav,
+            cap_usd=Decimal("50"),
+            burn_date=date(2026, 3, 11),
+            usdc_settlement_date=date(2026, 3, 9),
+            end_date=date(2026, 3, 12),
+        )
+
+
+def test_usdc_settlement_date_after_end_date_raises():
+    """usdc_settlement_date > end_date is contradictory: settlement landed
+    AFTER the Atlas-record / deal-end date. Refuse so the operator
+    re-checks which is which."""
+    period = _period(date(2026, 3, 1), date(2026, 3, 31))
+    with pytest.raises(ValueError, match="after end_date"):
+        _sde_asset_value_timeseries(
+            _prime(), _venue(), period,
+            balance_source=_ConstBalanceSource(Decimal("100")),
+            block_resolver=_StaticBlockResolver(),
+            nav_at_block=_const_nav,
+            cap_usd=Decimal("50"),
+            burn_date=date(2026, 3, 9),
+            usdc_settlement_date=date(2026, 3, 15),
+            end_date=date(2026, 3, 12),
+        )
+
+
+def test_usdc_settlement_date_equal_to_end_date_equivalent_to_legacy():
+    """When usdc_settlement_date == end_date, behaviour must match the
+    pre-Option-C path where in-flight ran through end_date. Pins
+    Σ-invariance for legacy callers that haven't migrated yet."""
+    period = _period(date(2026, 3, 1), date(2026, 3, 31))
+    cap = Decimal("325_000_000")
+    pre_burn = Decimal("454_000_000")
+    post_burn = Decimal("128_000_000")
+    bs = _StepBalanceSource(pre=pre_burn, post=post_burn, drop_date=date(2026, 3, 9))
+
+    df_legacy = _sde_asset_value_timeseries(
+        _prime(), _venue(), period,
+        balance_source=bs,
+        block_resolver=_StaticBlockResolver(),
+        nav_at_block=_const_nav,
+        cap_usd=cap,
+        burn_date=date(2026, 3, 9),
+        end_date=date(2026, 3, 12),
+    )
+    df_new = _sde_asset_value_timeseries(
+        _prime(), _venue(), period,
+        balance_source=bs,
+        block_resolver=_StaticBlockResolver(),
+        nav_at_block=_const_nav,
+        cap_usd=cap,
+        burn_date=date(2026, 3, 9),
+        usdc_settlement_date=date(2026, 3, 12),  # = end_date
+        end_date=date(2026, 3, 12),
+    )
+    legacy_by_date = {r["block_date"]: r for _, r in df_legacy.iterrows()}
+    new_by_date = {r["block_date"]: r for _, r in df_new.iterrows()}
+    for d, legacy_row in legacy_by_date.items():
+        assert legacy_row["cum_value"] == new_by_date[d]["cum_value"], d
+        assert legacy_row["uncapped_value"] == new_by_date[d]["uncapped_value"], d
 
 
 def test_february_period_unchanged_by_start_end_params_when_fully_inside_window():

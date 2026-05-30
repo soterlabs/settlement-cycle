@@ -304,6 +304,7 @@ def _sde_asset_value_timeseries(
     cap_usd: Decimal | None = None,
     start_date: "date | None" = None,
     burn_date: "date | None" = None,
+    usdc_settlement_date: "date | None" = None,
     end_date: "date | None" = None,
 ) -> pd.DataFrame:
     """Daily SDE asset value (USD) per venue. Returns a level series with
@@ -327,9 +328,14 @@ def _sde_asset_value_timeseries(
       capped through ``end_date``; days strictly after ``end_date`` return
       ``cum_value = 0`` (entry inactive).
     * ``cap_usd`` set, ``burn_date`` and ``end_date`` both set: in-flight
-      window (see below). ``burn_date <= end_date`` is required.
+      window (see below). ``burn_date <= end_date`` is required. The in-
+      flight upper bound is ``usdc_settlement_date`` if set, else
+      ``end_date`` (legacy fallback).
     * ``burn_date`` set without ``end_date``, or without ``cap_usd``, or
       with ``burn_date > end_date`` → ``ValueError``.
+    * ``usdc_settlement_date`` set without ``burn_date``, or with
+      ``burn_date > usdc_settlement_date`` or
+      ``usdc_settlement_date > end_date`` → ``ValueError``.
     * ``start_date`` / ``end_date`` (when set): days strictly before
       ``start_date`` or strictly after ``end_date`` are SDE-inactive and
       return ``cum_value = 0`` regardless of on-chain balance. The orchestrator
@@ -343,11 +349,16 @@ def _sde_asset_value_timeseries(
     a capped tranche is destroyed on-chain on ``burn_date`` but the USDC
     redemption is still settling, the raw on-chain value drops sharply (e.g.
     Grove E8 Mar 9: $325M cap → $128M residual) even though Sky's economic
-    exposure persists until ``end_date`` (the Atlas record date). Letting
-    ``cum_value`` follow that drop would inflate ``utilized`` for the in-
-    flight days and route phantom BR to Sky (~$22K/day on Grove E8 Mar 9-12).
-    For days in ``[burn_date, end_date]`` we keep ``cum_value = cap_usd`` so
-    the cap-coverage persists through the in-flight window.
+    exposure persists until the USDC actually lands at the prime's ALM
+    (``usdc_settlement_date``, Mar 11 for Grove E8). Letting ``cum_value``
+    follow that drop would inflate ``utilized`` for the in-flight days and
+    route phantom BR to Sky (~$22K/day on Grove E8 Mar 9-11). For days in
+    ``[burn_date, in_flight_end]`` we keep ``cum_value = cap_usd`` so the
+    cap-coverage persists through the in-flight window, where
+    ``in_flight_end = usdc_settlement_date if set else end_date``. Days
+    strictly after ``in_flight_end`` (up to and including ``end_date``)
+    return ``cum_value = 0`` — the redemption has settled, so the SDE-
+    capped slice no longer ties up prime capital.
     """
     if burn_date is not None and end_date is None:
         raise ValueError(
@@ -367,6 +378,31 @@ def _sde_asset_value_timeseries(
             f"({burn_date.isoformat()}) is after end_date "
             f"({end_date.isoformat()}) — inverted in-flight window."
         )
+    if usdc_settlement_date is not None and burn_date is None:
+        raise ValueError(
+            f"_sde_asset_value_timeseries({venue.id}): usdc_settlement_date "
+            f"set ({usdc_settlement_date.isoformat()}) but burn_date is None — "
+            "the settlement date only matters when an on-chain burn precedes it."
+        )
+    if (
+        usdc_settlement_date is not None and burn_date is not None
+        and burn_date > usdc_settlement_date
+    ):
+        raise ValueError(
+            f"_sde_asset_value_timeseries({venue.id}): burn_date "
+            f"({burn_date.isoformat()}) is after usdc_settlement_date "
+            f"({usdc_settlement_date.isoformat()}) — inverted in-flight window."
+        )
+    if (
+        usdc_settlement_date is not None and end_date is not None
+        and usdc_settlement_date > end_date
+    ):
+        raise ValueError(
+            f"_sde_asset_value_timeseries({venue.id}): usdc_settlement_date "
+            f"({usdc_settlement_date.isoformat()}) is after end_date "
+            f"({end_date.isoformat()}) — settlement cannot post-date the "
+            "Atlas record date."
+        )
     if (
         start_date is not None and end_date is not None
         and start_date > end_date
@@ -381,6 +417,10 @@ def _sde_asset_value_timeseries(
             f"({start_date.isoformat()}) is after end_date "
             f"({end_date.isoformat()}) — inverted active window."
         )
+    # In-flight upper bound: real USDC-settlement date when known, else fall
+    # back to end_date (legacy behaviour for entries that don't distinguish
+    # the two — pre-Option-C the in-flight window ran through end_date).
+    in_flight_end = usdc_settlement_date if usdc_settlement_date is not None else end_date
     holder = venue.holder_override or prime.alm[venue.chain]
     pin_block = period.pin_blocks[venue.chain]
     bal_df = balance_source.cumulative_balance_timeseries(
@@ -412,11 +452,23 @@ def _sde_asset_value_timeseries(
         elif (
             cap_usd is not None
             and burn_date is not None
-            and burn_date <= current <= end_date
+            and burn_date <= current <= in_flight_end
         ):
-            # In-flight redemption window — see docstring. The cap-coverage
-            # persists until end_date, regardless of the on-chain drop.
+            # In-flight redemption window — see docstring. Cap-coverage
+            # persists until ``in_flight_end`` (= usdc_settlement_date when
+            # set, else end_date), regardless of the on-chain drop.
             capped_value = cap_usd
+        elif (
+            burn_date is not None
+            and in_flight_end is not None
+            and current > in_flight_end
+        ):
+            # Post-settlement, pre-end-date: USDC has landed at the ALM, so
+            # the SDE-capped slice no longer ties up prime capital. Note this
+            # branch only fires when usdc_settlement_date < end_date — when
+            # the two coincide (legacy entries) the post-end gate above fires
+            # first and this branch is unreachable.
+            capped_value = Decimal("0")
         elif cap_usd is not None and raw_value > cap_usd:
             capped_value = cap_usd
         else:
@@ -2382,11 +2434,11 @@ def compute_monthly_pnl(
                 # period's actual_revenue (path 2). Both behaviours are
                 # intentional and complementary.
                 #
-                # ``end_date`` reuses ``SDEEntry.end_date`` because for the
-                # current Grove E8 burn the SDE deal end coincides with the
-                # Atlas USDC-record date (both 2026-03-12). If a future entry
-                # has those dates diverging, add a distinct ``atlas_record_date``
-                # field to ``SDEEntry`` rather than overloading ``end_date``.
+                # The in-flight upper bound is ``usdc_settlement_date`` when
+                # set (real USDC arrival at ALM, e.g. Grove E8 2026-03-11);
+                # ``end_date`` is the Atlas-record / deal-end date (Mar 12
+                # for E8). The two diverge by ~1-2 days when the USDC lands
+                # before the Atlas record posts — see the SDE YAML comments.
                 _sde_ts = _sde_asset_value_timeseries(
                     prime, venue, period,
                     balance_source=bsrc,
@@ -2395,6 +2447,7 @@ def compute_monthly_pnl(
                     cap_usd=sde_entry.cap_usd,
                     start_date=sde_entry.start_date,
                     burn_date=sde_entry.burn_date,
+                    usdc_settlement_date=sde_entry.usdc_settlement_date,
                     end_date=sde_entry.end_date,
                 )
                 sde_asset_value_per_venue.append((venue.id, _sde_ts))
