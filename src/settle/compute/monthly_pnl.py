@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, time, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 
 import pandas as pd
@@ -302,6 +302,10 @@ def _sde_asset_value_timeseries(
     block_resolver,
     nav_at_block,
     cap_usd: Decimal | None = None,
+    start_date: "date | None" = None,
+    burn_date: "date | None" = None,
+    usdc_settlement_date: "date | None" = None,
+    end_date: "date | None" = None,
 ) -> pd.DataFrame:
     """Daily SDE asset value (USD) per venue. Returns a level series with
     columns ``[block_date, cum_value, uncapped_value]``.
@@ -309,11 +313,114 @@ def _sde_asset_value_timeseries(
     ``cum_value`` is the capped value (≤ ``cap_usd`` for ``kind=capped`` SDE)
     consumed by ``compute_sky_revenue`` for utilized exclusion.
 
-    ``uncapped_value`` is the raw position value before the cap, used by
-    ``compute_venue_revenue`` to compute daily ``sd_share_d`` for capped
-    venues — so mid-month capital movements shift the Sky/prime split
-    proportionally rather than being locked at SoM.
+    ``uncapped_value`` is the raw on-chain position value (before cap), kept
+    on the frame for diagnostics — not consumed by the EoM-locked compute
+    path. Always reflects the actual balance × NAV.
+
+    Parameter contract:
+
+    * ``cap_usd = None``: ``cum_value = raw_value`` every day (no cap, no
+      in-flight handling).
+    * ``cap_usd`` set, ``burn_date = None``, ``end_date = None``: standard
+      daily capping ``cum_value = min(raw_value, cap_usd)`` — entry treated
+      as open-ended.
+    * ``cap_usd`` set, ``end_date`` set, ``burn_date = None`` (clean expiry):
+      capped through ``end_date``; days strictly after ``end_date`` return
+      ``cum_value = 0`` (entry inactive).
+    * ``cap_usd`` set, ``burn_date`` and ``end_date`` both set: in-flight
+      window (see below). ``burn_date <= end_date`` is required. The in-
+      flight upper bound is ``usdc_settlement_date`` if set, else
+      ``end_date`` (legacy fallback).
+    * ``burn_date`` set without ``end_date``, or without ``cap_usd``, or
+      with ``burn_date > end_date`` → ``ValueError``.
+    * ``usdc_settlement_date`` set without ``burn_date``, or with
+      ``burn_date > usdc_settlement_date`` or
+      ``usdc_settlement_date > end_date`` → ``ValueError``.
+    * ``start_date`` / ``end_date`` (when set): days strictly before
+      ``start_date`` or strictly after ``end_date`` are SDE-inactive and
+      return ``cum_value = 0`` regardless of on-chain balance. The orchestrator
+      attaches an SDE entry to a venue if it's active for ANY day of the
+      period; this per-day gate ensures cum_value is zero on days the entry
+      isn't actually live. ``uncapped_value`` keeps tracking on-chain
+      balance × NAV throughout for diagnostics.
+    * ``start_date > end_date`` (both set) → ``ValueError``.
+
+    **In-flight redemption window (capped SDE with ``burn_date`` set).** When
+    a capped tranche is destroyed on-chain on ``burn_date`` but the USDC
+    redemption is still settling, the raw on-chain value drops sharply (e.g.
+    Grove E8 Mar 9: $325M cap → $128M residual) even though Sky's economic
+    exposure persists until the USDC actually lands at the prime's ALM
+    (``usdc_settlement_date``, Mar 11 for Grove E8). Letting ``cum_value``
+    follow that drop would inflate ``utilized`` for the in-flight days and
+    route phantom BR to Sky (~$22K/day on Grove E8 Mar 9-11). For days in
+    ``[burn_date, in_flight_end]`` we keep ``cum_value = cap_usd`` so the
+    cap-coverage persists through the in-flight window, where
+    ``in_flight_end = usdc_settlement_date if set else end_date``. Days
+    strictly after ``in_flight_end`` (up to and including ``end_date``)
+    return ``cum_value = 0`` — the redemption has settled, so the SDE-
+    capped slice no longer ties up prime capital.
     """
+    if burn_date is not None and end_date is None:
+        raise ValueError(
+            f"_sde_asset_value_timeseries({venue.id}): burn_date set "
+            f"({burn_date.isoformat()}) but end_date is None — cannot bound "
+            "the in-flight window."
+        )
+    if burn_date is not None and cap_usd is None:
+        raise ValueError(
+            f"_sde_asset_value_timeseries({venue.id}): burn_date set "
+            f"({burn_date.isoformat()}) but cap_usd is None — in-flight "
+            "cap-preservation requires a cap to pin."
+        )
+    if burn_date is not None and end_date is not None and burn_date > end_date:
+        raise ValueError(
+            f"_sde_asset_value_timeseries({venue.id}): burn_date "
+            f"({burn_date.isoformat()}) is after end_date "
+            f"({end_date.isoformat()}) — inverted in-flight window."
+        )
+    if usdc_settlement_date is not None and burn_date is None:
+        raise ValueError(
+            f"_sde_asset_value_timeseries({venue.id}): usdc_settlement_date "
+            f"set ({usdc_settlement_date.isoformat()}) but burn_date is None — "
+            "the settlement date only matters when an on-chain burn precedes it."
+        )
+    if (
+        usdc_settlement_date is not None and burn_date is not None
+        and burn_date > usdc_settlement_date
+    ):
+        raise ValueError(
+            f"_sde_asset_value_timeseries({venue.id}): burn_date "
+            f"({burn_date.isoformat()}) is after usdc_settlement_date "
+            f"({usdc_settlement_date.isoformat()}) — inverted in-flight window."
+        )
+    if (
+        usdc_settlement_date is not None and end_date is not None
+        and usdc_settlement_date > end_date
+    ):
+        raise ValueError(
+            f"_sde_asset_value_timeseries({venue.id}): usdc_settlement_date "
+            f"({usdc_settlement_date.isoformat()}) is after end_date "
+            f"({end_date.isoformat()}) — settlement cannot post-date the "
+            "Atlas record date."
+        )
+    if (
+        start_date is not None and end_date is not None
+        and start_date > end_date
+    ):
+        # Inverted active window — a YAML misconfiguration where the SDE
+        # entry's start_date and end_date are swapped would silently zero
+        # out cum_value for every day in the period (the gate inside the
+        # daily loop would always fire). Refuse loudly so the operator
+        # gets a clear error instead of wrong sky_revenue numbers.
+        raise ValueError(
+            f"_sde_asset_value_timeseries({venue.id}): start_date "
+            f"({start_date.isoformat()}) is after end_date "
+            f"({end_date.isoformat()}) — inverted active window."
+        )
+    # In-flight upper bound: real USDC-settlement date when known, else fall
+    # back to end_date (legacy behaviour for entries that don't distinguish
+    # the two — pre-Option-C the in-flight window ran through end_date).
+    in_flight_end = usdc_settlement_date if usdc_settlement_date is not None else end_date
     holder = venue.holder_override or prime.alm[venue.chain]
     pin_block = period.pin_blocks[venue.chain]
     bal_df = balance_source.cumulative_balance_timeseries(
@@ -335,11 +442,37 @@ def _sde_asset_value_timeseries(
             eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
             block = block_resolver.block_at_or_before(venue.chain.value, eod)
             raw_value = bal * nav_at_block(block)
-        capped_value = (
-            min(raw_value, cap_usd)
-            if cap_usd is not None and raw_value > cap_usd
-            else raw_value
-        )
+        if (start_date is not None and current < start_date) or (
+            end_date is not None and current > end_date
+        ):
+            # SDE not active on this day — entry is either pre-start or
+            # post-end. cum_value is 0 (no utilized exclusion); uncapped_value
+            # still tracks the on-chain residual for diagnostics.
+            capped_value = Decimal("0")
+        elif (
+            cap_usd is not None
+            and burn_date is not None
+            and burn_date <= current <= in_flight_end
+        ):
+            # In-flight redemption window — see docstring. Cap-coverage
+            # persists until ``in_flight_end`` (= usdc_settlement_date when
+            # set, else end_date), regardless of the on-chain drop.
+            capped_value = cap_usd
+        elif (
+            burn_date is not None
+            and in_flight_end is not None
+            and current > in_flight_end
+        ):
+            # Post-settlement, pre-end-date: USDC has landed at the ALM, so
+            # the SDE-capped slice no longer ties up prime capital. Note this
+            # branch only fires when usdc_settlement_date < end_date — when
+            # the two coincide (legacy entries) the post-end gate above fires
+            # first and this branch is unreachable.
+            capped_value = Decimal("0")
+        elif cap_usd is not None and raw_value > cap_usd:
+            capped_value = cap_usd
+        else:
+            capped_value = raw_value
         rows.append({
             "block_date": current,
             "cum_value": capped_value,
@@ -347,85 +480,6 @@ def _sde_asset_value_timeseries(
         })
         current = current + timedelta(days=1)
     return pd.DataFrame(rows)
-
-
-def _compute_centrifuge_intra_epoch_sd_share(
-    cap_usd: Decimal,
-    ev_ts: pd.DataFrame,
-    sde_daily_values: pd.DataFrame,
-    period: "Period",
-) -> "Decimal | None":
-    """Withdrawal-weighted average sd_share for the intra-epoch yield delta.
-
-    For Centrifuge ERC-7540 venues the vault-event (claimRedeem) and the
-    token-transfer (requestRedeem) are separate transactions.  The delta
-    between vault-event actual_revenue and RWA actual_revenue is intra-epoch
-    yield earned on the redeemed shares.  To split it correctly between Sky
-    and Prime we need the sd_share at the time those shares were still in the
-    ALM — i.e. at requestRedeem time.
-
-    Since we don't track requestRedeem events directly we use the best
-    available proxy: on each claimRedeem day D the token-transfer series has
-    already removed the shares (at requestRedeem), so
-    ``sde_daily_values[D].uncapped_value`` is the post-requestRedeem position.
-    Adding back the gross USDC withdrawn gives an estimate of the
-    pre-requestRedeem position, and therefore the correct sd_share for that
-    redemption.
-
-    Returns the assets_out-weighted average of per-day sd_shares, or None if
-    there are no period withdrawals (caller falls back to SOM sd_share).
-    """
-    if "daily_assets_out" not in ev_ts.columns or ev_ts.empty:
-        return None
-
-    mask = ev_ts["block_date"].apply(lambda d: period.start <= d <= period.end)
-    ev_period = ev_ts.loc[mask].copy()
-    ev_period = ev_period[ev_period["daily_assets_out"] > Decimal("0")]
-    if ev_period.empty:
-        return None
-
-    # Build a {date: uncapped_value} dict from the daily SDE timeseries.
-    # _sde_asset_value_timeseries produces one row per day, so every period
-    # date is present — but guard with a nearest-prior fallback for safety.
-    sde_by_date: dict = {}
-    for _, r in sde_daily_values.iterrows():
-        d = r["block_date"]
-        v = r["uncapped_value"]
-        sde_by_date[d] = v if isinstance(v, Decimal) else Decimal(str(v))
-
-    sorted_sde_dates = sorted(sde_by_date)
-
-    def _lookup_pos(date) -> "Decimal | None":
-        if date in sde_by_date:
-            return sde_by_date[date]
-        prior = [d for d in sorted_sde_dates if d <= date]
-        return sde_by_date[prior[-1]] if prior else None
-
-    total_weight = Decimal("0")
-    total_sd     = Decimal("0")
-
-    for _, row in ev_period.iterrows():
-        assets_out = row["daily_assets_out"]
-        if not isinstance(assets_out, Decimal):
-            assets_out = Decimal(str(assets_out))
-        if assets_out <= 0:
-            continue
-
-        pos_after = _lookup_pos(row["block_date"])
-        if pos_after is None:
-            continue
-        if not isinstance(pos_after, Decimal):
-            pos_after = Decimal(str(pos_after))
-
-        pos_before = pos_after + assets_out
-        sd_share = (
-            min(cap_usd, pos_before) / pos_before
-            if pos_before > 0 else Decimal("0")
-        )
-        total_weight += assets_out
-        total_sd     += assets_out * sd_share
-
-    return (total_sd / total_weight) if total_weight > 0 else None
 
 
 def _susds_shares_to_principal(
@@ -1397,7 +1451,7 @@ def _log_sky_revenue_debug(
     lines += [
         "",
         f"  sky_rev_br (BR on utilized−SDE):  ${float(sky_rev_br):>14,.2f}",
-        f"  sde_revenue (Σ daily sd_share_d × daily_rev): ${float(sde_revenue):>14,.2f}",
+        f"  sde_revenue (Σ per-venue actual_rev × EoM sd_share): ${float(sde_revenue):>14,.2f}",
         f"  sky_revenue total:                 ${float(sky_rev_br + sde_revenue):>14,.2f}",
         "  ╚══════════════════════════════════════════════════════════════════════════════════════════════╝",
         "",
@@ -1751,7 +1805,6 @@ def compute_monthly_pnl(
         # VenueRevenueInputs append below.
         _erc4626_period_inflow: "Decimal | None" = None
         _ev_ts: "pd.DataFrame | None" = None
-        _erc4626_intra_epoch_sd_share: "Decimal | None" = None
         if venue.pricing_category == PricingCategory.SPARK_SAVINGS_V2:
             # Spark Savings V2 vaults aren't held at the prime ALM — the
             # vault contract custodies underlying for retail depositors and
@@ -2301,9 +2354,11 @@ def compute_monthly_pnl(
                             venue.id, _e,
                         )
 
-            # All Cat E venues: token-transfer inflow_ts for _daily_capped_sd_revenue.
-            # This keeps the SDE calculation consistent with _sde_asset_value_timeseries
-            # (both timed by ERC-20 transfers, not vault events).
+            # All Cat E venues: token-transfer inflow_ts for the
+            # ``actual_revenue = (value_eom - value_som) - period_inflow``
+            # formula. The SDE sd_share is EoM-locked (see
+            # ``_capped_sd_revenue_eom_locked``) and does not depend on
+            # this timeseries; it only feeds revenue accounting.
             def _cat_e_nav(block, _v=venue, _br=resolver, _nr=sources.nav_oracle_resolver):
                 return _resolve_rwa_nav(_v, block, block_resolver=_br, resolver=_nr)
 
@@ -2327,10 +2382,10 @@ def compute_monthly_pnl(
         # SDE classification — already resolved above as _early_sde (before the
         # sky_only early-exit). Reuse it here to avoid a second table lookup.
         sde_entry = _early_sde
-        # Daily uncapped position values for capped SDE venues — enables
-        # compute_venue_revenue to use per-day sd_share instead of locking at
-        # SoM. Set below for the NAV-oracle path; stays None for Curve LP SDE
-        # (no clean uncapped value available from the Curve pool path).
+        # Daily SDE asset-value timeseries — feeds ``utilized`` exclusion
+        # in ``compute_sky_revenue`` (Step 2). Does NOT feed
+        # ``compute_venue_revenue``: the sd_share split is EoM-locked via
+        # ``_capped_sd_revenue_eom_locked`` and uses ``value_eom`` directly.
         _sde_ts: pd.DataFrame | None = None
         if sde_entry is not None:
             ciuc = venue.curve_idle_usds
@@ -2358,32 +2413,44 @@ def compute_monthly_pnl(
                 def _sd_nav(block, _v=venue, _br=resolver, _nr=sources.nav_oracle_resolver):
                     return _resolve_rwa_nav(_v, block, block_resolver=_br, resolver=_nr)
 
+                # UTILIZED EXCLUSION path — feeds ``compute_sky_revenue`` via
+                # ``sde_av_total``. Independent of the SDE revenue *split*: the
+                # sd_share / sd_revenue computation runs in
+                # ``compute_venue_revenue`` using ``value_eom`` directly
+                # (EoM-locked, see ``_capped_sd_revenue_eom_locked``) and is
+                # not sensitive to the mid-period on-chain drop.
+                #
+                # **Gating asymmetry between the two paths.** This call's
+                # daily gate (``current < start_date`` or ``current > end_date``
+                # → cum_value=0) suppresses pre-start and post-end days from
+                # the utilized exclusion. ``compute_venue_revenue``'s
+                # EoM-locked sd_share applies to the FULL period's
+                # actual_revenue regardless of intra-period activity — it
+                # uses only the SoM/EoM snapshots and naturally reflects
+                # whatever the on-chain state was at period end. So an SDE
+                # entry that's only active for part of the period correctly
+                # contributes zero utilized exclusion on inactive days
+                # (path 1) while still attributing its EoM sd_share to the
+                # period's actual_revenue (path 2). Both behaviours are
+                # intentional and complementary.
+                #
+                # The in-flight upper bound is ``usdc_settlement_date`` when
+                # set (real USDC arrival at ALM, e.g. Grove E8 2026-03-11);
+                # ``end_date`` is the Atlas-record / deal-end date (Mar 12
+                # for E8). The two diverge by ~1-2 days when the USDC lands
+                # before the Atlas record posts — see the SDE YAML comments.
                 _sde_ts = _sde_asset_value_timeseries(
                     prime, venue, period,
                     balance_source=bsrc,
                     block_resolver=resolver,
                     nav_at_block=_sd_nav,
                     cap_usd=sde_entry.cap_usd,
+                    start_date=sde_entry.start_date,
+                    burn_date=sde_entry.burn_date,
+                    usdc_settlement_date=sde_entry.usdc_settlement_date,
+                    end_date=sde_entry.end_date,
                 )
                 sde_asset_value_per_venue.append((venue.id, _sde_ts))
-
-        # For Centrifuge capped SDE venues: compute the withdrawal-weighted
-        # sd_share for the intra-epoch yield delta.  Both _ev_ts (vault-event
-        # inflows with daily_assets_out) and _sde_ts (daily position values)
-        # must be available.  Falls back to SOM sd_share inside
-        # compute_venue_revenue when this is None.
-        if (
-            venue.centrifuge_vault is not None
-            and sde_entry is not None
-            and sde_entry.kind == "capped"
-            and _ev_ts is not None
-            and not _ev_ts.empty
-            and _sde_ts is not None
-            and not _sde_ts.empty
-        ):
-            _erc4626_intra_epoch_sd_share = _compute_centrifuge_intra_epoch_sd_share(
-                sde_entry.cap_usd, _ev_ts, _sde_ts, period,
-            )
 
         _log.info(
             "  [%d/%d] %s  done in %.1fs  som=$%.0f  eom=$%.0f%s",
@@ -2398,9 +2465,7 @@ def compute_monthly_pnl(
             sde_entry=sde_entry,
             actual_revenue_override=susds_spread,
             external_revenue=external_revenue_for_venue,
-            sde_daily_values=_sde_ts,
             erc4626_period_inflow=_erc4626_period_inflow,
-            erc4626_intra_epoch_sd_share=_erc4626_intra_epoch_sd_share,
         ))
 
     # Re-sort venue_inputs to match the declaration order in prime.venues so
@@ -2489,6 +2554,39 @@ def compute_monthly_pnl(
     # in ``MonthlyPnL`` checks the same expression — this is just the canonical
     # value to store. Sky Direct shortfall is already netted into ``sky_rev``
     # above, so it doesn't appear here separately.
+    # Per-venue daily SDE breakdown for post-hoc reporters (xlsx "SDE daily"
+    # tab — Sky / Grove / in-flight decomposition). Empty when no SDE venues
+    # are active this period.
+    from ..domain.monthly_pnl import SDEDailyBreakdown as _SDEDailyBreakdown
+    _venues_by_id = {v.id: v for v in prime.venues}
+    sde_daily_breakdown_out: list[_SDEDailyBreakdown] = []
+    for _vid, _df in sde_asset_value_per_venue:
+        _entry = sde_table.overlaps_venue(prime.id, _vid, period.start, period.end)
+        _venue = _venues_by_id.get(_vid)
+        if _entry is None or _venue is None:
+            continue
+        _daily = [
+            {
+                "block_date": _row["block_date"],
+                "cum_value": _row["cum_value"],
+                # ``uncapped_value`` is present only on the standard SDE
+                # timeseries (``_sde_asset_value_timeseries``); the Curve-pool
+                # variant doesn't compute it, so default to 0 for those rows.
+                "uncapped_value": _row["uncapped_value"]
+                    if "uncapped_value" in _df.columns else Decimal("0"),
+            }
+            for _, _row in _df.iterrows()
+        ]
+        sde_daily_breakdown_out.append(_SDEDailyBreakdown(
+            venue_id=_vid,
+            label=_venue.label,
+            cap_usd=_entry.cap_usd,
+            burn_date=_entry.burn_date,
+            usdc_settlement_date=_entry.usdc_settlement_date,
+            end_date=_entry.end_date,
+            daily=_daily,
+        ))
+
     return MonthlyPnL(
         prime_id=prime.id,
         month=month,
@@ -2504,4 +2602,5 @@ def compute_monthly_pnl(
         curve_susds_spread=curve_susds_spread if not sky_only else Decimal("0"),
         psm3_susds_spread=psm3_susds_spread if not sky_only else Decimal("0"),
         display_only_breakdown=display_only_breakdown,
+        sde_daily_breakdown=sde_daily_breakdown_out,
     )

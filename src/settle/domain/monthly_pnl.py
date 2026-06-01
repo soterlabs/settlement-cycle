@@ -7,6 +7,7 @@ Markdown / CSV / provenance artifacts.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import date
 from decimal import Decimal
 
 from .period import Month, Period
@@ -24,9 +25,11 @@ class VenueRevenue:
 
     For SDE venues (Step 4 of prime-settlement-methodology, kind=fixed|capped):
         actual_revenue = (value_eom − value_som) − period_inflow
-        sd_revenue = Σ_d daily_rev_d × sd_share_d        (capped, daily snapshots)
-                     or actual_revenue × 1               (fixed, sd_share = 1)
-        sd_share   = sd_revenue / actual_revenue         (effective avg, display only)
+        sd_revenue = actual_revenue × min(cap_usd, value_eom) / value_eom
+                                                          (capped, EoM-locked;
+                                                           see _capped_sd_revenue_eom_locked)
+                     or actual_revenue × 1                (fixed, sd_share = 1)
+        sd_share   = min(cap_usd, value_eom) / value_eom (capped)  | 1 (fixed)
         revenue = actual_revenue − sd_revenue + external_revenue   (to prime)
 
     The SDE position's asset value is also excluded from the prime's
@@ -61,6 +64,8 @@ class VenueRevenue:
     # to allocate the CoF charge across venues. SoM/EoM averaging mis-states
     # this materially when inflows are concentrated mid-month — see
     # ``_time_weighted_avg_value`` in compute.prime_agent_revenue.
+    # Serialized as ``tw_avg_value_usd`` in venues.csv and provenance.json
+    # (dataclass field drops the ``_usd`` suffix; serialized artifact keeps it).
     tw_avg_value: Decimal = Decimal("0")
     # When True, this venue's avg_value is excluded from the CoF allocation
     # denominator in post-hoc reporting (build_monthly_report). Mirrors the
@@ -74,10 +79,54 @@ class VenueRevenue:
     # CoF-eligible average, since the idle portion is already subtracted from
     # ``utilized`` and should not carry a CoF share.
     lending_idle_tw_avg_usd: Decimal = Decimal("0")
+    # Time-weighted average of the venue's off-chain notional principal,
+    # for cash-distribution-only venues where the on-chain ``tw_avg_value``
+    # is $0 but Sky is implicitly charging interest on the funded principal
+    # (e.g. Galaxy CLO E21 = $50M off-chain loan, Anchorage tri-party).
+    #
+    # **Display / reconciliation-only.** Not consumed by
+    # ``compute_prime_agent_revenue`` or ``compute_sky_revenue`` — headline
+    # numbers (``sky_revenue``, ``prime_agent_revenue``, ``monthly_pnl``,
+    # ``agent_rate``, ``sky_direct_shortfall``) are mathematically
+    # independent of whether ``notional_principal_usd`` is configured on
+    # any venue. Only the per-venue CoF split in
+    # ``scripts/build_monthly_report.py`` reads this field (via
+    # ``max(tw_avg_value, tw_avg_notional)``); Σ-totals stay exact
+    # regardless. Zero when no ``notional_principal_usd`` is set.
+    # Serialized as ``tw_avg_notional_usd`` in venues.csv and
+    # provenance.json (same field-name convention as ``tw_avg_value``).
+    tw_avg_notional: Decimal = Decimal("0")
     # Legacy fields kept for provenance round-trip on existing settlements
     # written under the old shortfall model. New runs always emit 0 for these.
     br_charge: Decimal = Decimal("0")
     sky_direct_shortfall: Decimal = Decimal("0")
+
+
+@dataclass(frozen=True, slots=True)
+class SDEDailyBreakdown:
+    """Per-day SDE asset-value series for one venue, retained on
+    ``MonthlyPnL`` so downstream reporters can render the Sky / Grove /
+    in-flight decomposition without re-running RPC queries.
+
+    The ``daily`` list mirrors the DataFrame returned by
+    ``_sde_asset_value_timeseries``: one dict per period day with keys
+    ``block_date`` (``date``), ``cum_value`` (``Decimal`` — the SDE-capped
+    value used for utilized exclusion), and ``uncapped_value`` (``Decimal``
+    — raw on-chain balance × NAV).
+
+    The accompanying scalar fields (``burn_date`` / ``usdc_settlement_date``
+    / ``end_date`` / ``cap_usd``) are the SDE-entry metadata at the moment
+    of the run, copied here so the reporter can apply the phase-based
+    decomposition (pre-burn → Sky+Grove, in-flight → Grove+inflight,
+    settled → Grove only).
+    """
+    venue_id: str
+    label: str
+    cap_usd: Decimal | None
+    burn_date: date | None
+    usdc_settlement_date: date | None
+    end_date: date | None
+    daily: list[dict] = field(default_factory=list)
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,6 +180,12 @@ class MonthlyPnL:
     # Each entry has revenue=0 by construction; ``value_som`` / ``value_eom``
     # carry the principal currently outstanding off-protocol.
     display_only_breakdown: list[VenueRevenue] = field(default_factory=list)
+    # Per-venue daily SDE asset-value series (see ``SDEDailyBreakdown``).
+    # Empty list for primes / months without active SDE entries; populated
+    # for every SDE venue exercised in the run. Consumed by post-hoc
+    # reporters (xlsx "SDE daily" tab) to render the Sky / Grove /
+    # in-flight decomposition without re-running on-chain reads.
+    sde_daily_breakdown: list[SDEDailyBreakdown] = field(default_factory=list)
 
     @property
     def prime_agent_total_revenue(self) -> Decimal:

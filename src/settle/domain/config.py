@@ -15,6 +15,7 @@ from .primes import (
     Chain,
     CurveIdleUsdsConfig,
     NavOracle,
+    NotionalScheduleEntry,
     Prime,
     PrincipalReturnOverride,
     PsmConfig,
@@ -30,6 +31,77 @@ def _parse_ilk_bytes32(s: str) -> bytes:
     if len(s) != 64:
         raise ValueError(f"ilk_bytes32 must be 64 hex chars; got {len(s)} ({s!r})")
     return bytes.fromhex(s)
+
+
+def _parse_notional_principal(raw) -> "tuple[NotionalScheduleEntry, ...] | None":
+    """Parse a venue's ``notional_principal_usd`` field.
+
+    Two YAML forms supported:
+
+    Scalar (constant notional):
+        ``notional_principal_usd: 50000000``  →  one entry, ``start_date``
+        set to ``date.min`` so it's active for every settlement period.
+
+    Date-ranged schedule (step function for time-varying notional):
+        ``notional_principal_usd:
+              - start_date: '2025-12-19'
+                amount: 50000000
+              - start_date: '2026-06-16'
+                amount: 0``
+        Each entry sets the notional from ``start_date`` onward. The
+        compute layer time-weights across the settlement period. Duplicate
+        ``start_date`` values are rejected to avoid an ambiguous tie-break.
+    """
+    if raw is None:
+        return None
+    if isinstance(raw, bool):
+        # bool is a subclass of int — reject explicitly before the int branch
+        # so YAML ``true``/``false`` doesn't quietly become Decimal("1")/("0").
+        raise ValueError(
+            f"notional_principal_usd: bool is not a valid notional amount "
+            f"(got {raw!r})"
+        )
+    if isinstance(raw, int):
+        return (
+            NotionalScheduleEntry(
+                start_date=date.min,
+                amount=Decimal(raw),
+            ),
+        )
+    if isinstance(raw, float):
+        # YAML ``50000000.0`` parses as Python float — Decimal(str(float))
+        # is exact for integer-valued floats but introduces representation
+        # noise for fractional values (e.g. Decimal(str(0.1)) is "0.1" but
+        # Decimal(str(50123456.78)) has trailing float-rep digits). Refuse
+        # rather than silently corrupt notional amounts. Operators wanting
+        # fractional notional should use the list form with an explicit
+        # string amount, or wrap the scalar in quotes.
+        raise ValueError(
+            f"notional_principal_usd: float values are not accepted (got "
+            f"{raw!r}) — use a plain integer for whole-dollar amounts, or "
+            "the list form with a quoted string amount for fractional."
+        )
+    if isinstance(raw, list):
+        entries = tuple(
+            NotionalScheduleEntry(
+                start_date=date.fromisoformat(e["start_date"]),
+                amount=Decimal(str(e["amount"])),
+            )
+            for e in raw
+        )
+        seen: set[date] = set()
+        for e in entries:
+            if e.start_date in seen:
+                raise ValueError(
+                    f"notional_principal_usd: duplicate start_date "
+                    f"{e.start_date.isoformat()}"
+                )
+            seen.add(e.start_date)
+        return entries
+    raise ValueError(
+        f"notional_principal_usd must be a number or a list of "
+        f"{{start_date, amount}} entries; got {type(raw).__name__}: {raw!r}"
+    )
 
 
 def _parse_min_transfer(v: dict) -> Decimal | None:
@@ -168,6 +240,9 @@ def load_prime(config_path: Path) -> Prime:
                     else None
                 ),
                 display_only=bool(v.get("display_only", False)),
+                notional_principal_usd=_parse_notional_principal(
+                    v.get("notional_principal_usd")
+                ),
             )
         )
 

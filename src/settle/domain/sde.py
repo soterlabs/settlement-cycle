@@ -39,8 +39,26 @@ class SDEEntry:
     pattern: str | None        # only for kind=pattern
     start_date: date
     end_date: date | None      # None = open-ended (still active)
-    label: str
-    source: str
+    # Optional: date on which Sky's on-chain tranche exposure (the SDE-capped
+    # slice) was destroyed but the USDC redemption hasn't yet landed.
+    # Consumed by ``_sde_asset_value_timeseries`` to keep
+    # ``cum_value = cap_usd`` for days in ``[burn_date, usdc_settlement_date]``
+    # so the in-flight window doesn't inflate ``utilized`` (which would route
+    # phantom BR to Sky — see Grove E8 Mar 9–11 for the canonical case).
+    # NOT consumed by ``_capped_sd_revenue_eom_locked`` (the EoM snapshot
+    # of value_eom naturally absorbs the burn for sd_share purposes).
+    burn_date: date | None = None
+    # Optional: date on which the USDC redemption proceeds actually landed
+    # at the prime's ALM (the real end of the in-flight window). Distinct
+    # from ``end_date`` (the Atlas-record / formal SDE-deal-end date), which
+    # may post-date the cash settlement by ≥ 1 day. When set, the in-flight
+    # cap-preservation rule above uses this as its upper bound. When None
+    # (legacy entries) the rule falls back to ``end_date``. Requires
+    # ``burn_date`` and ``cap_usd``; must satisfy
+    # ``burn_date <= usdc_settlement_date <= end_date``.
+    usdc_settlement_date: date | None = None
+    label: str = ""
+    source: str = ""
 
     def is_active_on(self, d: date) -> bool:
         if d < self.start_date:
@@ -121,6 +139,8 @@ def load_sde_table(config_path: Path | None = None) -> SDETable:
     entries: list[SDEEntry] = []
     for r in raw_entries:
         end_raw = r.get("end_date")
+        burn_raw = r.get("burn_date")
+        settle_raw = r.get("usdc_settlement_date")
         cap_raw = r.get("cap_usd")
         entries.append(SDEEntry(
             prime_id=r["prime"],
@@ -131,6 +151,8 @@ def load_sde_table(config_path: Path | None = None) -> SDETable:
             pattern=r.get("pattern"),
             start_date=date.fromisoformat(r["start_date"]),
             end_date=date.fromisoformat(end_raw) if end_raw else None,
+            burn_date=date.fromisoformat(burn_raw) if burn_raw else None,
+            usdc_settlement_date=date.fromisoformat(settle_raw) if settle_raw else None,
             label=r.get("label", ""),
             source=r.get("source", ""),
         ))

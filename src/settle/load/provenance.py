@@ -66,10 +66,32 @@ def render_provenance(
                 # see the breakdown between closed-form yield and external
                 # rewards. See ``normalize.positions._atoken_external_revenue_usd``.
                 "external_revenue": str(v.external_revenue),
+                # Sky-direct slice of actual_revenue. For capped SDE venues
+                # this is ``actual_revenue × min(cap_usd, value_eom) / value_eom``
+                # (EoM-locked — see ``_capped_sd_revenue_eom_locked``). Falls
+                # back to SoM-locked share when value_eom = 0. For fixed SDE
+                # it equals actual_revenue. Can be negative when a capped SDE
+                # position takes a loss (e.g., the JAAA E8 Mar 2026 tranche
+                # burn). Reporting layers display the value as-is without
+                # clamping to zero.
+                "sd_revenue": str(v.sd_revenue),
+                # Theoretical sd_share for the period — for capped SDE this
+                # is ``min(cap_usd, value_eom) / value_eom`` (or SoM-locked
+                # fallback). For fixed SDE always 1. Display-only; recomputed
+                # from cap_usd + value_eom + value_som rather than derived
+                # from sd_revenue / actual_revenue (so a break-even period
+                # still reports a meaningful share rather than 0).
+                "sd_share": str(v.sd_share),
                 # Time-weighted average daily principal across the period
                 # (mean of value_som + cum_inflow_d). Surfaced for post-hoc
                 # CoF allocation in reporting sheets.
                 "tw_avg_value_usd": str(v.tw_avg_value),
+                # Time-weighted average of the off-chain notional principal
+                # (from ``Venue.notional_principal_usd``). Non-zero only for
+                # cash-distribution-only venues (E21 Galaxy CLO, etc.).
+                # The CoF allocator uses max(tw_avg_value, tw_avg_notional)
+                # as the effective avg.
+                "tw_avg_notional_usd": str(v.tw_avg_notional),
                 "br_charge": str(v.br_charge),
                 "sky_direct_shortfall": str(v.sky_direct_shortfall),
             }
@@ -86,6 +108,32 @@ def render_provenance(
                 "value_eom": str(v.value_eom),
             }
             for v in pnl.display_only_breakdown
+        ],
+        # Per-venue daily SDE asset-value series. Used by the xlsx "SDE daily"
+        # tab to render the Sky / Grove / in-flight decomposition (phase-
+        # based: pre-burn / in-flight / settled) without re-running on-chain
+        # reads. Empty list for primes / months without active SDE venues.
+        "sde_daily_breakdown": [
+            {
+                "venue_id": b.venue_id,
+                "label": b.label,
+                "cap_usd": str(b.cap_usd) if b.cap_usd is not None else None,
+                "burn_date": b.burn_date.isoformat() if b.burn_date else None,
+                "usdc_settlement_date": (
+                    b.usdc_settlement_date.isoformat()
+                    if b.usdc_settlement_date else None
+                ),
+                "end_date": b.end_date.isoformat() if b.end_date else None,
+                "daily": [
+                    {
+                        "block_date": r["block_date"].isoformat(),
+                        "cum_value": str(r["cum_value"]),
+                        "uncapped_value": str(r["uncapped_value"]),
+                    }
+                    for r in b.daily
+                ],
+            }
+            for b in pnl.sde_daily_breakdown
         ],
         "sources": sources or {},
     }

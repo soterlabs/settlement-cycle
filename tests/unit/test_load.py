@@ -337,6 +337,63 @@ def test_write_provenance_emits_valid_json(tmp_path: Path):
     assert parsed["prime_id"] == "obex"
 
 
+def test_render_provenance_emits_sde_daily_breakdown_when_present():
+    """When the run produced a per-venue daily SDE series, provenance.json
+    carries it under ``sde_daily_breakdown`` so the xlsx "SDE daily" tab
+    can render the Sky / Grove / in-flight decomposition without re-running
+    on-chain reads. Empty list when no SDE venues active this period."""
+    from settle.domain import SDEDailyBreakdown
+    base = _sample_pnl()
+    sdb = SDEDailyBreakdown(
+        venue_id="E8",
+        label="JAAA on Eth",
+        cap_usd=Decimal("325000000"),
+        burn_date=date(2026, 3, 9),
+        usdc_settlement_date=date(2026, 3, 11),
+        end_date=date(2026, 3, 12),
+        daily=[
+            {"block_date": date(2026, 3, 7),
+             "cum_value": Decimal("325000000"),
+             "uncapped_value": Decimal("455000000")},
+            {"block_date": date(2026, 3, 10),
+             "cum_value": Decimal("325000000"),
+             "uncapped_value": Decimal("128000000")},
+            {"block_date": date(2026, 3, 12),
+             "cum_value": Decimal("0"),
+             "uncapped_value": Decimal("128000000")},
+        ],
+    )
+    pnl = type(base)(
+        prime_id=base.prime_id, month=base.month, period=base.period,
+        sky_revenue=base.sky_revenue, agent_rate=base.agent_rate,
+        prime_agent_revenue=base.prime_agent_revenue,
+        monthly_pnl=base.monthly_pnl,
+        venue_breakdown=base.venue_breakdown,
+        pin_blocks_som=base.pin_blocks_som,
+        sde_daily_breakdown=[sdb],
+    )
+    p = render_provenance(pnl)
+    assert len(p["sde_daily_breakdown"]) == 1
+    entry = p["sde_daily_breakdown"][0]
+    assert entry["venue_id"] == "E8"
+    assert entry["burn_date"] == "2026-03-09"
+    assert entry["usdc_settlement_date"] == "2026-03-11"
+    assert entry["cap_usd"] == "325000000"
+    assert len(entry["daily"]) == 3
+    # ISO-format dates, str-Decimal values — round-trippable to JSON.
+    assert entry["daily"][0]["block_date"] == "2026-03-07"
+    assert entry["daily"][0]["cum_value"] == "325000000"
+    assert entry["daily"][0]["uncapped_value"] == "455000000"
+
+
+def test_render_provenance_sde_daily_breakdown_empty_when_no_sde():
+    """No SDE venues this period → ``sde_daily_breakdown`` is an empty list
+    (not absent), so downstream readers can use ``prov.get("sde_daily_breakdown") or []``
+    safely."""
+    p = render_provenance(_sample_pnl())
+    assert p["sde_daily_breakdown"] == []
+
+
 # ---------------------------------------------------------------------------
 # Top-level writer
 # ---------------------------------------------------------------------------

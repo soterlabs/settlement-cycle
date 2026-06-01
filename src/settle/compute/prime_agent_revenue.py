@@ -22,9 +22,44 @@ import pandas as pd
 
 from ..domain.monthly_pnl import VenueRevenue
 from ..domain.period import Period
-from ..domain.primes import Venue
+from ..domain.primes import NotionalScheduleEntry, Venue
 from ..domain.sde import SDEEntry
 from ._helpers import cum_at_or_before
+
+
+def _time_weighted_notional(
+    schedule: tuple[NotionalScheduleEntry, ...] | None,
+    period: Period,
+) -> Decimal:
+    """Time-weighted average of a venue's off-chain notional principal.
+
+    ``schedule`` is sorted ascending by ``start_date``; each entry sets the
+    notional from its ``start_date`` onward (step function). The function
+    averages the daily-applicable notional across ``[period.start,
+    period.end]``. Returns ``Decimal("0")`` when ``schedule`` is None or
+    empty (no notional configured for this venue).
+    """
+    if schedule is None or len(schedule) == 0:
+        return Decimal("0")
+    n_days = period.n_days
+    if n_days <= 0:
+        return Decimal("0")
+    sorted_schedule = sorted(schedule, key=lambda e: e.start_date)
+    total = Decimal("0")
+    d = period.start
+    while d <= period.end:
+        applicable = Decimal("0")
+        for entry in sorted_schedule:
+            # ``sorted_schedule`` is ascending by ``start_date``; once we hit
+            # an entry that hasn't activated yet we know all later entries
+            # also haven't, so the last-set ``applicable`` is final for ``d``.
+            if entry.start_date <= d:
+                applicable = entry.amount
+            else:
+                break
+        total += applicable
+        d += timedelta(days=1)
+    return total / Decimal(n_days)
 
 
 def _time_weighted_avg_value(
@@ -91,30 +126,13 @@ class VenueRevenueInputs:
     # Zero for venues whose pricing category has no external-rewards path
     # wired up yet (today: Cat C aTokens only).
     external_revenue: Decimal = Decimal("0")
-    # Daily position value (pre-cap) from ``_sde_asset_value_timeseries``.
-    # Columns: ``[block_date, uncapped_value]``. When provided for a
-    # ``kind=capped`` SDE venue, ``compute_venue_revenue`` computes a daily
-    # sd_share_d = min(cap, v_d)/v_d and accumulates sd_revenue daily instead
-    # of locking sd_share at SoM. Ignored for ``kind=fixed`` (sd_share is
-    # always 1). None falls back to the SoM-locked behaviour.
-    sde_daily_values: pd.DataFrame | None = None
     # For ERC-4626 Centrifuge venues: the exact period inflow derived from
-    # on-chain Deposit/Withdraw event ``assets`` amounts (USDC exact).  When
-    # set, this value overrides the ``period_inflow`` displayed in the output
-    # and the ``actual_revenue`` formula, while ``inflow_timeseries`` (which
-    # is the token-transfer-based timeseries, consistent in timing with
-    # ``_sde_asset_value_timeseries``) is still passed to
-    # ``_daily_capped_sd_revenue`` so the SDE cap-weighting uses a consistent
-    # clock.  Without this split the two timeseries would be on different
-    # clocks (ERC-20 transfer day vs. Withdraw event day) and the asymmetric
-    # cap-weighting would misstate sd_revenue.
+    # on-chain Deposit/Withdraw event ``assets`` amounts (USDC exact). When
+    # set, this overrides the ``period_inflow`` displayed in the output and
+    # the ``actual_revenue`` formula. Under the EoM-locked capped-sd_share
+    # methodology the vault-event actual_revenue carries the full intra-epoch
+    # yield naturally, so no separate intra-epoch share is needed.
     erc4626_period_inflow: "Decimal | None" = None
-    # Pre-computed withdrawal-weighted average sd_share for splitting the
-    # intra-epoch yield delta (vault-event actual_revenue − RWA actual_revenue).
-    # Computed in monthly_pnl._compute_centrifuge_intra_epoch_sd_share from the
-    # per-day vault-event inflows and the daily SDE position timeseries.
-    # When None, compute_venue_revenue falls back to min(cap, SOM) / SOM.
-    erc4626_intra_epoch_sd_share: "Decimal | None" = None
 
 
 def _sd_share_at_som(
@@ -133,65 +151,66 @@ def _sd_share_at_som(
     return Decimal("0")
 
 
-def _daily_capped_sd_revenue(
+def _capped_sd_revenue_eom_locked(
     cap_usd: Decimal,
     value_som: Decimal,
-    sde_daily_values: pd.DataFrame,
-    inflow_timeseries: pd.DataFrame,
+    value_eom: Decimal,
+    actual_revenue: Decimal,
 ) -> Decimal:
-    """Accumulate sd_revenue using per-day position snapshots.
+    """sd_revenue = actual_revenue × min(cap_usd, value_eom) / value_eom.
 
-    For each day ``d`` in the period:
+    EoM-locked sd_share: one snapshot at period end, applied to the full
+    actual_revenue. Matches Grove team's PnL workbook methodology — see
+    PRD §17.13 / 2026-05-28 comparison vs Grove Jan–Apr 2026 data.
 
-        sd_share_d  = min(cap_usd, v_d) / v_d    (0 if v_d == 0)
-        daily_rev_d = (v_d − v_{d−1}) − inflow_d
-        sd_rev_d    = daily_rev_d × sd_share_d
+    **Why EoM-locked rather than daily-resolved?** A daily-resolved approach
+    (Σ daily_rev_d × sd_share_d, with sd_share_d = min(cap, v_d) / v_d) is
+    in principle more granular, but it diverges from Grove's reporting
+    whenever the position moves materially mid-period — Grove's workbook
+    consistently uses the period-end cap ratio. For a stable position
+    (Feb 2026: $454M throughout) the two methods agree. For a moving
+    position (Jan 2026 E8: $751M → $454M mid-month) they diverge by ~13
+    percentage points; EoM-locked is the empirical fit.
 
-    ``v_0`` (the "previous value" for day 1) is ``value_som`` from RPC so
-    that ``Σ daily_rev_d`` telescopes to ``actual_revenue``.
+    **Burn day handling.** When a capped tranche is destroyed on-chain
+    mid-period (e.g., Grove E8 JAAA Mar 9: Sky's $325M tranche burned;
+    Grove's $128M slice survived), EoM-locked yields ``sd_share = 1.0``
+    automatically (cap > value_eom), which empirically attributes ~100%
+    of the period's net P&L to Sky — close enough to Grove's −$451K out
+    of −$458K total (98.5%) for the Mar 2026 case. The SDE entry's
+    ``burn_date`` field (introduced earlier for the daily-resolved path)
+    is kept on ``SDEEntry`` for documentation but is no longer consumed
+    here; the EoM snapshot naturally absorbs the burn.
 
-    ``inflow_d`` is looked up from ``inflow_timeseries.daily_inflow`` by date;
-    days with no row contribute zero inflow.
+    **Full-redemption degenerate case (value_eom = 0).** Under EoM-locked the
+    ratio min(cap, 0)/0 is undefined. Fall back to the SoM-locked share
+    (``min(cap, value_som) / value_som``) — the snapshot at the *other* end
+    of the period — so a tranche fully redeemed during the period still
+    attributes a defensible Sky / Prime split rather than silently dropping
+    the entire loss on Prime. Returns 0 only when both endpoints are 0.
     """
-    inflow_by_date: dict = {}
-    if inflow_timeseries is not None and not inflow_timeseries.empty:
-        for _, row in inflow_timeseries.iterrows():
-            v = row["daily_inflow"]
-            inflow_by_date[row["block_date"]] = (
-                v if isinstance(v, Decimal) else Decimal(str(v))
-            )
-
-    total = Decimal("0")
-    prev = value_som
-    for _, row in sde_daily_values.sort_values("block_date").iterrows():
-        v_raw = row["uncapped_value"]
-        v = v_raw if isinstance(v_raw, Decimal) else Decimal(str(v_raw))
-        inflow_d = inflow_by_date.get(row["block_date"], Decimal("0"))
-        daily_rev = (v - prev) - inflow_d
-        if v > 0:
-            sd_share_d = min(cap_usd, v) / v
-            total += daily_rev * sd_share_d
-        # v == 0 → sd_share_d = 0 → daily_rev contributes 0 to Sky
-        prev = v
-    return total
+    if value_eom > 0:
+        sd_share = min(cap_usd, value_eom) / value_eom
+        return actual_revenue * sd_share
+    if value_som > 0:
+        sd_share = min(cap_usd, value_som) / value_som
+        return actual_revenue * sd_share
+    return Decimal("0")
 
 
 def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRevenue:
     """One venue's contribution to prime_agent_revenue under the SDE-split model.
 
     actual_revenue   = (value_eom − value_som) − period_inflow
-    sd_revenue       = Σ_d daily_rev_d × sd_share_d      (daily for capped SDE)
-                       or actual_revenue × sd_share_som   (fallback / fixed)
-    sd_share         = sd_revenue / actual_revenue        (effective average, display only)
+    sd_revenue       = actual_revenue × sd_share
+    sd_share         = min(cap, value_eom) / value_eom    (EoM-locked, capped SDE)
+                       1                                  (fixed SDE)
+                       0                                  (non-SDE)
     prime_revenue    = actual_revenue − sd_revenue + external_revenue
 
-    For ``kind=capped`` SDE venues with ``sde_daily_values`` supplied: each
-    day's ``sd_share_d = min(cap, v_d) / v_d`` is applied to that day's
-    revenue increment, so capital flows mid-month are reflected in the split
-    rather than being locked at SoM. See ``_daily_capped_sd_revenue``.
-
-    For ``kind=fixed`` or when no ``sde_daily_values`` is provided: falls back
-    to locking ``sd_share`` at SoM via ``_sd_share_at_som``.
+    Capped SDE uses the EoM-locked share — see ``_capped_sd_revenue_eom_locked``
+    for the methodology rationale (matches Grove team's PnL workbook), including
+    the burn-day and full-redemption fallbacks. Fixed SDE has ``sd_share = 1``.
 
     The ``external_revenue`` stream — off-pool rewards (Merkl, Anchorage,
     etc.) — is added AFTER the SDE split because it doesn't belong to the
@@ -202,7 +221,6 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
     absorbs sd_share of the loss, prime absorbs the rest. This matches Grove
     team's PnL workbook (no floor, no shortfall).
     """
-    _rwa_actual_revenue: Decimal | None = None  # set only in erc4626_period_inflow branch
     if inputs.actual_revenue_override is not None:
         actual_revenue = inputs.actual_revenue_override
         period_inflow = Decimal("0")
@@ -212,25 +230,15 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
         tw_avg_value = inputs.value_som
     elif inputs.erc4626_period_inflow is not None:
         # ERC-4626 Centrifuge venues: use exact vault-event USDC amounts for
-        # the period inflow and revenue formula; inflow_timeseries (token-
-        # transfer based, same clock as _sde_ts) is still used below by
-        # _daily_capped_sd_revenue so the daily cap-weighting is consistent.
+        # the period inflow and revenue formula. With EoM-locked sd_share
+        # (see ``_capped_sd_revenue_eom_locked``) the cap split applies
+        # uniformly to the full vault-event actual_revenue, so no separate
+        # token-transfer-clock decomposition is needed here.
         period_inflow = inputs.erc4626_period_inflow
         actual_revenue = (inputs.value_eom - inputs.value_som) - period_inflow
         inflow_df = inputs.inflow_timeseries
         tw_avg_value = _time_weighted_avg_value(
             period, inputs.value_som, inflow_df,
-        )
-        # Also compute the token-transfer actual_revenue (denominator for
-        # sd_share scaling below).  This is needed so the effective sd_share
-        # from _daily_capped_sd_revenue (which ran against the rwa inflow_ts)
-        # can be re-applied to the vault-event actual_revenue.
-        _rwa_cum_som = cum_at_or_before(
-            inflow_df, "cum_inflow", period.start - timedelta(days=1),
-        )
-        _rwa_cum_eom = cum_at_or_before(inflow_df, "cum_inflow", period.end)
-        _rwa_actual_revenue = (
-            (inputs.value_eom - inputs.value_som) - (_rwa_cum_eom - _rwa_cum_som)
         )
     else:
         inflow_df = inputs.inflow_timeseries
@@ -245,64 +253,30 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
         )
 
     entry = inputs.sde_entry
-    if (
-        entry is not None
-        and entry.kind == "capped"
-        and inputs.sde_daily_values is not None
-        and not inputs.sde_daily_values.empty
-    ):
-        sd_revenue = _daily_capped_sd_revenue(
-            entry.cap_usd,
-            inputs.value_som,
-            inputs.sde_daily_values,
-            inputs.inflow_timeseries,
+    if entry is not None and entry.kind == "capped":
+        sd_revenue = _capped_sd_revenue_eom_locked(
+            entry.cap_usd, inputs.value_som, inputs.value_eom, actual_revenue,
         )
-        # For ERC-4626 Centrifuge venues: _daily_capped_sd_revenue ran against
-        # the token-transfer inflow_ts (consistent clock with _sde_ts), but
-        # actual_revenue uses vault-event flows.  The two methodologies can
-        # differ because vault-event ``assets`` is exact USDC while the token-
-        # transfer path reprices net share movements at the end-of-day NAV.
-        # For Centrifuge ERC-7540 the transfer (requestRedeem) and the USDC
-        # receipt (claimRedeem) happen in different transactions: the delta
-        # represents intra-epoch yield that accrued on the redeemed shares inside
-        # the vault, never captured by the NAV-repricing path.
-        #
-        # Split this delta using the SOM sd_share (= min(cap, SOM) / SOM).
-        # The redeemed shares were part of the pre-redemption position; their
-        # Sky/Prime attribution is determined by where they sat relative to the
-        # cap at that time.  SOM is the best available proxy for the
-        # pre-redemption position when a single large redemption dominates the
-        # period (as is typical for Cat E venues).  Using the period-average
-        # sd_share would over-weight post-redemption days where the lower
-        # remaining position inflates sd_share and over-attributes to Sky.
-        #
-        # Known limitation: if multiple redemptions occurred at different times,
-        # or if the position changed significantly before the requestRedeem, the
-        # SOM sd_share is stale.  Track requestRedeem Transfer dates for a full
-        # fix (see PR description).
-        if _rwa_actual_revenue is not None:
-            _delta = actual_revenue - _rwa_actual_revenue
-            # Prefer the pre-computed per-event weighted sd_share when available
-            # (handles multiple redemptions at different cap ratios correctly).
-            # Fall back to SOM sd_share as an approximation when not provided
-            # (sufficient for single-redemption months).
-            if inputs.erc4626_intra_epoch_sd_share is not None:
-                _epoch_sd_share = inputs.erc4626_intra_epoch_sd_share
-            else:
-                _epoch_sd_share = (
-                    min(entry.cap_usd, inputs.value_som) / inputs.value_som
-                    if inputs.value_som > 0 else Decimal("0")
-                )
-            sd_revenue = sd_revenue + _delta * _epoch_sd_share
-        # Effective (average) sd_share for display — sd_revenue / actual_revenue.
-        sd_share = (
-            sd_revenue / actual_revenue if actual_revenue != 0 else Decimal("0")
-        )
+        # Display sd_share. Use the EoM-locked theoretical share whenever a
+        # position exists (so a break-even capped period still reports e.g.
+        # 71% rather than 0); fall back to SoM-locked when the EoM is empty
+        # but the period started with a position; only 0 when both endpoints
+        # are 0. Mirrors the branching in ``_capped_sd_revenue_eom_locked``.
+        if inputs.value_eom > 0:
+            sd_share = min(entry.cap_usd, inputs.value_eom) / inputs.value_eom
+        elif inputs.value_som > 0:
+            sd_share = min(entry.cap_usd, inputs.value_som) / inputs.value_som
+        else:
+            sd_share = Decimal("0")
     else:
         sd_share = _sd_share_at_som(entry, inputs.value_som)
         sd_revenue = actual_revenue * sd_share
 
     prime_revenue = (actual_revenue - sd_revenue) + inputs.external_revenue
+
+    tw_avg_notional = _time_weighted_notional(
+        inputs.venue.notional_principal_usd, period,
+    )
 
     return VenueRevenue(
         venue_id=inputs.venue.id,
@@ -317,6 +291,7 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
         external_revenue=inputs.external_revenue,
         tw_avg_value=tw_avg_value,
         cof_excluded=inputs.venue.cof_excluded,
+        tw_avg_notional=tw_avg_notional,
     )
 
 
