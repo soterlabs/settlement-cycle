@@ -186,6 +186,18 @@ class MonthlyPnL:
     # reporters (xlsx "SDE daily" tab) to render the Sky / Grove /
     # in-flight decomposition without re-running on-chain reads.
     sde_daily_breakdown: list[SDEDailyBreakdown] = field(default_factory=list)
+    # Total 30 bps spread deducted from sky_revenue for all sky_savings_token
+    # Cat B venues (Σ vr.susds_spread_reimbursement). sky_revenue is already
+    # net of this deduction — this field is surfaced for audit/reconciliation.
+    # Zero for primes with no sky_savings_token Cat B venues.
+    susds_spread_reimbursement: Decimal = Decimal("0")
+    # Sky Revenue that would result if NO deductions were applied to utilized
+    # (i.e., utilized = cum_debt throughout). Equals sky_rev_br_gross +
+    # sde_revenue - susds_spread_reimbursement, using the same BR / subsidy
+    # schedule as the actual sky_revenue.  Stored in provenance for the
+    # monthly report "max sky revenue" display; not part of any settlement
+    # invariant.  Zero default ensures backward compat with old provenance.
+    sky_revenue_gross: Decimal = Decimal("0")
 
     @property
     def prime_agent_total_revenue(self) -> Decimal:

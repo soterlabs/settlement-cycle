@@ -239,41 +239,58 @@ def compute_sky_revenue_daily(
             - cum_lending_idle
         )
 
-        daily_rev = Decimal("0")
-        ssr_apy   = Decimal("0")
-        base_apy  = Decimal("0")
-        if utilized > 0:
-            ssr_apy  = ssr_at_or_before(ssr, current)
-            # APYs combine multiplicatively, not additively: naive
-            # ``ssr_apy + 30bps`` loses the cross-term ``ssr_apy × 30bps``
-            # (~1.2 bps at SSR=4%). See ``combine_apys`` in ``_helpers.py``.
-            base_apy = combine_apys(ssr_apy, BASE_RATE_OVER_SSR)
-            if use_subsidy and current >= subsidy_config.program_start:
-                cap              = subsidy_config.cap_usd
-                subsidised_part  = min(utilized, cap)
-                excess_part      = max(Decimal("0"), utilized - cap)
-                ref_rate         = ref_rate_history.at(current)
-                t                = months_elapsed_since(current, subsidy_config.program_start)
-                sub_apy          = subsidised_apy(base_apy, ref_rate, t, subsidy_config.ramp_months)
-                daily_rev        = subsidised_part * daily_compounding_factor(sub_apy)
-                if excess_part > 0:
-                    daily_rev += excess_part * daily_compounding_factor(base_apy)
-            else:
-                daily_rev = utilized * daily_compounding_factor(base_apy)
+        # Always compute the rate — needed for both actual (utilized) and
+        # gross (cum_debt) revenue.  When cum_debt is 0 both will be 0.
+        ssr_apy  = ssr_at_or_before(ssr, current)
+        # APYs combine multiplicatively, not additively: naive
+        # ``ssr_apy + 30bps`` loses the cross-term ``ssr_apy × 30bps``
+        # (~1.2 bps at SSR=4%). See ``combine_apys`` in ``_helpers.py``.
+        base_apy = combine_apys(ssr_apy, BASE_RATE_OVER_SSR)
+
+        # Subsidy params — computed once and reused for both actual + gross.
+        _sub_apy: Decimal | None = None
+        _ref_rate: Decimal | None = None
+        _t: int | None = None
+        if use_subsidy and current >= subsidy_config.program_start:  # type: ignore[union-attr]
+            _ref_rate = ref_rate_history.at(current)                  # type: ignore[union-attr]
+            _t        = months_elapsed_since(current, subsidy_config.program_start)  # type: ignore[union-attr]
+            _sub_apy  = subsidised_apy(base_apy, _ref_rate, _t, subsidy_config.ramp_months)  # type: ignore[union-attr]
+
+        def _daily_rev_for(principal: Decimal) -> Decimal:
+            """BR revenue on ``principal`` with subsidy applied where active."""
+            if principal <= 0:
+                return Decimal("0")
+            if _sub_apy is not None:
+                cap     = subsidy_config.cap_usd  # type: ignore[union-attr]
+                sub_p   = min(principal, cap)
+                exc_p   = max(Decimal("0"), principal - cap)
+                rev     = sub_p * daily_compounding_factor(_sub_apy)
+                if exc_p > 0:
+                    rev += exc_p * daily_compounding_factor(base_apy)
+                return rev
+            return principal * daily_compounding_factor(base_apy)
+
+        daily_rev       = _daily_rev_for(utilized)
+        # Gross: BR on the full ilk debt before any utilized deductions.
+        # Captures "what sky_revenue would be if no idle USDS / SDE / PSM /
+        # Curve / lending deductions were applied."  Stored per-day so the
+        # orchestrator can sum it and write sky_revenue_gross to provenance.
+        daily_rev_gross = _daily_rev_for(cum_debt)
 
         total += daily_rev
         rows.append({
-            "date":          current,
-            "cum_debt":      cum_debt,
-            "alm_usds":      cum_alm_usds,
-            "psm_usds":      cum_psm_usds_leg,
-            "sde_av":        cum_sde,
-            "curve_idle":    cum_curve_usds,
-            "lending_idle":  cum_lending_idle,
-            "utilized":      utilized,
-            "ssr_apy":       float(ssr_apy),
-            "base_apy":      float(base_apy),
-            "daily_sky_rev": daily_rev,
+            "date":               current,
+            "cum_debt":           cum_debt,
+            "alm_usds":           cum_alm_usds,
+            "psm_usds":           cum_psm_usds_leg,
+            "sde_av":             cum_sde,
+            "curve_idle":         cum_curve_usds,
+            "lending_idle":       cum_lending_idle,
+            "utilized":           utilized,
+            "ssr_apy":            float(ssr_apy),
+            "base_apy":           float(base_apy),
+            "daily_sky_rev":      daily_rev,
+            "daily_sky_rev_gross": daily_rev_gross,
         })
         current = current + timedelta(days=1)
 
