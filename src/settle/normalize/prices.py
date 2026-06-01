@@ -321,6 +321,13 @@ def _resolve_rwa_nav(
             ),
             venue.nav_oracle.fallback_address.value if venue.nav_oracle.fallback_address else None,
         ))
+    if venue.nav_oracle.fallback2:
+        candidates.append((
+            _nav_oracle_kind(
+                venue.nav_oracle.fallback2, venue.nav_oracle.fallback2_underlying_decimals
+            ),
+            venue.nav_oracle.fallback2_address.value if venue.nav_oracle.fallback2_address else None,
+        ))
 
     from ..extract.oracles.chronicle import ChronicleReadError
     from ..extract.oracles.erc4626 import ERC4626ReadError

@@ -238,11 +238,21 @@ def read_position(chain: Chain, nfpm: Address, token_id: int, block: int) -> V3P
     )
 
 
+class PoolNotDeployedError(Exception):
+    """Raised when ``slot0()`` returns empty — pool contract not deployed at
+    this block (e.g. querying a pre-deployment SoM block)."""
+
+
 @cached(source_id="uniswap_v3.slot0")
 def read_pool_state(chain: Chain, pool: Address, block: int) -> V3PoolState:
     """Read pool's current sqrtPriceX96, tick, token0/1, fee, and global fee
     growth accumulators (needed to derive pending position fees)."""
     raw_slot0 = eth_call(chain, pool, SEL_SLOT0, block).removeprefix("0x")
+    if not raw_slot0:
+        raise PoolNotDeployedError(
+            f"slot0() returned empty for pool {pool.hex} on {chain.value} "
+            f"at block {block} — pool not yet deployed at this block."
+        )
     sqrt_price_x96 = int(raw_slot0[:64], 16) & ((1 << 160) - 1)
     current_tick = _decode_int24("0x" + raw_slot0[64:128])
 

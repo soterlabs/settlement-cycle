@@ -95,6 +95,17 @@ def load_prime(config_path: Path) -> Prime:
                     if no.get("fallback_underlying_decimals")
                     else None
                 ),
+                fallback2=no.get("fallback2"),
+                fallback2_address=(
+                    Address.from_str(no["fallback2_address"])
+                    if no.get("fallback2_address")
+                    else None
+                ),
+                fallback2_underlying_decimals=(
+                    int(no["fallback2_underlying_decimals"])
+                    if no.get("fallback2_underlying_decimals")
+                    else None
+                ),
                 oracle_chain=Chain(no["oracle_chain"]) if no.get("oracle_chain") else None,
             )
 

@@ -74,7 +74,10 @@ class RPCUniswapV3PositionSource:
         pool_a = Address(pool)
         nfpm = self._nfpm(chain_e)
 
-        pool_state = v3.read_pool_state(chain_e, pool_a, to_block)
+        try:
+            pool_state = v3.read_pool_state(chain_e, pool_a, to_block)
+        except v3.PoolNotDeployedError:
+            return []
         pool_target = (pool_state.token0.value, pool_state.token1.value, pool_state.fee)
 
         token_ids: set[int] = set()
@@ -111,7 +114,11 @@ class RPCUniswapV3PositionSource:
         nfpm = self._nfpm(chain_e)
 
         # Pool target identity (token0, token1, fee).
-        pool_state = v3.read_pool_state(chain_e, pool_a, block)
+        # Guard against pre-deployment blocks (pool contract not yet live).
+        try:
+            pool_state = v3.read_pool_state(chain_e, pool_a, block)
+        except v3.PoolNotDeployedError:
+            return []
         pool_target = (pool_state.token0.value, pool_state.token1.value, pool_state.fee)
 
         n_positions = v3.nfpm_balance_of(chain_e, nfpm, owner_a, block)
