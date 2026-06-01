@@ -423,6 +423,13 @@ venues:
     # sender is paired_source.
     paired_with: E14
     paired_source: '0x94b398acb2fce988871218221ea6a4a2b26cccbc'
+    # Display-only: tracked for monthly reports but excluded from
+    # prime_agent_revenue / sky_revenue / cost-basis invariant. Round-trip
+    # spread (the +$120k example: $50M USDC out → $50.12M AUSD back) is
+    # realized at the anchor (E14) when AUSD from paired_source lands at the
+    # ALM — see the paired-principal-cap classifier in
+    # ``_cat_a_capital_inflow_timeseries``.
+    display_only: true
 
   # ─────────────────────────────────────────────────────────────
   # Base — Phase 2.B (multi-chain rollout)

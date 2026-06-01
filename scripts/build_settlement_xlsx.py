@@ -345,6 +345,84 @@ def _write_sde(ws, sde: list[dict], sheet_rows: list[dict]) -> None:
     _set_widths(ws, {1: 8, 2: 8, 3: 14, 4: 12, 5: 12, 6: 8, 7: 50, 8: 25, 9: 16, 10: 18})
 
 
+def _write_off_protocol_holdings(ws, prov: dict, prime_cfg: dict) -> None:
+    """Off-protocol holdings — display-only venues. Surfaced for visibility
+    but excluded from prime_agent_revenue, sky_revenue, and the NAV cost-
+    basis invariant. Realized P&L on any round-trip lands at the anchor
+    venue when the cash arrives at the ALM — see
+    ``_cat_a_capital_inflow_timeseries`` paired-principal-cap classifier.
+    """
+    ws.title = "Off-protocol holdings"
+    rows = prov.get("display_only_breakdown") or []
+    ws.append(["Off-protocol holdings (tracked, not in prime revenue)"])
+    ws["A1"].font = _TITLE
+    ws.append([])
+    ws.append([
+        "These positions sit with external counterparties (e.g. OOB OTC "
+        "venues, off-protocol custodians). The balances below are visible "
+        "for monthly-NAV reporting only — they do NOT contribute to "
+        "prime_agent_revenue or sky_revenue. Any realized gain or loss on "
+        "the round-trip is booked at the anchor venue when the cash "
+        "settles back at the ALM proxy."
+    ])
+    ws.append([])
+
+    if not rows:
+        ws.append(["(no display-only venues active this period)"])
+        _set_widths(ws, {1: 90})
+        return
+
+    by_id = {v.get("id"): v for v in prime_cfg.get("venues", []) or []}
+
+    cols = [
+        "Venue", "Label", "Chain", "Counterparty (paired_source)",
+        "Anchor venue (paired_with)",
+        "Outstanding SoM (USD)", "Outstanding EoM (USD)", "Δ over period",
+        "Status",
+    ]
+    ws.append(cols)
+    _header_row(ws, ws.max_row, len(cols))
+
+    for r in rows:
+        vid = r["venue_id"]
+        cfg = by_id.get(vid, {})
+        chain = cfg.get("chain", "")
+        paired_source = (cfg.get("paired_source") or "")
+        paired_with = (cfg.get("paired_with") or "")
+        som = _D(r["value_som"])
+        eom = _D(r["value_eom"])
+        delta = eom - som
+        if eom == 0 and som > 0:
+            status = "fully returned"
+        elif eom == som and som > 0:
+            status = "outstanding (no change)"
+        elif eom < som:
+            status = "partial return"
+        elif eom > som:
+            status = "new principal-out"
+        else:
+            status = "—"
+        ws.append([
+            vid, r.get("label", ""), chain, paired_source, paired_with,
+            float(som), float(eom), float(delta), status,
+        ])
+        for col in (6, 7, 8):
+            ws.cell(ws.max_row, col).number_format = _USD0
+
+    ws.append([])
+    ws.append([
+        "Note: realized gain on returns (the round-trip spread) is "
+        "recognized as revenue at the anchor venue via the paired-"
+        "principal-cap classifier — see provenance.json venue_breakdown "
+        "for the anchor's actual_revenue / external_revenue split."
+    ])
+
+    _set_widths(ws, {
+        1: 8, 2: 50, 3: 12, 4: 46, 5: 20,
+        6: 18, 7: 18, 8: 16, 9: 22,
+    })
+
+
 # --------------------------------------------------------------------------
 # Entrypoint
 # --------------------------------------------------------------------------
@@ -373,6 +451,11 @@ def build_xlsx(prime_id: str, month: str) -> Path:
     _write_venues(wb.create_sheet(), sheet, cfg)
     _write_sky_revenue(wb.create_sheet(), prov, sheet, cfg)
     _write_sde(wb.create_sheet(), sde, sheet)
+    if prov.get("display_only_breakdown"):
+        # Only emit the off-protocol-holdings tab when the prime has display-
+        # only venues this period. Avoids an empty tab cluttering monthly
+        # reports for primes with no off-protocol positions.
+        _write_off_protocol_holdings(wb.create_sheet(), prov, cfg)
 
     out = cell_dir / _output_filename(prime_id, month)
     wb.save(out)

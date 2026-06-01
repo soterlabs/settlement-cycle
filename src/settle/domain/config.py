@@ -167,6 +167,7 @@ def load_prime(config_path: Path) -> Prime:
                     if v.get("paired_source")
                     else None
                 ),
+                display_only=bool(v.get("display_only", False)),
             )
         )
 

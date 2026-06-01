@@ -14,7 +14,7 @@ from decimal import Decimal
 
 import pandas as pd
 
-from ..domain.monthly_pnl import MonthlyPnL
+from ..domain.monthly_pnl import MonthlyPnL, VenueRevenue
 from ..domain.period import Month, Period
 from ..domain.pricing import PricingCategory
 from ..domain.primes import Chain, Prime, PsmKind
@@ -1673,6 +1673,9 @@ def compute_monthly_pnl(
     _log.info("step 3: per-venue pricing for %d venue(s)...", n_venues)
     # 3. Per-venue: value at SoM + EoM, inflow timeseries.
     venue_inputs: list[VenueRevenueInputs] = []
+    # Display-only venues: tracked for monthly reports but excluded from
+    # prime_agent_revenue / sky_revenue / NAV invariant. See ``Venue.display_only``.
+    display_only_breakdown: list[VenueRevenue] = []
 
     # 3a. Cash-distribution venues — attributed directly as prime revenue,
     # bypassing the standard SoM/EoM formula and the sky-revenue path.
@@ -1781,6 +1784,26 @@ def compute_monthly_pnl(
             block_resolver=resolver,
             nav_oracle_resolver=sources.nav_oracle_resolver,
         )
+
+        if venue.display_only:
+            # Tracked for monthly reports but excluded from prime_agent_revenue /
+            # sky_revenue / NAV invariant. Any realized spread on the round-trip
+            # is recognized at the anchor venue (see ``paired_with`` /
+            # ``paired_source``) via the Cat A paired-principal-cap classifier.
+            _log.info(
+                "  [%d/%d] %s  [display-only]  som=$%.0f  eom=$%.0f",
+                _venue_idx, n_venues, venue.id, value_som, value_eom,
+            )
+            display_only_breakdown.append(VenueRevenue(
+                venue_id=venue.id,
+                label=venue.label,
+                value_som=value_som,
+                value_eom=value_eom,
+                period_inflow=Decimal("0"),
+                revenue=Decimal("0"),
+                cof_excluded=venue.cof_excluded,
+            ))
+            continue
 
         # Inflow timeseries — three branches:
         #
@@ -2061,11 +2084,42 @@ def compute_monthly_pnl(
                 addr.value: [(o.date, o.amount) for o in entries]
                 for addr, entries in overrides_for_chain.items()
             }
+            # Paired-principal-cap auto-wiring: if any display-only venue on
+            # this chain points to this anchor (``paired_with == venue.id``),
+            # fetch its cumulative ALM→holder outflow series so the classifier
+            # can split inflows from ``paired_source`` into capital
+            # (principal-return up to the cap) and yield (excess). See
+            # ``Venue.display_only`` and the paired-principal-cap doc on
+            # ``_cat_a_capital_inflow_timeseries``.
+            paired_principal_caps: dict = {}
+            for eoa_v in prime.venues:
+                if not eoa_v.display_only:
+                    continue
+                if eoa_v.paired_with != venue.id:
+                    continue
+                if eoa_v.paired_source is None or eoa_v.holder_override is None:
+                    continue
+                if eoa_v.chain != venue.chain:
+                    # Cross-chain paired-cap isn't supported by the current
+                    # directed_inflow_timeseries (which is single-chain). The
+                    # display-only venue setup helper in normalize.positions
+                    # already enforces this; skip silently here.
+                    continue
+                cap_df = balance_src.directed_inflow_timeseries(
+                    chain=eoa_v.chain.value,
+                    token=eoa_v.token.address.value,
+                    from_addr=prime.alm[eoa_v.chain].value,
+                    to_addr=eoa_v.holder_override.value,
+                    start=prime.start_date,
+                    pin_block=period.pin_blocks[eoa_v.chain],
+                )
+                paired_principal_caps[eoa_v.paired_source.value] = cap_df
             inflow_ts = _cat_a_capital_inflow_timeseries(
                 prime, venue, period,
                 balance_source=balance_src,
                 external_sources=external,
                 principal_return_overrides=overrides_by_bytes,
+                paired_principal_caps=paired_principal_caps or None,
             )
         elif venue.pricing_category == PricingCategory.EOA:
             # Cat EOA — Off-protocol relay/staging address. The venue tracks
@@ -2392,4 +2446,5 @@ def compute_monthly_pnl(
         sde_revenue=sde_revenue,
         curve_susds_spread=curve_susds_spread if not sky_only else Decimal("0"),
         psm3_susds_spread=psm3_susds_spread if not sky_only else Decimal("0"),
+        display_only_breakdown=display_only_breakdown,
     )

@@ -272,3 +272,182 @@ def test_cat_a_empty_inflow_returns_empty(config_dir: Path):
         external_sources=set(),
     )
     assert out.empty
+
+
+# ---------------------------------------------------------------------------
+# Paired-principal-cap classifier (display-only EOA round-trip pattern).
+# ---------------------------------------------------------------------------
+#
+# Background: a display-only EOA venue tracks principal-out from the ALM to
+# an off-protocol address (e.g. FalconX). When the round-trip return lands
+# at the anchor Cat A venue via ``paired_source``, the classifier splits
+# each inflow into capital (up to the cumulative principal-out) and yield
+# (the excess) — so any spread captured during the OOB trip is realized
+# as revenue at the anchor when the cash arrives.
+
+
+def _paired_cap_series(events: list[tuple[date, Decimal]]) -> pd.DataFrame:
+    """Build a cum-principal-out DataFrame matching
+    ``directed_inflow_timeseries`` shape: ``[block_date, cum_inflow]``."""
+    rows = []
+    running = Decimal("0")
+    for d, amt in events:
+        running += amt
+        rows.append({"block_date": d, "cum_inflow": running})
+    return pd.DataFrame(rows)
+
+
+def test_paired_cap_return_under_cap_is_all_capital(config_dir: Path):
+    """Principal-out $50M; return $40M (under cap) → all $40M classified as
+    capital, no yield. Mirrors a partial-return mid-period."""
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()
+    cp_paired = _bytes20("0x94b398acb2fce988871218221ea6a4a2b26cccbc")
+    src = MockBalanceSource()
+    src.inflow_by_counterparty = lambda **_: pd.DataFrame({
+        "block_date":    [date(2026, 3, 10)],
+        "counterparty":  [cp_paired],
+        "signed_amount": [Decimal("40000000")],   # $40M return
+    })
+    cap_series = _paired_cap_series([(date(2026, 3, 1), Decimal("50000000"))])
+
+    out = _cat_a_capital_inflow_timeseries(
+        grove, venue, period,
+        balance_source=src,
+        external_sources=set(),
+        paired_principal_caps={cp_paired: cap_series},
+    )
+    assert out["daily_inflow"].sum() == Decimal("40000000")
+
+
+def test_paired_cap_return_exactly_at_cap_is_all_capital(config_dir: Path):
+    """Principal-out $50M; return exactly $50M → all capital, no yield.
+    The cap edge case where principal returns at par with no spread."""
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()
+    cp_paired = _bytes20("0x94b398acb2fce988871218221ea6a4a2b26cccbc")
+    src = MockBalanceSource()
+    src.inflow_by_counterparty = lambda **_: pd.DataFrame({
+        "block_date":    [date(2026, 3, 10)],
+        "counterparty":  [cp_paired],
+        "signed_amount": [Decimal("50000000")],
+    })
+    cap_series = _paired_cap_series([(date(2026, 3, 1), Decimal("50000000"))])
+
+    out = _cat_a_capital_inflow_timeseries(
+        grove, venue, period,
+        balance_source=src,
+        external_sources=set(),
+        paired_principal_caps={cp_paired: cap_series},
+    )
+    assert out["daily_inflow"].sum() == Decimal("50000000")
+
+
+def test_paired_cap_excess_over_cap_is_yield(config_dir: Path):
+    """Principal-out $50M; return $50.12M (single event over the cap) →
+    $50M classified as capital, $120k excluded (becomes yield/revenue at
+    the anchor). This is the FalconX OOB spread realization case."""
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()
+    cp_paired = _bytes20("0x94b398acb2fce988871218221ea6a4a2b26cccbc")
+    src = MockBalanceSource()
+    src.inflow_by_counterparty = lambda **_: pd.DataFrame({
+        "block_date":    [date(2026, 3, 10)],
+        "counterparty":  [cp_paired],
+        "signed_amount": [Decimal("50120000")],
+    })
+    cap_series = _paired_cap_series([(date(2026, 3, 1), Decimal("50000000"))])
+
+    out = _cat_a_capital_inflow_timeseries(
+        grove, venue, period,
+        balance_source=src,
+        external_sources=set(),
+        paired_principal_caps={cp_paired: cap_series},
+    )
+    # Only $50M is capital; the $120k excess is excluded → becomes revenue
+    # at the anchor (Δvalue − $50M of capital_inflow = $120k surplus).
+    assert out["daily_inflow"].sum() == Decimal("50000000")
+
+
+def test_paired_cap_progressive_consumption(config_dir: Path):
+    """Two principal-out events ($30M + $20M = $50M cap) and two returns
+    ($20M then $30.12M). First return is fully under cap → $20M capital.
+    Second return uses the remaining $30M of cap → $30M capital + $120k
+    yield. Total capital classified: $50M; total yield: $120k."""
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()
+    cp_paired = _bytes20("0x94b398acb2fce988871218221ea6a4a2b26cccbc")
+    src = MockBalanceSource()
+    src.inflow_by_counterparty = lambda **_: pd.DataFrame({
+        "block_date":    [date(2026, 3, 5),         date(2026, 3, 20)],
+        "counterparty":  [cp_paired,                cp_paired],
+        "signed_amount": [Decimal("20000000"),      Decimal("30120000")],
+    })
+    cap_series = _paired_cap_series([
+        (date(2026, 3, 1), Decimal("30000000")),   # first principal-out
+        (date(2026, 3, 15), Decimal("20000000")),  # second principal-out
+    ])
+
+    out = _cat_a_capital_inflow_timeseries(
+        grove, venue, period,
+        balance_source=src,
+        external_sources=set(),
+        paired_principal_caps={cp_paired: cap_series},
+    )
+    # $20M + $30M = $50M capital classified; the trailing $120k is yield.
+    assert out["daily_inflow"].sum() == Decimal("50000000")
+
+
+def test_paired_cap_inflow_with_zero_cap_is_all_yield(config_dir: Path):
+    """A return arrives before any principal has been sent out (cap = $0).
+    All of it is yield → no capital row. Mirrors a counterparty paying
+    yield prior to the principal-out leg (unusual but possible if mis-
+    timed). Defensive: guarantees the cap never goes negative."""
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()
+    cp_paired = _bytes20("0x94b398acb2fce988871218221ea6a4a2b26cccbc")
+    src = MockBalanceSource()
+    src.inflow_by_counterparty = lambda **_: pd.DataFrame({
+        "block_date":    [date(2026, 3, 10)],
+        "counterparty":  [cp_paired],
+        "signed_amount": [Decimal("100000")],
+    })
+    # Empty cap series → cum_principal_out is 0 at all dates.
+    cap_series = pd.DataFrame({"block_date": [], "cum_inflow": []})
+
+    out = _cat_a_capital_inflow_timeseries(
+        grove, venue, period,
+        balance_source=src,
+        external_sources=set(),
+        paired_principal_caps={cp_paired: cap_series},
+    )
+    # All yield → no capital row at all.
+    assert out.empty
+
+
+def test_paired_cap_non_paired_counterparty_unaffected(config_dir: Path):
+    """When a different (non-paired) counterparty is in the same frame,
+    its inflows follow the existing classification (external vs capital);
+    the paired-cap only affects rows from the paired_source. Pins the
+    isolation between the two classification paths."""
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()
+    cp_paired = _bytes20("0x94b398acb2fce988871218221ea6a4a2b26cccbc")
+    cp_internal = _bytes20("0x37305b1cd40574e4c5ce33f8e8306be057fd7341")  # PSM
+    src = MockBalanceSource()
+    src.inflow_by_counterparty = lambda **_: pd.DataFrame({
+        "block_date":    [date(2026, 3, 5),       date(2026, 3, 10)],
+        "counterparty":  [cp_internal,            cp_paired],
+        "signed_amount": [Decimal("1000000"),     Decimal("50120000")],
+    })
+    cap_series = _paired_cap_series([(date(2026, 3, 1), Decimal("50000000"))])
+
+    out = _cat_a_capital_inflow_timeseries(
+        grove, venue, period,
+        balance_source=src,
+        external_sources=set(),
+        paired_principal_caps={cp_paired: cap_series},
+    )
+    # Capital = $1M (internal counterparty, untouched) + $50M (paired,
+    # capped) = $51M. The $120k excess from the paired return is yield.
+    assert out["daily_inflow"].sum() == Decimal("51000000")

@@ -246,6 +246,21 @@ class Venue:
     # Both fields are required for category EOA and ignored elsewhere.
     paired_with: str | None = None
     paired_source: Address | None = None
+    # Off-protocol / "tracked-but-not-counted" flag. When True, the venue's
+    # value is computed and surfaced in reports (so off-protocol holdings
+    # remain visible in the monthly file) but the venue is EXCLUDED from:
+    #   - ``prime_agent_revenue`` (no actual_revenue contribution)
+    #   - ``sky_revenue`` (not added to or subtracted from any sky-side stream)
+    #   - the cost-basis NAV invariant (Σ value over operating venues only)
+    # Realized gains/losses on returns are recognized at the *anchor* venue
+    # (see ``paired_with`` / ``paired_source``) via the Cat A paired-principal-
+    # cap classifier in ``_cat_a_capital_inflow_timeseries``: inflows from
+    # ``paired_source`` up to the cumulative ALM→holder principal-out are
+    # classified as capital (principal-return); excess is yield (revenue).
+    # Typical use: principal sent to an off-protocol counterparty (e.g.
+    # FalconX) for an OOB acquisition; the cash settlement at the ALM is the
+    # realization event for any spread captured during the trip.
+    display_only: bool = False
 
 
 @dataclass(frozen=True, slots=True)
