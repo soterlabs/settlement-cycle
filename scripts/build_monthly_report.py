@@ -489,6 +489,22 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
     sky_rev_br_reduction = max(Decimal("0"), headline_sky_gross - cof_total)
     total_known_deduction = sum((v["deduction_avg"] for v in enriched), Decimal("0"))
 
+    # Effective daily BR rate — approximated as cof_total / total_weighted / n_days.
+    # total_weighted is the CoF allocation denominator (Σ avg_value × weight for
+    # deployed venues), which is a reasonable proxy for average utilized.
+    # Used to estimate each known venue's BR contribution independently, rather
+    # than dividing the total proportionally (which would always sum to 100%).
+    effective_br_daily = (
+        cof_total / total_weighted / Decimal(n_days)
+        if total_weighted > 0 and n_days > 0 else Decimal("0")
+    )
+
+    # Known venues' estimated BR contribution via rate × deduction × n_days.
+    # The residual (sky_rev_br_reduction − Σ known) represents PSM3 USDS +
+    # Curve idle USDS deductions that are not tracked per-venue in venues.csv.
+    total_known_br_est = total_known_deduction * effective_br_daily * Decimal(n_days)
+    psm_curve_residual = max(Decimal("0"), sky_rev_br_reduction - total_known_br_est)
+
     # Second pass: allocate CoF, derive P2S / P2G, estimate sky_rev reduction.
     for v in enriched:
         if total_weighted > 0:
@@ -501,13 +517,44 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
         # Σ profit_to_sky ≡ headline_sky (net sky_revenue) by construction.
         v["profit_to_sky"]   = v["cof_alloc"] + v["sd_revenue"] - v["spread_reimb"]
         v["profit_to_grove"] = v["revenue"] - v["cof_alloc"]
-        # sky_rev_reduction = exact spread + estimated BR-deduction portion.
+        # sky_rev_reduction = exact spread + rate-based BR-deduction estimate.
         utilized_est = (
-            v["deduction_avg"] / total_known_deduction * sky_rev_br_reduction
-            if total_known_deduction > 0 and v["deduction_avg"] > 0
-            else Decimal("0")
+            v["deduction_avg"] * effective_br_daily * Decimal(n_days)
+            if v["deduction_avg"] > 0 else Decimal("0")
         )
         v["sky_rev_reduction_est"] = v["spread_reimb"] + utilized_est
+
+    # Synthetic row for PSM3 USDS + Curve idle USDS residual.
+    # Must be appended AFTER the second pass so the second pass doesn't
+    # overwrite sky_rev_reduction_est with 0.
+    # Added whenever the residual is non-trivial (> $1) so reviewers can see
+    # the unattributed portion of the BR deduction rather than it disappearing.
+    if psm_curve_residual > Decimal("1"):
+        enriched.append({
+            "venue_id":              "PSM_CURVE_DEDUCT",
+            "label":                 "PSM3 USDS + PSM3 USDC (SDE) + Curve idle USDS — BR deduction (unattributed)",
+            "value_som":             Decimal("0"),
+            "value_eom":             Decimal("0"),
+            "avg_value":             Decimal("0"),
+            "sd_share":              Decimal("0"),
+            "weight":                Decimal("0"),
+            "actual_rev":            Decimal("0"),
+            "external":              Decimal("0"),
+            "revenue":               Decimal("0"),
+            "sd_revenue":            Decimal("0"),
+            "spread_reimb":          Decimal("0"),
+            "cof_alloc":             Decimal("0"),
+            "profit_to_sky":         Decimal("0"),
+            "profit_to_grove":       Decimal("0"),
+            "deduction_avg":         Decimal("0"),
+            "sky_rev_reduction_est": psm_curve_residual,
+                "note": (
+                    "BR deduction from PSM3 USDS leg + PSM3 USDC leg (SDE, "
+                    "≈$0 yield) + Curve idle USDS — not tracked per-venue; "
+                    "residual = sky_rev_br_reduction − "
+                    "Σ(known venue deduction_avg × effective_br_rate × n_days)"
+                ),
+        })
 
     totals = {
         "sky_revenue":              headline_sky,
