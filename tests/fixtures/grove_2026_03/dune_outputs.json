@@ -2979,12 +2979,6 @@
         "block": 24136052,
         "nav": "1000.00",
         "_note": "STAC deposit-time par; Chronicle had not yet started writing"
-      },
-      {
-        "oracle": "0x51cc9463788b870d1e9bacd111a9bbb2c9820c7e",
-        "block": 24136052,
-        "nav": "1.00",
-        "_note": "ACRDX deposit-time par; Chronicle had not yet started writing for older blocks"
       }
     ]
   },
@@ -3053,6 +3047,30 @@
         "topic0": "0x26f6a048ee9138f2c0ce266f322cb99228e8d619ae2bff30c67f8dcf9d2377b4",
         "topic1": "0x000000000000000000000000000000000000000000000000000000000011a53f",
         "data": "0x000000000000000000000000000000000000000000000000006f0eca865087c400000000000000000000000000000000000000000000000000000c0eac6bb75200000000000000000000000000000000000000000000000000000aae805b79b2"
+      }
+    ]
+  },
+  "cash_dist_e21": {
+    "_about": "Galaxy \u2192 Grove Eth ALM USDC distributions (cash_dist for E21 GACLO-1)",
+    "_chain": "ethereum",
+    "_token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+    "_from": "0xaC3D86f9840A8bE07dE5F67d6427983B7009DF1B",
+    "_to": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+    "rows": [
+      {
+        "block_date": "2026-01-12",
+        "daily_inflow": "209136.25",
+        "cum_inflow": "209136.25"
+      },
+      {
+        "block_date": "2026-02-10",
+        "daily_inflow": "402939.81",
+        "cum_inflow": "612076.06"
+      },
+      {
+        "block_date": "2026-03-10",
+        "daily_inflow": "363584.08",
+        "cum_inflow": "975660.1400000001"
       }
     ]
   }

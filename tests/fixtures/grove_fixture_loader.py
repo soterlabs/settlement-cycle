@@ -68,20 +68,25 @@ def df_with_dates(rows: list[dict], date_col: str) -> pd.DataFrame:
     return df
 
 
-def load_grove_and_fixtures(repo: Path):
-    """Load the ``grove`` Prime + all four block-resolver fixtures + the
-    Dune-output bundle. Returns ``(grove, dune_outputs, blocks_by_chain)``.
+def load_grove_and_fixtures(repo: Path, fixture_dir: str = "grove_2026_03"):
+    """Load the ``grove`` Prime + all block-resolver fixtures + the
+    Dune-output bundle. ``fixture_dir`` selects the snapshot generation
+    (``grove_2026_03`` for Q1 acceptance, ``grove_2026_04`` for April,
+    etc.). Returns ``(grove, dune_outputs, blocks_by_chain)``.
     """
     grove = load_prime(repo / "config" / "grove.yaml")
-    fixtures = json.loads(
-        (repo / "tests/fixtures/grove_2026_03/dune_outputs.json").read_text()
-    )
+    base = repo / "tests/fixtures" / fixture_dir
+    fixtures = json.loads((base / "dune_outputs.json").read_text())
     blocks_by_chain = {
-        "ethereum":    json.loads((repo / "tests/fixtures/grove_2026_03/blocks_at_eod.json").read_text()),
-        "base":        json.loads((repo / "tests/fixtures/grove_2026_03/blocks_at_eod_base.json").read_text()),
-        "avalanche_c": json.loads((repo / "tests/fixtures/grove_2026_03/blocks_at_eod_avalanche.json").read_text()),
-        "plume":       json.loads((repo / "tests/fixtures/grove_2026_03/blocks_at_eod_plume.json").read_text()),
+        "ethereum":    json.loads((base / "blocks_at_eod.json").read_text()),
+        "base":        json.loads((base / "blocks_at_eod_base.json").read_text()),
+        "avalanche_c": json.loads((base / "blocks_at_eod_avalanche.json").read_text()),
+        "plume":       json.loads((base / "blocks_at_eod_plume.json").read_text()),
     }
+    # Monad block resolver is optional — only the April fixture captures it.
+    monad_path = base / "blocks_at_eod_monad.json"
+    if monad_path.exists():
+        blocks_by_chain["monad"] = json.loads(monad_path.read_text())
     return grove, fixtures, blocks_by_chain
 
 
@@ -131,6 +136,22 @@ def build_grove_sources(grove, fixtures: dict, blocks_by_chain: dict[str, Any]) 
             directed_inflow_fixtures[(token, alm, ZERO)] = df_with_dates(
                 fixtures[f"vault_{vid}_burns"]["rows"], "block_date",
             )
+        # Cash-distribution sources (e.g. Galaxy CLO USDC sweeps for E21).
+        # ``cash_distributions`` queries ``directed_inflow_timeseries`` keyed by
+        # (token, payer, ALM-on-payer-chain). The fixture key is
+        # ``cash_dist_{vid}`` and may carry distributions on a DIFFERENT chain
+        # from the venue's home chain (Galaxy E21 lives on Avalanche but
+        # distributes USDC to the Ethereum ALM).
+        for src in v.cash_distributions:
+            chain = src.chain if src.chain is not None else v.chain
+            if chain not in grove.alm:
+                continue
+            fx_key = f"cash_dist_{vid}"
+            if fx_key not in fixtures:
+                continue
+            directed_inflow_fixtures[(
+                src.token.value, src.payer.value, grove.alm[chain].value,
+            )] = df_with_dates(fixtures[fx_key]["rows"], "block_date")
 
     cum_balance_fixtures: dict[bytes, pd.DataFrame] = {}
     for v in grove.venues:
