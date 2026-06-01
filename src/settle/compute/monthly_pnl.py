@@ -2365,20 +2365,37 @@ def compute_monthly_pnl(
                             float(_deduct_eom), float(value_eom),
                         )
 
-                # 30 bps spread deducted from Sky Revenue (not Prime Revenue).
-                # The prime earns SSR via the sUSDS share price; Sky charges
-                # full BR on the utilized base, then reduces its invoice by
-                # 30 bps × value_som × n_days so the prime's net cost = SSR × V
-                # (economic neutrality). value_som has all adjustments applied
-                # (Savings V2 deduction above) at this point.
-                from .sky_revenue import BASE_RATE_OVER_SSR as _BROSS
-                from ._helpers import daily_compounding_factor as _dcf
-                # daily_compounding_factor returns (1+APY)^(1/365) − 1,
-                # i.e. the per-day rate directly — do NOT subtract 1 again.
-                _spread_daily = _dcf(_BROSS)
-                _susds_spread_reimbs[venue.id] = (
-                    value_som * _spread_daily * _Dec(str(period.n_days))
-                )
+                # 30 bps spread — Supply Side PnL path (default).
+                # Sky charges full BR on utilized; prime_revenue = 0.
+                # The orchestrator deducts 30 bps × value_som × n_days from
+                # sky_revenue so the prime's net cost = SSR × V (economic
+                # neutrality). value_som has all adjustments applied (Savings
+                # V2 deduction above) at this point.
+                #
+                # Exception — demand_side_spread: True venues (currently S32):
+                # The sUSDS here collateralises Spark Savings deposits. Sky still
+                # charges full BR on all of utilized (the sUSDS is NOT subtracted,
+                # which correctly accounts for the full debt drawn from the ilk).
+                # The 30 bps spread reimbursement is handled separately as part
+                # of Demand Side Distribution Rewards — it does NOT flow through
+                # Supply Side settlement. Setting this flag leaves sky_revenue
+                # unreduced for this venue while keeping prime_revenue = 0.
+                if not venue.demand_side_spread:
+                    from .sky_revenue import BASE_RATE_OVER_SSR as _BROSS
+                    from ._helpers import daily_compounding_factor as _dcf
+                    # daily_compounding_factor returns (1+APY)^(1/365) − 1,
+                    # i.e. the per-day rate directly — do NOT subtract 1 again.
+                    _spread_daily = _dcf(_BROSS)
+                    _susds_spread_reimbs[venue.id] = (
+                        value_som * _spread_daily * _Dec(str(period.n_days))
+                    )
+                else:
+                    _log.info(
+                        "  %s demand_side_spread=True: 30bps reimbursement "
+                        "omitted from sky_revenue (handled via Demand Side "
+                        "Distribution Rewards). prime_revenue=0, full BR applies.",
+                        venue.id,
+                    )
 
                 # Build the inflow timeseries for tw_avg_value accuracy.
                 # inflow_ts is used only to compute an accurate time-weighted

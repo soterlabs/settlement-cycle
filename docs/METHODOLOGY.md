@@ -76,18 +76,29 @@ Sky charges full BR on `utilized`, then reduces its invoice by `30bps × value_s
 
 **Current `sky_savings_token` venues (Spark):**
 
-| Venue | Chain | Type |
-|---|---|---|
-| S32 | Ethereum | Raw sUSDS POL at ALM — `pricing_category: B` |
-| S37 | Base | sUSDS proxy POL — `pricing_category: B` |
-| S43 | Arbitrum | sUSDS proxy POL — `pricing_category: B` |
-| S47 | Optimism | sUSDS proxy POL — `pricing_category: B` |
-| S51 | Unichain | sUSDS proxy POL — `pricing_category: B` |
-| S24 | Ethereum | sUSDS leg of sUSDS/USDT Curve pool — `curve_idle_usds.sky_savings_token: true` |
+| Venue | Chain | Type | Spread treatment |
+|---|---|---|---|
+| S32 | Ethereum | Raw sUSDS POL at ALM — `pricing_category: B` | **Demand side** — see below |
+| S37 | Base | sUSDS proxy POL — `pricing_category: B` | Sky Revenue reduction |
+| S43 | Arbitrum | sUSDS proxy POL — `pricing_category: B` | Sky Revenue reduction |
+| S47 | Optimism | sUSDS proxy POL — `pricing_category: B` | Sky Revenue reduction |
+| S51 | Unichain | sUSDS proxy POL — `pricing_category: B` | Sky Revenue reduction |
+| S24 | Ethereum | sUSDS leg of sUSDS/USDT Curve pool — `curve_idle_usds.sky_savings_token: true` | Sky Revenue reduction |
 
-For raw sUSDS venues (Cat B): `susds_spread_reimbursement = value_som × 30bps_daily × n_days` deducted from `sky_revenue`; prime revenue = 0.
+For raw sUSDS venues (Cat B, supply-side): `susds_spread_reimbursement = value_som × 30bps_daily × n_days` deducted from `sky_revenue`; prime revenue = 0.
 
 For LP-embedded sUSDS venues (Curve `curve_idle_usds`): `spread_d = prime_sUSDS_value_d × 30bps_daily`, summed across the period and deducted from `sky_revenue` (surfaced as `curve_susds_spread` in provenance, folded into `susds_spread_reimbursement` total alongside Cat B venues).
+
+**S32 exception — `demand_side_spread: true`:**
+
+S32 (Ethereum raw sUSDS POL) is treated differently from the L2 sUSDS POL venues because it collateralises Spark Savings deposits (Savings V2). The prime's sUSDS here backs a demand-side product, not a pure supply-side allocation. Accordingly:
+
+- `prime_revenue = 0` (same as all `sky_savings_token` venues).
+- `sky_revenue` is **not** reduced by the 30 bps spread for S32. Sky charges full `BR × utilized` with no `susds_spread_reimbursement` deduction for this venue.
+- The full sUSDS balance is **not** subtracted from `utilized`. Even though only a fraction of the sUSDS is actively borrowed from the ilk at any point, removing it from the BR base would undercount the prime's actual debt position.
+- The 30 bps spread reimbursement is instead applied separately as part of **Demand Side Distribution Rewards** (outside this settlement report).
+
+The flag `demand_side_spread: true` in the venue YAML activates this path. It suppresses the `_susds_spread_reimbs` entry for the venue while leaving `prime_revenue = 0` and the full BR charge intact.
 
 ---
 

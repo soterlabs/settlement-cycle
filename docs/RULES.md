@@ -82,7 +82,7 @@ daily_sky_revenue = utilized_usds × [(1 + borrow_rate)^(1/365) - 1]
 
 ## Rule 5: sUSDS spread — 30 bps deducted from Sky Revenue
 
-For **all** sUSDS holdings (raw at ALM or inside LP pools), crediting the SSR appreciation as Prime Revenue double-counts: the prime already receives SSR through the sUSDS share price, so an additional model credit would yield `(2×SSR − BR) × V > 0` — an overcredit of ~3.7%/yr. The intent is economic neutrality (net = 0).
+For sUSDS holdings at the ALM or inside LP pools, crediting the SSR appreciation as Prime Revenue double-counts: the prime already receives SSR through the sUSDS share price, so an additional model credit would yield `(2×SSR − BR) × V > 0` — an overcredit of ~3.7%/yr. The intent is economic neutrality (net = 0).
 
 Governed by the `sky_savings_token` flag in the prime YAML config — set explicitly per venue, not inferred from the token address.
 
@@ -103,3 +103,12 @@ Governed by the `sky_savings_token` flag in the prime YAML config — set explic
 - `pps_d = convertToAssets(1 share, block_d)` to convert sUSDS→USDS.
 
 Net economic outcome: `SSR × V` (actual token gain) `− sky_revenue_net × share = SSR × V − SSR × V = 0`. Sky earns the net SSR; Prime is economically neutral.
+
+**Exception — demand-side sUSDS (`demand_side_spread: true`):**
+
+S32 (Spark ETH sUSDS POL) collateralises Spark Savings deposits (Savings V2), making it a demand-side position. The 30 bps spread reimbursement is applied via Demand Side Distribution Rewards and is **not** deducted from `sky_revenue` in this settlement report.
+
+- Prime Revenue = **0** (same as all `sky_savings_token` venues).
+- `sky_revenue` is **not** reduced — Sky charges full BR on `utilized` with no spread deduction for this venue.
+- The sUSDS is **not** subtracted from `utilized`. Even though not every USDS unit has been drawn from the ilk at every moment, keeping the full balance in the BR base correctly accounts for the total debt position. Subtracting it would undercount the prime's actual borrowing.
+- The flag `demand_side_spread: true` activates this path; it is independent of `sky_savings_token: true` (both must be set).
