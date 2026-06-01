@@ -109,6 +109,32 @@ def render_provenance(
             }
             for v in pnl.display_only_breakdown
         ],
+        # Per-venue daily SDE asset-value series. Used by the xlsx "SDE daily"
+        # tab to render the Sky / Grove / in-flight decomposition (phase-
+        # based: pre-burn / in-flight / settled) without re-running on-chain
+        # reads. Empty list for primes / months without active SDE venues.
+        "sde_daily_breakdown": [
+            {
+                "venue_id": b.venue_id,
+                "label": b.label,
+                "cap_usd": str(b.cap_usd) if b.cap_usd is not None else None,
+                "burn_date": b.burn_date.isoformat() if b.burn_date else None,
+                "usdc_settlement_date": (
+                    b.usdc_settlement_date.isoformat()
+                    if b.usdc_settlement_date else None
+                ),
+                "end_date": b.end_date.isoformat() if b.end_date else None,
+                "daily": [
+                    {
+                        "block_date": r["block_date"].isoformat(),
+                        "cum_value": str(r["cum_value"]),
+                        "uncapped_value": str(r["uncapped_value"]),
+                    }
+                    for r in b.daily
+                ],
+            }
+            for b in pnl.sde_daily_breakdown
+        ],
         "sources": sources or {},
     }
 

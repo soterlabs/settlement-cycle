@@ -2554,6 +2554,39 @@ def compute_monthly_pnl(
     # in ``MonthlyPnL`` checks the same expression — this is just the canonical
     # value to store. Sky Direct shortfall is already netted into ``sky_rev``
     # above, so it doesn't appear here separately.
+    # Per-venue daily SDE breakdown for post-hoc reporters (xlsx "SDE daily"
+    # tab — Sky / Grove / in-flight decomposition). Empty when no SDE venues
+    # are active this period.
+    from ..domain.monthly_pnl import SDEDailyBreakdown as _SDEDailyBreakdown
+    _venues_by_id = {v.id: v for v in prime.venues}
+    sde_daily_breakdown_out: list[_SDEDailyBreakdown] = []
+    for _vid, _df in sde_asset_value_per_venue:
+        _entry = sde_table.overlaps_venue(prime.id, _vid, period.start, period.end)
+        _venue = _venues_by_id.get(_vid)
+        if _entry is None or _venue is None:
+            continue
+        _daily = [
+            {
+                "block_date": _row["block_date"],
+                "cum_value": _row["cum_value"],
+                # ``uncapped_value`` is present only on the standard SDE
+                # timeseries (``_sde_asset_value_timeseries``); the Curve-pool
+                # variant doesn't compute it, so default to 0 for those rows.
+                "uncapped_value": _row["uncapped_value"]
+                    if "uncapped_value" in _df.columns else Decimal("0"),
+            }
+            for _, _row in _df.iterrows()
+        ]
+        sde_daily_breakdown_out.append(_SDEDailyBreakdown(
+            venue_id=_vid,
+            label=_venue.label,
+            cap_usd=_entry.cap_usd,
+            burn_date=_entry.burn_date,
+            usdc_settlement_date=_entry.usdc_settlement_date,
+            end_date=_entry.end_date,
+            daily=_daily,
+        ))
+
     return MonthlyPnL(
         prime_id=prime.id,
         month=month,
@@ -2569,4 +2602,5 @@ def compute_monthly_pnl(
         curve_susds_spread=curve_susds_spread if not sky_only else Decimal("0"),
         psm3_susds_spread=psm3_susds_spread if not sky_only else Decimal("0"),
         display_only_breakdown=display_only_breakdown,
+        sde_daily_breakdown=sde_daily_breakdown_out,
     )

@@ -7,6 +7,7 @@ Markdown / CSV / provenance artifacts.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import date
 from decimal import Decimal
 
 from .period import Month, Period
@@ -102,6 +103,33 @@ class VenueRevenue:
 
 
 @dataclass(frozen=True, slots=True)
+class SDEDailyBreakdown:
+    """Per-day SDE asset-value series for one venue, retained on
+    ``MonthlyPnL`` so downstream reporters can render the Sky / Grove /
+    in-flight decomposition without re-running RPC queries.
+
+    The ``daily`` list mirrors the DataFrame returned by
+    ``_sde_asset_value_timeseries``: one dict per period day with keys
+    ``block_date`` (``date``), ``cum_value`` (``Decimal`` — the SDE-capped
+    value used for utilized exclusion), and ``uncapped_value`` (``Decimal``
+    — raw on-chain balance × NAV).
+
+    The accompanying scalar fields (``burn_date`` / ``usdc_settlement_date``
+    / ``end_date`` / ``cap_usd``) are the SDE-entry metadata at the moment
+    of the run, copied here so the reporter can apply the phase-based
+    decomposition (pre-burn → Sky+Grove, in-flight → Grove+inflight,
+    settled → Grove only).
+    """
+    venue_id: str
+    label: str
+    cap_usd: Decimal | None
+    burn_date: date | None
+    usdc_settlement_date: date | None
+    end_date: date | None
+    daily: list[dict] = field(default_factory=list)
+
+
+@dataclass(frozen=True, slots=True)
 class MonthlyPnL:
     """Top-level result of a monthly settlement run.
 
@@ -152,6 +180,12 @@ class MonthlyPnL:
     # Each entry has revenue=0 by construction; ``value_som`` / ``value_eom``
     # carry the principal currently outstanding off-protocol.
     display_only_breakdown: list[VenueRevenue] = field(default_factory=list)
+    # Per-venue daily SDE asset-value series (see ``SDEDailyBreakdown``).
+    # Empty list for primes / months without active SDE entries; populated
+    # for every SDE venue exercised in the run. Consumed by post-hoc
+    # reporters (xlsx "SDE daily" tab) to render the Sky / Grove /
+    # in-flight decomposition without re-running on-chain reads.
+    sde_daily_breakdown: list[SDEDailyBreakdown] = field(default_factory=list)
 
     @property
     def prime_agent_total_revenue(self) -> Decimal:

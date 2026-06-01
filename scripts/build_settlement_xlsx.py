@@ -423,6 +423,97 @@ def _write_off_protocol_holdings(ws, prov: dict, prime_cfg: dict) -> None:
     })
 
 
+def _write_sde_daily(ws, prov: dict) -> None:
+    """Per-day Sky / Grove / In-flight NAV / Total breakdown for capped
+    SDE venues with an on-chain burn event (``burn_date`` set).
+
+    Phase rule per day:
+      * day < burn_date            → Sky = cum_value (cap), Grove = uncapped − cum_value, in-flight = 0
+      * burn_date ≤ day ≤ in_flight_end → Sky = 0, Grove = uncapped (residual), in-flight = cum_value
+      * day > in_flight_end        → Sky = 0, Grove = uncapped, in-flight = 0
+
+    where ``in_flight_end = usdc_settlement_date or end_date``. The total
+    column = sum of the three (= the prime+Sky combined NAV attributable
+    to this venue on that day).
+    """
+    breakdown = prov.get("sde_daily_breakdown") or []
+    venues_with_burn = [b for b in breakdown if b.get("burn_date")]
+    if not venues_with_burn:
+        # No burn events this period — skip the tab entirely.
+        return
+    ws.title = "SDE daily"
+    ws.append(["SDE per-day breakdown (capped venues with on-chain burn)"])
+    ws["A1"].font = _TITLE
+    ws.append([])
+    ws.append([
+        "For each capped SDE venue with an on-chain burn, the daily on-"
+        "chain position is decomposed into Sky's slice (cap-protected, "
+        "pre-burn), Grove's residual (above the cap, surviving the burn), "
+        "and the in-flight USDC settling back to the ALM (post-burn / "
+        "pre-settlement). The three columns sum to the total NAV "
+        "attributable to this venue on that day."
+    ])
+    ws.append([])
+
+    for b in venues_with_burn:
+        cap_str = b.get("cap_usd") or ""
+        burn = date.fromisoformat(b["burn_date"])
+        in_flight_end_raw = b.get("usdc_settlement_date") or b.get("end_date")
+        in_flight_end = (
+            date.fromisoformat(in_flight_end_raw) if in_flight_end_raw else None
+        )
+        end_date_str = b.get("end_date") or "—"
+        settle_str = b.get("usdc_settlement_date") or "—"
+
+        ws.append([f"{b['venue_id']} — {b.get('label', '')}"])
+        ws.cell(ws.max_row, 1).font = _BOLD
+        ws.append([
+            f"Cap: ${float(_D(cap_str)):,.0f}" if cap_str else "Cap: —",
+            f"burn_date: {b['burn_date']}",
+            f"usdc_settlement_date: {settle_str}",
+            f"end_date: {end_date_str}",
+        ])
+        ws.append([])
+        ws.append(["Date", "Sky position", "Grove position", "In-flight NAV", "Total"])
+        _header_row(ws, ws.max_row, 5)
+
+        for r in b.get("daily", []):
+            d = date.fromisoformat(r["block_date"])
+            cum = _D(r["cum_value"])
+            unc = _D(r["uncapped_value"])
+            if d < burn:
+                # Pre-burn: Sky and Grove both visible on-chain. Sky's
+                # share is the cap-protected slice; Grove's is the excess.
+                sky = cum
+                grove = max(Decimal("0"), unc - cum)
+                inflight = Decimal("0")
+            elif in_flight_end is not None and d <= in_flight_end and cum > 0:
+                # In-flight: Sky's shares are destroyed (so uncapped only
+                # reflects Grove's residual). Cap-preserved cum_value is
+                # the in-flight USDC pending settlement.
+                sky = Decimal("0")
+                grove = unc
+                inflight = cum
+            else:
+                # Post-settlement / post-end: Sky's slice is recognised
+                # at $0 (the USDC has landed at the ALM and joined idle
+                # alm_usds for separate accounting). Grove's residual
+                # remains on-chain.
+                sky = Decimal("0")
+                grove = unc
+                inflight = Decimal("0")
+            total = sky + grove + inflight
+            ws.append([
+                d.isoformat(), float(sky), float(grove), float(inflight), float(total),
+            ])
+            for c in (2, 3, 4, 5):
+                ws.cell(ws.max_row, c).number_format = _USD0
+
+        ws.append([])  # blank row between venues
+
+    _set_widths(ws, {1: 12, 2: 18, 3: 18, 4: 18, 5: 18})
+
+
 # --------------------------------------------------------------------------
 # Entrypoint
 # --------------------------------------------------------------------------
@@ -456,6 +547,11 @@ def build_xlsx(prime_id: str, month: str) -> Path:
         # only venues this period. Avoids an empty tab cluttering monthly
         # reports for primes with no off-protocol positions.
         _write_off_protocol_holdings(wb.create_sheet(), prov, cfg)
+    if any(b.get("burn_date") for b in (prov.get("sde_daily_breakdown") or [])):
+        # Only emit the "SDE daily" tab when at least one SDE venue had a
+        # burn this period — otherwise the three-column decomposition is
+        # uninteresting (Sky = full position, Grove = 0 throughout).
+        _write_sde_daily(wb.create_sheet(), prov)
 
     out = cell_dir / _output_filename(prime_id, month)
     wb.save(out)
