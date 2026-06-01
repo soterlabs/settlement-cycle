@@ -74,12 +74,12 @@ def _header_row(ws, row: int, ncols: int) -> None:
 # --------------------------------------------------------------------------
 
 def _read_provenance(cell: Path) -> dict:
-    with (cell / "provenance.json").open() as f:
+    with (cell / "provenance.json").open(encoding="utf-8") as f:
         return json.load(f)
 
 
 def _read_venues(cell: Path) -> list[dict]:
-    with (cell / "venues.csv").open() as f:
+    with (cell / "venues.csv").open(encoding="utf-8") as f:
         return list(csv.DictReader(f))
 
 
@@ -87,17 +87,17 @@ def _read_grove_sheet(cell: Path) -> list[dict]:
     p = cell / "grove_sheet.csv"
     if not p.exists():
         return []
-    with p.open() as f:
+    with p.open(encoding="utf-8") as f:
         return list(csv.DictReader(f))
 
 
 def _read_prime_yaml(prime_id: str) -> dict:
-    with (_REPO / "config" / f"{prime_id}.yaml").open() as f:
+    with (_REPO / "config" / f"{prime_id}.yaml").open(encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
 def _read_sde(prime_id: str, period_start: date) -> list[dict]:
-    with (_REPO / "config" / "sky_direct_exposures.yaml").open() as f:
+    with (_REPO / "config" / "sky_direct_exposures.yaml").open(encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
     out: list[dict] = []
     for section in ("active", "historical"):
@@ -345,12 +345,19 @@ def _write_sde(ws, sde: list[dict], sheet_rows: list[dict]) -> None:
     _set_widths(ws, {1: 8, 2: 8, 3: 14, 4: 12, 5: 12, 6: 8, 7: 50, 8: 25, 9: 16, 10: 18})
 
 
-def _write_off_protocol_holdings(ws, prov: dict, prime_cfg: dict) -> None:
+def _write_off_protocol_holdings(
+    ws, prov: dict, prime_cfg: dict, sheet_rows: list[dict],
+) -> None:
     """Off-protocol holdings — display-only venues. Surfaced for visibility
     but excluded from prime_agent_revenue, sky_revenue, and the NAV cost-
     basis invariant. Realized P&L on any round-trip lands at the anchor
     venue when the cash arrives at the ALM — see
     ``_cat_a_capital_inflow_timeseries`` paired-principal-cap classifier.
+
+    ``sheet_rows`` is the grove_sheet.csv output (post build_monthly_report).
+    When it includes a row for the display-only venue (which happens after
+    build_monthly_report was run with off_protocol.csv support), the
+    CoF allocation for the OOB position is read from there and displayed.
     """
     ws.title = "Off-protocol holdings"
     rows = prov.get("display_only_breakdown") or []
@@ -365,6 +372,14 @@ def _write_off_protocol_holdings(ws, prov: dict, prime_cfg: dict) -> None:
         "the round-trip is booked at the anchor venue when the cash "
         "settles back at the ALM proxy."
     ])
+    ws.append([
+        "CoF allocation: BR is charged on the full outstanding principal "
+        "(it is not deducted from utilized). The 'CoF allocation (est.)' "
+        "column shows the share of sky_revenue attributed to this position "
+        "by build_monthly_report — this CoF is absorbed by the prime with "
+        "no prime revenue to offset it during transit."
+    ])
+    ws.cell(ws.max_row, 1).font = _MUTED
     ws.append([])
 
     if not rows:
@@ -372,13 +387,14 @@ def _write_off_protocol_holdings(ws, prov: dict, prime_cfg: dict) -> None:
         _set_widths(ws, {1: 90})
         return
 
-    by_id = {v.get("id"): v for v in prime_cfg.get("venues", []) or []}
+    by_id  = {v.get("id"): v for v in prime_cfg.get("venues", []) or []}
+    sheet_by_id = {r["venue_id"]: r for r in sheet_rows}
 
     cols = [
         "Venue", "Label", "Chain", "Counterparty (paired_source)",
         "Anchor venue (paired_with)",
-        "Outstanding SoM (USD)", "Outstanding EoM (USD)", "Δ over period",
-        "Status",
+        "Outstanding SoM (USD)", "Outstanding EoM (USD)", "Avg value (SoM/EoM)",
+        "Δ over period", "CoF allocation (est.)", "Status",
     ]
     ws.append(cols)
     _header_row(ws, ws.max_row, len(cols))
@@ -391,7 +407,13 @@ def _write_off_protocol_holdings(ws, prov: dict, prime_cfg: dict) -> None:
         paired_with = (cfg.get("paired_with") or "")
         som = _D(r["value_som"])
         eom = _D(r["value_eom"])
+        avg  = (som + eom) / Decimal("2")
         delta = eom - som
+        # CoF allocation from grove_sheet.csv row (built by build_monthly_report
+        # when off_protocol.csv is present). Falls back to None if grove_sheet
+        # was generated before this feature or hasn't been regenerated yet.
+        sheet_row = sheet_by_id.get(vid, {})
+        cof_alloc = _D(sheet_row.get("cof_alloc") or 0) if sheet_row else Decimal("0")
         if eom == 0 and som > 0:
             status = "fully returned"
         elif eom == som and som > 0:
@@ -404,9 +426,11 @@ def _write_off_protocol_holdings(ws, prov: dict, prime_cfg: dict) -> None:
             status = "—"
         ws.append([
             vid, r.get("label", ""), chain, paired_source, paired_with,
-            float(som), float(eom), float(delta), status,
+            float(som), float(eom), float(avg), float(delta),
+            float(cof_alloc) if cof_alloc else None,
+            status,
         ])
-        for col in (6, 7, 8):
+        for col in (6, 7, 8, 9, 10):
             ws.cell(ws.max_row, col).number_format = _USD0
 
     ws.append([])
@@ -414,12 +438,13 @@ def _write_off_protocol_holdings(ws, prov: dict, prime_cfg: dict) -> None:
         "Note: realized gain on returns (the round-trip spread) is "
         "recognized as revenue at the anchor venue via the paired-"
         "principal-cap classifier — see provenance.json venue_breakdown "
-        "for the anchor's actual_revenue / external_revenue split."
+        "for the anchor's actual_revenue / external_revenue split. "
+        "Re-run build_monthly_report.py to refresh CoF allocation estimates."
     ])
 
     _set_widths(ws, {
         1: 8, 2: 50, 3: 12, 4: 46, 5: 20,
-        6: 18, 7: 18, 8: 16, 9: 22,
+        6: 18, 7: 18, 8: 18, 9: 16, 10: 18, 11: 22,
     })
 
 
@@ -455,7 +480,7 @@ def build_xlsx(prime_id: str, month: str) -> Path:
         # Only emit the off-protocol-holdings tab when the prime has display-
         # only venues this period. Avoids an empty tab cluttering monthly
         # reports for primes with no off-protocol positions.
-        _write_off_protocol_holdings(wb.create_sheet(), prov, cfg)
+        _write_off_protocol_holdings(wb.create_sheet(), prov, cfg, sheet)
 
     out = cell_dir / _output_filename(prime_id, month)
     wb.save(out)

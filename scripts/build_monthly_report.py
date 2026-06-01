@@ -132,6 +132,23 @@ def _read_venues(path: Path) -> list[dict]:
         return list(reader)
 
 
+def _read_off_protocol(cell: Path) -> list[dict]:
+    """Return rows from ``off_protocol.csv`` if it exists, else empty list.
+
+    Each row has ``venue_id``, ``label``, ``value_som``, ``value_eom``.
+    These are display-only venues (e.g. OOB relay EOAs) whose principal-out
+    is NOT deducted from ``utilized`` — Sky charges BR on it — but which have
+    no ``revenue`` entry in ``venues.csv``.  Including their time-weighted avg
+    in the CoF denominator prevents the unattributed CoF from being silently
+    spread across all deployed venues.
+    """
+    p = cell / "off_protocol.csv"
+    if not p.exists():
+        return []
+    with p.open(encoding="utf-8") as f:
+        return list(csv.DictReader(f))
+
+
 def _classify(row: dict, sde: dict[str, dict]) -> tuple[Decimal, Decimal, str]:
     """Returns ``(sd_share, sd_revenue, label_note)`` for a venue row.
 
@@ -201,6 +218,7 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
 
     sde = _load_sde_entries(prime_id, period_start)
     rows = _read_venues(venues_csv)
+    off_protocol_rows = _read_off_protocol(cell)
 
     # First pass: classify each venue, compute avg_value × weight.
     enriched: list[dict] = []
@@ -269,6 +287,34 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
             "revenue":    aggregate_susds_spread,
             "sd_revenue": Decimal("0"),
             "note":       "prime-only (no CoF; computed outside venue loop)",
+        })
+
+    # Display-only venues (off_protocol.csv) — OOB relay EOAs and similar.
+    # Their principal-out is NOT deducted from utilized, so Sky charges BR on
+    # the full amount. Including their avg_value in the CoF denominator
+    # prevents that BR cost from being silently spread across deployed venues.
+    # revenue = 0 (no prime revenue), profit_to_grove = -cof_alloc (they
+    # consume CoF without generating yield to cover it during transit).
+    # The round-trip spread surfaces at the anchor venue when cash returns.
+    for r in off_protocol_rows:
+        som = _D(r["value_som"])
+        eom = _D(r["value_eom"])
+        avg_value = (som + eom) / Decimal("2")
+        if avg_value <= 0:
+            continue
+        enriched.append({
+            "venue_id":   r["venue_id"],
+            "label":      r["label"],
+            "value_som":  som,
+            "value_eom":  eom,
+            "avg_value":  avg_value,
+            "sd_share":   Decimal("0"),
+            "weight":     Decimal("1"),   # bears CoF, not cof_excluded
+            "actual_rev": Decimal("0"),
+            "external":   Decimal("0"),
+            "revenue":    Decimal("0"),
+            "sd_revenue": Decimal("0"),
+            "note":       "OOB/display-only: CoF absorbed, no prime revenue during transit",
         })
 
     # CoF on Net_Subs = sky_revenue minus the SDE-revenue portion that flows
