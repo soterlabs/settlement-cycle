@@ -87,7 +87,7 @@ Sky charges full BR on `utilized`, then reduces its invoice by `30bps × value_s
 
 For raw sUSDS venues (Cat B): `susds_spread_reimbursement = value_som × 30bps_daily × n_days` deducted from `sky_revenue`; prime revenue = 0.
 
-For LP-embedded sUSDS venues (Curve `curve_idle_usds`): `spread_d = prime_sUSDS_value_d × 30bps_daily`, summed across the period and added to `prime_agent_revenue` outside the per-venue loop (unchanged — see `curve_susds_spread` in provenance).
+For LP-embedded sUSDS venues (Curve `curve_idle_usds`): `spread_d = prime_sUSDS_value_d × 30bps_daily`, summed across the period and deducted from `sky_revenue` (surfaced as `curve_susds_spread` in provenance, folded into `susds_spread_reimbursement` total alongside Cat B venues).
 
 ---
 

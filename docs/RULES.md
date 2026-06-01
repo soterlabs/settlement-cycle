@@ -97,8 +97,9 @@ Governed by the `sky_savings_token` flag in the prime YAML config — set explic
 **sUSDS inside Curve LP pools** (`curve_idle_usds.sky_savings_token: true`):
 
 - Not deducted from `utilized`.
-- `prime_revenue_d = (alm_lp_d / pool_total_d) × (sUSDS_reserve_d × pps_d) × 30bps_daily`
-- Summed across the period and added to `prime_agent_revenue` (surfaced as `curve_susds_spread` in provenance).
+- Prime Revenue = **0** for the sUSDS slice.
+- `sky_revenue_reduction_d = (alm_lp_d / pool_total_d) × (sUSDS_reserve_d × pps_d) × 30bps_daily`
+- Summed across the period and deducted from `sky_revenue` (surfaced as `curve_susds_spread` in provenance, folded into `susds_spread_reimbursement` total).
 - `pps_d = convertToAssets(1 share, block_d)` to convert sUSDS→USDS.
 
 Net economic outcome: `SSR × V` (actual token gain) `− sky_revenue_net × share = SSR × V − SSR × V = 0`. Sky earns the net SSR; Prime is economically neutral.

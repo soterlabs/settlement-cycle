@@ -482,10 +482,10 @@ venues:
       address: '0x00836fe54625be242bcfa286207795405ca4fd10'
       symbol: 'sUSDSUSDT'
       decimals: 18
-    # Prime's proportional sUSDS in this pool earns the 30bps spread
-    # (BR - SSR) as Prime Revenue (Curve LP path — different from Cat B).
+    # Prime's proportional sUSDS in this pool: 30bps spread (BR − SSR) is
+    # deducted from Sky Revenue (consistent with Cat B ALM venues, Rule 5).
     # sUSDS is NOT subtracted from utilized; SSR returns to Sky via BR charge.
-    # sky_savings_token: true triggers the spread-as-prime-revenue path (Curve).
+    # sky_savings_token: true triggers the spread-as-sky-revenue-reduction path.
     #
     # sde_coin: the USDT leg of this pool is a Sky Direct Exposure (SDE)
     # per Atlas A.2.2.9.1.1.1.1.3 (active from 2025-11-13, see

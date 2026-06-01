@@ -2897,13 +2897,12 @@ def compute_monthly_pnl(
     else:
         agent_rate = compute_agent_rate(period, sub_usds, sub_susds, ssr)
         prime_rev, breakdown = compute_prime_agent_revenue(period, venue_inputs)
-        # Add 30bps spread on sUSDS held inside Curve LP pools. This is computed
-        # separately from the venue loop because the data comes from the Curve
-        # pool daily snapshots, not from the venue's SoM/EoM position values.
-        # Same shape, different source: 30 bps spread on the sUSDS slice of PSM3
-        # holdings (PRD §17.11) — neutralises the SSR + BR-charge composite on
-        # the sUSDS leg so the prime nets to zero on idle sUSDS.
-        prime_rev = prime_rev + curve_susds_spread + psm3_susds_spread
+        # Per ``d255ed2`` (Rule 5 consistency): the 30 bps spread on sUSDS held
+        # in Curve LP pools and PSM3 is treated as a Sky Revenue REDUCTION (not
+        # a Prime Revenue credit), matching the treatment of sky_savings_token
+        # Cat B ALM venues. ``curve_susds_spread`` and ``psm3_susds_spread`` are
+        # folded into ``total_susds_spread_reimb`` below instead of being added
+        # to ``prime_rev``.
     # Annotate each venue's VenueRevenue with (a) its lending-idle tw_avg —
     # post-hoc report scripts deduct it from avg_value for CoF allocation
     # since the idle portion is already subtracted from utilized — and
@@ -2919,7 +2918,16 @@ def compute_monthly_pnl(
         )
         for vr in breakdown
     ]
-    total_susds_spread_reimb = sum(_susds_spread_reimbs.values(), Decimal("0"))
+    # Fold Curve LP and PSM3 sUSDS spreads into the total sky-revenue reduction
+    # alongside the Cat B per-venue values. All three paths (Cat B ALM + Curve
+    # LP + PSM3) are treated identically: Sky charges full BR on the underlying
+    # utilized, then refunds 30 bps as a sky_revenue reduction — net economic
+    # cost to the prime is SSR × V (Rule 5 consistency, per d255ed2).
+    total_susds_spread_reimb = (
+        sum(_susds_spread_reimbs.values(), Decimal("0"))
+        + curve_susds_spread
+        + psm3_susds_spread
+    )
 
 
     # SDE revenue (Σ actual × sd_share across venues) flows directly to Sky.
@@ -2952,14 +2960,12 @@ def compute_monthly_pnl(
         curve_idle_usds=curve_idle_usds,
         lending_idle_usds=lending_idle_usds,
     )
-    # Sky's full claim: BR on (utilized − SDE − idle deductions) + actual
-    # SDE revenue, minus the 30 bps spread reimbursement for sky_savings_token
-    # Cat B venues (Σ vr.susds_spread_reimbursement). The reimbursement
-    # neutralises the SSR-via-share-price + BR-on-utilized composite on
-    # sky_savings_token positions: Sky charges full BR then refunds 30bps,
-    # so the prime's net cost is SSR × V (economic neutrality). The Curve LP
-    # and PSM3 sUSDS-leg spreads are still credited to ``prime_rev``
-    # (those positions don't surface as venue rows the same way).
+    # Sky's full claim: BR on (utilized − SDE − idle deductions) + actual SDE
+    # revenue, minus the 30 bps spread reimbursement across all
+    # sky_savings_token paths (Cat B ALM + Curve LP sUSDS + PSM3 sUSDS leg).
+    # The reimbursement neutralises the SSR-via-share-price + BR-on-utilized
+    # composite on sUSDS positions: Sky charges full BR then refunds 30bps,
+    # so the prime's net cost is SSR × V (economic neutrality, Rule 5).
     sky_rev = sky_rev_br + sde_revenue - total_susds_spread_reimb
     # Pure BR × cum_debt (no idle / SDE / PSM / Curve / lending deductions).
     # Display-only. NOT the gross analog of sky_revenue: ``sky_revenue``
