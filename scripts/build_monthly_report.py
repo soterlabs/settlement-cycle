@@ -253,6 +253,7 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
         prov = json.load(f)
     period_start = date.fromisoformat(prov["period"]["start"])
     period_end   = date.fromisoformat(prov["period"]["end"])
+    n_days       = int(prov["period"]["n_days"])
     headline_sky    = _D(prov["results"]["sky_revenue"])
     headline_prime  = _D(prov["results"]["prime_agent_revenue"])
     headline_agent  = _D(prov["results"]["agent_rate"])
@@ -399,6 +400,7 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
         # cof_excluded venues → their tw_avg is alm_proxy_usds deduction.
         # lending_idle venues → lending_idle_tw_avg_usd is the deduction.
         # SDE fixed venues   → their avg_value is subtracted as sde_asset_value.
+        # SDE capped venues  → min(cap, avg) is subtracted as sde_asset_value.
         # All other venues   → do not reduce utilized (they're deployed at BR).
         #
         # ``avg_value_pre_override`` is used in place of ``avg_value`` so
@@ -475,7 +477,19 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
         (v["avg_value"] * v["weight"] for v in enriched), Decimal("0"),
     )
 
-    # Second pass: allocate CoF, derive P2S / P2G.
+    # Per-venue Sky Revenue reduction from maximum (sky_revenue_gross = pure BR × debt).
+    # Two separate sources:
+    #   1. Idle/SDE utilized deduction → reduces sky_rev_br_gross → cof_total.
+    #      sky_rev_br_reduction = sky_revenue_gross − cof_total
+    #      (both are pure BR; comparable directly)
+    #   2. sUSDS spread reimbursement → reduces sky_revenue below cof_total.
+    #      Per-venue spread_reimb is exact (no estimation needed).
+    # Note: PSM3 USDS and Curve idle USDS deductions are not tracked per-venue
+    # so Σ(utilized estimates) may undercount; labelled (est.).
+    sky_rev_br_reduction = max(Decimal("0"), headline_sky_gross - cof_total)
+    total_known_deduction = sum((v["deduction_avg"] for v in enriched), Decimal("0"))
+
+    # Second pass: allocate CoF, derive P2S / P2G, estimate sky_rev reduction.
     for v in enriched:
         if total_weighted > 0:
             v["cof_alloc"] = (
@@ -487,10 +501,18 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
         # Σ profit_to_sky ≡ headline_sky (net sky_revenue) by construction.
         v["profit_to_sky"]   = v["cof_alloc"] + v["sd_revenue"] - v["spread_reimb"]
         v["profit_to_grove"] = v["revenue"] - v["cof_alloc"]
+        # sky_rev_reduction = exact spread + estimated BR-deduction portion.
+        utilized_est = (
+            v["deduction_avg"] / total_known_deduction * sky_rev_br_reduction
+            if total_known_deduction > 0 and v["deduction_avg"] > 0
+            else Decimal("0")
+        )
+        v["sky_rev_reduction_est"] = v["spread_reimb"] + utilized_est
 
     totals = {
         "sky_revenue":              headline_sky,
         "sky_revenue_gross":        headline_sky_gross,
+        "sky_rev_br_reduction":     sky_rev_br_reduction,
         "prime_agent_revenue":      headline_prime,
         "agent_rate":               headline_agent,
         "cof_total":                cof_total,
@@ -506,7 +528,7 @@ def _emit_csv(rows: list[dict], out: Path) -> None:
     cols = [
         "venue_id", "label", "value_som", "value_eom", "avg_value",
         "sd_share", "weight", "actual_rev", "external", "revenue",
-        "sd_revenue", "spread_reimb", "deduction_avg",
+        "sd_revenue", "spread_reimb", "deduction_avg", "sky_rev_reduction_est",
         "cof_alloc", "profit_to_sky", "profit_to_grove", "note",
     ]
     with out.open("w", encoding="utf-8", newline="") as f:
@@ -549,8 +571,7 @@ def _emit_markdown(
     if totals["sky_revenue_gross"] > 0:
         lines.append(f"| **Sky Revenue (max) — BR × full ilk debt, no deductions** | **{_fmt_usd(totals['sky_revenue_gross'])}** |")
         lines.append(f"| &nbsp;&nbsp;↳ CoF on Net_Subs (actual BR × utilized) | {_fmt_usd(totals['cof_total'])} |")
-        sky_rev_br_reduction = max(Decimal("0"), totals["sky_revenue_gross"] - totals["cof_total"])
-        lines.append(f"| &nbsp;&nbsp;↳ reduction from idle/SDE deductions | −{_fmt_usd(sky_rev_br_reduction)} |")
+        lines.append(f"| &nbsp;&nbsp;↳ reduction from idle/SDE deductions (est., known venues only) | −{_fmt_usd(totals['sky_rev_br_reduction'])} |")
     lines.append(f"| Σ Grove Net Payment (= `prime_agent_revenue` − CoF) | {_fmt_usd(sum_p2g)} |")
     lines.append(f"| &nbsp;&nbsp;↳ `prime_agent_revenue` (per-venue revenue total) | {_fmt_usd(totals['prime_agent_revenue'])} |")
     lines.append(f"| &nbsp;&nbsp;↳ CoF deducted by Grove (= cof_total above) | -{_fmt_usd(totals['cof_total'])} |")
@@ -577,9 +598,9 @@ def _emit_markdown(
     lines.append("## Per-venue breakdown\n")
     lines.append(
         "| Venue | Label | avg_value | weight | Profit to Sky | Revenue | Grove Net Payment | "
-        "CoF alloc | SDE rev | Spread Reimb | Utilized Deduction (avg) | Note |"
+        "CoF alloc | SDE rev | Spread Reimb | Utilized Deduction (avg) | Sky Rev Reduction (est.) | Note |"
     )
-    lines.append("|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|")
+    lines.append("|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|")
     # Sort by Profit to Sky desc to make the sheet read like Grove's.
     for r in sorted(rows, key=lambda v: float(v["profit_to_sky"]), reverse=True):
         lines.append(
@@ -588,7 +609,7 @@ def _emit_markdown(
             f"{_fmt_usd(r['revenue'])} | {_fmt_usd(r['profit_to_grove'])} | "
             f"{_fmt_usd(r['cof_alloc'])} | "
             f"{_fmt_usd(r['sd_revenue'])} | {_fmt_usd(r['spread_reimb'])} | "
-            f"{_fmt_usd(r['deduction_avg'])} | {r['note']} |"
+            f"{_fmt_usd(r['deduction_avg'])} | {_fmt_usd(r['sky_rev_reduction_est'])} | {r['note']} |"
         )
     lines.append("")
     lines.append("## Formulas\n")
@@ -609,14 +630,24 @@ def _emit_markdown(
         "grove_net_payment_v  = revenue_v − cof_alloc_v\n"
         "# Invariants: Σ profit_to_sky ≡ sky_revenue   Σ GNP + cof_total ≡ prime_agent_revenue\n"
         "\n"
-        "# Utilized deduction column (display-only, no settlement effect):\n"
-        "deduction_avg_v = tw_avg_value if cof_excluded\n"
-        "                  else lending_idle_tw_avg if lending_idle > 0\n"
-        "                  else avg_value if fixed SDE\n"
-        "                  else min(cap_usd, avg_value) if capped SDE\n"
-        "                  else 0\n"
+        "# Sky Revenue reduction columns (display-only, no settlement effect):\n"
+        "sky_revenue_gross     = provenance:sky_revenue_gross  # pure BR × full ilk debt\n"
+        "                        # (no idle deductions, no SDE, no spread)\n"
+        "sky_rev_br_reduction  = sky_revenue_gross − cof_total\n"
+        "                        # both are pure BR; shows idle/SDE deduction effect\n"
+        "deduction_avg_v       = tw_avg_value if cof_excluded\n"
+        "                        else lending_idle_tw_avg if lending_idle > 0\n"
+        "                        else avg_value if fixed SDE\n"
+        "                        else min(cap_usd, avg_value) if capped SDE\n"
+        "                        else 0\n"
         "# Shows how much each venue reduces 'utilized' on average, i.e. the\n"
         "# principal that is NOT subject to BR charges. Exact per-venue.\n"
+        "sky_rev_reduction_est_v = spread_reimb_v                           # exact\n"
+        "                          + deduction_avg_v / Σ_v(deduction_avg_v)\n"
+        "                            × sky_rev_br_reduction                 # est.\n"
+        "# Note: PSM3 USDS and Curve idle USDS deductions are not tracked per-venue;\n"
+        "# Σ(BR-deduction portion) may undercount for primes with large PSM3/Curve.\n"
+        "# Spread portion is always exact.\n"
         "```\n"
     )
     out.write_text("\n".join(lines), encoding="utf-8")

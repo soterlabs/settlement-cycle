@@ -207,7 +207,8 @@ class MonthlyPnL:
     # no SDE asset-value, no Curve/lending idle. Uses the same subsidised
     # BR + ramp schedule as the actual ``sky_revenue``. Display-only —
     # NOT the gross analog of ``sky_revenue`` (which also adds the SDE
-    # actual revenue on top of BR-on-utilized). The two relate as:
+    # actual revenue on top of BR-on-utilized and subtracts the sUSDS
+    # spread reimbursement). The two relate as:
     #
     #     sky_revenue_gross = Σ_d subsidised_BR × cum_debt_d
     #     sky_revenue       = Σ_d subsidised_BR × utilized_d  +  sde_revenue

@@ -2984,9 +2984,10 @@ def compute_monthly_pnl(
     # composite on sUSDS positions: Sky charges full BR then refunds 30bps,
     # so the prime's net cost is SSR × V (economic neutrality, Rule 5).
     sky_rev = sky_rev_br + sde_revenue - total_susds_spread_reimb
-    # Pure BR × cum_debt (no idle / SDE / PSM / Curve / lending deductions).
-    # Display-only. NOT the gross analog of sky_revenue: ``sky_revenue``
-    # also adds ``sde_revenue`` on top of the BR-on-utilized base, so for
+    # Pure BR × cum_debt (no idle / SDE / PSM / Curve / lending deductions,
+    # no susds spread reimbursement). Display-only. NOT the gross analog of
+    # sky_revenue: ``sky_revenue`` also adds ``sde_revenue`` on top of the
+    # BR-on-utilized base and subtracts the spread reimbursement, so for
     # primes with active SDE positions ``sky_revenue`` can exceed
     # ``sky_revenue_gross``. The monthly report consumes this as
     # ``sky_revenue_gross − cof_total`` to display "BR reduction from
