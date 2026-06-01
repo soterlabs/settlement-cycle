@@ -76,6 +76,30 @@ def _previous_day_eod_utc(d) -> datetime:
     return datetime.combine(d - timedelta(days=1), time.max, tzinfo=timezone.utc)
 
 
+def _merge_cap_series(df1, df2):
+    """Sum two cumulative ``[block_date, cum_inflow]`` series into one.
+
+    Used when multiple display-only EOA venues share the same
+    ``paired_source`` — the pooled cap consumed by anchor inflows is the sum
+    of each leg's cumulative principal-out at every date, not just one
+    leg's. See the auto-wiring loop in ``compute_monthly_pnl`` (Cat A
+    branch) for the collision handling.
+    """
+    import pandas as _pd
+    from ._helpers import cum_at_or_before as _cum
+    if df1 is None or df1.empty:
+        return df2
+    if df2 is None or df2.empty:
+        return df1
+    all_dates = sorted(set(df1["block_date"]) | set(df2["block_date"]))
+    rows = [
+        {"block_date": d,
+         "cum_inflow": _cum(df1, "cum_inflow", d) + _cum(df2, "cum_inflow", d)}
+        for d in all_dates
+    ]
+    return _pd.DataFrame(rows)
+
+
 def _check_centrifuge_in_flight(
     prime: "Prime",
     pin_blocks_som: dict["Chain", int],
@@ -2095,6 +2119,14 @@ def compute_monthly_pnl(
             for eoa_v in prime.venues:
                 if not eoa_v.display_only:
                     continue
+                if eoa_v.skip:
+                    # ``skip`` takes precedence over ``display_only`` for
+                    # compute purposes: a wound-down venue should not drive
+                    # the anchor's cap, even if it's still listed for
+                    # reporting. Without this guard the skipped venue's
+                    # principal-out series would silently reclassify real
+                    # anchor inflows as capital, mis-attributing revenue.
+                    continue
                 if eoa_v.paired_with != venue.id:
                     continue
                 if eoa_v.paired_source is None or eoa_v.holder_override is None:
@@ -2105,6 +2137,18 @@ def compute_monthly_pnl(
                     # display-only venue setup helper in normalize.positions
                     # already enforces this; skip silently here.
                     continue
+                if eoa_v.chain not in prime.alm or eoa_v.chain not in period.pin_blocks:
+                    # Defensive: a display-only venue configured for a chain
+                    # where the prime has no ALM address (or where the period
+                    # has no pin_block) would otherwise KeyError mid-loop
+                    # with a hard-to-diagnose stack trace. Skip with a
+                    # warning so the operator sees which venue tripped it.
+                    _log.warning(
+                        "  paired-cap: skipping display-only venue %s — "
+                        "chain %s missing from prime.alm or period.pin_blocks.",
+                        eoa_v.id, eoa_v.chain.value,
+                    )
+                    continue
                 cap_df = balance_src.directed_inflow_timeseries(
                     chain=eoa_v.chain.value,
                     token=eoa_v.token.address.value,
@@ -2113,7 +2157,20 @@ def compute_monthly_pnl(
                     start=prime.start_date,
                     pin_block=period.pin_blocks[eoa_v.chain],
                 )
-                paired_principal_caps[eoa_v.paired_source.value] = cap_df
+                src_key = eoa_v.paired_source.value
+                if src_key in paired_principal_caps:
+                    # Two or more display-only EOAs share the same
+                    # ``paired_source``. The cap is the SUM of their
+                    # principal-out series — return inflows from the shared
+                    # counterparty consume the pooled cap, not just one
+                    # leg's. Without this, the second insert would silently
+                    # overwrite the first and reclassify legitimate
+                    # principal-returns as yield.
+                    paired_principal_caps[src_key] = _merge_cap_series(
+                        paired_principal_caps[src_key], cap_df,
+                    )
+                else:
+                    paired_principal_caps[src_key] = cap_df
             inflow_ts = _cat_a_capital_inflow_timeseries(
                 prime, venue, period,
                 balance_source=balance_src,

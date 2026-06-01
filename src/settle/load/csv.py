@@ -60,3 +60,26 @@ def write_venues_csv(pnl: MonthlyPnL, dest: Path) -> Path | None:
                 f"{v.br_charge}", f"{v.sky_direct_shortfall}",
             ])
     return dest
+
+
+def write_off_protocol_csv(pnl: MonthlyPnL, dest: Path) -> Path | None:
+    """Off-protocol holdings CSV — one row per display-only venue.
+
+    Surfaced separately from ``venues.csv`` so the operating-venue schema
+    stays untouched and downstream consumers can opt in to the new file.
+    Returns None when the prime has no display-only positions this period.
+    """
+    if not pnl.display_only_breakdown:
+        return None
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    headers = ["venue_id", "label", "value_som", "value_eom", "period_delta"]
+    with dest.open("w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(headers)
+        for v in pnl.display_only_breakdown:
+            w.writerow([
+                v.venue_id, v.label,
+                f"{v.value_som}", f"{v.value_eom}",
+                f"{v.value_eom - v.value_som}",
+            ])
+    return dest

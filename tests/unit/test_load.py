@@ -237,6 +237,78 @@ def test_write_venues_csv_returns_none_when_no_venues(tmp_path: Path):
 
 
 # ---------------------------------------------------------------------------
+# Display-only / off-protocol holdings
+# ---------------------------------------------------------------------------
+
+
+def _pnl_with_display_only() -> MonthlyPnL:
+    """A `MonthlyPnL` that has one operating venue and one display-only
+    venue, mirroring the Grove E36 / E14 production shape."""
+    base = _sample_pnl()
+    display = VenueRevenue(
+        venue_id="E36",
+        label="OOB principal via 0xd94f (relay)",
+        value_som=Decimal("50_000_000"),
+        value_eom=Decimal("0"),  # fully returned this period
+        period_inflow=Decimal("0"),
+        revenue=Decimal("0"),
+    )
+    return type(base)(
+        prime_id=base.prime_id, month=base.month, period=base.period,
+        sky_revenue=base.sky_revenue, agent_rate=base.agent_rate,
+        prime_agent_revenue=base.prime_agent_revenue,
+        monthly_pnl=base.monthly_pnl,
+        venue_breakdown=base.venue_breakdown,
+        pin_blocks_som=base.pin_blocks_som,
+        display_only_breakdown=[display],
+    )
+
+
+def test_render_markdown_includes_display_only_section():
+    md = render_markdown(_pnl_with_display_only())
+    assert "## Off-protocol holdings (display-only)" in md
+    assert "E36" in md
+    assert "OOB principal" in md
+    # Δ over period reflects EoM - SoM ($0 - $50M = -$50M)
+    assert "-$50,000,000" in md
+
+
+def test_render_markdown_omits_display_only_section_when_empty():
+    md = render_markdown(_sample_pnl())
+    assert "Off-protocol holdings" not in md
+
+
+def test_write_off_protocol_csv_emits_rows(tmp_path: Path):
+    from settle.load.csv import write_off_protocol_csv
+    out = write_off_protocol_csv(_pnl_with_display_only(), tmp_path / "off_protocol.csv")
+    assert out is not None
+    text = out.read_text()
+    assert "venue_id,label,value_som,value_eom,period_delta" in text
+    assert "E36" in text
+    # value_som and EoM as Decimal-formatted strings
+    assert "50000000" in text
+    # delta = 0 - 50_000_000
+    assert "-50000000" in text
+
+
+def test_write_off_protocol_csv_returns_none_when_no_display_only(tmp_path: Path):
+    from settle.load.csv import write_off_protocol_csv
+    out = write_off_protocol_csv(_sample_pnl(), tmp_path / "off_protocol.csv")
+    assert out is None
+    assert not (tmp_path / "off_protocol.csv").exists()
+
+
+def test_provenance_includes_display_only_breakdown():
+    p = render_provenance(_pnl_with_display_only())
+    assert "display_only_breakdown" in p
+    assert len(p["display_only_breakdown"]) == 1
+    e36 = p["display_only_breakdown"][0]
+    assert e36["venue_id"] == "E36"
+    assert e36["value_som"] == "50000000"
+    assert e36["value_eom"] == "0"
+
+
+# ---------------------------------------------------------------------------
 # Provenance
 # ---------------------------------------------------------------------------
 

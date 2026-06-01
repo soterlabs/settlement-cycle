@@ -425,6 +425,87 @@ def test_paired_cap_inflow_with_zero_cap_is_all_yield(config_dir: Path):
     assert out.empty
 
 
+def test_merge_cap_series_sums_two_cumulative_series():
+    """Collision handler for the case where two display-only venues share
+    the same ``paired_source``: the pooled cap is the sum of each leg's
+    cumulative principal-out at every date — not just one leg's. Pins the
+    arithmetic: at any date, the merged ``cum_inflow`` equals the sum of
+    the carry-forward values of both inputs."""
+    from settle.compute.monthly_pnl import _merge_cap_series
+
+    df1 = pd.DataFrame({
+        "block_date": [date(2026, 3, 1), date(2026, 3, 10)],
+        "cum_inflow": [Decimal("30000000"), Decimal("50000000")],
+    })
+    df2 = pd.DataFrame({
+        "block_date": [date(2026, 3, 5), date(2026, 3, 15)],
+        "cum_inflow": [Decimal("20000000"), Decimal("35000000")],
+    })
+
+    merged = _merge_cap_series(df1, df2)
+
+    by_date = {r["block_date"]: r["cum_inflow"] for _, r in merged.iterrows()}
+    # Mar 1: df1=$30M, df2=$0 (no row yet) → $30M
+    assert by_date[date(2026, 3, 1)]  == Decimal("30000000")
+    # Mar 5: df1=$30M (carry-forward), df2=$20M → $50M
+    assert by_date[date(2026, 3, 5)]  == Decimal("50000000")
+    # Mar 10: df1=$50M, df2=$20M (carry-forward) → $70M
+    assert by_date[date(2026, 3, 10)] == Decimal("70000000")
+    # Mar 15: df1=$50M (carry-forward), df2=$35M → $85M
+    assert by_date[date(2026, 3, 15)] == Decimal("85000000")
+
+
+def test_merge_cap_series_handles_empty_inputs():
+    """Defensive: merging with an empty frame returns the other; merging
+    two empties returns an empty. Avoids KeyError on the union step when
+    one display-only venue has had no principal-out activity yet."""
+    from settle.compute.monthly_pnl import _merge_cap_series
+
+    df = pd.DataFrame({
+        "block_date": [date(2026, 3, 1)],
+        "cum_inflow": [Decimal("100")],
+    })
+    empty = pd.DataFrame({"block_date": [], "cum_inflow": []})
+
+    assert _merge_cap_series(df, empty).equals(df)
+    assert _merge_cap_series(empty, df).equals(df)
+    assert _merge_cap_series(empty, empty).empty
+
+
+def test_paired_cap_pooled_collision_consumes_summed_cap(config_dir: Path):
+    """End-to-end: when two display-only EOAs share the same
+    ``paired_source``, returns from that counterparty consume the SUMMED
+    principal-out cap. A $80M return when leg-A has $50M out and leg-B
+    has $30M out should classify all $80M as capital (pooled cap = $80M),
+    not just one leg's $50M."""
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()
+    cp_paired = _bytes20("0x94b398acb2fce988871218221ea6a4a2b26cccbc")
+
+    src = MockBalanceSource()
+    src.inflow_by_counterparty = lambda **_: pd.DataFrame({
+        "block_date":    [date(2026, 3, 20)],
+        "counterparty":  [cp_paired],
+        "signed_amount": [Decimal("80000000")],
+    })
+
+    # Build the pooled cap as if it had been merged by the orchestrator's
+    # collision handler from two legs ($50M + $30M = $80M).
+    from settle.compute.monthly_pnl import _merge_cap_series
+    leg_a = _paired_cap_series([(date(2026, 3, 1), Decimal("50000000"))])
+    leg_b = _paired_cap_series([(date(2026, 3, 10), Decimal("30000000"))])
+    pooled = _merge_cap_series(leg_a, leg_b)
+
+    out = _cat_a_capital_inflow_timeseries(
+        grove, venue, period,
+        balance_source=src,
+        external_sources=set(),
+        paired_principal_caps={cp_paired: pooled},
+    )
+    # Full $80M is within pooled cap → all capital, no yield.
+    assert out["daily_inflow"].sum() == Decimal("80000000")
+
+
 def test_paired_cap_non_paired_counterparty_unaffected(config_dir: Path):
     """When a different (non-paired) counterparty is in the same frame,
     its inflows follow the existing classification (external vs capital);

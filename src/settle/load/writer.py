@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 from ..domain.monthly_pnl import MonthlyPnL
-from .csv import write_csv, write_venues_csv
+from .csv import write_csv, write_off_protocol_csv, write_venues_csv
 from .markdown import write_markdown
 from .provenance import write_provenance
 
@@ -51,4 +51,7 @@ def write_settlement(
     venues_path = write_venues_csv(pnl, output_dir / "venues.csv")
     if venues_path is not None:
         written["venues_csv"] = venues_path
+    off_protocol_path = write_off_protocol_csv(pnl, output_dir / "off_protocol.csv")
+    if off_protocol_path is not None:
+        written["off_protocol_csv"] = off_protocol_path
     return written
