@@ -43,23 +43,33 @@ _SETTLEMENT_SOURCES = {
 # Pin blocks per (month, chain). EoM block = last block ≤ <last day of month> 23:59:59 UTC.
 PIN_BLOCKS_BY_MONTH = {
     # SoM = previous month's EoM
+    # Monad blocks are placeholders — Monad mainnet was not active for Grove
+    # in Q1 2026 (E33 V3 pool reads degrade to $0 via the wrap in
+    # ``normalize.positions._uniswap_v3_value``). Set to monotonically
+    # increasing dummies so the block-resolver lookup doesn't underflow.
     (2026, 1): {
         "som": {Chain.ETHEREUM: 24136052, Chain.BASE: 40218126,
-                Chain.AVALANCHE_C: 74824633, Chain.PLUME: 44691271},
+                Chain.AVALANCHE_C: 74824633, Chain.PLUME: 44691271,
+                Chain.MONAD: 1},
         "eom": {Chain.ETHEREUM: 24358292, Chain.BASE: 41557326,
-                Chain.AVALANCHE_C: 76986991, Chain.PLUME: 49010253},
+                Chain.AVALANCHE_C: 76986991, Chain.PLUME: 49010253,
+                Chain.MONAD: 2},
     },
     (2026, 2): {
         "som": {Chain.ETHEREUM: 24358292, Chain.BASE: 41557326,
-                Chain.AVALANCHE_C: 76986991, Chain.PLUME: 49010253},
+                Chain.AVALANCHE_C: 76986991, Chain.PLUME: 49010253,
+                Chain.MONAD: 2},
         "eom": {Chain.ETHEREUM: 24558867, Chain.BASE: 42766926,
-                Chain.AVALANCHE_C: 79250451, Chain.PLUME: 52322002},
+                Chain.AVALANCHE_C: 79250451, Chain.PLUME: 52322002,
+                Chain.MONAD: 3},
     },
     (2026, 3): {
         "som": {Chain.ETHEREUM: 24558867, Chain.BASE: 42766926,
-                Chain.AVALANCHE_C: 79250451, Chain.PLUME: 52322002},
+                Chain.AVALANCHE_C: 79250451, Chain.PLUME: 52322002,
+                Chain.MONAD: 3},
         "eom": {Chain.ETHEREUM: 24781026, Chain.BASE: 44106126,
-                Chain.AVALANCHE_C: 81789468, Chain.PLUME: 58679343},
+                Chain.AVALANCHE_C: 81789468, Chain.PLUME: 58679343,
+                Chain.MONAD: 4},
     },
 }
 

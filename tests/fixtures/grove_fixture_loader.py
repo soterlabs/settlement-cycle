@@ -142,7 +142,13 @@ def build_grove_sources(grove, fixtures: dict, blocks_by_chain: dict[str, Any]) 
                 fixtures[key]["rows"], "block_date",
             )
 
-    inflow_by_cp_fixtures: dict[bytes, pd.DataFrame] = {}
+    # Per-(token, holder) inflow fixtures. Keying by ``token`` alone would
+    # silently spill one venue's flow data into a different venue that
+    # happens to share the token (e.g. E15 USDC at the main ALM and E32 USDC
+    # at an alt-holder both use the USDC token address). Cat A venues whose
+    # holder doesn't match a captured fixture get an empty frame — same
+    # behaviour as a venue that isn't in the fixture at all.
+    inflow_by_cp_fixtures: dict[tuple[bytes, bytes], pd.DataFrame] = {}
     for v in grove.venues:
         if v.pricing_category.value != "A":
             continue
@@ -153,7 +159,18 @@ def build_grove_sources(grove, fixtures: dict, blocks_by_chain: dict[str, Any]) 
                 df["counterparty"] = df["counterparty"].apply(
                     lambda h: bytes.fromhex(h.removeprefix("0x")).rjust(20, b"\x00")
                 )
-            inflow_by_cp_fixtures[v.token.address.value] = df
+            # Holder the fixture was captured against. Prefer the explicit
+            # ``_holder`` metadata field; fall back to the venue's effective
+            # holder (holder_override or main ALM) for older fixtures that
+            # didn't record it.
+            fx_holder_str = fixtures[key].get("_holder")
+            if fx_holder_str:
+                fx_holder = bytes.fromhex(
+                    fx_holder_str.removeprefix("0x")
+                ).rjust(20, b"\x00")
+            else:
+                fx_holder = (v.holder_override or grove.alm[v.chain]).value
+            inflow_by_cp_fixtures[(v.token.address.value, fx_holder)] = df
 
     class _RoutedBalances(MockBalanceSource):
         def cumulative_balance_timeseries(
@@ -174,7 +191,7 @@ def build_grove_sources(grove, fixtures: dict, blocks_by_chain: dict[str, Any]) 
             return pd.DataFrame({"block_date": [], "daily_inflow": [], "cum_inflow": []})
 
         def inflow_by_counterparty(self, chain, token, holder, start, pin_block):
-            df = inflow_by_cp_fixtures.get(token)
+            df = inflow_by_cp_fixtures.get((token, holder))
             if df is not None:
                 return df
             return pd.DataFrame({"block_date": [], "counterparty": [], "signed_amount": []})
@@ -191,9 +208,22 @@ def build_grove_sources(grove, fixtures: dict, blocks_by_chain: dict[str, Any]) 
         })
         for r in fixtures["v3_liquidity_events_e12"]["rows"]
     ]
+    # Scope the V3 events fixture to the (owner, pool) it was captured for.
+    # The Dune query is parameterised by ``token_ids_padded`` (= E12's
+    # tokenIds at the main Grove ALM in the AUSD/USDC pool) — applying its
+    # events to any other (owner, pool) silently mixes positions and routes
+    # phantom inflows into alt-holder venues that share the pool address
+    # (e.g. E30, which the alt-holder 0x94b398… uses for OOB AUSD
+    # acquisition). For all other (owner, pool) combinations the fixture
+    # returns an empty event list — same behaviour as a venue that isn't
+    # in the fixture at all.
+    _v3_fixture_owner = grove_alm
+    _v3_fixture_pool = bytes.fromhex("bafead7c60ea473758ed6c6021505e8bbd7e8e5d")
 
     class _V3Mixed(RPCUniswapV3PositionSource):
         def liquidity_events_in_pool(self, chain, owner, pool, from_block, to_block):
+            if owner != _v3_fixture_owner or pool != _v3_fixture_pool:
+                return []
             return [e for e in v3_events if from_block < e.block_number <= to_block]
 
     from settle.normalize.sources.dune_block_resolver import (
