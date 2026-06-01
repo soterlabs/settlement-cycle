@@ -247,7 +247,7 @@
   "alm_usds": {
     "_holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
     "_token": "USDS",
-    "_note": "All daily_net = 0 — USDS flows through ALM atomically (mint → swap to USDC/AUSD/RLUSD → deposit to venues). The trailing 7.45e-9 is float rounding noise.",
+    "_note": "All daily_net = 0 \u2014 USDS flows through ALM atomically (mint \u2192 swap to USDC/AUSD/RLUSD \u2192 deposit to venues). The trailing 7.45e-9 is float rounding noise.",
     "rows": []
   },
   "ssr": {
@@ -336,10 +336,13 @@
         "topic1": "0x000000000000000000000000000000000000000000000000000000000012327f",
         "data": "0x0000000000000000000000000000000000000000000000000378390b394825e80000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000016bcc41e9000"
       }
-    ]
+    ],
+    "_holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+    "_pool": "0xbafead7c60ea473758ed6c6021505e8bbd7e8e5d",
+    "_chain": "ethereum"
   },
   "atoken_e1_mints": {
-    "_about": "E1 aHorRwaRLUSD mints (Aave Pool → ALM) since prime start. Used as cost-basis inflow for Cat C inflow tracking.",
+    "_about": "E1 aHorRwaRLUSD mints (Aave Pool \u2192 ALM) since prime start. Used as cost-basis inflow for Cat C inflow tracking.",
     "_token": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
     "_dune_execution_id": "01KQ8JDJPX8ED8NKFJ6PC61NKZ",
     "rows": [
@@ -436,7 +439,7 @@
     ]
   },
   "atoken_e1_burns": {
-    "_about": "E1 aHorRwaRLUSD burns (ALM → 0x0). $4.96M burn on 2026-03-02 contributes to E1 period_inflow. Net E1 deposits since prime start = $144.3M − $9.9M = $134.4M.",
+    "_about": "E1 aHorRwaRLUSD burns (ALM \u2192 0x0). $4.96M burn on 2026-03-02 contributes to E1 period_inflow. Net E1 deposits since prime start = $144.3M \u2212 $9.9M = $134.4M.",
     "_token": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
     "_dune_execution_id": "01KQ8JDSWB856QNEJEEFP55QP0",
     "rows": [
@@ -507,7 +510,7 @@
     ]
   },
   "atoken_e3_mints": {
-    "_about": "E3 aEthRLUSD mints (Aave Pool → ALM) since prime start.",
+    "_about": "E3 aEthRLUSD mints (Aave Pool \u2192 ALM) since prime start.",
     "_token": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
     "_dune_execution_id": "01KQ8JC7R76D6SS84N4SH2H87T",
     "rows": [
@@ -649,7 +652,7 @@
     ]
   },
   "atoken_e3_burns": {
-    "_about": "E3 aEthRLUSD burns (ALM → 0x0). $124.8M of burns during March 2026 — explains the -$125M Δvalue, all rebalancing not loss.",
+    "_about": "E3 aEthRLUSD burns (ALM \u2192 0x0). $124.8M of burns during March 2026 \u2014 explains the -$125M \u0394value, all rebalancing not loss.",
     "_token": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
     "_dune_execution_id": "01KQ8JCXPFEY0ANJSVCR1V2NA5",
     "rows": [
@@ -681,7 +684,7 @@
     ]
   },
   "vault_e4_mints": {
-    "_about": "E4 grove-bbqUSDC-V2 (Steakhouse USDC) share mints since prime start. Cat B 4626 at-block-pps × $1 USDC.",
+    "_about": "E4 grove-bbqUSDC-V2 (Steakhouse USDC) share mints since prime start. Cat B 4626 at-block-pps \u00d7 $1 USDC.",
     "_token": "0xbeeff08df54897e7544ab01d0e86f013da354111",
     "_dune_execution_id": "01KQ8JZ9M3TYSR240A24ZSE0XF",
     "rows": [
@@ -793,7 +796,7 @@
     ]
   },
   "vault_e19_mints": {
-    "_about": "E19 grove-bbqUSDC (Base) share mints. One $984K capital deposit on 2026-01-19; no in-period activity → period_inflow = 0, revenue = pure pps yield.",
+    "_about": "E19 grove-bbqUSDC (Base) share mints. One $984K capital deposit on 2026-01-19; no in-period activity \u2192 period_inflow = 0, revenue = pure pps yield.",
     "_chain": "base",
     "_token": "0xbeef2d50b428675a1921bc6bbf4bfb9d8cf1461a",
     "_dune_execution_id": "01KQ9R8V87HSTDCXXMX6EC0HZ2",
@@ -813,7 +816,7 @@
     "rows": []
   },
   "cum_balance_e20": {
-    "_about": "E20 JAAA-avalanche ALM net flow. 5 deposits in Aug-Sep 2025 totaling 250M tokens. No in-period activity → period_inflow = 0. Real revenue comes from NAV growth via cross-chain Chronicle (Ethereum oracle).",
+    "_about": "E20 JAAA-avalanche ALM net flow. 5 deposits in Aug-Sep 2025 totaling 250M tokens. No in-period activity \u2192 period_inflow = 0. Real revenue comes from NAV growth via cross-chain Chronicle (Ethereum oracle).",
     "_chain": "avalanche_c",
     "_token": "0x58F93d6b1EF2F44eC379Cb975657C132CBeD3B6b",
     "_dune_execution_id": "01KQ9SB7SJ1J050TJDRVJ8S44W",
@@ -859,7 +862,7 @@
     ]
   },
   "cum_balance_e22": {
-    "_about": "E22 ACRDX (Plume) ALM net flow. Three deposits in October 2025 totaling 50.014M tokens. No in-period activity. NAV oracle = cross-chain Chronicle (read on Ethereum at 0x51cC9463...). NAV dropped −0.69% in March 2026 → expected revenue ≈ −$351K (real fund loss).",
+    "_about": "E22 ACRDX (Plume) ALM net flow. Three deposits in October 2025 totaling 50.014M tokens. No in-period activity. NAV oracle = cross-chain Chronicle (read on Ethereum at 0x51cC9463...). NAV dropped \u22120.69% in March 2026 \u2192 expected revenue \u2248 \u2212$351K (real fund loss).",
     "_chain": "plume",
     "_token": "0x9477724Bb54AD5417de8Baff29e59DF3fB4DA74f",
     "_dune_execution_id": "01KQ9T978DJQ18860ZPTB63FY7",
@@ -882,7 +885,7 @@
     ]
   },
   "cum_balance_e7": {
-    "_about": "E7 STAC ALM net daily balance flow. Cat E uses cumulative_balance, not mint/burn — STAC inflow comes via custodian flows.",
+    "_about": "E7 STAC ALM net daily balance flow. Cat E uses cumulative_balance, not mint/burn \u2014 STAC inflow comes via custodian flows.",
     "_token": "0x51c2d74017390cbbd30550179a16a1c28f7210fc",
     "_dune_execution_id": "01KQ8K8H77W39JY734TWZ8K5PS",
     "rows": [
@@ -1086,7 +1089,7 @@
     ]
   },
   "cum_balance_e9": {
-    "_about": "E9 JTRSY ALM net daily balance flow. cum_balance × NAV ≈ position value (matched: $1.05B × $1.10 ≈ $1.16B EoM).",
+    "_about": "E9 JTRSY ALM net daily balance flow. cum_balance \u00d7 NAV \u2248 position value (matched: $1.05B \u00d7 $1.10 \u2248 $1.16B EoM).",
     "_token": "0x8c213ee79581ff4984583c6a801e5263418c4b86",
     "_dune_execution_id": "01KQ8K7FTRD9HEFXRDT0F8PAN4",
     "rows": [
@@ -1236,7 +1239,7 @@
     "_about": "E13 RLUSD raw ALM net flow. In-period: zero net (any RLUSD that flowed in from E3 aRLUSD redemptions was immediately swapped to USDC).",
     "_token": "0x8292bb45bf1ee4d140127049757c2e0ff06317ed",
     "_dune_execution_id": "01KQ9JW5B1ZMWQGTYP7HWB2W7S",
-    "_note": "Trimmed to period anchors — in-and-out flows balance to ~0 throughout history (last ~0 anchor on 2026-02-12).",
+    "_note": "Trimmed to period anchors \u2014 in-and-out flows balance to ~0 throughout history (last ~0 anchor on 2026-02-12).",
     "rows": [
       {
         "block_date": "2026-02-12",
@@ -1246,13 +1249,13 @@
     ]
   },
   "cum_balance_e14": {
-    "_about": "E14 AUSD raw ALM net flow. In-period in/out flows totaled 0 — empty fixture lets compute correctly resolve cum_inflow=0 at both anchors. (Including only partial daily_net rows would trick the helper, which recomputes cum_inflow from daily_net cumsum and would lose the canceling rows.)",
+    "_about": "E14 AUSD raw ALM net flow. In-period in/out flows totaled 0 \u2014 empty fixture lets compute correctly resolve cum_inflow=0 at both anchors. (Including only partial daily_net rows would trick the helper, which recomputes cum_inflow from daily_net cumsum and would lose the canceling rows.)",
     "_token": "0x00000000efe302beaa2b3e6e1b18d08d69a9012a",
     "_dune_execution_id": "01KQ9JW7JTYPP0BSTFSBD5GM52",
     "rows": []
   },
   "cum_balance_e15": {
-    "_about": "E15 USDC raw ALM net flow. $9.99M arrived on 2026-03-31 (residue from E3 aRLUSD withdrawal pipeline). period_inflow = $9.99M netted out by RPC-observed value of $9.99M → revenue = 0.",
+    "_about": "E15 USDC raw ALM net flow. $9.99M arrived on 2026-03-31 (residue from E3 aRLUSD withdrawal pipeline). period_inflow = $9.99M netted out by RPC-observed value of $9.99M \u2192 revenue = 0.",
     "_token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
     "_dune_execution_id": "01KQ9JW9GFXHA2WPCC0VDD9QNN",
     "rows": [
@@ -1269,7 +1272,7 @@
     ]
   },
   "cum_balance_e16": {
-    "_about": "E16 DAI raw ALM net flow. Zero throughout — Grove never holds DAI on ETH ALM during this period.",
+    "_about": "E16 DAI raw ALM net flow. Zero throughout \u2014 Grove never holds DAI on ETH ALM during this period.",
     "_token": "0x6b175474e89094c44da98b954eedeac495271d0f",
     "_dune_execution_id": "01KQ9JWCZ5CEZWC29VA5734X0Z",
     "rows": []
@@ -1292,13 +1295,13 @@
     ]
   },
   "cum_balance_e18": {
-    "_about": "E18 sUSDS raw / POL ALM net flow. Zero throughout — Grove never holds sUSDS on ETH ALM during this period.",
+    "_about": "E18 sUSDS raw / POL ALM net flow. Zero throughout \u2014 Grove never holds sUSDS on ETH ALM during this period.",
     "_token": "0xa3931d71877c0e7a3148cb7eb4463524fec27fbd",
     "_dune_execution_id": "01KQ9JWSZ7VRFPMV99RH7YKFVG",
     "rows": []
   },
   "cum_balance_e10": {
-    "_about": "E10 BUIDL ALM capital-only flow (transfers ≥ $1M only). Filters out small daily yield-distribution mints ($10K-$200K each from BlackRock's BUIDL contract) so revenue = Δvalue − capital_inflow correctly attributes yield. Bimodal histogram (run 7387737) confirmed clean separation: yield mints all <$1M, capital subscriptions all >$10M.",
+    "_about": "E10 BUIDL ALM capital-only flow (transfers \u2265 $1M only). Filters out small daily yield-distribution mints ($10K-$200K each from BlackRock's BUIDL contract) so revenue = \u0394value \u2212 capital_inflow correctly attributes yield. Bimodal histogram (run 7387737) confirmed clean separation: yield mints all <$1M, capital subscriptions all >$10M.",
     "_token": "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041",
     "_dune_query_id": 7387743,
     "_dune_execution_id": "01KQ9JQABRKTV65MSS7ZZ407TD",
@@ -1410,7 +1413,7 @@
     ]
   },
   "inflow_by_counterparty_e15": {
-    "_about": "E15 USDC per-day per-counterparty signed flow at Grove ALM (0x491edfb0...). Used for Cat A source-tagged inflow netting. Rows where counterparty ∈ prime.internal_alm_sources are subtracted from Δvalue; remaining (external) flows pass through to revenue.",
+    "_about": "E15 USDC per-day per-counterparty signed flow at Grove ALM (0x491edfb0...). Used for Cat A source-tagged inflow netting. Rows where counterparty \u2208 prime.internal_alm_sources are subtracted from \u0394value; remaining (external) flows pass through to revenue.",
     "_chain": "ethereum",
     "_token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
     "_holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
@@ -2965,7 +2968,7 @@
     ]
   },
   "psm_usds": {
-    "_about": "Legacy fixture from the deprecated `directed_flow` PsmKind (removed 2026-05-11, see PRD §17.11). Mainnet PSM stack is non-custodial; no Ethereum PSM is tracked anymore. Grove also has no L2 PSM3 holdings, so psm_usds contributes $0 to utilized for any month. Kept as an empty stub to satisfy any fixture loader that still references this key.",
+    "_about": "Legacy fixture from the deprecated `directed_flow` PsmKind (removed 2026-05-11, see PRD \u00a717.11). Mainnet PSM stack is non-custodial; no Ethereum PSM is tracked anymore. Grove also has no L2 PSM3 holdings, so psm_usds contributes $0 to utilized for any month. Kept as an empty stub to satisfy any fixture loader that still references this key.",
     "rows": []
   },
   "nav_overrides": {
@@ -2982,6 +2985,74 @@
         "block": 24136052,
         "nav": "1.00",
         "_note": "ACRDX deposit-time par; Chronicle had not yet started writing for older blocks"
+      }
+    ]
+  },
+  "v3_liquidity_events_e30": {
+    "_about": "Uniswap V3 IncreaseLiquidity / DecreaseLiquidity events for E30 (alt-holder)",
+    "_chain": "ethereum",
+    "_holder": "0x94b398acb2fce988871218221ea6a4a2b26cccbc",
+    "_pool": "0xbafead7c60ea473758ed6c6021505e8bbd7e8e5d",
+    "_params": {
+      "nfpm": "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
+      "token_ids_padded": "0x0000000000000000000000000000000000000000000000000000000000119efe, 0x0000000000000000000000000000000000000000000000000000000000119f03, 0x000000000000000000000000000000000000000000000000000000000011a140, 0x000000000000000000000000000000000000000000000000000000000011a172, 0x000000000000000000000000000000000000000000000000000000000011a53f",
+      "from_block": 24136052,
+      "pin_block": 24781026
+    },
+    "rows": [
+      {
+        "block_number": 24228945,
+        "block_time": "2026-01-13T23:04:35+00:00",
+        "tx_hash": "0xa1d6d69eb0c2a3ffd32722936d9849028dfe34c5f493e491246c97081776a719",
+        "log_index": 43,
+        "topic0": "0x26f6a048ee9138f2c0ce266f322cb99228e8d619ae2bff30c67f8dcf9d2377b4",
+        "topic1": "0x000000000000000000000000000000000000000000000000000000000011a53f",
+        "data": "0x000000000000000000000000000000000000000000000000006f0a5125ecd22f00000000000000000000000000000000000000000000000000000db13ee4291b0000000000000000000000000000000000000000000000000000090b0ebd65e9"
+      },
+      {
+        "block_number": 24229177,
+        "block_time": "2026-01-13T23:51:11+00:00",
+        "tx_hash": "0x3aaf7edb85653ed80ae3413999c9518b1f56ec60f725f9449037b0294b15f9bc",
+        "log_index": 72,
+        "topic0": "0x3067048beee31b25b2f1681f88dac838c8bba36af25bfb2b7cf7473a5847e35f",
+        "topic1": "0x000000000000000000000000000000000000000000000000000000000011a53f",
+        "data": "0x000000000000000000000000000000000000000000000000004ff709c101ea4e0000000000000000000000000000000000000000000000000000082f79cd90000000000000000000000000000000000000000000000000000000082ff1e524de"
+      },
+      {
+        "block_number": 24229229,
+        "block_time": "2026-01-14T00:01:47+00:00",
+        "tx_hash": "0x19bb38c1e4e75ceb74139b40cd3ca2b2f2df7ccb3e4587d61becc0e677ec0387",
+        "log_index": 324,
+        "topic0": "0x3067048beee31b25b2f1681f88dac838c8bba36af25bfb2b7cf7473a5847e35f",
+        "topic1": "0x000000000000000000000000000000000000000000000000000000000011a53f",
+        "data": "0x00000000000000000000000000000000000000000000000000138c0812bc32ef000000000000000000000000000000000000000000000000000002003a37f0000000000000000000000000000000000000000000000000000000020057930903"
+      },
+      {
+        "block_number": 24234554,
+        "block_time": "2026-01-14T17:51:59+00:00",
+        "tx_hash": "0xea847de23cc48f3f93647c3dcbbd6258598db8d35c559fba80e92293757b0a66",
+        "log_index": 139,
+        "topic0": "0x26f6a048ee9138f2c0ce266f322cb99228e8d619ae2bff30c67f8dcf9d2377b4",
+        "topic1": "0x000000000000000000000000000000000000000000000000000000000011a53f",
+        "data": "0x00000000000000000000000000000000000000000000000000638311d3be1d3d00000000000000000000000000000000000000000000000000000baaea88065a000000000000000000000000000000000000000000000000000008b518986c28"
+      },
+      {
+        "block_number": 24234716,
+        "block_time": "2026-01-14T18:24:47+00:00",
+        "tx_hash": "0x6189bc14bc9a7e35e6f68df1bf09771b8e8434c56f271fe40d34c8980058cf45",
+        "log_index": 100,
+        "topic0": "0x3067048beee31b25b2f1681f88dac838c8bba36af25bfb2b7cf7473a5847e35f",
+        "topic1": "0x000000000000000000000000000000000000000000000000000000000011a53f",
+        "data": "0x000000000000000000000000000000000000000000000000006f0eca865087c400000000000000000000000000000000000000000000000000000b5e620f480000000000000000000000000000000000000000000000000000000b5ec9a0b84a"
+      },
+      {
+        "block_number": 24377630,
+        "block_time": "2026-02-03T16:50:23+00:00",
+        "tx_hash": "0xb527a649d9af5305059fa4bbd95d09887e73ad0af4c6e90002836bc6f476fd20",
+        "log_index": 39,
+        "topic0": "0x26f6a048ee9138f2c0ce266f322cb99228e8d619ae2bff30c67f8dcf9d2377b4",
+        "topic1": "0x000000000000000000000000000000000000000000000000000000000011a53f",
+        "data": "0x000000000000000000000000000000000000000000000000006f0eca865087c400000000000000000000000000000000000000000000000000000c0eac6bb75200000000000000000000000000000000000000000000000000000aae805b79b2"
       }
     ]
   }

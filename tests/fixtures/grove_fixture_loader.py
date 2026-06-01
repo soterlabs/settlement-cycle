@@ -196,35 +196,49 @@ def build_grove_sources(grove, fixtures: dict, blocks_by_chain: dict[str, Any]) 
                 return df
             return pd.DataFrame({"block_date": [], "counterparty": [], "signed_amount": []})
 
-    # V3 events fixture — decode once, filter per-call by block range so the
-    # same fixture can serve multi-month runs.
+    # V3 events fixtures — decode once, dispatch per call by (owner, pool)
+    # so multiple V3 fixtures (e.g. E12 at the main ALM and E30 at the alt-
+    # holder, both in the same AUSD/USDC pool) coexist without spilling
+    # into each other. Each fixture is scoped to the (owner, pool) it was
+    # captured for; callers requesting an un-captured (owner, pool) get an
+    # empty event list — same behaviour as a venue that isn't in the
+    # fixture at all.
     from settle.extract.uniswap_v3 import _decode_liquidity_log
     from settle.normalize.sources.uniswap_v3 import RPCUniswapV3PositionSource
-    v3_events = [
-        _decode_liquidity_log({
-            "blockNumber": hex(int(r["block_number"])), "transactionHash": r["tx_hash"],
-            "logIndex": hex(int(r["log_index"])), "topics": [r["topic0"], r["topic1"]],
-            "data": r["data"],
-        })
-        for r in fixtures["v3_liquidity_events_e12"]["rows"]
-    ]
-    # Scope the V3 events fixture to the (owner, pool) it was captured for.
-    # The Dune query is parameterised by ``token_ids_padded`` (= E12's
-    # tokenIds at the main Grove ALM in the AUSD/USDC pool) — applying its
-    # events to any other (owner, pool) silently mixes positions and routes
-    # phantom inflows into alt-holder venues that share the pool address
-    # (e.g. E30, which the alt-holder 0x94b398… uses for OOB AUSD
-    # acquisition). For all other (owner, pool) combinations the fixture
-    # returns an empty event list — same behaviour as a venue that isn't
-    # in the fixture at all.
-    _v3_fixture_owner = grove_alm
-    _v3_fixture_pool = bytes.fromhex("bafead7c60ea473758ed6c6021505e8bbd7e8e5d")
+
+    def _addr_to_bytes(s: str) -> bytes:
+        return bytes.fromhex(s.removeprefix("0x")).rjust(20, b"\x00")
+
+    v3_events_by_scope: dict[tuple[bytes, bytes], list] = {}
+    for key in fixtures:
+        if not key.startswith("v3_liquidity_events_"):
+            continue
+        entry = fixtures[key]
+        events = [
+            _decode_liquidity_log({
+                "blockNumber": hex(int(r["block_number"])),
+                "transactionHash": r["tx_hash"],
+                "logIndex": hex(int(r["log_index"])),
+                "topics": [r["topic0"], r["topic1"]],
+                "data": r["data"],
+            })
+            for r in entry["rows"]
+        ]
+        # ``_holder`` / ``_pool`` metadata identify the scope this fixture
+        # was captured against. Fall back to (main ALM, ?) when missing for
+        # backward-compatibility with the original e12 fixture format.
+        owner_b = _addr_to_bytes(entry["_holder"]) if "_holder" in entry else grove_alm
+        pool_b = _addr_to_bytes(entry["_pool"]) if "_pool" in entry else _addr_to_bytes(
+            "0xbafead7c60ea473758ed6c6021505e8bbd7e8e5d"
+        )
+        v3_events_by_scope[(owner_b, pool_b)] = events
 
     class _V3Mixed(RPCUniswapV3PositionSource):
         def liquidity_events_in_pool(self, chain, owner, pool, from_block, to_block):
-            if owner != _v3_fixture_owner or pool != _v3_fixture_pool:
+            events = v3_events_by_scope.get((owner, pool))
+            if events is None:
                 return []
-            return [e for e in v3_events if from_block < e.block_number <= to_block]
+            return [e for e in events if from_block < e.block_number <= to_block]
 
     from settle.normalize.sources.dune_block_resolver import (
         DuneBlockResolver, MultiChainBlockResolver,
