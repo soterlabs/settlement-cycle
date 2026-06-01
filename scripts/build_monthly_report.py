@@ -440,20 +440,6 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
             "note":          note,
         })
 
-<<<<<<< HEAD
-    # Synthetic row: 30 bps Prime Revenue components computed outside the
-    # venue loop (Curve LP sUSDS + PSM3 sUSDS leg). Required so that
-    # Σ v["revenue"] ≡ prime_agent_revenue — without it the reconciliation
-    # footer drifts by the spread amount for any prime holding sUSDS in
-    # Curve LP pools or PSM3 (Spark today; future primes likewise).
-    #
-    # ``revenue`` carries the aggregate spread so it lands in Σ v["revenue"]
-    # and Σ P2G ( = Σ (revenue − cof_alloc) ) reconciles to
-    # ``prime_agent_revenue − cof_total`` exactly. ``actual_rev`` mirrors
-    # ``revenue`` for the same reason (no SDE split applies). Weight=0 keeps
-    # the row out of the CoF allocation pool so its full revenue flows to
-    # Grove untaxed. ``spread_reimb`` duplicates ``revenue`` as the
-    # display-column surface for the sUSDS spread on its own.
     # Synthetic row: 30 bps Sky Revenue reduction for Curve LP + PSM3 sUSDS.
     # Consistent with Cat B ALM venues (per d255ed2): the spread reduces Sky
     # Revenue rather than increasing Prime Revenue. ``spread_reimb`` makes

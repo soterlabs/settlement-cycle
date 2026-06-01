@@ -14,6 +14,7 @@ A negative venue revenue means the prime spent more on inflows than the MtM grew
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import timedelta
 from decimal import Decimal
@@ -25,6 +26,8 @@ from ..domain.period import Period
 from ..domain.primes import NotionalScheduleEntry, Venue
 from ..domain.sde import SDEEntry
 from ._helpers import cum_at_or_before
+
+_log = logging.getLogger(__name__)
 
 
 def _time_weighted_notional(
@@ -66,6 +69,8 @@ def _time_weighted_avg_value(
     period: Period,
     value_som: Decimal,
     inflow_timeseries: pd.DataFrame,
+    *,
+    venue_id: str = "",
 ) -> Decimal:
     """Mean of daily principal across the period.
 
@@ -83,6 +88,14 @@ def _time_weighted_avg_value(
     negligible (~0.3–0.7% / month at Sky-relevant rates) — only principal
     flows are reflected here. Returns ``value_som`` if there are no
     inflow rows (degenerate case: stable position throughout).
+
+    Result is clamped to zero if negative. A negative value is structurally
+    possible for Cat A venues with ``external_alm_sources``: the external
+    arrival is excluded from the capital timeseries while the subsequent
+    on-chain outflow is included, making cumulative capital negative. This
+    is harmless for revenue (revenue = Δvalue − capital_net is correct) but
+    produces a misleading avg_value for CoF allocation. Any other negative
+    result is unexpected and logged as a warning.
     """
     n_days = period.n_days
     if n_days <= 0:
@@ -98,7 +111,18 @@ def _time_weighted_avg_value(
         cum_d = cum_at_or_before(inflow_timeseries, "cum_inflow", d)
         total += value_som + (cum_d - cum_baseline)
         d += timedelta(days=1)
-    return total / Decimal(n_days)
+    result = total / Decimal(n_days)
+    if result < Decimal("0"):
+        _log.warning(
+            "tw_avg_value negative for venue %s (raw=%.2f); clamping to 0. "
+            "Expected cause: Cat A external_alm_sources accounting asymmetry "
+            "(external arrival excluded from capital_net, outbound deployment "
+            "included). Verify no misconfigured external_alm_sources entry.",
+            venue_id or "<unknown>",
+            float(result),
+        )
+        return Decimal("0")
+    return result
 
 
 @dataclass(frozen=True, slots=True)
@@ -340,6 +364,7 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
         # commit 520c278 for the rationale.
         tw_avg_value = _time_weighted_avg_value(
             period, inputs.value_som, inputs.inflow_timeseries,
+            venue_id=inputs.venue.id,
         )
     elif inputs.erc4626_period_inflow is not None:
         # ERC-4626 Centrifuge venues: use exact vault-event USDC amounts for
@@ -352,6 +377,7 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
         inflow_df = inputs.inflow_timeseries
         tw_avg_value = _time_weighted_avg_value(
             period, inputs.value_som, inflow_df,
+            venue_id=inputs.venue.id,
         )
     else:
         inflow_df = inputs.inflow_timeseries
@@ -363,6 +389,7 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
         actual_revenue = (inputs.value_eom - inputs.value_som) - period_inflow
         tw_avg_value = _time_weighted_avg_value(
             period, inputs.value_som, inflow_df,
+            venue_id=inputs.venue.id,
         )
 
     # Off-chain administrative fee (e.g. BlackRock BUIDL-I $15K per capital
