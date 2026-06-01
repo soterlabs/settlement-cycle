@@ -140,6 +140,12 @@ class Venue:
     nav_oracle: NavOracle | None = None  # Category E only — see NavOracle
     lp_kind: str | None = None           # Category F only: 'curve_stableswap' | 'uniswap_v3'
     nft_position_manager: Address | None = None  # Category F (uniswap_v3) only
+    # When True, this venue's avg_value is excluded from the CoF allocation
+    # denominator in post-hoc reporting (build_monthly_report). Use for
+    # idle-ALM positions (raw USDS/USDC at the ALM proxy) that are already
+    # deducted from `utilized` via cum_alm_usds — allocating CoF to them
+    # would produce equal-and-opposite P2S / P2G entries that both should be 0.
+    cof_excluded: bool = False
     # Per-venue minimum transfer threshold (USD-equivalent). Drops transfers
     # below this amount from the cumulative-balance pull so daily
     # yield-distribution mints (BUIDL-style) don't contaminate the

@@ -133,6 +133,7 @@ def load_prime(config_path: Path) -> Prime:
                     if v.get("nft_position_manager")
                     else None
                 ),
+                cof_excluded=bool(v.get("cof_excluded", False)),
                 min_transfer_amount_usd=_parse_min_transfer(v),
                 sky_direct=bool(v.get("sky_direct", False)),
                 holder_override=(

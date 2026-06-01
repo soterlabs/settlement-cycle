@@ -216,7 +216,23 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
         else:
             avg_value = (_D(r["value_som"]) + _D(r["value_eom"])) / Decimal("2")
             note = (note + " " if note else "") + "(CoF approx)"
-        weight = Decimal("1") - sd_share
+        # Deduct the lending-idle portion from avg_value before CoF allocation.
+        # For Cat C/D venues with lending_idle_usds=true (e.g. S1 spUSDS, S4
+        # spDAI), the prime's share of unborrowed underlying is already subtracted
+        # from utilized daily. Allocating CoF on the full avg_value would
+        # double-charge that idle slice.
+        lending_idle_tw = _D(r.get("lending_idle_tw_avg_usd") or 0)
+        if lending_idle_tw > 0:
+            avg_value = max(Decimal("0"), avg_value - lending_idle_tw)
+            note = (note + " " if note else "") + "(avg excl. lending_idle)"
+        # cof_excluded venues (idle USDS/USDC at the ALM proxy) are already
+        # deducted from `utilized` via cum_alm_usds, so they owe no CoF.
+        # Setting weight=0 keeps them out of the allocation denominator,
+        # producing profit_to_sky=0 and profit_to_grove=revenue (≈0 for idle).
+        cof_excluded = r.get("cof_excluded", "").lower() == "true"
+        weight = Decimal("0") if cof_excluded else Decimal("1") - sd_share
+        if cof_excluded and not note:
+            note = "CoF excluded (already deducted from utilized)"
         enriched.append({
             "venue_id":   r["venue_id"],
             "label":      r["label"],

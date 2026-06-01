@@ -1155,7 +1155,7 @@ def _aggregate_lending_idle_usds(
     period: Period,
     *,
     block_resolver,
-) -> pd.DataFrame:
+) -> tuple[pd.DataFrame, dict[str, Decimal]]:
     """Daily USDS-equivalent of unborrowed underlying inside lending pools,
     summed across all venues with ``lending_idle_usds=True``.
 
@@ -1179,18 +1179,25 @@ def _aggregate_lending_idle_usds(
     The underlying must be a par-stable (USDS, DAI, USDC at $1 per unit).
     Deduction is in USDS-equivalent at face value (divided by underlying decimals).
 
-    Returns a ``[block_date, daily_net, cum_balance]`` DataFrame where
-    ``cum_balance`` is a daily snapshot matching the PSM3 convention.
-    Returns an empty DataFrame if no venue has ``lending_idle_usds=True``.
+    Returns a 2-tuple:
+    - ``aggregate_df``: ``[block_date, daily_net, cum_balance]`` DataFrame
+      where ``cum_balance`` is a daily snapshot matching the PSM3 convention.
+      Empty DataFrame if no venue has ``lending_idle_usds=True``.
+    - ``per_venue_tw_avg``: ``{venue_id: Decimal}`` — time-weighted mean of
+      each venue's daily lending-idle contribution across the period, useful
+      for post-hoc CoF re-attribution in the monthly report. Venues not
+      contributing return 0.
     """
     from datetime import time
     from ..extract.rpc import balance_of as _balance_of, total_supply_of as _total_supply_of
 
     venues = [v for v in prime.venues if v.lending_idle_usds]
     if not venues:
-        return _empty_psm_df()
+        return _empty_psm_df(), {}
 
     daily_by_date: dict = {}
+    # Per-venue daily idle values for tw_avg computation (post-hoc CoF re-attribution).
+    per_venue_daily: dict[str, list[Decimal]] = {}
 
     for venue in venues:
         if venue.underlying is None:
@@ -1211,6 +1218,7 @@ def _aggregate_lending_idle_usds(
         # cross-venue aggregate, so reading from it on failure would either
         # zero-out (consecutive failures) or over-count (cross-venue pickup).
         venue_last_idle = Decimal(0)
+        venue_daily: list[Decimal] = []
 
         current = period.start
         while current <= period.end:
@@ -1241,10 +1249,21 @@ def _aggregate_lending_idle_usds(
                 venue_last_idle = prime_idle
 
             daily_by_date[current] = daily_by_date.get(current, Decimal(0)) + prime_idle
+            venue_daily.append(prime_idle)
             current = current + timedelta(days=1)
 
+        per_venue_daily[venue.id] = venue_daily
+
+    # Compute per-venue time-weighted average of lending-idle deduction.
+    n_days = Decimal(period.n_days) if period.n_days > 0 else Decimal(1)
+    per_venue_tw_avg: dict[str, Decimal] = {
+        vid: sum(vals, Decimal(0)) / n_days
+        for vid, vals in per_venue_daily.items()
+        if vals
+    }
+
     if not daily_by_date:
-        return _empty_psm_df()
+        return _empty_psm_df(), {}
 
     days_sorted = sorted(daily_by_date)
     cum_balance = [daily_by_date[d] for d in days_sorted]
@@ -1255,7 +1274,7 @@ def _aggregate_lending_idle_usds(
         "block_date": days_sorted,
         "daily_net": daily_net,
         "cum_balance": cum_balance,
-    })
+    }), per_venue_tw_avg
 
 
 def _log_sky_revenue_debug(
@@ -1631,8 +1650,8 @@ def compute_monthly_pnl(
     )
     # Prime's share of unborrowed underlying in configured lending pools — Step 2
     # idle lending pool USDS. Computed daily via ``balanceOf`` + ``totalSupply``.
-    # Returns empty frame if no venue has ``lending_idle_usds=True``.
-    lending_idle_usds = _aggregate_lending_idle_usds(
+    # Returns (empty frame, {}) if no venue has ``lending_idle_usds=True``.
+    lending_idle_usds, _lending_idle_tw_avg = _aggregate_lending_idle_usds(
         prime, period,
         block_resolver=resolver,
     )
@@ -2267,6 +2286,18 @@ def compute_monthly_pnl(
         # holdings (PRD §17.11) — neutralises the SSR + BR-charge composite on
         # the sUSDS leg so the prime nets to zero on idle sUSDS.
         prime_rev = prime_rev + curve_susds_spread + psm3_susds_spread
+    # Annotate each venue's VenueRevenue with its lending-idle tw_avg so the
+    # post-hoc report scripts can deduct it from avg_value for CoF allocation
+    # (the idle portion is already subtracted from utilized, so it should not
+    # carry a CoF share).
+    if _lending_idle_tw_avg:
+        import dataclasses as _dc
+        breakdown = [
+            _dc.replace(vr, lending_idle_tw_avg_usd=_lending_idle_tw_avg[vr.venue_id])
+            if vr.venue_id in _lending_idle_tw_avg else vr
+            for vr in breakdown
+        ]
+
     # SDE revenue (Σ actual × sd_share across venues) flows directly to Sky.
     sde_revenue = sum((vr.sd_revenue for vr in breakdown), Decimal("0"))
 

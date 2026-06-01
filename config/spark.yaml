@@ -576,6 +576,7 @@ venues:
       address: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'
       symbol: 'USDS'
       decimals: 18
+    cof_excluded: true   # already deducted from utilized via cum_alm_usds
 
   # sUSDS POL held directly at the Spark ETH ALM (~$2.25B).
   # Pricing category B (ERC-4626): value_som/eom = shares × convertToAssets(block).
@@ -670,6 +671,7 @@ venues:
       address: '0x820c137fa70c8691f0e44dc420a5e53c168921dc'
       symbol: 'USDS'
       decimals: 18
+    cof_excluded: true   # already deducted from utilized via cum_alm_usds
 
   - id: S39
     chain: base
@@ -733,6 +735,7 @@ venues:
       address: '0x6491c05a82219b8d1479057361ff1654749b876b'
       symbol: 'USDS'
       decimals: 18
+    cof_excluded: true   # already deducted from utilized via cum_alm_usds
 
   - id: S45
     chain: arbitrum
@@ -770,6 +773,7 @@ venues:
       address: '0x4f13a96ec5c4cf34e442b46bbd98a0791f20edc3'
       symbol: 'USDS'
       decimals: 18
+    cof_excluded: true   # already deducted from utilized via cum_alm_usds
 
   - id: S49
     chain: optimism
@@ -807,6 +811,7 @@ venues:
       address: '0x7e10036acc4b56d4dfca3b77810356ce52313f9c'
       symbol: 'USDS'
       decimals: 18
+    cof_excluded: true   # already deducted from utilized via cum_alm_usds
 
   - id: S53
     chain: unichain
