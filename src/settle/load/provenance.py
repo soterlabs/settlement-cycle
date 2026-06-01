@@ -75,6 +75,18 @@ def render_provenance(
             }
             for v in pnl.venue_breakdown
         ],
+        # Display-only venues — tracked for reports, excluded from MSC
+        # totals. Empty list for primes with no off-protocol positions.
+        # See ``Venue.display_only``.
+        "display_only_breakdown": [
+            {
+                "venue_id": v.venue_id,
+                "label": v.label,
+                "value_som": str(v.value_som),
+                "value_eom": str(v.value_eom),
+            }
+            for v in pnl.display_only_breakdown
+        ],
         "sources": sources or {},
     }
 

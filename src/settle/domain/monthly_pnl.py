@@ -6,7 +6,7 @@ Markdown / CSV / provenance artifacts.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
 
 from .period import Month, Period
@@ -124,6 +124,13 @@ class MonthlyPnL:
     # shape, different source (PSM3 daily totals, not venue rows). Zero for
     # primes with no PSM3 leg configured.
     psm3_susds_spread: Decimal = Decimal("0")
+    # Off-protocol / "tracked-but-not-counted" venues (``Venue.display_only``).
+    # Surfaced for visibility in monthly reports (e.g. the dedicated xlsx tab
+    # rendered by ``build_settlement_xlsx``) but NOT folded into
+    # ``prime_agent_revenue``, ``sky_revenue``, or the cost-basis invariant.
+    # Each entry has revenue=0 by construction; ``value_som`` / ``value_eom``
+    # carry the principal currently outstanding off-protocol.
+    display_only_breakdown: list[VenueRevenue] = field(default_factory=list)
 
     @property
     def prime_agent_total_revenue(self) -> Decimal:

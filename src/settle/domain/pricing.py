@@ -25,3 +25,11 @@ class PricingCategory(StrEnum):
                                # but skipped with a warning in compute_monthly_pnl pending
                                # a proper assets-vs-liabilities accounting layer (vault
                                # underlying balance ↔ share supply × pps).
+    EOA = "EOA"                # Off-protocol EOA receiving ALM principal directly
+                               # (OOB pipelines, relay/staging addresses). Balance is
+                               # NOT read on-chain — it's reconstructed from token-
+                               # transfer history as
+                               #   Σ(ALM→holder outflows) − Σ(paired_source→ALM credits)
+                               # and priced at par USDC. Drains when the paired anchor
+                               # venue receives a tagged credit from ``paired_source``.
+                               # See ``venue.paired_with`` / ``venue.paired_source``.

@@ -399,6 +399,39 @@ venues:
       decimals: 18
 
   # ─────────────────────────────────────────────────────────────
+  # Category EOA — Out-of-band pipelines (principal-out via relay EOAs)
+  #
+  # See issue #95 for the full investigation. These venues track principal
+  # sent from the ALM proxy to off-protocol EOAs as part of OOB operations
+  # (e.g. AUSD acquisition via a multi-hop relay). Balance is reconstructed
+  # from token-transfer history (NOT on-chain ``balanceOf`` at the EOA),
+  # and drains when the matching return lands at a paired anchor venue.
+  # ─────────────────────────────────────────────────────────────
+  - id: E36
+    chain: ethereum
+    label: 'OOB principal via 0xd94f (relay to Monad ALM EOA → AUSD acquisition)'
+    pricing_category: EOA
+    token:
+      address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+      symbol: 'USDC'
+      decimals: 6
+    # Holder is the off-protocol EOA the ALM sends USDC to.
+    holder_override: '0xd94f9ef3395bbe41c1f05ced3c9a7dc520d08036'
+    # Pairing: when AUSD arrives at the ALM from the Monad ALM EOA (0x94b3…),
+    # the matching balance is drained from this venue. Anchor = E14 (AUSD raw
+    # on the ALM), so the drain query sums AUSD inflows to the ALM where the
+    # sender is paired_source.
+    paired_with: E14
+    paired_source: '0x94b398acb2fce988871218221ea6a4a2b26cccbc'
+    # Display-only: tracked for monthly reports but excluded from
+    # prime_agent_revenue / sky_revenue / cost-basis invariant. Round-trip
+    # spread (the +$120k example: $50M USDC out → $50.12M AUSD back) is
+    # realized at the anchor (E14) when AUSD from paired_source lands at the
+    # ALM — see the paired-principal-cap classifier in
+    # ``_cat_a_capital_inflow_timeseries``.
+    display_only: true
+
+  # ─────────────────────────────────────────────────────────────
   # Base — Phase 2.B (multi-chain rollout)
   # ─────────────────────────────────────────────────────────────
   - id: E19

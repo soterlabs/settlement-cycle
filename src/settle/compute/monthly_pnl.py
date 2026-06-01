@@ -14,7 +14,7 @@ from decimal import Decimal
 
 import pandas as pd
 
-from ..domain.monthly_pnl import MonthlyPnL
+from ..domain.monthly_pnl import MonthlyPnL, VenueRevenue
 from ..domain.period import Month, Period
 from ..domain.pricing import PricingCategory
 from ..domain.primes import Chain, Prime, PsmKind
@@ -74,6 +74,30 @@ class Sources:
 
 def _previous_day_eod_utc(d) -> datetime:
     return datetime.combine(d - timedelta(days=1), time.max, tzinfo=timezone.utc)
+
+
+def _merge_cap_series(df1, df2):
+    """Sum two cumulative ``[block_date, cum_inflow]`` series into one.
+
+    Used when multiple display-only EOA venues share the same
+    ``paired_source`` — the pooled cap consumed by anchor inflows is the sum
+    of each leg's cumulative principal-out at every date, not just one
+    leg's. See the auto-wiring loop in ``compute_monthly_pnl`` (Cat A
+    branch) for the collision handling.
+    """
+    import pandas as _pd
+    from ._helpers import cum_at_or_before as _cum
+    if df1 is None or df1.empty:
+        return df2
+    if df2 is None or df2.empty:
+        return df1
+    all_dates = sorted(set(df1["block_date"]) | set(df2["block_date"]))
+    rows = [
+        {"block_date": d,
+         "cum_inflow": _cum(df1, "cum_inflow", d) + _cum(df2, "cum_inflow", d)}
+        for d in all_dates
+    ]
+    return _pd.DataFrame(rows)
 
 
 def _check_centrifuge_in_flight(
@@ -1673,6 +1697,9 @@ def compute_monthly_pnl(
     _log.info("step 3: per-venue pricing for %d venue(s)...", n_venues)
     # 3. Per-venue: value at SoM + EoM, inflow timeseries.
     venue_inputs: list[VenueRevenueInputs] = []
+    # Display-only venues: tracked for monthly reports but excluded from
+    # prime_agent_revenue / sky_revenue / NAV invariant. See ``Venue.display_only``.
+    display_only_breakdown: list[VenueRevenue] = []
 
     # 3a. Cash-distribution venues — attributed directly as prime revenue,
     # bypassing the standard SoM/EoM formula and the sky-revenue path.
@@ -1764,6 +1791,7 @@ def compute_monthly_pnl(
         value_som = get_position_value(
             prime, venue, som_block,
             balance_source=sources.position_balance,
+            flow_source=sources.balance,
             erc4626_source=sources.convert_to_assets,
             v3_position_source=sources.v3_position,
             curve_pool_source=sources.curve_pool,
@@ -1773,12 +1801,33 @@ def compute_monthly_pnl(
         value_eom = get_position_value(
             prime, venue, eom_block,
             balance_source=sources.position_balance,
+            flow_source=sources.balance,
             erc4626_source=sources.convert_to_assets,
             v3_position_source=sources.v3_position,
             curve_pool_source=sources.curve_pool,
             block_resolver=resolver,
             nav_oracle_resolver=sources.nav_oracle_resolver,
         )
+
+        if venue.display_only:
+            # Tracked for monthly reports but excluded from prime_agent_revenue /
+            # sky_revenue / NAV invariant. Any realized spread on the round-trip
+            # is recognized at the anchor venue (see ``paired_with`` /
+            # ``paired_source``) via the Cat A paired-principal-cap classifier.
+            _log.info(
+                "  [%d/%d] %s  [display-only]  som=$%.0f  eom=$%.0f",
+                _venue_idx, n_venues, venue.id, value_som, value_eom,
+            )
+            display_only_breakdown.append(VenueRevenue(
+                venue_id=venue.id,
+                label=venue.label,
+                value_som=value_som,
+                value_eom=value_eom,
+                period_inflow=Decimal("0"),
+                revenue=Decimal("0"),
+                cof_excluded=venue.cof_excluded,
+            ))
+            continue
 
         # Inflow timeseries — three branches:
         #
@@ -2059,12 +2108,105 @@ def compute_monthly_pnl(
                 addr.value: [(o.date, o.amount) for o in entries]
                 for addr, entries in overrides_for_chain.items()
             }
+            # Paired-principal-cap auto-wiring: if any display-only venue on
+            # this chain points to this anchor (``paired_with == venue.id``),
+            # fetch its cumulative ALM→holder outflow series so the classifier
+            # can split inflows from ``paired_source`` into capital
+            # (principal-return up to the cap) and yield (excess). See
+            # ``Venue.display_only`` and the paired-principal-cap doc on
+            # ``_cat_a_capital_inflow_timeseries``.
+            paired_principal_caps: dict = {}
+            for eoa_v in prime.venues:
+                if not eoa_v.display_only:
+                    continue
+                if eoa_v.skip:
+                    # ``skip`` takes precedence over ``display_only`` for
+                    # compute purposes: a wound-down venue should not drive
+                    # the anchor's cap, even if it's still listed for
+                    # reporting. Without this guard the skipped venue's
+                    # principal-out series would silently reclassify real
+                    # anchor inflows as capital, mis-attributing revenue.
+                    continue
+                if eoa_v.paired_with != venue.id:
+                    continue
+                if eoa_v.paired_source is None or eoa_v.holder_override is None:
+                    continue
+                if eoa_v.chain != venue.chain:
+                    # Cross-chain paired-cap isn't supported by the current
+                    # directed_inflow_timeseries (which is single-chain). The
+                    # display-only venue setup helper in normalize.positions
+                    # already enforces this; skip silently here.
+                    continue
+                if eoa_v.chain not in prime.alm or eoa_v.chain not in period.pin_blocks:
+                    # Defensive: a display-only venue configured for a chain
+                    # where the prime has no ALM address (or where the period
+                    # has no pin_block) would otherwise KeyError mid-loop
+                    # with a hard-to-diagnose stack trace. Skip with a
+                    # warning so the operator sees which venue tripped it.
+                    _log.warning(
+                        "  paired-cap: skipping display-only venue %s — "
+                        "chain %s missing from prime.alm or period.pin_blocks.",
+                        eoa_v.id, eoa_v.chain.value,
+                    )
+                    continue
+                cap_df = balance_src.directed_inflow_timeseries(
+                    chain=eoa_v.chain.value,
+                    token=eoa_v.token.address.value,
+                    from_addr=prime.alm[eoa_v.chain].value,
+                    to_addr=eoa_v.holder_override.value,
+                    start=prime.start_date,
+                    pin_block=period.pin_blocks[eoa_v.chain],
+                )
+                src_key = eoa_v.paired_source.value
+                if src_key in paired_principal_caps:
+                    # Two or more display-only EOAs share the same
+                    # ``paired_source``. The cap is the SUM of their
+                    # principal-out series — return inflows from the shared
+                    # counterparty consume the pooled cap, not just one
+                    # leg's. Without this, the second insert would silently
+                    # overwrite the first and reclassify legitimate
+                    # principal-returns as yield.
+                    paired_principal_caps[src_key] = _merge_cap_series(
+                        paired_principal_caps[src_key], cap_df,
+                    )
+                else:
+                    paired_principal_caps[src_key] = cap_df
             inflow_ts = _cat_a_capital_inflow_timeseries(
                 prime, venue, period,
                 balance_source=balance_src,
                 external_sources=external,
                 principal_return_overrides=overrides_by_bytes,
+                paired_principal_caps=paired_principal_caps or None,
             )
+        elif venue.pricing_category == PricingCategory.EOA:
+            # Cat EOA — Off-protocol relay/staging address. The venue tracks
+            # outstanding ALM principal that's sitting at an EOA waiting for
+            # the return leg to land at the paired anchor venue. There is no
+            # native yield mechanism: every balance change is either fresh
+            # principal-out (ALM → holder) or a drain triggered by the paired
+            # anchor receiving a return (paired_source → ALM). Both are
+            # value-preserving capital movement, so we set ``inflow_ts =
+            # Δvalue`` and ``revenue = Δvalue − inflow`` collapses to 0 every
+            # period — Cat EOA never contributes to Prime Revenue.
+            #
+            # ⚠ Important: the economic "spread" (e.g. $50M USDC out →
+            # $50.12M anchor-asset back, where the +$120k is a mint/swap
+            # advantage captured during the OOB acquisition) will NOT appear
+            # in Prime Revenue. It persists as this venue's terminal negative
+            # balance (e.g. −$120k) once the drain exceeds the principal-out,
+            # and that residual is what makes the PRD §5.2 cost-basis
+            # invariant balance (Σ venue values = cum_debt − allocator returns).
+            # Booking the spread as venue revenue here would either
+            # double-count the anchor's downstream MtM (if the anchor is a
+            # raw stable that itself feeds a Cat B vault — e.g. E14 → E6) or
+            # mis-attribute capital flow as yield. Surfacing the spread as
+            # Prime Revenue requires a separate accounting layer; deferred.
+            import pandas as _pd
+            inflow_ts = _pd.DataFrame([{
+                "block_date": period.end,
+                "daily_inflow": value_eom - value_som,
+                "cum_inflow": value_eom - value_som,
+            }])
         elif venue.pricing_category == PricingCategory.RWA_TRANCHE:
             from ..normalize.positions import (
                 _rwa_inflow_timeseries,
@@ -2361,4 +2503,5 @@ def compute_monthly_pnl(
         sde_revenue=sde_revenue,
         curve_susds_spread=curve_susds_spread if not sky_only else Decimal("0"),
         psm3_susds_spread=psm3_susds_spread if not sky_only else Decimal("0"),
+        display_only_breakdown=display_only_breakdown,
     )

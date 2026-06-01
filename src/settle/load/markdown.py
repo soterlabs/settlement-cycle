@@ -123,6 +123,31 @@ def render_markdown(pnl: MonthlyPnL, *, rules_url: str = DEFAULT_RULES_URL) -> s
                 )
             p("")
 
+    # --- Off-protocol holdings (display-only venues) ---
+    if pnl.display_only_breakdown:
+        p("## Off-protocol holdings (display-only)")
+        p("")
+        p(
+            "Positions held by external counterparties (OOB OTC venues, "
+            "off-protocol custodians, etc.). Tracked for visibility but "
+            "**excluded from `prime_agent_revenue`, `sky_revenue`, and the "
+            "cost-basis invariant**. Realized gains or losses on the "
+            "round-trip are booked at the anchor venue when the cash "
+            "returns to the ALM proxy (see the paired-principal-cap "
+            "classifier)."
+        )
+        p("")
+        p("| Venue | Label | value_som | value_eom | Δ over period |")
+        p("|---|---|---:|---:|---:|")
+        for v in pnl.display_only_breakdown:
+            delta = v.value_eom - v.value_som
+            p(
+                f"| {v.venue_id} | {v.label} "
+                f"| {_fmt_usd(v.value_som)} | {_fmt_usd(v.value_eom)} "
+                f"| {_fmt_usd(delta)} |"
+            )
+        p("")
+
     # --- Definitions ---
     p("## Formula reference")
     p("")

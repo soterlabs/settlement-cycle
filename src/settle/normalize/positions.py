@@ -12,12 +12,18 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from ..domain.pricing import PricingCategory
 from ..domain.primes import Chain, Prime, Venue
 from ..domain.sky_tokens import KNOWN_PAR_STABLES_ETHEREUM, PAR_STABLES_BY_CHAIN
 from ..extract.dune import execute_query
 from .prices import UnsupportedPricingError, get_unit_price
-from .protocols import IConvertToAssetsSource, IPositionBalanceSource, IV3PositionSource
-from .registry import get_position_balance_source
+from .protocols import (
+    IBalanceSource,
+    IConvertToAssetsSource,
+    IPositionBalanceSource,
+    IV3PositionSource,
+)
+from .registry import get_balance_source, get_position_balance_source
 from .sources.uniswap_v3 import RPCUniswapV3PositionSource
 
 
@@ -27,6 +33,7 @@ def get_position_balance(
     block: int,
     *,
     source: IPositionBalanceSource | None = None,
+    flow_source: IBalanceSource | None = None,
 ) -> Decimal:
     """Token-units balance of `venue.token` held by `prime.alm[venue.chain]` at `block`.
 
@@ -34,12 +41,22 @@ def get_position_balance(
     is the *rebased* balance — interest already accrued. For ERC-4626 vaults,
     this is share count; multiply by the unit price (which folds in `convertToAssets`)
     to get USD value.
+
+    Category EOA branches off the standard on-chain ``balanceOf`` path entirely:
+    the balance is reconstructed from token-transfer history via
+    ``flow_source`` (defaults to the registry's IBalanceSource — same dune
+    pull used elsewhere). See :func:`_eoa_balance`.
     """
     if venue.chain not in prime.alm:
         raise ValueError(
             f"Prime {prime.id!r} has no ALM on {venue.chain.value} "
             f"(needed for venue {venue.id})"
         )
+
+    # Category EOA: balance comes from flow accounting, not on-chain balanceOf.
+    if venue.pricing_category == PricingCategory.EOA:
+        return _eoa_balance(prime, venue, block, source=flow_source)
+
     # Uniswap V3 positions aren't fungible ERC-20 — there's no scalar "balance"
     # of the pool. Use ``get_position_value`` directly, which enumerates NFTs
     # and sums redeemable amounts.
@@ -59,12 +76,117 @@ def get_position_balance(
     return Decimal(raw) / Decimal(10 ** venue.token.decimals)
 
 
+def _eoa_balance(
+    prime: Prime,
+    venue: Venue,
+    block: int,
+    *,
+    source: IBalanceSource | None = None,
+) -> Decimal:
+    """Flow-accounted balance for a Cat EOA venue.
+
+    The venue's holder is an off-protocol EOA that the ALM has sent principal
+    to (e.g. an OOB pipeline relay address). The on-chain ``balanceOf`` at the
+    holder is irrelevant — what we track is the **ALM's claim** against the
+    address, reconstructed from token-transfer history::
+
+        balance = Σ(ALM → holder outflows in venue.token)
+                − Σ(paired_source → ALM inflows in anchor.token, at par)
+
+    Both legs are at-par USDC (Cat EOA's token must be par-stable, enforced in
+    ``prices.get_unit_price``; the anchor venue's token must also be par-stable
+    or the conversion below would silently misprice). The result is in
+    ``venue.token`` units (decimal-adjusted).
+
+    Drains to zero (or slightly negative — that's the venue spread) once the
+    full principal has been returned via the anchor venue.
+    """
+    # Schema validation — these MUST be set for Cat EOA.
+    if venue.holder_override is None:
+        raise ValueError(
+            f"Venue {venue.id} (Cat EOA): holder_override is required (the EOA "
+            "address receiving principal from the ALM)."
+        )
+    if venue.paired_with is None or venue.paired_source is None:
+        raise ValueError(
+            f"Venue {venue.id} (Cat EOA): paired_with and paired_source are "
+            "required to compute the drain leg of the balance."
+        )
+
+    # Locate the anchor venue. The anchor's token is what the paired_source
+    # delivers to the ALM (the return asset).
+    anchor = next((v for v in prime.venues if v.id == venue.paired_with), None)
+    if anchor is None:
+        raise ValueError(
+            f"Venue {venue.id} (Cat EOA): paired_with={venue.paired_with!r} "
+            f"does not match any venue id in prime {prime.id!r}."
+        )
+    # The drain leg below queries token transfers in ``anchor.token``. That
+    # only works if the anchor's token is itself the asset the paired_source
+    # delivers — i.e. a Cat A par-stable raw venue. Pairing with a Cat B
+    # share-token (e.g. bbqAUSD shares) would query the wrong token entirely
+    # (shares, not underlying), and the drain would silently come back as
+    # zero. Fail loudly so misconfiguration surfaces at first balance read.
+    if anchor.pricing_category != PricingCategory.PAR_STABLE:
+        raise ValueError(
+            f"Venue {venue.id} (Cat EOA): anchor {anchor.id} has category "
+            f"{anchor.pricing_category.value!r}, not PAR_STABLE. Cat EOA "
+            "venues must pair with a Cat A par-stable raw venue so the drain "
+            "leg queries the actual return asset (not vault shares)."
+        )
+
+    src = source if source is not None else get_balance_source()
+    alm_addr = prime.alm[venue.chain]
+
+    # Leg 1: principal sent from ALM to the EOA holder, in venue.token.
+    out_df = src.directed_inflow_timeseries(
+        chain=venue.chain.value,
+        token=venue.token.address.value,
+        from_addr=alm_addr.value,
+        to_addr=venue.holder_override.value,
+        start=prime.start_date,
+        pin_block=block,
+    )
+    out_total = (
+        Decimal(str(out_df["cum_inflow"].iloc[-1])) if not out_df.empty
+        else Decimal("0")
+    )
+
+    # Leg 2: returns from paired_source delivered to the ALM, in anchor.token.
+    # The anchor venue must live on the same chain — cross-chain drain isn't
+    # supported (would need block-resolver and price translation).
+    if anchor.chain != venue.chain:
+        raise ValueError(
+            f"Venue {venue.id} (Cat EOA): anchor {anchor.id} is on chain "
+            f"{anchor.chain.value!r} but this venue is on {venue.chain.value!r}. "
+            "Cross-chain drain pairing is not supported."
+        )
+    drain_df = src.directed_inflow_timeseries(
+        chain=anchor.chain.value,
+        token=anchor.token.address.value,
+        from_addr=venue.paired_source.value,
+        to_addr=alm_addr.value,
+        start=prime.start_date,
+        pin_block=block,
+    )
+    drain_total = (
+        Decimal(str(drain_df["cum_inflow"].iloc[-1])) if not drain_df.empty
+        else Decimal("0")
+    )
+
+    # Both at par — subtraction is well-defined regardless of which par-stable
+    # each token is. The result may be slightly negative once the full
+    # principal has been returned (= venue spread / yield).
+    return out_total - drain_total
+
+
 def get_position_value(
     prime: Prime,
     venue: Venue,
     block: int,
     *,
     balance_source: IPositionBalanceSource | None = None,
+    flow_source: IBalanceSource | None = None,
     erc4626_source: IConvertToAssetsSource | None = None,
     v3_position_source: IV3PositionSource | None = None,
     curve_pool_source=None,
@@ -91,7 +213,11 @@ def get_position_value(
             v3_position_source = RPCUniswapV3PositionSource(nfpm_per_chain=overrides)
         return _uniswap_v3_value(prime, venue, block, source=v3_position_source)
 
-    balance = get_position_balance(prime, venue, block, source=balance_source)
+    balance = get_position_balance(
+        prime, venue, block,
+        source=balance_source,
+        flow_source=flow_source,
+    )
     if balance == 0:
         # Short-circuit: zero balance × any unit price = $0. Skipping the
         # unit_price call avoids an unnecessary failure on venues with
@@ -831,6 +957,7 @@ def _cat_a_capital_inflow_timeseries(
     balance_source,
     external_sources: set,
     principal_return_overrides: dict | None = None,
+    paired_principal_caps: dict | None = None,
 ):
     """Cat A par-stable capital-flow accounting with external-source allowlist.
 
@@ -848,6 +975,19 @@ def _cat_a_capital_inflow_timeseries(
     capital instead of yield — used for tri-party loan principal-correction
     or loan-termination events that arrive from an `external_alm_sources`
     address but represent a capital movement rather than yield.
+
+    ``paired_principal_caps``: optional ``{paired_source_bytes:
+    cum_principal_out_df}`` map for the "off-protocol round-trip" pattern
+    (see ``Venue.display_only``). When provided, inflows from each
+    ``paired_source`` are classified per-event with a running cap: the
+    portion of the cumulative receipts that does NOT exceed the cumulative
+    principal-out (ALM → display-only venue's holder, in that venue's
+    token) is treated as capital (principal-return); the excess is yield
+    (realized revenue at this anchor venue). Each frame must have columns
+    ``[block_date, cum_inflow]`` (the cum-outflow series from
+    ``directed_inflow_timeseries`` of the ALM→holder leg). Auto-populated
+    by the orchestrator from display-only EOA venues whose ``paired_with``
+    points to this anchor; do not set by hand.
 
     Returns DataFrame ``[block_date, daily_inflow, cum_inflow]`` of the
     capital portion. The compute layer subtracts this from Δvalue, leaving
@@ -946,8 +1086,11 @@ def _cat_a_capital_inflow_timeseries(
     # external source but matches a registered (date, amount) override is
     # reclassified as capital (e.g., a tri-party loan principal correction
     # or loan-termination return). Match tolerance: ±$1.
+    from decimal import Decimal as _Decimal
+    detail = detail.copy()
+    detail["_cp_bytes"] = norm
+
     if principal_return_overrides:
-        from decimal import Decimal as _Decimal
         def _is_override(row):
             cp = row["_cp_bytes"]
             if cp not in external_sources:
@@ -960,22 +1103,60 @@ def _cat_a_capital_inflow_timeseries(
                     return True
             return False
 
-        # Annotate rows for the closure
-        detail = detail.copy()
-        detail["_cp_bytes"] = norm
         is_principal_return = detail.apply(_is_override, axis=1)
         # Capital = (not external) OR (external AND override-matched)
         capital_mask = ~is_external | is_principal_return
-        capital = detail[capital_mask].drop(columns="_cp_bytes")
     else:
-        capital = detail[~is_external]
-    if capital.empty:
+        capital_mask = ~is_external
+
+    # Per-row capital amount: signed_amount if classified as capital, else 0.
+    # Subsequent paired-cap logic may further reduce this for paired_source
+    # inflows that exceed the cumulative principal-out.
+    detail["_capital_amount"] = [
+        _Decimal(str(detail["signed_amount"].iloc[i])) if capital_mask.iloc[i]
+        else _Decimal("0")
+        for i in range(len(detail))
+    ]
+
+    # Paired-principal-cap override: inflows from each ``paired_source`` are
+    # classified per-event using a running cap against the corresponding
+    # cum-principal-out series. The portion within the cap is capital
+    # (principal-return); the excess is yield (revenue at the anchor).
+    if paired_principal_caps:
+        from ..compute._helpers import cum_at_or_before as _cum_at_or_before
+        # Sort by date so we process inflows chronologically per source.
+        # Stable sort keeps multiple same-day events in their original order.
+        detail = detail.sort_values("block_date", kind="stable").reset_index(drop=True)
+        consumed: dict[bytes, _Decimal] = {src: _Decimal("0") for src in paired_principal_caps}
+        for idx in range(len(detail)):
+            cp = detail["_cp_bytes"].iloc[idx]
+            if cp not in paired_principal_caps:
+                continue
+            sa = _Decimal(str(detail["signed_amount"].iloc[idx]))
+            if sa <= 0:
+                # Outflow back to the paired_source — leave as default capital
+                # classification (no cap consumed; cap only applies to inflows).
+                continue
+            cap_df = paired_principal_caps[cp]
+            cap_at = _cum_at_or_before(cap_df, "cum_inflow", detail["block_date"].iloc[idx])
+            room = cap_at - consumed[cp]
+            if room >= sa:
+                capital_portion = sa
+            elif room > 0:
+                capital_portion = room
+            else:
+                capital_portion = _Decimal("0")
+            consumed[cp] += capital_portion
+            detail.at[idx, "_capital_amount"] = capital_portion
+
+    nonzero = detail[detail["_capital_amount"] != _Decimal("0")]
+    if nonzero.empty:
         return empty
 
     daily = (
-        capital.groupby("block_date", as_index=False)["signed_amount"]
+        nonzero.groupby("block_date", as_index=False)["_capital_amount"]
         .sum()
-        .rename(columns={"signed_amount": "daily_inflow"})
+        .rename(columns={"_capital_amount": "daily_inflow"})
         .sort_values("block_date")
         .reset_index(drop=True)
     )

@@ -161,6 +161,13 @@ def load_prime(config_path: Path) -> Prime:
                     if v.get("centrifuge_vault")
                     else None
                 ),
+                paired_with=v.get("paired_with"),
+                paired_source=(
+                    Address.from_str(v["paired_source"])
+                    if v.get("paired_source")
+                    else None
+                ),
+                display_only=bool(v.get("display_only", False)),
             )
         )
 
