@@ -218,21 +218,18 @@ def balance_of(chain: Chain, token: Address, holder: Address, block: int) -> int
     ``_decode_uint`` without raising).
 
     On exhausted-retry RPC failure (RPCError / HTTPError after all attempts in
-    ``eth_call``) the return is also 0, but a loud WARNING is logged so the
-    silent-zero doesn't mask a transient RPC outage that would otherwise
-    silently zero out a venue's value. Settlement scripts should fail or
-    re-run on these warnings rather than accept the 0.
+    ``eth_call``) this function **raises**. Caching an error as ``0`` here
+    would poison the cache: subsequent runs would silently use the bad
+    zero as if it were a real balance, and the warning that pointed to the
+    transient outage would not re-fire. Earlier this function returned 0
+    with a WARNING, which produced exactly that bug — a Grove May 2026
+    re-run with a fresh RPC URL kept serving the cached 0 from the prior
+    publicnode-archive failure. Hard-fail is the right contract: callers
+    that genuinely want soft-fail can wrap a try/except, but the cache
+    layer never persists an error as a successful value.
     """
     data = SEL_BALANCE_OF + _pad_address(holder)
-    try:
-        return _decode_uint(eth_call(chain, token, data, block))
-    except (RPCError, requests.HTTPError) as e:
-        import logging
-        logging.getLogger(__name__).warning(
-            "balance_of(%s, token=%s, holder=%s, block=%d) failed after retries: %s — returning 0",
-            chain.value, token.hex, holder.hex, block, e,
-        )
-        return 0
+    return _decode_uint(eth_call(chain, token, data, block))
 
 
 @cached(source_id="rpc.total_supply_of")
