@@ -367,6 +367,18 @@ venues:
       address: '0x00000000efe302beaa2b3e6e1b18d08d69a9012a'
       symbol: 'AUSD'
       decimals: 6
+    # AUSD at the Eth ALM is a routing layer: principal arrives via the OOB
+    # pipeline (E36 → 0xd94f → off-chain conversion → AUSD back from the Monad
+    # ALM EOA 0x94b3…) and gets immediately deployed into yield-bearing
+    # AUSD venues (E6 Morpho on Eth, E25 Morpho on Monad). The position
+    # never earns yield in place — every $ change is either a transfer
+    # through it or the OOB round-trip spread.
+    #
+    # The OOB spread is Grove's keeper per the operational agreement (Grove
+    # negotiates the MM rate). Marking display_only excludes E14 from
+    # prime_agent_revenue / sky_revenue / NAV invariant; the spread still
+    # appears in display_only_breakdown for reconciliation.
+    display_only: true
 
   - id: E31
     chain: ethereum
