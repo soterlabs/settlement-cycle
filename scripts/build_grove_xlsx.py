@@ -169,9 +169,9 @@ def _write_headline(ws, prov: dict, sheet_rows: list[dict]) -> None:
         "(ref_rate ramp) is already applied — the rate used here is the same "
         "subsidised BR as in actual sky_revenue, not the raw Maker base rate. "
         "The figure is useful for seeing how much the idle-USDS / SDE / lending "
-        "deductions reduce the BR component, and for per-venue Sky Rev Reduction "
-        "estimates in Summary Comp (spread_reimb exact; utilized-deduction portion "
-        "estimated proportionally from avg deduction; PSM3/Curve deductions not per-venue)."
+        "deductions reduce the BR component. The Utilized Deduction (avg) column "
+        "in Summary Comp shows the exact per-venue average amount subtracted from "
+        "utilized (CoF-excluded idle, lending-idle, fixed SDE, and capped SDE venues)."
     ])
     ws.cell(note_row, 1).alignment = Alignment(wrap_text=True, vertical="top")
     ws.row_dimensions[note_row].height = 72
@@ -184,7 +184,7 @@ def _write_summary_comp(ws, sheet_rows: list[dict]) -> None:
     ws.title = "Summary Comp"
     cols = ["Venue ID", "Label", "Avg Value", "Weight", "Profit to Sky",
             "Revenue", "Grove Net Payment", "CoF Allocation", "SDE Revenue",
-            "Spread Reimb", "Utilized Deduction (avg)", "Sky Rev Reduction (est.)",
+            "Spread Reimb", "Utilized Deduction (avg)",
             "Position (SoM)", "Position (EoM)", "Notes"]
     ws.append(cols)
     _bold_header(ws, 1, len(cols))
@@ -203,20 +203,19 @@ def _write_summary_comp(ws, sheet_rows: list[dict]) -> None:
             float(r["sd_revenue"]),
             float(r["spread_reimb"]),
             float(r.get("deduction_avg") or 0),
-            float(r.get("sky_rev_reduction_est") or 0),
             float(r["value_som"]),
             float(r["value_eom"]),
             r.get("note", ""),
         ])
     # Apply formats — cols: 3=AvgVal, 5=P2S, 6=Rev, 7=GNP, 8=CoF, 9=SDE,
-    #   10=SpreadReimb, 11=Deduction, 12=SkyRevRedEst, 13=SoM, 14=EoM
+    #   10=SpreadReimb, 11=Deduction, 12=SoM, 13=EoM
     for row in range(2, ws.max_row + 1):
-        for c in (3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14):
+        for c in (3, 5, 6, 7, 8, 9, 10, 11, 12, 13):
             ws.cell(row, c).number_format = _USD_FMT
         ws.cell(row, 4).number_format = _PCT_FMT
 
     _set_widths(ws, {1: 8, 2: 55, 3: 17, 4: 9, 5: 17, 6: 17, 7: 17, 8: 17,
-                     9: 17, 10: 17, 11: 20, 12: 22, 13: 17, 14: 17, 15: 40})
+                     9: 17, 10: 17, 11: 20, 12: 17, 13: 17, 14: 40})
 
 
 def _write_grove_exposures(ws, prime_cfg: dict, sde_active: dict) -> None:
