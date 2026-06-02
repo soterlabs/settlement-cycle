@@ -28,8 +28,13 @@ TICKER_TO_VENUE: dict[str, str] = {
     "BUIDLI_ETH":            "E10",
     "GACLO1_AVAX":           "E21",
     "grove-bbqAUSD_MON":     "E25",
-    "grove-bbqAUSD_ETH":     "E6",
-    "grove-bbqAUSD-V2_ETH":  "E6_V2",   # Grove tracks two bbqAUSD contracts; we have one
+    # Grove tracks two on-chain bbqAUSD vaults on Ethereum:
+    #   grove-bbqAUSD_ETH     — older Morpho V1 vault (we intentionally don't track)
+    #   grove-bbqAUSD-V2_ETH  — newer Morpho V2 vault — this is our E6
+    # Verified by symbol() and per-month numbers (E6 actual_rev matches the V2
+    # column to within rounding: Feb $5,696 ≈ $5,754 / Mar $40,044 ≈ $40,059 /
+    # Apr $49,855 ≈ $49,837).
+    "grove-bbqAUSD-V2_ETH":  "E6",
     "grove-bbqUSDC_BASE":    "E19",
     "grove-bbqUSDC_ETH":     "E5",
     "grove-bbqUSDC-V2_ETH":  "E4",
