@@ -100,6 +100,80 @@ def _merge_cap_series(df1, df2):
     return _pd.DataFrame(rows)
 
 
+def _build_paired_principal_caps(prime, venue, period, balance_src) -> dict:
+    """Build the ``paired_principal_caps`` map for a Cat A anchor venue.
+
+    For each display-only venue whose ``paired_with`` matches ``venue.id``,
+    fetch its cumulative ALM→holder outflow series and key it by the
+    venue's ``paired_source`` address. Multiple display-only venues sharing
+    the same ``paired_source`` get their cap series summed via
+    ``_merge_cap_series``. The result is the ``paired_principal_caps``
+    argument to ``_cat_a_capital_inflow_timeseries``.
+
+    Filter order is documented inline below — kept identical to the prior
+    inline loop so the refactor is behaviour-preserving. Extracted into a
+    standalone helper for unit-test coverage (see
+    ``tests/unit/test_paired_principal_caps.py``).
+    """
+    paired_principal_caps: dict = {}
+    for eoa_v in prime.venues:
+        if not eoa_v.display_only:
+            continue
+        if eoa_v.skip:
+            # ``skip`` takes precedence over ``display_only`` for
+            # compute purposes: a wound-down venue should not drive
+            # the anchor's cap, even if it's still listed for
+            # reporting. Without this guard the skipped venue's
+            # principal-out series would silently reclassify real
+            # anchor inflows as capital, mis-attributing revenue.
+            continue
+        if eoa_v.paired_with != venue.id:
+            continue
+        if eoa_v.paired_source is None or eoa_v.holder_override is None:
+            continue
+        if eoa_v.chain != venue.chain:
+            # Cross-chain paired-cap isn't supported by the current
+            # directed_inflow_timeseries (which is single-chain). The
+            # display-only venue setup helper in normalize.positions
+            # already enforces this; skip silently here.
+            continue
+        if eoa_v.chain not in prime.alm or eoa_v.chain not in period.pin_blocks:
+            # Defensive: a display-only venue configured for a chain
+            # where the prime has no ALM address (or where the period
+            # has no pin_block) would otherwise KeyError mid-loop
+            # with a hard-to-diagnose stack trace. Skip with a
+            # warning so the operator sees which venue tripped it.
+            _log.warning(
+                "  paired-cap: skipping display-only venue %s — "
+                "chain %s missing from prime.alm or period.pin_blocks.",
+                eoa_v.id, eoa_v.chain.value,
+            )
+            continue
+        cap_df = balance_src.directed_inflow_timeseries(
+            chain=eoa_v.chain.value,
+            token=eoa_v.token.address.value,
+            from_addr=prime.alm[eoa_v.chain].value,
+            to_addr=eoa_v.holder_override.value,
+            start=prime.start_date,
+            pin_block=period.pin_blocks[eoa_v.chain],
+        )
+        src_key = eoa_v.paired_source.value
+        if src_key in paired_principal_caps:
+            # Two or more display-only EOAs share the same
+            # ``paired_source``. The cap is the SUM of their
+            # principal-out series — return inflows from the shared
+            # counterparty consume the pooled cap, not just one
+            # leg's. Without this, the second insert would silently
+            # overwrite the first and reclassify legitimate
+            # principal-returns as yield.
+            paired_principal_caps[src_key] = _merge_cap_series(
+                paired_principal_caps[src_key], cap_df,
+            )
+        else:
+            paired_principal_caps[src_key] = cap_df
+    return paired_principal_caps
+
+
 def _check_centrifuge_in_flight(
     prime: "Prime",
     pin_blocks_som: dict["Chain", int],
@@ -1294,8 +1368,16 @@ def _aggregate_lending_idle_usds(
         # ``_aggregate_curve_idle_usds``): the shared ``daily_by_date`` is a
         # cross-venue aggregate, so reading from it on failure would either
         # zero-out (consecutive failures) or over-count (cross-venue pickup).
-        venue_last_idle = Decimal(0)
+        # ``venue_last_idle = None`` means we haven't observed a successful
+        # read yet — a failure at this point can't be "carried forward" from
+        # anything real and must propagate, otherwise we'd silently restore
+        # the cache-of-zeros antipattern (RPC down on day 1 → 0 → "carry"
+        # → 0 for the whole month).
+        venue_last_idle: Decimal | None = None
         venue_daily: list[Decimal] = []
+
+        from ..extract.rpc import RPCError as _RPCError
+        import requests as _requests
 
         current = period.start
         while current <= period.end:
@@ -1315,11 +1397,16 @@ def _aggregate_lending_idle_usds(
                     pool_idle_usds = Decimal(pool_idle_raw) / Decimal(10 ** underlying_decimals)
                     prime_idle = alm_share * pool_idle_usds
 
-            except Exception as exc:
+            except (_RPCError, _requests.HTTPError,
+                    _requests.ConnectionError, _requests.Timeout) as exc:
+                if venue_last_idle is None:
+                    # No successful read to carry forward — fail loud rather
+                    # than silently fall back to 0 for the rest of the period.
+                    raise
                 _log.warning(
                     "lending_idle_usds: RPC error for venue %s on %s; carrying forward "
-                    "prior value (error: %s).",
-                    venue.id, current, type(exc).__name__,
+                    "prior value $%s (error: %s).",
+                    venue.id, current, venue_last_idle, type(exc).__name__,
                 )
                 prime_idle = venue_last_idle
             else:
@@ -2160,69 +2247,11 @@ def compute_monthly_pnl(
                 addr.value: [(o.date, o.amount) for o in entries]
                 for addr, entries in overrides_for_chain.items()
             }
-            # Paired-principal-cap auto-wiring: if any display-only venue on
-            # this chain points to this anchor (``paired_with == venue.id``),
-            # fetch its cumulative ALM→holder outflow series so the classifier
-            # can split inflows from ``paired_source`` into capital
-            # (principal-return up to the cap) and yield (excess). See
-            # ``Venue.display_only`` and the paired-principal-cap doc on
-            # ``_cat_a_capital_inflow_timeseries``.
-            paired_principal_caps: dict = {}
-            for eoa_v in prime.venues:
-                if not eoa_v.display_only:
-                    continue
-                if eoa_v.skip:
-                    # ``skip`` takes precedence over ``display_only`` for
-                    # compute purposes: a wound-down venue should not drive
-                    # the anchor's cap, even if it's still listed for
-                    # reporting. Without this guard the skipped venue's
-                    # principal-out series would silently reclassify real
-                    # anchor inflows as capital, mis-attributing revenue.
-                    continue
-                if eoa_v.paired_with != venue.id:
-                    continue
-                if eoa_v.paired_source is None or eoa_v.holder_override is None:
-                    continue
-                if eoa_v.chain != venue.chain:
-                    # Cross-chain paired-cap isn't supported by the current
-                    # directed_inflow_timeseries (which is single-chain). The
-                    # display-only venue setup helper in normalize.positions
-                    # already enforces this; skip silently here.
-                    continue
-                if eoa_v.chain not in prime.alm or eoa_v.chain not in period.pin_blocks:
-                    # Defensive: a display-only venue configured for a chain
-                    # where the prime has no ALM address (or where the period
-                    # has no pin_block) would otherwise KeyError mid-loop
-                    # with a hard-to-diagnose stack trace. Skip with a
-                    # warning so the operator sees which venue tripped it.
-                    _log.warning(
-                        "  paired-cap: skipping display-only venue %s — "
-                        "chain %s missing from prime.alm or period.pin_blocks.",
-                        eoa_v.id, eoa_v.chain.value,
-                    )
-                    continue
-                cap_df = balance_src.directed_inflow_timeseries(
-                    chain=eoa_v.chain.value,
-                    token=eoa_v.token.address.value,
-                    from_addr=prime.alm[eoa_v.chain].value,
-                    to_addr=eoa_v.holder_override.value,
-                    start=prime.start_date,
-                    pin_block=period.pin_blocks[eoa_v.chain],
-                )
-                src_key = eoa_v.paired_source.value
-                if src_key in paired_principal_caps:
-                    # Two or more display-only EOAs share the same
-                    # ``paired_source``. The cap is the SUM of their
-                    # principal-out series — return inflows from the shared
-                    # counterparty consume the pooled cap, not just one
-                    # leg's. Without this, the second insert would silently
-                    # overwrite the first and reclassify legitimate
-                    # principal-returns as yield.
-                    paired_principal_caps[src_key] = _merge_cap_series(
-                        paired_principal_caps[src_key], cap_df,
-                    )
-                else:
-                    paired_principal_caps[src_key] = cap_df
+            # Paired-principal-cap auto-wiring — extracted into
+            # ``_build_paired_principal_caps`` for unit-test coverage.
+            paired_principal_caps = _build_paired_principal_caps(
+                prime, venue, period, balance_src,
+            )
             inflow_ts = _cat_a_capital_inflow_timeseries(
                 prime, venue, period,
                 balance_source=balance_src,

@@ -43,13 +43,26 @@ def total_supply(chain: Chain, pool: Address, block: int) -> int:
     return int(eth_call(chain, pool, SEL_TOTAL_SUPPLY, block), 16)
 
 
+def _is_selector_revert(e: BaseException) -> bool:
+    """True when an RPCError represents a Solidity execution revert (e.g. the
+    pool exposes the other selector signature), as opposed to a transport-layer
+    failure that exhausted retries. Catching the latter and falling through to
+    the alternate selector would silently hide RPC outages — and crucially
+    would cache a successful result from the wrong-shaped call as if it were
+    the real read. Same narrowing as in ``rpc.scaled_balance_of``.
+    """
+    return "execution reverted" in str(e).lower()
+
+
 @cached(source_id="curve.coin")
 def coin_at(chain: Chain, pool: Address, idx: int, block: int) -> Address:
     """Returns the address of the i-th coin in the pool. Tries uint256 then int128."""
     arg = _pad_uint(idx)
     try:
         return _decode_address(eth_call(chain, pool, SEL_COINS_UINT256 + arg, block))
-    except RPCError:
+    except RPCError as e:
+        if not _is_selector_revert(e):
+            raise
         return _decode_address(eth_call(chain, pool, SEL_COINS_INT128 + arg, block))
 
 
@@ -59,7 +72,9 @@ def balance_at(chain: Chain, pool: Address, idx: int, block: int) -> int:
     arg = _pad_uint(idx)
     try:
         return int(eth_call(chain, pool, SEL_BALANCES_UINT256 + arg, block), 16)
-    except RPCError:
+    except RPCError as e:
+        if not _is_selector_revert(e):
+            raise
         return int(eth_call(chain, pool, SEL_BALANCES_INT128 + arg, block), 16)
 
 

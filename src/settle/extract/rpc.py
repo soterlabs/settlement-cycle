@@ -205,8 +205,27 @@ def eth_call(chain: Chain, contract: Address, data: str, block: int) -> str:
 
 
 def _decode_uint(raw: str) -> int:
-    """Decode a uint256 eth_call return. Treats empty/zero-length results as 0
-    (token contract didn't exist at this block, or the call reverted)."""
+    """Decode a uint256 eth_call return. Maps empty/zero-length results (``"0x"``
+    or ``"0x0"``) to 0.
+
+    ⚠ Disambiguating ``"0x"``: most JSON-RPC providers return ``"0x"`` for ANY
+    EVM revert that doesn't include error data — including a deployed contract
+    that reverts because it's paused, has a custom guard, or returns no data
+    on edge inputs. The 0 we substitute is the right answer for the common
+    case (contract not yet deployed at this block) but masks legitimate
+    reverts as a $0 balance / share. If you're calling this from a context
+    where a real revert on an existing contract should NOT be silently
+    zeroed, check ``is_contract_deployed`` first OR catch the cached zero
+    upstream and re-validate.
+
+    Callers in this module that currently rely on the ``"0x"`` → 0 mapping:
+    ``balance_of``, ``convert_to_assets``, ``total_supply_of``,
+    ``scaled_balance_of`` (via the same-named helper), ``vault_share_to_assets``,
+    ``psm3_shares``, ``psm3_convert_to_asset_value``. All accept the
+    conflation — for our Grove + Spark use cases the affected contracts
+    either exist throughout the period or are queried at pre-deployment
+    blocks where the 0 is correct.
+    """
     if raw is None or raw in ("0x", "0x0"):
         return 0
     try:
@@ -297,7 +316,14 @@ def scaled_balance_of(chain: Chain, token: Address, holder: Address, block: int)
     data = SEL_SCALED_BALANCE_OF + _pad_address(holder)
     try:
         return _decode_uint(eth_call(chain, token, data, block))
-    except RPCError as e:
+    except (RPCError, requests.HTTPError) as e:
+        # Catch BOTH RPCError (JSON-RPC 200 with error payload) and HTTPError
+        # (some providers — drpc under load, Infura on certain plans — surface
+        # an execution revert as an HTTP 5xx instead of a JSON-RPC error). The
+        # ``"execution reverted"`` substring lives in the response body in
+        # either case; if it's present we still want the soft-fail-to-0 path
+        # (token lacks ``scaledBalanceOf`` accessor). Without HTTPError in the
+        # catch, the 5xx path would crash callers that previously soft-failed.
         if "execution reverted" in str(e).lower():
             return 0
         raise

@@ -153,19 +153,40 @@ def build_grove_sources(grove, fixtures: dict, blocks_by_chain: dict[str, Any]) 
                 src.token.value, src.payer.value, grove.alm[chain].value,
             )] = df_with_dates(fixtures[fx_key]["rows"], "block_date")
 
-        # display_only EOA venue principal-out caps. The compute layer in
+        # display_only venue principal-out caps. The compute layer in
         # monthly_pnl looks up ``directed_inflow_timeseries(token, ALM,
         # holder_override)`` for each display-only venue to build the
         # paired_principal_cap series. Without the fixture, the cap is $0
         # and inflows from ``paired_source`` to the anchor get fully
         # reclassified as realized revenue (E14 April $6.5M phantom).
-        if v.display_only and v.pricing_category.value == "EOA":
+        #
+        # Filter is (display_only AND holder_override AND has paired_with) —
+        # not restricted to pricing_category="EOA" because the compute-side
+        # wiring at monthly_pnl.py:~2204 iterates ALL display_only venues
+        # regardless of category. A display_only venue with no paired_with
+        # doesn't drive a cap and doesn't need this fixture.
+        if (v.display_only and v.holder_override is not None
+                and getattr(v, "paired_with", None) is not None):
             fx_key = f"eoa_outflow_{vid}"
-            if fx_key in fixtures and v.holder_override is not None:
+            if fx_key in fixtures:
                 alm = grove.alm[v.chain].value
                 directed_inflow_fixtures[(
                     v.token.address.value, alm, v.holder_override.value,
                 )] = df_with_dates(fixtures[fx_key]["rows"], "block_date")
+            else:
+                # Silent fallback to empty cap reproduces the original phantom
+                # revenue at the anchor venue. Warn at load time so the
+                # operator notices BEFORE inspecting suspect output numbers.
+                import warnings as _warnings
+                _warnings.warn(
+                    f"grove_fixture_loader: display_only venue {v.id!r} on "
+                    f"chain {v.chain.value!r} has no {fx_key!r} fixture — "
+                    f"paired_principal_cap for its anchor will be $0, and "
+                    f"inflows from its paired_source will be misclassified "
+                    f"as realized revenue. Capture eoa_outflow_{vid} via "
+                    f"_capture_dune_fixtures.py to fix.",
+                    stacklevel=2,
+                )
 
     cum_balance_fixtures: dict[bytes, pd.DataFrame] = {}
     for v in grove.venues:
