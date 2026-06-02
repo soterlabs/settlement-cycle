@@ -248,6 +248,24 @@ venues:
     # large round-number mints). Filter at $1M to isolate capital flow for
     # cost-basis tracking — sub-threshold mints contribute to revenue.
     min_transfer_amount_usd: 1000000
+    # BlackRock charges a flat $15,000 administrative fee on some capital
+    # operations — the fee is baked into the on-chain mint/burn amount at
+    # source (e.g. a $50M subscription mints $49,985K to the ALM). The
+    # empirical Jan-Apr 2026 pattern shows fee-charged events on
+    # subscriptions; whether redemptions are also fee-charged is unknown
+    # from the data we have (no negative-direction events in the period).
+    # MSC detects fee events by the "shaved amount" signature regardless of
+    # direction — see ``Venue.fixed_fee_per_capital_event_usd`` in
+    # ``domain/primes.py`` and the inline implementation in
+    # ``compute_venue_revenue``. Fee × n_events is subtracted from
+    # actual_revenue before the SDE split; flows entirely to Sky (BUIDL is
+    # fixed SDE → sd_share = 1).
+    #
+    # Verified Jan-Apr 2026: 0 / 5 / 1 / 0 fee events → 0 / $75K / $15K / 0
+    # deduction → reconciles MSC ↔ Grove BUIDL line exactly. Subscriptions
+    # that were NOT fee-charged in the period landed at clean round numbers
+    # (e.g., Mar 23-31: $50M, $25M each) — those correctly pass through.
+    fixed_fee_per_capital_event_usd: 15000
 
   # ─────────────────────────────────────────────────────────────
   # Category F — LP positions
@@ -264,6 +282,15 @@ venues:
       decimals: 18
     # Underlyings filled in dynamically from pool.coins(0)/coins(1) — both
     # are par-stables ($1 each).
+    # Off-chain notional: Grove's PnL workbook tracks $25M of pre-allocated
+    # capital for this pool from Feb 2026 onwards (the pool went live mid-Feb
+    # so MSC's on-chain ``tw_avg_value`` is ~$12M for Feb vs Grove's $25M
+    # full-month notional). The CoF allocator uses ``max(tw_avg_value,
+    # tw_avg_notional_usd)`` so once on-chain value catches up (Mar onwards
+    # ~$25M) the notional is dominated. Closes a ~$56K Feb gap vs Grove.
+    notional_principal_usd:
+      - start_date: '2026-02-01'
+        amount: 25000000
 
   - id: E12
     chain: ethereum
@@ -277,6 +304,14 @@ venues:
       symbol: 'AUSDUSDC-UNI3'
       decimals: 0    # not an ERC-20; positions are NFTs
     nft_position_manager: '0xc36442b4a4522e871399cd717abdd847ab11fe88'
+    # Off-chain notional: Grove's PnL workbook tracks $25M of pre-allocated
+    # capital for this pool from Jan 2026 onwards (the pool went on-chain in
+    # Feb so MSC's Jan ``tw_avg_value`` is $0). The CoF allocator uses
+    # ``max(tw_avg_value, tw_avg_notional_usd)`` so Feb-Apr (when on-chain
+    # value is ~$25M) the notional is dominated. Closes a ~$77K Jan gap.
+    notional_principal_usd:
+      - start_date: '2026-01-01'
+        amount: 25000000
 
   - id: E30
     chain: ethereum
@@ -332,6 +367,18 @@ venues:
       address: '0x00000000efe302beaa2b3e6e1b18d08d69a9012a'
       symbol: 'AUSD'
       decimals: 6
+    # AUSD at the Eth ALM is a routing layer: principal arrives via the OOB
+    # pipeline (E36 → 0xd94f → off-chain conversion → AUSD back from the Monad
+    # ALM EOA 0x94b3…) and gets immediately deployed into yield-bearing
+    # AUSD venues (E6 Morpho on Eth, E25 Morpho on Monad). The position
+    # never earns yield in place — every $ change is either a transfer
+    # through it or the OOB round-trip spread.
+    #
+    # The OOB spread is Grove's keeper per the operational agreement (Grove
+    # negotiates the MM rate). Marking display_only excludes E14 from
+    # prime_agent_revenue / sky_revenue / NAV invariant; the spread still
+    # appears in display_only_breakdown for reconciliation.
+    display_only: true
 
   - id: E31
     chain: ethereum
@@ -524,8 +571,16 @@ venues:
     # but Sky still charges BR on this $50M (it's part of utilized). Without
     # this field the per-venue CoF allocation gives E21 a $0 share and the
     # ~$150K/month of CoF that should attribute to E21 silently spreads
-    # across other venues' rows. Scalar form = constant for the loan term.
-    notional_principal_usd: 50000000
+    # across other venues' rows.
+    # Date-ranged so the planned termination (2026-06-16 — Galaxy loan
+    # maturity per the original deal) flips notional to $0 automatically
+    # for any settlement run past that date, without needing a manual YAML
+    # edit. Pre-termination behaviour is identical to the prior scalar form.
+    notional_principal_usd:
+      - start_date: '2025-12-19'   # initial disbursement to Galaxy
+        amount: 50000000
+      - start_date: '2026-06-16'   # planned loan termination
+        amount: 0
     cash_distributions:
       - payer: '0xaC3D86f9840A8bE07dE5F67d6427983B7009DF1B'  # Galaxy sweep address
         token: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'   # USDC on Ethereum

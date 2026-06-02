@@ -68,20 +68,25 @@ def df_with_dates(rows: list[dict], date_col: str) -> pd.DataFrame:
     return df
 
 
-def load_grove_and_fixtures(repo: Path):
-    """Load the ``grove`` Prime + all four block-resolver fixtures + the
-    Dune-output bundle. Returns ``(grove, dune_outputs, blocks_by_chain)``.
+def load_grove_and_fixtures(repo: Path, fixture_dir: str = "grove_2026_03"):
+    """Load the ``grove`` Prime + all block-resolver fixtures + the
+    Dune-output bundle. ``fixture_dir`` selects the snapshot generation
+    (``grove_2026_03`` for Q1 acceptance, ``grove_2026_04`` for April,
+    etc.). Returns ``(grove, dune_outputs, blocks_by_chain)``.
     """
     grove = load_prime(repo / "config" / "grove.yaml")
-    fixtures = json.loads(
-        (repo / "tests/fixtures/grove_2026_03/dune_outputs.json").read_text()
-    )
+    base = repo / "tests/fixtures" / fixture_dir
+    fixtures = json.loads((base / "dune_outputs.json").read_text())
     blocks_by_chain = {
-        "ethereum":    json.loads((repo / "tests/fixtures/grove_2026_03/blocks_at_eod.json").read_text()),
-        "base":        json.loads((repo / "tests/fixtures/grove_2026_03/blocks_at_eod_base.json").read_text()),
-        "avalanche_c": json.loads((repo / "tests/fixtures/grove_2026_03/blocks_at_eod_avalanche.json").read_text()),
-        "plume":       json.loads((repo / "tests/fixtures/grove_2026_03/blocks_at_eod_plume.json").read_text()),
+        "ethereum":    json.loads((base / "blocks_at_eod.json").read_text()),
+        "base":        json.loads((base / "blocks_at_eod_base.json").read_text()),
+        "avalanche_c": json.loads((base / "blocks_at_eod_avalanche.json").read_text()),
+        "plume":       json.loads((base / "blocks_at_eod_plume.json").read_text()),
     }
+    # Monad block resolver is optional — only the April fixture captures it.
+    monad_path = base / "blocks_at_eod_monad.json"
+    if monad_path.exists():
+        blocks_by_chain["monad"] = json.loads(monad_path.read_text())
     return grove, fixtures, blocks_by_chain
 
 
@@ -131,6 +136,57 @@ def build_grove_sources(grove, fixtures: dict, blocks_by_chain: dict[str, Any]) 
             directed_inflow_fixtures[(token, alm, ZERO)] = df_with_dates(
                 fixtures[f"vault_{vid}_burns"]["rows"], "block_date",
             )
+        # Cash-distribution sources (e.g. Galaxy CLO USDC sweeps for E21).
+        # ``cash_distributions`` queries ``directed_inflow_timeseries`` keyed by
+        # (token, payer, ALM-on-payer-chain). The fixture key is
+        # ``cash_dist_{vid}`` and may carry distributions on a DIFFERENT chain
+        # from the venue's home chain (Galaxy E21 lives on Avalanche but
+        # distributes USDC to the Ethereum ALM).
+        for src in v.cash_distributions:
+            chain = src.chain if src.chain is not None else v.chain
+            if chain not in grove.alm:
+                continue
+            fx_key = f"cash_dist_{vid}"
+            if fx_key not in fixtures:
+                continue
+            directed_inflow_fixtures[(
+                src.token.value, src.payer.value, grove.alm[chain].value,
+            )] = df_with_dates(fixtures[fx_key]["rows"], "block_date")
+
+        # display_only venue principal-out caps. The compute layer in
+        # monthly_pnl looks up ``directed_inflow_timeseries(token, ALM,
+        # holder_override)`` for each display-only venue to build the
+        # paired_principal_cap series. Without the fixture, the cap is $0
+        # and inflows from ``paired_source`` to the anchor get fully
+        # reclassified as realized revenue (E14 April $6.5M phantom).
+        #
+        # Filter is (display_only AND holder_override AND has paired_with) —
+        # not restricted to pricing_category="EOA" because the compute-side
+        # wiring at monthly_pnl.py:~2204 iterates ALL display_only venues
+        # regardless of category. A display_only venue with no paired_with
+        # doesn't drive a cap and doesn't need this fixture.
+        if (v.display_only and v.holder_override is not None
+                and getattr(v, "paired_with", None) is not None):
+            fx_key = f"eoa_outflow_{vid}"
+            if fx_key in fixtures:
+                alm = grove.alm[v.chain].value
+                directed_inflow_fixtures[(
+                    v.token.address.value, alm, v.holder_override.value,
+                )] = df_with_dates(fixtures[fx_key]["rows"], "block_date")
+            else:
+                # Silent fallback to empty cap reproduces the original phantom
+                # revenue at the anchor venue. Warn at load time so the
+                # operator notices BEFORE inspecting suspect output numbers.
+                import warnings as _warnings
+                _warnings.warn(
+                    f"grove_fixture_loader: display_only venue {v.id!r} on "
+                    f"chain {v.chain.value!r} has no {fx_key!r} fixture — "
+                    f"paired_principal_cap for its anchor will be $0, and "
+                    f"inflows from its paired_source will be misclassified "
+                    f"as realized revenue. Capture eoa_outflow_{vid} via "
+                    f"_capture_dune_fixtures.py to fix.",
+                    stacklevel=2,
+                )
 
     cum_balance_fixtures: dict[bytes, pd.DataFrame] = {}
     for v in grove.venues:
@@ -142,7 +198,13 @@ def build_grove_sources(grove, fixtures: dict, blocks_by_chain: dict[str, Any]) 
                 fixtures[key]["rows"], "block_date",
             )
 
-    inflow_by_cp_fixtures: dict[bytes, pd.DataFrame] = {}
+    # Per-(token, holder) inflow fixtures. Keying by ``token`` alone would
+    # silently spill one venue's flow data into a different venue that
+    # happens to share the token (e.g. E15 USDC at the main ALM and E32 USDC
+    # at an alt-holder both use the USDC token address). Cat A venues whose
+    # holder doesn't match a captured fixture get an empty frame — same
+    # behaviour as a venue that isn't in the fixture at all.
+    inflow_by_cp_fixtures: dict[tuple[bytes, bytes], pd.DataFrame] = {}
     for v in grove.venues:
         if v.pricing_category.value != "A":
             continue
@@ -153,7 +215,18 @@ def build_grove_sources(grove, fixtures: dict, blocks_by_chain: dict[str, Any]) 
                 df["counterparty"] = df["counterparty"].apply(
                     lambda h: bytes.fromhex(h.removeprefix("0x")).rjust(20, b"\x00")
                 )
-            inflow_by_cp_fixtures[v.token.address.value] = df
+            # Holder the fixture was captured against. Prefer the explicit
+            # ``_holder`` metadata field; fall back to the venue's effective
+            # holder (holder_override or main ALM) for older fixtures that
+            # didn't record it.
+            fx_holder_str = fixtures[key].get("_holder")
+            if fx_holder_str:
+                fx_holder = bytes.fromhex(
+                    fx_holder_str.removeprefix("0x")
+                ).rjust(20, b"\x00")
+            else:
+                fx_holder = (v.holder_override or grove.alm[v.chain]).value
+            inflow_by_cp_fixtures[(v.token.address.value, fx_holder)] = df
 
     class _RoutedBalances(MockBalanceSource):
         def cumulative_balance_timeseries(
@@ -174,27 +247,54 @@ def build_grove_sources(grove, fixtures: dict, blocks_by_chain: dict[str, Any]) 
             return pd.DataFrame({"block_date": [], "daily_inflow": [], "cum_inflow": []})
 
         def inflow_by_counterparty(self, chain, token, holder, start, pin_block):
-            df = inflow_by_cp_fixtures.get(token)
+            df = inflow_by_cp_fixtures.get((token, holder))
             if df is not None:
                 return df
             return pd.DataFrame({"block_date": [], "counterparty": [], "signed_amount": []})
 
-    # V3 events fixture — decode once, filter per-call by block range so the
-    # same fixture can serve multi-month runs.
+    # V3 events fixtures — decode once, dispatch per call by (owner, pool)
+    # so multiple V3 fixtures (e.g. E12 at the main ALM and E30 at the alt-
+    # holder, both in the same AUSD/USDC pool) coexist without spilling
+    # into each other. Each fixture is scoped to the (owner, pool) it was
+    # captured for; callers requesting an un-captured (owner, pool) get an
+    # empty event list — same behaviour as a venue that isn't in the
+    # fixture at all.
     from settle.extract.uniswap_v3 import _decode_liquidity_log
     from settle.normalize.sources.uniswap_v3 import RPCUniswapV3PositionSource
-    v3_events = [
-        _decode_liquidity_log({
-            "blockNumber": hex(int(r["block_number"])), "transactionHash": r["tx_hash"],
-            "logIndex": hex(int(r["log_index"])), "topics": [r["topic0"], r["topic1"]],
-            "data": r["data"],
-        })
-        for r in fixtures["v3_liquidity_events_e12"]["rows"]
-    ]
+
+    def _addr_to_bytes(s: str) -> bytes:
+        return bytes.fromhex(s.removeprefix("0x")).rjust(20, b"\x00")
+
+    v3_events_by_scope: dict[tuple[bytes, bytes], list] = {}
+    for key in fixtures:
+        if not key.startswith("v3_liquidity_events_"):
+            continue
+        entry = fixtures[key]
+        events = [
+            _decode_liquidity_log({
+                "blockNumber": hex(int(r["block_number"])),
+                "transactionHash": r["tx_hash"],
+                "logIndex": hex(int(r["log_index"])),
+                "topics": [r["topic0"], r["topic1"]],
+                "data": r["data"],
+            })
+            for r in entry["rows"]
+        ]
+        # ``_holder`` / ``_pool`` metadata identify the scope this fixture
+        # was captured against. Fall back to (main ALM, ?) when missing for
+        # backward-compatibility with the original e12 fixture format.
+        owner_b = _addr_to_bytes(entry["_holder"]) if "_holder" in entry else grove_alm
+        pool_b = _addr_to_bytes(entry["_pool"]) if "_pool" in entry else _addr_to_bytes(
+            "0xbafead7c60ea473758ed6c6021505e8bbd7e8e5d"
+        )
+        v3_events_by_scope[(owner_b, pool_b)] = events
 
     class _V3Mixed(RPCUniswapV3PositionSource):
         def liquidity_events_in_pool(self, chain, owner, pool, from_block, to_block):
-            return [e for e in v3_events if from_block < e.block_number <= to_block]
+            events = v3_events_by_scope.get((owner, pool))
+            if events is None:
+                return []
+            return [e for e in events if from_block < e.block_number <= to_block]
 
     from settle.normalize.sources.dune_block_resolver import (
         DuneBlockResolver, MultiChainBlockResolver,
@@ -229,6 +329,35 @@ def build_grove_sources(grove, fixtures: dict, blocks_by_chain: dict[str, Any]) 
                 return _NavWithOverride()
             return _default_resolve(kind)
 
+    # Per-(token, holder) event-block lookup for Cat C aTokens — populated
+    # from the captured ``atoken_{vid}_event_log`` fixtures (one row per
+    # Transfer event, with block_number). The compute layer uses this
+    # for sub-day-resolution segment boundaries.
+    atoken_event_blocks_by_pair: dict[tuple[bytes, bytes], list[int]] = {}
+    for v in grove.venues:
+        if v.pricing_category.value != "C":
+            continue
+        vid = v.id.lower()
+        key = f"atoken_{vid}_event_log"
+        if key not in fixtures:
+            continue
+        entry = fixtures[key]
+        rows = entry.get("rows", [])
+        # Holder defaults to main ALM; honor explicit ``_holder`` if set.
+        fx_holder_hex = entry.get("_holder")
+        if fx_holder_hex:
+            holder = bytes.fromhex(fx_holder_hex.removeprefix("0x"))
+        else:
+            holder = grove.alm[v.chain].value
+        blocks = sorted({int(r["block_number"]) for r in rows})
+        atoken_event_blocks_by_pair[(v.token.address.value, holder)] = blocks
+
+    def _atoken_event_blocks_lookup(
+        chain: str, token: bytes, holder: bytes, som: int, eom: int,
+    ) -> list[int]:
+        blocks = atoken_event_blocks_by_pair.get((token, holder), [])
+        return [b for b in blocks if som < b <= eom]
+
     return Sources(
         debt=MockDebtSource(debt_df),
         balance=_RoutedBalances(),
@@ -236,4 +365,5 @@ def build_grove_sources(grove, fixtures: dict, blocks_by_chain: dict[str, Any]) 
         v3_position=_V3Mixed(),
         block_resolver=resolver,
         nav_oracle_resolver=nav_resolver,
+        atoken_event_blocks=_atoken_event_blocks_lookup,
     )

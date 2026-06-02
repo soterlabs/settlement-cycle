@@ -202,6 +202,7 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
     """One venue's contribution to prime_agent_revenue under the SDE-split model.
 
     actual_revenue   = (value_eom − value_som) − period_inflow
+                       − (fixed_fee × n_fee_events)    [when fee configured]
     sd_revenue       = actual_revenue × sd_share
     sd_share         = min(cap, value_eom) / value_eom    (EoM-locked, capped SDE)
                        1                                  (fixed SDE)
@@ -217,11 +218,27 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
     Sky-Direct deal terms (the SDE covers pool-native yield only). For a
     non-SDE venue this is equivalent to ``actual_revenue + external_revenue``.
 
+    The off-chain admin-fee deduction (``fixed_fee × n_fee_events``) is
+    applied BEFORE the SDE split — see ``Venue.fixed_fee_per_capital_event_usd``.
+    For fixed-SDE venues (BUIDL today) it flows entirely to Sky; for capped
+    SDE it splits via the standard sd_share.
+
     Loss handling: a negative actual_revenue is split the same way — Sky
     absorbs sd_share of the loss, prime absorbs the rest. This matches Grove
     team's PnL workbook (no floor, no shortfall).
     """
     if inputs.actual_revenue_override is not None:
+        # Override venues (sUSDS spread at ALM) compute revenue closed-form
+        # without using ``inflow_timeseries``, so the fee-detection heuristic
+        # below can't be applied here. Today no override-path venue has the
+        # fee field set — the two are mutually exclusive by configuration.
+        assert inputs.venue.fixed_fee_per_capital_event_usd is None, (
+            f"venue {inputs.venue.id}: actual_revenue_override and "
+            "fixed_fee_per_capital_event_usd are mutually exclusive (the fee "
+            "heuristic needs the inflow_timeseries that the override path "
+            "doesn't consume). If you need both, plumb them through "
+            "separately and add a test for the composition."
+        )
         actual_revenue = inputs.actual_revenue_override
         period_inflow = Decimal("0")
         # Override venues (sUSDS spread at ALM) have a stable position
@@ -251,6 +268,63 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
         tw_avg_value = _time_weighted_avg_value(
             period, inputs.value_som, inflow_df,
         )
+
+    # Off-chain administrative fee (e.g. BlackRock BUIDL-I $15K per capital
+    # operation). The fee is taken at the source by the issuer: a $50M
+    # subscription mints $49,985K to the ALM. Detect fee-charged events by
+    # the "shaved amount" signature: ``|amount| + fee`` is a round multiple
+    # of ``_ROUNDING``. Direction-agnostic (works for both subscriptions and
+    # redemptions when fee-charged); a clean $50M mint with no fee gives
+    # $50,015K which is NOT a round multiple — correctly skipped.
+    # Verified on Grove E10 Jan–Apr 2026: 0/5/1/0 fee events, matching
+    # Grove's PnL workbook ($0 / $75K / $15K / $0 fee deduction).
+    # Subtracted from ``actual_revenue`` before the SDE split; for fixed-SDE
+    # venues (BUIDL is) the fee flows entirely to Sky.
+    fee_per_event = inputs.venue.fixed_fee_per_capital_event_usd
+    if fee_per_event is not None:
+        # Reject zero/None — the fee heuristic depends on the inflow
+        # timeseries being pre-filtered to capital-event amounts only.
+        # Without an effective ``min_transfer_amount_usd`` filter, the
+        # daily yield-distribution mints would be present and could
+        # accidentally satisfy the shaved-amount test (e.g. a $985K mint
+        # yields $985K + $15K = $1M, a clean multiple). The guard uses
+        # ``not …`` so both ``None`` and ``Decimal(0)`` raise.
+        if not inputs.venue.min_transfer_amount_usd:
+            raise ValueError(
+                f"venue {inputs.venue.id}: fixed_fee_per_capital_event_usd "
+                "requires min_transfer_amount_usd to be set to a positive "
+                "value — set 'min_transfer_amount_usd' on this venue in the "
+                "prime YAML config (e.g. 1000000 for BUIDL-style $1M-min "
+                "capital events)."
+            )
+        if inputs.inflow_timeseries is not None and not inputs.inflow_timeseries.empty:
+            # ``_ROUNDING`` = the institutional capital-event denomination
+            # for venues where this heuristic is used. For BUIDL-I, BlackRock
+            # subscribes/redeems in clean $1M multiples (Dune query 7387737
+            # bimodal histogram — yield mints <$1M, capital mints ≥ $10M in
+            # round $5M/$10M/$25M/$50M chunks). The fee is shaved off the
+            # gross at source so the on-chain mint is ``N × $1M − fee`` for
+            # fee-charged events. Two invariants tie this constant to the
+            # rest of the config:
+            #   1. ``_ROUNDING`` must be ≥ the venue's
+            #      ``min_transfer_amount_usd`` so the timeseries cannot
+            #      contain amounts smaller than _ROUNDING (otherwise a sub-
+            #      threshold mint could accidentally satisfy the test).
+            #   2. ``_ROUNDING`` matches the issuer's denomination convention.
+            #      If BlackRock switched to $500K-multiple subscriptions, this
+            #      heuristic would miss fee events on amounts like $499,985
+            #      — re-calibrate from the on-chain histogram.
+            _ROUNDING = Decimal("1000000")
+            ts = inputs.inflow_timeseries
+            in_period = ts["block_date"].between(period.start, period.end)
+            n_fee_events = 0
+            for _, r in ts[in_period].iterrows():
+                amount = r["daily_inflow"]
+                if amount == 0:
+                    continue
+                if (abs(amount) + fee_per_event) % _ROUNDING == 0:
+                    n_fee_events += 1
+            actual_revenue -= fee_per_event * Decimal(n_fee_events)
 
     entry = inputs.sde_entry
     if entry is not None and entry.kind == "capped":

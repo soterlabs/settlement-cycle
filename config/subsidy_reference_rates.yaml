@@ -117,9 +117,32 @@ rates:
   - effective_date: '2026-03-30'
     tbill_3m_apy: 0.0358
     effr_apy: 0.0433
-  # NB: April–May 2026 not yet populated.
-  #   * April: settlement carries forward the 2026-03-30 rate (up to 31
-  #     days stale → loud WARNING from ReferenceRateHistory.at).
-  #   * May:   carry-forward exceeds 45 days mid-month → FATAL
-  #     ValueError raised in compute_sky_revenue_daily. Populate before
-  #     running May 2026 settlement (see _STALE_CARRY_FORWARD_FATAL_DAYS).
+
+  # April–May 2026 — T-Bill 3M values pulled 2026-06-02 from treasury.gov
+  # daily-yield-curve CSV (URL in the header comment). EFFR carried
+  # forward at 0.0433 (NY Fed feed not yet pulled; flat through April-May
+  # per the Fed's pause stance).
+  - effective_date: '2026-04-06'
+    tbill_3m_apy: 0.0372
+    effr_apy: 0.0433
+  - effective_date: '2026-04-13'
+    tbill_3m_apy: 0.0371
+    effr_apy: 0.0433
+  - effective_date: '2026-04-20'
+    tbill_3m_apy: 0.0371
+    effr_apy: 0.0433
+  - effective_date: '2026-04-27'
+    tbill_3m_apy: 0.0368
+    effr_apy: 0.0433
+  - effective_date: '2026-05-04'
+    tbill_3m_apy: 0.0370
+    effr_apy: 0.0433
+  - effective_date: '2026-05-11'
+    tbill_3m_apy: 0.0370
+    effr_apy: 0.0433
+  - effective_date: '2026-05-18'
+    tbill_3m_apy: 0.0368
+    effr_apy: 0.0433
+  - effective_date: '2026-05-25'
+    tbill_3m_apy: 0.0368
+    effr_apy: 0.0433

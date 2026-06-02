@@ -694,6 +694,120 @@ def _atoken_transfer_revenue_usd(
     return _Decimal(str(raw))
 
 
+def _atoken_per_segment_yield(
+    chain_value: str,
+    token_addr: bytes,
+    holder_addr: bytes,
+    som_block: int,
+    eom_block: int,
+    segment_blocks: list[int],
+    *,
+    balance_at,
+    scaled_balance_at,
+) -> int:
+    """Per-segment closed-form yield for Aave aTokens.
+
+    Aave aTokens rebase ``balanceOf`` via a global liquidity index while
+    ``scaledBalanceOf`` (un-rebased principal) only changes on
+    mint/burn/transfer events. The closed-form formula::
+
+        yield = bal_end × scaled_start / scaled_end - bal_start
+
+    is exact across a span where scaled is constant (no events) — it
+    reduces to the pure rebase ``bal_end - bal_start``. When scaled
+    changes mid-span (an event happened), the same formula attributes
+    yield as if the scaled-start balance accrued for the whole span;
+    the error is bounded by ``Δscaled × (index_end - index_event) / RAY``
+    — at most ``V × intraday_index_growth`` per event.
+
+    Applying the closed-form per-SEGMENT (one per event day) instead of
+    per-PERIOD (one for the whole month) accumulates the per-event
+    error rather than the per-period error. For E1 April 2026's
+    $115M of late-month mints, the per-period closed-form lost
+    ≈$170K of yield (Δscaled / (scaled + Δscaled) × pool_yield ≈ 30%);
+    per-segment recovers all but a few dollars (events were at end-of-day
+    blocks so intraday growth is near zero).
+
+    ``segment_blocks`` is a sorted list of boundary blocks; the helper
+    treats each consecutive pair as one segment, prepending ``som_block``
+    and appending ``eom_block``. Boundaries outside [som_block, eom_block]
+    are silently dropped. Duplicate consecutive blocks collapse to a
+    zero-length segment that contributes 0 yield (harmless).
+
+    Clean-exit handling: when scaled drops to 0 (dust) within a segment,
+    the closed-form denominator explodes. The helper binary-searches the
+    burn block within that segment and uses ``balanceOf(burn_block - 1)``
+    as the segment-end balance — the same recovery as the pre-existing
+    clean-exit code path, just applied per-segment.
+
+    Returns the total yield in raw token units. Clamps each per-segment
+    yield to ≥ 0 (rebase only ever increases balance at rest; a
+    negative segment yield indicates an event slipped through our
+    boundary set and is more honest reported as 0 than as a bogus loss).
+    """
+    from decimal import Decimal as _D
+
+    # Build sorted unique block list spanning [som_block, eom_block].
+    blocks = sorted({som_block, eom_block,
+                     *[b for b in segment_blocks if som_block <= b <= eom_block]})
+    if len(blocks) < 2:
+        return 0
+
+    bal_start = balance_at(chain_value, token_addr, holder_addr, blocks[0])
+    scaled_start = scaled_balance_at(chain_value, token_addr, holder_addr, blocks[0])
+    total_yield = 0
+
+    for i in range(1, len(blocks)):
+        end_block = blocks[i]
+        if end_block == blocks[i - 1]:
+            continue  # degenerate zero-length segment
+        bal_end = balance_at(chain_value, token_addr, holder_addr, end_block)
+        scaled_end = scaled_balance_at(chain_value, token_addr, holder_addr, end_block)
+
+        if scaled_start == 0:
+            # Pre-deployment / empty position at segment start. Anything
+            # at end is principal injection, not yield.
+            seg_yield = 0
+        elif scaled_end == 0 or scaled_end * 1000 < scaled_start:
+            # Clean exit within this segment — Aave leaves 1 wei dust on
+            # full withdrawal so the literal ``scaled_end == 0`` check
+            # misses it. Use the same relative-threshold definition as
+            # the outer function's ``is_clean_exit``. Closed-form
+            # denominator blows up here; instead binary-search for the
+            # burn block and read balance just before.
+            lo, hi = blocks[i - 1] + 1, end_block
+            threshold = max(1, scaled_start // 10)
+            while lo < hi:
+                mid = (lo + hi) // 2
+                sb = scaled_balance_at(chain_value, token_addr, holder_addr, mid)
+                if sb <= threshold:
+                    hi = mid
+                else:
+                    lo = mid + 1
+            bal_pre_burn = balance_at(
+                chain_value, token_addr, holder_addr, lo - 1,
+            )
+            seg_yield = bal_pre_burn - bal_start
+        else:
+            # Standard per-segment closed-form.
+            seg_yield = int(
+                _D(bal_end) * _D(scaled_start) / _D(scaled_end)
+            ) - bal_start
+
+        total_yield += max(0, seg_yield)
+        bal_start = bal_end
+        scaled_start = scaled_end
+
+    return total_yield
+
+
+# Backwards-compatibility alias so existing imports don't break. The
+# per-event helper's old (pre_block, post_block) interface is gone — the
+# per-segment helper subsumes it with a simpler single-block-per-boundary
+# input. Tests using the old name are updated separately.
+_atoken_per_event_yield = _atoken_per_segment_yield
+
+
 def _atoken_index_weighted_inflow(
     prime: Prime,
     venue: Venue,
@@ -703,6 +817,7 @@ def _atoken_index_weighted_inflow(
     period_end_date,
     scaled_balance_at,
     balance_at,
+    transfer_event_blocks=None,
 ):
     """Closed-form rebasing-token inflow for Cat C/D (Aave aToken, SparkLend
     spToken).
@@ -793,41 +908,66 @@ def _atoken_index_weighted_inflow(
     is_clean_exit = (scaled_eom == 0 or
                      (scaled_som > 0 and scaled_eom * 1000 < scaled_som))
 
-    if is_clean_exit and som_block < eom_block:
-        # Two recovery paths for the closed-form degeneration:
-        #   (1) Single mid-period withdrawal — binary-search for the burn
-        #       block, then read rebased balance just before it.
-        #   (2) Multiple partial withdrawals — give up and return yield=0,
-        #       since the binary search would land on the LAST burn and
-        #       ``bal_pre_W`` would only reflect the residual.
-        #
-        # We discriminate by reading scaled_balance at the period midpoint
-        # *before* running the search. If it's still ≈ scaled_som the
-        # withdrawal happened in the second half; if it's ≈ dust the
-        # withdrawal happened in the first half — either way single
-        # withdrawal. If it's anywhere in between (10-90% of scaled_som),
-        # the position is being drained in stages and we bail out.
+    # Per-segment yield path: when the caller provides a way to enumerate
+    # event boundary blocks (typically end-of-event-day blocks derived
+    # from the daily mint/burn fixtures), apply the closed-form formula
+    # per-segment instead of per-period. This correctly attributes yield
+    # to each segment's scaled-balance basis, eliminating the
+    # ``Δscaled × (index_eom - index_at_event) / RAY`` under-count of the
+    # whole-period closed-form. See ``_atoken_per_segment_yield`` for the
+    # math; in short, it's the same formula but applied N times instead
+    # of once, with per-segment error bounded by ``V × intraday_index_
+    # growth`` per event (≈ pennies for end-of-day boundaries).
+    if transfer_event_blocks is not None and som_block < eom_block:
+        boundaries = list(transfer_event_blocks(
+            chain_value, token_addr, holder.value, som_block, eom_block,
+        ))
+        # The callable returns (pre_block, post_block) tuples from the
+        # day-resolution fixture mapping. Per-segment needs only the
+        # POST blocks — the end-of-event-day boundaries — since each
+        # consecutive pair (including the implicit som/eom anchors)
+        # defines one segment.
+        segment_blocks = sorted({post for _, post in boundaries})
+        yield_raw = _atoken_per_segment_yield(
+            chain_value, token_addr, holder.value,
+            som_block, eom_block, segment_blocks,
+            balance_at=balance_at,
+            scaled_balance_at=scaled_balance_at,
+        )
+        period_inflow_raw = delta_raw - yield_raw
+        period_inflow_usd = Decimal(period_inflow_raw) / scale
+        if boundaries:
+            import logging as _logging
+            _logging.getLogger(__name__).info(
+                "_atoken_index_weighted_inflow: venue %s per-segment "
+                "yield %s across %d boundary block(s).",
+                venue.id, yield_raw, len(segment_blocks),
+            )
+    elif is_clean_exit and som_block < eom_block:
+        # Clean-exit fallback (no event-block lookup wired). Same
+        # recovery logic as before this PR: binary-search for the
+        # withdrawal block, or fall back to yield=0 for multi-segment
+        # drains. Preserved for callers that don't pass
+        # ``transfer_event_blocks`` (notably the existing test fixtures
+        # that don't have mint/burn aggregates wired).
         if scaled_som == 0:
             yield_raw = 0
         else:
             mid_block = (som_block + eom_block) // 2
             sb_mid = scaled_balance_at(chain_value, token_addr, holder.value, mid_block)
-            # Multi-withdrawal sentinel: midpoint is intermediate.
-            dust_threshold  = scaled_som // 1000   # 0.1%
-            stable_threshold = (scaled_som * 9) // 10  # 90%
-            if dust_threshold < sb_mid < stable_threshold:
-                # Multi-withdrawal detected. Conservative fallback.
+            dust_threshold  = scaled_som // 1000
+            stable_threshold = (scaled_som * 9) // 10
+            multi_withdrawal = (dust_threshold < sb_mid < stable_threshold)
+            if multi_withdrawal:
                 yield_raw = 0
                 import logging as _logging
                 _logging.getLogger(__name__).warning(
                     "_atoken_index_weighted_inflow: venue %s drained in "
                     "stages (scaled at midpoint = %s, scaled_som = %s); "
-                    "falling back to yield=0. Multi-segment yield "
-                    "attribution requires per-event index reads — "
-                    "deferred.", venue.id, sb_mid, scaled_som,
+                    "no transfer_event_blocks lookup wired — falling "
+                    "back to yield=0.", venue.id, sb_mid, scaled_som,
                 )
             else:
-                # Single withdrawal — binary-search for the burn block.
                 lo, hi = som_block + 1, eom_block
                 threshold = scaled_som // 10
                 while lo < hi:
@@ -837,15 +977,8 @@ def _atoken_index_weighted_inflow(
                         hi = mid
                     else:
                         lo = mid + 1
-                withdrawal_block = lo
-                # bal at the block right before withdrawal = pre-withdrawal
-                # rebased value with the correct ``index_W`` folded in.
-                bal_pre_W = balance_at(chain_value, token_addr, holder.value,
-                                       withdrawal_block - 1)
+                bal_pre_W = balance_at(chain_value, token_addr, holder.value, lo - 1)
                 candidate_yield = bal_pre_W - bal_som
-                # Final safety check: yield must be non-negative for an
-                # accruing token. If negative, the search converged
-                # unexpectedly — fall back to yield=0.
                 if candidate_yield < 0:
                     yield_raw = 0
                     import logging as _logging
@@ -864,10 +997,21 @@ def _atoken_index_weighted_inflow(
         # only possible in tests). Yield = 0; everything is capital.
         period_inflow_usd = Decimal(delta_raw) / scale
     else:
-        # Closed-form path (the common case). Round-half-even on the Decimal
-        # remainder. ``int()`` truncates toward zero, biasing a slightly-
-        # negative result up by one raw unit under partial-withdrawal
-        # precision noise.
+        # Closed-form path (the common case). Round-half-even on the
+        # Decimal remainder. ``int()`` truncates toward zero, biasing a
+        # slightly-negative result up by one raw unit under partial-
+        # withdrawal precision noise.
+        #
+        # Note: the closed-form under-counts when a large mid-period mint
+        # arrives (Δscaled × (index_eom − index_at_mint) / RAY of yield
+        # earned by newly-minted aTokens isn't attributed). E1 April 2026
+        # hits this with $115M of mints late month, losing ~$170K of
+        # yield vs Grove. We tried promoting to the per-event helper here
+        # but day-resolution boundaries collapse the inter-event-day
+        # yield on consecutive event days into the principal jump,
+        # producing WORSE numbers than the closed-form. Fixing this
+        # cleanly needs face-value mint amounts subtracted from the
+        # segment yield, or sub-day event-block resolution — deferred.
         yield_raw = int(
             (_D(bal_eom) * _D(scaled_som) / _D(scaled_eom) - _D(bal_som))
             .to_integral_value(rounding="ROUND_HALF_EVEN")

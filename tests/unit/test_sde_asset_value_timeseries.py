@@ -108,26 +108,23 @@ def test_capped_sde_in_flight_window_keeps_cap_coverage():
         burn_date=burn,
         end_date=sde_end,
     )
-
     by_date = {r["block_date"]: r for _, r in df.iterrows()}
 
-    # Pre-burn: capped at cap (uncapped value > cap).
+    # Pre-burn (Mar 1-8): on-chain > cap → cum_value = cap.
     assert by_date[date(2026, 3, 8)]["cum_value"]      == cap
     assert by_date[date(2026, 3, 8)]["uncapped_value"] == pre_burn
 
-    # Burn day → end_date: cum_value stays at cap (in-flight coverage)
-    # even though uncapped_value has collapsed to the on-chain residual.
+    # In-flight window (Mar 9-12 inclusive): when ``usdc_settlement_date``
+    # is not set, the in-flight upper bound falls back to ``end_date``, so
+    # cap-coverage holds through end_date. uncapped_value tracks the
+    # on-chain residual ($128M).
     for d in (date(2026, 3, 9), date(2026, 3, 10),
               date(2026, 3, 11), date(2026, 3, 12)):
-        assert by_date[d]["cum_value"]      == cap, f"in-flight day {d}"
-        assert by_date[d]["uncapped_value"] == post_burn, f"in-flight day {d}"
+        assert by_date[d]["cum_value"]      == cap, f"in-flight {d}"
+        assert by_date[d]["uncapped_value"] == post_burn, f"in-flight {d}"
 
-    # Post end_date: SDE entry is inactive, so cum_value drops to 0 even
-    # though the on-chain residual ($128M) still exists. uncapped_value
-    # keeps tracking the on-chain residual for diagnostics. See
-    # ``test_post_end_date_cum_value_is_zero_even_when_on_chain_residual_exists``
-    # for the dedicated post-end-date test.
-    for d in (date(2026, 3, 13), date(2026, 3, 14), date(2026, 3, 31)):
+    # Post-end-date (Mar 13-31): SDE inactive → cum_value = 0.
+    for d in (date(2026, 3, 13), date(2026, 3, 31)):
         assert by_date[d]["cum_value"]      == Decimal("0"), f"post-end {d}"
         assert by_date[d]["uncapped_value"] == post_burn, f"post-end {d}"
 
@@ -202,8 +199,9 @@ def test_capped_sde_without_burn_date_uses_on_chain_value():
 
 
 def test_burn_date_without_end_date_raises():
-    """burn_date is meaningless without end_date — refuse the call so the
-    operator can't accidentally configure a half-set in-flight window."""
+    """Under the in-flight cap-preservation model, ``burn_date`` requires
+    ``end_date`` so the in-flight window has a well-defined upper bound.
+    Configuring burn_date alone is a YAML error — refuse loudly."""
     period = _period(date(2026, 3, 1), date(2026, 3, 31))
     with pytest.raises(ValueError, match="end_date is None"):
         _sde_asset_value_timeseries(
@@ -214,6 +212,23 @@ def test_burn_date_without_end_date_raises():
             cap_usd=Decimal("50"),
             burn_date=date(2026, 3, 9),
             end_date=None,
+        )
+
+
+def test_burn_date_without_cap_usd_raises():
+    """``burn_date`` also requires ``cap_usd`` — the in-flight branch keeps
+    ``cum_value = cap_usd`` so there's nothing to pin to without a cap.
+    Refuse the call rather than silently no-op the cap-preservation."""
+    period = _period(date(2026, 3, 1), date(2026, 3, 31))
+    with pytest.raises(ValueError, match="cap_usd is None"):
+        _sde_asset_value_timeseries(
+            _prime(), _venue(), period,
+            balance_source=_ConstBalanceSource(Decimal("100")),
+            block_resolver=_StaticBlockResolver(),
+            nav_at_block=_const_nav,
+            cap_usd=None,
+            burn_date=date(2026, 3, 9),
+            end_date=date(2026, 3, 12),
         )
 
 
@@ -241,23 +256,6 @@ def test_period_entirely_after_end_date_yields_zero_cum_value():
     for _, row in df.iterrows():
         assert row["cum_value"] == Decimal("0")
         assert row["uncapped_value"] == post
-
-
-def test_burn_date_without_cap_usd_raises():
-    """In-flight cap-preservation needs a cap to pin. If someone configures
-    burn_date on a non-capped entry (or otherwise passes cap_usd=None), the
-    function should refuse rather than silently no-op the cap-preservation."""
-    period = _period(date(2026, 3, 1), date(2026, 3, 31))
-    with pytest.raises(ValueError, match="cap_usd is None"):
-        _sde_asset_value_timeseries(
-            _prime(), _venue(), period,
-            balance_source=_ConstBalanceSource(Decimal("100")),
-            block_resolver=_StaticBlockResolver(),
-            nav_at_block=_const_nav,
-            cap_usd=None,
-            burn_date=date(2026, 3, 9),
-            end_date=date(2026, 3, 12),
-        )
 
 
 def test_inverted_burn_window_raises():
@@ -321,9 +319,9 @@ def test_post_end_date_cum_value_is_zero_even_when_on_chain_residual_exists():
     )
     by_date = {r["block_date"]: r for _, r in df.iterrows()}
 
-    # Sanity: pre-end-date follows the existing cap / in-flight rules.
-    assert by_date[date(2026, 3, 12)]["cum_value"] == cap
-    # Post-end-date: cum_value must drop to 0 (entry inactive), but
+    # Sanity: pre-burn follows the normal cap rule.
+    assert by_date[date(2026, 3, 8)]["cum_value"] == cap
+    # Post-burn (which includes post-end-date): cum_value = 0 throughout.
     # uncapped_value keeps tracking the on-chain residual for diagnostics.
     for d in (date(2026, 3, 13), date(2026, 3, 20), date(2026, 3, 31)):
         assert by_date[d]["cum_value"] == Decimal("0"), f"post-end-date {d}"

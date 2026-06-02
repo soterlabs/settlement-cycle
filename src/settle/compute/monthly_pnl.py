@@ -70,6 +70,14 @@ class Sources:
     # overrides the registry lookup. Used by acceptance scripts to inject
     # historical-NAV overrides without monkey-patching ``_NAV_ORACLE_SOURCES``.
     nav_oracle_resolver: object = None
+    # Optional aToken Transfer-event log lookup. Signature:
+    #   ``(chain: str, token: bytes, holder: bytes, som: int, eom: int) -> list[int]``
+    # Returns the SORTED list of block numbers where Transfer events involving
+    # ``holder`` occurred within ``(som, eom]``. When set, the Cat C
+    # per-segment yield path uses sub-day-resolution event boundaries
+    # (one boundary per event block) instead of falling back to
+    # end-of-day boundaries derived from daily mint/burn aggregates.
+    atoken_event_blocks: object = None
 
 
 def _previous_day_eod_utc(d) -> datetime:
@@ -98,6 +106,80 @@ def _merge_cap_series(df1, df2):
         for d in all_dates
     ]
     return _pd.DataFrame(rows)
+
+
+def _build_paired_principal_caps(prime, venue, period, balance_src) -> dict:
+    """Build the ``paired_principal_caps`` map for a Cat A anchor venue.
+
+    For each display-only venue whose ``paired_with`` matches ``venue.id``,
+    fetch its cumulative ALM→holder outflow series and key it by the
+    venue's ``paired_source`` address. Multiple display-only venues sharing
+    the same ``paired_source`` get their cap series summed via
+    ``_merge_cap_series``. The result is the ``paired_principal_caps``
+    argument to ``_cat_a_capital_inflow_timeseries``.
+
+    Filter order is documented inline below — kept identical to the prior
+    inline loop so the refactor is behaviour-preserving. Extracted into a
+    standalone helper for unit-test coverage (see
+    ``tests/unit/test_paired_principal_caps.py``).
+    """
+    paired_principal_caps: dict = {}
+    for eoa_v in prime.venues:
+        if not eoa_v.display_only:
+            continue
+        if eoa_v.skip:
+            # ``skip`` takes precedence over ``display_only`` for
+            # compute purposes: a wound-down venue should not drive
+            # the anchor's cap, even if it's still listed for
+            # reporting. Without this guard the skipped venue's
+            # principal-out series would silently reclassify real
+            # anchor inflows as capital, mis-attributing revenue.
+            continue
+        if eoa_v.paired_with != venue.id:
+            continue
+        if eoa_v.paired_source is None or eoa_v.holder_override is None:
+            continue
+        if eoa_v.chain != venue.chain:
+            # Cross-chain paired-cap isn't supported by the current
+            # directed_inflow_timeseries (which is single-chain). The
+            # display-only venue setup helper in normalize.positions
+            # already enforces this; skip silently here.
+            continue
+        if eoa_v.chain not in prime.alm or eoa_v.chain not in period.pin_blocks:
+            # Defensive: a display-only venue configured for a chain
+            # where the prime has no ALM address (or where the period
+            # has no pin_block) would otherwise KeyError mid-loop
+            # with a hard-to-diagnose stack trace. Skip with a
+            # warning so the operator sees which venue tripped it.
+            _log.warning(
+                "  paired-cap: skipping display-only venue %s — "
+                "chain %s missing from prime.alm or period.pin_blocks.",
+                eoa_v.id, eoa_v.chain.value,
+            )
+            continue
+        cap_df = balance_src.directed_inflow_timeseries(
+            chain=eoa_v.chain.value,
+            token=eoa_v.token.address.value,
+            from_addr=prime.alm[eoa_v.chain].value,
+            to_addr=eoa_v.holder_override.value,
+            start=prime.start_date,
+            pin_block=period.pin_blocks[eoa_v.chain],
+        )
+        src_key = eoa_v.paired_source.value
+        if src_key in paired_principal_caps:
+            # Two or more display-only EOAs share the same
+            # ``paired_source``. The cap is the SUM of their
+            # principal-out series — return inflows from the shared
+            # counterparty consume the pooled cap, not just one
+            # leg's. Without this, the second insert would silently
+            # overwrite the first and reclassify legitimate
+            # principal-returns as yield.
+            paired_principal_caps[src_key] = _merge_cap_series(
+                paired_principal_caps[src_key], cap_df,
+            )
+        else:
+            paired_principal_caps[src_key] = cap_df
+    return paired_principal_caps
 
 
 def _check_centrifuge_in_flight(
@@ -317,7 +399,7 @@ def _sde_asset_value_timeseries(
     on the frame for diagnostics — not consumed by the EoM-locked compute
     path. Always reflects the actual balance × NAV.
 
-    Parameter contract:
+    Daily branching — first matching rule wins:
 
     * ``cap_usd = None``: ``cum_value = raw_value`` every day (no cap, no
       in-flight handling).
@@ -409,9 +491,8 @@ def _sde_asset_value_timeseries(
     ):
         # Inverted active window — a YAML misconfiguration where the SDE
         # entry's start_date and end_date are swapped would silently zero
-        # out cum_value for every day in the period (the gate inside the
-        # daily loop would always fire). Refuse loudly so the operator
-        # gets a clear error instead of wrong sky_revenue numbers.
+        # out cum_value for every day in the period. Refuse loudly so the
+        # operator gets a clear error instead of wrong sky_revenue numbers.
         raise ValueError(
             f"_sde_asset_value_timeseries({venue.id}): start_date "
             f"({start_date.isoformat()}) is after end_date "
@@ -1295,8 +1376,16 @@ def _aggregate_lending_idle_usds(
         # ``_aggregate_curve_idle_usds``): the shared ``daily_by_date`` is a
         # cross-venue aggregate, so reading from it on failure would either
         # zero-out (consecutive failures) or over-count (cross-venue pickup).
-        venue_last_idle = Decimal(0)
+        # ``venue_last_idle = None`` means we haven't observed a successful
+        # read yet — a failure at this point can't be "carried forward" from
+        # anything real and must propagate, otherwise we'd silently restore
+        # the cache-of-zeros antipattern (RPC down on day 1 → 0 → "carry"
+        # → 0 for the whole month).
+        venue_last_idle: Decimal | None = None
         venue_daily: list[Decimal] = []
+
+        from ..extract.rpc import RPCError as _RPCError
+        import requests as _requests
 
         current = period.start
         while current <= period.end:
@@ -1316,11 +1405,16 @@ def _aggregate_lending_idle_usds(
                     pool_idle_usds = Decimal(pool_idle_raw) / Decimal(10 ** underlying_decimals)
                     prime_idle = alm_share * pool_idle_usds
 
-            except Exception as exc:
+            except (_RPCError, _requests.HTTPError,
+                    _requests.ConnectionError, _requests.Timeout) as exc:
+                if venue_last_idle is None:
+                    # No successful read to carry forward — fail loud rather
+                    # than silently fall back to 0 for the rest of the period.
+                    raise
                 _log.warning(
                     "lending_idle_usds: RPC error for venue %s on %s; carrying forward "
-                    "prior value (error: %s).",
-                    venue.id, current, type(exc).__name__,
+                    "prior value $%s (error: %s).",
+                    venue.id, current, venue_last_idle, type(exc).__name__,
                 )
                 prime_idle = venue_last_idle
             else:
@@ -1973,6 +2067,111 @@ def compute_monthly_pnl(
                 _atoken_index_weighted_inflow,
             )
             from ..domain.primes import Address as _Addr, Chain as _Chain
+
+            # Sentinel "zero address" — used by the mint/burn fixtures as the
+            # counterparty for mints (from=0) and burns (to=0).
+            _ZERO = b"\x00" * 20
+            _balance_src_for_events = (
+                sources.balance if sources.balance is not None else get_balance_source()
+            )
+
+            def _atoken_event_blocks(
+                chain_value: str, token_addr: bytes, holder_addr: bytes,
+                som: int, eom: int,
+            ) -> list[tuple[int, int]]:
+                """Day-resolution ``(pre_block, post_block)`` boundaries for
+                the per-event yield path.
+
+                The Aave aToken ``Transfer`` event scan via ``eth_getLogs``
+                is unworkable on free RPC tiers (Alchemy caps the window at
+                10 blocks — a single Eth-month is 215K blocks). We instead
+                derive event days from the daily mint/burn aggregates we
+                already capture per Cat C venue and convert each activity
+                date ``d`` to:
+
+                * ``pre_block``  = ``block_at_or_before(EOD d-1)`` — the
+                  block where the scaled balance is still at its
+                  PRE-event-day value. Reading ``balanceOf`` here closes
+                  the segment that just ended.
+                * ``post_block`` = ``block_at_or_before(EOD d)`` — the
+                  block where the scaled balance reflects all of day d's
+                  events. Reading ``balanceOf`` here opens the next segment.
+
+                Precision: any yield accrued from the start of event day d
+                to the in-day event time lands in the NEXT segment (or
+                gets lost when consecutive event days collide and the
+                next pre-block coincides with the current post-block).
+                Bounded loss: ≈half a day per event. For a $11.6M position
+                at ~3% APY that's ≈$500 per event — below the closed-
+                form's $20K/mo fallback ceiling that this path replaces.
+                """
+                from datetime import datetime as _dt, time as _time, timezone as _tz, timedelta as _td
+                if som + 1 > eom:
+                    return []
+                # Collect activity dates from mints (from=ZERO → holder)
+                # and burns (holder → ZERO). We only care about WHICH days
+                # had activity, not the magnitude.
+                dates: set = set()
+                for from_addr, to_addr in (
+                    (_ZERO, holder_addr), (holder_addr, _ZERO),
+                ):
+                    df = _balance_src_for_events.directed_inflow_timeseries(
+                        chain=chain_value, token=token_addr,
+                        from_addr=from_addr, to_addr=to_addr,
+                        start=prime.start_date, pin_block=eom,
+                    )
+                    if df is None or df.empty:
+                        continue
+                    for _, row in df.iterrows():
+                        amt = row.get("daily_inflow", 0) or row.get("cum_inflow", 0)
+                        try:
+                            amt_f = float(amt)
+                        except (TypeError, ValueError):
+                            amt_f = 0
+                        if amt_f > 0:
+                            dates.add(row["block_date"])
+                boundaries: list[tuple[int, int]] = []
+                for d in dates:
+                    pre_eod = _dt.combine(d - _td(days=1), _time.max, tzinfo=_tz.utc)
+                    post_eod = _dt.combine(d, _time.max, tzinfo=_tz.utc)
+                    pre_block = resolver.block_at_or_before(chain_value, pre_eod)
+                    post_block = resolver.block_at_or_before(chain_value, post_eod)
+                    # post_block must fall within the period to be useful.
+                    if not (som < post_block <= eom):
+                        continue
+                    # pre_block may be < som_block (day d = first day of
+                    # period); the helper clamps it to som_block.
+                    boundaries.append((pre_block, post_block))
+                return sorted(set(boundaries), key=lambda t: t[1])
+
+            # Per-event vs day-resolution boundary lookup. If Sources
+            # provides a sub-day-resolution ``atoken_event_blocks``
+            # callable AND it returns at least one event for this
+            # (token, holder) within the period, prefer it over the
+            # day-resolution helper. Sub-day boundaries eliminate
+            # intraday/consecutive-event precision loss.
+            #
+            # Fall back to day-resolution when the per-event lookup
+            # returns nothing — typically because an older fixture set
+            # captured ``atoken_{vid}_mints``/``burns`` daily aggregates
+            # but not ``atoken_{vid}_event_log``. The day-resolution
+            # path is still correct for venues with sparse events.
+            if sources.atoken_event_blocks is not None:
+                _day_res_cb = _atoken_event_blocks   # capture original
+                _per_event_cb = sources.atoken_event_blocks
+                def _atoken_event_blocks(
+                    chain_value: str, token_addr: bytes, holder_addr: bytes,
+                    som: int, eom: int,
+                ) -> list[tuple[int, int]]:
+                    blocks = _per_event_cb(chain_value, token_addr, holder_addr, som, eom)
+                    if blocks:
+                        # Sub-day-resolution boundaries: each event block
+                        # gets a (pre=block-1, post=block) tuple.
+                        return [(b - 1, b) for b in blocks if som < b <= eom]
+                    # No per-event data — defer to the day-resolution
+                    # daily-aggregate path.
+                    return _day_res_cb(chain_value, token_addr, holder_addr, som, eom)
+
             inflow_ts = _atoken_index_weighted_inflow(
                 prime, venue, som_block, eom_block,
                 period_end_date=period.end,
@@ -1982,6 +2181,7 @@ def compute_monthly_pnl(
                 scaled_balance_at=lambda c, t, h, b: scaled_balance_of(
                     _Chain(c), _Addr(t), _Addr(h), b,
                 ),
+                transfer_event_blocks=_atoken_event_blocks,
             )
             # Off-pool aToken rewards (Merkl, Anchorage, …). The closed-form
             # ``yield = scaled(SoM) × Δindex / RAY`` formula above only
@@ -2161,69 +2361,11 @@ def compute_monthly_pnl(
                 addr.value: [(o.date, o.amount) for o in entries]
                 for addr, entries in overrides_for_chain.items()
             }
-            # Paired-principal-cap auto-wiring: if any display-only venue on
-            # this chain points to this anchor (``paired_with == venue.id``),
-            # fetch its cumulative ALM→holder outflow series so the classifier
-            # can split inflows from ``paired_source`` into capital
-            # (principal-return up to the cap) and yield (excess). See
-            # ``Venue.display_only`` and the paired-principal-cap doc on
-            # ``_cat_a_capital_inflow_timeseries``.
-            paired_principal_caps: dict = {}
-            for eoa_v in prime.venues:
-                if not eoa_v.display_only:
-                    continue
-                if eoa_v.skip:
-                    # ``skip`` takes precedence over ``display_only`` for
-                    # compute purposes: a wound-down venue should not drive
-                    # the anchor's cap, even if it's still listed for
-                    # reporting. Without this guard the skipped venue's
-                    # principal-out series would silently reclassify real
-                    # anchor inflows as capital, mis-attributing revenue.
-                    continue
-                if eoa_v.paired_with != venue.id:
-                    continue
-                if eoa_v.paired_source is None or eoa_v.holder_override is None:
-                    continue
-                if eoa_v.chain != venue.chain:
-                    # Cross-chain paired-cap isn't supported by the current
-                    # directed_inflow_timeseries (which is single-chain). The
-                    # display-only venue setup helper in normalize.positions
-                    # already enforces this; skip silently here.
-                    continue
-                if eoa_v.chain not in prime.alm or eoa_v.chain not in period.pin_blocks:
-                    # Defensive: a display-only venue configured for a chain
-                    # where the prime has no ALM address (or where the period
-                    # has no pin_block) would otherwise KeyError mid-loop
-                    # with a hard-to-diagnose stack trace. Skip with a
-                    # warning so the operator sees which venue tripped it.
-                    _log.warning(
-                        "  paired-cap: skipping display-only venue %s — "
-                        "chain %s missing from prime.alm or period.pin_blocks.",
-                        eoa_v.id, eoa_v.chain.value,
-                    )
-                    continue
-                cap_df = balance_src.directed_inflow_timeseries(
-                    chain=eoa_v.chain.value,
-                    token=eoa_v.token.address.value,
-                    from_addr=prime.alm[eoa_v.chain].value,
-                    to_addr=eoa_v.holder_override.value,
-                    start=prime.start_date,
-                    pin_block=period.pin_blocks[eoa_v.chain],
-                )
-                src_key = eoa_v.paired_source.value
-                if src_key in paired_principal_caps:
-                    # Two or more display-only EOAs share the same
-                    # ``paired_source``. The cap is the SUM of their
-                    # principal-out series — return inflows from the shared
-                    # counterparty consume the pooled cap, not just one
-                    # leg's. Without this, the second insert would silently
-                    # overwrite the first and reclassify legitimate
-                    # principal-returns as yield.
-                    paired_principal_caps[src_key] = _merge_cap_series(
-                        paired_principal_caps[src_key], cap_df,
-                    )
-                else:
-                    paired_principal_caps[src_key] = cap_df
+            # Paired-principal-cap auto-wiring — extracted into
+            # ``_build_paired_principal_caps`` for unit-test coverage.
+            paired_principal_caps = _build_paired_principal_caps(
+                prime, venue, period, balance_src,
+            )
             inflow_ts = _cat_a_capital_inflow_timeseries(
                 prime, venue, period,
                 balance_source=balance_src,
@@ -2414,21 +2556,22 @@ def compute_monthly_pnl(
                     return _resolve_rwa_nav(_v, block, block_resolver=_br, resolver=_nr)
 
                 # UTILIZED EXCLUSION path — feeds ``compute_sky_revenue`` via
-                # ``sde_av_total``. Independent of the SDE revenue *split*: the
-                # sd_share / sd_revenue computation runs in
+                # ``sde_av_total``. Independent of the SDE revenue *split*:
+                # the sd_share / sd_revenue computation runs in
                 # ``compute_venue_revenue`` using ``value_eom`` directly
-                # (EoM-locked, see ``_capped_sd_revenue_eom_locked``) and is
-                # not sensitive to the mid-period on-chain drop.
+                # (EoM-locked, see ``_capped_sd_revenue_eom_locked``).
                 #
                 # **Gating asymmetry between the two paths.** This call's
-                # daily gate (``current < start_date`` or ``current > end_date``
-                # → cum_value=0) suppresses pre-start and post-end days from
-                # the utilized exclusion. ``compute_venue_revenue``'s
-                # EoM-locked sd_share applies to the FULL period's
-                # actual_revenue regardless of intra-period activity — it
-                # uses only the SoM/EoM snapshots and naturally reflects
-                # whatever the on-chain state was at period end. So an SDE
-                # entry that's only active for part of the period correctly
+                # daily gate (pre-start / post-burn / post-end → cum_value=0)
+                # suppresses inactive days from the utilized exclusion —
+                # critically including the burn day onwards (Grove's "SKY
+                # EXPOSURE" workbook tab shows Sky's per-venue Asset Value
+                # dropping to $0 on burn day, not at end_date). Meanwhile
+                # ``compute_venue_revenue``'s EoM-locked sd_share applies to
+                # the FULL period's actual_revenue regardless of intra-period
+                # activity — it uses only the SoM/EoM snapshots and naturally
+                # reflects the on-chain state at period end. So an SDE entry
+                # that's only active for part of the period correctly
                 # contributes zero utilized exclusion on inactive days
                 # (path 1) while still attributing its EoM sd_share to the
                 # period's actual_revenue (path 2). Both behaviours are

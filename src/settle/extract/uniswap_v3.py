@@ -193,11 +193,27 @@ class V3TickInfo:
     fee_growth_outside_1_x128: int
 
 
+def _decode_uint(raw: str) -> int:
+    """Decode a uint256 eth_call return. Treats empty/zero-length results as 0
+    — matches the convention in ``extract.rpc._decode_uint``. The NFPM contract
+    isn't deployed on every EVM chain (e.g. Monad has no canonical V3 yet);
+    calling ``balanceOf`` against a missing contract reverts and the RPC
+    returns ``0x``, which is semantically equivalent to "owner holds 0 NFTs"
+    for our purposes.
+    """
+    if raw is None or raw in ("0x", "0x0"):
+        return 0
+    try:
+        return int(raw, 16)
+    except ValueError:
+        return 0
+
+
 @cached(source_id="uniswap_v3.balance_of_nfpm")
 def nfpm_balance_of(chain: Chain, nfpm: Address, owner: Address, block: int) -> int:
     """Number of V3 NFTs the owner holds at ``block``."""
     data = SEL_BALANCE_OF + _pad_address(owner)
-    return int(eth_call(chain, nfpm, data, block), 16)
+    return _decode_uint(eth_call(chain, nfpm, data, block))
 
 
 @cached(source_id="uniswap_v3.token_of_owner_by_index")
@@ -206,7 +222,7 @@ def token_of_owner_by_index(
 ) -> int:
     """Returns the i-th tokenId owned by ``owner`` (ERC-721 enumerable extension)."""
     data = SEL_TOKEN_OF_OWNER_BY_INDEX + _pad_address(owner) + _pad_uint(index)
-    return int(eth_call(chain, nfpm, data, block), 16)
+    return _decode_uint(eth_call(chain, nfpm, data, block))
 
 
 @cached(source_id="uniswap_v3.positions")

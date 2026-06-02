@@ -179,19 +179,53 @@ from ._abi import pad_address as _pad_address, pad_uint as _pad_uint  # noqa: E4
 # Read methods — all pinned to a block
 # ----------------------------------------------------------------------------
 
+# Explicit gas cap sent in every eth_call. Needed because drpc's Monad
+# endpoint rejects requests with no ``gas`` field, claiming the implicit
+# block-gas exceeds its provider limit ("user-specified gas exceeds
+# provider limit", JSON-RPC code -32603). All other providers we use
+# (publicnode Ethereum/Base, official Avalanche, Plume) tolerate this
+# cap, so we set it unconditionally for simpler code. 10M is well above
+# any single-contract read we make (V3 ticks, ERC-4626 conversion, etc.)
+# and below every chain's block gas limit, so simulator behaviour is
+# unchanged on the chains where it wasn't required.
+_ETH_CALL_GAS_CAP_HEX = "0x989680"  # 10,000,000
+
+
 @cached(source_id="rpc.eth_call")
 def eth_call(chain: Chain, contract: Address, data: str, block: int) -> str:
     """Raw eth_call. `data` = 0x-prefixed hex selector + abi-encoded args."""
     return _post(
         rpc_url(chain),
         "eth_call",
-        [{"to": contract.hex, "data": data}, hex(block)],
+        [
+            {"to": contract.hex, "data": data, "gas": _ETH_CALL_GAS_CAP_HEX},
+            hex(block),
+        ],
     )
 
 
 def _decode_uint(raw: str) -> int:
-    """Decode a uint256 eth_call return. Treats empty/zero-length results as 0
-    (token contract didn't exist at this block, or the call reverted)."""
+    """Decode a uint256 eth_call return. Maps empty/zero-length results (``"0x"``
+    or ``"0x0"``) to 0.
+
+    ⚠ Disambiguating ``"0x"``: most JSON-RPC providers return ``"0x"`` for ANY
+    EVM revert that doesn't include error data — including a deployed contract
+    that reverts because it's paused, has a custom guard, or returns no data
+    on edge inputs. The 0 we substitute is the right answer for the common
+    case (contract not yet deployed at this block) but masks legitimate
+    reverts as a $0 balance / share. If you're calling this from a context
+    where a real revert on an existing contract should NOT be silently
+    zeroed, check ``is_contract_deployed`` first OR catch the cached zero
+    upstream and re-validate.
+
+    Callers in this module that currently rely on the ``"0x"`` → 0 mapping:
+    ``balance_of``, ``convert_to_assets``, ``total_supply_of``,
+    ``scaled_balance_of`` (via the same-named helper), ``vault_share_to_assets``,
+    ``psm3_shares``, ``psm3_convert_to_asset_value``. All accept the
+    conflation — for our Grove + Spark use cases the affected contracts
+    either exist throughout the period or are queried at pre-deployment
+    blocks where the 0 is correct.
+    """
     if raw is None or raw in ("0x", "0x0"):
         return 0
     try:
@@ -218,21 +252,18 @@ def balance_of(chain: Chain, token: Address, holder: Address, block: int) -> int
     ``_decode_uint`` without raising).
 
     On exhausted-retry RPC failure (RPCError / HTTPError after all attempts in
-    ``eth_call``) the return is also 0, but a loud WARNING is logged so the
-    silent-zero doesn't mask a transient RPC outage that would otherwise
-    silently zero out a venue's value. Settlement scripts should fail or
-    re-run on these warnings rather than accept the 0.
+    ``eth_call``) this function **raises**. Caching an error as ``0`` here
+    would poison the cache: subsequent runs would silently use the bad
+    zero as if it were a real balance, and the warning that pointed to the
+    transient outage would not re-fire. Earlier this function returned 0
+    with a WARNING, which produced exactly that bug — a Grove May 2026
+    re-run with a fresh RPC URL kept serving the cached 0 from the prior
+    publicnode-archive failure. Hard-fail is the right contract: callers
+    that genuinely want soft-fail can wrap a try/except, but the cache
+    layer never persists an error as a successful value.
     """
     data = SEL_BALANCE_OF + _pad_address(holder)
-    try:
-        return _decode_uint(eth_call(chain, token, data, block))
-    except (RPCError, requests.HTTPError) as e:
-        import logging
-        logging.getLogger(__name__).warning(
-            "balance_of(%s, token=%s, holder=%s, block=%d) failed after retries: %s — returning 0",
-            chain.value, token.hex, holder.hex, block, e,
-        )
-        return 0
+    return _decode_uint(eth_call(chain, token, data, block))
 
 
 @cached(source_id="rpc.total_supply_of")
@@ -245,18 +276,15 @@ def total_supply_of(chain: Chain, token: Address, block: int) -> int:
     it gives the holder's proportional share of the pool:
     ``share = balanceOf(holder) / totalSupply()``.
 
-    Returns 0 if the token didn't exist at this block or on RPC error
-    (logged as WARNING so silent zeros are auditable).
+    Returns 0 if the token didn't exist at this block (RPC reverts with 0x —
+    handled inside ``_decode_uint`` without raising). On RPC infra failure
+    this **raises**: caching an error as 0 here would silently zero out
+    every pool-share calculation that depends on it, and the SparkLend
+    caller (``monthly_pnl.lending_idle_usds``) already wraps the call in
+    a try/except that carries forward the prior value on error — the same
+    semantics the old soft-fail provided, but without cache poisoning.
     """
-    try:
-        return _decode_uint(eth_call(chain, token, SEL_TOTAL_SUPPLY, block))
-    except (RPCError, requests.HTTPError) as e:
-        import logging
-        logging.getLogger(__name__).warning(
-            "total_supply_of(%s, token=%s, block=%d) failed: %s — returning 0",
-            chain.value, token.hex, block, e,
-        )
-        return 0
+    return _decode_uint(eth_call(chain, token, SEL_TOTAL_SUPPLY, block))
 
 
 SEL_SCALED_BALANCE_OF = "0x1da24f3e"   # scaledBalanceOf(address)
@@ -272,22 +300,33 @@ def scaled_balance_of(chain: Chain, token: Address, holder: Address, block: int)
     yield over a period: ``yield = scaled_som × (index_eom − index_som) / RAY``.
 
     The model is exact for Aave V3 / SparkLend (which expose ``scaledBalanceOf``).
-    Tokens without a scaled-balance accessor will revert; the caller must
-    catch and fall back to face-value inflow accounting.
+    Tokens without a scaled-balance accessor revert; that case is preserved by
+    returning 0 so the caller can fall back to face-value inflow accounting.
+
+    Execution-revert handling: most nodes return ``result: "0x"`` for a revert
+    without data, which ``_decode_uint`` already maps to 0. A few nodes
+    instead surface the revert as a JSON-RPC error with "execution reverted"
+    in the message — we treat that string specifically as the same case.
+
+    Any OTHER RPC error (transient transport failures that exhausted retries,
+    timeouts, gateway errors) propagates. Caching an infra failure as 0 here
+    used to corrupt yield math for the entire Aave/Spark stack until the
+    cache was hand-purged.
     """
     data = SEL_SCALED_BALANCE_OF + _pad_address(holder)
     try:
         return _decode_uint(eth_call(chain, token, data, block))
     except (RPCError, requests.HTTPError) as e:
-        # Tokens without a scaledBalanceOf accessor revert; that's the design
-        # intent for return-0 here. But "RPC down" is a different failure mode
-        # — log loud so the caller can distinguish.
-        import logging
-        logging.getLogger(__name__).warning(
-            "scaled_balance_of(%s, token=%s, holder=%s, block=%d) failed: %s — returning 0",
-            chain.value, token.hex, holder.hex, block, e,
-        )
-        return 0
+        # Catch BOTH RPCError (JSON-RPC 200 with error payload) and HTTPError
+        # (some providers — drpc under load, Infura on certain plans — surface
+        # an execution revert as an HTTP 5xx instead of a JSON-RPC error). The
+        # ``"execution reverted"`` substring lives in the response body in
+        # either case; if it's present we still want the soft-fail-to-0 path
+        # (token lacks ``scaledBalanceOf`` accessor). Without HTTPError in the
+        # catch, the 5xx path would crash callers that previously soft-failed.
+        if "execution reverted" in str(e).lower():
+            return 0
+        raise
 
 
 @cached(source_id="rpc.native_balance")
@@ -310,12 +349,22 @@ def decimals_of(chain: Chain, token: Address, block: int) -> int:
 
 @cached(source_id="rpc.convert_to_assets")
 def convert_to_assets(chain: Chain, vault: Address, shares: int, block: int) -> int:
-    """ERC-4626 `convertToAssets(shares)`. Returns 0 if vault didn't exist at this block."""
+    """ERC-4626 `convertToAssets(shares)`. Returns 0 if vault didn't exist at this
+    block (RPC reverts with 0x — handled inside ``_decode_uint`` without raising).
+
+    On exhausted-retry RPC failure (RPCError / HTTPError after all attempts in
+    ``eth_call``) this function **raises** — same hard-fail contract as
+    ``balance_of``. Caching an error as 0 here poisons the cache: every
+    subsequent read returns the cached 0, the vault's share price evaluates
+    to 0, and any position priced as ``balance × convertToAssets`` reports
+    $0 even with a real on-chain balance. Earlier this function returned 0
+    silently, which produced exactly that bug on Grove May 2026 (E19/E23
+    on Base): an upstream Alchemy hiccup during fixture capture cached 0,
+    and the position was reported as -$100M phantom loss until the cache
+    was hand-purged.
+    """
     data = SEL_CONVERT_TO_ASSETS + _pad_uint(shares)
-    try:
-        return _decode_uint(eth_call(chain, vault, data, block))
-    except (RPCError, requests.HTTPError):
-        return 0
+    return _decode_uint(eth_call(chain, vault, data, block))
 
 
 @cached(source_id="rpc.psm3_shares")
