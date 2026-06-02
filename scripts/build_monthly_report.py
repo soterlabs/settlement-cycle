@@ -131,6 +131,7 @@ def _load_sde_entries(prime_id: str, period_start: date) -> dict[str, dict]:
                 "cap_usd": entry.get("cap_usd"),
                 "label": entry.get("label", ""),
                 "source": entry.get("source", ""),
+                "end_date": end,
             }
     return out
 
@@ -201,6 +202,7 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
     with prov_json.open(encoding="utf-8") as f:
         prov = json.load(f)
     period_start = date.fromisoformat(prov["period"]["start"])
+    period_end   = date.fromisoformat(prov["period"]["end"])
     headline_sky    = _D(prov["results"]["sky_revenue"])
     headline_prime  = _D(prov["results"]["prime_agent_revenue"])
     headline_agent  = _D(prov["results"]["agent_rate"])
@@ -262,6 +264,53 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
         weight = Decimal("0") if cof_excluded else Decimal("1") - sd_share
         if cof_excluded and not note:
             note = "CoF excluded (already deducted from utilized)"
+
+        # Mid-period SDE end: the SDE designation covers only part of the period.
+        # For a capped SDE, Grove held the excess above the cap throughout the SDE
+        # days — that slice bears CoF even before the SDE ended. After the end_date,
+        # Grove holds the full remaining position (value_eom) and owes CoF on all of
+        # it. Override avg_value and weight to reflect both contributions:
+        #
+        #   avg_value = (grove_excess_above_cap × sde_days
+        #                + value_eom × non_sde_days) / total_days
+        #   weight    = 1   (avg_value already isolates Grove's portion)
+        #
+        # For fixed SDE (no cap), Grove has zero excess during the SDE period,
+        # so only the post-SDE term contributes.
+        #
+        # Example: E8 JAAA Eth, Mar 2026 — SDE capped at $325M, ended 2026-03-12.
+        #   Grove excess during SDE (Mar 1-11): $455M - $325M = $130M × 11/31 = $46.1M
+        #   Post-SDE (Mar 12-31):               $128M × 20/31                 = $82.6M
+        #   Total CoF-bearing avg ≈ $128.7M   (vs $0 without this override)
+        entry = sde.get(r["venue_id"])
+        if entry and not cof_excluded:
+            sde_end = entry.get("end_date")
+            if sde_end is not None:
+                if isinstance(sde_end, str):
+                    sde_end = date.fromisoformat(sde_end)
+                if sde_end <= period_end:
+                    total_days_n = (period_end - period_start).days + 1
+                    sde_days_n   = (sde_end - period_start).days
+                    non_sde_days_n = (period_end - sde_end).days + 1
+                    total_d    = Decimal(str(total_days_n))
+                    sde_d      = Decimal(str(sde_days_n))
+                    non_sde_d  = Decimal(str(non_sde_days_n))
+                    value_eom_d = _D(r["value_eom"])
+                    cap_usd = entry.get("cap_usd")
+                    grove_excess = (
+                        max(Decimal("0"), _D(r["value_som"]) - Decimal(str(cap_usd)))
+                        if cap_usd is not None else Decimal("0")
+                    )
+                    new_avg = (grove_excess * sde_d + value_eom_d * non_sde_d) / total_d
+                    weight = Decimal("1")
+                    avg_value = new_avg
+                    note = (note + " — " if note else "") + (
+                        f"SDE ended {sde_end.isoformat()}; "
+                        f"CoF: excess ${float(grove_excess):,.0f}×{sde_days_n}d "
+                        f"+ EoM ${float(value_eom_d):,.0f}×{non_sde_days_n}d "
+                        f"/ {total_days_n}d → avg ${float(new_avg):,.0f}"
+                    )
+
         enriched.append({
             "venue_id":   r["venue_id"],
             "label":      r["label"],
