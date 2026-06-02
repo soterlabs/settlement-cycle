@@ -2059,6 +2059,83 @@ def compute_monthly_pnl(
                 _atoken_index_weighted_inflow,
             )
             from ..domain.primes import Address as _Addr, Chain as _Chain
+
+            # Sentinel "zero address" — used by the mint/burn fixtures as the
+            # counterparty for mints (from=0) and burns (to=0).
+            _ZERO = b"\x00" * 20
+            _balance_src_for_events = (
+                sources.balance if sources.balance is not None else get_balance_source()
+            )
+
+            def _atoken_event_blocks(
+                chain_value: str, token_addr: bytes, holder_addr: bytes,
+                som: int, eom: int,
+            ) -> list[tuple[int, int]]:
+                """Day-resolution ``(pre_block, post_block)`` boundaries for
+                the per-event yield path.
+
+                The Aave aToken ``Transfer`` event scan via ``eth_getLogs``
+                is unworkable on free RPC tiers (Alchemy caps the window at
+                10 blocks — a single Eth-month is 215K blocks). We instead
+                derive event days from the daily mint/burn aggregates we
+                already capture per Cat C venue and convert each activity
+                date ``d`` to:
+
+                * ``pre_block``  = ``block_at_or_before(EOD d-1)`` — the
+                  block where the scaled balance is still at its
+                  PRE-event-day value. Reading ``balanceOf`` here closes
+                  the segment that just ended.
+                * ``post_block`` = ``block_at_or_before(EOD d)`` — the
+                  block where the scaled balance reflects all of day d's
+                  events. Reading ``balanceOf`` here opens the next segment.
+
+                Precision: any yield accrued from the start of event day d
+                to the in-day event time lands in the NEXT segment (or
+                gets lost when consecutive event days collide and the
+                next pre-block coincides with the current post-block).
+                Bounded loss: ≈half a day per event. For a $11.6M position
+                at ~3% APY that's ≈$500 per event — below the closed-
+                form's $20K/mo fallback ceiling that this path replaces.
+                """
+                from datetime import datetime as _dt, time as _time, timezone as _tz, timedelta as _td
+                if som + 1 > eom:
+                    return []
+                # Collect activity dates from mints (from=ZERO → holder)
+                # and burns (holder → ZERO). We only care about WHICH days
+                # had activity, not the magnitude.
+                dates: set = set()
+                for from_addr, to_addr in (
+                    (_ZERO, holder_addr), (holder_addr, _ZERO),
+                ):
+                    df = _balance_src_for_events.directed_inflow_timeseries(
+                        chain=chain_value, token=token_addr,
+                        from_addr=from_addr, to_addr=to_addr,
+                        start=prime.start_date, pin_block=eom,
+                    )
+                    if df is None or df.empty:
+                        continue
+                    for _, row in df.iterrows():
+                        amt = row.get("daily_inflow", 0) or row.get("cum_inflow", 0)
+                        try:
+                            amt_f = float(amt)
+                        except (TypeError, ValueError):
+                            amt_f = 0
+                        if amt_f > 0:
+                            dates.add(row["block_date"])
+                boundaries: list[tuple[int, int]] = []
+                for d in dates:
+                    pre_eod = _dt.combine(d - _td(days=1), _time.max, tzinfo=_tz.utc)
+                    post_eod = _dt.combine(d, _time.max, tzinfo=_tz.utc)
+                    pre_block = resolver.block_at_or_before(chain_value, pre_eod)
+                    post_block = resolver.block_at_or_before(chain_value, post_eod)
+                    # post_block must fall within the period to be useful.
+                    if not (som < post_block <= eom):
+                        continue
+                    # pre_block may be < som_block (day d = first day of
+                    # period); the helper clamps it to som_block.
+                    boundaries.append((pre_block, post_block))
+                return sorted(set(boundaries), key=lambda t: t[1])
+
             inflow_ts = _atoken_index_weighted_inflow(
                 prime, venue, som_block, eom_block,
                 period_end_date=period.end,
@@ -2068,6 +2145,7 @@ def compute_monthly_pnl(
                 scaled_balance_at=lambda c, t, h, b: scaled_balance_of(
                     _Chain(c), _Addr(t), _Addr(h), b,
                 ),
+                transfer_event_blocks=_atoken_event_blocks,
             )
             # Off-pool aToken rewards (Merkl, Anchorage, …). The closed-form
             # ``yield = scaled(SoM) × Δindex / RAY`` formula above only

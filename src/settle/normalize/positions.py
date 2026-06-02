@@ -694,6 +694,93 @@ def _atoken_transfer_revenue_usd(
     return _Decimal(str(raw))
 
 
+def _atoken_per_event_yield(
+    chain_value: str,
+    token_addr: bytes,
+    holder_addr: bytes,
+    som_block: int,
+    eom_block: int,
+    event_boundaries: list[tuple[int, int]],
+    *,
+    balance_at,
+) -> int:
+    """Walk Aave aToken event boundaries, summing yield per segment.
+
+    Aave aTokens rebase ``balanceOf`` via a global liquidity index while
+    ``scaledBalanceOf`` (the un-rebased principal) only changes on
+    mint/burn/transfer events. Between two consecutive events, the yield
+    accrued at the holder is simply ``Δ balanceOf`` — the index moved, the
+    scaled balance didn't. We exploit that to attribute yield correctly
+    across multi-segment drains, which the closed-form
+    ``scaled_som × Δindex / RAY`` mishandles.
+
+    Each event boundary is a ``(pre_block, post_block)`` tuple where:
+
+    * ``pre_block`` — a block where the scaled balance is still at its
+      PRE-event value (typically the last block of the day before the
+      event day; we read ``balanceOf`` here to bookend the segment that
+      ENDED at this event).
+    * ``post_block`` — a block where the scaled balance is at its
+      POST-event value (typically the last block of the event day; we
+      read ``balanceOf`` here to bookend the NEXT segment).
+
+    Algorithm:
+
+    1. ``last_balance = balanceOf(som_block)``.
+    2. For each ``(pre, post)`` in sorted boundaries:
+       - ``segment_yield = balanceOf(pre) - last_balance`` (rebase accrual
+         on the scaled balance held throughout the segment).
+       - ``last_balance = balanceOf(post)``.
+    3. Tail: ``total += balanceOf(eom_block) - last_balance``.
+
+    Precision: day-resolution boundaries lose at most half a day of yield
+    per event (the yield from event-day-start to event-time gets bucketed
+    into the next segment, then bucketed into the "lost" pre-day-of-next-
+    event window for the consecutive-day case). For a $11.6M position at
+    3% APY that's ≈$500/event; below the closed-form's $20K/mo fallback.
+
+    Edge cases:
+      - No boundaries: ``yield = max(0, bal_eom - bal_som)``. Defensive;
+        caller only routes here on multi-segment drains.
+      - Negative segment yield (off-by-one boundary, event slipped through,
+        RPC weirdness): clamped to 0 so a single bad read can't drag the
+        period revenue negative.
+
+    Returns the total yield in raw token units (caller divides by 10^decimals).
+    """
+    if not event_boundaries:
+        return max(0, balance_at(chain_value, token_addr, holder_addr, eom_block)
+                   - balance_at(chain_value, token_addr, holder_addr, som_block))
+
+    # Sort by pre_block; clamp pre_block to be >= som_block (a boundary
+    # whose "previous day" lands before the period start should still read
+    # at som_block as its pre-event boundary). Drop boundaries whose
+    # post_block is outside the period.
+    cleaned = sorted(
+        ((max(pre, som_block), post) for pre, post in event_boundaries
+         if som_block <= post <= eom_block),
+        key=lambda t: t[0],
+    )
+
+    total_yield_raw = 0
+    last_balance = balance_at(chain_value, token_addr, holder_addr, som_block)
+    for pre_block, post_block in cleaned:
+        bal_pre = balance_at(chain_value, token_addr, holder_addr, pre_block)
+        segment_yield = bal_pre - last_balance
+        # Defensive clamp: rebase only ever increases balance at rest. A
+        # negative here would mean an event slipped between last_block
+        # and pre_block that we didn't see — clamp rather than propagate
+        # a bogus loss.
+        total_yield_raw += max(0, segment_yield)
+        last_balance = balance_at(chain_value, token_addr, holder_addr, post_block)
+
+    # Tail: from the last event's post-state through EoM.
+    bal_eom = balance_at(chain_value, token_addr, holder_addr, eom_block)
+    tail_yield = bal_eom - last_balance
+    total_yield_raw += max(0, tail_yield)
+    return total_yield_raw
+
+
 def _atoken_index_weighted_inflow(
     prime: Prime,
     venue: Venue,
@@ -703,6 +790,7 @@ def _atoken_index_weighted_inflow(
     period_end_date,
     scaled_balance_at,
     balance_at,
+    transfer_event_blocks=None,
 ):
     """Closed-form rebasing-token inflow for Cat C/D (Aave aToken, SparkLend
     spToken).
@@ -815,17 +903,39 @@ def _atoken_index_weighted_inflow(
             # Multi-withdrawal sentinel: midpoint is intermediate.
             dust_threshold  = scaled_som // 1000   # 0.1%
             stable_threshold = (scaled_som * 9) // 10  # 90%
-            if dust_threshold < sb_mid < stable_threshold:
-                # Multi-withdrawal detected. Conservative fallback.
-                yield_raw = 0
-                import logging as _logging
-                _logging.getLogger(__name__).warning(
-                    "_atoken_index_weighted_inflow: venue %s drained in "
-                    "stages (scaled at midpoint = %s, scaled_som = %s); "
-                    "falling back to yield=0. Multi-segment yield "
-                    "attribution requires per-event index reads — "
-                    "deferred.", venue.id, sb_mid, scaled_som,
-                )
+            multi_withdrawal = (dust_threshold < sb_mid < stable_threshold)
+
+            if multi_withdrawal:
+                # Multi-segment drain: closed-form is wrong. If the caller
+                # provided a way to enumerate Transfer-event blocks, use the
+                # per-event reading path (sums ``balanceOf`` deltas across
+                # each segment between events). Otherwise we have no way to
+                # attribute yield correctly and fall back to yield=0 — the
+                # documented conservative behaviour.
+                if transfer_event_blocks is not None:
+                    event_boundaries = list(transfer_event_blocks(
+                        chain_value, token_addr, holder.value, som_block, eom_block,
+                    ))
+                    yield_raw = _atoken_per_event_yield(
+                        chain_value, token_addr, holder.value,
+                        som_block, eom_block, event_boundaries,
+                        balance_at=balance_at,
+                    )
+                    import logging as _logging
+                    _logging.getLogger(__name__).info(
+                        "_atoken_index_weighted_inflow: venue %s drained in "
+                        "stages — per-event yield %s across %d event(s).",
+                        venue.id, yield_raw, len(event_boundaries),
+                    )
+                else:
+                    yield_raw = 0
+                    import logging as _logging
+                    _logging.getLogger(__name__).warning(
+                        "_atoken_index_weighted_inflow: venue %s drained in "
+                        "stages (scaled at midpoint = %s, scaled_som = %s); "
+                        "no transfer_event_blocks lookup wired — falling "
+                        "back to yield=0.", venue.id, sb_mid, scaled_som,
+                    )
             else:
                 # Single withdrawal — binary-search for the burn block.
                 lo, hi = som_block + 1, eom_block
@@ -844,17 +954,36 @@ def _atoken_index_weighted_inflow(
                                        withdrawal_block - 1)
                 candidate_yield = bal_pre_W - bal_som
                 # Final safety check: yield must be non-negative for an
-                # accruing token. If negative, the search converged
-                # unexpectedly — fall back to yield=0.
+                # accruing token. If negative, the binary search converged
+                # on a later burn (the position drained in stages after
+                # all). Promote to the per-event path if available;
+                # otherwise fall back to yield=0.
                 if candidate_yield < 0:
-                    yield_raw = 0
-                    import logging as _logging
-                    _logging.getLogger(__name__).warning(
-                        "_atoken_index_weighted_inflow: venue %s binary "
-                        "search produced negative yield (bal_pre=%s, "
-                        "bal_som=%s); falling back to yield=0.",
-                        venue.id, bal_pre_W, bal_som,
-                    )
+                    if transfer_event_blocks is not None:
+                        event_boundaries = list(transfer_event_blocks(
+                            chain_value, token_addr, holder.value, som_block, eom_block,
+                        ))
+                        yield_raw = _atoken_per_event_yield(
+                            chain_value, token_addr, holder.value,
+                            som_block, eom_block, event_boundaries,
+                            balance_at=balance_at,
+                        )
+                        import logging as _logging
+                        _logging.getLogger(__name__).info(
+                            "_atoken_index_weighted_inflow: venue %s binary "
+                            "search produced negative yield — promoted to "
+                            "per-event path, yield=%s across %d boundaries.",
+                            venue.id, yield_raw, len(event_boundaries),
+                        )
+                    else:
+                        yield_raw = 0
+                        import logging as _logging
+                        _logging.getLogger(__name__).warning(
+                            "_atoken_index_weighted_inflow: venue %s binary "
+                            "search produced negative yield (bal_pre=%s, "
+                            "bal_som=%s); falling back to yield=0.",
+                            venue.id, bal_pre_W, bal_som,
+                        )
                 else:
                     yield_raw = candidate_yield
         period_inflow_raw = delta_raw - yield_raw
