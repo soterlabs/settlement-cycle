@@ -709,6 +709,13 @@ venues:
       symbol: 'USDC'
       decimals: 6
     holder_override: '0x94b398acb2fce988871218221ea6a4a2b26cccbc'
+    # Monad is not covered by Dune's transfer-event spellbook, so
+    # inflow_by_counterparty returns empty and the pipeline cannot
+    # distinguish capital deposits from yield. force_capital_inflow
+    # treats the full Δvalue as capital (revenue = 0) while keeping
+    # the venue in the CoF allocation pool via its tw_avg_value_usd.
+    # Remove once Monad transfer-event data is available in Dune.
+    force_capital_inflow: true
 
   # Plume venues — held $0 throughout Q1 2026 (wound down Oct 2025) but
   # listed for completeness with Grove team's inventory. Bridged-token

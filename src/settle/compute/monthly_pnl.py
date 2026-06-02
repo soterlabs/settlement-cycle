@@ -2373,6 +2373,25 @@ def compute_monthly_pnl(
                 principal_return_overrides=overrides_by_bytes,
                 paired_principal_caps=paired_principal_caps or None,
             )
+            if venue.force_capital_inflow:
+                # Synthesise inflow = Δvalue so revenue collapses to 0.
+                # Used for Cat A venues on chains without reliable transfer-
+                # event coverage (e.g. Monad): the pipeline cannot distinguish
+                # capital deposits from yield, so we declare no yield and
+                # attribute the full period Δvalue to capital movement.
+                # A single period-start row is used so tw_avg_value_usd
+                # reflects the full EoM balance for CoF allocation purposes.
+                _delta = value_eom - value_som
+                _log.info(
+                    "  [%s] force_capital_inflow — synthesising inflow $%.2f "
+                    "(value_som=$%.2f, value_eom=$%.2f)",
+                    venue.id, float(_delta), float(value_som), float(value_eom),
+                )
+                inflow_ts = pd.DataFrame({
+                    "block_date": [period.start],
+                    "daily_inflow": [_delta],
+                    "cum_inflow": [_delta],
+                })
         elif venue.pricing_category == PricingCategory.EOA:
             # Cat EOA — Off-protocol relay/staging address. The venue tracks
             # outstanding ALM principal that's sitting at an EOA waiting for

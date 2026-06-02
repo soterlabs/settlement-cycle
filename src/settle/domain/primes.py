@@ -298,6 +298,13 @@ class Venue:
     # FalconX) for an OOB acquisition; the cash settlement at the ALM is the
     # realization event for any spread captured during the trip.
     display_only: bool = False
+    # Force all balance changes to be treated as capital inflow (revenue = 0).
+    # Use for Cat A par-stable venues on chains without reliable transfer-event
+    # data (e.g. Monad): the pipeline cannot distinguish capital movements from
+    # yield, so we conservatively declare revenue = 0 and attribute the full
+    # Δvalue to inflow. The venue still participates in CoF allocation via its
+    # tw_avg_value_usd. Only valid on PricingCategory.PAR_STABLE venues.
+    force_capital_inflow: bool = False
     # Off-chain notional principal used by the CoF allocation when on-chain
     # ``tw_avg_value_usd`` doesn't reflect the principal Sky is implicitly
     # charging interest on. Primary use case: cash-distribution-only venues

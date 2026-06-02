@@ -270,6 +270,7 @@ def load_prime(config_path: Path) -> Prime:
                     else None
                 ),
                 display_only=bool(v.get("display_only", False)),
+                force_capital_inflow=bool(v.get("force_capital_inflow", False)),
                 notional_principal_usd=_parse_notional_principal(
                     v.get("notional_principal_usd")
                 ),
