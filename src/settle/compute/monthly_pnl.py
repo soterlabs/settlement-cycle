@@ -2700,7 +2700,7 @@ def compute_monthly_pnl(
     # Sky's full claim: BR on (utilized − SDE) + actual SDE revenue,
     # minus 30 bps spread reimbursement for all sky_savings_token venues
     # (Cat B ALM + Curve LP sUSDS + PSM3 sUSDS leg).
-    sky_rev = sky_rev_br + sde_revenue - total_susds_spread_reimb
+    sky_rev = sky_rev_br + sde_revenue
     # Pure BR on full ilk debt — no idle deductions, no SDE, no spread.
     # Display-only; not part of any settlement invariant.
     # Compare to cof_total (= sky_rev_br) for the "idle deduction effect"
@@ -2773,6 +2773,6 @@ def compute_monthly_pnl(
         psm3_susds_spread=psm3_susds_spread if not sky_only else Decimal("0"),
         display_only_breakdown=display_only_breakdown,
         sde_daily_breakdown=sde_daily_breakdown_out,
-        susds_spread_reimbursement=total_susds_spread_reimb,
+        susds_spread_reimbursement=curve_susds_spread + psm3_susds_spread,
         sky_revenue_gross=sky_rev_gross,
     )
