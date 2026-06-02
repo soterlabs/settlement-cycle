@@ -179,13 +179,28 @@ from ._abi import pad_address as _pad_address, pad_uint as _pad_uint  # noqa: E4
 # Read methods — all pinned to a block
 # ----------------------------------------------------------------------------
 
+# Explicit gas cap sent in every eth_call. Needed because drpc's Monad
+# endpoint rejects requests with no ``gas`` field, claiming the implicit
+# block-gas exceeds its provider limit ("user-specified gas exceeds
+# provider limit", JSON-RPC code -32603). All other providers we use
+# (publicnode Ethereum/Base, official Avalanche, Plume) tolerate this
+# cap, so we set it unconditionally for simpler code. 10M is well above
+# any single-contract read we make (V3 ticks, ERC-4626 conversion, etc.)
+# and below every chain's block gas limit, so simulator behaviour is
+# unchanged on the chains where it wasn't required.
+_ETH_CALL_GAS_CAP_HEX = "0x989680"  # 10,000,000
+
+
 @cached(source_id="rpc.eth_call")
 def eth_call(chain: Chain, contract: Address, data: str, block: int) -> str:
     """Raw eth_call. `data` = 0x-prefixed hex selector + abi-encoded args."""
     return _post(
         rpc_url(chain),
         "eth_call",
-        [{"to": contract.hex, "data": data}, hex(block)],
+        [
+            {"to": contract.hex, "data": data, "gas": _ETH_CALL_GAS_CAP_HEX},
+            hex(block),
+        ],
     )
 
 
