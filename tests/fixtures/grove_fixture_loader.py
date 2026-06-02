@@ -153,6 +153,20 @@ def build_grove_sources(grove, fixtures: dict, blocks_by_chain: dict[str, Any]) 
                 src.token.value, src.payer.value, grove.alm[chain].value,
             )] = df_with_dates(fixtures[fx_key]["rows"], "block_date")
 
+        # display_only EOA venue principal-out caps. The compute layer in
+        # monthly_pnl looks up ``directed_inflow_timeseries(token, ALM,
+        # holder_override)`` for each display-only venue to build the
+        # paired_principal_cap series. Without the fixture, the cap is $0
+        # and inflows from ``paired_source`` to the anchor get fully
+        # reclassified as realized revenue (E14 April $6.5M phantom).
+        if v.display_only and v.pricing_category.value == "EOA":
+            fx_key = f"eoa_outflow_{vid}"
+            if fx_key in fixtures and v.holder_override is not None:
+                alm = grove.alm[v.chain].value
+                directed_inflow_fixtures[(
+                    v.token.address.value, alm, v.holder_override.value,
+                )] = df_with_dates(fixtures[fx_key]["rows"], "block_date")
+
     cum_balance_fixtures: dict[bytes, pd.DataFrame] = {}
     for v in grove.venues:
         if v.pricing_category.value not in ("A", "E"):

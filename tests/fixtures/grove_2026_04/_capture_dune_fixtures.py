@@ -200,17 +200,55 @@ def main() -> int:
             "_chain": chain, "_token": "0x" + token_hex.lower(),
             "rows": transfer_ts(chain, token, holder, pb, min_tx)}
 
-    # 7. inflow_by_counterparty_e15 (USDC at Grove Eth ALM)
-    print("  fetching inflow_by_counterparty_e15 …")
-    df = execute_query(
-        QUERIES / "inflow_by_counterparty.sql",
-        params={"chain": "ethereum", "token": USDC, "holder": GROVE_ALM_ETH,
-                "start_date": START_DATE},
-        pin_block=eth_eom,
-    )
-    fx["inflow_by_counterparty_e15"] = {
-        "_chain": "ethereum", "_token": "0x" + USDC.hex(),
-        "_holder": "0x" + GROVE_ALM_ETH.hex(), "rows": _rows(df)}
+    # 7. inflow_by_counterparty_eXX — per-(token, holder) counterparty-attributed
+    #    transfer log. Needed for Cat A par-stable venues so the pipeline can
+    #    distinguish "principal arrived via transfer" from "yield accrued in
+    #    place". Without this, balance changes get misclassified as revenue —
+    #    bit us in April when $1M arrived at E14 (AUSD Eth ALM) with no
+    #    inflow record. E15 was originally the only one captured (USDC); the
+    #    rest were skipped because Q1 balances stayed at $0.
+    AUSD = bytes.fromhex("00000000efe302beaa2b3e6e1b18d08d69a9012a")
+    USDC_MONAD = bytes.fromhex("754704bc059f8c67012fed69bc8a327a5aafb603")
+    ALT_HOLDER = bytes.fromhex("94b398acb2fce988871218221ea6a4a2b26cccbc")
+    INFLOW_BY_CP: list[tuple[str, str, bytes, bytes, int]] = [
+        # (vid, chain, token, holder, pin_block)
+        ("e14", "ethereum", AUSD, GROVE_ALM_ETH, eth_eom),
+        ("e15", "ethereum", USDC, GROVE_ALM_ETH, eth_eom),
+        ("e31", "ethereum", AUSD, ALT_HOLDER, eth_eom),
+        ("e34", "monad",    AUSD, ALT_HOLDER, PIN_BLOCKS_EOM["monad"]),
+        ("e35", "monad",    USDC_MONAD, ALT_HOLDER, PIN_BLOCKS_EOM["monad"]),
+    ]
+    for vid, chain, token, holder, pb in INFLOW_BY_CP:
+        print(f"  fetching inflow_by_counterparty_{vid} ({chain}) …")
+        df = execute_query(
+            QUERIES / "inflow_by_counterparty.sql",
+            params={"chain": chain, "token": token, "holder": holder,
+                    "start_date": START_DATE},
+            pin_block=pb,
+        )
+        fx[f"inflow_by_counterparty_{vid}"] = {
+            "_chain": chain, "_token": "0x" + token.hex(),
+            "_holder": "0x" + holder.hex(), "rows": _rows(df)}
+
+    # 7b. EOA directed-outflow caps — for ``display_only`` venues whose
+    # ``paired_with`` anchors expect a ``directed_inflow_timeseries`` lookup
+    # against (token, ALM, holder_override). The compute layer uses this as
+    # the per-counterparty principal-cap when classifying paired_source
+    # inflows at the anchor. Currently E36 (OOB USDC pipeline to 0xd94f...).
+    # Without this, paired-source inflows above $0 cap get reclassified as
+    # realized revenue at the anchor — exactly the E14 April phantom $6.5M.
+    EOA_RELAY = bytes.fromhex("d94f9ef3395bbe41c1f05ced3c9a7dc520d08036")
+    EOA_VENUES_OUTFLOW: list[tuple[str, str, bytes, bytes, bytes, int]] = [
+        # (vid, chain, token, from_addr, to_addr, pin_block)
+        ("e36", "ethereum", USDC, GROVE_ALM_ETH, EOA_RELAY, eth_eom),
+    ]
+    for vid, chain, token, from_addr, to_addr, pb in EOA_VENUES_OUTFLOW:
+        print(f"  fetching eoa_outflow_{vid} ({chain}) …")
+        fx[f"eoa_outflow_{vid}"] = {
+            "_chain": chain, "_token": "0x" + token.hex(),
+            "_from": "0x" + from_addr.hex(), "_to": "0x" + to_addr.hex(),
+            "rows": venue_inflow(chain, token, from_addr, to_addr, pb),
+        }
 
     # 8. V3 liquidity events — E12 (main ALM) and E30 (alt-holder)
     POOL = bytes.fromhex("bafead7c60ea473758ed6c6021505e8bbd7e8e5d")
