@@ -610,7 +610,12 @@ venues:
     pricing_category: B
     sky_savings_token: true
     demand_side_spread: true         # spread handled via Demand Side Distribution Rewards, not here
-    deduct_savings_v2_deployed: true  # subtract daily Savings V2 deployed_amount
+    # TODO: deduct_savings_v2_deployed is currently a no-op — the upstream Dune
+    # table (dune.sparkdotfi.result_savings_v_2_deployment_metrics) is no longer
+    # accessible. A new data source for daily sUSDS deployed into Savings V2
+    # must be created before this deduction can be re-enabled.
+    # See src/settle/normalize/sources/dune_savings_v2_deployed.py.
+    deduct_savings_v2_deployed: true  # flag preserved; implementation stubbed pending new data source
     token:
       address: '0xa3931d71877c0e7a3148cb7eb4463524fec27fbd'
       symbol: 'sUSDS'

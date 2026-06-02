@@ -1,26 +1,39 @@
-"""Dune-backed `ISavingsV2DeployedSource` — wraps `queries/savings_v2_deployed.sql`."""
+"""Dune-backed `ISavingsV2DeployedSource` — wraps `queries/savings_v2_deployed.sql`.
+
+TODO: The upstream Dune table `dune.sparkdotfi.result_savings_v_2_deployment_metrics`
+is no longer publicly accessible (private dataset).  The implementation is stubbed
+to return an empty DataFrame until a replacement data source is available.
+
+To re-enable:
+  1. Identify or recreate a data source for daily sUSDS deployed from the Spark ETH
+     ALM into Savings V2 (the `deployed_amount` / `spUSDC` time-series).
+  2. Replace the stub below with a live query against that source.
+  3. Re-run the affected settlement periods to backfill corrected S32 values.
+
+Without this deduction, S32 value_som / value_eom are slightly overstated (they
+include sUSDS shares deployed into Savings V2 that are not held at the ALM proxy).
+"""
 
 from __future__ import annotations
 
+import logging
+
 import pandas as pd
 
-from ...extract.dune import execute_query
-from ._dune_decode import to_decimal as _to_decimal
-from ._paths import QUERIES_DIR
+_log = logging.getLogger(__name__)
 
 
 class DuneSavingsV2DeployedSource:
-    """Implements `ISavingsV2DeployedSource` against savings_v2_deployed.sql."""
+    """Stubbed until a replacement data source for Savings V2 deployment metrics
+    is available.  Returns an empty DataFrame so the deduction is silently skipped.
+    See module docstring for re-enablement instructions.
+    """
 
     def savings_v2_deployed(self, pin_block: int) -> pd.DataFrame:
-        df = execute_query(
-            QUERIES_DIR / "savings_v2_deployed.sql",
-            params={},
-            pin_block=pin_block,
+        _log.warning(
+            "DuneSavingsV2DeployedSource: Savings V2 deployment metrics data source "
+            "is unavailable (upstream Dune table removed). Returning empty — "
+            "deduct_savings_v2_deployed will have no effect until a replacement "
+            "data source is implemented. See normalize/sources/dune_savings_v2_deployed.py."
         )
-        if df.empty:
-            return df
-        df["dt"] = pd.to_datetime(df["dt"]).dt.date
-        df["susds_deployed_usd"] = df["susds_deployed_usd"].apply(_to_decimal)
-        df = df.sort_values("dt").reset_index(drop=True)
-        return df
+        return pd.DataFrame(columns=["dt", "susds_deployed_usd"])
