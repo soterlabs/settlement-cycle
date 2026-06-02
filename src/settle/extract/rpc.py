@@ -322,12 +322,22 @@ def decimals_of(chain: Chain, token: Address, block: int) -> int:
 
 @cached(source_id="rpc.convert_to_assets")
 def convert_to_assets(chain: Chain, vault: Address, shares: int, block: int) -> int:
-    """ERC-4626 `convertToAssets(shares)`. Returns 0 if vault didn't exist at this block."""
+    """ERC-4626 `convertToAssets(shares)`. Returns 0 if vault didn't exist at this
+    block (RPC reverts with 0x — handled inside ``_decode_uint`` without raising).
+
+    On exhausted-retry RPC failure (RPCError / HTTPError after all attempts in
+    ``eth_call``) this function **raises** — same hard-fail contract as
+    ``balance_of``. Caching an error as 0 here poisons the cache: every
+    subsequent read returns the cached 0, the vault's share price evaluates
+    to 0, and any position priced as ``balance × convertToAssets`` reports
+    $0 even with a real on-chain balance. Earlier this function returned 0
+    silently, which produced exactly that bug on Grove May 2026 (E19/E23
+    on Base): an upstream Alchemy hiccup during fixture capture cached 0,
+    and the position was reported as -$100M phantom loss until the cache
+    was hand-purged.
+    """
     data = SEL_CONVERT_TO_ASSETS + _pad_uint(shares)
-    try:
-        return _decode_uint(eth_call(chain, vault, data, block))
-    except (RPCError, requests.HTTPError):
-        return 0
+    return _decode_uint(eth_call(chain, vault, data, block))
 
 
 @cached(source_id="rpc.psm3_shares")
