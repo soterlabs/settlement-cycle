@@ -165,11 +165,13 @@ def _write_headline(ws, prov: dict, sheet_rows: list[dict]) -> None:
         "⚠ Note on Sky Revenue (max): this figure is BR × full ilk debt and is "
         "not a true ceiling on actual sky_revenue. SDE revenue (Σ sd_revenue) is "
         "added to sky_revenue on top of the BR charge, so actual sky_revenue can "
-        "exceed this 'max' for primes with significant SDE positions. The figure "
-        "is useful for seeing how much the idle-USDS / SDE / lending deductions "
-        "reduce the BR component, and for per-venue Sky Rev Reduction estimates "
-        "in Summary Comp (spread_reimb exact; utilized-deduction portion estimated "
-        "proportionally from avg deduction; PSM3/Curve deductions not per-venue)."
+        "exceed this 'max' for primes with significant SDE positions. The subsidy "
+        "(ref_rate ramp) is already applied — the rate used here is the same "
+        "subsidised BR as in actual sky_revenue, not the raw Maker base rate. "
+        "The figure is useful for seeing how much the idle-USDS / SDE / lending "
+        "deductions reduce the BR component, and for per-venue Sky Rev Reduction "
+        "estimates in Summary Comp (spread_reimb exact; utilized-deduction portion "
+        "estimated proportionally from avg deduction; PSM3/Curve deductions not per-venue)."
     ])
     ws.cell(note_row, 1).alignment = Alignment(wrap_text=True, vertical="top")
     ws.row_dimensions[note_row].height = 72
