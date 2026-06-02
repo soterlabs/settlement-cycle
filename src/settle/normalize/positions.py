@@ -993,10 +993,21 @@ def _atoken_index_weighted_inflow(
         # only possible in tests). Yield = 0; everything is capital.
         period_inflow_usd = Decimal(delta_raw) / scale
     else:
-        # Closed-form path (the common case). Round-half-even on the Decimal
-        # remainder. ``int()`` truncates toward zero, biasing a slightly-
-        # negative result up by one raw unit under partial-withdrawal
-        # precision noise.
+        # Closed-form path (the common case). Round-half-even on the
+        # Decimal remainder. ``int()`` truncates toward zero, biasing a
+        # slightly-negative result up by one raw unit under partial-
+        # withdrawal precision noise.
+        #
+        # Note: the closed-form under-counts when a large mid-period mint
+        # arrives (Δscaled × (index_eom − index_at_mint) / RAY of yield
+        # earned by newly-minted aTokens isn't attributed). E1 April 2026
+        # hits this with $115M of mints late month, losing ~$170K of
+        # yield vs Grove. We tried promoting to the per-event helper here
+        # but day-resolution boundaries collapse the inter-event-day
+        # yield on consecutive event days into the principal jump,
+        # producing WORSE numbers than the closed-form. Fixing this
+        # cleanly needs face-value mint amounts subtracted from the
+        # segment yield, or sub-day event-block resolution — deferred.
         yield_raw = int(
             (_D(bal_eom) * _D(scaled_som) / _D(scaled_eom) - _D(bal_som))
             .to_integral_value(rounding="ROUND_HALF_EVEN")

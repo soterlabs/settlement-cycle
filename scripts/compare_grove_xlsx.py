@@ -54,12 +54,26 @@ TICKER_TO_VENUE: dict[str, str] = {
 _REPO = Path(__file__).resolve().parent.parent
 
 
-def _grove_per_venue(month_xlsx: Path) -> dict[str, tuple[float, float, float]]:
-    """Return ``{ticker: (profit_to_sky, profit_to_grove, aggregate)}`` from
-    the Summary Comp sheet's Grove column."""
+def _grove_per_venue(month_xlsx: Path) -> dict[str, tuple[float, float, float, float]]:
+    """Return ``{ticker: (sky, grove, aggregate_with_rewards, aggregate_without_rewards)}``.
+
+    Grove's Summary Comp sheet has TWO Aggregate columns side by side:
+
+    * cols 3-5: Profit to Sky / Profit to Grove / Aggregate  (WITH rewards)
+    * cols 6-8: Profit to Sky / Profit to Grove / Aggregate  (WITHOUT rewards)
+
+    The "with rewards" aggregate folds in Merkl / Anchorage drops on an
+    accrual basis (Grove allocates them ratably across the period); the
+    "without rewards" aggregate is pool-native yield only. Our pipeline's
+    ``actual_revenue`` realizes external rewards at CLAIM date in a
+    separate ``external_revenue`` bucket — so the apples-to-apples Grove
+    column for ``actual_revenue`` is the **without-rewards** Aggregate.
+    The with-rewards column is shown alongside so the Merkl methodology
+    delta is visible at a glance.
+    """
     wb = openpyxl.load_workbook(month_xlsx, data_only=True)
     ws = wb["Summary Comp"]
-    out: dict[str, tuple[float, float, float]] = {}
+    out: dict[str, tuple[float, float, float, float]] = {}
     for row_idx in range(4, ws.max_row + 1):
         ticker = ws.cell(row_idx, 2).value
         if ticker is None or (isinstance(ticker, str) and ticker.strip() == ""):
@@ -67,10 +81,11 @@ def _grove_per_venue(month_xlsx: Path) -> dict[str, tuple[float, float, float]]:
         try:
             sky = float(ws.cell(row_idx, 3).value or 0)
             grove = float(ws.cell(row_idx, 4).value or 0)
-            agg = float(ws.cell(row_idx, 5).value or 0)
+            agg_with = float(ws.cell(row_idx, 5).value or 0)
+            agg_without = float(ws.cell(row_idx, 8).value or 0)
         except (TypeError, ValueError):
             continue
-        out[str(ticker)] = (sky, grove, agg)
+        out[str(ticker)] = (sky, grove, agg_with, agg_without)
     return out
 
 
@@ -87,34 +102,46 @@ def compare(month: str, xlsx_name: str, *, gap_threshold: float = 5000) -> None:
     grove = _grove_per_venue(_REPO / "data" / "grove" / xlsx_name)
     ours = _our_per_venue(month)
     print(f"\n=== {month} — per-venue Aggregate (ours vs Grove) ===")
-    print(f"{'Ticker':<25}{'Venue':<14}{'Ours actual_rev':>18}{'Grove Aggr':>16}"
-          f"{'Δ (ours−Grove)':>18}  Note")
+    print(f"{'Ticker':<25}{'Venue':<14}{'Ours actual_rev':>17}"
+          f"{'Grove (no rew)':>15}{'Δ vs no-rew':>13}"
+          f"{'Grove (w/ rew)':>17}  Note")
     print("-" * 110)
 
-    # Stable order: largest |Grove aggregate| first.
+    # Stable order: largest |Grove no-rewards aggregate| first.
     seen_vids: set[str] = set()
-    for ticker, (sky, grove_, agg) in sorted(grove.items(), key=lambda kv: -abs(kv[1][2])):
+    for ticker, (sky, grove_, agg_with, agg_without) in sorted(
+        grove.items(), key=lambda kv: -abs(kv[1][3])
+    ):
         vid = TICKER_TO_VENUE.get(ticker, "?")
         if vid == "?":
-            print(f"{ticker:<25}{'?':<14}{'(no mapping)':>18}{agg:>16,.0f}")
+            print(f"{ticker:<25}{'?':<14}{'(no mapping)':>17}"
+                  f"{agg_without:>15,.0f}{'':>13}{agg_with:>17,.0f}")
             continue
         # JAAA Mar split — combine the two halves before comparing.
         if vid == "E8_SKY":
             continue
         if vid == "E8_GROVE":
-            paired = grove.get("JAAA_ETH_Sky", (0, 0, 0))[2]
-            agg = agg + paired
+            paired = grove.get("JAAA_ETH_Sky", (0, 0, 0, 0))
+            agg_with += paired[2]
+            agg_without += paired[3]
             vid = "E8"
         for v in vid.split("+"):
             seen_vids.add(v)
         ids = vid.split("+")
         our_val = sum(ours.get(i, 0.0) for i in ids if i in ours)
-        diff = our_val - agg
-        flag = " ⚠" if abs(diff) > gap_threshold else ""
+        diff_without = our_val - agg_without
+        flag = " ⚠" if abs(diff_without) > gap_threshold else ""
         note = ""
         if "+" in vid:
             note = f"  (sum across {vid})"
-        print(f"{ticker:<25}{vid:<14}{our_val:>18,.0f}{agg:>16,.0f}{diff:>18,.0f}{flag}{note}")
+        # Merkl methodology delta = "with rewards" − "without rewards".
+        # Mention it for tickers where the two differ materially so the
+        # operator sees that the with-rewards gap is methodology-known.
+        if abs(agg_with - agg_without) > 1000 and not note:
+            note = f"  (Merkl accrual Δ ≈ ${agg_with - agg_without:,.0f})"
+        print(f"{ticker:<25}{vid:<14}{our_val:>17,.0f}"
+              f"{agg_without:>15,.0f}{diff_without:>13,.0f}{flag}"
+              f"{agg_with:>17,.0f}{note}")
 
     extras = [vid for vid in ours if vid not in seen_vids and abs(ours[vid]) > 100]
     if extras:
