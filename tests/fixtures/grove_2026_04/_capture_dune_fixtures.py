@@ -143,6 +143,22 @@ def main() -> int:
             "rows": venue_inflow("ethereum", atoken, ZERO_ADDR, GROVE_ALM_ETH, eth_eom)}
         fx[f"atoken_{vid}_burns"] = {"_token": "0x" + atoken.hex(),
             "rows": venue_inflow("ethereum", atoken, GROVE_ALM_ETH, ZERO_ADDR, eth_eom)}
+        # Per-event Transfer log (sub-day block resolution). Used by the
+        # Cat C per-segment yield path to place each event at its exact
+        # block instead of bucketing to end-of-day. Closes the consecutive-
+        # event-day precision loss observed in E1 April 2026.
+        print(f"  fetching atoken_{vid}_event_log …")
+        df = execute_query(
+            QUERIES / "atoken_event_log.sql",
+            params={"chain": "ethereum", "token": atoken,
+                    "holder": GROVE_ALM_ETH, "start_date": START_DATE},
+            pin_block=eth_eom,
+        )
+        fx[f"atoken_{vid}_event_log"] = {
+            "_chain": "ethereum", "_token": "0x" + atoken.hex(),
+            "_holder": "0x" + GROVE_ALM_ETH.hex(),
+            "rows": _rows(df),
+        }
 
     # 5. Cat B vaults — E4/E5/E6 on Eth, E19/E23 on Base
     VAULTS_ETH = {

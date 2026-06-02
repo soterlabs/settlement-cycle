@@ -1493,6 +1493,253 @@
       }
     ]
   },
+  "atoken_e1_event_log": {
+    "_chain": "ethereum",
+    "_token": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
+    "_holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+    "rows": [
+      {
+        "block_number": "23727555",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "124",
+        "signed_amount": "25000000.0"
+      },
+      {
+        "block_number": "23820787",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "240",
+        "signed_amount": "25163890.63386596"
+      },
+      {
+        "block_number": "24178198",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "51",
+        "signed_amount": "15057325.844714204"
+      },
+      {
+        "block_number": "24184744",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "701",
+        "signed_amount": "124913.44507787008"
+      },
+      {
+        "block_number": "24234766",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "249",
+        "signed_amount": "1121477.3977145154"
+      },
+      {
+        "block_number": "24234884",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "371",
+        "signed_amount": "2000060.9830426723"
+      },
+      {
+        "block_number": "24277874",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "301",
+        "signed_amount": "601258.9398409503"
+      },
+      {
+        "block_number": "24279256",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "522",
+        "signed_amount": "560071.6057146267"
+      },
+      {
+        "block_number": "24284923",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "214",
+        "signed_amount": "412323.2017574552"
+      },
+      {
+        "block_number": "24290859",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "333",
+        "signed_amount": "13988737.23152089"
+      },
+      {
+        "block_number": "24291001",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "261",
+        "signed_amount": "608073.5001829744"
+      },
+      {
+        "block_number": "24291100",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "384",
+        "signed_amount": "754.1751733569445"
+      },
+      {
+        "block_number": "24306420",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "595",
+        "signed_amount": "1108091.2034099607"
+      },
+      {
+        "block_number": "24319459",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "126",
+        "signed_amount": "2007058.623083731"
+      },
+      {
+        "block_number": "24320536",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "128",
+        "signed_amount": "3497094.0060530347"
+      },
+      {
+        "block_number": "24320739",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "694",
+        "signed_amount": "1000117.4672571316"
+      },
+      {
+        "block_number": "24320825",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "258",
+        "signed_amount": "3000050.250745833"
+      },
+      {
+        "block_number": "24321322",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "213",
+        "signed_amount": "3996302.0867095487"
+      },
+      {
+        "block_number": "24328899",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "272",
+        "signed_amount": "13316.694954075905"
+      },
+      {
+        "block_number": "24341928",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "62",
+        "signed_amount": "2058053.0614481196"
+      },
+      {
+        "block_number": "24349333",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "412",
+        "signed_amount": "5522.766482755185"
+      },
+      {
+        "block_number": "24363526",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "470",
+        "signed_amount": "2005239.322839506"
+      },
+      {
+        "block_number": "24369530",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "611",
+        "signed_amount": "9453206.417667324"
+      },
+      {
+        "block_number": "24369890",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "434",
+        "signed_amount": "6000201.8545430135"
+      },
+      {
+        "block_number": "24386359",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "1205",
+        "signed_amount": "1206880.9228506652"
+      },
+      {
+        "block_number": "24386419",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "679",
+        "signed_amount": "10359.75046224029"
+      },
+      {
+        "block_number": "24391305",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "274",
+        "signed_amount": "1999900.0162628808"
+      },
+      {
+        "block_number": "24392041",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "197",
+        "signed_amount": "12987290.53481484"
+      },
+      {
+        "block_number": "24393505",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "479",
+        "signed_amount": "1299334.1444370125"
+      },
+      {
+        "block_number": "24399845",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "561",
+        "signed_amount": "2801.0542235444113"
+      },
+      {
+        "block_number": "24399845",
+        "counterparty": "0xaa06d4d59fd98361dd84388f642bb5635586bea2",
+        "evt_index": "563",
+        "signed_amount": "821306.03170803"
+      },
+      {
+        "block_number": "24400420",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "61",
+        "signed_amount": "7992268.288698819"
+      },
+      {
+        "block_number": "24486935",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "446",
+        "signed_amount": "-4960096.153796593"
+      },
+      {
+        "block_number": "24571878",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "1172",
+        "signed_amount": "-4963439.079177979"
+      },
+      {
+        "block_number": "24936542",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "595",
+        "signed_amount": "50254108.00645769"
+      },
+      {
+        "block_number": "24943335",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "523",
+        "signed_amount": "22505417.80014132"
+      },
+      {
+        "block_number": "24950742",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "416",
+        "signed_amount": "5343.15140206038"
+      },
+      {
+        "block_number": "24950742",
+        "counterparty": "0xaa06d4d59fd98361dd84388f642bb5635586bea2",
+        "evt_index": "418",
+        "signed_amount": "978913.6706715025"
+      },
+      {
+        "block_number": "24952515",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "810",
+        "signed_amount": "33001285.66645874"
+      },
+      {
+        "block_number": "24957301",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "598",
+        "signed_amount": "9246360.07320486"
+      }
+    ]
+  },
   "atoken_e2_mints": {
     "_token": "0x68215b6533c47ff9f7125ac95adf00fe4a62f79e",
     "rows": [
@@ -1540,6 +1787,67 @@
         "block_date": "2026-02-19",
         "cum_inflow": "11565115.706819002",
         "daily_inflow": "6618322.753224"
+      }
+    ]
+  },
+  "atoken_e2_event_log": {
+    "_chain": "ethereum",
+    "_token": "0x68215b6533c47ff9f7125ac95adf00fe4a62f79e",
+    "_holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+    "rows": [
+      {
+        "block_number": "23727369",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "260",
+        "signed_amount": "5000000.0"
+      },
+      {
+        "block_number": "23828233",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "58",
+        "signed_amount": "1007678.082639"
+      },
+      {
+        "block_number": "23877291",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "121",
+        "signed_amount": "1004989.052858"
+      },
+      {
+        "block_number": "23928527",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "90",
+        "signed_amount": "1505746.694638"
+      },
+      {
+        "block_number": "23940382",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "273",
+        "signed_amount": "1501446.639393"
+      },
+      {
+        "block_number": "24176915",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "339",
+        "signed_amount": "1545255.237293"
+      },
+      {
+        "block_number": "24478612",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "1297",
+        "signed_amount": "-4946792.953595"
+      },
+      {
+        "block_number": "24491454",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "713",
+        "signed_amount": "-6618320.182937"
+      },
+      {
+        "block_number": "24491532",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "590",
+        "signed_amount": "-2.570287"
       }
     ]
   },
@@ -1730,6 +2038,325 @@
         "block_date": "2026-04-24",
         "cum_inflow": "289496974.15465",
         "daily_inflow": "1411909.4160313045"
+      }
+    ]
+  },
+  "atoken_e3_event_log": {
+    "_chain": "ethereum",
+    "_token": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+    "_holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+    "rows": [
+      {
+        "block_number": "23728340",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "66",
+        "signed_amount": "14998287.0"
+      },
+      {
+        "block_number": "23728457",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "355",
+        "signed_amount": "4997910.447808873"
+      },
+      {
+        "block_number": "23734220",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "272",
+        "signed_amount": "5000022.22453575"
+      },
+      {
+        "block_number": "23734534",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "438",
+        "signed_amount": "9996842.094701244"
+      },
+      {
+        "block_number": "23735067",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "242",
+        "signed_amount": "4996696.2917818995"
+      },
+      {
+        "block_number": "23735352",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "163",
+        "signed_amount": "9996233.763140302"
+      },
+      {
+        "block_number": "23735735",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "137",
+        "signed_amount": "9992888.879088901"
+      },
+      {
+        "block_number": "23741088",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "225",
+        "signed_amount": "9991804.283919597"
+      },
+      {
+        "block_number": "23742538",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "143",
+        "signed_amount": "9995523.312948545"
+      },
+      {
+        "block_number": "23748305",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "283",
+        "signed_amount": "9996129.438984398"
+      },
+      {
+        "block_number": "23748557",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "174",
+        "signed_amount": "9995911.35690387"
+      },
+      {
+        "block_number": "23757532",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "266",
+        "signed_amount": "5000960.70721971"
+      },
+      {
+        "block_number": "23762027",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "794",
+        "signed_amount": "9996503.663439766"
+      },
+      {
+        "block_number": "23772466",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "241",
+        "signed_amount": "14994927.811622456"
+      },
+      {
+        "block_number": "23784349",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "295",
+        "signed_amount": "14996149.660247965"
+      },
+      {
+        "block_number": "23793437",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "289",
+        "signed_amount": "14994624.744734846"
+      },
+      {
+        "block_number": "23798775",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "144",
+        "signed_amount": "14991920.467094962"
+      },
+      {
+        "block_number": "23813604",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "271",
+        "signed_amount": "13911946.142323088"
+      },
+      {
+        "block_number": "23820787",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "232",
+        "signed_amount": "-25061555.527235836"
+      },
+      {
+        "block_number": "23828233",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "65",
+        "signed_amount": "15003254.788753934"
+      },
+      {
+        "block_number": "23834556",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "41",
+        "signed_amount": "13402946.060915422"
+      },
+      {
+        "block_number": "23844098",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "431",
+        "signed_amount": "9856.381120743381"
+      },
+      {
+        "block_number": "23850669",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "39",
+        "signed_amount": "15003286.116915977"
+      },
+      {
+        "block_number": "23863161",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "360",
+        "signed_amount": "6307022.5491521405"
+      },
+      {
+        "block_number": "23863514",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "461",
+        "signed_amount": "1480246.2692733584"
+      },
+      {
+        "block_number": "23863629",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "348",
+        "signed_amount": "13320520.447197832"
+      },
+      {
+        "block_number": "23877780",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "294",
+        "signed_amount": "1409012.4784687175"
+      },
+      {
+        "block_number": "23879659",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "64",
+        "signed_amount": "2291404.9646516456"
+      },
+      {
+        "block_number": "24048624",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "458",
+        "signed_amount": "9877973.036339264"
+      },
+      {
+        "block_number": "24183439",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "345",
+        "signed_amount": "4066397.6767498283"
+      },
+      {
+        "block_number": "24184414",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "240",
+        "signed_amount": "220942.54268825767"
+      },
+      {
+        "block_number": "24234162",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "308",
+        "signed_amount": "1248102.5742243433"
+      },
+      {
+        "block_number": "24235177",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "416",
+        "signed_amount": "1201120.0098630835"
+      },
+      {
+        "block_number": "24292304",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "850",
+        "signed_amount": "4060789.96444785"
+      },
+      {
+        "block_number": "24376694",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "269",
+        "signed_amount": "1796627.4108647595"
+      },
+      {
+        "block_number": "24386509",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "1018",
+        "signed_amount": "1010168.5963149128"
+      },
+      {
+        "block_number": "24386544",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "394",
+        "signed_amount": "726.0677423383853"
+      },
+      {
+        "block_number": "24391040",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "241",
+        "signed_amount": "3305049.6489888006"
+      },
+      {
+        "block_number": "24393260",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "944",
+        "signed_amount": "1201212.8021719505"
+      },
+      {
+        "block_number": "24399845",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "551",
+        "signed_amount": "6583.179600495638"
+      },
+      {
+        "block_number": "24399845",
+        "counterparty": "0xdef1fa4cefe67365ba046a7c630d6b885298e210",
+        "evt_index": "553",
+        "signed_amount": "2963561.635045723"
+      },
+      {
+        "block_number": "24441561",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "573",
+        "signed_amount": "50618.26272579542"
+      },
+      {
+        "block_number": "24594027",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "831",
+        "signed_amount": "-4865055.181223492"
+      },
+      {
+        "block_number": "24597947",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "171",
+        "signed_amount": "2371.451258101906"
+      },
+      {
+        "block_number": "24598829",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "722",
+        "signed_amount": "-49998243.00827397"
+      },
+      {
+        "block_number": "24621162",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "363",
+        "signed_amount": "-19983563.778779335"
+      },
+      {
+        "block_number": "24692758",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "1186",
+        "signed_amount": "-49954869.26201598"
+      },
+      {
+        "block_number": "24900509",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "1101",
+        "signed_amount": "-24893897.99460727"
+      },
+      {
+        "block_number": "24908939",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "856",
+        "signed_amount": "-113327879.9864828"
+      },
+      {
+        "block_number": "24950742",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "406",
+        "signed_amount": "0.005844241943054894"
+      },
+      {
+        "block_number": "24950742",
+        "counterparty": "0xdef1fa4cefe67365ba046a7c630d6b885298e210",
+        "evt_index": "408",
+        "signed_amount": "1411897.3098856362"
+      },
+      {
+        "block_number": "24950945",
+        "counterparty": "0x0000000000000000000000000000000000000000",
+        "evt_index": "699",
+        "signed_amount": "-1411909.4160313045"
       }
     ]
   },

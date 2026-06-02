@@ -329,6 +329,35 @@ def build_grove_sources(grove, fixtures: dict, blocks_by_chain: dict[str, Any]) 
                 return _NavWithOverride()
             return _default_resolve(kind)
 
+    # Per-(token, holder) event-block lookup for Cat C aTokens — populated
+    # from the captured ``atoken_{vid}_event_log`` fixtures (one row per
+    # Transfer event, with block_number). The compute layer uses this
+    # for sub-day-resolution segment boundaries.
+    atoken_event_blocks_by_pair: dict[tuple[bytes, bytes], list[int]] = {}
+    for v in grove.venues:
+        if v.pricing_category.value != "C":
+            continue
+        vid = v.id.lower()
+        key = f"atoken_{vid}_event_log"
+        if key not in fixtures:
+            continue
+        entry = fixtures[key]
+        rows = entry.get("rows", [])
+        # Holder defaults to main ALM; honor explicit ``_holder`` if set.
+        fx_holder_hex = entry.get("_holder")
+        if fx_holder_hex:
+            holder = bytes.fromhex(fx_holder_hex.removeprefix("0x"))
+        else:
+            holder = grove.alm[v.chain].value
+        blocks = sorted({int(r["block_number"]) for r in rows})
+        atoken_event_blocks_by_pair[(v.token.address.value, holder)] = blocks
+
+    def _atoken_event_blocks_lookup(
+        chain: str, token: bytes, holder: bytes, som: int, eom: int,
+    ) -> list[int]:
+        blocks = atoken_event_blocks_by_pair.get((token, holder), [])
+        return [b for b in blocks if som < b <= eom]
+
     return Sources(
         debt=MockDebtSource(debt_df),
         balance=_RoutedBalances(),
@@ -336,4 +365,5 @@ def build_grove_sources(grove, fixtures: dict, blocks_by_chain: dict[str, Any]) 
         v3_position=_V3Mixed(),
         block_resolver=resolver,
         nav_oracle_resolver=nav_resolver,
+        atoken_event_blocks=_atoken_event_blocks_lookup,
     )

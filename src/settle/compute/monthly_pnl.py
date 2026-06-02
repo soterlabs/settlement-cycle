@@ -70,6 +70,14 @@ class Sources:
     # overrides the registry lookup. Used by acceptance scripts to inject
     # historical-NAV overrides without monkey-patching ``_NAV_ORACLE_SOURCES``.
     nav_oracle_resolver: object = None
+    # Optional aToken Transfer-event log lookup. Signature:
+    #   ``(chain: str, token: bytes, holder: bytes, som: int, eom: int) -> list[int]``
+    # Returns the SORTED list of block numbers where Transfer events involving
+    # ``holder`` occurred within ``(som, eom]``. When set, the Cat C
+    # per-segment yield path uses sub-day-resolution event boundaries
+    # (one boundary per event block) instead of falling back to
+    # end-of-day boundaries derived from daily mint/burn aggregates.
+    atoken_event_blocks: object = None
 
 
 def _previous_day_eod_utc(d) -> datetime:
@@ -2135,6 +2143,34 @@ def compute_monthly_pnl(
                     # period); the helper clamps it to som_block.
                     boundaries.append((pre_block, post_block))
                 return sorted(set(boundaries), key=lambda t: t[1])
+
+            # Per-event vs day-resolution boundary lookup. If Sources
+            # provides a sub-day-resolution ``atoken_event_blocks``
+            # callable AND it returns at least one event for this
+            # (token, holder) within the period, prefer it over the
+            # day-resolution helper. Sub-day boundaries eliminate
+            # intraday/consecutive-event precision loss.
+            #
+            # Fall back to day-resolution when the per-event lookup
+            # returns nothing — typically because an older fixture set
+            # captured ``atoken_{vid}_mints``/``burns`` daily aggregates
+            # but not ``atoken_{vid}_event_log``. The day-resolution
+            # path is still correct for venues with sparse events.
+            if sources.atoken_event_blocks is not None:
+                _day_res_cb = _atoken_event_blocks   # capture original
+                _per_event_cb = sources.atoken_event_blocks
+                def _atoken_event_blocks(
+                    chain_value: str, token_addr: bytes, holder_addr: bytes,
+                    som: int, eom: int,
+                ) -> list[tuple[int, int]]:
+                    blocks = _per_event_cb(chain_value, token_addr, holder_addr, som, eom)
+                    if blocks:
+                        # Sub-day-resolution boundaries: each event block
+                        # gets a (pre=block-1, post=block) tuple.
+                        return [(b - 1, b) for b in blocks if som < b <= eom]
+                    # No per-event data — defer to the day-resolution
+                    # daily-aggregate path.
+                    return _day_res_cb(chain_value, token_addr, holder_addr, som, eom)
 
             inflow_ts = _atoken_index_weighted_inflow(
                 prime, venue, som_block, eom_block,
