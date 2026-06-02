@@ -333,6 +333,10 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
             deduction_avg = lending_idle_tw
         elif sd_share >= Decimal("0.999"):   # fixed SDE (100% to Sky)
             deduction_avg = avg_value
+        elif entry is not None and entry.get("kind") == "capped" and entry.get("cap_usd"):
+            # Capped SDE: the pipeline subtracts min(cap, value) from utilized
+            # each day. Use min(cap, avg_value) as the utilized-deduction estimate.
+            deduction_avg = min(Decimal(str(entry["cap_usd"])), avg_value)
         else:
             deduction_avg = Decimal("0")
 
