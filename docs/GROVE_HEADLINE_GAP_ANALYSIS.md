@@ -14,9 +14,14 @@ were missing from the cum_balance fixture, so the SDE-asset-value daily
 deduction was understated by ~$520M every day in April, inflating CoF by
 ~$1.7M.
 
-After fix, April Δ shrinks from **+$1.84M → +$154K** (closes 96% of the
-gap). The remaining ±$50–400K monthly gaps are minor methodology deltas,
-documented below.
+After all three fixes in this PR (capture-script START_DATE + Dune
+frob+grab redeploy + BUIDL filter), April Δ shrinks from **+$1.84M →
++$124K** (closes 93% of the gap). The remaining ±$50–320K monthly gaps
+are minor methodology deltas, documented below.
+
+(After only the START_DATE fix in isolation — pre-frob+grab-redeploy,
+pre-BUIDL-filter-fix — April Δ was +$154K, the value referenced in
+the "Root cause — April" section below.)
 
 ## Per-month gap attribution (post-fix)
 

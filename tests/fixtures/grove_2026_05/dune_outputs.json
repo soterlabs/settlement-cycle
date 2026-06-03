@@ -1,5 +1,5 @@
 {
-  "_about": "Grove May 2026 fixture, captured via Dune on 2026-06-02; Eth EoM=25218797, start=2025-10-23",
+  "_about": "Grove May 2026 fixture. Original capture: start=2025-10-23 (buggy \u2014 corrected). cum_balance_e9/e10 series fetched fresh from Dune on 2026-06-03 with the correct start=2025-05-14 (Grove's prime start per config/grove.yaml). debt series captured 2026-06-03 against query 7642450 (frob+grab). Other series retain the original capture; see individual _params blocks for per-key provenance. Eth EoM=25218797. Re-run _capture_dune_fixtures.py for a clean single-pass capture (now correctly parameterised).",
   "pin_block_som_ethereum": 24996367,
   "pin_block_eom_ethereum": 25218797,
   "debt": {

@@ -455,6 +455,27 @@ def _fetch_all_rows(execution_id: str) -> list[dict]:
 
 
 @cached(source_id="dune.execute")
+def _execute_query_cached(
+    query_id: int, sql_path_str: str, params: dict[str, Any],
+    pin_block: int, performance: str,
+) -> pd.DataFrame:
+    """Cache-keyed implementation. ``query_id`` is the FIRST arg so any
+    re-mapping (e.g. ``cache/dune_published.json`` repointed to a different
+    query) invalidates the cache automatically. ``sql_path_str`` is kept in
+    the key for human-readable cache filenames but it's the ``query_id``
+    that guarantees freshness when the SQL content changes.
+
+    See the wrapper ``execute_query`` for the public entry point.
+    """
+    _log.info("Dune query %s (id=%d) submitting...", sql_path_str, query_id)
+    full_params = {**params, "pin_block": pin_block}
+    dune_params = {k: _format_param(v) for k, v in full_params.items()}
+    execution_id = _execute_query(query_id, dune_params, performance)
+    rows = _fetch_all_rows(execution_id)
+    _log.info("Dune query %s → %d rows", sql_path_str, len(rows))
+    return pd.DataFrame(rows)
+
+
 def execute_query(sql_path: Path, params: dict[str, Any], pin_block: int,
                   performance: str = DEFAULT_PERFORMANCE) -> pd.DataFrame:
     """Execute a saved Dune query and return its results as a DataFrame.
@@ -463,18 +484,17 @@ def execute_query(sql_path: Path, params: dict[str, Any], pin_block: int,
     cache key. `params` keys must match named parameters declared in the SQL file.
     Callers MUST NOT pass ``pin_block`` inside ``params`` — that's an alias for
     the positional argument and would silently get overwritten.
+
+    The cache key includes the resolved Dune ``query_id`` so that re-pointing
+    ``cache/dune_published.json`` to a different query (e.g. migrating from
+    a frob-only ``debt_timeseries`` query to a frob+grab one) invalidates any
+    cached results automatically — no need for ``SETTLE_NO_CACHE=1``.
     """
     if "pin_block" in params:
         raise ValueError(
             "execute_query: pass pin_block as the positional arg, not via params"
         )
     query_id = _resolve_query_id(sql_path)
-    _log.info("Dune query %s (id=%d) submitting...", sql_path.name, query_id)
-
-    full_params = {**params, "pin_block": pin_block}
-    dune_params = {k: _format_param(v) for k, v in full_params.items()}
-
-    execution_id = _execute_query(query_id, dune_params, performance)
-    rows = _fetch_all_rows(execution_id)
-    _log.info("Dune query %s → %d rows", sql_path.name, len(rows))
-    return pd.DataFrame(rows)
+    return _execute_query_cached(
+        query_id, sql_path.name, params, pin_block, performance,
+    )

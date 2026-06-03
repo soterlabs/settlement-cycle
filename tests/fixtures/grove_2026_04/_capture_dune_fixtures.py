@@ -338,7 +338,7 @@ def main() -> int:
         print(f"  fetching blocks_at_eod_{chain} …")
         df = execute_query(
             QUERIES / "blocks_at_eod.sql",
-            params={"chain": chain, "start_date": START_DATE},
+            params={"chain": chain, "start_date": START_DATE, "end_date": "2026-04-30"},
             pin_block=pb,
         )
         suffix = "" if chain == "ethereum" else f"_{chain.replace('_c', '')}"

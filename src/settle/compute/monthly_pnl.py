@@ -2640,31 +2640,61 @@ def compute_monthly_pnl(
                 # 2025-10-23 vs the correct 2025-05-14, dropping ~$520M of
                 # pre-Oct-23 BUIDL+JTRSY balance from cum_balance).
                 #
-                # Check that the SDE timeseries' SoM uncapped_value agrees
-                # with the venue's value_som (the authoritative balanceOf-
-                # based read). Only warn when SDE SoM is LOWER than
-                # value_som — that's the bug direction (missing balance).
-                # The opposite direction (SDE SoM > value_som) is benign:
-                # it just means there were on-chain events between the SoM
-                # pin block and EOD of period.start (intraday mints / NAV
-                # tick), which is expected and doesn't indicate filter or
-                # start_date drift.
+                # Compare cum_balance at the SoM pin block date (= the day
+                # BEFORE period.start) with ``value_som`` (the authoritative
+                # balanceOf-based read at the SoM pin block). Reading at
+                # ``period.start - 1`` excludes any same-day events on
+                # period.start (e.g. a large redemption fired at the
+                # Centrifuge mint window on May 1) which would otherwise
+                # produce a benign false positive — the post-fix Grove May
+                # 2026 case is the motivating example: JTRSY had a $50M
+                # outflow on May 1 ~08:30 UTC, so the period.start EOD
+                # cum_balance was legitimately $50M LOWER than value_som.
+                # Anchoring the check at the SoM date removes that source
+                # of noise. Only warn when the SoM-anchored cum_balance is
+                # LOWER than value_som by >$1M — that's the bug direction
+                # (missing pre-period balance).
                 if not _sde_ts.empty and value_som > 0:
-                    _sde_som = Decimal(str(_sde_ts.iloc[0]["uncapped_value"]))
+                    from datetime import timedelta as _td
+                    # Re-read cum_balance from the same source the SDE
+                    # timeseries used (cached at this point — no extra Dune
+                    # call). Anchor the read at the day BEFORE period.start
+                    # so it matches value_som's time point (= SoM pin block
+                    # = prior month's EOD).
+                    _sde_holder = venue.holder_override or prime.alm[venue.chain]
+                    _bal_df = bsrc.cumulative_balance_timeseries(
+                        chain=venue.chain.value,
+                        token=venue.token.address.value,
+                        holder=_sde_holder.value,
+                        start=prime.start_date,
+                        pin_block=period.pin_blocks[venue.chain],
+                        min_transfer_amount=Decimal(0),
+                    )
+                    _som_date = period.start - _td(days=1)
+                    _som_bal = cum_at_or_before(_bal_df, "cum_balance", _som_date)
+                    if _som_bal > 0:
+                        _som_block = resolver.block_at_or_before(
+                            venue.chain.value,
+                            datetime.combine(_som_date, time.max, tzinfo=timezone.utc),
+                        )
+                        _sde_som = _som_bal * _sd_nav(_som_block)
+                    else:
+                        _sde_som = Decimal(0)
                     _delta = value_som - _sde_som   # signed: positive = SDE understates
                     if _delta > Decimal("1_000_000"):
                         _log.warning(
-                            "  [%s] SDE timeseries SoM ($%.0f) UNDERSTATES "
-                            "value_som ($%.0f) by $%.0f — likely a "
-                            "cumulative_balance_timeseries / capture-script "
-                            "issue (yield-mint filter or wrong start_date). "
-                            "Will UNDERSTATE the SDE deduction from utilized "
-                            "and OVERSTATE sky_revenue. Re-capture the "
-                            "fixture with start_date = prime.start_date "
-                            "AND pass min_transfer_amount=0 to "
+                            "  [%s] SDE timeseries SoM-anchored cum_balance "
+                            "(%s → $%.0f) UNDERSTATES value_som ($%.0f) by "
+                            "$%.0f — likely a cumulative_balance_timeseries "
+                            "/ capture-script issue (yield-mint filter or "
+                            "wrong start_date). Will UNDERSTATE the SDE "
+                            "deduction from utilized and OVERSTATE "
+                            "sky_revenue. Re-capture the fixture with "
+                            "start_date = prime.start_date AND pass "
+                            "min_transfer_amount=0 to "
                             "cumulative_balance_timeseries for SDE venues.",
-                            venue.id, float(_sde_som), float(value_som),
-                            float(_delta),
+                            venue.id, _som_date.isoformat(), float(_sde_som),
+                            float(value_som), float(_delta),
                         )
                 sde_asset_value_per_venue.append((venue.id, _sde_ts))
 
