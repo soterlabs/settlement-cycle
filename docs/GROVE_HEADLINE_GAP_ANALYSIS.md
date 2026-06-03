@@ -23,7 +23,7 @@ documented below.
 | Month | Ours P2S | Grove P2S | Δ P2S | Driver |
 |---|---:|---:|---:|---|
 | 2026-01 | $6,595,461 | $6,220,570 | +$374,891 | (a) PR #103 grab + (b) JAAA capped SDE allocation + (c) alt-holder venues |
-| 2026-02 | $5,650,300 | $6,042,238 | −$391,938 | (d) `utilized` base methodology — we deduct more than Grove |
+| 2026-02 | $5,650,300 | $6,042,238 | −$391,938 | (d) Q1 fixture's `debt` series was missing 17 of 19 daily Feb rows — forward-fill silently understated mid-Feb cum_debt by $150-300M |
 | 2026-03 | $6,333,154 | $6,376,609 | −$43,454 | small; mid-period JAAA SDE end blends our buckets close to Grove's |
 | 2026-04 | $9,364,842 | $9,211,014 | +$153,828 | PR #103 grab + minor (a) + (b) |
 | 2026-05 | $8,629,395 | (no Grove xlsx) | — | — |
@@ -131,18 +131,39 @@ xlsx uses a different per-venue allocation that produces slightly
 different daily Sky shares. Net impact: per-venue Sky off by tens of $K
 per month for E8.
 
-### (d) `utilized` base methodology — broader vs narrower (Feb)
+### (d) Q1 fixture had incomplete Feb debt rows (root cause of Feb gap)
 
-Our `utilized` = `cum_debt − ALM idle USDS − PSM USDS − SDE asset value
-− Curve idle − lending idle` (broader). Grove's `Net Subs` = `Subscriptions
-− SDE asset value` only (narrower). For Feb, Grove's avg Net Subs =
-$1,031M vs our implied avg utilized ≈ $910M → CoF $121M × 0.036 × 28/365 =
-$334K less than Grove's. Matches the -$392K Feb gap closely.
+**Initial hypothesis (wrong, retained for record):** I first thought
+our `utilized` was lower than Grove's `Net Subs` because we deduct
+ALM idle USDS / PSM USDS / Curve idle / lending idle, while Grove
+only deducts SDE asset value. That turned out to be **incorrect** —
+Grove's `config/grove.yaml` shows:
 
-This is a real methodology disagreement. Per Atlas §A.2.7 / Step 2
-("prime-settlement-methodology"), the broader definition is canonical
-— Grove's narrower computation appears to under-deduct from `utilized`.
-Worth raising with Grove team.
+- No PSM tracking (explicit comment: "Sky's mainnet PSM stack is
+  non-custodial — no per-prime balances accumulate")
+- No `curve_idle_usds` config on E11 (AUSD/USDC pool — neither coin
+  is USDS/sUSDS, so the deduction doesn't apply)
+- No `lending_idle_usds: true` flag on E1/E2/E3 (Aave aTokens)
+- E17 USDS raw at ALM = $0 throughout (verified on-chain + via BA
+  Labs daily series)
+
+So our utilized for Grove deducts ONLY SDE asset value — identical to
+Grove's Net Subs definition. The "broader deduction" hypothesis was
+wrong.
+
+**Real cause:** the Q1 fixture (`grove_2026_03/dune_outputs.json`) had
+only **2 daily debt rows for February** (Feb 2 + Feb 27), while a
+fresh Dune re-capture returns **19 daily rows** (Feb 2, 6, 12, 13,
+16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 27). Our pipeline forward-
+fills `cum_debt` from the latest available row, so the missing rows
+caused us to silently understate cum_debt by $150-300M during mid-Feb.
+Lower cum_debt → lower utilized → lower CoF → lower sky_revenue.
+
+Re-capturing the fixture fresh from Dune (using the corrected
+START_DATE 2025-05-14 from Fix 1 + the new frob+grab query 7642450
+from Fix 2) restores the full 19-row Feb series. After fix, Feb gap
+shrinks from −$391K → +$94K (closes 76% of the gap; residual is
+subsidy-ramp methodology delta documented in section (b)).
 
 ### (e) Alt-holder venues we track that Grove doesn't (or vice versa)
 
@@ -160,10 +181,7 @@ chains we don't read. Net effect: ±$50–100K per month, small.
 2. **Decide on the subsidy-ramp formula** with Grove team. Either confirm
    our `min(T, 24)/24` ramp matches Atlas and Grove updates their
    methodology, or align ours to Grove's flat-ref_rate approach.
-3. **Decide on the `utilized` base definition** with Grove team. Our
-   broader deduction (ALM idle, PSM, Curve, lending) is what Atlas
-   §A.2.7 prescribes; Grove's narrower base inflates CoF by ~$300K/mo.
-4. **(Optional)** Consider moving `_sde_asset_value_timeseries` to use
+3. **(Optional)** Consider moving `_sde_asset_value_timeseries` to use
    daily `balanceOf` reads (via `IPositionBalanceSource.balance_at`)
    instead of Dune cum_balance. Removes the dependency on transfer-event
    completeness entirely. Cost: ~30 RPC calls per SDE venue per month.
