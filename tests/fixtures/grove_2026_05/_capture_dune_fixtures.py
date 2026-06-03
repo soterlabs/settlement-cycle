@@ -30,7 +30,9 @@ PIN_BLOCKS_EOM = {
     "ethereum": 25218797, "base": 46741326, "avalanche_c": 86865826,
     "plume": 71786194, "monad": 78309381,
 }
-START_DATE = "2025-10-23"
+START_DATE = "2025-05-14"   # Grove prime start (per config/grove.yaml)
+# NOTE: the original value here was "2025-10-23", which is WRONG. See the
+# detailed note in grove_2026_04/_capture_dune_fixtures.py — same bug.
 
 GROVE_ALM_ETH = bytes.fromhex("491edfb0b8b608044e227225c715981a30f3a44e")
 GROVE_ALM_BASE = bytes.fromhex("9b746dbc5269e1df6e4193bcb441c0fbbf1cecee")
@@ -120,6 +122,23 @@ def main() -> int:
             "rows": venue_inflow("ethereum", atoken, ZERO_ADDR, GROVE_ALM_ETH, eth_eom)}
         fx[f"atoken_{vid}_burns"] = {"_token": "0x" + atoken.hex(),
             "rows": venue_inflow("ethereum", atoken, GROVE_ALM_ETH, ZERO_ADDR, eth_eom)}
+        # Per-event Transfer log (sub-day block resolution). Used by the
+        # Cat C per-segment yield path to place each event at its exact
+        # block instead of bucketing to end-of-day. Mirrors the April
+        # capture; without this the loader silently falls back to day-
+        # resolution boundaries, regressing E1/E2/E3 precision for May.
+        print(f"  fetching atoken_{vid}_event_log …")
+        df = execute_query(
+            QUERIES / "atoken_event_log.sql",
+            params={"chain": "ethereum", "token": atoken,
+                    "holder": GROVE_ALM_ETH, "start_date": START_DATE},
+            pin_block=eth_eom,
+        )
+        fx[f"atoken_{vid}_event_log"] = {
+            "_chain": "ethereum", "_token": "0x" + atoken.hex(),
+            "_holder": "0x" + GROVE_ALM_ETH.hex(),
+            "rows": _rows(df),
+        }
 
     VAULTS_ETH = {
         "e4": bytes.fromhex("beeff08df54897e7544ab01d0e86f013da354111"),
@@ -173,6 +192,14 @@ def main() -> int:
         fx[f"cum_balance_{vid}"] = {
             "_chain": chain, "_token": "0x" + token_hex.lower(),
             "rows": transfer_ts(chain, token, holder, pb, min_tx)}
+        # BUIDL: second unfiltered capture for the SDE asset-value path —
+        # see grove_2026_04/_capture_dune_fixtures.py for the rationale.
+        if vid == "e10":
+            print(f"  fetching cum_balance_{vid}_raw ({chain}, unfiltered) …")
+            fx[f"cum_balance_{vid}_raw"] = {
+                "_chain": chain, "_token": "0x" + token_hex.lower(),
+                "_note": "unfiltered for SDE asset-value; min_transfer=0",
+                "rows": transfer_ts(chain, token, holder, pb, 0)}
 
     # inflow_by_counterparty_eXX — Cat A par-stable counterparty-attributed
     # transfer log. Required for the Cat A classifier to distinguish
