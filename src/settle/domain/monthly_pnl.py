@@ -186,6 +186,36 @@ class MonthlyPnL:
     # reporters (xlsx "SDE daily" tab) to render the Sky / Grove /
     # in-flight decomposition without re-running on-chain reads.
     sde_daily_breakdown: list[SDEDailyBreakdown] = field(default_factory=list)
+    # Aggregate 30 bps spread credited to ``prime_agent_revenue`` for all
+    # sky_savings_token positions (Curve LP sUSDS + PSM3 sUSDS leg).
+    # **Already added to ``prime_agent_revenue``** by the compute layer —
+    # this field is surfaced for audit / Grove-comparable display only and
+    # does NOT alter ``sky_revenue`` (the BR remains charged on the
+    # underlying utilized in full; the 30 bps lands in Prime Revenue, not
+    # as a Sky deduction). Equals ``curve_susds_spread + psm3_susds_spread``
+    # for primes wired up with those positions; zero otherwise. Per-Cat-B-
+    # ALM sUSDS-venue attribution is NOT currently plumbed through — the
+    # aggregate is prime-level only.
+    susds_spread_reimbursement: Decimal = Decimal("0")
+    # Pure BR × full ilk debt with NO deductions: no idle-USDS, no PSM,
+    # no SDE asset-value, no Curve/lending idle. Uses the same subsidised
+    # BR + ramp schedule as the actual ``sky_revenue``. Display-only —
+    # NOT the gross analog of ``sky_revenue`` (which also adds the SDE
+    # actual revenue on top of BR-on-utilized). The two relate as:
+    #
+    #     sky_revenue_gross = Σ_d subsidised_BR × cum_debt_d
+    #     sky_revenue       = Σ_d subsidised_BR × utilized_d  +  sde_revenue
+    #
+    # so for primes with active SDE positions, ``sky_revenue`` can EXCEED
+    # ``sky_revenue_gross`` (when SDE revenue > the deductions' BR cost).
+    # ``susds_spread_reimbursement`` is NOT in this identity — it credits
+    # ``prime_agent_revenue``, not ``sky_revenue``.
+    #
+    # The field is consumed by ``build_monthly_report.py`` to display
+    # "BR reduction from idle/SDE deductions" as ``sky_revenue_gross
+    # − cof_total``. Not part of any settlement invariant. Zero default
+    # for backward compat with old provenance.
+    sky_revenue_gross: Decimal = Decimal("0")
 
     @property
     def prime_agent_total_revenue(self) -> Decimal:

@@ -122,6 +122,9 @@ def _write_headline(ws, prov: dict, sheet_rows: list[dict]) -> None:
     cof = sky - sd
     p2g_sum = sum((_D(r["profit_to_grove"]) for r in sheet_rows), Decimal("0"))
 
+    sky_gross    = _D(prov["results"].get("sky_revenue_gross") or 0)
+    spread_reimb = _D(prov["results"].get("susds_spread_reimbursement") or 0)
+
     ws.title = "Headline"
     ws.append([f"Grove monthly settlement — {prov['month']}"])
     ws["A1"].font = Font(bold=True, size=14)
@@ -132,9 +135,15 @@ def _write_headline(ws, prov: dict, sheet_rows: list[dict]) -> None:
         ("Σ Profit to Sky ≡ sky_revenue",                                 sky),
         ("    ↳ CoF on Net_Subs (BR × utilized)",                         cof),
         ("    ↳ SDE revenue (full flow to Sky)",                          sd),
+        ("",                                                              None),
+        ("Sky Revenue (max) — BR × full ilk debt, no deductions",          sky_gross),
+        ("    ↳ CoF on Net_Subs (actual BR × utilized)",                  cof),
+        ("    ↳ reduction from idle/SDE deductions (est., known venues)", -(sky_gross - cof) if sky_gross > 0 else Decimal("0")),
+        ("",                                                              None),
         ("Σ Grove Net Payment (= prime_agent_revenue − CoF)",             p2g_sum),
         ("    ↳ prime_agent_revenue (per-venue gross venue yield total)", par),
         ("    ↳ CoF deducted by Grove (= CoF above)",                     -cof),
+        ("    ↳ includes sUSDS spread (Curve LP + PSM3, credited to prime)", spread_reimb),
         ("agent_rate (subproxy yield, off-sheet)",                        ar),
         ("",                                                              None),
         ("Reconciliation drift Σ P2S − sky_revenue (must be ~0)",         sum((_D(r["profit_to_sky"]) for r in sheet_rows), Decimal("0")) - sky),
@@ -149,13 +158,33 @@ def _write_headline(ws, prov: dict, sheet_rows: list[dict]) -> None:
     ws.append(["Period", f"{prov['period']['start']} → {prov['period']['end']} ({prov['period']['n_days']} days)"])
     ws.append(["Generated at (UTC)", prov.get("generated_at_utc", "")])
     ws.append(["Pipeline version",   prov.get("settle_version", "")])
-    _set_widths(ws, {1: 60, 2: 22})
+
+    ws.append([])
+    note_row = ws.max_row + 1
+    ws.append([
+        "⚠ Note on Sky Revenue (max): this figure is BR × full ilk debt and is "
+        "not a true ceiling on actual sky_revenue. SDE revenue (Σ sd_revenue) is "
+        "added to sky_revenue on top of the BR charge, so actual sky_revenue can "
+        "exceed this 'max' for primes with significant SDE positions. The subsidy "
+        "(ref_rate ramp) is already applied — the rate used here is the same "
+        "subsidised BR as in actual sky_revenue, not the raw Maker base rate. "
+        "The figure is useful for seeing how much the idle-USDS / SDE / lending "
+        "deductions reduce the BR component. The Utilized Deduction (avg) column "
+        "in Summary Comp shows the exact per-venue average amount subtracted from "
+        "utilized (CoF-excluded idle, lending-idle, fixed SDE, and capped SDE venues)."
+    ])
+    ws.cell(note_row, 1).alignment = Alignment(wrap_text=True, vertical="top")
+    ws.row_dimensions[note_row].height = 72
+    ws.cell(note_row, 1).font = Font(italic=True, color="666666")
+
+    _set_widths(ws, {1: 80, 2: 22})
 
 
 def _write_summary_comp(ws, sheet_rows: list[dict]) -> None:
     ws.title = "Summary Comp"
     cols = ["Venue ID", "Label", "Avg Value", "Weight", "Profit to Sky",
             "Revenue", "Grove Net Payment", "CoF Allocation", "SDE Revenue",
+            "Spread Reimb", "Utilized Deduction (avg)",
             "Position (SoM)", "Position (EoM)", "Notes"]
     ws.append(cols)
     _bold_header(ws, 1, len(cols))
@@ -172,17 +201,21 @@ def _write_summary_comp(ws, sheet_rows: list[dict]) -> None:
             float(r["profit_to_grove"]),
             float(r["cof_alloc"]),
             float(r["sd_revenue"]),
+            float(r["spread_reimb"]),
+            float(r.get("deduction_avg") or 0),
             float(r["value_som"]),
             float(r["value_eom"]),
             r.get("note", ""),
         ])
-    # Apply formats — cols: 3=AvgVal, 5=P2S, 6=Revenue, 7=GNP, 8=CoF, 9=SDE, 10=SoM, 11=EoM
+    # Apply formats — cols: 3=AvgVal, 5=P2S, 6=Rev, 7=GNP, 8=CoF, 9=SDE,
+    #   10=SpreadReimb, 11=Deduction, 12=SoM, 13=EoM
     for row in range(2, ws.max_row + 1):
-        for c in (3, 5, 6, 7, 8, 9, 10, 11):
+        for c in (3, 5, 6, 7, 8, 9, 10, 11, 12, 13):
             ws.cell(row, c).number_format = _USD_FMT
         ws.cell(row, 4).number_format = _PCT_FMT
 
-    _set_widths(ws, {1: 8, 2: 55, 3: 17, 4: 9, 5: 17, 6: 17, 7: 17, 8: 17, 9: 17, 10: 17, 11: 17, 12: 40})
+    _set_widths(ws, {1: 8, 2: 55, 3: 17, 4: 9, 5: 17, 6: 17, 7: 17, 8: 17,
+                     9: 17, 10: 17, 11: 20, 12: 17, 13: 17, 14: 40})
 
 
 def _write_grove_exposures(ws, prime_cfg: dict, sde_active: dict) -> None:

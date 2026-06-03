@@ -46,6 +46,15 @@ def render_provenance(
             # zero for primes without sUSDS-in-Curve or PSM3 positions.
             "curve_susds_spread": str(pnl.curve_susds_spread),
             "psm3_susds_spread": str(pnl.psm3_susds_spread),
+            # Total 30 bps spread deducted from sky_revenue for sky_savings_token
+            # Cat B venues. sky_revenue is already net of this deduction.
+            # Used by build_monthly_report.py to recover gross-BR cof_total.
+            "susds_spread_reimbursement": str(pnl.susds_spread_reimbursement),
+            # Sky Revenue that would result if no deductions were subtracted
+            # from utilized (i.e., utilized = cum_debt each day). Same BR /
+            # subsidy schedule as actual sky_revenue. Display-only — not
+            # part of any settlement invariant.
+            "sky_revenue_gross": str(pnl.sky_revenue_gross),
         },
         "venue_breakdown": [
             {

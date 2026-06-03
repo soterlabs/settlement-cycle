@@ -131,6 +131,7 @@ def _load_sde_entries(prime_id: str, period_start: date) -> dict[str, dict]:
                 "cap_usd": entry.get("cap_usd"),
                 "label": entry.get("label", ""),
                 "source": entry.get("source", ""),
+                "end_date": end,
             }
     return out
 
@@ -139,6 +140,52 @@ def _read_venues(path: Path) -> list[dict]:
     with path.open(encoding="utf-8") as f:
         reader = csv.DictReader(f)
         return list(reader)
+
+
+def _mid_period_sde_blend(
+    *,
+    value_som: Decimal,
+    value_eom: Decimal,
+    cap_usd: Decimal | None,
+    period_start: date,
+    period_end: date,
+    sde_end: date,
+) -> tuple[Decimal, int, int, int, Decimal] | None:
+    """Compute the mid-period-SDE-end CoF-bearing avg_value blend.
+
+    Returns ``None`` when no override is needed (``sde_end`` falls outside
+    the in-period window ``[period_start, period_end)`` — strict upper
+    bound because ``sde_end == period_end`` means SDE was active for the
+    full period and the override is a no-op).
+
+    Otherwise returns ``(new_avg, sde_days_n, non_sde_days_n, total_days_n,
+    grove_excess)`` where::
+
+        total_days_n   = (period_end − period_start).days + 1  (inclusive)
+        sde_days_n     = (sde_end    − period_start).days + 1  (inclusive both ends)
+        non_sde_days_n = (period_end − sde_end).days           (strictly after)
+        grove_excess   = max(0, value_som − cap_usd)           (capped) | 0 (fixed)
+        new_avg        = (grove_excess × sde_days_n
+                          + value_eom × non_sde_days_n) / total_days_n
+
+    Day-count convention matches the pipeline gate
+    ``_sde_asset_value_timeseries`` (``current > end_date`` → SDE-inactive),
+    so ``end_date`` itself is the LAST SDE-active day.
+    """
+    if not (period_start <= sde_end < period_end):
+        return None
+    total_days_n   = (period_end - period_start).days + 1
+    sde_days_n     = (sde_end - period_start).days + 1
+    non_sde_days_n = (period_end - sde_end).days
+    total_d   = Decimal(str(total_days_n))
+    sde_d     = Decimal(str(sde_days_n))
+    non_sde_d = Decimal(str(non_sde_days_n))
+    grove_excess = (
+        max(Decimal("0"), value_som - cap_usd)
+        if cap_usd is not None else Decimal("0")
+    )
+    new_avg = (grove_excess * sde_d + value_eom * non_sde_d) / total_d
+    return new_avg, sde_days_n, non_sde_days_n, total_days_n, grove_excess
 
 
 def _classify(row: dict, sde: dict[str, dict]) -> tuple[Decimal, Decimal, str]:
@@ -201,16 +248,28 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
     with prov_json.open(encoding="utf-8") as f:
         prov = json.load(f)
     period_start = date.fromisoformat(prov["period"]["start"])
+    period_end   = date.fromisoformat(prov["period"]["end"])
     headline_sky    = _D(prov["results"]["sky_revenue"])
     headline_prime  = _D(prov["results"]["prime_agent_revenue"])
     headline_agent  = _D(prov["results"]["agent_rate"])
-    # 30 bps Prime Revenue components computed outside the venue loop
-    # (PRD §17.11). Missing on settlements written before
-    # ``curve_susds_spread`` / ``psm3_susds_spread`` were surfaced in
-    # provenance.json — fall back to 0 for those legacy files.
-    curve_spread = _D(prov["results"].get("curve_susds_spread") or 0)
-    psm3_spread  = _D(prov["results"].get("psm3_susds_spread")  or 0)
-    aggregate_susds_spread = curve_spread + psm3_spread
+    # sky_revenue_gross: what sky_revenue would be with utilized = cum_debt.
+    # Zero on legacy provenance files that pre-date this field.
+    headline_sky_gross = _D(prov["results"].get("sky_revenue_gross") or 0)
+    # Total 30 bps spread deducted from sky_revenue across ALL sky_savings_token
+    # venues (Cat B ALM + Curve LP sUSDS + PSM3 sUSDS leg). headline_sky is
+    # already net of this deduction, so we add it back when computing cof_total
+    # to recover the gross-BR allocation base.
+    # Falls back to 0 on legacy provenance files written before this field was
+    # introduced; also backfill curve+psm3 components if present separately.
+    susds_spread_total = _D(prov["results"].get("susds_spread_reimbursement") or 0)
+    if susds_spread_total == 0:
+        curve_spread = _D(prov["results"].get("curve_susds_spread") or 0)
+        psm3_spread  = _D(prov["results"].get("psm3_susds_spread")  or 0)
+        susds_spread_total = curve_spread + psm3_spread
+    aggregate_susds_spread = (
+        _D(prov["results"].get("curve_susds_spread") or 0)
+        + _D(prov["results"].get("psm3_susds_spread") or 0)
+    )
 
     sde = _load_sde_entries(prime_id, period_start)
     rows = _read_venues(venues_csv)
@@ -262,42 +321,153 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
         weight = Decimal("0") if cof_excluded else Decimal("1") - sd_share
         if cof_excluded and not note:
             note = "CoF excluded (already deducted from utilized)"
+
+        # Mid-period SDE end: the SDE designation covers only part of the period.
+        # For a capped SDE, Grove held the excess above the cap throughout the SDE
+        # days — that slice bears CoF even before the SDE ended. After the end_date,
+        # Grove holds the full remaining position (value_eom) and owes CoF on all of
+        # it. Override avg_value and weight to reflect both contributions:
+        #
+        #   avg_value = (grove_excess_above_cap × sde_days
+        #                + value_eom × non_sde_days) / total_days
+        #   weight    = 1   (avg_value already isolates Grove's portion)
+        #
+        # For fixed SDE (no cap), Grove has zero excess during the SDE period,
+        # so only the post-SDE term contributes.
+        #
+        # Day-count convention: the pipeline gates SDE-inactive days with
+        # ``current > end_date`` (see ``_sde_asset_value_timeseries``), so
+        # ``end_date`` itself is the LAST SDE-active day. SDE window is
+        # ``[period_start, sde_end]`` (inclusive both ends); non-SDE window
+        # is ``(sde_end, period_end]`` (strictly after sde_end).
+        #
+        # Example: E8 JAAA Eth, Mar 2026 — SDE capped at $325M, ended 2026-03-12.
+        #   Grove excess during SDE (Mar 1-12, 12d): $455M - $325M = $130M × 12/31 = $50.3M
+        #   Post-SDE (Mar 13-31, 19d):               $128M × 19/31                 = $78.5M
+        #   Total CoF-bearing avg ≈ $128.8M   (vs $0 without this override)
+        # Preserve the pre-override avg_value for deduction_avg below —
+        # the utilized-deduction estimate must reflect what the pipeline
+        # actually subtracted from utilized (≈ time-averaged capped value),
+        # NOT the post-override Grove-portion blend.
+        avg_value_pre_override = avg_value
+        entry = sde.get(r["venue_id"])
+        if entry and not cof_excluded:
+            sde_end = entry.get("end_date")
+            if sde_end is not None:
+                if isinstance(sde_end, str):
+                    sde_end = date.fromisoformat(sde_end)
+                # Approximation: ``value_som`` is used as a flat baseline
+                # for the uncapped asset value during the SDE-active window.
+                # The accurate computation would time-average
+                # ``uncapped_value`` from ``sde_daily_breakdown`` over the
+                # SDE days, but that series is not threaded into the report
+                # builder. The error is bounded by daily price drift across
+                # the SDE window (typically <1% on a $300M position); for
+                # the JAAA Mar 2026 example the daily uncapped value held
+                # within $5M of value_som over the 12 SDE days.
+                cap_usd_d = (
+                    Decimal(str(entry["cap_usd"]))
+                    if entry.get("cap_usd") is not None else None
+                )
+                blend = _mid_period_sde_blend(
+                    value_som=_D(r["value_som"]),
+                    value_eom=_D(r["value_eom"]),
+                    cap_usd=cap_usd_d,
+                    period_start=period_start,
+                    period_end=period_end,
+                    sde_end=sde_end,
+                )
+                if blend is not None:
+                    new_avg, sde_days_n, non_sde_days_n, total_days_n, grove_excess = blend
+                    value_eom_d = _D(r["value_eom"])
+                    weight = Decimal("1")
+                    avg_value = new_avg
+                    note = (note + " — " if note else "") + (
+                        f"SDE ended {sde_end.isoformat()}; "
+                        f"CoF: excess ${float(grove_excess):,.0f}×{sde_days_n}d "
+                        f"+ EoM ${float(value_eom_d):,.0f}×{non_sde_days_n}d "
+                        f"/ {total_days_n}d → avg ${float(new_avg):,.0f}"
+                    )
+
+        # Utilized deduction: the amount this venue subtracts from utilized.
+        # cof_excluded venues → their tw_avg is alm_proxy_usds deduction.
+        # lending_idle venues → lending_idle_tw_avg_usd is the deduction.
+        # SDE fixed venues   → their avg_value is subtracted as sde_asset_value.
+        # All other venues   → do not reduce utilized (they're deployed at BR).
+        #
+        # ``avg_value_pre_override`` is used in place of ``avg_value`` so
+        # mid-period-SDE venues report the pipeline-aligned deduction (≈
+        # time-avg capped value), not the post-override Grove-portion blend
+        # — the latter would understate the deduction the pipeline actually
+        # applied during the SDE-active window.
+        if cof_excluded:
+            deduction_avg = avg_value_pre_override
+        elif lending_idle_tw > 0:
+            deduction_avg = lending_idle_tw
+        elif sd_share >= Decimal("0.999"):   # fixed SDE (100% to Sky)
+            deduction_avg = avg_value_pre_override
+        elif entry is not None and entry.get("kind") == "capped" and entry.get("cap_usd"):
+            # Capped SDE: the pipeline subtracts min(cap, value) from utilized
+            # each day. Use min(cap, avg_value_pre_override) as the
+            # utilized-deduction estimate.
+            deduction_avg = min(Decimal(str(entry["cap_usd"])), avg_value_pre_override)
+        else:
+            deduction_avg = Decimal("0")
+
         enriched.append({
-            "venue_id":   r["venue_id"],
-            "label":      r["label"],
-            "value_som":  _D(r["value_som"]),
-            "value_eom":  _D(r["value_eom"]),
-            "avg_value":  avg_value,
-            "sd_share":   sd_share,
-            "weight":     weight,
-            "actual_rev": _D(r["actual_revenue"]),
-            "external":   _D(r.get("external_revenue") or 0),
-            "revenue":    _D(r["revenue"]),       # already net of SDE
-            "sd_revenue": sd_revenue,
-            "note":       note,
+            "venue_id":      r["venue_id"],
+            "label":         r["label"],
+            "value_som":     _D(r["value_som"]),
+            "value_eom":     _D(r["value_eom"]),
+            "avg_value":     avg_value,
+            "sd_share":      sd_share,
+            "weight":        weight,
+            "actual_rev":    _D(r["actual_revenue"]),
+            "external":      _D(r.get("external_revenue") or 0),
+            "revenue":       _D(r["revenue"]),       # already net of SDE
+            "sd_revenue":    sd_revenue,
+            # Per-venue 30 bps spread reimbursement is NOT currently plumbed
+            # through ``VenueRevenue`` / ``venues.csv`` — the compute layer
+            # only retains the prime-level aggregate on ``MonthlyPnL.
+            # susds_spread_reimbursement``. Per-venue rows therefore show 0;
+            # the synthetic SPREAD row below carries the aggregate so the
+            # markdown table's column total still reconciles. If finer
+            # attribution is needed in the future, add the field to
+            # ``VenueRevenue`` + ``write_venues_csv`` and read it here.
+            "spread_reimb":  Decimal("0"),
+            "deduction_avg": deduction_avg,   # avg amount reducing utilized
+            "note":          note,
         })
 
     # Synthetic row: 30 bps Prime Revenue components computed outside the
     # venue loop (Curve LP sUSDS + PSM3 sUSDS leg). Required so that
-    # Σ vr.revenue ≡ prime_agent_revenue — without it the reconciliation
+    # Σ v["revenue"] ≡ prime_agent_revenue — without it the reconciliation
     # footer drifts by the spread amount for any prime holding sUSDS in
     # Curve LP pools or PSM3 (Spark today; future primes likewise).
-    # Weight=0 keeps it out of the CoF allocation pool. Note column flags
-    # the aggregate so the row's prime-only attribution is explicit.
+    #
+    # ``revenue`` carries the aggregate spread so it lands in Σ v["revenue"]
+    # and Σ P2G ( = Σ (revenue − cof_alloc) ) reconciles to
+    # ``prime_agent_revenue − cof_total`` exactly. ``actual_rev`` mirrors
+    # ``revenue`` for the same reason (no SDE split applies). Weight=0 keeps
+    # the row out of the CoF allocation pool so its full revenue flows to
+    # Grove untaxed. ``spread_reimb`` duplicates ``revenue`` as the
+    # display-column surface for the sUSDS spread on its own.
     if aggregate_susds_spread != 0:
         enriched.append({
-            "venue_id":   "SPREAD",
-            "label":      "30bps sUSDS spread (Curve LP + PSM3 aggregate)",
-            "value_som":  Decimal("0"),
-            "value_eom":  Decimal("0"),
-            "avg_value":  Decimal("0"),
-            "sd_share":   Decimal("0"),
-            "weight":     Decimal("0"),
-            "actual_rev": aggregate_susds_spread,
-            "external":   Decimal("0"),
-            "revenue":    aggregate_susds_spread,
-            "sd_revenue": Decimal("0"),
-            "note":       "prime-only (no CoF; computed outside venue loop)",
+            "venue_id":      "SPREAD",
+            "label":         "30bps sUSDS spread (Curve LP + PSM3) — Prime Revenue (untaxed)",
+            "value_som":     Decimal("0"),
+            "value_eom":     Decimal("0"),
+            "avg_value":     Decimal("0"),
+            "sd_share":      Decimal("0"),
+            "weight":        Decimal("0"),
+            "actual_rev":    aggregate_susds_spread,
+            "external":      Decimal("0"),
+            "revenue":       aggregate_susds_spread,
+            "sd_revenue":    Decimal("0"),
+            "spread_reimb":  aggregate_susds_spread,
+            "deduction_avg": Decimal("0"),  # sUSDS not deducted from utilized
+            "note":          "Prime Revenue (sUSDS spread, no CoF; computed outside venue loop)",
         })
 
     # CoF on Net_Subs = sky_revenue minus the SDE-revenue portion that flows
@@ -321,13 +491,15 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
         v["profit_to_grove"] = v["revenue"] - v["cof_alloc"]
 
     totals = {
-        "sky_revenue":            headline_sky,
-        "prime_agent_revenue":    headline_prime,
-        "agent_rate":             headline_agent,
-        "cof_total":              cof_total,
-        "sd_revenue_total":       total_sd_revenue,
-        "sum_p2s":                sum((v["profit_to_sky"]   for v in enriched), Decimal("0")),
-        "sum_p2g":                sum((v["profit_to_grove"] for v in enriched), Decimal("0")),
+        "sky_revenue":              headline_sky,
+        "sky_revenue_gross":        headline_sky_gross,
+        "prime_agent_revenue":      headline_prime,
+        "agent_rate":               headline_agent,
+        "cof_total":                cof_total,
+        "sd_revenue_total":         total_sd_revenue,
+        "susds_spread_reimb_total": susds_spread_total,
+        "sum_p2s":                  sum((v["profit_to_sky"]   for v in enriched), Decimal("0")),
+        "sum_p2g":                  sum((v["profit_to_grove"] for v in enriched), Decimal("0")),
     }
     return enriched, totals
 
@@ -336,7 +508,8 @@ def _emit_csv(rows: list[dict], out: Path) -> None:
     cols = [
         "venue_id", "label", "value_som", "value_eom", "avg_value",
         "sd_share", "weight", "actual_rev", "external", "revenue",
-        "sd_revenue", "cof_alloc", "profit_to_sky", "profit_to_grove", "note",
+        "sd_revenue", "spread_reimb", "deduction_avg",
+        "cof_alloc", "profit_to_sky", "profit_to_grove", "note",
     ]
     with out.open("w", encoding="utf-8", newline="") as f:
         w = csv.DictWriter(f, fieldnames=cols)
@@ -370,6 +543,16 @@ def _emit_markdown(
     lines.append(f"| Σ Profit to Sky ≡ `sky_revenue` | {_fmt_usd(totals['sky_revenue'])} |")
     lines.append(f"| &nbsp;&nbsp;↳ CoF on Net_Subs (BR × utilized) | {_fmt_usd(totals['cof_total'])} |")
     lines.append(f"| &nbsp;&nbsp;↳ SDE revenue (full flow to Sky) | {_fmt_usd(totals['sd_revenue_total'])} |")
+    if totals["susds_spread_reimb_total"] != 0:
+        lines.append(
+            f"| `sUSDS spread (Curve LP + PSM3) — credited to prime_revenue, not deducted from sky_revenue` "
+            f"| {_fmt_usd(totals['susds_spread_reimb_total'])} |"
+        )
+    if totals["sky_revenue_gross"] > 0:
+        lines.append(f"| **Sky Revenue (max) — BR × full ilk debt, no deductions** | **{_fmt_usd(totals['sky_revenue_gross'])}** |")
+        lines.append(f"| &nbsp;&nbsp;↳ CoF on Net_Subs (actual BR × utilized) | {_fmt_usd(totals['cof_total'])} |")
+        sky_rev_br_reduction = max(Decimal("0"), totals["sky_revenue_gross"] - totals["cof_total"])
+        lines.append(f"| &nbsp;&nbsp;↳ reduction from idle/SDE deductions | −{_fmt_usd(sky_rev_br_reduction)} |")
     lines.append(f"| Σ Grove Net Payment (= `prime_agent_revenue` − CoF) | {_fmt_usd(sum_p2g)} |")
     lines.append(f"| &nbsp;&nbsp;↳ `prime_agent_revenue` (per-venue revenue total) | {_fmt_usd(totals['prime_agent_revenue'])} |")
     lines.append(f"| &nbsp;&nbsp;↳ CoF deducted by Grove (= cof_total above) | -{_fmt_usd(totals['cof_total'])} |")
@@ -395,9 +578,10 @@ def _emit_markdown(
 
     lines.append("## Per-venue breakdown\n")
     lines.append(
-        "| Venue | Label | avg_value | weight | Profit to Sky | Revenue | Grove Net Payment | CoF alloc | SDE rev | Note |"
+        "| Venue | Label | avg_value | weight | Profit to Sky | Revenue | Grove Net Payment | "
+        "CoF alloc | SDE rev | Spread Reimb | Utilized Deduction (avg) | Note |"
     )
-    lines.append("|---|---|---:|---:|---:|---:|---:|---:|---:|---|")
+    lines.append("|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|")
     # Sort by Profit to Sky desc to make the sheet read like Grove's.
     for r in sorted(rows, key=lambda v: float(v["profit_to_sky"]), reverse=True):
         lines.append(
@@ -405,7 +589,8 @@ def _emit_markdown(
             f"{_fmt_pct(r['weight'])} | {_fmt_usd(r['profit_to_sky'])} | "
             f"{_fmt_usd(r['revenue'])} | {_fmt_usd(r['profit_to_grove'])} | "
             f"{_fmt_usd(r['cof_alloc'])} | "
-            f"{_fmt_usd(r['sd_revenue'])} | {r['note']} |"
+            f"{_fmt_usd(r['sd_revenue'])} | {_fmt_usd(r['spread_reimb'])} | "
+            f"{_fmt_usd(r['deduction_avg'])} | {r['note']} |"
         )
     lines.append("")
     lines.append("## Formulas\n")
@@ -422,6 +607,16 @@ def _emit_markdown(
         "cof_alloc_v       = avg_value_v × weight_v / Σ_v(avg × weight) × cof_total\n"
         "profit_to_sky_v      = cof_alloc_v + sd_revenue_v\n"
         "grove_net_payment_v  = revenue_v − cof_alloc_v\n"
+        "# Invariants: Σ profit_to_sky ≡ sky_revenue   Σ GNP + cof_total ≡ prime_agent_revenue\n"
+        "\n"
+        "# Utilized deduction column (display-only, no settlement effect):\n"
+        "deduction_avg_v = tw_avg_value if cof_excluded\n"
+        "                  else lending_idle_tw_avg if lending_idle > 0\n"
+        "                  else avg_value if fixed SDE\n"
+        "                  else min(cap_usd, avg_value) if capped SDE\n"
+        "                  else 0\n"
+        "# Shows how much each venue reduces 'utilized' on average, i.e. the\n"
+        "# principal that is NOT subject to BR charges. Exact per-venue.\n"
         "```\n"
     )
     out.write_text("\n".join(lines), encoding="utf-8")

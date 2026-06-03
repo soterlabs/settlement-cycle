@@ -2355,24 +2355,50 @@ def compute_monthly_pnl(
                 for addr in prime.external_alm_sources.get(venue.chain, [])
             }
             # Map override list keyed by raw 20-byte address (matches the
-            # ``_to_bytes`` normalisation inside the helper).
-            overrides_for_chain = prime.principal_return_overrides.get(venue.chain, {})
-            overrides_by_bytes = {
-                addr.value: [(o.date, o.amount) for o in entries]
-                for addr, entries in overrides_for_chain.items()
-            }
-            # Paired-principal-cap auto-wiring — extracted into
-            # ``_build_paired_principal_caps`` for unit-test coverage.
-            paired_principal_caps = _build_paired_principal_caps(
-                prime, venue, period, balance_src,
-            )
-            inflow_ts = _cat_a_capital_inflow_timeseries(
-                prime, venue, period,
-                balance_source=balance_src,
-                external_sources=external,
-                principal_return_overrides=overrides_by_bytes,
-                paired_principal_caps=paired_principal_caps or None,
-            )
+            if venue.force_capital_inflow:
+                # Synthesise inflow = Δvalue so revenue collapses to 0.
+                # Used for Cat A venues on chains without reliable transfer-
+                # event coverage (e.g. Monad): the pipeline cannot distinguish
+                # capital deposits from yield, so we declare no yield and
+                # attribute the full period Δvalue to capital movement.
+                # A single period-start row is used so tw_avg_value_usd
+                # reflects the full EoM balance for CoF allocation purposes.
+                #
+                # Short-circuit BEFORE the normal Cat A path so we don't pay
+                # for ``_cat_a_capital_inflow_timeseries`` (Dune transfer event
+                # fetches, paired-principal-cap wiring) just to discard the
+                # result. The flag's validity is enforced at config load —
+                # see ``Venue.__post_init__``.
+                _delta = value_eom - value_som
+                _log.info(
+                    "  [%s] force_capital_inflow — synthesising inflow $%.2f "
+                    "(value_som=$%.2f, value_eom=$%.2f)",
+                    venue.id, float(_delta), float(value_som), float(value_eom),
+                )
+                inflow_ts = pd.DataFrame({
+                    "block_date": [period.start],
+                    "daily_inflow": [_delta],
+                    "cum_inflow": [_delta],
+                })
+            else:
+                # ``_to_bytes`` normalisation inside the helper).
+                overrides_for_chain = prime.principal_return_overrides.get(venue.chain, {})
+                overrides_by_bytes = {
+                    addr.value: [(o.date, o.amount) for o in entries]
+                    for addr, entries in overrides_for_chain.items()
+                }
+                # Paired-principal-cap auto-wiring — extracted into
+                # ``_build_paired_principal_caps`` for unit-test coverage.
+                paired_principal_caps = _build_paired_principal_caps(
+                    prime, venue, period, balance_src,
+                )
+                inflow_ts = _cat_a_capital_inflow_timeseries(
+                    prime, venue, period,
+                    balance_source=balance_src,
+                    external_sources=external,
+                    principal_return_overrides=overrides_by_bytes,
+                    paired_principal_caps=paired_principal_caps or None,
+                )
         elif venue.pricing_category == PricingCategory.EOA:
             # Cat EOA — Off-protocol relay/staging address. The venue tracks
             # outstanding ALM principal that's sitting at an EOA waiting for
@@ -2678,8 +2704,22 @@ def compute_monthly_pnl(
         curve_idle_usds=curve_idle_usds,
         lending_idle_usds=lending_idle_usds,
     )
-    # Sky's full claim: BR on (utilized − SDE) + actual SDE revenue.
+    # Sky's full claim: BR on (utilized − SDE − idle deductions) + actual
+    # SDE revenue. The 30 bps sUSDS spread (Curve LP + PSM3 sUSDS leg) is
+    # credited to ``prime_rev``, not deducted from ``sky_rev`` — Sky still
+    # charges full BR on the underlying utilized, and the spread is the
+    # prime's net pickup on the share-price-appreciation accounting. The
+    # economic neutrality (SSR via share-price + BR + 30bps Prime = 0)
+    # holds at the COMBINED level; sky_revenue stays gross of the spread.
     sky_rev = sky_rev_br + sde_revenue
+    # Pure BR × cum_debt (no idle / SDE / PSM / Curve / lending deductions).
+    # Display-only. NOT the gross analog of sky_revenue: ``sky_revenue``
+    # also adds ``sde_revenue`` on top of the BR-on-utilized base, so for
+    # primes with active SDE positions ``sky_revenue`` can exceed
+    # ``sky_revenue_gross``. The monthly report consumes this as
+    # ``sky_revenue_gross − cof_total`` to display "BR reduction from
+    # idle/SDE deductions". See ``MonthlyPnL.sky_revenue_gross`` docstring.
+    sky_rev_gross = Decimal(str(sky_rev_daily["daily_sky_rev_gross"].sum()))
 
     _log_sky_revenue_debug(
         sky_rev_daily,
@@ -2746,4 +2786,6 @@ def compute_monthly_pnl(
         psm3_susds_spread=psm3_susds_spread if not sky_only else Decimal("0"),
         display_only_breakdown=display_only_breakdown,
         sde_daily_breakdown=sde_daily_breakdown_out,
+        susds_spread_reimbursement=curve_susds_spread + psm3_susds_spread,
+        sky_revenue_gross=sky_rev_gross,
     )
