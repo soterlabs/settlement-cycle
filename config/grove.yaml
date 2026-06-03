@@ -339,10 +339,15 @@ venues:
       decimals: 0    # not an ERC-20; positions are NFTs
     nft_position_manager: '0x7197e214c0b767cfb76fb734ab638e2c192f4e53'
     holder_override: '0x94b398acb2fce988871218221ea6a4a2b26cccbc'
-    # Note: Monad is not in Dune's spellbook, so liquidity-event inflow
-    # tracking is not viable (the V3 inflow path relies on Dune's
-    # uniswap_v3.liquidity_events spell). The pipeline falls back to
-    # RPCUniswapV3PositionSource (eth_getLogs) for inflow calculation.
+    # FalconX-relay Monad venue — display-only. The Monad ALM is reached
+    # via an off-protocol AUSD acquisition routed through 0xd94f → 0x94b3…;
+    # round-trip P&L is recognized at the anchor E14 (AUSD raw on the
+    # Ethereum ALM) via the paired-principal-cap classifier. Excluded
+    # from prime_agent_revenue / sky_revenue / NAV invariant so Sky / Grove
+    # split is computed only on positions reachable through standard
+    # event coverage. Remove once Monad transfer-event data is in Dune AND
+    # the FalconX relay path is fully reconciled.
+    display_only: true
 
   # ---- E13–E18 : raw idle holdings on the ALM proxy ----
   # PRD §4.1: anything Grove holds outside an active venue still belongs to
@@ -689,6 +694,10 @@ venues:
       address: '0x00000000efe302beaa2b3e6e1b18d08d69a9012a'
       symbol: 'AUSD'
       decimals: 6
+    # FalconX-relay Monad venue — display-only (see E33 note). Round-trip
+    # P&L recognized at the Ethereum anchor; this venue is excluded from
+    # prime_agent_revenue / sky_revenue / NAV invariant.
+    display_only: true
 
   - id: E34
     chain: monad
@@ -699,6 +708,8 @@ venues:
       symbol: 'AUSD'
       decimals: 6
     holder_override: '0x94b398acb2fce988871218221ea6a4a2b26cccbc'
+    # FalconX-relay Monad venue — display-only (see E33 note).
+    display_only: true
 
   - id: E35
     chain: monad
@@ -709,13 +720,12 @@ venues:
       symbol: 'USDC'
       decimals: 6
     holder_override: '0x94b398acb2fce988871218221ea6a4a2b26cccbc'
-    # Monad is not covered by Dune's transfer-event spellbook, so
-    # inflow_by_counterparty returns empty and the pipeline cannot
-    # distinguish capital deposits from yield. force_capital_inflow
-    # treats the full Δvalue as capital (revenue = 0) while keeping
-    # the venue in the CoF allocation pool via its tw_avg_value_usd.
-    # Remove once Monad transfer-event data is available in Dune.
-    force_capital_inflow: true
+    # FalconX-relay Monad venue — display-only (see E33 note). Supersedes
+    # the prior ``force_capital_inflow`` treatment: while that flag set
+    # revenue=0 but kept the venue in the CoF allocation pool, display_only
+    # removes it from CoF as well, matching the FalconX relay semantics
+    # (P&L recognized at the anchor, not here).
+    display_only: true
 
   # Plume venues — held $0 throughout Q1 2026 (wound down Oct 2025) but
   # listed for completeness with Grove team's inventory. Bridged-token
