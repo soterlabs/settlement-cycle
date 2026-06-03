@@ -134,6 +134,9 @@ def _write_summary(ws, prov: dict, sheet_rows: list[dict]) -> None:
     cof   = sky - sd
     sum_p2g = sum((_D(r["profit_to_grove"]) for r in sheet_rows), Decimal("0"))
     monthly_pnl = par + ar - sky
+    # New display-only surfaces from PR #104 — see provenance schema.
+    sky_gross    = _D(res.get("sky_revenue_gross") or 0)
+    spread_reimb = _D(res.get("susds_spread_reimbursement") or 0)
 
     ws.append([f"{prime} — Monthly settlement {month}"])
     ws["A1"].font = _TITLE
@@ -173,6 +176,32 @@ def _write_summary(ws, prov: dict, sheet_rows: list[dict]) -> None:
     )
     ws.append([])
 
+    # Sky Revenue (max) — display-only ceiling on BR (no idle/SDE deductions).
+    # NOT a true ceiling on sky_revenue: actual sky_revenue adds sde_revenue
+    # on top of BR-on-utilized, so for primes with material SDE positions
+    # sky_revenue can exceed sky_revenue_gross. The subsidised BR (ref_rate
+    # ramp) is already applied — the rate matches actual sky_revenue, not
+    # the raw Maker base rate.
+    if sky_gross > 0:
+        _block(
+            "Sky Revenue (max) — BR × full ilk debt, no deductions",
+            rows=[
+                ("CoF on Net_Subs (actual BR × utilized)",         cof),
+                ("reduction from idle/SDE deductions",             -(sky_gross - cof)),
+            ],
+            total=sky_gross,
+        )
+        ws.append([])
+
+    # sUSDS spread — credited to prime_agent_revenue, NOT deducted from
+    # sky_revenue (Sky charges full BR on the underlying utilized; the
+    # 30 bps lands in Prime Revenue). Surfaced for Grove-side audit only.
+    if spread_reimb != 0:
+        ws.append(["sUSDS spread (Curve LP + PSM3) — credited to prime_agent_revenue", float(spread_reimb)])
+        ws.cell(ws.max_row, 2).number_format = _USD
+        ws.cell(ws.max_row, 1).font = _MUTED
+        ws.append([])
+
     _block(
         'Comparison (Grove-style "Profit to Grove")',
         rows=[
@@ -204,6 +233,7 @@ def _write_venues(ws, sheet_rows: list[dict], prime_cfg: dict) -> None:
         "actual_revenue", "external_revenue", "revenue (to prime)",
         "sd_revenue (to Sky)",
         "Avg value", "Weight", "CoF alloc", "Profit to Sky", "Profit to Grove",
+        "Utilized Deduction (avg)", "Spread Reimb",
         "Notes",
     ]
     ws.append(cols)
@@ -230,19 +260,22 @@ def _write_venues(ws, sheet_rows: list[dict], prime_cfg: dict) -> None:
             float(r["cof_alloc"]),
             float(r["profit_to_sky"]),
             float(r["profit_to_grove"]),
+            float(_D(r.get("deduction_avg") or 0)),
+            float(_D(r.get("spread_reimb")  or 0)),
             r.get("note", ""),
         ])
 
-    # Number formats
+    # Number formats: USD cols are 5–12, 14–18. Pct col is 13. Last col is text.
     for row in range(2, ws.max_row + 1):
-        for c in (5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16):
+        for c in (5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18):
             ws.cell(row, c).number_format = _USD0
         ws.cell(row, 13).number_format = _PCT
 
     _set_widths(ws, {
         1: 7, 2: 50, 3: 11, 4: 13,
         5: 16, 6: 16, 7: 16, 8: 14, 9: 14, 10: 16, 11: 16,
-        12: 16, 13: 9, 14: 14, 15: 16, 16: 16, 17: 30,
+        12: 16, 13: 9, 14: 14, 15: 16, 16: 16,
+        17: 22, 18: 14, 19: 30,
     })
     ws.freeze_panes = "C2"
 
@@ -253,6 +286,8 @@ def _write_sky_revenue(ws, prov: dict, sheet_rows: list[dict], prime_cfg: dict) 
     sky = _D(res["sky_revenue"])
     sd  = sum((_D(r["sd_revenue"]) for r in sheet_rows), Decimal("0"))
     cof = sky - sd
+    sky_gross    = _D(res.get("sky_revenue_gross") or 0)
+    spread_reimb = _D(res.get("susds_spread_reimbursement") or 0)
 
     ws.append(["How Sky's monthly take is built"])
     ws["A1"].font = _TITLE
@@ -273,6 +308,44 @@ def _write_sky_revenue(ws, prov: dict, sheet_rows: list[dict], prime_cfg: dict) 
     ws.append(["Utilized base = cum_debt − idle USDS − PSM USDS − Σ SDE asset value − Curve idle − lending idle"])
     ws.cell(ws.max_row, 1).font = _MUTED
     ws.append([])
+
+    # Sky Revenue (max) reconciliation — pure BR × cum_debt vs actual CoF.
+    # Display-only diagnostic that surfaces how much the idle/SDE/PSM/Curve
+    # deductions reduce the BR component of sky_revenue.
+    if sky_gross > 0:
+        ws.append(["Sky Revenue (max) — BR × full ilk debt (no deductions)", float(sky_gross)])
+        ws.cell(ws.max_row, 2).number_format = _USD
+        ws.cell(ws.max_row, 1).font = _BOLD
+        ws.append(["    ↳ actual CoF on Net_Subs (BR × utilized)",            float(cof)])
+        ws.cell(ws.max_row, 2).number_format = _USD
+        ws.append(["    ↳ reduction from idle/SDE deductions",                -float(sky_gross - cof)])
+        ws.cell(ws.max_row, 2).number_format = _USD
+        ws.append([
+            "Note: sky_revenue can EXCEED sky_revenue_gross for primes with "
+            "active SDE positions — sky_revenue also adds sde_revenue on top "
+            "of BR-on-utilized. The subsidised BR (ref_rate ramp) is already "
+            "applied here; this is NOT the raw Maker base rate."
+        ])
+        ws.cell(ws.max_row, 1).font = _MUTED
+        ws.cell(ws.max_row, 1).alignment = Alignment(wrap_text=True, vertical="top")
+        ws.row_dimensions[ws.max_row].height = 60
+        ws.append([])
+
+    # sUSDS spread — Prime Revenue line, not a Sky deduction.
+    if spread_reimb != 0:
+        ws.append([
+            "sUSDS spread (Curve LP + PSM3) — 30 bps × value × n_days "
+            "credited to prime_agent_revenue. Sky still charges full BR on "
+            "the underlying utilized; this row is the prime's offsetting "
+            "pickup on the share-price-appreciation accounting (SSR + BR + "
+            "30 bps nets to zero economically).",
+            float(spread_reimb),
+        ])
+        ws.cell(ws.max_row, 2).number_format = _USD
+        ws.cell(ws.max_row, 1).font = _MUTED
+        ws.cell(ws.max_row, 1).alignment = Alignment(wrap_text=True, vertical="top")
+        ws.row_dimensions[ws.max_row].height = 60
+        ws.append([])
 
     # Subsidy params if enabled.
     sub_cfg = prime_cfg.get("subsidy") or {}

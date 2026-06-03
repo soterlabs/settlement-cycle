@@ -441,27 +441,33 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
 
     # Synthetic row: 30 bps Prime Revenue components computed outside the
     # venue loop (Curve LP sUSDS + PSM3 sUSDS leg). Required so that
-    # Σ vr.revenue ≡ prime_agent_revenue — without it the reconciliation
+    # Σ v["revenue"] ≡ prime_agent_revenue — without it the reconciliation
     # footer drifts by the spread amount for any prime holding sUSDS in
     # Curve LP pools or PSM3 (Spark today; future primes likewise).
-    # Weight=0 keeps it out of the CoF allocation pool. Note column flags
-    # the aggregate so the row's prime-only attribution is explicit.
+    #
+    # ``revenue`` carries the aggregate spread so it lands in Σ v["revenue"]
+    # and Σ P2G ( = Σ (revenue − cof_alloc) ) reconciles to
+    # ``prime_agent_revenue − cof_total`` exactly. ``actual_rev`` mirrors
+    # ``revenue`` for the same reason (no SDE split applies). Weight=0 keeps
+    # the row out of the CoF allocation pool so its full revenue flows to
+    # Grove untaxed. ``spread_reimb`` duplicates ``revenue`` as the
+    # display-column surface for the sUSDS spread on its own.
     if aggregate_susds_spread != 0:
         enriched.append({
             "venue_id":      "SPREAD",
-            "label":         "30bps sUSDS spread (Curve LP + PSM3) — Sky Revenue reduction",
+            "label":         "30bps sUSDS spread (Curve LP + PSM3) — Prime Revenue (untaxed)",
             "value_som":     Decimal("0"),
             "value_eom":     Decimal("0"),
             "avg_value":     Decimal("0"),
             "sd_share":      Decimal("0"),
             "weight":        Decimal("0"),
-            "actual_rev":    Decimal("0"),
+            "actual_rev":    aggregate_susds_spread,
             "external":      Decimal("0"),
-            "revenue":       Decimal("0"),
+            "revenue":       aggregate_susds_spread,
             "sd_revenue":    Decimal("0"),
             "spread_reimb":  aggregate_susds_spread,
             "deduction_avg": Decimal("0"),  # sUSDS not deducted from utilized
-            "note":          "sky-revenue reduction (no CoF; computed outside venue loop)",
+            "note":          "Prime Revenue (sUSDS spread, no CoF; computed outside venue loop)",
         })
 
     # CoF on Net_Subs = sky_revenue minus the SDE-revenue portion that flows
@@ -537,7 +543,11 @@ def _emit_markdown(
     lines.append(f"| Σ Profit to Sky ≡ `sky_revenue` | {_fmt_usd(totals['sky_revenue'])} |")
     lines.append(f"| &nbsp;&nbsp;↳ CoF on Net_Subs (BR × utilized) | {_fmt_usd(totals['cof_total'])} |")
     lines.append(f"| &nbsp;&nbsp;↳ SDE revenue (full flow to Sky) | {_fmt_usd(totals['sd_revenue_total'])} |")
-    lines.append(f"| &nbsp;&nbsp;↳ sUSDS spread reimb. (−Sky Revenue) | −{_fmt_usd(totals['susds_spread_reimb_total'])} |")
+    if totals["susds_spread_reimb_total"] != 0:
+        lines.append(
+            f"| `sUSDS spread (Curve LP + PSM3) — credited to prime_revenue, not deducted from sky_revenue` "
+            f"| {_fmt_usd(totals['susds_spread_reimb_total'])} |"
+        )
     if totals["sky_revenue_gross"] > 0:
         lines.append(f"| **Sky Revenue (max) — BR × full ilk debt, no deductions** | **{_fmt_usd(totals['sky_revenue_gross'])}** |")
         lines.append(f"| &nbsp;&nbsp;↳ CoF on Net_Subs (actual BR × utilized) | {_fmt_usd(totals['cof_total'])} |")

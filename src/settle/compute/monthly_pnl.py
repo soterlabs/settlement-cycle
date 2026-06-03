@@ -2704,9 +2704,13 @@ def compute_monthly_pnl(
         curve_idle_usds=curve_idle_usds,
         lending_idle_usds=lending_idle_usds,
     )
-    # Sky's full claim: BR on (utilized − SDE) + actual SDE revenue,
-    # minus 30 bps spread reimbursement for all sky_savings_token venues
-    # (Cat B ALM + Curve LP sUSDS + PSM3 sUSDS leg).
+    # Sky's full claim: BR on (utilized − SDE − idle deductions) + actual
+    # SDE revenue. The 30 bps sUSDS spread (Curve LP + PSM3 sUSDS leg) is
+    # credited to ``prime_rev``, not deducted from ``sky_rev`` — Sky still
+    # charges full BR on the underlying utilized, and the spread is the
+    # prime's net pickup on the share-price-appreciation accounting. The
+    # economic neutrality (SSR via share-price + BR + 30bps Prime = 0)
+    # holds at the COMBINED level; sky_revenue stays gross of the spread.
     sky_rev = sky_rev_br + sde_revenue
     # Pure BR × cum_debt (no idle / SDE / PSM / Curve / lending deductions).
     # Display-only. NOT the gross analog of sky_revenue: ``sky_revenue``
