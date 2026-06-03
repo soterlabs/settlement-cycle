@@ -142,6 +142,52 @@ def _read_venues(path: Path) -> list[dict]:
         return list(reader)
 
 
+def _mid_period_sde_blend(
+    *,
+    value_som: Decimal,
+    value_eom: Decimal,
+    cap_usd: Decimal | None,
+    period_start: date,
+    period_end: date,
+    sde_end: date,
+) -> tuple[Decimal, int, int, int, Decimal] | None:
+    """Compute the mid-period-SDE-end CoF-bearing avg_value blend.
+
+    Returns ``None`` when no override is needed (``sde_end`` falls outside
+    the in-period window ``[period_start, period_end)`` — strict upper
+    bound because ``sde_end == period_end`` means SDE was active for the
+    full period and the override is a no-op).
+
+    Otherwise returns ``(new_avg, sde_days_n, non_sde_days_n, total_days_n,
+    grove_excess)`` where::
+
+        total_days_n   = (period_end − period_start).days + 1  (inclusive)
+        sde_days_n     = (sde_end    − period_start).days + 1  (inclusive both ends)
+        non_sde_days_n = (period_end − sde_end).days           (strictly after)
+        grove_excess   = max(0, value_som − cap_usd)           (capped) | 0 (fixed)
+        new_avg        = (grove_excess × sde_days_n
+                          + value_eom × non_sde_days_n) / total_days_n
+
+    Day-count convention matches the pipeline gate
+    ``_sde_asset_value_timeseries`` (``current > end_date`` → SDE-inactive),
+    so ``end_date`` itself is the LAST SDE-active day.
+    """
+    if not (period_start <= sde_end < period_end):
+        return None
+    total_days_n   = (period_end - period_start).days + 1
+    sde_days_n     = (sde_end - period_start).days + 1
+    non_sde_days_n = (period_end - sde_end).days
+    total_d   = Decimal(str(total_days_n))
+    sde_d     = Decimal(str(sde_days_n))
+    non_sde_d = Decimal(str(non_sde_days_n))
+    grove_excess = (
+        max(Decimal("0"), value_som - cap_usd)
+        if cap_usd is not None else Decimal("0")
+    )
+    new_avg = (grove_excess * sde_d + value_eom * non_sde_d) / total_d
+    return new_avg, sde_days_n, non_sde_days_n, total_days_n, grove_excess
+
+
 def _classify(row: dict, sde: dict[str, dict]) -> tuple[Decimal, Decimal, str]:
     """Returns ``(sd_share, sd_revenue, label_note)`` for a venue row.
 
@@ -289,30 +335,51 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
         # For fixed SDE (no cap), Grove has zero excess during the SDE period,
         # so only the post-SDE term contributes.
         #
+        # Day-count convention: the pipeline gates SDE-inactive days with
+        # ``current > end_date`` (see ``_sde_asset_value_timeseries``), so
+        # ``end_date`` itself is the LAST SDE-active day. SDE window is
+        # ``[period_start, sde_end]`` (inclusive both ends); non-SDE window
+        # is ``(sde_end, period_end]`` (strictly after sde_end).
+        #
         # Example: E8 JAAA Eth, Mar 2026 — SDE capped at $325M, ended 2026-03-12.
-        #   Grove excess during SDE (Mar 1-11): $455M - $325M = $130M × 11/31 = $46.1M
-        #   Post-SDE (Mar 12-31):               $128M × 20/31                 = $82.6M
-        #   Total CoF-bearing avg ≈ $128.7M   (vs $0 without this override)
+        #   Grove excess during SDE (Mar 1-12, 12d): $455M - $325M = $130M × 12/31 = $50.3M
+        #   Post-SDE (Mar 13-31, 19d):               $128M × 19/31                 = $78.5M
+        #   Total CoF-bearing avg ≈ $128.8M   (vs $0 without this override)
+        # Preserve the pre-override avg_value for deduction_avg below —
+        # the utilized-deduction estimate must reflect what the pipeline
+        # actually subtracted from utilized (≈ time-averaged capped value),
+        # NOT the post-override Grove-portion blend.
+        avg_value_pre_override = avg_value
         entry = sde.get(r["venue_id"])
         if entry and not cof_excluded:
             sde_end = entry.get("end_date")
             if sde_end is not None:
                 if isinstance(sde_end, str):
                     sde_end = date.fromisoformat(sde_end)
-                if sde_end <= period_end:
-                    total_days_n = (period_end - period_start).days + 1
-                    sde_days_n   = (sde_end - period_start).days
-                    non_sde_days_n = (period_end - sde_end).days + 1
-                    total_d    = Decimal(str(total_days_n))
-                    sde_d      = Decimal(str(sde_days_n))
-                    non_sde_d  = Decimal(str(non_sde_days_n))
+                # Approximation: ``value_som`` is used as a flat baseline
+                # for the uncapped asset value during the SDE-active window.
+                # The accurate computation would time-average
+                # ``uncapped_value`` from ``sde_daily_breakdown`` over the
+                # SDE days, but that series is not threaded into the report
+                # builder. The error is bounded by daily price drift across
+                # the SDE window (typically <1% on a $300M position); for
+                # the JAAA Mar 2026 example the daily uncapped value held
+                # within $5M of value_som over the 12 SDE days.
+                cap_usd_d = (
+                    Decimal(str(entry["cap_usd"]))
+                    if entry.get("cap_usd") is not None else None
+                )
+                blend = _mid_period_sde_blend(
+                    value_som=_D(r["value_som"]),
+                    value_eom=_D(r["value_eom"]),
+                    cap_usd=cap_usd_d,
+                    period_start=period_start,
+                    period_end=period_end,
+                    sde_end=sde_end,
+                )
+                if blend is not None:
+                    new_avg, sde_days_n, non_sde_days_n, total_days_n, grove_excess = blend
                     value_eom_d = _D(r["value_eom"])
-                    cap_usd = entry.get("cap_usd")
-                    grove_excess = (
-                        max(Decimal("0"), _D(r["value_som"]) - Decimal(str(cap_usd)))
-                        if cap_usd is not None else Decimal("0")
-                    )
-                    new_avg = (grove_excess * sde_d + value_eom_d * non_sde_d) / total_d
                     weight = Decimal("1")
                     avg_value = new_avg
                     note = (note + " — " if note else "") + (
@@ -327,16 +394,23 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
         # lending_idle venues → lending_idle_tw_avg_usd is the deduction.
         # SDE fixed venues   → their avg_value is subtracted as sde_asset_value.
         # All other venues   → do not reduce utilized (they're deployed at BR).
+        #
+        # ``avg_value_pre_override`` is used in place of ``avg_value`` so
+        # mid-period-SDE venues report the pipeline-aligned deduction (≈
+        # time-avg capped value), not the post-override Grove-portion blend
+        # — the latter would understate the deduction the pipeline actually
+        # applied during the SDE-active window.
         if cof_excluded:
-            deduction_avg = avg_value
+            deduction_avg = avg_value_pre_override
         elif lending_idle_tw > 0:
             deduction_avg = lending_idle_tw
         elif sd_share >= Decimal("0.999"):   # fixed SDE (100% to Sky)
-            deduction_avg = avg_value
+            deduction_avg = avg_value_pre_override
         elif entry is not None and entry.get("kind") == "capped" and entry.get("cap_usd"):
             # Capped SDE: the pipeline subtracts min(cap, value) from utilized
-            # each day. Use min(cap, avg_value) as the utilized-deduction estimate.
-            deduction_avg = min(Decimal(str(entry["cap_usd"])), avg_value)
+            # each day. Use min(cap, avg_value_pre_override) as the
+            # utilized-deduction estimate.
+            deduction_avg = min(Decimal(str(entry["cap_usd"])), avg_value_pre_override)
         else:
             deduction_avg = Decimal("0")
 
@@ -352,9 +426,15 @@ def build_sheet(prime_id: str, month: str) -> tuple[list[dict], dict]:
             "external":      _D(r.get("external_revenue") or 0),
             "revenue":       _D(r["revenue"]),       # already net of SDE
             "sd_revenue":    sd_revenue,
-            # 30 bps spread deducted from Sky Revenue for this venue.
-            # Non-zero only for sky_savings_token Cat B venues.
-            "spread_reimb":  _D(r.get("susds_spread_reimbursement") or 0),
+            # Per-venue 30 bps spread reimbursement is NOT currently plumbed
+            # through ``VenueRevenue`` / ``venues.csv`` — the compute layer
+            # only retains the prime-level aggregate on ``MonthlyPnL.
+            # susds_spread_reimbursement``. Per-venue rows therefore show 0;
+            # the synthetic SPREAD row below carries the aggregate so the
+            # markdown table's column total still reconciles. If finer
+            # attribution is needed in the future, add the field to
+            # ``VenueRevenue`` + ``write_venues_csv`` and read it here.
+            "spread_reimb":  Decimal("0"),
             "deduction_avg": deduction_avg,   # avg amount reducing utilized
             "note":          note,
         })

@@ -191,12 +191,22 @@ class MonthlyPnL:
     # net of this deduction — this field is surfaced for audit/reconciliation.
     # Zero for primes with no sky_savings_token Cat B venues.
     susds_spread_reimbursement: Decimal = Decimal("0")
-    # Sky Revenue that would result if NO deductions were applied to utilized
-    # (i.e., utilized = cum_debt throughout). Equals sky_rev_br_gross +
-    # sde_revenue - susds_spread_reimbursement, using the same BR / subsidy
-    # schedule as the actual sky_revenue.  Stored in provenance for the
-    # monthly report "max sky revenue" display; not part of any settlement
-    # invariant.  Zero default ensures backward compat with old provenance.
+    # Pure BR × full ilk debt with NO deductions: no idle-USDS, no PSM,
+    # no SDE asset-value, no Curve/lending idle. Uses the same subsidised
+    # BR + ramp schedule as the actual ``sky_revenue``. Display-only —
+    # NOT the gross analog of ``sky_revenue`` (which also adds the SDE
+    # actual revenue on top of BR-on-utilized). The two relate as:
+    #
+    #     sky_revenue_gross = Σ_d subsidised_BR × cum_debt_d
+    #     sky_revenue       = Σ_d subsidised_BR × utilized_d  +  sde_revenue
+    #                                                         − susds_spread_reimbursement
+    #
+    # so for primes with active SDE positions, ``sky_revenue`` can EXCEED
+    # ``sky_revenue_gross`` (when SDE revenue > the deductions' BR cost).
+    # The field is consumed by ``build_monthly_report.py`` to display
+    # "BR reduction from idle/SDE deductions" as ``sky_revenue_gross
+    # − cof_total``. Not part of any settlement invariant. Zero default
+    # for backward compat with old provenance.
     sky_revenue_gross: Decimal = Decimal("0")
 
     @property

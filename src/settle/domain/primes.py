@@ -333,6 +333,22 @@ class Venue:
     # effective avg = tw_avg_value_usd unchanged.
     notional_principal_usd: tuple[NotionalScheduleEntry, ...] | None = None
 
+    def __post_init__(self) -> None:
+        # ``force_capital_inflow`` short-circuits the Cat A capital-inflow
+        # path (see ``compute.monthly_pnl``). It synthesises inflow = Δvalue
+        # so revenue collapses to 0, which is ONLY a defensible default for
+        # par-stable venues — Cat B/C/D/E venues have legitimate yield in
+        # the NAV/price/share that we must not silently zero. Reject misuse
+        # at config-load time so a YAML typo can't silently lose revenue.
+        if self.force_capital_inflow and self.pricing_category != PricingCategory.PAR_STABLE:
+            raise ValueError(
+                f"Venue {self.id}: force_capital_inflow is only valid on "
+                f"PricingCategory.PAR_STABLE venues (got "
+                f"{self.pricing_category.name}). The flag's revenue=0 "
+                f"semantics only makes sense for par-stable positions on "
+                f"chains without reliable transfer-event coverage."
+            )
+
 
 @dataclass(frozen=True, slots=True)
 class CurveIdleUsdsConfig:
