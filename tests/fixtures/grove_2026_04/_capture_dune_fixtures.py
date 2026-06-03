@@ -42,7 +42,14 @@ PIN_BLOCKS_EOM = {
     "ethereum": 24996367, "base": 45402126, "avalanche_c": 84298393,
     "plume": 65382097, "monad": 71616121,
 }
-START_DATE = "2025-10-23"   # Grove prime start
+START_DATE = "2025-05-14"   # Grove prime start (per config/grove.yaml)
+# NOTE: the original value here was "2025-10-23", which is WRONG — Grove's
+# prime start is 2025-05-14 (see config/grove.yaml). Using Oct 23 truncated
+# the BUIDL and JTRSY transfer history and resulted in cum_balance series
+# missing ~$258M (BUIDL) / ~$237M (JTRSY) of pre-Oct-23 deposits, which in
+# turn understated the SDE asset value deducted from utilized → over-charged
+# CoF → inflated sky_revenue by ~$1.7M in April 2026. Future fixture
+# re-captures MUST use the correct prime start.
 
 GROVE_ALM_ETH = bytes.fromhex("491edfb0b8b608044e227225c715981a30f3a44e")
 GROVE_ALM_BASE = bytes.fromhex("9b746dbc5269e1df6e4193bcb441c0fbbf1cecee")

@@ -30,7 +30,9 @@ PIN_BLOCKS_EOM = {
     "ethereum": 25218797, "base": 46741326, "avalanche_c": 86865826,
     "plume": 71786194, "monad": 78309381,
 }
-START_DATE = "2025-10-23"
+START_DATE = "2025-05-14"   # Grove prime start (per config/grove.yaml)
+# NOTE: the original value here was "2025-10-23", which is WRONG. See the
+# detailed note in grove_2026_04/_capture_dune_fixtures.py — same bug.
 
 GROVE_ALM_ETH = bytes.fromhex("491edfb0b8b608044e227225c715981a30f3a44e")
 GROVE_ALM_BASE = bytes.fromhex("9b746dbc5269e1df6e4193bcb441c0fbbf1cecee")

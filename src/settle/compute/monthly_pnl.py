@@ -2619,6 +2619,38 @@ def compute_monthly_pnl(
                     usdc_settlement_date=sde_entry.usdc_settlement_date,
                     end_date=sde_entry.end_date,
                 )
+                # Safeguard: the SDE timeseries reads
+                # ``cumulative_balance_timeseries`` (Dune transfers, filtered
+                # by ``venue.min_transfer_amount_usd`` AND by capture-script
+                # start_date). If either filter is mis-set the resulting
+                # cum_balance can be missing the venue's pre-filter holdings,
+                # silently understating the SDE deduction and inflating
+                # ``sky_revenue``. This bit Grove April 2026 (~$1.7M inflated
+                # sky_revenue from a capture-script start_date typo of
+                # 2025-10-23 vs the correct 2025-05-14, dropping ~$520M of
+                # pre-Oct-23 BUIDL+JTRSY balance from cum_balance).
+                #
+                # Check that the SDE timeseries' SoM uncapped_value agrees
+                # with the venue's value_som (the authoritative balanceOf-
+                # based read). Log a loud warning on >$1M divergence so the
+                # operator catches the bug before it ships.
+                if not _sde_ts.empty and value_som > 0:
+                    _sde_som = Decimal(str(_sde_ts.iloc[0]["uncapped_value"]))
+                    _delta = abs(_sde_som - value_som)
+                    if _delta > Decimal("1_000_000"):
+                        _log.warning(
+                            "  [%s] SDE timeseries SoM ($%.0f) diverges from "
+                            "value_som ($%.0f) by $%.0f — likely a "
+                            "cumulative_balance_timeseries / capture-script "
+                            "issue (yield-mint filter or wrong start_date). "
+                            "Will UNDERSTATE the SDE deduction from utilized "
+                            "and OVERSTATE sky_revenue. Re-capture the "
+                            "fixture with start_date = prime.start_date "
+                            "AND consider passing min_transfer_amount=0 to "
+                            "cumulative_balance_timeseries for SDE venues.",
+                            venue.id, float(_sde_som), float(value_som),
+                            float(_delta),
+                        )
                 sde_asset_value_per_venue.append((venue.id, _sde_ts))
 
         _log.info(
