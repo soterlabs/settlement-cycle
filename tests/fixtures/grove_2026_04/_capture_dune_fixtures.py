@@ -222,6 +222,20 @@ def main() -> int:
         fx[f"cum_balance_{vid}"] = {
             "_chain": chain, "_token": "0x" + token_hex.lower(),
             "rows": transfer_ts(chain, token, holder, pb, min_tx)}
+        # BUIDL needs a SECOND unfiltered capture for the SDE asset-value
+        # deduction path. The default cum_balance_e10 (filtered, $1M min)
+        # is intentional for the Cat E inflow path — drops yield-mint dust
+        # that would corrupt capital-inflow accounting. But the SDE
+        # ``utilized`` exclusion needs the FULL on-chain balance (matches
+        # what BA Labs reads via ``balanceOf``). _sde_asset_value_timeseries
+        # always passes ``min_transfer_amount=0`` so we capture an
+        # unfiltered version here under the ``_raw`` suffix.
+        if vid == "e10":
+            print(f"  fetching cum_balance_{vid}_raw ({chain}, unfiltered) …")
+            fx[f"cum_balance_{vid}_raw"] = {
+                "_chain": chain, "_token": "0x" + token_hex.lower(),
+                "_note": "unfiltered for SDE asset-value; min_transfer=0",
+                "rows": transfer_ts(chain, token, holder, pb, 0)}
 
     # 7. inflow_by_counterparty_eXX — per-(token, holder) counterparty-attributed
     #    transfer log. Needed for Cat A par-stable venues so the pipeline can

@@ -189,6 +189,14 @@ def build_grove_sources(grove, fixtures: dict, blocks_by_chain: dict[str, Any]) 
                 )
 
     cum_balance_fixtures: dict[bytes, pd.DataFrame] = {}
+    # Parallel dict for the UNFILTERED cum_balance series — captured with
+    # ``min_transfer_amount=0`` so it includes sub-$1M yield-distribution
+    # mints. Consumed by ``_sde_asset_value_timeseries`` (which always passes
+    # ``min_transfer_amount=0`` to align with BA Labs's balanceOf-based
+    # asset value). The default ``cum_balance_*`` fixtures stay filtered for
+    # the Cat E inflow path where the filter is intentional (BUIDL yield
+    # mints aren't capital subscriptions).
+    cum_balance_raw_fixtures: dict[bytes, pd.DataFrame] = {}
     for v in grove.venues:
         if v.pricing_category.value not in ("A", "E"):
             continue
@@ -196,6 +204,11 @@ def build_grove_sources(grove, fixtures: dict, blocks_by_chain: dict[str, Any]) 
         if key in fixtures:
             cum_balance_fixtures[v.token.address.value] = df_with_dates(
                 fixtures[key]["rows"], "block_date",
+            )
+        raw_key = f"cum_balance_{v.id.lower()}_raw"
+        if raw_key in fixtures:
+            cum_balance_raw_fixtures[v.token.address.value] = df_with_dates(
+                fixtures[raw_key]["rows"], "block_date",
             )
 
     # Per-(token, holder) inflow fixtures. Keying by ``token`` alone would
@@ -236,6 +249,19 @@ def build_grove_sources(grove, fixtures: dict, blocks_by_chain: dict[str, Any]) 
             if token == USDS  and holder == grove_sub:  return sub_usds
             if token == SUSDS and holder == grove_sub:  return sub_susds
             if token == USDS  and holder == grove_alm:  return alm_usds
+            # When the caller explicitly requests the unfiltered series
+            # (``min_transfer_amount=0``, used by ``_sde_asset_value_timeseries``)
+            # prefer the ``_raw`` fixture if captured for this token. Falls
+            # back to the default filtered series when no raw fixture exists
+            # (e.g. JTRSY's default fixture is already raw — see
+            # ``_capture_dune_fixtures.py``).
+            if (
+                min_transfer_amount is not None
+                and min_transfer_amount == 0
+                and holder in all_alm_values
+                and token in cum_balance_raw_fixtures
+            ):
+                return cum_balance_raw_fixtures[token]
             if holder in all_alm_values and token in cum_balance_fixtures:
                 return cum_balance_fixtures[token]
             return df_with_dates([], "block_date")

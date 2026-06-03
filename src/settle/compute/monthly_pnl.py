@@ -504,13 +504,23 @@ def _sde_asset_value_timeseries(
     in_flight_end = usdc_settlement_date if usdc_settlement_date is not None else end_date
     holder = venue.holder_override or prime.alm[venue.chain]
     pin_block = period.pin_blocks[venue.chain]
+    # SDE asset-value deduction needs the RAW on-chain balance (i.e. what
+    # ``balanceOf(holder)`` would return), not the filtered capital-inflow
+    # series. The venue's ``min_transfer_amount_usd`` filter exists for the
+    # inflow path (``_cat_e_inflow_timeseries``) — there it correctly drops
+    # sub-threshold yield-distribution mints that would otherwise corrupt
+    # cost-basis tracking. But for the utilized exclusion we need every
+    # token the ALM actually holds, including those filtered yield mints.
+    # Passing ``min_transfer_amount=0`` here keeps the SDE deduction aligned
+    # with BA Labs's ``balanceOf``-based asset value (verified Apr 2026:
+    # +$11M BUIDL alignment closing a ~$45K/mo CoF over-charge).
     bal_df = balance_source.cumulative_balance_timeseries(
         chain=venue.chain.value,
         token=venue.token.address.value,
         holder=holder.value,
         start=prime.start_date,
         pin_block=pin_block,
-        min_transfer_amount=venue.min_transfer_amount_usd or Decimal(0),
+        min_transfer_amount=Decimal(0),
     )
 
     rows = []
@@ -2632,21 +2642,26 @@ def compute_monthly_pnl(
                 #
                 # Check that the SDE timeseries' SoM uncapped_value agrees
                 # with the venue's value_som (the authoritative balanceOf-
-                # based read). Log a loud warning on >$1M divergence so the
-                # operator catches the bug before it ships.
+                # based read). Only warn when SDE SoM is LOWER than
+                # value_som — that's the bug direction (missing balance).
+                # The opposite direction (SDE SoM > value_som) is benign:
+                # it just means there were on-chain events between the SoM
+                # pin block and EOD of period.start (intraday mints / NAV
+                # tick), which is expected and doesn't indicate filter or
+                # start_date drift.
                 if not _sde_ts.empty and value_som > 0:
                     _sde_som = Decimal(str(_sde_ts.iloc[0]["uncapped_value"]))
-                    _delta = abs(_sde_som - value_som)
+                    _delta = value_som - _sde_som   # signed: positive = SDE understates
                     if _delta > Decimal("1_000_000"):
                         _log.warning(
-                            "  [%s] SDE timeseries SoM ($%.0f) diverges from "
+                            "  [%s] SDE timeseries SoM ($%.0f) UNDERSTATES "
                             "value_som ($%.0f) by $%.0f — likely a "
                             "cumulative_balance_timeseries / capture-script "
                             "issue (yield-mint filter or wrong start_date). "
                             "Will UNDERSTATE the SDE deduction from utilized "
                             "and OVERSTATE sky_revenue. Re-capture the "
                             "fixture with start_date = prime.start_date "
-                            "AND consider passing min_transfer_amount=0 to "
+                            "AND pass min_transfer_amount=0 to "
                             "cumulative_balance_timeseries for SDE venues.",
                             venue.id, float(_sde_som), float(value_som),
                             float(_delta),

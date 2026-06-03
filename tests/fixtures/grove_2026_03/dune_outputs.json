@@ -3486,5 +3486,819 @@
         "cum_inflow": "975660.1400000001"
       }
     ]
+  },
+  "cum_balance_e10_raw": {
+    "_query": "queries/transfer_timeseries.sql",
+    "_params": {
+      "chain": "ethereum",
+      "token": "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041",
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "start_date": "2025-05-14",
+      "min_transfer_amount": 0,
+      "pin_block": 24781026
+    },
+    "_note": "Unfiltered BUIDL cum_balance for SDE asset-value deduction. The filtered cum_balance_e10 (min_transfer=$1M) is for Cat E inflow tracking; this one is for _sde_asset_value_timeseries.",
+    "rows": [
+      {
+        "block_date": "2025-07-28",
+        "cum_balance": "608367166.98",
+        "daily_net": "608367166.98"
+      },
+      {
+        "block_date": "2025-08-04",
+        "cum_balance": "508367166.98",
+        "daily_net": "-100000000.0"
+      },
+      {
+        "block_date": "2025-08-12",
+        "cum_balance": "508425670.64000005",
+        "daily_net": "58503.66"
+      },
+      {
+        "block_date": "2025-08-13",
+        "cum_balance": "508484273.21000004",
+        "daily_net": "58602.57"
+      },
+      {
+        "block_date": "2025-08-14",
+        "cum_balance": "508542700.17",
+        "daily_net": "58426.96"
+      },
+      {
+        "block_date": "2025-08-15",
+        "cum_balance": "508601125.17",
+        "daily_net": "58425.0"
+      },
+      {
+        "block_date": "2025-08-18",
+        "cum_balance": "508776831.42",
+        "daily_net": "175706.25"
+      },
+      {
+        "block_date": "2025-08-19",
+        "cum_balance": "508835348.51",
+        "daily_net": "58517.09"
+      },
+      {
+        "block_date": "2025-08-20",
+        "cum_balance": "508893663.32",
+        "daily_net": "58314.81"
+      },
+      {
+        "block_date": "2025-08-21",
+        "cum_balance": "508951905.79",
+        "daily_net": "58242.47"
+      },
+      {
+        "block_date": "2025-08-22",
+        "cum_balance": "509010225.27000004",
+        "daily_net": "58319.48"
+      },
+      {
+        "block_date": "2025-08-25",
+        "cum_balance": "509186058.84000003",
+        "daily_net": "175833.57"
+      },
+      {
+        "block_date": "2025-08-26",
+        "cum_balance": "509244730.54",
+        "daily_net": "58671.7"
+      },
+      {
+        "block_date": "2025-08-27",
+        "cum_balance": "509303524.28000003",
+        "daily_net": "58793.74"
+      },
+      {
+        "block_date": "2025-08-28",
+        "cum_balance": "509362165.1",
+        "daily_net": "58640.82"
+      },
+      {
+        "block_date": "2025-08-29",
+        "cum_balance": "509420631.01000005",
+        "daily_net": "58465.91"
+      },
+      {
+        "block_date": "2025-09-02",
+        "cum_balance": "459654480.6100001",
+        "daily_net": "-49766150.4"
+      },
+      {
+        "block_date": "2025-09-03",
+        "cum_balance": "359707465.1700001",
+        "daily_net": "-99947015.44"
+      },
+      {
+        "block_date": "2025-09-04",
+        "cum_balance": "359748930.0500001",
+        "daily_net": "41464.88"
+      },
+      {
+        "block_date": "2025-09-05",
+        "cum_balance": "359790348.8500001",
+        "daily_net": "41418.8"
+      },
+      {
+        "block_date": "2025-09-08",
+        "cum_balance": "360815517.00000006",
+        "daily_net": "1025168.15"
+      },
+      {
+        "block_date": "2025-09-09",
+        "cum_balance": "360856995.99000007",
+        "daily_net": "41478.99"
+      },
+      {
+        "block_date": "2025-09-10",
+        "cum_balance": "360898427.7900001",
+        "daily_net": "41431.8"
+      },
+      {
+        "block_date": "2025-09-11",
+        "cum_balance": "360939789.6400001",
+        "daily_net": "41361.85"
+      },
+      {
+        "block_date": "2025-09-12",
+        "cum_balance": "360980976.8400001",
+        "daily_net": "41187.2"
+      },
+      {
+        "block_date": "2025-09-15",
+        "cum_balance": "311104826.5300001",
+        "daily_net": "-49876150.31"
+      },
+      {
+        "block_date": "2025-09-16",
+        "cum_balance": "311146585.7800001",
+        "daily_net": "41759.25"
+      },
+      {
+        "block_date": "2025-09-17",
+        "cum_balance": "311181861.0900001",
+        "daily_net": "35275.31"
+      },
+      {
+        "block_date": "2025-09-18",
+        "cum_balance": "261217090.3000001",
+        "daily_net": "-49964770.79"
+      },
+      {
+        "block_date": "2025-09-19",
+        "cum_balance": "261245762.2700001",
+        "daily_net": "28671.97"
+      },
+      {
+        "block_date": "2025-09-22",
+        "cum_balance": "261331822.1000001",
+        "daily_net": "86059.83"
+      },
+      {
+        "block_date": "2025-09-23",
+        "cum_balance": "261360511.37000012",
+        "daily_net": "28689.27"
+      },
+      {
+        "block_date": "2025-09-24",
+        "cum_balance": "261389128.2600001",
+        "daily_net": "28616.89"
+      },
+      {
+        "block_date": "2025-09-25",
+        "cum_balance": "261417836.8900001",
+        "daily_net": "28708.63"
+      },
+      {
+        "block_date": "2025-09-26",
+        "cum_balance": "261446710.75000012",
+        "daily_net": "28873.86"
+      },
+      {
+        "block_date": "2025-09-29",
+        "cum_balance": "261533009.3500001",
+        "daily_net": "86298.6"
+      },
+      {
+        "block_date": "2025-09-30",
+        "cum_balance": "261561721.2300001",
+        "daily_net": "28711.88"
+      },
+      {
+        "block_date": "2025-10-01",
+        "cum_balance": "261590741.7600001",
+        "daily_net": "29020.53"
+      },
+      {
+        "block_date": "2025-10-02",
+        "cum_balance": "261619603.59000012",
+        "daily_net": "28861.83"
+      },
+      {
+        "block_date": "2025-10-03",
+        "cum_balance": "261648461.5400001",
+        "daily_net": "28857.95"
+      },
+      {
+        "block_date": "2025-10-06",
+        "cum_balance": "261734925.62000012",
+        "daily_net": "86464.08"
+      },
+      {
+        "block_date": "2025-10-07",
+        "cum_balance": "261763613.6000001",
+        "daily_net": "28687.98"
+      },
+      {
+        "block_date": "2025-10-08",
+        "cum_balance": "261792233.7900001",
+        "daily_net": "28620.19"
+      },
+      {
+        "block_date": "2025-10-09",
+        "cum_balance": "261820730.9200001",
+        "daily_net": "28497.13"
+      },
+      {
+        "block_date": "2025-10-10",
+        "cum_balance": "261849152.0800001",
+        "daily_net": "28421.16"
+      },
+      {
+        "block_date": "2025-10-14",
+        "cum_balance": "261963212.5200001",
+        "daily_net": "114060.44"
+      },
+      {
+        "block_date": "2025-10-15",
+        "cum_balance": "261991861.6000001",
+        "daily_net": "28649.08"
+      },
+      {
+        "block_date": "2025-10-16",
+        "cum_balance": "262020877.72000012",
+        "daily_net": "29016.12"
+      },
+      {
+        "block_date": "2025-10-17",
+        "cum_balance": "262049762.90000013",
+        "daily_net": "28885.18"
+      },
+      {
+        "block_date": "2025-10-20",
+        "cum_balance": "262135345.46000013",
+        "daily_net": "85582.56"
+      },
+      {
+        "block_date": "2025-10-21",
+        "cum_balance": "262163771.94000012",
+        "daily_net": "28426.48"
+      },
+      {
+        "block_date": "2025-10-22",
+        "cum_balance": "262192457.90000013",
+        "daily_net": "28685.96"
+      },
+      {
+        "block_date": "2025-10-23",
+        "cum_balance": "262221040.02000013",
+        "daily_net": "28582.12"
+      },
+      {
+        "block_date": "2025-10-24",
+        "cum_balance": "262249688.46000013",
+        "daily_net": "28648.44"
+      },
+      {
+        "block_date": "2025-10-27",
+        "cum_balance": "262335617.19000012",
+        "daily_net": "85928.73"
+      },
+      {
+        "block_date": "2025-10-28",
+        "cum_balance": "262364388.59000012",
+        "daily_net": "28771.4"
+      },
+      {
+        "block_date": "2025-10-29",
+        "cum_balance": "262393167.6000001",
+        "daily_net": "28779.01"
+      },
+      {
+        "block_date": "2025-10-30",
+        "cum_balance": "262421854.00000012",
+        "daily_net": "28686.4"
+      },
+      {
+        "block_date": "2025-10-31",
+        "cum_balance": "262449649.72000012",
+        "daily_net": "27795.72"
+      },
+      {
+        "block_date": "2025-11-03",
+        "cum_balance": "262534542.46000013",
+        "daily_net": "84892.74"
+      },
+      {
+        "block_date": "2025-11-04",
+        "cum_balance": "262562669.62000012",
+        "daily_net": "28127.16"
+      },
+      {
+        "block_date": "2025-11-05",
+        "cum_balance": "262590411.73000014",
+        "daily_net": "27742.11"
+      },
+      {
+        "block_date": "2025-11-06",
+        "cum_balance": "262617848.23000014",
+        "daily_net": "27436.5"
+      },
+      {
+        "block_date": "2025-11-07",
+        "cum_balance": "262645262.91000015",
+        "daily_net": "27414.68"
+      },
+      {
+        "block_date": "2025-11-10",
+        "cum_balance": "262727559.66000015",
+        "daily_net": "82296.75"
+      },
+      {
+        "block_date": "2025-11-12",
+        "cum_balance": "262782664.14000013",
+        "daily_net": "55104.48"
+      },
+      {
+        "block_date": "2025-11-13",
+        "cum_balance": "262810246.86000013",
+        "daily_net": "27582.72"
+      },
+      {
+        "block_date": "2025-11-14",
+        "cum_balance": "262837881.62000012",
+        "daily_net": "27634.76"
+      },
+      {
+        "block_date": "2025-11-17",
+        "cum_balance": "262920341.21000013",
+        "daily_net": "82459.59"
+      },
+      {
+        "block_date": "2025-11-18",
+        "cum_balance": "262947932.07000014",
+        "daily_net": "27590.86"
+      },
+      {
+        "block_date": "2025-11-19",
+        "cum_balance": "262975366.74000013",
+        "daily_net": "27434.67"
+      },
+      {
+        "block_date": "2025-11-20",
+        "cum_balance": "263002722.49000013",
+        "daily_net": "27355.75"
+      },
+      {
+        "block_date": "2025-11-21",
+        "cum_balance": "263029999.55000013",
+        "daily_net": "27277.06"
+      },
+      {
+        "block_date": "2025-11-24",
+        "cum_balance": "263112150.14000013",
+        "daily_net": "82150.59"
+      },
+      {
+        "block_date": "2025-11-25",
+        "cum_balance": "263139616.94000015",
+        "daily_net": "27466.8"
+      },
+      {
+        "block_date": "2025-11-26",
+        "cum_balance": "263167193.97000015",
+        "daily_net": "27577.03"
+      },
+      {
+        "block_date": "2025-11-28",
+        "cum_balance": "263222617.51000014",
+        "daily_net": "55423.54"
+      },
+      {
+        "block_date": "2025-12-01",
+        "cum_balance": "263306266.24000013",
+        "daily_net": "83648.73"
+      },
+      {
+        "block_date": "2025-12-02",
+        "cum_balance": "263334124.83000013",
+        "daily_net": "27858.59"
+      },
+      {
+        "block_date": "2025-12-03",
+        "cum_balance": "263361660.89000013",
+        "daily_net": "27536.06"
+      },
+      {
+        "block_date": "2025-12-04",
+        "cum_balance": "263389011.26000014",
+        "daily_net": "27350.37"
+      },
+      {
+        "block_date": "2025-12-05",
+        "cum_balance": "263416174.04000014",
+        "daily_net": "27162.78"
+      },
+      {
+        "block_date": "2025-12-08",
+        "cum_balance": "263497960.01000014",
+        "daily_net": "81785.97"
+      },
+      {
+        "block_date": "2025-12-09",
+        "cum_balance": "263525322.17000014",
+        "daily_net": "27362.16"
+      },
+      {
+        "block_date": "2025-12-10",
+        "cum_balance": "263552556.72000015",
+        "daily_net": "27234.55"
+      },
+      {
+        "block_date": "2025-12-11",
+        "cum_balance": "263579686.56000015",
+        "daily_net": "27129.84"
+      },
+      {
+        "block_date": "2025-12-12",
+        "cum_balance": "263605731.13000014",
+        "daily_net": "26044.57"
+      },
+      {
+        "block_date": "2025-12-15",
+        "cum_balance": "263684234.77000013",
+        "daily_net": "78503.64"
+      },
+      {
+        "block_date": "2025-12-16",
+        "cum_balance": "178710730.03000015",
+        "daily_net": "-84973504.74"
+      },
+      {
+        "block_date": "2025-12-17",
+        "cum_balance": "178728363.78000015",
+        "daily_net": "17633.75"
+      },
+      {
+        "block_date": "2025-12-18",
+        "cum_balance": "178746053.78000015",
+        "daily_net": "17690.0"
+      },
+      {
+        "block_date": "2025-12-19",
+        "cum_balance": "178763604.14000016",
+        "daily_net": "17550.36"
+      },
+      {
+        "block_date": "2025-12-22",
+        "cum_balance": "178816264.67000017",
+        "daily_net": "52660.53"
+      },
+      {
+        "block_date": "2025-12-23",
+        "cum_balance": "178833916.16000018",
+        "daily_net": "17651.49"
+      },
+      {
+        "block_date": "2025-12-24",
+        "cum_balance": "178851394.4900002",
+        "daily_net": "17478.33"
+      },
+      {
+        "block_date": "2025-12-26",
+        "cum_balance": "178886365.31000018",
+        "daily_net": "34970.82"
+      },
+      {
+        "block_date": "2025-12-29",
+        "cum_balance": "178939570.22000018",
+        "daily_net": "53204.91"
+      },
+      {
+        "block_date": "2025-12-30",
+        "cum_balance": "178957344.29000017",
+        "daily_net": "17774.07"
+      },
+      {
+        "block_date": "2025-12-31",
+        "cum_balance": "178974854.01000017",
+        "daily_net": "17509.72"
+      },
+      {
+        "block_date": "2026-01-02",
+        "cum_balance": "179010767.47000018",
+        "daily_net": "35913.46"
+      },
+      {
+        "block_date": "2026-01-05",
+        "cum_balance": "179063700.07000017",
+        "daily_net": "52932.6"
+      },
+      {
+        "block_date": "2026-01-06",
+        "cum_balance": "179081131.92000017",
+        "daily_net": "17431.85"
+      },
+      {
+        "block_date": "2026-01-07",
+        "cum_balance": "179098406.09000015",
+        "daily_net": "17274.17"
+      },
+      {
+        "block_date": "2026-01-08",
+        "cum_balance": "179115394.47000015",
+        "daily_net": "16988.38"
+      },
+      {
+        "block_date": "2026-01-09",
+        "cum_balance": "179132575.40000015",
+        "daily_net": "17180.93"
+      },
+      {
+        "block_date": "2026-01-12",
+        "cum_balance": "179184096.80000016",
+        "daily_net": "51521.4"
+      },
+      {
+        "block_date": "2026-01-13",
+        "cum_balance": "179201316.03000015",
+        "daily_net": "17219.23"
+      },
+      {
+        "block_date": "2026-01-14",
+        "cum_balance": "179218556.99000016",
+        "daily_net": "17240.96"
+      },
+      {
+        "block_date": "2026-01-15",
+        "cum_balance": "179235752.29000017",
+        "daily_net": "17195.3"
+      },
+      {
+        "block_date": "2026-01-16",
+        "cum_balance": "179252999.43000016",
+        "daily_net": "17247.14"
+      },
+      {
+        "block_date": "2026-01-20",
+        "cum_balance": "179321861.27000016",
+        "daily_net": "68861.84"
+      },
+      {
+        "block_date": "2026-01-21",
+        "cum_balance": "179339204.56000015",
+        "daily_net": "17343.29"
+      },
+      {
+        "block_date": "2026-01-22",
+        "cum_balance": "179356558.50000015",
+        "daily_net": "17353.94"
+      },
+      {
+        "block_date": "2026-01-23",
+        "cum_balance": "179373942.28000015",
+        "daily_net": "17383.78"
+      },
+      {
+        "block_date": "2026-01-26",
+        "cum_balance": "179426285.38000014",
+        "daily_net": "52343.1"
+      },
+      {
+        "block_date": "2026-01-27",
+        "cum_balance": "179443761.86000013",
+        "daily_net": "17476.48"
+      },
+      {
+        "block_date": "2026-01-28",
+        "cum_balance": "179461221.20000014",
+        "daily_net": "17459.34"
+      },
+      {
+        "block_date": "2026-01-29",
+        "cum_balance": "179478604.89000013",
+        "daily_net": "17383.69"
+      },
+      {
+        "block_date": "2026-01-30",
+        "cum_balance": "179495969.98000014",
+        "daily_net": "17365.09"
+      },
+      {
+        "block_date": "2026-02-02",
+        "cum_balance": "179548506.49000013",
+        "daily_net": "52536.51"
+      },
+      {
+        "block_date": "2026-02-03",
+        "cum_balance": "179566017.50000012",
+        "daily_net": "17511.01"
+      },
+      {
+        "block_date": "2026-02-04",
+        "cum_balance": "179583518.72000012",
+        "daily_net": "17501.22"
+      },
+      {
+        "block_date": "2026-02-05",
+        "cum_balance": "229583736.09000012",
+        "daily_net": "50000217.37"
+      },
+      {
+        "block_date": "2026-02-06",
+        "cum_balance": "279590727.23000014",
+        "daily_net": "50006991.14"
+      },
+      {
+        "block_date": "2026-02-09",
+        "cum_balance": "279671122.70000017",
+        "daily_net": "80395.47"
+      },
+      {
+        "block_date": "2026-02-10",
+        "cum_balance": "279697896.7400002",
+        "daily_net": "26774.04"
+      },
+      {
+        "block_date": "2026-02-11",
+        "cum_balance": "279724744.1000002",
+        "daily_net": "26847.36"
+      },
+      {
+        "block_date": "2026-02-12",
+        "cum_balance": "279751580.6100002",
+        "daily_net": "26836.51"
+      },
+      {
+        "block_date": "2026-02-13",
+        "cum_balance": "279778450.4700002",
+        "daily_net": "26869.86"
+      },
+      {
+        "block_date": "2026-02-17",
+        "cum_balance": "329871603.8700002",
+        "daily_net": "50093153.4"
+      },
+      {
+        "block_date": "2026-02-18",
+        "cum_balance": "379888537.7500002",
+        "daily_net": "50016933.88"
+      },
+      {
+        "block_date": "2026-02-19",
+        "cum_balance": "379925645.64000016",
+        "daily_net": "37107.89"
+      },
+      {
+        "block_date": "2026-02-20",
+        "cum_balance": "379962168.65000015",
+        "daily_net": "36523.01"
+      },
+      {
+        "block_date": "2026-02-23",
+        "cum_balance": "380071677.5600002",
+        "daily_net": "109508.91"
+      },
+      {
+        "block_date": "2026-02-24",
+        "cum_balance": "380108190.2900002",
+        "daily_net": "36512.73"
+      },
+      {
+        "block_date": "2026-02-25",
+        "cum_balance": "380146858.3100002",
+        "daily_net": "38668.02"
+      },
+      {
+        "block_date": "2026-02-26",
+        "cum_balance": "380183466.0700002",
+        "daily_net": "36607.76"
+      },
+      {
+        "block_date": "2026-02-27",
+        "cum_balance": "430205099.03000015",
+        "daily_net": "50021632.96"
+      },
+      {
+        "block_date": "2026-03-02",
+        "cum_balance": "480314710.51000017",
+        "daily_net": "50109611.48"
+      },
+      {
+        "block_date": "2026-03-03",
+        "cum_balance": "480361374.04000014",
+        "daily_net": "46663.53"
+      },
+      {
+        "block_date": "2026-03-04",
+        "cum_balance": "480407835.55000013",
+        "daily_net": "46461.51"
+      },
+      {
+        "block_date": "2026-03-05",
+        "cum_balance": "480454153.59000015",
+        "daily_net": "46318.04"
+      },
+      {
+        "block_date": "2026-03-06",
+        "cum_balance": "480500280.0700002",
+        "daily_net": "46126.48"
+      },
+      {
+        "block_date": "2026-03-09",
+        "cum_balance": "480638409.01000017",
+        "daily_net": "138128.94"
+      },
+      {
+        "block_date": "2026-03-10",
+        "cum_balance": "480684536.84000015",
+        "daily_net": "46127.83"
+      },
+      {
+        "block_date": "2026-03-11",
+        "cum_balance": "480730555.65000015",
+        "daily_net": "46018.81"
+      },
+      {
+        "block_date": "2026-03-12",
+        "cum_balance": "480776565.89000016",
+        "daily_net": "46010.24"
+      },
+      {
+        "block_date": "2026-03-13",
+        "cum_balance": "480822727.65000015",
+        "daily_net": "46161.76"
+      },
+      {
+        "block_date": "2026-03-16",
+        "cum_balance": "480961216.14000016",
+        "daily_net": "138488.49"
+      },
+      {
+        "block_date": "2026-03-17",
+        "cum_balance": "481007734.71000016",
+        "daily_net": "46518.57"
+      },
+      {
+        "block_date": "2026-03-18",
+        "cum_balance": "481053828.72000015",
+        "daily_net": "46094.01"
+      },
+      {
+        "block_date": "2026-03-19",
+        "cum_balance": "481099746.7500001",
+        "daily_net": "45918.03"
+      },
+      {
+        "block_date": "2026-03-20",
+        "cum_balance": "481145697.0700001",
+        "daily_net": "45950.32"
+      },
+      {
+        "block_date": "2026-03-23",
+        "cum_balance": "531283555.4100001",
+        "daily_net": "50137858.34"
+      },
+      {
+        "block_date": "2026-03-24",
+        "cum_balance": "556334023.1000001",
+        "daily_net": "25050467.69"
+      },
+      {
+        "block_date": "2026-03-25",
+        "cum_balance": "581387163.5700002",
+        "daily_net": "25053140.47"
+      },
+      {
+        "block_date": "2026-03-26",
+        "cum_balance": "606442975.5700002",
+        "daily_net": "25055812.0"
+      },
+      {
+        "block_date": "2026-03-27",
+        "cum_balance": "631501058.2500001",
+        "daily_net": "25058082.68"
+      },
+      {
+        "block_date": "2026-03-30",
+        "cum_balance": "681682561.1300001",
+        "daily_net": "50181502.88"
+      },
+      {
+        "block_date": "2026-03-31",
+        "cum_balance": "706747881.3200002",
+        "daily_net": "25065320.19"
+      }
+    ]
   }
 }

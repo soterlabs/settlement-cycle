@@ -175,6 +175,14 @@ def main() -> int:
         fx[f"cum_balance_{vid}"] = {
             "_chain": chain, "_token": "0x" + token_hex.lower(),
             "rows": transfer_ts(chain, token, holder, pb, min_tx)}
+        # BUIDL: second unfiltered capture for the SDE asset-value path —
+        # see grove_2026_04/_capture_dune_fixtures.py for the rationale.
+        if vid == "e10":
+            print(f"  fetching cum_balance_{vid}_raw ({chain}, unfiltered) …")
+            fx[f"cum_balance_{vid}_raw"] = {
+                "_chain": chain, "_token": "0x" + token_hex.lower(),
+                "_note": "unfiltered for SDE asset-value; min_transfer=0",
+                "rows": transfer_ts(chain, token, holder, pb, 0)}
 
     # inflow_by_counterparty_eXX — Cat A par-stable counterparty-attributed
     # transfer log. Required for the Cat A classifier to distinguish
