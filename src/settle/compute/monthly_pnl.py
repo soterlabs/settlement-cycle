@@ -2140,7 +2140,7 @@ def compute_monthly_pnl(
                             amt_f = 0
                         if amt_f > 0:
                             dates.add(row["block_date"])
-                boundaries: list[tuple[int, int]] = []
+                boundaries: list[tuple[int, int, object]] = []
                 for d in dates:
                     pre_eod = _dt.combine(d - _td(days=1), _time.max, tzinfo=_tz.utc)
                     post_eod = _dt.combine(d, _time.max, tzinfo=_tz.utc)
@@ -2151,7 +2151,9 @@ def compute_monthly_pnl(
                         continue
                     # pre_block may be < som_block (day d = first day of
                     # period); the helper clamps it to som_block.
-                    boundaries.append((pre_block, post_block))
+                    # Include the date so callers can stamp inflow rows on the
+                    # correct day rather than always using period_end_date.
+                    boundaries.append((pre_block, post_block, d))
                 return sorted(set(boundaries), key=lambda t: t[1])
 
             # Per-event vs day-resolution boundary lookup. If Sources
@@ -2172,12 +2174,17 @@ def compute_monthly_pnl(
                 def _atoken_event_blocks(
                     chain_value: str, token_addr: bytes, holder_addr: bytes,
                     som: int, eom: int,
-                ) -> list[tuple[int, int]]:
+                ) -> list[tuple[int, int, object]]:
                     blocks = _per_event_cb(chain_value, token_addr, holder_addr, som, eom)
                     if blocks:
                         # Sub-day-resolution boundaries: each event block
-                        # gets a (pre=block-1, post=block) tuple.
-                        return [(b - 1, b) for b in blocks if som < b <= eom]
+                        # gets a (pre=block-1, post=block, date) triple.
+                        # block_to_date maps the post_block to a calendar date
+                        # so per-event inflow rows land on the right day.
+                        return [
+                            (b - 1, b, resolver.block_to_date(chain_value, b))
+                            for b in blocks if som < b <= eom
+                        ]
                     # No per-event data — defer to the day-resolution
                     # daily-aggregate path.
                     return _day_res_cb(chain_value, token_addr, holder_addr, som, eom)
