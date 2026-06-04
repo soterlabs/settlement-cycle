@@ -922,12 +922,12 @@ def _atoken_index_weighted_inflow(
         boundaries = list(transfer_event_blocks(
             chain_value, token_addr, holder.value, som_block, eom_block,
         ))
-        # The callable returns (pre_block, post_block) tuples from the
-        # day-resolution fixture mapping. Per-segment needs only the
-        # POST blocks — the end-of-event-day boundaries — since each
-        # consecutive pair (including the implicit som/eom anchors)
-        # defines one segment.
-        segment_blocks = sorted({post for _, post in boundaries})
+        # The callable returns (pre_block, post_block, date) triples.
+        # Per-segment needs only the POST blocks for yield calculation; the
+        # dates are used to stamp each inflow row on the correct calendar day
+        # so that _time_weighted_avg_value sees the position change on the
+        # actual event day instead of period_end_date.
+        segment_blocks = sorted({post for pre, post, *_ in boundaries})
         yield_raw = _atoken_per_segment_yield(
             chain_value, token_addr, holder.value,
             som_block, eom_block, segment_blocks,
@@ -943,6 +943,36 @@ def _atoken_index_weighted_inflow(
                 "yield %s across %d boundary block(s).",
                 venue.id, yield_raw, len(segment_blocks),
             )
+            # Build a per-event inflow timeseries so that tw_avg_value
+            # reflects position changes on the correct calendar days.
+            # For each event boundary (pre, post, date) the inflow is:
+            #   inflow_event = (bal_post - bal_pre) − yield_event
+            # where yield_event uses the same closed-form as the overall
+            # formula — exact when scaled is constant across [pre, post].
+            # Non-event segments contribute only rebase yield (inflow=0),
+            # so they need no rows. The sum of per-event inflows equals
+            # period_inflow_usd computed above.
+            rows: list[dict] = []
+            cum = Decimal(0)
+            for pre_blk, post_blk, event_date in sorted(boundaries, key=lambda t: t[1]):
+                b_pre  = balance_at(chain_value, token_addr, holder.value, pre_blk)
+                sb_pre = scaled_balance_at(chain_value, token_addr, holder.value, pre_blk)
+                b_post = balance_at(chain_value, token_addr, holder.value, post_blk)
+                sb_post = scaled_balance_at(chain_value, token_addr, holder.value, post_blk)
+                delta_evt = b_post - b_pre
+                if sb_post == 0:
+                    # Clean exit within this window: yield = 0 (conservative;
+                    # rare since _atoken_per_segment_yield handles it per-seg).
+                    y_evt = 0
+                else:
+                    y_evt = max(0, int(
+                        (_D(b_post) * _D(sb_pre) / _D(sb_post) - _D(b_pre))
+                        .to_integral_value(rounding="ROUND_HALF_EVEN")
+                    ))
+                inflow_evt = Decimal(delta_evt - y_evt) / scale
+                cum += inflow_evt
+                rows.append({"block_date": event_date, "daily_inflow": inflow_evt, "cum_inflow": cum})
+            return pd.DataFrame(rows)
     elif is_clean_exit and som_block < eom_block:
         # Clean-exit fallback (no event-block lookup wired). Same
         # recovery logic as before this PR: binary-search for the

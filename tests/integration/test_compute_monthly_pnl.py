@@ -485,6 +485,111 @@ def test_atoken_index_weighted_inflow(fixed_pin_blocks, monkeypatch):
     assert v.revenue < Decimal("1300000")
 
 
+def test_atoken_mid_period_event_stamps_inflow_on_event_date(fixed_pin_blocks, monkeypatch):
+    """Per-event inflow rows must be stamped on the actual event date, NOT
+    on ``period_end_date``. Regression test for the bug this PR fixes:
+    previously ``_atoken_index_weighted_inflow`` returned a single row at
+    period.end regardless of when the transfer happened, which inflated
+    ``tw_avg_value`` (and therefore CoF allocation) for any mid-period
+    withdrawal because ``_time_weighted_avg_value`` saw the position as
+    held at the SoM level for the full month.
+
+    Scenario: $100M aRLUSD held from Mar 1, withdraw $50M on Mar 10 (=
+    day 10 of a 31-day period). Constant scaled balance within each
+    segment → yield is zero within the segment, so the per-event inflow
+    equals the raw balance delta (-$50M).
+
+    Verifies:
+      1. The returned DataFrame has 1 row (one event), block_date = Mar 10
+         (NOT Mar 31 = period.end).
+      2. ``tw_avg_value_usd`` reflects $100M on days 1-9 and $50M on days
+         10-31 — i.e. it's between $50M and $100M, NOT $100M (the old
+         single-row-at-EoM behaviour) and NOT $50M (treating the
+         withdrawal as if it happened SoM).
+    """
+    from datetime import date as _d, timedelta as _td
+    from settle.compute.prime_agent_revenue import _time_weighted_avg_value
+    from settle.domain import Address, PricingCategory, Token
+    from settle.domain.period import Period
+    from settle.domain.primes import Prime, Venue
+    from settle.normalize.positions import _atoken_index_weighted_inflow
+
+    RLUSD = Address.from_str("0x8292bb45bf1ee4d140127049757c2e0ff06317ed")
+    aRLUSD = Address.from_str("0xfa82580c16a31d0c1bc632a36f82e83efef3eec0")
+    alm = Address.from_str("0x491edfb0b8b608044e227225c715981a30f3a44e")
+    venue = Venue(
+        id="E3", chain=Chain.ETHEREUM,
+        token=Token(Chain.ETHEREUM, aRLUSD, "aRLUSD", 18),
+        pricing_category=PricingCategory.AAVE_ATOKEN,
+        underlying=Token(Chain.ETHEREUM, RLUSD, "RLUSD", 18),
+    )
+    prime = Prime(
+        id="grove-e3-only", ilk_bytes32=b"\x00" * 32,
+        start_date=_d(2025, 5, 14),
+        alm={Chain.ETHEREUM: alm},
+        subproxy={Chain.ETHEREUM: alm},
+        venues=[venue],
+    )
+
+    som_block = fixed_pin_blocks["som"][Chain.ETHEREUM]
+    eom_block = fixed_pin_blocks["eom"][Chain.ETHEREUM]
+    event_pre = som_block + 1000     # block just before withdrawal
+    event_post = som_block + 1001    # block at withdrawal (= "event block")
+    event_date = _d(2026, 3, 10)
+    bal_som = 100 * 10**24
+    bal_post_event = 50 * 10**24
+    bal_eom = bal_post_event
+    # Constant scaled balance within each segment → zero rebase yield
+    # within the segment. Two segments separated by a -$50M cash flow.
+    scaled_in_segment_1 = 95 * 10**24    # pre-event
+    scaled_in_segment_2 = scaled_in_segment_1 // 2   # post-event (half burned)
+
+    def fake_balance(chain, token, holder, block):
+        if block <= event_pre: return bal_som
+        return bal_eom
+
+    def fake_scaled(chain, token, holder, block):
+        if block <= event_pre: return scaled_in_segment_1
+        return scaled_in_segment_2
+
+    def fake_event_blocks(chain_value, token_addr, holder_addr, som, eom):
+        # Simulates the per-event boundary callback after the wrapper has
+        # already converted blocks to (pre, post, date) triples.
+        return [(event_pre, event_post, event_date)]
+
+    df = _atoken_index_weighted_inflow(
+        prime, venue, som_block, eom_block,
+        period_end_date=_d(2026, 3, 31),
+        scaled_balance_at=fake_scaled,
+        balance_at=fake_balance,
+        transfer_event_blocks=fake_event_blocks,
+    )
+
+    # ── Assertion 1: inflow row stamped on the actual event date ──
+    assert len(df) == 1, f"expected 1 event row, got {len(df)}: {df!r}"
+    assert df.iloc[0]["block_date"] == event_date, (
+        f"event row stamped on {df.iloc[0]['block_date']} "
+        f"(expected {event_date}); the pre-PR bug was to use period_end_date"
+    )
+    # ── Assertion 2: inflow ≈ -$50M (the burn delta, with zero in-segment yield) ──
+    assert df.iloc[0]["daily_inflow"] < Decimal("-49_000_000")
+    assert df.iloc[0]["daily_inflow"] > Decimal("-51_000_000")
+
+    # ── Assertion 3: tw_avg_value sees the position drop on the right day ──
+    period = Period(start=_d(2026, 3, 1), end=_d(2026, 3, 31),
+                    pin_blocks=fixed_pin_blocks["eom"])
+    tw_avg = _time_weighted_avg_value(period, Decimal("100_000_000"), df)
+    # 9 days × $100M + 22 days × $50M ≈ ($900M + $1100M) / 31 ≈ $64.5M.
+    # If event were stamped at period.end (old bug): tw_avg ≈ $100M.
+    # If stamped at period.start: tw_avg ≈ $50M. Anything between confirms
+    # the per-event date stamping is working.
+    assert Decimal("60_000_000") < tw_avg < Decimal("70_000_000"), (
+        f"tw_avg={tw_avg} — should be ~$64.5M reflecting Mar 10 event date; "
+        f"$100M means event was treated as EoM (pre-PR bug); "
+        f"$50M means event was treated as SoM"
+    )
+
+
 def test_atoken_clean_exit_binary_searches_withdrawal_block(fixed_pin_blocks, monkeypatch):
     """Mid-period full withdrawal — partial-period yield via binary search.
 
