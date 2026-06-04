@@ -133,6 +133,14 @@ class VenueRevenueInputs:
     # methodology the vault-event actual_revenue carries the full intra-epoch
     # yield naturally, so no separate intra-epoch share is needed.
     erc4626_period_inflow: "Decimal | None" = None
+    # Daily timeseries used by the daily-resolved capped sd_share computation.
+    # Expected columns: ``block_date``, ``cum_value`` (capped daily Sky-direct
+    # allocation in USD), ``uncapped_value`` (daily total venue value in USD).
+    # When provided AND ``sde_entry.kind == "capped"``, the sd_share is
+    # computed as ``Σ_d cum_value_d / Σ_d uncapped_value_d`` (value-weighted
+    # average daily share — matches Grove's per-day allocation methodology).
+    # When ``None``, falls back to the EoM-locked snapshot.
+    value_timeseries: "pd.DataFrame | None" = None
 
 
 def _sd_share_at_som(
@@ -196,6 +204,83 @@ def _capped_sd_revenue_eom_locked(
         sd_share = min(cap_usd, value_som) / value_som
         return actual_revenue * sd_share
     return Decimal("0")
+
+
+def _capped_sd_revenue_daily_resolved(
+    value_timeseries: pd.DataFrame,
+    actual_revenue: Decimal,
+    sde_entry: SDEEntry,
+    period: Period,
+    value_eom: Decimal,
+) -> tuple[Decimal, Decimal]:
+    """sd_revenue = actual_revenue × Σ_d cum_value_d / Σ_d uncapped_value_d.
+
+    Daily-resolved Sky-direct share: average of the per-day Sky allocation
+    fraction, weighted by daily total venue value. Matches Grove's PnL
+    workbook per-day allocation methodology (column H × daily NAV in their
+    ``<Asset>_ETH Allocation`` sheets, applied to the full period revenue).
+
+    Returns ``(sd_revenue, sd_share)`` so the caller can populate
+    ``VenueRevenue.sd_share`` with the same effective fraction.
+
+    **Empirical fit vs Grove (verified Jan 2026 JAAA_ETH).**
+    Grove's $1,432,988 ≈ $2,363,115 × (Σ daily sky_alloc / Σ daily value)
+                     ≈ $2,363,115 × 60.64%.
+    The "% of Grove-Only Portfolio" column G in Grove's sheet is the
+    complement (1 - 60.64% ≈ 39.36%) — the value-weighted Grove residual
+    fraction across the period.
+
+    **Equivalence with EoM-locked when share is constant.** For a stable
+    position with no inflows, daily ``cum_value`` and ``uncapped_value`` are
+    constant, so the value-weighted average reduces to the EoM ratio:
+    ``cum_value_eom / uncapped_value_eom = min(cap, value_eom) / value_eom``.
+    The two methods coincide on stable-position months (e.g. Grove Feb
+    2026: JAAA at $454M throughout) and diverge only when the position
+    moves materially mid-period.
+
+    **Burn-day override.** When the period contains a ``burn_date`` AND the
+    post-burn position has shrunk below the cap (``value_eom < cap_usd``),
+    short-circuit to ``sd_share = 1.0`` (Sky bears the full period's
+    actual_revenue). Rationale: Grove's workbook treats the burn-month's
+    net P&L as essentially Sky's (JAAA Mar 2026: Sky takes -$451,060 of
+    -$458,298 total = 98.4%). The daily-Σ method would otherwise
+    under-attribute because ``cum_value`` drops to 0 from
+    ``usdc_settlement_date`` onward — but Grove's view is that the
+    cap-protected slice spanned the bulk of the value-weighted exposure
+    and the residual on-chain position is a small Grove-only sliver. The
+    ``value_eom < cap_usd`` guard prevents firing if the position is still
+    above cap at EoM (i.e. the cap is still constraining), which would
+    indicate the position hasn't actually been settled out.
+
+    **Burn-day handling for non-override case.** ``cum_value`` is gated by
+    ``_sde_asset_value_timeseries`` (zero pre-start/post-end, ``cap_usd``
+    during the in-flight window, ``raw`` when below the cap, etc.), so the
+    Σ honours burn semantics natively for periods that don't trigger the
+    override (e.g. months entirely before or after the burn date).
+
+    **Degenerate fallback.** If the daily ``uncapped_value`` sum is zero
+    (no active days in the period, e.g. fully out-of-window SDE entry),
+    return ``(0, 0)`` — neither Sky nor Prime accrues anything from a
+    venue with no value to allocate.
+    """
+    if value_timeseries is None or value_timeseries.empty:
+        raise ValueError("daily-resolved sd_share requires non-empty value_timeseries")
+    # Burn-day override — see docstring.
+    if (
+        sde_entry.burn_date is not None
+        and period.start <= sde_entry.burn_date <= period.end
+        and value_eom < sde_entry.cap_usd
+    ):
+        return actual_revenue, Decimal("1")
+    sum_cum = Decimal("0")
+    sum_uncapped = Decimal("0")
+    for _, r in value_timeseries.iterrows():
+        sum_cum += Decimal(str(r["cum_value"]))
+        sum_uncapped += Decimal(str(r["uncapped_value"]))
+    if sum_uncapped <= 0:
+        return Decimal("0"), Decimal("0")
+    sd_share = sum_cum / sum_uncapped
+    return actual_revenue * sd_share, sd_share
 
 
 def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRevenue:
@@ -328,20 +413,28 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
 
     entry = inputs.sde_entry
     if entry is not None and entry.kind == "capped":
-        sd_revenue = _capped_sd_revenue_eom_locked(
-            entry.cap_usd, inputs.value_som, inputs.value_eom, actual_revenue,
-        )
-        # Display sd_share. Use the EoM-locked theoretical share whenever a
-        # position exists (so a break-even capped period still reports e.g.
-        # 71% rather than 0); fall back to SoM-locked when the EoM is empty
-        # but the period started with a position; only 0 when both endpoints
-        # are 0. Mirrors the branching in ``_capped_sd_revenue_eom_locked``.
-        if inputs.value_eom > 0:
-            sd_share = min(entry.cap_usd, inputs.value_eom) / inputs.value_eom
-        elif inputs.value_som > 0:
-            sd_share = min(entry.cap_usd, inputs.value_som) / inputs.value_som
+        # Prefer daily-resolved (Σ cum_value / Σ uncapped_value) when the
+        # daily timeseries was plumbed in by the orchestrator — matches
+        # Grove's per-day allocation methodology. Fall back to EoM-locked
+        # for legacy call paths that don't pass ``value_timeseries`` yet
+        # (e.g. tests that build VenueRevenueInputs directly without the
+        # SDE timeseries). See ``_capped_sd_revenue_daily_resolved`` for
+        # the equivalence proof for stable-position months.
+        if inputs.value_timeseries is not None and not inputs.value_timeseries.empty:
+            sd_revenue, sd_share = _capped_sd_revenue_daily_resolved(
+                inputs.value_timeseries, actual_revenue,
+                sde_entry=entry, period=period, value_eom=inputs.value_eom,
+            )
         else:
-            sd_share = Decimal("0")
+            sd_revenue = _capped_sd_revenue_eom_locked(
+                entry.cap_usd, inputs.value_som, inputs.value_eom, actual_revenue,
+            )
+            if inputs.value_eom > 0:
+                sd_share = min(entry.cap_usd, inputs.value_eom) / inputs.value_eom
+            elif inputs.value_som > 0:
+                sd_share = min(entry.cap_usd, inputs.value_som) / inputs.value_som
+            else:
+                sd_share = Decimal("0")
     else:
         sd_share = _sd_share_at_som(entry, inputs.value_som)
         sd_revenue = actual_revenue * sd_share

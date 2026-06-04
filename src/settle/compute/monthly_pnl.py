@@ -2561,9 +2561,11 @@ def compute_monthly_pnl(
         # sky_only early-exit). Reuse it here to avoid a second table lookup.
         sde_entry = _early_sde
         # Daily SDE asset-value timeseries — feeds ``utilized`` exclusion
-        # in ``compute_sky_revenue`` (Step 2). Does NOT feed
-        # ``compute_venue_revenue``: the sd_share split is EoM-locked via
-        # ``_capped_sd_revenue_eom_locked`` and uses ``value_eom`` directly.
+        # in ``compute_sky_revenue`` (Step 2) AND, for capped SDE, the
+        # daily-resolved sd_share computation in
+        # ``compute_venue_revenue`` (``_capped_sd_revenue_daily_resolved``).
+        # When this timeseries is None the venue-revenue split falls back
+        # to the EoM-locked snapshot (legacy path).
         _sde_ts: pd.DataFrame | None = None
         if sde_entry is not None:
             ciuc = venue.curve_idle_usds
@@ -2577,13 +2579,14 @@ def compute_monthly_pnl(
                     if sources.curve_pool is not None
                     else _CPS()
                 )
-                sde_asset_value_per_venue.append((venue.id, _curve_sde_asset_value_timeseries(
+                _sde_ts = _curve_sde_asset_value_timeseries(
                     prime, venue, period,
                     sde_coin=ciuc.sde_coin,
                     curve_pool_source=_curve_src,
                     block_resolver=resolver,
                     cap_usd=sde_entry.cap_usd,
-                )))
+                )
+                sde_asset_value_per_venue.append((venue.id, _sde_ts))
             else:
                 # Cat E (RWA tranche) path — requires nav_oracle on the venue.
                 bsrc = sources.balance if sources.balance is not None else get_balance_source()
@@ -2712,6 +2715,7 @@ def compute_monthly_pnl(
             actual_revenue_override=susds_spread,
             external_revenue=external_revenue_for_venue,
             erc4626_period_inflow=_erc4626_period_inflow,
+            value_timeseries=_sde_ts,
         ))
 
     # Re-sort venue_inputs to match the declaration order in prime.venues so
