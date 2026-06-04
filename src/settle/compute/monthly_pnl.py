@@ -681,6 +681,55 @@ def _df_from_daily_dict(daily_by_date: dict) -> pd.DataFrame:
     return df
 
 
+def _susds_cat_b_spread_reimb(
+    value_som: Decimal, inflow_ts: pd.DataFrame | None, period: Period,
+) -> Decimal:
+    """30 bps daily-compounded Sky Revenue reduction for a Cat B
+    ``sky_savings_token`` venue (S32 / S37 / S43 / S47 / S51).
+
+    Sky charges full BR on the underlying USDS (sUSDS is NOT subtracted from
+    utilized), then refunds 30 bps as a sky_revenue reduction so the prime's
+    net cost is SSR × V (economic neutrality, Rule 5).
+
+    Formula: ``Σ_d V_d × daily_compounding_factor(BASE_RATE_OVER_SSR)``
+    where ``V_d = value_som + (cum_inflow_d − cum_inflow_{som-1})`` is the
+    daily sUSDS position value across ``[period.start, period.end]``.
+
+    Mirrors the daily-integration pattern used by ``_psm3_susds_spread`` and
+    ``_aggregate_curve_idle_usds``. The previous flat-SoM approximation
+    (``value_som × n_days × spread_daily``) misstated the reimbursement by
+    ~``(V_avg − V_som) × n_days × spread_daily`` for venues with material
+    mid-period inflows/outflows; daily integration is exact (Rule 5
+    precision parity across all three sUSDS paths).
+
+    Degenerate case: returns ``Decimal(0)`` when both ``value_som`` is zero
+    AND ``inflow_ts`` is empty (no position throughout the period). Negative
+    daily positions (transient if e.g. an external arrival is excluded from
+    the timeseries while the subsequent on-chain outflow is included) are
+    clamped to zero per day so the spread reimbursement stays non-negative.
+    """
+    from ._helpers import daily_compounding_factor
+    from .sky_revenue import BASE_RATE_OVER_SSR
+    spread_daily = daily_compounding_factor(BASE_RATE_OVER_SSR)
+    if inflow_ts is None or inflow_ts.empty:
+        # Stable position throughout — V_d = value_som for every day.
+        if value_som <= 0:
+            return Decimal("0")
+        return value_som * spread_daily * Decimal(period.n_days)
+    cum_baseline = cum_at_or_before(
+        inflow_ts, "cum_inflow", period.start - timedelta(days=1),
+    )
+    total = Decimal("0")
+    current = period.start
+    while current <= period.end:
+        cum_d = cum_at_or_before(inflow_ts, "cum_inflow", current)
+        v_d = value_som + (cum_d - cum_baseline)
+        if v_d > 0:
+            total += v_d * spread_daily
+        current = current + timedelta(days=1)
+    return total
+
+
 def _psm3_susds_spread(psm_usds: pd.DataFrame | None, period: Period) -> Decimal:
     """30 bps daily-compounded Prime Revenue credit on the sUSDS slice of
     PSM3 holdings.
@@ -2404,31 +2453,22 @@ def compute_monthly_pnl(
                 # of Demand Side Distribution Rewards — it does NOT flow through
                 # Supply Side settlement. Setting this flag leaves sky_revenue
                 # unreduced for this venue while keeping prime_revenue = 0.
-                if not venue.demand_side_spread:
-                    from .sky_revenue import BASE_RATE_OVER_SSR as _BROSS
-                    from ._helpers import daily_compounding_factor as _dcf
-                    # daily_compounding_factor returns (1+APY)^(1/365) − 1,
-                    # i.e. the per-day rate directly — do NOT subtract 1 again.
-                    _spread_daily = _dcf(_BROSS)
-                    _susds_spread_reimbs[venue.id] = (
-                        value_som * _spread_daily * _Dec(str(period.n_days))
-                    )
-                else:
+                if venue.demand_side_spread:
                     _log.info(
                         "  %s demand_side_spread=True: 30bps reimbursement "
                         "omitted from sky_revenue (handled via Demand Side "
                         "Distribution Rewards). prime_revenue=0, full BR applies.",
                         venue.id,
                     )
+                # Note: the spread reimbursement is computed below, AFTER
+                # ``inflow_ts`` is built, using the daily-position helper
+                # ``_susds_cat_b_spread_reimb``. Rule 5 precision parity with
+                # ``_psm3_susds_spread`` and ``_aggregate_curve_idle_usds``,
+                # both of which already integrate daily.
 
-                # Build the inflow timeseries for tw_avg_value accuracy.
-                # inflow_ts is used only to compute an accurate time-weighted
-                # average for CoF allocation display in the report scripts.
-                # NOTE: the spread formula itself should also be updated to use
-                # the daily-position timeseries (Σ_d value_d × spread_daily)
-                # rather than value_som × n_days — that change is deferred to a
-                # separate PR because it alters sky_revenue totals, not just the
-                # per-venue CoF attribution display.
+                # Build the inflow timeseries — used for both ``tw_avg_value``
+                # CoF allocation display AND the daily-resolved spread
+                # reimbursement (``_susds_cat_b_spread_reimb`` below).
                 if venue.chain == Chain.ETHEREUM:
                     # True ERC-4626: convertToAssets works — same infra as sub-case (b).
                     _susds_erc4626_src = (
@@ -2501,6 +2541,18 @@ def compute_monthly_pnl(
                     inflow_ts = pd.DataFrame({
                         "block_date": [], "daily_inflow": [], "cum_inflow": [],
                     })
+
+                # Daily-resolved spread reimbursement, computed AFTER
+                # ``inflow_ts`` so the daily-position helper can integrate
+                # ``Σ_d V_d × spread_daily``. Skipped for demand_side_spread
+                # venues (S32) — those route the spread via Demand Side
+                # Distribution Rewards, out-of-band from Supply Side
+                # settlement. ``value_som`` already has the Savings V2
+                # ``deployed_amount`` deduction applied (see block above).
+                if not venue.demand_side_spread:
+                    _susds_spread_reimbs[venue.id] = _susds_cat_b_spread_reimb(
+                        value_som, inflow_ts, period,
+                    )
             else:
                 # Sub-case (b): normal Cat B MtM.
                 susds_spread = None
