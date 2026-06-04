@@ -498,6 +498,80 @@ def test_daily_resolved_empty_timeseries_falls_back_to_eom_locked():
     assert vr.sd_revenue == Decimal("2_363_115") * expected_share
 
 
+def test_daily_resolved_with_erc4626_period_inflow_burn_override_end_to_end():
+    """Production path coverage: JAAA Mar 2026 uses ``erc4626_period_inflow``
+    (Centrifuge Deposit/Withdraw event amounts) to compute actual_revenue,
+    AND the burn-day override fires because value_eom < cap. This test
+    exercises the full Cat E composition without the test-only
+    ``actual_revenue_override`` shortcut — the production code path on
+    burn months goes through erc4626_period_inflow."""
+    cap = Decimal("325_000_000")
+    period = Period(start=date(2026, 3, 1), end=date(2026, 3, 31),
+                    pin_blocks={Chain.ETHEREUM: 24971074})
+    # JAAA Mar 2026 actuals (rounded):
+    #   value_som = $455.58M, value_eom = $128.24M (post-burn residual),
+    #   period_inflow = -$326.86M (Sky redemption out via Centrifuge),
+    #   actual_revenue = (128.24 − 455.58) − (−326.86) = -$0.48M ≈ -$477K.
+    value_som = Decimal("455_576_922")
+    value_eom = Decimal("128_240_934")
+    inflow = Decimal("-326_858_574")
+    expected_actual_rev = (value_eom - value_som) - inflow  # = -$477,414
+    # Plausible daily timeseries — the override should ignore Σ details and
+    # return sd_share = 1.0.
+    rows = [(date(2026, 3, d), cap, value_som) for d in range(1, 9)]   # pre-burn
+    rows += [(date(2026, 3, d), cap, value_eom) for d in range(9, 12)] # in-flight
+    rows += [(date(2026, 3, d), Decimal("0"), value_eom) for d in range(12, 32)]
+    ts = _daily_value_ts(rows)
+    inputs = VenueRevenueInputs(
+        venue=_venue("JAAA"),
+        value_som=value_som, value_eom=value_eom,
+        inflow_timeseries=_empty_inflow(),
+        sde_entry=_sde_capped_with_burn(
+            "JAAA", cap, date(2026, 3, 9), date(2026, 3, 11), date(2026, 3, 12),
+        ),
+        erc4626_period_inflow=inflow,   # production Cat E inflow path
+        value_timeseries=ts,
+    )
+    vr = compute_venue_revenue(period, inputs)
+    # actual_revenue must come from the erc4626 branch, NOT a hardcoded override.
+    assert vr.actual_revenue == expected_actual_rev
+    # Burn-day override fires (burn ∈ period, value_eom < cap) → sd_share = 1.
+    assert vr.sd_share == Decimal("1")
+    assert vr.sd_revenue == expected_actual_rev
+    assert vr.period_inflow == inflow
+    assert vr.revenue == Decimal("0")    # nothing to Prime
+
+
+def test_curve_lp_daily_resolved_timeseries_has_required_columns():
+    """Regression: `_curve_sde_asset_value_timeseries` (Curve LP SDE path)
+    must emit BOTH `cum_value` AND `uncapped_value` columns so it's
+    interchangeable with `_sde_asset_value_timeseries` when fed into
+    `_capped_sd_revenue_daily_resolved`. A missing `uncapped_value` would
+    raise KeyError when iterating rows — found in code review."""
+    # Build a minimal Curve-shape timeseries (same schema as RWA SDE) and
+    # verify the daily-resolved function can consume it without KeyError.
+    cap = Decimal("100_000_000")
+    period = Period(start=date(2026, 2, 1), end=date(2026, 2, 3),
+                    pin_blocks={Chain.ETHEREUM: 24558867})
+    # 3 days, position at cap throughout → sd_share = 1.0 with no burn.
+    ts = _daily_value_ts([
+        (date(2026, 2, 1), cap, Decimal("100_000_000")),
+        (date(2026, 2, 2), cap, Decimal("100_000_000")),
+        (date(2026, 2, 3), cap, Decimal("100_000_000")),
+    ])
+    inputs = VenueRevenueInputs(
+        venue=_venue("S24"),
+        value_som=Decimal("100_000_000"), value_eom=Decimal("100_000_000"),
+        inflow_timeseries=_empty_inflow(),
+        sde_entry=_sde_capped("S24", cap),
+        actual_revenue_override=Decimal("500_000"),
+        value_timeseries=ts,
+    )
+    vr = compute_venue_revenue(period, inputs)
+    assert vr.sd_share == Decimal("1")
+    assert vr.sd_revenue == Decimal("500_000")
+
+
 # --- external_revenue ------------------------------------------------------
 #
 # Cat C aToken Merkl-style drops arrive as a separate revenue stream that

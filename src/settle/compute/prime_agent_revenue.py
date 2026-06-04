@@ -167,35 +167,35 @@ def _capped_sd_revenue_eom_locked(
 ) -> Decimal:
     """sd_revenue = actual_revenue × min(cap_usd, value_eom) / value_eom.
 
-    EoM-locked sd_share: one snapshot at period end, applied to the full
-    actual_revenue. Matches Grove team's PnL workbook methodology — see
-    PRD §17.13 / 2026-05-28 comparison vs Grove Jan–Apr 2026 data.
+    **Legacy fallback path** — the primary capped-SDE methodology is now
+    daily-resolved (``_capped_sd_revenue_daily_resolved``), which matches
+    Grove team's per-day allocation logic in their ``<Asset>_ETH Allocation``
+    workbook sheets. This function is retained only for callers that don't
+    pass a ``value_timeseries`` (e.g. unit tests that build
+    ``VenueRevenueInputs`` directly without the SDE timeseries).
 
-    **Why EoM-locked rather than daily-resolved?** A daily-resolved approach
-    (Σ daily_rev_d × sd_share_d, with sd_share_d = min(cap, v_d) / v_d) is
-    in principle more granular, but it diverges from Grove's reporting
-    whenever the position moves materially mid-period — Grove's workbook
-    consistently uses the period-end cap ratio. For a stable position
-    (Feb 2026: $454M throughout) the two methods agree. For a moving
-    position (Jan 2026 E8: $751M → $454M mid-month) they diverge by ~13
-    percentage points; EoM-locked is the empirical fit.
+    **History.** PR #101 (2026-06-01) introduced EoM-locked as the primary
+    methodology, citing the 2026-05-28 Feb/Mar comparison vs Grove. That
+    comparison happened to be on stable-position months where EoM-locked
+    and daily-resolved coincide. The 2026-06-04 Jan investigation showed
+    Grove uses daily-resolved (effective Sky share for Jan JAAA: 60.6%
+    daily vs 71.5% EoM); we reverted to daily-resolved with a burn-day
+    override (see ``_capped_sd_revenue_daily_resolved``).
 
-    **Burn day handling.** When a capped tranche is destroyed on-chain
-    mid-period (e.g., Grove E8 JAAA Mar 9: Sky's $325M tranche burned;
-    Grove's $128M slice survived), EoM-locked yields ``sd_share = 1.0``
-    automatically (cap > value_eom), which empirically attributes ~100%
-    of the period's net P&L to Sky — close enough to Grove's −$451K out
-    of −$458K total (98.5%) for the Mar 2026 case. The SDE entry's
-    ``burn_date`` field (introduced earlier for the daily-resolved path)
-    is kept on ``SDEEntry`` for documentation but is no longer consumed
-    here; the EoM snapshot naturally absorbs the burn.
+    **Behaviour on a stable position** (constant ``v(t)`` and no inflows):
+    this function and the daily-resolved one return identical numbers, so
+    using this fallback on a stable-position month is exactly equivalent.
 
-    **Full-redemption degenerate case (value_eom = 0).** Under EoM-locked the
-    ratio min(cap, 0)/0 is undefined. Fall back to the SoM-locked share
-    (``min(cap, value_som) / value_som``) — the snapshot at the *other* end
-    of the period — so a tranche fully redeemed during the period still
-    attributes a defensible Sky / Prime split rather than silently dropping
-    the entire loss on Prime. Returns 0 only when both endpoints are 0.
+    **Burn day on volatile position.** Sky's capped tranche burned
+    mid-period and ``value_eom < cap_usd`` → here ``sd_share = 1.0``
+    automatically (cap > value_eom). The daily-resolved path reaches the
+    same result via its explicit burn-day override branch (matches Grove's
+    JAAA Mar 2026: Sky absorbs essentially the full period net P&L).
+
+    **Full-redemption degenerate case (value_eom = 0).** Falls back to the
+    SoM-locked share (``min(cap, value_som) / value_som``) — defensible
+    Sky/Prime split rather than silently dropping the entire P&L on Prime.
+    Returns 0 only when both endpoints are 0.
     """
     if value_eom > 0:
         sd_share = min(cap_usd, value_eom) / value_eom
@@ -289,14 +289,20 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
     actual_revenue   = (value_eom − value_som) − period_inflow
                        − (fixed_fee × n_fee_events)    [when fee configured]
     sd_revenue       = actual_revenue × sd_share
-    sd_share         = min(cap, value_eom) / value_eom    (EoM-locked, capped SDE)
-                       1                                  (fixed SDE)
-                       0                                  (non-SDE)
+    sd_share         = Σ_d cum_value_d / Σ_d uncapped_value_d   (capped SDE,
+                                                                 daily-resolved)
+                       1.0                                       (burn-day override
+                                                                  fires for capped)
+                       1                                         (fixed SDE)
+                       0                                         (non-SDE)
     prime_revenue    = actual_revenue − sd_revenue + external_revenue
 
-    Capped SDE uses the EoM-locked share — see ``_capped_sd_revenue_eom_locked``
-    for the methodology rationale (matches Grove team's PnL workbook), including
-    the burn-day and full-redemption fallbacks. Fixed SDE has ``sd_share = 1``.
+    Capped SDE uses the daily-resolved share when ``value_timeseries`` is
+    provided — see ``_capped_sd_revenue_daily_resolved`` for the methodology
+    (matches Grove team's per-day allocation), including the burn-day
+    override. Falls back to ``_capped_sd_revenue_eom_locked`` when no
+    timeseries is plumbed in (legacy / test-only path). Fixed SDE has
+    ``sd_share = 1``.
 
     The ``external_revenue`` stream — off-pool rewards (Merkl, Anchorage,
     etc.) — is added AFTER the SDE split because it doesn't belong to the

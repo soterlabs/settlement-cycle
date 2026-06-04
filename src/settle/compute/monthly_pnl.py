@@ -338,7 +338,8 @@ def _curve_sde_asset_value_timeseries(
     current = period.start
     while current <= period.end:
         eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
-        value = Decimal("0")
+        raw_value = Decimal("0")
+        capped_value = Decimal("0")
         try:
             block = block_resolver.block_at_or_before(chain_str, eod)
             pool_state = curve_pool_source.read_pool(chain_str, pool_addr, block)
@@ -356,9 +357,8 @@ def _curve_sde_asset_value_timeseries(
                     alm_lp = Decimal(alm_lp_raw) / Decimal(10 ** venue.token.decimals)
                     pool_total = Decimal(total_supply) / Decimal(10 ** venue.token.decimals)
                     coin_usds = Decimal(raw_coin) / Decimal(10 ** coin_decimals)
-                    value = (alm_lp / pool_total) * coin_usds
-                    if cap_usd is not None and value > cap_usd:
-                        value = cap_usd
+                    raw_value = (alm_lp / pool_total) * coin_usds
+                    capped_value = min(cap_usd, raw_value) if cap_usd is not None else raw_value
                 else:
                     _log.warning(
                         "curve SDE: venue %s pool %s does not contain SDE coin %s "
@@ -370,7 +370,14 @@ def _curve_sde_asset_value_timeseries(
                 "curve SDE: RPC error for venue %s on %s; using $0 (error: %s).",
                 venue.id, current, type(exc).__name__,
             )
-        rows.append({"block_date": current, "cum_value": value})
+        # Emit both columns so the schema matches ``_sde_asset_value_timeseries``;
+        # `_capped_sd_revenue_daily_resolved` requires both. `uncapped_value` is
+        # the pre-cap raw position; `cum_value` is the post-cap deduction value.
+        rows.append({
+            "block_date": current,
+            "cum_value": capped_value,
+            "uncapped_value": raw_value,
+        })
         current = current + timedelta(days=1)
     return pd.DataFrame(rows)
 
@@ -1555,7 +1562,7 @@ def _log_sky_revenue_debug(
     lines += [
         "",
         f"  sky_rev_br (BR on utilized−SDE):  ${float(sky_rev_br):>14,.2f}",
-        f"  sde_revenue (Σ per-venue actual_rev × EoM sd_share): ${float(sde_revenue):>14,.2f}",
+        f"  sde_revenue (Σ per-venue actual_rev × sd_share):     ${float(sde_revenue):>14,.2f}",
         f"  sky_revenue total:                 ${float(sky_rev_br + sde_revenue):>14,.2f}",
         "  ╚══════════════════════════════════════════════════════════════════════════════════════════════╝",
         "",
@@ -2594,27 +2601,26 @@ def compute_monthly_pnl(
                 def _sd_nav(block, _v=venue, _br=resolver, _nr=sources.nav_oracle_resolver):
                     return _resolve_rwa_nav(_v, block, block_resolver=_br, resolver=_nr)
 
-                # UTILIZED EXCLUSION path — feeds ``compute_sky_revenue`` via
-                # ``sde_av_total``. Independent of the SDE revenue *split*:
-                # the sd_share / sd_revenue computation runs in
-                # ``compute_venue_revenue`` using ``value_eom`` directly
-                # (EoM-locked, see ``_capped_sd_revenue_eom_locked``).
+                # Daily SDE asset-value series — feeds TWO downstream paths:
+                #   1. ``compute_sky_revenue`` via ``sde_av_total``: daily
+                #      utilized exclusion (Sky's cap-protected slice is
+                #      removed from the BR×Net_Subs base).
+                #   2. ``compute_venue_revenue`` via ``VenueRevenueInputs.
+                #      value_timeseries``: drives the daily-resolved capped
+                #      sd_share (``_capped_sd_revenue_daily_resolved``).
                 #
-                # **Gating asymmetry between the two paths.** This call's
-                # daily gate (pre-start / post-burn / post-end → cum_value=0)
-                # suppresses inactive days from the utilized exclusion —
-                # critically including the burn day onwards (Grove's "SKY
-                # EXPOSURE" workbook tab shows Sky's per-venue Asset Value
-                # dropping to $0 on burn day, not at end_date). Meanwhile
-                # ``compute_venue_revenue``'s EoM-locked sd_share applies to
-                # the FULL period's actual_revenue regardless of intra-period
-                # activity — it uses only the SoM/EoM snapshots and naturally
-                # reflects the on-chain state at period end. So an SDE entry
-                # that's only active for part of the period correctly
-                # contributes zero utilized exclusion on inactive days
-                # (path 1) while still attributing its EoM sd_share to the
-                # period's actual_revenue (path 2). Both behaviours are
-                # intentional and complementary.
+                # **Gating semantics.** The daily gate (pre-start / post-burn
+                # / post-end → cum_value=0) controls both paths uniformly:
+                # inactive days contribute zero utilized exclusion AND zero
+                # to the Σ cum_value in the sd_share numerator. Burn-day
+                # special handling (cap-coverage preserved through
+                # ``usdc_settlement_date``) is also applied here so both
+                # paths see the same daily values. The daily-resolved
+                # function in compute_venue_revenue applies an additional
+                # burn-day override (sd_share = 1.0) when the burn falls
+                # inside the period and value_eom < cap — this matches
+                # Grove's burn-month attribution (Sky absorbs full P&L)
+                # which the raw Σ ratio under-attributes.
                 #
                 # The in-flight upper bound is ``usdc_settlement_date`` when
                 # set (real USDC arrival at ALM, e.g. Grove E8 2026-03-11);
@@ -2833,11 +2839,7 @@ def compute_monthly_pnl(
             {
                 "block_date": _row["block_date"],
                 "cum_value": _row["cum_value"],
-                # ``uncapped_value`` is present only on the standard SDE
-                # timeseries (``_sde_asset_value_timeseries``); the Curve-pool
-                # variant doesn't compute it, so default to 0 for those rows.
-                "uncapped_value": _row["uncapped_value"]
-                    if "uncapped_value" in _df.columns else Decimal("0"),
+                "uncapped_value": _row["uncapped_value"],
             }
             for _, _row in _df.iterrows()
         ]
