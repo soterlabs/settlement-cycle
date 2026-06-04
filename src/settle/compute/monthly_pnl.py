@@ -2181,10 +2181,31 @@ def compute_monthly_pnl(
                         # gets a (pre=block-1, post=block, date) triple.
                         # block_to_date maps the post_block to a calendar date
                         # so per-event inflow rows land on the right day.
-                        return [
-                            (b - 1, b, resolver.block_to_date(chain_value, b))
-                            for b in blocks if som < b <= eom
-                        ]
+                        # The resolver is indexed up to EoM; event blocks are
+                        # filtered to ``som < b <= eom`` so they should be in
+                        # range. Defensive: if the resolver doesn't cover a
+                        # block (e.g. fixture coverage gap, EoM pin block
+                        # beyond the last daily-max-block recorded), fall
+                        # back to ``period.end`` and warn — the per-event
+                        # date is for time-weighting; treating it as EoM is
+                        # at worst a regression to the pre-PR behaviour for
+                        # that specific event.
+                        triples = []
+                        for b in blocks:
+                            if not (som < b <= eom):
+                                continue
+                            try:
+                                d = resolver.block_to_date(chain_value, b)
+                            except (ValueError, KeyError) as exc:
+                                _log.warning(
+                                    "atoken_event_blocks: block_to_date failed "
+                                    "for chain=%s block=%d (%s: %s); falling "
+                                    "back to period.end for this event.",
+                                    chain_value, b, type(exc).__name__, exc,
+                                )
+                                d = period.end
+                            triples.append((b - 1, b, d))
+                        return triples
                     # No per-event data — defer to the day-resolution
                     # daily-aggregate path.
                     return _day_res_cb(chain_value, token_addr, holder_addr, som, eom)
