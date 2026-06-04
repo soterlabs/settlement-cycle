@@ -166,12 +166,6 @@ flowing through ALM ingress or names a new source we need to plumb.
 
 ### P1 — methodology unknowns affecting accuracy
 
-#### G2. External ALM sources / off-chain yield distributors
-`external_alm_sources` is empty in `config/grove.yaml` → revenue from idle
-par-stables (E13–E17) = **$0**. Does Grove have any off-chain custodian
-sending realized yield directly to the ALM proxy
-`0x491edfb0b8b608044e227225c715981a30f3a44e` (RLUSD coupon distributions,
-AUSD-issuer rebates, etc.)? If yes, we need the sender address(es).
 
 #### G6. Chronicle adapter — pre-deployment silent fallback to const_one
 E7 STAC, E8 JAAA, E9 JTRSY, E22 ACRDX use Chronicle NAV oracles. Several
@@ -258,6 +252,64 @@ Numerical impact when distributions begin: depends on coupon size.
 Galaxy publishes CLO trances with ~3-7% APY on the underlying — so a
 $49.9M position could pay $1.5-3.5M/yr split into ~12 monthly
 sweeps if the cadence assumption holds.
+
+#### G23. CoF on Net_Subs — BR computation + vat.grab inclusion in Subscriptions
+Raised 2026-06-04 after a clean SDE-share methodology bisect (PR-this-branch).
+With daily-resolved `sd_share` + burn-day override, our per-venue `sd_revenue`
+matches Grove's workbook to within upstream `actual_revenue` drift on all
+four months of Jan-Apr 2026 (Σ Δ sd_rev = −$36K, dominated by Mar
+Centrifuge `Deposit/Withdraw.assets` events vs `Transfer × NAV`
+accounting). After that fix, the residual headline gap vs Grove
+decomposes as:
+
+| Month | Δ Σ sd_revenue | **Δ cof_total** | Δ sky_revenue |
+|-------|---:|---:|---:|
+| Jan | −$3,311 | **+$60,078** | +$56,767 |
+| Feb | −$5,827 | **+$100,790** | +$94,963 |
+| Mar | −$26,354 | −$42,060 | −$68,414 |
+| Apr | −$649 | **+$124,933** | +$124,284 |
+| **Σ** | **−$36,141** | **+$243,741** | **+$207,600** |
+
+So **+$244K Σ Jan-Apr is in `cof_total` (BR × Net_Subs)** — the SDE-split
+side is solved. Two known methodology differences likely explain the gap
+(both on the Grove side, not in our pipeline):
+
+1. **BR rate computation.** We compute the daily subsidised BR per Sky
+   governance (`subsidised_apy_d = ref_rate_d + (BR_d − ref_rate_d) × T / 24`,
+   T = months since 2026-01-01, capped at 24). Grove's workbook may
+   use a different rate (constant per-month BR, average BR, or a
+   stale formula). The over-attribution rate vs Grove is ~0.046% of
+   avg Net_Subs — too small for a flagrant rate error, but consistent
+   with e.g. a subsidy-ramp truncation or a slightly different
+   per-day BR sampling.
+2. **`vat.grab` inclusion in Net_Subs.** Per PR #103 (2026-06-03) we
+   now include `vat.grab` events alongside `vat.frob` in `cum_debt`
+   so that our Net_Subs matches `Vat.urns(ALLOCATOR-BLOOM-A).Art`
+   exactly. **Grove's "Subscriptions" column appears to only read
+   `vat.frob` events**, missing the monthly Sky-Share spell that
+   capitalizes accrued Sky revenue via `vat.grab` (see PRD §13 / the
+   vat.grab transaction list shared with Grove team 2026-06-03).
+   Cumulative grab through 2026-05-11 is **$57.91M** — so any
+   downstream BR calculation that uses Grove's frob-only
+   "Subscriptions" series will under-report Net_Subs by that amount,
+   under-charging CoF.
+
+**Q for Grove:**
+1. **BR rate** — what formula does the workbook's CoF column use? Is it
+   a daily subsidised rate per the Sky-governance formula, a constant
+   per-month BR, or something else?
+2. **Subscriptions column composition** — does it sum only `vat.frob`
+   events on `ALLOCATOR-BLOOM-A`, or does it also include `vat.grab`
+   events from the monthly Sky-Share spell? If the latter, what
+   selector / event filter do you use?
+3. **Reconciliation** — both sides should reconcile to
+   `Vat.urns(ALLOCATOR-BLOOM-A).Art × Vat.ilks(ALLOCATOR-BLOOM-A).rate`.
+   Can your team confirm or share your Net_Subs derivation so we can
+   bisect the +$244K?
+
+Numerical impact: pinning this resolves the residual +$207K Σ Jan-Apr
+headline gap (down to ~$36K of pure upstream `actual_revenue` drift).
+Cross-ref **PRD §17.13 item 8**.
 
 ### P2 — sanity checks / confirmations
 
@@ -734,58 +786,6 @@ If day-level is confirmed, the fix is ~10 lines in `compute_sky_
 revenue` plus a regression test that covers a SoM-not-yet-active
 venue + a within-month end_date.
 
-#### S25. L2 sUSDS spread-credit silently $0 (S37/S43/S47/S51) — Prime Revenue under-count
-Discovered while wiring the multi-chain ALM-USDS aggregator
-(`compute_monthly_pnl._aggregate_alm_usds`, 2026-05-12). The L2 sUSDS
-proxies on Base / Arbitrum / Optimism / Unichain do NOT expose ERC-4626
-`convertToAssets` — the sUSDS deployment on each L2 is a 1:1 bridged
-balance whose price-per-share lives only on Ethereum. The pipeline's
-RPC layer (`extract/rpc.convert_to_assets`) returns 0 silently on revert,
-so `value_som = 0` → `susds_spread = 0` for these venues today.
-
-**Concrete impact (Dune query 7474562, 2026-05-12):** Spark holds
-~294M sUSDS shares at L2 ALMs (~$314M at the current ~$1.069 pps —
-130.9M arb + 93.2M op + 69.2M base + 0.9M uni). At 30 bps the missing
-Prime Revenue is roughly `$314M × 0.003 / 365 ≈ $2,580/day ≈ $77K/mo`.
-Sky-side BR charge is **already correct** on these positions (utilized
-not reduced for `sky_savings_token: true` venues, full BR charged).
-
-To fix, the Cat B sub-case (a) pricing for L2 sUSDS needs a working
-sUSDS→USDS rate. The cleanest source is the **local L2 PSM3 contract**
-itself — verified 2026-05-12 against the Spark PSM3 source
-(`marsfoundation/spark-psm` `src/PSM3.sol`). Every L2 PSM3 exposes:
-
-- `convertToShares(address asset, uint256 amount)` (selector `0xc6e6f592`)
-  → PSM3 shares for `amount` of `asset`
-- `convertToAssetValue(uint256 shares)` (selector `0x41c094e0`)
-  → USDS-equivalent value of those shares (18 dec)
-
-Two-call recipe to price 1 sUSDS in USDS on any L2 PSM3 host chain:
-```
-shares_per_sUSDS = PSM3.convertToShares(sUSDS_address, 1e18)
-usds_per_sUSDS   = PSM3.convertToAssetValue(shares_per_sUSDS)
-```
-
-This is much cleaner than reading Ethereum sUSDS pps at a cross-chain
-block — no Chronicle-style oracle bridge needed; pipeline already calls
-`convertToAssetValue` in the PSM3 leg-split path. Concrete plan:
-
-1. Add `psm3_convert_to_shares(chain, psm3, asset, amount, block)` to
-   `extract/rpc.py` (selector `0xc6e6f592`).
-2. Extend `IPsm3Source` with a `convert_to_shares` method; route Cat B
-   sub-case (a) sUSDS-at-L2 pricing through it when the venue's chain
-   has a PSM3 configured on the prime.
-3. Regression test: Q1 2026 monthly run before/after — expect
-   ~$77K/mo Prime Revenue uplift for Spark.
-
-Edge case: a prime might hold L2 sUSDS on a chain where it has no PSM3
-(e.g. a future Avalanche-C deployment). For that case the fallback IS
-the Ethereum-sUSDS cross-chain read; defer until a real venue triggers it.
-
-**Q for Spark/BA:** Confirm the 30 bps spread credit should also apply
-to idle sUSDS held at L2 ALMs (not just Ethereum) — this is the same
-economic neutrality argument as the Ethereum POL position (S32) and
-the PSM3 sUSDS leg, just on L2. Resolution: implement and close.
 
 ### P2 — sanity checks / confirmations
 
@@ -1434,6 +1434,12 @@ Resolved questions move here from their open section when their GitHub
 issue is closed. The full resolution narrative lives in
 `PRD.md §17.13` (review-acks); this section keeps a compact pointer
 trail (Q-ID, title, close date, issue link).
+
+### G2. External ALM sources / off-chain yield distributors
+**Resolved 2026-06-01** via [#2](https://github.com/soterlabs/settlement-cycle/issues/2). See `PRD.md §17.13`.
+
+### S25. L2 sUSDS spread-credit silently $0 (S37/S43/S47/S51) — Prime Revenue under-count
+**Resolved 2026-05-18** via [#75](https://github.com/soterlabs/settlement-cycle/issues/75). See `PRD.md §17.13`.
 
 ### S1. Confirm `2024-11-18` is Spark's billing anchor
 **Resolved 2026-05-07** via [#19](https://github.com/soterlabs/settlement-cycle/issues/19). See `PRD.md §17.13`.

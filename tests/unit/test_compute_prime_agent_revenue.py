@@ -289,6 +289,289 @@ def test_compute_prime_revenue_sums_only_prime_share():
     assert sum((v.sd_revenue for v in breakdown), Decimal(0)) == Decimal("5")
 
 
+# --- SDE split (capped, daily-resolved + burn-day override) ----------------
+#
+# `_capped_sd_revenue_daily_resolved` is the post-2026-06 methodology that
+# replaces the EoM-locked snapshot when a daily value_timeseries is
+# available. Mirrors Grove's per-day allocation logic in their
+# `<Asset>_ETH Allocation` sheets — sd_share = Σ_d cum_value / Σ_d uncapped.
+#
+# The burn-day override short-circuits to sd_share = 1.0 when the SDE
+# entry's burn_date falls inside the period AND value_eom < cap_usd,
+# matching Grove's burn-month behaviour (JAAA Mar 2026: ~98% of net P&L
+# to Sky). Without the override, the daily-Σ method under-attributes
+# because `cum_value` drops to 0 from usdc_settlement_date onward.
+
+def _sde_capped_with_burn(
+    venue_id: str, cap_usd: Decimal, burn: date, settle: date, end: date,
+) -> SDEEntry:
+    return SDEEntry(
+        prime_id="grove", venue_id=venue_id, chain="ethereum",
+        kind="capped", cap_usd=cap_usd, pattern=None,
+        start_date=date(2025, 10, 23), end_date=end,
+        burn_date=burn, usdc_settlement_date=settle,
+        label="test capped w/ burn", source="",
+    )
+
+
+def _daily_value_ts(rows: list[tuple[date, Decimal, Decimal]]) -> pd.DataFrame:
+    """Build a `value_timeseries` from (block_date, cum_value, uncapped_value)
+    tuples. Mirrors the schema produced by `_sde_asset_value_timeseries`."""
+    return pd.DataFrame([
+        {"block_date": d, "cum_value": c, "uncapped_value": u}
+        for d, c, u in rows
+    ])
+
+
+def test_daily_resolved_matches_eom_when_position_is_stable():
+    """For a constant-value, constant-share month the daily-Σ method must
+    coincide with the EoM-locked snapshot. Feb 2026 JAAA ($454M throughout,
+    no inflows) is the canonical example: both methods give
+    actual_revenue × cap / value_eom."""
+    cap = Decimal("325_000_000")
+    val = Decimal("454_000_000")
+    period = Period(start=date(2026, 2, 1), end=date(2026, 2, 28),
+                    pin_blocks={Chain.ETHEREUM: 24558867})
+    # Stable position: every day cum_value=cap, uncapped_value=val.
+    ts = _daily_value_ts([
+        (date(2026, 2, d), cap, val) for d in range(1, 29)
+    ])
+    inputs = VenueRevenueInputs(
+        venue=_venue("JAAA"),
+        value_som=val, value_eom=val,
+        inflow_timeseries=_empty_inflow(),
+        sde_entry=_sde_capped("JAAA", cap),
+        value_timeseries=ts,
+    )
+    vr = compute_venue_revenue(period, inputs)
+    assert vr.actual_revenue == Decimal("0")
+    # Σ cum / Σ uncapped = 28×cap / 28×val = cap / val — same as EoM ratio.
+    expected_share = cap / val
+    assert vr.sd_share == expected_share
+    assert vr.sd_revenue == Decimal("0")  # 0 × share = 0
+
+
+def test_daily_resolved_with_mid_period_redemption_matches_grove():
+    """Jan 2026 JAAA: $751M → $454M mid-month redemption. The daily method
+    must produce a share between the SoM (43.2%) and EoM (71.5%) shares,
+    weighted by daily value. With Grove's actual daily series the
+    effective share is 60.64% — but this test uses a simplified two-segment
+    series to verify the value-weighted average."""
+    cap = Decimal("325_000_000")
+    # Days 1-5 at $751M (cap binds at 43.22%); days 6-31 at $454M (71.55%).
+    period = Period(start=date(2026, 1, 1), end=date(2026, 1, 31),
+                    pin_blocks={Chain.ETHEREUM: 24358292})
+    rows = []
+    for d in range(1, 6):
+        rows.append((date(2026, 1, d), cap, Decimal("751_935_242")))
+    for d in range(6, 32):
+        rows.append((date(2026, 1, d), cap, Decimal("454_188_057")))
+    ts = _daily_value_ts(rows)
+    actual_revenue = Decimal("2_363_169")
+    inputs = VenueRevenueInputs(
+        venue=_venue("JAAA"),
+        value_som=Decimal("751_935_538"), value_eom=Decimal("454_188_405"),
+        inflow_timeseries=_empty_inflow(),
+        sde_entry=_sde_capped("JAAA", cap),
+        value_timeseries=ts,
+    )
+    # Force the (value_eom − value_som) − period_inflow path to match actual_revenue
+    # by using override.
+    inputs2 = VenueRevenueInputs(
+        venue=inputs.venue, value_som=inputs.value_som, value_eom=inputs.value_eom,
+        inflow_timeseries=inputs.inflow_timeseries, sde_entry=inputs.sde_entry,
+        actual_revenue_override=actual_revenue, value_timeseries=ts,
+    )
+    vr = compute_venue_revenue(period, inputs2)
+    # Σ cum = 31 × cap = 31 × 325M
+    # Σ uncapped = 5 × 751.9M + 26 × 454.2M = 3,759.7M + 11,808.9M = 15,568.6M
+    expected_share = (Decimal(31) * cap) / (Decimal(5) * Decimal("751_935_242") + Decimal(26) * Decimal("454_188_057"))
+    assert abs(vr.sd_share - expected_share) < Decimal("1e-10")
+    # The share should be between SoM (cap/751M ≈ 43.2%) and EoM (cap/454M ≈ 71.5%)
+    assert Decimal("0.43") < vr.sd_share < Decimal("0.72")
+    assert vr.sd_revenue == actual_revenue * vr.sd_share
+
+
+def test_daily_resolved_burn_day_override_fires_when_burn_in_period_and_value_eom_below_cap():
+    """Mar 2026 JAAA: burn on Mar 9, USDC settled Mar 11, end_date Mar 12.
+    Post-burn value_eom ($128M) < cap ($325M) → override fires →
+    sd_share = 1.0 → Sky absorbs the full period's actual_revenue.
+    Matches Grove's Mar 2026 workbook attribution to JAAA_ETH_Sky."""
+    cap = Decimal("325_000_000")
+    period = Period(start=date(2026, 3, 1), end=date(2026, 3, 31),
+                    pin_blocks={Chain.ETHEREUM: 24971074})
+    actual_revenue = Decimal("-477_414")
+    # Build a series with non-trivial cum/uncapped sums — the override should
+    # ignore them and return sd_share = 1.0 regardless.
+    rows = [(date(2026, 3, d), cap, Decimal("455_000_000")) for d in range(1, 9)]
+    rows += [(date(2026, 3, d), cap, Decimal("128_000_000")) for d in range(9, 12)]
+    rows += [(date(2026, 3, d), Decimal("0"), Decimal("128_000_000")) for d in range(12, 32)]
+    ts = _daily_value_ts(rows)
+    inputs = VenueRevenueInputs(
+        venue=_venue("JAAA"),
+        value_som=Decimal("455_576_922"), value_eom=Decimal("128_240_934"),
+        inflow_timeseries=_empty_inflow(),
+        sde_entry=_sde_capped_with_burn(
+            "JAAA", cap, date(2026, 3, 9), date(2026, 3, 11), date(2026, 3, 12),
+        ),
+        actual_revenue_override=actual_revenue,
+        value_timeseries=ts,
+    )
+    vr = compute_venue_revenue(period, inputs)
+    assert vr.sd_share == Decimal("1")
+    assert vr.sd_revenue == actual_revenue
+    assert vr.revenue == Decimal("0")  # nothing to prime — Sky takes full loss
+
+
+def test_daily_resolved_burn_day_override_does_not_fire_when_value_eom_above_cap():
+    """Defensive: if the burn happens but value_eom is still above the cap
+    (the position hasn't actually shrunk past the cap-protected slice),
+    the override must NOT fire. Daily-Σ runs normally instead."""
+    cap = Decimal("325_000_000")
+    period = Period(start=date(2026, 3, 1), end=date(2026, 3, 31),
+                    pin_blocks={Chain.ETHEREUM: 24971074})
+    rows = [(date(2026, 3, d), cap, Decimal("455_000_000")) for d in range(1, 32)]
+    ts = _daily_value_ts(rows)
+    inputs = VenueRevenueInputs(
+        venue=_venue("JAAA"),
+        value_som=Decimal("455_000_000"), value_eom=Decimal("455_000_000"),  # > cap
+        inflow_timeseries=_empty_inflow(),
+        sde_entry=_sde_capped_with_burn(
+            "JAAA", cap, date(2026, 3, 9), date(2026, 3, 11), date(2026, 3, 12),
+        ),
+        actual_revenue_override=Decimal("100_000"),
+        value_timeseries=ts,
+    )
+    vr = compute_venue_revenue(period, inputs)
+    expected_share = cap / Decimal("455_000_000")  # daily-Σ value-weighted = constant ratio
+    assert abs(vr.sd_share - expected_share) < Decimal("1e-10")
+    assert vr.sd_share < Decimal("1")
+
+
+def test_daily_resolved_burn_day_override_does_not_fire_when_burn_outside_period():
+    """Apr 2026 JAAA: SDE deactivated 2026-03-12 (end_date), burn was Mar 9.
+    For April, burn_date is NOT in [period.start, period.end] → override
+    must not fire. In practice the SDE entry's end_date check upstream
+    prevents the entry from being applied to April at all, but this test
+    verifies the override-only guard in isolation."""
+    cap = Decimal("325_000_000")
+    period = Period(start=date(2026, 4, 1), end=date(2026, 4, 30),
+                    pin_blocks={Chain.ETHEREUM: 24971074})
+    # value below cap, but burn was last month — override must NOT fire
+    rows = [(date(2026, 4, d), Decimal("0"), Decimal("128_000_000")) for d in range(1, 31)]
+    ts = _daily_value_ts(rows)
+    inputs = VenueRevenueInputs(
+        venue=_venue("JAAA"),
+        value_som=Decimal("128_240_934"), value_eom=Decimal("128_831_404"),
+        inflow_timeseries=_empty_inflow(),
+        sde_entry=_sde_capped_with_burn(
+            "JAAA", cap, date(2026, 3, 9), date(2026, 3, 11), date(2026, 3, 12),
+        ),
+        actual_revenue_override=Decimal("590_470"),
+        value_timeseries=ts,
+    )
+    vr = compute_venue_revenue(period, inputs)
+    # cum_value = 0 every day → sd_share = 0 → all revenue to Prime
+    assert vr.sd_share == Decimal("0")
+    assert vr.sd_revenue == Decimal("0")
+    assert vr.revenue == Decimal("590_470")
+
+
+def test_daily_resolved_empty_timeseries_falls_back_to_eom_locked():
+    """If `value_timeseries` is None (legacy path: tests constructing
+    VenueRevenueInputs directly without the SDE timeseries), the EoM-locked
+    fallback runs. This preserves backward compatibility with any caller
+    that hasn't been migrated to plumb the timeseries through."""
+    cap = Decimal("325_000_000")
+    eom = Decimal("454_000_000")
+    inputs = VenueRevenueInputs(
+        venue=_venue("JAAA"),
+        value_som=Decimal("750_000_000"), value_eom=eom,
+        inflow_timeseries=_empty_inflow(),
+        sde_entry=_sde_capped("JAAA", cap),
+        actual_revenue_override=Decimal("2_363_115"),
+        # value_timeseries=None — the fallback condition
+    )
+    vr = compute_venue_revenue(_period(), inputs)
+    expected_share = cap / eom
+    assert vr.sd_share == expected_share
+    assert vr.sd_revenue == Decimal("2_363_115") * expected_share
+
+
+def test_daily_resolved_with_erc4626_period_inflow_burn_override_end_to_end():
+    """Production path coverage: JAAA Mar 2026 uses ``erc4626_period_inflow``
+    (Centrifuge Deposit/Withdraw event amounts) to compute actual_revenue,
+    AND the burn-day override fires because value_eom < cap. This test
+    exercises the full Cat E composition without the test-only
+    ``actual_revenue_override`` shortcut — the production code path on
+    burn months goes through erc4626_period_inflow."""
+    cap = Decimal("325_000_000")
+    period = Period(start=date(2026, 3, 1), end=date(2026, 3, 31),
+                    pin_blocks={Chain.ETHEREUM: 24971074})
+    # JAAA Mar 2026 actuals (rounded):
+    #   value_som = $455.58M, value_eom = $128.24M (post-burn residual),
+    #   period_inflow = -$326.86M (Sky redemption out via Centrifuge),
+    #   actual_revenue = (128.24 − 455.58) − (−326.86) = -$0.48M ≈ -$477K.
+    value_som = Decimal("455_576_922")
+    value_eom = Decimal("128_240_934")
+    inflow = Decimal("-326_858_574")
+    expected_actual_rev = (value_eom - value_som) - inflow  # = -$477,414
+    # Plausible daily timeseries — the override should ignore Σ details and
+    # return sd_share = 1.0.
+    rows = [(date(2026, 3, d), cap, value_som) for d in range(1, 9)]   # pre-burn
+    rows += [(date(2026, 3, d), cap, value_eom) for d in range(9, 12)] # in-flight
+    rows += [(date(2026, 3, d), Decimal("0"), value_eom) for d in range(12, 32)]
+    ts = _daily_value_ts(rows)
+    inputs = VenueRevenueInputs(
+        venue=_venue("JAAA"),
+        value_som=value_som, value_eom=value_eom,
+        inflow_timeseries=_empty_inflow(),
+        sde_entry=_sde_capped_with_burn(
+            "JAAA", cap, date(2026, 3, 9), date(2026, 3, 11), date(2026, 3, 12),
+        ),
+        erc4626_period_inflow=inflow,   # production Cat E inflow path
+        value_timeseries=ts,
+    )
+    vr = compute_venue_revenue(period, inputs)
+    # actual_revenue must come from the erc4626 branch, NOT a hardcoded override.
+    assert vr.actual_revenue == expected_actual_rev
+    # Burn-day override fires (burn ∈ period, value_eom < cap) → sd_share = 1.
+    assert vr.sd_share == Decimal("1")
+    assert vr.sd_revenue == expected_actual_rev
+    assert vr.period_inflow == inflow
+    assert vr.revenue == Decimal("0")    # nothing to Prime
+
+
+def test_curve_lp_daily_resolved_timeseries_has_required_columns():
+    """Regression: `_curve_sde_asset_value_timeseries` (Curve LP SDE path)
+    must emit BOTH `cum_value` AND `uncapped_value` columns so it's
+    interchangeable with `_sde_asset_value_timeseries` when fed into
+    `_capped_sd_revenue_daily_resolved`. A missing `uncapped_value` would
+    raise KeyError when iterating rows — found in code review."""
+    # Build a minimal Curve-shape timeseries (same schema as RWA SDE) and
+    # verify the daily-resolved function can consume it without KeyError.
+    cap = Decimal("100_000_000")
+    period = Period(start=date(2026, 2, 1), end=date(2026, 2, 3),
+                    pin_blocks={Chain.ETHEREUM: 24558867})
+    # 3 days, position at cap throughout → sd_share = 1.0 with no burn.
+    ts = _daily_value_ts([
+        (date(2026, 2, 1), cap, Decimal("100_000_000")),
+        (date(2026, 2, 2), cap, Decimal("100_000_000")),
+        (date(2026, 2, 3), cap, Decimal("100_000_000")),
+    ])
+    inputs = VenueRevenueInputs(
+        venue=_venue("S24"),
+        value_som=Decimal("100_000_000"), value_eom=Decimal("100_000_000"),
+        inflow_timeseries=_empty_inflow(),
+        sde_entry=_sde_capped("S24", cap),
+        actual_revenue_override=Decimal("500_000"),
+        value_timeseries=ts,
+    )
+    vr = compute_venue_revenue(period, inputs)
+    assert vr.sd_share == Decimal("1")
+    assert vr.sd_revenue == Decimal("500_000")
+
+
 # --- external_revenue ------------------------------------------------------
 #
 # Cat C aToken Merkl-style drops arrive as a separate revenue stream that

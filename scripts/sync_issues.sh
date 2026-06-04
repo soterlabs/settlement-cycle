@@ -50,15 +50,22 @@ done
 command -v gh >/dev/null 2>&1 || { echo "error: gh CLI not found." >&2; exit 2; }
 [[ -f "$QFILE" ]] || { echo "error: $QFILE not found" >&2; exit 2; }
 
-ISSUES_JSON=$(gh issue list --repo "$REPO" --state all --limit 500 \
-  --json number,title,labels,body,state,closedAt 2>&1) || {
+# gh issue payload can grow large (>500KB at 70+ issues) — pass it via a
+# temp file instead of an env var to avoid hitting the OS ARG_MAX limit
+# when the python3 subprocess is spawned (E2BIG: "Argument list too long").
+ISSUES_FILE=$(mktemp -t sync_issues_XXXXXX.json)
+trap 'rm -f "$ISSUES_FILE"' EXIT
+if ! gh issue list --repo "$REPO" --state all --limit 500 \
+    --json number,title,labels,body,state,closedAt > "$ISSUES_FILE" 2>"$ISSUES_FILE.err"; then
   echo "error: gh issue list failed:" >&2
-  echo "$ISSUES_JSON" >&2
+  cat "$ISSUES_FILE.err" >&2
+  rm -f "$ISSUES_FILE.err"
   exit 2
-}
+fi
+rm -f "$ISSUES_FILE.err"
 
 REPO="$REPO" QFILE="$QFILE" \
-  MODE="$MODE" QUIET="$QUIET" YES="$YES" ISSUES_JSON="$ISSUES_JSON" \
+  MODE="$MODE" QUIET="$QUIET" YES="$YES" ISSUES_FILE="$ISSUES_FILE" \
   python3 - <<'PYEOF'
 import hashlib, json, os, re, subprocess, sys
 from datetime import datetime
@@ -140,7 +147,8 @@ def parse_markdown(text):
 open_qs, resolved_qids, blocks = parse_markdown(md_text)
 
 # ─── Index live issues by Q-ID ────────────────────────────────────
-issues = json.loads(os.environ['ISSUES_JSON'])
+with open(os.environ['ISSUES_FILE']) as _f:
+    issues = json.load(_f)
 live_by_qid = {}
 for it in issues:
     title = (it.get('title') or '').strip()
