@@ -1,8 +1,8 @@
 """Compare our per-venue ``actual_revenue`` against Grove's reference xlsx.
 
 Reads:
-  data/grove/{jan,feb,mar,apr}_2026.xlsx  ← Grove's "Summary Comp" sheet
-  settlements/grove/{month}/venues.csv    ← our pipeline output
+  data/grove/{jan,feb,mar,apr}_2026.xlsx       ← Grove's "Summary Comp" sheet
+  settlements/grove/{month}/provenance.json    ← our pipeline output
 
 Maps Grove tickers (e.g. ACRDX_PLUME) to our venue ids (E22) and prints a
 side-by-side table per month with the residual gap.
@@ -13,7 +13,7 @@ Use to surface remaining methodology gaps after re-running the pipeline.
 from __future__ import annotations
 
 import argparse
-import csv
+import json
 from pathlib import Path
 
 import openpyxl
@@ -91,10 +91,11 @@ def _grove_per_venue(month_xlsx: Path) -> dict[str, tuple[float, float, float, f
 
 def _our_per_venue(month: str) -> dict[str, float]:
     out: dict[str, float] = {}
-    path = _REPO / "settlements" / "grove" / month / "venues.csv"
+    path = _REPO / "settlements" / "grove" / month / "provenance.json"
     with path.open() as f:
-        for r in csv.DictReader(f):
-            out[r["venue_id"]] = float(r["actual_revenue"])
+        prov = json.load(f)
+    for r in prov["venue_breakdown"]:
+        out[r["venue_id"]] = float(r["actual_revenue"])
     return out
 
 

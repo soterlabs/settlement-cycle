@@ -1,19 +1,24 @@
 """Render an MSC-native settlement xlsx from a settlement output.
 
-Four tabs:
+Self-sufficient: reads ``provenance.json`` only (plus prime YAML and SDE
+config for the static reference tabs). The per-venue ``cof_alloc /
+profit_to_sky / profit_to_grove`` re-attribution is computed in-process
+via ``settle.load.grove_sheet.compute_sheet_rows``.
+
+Tabs:
 
   1. Summary           — Prime side / Sky side / Grove-comparable Σ P2G / period info
   2. Venues            — per-venue P&L breakdown with CoF re-attribution
   3. Sky Revenue       — how sky_revenue is built (CoF + SDE) + subsidy params
   4. Sky Direct        — active Sky-Direct entries this period
+  5. Off-protocol holdings (when present)
+  6. SDE daily         — per-day Sky/Grove/in-flight (when a burn occurred)
 
 Inputs:
-  settlements/{prime}/{month}/venues.csv
-  settlements/{prime}/{month}/provenance.json
-  settlements/{prime}/{month}/grove_sheet.csv   (post-processor output: P2S/P2G/CoF alloc)
+  settlements/{prime}/{month}/provenance.json    (canonical machine-readable output)
   config/{prime}.yaml
   config/sky_direct_exposures.yaml
-  config/subsidy_reference_rates.yaml (for the ref-rate readout in Sky Revenue tab)
+  config/subsidy_reference_rates.yaml            (for the ref-rate readout)
 
 Output:
   settlements/{prime}/{month}/{prime}_settlement_{month_name}_{year}.xlsx
@@ -23,8 +28,8 @@ Output:
 from __future__ import annotations
 
 import argparse
-import csv
 import json
+import sys
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -35,6 +40,11 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 _REPO = Path(__file__).resolve().parent.parent
+
+# Import the shared grove-sheet computation. The path manipulation lets the
+# script run as a CLI without installing the package.
+sys.path.insert(0, str(_REPO / "src"))
+from settle.load.grove_sheet import compute_sheet_rows  # noqa: E402
 
 # Styling.
 _BOLD   = Font(bold=True)
@@ -78,17 +88,17 @@ def _read_provenance(cell: Path) -> dict:
         return json.load(f)
 
 
-def _read_venues(cell: Path) -> list[dict]:
-    with (cell / "venues.csv").open() as f:
-        return list(csv.DictReader(f))
+def _sheet_rows_as_strings(sheet_rows: list[dict]) -> list[dict]:
+    """Convert ``compute_sheet_rows`` output (per-venue Decimal values) into
+    string-keyed dicts to match the legacy CSV-row shape that the xlsx
+    writers historically consumed.
 
-
-def _read_grove_sheet(cell: Path) -> list[dict]:
-    p = cell / "grove_sheet.csv"
-    if not p.exists():
-        return []
-    with p.open() as f:
-        return list(csv.DictReader(f))
+    The writers (``_write_summary``, ``_write_venues``, ``_write_sky_revenue``,
+    ``_write_sde``) read fields via ``r["foo"]`` then ``_D(r["foo"])`` —
+    accepting either CSV strings or Decimals already. We pass Decimals
+    straight through; the writers' ``_D`` parsing is a no-op for them.
+    """
+    return sheet_rows
 
 
 def _read_prime_yaml(prime_id: str) -> dict:
@@ -606,7 +616,7 @@ def _output_filename(prime_id: str, month: str) -> str:
 def build_xlsx(prime_id: str, month: str) -> Path:
     cell_dir = _REPO / "settlements" / prime_id / month
     prov     = _read_provenance(cell_dir)
-    sheet    = _read_grove_sheet(cell_dir)
+    sheet, _totals = compute_sheet_rows(prov, prime_id)
     cfg      = _read_prime_yaml(prime_id)
     sde      = _read_sde(prime_id, date.fromisoformat(prov["period"]["start"]))
 
@@ -636,8 +646,6 @@ def main() -> int:
     parser.add_argument("--prime", default="grove")
     parser.add_argument("--month", default="2026-04")
     args = parser.parse_args()
-    import sys
-    sys.path.insert(0, str(_REPO / "src"))
     out = build_xlsx(args.prime, args.month)
     print(f"Wrote {out}")
     return 0

@@ -1359,19 +1359,19 @@ def test_venue_revenue_susds_spread_reimbursement_preserved_via_dataclasses_repl
     assert vr_updated.sd_revenue == vr.sd_revenue
 
 
-def test_venue_revenue_susds_spread_serialised_to_csv():
+def test_venue_revenue_susds_spread_serialised_to_provenance():
     """The compute layer plumbs ``susds_spread_reimbursement`` onto
-    ``VenueRevenue``; the Load layer (``write_venues_csv``) must include it
-    in the row so ``build_monthly_report.py`` can read it back as
-    ``r.get('susds_spread_reimbursement')``. Regression guard against the
-    CSV header / row drifting out of sync."""
-    import csv
+    ``VenueRevenue``; the Load layer (``write_provenance``) must include
+    it in the JSON row so ``settle.load.grove_sheet.compute_sheet_rows``
+    can read it back as ``r.get('susds_spread_reimbursement')``.
+    Regression guard against the JSON schema drifting out of sync."""
+    import json
     import tempfile
     import dataclasses
     from pathlib import Path
 
     from settle.domain.monthly_pnl import MonthlyPnL
-    from settle.load.csv import write_venues_csv
+    from settle.load.provenance import write_provenance
 
     inputs = VenueRevenueInputs(
         venue=_venue("S37"),
@@ -1383,7 +1383,7 @@ def test_venue_revenue_susds_spread_serialised_to_csv():
 
     pnl = MonthlyPnL(
         prime_id="spark",
-        month=_period().start.replace(day=1),  # ignored; only venue_breakdown matters
+        month=_period().start.replace(day=1),
         period=_period(),
         sky_revenue=Decimal("0"),
         agent_rate=Decimal("0"),
@@ -1393,14 +1393,15 @@ def test_venue_revenue_susds_spread_serialised_to_csv():
         pin_blocks_som={Chain.ETHEREUM: 0},
     )
     with tempfile.TemporaryDirectory() as tmp:
-        path = write_venues_csv(pnl, Path(tmp) / "venues.csv")
-        assert path is not None
+        path = write_provenance(pnl, Path(tmp) / "provenance.json")
         with path.open() as f:
-            rows = list(csv.DictReader(f))
+            prov = json.load(f)
+    rows = prov["venue_breakdown"]
     assert len(rows) == 1
     assert "susds_spread_reimbursement" in rows[0], (
-        "venues.csv must carry susds_spread_reimbursement column — "
-        "downstream build_monthly_report reads it via r.get(...)"
+        "provenance.json venue_breakdown rows must carry "
+        "susds_spread_reimbursement — settle.load.grove_sheet reads it "
+        "via r.get(...)"
     )
     assert Decimal(rows[0]["susds_spread_reimbursement"]) == Decimal("25479.45")
 

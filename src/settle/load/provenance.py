@@ -104,6 +104,16 @@ def render_provenance(
                 # 30 bps spread deducted from sky_revenue for this venue.
                 # Non-zero only for sky_savings_token Cat B venues.
                 "susds_spread_reimbursement": str(v.susds_spread_reimbursement),
+                # When True, this venue's avg_value is excluded from the CoF
+                # allocation denominator in post-hoc reporting. Mirrors the
+                # ``Venue.cof_excluded`` flag, propagated here so the
+                # settlement xlsx builder doesn't have to re-load YAML.
+                "cof_excluded": v.cof_excluded,
+                # Time-weighted average daily lending-idle deduction for
+                # Cat C/D venues with ``lending_idle_usds: true``. The
+                # post-hoc CoF allocator subtracts this from avg_value
+                # before splitting cof_total across venues.
+                "lending_idle_tw_avg_usd": str(v.lending_idle_tw_avg_usd),
                 "br_charge": str(v.br_charge),
                 "sky_direct_shortfall": str(v.sky_direct_shortfall),
             }
