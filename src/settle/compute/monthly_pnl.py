@@ -1630,10 +1630,34 @@ def compute_monthly_pnl(
     SDE venues only, and ``compute_agent_rate`` is skipped entirely. This is
     substantially faster because it avoids the hundreds of per-venue RPC calls
     needed for prime_agent_revenue. The returned ``MonthlyPnL`` has
-    ``prime_agent_revenue=0`` and ``agent_rate=0``; ``sky_revenue`` is fully
-    accurate (all utilized components + SDE revenue are still computed).
+    ``prime_agent_revenue=0`` and ``agent_rate=0``.
+
+    **Debug mode — sky_revenue caveat.** sky_revenue is accurate to within
+    ``Σ Cat B susds_spread_reimbursement`` for primes with
+    ``sky_savings_token`` Cat B venues. Those venues are not SDE entries, so
+    they are skipped in sky_only mode; their per-venue 30bps reimbursements
+    are therefore NOT deducted from sky_revenue. Curve LP and PSM3 sUSDS-leg
+    spread components are computed pre-loop and ARE deducted. For canonical
+    sky_revenue use the default (non-sky-only) path. A WARNING is emitted at
+    invocation time if Cat B sUSDS venues are present.
     """
     sources = sources if sources is not None else Sources()
+
+    # sky_only debug-mode warning — see docstring above.
+    if sky_only:
+        _catB_sUSDS_venues = [
+            v.id for v in prime.venues
+            if getattr(v, "sky_savings_token", False)
+            and not getattr(v, "demand_side_spread", False)
+        ]
+        if _catB_sUSDS_venues:
+            _log.warning(
+                "sky_only mode: prime %s has Cat B sky_savings_token venues %s "
+                "— their 30bps spread reimbursement will NOT be deducted from "
+                "sky_revenue. For canonical sky_revenue, re-run without "
+                "--sky-only. (Curve LP and PSM3 sUSDS spreads ARE deducted.)",
+                prime.id, _catB_sUSDS_venues,
+            )
 
     # 1. Resolve the block resolver up front. We need it for pin_blocks (if not
     #    supplied) AND for V3 inflow tracking (event block → date conversion).
