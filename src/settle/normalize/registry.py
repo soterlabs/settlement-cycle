@@ -17,10 +17,12 @@ from .protocols import (
     INavOracleSource,
     IPositionBalanceSource,
     IPsm3Source,
+    ISavingsV2DeployedSource,
     ISSRSource,
 )
 from .sources.dune_balances import DuneBalanceSource
 from .sources.dune_debt import DuneDebtSource
+from .sources.dune_savings_v2_deployed import DuneSavingsV2DeployedSource
 from .sources.dune_ssr import DuneSSRSource
 from .sources.oracles import (
     ChronicleNavSource,
@@ -47,6 +49,10 @@ _BALANCE_SOURCES: dict[str, type[IBalanceSource]] = {
 
 _SSR_SOURCES: dict[str, type[ISSRSource]] = {
     "dune": DuneSSRSource,
+}
+
+_SAVINGS_V2_DEPLOYED_SOURCES: dict[str, type[ISavingsV2DeployedSource]] = {
+    "dune": DuneSavingsV2DeployedSource,
 }
 
 _POSITION_BALANCE_SOURCES: dict[str, type[IPositionBalanceSource]] = {
@@ -98,6 +104,15 @@ def get_balance_source(name: str = "dune") -> IBalanceSource:
             f"Unknown balance source {name!r}. Available: {sorted(_BALANCE_SOURCES)}"
         )
     return _BALANCE_SOURCES[name]()
+
+
+def get_savings_v2_deployed_source(name: str = "dune") -> ISavingsV2DeployedSource:
+    if name not in _SAVINGS_V2_DEPLOYED_SOURCES:
+        raise UnknownSourceError(
+            f"Unknown savings-v2-deployed source {name!r}. "
+            f"Available: {sorted(_SAVINGS_V2_DEPLOYED_SOURCES)}"
+        )
+    return _SAVINGS_V2_DEPLOYED_SOURCES[name]()
 
 
 def get_ssr_source(name: str = "dune") -> ISSRSource:

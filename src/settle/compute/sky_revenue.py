@@ -215,13 +215,12 @@ def compute_sky_revenue_daily(
         #   - USDC  leg → SDE per Atlas §A.2.3.2.2.3 (Sky takes the actual
         #                 yield, ≈ $0 for passive reserves); folded into
         #                 ``cum_sde`` so it's excluded from BR base
-        #   - sUSDS leg → NOT subtracted here. The prime captures SSR via the
-        #                 share-price appreciation of its PSM3 claim; charging
-        #                 full BR on this slice and crediting the prime 30 bps
-        #                 as Prime Revenue (in the orchestrator) makes the
-        #                 SSR / BR / 30 bps composite net to zero. Subtracting
-        #                 here would give the prime SSR for free at Sky's
-        #                 expense.
+        #   - sUSDS leg → NOT subtracted here. Sky charges full BR on this
+        #                 slice; the orchestrator deducts the 30 bps spread
+        #                 (psm3_susds_spread) from sky_revenue after the fact
+        #                 (same treatment as Cat B ALM venues, Rule 5).
+        #                 Subtracting here instead would give the prime SSR for
+        #                 free at Sky's expense.
         cum_psm_usds_leg  = cum_at_or_before(psm_usds, "cum_usds_leg", current)
         cum_psm_usdc_sde  = cum_at_or_before(psm_usds, "cum_usdc",     current)
         cum_sde = cum_at_or_before(sde_asset_value, "cum_value", current) + cum_psm_usdc_sde

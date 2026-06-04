@@ -96,6 +96,13 @@ class VenueRevenue:
     # Serialized as ``tw_avg_notional_usd`` in venues.csv and
     # provenance.json (same field-name convention as ``tw_avg_value``).
     tw_avg_notional: Decimal = Decimal("0")
+    # 30 bps spread reimbursement deducted from Sky Revenue for
+    # ``sky_savings_token: true`` Cat B venues. The prime earns SSR through
+    # the sUSDS share price; Sky charges full BR then reduces its invoice by
+    # this amount, making prime's net cost = SSR × V (economic neutrality).
+    # Formula: value_som × (daily_compounding_factor(BASE_RATE_OVER_SSR) − 1)
+    #          × n_days. Zero for all other venues.
+    susds_spread_reimbursement: Decimal = Decimal("0")
     # Legacy fields kept for provenance round-trip on existing settlements
     # written under the old shortfall model. New runs always emit 0 for these.
     br_charge: Decimal = Decimal("0")
@@ -186,30 +193,30 @@ class MonthlyPnL:
     # reporters (xlsx "SDE daily" tab) to render the Sky / Grove /
     # in-flight decomposition without re-running on-chain reads.
     sde_daily_breakdown: list[SDEDailyBreakdown] = field(default_factory=list)
-    # Aggregate 30 bps spread credited to ``prime_agent_revenue`` for all
-    # sky_savings_token positions (Curve LP sUSDS + PSM3 sUSDS leg).
-    # **Already added to ``prime_agent_revenue``** by the compute layer —
-    # this field is surfaced for audit / Grove-comparable display only and
-    # does NOT alter ``sky_revenue`` (the BR remains charged on the
-    # underlying utilized in full; the 30 bps lands in Prime Revenue, not
-    # as a Sky deduction). Equals ``curve_susds_spread + psm3_susds_spread``
-    # for primes wired up with those positions; zero otherwise. Per-Cat-B-
-    # ALM sUSDS-venue attribution is NOT currently plumbed through — the
-    # aggregate is prime-level only.
+    # Total 30 bps spread deducted from ``sky_revenue`` for all
+    # ``sky_savings_token`` Cat B venues (= Σ vr.susds_spread_reimbursement
+    # across the venue breakdown). Replaces the prior Prime-Revenue-credit
+    # semantics (PR ``fix/susds-methodology``): Sky now charges full BR on
+    # utilized, then reduces its invoice by this aggregate — prime's net
+    # cost matches SSR × V (economic neutrality). ``sky_revenue`` is
+    # already net of this deduction; field surfaced for audit /
+    # reconciliation. Zero for primes with no sky_savings_token Cat B
+    # venues.
     susds_spread_reimbursement: Decimal = Decimal("0")
     # Pure BR × full ilk debt with NO deductions: no idle-USDS, no PSM,
     # no SDE asset-value, no Curve/lending idle. Uses the same subsidised
     # BR + ramp schedule as the actual ``sky_revenue``. Display-only —
     # NOT the gross analog of ``sky_revenue`` (which also adds the SDE
-    # actual revenue on top of BR-on-utilized). The two relate as:
+    # actual revenue on top of BR-on-utilized and subtracts the sUSDS
+    # spread reimbursement). The two relate as:
     #
     #     sky_revenue_gross = Σ_d subsidised_BR × cum_debt_d
     #     sky_revenue       = Σ_d subsidised_BR × utilized_d  +  sde_revenue
+    #                         − susds_spread_reimbursement
     #
     # so for primes with active SDE positions, ``sky_revenue`` can EXCEED
-    # ``sky_revenue_gross`` (when SDE revenue > the deductions' BR cost).
-    # ``susds_spread_reimbursement`` is NOT in this identity — it credits
-    # ``prime_agent_revenue``, not ``sky_revenue``.
+    # ``sky_revenue_gross`` (when SDE revenue > the deductions' BR cost
+    # plus the susds spread reimbursement).
     #
     # The field is consumed by ``build_monthly_report.py`` to display
     # "BR reduction from idle/SDE deductions" as ``sky_revenue_gross

@@ -45,6 +45,7 @@ def write_venues_csv(pnl: MonthlyPnL, dest: Path) -> Path | None:
         "revenue", "actual_revenue", "external_revenue",
         "tw_avg_value_usd", "tw_avg_notional_usd",
         "cof_excluded", "lending_idle_tw_avg_usd",
+        "susds_spread_reimbursement",
         "br_charge", "sky_direct_shortfall",
     ]
     with dest.open("w", newline="") as f:
@@ -59,6 +60,7 @@ def write_venues_csv(pnl: MonthlyPnL, dest: Path) -> Path | None:
                 f"{v.tw_avg_value}", f"{v.tw_avg_notional}",
                 "true" if v.cof_excluded else "false",
                 f"{v.lending_idle_tw_avg_usd}",
+                f"{v.susds_spread_reimbursement}",
                 f"{v.br_charge}", f"{v.sky_direct_shortfall}",
             ])
     return dest

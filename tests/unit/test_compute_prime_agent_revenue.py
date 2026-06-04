@@ -1309,3 +1309,153 @@ def test_fee_with_erc4626_period_inflow_branch():
     # fee = 1 × $15K → actual_revenue = $0
     assert vr.period_inflow == Decimal("49985000")
     assert vr.actual_revenue == Decimal("0")
+
+
+# --- sky_savings_token susds_spread_reimbursement plumbing ---------------
+#
+# Cat B ``sky_savings_token`` venues (Spark S32 / S37 / S43 / S47 / S51)
+# get a 30bps spread reimbursement applied as a Sky Revenue REDUCTION (not
+# a Prime Revenue credit). The orchestrator computes
+# ``_susds_spread_reimbs[venue.id] = value_som × spread_daily × n_days``
+# and injects it onto each VenueRevenue via ``dataclasses.replace``. These
+# tests pin the dataclass-field plumbing — the actual orchestrator
+# computation is exercised at the integration level.
+
+def test_venue_revenue_susds_spread_reimbursement_defaults_to_zero():
+    """Default value is zero for non-sky_savings_token venues so the field is
+    safe to sum across the breakdown unconditionally."""
+    inputs = VenueRevenueInputs(
+        venue=_venue("V1"),
+        value_som=Decimal("100_000_000"), value_eom=Decimal("100_000_000"),
+        inflow_timeseries=_empty_inflow(),
+    )
+    vr = compute_venue_revenue(_period(), inputs)
+    assert vr.susds_spread_reimbursement == Decimal("0")
+
+
+def test_venue_revenue_susds_spread_reimbursement_preserved_via_dataclasses_replace():
+    """The orchestrator injects the Cat B per-venue reimbursement via
+    ``dataclasses.replace(vr, susds_spread_reimbursement=X)`` AFTER
+    ``compute_venue_revenue`` returns. Regression guard: that field MUST be
+    a writeable ``dataclasses.replace`` target and survive the replace
+    operation — otherwise the per-venue plumbing → CSV → report breaks
+    silently while the aggregate stays correct.
+    """
+    import dataclasses
+    inputs = VenueRevenueInputs(
+        venue=_venue("S37"),
+        value_som=Decimal("100_000_000"), value_eom=Decimal("100_000_000"),
+        inflow_timeseries=_empty_inflow(),
+    )
+    vr = compute_venue_revenue(_period(), inputs)
+    # Mirror the orchestrator: monthly_pnl.py:2929-2937 dataclasses.replace pass.
+    spread = Decimal("25_479.45")    # 100M × 30bps / 365 × 31
+    vr_updated = dataclasses.replace(vr, susds_spread_reimbursement=spread)
+    assert vr_updated.susds_spread_reimbursement == spread
+    # All other fields preserved.
+    assert vr_updated.venue_id == "S37"
+    assert vr_updated.value_som == Decimal("100_000_000")
+    assert vr_updated.revenue == vr.revenue
+    assert vr_updated.sd_revenue == vr.sd_revenue
+
+
+def test_venue_revenue_susds_spread_serialised_to_csv():
+    """The compute layer plumbs ``susds_spread_reimbursement`` onto
+    ``VenueRevenue``; the Load layer (``write_venues_csv``) must include it
+    in the row so ``build_monthly_report.py`` can read it back as
+    ``r.get('susds_spread_reimbursement')``. Regression guard against the
+    CSV header / row drifting out of sync."""
+    import csv
+    import tempfile
+    import dataclasses
+    from pathlib import Path
+
+    from settle.domain.monthly_pnl import MonthlyPnL
+    from settle.load.csv import write_venues_csv
+
+    inputs = VenueRevenueInputs(
+        venue=_venue("S37"),
+        value_som=Decimal("100_000_000"), value_eom=Decimal("100_000_000"),
+        inflow_timeseries=_empty_inflow(),
+    )
+    vr = compute_venue_revenue(_period(), inputs)
+    vr = dataclasses.replace(vr, susds_spread_reimbursement=Decimal("25479.45"))
+
+    pnl = MonthlyPnL(
+        prime_id="spark",
+        month=_period().start.replace(day=1),  # ignored; only venue_breakdown matters
+        period=_period(),
+        sky_revenue=Decimal("0"),
+        agent_rate=Decimal("0"),
+        prime_agent_revenue=Decimal("0"),
+        monthly_pnl=Decimal("0"),
+        venue_breakdown=[vr],
+        pin_blocks_som={Chain.ETHEREUM: 0},
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        path = write_venues_csv(pnl, Path(tmp) / "venues.csv")
+        assert path is not None
+        with path.open() as f:
+            rows = list(csv.DictReader(f))
+    assert len(rows) == 1
+    assert "susds_spread_reimbursement" in rows[0], (
+        "venues.csv must carry susds_spread_reimbursement column — "
+        "downstream build_monthly_report reads it via r.get(...)"
+    )
+    assert Decimal(rows[0]["susds_spread_reimbursement"]) == Decimal("25479.45")
+
+
+def test_monthly_pnl_susds_spread_reimbursement_aggregates_per_venue():
+    """The headline ``MonthlyPnL.susds_spread_reimbursement`` is the
+    aggregate sky-revenue reduction; it must include both the per-venue
+    Cat B amounts AND any Curve LP + PSM3 components folded in by the
+    orchestrator. Pins that the field exists and can carry the aggregate
+    independently of the per-venue ``VenueRevenue.susds_spread_reimbursement``
+    fields."""
+    from settle.domain.monthly_pnl import MonthlyPnL
+
+    # Two Cat B venues, each reimbursed $10K; plus $5K Curve + $3K PSM3.
+    breakdown = [
+        compute_venue_revenue(_period(), VenueRevenueInputs(
+            venue=_venue("S37"),
+            value_som=Decimal("100_000_000"), value_eom=Decimal("100_000_000"),
+            inflow_timeseries=_empty_inflow(),
+        )),
+        compute_venue_revenue(_period(), VenueRevenueInputs(
+            venue=_venue("S43"),
+            value_som=Decimal("100_000_000"), value_eom=Decimal("100_000_000"),
+            inflow_timeseries=_empty_inflow(),
+        )),
+    ]
+    import dataclasses
+    breakdown = [
+        dataclasses.replace(breakdown[0], susds_spread_reimbursement=Decimal("10000")),
+        dataclasses.replace(breakdown[1], susds_spread_reimbursement=Decimal("10000")),
+    ]
+    # Mirrors monthly_pnl.py:2943-2947 aggregation formula.
+    curve = Decimal("5000")
+    psm3 = Decimal("3000")
+    total_reimb = sum(
+        (vr.susds_spread_reimbursement for vr in breakdown), Decimal("0"),
+    ) + curve + psm3
+    assert total_reimb == Decimal("28000")
+
+    sky_rev = Decimal("100000") - total_reimb
+    pnl = MonthlyPnL(
+        prime_id="spark", month=_period().start.replace(day=1), period=_period(),
+        sky_revenue=sky_rev,
+        agent_rate=Decimal("0"), prime_agent_revenue=Decimal("0"),
+        # MonthlyPnL.__post_init__ enforces:
+        #   monthly_pnl ≡ prime_rev + agent_rate + distribution_rewards − sky_rev
+        monthly_pnl=-sky_rev,
+        venue_breakdown=breakdown,
+        pin_blocks_som={Chain.ETHEREUM: 0},
+        curve_susds_spread=curve, psm3_susds_spread=psm3,
+        susds_spread_reimbursement=total_reimb,
+    )
+    # Headline aggregate must equal Σ per-venue + curve + psm3.
+    assert pnl.susds_spread_reimbursement == Decimal("28000")
+    assert pnl.susds_spread_reimbursement == (
+        sum((vr.susds_spread_reimbursement for vr in pnl.venue_breakdown), Decimal("0"))
+        + pnl.curve_susds_spread + pnl.psm3_susds_spread
+    )

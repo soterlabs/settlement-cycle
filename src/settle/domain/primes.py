@@ -232,14 +232,31 @@ class Venue:
     # Sky Savings Token flag. When True, the venue token is the Sky Savings
     # vault (sUSDS or a per-chain canonical wrapper) and its revenue treatment
     # differs from normal Cat B:
-    #   prime_revenue = value_som × 30bps_daily × n_days  (spread only)
+    #   prime_revenue = 0  (SSR accrues via share price; no additional credit)
+    #   sky_revenue_reduction = value_som × 30bps_daily × n_days  (spread
+    #     deducted from Sky Revenue, surfaced as susds_spread_reimbursement)
     # The SSR appreciation is NOT Prime Revenue — the prime already receives
     # SSR through the sUSDS share price, so also crediting it in the settlement
-    # model would double-count (total = 2×SSR − BR > 0, overcrediting by ~3.7%/yr).
-    # Economic intent: net = SSR (token gain) + 30bps (Prime Rev) − BR (Sky Rev) = 0.
+    # model would double-count (total = 2×SSR − BR > 0, overcrediting ~3.7%/yr).
+    # Economic intent: prime cost = SSR × V, Sky net = SSR × V.
     # Applies to all direct sUSDS holdings regardless of chain or venue type
     # (raw ALM, LP token, etc.). Set explicitly in the prime YAML config.
+    # See docs/METHODOLOGY.md §1 special-case and docs/RULES.md Rule 5.
     sky_savings_token: bool = False
+    # When True, subtract the daily Savings V2 deployed_amount from this
+    # venue's USD value (value_som, value_eom, tw_avg). Used for S32
+    # (sUSDS raw / POL at Spark ETH ALM) where the ALM's sUSDS balance
+    # includes shares deployed into Savings V2 that are not truly held
+    # at the ALM proxy. Requires sky_savings_token: true.
+    deduct_savings_v2_deployed: bool = False
+    # When True (and sky_savings_token is also True), the 30 bps spread
+    # reimbursement is NOT deducted from Sky Revenue in this settlement report.
+    # Use when the spread is accounted for elsewhere — specifically when the
+    # sUSDS held here is collateralising demand-side deposits (e.g. Spark
+    # Savings / Savings V2 on Ethereum), and the reimbursement will be applied
+    # as part of Demand Side Distribution Rewards rather than Supply Side PnL.
+    # Sky still charges full BR on utilized; prime_revenue remains 0.
+    demand_side_spread: bool = False
     # Additional addresses to treat as "burn destinations" when classifying
     # share Transfers for Cat B inflow accounting. ERC-4626 vaults with a
     # withdrawal-queue pattern (Maple PoolV2 etc.) Transfer the user's
@@ -383,7 +400,7 @@ class CurveIdleUsdsConfig:
     """
 
     coin: Address          # address of the target coin in the Curve pool
-    sky_savings_token: bool = False  # True → 30bps spread to Prime Revenue; no utilized deduction
+    sky_savings_token: bool = False  # True → 30bps spread deducted from Sky Revenue; no utilized deduction
     sde_coin: "Address | None" = None  # par-stable coin that is the SDE exposure (optional)
 
 

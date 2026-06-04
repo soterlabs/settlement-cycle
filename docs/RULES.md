@@ -80,23 +80,35 @@ daily_sky_revenue = utilized_usds × [(1 + borrow_rate)^(1/365) - 1]
 - Subproxy USDS and subproxy sUSDS are **not** deducted from utilized. They are treasury/risk capital that does not correspond solely to ilk debt.
 - The MSC settlement figures imply a slightly higher effective demand than our "utilized USDS" (~1-2% gap growing over time), possibly due to accumulated Vat rate on the ilk art. This is flagged in findings.
 
-## Rule 5: All held sUSDS — 30 bps spread is Prime Revenue
+## Rule 5: sUSDS spread — 30 bps deducted from Sky Revenue
 
-For **all** sUSDS holdings (raw at ALM or inside LP pools), crediting the SSR appreciation as Prime Revenue double-counts: the prime already receives SSR through the sUSDS share price, so an additional model credit would yield `(2×SSR − BR) × V > 0` — an overcredit of ~3.7%/yr. The intent is economic neutrality (net = 0). Prime Revenue is therefore the **30 bps spread** (BR − SSR) only.
+For sUSDS holdings at the ALM or inside LP pools, crediting the SSR appreciation as Prime Revenue double-counts: the prime already receives SSR through the sUSDS share price, so an additional model credit would yield `(2×SSR − BR) × V > 0` — an overcredit of ~3.7%/yr. The intent is economic neutrality (net = 0).
 
 Governed by the `sky_savings_token` flag in the prime YAML config — set explicitly per venue, not inferred from the token address.
 
 **Raw sUSDS at ALM** (`pricing_category: B` venues, flag at venue level):
 
 - Not deducted from `utilized`.
-- `prime_revenue = value_som × ((1 + 0.30%)^(1/365) − 1) × n_days`
-- Computed at SoM USDS value (`shares × convertToAssets(som_block)`).
+- Prime Revenue = **0** for these venues.
+- `sky_revenue_reduction = value_som × ((1 + 0.30%)^(1/365) − 1) × n_days`
+- The prime receives this reimbursement as a **reduction in Sky Revenue** (lower debt to Sky), not as Prime Revenue. Surfaced as `susds_spread_reimbursement` in `venues.csv`.
+- `sky_revenue` in the settlement output is already net of all such reductions.
 
 **sUSDS inside Curve LP pools** (`curve_idle_usds.sky_savings_token: true`):
 
 - Not deducted from `utilized`.
-- `prime_revenue_d = (alm_lp_d / pool_total_d) × (sUSDS_reserve_d × pps_d) × 30bps_daily`
-- Summed across the period and added to `prime_agent_revenue`.
+- Prime Revenue = **0** for the sUSDS slice.
+- `sky_revenue_reduction_d = (alm_lp_d / pool_total_d) × (sUSDS_reserve_d × pps_d) × 30bps_daily`
+- Summed across the period and deducted from `sky_revenue` (surfaced as `curve_susds_spread` in provenance, folded into `susds_spread_reimbursement` total).
 - `pps_d = convertToAssets(1 share, block_d)` to convert sUSDS→USDS.
 
-Net economic outcome for both cases: `SSR × V` (actual token gain) `+ 30bps × V` (Prime Revenue) `− BR × V` (Sky Revenue) = 0. Sky earns the net SSR; Prime is economically neutral.
+Net economic outcome: `SSR × V` (actual token gain) `− sky_revenue_net × share = SSR × V − SSR × V = 0`. Sky earns the net SSR; Prime is economically neutral.
+
+**Exception — demand-side sUSDS (`demand_side_spread: true`):**
+
+S32 (Spark ETH sUSDS POL) collateralises Spark Savings deposits (Savings V2), making it a demand-side position. The 30 bps spread reimbursement is applied via Demand Side Distribution Rewards and is **not** deducted from `sky_revenue` in this settlement report.
+
+- Prime Revenue = **0** (same as all `sky_savings_token` venues).
+- `sky_revenue` is **not** reduced — Sky charges full BR on `utilized` with no spread deduction for this venue.
+- The sUSDS is **not** subtracted from `utilized`. Even though not every USDS unit has been drawn from the ilk at every moment, keeping the full balance in the BR base correctly accounts for the total debt position. Subtracting it would undercount the prime's actual borrowing.
+- The flag `demand_side_spread: true` activates this path; it is independent of `sky_savings_token: true` (both must be set).
