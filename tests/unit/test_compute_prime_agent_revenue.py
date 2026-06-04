@@ -1459,3 +1459,126 @@ def test_monthly_pnl_susds_spread_reimbursement_aggregates_per_venue():
         sum((vr.susds_spread_reimbursement for vr in pnl.venue_breakdown), Decimal("0"))
         + pnl.curve_susds_spread + pnl.psm3_susds_spread
     )
+
+
+# --- _susds_cat_b_spread_reimb daily integration -------------------------
+#
+# Rule 5 consistency: the Cat B sky_savings_token 30bps reimbursement now
+# uses ``Σ_d V_d × spread_daily`` like the Curve LP and PSM3 paths, instead
+# of the prior flat ``value_som × n_days × spread_daily`` approximation.
+# These tests pin the helper's daily-integration semantics.
+
+def test_susds_cat_b_spread_reimb_stable_position_matches_flat_formula():
+    """Backward-compat: with NO inflows during the period, the daily
+    integration must produce the same number as the old flat formula
+    (V_som × spread_daily × n_days). This is the case for venues with no
+    mid-period sUSDS movement — the change is a no-op."""
+    from settle.compute.monthly_pnl import _susds_cat_b_spread_reimb
+    from settle.compute._helpers import daily_compounding_factor
+    from settle.compute.sky_revenue import BASE_RATE_OVER_SSR
+    spread_daily = daily_compounding_factor(BASE_RATE_OVER_SSR)
+    value_som = Decimal("100_000_000")
+    period = _period()  # 31 days
+    expected_flat = value_som * spread_daily * Decimal(period.n_days)
+    # Empty inflow_ts → V_d = value_som every day → integrates to same answer.
+    result = _susds_cat_b_spread_reimb(value_som, _empty_inflow(), period)
+    assert result == expected_flat
+
+
+def test_susds_cat_b_spread_reimb_mid_period_deposit_integrates_correctly():
+    """The bug the helper fixes: a mid-period sUSDS deposit. Old flat
+    formula (value_som × n_days × spread_daily) under-counted by
+    ``Σ_{d>=deposit_day} (deposit_amount) × spread_daily``. Daily
+    integration correctly attributes the spread to the days the prime
+    actually held the higher balance.
+
+    Scenario: $100M SoM, +$50M deposit on Mar 15 (day 15 of 31).
+        Days 1-14: V_d = $100M (14 days)
+        Days 15-31: V_d = $150M (17 days)
+        Σ V_d = 14×$100M + 17×$150M = $1.4B + $2.55B = $3.95B
+        flat = $100M × 31 = $3.1B
+        Δ = $850M × spread_daily (= +$850M × 30bps / 365 ≈ +$699)
+    """
+    from settle.compute.monthly_pnl import _susds_cat_b_spread_reimb
+    from settle.compute._helpers import daily_compounding_factor
+    from settle.compute.sky_revenue import BASE_RATE_OVER_SSR
+    spread_daily = daily_compounding_factor(BASE_RATE_OVER_SSR)
+    value_som = Decimal("100_000_000")
+    period = _period()
+    # Mar 15 = day 15 of 31. Construct cum_inflow timeseries.
+    deposit_day = date(2026, 3, 15)
+    inflow_ts = pd.DataFrame({
+        "block_date":   [deposit_day],
+        "daily_inflow": [Decimal("50_000_000")],
+        "cum_inflow":   [Decimal("50_000_000")],
+    })
+    result = _susds_cat_b_spread_reimb(value_som, inflow_ts, period)
+
+    # Σ V_d = 14×$100M + 17×$150M = $3,950M.
+    expected = Decimal("3_950_000_000") * spread_daily
+    assert result == expected
+
+    # Sanity: result strictly greater than flat formula (more days at $150M).
+    flat = value_som * spread_daily * Decimal(period.n_days)
+    assert result > flat
+    # Δ ≈ $850M × spread_daily (~$699 at 30bps).
+    delta = result - flat
+    assert delta == Decimal("850_000_000") * spread_daily
+
+
+def test_susds_cat_b_spread_reimb_mid_period_withdrawal_integrates_correctly():
+    """Inverse case: $150M SoM, −$50M withdrawal on Mar 15. Daily
+    integration produces a smaller spread than the flat formula (the prime
+    held less for the second half of the month), so sky_revenue gets a
+    smaller reduction → sky earns more. Flat formula over-counted."""
+    from settle.compute.monthly_pnl import _susds_cat_b_spread_reimb
+    from settle.compute._helpers import daily_compounding_factor
+    from settle.compute.sky_revenue import BASE_RATE_OVER_SSR
+    spread_daily = daily_compounding_factor(BASE_RATE_OVER_SSR)
+    value_som = Decimal("150_000_000")
+    period = _period()
+    withdrawal_day = date(2026, 3, 15)
+    inflow_ts = pd.DataFrame({
+        "block_date":   [withdrawal_day],
+        "daily_inflow": [Decimal("-50_000_000")],
+        "cum_inflow":   [Decimal("-50_000_000")],
+    })
+    result = _susds_cat_b_spread_reimb(value_som, inflow_ts, period)
+    # Σ V_d = 14×$150M + 17×$100M = $2.1B + $1.7B = $3.8B
+    expected = Decimal("3_800_000_000") * spread_daily
+    assert result == expected
+    flat = value_som * spread_daily * Decimal(period.n_days)
+    assert result < flat   # daily integration < flat for withdrawals
+
+
+def test_susds_cat_b_spread_reimb_zero_position_returns_zero():
+    """Degenerate case: no position throughout. Stable-zero AND empty inflow_ts
+    short-circuit to zero (no `Σ` to compute)."""
+    from settle.compute.monthly_pnl import _susds_cat_b_spread_reimb
+    assert _susds_cat_b_spread_reimb(Decimal("0"), _empty_inflow(), _period()) == Decimal("0")
+    assert _susds_cat_b_spread_reimb(Decimal("0"), None, _period()) == Decimal("0")
+
+
+def test_susds_cat_b_spread_reimb_clamps_negative_daily_position():
+    """If a transient accounting asymmetry produces a negative V_d (same
+    cause as the ``tw_avg_value`` clamp — external arrival excluded from
+    capital_net, outbound deployment included), the spread integration
+    clamps those days to zero so the reimbursement stays non-negative."""
+    from settle.compute.monthly_pnl import _susds_cat_b_spread_reimb
+    from settle.compute._helpers import daily_compounding_factor
+    from settle.compute.sky_revenue import BASE_RATE_OVER_SSR
+    spread_daily = daily_compounding_factor(BASE_RATE_OVER_SSR)
+    value_som = Decimal("50_000_000")
+    period = _period()
+    # Withdrawal larger than value_som on day 5 → V_d would go negative.
+    inflow_ts = pd.DataFrame({
+        "block_date":   [date(2026, 3, 5)],
+        "daily_inflow": [Decimal("-80_000_000")],
+        "cum_inflow":   [Decimal("-80_000_000")],
+    })
+    result = _susds_cat_b_spread_reimb(value_som, inflow_ts, period)
+    # Days 1-4: V_d = $50M (4 days × $50M = $200M)
+    # Days 5-31: V_d = -$30M → clamped to 0 (contributes nothing)
+    expected = Decimal("200_000_000") * spread_daily
+    assert result == expected
+    assert result > Decimal("0")    # always non-negative
