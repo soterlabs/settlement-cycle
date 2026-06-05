@@ -1,18 +1,27 @@
 """Top-level settlement writer + default output-path resolver.
 
-Emits only the canonical artifacts:
-  - ``provenance.json``                                 (machine-readable)
-  - ``{prime}_settlement_{month_name}_{year}.xlsx``     (human-readable)
+Emits three artifacts per monthly run:
+  - ``provenance.json``                                 (machine-readable,
+                                                         large, regenerable,
+                                                         **gitignored**)
+  - ``summary.md``                                      (text-only, small,
+                                                         deterministic —
+                                                         the **PR-review
+                                                         surface**, tracked
+                                                         in git)
+  - ``{prime}_settlement_{month_name}_{year}.xlsx``     (canonical
+                                                         human-readable
+                                                         multi-tab Excel,
+                                                         tracked in git)
 
-The xlsx is rendered in-process by ``scripts.build_settlement_xlsx``,
-which reads only ``provenance.json`` (and static config files) — no
-intermediate CSV or markdown artifacts.
+The xlsx is rendered by ``scripts.build_settlement_xlsx`` (subprocess —
+reads only ``provenance.json``). The summary is rendered in-process by
+``settle.load.summary.write_summary``. The Grove-shaped per-venue
+re-attribution used by the xlsx is computed in-process by
+``settle.load.grove_sheet.compute_sheet_rows``.
 
 Historical artifacts (``pnl.md`` / ``pnl.csv`` / ``venues.csv`` /
 ``off_protocol.csv`` / ``grove_sheet.{md,csv,xlsx}``) have been retired.
-All the data they carried lives in ``provenance.json`` now and the
-Grove-shaped per-venue re-attribution is computed in-process by
-``settle.load.grove_sheet.compute_sheet_rows``.
 """
 
 from __future__ import annotations
@@ -24,6 +33,7 @@ from pathlib import Path
 
 from ..domain.monthly_pnl import MonthlyPnL
 from .provenance import write_provenance
+from .summary import write_summary
 
 # settlement-cycle/src/settle/load/writer.py → parents[3] = settlement-cycle/
 _REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -63,10 +73,12 @@ def write_settlement(
     """
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    prov_path = write_provenance(
+        pnl, output_dir / "provenance.json", sources=sources,
+    )
     written: dict[str, Path] = {
-        "provenance": write_provenance(
-            pnl, output_dir / "provenance.json", sources=sources,
-        ),
+        "provenance": prov_path,
+        "summary":    write_summary(prov_path, output_dir / "summary.md"),
     }
 
     # Build the canonical xlsx. The script-as-subprocess shape keeps the

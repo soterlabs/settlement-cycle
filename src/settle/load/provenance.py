@@ -55,6 +55,14 @@ def render_provenance(
             # subsidy schedule as actual sky_revenue. Display-only — not
             # part of any settlement invariant.
             "sky_revenue_gross": str(pnl.sky_revenue_gross),
+            # SDE revenue (Σ venue.sd_revenue across the breakdown). Already
+            # rolled into sky_revenue; surfaced separately for the summary
+            # headline.
+            "sde_revenue": str(pnl.sde_revenue),
+            # Net monthly P&L: prime_agent_revenue + agent_rate +
+            # distribution_rewards − sky_revenue. Negative when sky_revenue
+            # exceeds total prime revenue.
+            "monthly_pnl": str(pnl.monthly_pnl),
         },
         "venue_breakdown": [
             {

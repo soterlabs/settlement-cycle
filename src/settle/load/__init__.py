@@ -20,11 +20,14 @@ from it deterministically.
 
 from .grove_sheet import compute_sheet_rows
 from .provenance import write_provenance
+from .summary import render_summary, write_summary
 from .writer import default_output_dir, write_settlement
 
 __all__ = [
     "compute_sheet_rows",
     "default_output_dir",
+    "render_summary",
     "write_provenance",
     "write_settlement",
+    "write_summary",
 ]
