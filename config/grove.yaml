@@ -519,16 +519,16 @@ venues:
   # the pipeline translates the Avalanche EoD block to the corresponding
   # Ethereum block automatically. Verified working Dec-2025 onward
   # (NAV ~$1.020–$1.028, slowly appreciating CLO tranche).
-  # E21 (GACLO-1): skip: true is correct and intentional (BA decision).
+  # E21 (GACLO-1): now reads on-chain balance × $1 (const_one oracle).
   #
-  # Pricing model: const_one ($1/token). Un-skipping E21 would produce
-  # balance × $1 = principal deployed, which contributes $0 to revenue.
-  # skip: true and un-skip are therefore revenue-equivalent.
-  #
-  # Revenue capture: Galaxy distributes CLO yield as monthly USDC sweeps to
-  # the Grove Ethereum ALM (~10th of each month). Attributed directly to E21
-  # via the venue's cash_distributions config (payer → ALM on Ethereum).
-  # This does not affect E15 (USDC raw) or Sky revenue.
+  # 2026-06-05: removed ``skip: true`` to match BA Labs' balance-sheet
+  # display, which reads the GACLO-1 ``balanceOf(Grove Ava ALM) × $1``
+  # directly. The const_one oracle prices each token at par; value_eom
+  # now equals the on-chain principal. Revenue from this venue still
+  # comes from ``cash_distributions`` (Galaxy USDC sweeps to the Eth
+  # ALM, ~10th of each month) — un-skip does NOT introduce double-
+  # counting because the cash distribution payments hit Eth USDC (E15),
+  # not GACLO-1 itself, so they don't move E21's value_eom.
   - id: E20
     chain: avalanche_c
     label: 'Janus Henderson Anemoy AAA CLO (JAAA-avalanche)'
@@ -559,12 +559,11 @@ venues:
     chain: avalanche_c
     label: 'Galaxy Arch CLO Token (GACLO-1)'
     pricing_category: E
-    # skip: true is intentional (BA decision). CLO tokens issued/redeemed at $1;
-    # un-skipping would produce balance × $1 = principal, contributing $0 revenue.
-    # Revenue capture: Galaxy distributes CLO yield as monthly USDC sweeps (~10th
-    # of each month) to the Grove Ethereum ALM. Attributed directly to E21 via
-    # cash_distributions below — does not affect E15 (USDC raw) or Sky revenue.
-    skip: true
+    # Revenue capture: Galaxy distributes CLO yield as monthly USDC sweeps
+    # (~10th of each month) to the Grove Ethereum ALM. Attributed directly to
+    # E21 via cash_distributions below — does not affect E15 (USDC raw) or
+    # Sky revenue. The value_eom now reflects the on-chain GACLO-1 balance
+    # at $1/token (const_one), matching BA Labs.
     token:
       address: '0x2c0adff8e114f3ca106051144353ac703d24b901'
       symbol: 'GACLO-1'

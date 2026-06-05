@@ -1254,15 +1254,26 @@ def _cat_a_capital_inflow_timeseries(
     # the zero address ``b"\x00" * 20``) compare incorrectly. Use ``apply``
     # with Python ``in`` for correct bytes equality.
     norm = detail["counterparty"].map(_to_bytes)
-    is_external = norm.apply(lambda b: b in external_sources)
+    is_external_cp = norm.apply(lambda b: b in external_sources)
+
+    # External-counterparty classification is DIRECTIONAL: only positive
+    # signed_amount (inflows from the custodian to the ALM) are recognised
+    # as external yield. Negative signed_amount (outflows from the ALM TO
+    # the custodian — e.g. loan principal disbursements to Anchorage tri-
+    # party escrow) are CAPITAL movements, not negative yield. Without
+    # this directional check, a $99M ALM→Anchorage loan disbursement
+    # would surface as −$99M phantom yield (Spark May 2026 S26 USDC).
+    from decimal import Decimal as _Decimal
+    detail = detail.copy()
+    detail["_cp_bytes"] = norm
+    is_external = is_external_cp & (detail["signed_amount"].apply(
+        lambda x: _Decimal(str(x)) > 0
+    ))
 
     # Apply principal-return overrides: an inflow that's nominally from an
     # external source but matches a registered (date, amount) override is
     # reclassified as capital (e.g., a tri-party loan principal correction
     # or loan-termination return). Match tolerance: ±$1.
-    from decimal import Decimal as _Decimal
-    detail = detail.copy()
-    detail["_cp_bytes"] = norm
 
     if principal_return_overrides:
         def _is_override(row):
@@ -1278,7 +1289,7 @@ def _cat_a_capital_inflow_timeseries(
             return False
 
         is_principal_return = detail.apply(_is_override, axis=1)
-        # Capital = (not external) OR (external AND override-matched)
+        # Capital = (not external INFLOW) OR (external AND override-matched)
         capital_mask = ~is_external | is_principal_return
     else:
         capital_mask = ~is_external

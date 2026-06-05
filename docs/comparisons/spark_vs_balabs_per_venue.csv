@@ -1,0 +1,281 @@
+month,venue_id,label,chain,ours,ba_labs,diff,in_provenance
+2026-01,S1,Spark USDS (SparkLend spToken),ethereum,556639355.91,556639355.91,0.00,yes
+2026-01,S2,Spark USDC (SparkLend spToken),ethereum,43659321.09,43659321.09,0.00,yes
+2026-01,S3,Spark USDT (SparkLend spToken),ethereum,220863532.36,220863532.36,0.00,yes
+2026-01,S4,Spark DAI (SparkLend spToken),ethereum,305426388.32,305426388.32,0.00,yes
+2026-01,S5,Spark PYUSD (SparkLend spToken),ethereum,99995755.66,99995755.66,0.00,yes
+2026-01,S6,Aave Ethereum Lido USDS (aToken),ethereum,0.00,0.00,0.00,yes
+2026-01,S7,Aave Ethereum USDS (aToken),ethereum,0.01,0.01,0.00,yes
+2026-01,S8,Aave Ethereum USDC (aToken),ethereum,0.06,0.06,0.00,yes
+2026-01,S9,Aave Ethereum USDT (aToken),ethereum,0.00,0.00,0.00,yes
+2026-01,S10,Spark Blue Chip USDC Vault (Morpho),ethereum,976334.44,976344.88,-10.44,yes
+2026-01,S11,Spark Blue Chip USDT Vault (Morpho V2),ethereum,0.00,0.00,0.00,yes
+2026-01,S12,Spark DAI Vault (Morpho),ethereum,332.92,332.95,-0.03,yes
+2026-01,S13,Spark USDS Vault (Morpho),ethereum,21.91,21.91,-0.00,yes
+2026-01,S14,Maple syrupUSDC (ERC-4626),ethereum,100000608.93,100000695.17,-86.24,yes
+2026-01,S15,Maple syrupUSDT (ERC-4626),ethereum,0.00,0.00,0.00,yes
+2026-01,S16,Ethena Staked USDe (sUSDe),ethereum,98.61,98.61,-0.00,yes
+2026-01,S17,Fluid Savings USDS (fsUSDS),ethereum,0.00,0.00,0.00,yes
+2026-01,S18,Arkis Spark Prime USDC 1 (ERC-4626),ethereum,15106645.24,15106649.74,-4.51,yes
+2026-01,S19,BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I),ethereum,0.00,0.00,0.00,yes
+2026-01,S20,Janus Henderson Anemoy Treasury Fund (JTRSY),ethereum,0.00,0.00,0.00,yes
+2026-01,S21,Superstate Short Duration US Government Securities Fund (USTB),ethereum,0.00,0.00,0.00,yes
+2026-01,S22,Superstate Crypto Carry Fund (USCC),ethereum,0.00,0.00,0.00,yes
+2026-01,S23,"Anchorage tri-party loan escrow (USDC pass-through, ~$0 balance)",ethereum,1.21,150000001.21,-150000000.00,yes
+2026-01,S24,Spark.fi USDT Reserve Curve (sUSDS/USDT),ethereum,49999911.75,49996943.22,2968.52,yes
+2026-01,S25,Spark.fi PYUSD Reserve Curve (PYUSD/USDS),ethereum,100000425.55,100000379.31,46.24,yes
+2026-01,S26,USDC raw (ALM idle),ethereum,0.00,0.00,0.00,yes
+2026-01,S27,USDT raw (ALM idle — $442M as of 2026-04),ethereum,0.00,0.00,0.00,yes
+2026-01,S28,PYUSD raw (ALM idle — $677M as of 2026-04),ethereum,524852622.17,524852622.17,0.00,yes
+2026-01,S29,DAI raw (ALM idle),ethereum,0.00,0.00,0.00,yes
+2026-01,S30,USDe raw (ALM idle),ethereum,0.00,0.00,0.00,yes
+2026-01,S31,USDS raw / POL (ALM idle — already netted out of utilized),ethereum,0.00,0.00,0.00,yes
+2026-01,S32,"sUSDS raw / POL (ALM — Cat B 4626, demand-side spread)",ethereum,393521575.97,393521575.97,-0.00,yes
+2026-01,S34,"Spark USDC Vault (Morpho, Base)",base,61.15,61.15,-0.00,yes
+2026-01,S35,Aave Base USDC (aBasUSDC),base,0.00,0.00,0.00,yes
+2026-01,S36,"Fluid Savings USDS (fsUSDS, Base)",base,283.90,283.90,0.00,yes
+2026-01,S37,Savings USDS / sUSDS proxy (Base — POL),base,75079284.39,75079284.39,-0.00,yes
+2026-01,S38,USDS raw (Base — POL),base,65170000.00,65170000.00,0.00,yes
+2026-01,S39,USDC raw (Base — ALM idle),base,4979093.44,4979093.44,0.00,yes
+2026-01,S41,Aave Arbitrum USDCn (aArbUSDCn),arbitrum,0.01,0.01,0.00,yes
+2026-01,S42,"Fluid Savings USDS (fsUSDS, Arbitrum)",arbitrum,0.00,0.00,0.00,yes
+2026-01,S43,Savings USDS / sUSDS proxy (Arbitrum — POL),arbitrum,196264917.55,196264917.55,-0.00,yes
+2026-01,S44,USDS raw (Arbitrum — POL),arbitrum,90000000.00,90000000.00,0.00,yes
+2026-01,S45,USDC raw (Arbitrum — ALM idle),arbitrum,4994817.32,4994817.32,0.00,yes
+2026-01,S47,Savings USDS / sUSDS proxy (Optimism — POL),optimism,101106912.91,101106912.91,-0.00,yes
+2026-01,S48,USDS raw (Optimism — POL),optimism,89900000.00,89900000.00,0.00,yes
+2026-01,S49,USDC raw (Optimism — ALM idle),optimism,5000000.00,5000000.00,0.00,yes
+2026-01,S51,Savings USDS / sUSDS proxy (Unichain — POL),unichain,973415.25,973415.25,-0.00,yes
+2026-01,S52,USDS raw (Unichain — POL),unichain,89900000.00,89900000.00,0.00,yes
+2026-01,S53,USDC raw (Unichain — ALM idle),unichain,5000000.00,5000000.00,0.00,yes
+2026-01,S54,Aave Avalanche USDC (aAvaUSDC),avalanche_c,10000965.04,10000965.04,0.00,yes
+2026-01,S55,USDC raw (Avalanche-C — ALM idle),avalanche_c,0.00,0.00,0.00,yes
+2026-01,S56,Spark Savings V2 — spUSDC vault,ethereum,0.00,10000000.00,-10000000.00,no
+2026-01,S57,Spark Savings V2 — spUSDT vault,ethereum,0.00,10000000.00,-10000000.00,no
+2026-01,S58,Spark Savings V2 — spETH vault,ethereum,0.00,2534900.50,-2534900.50,no
+2026-01,S59,Spark Savings V2 — spPYUSD vault,ethereum,0.00,28508.63,-28508.63,no
+2026-01,S60,"Spark Savings V2 — spUSDC vault (Avalanche-C, CREATE2 same address)",avalanche_c,0.00,9556743.35,-9556743.35,no
+2026-02,S1,Spark USDS (SparkLend spToken),ethereum,275418608.32,275418608.32,0.00,yes
+2026-02,S2,Spark USDC (SparkLend spToken),ethereum,47958113.07,47958113.07,0.00,yes
+2026-02,S3,Spark USDT (SparkLend spToken),ethereum,334974961.95,334974961.95,0.00,yes
+2026-02,S4,Spark DAI (SparkLend spToken),ethereum,246097994.85,246097994.85,0.00,yes
+2026-02,S5,Spark PYUSD (SparkLend spToken),ethereum,100000062.96,100000062.96,0.00,yes
+2026-02,S6,Aave Ethereum Lido USDS (aToken),ethereum,0.00,0.00,0.00,yes
+2026-02,S7,Aave Ethereum USDS (aToken),ethereum,0.01,0.01,0.00,yes
+2026-02,S8,Aave Ethereum USDC (aToken),ethereum,0.06,0.06,0.00,yes
+2026-02,S9,Aave Ethereum USDT (aToken),ethereum,0.00,0.00,0.00,yes
+2026-02,S10,Spark Blue Chip USDC Vault (Morpho),ethereum,977613.84,977628.00,-14.16,yes
+2026-02,S11,Spark Blue Chip USDT Vault (Morpho V2),ethereum,0.00,0.00,0.00,yes
+2026-02,S12,Spark DAI Vault (Morpho),ethereum,344.96,345.01,-0.05,yes
+2026-02,S13,Spark USDS Vault (Morpho),ethereum,21.91,21.91,-0.00,yes
+2026-02,S14,Maple syrupUSDC (ERC-4626),ethereum,200002600.61,200002608.30,-7.70,yes
+2026-02,S15,Maple syrupUSDT (ERC-4626),ethereum,55000541.21,55000585.04,-43.83,yes
+2026-02,S16,Ethena Staked USDe (sUSDe),ethereum,98.88,98.88,-0.00,yes
+2026-02,S17,Fluid Savings USDS (fsUSDS),ethereum,0.00,0.00,0.00,yes
+2026-02,S18,Arkis Spark Prime USDC 1 (ERC-4626),ethereum,10113369.18,10113375.58,-6.40,yes
+2026-02,S19,BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I),ethereum,0.00,0.00,0.00,yes
+2026-02,S20,Janus Henderson Anemoy Treasury Fund (JTRSY),ethereum,0.00,0.00,0.00,yes
+2026-02,S21,Superstate Short Duration US Government Securities Fund (USTB),ethereum,0.00,0.00,0.00,yes
+2026-02,S22,Superstate Crypto Carry Fund (USCC),ethereum,0.00,0.00,0.00,yes
+2026-02,S23,"Anchorage tri-party loan escrow (USDC pass-through, ~$0 balance)",ethereum,1.21,150000000.00,-149999998.79,yes
+2026-02,S24,Spark.fi USDT Reserve Curve (sUSDS/USDT),ethereum,50000340.65,49999963.28,377.36,yes
+2026-02,S25,Spark.fi PYUSD Reserve Curve (PYUSD/USDS),ethereum,100000617.74,100000547.14,70.60,yes
+2026-02,S26,USDC raw (ALM idle),ethereum,0.00,0.00,0.00,yes
+2026-02,S27,USDT raw (ALM idle — $442M as of 2026-04),ethereum,1868.74,1868.74,0.00,yes
+2026-02,S28,PYUSD raw (ALM idle — $677M as of 2026-04),ethereum,527588174.07,527588174.07,0.00,yes
+2026-02,S29,DAI raw (ALM idle),ethereum,0.00,0.00,0.00,yes
+2026-02,S30,USDe raw (ALM idle),ethereum,0.00,0.00,0.00,yes
+2026-02,S31,USDS raw / POL (ALM idle — already netted out of utilized),ethereum,0.00,0.00,0.00,yes
+2026-02,S32,"sUSDS raw / POL (ALM — Cat B 4626, demand-side spread)",ethereum,798615399.44,798615399.44,-0.00,yes
+2026-02,S34,"Spark USDC Vault (Morpho, Base)",base,494.72,494.72,-0.00,yes
+2026-02,S35,Aave Base USDC (aBasUSDC),base,0.00,0.00,0.00,yes
+2026-02,S36,"Fluid Savings USDS (fsUSDS, Base)",base,283.90,283.90,0.00,yes
+2026-02,S37,Savings USDS / sUSDS proxy (Base — POL),base,75305516.52,75305516.52,-0.00,yes
+2026-02,S38,USDS raw (Base — POL),base,65170000.00,65170000.00,0.00,yes
+2026-02,S39,USDC raw (Base — ALM idle),base,5000000.00,5000000.00,0.00,yes
+2026-02,S41,Aave Arbitrum USDCn (aArbUSDCn),arbitrum,0.01,0.01,0.00,yes
+2026-02,S42,"Fluid Savings USDS (fsUSDS, Arbitrum)",arbitrum,0.00,0.00,0.00,yes
+2026-02,S43,Savings USDS / sUSDS proxy (Arbitrum — POL),arbitrum,196856311.43,196856311.43,-0.00,yes
+2026-02,S44,USDS raw (Arbitrum — POL),arbitrum,90000000.00,90000000.00,0.00,yes
+2026-02,S45,USDC raw (Arbitrum — ALM idle),arbitrum,4983790.60,4983790.60,0.00,yes
+2026-02,S47,Savings USDS / sUSDS proxy (Optimism — POL),optimism,101411572.60,101411572.60,-0.00,yes
+2026-02,S48,USDS raw (Optimism — POL),optimism,89900000.00,89900000.00,0.00,yes
+2026-02,S49,USDC raw (Optimism — ALM idle),optimism,5000000.00,5000000.00,0.00,yes
+2026-02,S51,Savings USDS / sUSDS proxy (Unichain — POL),unichain,976348.39,976348.39,-0.00,yes
+2026-02,S52,USDS raw (Unichain — POL),unichain,89900000.00,89900000.00,0.00,yes
+2026-02,S53,USDC raw (Unichain — ALM idle),unichain,4997665.83,4997665.83,0.00,yes
+2026-02,S54,Aave Avalanche USDC (aAvaUSDC),avalanche_c,10000143.51,10000143.51,0.00,yes
+2026-02,S55,USDC raw (Avalanche-C — ALM idle),avalanche_c,0.00,0.00,0.00,yes
+2026-02,S56,Spark Savings V2 — spUSDC vault,ethereum,0.00,10000000.00,-10000000.00,no
+2026-02,S57,Spark Savings V2 — spUSDT vault,ethereum,0.00,9994938.04,-9994938.04,no
+2026-02,S58,Spark Savings V2 — spETH vault,ethereum,0.00,2117607.70,-2117607.70,no
+2026-02,S59,Spark Savings V2 — spPYUSD vault,ethereum,0.00,94399.70,-94399.70,no
+2026-02,S60,"Spark Savings V2 — spUSDC vault (Avalanche-C, CREATE2 same address)",avalanche_c,0.00,10000000.00,-10000000.00,no
+2026-03,S1,Spark USDS (SparkLend spToken),ethereum,150752807.53,150752807.53,0.00,yes
+2026-03,S2,Spark USDC (SparkLend spToken),ethereum,37220.76,37220.76,0.00,yes
+2026-03,S3,Spark USDT (SparkLend spToken),ethereum,282411706.54,282411706.54,0.00,yes
+2026-03,S4,Spark DAI (SparkLend spToken),ethereum,252839704.15,252839704.15,0.00,yes
+2026-03,S5,Spark PYUSD (SparkLend spToken),ethereum,100000230.67,100000230.67,0.00,yes
+2026-03,S6,Aave Ethereum Lido USDS (aToken),ethereum,0.00,0.00,0.00,yes
+2026-03,S7,Aave Ethereum USDS (aToken),ethereum,0.01,0.01,0.00,yes
+2026-03,S8,Aave Ethereum USDC (aToken),ethereum,0.06,0.06,0.00,yes
+2026-03,S9,Aave Ethereum USDT (aToken),ethereum,495610843.87,495610843.87,0.00,yes
+2026-03,S10,Spark Blue Chip USDC Vault (Morpho),ethereum,977119.89,977120.51,-0.62,yes
+2026-03,S11,Spark Blue Chip USDT Vault (Morpho V2),ethereum,40001.50,40001.64,-0.13,yes
+2026-03,S12,Spark DAI Vault (Morpho),ethereum,359.99,359.99,-0.00,yes
+2026-03,S13,Spark USDS Vault (Morpho),ethereum,21.91,21.91,-0.00,yes
+2026-03,S14,Maple syrupUSDC (ERC-4626),ethereum,100002159.26,100002184.04,-24.78,yes
+2026-03,S15,Maple syrupUSDT (ERC-4626),ethereum,100001961.58,100002011.50,-49.91,yes
+2026-03,S16,Ethena Staked USDe (sUSDe),ethereum,99.17,99.17,-0.00,yes
+2026-03,S17,Fluid Savings USDS (fsUSDS),ethereum,0.00,0.00,0.00,yes
+2026-03,S18,Arkis Spark Prime USDC 1 (ERC-4626),ethereum,10156910.09,10156912.03,-1.93,yes
+2026-03,S19,BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I),ethereum,0.00,0.00,0.00,yes
+2026-03,S20,Janus Henderson Anemoy Treasury Fund (JTRSY),ethereum,0.00,0.00,0.00,yes
+2026-03,S21,Superstate Short Duration US Government Securities Fund (USTB),ethereum,0.00,0.00,0.00,yes
+2026-03,S22,Superstate Crypto Carry Fund (USCC),ethereum,0.00,0.00,0.00,yes
+2026-03,S23,"Anchorage tri-party loan escrow (USDC pass-through, ~$0 balance)",ethereum,133501.21,150000000.00,-149866498.79,yes
+2026-03,S24,Spark.fi USDT Reserve Curve (sUSDS/USDT),ethereum,50000879.86,49998914.51,1965.35,yes
+2026-03,S25,Spark.fi PYUSD Reserve Curve (PYUSD/USDS),ethereum,100000454.45,99998727.43,1727.02,yes
+2026-03,S26,USDC raw (ALM idle),ethereum,0.00,0.00,0.00,yes
+2026-03,S27,USDT raw (ALM idle — $442M as of 2026-04),ethereum,0.00,0.00,0.00,yes
+2026-03,S28,PYUSD raw (ALM idle — $677M as of 2026-04),ethereum,555394863.22,555394863.22,0.00,yes
+2026-03,S29,DAI raw (ALM idle),ethereum,0.00,0.00,0.00,yes
+2026-03,S30,USDe raw (ALM idle),ethereum,0.00,0.00,0.00,yes
+2026-03,S31,USDS raw / POL (ALM idle — already netted out of utilized),ethereum,0.00,0.00,0.00,yes
+2026-03,S32,"sUSDS raw / POL (ALM — Cat B 4626, demand-side spread)",ethereum,1371348954.66,1371348954.66,-0.00,yes
+2026-03,S34,"Spark USDC Vault (Morpho, Base)",base,427.90,427.90,-0.00,yes
+2026-03,S35,Aave Base USDC (aBasUSDC),base,0.00,0.00,0.00,yes
+2026-03,S36,"Fluid Savings USDS (fsUSDS, Base)",base,283.90,283.90,0.00,yes
+2026-03,S37,Savings USDS / sUSDS proxy (Base — POL),base,75545660.91,75545660.91,-0.00,yes
+2026-03,S38,USDS raw (Base — POL),base,65170000.00,65170000.00,0.00,yes
+2026-03,S39,USDC raw (Base — ALM idle),base,4997775.72,4997775.72,0.00,yes
+2026-03,S41,Aave Arbitrum USDCn (aArbUSDCn),arbitrum,0.01,0.01,0.00,yes
+2026-03,S42,"Fluid Savings USDS (fsUSDS, Arbitrum)",arbitrum,0.00,0.00,0.00,yes
+2026-03,S43,Savings USDS / sUSDS proxy (Arbitrum — POL),arbitrum,142898719.72,142898709.88,9.84,yes
+2026-03,S44,USDS raw (Arbitrum — POL),arbitrum,90000000.00,90000000.00,0.00,yes
+2026-03,S45,USDC raw (Arbitrum — ALM idle),arbitrum,4442753.64,4671511.59,-228757.95,yes
+2026-03,S47,Savings USDS / sUSDS proxy (Optimism — POL),optimism,101734967.51,101734967.51,-0.00,yes
+2026-03,S48,USDS raw (Optimism — POL),optimism,89900000.00,89900000.00,0.00,yes
+2026-03,S49,USDC raw (Optimism — ALM idle),optimism,5000000.00,5000000.00,0.00,yes
+2026-03,S51,Savings USDS / sUSDS proxy (Unichain — POL),unichain,979461.90,979461.90,-0.00,yes
+2026-03,S52,USDS raw (Unichain — POL),unichain,89900000.00,89900000.00,0.00,yes
+2026-03,S53,USDC raw (Unichain — ALM idle),unichain,4987120.65,4987120.65,0.00,yes
+2026-03,S54,Aave Avalanche USDC (aAvaUSDC),avalanche_c,10000122.64,10000122.64,0.00,yes
+2026-03,S55,USDC raw (Avalanche-C — ALM idle),avalanche_c,10.26,10.26,0.00,yes
+2026-03,S56,Spark Savings V2 — spUSDC vault,ethereum,0.00,10000000.00,-10000000.00,no
+2026-03,S57,Spark Savings V2 — spUSDT vault,ethereum,0.00,9995957.41,-9995957.41,no
+2026-03,S58,Spark Savings V2 — spETH vault,ethereum,0.00,3457666.83,-3457666.83,no
+2026-03,S59,Spark Savings V2 — spPYUSD vault,ethereum,0.00,100000.00,-100000.00,no
+2026-03,S60,"Spark Savings V2 — spUSDC vault (Avalanche-C, CREATE2 same address)",avalanche_c,0.00,7361798.88,-7361798.88,no
+2026-04,S1,Spark USDS (SparkLend spToken),ethereum,147862782.13,147862782.13,0.00,yes
+2026-04,S2,Spark USDC (SparkLend spToken),ethereum,9229822.11,9229822.11,0.00,yes
+2026-04,S3,Spark USDT (SparkLend spToken),ethereum,677669071.17,677669071.17,0.00,yes
+2026-04,S4,Spark DAI (SparkLend spToken),ethereum,266184835.47,266184835.47,0.00,yes
+2026-04,S5,Spark PYUSD (SparkLend spToken),ethereum,100001095.92,100001095.92,0.00,yes
+2026-04,S6,Aave Ethereum Lido USDS (aToken),ethereum,0.00,0.00,0.00,yes
+2026-04,S7,Aave Ethereum USDS (aToken),ethereum,0.01,0.01,0.00,yes
+2026-04,S8,Aave Ethereum USDC (aToken),ethereum,0.06,0.06,0.00,yes
+2026-04,S9,Aave Ethereum USDT (aToken),ethereum,5.90,5.90,0.00,yes
+2026-04,S10,Spark Blue Chip USDC Vault (Morpho),ethereum,704090.80,704091.49,-0.68,yes
+2026-04,S11,Spark Blue Chip USDT Vault (Morpho V2),ethereum,51710579.95,51710589.31,-9.35,yes
+2026-04,S12,Spark DAI Vault (Morpho),ethereum,458.57,459.05,-0.48,yes
+2026-04,S13,Spark USDS Vault (Morpho),ethereum,21.91,21.91,-0.00,yes
+2026-04,S14,Maple syrupUSDC (ERC-4626),ethereum,105306162.11,105306218.89,-56.78,yes
+2026-04,S15,Maple syrupUSDT (ERC-4626),ethereum,76904851.99,76904877.56,-25.57,yes
+2026-04,S16,Ethena Staked USDe (sUSDe),ethereum,99.50,99.50,-0.00,yes
+2026-04,S17,Fluid Savings USDS (fsUSDS),ethereum,0.00,0.00,0.00,yes
+2026-04,S18,Arkis Spark Prime USDC 1 (ERC-4626),ethereum,0.28,0.28,-0.00,yes
+2026-04,S19,BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I),ethereum,0.00,0.00,0.00,yes
+2026-04,S20,Janus Henderson Anemoy Treasury Fund (JTRSY),ethereum,0.00,0.00,0.00,yes
+2026-04,S21,Superstate Short Duration US Government Securities Fund (USTB),ethereum,0.00,0.00,0.00,yes
+2026-04,S22,Superstate Crypto Carry Fund (USCC),ethereum,0.00,0.00,0.00,yes
+2026-04,S23,"Anchorage tri-party loan escrow (USDC pass-through, ~$0 balance)",ethereum,1.55,150000000.00,-149999998.45,yes
+2026-04,S24,Spark.fi USDT Reserve Curve (sUSDS/USDT),ethereum,50002415.26,50001489.49,925.77,yes
+2026-04,S25,Spark.fi PYUSD Reserve Curve (PYUSD/USDS),ethereum,99998676.75,99997692.10,984.65,yes
+2026-04,S26,USDC raw (ALM idle),ethereum,0.00,0.00,0.00,yes
+2026-04,S27,USDT raw (ALM idle — $442M as of 2026-04),ethereum,483436565.92,483436565.92,0.00,yes
+2026-04,S28,PYUSD raw (ALM idle — $677M as of 2026-04),ethereum,677151123.08,677151123.08,0.00,yes
+2026-04,S29,DAI raw (ALM idle),ethereum,0.00,0.00,0.00,yes
+2026-04,S30,USDe raw (ALM idle),ethereum,0.00,0.00,0.00,yes
+2026-04,S31,USDS raw / POL (ALM idle — already netted out of utilized),ethereum,0.00,0.00,0.00,yes
+2026-04,S32,"sUSDS raw / POL (ALM — Cat B 4626, demand-side spread)",ethereum,1723240793.74,1723240793.74,-0.00,yes
+2026-04,S34,"Spark USDC Vault (Morpho, Base)",base,224.72,224.72,-0.00,yes
+2026-04,S35,Aave Base USDC (aBasUSDC),base,0.00,0.00,0.00,yes
+2026-04,S36,"Fluid Savings USDS (fsUSDS, Base)",base,283.90,283.90,0.00,yes
+2026-04,S37,Savings USDS / sUSDS proxy (Base — POL),base,75772907.26,75772907.26,-0.00,yes
+2026-04,S38,USDS raw (Base — POL),base,65170000.00,65170000.00,0.00,yes
+2026-04,S39,USDC raw (Base — ALM idle),base,5000000.00,5000000.00,0.00,yes
+2026-04,S41,Aave Arbitrum USDCn (aArbUSDCn),arbitrum,0.01,0.01,0.00,yes
+2026-04,S42,"Fluid Savings USDS (fsUSDS, Arbitrum)",arbitrum,0.00,0.00,0.00,yes
+2026-04,S43,Savings USDS / sUSDS proxy (Arbitrum — POL),arbitrum,143328568.53,143328568.53,-0.00,yes
+2026-04,S44,USDS raw (Arbitrum — POL),arbitrum,90000000.00,90000000.00,0.00,yes
+2026-04,S45,USDC raw (Arbitrum — ALM idle),arbitrum,5009602.26,5009602.26,0.00,yes
+2026-04,S47,Savings USDS / sUSDS proxy (Optimism — POL),optimism,102040993.03,102040993.03,-0.00,yes
+2026-04,S48,USDS raw (Optimism — POL),optimism,89900000.00,89900000.00,0.00,yes
+2026-04,S49,USDC raw (Optimism — ALM idle),optimism,5000000.00,5000000.00,0.00,yes
+2026-04,S51,Savings USDS / sUSDS proxy (Unichain — POL),unichain,982408.19,982408.19,-0.00,yes
+2026-04,S52,USDS raw (Unichain — POL),unichain,89900000.00,89900000.00,0.00,yes
+2026-04,S53,USDC raw (Unichain — ALM idle),unichain,4996314.28,4996314.28,0.00,yes
+2026-04,S54,Aave Avalanche USDC (aAvaUSDC),avalanche_c,0.15,0.15,0.00,yes
+2026-04,S55,USDC raw (Avalanche-C — ALM idle),avalanche_c,2500.22,2500.22,0.00,yes
+2026-04,S56,Spark Savings V2 — spUSDC vault,ethereum,0.00,9976912.56,-9976912.56,no
+2026-04,S57,Spark Savings V2 — spUSDT vault,ethereum,0.00,9981045.04,-9981045.04,no
+2026-04,S58,Spark Savings V2 — spETH vault,ethereum,0.00,5625997.43,-5625997.43,no
+2026-04,S59,Spark Savings V2 — spPYUSD vault,ethereum,0.00,982544.01,-982544.01,no
+2026-04,S60,"Spark Savings V2 — spUSDC vault (Avalanche-C, CREATE2 same address)",avalanche_c,0.00,2000000.00,-2000000.00,no
+2026-05,S1,Spark USDS (SparkLend spToken),ethereum,550178045.36,550178017.71,27.66,yes
+2026-05,S2,Spark USDC (SparkLend spToken),ethereum,12183497.21,12183497.21,0.00,yes
+2026-05,S3,Spark USDT (SparkLend spToken),ethereum,495837665.42,495837665.42,0.00,yes
+2026-05,S4,Spark DAI (SparkLend spToken),ethereum,266960907.71,266960893.45,14.26,yes
+2026-05,S5,Spark PYUSD (SparkLend spToken),ethereum,100000628.58,100000627.58,1.00,yes
+2026-05,S6,Aave Ethereum Lido USDS (aToken),ethereum,0.00,0.00,0.00,yes
+2026-05,S7,Aave Ethereum USDS (aToken),ethereum,0.01,0.01,0.00,yes
+2026-05,S8,Aave Ethereum USDC (aToken),ethereum,0.06,0.06,0.00,yes
+2026-05,S9,Aave Ethereum USDT (aToken),ethereum,5.91,5.91,0.00,yes
+2026-05,S10,Spark Blue Chip USDC Vault (Morpho),ethereum,3501087.14,3501088.83,-1.69,yes
+2026-05,S11,Spark Blue Chip USDT Vault (Morpho V2),ethereum,71943502.10,71943533.54,-31.44,yes
+2026-05,S12,Spark DAI Vault (Morpho),ethereum,539.87,545.25,-5.38,yes
+2026-05,S13,Spark USDS Vault (Morpho),ethereum,21.91,21.91,-0.00,yes
+2026-05,S14,Maple syrupUSDC (ERC-4626),ethereum,105300451.25,105300459.53,-8.28,yes
+2026-05,S15,Maple syrupUSDT (ERC-4626),ethereum,0.00,0.00,0.00,yes
+2026-05,S16,Ethena Staked USDe (sUSDe),ethereum,99.81,99.81,-0.00,yes
+2026-05,S17,Fluid Savings USDS (fsUSDS),ethereum,0.00,0.00,0.00,yes
+2026-05,S18,Arkis Spark Prime USDC 1 (ERC-4626),ethereum,15021342.65,15021347.91,-5.26,yes
+2026-05,S19,BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I),ethereum,0.00,0.00,0.00,yes
+2026-05,S20,Janus Henderson Anemoy Treasury Fund (JTRSY),ethereum,0.00,0.00,0.00,yes
+2026-05,S21,Superstate Short Duration US Government Securities Fund (USTB),ethereum,0.00,0.00,0.00,yes
+2026-05,S22,Superstate Crypto Carry Fund (USCC),ethereum,0.00,0.00,0.00,yes
+2026-05,S23,"Anchorage tri-party loan escrow (USDC pass-through, ~$0 balance)",ethereum,10.02,250000010.02,-250000000.00,yes
+2026-05,S24,Spark.fi USDT Reserve Curve (sUSDS/USDT),ethereum,48750265.65,48747079.70,3185.95,yes
+2026-05,S25,Spark.fi PYUSD Reserve Curve (PYUSD/USDS),ethereum,99999260.91,99997912.85,1348.06,yes
+2026-05,S26,USDC raw (ALM idle),ethereum,0.00,0.00,0.00,yes
+2026-05,S27,USDT raw (ALM idle — $442M as of 2026-04),ethereum,608678684.52,608678684.52,0.00,yes
+2026-05,S28,PYUSD raw (ALM idle — $677M as of 2026-04),ethereum,262428227.92,262428227.92,0.00,yes
+2026-05,S29,DAI raw (ALM idle),ethereum,0.00,0.00,0.00,yes
+2026-05,S30,USDe raw (ALM idle),ethereum,0.00,0.00,0.00,yes
+2026-05,S31,USDS raw / POL (ALM idle — already netted out of utilized),ethereum,0.00,0.00,0.00,yes
+2026-05,S32,"sUSDS raw / POL (ALM — Cat B 4626, demand-side spread)",ethereum,1577554266.46,1577554266.46,-0.00,yes
+2026-05,S34,"Spark USDC Vault (Morpho, Base)",base,424.91,424.91,-0.00,yes
+2026-05,S35,Aave Base USDC (aBasUSDC),base,0.00,0.00,0.00,yes
+2026-05,S36,"Fluid Savings USDS (fsUSDS, Base)",base,283.90,283.90,0.00,yes
+2026-05,S37,Savings USDS / sUSDS proxy (Base — POL),base,76003428.30,76003428.30,-0.00,yes
+2026-05,S38,USDS raw (Base — POL),base,65170000.00,65170000.00,0.00,yes
+2026-05,S39,USDC raw (Base — ALM idle),base,4997576.71,4997576.71,0.00,yes
+2026-05,S41,Aave Arbitrum USDCn (aArbUSDCn),arbitrum,0.01,0.01,0.00,yes
+2026-05,S42,"Fluid Savings USDS (fsUSDS, Arbitrum)",arbitrum,0.00,0.00,0.00,yes
+2026-05,S43,Savings USDS / sUSDS proxy (Arbitrum — POL),arbitrum,143764611.58,143764611.58,-0.00,yes
+2026-05,S44,USDS raw (Arbitrum — POL),arbitrum,90000000.00,90000000.00,0.00,yes
+2026-05,S45,USDC raw (Arbitrum — ALM idle),arbitrum,4975417.17,4975417.17,0.00,yes
+2026-05,S47,Savings USDS / sUSDS proxy (Optimism — POL),optimism,102351428.46,102351428.46,-0.00,yes
+2026-05,S48,USDS raw (Optimism — POL),optimism,89900000.00,89900000.00,0.00,yes
+2026-05,S49,USDC raw (Optimism — ALM idle),optimism,5019997.40,5019997.40,0.00,yes
+2026-05,S51,Savings USDS / sUSDS proxy (Unichain — POL),unichain,985396.93,985396.93,-0.00,yes
+2026-05,S52,USDS raw (Unichain — POL),unichain,89900000.00,89900000.00,0.00,yes
+2026-05,S53,USDC raw (Unichain — ALM idle),unichain,4992819.46,4992819.46,0.00,yes
+2026-05,S54,Aave Avalanche USDC (aAvaUSDC),avalanche_c,0.16,0.16,0.00,yes
+2026-05,S55,USDC raw (Avalanche-C — ALM idle),avalanche_c,0.00,0.00,0.00,yes
+2026-05,S56,Spark Savings V2 — spUSDC vault,ethereum,0.00,10000000.00,-10000000.00,no
+2026-05,S57,Spark Savings V2 — spUSDT vault,ethereum,0.00,10000000.00,-10000000.00,no
+2026-05,S58,Spark Savings V2 — spETH vault,ethereum,0.00,4995675.00,-4995675.00,no
+2026-05,S59,Spark Savings V2 — spPYUSD vault,ethereum,0.00,773066.16,-773066.16,no
+2026-05,S60,"Spark Savings V2 — spUSDC vault (Avalanche-C, CREATE2 same address)",avalanche_c,0.00,1995312.93,-1995312.93,no

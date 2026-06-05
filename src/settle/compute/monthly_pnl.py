@@ -1960,10 +1960,56 @@ def compute_monthly_pnl(
             venue, prime, period, _cash_dist_balance_src
         )
         _log.info("  [cash_dist] %s — total cash revenue: %s", venue.id, cash_rev)
+        # value_som / value_eom: try the standard ``get_position_value`` so
+        # cash-distribution venues with a meaningful on-chain balance (e.g.
+        # E21 GACLO-1 with ``nav_oracle: const_one``) report the principal
+        # for display + CoF parity with BA Labs. Skip when ``venue.skip`` is
+        # set (oracle untrusted / token doesn't expose required reads) or
+        # when ``get_position_value`` raises (e.g. proxy reverts), in which
+        # case we fall back to $0 — revenue is still captured via the cash-
+        # dist override above.
+        v_som = Decimal("0")
+        v_eom = Decimal("0")
+        if not venue.skip and venue.chain in pin_blocks_som and venue.chain in pin_blocks_eom:
+            from ..extract.dune import DuneError as _DuneError
+            from ..extract.rpc import RPCError as _RPCError
+            import requests as _requests
+            try:
+                v_som = get_position_value(
+                    prime, venue, pin_blocks_som[venue.chain],
+                    balance_source=sources.position_balance,
+                    flow_source=sources.balance,
+                    erc4626_source=sources.convert_to_assets,
+                    v3_position_source=sources.v3_position,
+                    curve_pool_source=sources.curve_pool,
+                    block_resolver=resolver,
+                    nav_oracle_resolver=sources.nav_oracle_resolver,
+                )
+                v_eom = get_position_value(
+                    prime, venue, pin_blocks_eom[venue.chain],
+                    balance_source=sources.position_balance,
+                    flow_source=sources.balance,
+                    erc4626_source=sources.convert_to_assets,
+                    v3_position_source=sources.v3_position,
+                    curve_pool_source=sources.curve_pool,
+                    block_resolver=resolver,
+                    nav_oracle_resolver=sources.nav_oracle_resolver,
+                )
+            except (_RPCError, _DuneError, _requests.HTTPError,
+                    _requests.ConnectionError, _requests.Timeout) as _e:
+                # Transient transport failure — fall back to $0 and let the
+                # cash-distribution revenue stand. Config errors
+                # (UnsupportedPricingError, ValueError) propagate so a YAML
+                # misconfig doesn't silently undo an un-skip like E21's.
+                _log.warning(
+                    "  [cash_dist] %s — get_position_value transient failure "
+                    "(%s); leaving value_som/eom at $0",
+                    venue.id, type(_e).__name__,
+                )
         venue_inputs.append(VenueRevenueInputs(
             venue=venue,
-            value_som=Decimal("0"),
-            value_eom=Decimal("0"),
+            value_som=v_som,
+            value_eom=v_eom,
             inflow_timeseries=pd.DataFrame(
                 columns=["block_date", "daily_inflow", "cum_inflow"]
             ),
@@ -2032,26 +2078,47 @@ def compute_monthly_pnl(
         som_block = pin_blocks_som[venue.chain]
         eom_block = pin_blocks_eom[venue.chain]
 
-        value_som = get_position_value(
-            prime, venue, som_block,
-            balance_source=sources.position_balance,
-            flow_source=sources.balance,
-            erc4626_source=sources.convert_to_assets,
-            v3_position_source=sources.v3_position,
-            curve_pool_source=sources.curve_pool,
-            block_resolver=resolver,
-            nav_oracle_resolver=sources.nav_oracle_resolver,
+        # L2 sUSDS Cat B venues (S37/S43/S47/S51) use proxy contracts that
+        # don't expose ``convertToAssets`` — the standard ERC-4626 path
+        # raises. Defer to the dedicated PSM3-pps recompute below
+        # (``_l2_susds_value``) by starting at 0; the value gets overwritten
+        # before VenueRevenue is constructed.
+        #
+        # The guard MUST match the recompute condition exactly
+        # (``chain != ETHEREUM and chain in prime.psm``) — otherwise a future
+        # sUSDS Cat B venue on a chain without a registered PSM3 would have
+        # its values zeroed here AND skipped by the recompute, silently
+        # reporting $0 for a non-zero position.
+        _defer_l2_susds = (
+            venue.pricing_category == PricingCategory.ERC4626_VAULT
+            and venue.sky_savings_token
+            and venue.chain != Chain.ETHEREUM
+            and venue.chain in prime.psm
         )
-        value_eom = get_position_value(
-            prime, venue, eom_block,
-            balance_source=sources.position_balance,
-            flow_source=sources.balance,
-            erc4626_source=sources.convert_to_assets,
-            v3_position_source=sources.v3_position,
-            curve_pool_source=sources.curve_pool,
-            block_resolver=resolver,
-            nav_oracle_resolver=sources.nav_oracle_resolver,
-        )
+        if _defer_l2_susds:
+            value_som = Decimal("0")
+            value_eom = Decimal("0")
+        else:
+            value_som = get_position_value(
+                prime, venue, som_block,
+                balance_source=sources.position_balance,
+                flow_source=sources.balance,
+                erc4626_source=sources.convert_to_assets,
+                v3_position_source=sources.v3_position,
+                curve_pool_source=sources.curve_pool,
+                block_resolver=resolver,
+                nav_oracle_resolver=sources.nav_oracle_resolver,
+            )
+            value_eom = get_position_value(
+                prime, venue, eom_block,
+                balance_source=sources.position_balance,
+                flow_source=sources.balance,
+                erc4626_source=sources.convert_to_assets,
+                v3_position_source=sources.v3_position,
+                curve_pool_source=sources.curve_pool,
+                block_resolver=resolver,
+                nav_oracle_resolver=sources.nav_oracle_resolver,
+            )
 
         if venue.display_only:
             # Tracked for monthly reports but excluded from prime_agent_revenue /
@@ -2397,12 +2464,25 @@ def compute_monthly_pnl(
                         )
                     except (_RPCError, _DuneError, _requests.HTTPError,
                             _requests.ConnectionError, _requests.Timeout) as _e:
-                        _log.warning(
-                            "  Cat B L2 sUSDS pricing failed for %s on %s "
-                            "(%s) — keeping get_position_value result; "
-                            "30bps credit may be wrong for this period.",
-                            venue.id, venue.chain.value, _e,
-                        )
+                        if _defer_l2_susds:
+                            # No prior ``get_position_value`` was called for
+                            # this venue (the proxy reverts on convertToAssets,
+                            # so we'd deferred). value_som/value_eom are
+                            # literally Decimal("0"); revenue + 30bps credit
+                            # will both be wrong.
+                            _log.warning(
+                                "  Cat B L2 sUSDS pricing FAILED for %s on %s "
+                                "(%s) — values remain $0 (defer path); "
+                                "settlement data for this venue is unreliable.",
+                                venue.id, venue.chain.value, _e,
+                            )
+                        else:
+                            _log.warning(
+                                "  Cat B L2 sUSDS pricing failed for %s on %s "
+                                "(%s) — keeping get_position_value result; "
+                                "30bps credit may be wrong for this period.",
+                                venue.id, venue.chain.value, _e,
+                            )
 
                 susds_spread = _Dec("0")  # prime earns 0; spread deducted from Sky Revenue below
 

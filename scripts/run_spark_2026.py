@@ -109,19 +109,45 @@ PIN_BLOCKS_BY_MONTH = {
                 Chain.ARBITRUM: 447736930, Chain.OPTIMISM: 149701411,
                 Chain.UNICHAIN: 44253240, Chain.AVALANCHE_C: 81789468},
     },
+    # Apr/May added 2026-06-05. Eth+Base+Avalanche-C blocks copied from
+    # Grove's Apr/May fixtures; Arb/Op/Uni resolved via RPC binary search
+    # (Dune credits exhausted before fixture refresh).
+    (2026, 4): {
+        "som": {Chain.ETHEREUM: 24781026, Chain.BASE: 44106126,
+                Chain.ARBITRUM: 447736930, Chain.OPTIMISM: 149701411,
+                Chain.UNICHAIN: 44253240, Chain.AVALANCHE_C: 81789468},
+        "eom": {Chain.ETHEREUM: 24996367, Chain.BASE: 45402126,
+                Chain.ARBITRUM: 458085623, Chain.OPTIMISM: 150997411,
+                Chain.UNICHAIN: 46845240, Chain.AVALANCHE_C: 84298393},
+    },
+    (2026, 5): {
+        "som": {Chain.ETHEREUM: 24996367, Chain.BASE: 45402126,
+                Chain.ARBITRUM: 458085623, Chain.OPTIMISM: 150997411,
+                Chain.UNICHAIN: 46845240, Chain.AVALANCHE_C: 84298393},
+        "eom": {Chain.ETHEREUM: 25218797, Chain.BASE: 46741326,
+                Chain.ARBITRUM: 468748167, Chain.OPTIMISM: 152336611,
+                Chain.UNICHAIN: 49523640, Chain.AVALANCHE_C: 86865826},
+    },
 }
 
-# (year, month, fixture_dir). Only Q1 fixtures exist today — see module
-# docstring for how to extend Apr+.
+# (year, month, fixture_dir). The ``spark_2026_q1`` fixture set was
+# refreshed 2026-06-05 to extend lifetime coverage through 2026-05-31:
+# debt_timeseries + daily EoD blocks via published Dune queries, Cat B/E
+# ``cum_balance`` via per-venue ``transfer_timeseries.sql``, and a new
+# ``inflow_by_counterparty.json`` capturing per-day per-counterparty
+# token flows for Cat A "raw idle" par-stable venues. So all 5 months
+# now run against the same fixture without an in-period anchor gap.
 _MONTH_PLAN = [
     (2026, 1, "spark_2026_q1"),
     (2026, 2, "spark_2026_q1"),
     (2026, 3, "spark_2026_q1"),
+    (2026, 4, "spark_2026_q1"),
+    (2026, 5, "spark_2026_q1"),
 ]
 
 
 def main() -> int:
-    print("Spark 2026 multi-month settlement (Q1 only — Apr+ needs new fixtures)")
+    print("Spark 2026 multi-month settlement (Jan → May)")
     print("=" * 110)
     print(f"{'Month':<10} {'prime_agent_total':>20} {'sky_revenue':>16} "
           f"{'sky_direct_shortfall':>22} {'monthly_pnl':>16}")
