@@ -55,6 +55,14 @@ def render_provenance(
             # subsidy schedule as actual sky_revenue. Display-only — not
             # part of any settlement invariant.
             "sky_revenue_gross": str(pnl.sky_revenue_gross),
+            # SDE revenue (Σ venue.sd_revenue across the breakdown). Already
+            # rolled into sky_revenue; surfaced separately for the summary
+            # headline.
+            "sde_revenue": str(pnl.sde_revenue),
+            # Net monthly P&L: prime_agent_revenue + agent_rate +
+            # distribution_rewards − sky_revenue. Negative when sky_revenue
+            # exceeds total prime revenue.
+            "monthly_pnl": str(pnl.monthly_pnl),
         },
         "venue_breakdown": [
             {
@@ -104,6 +112,16 @@ def render_provenance(
                 # 30 bps spread deducted from sky_revenue for this venue.
                 # Non-zero only for sky_savings_token Cat B venues.
                 "susds_spread_reimbursement": str(v.susds_spread_reimbursement),
+                # When True, this venue's avg_value is excluded from the CoF
+                # allocation denominator in post-hoc reporting. Mirrors the
+                # ``Venue.cof_excluded`` flag, propagated here so the
+                # settlement xlsx builder doesn't have to re-load YAML.
+                "cof_excluded": v.cof_excluded,
+                # Time-weighted average daily lending-idle deduction for
+                # Cat C/D venues with ``lending_idle_usds: true``. The
+                # post-hoc CoF allocator subtracts this from avg_value
+                # before splitting cof_total across venues.
+                "lending_idle_tw_avg_usd": str(v.lending_idle_tw_avg_usd),
                 "br_charge": str(v.br_charge),
                 "sky_direct_shortfall": str(v.sky_direct_shortfall),
             }

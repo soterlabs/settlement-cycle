@@ -1,6 +1,6 @@
 """Shared Spark-fixture loader (mirrors ``grove_fixture_loader.py``).
 
-The runner (`scripts/run_spark_2026_q1.py`) builds its ``Sources`` from
+The runner (`scripts/run_spark_2026.py`) builds its ``Sources`` from
 captured-fixture sets:
 
 * ``debt_timeseries.json``           — ALLOCATOR-SPARK-A debt

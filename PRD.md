@@ -542,7 +542,7 @@ Resolutions land as ADRs in `adr/` at the root of this repo.
 - ✅ MCP-driven Dune fixtures captured for the entire prime lifetime (debt, balances, SSR, V3 events Q1 2026, RWA cum_balance for E7–E10/E20–E22, mint/burn for E1–E6/E19/E23, blocks_at_eod per chain, inflow_by_counterparty E15, PSM USDS, NAV overrides for pre-deployment Chronicle blocks).
 - ✅ 192 unit + 8 integration tests passing. Markdown + CSV + provenance written under `settlements/grove/2026-03/`.
 - ✅ Methodology alignment with `prime-settlement-methodology.md` + `debt-rate-methodology.md` complete except for two deferred items (subsidised rate, idle USDS in lending pools/AMMs). See §17.7.
-- ✅ Q1 2026 multi-month run (`scripts/run_grove_2026_q1.py`) produces Jan/Feb/Mar settlement numbers in one execution. See §17.8.
+- ✅ Multi-month 2026 run (`scripts/run_grove_2026.py`) produces Jan / Feb / Mar / Apr / May settlement numbers in one execution. See §17.8.
 
 #### Cross-cutting
 - ✅ Source pluggability across `IDebtSource`, `IBalanceSource`, `ISSRSource`, `IPositionBalanceSource`, `IConvertToAssetsSource`, `IBlockResolver`, `INavOracleSource`, `IV3PositionSource`, plus duck-typed `CurvePoolSource`.
@@ -589,7 +589,7 @@ After the 2026-05-02 refactors (subsidised rate, SDE config table with capped JA
 | 2026-03 |   $129,496 | $6,302,405 | $0 | −$6,166,635 |
 | **Q1 total** | **$4,289,366** | **$17,767,668** | **$0** | **−$13,459,964** |
 
-Reproduce: `python3 scripts/run_grove_2026_q1.py` (lifetime Dune fixtures cover all three months; pin blocks per month are hardcoded in `PIN_BLOCKS_BY_MONTH`).
+Reproduce: `python3 scripts/run_grove_2026.py` (lifetime Dune fixtures cover all three Q1 months; pin blocks per month are hardcoded in `PIN_BLOCKS_BY_MONTH`).
 
 `sky_direct_shortfall` is now always 0 — under the new SDE-split model Sky takes the actual venue revenue (no more floor / shortfall absorption). The legacy field is preserved for provenance round-trip on settlements written under the old model.
 
@@ -636,7 +636,7 @@ Reference docs: `prime-settlement-methodology.md` (5-step framework) and `debt-r
 - Agent rate uniformly = `SSR + 20bps`. For sUSDS in subproxy, only the +20bps component applies (SSR already in the index).
 
 - **Step 4 Sky Direct reimbursement (`sky_direct: true` venue flag).** Per-venue floor: `Prime Revenue = max(0, ActualRev − BR_charge)`; `Sky Revenue = BR_charge always (with shortfall absorbed)`. BR_charge computed daily-precise (`Σ_d AV_d × ((1+SSR_d+30bps)^(1/365)-1)`), with AV_d = balance_at_day(d) × NAV_at_day_eod_block. Marked Sky Direct for Grove: **E9 JTRSY** + **E10 BUIDL**. Other documented Sky Direct exposures don't apply to Grove today (USTB — not held; PSM USDC on non-Eth chains — Grove not exposed; Spark Curve sUSDS/USDT — Spark only). The orchestrator subtracts total shortfall from gross sky_revenue; `MonthlyPnL.sky_direct_shortfall` reports the absorbed amount.
-- **Multi-month support.** `scripts/run_grove_2026_q1.py` runs Jan/Feb/Mar 2026 against the same lifetime fixtures (different pin_blocks per month). Required gating fixes: extended V3 events query (Dec 31 2025 → Mar 31 2026, captured the Feb 4 LP creation) and Chronicle NAV overrides for E7 STAC + E22 ACRDX at Dec 31 2025 (oracle pre-deployment).
+- **Multi-month support.** `scripts/run_grove_2026.py` runs Jan / Feb / Mar / Apr / May 2026 in a single execution, switching fixture dirs between Q1 (`grove_2026_03`), Apr (`grove_2026_04`) and May (`grove_2026_05`) with the right pin_blocks per month. Required gating fixes for Q1: extended V3 events query (Dec 31 2025 → Mar 31 2026, captured the Feb 4 LP creation) and Chronicle NAV overrides for E7 STAC + E22 ACRDX at Dec 31 2025 (oracle pre-deployment).
 - **RPC defensive coding.** `balance_of` / `scaled_balance_of` / `convert_to_assets` now treat empty (`0x`) returns and HTTP 4xx as zero — required for venues that didn't exist at older SoM blocks (E23 Steakhouse Prime Instant created mid-March; querying Feb SoM returns empty without this).
 
 **Recently shipped (2026-05-02 — Grove team workbook reconciliation):**
@@ -674,7 +674,7 @@ Reference docs: `prime-settlement-methodology.md` (5-step framework) and `debt-r
 
 ### 17.8 Q1 2026 Grove numbers — reproducibility note
 
-`scripts/run_grove_2026_q1.py` produces January, February, and March 2026 settlement numbers in one run. It uses the same lifetime Dune fixtures captured for March (debt, balances, SSR, mint/burn, cum_balance for RWA, V3 events, blocks_at_eod) and varies only `pin_blocks_som` / `pin_blocks_eom`. Two extensions vs the March-only run:
+`scripts/run_grove_2026.py` produces January, February, and March 2026 settlement numbers in one run (alongside Apr / May, which use the `grove_2026_04` and `grove_2026_05` fixture dirs). For the Q1 months, it uses the same lifetime Dune fixtures captured for March (debt, balances, SSR, mint/burn, cum_balance for RWA, V3 events, blocks_at_eod) and varies only `pin_blocks_som` / `pin_blocks_eom`. Two extensions vs the March-only run:
 
 1. **V3 events fixture** widened from `[Feb 28, Mar 31]` to `[Dec 31 2025, Mar 31 2026]`, capturing the Feb 4 IncreaseLiquidity event ($25M USDC into the AUSD/USDC LP).
 2. **`nav_overrides`** fixture key (in `dune_outputs.json`) provides explicit Chronicle NAVs for two `(oracle, block)` pairs where Chronicle had not yet started writing: E7 STAC at block 24136052 → $1000.00 (deposit-time par), E22 ACRDX at block 24136052 → $1.00 (deposit-time par). Without these, the prime_agent_revenue for January would include a phantom $100M jump on E7. **Note (2026-05-13):** the E22 ACRDX override is superseded by the `erc4626_vault` fallback oracle (see §17.13 item 8) — the vault gives the actual on-chain NAV ($1.01877 at block 24,136,052) rather than the $1.00 par approximation. The E7 STAC override remains necessary.

@@ -201,57 +201,41 @@ def daily_compound(apy: Decimal) -> Decimal:
 # ----------------------------------------------------------------------------
 
 def our_pnl_csv(month_label: str) -> dict[str, Decimal]:
-    """Returns ``{sky_revenue, prime_agent_revenue, prime_agent_total, sde_shortfall, ...}``
-    from ``settlements/grove/{month}/pnl.csv``."""
-    path = _REPO / "settlements" / "grove" / month_label / "pnl.csv"
+    """Returns headline totals from ``settlements/grove/{month}/provenance.json``.
+    Function name kept for backward-compat with the rest of the script."""
+    import json
+    path = _REPO / "settlements" / "grove" / month_label / "provenance.json"
     with path.open() as f:
-        row = next(csv.DictReader(f))
+        prov = json.load(f)
+    r = prov["results"]
     return {
-        "sky_revenue": Decimal(row["sky_revenue"]),
-        "prime_agent_revenue": Decimal(row["prime_agent_revenue"]),
-        "prime_agent_total_revenue": Decimal(row["prime_agent_total_revenue"]),
-        "sky_direct_shortfall": Decimal(row["sky_direct_shortfall"]),
+        "sky_revenue": Decimal(r["sky_revenue"]),
+        "prime_agent_revenue": Decimal(r["prime_agent_revenue"]),
+        "prime_agent_total_revenue": Decimal(r["prime_agent_total_revenue"]),
+        "sky_direct_shortfall": Decimal(r.get("sky_direct_shortfall") or "0"),
     }
 
 
 def our_grove_sheet_sky(month_label: str) -> dict[str, Decimal] | None:
-    """Read CoF on utilised debt + SDE revenue from the settlement xlsx's
-    Sky Revenue tab. Returns None if the xlsx isn't present."""
-    import openpyxl
-    # Try the various xlsx names this repo produces.
-    month_to_name = {
-        "2026-01": "january", "2026-02": "february", "2026-03": "march",
-        "2026-04": "april", "2026-05": "may",
+    """Returns ``{cof_subsidised, sde_revenue, sky_revenue_grove}`` computed
+    in-process from ``provenance.json`` via ``settle.load.grove_sheet``.
+    Replaces the prior xlsx Sky-Revenue-tab reader — same data, no file I/O.
+    """
+    import json
+    import sys
+    sys.path.insert(0, str(_REPO / "src"))
+    from settle.load.grove_sheet import compute_sheet_rows
+    path = _REPO / "settlements" / "grove" / month_label / "provenance.json"
+    if not path.exists():
+        return None
+    with path.open() as f:
+        prov = json.load(f)
+    _rows, totals = compute_sheet_rows(prov, "grove")
+    return {
+        "cof_subsidised":    totals["cof_total"],
+        "sde_revenue":       totals["sd_revenue_total"],
+        "sky_revenue_grove": totals["sky_revenue"],
     }
-    name = month_to_name.get(month_label)
-    candidates = [
-        _REPO / "settlements" / "grove" / month_label / "settlement.xlsx",
-        _REPO / "settlements" / "grove" / month_label / f"grove_settlement_{name}_2026.xlsx",
-    ] if name else []
-    for f in candidates:
-        if not f.exists():
-            continue
-        wb = openpyxl.load_workbook(f, data_only=True)
-        if "Sky Revenue" not in wb.sheetnames:
-            continue
-        ws = wb["Sky Revenue"]
-        out: dict[str, Decimal] = {}
-        for r in range(1, ws.max_row + 1):
-            k = str(ws.cell(r, 1).value or "")
-            v = ws.cell(r, 2).value
-            if "CoF on utilized" in k:
-                out["cof_subsidised"] = Decimal(str(v or 0))
-            elif "Sky-Direct revenue" in k:
-                out["sde_revenue"] = Decimal(str(v or 0))
-            elif "equals sky_revenue" in k:
-                out["sky_revenue_grove"] = Decimal(str(v or 0))
-        # Some xlsx variants emit the totals row with the label only as a
-        # merged comment so the "equals sky_revenue" key doesn't survive
-        # ``cell(r, 1).value``. Reconstruct the total from the components.
-        if "sky_revenue_grove" not in out and "cof_subsidised" in out:
-            out["sky_revenue_grove"] = out["cof_subsidised"] + out.get("sde_revenue", Decimal(0))
-        return out
-    return None
 
 
 # ----------------------------------------------------------------------------

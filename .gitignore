@@ -41,7 +41,17 @@ out.json
 
 # Data
 data
-settlements
+
+# Settlement artifacts:
+#   * track ``{prime}_settlement_{month}_{year}.xlsx`` — canonical
+#     human-readable artifact (shared with prime / Sky team).
+#   * track ``summary.md`` — text-only deterministic PR-review surface;
+#     diffs cleanly in the GitHub UI so reviewers can see headline +
+#     per-venue number changes at a glance.
+#   * ignore ``provenance.json`` — large (~35 KB), regenerable, and
+#     changes on every run (timestamps, source manifest) even when the
+#     headline numbers don't move.
+settlements/**/provenance.json
 
 # Claude
 .claude

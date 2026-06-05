@@ -1,18 +1,17 @@
 """Shared Grove-fixture loader.
 
-Both ``scripts/run_grove_2026_03.py`` (single-month acceptance) and
-``scripts/run_grove_2026_q1.py`` (multi-month Q1 2026) build their
-``Sources`` from the same captured-fixture set:
+The consolidated runner ``scripts/run_grove_2026.py`` (Jan → May 2026)
+builds its ``Sources`` from one of three captured-fixture sets,
+depending on which month is being processed:
 
-* ``tests/fixtures/grove_2026_03/dune_outputs.json`` — debt, balances, SSR,
-  per-venue mint/burn + cum_balance, V3 events, NAV overrides.
-* ``tests/fixtures/grove_2026_03/blocks_at_eod*.json`` — block-resolver
-  rows per chain (covers the full prime lifetime).
+* ``grove_2026_03/`` — Jan / Feb / Mar 2026 (debt, balances, SSR, per-venue
+  mint/burn + cum_balance, V3 events, NAV overrides, blocks_at_eod per chain).
+* ``grove_2026_04/`` — April 2026 (same shape, captured at April month-end).
+* ``grove_2026_05/`` — May 2026 (same shape, captured at May month-end).
 
-This module factors out the ~150 lines of fixture-loading + source-routing
-that the two scripts otherwise duplicate. Build a ``Sources`` once per run,
-or for multi-month: rebuild per month (cheap — pure-memory) so each call
-gets a fresh ``MockBalanceSource.cumulative_calls`` etc.
+The runner switches fixture dir between months. ``Sources`` is rebuilt per
+month (cheap — pure-memory) so each call gets a fresh
+``MockBalanceSource.cumulative_calls`` etc.
 
 Live RPC primitives (position_balance, convert_to_assets, NAV oracles,
 V3 NFT enumeration, Curve pool reads) come from the registry defaults —

@@ -2,7 +2,7 @@
 
 Not a pipeline component. The actual MCP fetch happens via Claude Code +
 mcp__dune tools — this just loads the captured JSON and reshapes it for the
-runner. See `scripts/run_spark_2026_q1.py`.
+runner. See `scripts/run_spark_2026.py`.
 """
 
 from __future__ import annotations
