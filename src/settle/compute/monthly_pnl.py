@@ -2043,17 +2043,69 @@ def compute_monthly_pnl(
         _erc4626_period_inflow: "Decimal | None" = None
         _ev_ts: "pd.DataFrame | None" = None
         if venue.pricing_category == PricingCategory.SPARK_SAVINGS_V2:
-            # Spark Savings V2 vaults aren't held at the prime ALM — the
-            # vault contract custodies underlying for retail depositors and
-            # the prime earns the yield spread (vault_yield − share_rate).
-            # Computing this requires a separate assets-vs-liabilities
-            # accounting layer (vault underlying balance ↔ share supply ×
-            # pps) that doesn't fit the standard Cat A/B/C/E/F flow.
-            # Skip with a warning until that layer lands.
-            _log.warning(
-                "  [skip] %s (%s, %s) — Spark Savings V2 compute path not yet implemented.",
-                venue.id, venue.token.symbol, venue.chain.value,
-            )
+            # Out-of-scope for the VSR-liability model: spETH (S58). Its
+            # underlying is WETH, not a par-stable, and the deployed-WETH
+            # yield (Sparklend-WETH etc.) is NOT yet wired into our venue
+            # inventory. Including spETH here would subtract the VSR
+            # liability without the offsetting gross yield — one-sided
+            # accounting. See ``docs/spark/PRD_savings_vaults.md`` §9.
+            from ..normalize.prices import is_par_stable
+            if venue.underlying is None or not is_par_stable(venue.underlying):
+                _log.info(
+                    "  [savings_v2] %s — underlying %s is not a par-stable "
+                    "(out of scope for VSR-liability model — see PRD §9).",
+                    venue.id,
+                    venue.underlying.symbol if venue.underlying else "(none)",
+                )
+                continue
+            # Spark Savings V2 vaults — Phase A: VSR-liability subtraction.
+            #
+            # The deployed underlying routes to the Spark ALM, where its
+            # gross yield is already captured by Spark's existing Cat A /
+            # B / C / E venues (verified on-chain — see
+            # ``docs/spark/PRD_savings_vaults.md`` §2-§3). What's missing
+            # is the depositor-side liability accrual: each share's pps
+            # grows daily at the VSR, and that growth is what Spark owes
+            # the depositor.
+            #
+            # We subtract ``Σ_d totalSupply(d-1) × (pps(d) - pps(d-1))``
+            # as a NEGATIVE revenue line on this venue. value_som /
+            # value_eom carry the depositor liability (= totalAssets) so
+            # the per-venue display matches BA Labs.
+            from .savings_v2_liability import compute_vsr_liability_period
+            from ..extract.dune import DuneError as _DuneError
+            from ..extract.rpc import RPCError as _RPCError
+            import requests as _requests
+            try:
+                vsr_liab, total_som, total_eom = compute_vsr_liability_period(
+                    venue, period.start, period.end,
+                    block_resolver=resolver,
+                )
+            except (_RPCError, _DuneError, _requests.HTTPError,
+                    _requests.ConnectionError, _requests.Timeout) as _e:
+                # Transient transport failure on a per-day read. Skip the
+                # venue (contribution = 0) and let the operator decide
+                # whether to retry. Programming errors (``ValueError``,
+                # ``AssertionError``, ``RuntimeError`` from the baseline-
+                # guard, etc.) propagate — a corrupted liability of $5M+
+                # silently zeroing would over-state ``prime_agent_revenue``
+                # by the same amount with no settlement-blocking signal.
+                _log.warning(
+                    "  [savings_v2] %s — VSR-liability transient failure "
+                    "(%s); skipping the venue (revenue contribution = 0).",
+                    venue.id, type(_e).__name__,
+                )
+                continue
+            venue_inputs.append(VenueRevenueInputs(
+                venue=venue,
+                value_som=total_som,
+                value_eom=total_eom,
+                inflow_timeseries=pd.DataFrame(
+                    columns=["block_date", "daily_inflow", "cum_inflow"]
+                ),
+                sde_entry=None,
+                actual_revenue_override=-vsr_liab,
+            ))
             continue
         # In sky_only mode, check the SDE table up-front so we can skip all
         # non-SDE venues before doing any RPC / pricing work.

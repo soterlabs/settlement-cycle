@@ -115,10 +115,14 @@ def _ba_lookup(ba_rows: list[dict], venue: dict, date: str) -> Decimal:
             and r.get("network") == net
         ]
     elif vid in VAULT_KEYED_VENUES:
-        # Our token.address IS the vault — match by wallet_address.
+        # Spark Savings V2 venues — our ``value_eom`` is the depositor
+        # liability (= ``totalAssets()`` at EoM), matching BA Labs's
+        # ``liabilities`` column rather than the ``assets`` column. The
+        # vault contract's ``wallet_address`` is the same as our
+        # ``token.address``.
         matches = [
             r for r in ba_rows
-            if r["date"] == date and r["what"] == "assets"
+            if r["date"] == date and r["what"] == "liabilities"
             and r.get("wallet_address", "").lower() == addr
             and r.get("network") == net
         ]

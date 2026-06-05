@@ -6,16 +6,16 @@ Period: 2026-02-01 → 2026-02-28 (28 days)
 
 | Field | USD |
 |---|---:|
-| prime_agent_revenue | $7,043,198.41 |
+| prime_agent_revenue | $5,286,406.06 |
 | agent_rate | $0.00 |
-| prime_agent_total_revenue | $7,043,198.41 |
+| prime_agent_total_revenue | $5,286,406.06 |
 | sky_revenue (net) | $7,789,700.05 |
 | sde_revenue | $34,251.06 |
 | susds_spread_reimbursement | $141,076.10 |
 | curve_susds_spread | $2,330.66 |
 | psm3_susds_spread | $52,934.95 |
 | sky_revenue_gross | $10,071,754.22 |
-| monthly_pnl | -$746,501.64 |
+| monthly_pnl | -$2,503,293.99 |
 
 ## Per-venue
 
@@ -72,4 +72,8 @@ Period: 2026-02-01 → 2026-02-28 (28 days)
 | S53 | USDC raw (Unichain — ALM idle) | $5,000,000.00 | $4,997,665.83 | -$2,334.17 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S54 | Aave Avalanche USDC (aAvaUSDC) | $10,000,965.04 | $10,000,143.51 | -$20,243.63 | $19,422.10 | $19,422.10 | $0.00 | 0% | $0.00 |
 | S55 | USDC raw (Avalanche-C — ALM idle) | $0.00 | $0.00 | $0.00 | -$0.00 | -$0.00 | $-0.00 | 0% | $0.00 |
+| S56 | Spark Savings V2 — spUSDC vault | $207,131,500.43 | $287,780,830.42 | $0.00 | -$627,039.83 | -$627,039.83 | $-0.00 | 0% | $0.00 |
+| S57 | Spark Savings V2 — spUSDT vault | $120,038,508.36 | $387,977,397.42 | $0.00 | -$742,151.61 | -$742,151.61 | $-0.00 | 0% | $0.00 |
+| S59 | Spark Savings V2 — spPYUSD vault | $285,387.14 | $94,443.72 | $0.00 | -$574.47 | -$574.47 | $-0.00 | 0% | $0.00 |
+| S60 | Spark Savings V2 — spUSDC vault (Avalanche-C, CREATE2 same address) | $95,656,876.18 | $152,857,139.20 | $0.00 | -$387,026.44 | -$387,026.44 | $-0.00 | 0% | $0.00 |
 

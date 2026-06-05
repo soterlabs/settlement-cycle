@@ -21,6 +21,7 @@ SEL_BALANCE_OF = "0x70a08231"           # balanceOf(address)
 SEL_DECIMALS = "0x313ce567"             # decimals()
 SEL_TOTAL_SUPPLY = "0x18160ddd"         # totalSupply()
 SEL_CONVERT_TO_ASSETS = "0x07a2d13a"    # convertToAssets(uint256)
+SEL_TOTAL_ASSETS = "0x01e1d114"         # totalAssets() — ERC-4626
 # PSM3 (Spark) — non-standard ABI: shares are internal accounting (no Transfer
 # events) and the rate uses ``convertToAssetValue(uint256)`` rather than the
 # ERC-4626 ``convertToAssets(uint256)``.
@@ -285,6 +286,23 @@ def total_supply_of(chain: Chain, token: Address, block: int) -> int:
     semantics the old soft-fail provided, but without cache poisoning.
     """
     return _decode_uint(eth_call(chain, token, SEL_TOTAL_SUPPLY, block))
+
+
+@cached(source_id="rpc.total_assets_of")
+def total_assets_of(chain: Chain, vault: Address, block: int) -> int:
+    """ERC-4626 ``totalAssets()`` at a specific block — total underlying-token
+    value backing all shares.
+
+    Used by the Spark Savings V2 (S2) VSR-liability computation:
+    ``totalAssets()`` ≈ ``totalSupply() × pps``, and is the depositor
+    liability that Spark owes at any moment. Reading it directly avoids a
+    separate ``convertToAssets(totalSupply)`` call.
+
+    Hard-fails on RPC infra error (same semantics as ``total_supply_of``):
+    silently caching 0 here would under-state Spark's VSR liability and
+    over-state ``prime_agent_revenue``.
+    """
+    return _decode_uint(eth_call(chain, vault, SEL_TOTAL_ASSETS, block))
 
 
 SEL_SCALED_BALANCE_OF = "0x1da24f3e"   # scaledBalanceOf(address)
