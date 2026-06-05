@@ -130,10 +130,13 @@ PIN_BLOCKS_BY_MONTH = {
     },
 }
 
-# (year, month, fixture_dir). Cat B/E ``cum_balance`` JSONs still end
-# 2026-03-31, so for Apr/May the loader produces zero ``period_inflow`` for
-# Cat B venues (revenue collapses to MtM Δvalue). ``value_eom`` comes from
-# RPC ``balanceOf`` at the pin blocks and is unaffected by this gap.
+# (year, month, fixture_dir). The ``spark_2026_q1`` fixture set was
+# refreshed 2026-06-05 to extend lifetime coverage through 2026-05-31:
+# debt_timeseries + daily EoD blocks via published Dune queries, Cat B/E
+# ``cum_balance`` via per-venue ``transfer_timeseries.sql``, and a new
+# ``inflow_by_counterparty.json`` capturing per-day per-counterparty
+# token flows for Cat A "raw idle" par-stable venues. So all 5 months
+# now run against the same fixture without an in-period anchor gap.
 _MONTH_PLAN = [
     (2026, 1, "spark_2026_q1"),
     (2026, 2, "spark_2026_q1"),

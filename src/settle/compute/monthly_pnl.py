@@ -1971,6 +1971,9 @@ def compute_monthly_pnl(
         v_som = Decimal("0")
         v_eom = Decimal("0")
         if not venue.skip and venue.chain in pin_blocks_som and venue.chain in pin_blocks_eom:
+            from ..extract.dune import DuneError as _DuneError
+            from ..extract.rpc import RPCError as _RPCError
+            import requests as _requests
             try:
                 v_som = get_position_value(
                     prime, venue, pin_blocks_som[venue.chain],
@@ -1992,10 +1995,15 @@ def compute_monthly_pnl(
                     block_resolver=resolver,
                     nav_oracle_resolver=sources.nav_oracle_resolver,
                 )
-            except Exception as _e:
+            except (_RPCError, _DuneError, _requests.HTTPError,
+                    _requests.ConnectionError, _requests.Timeout) as _e:
+                # Transient transport failure — fall back to $0 and let the
+                # cash-distribution revenue stand. Config errors
+                # (UnsupportedPricingError, ValueError) propagate so a YAML
+                # misconfig doesn't silently undo an un-skip like E21's.
                 _log.warning(
-                    "  [cash_dist] %s — get_position_value failed (%s); "
-                    "leaving value_som/eom at $0",
+                    "  [cash_dist] %s — get_position_value transient failure "
+                    "(%s); leaving value_som/eom at $0",
                     venue.id, type(_e).__name__,
                 )
         venue_inputs.append(VenueRevenueInputs(
