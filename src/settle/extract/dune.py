@@ -349,11 +349,25 @@ def _resolve_query_id(sql_path: Path) -> int:
     return query_id
 
 
+_DUNE_QUOTA_EXHAUSTED: bool = False
+
+
 def _execute_query(
     query_id: int,
     parameters: dict[str, Any],
     performance: str,
 ) -> str:
+    # Once we've seen a 402 ("datapoint limit per billing cycle"), every
+    # subsequent execute call within the same Python process will also
+    # 402. Short-circuiting saves ~30s per call (one 429 retry + the
+    # POST round-trip), which adds up to hours over a multi-month run
+    # that fans out per-day Dune lookups. Cleared on process restart.
+    global _DUNE_QUOTA_EXHAUSTED
+    if _DUNE_QUOTA_EXHAUSTED:
+        raise DuneError(
+            f"Dune execute {query_id} → HTTP 402 (short-circuited; previous "
+            f"call returned 402 — datapoint quota exhausted for billing cycle)"
+        )
     body: dict[str, Any] = {"performance": performance}
     if parameters:
         body["query_parameters"] = parameters
@@ -365,6 +379,8 @@ def _execute_query(
         timeout=30,
     )
     if not r.ok:
+        if r.status_code == 402:
+            _DUNE_QUOTA_EXHAUSTED = True
         raise DuneError(
             f"Dune execute {query_id} → HTTP {r.status_code}: {r.text[:400]}"
         )

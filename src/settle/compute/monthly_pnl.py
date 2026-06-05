@@ -2032,26 +2032,47 @@ def compute_monthly_pnl(
         som_block = pin_blocks_som[venue.chain]
         eom_block = pin_blocks_eom[venue.chain]
 
-        value_som = get_position_value(
-            prime, venue, som_block,
-            balance_source=sources.position_balance,
-            flow_source=sources.balance,
-            erc4626_source=sources.convert_to_assets,
-            v3_position_source=sources.v3_position,
-            curve_pool_source=sources.curve_pool,
-            block_resolver=resolver,
-            nav_oracle_resolver=sources.nav_oracle_resolver,
+        # L2 sUSDS Cat B venues (S37/S43/S47/S51) use proxy contracts that
+        # don't expose ``convertToAssets`` — the standard ERC-4626 path
+        # raises. Defer to the dedicated PSM3-pps recompute below
+        # (``_l2_susds_value``) by starting at 0; the value gets overwritten
+        # before VenueRevenue is constructed.
+        #
+        # The guard MUST match the recompute condition exactly
+        # (``chain != ETHEREUM and chain in prime.psm``) — otherwise a future
+        # sUSDS Cat B venue on a chain without a registered PSM3 would have
+        # its values zeroed here AND skipped by the recompute, silently
+        # reporting $0 for a non-zero position.
+        _defer_l2_susds = (
+            venue.pricing_category == PricingCategory.ERC4626_VAULT
+            and venue.sky_savings_token
+            and venue.chain != Chain.ETHEREUM
+            and venue.chain in prime.psm
         )
-        value_eom = get_position_value(
-            prime, venue, eom_block,
-            balance_source=sources.position_balance,
-            flow_source=sources.balance,
-            erc4626_source=sources.convert_to_assets,
-            v3_position_source=sources.v3_position,
-            curve_pool_source=sources.curve_pool,
-            block_resolver=resolver,
-            nav_oracle_resolver=sources.nav_oracle_resolver,
-        )
+        if _defer_l2_susds:
+            value_som = Decimal("0")
+            value_eom = Decimal("0")
+        else:
+            value_som = get_position_value(
+                prime, venue, som_block,
+                balance_source=sources.position_balance,
+                flow_source=sources.balance,
+                erc4626_source=sources.convert_to_assets,
+                v3_position_source=sources.v3_position,
+                curve_pool_source=sources.curve_pool,
+                block_resolver=resolver,
+                nav_oracle_resolver=sources.nav_oracle_resolver,
+            )
+            value_eom = get_position_value(
+                prime, venue, eom_block,
+                balance_source=sources.position_balance,
+                flow_source=sources.balance,
+                erc4626_source=sources.convert_to_assets,
+                v3_position_source=sources.v3_position,
+                curve_pool_source=sources.curve_pool,
+                block_resolver=resolver,
+                nav_oracle_resolver=sources.nav_oracle_resolver,
+            )
 
         if venue.display_only:
             # Tracked for monthly reports but excluded from prime_agent_revenue /
@@ -2397,12 +2418,25 @@ def compute_monthly_pnl(
                         )
                     except (_RPCError, _DuneError, _requests.HTTPError,
                             _requests.ConnectionError, _requests.Timeout) as _e:
-                        _log.warning(
-                            "  Cat B L2 sUSDS pricing failed for %s on %s "
-                            "(%s) — keeping get_position_value result; "
-                            "30bps credit may be wrong for this period.",
-                            venue.id, venue.chain.value, _e,
-                        )
+                        if _defer_l2_susds:
+                            # No prior ``get_position_value`` was called for
+                            # this venue (the proxy reverts on convertToAssets,
+                            # so we'd deferred). value_som/value_eom are
+                            # literally Decimal("0"); revenue + 30bps credit
+                            # will both be wrong.
+                            _log.warning(
+                                "  Cat B L2 sUSDS pricing FAILED for %s on %s "
+                                "(%s) — values remain $0 (defer path); "
+                                "settlement data for this venue is unreliable.",
+                                venue.id, venue.chain.value, _e,
+                            )
+                        else:
+                            _log.warning(
+                                "  Cat B L2 sUSDS pricing failed for %s on %s "
+                                "(%s) — keeping get_position_value result; "
+                                "30bps credit may be wrong for this period.",
+                                venue.id, venue.chain.value, _e,
+                            )
 
                 susds_spread = _Dec("0")  # prime earns 0; spread deducted from Sky Revenue below
 

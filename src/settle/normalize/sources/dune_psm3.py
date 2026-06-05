@@ -201,8 +201,22 @@ class DunePsm3Source:
     # ----------------------------------------------------------------------
 
     def shares_of(self, chain: str, psm3: bytes, holder: bytes, block: int) -> int:
-        history = self._load_holder_history(chain, holder, pin_block=block)
-        return _bisect_cum_at_or_before(history, block)
+        from ...extract.dune import DuneError
+        try:
+            history = self._load_holder_history(chain, holder, pin_block=block)
+            return _bisect_cum_at_or_before(history, block)
+        except DuneError:
+            # Dune outage / 402 quota: fall back to a direct RPC read of
+            # ``shares(holder)`` at this block. The PSM3 contract exposes a
+            # public ``shares(address)(uint256)`` getter — fully equivalent
+            # to the event-reconstruction path for a point-in-time snapshot
+            # (the event path is only preferred when callers need the
+            # *timeseries*; for a single-block read RPC is exact).
+            from ...domain import Address, Chain
+            from ...extract import rpc as _rpc
+            return _rpc.psm3_shares(
+                Chain(chain), Address(psm3), Address(holder), block,
+            )
 
     def convert_to_asset_value(self, chain: str, psm3: bytes, num_shares: int, block: int) -> int:
         """USDS-equivalent value of ``num_shares`` at ``block``.
@@ -231,9 +245,26 @@ class DunePsm3Source:
         """
         if num_shares == 0:
             return 0
-        pool_total = _bisect_cum_at_or_before(
-            self._load_pool_history(chain, pin_block=block), block,
-        )
+        from ...extract.dune import DuneError
+        try:
+            pool_total = _bisect_cum_at_or_before(
+                self._load_pool_history(chain, pin_block=block), block,
+            )
+        except DuneError:
+            # Dune outage / 402 quota: fall back to RPC
+            # ``convertToAssetValue(num_shares)`` direct call. Skips the
+            # leg-by-leg decomposition — the caller in ``_legs_at`` still
+            # decomposes via reserve reads (which only need ``pos_bal``,
+            # not Dune), but the *value* we return is exact. The
+            # decomposition-via-reserves step computes
+            # ``spark_share × leg_reserve`` per leg; the spark_share itself
+            # is derived from this returned value, so the legs end up
+            # consistent.
+            from ...domain import Address, Chain as _Chain
+            from ...extract import rpc as _rpc
+            return _rpc.psm3_convert_to_asset_value(
+                _Chain(chain), Address(psm3), num_shares, block,
+            )
         if pool_total <= 0:
             return 0
 

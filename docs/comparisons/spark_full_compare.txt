@@ -1,0 +1,42 @@
+Fetched 12397 BA Labs rows; 56 Spark venues in config
+
+=== Top 30 |diff| across all (venue × month) ===
+month      venue  chain                       ours                ba              diff  label
+----------------------------------------------------------------------------------------------------------------------------------
+2026-05    S23    ethereum       $           10.02 $  250,000,010.02 $ -250,000,000.00  Anchorage tri-party loan escrow (USDC pass-through, ~$0 bala
+2026-01    S23    ethereum       $            1.21 $  150,000,001.21 $ -150,000,000.00  Anchorage tri-party loan escrow (USDC pass-through, ~$0 bala
+2026-02    S23    ethereum       $            1.21 $  150,000,000.00 $ -149,999,998.79  Anchorage tri-party loan escrow (USDC pass-through, ~$0 bala
+2026-04    S23    ethereum       $            1.55 $  150,000,000.00 $ -149,999,998.45  Anchorage tri-party loan escrow (USDC pass-through, ~$0 bala
+2026-03    S23    ethereum       $      133,501.21 $  150,000,000.00 $ -149,866,498.79  Anchorage tri-party loan escrow (USDC pass-through, ~$0 bala
+2026-01    S56    ethereum       $            0.00 $   10,000,000.00 $  -10,000,000.00  Spark Savings V2 — spUSDC vault
+2026-01    S57    ethereum       $            0.00 $   10,000,000.00 $  -10,000,000.00  Spark Savings V2 — spUSDT vault
+2026-02    S56    ethereum       $            0.00 $   10,000,000.00 $  -10,000,000.00  Spark Savings V2 — spUSDC vault
+2026-02    S60    avalanche_c    $            0.00 $   10,000,000.00 $  -10,000,000.00  Spark Savings V2 — spUSDC vault (Avalanche-C, CREATE2 same a
+2026-03    S56    ethereum       $            0.00 $   10,000,000.00 $  -10,000,000.00  Spark Savings V2 — spUSDC vault
+2026-05    S56    ethereum       $            0.00 $   10,000,000.00 $  -10,000,000.00  Spark Savings V2 — spUSDC vault
+2026-05    S57    ethereum       $            0.00 $   10,000,000.00 $  -10,000,000.00  Spark Savings V2 — spUSDT vault
+2026-03    S57    ethereum       $            0.00 $    9,995,957.41 $   -9,995,957.41  Spark Savings V2 — spUSDT vault
+2026-02    S57    ethereum       $            0.00 $    9,994,938.04 $   -9,994,938.04  Spark Savings V2 — spUSDT vault
+2026-04    S57    ethereum       $            0.00 $    9,981,045.04 $   -9,981,045.04  Spark Savings V2 — spUSDT vault
+2026-04    S56    ethereum       $            0.00 $    9,976,912.56 $   -9,976,912.56  Spark Savings V2 — spUSDC vault
+2026-01    S60    avalanche_c    $            0.00 $    9,556,743.35 $   -9,556,743.35  Spark Savings V2 — spUSDC vault (Avalanche-C, CREATE2 same a
+2026-03    S60    avalanche_c    $            0.00 $    7,361,798.88 $   -7,361,798.88  Spark Savings V2 — spUSDC vault (Avalanche-C, CREATE2 same a
+2026-04    S58    ethereum       $            0.00 $    5,625,997.43 $   -5,625,997.43  Spark Savings V2 — spETH vault
+2026-05    S58    ethereum       $            0.00 $    4,995,675.00 $   -4,995,675.00  Spark Savings V2 — spETH vault
+2026-03    S58    ethereum       $            0.00 $    3,457,666.83 $   -3,457,666.83  Spark Savings V2 — spETH vault
+2026-01    S58    ethereum       $            0.00 $    2,534,900.50 $   -2,534,900.50  Spark Savings V2 — spETH vault
+2026-02    S58    ethereum       $            0.00 $    2,117,607.70 $   -2,117,607.70  Spark Savings V2 — spETH vault
+2026-04    S60    avalanche_c    $            0.00 $    2,000,000.00 $   -2,000,000.00  Spark Savings V2 — spUSDC vault (Avalanche-C, CREATE2 same a
+2026-05    S60    avalanche_c    $            0.00 $    1,995,312.93 $   -1,995,312.93  Spark Savings V2 — spUSDC vault (Avalanche-C, CREATE2 same a
+2026-04    S59    ethereum       $            0.00 $      982,544.01 $     -982,544.01  Spark Savings V2 — spPYUSD vault
+2026-05    S59    ethereum       $            0.00 $      773,066.16 $     -773,066.16  Spark Savings V2 — spPYUSD vault
+2026-03    S45    arbitrum       $    4,442,753.64 $    4,671,511.59 $     -228,757.95  USDC raw (Arbitrum — ALM idle)
+2026-03    S59    ethereum       $            0.00 $      100,000.00 $     -100,000.00  Spark Savings V2 — spPYUSD vault
+2026-02    S59    ethereum       $            0.00 $       94,399.70 $      -94,399.70  Spark Savings V2 — spPYUSD vault
+
+=== Per-month total |diff| ===
+  2026-01:  ours_total=$3,149,412,683.04  ba_total=$3,331,529,921.97  sum_abs_diff=$  182,123,268.46
+  2026-02:  ours_total=$3,486,252,861.12  ba_total=$3,668,459,429.54  sum_abs_diff=$  182,207,464.35
+  2026-03:  ours_total=$4,255,267,105.11  ba_total=$4,436,274,160.15  sum_abs_diff=$  181,014,459.45
+  2026-04:  ours_total=$5,146,507,256.75  ba_total=$5,325,071,936.69  sum_abs_diff=$  178,568,500.80
+  2026-05:  ours_total=$4,896,399,895.45  ba_total=$5,174,159,424.67  sum_abs_diff=$  277,768,683.06

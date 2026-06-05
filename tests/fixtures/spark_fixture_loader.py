@@ -80,6 +80,14 @@ def load_spark_and_fixtures(repo: Path):
             (repo / "tests/fixtures/grove_2026_03/dune_outputs.json").read_text()
         )["ssr"],
     }
+    # Optional Cat A inflow_by_counterparty fixture — populated by
+    # ``scripts/capture_spark_inflow_by_counterparty.py``. Missing → loader
+    # falls back to empty rows (legacy behaviour, which is fine for L2 Cat A
+    # par-stables but produces phantom revenue on Eth Cat A venues with
+    # external_alm_sources configured).
+    inflow_path = fdir / "inflow_by_counterparty.json"
+    if inflow_path.exists():
+        fixtures["inflow_by_counterparty"] = json.loads(inflow_path.read_text())
     return spark, fixtures
 
 
@@ -315,16 +323,42 @@ def build_spark_sources(
             return _empty_directed_df()
 
         def inflow_by_counterparty(self, chain, token, holder, start, pin_block):
-            # Test fixture limitation: returns empty rows for every venue.
-            # Live `inflow_by_counterparty` (Dune) would return per-counterparty
-            # transfers, including Anchorage interest sweeps to S26 USDC raw
-            # (PR 1, 2026-05-05) — to exercise that path in tests, add the
-            # actual Transfer rows to a fixture and load them here. Until
-            # then the offline fixture produces pre-PR-1 numbers (Cat A
-            # revenue = 0 for every par-stable venue via the fallback path).
-            return pd.DataFrame({
-                "block_date": [], "counterparty": [], "signed_amount": [],
-            })
+            # Source: ``tests/fixtures/spark_2026_q1/inflow_by_counterparty.json``
+            # captured via published Dune query 7432797 (one execution per
+            # Cat A venue × Spark ALM holder pair). The fixture rows are
+            # tagged with ``venue_id`` + ``chain``; look up the matching
+            # venue(s) by (chain, token.address) and filter rows.
+            #
+            # Returns empty rows when the fixture isn't present — falls back
+            # to the cumulative-balance path for L2 par-stables (correct: no
+            # external_alm_sources configured on L2) and to the phantom-
+            # revenue path on Eth Cat A (incorrect, but explicit — see the
+            # caller in normalize/positions.py).
+            inflow_bundle = fixtures.get("inflow_by_counterparty")
+            if inflow_bundle is None:
+                return pd.DataFrame({
+                    "block_date": [], "counterparty": [], "signed_amount": [],
+                })
+            target_vids = {
+                v.id for v in spark.venues
+                if v.chain.value == chain and v.token.address.value == token
+            }
+            matched_rows = [
+                {
+                    "block_date":   r["block_date"],
+                    "counterparty": r["counterparty"],
+                    "signed_amount": _D(str(r["signed_amount"])),
+                }
+                for r in inflow_bundle["rows"]
+                if r.get("venue_id") in target_vids
+            ]
+            if not matched_rows:
+                return pd.DataFrame({
+                    "block_date": [], "counterparty": [], "signed_amount": [],
+                })
+            df = pd.DataFrame(matched_rows)
+            df["block_date"] = pd.to_datetime(df["block_date"]).dt.date
+            return df
 
     # Block resolver: combine L2 + Eth + Avalanche-C fixtures into a single
     # multi-chain MockBlockResolver, with the Spark fixture file's exact

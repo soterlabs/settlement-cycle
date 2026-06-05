@@ -1,44 +1,770 @@
 {
-  "_about": "Cat E (RWA) cum_balance per venue at the Spark Eth ALM (0x1601843c…) from prime start through 2026-03-31 EoM (pin block 24781026). BUIDL-I (S19) uses min_transfer_amount=1M to filter sub-$1M yield-distribution mints. Material finding: ALL Cat E positions are $0 by Q1 2026 — Spark exited every RWA tranche between July and December 2025.",
-  "_dune_query_id": 7402171,
-  "_dune_execution_id": "01KQDKHWFC0BN209RKYAVHWVD8",
-  "_columns": ["venue_id", "block_date", "daily_net", "cum_balance"],
-  "_row_count": 28,
-  "_q1_2026_summary": {
-    "S19_BUIDL_I": "0 (fully exited 2025-07-28; final cum was -$8.94M float-roundoff)",
-    "S20_JTRSY": "0 (fully exited 2025-07-28)",
-    "S21_USTB": "0 (fully exited 2025-07-17)",
-    "S22_USCC": "0 (fully exited 2025-12-03)",
-    "S23_Anchorage": "0 (no on-chain transfers; off-chain position not visible)"
-  },
+  "_about": "Spark Cat E cum_balance \u2014 refreshed 2026-06-05 via published transfer_timeseries.sql (query 7432800), holder = chain-specific Spark ALM. Lifetime to 2026-05-31.",
+  "_dune_query_id": 7432800,
+  "_columns": [
+    "venue_id",
+    "chain",
+    "block_date",
+    "daily_net",
+    "cum_balance"
+  ],
+  "_row_count": 108,
   "rows": [
-    {"venue_id":"S19","block_date":"2025-04-08","daily_net":49949924.88,"cum_balance":49949924.88},
-    {"venue_id":"S19","block_date":"2025-04-09","daily_net":149850149.85,"cum_balance":199800074.73},
-    {"venue_id":"S19","block_date":"2025-04-10","daily_net":149880149.85,"cum_balance":349680224.58},
-    {"venue_id":"S19","block_date":"2025-04-11","daily_net":149865149.85,"cum_balance":499545374.43},
-    {"venue_id":"S19","block_date":"2025-04-30","daily_net":149940000,"cum_balance":649485374.43},
-    {"venue_id":"S19","block_date":"2025-05-01","daily_net":149940000,"cum_balance":799425374.43},
-    {"venue_id":"S19","block_date":"2025-07-18","daily_net":-200000000,"cum_balance":599425374.43},
-    {"venue_id":"S19","block_date":"2025-07-28","daily_net":-608367166.98,"cum_balance":-8941792.55},
-    {"venue_id":"S20","block_date":"2025-04-07","daily_net":47173004.018239,"cum_balance":47173004.018239},
-    {"venue_id":"S20","block_date":"2025-04-08","daily_net":47169862.550368,"cum_balance":94342866.568607},
-    {"venue_id":"S20","block_date":"2025-04-15","daily_net":47141692.009899,"cum_balance":141484558.578506},
-    {"venue_id":"S20","block_date":"2025-04-16","daily_net":47136882.21324,"cum_balance":188621440.791746},
-    {"venue_id":"S20","block_date":"2025-05-07","daily_net":94046971.031663,"cum_balance":282668411.823409},
-    {"venue_id":"S20","block_date":"2025-05-08","daily_net":94032943.83402,"cum_balance":376701355.657429},
-    {"venue_id":"S20","block_date":"2025-05-13","daily_net":-93.983437,"cum_balance":376701261.673992},
-    {"venue_id":"S20","block_date":"2025-07-28","daily_net":-376701261.673992,"cum_balance":0},
-    {"venue_id":"S21","block_date":"2025-04-07","daily_net":4703046.810106,"cum_balance":4703046.810106},
-    {"venue_id":"S21","block_date":"2025-04-08","daily_net":4702610.663715,"cum_balance":9405657.473821},
-    {"venue_id":"S21","block_date":"2025-04-14","daily_net":4699339.103745,"cum_balance":14104996.577566},
-    {"venue_id":"S21","block_date":"2025-04-21","daily_net":4695546.405709,"cum_balance":18800542.983275},
-    {"venue_id":"S21","block_date":"2025-04-22","daily_net":9390150.126903,"cum_balance":28190693.110178},
-    {"venue_id":"S21","block_date":"2025-05-14","daily_net":-10,"cum_balance":28190683.110178},
-    {"venue_id":"S21","block_date":"2025-07-17","daily_net":-28190683.110178,"cum_balance":0},
-    {"venue_id":"S22","block_date":"2025-10-21","daily_net":4428393.645144,"cum_balance":4428393.645144},
-    {"venue_id":"S22","block_date":"2025-10-22","daily_net":4424373.911272,"cum_balance":8852767.556416},
-    {"venue_id":"S22","block_date":"2025-11-05","daily_net":4412716.424986,"cum_balance":13265483.981402},
-    {"venue_id":"S22","block_date":"2025-12-01","daily_net":-8843655.9876,"cum_balance":4421827.993802},
-    {"venue_id":"S22","block_date":"2025-12-03","daily_net":-4421827.993802,"cum_balance":0}
+    {
+      "block_date": "2025-04-07",
+      "cum_balance": 100000,
+      "daily_net": 100000,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-04-08",
+      "cum_balance": 50049936.28,
+      "daily_net": 49949936.28,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-04-09",
+      "cum_balance": 199905852.88,
+      "daily_net": 149855916.6,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-04-10",
+      "cum_balance": 349809124.24,
+      "daily_net": 149903271.35999998,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-04-11",
+      "cum_balance": 499714527.33000004,
+      "daily_net": 149905403.09,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-04-14",
+      "cum_balance": 499886311.20000005,
+      "daily_net": 171783.87,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-04-15",
+      "cum_balance": 499943614.6700001,
+      "daily_net": 57303.47,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-04-16",
+      "cum_balance": 500001162.68000007,
+      "daily_net": 57548.01,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-04-17",
+      "cum_balance": 500058247.31000006,
+      "daily_net": 57084.63,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-04-21",
+      "cum_balance": 500287135.99000007,
+      "daily_net": 228888.68,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-04-22",
+      "cum_balance": 500344402.3600001,
+      "daily_net": 57266.37,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-04-23",
+      "cum_balance": 500401478.1500001,
+      "daily_net": 57075.79,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-04-24",
+      "cum_balance": 500458374.8000001,
+      "daily_net": 56896.65,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-04-25",
+      "cum_balance": 500515337.4700001,
+      "daily_net": 56962.67,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-04-28",
+      "cum_balance": 500687213.4400001,
+      "daily_net": 171875.97,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-04-29",
+      "cum_balance": 500744822.5100001,
+      "daily_net": 57609.07,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-04-30",
+      "cum_balance": 650742383.6300001,
+      "daily_net": 149997561.12,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-05-01",
+      "cum_balance": 800757388.2,
+      "daily_net": 150015004.57,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-05-02",
+      "cum_balance": 800849423.25,
+      "daily_net": 92035.05,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-05-05",
+      "cum_balance": 801125194.95,
+      "daily_net": 275771.7,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-05-06",
+      "cum_balance": 801216770.7700001,
+      "daily_net": 91575.82,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-05-07",
+      "cum_balance": 801308336.2300001,
+      "daily_net": 91565.46,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-05-08",
+      "cum_balance": 801399643.7100002,
+      "daily_net": 91307.48,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-05-09",
+      "cum_balance": 801490910.3100002,
+      "daily_net": 91266.6,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-05-12",
+      "cum_balance": 801764286.8400002,
+      "daily_net": 273376.53,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-05-13",
+      "cum_balance": 801855440.2200001,
+      "daily_net": 91153.38,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-05-14",
+      "cum_balance": 801696811.6500001,
+      "daily_net": -158628.57,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-05-15",
+      "cum_balance": 801788037.5300001,
+      "daily_net": 91225.88,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-05-16",
+      "cum_balance": 801879469.4300001,
+      "daily_net": 91431.9,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-05-19",
+      "cum_balance": 802153464.44,
+      "daily_net": 273995.01,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-05-20",
+      "cum_balance": 802244622.7600001,
+      "daily_net": 91158.32,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-05-21",
+      "cum_balance": 802335687.1500001,
+      "daily_net": 91064.39,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-05-22",
+      "cum_balance": 802426755.46,
+      "daily_net": 91068.31,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-05-23",
+      "cum_balance": 802517797.19,
+      "daily_net": 91041.73,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-05-27",
+      "cum_balance": 802882053.59,
+      "daily_net": 364256.4,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-05-28",
+      "cum_balance": 802973651.19,
+      "daily_net": 91597.6,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-05-29",
+      "cum_balance": 803065499.33,
+      "daily_net": 91848.14,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-05-30",
+      "cum_balance": 803157353.1600001,
+      "daily_net": 91853.83,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-06-02",
+      "cum_balance": 803433659.3700001,
+      "daily_net": 276306.21,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-06-03",
+      "cum_balance": 803525536.8300002,
+      "daily_net": 91877.46,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-06-04",
+      "cum_balance": 803617092.1400001,
+      "daily_net": 91555.31,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-06-05",
+      "cum_balance": 803708419.2,
+      "daily_net": 91327.06,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-06-06",
+      "cum_balance": 803799739.7700001,
+      "daily_net": 91320.57,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-06-09",
+      "cum_balance": 804073718.1300001,
+      "daily_net": 273978.36,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-06-10",
+      "cum_balance": 804165083.4200001,
+      "daily_net": 91365.29,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-06-11",
+      "cum_balance": 804256464.72,
+      "daily_net": 91381.3,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-06-12",
+      "cum_balance": 804347870.88,
+      "daily_net": 91406.16,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-06-13",
+      "cum_balance": 804439267.32,
+      "daily_net": 91396.44,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-06-16",
+      "cum_balance": 804713473.32,
+      "daily_net": 274206,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-06-17",
+      "cum_balance": 804805285.49,
+      "daily_net": 91812.17,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-06-18",
+      "cum_balance": 804896964.88,
+      "daily_net": 91679.39,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-06-20",
+      "cum_balance": 805079785.96,
+      "daily_net": 182821.08,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-06-23",
+      "cum_balance": 805354053.3100001,
+      "daily_net": 274267.35,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-06-24",
+      "cum_balance": 805445505.2900001,
+      "daily_net": 91451.98,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-06-25",
+      "cum_balance": 805537097.33,
+      "daily_net": 91592.04,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-06-26",
+      "cum_balance": 805629370.8000001,
+      "daily_net": 92273.47,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-06-27",
+      "cum_balance": 805722416.1600001,
+      "daily_net": 93045.36,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-06-30",
+      "cum_balance": 806001125.22,
+      "daily_net": 278709.06,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-07-01",
+      "cum_balance": 806094288.47,
+      "daily_net": 93163.25,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-07-02",
+      "cum_balance": 806187536.65,
+      "daily_net": 93248.18,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-07-03",
+      "cum_balance": 806280511.84,
+      "daily_net": 92975.19,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-07-07",
+      "cum_balance": 806650101.1600001,
+      "daily_net": 369589.32,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-07-08",
+      "cum_balance": 806742415.0000001,
+      "daily_net": 92313.84,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-07-09",
+      "cum_balance": 806835004.0200001,
+      "daily_net": 92589.02,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-07-10",
+      "cum_balance": 806927443.9100001,
+      "daily_net": 92439.89,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-07-11",
+      "cum_balance": 807019788.69,
+      "daily_net": 92344.78,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-07-14",
+      "cum_balance": 807297174.3000001,
+      "daily_net": 277385.61,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-07-15",
+      "cum_balance": 807389978.7600001,
+      "daily_net": 92804.46,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-07-16",
+      "cum_balance": 807483547.9900001,
+      "daily_net": 93569.23,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-07-17",
+      "cum_balance": 807576675.8800001,
+      "daily_net": 93127.89,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-07-18",
+      "cum_balance": 607669789.4700001,
+      "daily_net": -199906886.41,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-07-21",
+      "cum_balance": 607878569.6100001,
+      "daily_net": 208780.14,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-07-22",
+      "cum_balance": 607947901.2000002,
+      "daily_net": 69331.59,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-07-23",
+      "cum_balance": 608017167.7400001,
+      "daily_net": 69266.54,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-07-24",
+      "cum_balance": 608086487.7800001,
+      "daily_net": 69320.04,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-07-25",
+      "cum_balance": 608156165.3700001,
+      "daily_net": 69677.59,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-07-28",
+      "cum_balance": 1.1920928955078125e-07,
+      "daily_net": -608156165.37,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-07-29",
+      "cum_balance": 70301.69000011921,
+      "daily_net": 70301.69,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-07-30",
+      "cum_balance": 140548.8400001192,
+      "daily_net": 70247.15,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-07-31",
+      "cum_balance": 210418.9100001192,
+      "daily_net": 69870.07,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-08-01",
+      "cum_balance": 280845.9400001192,
+      "daily_net": 70427.03,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-08-04",
+      "cum_balance": 491034.0100001192,
+      "daily_net": 210188.07,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-08-05",
+      "cum_balance": 549446.3500001192,
+      "daily_net": 58412.34,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-08-06",
+      "cum_balance": 608036.3900001192,
+      "daily_net": 58590.04,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-08-07",
+      "cum_balance": 666544.6200001192,
+      "daily_net": 58508.23,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-08-08",
+      "cum_balance": 725057.0300001192,
+      "daily_net": 58512.41,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-08-11",
+      "cum_balance": 900612.8900001192,
+      "daily_net": 175555.86,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-09-08",
+      "cum_balance": 1.1920928955078125e-07,
+      "daily_net": -900612.89,
+      "venue_id": "S19",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-04-07",
+      "cum_balance": 47173004.018239,
+      "daily_net": 47173004.018239,
+      "venue_id": "S20",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-04-08",
+      "cum_balance": 94342866.568607,
+      "daily_net": 47169862.550368,
+      "venue_id": "S20",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-04-15",
+      "cum_balance": 141484558.578506,
+      "daily_net": 47141692.009899,
+      "venue_id": "S20",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-04-16",
+      "cum_balance": 188621440.791746,
+      "daily_net": 47136882.21324,
+      "venue_id": "S20",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-05-07",
+      "cum_balance": 282668411.82340896,
+      "daily_net": 94046971.031663,
+      "venue_id": "S20",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-05-08",
+      "cum_balance": 376701355.657429,
+      "daily_net": 94032943.83402,
+      "venue_id": "S20",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-05-13",
+      "cum_balance": 376701261.673992,
+      "daily_net": -93.983437,
+      "venue_id": "S20",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-07-28",
+      "cum_balance": 0,
+      "daily_net": -376701261.673992,
+      "venue_id": "S20",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-04-07",
+      "cum_balance": 4703046.810106,
+      "daily_net": 4703046.810106,
+      "venue_id": "S21",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-04-08",
+      "cum_balance": 9405657.473821,
+      "daily_net": 4702610.663715,
+      "venue_id": "S21",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-04-14",
+      "cum_balance": 14104996.577566,
+      "daily_net": 4699339.103745,
+      "venue_id": "S21",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-04-21",
+      "cum_balance": 18800542.983275,
+      "daily_net": 4695546.405709,
+      "venue_id": "S21",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-04-22",
+      "cum_balance": 28190693.110178,
+      "daily_net": 9390150.126903,
+      "venue_id": "S21",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-05-14",
+      "cum_balance": 28190683.110178,
+      "daily_net": -10,
+      "venue_id": "S21",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-07-17",
+      "cum_balance": 0,
+      "daily_net": -28190683.110178,
+      "venue_id": "S21",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-10-21",
+      "cum_balance": 4428393.645144,
+      "daily_net": 4428393.645144,
+      "venue_id": "S22",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-10-22",
+      "cum_balance": 8852767.556416,
+      "daily_net": 4424373.911272,
+      "venue_id": "S22",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-11-05",
+      "cum_balance": 13265483.981401999,
+      "daily_net": 4412716.424986,
+      "venue_id": "S22",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-12-01",
+      "cum_balance": 4421827.993801998,
+      "daily_net": -8843655.9876,
+      "venue_id": "S22",
+      "chain": "ethereum"
+    },
+    {
+      "block_date": "2025-12-03",
+      "cum_balance": -1.862645149230957e-09,
+      "daily_net": -4421827.993802,
+      "venue_id": "S22",
+      "chain": "ethereum"
+    }
   ]
 }
