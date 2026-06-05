@@ -1960,10 +1960,48 @@ def compute_monthly_pnl(
             venue, prime, period, _cash_dist_balance_src
         )
         _log.info("  [cash_dist] %s — total cash revenue: %s", venue.id, cash_rev)
+        # value_som / value_eom: try the standard ``get_position_value`` so
+        # cash-distribution venues with a meaningful on-chain balance (e.g.
+        # E21 GACLO-1 with ``nav_oracle: const_one``) report the principal
+        # for display + CoF parity with BA Labs. Skip when ``venue.skip`` is
+        # set (oracle untrusted / token doesn't expose required reads) or
+        # when ``get_position_value`` raises (e.g. proxy reverts), in which
+        # case we fall back to $0 — revenue is still captured via the cash-
+        # dist override above.
+        v_som = Decimal("0")
+        v_eom = Decimal("0")
+        if not venue.skip and venue.chain in pin_blocks_som and venue.chain in pin_blocks_eom:
+            try:
+                v_som = get_position_value(
+                    prime, venue, pin_blocks_som[venue.chain],
+                    balance_source=sources.position_balance,
+                    flow_source=sources.balance,
+                    erc4626_source=sources.convert_to_assets,
+                    v3_position_source=sources.v3_position,
+                    curve_pool_source=sources.curve_pool,
+                    block_resolver=resolver,
+                    nav_oracle_resolver=sources.nav_oracle_resolver,
+                )
+                v_eom = get_position_value(
+                    prime, venue, pin_blocks_eom[venue.chain],
+                    balance_source=sources.position_balance,
+                    flow_source=sources.balance,
+                    erc4626_source=sources.convert_to_assets,
+                    v3_position_source=sources.v3_position,
+                    curve_pool_source=sources.curve_pool,
+                    block_resolver=resolver,
+                    nav_oracle_resolver=sources.nav_oracle_resolver,
+                )
+            except Exception as _e:
+                _log.warning(
+                    "  [cash_dist] %s — get_position_value failed (%s); "
+                    "leaving value_som/eom at $0",
+                    venue.id, type(_e).__name__,
+                )
         venue_inputs.append(VenueRevenueInputs(
             venue=venue,
-            value_som=Decimal("0"),
-            value_eom=Decimal("0"),
+            value_som=v_som,
+            value_eom=v_eom,
             inflow_timeseries=pd.DataFrame(
                 columns=["block_date", "daily_inflow", "cum_inflow"]
             ),
