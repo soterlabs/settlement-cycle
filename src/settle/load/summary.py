@@ -20,11 +20,11 @@ Structure:
     | Headline | USD |
     | prime_agent_revenue        | $... |
     | agent_rate                 | $... |
+    | prime_agent_total_revenue  | $... |
     | sky_revenue (net)          | $... |
     | sde_revenue                | $... |
     | susds_spread_reimbursement | $... |
     | sky_revenue_gross          | $... |   (when non-zero)
-    | monthly_pnl                | $... |
 
     ## Per-venue
     | Venue | Label | value_som | value_eom | actual_rev | revenue | sd_revenue |
@@ -91,6 +91,15 @@ def render_summary(prov: dict) -> str:
 
     # ── Headline ────────────────────────────────────────────────────
     r = prov.get("results", {})
+    # NOTE: ``monthly_pnl`` was deliberately removed from the headline
+    # (it's still present in provenance.json for backward-compat). It
+    # was ``prime_agent_revenue + agent_rate + distribution_rewards −
+    # sky_revenue``, which doesn't map to a real Prime-agent P&L:
+    # ``prime_agent_revenue`` is already the prime's excess (its take
+    # net of Sky's BR-on-utilized), so subtracting ``sky_revenue``
+    # again double-counts. The four headline fields below
+    # (prime_agent_revenue / agent_rate / prime_agent_total_revenue /
+    # sky_revenue) are sufficient to describe each side's economics.
     headline_rows = [
         ("prime_agent_revenue",        r.get("prime_agent_revenue")),
         ("agent_rate",                 r.get("agent_rate")),
@@ -102,7 +111,6 @@ def render_summary(prov: dict) -> str:
         ("curve_susds_spread",         r.get("curve_susds_spread")),
         ("psm3_susds_spread",          r.get("psm3_susds_spread")),
         ("sky_revenue_gross",          r.get("sky_revenue_gross")),
-        ("monthly_pnl",                r.get("monthly_pnl")),
     ]
     lines.append("## Headline")
     lines.append("")
@@ -115,7 +123,6 @@ def render_summary(prov: dict) -> str:
         if label not in (
             "prime_agent_revenue", "agent_rate",
             "prime_agent_total_revenue", "sky_revenue (net)",
-            "monthly_pnl",
         ) and _D(val) == 0:
             continue
         lines.append(f"| {label} | {_usd(val)} |")
