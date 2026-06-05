@@ -15,7 +15,6 @@ Period: 2026-05-01 → 2026-05-31 (31 days)
 | curve_susds_spread | $2,810.40 |
 | psm3_susds_spread | $100,146.90 |
 | sky_revenue_gross | $13,377,121.86 |
-| monthly_pnl | -$2,160,281.55 |
 
 ## Per-venue
 

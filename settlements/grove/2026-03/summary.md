@@ -12,7 +12,6 @@ Period: 2026-03-01 → 2026-03-31 (31 days)
 | sky_revenue (net) | $6,308,194.49 |
 | sde_revenue | $3,251,383.75 |
 | sky_revenue_gross | $7,972,909.71 |
-| monthly_pnl | -$5,806,868.53 |
 
 ## Per-venue
 
