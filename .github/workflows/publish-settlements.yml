@@ -1,0 +1,62 @@
+name: Publish settlements to settlement-reports
+
+# Mirrors the `settlements/` folder of this repo into the `reports/`
+# folder of soterlabs/settlement-reports on every push to main. The
+# target's `reports/` is made to match `settlements/` exactly (files
+# deleted here are deleted there); everything else in the target repo
+# (.git, .github/, README.md, …) is left untouched, since --delete only
+# acts within reports/.
+#
+# Auth: a fine-grained PAT scoped to settlement-reports (Contents: Read
+# and write), stored as the secret SETTLEMENT_REPORTS_TOKEN in this repo.
+
+on:
+  push:
+    branches: [main]
+    # Only run when published content actually changes.
+    paths:
+      - 'settlements/**'
+  workflow_dispatch: {}
+
+# Serialize pushes so two runs don't race on the target's main branch.
+concurrency:
+  group: publish-settlements
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout source (settlement-cycle)
+        uses: actions/checkout@v4
+        with:
+          path: source
+
+      - name: Checkout target (settlement-reports)
+        uses: actions/checkout@v4
+        with:
+          repository: soterlabs/settlement-reports
+          token: ${{ secrets.SETTLEMENT_REPORTS_TOKEN }}
+          path: target
+          # Keep the persisted PAT credential so the push step can use it.
+          persist-credentials: true
+
+      - name: Mirror settlements/ into target reports/
+        run: |
+          mkdir -p target/reports
+          rsync -a --delete source/settlements/ target/reports/
+
+      - name: Commit and push if changed
+        working-directory: target
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to publish."
+            exit 0
+          fi
+          SHA="${GITHUB_SHA::7}"
+          git commit -m "Publish settlements from settlement-cycle@${SHA}"
+          git push origin HEAD:main
