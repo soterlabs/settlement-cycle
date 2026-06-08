@@ -50,11 +50,13 @@ def render_provenance(
             # Cat B venues. sky_revenue is already net of this deduction.
             # Used by build_monthly_report.py to recover gross-BR cof_total.
             "susds_spread_reimbursement": str(pnl.susds_spread_reimbursement),
-            # Total +20 bps agent rate income on sUSDS POL venues (currently
-            # Spark S32 only, configured via ``Venue.pol_agent_rate: true``).
-            # Already rolled into prime_agent_revenue via the per-venue
-            # ``pol_agent_rate_usd`` contributions; surfaced separately for
-            # the summary headline.
+            # Total +20 bps agent rate Sky pays the prime on sUSDS POL
+            # venues (currently Spark S32 only, configured via
+            # ``Venue.pol_agent_rate: true``). Routed as a Sky Revenue
+            # reduction (parallel to ``susds_spread_reimbursement``) —
+            # ``sky_revenue`` is already net of this deduction. NOT folded
+            # into prime_agent_revenue; surfaced separately for the summary
+            # headline + per-venue audit (see ``venue_breakdown[i].pol_agent_rate_usd``).
             "pol_agent_rate": str(pnl.pol_agent_rate),
             # Sky Revenue that would result if no deductions were subtracted
             # from utilized (i.e., utilized = cum_debt each day). Same BR /

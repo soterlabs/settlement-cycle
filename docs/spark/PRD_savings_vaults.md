@@ -394,8 +394,9 @@ next action so it can be picked up cold.
   separate PRD.
 - **Per-allocation breakdown** — interesting reporting but not needed
   for the headline number; deferred.
-- **Avalanche spUSDC (S60)** — small ($37M); same model, deferred per
-  §5.3.
+- ~~**Avalanche spUSDC (S60)**~~ — shipped via Phase A's chain-agnostic
+  RPC path (§5.3). Verification spot-check still recommended (sample
+  daily EoD blocks on Avalanche against on-chain `totalAssets()`).
 - **Performance attribution between Spark and depositors at the per-day
   granularity** — the headline number captures the netted P&L; we
   don't try to reconstruct *which* deployment leg outperformed.
@@ -408,8 +409,12 @@ next action so it can be picked up cold.
    (negative) `vsr_liability` contributions in Spark's monthly settlement
    breakdown (Jan–May 2026: total ~$28M Spark CoF across the four vaults).
 2. Per-vault internal consistency checks (§6.1) pass.
-3. Closed-form reconciliation (§5.2) lands within 1% — or the gap is
-   characterised and the model is corrected accordingly.
+3. **Ongoing — per-period monitoring via `scripts/reconcile_savings_v2.py`.**
+   Closed-form reconciliation lands within 1% — or the gap is
+   characterised and the model is corrected accordingly. Per §5.2 the
+   tolerance is soft (an "investigate" trigger, not a pipeline gate);
+   per-vault gaps are surfaced in `savings_v2_reconciliation.md` and
+   reviewed each month.
 4. ✓ **Done (PR #114):** Headline `prime_agent_revenue` for Spark
    decreased by the expected VSR liability magnitude (verified against
    BA Labs Jan–May 2026 to within $5K/month per vault).

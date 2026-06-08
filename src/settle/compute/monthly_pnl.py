@@ -1759,6 +1759,16 @@ def compute_monthly_pnl(
                 "--sky-only. (Curve LP and PSM3 sUSDS spreads ARE deducted.)",
                 prime.id, _catB_sUSDS_venues,
             )
+        _pol_agent_venues = [
+            v.id for v in prime.venues if getattr(v, "pol_agent_rate", False)
+        ]
+        if _pol_agent_venues:
+            _log.warning(
+                "sky_only mode: prime %s has pol_agent_rate venues %s — their "
+                "20bps agent rate Sky pays the prime will NOT be deducted from "
+                "sky_revenue. For canonical sky_revenue, re-run without --sky-only.",
+                prime.id, _pol_agent_venues,
+            )
 
     # 1. Resolve the block resolver up front. We need it for pin_blocks (if not
     #    supplied) AND for V3 inflow tracking (event block → date conversion).
@@ -2074,9 +2084,11 @@ def compute_monthly_pnl(
     # VenueRevenue after compute_prime_agent_revenue and summed to reduce
     # sky_rev (see step 4 below).
     _susds_spread_reimbs: dict[str, Decimal] = {}
-    # Agent-rate income on sUSDS POL venues (currently S32 only). Populated
-    # in the same sub-case; injected into VenueRevenue.pol_agent_rate_usd
-    # and added to per-venue revenue so it flows into prime_agent_revenue.
+    # Agent rate Sky pays the prime on sUSDS POL venues (currently S32
+    # only). Populated in the same sub-case; injected into
+    # VenueRevenue.pol_agent_rate_usd for the per-venue audit trail, and
+    # summed into ``total_pol_agent_rate`` which is subtracted from
+    # ``sky_rev`` below (parallel to ``total_susds_spread_reimb``).
     _pol_agent_rate_usds: dict[str, Decimal] = {}
     for venue in prime.venues:
         if venue.cash_distributions:
