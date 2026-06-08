@@ -46,7 +46,12 @@ def _pct(x: Decimal) -> str:
     return f"{x * 100:.3f}%"
 
 
-def render_report(prime_id: str, month: str, recs: list[VaultReconciliation]) -> str:
+def render_report(
+    prime_id: str,
+    month: str,
+    recs: list[VaultReconciliation],
+    pol_agent_rate_total: Decimal = Decimal("0"),
+) -> str:
     lines: list[str] = []
     lines.append(f"# Spark Savings V2 — per-vault economic view ({prime_id.upper()} {month})")
     lines.append("")
@@ -60,6 +65,19 @@ def render_report(prime_id: str, month: str, recs: list[VaultReconciliation]) ->
         "scale out the USDS-minted-via-Allocator co-tenant capital."
     )
     lines.append("")
+    if pol_agent_rate_total > 0:
+        lines.append(
+            f"**Note — S32 POL agent rate income (this period): "
+            f"{_usd(pol_agent_rate_total)}.** This is a prime-level income "
+            f"line earned on the pooled sUSDS POL at the Spark ETH ALM "
+            f"(funded by both USDS-via-Allocator and savings-vault deposits "
+            f"swapped through PSM3). It's already in `prime_agent_revenue` "
+            f"and is NOT attributed to any single vault in the per-vault "
+            f"table below — surfacing it here for context so the reader can "
+            f"compute Spark's all-in position on savings vaults as "
+            f"`net_spread_weighted_total + pol_agent_rate_total`."
+        )
+        lines.append("")
     lines.append("## Summary")
     lines.append("")
     lines.append(
@@ -177,7 +195,8 @@ def main() -> int:
         return 0
 
     recs = reconcile_all(prime, prov)
-    report = render_report(args.prime, args.month, recs)
+    pol_total = Decimal(str(prov.get("results", {}).get("pol_agent_rate") or 0))
+    report = render_report(args.prime, args.month, recs, pol_total)
     print(report)
 
     if args.write:

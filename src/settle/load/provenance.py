@@ -50,6 +50,12 @@ def render_provenance(
             # Cat B venues. sky_revenue is already net of this deduction.
             # Used by build_monthly_report.py to recover gross-BR cof_total.
             "susds_spread_reimbursement": str(pnl.susds_spread_reimbursement),
+            # Total +20 bps agent rate income on sUSDS POL venues (currently
+            # Spark S32 only, configured via ``Venue.pol_agent_rate: true``).
+            # Already rolled into prime_agent_revenue via the per-venue
+            # ``pol_agent_rate_usd`` contributions; surfaced separately for
+            # the summary headline.
+            "pol_agent_rate": str(pnl.pol_agent_rate),
             # Sky Revenue that would result if no deductions were subtracted
             # from utilized (i.e., utilized = cum_debt each day). Same BR /
             # subsidy schedule as actual sky_revenue. Display-only — not
@@ -112,6 +118,12 @@ def render_provenance(
                 # 30 bps spread deducted from sky_revenue for this venue.
                 # Non-zero only for sky_savings_token Cat B venues.
                 "susds_spread_reimbursement": str(v.susds_spread_reimbursement),
+                # +20 bps agent rate income on sUSDS POL. Non-zero only for
+                # venues with ``Venue.pol_agent_rate: true`` (currently Spark
+                # S32). Already rolled into ``revenue`` above; surfaced
+                # separately for audit and the savings_v2 reconciliation
+                # report.
+                "pol_agent_rate_usd": str(v.pol_agent_rate_usd),
                 # When True, this venue's avg_value is excluded from the CoF
                 # allocation denominator in post-hoc reporting. Mirrors the
                 # ``Venue.cof_excluded`` flag, propagated here so the

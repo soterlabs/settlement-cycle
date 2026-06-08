@@ -2,6 +2,8 @@
 
 Per `docs/spark/PRD_savings_vaults.md` §5.2. **Display-only.** Contamination handling: (1) Cat A par-stable venues whose yield comes from `external_alm_sources` sweeps (S26 USDC raw → Anchorage, S28 PYUSD raw → PayPal) are excluded from the mapping in `config/spark.yaml`. (2) The remaining lending venues are weighted by `vault_share = vault_TVL_avg / Σ venue_TVL_avg` to scale out the USDS-minted-via-Allocator co-tenant capital.
 
+**Note — S32 POL agent rate income (this period): $87,501.45.** This is a prime-level income line earned on the pooled sUSDS POL at the Spark ETH ALM (funded by both USDS-via-Allocator and savings-vault deposits swapped through PSM3). It's already in `prime_agent_revenue` and is NOT attributed to any single vault in the per-vault table below — surfacing it here for context so the reader can compute Spark's all-in position on savings vaults as `net_spread_weighted_total + pol_agent_rate_total`.
+
 ## Summary
 
 | Vault | Underlying | TVL avg | Share | VSR liability | VSR APY | Pipeline yield (raw) | Yield (weighted) | apr_eff (weighted) | Net (weighted) |

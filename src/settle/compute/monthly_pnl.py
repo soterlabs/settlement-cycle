@@ -730,6 +730,51 @@ def _susds_cat_b_spread_reimb(
     return total
 
 
+def _pol_susds_agent_rate(
+    value_som: Decimal, inflow_ts: pd.DataFrame | None, period: Period,
+) -> Decimal:
+    """20 bps daily-compounded agent rate income on sUSDS POL at the ALM.
+
+    Per the Sky-Spark agreement, Spark earns the agent rate on Ethereum
+    sUSDS POL (S32). Since SSR is already received via the sUSDS share
+    price, only the +20bps component above SSR applies here.
+
+    The income flows 100% to ``prime_agent_revenue`` (not subject to SDE
+    split). Combined with the BR-charge-on-underlying mechanism (Sky
+    charges 30bps over SSR on the underlying USDS in ``cum_debt``),
+    Spark's net cost on S32 becomes ``30bps − 20bps = 10bps × V × days``.
+
+    Formula: ``Σ_d V_d × daily_compounding_factor(AGENT_RATE_OVER_SSR)``
+    where ``V_d = value_som + (cum_inflow_d − cum_inflow_{som-1})``.
+    Mirrors ``_susds_cat_b_spread_reimb`` daily-integration exactly so
+    the two paths can be compared term-by-term.
+
+    Scope: applied to ``Venue.pol_agent_rate=True`` venues. Currently
+    just S32 on Ethereum. L2 sUSDS proxies (S37/S43/S47/S51) keep their
+    existing 30bps ``susds_spread_reimbursement`` mechanism and do NOT
+    receive the agent rate — per the prime team's Ethereum-only scope.
+    """
+    from ._helpers import daily_compounding_factor
+    from .agent_rate import AGENT_RATE_OVER_SSR
+    agent_daily = daily_compounding_factor(AGENT_RATE_OVER_SSR)
+    if inflow_ts is None or inflow_ts.empty:
+        if value_som <= 0:
+            return Decimal("0")
+        return value_som * agent_daily * Decimal(period.n_days)
+    cum_baseline = cum_at_or_before(
+        inflow_ts, "cum_inflow", period.start - timedelta(days=1),
+    )
+    total = Decimal("0")
+    current = period.start
+    while current <= period.end:
+        cum_d = cum_at_or_before(inflow_ts, "cum_inflow", current)
+        v_d = value_som + (cum_d - cum_baseline)
+        if v_d > 0:
+            total += v_d * agent_daily
+        current = current + timedelta(days=1)
+    return total
+
+
 def _psm3_susds_spread(psm_usds: pd.DataFrame | None, period: Period) -> Decimal:
     """30 bps daily-compounded Prime Revenue credit on the sUSDS slice of
     PSM3 holdings.
@@ -2022,6 +2067,10 @@ def compute_monthly_pnl(
     # VenueRevenue after compute_prime_agent_revenue and summed to reduce
     # sky_rev (see step 4 below).
     _susds_spread_reimbs: dict[str, Decimal] = {}
+    # Agent-rate income on sUSDS POL venues (currently S32 only). Populated
+    # in the same sub-case; injected into VenueRevenue.pol_agent_rate_usd
+    # and added to per-venue revenue so it flows into prime_agent_revenue.
+    _pol_agent_rate_usds: dict[str, Decimal] = {}
     for venue in prime.venues:
         if venue.cash_distributions:
             # Already handled by the cash-distribution pass above — skip here
@@ -2685,6 +2734,14 @@ def compute_monthly_pnl(
                     _susds_spread_reimbs[venue.id] = _susds_cat_b_spread_reimb(
                         value_som, inflow_ts, period,
                     )
+                # Agent rate income on POL — 20bps × V × days, daily-integrated.
+                # Currently configured for S32 only (Ethereum sUSDS POL); the
+                # L2 sUSDS proxies don't carry the flag and earn 0 here. Flows
+                # 100% to prime_agent_revenue via the per-venue rollup.
+                if venue.pol_agent_rate:
+                    _pol_agent_rate_usds[venue.id] = _pol_susds_agent_rate(
+                        value_som, inflow_ts, period,
+                    )
             else:
                 # Sub-case (b): normal Cat B MtM.
                 susds_spread = None
@@ -3140,6 +3197,12 @@ def compute_monthly_pnl(
             vr,
             lending_idle_tw_avg_usd=_lending_idle_tw_avg.get(vr.venue_id, vr.lending_idle_tw_avg_usd),
             susds_spread_reimbursement=_susds_spread_reimbs.get(vr.venue_id, vr.susds_spread_reimbursement),
+            pol_agent_rate_usd=_pol_agent_rate_usds.get(vr.venue_id, vr.pol_agent_rate_usd),
+            # Fold the POL agent-rate income directly into ``revenue`` so it
+            # flows into prime_agent_revenue via the existing per-venue rollup.
+            # Without this, the field would be display-only and the prime would
+            # not actually receive the +20bps income.
+            revenue=vr.revenue + _pol_agent_rate_usds.get(vr.venue_id, Decimal("0")),
         )
         for vr in breakdown
     ]
@@ -3153,6 +3216,15 @@ def compute_monthly_pnl(
         + curve_susds_spread
         + psm3_susds_spread
     )
+
+    # Prime-level total of the POL agent rate income. The per-venue revenue
+    # was bumped above in the ``_dc.replace`` pass; ``prime_rev`` from
+    # ``compute_prime_agent_revenue`` was computed BEFORE that bump, so we
+    # add the total here so ``prime_rev`` stays equal to ``Σ vr.revenue``.
+    # Surfaced separately as ``MonthlyPnL.pol_agent_rate`` for headline
+    # visibility (currently only Spark on S32 contributes a non-zero value).
+    total_pol_agent_rate = sum(_pol_agent_rate_usds.values(), Decimal("0"))
+    prime_rev = prime_rev + total_pol_agent_rate
 
 
     # SDE revenue (Σ actual × sd_share across venues) flows directly to Sky.
@@ -3290,5 +3362,6 @@ def compute_monthly_pnl(
         sde_daily_breakdown=sde_daily_breakdown_out,
         sky_revenue_daily=sky_revenue_daily_out,
         susds_spread_reimbursement=total_susds_spread_reimb,
+        pol_agent_rate=total_pol_agent_rate if not sky_only else Decimal("0"),
         sky_revenue_gross=sky_rev_gross,
     )

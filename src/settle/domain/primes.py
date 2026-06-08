@@ -257,6 +257,21 @@ class Venue:
     # as part of Demand Side Distribution Rewards rather than Supply Side PnL.
     # Sky still charges full BR on utilized; prime_revenue remains 0.
     demand_side_spread: bool = False
+    # When True, the prime EARNS the agent rate (+20bps over SSR, applied only
+    # to the +20bps component since SSR is already received via the sUSDS share
+    # price) on the value of this venue's sUSDS holdings, daily-integrated like
+    # ``susds_spread_reimbursement``. Income flows 100% to prime_agent_revenue
+    # via ``VenueRevenue.pol_agent_rate_usd``; not subject to the SDE split.
+    #
+    # Currently used on a single venue: **Spark S32 (sUSDS POL at Ethereum ALM)**
+    # to model the Sky-Spark agreement that Spark earns the agent rate on
+    # Ethereum-held sUSDS POL. Combined with the BR-charge-on-underlying
+    # mechanism, Spark's net cost on S32 becomes 30bps − 20bps = 10bps × V × days.
+    #
+    # NOT applied to the L2 sUSDS proxies (S37/S43/S47/S51): those keep their
+    # existing 30bps ``susds_spread_reimbursement`` (net 0bps cost) — the
+    # Sky-Spark agreement on agent rate is Ethereum-only per the prime team.
+    pol_agent_rate: bool = False
     # Additional addresses to treat as "burn destinations" when classifying
     # share Transfers for Cat B inflow accounting. ERC-4626 vaults with a
     # withdrawal-queue pattern (Maple PoolV2 etc.) Transfer the user's
