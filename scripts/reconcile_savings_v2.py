@@ -67,14 +67,16 @@ def render_report(
     lines.append("")
     if pol_agent_rate_total > 0:
         lines.append(
-            f"**Note — S32 POL agent rate income (this period): "
-            f"{_usd(pol_agent_rate_total)}.** This is a prime-level income "
-            f"line earned on the pooled sUSDS POL at the Spark ETH ALM "
+            f"**Note — S32 POL agent rate (this period): "
+            f"{_usd(pol_agent_rate_total)}.** Sky pays Spark the agent rate "
+            f"(+20bps over SSR) on the pooled sUSDS POL at the Spark ETH ALM "
             f"(funded by both USDS-via-Allocator and savings-vault deposits "
-            f"swapped through PSM3). It's already in `prime_agent_revenue` "
-            f"and is NOT attributed to any single vault in the per-vault "
-            f"table below — surfacing it here for context so the reader can "
-            f"compute Spark's all-in position on savings vaults as "
+            f"swapped through PSM3). Routed as a Sky Revenue reduction "
+            f"(parallel to the 30bps `susds_spread_reimbursement`), it "
+            f"reduces what Spark owes Sky by this amount. It is NOT "
+            f"attributed to any single vault in the per-vault table below — "
+            f"surfacing it here for context so the reader can compute "
+            f"Spark's all-in position on savings vaults as "
             f"`net_spread_weighted_total + pol_agent_rate_total`."
         )
         lines.append("")

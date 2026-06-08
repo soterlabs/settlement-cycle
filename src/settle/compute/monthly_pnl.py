@@ -733,16 +733,23 @@ def _susds_cat_b_spread_reimb(
 def _pol_susds_agent_rate(
     value_som: Decimal, inflow_ts: pd.DataFrame | None, period: Period,
 ) -> Decimal:
-    """20 bps daily-compounded agent rate income on sUSDS POL at the ALM.
+    """20 bps daily-compounded agent rate Sky pays Spark on sUSDS POL.
 
     Per the Sky-Spark agreement, Spark earns the agent rate on Ethereum
     sUSDS POL (S32). Since SSR is already received via the sUSDS share
     price, only the +20bps component above SSR applies here.
 
-    The income flows 100% to ``prime_agent_revenue`` (not subject to SDE
-    split). Combined with the BR-charge-on-underlying mechanism (Sky
-    charges 30bps over SSR on the underlying USDS in ``cum_debt``),
-    Spark's net cost on S32 becomes ``30bps − 20bps = 10bps × V × days``.
+    **Accounting:** routed as a Sky Revenue reduction (subtract from
+    ``sky_rev`` in the orchestrator), parallel to the existing 30bps
+    ``susds_spread_reimbursement`` mechanism. Same shape, different rate
+    (20bps vs 30bps) — both are Sky-to-Spark transfers on sUSDS POL.
+    The S32 venue's per-venue ``actual_revenue`` and ``revenue`` stay at
+    $0 (consistent with every other ``sky_savings_token`` venue); the
+    20bps shows up as a reduction in the ``sky_revenue`` headline.
+
+    Combined with the BR-charge-on-underlying mechanism (Sky charges
+    30bps over SSR on the underlying USDS in ``cum_debt``), Spark's net
+    cost on S32 becomes ``30bps − 20bps = 10bps × V × days``.
 
     Formula: ``Σ_d V_d × daily_compounding_factor(AGENT_RATE_OVER_SSR)``
     where ``V_d = value_som + (cum_inflow_d − cum_inflow_{som-1})``.
@@ -3198,11 +3205,13 @@ def compute_monthly_pnl(
             lending_idle_tw_avg_usd=_lending_idle_tw_avg.get(vr.venue_id, vr.lending_idle_tw_avg_usd),
             susds_spread_reimbursement=_susds_spread_reimbs.get(vr.venue_id, vr.susds_spread_reimbursement),
             pol_agent_rate_usd=_pol_agent_rate_usds.get(vr.venue_id, vr.pol_agent_rate_usd),
-            # Fold the POL agent-rate income directly into ``revenue`` so it
-            # flows into prime_agent_revenue via the existing per-venue rollup.
-            # Without this, the field would be display-only and the prime would
-            # not actually receive the +20bps income.
-            revenue=vr.revenue + _pol_agent_rate_usds.get(vr.venue_id, Decimal("0")),
+            # ``pol_agent_rate_usd`` is recorded per-venue for audit (so an
+            # auditor can see which venue earned the agent rate) but is NOT
+            # added to ``revenue``. The agent rate is routed as a Sky Revenue
+            # reduction below — same mechanism as ``susds_spread_reimbursement``,
+            # consistent with Rule 5 economic-neutrality plumbing on every
+            # other ``sky_savings_token`` venue. See ``Venue.pol_agent_rate``
+            # docstring for the economic equivalence.
         )
         for vr in breakdown
     ]
@@ -3217,14 +3226,13 @@ def compute_monthly_pnl(
         + psm3_susds_spread
     )
 
-    # Prime-level total of the POL agent rate income. The per-venue revenue
-    # was bumped above in the ``_dc.replace`` pass; ``prime_rev`` from
-    # ``compute_prime_agent_revenue`` was computed BEFORE that bump, so we
-    # add the total here so ``prime_rev`` stays equal to ``Σ vr.revenue``.
-    # Surfaced separately as ``MonthlyPnL.pol_agent_rate`` for headline
-    # visibility (currently only Spark on S32 contributes a non-zero value).
+    # Prime-level total of the POL agent rate. Routed as a Sky Revenue
+    # reduction below (parallel to ``total_susds_spread_reimb``) — same
+    # mechanism the 30bps spread reimbursement uses, for consistency. The
+    # economic effect is identical to adding it to ``prime_rev``: Spark's
+    # net cost on the POL drops by ``total_pol_agent_rate`` either way.
+    # Surfaced as ``MonthlyPnL.pol_agent_rate`` for headline visibility.
     total_pol_agent_rate = sum(_pol_agent_rate_usds.values(), Decimal("0"))
-    prime_rev = prime_rev + total_pol_agent_rate
 
 
     # SDE revenue (Σ actual × sd_share across venues) flows directly to Sky.
@@ -3258,12 +3266,19 @@ def compute_monthly_pnl(
         lending_idle_usds=lending_idle_usds,
     )
     # Sky's full claim: BR on (utilized − SDE − idle deductions) + actual SDE
-    # revenue, minus the 30 bps spread reimbursement across all
-    # sky_savings_token paths (Cat B ALM + Curve LP sUSDS + PSM3 sUSDS leg).
-    # The reimbursement neutralises the SSR-via-share-price + BR-on-utilized
-    # composite on sUSDS positions: Sky charges full BR then refunds 30bps,
-    # so the prime's net cost is SSR × V (economic neutrality, Rule 5).
-    sky_rev = sky_rev_br + sde_revenue - total_susds_spread_reimb
+    # revenue, minus two Sky-to-Spark transfers on sUSDS positions:
+    #   * ``total_susds_spread_reimb`` — 30bps spread reimbursement across
+    #     Cat B ALM + Curve LP sUSDS + PSM3 sUSDS leg. Neutralises the
+    #     SSR-via-share-price + BR-on-utilized composite on those positions
+    #     (Rule 5 — prime's net cost = SSR × V, economic neutrality).
+    #   * ``total_pol_agent_rate`` — 20bps agent rate Sky pays on sUSDS POL
+    #     where ``Venue.pol_agent_rate: true`` is set (currently Spark S32
+    #     only). Combined with the absent spread reimbursement on S32
+    #     (``demand_side_spread: true`` suppresses it), Spark's net cost on
+    #     S32 is BR_spread − agent_rate = 30bps − 20bps = 10bps × V × days.
+    # Both deductions are routed through ``sky_rev`` (not ``prime_rev``)
+    # for accounting consistency — the economic effect is identical.
+    sky_rev = sky_rev_br + sde_revenue - total_susds_spread_reimb - total_pol_agent_rate
     # Pure BR × cum_debt (no idle / SDE / PSM / Curve / lending deductions,
     # no susds spread reimbursement). Display-only. NOT the gross analog of
     # sky_revenue: ``sky_revenue`` also adds ``sde_revenue`` on top of the

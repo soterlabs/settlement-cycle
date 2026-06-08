@@ -103,13 +103,15 @@ class VenueRevenue:
     # Formula: value_som × (daily_compounding_factor(BASE_RATE_OVER_SSR) − 1)
     #          × n_days. Zero for all other venues.
     susds_spread_reimbursement: Decimal = Decimal("0")
-    # Agent rate income (+20bps over SSR, applied only to the +20bps component
-    # since SSR is received via the sUSDS share price) on the value of this
-    # venue's sUSDS holdings. Daily-integrated like ``susds_spread_reimbursement``.
-    # Non-zero only for venues with ``Venue.pol_agent_rate: true`` — currently
-    # just Spark S32. Folded into ``revenue`` (flows 100% to prime, not subject
-    # to SDE split). See ``Venue.pol_agent_rate`` docstring for the economic
-    # rationale and Sky-Spark agreement context.
+    # Agent rate (+20bps over SSR, applied only to the +20bps component since
+    # SSR is received via the sUSDS share price) Sky pays Spark on this venue's
+    # sUSDS POL. Daily-integrated like ``susds_spread_reimbursement``. Non-zero
+    # only for venues with ``Venue.pol_agent_rate: true`` — currently just
+    # Spark S32. **Display-only at the per-venue level**: the prime-level
+    # ``MonthlyPnL.pol_agent_rate`` aggregate is routed as a Sky Revenue
+    # reduction (not folded into per-venue ``revenue``) for consistency with
+    # the existing ``susds_spread_reimbursement`` mechanism. See
+    # ``Venue.pol_agent_rate`` docstring for the economic rationale.
     pol_agent_rate_usd: Decimal = Decimal("0")
     # Legacy fields kept for provenance round-trip on existing settlements
     # written under the old shortfall model. New runs always emit 0 for these.
@@ -221,11 +223,13 @@ class MonthlyPnL:
     # reconciliation. Zero for primes with no sky_savings_token Cat B
     # venues.
     susds_spread_reimbursement: Decimal = Decimal("0")
-    # Total agent rate income (+20bps over SSR) on the prime's sUSDS POL
-    # venues (= Σ vr.pol_agent_rate_usd across the venue breakdown). Already
-    # rolled into ``prime_agent_revenue`` per-venue; surfaced separately for
-    # the summary headline. Currently non-zero only for Spark on S32
-    # (Ethereum sUSDS POL). See ``Venue.pol_agent_rate``.
+    # Total agent rate (+20bps over SSR) Sky pays Spark on sUSDS POL
+    # venues (= Σ vr.pol_agent_rate_usd across the venue breakdown).
+    # Routed as a Sky Revenue reduction (subtracted from ``sky_revenue``
+    # alongside ``susds_spread_reimbursement``) — same accounting shape
+    # as the 30bps reimbursement, for consistency. Currently non-zero
+    # only for Spark on S32 (Ethereum sUSDS POL). See
+    # ``Venue.pol_agent_rate``.
     pol_agent_rate: Decimal = Decimal("0")
     # Pure BR × full ilk debt with NO deductions: no idle-USDS, no PSM,
     # no SDE asset-value, no Curve/lending idle. Uses the same subsidised

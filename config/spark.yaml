@@ -601,11 +601,14 @@ venues:
   #   while keeping the full BR charge intact.
   #
   # Why pol_agent_rate: true (per Sky-Spark agreement, Ethereum-only):
-  #   Spark earns the agent rate (+20bps over SSR, applied only to the
+  #   Sky pays Spark the agent rate (+20bps over SSR, applied only to the
   #   +20bps component since SSR is received via the sUSDS share price)
   #   on Ethereum-held sUSDS POL. Daily-integrated like
-  #   susds_spread_reimbursement. The income flows into
-  #   prime_agent_revenue. Combined with the full BR charge above,
+  #   susds_spread_reimbursement. **Routed as a Sky Revenue reduction**
+  #   (same mechanism as the 30bps spread reimbursement, just a different
+  #   rate) — Sky's invoice to Spark drops by 20bps × V × days, leaving
+  #   the per-venue ``actual_revenue`` and ``revenue`` at 0 like every
+  #   other sky_savings_token venue. Combined with the full BR charge,
   #   Spark's net cost on this position = 30bps − 20bps = 10bps × V × days.
   #
   # Contrast with S37/S43/S47/S51 (L2 sUSDS POL): those are pure supply-side

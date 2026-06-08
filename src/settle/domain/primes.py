@@ -257,11 +257,19 @@ class Venue:
     # as part of Demand Side Distribution Rewards rather than Supply Side PnL.
     # Sky still charges full BR on utilized; prime_revenue remains 0.
     demand_side_spread: bool = False
-    # When True, the prime EARNS the agent rate (+20bps over SSR, applied only
-    # to the +20bps component since SSR is already received via the sUSDS share
-    # price) on the value of this venue's sUSDS holdings, daily-integrated like
-    # ``susds_spread_reimbursement``. Income flows 100% to prime_agent_revenue
-    # via ``VenueRevenue.pol_agent_rate_usd``; not subject to the SDE split.
+    # When True, Sky pays the prime the agent rate (+20bps over SSR, applied
+    # only to the +20bps component since SSR is already received via the
+    # sUSDS share price) on the value of this venue's sUSDS holdings,
+    # daily-integrated like ``susds_spread_reimbursement``.
+    #
+    # **Accounting:** the agent rate is routed as a Sky Revenue REDUCTION
+    # (subtracted from ``MonthlyPnL.sky_revenue`` alongside the existing
+    # 30bps spread reimbursement). Same mechanism, different rate. Surfaced
+    # as ``MonthlyPnL.pol_agent_rate`` for headline visibility and as
+    # ``VenueRevenue.pol_agent_rate_usd`` for the per-venue audit trail.
+    # The per-venue ``revenue`` and ``actual_revenue`` stay at 0 — consistent
+    # with every other ``sky_savings_token`` venue, whose prime-side P&L
+    # is captured exclusively at the sky_revenue layer.
     #
     # Currently used on a single venue: **Spark S32 (sUSDS POL at Ethereum ALM)**
     # to model the Sky-Spark agreement that Spark earns the agent rate on
