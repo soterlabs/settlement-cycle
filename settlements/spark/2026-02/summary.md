@@ -82,3 +82,5 @@ Period: 2026-02-01 → 2026-02-28 (28 days)
 | S59 | Spark Savings V2 — spPYUSD vault | $285,387.14 | $94,443.72 |
 | S60 | Spark Savings V2 — spUSDC vault (Avalanche-C, CREATE2 same address) | $95,656,876.18 | $152,857,139.20 |
 
+> Aggregated `actual_revenue` from the venues above (included in `prime_agent_revenue` at the prime level, not shown per-vault): **-$1,756,792.35**. Per-vault values remain in `provenance.json` under `venue_breakdown[]`.
+
