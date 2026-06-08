@@ -195,8 +195,9 @@ Enabled per-venue via `lending_idle_usds: true` in the prime YAML config (Cat C 
 - Scans all `frob` (selector `0x76088703`) **and `grab`** (selector `0x7bab3f40`) calls to the Vat (`0x35D1…492B`) filtered to the prime's `ilk_bytes32`
 - Each call carries a signed `dart` (change in normalized debt, 1e18 units) at calldata offset 165
 - The Dune query returns `Σ dart = Vat.ilks[ilk].Art` (normalised debt, wad units) from `prime.start_date` through the EoM pin block
-- `normalize/debt.py` reads `Vat.ilks[ilk].rate` at the EoM pin block via RPC and scales: `cum_debt = Art × rate`, giving actual outstanding USDS
-- For ALLOCATOR-BLOOM-A, `rate = 1.0` always (grab-based capitalisation, no `jug.drip`); for ALLOCATOR-SPARK-A, `rate ≈ 1.045` by early 2026
+- `normalize/debt.py` reads `Vat.ilks[ilk].rate` **per calendar day** via RPC (at each day's EoD block, when a `block_resolver` is supplied — the production path used by `compute_monthly_pnl`) and scales day-by-day: `cum_debt_d = Art_d × rate_d / 1e27`, giving actual outstanding USDS each day. Daily rate accrual is what produces non-zero `daily_dart` even on days without frob/grab activity.
+- Fallback (no resolver — tests / one-off queries only): returns the raw normalised `Art` series **without rate scaling**. `cum_debt` then carries Art-wad units, not USDS — a ~4.5% under-statement for ALLOCATOR-SPARK-A. The normalize layer emits a warning when this path is taken.
+- For ALLOCATOR-BLOOM-A, `rate = 1.0` always (grab-based capitalisation, no `jug.drip`); both paths are equivalent there. For ALLOCATOR-SPARK-A, `rate ≈ 1.045` by early 2026.
 - Ilk-level, not per-vault: if the prime's ilk has multiple vaults or subproxies, `cum_debt` captures the aggregate
 
 ---

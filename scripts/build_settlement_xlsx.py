@@ -406,14 +406,13 @@ def _write_sky_revenue(ws, prov: dict, sheet_rows: list[dict], prime_cfg: dict) 
         ws.row_dimensions[ws.max_row].height = 60
         ws.append([])
 
-    # sUSDS spread — Prime Revenue line, not a Sky deduction.
+    # sUSDS spread — Sky Revenue reduction (Cat B refund).
     if spread_reimb != 0:
         ws.append([
             "sUSDS spread (Curve LP + PSM3) — 30 bps × value × n_days "
-            "credited to prime_agent_revenue. Sky still charges full BR on "
-            "the underlying utilized; this row is the prime's offsetting "
-            "pickup on the share-price-appreciation accounting (SSR + BR + "
-            "30 bps nets to zero economically).",
+            "deducted from sky_revenue. Sky charges full BR on the "
+            "underlying utilized; this row is the offsetting refund to the "
+            "prime so SSR + BR + 30 bps nets to zero economically.",
             float(spread_reimb),
         ])
         ws.cell(ws.max_row, 2).number_format = _USD
@@ -697,9 +696,12 @@ def _write_debt(ws, prov: dict) -> None:
     ws.append([])
     ws.append([
         "cum_debt = Σ on-chain Vat dart from frob (0x76088703) + grab "
-        "(0x7bab3f40). utilized = cum_debt − Σ deductions. base_apy = "
-        "(1+SSR)(1+0.003)−1 (multiplicative). sub_apy applies on the first "
-        "cap_usd of utilized when the subsidy is active; excess pays base_apy."
+        "(0x7bab3f40), then scaled by Vat.ilks[ilk].rate_d / 1e27 read "
+        "at each day's EoD block — actual outstanding USDS per day, not "
+        "raw normalised Art. utilized = cum_debt − Σ deductions. base_apy "
+        "= (1+SSR)(1+0.003)−1 (multiplicative). sub_apy applies on the "
+        "first cap_usd of utilized when the subsidy is active; excess "
+        "pays base_apy."
     ])
     ws.cell(ws.max_row, 1).font = _MUTED
     ws.cell(ws.max_row, 1).alignment = Alignment(wrap_text=True, vertical="top")

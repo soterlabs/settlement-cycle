@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 
@@ -12,6 +13,8 @@ from ..domain.primes import Address, Chain, Prime
 from ..validation.schemas import assert_columns
 from .protocols import IBlockResolver, IDebtSource
 from .registry import get_debt_source
+
+_log = logging.getLogger(__name__)
 
 # MakerDAO Vat — same constant as snapshot/compute.py; duplicated here to
 # avoid a cross-layer import (normalize must not import from compute/snapshot).
@@ -50,12 +53,13 @@ def get_debt_timeseries(
     ``daily_dart`` is derived as ``cum_debt_d − cum_debt_{d-1}``, capturing
     both frob/grab activity and the daily rate accrual on existing principal.
 
-    **EoM approximation (fallback):** when no resolver is provided, the EoM
-    rate is applied uniformly to the sparse series.  Daily rate error ≤ 0.3%
-    for a monthly period — negligible vs. the ~4.5% systematic correction for
-    ALLOCATOR-SPARK-A, but imprecise. Prefer always passing ``block_resolver``.
-
-    For ALLOCATOR-BLOOM-A ``rate = 1.0`` always; both paths are no-ops there.
+    **Fallback (no resolver):** returns the raw sparse Dune frame unchanged.
+    ``cum_debt`` then carries normalised Art (wad units), NOT USDS — a ~4.5%
+    under-statement for ALLOCATOR-SPARK-A. This path is intended only for
+    tests / one-off queries where rate precision doesn't matter; a
+    ``logging.warning`` is emitted so production callers that forget to pass
+    a resolver notice. For ALLOCATOR-BLOOM-A ``rate = 1.0`` always, so the
+    distinction is moot.
     """
     if Chain.ETHEREUM not in period.pin_blocks:
         raise ValueError(
@@ -97,5 +101,13 @@ def get_debt_timeseries(
     # No block_resolver: return the raw normalised Art series without rate
     # scaling. Callers that need accurate USDS values (e.g. compute_monthly_pnl)
     # always supply a resolver; this path is used only in tests or one-off
-    # queries where rate precision is not required.
+    # queries where rate precision is not required. Warn loudly so any
+    # production caller that forgets to pass a resolver sees the footgun.
+    _log.warning(
+        "get_debt_timeseries called without block_resolver for ilk=%s "
+        "prime=%s — returning raw normalised Art (wad), NOT rate-scaled "
+        "USDS. cum_debt will under-state actual debt by the accumulated "
+        "Vat ilk rate (~4.5%% for ALLOCATOR-SPARK-A by early 2026).",
+        prime.ilk_bytes32.hex(), prime.id,
+    )
     return sparse

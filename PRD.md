@@ -190,7 +190,13 @@ class IPriceSource(Protocol):
     def unit_price(self, venue: Venue, block: int) -> Decimal: ...
 
 # normalize/debt.py
-def get_debt_timeseries(prime: Prime, period: Period) -> pd.DataFrame: ...
+def get_debt_timeseries(
+    prime: Prime,
+    period: Period,
+    *,
+    source: IDebtSource | None = None,
+    block_resolver: IBlockResolver | None = None,  # production path scales Art × rate daily
+) -> pd.DataFrame: ...
 
 # normalize/balances.py
 def get_subproxy_balance_timeseries(prime: Prime, token: Token, period: Period) -> pd.DataFrame: ...

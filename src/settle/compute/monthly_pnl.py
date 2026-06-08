@@ -1683,7 +1683,7 @@ def _log_sky_revenue_debug(
         "  ╚══════════════════════════════════════════════════════════════════════════════════════════════╝",
         "",
     ]
-    _log.info("\n".join(lines))
+    _log.debug("\n".join(lines))
 
 
 def _compute_cash_dist_revenue(

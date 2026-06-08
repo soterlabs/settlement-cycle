@@ -44,6 +44,7 @@
 -- xlsx "Subscriptions" methodology, which is frob-only. Confirm with
 -- the prime team before treating the grab-inclusive number as the
 -- canonical "Subscriptions" base for the cost-of-funds split.
+-- Tracked as QUESTIONS.md S28 (Spark team / P1).
 --
 -- DECIMAL(38,18) preserves int256/1e18 exactly up to ~9.2e18 USDS — DOUBLE
 -- (53-bit mantissa) loses precision at the ULP-of-1e26 level (~$11K per frob
