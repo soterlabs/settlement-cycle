@@ -94,13 +94,8 @@ def get_debt_timeseries(
             current += timedelta(days=1)
         return pd.DataFrame(rows)
 
-    # Fallback: EoM rate applied uniformly to all rows in the sparse series.
-    rate_raw = _ilk_rate(
-        Chain.ETHEREUM, _VAT, prime.ilk_bytes32,
-        period.pin_blocks[Chain.ETHEREUM],
-    )
-    rate = Decimal(rate_raw) / _RAY
-    if rate != Decimal("1"):
-        sparse["cum_debt"]   = sparse["cum_debt"]   * rate
-        sparse["daily_dart"] = sparse["daily_dart"] * rate
+    # No block_resolver: return the raw normalised Art series without rate
+    # scaling. Callers that need accurate USDS values (e.g. compute_monthly_pnl)
+    # always supply a resolver; this path is used only in tests or one-off
+    # queries where rate precision is not required.
     return sparse
