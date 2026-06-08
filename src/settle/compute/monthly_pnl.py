@@ -1577,13 +1577,18 @@ def _log_sky_revenue_debug(
     breakdown: list,
     sky_rev_br: Decimal,
     sde_revenue: Decimal,
+    *,
+    susds_spread_reimb: Decimal = Decimal("0"),
+    pol_agent_rate: Decimal = Decimal("0"),
 ) -> None:
     """Log a full daily breakdown of sky_revenue components at INFO level.
 
     Emits three sections:
       1. Day-by-day table: debt, each deduction, utilized, APY, daily BR revenue.
       2. Per-SDE-venue daily asset-value table (if any SDEs active).
-      3. SDE period-total revenue by venue + grand totals.
+      3. SDE period-total revenue by venue + grand totals + reconciliation to
+         the final sky_revenue (after sUSDS spread reimbursements and POL agent
+         rate deductions).
     """
     # ── section 1: daily utilized decomposition ──────────────────────────────
     hdr = (
@@ -1664,11 +1669,17 @@ def _log_sky_revenue_debug(
         lines.append("  " + "─" * 84)
         lines.append(f"  {'SDE total':>56s}  ${float(sde_revenue):>13,.2f}")
 
+    sky_rev_total = sky_rev_br + sde_revenue
+    sky_rev_final = sky_rev_total - susds_spread_reimb - pol_agent_rate
     lines += [
         "",
-        f"  sky_rev_br (BR on utilized−SDE):  ${float(sky_rev_br):>14,.2f}",
-        f"  sde_revenue (Σ per-venue actual_rev × sd_share):     ${float(sde_revenue):>14,.2f}",
-        f"  sky_revenue total:                 ${float(sky_rev_br + sde_revenue):>14,.2f}",
+        f"  sky_rev_br (BR on utilized−SDE):          ${float(sky_rev_br):>14,.2f}",
+        f"  sde_revenue (Σ actual_rev × sd_share):    ${float(sde_revenue):>14,.2f}",
+        f"  subtotal:                                 ${float(sky_rev_total):>14,.2f}",
+        f"  − sUSDS spread reimbursement (30bps):    -${float(susds_spread_reimb):>14,.2f}",
+        f"  − POL agent rate (20bps S32):            -${float(pol_agent_rate):>14,.2f}",
+        f"  ──────────────────────────────────────────────────────",
+        f"  sky_revenue (final):                      ${float(sky_rev_final):>14,.2f}",
         "  ╚══════════════════════════════════════════════════════════════════════════════════════════════╝",
         "",
     ]
@@ -3306,6 +3317,8 @@ def compute_monthly_pnl(
         breakdown,
         sky_rev_br,
         sde_revenue,
+        susds_spread_reimb=total_susds_spread_reimb,
+        pol_agent_rate=total_pol_agent_rate,
     )
     # Legacy field — always 0 under the SDE-split model (Sky takes actual
     # revenue, not floored).
