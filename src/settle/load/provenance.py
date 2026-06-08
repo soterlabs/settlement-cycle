@@ -58,6 +58,15 @@ def render_provenance(
             # into prime_agent_revenue; surfaced separately for the summary
             # headline + per-venue audit (see ``venue_breakdown[i].pol_agent_rate_usd``).
             "pol_agent_rate": str(pnl.pol_agent_rate),
+            # Total SSR appreciation credit on sUSDS POL venues — daily
+            # integration of ``V_d × SSR_d / 365`` across every
+            # ``sky_savings_token=True`` Cat B venue (Spark S32 + L2
+            # sUSDS proxies). Routed as a Sky Revenue reduction; makes
+            # the SSR component of the BR charge on the underlying USDS
+            # explicitly offset against the matching SSR appreciation
+            # Spark earns via the sUSDS index (previously implicit only
+            # in ``value_eom`` growth).
+            "susds_pol_ssr_credit": str(pnl.susds_pol_ssr_credit),
             # Sky Revenue that would result if no deductions were subtracted
             # from utilized (i.e., utilized = cum_debt each day). Same BR /
             # subsidy schedule as actual sky_revenue. Display-only — not
@@ -126,6 +135,13 @@ def render_provenance(
                 # separately for audit and the savings_v2 reconciliation
                 # report.
                 "pol_agent_rate_usd": str(v.pol_agent_rate_usd),
+                # SSR appreciation credit on sUSDS POL — daily integration
+                # of ``V_d × SSR_d/365``. Non-zero only for
+                # ``sky_savings_token=True`` Cat B venues (Spark S32 + L2
+                # proxies). Routed as a Sky Revenue reduction at the prime
+                # level (see ``results.susds_pol_ssr_credit``); the per-
+                # venue value is recorded here for the audit trail.
+                "susds_pol_ssr_credit_usd": str(v.susds_pol_ssr_credit_usd),
                 # When True, this venue's avg_value is excluded from the CoF
                 # allocation denominator in post-hoc reporting. Mirrors the
                 # ``Venue.cof_excluded`` flag, propagated here so the

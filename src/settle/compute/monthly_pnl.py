@@ -730,6 +730,72 @@ def _susds_cat_b_spread_reimb(
     return total
 
 
+def _susds_pol_ssr_credit(
+    value_som: Decimal,
+    inflow_ts: pd.DataFrame | None,
+    ssr: pd.DataFrame,
+    period: Period,
+) -> Decimal:
+    """SSR-rate Sky-revenue reduction on sUSDS POL — credits Spark for the
+    SSR appreciation the sUSDS share price earns over the period.
+
+    **Why:** Sky charges full BR on the underlying USDS slice in
+    ``cum_debt``. The BR rate is ``(1+SSR)(1+0.003) − 1``, which embeds
+    SSR. The matching SSR appreciation Spark earns via the sUSDS index
+    is currently not booked anywhere in the P&L (it lives in
+    ``value_eom`` growth as position size, not as revenue or as a
+    sky_revenue decrease). Per the Sky-Spark methodology agreement, the
+    SSR component of the BR charge is conceptually offset by the
+    sUSDS index appreciation — this helper makes that offset explicit
+    by reducing ``sky_revenue`` by ``Σ_d V_d × SSR_d / 365``.
+
+    Combined with the existing 30bps ``susds_spread_reimbursement`` (L2)
+    or 20bps ``pol_agent_rate`` (S32 Ethereum), the net Spark cost on
+    sUSDS POL becomes:
+      * L2 proxies:  (SSR + 30bps) − 30bps_reimb − SSR_credit = 0
+      * S32 Ethereum: (SSR + 30bps) − 20bps_pol_agent − SSR_credit = 10bps
+        (the residual 10bps is the demand-side share routed via DSDR).
+
+    Formula: ``Σ_d V_d × daily_compounding_factor(SSR_d)`` where
+    ``V_d = value_som + (cum_inflow_d − cum_inflow_{som-1})`` and
+    ``SSR_d`` is the SSR APY effective on day ``d``. Mirrors the daily
+    integration of ``_susds_cat_b_spread_reimb`` and
+    ``_pol_susds_agent_rate``.
+
+    Scope: applied to ``sky_savings_token=True`` Cat B venues (Spark's
+    S32 + S37 + S43 + S47 + S51). Curve LP sUSDS legs and the PSM3
+    sUSDS leg are NOT in scope — those have their own 30bps refunds
+    (``curve_susds_spread`` / ``psm3_susds_spread``) and use the
+    "implicit SSR offset" framing; extending the SSR credit to them
+    is a follow-up if needed.
+
+    Note on signs: the return value is the **positive** USD amount of
+    SSR appreciation. The orchestrator subtracts it from ``sky_rev``
+    (so it REDUCES Sky's net take and is equivalent to Spark earning it).
+    """
+    from ._helpers import daily_compounding_factor, ssr_at_or_before
+    if inflow_ts is None or inflow_ts.empty:
+        cum_baseline = Decimal("0")
+    else:
+        cum_baseline = cum_at_or_before(
+            inflow_ts, "cum_inflow", period.start - timedelta(days=1),
+        )
+    total = Decimal("0")
+    current = period.start
+    while current <= period.end:
+        ssr_apy = ssr_at_or_before(ssr, current)
+        ssr_daily = daily_compounding_factor(ssr_apy)
+        if inflow_ts is None or inflow_ts.empty:
+            v_d = value_som
+        else:
+            cum_d = cum_at_or_before(inflow_ts, "cum_inflow", current)
+            v_d = value_som + (cum_d - cum_baseline)
+        if v_d > 0:
+            total += v_d * ssr_daily
+        current = current + timedelta(days=1)
+    return total
+
+
 def _pol_susds_agent_rate(
     value_som: Decimal, inflow_ts: pd.DataFrame | None, period: Period,
 ) -> Decimal:
@@ -1769,6 +1835,19 @@ def compute_monthly_pnl(
                 "sky_revenue. For canonical sky_revenue, re-run without --sky-only.",
                 prime.id, _pol_agent_venues,
             )
+        _ssr_credit_venues = [
+            v.id for v in prime.venues
+            if getattr(v, "sky_savings_token", False)
+            and v.pricing_category.value == "B"
+        ]
+        if _ssr_credit_venues:
+            _log.warning(
+                "sky_only mode: prime %s has sky_savings_token Cat B venues "
+                "%s — their SSR appreciation credit (Σ V_d × SSR_d/365) will "
+                "NOT be deducted from sky_revenue. For canonical sky_revenue, "
+                "re-run without --sky-only.",
+                prime.id, _ssr_credit_venues,
+            )
 
     # 1. Resolve the block resolver up front. We need it for pin_blocks (if not
     #    supplied) AND for V3 inflow tracking (event block → date conversion).
@@ -2090,6 +2169,13 @@ def compute_monthly_pnl(
     # summed into ``total_pol_agent_rate`` which is subtracted from
     # ``sky_rev`` below (parallel to ``total_susds_spread_reimb``).
     _pol_agent_rate_usds: dict[str, Decimal] = {}
+    # SSR appreciation credit on sUSDS POL venues — credits Spark for the
+    # SSR component of the BR charge that's offset by the sUSDS index
+    # appreciation. Populated for every ``sky_savings_token=True`` Cat B
+    # venue (S32 + L2 proxies). Summed into ``total_susds_pol_ssr_credit``
+    # which is subtracted from ``sky_rev`` (parallel to
+    # ``total_susds_spread_reimb`` and ``total_pol_agent_rate``).
+    _susds_pol_ssr_credits: dict[str, Decimal] = {}
     for venue in prime.venues:
         if venue.cash_distributions:
             # Already handled by the cash-distribution pass above — skip here
@@ -2761,6 +2847,15 @@ def compute_monthly_pnl(
                     _pol_agent_rate_usds[venue.id] = _pol_susds_agent_rate(
                         value_som, inflow_ts, period,
                     )
+                # SSR appreciation credit — SSR × V × days, daily-integrated.
+                # Applied to every sky_savings_token Cat B venue (S32 +
+                # L2 proxies). Reduces sky_revenue, making explicit the
+                # SSR-via-index offset against the SSR component of the
+                # BR charge on the underlying USDS. See the
+                # ``_susds_pol_ssr_credit`` helper for the rationale.
+                _susds_pol_ssr_credits[venue.id] = _susds_pol_ssr_credit(
+                    value_som, inflow_ts, ssr, period,
+                )
             else:
                 # Sub-case (b): normal Cat B MtM.
                 susds_spread = None
@@ -3217,13 +3312,14 @@ def compute_monthly_pnl(
             lending_idle_tw_avg_usd=_lending_idle_tw_avg.get(vr.venue_id, vr.lending_idle_tw_avg_usd),
             susds_spread_reimbursement=_susds_spread_reimbs.get(vr.venue_id, vr.susds_spread_reimbursement),
             pol_agent_rate_usd=_pol_agent_rate_usds.get(vr.venue_id, vr.pol_agent_rate_usd),
-            # ``pol_agent_rate_usd`` is recorded per-venue for audit (so an
-            # auditor can see which venue earned the agent rate) but is NOT
-            # added to ``revenue``. The agent rate is routed as a Sky Revenue
-            # reduction below — same mechanism as ``susds_spread_reimbursement``,
-            # consistent with Rule 5 economic-neutrality plumbing on every
-            # other ``sky_savings_token`` venue. See ``Venue.pol_agent_rate``
-            # docstring for the economic equivalence.
+            susds_pol_ssr_credit_usd=_susds_pol_ssr_credits.get(vr.venue_id, vr.susds_pol_ssr_credit_usd),
+            # ``pol_agent_rate_usd`` and ``susds_pol_ssr_credit_usd`` are
+            # recorded per-venue for the audit trail (so an auditor can see
+            # which venue earned which credit) but are NOT added to
+            # ``revenue``. Both are routed as Sky Revenue reductions below
+            # — same mechanism as ``susds_spread_reimbursement``, consistent
+            # with Rule 5 economic-neutrality plumbing on every other
+            # ``sky_savings_token`` venue.
         )
         for vr in breakdown
     ]
@@ -3245,6 +3341,12 @@ def compute_monthly_pnl(
     # net cost on the POL drops by ``total_pol_agent_rate`` either way.
     # Surfaced as ``MonthlyPnL.pol_agent_rate`` for headline visibility.
     total_pol_agent_rate = sum(_pol_agent_rate_usds.values(), Decimal("0"))
+    # Prime-level total of the sUSDS-POL SSR credit. Routed as a Sky
+    # Revenue reduction (parallel to the two above). Surfaced as
+    # ``MonthlyPnL.susds_pol_ssr_credit`` for headline visibility.
+    # Currently only non-zero for Spark (S32 + L2 sUSDS proxies — every
+    # ``sky_savings_token=True`` Cat B venue).
+    total_susds_pol_ssr_credit = sum(_susds_pol_ssr_credits.values(), Decimal("0"))
 
 
     # SDE revenue (Σ actual × sd_share across venues) flows directly to Sky.
@@ -3278,19 +3380,30 @@ def compute_monthly_pnl(
         lending_idle_usds=lending_idle_usds,
     )
     # Sky's full claim: BR on (utilized − SDE − idle deductions) + actual SDE
-    # revenue, minus two Sky-to-Spark transfers on sUSDS positions:
+    # revenue, minus three Sky-to-Spark transfers on sUSDS positions:
     #   * ``total_susds_spread_reimb`` — 30bps spread reimbursement across
-    #     Cat B ALM + Curve LP sUSDS + PSM3 sUSDS leg. Neutralises the
-    #     SSR-via-share-price + BR-on-utilized composite on those positions
-    #     (Rule 5 — prime's net cost = SSR × V, economic neutrality).
+    #     Cat B ALM + Curve LP sUSDS + PSM3 sUSDS leg.
     #   * ``total_pol_agent_rate`` — 20bps agent rate Sky pays on sUSDS POL
     #     where ``Venue.pol_agent_rate: true`` is set (currently Spark S32
-    #     only). Combined with the absent spread reimbursement on S32
-    #     (``demand_side_spread: true`` suppresses it), Spark's net cost on
-    #     S32 is BR_spread − agent_rate = 30bps − 20bps = 10bps × V × days.
-    # Both deductions are routed through ``sky_rev`` (not ``prime_rev``)
-    # for accounting consistency — the economic effect is identical.
-    sky_rev = sky_rev_br + sde_revenue - total_susds_spread_reimb - total_pol_agent_rate
+    #     only).
+    #   * ``total_susds_pol_ssr_credit`` — SSR appreciation credit on every
+    #     ``sky_savings_token=True`` Cat B sUSDS POL venue. Makes the
+    #     SSR-via-index offset explicit (was previously hidden in
+    #     ``value_eom`` growth and uncounted in P&L).
+    #
+    # Net Spark cost composition on sUSDS POL after all three:
+    #   * L2 proxies: (SSR + 30bps) − 30bps_reimb − SSR_credit = 0
+    #   * S32 (no reimb, has pol_agent_rate):
+    #     (SSR + 30bps) − 20bps_pol_agent − SSR_credit = 10bps (DSDR share)
+    #
+    # All three are routed through ``sky_rev`` for accounting consistency.
+    sky_rev = (
+        sky_rev_br
+        + sde_revenue
+        - total_susds_spread_reimb
+        - total_pol_agent_rate
+        - total_susds_pol_ssr_credit
+    )
     # Pure BR × cum_debt (no idle / SDE / PSM / Curve / lending deductions,
     # no susds spread reimbursement). Display-only. NOT the gross analog of
     # sky_revenue: ``sky_revenue`` also adds ``sde_revenue`` on top of the
@@ -3390,5 +3503,6 @@ def compute_monthly_pnl(
         sky_revenue_daily=sky_revenue_daily_out,
         susds_spread_reimbursement=total_susds_spread_reimb,
         pol_agent_rate=total_pol_agent_rate if not sky_only else Decimal("0"),
+        susds_pol_ssr_credit=total_susds_pol_ssr_credit if not sky_only else Decimal("0"),
         sky_revenue_gross=sky_rev_gross,
     )

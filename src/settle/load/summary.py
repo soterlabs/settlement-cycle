@@ -109,6 +109,7 @@ def render_summary(prov: dict) -> str:
         ("sde_revenue",                r.get("sde_revenue")),
         ("susds_spread_reimbursement", r.get("susds_spread_reimbursement")),
         ("pol_agent_rate",             r.get("pol_agent_rate")),
+        ("susds_pol_ssr_credit",       r.get("susds_pol_ssr_credit")),
         ("curve_susds_spread",         r.get("curve_susds_spread")),
         ("psm3_susds_spread",          r.get("psm3_susds_spread")),
         ("sky_revenue_gross",          r.get("sky_revenue_gross")),
