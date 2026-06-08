@@ -6,9 +6,9 @@ Period: 2026-05-01 → 2026-05-31 (31 days)
 
 | Field | USD |
 |---|---:|
-| prime_agent_revenue | $5,964,136.68 |
+| prime_agent_revenue | $6,635,036.07 |
 | agent_rate | $68,216.96 |
-| prime_agent_total_revenue | $6,032,353.64 |
+| prime_agent_total_revenue | $6,703,253.03 |
 | sky_revenue (net) | $8,588,504.48 |
 | sde_revenue | $5,242,531.29 |
 | sky_revenue_gross | $9,534,049.06 |
@@ -45,6 +45,8 @@ Period: 2026-05-01 → 2026-05-31 (31 days)
 | E30 | Uniswap V3 AUSD/USDC pool (NFT positions — alt holder) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E31 | AUSD raw (alt holder idle) | $10,068.98 | $10,068.98 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E32 | USDC raw (alt holder idle) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
+| E37 | Maple syrupUSDC (ERC-4626) | $0.00 | $100,275,383.22 | $100,002,808.74 | $272,574.48 | $272,574.48 | $0.00 | 0% | $0.00 |
+| E38 | Agora AUSD incentives (cash distribution to Grove Eth ALM) | $0.00 | $0.00 | $0.00 | $398,324.92 | $398,324.92 | $0.00 | 0% | $0.00 |
 
 ## Off-protocol holdings
 

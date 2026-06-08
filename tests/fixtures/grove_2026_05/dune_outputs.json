@@ -9450,5 +9450,67 @@
         "daily_net": "67908.42"
       }
     ]
+  },
+  "vault_e37_mints": {
+    "_token": "0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b",
+    "_about": "syrupUSDC Transfers from 0x0 to Grove Eth ALM (Cat B mints)",
+    "rows": [
+      {
+        "block_date": "2026-05-08",
+        "cum_inflow": "42980329.624927",
+        "daily_inflow": "42980329.624927"
+      },
+      {
+        "block_date": "2026-05-11",
+        "cum_inflow": "85943747.637271",
+        "daily_inflow": "42963418.012344"
+      }
+    ]
+  },
+  "vault_e37_burns": {
+    "_token": "0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b",
+    "_about": "syrupUSDC Transfers from Grove Eth ALM to 0x0 (Cat B burns)",
+    "rows": []
+  },
+  "cash_dist_e38_p0": {
+    "_token": "0x00000000efe302beaa2b3e6e1b18d08d69a9012a",
+    "_from": "0x4a4593c5d963473a95f0762bd6df4571542af651",
+    "_to": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+    "_about": "Agora AUSD payer #0 \u2192 Grove Eth ALM (cash_dist)",
+    "rows": [
+      {
+        "block_date": "2026-02-25",
+        "cum_inflow": "25.0",
+        "daily_inflow": "25.0"
+      },
+      {
+        "block_date": "2026-03-04",
+        "cum_inflow": "32876.71",
+        "daily_inflow": "32851.71"
+      },
+      {
+        "block_date": "2026-03-05",
+        "cum_inflow": "561287.52",
+        "daily_inflow": "528410.81"
+      }
+    ]
+  },
+  "cash_dist_e38_p1": {
+    "_token": "0x00000000efe302beaa2b3e6e1b18d08d69a9012a",
+    "_from": "0xdf27ac19cb1da767e181748aaa54e1535aaa3a1d",
+    "_to": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+    "_about": "Agora AUSD payer #1 \u2192 Grove Eth ALM (cash_dist)",
+    "rows": [
+      {
+        "block_date": "2026-04-16",
+        "cum_inflow": "857584.0",
+        "daily_inflow": "857584.0"
+      },
+      {
+        "block_date": "2026-05-29",
+        "cum_inflow": "1255908.92",
+        "daily_inflow": "398324.92"
+      }
+    ]
   }
 }
