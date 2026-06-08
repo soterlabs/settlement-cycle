@@ -161,6 +161,21 @@ def build_grove_sources(grove, fixtures: dict, blocks_by_chain: dict[str, Any]) 
                 fx_key = fx_key_legacy
             else:
                 continue
+            # Defensive: assert the fixture's ``_from`` metadata matches the
+            # YAML payer. Without this, reordering the ``cash_distributions``
+            # list in the YAML silently swaps fixture-to-payer mappings —
+            # the lookup-by-positional-index produces an empty frame for one
+            # of the payers, dropping their revenue with no error.
+            fx_from = fixtures[fx_key].get("_from")
+            if fx_from is not None:
+                fx_from_bytes = bytes.fromhex(fx_from.removeprefix("0x")).rjust(20, b"\x00")
+                if fx_from_bytes != src.payer.value:
+                    raise ValueError(
+                        f"cash_dist fixture {fx_key!r} for venue {v.id} carries "
+                        f"_from={fx_from} but YAML cash_distributions[{i}].payer="
+                        f"0x{src.payer.value.hex()}. Re-capture the fixture or "
+                        f"restore the original YAML order."
+                    )
             directed_inflow_fixtures[(
                 src.token.value, src.payer.value, grove.alm[chain].value,
             )] = df_with_dates(fixtures[fx_key]["rows"], "block_date")

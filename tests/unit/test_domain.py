@@ -146,7 +146,9 @@ def test_load_prime_obex(config_dir: Path):
 
 def test_load_prime_grove(config_dir: Path):
     """Grove config: 12 original venues (E1–E12) + 9 idle/multi-chain holdings
-    (E13–E18, E26, E27, E25) + 6 alt-holder venues (E30–E35) = 33 total."""
+    (E13–E18, E26, E27, E25) + 6 alt-holder venues (E30–E35) + E36 EOA
+    + E37 Maple syrupUSDC + E38 Agora incentives = 36 total. (E25 is
+    display_only but still loads as a Cat B venue.)"""
     grove = load_prime(config_dir / "grove.yaml")
     assert grove.id == "grove"
     assert grove.start_date == date(2025, 5, 14)

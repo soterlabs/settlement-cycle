@@ -6,7 +6,7 @@ Adds to each of:
   * ``tests/fixtures/grove_2026_04/dune_outputs.json``  (Apr 2026)
   * ``tests/fixtures/grove_2026_05/dune_outputs.json``  (May 2026)
 
-Per fixture, three new keys:
+Per fixture, four new keys:
   * ``vault_e37_mints``      — syrupUSDC Transfers from ZERO to Grove ALM
   * ``vault_e37_burns``      — syrupUSDC Transfers from Grove ALM to ZERO
   * ``cash_dist_e38_p0``     — AUSD Transfers from Agora payer #0 to Grove ALM
