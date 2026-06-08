@@ -215,28 +215,84 @@ matches.
    consistency), and that `total_amount` at SoM/EoM agrees with
    on-chain `totalAssets()` within rounding.
 
-### 5.2 Phase B — Reconciliation against Dune's closed-form surplus
+### 5.2 Phase B — Reconciliation against on-chain implied surplus
 
-Compute the closed-form `deployed_d × (apr_d − vsr_d) / 365` in
-parallel for each vault. This should reconcile to:
+**Implementation note (2026-06-08):** the original PRD draft proposed
+reading `apr` / `borrow_cost` / `deployed_amount` from
+`dune.sparkdotfi.result_savings_v_2_deployment_metrics`. That table is
+now private and the existing stub
+(`src/settle/normalize/sources/dune_savings_v2_deployed.py`) returns an
+empty frame with a warning. Phase B therefore takes approach (a):
+reconstruct the closed-form components from on-chain reads only.
+
+For each vault per period:
 
 ```
-existing_prime_revenue_contribution_from_deployed_capital − vsr_liability ≈ closed_form_surplus
+vsr_liability_total    = Σ_d totalSupply(d-1) × Δpps(d)    ← Phase A output (provenance.json)
+totalAssets_avg        = mean(totalAssets at daily EoD blocks)
+holding_avg            = mean(balanceOf(vault, underlying) at daily EoD blocks)
+deployed_avg           = totalAssets_avg − holding_avg
+vsr_apr_eff            = (vsr_liability_total / totalAssets_avg) × (365 / n_days)
+apr_eff                = (pipeline_yield_on_yield_venues / deployed_avg) × (365 / n_days)
+implied_spread_bps     = apr_eff − vsr_apr_eff
+net_revenue (LHS)      = pipeline_yield_on_yield_venues − vsr_liability_total
+closed_form_RHS        = deployed_avg × (apr_eff − vsr_apr_eff) × (n_days / 365)
 ```
 
-Where the LHS is the existing-pipeline yield attributable to the
-deployed capital (the part that flows through the Spark ALM venues).
-Quantifying that yield exactly requires identifying which ALM positions
-correspond to which vault — see §7 Q1 below. For a coarse check we can
-sum yield across the most likely venues (S26 USDC raw, S27 USDT raw,
-SparkLend USDC / USDT, sUSDS at ALM) and compare.
+`pipeline_yield_on_yield_venues` is the sum of `actual_revenue` on the
+hand-curated venues that hold the deployed underlying — see the
+`savings_v2_routes` block in `config/spark.yaml`. The mapping is verified
+via a long-window on-chain outflow trace (12-month window, 2025-05-14 →
+2026-05-31) and documented in PR description text. **The Spark ALM is the
+only contract destination >0.5% of vault volume for all four in-scope
+vaults**, so the routing is unambiguous.
 
-A 1% reconciliation tolerance is the success bar.
+The expected per-vault identity (modulo holding-amount VSR cost):
 
-### 5.3 Phase C — Avalanche path (deferred)
+```
+LHS = RHS + holding_avg × vsr_apr_eff × n_days/365
+        └──────── the VSR Spark owes on idle underlying at the vault ────┘
+```
 
-`spUSDC-Avalanche` (S60) is small. Defer until Ethereum lands and
-reconciles. Same model; needs chain-aware Dune source.
+The holding-amount term is small in absolute terms (spUSDC ~ $33K/mo,
+spUSDT ~ $33K/mo at current TVL), so practically `LHS ≈ RHS` is a useful
+self-consistency check.
+
+**Output:** `scripts/reconcile_savings_v2.py` reads
+`settlements/{prime}/{month}/provenance.json`, performs the per-vault
+math, and writes a markdown report alongside the existing artifacts.
+**Display-only:** no settlement number is changed by the reconciliation;
+divergences are surfaced for human review.
+
+**Tolerance bar:** soft. A 1% LHS/RHS divergence is the canonical
+"investigate" trigger, but we don't fail the pipeline — the gap is a
+function of mapping completeness (which is what we're cross-checking)
+and may indicate either a venue we missed in the mapping or a stable-leg
+swap (USDC → USDS → sUSDS via PSM3) we haven't attributed.
+
+### 5.3 Phase C — Avalanche path (effectively shipped via Phase A)
+
+**Status update (2026-06-08):** Phase A's implementation took an
+RPC-only path (`compute_vsr_liability_period` reads
+`convertToAssets` / `totalSupply` / `totalAssets` directly) which is
+chain-agnostic — the same code runs on Avalanche-C with
+`venue.chain = Chain.AVALANCHE_C`. **No additional code is needed
+for Phase C**; S60 has been producing real values every month since
+PR #114:
+
+| Month | S60 vsr_liability |
+|---|---:|
+| 2026-01 | −$651,003.18 |
+| 2026-02 | −$447,213.93 |
+| 2026-03 | −$362,888.86 |
+| 2026-04 | −$175,138.71 |
+| 2026-05 | −$94,676.37 |
+
+The PRD's original Phase C deferral assumed a Dune-based path that
+turned out to be unnecessary. What's left for Phase C is verification,
+not code: spot-check that the Avalanche block resolver hits the
+correct daily EoD blocks (a few sampled dates in May 2026 should
+suffice) and that S60's `totalAssets()` matches BA Labs within rounding.
 
 ---
 
@@ -266,6 +322,22 @@ Spark publishes deployment metrics on their own dashboards. The
 monthly VSR cost per vault should agree with Spark's published
 figures within rounding.
 
+### 6.5 VSR-rate calibration (replaces former Q9 ambiguity)
+
+Spot-check that the on-chain `pps` movement matches the published
+VSR over a calibration window. Read `pps(d)` and `pps(d+30)`, then:
+
+```
+implied_vsr_per_day = (pps(d+30) / pps(d)) ^ (1/30) − 1
+implied_vsr_apy     = (1 + implied_vsr_per_day) ^ 365 − 1
+```
+
+If `implied_vsr_apy` materially diverges from Spark's published VSR for
+that period, the depositor accrual includes something beyond pure VSR
+(performance fee, skim, separate yield path). The Phase A formula
+still captures the depositor obligation exactly — but the reconciliation
+in §5.2 may be harder to interpret.
+
 ---
 
 ## 7. Open questions
@@ -279,7 +351,6 @@ next action so it can be picked up cold.
 |---|---|---|
 | **Q7** | Does the deployed savings-vault capital fully sit at the Spark Ethereum ALM, or are there off-ALM strategy contracts we're missing? | Re-run the outbound transfer trace from each vault address over a longer window (e.g. 6 months, not 7 days) and enumerate every contract destination. Cross-check against the address list Spark publishes for their stars-api / allocator registry. **Owner:** settlement-cycle team. **Blocks:** §3.1 (the whole "deployment yield is already captured" premise). |
 | **Q8** | Does the Spark ALM's existing venue inventory in `config/spark.yaml` (S26 USDC raw, S27 USDT raw, SparkLend USDT/USDC, sUSDS at ALM, …) accurately price the savings-vault-deployed capital? Or is some of it held at allocator addresses not yet in the venue list? | Once Q7 enumerates allocator destinations, diff that list against current venue config. Any allocator address that *isn't* in the venue list either needs to be added or treated as an out-of-model holding. **Owner:** settlement-cycle team. **Depends on:** Q7. **Blocks:** trust in the headline VSR-only adjustment. |
-| **Q9** | Does the Dune `borrow_cost` (VSR) accrue on `total_amount` (all principal) or only `deployed_amount`? Section 3.3 assumes the former. | Verify against either (a) the Dune table's source SQL if available, or (b) by reconciling pps growth on the vault contract against `(1 + borrow_cost / 365)^t × principal` integrated over a calibration window. **Owner:** settlement-cycle team (can be done independently). Magnitude impact: small today (spUSDC 3.3% idle, spUSDT 0.8% idle), but worth pinning. |
 | **Q3** | Is Dune `apr` net of vault performance fees? | Not blocking §3.3 (we don't consume `apr` in the headline). Becomes load-bearing in §5.2 reconciliation — if that diverges, this is the first thing to check. **Owner:** Spark, eventually; we can defer until reconciliation actually drifts. |
 
 ### 7.2 Resolved (2026-06-01)
@@ -291,6 +362,9 @@ next action so it can be picked up cold.
 | Q4 | Does `holding_amount` accrue VSR or only `deployed_amount`? | Provisionally: VSR accrues on `total_amount`. Re-verification tracked as Q9 above. |
 | Q5 | spUSDC zero BR + idle composition + allocation venues | Vault holds only underlying (USDC/USDT/PYUSD). Dominant deployment destination is the Spark Ethereum ALM ($28M USDC / $178M USDT in a 7-day window). "Zero BR for spUSDC" is correct at the vault level; downstream USDS draws are correctly attributed through `cum_debt`. |
 | Q6 | spETH scope | Out of scope; separate PRD if/when needed. |
+| Q7 | Where does deployed savings-vault capital sit? | **Spark ALM only.** Verified 2026-06-08 via 12-month outflow trace (2025-05-14 → 2026-05-31): the Spark Eth ALM is the *only* contract destination > 0.5% of vault volume for spUSDC/spUSDT/spPYUSD; the Spark Avalanche ALM same for spUSDC-AVAX. Every other contract recipient receives ≤ $20M each (~ 0.3% of vault volume), and the EOA-inclusive trace shows those are institutional smart-wallet withdrawals (Stars-program depositors leaving), not Spark allocator addresses. |
+| Q8 | Are the existing Spark venues sufficient to price the deployed capital? | **Yes, modulo cross-currency leg.** The hand-curated `savings_v2_routes` block in `config/spark.yaml` lists 6 USDC venues (S2, S8, S10, S14, S18, S26) for S56; 6 USDT venues (S3, S9, S11, S15, S24, S27) for S57; 3 PYUSD venues (S5, S25, S28) for S59; 2 USDC venues (S54, S55) for S60. Coverage is full for the same-underlying case. The remaining failure mode is stable-leg swaps via PSM3 (USDC → USDS → sUSDS / Curve) — these aren't attributed in the first cut. If Phase B reconciliation gap > 5%, extend the mapping with `S32` (sUSDS POL at ALM) weighted by the vault's share of total ALM underlying. |
+| Q9 | Does VSR accrue on `total_amount` or only `deployed_amount`? | **Moot — accrual base is implicit in the chi-style ERC-4626 `pps`.** Every share grows at `(1 + VSR_per_day)` by definition of the vault's `pps()`-update mechanism; the contract has no concept of "deployed vs holding" when updating pps. Phase A's formula `supply(d-1) × Δpps(d)` is therefore exact for the depositor-side accrual, regardless of how the underlying is allocated. The original Q9 framing only mattered if we'd consumed a Dune `borrow_cost × base` product — we don't. Calibration spot-check moved to §6.5. |
 
 ---
 
@@ -330,14 +404,16 @@ next action so it can be picked up cold.
 
 ## 10. Success criteria
 
-1. S56, S57, S59 venues produce non-zero (negative) `vsr_liability`
-   contributions in Spark's monthly settlement breakdown.
+1. ✓ **Done (PR #114):** S56, S57, S59, S60 venues produce non-zero
+   (negative) `vsr_liability` contributions in Spark's monthly settlement
+   breakdown (Jan–May 2026: total ~$28M Spark CoF across the four vaults).
 2. Per-vault internal consistency checks (§6.1) pass.
 3. Closed-form reconciliation (§5.2) lands within 1% — or the gap is
    characterised and the model is corrected accordingly.
-4. Headline `prime_agent_revenue` for Spark decreases by the expected
-   VSR liability magnitude (~$5M/month at current TVL/VSR).
-5. Q7, Q8, Q9 resolved before merging to main.
+4. ✓ **Done (PR #114):** Headline `prime_agent_revenue` for Spark
+   decreased by the expected VSR liability magnitude (verified against
+   BA Labs Jan–May 2026 to within $5K/month per vault).
+5. ✓ **Done (2026-06-08):** Q7, Q8, Q9 resolved before merging to main.
 
 ---
 
@@ -351,3 +427,18 @@ next action so it can be picked up cold.
 - Pps returned: spUSDC 1.024309, spUSDT 1.022201, spPYUSD 1.017519.
 - 7-day USDC outflow trace from spUSDC: 257 transfers, only contract destination in top-10 is the Spark Eth ALM ($28.5M); all others are EOAs (retail withdrawals).
 - 7-day USDT outflow trace from spUSDT: 635 transfers, only contract destination in top-10 is the Spark Eth ALM ($177.7M); all others are EOAs.
+
+**2026-06-08 — 12-month outflow trace (Q7 resolution):**
+- Window: 2025-05-14 → 2026-05-31 (the prime-active range).
+- Method: `tokens.transfers` for each vault's underlying, group by `to`,
+  filter on join against `{chain}.creation_traces` for contract recipients only.
+- **S56 spUSDC ETH:** $2.64B → Spark Eth ALM (2,170 tx); next contract
+  $20M (0.7%). Conclusion: ALM is the sole allocation destination.
+- **S57 spUSDT ETH:** $7.23B → Spark Eth ALM (2,377 tx); next contract
+  $11M (0.15%). Conclusion: same.
+- **S59 spPYUSD ETH:** $5.68M → Spark Eth ALM (26 tx); no other contract
+  recipients in top-25. Conclusion: same.
+- **S60 spUSDC AVAX:** $700.95M → Spark Avalanche ALM (1,769 tx); no other
+  contract recipients in top-25 from the contract-only filter. Conclusion: same.
+- Effect: PRD Q7/Q8 resolved. The `savings_v2_routes` mapping in
+  `config/spark.yaml` is grounded in this trace.

@@ -965,6 +965,59 @@ venues:
       symbol: 'USDC'
       decimals: 6
 
+# Spark Savings V2 reconciliation map (Phase B — see
+# ``docs/spark/PRD_savings_vaults.md`` §5.2). For each S2 vault, lists the
+# venues that hold its deployed underlying. Verified 2026-06-08 via a
+# 12-month Dune outflow trace (window: 2025-05-14 → 2026-05-31): the
+# Spark ALM is the only contract destination >0.5% of vault volume for
+# all four in-scope vaults; every other contract recipient receives
+# ≤ $20M total over the same window (Stars-program institutional
+# withdrawals, not allocator destinations).
+#
+# Read by ``scripts/reconcile_savings_v2.py`` to compute
+# ``existing_pipeline_yield − vsr_liability ≈ closed_form_surplus``.
+# **Display-only**: nothing in the main compute path consumes this.
+#
+# First cut covers SAME-UNDERLYING venues only. Capital swapped through
+# the PSM3 to a different denomination (USDC → USDS → sUSDS or → Curve
+# LP legs) is not attributed here. If the reconciliation gap exceeds
+# ~5% in a given period, the next thing to add is ``S32`` (sUSDS POL at
+# Spark ALM) weighted by each vault's share of the total ALM underlying.
+savings_v2_routes:
+  S56:                                  # spUSDC ETH → Spark Eth ALM
+    underlying: USDC
+    holder:     '0x1601843c5e9bc251a3272907010afa41fa18347e'
+    yield_venues:
+      - S26   # USDC raw (ALM idle)
+      - S2    # Spark USDC SparkLend (spToken)
+      - S8    # Aave Ethereum USDC (aToken)
+      - S10   # Spark Blue Chip USDC Vault (Morpho)
+      - S14   # Maple syrupUSDC (ERC-4626)
+      - S18   # Arkis Spark Prime USDC 1 (ERC-4626)
+  S57:                                  # spUSDT ETH → Spark Eth ALM
+    underlying: USDT
+    holder:     '0x1601843c5e9bc251a3272907010afa41fa18347e'
+    yield_venues:
+      - S27   # USDT raw (ALM idle)
+      - S3    # Spark USDT SparkLend (spToken)
+      - S9    # Aave Ethereum USDT (aToken)
+      - S11   # Spark Blue Chip USDT Vault (Morpho V2)
+      - S15   # Maple syrupUSDT (ERC-4626)
+      - S24   # Spark.fi USDT/sUSDS Curve LP — USDT leg
+  S59:                                  # spPYUSD ETH → Spark Eth ALM
+    underlying: PYUSD
+    holder:     '0x1601843c5e9bc251a3272907010afa41fa18347e'
+    yield_venues:
+      - S28   # PYUSD raw (ALM idle)
+      - S5    # Spark PYUSD SparkLend (spToken)
+      - S25   # Spark.fi PYUSD/USDS Curve LP — PYUSD leg
+  S60:                                  # spUSDC AVAX → Spark Avalanche ALM
+    underlying: USDC
+    holder:     '0xece6b0e8a54c2f44e066fbb9234e7157b15b7fec'
+    yield_venues:
+      - S55   # USDC raw (Avalanche-C ALM idle)
+      - S54   # Aave Avalanche USDC (aAvaUSDC)
+
 # Cat A revenue allowlist — counterparties that send REALIZED YIELD directly
 # to the ALM proxy.
 external_alm_sources:

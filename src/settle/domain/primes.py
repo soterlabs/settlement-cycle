@@ -497,6 +497,15 @@ class Prime:
     # full BR on utilized). When enabled, Sky charges subsidised rate on the
     # first ``cap_usd`` of utilized USDS; any excess at full BR.
     subsidy: SubsidyConfig = field(default_factory=lambda: SubsidyConfig(enabled=False))
+    # Per-S2-vault "deployment yield venues" mapping for Phase B reconciliation
+    # (see ``docs/spark/PRD_savings_vaults.md`` §5.2). Maps an S2 vault's
+    # venue_id (e.g. ``"S56"``) to the list of yield-bearing venue IDs whose
+    # ``actual_revenue`` collectively prices the deployed underlying.
+    # Used by ``scripts/reconcile_savings_v2.py`` to compute
+    # ``existing_pipeline_yield − vsr_liability ≈ closed_form_surplus``.
+    # Empty for primes without S2 vaults (i.e. every prime except Spark today).
+    # The mapping is **display-only**: nothing in the main compute path reads it.
+    savings_v2_routes: dict[str, list[str]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if len(self.ilk_bytes32) != 32:

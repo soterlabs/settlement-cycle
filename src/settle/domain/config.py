@@ -302,6 +302,38 @@ def load_prime(config_path: Path) -> Prime:
                 for e in entries
             ]
 
+    # Phase B reconciliation mapping (see docs/spark/PRD_savings_vaults.md
+    # §5.2). Maps each S2 vault's venue_id to the list of yield-venue IDs
+    # whose actual_revenue prices the deployed underlying. Validated at
+    # parse time: the keys must reference S2 venues that exist in this
+    # prime's inventory, and the values must reference venues that also
+    # exist (any non-S2 pricing_category).
+    savings_v2_routes: dict[str, list[str]] = {}
+    raw_routes = cfg.get("savings_v2_routes") or {}
+    venue_ids = {v.id for v in venues}
+    for vault_id, route in raw_routes.items():
+        if vault_id not in venue_ids:
+            raise ValueError(
+                f"savings_v2_routes: key {vault_id!r} is not a venue in {cfg['id']!r}"
+            )
+        # The route entry can be either a plain list of venue IDs, or a dict
+        # with a ``yield_venues`` key (the YAML shape used in spark.yaml for
+        # human readability — includes underlying / holder labels alongside).
+        if isinstance(route, dict):
+            yield_venues = route.get("yield_venues", [])
+        else:
+            yield_venues = route
+        if not isinstance(yield_venues, list):
+            raise ValueError(
+                f"savings_v2_routes[{vault_id!r}]: yield_venues must be a list, got {type(yield_venues).__name__}"
+            )
+        for yv in yield_venues:
+            if yv not in venue_ids:
+                raise ValueError(
+                    f"savings_v2_routes[{vault_id!r}]: venue {yv!r} not found in {cfg['id']!r}"
+                )
+        savings_v2_routes[vault_id] = list(yield_venues)
+
     return Prime(
         id=cfg["id"],
         ilk_bytes32=_parse_ilk_bytes32(cfg["ilk_bytes32"]),
@@ -313,6 +345,7 @@ def load_prime(config_path: Path) -> Prime:
         external_alm_sources=external_alm_sources,
         principal_return_overrides=principal_return_overrides,
         subsidy=SubsidyConfig.from_dict(cfg.get("subsidy")),
+        savings_v2_routes=savings_v2_routes,
     )
 
 
