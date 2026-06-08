@@ -774,6 +774,13 @@ def _susds_pol_ssr_credit(
     (so it REDUCES Sky's net take and is equivalent to Spark earning it).
     """
     from ._helpers import daily_compounding_factor, ssr_at_or_before
+    # Stable-position fast path parity with ``_susds_cat_b_spread_reimb``
+    # and ``_pol_susds_agent_rate``: a zero-or-negative ``value_som`` with
+    # no inflows produces a zero credit. SSR varies per day, so we can't
+    # collapse the loop into a single multiplication when inflows are
+    # present — but we can short-circuit the trivial case.
+    if (inflow_ts is None or inflow_ts.empty) and value_som <= 0:
+        return Decimal("0")
     if inflow_ts is None or inflow_ts.empty:
         cum_baseline = Decimal("0")
     else:
@@ -813,9 +820,11 @@ def _pol_susds_agent_rate(
     $0 (consistent with every other ``sky_savings_token`` venue); the
     20bps shows up as a reduction in the ``sky_revenue`` headline.
 
-    Combined with the BR-charge-on-underlying mechanism (Sky charges
-    30bps over SSR on the underlying USDS in ``cum_debt``), Spark's net
-    cost on S32 becomes ``30bps − 20bps = 10bps × V × days``.
+    Combined with the BR-charge-on-underlying mechanism AND the
+    ``susds_pol_ssr_credit`` (also applied to S32), Spark's net cost on
+    S32 becomes ``(SSR + 30bps) − 20bps_pol_agent − SSR_credit = 10bps
+    × V × days`` (the residual 10bps is the demand-side share routed
+    via DSDR — see ``_susds_pol_ssr_credit`` for the full identity).
 
     Formula: ``Σ_d V_d × daily_compounding_factor(AGENT_RATE_OVER_SSR)``
     where ``V_d = value_som + (cum_inflow_d − cum_inflow_{som-1})``.
@@ -826,6 +835,7 @@ def _pol_susds_agent_rate(
     just S32 on Ethereum. L2 sUSDS proxies (S37/S43/S47/S51) keep their
     existing 30bps ``susds_spread_reimbursement`` mechanism and do NOT
     receive the agent rate — per the prime team's Ethereum-only scope.
+    (They DO receive the ``susds_pol_ssr_credit``.)
     """
     from ._helpers import daily_compounding_factor
     from .agent_rate import AGENT_RATE_OVER_SSR

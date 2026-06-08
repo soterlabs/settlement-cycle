@@ -581,8 +581,16 @@ venues:
   # sUSDS POL held directly at the Spark ETH ALM (~$2.25B).
   # Pricing category B (ERC-4626): value_som/eom = shares × convertToAssets(block).
   #
-  # Revenue treatment: prime_revenue earns the AGENT RATE (+20bps on the
-  # sUSDS value, integrated daily). Sky charges full BR on utilized.
+  # Revenue treatment (three independent Sky-revenue reductions apply):
+  #   1. Full BR is charged on the underlying USDS in cum_debt (= SSR + 30bps).
+  #   2. ``pol_agent_rate: true`` → 20bps × value × days subtracted from
+  #      sky_revenue (Sky pays Spark the agent rate on this POL).
+  #   3. ``sky_savings_token: true`` triggers the SSR-credit mechanism →
+  #      SSR × value × days subtracted from sky_revenue (makes the
+  #      SSR-via-index offset against BR explicit).
+  # Net Spark cost = (SSR + 30bps) − 20bps_pol_agent − SSR_credit = 10bps
+  # × value × days (the residual 10bps is the demand-side share routed via
+  # Demand Side Distribution Rewards, outside Supply Side P&L).
   #
   # Why full BR and no utilized deduction:
   #   Although only a portion of the sUSDS held at the ALM is actively
@@ -608,8 +616,11 @@ venues:
   #   (same mechanism as the 30bps spread reimbursement, just a different
   #   rate) — Sky's invoice to Spark drops by 20bps × V × days, leaving
   #   the per-venue ``actual_revenue`` and ``revenue`` at 0 like every
-  #   other sky_savings_token venue. Combined with the full BR charge,
-  #   Spark's net cost on this position = 30bps − 20bps = 10bps × V × days.
+  #   other sky_savings_token venue. Combined with the full BR charge AND
+  #   the ``susds_pol_ssr_credit`` (also applied here), Spark's net cost
+  #   on this position = ``(SSR + 30bps) − 20bps_pol_agent − SSR_credit
+  #   = 10bps × V × days`` (the residual 10bps is the demand-side share
+  #   routed via DSDR, outside Supply Side P&L).
   #
   # Contrast with S37/S43/S47/S51 (L2 sUSDS POL): those are pure supply-side
   # holdings with no Savings product backing them, so they do receive the

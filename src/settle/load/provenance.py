@@ -129,10 +129,12 @@ def render_provenance(
                 # 30 bps spread deducted from sky_revenue for this venue.
                 # Non-zero only for sky_savings_token Cat B venues.
                 "susds_spread_reimbursement": str(v.susds_spread_reimbursement),
-                # +20 bps agent rate income on sUSDS POL. Non-zero only for
-                # venues with ``Venue.pol_agent_rate: true`` (currently Spark
-                # S32). Already rolled into ``revenue`` above; surfaced
-                # separately for audit and the savings_v2 reconciliation
+                # +20 bps agent rate Sky pays the prime on sUSDS POL.
+                # Non-zero only for venues with ``Venue.pol_agent_rate: true``
+                # (currently Spark S32). NOT folded into ``revenue`` —
+                # routed as a Sky Revenue reduction at the prime level (see
+                # ``results.pol_agent_rate``). Per-venue value recorded
+                # here for the audit trail + the savings_v2 reconciliation
                 # report.
                 "pol_agent_rate_usd": str(v.pol_agent_rate_usd),
                 # SSR appreciation credit on sUSDS POL — daily integration

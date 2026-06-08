@@ -274,11 +274,15 @@ class Venue:
     # Currently used on a single venue: **Spark S32 (sUSDS POL at Ethereum ALM)**
     # to model the Sky-Spark agreement that Spark earns the agent rate on
     # Ethereum-held sUSDS POL. Combined with the BR-charge-on-underlying
-    # mechanism, Spark's net cost on S32 becomes 30bps − 20bps = 10bps × V × days.
+    # mechanism AND the ``susds_pol_ssr_credit`` (also applied to S32),
+    # Spark's net cost on S32 becomes
+    # ``(SSR + 30bps) − 20bps_pol_agent − SSR_credit = 10bps × V × days``
+    # (the residual 10bps is the demand-side share routed via DSDR).
     #
     # NOT applied to the L2 sUSDS proxies (S37/S43/S47/S51): those keep their
-    # existing 30bps ``susds_spread_reimbursement`` (net 0bps cost) — the
-    # Sky-Spark agreement on agent rate is Ethereum-only per the prime team.
+    # existing 30bps ``susds_spread_reimbursement`` PLUS the
+    # ``susds_pol_ssr_credit``; combined they net the L2 sUSDS POL to 0bps —
+    # the Sky-Spark agreement on agent rate is Ethereum-only per the prime team.
     pol_agent_rate: bool = False
     # Additional addresses to treat as "burn destinations" when classifying
     # share Transfers for Cat B inflow accounting. ERC-4626 vaults with a

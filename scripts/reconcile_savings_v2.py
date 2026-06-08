@@ -51,6 +51,7 @@ def render_report(
     month: str,
     recs: list[VaultReconciliation],
     pol_agent_rate_total: Decimal = Decimal("0"),
+    susds_pol_ssr_credit_total: Decimal = Decimal("0"),
 ) -> str:
     lines: list[str] = []
     lines.append(f"# Spark Savings V2 — per-vault economic view ({prime_id.upper()} {month})")
@@ -65,19 +66,38 @@ def render_report(
         "scale out the USDS-minted-via-Allocator co-tenant capital."
     )
     lines.append("")
-    if pol_agent_rate_total > 0:
+    if pol_agent_rate_total > 0 or susds_pol_ssr_credit_total > 0:
+        all_in = pol_agent_rate_total + susds_pol_ssr_credit_total
         lines.append(
-            f"**Note — S32 POL agent rate (this period): "
-            f"{_usd(pol_agent_rate_total)}.** Sky pays Spark the agent rate "
-            f"(+20bps over SSR) on the pooled sUSDS POL at the Spark ETH ALM "
-            f"(funded by both USDS-via-Allocator and savings-vault deposits "
-            f"swapped through PSM3). Routed as a Sky Revenue reduction "
-            f"(parallel to the 30bps `susds_spread_reimbursement`), it "
-            f"reduces what Spark owes Sky by this amount. It is NOT "
-            f"attributed to any single vault in the per-vault table below — "
-            f"surfacing it here for context so the reader can compute "
-            f"Spark's all-in position on savings vaults as "
-            f"`net_spread_weighted_total + pol_agent_rate_total`."
+            f"**Note — sUSDS POL Sky-revenue reductions (this period):**"
+        )
+        if pol_agent_rate_total > 0:
+            lines.append(
+                f"- `pol_agent_rate` (S32 only, +20bps over SSR): "
+                f"{_usd(pol_agent_rate_total)}"
+            )
+        if susds_pol_ssr_credit_total > 0:
+            lines.append(
+                f"- `susds_pol_ssr_credit` (every sky_savings_token Cat B "
+                f"venue: S32 + L2 proxies, SSR rate): "
+                f"{_usd(susds_pol_ssr_credit_total)}"
+            )
+        lines.append(
+            f"- **Combined sUSDS POL sky_revenue reduction: "
+            f"{_usd(all_in)}**"
+        )
+        lines.append("")
+        lines.append(
+            f"These reduce what Spark owes Sky on sUSDS POL — they make the "
+            f"SSR-via-index offset against the BR charge explicit in the "
+            f"cash-flow accounting (otherwise the SSR appreciation lives only "
+            f"in `value_eom` growth). The pooled sUSDS POL at the Spark ETH "
+            f"ALM (S32) is funded by both USDS-via-Allocator and savings-vault "
+            f"deposits swapped through PSM3, so these credits are NOT attributed "
+            f"to any single vault in the per-vault table below — surfacing them "
+            f"here for context so the reader can compute Spark's all-in position "
+            f"on savings vaults as "
+            f"`net_spread_weighted_total + pol_agent_rate_total + susds_pol_ssr_credit_total`."
         )
         lines.append("")
     lines.append("## Summary")
@@ -198,7 +218,8 @@ def main() -> int:
 
     recs = reconcile_all(prime, prov)
     pol_total = Decimal(str(prov.get("results", {}).get("pol_agent_rate") or 0))
-    report = render_report(args.prime, args.month, recs, pol_total)
+    ssr_credit_total = Decimal(str(prov.get("results", {}).get("susds_pol_ssr_credit") or 0))
+    report = render_report(args.prime, args.month, recs, pol_total, ssr_credit_total)
     print(report)
 
     if args.write:

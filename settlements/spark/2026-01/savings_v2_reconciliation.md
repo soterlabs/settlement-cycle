@@ -2,7 +2,12 @@
 
 Per `docs/spark/PRD_savings_vaults.md` §5.2. **Display-only.** Contamination handling: (1) Cat A par-stable venues whose yield comes from `external_alm_sources` sweeps (S26 USDC raw → Anchorage, S28 PYUSD raw → PayPal) are excluded from the mapping in `config/spark.yaml`. (2) The remaining lending venues are weighted by `vault_share = vault_TVL_avg / Σ venue_TVL_avg` to scale out the USDS-minted-via-Allocator co-tenant capital.
 
-**Note — S32 POL agent rate (this period): $87,501.45.** Sky pays Spark the agent rate (+20bps over SSR) on the pooled sUSDS POL at the Spark ETH ALM (funded by both USDS-via-Allocator and savings-vault deposits swapped through PSM3). Routed as a Sky Revenue reduction (parallel to the 30bps `susds_spread_reimbursement`), it reduces what Spark owes Sky by this amount. It is NOT attributed to any single vault in the per-vault table below — surfacing it here for context so the reader can compute Spark's all-in position on savings vaults as `net_spread_weighted_total + pol_agent_rate_total`.
+**Note — sUSDS POL Sky-revenue reductions (this period):**
+- `pol_agent_rate` (S32 only, +20bps over SSR): $87,501.45
+- `susds_pol_ssr_credit` (every sky_savings_token Cat B venue: S32 + L2 proxies, SSR rate): $2,387,351.61
+- **Combined sUSDS POL sky_revenue reduction: $2,474,853.06**
+
+These reduce what Spark owes Sky on sUSDS POL — they make the SSR-via-index offset against the BR charge explicit in the cash-flow accounting (otherwise the SSR appreciation lives only in `value_eom` growth). The pooled sUSDS POL at the Spark ETH ALM (S32) is funded by both USDS-via-Allocator and savings-vault deposits swapped through PSM3, so these credits are NOT attributed to any single vault in the per-vault table below — surfacing them here for context so the reader can compute Spark's all-in position on savings vaults as `net_spread_weighted_total + pol_agent_rate_total + susds_pol_ssr_credit_total`.
 
 ## Summary
 
