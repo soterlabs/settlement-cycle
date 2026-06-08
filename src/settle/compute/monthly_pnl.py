@@ -1912,7 +1912,7 @@ def compute_monthly_pnl(
     _log.info("step 2: gathering Dune/normalize inputs (debt, balances, SSR)...")
     # 2. Gather Normalize inputs for sky_revenue + agent_rate (Ethereum-only).
     _log.info("  2a: debt timeseries...")
-    debt = get_debt_timeseries(prime, period, source=sources.debt)
+    debt = get_debt_timeseries(prime, period, source=sources.debt, block_resolver=resolver)
     if not sky_only:
         _log.info("  2b: subproxy USDS balance...")
         sub_usds = get_subproxy_balance_timeseries(

@@ -16,7 +16,7 @@ from decimal import Decimal
 
 from ..domain.primes import Address, Chain, Prime
 from ..domain.sky_tokens import USDS_ETHEREUM, sUSDS_ETHEREUM
-from ..extract.rpc import balance_of, convert_to_assets, eth_call
+from ..extract.rpc import SEL_ILKS as _SEL_ILKS, balance_of, convert_to_assets, eth_call
 from ..normalize.positions import get_position_value
 from ..normalize.registry import (
     get_balance_source,
@@ -48,7 +48,7 @@ _log = logging.getLogger(__name__)
 # prime's ilk. Per-prime debt is `Vat.ilks(ilk).Art × Vat.ilks(ilk).rate / 1e45`
 # (Art is wad ×1e18, rate is ray ×1e27; product is rad ×1e45 → USD whole units).
 VAT_ADDRESS = Address.from_str("0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B")
-SEL_VAT_ILKS = "0xd9638d36"   # ilks(bytes32) → (Art, rate, spot, line, dust)
+SEL_VAT_ILKS = _SEL_ILKS   # ilks(bytes32) → (Art, rate, spot, line, dust); defined in extract.rpc
 
 
 def _read_debt_ilk(prime: Prime, eth_block: int) -> Decimal | None:

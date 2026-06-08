@@ -192,10 +192,11 @@ Enabled per-venue via `lending_idle_usds: true` in the prime YAML config (Cat C 
 
 **`cum_debt`** — source of truth for total drawn USDS. Derived from the Sky Vat on-chain:
 
-- Scans all `frob` calls (selector `0x76088703`) to the Vat (`0x35D1…492B`) filtered to the prime's `ilk_bytes32`
+- Scans all `frob` (selector `0x76088703`) **and `grab`** (selector `0x7bab3f40`) calls to the Vat (`0x35D1…492B`) filtered to the prime's `ilk_bytes32`
 - Each call carries a signed `dart` (change in normalized debt, 1e18 units) at calldata offset 165
-- `cum_debt = Σ dart` from `prime.start_date` through the EoM pin block
-- Matches `Vat.ilks[ilk].Art × rate` — the total outstanding USDS drawn against that ilk
+- The Dune query returns `Σ dart = Vat.ilks[ilk].Art` (normalised debt, wad units) from `prime.start_date` through the EoM pin block
+- `normalize/debt.py` reads `Vat.ilks[ilk].rate` at the EoM pin block via RPC and scales: `cum_debt = Art × rate`, giving actual outstanding USDS
+- For ALLOCATOR-BLOOM-A, `rate = 1.0` always (grab-based capitalisation, no `jug.drip`); for ALLOCATOR-SPARK-A, `rate ≈ 1.045` by early 2026
 - Ilk-level, not per-vault: if the prime's ilk has multiple vaults or subproxies, `cum_debt` captures the aggregate
 
 ---
