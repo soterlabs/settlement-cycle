@@ -77,6 +77,12 @@ class VenueRevenue:
     # (summary.md, xlsx Venues tab). Mirrors ``Venue.hide_per_venue_pnl``
     # — propagated here so renderers consume it directly from
     # provenance.json without re-loading the config YAML.
+    #
+    # **Display-only.** Compute code MUST NOT branch on this field —
+    # the venue's ``revenue`` / ``actual_revenue`` already flow into
+    # ``MonthlyPnL.prime_agent_revenue`` via the regular aggregation
+    # path; suppressing them at compute time would silently drop the
+    # depositor-liability accrual from the prime headline.
     hide_per_venue_pnl: bool = False
     # Time-weighted average of this venue's daily lending-idle deduction
     # (prime's pro-rata share of unborrowed underlying in SparkLend / Aave
