@@ -288,6 +288,14 @@ def compute_sky_revenue_daily(
             "utilized":           utilized,
             "ssr_apy":            float(ssr_apy),
             "base_apy":           float(base_apy),
+            # Subsidy ramp position + reference rate + effective subsidised
+            # APY. Populated only when ``subsidy_config.enabled`` and
+            # ``current >= subsidy.program_start`` — None otherwise so the
+            # xlsx "Debt" tab can omit the columns cleanly for non-subsidy
+            # primes / pre-program days.
+            "ref_rate_apy":       float(_ref_rate) if _ref_rate is not None else None,
+            "sub_apy":            float(_sub_apy)  if _sub_apy  is not None else None,
+            "t_months":           _t,
             "daily_sky_rev":      daily_rev,
             "daily_sky_rev_gross": daily_rev_gross,
         })

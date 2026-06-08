@@ -11,8 +11,9 @@ Tabs:
   2. Venues            — per-venue P&L breakdown with CoF re-attribution
   3. Sky Revenue       — how sky_revenue is built (CoF + SDE) + subsidy params
   4. Sky Direct        — active Sky-Direct entries this period
-  5. Off-protocol holdings (when present)
-  6. SDE daily         — per-day Sky/Grove/in-flight (when a burn occurred)
+  5. Debt              — per-day cum_debt (frob+grab), deductions, APYs, Sky charge
+  6. Off-protocol holdings (when present)
+  7. SDE daily         — per-day Sky/Grove/in-flight (when a burn occurred)
 
 Inputs:
   settlements/{prime}/{month}/provenance.json    (canonical machine-readable output)
@@ -597,6 +598,135 @@ def _write_sde_daily(ws, prov: dict) -> None:
     _set_widths(ws, {1: 12, 2: 18, 3: 18, 4: 18, 5: 18})
 
 
+def _write_debt(ws, prov: dict) -> None:
+    """Per-day ilk-debt + Sky-charge breakdown.
+
+    Debug-oriented tab for the prime team to reconcile two methodology
+    knobs that drive ``sky_revenue``:
+
+      * **Debt source**: ``cum_debt`` here is built from BOTH ``vat.frob``
+        (regular draws/repays) and ``vat.grab`` (stability-fee
+        capitalisation) trace events — matching the canonical Vat
+        ``urns[ilk][u].art``. Primes using a frob-only "Subscriptions"
+        spreadsheet will see lower numbers and a correspondingly lower
+        CoF charge — the daily delta is the cumulative-grab dart through
+        that date.
+
+      * **Rate composition**: ``base_apy`` = (1 + SSR)(1 + 30bps) − 1
+        (multiplicative), not the naive sum SSR + 30bps. ``sub_apy`` is
+        the subsidised rate after the ramp: ``ref_rate + (base − ref_rate)
+        × T/24``, clamped at base_apy when ref_rate exceeds base_apy.
+        ``daily_sky_rev`` applies sub_apy to the first $1B of utilized and
+        full base_apy to the excess; ``daily_sky_rev_gross`` applies the
+        same rate schedule but on the full cum_debt (no deductions),
+        making the gap to actual a measure of the deduction stack.
+    """
+    rows = prov.get("sky_revenue_daily") or []
+    if not rows:
+        # No daily series captured (e.g. legacy provenance.json from before
+        # this field was added) — skip the tab cleanly rather than render
+        # an empty grid.
+        return
+    ws.title = "Debt"
+    ws.append(["Daily ilk debt + Sky charge breakdown"])
+    ws["A1"].font = _TITLE
+    ws.append([])
+    ws.append([
+        "cum_debt = Σ on-chain Vat dart from frob (0x76088703) + grab "
+        "(0x7bab3f40). utilized = cum_debt − Σ deductions. base_apy = "
+        "(1+SSR)(1+0.003)−1 (multiplicative). sub_apy applies on the first "
+        "cap_usd of utilized when the subsidy is active; excess pays base_apy."
+    ])
+    ws.cell(ws.max_row, 1).font = _MUTED
+    ws.cell(ws.max_row, 1).alignment = Alignment(wrap_text=True, vertical="top")
+    ws.row_dimensions[ws.max_row].height = 45
+    ws.append([])
+
+    # If no row has subsidy data populated, omit the three subsidy columns
+    # (T, ref_rate, sub_apy) — keeps the tab tight for non-subsidy primes.
+    has_subsidy = any(r.get("sub_apy") is not None for r in rows)
+
+    cols = [
+        "Date",
+        "cum_debt",
+        "− ALM idle",
+        "− PSM USDS",
+        "− SDE NAV",
+        "− Curve idle",
+        "− Lending idle",
+        "= utilized",
+        "SSR APY",
+        "base APY",
+    ]
+    if has_subsidy:
+        cols += ["T (months)", "ref_rate APY", "sub APY"]
+    cols += ["daily Sky charge", "daily Sky charge (gross on cum_debt)"]
+    ws.append(cols)
+    _header_row(ws, ws.max_row, len(cols))
+
+    sum_rev   = Decimal("0")
+    sum_gross = Decimal("0")
+    for r in rows:
+        rev = _D(r["daily_sky_rev"])
+        gross = _D(r["daily_sky_rev_gross"])
+        sum_rev   += rev
+        sum_gross += gross
+        out = [
+            r["date"],
+            float(_D(r["cum_debt"])),
+            float(_D(r["alm_usds"])),
+            float(_D(r["psm_usds"])),
+            float(_D(r["sde_av"])),
+            float(_D(r["curve_idle"])),
+            float(_D(r["lending_idle"])),
+            float(_D(r["utilized"])),
+            r["ssr_apy"],
+            r["base_apy"],
+        ]
+        if has_subsidy:
+            out += [r.get("t_months"), r.get("ref_rate_apy"), r.get("sub_apy")]
+        out += [float(rev), float(gross)]
+        ws.append(out)
+        row_n = ws.max_row
+        # USD columns: cum_debt … utilized, daily charges
+        for c in (2, 3, 4, 5, 6, 7, 8):
+            ws.cell(row_n, c).number_format = _USD0
+        # APY columns
+        for c in (9, 10):
+            ws.cell(row_n, c).number_format = _PCT
+        if has_subsidy:
+            for c in (12, 13):  # ref_rate APY, sub APY (T stays integer)
+                ws.cell(row_n, c).number_format = _PCT
+            ws.cell(row_n, len(cols) - 1).number_format = _USD
+            ws.cell(row_n, len(cols)).number_format     = _USD
+        else:
+            ws.cell(row_n, 11).number_format = _USD
+            ws.cell(row_n, 12).number_format = _USD
+
+    # Totals footer — only the additive columns (daily charges) sum
+    # meaningfully across the period; the rest are point-in-time.
+    ws.append([])
+    total_row = [""] * len(cols)
+    total_row[0] = "Σ daily charges"
+    total_row[-2] = float(sum_rev)
+    total_row[-1] = float(sum_gross)
+    ws.append(total_row)
+    row_n = ws.max_row
+    ws.cell(row_n, 1).font = _BOLD
+    ws.cell(row_n, len(cols) - 1).number_format = _USD
+    ws.cell(row_n, len(cols)).number_format     = _USD
+    ws.cell(row_n, len(cols) - 1).font = _BOLD
+    ws.cell(row_n, len(cols)).font     = _BOLD
+
+    # Widths
+    widths = {1: 12, 2: 16, 3: 14, 4: 14, 5: 14, 6: 14, 7: 14, 8: 16, 9: 10, 10: 10}
+    if has_subsidy:
+        widths.update({11: 11, 12: 12, 13: 11, 14: 18, 15: 22})
+    else:
+        widths.update({11: 18, 12: 22})
+    _set_widths(ws, widths)
+
+
 # --------------------------------------------------------------------------
 # Entrypoint
 # --------------------------------------------------------------------------
@@ -625,6 +755,12 @@ def build_xlsx(prime_id: str, month: str) -> Path:
     _write_venues(wb.create_sheet(), sheet, cfg)
     _write_sky_revenue(wb.create_sheet(), prov, sheet, cfg)
     _write_sde(wb.create_sheet(), sde, sheet)
+    if prov.get("sky_revenue_daily"):
+        # "Debt" debug tab — emitted whenever the daily series is captured
+        # (every run from the version that introduced ``sky_revenue_daily``
+        # in provenance.json). Skipped silently on legacy outputs where
+        # the field is absent.
+        _write_debt(wb.create_sheet(), prov)
     if prov.get("display_only_breakdown"):
         # Only emit the off-protocol-holdings tab when the prime has display-
         # only venues this period. Avoids an empty tab cluttering monthly

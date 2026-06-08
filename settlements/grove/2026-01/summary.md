@@ -45,6 +45,8 @@ Period: 2026-01-01 → 2026-01-31 (31 days)
 | E30 | Uniswap V3 AUSD/USDC pool (NFT positions — alt holder) | $24,998,427.31 | $25,003,445.42 | $3,630.94 | $1,387.18 | $1,387.18 | $0.00 | 0% | $0.00 |
 | E31 | AUSD raw (alt holder idle) | $0.08 | $3,688.95 | $0.00 | $3,688.87 | $3,688.87 | $0.00 | 0% | $0.00 |
 | E32 | USDC raw (alt holder idle) | $5,849.73 | $2,254.27 | $0.00 | -$3,595.46 | -$3,595.46 | $-0.00 | 0% | $0.00 |
+| E37 | Maple syrupUSDC (ERC-4626) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
+| E38 | Agora AUSD incentives (cash distribution to Grove Eth ALM) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 
 ## Off-protocol holdings
 

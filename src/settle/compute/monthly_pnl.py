@@ -3247,6 +3247,31 @@ def compute_monthly_pnl(
             daily=_daily,
         ))
 
+    # Serialize the day-by-day sky-revenue breakdown into plain dicts (the
+    # MonthlyPnL field accepts ``list[dict]`` so the wire-format works without
+    # introducing a new dataclass). Decimals are stringified for
+    # ``provenance.json`` round-trip; APYs stay as native floats / None.
+    sky_revenue_daily_out: list[dict] = [
+        {
+            "date":                row["date"].isoformat(),
+            "cum_debt":            str(row["cum_debt"]),
+            "alm_usds":            str(row["alm_usds"]),
+            "psm_usds":            str(row["psm_usds"]),
+            "sde_av":              str(row["sde_av"]),
+            "curve_idle":          str(row["curve_idle"]),
+            "lending_idle":        str(row["lending_idle"]),
+            "utilized":            str(row["utilized"]),
+            "ssr_apy":             row["ssr_apy"],
+            "base_apy":            row["base_apy"],
+            "ref_rate_apy":        row["ref_rate_apy"],
+            "sub_apy":             row["sub_apy"],
+            "t_months":            row["t_months"],
+            "daily_sky_rev":       str(row["daily_sky_rev"]),
+            "daily_sky_rev_gross": str(row["daily_sky_rev_gross"]),
+        }
+        for _, row in sky_rev_daily.iterrows()
+    ]
+
     return MonthlyPnL(
         prime_id=prime.id,
         month=month,
@@ -3263,6 +3288,7 @@ def compute_monthly_pnl(
         psm3_susds_spread=psm3_susds_spread if not sky_only else Decimal("0"),
         display_only_breakdown=display_only_breakdown,
         sde_daily_breakdown=sde_daily_breakdown_out,
+        sky_revenue_daily=sky_revenue_daily_out,
         susds_spread_reimbursement=total_susds_spread_reimb,
         sky_revenue_gross=sky_rev_gross,
     )

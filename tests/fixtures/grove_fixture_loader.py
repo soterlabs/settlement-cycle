@@ -128,26 +128,54 @@ def build_grove_sources(grove, fixtures: dict, blocks_by_chain: dict[str, Any]) 
             directed_inflow_fixtures[(token, alm, ZERO)] = df_with_dates(
                 fixtures[f"atoken_{vid}_burns"]["rows"], "block_date",
             )
-        elif cat == "B" and vid in ("e4", "e5", "e6", "e19", "e23"):
-            directed_inflow_fixtures[(token, ZERO, alm)] = df_with_dates(
-                fixtures[f"vault_{vid}_mints"]["rows"], "block_date",
-            )
-            directed_inflow_fixtures[(token, alm, ZERO)] = df_with_dates(
-                fixtures[f"vault_{vid}_burns"]["rows"], "block_date",
-            )
-        # Cash-distribution sources (e.g. Galaxy CLO USDC sweeps for E21).
-        # ``cash_distributions`` queries ``directed_inflow_timeseries`` keyed by
-        # (token, payer, ALM-on-payer-chain). The fixture key is
-        # ``cash_dist_{vid}`` and may carry distributions on a DIFFERENT chain
-        # from the venue's home chain (Galaxy E21 lives on Avalanche but
-        # distributes USDC to the Ethereum ALM).
-        for src in v.cash_distributions:
+        elif cat == "B" and vid in ("e4", "e5", "e6", "e19", "e23", "e37"):
+            # ``e37`` (Maple syrupUSDC, Cat B) — fixture absent in pre-May
+            # captures since the position only appeared 2026-05-01. The
+            # ``.get`` fallback returns an empty frame for those months,
+            # which the Cat B closed-form classifier correctly treats as
+            # "no on-chain mints/burns" → Δvalue between SoM/EoM=0.
+            mints = fixtures.get(f"vault_{vid}_mints", {}).get("rows", [])
+            burns = fixtures.get(f"vault_{vid}_burns", {}).get("rows", [])
+            directed_inflow_fixtures[(token, ZERO, alm)] = df_with_dates(mints, "block_date")
+            directed_inflow_fixtures[(token, alm, ZERO)] = df_with_dates(burns, "block_date")
+        # Cash-distribution sources (e.g. Galaxy CLO USDC sweeps for E21,
+        # Agora AUSD incentives for E38). ``cash_distributions`` queries
+        # ``directed_inflow_timeseries`` keyed by (token, payer, ALM-on-
+        # payer-chain). Each venue carries 1+ payer entries.
+        #
+        # Fixture keys (in lookup order):
+        #   1. ``cash_dist_{vid}_p{i}``  — per-payer indexed (E38 multi-payer)
+        #   2. ``cash_dist_{vid}``       — single-payer legacy (E21 Galaxy)
+        #
+        # Distributions may land on a different chain from the venue's home
+        # chain (Galaxy E21 lives on Avalanche but pays USDC to the Eth ALM).
+        for i, src in enumerate(v.cash_distributions):
             chain = src.chain if src.chain is not None else v.chain
             if chain not in grove.alm:
                 continue
-            fx_key = f"cash_dist_{vid}"
-            if fx_key not in fixtures:
+            fx_key_indexed = f"cash_dist_{vid}_p{i}"
+            fx_key_legacy  = f"cash_dist_{vid}"
+            if fx_key_indexed in fixtures:
+                fx_key = fx_key_indexed
+            elif fx_key_legacy in fixtures and len(v.cash_distributions) == 1:
+                fx_key = fx_key_legacy
+            else:
                 continue
+            # Defensive: assert the fixture's ``_from`` metadata matches the
+            # YAML payer. Without this, reordering the ``cash_distributions``
+            # list in the YAML silently swaps fixture-to-payer mappings —
+            # the lookup-by-positional-index produces an empty frame for one
+            # of the payers, dropping their revenue with no error.
+            fx_from = fixtures[fx_key].get("_from")
+            if fx_from is not None:
+                fx_from_bytes = bytes.fromhex(fx_from.removeprefix("0x")).rjust(20, b"\x00")
+                if fx_from_bytes != src.payer.value:
+                    raise ValueError(
+                        f"cash_dist fixture {fx_key!r} for venue {v.id} carries "
+                        f"_from={fx_from} but YAML cash_distributions[{i}].payer="
+                        f"0x{src.payer.value.hex()}. Re-capture the fixture or "
+                        f"restore the original YAML order."
+                    )
             directed_inflow_fixtures[(
                 src.token.value, src.payer.value, grove.alm[chain].value,
             )] = df_with_dates(fixtures[fx_key]["rows"], "block_date")
