@@ -153,10 +153,20 @@ class Venue:
     lp_kind: str | None = None           # Category F only: 'curve_stableswap' | 'uniswap_v3'
     nft_position_manager: Address | None = None  # Category F (uniswap_v3) only
     # When True, this venue's avg_value is excluded from the CoF allocation
-    # denominator in post-hoc reporting (build_monthly_report). Use for
-    # idle-ALM positions (raw USDS/USDC at the ALM proxy) that are already
-    # deducted from `utilized` via cum_alm_usds — allocating CoF to them
-    # would produce equal-and-opposite P2S / P2G entries that both should be 0.
+    # denominator in post-hoc reporting (build_monthly_report). Two distinct
+    # use cases share this flag:
+    #   (a) idle-ALM positions (raw USDS/USDC at the ALM proxy — S31, S38,
+    #       S44, S48, S52) that are already deducted from `utilized` via
+    #       cum_alm_usds. Allocating CoF to them would produce equal-and-
+    #       opposite P2S / P2G entries that both should be 0.
+    #   (b) Savings V2 vaults (S56/S57/S59/S60) whose capital is depositor-
+    #       funded (USDC/USDT/PYUSD held against pp-share liabilities) and
+    #       was never drawn from the ilk — so Sky never funded it and Sky's
+    #       CoF should not be split against it. These are NOT in
+    #       cum_alm_usds; their "utilized deduction" is $0.
+    # The grove-sheet renderer distinguishes the two by the sign of
+    # ``actual_revenue`` (negative ⇒ Savings V2 VSR liability) to set the
+    # correct ``deduction_avg`` and the right xlsx note text.
     cof_excluded: bool = False
     # Per-venue minimum transfer threshold (USD-equivalent). Drops transfers
     # below this amount from the cumulative-balance pull so daily
@@ -257,6 +267,29 @@ class Venue:
     # as part of Demand Side Distribution Rewards rather than Supply Side PnL.
     # Sky still charges full BR on utilized; prime_revenue remains 0.
     demand_side_spread: bool = False
+    # When True, Sky pays the prime the agent rate (+20bps over SSR, applied
+    # only to the +20bps component since SSR is already received via the
+    # sUSDS share price) on the value of this venue's sUSDS holdings,
+    # daily-integrated like ``susds_spread_reimbursement``.
+    #
+    # **Accounting:** the agent rate is routed as a Sky Revenue REDUCTION
+    # (subtracted from ``MonthlyPnL.sky_revenue`` alongside the existing
+    # 30bps spread reimbursement). Same mechanism, different rate. Surfaced
+    # as ``MonthlyPnL.pol_agent_rate`` for headline visibility and as
+    # ``VenueRevenue.pol_agent_rate_usd`` for the per-venue audit trail.
+    # The per-venue ``revenue`` and ``actual_revenue`` stay at 0 — consistent
+    # with every other ``sky_savings_token`` venue, whose prime-side P&L
+    # is captured exclusively at the sky_revenue layer.
+    #
+    # Currently used on a single venue: **Spark S32 (sUSDS POL at Ethereum ALM)**
+    # to model the Sky-Spark agreement that Spark earns the agent rate on
+    # Ethereum-held sUSDS POL. Combined with the BR-charge-on-underlying
+    # mechanism, Spark's net cost on S32 is reduced by 20bps × V × days.
+    #
+    # NOT applied to the L2 sUSDS proxies (S37/S43/S47/S51): those keep their
+    # existing 30bps ``susds_spread_reimbursement`` (net 0bps cost) — the
+    # Sky-Spark agreement on agent rate is Ethereum-only per the prime team.
+    pol_agent_rate: bool = False
     # Additional addresses to treat as "burn destinations" when classifying
     # share Transfers for Cat B inflow accounting. ERC-4626 vaults with a
     # withdrawal-queue pattern (Maple PoolV2 etc.) Transfer the user's

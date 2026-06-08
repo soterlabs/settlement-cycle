@@ -581,7 +581,21 @@ venues:
   # sUSDS POL held directly at the Spark ETH ALM (~$2.25B).
   # Pricing category B (ERC-4626): value_som/eom = shares × convertToAssets(block).
   #
-  # Revenue treatment: prime_revenue = 0; Sky charges full BR on utilized.
+  # Revenue treatment: Sky charges full BR on the underlying USDS in
+  # cum_debt (= SSR + 30bps). Two independent sky_revenue reductions then
+  # apply:
+  #   1. ``demand_side_spread: true`` — suppresses the 30bps
+  #      ``susds_spread_reimbursement`` that L2 sUSDS proxies receive.
+  #      The 30bps is routed via Demand Side Distribution Rewards instead
+  #      (the sUSDS collateralises Spark Savings deposits; depositors are
+  #      owed the SSR via the Savings product, not the prime directly).
+  #   2. ``pol_agent_rate: true`` — Sky pays Spark the agent rate
+  #      (+20bps over SSR) on Ethereum-held sUSDS POL per the Sky-Spark
+  #      agreement. Daily-integrated; subtracts 20bps × V × days from
+  #      sky_revenue.
+  # Net effect on Spark for this position: Sky charges 30bps spread,
+  # refunds 20bps via pol_agent_rate → 10bps × V × days residual cost
+  # (the demand-side share routed via DSDR, outside Supply Side P&L).
   #
   # Why full BR and no utilized deduction:
   #   Although only a portion of the sUSDS held at the ALM is actively
@@ -590,26 +604,20 @@ venues:
   #   is correctly reflected in the BR charge — subtracting would undercount
   #   the prime's actual borrowing position.
   #
-  # Why NO susds_spread_reimbursement here (demand_side_spread: true):
-  #   This sUSDS collateralises Spark Savings deposits (Savings V2). The
-  #   economic relationship is on the demand side — depositors are owed the
-  #   SSR via the Savings product, not the prime agent directly. The 30 bps
-  #   spread reimbursement is therefore applied as part of Demand Side
-  #   Distribution Rewards, not Supply Side PnL settlement. Setting
-  #   demand_side_spread: true leaves sky_revenue unreduced for this venue
-  #   while keeping prime_revenue = 0 and the full BR charge intact.
-  #
   # Contrast with S37/S43/S47/S51 (L2 sUSDS POL): those are pure supply-side
-  # holdings with no Savings product backing them, so they do receive the
-  # standard 30 bps sky_revenue reduction via susds_spread_reimbursement.
+  # holdings with no Savings product backing them, so they receive the
+  # standard 30bps ``susds_spread_reimbursement`` (net 0bps cost). The
+  # pol_agent_rate is NOT applied to the L2 proxies — the Sky-Spark
+  # agreement on agent rate is Ethereum-only.
   #
   # See docs/METHODOLOGY.md §1 special-case and docs/RULES.md Rule 5.
   - id: S32
     chain: ethereum
-    label: 'sUSDS raw / POL (ALM — Cat B 4626, demand-side spread)'
+    label: 'sUSDS raw / POL (ALM — Cat B 4626, demand-side spread + agent rate)'
     pricing_category: B
     sky_savings_token: true
     demand_side_spread: true         # spread handled via Demand Side Distribution Rewards, not here
+    pol_agent_rate: true             # Spark earns +20bps agent rate on this POL (Ethereum-only)
     # TODO: deduct_savings_v2_deployed is currently a no-op — the upstream Dune
     # table (dune.sparkdotfi.result_savings_v_2_deployment_metrics) is no longer
     # accessible. A new data source for daily sUSDS deployed into Savings V2
@@ -895,10 +903,21 @@ venues:
   #   - spETH  (eth):  ~81.6K WETH ≈ $185M | 243 holders
   #   - spPYUSD(eth):  ~$1.07M underlying | 13 holders
   #   - spUSDC (ava):  ~$37M underlying   | 87 holders
+  # S56/S57/S59/S60 (and S58 spETH which is out of scope per
+  # docs/spark/PRD_savings_vaults.md §9) are Spark Savings V2 vaults.
+  # ``cof_excluded: true`` keeps their ``tw_avg_value`` out of the
+  # post-hoc CoF allocation denominator: these vaults hold depositor
+  # capital (USDC/USDT/PYUSD via the Savings product), NOT Sky-funded
+  # USDS draws — so allocating Sky's CoF to them would mis-attribute
+  # cost to capital Sky never lent. Mirrors how Grove's deposit-funded
+  # idle venues are handled. Same pattern as the existing
+  # ``cof_excluded`` flags on S31/S32 (sUSDS POL — already deducted
+  # from utilized via cum_alm_usds).
   - id: S56
     chain: ethereum
     label: 'Spark Savings V2 — spUSDC vault'
     pricing_category: S2
+    cof_excluded: true
     holder_override: '0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d'
     token:
       address: '0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d'
@@ -913,6 +932,7 @@ venues:
     chain: ethereum
     label: 'Spark Savings V2 — spUSDT vault'
     pricing_category: S2
+    cof_excluded: true
     holder_override: '0xe2e7a17dff93280dec073c995595155283e3c372'
     token:
       address: '0xe2e7a17dff93280dec073c995595155283e3c372'
@@ -941,6 +961,7 @@ venues:
     chain: ethereum
     label: 'Spark Savings V2 — spPYUSD vault'
     pricing_category: S2
+    cof_excluded: true
     holder_override: '0x80128dbb9f07b93dde62a6daeadb69ed14a7d354'
     token:
       address: '0x80128dbb9f07b93dde62a6daeadb69ed14a7d354'
@@ -955,6 +976,7 @@ venues:
     chain: avalanche_c
     label: 'Spark Savings V2 — spUSDC vault (Avalanche-C, CREATE2 same address)'
     pricing_category: S2
+    cof_excluded: true
     holder_override: '0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d'
     token:
       address: '0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d'
