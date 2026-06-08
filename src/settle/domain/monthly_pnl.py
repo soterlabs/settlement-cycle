@@ -113,15 +113,6 @@ class VenueRevenue:
     # the existing ``susds_spread_reimbursement`` mechanism. See
     # ``Venue.pol_agent_rate`` docstring for the economic rationale.
     pol_agent_rate_usd: Decimal = Decimal("0")
-    # SSR appreciation credit on sUSDS POL — Σ_d V_d × SSR_d/365, daily-
-    # integrated. Non-zero only for ``sky_savings_token=True`` Cat B venues
-    # (Spark S32 + L2 sUSDS proxies). Makes explicit the SSR offset against
-    # the BR charge on the underlying USDS (the BR rate embeds SSR; this
-    # credit cancels the SSR component, leaving Spark's net cost on sUSDS
-    # POL equal to the spread). Display-only at the per-venue level;
-    # routed at the prime level as ``MonthlyPnL.susds_pol_ssr_credit``,
-    # subtracted from ``sky_revenue``.
-    susds_pol_ssr_credit_usd: Decimal = Decimal("0")
     # Legacy fields kept for provenance round-trip on existing settlements
     # written under the old shortfall model. New runs always emit 0 for these.
     br_charge: Decimal = Decimal("0")
@@ -240,15 +231,6 @@ class MonthlyPnL:
     # only for Spark on S32 (Ethereum sUSDS POL). See
     # ``Venue.pol_agent_rate``.
     pol_agent_rate: Decimal = Decimal("0")
-    # Total SSR appreciation credit on sUSDS POL venues (= Σ
-    # vr.susds_pol_ssr_credit_usd across the venue breakdown). Applied
-    # to all ``sky_savings_token=True`` Cat B venues (Spark S32 + L2
-    # proxies). Routed as a Sky Revenue reduction (subtracted from
-    # ``sky_revenue`` alongside ``susds_spread_reimbursement`` and
-    # ``pol_agent_rate``). Makes the SSR-via-index offset against the
-    # SSR component of BR explicit in the cash-flow accounting (it
-    # was previously implicit in ``value_eom`` growth only).
-    susds_pol_ssr_credit: Decimal = Decimal("0")
     # Pure BR × full ilk debt with NO deductions: no idle-USDS, no PSM,
     # no SDE asset-value, no Curve/lending idle. Uses the same subsidised
     # BR + ramp schedule as the actual ``sky_revenue``. Display-only —

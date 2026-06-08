@@ -217,58 +217,37 @@ matches.
 
 ### 5.2 Phase B — Reconciliation against on-chain implied surplus
 
-**Implementation note (2026-06-08):** the original PRD draft proposed
-reading `apr` / `borrow_cost` / `deployed_amount` from
-`dune.sparkdotfi.result_savings_v_2_deployment_metrics`. That table is
-now private and the existing stub
-(`src/settle/normalize/sources/dune_savings_v2_deployed.py`) returns an
-empty frame with a warning. Phase B therefore takes approach (a):
-reconstruct the closed-form components from on-chain reads only.
+**Status (2026-06-08): not needed.** Phase A's VSR-liability subtraction
+together with the existing venue accounting already reproduces Spark's
+per-prime headline P&L to within rounding against the BA Labs balance-sheet
+API ([historic snapshot](https://observatory.data.blockanalitica.com/primes/spark/balance-sheet/historic/)),
+which is our reconciliation target. A per-vault closed-form surplus check
+would only restate the same numbers in a different shape — useful for
+investigating *per-vault* yields (Spark's "performance" view), not for
+the prime-level accounting we settle on. Skipped to avoid adding a
+mechanism whose output competes with the canonical settlement.
 
-For each vault per period:
+For the Phoenix Labs cross-check that motivated this PRD section: their
+SLL Actual Revenue tracker reports per-protocol attributions
+(`gross_yield_usd`, `borrow_cost_usd`, etc., from
+`dune.sparkdotfi.result_spark_sll_actual_revenue_daily`). That's a
+*per-venue PnL* view; ours is the *prime-level accounting* view. The
+two should be related by aggregation, but they're not 1:1 comparable
+line-by-line — the Phoenix Labs columns include Spark-internal funding
+splits (Sky vs Savings V2) that the prime-level Vat `cum_debt` doesn't
+distinguish, and that distinction is what produces most of the
+per-line divergence Phoenix Labs documented.
 
-```
-vsr_liability_total    = Σ_d totalSupply(d-1) × Δpps(d)    ← Phase A output (provenance.json)
-totalAssets_avg        = mean(totalAssets at daily EoD blocks)
-holding_avg            = mean(balanceOf(vault, underlying) at daily EoD blocks)
-deployed_avg           = totalAssets_avg − holding_avg
-vsr_apr_eff            = (vsr_liability_total / totalAssets_avg) × (365 / n_days)
-apr_eff                = (pipeline_yield_on_yield_venues / deployed_avg) × (365 / n_days)
-implied_spread_bps     = apr_eff − vsr_apr_eff
-net_revenue (LHS)      = pipeline_yield_on_yield_venues − vsr_liability_total
-closed_form_RHS        = deployed_avg × (apr_eff − vsr_apr_eff) × (n_days / 365)
-```
-
-`pipeline_yield_on_yield_venues` is the sum of `actual_revenue` on the
-hand-curated venues that hold the deployed underlying — see the
-`savings_v2_routes` block in `config/spark.yaml`. The mapping is verified
-via a long-window on-chain outflow trace (12-month window, 2025-05-14 →
-2026-05-31) and documented in PR description text. **The Spark ALM is the
-only contract destination >0.5% of vault volume for all four in-scope
-vaults**, so the routing is unambiguous.
-
-The expected per-vault identity (modulo holding-amount VSR cost):
-
-```
-LHS = RHS + holding_avg × vsr_apr_eff × n_days/365
-        └──────── the VSR Spark owes on idle underlying at the vault ────┘
-```
-
-The holding-amount term is small in absolute terms (spUSDC ~ $33K/mo,
-spUSDT ~ $33K/mo at current TVL), so practically `LHS ≈ RHS` is a useful
-self-consistency check.
-
-**Output:** `scripts/reconcile_savings_v2.py` reads
-`settlements/{prime}/{month}/provenance.json`, performs the per-vault
-math, and writes a markdown report alongside the existing artifacts.
-**Display-only:** no settlement number is changed by the reconciliation;
-divergences are surfaced for human review.
-
-**Tolerance bar:** soft. A 1% LHS/RHS divergence is the canonical
-"investigate" trigger, but we don't fail the pipeline — the gap is a
-function of mapping completeness (which is what we're cross-checking)
-and may indicate either a venue we missed in the mapping or a stable-leg
-swap (USDC → USDS → sUSDS via PSM3) we haven't attributed.
+Earlier drafts of this PRD included a Phase B reconciliation script
+(`scripts/reconcile_savings_v2.py`) + module
+(`src/settle/compute/savings_v2_reconcile.py`) + `savings_v2_routes`
+config block + per-period `savings_v2_reconciliation.md` artifacts.
+All four were removed in a later iteration because (a) they restated
+existing settlement numbers in a different shape without changing
+totals, (b) the per-vault attribution they relied on added confusion
+without adding accuracy, and (c) the canonical BA Labs match made the
+extra layer unnecessary. The investigation findings they produced
+(Q7/Q8/Q9 resolutions in §7.2 below) remain valid and load-bearing.
 
 ### 5.3 Phase C — Avalanche path (effectively shipped via Phase A)
 
@@ -351,7 +330,7 @@ next action so it can be picked up cold.
 |---|---|---|
 | **Q7** | Does the deployed savings-vault capital fully sit at the Spark Ethereum ALM, or are there off-ALM strategy contracts we're missing? | Re-run the outbound transfer trace from each vault address over a longer window (e.g. 6 months, not 7 days) and enumerate every contract destination. Cross-check against the address list Spark publishes for their stars-api / allocator registry. **Owner:** settlement-cycle team. **Blocks:** §3.1 (the whole "deployment yield is already captured" premise). |
 | **Q8** | Does the Spark ALM's existing venue inventory in `config/spark.yaml` (S26 USDC raw, S27 USDT raw, SparkLend USDT/USDC, sUSDS at ALM, …) accurately price the savings-vault-deployed capital? Or is some of it held at allocator addresses not yet in the venue list? | Once Q7 enumerates allocator destinations, diff that list against current venue config. Any allocator address that *isn't* in the venue list either needs to be added or treated as an out-of-model holding. **Owner:** settlement-cycle team. **Depends on:** Q7. **Blocks:** trust in the headline VSR-only adjustment. |
-| **Q3** | Is Dune `apr` net of vault performance fees? | Not blocking §3.3 (we don't consume `apr` in the headline). Becomes load-bearing in §5.2 reconciliation — if that diverges, this is the first thing to check. **Owner:** Spark, eventually; we can defer until reconciliation actually drifts. |
+| **Q3** | Is Dune `apr` net of vault performance fees? | Not blocking §3.3 (we don't consume `apr` in the headline). With §5.2 retired, this only matters if the §6.5 `pps`-based VSR calibration spot-checks diverge from Spark's published VSR — in that case Dune `apr` semantics is the first thing to verify. **Owner:** Spark, eventually; we can defer. |
 
 ### 7.2 Resolved (2026-06-01)
 
@@ -363,23 +342,27 @@ next action so it can be picked up cold.
 | Q5 | spUSDC zero BR + idle composition + allocation venues | Vault holds only underlying (USDC/USDT/PYUSD). Dominant deployment destination is the Spark Ethereum ALM ($28M USDC / $178M USDT in a 7-day window). "Zero BR for spUSDC" is correct at the vault level; downstream USDS draws are correctly attributed through `cum_debt`. |
 | Q6 | spETH scope | Out of scope; separate PRD if/when needed. |
 | Q7 | Where does deployed savings-vault capital sit? | **Spark ALM only.** Verified 2026-06-08 via 12-month outflow trace (2025-05-14 → 2026-05-31): the Spark Eth ALM is the *only* contract destination > 0.5% of vault volume for spUSDC/spUSDT/spPYUSD; the Spark Avalanche ALM same for spUSDC-AVAX. Every other contract recipient receives ≤ $20M each (~ 0.3% of vault volume), and the EOA-inclusive trace shows those are institutional smart-wallet withdrawals (Stars-program depositors leaving), not Spark allocator addresses. |
-| Q8 | Are the existing Spark venues sufficient to price the deployed capital? | **Yes, modulo cross-currency leg.** The hand-curated `savings_v2_routes` block in `config/spark.yaml` lists 6 USDC venues (S2, S8, S10, S14, S18, S26) for S56; 6 USDT venues (S3, S9, S11, S15, S24, S27) for S57; 3 PYUSD venues (S5, S25, S28) for S59; 2 USDC venues (S54, S55) for S60. Coverage is full for the same-underlying case. The remaining failure mode is stable-leg swaps via PSM3 (USDC → USDS → sUSDS / Curve) — these aren't attributed in the first cut. If Phase B reconciliation gap > 5%, extend the mapping with `S32` (sUSDS POL at ALM) weighted by the vault's share of total ALM underlying. |
+| Q8 | Are the existing Spark venues sufficient to price the deployed capital? | **Yes.** The 12-month outflow trace (§11) shows the Spark ALM is the sole contract destination for every vault, and the ALM's existing venue inventory in `config/spark.yaml` (S26 USDC raw, S27 USDT raw, S28 PYUSD raw, SparkLend USDT/USDC, S32 sUSDS POL at ALM, S54/S55 Avalanche, …) already prices that capital. An earlier draft of this PRD curated a per-vault `savings_v2_routes` mapping to enumerate which existing venues correspond to each vault's USDC/USDT/PYUSD underlying — the trace ratified that mapping, but the block was subsequently removed (along with the Phase B reconciliation it fed) because per-vault attribution restates the same prime-level totals without changing them. See §5.2 for the rationale. |
 | Q9 | Does VSR accrue on `total_amount` or only `deployed_amount`? | **Moot — accrual base is implicit in the chi-style ERC-4626 `pps`.** Every share grows at `(1 + VSR_per_day)` by definition of the vault's `pps()`-update mechanism; the contract has no concept of "deployed vs holding" when updating pps. Phase A's formula `supply(d-1) × Δpps(d)` is therefore exact for the depositor-side accrual, regardless of how the underlying is allocated. The original Q9 framing only mattered if we'd consumed a Dune `borrow_cost × base` product — we don't. Calibration spot-check moved to §6.5. |
 
 ---
 
 ## 8. Risks
 
-- **Q7/Q8 unresolved → model wrong.** If a meaningful chunk of the
+- **Q7/Q8 unresolved → model wrong.** ~~If a meaningful chunk of the
   deployed capital sits at allocator addresses we don't track, §3.1
   is incomplete and the VSR-only subtraction under-states Spark's
-  costs. Mitigation: §5.2 reconciliation should catch this loudly.
+  costs.~~ Resolved 2026-06-08 by the §11 12-month outflow trace
+  (Spark ALM is the sole contract destination). Ongoing mitigation
+  is the BA Labs balance-sheet match (see §5.2) — if Spark adds a
+  new allocator destination that we don't pick up, the BA Labs
+  reconciliation will diverge.
 - **Q9 accrual base.** If VSR accrues only on `deployed_amount`, our
   headline over-states the liability by `holding_amount × vsr`. Small
   effect today but worth verifying.
 - **Closed-form vs decomposed drift.** If Spark changes `apr`
-  semantics, §5.2 reconciliation will diverge — that's a feature, not
-  a bug; loud failure prompts re-review.
+  semantics, the §6.5 `pps`-based VSR calibration spot-check will
+  diverge — that's a feature, not a bug; loud failure prompts re-review.
 - **Multi-period drift.** `pps` is the on-chain truth and grows
   monotonically; `total_amount × VSR / 365` is our reconstruction.
   Over multi-quarter windows, daily compounding vs simple-interest
@@ -409,12 +392,14 @@ next action so it can be picked up cold.
    (negative) `vsr_liability` contributions in Spark's monthly settlement
    breakdown (Jan–May 2026: total ~$28M Spark CoF across the four vaults).
 2. Per-vault internal consistency checks (§6.1) pass.
-3. **Ongoing — per-period monitoring via `scripts/reconcile_savings_v2.py`.**
-   Closed-form reconciliation lands within 1% — or the gap is
-   characterised and the model is corrected accordingly. Per §5.2 the
-   tolerance is soft (an "investigate" trigger, not a pipeline gate);
-   per-vault gaps are surfaced in `savings_v2_reconciliation.md` and
-   reviewed each month.
+3. ✓ **Done (2026-06-08):** Per-period monitoring is provided by the
+   BA Labs balance-sheet match — Phase A's VSR-liability subtraction
+   together with the existing venue accounting reproduces Spark's
+   per-prime headline P&L to within rounding against the
+   [BA Labs balance-sheet API](https://observatory.data.blockanalitica.com/primes/spark/balance-sheet/historic/).
+   An earlier draft of this PRD added a per-vault closed-form
+   reconciliation script + per-period markdown artifact, but both were
+   removed once the canonical BA Labs match was confirmed (see §5.2).
 4. ✓ **Done (PR #114):** Headline `prime_agent_revenue` for Spark
    decreased by the expected VSR liability magnitude (verified against
    BA Labs Jan–May 2026 to within $5K/month per vault).
@@ -445,5 +430,8 @@ next action so it can be picked up cold.
   recipients in top-25. Conclusion: same.
 - **S60 spUSDC AVAX:** $700.95M → Spark Avalanche ALM (1,769 tx); no other
   contract recipients in top-25 from the contract-only filter. Conclusion: same.
-- Effect: PRD Q7/Q8 resolved. The `savings_v2_routes` mapping in
-  `config/spark.yaml` is grounded in this trace.
+- Effect: PRD Q7/Q8 resolved. An earlier `savings_v2_routes` mapping
+  in `config/spark.yaml` was grounded in this trace, but the mapping
+  block was subsequently removed (along with the Phase B
+  reconciliation it fed) once the BA Labs balance-sheet match
+  obviated the per-vault attribution layer — see §5.2.

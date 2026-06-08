@@ -581,16 +581,21 @@ venues:
   # sUSDS POL held directly at the Spark ETH ALM (~$2.25B).
   # Pricing category B (ERC-4626): value_som/eom = shares × convertToAssets(block).
   #
-  # Revenue treatment (three independent Sky-revenue reductions apply):
-  #   1. Full BR is charged on the underlying USDS in cum_debt (= SSR + 30bps).
-  #   2. ``pol_agent_rate: true`` → 20bps × value × days subtracted from
-  #      sky_revenue (Sky pays Spark the agent rate on this POL).
-  #   3. ``sky_savings_token: true`` triggers the SSR-credit mechanism →
-  #      SSR × value × days subtracted from sky_revenue (makes the
-  #      SSR-via-index offset against BR explicit).
-  # Net Spark cost = (SSR + 30bps) − 20bps_pol_agent − SSR_credit = 10bps
-  # × value × days (the residual 10bps is the demand-side share routed via
-  # Demand Side Distribution Rewards, outside Supply Side P&L).
+  # Revenue treatment: Sky charges full BR on the underlying USDS in
+  # cum_debt (= SSR + 30bps). Two independent sky_revenue reductions then
+  # apply:
+  #   1. ``demand_side_spread: true`` — suppresses the 30bps
+  #      ``susds_spread_reimbursement`` that L2 sUSDS proxies receive.
+  #      The 30bps is routed via Demand Side Distribution Rewards instead
+  #      (the sUSDS collateralises Spark Savings deposits; depositors are
+  #      owed the SSR via the Savings product, not the prime directly).
+  #   2. ``pol_agent_rate: true`` — Sky pays Spark the agent rate
+  #      (+20bps over SSR) on Ethereum-held sUSDS POL per the Sky-Spark
+  #      agreement. Daily-integrated; subtracts 20bps × V × days from
+  #      sky_revenue.
+  # Net effect on Spark for this position: Sky charges 30bps spread,
+  # refunds 20bps via pol_agent_rate → 10bps × V × days residual cost
+  # (the demand-side share routed via DSDR, outside Supply Side P&L).
   #
   # Why full BR and no utilized deduction:
   #   Although only a portion of the sUSDS held at the ALM is actively
@@ -599,34 +604,11 @@ venues:
   #   is correctly reflected in the BR charge — subtracting would undercount
   #   the prime's actual borrowing position.
   #
-  # Why NO susds_spread_reimbursement here (demand_side_spread: true):
-  #   This sUSDS collateralises Spark Savings deposits (Savings V2). The
-  #   economic relationship is on the demand side — depositors are owed the
-  #   SSR via the Savings product, not the prime agent directly. The 30 bps
-  #   spread reimbursement is therefore applied as part of Demand Side
-  #   Distribution Rewards, not Supply Side PnL settlement. Setting
-  #   demand_side_spread: true leaves sky_revenue unreduced for this venue
-  #   while keeping the full BR charge intact.
-  #
-  # Why pol_agent_rate: true (per Sky-Spark agreement, Ethereum-only):
-  #   Sky pays Spark the agent rate (+20bps over SSR, applied only to the
-  #   +20bps component since SSR is received via the sUSDS share price)
-  #   on Ethereum-held sUSDS POL. Daily-integrated like
-  #   susds_spread_reimbursement. **Routed as a Sky Revenue reduction**
-  #   (same mechanism as the 30bps spread reimbursement, just a different
-  #   rate) — Sky's invoice to Spark drops by 20bps × V × days, leaving
-  #   the per-venue ``actual_revenue`` and ``revenue`` at 0 like every
-  #   other sky_savings_token venue. Combined with the full BR charge AND
-  #   the ``susds_pol_ssr_credit`` (also applied here), Spark's net cost
-  #   on this position = ``(SSR + 30bps) − 20bps_pol_agent − SSR_credit
-  #   = 10bps × V × days`` (the residual 10bps is the demand-side share
-  #   routed via DSDR, outside Supply Side P&L).
-  #
   # Contrast with S37/S43/S47/S51 (L2 sUSDS POL): those are pure supply-side
-  # holdings with no Savings product backing them, so they do receive the
-  # standard 30 bps sky_revenue reduction via susds_spread_reimbursement
-  # (net 0bps cost). The pol_agent_rate is NOT applied to the L2 proxies —
-  # the Sky-Spark agreement on agent rate is Ethereum-only.
+  # holdings with no Savings product backing them, so they receive the
+  # standard 30bps ``susds_spread_reimbursement`` (net 0bps cost). The
+  # pol_agent_rate is NOT applied to the L2 proxies — the Sky-Spark
+  # agreement on agent rate is Ethereum-only.
   #
   # See docs/METHODOLOGY.md §1 special-case and docs/RULES.md Rule 5.
   - id: S32
@@ -921,10 +903,21 @@ venues:
   #   - spETH  (eth):  ~81.6K WETH ≈ $185M | 243 holders
   #   - spPYUSD(eth):  ~$1.07M underlying | 13 holders
   #   - spUSDC (ava):  ~$37M underlying   | 87 holders
+  # S56/S57/S59/S60 (and S58 spETH which is out of scope per
+  # docs/spark/PRD_savings_vaults.md §9) are Spark Savings V2 vaults.
+  # ``cof_excluded: true`` keeps their ``tw_avg_value`` out of the
+  # post-hoc CoF allocation denominator: these vaults hold depositor
+  # capital (USDC/USDT/PYUSD via the Savings product), NOT Sky-funded
+  # USDS draws — so allocating Sky's CoF to them would mis-attribute
+  # cost to capital Sky never lent. Mirrors how Grove's deposit-funded
+  # idle venues are handled. Same pattern as the existing
+  # ``cof_excluded`` flags on S31/S32 (sUSDS POL — already deducted
+  # from utilized via cum_alm_usds).
   - id: S56
     chain: ethereum
     label: 'Spark Savings V2 — spUSDC vault'
     pricing_category: S2
+    cof_excluded: true
     holder_override: '0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d'
     token:
       address: '0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d'
@@ -939,6 +932,7 @@ venues:
     chain: ethereum
     label: 'Spark Savings V2 — spUSDT vault'
     pricing_category: S2
+    cof_excluded: true
     holder_override: '0xe2e7a17dff93280dec073c995595155283e3c372'
     token:
       address: '0xe2e7a17dff93280dec073c995595155283e3c372'
@@ -967,6 +961,7 @@ venues:
     chain: ethereum
     label: 'Spark Savings V2 — spPYUSD vault'
     pricing_category: S2
+    cof_excluded: true
     holder_override: '0x80128dbb9f07b93dde62a6daeadb69ed14a7d354'
     token:
       address: '0x80128dbb9f07b93dde62a6daeadb69ed14a7d354'
@@ -981,6 +976,7 @@ venues:
     chain: avalanche_c
     label: 'Spark Savings V2 — spUSDC vault (Avalanche-C, CREATE2 same address)'
     pricing_category: S2
+    cof_excluded: true
     holder_override: '0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d'
     token:
       address: '0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d'
@@ -990,68 +986,6 @@ venues:
       address: '0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e'
       symbol: 'USDC'
       decimals: 6
-
-# Spark Savings V2 reconciliation map (Phase B — see
-# ``docs/spark/PRD_savings_vaults.md`` §5.2). For each S2 vault, lists the
-# venues that hold its deployed underlying. Verified 2026-06-08 via a
-# 12-month Dune outflow trace (window: 2025-05-14 → 2026-05-31): the
-# Spark ALM is the only contract destination >0.5% of vault volume for
-# all four in-scope vaults; every other contract recipient receives
-# ≤ $20M total over the same window (Stars-program institutional
-# withdrawals, not allocator destinations).
-#
-# Read by ``scripts/reconcile_savings_v2.py`` to compute
-# ``existing_pipeline_yield − vsr_liability ≈ closed_form_surplus``.
-# **Display-only**: nothing in the main compute path consumes this.
-#
-# First cut covers SAME-UNDERLYING venues only. Capital swapped through
-# the PSM3 to a different denomination (USDC → USDS → sUSDS or → Curve
-# LP legs) is not attributed here. If the reconciliation gap exceeds
-# ~5% in a given period, the next thing to add is ``S32`` (sUSDS POL at
-# Spark ALM) weighted by each vault's share of the total ALM underlying.
-savings_v2_routes:
-  # IMPORTANT — venues whose ``actual_revenue`` originates exclusively
-  # from ``external_alm_sources`` (Anchorage USDC sweeps for S26, PayPal
-  # PYUSD rewards for S28) are EXCLUDED from these lists. Those sweeps
-  # are yield on Spark-side off-chain programs (tri-party loan, PayPal
-  # reward agreement) that incidentally transit the ALM in the same
-  # token — they are NOT yield on savings-vault depositors' deployed
-  # capital, and including them inflates ``apr_eff`` by 10-20× on small
-  # vaults. The lending-side venues (SparkLend, Aave, Morpho, Maple,
-  # Curve LP) genuinely earn yield on the pooled deployed underlying.
-  S56:                                  # spUSDC ETH → Spark Eth ALM
-    underlying: USDC
-    holder:     '0x1601843c5e9bc251a3272907010afa41fa18347e'
-    yield_venues:
-      - S2    # Spark USDC SparkLend (spToken)
-      - S8    # Aave Ethereum USDC (aToken)
-      - S10   # Spark Blue Chip USDC Vault (Morpho)
-      - S14   # Maple syrupUSDC (ERC-4626)
-      - S18   # Arkis Spark Prime USDC 1 (ERC-4626)
-      # S26 USDC raw — EXCLUDED: yield = Anchorage USDC sweeps via external_alm_sources
-  S57:                                  # spUSDT ETH → Spark Eth ALM
-    underlying: USDT
-    holder:     '0x1601843c5e9bc251a3272907010afa41fa18347e'
-    yield_venues:
-      - S3    # Spark USDT SparkLend (spToken)
-      - S9    # Aave Ethereum USDT (aToken)
-      - S11   # Spark Blue Chip USDT Vault (Morpho V2)
-      - S15   # Maple syrupUSDT (ERC-4626)
-      - S24   # Spark.fi USDT/sUSDS Curve LP — USDT leg
-      - S27   # USDT raw (ALM idle) — no external_alm_sources for USDT today
-  S59:                                  # spPYUSD ETH → Spark Eth ALM
-    underlying: PYUSD
-    holder:     '0x1601843c5e9bc251a3272907010afa41fa18347e'
-    yield_venues:
-      - S5    # Spark PYUSD SparkLend (spToken)
-      - S25   # Spark.fi PYUSD/USDS Curve LP — PYUSD leg
-      # S28 PYUSD raw — EXCLUDED: yield = PayPal PYUSD rewards via external_alm_sources
-  S60:                                  # spUSDC AVAX → Spark Avalanche ALM
-    underlying: USDC
-    holder:     '0xece6b0e8a54c2f44e066fbb9234e7157b15b7fec'
-    yield_venues:
-      - S55   # USDC raw (Avalanche-C ALM idle) — no external_alm_sources for USDC AVAX
-      - S54   # Aave Avalanche USDC (aAvaUSDC)
 
 # Cat A revenue allowlist — counterparties that send REALIZED YIELD directly
 # to the ALM proxy.

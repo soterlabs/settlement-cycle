@@ -9,11 +9,10 @@ Period: 2026-04-01 → 2026-04-30 (30 days)
 | prime_agent_revenue | $1,458,461.44 |
 | agent_rate | $0.00 |
 | prime_agent_total_revenue | $1,458,461.44 |
-| sky_revenue (net) | $3,873,038.98 |
+| sky_revenue (net) | $8,969,960.81 |
 | sde_revenue | $115,802.67 |
 | susds_spread_reimbursement | $178,920.97 |
 | pol_agent_rate | $223,871.10 |
-| susds_pol_ssr_credit | $5,096,921.84 |
 | curve_susds_spread | $8,462.29 |
 | psm3_susds_spread | $91,387.06 |
 | sky_revenue_gross | $11,542,442.01 |

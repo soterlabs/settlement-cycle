@@ -153,10 +153,20 @@ class Venue:
     lp_kind: str | None = None           # Category F only: 'curve_stableswap' | 'uniswap_v3'
     nft_position_manager: Address | None = None  # Category F (uniswap_v3) only
     # When True, this venue's avg_value is excluded from the CoF allocation
-    # denominator in post-hoc reporting (build_monthly_report). Use for
-    # idle-ALM positions (raw USDS/USDC at the ALM proxy) that are already
-    # deducted from `utilized` via cum_alm_usds — allocating CoF to them
-    # would produce equal-and-opposite P2S / P2G entries that both should be 0.
+    # denominator in post-hoc reporting (build_monthly_report). Two distinct
+    # use cases share this flag:
+    #   (a) idle-ALM positions (raw USDS/USDC at the ALM proxy — S31, S38,
+    #       S44, S48, S52) that are already deducted from `utilized` via
+    #       cum_alm_usds. Allocating CoF to them would produce equal-and-
+    #       opposite P2S / P2G entries that both should be 0.
+    #   (b) Savings V2 vaults (S56/S57/S59/S60) whose capital is depositor-
+    #       funded (USDC/USDT/PYUSD held against pp-share liabilities) and
+    #       was never drawn from the ilk — so Sky never funded it and Sky's
+    #       CoF should not be split against it. These are NOT in
+    #       cum_alm_usds; their "utilized deduction" is $0.
+    # The grove-sheet renderer distinguishes the two by the sign of
+    # ``actual_revenue`` (negative ⇒ Savings V2 VSR liability) to set the
+    # correct ``deduction_avg`` and the right xlsx note text.
     cof_excluded: bool = False
     # Per-venue minimum transfer threshold (USD-equivalent). Drops transfers
     # below this amount from the cumulative-balance pull so daily
@@ -274,15 +284,11 @@ class Venue:
     # Currently used on a single venue: **Spark S32 (sUSDS POL at Ethereum ALM)**
     # to model the Sky-Spark agreement that Spark earns the agent rate on
     # Ethereum-held sUSDS POL. Combined with the BR-charge-on-underlying
-    # mechanism AND the ``susds_pol_ssr_credit`` (also applied to S32),
-    # Spark's net cost on S32 becomes
-    # ``(SSR + 30bps) − 20bps_pol_agent − SSR_credit = 10bps × V × days``
-    # (the residual 10bps is the demand-side share routed via DSDR).
+    # mechanism, Spark's net cost on S32 is reduced by 20bps × V × days.
     #
     # NOT applied to the L2 sUSDS proxies (S37/S43/S47/S51): those keep their
-    # existing 30bps ``susds_spread_reimbursement`` PLUS the
-    # ``susds_pol_ssr_credit``; combined they net the L2 sUSDS POL to 0bps —
-    # the Sky-Spark agreement on agent rate is Ethereum-only per the prime team.
+    # existing 30bps ``susds_spread_reimbursement`` (net 0bps cost) — the
+    # Sky-Spark agreement on agent rate is Ethereum-only per the prime team.
     pol_agent_rate: bool = False
     # Additional addresses to treat as "burn destinations" when classifying
     # share Transfers for Cat B inflow accounting. ERC-4626 vaults with a
@@ -524,15 +530,6 @@ class Prime:
     # full BR on utilized). When enabled, Sky charges subsidised rate on the
     # first ``cap_usd`` of utilized USDS; any excess at full BR.
     subsidy: SubsidyConfig = field(default_factory=lambda: SubsidyConfig(enabled=False))
-    # Per-S2-vault "deployment yield venues" mapping for Phase B reconciliation
-    # (see ``docs/spark/PRD_savings_vaults.md`` §5.2). Maps an S2 vault's
-    # venue_id (e.g. ``"S56"``) to the list of yield-bearing venue IDs whose
-    # ``actual_revenue`` collectively prices the deployed underlying.
-    # Used by ``scripts/reconcile_savings_v2.py`` to compute
-    # ``existing_pipeline_yield − vsr_liability ≈ closed_form_surplus``.
-    # Empty for primes without S2 vaults (i.e. every prime except Spark today).
-    # The mapping is **display-only**: nothing in the main compute path reads it.
-    savings_v2_routes: dict[str, list[str]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if len(self.ilk_bytes32) != 32:

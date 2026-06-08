@@ -267,12 +267,25 @@ def compute_sheet_rows(
         if lending_idle_tw > 0:
             avg_value = max(Decimal("0"), avg_value - lending_idle_tw)
             note = (note + " " if note else "") + "(avg excl. lending_idle)"
-        # cof_excluded venues are already deducted from utilized via
-        # cum_alm_usds; weight=0 keeps them out of the CoF pool.
+        # cof_excluded venues are kept out of the CoF pool (weight=0). Two
+        # distinct exclusion reasons share the flag:
+        #   - idle-ALM positions already deducted from utilized via
+        #     cum_alm_usds (actual_revenue=0).
+        #   - Savings V2 depositor-capital vaults never in cum_alm_usds
+        #     (actual_revenue<0; the VSR liability accrual).
+        # The two paths differ in ``deduction_avg`` below; the sign of
+        # ``actual_revenue`` disambiguates.
         cof_excluded = _truthy(r.get("cof_excluded"))
+        cof_excluded_savings_v2 = (
+            cof_excluded and _D(r.get("actual_revenue") or 0) < 0
+        )
         weight = Decimal("0") if cof_excluded else Decimal("1") - sd_share
         if cof_excluded and not note:
-            note = "CoF excluded (already deducted from utilized)"
+            note = (
+                "CoF excluded (Savings V2 depositor capital; not in cum_alm_usds)"
+                if cof_excluded_savings_v2
+                else "CoF excluded (already deducted from utilized)"
+            )
 
         # Mid-period SDE end: when the SDE designation covers only part of
         # the period, blend Grove's excess-above-cap during SDE days with
@@ -309,8 +322,13 @@ def compute_sheet_rows(
                     )
 
         # Utilized deduction (display-only): how much this venue subtracts
-        # from utilized on average. Used by xlsx Sky Revenue tab.
-        if cof_excluded:
+        # from utilized on average. Used by xlsx Sky Revenue tab. Savings V2
+        # depositor-capital vaults are never in cum_alm_usds, so their
+        # utilized deduction is $0 — only idle-ALM ``cof_excluded`` venues
+        # contribute to ``total_known_deduction``.
+        if cof_excluded and cof_excluded_savings_v2:
+            deduction_avg = Decimal("0")
+        elif cof_excluded:
             deduction_avg = avg_value_pre_override
         elif lending_idle_tw > 0:
             deduction_avg = lending_idle_tw
