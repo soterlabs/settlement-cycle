@@ -984,38 +984,47 @@ venues:
 # ~5% in a given period, the next thing to add is ``S32`` (sUSDS POL at
 # Spark ALM) weighted by each vault's share of the total ALM underlying.
 savings_v2_routes:
+  # IMPORTANT — venues whose ``actual_revenue`` originates exclusively
+  # from ``external_alm_sources`` (Anchorage USDC sweeps for S26, PayPal
+  # PYUSD rewards for S28) are EXCLUDED from these lists. Those sweeps
+  # are yield on Spark-side off-chain programs (tri-party loan, PayPal
+  # reward agreement) that incidentally transit the ALM in the same
+  # token — they are NOT yield on savings-vault depositors' deployed
+  # capital, and including them inflates ``apr_eff`` by 10-20× on small
+  # vaults. The lending-side venues (SparkLend, Aave, Morpho, Maple,
+  # Curve LP) genuinely earn yield on the pooled deployed underlying.
   S56:                                  # spUSDC ETH → Spark Eth ALM
     underlying: USDC
     holder:     '0x1601843c5e9bc251a3272907010afa41fa18347e'
     yield_venues:
-      - S26   # USDC raw (ALM idle)
       - S2    # Spark USDC SparkLend (spToken)
       - S8    # Aave Ethereum USDC (aToken)
       - S10   # Spark Blue Chip USDC Vault (Morpho)
       - S14   # Maple syrupUSDC (ERC-4626)
       - S18   # Arkis Spark Prime USDC 1 (ERC-4626)
+      # S26 USDC raw — EXCLUDED: yield = Anchorage USDC sweeps via external_alm_sources
   S57:                                  # spUSDT ETH → Spark Eth ALM
     underlying: USDT
     holder:     '0x1601843c5e9bc251a3272907010afa41fa18347e'
     yield_venues:
-      - S27   # USDT raw (ALM idle)
       - S3    # Spark USDT SparkLend (spToken)
       - S9    # Aave Ethereum USDT (aToken)
       - S11   # Spark Blue Chip USDT Vault (Morpho V2)
       - S15   # Maple syrupUSDT (ERC-4626)
       - S24   # Spark.fi USDT/sUSDS Curve LP — USDT leg
+      - S27   # USDT raw (ALM idle) — no external_alm_sources for USDT today
   S59:                                  # spPYUSD ETH → Spark Eth ALM
     underlying: PYUSD
     holder:     '0x1601843c5e9bc251a3272907010afa41fa18347e'
     yield_venues:
-      - S28   # PYUSD raw (ALM idle)
       - S5    # Spark PYUSD SparkLend (spToken)
       - S25   # Spark.fi PYUSD/USDS Curve LP — PYUSD leg
+      # S28 PYUSD raw — EXCLUDED: yield = PayPal PYUSD rewards via external_alm_sources
   S60:                                  # spUSDC AVAX → Spark Avalanche ALM
     underlying: USDC
     holder:     '0xece6b0e8a54c2f44e066fbb9234e7157b15b7fec'
     yield_venues:
-      - S55   # USDC raw (Avalanche-C ALM idle)
+      - S55   # USDC raw (Avalanche-C ALM idle) — no external_alm_sources for USDC AVAX
       - S54   # Aave Avalanche USDC (aAvaUSDC)
 
 # Cat A revenue allowlist — counterparties that send REALIZED YIELD directly

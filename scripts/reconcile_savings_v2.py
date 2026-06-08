@@ -52,54 +52,55 @@ def render_report(prime_id: str, month: str, recs: list[VaultReconciliation]) ->
     lines.append("")
     lines.append(
         "Per `docs/spark/PRD_savings_vaults.md` §5.2. **Display-only.** "
-        "The pipeline-yield column is an UPPER BOUND — the mapped venues "
-        "hold capital from both savings-vault depositors and "
-        "USDS-minted-via-Allocator-Vault, so attributing 100% of their "
-        "yield to the vault over-attributes by the Allocator-funded share. "
-        "Read `apr_eff` as a maximum yield envelope and treat implausibly "
-        "high values (⚠) as co-tenant contamination flags."
+        "Contamination handling: (1) Cat A par-stable venues whose yield "
+        "comes from `external_alm_sources` sweeps (S26 USDC raw → Anchorage, "
+        "S28 PYUSD raw → PayPal) are excluded from the mapping in "
+        "`config/spark.yaml`. (2) The remaining lending venues are "
+        "weighted by `vault_share = vault_TVL_avg / Σ venue_TVL_avg` to "
+        "scale out the USDS-minted-via-Allocator co-tenant capital."
     )
     lines.append("")
     lines.append("## Summary")
     lines.append("")
     lines.append(
-        "| Vault | Underlying | TVL avg | VSR liability | VSR APY "
-        "| Pipeline yield (max) | apr_eff (max) | Net upper bound |"
+        "| Vault | Underlying | TVL avg | Share | VSR liability "
+        "| VSR APY | Pipeline yield (raw) | Yield (weighted) "
+        "| apr_eff (weighted) | Net (weighted) |"
     )
     lines.append(
-        "|---|---|---:|---:|---:|---:|---:|---:|"
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|"
     )
     total_vsr = Decimal("0")
-    total_pipeline_yield = Decimal("0")
-    total_net = Decimal("0")
+    total_pipeline_yield_w = Decimal("0")
+    total_net_w = Decimal("0")
     for r in recs:
         total_vsr += r.vsr_liability
-        total_pipeline_yield += r.pipeline_yield
-        total_net += r.net_spread_upper_bound
+        total_pipeline_yield_w += r.pipeline_yield_weighted
+        total_net_w += r.net_spread_weighted
         flag = " ⚠" if r.apr_eff_implausible else ""
         lines.append(
             f"| {r.vault_id} | {r.underlying_symbol} "
             f"| {_usd(r.total_assets_avg)} "
+            f"| {_pct(r.vault_share)} "
             f"| {_usd(r.vsr_liability)} "
             f"| {_pct(r.vsr_apr_eff)} "
             f"| {_usd(r.pipeline_yield)} "
-            f"| {_pct(r.apr_eff)}{flag} "
-            f"| {_usd(r.net_spread_upper_bound)} |"
+            f"| {_usd(r.pipeline_yield_weighted)} "
+            f"| {_pct(r.apr_eff_weighted)}{flag} "
+            f"| {_usd(r.net_spread_weighted)} |"
         )
     lines.append(
-        f"| **Σ** | — | — "
-        f"| {_usd(total_vsr)} | — "
-        f"| {_usd(total_pipeline_yield)} | — "
-        f"| {_usd(total_net)} |"
+        f"| **Σ** | — | — | — "
+        f"| {_usd(total_vsr)} | — | — "
+        f"| {_usd(total_pipeline_yield_w)} | — "
+        f"| {_usd(total_net_w)} |"
     )
     lines.append("")
     if any(r.apr_eff_implausible for r in recs):
         lines.append(
-            "**⚠ implausible apr_eff** — a mapped venue's `actual_revenue` "
-            "includes yield from non-savings-vault sources (e.g. Anchorage "
-            "USDC sweeps landing at S26, PayPal PYUSD rewards landing at "
-            "S28). Reduce the mapping or weight by the vault's share of "
-            "total ALM underlying."
+            "**⚠ implausible apr_eff_weighted** — a residual non-vault yield "
+            "source remains in the mapping after the external-yield + "
+            "co-tenancy corrections. Investigate the per-venue table below."
         )
         lines.append("")
 
@@ -119,21 +120,30 @@ def render_report(prime_id: str, month: str, recs: list[VaultReconciliation]) ->
             f"→ effective rate {_pct(r.vsr_apr_eff)} APY"
         )
         lines.append(
-            f"- **Pipeline yield on mapped venues (upper bound):** "
-            f"{_usd(r.pipeline_yield)} → implied rate {_pct(r.apr_eff)} APY"
-            + (" ⚠ implausibly high — co-tenant attribution likely" if r.apr_eff_implausible else "")
+            f"- **Mapped yield venues TVL avg:** {_usd(r.yield_venue_tvl_avg)}  "
+            f"→ vault_share = {_pct(r.vault_share)}"
         )
         lines.append(
-            f"- **Implied Spark spread (upper bound):** {_pct(r.spread_apr_eff)} APY  "
-            f"= apr_eff − vsr_apr_eff"
+            f"- **Pipeline yield (raw, all co-tenants):** {_usd(r.pipeline_yield)}  "
+            f"→ implied rate {_pct(r.apr_eff_raw)} APY (upper bound, ignore)"
         )
         lines.append(
-            f"- **Net upper bound to Spark:** pipeline_yield − vsr_liability = "
-            f"{_usd(r.net_spread_upper_bound)}"
+            f"- **Pipeline yield (weighted to vault share):** "
+            f"{_usd(r.pipeline_yield_weighted)} → implied rate "
+            f"{_pct(r.apr_eff_weighted)} APY"
+            + (" ⚠ implausible — investigate" if r.apr_eff_implausible else "")
+        )
+        lines.append(
+            f"- **Implied Spark spread (weighted):** {_pct(r.spread_apr_weighted)} APY  "
+            f"= apr_eff_weighted − vsr_apr_eff"
+        )
+        lines.append(
+            f"- **Net spread to Spark (weighted):** vault_share × pipeline_yield − vsr_liability = "
+            f"{_usd(r.net_spread_weighted)}"
         )
         lines.append("")
         lines.append(
-            "Per-venue yield contributions (sum = pipeline yield above):"
+            "Per-venue yield contributions (raw, pre-weighting):"
         )
         lines.append("")
         lines.append("| Venue | Label | actual_revenue |")

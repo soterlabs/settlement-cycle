@@ -8,25 +8,31 @@ S60 spUSDC AVAX), surface a per-vault transparency view:
 * ``pipeline_yield_on_yield_venues``: sum of ``actual_revenue`` on the
   venues listed in ``prime.savings_v2_routes[vault_id]`` (the
   hand-curated mapping in ``config/spark.yaml``).
-* ``apr_eff``, ``vsr_apr_eff``: period-annualised effective rates.
-* ``net_spread``: ``pipeline_yield − vsr_liability``.
+* ``vault_share``: this vault's share of the mapped venues' total TVL
+  (= ``vault_TVL_avg / Σ venue_TVL_avg``). Used to scale the pipeline
+  yield down to the savings-vault-attributable slice.
+* ``apr_eff_weighted``, ``vsr_apr_eff``: period-annualised effective rates.
+* ``net_spread_weighted``: ``vault_share × pipeline_yield − vsr_liability``.
 
-**Important caveat — co-tenant attribution.** The yield venues at the
-Spark ALM (S26 USDC raw, S2 SparkLend USDC, etc.) hold capital from
-*both* savings-vault depositors AND USDS-minted-via-Allocator-Vault.
-Attributing 100% of each venue's yield to the savings vaults
-**over-attributes** by the Allocator-Vault-funded share. Read the
-``apr_eff`` column as an upper bound, not as the actual yield earned
-on the deployed savings-vault capital. The PRD's original Phase B
-plan addressed this via independent ``apr_d`` from a Dune
-deployment-metrics table — that table is no longer accessible.
+**Two contamination paths handled:**
 
-What the report still gives you, despite the co-tenant caveat:
-1. The exact VSR liability per vault (Phase A's settlement-affecting number).
-2. The maximum-attributable yield envelope per vault.
-3. A loud signal when ``apr_eff`` is implausibly high (e.g., S56 at
-   ~20% APY in May 2026 → flags the Anchorage USDC sweeps landing at
-   S26 that aren't pps-on-deployed-capital).
+1. **External-yield venues (FIXED in config):** Cat A par-stable venues
+   whose ``actual_revenue`` comes exclusively from ``external_alm_sources``
+   sweeps (S26 USDC raw — Anchorage tri-party loan interest; S28 PYUSD
+   raw — PayPal/Paxos rewards) are EXCLUDED from the yield_venues lists
+   in ``config/spark.yaml``. Including them attributes Spark-side
+   off-chain program yield to savings-vault depositors — economically
+   incorrect.
+
+2. **Co-tenant capital (HANDLED via vault_share weighting):** The
+   remaining yield venues (SparkLend, Aave, Morpho, Maple, Curve LP)
+   hold pooled underlying from BOTH savings-vault depositors AND
+   USDS-minted-via-Allocator-Vault. The ``vault_share`` weight scales
+   the pipeline yield down to the savings-vault-attributable slice.
+
+After both corrections, ``apr_eff_weighted`` should sit in a plausible
+band (~3-6% APY for stable-coin deployment in 2026). The flag remains
+as a safety net.
 
 This is **display-only**: no settlement number is changed.
 
@@ -77,20 +83,31 @@ class VaultReconciliation:
     per_yield_venue: tuple[tuple[str, str, Decimal], ...] = field(default_factory=tuple)
     pipeline_yield: Decimal = Decimal("0")
 
+    # Co-tenancy weighting. The mapped venues' actual_revenue is yield
+    # on the ENTIRE pooled underlying held at the ALM (savings-vault
+    # depositors + USDS-minted-via-Allocator + ...). The savings-vault
+    # share = vault_TVL / total_yield_venue_TVL — a per-period scalar
+    # in [0, 1] that scales the attribution down to the
+    # vault-attributable slice.
+    yield_venue_tvl_avg: Decimal = Decimal("0")
+    vault_share: Decimal = Decimal("0")
+    pipeline_yield_weighted: Decimal = Decimal("0")
+
     # Effective rates (annualised from period totals).
     vsr_apr_eff: Decimal = Decimal("0")
-    apr_eff: Decimal = Decimal("0")
-    spread_apr_eff: Decimal = Decimal("0")
+    apr_eff_raw: Decimal = Decimal("0")           # apr from unweighted pipeline_yield (UPPER BOUND)
+    apr_eff_weighted: Decimal = Decimal("0")      # apr from vault-share-weighted pipeline_yield
+    spread_apr_weighted: Decimal = Decimal("0")
 
-    # Net spread to Spark if 100% of the mapped venues' yield were
-    # attributable to savings-vault-deployed capital. UPPER bound only —
-    # see module docstring for the co-tenant caveat.
+    # Net spread to Spark. ``_upper_bound`` assumes 100% attribution
+    # (= old behaviour, for backward comparison). ``_weighted`` uses
+    # the vault-share weight (= our best per-period estimate).
     net_spread_upper_bound: Decimal = Decimal("0")
+    net_spread_weighted: Decimal = Decimal("0")
 
-    # True when ``apr_eff`` exceeds ``_APR_EFF_SANITY_CAP`` — a heuristic
-    # that surfaces likely co-tenant contamination (e.g. Anchorage USDC
-    # sweeps inflating S26's actual_revenue beyond the deployed-capital
-    # share). Operator review needed; not an error.
+    # True when ``apr_eff_weighted`` exceeds the sanity cap — operator
+    # review needed (typically signals a residual co-tenant venue we
+    # still need to drop from the mapping).
     apr_eff_implausible: bool = False
 
 
@@ -137,11 +154,11 @@ def reconcile_vault(
         else "?"
     )
 
-    # Per-venue yield contributions. Missing entries (e.g. a yield venue
-    # that wasn't priced this month because it was skipped) contribute 0;
-    # we record them with an empty label so the operator sees the gap.
+    # Per-venue yield contributions + per-venue TVL avg (needed for the
+    # co-tenancy weight). Missing entries contribute 0 to both.
     per_yield_venue = []
     pipeline_yield = Decimal("0")
+    yield_venue_tvl_avg = Decimal("0")
     for vid in route:
         row = by_id.get(vid)
         if row is None:
@@ -150,6 +167,9 @@ def reconcile_vault(
         contrib = _D(row.get("actual_revenue"))
         per_yield_venue.append((vid, row.get("label", ""), contrib))
         pipeline_yield += contrib
+        v_som = _D(row.get("value_som"))
+        v_eom = _D(row.get("value_eom"))
+        yield_venue_tvl_avg += (v_som + v_eom) / 2
 
     # Period day count for annualisation.
     period = prov.get("period", {})
@@ -157,23 +177,34 @@ def reconcile_vault(
     end   = date.fromisoformat(period["end"])
     n_days = (end - start).days + 1
 
+    # Co-tenancy weight: the mapped yield venues hold pooled underlying
+    # from multiple sources. The vault's share of the pool is roughly
+    # ``vault_TVL / total_pool_TVL``. We use ``yield_venue_tvl_avg`` as
+    # the pool denominator. Clamped to [0, 1] — a vault TVL larger than
+    # the venues it routes to would mean some deployed capital sits
+    # at unmapped destinations (cross-currency PSM3 swaps, etc.), in
+    # which case the unweighted attribution is already an upper bound.
+    if yield_venue_tvl_avg > 0:
+        raw_share = total_avg / yield_venue_tvl_avg
+        vault_share = min(Decimal("1"), raw_share)
+    else:
+        vault_share = Decimal("0")
+    pipeline_yield_weighted = pipeline_yield * vault_share
+
     # Effective rates (period-annualised). Guard against zero-vault months
     # (a vault that hadn't yet been deployed produces zero TVL — APRs are
     # mathematically undefined, so we report 0 rather than divide-by-zero).
     if total_avg > 0 and n_days > 0:
         scale = Decimal(365) / Decimal(n_days)
-        vsr_apr_eff = (vsr_liability / total_avg) * scale
-        apr_eff     = (pipeline_yield / total_avg) * scale
+        vsr_apr_eff      = (vsr_liability / total_avg) * scale
+        apr_eff_raw      = (pipeline_yield / total_avg) * scale
+        apr_eff_weighted = (pipeline_yield_weighted / total_avg) * scale
     else:
-        vsr_apr_eff = Decimal("0")
-        apr_eff     = Decimal("0")
-    spread = apr_eff - vsr_apr_eff
+        vsr_apr_eff = apr_eff_raw = apr_eff_weighted = Decimal("0")
+    spread_weighted = apr_eff_weighted - vsr_apr_eff
 
-    # Net spread upper bound (= LHS, since `pipeline_yield − vsr_liability`
-    # algebraically equals the "closed-form" `deployed × (apr − vsr) × t/T`
-    # when apr is derived from `pipeline_yield / deployed`; the two views
-    # are not independent. See module docstring on the co-tenant caveat.
-    net_spread_upper = pipeline_yield - vsr_liability
+    net_spread_upper    = pipeline_yield          - vsr_liability
+    net_spread_weighted = pipeline_yield_weighted - vsr_liability
 
     return VaultReconciliation(
         vault_id=vault_id,
@@ -187,11 +218,16 @@ def reconcile_vault(
         vsr_liability=vsr_liability,
         per_yield_venue=tuple(per_yield_venue),
         pipeline_yield=pipeline_yield,
+        yield_venue_tvl_avg=yield_venue_tvl_avg,
+        vault_share=vault_share,
+        pipeline_yield_weighted=pipeline_yield_weighted,
         vsr_apr_eff=vsr_apr_eff,
-        apr_eff=apr_eff,
-        spread_apr_eff=spread,
+        apr_eff_raw=apr_eff_raw,
+        apr_eff_weighted=apr_eff_weighted,
+        spread_apr_weighted=spread_weighted,
         net_spread_upper_bound=net_spread_upper,
-        apr_eff_implausible=apr_eff > _APR_EFF_SANITY_CAP,
+        net_spread_weighted=net_spread_weighted,
+        apr_eff_implausible=apr_eff_weighted > _APR_EFF_SANITY_CAP,
     )
 
 
