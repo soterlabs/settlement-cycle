@@ -86,7 +86,7 @@ def _header_row(ws, row: int, ncols: int) -> None:
 # --------------------------------------------------------------------------
 
 def _read_provenance(cell: Path) -> dict:
-    with (cell / "provenance.json").open() as f:
+    with (cell / "provenance.json").open(encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -104,12 +104,12 @@ def _sheet_rows_as_strings(sheet_rows: list[dict]) -> list[dict]:
 
 
 def _read_prime_yaml(prime_id: str) -> dict:
-    with (_REPO / "config" / f"{prime_id}.yaml").open() as f:
+    with (_REPO / "config" / f"{prime_id}.yaml").open(encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
 def _read_sde(prime_id: str, period_start: date) -> list[dict]:
-    with (_REPO / "config" / "sky_direct_exposures.yaml").open() as f:
+    with (_REPO / "config" / "sky_direct_exposures.yaml").open(encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
     out: list[dict] = []
     for section in ("active", "historical"):

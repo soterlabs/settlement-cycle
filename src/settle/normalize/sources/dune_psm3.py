@@ -194,7 +194,19 @@ class DunePsm3Source:
         idx = bisect.bisect_right(blocks, block) - 1
         if idx < 0:
             return 0
-        return history[idx][1]
+        val = history[idx][1]
+        if val < 0:
+            # Dune cumulative is negative — implies missing early deposit events
+            # (the start_month partition cut off transfers that predate the window).
+            # An on-chain ERC-20 balance can never be negative; return None so the
+            # caller falls back to a direct RPC balanceOf for the correct value.
+            _log.warning(
+                "Negative Dune reserve for %s / %s @ block %d (val=%d) — "
+                "falling back to RPC balanceOf.",
+                chain, token_hex, block, val,
+            )
+            return None
+        return val
 
     # ----------------------------------------------------------------------
     # IPsm3Source interface
@@ -410,8 +422,10 @@ class DunePsm3Source:
         chain_enum = Chain(chain)
         leg_tokens = PSM3_LEG_TOKENS[chain_enum]
         # ``evt_block_date >= start_month`` partition pushdown — keeps the
-        # erc20_<chain>.evt_transfer scan small. 2025-08-01 floors comfortably
-        # before any Spark PSM3 deployment (the earliest, on Base, was Sep 2025).
+        # erc20_<chain>.evt_transfer scan small. Use 2024-01-01 as a conservative
+        # floor; pushing this too late causes the cumulative to miss early deposits
+        # (observed: Base PSM3 USDC had ~$15M deposited pre-2025-08, making the
+        # Aug-2025 floor produce a permanently-negative cumulative).
         df = execute_query(
             _QUERIES_DIR / sql_name,
             params={
@@ -419,7 +433,7 @@ class DunePsm3Source:
                 "usdc":  leg_tokens["USDC"].address.value,
                 "usds":  leg_tokens["USDS"].address.value,
                 "susds": leg_tokens["sUSDS"].address.value,
-                "start_month": "2025-08-01",
+                "start_month": "2024-01-01",
             },
             pin_block=pin_block,
         )
