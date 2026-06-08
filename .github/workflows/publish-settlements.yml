@@ -60,16 +60,23 @@ jobs:
         run: |
           # ``gh api .../commits/<sha>/pulls`` returns the PR(s) associated
           # with a commit on the default branch — works for both squash and
-          # standard merges. Returns [] (and ``--jq '.[0].number'`` prints
-          # nothing) when the commit came from a direct push to main with
-          # no PR.
+          # standard merges. Returns [] when the commit came from a direct
+          # push to main with no PR. We fetch the raw JSON once and parse
+          # ``number`` + ``title`` from it so the subject line carries the
+          # PR title (more readable in the settlement-reports commit list).
           SHA="${GITHUB_SHA}"
           REPO="${GITHUB_REPOSITORY}"
-          PR_NUMBER=$(gh api -H "Accept: application/vnd.github+json" \
-            "repos/${REPO}/commits/${SHA}/pulls" \
-            --jq '.[0].number' 2>/dev/null || true)
-          if [ -n "${PR_NUMBER}" ] && [ "${PR_NUMBER}" != "null" ]; then
-            echo "label=PR #${PR_NUMBER}"                                     >> "$GITHUB_OUTPUT"
+          PR_JSON=$(gh api -H "Accept: application/vnd.github+json" \
+            "repos/${REPO}/commits/${SHA}/pulls" 2>/dev/null || echo "[]")
+          PR_NUMBER=$(printf '%s' "${PR_JSON}" | jq -r '.[0].number // empty')
+          PR_TITLE=$(printf  '%s' "${PR_JSON}" | jq -r '.[0].title  // empty')
+          if [ -n "${PR_NUMBER}" ]; then
+            if [ -n "${PR_TITLE}" ]; then
+              LABEL="PR #${PR_NUMBER}: ${PR_TITLE}"
+            else
+              LABEL="PR #${PR_NUMBER}"
+            fi
+            echo "label=${LABEL}"                                             >> "$GITHUB_OUTPUT"
             echo "url=https://github.com/${REPO}/pull/${PR_NUMBER}"           >> "$GITHUB_OUTPUT"
           else
             echo "label=commit ${SHA::7}"                                     >> "$GITHUB_OUTPUT"
