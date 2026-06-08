@@ -27,6 +27,12 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Need ``pull-requests: read`` so the source-link step can query the PR
+    # associated with the merge commit on main. ``contents: read`` is the
+    # default and is enough for the checkout itself.
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - name: Checkout source (settlement-cycle)
         uses: actions/checkout@v4
@@ -47,8 +53,41 @@ jobs:
           mkdir -p target/reports
           rsync -a --delete source/settlements/ target/reports/
 
+      - name: Resolve source link (PR if any, else commit)
+        id: source_link
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # ``gh api .../commits/<sha>/pulls`` returns the PR(s) associated
+          # with a commit on the default branch — works for both squash and
+          # standard merges. Returns [] when the commit came from a direct
+          # push to main with no PR. We fetch the raw JSON once and parse
+          # ``number`` + ``title`` from it so the subject line carries the
+          # PR title (more readable in the settlement-reports commit list).
+          SHA="${GITHUB_SHA}"
+          REPO="${GITHUB_REPOSITORY}"
+          PR_JSON=$(gh api -H "Accept: application/vnd.github+json" \
+            "repos/${REPO}/commits/${SHA}/pulls" 2>/dev/null || echo "[]")
+          PR_NUMBER=$(printf '%s' "${PR_JSON}" | jq -r '.[0].number // empty')
+          PR_TITLE=$(printf  '%s' "${PR_JSON}" | jq -r '.[0].title  // empty')
+          if [ -n "${PR_NUMBER}" ]; then
+            if [ -n "${PR_TITLE}" ]; then
+              LABEL="PR #${PR_NUMBER}: ${PR_TITLE}"
+            else
+              LABEL="PR #${PR_NUMBER}"
+            fi
+            echo "label=${LABEL}"                                             >> "$GITHUB_OUTPUT"
+            echo "url=https://github.com/${REPO}/pull/${PR_NUMBER}"           >> "$GITHUB_OUTPUT"
+          else
+            echo "label=commit ${SHA::7}"                                     >> "$GITHUB_OUTPUT"
+            echo "url=https://github.com/${REPO}/commit/${SHA}"               >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Commit and push if changed
         working-directory: target
+        env:
+          SOURCE_LABEL: ${{ steps.source_link.outputs.label }}
+          SOURCE_URL:   ${{ steps.source_link.outputs.url }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -57,6 +96,9 @@ jobs:
             echo "No changes to publish."
             exit 0
           fi
-          SHA="${GITHUB_SHA::7}"
-          git commit -m "Publish settlements from settlement-cycle@${SHA}"
+          # Subject line carries either ``PR #N`` (typical) or
+          # ``commit <sha>`` (direct-push case). Body has the full URL so
+          # GitHub renders it as a clickable link in the commits list.
+          git commit -m "Publish settlements from settlement-cycle ${SOURCE_LABEL}" \
+                     -m "Source: ${SOURCE_URL}"
           git push origin HEAD:main
