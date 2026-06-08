@@ -141,6 +141,34 @@ venues:
       decimals: 6
 
   # ─────────────────────────────────────────────────────────────
+  # Category B — Maple credit (ERC-4626)
+  # ─────────────────────────────────────────────────────────────
+  # Note: E28/E29 are reserved as commented-out Plume stubs near the
+  # bottom of this file (wound-down JTRSY-plume / USDC-raw). E37 is the
+  # next free ID after the E30–E36 block.
+  - id: E37
+    chain: ethereum
+    label: 'Maple syrupUSDC (ERC-4626)'
+    pricing_category: B
+    token:
+      address: '0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b'      # PoolV2 = syrupUSDC vault
+      symbol: 'syrupUSDC'
+      decimals: 6
+    underlying:
+      address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'      # USDC
+      symbol: 'USDC'
+      decimals: 6
+    # First Grove ALM (0x491edf…) syrupUSDC balance: 0 at 2026-04-30 23:59 UTC,
+    # 85,943,747.637271 shares (~$100.28M USDC) at 2026-05-31 23:59 UTC.
+    # Maple uses a withdrawal-queue pattern: redemptions Transfer shares
+    # from the ALM to the queue contract before the actual burn happens
+    # in-tx. Same redemption-escrow set as Spark S14 — both ALMs redeem
+    # through the same Maple internals.
+    share_burn_destinations:
+      - '0x7ad5ffa5fdf509e30186f4609c2f6269f4b6158f'   # actual syrupUSDC redemption escrow
+      - '0x1bc47a0dd0fdab96e9ef982fdf1f34dc6207cfe3'   # public WithdrawalManagerQueue (kept for safety)
+
+  # ─────────────────────────────────────────────────────────────
   # Category E — RWA tranche / issuer tokens
   # Phase 2.A: Chronicle oracle primary, $1000 pre-deploy fallback.
   # ──────────────────────────────────────────────────────────────
@@ -725,6 +753,43 @@ venues:
     # removes it from CoF as well, matching the FalconX relay semantics
     # (P&L recognized at the anchor, not here).
     display_only: true
+
+  # ─────────────────────────────────────────────────────────────
+  # Off-pool incentives — Agora rewards for AUSD activity
+  # ─────────────────────────────────────────────────────────────
+  - id: E38
+    chain: ethereum
+    label: 'Agora AUSD incentives (cash distribution to Grove Eth ALM)'
+    pricing_category: A
+    token:
+      address: '0x00000000efe302beaa2b3e6e1b18d08d69a9012a'      # AUSD
+      symbol: 'AUSD'
+      decimals: 6
+    # Agora pays AUSD incentives to Grove for AUSD-pool activity (in
+    # addition to the Merkl drops captured via ``external_alm_sources``).
+    # Two distinct payer addresses observed in Feb-May 2026, totalling
+    # $1,817,197.45 across 7 transfers, all arriving at the Grove Ethereum
+    # ALM 0x491edf… (data: Grove team's incentives spreadsheet, verified
+    # 1:1 on-chain via tx hash):
+    #
+    #   payer #1 (0x4a4593…) — Feb 25 to Mar 5 (4 tx, $561,287.52)
+    #   payer #2 (0xdf27ac…) — Apr 16 to May 29 (3 tx, $1,255,908.92)
+    #
+    # ``skip: true`` — no on-chain principal tracked here. The AUSD lands
+    # at the Grove ALM and is immediately redeployed into the existing
+    # AUSD venues (E6 bbqAUSD, E11 Curve LP, E12 Uni V3). Their standard
+    # Cat B / Cat F principal accounting absorbs the deployment as a
+    # capital inflow that nets to zero revenue, so accumulating
+    # value_som / value_eom here would double-count the AUSD. Revenue is
+    # captured solely via the cash_distributions below.
+    skip: true
+    cash_distributions:
+      - payer: '0x4a4593c5d963473a95f0762bd6df4571542af651'  # Agora payer #1 (Feb-Mar 2026)
+        token: '0x00000000efe302beaa2b3e6e1b18d08d69a9012a'  # AUSD
+        chain: ethereum
+      - payer: '0xdf27ac19cb1da767e181748aaa54e1535aaa3a1d'  # Agora payer #2 (Apr-May 2026)
+        token: '0x00000000efe302beaa2b3e6e1b18d08d69a9012a'  # AUSD
+        chain: ethereum
 
   # Plume venues — held $0 throughout Q1 2026 (wound down Oct 2025) but
   # listed for completeness with Grove team's inventory. Bridged-token

@@ -193,6 +193,16 @@ class MonthlyPnL:
     # reporters (xlsx "SDE daily" tab) to render the Sky / Grove /
     # in-flight decomposition without re-running on-chain reads.
     sde_daily_breakdown: list[SDEDailyBreakdown] = field(default_factory=list)
+    # Daily Sky-revenue breakdown — one row per calendar day in the period,
+    # carrying ``cum_debt`` (frob+grab), the deductions applied to derive
+    # ``utilized``, the SSR / base / subsidised APYs effective on that day,
+    # the subsidy ramp index ``t_months``, and the daily Sky charge
+    # (actual + gross-on-cum_debt). Surfaced for the xlsx "Debt" tab so the
+    # prime team can reconcile the methodology (frob vs frob+grab, APY
+    # composition, subsidy ramp) without re-running the pipeline. Each entry
+    # is a dict with stringified Decimals + float APYs — same wire-format
+    # convention as ``SDEDailyBreakdown.daily``.
+    sky_revenue_daily: list[dict] = field(default_factory=list)
     # Total 30 bps spread deducted from ``sky_revenue`` for all
     # ``sky_savings_token`` Cat B venues (= Σ vr.susds_spread_reimbursement
     # across the venue breakdown). Replaces the prior Prime-Revenue-credit

@@ -139,6 +139,13 @@ def render_provenance(
             }
             for v in pnl.display_only_breakdown
         ],
+        # Day-by-day Sky-revenue breakdown: cum_debt (frob+grab), the five
+        # deductions that derive ``utilized``, the SSR / base / subsidised
+        # APYs effective each day, the subsidy ramp index, and the daily
+        # Sky charge (actual + gross-on-cum_debt). Empty list for runs
+        # where the daily series wasn't captured. Consumed by the xlsx
+        # "Debt" tab for prime-team reconciliation.
+        "sky_revenue_daily": pnl.sky_revenue_daily,
         # Per-venue daily SDE asset-value series. Used by the xlsx "SDE daily"
         # tab to render the Sky / Grove / in-flight decomposition (phase-
         # based: pre-burn / in-flight / settled) without re-running on-chain
