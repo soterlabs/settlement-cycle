@@ -353,6 +353,7 @@ def compute_sheet_rows(
             "sd_revenue":    sd_revenue,
             "spread_reimb":  _D(r.get("susds_spread_reimbursement") or 0),
             "deduction_avg": deduction_avg,
+            "hide_per_venue_pnl": _truthy(r.get("hide_per_venue_pnl")),
             "note":          note,
         })
 

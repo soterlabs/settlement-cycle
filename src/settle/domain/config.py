@@ -228,6 +228,7 @@ def load_prime(config_path: Path) -> Prime:
                     else None
                 ),
                 cof_excluded=bool(v.get("cof_excluded", False)),
+                hide_per_venue_pnl=bool(v.get("hide_per_venue_pnl", False)),
                 min_transfer_amount_usd=_parse_min_transfer(v),
                 fixed_fee_per_capital_event_usd=(
                     _parse_usd_amount(

@@ -913,11 +913,21 @@ venues:
   # idle venues are handled. Same pattern as the existing
   # ``cof_excluded`` flags on S31/S32 (sUSDS POL — already deducted
   # from utilized via cum_alm_usds).
+  #
+  # ``hide_per_venue_pnl: true`` further hides their per-venue PnL row
+  # in the summary.md / xlsx Venues table. Their per-venue
+  # ``actual_revenue`` is the negative VSR-liability accrual on
+  # depositor capital — a real prime-level liability (still folded into
+  # ``prime_agent_revenue``) but reads as a misleading "−$2M revenue"
+  # line when shown per-vault. Positions surface in a position-only
+  # sub-section so the BA Labs balance-sheet reconciliation remains
+  # visible. NOT set on S58 (out of scope per PRD §9).
   - id: S56
     chain: ethereum
     label: 'Spark Savings V2 — spUSDC vault'
     pricing_category: S2
     cof_excluded: true
+    hide_per_venue_pnl: true
     holder_override: '0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d'
     token:
       address: '0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d'
@@ -933,6 +943,7 @@ venues:
     label: 'Spark Savings V2 — spUSDT vault'
     pricing_category: S2
     cof_excluded: true
+    hide_per_venue_pnl: true
     holder_override: '0xe2e7a17dff93280dec073c995595155283e3c372'
     token:
       address: '0xe2e7a17dff93280dec073c995595155283e3c372'
@@ -962,6 +973,7 @@ venues:
     label: 'Spark Savings V2 — spPYUSD vault'
     pricing_category: S2
     cof_excluded: true
+    hide_per_venue_pnl: true
     holder_override: '0x80128dbb9f07b93dde62a6daeadb69ed14a7d354'
     token:
       address: '0x80128dbb9f07b93dde62a6daeadb69ed14a7d354'
@@ -977,6 +989,7 @@ venues:
     label: 'Spark Savings V2 — spUSDC vault (Avalanche-C, CREATE2 same address)'
     pricing_category: S2
     cof_excluded: true
+    hide_per_venue_pnl: true
     holder_override: '0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d'
     token:
       address: '0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d'

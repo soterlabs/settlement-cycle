@@ -130,10 +130,15 @@ def render_summary(prov: dict) -> str:
     lines.append("")
 
     # ── Per-venue ───────────────────────────────────────────────────
-    venues = sorted(
+    # Venues with ``hide_per_venue_pnl`` are excluded from the PnL table
+    # and rendered position-only in a dedicated sub-section below — see
+    # the field docstring on ``Venue.hide_per_venue_pnl`` for rationale.
+    all_venues = sorted(
         prov.get("venue_breakdown") or [],
         key=lambda v: _venue_sort_key(v.get("venue_id", "")),
     )
+    venues       = [v for v in all_venues if not v.get("hide_per_venue_pnl")]
+    pnl_hidden   = [v for v in all_venues if     v.get("hide_per_venue_pnl")]
     if venues:
         lines.append("## Per-venue")
         lines.append("")
@@ -157,6 +162,21 @@ def render_summary(prov: dict) -> str:
                 f"{_usd(v.get('sd_revenue'))} | "
                 f"{sd_share_str} | "
                 f"{_usd(spread)} |"
+            )
+        lines.append("")
+
+    # ── PnL-suppressed venues (positions only) ──────────────────────
+    if pnl_hidden:
+        lines.append("## Position-only venues (PnL aggregated at prime level)")
+        lines.append("")
+        lines.append("| Venue | Label | value_som | value_eom |")
+        lines.append("|---|---|---:|---:|")
+        for v in pnl_hidden:
+            lines.append(
+                f"| {v.get('venue_id', '')} | "
+                f"{v.get('label', '')} | "
+                f"{_usd(v.get('value_som'))} | "
+                f"{_usd(v.get('value_eom'))} |"
             )
         lines.append("")
 

@@ -72,6 +72,12 @@ class VenueRevenue:
     # same flag on Venue — propagated here so the CSV carries it forward
     # without requiring the reporting script to re-load the config YAML.
     cof_excluded: bool = False
+    # When True, per-venue PnL columns (actual_revenue / revenue /
+    # sd_revenue / profit_to_grove) are suppressed in display surfaces
+    # (summary.md, xlsx Venues tab). Mirrors ``Venue.hide_per_venue_pnl``
+    # — propagated here so renderers consume it directly from
+    # provenance.json without re-loading the config YAML.
+    hide_per_venue_pnl: bool = False
     # Time-weighted average of this venue's daily lending-idle deduction
     # (prime's pro-rata share of unborrowed underlying in SparkLend / Aave
     # pools). Non-zero only for venues with ``lending_idle_usds: true``.

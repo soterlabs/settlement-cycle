@@ -2258,6 +2258,7 @@ def compute_monthly_pnl(
                 period_inflow=Decimal("0"),
                 revenue=Decimal("0"),
                 cof_excluded=venue.cof_excluded,
+                hide_per_venue_pnl=venue.hide_per_venue_pnl,
             ))
             continue
 
