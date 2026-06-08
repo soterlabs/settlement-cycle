@@ -205,11 +205,11 @@ def _write_summary(ws, prov: dict, sheet_rows: list[dict]) -> None:
         )
         ws.append([])
 
-    # sUSDS spread — credited to prime_agent_revenue, NOT deducted from
-    # sky_revenue (Sky charges full BR on the underlying utilized; the
-    # 30 bps lands in Prime Revenue). Surfaced for Grove-side audit only.
+    # sUSDS spread — deducted from sky_revenue (Sky charges full BR on the
+    # underlying utilized then refunds 30 bps; net cost to prime = SSR × V).
+    # Surfaced here for audit visibility.
     if spread_reimb != 0:
-        ws.append(["sUSDS spread (Curve LP + PSM3) — credited to prime_agent_revenue", float(spread_reimb)])
+        ws.append(["sUSDS spread (Curve LP + PSM3) — deducted from sky_revenue", float(spread_reimb)])
         ws.cell(ws.max_row, 2).number_format = _USD
         ws.cell(ws.max_row, 1).font = _MUTED
         ws.append([])
