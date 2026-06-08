@@ -72,8 +72,15 @@ Period: 2026-05-01 → 2026-05-31 (31 days)
 | S53 | USDC raw (Unichain — ALM idle) | $4,996,314.28 | $4,992,819.46 | -$3,494.82 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S54 | Aave Avalanche USDC (aAvaUSDC) | $0.15 | $0.16 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S55 | USDC raw (Avalanche-C — ALM idle) | $2,500.22 | $0.00 | -$2,500.22 | -$0.00 | -$0.00 | $-0.00 | 0% | $0.00 |
-| S56 | Spark Savings V2 — spUSDC vault | $573,332,157.53 | $303,545,287.19 | $0.00 | -$2,077,933.25 | -$2,077,933.25 | $-0.00 | 0% | $0.00 |
-| S57 | Spark Savings V2 — spUSDT vault | $1,134,703,231.02 | $1,270,360,913.25 | $0.00 | -$2,595,205.75 | -$2,595,205.75 | $-0.00 | 0% | $0.00 |
-| S59 | Spark Savings V2 — spPYUSD vault | $1,066,559.88 | $773,533.78 | $0.00 | -$2,640.44 | -$2,640.44 | $-0.00 | 0% | $0.00 |
-| S60 | Spark Savings V2 — spUSDC vault (Avalanche-C, CREATE2 same address) | $37,138,817.43 | $25,647,247.42 | $0.00 | -$94,676.37 | -$94,676.37 | $-0.00 | 0% | $0.00 |
+
+## Position-only venues (PnL aggregated at prime level)
+
+| Venue | Label | value_som | value_eom |
+|---|---|---:|---:|
+| S56 | Spark Savings V2 — spUSDC vault | $573,332,157.53 | $303,545,287.19 |
+| S57 | Spark Savings V2 — spUSDT vault | $1,134,703,231.02 | $1,270,360,913.25 |
+| S59 | Spark Savings V2 — spPYUSD vault | $1,066,559.88 | $773,533.78 |
+| S60 | Spark Savings V2 — spUSDC vault (Avalanche-C, CREATE2 same address) | $37,138,817.43 | $25,647,247.42 |
+
+> Aggregated `actual_revenue` from the venues above (included in `prime_agent_revenue` at the prime level, not shown per-vault): **-$4,770,455.81**. Per-vault values remain in `provenance.json` under `venue_breakdown[]`.
 

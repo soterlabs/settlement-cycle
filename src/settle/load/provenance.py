@@ -133,6 +133,16 @@ def render_provenance(
                 # ``Venue.cof_excluded`` flag, propagated here so the
                 # settlement xlsx builder doesn't have to re-load YAML.
                 "cof_excluded": v.cof_excluded,
+                # When True, the renderer suppresses per-venue PnL columns
+                # in the summary.md / xlsx Venues table. The venue still
+                # contributes to ``prime_agent_revenue`` at the prime
+                # level; only the per-venue display row is hidden.
+                # Currently set on Spark Savings V2 vaults
+                # (S56/S57/S59/S60) — their per-venue "revenue" is the
+                # negative VSR-liability accrual on depositor capital,
+                # which is a real prime-level liability but reads as
+                # misleading "−$X revenue" when shown per-vault.
+                "hide_per_venue_pnl": v.hide_per_venue_pnl,
                 # Time-weighted average daily lending-idle deduction for
                 # Cat C/D venues with ``lending_idle_usds: true``. The
                 # post-hoc CoF allocator subtracts this from avg_value

@@ -46,6 +46,7 @@ _REPO = Path(__file__).resolve().parent.parent
 # script run as a CLI without installing the package.
 sys.path.insert(0, str(_REPO / "src"))
 from settle.load.grove_sheet import compute_sheet_rows  # noqa: E402
+from settle.load.summary import _venue_sort_key  # noqa: E402
 
 # Styling.
 _BOLD   = Font(bold=True)
@@ -250,8 +251,18 @@ def _write_venues(ws, sheet_rows: list[dict], prime_cfg: dict) -> None:
     ws.append(cols)
     _header_row(ws, 1, len(cols))
 
+    # Venues with ``hide_per_venue_pnl`` are not rendered in the PnL body;
+    # they appear in a position-only sub-table below. The venue still
+    # contributes to ``prime_agent_revenue`` at the prime level (the
+    # Summary tab's headline is unchanged) — only the per-venue PnL row
+    # is suppressed. Currently set on Spark Savings V2 vaults
+    # (S56/S57/S59/S60) whose per-venue "revenue" is the negative
+    # VSR-liability accrual on depositor capital.
+    pnl_rows      = [r for r in sheet_rows if not r.get("hide_per_venue_pnl")]
+    position_only = [r for r in sheet_rows if     r.get("hide_per_venue_pnl")]
+
     # Sort by absolute Profit to Sky desc so Grove-large positions surface first.
-    for r in sorted(sheet_rows, key=lambda x: abs(float(x["profit_to_sky"])), reverse=True):
+    for r in sorted(pnl_rows, key=lambda x: abs(float(x["profit_to_sky"])), reverse=True):
         vid = r["venue_id"]
         v = by_id.get(vid, {})
         ws.append([
@@ -276,8 +287,61 @@ def _write_venues(ws, sheet_rows: list[dict], prime_cfg: dict) -> None:
             r.get("note", ""),
         ])
 
-    # Number formats: USD cols are 5–12, 14–18. Pct col is 13. Last col is text.
-    for row in range(2, ws.max_row + 1):
+    body_last_row = ws.max_row
+
+    # ── Position-only sub-section ──────────────────────────────────
+    # PnL-suppressed venues rendered with positions only. Their
+    # ``actual_revenue`` (negative VSR liability for Savings V2) flows
+    # into the prime-level ``prime_agent_revenue`` headline on the
+    # Summary tab; per-venue PnL is intentionally hidden.
+    if position_only:
+        ws.append([])
+        ws.append(["Position-only venues (PnL aggregated at prime level)"])
+        ws.cell(ws.max_row, 1).font = _BOLD
+        ws.append([
+            "Venue", "Label", "Chain", "Pricing cat.",
+            "Position SoM", "Position EoM",
+        ])
+        _header_row(ws, ws.max_row, 6)
+        # Sort with the same numeric-aware key as ``summary.py`` so the
+        # two surfaces stay in step (e.g. S9 before S10).
+        for r in sorted(position_only, key=lambda x: _venue_sort_key(x["venue_id"])):
+            vid = r["venue_id"]
+            v = by_id.get(vid, {})
+            ws.append([
+                vid,
+                r["label"],
+                v.get("chain", ""),
+                v.get("pricing_category", ""),
+                float(r["value_som"]),
+                float(r["value_eom"]),
+            ])
+            for c in (5, 6):
+                ws.cell(ws.max_row, c).number_format = _USD0
+        # Aggregate cell — keeps the visible Venues body reconcilable
+        # against the Summary tab's ``Profit to Grove`` total. Without
+        # this, an auditor summing the visible body's ``revenue (to
+        # prime)`` / ``Profit to Grove`` columns would find a gap equal
+        # to the suppressed VSR liability with no in-sheet explanation.
+        agg_actual = sum(
+            (_D(r["actual_rev"]) for r in position_only), Decimal("0"),
+        )
+        ws.append([
+            "",
+            "Aggregated actual_revenue (included in prime_agent_revenue, "
+            "not in Venues body above)",
+            "", "", "",
+            float(agg_actual),
+        ])
+        ws.cell(ws.max_row, 6).number_format = _USD0
+        ws.cell(ws.max_row, 6).font = _BOLD
+        ws.cell(ws.max_row, 2).font = _MUTED
+
+    # Number formats for the PnL body: USD cols are 5–12, 14–18. Pct col
+    # is 13. Last col is text. Limit the formatting loop to the PnL body
+    # so the position-only sub-section above keeps its own narrower
+    # formatting.
+    for row in range(2, body_last_row + 1):
         for c in (5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18):
             ws.cell(row, c).number_format = _USD0
         ws.cell(row, 13).number_format = _PCT

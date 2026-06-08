@@ -210,6 +210,16 @@ def compute_sheet_rows(
 
     Reads venue rows from ``prov["venue_breakdown"]`` — same shape as
     ``venues.csv`` historically, with the same field names.
+
+    Note: rows with ``hide_per_venue_pnl=True`` are included in the
+    returned list (with their full PnL fields populated) so callers can
+    decide whether to render them. The display layer
+    (``build_settlement_xlsx._write_venues``, ``settle.load.summary``)
+    filters them out of the per-venue PnL table and renders them in a
+    separate position-only sub-section. Both ``totals.sum_p2s`` and
+    ``totals.sum_p2g`` aggregate across ALL rows, including hidden ones
+    — so the Summary-tab headline stays consistent with
+    ``prime_agent_revenue`` even when the Venues-tab body is filtered.
     """
     period_start = date.fromisoformat(prov["period"]["start"])
     period_end   = date.fromisoformat(prov["period"]["end"])
@@ -353,6 +363,7 @@ def compute_sheet_rows(
             "sd_revenue":    sd_revenue,
             "spread_reimb":  _D(r.get("susds_spread_reimbursement") or 0),
             "deduction_avg": deduction_avg,
+            "hide_per_venue_pnl": _truthy(r.get("hide_per_venue_pnl")),
             "note":          note,
         })
 

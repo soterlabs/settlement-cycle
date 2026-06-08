@@ -168,6 +168,19 @@ class Venue:
     # ``actual_revenue`` (negative ⇒ Savings V2 VSR liability) to set the
     # correct ``deduction_avg`` and the right xlsx note text.
     cof_excluded: bool = False
+    # When True, this venue's PnL columns (actual_revenue / revenue /
+    # sd_revenue / profit_to_grove) are suppressed in per-venue display
+    # surfaces — the settlement summary.md "## Per-venue" table and the
+    # xlsx "Venues" tab. The venue is still computed normally and its
+    # revenue still flows into ``prime_agent_revenue`` at the prime
+    # level; only the per-venue display is hidden. Positions
+    # (value_som / value_eom) are surfaced separately so the BA Labs
+    # balance-sheet reconciliation isn't lost. Set on the Spark Savings V2
+    # vaults (S56/S57/S59/S60) where the per-venue "revenue" is the
+    # negative VSR-liability accrual on depositor capital — a real
+    # prime-level liability, but per-venue it reads as a misleading
+    # "−$2M revenue" line for a vault that didn't lose money.
+    hide_per_venue_pnl: bool = False
     # Per-venue minimum transfer threshold (USD-equivalent). Drops transfers
     # below this amount from the cumulative-balance pull so daily
     # yield-distribution mints (BUIDL-style) don't contaminate the
