@@ -17,20 +17,84 @@ WITH
 -- ==========================================================================
 -- A) Monthly PnL section (mirrors shared query 6954380)
 -- ==========================================================================
-frobs AS (
+-- frob: regular debt draws/repays
+-- grab: stability-fee capitalisation (allocator-ilk usage; not liquidation)
+-- ALLOCATOR-OBEX-A has duty = 0 (jug.drip dormant, rate ≡ 1), so the
+-- entire stability-fee accrual flows through vat.grab events that bump
+-- Art directly. Frob-only cum_debt under-counts by the full accrued
+-- interest. See ``src/settle/queries/debt_timeseries.sql`` for the
+-- same pattern in the settlement-cycle pipeline + QUESTIONS.md S28
+-- for the grab-inclusive vs frob-only methodology question.
+debt_events AS (
   SELECT tr.block_date,
     CAST(bytearray_to_int256(substr(tr.input, 165, 32)) AS DOUBLE) / 1e18 AS dart
   FROM ethereum.traces tr
   WHERE tr."to" = 0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B
-    AND substr(tr.input, 1, 4) = 0x76088703
+    AND substr(tr.input, 1, 4) = 0x76088703   -- frob selector
+    AND substr(tr.input, 5, 32) = 0x414c4c4f4341544f522d4f4245582d4100000000000000000000000000000000
+    AND tr.success = true AND tr.block_date >= DATE '2025-11-01'
+
+  UNION ALL
+
+  SELECT tr.block_date,
+    CAST(bytearray_to_int256(substr(tr.input, 165, 32)) AS DOUBLE) / 1e18 AS dart
+  FROM ethereum.traces tr
+  WHERE tr."to" = 0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B
+    AND substr(tr.input, 1, 4) = 0x7bab3f40   -- grab selector
     AND substr(tr.input, 5, 32) = 0x414c4c4f4341544f522d4f4245582d4100000000000000000000000000000000
     AND tr.success = true AND tr.block_date >= DATE '2025-11-01'
 ),
 daily_debt AS (
-  SELECT block_date, SUM(dart) AS dd FROM frobs GROUP BY block_date
+  SELECT block_date, SUM(dart) AS dd FROM debt_events GROUP BY block_date
 ),
 cum_debt AS (
   SELECT block_date, SUM(dd) OVER (ORDER BY block_date) AS cum_debt FROM daily_debt
+),
+
+-- Live SSR feed — mirrors src/settle/queries/ssr_history.sql. Reads
+-- ``file(bytes32("ssr"), uint256)`` traces on sUSDS to pick up every SSR
+-- step change on-chain. Bounded to 2024-01-01 so the OBEX start_date
+-- always has a prior change to carry-forward from. Replaces the previous
+-- hardcoded CASE ladder, which went stale every time SSR moved (the May
+-- 2026 outlier surfaced this).
+ssr_changes AS (
+  SELECT tr.block_time, tr.block_date,
+    POWER(CAST(bytearray_to_uint256(substr(tr.input, 37, 32)) AS DOUBLE) / 1e27,
+          31536000) - 1 AS ssr_apy
+  FROM ethereum.traces tr
+  WHERE tr."to" = 0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD
+    AND substr(tr.input, 1, 4) = 0x29ae8114
+    AND substr(tr.input, 5, 32) = 0x7373720000000000000000000000000000000000000000000000000000000000
+    AND tr.success = true
+    AND tr.block_date >= DATE '2024-01-01'
+),
+ssr_daily_changes AS (
+  -- One row per UTC day, keeping the chronologically last file() call
+  -- (the rate effective at EoD).
+  SELECT block_date, ssr_apy FROM (
+    SELECT block_date, ssr_apy,
+      ROW_NUMBER() OVER (PARTITION BY block_date ORDER BY block_time DESC) AS rn
+    FROM ssr_changes
+  ) WHERE rn = 1
+),
+-- Forward-fill SSR per calendar date. Extended calendar covers all SSR
+-- history so the carry-forward seed value exists for the first OBEX day.
+-- ``ssr_per_day`` then gives one (block_date, ssr_apy) per calendar day.
+extended_calendar AS (
+  SELECT d AS block_date
+  FROM UNNEST(SEQUENCE(DATE '2024-01-01', CURRENT_DATE, INTERVAL '1' DAY)) AS t(d)
+),
+ssr_per_day AS (
+  -- Group pattern: SUM(1 when non-NULL) creates a running id that
+  -- increments each time a new SSR change lands; MAX(ssr_apy) within
+  -- group fills NULL cells with the most-recent prior value.
+  SELECT block_date, MAX(ssr_apy) OVER (PARTITION BY grp) AS ssr_apy FROM (
+    SELECT ec.block_date, sd.ssr_apy,
+      SUM(CASE WHEN sd.ssr_apy IS NOT NULL THEN 1 ELSE 0 END)
+        OVER (ORDER BY ec.block_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS grp
+    FROM extended_calendar ec
+    LEFT JOIN ssr_daily_changes sd ON sd.block_date = ec.block_date
+  )
 ),
 
 usds_flows AS (
@@ -113,7 +177,7 @@ prices AS (
 joined_pnl AS (
   SELECT c.block_date,
     cd.cum_debt, cu.cum_sub_usds, cu.cum_alm_usds, cs.cum_susds,
-    v.cum_venue, cc.cum_usdc, p.price
+    v.cum_venue, cc.cum_usdc, p.price, sp.ssr_apy
   FROM calendar c
   LEFT JOIN cum_debt cd      ON cd.block_date = c.block_date
   LEFT JOIN cum_usds cu      ON cu.block_date = c.block_date
@@ -121,6 +185,7 @@ joined_pnl AS (
   LEFT JOIN cum_venue v      ON v.block_date  = c.block_date
   LEFT JOIN cum_cost cc      ON cc.block_date = c.block_date
   LEFT JOIN prices p         ON p.block_date  = c.block_date
+  LEFT JOIN ssr_per_day sp   ON sp.block_date = c.block_date
 ),
 
 filled_pnl AS (
@@ -131,29 +196,33 @@ filled_pnl AS (
     MAX(cum_susds)     OVER (ORDER BY block_date) AS cum_susds,
     MAX(cum_venue)     OVER (ORDER BY block_date) AS cum_venue,
     MAX(cum_usdc)      OVER (ORDER BY block_date) AS cum_usdc,
-    MAX(price)         OVER (ORDER BY block_date) AS price
+    MAX(price)         OVER (ORDER BY block_date) AS price,
+    ssr_apy
   FROM joined_pnl
 ),
 
+-- agent_demand (= utilized in the settlement-cycle pipeline) intentionally
+-- does NOT subtract ``cum_sub_usds`` (USDS held at the subproxy). Subproxy
+-- balances are treasury / risk capital — they're drawn from Sky's ilk
+-- (so ``Art × rate`` accrues on them) and the agent rate (SSR + 20 bps)
+-- is paid separately to the prime via the ``monthly_rate`` section
+-- below. Subtracting subproxy from the BR base would mis-attribute the
+-- ~10 bps net cost as zero and split the same flow across two ledgers.
+-- See ``docs/METHODOLOGY.md §3`` (the equivalent pipeline rule) and the
+-- ``test_against_oracle_replay`` docstring for the methodology history.
+-- BR APY = (1 + SSR)(1 + 0.003) − 1   (multiplicative 30 bps spread over SSR)
 daily_pnl AS (
   SELECT
     block_date,
-    COALESCE(cum_debt,0) - COALESCE(cum_sub_usds,0)
+    COALESCE(cum_debt,0)
       - COALESCE(cum_alm_usds,0) - COALESCE(cum_susds,0)      AS agent_demand,
-    (COALESCE(cum_debt,0) - COALESCE(cum_sub_usds,0)
+    (COALESCE(cum_debt,0)
       - COALESCE(cum_alm_usds,0) - COALESCE(cum_susds,0))
-      * (POWER(CASE
-          WHEN block_date < DATE '2025-11-07' THEN 1.048
-          WHEN block_date < DATE '2025-11-11' THEN 1.0455
-          WHEN block_date < DATE '2025-12-02' THEN 1.048
-          WHEN block_date < DATE '2025-12-16' THEN 1.0455
-          WHEN block_date < DATE '2026-03-09' THEN 1.043
-          ELSE 1.0405
-        END, 1.0/365) - 1)                                     AS sky_revenue,
-    COALESCE(cum_venue,0) * COALESCE(price,0)                   AS pos_value,
-    COALESCE(cum_usdc,0)                                        AS cost_basis,
+      * (POWER((1.0 + ssr_apy) * 1.003, 1.0/365) - 1)         AS sky_revenue,
+    COALESCE(cum_venue,0) * COALESCE(price,0)                  AS pos_value,
+    COALESCE(cum_usdc,0)                                       AS cost_basis,
     COALESCE(cum_venue,0) * COALESCE(price,0)
-      - COALESCE(cum_usdc,0)                                    AS unrealized_gain
+      - COALESCE(cum_usdc,0)                                   AS unrealized_gain
   FROM filled_pnl
   WHERE COALESCE(cum_debt,0) > 0
 ),
@@ -219,31 +288,29 @@ cum_sub_susds_only AS (
 ),
 
 joined_rate AS (
-  SELECT c.block_date, u.cum_usds, s.cum_susds
+  SELECT c.block_date, u.cum_usds, s.cum_susds, sp.ssr_apy
   FROM calendar c
   LEFT JOIN cum_sub_usds_only  u ON u.block_date = c.block_date
   LEFT JOIN cum_sub_susds_only s ON s.block_date = c.block_date
+  LEFT JOIN ssr_per_day sp       ON sp.block_date = c.block_date
 ),
 filled_rate AS (
   SELECT block_date,
     MAX(cum_usds)  OVER (ORDER BY block_date) AS cum_usds,
-    MAX(cum_susds) OVER (ORDER BY block_date) AS cum_susds
+    MAX(cum_susds) OVER (ORDER BY block_date) AS cum_susds,
+    ssr_apy
   FROM joined_rate
 ),
+-- Agent rate APYs:
+--   USDS slice  → (1 + SSR)(1 + 0.002) − 1     (20 bps over SSR)
+--   sUSDS slice → 1.002 only (SSR already accrues via the sUSDS index)
 daily_rate AS (
   SELECT
     block_date,
     COALESCE(cum_usds, 0)
-      * (POWER(CASE
-          WHEN block_date < DATE '2025-11-07' THEN 1.047
-          WHEN block_date < DATE '2025-11-11' THEN 1.0445
-          WHEN block_date < DATE '2025-12-02' THEN 1.047
-          WHEN block_date < DATE '2025-12-16' THEN 1.0445
-          WHEN block_date < DATE '2026-03-09' THEN 1.042
-          ELSE 1.0395
-        END, 1.0/365) - 1)                    AS agent_rate_usds,
+      * (POWER((1.0 + ssr_apy) * 1.002, 1.0/365) - 1)     AS agent_rate_usds,
     COALESCE(cum_susds, 0)
-      * (POWER(1.002, 1.0/365) - 1)           AS agent_rate_susds
+      * (POWER(1.002, 1.0/365) - 1)                       AS agent_rate_susds
   FROM filled_rate
   WHERE COALESCE(cum_usds, 0) > 0 OR COALESCE(cum_susds, 0) > 0
 ),

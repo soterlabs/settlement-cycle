@@ -9,7 +9,8 @@ Period: 2026-02-01 → 2026-02-28 (28 days)
 | prime_agent_revenue | $2,119,089.66 |
 | agent_rate | $67,754.17 |
 | prime_agent_total_revenue | $2,186,843.83 |
-| sky_revenue (net) | $1,943,215.29 |
+| sky_revenue (net) | $1,948,739.35 |
+| sky_revenue_gross | $1,948,739.35 |
 
 ## Per-venue
 

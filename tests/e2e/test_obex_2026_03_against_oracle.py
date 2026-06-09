@@ -14,18 +14,33 @@ Two test paths share the same fixture-driven setup:
   via Dune + RPC and compares to the same oracle. Requires ``DUNE_API_KEY``
   and ``ETH_RPC`` env vars.
 
-Acceptance from PRD §16: components match within ~0.01% **modulo documented
-methodology differences**. The test asserts:
+Acceptance from PRD §16: components match within **documented methodology
+bands**. The test asserts:
 
-* ``utilized`` / ``agent_demand``  matches exactly      (event aggregation only)
-* ``sky_revenue``                  matches < 0.01%      (same APY formula)
-* ``agent_rate``                   matches < 0.01%      (same APY formula)
-* ``prime_agent_revenue``          differs by ~$220K    (price source: oracle uses
-                                                          ``prices.day`` DEX VWAP;
-                                                          our pipeline uses canonical
-                                                          ``convertToAssets``. Documented in
-                                                          ``valuation_poc/QUESTIONS.md`` Q10.)
-* ``monthly_pnl``                  differs by ~$220K    (downstream of the price gap)
+* ``agent_rate``                  matches < 0.01%      (same SSR feed, same APY formula)
+* ``sky_revenue``                 matches < 0.01%      (same SSR feed, same APY formula)
+* ``prime_agent_revenue``         +8–13% vs oracle     (price source: oracle uses
+                                                         ``prices.day`` DEX VWAP; our
+                                                         pipeline uses canonical
+                                                         ``convertToAssets``. Measured
+                                                         +10.97% on 2026-04-27.)
+
+The oracle SQL (``reference/obex_monthly_pnl.sql``) was refreshed three times
+on 2026-06-09 to align with the settlement-cycle pipeline's methodology:
+  v2 (query 7682762): added ``vat.grab`` events alongside ``vat.frob`` in the
+    debt-events sum — ALLOCATOR-OBEX-A has ``duty = 0`` (``jug.drip`` dormant,
+    ``rate ≡ 1``) so the entire stability-fee accrual flows through ``grab``.
+  v3 (query 7683158): dropped the ``- cum_sub_usds`` subtraction from
+    ``agent_demand`` — subproxy USDS is treasury/risk capital drawn from Sky's
+    ilk, so BR accrues on it. The agent rate (SSR + 20bps) is paid on a
+    separate ledger flow rather than netted into the BR base, matching
+    ``docs/METHODOLOGY.md §3``.
+  v4 (query 7683607): replaced the hardcoded SSR step-ladder with a live
+    ``file(bytes32("ssr"), uint)`` feed on the sUSDS contract (mirrors
+    ``src/settle/queries/ssr_history.sql``). The hardcoded ladder went stale
+    every time SSR moved; the live feed picks up future step changes
+    automatically. After v4, oracle and pipeline match to the penny on
+    ``sky_revenue`` and ``agent_rate``.
 """
 
 from __future__ import annotations
@@ -159,19 +174,24 @@ def test_against_oracle_replay(config_dir: Path):
     expected_agent = Decimal(str(expected["agent_rate"]))
     expected_prime = Decimal(str(expected["prime_agent_revenue"]))
 
-    # --- Components that must match within 0.01% (same methodology) ---
-    assert result.sky_revenue == pytest.approx(expected_sky, rel=Decimal("0.0001")), \
-        f"sky_revenue {result.sky_revenue} vs oracle {expected_sky}"
+    # --- Agent rate + sky_revenue: after the v4 oracle refresh (live SSR
+    # feed), oracle and pipeline use identical inputs (frob+grab debt sum,
+    # no subproxy subtraction, dynamic SSR per day). Match within 0.01%
+    # is the genuine tight regression check — any drift means a real bug
+    # or a methodology change worth investigating.
     assert result.agent_rate == pytest.approx(expected_agent, rel=Decimal("0.0001")), \
         f"agent_rate {result.agent_rate} vs oracle {expected_agent}"
+    assert result.sky_revenue == pytest.approx(expected_sky, rel=Decimal("0.0001")), \
+        f"sky_revenue {result.sky_revenue} vs oracle {expected_sky}"
 
-    # --- Component with documented methodology difference (price source) ---
-    # Oracle uses prices.day VWAP for syrupUSDC; we use convertToAssets (canonical).
-    # convertToAssets reports a slightly higher EoM price (1.157829 vs ~1.155 from VWAP),
-    # so our prime_revenue is HIGHER. Measured gap from MCP capture on 2026-04-27:
-    # +$220,123 on $2,007,260 oracle = +10.97%.
-    # The acceptance band is tight enough that any sign error or off-by-one in
-    # ``compute_venue_revenue`` would push the delta out of range and fail the test.
+    # --- prime_revenue: documented methodology gap on the price source.
+    # Oracle uses prices.day VWAP for syrupUSDC; we use convertToAssets
+    # (canonical). convertToAssets reports a slightly higher EoM price
+    # (1.157829 vs ~1.155 from VWAP), so our prime_revenue is HIGHER.
+    # Measured gap from MCP capture on 2026-04-27: +$220,123 on $2,007,260
+    # oracle = +10.97%. The acceptance band is tight enough that any sign
+    # error or off-by-one in ``compute_venue_revenue`` would push the delta
+    # out of range and fail the test.
     delta = result.prime_agent_revenue - expected_prime
     rel_delta = delta / expected_prime
     assert Decimal("0.08") < rel_delta < Decimal("0.13"), (
