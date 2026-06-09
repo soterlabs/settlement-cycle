@@ -1,12 +1,9 @@
 """Spark 2026 multi-month settlement runner.
 
 Single entry point that runs every Spark month for which a fixture set
-currently exists. Today that's Q1 only:
-
-  * Jan / Feb / Mar → ``tests/fixtures/spark_2026_q1/``.
-
-Apr+ are not yet runnable from this script — extending coverage means
-capturing a new Spark fixture set (debt timeseries, Cat B/E cum_balance,
+currently exists (Jan-May 2026, all from ``tests/fixtures/spark_2026_q1/``
+after the 2026-06-05 fixture refresh). Extending coverage means
+refreshing the Spark fixture set (debt timeseries, Cat B/E cum_balance,
 L2 block resolvers) for the relevant months and adding entries to
 ``PIN_BLOCKS_BY_MONTH`` + ``_MONTH_PLAN`` below.
 
@@ -19,11 +16,13 @@ For each month, the loop:
   4. Persists ``provenance.json`` + ``summary.md`` + the canonical xlsx
      under ``settlements/spark/<YYYY-MM>/`` via ``write_settlement``.
 
-This script sets ``SETTLE_SPARK_ALLOW_PRE_PERIOD_ANCHOR=1`` on import so
-the Cat B anchor-row check in the fixture loader is bypassed for Spark
-venues whose ``cat_b_cum_balance.json`` has no in-period rows. Confirmed
-safe (no Q1 flows for those venues, per Spark team) — see
-``tests/fixtures/spark_fixture_loader.py`` for the check itself.
+The Cat B pre-period-anchor check in the fixture loader is bypassed ONLY
+for the months where "no mid-period flows" was actually verified with the
+Spark team (Q1 2026 — see ``_ANCHOR_CHECK_VERIFIED_MONTHS``). Later
+months run with the check armed: a Cat B venue holding a material
+balance with no in-period fixture rows fails loud instead of silently
+booking deposit principal as yield. Verify a new month before adding it
+to the set.
 
 Known limitation: the PSM3 holder-history source pulls Dune query
 ``7483773`` live, and that query returns HTTP 404 ("Query not found")
@@ -41,10 +40,13 @@ import sys
 from datetime import date, timedelta
 from pathlib import Path
 
-# Bypass the Cat B pre-period-anchor check. See module docstring for why
-# this is safe for Spark Q1 today. Must be set BEFORE importing the
-# fixture loader so the module-level read sees it.
-os.environ.setdefault("SETTLE_SPARK_ALLOW_PRE_PERIOD_ANCHOR", "1")
+# Months where the Cat B pre-period-anchor check may be bypassed — i.e.
+# where "no mid-period flows for the anchor-only venues" was explicitly
+# verified with the Spark team. The bypass is applied per-month inside
+# the run loop (the loader reads the env var at build_spark_sources
+# time), NOT globally: a global setdefault would silently disable the
+# guard for every future month this runner grows to cover.
+_ANCHOR_CHECK_VERIFIED_MONTHS = {(2026, 1), (2026, 2), (2026, 3)}
 
 _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO / "src"))
@@ -164,6 +166,10 @@ def main() -> int:
 
         pins = PIN_BLOCKS_BY_MONTH[(y, m)]
         period_start, period_end = _period_dates(y, m)
+        if (y, m) in _ANCHOR_CHECK_VERIFIED_MONTHS:
+            os.environ["SETTLE_SPARK_ALLOW_PRE_PERIOD_ANCHOR"] = "1"
+        else:
+            os.environ.pop("SETTLE_SPARK_ALLOW_PRE_PERIOD_ANCHOR", None)
         sources = build_spark_sources(
             spark, fixtures,
             pin_blocks_som=pins["som"], pin_blocks_eom=pins["eom"],
