@@ -8,11 +8,11 @@ Suffix legend: ``(gross)`` = one-way ledger entry, ``(net)`` = after the row's r
 
 | Field | USD |
 |---|---:|
-| prime_agent_revenue (gross) | $7,865,873.68 |
+| prime_agent_revenue (gross) | $8,845,861.94 |
 | agent_rate (gross) | $121,900.75 |
-| prime_agent_total_revenue (gross) | $7,987,774.43 |
+| prime_agent_total_revenue (gross) | $8,967,762.69 |
 | sky_revenue (net) | $10,914,895.68 |
-| prime_agent_revenue (net) | -$2,927,121.24 |
+| prime_agent_revenue (net) | -$1,947,132.99 |
 | sde_revenue (gross) | $74,156.06 |
 | susds_spread_reimbursement (gross) | $184,910.42 |
 | pol_agent_rate (gross) | $322,533.45 |
@@ -59,18 +59,18 @@ Suffix legend: ``(gross)`` = one-way ledger entry, ``(net)`` = after the row's r
 | S34 | Spark USDC Vault (Morpho, Base) | $224.72 | $424.91 | $199.03 | $1.16 | $1.16 | $0.00 | 0% | $0.00 |
 | S35 | Aave Base USDC (aBasUSDC) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S36 | Fluid Savings USDS (fsUSDS, Base) | $283.90 | $283.90 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
-| S37 | Savings USDS / sUSDS proxy (Base — POL) | $75,772,907.26 | $76,003,428.30 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $19,277.70 |
+| S37 | Savings USDS / sUSDS proxy (Base — POL) | $75,772,907.26 | $76,003,428.30 | $0.00 | $230,521.03 | $230,521.03 | $0.00 | 0% | $19,277.70 |
 | S38 | USDS raw (Base — POL) | $65,170,000.00 | $65,170,000.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S39 | USDC raw (Base — ALM idle) | $5,000,000.00 | $4,997,576.71 | -$2,423.29 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S41 | Aave Arbitrum USDCn (aArbUSDCn) | $0.01 | $0.01 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S42 | Fluid Savings USDS (fsUSDS, Arbitrum) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
-| S43 | Savings USDS / sUSDS proxy (Arbitrum — POL) | $143,328,568.53 | $143,764,611.58 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $36,464.81 |
+| S43 | Savings USDS / sUSDS proxy (Arbitrum — POL) | $143,328,568.53 | $143,764,611.58 | $0.00 | $436,043.05 | $436,043.05 | $0.00 | 0% | $36,464.81 |
 | S44 | USDS raw (Arbitrum — POL) | $90,000,000.00 | $90,000,000.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S45 | USDC raw (Arbitrum — ALM idle) | $5,009,602.26 | $4,975,417.17 | -$34,185.10 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
-| S47 | Savings USDS / sUSDS proxy (Optimism — POL) | $102,040,993.03 | $102,351,428.46 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $25,960.67 |
+| S47 | Savings USDS / sUSDS proxy (Optimism — POL) | $102,040,993.03 | $102,351,428.46 | $0.00 | $310,435.43 | $310,435.43 | $0.00 | 0% | $25,960.67 |
 | S48 | USDS raw (Optimism — POL) | $89,900,000.00 | $89,900,000.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S49 | USDC raw (Optimism — ALM idle) | $5,000,000.00 | $5,019,997.40 | $19,997.40 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
-| S51 | Savings USDS / sUSDS proxy (Unichain — POL) | $982,408.19 | $985,396.93 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $249.94 |
+| S51 | Savings USDS / sUSDS proxy (Unichain — POL) | $982,408.19 | $985,396.93 | $0.00 | $2,988.74 | $2,988.74 | $0.00 | 0% | $249.94 |
 | S52 | USDS raw (Unichain — POL) | $89,900,000.00 | $89,900,000.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S53 | USDC raw (Unichain — ALM idle) | $4,996,314.28 | $4,992,819.46 | -$3,494.82 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S54 | Aave Avalanche USDC (aAvaUSDC) | $0.15 | $0.16 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |

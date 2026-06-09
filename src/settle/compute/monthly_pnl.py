@@ -2631,7 +2631,45 @@ def compute_monthly_pnl(
                                 venue.id, venue.chain.value, _e,
                             )
 
-                susds_spread = _Dec("0")  # prime earns 0; spread deducted from Sky Revenue below
+                # Prime-revenue attribution for sUSDS:
+                #
+                # Two cases, gated on ``venue.demand_side_spread``:
+                #
+                # (i) Case 1 — clean POL (S37 Base / S43 Arb / S47 Op / S51 Uni):
+                #     ``demand_side_spread = False``. The sUSDS is 100% debt-
+                #     sourced (the prime drew USDS from the ilk and converted
+                #     it). Drop the override and let the natural MtM
+                #     ``(value_eom − value_som) − period_inflow`` compute the
+                #     gross SSR × V appreciation as prime_agent_revenue. That
+                #     nets against the SSR × V Sky already charges via
+                #     ``BR × utilized − susds_spread_reimbursement``, so
+                #     ``monthly_pnl`` correctly reads 0 for these venues (the
+                #     true economic outcome — the prime physically holds the
+                #     gain inside the sUSDS token; the SSR returns to Sky via
+                #     the BR machinery; net mint to ALM = 0).
+                #
+                # (ii) Case 2 — S32 mixed-source (Ethereum raw sUSDS POL):
+                #     ``demand_side_spread = True``. The sUSDS balance mixes
+                #     debt-sourced (BR-paired) and depositor-sourced (Savings
+                #     V2 retail capital — its SSR belongs to depositors, NOT
+                #     the prime). Naïvely lifting the override would over-
+                #     credit ``prime_agent_revenue`` by SSR × (depositor
+                #     slice). The proper fix needs ``deduct_savings_v2_deployed``
+                #     (currently a stubbed no-op, ``dune.sparkdotfi.
+                #     result_savings_v_2_deployment_metrics`` is unavailable
+                #     upstream) to isolate the debt-sourced slice. Until that
+                #     data source returns, keep the legacy ``override = 0``
+                #     path for S32 and document the residual artifact. See
+                #     PRD ``docs/PRD_revenue_gross_net_audit.md`` §10 for the
+                #     full diagnosis + sequencing plan.
+                if venue.demand_side_spread:
+                    # Case 2 (S32 today). Legacy behavior — keep until
+                    # ``savings_v2_deployed`` data source returns.
+                    susds_spread = _Dec("0")
+                else:
+                    # Case 1 (S37/S43/S47/S51). Leave ``susds_spread = None``
+                    # so the standard MtM path runs in compute_venue_revenue.
+                    susds_spread = None
 
                 # Subtract Savings V2 deployed_amount from value_som and value_eom
                 # when the venue is flagged deduct_savings_v2_deployed. The ALM's
