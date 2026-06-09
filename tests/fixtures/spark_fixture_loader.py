@@ -295,10 +295,11 @@ def build_spark_sources(
     # SubProxy. Pre-2026-06-09 the fallback was acceptable because
     # ``config/spark.yaml`` listed the urn (legit $0); after correcting
     # the address to the real SubProxy ``0x3300…f8c4``, the fallback was
-    # silently underpaying ``agent_rate`` by ~$23K cumulative Jan–May
-    # (~4% of the $555K headline). The captured timeseries below is the
-    # output of the canonical ``transfer_timeseries.sql`` Dune query
-    # (id 7432800) for ``(USDS, SubProxy)`` and ``(sUSDS, SubProxy)``.
+    # silently underpaying ``agent_rate`` by ~$18.6K cumulative Jan–May
+    # 2026 (≈3.3% of the $563,872 pre-fix headline). The captured
+    # timeseries below is the output of the canonical
+    # ``transfer_timeseries.sql`` Dune query (id 7432800) for
+    # ``(USDS, SubProxy)`` and ``(sUSDS, SubProxy)``.
     eth_subproxy = spark.subproxy[Chain.ETHEREUM].value
     subproxy_usds_df = _df_with_dates(
         fixtures["subproxy_usds"]["rows"], "block_date",
@@ -306,6 +307,19 @@ def build_spark_sources(
     subproxy_susds_df = _df_with_dates(
         fixtures["subproxy_susds"]["rows"], "block_date",
     )
+
+    def _filter_subproxy_df(df: pd.DataFrame, start) -> pd.DataFrame:
+        """Honor the ``IBalanceSource.cumulative_balance_timeseries``
+        contract: return only rows with ``block_date >= start``. The
+        fixture covers the full prime history from 2024-11-18, but a
+        caller asking for, say, a 2026-05 settlement window should
+        receive only the rows it would get from the live Dune source.
+        Pre-period rows are absorbed by the SoM on-chain anchor in
+        ``get_subproxy_balance_timeseries`` — they don't need to be in
+        the returned frame."""
+        if df.empty or start is None:
+            return df
+        return df[df["block_date"] >= start].reset_index(drop=True)
 
     class _RoutedBalances(MockBalanceSource):
         def cumulative_balance_timeseries(
@@ -329,12 +343,17 @@ def build_spark_sources(
             df = cat_a_cum_by_token_holder.get((token, holder))
             if df is not None:
                 return df
-            # SubProxy (USDS + sUSDS on Ethereum).
-            if holder == eth_subproxy:
+            # SubProxy (USDS + sUSDS on Ethereum). Filter by ``start`` so
+            # the routed frame matches the live ``DuneBalanceSource``
+            # contract — otherwise a future test parameterized on a later
+            # start would silently consume pre-period rows. ``chain``
+            # check guards against a hypothetical future cross-chain
+            # subproxy collision.
+            if chain == Chain.ETHEREUM.value and holder == eth_subproxy:
                 if token == USDS_ETH:
-                    return subproxy_usds_df
+                    return _filter_subproxy_df(subproxy_usds_df, start)
                 if token == SUSDS_ETH:
-                    return subproxy_susds_df
+                    return _filter_subproxy_df(subproxy_susds_df, start)
             return _empty_balance_df()
 
         def directed_inflow_timeseries(self, chain, token, from_addr, to_addr, start, pin_block):

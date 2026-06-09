@@ -58,7 +58,18 @@ SPARK_FIRST_FROB_DATE = "2024-11-18"
 
 # Pin blocks at May 31 EoM (= upper bound for the extended fetch) — these
 # should be at-or-after the actual May 31 23:59:59 UTC blocks. Adding a
-# small buffer for safety.
+# small buffer for safety on the bulk-date queries (debt + blocks).
+#
+# NOTE: the SubProxy USDS/sUSDS capture (``refresh_subproxy_timeseries``)
+# uses ``MAY_31_PIN_BLOCK_EXACT`` instead so it matches the actual EoM
+# block used by ``scripts/run_spark_2026.py`` (May 2026 EoM eth pin =
+# 25218797 per PIN_BLOCKS_BY_MONTH). Using the safety-buffer value here
+# would cause the captured fixture to include any post-May-31 transfers,
+# making the fixture metadata's pin_block diverge from what the EoM
+# cross-check in ``get_subproxy_balance_timeseries`` reads.
+MAY_31_PIN_BLOCK_EXACT = {
+    "ethereum": 25218797,  # = PIN_BLOCKS_BY_MONTH[(2026,5)]["eom"][ethereum]
+}
 MAY_31_PIN_BLOCK = {
     "ethereum":    25300000,  # ~2026-06-02
     "base":        47000000,
@@ -233,6 +244,7 @@ def refresh_subproxy_timeseries() -> None:
     the agent_rate base. ~$23K underpayment cumulative Jan–May 2026 in
     practice.
     """
+    pin_block = MAY_31_PIN_BLOCK_EXACT["ethereum"]
     for tok_label, tok_addr, dest_name in [
         ("USDS",  USDS_ETH,  "subproxy_usds_timeseries.json"),
         ("sUSDS", SUSDS_ETH, "subproxy_susds_timeseries.json"),
@@ -245,7 +257,7 @@ def refresh_subproxy_timeseries() -> None:
                 "token":               tok_addr,
                 "holder":              SPARK_SUBPROXY_ETH,
                 "start_date":          SPARK_FIRST_FROB_DATE,
-                "pin_block":           str(MAY_31_PIN_BLOCK["ethereum"]),
+                "pin_block":           str(pin_block),
                 "min_transfer_amount": "0",
             },
         )
@@ -261,7 +273,7 @@ def refresh_subproxy_timeseries() -> None:
                 "token": tok_addr,
                 "holder": SPARK_SUBPROXY_ETH,
                 "start_date": SPARK_FIRST_FROB_DATE,
-                "pin_block": MAY_31_PIN_BLOCK["ethereum"],
+                "pin_block": pin_block,
                 "min_transfer_amount": 0,
             },
             "_columns": ["block_date", "daily_net", "cum_balance"],
