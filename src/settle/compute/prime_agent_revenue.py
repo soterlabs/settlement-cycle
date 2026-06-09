@@ -496,6 +496,7 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
         external_revenue=inputs.external_revenue,
         tw_avg_value=tw_avg_value,
         cof_excluded=inputs.venue.cof_excluded,
+        pricing_category=inputs.venue.pricing_category.value,
         hide_per_venue_pnl=inputs.venue.hide_per_venue_pnl,
         tw_avg_notional=tw_avg_notional,
     )

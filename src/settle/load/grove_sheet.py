@@ -280,14 +280,16 @@ def compute_sheet_rows(
         # cof_excluded venues are kept out of the CoF pool (weight=0). Two
         # distinct exclusion reasons share the flag:
         #   - idle-ALM positions already deducted from utilized via
-        #     cum_alm_usds (actual_revenue=0).
-        #   - Savings V2 depositor-capital vaults never in cum_alm_usds
-        #     (actual_revenue<0; the VSR liability accrual).
-        # The two paths differ in ``deduction_avg`` below; the sign of
-        # ``actual_revenue`` disambiguates.
+        #     cum_alm_usds.
+        #   - Savings V2 depositor-capital vaults never in cum_alm_usds.
+        # The two paths differ in ``deduction_avg`` below; the venue's
+        # ``pricing_category`` disambiguates. Sign-of-``actual_revenue``
+        # fallback covers provenance.json written before the field existed
+        # (S2 venues then carried the negative VSR-liability accrual).
         cof_excluded = _truthy(r.get("cof_excluded"))
-        cof_excluded_savings_v2 = (
-            cof_excluded and _D(r.get("actual_revenue") or 0) < 0
+        cof_excluded_savings_v2 = cof_excluded and (
+            r.get("pricing_category") == "S2"
+            or _D(r.get("actual_revenue") or 0) < 0
         )
         weight = Decimal("0") if cof_excluded else Decimal("1") - sd_share
         if cof_excluded and not note:

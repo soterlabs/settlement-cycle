@@ -2139,12 +2139,20 @@ def compute_monthly_pnl(
         if venue.pricing_category == PricingCategory.SPARK_SAVINGS_V2:
             # Spark Savings V2 vaults — position-only tracking.
             #
-            # These vaults are EXCLUDED from prime_agent_revenue. The gross
-            # yield on the deployed underlying is already captured by Spark's
-            # existing Cat A/B/C/E venues (S1–S55); there is no separate
-            # revenue line to book here. We track value_som/value_eom for
-            # position reporting only (surfaced in the "Position-only venues"
-            # section of summary.md and in venue_breakdown[].hide_per_venue_pnl).
+            # These vaults are EXCLUDED from prime_agent_revenue. The MSC
+            # accounting boundary is the ALM proxy: yield on the deployed
+            # underlying is already captured by Spark's existing Cat A/B/C/E
+            # venues (S1–S55), and the depositor-side VSR liability is a
+            # vault-layer obligation of Spark's retail product, OUTSIDE that
+            # boundary — depositor withdrawals (principal + accrued VSR)
+            # leave the ALM as capital flows, not negative revenue. See
+            # ``docs/spark/PRD_savings_vaults.md`` §3. Consequence: expect a
+            # ~VSR-sized reconciliation gap vs Spark/BA Labs dashboards,
+            # whose surplus formula nets borrow_cost.
+            #
+            # We track value_som/value_eom for position reporting only
+            # (surfaced in the "Position-only venues" section of summary.md
+            # and in venue_breakdown[].hide_per_venue_pnl).
             #
             # spETH (S58) is also skipped: its underlying is WETH (not a
             # par-stable), so totalAssets() is denominated in WETH and cannot
@@ -2167,6 +2175,8 @@ def compute_monthly_pnl(
             som_block = pin_blocks_som[venue.chain]
             eom_block = period.pin_blocks[venue.chain]
             from ..extract import rpc as _rpc_sv2
+            from ..extract.rpc import RPCError as _RPCError
+            import requests as _requests
             _ud = venue.underlying.decimals
             try:
                 total_som = Decimal(_rpc_sv2.total_assets_of(
@@ -2175,7 +2185,11 @@ def compute_monthly_pnl(
                 total_eom = Decimal(_rpc_sv2.total_assets_of(
                     venue.chain, venue.token.address, eom_block,
                 )) / Decimal(10 ** _ud)
-            except Exception as _e:
+            except (_RPCError, _requests.HTTPError,
+                    _requests.ConnectionError, _requests.Timeout) as _e:
+                # Transient transport failure only — programming errors
+                # propagate so a position doesn't silently vanish from the
+                # BA Labs balance-sheet reconciliation.
                 _log.warning(
                     "  [savings_v2] %s — totalAssets read failed (%s); skipping.",
                     venue.id, type(_e).__name__,
@@ -2281,6 +2295,7 @@ def compute_monthly_pnl(
                 period_inflow=Decimal("0"),
                 revenue=Decimal("0"),
                 cof_excluded=venue.cof_excluded,
+                pricing_category=venue.pricing_category.value,
                 hide_per_venue_pnl=venue.hide_per_venue_pnl,
             ))
             continue
