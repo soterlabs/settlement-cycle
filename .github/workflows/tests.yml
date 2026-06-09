@@ -22,9 +22,13 @@ jobs:
           cache: pip
       - name: Install package + dev extras
         run: pip install -e ".[dev]"
-      - name: Run pytest (unit tests only)
+      - name: Run pytest (unit + integration + e2e, non-live)
         # Live-marked tests hit real RPC / Dune / API and are skipped by
         # default; they're not safe to run in CI without credentials.
         # ``-m "not live"`` is a belt-and-braces filter on top of the
-        # default deselection.
-        run: pytest tests/unit -m "not live" -q
+        # default deselection. tests/integration and tests/e2e are the
+        # only suites that exercise the full compute_monthly_pnl
+        # orchestrator and the OBEX oracle replay — running unit tests
+        # alone let a broken orchestrator merge invisibly (debt.py:91
+        # float×Decimal TypeError, fixed alongside this line).
+        run: pytest tests/unit tests/integration tests/e2e -m "not live" -q

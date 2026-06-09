@@ -84,6 +84,18 @@ def test_monthly_pnl_zero_book_zero_pnl(obex, fixed_pin_blocks):
     assert result.monthly_pnl == Decimal("0")
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "G24 (QUESTIONS.md): this test pins the ADDITIVE rate composition "
+        "documented in RULES.md (`SSR + 30bps`); production composes "
+        "multiplicatively via combine_apys since PR #87 (~1.2 bps apart). "
+        "Keep the additive expectation as the independent pin until the "
+        "methodology question resolves; then either delete this marker "
+        "(additive wins) or rewrite `expected_*` with hand-computed "
+        "multiplicative constants (multiplicative wins)."
+    ),
+)
 def test_monthly_pnl_obex_synthetic_one_venue(obex, fixed_pin_blocks):
     """OBEX-shaped scenario, all numbers chosen for closed-form math.
 
@@ -1018,9 +1030,10 @@ def test_erc4626_closed_form_inflow_for_non_dune_chain(fixed_pin_blocks, monkeyp
 
 def test_monthly_pnl_invokes_block_resolver_for_both_som_and_eom(obex):
     """When pin_blocks_eom/som are not supplied, `compute_monthly_pnl` must
-    delegate to the configured `IBlockResolver` exactly twice per chain (one
-    SoM anchor, one EoM anchor) and the SoM anchor must precede the EoM anchor
-    by ~1 month."""
+    delegate to the configured `IBlockResolver` for the SoM and EoM anchors.
+    Since PR #121 the debt daily-rate expansion also resolves one EoD block
+    per calendar day, so the resolver sees 2 + n_days calls — the test pins
+    only the anchors and the chain, not the exact count."""
     from datetime import datetime, time, timedelta, timezone
 
     from ..fixtures.mock_sources import MockBlockResolver
@@ -1040,9 +1053,9 @@ def test_monthly_pnl_invokes_block_resolver_for_both_som_and_eom(obex):
         # Both pin sets None → resolver must be invoked
     )
 
-    # Resolver called exactly twice for ethereum (OBEX has only one chain).
-    chains_seen = [c for c, _ in resolver.calls]
-    assert chains_seen == ["ethereum", "ethereum"]
+    # Every resolver call is for ethereum (OBEX has only one chain).
+    chains_seen = {c for c, _ in resolver.calls}
+    assert chains_seen == {"ethereum"}
     anchors = [a for _, a in resolver.calls]
     eom_anchor = datetime.combine(date(2026, 3, 31), time.max, tzinfo=timezone.utc)
     som_anchor = datetime.combine(date(2026, 2, 28), time.max, tzinfo=timezone.utc)

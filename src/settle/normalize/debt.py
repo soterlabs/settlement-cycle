@@ -27,7 +27,13 @@ def _art_at_or_before(df: pd.DataFrame, d: date) -> Decimal:
     mask = df["block_date"] <= d
     if not mask.any():
         return Decimal("0")
-    return df.loc[mask, "cum_debt"].iloc[-1]
+    val = df.loc[mask, "cum_debt"].iloc[-1]
+    # IDebtSource implementations may emit float cum_debt; the daily
+    # expansion below multiplies this by a Decimal rate, which TypeErrors
+    # on float. Coerce via str to avoid binary-float artifacts.
+    if isinstance(val, Decimal):
+        return val
+    return Decimal(str(val))
 
 
 def get_debt_timeseries(
