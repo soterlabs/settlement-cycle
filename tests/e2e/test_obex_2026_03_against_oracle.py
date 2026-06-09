@@ -17,26 +17,29 @@ Two test paths share the same fixture-driven setup:
 Acceptance from PRD §16: components match within **documented methodology
 bands**. The test asserts:
 
-* ``agent_rate``                  matches < 0.01%      (same APY ladder, same series)
-* ``sky_revenue``                 +1–6% vs oracle      (subproxy-USDS base: pipeline
-                                                         charges BR on full ilk debt
-                                                         minus only on-ALM idle; oracle
-                                                         additionally subtracts
-                                                         ``cum_sub_usds`` from
-                                                         ``agent_demand``. Measured +3.30%
-                                                         on 2026-06-09.)
+* ``agent_rate``                  within ±0.5%         (SSR step-timing: oracle's
+                                                         hardcoded ladder vs pipeline's
+                                                         live SSR feed diverge slightly
+                                                         around step-change days)
+* ``sky_revenue``                 within ±0.5%         (same SSR step-timing as above —
+                                                         BR is SSR + 30bps so the same
+                                                         drift applies)
 * ``prime_agent_revenue``         +8–13% vs oracle     (price source: oracle uses
                                                          ``prices.day`` DEX VWAP; our
                                                          pipeline uses canonical
                                                          ``convertToAssets``. Measured
                                                          +10.97% on 2026-04-27.)
 
-The oracle SQL (``reference/obex_monthly_pnl.sql``) was refreshed on 2026-06-09
-to include ``vat.grab`` events alongside ``vat.frob`` in the debt-events sum.
-ALLOCATOR-OBEX-A has ``duty = 0`` (``jug.drip`` dormant, ``rate ≡ 1``), so the
-entire stability-fee accrual flows through ``vat.grab`` and the refresh closed
-the largest pre-existing gap (frob-only oracle was under-counting cum_debt by
-the full capitalised interest).
+The oracle SQL (``reference/obex_monthly_pnl.sql``) was refreshed twice on
+2026-06-09 to align with the settlement-cycle pipeline's methodology:
+  v2 (query 7682762): added ``vat.grab`` events alongside ``vat.frob`` in the
+    debt-events sum — ALLOCATOR-OBEX-A has ``duty = 0`` (``jug.drip`` dormant,
+    ``rate ≡ 1``) so the entire stability-fee accrual flows through ``grab``.
+  v3 (query 7683158): dropped the ``- cum_sub_usds`` subtraction from
+    ``agent_demand`` — subproxy USDS is treasury/risk capital drawn from Sky's
+    ilk, so BR accrues on it. The agent rate (SSR + 20bps) is paid on a
+    separate ledger flow rather than netted into the BR base, matching
+    ``docs/METHODOLOGY.md §3``.
 """
 
 from __future__ import annotations
@@ -178,22 +181,12 @@ def test_against_oracle_replay(config_dir: Path):
     assert result.agent_rate == pytest.approx(expected_agent, rel=Decimal("0.005")), \
         f"agent_rate {result.agent_rate} vs oracle {expected_agent}"
 
-    # --- sky_revenue: documented methodology gap on the BR base.
-    # Oracle subtracts ``cum_sub_usds`` (subproxy USDS) from ``agent_demand`` so
-    # BR is not charged on the subproxy slice. Our pipeline does NOT subtract
-    # subproxy_usds from ``utilized`` — Sky's BR runs on the full ilk debt
-    # minus only the on-ALM idle deductions. For 2026-03 this means we charge
-    # BR on ~$20M more debt than the oracle, lifting sky_revenue by ~3.3%.
-    # The agent_rate program separately compensates the prime for subproxy
-    # USDS at SSR + 20bps, so net economic effect to the prime is the BR-SSR
-    # spread minus the 20bps agent rebate; the gross numbers differ between
-    # the two views. Acceptance band: 1%–6% on the high side.
-    delta_sky = result.sky_revenue - expected_sky
-    rel_delta_sky = delta_sky / expected_sky
-    assert Decimal("0.01") < rel_delta_sky < Decimal("0.06"), (
-        f"sky_revenue gap {rel_delta_sky:.4%} outside expected subproxy-base "
-        f"band [1%, 6%]. Measured at +3.30% on 2026-06-09 — investigate any change."
-    )
+    # --- sky_revenue: after the v3 oracle refresh (2026-06-09) the oracle's
+    # ``agent_demand`` matches the pipeline's ``utilised`` formula (frob+grab
+    # debt sum, no subproxy subtraction). The residual ~0.4% diff is the same
+    # SSR step-timing drift that affects agent_rate. Acceptance band: ±0.5%.
+    assert result.sky_revenue == pytest.approx(expected_sky, rel=Decimal("0.005")), \
+        f"sky_revenue {result.sky_revenue} vs oracle {expected_sky}"
 
     # --- prime_revenue: documented methodology gap on the price source.
     # Oracle uses prices.day VWAP for syrupUSDC; we use convertToAssets

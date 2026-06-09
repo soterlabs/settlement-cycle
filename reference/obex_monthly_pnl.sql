@@ -153,12 +153,21 @@ filled_pnl AS (
   FROM joined_pnl
 ),
 
+-- agent_demand (= utilized in the settlement-cycle pipeline) intentionally
+-- does NOT subtract ``cum_sub_usds`` (USDS held at the subproxy). Subproxy
+-- balances are treasury / risk capital — they're drawn from Sky's ilk
+-- (so ``Art × rate`` accrues on them) and the agent rate (SSR + 20 bps)
+-- is paid separately to the prime via the ``monthly_rate`` section
+-- below. Subtracting subproxy from the BR base would mis-attribute the
+-- ~10 bps net cost as zero and split the same flow across two ledgers.
+-- See ``docs/METHODOLOGY.md §3`` (the equivalent pipeline rule) and the
+-- ``test_against_oracle_replay`` docstring for the methodology history.
 daily_pnl AS (
   SELECT
     block_date,
-    COALESCE(cum_debt,0) - COALESCE(cum_sub_usds,0)
+    COALESCE(cum_debt,0)
       - COALESCE(cum_alm_usds,0) - COALESCE(cum_susds,0)      AS agent_demand,
-    (COALESCE(cum_debt,0) - COALESCE(cum_sub_usds,0)
+    (COALESCE(cum_debt,0)
       - COALESCE(cum_alm_usds,0) - COALESCE(cum_susds,0))
       * (POWER(CASE
           WHEN block_date < DATE '2025-11-07' THEN 1.048
