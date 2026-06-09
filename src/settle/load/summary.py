@@ -66,6 +66,15 @@ def _usd(x) -> str:
     return f"${d:,.2f}"
 
 
+def _usds(x) -> str:
+    """Same as ``_usd`` but with no leading currency sign — used in the
+    headline tables where the column header carries the unit (``USDS``)."""
+    d = _D(x)
+    if d < 0:
+        return f"-{-d:,.2f}"
+    return f"{d:,.2f}"
+
+
 def _venue_sort_key(venue_id: str):
     """Stable order: numeric prefix first (E1, E2, ..., E10, ...), then
     alphabetic (SPREAD, PSM_CURVE_DEDUCT, etc.). Falls back to the raw
@@ -97,42 +106,115 @@ def render_summary(prov: dict) -> str:
 
     # ── Headline ────────────────────────────────────────────────────
     r = prov.get("results", {})
-    # NOTE: ``monthly_pnl`` was deliberately removed from the headline
-    # (it's still present in provenance.json for backward-compat). It
-    # was ``prime_agent_revenue + agent_rate + distribution_rewards −
-    # sky_revenue``, which doesn't map to a real Prime-agent P&L:
-    # ``prime_agent_revenue`` is already the prime's excess (its take
-    # net of Sky's BR-on-utilized), so subtracting ``sky_revenue``
-    # again double-counts. The four headline fields below
-    # (prime_agent_revenue / agent_rate / prime_agent_total_revenue /
-    # sky_revenue) are sufficient to describe each side's economics.
-    headline_rows = [
-        ("prime_agent_revenue",        r.get("prime_agent_revenue")),
-        ("agent_rate",                 r.get("agent_rate")),
-        ("distribution_rewards",       r.get("distribution_rewards")),
-        ("prime_agent_total_revenue",  r.get("prime_agent_total_revenue")),
-        ("sky_revenue (net)",          r.get("sky_revenue")),
-        ("sde_revenue",                r.get("sde_revenue")),
-        ("susds_spread_reimbursement", r.get("susds_spread_reimbursement")),
-        ("pol_agent_rate",             r.get("pol_agent_rate")),
-        ("curve_susds_spread",         r.get("curve_susds_spread")),
-        ("psm3_susds_spread",          r.get("psm3_susds_spread")),
-        ("sky_revenue_gross",          r.get("sky_revenue_gross")),
+    # Two-sided breakdown: prime-side P&L vs Sky-side P&L. Each side
+    # decomposes into a "regular" line plus a SDE (Sky Direct Exposure)
+    # line, and the two sub-totals (``prime agent profit`` and
+    # ``sky revenue``) sum the components above them.
+    #
+    # Definitions:
+    #   prime agent net revenue   = Σ revenue across non-SDE venues
+    #                               (sd_share == 0 in venue_breakdown).
+    #                               Includes external_revenue (Merkl /
+    #                               Agora / Anchorage sweeps) for those
+    #                               venues.
+    #   prime side SDE            = Σ revenue across SDE venues
+    #                               (sd_share > 0). For fixed SDE
+    #                               (sd_share = 1) this is just the
+    #                               external_revenue portion; for capped
+    #                               SDE it is the (1 − sd_share) ×
+    #                               actual_revenue residual plus
+    #                               external_revenue.
+    #   prime agent profit        = agent_rate + distribution_rewards
+    #                              + prime_agent_net_revenue
+    #                              + prime_side_sde
+    #                             ≡ agent_rate + distribution_rewards
+    #                              + prime_agent_revenue
+    #                              (= prime_agent_total_revenue)
+    #
+    #   prime cost of funds       = sky_revenue (net) − sde_revenue
+    #                               Net of all intra-Sky credits (sUSDS /
+    #                               Curve / PSM3 spread reimbursements
+    #                               + pol_agent_rate) — i.e. what the
+    #                               prime actually pays as interest.
+    #   sky side SDE              = sde_revenue (the Sky-redirected
+    #                               portion of venue actual_revenue,
+    #                               summed across SDE venues).
+    #   sky revenue               = prime_cof + sky_side_sde
+    #                             ≡ sky_revenue (net) (already includes
+    #                               sde_revenue minus intra-Sky credits).
+    venues_for_split = [
+        v for v in (prov.get("venue_breakdown") or [])
+        if not v.get("hide_per_venue_pnl")
     ]
+    sky_revenue_total = _D(r.get("sky_revenue"))
+    sky_side_sde      = _D(r.get("sde_revenue"))
+    prime_cof         = sky_revenue_total - sky_side_sde
+
+    # ``prime agent net revenue`` is the prime's net take from non-SDE
+    # venues AFTER paying the BR cost of funds. Gross venue yield minus
+    # prime_cof, so the line reads as actual P&L rather than gross take.
+    # The FULL ``prime_cof`` is charged against the non-SDE bucket (no
+    # per-venue or per-bucket CoF allocation); for SDE-heavy primes
+    # (Grove May 2026 is the limit case — E9 JTRSY + E10 BUIDL together
+    # carry ~$1.5B of fixed-SDE principal with sd_share=1) this can push
+    # ``prime_agent_net_revenue`` materially negative while
+    # ``prime_side_sde`` stays small/zero. The ``prime agent profit``
+    # total is still correct algebraically (it equals ``agent_rate +
+    # distribution_rewards + prime_agent_revenue − prime_cof``), but the
+    # decomposition is asymmetric and emphasises non-SDE economics. The
+    # alternative (allocating CoF pro-rata across SDE / non-SDE based on
+    # utilized USDS) is intentionally not done — Sky charges BR on the
+    # ilk-debt aggregate, not per-venue, so any allocation would be a
+    # display choice without a defensible formula. Operators looking at
+    # an SDE-heavy prime's breakdown should focus on the bold totals
+    # (``prime agent profit`` + ``sky revenue``); the intermediate lines
+    # are informational.
+    if not venues_for_split:
+        # Empty venue_breakdown shouldn't happen in production — every
+        # prime has at least one venue. Render zeros rather than a
+        # misleading ``-prime_cof`` on the net-revenue line.
+        non_sde_revenue_gross = Decimal("0")
+        prime_side_sde        = Decimal("0")
+        prime_agent_net_revenue = Decimal("0")
+    else:
+        non_sde_revenue_gross = sum(
+            (_D(v.get("revenue")) for v in venues_for_split if _D(v.get("sd_share")) == 0),
+            Decimal("0"),
+        )
+        prime_side_sde = sum(
+            (_D(v.get("revenue")) for v in venues_for_split if _D(v.get("sd_share")) != 0),
+            Decimal("0"),
+        )
+        prime_agent_net_revenue = non_sde_revenue_gross - prime_cof
+    agent_rate     = _D(r.get("agent_rate"))
+    dist_rewards   = _D(r.get("distribution_rewards"))
+    prime_profit   = agent_rate + dist_rewards + prime_agent_net_revenue + prime_side_sde
+
+    def _row(label: str, val) -> str:
+        if isinstance(val, str):
+            return f"| {label} | {val} |"
+        return f"| {label} | {_usds(val)} |"
+
     lines.append("## Headline")
     lines.append("")
-    lines.append("| Field | USD |")
+    lines.append("### Prime side")
+    lines.append("")
+    lines.append("| Field | USDS |")
     lines.append("|---|---:|")
-    for label, val in headline_rows:
-        # Skip zero rows for non-headline fields so the table stays tight.
-        # Always show the four primary fields (prime_agent_revenue, agent_rate,
-        # prime_agent_total_revenue, sky_revenue) even when zero.
-        if label not in (
-            "prime_agent_revenue", "agent_rate",
-            "prime_agent_total_revenue", "sky_revenue (net)",
-        ) and _D(val) == 0:
-            continue
-        lines.append(f"| {label} | {_usd(val)} |")
+    lines.append(_row("agent rate", agent_rate))
+    lines.append(_row("distribution rewards", "TBD" if dist_rewards == 0 else _usds(dist_rewards)))
+    lines.append(_row("prime agent net revenue", prime_agent_net_revenue))
+    lines.append(_row("prime side sky direct exposure", prime_side_sde))
+    lines.append(_row("**prime agent profit**", f"**{_usds(prime_profit)}**"))
+    lines.append("")
+
+    lines.append("### Sky side")
+    lines.append("")
+    lines.append("| Field | USDS |")
+    lines.append("|---|---:|")
+    lines.append(_row("prime cost of funds", prime_cof))
+    lines.append(_row("sky side sky direct exposure", sky_side_sde))
+    lines.append(_row("**sky revenue**", f"**{_usds(sky_revenue_total)}**"))
     lines.append("")
 
     # ── Per-venue ───────────────────────────────────────────────────

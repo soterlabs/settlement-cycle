@@ -4,18 +4,23 @@ Period: 2026-04-01 → 2026-04-30 (30 days)
 
 ## Headline
 
-| Field | USD |
+### Prime side
+
+| Field | USDS |
 |---|---:|
-| prime_agent_revenue | $5,122,374.71 |
-| agent_rate | $116,261.82 |
-| prime_agent_total_revenue | $5,238,636.53 |
-| sky_revenue (net) | $9,492,954.29 |
-| sde_revenue | $115,802.67 |
-| susds_spread_reimbursement | $178,920.97 |
-| pol_agent_rate | $223,871.10 |
-| curve_susds_spread | $8,462.29 |
-| psm3_susds_spread | $91,387.06 |
-| sky_revenue_gross | $12,065,435.49 |
+| agent rate | 116,261.82 |
+| distribution rewards | TBD |
+| prime agent net revenue | -4,254,776.91 |
+| prime side sky direct exposure | 0.00 |
+| **prime agent profit** | **-4,138,515.08** |
+
+### Sky side
+
+| Field | USDS |
+|---|---:|
+| prime cost of funds | 9,377,151.62 |
+| sky side sky direct exposure | 115,802.67 |
+| **sky revenue** | **9,492,954.29** |
 
 ## Per-venue
 
