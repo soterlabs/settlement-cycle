@@ -556,8 +556,22 @@ def _find_block_at_or_before_rpc(chain: Chain, ts: datetime, target: int) -> int
     """RPC binary search — ~25 ``block_timestamp`` calls (cached) plus one
     ``latest_block`` call (intrinsically non-deterministic, never cached)."""
     high = latest_block(chain)
-    if block_timestamp(chain, high) <= target:
+    head_ts = block_timestamp(chain, high)
+    if head_ts == target:
+        # Timestamps are strictly increasing, so the head block at exactly
+        # the anchor is provably the final answer.
         return high
+    if head_ts < target:
+        # The chain hasn't reached the anchor yet — e.g. `settle run` on a
+        # month that hasn't ended. Returning (and caching) the current head
+        # would permanently pin every downstream read for this anchor to a
+        # mid-month block; refuse instead so nothing wrong enters the cache.
+        raise ValueError(
+            f"find_block_at_or_before({chain}, {ts.isoformat()}): anchor is "
+            f"beyond the chain head (head block {high} ts={head_ts} < "
+            f"target {target}). The settlement period has likely not ended "
+            "yet — re-run once the chain has passed the anchor."
+        )
 
     # Reject targets that precede genesis — otherwise the search collapses to
     # block 0 and silently pins every downstream RPC call to genesis (zero
@@ -612,6 +626,49 @@ def _find_block_at_or_before_dune(chain: Chain, ts: datetime) -> int | None:
     return int(df["block_number"].iloc[0])
 
 
+def _dune_block_verified(chain: Chain, block: int, target: int, ts: datetime) -> bool:
+    """Cross-check a Dune-resolved pin block against on-chain timestamps.
+
+    True iff ``ts(block) <= target < ts(block+1)`` — i.e. ``block`` is
+    provably the highest block at or before the anchor. ``evms.blocks``
+    lags the chain head; a query executed while Dune is behind the anchor
+    returns Dune's max *indexed* block instead, and without this check that
+    wrong answer would be cached permanently (pickle + Postgres) under the
+    anchor's cache key. Costs two cached ``block_timestamp`` reads plus one
+    ``latest_block`` call.
+    """
+    log = logging.getLogger(__name__)
+    if block_timestamp(chain, block) > target:
+        log.warning(
+            "Dune block_at_or_before(%s, %s) returned block %d AFTER the "
+            "anchor — falling back to RPC binary search",
+            chain.value, ts.isoformat(), block,
+        )
+        return False
+    head = latest_block(chain)
+    if block >= head:
+        # Dune returned (at least) the RPC head — can't prove a later block
+        # exists past the anchor. Likely Dune's index head, not the true
+        # at-or-before block. The RPC search either proves the real answer
+        # or raises if the chain hasn't passed the anchor.
+        log.warning(
+            "Dune block_at_or_before(%s, %s) returned block %d >= chain "
+            "head %d (Dune index head, not the anchor block?) — falling "
+            "back to RPC binary search",
+            chain.value, ts.isoformat(), block, head,
+        )
+        return False
+    if block_timestamp(chain, block + 1) <= target:
+        log.warning(
+            "Dune block_at_or_before(%s, %s) is lagging: block %d+1 is "
+            "still at or before the anchor — falling back to RPC binary "
+            "search",
+            chain.value, ts.isoformat(), block,
+        )
+        return False
+    return True
+
+
 @cached(source_id="rpc.find_block_at_or_before")
 def find_block_at_or_before(chain: Chain, ts: datetime) -> int:
     """Highest block on ``chain`` whose timestamp ≤ ``ts`` (UTC).
@@ -637,7 +694,7 @@ def find_block_at_or_before(chain: Chain, ts: datetime) -> int:
 
     if chain in _DUNE_TIMESTAMP_CHAINS:
         dune_result = _find_block_at_or_before_dune(chain, ts)
-        if dune_result is not None:
+        if dune_result is not None and _dune_block_verified(chain, dune_result, target, ts):
             return dune_result
 
     return _find_block_at_or_before_rpc(chain, ts, target)

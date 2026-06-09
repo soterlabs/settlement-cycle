@@ -136,3 +136,85 @@ def test_ilk_rate_returns_ray_one_on_short_response(
     vat = Address.from_str("0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B")
     ilk = b"\x01" * 32
     assert ilk_rate(Chain.ETHEREUM, vat, ilk, 24971074) == 10**27
+
+
+# ---------------------------------------------------------------------------
+# find_block_at_or_before guards (H1: never cache a wrong pin block)
+# ---------------------------------------------------------------------------
+
+from datetime import UTC, datetime  # noqa: E402
+
+_ANCHOR = datetime(2026, 3, 31, 23, 59, 59, tzinfo=UTC)
+_TARGET = int(_ANCHOR.timestamp())
+
+
+def _patch_chain(monkeypatch, *, head: int, ts_of_block):
+    """Stub latest_block + block_timestamp with a synthetic chain."""
+    monkeypatch.setattr(_rpc, "latest_block", lambda chain: head)
+    monkeypatch.setattr(_rpc, "block_timestamp", lambda chain, b: ts_of_block(b))
+
+
+def test_find_block_refuses_anchor_beyond_chain_head(
+    tmp_cache_dir, monkeypatch: pytest.MonkeyPatch,
+):
+    """Running a month before it has ended must raise, not return (and
+    permanently cache) the current chain head as the EoM pin block."""
+    monkeypatch.delenv("DUNE_API_KEY", raising=False)
+    _patch_chain(monkeypatch, head=100, ts_of_block=lambda b: _TARGET - 1000 + b)
+    with pytest.raises(ValueError, match="beyond the chain head"):
+        _rpc.find_block_at_or_before(Chain.ETHEREUM, _ANCHOR)
+
+
+def test_find_block_head_exactly_at_anchor_is_provably_final(
+    tmp_cache_dir, monkeypatch: pytest.MonkeyPatch,
+):
+    """Timestamps are strictly increasing, so head_ts == target IS the
+    at-or-before block — no refusal."""
+    monkeypatch.delenv("DUNE_API_KEY", raising=False)
+    _patch_chain(monkeypatch, head=100, ts_of_block=lambda b: _TARGET - (100 - b) * 12)
+    assert _rpc.find_block_at_or_before(Chain.ETHEREUM, _ANCHOR) == 100
+
+
+def test_find_block_binary_search_still_resolves_past_anchor(
+    tmp_cache_dir, monkeypatch: pytest.MonkeyPatch,
+):
+    """Normal case: anchor strictly inside the chain — binary search finds
+    the highest block with ts <= target."""
+    monkeypatch.delenv("DUNE_API_KEY", raising=False)
+    # Block b has ts = _TARGET - 1006 + 12*b → block 83 has ts _TARGET - 10
+    # (<= target), block 84 has ts _TARGET + 2 (> target).
+    _patch_chain(monkeypatch, head=100, ts_of_block=lambda b: _TARGET - 1006 + 12 * b)
+    assert _rpc.find_block_at_or_before(Chain.ETHEREUM, _ANCHOR) == 83
+
+
+def test_dune_block_verified_rejects_lagging_index(
+    tmp_cache_dir, monkeypatch: pytest.MonkeyPatch,
+):
+    """evms.blocks behind the anchor: Dune returns its max indexed block,
+    whose successor is still <= target — must be rejected."""
+    _patch_chain(monkeypatch, head=100, ts_of_block=lambda b: _TARGET - 1006 + 12 * b)
+    # Block 50 is well before the anchor; block 51 is also <= target.
+    assert _rpc._dune_block_verified(Chain.ETHEREUM, 50, _TARGET, _ANCHOR) is False
+
+
+def test_dune_block_verified_rejects_dune_index_head(
+    tmp_cache_dir, monkeypatch: pytest.MonkeyPatch,
+):
+    """Dune returning >= the RPC head can't be proven to bracket the anchor."""
+    _patch_chain(monkeypatch, head=100, ts_of_block=lambda b: _TARGET - 1006 + 12 * b)
+    assert _rpc._dune_block_verified(Chain.ETHEREUM, 100, _TARGET, _ANCHOR) is False
+
+
+def test_dune_block_verified_rejects_block_after_anchor(
+    tmp_cache_dir, monkeypatch: pytest.MonkeyPatch,
+):
+    _patch_chain(monkeypatch, head=100, ts_of_block=lambda b: _TARGET - 1006 + 12 * b)
+    assert _rpc._dune_block_verified(Chain.ETHEREUM, 90, _TARGET, _ANCHOR) is False
+
+
+def test_dune_block_verified_accepts_true_bracket(
+    tmp_cache_dir, monkeypatch: pytest.MonkeyPatch,
+):
+    _patch_chain(monkeypatch, head=100, ts_of_block=lambda b: _TARGET - 1006 + 12 * b)
+    # Block 83 ts = _TARGET - 10 <= target; block 84 ts = _TARGET + 2 > target.
+    assert _rpc._dune_block_verified(Chain.ETHEREUM, 83, _TARGET, _ANCHOR) is True
