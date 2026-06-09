@@ -276,3 +276,44 @@ def test_subproxy_balance_empty_df_with_seed_prepends_row_only(
     assert len(df) == 1
     assert df.iloc[0]["block_date"] == obex.start_date
     assert float(df.iloc[0]["cum_balance"]) == pytest.approx(36_000_000.0)
+
+
+def test_subproxy_balance_empty_df_with_seed_AND_eom_drift(config_dir: Path, caplog):
+    """Combined scenario matching Spark Apr/May 2026 prod: Dune source
+    returns empty (fixture loader's ``_empty_balance_df()`` fallback),
+    on-chain SoM has a substantial balance (seed fires), AND on-chain
+    EoM has additional drift (cross-check fires). Both warnings should
+    appear and the returned df should hold the SoM seed only — the
+    cross-check warns but doesn't synthesize the missing mid-period
+    flow (that's why the time-weighted-average impact on agent_rate
+    leaks). Regression guard: keep both warnings visible to the
+    operator simultaneously."""
+    import logging
+    obex = _obex(config_dir)
+    venue = obex.venues[0]
+    underlying = venue.underlying
+    assert underlying is not None
+
+    src = MockBalanceSource(cumulative_df=pd.DataFrame({
+        "block_date": [], "daily_net": [], "cum_balance": [],
+    }))
+    period = Period.from_month(Month(2026, 4), pin_blocks={Chain.ETHEREUM: 999_000})
+    som_block = 990_000
+    scale = 10 ** underlying.decimals
+    # SoM = $36.37M, EoM = $36.90M → seed $36.37M, EoM drift +$525,726
+    # (exactly the Spark Apr 2026 prod values).
+    on_chain = {som_block: 36_373_388 * scale, 999_000: 36_899_114 * scale}
+    balance_at = lambda c, t, h, b: on_chain[b]
+
+    with caplog.at_level(logging.WARNING, logger="settle.normalize.balances"):
+        df = get_subproxy_balance_timeseries(
+            obex, Chain.ETHEREUM, underlying, period,
+            source=src, som_block=som_block, balance_at=balance_at,
+        )
+
+    msgs = [r.message for r in caplog.records]
+    assert any("SoM anchor found" in m and "36373388" in m.replace(",", "") for m in msgs)
+    assert any("EoM cross-check found" in m and "525726" in m.replace(",", "") for m in msgs)
+    # Returned df has the seed row only (no mid-period synthesis).
+    assert len(df) == 1
+    assert float(df.iloc[0]["cum_balance"]) == pytest.approx(36_373_388.0)

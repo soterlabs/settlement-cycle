@@ -32,6 +32,13 @@ def _cumulative(
         pin_block=pin_block,
     )
     assert_columns(df, ["block_date", "daily_net", "cum_balance"])
+    # Normalize block_date to plain Python ``date`` so downstream
+    # comparisons against ``period.start`` / ``period.end`` (both ``date``)
+    # are safe across sources. ``DuneBalanceSource`` already does this, but
+    # fixture/mock sources or future parquet sources may return
+    # ``pd.Timestamp`` — pandas ≥2 raises ``TypeError`` on ``Timestamp < date``.
+    if not df.empty:
+        df["block_date"] = pd.to_datetime(df["block_date"]).dt.date
     return df
 
 
@@ -56,6 +63,26 @@ def get_subproxy_balance_timeseries(
     governance allocations whose Transfer events Dune doesn't surface
     for this address). The on-chain ``balanceOf`` is the gold standard;
     the seed adjustment shifts the entire series to match.
+
+    **Seed semantics for pre-period rows.** The seed is applied as a
+    SHIFT to every row (events-tracked or not) AND as a synthetic row at
+    ``prime.start_date``. This is correct for monthly settlement (the
+    only consumer today) because ``agent_rate`` integrates the period-
+    delta, not absolute pre-period levels. It IS an approximation for a
+    hypothetical cross-period consumer: we don't know precisely when the
+    pre-period funding happened — we assume it was present from
+    ``prime.start_date``. If the funding actually arrived mid-pre-period,
+    pre-period queries against this dataframe will overstate balances
+    before that funding date. Only the monthly-settlement contract is
+    guaranteed; document and bound the use accordingly.
+
+    **EoM cross-check.** After the SoM anchor, the function also reads
+    on-chain ``balanceOf`` at the EoM pin block and compares against the
+    tracked EoM balance (post-shift). Divergence indicates a mid-period
+    transfer the source did not surface — the SoM anchor cannot recover
+    those (the seed only captures pre-SoM funding). A warning fires; no
+    correction is applied (we don't know on what day the missed flow
+    happened, so any synthesis would be miscalibrated).
     """
     from decimal import Decimal as _Dec
     import logging as _logging
@@ -146,12 +173,12 @@ def get_subproxy_balance_timeseries(
                 "post-SoM-anchor) and on-chain balanceOf (%.6f) at "
                 "subproxy %s on %s. The SoM anchor caught the pre-period "
                 "balance but mid-period flows are missing from the events "
-                "series — common causes: (a) the source returned empty "
-                "for this (token, holder) (e.g. a fixture loader's "
-                "``_empty_balance_df()`` fallback written when the holder "
-                "address was different); (b) Dune ``tokens.transfers`` "
-                "actually missed mid-period events. Settlement output "
-                "may be off by the time-weighted impact of the drift.",
+                "series. Operator: verify the balance source is configured "
+                "for the correct holder address and is returning all "
+                "Transfer events in the period; re-check Dune "
+                "``tokens.transfers`` coverage if the source looks correct. "
+                "Settlement output may be off by the time-weighted impact "
+                "of the drift.",
                 float(eom_drift), float(tracked_eom), float(on_chain_eom),
                 prime.subproxy[chain].hex, token.symbol,
             )

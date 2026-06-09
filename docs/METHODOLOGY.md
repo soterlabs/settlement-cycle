@@ -115,6 +115,7 @@ agent_rate = Σ_days  subproxy_usds   × ((1 + SSR + 0.20%)^(1/365) − 1)
 - sUSDS earns only `20bps` — SSR already accrues via the token's index; applying it again would double-count
 - `subproxy_susds` is the **cost-basis principal** (`shares × entry_pps`), not the current value
 - Subproxy balances are **not** deducted from `utilized` — they represent treasury/risk capital, not idle ilk-funded USDS
+- **The "subproxy" is the SubProxy CONTRACT, distinct from the ilk's *urn* in the Vat.** The urn (e.g. ALLOCATOR-SPARK-A urn = `0x691a…`) is the borrower position that records ilk debt and holds $0. The SubProxy contract (e.g. Spark = `0x3300…f8c4`) is what actually holds the idle USDS/sUSDS balances on which `agent_rate` accrues. Each prime's SubProxy address is in `{prime}.yaml → addresses.{chain}.subproxy`
 
 ---
 

@@ -310,7 +310,19 @@ def build_spark_sources(
             df = cat_a_cum_by_token_holder.get((token, holder))
             if df is not None:
                 return df
-            # Spark Eth subproxy/ALM raw USDS+sUSDS confirmed ~$0 (dust).
+            # TODO(follow-up): the empty-df fallback is INCORRECT for the
+            # Spark Eth SubProxy after the 2026-06-09 config fix (urn
+            # 0x691a… → real SubProxy 0x3300…). The real SubProxy holds
+            # $30–37M USDS with monthly inflows/outflows; returning
+            # empty here masks those mid-period flows (the SoM anchor
+            # in get_subproxy_balance_timeseries pegs the opening
+            # balance but mid-period drift is dropped). See PRD §17.13
+            # "Spark SubProxy mid-period USDS flows masked by the
+            # fixture loader" for the proper fix: either capture
+            # subproxy USDS/sUSDS into this fixture, or route subproxy
+            # queries through live Dune. Time-weighted impact on
+            # agent_rate is ~$300/month max — small enough to defer,
+            # but the fixture is now lying.
             return _empty_balance_df()
 
         def directed_inflow_timeseries(self, chain, token, from_addr, to_addr, start, pin_block):

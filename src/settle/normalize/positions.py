@@ -1590,6 +1590,15 @@ def _shares_to_usd_inflow_timeseries(
         # Tolerance: 1 wei-equivalent of a share. Real Dune-missed mints
         # observed in practice are ≥ 1 share (millions in the Grove E23
         # 2026-05 case); rounding noise stays well under this.
+        # Pure-synthetic = no real event on ``period.end`` AT ALL. If a
+        # legitimate EoM mint/burn happened on that date too, we keep its
+        # standard EoD pricing path (don't silently re-price it at the
+        # pin_block — small bps difference, but a behavior change for a
+        # totally normal event we shouldn't introduce as a side effect of
+        # the reconciliation).
+        eom_is_pure_synthetic = (
+            period.end not in by_date and abs(discrepancy) > Decimal("0.000001")
+        )
         if abs(discrepancy) > Decimal("0.000001"):
             _logging.getLogger(__name__).warning(
                 "_shares_to_usd_inflow_timeseries: EoM reconciliation found "
@@ -1602,6 +1611,8 @@ def _shares_to_usd_inflow_timeseries(
                 float(tracked_delta), float(actual_delta),
             )
             by_date[period.end] = by_date.get(period.end, Decimal("0")) + discrepancy
+    else:
+        eom_is_pure_synthetic = False
 
     if not by_date:
         return pd.DataFrame({
@@ -1610,12 +1621,12 @@ def _shares_to_usd_inflow_timeseries(
 
     rows = []
     for d in sorted(by_date):
-        # The synthetic reconciliation row on ``period.end`` (when the
-        # EoM anchor fires) is priced at the canonical ``pin_block``, not
-        # the resolver's EoD lookup — this matches the block at which the
-        # on-chain Δshares was computed and dodges any drift between the
-        # resolver's "EoD" definition and the orchestrator-supplied pin.
-        if d == period.end:
+        # Pure-synthetic period.end row → price at the canonical ``pin_block``
+        # (the same block used to read on-chain Δshares — dodges drift
+        # between the resolver's EoD definition and the orchestrator pin).
+        # Anything else (mid-period mints/burns, real EoM mints, dates
+        # without reconciliation) → standard EoD-block lookup.
+        if d == period.end and eom_is_pure_synthetic:
             block = pin_block
         else:
             eod = datetime.combine(d, time.max, tzinfo=timezone.utc)
