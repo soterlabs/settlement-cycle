@@ -1,9 +1,11 @@
 """Extend ``tests/fixtures/spark_2026_q1/`` fixture files to cover Apr+May 2026.
 
 Refreshes (additively) the following files using the published Dune queries:
-  * ``debt_timeseries.json``               — Dune query 7642450
-  * ``eth_avalanche_daily_eod_blocks.json`` — Dune query 7474490
-  * ``l2_daily_eod_blocks.json``           — Dune query 7474490
+  * ``debt_timeseries.json``                  — Dune query 7642450
+  * ``eth_avalanche_daily_eod_blocks.json``   — Dune query 7474490
+  * ``l2_daily_eod_blocks.json``              — Dune query 7474490
+  * ``subproxy_usds_timeseries.json``         — Dune query 7432800
+  * ``subproxy_susds_timeseries.json``        — Dune query 7432800
 
 Cat B / Cat E cum_balance JSONs are NOT refreshed (would require
 re-capturing the per-venue queries that were auto-created at Q1 time and
@@ -41,6 +43,18 @@ HEADERS = {"x-dune-api-key": DUNE_API_KEY, "content-type": "application/json"}
 
 # Spark ALLOCATOR-A ilk
 ILK_BYTES32 = "0x414c4c4f4341544f522d535041524b2d41000000000000000000000000000000"
+
+# Spark Eth SubProxy (the real contract that holds idle USDS — distinct
+# from the urn at 0x691a…6ba which is the borrower position in the Vat).
+SPARK_SUBPROXY_ETH = "0x3300f198988e4c9c63f75df86de36421f06af8c4"
+
+# Sky tokens on Ethereum.
+USDS_ETH  = "0xdc035d45d973e3ec169d2276ddab16f1e407384f"
+SUSDS_ETH = "0xa3931d71877c0e7a3148cb7eb4463524fec27fbd"
+
+# Capture window for the subproxy timeseries (matches the existing
+# debt_timeseries window — full prime history through May EoM).
+SPARK_FIRST_FROB_DATE = "2024-11-18"
 
 # Pin blocks at May 31 EoM (= upper bound for the extended fetch) — these
 # should be at-or-after the actual May 31 23:59:59 UTC blocks. Adding a
@@ -208,6 +222,57 @@ def refresh_blocks() -> None:
     print(f"  wrote {l2_path} ({len(l2_rows)} rows)")
 
 
+def refresh_subproxy_timeseries() -> None:
+    """Refresh subproxy USDS + sUSDS daily-net + cum_balance timeseries.
+
+    These feed ``spark_fixture_loader._RoutedBalances.cumulative_balance_timeseries``
+    for ``(USDS, SubProxy)`` and ``(sUSDS, SubProxy)`` queries. Without
+    them, the loader falls back to an empty df, the SoM on-chain anchor
+    pegs each month's opening balance correctly, but mid-period flows
+    (Sky governance allocations, treasury rebalances) are dropped from
+    the agent_rate base. ~$23K underpayment cumulative Jan–May 2026 in
+    practice.
+    """
+    for tok_label, tok_addr, dest_name in [
+        ("USDS",  USDS_ETH,  "subproxy_usds_timeseries.json"),
+        ("sUSDS", SUSDS_ETH, "subproxy_susds_timeseries.json"),
+    ]:
+        print(f"  fetching ({tok_label}, SubProxy {SPARK_SUBPROXY_ETH[:10]}…)")
+        rows = execute_and_poll(
+            7432800,
+            {
+                "chain":               "ethereum",
+                "token":               tok_addr,
+                "holder":              SPARK_SUBPROXY_ETH,
+                "start_date":          SPARK_FIRST_FROB_DATE,
+                "pin_block":           str(MAY_31_PIN_BLOCK["ethereum"]),
+                "min_transfer_amount": "0",
+            },
+        )
+        out = {
+            "_about": (
+                f"Spark SubProxy {tok_label} daily-net + cum_balance timeseries, "
+                f"{SPARK_FIRST_FROB_DATE} → 2026-05-31. Source-of-truth for the "
+                f"agent_rate base on this token. Refreshed via extend_spark_fixtures.py."
+            ),
+            "_dune_query_id": 7432800,
+            "_query_params": {
+                "chain": "ethereum",
+                "token": tok_addr,
+                "holder": SPARK_SUBPROXY_ETH,
+                "start_date": SPARK_FIRST_FROB_DATE,
+                "pin_block": MAY_31_PIN_BLOCK["ethereum"],
+                "min_transfer_amount": 0,
+            },
+            "_columns": ["block_date", "daily_net", "cum_balance"],
+            "_units": f"{tok_label} (human units, 18 decimals already divided out)",
+            "rows": rows,
+        }
+        dest = FIXTURE_DIR / dest_name
+        dest.write_text(json.dumps(out, indent=2))
+        print(f"  wrote {dest} ({len(rows)} rows)")
+
+
 def main() -> int:
     print("Refreshing Spark fixtures (Q1 → Q2 extension)")
     print()
@@ -218,6 +283,10 @@ def main() -> int:
 
     print("2. eth_avalanche + l2 blocks")
     refresh_blocks()
+    print()
+
+    print("3. subproxy USDS + sUSDS timeseries")
+    refresh_subproxy_timeseries()
     print()
 
     print("Done.")

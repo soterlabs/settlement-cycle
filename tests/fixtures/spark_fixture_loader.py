@@ -73,6 +73,8 @@ def load_spark_and_fixtures(repo: Path):
         "debt": json.loads((fdir / "debt_timeseries.json").read_text()),
         "cat_b": json.loads((fdir / "cat_b_cum_balance.json").read_text()),
         "cat_e": json.loads((fdir / "cat_e_cum_balance.json").read_text()),
+        "subproxy_usds":  json.loads((fdir / "subproxy_usds_timeseries.json").read_text()),
+        "subproxy_susds": json.loads((fdir / "subproxy_susds_timeseries.json").read_text()),
         "blocks_l2": json.loads((fdir / "l2_daily_eod_blocks.json").read_text()),
         "blocks_eth_ava": json.loads((fdir / "eth_avalanche_daily_eod_blocks.json").read_text()),
         # SSR comes from Grove's fixture (Sky-wide).
@@ -288,6 +290,23 @@ def build_spark_sources(
             df = df[["block_date", "daily_net", "cum_balance"]].sort_values("block_date").reset_index(drop=True)
         cat_e_by_token[v.token.address.value] = df
 
+    # SubProxy USDS / sUSDS routing — replaces the previous empty-df
+    # fallback that masked mid-period Sky governance allocations to the
+    # SubProxy. Pre-2026-06-09 the fallback was acceptable because
+    # ``config/spark.yaml`` listed the urn (legit $0); after correcting
+    # the address to the real SubProxy ``0x3300…f8c4``, the fallback was
+    # silently underpaying ``agent_rate`` by ~$23K cumulative Jan–May
+    # (~4% of the $555K headline). The captured timeseries below is the
+    # output of the canonical ``transfer_timeseries.sql`` Dune query
+    # (id 7432800) for ``(USDS, SubProxy)`` and ``(sUSDS, SubProxy)``.
+    eth_subproxy = spark.subproxy[Chain.ETHEREUM].value
+    subproxy_usds_df = _df_with_dates(
+        fixtures["subproxy_usds"]["rows"], "block_date",
+    )
+    subproxy_susds_df = _df_with_dates(
+        fixtures["subproxy_susds"]["rows"], "block_date",
+    )
+
     class _RoutedBalances(MockBalanceSource):
         def cumulative_balance_timeseries(
             self, chain, token, holder, start, pin_block, min_transfer_amount=None,
@@ -310,19 +329,12 @@ def build_spark_sources(
             df = cat_a_cum_by_token_holder.get((token, holder))
             if df is not None:
                 return df
-            # TODO(follow-up): the empty-df fallback is INCORRECT for the
-            # Spark Eth SubProxy after the 2026-06-09 config fix (urn
-            # 0x691a… → real SubProxy 0x3300…). The real SubProxy holds
-            # $30–37M USDS with monthly inflows/outflows; returning
-            # empty here masks those mid-period flows (the SoM anchor
-            # in get_subproxy_balance_timeseries pegs the opening
-            # balance but mid-period drift is dropped). See PRD §17.13
-            # "Spark SubProxy mid-period USDS flows masked by the
-            # fixture loader" for the proper fix: either capture
-            # subproxy USDS/sUSDS into this fixture, or route subproxy
-            # queries through live Dune. Time-weighted impact on
-            # agent_rate is ~$300/month max — small enough to defer,
-            # but the fixture is now lying.
+            # SubProxy (USDS + sUSDS on Ethereum).
+            if holder == eth_subproxy:
+                if token == USDS_ETH:
+                    return subproxy_usds_df
+                if token == SUSDS_ETH:
+                    return subproxy_susds_df
             return _empty_balance_df()
 
         def directed_inflow_timeseries(self, chain, token, from_addr, to_addr, start, pin_block):
