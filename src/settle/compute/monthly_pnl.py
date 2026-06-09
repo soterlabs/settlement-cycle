@@ -1931,12 +1931,11 @@ def compute_monthly_pnl(
         # address (Spark SubProxy was holding ~$36M USDS throughout 2026
         # that Dune-event reconstruction didn't see). Routed through
         # ``sources.position_balance`` so tests can inject deterministic
-        # values via the existing mock.
-        _balance_at_sub = (
-            sources.position_balance.balance_at
-            if sources.position_balance is not None
-            else None
-        )
+        # values; falls back to the registry so the anchor is active
+        # in production runs that don't pass an explicit Sources().
+        from ..normalize.registry import get_position_balance_source as _get_pb
+        _pb_src_sub = sources.position_balance or _get_pb()
+        _balance_at_sub = _pb_src_sub.balance_at
         _eth_som = (pin_blocks_som or {}).get(Chain.ETHEREUM)
         _log.info("  2b: subproxy USDS balance...")
         sub_usds = get_subproxy_balance_timeseries(
@@ -2821,14 +2820,16 @@ def compute_monthly_pnl(
                 # rebasing helper). Approximation: mid-period mints/burns
                 # priced at ``pps_eom`` — negligible vs slow-moving NAV.
                 # Routed through ``sources.position_balance`` so tests can
-                # inject deterministic values; the closed-form helper and
-                # the on-chain reconciliation in ``_shares_to_usd_inflow_timeseries``
-                # both consume it.
-                _balance_at = (
-                    sources.position_balance.balance_at
-                    if sources.position_balance is not None
-                    else None
+                # inject deterministic values; falls back to the registry
+                # so the closed-form helper (non-Dune chains, e.g. Monad)
+                # and the on-chain reconciliation in
+                # ``_shares_to_usd_inflow_timeseries`` both have a live
+                # ``balance_at`` callable in production runs.
+                from ..normalize.registry import (
+                    get_position_balance_source as _get_pb_b,
                 )
+                _pb_src_b = sources.position_balance or _get_pb_b()
+                _balance_at = _pb_src_b.balance_at
                 if venue.chain.value not in _DUNE_BLOCK_CHAINS:
                     from ..normalize.positions import _erc4626_shares_weighted_inflow
                     inflow_ts = _erc4626_shares_weighted_inflow(

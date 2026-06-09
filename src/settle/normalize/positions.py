@@ -1459,8 +1459,12 @@ def _shares_to_usd_inflow_timeseries(
     at the exact pin-block boundary — observed for Grove E23 on 2026-05-31:
     a 2,919,004 steakUSDC mint at the May-EoD pin block was missing from
     Dune but visible via RPC ``balanceOf``) is attributed as a synthetic
-    inflow row at ``period.end`` priced at ``pps_eom``. Emits a warning so
-    the reconciliation kick-in is visible in logs.
+    inflow row at ``period.end`` priced at ``price_at_block(pin_block)`` —
+    the same block used to read the on-chain Δshares. A discrepancy whose
+    true economic event was mid-period (not at the pin-block boundary)
+    will be mispriced by the (EoM − event-date) pps drift; the warning
+    log captures the discrepancy magnitude so reviewers can spot-check.
+    Emits a warning so the reconciliation kick-in is visible in logs.
 
     Returns DataFrame ``[block_date, daily_inflow, cum_inflow]``.
     """
@@ -1606,8 +1610,16 @@ def _shares_to_usd_inflow_timeseries(
 
     rows = []
     for d in sorted(by_date):
-        eod = datetime.combine(d, time.max, tzinfo=timezone.utc)
-        block = block_resolver.block_at_or_before(venue.chain.value, eod)
+        # The synthetic reconciliation row on ``period.end`` (when the
+        # EoM anchor fires) is priced at the canonical ``pin_block``, not
+        # the resolver's EoD lookup — this matches the block at which the
+        # on-chain Δshares was computed and dodges any drift between the
+        # resolver's "EoD" definition and the orchestrator-supplied pin.
+        if d == period.end:
+            block = pin_block
+        else:
+            eod = datetime.combine(d, time.max, tzinfo=timezone.utc)
+            block = block_resolver.block_at_or_before(venue.chain.value, eod)
         usd_per_share = price_at_block(block)
         rows.append({
             "block_date": d,

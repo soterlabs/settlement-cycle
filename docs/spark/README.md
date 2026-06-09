@@ -6,13 +6,14 @@ Spark is a prime agent in the Sky ecosystem.
 
 | Contract | Address | Role |
 |----------|---------|------|
-| ALM Proxy | TBD | |
-| Subproxy | TBD | Holds idle USDS (earns agent rate) |
+| ALM Proxy | `0x1601843c5e9bc251a3272907010afa41fa18347e` | Cross-chain hub for Spark allocations |
+| Urn | `0x691a6c29e9e96dd897718305427ad5d534db16ba` | Borrower position in the Vat (ALLOCATOR-SPARK-A); records ilk debt. Holds $0. |
+| SubProxy | `0x3300f198988e4C9C63F75dF86De36421f06af8c4` | Holds idle USDS (~$30–37M throughout 2026) earning SSR+agent_rate. Distinct from the urn — confirmed on-chain. |
 
 ## Ilk
 
-- **Name:** TBD
-- **bytes32:** TBD
+- **Name:** `ALLOCATOR-SPARK-A`
+- **bytes32:** `0x414c4c4f4341544f522d535041524b2d41000000000000000000000000000000`
 
 ## Dune query parameters
 
@@ -20,12 +21,12 @@ All queries are shared parameterized templates in [`queries/`](../../queries/) (
 
 | Parameter | Value |
 |-----------|-------|
-| `ilk_bytes32` | TBD |
-| `subproxy_address` | TBD |
-| `alm_proxy_address` | TBD |
-| `venue_token_address` | TBD |
-| `start_date` | TBD |
-| `calendar_start_date` | TBD |
+| `ilk_bytes32` | `0x414c4c4f4341544f522d535041524b2d41000000000000000000000000000000` |
+| `subproxy_address` | `0x3300f198988e4C9C63F75dF86De36421f06af8c4` |
+| `alm_proxy_address` | `0x1601843c5e9bc251a3272907010afa41fa18347e` |
+| `venue_token_address` | per-venue (see `config/spark.yaml`) |
+| `start_date` | 2024-11-18 (first frob) |
+| `calendar_start_date` | per settlement period |
 
 ## PnL summary
 

@@ -117,6 +117,39 @@ def get_subproxy_balance_timeseries(
             if not df.empty:
                 df = df[df["block_date"] != prime.start_date]
             df = pd.concat([seed_row, df], ignore_index=True)
+
+        # EoM cross-check. The SoM anchor handles pre-period funding, but
+        # a mid-period out-of-band transfer Dune missed would not show up
+        # in ``seed`` (transfer happened after SoM, so SoM events still
+        # match SoM on-chain). Read on-chain EoM and compare against the
+        # tracked EoM (after the seed shift). If they diverge, warn — the
+        # operator needs to investigate whether to add a manual reconciling
+        # entry.
+        eom_block = _resolve_pin(period, chain)
+        on_chain_eom = _Dec(balance_at(
+            chain.value, token.address.value,
+            prime.subproxy[chain].value, eom_block,
+        )) / scale
+        if df.empty:
+            tracked_eom = _Dec("0")
+        else:
+            mask_eom = df["block_date"] <= period.end
+            tracked_eom = (
+                _Dec(str(df.loc[mask_eom, "cum_balance"].iloc[-1]))
+                if mask_eom.any() else _Dec("0")
+            )
+        eom_drift = on_chain_eom - tracked_eom
+        if abs(eom_drift) > _Dec("0.01"):
+            _logging.getLogger(__name__).warning(
+                "get_subproxy_balance_timeseries: EoM cross-check found "
+                "%.6f-token drift between tracked cum_balance (%.6f, "
+                "post-SoM-anchor) and on-chain balanceOf (%.6f) at "
+                "subproxy %s on %s. Likely cause: a mid-period transfer "
+                "Dune tokens.transfers did not surface. The SoM anchor "
+                "does NOT catch this — settlement output may be off.",
+                float(eom_drift), float(tracked_eom), float(on_chain_eom),
+                prime.subproxy[chain].hex, token.symbol,
+            )
     return df
 
 
