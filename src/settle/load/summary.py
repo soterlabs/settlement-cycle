@@ -184,20 +184,10 @@ def render_summary(prov: dict) -> str:
                 f"{_usd(v.get('value_som'))} | "
                 f"{_usd(v.get('value_eom'))} |"
             )
-        # Aggregate note — keeps the visible Per-venue ``revenue`` column
-        # reconcilable against the ``prime_agent_revenue`` headline above.
-        # Without this, a reader summing the Per-venue table would find a
-        # gap equal to the suppressed VSR liability with no in-document
-        # explanation.
-        agg_actual = sum(
-            (_D(v.get("actual_revenue")) for v in pnl_hidden), Decimal("0"),
-        )
         lines.append("")
         lines.append(
-            f"> Aggregated `actual_revenue` from the venues above "
-            f"(included in `prime_agent_revenue` at the prime level, not "
-            f"shown per-vault): **{_usd(agg_actual)}**. Per-vault values "
-            f"remain in `provenance.json` under `venue_breakdown[]`."
+            f"> Position values above are **excluded from `prime_agent_revenue`**. "
+            f"Per-vault values remain in `provenance.json` under `venue_breakdown[]`."
         )
         lines.append("")
 
