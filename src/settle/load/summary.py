@@ -99,26 +99,29 @@ def render_summary(prov: dict) -> str:
     r = prov.get("results", {})
     # Every headline row carries an explicit ``(gross)`` / ``(net)``
     # suffix so a reader doesn't have to guess what flow each value
-    # represents. Rule of thumb:
-    #   * ``(gross)`` = a one-way flow (yield earned, fee paid, claim
-    #     made) before any offset on the other side of the ledger
-    #   * ``(net)``   = a one-way flow after an intra-side credit
-    #     (currently only ``sky_revenue`` has this: it nets out
-    #     ``susds_spread_reimbursement`` + ``curve_susds_spread`` +
-    #     ``psm3_susds_spread`` against the BR claim)
-    # The PRIME's net P&L = ``prime_agent_total_revenue (gross)``
-    # − ``sky_revenue (net)``. The SKY's net P&L = ``sky_revenue (net)``
-    # − ``agent_rate (gross)`` − ``pol_agent_rate (gross)``
-    # − ``distribution_rewards (gross)``. These aren't pre-computed in
-    # the headline because the right framing varies by counterparty
-    # (e.g. SDE-heavy primes have additional sd_revenue redirected to
-    # Sky that's already inside ``sky_revenue (net)``).
+    # represents. ``(gross)`` = a one-way flow (yield earned, fee paid,
+    # claim made) before any offset. ``(net)`` = after the row's
+    # relevant offsets; the meaning is per-row:
+    #   * ``sky_revenue (net)``         = BR claim net of intra-Sky
+    #                                      spread reimbursements
+    #                                      (sUSDS / Curve / PSM3)
+    #   * ``prime_agent_revenue (net)`` = the prime's P&L — gross
+    #                                      total revenue minus what
+    #                                      Sky claims back as
+    #                                      ``sky_revenue (net)``
+    #                                      (= the legacy ``monthly_pnl``
+    #                                      field in provenance.json)
+    # Sky's net P&L isn't a row because the right framing varies by
+    # counterparty (SDE-heavy primes have sd_revenue redirected to Sky
+    # that's already inside ``sky_revenue (net)``). The legend below
+    # documents the formula.
     headline_rows = [
         ("prime_agent_revenue (gross)",        r.get("prime_agent_revenue")),
         ("agent_rate (gross)",                 r.get("agent_rate")),
         ("distribution_rewards (gross)",       r.get("distribution_rewards")),
         ("prime_agent_total_revenue (gross)",  r.get("prime_agent_total_revenue")),
         ("sky_revenue (net)",                  r.get("sky_revenue")),
+        ("prime_agent_revenue (net)",          r.get("monthly_pnl")),
         ("sde_revenue (gross)",                r.get("sde_revenue")),
         ("susds_spread_reimbursement (gross)", r.get("susds_spread_reimbursement")),
         ("pol_agent_rate (gross)",             r.get("pol_agent_rate")),
@@ -130,10 +133,21 @@ def render_summary(prov: dict) -> str:
     lines.append("")
     lines.append(
         "Suffix legend: ``(gross)`` = one-way ledger entry, ``(net)`` = "
-        "after intra-side credits (today only ``sky_revenue`` carries this — "
-        "BR claim net of sUSDS/Curve/PSM3 spread reimbursements). The prime's "
-        "net P&L = ``prime_agent_total_revenue (gross)`` − ``sky_revenue (net)``; "
-        "Sky's net P&L = ``sky_revenue (net)`` − ``agent_rate (gross)`` "
+        "after the row's relevant offsets. Two rows carry ``(net)``: "
+        "``sky_revenue (net)`` is the BR claim net of sUSDS / Curve / "
+        "PSM3 spread reimbursements (intra-Sky credits); "
+        "``prime_agent_revenue (net)`` = ``prime_agent_total_revenue (gross)`` "
+        "− ``sky_revenue (net)`` (i.e. the legacy ``monthly_pnl``). "
+        "**For non-SDE primes (e.g. OBEX) this equals the prime's profit.** "
+        "**For SDE-heavy primes (e.g. Grove) ``sky_revenue (net)`` already "
+        "contains ``sde_revenue (gross)``** — that revenue was redirected "
+        "out of ``prime_agent_revenue (gross)`` and 100% to Sky, so "
+        "subtracting it once via ``sky_revenue (net)`` is correct; but "
+        "interpreting ``prime_agent_revenue (net)`` as the prime's true "
+        "profit overstates Sky's claim by ``sde_revenue (gross)``. For "
+        "those primes the prime's true profit is "
+        "``prime_agent_revenue (net) + sde_revenue (gross)``. Sky's net "
+        "P&L (not a row) = ``sky_revenue (net)`` − ``agent_rate (gross)`` "
         "− ``pol_agent_rate (gross)`` − ``distribution_rewards (gross)``."
     )
     lines.append("")
@@ -141,11 +155,11 @@ def render_summary(prov: dict) -> str:
     lines.append("|---|---:|")
     for label, val in headline_rows:
         # Skip zero rows for non-headline fields so the table stays tight.
-        # Always show the four primary fields (prime_agent_revenue, agent_rate,
-        # prime_agent_total_revenue, sky_revenue) even when zero.
+        # Always show the five primary fields even when zero.
         if label not in (
             "prime_agent_revenue (gross)", "agent_rate (gross)",
             "prime_agent_total_revenue (gross)", "sky_revenue (net)",
+            "prime_agent_revenue (net)",
         ) and _D(val) == 0:
             continue
         lines.append(f"| {label} | {_usd(val)} |")

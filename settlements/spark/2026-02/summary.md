@@ -4,7 +4,7 @@ Period: 2026-02-01 → 2026-02-28 (28 days)
 
 ## Headline
 
-Suffix legend: ``(gross)`` = one-way ledger entry, ``(net)`` = after intra-side credits (today only ``sky_revenue`` carries this — BR claim net of sUSDS/Curve/PSM3 spread reimbursements). The prime's net P&L = ``prime_agent_total_revenue (gross)`` − ``sky_revenue (net)``; Sky's net P&L = ``sky_revenue (net)`` − ``agent_rate (gross)`` − ``pol_agent_rate (gross)`` − ``distribution_rewards (gross)``.
+Suffix legend: ``(gross)`` = one-way ledger entry, ``(net)`` = after the row's relevant offsets. Two rows carry ``(net)``: ``sky_revenue (net)`` is the BR claim net of sUSDS / Curve / PSM3 spread reimbursements (intra-Sky credits); ``prime_agent_revenue (net)`` = ``prime_agent_total_revenue (gross)`` − ``sky_revenue (net)`` (i.e. the legacy ``monthly_pnl``). **For non-SDE primes (e.g. OBEX) this equals the prime's profit.** **For SDE-heavy primes (e.g. Grove) ``sky_revenue (net)`` already contains ``sde_revenue (gross)``** — that revenue was redirected out of ``prime_agent_revenue (gross)`` and 100% to Sky, so subtracting it once via ``sky_revenue (net)`` is correct; but interpreting ``prime_agent_revenue (net)`` as the prime's true profit overstates Sky's claim by ``sde_revenue (gross)``. For those primes the prime's true profit is ``prime_agent_revenue (net) + sde_revenue (gross)``. Sky's net P&L (not a row) = ``sky_revenue (net)`` − ``agent_rate (gross)`` − ``pol_agent_rate (gross)`` − ``distribution_rewards (gross)``.
 
 | Field | USD |
 |---|---:|
@@ -12,6 +12,7 @@ Suffix legend: ``(gross)`` = one-way ledger entry, ``(net)`` = after intra-side 
 | agent_rate (gross) | $114,973.49 |
 | prime_agent_total_revenue (gross) | $5,401,379.55 |
 | sky_revenue (net) | $7,905,200.85 |
+| prime_agent_revenue (net) | -$2,503,821.29 |
 | sde_revenue (gross) | $34,251.06 |
 | susds_spread_reimbursement (gross) | $160,996.25 |
 | pol_agent_rate (gross) | $90,940.64 |
