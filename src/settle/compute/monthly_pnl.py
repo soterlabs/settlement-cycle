@@ -613,10 +613,23 @@ def _susds_shares_to_principal(
     Each day's signed share-flow is priced at that day's EoD pps (one
     ``convertToAssets`` RPC per active day). This is the deposit-time value,
     NOT the current value (``shares × current_pps``, which double-counts SSR).
+
+    **SoM-anchor seed.** ``get_subproxy_balance_timeseries`` injects
+    pre-period funding (Dune-invisible transfers) as a ``cum_balance``
+    offset with ``daily_net = 0`` — the same failure mode that produced
+    Spark's ``agent_rate = $0`` (PRD §17.12). That base offset lives only
+    in ``cum_balance``, so a rebuild from ``Σ daily_net × pps`` would drop
+    it (under-accruing agent_rate) — and a seed-only series short-circuited
+    entirely, leaving raw SHARES consumed as USDS at 1:1. The base is
+    detected as ``cum[0] − daily_net[0]`` and priced at the first row's
+    date pps, consistent with the seed's documented "present since
+    ``prime.start_date``" assumption.
     """
     if sub_susds_shares is None or sub_susds_shares.empty:
         return sub_susds_shares
-    if not (sub_susds_shares["daily_net"] != 0).any():
+    first = sub_susds_shares.iloc[0]
+    base_shares = _to_decimal(first["cum_balance"]) - _to_decimal(first["daily_net"])
+    if base_shares == 0 and not (sub_susds_shares["daily_net"] != 0).any():
         return sub_susds_shares  # no activity → all-zero is the same in shares/USDS
 
     # The vault address is hardcoded to Ethereum's sUSDS. Multi-chain sUSDS
@@ -651,6 +664,11 @@ def _susds_shares_to_principal(
     daily_usds: list[Decimal] = []
     cum_usds: list[Decimal] = []
     running = Decimal("0")
+    if base_shares != 0:
+        # Seed the running principal with the SoM-anchor base, priced at
+        # the first row's date (the assumed funding date). Lives in
+        # cum_balance only — mirrors the input frame's seed shape.
+        running = base_shares * _pps_for_day(first["block_date"])
     for _, row in out.iterrows():
         shares_flow = row["daily_net"]
         if shares_flow == 0:

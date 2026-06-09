@@ -126,6 +126,50 @@ def test_susds_principal_rejects_non_ethereum_chain():
         )
 
 
+def test_susds_principal_seed_only_series_is_converted_not_passed_through():
+    """SoM-anchor seed with NO in-period flows: the old short-circuit
+    returned the frame unchanged, leaving raw SHARES consumed as USDS 1:1
+    (mispriced by the sUSDS pps). The seed must be priced like any other
+    cost-basis contribution."""
+    seed = Decimal("1000")  # shares, injected by get_subproxy_balance_timeseries
+    df = pd.DataFrame({
+        "block_date": [date(2024, 11, 18)],
+        "daily_net": [Decimal("0")],
+        "cum_balance": [seed],
+    })
+    c2a = MockConvertToAssetsSource(raw_assets=int(Decimal("1.05") * 10**18))
+    out = _susds_shares_to_principal(
+        df,
+        sources=Sources(convert_to_assets=c2a),
+        block_resolver=MockBlockResolver(default=24000000),
+        chain=Chain.ETHEREUM,
+    )
+    assert out["cum_balance"].iloc[0] == Decimal("1050")  # 1000 × 1.05
+    assert out["daily_net"].iloc[0] == Decimal("0")       # seed shape preserved
+    assert len(c2a.calls) == 1
+
+
+def test_susds_principal_seed_survives_rebuild_with_flows():
+    """Seed + in-period flows: the rebuild from Σ daily_net × pps must keep
+    the seed in cum_balance (the agent-rate base), not silently drop it."""
+    df = pd.DataFrame({
+        "block_date": [date(2024, 11, 18), date(2026, 3, 10)],
+        "daily_net": [Decimal("0"), Decimal("100")],
+        "cum_balance": [Decimal("1000"), Decimal("1100")],  # 1000 = seed
+    })
+    c2a = MockConvertToAssetsSource(raw_assets=int(Decimal("1.05") * 10**18))
+    out = _susds_shares_to_principal(
+        df,
+        sources=Sources(convert_to_assets=c2a),
+        block_resolver=MockBlockResolver(default=24000000),
+        chain=Chain.ETHEREUM,
+    )
+    # cum = seed×pps + flow×pps = 1050 + 105.
+    assert out["cum_balance"].iloc[0] == Decimal("1050")
+    assert out["cum_balance"].iloc[1] == Decimal("1155")
+    assert out["daily_net"].iloc[1] == Decimal("105")
+
+
 # ----------------------------------------------------------------------------
 # get_psm_usds_timeseries
 # ----------------------------------------------------------------------------
