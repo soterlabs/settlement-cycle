@@ -1,58 +1,58 @@
 {
-  "_about": "OBEX Dune-oracle results from reference/obex_monthly_pnl.sql, refreshed via Dune MCP on 2026-06-09 (query 7683158, v3). Two methodology fixes vs the original 2026-04-27 capture: (1) the debt sum now UNIONs vat.frob + vat.grab (ALLOCATOR-OBEX-A has duty=0, rate ≡ 1, so the entire stability-fee accrual flows through grab); (2) agent_demand no longer subtracts cum_sub_usds — subproxy USDS is treasury/risk capital drawn from Sky's ilk, so BR accrues on it and the agent rate is paid on a separate ledger flow. Together these align the oracle with the settlement-cycle pipeline's methodology (docs/METHODOLOGY.md §3).",
-  "_oracle_query_id": 7683158,
+  "_about": "OBEX Dune-oracle results from reference/obex_monthly_pnl.sql, refreshed via Dune MCP on 2026-06-09 (query 7683607, v4). Three methodology fixes vs the original 2026-04-27 capture: (1) the debt sum now UNIONs vat.frob + vat.grab (ALLOCATOR-OBEX-A has duty=0, rate ≡ 1, so the entire stability-fee accrual flows through grab); (2) agent_demand no longer subtracts cum_sub_usds — subproxy USDS is treasury/risk capital, BR accrues on it; (3) BR / agent rate APYs now read SSR live from sUSDS file() traces instead of a hardcoded CASE ladder (replaces the stale ladder that caused the 2026-05 outlier). After these three fixes the oracle matches the pipeline to the penny on sky_revenue and agent_rate across Jan-May 2026.",
+  "_oracle_query_id": 7683607,
 
   "by_month": {
     "2025-11": {
       "days_pnl": 13, "days_rate": 14, "agent_demand": 170000000,
-      "prime_agent_revenue": 220235.41668704897, "agent_rate": 36997.138561452484,
-      "obex_revenue_total": 257232.55524850145, "sky_revenue": 209383.98146557622,
-      "monthly_pnl": 47848.57378292523
+      "prime_agent_revenue": 220235.41668704897, "agent_rate": 37066.380382577256,
+      "obex_revenue_total": 257301.79706962622, "sky_revenue": 209959.2666724992,
+      "monthly_pnl": 47342.53039712703
     },
     "2025-12": {
       "days_pnl": 31, "days_rate": 31, "agent_demand": 470000000,
-      "prime_agent_revenue": 1263359.2397663593, "agent_rate": 75589.2180182003,
-      "obex_revenue_total": 1338948.4577845596, "sky_revenue": 1277628.554344101,
-      "monthly_pnl": 61319.90344045847
+      "prime_agent_revenue": 1263359.2397663593, "agent_rate": 75730.39600035436,
+      "obex_revenue_total": 1339089.6357667136, "sky_revenue": 1281124.369068571,
+      "monthly_pnl": 57965.26669814275
     },
     "2026-01": {
       "days_pnl": 31, "days_rate": 31, "agent_demand": 600000000,
-      "prime_agent_revenue": 2450905.482421994, "agent_rate": 73383.32778829074,
-      "obex_revenue_total": 2524288.810210285, "sky_revenue": 2105180.210023593,
-      "monthly_pnl": 419108.6001866916
+      "prime_agent_revenue": 2450905.482421994, "agent_rate": 73520.27493991621,
+      "obex_revenue_total": 2524425.7573619103, "sky_revenue": 2110933.271103733,
+      "monthly_pnl": 413492.4862581771
     },
     "2026-02": {
       "days_pnl": 28, "days_rate": 28, "agent_demand": 601768819,
-      "prime_agent_revenue": 1996987.1164251566, "agent_rate": 67627.95894737547,
-      "obex_revenue_total": 2064615.075372532, "sky_revenue": 1943428.3267261386,
-      "monthly_pnl": 121186.74864639342
+      "prime_agent_revenue": 1996987.1164251566, "agent_rate": 67754.16549356547,
+      "obex_revenue_total": 2064741.281918722, "sky_revenue": 1948739.3503692904,
+      "monthly_pnl": 116001.93154943152
     },
     "2026-03": {
       "days_pnl": 31, "days_rate": 31, "agent_demand": 605813016,
-      "prime_agent_revenue": 2007260.1364759207, "agent_rate": 71927.42694544284,
-      "obex_revenue_total": 2079187.5634213635, "sky_revenue": 2068228.0000018233,
-      "monthly_pnl": 10959.56341954018
+      "prime_agent_revenue": 2007260.1364759207, "agent_rate": 72061.46576037808,
+      "obex_revenue_total": 2079321.6022362988, "sky_revenue": 2073865.9258412875,
+      "monthly_pnl": 5455.676395011367
     },
     "2026-04": {
       "days_pnl": 30, "days_rate": 30, "agent_demand": 607888664,
-      "prime_agent_revenue": 2222924.1945779324, "agent_rate": 68744.1101483684,
-      "obex_revenue_total": 2291668.3047263008, "sky_revenue": 1977854.873847782,
-      "monthly_pnl": 313813.43087851885
+      "prime_agent_revenue": 2222924.1945779324, "agent_rate": 68358.24765013311,
+      "obex_revenue_total": 2291282.4422280653, "sky_revenue": 1968813.074971972,
+      "monthly_pnl": 322469.3672560933
     },
     "2026-05": {
       "days_pnl": 31, "days_rate": 31, "agent_demand": 609858163,
-      "prime_agent_revenue": 2378041.686389327, "agent_rate": 71379.18462138827,
-      "obex_revenue_total": 2449420.871010715, "sky_revenue": 2054348.3389139657,
-      "monthly_pnl": 395072.5320967494
+      "prime_agent_revenue": 2378041.686389327, "agent_rate": 69563.00574816565,
+      "obex_revenue_total": 2447604.692137493, "sky_revenue": 2005204.0725434572,
+      "monthly_pnl": 442400.61959403567
     }
   },
 
   "_phase_1_target_month": "2026-03",
   "_methodology_notes": [
     "Oracle uses prices.day for syrupUSDC valuation (DEX VWAP). Our pipeline uses convertToAssets (canonical NAV) — accounts for the documented ~$220K prime_agent_revenue diff.",
-    "Oracle includes vat.grab events alongside vat.frob in the cum_debt sum (refreshed 2026-06-09).",
-    "Oracle's agent_demand no longer subtracts cum_sub_usds — matches the pipeline's utilised formula, which keeps subproxy USDS in the BR base (subproxy is treasury/risk capital drawn from Sky's ilk; agent rate is paid as a separate ledger flow rather than netted into the BR base).",
-    "Residual ~0.4% diff on sky_revenue is from the oracle's hardcoded SSR step ladder vs the pipeline's live SSR feed around step-change boundaries (e.g., 2026-03-09).",
+    "Oracle includes vat.grab events alongside vat.frob in the cum_debt sum (refreshed 2026-06-09 v2).",
+    "Oracle's agent_demand no longer subtracts cum_sub_usds — matches the pipeline's utilised formula (refreshed v3).",
+    "Oracle reads SSR live from sUSDS file() traces (refreshed v4). Closes the stale-ladder gap that caused the 2026-05 outlier; oracle and pipeline now match to the penny on sky_revenue + agent_rate across Jan-May 2026.",
     "Both pipelines use APY with per-second compounding (POWER((1 + apy), 1/365) - 1)."
   ]
 }

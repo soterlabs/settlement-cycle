@@ -17,21 +17,16 @@ Two test paths share the same fixture-driven setup:
 Acceptance from PRD §16: components match within **documented methodology
 bands**. The test asserts:
 
-* ``agent_rate``                  within ±0.5%         (SSR step-timing: oracle's
-                                                         hardcoded ladder vs pipeline's
-                                                         live SSR feed diverge slightly
-                                                         around step-change days)
-* ``sky_revenue``                 within ±0.5%         (same SSR step-timing as above —
-                                                         BR is SSR + 30bps so the same
-                                                         drift applies)
+* ``agent_rate``                  matches < 0.01%      (same SSR feed, same APY formula)
+* ``sky_revenue``                 matches < 0.01%      (same SSR feed, same APY formula)
 * ``prime_agent_revenue``         +8–13% vs oracle     (price source: oracle uses
                                                          ``prices.day`` DEX VWAP; our
                                                          pipeline uses canonical
                                                          ``convertToAssets``. Measured
                                                          +10.97% on 2026-04-27.)
 
-The oracle SQL (``reference/obex_monthly_pnl.sql``) was refreshed twice on
-2026-06-09 to align with the settlement-cycle pipeline's methodology:
+The oracle SQL (``reference/obex_monthly_pnl.sql``) was refreshed three times
+on 2026-06-09 to align with the settlement-cycle pipeline's methodology:
   v2 (query 7682762): added ``vat.grab`` events alongside ``vat.frob`` in the
     debt-events sum — ALLOCATOR-OBEX-A has ``duty = 0`` (``jug.drip`` dormant,
     ``rate ≡ 1``) so the entire stability-fee accrual flows through ``grab``.
@@ -40,6 +35,12 @@ The oracle SQL (``reference/obex_monthly_pnl.sql``) was refreshed twice on
     ilk, so BR accrues on it. The agent rate (SSR + 20bps) is paid on a
     separate ledger flow rather than netted into the BR base, matching
     ``docs/METHODOLOGY.md §3``.
+  v4 (query 7683607): replaced the hardcoded SSR step-ladder with a live
+    ``file(bytes32("ssr"), uint)`` feed on the sUSDS contract (mirrors
+    ``src/settle/queries/ssr_history.sql``). The hardcoded ladder went stale
+    every time SSR moved; the live feed picks up future step changes
+    automatically. After v4, oracle and pipeline match to the penny on
+    ``sky_revenue`` and ``agent_rate``.
 """
 
 from __future__ import annotations
@@ -173,19 +174,14 @@ def test_against_oracle_replay(config_dir: Path):
     expected_agent = Decimal(str(expected["agent_rate"]))
     expected_prime = Decimal(str(expected["prime_agent_revenue"]))
 
-    # --- Agent rate: close to but not exactly matching the oracle. Oracle
-    # uses a hardcoded SSR step ladder (CASE on block_date) for the agent
-    # APY; pipeline reads SSR daily from the on-chain rates feed. The two
-    # diverge slightly around step-change boundaries (e.g., 2026-03-09).
-    # Measured +0.19% on 2026-06-09. Acceptance band: ±0.5%.
-    assert result.agent_rate == pytest.approx(expected_agent, rel=Decimal("0.005")), \
+    # --- Agent rate + sky_revenue: after the v4 oracle refresh (live SSR
+    # feed), oracle and pipeline use identical inputs (frob+grab debt sum,
+    # no subproxy subtraction, dynamic SSR per day). Match within 0.01%
+    # is the genuine tight regression check — any drift means a real bug
+    # or a methodology change worth investigating.
+    assert result.agent_rate == pytest.approx(expected_agent, rel=Decimal("0.0001")), \
         f"agent_rate {result.agent_rate} vs oracle {expected_agent}"
-
-    # --- sky_revenue: after the v3 oracle refresh (2026-06-09) the oracle's
-    # ``agent_demand`` matches the pipeline's ``utilised`` formula (frob+grab
-    # debt sum, no subproxy subtraction). The residual ~0.4% diff is the same
-    # SSR step-timing drift that affects agent_rate. Acceptance band: ±0.5%.
-    assert result.sky_revenue == pytest.approx(expected_sky, rel=Decimal("0.005")), \
+    assert result.sky_revenue == pytest.approx(expected_sky, rel=Decimal("0.0001")), \
         f"sky_revenue {result.sky_revenue} vs oracle {expected_sky}"
 
     # --- prime_revenue: documented methodology gap on the price source.
