@@ -6,9 +6,9 @@ Period: 2026-05-01 → 2026-05-31 (31 days)
 
 | Field | USD |
 |---|---:|
-| prime_agent_revenue | $6,635,036.07 |
-| agent_rate | $68,216.96 |
-| prime_agent_total_revenue | $6,703,253.03 |
+| prime_agent_revenue | $3,635,291.95 |
+| agent_rate | $71,960.60 |
+| prime_agent_total_revenue | $3,707,252.55 |
 | sky_revenue (net) | $8,588,504.48 |
 | sde_revenue | $5,242,531.29 |
 | sky_revenue_gross | $9,534,049.06 |
@@ -38,7 +38,7 @@ Period: 2026-05-01 → 2026-05-31 (31 days)
 | E20 | Janus Henderson Anemoy AAA CLO (JAAA-avalanche) | $258,061,227.21 | $259,054,698.77 | $0.00 | $993,471.56 | $993,471.56 | $0.00 | 0% | $0.00 |
 | E21 | Galaxy Arch CLO Token (GACLO-1) | $49,900,000.00 | $46,308,344.52 | $0.00 | $389,109.90 | $389,109.90 | $0.00 | 0% | $0.00 |
 | E22 | Anemoy Tokenized Apollo Diversified Credit Fund (ACRDX) | $50,865,822.22 | $32,739,638.94 | -$18,077,669.47 | -$48,513.80 | -$48,513.80 | $-0.00 | 0% | $0.00 |
-| E23 | Steakhouse Prime Instant (Base, Morpho V2) | $67,839,910.01 | $103,110,534.95 | $32,001,547.75 | $3,269,077.19 | $3,269,077.19 | $0.00 | 0% | $0.00 |
+| E23 | Steakhouse Prime Instant (Base, Morpho V2) | $67,839,910.01 | $103,110,534.95 | $35,001,291.88 | $269,333.06 | $269,333.06 | $0.00 | 0% | $0.00 |
 | E24 | Steakhouse High Yield PYUSD (Morpho 4626) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E26 | PYUSD raw (ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E27 | USDC raw on Base (ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |

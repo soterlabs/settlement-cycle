@@ -1925,13 +1925,28 @@ def compute_monthly_pnl(
     _log.info("  2a: debt timeseries...")
     debt = get_debt_timeseries(prime, period, source=sources.debt, block_resolver=resolver)
     if not sky_only:
+        # ``som_block`` + ``balance_at`` enable the on-chain anchor in
+        # ``get_subproxy_balance_timeseries`` — catches pre-period funding
+        # not surfaced by Dune ``tokens.transfers`` for the SubProxy
+        # address (Spark SubProxy was holding ~$36M USDS throughout 2026
+        # that Dune-event reconstruction didn't see). Routed through
+        # ``sources.position_balance`` so tests can inject deterministic
+        # values via the existing mock.
+        _balance_at_sub = (
+            sources.position_balance.balance_at
+            if sources.position_balance is not None
+            else None
+        )
+        _eth_som = (pin_blocks_som or {}).get(Chain.ETHEREUM)
         _log.info("  2b: subproxy USDS balance...")
         sub_usds = get_subproxy_balance_timeseries(
             prime, Chain.ETHEREUM, USDS_ETHEREUM, period, source=sources.balance,
+            som_block=_eth_som, balance_at=_balance_at_sub,
         )
         _log.info("  2c: subproxy sUSDS shares...")
         sub_susds_shares = get_subproxy_balance_timeseries(
             prime, Chain.ETHEREUM, sUSDS_ETHEREUM, period, source=sources.balance,
+            som_block=_eth_som, balance_at=_balance_at_sub,
         )
         # Convert sUSDS shares → USDS-denominated cost-basis principal:
         # ``principal = Σ daily_net_shares × pps_at_that_day's_eod_block``. This is
@@ -2805,24 +2820,36 @@ def compute_monthly_pnl(
                 # + ``convertToAssets`` at SoM/EoM (same shape as the Cat C
                 # rebasing helper). Approximation: mid-period mints/burns
                 # priced at ``pps_eom`` — negligible vs slow-moving NAV.
+                # Routed through ``sources.position_balance`` so tests can
+                # inject deterministic values; the closed-form helper and
+                # the on-chain reconciliation in ``_shares_to_usd_inflow_timeseries``
+                # both consume it.
+                _balance_at = (
+                    sources.position_balance.balance_at
+                    if sources.position_balance is not None
+                    else None
+                )
                 if venue.chain.value not in _DUNE_BLOCK_CHAINS:
                     from ..normalize.positions import _erc4626_shares_weighted_inflow
-                    from ..extract.rpc import balance_of as _bal_of
-                    from ..domain.primes import Address as _Addr_b, Chain as _Chain_b
                     inflow_ts = _erc4626_shares_weighted_inflow(
                         prime, venue, som_block, eom_block,
                         period_end_date=period.end,
-                        balance_at=lambda c, t, h, b: _bal_of(
-                            _Chain_b(c), _Addr_b(t), _Addr_b(h), b,
-                        ),
+                        balance_at=_balance_at,
                         price_at_block=_cat_b_price,
                     )
                 else:
+                    # ``som_block`` + ``balance_at`` enable the EoM
+                    # share-balance reconciliation in
+                    # ``_shares_to_usd_inflow_timeseries`` — catches Dune
+                    # ``tokens.transfers`` indexing gaps at the pin-block
+                    # boundary (Grove E23 2026-05-31).
                     inflow_ts = _shares_to_usd_inflow_timeseries(
                         prime, venue, period,
                         balance_source=balance_src,
                         block_resolver=resolver,
                         price_at_block=_cat_b_price,
+                        som_block=som_block,
+                        balance_at=_balance_at,
                     )
         elif venue.pricing_category == PricingCategory.PAR_STABLE:
             # Cat A — raw par-stable holdings on the ALM. Source-tagged

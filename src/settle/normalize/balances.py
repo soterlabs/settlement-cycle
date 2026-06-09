@@ -42,14 +42,82 @@ def get_subproxy_balance_timeseries(
     period: Period,
     *,
     source: IBalanceSource | None = None,
+    som_block: int | None = None,
+    balance_at=None,
 ) -> pd.DataFrame:
-    """Daily net flow + running balance of `token` held by `prime.subproxy[chain]`."""
+    """Daily net flow + running balance of `token` held by `prime.subproxy[chain]`.
+
+    When ``som_block`` and ``balance_at`` are supplied, the series is
+    anchored against on-chain ``balanceOf`` at the SoM block. The
+    Dune-based ``cumulative_balance_timeseries`` reconstructs the balance
+    from transfer events starting at ``prime.start_date``, but the
+    SubProxy may hold a pre-existing balance from before that date
+    (Spark's SubProxy held ~$30–37M USDS throughout 2026 funded via Sky
+    governance allocations whose Transfer events Dune doesn't surface
+    for this address). The on-chain ``balanceOf`` is the gold standard;
+    the seed adjustment shifts the entire series to match.
+    """
+    from decimal import Decimal as _Dec
+    import logging as _logging
+
     if chain not in prime.subproxy:
         raise ValueError(f"Prime {prime.id!r} has no subproxy on {chain.value}")
     src = source if source is not None else get_balance_source()
-    return _cumulative(
+    df = _cumulative(
         src, chain, token, prime.subproxy[chain], prime.start_date, _resolve_pin(period, chain),
     )
+
+    if som_block is not None and balance_at is not None:
+        scale = _Dec(10 ** token.decimals)
+        on_chain_som_raw = balance_at(
+            chain.value, token.address.value,
+            prime.subproxy[chain].value, som_block,
+        )
+        on_chain_som = _Dec(on_chain_som_raw) / scale
+
+        # Tracked balance at the SoM cutover. Pick the last row with
+        # block_date < period.start (= the events-tracked balance going
+        # into the period).
+        if df.empty:
+            tracked_som = _Dec("0")
+        else:
+            mask = df["block_date"] < period.start
+            tracked_som = (
+                _Dec(str(df.loc[mask, "cum_balance"].iloc[-1]))
+                if mask.any() else _Dec("0")
+            )
+
+        seed = on_chain_som - tracked_som
+        if abs(seed) > _Dec("0.01"):
+            _logging.getLogger(__name__).warning(
+                "get_subproxy_balance_timeseries: SoM anchor found "
+                "%.6f-token gap between Dune-tracked cum_balance (%.6f) "
+                "and on-chain balanceOf (%.6f) at subproxy %s on %s. "
+                "Anchoring series to on-chain truth — most likely cause: "
+                "pre-period funding not captured by Dune tokens.transfers.",
+                float(seed), float(tracked_som), float(on_chain_som),
+                prime.subproxy[chain].hex, token.symbol,
+            )
+            # Shift all existing rows by the seed AND prepend a synthetic
+            # row at prime.start_date so ``cum_at_or_before`` returns the
+            # seed for dates with no events (the empty-series case). Use
+            # Decimal arithmetic — different balance sources return
+            # ``cum_balance`` as Decimal (Grove) or float (Spark fixture).
+            if not df.empty:
+                df = df.copy()
+                df["cum_balance"] = df["cum_balance"].apply(
+                    lambda v: _Dec(str(v)) + seed
+                )
+            seed_row = pd.DataFrame([{
+                "block_date": prime.start_date,
+                "daily_net":  _Dec("0"),
+                "cum_balance": seed,
+            }])
+            # Filter out any existing row at start_date to avoid duplication.
+            if not df.empty:
+                df = df[df["block_date"] != prime.start_date]
+            df = pd.concat([seed_row, df], ignore_index=True)
+    return df
 
 
 def get_alm_balance_timeseries(
