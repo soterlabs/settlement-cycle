@@ -311,6 +311,44 @@ Numerical impact: pinning this resolves the residual +$207K Σ Jan-Apr
 headline gap (down to ~$36K of pure upstream `actual_revenue` drift).
 Cross-ref **PRD §17.13 item 8**.
 
+#### G24. Borrow/agent rate composition — additive (`SSR + 30bps`, per RULES.md) or multiplicative (`(1+SSR)(1+0.003)−1`, as implemented)?
+
+The methodology docs and the code disagree on how the spread composes
+with SSR:
+
+- **Docs (additive):** RULES.md Rule 3/4 — `(1 + SSR + 0.30%)^(1/365) −
+  1`, with the rate table showing 6.25% → 6.55%; METHODOLOGY.md "Rate
+  conventions" — "Borrow rate = SSR + 30bps".
+- **Code (multiplicative, since PR #87):** `combine_apys` in
+  `src/settle/compute/_helpers.py` computes `(1+SSR)(1+0.003) − 1` for
+  BR and `(1+SSR)(1+0.002) − 1` for agent rate, deliberately adding the
+  `SSR × spread` cross-term.
+
+The difference is ~1.2 bps ≈ **$14K/month per $1.4B utilized**, charged
+*against* the prime, and it is baked into both `sky_revenue` and
+`agent_rate` for every prime every month. If Grove's workbook (and BA's)
+uses the documented additive form, this is a permanent, unexplained
+reconciliation residual.
+
+Notably, **PRD §17.13 item 8** reports an unexplained **+$244K Σ Jan–Apr
+`cof_total` over-attribution vs Grove's workbook** and lists two
+candidate causes — the multiplicative cross-term is a third candidate
+that analysis didn't consider (sign and magnitude are consistent:
+multiplicative charges the prime MORE).
+
+**Q for Grove / BA:**
+1. Which composition does the Grove workbook's CoF column use —
+   `SSR + 0.30%` straight, or `(1+SSR)(1+0.003) − 1`?
+2. Same question for the +20 bps agent rate on subproxy USDS/sUSDS.
+3. Whichever side is canonical, we'll align the other (code or
+   RULES.md/METHODOLOGY.md) and quantify the retro delta per month.
+
+Until resolved, the additive expectation is pinned as
+`xfail(strict=True)` in
+`tests/integration/test_compute_monthly_pnl.py::test_monthly_pnl_obex_synthetic_one_venue`
+so the divergence stays visible. Found in the 2026-06-09 three-round
+methodology/code review.
+
 ### P2 — sanity checks / confirmations
 
 #### G4. Sky Direct venue set re-confirmation
@@ -570,6 +608,51 @@ LayerZero withdrawal drag, see Q-S26).
 
 **Not a Spark/BA question** — this is purely on the MSC side. Closing
 via the resolved-pointer flow once the RPC swap lands.
+
+#### S29. Venue S24 (Curve sUSDS/USDT LP) — `kind: fixed` SDE routes the WHOLE pool's revenue to Sky, including the sUSDS leg's SSR appreciation
+
+The Atlas entry and our own config comments scope this SDE to "the USDT
+leg of this pool" — `sde_coin: USDT` drives only the **utilized
+exclusion** (the daily asset-value series counts the USDT reserve). But
+the SDE table entry is `kind: fixed`, so `sd_share = 1.0` and
+`sd_revenue = actual_revenue × 1.0` — and `actual_revenue` for S24 is
+the **whole-pool** MtM revenue via the Curve index-weighted inflow
+method, whose unit price reprices the sUSDS reserve through
+`convertToAssets`, i.e. it embeds the SSR appreciation of the sUSDS leg.
+
+Meanwhile the sUSDS leg stays in the BR base (`sky_savings_token: true`
+→ no utilized deduction) and Spark gets back only the 30 bps
+`curve_susds_spread` (~$6.2K/mo). Net effect per the published
+artifacts: Spark pays full BR on the sUSDS slice AND surrenders the SSR
+appreciation embedded in `sd_revenue`:
+
+| Month | sd_revenue routed 100% to Sky |
+|---|---|
+| Jan 2026 | $27.5K |
+| Feb 2026 | $34.3K |
+| Mar 2026 | $83.5K |
+| Apr 2026 | $115.8K |
+| May 2026 | $74.2K |
+| **Σ Jan–May** | **$335K** |
+
+The sUSDS-driven majority of that should be SSR-neutral under Rule 5 —
+as implemented, Sky effectively collects SSR twice on the sUSDS slice.
+
+**Q for Spark / Sky governance / BA:**
+1. Is the Atlas intent for venue-S24's SDE genuinely *whole-pool* fixed
+   (current implementation), or *USDT-leg-only* (what `sde_coin: USDT`
+   and the config comments suggest)?
+2. If USDT-leg-only: should `sd_revenue` be scoped by the same per-leg
+   split used for the utilized exclusion (USDT reserve share of pool
+   value), leaving the sUSDS leg's appreciation with the prime under
+   Rule 5?
+3. Retro impact — do Jan–May 2026 Spark settlements get re-issued, or
+   prospective-only?
+
+Cross-ref: `config/sky_direct_exposures.yaml` (S24 entry),
+`src/settle/compute/prime_agent_revenue.py` (`_sd_share_at_som`,
+fixed-kind path), RULES.md Rule 5. Found in the 2026-06-09 three-round
+methodology/code review.
 
 ### P1 — methodology unknowns affecting accuracy
 
