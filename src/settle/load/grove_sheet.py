@@ -32,11 +32,14 @@ Per-venue formula (mirrors Grove's PnL workbook layout):
                                                               compute)
     spread_reimb_v    = susds_spread_reimbursement
                         (non-zero only for sky_savings_token Cat B)
-    CoF_total         = sky_revenue + Σ spread_reimb_v − Σ sd_revenue_v
-                        (sky_revenue is net of spread reimb; add back to
-                         recover the gross-BR allocation base)
+    CoF_total         = sky_revenue + Σ spread_reimb_v + pol_agent_rate
+                        − Σ sd_revenue_v
+                        (sky_revenue is net of the spread reimb AND the
+                         20bps POL agent rate; add both back to recover
+                         the gross-BR allocation base)
     cof_alloc_v       = avg_value_v × weight_v / Σ_v(avg × weight) × CoF_total
     profit_to_sky_v   = cof_alloc_v + sd_revenue_v − spread_reimb_v
+                        − pol_agent_rate_v
     profit_to_grove_v = revenue_v − cof_alloc_v
 """
 
@@ -246,6 +249,11 @@ def compute_sheet_rows(
         _D(prov["results"].get("curve_susds_spread") or 0)
         + _D(prov["results"].get("psm3_susds_spread") or 0)
     )
+    # 20bps POL agent-rate (S32-style venues). ``sky_revenue`` is net of
+    # this too; without adding it back the gross-BR allocation base is
+    # understated (Mar 2026 Spark: $163,247 smeared pro-rata across all
+    # venues' cof_alloc) and the carrying venue never shows its −20bps.
+    pol_agent_rate_total = _D(prov["results"].get("pol_agent_rate") or 0)
 
     sde = load_sde_entries(prime_id, period_start)
     rows = prov["venue_breakdown"]
@@ -349,6 +357,11 @@ def compute_sheet_rows(
         else:
             deduction_avg = Decimal("0")
 
+        pol_agent_rate_v = _D(r.get("pol_agent_rate_usd") or 0)
+        if pol_agent_rate_v > 0:
+            note = (note + " " if note else "") + (
+                f"(−${float(pol_agent_rate_v):,.0f} 20bps POL agent rate to prime)"
+            )
         enriched.append({
             "venue_id":      r["venue_id"],
             "label":         r["label"],
@@ -362,6 +375,7 @@ def compute_sheet_rows(
             "revenue":       _D(r["revenue"]),
             "sd_revenue":    sd_revenue,
             "spread_reimb":  _D(r.get("susds_spread_reimbursement") or 0),
+            "pol_agent_rate": pol_agent_rate_v,
             "deduction_avg": deduction_avg,
             "hide_per_venue_pnl": _truthy(r.get("hide_per_venue_pnl")),
             "note":          note,
@@ -382,15 +396,18 @@ def compute_sheet_rows(
             "revenue":       Decimal("0"),
             "sd_revenue":    Decimal("0"),
             "spread_reimb":  aggregate_susds_spread,
+            "pol_agent_rate": Decimal("0"),
             "deduction_avg": Decimal("0"),
             "note":          "sky-revenue reduction (no CoF; computed outside venue loop)",
         })
 
     # CoF on Net_Subs = gross BR base minus SDE revenue. headline_sky is
-    # net of the sUSDS spread reimbursement; add it back to recover the
-    # gross-BR allocation base.
+    # net of the sUSDS spread reimbursement AND the 20bps POL agent rate;
+    # add both back to recover the gross-BR allocation base.
     total_sd_revenue = sum((v["sd_revenue"] for v in enriched), Decimal("0"))
-    cof_total = headline_sky + susds_spread_total - total_sd_revenue
+    cof_total = (
+        headline_sky + susds_spread_total + pol_agent_rate_total - total_sd_revenue
+    )
 
     total_weighted = sum(
         (v["avg_value"] * v["weight"] for v in enriched), Decimal("0"),
@@ -414,7 +431,10 @@ def compute_sheet_rows(
             )
         else:
             v["cof_alloc"] = Decimal("0")
-        v["profit_to_sky"]   = v["cof_alloc"] + v["sd_revenue"] - v["spread_reimb"]
+        v["profit_to_sky"]   = (
+            v["cof_alloc"] + v["sd_revenue"] - v["spread_reimb"]
+            - v.get("pol_agent_rate", Decimal("0"))
+        )
         v["profit_to_grove"] = v["revenue"] - v["cof_alloc"]
         utilized_est = (
             v["deduction_avg"] * effective_br_daily * Decimal(n_days)
@@ -460,6 +480,7 @@ def compute_sheet_rows(
         "cof_total":                cof_total,
         "sd_revenue_total":         total_sd_revenue,
         "susds_spread_reimb_total": susds_spread_total,
+        "pol_agent_rate_total":     pol_agent_rate_total,
         "sum_p2s":                  sum((v["profit_to_sky"]   for v in enriched), Decimal("0")),
         "sum_p2g":                  sum((v["profit_to_grove"] for v in enriched), Decimal("0")),
     }
