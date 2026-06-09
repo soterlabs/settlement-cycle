@@ -7,6 +7,15 @@
 --
 -- Output columns: block_date, daily_dart, cum_debt
 --
+-- ⚠ IMPORTANT — this query returns NORMALISED debt (Vat.ilks(ilk).Art, in
+-- wad units / 1e18). It does NOT multiply by the rate index. The Python
+-- normalize layer (normalize/debt.py) reads Vat.ilks(ilk).rate at the EoM
+-- pin block via RPC and scales all rows before returning to the compute layer.
+-- Do not use cum_debt from this query directly as the BR principal — always
+-- go through get_debt_timeseries() so the rate scaling is applied.
+-- For ALLOCATOR-BLOOM-A rate = 1.0 always; for ALLOCATOR-SPARK-A rate ≈ 1.045
+-- at early 2026 (jug.drip accumulation since 2024-11).
+--
 -- Detection: traces to the Vat (0x35D1...492B) with selector + ilk-match. Two
 -- selectors contribute to ``urns[ilk][u].art``:
 --
@@ -35,6 +44,7 @@
 -- xlsx "Subscriptions" methodology, which is frob-only. Confirm with
 -- the prime team before treating the grab-inclusive number as the
 -- canonical "Subscriptions" base for the cost-of-funds split.
+-- Tracked as QUESTIONS.md S28 (Spark team / P1).
 --
 -- DECIMAL(38,18) preserves int256/1e18 exactly up to ~9.2e18 USDS — DOUBLE
 -- (53-bit mantissa) loses precision at the ULP-of-1e26 level (~$11K per frob

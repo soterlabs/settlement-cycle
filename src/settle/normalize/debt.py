@@ -2,13 +2,32 @@
 
 from __future__ import annotations
 
+import logging
+from datetime import date, datetime, time, timedelta, timezone
+from decimal import Decimal
+
 import pandas as pd
 
 from ..domain.period import Period
-from ..domain.primes import Chain, Prime
+from ..domain.primes import Address, Chain, Prime
 from ..validation.schemas import assert_columns
-from .protocols import IDebtSource
+from .protocols import IBlockResolver, IDebtSource
 from .registry import get_debt_source
+
+_log = logging.getLogger(__name__)
+
+# MakerDAO Vat — same constant as snapshot/compute.py; duplicated here to
+# avoid a cross-layer import (normalize must not import from compute/snapshot).
+_VAT = Address.from_str("0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B")
+_RAY = Decimal(10 ** 27)
+
+
+def _art_at_or_before(df: pd.DataFrame, d: date) -> Decimal:
+    """Carry-forward of the raw normalised Art at or before ``d``."""
+    mask = df["block_date"] <= d
+    if not mask.any():
+        return Decimal("0")
+    return df.loc[mask, "cum_debt"].iloc[-1]
 
 
 def get_debt_timeseries(
@@ -16,12 +35,31 @@ def get_debt_timeseries(
     period: Period,
     *,
     source: IDebtSource | None = None,
+    block_resolver: IBlockResolver | None = None,
 ) -> pd.DataFrame:
-    """Daily cumulative ilk debt for `prime`, from `prime.start_date` through
-    ``period.pin_blocks[ethereum]``.
+    """Daily cumulative ilk debt for ``prime`` over ``period``.
 
-    Returns DataFrame[block_date, daily_dart, cum_debt]. Compute slices to
-    period bounds (SoM / EoM).
+    Returns DataFrame[block_date, daily_dart, cum_debt] where ``cum_debt``
+    is the actual outstanding USDS (``Vat.ilks(ilk).Art × rate``), not raw
+    normalised Art.
+
+    The Dune source returns ``Σ dart = Art`` (normalised, wad/1e18).  This
+    function multiplies by the Vat rate index so the BR principal is correct.
+
+    **Daily precision (preferred):** when ``block_resolver`` is supplied, the
+    function expands the sparse Dune series into one row per calendar day in
+    ``[period.start, period.end]``.  For each day it reads ``ilk.rate`` at
+    that day's EoD block via RPC (cached after first run — ~28 calls/month).
+    ``daily_dart`` is derived as ``cum_debt_d − cum_debt_{d-1}``, capturing
+    both frob/grab activity and the daily rate accrual on existing principal.
+
+    **Fallback (no resolver):** returns the raw sparse Dune frame unchanged.
+    ``cum_debt`` then carries normalised Art (wad units), NOT USDS — a ~4.5%
+    under-statement for ALLOCATOR-SPARK-A. This path is intended only for
+    tests / one-off queries where rate precision doesn't matter; a
+    ``logging.warning`` is emitted so production callers that forget to pass
+    a resolver notice. For ALLOCATOR-BLOOM-A ``rate = 1.0`` always, so the
+    distinction is moot.
     """
     if Chain.ETHEREUM not in period.pin_blocks:
         raise ValueError(
@@ -29,10 +67,47 @@ def get_debt_timeseries(
             f"chains={sorted(period.pin_blocks)}"
         )
     src = source if source is not None else get_debt_source()
-    df = src.debt_timeseries(
+    # Sparse Dune series: one row per day with frob/grab activity.
+    # cum_debt here = Art (normalised), NOT actual USDS yet.
+    sparse = src.debt_timeseries(
         ilk=prime.ilk_bytes32,
         start=prime.start_date,
         pin_block=period.pin_blocks[Chain.ETHEREUM],
     )
-    assert_columns(df, ["block_date", "daily_dart", "cum_debt"])
-    return df
+    assert_columns(sparse, ["block_date", "daily_dart", "cum_debt"])
+
+    from ..extract.rpc import ilk_rate as _ilk_rate
+
+    if block_resolver is not None:
+        # Daily expansion: one row per calendar day, rate read at EoD block.
+        rows = []
+        prev_cum: Decimal = Decimal("0")
+        current = period.start
+        while current <= period.end:
+            art_d = _art_at_or_before(sparse, current)
+            eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
+            block_d = block_resolver.block_at_or_before(Chain.ETHEREUM.value, eod)
+            rate_raw = _ilk_rate(Chain.ETHEREUM, _VAT, prime.ilk_bytes32, block_d)
+            cum_d = art_d * Decimal(rate_raw) / _RAY
+            rows.append({
+                "block_date": current,
+                "daily_dart": cum_d - prev_cum,
+                "cum_debt":   cum_d,
+            })
+            prev_cum = cum_d
+            current += timedelta(days=1)
+        return pd.DataFrame(rows)
+
+    # No block_resolver: return the raw normalised Art series without rate
+    # scaling. Callers that need accurate USDS values (e.g. compute_monthly_pnl)
+    # always supply a resolver; this path is used only in tests or one-off
+    # queries where rate precision is not required. Warn loudly so any
+    # production caller that forgets to pass a resolver sees the footgun.
+    _log.warning(
+        "get_debt_timeseries called without block_resolver for ilk=%s "
+        "prime=%s — returning raw normalised Art (wad), NOT rate-scaled "
+        "USDS. cum_debt will under-state actual debt by the accumulated "
+        "Vat ilk rate (~4.5%% for ALLOCATOR-SPARK-A by early 2026).",
+        prime.ilk_bytes32.hex(), prime.id,
+    )
+    return sparse

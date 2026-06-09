@@ -86,7 +86,7 @@ def _header_row(ws, row: int, ncols: int) -> None:
 # --------------------------------------------------------------------------
 
 def _read_provenance(cell: Path) -> dict:
-    with (cell / "provenance.json").open() as f:
+    with (cell / "provenance.json").open(encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -104,12 +104,12 @@ def _sheet_rows_as_strings(sheet_rows: list[dict]) -> list[dict]:
 
 
 def _read_prime_yaml(prime_id: str) -> dict:
-    with (_REPO / "config" / f"{prime_id}.yaml").open() as f:
+    with (_REPO / "config" / f"{prime_id}.yaml").open(encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
 def _read_sde(prime_id: str, period_start: date) -> list[dict]:
-    with (_REPO / "config" / "sky_direct_exposures.yaml").open() as f:
+    with (_REPO / "config" / "sky_direct_exposures.yaml").open(encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
     out: list[dict] = []
     for section in ("active", "historical"):
@@ -205,11 +205,11 @@ def _write_summary(ws, prov: dict, sheet_rows: list[dict]) -> None:
         )
         ws.append([])
 
-    # sUSDS spread — credited to prime_agent_revenue, NOT deducted from
-    # sky_revenue (Sky charges full BR on the underlying utilized; the
-    # 30 bps lands in Prime Revenue). Surfaced for Grove-side audit only.
+    # sUSDS spread — deducted from sky_revenue (Sky charges full BR on the
+    # underlying utilized then refunds 30 bps; net cost to prime = SSR × V).
+    # Surfaced here for audit visibility.
     if spread_reimb != 0:
-        ws.append(["sUSDS spread (Curve LP + PSM3) — credited to prime_agent_revenue", float(spread_reimb)])
+        ws.append(["sUSDS spread (Curve LP + PSM3) — deducted from sky_revenue", float(spread_reimb)])
         ws.cell(ws.max_row, 2).number_format = _USD
         ws.cell(ws.max_row, 1).font = _MUTED
         ws.append([])
@@ -406,14 +406,13 @@ def _write_sky_revenue(ws, prov: dict, sheet_rows: list[dict], prime_cfg: dict) 
         ws.row_dimensions[ws.max_row].height = 60
         ws.append([])
 
-    # sUSDS spread — Prime Revenue line, not a Sky deduction.
+    # sUSDS spread — Sky Revenue reduction (Cat B refund).
     if spread_reimb != 0:
         ws.append([
             "sUSDS spread (Curve LP + PSM3) — 30 bps × value × n_days "
-            "credited to prime_agent_revenue. Sky still charges full BR on "
-            "the underlying utilized; this row is the prime's offsetting "
-            "pickup on the share-price-appreciation accounting (SSR + BR + "
-            "30 bps nets to zero economically).",
+            "deducted from sky_revenue. Sky charges full BR on the "
+            "underlying utilized; this row is the offsetting refund to the "
+            "prime so SSR + BR + 30 bps nets to zero economically.",
             float(spread_reimb),
         ])
         ws.cell(ws.max_row, 2).number_format = _USD
@@ -697,9 +696,12 @@ def _write_debt(ws, prov: dict) -> None:
     ws.append([])
     ws.append([
         "cum_debt = Σ on-chain Vat dart from frob (0x76088703) + grab "
-        "(0x7bab3f40). utilized = cum_debt − Σ deductions. base_apy = "
-        "(1+SSR)(1+0.003)−1 (multiplicative). sub_apy applies on the first "
-        "cap_usd of utilized when the subsidy is active; excess pays base_apy."
+        "(0x7bab3f40), then scaled by Vat.ilks[ilk].rate_d / 1e27 read "
+        "at each day's EoD block — actual outstanding USDS per day, not "
+        "raw normalised Art. utilized = cum_debt − Σ deductions. base_apy "
+        "= (1+SSR)(1+0.003)−1 (multiplicative). sub_apy applies on the "
+        "first cap_usd of utilized when the subsidy is active; excess "
+        "pays base_apy."
     ])
     ws.cell(ws.max_row, 1).font = _MUTED
     ws.cell(ws.max_row, 1).alignment = Alignment(wrap_text=True, vertical="top")

@@ -573,6 +573,19 @@ via the resolved-pointer flow once the RPC swap lands.
 
 ### P1 — methodology unknowns affecting accuracy
 
+#### S28. `cum_debt` base — frob-only or frob+grab (Vat `Art`)?
+Settlement currently uses `cum_debt = (Σ Vat.frob.dart + Σ Vat.grab.dart) × Vat.ilks[ilk].rate / 1e27` as the BR principal — i.e. the canonical Vat `Art × rate`. This includes `grab` darts. In the Allocator system `grab` is used for stability-fee capitalisation, **not** liquidation: each call bumps the urn's normalised debt to record interest the vow has accrued (the paired `vat.suck` on the vow side, which our SQL doesn't watch, supplies the matching `dai[vow]` credit). Grove's xlsx "Subscriptions" column has historically been frob-only.
+
+For Spark, cumulative `grab` dart was ~$48M by 2026-04-30 (see `src/settle/queries/debt_timeseries.sql:43-46`). Treating grab-inclusive `Art` as the "Subscriptions" base means we charge BR on capital that Grove's frob-only tally would exclude.
+
+Question: which base is canonical for the CoF / Subscriptions split? Options:
+1. **Grab-inclusive (current implementation):** matches on-chain Vat state exactly; consistent with `Vat.ilks(ilk).Art`; consistent with Grove if Grove also moves to grab-inclusive.
+2. **Frob-only:** matches Grove's historical reporting; intentionally excludes capitalised interest from BR principal.
+
+If we land on #1 across all primes, no further action. If #2 for Grove and #1 for Spark, the SQL comment block at `debt_timeseries.sql:43` should make the asymmetry explicit and the methodology doc should call it out.
+
+Until confirmed, settlement runs include grab-inclusive `Art` — flagged inline in the SQL so anyone touching the query sees the open item.
+
 #### S4. Multi-chain ALM netting in sky_revenue
 `compute_sky_revenue` currently nets only **USDS** at the Eth ALM/subproxy
 + PSM USDS-equivalent. PYUSD/USDC/USDT held at Eth ALM are NOT netted

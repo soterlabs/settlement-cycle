@@ -192,10 +192,12 @@ Enabled per-venue via `lending_idle_usds: true` in the prime YAML config (Cat C 
 
 **`cum_debt`** — source of truth for total drawn USDS. Derived from the Sky Vat on-chain:
 
-- Scans all `frob` calls (selector `0x76088703`) to the Vat (`0x35D1…492B`) filtered to the prime's `ilk_bytes32`
+- Scans all `frob` (selector `0x76088703`) **and `grab`** (selector `0x7bab3f40`) calls to the Vat (`0x35D1…492B`) filtered to the prime's `ilk_bytes32`
 - Each call carries a signed `dart` (change in normalized debt, 1e18 units) at calldata offset 165
-- `cum_debt = Σ dart` from `prime.start_date` through the EoM pin block
-- Matches `Vat.ilks[ilk].Art × rate` — the total outstanding USDS drawn against that ilk
+- The Dune query returns `Σ dart = Vat.ilks[ilk].Art` (normalised debt, wad units) from `prime.start_date` through the EoM pin block
+- `normalize/debt.py` reads `Vat.ilks[ilk].rate` **per calendar day** via RPC (at each day's EoD block, when a `block_resolver` is supplied — the production path used by `compute_monthly_pnl`) and scales day-by-day: `cum_debt_d = Art_d × rate_d / 1e27`, giving actual outstanding USDS each day. Daily rate accrual is what produces non-zero `daily_dart` even on days without frob/grab activity.
+- Fallback (no resolver — tests / one-off queries only): returns the raw normalised `Art` series **without rate scaling**. `cum_debt` then carries Art-wad units, not USDS — a ~4.5% under-statement for ALLOCATOR-SPARK-A. The normalize layer emits a warning when this path is taken.
+- Both ilks use both mechanisms; the relative weight differs. For **ALLOCATOR-BLOOM-A**, `duty = 0` so `jug.drip` is dormant and `rate` stays at 1.0 — all interest capitalisation arrives via `vat.grab` events that bump `Art` directly. For **ALLOCATOR-SPARK-A**, `duty > 0` and `jug.drip` is active — most of the interest accumulates in `rate` (≈1.045 by early 2026, ≈$177M cumulative on Spark's ~$3.9B `Art`) with a smaller portion arriving via `vat.grab` (≈$48M cumulative by Apr 2026, ~1.2% of `Art`). The formula `cum_debt = (Σ frob.dart + Σ grab.dart) × rate / 1e27` handles both regimes uniformly.
 - Ilk-level, not per-vault: if the prime's ilk has multiple vaults or subproxies, `cum_debt` captures the aggregate
 
 ---

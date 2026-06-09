@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import date
+import logging
+from dataclasses import dataclass, field
+from datetime import date, datetime
+from decimal import Decimal
 from pathlib import Path
 
 import pandas as pd
@@ -14,6 +17,16 @@ from settle.normalize.debt import get_debt_timeseries
 from settle.validation import SchemaError
 
 from ..fixtures.mock_sources import MockDebtSource
+
+
+@dataclass
+class _MockBlockResolver:
+    """In-memory ``IBlockResolver`` — maps each calendar date to a fixed block."""
+
+    blocks_by_date: dict[date, int] = field(default_factory=dict)
+
+    def block_at_or_before(self, chain: str, anchor_utc: datetime) -> int:
+        return self.blocks_by_date.get(anchor_utc.date(), 0)
 
 
 def _obex(config_dir: Path):
@@ -68,3 +81,73 @@ def test_get_debt_timeseries_accepts_empty_dataframe(config_dir: Path):
     obex = _obex(config_dir)
     result = get_debt_timeseries(obex, _period(), source=MockDebtSource())
     assert len(result) == 0
+
+
+def test_get_debt_timeseries_scales_art_by_daily_ilk_rate(
+    config_dir: Path, monkeypatch: pytest.MonkeyPatch,
+):
+    """With a ``block_resolver`` supplied, each day's ``cum_debt`` is
+    ``Art_d × rate_d / 1e27``. Verifies the production path: even when
+    ``Art`` is flat, a rising rate produces a non-zero ``daily_dart``
+    (the daily interest-accrual line)."""
+    src = MockDebtSource(pd.DataFrame({
+        "block_date": [date(2026, 4, 1)],
+        "daily_dart": [Decimal("100_000_000")],
+        "cum_debt":   [Decimal("100_000_000")],   # raw Art (wad units)
+    }))
+    obex = _obex(config_dir)
+
+    period = Period(
+        start=date(2026, 4, 1), end=date(2026, 4, 3),
+        pin_blocks={Chain.ETHEREUM: 24971074},
+    )
+    resolver = _MockBlockResolver({
+        date(2026, 4, 1): 1001,
+        date(2026, 4, 2): 1002,
+        date(2026, 4, 3): 1003,
+    })
+    # rate index = 1.00 → 1.01 → 1.02 (in ray units = ×1e27).
+    rate_by_block = {
+        1001: 10**27,
+        1002: int(Decimal("1.01") * 10**27),
+        1003: int(Decimal("1.02") * 10**27),
+    }
+    from settle.extract import rpc as _rpc
+    monkeypatch.setattr(
+        _rpc, "ilk_rate",
+        lambda chain, vat, ilk, block: rate_by_block[block],
+    )
+
+    out = get_debt_timeseries(obex, period, source=src, block_resolver=resolver)
+
+    assert len(out) == 3
+    # cum_debt scales by per-day rate; daily_dart is the day-on-day Δ
+    # (a $100M starting balance plus 1% / 1% rate accrual the next two days).
+    assert out.iloc[0]["cum_debt"]  == Decimal("100000000.00")
+    assert out.iloc[1]["cum_debt"]  == Decimal("101000000.00")
+    assert out.iloc[2]["cum_debt"]  == Decimal("102000000.00")
+    assert out.iloc[0]["daily_dart"] == Decimal("100000000.00")
+    assert out.iloc[1]["daily_dart"] == Decimal("1000000.00")
+    assert out.iloc[2]["daily_dart"] == Decimal("1000000.00")
+
+
+def test_get_debt_timeseries_warns_when_no_resolver_passed(
+    config_dir: Path, caplog: pytest.LogCaptureFixture,
+):
+    """The no-resolver path returns raw Art (not USDS) and emits a warning so
+    a forgetful caller sees the footgun. Locks in the safeguard introduced
+    after the silent-fallback review finding."""
+    src = MockDebtSource(pd.DataFrame({
+        "block_date": [date(2026, 4, 1)],
+        "daily_dart": [Decimal("50_000_000")],
+        "cum_debt":   [Decimal("50_000_000")],
+    }))
+    obex = _obex(config_dir)
+    with caplog.at_level(logging.WARNING, logger="settle.normalize.debt"):
+        out = get_debt_timeseries(obex, _period(), source=src)
+    # Returned series is the raw sparse frame, unmodified.
+    assert out.iloc[0]["cum_debt"] == Decimal("50_000_000")
+    # The footgun warning fired.
+    assert any(
+        "without block_resolver" in r.message for r in caplog.records
+    ), f"expected warning, got: {[r.message for r in caplog.records]}"

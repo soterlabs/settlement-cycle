@@ -305,6 +305,9 @@ def total_assets_of(chain: Chain, vault: Address, block: int) -> int:
     return _decode_uint(eth_call(chain, vault, SEL_TOTAL_ASSETS, block))
 
 
+SEL_ILKS = "0xd9638d36"              # ilks(bytes32) → (Art, rate, spot, line, dust)
+_RAY = 10 ** 27
+
 SEL_SCALED_BALANCE_OF = "0x1da24f3e"   # scaledBalanceOf(address)
 
 
@@ -345,6 +348,28 @@ def scaled_balance_of(chain: Chain, token: Address, holder: Address, block: int)
         if "execution reverted" in str(e).lower():
             return 0
         raise
+
+
+@cached(source_id="rpc.ilk_rate")
+def ilk_rate(chain: Chain, vat: Address, ilk: bytes, block: int) -> int:
+    """``Vat.ilks(ilk).rate`` at ``block`` — the accumulated stability-fee
+    index in raw ray units (1e27 = 1.0).
+
+    Used to convert normalised debt (``Art``, in wad) to actual outstanding
+    USDS: ``actual_usds = Art * rate / 1e45``.
+
+    Returns ``10**27`` (= 1.0 ray) for uninitialised ilks (``rate == 0``
+    on-chain) or empty responses, so callers treating it as a multiplier
+    degrade gracefully to Art-only semantics — correct for ilks whose rate
+    is always 1.0 (e.g. ALLOCATOR-BLOOM-A).
+    """
+    data = SEL_ILKS + ilk.hex()
+    raw = eth_call(chain, vat, data, block)
+    hx = raw[2:] if raw.startswith("0x") else raw
+    if len(hx) < 128:
+        return _RAY
+    rate_raw = int(hx[64:128], 16)
+    return rate_raw if rate_raw > 0 else _RAY
 
 
 @cached(source_id="rpc.native_balance")
