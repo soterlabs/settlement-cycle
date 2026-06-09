@@ -422,3 +422,76 @@ def test_psm3_susds_spread_empty_returns_zero():
         "cum_balance":  [Decimal("100000")],
     })
     assert _psm3_susds_spread(df_old, period) == Decimal(0)
+
+
+# ----------------------------------------------------------------------------
+# PSM3 bounded carry-forward (M11): a frozen series must not span weeks
+# ----------------------------------------------------------------------------
+
+
+class _FlakyPsm3:
+    """1:1 PSM3 stub: equal $30 legs, claim $90; raises on listed blocks."""
+
+    def __init__(self, fail_blocks: set[int]):
+        self.fail_blocks = fail_blocks
+
+    def shares_of(self, chain, psm3, holder, block):
+        if block in self.fail_blocks:
+            from settle.extract.rpc import RPCError
+            raise RPCError(f"flake at block {block}")
+        return 90 * 10**18
+
+    def convert_to_asset_value(self, chain, psm3, num_shares, block):
+        return num_shares  # 1:1
+
+    def pool_reserve_at(self, chain, addr, psm3, block, decimals):
+        return 30 * (10 ** decimals)
+
+
+class _DayBlockResolver:
+    def block_at_or_before(self, chain, anchor):
+        return anchor.day  # block == day-of-month on every chain
+
+
+def _psm3_period(start: date, end: date) -> Period:
+    return Period(
+        start=start, end=end,
+        pin_blocks={Chain.BASE: 1_000_000, Chain.ETHEREUM: 2_000_000},
+    )
+
+
+def test_psm3_carry_forward_is_bounded(config_dir: Path):
+    """6 consecutive failed days exceed the default 5-day cap → the run
+    fails instead of publishing a series frozen at an early snapshot."""
+    spark = load_prime(config_dir / "spark.yaml")
+    period = _psm3_period(date(2026, 3, 1), date(2026, 3, 8))
+    with pytest.raises(RuntimeError, match="consecutive failed days"):
+        get_psm_usds_timeseries(
+            spark, Chain.BASE, period,
+            balance_source=MockBalanceSource(),
+            psm3_source=_FlakyPsm3(fail_blocks={1, 2, 3, 4, 5, 6}),
+            block_resolver=_DayBlockResolver(),
+            position_balance_source=MockPositionBalanceSource(raw_balance=0),
+            convert_to_assets_source=MockConvertToAssetsSource(raw_assets=10**18),
+        )
+
+
+def test_psm3_short_flake_carries_forward_and_recovers(config_dir: Path, caplog):
+    """A 2-day flake stays within the cap: failed days carry yesterday's
+    legs, the series completes, and a degraded-day summary is logged."""
+    import logging
+
+    spark = load_prime(config_dir / "spark.yaml")
+    period = _psm3_period(date(2026, 3, 1), date(2026, 3, 8))
+    with caplog.at_level(logging.WARNING, logger="settle.compute.monthly_pnl"):
+        out = get_psm_usds_timeseries(
+            spark, Chain.BASE, period,
+            balance_source=MockBalanceSource(),
+            psm3_source=_FlakyPsm3(fail_blocks={2, 3}),
+            block_resolver=_DayBlockResolver(),
+            position_balance_source=MockPositionBalanceSource(raw_balance=0),
+            convert_to_assets_source=MockConvertToAssetsSource(raw_assets=10**18),
+        )
+    assert len(out) == 8
+    assert (out["cum_balance"] == Decimal("90")).all()
+    assert any("2 of 8 day(s) carried forward" in r.message for r in caplog.records)

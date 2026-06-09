@@ -8,6 +8,7 @@ timeseries before composing the three revenue components.
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
@@ -1146,12 +1147,10 @@ def get_psm_usds_timeseries(
 
         _ZERO_LEGS = (Decimal(0), Decimal(0), Decimal(0))
 
-        def _legs_at(
-            day,
-            fallback: tuple[Decimal, Decimal, Decimal] | None = None,
-        ) -> tuple[Decimal, Decimal, Decimal]:
+        def _legs_at(day) -> tuple[Decimal, Decimal, Decimal]:
             """Spark's USDS-equivalent claim split into (usdc, usds, susds)
-            at this day's EoD block."""
+            at this day's EoD block. Raises on transport failure — the day
+            loop below owns the (bounded) carry-forward policy."""
             eod = datetime.combine(day, time.max, tzinfo=timezone.utc)
             try:
                 block = block_resolver.block_at_or_before(chain.value, eod)
@@ -1216,22 +1215,25 @@ def get_psm_usds_timeseries(
                     spark_share * usds_val,
                     spark_share * susds_val,
                 )
-            except (RPCError, DuneError, _requests.HTTPError, _requests.ConnectionError, _requests.Timeout) as e:
-                if fallback is None:
-                    raise
-                _log.warning(
-                    "PSM3 read failed on %s for %s @ %s; carrying forward "
-                    "legs=(usdc=$%s, usds=$%s, susds=$%s) (error: %s). PSM "
-                    "USDS-equiv may be slightly stale for this day.",
-                    chain.value, psm3_addr.hex(), day,
-                    f"{fallback[0]:,.2f}", f"{fallback[1]:,.2f}", f"{fallback[2]:,.2f}",
-                    type(e).__name__,
-                )
-                return fallback
+            except (RPCError, DuneError, _requests.HTTPError,
+                    _requests.ConnectionError, _requests.Timeout):
+                # Transport failures propagate to the day loop, which owns
+                # the bounded carry-forward policy.
+                raise
 
         # One snapshot per day across [period.start, period.end]. The init
         # read (period.start - 1) cannot fall back — a missing baseline
         # means we can't compute period flows correctly, so let it raise.
+        #
+        # Per-day failures carry forward yesterday's legs, but BOUNDED:
+        # unbounded carry-forward meant a mid-run Dune 402 (sticky for the
+        # whole process) plus flaky L2 RPC could freeze the rest of the
+        # month at one early-month snapshot — with ~$544M of PSM3 holdings
+        # driving the utilized deduction, a weeks-long frozen series moves
+        # sky_revenue by the full drift while the artifact looks complete.
+        # After SETTLE_PSM3_MAX_CARRY_DAYS consecutive failures (default 5)
+        # the run fails instead; a degraded-day summary is logged either way.
+        max_carry = int(os.environ.get("SETTLE_PSM3_MAX_CARRY_DAYS", "5"))
         days = [period.start + timedelta(days=i) for i in range((period.end - period.start).days + 1)]
         cur_legs = _legs_at(period.start - timedelta(days=1))
         block_dates: list = []
@@ -1239,8 +1241,36 @@ def get_psm_usds_timeseries(
         cum_usdc: list[Decimal] = []
         cum_usds_leg: list[Decimal] = []
         cum_susds: list[Decimal] = []
+        consecutive_carry = 0
+        degraded_days: list = []
         for day in days:
-            legs = _legs_at(day, fallback=cur_legs)
+            try:
+                legs = _legs_at(day)
+                consecutive_carry = 0
+            except (RPCError, DuneError, _requests.HTTPError,
+                    _requests.ConnectionError, _requests.Timeout) as e:
+                consecutive_carry += 1
+                degraded_days.append(day)
+                if consecutive_carry > max_carry:
+                    raise RuntimeError(
+                        f"PSM3 timeseries on {chain.value}: {consecutive_carry} "
+                        f"consecutive failed days ending {day} — refusing to "
+                        f"publish a series frozen at the {cur_legs} snapshot. "
+                        "Fix the data source (Dune quota / RPC) and re-run, or "
+                        "raise SETTLE_PSM3_MAX_CARRY_DAYS if the gap is "
+                        "genuinely acceptable."
+                    ) from e
+                _log.warning(
+                    "PSM3 read failed on %s for %s @ %s; carrying forward "
+                    "legs=(usdc=$%s, usds=$%s, susds=$%s) (error: %s, "
+                    "consecutive carry %d/%d). PSM USDS-equiv may be "
+                    "slightly stale for this day.",
+                    chain.value, psm3_addr.hex(), day,
+                    f"{cur_legs[0]:,.2f}", f"{cur_legs[1]:,.2f}",
+                    f"{cur_legs[2]:,.2f}",
+                    type(e).__name__, consecutive_carry, max_carry,
+                )
+                legs = cur_legs
             block_dates.append(day)
             cum_balance_today = sum(legs)
             cum_balance_yday = sum(cur_legs)
@@ -1249,6 +1279,15 @@ def get_psm_usds_timeseries(
             cum_usds_leg.append(legs[1])
             cum_susds.append(legs[2])
             cur_legs = legs
+        if degraded_days:
+            _log.warning(
+                "PSM3 timeseries on %s: %d of %d day(s) carried forward due "
+                "to failed reads (%s). The utilized deduction is stale on "
+                "those days — re-run once the data source recovers to "
+                "tighten the artifact.",
+                chain.value, len(degraded_days), len(days),
+                ", ".join(str(d) for d in degraded_days),
+            )
 
         if all(u == 0 and s == 0 and z == 0 for u, s, z in zip(cum_usdc, cum_usds_leg, cum_susds)):
             return _empty_psm_df()
