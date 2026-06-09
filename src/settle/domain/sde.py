@@ -91,17 +91,37 @@ class SDETable:
         ambiguous (multiple active) config.
 
         Only the SoM-active entry is consulted; ``period_end`` is accepted
-        for symmetry with the general "overlap" semantics but is not
-        consulted today (mid-month SDE activation is not yet pro-rated).
+        for symmetry with the general "overlap" semantics but does not widen
+        the match (mid-month SDE activation is not yet pro-rated — open
+        question S24 in QUESTIONS.md). Both silent-drop cases warn loudly:
+
+        * an entry that overlaps the period but starts after ``period_start``
+          is skipped for the WHOLE month (no sd_revenue, no utilized
+          exclusion);
+        * a returned ``fixed`` entry whose ``end_date`` falls inside the
+          period keeps ``sd_share = 1.0`` for the whole month (post-end
+          revenue still routed to Sky).
         """
-        matches = [
+        venue_entries = [
             e for e in self.entries
             if e.prime_id == prime_id
             and e.venue_id == venue_id
             and e.kind in _VENUE_KINDS
-            and e.is_active_on(period_start)
         ]
+        matches = [e for e in venue_entries if e.is_active_on(period_start)]
         if not matches:
+            late = [e for e in venue_entries if e.overlaps(period_start, period_end)]
+            if late:
+                _log.warning(
+                    "SDE entry %r for %s/%s starts mid-period (%s > SoM %s) "
+                    "and is SKIPPED for the whole month under the SoM-locked "
+                    "semantics — no sd_revenue and no utilized exclusion for "
+                    "%d active day(s). See QUESTIONS.md S24 (mid-period "
+                    "activation pro-rating).",
+                    late[0].label, prime_id, venue_id,
+                    late[0].start_date, period_start,
+                    (period_end - max(late[0].start_date, period_start)).days + 1,
+                )
             return None
         if len(matches) > 1:
             raise ValueError(
@@ -109,7 +129,20 @@ class SDETable:
                 f"prime={prime_id}, venue={venue_id}, date={period_start}: "
                 f"{[e.label for e in matches]}"
             )
-        return matches[0]
+        entry = matches[0]
+        if (
+            entry.kind == "fixed"
+            and entry.end_date is not None
+            and entry.end_date < period_end
+        ):
+            _log.warning(
+                "Fixed SDE entry %r for %s/%s ends mid-period (%s < EoM %s) "
+                "but sd_share stays 1.0 for the whole month — revenue after "
+                "end_date is still routed to Sky. See QUESTIONS.md S24 "
+                "(closing-side pro-rating).",
+                entry.label, prime_id, venue_id, entry.end_date, period_end,
+            )
+        return entry
 
 
 def load_sde_table(config_path: Path | None = None) -> SDETable:
