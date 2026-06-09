@@ -1,7 +1,12 @@
 """Spark Savings V2 — VSR-liability accrual per vault per period.
 
-Per ``docs/spark/PRD_savings_vaults.md`` §3, every S2 vault (spUSDC, spUSDT,
-spPYUSD, ...) has:
+NOTE: ``compute_vsr_liability_period`` is **not currently called** from the
+main settlement pipeline. S2 venues (spUSDC, spUSDT, spPYUSD, ...) are
+tracked for position reporting only and excluded from ``prime_agent_revenue``
+— see ``compute.monthly_pnl`` for the current S2 handling. This module is
+retained for potential future use (e.g. a dedicated Savings V2 report).
+
+Per ``docs/spark/PRD_savings_vaults.md`` §3, every S2 vault has:
 
 * **An asset side** — the deployed underlying which routes to the Spark
   ALM. The gross yield on this is already captured by Spark's existing
@@ -9,8 +14,7 @@ spPYUSD, ...) has:
 * **A liability side** — the depositor claim, which grows daily at the
   Vault Savings Rate (VSR). Each ``spUSDC`` share's price-per-share
   appreciates each day; the corresponding interest is what Spark owes
-  the depositor and is the cost that must be subtracted from
-  ``prime_agent_revenue``.
+  the depositor.
 
 The on-chain ``ERC-4626 totalAssets()`` already equals ``totalSupply() ×
 pps``. The VSR accrual on day *d* is the change in ``totalAssets`` that

@@ -1,6 +1,11 @@
 # PRD — Spark Savings V2 Vaults (spUSDT / spPYUSD / spUSDC)
 
-**Status:** draft, 2026-06-01. Author: settlement-cycle team.
+**Status:** revised 2026-06-09 — **scope decision: the VSR depositor
+liability is OUT of MSC scope** (see §3). The Phase A VSR-liability
+subtraction described in §5 was implemented (PR #114) and then removed
+again (PR #126); S2 venues are now position-only. §5–§6 are retained
+as the historical record of the superseded model.
+Originally drafted 2026-06-01. Author: settlement-cycle team.
 **Scope:** compute path for Spark Savings V2 venues S56–S60 currently
 skipped in `compute_monthly_pnl`. Combined TVL ≈ $1.6B (USD-stable
 vaults only; spETH excluded — see §9).
@@ -100,59 +105,79 @@ deposit:
 In other words: **the gross yield on the savings-vault-deployed
 capital is already in Spark's `prime_agent_revenue`**.
 
-### 3.2 What's missing
+### 3.2 The depositor liability — and why it is OUT of scope (decision 2026-06-09)
 
-The only piece our pipeline currently ignores is the **liability to
-retail depositors** that accrues at the VSR. Mechanically: the vault's
-pps grows over time at the VSR, so each spUSDC / spUSDT / spPYUSD
-share represents an increasing claim on the underlying. The
-corresponding cost is owed by Spark.
+The vaults carry a **liability to retail depositors** that accrues at
+the VSR: the vault's pps grows over time, so each spUSDC / spUSDT /
+spPYUSD share represents an increasing claim on the underlying.
 
 ```
 vsr_liability_accrual_d = total_amount_d × vsr_d / 365
                         = total_amount_d × borrow_cost_d / 365
 ```
 
-This is a daily cost on Spark's side that must be subtracted from
-`prime_agent_revenue`.
+An earlier revision of this PRD (2026-06-01) treated this accrual as a
+cost that must be subtracted from `prime_agent_revenue`, and Phase A
+(§5.1) shipped it as a negative per-vault revenue line (PR #114).
 
-### 3.3 Headline formula
+**Decision (lakonema2000, 2026-06-09, PR #126): the VSR liability is
+outside the MSC accounting boundary and is NOT subtracted.** The MSC
+settlement accounts the prime agent's position book — flows to/from
+the **ALM proxy**. Under that boundary:
 
-```
-prime_agent_revenue_savings_adjustment = − Σ_d (total_amount_d × vsr_d / 365)
-                                          (summed over each vault separately)
-```
+- Savings V2 depositor capital arriving at the ALM is a capital inflow
+  (netted out of venue revenue, like any inflow).
+- Yield earned on it at the existing venues (S1–S55) is ALM revenue —
+  in scope, per §3.1.
+- Depositor withdrawals (principal + accrued VSR) leave the ALM as
+  capital outflows — also netted, never hitting revenue.
 
-No other adjustment is needed if §3.1 is correct (deployment already
-tracked at the ALM). The savings vaults become a **single negative
-line** in Spark's revenue breakdown, attributed per-vault.
+The VSR is a vault-layer obligation of Spark's retail savings product,
+in the same category as Spark's other operating costs — not an MSC
+settlement item. Consistent with this, `sky_revenue` charges BR only
+on ilk debt (depositor capital is not charged), and the S2 venues are
+`cof_excluded` (Sky's CoF is not split against capital Sky never
+funded).
 
-### 3.4 Why this is cleaner than the closed-form `deployed × (apr − vsr)`
+### 3.3 Treatment
 
-The closed-form formula proposed in `QUESTIONS.md` §S6 gives Spark's
-*net spread* (the part Spark keeps). It works only if you're also
-willing to *exclude* the deployment yield from the rest of the model —
-which would mean removing the underlying token's contribution to the
-Spark ALM's existing Cat A / C / E venues. That's harder to do
-correctly and harder to reconcile.
+S2 venues are **position-only**: `value_som` / `value_eom` =
+`totalAssets()` at the SoM/EoM pin blocks, `actual_revenue = 0`. They
+appear in the "Position-only venues" section of `summary.md` and in
+`venue_breakdown[]` with `hide_per_venue_pnl = true`.
 
-Subtracting only the VSR-accrual liability is mathematically
-equivalent (existing_revenue − vsr_liability = deployed × apr − vsr ×
-principal) but doesn't require touching the existing venue
-computations.
+### 3.4 Known consequences of the scope decision
 
-### 3.5 Sanity check: which side is bigger?
+1. **`prime_agent_revenue` is gross of depositor funding costs.** It
+   means "yield generated at the ALM," regardless of whether the
+   capital was Sky-funded or depositor-funded. Spark's true economics
+   on Savings V2 are smaller by the VSR accrual (~$4–5M/month at
+   2026-06 TVL, see §3.5).
+2. **A ~VSR-sized reconciliation gap vs Spark / BA Labs.** Spark's own
+   surplus formula nets the VSR (`deployed × (apr − borrow_cost)`), and
+   their projection tables carry `saving_v2_borrow_cost_proj_usd` as a
+   liability line. §5.2 records that the superseded VSR subtraction is
+   what produced headline parity with the BA Labs balance-sheet API —
+   under the scope decision that parity no longer holds, and the gap
+   (≈ the period's VSR accrual) is a **documented scope difference**,
+   not an error. Anyone reconciling against BA Labs must add the VSR
+   accrual back.
+3. **Counterparty confirmation pending** — see the open question in
+   `QUESTIONS.md` asking Spark to confirm this scope reading of
+   `prime_agent_revenue`.
 
-For spUSDT today (~$1.27B at VSR ~ 4.0% annual), the daily VSR accrual
-is roughly $139K. Over a 30-day month, ~$4.2M.
+### 3.5 Sizing the out-of-scope liability (2026-06 TVL)
+
+For spUSDT (~$1.27B at VSR ~ 4.0% annual), the daily VSR accrual is
+roughly $139K — ~$4.2M over a 30-day month.
 
 For spUSDC (~$303M at VSR ~ 4.0%), ~$33K/day, ~$1M/month.
 
 For spPYUSD (~$0.77M, ~$85/day) — negligible.
 
-Combined ~$5M/month of VSR liability that should reduce Spark's
-`prime_agent_revenue` once this PRD ships. The actual figure depends
-on the precise VSR each day.
+Combined ~$5M/month of VSR liability that stays on Spark's side of the
+boundary and is the expected magnitude of the BA Labs reconciliation
+gap (§3.4.2).
 
 ---
 
@@ -195,6 +220,12 @@ matches.
 ---
 
 ## 5. Implementation plan
+
+> **Superseded (2026-06-09).** §5–§6 describe the VSR-liability
+> subtraction model that shipped in PR #114 and was removed by the
+> scope decision in §3.2 (PR #126). Retained as the historical record —
+> in particular §5.2's BA Labs parity result, which quantifies the
+> reconciliation gap the scope decision accepts.
 
 ### 5.1 Phase A — VSR liability subtraction (target: 1 sprint)
 

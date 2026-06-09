@@ -6,9 +6,9 @@ Period: 2026-03-01 → 2026-03-31 (31 days)
 
 | Field | USD |
 |---|---:|
-| prime_agent_revenue | $3,154,426.62 |
+| prime_agent_revenue | $6,084,952.07 |
 | agent_rate | $122,911.66 |
-| prime_agent_total_revenue | $3,277,338.28 |
+| prime_agent_total_revenue | $6,207,863.74 |
 | sky_revenue (net) | $8,087,761.72 |
 | sde_revenue | $83,475.52 |
 | susds_spread_reimbursement | $180,470.62 |
@@ -73,7 +73,7 @@ Period: 2026-03-01 → 2026-03-31 (31 days)
 | S54 | Aave Avalanche USDC (aAvaUSDC) | $10,000,143.51 | $10,000,122.64 | -$19,331.28 | $19,310.41 | $19,310.41 | $0.00 | 0% | $0.00 |
 | S55 | USDC raw (Avalanche-C — ALM idle) | $0.00 | $10.26 | $10.26 | -$0.00 | -$0.00 | $-0.00 | 0% | $0.00 |
 
-## Position-only venues (PnL aggregated at prime level)
+## Position-only venues (excluded from `prime_agent_revenue`)
 
 | Venue | Label | value_som | value_eom |
 |---|---|---:|---:|
@@ -82,5 +82,5 @@ Period: 2026-03-01 → 2026-03-31 (31 days)
 | S59 | Spark Savings V2 — spPYUSD vault | $94,443.72 | $504,861.56 |
 | S60 | Spark Savings V2 — spUSDC vault (Avalanche-C, CREATE2 same address) | $152,857,139.20 | $73,619,968.24 |
 
-> Aggregated `actual_revenue` from the venues above (included in `prime_agent_revenue` at the prime level, not shown per-vault): **-$2,930,525.46**. Per-vault values remain in `provenance.json` under `venue_breakdown[]`.
+> Position values above are **excluded from `prime_agent_revenue`** per the Savings V2 scope decision (the depositor-side VSR liability is outside the MSC/ALM accounting boundary — see `docs/spark/PRD_savings_vaults.md` §3 and `QUESTIONS.md` S30). Reconciliations against Spark / BA Labs dashboards, which net the VSR, will differ by ≈ the period's VSR accrual. Per-vault values remain in `provenance.json` under `venue_breakdown[]`.
 

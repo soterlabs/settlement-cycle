@@ -72,6 +72,11 @@ class VenueRevenue:
     # same flag on Venue — propagated here so the CSV carries it forward
     # without requiring the reporting script to re-load the config YAML.
     cof_excluded: bool = False
+    # ``Venue.pricing_category.value`` ("A", "B", …, "S2"). Propagated so
+    # reporting can branch on venue kind (e.g. the grove-sheet renderer's
+    # Savings-V2 ``deduction_avg`` path) without re-loading the config YAML
+    # or inferring the kind from the sign of ``actual_revenue``.
+    pricing_category: str = ""
     # When True, per-venue PnL columns (actual_revenue / revenue /
     # sd_revenue / profit_to_grove) are suppressed in display surfaces
     # (summary.md, xlsx Venues tab). Mirrors ``Venue.hide_per_venue_pnl``
@@ -79,10 +84,10 @@ class VenueRevenue:
     # provenance.json without re-loading the config YAML.
     #
     # **Display-only.** Compute code MUST NOT branch on this field —
-    # the venue's ``revenue`` / ``actual_revenue`` already flow into
-    # ``MonthlyPnL.prime_agent_revenue`` via the regular aggregation
-    # path; suppressing them at compute time would silently drop the
-    # depositor-liability accrual from the prime headline.
+    # the venue's ``revenue`` / ``actual_revenue`` (currently $0 for the
+    # Savings V2 vaults that set this flag — position-only tracking)
+    # already flow into ``MonthlyPnL.prime_agent_revenue`` via the
+    # regular aggregation path.
     hide_per_venue_pnl: bool = False
     # Time-weighted average of this venue's daily lending-idle deduction
     # (prime's pro-rata share of unborrowed underlying in SparkLend / Aave

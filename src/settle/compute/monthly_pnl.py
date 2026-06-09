@@ -2137,59 +2137,99 @@ def compute_monthly_pnl(
         _erc4626_period_inflow: "Decimal | None" = None
         _ev_ts: "pd.DataFrame | None" = None
         if venue.pricing_category == PricingCategory.SPARK_SAVINGS_V2:
-            # Out-of-scope for the VSR-liability model: spETH (S58). Its
-            # underlying is WETH, not a par-stable, and the deployed-WETH
-            # yield (Sparklend-WETH etc.) is NOT yet wired into our venue
-            # inventory. Including spETH here would subtract the VSR
-            # liability without the offsetting gross yield — one-sided
-            # accounting. See ``docs/spark/PRD_savings_vaults.md`` §9.
+            # Spark Savings V2 vaults — position-only tracking.
+            #
+            # These vaults are EXCLUDED from prime_agent_revenue. The MSC
+            # accounting boundary is the ALM proxy: yield on the deployed
+            # underlying is already captured by Spark's existing Cat A/B/C/E
+            # venues (S1–S55), and the depositor-side VSR liability is a
+            # vault-layer obligation of Spark's retail product, OUTSIDE that
+            # boundary — depositor withdrawals (principal + accrued VSR)
+            # leave the ALM as capital flows, not negative revenue. See
+            # ``docs/spark/PRD_savings_vaults.md`` §3. Consequence: expect a
+            # ~VSR-sized reconciliation gap vs Spark/BA Labs dashboards,
+            # whose surplus formula nets borrow_cost.
+            #
+            # We track value_som/value_eom for position reporting only
+            # (surfaced in the "Position-only venues" section of summary.md
+            # and in venue_breakdown[].hide_per_venue_pnl).
+            #
+            # spETH (S58) is also skipped: its underlying is WETH (not a
+            # par-stable), so totalAssets() is denominated in WETH and cannot
+            # be summed with the USD venue table. See PRD §9.
             from ..normalize.prices import is_par_stable
             if venue.underlying is None or not is_par_stable(venue.underlying):
                 _log.info(
-                    "  [savings_v2] %s — underlying %s is not a par-stable "
-                    "(out of scope for VSR-liability model — see PRD §9).",
+                    "  [savings_v2] %s — underlying %s is not a par-stable; "
+                    "skipping (out of scope — see PRD §9).",
                     venue.id,
                     venue.underlying.symbol if venue.underlying else "(none)",
                 )
                 continue
-            # Spark Savings V2 vaults — Phase A: VSR-liability subtraction.
-            #
-            # The deployed underlying routes to the Spark ALM, where its
-            # gross yield is already captured by Spark's existing Cat A /
-            # B / C / E venues (verified on-chain — see
-            # ``docs/spark/PRD_savings_vaults.md`` §2-§3). What's missing
-            # is the depositor-side liability accrual: each share's pps
-            # grows daily at the VSR, and that growth is what Spark owes
-            # the depositor.
-            #
-            # We subtract ``Σ_d totalSupply(d-1) × (pps(d) - pps(d-1))``
-            # as a NEGATIVE revenue line on this venue. value_som /
-            # value_eom carry the depositor liability (= totalAssets) so
-            # the per-venue display matches BA Labs.
-            from .savings_v2_liability import compute_vsr_liability_period
-            from ..extract.dune import DuneError as _DuneError
+            if venue.chain not in pin_blocks_som or venue.chain not in period.pin_blocks:
+                # WARNING, not info: the position disappears from the
+                # position-only section / BA Labs reconciliation. The
+                # standard venue path raises on a missing chain; this softer
+                # skip is deliberate ($0 revenue contribution) but must stay
+                # loud.
+                _log.warning(
+                    "  [savings_v2] %s — no SoM/EoM block for chain %s; "
+                    "skipping (position will be MISSING from the report).",
+                    venue.id, venue.chain.value,
+                )
+                continue
+            som_block = pin_blocks_som[venue.chain]
+            eom_block = period.pin_blocks[venue.chain]
+            from ..extract import rpc as _rpc_sv2
             from ..extract.rpc import RPCError as _RPCError
             import requests as _requests
+            _ud = venue.underlying.decimals
             try:
-                vsr_liab, total_som, total_eom = compute_vsr_liability_period(
-                    venue, period.start, period.end,
-                    block_resolver=resolver,
-                )
-            except (_RPCError, _DuneError, _requests.HTTPError,
+                total_som = Decimal(_rpc_sv2.total_assets_of(
+                    venue.chain, venue.token.address, som_block,
+                )) / Decimal(10 ** _ud)
+                total_eom = Decimal(_rpc_sv2.total_assets_of(
+                    venue.chain, venue.token.address, eom_block,
+                )) / Decimal(10 ** _ud)
+            except (_RPCError, _requests.HTTPError,
                     _requests.ConnectionError, _requests.Timeout) as _e:
-                # Transient transport failure on a per-day read. Skip the
-                # venue (contribution = 0) and let the operator decide
-                # whether to retry. Programming errors (``ValueError``,
-                # ``AssertionError``, ``RuntimeError`` from the baseline-
-                # guard, etc.) propagate — a corrupted liability of $5M+
-                # silently zeroing would over-state ``prime_agent_revenue``
-                # by the same amount with no settlement-blocking signal.
+                # Transient transport failure only — programming errors
+                # propagate so a position doesn't silently vanish from the
+                # BA Labs balance-sheet reconciliation.
                 _log.warning(
-                    "  [savings_v2] %s — VSR-liability transient failure "
-                    "(%s); skipping the venue (revenue contribution = 0).",
+                    "  [savings_v2] %s — totalAssets read failed (%s); skipping.",
                     venue.id, type(_e).__name__,
                 )
                 continue
+            # eth_call maps reverts/empty returndata to 0, so a poisoned read
+            # is indistinguishable from an empty vault (the old daily path
+            # raised on a zero-pps baseline for the same reason). Don't book
+            # a fabricated $0 row for a vault that holds $1B+; an actually
+            # wound-down vault produces the same skip, which costs nothing.
+            if total_som == 0 and total_eom == 0:
+                _log.warning(
+                    "  [savings_v2] %s — totalAssets is 0 at both SoM and EoM "
+                    "(empty vault, or a poisoned/reverted read mapped to 0); "
+                    "skipping the $0 position row. Verify against the vault "
+                    "contract if this venue is expected to hold funds.",
+                    venue.id,
+                )
+                continue
+            if total_som == 0 or total_eom == 0:
+                _log.warning(
+                    "  [savings_v2] %s — totalAssets is 0 at one boundary "
+                    "(som=$%.2f eom=$%.2f); legitimate for a vault launch/"
+                    "wind-down mid-period, otherwise a poisoned read. "
+                    "Recording as-is.",
+                    venue.id, float(total_som), float(total_eom),
+                )
+            _log.info(
+                "  [savings_v2] %s (%s on %s): position-only "
+                "total_assets_som=$%.2f  total_assets_eom=$%.2f "
+                "(excluded from prime_agent_revenue)",
+                venue.id, venue.token.symbol, venue.chain.value,
+                float(total_som), float(total_eom),
+            )
             venue_inputs.append(VenueRevenueInputs(
                 venue=venue,
                 value_som=total_som,
@@ -2198,7 +2238,7 @@ def compute_monthly_pnl(
                     columns=["block_date", "daily_inflow", "cum_inflow"]
                 ),
                 sde_entry=None,
-                actual_revenue_override=-vsr_liab,
+                actual_revenue_override=Decimal("0"),
             ))
             continue
         # In sky_only mode, check the SDE table up-front so we can skip all
@@ -2283,6 +2323,7 @@ def compute_monthly_pnl(
                 period_inflow=Decimal("0"),
                 revenue=Decimal("0"),
                 cof_excluded=venue.cof_excluded,
+                pricing_category=venue.pricing_category.value,
                 hide_per_venue_pnl=venue.hide_per_venue_pnl,
             ))
             continue
