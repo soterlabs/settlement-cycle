@@ -56,11 +56,11 @@ Every current pricing category's value reading was verified to carry no CoF-equi
 |-----|---------------|--------------|----------|----------------------------------------------------|
 | **A** PAR_STABLE | Grove E13 RLUSD raw | `balance_of(token, ALM, block) × $1` | `prices.py:100-101` (unit price), `positions.py:216-220` (balance) | ✓ No — par-stable token, raw ERC-20 balance, no internal yield mechanism |
 | **B** ERC4626_VAULT (standard) | OBEX V1 Maple syrupUSDC | `convertToAssets(shares=1, block) × par_underlying` | `prices.py:117-129` | ✓ No — Maple's `convertToAssets` reflects lender yield in the vault; Sky's BR doesn't exist in Maple's pricePerShare. The prime borrowed USDS from Sky to fund the position; Sky's BR is captured on the ilk-debt side, not the venue side. |
-| **B** ERC4626_VAULT (sky_savings_token) | Spark S32 sUSDS POL | `convertToAssets(shares=1, block) × par_underlying` **+ override** | `monthly_pnl.py:2547-2563` (dispatch), `2563-2806` (sky_savings_token sub-case), `prime_agent_revenue.py:345-368` (override application) | ⚠️ YES — sUSDS appreciates by SSR. Handled correctly via `actual_revenue_override = susds_spread` (currently $0; the SSR appreciation that would otherwise land in actual_revenue is implicitly credited back to the prime via `susds_spread_reimbursement` reducing `sky_revenue (net)`). **Convention codified: any future `sky_savings_token: true` venue MUST go through this override path.** |
+| **B** ERC4626_VAULT (sky_savings_token) | Spark S32 sUSDS POL | `convertToAssets(shares=1, block) × par_underlying` **+ override (currently broken)** | `monthly_pnl.py:2547-2563` (dispatch), `2563-2806` (sky_savings_token sub-case), `prime_agent_revenue.py:345-368` (override application) | ❌ **KNOWN BUG — see [§10 below]**. The override sets `actual_revenue = 0`, dropping the SSR × V appreciation the prime physically holds inside the sUSDS token. Sky's BR machinery still charges full BR on the underlying USDS debt (sUSDS not subtracted from `utilized`), partially offset by `susds_spread_reimbursement`. Net result: `prime_agent_revenue (net) − sky_revenue (net)` reads `−SSR × V` for these venues when the true PnL is `0`. The original §4 verdict marked this "handled correctly via override" — **that was wrong**; the override IS the bug, not the fix. Tracked for a separate PR. |
 | **C** AAVE_ATOKEN / SPARKLEND_SPTOKEN | Grove E1 aEthRLUSD | `scaledBalanceOf × liquidityIndex × par_underlying` (via `_atoken_index_weighted_inflow`) | `monthly_pnl.py:2369-2546`, `prices.py:131-137` | ✓ No — Aave's `liquidityIndex` reflects lender yield (borrower interest, net of Aave's reserve factor). Sky's BR is not part of Aave's accounting. |
 | **E** RWA_TRANCHE (Chronicle NAV) | Grove E9 JTRSY | Chronicle oracle NAV via `_resolve_rwa_nav` | `prices.py:139-144` | ✓ No — NAV is the fund's reported value (issuer-side). No Sky leg. |
 | **E** RWA_TRANCHE (Centrifuge ERC-4626 fallback) | Grove E37 syrupUSDC | `convertToAssets` + exact USDC inflow from `_erc4626_event_inflow_timeseries` | `monthly_pnl.py:2945-2997` | ✓ No — same shape as Cat B Maple. |
-| **F** LP_POOL (curve_stableswap) | Grove E11 Curve AUSD/USDC | `Σ reserves × per-coin price` via `_curve_lp_unit_price` (par-stable @ $1, yield-bearing recursive via `convertToAssets`) | `prices.py:146-152`, `prices.py:171-247` | ✓ No — Curve pool reserves at par. For pools with a sUSDS leg the SSR appreciation flows back to Sky via `curve_susds_spread` reducing `sky_revenue (net)` (not via the LP unit price), so the value reading itself is gross. |
+| **F** LP_POOL (curve_stableswap) | Grove E11 Curve AUSD/USDC | `Σ reserves × per-coin price` via `_curve_lp_unit_price` (par-stable @ $1, yield-bearing recursive via `convertToAssets`) | `prices.py:146-152`, `prices.py:171-247` | ✓ No CoF deduction in the value reading. **Subtlety for sUSDS-leg pools (Spark S24):** the LP unit price's recursive `convertToAssets` DOES embed the sUSDS leg's SSR appreciation in `value_eom − value_som`. That SSR amount is then removed from `sky_revenue (net)` via `curve_susds_spread` to avoid double-charging Sky's BR-on-utilized. Net economic outcome is correct, but the same shape as the sky_savings_token bug — see §10 below; will need parallel attention when that fix lands. |
 | **F** LP_POOL (uniswap_v3) | Grove E12 Uniswap V3 AUSD/USDC | Position-NFT enumeration + `amount0/amount1 × $1` via `_uniswap_v3_value` | `positions.py:237-299` | ✓ No — par-stable amounts × $1. UniV3 fee accrual is to LP holders (= us) and surfaces via `external_revenue`. |
 | **EOA** | Spark S23 Anchorage escrow | `balance_of(USDC, escrow, block) × $1` | `prices.py:103-115` | ✓ No — par-stable principal at par. Interest sweeps flow via `external_revenue` (Cat A `external_alm_sources` path) into S26 USDC raw. |
 
@@ -90,7 +90,7 @@ Every current pricing category's value reading was verified to carry no CoF-equi
 3. **Add a "Revenue conventions — gross of CoF" subsection to `docs/METHODOLOGY.md`** referencing this PRD. One paragraph: "Per-venue `actual_revenue` is NAV growth (net of new principal arriving), gross of the BR Sky charges the prime on the ilk debt that funded the venue. Sky's BR is captured separately via `sky_revenue` and netted at the `monthly_pnl` level. See [PRD link] for the per-venue audit confirming no compute path silently subtracts a CoF-equivalent amount."
 4. **Invariant test** — `tests/unit/test_revenue_conventions.py` asserting:
    - `Σ venue_actual_revenue + Σ external_revenue − Σ sd_revenue == prime_agent_revenue` (aggregation invariant)
-   - For each `sky_savings_token: true` venue, `actual_revenue_override` is set (catches future regressions of the only known CoF-equivalent case in the codebase)
+   - Once the §10 sUSDS fix lands: for each `sky_savings_token: true` venue in Case 1 (clean POL: S37/S43/S47/S51), `actual_revenue_override` is **NOT set** — the MtM should compute naturally. For S32 (Case 2), the override stays until the `savings_v2_deployed` data source is rebuilt.
 
 ## 8. Out of scope
 
@@ -102,3 +102,26 @@ Every current pricing category's value reading was verified to carry no CoF-equi
 ## 9. Next step
 
 §4 walked 2026-06-09 — see grid above with citations. §5 is the remaining walk; the per-path expectations are pre-populated but each emit-amount should be confirmed against its Dune query / source code. Deliverables §3 (METHODOLOGY.md cross-link) and §4 (invariant test) follow.
+
+## 10. Known bug — `sky_savings_token` Prime PnL understatement (post-audit finding, 2026-06-09)
+
+After the §4 walk landed, a colleague's writeup identified that the `actual_revenue_override = 0` path for `sky_savings_token: true` venues is the source of Spark's deeply-negative `monthly_pnl` reading (≈ −$23M cumulative Jan–May 2026, of which the lion's share is sUSDS-attributable). The bug is **asymmetric accounting**, not a missing data source:
+
+- The override drops the SSR × V appreciation that the prime physically holds inside the sUSDS token (`prime_agent_revenue += 0` instead of `+= SSR × V`).
+- Sky's BR machinery continues to charge `BR × V` on the underlying USDS debt because sUSDS is not subtracted from `utilized` (correct — the prime DID borrow USDS to fund the position).
+- `susds_spread_reimbursement` removes the 30bps Sky overcharge, leaving `sky_revenue (net) += SSR × V` for the venue.
+- Net headline: `prime_agent_revenue − sky_revenue = 0 − SSR × V = −SSR × V`, even though the true economic outcome is exactly `0` (prime holds SSR × V in the token, pays SSR × V via the BR-minus-reimb mechanism).
+
+**Three cases the fix doesn't apply uniformly to:**
+
+| Case | Venues | Treatment |
+|---|---|---|
+| **1. Clean POL** | S37 (Base), S43 (Arb), S47 (Op), S51 (Uni) | Drop the override. Let `actual_revenue` compute naturally as `(value_eom − value_som) − period_inflow ≈ SSR × V`. No SDE redirect (sd_share stays 0). The Maple-shape symmetry brings `monthly_pnl` to 0. |
+| **2. S32 mixed-source** | S32 (Eth raw sUSDS POL, `demand_side_spread: true`) | sUSDS balance includes both debt-sourced (paired with BR) and depositor-sourced (retail Savings V2). Naïve fix over-credits by `SSR × (depositor slice)`. Requires the `savings_v2_deployed` split, currently a stubbed no-op because the upstream Dune table `dune.sparkdotfi.result_savings_v_2_deployment_metrics` is unavailable. **Leave S32 on the current `demand_side_spread` path until a replacement data source lands; document the residual artifact.** |
+| **3. Embedded sUSDS legs** | S24 Curve sUSDS/USDT, PSM3 sUSDS leg | The sUSDS portion is a fraction of a larger position (already produced per-day by `curve_susds_spread` / `_psm3_susds_spread`). Re-book those amounts as a netted Prime/Sky pair instead of a one-sided Sky reduction. |
+
+**Suggested sequencing (per the writeup):** Case 1 first (smallest, cleanest, ships value), Case 3 second (reuses existing per-day sUSDS values), Case 2 last (or never, depending on data-source revival).
+
+**Estimated impact at Spark's exposures:** ~$10M cumulative Jan–May 2026 closure of the apparent `monthly_pnl` understatement once Cases 1 + 3 land. The remainder of Spark's ≈ −$23M reading is genuine (Anchorage principal not yet swept, etc.).
+
+**Tracking:** separate PR to land off this branch.
