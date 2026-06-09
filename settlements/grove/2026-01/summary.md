@@ -4,14 +4,16 @@ Period: 2026-01-01 → 2026-01-31 (31 days)
 
 ## Headline
 
+Suffix legend: ``(gross)`` = one-way ledger entry, ``(net)`` = after intra-side credits (today only ``sky_revenue`` carries this — BR claim net of sUSDS/Curve/PSM3 spread reimbursements). The prime's net P&L = ``prime_agent_total_revenue (gross)`` − ``sky_revenue (net)``; Sky's net P&L = ``sky_revenue (net)`` − ``agent_rate (gross)`` − ``pol_agent_rate (gross)`` − ``distribution_rewards (gross)``.
+
 | Field | USD |
 |---|---:|
-| prime_agent_revenue | $3,270,233.05 |
-| agent_rate | $6,275.53 |
-| prime_agent_total_revenue | $3,276,508.57 |
+| prime_agent_revenue (gross) | $3,270,233.05 |
+| agent_rate (gross) | $6,275.53 |
+| prime_agent_total_revenue (gross) | $3,276,508.57 |
 | sky_revenue (net) | $6,277,336.08 |
-| sde_revenue | $2,954,411.88 |
-| sky_revenue_gross | $6,577,707.67 |
+| sde_revenue (gross) | $2,954,411.88 |
+| sky_revenue (gross, pre-spread-credit) | $6,577,707.67 |
 
 ## Per-venue
 
