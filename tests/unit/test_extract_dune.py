@@ -211,3 +211,49 @@ def test_infer_parameters_preserves_order_of_first_appearance():
     sql = "WHERE x = {{chain}} AND y <= {{pin_block}} AND z = {{token}}"
     keys = [p["key"] for p in _infer_parameters(sql)]
     assert keys == ["chain", "pin_block", "token"]
+
+
+# ----------------------------------------------------------------------------
+# _resolve_query_id — published-map staleness check (path-keyed registry)
+# ----------------------------------------------------------------------------
+
+import pytest  # noqa: E402
+
+from settle.extract import dune as _dune  # noqa: E402
+from settle.extract.dune import DuneError, _resolve_query_id, _sql_hash  # noqa: E402
+
+_DEBT_SQL = (
+    Path(__file__).resolve().parents[2] / "src/settle/queries/debt_timeseries.sql"
+)
+_REL = "src/settle/queries/debt_timeseries.sql"
+
+
+def test_resolve_published_hash_match_returns_id(monkeypatch):
+    monkeypatch.setattr(_dune, "_published_query_ids", lambda: {
+        _REL: {"query_id": 7642450, "sql_sha256": _sql_hash(_DEBT_SQL.read_text())},
+    })
+    assert _resolve_query_id(_DEBT_SQL) == 7642450
+
+
+def test_resolve_published_hash_mismatch_raises(monkeypatch):
+    """A local SQL edit must NOT silently execute the old published SQL —
+    the path-keyed registry would keep serving the pre-edit query forever."""
+    monkeypatch.delenv("SETTLE_ALLOW_PUBLISHED_SQL_DRIFT", raising=False)
+    monkeypatch.setattr(_dune, "_published_query_ids", lambda: {
+        _REL: {"query_id": 7642450, "sql_sha256": "0" * 64},
+    })
+    with pytest.raises(DuneError, match="differs from the SQL last published"):
+        _resolve_query_id(_DEBT_SQL)
+
+
+def test_resolve_published_hash_mismatch_env_bypass(monkeypatch):
+    monkeypatch.setenv("SETTLE_ALLOW_PUBLISHED_SQL_DRIFT", "1")
+    monkeypatch.setattr(_dune, "_published_query_ids", lambda: {
+        _REL: {"query_id": 7642450, "sql_sha256": "0" * 64},
+    })
+    assert _resolve_query_id(_DEBT_SQL) == 7642450
+
+
+def test_resolve_published_legacy_int_entry_still_works(monkeypatch):
+    monkeypatch.setattr(_dune, "_published_query_ids", lambda: {_REL: 7642450})
+    assert _resolve_query_id(_DEBT_SQL) == 7642450

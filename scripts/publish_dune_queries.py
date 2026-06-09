@@ -51,6 +51,7 @@ from settle.extract.dune import (  # noqa: E402
     _create_query,
     _execute_query,
     _format_param,
+    _sql_hash,
     _update_query_sql,
 )
 
@@ -168,15 +169,25 @@ PARAM_DEFAULTS = {
 }
 
 
-def _load_registry() -> dict[str, int]:
+def _load_registry() -> dict:
     if REGISTRY_PATH.exists():
         return json.loads(REGISTRY_PATH.read_text())
     return {}
 
 
-def _save_registry(reg: dict[str, int]) -> None:
+def _save_registry(reg: dict) -> None:
     REGISTRY_PATH.parent.mkdir(parents=True, exist_ok=True)
-    REGISTRY_PATH.write_text(json.dumps(reg, indent=2, sort_keys=True))
+    REGISTRY_PATH.write_text(json.dumps(reg, indent=2, sort_keys=True) + "\n")
+
+
+def _entry_qid(entry) -> int:
+    """Registry entries are either a bare int (legacy) or
+    ``{"query_id": int, "sql_sha256": str}``."""
+    return int(entry["query_id"]) if isinstance(entry, dict) else int(entry)
+
+
+def _entry_sha(entry) -> str | None:
+    return entry.get("sql_sha256") if isinstance(entry, dict) else None
 
 
 def _execute(query_id: int, params: dict) -> str:
@@ -194,27 +205,40 @@ def _execute(query_id: int, params: dict) -> str:
 def _publish_one(
     rel_path: str,
     sql_path: Path,
-    registry: dict[str, int],
+    registry: dict,
     force: bool,
 ) -> tuple[int, str]:
-    """Returns (query_id, state) where state ∈ {created, force_updated, skipped}."""
+    """Returns (query_id, state) where state ∈ {created, force_updated,
+    skipped, STALE}.
+
+    ``STALE`` means the local SQL no longer matches what was last
+    published (sha mismatch) and ``--force`` wasn't given — the runtime
+    (``_resolve_query_id``) refuses to execute such a query, so this
+    state is reported as a failure by ``main``.
+    """
     sql = sql_path.read_text()
+    sha = _sql_hash(sql)
     name = f"[settle-msc] {sql_path.name}"
     params = PARAM_DEFAULTS.get(sql_path.name, {})
 
     if rel_path in registry and not force:
-        return registry[rel_path], "skipped"
+        recorded = _entry_sha(registry[rel_path])
+        if recorded is not None and recorded != sha:
+            return _entry_qid(registry[rel_path]), "STALE"
+        return _entry_qid(registry[rel_path]), "skipped"
 
     if rel_path in registry and force:
-        query_id = registry[rel_path]
+        query_id = _entry_qid(registry[rel_path])
         _update_query_sql(query_id, sql, is_private=False)
+        registry[rel_path] = {"query_id": query_id, "sql_sha256": sha}
+        _save_registry(registry)
         if params:
             _execute(query_id, params)
         return query_id, "force_updated"
 
     # Not in registry → create + execute.
     query_id = _create_query(sql, name=name, is_private=False)
-    registry[rel_path] = query_id
+    registry[rel_path] = {"query_id": query_id, "sql_sha256": sha}
     _save_registry(registry)
     if params:
         _execute(query_id, params)
@@ -261,7 +285,16 @@ def main() -> int:
         print(f"{rel:40s}  {qid_s:>10s}  {state:14s}  {url_s}")
     print()
     print(f"Registry: {REGISTRY_PATH.relative_to(REPO_ROOT)}")
-    return 0 if all(r[1] is not None for r in rows) else 1
+    stale = [r[0] for r in rows if r[3] == "STALE"]
+    if stale:
+        print(
+            "\nSTALE: local SQL differs from the last-published version for: "
+            + ", ".join(stale)
+            + "\nThe runtime refuses to execute these (DuneError). "
+            "Re-run with --force (owning account's DUNE_API_KEY) to publish.",
+            file=sys.stderr,
+        )
+    return 0 if (all(r[1] is not None for r in rows) and not stale) else 1
 
 
 if __name__ == "__main__":

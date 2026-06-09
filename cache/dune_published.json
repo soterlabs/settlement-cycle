@@ -1,9 +1,30 @@
 {
-  "src/settle/queries/blocks_at_eod.sql": 7474490,
-  "src/settle/queries/debt_timeseries.sql": 7642450,
-  "src/settle/queries/inflow_by_counterparty.sql": 7432797,
-  "src/settle/queries/ssr_history.sql": 7432798,
-  "src/settle/queries/transfer_timeseries.sql": 7432800,
-  "src/settle/queries/v3_liquidity_events.sql": 7432801,
-  "src/settle/queries/venue_inflow.sql": 7432803
+  "src/settle/queries/blocks_at_eod.sql": {
+    "query_id": 7474490,
+    "sql_sha256": "25e3b64d0d3d881403685b574276a6d1ada259dc013bf52e1779a86d6226515e"
+  },
+  "src/settle/queries/debt_timeseries.sql": {
+    "query_id": 7642450,
+    "sql_sha256": "a77db44cae94bb5ccfe6d273bae4f9e3b50f287bc94984ec87f32ffb8be1d829"
+  },
+  "src/settle/queries/inflow_by_counterparty.sql": {
+    "query_id": 7432797,
+    "sql_sha256": "77c01be31c5c6322b579a785c020091a2ed0d953bbcd28dfe3313910507010ed"
+  },
+  "src/settle/queries/ssr_history.sql": {
+    "query_id": 7432798,
+    "sql_sha256": "d63d0426c1c08367da2e0b95ee53291d71028858db5bad03edece2b0bf03e61d"
+  },
+  "src/settle/queries/transfer_timeseries.sql": {
+    "query_id": 7432800,
+    "sql_sha256": "832b29a3ada4b1b9c0eb3a777cf61ae68d9f4db4f03a21f00598df2c2ae7ead4"
+  },
+  "src/settle/queries/v3_liquidity_events.sql": {
+    "query_id": 7432801,
+    "sql_sha256": "9244b246c80769f9cb9368cb0be7f0fe26e3b6b588199254af53b1519445309a"
+  },
+  "src/settle/queries/venue_inflow.sql": {
+    "query_id": 7432803,
+    "sql_sha256": "5594e5b425f59e7d6eb1c2fd5f4ab52c590c5ab69e0fb683abc2aede9d9d531d"
+  }
 }

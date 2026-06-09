@@ -282,13 +282,18 @@ def _update_query_sql(
         )
 
 
-def _published_query_ids() -> dict[str, int]:
+def _published_query_ids() -> dict[str, Any]:
     """Load ``cache/dune_published.json`` from the repo root (keyed by relative path).
 
     This file is committed to the repo and maps each SQL file's repo-relative
     path to a canonical public Dune query ID. Checking it first means no
     Dune API calls are needed on a fresh clone — no auto-create, no local
     registry bootstrap.
+
+    Entry shapes: legacy ``int`` query_id, or
+    ``{"query_id": int, "sql_sha256": str}`` — the hash is what the local
+    SQL looked like when last published, enabling the staleness check in
+    ``_resolve_query_id``.
     """
     # sql_path lives at <repo>/src/settle/queries/<name>.sql
     # → go up 4 levels from this file: extract → settle → src → repo root
@@ -313,11 +318,38 @@ def _resolve_query_id(sql_path: Path) -> int:
     try:
         repo_root = Path(__file__).resolve().parents[3]
         rel_key = str(sql_path.resolve().relative_to(repo_root)).replace("\\", "/")
+    except ValueError:
+        rel_key = None  # sql_path outside the repo → skip the published map
+    if rel_key is not None:
         published = _published_query_ids()
-        if rel_key in published:
-            return int(published[rel_key])
-    except (ValueError, KeyError):
-        pass
+        entry = published.get(rel_key)
+        if entry is not None:
+            if isinstance(entry, dict):
+                expected_sha = entry.get("sql_sha256")
+                if expected_sha and _sql_hash(sql_path.read_text()) != expected_sha:
+                    # The published map is path-keyed, so a local SQL edit
+                    # does NOT change the query Dune executes — without
+                    # this check the run silently executes (and caches)
+                    # results of the pre-edit SQL forever.
+                    if os.environ.get("SETTLE_ALLOW_PUBLISHED_SQL_DRIFT") != "1":
+                        raise DuneError(
+                            f"{rel_key} differs from the SQL last published "
+                            f"to Dune query {entry['query_id']} — executing "
+                            "now would run the OLD SQL. Re-publish with "
+                            "`python scripts/publish_dune_queries.py "
+                            "--force` (requires the owning account's "
+                            "DUNE_API_KEY), or set "
+                            "SETTLE_ALLOW_PUBLISHED_SQL_DRIFT=1 to "
+                            "knowingly execute the published version."
+                        )
+                    _log.warning(
+                        "%s differs from the published SQL for Dune query "
+                        "%s — executing the PUBLISHED (old) version because "
+                        "SETTLE_ALLOW_PUBLISHED_SQL_DRIFT=1.",
+                        rel_key, entry["query_id"],
+                    )
+                return int(entry["query_id"])
+            return int(entry)  # legacy shape: bare query_id
 
     sql = sql_path.read_text()
     sha = _sql_hash(sql)
