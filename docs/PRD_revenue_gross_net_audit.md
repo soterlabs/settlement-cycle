@@ -1,100 +1,103 @@
-# PRD — `prime_agent_revenue` gross/net audit
+# PRD — `prime_agent_revenue` gross/net of borrowing cost (CoF) audit
 
 **Status:** draft (2026-06-09)
 **Author:** Claude Opus + lakonema2000
-**Trigger:** PR #125 review of `summary.md` headline labels surfaced ambiguity about whether `prime_agent_revenue` is gross or net of Sky's BR ("cost of funds", CoF). Spark's deeply-negative net P&L (−$23M Jan–May) reinforced that the convention needs to be auditable, not just implicit.
+**Trigger:** PR #125 review of `summary.md` headline labels surfaced ambiguity about whether `prime_agent_revenue` is gross or net of Sky's BR ("cost of funds", CoF, = the interest the prime owes Sky on its ilk debt). Spark's deeply-negative net P&L (−$23M Jan–May) reinforced that the convention needs to be auditable, not just implicit.
 
-## 1. Scope — why only `prime_agent_revenue`
+## 1. Scope — only `prime_agent_revenue`
 
-The other revenue quantities in the pipeline each have a single, unambiguous definition in code and only one place where they're computed:
+The other revenue quantities have a single canonical formula at a single compute site, with no hidden CoF subtraction — out of scope:
 
 | Quantity | Definition | Ambiguity? |
 |---|---|---|
-| `sky_revenue (net)` | `subsidised_BR × utilized + sde_revenue − susds_spread_reimbursement − pol_agent_rate` (one formula, one site) | No |
+| `sky_revenue (net)` | `subsidised_BR × utilized + sde_revenue − susds_spread_reimbursement − pol_agent_rate` | No — sky_revenue IS the CoF (gross of any prime credit), then minus the three credits, all at one site |
 | `agent_rate` | `Σ_days subproxy_usds × ((1 + SSR + 20bps)^(1/365) − 1) + Σ_days subproxy_susds × ((1 + 20bps)^(1/365) − 1)` | No |
-| `sde_revenue` | `actual_revenue × sd_share` per venue, then summed | No |
+| `sde_revenue` | `actual_revenue × sd_share` per venue, summed | No |
 | `pol_agent_rate` | SSR+20bps on sUSDS POL value (Spark S32 only) | No |
 | `susds_spread_reimbursement` / `curve_susds_spread` / `psm3_susds_spread` | 30 bps × cum sUSDS value, integrated daily | No |
-| `external_revenue` | per-venue Merkl / Agora claim amount (whole amount goes to prime) | No |
+| `external_revenue` | per-venue Merkl / Agora claim amount (whole amount to prime) | No |
 | `distribution_rewards` | Phase 3+ placeholder, currently `0` | No |
 
-These are out of scope — they're one-way ledger entries computed at a single site from explicit inputs.
-
-`prime_agent_revenue` is different: it's an **aggregation** over per-venue `actual_revenue` values, and each per-venue value comes from a different code path with different upstream guarantees. That's where hidden netting can creep in unnoticed.
+`prime_agent_revenue` is different because it's an aggregation over per-venue `actual_revenue` values, and each per-venue value comes from a different code path. The question is whether any of those code paths inadvertently subtract something CoF-equivalent before we report it.
 
 ## 2. The actual question
 
-Per `src/settle/compute/prime_agent_revenue.py:322`:
+The convention we believe we have:
+
+> Per-venue `actual_revenue` is **NAV growth net of new principal that arrived**, **gross of Sky's BR**. Sky's BR is captured separately via `sky_revenue` and netted at the `monthly_pnl` level. The prime's true profit = `prime_agent_total_revenue (gross)` − `sky_revenue (net)` + `sde_revenue (gross)` add-back.
+
+Concretely, for a venue funded by USDS the prime drew from the ilk:
 
 ```
-prime_revenue (per venue) = actual_revenue − sd_revenue + external_revenue
-prime_agent_revenue       = Σ prime_revenue (over venues)
+actual_revenue        = (value_eom − value_som) − period_inflow             ← gross venue yield
+sky_revenue (BR leg)  = Σ_d  subsidised_BR × utilized_d                     ← CoF on the underlying ilk debt
+prime_pnl_real        = (Σ actual_revenue + agent_rate) − sky_revenue + sde_revenue add-back
 ```
 
-The convention we WANT to hold:
+`actual_revenue` is **NAV growth — no interest deduction**. The interest the prime owes Sky lives on the OTHER side of the ledger (in `sky_revenue`) and is netted at the bottom line, not at the per-venue level. This is the principle that needs verification per venue.
 
-> `actual_revenue` is **gross of every external cost the prime pays**, including Sky's BR.
-> Sky's BR is captured separately via `sky_revenue` and netted at the `monthly_pnl` level.
+## 3. Where the convention could silently break
 
-This convention IS correct for Cat A par-stables (zero internal yield, zero internal fee — `value_eom − value_som ≡ 0` trivially gross). But for yield-bearing venue types it depends on what the **underlying value reading** (NAV oracle / index / `convertToAssets`) already nets out internally.
+Three concrete failure modes the audit needs to rule out:
 
-If a venue's value reading already nets out some internal cost (e.g. Aave's reserve factor, Morpho's vault performance fee, Centrifuge's issuer fee), then `actual_revenue` is **silently net of that cost** while we treat it as gross. The CoF (Sky's BR) isn't the issue — it's never inside a venue NAV. But internal venue-side fees ARE inside the NAV, and the question is: do we want them treated as "unavoidable venue-side cost" (current behavior, accepted implicitly) or grossed back up (would require fee-rate inputs per venue, not viable for most third-party vaults)?
+1. **A venue source already subtracts a Sky-equivalent rate from the NAV.** Example: imagine a hypothetical sUSDS-style wrapper where the on-chain `convertToAssets` already credits SSR (Sky's savings rate) to the holder. The growth in `value_eom − value_som` would then include SSR appreciation that Sky also charges back via BR (= SSR + spread). That's a real case — we handle it via the `actual_revenue_override` mechanism for `sky_savings_token` venues, which BYPASSES the `(value_eom − value_som) − period_inflow` formula and uses the bps-spread directly. **If any new `sky_savings_token`-type venue lands without that override wiring, we'd double-count: include SSR in `actual_revenue` AND charge BR in `sky_revenue`.**
 
-The honest answer is **the current "accept the venue-internal netting" behavior is probably the right call** — we can't ungross what we can't observe. But the PRD's value is **making this explicit per venue**, so a reviewer auditing a single number can immediately see which costs are inside and which aren't.
+2. **A venue value reading factors in a "rebate" or "interest paid back" that's effectively CoF-equivalent.** Hypothetical example: a credit-pool token whose value drops when the pool pays out interest to senior tranches. Today no such venue exists, but the audit should confirm none of the current pricing categories has this shape.
 
-## 3. Per-venue audit checklist
+3. **External-revenue paths could carry a CoF-net value.** Example: if an interest-sweep counterparty (Anchorage) sent us yield amounts already net of some on-chain BR-like obligation, we'd be undercounting. The audit needs to confirm each `external_revenue` path emits a gross figure.
 
-For each pricing category, fill in the table:
+The PRD's value is checking each per-venue path against these three failure modes and certifying "no CoF deduction here".
 
-| Cat | Venue example | Value source | Internal nettings (folded into our `actual_revenue`) | Gross of CoF? |
-|-----|---------------|--------------|------------------------------------------------------|---------------|
-| **A** | Grove E13 RLUSD raw | `balance_of(token, ALM, block)` | None — par-stable, no internal yield | ✓ (trivially) |
-| **B** | OBEX V1 Maple syrupUSDC | `convertToAssets(shares, block)` | Maple **performance fee** (taken from vault yield before mint of new shares) | ✓ for our purposes |
-| **B** | Spark S32 sUSDS POL | `convertToAssets(shares, block)` | sUSDS SSR accrual (Sky-internal) | ✓ — `actual_revenue_override` injects the 30bps spread, not the raw NAV |
-| **C** | Grove E1 aEthRLUSD | `scaled_balance × liquidityIndex` | Aave **reserve factor** (skimmed from borrower interest before being credited to lenders' index) | ✓ for our purposes |
-| **E** | Grove E9 JTRSY | Chronicle NAV oracle | Anemoy / Centrifuge **issuer fees** (folded into NAV) | ✓ for our purposes |
-| **E** | Grove E37 syrupUSDC | `convertToAssets` (ERC-4626 fallback) | Maple performance fee | ✓ for our purposes |
-| **F** | Grove E11 Curve AUSD/USDC | `get_virtual_price` + LP balance | None — Curve fees accrue to LP holders (= us) | ✓ |
-| **F** | E12 Uniswap V3 LP | Position-NFT events + pool reads | UniV3 **swap fee** (already accrues to position) | ✓ |
+## 4. Per-venue audit checklist
 
-"✓ for our purposes" = the underlying source already nets the venue-internal fee out of the NAV before we read it. We accept this as unavoidable (we don't have the inputs to gross it back up, and the fee is genuinely a venue-side cost the prime never sees). Gross-of-CoF (Sky's BR) is preserved.
+For each pricing category, fill in:
 
-**The grid is empty until walked.** Filling it is the deliverable.
+| Cat | Venue example | Value source | CoF-equivalent deduction inside the value reading? |
+|-----|---------------|--------------|----------------------------------------------------|
+| **A** | Grove E13 RLUSD raw | `balance_of(token, ALM, block)` | No — par-stable, raw balance |
+| **B** | OBEX V1 Maple syrupUSDC | `convertToAssets(shares, block)` | No — the prime borrowed USDS from Sky to deploy here; Sky's BR doesn't appear in Maple's NAV |
+| **B** | Spark S32 sUSDS POL | `convertToAssets(shares, block)` + **override** | YES — sUSDS appreciates by SSR. Handled correctly via `actual_revenue_override` (bypasses the value-delta formula). **Convention: any future `sky_savings_token: true` venue MUST set the override.** |
+| **C** | Grove E1 aEthRLUSD | `scaled_balance × liquidityIndex` | No — Aave's `liquidityIndex` reflects lender yield, doesn't include Sky's BR |
+| **E** | Grove E9 JTRSY | Chronicle NAV oracle | No — NAV is the fund's reported value, no Sky-side deduction |
+| **E** | Grove E37 syrupUSDC | `convertToAssets` fallback | No (same as Cat B Maple) |
+| **F** | Grove E11 Curve AUSD/USDC | `get_virtual_price` + LP balance | No — pool yield only, no Sky-side deduction |
+| **F** | E12 Uniswap V3 LP | Position-NFT events + pool reads | No |
 
-## 4. External-revenue paths
+"No" rows are the expected state. Any "Yes" must be paired with an explicit code-side mechanism (override, exception, or netting reversal) that prevents the double-count. The grid is empty until walked.
 
-`external_revenue` feeds into `prime_agent_revenue` (via the per-venue `prime_revenue` formula in §2). Each external path needs the same gross/net check:
+## 5. External-revenue paths checklist
 
-| Path | Source | Value emitted | Gross of CoF? |
-|------|--------|----------------|---------------|
-| **Merkl claims** (Grove E1/E3) | Dune `Claimed` event amount | aToken amount × NAV | ✓ — `Claimed.amount` is the full reward, no fee netted |
-| **Agora AUSD incentives** (Grove E38) | Dune transfer from configured `cash_distribution_source` | USD amount | ✓ — direct cash distribution |
-| **Anchorage interest sweeps** (Spark S26) | Dune transfer from configured `external_alm_sources` EOA | USDC amount | ✓ — full interest payment |
-| **V3 LP fees** (E11/E12) | Position-NFT `collect` events + accrual | USD-equivalent fee amount | ✓ — full LP fee |
-| **Sky governance allocations** (Spark/Grove SubProxy) | Direct USDS transfer | n/a — treated as opening balance, NOT revenue | ✓ (correctly classified as capital, not yield) |
+`external_revenue` feeds into `prime_agent_revenue` via the per-venue `prime_revenue` formula. Each external path needs the same CoF check:
 
-Same caveat: the grid is the deliverable, the writeup is the spec.
+| Path | Source | Amount semantic | CoF-net? |
+|------|--------|-----------------|----------|
+| **Merkl claims** (Grove E1/E3) | Dune `Claimed.amount` event | Reward token amount × NAV | No — protocol-incentive payment, no Sky leg |
+| **Agora AUSD incentives** (Grove E38) | Dune transfer from configured source | USD amount | No — cash distribution |
+| **Anchorage interest sweeps** (Spark S26) | Dune transfer from configured EOA | USDC amount | No — full interest payment, Anchorage is off-Sky |
+| **V3 LP fees** (E11/E12) | Position-NFT `collect` events + accrual | USD-equivalent fee | No |
+| **Sky governance allocations** (Spark/Grove SubProxy) | Direct USDS transfer | n/a — treated as opening balance, NOT revenue | n/a |
 
-## 5. Other items worth confirming alongside
-
-These aren't gross/net concerns per se but live in the same accounting neighborhood and are worth checking while the file is open:
+## 6. Other items worth confirming alongside
 
 1. **PSM3 BR exclusion** — Sky Atlas (#e15caed7-276c-4489-95dc-9ba628566bf4) says Spark should not pay BR on USDS held in PSM3. **Confirmed implemented**: `src/settle/compute/sky_revenue.py:11` declares the deduction and `monthly_pnl.py:1977 + 3311` wires `psm_usds` through to `compute_sky_revenue_daily`. Spark's PSM3 USDS is subtracted from `utilized` — no BR charged on it.
 2. **Sky-net-P&L legend in `summary.py`** — fixed in commit `a4435e8`. The legend formerly double-subtracted `pol_agent_rate` from Sky's net P&L; the correct formula is `sky_revenue (net) − agent_rate (gross) − distribution_rewards (gross)` because `pol_agent_rate` and the spread reimbursements are already inside `sky_revenue (net)`.
 
-## 6. Deliverables
+## 7. Deliverables
 
-1. **Walk §3** — open each pricing-category source file, document the actual venue-internal nettings, mark ✓ or note exceptions. One row per pricing category at minimum.
-2. **Walk §4** — open each external-revenue Dune query / source path, document what the emitted value contains.
-3. **Add a "Revenue conventions" subsection to `docs/METHODOLOGY.md` §2.5** linking to this PRD as the audit source of truth. One paragraph: "`prime_agent_revenue` is gross of Sky's BR but already net of unavoidable venue-internal fees that live inside the NAV reading — see [PRD link] for the per-venue breakdown of which fees are folded in where."
-4. **(Optional) Invariant test** — a `tests/unit/test_revenue_conventions.py` that asserts `Σ venue_actual_revenue + Σ external_revenue − Σ sd_revenue == prime_agent_revenue` (the aggregation invariant) for the OBEX/Grove/Spark fixtures. This doesn't catch hidden venue-internal netting but does catch future regressions in the per-venue aggregation rule.
+1. **Walk §4** — open each pricing-category compute site, confirm no CoF-equivalent deduction is folded into the value reading, and document the citation. One row per pricing category at minimum.
+2. **Walk §5** — open each external-revenue path source, confirm the emitted amount is gross of any Sky-side deduction.
+3. **Add a "Revenue conventions — gross of CoF" subsection to `docs/METHODOLOGY.md`** referencing this PRD. One paragraph: "Per-venue `actual_revenue` is NAV growth (net of new principal arriving), gross of the BR Sky charges the prime on the ilk debt that funded the venue. Sky's BR is captured separately via `sky_revenue` and netted at the `monthly_pnl` level. See [PRD link] for the per-venue audit confirming no compute path silently subtracts a CoF-equivalent amount."
+4. **Invariant test** — `tests/unit/test_revenue_conventions.py` asserting:
+   - `Σ venue_actual_revenue + Σ external_revenue − Σ sd_revenue == prime_agent_revenue` (aggregation invariant)
+   - For each `sky_savings_token: true` venue, `actual_revenue_override` is set (catches future regressions of the only known CoF-equivalent case in the codebase)
 
-## 7. Out of scope
+## 8. Out of scope
 
-- Changing the underlying compute formulas. This PRD is purely about labels, conventions, and audit — not about reshaping who gets paid what.
-- Spark's deeply-negative net P&L. That's a model question (does Sky compensate Spark enough for its strategic liquidity provisioning?), not a pipeline-correctness question.
-- Adding a new "true profit" field to provenance.json. The `prime_agent_revenue (net)` row in `summary.md` (from PR #125) plus the per-prime caveat in the legend is enough; deferring a dedicated field until after the audit reveals whether the existing fields can be relabeled cleanly.
+- Changing the underlying compute formulas. This PRD is purely about convention, audit, and documentation — not about reshaping who gets paid what.
+- Spark's deeply-negative net P&L. That's a model question (does Sky compensate Spark enough for its strategic PSM3 / POL provisioning?), not a pipeline-correctness question.
+- Venue-internal fees that the NAV/index reading already nets out (Maple perf fee, Aave reserve factor, Centrifuge issuer fees, UniV3 LP fees that accrue to us). Those are venue-side costs the prime never sees and we can't ungross. They're orthogonal to the CoF question.
+- Adding a new "true profit" field to provenance.json. Deferred until the audit reveals whether existing fields can be relabeled cleanly.
 
-## 8. Next step
+## 9. Next step
 
-Walk §3 first (one row per pricing category, single sitting). The grid moves from "empty" to "filled" with citations; the spec moves from "assumed" to "documented". §4 follows in a second sitting.
+Walk §4 first (one row per pricing category, single sitting). The grid moves from "expected" to "confirmed" with citations. §5 follows in a second sitting.
