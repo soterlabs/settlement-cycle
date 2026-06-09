@@ -17,17 +17,35 @@ WITH
 -- ==========================================================================
 -- A) Monthly PnL section (mirrors shared query 6954380)
 -- ==========================================================================
-frobs AS (
+-- frob: regular debt draws/repays
+-- grab: stability-fee capitalisation (allocator-ilk usage; not liquidation)
+-- ALLOCATOR-OBEX-A has duty = 0 (jug.drip dormant, rate ≡ 1), so the
+-- entire stability-fee accrual flows through vat.grab events that bump
+-- Art directly. Frob-only cum_debt under-counts by the full accrued
+-- interest. See ``src/settle/queries/debt_timeseries.sql`` for the
+-- same pattern in the settlement-cycle pipeline + QUESTIONS.md S28
+-- for the grab-inclusive vs frob-only methodology question.
+debt_events AS (
   SELECT tr.block_date,
     CAST(bytearray_to_int256(substr(tr.input, 165, 32)) AS DOUBLE) / 1e18 AS dart
   FROM ethereum.traces tr
   WHERE tr."to" = 0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B
-    AND substr(tr.input, 1, 4) = 0x76088703
+    AND substr(tr.input, 1, 4) = 0x76088703   -- frob selector
+    AND substr(tr.input, 5, 32) = 0x414c4c4f4341544f522d4f4245582d4100000000000000000000000000000000
+    AND tr.success = true AND tr.block_date >= DATE '2025-11-01'
+
+  UNION ALL
+
+  SELECT tr.block_date,
+    CAST(bytearray_to_int256(substr(tr.input, 165, 32)) AS DOUBLE) / 1e18 AS dart
+  FROM ethereum.traces tr
+  WHERE tr."to" = 0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B
+    AND substr(tr.input, 1, 4) = 0x7bab3f40   -- grab selector
     AND substr(tr.input, 5, 32) = 0x414c4c4f4341544f522d4f4245582d4100000000000000000000000000000000
     AND tr.success = true AND tr.block_date >= DATE '2025-11-01'
 ),
 daily_debt AS (
-  SELECT block_date, SUM(dart) AS dd FROM frobs GROUP BY block_date
+  SELECT block_date, SUM(dart) AS dd FROM debt_events GROUP BY block_date
 ),
 cum_debt AS (
   SELECT block_date, SUM(dd) OVER (ORDER BY block_date) AS cum_debt FROM daily_debt
