@@ -178,3 +178,26 @@ def test_routing_keys_by_token_and_holder():
         "An unknown (token, holder) pair must return an empty frame, "
         "not accidentally serve another venue's series."
     )
+
+
+def test_unrouted_alm_usds_query_warns():
+    """An ALM-USDS balance query for a chain with no routed fixture must
+    warn — a silent empty excludes that chain's idle USDS from the
+    utilized deduction (the Spark Feb 2026 antipattern, PRD §17.13)."""
+    import warnings
+
+    from settle.domain import Chain
+    from settle.domain.sky_tokens import USDS_BY_CHAIN
+
+    grove, fixtures, blocks = load_grove_and_fixtures(_REPO, "grove_2026_03")
+    sources = build_grove_sources(grove, fixtures, blocks)
+    base_usds = USDS_BY_CHAIN[Chain.BASE].address.value
+    base_alm = grove.alm[Chain.BASE].value
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        df = sources.balance.cumulative_balance_timeseries(
+            "base", base_usds, base_alm, date(2026, 3, 1), pin_block=1,
+        )
+    assert df.empty
+    assert any("EXCLUDED from the utilized deduction" in str(w.message) for w in caught)

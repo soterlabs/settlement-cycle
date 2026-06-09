@@ -278,6 +278,24 @@ def build_grove_sources(grove, fixtures: dict, blocks_by_chain: dict[str, Any]) 
                 fx_holder = (v.holder_override or grove.alm[v.chain]).value
             inflow_by_cp_fixtures[(v.token.address.value, fx_holder)] = df
 
+    # ALM-USDS pairs the compute layer WILL query (one per chain in
+    # ``grove.alm`` with a known USDS address) but that have no routed
+    # fixture. ``_aggregate_alm_usds`` consumes the result as the utilized
+    # deduction, so a silent empty here excludes that chain's idle ALM USDS
+    # from the deduction with no signal — the antipattern behind Spark's
+    # Feb 2026 +$18.9K agent_rate error (PRD §17.13). Only Ethereum is
+    # routed today; warn when any other chain's pair is actually queried.
+    from settle.domain.sky_tokens import USDS_BY_CHAIN as _USDS_BY_CHAIN
+    _unrouted_alm_usds: dict[tuple[bytes, bytes], str] = {}
+    for _chain, _alm_addr in grove.alm.items():
+        _usds_tok = _USDS_BY_CHAIN.get(_chain)
+        if _usds_tok is None:
+            continue
+        _key = (_usds_tok.address.value, _alm_addr.value)
+        if _key != (USDS, grove_alm):
+            _unrouted_alm_usds[_key] = _chain.value
+    _warned_alm_usds: set[tuple[bytes, bytes]] = set()
+
     class _RoutedBalances(MockBalanceSource):
         def cumulative_balance_timeseries(
             self, chain, token, holder, start, pin_block, min_transfer_amount=None,
@@ -286,6 +304,18 @@ def build_grove_sources(grove, fixtures: dict, blocks_by_chain: dict[str, Any]) 
             if token == USDS  and holder == grove_sub:  return sub_usds
             if token == SUSDS and holder == grove_sub:  return sub_susds
             if token == USDS  and holder == grove_alm:  return alm_usds
+            if (token, holder) in _unrouted_alm_usds and (token, holder) not in _warned_alm_usds:
+                _warned_alm_usds.add((token, holder))
+                import warnings as _warnings
+                _warnings.warn(
+                    f"grove_fixture_loader: ALM USDS balance queried for chain "
+                    f"{_unrouted_alm_usds[(token, holder)]!r} but no fixture is "
+                    f"routed for it — returning empty, so any idle USDS at that "
+                    f"ALM is EXCLUDED from the utilized deduction (Grove "
+                    f"over-charged BR). Capture the fixture or confirm the "
+                    f"balance is $0 on-chain.",
+                    stacklevel=2,
+                )
             # When the caller explicitly requests the unfiltered series
             # (``min_transfer_amount=0``, used by ``_sde_asset_value_timeseries``)
             # prefer the ``_raw`` fixture if captured for this (token, holder).
