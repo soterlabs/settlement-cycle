@@ -119,9 +119,39 @@ def _build_replay_sources(dune: dict, obex_alm_value: bytes,
             self.directed_calls.append((chain, token, from_addr, to_addr, start, pin_block))
             return inflow_df
 
+    # SoM/EoM USDS + sUSDS balances at the OBEX subproxy, derived from the
+    # Dune events fixture so the on-chain-anchor reconciliation in
+    # ``get_subproxy_balance_timeseries`` sees a zero seed (no divergence
+    # between events and on-chain). In production the live RPC sees the
+    # true balance which may include pre-period funding Dune missed.
+    period_start = date(2026, 3, 1)
+    period_end = date(2026, 3, 31)
+
+    def _events_balance_raw(df: pd.DataFrame, on_or_before: date, decimals: int) -> int:
+        if df.empty:
+            return 0
+        mask = df["block_date"] <= on_or_before
+        if not mask.any():
+            return 0
+        return int(Decimal(str(df.loc[mask, "cum_balance"].iloc[-1])) * (Decimal(10) ** decimals))
+
+    sub_usds_som_raw = _events_balance_raw(sub_usds_df, date(2026, 2, 28), 18)
+    sub_usds_eom_raw = _events_balance_raw(sub_usds_df, period_end, 18)
+    sub_susds_som_raw = _events_balance_raw(sub_susds_df, date(2026, 2, 28), 18)
+    sub_susds_eom_raw = _events_balance_raw(sub_susds_df, period_end, 18)
+
     class _RoutedBalanceOf(MockPositionBalanceSource):
         def balance_at(self, chain, token, holder, block):
             self.calls.append((chain, token, holder, block))
+            # Subproxy USDS/sUSDS queries — feed the events-tracked balance
+            # back so the new on-chain anchor in
+            # ``get_subproxy_balance_timeseries`` sees a zero seed and is a
+            # no-op for this replay test.
+            if token == USDS and holder == obex_subproxy_value:
+                return sub_usds_som_raw if block == som_block else sub_usds_eom_raw
+            if token == SUSDS and holder == obex_subproxy_value:
+                return sub_susds_som_raw if block == som_block else sub_susds_eom_raw
+            # Cat B (syrupUSDC) queries — original behavior.
             if block == som_block:
                 return rpc_pos["syrupUSDC_balance_raw_at_som"]
             if block == eom_block:

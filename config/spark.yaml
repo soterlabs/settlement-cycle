@@ -36,7 +36,7 @@ subsidy:
 
 addresses:
   ethereum:
-    subproxy: '0x691a6c29e9e96dd897718305427ad5d534db16ba'    # urn for ALLOCATOR-SPARK-A; 49,789 frob calls (most active allocator)
+    subproxy: '0x3300f198988e4C9C63F75dF86De36421f06af8c4'    # SubProxy for ALLOCATOR-SPARK-A — holds idle USDS earning agent_rate (~$30–37M throughout 2026). Previous config had 0x691a…6ba which is the urn (the borrower position in the Vat), not the subproxy contract — confirmed by on-chain USDS balanceOf at multiple block heights showing $0 at the urn and ~$36M at this SubProxy.
     alm:      '0x1601843c5e9bc251a3272907010afa41fa18347e'    # Spark Ethereum ALM (cross-chain hub)
     # No PSM tracking on Ethereum. Sky's mainnet PSM stack (DssLitePsm +
     # DaiUsds converter + LITE-PSM-USDC pocket EOA + retail UsdsPsmWrapper)

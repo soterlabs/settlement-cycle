@@ -6,9 +6,9 @@ Period: 2026-01-01 → 2026-01-31 (31 days)
 
 | Field | USD |
 |---|---:|
-| prime_agent_revenue | $3,270,233.04 |
+| prime_agent_revenue | $3,270,233.05 |
 | agent_rate | $6,275.53 |
-| prime_agent_total_revenue | $3,276,508.56 |
+| prime_agent_total_revenue | $3,276,508.57 |
 | sky_revenue (net) | $6,277,336.08 |
 | sde_revenue | $2,954,411.88 |
 | sky_revenue_gross | $6,577,707.67 |
@@ -21,7 +21,7 @@ Period: 2026-01-01 → 2026-01-31 (31 days)
 | E2 | Aave Horizon RWA USDC (aToken) | $10,056,422.20 | $11,600,502.75 | $1,500,068.08 | $44,012.47 | $44,012.47 | $0.00 | 0% | $0.00 |
 | E3 | Aave Ethereum RLUSD (aToken) | $241,966,197.04 | $252,762,587.50 | $10,561,390.89 | $234,999.57 | $234,999.57 | $0.00 | 0% | $0.00 |
 | E4 | Grove x Steakhouse USDC (Morpho 4626) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
-| E5 | Grove x Steakhouse USDC High Yield (Morpho 4626) | $0.00 | $1,009,793.26 | $999,752.65 | $10,040.61 | $10,040.61 | $0.00 | 0% | $0.00 |
+| E5 | Grove x Steakhouse USDC High Yield (Morpho 4626) | $0.00 | $1,009,793.26 | $999,752.64 | $10,040.62 | $10,040.62 | $0.00 | 0% | $0.00 |
 | E6 | Grove x Steakhouse AUSD (Morpho 4626) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E7 | Securitize Tokenized AAA CLO Fund (STAC) | $100,000,000.00 | $100,616,387.90 | $0.00 | $616,387.90 | $616,387.90 | $0.00 | 0% | $0.00 |
 | E8 | Janus Henderson Anemoy AAA CLO (JAAA) | $751,935,537.90 | $454,188,405.33 | -$300,110,301.94 | $2,363,169.37 | $933,299.18 | $1,429,870.18 | 60.51% | $0.00 |

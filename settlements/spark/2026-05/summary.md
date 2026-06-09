@@ -6,9 +6,9 @@ Period: 2026-05-01 → 2026-05-31 (31 days)
 
 | Field | USD |
 |---|---:|
-| prime_agent_revenue | $8,471,023.89 |
-| agent_rate | $0.00 |
-| prime_agent_total_revenue | $8,471,023.89 |
+| prime_agent_revenue | $7,865,873.68 |
+| agent_rate | $121,900.75 |
+| prime_agent_total_revenue | $7,987,774.43 |
 | sky_revenue (net) | $10,914,895.68 |
 | sde_revenue | $74,156.06 |
 | susds_spread_reimbursement | $184,910.42 |
@@ -30,7 +30,7 @@ Period: 2026-05-01 → 2026-05-31 (31 days)
 | S7 | Aave Ethereum USDS (aToken) | $0.01 | $0.01 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S8 | Aave Ethereum USDC (aToken) | $0.06 | $0.06 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S9 | Aave Ethereum USDT (aToken) | $5.90 | $5.91 | $0.00 | $0.02 | $0.02 | $0.00 | 0% | $0.00 |
-| S10 | Spark Blue Chip USDC Vault (Morpho) | $704,090.80 | $3,501,087.14 | $2,187,041.24 | $609,955.10 | $609,955.10 | $0.00 | 0% | $0.00 |
+| S10 | Spark Blue Chip USDC Vault (Morpho) | $704,090.80 | $3,501,087.14 | $2,792,191.45 | $4,804.89 | $4,804.89 | $0.00 | 0% | $0.00 |
 | S11 | Spark Blue Chip USDT Vault (Morpho V2) | $51,710,579.95 | $71,943,502.10 | $20,015,652.75 | $217,269.40 | $217,269.40 | $0.00 | 0% | $0.00 |
 | S12 | Spark DAI Vault (Morpho) | $458.57 | $539.87 | $4.97 | $76.33 | $76.33 | $0.00 | 0% | $0.00 |
 | S13 | Spark USDS Vault (Morpho) | $21.91 | $21.91 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |

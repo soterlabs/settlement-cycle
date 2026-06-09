@@ -1432,6 +1432,8 @@ def _shares_to_usd_inflow_timeseries(
     balance_source,
     block_resolver,
     price_at_block,
+    som_block: int | None = None,
+    balance_at=None,
 ):
     """Generic Cat B / Cat E inflow tracking.
 
@@ -1448,6 +1450,21 @@ def _shares_to_usd_inflow_timeseries(
     ``price_at_block`` is an injected callable so this helper stays clean of
     Cat-specific pricing logic — the caller wires Cat B → ``convertToAssets``
     × par-stable, Cat E → ``NavOracle.read``.
+
+    **EoM reconciliation against on-chain `balanceOf`.** When ``som_block``
+    and ``balance_at`` are supplied, after collecting the event-tracked share
+    deltas the helper reads the on-chain share balance at SoM and EoM and
+    compares the actual Δshares against the events-tracked Δshares. Any
+    discrepancy (typically caused by a Dune ``tokens.transfers`` indexing gap
+    at the exact pin-block boundary — observed for Grove E23 on 2026-05-31:
+    a 2,919,004 steakUSDC mint at the May-EoD pin block was missing from
+    Dune but visible via RPC ``balanceOf``) is attributed as a synthetic
+    inflow row at ``period.end`` priced at ``price_at_block(pin_block)`` —
+    the same block used to read the on-chain Δshares. A discrepancy whose
+    true economic event was mid-period (not at the pin-block boundary)
+    will be mispriced by the (EoM − event-date) pps drift; the warning
+    log captures the discrepancy magnitude so reviewers can spot-check.
+    Emits a warning so the reconciliation kick-in is visible in logs.
 
     Returns DataFrame ``[block_date, daily_inflow, cum_inflow]``.
     """
@@ -1528,6 +1545,75 @@ def _shares_to_usd_inflow_timeseries(
             shares_d = shares if isinstance(shares, Decimal) else Decimal(str(shares))
             by_date[d] = by_date.get(d, Decimal("0")) + sign * shares_d
 
+    # EoM reconciliation against on-chain ``balanceOf``. The Dune
+    # ``tokens.transfers`` table can miss Transfer events at the exact
+    # pin-block boundary (see Grove E23 2026-05-31 where a mint at block
+    # 46741326 = May-EoD UTC didn't surface in Dune but did show up in
+    # RPC ``balanceOf``). Without this step the missing mint inflates
+    # ``actual_revenue`` by the deposit value (~$3M for that case).
+    #
+    # We compare two PERIOD-ONLY deltas (NOT cumulative-from-prime-start):
+    #   * events delta  = Σ by_date[d] for d in [period.start, period.end]
+    #   * on-chain delta = balanceOf(eom_block) − balanceOf(som_block)
+    # Any discrepancy is attributed as a synthetic inflow row at
+    # ``period.end`` priced at ``pps_eom``. This keeps the reconciliation
+    # confined to the period being settled.
+    #
+    # **Skipped for venues with ``share_burn_destinations``** (Maple-style
+    # withdrawal queues, currently S14/S15/E37). For those, the in-tx burn
+    # transfers shares to a queue contract; the events-vs-balanceOf invariant
+    # is broken by the pending-redemption window even when Dune indexes
+    # everything correctly. The queue/refund netting in ``queue_flow_dfs``
+    # is the right mechanism for those venues; layering an on-chain anchor
+    # on top would over-correct (observed for Spark S14/S15 in Apr 2026
+    # where the discrepancy spans 89M shares — a Maple defensive unwind,
+    # not a Dune indexing gap).
+    if (
+        som_block is not None
+        and balance_at is not None
+        and not venue.share_burn_destinations
+    ):
+        scale = Decimal(10 ** venue.token.decimals)
+        eom_block = pin_block
+        som_shares = Decimal(balance_at(
+            venue.chain.value, venue.token.address.value, holder.value, som_block,
+        )) / scale
+        eom_shares = Decimal(balance_at(
+            venue.chain.value, venue.token.address.value, holder.value, eom_block,
+        )) / scale
+        actual_delta = eom_shares - som_shares
+        tracked_delta = sum(
+            (v for d, v in by_date.items() if period.start <= d <= period.end),
+            Decimal("0"),
+        )
+        discrepancy = actual_delta - tracked_delta
+        # Tolerance: 1 wei-equivalent of a share. Real Dune-missed mints
+        # observed in practice are ≥ 1 share (millions in the Grove E23
+        # 2026-05 case); rounding noise stays well under this.
+        # Pure-synthetic = no real event on ``period.end`` AT ALL. If a
+        # legitimate EoM mint/burn happened on that date too, we keep its
+        # standard EoD pricing path (don't silently re-price it at the
+        # pin_block — small bps difference, but a behavior change for a
+        # totally normal event we shouldn't introduce as a side effect of
+        # the reconciliation).
+        eom_is_pure_synthetic = (
+            period.end not in by_date and abs(discrepancy) > Decimal("0.000001")
+        )
+        if abs(discrepancy) > Decimal("0.000001"):
+            _logging.getLogger(__name__).warning(
+                "_shares_to_usd_inflow_timeseries: EoM reconciliation found "
+                "%.6f-share gap for venue %s (period events-tracked=%.6f, "
+                "on-chain period Δ=%.6f). Attributing as synthetic inflow "
+                "row at period.end — most likely cause: Dune "
+                "tokens.transfers missed a Transfer event at the pin-block "
+                "boundary.",
+                float(discrepancy), venue.id,
+                float(tracked_delta), float(actual_delta),
+            )
+            by_date[period.end] = by_date.get(period.end, Decimal("0")) + discrepancy
+    else:
+        eom_is_pure_synthetic = False
+
     if not by_date:
         return pd.DataFrame({
             "block_date": [], "daily_inflow": [], "cum_inflow": [],
@@ -1535,8 +1621,16 @@ def _shares_to_usd_inflow_timeseries(
 
     rows = []
     for d in sorted(by_date):
-        eod = datetime.combine(d, time.max, tzinfo=timezone.utc)
-        block = block_resolver.block_at_or_before(venue.chain.value, eod)
+        # Pure-synthetic period.end row → price at the canonical ``pin_block``
+        # (the same block used to read on-chain Δshares — dodges drift
+        # between the resolver's EoD definition and the orchestrator pin).
+        # Anything else (mid-period mints/burns, real EoM mints, dates
+        # without reconciliation) → standard EoD-block lookup.
+        if d == period.end and eom_is_pure_synthetic:
+            block = pin_block
+        else:
+            eod = datetime.combine(d, time.max, tzinfo=timezone.utc)
+            block = block_resolver.block_at_or_before(venue.chain.value, eod)
         usd_per_share = price_at_block(block)
         rows.append({
             "block_date": d,

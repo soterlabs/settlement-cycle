@@ -105,6 +105,8 @@ def _prime() -> Prime:
 
 
 class _FakePeriod:
+    start = date(2026, 4, 1)
+    end   = date(2026, 4, 30)
     pin_blocks = {Chain.ETHEREUM: 24000000}
 
 
@@ -196,3 +198,129 @@ def test_no_burn_destinations_behaves_like_before():
     # +50M − 10M = +40M (no queue netting since destinations list is empty)
     assert len(out) == 2  # one row per active date
     assert out["cum_inflow"].iloc[-1] == Decimal("40000000")
+
+
+# --------------------------------------------------------------------------
+# EoM on-chain reconciliation — fix for Grove E23 (Dune missed a 2.9M-share
+# mint at the exact pin-block boundary, surfaced as $3.27M phantom revenue).
+# --------------------------------------------------------------------------
+
+class _AprPeriod:
+    """Period stub: April 2026 with the EoM pin block = 24000000.
+
+    ``period.start`` / ``period.end`` are required by the EoM reconciliation
+    filter ``period.start <= d <= period.end``.
+    """
+    start = date(2026, 4, 1)
+    end   = date(2026, 4, 30)
+    pin_blocks = {Chain.ETHEREUM: 24000000}
+
+
+def _venue_no_queue() -> Venue:
+    return Venue(
+        id="E23-like",
+        chain=Chain.ETHEREUM,
+        token=Token(chain=Chain.ETHEREUM, address=_VAULT, symbol="X", decimals=18),
+        pricing_category=PricingCategory.ERC4626_VAULT,
+        underlying=Token(chain=Chain.ETHEREUM, address=_USDT, symbol="USDT", decimals=6),
+        # share_burn_destinations omitted → reconciliation eligible
+    )
+
+
+def test_eom_reconciliation_fires_when_on_chain_exceeds_events(caplog):
+    """On-chain Δshares (period-only) > Σ events Δshares → synthetic row
+    appears at ``period.end`` with the missing inflow priced at
+    ``pps(pin_block)``."""
+    import logging
+    venue = _venue_no_queue()
+    prime = _prime()
+    src = _MockBalanceSource({
+        # Single mint of 31.16M shares mid-period — matches what events see.
+        (b"\x00" * 20, _ALM.value): _df([(date(2026, 4, 15), 31_163_174)]),
+    })
+    # On-chain SoM = 0 shares, on-chain EoM = 34.08M shares — period delta
+    # is 34.08M, 2.92M more than the events reconstruction sees.
+    scale = 10 ** 18
+    on_chain = {23_999_000: 0, 24_000_000: 34_082_179 * scale}
+    balance_at = lambda c, t, h, b: on_chain[b]
+
+    with caplog.at_level(logging.WARNING, logger="settle.normalize.positions"):
+        out = _shares_to_usd_inflow_timeseries(
+            prime, venue, _AprPeriod(),
+            balance_source=src,
+            block_resolver=_MockBlockResolver(),
+            price_at_block=_flat_price_at_block,
+            som_block=23_999_000,
+            balance_at=balance_at,
+        )
+
+    msgs = [r.message for r in caplog.records]
+    assert any(
+        "EoM reconciliation found" in m and "venue E23-like" in m for m in msgs
+    ), msgs
+    # cum_inflow at EoM = 31.16M (events) + 2.92M (synthetic) ≈ 34.08M shares,
+    # priced at pps=1 → ≈ 34.08M USD.
+    assert out["cum_inflow"].iloc[-1] == Decimal("34082179")
+    # The synthetic row was placed on period.end, not on a separate stray date.
+    eom_row = out[out["block_date"] == _AprPeriod.end]
+    assert len(eom_row) == 1
+    assert eom_row["daily_inflow"].iloc[0] == Decimal("2919005")  # 34.08M - 31.16M
+
+
+def test_eom_reconciliation_skipped_when_share_burn_destinations(caplog):
+    """Maple-style queue venues (S14/S15/E37) have ``share_burn_destinations``
+    set — the events-vs-balanceOf invariant intentionally doesn't hold, so
+    the reconciliation must not fire (would over-correct by ~89M shares
+    for S15 in production)."""
+    import logging
+    venue = _venue_with_queue()   # has _QUEUE in share_burn_destinations
+    prime = _prime()
+    src = _MockBalanceSource({
+        (b"\x00" * 20, _ALM.value): _df([(date(2026, 4, 5), 100_000_000)]),
+    })
+    # On-chain delta = 0 (queue burns offset the mint pending fulfillment),
+    # tracked delta = 100M. With the skip in place no reconciliation fires.
+    on_chain = {23_999_000: 0, 24_000_000: 0}
+    balance_at = lambda c, t, h, b: on_chain[b]
+
+    with caplog.at_level(logging.WARNING, logger="settle.normalize.positions"):
+        out = _shares_to_usd_inflow_timeseries(
+            prime, venue, _AprPeriod(),
+            balance_source=src,
+            block_resolver=_MockBlockResolver(),
+            price_at_block=_flat_price_at_block,
+            som_block=23_999_000,
+            balance_at=balance_at,
+        )
+
+    msgs = [r.message for r in caplog.records]
+    assert not any("EoM reconciliation found" in m for m in msgs)
+    # Output matches the no-reconciliation path: just the +100M mint.
+    assert out["cum_inflow"].iloc[-1] == Decimal("100000000")
+
+
+def test_eom_reconciliation_below_tolerance_silent():
+    """Sub-microshare drift (rounding noise) does not fire the warning or
+    inject a row — guards against Decimal-precision dust from event
+    aggregation."""
+    venue = _venue_no_queue()
+    prime = _prime()
+    # Track 1.0 share inflow.
+    src = _MockBalanceSource({
+        (b"\x00" * 20, _ALM.value): _df([(date(2026, 4, 5), 1)]),
+    })
+    # On-chain shows 1.0 share + 0.0000005 (5e11 wei on a 18-dec token).
+    on_chain = {23_999_000: 0, 24_000_000: 10 ** 18 + 500_000_000_000}
+    balance_at = lambda c, t, h, b: on_chain[b]
+
+    out = _shares_to_usd_inflow_timeseries(
+        prime, venue, _AprPeriod(),
+        balance_source=src,
+        block_resolver=_MockBlockResolver(),
+        price_at_block=_flat_price_at_block,
+        som_block=23_999_000,
+        balance_at=balance_at,
+    )
+    # No reconciliation row added — only the original event row remains.
+    assert len(out) == 1
+    assert out["cum_inflow"].iloc[-1] == Decimal("1")
