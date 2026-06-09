@@ -101,9 +101,10 @@ def build_spark_sources(
     """Assemble the Spark ``Sources`` bundle from captured fixtures.
 
     Routing strategy (per-venue):
-    * Cat A: empty cum_balance + empty inflow (revenue=0 with empty
-      ``external_alm_sources``); SoM/EoM value snapshots come from RPC
-      ``balanceOf`` via ``position_balance``.
+    * Cat A: daily cum_balance synthesized from RPC ``balanceOf`` at the
+      fixture's daily EoD blocks (revenue=0 with empty
+      ``external_alm_sources``); SoM/EoM anchors use the canonical pin
+      blocks.
     * Cat B: per-(token, holder=ALM) cum_balance from ``cat_b_cum_balance.json``.
     * Cat C: no fixture — pure RPC ``balanceOf`` + ``scaledBalanceOf``.
     * Cat E: per-(token, holder=Eth ALM) cum_balance from ``cat_e_cum_balance.json``.
@@ -185,8 +186,9 @@ def build_spark_sources(
             _df_with_dates(burn_rows, "block_date") if burn_rows else _empty_directed_df()
         )
 
-    # Cat A routing: synthesize a 2-row cumulative_balance_timeseries from
-    # RPC ``balanceOf`` at SoM/EoM. The compute-layer Cat A fallback (when
+    # Cat A routing: synthesize a daily cumulative_balance_timeseries from
+    # RPC ``balanceOf`` at the fixture's daily EoD blocks (SoM/EoM on the
+    # canonical pin blocks). The compute-layer Cat A fallback (when
     # external_alm_sources is empty AND inflow_by_counterparty returns empty)
     # consumes this to set capital_net = Δvalue, producing revenue = 0 — the
     # correct behavior for par-stables held at the ALM with no off-chain
@@ -232,6 +234,14 @@ def build_spark_sources(
                         "extend the fixture."
                     )
 
+    # Daily EoD blocks from the captured fixtures — shared by the Cat A
+    # synthesis below and the block resolver at the end of this function.
+    blocks_by_chain_date: dict[tuple[str, _date], int] = {}
+    for _r in fixtures["blocks_l2"]["rows"]:
+        blocks_by_chain_date[(_r["chain"], _date.fromisoformat(_r["block_date"]))] = _r["block_number"]
+    for _r in fixtures["blocks_eth_ava"]["rows"]:
+        blocks_by_chain_date[(_r["chain"], _date.fromisoformat(_r["block_date"]))] = _r["block_number"]
+
     cat_a_cum_by_token_holder: dict[tuple[bytes, bytes], pd.DataFrame] = {}
     if pin_blocks_som and pin_blocks_eom:
         if period_start is None or period_end is None:
@@ -255,27 +265,46 @@ def build_spark_sources(
             raw = _rpc.balance_of(_Chain(chain), _Addr(token), _Addr(holder), block)
             return _D(raw) / _D(10 ** decimals)
 
+        # Daily series, not a SoM/EoM 2-point step: cum_at_or_before over a
+        # 2-row frame returns the SoM balance for EVERY interior day of the
+        # month, so any mid-month swing in idle ALM balances (~$700M+ of
+        # USDS/POL across chains) mis-states the daily utilized deduction in
+        # compute_sky_revenue. Interior days read RPC balanceOf at the
+        # fixture's daily EoD blocks (calls are @cached — re-runs are free);
+        # SoM/EoM stay on the canonical pin blocks. A day missing from the
+        # block fixture is skipped — downstream cum_at_or_before then
+        # carries the previous day forward, which is the 2-point behaviour
+        # for that day only, not the whole month.
         for v in spark.venues:
             if v.pricing_category.value != "A":
                 continue
             if v.chain not in pin_blocks_som or v.chain not in pin_blocks_eom:
                 continue
-            som_blk = pin_blocks_som[v.chain]
-            eom_blk = pin_blocks_eom[v.chain]
-            bal_som = _balance_decimal(
-                v.chain.value, v.token.address.value,
-                spark.alm[v.chain].value, som_blk, v.token.decimals,
-            )
-            bal_eom = _balance_decimal(
-                v.chain.value, v.token.address.value,
-                spark.alm[v.chain].value, eom_blk, v.token.decimals,
-            )
-            rows = [
-                {"block_date": som_date, "daily_net": bal_som, "cum_balance": bal_som},
-                {"block_date": eom_date, "daily_net": bal_eom - bal_som, "cum_balance": bal_eom},
-            ]
+            holder = spark.alm[v.chain].value
+            day_blocks: list[tuple[_date, int]] = [(som_date, pin_blocks_som[v.chain])]
+            d = period_start
+            while d < eom_date:
+                blk = blocks_by_chain_date.get((v.chain.value, d))
+                if blk is not None:
+                    day_blocks.append((d, blk))
+                d += _td(days=1)
+            day_blocks.append((eom_date, pin_blocks_eom[v.chain]))
+
+            rows = []
+            prev_bal = _D(0)
+            for day, blk in day_blocks:
+                bal = _balance_decimal(
+                    v.chain.value, v.token.address.value, holder,
+                    blk, v.token.decimals,
+                )
+                rows.append({
+                    "block_date": day,
+                    "daily_net": bal - prev_bal,
+                    "cum_balance": bal,
+                })
+                prev_bal = bal
             df = pd.DataFrame(rows)
-            cat_a_cum_by_token_holder[(v.token.address.value, spark.alm[v.chain].value)] = df
+            cat_a_cum_by_token_holder[(v.token.address.value, holder)] = df
 
     # Cat E routing: only Eth ALM holders.
     cat_e_by_token: dict[bytes, pd.DataFrame] = {}
@@ -336,10 +365,11 @@ def build_spark_sources(
             # Cat E routing (Eth ALM)
             if holder == eth_alm and token in cat_e_by_token:
                 return cat_e_by_token[token]
-            # Cat A routing: synthesized SoM/EoM 2-row frame so the compute-
-            # layer Cat A fallback (when inflow_by_counterparty returns
-            # empty rows below) treats balance changes as value-preserving
-            # capital → revenue = 0.
+            # Cat A routing: synthesized daily balanceOf frame so the
+            # compute-layer Cat A fallback (when inflow_by_counterparty
+            # returns empty rows below) treats balance changes as value-
+            # preserving capital → revenue = 0, and the daily utilized
+            # deduction tracks mid-month swings instead of a SoM step.
             df = cat_a_cum_by_token_holder.get((token, holder))
             if df is not None:
                 return df
@@ -403,18 +433,9 @@ def build_spark_sources(
             df["block_date"] = pd.to_datetime(df["block_date"]).dt.date
             return df
 
-    # Block resolver: combine L2 + Eth + Avalanche-C fixtures into a single
-    # multi-chain MockBlockResolver, with the Spark fixture file's exact
-    # date→block mapping.
-    blocks_by_chain_date: dict[tuple[str, "date"], int] = {}
-    from datetime import date as _date
-    for r in fixtures["blocks_l2"]["rows"]:
-        d = _date.fromisoformat(r["block_date"])
-        blocks_by_chain_date[(r["chain"], d)] = r["block_number"]
-    for r in fixtures["blocks_eth_ava"]["rows"]:
-        d = _date.fromisoformat(r["block_date"])
-        blocks_by_chain_date[(r["chain"], d)] = r["block_number"]
-
+    # Block resolver: the combined L2 + Eth + Avalanche-C daily-block map
+    # (``blocks_by_chain_date``, built above for the Cat A synthesis) with
+    # the Spark fixture file's exact date→block mapping.
     class _FixtureMultiResolver:
         def block_at_or_before(self, chain: str, anchor_utc):
             d = anchor_utc.date()
