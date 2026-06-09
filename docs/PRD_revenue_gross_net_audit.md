@@ -48,22 +48,23 @@ Three concrete failure modes the audit needs to rule out:
 
 The PRD's value is checking each per-venue path against these three failure modes and certifying "no CoF deduction here".
 
-## 4. Per-venue audit checklist
+## 4. Per-venue audit checklist — WALKED 2026-06-09
 
-For each pricing category, fill in:
+Every current pricing category's value reading was verified to carry no CoF-equivalent deduction. The one venue type (`sky_savings_token` Cat B) where the NAV does appreciate by an SSR-equivalent rate is handled via an explicit override that bypasses the value-delta formula.
 
-| Cat | Venue example | Value source | CoF-equivalent deduction inside the value reading? |
-|-----|---------------|--------------|----------------------------------------------------|
-| **A** | Grove E13 RLUSD raw | `balance_of(token, ALM, block)` | No — par-stable, raw balance |
-| **B** | OBEX V1 Maple syrupUSDC | `convertToAssets(shares, block)` | No — the prime borrowed USDS from Sky to deploy here; Sky's BR doesn't appear in Maple's NAV |
-| **B** | Spark S32 sUSDS POL | `convertToAssets(shares, block)` + **override** | YES — sUSDS appreciates by SSR. Handled correctly via `actual_revenue_override` (bypasses the value-delta formula). **Convention: any future `sky_savings_token: true` venue MUST set the override.** |
-| **C** | Grove E1 aEthRLUSD | `scaled_balance × liquidityIndex` | No — Aave's `liquidityIndex` reflects lender yield, doesn't include Sky's BR |
-| **E** | Grove E9 JTRSY | Chronicle NAV oracle | No — NAV is the fund's reported value, no Sky-side deduction |
-| **E** | Grove E37 syrupUSDC | `convertToAssets` fallback | No (same as Cat B Maple) |
-| **F** | Grove E11 Curve AUSD/USDC | `get_virtual_price` + LP balance | No — pool yield only, no Sky-side deduction |
-| **F** | E12 Uniswap V3 LP | Position-NFT events + pool reads | No |
+| Cat | Venue example | Value source | Citation | CoF-equivalent deduction inside the value reading? |
+|-----|---------------|--------------|----------|----------------------------------------------------|
+| **A** PAR_STABLE | Grove E13 RLUSD raw | `balance_of(token, ALM, block) × $1` | `prices.py:100-101` (unit price), `positions.py:216-220` (balance) | ✓ No — par-stable token, raw ERC-20 balance, no internal yield mechanism |
+| **B** ERC4626_VAULT (standard) | OBEX V1 Maple syrupUSDC | `convertToAssets(shares=1, block) × par_underlying` | `prices.py:117-129` | ✓ No — Maple's `convertToAssets` reflects lender yield in the vault; Sky's BR doesn't exist in Maple's pricePerShare. The prime borrowed USDS from Sky to fund the position; Sky's BR is captured on the ilk-debt side, not the venue side. |
+| **B** ERC4626_VAULT (sky_savings_token) | Spark S32 sUSDS POL | `convertToAssets(shares=1, block) × par_underlying` **+ override** | `monthly_pnl.py:2547-2563` (dispatch), `2563-2806` (sky_savings_token sub-case), `prime_agent_revenue.py:345-368` (override application) | ⚠️ YES — sUSDS appreciates by SSR. Handled correctly via `actual_revenue_override = susds_spread` (currently $0; the SSR appreciation that would otherwise land in actual_revenue is implicitly credited back to the prime via `susds_spread_reimbursement` reducing `sky_revenue (net)`). **Convention codified: any future `sky_savings_token: true` venue MUST go through this override path.** |
+| **C** AAVE_ATOKEN / SPARKLEND_SPTOKEN | Grove E1 aEthRLUSD | `scaledBalanceOf × liquidityIndex × par_underlying` (via `_atoken_index_weighted_inflow`) | `monthly_pnl.py:2369-2546`, `prices.py:131-137` | ✓ No — Aave's `liquidityIndex` reflects lender yield (borrower interest, net of Aave's reserve factor). Sky's BR is not part of Aave's accounting. |
+| **E** RWA_TRANCHE (Chronicle NAV) | Grove E9 JTRSY | Chronicle oracle NAV via `_resolve_rwa_nav` | `prices.py:139-144` | ✓ No — NAV is the fund's reported value (issuer-side). No Sky leg. |
+| **E** RWA_TRANCHE (Centrifuge ERC-4626 fallback) | Grove E37 syrupUSDC | `convertToAssets` + exact USDC inflow from `_erc4626_event_inflow_timeseries` | `monthly_pnl.py:2945-2997` | ✓ No — same shape as Cat B Maple. |
+| **F** LP_POOL (curve_stableswap) | Grove E11 Curve AUSD/USDC | `Σ reserves × per-coin price` via `_curve_lp_unit_price` (par-stable @ $1, yield-bearing recursive via `convertToAssets`) | `prices.py:146-152`, `prices.py:171-247` | ✓ No — Curve pool reserves at par. For pools with a sUSDS leg the SSR appreciation flows back to Sky via `curve_susds_spread` reducing `sky_revenue (net)` (not via the LP unit price), so the value reading itself is gross. |
+| **F** LP_POOL (uniswap_v3) | Grove E12 Uniswap V3 AUSD/USDC | Position-NFT enumeration + `amount0/amount1 × $1` via `_uniswap_v3_value` | `positions.py:237-299` | ✓ No — par-stable amounts × $1. UniV3 fee accrual is to LP holders (= us) and surfaces via `external_revenue`. |
+| **EOA** | Spark S23 Anchorage escrow | `balance_of(USDC, escrow, block) × $1` | `prices.py:103-115` | ✓ No — par-stable principal at par. Interest sweeps flow via `external_revenue` (Cat A `external_alm_sources` path) into S26 USDC raw. |
 
-"No" rows are the expected state. Any "Yes" must be paired with an explicit code-side mechanism (override, exception, or netting reversal) that prevents the double-count. The grid is empty until walked.
+**Result of the walk:** every current pricing category is gross of CoF. The single exception (Cat B `sky_savings_token`) is handled by an explicit override mechanism, and the audit codifies "any future such venue MUST use the same override" as a convention.
 
 ## 5. External-revenue paths checklist
 
@@ -100,4 +101,4 @@ For each pricing category, fill in:
 
 ## 9. Next step
 
-Walk §4 first (one row per pricing category, single sitting). The grid moves from "expected" to "confirmed" with citations. §5 follows in a second sitting.
+§4 walked 2026-06-09 — see grid above with citations. §5 is the remaining walk; the per-path expectations are pre-populated but each emit-amount should be confirmed against its Dune query / source code. Deliverables §3 (METHODOLOGY.md cross-link) and §4 (invariant test) follow.
