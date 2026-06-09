@@ -144,9 +144,14 @@ def get_subproxy_balance_timeseries(
                 "get_subproxy_balance_timeseries: EoM cross-check found "
                 "%.6f-token drift between tracked cum_balance (%.6f, "
                 "post-SoM-anchor) and on-chain balanceOf (%.6f) at "
-                "subproxy %s on %s. Likely cause: a mid-period transfer "
-                "Dune tokens.transfers did not surface. The SoM anchor "
-                "does NOT catch this — settlement output may be off.",
+                "subproxy %s on %s. The SoM anchor caught the pre-period "
+                "balance but mid-period flows are missing from the events "
+                "series — common causes: (a) the source returned empty "
+                "for this (token, holder) (e.g. a fixture loader's "
+                "``_empty_balance_df()`` fallback written when the holder "
+                "address was different); (b) Dune ``tokens.transfers`` "
+                "actually missed mid-period events. Settlement output "
+                "may be off by the time-weighted impact of the drift.",
                 float(eom_drift), float(tracked_eom), float(on_chain_eom),
                 prime.subproxy[chain].hex, token.symbol,
             )
