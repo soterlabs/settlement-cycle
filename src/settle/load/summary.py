@@ -148,7 +148,9 @@ def render_summary(prov: dict) -> str:
         "those primes the prime's true profit is "
         "``prime_agent_revenue (net) + sde_revenue (gross)``. Sky's net "
         "P&L (not a row) = ``sky_revenue (net)`` − ``agent_rate (gross)`` "
-        "− ``pol_agent_rate (gross)`` − ``distribution_rewards (gross)``."
+        "− ``distribution_rewards (gross)`` (``pol_agent_rate`` and the "
+        "sUSDS / Curve / PSM3 spread reimbursements are NOT subtracted "
+        "again because they're already inside ``sky_revenue (net)``)."
     )
     lines.append("")
     lines.append("| Field | USD |")
