@@ -573,6 +573,32 @@ via the resolved-pointer flow once the RPC swap lands.
 
 ### P1 — methodology unknowns affecting accuracy
 
+#### S30. Savings V2 VSR liability — confirm it is outside MSC `prime_agent_revenue` scope
+
+As of PR #126, MSC treats the Savings V2 vaults (S56/S57/S59/S60) as
+**position-only**: the gross yield on vault-deployed capital remains in
+`prime_agent_revenue` (it is earned at the ALM and captured by the
+existing S1–S55 venues), but the depositor-side VSR liability accrual
+is **not** subtracted. Rationale: the MSC accounting boundary is the
+ALM proxy — depositor deposits/withdrawals (principal + accrued VSR)
+are capital flows in/out of the ALM, and the VSR is a vault-layer
+obligation of Spark's retail product, not an MSC settlement item. See
+`docs/spark/PRD_savings_vaults.md` §3.
+
+Question for Spark: confirm this scope reading of
+`prime_agent_revenue`. Two consequences to be explicit about:
+
+1. MSC's headline includes yield earned on depositor-funded capital
+   (with no VSR offset and no CoF allocated against it — it was never
+   drawn from the ilk).
+2. MSC will diverge from Spark's own surplus accounting
+   (`deployed × (apr − borrow_cost)`) and from the BA Labs
+   balance-sheet headline by ≈ the period's VSR accrual
+   (~$1.8M for 2026-01; ~$4–5M/month at 2026-06 TVL). We will carry
+   this as a documented scope difference unless Spark prefers the
+   VSR-netted convention, in which case the (previously implemented)
+   per-vault negative VSR line is restored.
+
 #### S28. `cum_debt` base — frob-only or frob+grab (Vat `Art`)?
 Settlement currently uses `cum_debt = (Σ Vat.frob.dart + Σ Vat.grab.dart) × Vat.ilks[ilk].rate / 1e27` as the BR principal — i.e. the canonical Vat `Art × rate`. This includes `grab` darts. In the Allocator system `grab` is used for stability-fee capitalisation, **not** liquidation: each call bumps the urn's normalised debt to record interest the vow has accrued (the paired `vat.suck` on the vow side, which our SQL doesn't watch, supplies the matching `dai[vow]` credit). Grove's xlsx "Subscriptions" column has historically been frob-only.
 
