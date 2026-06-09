@@ -574,7 +574,7 @@ via the resolved-pointer flow once the RPC swap lands.
 ### P1 — methodology unknowns affecting accuracy
 
 #### S28. `cum_debt` base — frob-only or frob+grab (Vat `Art`)?
-Settlement currently uses `cum_debt = (Σ Vat.frob.dart + Σ Vat.grab.dart) × Vat.ilks[ilk].rate / 1e27` as the BR principal — i.e. the canonical Vat `Art × rate`. This includes `grab` darts (the capitalised liquidation-style adjustments where Sky absorbs prior debt + interest). Grove's xlsx "Subscriptions" column has historically been frob-only.
+Settlement currently uses `cum_debt = (Σ Vat.frob.dart + Σ Vat.grab.dart) × Vat.ilks[ilk].rate / 1e27` as the BR principal — i.e. the canonical Vat `Art × rate`. This includes `grab` darts. In the Allocator system `grab` is used for stability-fee capitalisation, **not** liquidation: each call bumps the urn's normalised debt to record interest the vow has accrued (the paired `vat.suck` on the vow side, which our SQL doesn't watch, supplies the matching `dai[vow]` credit). Grove's xlsx "Subscriptions" column has historically been frob-only.
 
 For Spark, cumulative `grab` dart was ~$48M by 2026-04-30 (see `src/settle/queries/debt_timeseries.sql:43-46`). Treating grab-inclusive `Art` as the "Subscriptions" base means we charge BR on capital that Grove's frob-only tally would exclude.
 
