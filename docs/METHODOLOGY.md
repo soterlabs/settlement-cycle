@@ -21,25 +21,38 @@ actual_revenue = (value_eom − value_som) − period_inflow
 **SDE split (Sky Direct Exposure venues):**
 
 - `kind = fixed`: 100 % of `actual_revenue` goes to Sky.
-- `kind = capped`: computed daily using end-of-day position snapshots.
-
-For `kind = capped`, the split accumulates day by day:
+- `kind = capped`: a value-weighted average Sky share over the period's
+  end-of-day position snapshots, applied to the full period revenue
+  (matches Grove's per-day allocation workbook; verified vs Grove Jan 2026
+  JAAA — see PRD §17.7):
 
 ```
-For each day d in [period.start, period.end]:
-    sd_share_d  = min(cap_usd, v_d) / v_d   (0 if v_d = 0)
-    daily_rev_d = (v_d − v_{d−1}) − inflow_d
-    sd_rev_d    = daily_rev_d × sd_share_d
-
-sd_revenue    = Σ_d sd_rev_d                              → to Sky
+sd_share   = Σ_d cum_value_d / Σ_d uncapped_value_d
+sd_revenue = actual_revenue × sd_share                     → to Sky
 prime_revenue = actual_revenue − sd_revenue + external_revenue → to prime
 ```
 
-where `v_d` is the daily end-of-day position value (from the same balance ×
-NAV oracle timeseries used for `sde_asset_value`), and `v_0 = value_som`.
+where `uncapped_value_d` is the raw end-of-day position value (balance ×
+NAV oracle) and `cum_value_d = min(cap_usd, uncapped_value_d)` with the
+activation/burn gating applied (`0` outside `[start_date, end_date]`;
+held at `cap_usd` during a burn's in-flight window
+`[burn_date, usdc_settlement_date]`).
 
-`sd_share_avg = sd_revenue / actual_revenue` is reported as a period summary
-figure (the weighted-average sky share for the month).
+Special cases:
+
+- **Burn-day override** — when the period contains a `burn_date` AND
+  `value_eom < cap_usd` (the position actually settled out), `sd_share = 1`
+  for the month: Sky bears the full period net P&L (Grove JAAA Mar 2026:
+  Sky takes 98.4%). Without the override the Σ would under-attribute
+  because `cum_value` drops to 0 from `usdc_settlement_date` onward.
+- **Stable position** — with constant value and no flows the formula
+  reduces to the EoM-locked ratio `min(cap, value_eom) / value_eom`; the
+  legacy EoM-locked path (`_capped_sd_revenue_eom_locked`) is retained
+  only as a fallback for callers without a daily value timeseries.
+- **No active days** (`Σ uncapped = 0`) → `sd_share = 0`.
+
+`sd_share` is reported as a period summary figure (the value-weighted
+Sky share for the month).
 
 ```
 prime_agent_revenue = Σ_venues prime_revenue
@@ -133,7 +146,7 @@ sky_revenue = sky_rev_br + sde_revenue
 sky_rev_br = Σ_days  max(utilized_d, 0) × ((1 + effective_br_d)^(1/365) − 1)
 ```
 
-where `effective_br_d` is the subsidised borrow rate for the day (= `SSR + 30bps` at full rate; steps down toward `ref_rate + 30bps` over the 24-month subsidy programme).
+where `effective_br_d` is the subsidised borrow rate for the day: `ref_rate + (BR − ref_rate) × T/24` for ramp month `T` — i.e. the bare `ref_rate` at T=0, reaching the full borrow rate (`SSR + 30bps`) at T=24, clamped so the prime never pays more than the unsubsidised BR (`domain/subsidy.py::subsidised_apy`, verified against Grove's workbook).
 
 **`sde_revenue`** — actual yield from SDE positions (from the `sd_revenue` fields above):
 
@@ -229,4 +242,4 @@ Example — February 2026 Grove: current `monthly_pnl` = −$5.27M; correct net 
 - All rates use **APY with daily compounding**: `daily_factor = (1 + APY)^(1/365) − 1`
 - SSR is tracked daily via SP-BEAM governance calls; see `docs/RULES.md` for history
 - Borrow rate = `SSR + 30bps`; agent rate = `SSR + 20bps` (USDS) / `20bps` (sUSDS)
-- Subsidised borrow rate ramps from `ref_rate + 30bps` toward full `SSR + 30bps` over 24 months from 2026-01-01; capped at `subsidy.cap_usd` per prime (excess at full rate)
+- Subsidised borrow rate ramps from the bare `ref_rate` toward full `SSR + 30bps` over 24 months from 2026-01-01; capped at `subsidy.cap_usd` per prime (excess at full rate)

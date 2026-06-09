@@ -8,13 +8,19 @@
 #   A.2.2.9.1.1.1.1.* — Sky Direct Exposures (Active)
 #   A.2.2.9.1.1.1.1.3 — Historical Sky Direct Exposures
 #
-# SDE semantics (post 2026-05-28 refactor, matches Grove team's PnL workbook):
+# SDE semantics (post 2026-06-04 revert to daily-resolved, matches Grove
+# team's PnL workbook — see PRD §17.7):
 #   - fixed  → 100 % of actual_revenue goes to Sky.
-#   - capped → sd_share = min(cap_usd, value_eom) / value_eom (EoM-locked).
-#              sd_revenue = actual_revenue × sd_share applied once to the
-#              full period. Falls back to SoM-locked share when value_eom = 0
-#              (full redemption mid-period). See ``_capped_sd_revenue_eom_locked``
-#              for rationale and the daily-resolved → EoM-locked transition.
+#   - capped → sd_share = Σ_d cum_value_d / Σ_d uncapped_value_d (value-
+#              weighted average of the daily Sky allocation fraction);
+#              sd_revenue = actual_revenue × sd_share applied to the full
+#              period. Burn-day override: burn_date in period AND
+#              value_eom < cap_usd → sd_share = 1 (Sky bears the period
+#              P&L). See ``_capped_sd_revenue_daily_resolved``. The
+#              EoM-locked form (min(cap, value_eom) / value_eom,
+#              ``_capped_sd_revenue_eom_locked``) survives only as the
+#              fallback when no daily value timeseries is available; the
+#              two coincide on stable-position months.
 #   - The Sky-direct slice's asset value is excluded from the prime's
 #     subsidised CoF base (= Grove team's Net_Subs) for every day the entry
 #     is active. Days strictly before ``start_date`` or strictly after
