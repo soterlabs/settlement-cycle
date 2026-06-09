@@ -337,7 +337,17 @@ def _curve_sde_asset_value_timeseries(
     holder = (venue.holder_override or prime.alm[venue.chain]).value
     chain_str = venue.chain.value
 
+    from ..extract.rpc import RPCError as _RPCError
+    import requests as _requests
+
     rows = []
+    # Carry-forward state for transport failures (mirrors
+    # ``_aggregate_lending_idle_usds``): a failed day must NOT record $0 —
+    # that removes the day's utilized exclusion (prime over-charged BR) and
+    # pollutes the Σcum/Σuncapped ratio for capped entries. ``None`` means
+    # no successful read yet; failing then raises rather than seeding the
+    # month with zeros.
+    last_good: tuple[Decimal, Decimal] | None = None
     current = period.start
     while current <= period.end:
         eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
@@ -368,11 +378,18 @@ def _curve_sde_asset_value_timeseries(
                         "at block %d — $0 for day %s.",
                         venue.id, pool_addr.hex(), sde_coin.hex, block, current,
                     )
-        except Exception as exc:
+        except (_RPCError, _requests.HTTPError,
+                _requests.ConnectionError, _requests.Timeout) as exc:
+            if last_good is None:
+                raise
+            raw_value, capped_value = last_good
             _log.warning(
-                "curve SDE: RPC error for venue %s on %s; using $0 (error: %s).",
-                venue.id, current, type(exc).__name__,
+                "curve SDE: RPC error for venue %s on %s; carrying forward "
+                "prior value $%s (error: %s).",
+                venue.id, current, raw_value, type(exc).__name__,
             )
+        else:
+            last_good = (raw_value, capped_value)
         # Emit both columns so the schema matches ``_sde_asset_value_timeseries``;
         # `_capped_sd_revenue_daily_resolved` requires both. `uncapped_value` is
         # the pre-cap raw position; `cum_value` is the post-cap deduction value.
@@ -1264,10 +1281,11 @@ def _aggregate_curve_idle_usds(
     """
     from datetime import time
     from ..domain.sky_tokens import KNOWN_PAR_STABLES_ETHEREUM, KNOWN_YIELD_BEARING_ETHEREUM
-    from ..extract.rpc import balance_of as _balance_of
+    from ..extract.rpc import RPCError as _RPCError, balance_of as _balance_of
     from ..normalize.sources.curve_pool import CurvePoolSource
     from .sky_revenue import BASE_RATE_OVER_SSR
     from ._helpers import daily_compounding_factor
+    import requests as _requests
 
     venues_with_config = [v for v in prime.venues if v.curve_idle_usds is not None]
     if not venues_with_config:
@@ -1312,9 +1330,12 @@ def _aggregate_curve_idle_usds(
         # ``daily_util`` / ``daily_spread`` dicts would (a) carry the
         # cross-venue aggregate, not this venue's prior value, and (b)
         # compound on consecutive failures into a zero or doubled value.
-        # Keep per-venue state local to the venue's day loop.
-        venue_last_usds = Decimal(0)
-        venue_last_spread = Decimal(0)
+        # Keep per-venue state local to the venue's day loop. ``None`` means
+        # no successful read yet — a day-1 failure then raises instead of
+        # seeding the whole month's carry-forward with $0 (which over-states
+        # utilized and over-charges the prime BR on its Curve idle USDS).
+        venue_last_usds: Decimal | None = None
+        venue_last_spread: Decimal | None = None
 
         current = period.start
         while current <= period.end:
@@ -1392,7 +1413,16 @@ def _aggregate_curve_idle_usds(
                             (alm_lp / pool_total) * coin_usds if pool_total > 0 else Decimal(0)
                         )
 
-            except Exception as exc:
+            except (_RPCError, _requests.HTTPError,
+                    _requests.ConnectionError, _requests.Timeout) as exc:
+                # Transport errors only — config/programming errors (e.g. the
+                # ValueError raises above) must propagate, not silently turn
+                # into a carried-forward value.
+                if venue_last_usds is None:
+                    # No successful read to carry forward — fail loud rather
+                    # than silently fall back to $0 for the rest of the
+                    # period (mirrors ``_aggregate_lending_idle_usds``).
+                    raise
                 _log.warning(
                     "curve_idle_usds: RPC error for venue %s on %s; carrying forward "
                     "prior value (error: %s).",
