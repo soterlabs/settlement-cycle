@@ -26,6 +26,7 @@ Historical artifacts (``pnl.md`` / ``pnl.csv`` / ``venues.csv`` /
 
 from __future__ import annotations
 
+import logging
 import os
 import subprocess
 import sys
@@ -37,6 +38,8 @@ from .summary import write_summary
 
 # settlement-cycle/src/settle/load/writer.py → parents[3] = settlement-cycle/
 _REPO_ROOT = Path(__file__).resolve().parents[3]
+
+_log = logging.getLogger(__name__)
 
 
 def default_output_dir(prime_id: str, month: str) -> Path:
@@ -87,19 +90,39 @@ def write_settlement(
     month_str = f"{pnl.month.year}-{pnl.month.month:02d}"
     script = _REPO_ROOT / "scripts" / "build_settlement_xlsx.py"
     if script.exists():
+        xlsx_path = output_dir / _output_filename(pnl.prime_id, month_str)
         try:
+            # ``--dir`` pins the subprocess to THIS run's output dir — without
+            # it the script resolves its own default and a custom
+            # --output-dir/SETTLE_OUTPUT_DIR run would re-render the
+            # repo-default xlsx from stale provenance.
             subprocess.run(
                 [sys.executable, str(script), "--prime", pnl.prime_id,
-                 "--month", month_str],
+                 "--month", month_str, "--dir", str(output_dir)],
                 check=True, capture_output=True, text=True, timeout=60,
             )
-            xlsx_path = output_dir / _output_filename(pnl.prime_id, month_str)
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+            # Don't fail the settlement run on a render failure — the
+            # canonical provenance.json is already on disk. But the xlsx is
+            # the git-tracked, counterparty-facing artifact: a silent skip
+            # leaves the PREVIOUS run's xlsx in place, so shout about it and
+            # never report a stale file as written.
+            stderr = getattr(e, "stderr", None) or ""
+            _log.error(
+                "xlsx render FAILED for %s %s — %s. The settlement numbers "
+                "live in provenance.json/summary.md; any %s already in %s is "
+                "STALE (previous run) and must not be committed. stderr:\n%s",
+                pnl.prime_id, month_str, e.__class__.__name__,
+                xlsx_path.name, output_dir, stderr.strip(),
+            )
+        else:
             if xlsx_path.exists():
                 written["xlsx"] = xlsx_path
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-            # Don't fail the settlement run on a render failure — the
-            # canonical provenance.json is already on disk.
-            pass
+            else:
+                _log.error(
+                    "xlsx render reported success but %s does not exist — "
+                    "check build_settlement_xlsx.py output naming", xlsx_path,
+                )
 
     return written
 

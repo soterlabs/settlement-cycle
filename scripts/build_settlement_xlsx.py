@@ -809,8 +809,13 @@ def _output_filename(prime_id: str, month: str) -> str:
     return f"{prime_id}_settlement_{_MONTH_NAMES[int(m) - 1]}_{year}.xlsx"
 
 
-def build_xlsx(prime_id: str, month: str) -> Path:
-    cell_dir = _REPO / "settlements" / prime_id / month
+def build_xlsx(prime_id: str, month: str, cell_dir: Path | None = None) -> Path:
+    if cell_dir is None:
+        # Honor SETTLE_OUTPUT_DIR like the settlement writer does — a run
+        # with a custom output dir must not re-render the repo-default xlsx
+        # from whatever stale provenance.json happens to sit there.
+        from settle.load.writer import default_output_dir
+        cell_dir = default_output_dir(prime_id, month)
     prov     = _read_provenance(cell_dir)
     sheet, _totals = compute_sheet_rows(prov, prime_id)
     cfg      = _read_prime_yaml(prime_id)
@@ -847,8 +852,14 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--prime", default="grove")
     parser.add_argument("--month", default="2026-04")
+    parser.add_argument(
+        "--dir", type=Path, default=None,
+        help="Settlement cell directory holding provenance.json (the xlsx "
+             "is written next to it). Defaults to the SETTLE_OUTPUT_DIR-"
+             "aware <settlements>/<prime>/<month>/.",
+    )
     args = parser.parse_args()
-    out = build_xlsx(args.prime, args.month)
+    out = build_xlsx(args.prime, args.month, cell_dir=args.dir)
     print(f"Wrote {out}")
     return 0
 
