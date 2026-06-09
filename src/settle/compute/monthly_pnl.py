@@ -2167,8 +2167,14 @@ def compute_monthly_pnl(
                 )
                 continue
             if venue.chain not in pin_blocks_som or venue.chain not in period.pin_blocks:
-                _log.info(
-                    "  [savings_v2] %s — no SoM/EoM block for chain %s; skipping.",
+                # WARNING, not info: the position disappears from the
+                # position-only section / BA Labs reconciliation. The
+                # standard venue path raises on a missing chain; this softer
+                # skip is deliberate ($0 revenue contribution) but must stay
+                # loud.
+                _log.warning(
+                    "  [savings_v2] %s — no SoM/EoM block for chain %s; "
+                    "skipping (position will be MISSING from the report).",
                     venue.id, venue.chain.value,
                 )
                 continue
@@ -2195,6 +2201,28 @@ def compute_monthly_pnl(
                     venue.id, type(_e).__name__,
                 )
                 continue
+            # eth_call maps reverts/empty returndata to 0, so a poisoned read
+            # is indistinguishable from an empty vault (the old daily path
+            # raised on a zero-pps baseline for the same reason). Don't book
+            # a fabricated $0 row for a vault that holds $1B+; an actually
+            # wound-down vault produces the same skip, which costs nothing.
+            if total_som == 0 and total_eom == 0:
+                _log.warning(
+                    "  [savings_v2] %s — totalAssets is 0 at both SoM and EoM "
+                    "(empty vault, or a poisoned/reverted read mapped to 0); "
+                    "skipping the $0 position row. Verify against the vault "
+                    "contract if this venue is expected to hold funds.",
+                    venue.id,
+                )
+                continue
+            if total_som == 0 or total_eom == 0:
+                _log.warning(
+                    "  [savings_v2] %s — totalAssets is 0 at one boundary "
+                    "(som=$%.2f eom=$%.2f); legitimate for a vault launch/"
+                    "wind-down mid-period, otherwise a poisoned read. "
+                    "Recording as-is.",
+                    venue.id, float(total_som), float(total_eom),
+                )
             _log.info(
                 "  [savings_v2] %s (%s on %s): position-only "
                 "total_assets_som=$%.2f  total_assets_eom=$%.2f "

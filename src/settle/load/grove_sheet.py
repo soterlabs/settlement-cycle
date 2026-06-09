@@ -48,6 +48,8 @@ from pathlib import Path
 
 import yaml
 
+from ..domain.pricing import PricingCategory
+
 _REPO = Path(__file__).resolve().parents[3]
 
 
@@ -288,7 +290,7 @@ def compute_sheet_rows(
         # (S2 venues then carried the negative VSR-liability accrual).
         cof_excluded = _truthy(r.get("cof_excluded"))
         cof_excluded_savings_v2 = cof_excluded and (
-            r.get("pricing_category") == "S2"
+            r.get("pricing_category") == PricingCategory.SPARK_SAVINGS_V2.value
             or _D(r.get("actual_revenue") or 0) < 0
         )
         weight = Decimal("0") if cof_excluded else Decimal("1") - sd_share
