@@ -6,12 +6,18 @@
 --   {{holder}}                 varbinary  — holder address (subproxy or ALM)
 --   {{start_date}}             text       — 'YYYY-MM-DD'
 --   {{pin_block}}              number     — upper-bound block_number cutoff
---   {{min_transfer_amount}}    number     — drop transfers strictly below this
+--   {{min_transfer_amount}}    number     — drop INFLOWS strictly below this
 --                                            amount (decimal-adjusted, USD-equiv
 --                                            for par-stables). Pass 0 for no
 --                                            filtering. Used by BUIDL E10 to
 --                                            separate sub-$1M yield-distribution
 --                                            mints from real capital deposits.
+--                                            Outflows are never filtered: a
+--                                            sub-threshold redemption/sweep is
+--                                            real capital leaving the holder —
+--                                            dropping it would overstate
+--                                            cum_balance and book the missing
+--                                            outflow as phantom revenue.
 --
 -- Output columns: block_date, daily_net, cum_balance
 --
@@ -29,7 +35,8 @@ WITH flows AS (
     AND ("to" = {{holder}} OR "from" = {{holder}})
     AND block_date      >= DATE '{{start_date}}'
     AND block_number    <= {{pin_block}}
-    AND amount          >= {{min_transfer_amount}}
+    -- min filter applies to inflows only; outflows always count (see header)
+    AND (amount >= {{min_transfer_amount}} OR "from" = {{holder}})
   GROUP BY block_date
 )
 SELECT

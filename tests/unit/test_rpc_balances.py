@@ -280,3 +280,37 @@ def test_inflow_by_counterparty_tags_other_side(monkeypatch):
     )}
     assert by_pair[(date(2026, 2, 1), CP1.hex())] == Decimal("3")
     assert by_pair[(date(2026, 2, 2), CP2.hex())] == Decimal("3")
+
+
+def test_cumulative_balance_min_transfer_filter_is_inflow_only(monkeypatch):
+    """The min filter exists to drop BUIDL-style sub-$1M yield-distribution
+    MINTS. Outflows are real capital leaving the holder regardless of size —
+    dropping a sub-threshold redemption overstates cum_balance and books the
+    missing outflow as phantom revenue. Mirrors transfer_timeseries.sql."""
+    monkeypatch.setenv("SETTLE_NO_CACHE", "1")
+    in_logs = [
+        _decoded(100, CP1, HOLDER, 5_000_000),        # +5.0 — above threshold
+        _decoded(101, CP1, HOLDER, 500_000),          # +0.5 — yield mint, dropped
+    ]
+    out_logs = [
+        _decoded(102, HOLDER, CP1, 900_000),          # -0.9 — sub-threshold sweep, KEPT
+    ]
+
+    def fake_scan(chain, token, fb, tb, *, from_filter=None, to_filter=None):
+        return out_logs if from_filter == HOLDER else in_logs
+
+    monkeypatch.setattr(
+        "settle.normalize.sources.rpc_balances.scan_transfers", fake_scan,
+    )
+    monkeypatch.setattr(
+        "settle.extract.rpc.decimals_of", lambda chain, token, block: 6,
+    )
+    resolver = _StubResolver({100: date(2026, 2, 1), 101: date(2026, 2, 1),
+                              102: date(2026, 2, 1)})
+    src = RPCBalanceSource(block_resolver=resolver)
+    df = src.cumulative_balance_timeseries(
+        "ethereum", TOKEN, HOLDER, date(2026, 2, 1), pin_block=500,
+        min_transfer_amount=Decimal("1.0"),
+    )
+    # +5.0 (kept) − 0.9 (outflow always kept); the 0.5 mint is dropped.
+    assert df["daily_net"].iloc[0] == Decimal("4.1")

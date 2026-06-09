@@ -108,8 +108,11 @@ class RPCBalanceSource:
             daily[self._block_date(chain, block_number)] += amount
         for block_number, from_addr, to_addr, value_raw in out_logs:
             amount = Decimal(value_raw) / scale
-            if amount < threshold:
-                continue
+            # No threshold on outflows: the filter exists to drop BUIDL-style
+            # sub-$1M yield-distribution MINTS; a sub-threshold redemption or
+            # sweep is real capital leaving the holder, and dropping it would
+            # overstate cum_balance (phantom revenue). Mirrors
+            # transfer_timeseries.sql.
             daily[self._block_date(chain, block_number)] -= amount
 
         if not daily:

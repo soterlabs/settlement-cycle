@@ -257,3 +257,11 @@ def test_resolve_published_hash_mismatch_env_bypass(monkeypatch):
 def test_resolve_published_legacy_int_entry_still_works(monkeypatch):
     monkeypatch.setattr(_dune, "_published_query_ids", lambda: {_REL: 7642450})
     assert _resolve_query_id(_DEBT_SQL) == 7642450
+
+
+def test_transfer_timeseries_min_filter_is_inflow_only(queries_dir: Path):
+    """Pin the direction-scoped min filter: sub-threshold OUTFLOWS must not
+    be dropped (a $900K redemption vanishing from cum_balance books phantom
+    revenue); only inflows (BUIDL-style yield mints) are filtered."""
+    sql = (queries_dir / "transfer_timeseries.sql").read_text()
+    assert '(amount >= {{min_transfer_amount}} OR "from" = {{holder}})' in sql
