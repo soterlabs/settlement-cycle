@@ -10,9 +10,9 @@ Period: 2026-03-01 → 2026-03-31 (31 days)
 |---|---:|
 | agent rate | 122,911.66 |
 | distribution rewards | TBD |
-| prime agent net revenue | -863,343.22 |
+| prime agent net revenue | 907,235.93 |
 | prime side sky direct exposure | 0.00 |
-| **prime agent profit** | **-740,431.56** |
+| **prime agent profit** | **1,030,147.59** |
 
 ### Sky side
 
@@ -57,7 +57,7 @@ Period: 2026-03-01 → 2026-03-31 (31 days)
 | S29 | DAI raw (ALM idle) | $0.00 | $0.00 | -$0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S30 | USDe raw (ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S31 | USDS raw / POL (ALM idle — already netted out of utilized) | $0.00 | $0.00 | -$0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
-| S32 | sUSDS raw / POL (ALM — Cat B 4626, demand-side spread + agent rate) | $798,615,399.44 | $1,371,348,954.66 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
+| S32 | sUSDS raw / POL (ALM — Cat B 4626, demand-side spread + agent rate) | $798,615,399.44 | $1,371,348,954.66 | $569,734,360.09 | $1,770,579.15 | $1,770,579.15 | $0.00 | 0% | $0.00 |
 | S34 | Spark USDC Vault (Morpho, Base) | $494.72 | $427.90 | -$68.11 | $1.29 | $1.29 | $0.00 | 0% | $0.00 |
 | S35 | Aave Base USDC (aBasUSDC) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S36 | Fluid Savings USDS (fsUSDS, Base) | $283.90 | $283.90 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |

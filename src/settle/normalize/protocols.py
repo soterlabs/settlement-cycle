@@ -91,10 +91,13 @@ class ISSRSource(Protocol):
 
 
 class ISavingsV2DeployedSource(Protocol):
-    """Daily sUSDS amount deployed from the Spark ALM into Savings V2."""
+    """USD-equivalent depositor-sourced sUSDS held at the Spark Eth ALM at
+    a given block (= the slice of S32's sUSDS reading that belongs to
+    Savings V2 depositors via the PSM-routed spUSDC vault, NOT to
+    Spark's debt-funded POL)."""
 
-    def savings_v2_deployed(self, pin_block: int) -> pd.DataFrame:
-        """Returns DataFrame[dt (date), susds_deployed_usd (Decimal)]."""
+    def at_block(self, block: int) -> Decimal:
+        """Return USD-equivalent depositor-sourced sUSDS at the given block."""
         ...
 
 

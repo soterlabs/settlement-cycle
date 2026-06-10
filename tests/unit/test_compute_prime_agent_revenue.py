@@ -1583,3 +1583,112 @@ def test_susds_cat_b_spread_reimb_clamps_negative_daily_position():
     expected = Decimal("200_000_000") * spread_daily
     assert result == expected
     assert result > Decimal("0")    # always non-negative
+
+
+# --- actual_revenue_adjustment (Case-2 sUSDS depositor-SSR removal) ---------
+
+def test_actual_revenue_adjustment_subtracts_from_formula_mtm():
+    """S32-shaped: raw MtM on the full sUSDS balance includes the
+    depositor-sourced spUSDC slice's SSR accrual; the caller passes the
+    negated daily-integrated depositor SSR as ``actual_revenue_adjustment``
+    so only the debt-sourced appreciation is booked."""
+    inputs = VenueRevenueInputs(
+        venue=_venue(), value_som=Decimal("1_000_000_000"),
+        value_eom=Decimal("1_006_000_000"),
+        inflow_timeseries=_empty_inflow(),
+        actual_revenue_adjustment=Decimal("-2_000_000"),
+    )
+    vr = compute_venue_revenue(_period(), inputs)
+    # raw MtM = 6M; depositor SSR removed = 2M → booked 4M
+    assert vr.revenue == Decimal("4_000_000")
+    assert vr.period_inflow == Decimal("0")
+
+
+def test_actual_revenue_adjustment_composes_with_period_inflow():
+    inflow_df = pd.DataFrame({
+        "block_date":   [date(2026, 3, 10)],
+        "daily_inflow": [Decimal("50_000_000")],
+        "cum_inflow":   [Decimal("50_000_000")],
+    })
+    inputs = VenueRevenueInputs(
+        venue=_venue(), value_som=Decimal("1_000_000_000"),
+        value_eom=Decimal("1_056_000_000"),
+        inflow_timeseries=inflow_df,
+        actual_revenue_adjustment=Decimal("-2_000_000"),
+    )
+    vr = compute_venue_revenue(_period(), inputs)
+    # (1.056B − 1.0B) − 50M inflow = 6M raw, − 2M adjustment = 4M
+    assert vr.revenue == Decimal("4_000_000")
+    assert vr.period_inflow == Decimal("50_000_000")
+
+
+def test_actual_revenue_adjustment_rejects_override_combination():
+    """The override bypasses the MtM formula — a non-zero adjustment there
+    would be silently dropped. Must assert loudly instead."""
+    inputs = VenueRevenueInputs(
+        venue=_venue(), value_som=Decimal("100"), value_eom=Decimal("200"),
+        inflow_timeseries=_empty_inflow(),
+        actual_revenue_override=Decimal("0"),
+        actual_revenue_adjustment=Decimal("-1"),
+    )
+    with pytest.raises(AssertionError, match="mutually exclusive"):
+        compute_venue_revenue(_period(), inputs)
+
+
+# --- _savings_v2_depositor_ssr (Case-2 daily integration) -------------------
+
+class _StubSv2Source:
+    """ISavingsV2DeployedSource stub returning a fixed TA per block."""
+    def __init__(self, ta_by_block: dict[int, Decimal]):
+        self.ta_by_block = ta_by_block
+        self.calls: list[int] = []
+
+    def at_block(self, block: int) -> Decimal:
+        self.calls.append(block)
+        return self.ta_by_block.get(block, Decimal("0"))
+
+
+class _StubDayResolver:
+    """Maps each EoD datetime to a synthetic block = day-of-month."""
+    def block_at_or_before(self, chain: str, ts) -> int:
+        return ts.day
+
+
+def _ssr_df(apy: str = "0.045") -> pd.DataFrame:
+    return pd.DataFrame({
+        "effective_date": [date(2025, 1, 1)],
+        "ssr_apy":        [Decimal(apy)],
+    })
+
+
+def test_savings_v2_depositor_ssr_integrates_daily():
+    """Flat $300M TA all month at 4.5% SSR → Σ = 31 × 300M × daily factor."""
+    from settle.compute.monthly_pnl import _savings_v2_depositor_ssr
+    from settle.compute._helpers import daily_compounding_factor
+    ta = Decimal("300_000_000")
+    src = _StubSv2Source({d: ta for d in range(1, 32)})
+    total = _savings_v2_depositor_ssr(src, _StubDayResolver(), _ssr_df(), _period())
+    expected = ta * daily_compounding_factor(Decimal("0.045")) * 31
+    assert total == expected
+    assert len(src.calls) == 31
+
+
+def test_savings_v2_depositor_ssr_zero_vault_contributes_nothing():
+    """Pre-deployment month: TA = 0 every day → total 0, no warnings."""
+    from settle.compute.monthly_pnl import _savings_v2_depositor_ssr
+    src = _StubSv2Source({})
+    total = _savings_v2_depositor_ssr(src, _StubDayResolver(), _ssr_df(), _period())
+    assert total == Decimal("0")
+
+
+def test_savings_v2_depositor_ssr_carries_forward_on_transient_zero():
+    """A 0 read after a non-zero day = suspected RPC failure → carry the
+    previous day's TA forward (conservative: keeps the carve-out whole)."""
+    from settle.compute.monthly_pnl import _savings_v2_depositor_ssr
+    from settle.compute._helpers import daily_compounding_factor
+    ta = Decimal("300_000_000")
+    # Day 15 missing from the map → at_block returns 0 → carry-forward.
+    src = _StubSv2Source({d: ta for d in range(1, 32) if d != 15})
+    total = _savings_v2_depositor_ssr(src, _StubDayResolver(), _ssr_df(), _period())
+    expected = ta * daily_compounding_factor(Decimal("0.045")) * 31
+    assert total == expected  # all 31 days counted, day 15 carried forward
