@@ -286,23 +286,31 @@ def load_prime(config_path: Path) -> Prime:
         chain = Chain(chain_str)
         external_alm_sources[chain] = [Address.from_str(a) for a in addrs]
 
-    principal_return_overrides: dict[
-        Chain, dict[Address, list[PrincipalReturnOverride]]
-    ] = {}
-    for chain_str, by_addr in cfg.get("principal_return_overrides", {}).items():
-        chain = Chain(chain_str)
-        principal_return_overrides[chain] = {}
-        for addr_str, entries in by_addr.items():
-            addr = Address.from_str(addr_str)
-            principal_return_overrides[chain][addr] = [
-                PrincipalReturnOverride(
-                    date=date.fromisoformat(e["date"]),
-                    amount=Decimal(str(e["amount"])),
-                    token=e.get("token", ""),
-                    note=e.get("note", ""),
-                )
-                for e in entries
-            ]
+    def _parse_event_overrides(
+        key: str,
+    ) -> dict[Chain, dict[Address, list[PrincipalReturnOverride]]]:
+        """Parse a ``{chain: {address: [{date, amount, token?, note?}]}}``
+        override block (shared shape between ``principal_return_overrides``
+        and ``yield_reversal_overrides``)."""
+        out: dict[Chain, dict[Address, list[PrincipalReturnOverride]]] = {}
+        for chain_str, by_addr in cfg.get(key, {}).items():
+            chain = Chain(chain_str)
+            out[chain] = {}
+            for addr_str, entries in by_addr.items():
+                addr = Address.from_str(addr_str)
+                out[chain][addr] = [
+                    PrincipalReturnOverride(
+                        date=date.fromisoformat(e["date"]),
+                        amount=Decimal(str(e["amount"])),
+                        token=e.get("token", ""),
+                        note=e.get("note", ""),
+                    )
+                    for e in entries
+                ]
+        return out
+
+    principal_return_overrides = _parse_event_overrides("principal_return_overrides")
+    yield_reversal_overrides = _parse_event_overrides("yield_reversal_overrides")
 
     return Prime(
         id=cfg["id"],
@@ -314,6 +322,7 @@ def load_prime(config_path: Path) -> Prime:
         venues=venues,
         external_alm_sources=external_alm_sources,
         principal_return_overrides=principal_return_overrides,
+        yield_reversal_overrides=yield_reversal_overrides,
         subsidy=SubsidyConfig.from_dict(cfg.get("subsidy")),
     )
 

@@ -573,6 +573,51 @@ via the resolved-pointer flow once the RPC swap lands.
 
 ### P1 — methodology unknowns affecting accuracy
 
+#### S31. Anchorage May 2026 — confirm the $100M second tranche + over-shoot correction
+
+Per-transfer analysis (Dune query 7690887) of May 2026 escrow ↔ ALM
+USDC flows shows Spark deployed a **new ~$100M tranche** to Anchorage
+across May 10–20, via four $5M lump transfers plus a streaming
+program (~1,100 transfers of $35–132K each):
+
+| Day | Lumps (≥$1M) | Stream (sub-$1M) | Total out |
+|---|---:|---:|---:|
+| May 10 | −5,000,000 ([0x9f1eea71…](https://etherscan.io/tx/0x9f1eea716acf5c781e19880d98fbe1745ba413c380eed29e941a952673e0dc7b)) | −10,888,888.88 (135 tx) | −15,888,888.88 |
+| May 11 | — | −34,111,109.86 (295 tx) | −34,111,109.86 |
+| May 13 | −5,000,000 ([0xceb96fc5…](https://etherscan.io/tx/0xceb96fc543437677884e14eb71a115607c7e3faddd466bcd020f3f84c8b3a7ab)) | −270,838.33 (5 tx) | −5,270,838.33 |
+| **May 14** | **+5,270,830.00 ([0x1d3dd0ad…](https://etherscan.io/tx/0x1d3dd0adf2b6ab8c1bc89998bc4e370a4549382cf73a16c968c94f49445ad667))** | — | **+5,270,830.00** |
+| May 19 | −5,000,000 ([0x8cccc47f…](https://etherscan.io/tx/0x8cccc47f2c87b93153df14040eed93d26edc09222644bc11cf2b4dbb2caad583)) | −4,243,055.55 (91 tx) | −9,243,055.55 |
+| May 20 | −5,000,000 ([0x99da9962…](https://etherscan.io/tx/0x99da9962bb5baa6315f36ce952c76ef5e3854df0c956969433e4d05ccbc53b80)) | −35,743,055.51 (602 tx) | −40,743,055.51 |
+
+**Σ outflows = $105,270,838.70; minus the May 14 return = $100,000,008.70
+≈ exactly $100M.** Reading: the May 13 flows overshot the tranche
+target; Anchorage returned the excess ($5,270,830, = that day's
+receipts less $8.33) the next morning, landing the net deployment on
+$100M. Corroboration: the Jun 3 interest sweep jumped to $1,435,965 ≈
+$891,780 (original $150M tranche) + ~$544K (≈7.13% APR on $100M for
+the partial month).
+
+(May 4's +$891,780.28 is the regular monthly interest sweep on the
+original tranche.)
+
+**Our current treatment** (config `principal_return_overrides`, added
+2026-06-10): the May 14 inflow is registered as a capital return, NOT
+yield. All outflows stay capital under the directional default. Net
+May Anchorage yield books as **$891,780.28** (the May 4 sweep only).
+
+**Questions for Spark:**
+- Confirm the new ~$100M tranche (terms? same 7.13% APR? same
+  June 16 termination as the original $150M, or its own schedule?).
+- Confirm the May 13 → May 14 out-and-back was an over-shoot
+  correction to land the tranche on exactly $100M.
+- Is the Jun 3 +$1,435,965 sweep pure interest (consistent with
+  $250M total principal)?
+- Will the termination sweep(s) separate principal from final
+  interest, or arrive combined? (We need the split for
+  `principal_return_overrides` — see the placeholder note in
+  `config/spark.yaml`. Note the amounts: $250M total if both tranches
+  unwind together.)
+
 #### S30. Savings V2 VSR liability — confirm it is outside MSC `prime_agent_revenue` scope
 
 As of PR #126, MSC treats the Savings V2 vaults (S56/S57/S59/S60) as

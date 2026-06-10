@@ -10,17 +10,17 @@ Period: 2026-01-01 → 2026-01-31 (31 days)
 |---|---:|
 | agent rate | 106,392.55 |
 | distribution rewards | TBD |
-| prime agent net revenue | -3,471,860.01 |
-| prime side sky direct exposure | 0.00 |
-| **prime agent profit** | **-3,365,467.47** |
+| prime agent net revenue | -805,814.55 |
+| prime side sky direct exposure | 25,473.95 |
+| **prime agent profit** | **-673,948.05** |
 
 ### Sky side
 
 | Field | USDS |
 |---|---:|
 | prime cost of funds | 8,283,645.14 |
-| sky side sky direct exposure | 27,497.03 |
-| **sky revenue** | **8,311,142.17** |
+| sky side sky direct exposure | 2,023.08 |
+| **sky revenue** | **8,285,668.22** |
 
 ## Per-venue
 
@@ -49,7 +49,7 @@ Period: 2026-01-01 → 2026-01-31 (31 days)
 | S21 | Superstate Short Duration US Government Securities Fund (USTB) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 100.00% | $0.00 |
 | S22 | Superstate Crypto Carry Fund (USCC) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S23 | Anchorage tri-party loan escrow (USDC pass-through, ~$0 balance) | $1.11 | $1.21 | $0.00 | $0.10 | $0.10 | $0.00 | 0% | $0.00 |
-| S24 | Spark.fi USDT Reserve Curve (sUSDS/USDT) | $50,000,864.48 | $49,999,911.75 | -$28,449.77 | $27,497.03 | $0.00 | $27,497.03 | 100.00% | $0.00 |
+| S24 | Spark.fi USDT Reserve Curve (sUSDS/USDT) | $50,000,864.48 | $49,999,911.75 | -$28,449.77 | $2,023.08 | $25,473.95 | $2,023.08 | 100.00% | $0.00 |
 | S25 | Spark.fi PYUSD Reserve Curve (PYUSD/USDS) | $100,000,415.95 | $100,000,425.55 | -$7,422.05 | $7,431.66 | $7,431.66 | $0.00 | 0% | $0.00 |
 | S26 | USDC raw (ALM idle) | $0.00 | $0.00 | -$891,780.00 | $891,780.00 | $891,780.00 | $0.00 | 0% | $0.00 |
 | S27 | USDT raw (ALM idle — $442M as of 2026-04) | $0.00 | $0.00 | -$0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
@@ -57,22 +57,22 @@ Period: 2026-01-01 → 2026-01-31 (31 days)
 | S29 | DAI raw (ALM idle) | $0.00 | $0.00 | $0.00 | -$0.00 | -$0.00 | $-0.00 | 0% | $0.00 |
 | S30 | USDe raw (ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S31 | USDS raw / POL (ALM idle — already netted out of utilized) | $0.00 | $0.00 | -$0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
-| S32 | sUSDS raw / POL (ALM — Cat B 4626, demand-side spread + agent rate) | $529,568,618.85 | $393,521,575.97 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
+| S32 | sUSDS raw / POL (ALM — Cat B 4626, demand-side spread + agent rate) | $529,568,618.85 | $393,521,575.97 | -$137,782,501.86 | $1,133,974.69 | $1,133,974.69 | $0.00 | 0% | $0.00 |
 | S34 | Spark USDC Vault (Morpho, Base) | $167,771,852.13 | $61.15 | -$167,989,912.44 | $218,121.46 | $218,121.46 | $0.00 | 0% | $0.00 |
 | S35 | Aave Base USDC (aBasUSDC) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S36 | Fluid Savings USDS (fsUSDS, Base) | $283.90 | $283.90 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
-| S37 | Savings USDS / sUSDS proxy (Base — POL) | $74,829,605.80 | $75,079,284.39 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $19,037.71 |
+| S37 | Savings USDS / sUSDS proxy (Base — POL) | $74,829,605.80 | $75,079,284.39 | $0.00 | $249,678.59 | $249,678.59 | $0.00 | 0% | $19,037.71 |
 | S38 | USDS raw (Base — POL) | $65,170,000.00 | $65,170,000.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S39 | USDC raw (Base — ALM idle) | $4,732,058.26 | $4,979,093.44 | $247,035.17 | -$0.00 | -$0.00 | $-0.00 | 0% | $0.00 |
 | S41 | Aave Arbitrum USDCn (aArbUSDCn) | $0.01 | $0.01 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S42 | Fluid Savings USDS (fsUSDS, Arbitrum) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
-| S43 | Savings USDS / sUSDS proxy (Arbitrum — POL) | $178,950.65 | $196,264,917.55 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $20,938.88 |
+| S43 | Savings USDS / sUSDS proxy (Arbitrum — POL) | $178,950.65 | $196,264,917.55 | $195,832,690.84 | $253,276.06 | $253,276.06 | $0.00 | 0% | $20,938.88 |
 | S44 | USDS raw (Arbitrum — POL) | $90,000,000.00 | $90,000,000.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S45 | USDC raw (Arbitrum — ALM idle) | $5,000,000.00 | $4,994,817.32 | -$5,182.68 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
-| S47 | Savings USDS / sUSDS proxy (Optimism — POL) | $970,178.13 | $101,106,912.91 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $10,916.28 |
+| S47 | Savings USDS / sUSDS proxy (Optimism — POL) | $970,178.13 | $101,106,912.91 | $100,004,463.92 | $132,270.86 | $132,270.86 | $0.00 | 0% | $10,916.28 |
 | S48 | USDS raw (Optimism — POL) | $89,900,000.00 | $89,900,000.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S49 | USDC raw (Optimism — ALM idle) | $5,000,000.00 | $5,000,000.00 | -$0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
-| S51 | Savings USDS / sUSDS proxy (Unichain — POL) | $970,178.13 | $973,415.25 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $246.83 |
+| S51 | Savings USDS / sUSDS proxy (Unichain — POL) | $970,178.13 | $973,415.25 | $0.00 | $3,237.12 | $3,237.12 | $0.00 | 0% | $246.83 |
 | S52 | USDS raw (Unichain — POL) | $89,900,000.00 | $89,900,000.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S53 | USDC raw (Unichain — ALM idle) | $5,000,000.00 | $5,000,000.00 | -$0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S54 | Aave Avalanche USDC (aAvaUSDC) | $10,000,438.06 | $10,000,965.04 | -$31,069.97 | $31,596.95 | $31,596.95 | $0.00 | 0% | $0.00 |

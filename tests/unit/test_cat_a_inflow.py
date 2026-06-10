@@ -532,3 +532,115 @@ def test_paired_cap_non_paired_counterparty_unaffected(config_dir: Path):
     # Capital = $1M (internal counterparty, untouched) + $50M (paired,
     # capped) = $51M. The $120k excess from the paired return is yield.
     assert out["daily_inflow"].sum() == Decimal("51000000")
+
+
+# --- yield_reversal_overrides (outflow mirror) -------------------------------
+
+def test_cat_a_yield_reversal_override_excludes_outflow_from_capital(
+    config_dir: Path,
+):
+    """An OUTFLOW to an external source whose (date, |amount|) matches a
+    yield-reversal override is excluded from the capital frame, so it nets
+    against the source's inflows in revenue (the Spark→Anchorage 2026-05-19
+    $5M reimbursement of the over-sized May 14 payment)."""
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()
+    cp_external = _bytes20("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+
+    # May-shaped flows: interest sweep in, big payment in, $5M back out.
+    src = MockBalanceSource()
+    src.inflow_by_counterparty = lambda **_: pd.DataFrame({
+        "block_date":   [date(2026, 3, 4), date(2026, 3, 14), date(2026, 3, 19)],
+        "counterparty": [cp_external,      cp_external,       cp_external],
+        "signed_amount":[Decimal("891780"), Decimal("5270830"), Decimal("-5000000")],
+    })
+    reversals = {cp_external: [(date(2026, 3, 19), Decimal("5000000"))]}
+
+    out = _cat_a_capital_inflow_timeseries(
+        grove, venue, period,
+        balance_source=src,
+        external_sources={cp_external},
+        yield_reversal_overrides=reversals,
+    )
+    # Both inflows pass through as yield (excluded from capital). The
+    # registered outflow is ALSO excluded from capital → the capital frame
+    # is truly EMPTY (the reversal row gets _capital_amount = 0 and is
+    # filtered out, not retained as a negative entry). Revenue =
+    # Δvalue − 0 therefore nets all three flows: 891,780 + 5,270,830
+    # − 5,000,000 = 1,162,610.
+    assert out.empty
+    assert out["daily_inflow"].sum() == Decimal("0")
+
+
+def test_cat_a_unregistered_outflow_to_external_stays_capital(
+    config_dir: Path,
+):
+    """The directional default is preserved: an outflow to an external
+    source with NO registered reversal stays capital (a principal
+    disbursement to the escrow must never read as negative yield)."""
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()
+    cp_external = _bytes20("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+
+    src = MockBalanceSource()
+    src.inflow_by_counterparty = lambda **_: pd.DataFrame({
+        "block_date":   [date(2026, 3, 10)],
+        "counterparty": [cp_external],
+        "signed_amount":[Decimal("-150000000")],   # principal disbursement
+    })
+    reversals = {cp_external: [(date(2026, 3, 19), Decimal("5000000"))]}
+
+    out = _cat_a_capital_inflow_timeseries(
+        grove, venue, period,
+        balance_source=src,
+        external_sources={cp_external},
+        yield_reversal_overrides=reversals,
+    )
+    # Unmatched outflow (different date AND amount) → capital, as before.
+    assert out["daily_inflow"].sum() == Decimal("-150000000")
+
+
+def test_cat_a_yield_reversal_misses_on_amount_mismatch(config_dir: Path):
+    """Same date but amount off by more than $1 → no match → capital."""
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()
+    cp_external = _bytes20("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+
+    src = MockBalanceSource()
+    src.inflow_by_counterparty = lambda **_: pd.DataFrame({
+        "block_date":   [date(2026, 3, 19)],
+        "counterparty": [cp_external],
+        "signed_amount":[Decimal("-5000002")],     # $2 off the registered $5M
+    })
+    reversals = {cp_external: [(date(2026, 3, 19), Decimal("5000000"))]}
+
+    out = _cat_a_capital_inflow_timeseries(
+        grove, venue, period,
+        balance_source=src,
+        external_sources={cp_external},
+        yield_reversal_overrides=reversals,
+    )
+    assert out["daily_inflow"].sum() == Decimal("-5000002")
+
+
+def test_load_prime_parses_override_blocks_from_spark_yaml(
+    config_dir: Path,
+):
+    """spark.yaml carries an empty ``yield_reversal_overrides`` block (the
+    May 2026 Anchorage case turned out to be a round-trip handled via
+    ``principal_return_overrides``) — the empty block must parse cleanly,
+    and the May 14 round-trip return entry must land on the inflow-side
+    mechanism."""
+    spark = load_prime(config_dir / "spark.yaml")
+    # Empty reversal block parses to no-entries (either {} or no chains).
+    assert all(
+        not by_addr for by_addr in spark.yield_reversal_overrides.values()
+    )
+    # The May 14 round-trip return is a principal-return (inflow) override.
+    anchorage = _bytes20("0x49506c3aa028693458d6ee816b2ec28522946872")
+    eth = spark.principal_return_overrides[Chain.ETHEREUM]
+    entries = next(v for k, v in eth.items() if k.value == anchorage)
+    assert any(
+        e.date == date(2026, 5, 14) and e.amount == Decimal("5270830")
+        for e in entries
+    )

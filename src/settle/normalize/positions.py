@@ -1131,6 +1131,7 @@ def _cat_a_capital_inflow_timeseries(
     balance_source,
     external_sources: set,
     principal_return_overrides: dict | None = None,
+    yield_reversal_overrides: dict | None = None,
     paired_principal_caps: dict | None = None,
 ):
     """Cat A par-stable capital-flow accounting with external-source allowlist.
@@ -1149,6 +1150,16 @@ def _cat_a_capital_inflow_timeseries(
     capital instead of yield — used for tri-party loan principal-correction
     or loan-termination events that arrive from an `external_alm_sources`
     address but represent a capital movement rather than yield.
+
+    ``yield_reversal_overrides``: the mirror — optional ``{address_bytes:
+    [(date, amount), …]}`` map for OUTFLOWS from the ALM TO an external
+    source that return over-received yield (e.g. Spark reimbursing
+    Anchorage $5M on 2026-05-19 after the over-sized May 14 payment). A
+    matching outflow (date, |amount| within $1) is reclassified as
+    NEGATIVE yield (excluded from the capital frame, so it nets against
+    that source's inflows in revenue). Default direction stays capital —
+    principal disbursements to escrows must never read as negative
+    yield, so each reversal is an explicit, auditable entry.
 
     ``paired_principal_caps``: optional ``{paired_source_bytes:
     cum_principal_out_df}`` map for the "off-protocol round-trip" pattern
@@ -1260,9 +1271,13 @@ def _cat_a_capital_inflow_timeseries(
     # signed_amount (inflows from the custodian to the ALM) are recognised
     # as external yield. Negative signed_amount (outflows from the ALM TO
     # the custodian — e.g. loan principal disbursements to Anchorage tri-
-    # party escrow) are CAPITAL movements, not negative yield. Without
-    # this directional check, a $99M ALM→Anchorage loan disbursement
-    # would surface as −$99M phantom yield (Spark May 2026 S26 USDC).
+    # party escrow) are CAPITAL movements BY DEFAULT, not negative yield.
+    # Without this directional check, a $99M ALM→Anchorage loan
+    # disbursement would surface as −$99M phantom yield (Spark May 2026
+    # S26 USDC). The one exception is an explicit ``yield_reversal_overrides``
+    # entry (applied further below): a registered (date, |amount|) outflow
+    # is a confirmed return of over-received yield and nets against the
+    # source's inflows.
     from decimal import Decimal as _Decimal
     detail = detail.copy()
     detail["_cp_bytes"] = norm
@@ -1293,6 +1308,31 @@ def _cat_a_capital_inflow_timeseries(
         capital_mask = ~is_external | is_principal_return
     else:
         capital_mask = ~is_external
+
+    # Apply yield-reversal overrides (the mirror of principal-return):
+    # an OUTFLOW to an external source matching a registered (date,
+    # |amount|) is a return of over-received yield — exclude it from the
+    # capital frame so it nets against the source's inflows in revenue
+    # (``revenue = Δvalue − capital_net``: removing a negative flow from
+    # capital_net lowers revenue by the same amount). Match tolerance ±$1,
+    # same as principal-return.
+    if yield_reversal_overrides:
+        def _is_yield_reversal(row):
+            cp = row["_cp_bytes"]
+            if cp not in external_sources:
+                return False
+            sa = _Decimal(str(row["signed_amount"]))
+            if sa >= 0:
+                return False    # reversals are outflows only
+            entries = yield_reversal_overrides.get(cp, [])
+            bd = row["block_date"]
+            for entry_date, entry_amount in entries:
+                if bd == entry_date and abs(-sa - entry_amount) <= 1:
+                    return True
+            return False
+
+        is_yield_reversal = detail.apply(_is_yield_reversal, axis=1)
+        capital_mask = capital_mask & ~is_yield_reversal
 
     # Per-row capital amount: signed_amount if classified as capital, else 0.
     # Subsequent paired-cap logic may further reduce this for paired_source

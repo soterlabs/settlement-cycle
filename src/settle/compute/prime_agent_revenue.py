@@ -165,6 +165,15 @@ class VenueRevenueInputs:
     # average daily share — matches Grove's per-day allocation methodology).
     # When ``None``, falls back to the EoM-locked snapshot.
     value_timeseries: "pd.DataFrame | None" = None
+    # Signed USD adjustment added to the formula-computed ``actual_revenue``
+    # (``(value_eom − value_som) − period_inflow + adjustment``). Used by
+    # mixed-source sUSDS venues (Spark S32) to remove the daily-integrated
+    # SSR accrual on the depositor-sourced slice (``Σ_d spUSDC_AO_d ×
+    # ssr_daily_d``, AO = ``assetsOutstanding``) from the raw MtM — that appreciation belongs to
+    # Savings V2 depositors, not the prime/Sky pair. Mutually exclusive
+    # with ``actual_revenue_override`` (the override bypasses the formula
+    # entirely, so an adjustment would be silently dropped).
+    actual_revenue_adjustment: Decimal = Decimal("0")
 
 
 def _sd_share_at_som(
@@ -343,8 +352,11 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
     team's PnL workbook (no floor, no shortfall).
     """
     if inputs.actual_revenue_override is not None:
-        # Used for sky_savings_token venues where prime revenue is set
-        # explicitly (currently 0 — spread reimbursement removed). The
+        # Override path — reserved for sky_savings_token venues where the
+        # MtM formula must not run. Post Case-1/Case-2 sUSDS attribution
+        # fixes, only the legacy fallback hits this (demand_side_spread
+        # venue WITHOUT a live deduct_savings_v2_deployed carve-out);
+        # S37/S43/S47/S51 and S32 now take the formula path. The
         # fee-detection heuristic below cannot be applied to override
         # venues because they don't consume ``inflow_timeseries`` for
         # actual_revenue. Today no override-path venue has the fee field
@@ -391,6 +403,30 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
             period, inputs.value_som, inflow_df,
             venue_id=inputs.venue.id,
         )
+
+    # Signed adjustment to the formula-computed actual_revenue. Today
+    # used only by mixed-source sUSDS venues (Spark S32): the raw MtM on
+    # the full ALM sUSDS balance includes the SSR accrual on the
+    # depositor-sourced spUSDC slice; the caller passes the negated
+    # daily-integrated ``Σ_d spUSDC_AO_d × ssr_daily_d`` so the booked
+    # actual_revenue covers only the debt-sourced slice. Applied BEFORE
+    # the fee heuristic and the SDE split (same position in the formula
+    # as the value/inflow legs it corrects), and applies uniformly to
+    # both formula branches — the standard inflow-timeseries path AND
+    # the ``erc4626_period_inflow`` (Centrifuge vault-event) path. The
+    # combination with the ERC-4626 branch is semantically consistent
+    # (``Δvalue − exact_inflow + adjustment``) but unused today: the
+    # ERC-4626 venues are Grove-only and the adjustment is Spark-only.
+    # Incompatible with the override path — the override bypasses the
+    # formula, so a non-zero adjustment there would be silently dropped;
+    # assert loudly instead.
+    if inputs.actual_revenue_adjustment != Decimal("0"):
+        assert inputs.actual_revenue_override is None, (
+            f"venue {inputs.venue.id}: actual_revenue_adjustment and "
+            "actual_revenue_override are mutually exclusive (the override "
+            "bypasses the MtM formula the adjustment corrects)."
+        )
+        actual_revenue += inputs.actual_revenue_adjustment
 
     # Off-chain administrative fee (e.g. BlackRock BUIDL-I $15K per capital
     # operation). The fee is taken at the source by the issuer: a $50M

@@ -730,6 +730,67 @@ def _susds_cat_b_spread_reimb(
     return total
 
 
+def _savings_v2_depositor_ssr(
+    sv2_src, resolver, ssr_history: pd.DataFrame, period: Period,
+) -> Decimal:
+    """Daily-integrated SSR accrual on the depositor-sourced spUSDC slice.
+
+    Returns ``Σ_d spUSDC_AO_d × ssr_daily_factor_d`` over
+    ``[period.start, period.end]``, where ``spUSDC_AO_d`` is
+    ``spUSDC_V2.assetsOutstanding`` (the deployed-to-ALM portion —
+    excludes the vault's ~$10M USDC withdrawal buffer, which never
+    enters S32's sUSDS reading) read at day ``d``'s EoD block and
+    ``ssr_daily_factor_d = (1 + SSR_d)^(1/365) − 1``. The caller negates
+    the total and books it via
+    ``VenueRevenueInputs.actual_revenue_adjustment`` for S32, removing
+    the depositors' SSR from the raw sUSDS MtM.
+
+    **Day-boundary convention — right-Riemann on EoD-d positions.** Day
+    ``d``'s accrual is computed on the position INCLUDING day-d flows,
+    matching ``_susds_cat_b_spread_reimb`` (``V_d = value_som +
+    cum_inflows_through_d``) and ``compute_sky_revenue_daily``
+    (``art_at_or_before(sparse, d)``). Consistency across the three
+    integrals matters more than the half-day absolute bias they share.
+
+    **RPC-failure degradation — carry-forward.** ``sv2_src.at_block``
+    returns 0 on revert/outage. A genuine pre-deployment 0 follows other
+    0s (carry-forward of 0 = 0, correct); a transient outage mid-series
+    would silently shrink the carve-out and over-credit the prime, so a
+    0 read AFTER a non-zero day carries the previous day's value forward
+    with a warning (the series is slow-moving; conservative for the
+    prime).
+
+    ``resolver`` is the orchestrator's block resolver — Dune-backed and
+    cached when ``DUNE_API_KEY`` is set (the upgrade happens before the
+    venue loop), so the ~31 daily lookups are cheap on re-runs.
+    """
+    from ._helpers import daily_compounding_factor, ssr_at_or_before
+
+    total = Decimal("0")
+    prev_ta = Decimal("0")
+    current = period.start
+    while current <= period.end:
+        eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
+        block = resolver.block_at_or_before(Chain.ETHEREUM.value, eod)
+        ta = sv2_src.at_block(block)
+        if ta == 0 and prev_ta > 0:
+            _log.warning(
+                "_savings_v2_depositor_ssr: spUSDC assetsOutstanding read 0 at "
+                "block %d (day %s) after $%.0f the previous day — treating "
+                "as a transient read failure and carrying the previous "
+                "day's value forward.",
+                block, current.isoformat(), float(prev_ta),
+            )
+            ta = prev_ta
+        if ta > 0:
+            total += ta * daily_compounding_factor(
+                ssr_at_or_before(ssr_history, current),
+            )
+        prev_ta = ta
+        current = current + timedelta(days=1)
+    return total
+
+
 def _pol_susds_agent_rate(
     value_som: Decimal, inflow_ts: pd.DataFrame | None, period: Period,
 ) -> Decimal:
@@ -810,6 +871,44 @@ def _psm3_susds_spread(psm_usds: pd.DataFrame | None, period: Period) -> Decimal
         cum_susds = cum_at_or_before(psm_usds, "cum_susds", current)
         if cum_susds > 0:
             total += cum_susds * spread_factor
+        current = current + timedelta(days=1)
+    return total
+
+
+def _psm3_susds_appreciation(
+    psm_usds: pd.DataFrame | None, period: Period, ssr_history: pd.DataFrame,
+) -> Decimal:
+    """Daily-integrated SSR appreciation on the PSM3 sUSDS slice — Case 3a
+    of the sUSDS attribution fix (PRD ``docs/PRD_revenue_gross_net_audit.md``
+    §10).
+
+    The prime physically receives the SSR growth of the sUSDS reserve
+    inside PSM3 (via ``convertToAssetValue`` growth of its PSM3 share),
+    pays full BR on the underlying debt (no ``utilized`` reduction for
+    the sUSDS leg) and gets the 30 bps spread back via
+    ``_psm3_susds_spread``: ``+SSR − BR + 30bps = 0``. Before this fix
+    only the two Sky-side legs were booked, so the headline showed
+    ``−SSR × V`` on this slice when the true PnL is ``0``. This function
+    returns the missing prime-side leg::
+
+        Σ_d  cum_susds_d × ((1 + SSR_d)^(1/365) − 1)
+
+    booked directly into ``prime_agent_revenue`` (PSM3 is not a venue —
+    no per-venue row, no SDE interaction). Same daily integration and
+    right-Riemann EoD-d convention as ``_psm3_susds_spread`` — only the
+    rate differs (per-day SSR instead of the 30 bps constant).
+    """
+    if psm_usds is None or psm_usds.empty or "cum_susds" not in psm_usds.columns:
+        return Decimal("0")
+    from ._helpers import daily_compounding_factor, ssr_at_or_before
+    total = Decimal("0")
+    current = period.start
+    while current <= period.end:
+        cum_susds = cum_at_or_before(psm_usds, "cum_susds", current)
+        if cum_susds > 0:
+            total += cum_susds * daily_compounding_factor(
+                ssr_at_or_before(ssr_history, current),
+            )
         current = current + timedelta(days=1)
     return total
 
@@ -1240,15 +1339,27 @@ def _aggregate_curve_idle_usds(
     curve_pool_source,
     block_resolver,
     convert_to_assets_source=None,
-) -> tuple[pd.DataFrame, Decimal]:
+    ssr_history: pd.DataFrame | None = None,
+) -> tuple[pd.DataFrame, Decimal, dict[str, Decimal]]:
     """Daily data for Curve pool coins configured via ``curve_idle_usds``.
 
-    Returns a **tuple** ``(utilized_deduction_df, susds_spread)``:
+    Returns a **tuple** ``(utilized_deduction_df, susds_spread,
+    susds_ssr_by_venue)``:
 
     * ``utilized_deduction_df`` — ``[block_date, daily_net, cum_balance]`` frame
       of the daily USDS deduction from ``utilized`` (par-stable coin venues only).
-    * ``susds_spread`` — total Decimal Prime Revenue from the 30 bps spread on
-      sUSDS inside LP pools (``sky_savings_token=True`` venues only).
+    * ``susds_spread`` — total Decimal 30 bps spread on sUSDS inside LP pools
+      (``sky_savings_token=True`` venues only); folded into the sky-revenue
+      reduction by the orchestrator (d255ed2).
+    * ``susds_ssr_by_venue`` — per-venue-id Decimal of the FULL-SSR daily
+      integral on the same prime-proportional sUSDS values (Case 3b of the
+      sUSDS attribution fix, PRD §10). The LP unit price's recursive
+      ``convertToAssets`` embeds this appreciation in the venue's MtM
+      ``actual_revenue``; for SDE venues (S24, sd_share ≈ 100%) the redirect
+      would hand it to Sky a SECOND time on top of Sky's BR − 30bps = SSR
+      collection. The orchestrator removes it from the SDE-eligible pot
+      (``actual_revenue_adjustment``) and re-books it 100% to the prime
+      (``external_revenue``). Empty when ``ssr_history`` is None.
 
     **Par-stable coin venues** (``sky_savings_token=False``):
     Prime's proportional share of the coin reserve is deducted from ``utilized``::
@@ -1260,23 +1371,31 @@ def _aggregate_curve_idle_usds(
 
         spread_d = (alm_lp_d / pool_total_d) × (sUSDS_reserve_d × pps_d) × 30bps_daily
 
-    where ``pps_d = convertToAssets(1 share, block_d) / 10**underlying_decimals``.
+    where ``pps_d = convertToAssets(1 share, block_d) / 10**underlying_decimals``,
+    plus the full-SSR integral on the same daily values for ``susds_ssr_by_venue``.
     """
     from datetime import time
     from ..domain.sky_tokens import KNOWN_PAR_STABLES_ETHEREUM, KNOWN_YIELD_BEARING_ETHEREUM
     from ..extract.rpc import balance_of as _balance_of
     from ..normalize.sources.curve_pool import CurvePoolSource
     from .sky_revenue import BASE_RATE_OVER_SSR
-    from ._helpers import daily_compounding_factor
+    from ._helpers import daily_compounding_factor, ssr_at_or_before
 
     venues_with_config = [v for v in prime.venues if v.curve_idle_usds is not None]
     if not venues_with_config:
-        return _empty_psm_df(), Decimal("0")
+        return _empty_psm_df(), Decimal("0"), {}
 
     pool_src = curve_pool_source if curve_pool_source is not None else CurvePoolSource()
 
     # c2a is only needed for sky_savings_token venues.
     has_sky_savings = any(v.curve_idle_usds.sky_savings_token for v in venues_with_config)
+    if has_sky_savings and ssr_history is None:
+        _log.warning(
+            "_aggregate_curve_idle_usds: sky_savings_token Curve venues "
+            "present but ssr_history is None — susds_ssr_by_venue will be "
+            "empty and the Case 3b sUSDS-leg SSR re-attribution (PRD §10) "
+            "will silently not fire. Pass ssr_history for canonical numbers.",
+        )
     c2a = None
     if has_sky_savings:
         from ..normalize.registry import get_convert_to_assets_source as _get_c2a
@@ -1297,9 +1416,10 @@ def _aggregate_curve_idle_usds(
         return Decimal(raw_balance) / Decimal(10 ** decimals)
 
     # Separate accumulators for par-stable (utilized deduction) and
-    # sky-savings-token (spread revenue).
+    # sky-savings-token (spread revenue + full-SSR appreciation).
     daily_util: dict = {}
     daily_spread: dict = {}
+    susds_ssr_by_venue: dict[str, Decimal] = {}
 
     for venue in venues_with_config:
         cfg = venue.curve_idle_usds
@@ -1315,12 +1435,14 @@ def _aggregate_curve_idle_usds(
         # Keep per-venue state local to the venue's day loop.
         venue_last_usds = Decimal(0)
         venue_last_spread = Decimal(0)
+        venue_last_susds_value = Decimal(0)
 
         current = period.start
         while current <= period.end:
             eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
             prime_usds = Decimal(0)
             prime_spread = Decimal(0)
+            prime_susds_value = Decimal(0)
             # Sentinel: when True, the day's computation produced no data
             # (pool not yet seeded, configured coin absent), so we treat it
             # as $0 deduction AND reset the venue carry-forward state to 0.
@@ -1376,12 +1498,12 @@ def _aggregate_curve_idle_usds(
                             shares=10 ** share_decimals, block=block,
                         )
                         pps = Decimal(pps_raw) / Decimal(10 ** underlying_decimals)
-                        prime_susds_usds = (
+                        prime_susds_value = (
                             (alm_lp / pool_total)
                             * (Decimal(raw_coin_balance) / Decimal(10 ** share_decimals))
                             * pps
                         ) if pool_total > 0 else Decimal(0)
-                        prime_spread = prime_susds_usds * spread_daily_factor
+                        prime_spread = prime_susds_value * spread_daily_factor
                     elif target_coin in KNOWN_YIELD_BEARING_ETHEREUM:
                         # Yield-bearing but not sky_savings_token: data fetched for
                         # future use; no utilized deduction and no spread revenue yet.
@@ -1403,13 +1525,25 @@ def _aggregate_curve_idle_usds(
                 # source of the consecutive-failure → zero-out bug.
                 prime_usds = venue_last_usds
                 prime_spread = venue_last_spread
+                prime_susds_value = venue_last_susds_value
             else:
                 # On success, update this venue's running carry-forward.
                 venue_last_usds = prime_usds
                 venue_last_spread = prime_spread
+                venue_last_susds_value = prime_susds_value
 
             daily_util[current] = daily_util.get(current, Decimal(0)) + prime_usds
             daily_spread[current] = daily_spread.get(current, Decimal(0)) + prime_spread
+            # Case 3b: full-SSR integral on the same daily sUSDS values,
+            # attributed per venue (consumed by the orchestrator to
+            # re-book the sUSDS-leg appreciation out of the SDE pot).
+            if ssr_history is not None and prime_susds_value > 0:
+                susds_ssr_by_venue[venue.id] = (
+                    susds_ssr_by_venue.get(venue.id, Decimal(0))
+                    + prime_susds_value * daily_compounding_factor(
+                        ssr_at_or_before(ssr_history, current),
+                    )
+                )
             current = current + timedelta(days=1)
 
     # Build utilized deduction DataFrame (par-stable coins).
@@ -1428,7 +1562,7 @@ def _aggregate_curve_idle_usds(
         util_df = _empty_psm_df()
 
     susds_spread = sum(daily_spread.values(), Decimal("0"))
-    return util_df, susds_spread
+    return util_df, susds_spread, susds_ssr_by_venue
 
 
 def _aggregate_lending_idle_usds(
@@ -1753,6 +1887,18 @@ def compute_monthly_pnl(
     spread components are computed pre-loop and ARE deducted. For canonical
     sky_revenue use the default (non-sky-only) path. A WARNING is emitted at
     invocation time if Cat B sUSDS venues are present.
+
+    **sky_only + Case 3b (Curve sUSDS-leg SSR re-attribution).** SDE venues
+    with a sUSDS leg (Spark S24) ARE processed in sky_only mode, and the
+    Case 3b re-attribution (PRD §10) deliberately stays active: it removes
+    the sUSDS-leg SSR from the SDE-eligible ``actual_revenue``, lowering
+    ``sde_revenue`` / ``sky_revenue`` by the former double-collect. This is
+    the CANONICAL sky_revenue (matching the full run) — Sky's claim on that
+    appreciation already flows via the BR − 30bps machinery, so the SDE
+    redirect was double-billing. The offsetting prime-side credit
+    (``external_revenue``) is invisible in sky_only output because
+    ``prime_agent_revenue`` is pinned to 0 — an expected display asymmetry
+    of the debug mode, not an accounting hole.
     """
     sources = sources if sources is not None else Sources()
 
@@ -1982,24 +2128,45 @@ def compute_monthly_pnl(
         position_balance_source=sources.position_balance,
         convert_to_assets_source=sources.convert_to_assets,
     )
+    # SSR history is needed by the Case-3 sUSDS appreciation integrals
+    # below (PSM3 leg + Curve leg) as well as agent_rate / sky_revenue —
+    # fetch it before the PSM3/Curve aggregation.
+    _log.info("  2g: SSR history...")
+    ssr = get_ssr_history(prime, period, source=sources.ssr)
     # Neutralising 30 bps spread credit on the sUSDS slice of PSM3 holdings
     # (PRD §17.11). Sky charges full BR on this slice (utilized NOT reduced
     # for sUSDS in compute_sky_revenue) AND pays SSR to sUSDS holders
     # (= prime via PSM3 share appreciation). Crediting 30 bps back keeps the
     # composite (+SSR − BR + 30 bps = 0) economically neutral on idle sUSDS.
     psm3_susds_spread = _psm3_susds_spread(psm_usds, period)
+    # Case 3a (PRD §10): the SSR appreciation on the PSM3 sUSDS slice is
+    # real prime income (accrues inside the prime's PSM3 share value) that
+    # was never booked — the books showed −SSR × V on this leg while the
+    # true PnL is 0 (+SSR − BR + 30bps = 0). Book it as Prime Revenue;
+    # Sky's single collection (BR − 30bps = SSR) stays where it is.
+    # Skipped in sky_only mode — it's a prime-side-only credit and
+    # prime_agent_revenue is pinned to 0 there.
+    psm3_susds_appreciation = (
+        _psm3_susds_appreciation(psm_usds, period, ssr)
+        if not sky_only else Decimal("0")
+    )
     # Prime's proportional USDS-equivalent in configured Curve pools — Step 2
     # idle AMM USDS. Computed daily via RPC (``read_pool`` + ``balanceOf`` +
     # ``convertToAssets`` for sUSDS legs). Returns empty frame if no venue has
     # ``curve_idle_usds`` set (e.g. Grove, OBEX — $0, no cost).
-    # Returns (utilized_deduction_df, curve_susds_spread).
-    # curve_susds_spread is the total 30bps Prime Revenue from sUSDS held inside
-    # Curve LP pools (sky_savings_token=True venues); added to prime_rev below.
-    curve_idle_usds, curve_susds_spread = _aggregate_curve_idle_usds(
-        prime, period,
-        curve_pool_source=sources.curve_pool,
-        block_resolver=resolver,
-        convert_to_assets_source=sources.convert_to_assets,
+    # Returns (utilized_deduction_df, curve_susds_spread, curve_susds_ssr_by_venue).
+    # ``curve_susds_spread`` (30bps) is folded into the sky-revenue reduction
+    # below (d255ed2); ``curve_susds_ssr_by_venue`` (full-SSR integral, Case 3b)
+    # re-attributes the sUSDS-leg appreciation embedded in the LP MtM: removed
+    # from the SDE-eligible actual_revenue and re-booked 100% to the prime.
+    curve_idle_usds, curve_susds_spread, curve_susds_ssr_by_venue = (
+        _aggregate_curve_idle_usds(
+            prime, period,
+            curve_pool_source=sources.curve_pool,
+            block_resolver=resolver,
+            convert_to_assets_source=sources.convert_to_assets,
+            ssr_history=ssr,
+        )
     )
     # Prime's share of unborrowed underlying in configured lending pools — Step 2
     # idle lending pool USDS. Computed daily via ``balanceOf`` + ``totalSupply``.
@@ -2008,8 +2175,6 @@ def compute_monthly_pnl(
         prime, period,
         block_resolver=resolver,
     )
-    _log.info("  2g: SSR history...")
-    ssr = get_ssr_history(prime, period, source=sources.ssr)
     _log.info("  2h: Centrifuge vault in-flight request check...")
     _check_centrifuge_in_flight(prime, pin_blocks_som, pin_blocks_eom)
     _log.info("  step 2 complete.")
@@ -2343,6 +2508,12 @@ def compute_monthly_pnl(
         # and remains None for all other venues. It is threaded into
         # VenueRevenueInputs.actual_revenue_override below.
         susds_spread: Decimal | None = None
+        # susds_mtm_adjustment is set to a NEGATIVE Decimal for mixed-source
+        # sUSDS venues (Spark S32, ``deduct_savings_v2_deployed``): the
+        # daily-integrated SSR accrual on the depositor-sourced spUSDC slice,
+        # removed from the raw MtM via
+        # ``VenueRevenueInputs.actual_revenue_adjustment``. Zero elsewhere.
+        susds_mtm_adjustment: Decimal = Decimal("0")
         # external_revenue_for_venue is set to a non-zero Decimal in the Cat C
         # branch when ``prime.external_alm_sources[venue.chain]`` is populated
         # — captures Merkl-style aToken drops as a separate revenue stream
@@ -2672,60 +2843,102 @@ def compute_monthly_pnl(
                                 venue.id, venue.chain.value, _e,
                             )
 
-                susds_spread = _Dec("0")  # prime earns 0; spread deducted from Sky Revenue below
+                # Prime-revenue attribution for sUSDS (PRD
+                # ``docs/PRD_revenue_gross_net_audit.md`` §10):
+                #
+                # (i) Case 1 — clean POL (S37 Base / S43 Arb / S47 Op / S51
+                #     Uni; ``demand_side_spread = False``). The sUSDS is 100%
+                #     debt-sourced. Leave ``susds_spread = None`` so the
+                #     natural MtM ``(value_eom − value_som) − period_inflow``
+                #     books the gross SSR × V appreciation as
+                #     prime_agent_revenue. It nets against the SSR × V Sky
+                #     already takes via ``BR × utilized −
+                #     susds_spread_reimbursement`` → venue PnL ≈ 0 (the true
+                #     economic outcome; net mint to ALM = 0).
+                #
+                # (ii) Case 2 — S32 mixed-source (Ethereum raw sUSDS POL;
+                #     ``demand_side_spread = True`` AND
+                #     ``deduct_savings_v2_deployed = True``). The ALM's sUSDS
+                #     balance mixes debt-sourced slices (true POL +
+                #     spUSDT/spPYUSD collateral-backed — their deposits mint
+                #     NEW ilk debt via ``vat.frob``, so BR is already charged
+                #     on them) with ONE depositor-sourced slice: spUSDC V2
+                #     (PSM-routed USDC→USDS, no new ilk debt; its SSR belongs
+                #     to spUSDC depositors). The MtM runs on the RAW values +
+                #     RAW inflow timeseries (internally consistent — depositor
+                #     capital flows net out as inflows), and the depositor
+                #     slice's SSR accrual is removed via
+                #     ``susds_mtm_adjustment`` (daily-integrated
+                #     ``−Σ_d spUSDC_AO_d × ssr_daily_d``, computed below;
+                #     AO = ``assetsOutstanding``, the deployed-to-ALM
+                #     portion — excludes the vault's USDC withdrawal
+                #     buffer, which never enters S32's reading).
+                #     Endpoint-only value carve-outs do NOT work here: they
+                #     desync ``Δvalue`` from ``period_inflow`` and blow the
+                #     revenue up by the depositor net-flow (observed:
+                #     ±$80–280M/month artefacts).
+                #
+                # (iii) Legacy fallback — ``demand_side_spread = True`` with
+                #     NO live carve-out: keep ``override = 0``. We can't
+                #     isolate the depositor slice, so zeroing avoids
+                #     over-crediting the prime by ``SSR × depositor_slice``
+                #     (the pre-fix behaviour, understated but safe).
+                if venue.demand_side_spread and not venue.deduct_savings_v2_deployed:
+                    susds_spread = _Dec("0")
+                else:
+                    susds_spread = None
 
-                # Subtract Savings V2 deployed_amount from value_som and value_eom
-                # when the venue is flagged deduct_savings_v2_deployed. The ALM's
-                # sUSDS balance includes shares deployed into Savings V2 that are
-                # not held at the proxy. Carry-forward: use the most recent day's
-                # deployed_amount at or before each period boundary.
+                # Case 2 depositor-SSR adjustment: daily-integrated SSR
+                # accrual on the spUSDC V2 assetsOutstanding series,
+                # negated. See ``_savings_v2_depositor_ssr`` for the
+                # day-boundary convention (right-Riemann on EoD-d
+                # positions, matching the other daily integrals) and the
+                # carry-forward RPC-failure degradation. NOTE the
+                # deliberate asymmetry: the depositor liability grows at
+                # the VSR (depositor accrual) but we subtract at
+                # the SSR — the SSR−VSR margin on depositor principal is
+                # Spark's demand-side business margin, excluded from
+                # supply-side settlement per the Savings-V2 scope decision
+                # (PR #126).
                 if venue.deduct_savings_v2_deployed:
                     _sv2_src = (
                         sources.savings_v2_deployed
                         if sources.savings_v2_deployed is not None
                         else get_savings_v2_deployed_source()
                     )
-                    _sv2_ts = _sv2_src.savings_v2_deployed(
-                        pin_block=period.pin_blocks[Chain.ETHEREUM],
+                    _dep_ssr_total = _savings_v2_depositor_ssr(
+                        _sv2_src, resolver, ssr, period,
                     )
-                    if not _sv2_ts.empty:
-                        def _sv2_at(target_date):
-                            eligible = _sv2_ts[_sv2_ts["dt"] <= target_date]
-                            if eligible.empty:
-                                return _Dec("0")
-                            return _Dec(str(eligible.loc[eligible["dt"].idxmax(), "susds_deployed_usd"]))
-
-                        _deduct_som = _sv2_at(period.start)
-                        _deduct_eom = _sv2_at(period.end)
-                        value_som = max(_Dec("0"), value_som - _deduct_som)
-                        value_eom = max(_Dec("0"), value_eom - _deduct_eom)
-                        _log.info(
-                            "  S2V2 deduction %s: som −$%.0f → $%.0f  eom −$%.0f → $%.0f",
-                            venue.id,
-                            float(_deduct_som), float(value_som),
-                            float(_deduct_eom), float(value_eom),
-                        )
+                    susds_mtm_adjustment = -_dep_ssr_total
+                    _log.info(
+                        "  Savings V2 depositor-SSR adjustment %s: −$%.0f "
+                        "(daily-integrated spUSDC_AO × SSR across %d days)",
+                        venue.id, float(_dep_ssr_total), period.n_days,
+                    )
 
                 # 30 bps spread — Supply Side PnL path (default).
-                # Sky charges full BR on utilized; prime_revenue = 0.
-                # The orchestrator deducts 30 bps × value_som × n_days from
-                # sky_revenue so the prime's net cost = SSR × V (economic
-                # neutrality). value_som has all adjustments applied (Savings
-                # V2 deduction above) at this point.
+                # Sky charges full BR on utilized; the orchestrator deducts
+                # 30 bps × V_d (daily-integrated) from sky_revenue so the
+                # prime's net cost = SSR × V (economic neutrality with the
+                # MtM-booked SSR appreciation).
                 #
                 # Exception — demand_side_spread: True venues (currently S32):
-                # The sUSDS here collateralises Spark Savings deposits. Sky still
-                # charges full BR on all of utilized (the sUSDS is NOT subtracted,
-                # which correctly accounts for the full debt drawn from the ilk).
-                # The 30 bps spread reimbursement is handled separately as part
-                # of Demand Side Distribution Rewards — it does NOT flow through
-                # Supply Side settlement. Setting this flag leaves sky_revenue
-                # unreduced for this venue while keeping prime_revenue = 0.
+                # The sUSDS here collateralises Spark Savings deposits. Sky
+                # still charges full BR on all of utilized (the sUSDS is NOT
+                # subtracted, which correctly accounts for the full debt drawn
+                # from the ilk). The 30 bps spread reimbursement is handled
+                # separately as part of Demand Side Distribution Rewards — it
+                # does NOT flow through Supply Side settlement, and the
+                # Case-2 MtM attribution does not change that (see the
+                # reimbursement gate below). S32's MtM revenue (debt-sourced
+                # slice via susds_mtm_adjustment) IS booked since the Case-2
+                # fix.
                 if venue.demand_side_spread:
                     _log.info(
                         "  %s demand_side_spread=True: 30bps reimbursement "
                         "omitted from sky_revenue (handled via Demand Side "
-                        "Distribution Rewards). prime_revenue=0, full BR applies.",
+                        "Distribution Rewards). Full BR applies; MtM revenue "
+                        "booked on the debt-sourced slice.",
                         venue.id,
                     )
                 # Note: the spread reimbursement is computed below, AFTER
@@ -2813,10 +3026,15 @@ def compute_monthly_pnl(
                 # Daily-resolved spread reimbursement, computed AFTER
                 # ``inflow_ts`` so the daily-position helper can integrate
                 # ``Σ_d V_d × spread_daily``. Skipped for demand_side_spread
-                # venues (S32) — those route the spread via Demand Side
-                # Distribution Rewards, out-of-band from Supply Side
-                # settlement. ``value_som`` already has the Savings V2
-                # ``deployed_amount`` deduction applied (see block above).
+                # venues (S32) — by design their 30 bps spread is compensated
+                # OUT-OF-BAND via Demand Side Distribution Rewards, not
+                # through Supply Side settlement. The Case-2 MtM attribution
+                # (susds_mtm_adjustment) does NOT change this: enabling the
+                # in-band reimbursement here while DSDR also pays it would
+                # double-pay Sky's spread refund (~30bps × ~$1B ≈ $250K/mo).
+                # Consequence: S32's venue-level supply-side PnL reads
+                # ≈ −30bps × V_debt (SSR×V booked, (SSR+30bps)×V charged) —
+                # a documented residual squared away by DSDR, not an error.
                 if not venue.demand_side_spread:
                     _susds_spread_reimbs[venue.id] = _susds_cat_b_spread_reimb(
                         value_som, inflow_ts, period,
@@ -2942,6 +3160,14 @@ def compute_monthly_pnl(
                     addr.value: [(o.date, o.amount) for o in entries]
                     for addr, entries in overrides_for_chain.items()
                 }
+                # Yield-reversal overrides — the outflow mirror (ALM →
+                # external source returning over-received yield, e.g. the
+                # 2026-05-19 $5M Spark→Anchorage reimbursement).
+                reversals_for_chain = prime.yield_reversal_overrides.get(venue.chain, {})
+                reversals_by_bytes = {
+                    addr.value: [(o.date, o.amount) for o in entries]
+                    for addr, entries in reversals_for_chain.items()
+                }
                 # Paired-principal-cap auto-wiring — extracted into
                 # ``_build_paired_principal_caps`` for unit-test coverage.
                 paired_principal_caps = _build_paired_principal_caps(
@@ -2952,6 +3178,7 @@ def compute_monthly_pnl(
                     balance_source=balance_src,
                     external_sources=external,
                     principal_return_overrides=overrides_by_bytes,
+                    yield_reversal_overrides=reversals_by_bytes or None,
                     paired_principal_caps=paired_principal_caps or None,
                 )
         elif venue.pricing_category == PricingCategory.EOA:
@@ -3245,6 +3472,27 @@ def compute_monthly_pnl(
                         )
                 sde_asset_value_per_venue.append((venue.id, _sde_ts))
 
+        # Case 3b (PRD §10): re-attribute the sUSDS-leg SSR appreciation
+        # embedded in the Curve LP MtM (recursive ``convertToAssets`` in
+        # ``_curve_lp_unit_price``). For SDE venues (S24, sd_share ≈ 100%)
+        # the redirect would hand it to Sky a SECOND time on top of Sky's
+        # BR − 30bps = SSR collection. Remove it from the SDE-eligible
+        # actual_revenue and re-book 100% to the prime as
+        # ``external_revenue`` (the SDE deal covers the USDT-leg exposure;
+        # the sUSDS-leg SSR is outside its terms). Net effect: prime books
+        # +SSR×V_susds (nets to ~0 against Sky's BR − 30bps machinery) and
+        # ``sde_revenue`` / ``sky_revenue`` drop by the former
+        # double-collect.
+        _curve_c3 = curve_susds_ssr_by_venue.get(venue.id)
+        if _curve_c3:
+            susds_mtm_adjustment -= _curve_c3
+            external_revenue_for_venue += _curve_c3
+            _log.info(
+                "  Curve sUSDS-leg SSR re-attribution %s: $%.0f moved from "
+                "SDE-eligible actual_revenue to prime external_revenue",
+                venue.id, float(_curve_c3),
+            )
+
         _log.info(
             "  [%d/%d] %s  done in %.1fs  som=$%.0f  eom=$%.0f%s",
             _venue_idx, n_venues, venue.id,
@@ -3260,6 +3508,7 @@ def compute_monthly_pnl(
             external_revenue=external_revenue_for_venue,
             erc4626_period_inflow=_erc4626_period_inflow,
             value_timeseries=_sde_ts,
+            actual_revenue_adjustment=susds_mtm_adjustment,
         ))
 
     # Re-sort venue_inputs to match the declaration order in prime.venues so
@@ -3280,6 +3529,14 @@ def compute_monthly_pnl(
     else:
         agent_rate = compute_agent_rate(period, sub_usds, sub_susds, ssr)
         prime_rev, breakdown = compute_prime_agent_revenue(period, venue_inputs)
+        # Case 3a (PRD §10): book the SSR appreciation on the PSM3 sUSDS
+        # slice as Prime Revenue. PSM3 is not a venue (no per-venue row,
+        # no SDE interaction), so this is a prime-level addition. It nets
+        # against Sky's existing BR − 30bps = SSR collection on the same
+        # slice → the composite contributes ~0 to the prime's profit,
+        # matching the physical reality (the appreciation accrues inside
+        # the prime's PSM3 share value).
+        prime_rev += psm3_susds_appreciation
         # Per ``d255ed2`` (Rule 5 consistency): the 30 bps spread on sUSDS held
         # in Curve LP pools and PSM3 is treated as a Sky Revenue REDUCTION (not
         # a Prime Revenue credit), matching the treatment of sky_savings_token
@@ -3466,6 +3723,9 @@ def compute_monthly_pnl(
         sde_revenue=sde_revenue,
         curve_susds_spread=curve_susds_spread if not sky_only else Decimal("0"),
         psm3_susds_spread=psm3_susds_spread if not sky_only else Decimal("0"),
+        psm3_susds_appreciation=(
+            psm3_susds_appreciation if not sky_only else Decimal("0")
+        ),
         display_only_breakdown=display_only_breakdown,
         sde_daily_breakdown=sde_daily_breakdown_out,
         sky_revenue_daily=sky_revenue_daily_out,

@@ -207,6 +207,15 @@ class MonthlyPnL:
     # shape, different source (PSM3 daily totals, not venue rows). Zero for
     # primes with no PSM3 leg configured.
     psm3_susds_spread: Decimal = Decimal("0")
+    # Daily-integrated SSR appreciation on the PSM3 sUSDS slice — Case 3a
+    # of the sUSDS attribution fix (PRD docs/PRD_revenue_gross_net_audit.md
+    # §10). The prime physically receives this growth inside its PSM3
+    # share value; booked into ``prime_agent_revenue`` as a prime-level
+    # addition (PSM3 is not a venue, so Σ vr.revenue < prime_agent_revenue
+    # by exactly this amount for primes with a PSM3 sUSDS leg). Nets
+    # against Sky's BR − 30bps = SSR collection on the same slice. Zero
+    # for primes with no PSM3 leg.
+    psm3_susds_appreciation: Decimal = Decimal("0")
     # Off-protocol / "tracked-but-not-counted" venues (``Venue.display_only``).
     # Surfaced for visibility in monthly reports (e.g. the dedicated xlsx tab
     # rendered by ``build_settlement_xlsx``) but NOT folded into

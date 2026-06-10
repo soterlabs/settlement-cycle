@@ -1038,9 +1038,38 @@ principal_return_overrides:
         amount: 5000000
         token: 'USDC'
         note: 'partial-principal correction during initial Dec disbursement window'
+      # 2026-05-14: +$5,270,830 USDC received from the escrow
+      #   https://etherscan.io/tx/0x1d3dd0adf2b6ab8c1bc89998bc4e370a4549382cf73a16c968c94f49445ad667
+      # is Anchorage RETURNING the previous day's receipts ($5M lump +
+      # $270,838.33 of streamed transfers, less $8.33) — an over-shoot
+      # correction during the deployment of a NEW ~$100M tranche
+      # (May 10–20: Σ outflows $105,270,838.70 − this return =
+      # $100,000,008.70). Capital, not yield. Without this entry the
+      # inflow is classified as external yield and S26 May revenue is
+      # overstated by $5.27M. All the tranche outflows stay capital under
+      # the directional default. Net May Anchorage yield = the
+      # $891,780.28 May 4 interest sweep only. Pending Spark/Anchorage
+      # confirmation of the tranche terms — see QUESTIONS.md S31.
+      - date: '2026-05-14'
+        amount: 5270830
+        token: 'USDC'
+        note: 'over-shoot correction during the May $100M tranche deployment, not yield'
       # 2026-06-16 loan termination: when the loan unwinds, Anchorage will
       # sweep back the $150M principal (likely as one or two transfers,
       # plus a final-interest stub). Add the principal entry here once the
       # transfer is observed on-chain — splitting principal vs final
       # interest by the actual amounts. Until that happens, retroactive
       # June 2026 settlement would mis-classify the $150M as yield.
+
+# Mirror of principal_return_overrides for OUTFLOWS: ALM → external-source
+# transfers that return over-received yield. A matching outflow (date,
+# |amount| within $1 of the DAY-NET flow for that counterparty) is
+# reclassified capital → NEGATIVE yield, netting against the source's
+# inflows. The directional default stays capital — principal disbursements
+# to escrows must never read as negative yield — so each reversal is an
+# explicit, auditable, counterparty-confirmed entry. NOTE: the classifier
+# operates on per-(date, counterparty) day-net amounts; an entry only
+# matches when the registered amount equals the whole day's net flow.
+# No entries today (the May 2026 Anchorage case turned out to be a
+# round-trip handled via principal_return_overrides above).
+yield_reversal_overrides: {}

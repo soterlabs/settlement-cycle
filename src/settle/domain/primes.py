@@ -490,14 +490,30 @@ class PsmConfig:
 
 @dataclass(frozen=True, slots=True)
 class PrincipalReturnOverride:
-    """A single inflow that arrives FROM an `external_alm_sources` address
-    but should NOT be classified as yield (it's a principal-return event
-    on a tri-party loan or similar instrument). Matched by (date, amount)
-    against on-chain Transfer rows during Cat A inflow classification.
+    """A single (date, amount)-matched transfer-event override used by the
+    Cat A classifier. Two consumers, opposite directions:
+
+    * ``Prime.principal_return_overrides`` — an INFLOW from an
+      ``external_alm_sources`` address that should NOT be classified as
+      yield (principal-return on a tri-party loan or similar).
+    * ``Prime.yield_reversal_overrides`` — an OUTFLOW to an
+      ``external_alm_sources`` address that returns over-received yield
+      (reclassified capital → negative yield).
 
     Amounts are in whole USD units (par-stable assumption — same scaling
     as ``inflow_by_counterparty.signed_amount``). Matching tolerates ±$1
     of rounding noise.
+
+    **Matching operates on DAY-NET amounts**: ``inflow_by_counterparty``
+    aggregates flows per (date, counterparty) into a single net row, so
+    an entry only matches when the registered amount equals the whole
+    day's net flow for that counterparty (±$1). If the target transfer
+    shares its day with other flows to/from the same address, the day-net
+    differs from the transfer amount and the entry silently never
+    matches — verify the day-net on-chain before registering. Also note:
+    addresses are NOT validated against ``external_alm_sources`` at
+    config-load time — an override registered for a non-external address
+    silently never matches.
     """
 
     date: date
@@ -534,6 +550,21 @@ class Prime:
     # inflows as capital.  See ``PrincipalReturnOverride`` and
     # ``_cat_a_capital_inflow_timeseries``.
     principal_return_overrides: dict[
+        Chain, dict[Address, list["PrincipalReturnOverride"]]
+    ] = field(default_factory=dict)
+    # Mirror of ``principal_return_overrides`` for the OPPOSITE direction:
+    # per-(chain, source) overrides for OUTFLOWS from the ALM to an external
+    # ALM source that are a return of over-received yield (e.g. Spark
+    # reimbursing Anchorage $5M on 2026-05-19 after the over-sized May 14
+    # payment). The Cat A classifier matches by (date, |amount| within $1)
+    # and reclassifies matching outflows as NEGATIVE yield (netting against
+    # that source's inflows) instead of the default capital classification.
+    # The directional default stays capital — principal disbursements to
+    # escrows must never read as negative yield — so every reversal is an
+    # explicit, auditable entry. Reuses the ``PrincipalReturnOverride``
+    # dataclass (same (date, amount, token, note) shape and matching
+    # semantics).
+    yield_reversal_overrides: dict[
         Chain, dict[Address, list["PrincipalReturnOverride"]]
     ] = field(default_factory=dict)
     # Subsidised borrowing rate config. Default = disabled (legacy behavior:
