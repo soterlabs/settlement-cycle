@@ -1,0 +1,19 @@
+# Skybase prime agent — agent-rate-only (no supply-side primitives).
+#
+# Skybase has no allocator ilk and no ALM venues; its entire settlement is
+# the demand-side agent rate (SSR + 20bps) earned on the subproxy's treasury
+# holdings (USDS at SSR+20bps; sUSDS at +20bps over the index accrual).
+# ``ilk_bytes32`` is intentionally absent — the pipeline returns a zero-debt
+# series and sky_revenue / prime venue revenue are 0 by construction.
+#
+# Settled since MSC #5/6; demand-side totals on the forum:
+#   Feb (incl. distribution rewards) · Mar 225,299 USDS · Apr 201,469 USDS.
+# NOTE: forum demand-side totals include Distribution Rewards on top of the
+# treasury agent rate — this pipeline computes the agent-rate component only.
+
+id: skybase
+start_date: '2025-12-01'
+
+addresses:
+  ethereum:
+    subproxy: '0x08978E3700859E476201c1D7438B3427e3C81140'

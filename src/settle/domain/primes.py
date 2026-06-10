@@ -527,7 +527,11 @@ class Prime:
     """A Sky prime agent — ilk, addresses per chain, allocation venues."""
 
     id: str                              # 'obex' | 'grove' | 'spark' | 'skybase' | …
-    ilk_bytes32: bytes                   # 32-byte ilk identifier
+    # 32-byte ilk identifier. ``None`` for agent-rate-only primes (Keel,
+    # Skybase): no allocator ilk → no debt, no BR charge, no supply-side
+    # venues — settlement reduces to the agent rate on subproxy treasury
+    # holdings (``get_debt_timeseries`` returns an all-zero series).
+    ilk_bytes32: bytes | None
     start_date: date                     # first frob date (calendar start)
     subproxy: dict[Chain, Address] = field(default_factory=dict)
     alm: dict[Chain, Address] = field(default_factory=dict)
@@ -573,8 +577,14 @@ class Prime:
     subsidy: SubsidyConfig = field(default_factory=lambda: SubsidyConfig(enabled=False))
 
     def __post_init__(self) -> None:
-        if len(self.ilk_bytes32) != 32:
+        if self.ilk_bytes32 is not None and len(self.ilk_bytes32) != 32:
             raise ValueError(f"ilk_bytes32 must be 32 bytes; got {len(self.ilk_bytes32)}")
+        if self.ilk_bytes32 is None and self.venues:
+            raise ValueError(
+                f"prime {self.id!r}: venues configured without an ilk_bytes32 — "
+                "supply-side venues need ilk debt for the BR charge. Either add "
+                "the allocator ilk or remove the venues (agent-rate-only prime)."
+            )
 
     @property
     def chains(self) -> set[Chain]:

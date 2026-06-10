@@ -1,0 +1,17 @@
+# Keel prime agent — agent-rate-only (no supply-side primitives).
+#
+# Keel has no allocator ilk and no ALM venues; its entire settlement is the
+# demand-side agent rate (SSR + 20bps) earned on the subproxy's treasury
+# holdings (USDS at SSR+20bps; sUSDS at +20bps over the index accrual).
+# ``ilk_bytes32`` is intentionally absent — the pipeline returns a zero-debt
+# series and sky_revenue / prime venue revenue are 0 by construction.
+#
+# First settled in MSC #7 (March 2026); demand-side totals on the forum:
+#   Mar 30,241 USDS · Apr 52,915 USDS.
+
+id: keel
+start_date: '2025-12-01'
+
+addresses:
+  ethereum:
+    subproxy: '0x355CD90Ecb1b409Fdf8b64c4473C3B858dA2c310'
