@@ -3153,6 +3153,14 @@ def compute_monthly_pnl(
                     addr.value: [(o.date, o.amount) for o in entries]
                     for addr, entries in overrides_for_chain.items()
                 }
+                # Yield-reversal overrides — the outflow mirror (ALM →
+                # external source returning over-received yield, e.g. the
+                # 2026-05-19 $5M Spark→Anchorage reimbursement).
+                reversals_for_chain = prime.yield_reversal_overrides.get(venue.chain, {})
+                reversals_by_bytes = {
+                    addr.value: [(o.date, o.amount) for o in entries]
+                    for addr, entries in reversals_for_chain.items()
+                }
                 # Paired-principal-cap auto-wiring — extracted into
                 # ``_build_paired_principal_caps`` for unit-test coverage.
                 paired_principal_caps = _build_paired_principal_caps(
@@ -3163,6 +3171,7 @@ def compute_monthly_pnl(
                     balance_source=balance_src,
                     external_sources=external,
                     principal_return_overrides=overrides_by_bytes,
+                    yield_reversal_overrides=reversals_by_bytes or None,
                     paired_principal_caps=paired_principal_caps or None,
                 )
         elif venue.pricing_category == PricingCategory.EOA:

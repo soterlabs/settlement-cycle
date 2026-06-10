@@ -573,6 +573,42 @@ via the resolved-pointer flow once the RPC swap lands.
 
 ### P1 — methodology unknowns affecting accuracy
 
+#### S31. Anchorage May 2026 flows — confirm round-trip + new disbursement tranche
+
+The full May 2026 escrow ↔ ALM day-net picture (S23 tri-party loan,
+terminating 2026-06-16) shows much more than the standard interest
+sweep, and needs Spark/Anchorage confirmation:
+
+| Date | Day-net flow | Our reading |
+|---|---:|---|
+| May 4 | +891,780.28 | monthly interest sweep ✓ |
+| May 11 | −34,111,109.86 | new principal disbursement? |
+| May 13 | −5,270,838.33 | outflow… |
+| May 14 | +5,270,830.00 | …returned next day ($8.33 less) — round-trip ([tx 0x1d3dd0ad…ad667](https://etherscan.io/tx/0x1d3dd0adf2b6ab8c1bc89998bc4e370a4549382cf73a16c968c94f49445ad667)) |
+| May 19 | −9,243,055.55 | incl. a frob-funded $5M ([tx 0x8cccc47f…aad583](https://etherscan.io/tx/0x8cccc47f2c87b93153df14040eed93d26edc09222644bc11cf2b4dbb2caad583)) — disbursement? |
+| May 20 | −40,743,055.51 | new principal disbursement? |
+| Jun 3 | +1,435,964.69 | June interest sweep (larger than usual?) |
+
+**Our current treatment** (config `principal_return_overrides`, added
+2026-06-10): the May 14 inflow is registered as a capital return of the
+May 13 outflow (amounts match to $8.33), NOT yield. All outflows stay
+capital under the directional default. Net May Anchorage yield books as
+**$891,780.28** (the May 4 sweep only).
+
+**Questions for Spark:**
+- Confirm the May 13 → May 14 out-and-back was an operational
+  round-trip (what happened?).
+- Confirm the May 11 / May 19 / May 20 outflows (−$84M total) are new
+  loan principal — a second tranche on top of the original $150M? If
+  so, what are the terms (the BR clock on the funding debt is already
+  running)?
+- Is the Jun 3 +$1,435,965 sweep pure interest (it's ~1.6× the prior
+  ~$892K monthly run-rate — consistent with the larger principal)?
+- Will the June 16 termination sweep separate principal from final
+  interest, or arrive as one combined transfer? (We need the split for
+  `principal_return_overrides` — see the placeholder note in
+  `config/spark.yaml`.)
+
 #### S30. Savings V2 VSR liability — confirm it is outside MSC `prime_agent_revenue` scope
 
 As of PR #126, MSC treats the Savings V2 vaults (S56/S57/S59/S60) as
