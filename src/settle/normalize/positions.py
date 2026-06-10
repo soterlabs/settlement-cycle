@@ -986,12 +986,15 @@ def _atoken_index_weighted_inflow(
                     ))
                 inflow_evt = Decimal(delta_evt - y_evt) / scale
                 cum += inflow_evt
-                day = by_date.setdefault(
-                    event_date,
-                    {"block_date": event_date, "daily_inflow": Decimal(0), "cum_inflow": cum},
-                )
+                if event_date not in by_date:
+                    by_date[event_date] = {
+                        "block_date": event_date,
+                        "daily_inflow": Decimal(0),
+                        "cum_inflow": Decimal(0),  # placeholder; set below
+                    }
+                day = by_date[event_date]
                 day["daily_inflow"] += inflow_evt
-                day["cum_inflow"] = cum
+                day["cum_inflow"] = cum  # always the running total after this event
             return (
                 pd.DataFrame(sorted(by_date.values(), key=lambda r: r["block_date"]))
                 .reset_index(drop=True)
