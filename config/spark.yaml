@@ -1040,20 +1040,20 @@ principal_return_overrides:
         note: 'partial-principal correction during initial Dec disbursement window'
       # 2026-05-14: +$5,270,830 USDC received from the escrow
       #   https://etherscan.io/tx/0x1d3dd0adf2b6ab8c1bc89998bc4e370a4549382cf73a16c968c94f49445ad667
-      # is the RETURN of Spark's own 2026-05-13 −$5,270,838.33 outflow to
-      # the escrow (same amount minus $8.33 — an out-and-back round-trip,
-      # not yield). Without this entry the inflow is classified as
-      # external yield and S26 May revenue is overstated by $5.27M.
-      # May 2026 also saw large NEW principal disbursements to the escrow
-      # (−$34.1M May 11, −$9.2M May 19 incl. a frob-funded $5M at
-      #   https://etherscan.io/tx/0x8cccc47f2c87b93153df14040eed93d26edc09222644bc11cf2b4dbb2caad583
-      # and −$40.7M May 20) — those stay capital under the directional
-      # default. Net May Anchorage yield = the $891,780.28 May 4 sweep
-      # only. Pending Spark/Anchorage confirmation — see QUESTIONS.md S31.
+      # is Anchorage RETURNING the previous day's receipts ($5M lump +
+      # $270,838.33 of streamed transfers, less $8.33) — an over-shoot
+      # correction during the deployment of a NEW ~$100M tranche
+      # (May 10–20: Σ outflows $105,270,838.70 − this return =
+      # $100,000,008.70). Capital, not yield. Without this entry the
+      # inflow is classified as external yield and S26 May revenue is
+      # overstated by $5.27M. All the tranche outflows stay capital under
+      # the directional default. Net May Anchorage yield = the
+      # $891,780.28 May 4 interest sweep only. Pending Spark/Anchorage
+      # confirmation of the tranche terms — see QUESTIONS.md S31.
       - date: '2026-05-14'
         amount: 5270830
         token: 'USDC'
-        note: 'return of the May 13 round-trip outflow (−$5,270,838.33), not yield'
+        note: 'over-shoot correction during the May $100M tranche deployment, not yield'
       # 2026-06-16 loan termination: when the loan unwinds, Anchorage will
       # sweep back the $150M principal (likely as one or two transfers,
       # plus a final-interest stub). Add the principal entry here once the
