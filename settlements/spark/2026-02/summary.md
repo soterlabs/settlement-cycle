@@ -10,17 +10,17 @@ Period: 2026-02-01 → 2026-02-28 (28 days)
 |---|---:|
 | agent rate | 114,973.49 |
 | distribution rewards | TBD |
-| prime agent net revenue | 1,405,908.48 |
-| prime side sky direct exposure | 0.00 |
-| **prime agent profit** | **1,520,881.97** |
+| prime agent net revenue | 2,359,860.16 |
+| prime side sky direct exposure | 30,517.19 |
+| **prime agent profit** | **2,505,350.83** |
 
 ### Sky side
 
 | Field | USDS |
 |---|---:|
 | prime cost of funds | 7,870,949.78 |
-| sky side sky direct exposure | 34,251.06 |
-| **sky revenue** | **7,905,200.85** |
+| sky side sky direct exposure | 3,733.88 |
+| **sky revenue** | **7,874,683.66** |
 
 ## Per-venue
 
@@ -49,7 +49,7 @@ Period: 2026-02-01 → 2026-02-28 (28 days)
 | S21 | Superstate Short Duration US Government Securities Fund (USTB) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 100.00% | $0.00 |
 | S22 | Superstate Crypto Carry Fund (USCC) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S23 | Anchorage tri-party loan escrow (USDC pass-through, ~$0 balance) | $1.21 | $1.21 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
-| S24 | Spark.fi USDT Reserve Curve (sUSDS/USDT) | $49,999,911.75 | $50,000,340.65 | -$33,822.17 | $34,251.06 | $0.00 | $34,251.06 | 100.00% | $0.00 |
+| S24 | Spark.fi USDT Reserve Curve (sUSDS/USDT) | $49,999,911.75 | $50,000,340.65 | -$33,822.17 | $3,733.88 | $30,517.19 | $3,733.88 | 100.00% | $0.00 |
 | S25 | Spark.fi PYUSD Reserve Curve (PYUSD/USDS) | $100,000,425.55 | $100,000,617.74 | -$12,634.46 | $12,826.65 | $12,826.65 | $0.00 | 0% | $0.00 |
 | S26 | USDC raw (ALM idle) | $0.00 | $0.00 | -$891,780.00 | $891,780.00 | $891,780.00 | $0.00 | 0% | $0.00 |
 | S27 | USDT raw (ALM idle — $442M as of 2026-04) | $0.00 | $1,868.74 | $1,868.74 | -$0.00 | -$0.00 | $-0.00 | 0% | $0.00 |
