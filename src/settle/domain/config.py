@@ -314,7 +314,13 @@ def load_prime(config_path: Path) -> Prime:
 
     return Prime(
         id=cfg["id"],
-        ilk_bytes32=_parse_ilk_bytes32(cfg["ilk_bytes32"]),
+        # Optional for agent-rate-only primes (Keel, Skybase) — no allocator
+        # ilk exists, so the debt machinery degrades to an all-zero series.
+        ilk_bytes32=(
+            _parse_ilk_bytes32(cfg["ilk_bytes32"])
+            if cfg.get("ilk_bytes32") is not None
+            else None
+        ),
         start_date=date.fromisoformat(cfg["start_date"]),
         subproxy=subproxy,
         alm=alm,

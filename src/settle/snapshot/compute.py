@@ -53,7 +53,10 @@ SEL_VAT_ILKS = _SEL_ILKS   # ilks(bytes32) → (Art, rate, spot, line, dust); de
 
 def _read_debt_ilk(prime: Prime, eth_block: int) -> Decimal | None:
     """Return total prime debt = Σ over all urns in the ilk of (art × rate / RAY).
-    One eth_call to Vat.ilks(ilk_bytes32). Returns None on RPC failure."""
+    One eth_call to Vat.ilks(ilk_bytes32). Returns None on RPC failure or
+    when the prime has no allocator ilk (agent-rate-only primes)."""
+    if prime.ilk_bytes32 is None:
+        return None
     data = SEL_VAT_ILKS + prime.ilk_bytes32.hex()
     try:
         raw = eth_call(Chain.ETHEREUM, VAT_ADDRESS, data, eth_block)

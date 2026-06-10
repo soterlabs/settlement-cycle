@@ -285,3 +285,37 @@ def test_prime_agent_total_revenue_includes_distribution_rewards():
         distribution_rewards=_D("250"),
     )
     assert pnl.prime_agent_total_revenue == _D("350")
+
+
+def test_load_prime_agent_rate_only(config_dir: Path):
+    """Keel / Skybase: no ilk, no alm, no venues — agent rate only.
+
+    ``ilk_bytes32`` is absent from the YAML → ``None`` on the Prime;
+    the debt machinery then returns a zero series instead of querying."""
+    for prime_id, sub in (
+        ("keel",    "0x355cd90ecb1b409fdf8b64c4473c3b858da2c310"),
+        ("skybase", "0x08978e3700859e476201c1d7438b3427e3c81140"),
+    ):
+        prime = load_prime(config_dir / f"{prime_id}.yaml")
+        assert prime.id == prime_id
+        assert prime.ilk_bytes32 is None
+        assert prime.venues == []
+        assert prime.alm == {}
+        assert prime.subproxy[Chain.ETHEREUM].hex == sub
+        assert prime.chains == {Chain.ETHEREUM}
+
+
+def test_prime_rejects_venues_without_ilk():
+    """Supply-side venues need ilk debt for the BR charge — an agent-rate-
+    only prime must not silently carry venues."""
+    from settle.domain.primes import Token, Venue
+    venue = Venue(
+        id="V1", chain=Chain.ETHEREUM, label="x",
+        pricing_category=PricingCategory.ERC4626_VAULT,
+        token=Token(address=Address.from_str("0x" + "11" * 20), symbol="T", decimals=18, chain=Chain.ETHEREUM),
+    )
+    with pytest.raises(ValueError, match="without an ilk_bytes32"):
+        Prime(
+            id="bad", ilk_bytes32=None, start_date=date(2025, 1, 1),
+            venues=[venue],
+        )

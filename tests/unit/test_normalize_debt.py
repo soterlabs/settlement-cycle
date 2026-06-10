@@ -151,3 +151,20 @@ def test_get_debt_timeseries_warns_when_no_resolver_passed(
     assert any(
         "without block_resolver" in r.message for r in caplog.records
     ), f"expected warning, got: {[r.message for r in caplog.records]}"
+
+
+def test_get_debt_timeseries_agent_rate_only_prime_returns_zero_series(config_dir: Path):
+    """``ilk_bytes32 is None`` (Keel/Skybase) → all-zero single-row series,
+    no source query. Non-empty so ``compute_sky_revenue``'s
+    ``require_non_empty(debt)`` guard passes with a genuine zero BR base."""
+    keel = load_prime(config_dir / "keel.yaml")
+    src = MockDebtSource()
+    result = get_debt_timeseries(keel, _period(), source=src)
+    assert src.calls == []          # Dune never queried
+    assert len(result) == 1
+    assert result.iloc[0].cum_debt == 0
+    assert result.iloc[0].daily_dart == 0
+    # Load-bearing: cum_at_or_before carries this row forward from day 1 of
+    # the period, so the BR base reads 0 on every day — a block_date outside
+    # the period would silently desync the daily loop.
+    assert result.iloc[0]["block_date"] == _period().start

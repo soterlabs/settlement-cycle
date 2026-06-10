@@ -27,7 +27,12 @@ def _cmd_version(_args: argparse.Namespace) -> int:
 def _cmd_config_check(args: argparse.Namespace) -> int:
     prime = load_prime_by_id(args.prime)
     print(f"Prime:           {prime.id}")
-    print(f"Ilk (bytes32):   0x{prime.ilk_bytes32.hex()}")
+    _ilk = (
+        f"0x{prime.ilk_bytes32.hex()}"
+        if prime.ilk_bytes32 is not None
+        else "(none — agent-rate-only prime)"
+    )
+    print(f"Ilk (bytes32):   {_ilk}")
     print(f"Start date:      {prime.start_date}")
     print(f"Chains:          {sorted(c.value for c in prime.chains)}")
     print(f"Subproxy:")

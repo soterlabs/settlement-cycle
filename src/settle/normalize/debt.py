@@ -66,6 +66,21 @@ def get_debt_timeseries(
             "Period must have an ethereum pin_block; got "
             f"chains={sorted(period.pin_blocks)}"
         )
+    if prime.ilk_bytes32 is None:
+        # Agent-rate-only prime (Keel, Skybase): no allocator ilk → no debt.
+        # Return an all-zero single-row series instead of querying Dune so
+        # downstream consumers (``compute_sky_revenue``'s
+        # ``require_non_empty`` guard, the BR base) see a legitimate
+        # zero-debt prime rather than a misconfigured source.
+        logging.getLogger(__name__).info(
+            "get_debt_timeseries: prime %s has no ilk_bytes32 — "
+            "agent-rate-only prime, returning zero-debt series.", prime.id,
+        )
+        return pd.DataFrame([{
+            "block_date": period.start,
+            "daily_dart": Decimal("0"),
+            "cum_debt": Decimal("0"),
+        }])
     src = source if source is not None else get_debt_source()
     # Sparse Dune series: one row per day with frob/grab activity.
     # cum_debt here = Art (normalised), NOT actual USDS yet.
