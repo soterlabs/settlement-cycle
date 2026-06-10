@@ -229,3 +229,61 @@ def test_negative_segment_yield_clamps_to_zero():
     # Segment 1: 990K - 1M = -10K → clamped to 0
     # Segment 2: 1.01M - 990K = 20K
     assert out == 20_000
+
+
+# --- _atoken_index_weighted_inflow per-event rows ---------------------------
+
+def test_per_event_inflow_collapses_same_day_events_to_one_row():
+    """Two events on the same calendar date must produce ONE inflow row
+    carrying the end-of-day cumulative.
+
+    Regression: E3 April 2026 — Merkl claim (+$1.41M, 15:32) and full
+    burn (−$1.41M, 16:13) on Apr 24 produced two rows with the same
+    ``block_date``; the consumer's date-max lookup then took the first
+    row, dropping the burn and booking a phantom −$1.41M loss."""
+    from datetime import date
+    from decimal import Decimal
+    from types import SimpleNamespace
+
+    from settle.domain.primes import Chain
+    from settle.normalize.positions import _atoken_index_weighted_inflow
+
+    venue = SimpleNamespace(
+        id="E3-test",
+        holder_override=None,
+        chain=Chain.ETHEREUM,
+        token=SimpleNamespace(
+            address=SimpleNamespace(value=TOKEN), decimals=0,
+        ),
+    )
+    prime = SimpleNamespace(alm={Chain.ETHEREUM: SimpleNamespace(value=HOLDER)})
+
+    SOM, EOM = 100, 200
+    # Day 1 (block 150): claim in +1_000 (mint: scaled jumps).
+    # Same day (block 160): full burn to dust.
+    balances = {100: 5_000, 149: 5_000, 150: 6_000, 159: 6_000, 160: 1, 200: 1}
+    scaleds  = {100: 5_000, 149: 5_000, 150: 6_000, 159: 6_000, 160: 1, 200: 1}
+    # _atoken_per_segment_yield binary-searches inside the exit segment.
+    for b in range(150, 200):
+        balances.setdefault(b, 6_000 if b < 160 else 1)
+        scaleds.setdefault(b, 6_000 if b < 160 else 1)
+    bal_at, sb_at = _factory(balances, scaleds)
+
+    d = date(2026, 4, 24)
+    ts = _atoken_index_weighted_inflow(
+        prime, venue, SOM, EOM,
+        period_end_date=date(2026, 4, 30),
+        balance_at=lambda c, t, h, b: bal_at(c, t, h, b),
+        scaled_balance_at=lambda c, t, h, b: sb_at(c, t, h, b),
+        transfer_event_blocks=lambda c, t, h, som, eom: [
+            (149, 150, d), (159, 160, d),
+        ],
+    )
+    same_day = ts[ts.block_date == d]
+    assert len(same_day) == 1, f"expected 1 collapsed row, got\n{ts}"
+    # +1_000 in, then −5_999 out → end-of-day cumulative −4_999. (A
+    # first-event collapse would read +1_000 here — this pins LAST.)
+    cum = same_day["cum_inflow"].iloc[0]
+    assert isinstance(cum, Decimal)  # no float coercion through the collapse
+    assert cum == Decimal("-4999")
+    assert same_day["daily_inflow"].iloc[0] == Decimal("-4999")

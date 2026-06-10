@@ -80,8 +80,15 @@ def cum_at_or_before(
     degrade gracefully when consumers are handed an older-shape frame —
     pre-PSM3-leg-split test fixtures, in particular.
 
-    Lookup is by date-max (`idxmax`), so a non-sorted DataFrame still returns
-    the correct row — robustness against any source that doesn't pre-sort.
+    Lookup is by date-max, so a non-sorted DataFrame still returns the
+    correct row — robustness against any source that doesn't pre-sort.
+    Among rows TIED on the max date, the positionally LAST one wins: for
+    a cumulative series with multiple same-day rows (per-event aToken
+    inflows), the last row carries the end-of-day cumulative. (The old
+    ``idxmax`` lookup took the FIRST tied row, silently dropping every
+    later same-day event — E3 April 2026 lost a $1.41M Merkl round-trip
+    this way.) Producers should still emit one row per date; this is
+    defence in depth.
 
     Note: returning ``0`` on empty is the correct default for *flow* timeseries
     (inflow / per-venue activity) where "no rows" genuinely means "no activity".
@@ -95,8 +102,8 @@ def cum_at_or_before(
     eligible = timeseries[timeseries[date_col] <= target]
     if eligible.empty:
         return Decimal("0")
-    latest_idx = eligible[date_col].idxmax()
-    return Decimal(str(eligible.loc[latest_idx, value_col]))
+    tied = eligible[eligible[date_col] == eligible[date_col].max()]
+    return Decimal(str(tied[value_col].iloc[-1]))
 
 
 def require_non_empty(timeseries: pd.DataFrame, *, name: str, hint: str = "") -> None:
