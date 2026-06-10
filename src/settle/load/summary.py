@@ -177,13 +177,21 @@ def render_summary(prov: dict) -> str:
         prime_side_sde        = Decimal("0")
         prime_agent_net_revenue = Decimal("0")
     else:
-        non_sde_revenue_gross = sum(
-            (_D(v.get("revenue")) for v in venues_for_split if _D(v.get("sd_share")) == 0),
-            Decimal("0"),
-        )
         prime_side_sde = sum(
             (_D(v.get("revenue")) for v in venues_for_split if _D(v.get("sd_share")) != 0),
             Decimal("0"),
+        )
+        # Derive the non-SDE bucket from the prime-level total rather
+        # than summing venue rows: ``prime_agent_revenue`` can exceed
+        # Σ vr.revenue by prime-level additions that have no venue row
+        # (today: ``psm3_susds_appreciation``, the Case-3a SSR booking
+        # on the PSM3 sUSDS slice). Summing rows would silently drop
+        # those from the headline. ``hide_per_venue_pnl`` venues are
+        # excluded from ``venues_for_split`` but contribute $0 revenue
+        # and $0 sd_revenue by construction (override = 0), so their
+        # exclusion doesn't break this derivation.
+        non_sde_revenue_gross = (
+            _D(r.get("prime_agent_revenue")) - prime_side_sde
         )
         prime_agent_net_revenue = non_sde_revenue_gross - prime_cof
     agent_rate     = _D(r.get("agent_rate"))

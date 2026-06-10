@@ -1692,3 +1692,26 @@ def test_savings_v2_depositor_ssr_carries_forward_on_transient_zero():
     total = _savings_v2_depositor_ssr(src, _StubDayResolver(), _ssr_df(), _period())
     expected = ta * daily_compounding_factor(Decimal("0.045")) * 31
     assert total == expected  # all 31 days counted, day 15 carried forward
+
+
+def test_case3b_adjustment_plus_external_rebooks_susds_leg_to_prime():
+    """Case 3b composition (S24-shaped): the sUSDS-leg SSR ``x`` embedded
+    in the LP MtM is removed from the SDE-eligible pot
+    (``adjustment = −x``) and re-booked 100% prime (``external = +x``).
+    For a fixed-SDE venue (sd_share = 1): Sky's sd_revenue = raw − x,
+    prime books exactly +x."""
+    raw_mtm = Decimal("74_000")   # full LP MtM incl. sUSDS-leg SSR
+    x = Decimal("37_000")         # sUSDS-leg SSR portion
+    inputs = VenueRevenueInputs(
+        venue=_venue("S24-like"),
+        value_som=Decimal("50_000_000"),
+        value_eom=Decimal("50_000_000") + raw_mtm,
+        inflow_timeseries=_empty_inflow(),
+        sde_entry=_sde_fixed("S24-like"),
+        actual_revenue_adjustment=-x,
+        external_revenue=x,
+    )
+    vr = compute_venue_revenue(_period(), inputs)
+    assert vr.actual_revenue == raw_mtm - x          # SDE-eligible pot
+    assert vr.sd_revenue == raw_mtm - x              # 100% of pot to Sky
+    assert vr.revenue == x                           # prime books the SSR

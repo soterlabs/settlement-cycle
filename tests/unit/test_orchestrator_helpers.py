@@ -378,3 +378,74 @@ def test_psm3_susds_spread_empty_returns_zero():
         "cum_balance":  [Decimal("100000")],
     })
     assert _psm3_susds_spread(df_old, period) == Decimal(0)
+
+
+def test_psm3_susds_appreciation_full_ssr_daily():
+    """``_psm3_susds_appreciation`` (Case 3a, PRD §10) mirrors
+    ``_psm3_susds_spread`` but at the per-day SSR rate: $100M sUSDS leg
+    over 10 days at 4.5% SSR ≈ $100M × 4.5%/365 × 10 ≈ $120K."""
+    from settle.compute.monthly_pnl import _psm3_susds_appreciation
+    from settle.compute._helpers import daily_compounding_factor
+
+    days = [date(2026, 3, 1) + timedelta(days=i) for i in range(10)]
+    df = pd.DataFrame({
+        "block_date":   days,
+        "daily_net":    [Decimal(0)] * 10,
+        "cum_balance":  [Decimal("100000000")] * 10,
+        "cum_usdc":     [Decimal(0)] * 10,
+        "cum_usds_leg": [Decimal(0)] * 10,
+        "cum_susds":    [Decimal("100000000")] * 10,
+    })
+    ssr = pd.DataFrame({
+        "effective_date": [date(2025, 1, 1)],
+        "ssr_apy":        [Decimal("0.045")],
+    })
+    period = Period(start=days[0], end=days[-1],
+                    pin_blocks={Chain.BASE: 1, Chain.ETHEREUM: 1})
+
+    out = _psm3_susds_appreciation(df, period, ssr)
+    expected = Decimal("100000000") * daily_compounding_factor(Decimal("0.045")) * 10
+    assert out == expected
+    assert Decimal("115000") < out < Decimal("125000")
+
+
+def test_psm3_susds_appreciation_tracks_ssr_changes():
+    """A mid-period SP-BEAM SSR change applies from its effective date."""
+    from settle.compute.monthly_pnl import _psm3_susds_appreciation
+    from settle.compute._helpers import daily_compounding_factor
+
+    days = [date(2026, 3, 1) + timedelta(days=i) for i in range(10)]
+    df = pd.DataFrame({
+        "block_date":   days,
+        "daily_net":    [Decimal(0)] * 10,
+        "cum_balance":  [Decimal("100000000")] * 10,
+        "cum_usdc":     [Decimal(0)] * 10,
+        "cum_usds_leg": [Decimal(0)] * 10,
+        "cum_susds":    [Decimal("100000000")] * 10,
+    })
+    ssr = pd.DataFrame({
+        "effective_date": [date(2025, 1, 1), date(2026, 3, 6)],
+        "ssr_apy":        [Decimal("0.045"), Decimal("0.040")],
+    })
+    period = Period(start=days[0], end=days[-1],
+                    pin_blocks={Chain.ETHEREUM: 1})
+
+    out = _psm3_susds_appreciation(df, period, ssr)
+    v = Decimal("100000000")
+    expected = (
+        v * daily_compounding_factor(Decimal("0.045")) * 5   # Mar 1–5
+        + v * daily_compounding_factor(Decimal("0.040")) * 5  # Mar 6–10
+    )
+    assert out == expected
+
+
+def test_psm3_susds_appreciation_empty_returns_zero():
+    from settle.compute.monthly_pnl import _psm3_susds_appreciation
+    ssr = pd.DataFrame({
+        "effective_date": [date(2025, 1, 1)],
+        "ssr_apy":        [Decimal("0.045")],
+    })
+    period = Period(start=date(2026, 3, 1), end=date(2026, 3, 31),
+                    pin_blocks={Chain.ETHEREUM: 1})
+    assert _psm3_susds_appreciation(None, period, ssr) == Decimal(0)
+    assert _psm3_susds_appreciation(pd.DataFrame(), period, ssr) == Decimal(0)

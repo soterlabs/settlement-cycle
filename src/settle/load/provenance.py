@@ -46,6 +46,10 @@ def render_provenance(
             # zero for primes without sUSDS-in-Curve or PSM3 positions.
             "curve_susds_spread": str(pnl.curve_susds_spread),
             "psm3_susds_spread": str(pnl.psm3_susds_spread),
+            # Case 3a (PRD §10): SSR appreciation on the PSM3 sUSDS slice,
+            # booked into prime_agent_revenue as a prime-level addition
+            # (no venue row). Σ venue.revenue + this = prime_agent_revenue.
+            "psm3_susds_appreciation": str(pnl.psm3_susds_appreciation),
             # Total 30 bps spread deducted from sky_revenue for sky_savings_token
             # Cat B venues. sky_revenue is already net of this deduction.
             # Used by build_monthly_report.py to recover gross-BR cof_total.
