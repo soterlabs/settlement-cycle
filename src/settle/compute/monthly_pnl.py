@@ -735,9 +735,11 @@ def _savings_v2_depositor_ssr(
 ) -> Decimal:
     """Daily-integrated SSR accrual on the depositor-sourced spUSDC slice.
 
-    Returns ``Σ_d spUSDC_TA_d × ssr_daily_factor_d`` over
-    ``[period.start, period.end]``, where ``spUSDC_TA_d`` is
-    ``spUSDC_V2.totalAssets`` read at day ``d``'s EoD block and
+    Returns ``Σ_d spUSDC_AO_d × ssr_daily_factor_d`` over
+    ``[period.start, period.end]``, where ``spUSDC_AO_d`` is
+    ``spUSDC_V2.assetsOutstanding`` (the deployed-to-ALM portion —
+    excludes the vault's ~$10M USDC withdrawal buffer, which never
+    enters S32's sUSDS reading) read at day ``d``'s EoD block and
     ``ssr_daily_factor_d = (1 + SSR_d)^(1/365) − 1``. The caller negates
     the total and books it via
     ``VenueRevenueInputs.actual_revenue_adjustment`` for S32, removing
@@ -754,8 +756,9 @@ def _savings_v2_depositor_ssr(
     returns 0 on revert/outage. A genuine pre-deployment 0 follows other
     0s (carry-forward of 0 = 0, correct); a transient outage mid-series
     would silently shrink the carve-out and over-credit the prime, so a
-    0 read AFTER a non-zero day carries the previous day's TA forward
-    with a warning (TA is slow-moving; conservative for the prime).
+    0 read AFTER a non-zero day carries the previous day's value forward
+    with a warning (the series is slow-moving; conservative for the
+    prime).
 
     ``resolver`` is the orchestrator's block resolver — Dune-backed and
     cached when ``DUNE_API_KEY`` is set (the upgrade happens before the
@@ -772,7 +775,7 @@ def _savings_v2_depositor_ssr(
         ta = sv2_src.at_block(block)
         if ta == 0 and prev_ta > 0:
             _log.warning(
-                "_savings_v2_depositor_ssr: spUSDC totalAssets read 0 at "
+                "_savings_v2_depositor_ssr: spUSDC assetsOutstanding read 0 at "
                 "block %d (day %s) after $%.0f the previous day — treating "
                 "as a transient read failure and carrying the previous "
                 "day's value forward.",
@@ -2866,7 +2869,10 @@ def compute_monthly_pnl(
                 #     capital flows net out as inflows), and the depositor
                 #     slice's SSR accrual is removed via
                 #     ``susds_mtm_adjustment`` (daily-integrated
-                #     ``−Σ_d spUSDC_TA_d × ssr_daily_d``, computed below).
+                #     ``−Σ_d spUSDC_AO_d × ssr_daily_d``, computed below;
+                #     AO = ``assetsOutstanding``, the deployed-to-ALM
+                #     portion — excludes the vault's USDC withdrawal
+                #     buffer, which never enters S32's reading).
                 #     Endpoint-only value carve-outs do NOT work here: they
                 #     desync ``Δvalue`` from ``period_inflow`` and blow the
                 #     revenue up by the depositor net-flow (observed:
@@ -2883,12 +2889,13 @@ def compute_monthly_pnl(
                     susds_spread = None
 
                 # Case 2 depositor-SSR adjustment: daily-integrated SSR
-                # accrual on the spUSDC V2 totalAssets series, negated.
-                # See ``_savings_v2_depositor_ssr`` for the day-boundary
-                # convention (right-Riemann on EoD-d positions, matching
-                # the other daily integrals) and the carry-forward RPC-
-                # failure degradation. NOTE the deliberate asymmetry: TA
-                # grows at the VSR (depositor accrual) but we subtract at
+                # accrual on the spUSDC V2 assetsOutstanding series,
+                # negated. See ``_savings_v2_depositor_ssr`` for the
+                # day-boundary convention (right-Riemann on EoD-d
+                # positions, matching the other daily integrals) and the
+                # carry-forward RPC-failure degradation. NOTE the
+                # deliberate asymmetry: the depositor liability grows at
+                # the VSR (depositor accrual) but we subtract at
                 # the SSR — the SSR−VSR margin on depositor principal is
                 # Spark's demand-side business margin, excluded from
                 # supply-side settlement per the Savings-V2 scope decision
@@ -2905,7 +2912,7 @@ def compute_monthly_pnl(
                     susds_mtm_adjustment = -_dep_ssr_total
                     _log.info(
                         "  Savings V2 depositor-SSR adjustment %s: −$%.0f "
-                        "(daily-integrated spUSDC_TA × SSR across %d days)",
+                        "(daily-integrated spUSDC_AO × SSR across %d days)",
                         venue.id, float(_dep_ssr_total), period.n_days,
                     )
 

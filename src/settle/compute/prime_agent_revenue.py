@@ -168,8 +168,8 @@ class VenueRevenueInputs:
     # Signed USD adjustment added to the formula-computed ``actual_revenue``
     # (``(value_eom − value_som) − period_inflow + adjustment``). Used by
     # mixed-source sUSDS venues (Spark S32) to remove the daily-integrated
-    # SSR accrual on the depositor-sourced slice (``Σ_d spUSDC_TA_d ×
-    # ssr_daily_d``) from the raw MtM — that appreciation belongs to
+    # SSR accrual on the depositor-sourced slice (``Σ_d spUSDC_AO_d ×
+    # ssr_daily_d``, AO = ``assetsOutstanding``) from the raw MtM — that appreciation belongs to
     # Savings V2 depositors, not the prime/Sky pair. Mutually exclusive
     # with ``actual_revenue_override`` (the override bypasses the formula
     # entirely, so an adjustment would be silently dropped).
@@ -408,7 +408,7 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
     # used only by mixed-source sUSDS venues (Spark S32): the raw MtM on
     # the full ALM sUSDS balance includes the SSR accrual on the
     # depositor-sourced spUSDC slice; the caller passes the negated
-    # daily-integrated ``Σ_d spUSDC_TA_d × ssr_daily_d`` so the booked
+    # daily-integrated ``Σ_d spUSDC_AO_d × ssr_daily_d`` so the booked
     # actual_revenue covers only the debt-sourced slice. Applied BEFORE
     # the fee heuristic and the SDE split (same position in the formula
     # as the value/inflow legs it corrects), and applies uniformly to

@@ -1,4 +1,4 @@
-"""On-chain ``ISavingsV2DeployedSource`` — reads ``spUSDC_V2.totalAssets``.
+"""On-chain ``ISavingsV2DeployedSource`` — reads ``spUSDC_V2.assetsOutstanding``.
 
 For Spark S32 (Ethereum raw sUSDS POL), the ALM's ``balanceOf(sUSDS)``
 reading mixes two slices:
@@ -20,10 +20,20 @@ reading mixes two slices:
   SSR would over-credit by ``SSR × spUSDC_TA`` per period.
 
 This source returns the **USD-equivalent of the depositor-sourced
-slice at a given block** — i.e. ``spUSDC_V2.totalAssets(block)``,
+slice at a given block** — i.e. ``spUSDC_V2.assetsOutstanding(block)``,
 denominated in USDC at par. The consumer subtracts this from S32's
 ``value_som`` / ``value_eom`` before computing per-period revenue,
 isolating the debt-sourced slice for the standard Case 1 logic.
+
+**Why ``assetsOutstanding`` and not ``totalAssets``.** The vault keeps
+a USDC withdrawal buffer (~$10M) at the vault contract itself; that
+buffer is part of ``totalAssets`` (what the vault owes depositors) but
+is never converted to sUSDS at the ALM, so it never enters S32's
+``balanceOf(sUSDS, ALM)`` reading. ``assetsOutstanding`` is exactly the
+deployed portion — verified on-chain (Apr/May 2026 EoM and latest):
+``totalAssets == assetsOutstanding + balanceOf(USDC, vault)`` to the
+cent. Carving out ``totalAssets`` would over-subtract ~$10M of
+depositor slice that isn't in the measurement in the first place.
 
 Other Savings V2 vaults DO NOT need a carve-out:
 
@@ -54,11 +64,13 @@ _log = logging.getLogger(__name__)
 # sUSDS at the vault contract (V1 sUSDC, doesn't enter S32's reading).
 _SPUSDC_V2 = Address.from_str("0x28B3a8fb53B741A8Fd78c0fb9A6B2393d896a43d")
 
-# ERC-4626 ``totalAssets()`` selector — returns the underlying-asset
-# amount the vault currently owes its depositors. For spUSDC V2 the
-# underlying is USDC (par-stable), so the returned value is directly
-# the USD-equivalent.
-_SEL_TOTAL_ASSETS = "0x01e1d114"
+# ``assetsOutstanding()`` selector — returns the underlying-asset amount
+# the vault has deployed out of the contract (to the ALM, where it sits
+# as sUSDS). Excludes the USDC withdrawal buffer held at the vault, which
+# never reaches the ALM (totalAssets = assetsOutstanding + vault-idle
+# USDC). For spUSDC V2 the underlying is USDC (par-stable), so the
+# returned value is directly the USD-equivalent.
+_SEL_ASSETS_OUTSTANDING = "0x925455ca"
 
 # spUSDC underlying is USDC (6 decimals).
 _USDC_SCALE = Decimal(10**6)
@@ -70,22 +82,22 @@ class DuneSavingsV2DeployedSource:
     Despite the legacy name (kept for protocol compatibility), this is
     an RPC-backed implementation — the original Dune table
     ``dune.sparkdotfi.result_savings_v_2_deployment_metrics`` is no
-    longer accessible, and direct ``totalAssets`` reads are simpler and
-    more precise anyway (no daily Dune ingestion lag).
+    longer accessible, and direct ``assetsOutstanding`` reads are
+    simpler and more precise anyway (no daily Dune ingestion lag).
     """
 
     def at_block(self, block: int) -> Decimal:
         """USD-equivalent depositor-sourced sUSDS at the given block.
 
-        Computed as ``spUSDC_V2.totalAssets(block)`` denominated in
-        USDC at par. Returns ``Decimal("0")`` if the call reverts
+        Computed as ``spUSDC_V2.assetsOutstanding(block)`` denominated
+        in USDC at par. Returns ``Decimal("0")`` if the call reverts
         (e.g. block is before vault deployment) so the deduction
         degrades gracefully — preserves the pre-fix behaviour for
         pre-deployment blocks while picking up the correct carve-out
         once the vault exists.
         """
         try:
-            raw = eth_call(Chain.ETHEREUM, _SPUSDC_V2, _SEL_TOTAL_ASSETS, block)
+            raw = eth_call(Chain.ETHEREUM, _SPUSDC_V2, _SEL_ASSETS_OUTSTANDING, block)
         except Exception as e:
             _log.warning(
                 "DuneSavingsV2DeployedSource.at_block(%d) failed (%s) — "
