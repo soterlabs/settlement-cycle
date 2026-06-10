@@ -10,9 +10,9 @@ Period: 2026-04-01 → 2026-04-30 (30 days)
 |---|---:|
 | agent rate | 45,332.83 |
 | distribution rewards | TBD |
-| prime agent net revenue | 2,270,604.88 |
+| prime agent net revenue | 3,682,517.18 |
 | prime side sky direct exposure | 0.00 |
-| **prime agent profit** | **2,315,937.71** |
+| **prime agent profit** | **3,727,850.01** |
 
 ### Sky side
 
@@ -28,7 +28,7 @@ Period: 2026-04-01 → 2026-04-30 (30 days)
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
 | E1 | Aave Horizon RWA RLUSD (aToken) | $135,317,040.98 | $251,199,143.45 | $115,722,231.19 | $159,871.28 | $1,138,784.95 | $0.00 | 0% | $0.00 |
 | E2 | Aave Horizon RWA USDC (aToken) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
-| E3 | Aave Ethereum RLUSD (aToken) | $138,267,796.42 | $0.37 | -$136,919,507.91 | -$1,348,288.15 | $63,609.16 | $-0.00 | 0% | $0.00 |
+| E3 | Aave Ethereum RLUSD (aToken) | $138,267,796.42 | $0.37 | -$138,331,420.20 | $63,624.15 | $1,475,521.46 | $0.00 | 0% | $0.00 |
 | E4 | Grove x Steakhouse USDC (Morpho 4626) | $3,954,260.40 | $5,004,060.19 | $1,041,279.35 | $8,520.45 | $8,520.45 | $0.00 | 0% | $0.00 |
 | E5 | Grove x Steakhouse USDC High Yield (Morpho 4626) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E6 | Grove x Steakhouse AUSD (Morpho 4626) | $18,646,064.04 | $24,982,367.89 | $6,286,449.18 | $49,854.68 | $49,854.68 | $0.00 | 0% | $0.00 |

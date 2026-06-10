@@ -122,6 +122,24 @@ def test_cum_at_or_before_unsorted_input():
     assert cum_at_or_before(df, "cum_balance", date(2026, 4, 1)) == Decimal("25000000.0")
 
 
+def test_cum_at_or_before_duplicate_dates_takes_last_row():
+    """Multiple rows on the max date → the positionally LAST one wins.
+
+    Regression: E3 April 2026 had two per-event inflow rows on Apr 24
+    (Merkl claim in, full burn out). The old ``idxmax`` lookup returned
+    the FIRST tied row, dropping the burn from the cumulative and
+    booking a phantom −$1.41M principal loss."""
+    df = pd.DataFrame({
+        "block_date": [date(2026, 4, 17), date(2026, 4, 24), date(2026, 4, 24)],
+        "cum_inflow": [Decimal("-25000000"),
+                       Decimal("-136919507.91"),   # after Merkl claim in
+                       Decimal("-138331420.20")],  # after same-day burn out
+    })
+    assert cum_at_or_before(df, "cum_inflow", date(2026, 4, 30)) == Decimal("-138331420.20")
+    assert cum_at_or_before(df, "cum_inflow", date(2026, 4, 24)) == Decimal("-138331420.20")
+    assert cum_at_or_before(df, "cum_inflow", date(2026, 4, 20)) == Decimal("-25000000")
+
+
 # --- ssr_at_or_before ------------------------------------------------------
 
 def _ssr():

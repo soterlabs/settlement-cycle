@@ -952,7 +952,22 @@ def _atoken_index_weighted_inflow(
             # Non-event segments contribute only rebase yield (inflow=0),
             # so they need no rows. The sum of per-event inflows equals
             # period_inflow_usd computed above.
-            rows: list[dict] = []
+            # NOTE: rows are collapsed to one per calendar date below.
+            # Multiple same-day events (e.g. E3 April 2026: Merkl claim
+            # +$1.41M at 15:32, full burn −$1.41M at 16:13) would
+            # otherwise produce duplicate ``block_date`` rows, and the
+            # consumer's ``cum_at_or_before`` date-max lookup has no
+            # defined row to pick among ties — the pre-fix ``idxmax``
+            # took the FIRST tied row, silently dropping every later
+            # same-day event from the cumulative (−$1.41M of phantom
+            # principal loss on E3).
+            # Collapsed one-row-per-date accumulation: boundaries are
+            # processed in post-block order, so for each date the running
+            # ``cum`` after its last event IS the end-of-day cumulative.
+            # Collapsing in plain Python (dict keyed by date, overwritten
+            # per event) avoids any reliance on pandas groupby intra-group
+            # ordering and keeps the Decimal values exact.
+            by_date: dict = {}
             cum = Decimal(0)
             for pre_blk, post_blk, event_date in sorted(boundaries, key=lambda t: t[1]):
                 b_pre  = balance_at(chain_value, token_addr, holder.value, pre_blk)
@@ -971,8 +986,16 @@ def _atoken_index_weighted_inflow(
                     ))
                 inflow_evt = Decimal(delta_evt - y_evt) / scale
                 cum += inflow_evt
-                rows.append({"block_date": event_date, "daily_inflow": inflow_evt, "cum_inflow": cum})
-            return pd.DataFrame(rows)
+                day = by_date.setdefault(
+                    event_date,
+                    {"block_date": event_date, "daily_inflow": Decimal(0), "cum_inflow": cum},
+                )
+                day["daily_inflow"] += inflow_evt
+                day["cum_inflow"] = cum
+            return (
+                pd.DataFrame(sorted(by_date.values(), key=lambda r: r["block_date"]))
+                .reset_index(drop=True)
+            )
     elif is_clean_exit and som_block < eom_block:
         # Clean-exit fallback (no event-block lookup wired). Same
         # recovery logic as before this PR: binary-search for the
