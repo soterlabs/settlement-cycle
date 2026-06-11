@@ -56,3 +56,8 @@ settlements/**/provenance.json
 # Claude
 .claude
 .secrets/
+
+# DR workbook snapshots — canonical sources are the public URLs in
+# preparation/scripts/dr_aggregate.py (--local uses these if present)
+preparation/dr_payouts.xlsx
+preparation/dr_results.xlsx

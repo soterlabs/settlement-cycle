@@ -47,10 +47,11 @@ stderr (`[cache] using … delete to force re-fetch`). To force a full
 refresh: `rm -f /tmp/dr_* /tmp/gen_doc_*`.
 
 `dr_aggregate.py` (the standalone DR aggregator, also used by
-`generate_doc.py`) accepts `--local` to read the snapshot files
-`dr_results.xlsx` / `dr_payouts.xlsx` in this folder instead of the
-remote sources. ⚠️ The snapshots are frozen copies (last refreshed
-2026-06-11) — remote and `--local` diverge once upstream changes.
+`generate_doc.py`) accepts `--local` to read snapshot files
+`dr_results.xlsx` / `dr_payouts.xlsx` from this folder instead of the
+remote sources. ⚠️ The snapshots are NOT tracked in git (the public
+URLs are canonical) — to use `--local`, first download copies:
+the xlsx from the settle-dr-dune repo, the payouts via the CSV export.
 
 ## Standalone DR queries
 
