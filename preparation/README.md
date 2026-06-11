@@ -32,13 +32,13 @@ script (with the post links) and only change if a forum post is amended.
 ## What lives where in generate_doc.py
 
 - `FORUM_SKY` / `FORUM_DEMAND` — forum finals per prime per month.
-- `SUPPLY_NOTE`, `SKY_NOTE`, `AR_NOTE_*`, `dr_recipe()` and the inline
-  section strings — all the prose notes (methodology, caveats, ⚠️
-  warnings, GAR stub, Pending items). Edit prose here.
+- `SUPPLY_NOTE`, `SKY_NOTE`, `AR_NOTE_*`, `dr_links()`, `GAR_SHEET` and
+  the inline section strings — all the prose (notes, ⚠️ warnings, the
+  BA-Labs GAR figures, Pending items). Edit prose here.
 - `collect()` — the fetch layer (reports, DR, Dune).
-- `build()` — the document assembly (per-prime sections in the
-  1.supply / 2.demand structure, reconciliation tables computed from
-  the components).
+- `build()` — the document assembly (`##` prime / `###` category /
+  `####` primitive headings; reconciliation tables computed from the
+  components).
 
 ## Caching & offline
 
