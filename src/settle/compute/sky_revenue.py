@@ -68,6 +68,7 @@ The orchestrator (compute_monthly_pnl) is responsible for gathering inputs.
 
 from __future__ import annotations
 
+import logging
 from datetime import timedelta
 from decimal import Decimal
 
@@ -87,6 +88,8 @@ from ._helpers import (
     require_non_empty,
     ssr_at_or_before,
 )
+
+_log = logging.getLogger(__name__)
 
 # Spread Sky charges over SSR for utilized debt. Per prime-settlement-
 # methodology §1 + debt-rate-methodology, the base rate = SSR + 30bps.
@@ -300,5 +303,29 @@ def compute_sky_revenue_daily(
             "daily_sky_rev_gross": daily_rev_gross,
         })
         current = current + timedelta(days=1)
+
+    # $0-subsidy smell check. When the subsidy is enabled but the reference
+    # rate sits at/above base_apy on *every* active day, the ramp clamps to
+    # base and the prime gets zero subsidy benefit. That is occasionally
+    # legitimate (genuinely high EFFR/T-Bill), but it is also the exact
+    # signature of a stale/placeholder reference rate — the May 2026 Spark
+    # run carried a January EFFR of 4.33% (> BR ≈ 4.06%) through the whole
+    # month, silently zeroing a subsidy that should have been worth ~$0.2M.
+    # The staleness guard in ReferenceRateHistory.at() cannot catch this
+    # (the YAML rows were present, just wrong), so flag the zero-benefit
+    # outcome directly.
+    if use_subsidy:
+        active = [r for r in rows if r["sub_apy"] is not None]
+        benefit = any(r["sub_apy"] < r["base_apy"] for r in active)
+        if active and not benefit:
+            _log.warning(
+                "Subsidy enabled but produced $0 benefit for the whole period "
+                "(ref_rate ≥ base_apy every day; e.g. ref %.4f%% ≥ base %.4f%%). "
+                "Verify the %s reference rate is current — a stale/placeholder "
+                "value above the base rate silently nullifies the subsidy "
+                "(May 2026 Spark root cause).",
+                active[0]["ref_rate_apy"] * 100, active[0]["base_apy"] * 100,
+                subsidy_config.ref_rate_kind,  # type: ignore[union-attr]
+            )
 
     return total, pd.DataFrame(rows)

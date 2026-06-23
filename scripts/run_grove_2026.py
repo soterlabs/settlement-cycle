@@ -21,6 +21,7 @@ Run with:
 
 from __future__ import annotations
 
+import dataclasses
 import sys
 from pathlib import Path
 
@@ -31,6 +32,7 @@ sys.path.insert(0, str(_REPO))
 from settle.compute import compute_monthly_pnl
 from settle.domain import Chain, Month
 from settle.load import write_settlement
+from settle.normalize.registry import get_ssr_source
 from tests.fixtures.grove_fixture_loader import (
     build_grove_sources,
     load_grove_and_fixtures,
@@ -99,7 +101,7 @@ def _sources_manifest(fixture_dir: str) -> dict[str, str]:
     return {
         "debt":                    f"DuneDebtSource (MCP fixture: {fixture_dir}/dune_outputs.json)",
         "balance":                 "DuneBalanceSource (MCP fixture)",
-        "ssr":                     "DuneSSRSource (MCP fixture)",
+        "ssr":                     "DuneSSRSource (live on-chain read at the period pin block)",
         "position_balance":        "RPCPositionBalanceSource",
         "convert_to_assets":       "RPCConvertToAssetsSource",
         "nav_oracle (chronicle)":  "ChronicleNavSource",
@@ -131,6 +133,10 @@ def main() -> int:
         # Rebuild Sources per month so each MockBalanceSource gets a fresh
         # call-recording slate (avoids leaking state across months).
         sources = build_grove_sources(grove, fixtures, blocks_by_chain)
+        # Stop freezing SSR: read it live at the period pin block rather than
+        # the per-month fixture snapshot (deterministic historical read; keeps
+        # SSR always current — see run_spark_2026.py for the rationale).
+        sources = dataclasses.replace(sources, ssr=get_ssr_source())
         pin = PIN_BLOCKS_BY_MONTH[(y, m)]
 
         result = compute_monthly_pnl(

@@ -7,9 +7,12 @@
 # (2026-01-01 per Sky governance — i.e. T=1 for Feb 2026, T=2 for Mar, …).
 #
 # Sky's spec names this the EFFR (Effective Federal Funds Rate, NY Fed:
-# https://www.newyorkfed.org/markets/reference-rates/effr). For Feb 2026
-# EFFR ≈ 4.33%, which is ~ at-or-above BR (SSR+30bps ≈ 4.30%) — under that
-# rate the subsidy yields ≈ 0 benefit.
+# https://www.newyorkfed.org/markets/reference-rates/effr). EFFR ran at
+# ~3.64% Jan–Apr 2026 (target range 3.50–3.75%, IORB 3.65%, EFFR 1bp below;
+# the Fed held through Q1–Q2 per the Jan/Mar/Apr FOMC minutes), easing to
+# ~3.62% by late May — comfortably below BR (SSR+30bps), so the subsidy is
+# active. (An earlier 4.33% placeholder here sat ABOVE BR and silently
+# zeroed Spark's subsidy — the May 2026 mis-pricing; refreshed 2026-06-23.)
 #
 # Grove team's Feb 2026 PnL workbook (data/grove/feb_2026.xlsx) uses the
 # 3-month T-Bill rate (~3.67–3.74%) instead, producing a ~26bps subsidy
@@ -35,114 +38,120 @@ rates:
   # treasury.gov daily yield curve. Used to verify Grove sheet methodology.)
   - effective_date: '2026-01-01'
     tbill_3m_apy: 0.0367
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-01-31'
     tbill_3m_apy: 0.0367
-    effr_apy: 0.0433
+    effr_apy: 0.0364
 
   # 2026-02 — daily T-Bill 3M readings (from Grove sheet Treasury Rate tab,
   # exact match for empirical reproduction).
   - effective_date: '2026-02-02'
     tbill_3m_apy: 0.0369
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-02-03'
     tbill_3m_apy: 0.0369
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-02-04'
     tbill_3m_apy: 0.0369
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-02-05'
     tbill_3m_apy: 0.0367
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-02-06'
     tbill_3m_apy: 0.0368
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-02-09'
     tbill_3m_apy: 0.0369
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-02-10'
     tbill_3m_apy: 0.0369
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-02-11'
     tbill_3m_apy: 0.0370
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-02-12'
     tbill_3m_apy: 0.0370
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-02-13'
     tbill_3m_apy: 0.0368
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-02-17'
     tbill_3m_apy: 0.0369
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-02-18'
     tbill_3m_apy: 0.0370
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-02-19'
     tbill_3m_apy: 0.0369
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-02-20'
     tbill_3m_apy: 0.0369
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-02-23'
     tbill_3m_apy: 0.0369
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-02-24'
     tbill_3m_apy: 0.0369
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-02-25'
     tbill_3m_apy: 0.0369
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-02-26'
     tbill_3m_apy: 0.0368
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-02-27'
     tbill_3m_apy: 0.0367
-    effr_apy: 0.0433
+    effr_apy: 0.0364
 
   # March 2026 (treasury.gov daily yield curve + NY Fed EFFR; carry-forward
   # fills weekend/holiday gaps). Update as new months are settled.
   - effective_date: '2026-03-02'
     tbill_3m_apy: 0.0366
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-03-09'
     tbill_3m_apy: 0.0364
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-03-16'
     tbill_3m_apy: 0.0362
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-03-23'
     tbill_3m_apy: 0.0360
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-03-30'
     tbill_3m_apy: 0.0358
-    effr_apy: 0.0433
+    effr_apy: 0.0364
 
-  # April–May 2026 — T-Bill 3M values pulled 2026-06-02 from treasury.gov
-  # daily-yield-curve CSV (URL in the header comment). EFFR carried
-  # forward at 0.0433 (NY Fed feed not yet pulled; flat through April-May
-  # per the Fed's pause stance).
+  # April 2026 — T-Bill 3M from treasury.gov (pulled 2026-06-02). EFFR
+  # refreshed 2026-06-23: the FOMC held the target range at 3.50–3.75% with
+  # IORB 3.65% through April (April 28–29 minutes), and EFFR ran 1bp below
+  # IORB = 3.64% all month. (Prior 0.0433 was the stale Jan placeholder that
+  # silently zeroed Spark's subsidy.) Sources: federalreserve.gov FOMC
+  # minutes 2026-04-29 + H.15 daily release.
   - effective_date: '2026-04-06'
     tbill_3m_apy: 0.0372
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-04-13'
     tbill_3m_apy: 0.0371
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-04-20'
     tbill_3m_apy: 0.0371
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-04-27'
     tbill_3m_apy: 0.0368
-    effr_apy: 0.0433
+    effr_apy: 0.0364
+  # EFFR refreshed 2026-06-23 from Spark's published May rate schedule
+  # (NY Fed EFFR): 3.64% (May 1–6), 3.63% (May 7–18), 3.62% (May 19–31).
+  # Prior values were the stale Jan placeholder (4.33%), which sat above the
+  # base rate and silently zeroed Spark's subsidy — see the May 2026 fix.
   - effective_date: '2026-05-04'
     tbill_3m_apy: 0.0370
-    effr_apy: 0.0433
+    effr_apy: 0.0364
   - effective_date: '2026-05-11'
     tbill_3m_apy: 0.0370
-    effr_apy: 0.0433
+    effr_apy: 0.0363
   - effective_date: '2026-05-18'
     tbill_3m_apy: 0.0368
-    effr_apy: 0.0433
+    effr_apy: 0.0362
   - effective_date: '2026-05-25'
     tbill_3m_apy: 0.0368
-    effr_apy: 0.0433
+    effr_apy: 0.0362

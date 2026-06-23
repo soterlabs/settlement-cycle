@@ -9,7 +9,11 @@ import pandas as pd
 import pytest
 
 from settle.compute._helpers import combine_apys, daily_compounding_factor
-from settle.compute.sky_revenue import BASE_RATE_OVER_SSR, compute_sky_revenue
+from settle.compute.sky_revenue import (
+    BASE_RATE_OVER_SSR,
+    compute_sky_revenue,
+    compute_sky_revenue_daily,
+)
 from settle.domain import Chain, Period
 from settle.domain.subsidy import ReferenceRateHistory, SubsidyConfig
 
@@ -180,3 +184,61 @@ def test_subsidy_enabled_but_period_before_program_start():
     base_apy = combine_apys(Decimal("0.04"), BASE_RATE_OVER_SSR)
     expected = Decimal("100000000") * 31 * daily_compounding_factor(base_apy)
     assert rev == expected
+
+
+def test_subsidy_zero_benefit_warns(caplog):
+    """When the reference rate sits at/above base every day, the ramp clamps
+    to base and the subsidy yields $0 — the stale/placeholder-rate signature.
+    Compute must warn (the May 2026 Spark mis-pricing went unflagged because
+    a Jan EFFR of 4.33% > BR silently nullified the subsidy)."""
+    import logging
+
+    period = _period(date(2026, 5, 1), date(2026, 5, 31))
+    debt_df = pd.DataFrame({"block_date": [date(2026, 4, 1)], "cum_debt": [3_000_000_000.0]})
+    ssr_df = _ssr_const(0.0365)  # base ≈ 3.95% < stale ref 4.33%
+    subsidy = SubsidyConfig(
+        enabled=True, program_start=date(2026, 1, 1),
+        cap_usd=Decimal("1000000000"), ramp_months=24, ref_rate_kind="effr",
+    )
+    ref_rates = ReferenceRateHistory(
+        rates=pd.DataFrame({
+            "effective_date": [date(2026, 5, 1)],
+            "ref_rate_apy":   [Decimal("0.0433")],   # placeholder value above BR
+        }),
+        kind="effr",
+    )
+    with caplog.at_level(logging.WARNING):
+        _total, df = compute_sky_revenue_daily(
+            period, debt_df, _empty(["block_date", "cum_balance"]), ssr_df,
+            subsidy_config=subsidy, ref_rate_history=ref_rates,
+        )
+    assert any("$0 benefit" in r.message for r in caplog.records)
+    # Every day's subsidised rate clamped up to base (no benefit).
+    assert all(r["sub_apy"] == r["base_apy"] for r in df.to_dict("records"))
+
+
+def test_subsidy_real_benefit_does_not_warn(caplog):
+    """Sanity counterpart: when ref_rate < base, the subsidy applies and no
+    zero-benefit warning fires."""
+    import logging
+
+    period = _period(date(2026, 5, 1), date(2026, 5, 31))
+    debt_df = pd.DataFrame({"block_date": [date(2026, 4, 1)], "cum_debt": [3_000_000_000.0]})
+    ssr_df = _ssr_const(0.0365)
+    subsidy = SubsidyConfig(
+        enabled=True, program_start=date(2026, 1, 1),
+        cap_usd=Decimal("1000000000"), ramp_months=24, ref_rate_kind="effr",
+    )
+    ref_rates = ReferenceRateHistory(
+        rates=pd.DataFrame({
+            "effective_date": [date(2026, 5, 1)],
+            "ref_rate_apy":   [Decimal("0.0362")],   # real EFFR, below BR
+        }),
+        kind="effr",
+    )
+    with caplog.at_level(logging.WARNING):
+        compute_sky_revenue_daily(
+            period, debt_df, _empty(["block_date", "cum_balance"]), ssr_df,
+            subsidy_config=subsidy, ref_rate_history=ref_rates,
+        )
+    assert not any("$0 benefit" in r.message for r in caplog.records)
