@@ -368,23 +368,33 @@ def summarize_subsidy(
     for _, r in daily.iterrows():
         u = max(Decimal("0"), Decimal(str(r["utilized"])))
         base = Decimal(str(r["base_apy"]))
+        # On pre-program days sub_apy is absent. In a DataFrame that mixes
+        # absent and present days pandas coerces the column to float64 and
+        # the absent entries become NaN (not None) — so guard with pd.isna,
+        # not just ``is not None``; ``Decimal(str(nan)) < base`` would raise
+        # InvalidOperation and abort the whole settlement.
         sub_raw = r["sub_apy"]
-        sub = Decimal(str(sub_raw)) if sub_raw is not None else base
+        sub_present = sub_raw is not None and not pd.isna(sub_raw)
+        sub = Decimal(str(sub_raw)) if sub_present else base
         st, ex = min(u, cap), max(Decimal("0"), u - cap)
         base_f = daily_compounding_factor(base)
-        sub_f = daily_compounding_factor(sub)
 
         util_sum += u
         sub_tr += st
         exc_tr += ex
         wbase_num += u * base
         weff_num += st * sub + ex * base
-        sub_cof += st * sub_f
+        sub_cof += st * daily_compounding_factor(sub)
         exc_cof += ex * base_f
-        actual_cof += st * sub_f + ex * base_f
+        # actual_cof reuses the per-day charge the daily loop already
+        # computed (``_daily_rev_for(utilized)``) so the reconciliation
+        # ``sub_tranche_cof + exc_tranche_cof == actual_cof == Σ daily_sky_rev``
+        # holds by construction, not by a duplicated formula.
+        actual_cof += Decimal(str(r["daily_sky_rev"]))
         full_br_cof += u * base_f
-        if sub_raw is not None:
-            ref_sum += Decimal(str(r["ref_rate_apy"]))
+        ref_raw = r["ref_rate_apy"]
+        if sub_present and ref_raw is not None and not pd.isna(ref_raw):
+            ref_sum += Decimal(str(ref_raw))
             sub_sum += sub
             active += 1
             if sub < base:
@@ -410,5 +420,8 @@ def summarize_subsidy(
         "subsidy_benefit":      str(benefit),
         "sub_tranche_cof":      str(sub_cof),
         "exc_tranche_cof":      str(exc_cof),
-        "zero_benefit":         not any_benefit_day,
+        # Only meaningful once the subsidy is active: a period entirely
+        # before program_start has active==0 and is "no subsidy yet", not
+        # "$0 benefit from a stale rate" — don't flag it.
+        "zero_benefit":         active > 0 and not any_benefit_day,
     }

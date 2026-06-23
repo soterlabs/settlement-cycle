@@ -13,6 +13,7 @@ from settle.compute.sky_revenue import (
     BASE_RATE_OVER_SSR,
     compute_sky_revenue,
     compute_sky_revenue_daily,
+    summarize_subsidy,
 )
 from settle.domain import Chain, Period
 from settle.domain.subsidy import ReferenceRateHistory, SubsidyConfig
@@ -280,3 +281,51 @@ def test_summarize_subsidy_none_when_disabled():
                        "sub_apy": [None], "ref_rate_apy": [None]})
     assert summarize_subsidy(df, None) is None
     assert summarize_subsidy(df, SubsidyConfig(enabled=False)) is None
+
+
+def test_summarize_subsidy_handles_program_start_midperiod(caplog):
+    """A period that straddles program_start has mixed None/float sub_apy →
+    pandas coerces the column to float64 with NaN. summarize_subsidy must not
+    crash on Decimal('NaN') < base, and must still reconcile. Regression for
+    the InvalidOperation introduced by the panel→provenance refactor."""
+    import logging
+    period = _period(date(2026, 2, 1), date(2026, 2, 3))   # program starts mid-window
+    debt_df = pd.DataFrame({"block_date": [date(2026, 1, 1)], "cum_debt": [3_000_000_000.0]})
+    ssr_df = _ssr_const(0.0365)
+    subsidy = SubsidyConfig(
+        enabled=True, program_start=date(2026, 2, 2),
+        cap_usd=Decimal("1000000000"), ramp_months=24, ref_rate_kind="effr")
+    ref = ReferenceRateHistory(
+        rates=pd.DataFrame({"effective_date": [date(2026, 2, 2)],
+                            "ref_rate_apy": [Decimal("0.0362")]}), kind="effr")
+    total, df = compute_sky_revenue_daily(
+        period, debt_df, _empty(["block_date", "cum_balance"]), ssr_df,
+        subsidy_config=subsidy, ref_rate_history=ref)
+    s = summarize_subsidy(df, subsidy)             # must not raise
+    assert s is not None
+    # tranche CoFs + actual still reconcile across the mixed window
+    assert abs(Decimal(s["sub_tranche_cof"]) + Decimal(s["exc_tranche_cof"])
+               - Decimal(s["actual_cof"])) < Decimal("0.01")
+    assert abs(Decimal(s["actual_cof"]) - total) < Decimal("0.01")
+
+
+def test_summarize_subsidy_no_warning_before_program_start(caplog):
+    """A whole period before program_start (active==0) is 'subsidy not started',
+    not '$0 benefit from a stale rate' — no zero-benefit flag, no warning."""
+    import logging
+    period = _period(date(2025, 12, 1), date(2025, 12, 31))
+    debt_df = pd.DataFrame({"block_date": [date(2025, 11, 1)], "cum_debt": [3_000_000_000.0]})
+    ssr_df = _ssr_const(0.04)
+    subsidy = SubsidyConfig(
+        enabled=True, program_start=date(2026, 1, 1),
+        cap_usd=Decimal("1000000000"), ramp_months=24, ref_rate_kind="effr")
+    ref = ReferenceRateHistory(
+        rates=pd.DataFrame({"effective_date": [date(2026, 1, 1)],
+                            "ref_rate_apy": [Decimal("0.0362")]}), kind="effr")
+    with caplog.at_level(logging.WARNING):
+        _t, df = compute_sky_revenue_daily(
+            period, debt_df, _empty(["block_date", "cum_balance"]), ssr_df,
+            subsidy_config=subsidy, ref_rate_history=ref)
+    s = summarize_subsidy(df, subsidy)
+    assert s["zero_benefit"] is False                      # not flagged
+    assert not any("$0 benefit" in r.message for r in caplog.records)
