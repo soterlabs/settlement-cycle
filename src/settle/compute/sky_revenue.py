@@ -304,28 +304,111 @@ def compute_sky_revenue_daily(
         })
         current = current + timedelta(days=1)
 
-    # $0-subsidy smell check. When the subsidy is enabled but the reference
-    # rate sits at/above base_apy on *every* active day, the ramp clamps to
-    # base and the prime gets zero subsidy benefit. That is occasionally
-    # legitimate (genuinely high EFFR/T-Bill), but it is also the exact
-    # signature of a stale/placeholder reference rate — the May 2026 Spark
-    # run carried a January EFFR of 4.33% (> BR ≈ 4.06%) through the whole
-    # month, silently zeroing a subsidy that should have been worth ~$0.2M.
-    # The staleness guard in ReferenceRateHistory.at() cannot catch this
-    # (the YAML rows were present, just wrong), so flag the zero-benefit
-    # outcome directly.
+    daily_df = pd.DataFrame(rows)
+
+    # $0-subsidy smell check — driven by the SAME aggregation the report
+    # consumes (``summarize_subsidy``), so the warning and the spreadsheet's
+    # zero-benefit flag can never disagree. When the subsidy is enabled but
+    # the reference rate sits at/above base_apy on every active day, the ramp
+    # clamps to base and the prime gets $0 benefit. Occasionally legitimate
+    # (genuinely high EFFR/T-Bill), but also the exact signature of a stale
+    # /placeholder reference rate — the May 2026 Spark run carried a January
+    # EFFR of 4.33% (> BR) all month, silently zeroing a ~$0.2M subsidy. The
+    # date-staleness guard in ReferenceRateHistory.at() can't catch it (rows
+    # present, just wrong), so flag the zero-benefit outcome directly.
     if use_subsidy:
-        active = [r for r in rows if r["sub_apy"] is not None]
-        benefit = any(r["sub_apy"] < r["base_apy"] for r in active)
-        if active and not benefit:
+        summary = summarize_subsidy(daily_df, subsidy_config)
+        if summary is not None and summary["zero_benefit"]:
             _log.warning(
                 "Subsidy enabled but produced $0 benefit for the whole period "
-                "(ref_rate ≥ base_apy every day; e.g. ref %.4f%% ≥ base %.4f%%). "
+                "(ref_rate ≥ base_apy every day; ref %.4f%% ≥ base %.4f%%). "
                 "Verify the %s reference rate is current — a stale/placeholder "
                 "value above the base rate silently nullifies the subsidy "
                 "(May 2026 Spark root cause).",
-                active[0]["ref_rate_apy"] * 100, active[0]["base_apy"] * 100,
+                (summary["ref_apy_avg"] or 0) * 100, summary["base_apy_avg"] * 100,
                 subsidy_config.ref_rate_kind,  # type: ignore[union-attr]
             )
 
-    return total, pd.DataFrame(rows)
+    return total, daily_df
+
+
+def summarize_subsidy(
+    daily: pd.DataFrame,
+    subsidy_config: SubsidyConfig | None,
+) -> dict | None:
+    """Per-period subsidy aggregates for the settlement report.
+
+    Single source of truth for the subsidy numbers the spreadsheet renders —
+    the "Rates & subsidy" panel only formats this dict, so the report can
+    never drift from the rate schedule actually charged in
+    ``compute_sky_revenue_daily``. Every CoF figure here is recomputed with
+    the same ``daily_compounding_factor`` (and the same cap-tranche split as
+    ``_daily_rev_for``) that produced ``daily_sky_rev``, so
+    ``sub_tranche_cof + exc_tranche_cof == actual_cof == Σ daily_sky_rev`` to
+    the cent and ``subsidy_benefit == full_br_cof − actual_cof``.
+
+    Returns ``None`` when the prime has no subsidy enabled or there are no
+    days. All Decimals are stringified and rates are floats so the result is
+    JSON-ready for ``provenance.json``.
+    """
+    if subsidy_config is None or not subsidy_config.enabled:
+        return None
+    if daily is None or len(daily) == 0:
+        return None
+
+    cap = Decimal(str(subsidy_config.cap_usd))
+    n = len(daily)
+    util_sum = sub_tr = exc_tr = Decimal("0")
+    wbase_num = weff_num = Decimal("0")
+    actual_cof = full_br_cof = sub_cof = exc_cof = Decimal("0")
+    ref_sum = sub_sum = Decimal("0")
+    active = 0
+    any_benefit_day = False
+
+    for _, r in daily.iterrows():
+        u = max(Decimal("0"), Decimal(str(r["utilized"])))
+        base = Decimal(str(r["base_apy"]))
+        sub_raw = r["sub_apy"]
+        sub = Decimal(str(sub_raw)) if sub_raw is not None else base
+        st, ex = min(u, cap), max(Decimal("0"), u - cap)
+        base_f = daily_compounding_factor(base)
+        sub_f = daily_compounding_factor(sub)
+
+        util_sum += u
+        sub_tr += st
+        exc_tr += ex
+        wbase_num += u * base
+        weff_num += st * sub + ex * base
+        sub_cof += st * sub_f
+        exc_cof += ex * base_f
+        actual_cof += st * sub_f + ex * base_f
+        full_br_cof += u * base_f
+        if sub_raw is not None:
+            ref_sum += Decimal(str(r["ref_rate_apy"]))
+            sub_sum += sub
+            active += 1
+            if sub < base:
+                any_benefit_day = True
+
+    wbase = (wbase_num / util_sum) if util_sum else Decimal("0")
+    eff = (weff_num / util_sum) if util_sum else Decimal("0")
+    benefit = full_br_cof - actual_cof
+    return {
+        "cap_usd":              str(cap),
+        "ref_rate_kind":        subsidy_config.ref_rate_kind,
+        "n_days":               n,
+        "tw_utilized":          str(util_sum / n),
+        "sub_tranche_balance":  str(sub_tr / n),
+        "exc_tranche_balance":  str(exc_tr / n),
+        "base_apy_avg":         float(wbase),
+        "ref_apy_avg":          float(ref_sum / active) if active else None,
+        "sub_apy_avg":          float(sub_sum / active) if active else None,
+        "effective_apy":        float(eff),
+        "diff_bps":             float((eff - wbase) * Decimal("10000")),
+        "actual_cof":           str(actual_cof),
+        "full_br_cof":          str(full_br_cof),
+        "subsidy_benefit":      str(benefit),
+        "sub_tranche_cof":      str(sub_cof),
+        "exc_tranche_cof":      str(exc_cof),
+        "zero_benefit":         not any_benefit_day,
+    }

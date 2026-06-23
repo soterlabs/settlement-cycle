@@ -355,96 +355,66 @@ def _write_venues(ws, sheet_rows: list[dict], prime_cfg: dict) -> None:
     ws.freeze_panes = "C2"
 
 
-def _write_subsidy_panel(ws, prov: dict, sub_cfg: dict) -> None:
-    """Rates & subsidy headline panel (subsidised-borrowing primes only).
+def _write_subsidy_panel(ws, summary: dict) -> None:
+    """Rates & subsidy headline panel — FORMAT ONLY.
 
-    Reads the per-day ``sky_revenue_daily`` series and summarises, for the
-    period: the effective rate actually charged, the $1B subsidised / excess
-    tranche split, and the dollar value of the subsidy vs full base rate.
+    Renders the per-period aggregates that ``compute.sky_revenue.
+    summarize_subsidy`` emits into ``provenance.json["subsidy_summary"]``.
+    All economics (tranche split, effective rate, $ benefit, zero-benefit
+    flag) are computed in the compute layer against the exact rate schedule
+    charged, so this panel does no math and cannot drift from settlement.
     """
-    rows = prov.get("sky_revenue_daily") or []
-    if not rows:
-        return
-    n = len(rows)
-    cap = _D(sub_cfg.get("cap_usd") or 0)
+    cap = _D(summary["cap_usd"])
+    kind = summary.get("ref_rate_kind", "ref rate")
 
-    def f(apy) -> Decimal:                       # daily compounding factor
-        return (Decimal(1) + _D(apy)) ** (Decimal(1) / Decimal(365)) - Decimal(1)
-
-    util_sum = sub_tr_sum = exc_tr_sum = Decimal(0)
-    wbase_num = weff_num = Decimal(0)            # utilized-weighted rate sums
-    actual_cof = full_br_cof = Decimal(0)
-    sub_cof = exc_cof = Decimal(0)
-    ref_sum = sub_sum = Decimal(0); active = 0
-    for r in rows:
-        u = max(Decimal(0), _D(r["utilized"]))
-        base = _D(r["base_apy"])
-        sub = _D(r["sub_apy"]) if r.get("sub_apy") is not None else base
-        st, ex = min(u, cap), max(Decimal(0), u - cap)
-        util_sum += u; sub_tr_sum += st; exc_tr_sum += ex
-        wbase_num += u * base
-        weff_num += st * sub + ex * base
-        actual_cof += _D(r["daily_sky_rev"])
-        full_br_cof += u * f(base)
-        sub_cof += st * f(sub); exc_cof += ex * f(base)
-        if r.get("ref_rate_apy") is not None:
-            ref_sum += _D(r["ref_rate_apy"]); sub_sum += sub; active += 1
-
-    twu = util_sum / n
-    wbase = (wbase_num / util_sum) if util_sum else Decimal(0)
-    eff = (weff_num / util_sum) if util_sum else Decimal(0)
-    avg_ref = (ref_sum / active) if active else None
-    avg_sub = (sub_sum / active) if active else None
-    benefit = full_br_cof - actual_cof
-    diff_bps = (eff - wbase) * Decimal(10000)
-    kind = sub_cfg.get("ref_rate_kind", "ref rate")
-
-    def _row(label, val, fmt=None, bold=False, muted=False):
+    def _row(label, val, fmt=None, bold=False):
         ws.append([label, val])
-        c = ws.cell(ws.max_row, 2)
-        if fmt:
-            c.number_format = fmt
+        if fmt is not None:
+            ws.cell(ws.max_row, 2).number_format = fmt
         if bold:
-            ws.cell(ws.max_row, 1).font = _BOLD; c.font = _BOLD
-        if muted:
-            ws.cell(ws.max_row, 1).font = _MUTED
+            ws.cell(ws.max_row, 1).font = _BOLD
+            ws.cell(ws.max_row, 2).font = _BOLD
+
+    def _pct(key):  # rate may be None (no subsidy-active days)
+        return (float(summary[key]), _PCT) if summary.get(key) is not None else ("n/a", None)
 
     ws.append(["Rates & subsidy — effective rate charged this period"])
     ws.cell(ws.max_row, 1).font = _BOLD
     ws.append(["Metric", "Value"]); _header_row(ws, ws.max_row, 2)
-    _row("Time-weighted utilized", float(twu), _USD0)
-    _row(f"  — first ${cap/Decimal(10**9):.0f}B (subsidised tranche)", float(sub_tr_sum / n), _USD0)
-    _row("  — excess (full base-rate tranche)", float(exc_tr_sum / n), _USD0)
-    _row("Base rate (BR = SSR + 30bps), period avg", float(wbase), _PCT)
-    _row(f"Reference rate ({kind}), period avg",
-         float(avg_ref) if avg_ref is not None else "n/a", _PCT if avg_ref is not None else None)
-    _row("Subsidised rate (BR*), period avg",
-         float(avg_sub) if avg_sub is not None else "n/a", _PCT if avg_sub is not None else None)
-    _row("Effective blended rate charged", float(eff), _PCT, bold=True)
-    _row("Diff vs base rate (bps)", float(diff_bps), "0.0", bold=True)
-    _row("Subsidy benefit to prime (USD)", float(benefit), _USD, bold=True)
+    _row("Time-weighted utilized", float(_D(summary["tw_utilized"])), _USD0)
+    _row(f"  — first ${cap/Decimal(10**9):.0f}B (subsidised tranche)",
+         float(_D(summary["sub_tranche_balance"])), _USD0)
+    _row("  — excess (full base-rate tranche)",
+         float(_D(summary["exc_tranche_balance"])), _USD0)
+    _row("Base rate (BR = SSR + 30bps), period avg", float(summary["base_apy_avg"]), _PCT)
+    _row(f"Reference rate ({kind}), period avg", *_pct("ref_apy_avg"))
+    _row("Subsidised rate (BR*), period avg", *_pct("sub_apy_avg"))
+    _row("Effective blended rate charged", float(summary["effective_apy"]), _PCT, bold=True)
+    _row("Diff vs base rate (bps)", float(summary["diff_bps"]), "0.0", bold=True)
+    _row("Subsidy benefit to prime (USD)", float(_D(summary["subsidy_benefit"])), _USD, bold=True)
 
-    # #3 — subsidy dollar reconciliation
+    # Subsidy dollar reconciliation (full BR − actual = benefit).
     ws.append([])
-    _row("CoF at full base rate (no subsidy)", float(full_br_cof), _USD)
-    _row("  − actual CoF (subsidy on first tranche)", float(actual_cof), _USD)
-    _row("  = subsidy benefit", float(benefit), _USD, bold=True)
+    _row("CoF at full base rate (no subsidy)", float(_D(summary["full_br_cof"])), _USD)
+    _row("  − actual CoF (subsidy on first tranche)", float(_D(summary["actual_cof"])), _USD)
+    _row("  = subsidy benefit", float(_D(summary["subsidy_benefit"])), _USD, bold=True)
 
-    # #2 — tranche split table
+    # Tranche split — balance + CoF (sub_tranche_cof + exc_tranche_cof =
+    # actual_cof exactly, both from compute).
     ws.append([])
-    ws.append(["Tranche", "Avg balance", "Rate (APY)", "CoF (USD)"])
-    _header_row(ws, ws.max_row, 4)
-    for lbl, bal, rate, cofv in [
-        (f"Subsidised (first ${cap/Decimal(10**9):.0f}B)", sub_tr_sum / n, avg_sub if avg_sub is not None else wbase, sub_cof),
-        ("Excess (> cap)", exc_tr_sum / n, wbase, exc_cof),
+    ws.append(["Tranche", "Avg balance", "CoF (USD)"])
+    _header_row(ws, ws.max_row, 3)
+    for lbl, bal_key, cof_key in [
+        (f"Subsidised (first ${cap/Decimal(10**9):.0f}B)", "sub_tranche_balance", "sub_tranche_cof"),
+        ("Excess (> cap)", "exc_tranche_balance", "exc_tranche_cof"),
     ]:
-        ws.append([lbl, float(bal), float(rate), float(cofv)])
+        ws.append([lbl, float(_D(summary[bal_key])), float(_D(summary[cof_key]))])
         ws.cell(ws.max_row, 2).number_format = _USD0
-        ws.cell(ws.max_row, 3).number_format = _PCT
-        ws.cell(ws.max_row, 4).number_format = _USD
+        ws.cell(ws.max_row, 3).number_format = _USD
 
-    # ⚠️ zero-benefit flag — the stale/placeholder reference-rate signature.
-    if benefit <= _D("1"):
+    # ⚠️ zero-benefit flag — same condition as the compute-layer warning
+    # (no day had sub_apy < base_apy), so panel and log never disagree.
+    if summary.get("zero_benefit"):
         ws.append([
             "⚠️ Subsidy produced ≈$0 benefit this period — the reference "
             f"rate ({kind}) sits at/above the base rate every day. Verify it "
@@ -470,11 +440,11 @@ def _write_sky_revenue(ws, prov: dict, sheet_rows: list[dict], prime_cfg: dict) 
     ws["A1"].font = _TITLE
     ws.append([])
 
-    # Rates & subsidy headline panel — only for primes with subsidised
-    # borrowing (Spark, Grove). Renders the effective rate actually charged,
-    # the $1B tranche split, and the $ value of the subsidy vs full base rate.
-    if (prime_cfg.get("subsidy") or {}).get("enabled"):
-        _write_subsidy_panel(ws, prov, prime_cfg["subsidy"])
+    # Rates & subsidy headline panel — only when compute emitted the
+    # per-period aggregates (subsidised-borrowing primes: Spark, Grove).
+    # The panel formats this dict; it does no economics of its own.
+    if prov.get("subsidy_summary"):
+        _write_subsidy_panel(ws, prov["subsidy_summary"])
 
     ws.append(["Component", "USD"])
     _header_row(ws, ws.max_row, 2)

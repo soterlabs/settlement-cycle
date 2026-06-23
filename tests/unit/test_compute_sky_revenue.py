@@ -242,3 +242,41 @@ def test_subsidy_real_benefit_does_not_warn(caplog):
             subsidy_config=subsidy, ref_rate_history=ref_rates,
         )
     assert not any("$0 benefit" in r.message for r in caplog.records)
+
+
+def test_summarize_subsidy_reconciles():
+    """summarize_subsidy is the single source for the report: its tranche
+    CoFs sum to actual_cof, actual_cof equals the summed daily charge, and
+    full_br − actual == subsidy_benefit (all on the same compounding factor)."""
+    from settle.compute.sky_revenue import summarize_subsidy
+    period = _period(date(2026, 5, 1), date(2026, 5, 31))
+    debt_df = pd.DataFrame({"block_date": [date(2026, 4, 1)], "cum_debt": [3_000_000_000.0]})
+    ssr_df = _ssr_const(0.0365)
+    subsidy = SubsidyConfig(
+        enabled=True, program_start=date(2026, 1, 1),
+        cap_usd=Decimal("1000000000"), ramp_months=24, ref_rate_kind="effr",
+    )
+    ref = ReferenceRateHistory(
+        rates=pd.DataFrame({"effective_date": [date(2026, 5, 1)],
+                            "ref_rate_apy": [Decimal("0.0362")]}), kind="effr")
+    total, df = compute_sky_revenue_daily(
+        period, debt_df, _empty(["block_date", "cum_balance"]), ssr_df,
+        subsidy_config=subsidy, ref_rate_history=ref)
+    s = summarize_subsidy(df, subsidy)
+    assert s is not None
+    sub_cof, exc_cof = Decimal(s["sub_tranche_cof"]), Decimal(s["exc_tranche_cof"])
+    actual, full_br = Decimal(s["actual_cof"]), Decimal(s["full_br_cof"])
+    benefit = Decimal(s["subsidy_benefit"])
+    assert abs(sub_cof + exc_cof - actual) < Decimal("0.01")        # tranches tie to actual
+    assert abs(actual - total) < Decimal("0.01")                     # actual == summed daily charge
+    assert abs(full_br - actual - benefit) < Decimal("0.0000001")    # benefit identity
+    assert s["zero_benefit"] is False and benefit > 0
+    assert s["ref_rate_kind"] == "effr"
+
+
+def test_summarize_subsidy_none_when_disabled():
+    from settle.compute.sky_revenue import summarize_subsidy
+    df = pd.DataFrame({"utilized": [1.0], "base_apy": [0.04],
+                       "sub_apy": [None], "ref_rate_apy": [None]})
+    assert summarize_subsidy(df, None) is None
+    assert summarize_subsidy(df, SubsidyConfig(enabled=False)) is None

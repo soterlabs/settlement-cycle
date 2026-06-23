@@ -50,7 +50,7 @@ from ..normalize.registry import (
 from ._helpers import cum_at_or_before
 from .agent_rate import compute_agent_rate
 from .prime_agent_revenue import VenueRevenueInputs, compute_prime_agent_revenue
-from .sky_revenue import compute_sky_revenue_daily
+from .sky_revenue import compute_sky_revenue_daily, summarize_subsidy
 
 _log = logging.getLogger(__name__)
 
@@ -3732,4 +3732,5 @@ def compute_monthly_pnl(
         susds_spread_reimbursement=total_susds_spread_reimb,
         pol_agent_rate=total_pol_agent_rate if not sky_only else Decimal("0"),
         sky_revenue_gross=sky_rev_gross,
+        subsidy_summary=summarize_subsidy(sky_rev_daily, prime.subsidy),
     )
