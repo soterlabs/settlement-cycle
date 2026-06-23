@@ -209,7 +209,7 @@ def test_subsidy_zero_benefit_warns(caplog):
         kind="effr",
     )
     with caplog.at_level(logging.WARNING):
-        _total, df = compute_sky_revenue_daily(
+        _total, df, _ = compute_sky_revenue_daily(
             period, debt_df, _empty(["block_date", "cum_balance"]), ssr_df,
             subsidy_config=subsidy, ref_rate_history=ref_rates,
         )
@@ -260,7 +260,7 @@ def test_summarize_subsidy_reconciles():
     ref = ReferenceRateHistory(
         rates=pd.DataFrame({"effective_date": [date(2026, 5, 1)],
                             "ref_rate_apy": [Decimal("0.0362")]}), kind="effr")
-    total, df = compute_sky_revenue_daily(
+    total, df, _ = compute_sky_revenue_daily(
         period, debt_df, _empty(["block_date", "cum_balance"]), ssr_df,
         subsidy_config=subsidy, ref_rate_history=ref)
     s = summarize_subsidy(df, subsidy)
@@ -298,7 +298,7 @@ def test_summarize_subsidy_handles_program_start_midperiod(caplog):
     ref = ReferenceRateHistory(
         rates=pd.DataFrame({"effective_date": [date(2026, 2, 2)],
                             "ref_rate_apy": [Decimal("0.0362")]}), kind="effr")
-    total, df = compute_sky_revenue_daily(
+    total, df, _ = compute_sky_revenue_daily(
         period, debt_df, _empty(["block_date", "cum_balance"]), ssr_df,
         subsidy_config=subsidy, ref_rate_history=ref)
     s = summarize_subsidy(df, subsidy)             # must not raise
@@ -323,7 +323,7 @@ def test_summarize_subsidy_no_warning_before_program_start(caplog):
         rates=pd.DataFrame({"effective_date": [date(2026, 1, 1)],
                             "ref_rate_apy": [Decimal("0.0362")]}), kind="effr")
     with caplog.at_level(logging.WARNING):
-        _t, df = compute_sky_revenue_daily(
+        _t, df, _ = compute_sky_revenue_daily(
             period, debt_df, _empty(["block_date", "cum_balance"]), ssr_df,
             subsidy_config=subsidy, ref_rate_history=ref)
     s = summarize_subsidy(df, subsidy)

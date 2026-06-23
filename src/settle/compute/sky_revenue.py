@@ -111,7 +111,7 @@ def compute_sky_revenue(
 ) -> Decimal:
     """Sum of daily Sky revenue over ``period``.  See ``compute_sky_revenue_daily``
     for the full docstring and per-day breakdown."""
-    total, _ = compute_sky_revenue_daily(
+    total, _, _ = compute_sky_revenue_daily(
         period, debt, alm_usds, ssr, psm_usds,
         subsidy_config=subsidy_config,
         ref_rate_history=ref_rate_history,
@@ -134,11 +134,15 @@ def compute_sky_revenue_daily(
     sde_asset_value: pd.DataFrame | None = None,
     curve_idle_usds: pd.DataFrame | None = None,
     lending_idle_usds: pd.DataFrame | None = None,
-) -> tuple[Decimal, pd.DataFrame]:
+) -> tuple[Decimal, pd.DataFrame, dict | None]:
     """Sum of daily Sky revenue over ``period`` plus a full day-by-day breakdown.
 
-    Returns ``(total, daily_df)`` where ``daily_df`` has one row per calendar
-    day in the period with columns::
+    Returns ``(total, daily_df, subsidy_summary)`` where ``daily_df`` has one
+    row per calendar day in the period, and ``subsidy_summary`` is the
+    per-period subsidy aggregate dict (``None`` when no subsidy is enabled) —
+    computed once here and reused both for the zero-benefit warning below and
+    by the orchestrator for ``provenance.json``, so there is a single source.
+    ``daily_df`` columns::
 
         date            — calendar date
         cum_debt        — gross ilk debt (USDS) at that day's EoD block
@@ -306,30 +310,34 @@ def compute_sky_revenue_daily(
 
     daily_df = pd.DataFrame(rows)
 
-    # $0-subsidy smell check — driven by the SAME aggregation the report
-    # consumes (``summarize_subsidy``), so the warning and the spreadsheet's
-    # zero-benefit flag can never disagree. When the subsidy is enabled but
-    # the reference rate sits at/above base_apy on every active day, the ramp
-    # clamps to base and the prime gets $0 benefit. Occasionally legitimate
-    # (genuinely high EFFR/T-Bill), but also the exact signature of a stale
-    # /placeholder reference rate — the May 2026 Spark run carried a January
-    # EFFR of 4.33% (> BR) all month, silently zeroing a ~$0.2M subsidy. The
-    # date-staleness guard in ReferenceRateHistory.at() can't catch it (rows
-    # present, just wrong), so flag the zero-benefit outcome directly.
-    if use_subsidy:
-        summary = summarize_subsidy(daily_df, subsidy_config)
-        if summary is not None and summary["zero_benefit"]:
-            _log.warning(
-                "Subsidy enabled but produced $0 benefit for the whole period "
-                "(ref_rate ≥ base_apy every day; ref %.4f%% ≥ base %.4f%%). "
-                "Verify the %s reference rate is current — a stale/placeholder "
-                "value above the base rate silently nullifies the subsidy "
-                "(May 2026 Spark root cause).",
-                (summary["ref_apy_avg"] or 0) * 100, summary["base_apy_avg"] * 100,
-                subsidy_config.ref_rate_kind,  # type: ignore[union-attr]
-            )
+    # Per-period subsidy aggregates — computed ONCE here and returned, so the
+    # zero-benefit warning below and the orchestrator's provenance block share
+    # one computation (no double call).
+    subsidy_summary = summarize_subsidy(daily_df, subsidy_config)
 
-    return total, daily_df
+    # $0-subsidy smell check — driven by the SAME aggregation the report
+    # consumes, so the warning and the spreadsheet's zero-benefit flag can
+    # never disagree. When the subsidy is enabled but the reference rate sits
+    # at/above base_apy on every active day, the ramp clamps to base and the
+    # prime gets $0 benefit. Occasionally legitimate (genuinely high
+    # EFFR/T-Bill), but also the exact signature of a stale/placeholder
+    # reference rate — the May 2026 Spark run carried a January EFFR of 4.33%
+    # (> BR) all month, silently zeroing a ~$0.2M subsidy. The date-staleness
+    # guard in ReferenceRateHistory.at() can't catch it (rows present, just
+    # wrong), so flag the zero-benefit outcome directly.
+    if subsidy_summary is not None and subsidy_summary["zero_benefit"]:
+        _log.warning(
+            "Subsidy enabled but produced $0 benefit for the whole period "
+            "(ref_rate ≥ base_apy every day; ref %.4f%% ≥ base %.4f%%). "
+            "Verify the %s reference rate is current — a stale/placeholder "
+            "value above the base rate silently nullifies the subsidy "
+            "(May 2026 Spark root cause).",
+            (subsidy_summary["ref_apy_avg"] or 0) * 100,
+            subsidy_summary["base_apy_avg"] * 100,
+            subsidy_config.ref_rate_kind,  # type: ignore[union-attr]
+        )
+
+    return total, daily_df, subsidy_summary
 
 
 def summarize_subsidy(
