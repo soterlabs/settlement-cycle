@@ -74,3 +74,33 @@ def test_get_ssr_history_requires_eth_pin(config_dir: Path):
     period_no_pin = Period.from_month(Month(2026, 4), pin_blocks={})
     with pytest.raises(ValueError, match="ethereum pin_block"):
         get_ssr_history(obex, period_no_pin, source=MockSSRSource())
+
+
+def test_get_ssr_history_warns_when_latest_change_is_stale(config_dir, caplog):
+    """A latest SSR change far before period end is the stale-snapshot
+    signature (the May 2026 Spark run carried a Q1 3.75% into May). Warn so
+    a reused/frozen SSR source is caught; not fatal (flat SSR is legitimate)."""
+    import logging
+
+    src = MockSSRSource(pd.DataFrame({
+        "effective_date": [date(2026, 3, 9)],   # 83 days before May-31 period end
+        "ssr_apy":        [0.0375],
+    }))
+    period = Period.from_month(Month(2026, 5), pin_blocks={Chain.ETHEREUM: 25218797})
+    with caplog.at_level(logging.WARNING):
+        get_ssr_history(_obex(config_dir), period, source=src)
+    assert any("stale" in r.message.lower() for r in caplog.records)
+
+
+def test_get_ssr_history_no_warning_when_rate_is_recent(config_dir, caplog):
+    """A recent SSR change → no staleness warning."""
+    import logging
+
+    src = MockSSRSource(pd.DataFrame({
+        "effective_date": [date(2026, 5, 26)],   # within the May period
+        "ssr_apy":        [0.0360],
+    }))
+    period = Period.from_month(Month(2026, 5), pin_blocks={Chain.ETHEREUM: 25218797})
+    with caplog.at_level(logging.WARNING):
+        get_ssr_history(_obex(config_dir), period, source=src)
+    assert not any("stale" in r.message.lower() for r in caplog.records)

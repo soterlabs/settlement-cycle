@@ -48,7 +48,7 @@ def test_no_deductions_gross_equals_actual():
     every day."""
     period = _period(date(2026, 3, 1), date(2026, 3, 31))
     debt = pd.DataFrame({"block_date": [date(2026, 1, 1)], "cum_debt": [100_000_000.0]})
-    _total, daily = compute_sky_revenue_daily(
+    _total, daily, _ = compute_sky_revenue_daily(
         period,
         debt=debt,
         alm_usds=_empty(["block_date", "cum_balance"]),
@@ -70,7 +70,7 @@ def test_idle_alm_deduction_makes_gross_exceed_actual():
     period = _period(date(2026, 3, 1), date(2026, 3, 1))   # single day
     debt = pd.DataFrame({"block_date": [date(2026, 1, 1)], "cum_debt": [100_000_000.0]})
     alm = pd.DataFrame({"block_date": [date(2026, 1, 1)], "cum_balance": [30_000_000.0]})
-    _total, daily = compute_sky_revenue_daily(
+    _total, daily, _ = compute_sky_revenue_daily(
         period, debt=debt, alm_usds=alm, ssr=_ssr_const(0.047),
     )
     f = daily_compounding_factor(combine_apys(Decimal("0.047"), BASE_RATE_OVER_SSR))
@@ -88,7 +88,7 @@ def test_sde_deduction_makes_gross_exceed_actual():
     period = _period(date(2026, 3, 1), date(2026, 3, 1))
     debt = pd.DataFrame({"block_date": [date(2026, 1, 1)], "cum_debt": [500_000_000.0]})
     sde  = pd.DataFrame({"block_date": [date(2026, 1, 1)], "cum_value":   [325_000_000.0]})
-    _total, daily = compute_sky_revenue_daily(
+    _total, daily, _ = compute_sky_revenue_daily(
         period, debt=debt,
         alm_usds=_empty(["block_date", "cum_balance"]),
         ssr=_ssr_const(0.047),
@@ -107,7 +107,7 @@ def test_zero_debt_gives_zero_gross():
     period = _period(date(2026, 3, 1), date(2026, 3, 1))
     # No row before period.start → cum_debt = 0
     debt = pd.DataFrame({"block_date": [date(2026, 6, 1)], "cum_debt": [100_000_000.0]})
-    _total, daily = compute_sky_revenue_daily(
+    _total, daily, _ = compute_sky_revenue_daily(
         period, debt=debt,
         alm_usds=_empty(["block_date", "cum_balance"]),
         ssr=_ssr_const(0.047),
@@ -138,7 +138,7 @@ def test_gross_uses_subsidy_when_active():
         }),
         kind="tbill_3m",
     )
-    _total, daily = compute_sky_revenue_daily(
+    _total, daily, _ = compute_sky_revenue_daily(
         period, debt=debt,
         alm_usds=_empty(["block_date", "cum_balance"]),
         ssr=_ssr_const(0.047),
@@ -156,7 +156,7 @@ def test_gross_sums_match_orchestrator_pattern():
     debt = pd.DataFrame({"block_date": [date(2026, 1, 1)], "cum_debt": [250_000_000.0]})
     # Add deductions so actual differs from gross — the test is the gross sum
     alm = pd.DataFrame({"block_date": [date(2026, 1, 1)], "cum_balance": [10_000_000.0]})
-    _total, daily = compute_sky_revenue_daily(
+    _total, daily, _ = compute_sky_revenue_daily(
         period, debt=debt, alm_usds=alm, ssr=_ssr_const(0.047),
     )
     f = daily_compounding_factor(combine_apys(Decimal("0.047"), BASE_RATE_OVER_SSR))

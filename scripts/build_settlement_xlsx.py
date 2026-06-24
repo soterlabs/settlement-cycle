@@ -355,6 +355,78 @@ def _write_venues(ws, sheet_rows: list[dict], prime_cfg: dict) -> None:
     ws.freeze_panes = "C2"
 
 
+def _write_subsidy_panel(ws, summary: dict) -> None:
+    """Rates & subsidy headline panel — FORMAT ONLY.
+
+    Renders the per-period aggregates that ``compute.sky_revenue.
+    summarize_subsidy`` emits into ``provenance.json["subsidy_summary"]``.
+    All economics (tranche split, effective rate, $ benefit, zero-benefit
+    flag) are computed in the compute layer against the exact rate schedule
+    charged, so this panel does no math and cannot drift from settlement.
+    """
+    cap = _D(summary["cap_usd"])
+    kind = summary.get("ref_rate_kind", "ref rate")
+
+    def _row(label, val, fmt=None, bold=False):
+        ws.append([label, val])
+        if fmt is not None:
+            ws.cell(ws.max_row, 2).number_format = fmt
+        if bold:
+            ws.cell(ws.max_row, 1).font = _BOLD
+            ws.cell(ws.max_row, 2).font = _BOLD
+
+    def _pct(key):  # rate may be None (no subsidy-active days)
+        return (float(summary[key]), _PCT) if summary.get(key) is not None else ("n/a", None)
+
+    ws.append(["Rates & subsidy — effective rate charged this period"])
+    ws.cell(ws.max_row, 1).font = _BOLD
+    ws.append(["Metric", "Value"]); _header_row(ws, ws.max_row, 2)
+    _row("Time-weighted utilized", float(_D(summary["tw_utilized"])), _USD0)
+    _row(f"  — first ${cap/Decimal(10**9):.0f}B (subsidised tranche)",
+         float(_D(summary["sub_tranche_balance"])), _USD0)
+    _row("  — excess (full base-rate tranche)",
+         float(_D(summary["exc_tranche_balance"])), _USD0)
+    _row("Base rate (BR = SSR + 30bps), period avg", float(summary["base_apy_avg"]), _PCT)
+    _row(f"Reference rate ({kind}), period avg", *_pct("ref_apy_avg"))
+    _row("Subsidised rate (BR*), period avg", *_pct("sub_apy_avg"))
+    _row("Effective blended rate charged", float(summary["effective_apy"]), _PCT, bold=True)
+    _row("Diff vs base rate (bps)", float(summary["diff_bps"]), "0.0", bold=True)
+    _row("Subsidy benefit to prime (USD)", float(_D(summary["subsidy_benefit"])), _USD, bold=True)
+
+    # Subsidy dollar reconciliation (full BR − actual = benefit).
+    ws.append([])
+    _row("CoF at full base rate (no subsidy)", float(_D(summary["full_br_cof"])), _USD)
+    _row("  − actual CoF (subsidy on first tranche)", float(_D(summary["actual_cof"])), _USD)
+    _row("  = subsidy benefit", float(_D(summary["subsidy_benefit"])), _USD, bold=True)
+
+    # Tranche split — balance + CoF (sub_tranche_cof + exc_tranche_cof =
+    # actual_cof exactly, both from compute).
+    ws.append([])
+    ws.append(["Tranche", "Avg balance", "CoF (USD)"])
+    _header_row(ws, ws.max_row, 3)
+    for lbl, bal_key, cof_key in [
+        (f"Subsidised (first ${cap/Decimal(10**9):.0f}B)", "sub_tranche_balance", "sub_tranche_cof"),
+        ("Excess (> cap)", "exc_tranche_balance", "exc_tranche_cof"),
+    ]:
+        ws.append([lbl, float(_D(summary[bal_key])), float(_D(summary[cof_key]))])
+        ws.cell(ws.max_row, 2).number_format = _USD0
+        ws.cell(ws.max_row, 3).number_format = _USD
+
+    # ⚠️ zero-benefit flag — same condition as the compute-layer warning
+    # (no day had sub_apy < base_apy), so panel and log never disagree.
+    if summary.get("zero_benefit"):
+        ws.append([
+            "⚠️ Subsidy produced ≈$0 benefit this period — the reference "
+            f"rate ({kind}) sits at/above the base rate every day. Verify it "
+            "is current; a stale or placeholder value silently nullifies the "
+            "subsidy (this caused the May 2026 Spark mis-pricing)."
+        ])
+        ws.cell(ws.max_row, 1).font = Font(bold=True, color="B45309")
+        ws.cell(ws.max_row, 1).alignment = Alignment(wrap_text=True, vertical="top")
+        ws.row_dimensions[ws.max_row].height = 45
+    ws.append([])
+
+
 def _write_sky_revenue(ws, prov: dict, sheet_rows: list[dict], prime_cfg: dict) -> None:
     ws.title = "Sky Revenue"
     res = prov["results"]
@@ -367,6 +439,12 @@ def _write_sky_revenue(ws, prov: dict, sheet_rows: list[dict], prime_cfg: dict) 
     ws.append(["How Sky's monthly take is built"])
     ws["A1"].font = _TITLE
     ws.append([])
+
+    # Rates & subsidy headline panel — only when compute emitted the
+    # per-period aggregates (subsidised-borrowing primes: Spark, Grove).
+    # The panel formats this dict; it does no economics of its own.
+    if prov.get("subsidy_summary"):
+        _write_subsidy_panel(ws, prov["subsidy_summary"])
 
     ws.append(["Component", "USD"])
     _header_row(ws, ws.max_row, 2)

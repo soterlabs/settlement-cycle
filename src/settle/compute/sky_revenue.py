@@ -68,6 +68,7 @@ The orchestrator (compute_monthly_pnl) is responsible for gathering inputs.
 
 from __future__ import annotations
 
+import logging
 from datetime import timedelta
 from decimal import Decimal
 
@@ -87,6 +88,8 @@ from ._helpers import (
     require_non_empty,
     ssr_at_or_before,
 )
+
+_log = logging.getLogger(__name__)
 
 # Spread Sky charges over SSR for utilized debt. Per prime-settlement-
 # methodology §1 + debt-rate-methodology, the base rate = SSR + 30bps.
@@ -108,7 +111,7 @@ def compute_sky_revenue(
 ) -> Decimal:
     """Sum of daily Sky revenue over ``period``.  See ``compute_sky_revenue_daily``
     for the full docstring and per-day breakdown."""
-    total, _ = compute_sky_revenue_daily(
+    total, _, _ = compute_sky_revenue_daily(
         period, debt, alm_usds, ssr, psm_usds,
         subsidy_config=subsidy_config,
         ref_rate_history=ref_rate_history,
@@ -131,11 +134,15 @@ def compute_sky_revenue_daily(
     sde_asset_value: pd.DataFrame | None = None,
     curve_idle_usds: pd.DataFrame | None = None,
     lending_idle_usds: pd.DataFrame | None = None,
-) -> tuple[Decimal, pd.DataFrame]:
+) -> tuple[Decimal, pd.DataFrame, dict | None]:
     """Sum of daily Sky revenue over ``period`` plus a full day-by-day breakdown.
 
-    Returns ``(total, daily_df)`` where ``daily_df`` has one row per calendar
-    day in the period with columns::
+    Returns ``(total, daily_df, subsidy_summary)`` where ``daily_df`` has one
+    row per calendar day in the period, and ``subsidy_summary`` is the
+    per-period subsidy aggregate dict (``None`` when no subsidy is enabled) —
+    computed once here and reused both for the zero-benefit warning below and
+    by the orchestrator for ``provenance.json``, so there is a single source.
+    ``daily_df`` columns::
 
         date            — calendar date
         cum_debt        — gross ilk debt (USDS) at that day's EoD block
@@ -301,4 +308,128 @@ def compute_sky_revenue_daily(
         })
         current = current + timedelta(days=1)
 
-    return total, pd.DataFrame(rows)
+    daily_df = pd.DataFrame(rows)
+
+    # Per-period subsidy aggregates — computed ONCE here and returned, so the
+    # zero-benefit warning below and the orchestrator's provenance block share
+    # one computation (no double call).
+    subsidy_summary = summarize_subsidy(daily_df, subsidy_config)
+
+    # $0-subsidy smell check — driven by the SAME aggregation the report
+    # consumes, so the warning and the spreadsheet's zero-benefit flag can
+    # never disagree. When the subsidy is enabled but the reference rate sits
+    # at/above base_apy on every active day, the ramp clamps to base and the
+    # prime gets $0 benefit. Occasionally legitimate (genuinely high
+    # EFFR/T-Bill), but also the exact signature of a stale/placeholder
+    # reference rate — the May 2026 Spark run carried a January EFFR of 4.33%
+    # (> BR) all month, silently zeroing a ~$0.2M subsidy. The date-staleness
+    # guard in ReferenceRateHistory.at() can't catch it (rows present, just
+    # wrong), so flag the zero-benefit outcome directly.
+    if subsidy_summary is not None and subsidy_summary["zero_benefit"]:
+        _log.warning(
+            "Subsidy enabled but produced $0 benefit for the whole period "
+            "(ref_rate ≥ base_apy every day; ref %.4f%% ≥ base %.4f%%). "
+            "Verify the %s reference rate is current — a stale/placeholder "
+            "value above the base rate silently nullifies the subsidy "
+            "(May 2026 Spark root cause).",
+            (subsidy_summary["ref_apy_avg"] or 0) * 100,
+            subsidy_summary["base_apy_avg"] * 100,
+            subsidy_config.ref_rate_kind,  # type: ignore[union-attr]
+        )
+
+    return total, daily_df, subsidy_summary
+
+
+def summarize_subsidy(
+    daily: pd.DataFrame,
+    subsidy_config: SubsidyConfig | None,
+) -> dict | None:
+    """Per-period subsidy aggregates for the settlement report.
+
+    Single source of truth for the subsidy numbers the spreadsheet renders —
+    the "Rates & subsidy" panel only formats this dict, so the report can
+    never drift from the rate schedule actually charged in
+    ``compute_sky_revenue_daily``. Every CoF figure here is recomputed with
+    the same ``daily_compounding_factor`` (and the same cap-tranche split as
+    ``_daily_rev_for``) that produced ``daily_sky_rev``, so
+    ``sub_tranche_cof + exc_tranche_cof == actual_cof == Σ daily_sky_rev`` to
+    the cent and ``subsidy_benefit == full_br_cof − actual_cof``.
+
+    Returns ``None`` when the prime has no subsidy enabled or there are no
+    days. All Decimals are stringified and rates are floats so the result is
+    JSON-ready for ``provenance.json``.
+    """
+    if subsidy_config is None or not subsidy_config.enabled:
+        return None
+    if daily is None or len(daily) == 0:
+        return None
+
+    cap = Decimal(str(subsidy_config.cap_usd))
+    n = len(daily)
+    util_sum = sub_tr = exc_tr = Decimal("0")
+    wbase_num = weff_num = Decimal("0")
+    actual_cof = full_br_cof = sub_cof = exc_cof = Decimal("0")
+    ref_sum = sub_sum = Decimal("0")
+    active = 0
+    any_benefit_day = False
+
+    for _, r in daily.iterrows():
+        u = max(Decimal("0"), Decimal(str(r["utilized"])))
+        base = Decimal(str(r["base_apy"]))
+        # On pre-program days sub_apy is absent. In a DataFrame that mixes
+        # absent and present days pandas coerces the column to float64 and
+        # the absent entries become NaN (not None) — so guard with pd.isna,
+        # not just ``is not None``; ``Decimal(str(nan)) < base`` would raise
+        # InvalidOperation and abort the whole settlement.
+        sub_raw = r["sub_apy"]
+        sub_present = sub_raw is not None and not pd.isna(sub_raw)
+        sub = Decimal(str(sub_raw)) if sub_present else base
+        st, ex = min(u, cap), max(Decimal("0"), u - cap)
+        base_f = daily_compounding_factor(base)
+
+        util_sum += u
+        sub_tr += st
+        exc_tr += ex
+        wbase_num += u * base
+        weff_num += st * sub + ex * base
+        sub_cof += st * daily_compounding_factor(sub)
+        exc_cof += ex * base_f
+        # actual_cof reuses the per-day charge the daily loop already
+        # computed (``_daily_rev_for(utilized)``) so the reconciliation
+        # ``sub_tranche_cof + exc_tranche_cof == actual_cof == Σ daily_sky_rev``
+        # holds by construction, not by a duplicated formula.
+        actual_cof += Decimal(str(r["daily_sky_rev"]))
+        full_br_cof += u * base_f
+        ref_raw = r["ref_rate_apy"]
+        if sub_present and ref_raw is not None and not pd.isna(ref_raw):
+            ref_sum += Decimal(str(ref_raw))
+            sub_sum += sub
+            active += 1
+            if sub < base:
+                any_benefit_day = True
+
+    wbase = (wbase_num / util_sum) if util_sum else Decimal("0")
+    eff = (weff_num / util_sum) if util_sum else Decimal("0")
+    benefit = full_br_cof - actual_cof
+    return {
+        "cap_usd":              str(cap),
+        "ref_rate_kind":        subsidy_config.ref_rate_kind,
+        "n_days":               n,
+        "tw_utilized":          str(util_sum / n),
+        "sub_tranche_balance":  str(sub_tr / n),
+        "exc_tranche_balance":  str(exc_tr / n),
+        "base_apy_avg":         float(wbase),
+        "ref_apy_avg":          float(ref_sum / active) if active else None,
+        "sub_apy_avg":          float(sub_sum / active) if active else None,
+        "effective_apy":        float(eff),
+        "diff_bps":             float((eff - wbase) * Decimal("10000")),
+        "actual_cof":           str(actual_cof),
+        "full_br_cof":          str(full_br_cof),
+        "subsidy_benefit":      str(benefit),
+        "sub_tranche_cof":      str(sub_cof),
+        "exc_tranche_cof":      str(exc_cof),
+        # Only meaningful once the subsidy is active: a period entirely
+        # before program_start has active==0 and is "no subsidy yet", not
+        # "$0 benefit from a stale rate" — don't flag it.
+        "zero_benefit":         active > 0 and not any_benefit_day,
+    }

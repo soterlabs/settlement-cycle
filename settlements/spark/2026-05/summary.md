@@ -8,19 +8,19 @@ Period: 2026-05-01 → 2026-05-31 (31 days)
 
 | Field | USDS |
 |---|---:|
-| agent rate | 121,900.75 |
+| agent rate | 118,578.18 |
 | distribution rewards | TBD |
-| prime agent net revenue | 2,512,977.93 |
-| prime side sky direct exposure | 34,540.62 |
-| **prime agent profit** | **2,669,419.29** |
+| prime agent net revenue | 3,055,294.68 |
+| prime side sky direct exposure | 33,605.38 |
+| **prime agent profit** | **3,207,478.24** |
 
 ### Sky side
 
 | Field | USDS |
 |---|---:|
-| prime cost of funds | 10,840,739.62 |
-| sky side sky direct exposure | 39,615.44 |
-| **sky revenue** | **10,880,355.06** |
+| prime cost of funds | 10,320,044.69 |
+| sky side sky direct exposure | 40,550.68 |
+| **sky revenue** | **10,360,595.37** |
 
 ## Per-venue
 
@@ -49,7 +49,7 @@ Period: 2026-05-01 → 2026-05-31 (31 days)
 | S21 | Superstate Short Duration US Government Securities Fund (USTB) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 100.00% | $0.00 |
 | S22 | Superstate Crypto Carry Fund (USCC) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S23 | Anchorage tri-party loan escrow (USDC pass-through, ~$0 balance) | $1.55 | $10.02 | $0.00 | $8.47 | $8.47 | $0.00 | 0% | $0.00 |
-| S24 | Spark.fi USDT Reserve Curve (sUSDS/USDT) | $50,002,415.26 | $48,750,265.65 | -$1,326,305.67 | $39,615.44 | $34,540.62 | $39,615.44 | 100.00% | $0.00 |
+| S24 | Spark.fi USDT Reserve Curve (sUSDS/USDT) | $50,002,415.26 | $48,750,265.65 | -$1,326,305.67 | $40,550.68 | $33,605.38 | $40,550.68 | 100.00% | $0.00 |
 | S25 | Spark.fi PYUSD Reserve Curve (PYUSD/USDS) | $99,998,676.75 | $99,999,260.91 | -$5,801.73 | $6,385.88 | $6,385.88 | $0.00 | 0% | $0.00 |
 | S26 | USDC raw (ALM idle) | $0.00 | $0.00 | -$891,780.28 | $891,780.28 | $891,780.28 | $0.00 | 0% | $0.00 |
 | S27 | USDT raw (ALM idle — $442M as of 2026-04) | $483,436,565.92 | $608,678,684.52 | $125,436,563.04 | -$194,444.44 | -$194,444.44 | $-0.00 | 0% | $0.00 |
@@ -57,7 +57,7 @@ Period: 2026-05-01 → 2026-05-31 (31 days)
 | S29 | DAI raw (ALM idle) | $0.00 | $0.00 | -$0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S30 | USDe raw (ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S31 | USDS raw / POL (ALM idle — already netted out of utilized) | $0.00 | $0.00 | $0.00 | -$0.00 | -$0.00 | $-0.00 | 0% | $0.00 |
-| S32 | sUSDS raw / POL (ALM — Cat B 4626, demand-side spread + agent rate) | $1,723,240,793.74 | $1,577,554,266.46 | -$151,541,864.90 | $3,777,395.23 | $3,777,395.23 | $0.00 | 0% | $0.00 |
+| S32 | sUSDS raw / POL (ALM — Cat B 4626, demand-side spread + agent rate) | $1,723,240,793.74 | $1,577,554,266.46 | -$151,541,864.90 | $3,834,450.91 | $3,834,450.91 | $0.00 | 0% | $0.00 |
 | S34 | Spark USDC Vault (Morpho, Base) | $224.72 | $424.91 | $199.03 | $1.16 | $1.16 | $0.00 | 0% | $0.00 |
 | S35 | Aave Base USDC (aBasUSDC) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S36 | Fluid Savings USDS (fsUSDS, Base) | $283.90 | $283.90 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |

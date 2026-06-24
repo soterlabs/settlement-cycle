@@ -183,6 +183,10 @@ def render_provenance(
         # wasn't captured. Consumed by the xlsx "Debt" tab for prime-team
         # reconciliation.
         "sky_revenue_daily": pnl.sky_revenue_daily,
+        # Per-period subsidised-borrowing aggregates (None for non-subsidy
+        # primes). Single source for the xlsx "Rates & subsidy" panel —
+        # effective rate, $1B tranche split, and the subsidy's $ benefit.
+        "subsidy_summary": pnl.subsidy_summary,
         # Per-venue daily SDE asset-value series. Used by the xlsx "SDE daily"
         # tab to render the Sky / Grove / in-flight decomposition (phase-
         # based: pre-burn / in-flight / settled) without re-running on-chain

@@ -278,6 +278,14 @@ class MonthlyPnL:
     # for backward compat with old provenance.
     sky_revenue_gross: Decimal = Decimal("0")
 
+    # Per-period subsidised-borrowing aggregates (``compute.sky_revenue.
+    # summarize_subsidy``): time-weighted utilized, $1B tranche split,
+    # base/ref/effective rates, the subsidy's $ benefit vs full base rate,
+    # and a zero-benefit flag. ``None`` for primes without a subsidy. This is
+    # the single source the xlsx "Rates & subsidy" panel formats — the panel
+    # does no economics of its own, so it cannot drift from what was charged.
+    subsidy_summary: dict | None = None
+
     @property
     def prime_agent_total_revenue(self) -> Decimal:
         """Sum of all revenue streams to the prime — the reported headline.

@@ -3606,7 +3606,7 @@ def compute_monthly_pnl(
         load_reference_rates(kind=prime.subsidy.ref_rate_kind)
         if prime.subsidy.enabled else None
     )
-    sky_rev_br, sky_rev_daily = compute_sky_revenue_daily(
+    sky_rev_br, sky_rev_daily, subsidy_summary = compute_sky_revenue_daily(
         period, debt, alm_usds, ssr, psm_usds=psm_usds,
         subsidy_config=prime.subsidy,
         ref_rate_history=ref_rate_history,
@@ -3732,4 +3732,5 @@ def compute_monthly_pnl(
         susds_spread_reimbursement=total_susds_spread_reimb,
         pol_agent_rate=total_pol_agent_rate if not sky_only else Decimal("0"),
         sky_revenue_gross=sky_rev_gross,
+        subsidy_summary=subsidy_summary,
     )

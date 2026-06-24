@@ -36,6 +36,7 @@ Run with:
 
 from __future__ import annotations
 
+import dataclasses
 import os
 import sys
 from datetime import date, timedelta
@@ -53,6 +54,7 @@ sys.path.insert(0, str(_REPO))
 from settle.compute import compute_monthly_pnl
 from settle.domain import Chain, Month
 from settle.load import write_settlement
+from settle.normalize.registry import get_ssr_source
 from tests.fixtures.spark_fixture_loader import (
     build_spark_sources,
     load_spark_and_fixtures,
@@ -73,7 +75,7 @@ _SETTLEMENT_SOURCES = {
         "Cat A stubbed; Ethereum `directed_flow` PSM returns empty — mainnet "
         "LITE-PSM is non-custodial for USDS, see PRD §17.11)"
     ),
-    "ssr":              "MockSSRSource (reused from grove_2026_03 — Sky-wide)",
+    "ssr":              "DuneSSRSource (live on-chain read at the period pin block)",
     "position_balance": "RPCPositionBalanceSource",
     "convert_to_assets": "RPCConvertToAssetsSource",
     "psm3":             "RPCPsm3Source (drpc — cached from sky_revenue run)",
@@ -169,6 +171,12 @@ def main() -> int:
             pin_blocks_som=pins["som"], pin_blocks_eom=pins["eom"],
             period_start=period_start, period_end=period_end,
         )
+        # Stop freezing SSR: read it live from chain at the period's pin
+        # block instead of the (stale) Q1 fixture snapshot. SSR is a global
+        # Sky parameter and a historical on-chain read is deterministic, so
+        # this is reproducible while always current — fixing the May 2026
+        # mis-pricing where a Q1 fixture's 3.75% was carried into May.
+        sources = dataclasses.replace(sources, ssr=get_ssr_source())
 
         result = compute_monthly_pnl(
             spark, Month(y, m),

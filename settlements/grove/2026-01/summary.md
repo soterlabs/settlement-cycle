@@ -10,17 +10,17 @@ Period: 2026-01-01 → 2026-01-31 (31 days)
 |---|---:|
 | agent rate | 6,275.53 |
 | distribution rewards | TBD |
-| prime agent net revenue | -985,990.34 |
+| prime agent net revenue | -985,990.35 |
 | prime side sky direct exposure | 933,299.18 |
-| **prime agent profit** | **-46,415.63** |
+| **prime agent profit** | **-46,415.64** |
 
 ### Sky side
 
 | Field | USDS |
 |---|---:|
-| prime cost of funds | 3,322,924.20 |
+| prime cost of funds | 3,322,924.21 |
 | sky side sky direct exposure | 2,954,411.88 |
-| **sky revenue** | **6,277,336.08** |
+| **sky revenue** | **6,277,336.09** |
 
 ## Per-venue
 
