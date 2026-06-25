@@ -582,20 +582,17 @@ venues:
   # Pricing category B (ERC-4626): value_som/eom = shares × convertToAssets(block).
   #
   # Revenue treatment: Sky charges full BR on the underlying USDS in
-  # cum_debt (= SSR + 30bps). Two independent sky_revenue reductions then
-  # apply:
-  #   1. ``demand_side_spread: true`` — suppresses the 30bps
-  #      ``susds_spread_reimbursement`` that L2 sUSDS proxies receive.
-  #      The 30bps is routed via Demand Side Distribution Rewards instead
-  #      (the sUSDS collateralises Spark Savings deposits; depositors are
-  #      owed the SSR via the Savings product, not the prime directly).
-  #   2. ``pol_agent_rate: true`` — Sky pays Spark the agent rate
-  #      (+20bps over SSR) on Ethereum-held sUSDS POL per the Sky-Spark
-  #      agreement. Daily-integrated; subtracts 20bps × V × days from
-  #      sky_revenue.
-  # Net effect on Spark for this position: Sky charges 30bps spread,
-  # refunds 20bps via pol_agent_rate → 10bps × V × days residual cost
-  # (the demand-side share routed via DSDR, outside Supply Side P&L).
+  # cum_debt (= SSR + 30bps). One sky_revenue adjustment applies:
+  #   ``demand_side_spread: true`` — suppresses the 30bps
+  #   ``susds_spread_reimbursement`` that L2 sUSDS proxies receive.
+  #   The 30bps is routed via Demand Side Distribution Rewards instead
+  #   (the sUSDS collateralises Spark Savings deposits; depositors are
+  #   owed the SSR via the Savings product, not the prime directly).
+  # The prime's compensation on this POL is the Demand Side Distribution
+  # Reward, NOT the agent rate — so ``pol_agent_rate`` is NOT set here.
+  # Net effect on Spark for this position: Sky charges the full 30bps
+  # spread, all of which is the demand-side share routed via DSDR (outside
+  # Supply Side P&L); no agent-rate refund.
   #
   # Why full BR and no utilized deduction:
   #   Although only a portion of the sUSDS held at the ALM is actively
@@ -606,18 +603,15 @@ venues:
   #
   # Contrast with S37/S43/S47/S51 (L2 sUSDS POL): those are pure supply-side
   # holdings with no Savings product backing them, so they receive the
-  # standard 30bps ``susds_spread_reimbursement`` (net 0bps cost). The
-  # pol_agent_rate is NOT applied to the L2 proxies — the Sky-Spark
-  # agreement on agent rate is Ethereum-only.
+  # standard 30bps ``susds_spread_reimbursement`` (net 0bps cost).
   #
   # See docs/METHODOLOGY.md §1 special-case and docs/RULES.md Rule 5.
   - id: S32
     chain: ethereum
-    label: 'sUSDS raw / POL (ALM — Cat B 4626, demand-side spread + agent rate)'
+    label: 'sUSDS raw / POL (ALM — Cat B 4626, demand-side spread)'
     pricing_category: B
     sky_savings_token: true
     demand_side_spread: true         # spread handled via Demand Side Distribution Rewards, not here
-    pol_agent_rate: true             # Spark earns +20bps agent rate on this POL (Ethereum-only)
     # TODO: deduct_savings_v2_deployed is currently a no-op — the upstream Dune
     # table (dune.sparkdotfi.result_savings_v_2_deployment_metrics) is no longer
     # accessible. A new data source for daily sUSDS deployed into Savings V2

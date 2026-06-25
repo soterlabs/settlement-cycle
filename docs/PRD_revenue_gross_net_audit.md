@@ -10,10 +10,9 @@ The other revenue quantities have a single canonical formula at a single compute
 
 | Quantity | Definition | Ambiguity? |
 |---|---|---|
-| `sky_revenue (net)` | `subsidised_BR × utilized + sde_revenue − susds_spread_reimbursement − pol_agent_rate` | No — sky_revenue IS the CoF (gross of any prime credit), then minus the three credits, all at one site |
+| `sky_revenue (net)` | `subsidised_BR × utilized + sde_revenue − susds_spread_reimbursement` | No — sky_revenue IS the CoF (gross of any prime credit), then minus the sUSDS spread reimbursement, at one site |
 | `agent_rate` | `Σ_days subproxy_usds × ((1 + SSR + 20bps)^(1/365) − 1) + Σ_days subproxy_susds × ((1 + 20bps)^(1/365) − 1)` | No |
 | `sde_revenue` | `actual_revenue × sd_share` per venue, summed | No |
-| `pol_agent_rate` | SSR+20bps on sUSDS POL value (Spark S32 only) | No |
 | `susds_spread_reimbursement` / `curve_susds_spread` / `psm3_susds_spread` | 30 bps × cum sUSDS value, integrated daily | No |
 | `external_revenue` | per-venue Merkl / Agora claim amount (whole amount to prime) | No |
 | `distribution_rewards` | Phase 3+ placeholder, currently `0` | No |

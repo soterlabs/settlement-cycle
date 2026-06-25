@@ -133,9 +133,9 @@ def render_summary(prov: dict) -> str:
     #
     #   prime cost of funds       = sky_revenue (net) − sde_revenue
     #                               Net of all intra-Sky credits (sUSDS /
-    #                               Curve / PSM3 spread reimbursements
-    #                               + pol_agent_rate) — i.e. what the
-    #                               prime actually pays as interest.
+    #                               Curve / PSM3 spread reimbursements)
+    #                               — i.e. what the prime actually pays
+    #                               as interest.
     #   sky side SDE              = sde_revenue (the Sky-redirected
     #                               portion of venue actual_revenue,
     #                               summed across SDE venues).
