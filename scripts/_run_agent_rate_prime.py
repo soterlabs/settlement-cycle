@@ -111,6 +111,10 @@ def run(prime_id: str) -> int:
         label = f"{month.year}-{month.month:02d}"
         try:
             result = compute_monthly_pnl(prime, month, sources=_live_sources())
+            # Fold in DR so the console headline matches the written report
+            # (write_settlement enriches a copy; this enriches the printed one).
+            from settle.load import enrich_with_dr
+            result = enrich_with_dr(result)
             out_dir = _REPO / "settlements" / prime_id / label
             paths = write_settlement(result, out_dir, sources=_SOURCES_LIVE)
             artifacts.append((label, paths))

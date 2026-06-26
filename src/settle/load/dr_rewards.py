@@ -81,7 +81,22 @@ def _summary_rows() -> tuple | None:
 
 
 def _col_for(header: tuple, label: str) -> int | None:
-    return next((i for i, h in enumerate(header) if str(h).strip().lower() == label.lower()), None)
+    """Column index whose header matches ``label`` (case-insensitive). Month
+    headers may be stored as text (``'YYYY-MM'``) or as Excel date cells (which
+    openpyxl returns as ``datetime`` under ``data_only``); both are normalised
+    to ``'YYYY-MM'`` before matching, so a workbook regeneration that switches
+    the month headers to dates doesn't silently drop all DR."""
+    want = label.strip().lower()
+    for i, h in enumerate(header):
+        if h is None:
+            continue
+        if hasattr(h, "year") and hasattr(h, "month"):  # date / datetime cell
+            cell = f"{h.year}-{h.month:02d}"
+        else:
+            cell = str(h).strip()
+        if cell.lower() == want:
+            return i
+    return None
 
 
 def load_dr(prime_id: str, month: str) -> dict | None:

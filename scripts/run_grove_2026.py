@@ -153,6 +153,10 @@ def main() -> int:
             pin_blocks_eom=pin["eom"],
             pin_blocks_som=pin["som"],
         )
+        # Fold in DR so the console headline matches the written report
+        # (write_settlement enriches a copy; this enriches the printed one).
+        from settle.load import enrich_with_dr
+        result = enrich_with_dr(result)
 
         label = f"{y}-{m:02d}"
         print(f"{label:<10} ${float(result.prime_agent_total_revenue):>19,.2f} "
