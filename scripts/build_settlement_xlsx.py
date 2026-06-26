@@ -140,12 +140,13 @@ def _write_summary(ws, prov: dict, sheet_rows: list[dict]) -> None:
     res   = prov["results"]
     par   = _D(res["prime_agent_revenue"])
     ar    = _D(res["agent_rate"])
-    par_t = _D(res.get("prime_agent_total_revenue", par + ar))
+    dr    = _D(res.get("distribution_rewards") or 0)
+    par_t = _D(res.get("prime_agent_total_revenue", par + ar + dr))
     sky   = _D(res["sky_revenue"])
     sd    = sum((_D(r["sd_revenue"]) for r in sheet_rows), Decimal("0"))
     cof   = sky - sd
     sum_p2g = sum((_D(r["profit_to_grove"]) for r in sheet_rows), Decimal("0"))
-    monthly_pnl = par + ar - sky
+    monthly_pnl = par + ar + dr - sky
     # New display-only surfaces from PR #104 — see provenance schema.
     sky_gross    = _D(res.get("sky_revenue_gross") or 0)
     spread_reimb = _D(res.get("susds_spread_reimbursement") or 0)
@@ -168,14 +169,13 @@ def _write_summary(ws, prov: dict, sheet_rows: list[dict]) -> None:
         cell.font = _BOLD
         cell.border = Border(top=_THIN)
 
-    _block(
-        "Prime side",
-        rows=[
-            ("prime_agent_revenue (gross venue yield to prime)", par),
-            ("+ agent_rate (subproxy USDS / sUSDS yield)",       ar),
-        ],
-        total=par_t,
-    )
+    prime_rows = [
+        ("prime_agent_revenue (gross venue yield to prime)", par),
+        ("+ agent_rate (subproxy USDS / sUSDS yield)",       ar),
+    ]
+    if dr != 0:
+        prime_rows.append(("+ distribution_rewards (settle-dr-dune)", dr))
+    _block("Prime side", rows=prime_rows, total=par_t)
     ws.append([])
 
     _block(

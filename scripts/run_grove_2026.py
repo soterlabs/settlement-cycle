@@ -112,6 +112,14 @@ def _sources_manifest(fixture_dir: str) -> dict[str, str]:
 
 
 def main() -> int:
+    if "--dr-only" in sys.argv:
+        # Refresh Distribution Rewards from settle-dr-dune into the existing
+        # reports — no recompute (no RPC / Dune). Needs a prior full run.
+        from settle.load import refresh_dr_only
+        print("Grove — DR-only refresh from settle-dr-dune (no recompute)")
+        refresh_dr_only("grove")
+        return 0
+
     print("Grove 2026 multi-month settlement (Jan → May)")
     print("=" * 110)
     print(f"{'Month':<10} {'prime_agent_total':>20} {'sky_revenue':>16} "
@@ -145,6 +153,10 @@ def main() -> int:
             pin_blocks_eom=pin["eom"],
             pin_blocks_som=pin["som"],
         )
+        # Fold in DR so the console headline matches the written report
+        # (write_settlement enriches a copy; this enriches the printed one).
+        from settle.load import enrich_with_dr
+        result = enrich_with_dr(result)
 
         label = f"{y}-{m:02d}"
         print(f"{label:<10} ${float(result.prime_agent_total_revenue):>19,.2f} "

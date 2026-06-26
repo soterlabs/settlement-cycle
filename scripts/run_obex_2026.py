@@ -96,6 +96,15 @@ def _live_sources() -> Sources:
 
 
 def main() -> int:
+    if "--dr-only" in sys.argv:
+        # Refresh Distribution Rewards from settle-dr-dune into the existing
+        # reports — no recompute (no RPC / Dune). obex has no tagged DR, so
+        # this is a fast no-op; the flag still prevents a full recompute.
+        from settle.load import refresh_dr_only
+        print("OBEX — DR-only refresh from settle-dr-dune (no recompute)")
+        refresh_dr_only("obex")
+        return 0
+
     logging.basicConfig(
         level=os.environ.get("LOG_LEVEL", "INFO"),
         format='%(asctime)s %(name)s %(levelname)s %(message)s',

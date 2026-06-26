@@ -9,10 +9,10 @@ Period: 2026-01-01 → 2026-01-31 (31 days)
 | Field | USDS |
 |---|---:|
 | agent rate | 106,392.55 |
-| distribution rewards | TBD |
+| distribution rewards | 1,144,088.13 |
 | prime agent net revenue | -344,340.78 |
 | prime side sky direct exposure | 25,473.95 |
-| **prime agent profit** | **-212,474.27** |
+| **prime agent profit** | **931,613.86** |
 
 ### Sky side
 
@@ -88,4 +88,40 @@ Period: 2026-01-01 → 2026-01-31 (31 days)
 | S60 | Spark Savings V2 — spUSDC vault (Avalanche-C, CREATE2 same address) | $190,414,182.35 | $95,656,876.18 |
 
 > Position values above are **excluded from `prime_agent_revenue`** per the Savings V2 scope decision (the depositor-side VSR liability is outside the MSC/ALM accounting boundary — see `docs/spark/PRD_savings_vaults.md` §3 and `QUESTIONS.md` S30). Reconciliations against Spark / BA Labs dashboards, which net the VSR, will differ by ≈ the period's VSR accrual. Per-vault values remain in `provenance.json` under `venue_breakdown[]`.
+
+## DR per ref code
+
+| ref_code | DR (USD) | notes |
+|---|---:|---|
+| 2 | $0.00 |  |
+| 128 | $1,021,651.00 |  |
+| 129 | $2.58 |  |
+| 170 | $0.00 |  |
+| 171 | $0.00 |  |
+| 182 | $0.02 |  |
+| 183 | $21,333.38 |  |
+| 186 | $978.23 |  |
+| 188 | $1,186.52 |  |
+| 190 | $10,486.78 |  |
+| 191 | $3,403.28 |  |
+| 192 | $56,666.76 |  |
+| 194 | $4.96 |  |
+| 195 | $3,879.94 |  |
+| 196 | $0.03 |  |
+| 197 | $6,824.99 | stUSDS |
+| 198 | $0.02 |  |
+| 200 | $2.10 |  |
+| 202 | $30.39 |  |
+| 204 | $0.00 |  |
+| 205 | $0.00 |  |
+| 206 | $0.00 |  |
+| 214 | $0.00 |  |
+| 216 | $0.00 |  |
+| 219 | $0.00 |  |
+| 223 | $0.00 |  |
+| 224 | $0.00 |  |
+| 303 | $0.00 |  |
+| 555 | $0.00 |  |
+| 9001 | $17,637.13 | Synthetic code: USDS in Aave aEthUSDS (0x32a6268f9Ba3642Dda7892aDd74f1D34469A4259). No on-chain Referral event; entire contract balance attributed. XR rate. |
+| **Total** | **$1,144,088.13** | |
 

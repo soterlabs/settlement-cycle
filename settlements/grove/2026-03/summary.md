@@ -9,10 +9,10 @@ Period: 2026-03-01 → 2026-03-31 (31 days)
 | Field | USDS |
 |---|---:|
 | agent rate | 6,287.12 |
-| distribution rewards | TBD |
+| distribution rewards | 191,719.25 |
 | prime agent net revenue | -2,000,509.40 |
 | prime side sky direct exposure | 0.00 |
-| **prime agent profit** | **-1,994,222.28** |
+| **prime agent profit** | **-1,802,503.03** |
 
 ### Sky side
 
@@ -56,6 +56,19 @@ Period: 2026-03-01 → 2026-03-31 (31 days)
 | E32 | USDC raw (alt holder idle) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E37 | Maple syrupUSDC (ERC-4626) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E38 | Agora AUSD incentives (cash distribution to Grove Eth ALM) | $0.00 | $0.00 | $0.00 | $561,262.52 | $561,262.52 | $0.00 | 0% | $0.00 |
+
+## DR per ref code
+
+| ref_code | DR (USD) | notes |
+|---|---:|---|
+| 2000 | $0.00 |  |
+| 2001 | $0.00 |  |
+| 2002 | $174,574.28 |  |
+| 2003 | $0.00 |  |
+| 2005 | $17,144.97 |  |
+| 2008 | $0.00 |  |
+| 2222 | $0.00 |  |
+| **Total** | **$191,719.25** | |
 
 ## Off-protocol holdings
 

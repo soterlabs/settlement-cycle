@@ -18,14 +18,17 @@ All data is in ``provenance.json``; the Grove-sheet math is derivable
 from it deterministically.
 """
 
+from .dr_rewards import enrich_with_dr
 from .grove_sheet import compute_sheet_rows
 from .provenance import write_provenance
 from .summary import render_summary, write_summary
-from .writer import default_output_dir, write_settlement
+from .writer import default_output_dir, refresh_dr_only, write_settlement
 
 __all__ = [
     "compute_sheet_rows",
     "default_output_dir",
+    "enrich_with_dr",
+    "refresh_dr_only",
     "render_summary",
     "write_provenance",
     "write_settlement",

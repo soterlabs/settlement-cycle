@@ -82,6 +82,14 @@ def _live_sources() -> Sources:
 
 
 def run(prime_id: str) -> int:
+    if "--dr-only" in sys.argv:
+        # Refresh Distribution Rewards from settle-dr-dune into the existing
+        # reports — no recompute (no RPC / Dune). Needs a prior full run.
+        from settle.load import refresh_dr_only
+        print(f"{prime_id.upper()} — DR-only refresh from settle-dr-dune (no recompute)")
+        refresh_dr_only(prime_id)
+        return 0
+
     logging.basicConfig(
         level=os.environ.get("LOG_LEVEL", "INFO"),
         format='%(asctime)s %(name)s %(levelname)s %(message)s',
@@ -103,6 +111,10 @@ def run(prime_id: str) -> int:
         label = f"{month.year}-{month.month:02d}"
         try:
             result = compute_monthly_pnl(prime, month, sources=_live_sources())
+            # Fold in DR so the console headline matches the written report
+            # (write_settlement enriches a copy; this enriches the printed one).
+            from settle.load import enrich_with_dr
+            result = enrich_with_dr(result)
             out_dir = _REPO / "settlements" / prime_id / label
             paths = write_settlement(result, out_dir, sources=_SOURCES_LIVE)
             artifacts.append((label, paths))
