@@ -9,10 +9,10 @@ Period: 2026-05-01 → 2026-05-31 (31 days)
 | Field | USDS |
 |---|---:|
 | agent rate | 118,578.18 |
-| distribution rewards | 1,622,762.97 |
+| distribution rewards | 1,632,540.80 |
 | prime agent net revenue | 2,732,761.23 |
 | prime side sky direct exposure | 33,605.38 |
-| **prime agent profit** | **4,507,707.76** |
+| **prime agent profit** | **4,517,485.59** |
 
 ### Sky side
 
@@ -94,8 +94,12 @@ Period: 2026-05-01 → 2026-05-31 (31 days)
 | ref_code | DR (USD) | notes |
 |---|---:|---|
 | 2 | $0.00 |  |
+| 127 | $1,824.59 | Synthetic code: untagged sUSDC |
 | 128 | $1,513,777.28 |  |
 | 129 | $1.49 |  |
+| 130 | $3,911.67 | Synthetic code: Untagged spUSDT. |
+| 131 | $4,041.57 | Synthetic code: Untagged spUSDC. Combined into 128 by Spark on Dune. |
+| 132 | $0.00 | Synthetic code: Untagged spPYUSD. Combined into 128 by Spark on Dune. |
 | 170 | $0.00 |  |
 | 171 | $0.00 |  |
 | 182 | $0.02 |  |
@@ -123,5 +127,5 @@ Period: 2026-05-01 → 2026-05-31 (31 days)
 | 303 | $0.00 |  |
 | 555 | $0.00 |  |
 | 9001 | $9,626.62 | Synthetic code: USDS in Aave aEthUSDS (0x32a6268f9Ba3642Dda7892aDd74f1D34469A4259). No on-chain Referral event; entire contract balance attributed. XR rate. |
-| **Total** | **$1,622,762.97** | |
+| **Total** | **$1,632,540.80** | |
 
