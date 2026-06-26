@@ -609,7 +609,7 @@ Reproduce: `python3 scripts/run_grove_2026.py` (lifetime Dune fixtures cover all
 
 The $402K residual is dominated by **E1 aHorRwaRLUSD off-pool yield** (~$430K/month) — see §17.13 high-priority entry: Grove team accrues this off-chain, no equivalent feed in our pipeline yet.
 
-`distribution_rewards` is a default-zero placeholder for referral / liquidity-program payouts (e.g. skybase referral codes). Field exists on `MonthlyPnL` and flows through to all output formats; populated when the source lands (Phase 3+).
+`distribution_rewards` is the prime's Distribution Rewards (referral / liquidity-program payouts). **Sourced as of 2026-06** from the `settle-dr-dune` submodule's reconciliation workbook (Summary tab, per ref code) for Spark / Grove / Skybase / Keel — see §17.6. Field flows through to all output formats; "TBD" now appears only for primes/months with no DR source.
 
 ### 17.5 Cat A inflow accounting — design note
 
@@ -624,9 +624,13 @@ Formula: `revenue = Δvalue − capital_inflow = external_inflow`.
 
 Underlying primitive: `inflow_by_counterparty.sql` returns `[block_date, counterparty, signed_amount]` per holder; the compute layer filters on the allowlist and sums.
 
-### 17.6 Distribution rewards — Phase 3+
+### 17.6 Distribution rewards — sourced from `settle-dr-dune` (2026-06)
 
-Some primes (e.g. skybase) earn yield from active referral codes / liquidity-program payouts that arrive as periodic transfers, not as venue NAV growth. The pipeline reserves a `distribution_rewards` column in the headline (always 0 today) so the structure is stable when the source lands. Likely shape: a Dune-backed primitive that sums per-period payouts for a configured set of (chain, token, sender→recipient) tuples.
+Some primes earn yield from referral codes / liquidity-program payouts that arrive as periodic transfers, not as venue NAV growth. These **Distribution Rewards (DR)** are now sourced from the [`settle-dr-dune`](https://github.com/soterlabs/settle-dr-dune) submodule — a transparent on-chain reconstruction of DR revenue by ref code (a self-owned alternative to Spark's opaque `dune.sparkdotfi.result_spark_*` datasets).
+
+Integration (`src/settle/load/dr_rewards.py`): the `Summary` tab of `dune-results/dr_comparison_latest.xlsx` is grouped by prime, with one DR-USD column per month and a per-group `Total`. `enrich_with_dr` populates `MonthlyPnL.distribution_rewards` (the group total for the period) + `dr_breakdown` (per-ref-code rows) at report-write time; `summary.md` shows the headline figure + a "DR per ref code" table.
+
+Scope: tagged-DR primes **Spark / Grove / Skybase / Keel**. The untagged "Other" bucket and primes without a DR group (e.g. obex) are excluded (render "TBD"). Refresh without recompute via `python scripts/run_{prime}_2026.py --dr-only` (patches existing provenance + re-renders; no RPC / Dune).
 
 ### 17.7 Methodology alignment vs. prime-settlement-methodology + debt-rate-methodology docs
 

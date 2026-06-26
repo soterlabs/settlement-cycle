@@ -138,23 +138,34 @@ def refresh_dr_only(prime_id: str) -> list[Path]:
             prov = json.load(f)
         month = prov.get("month") or f"{prov['period']['start'][:7]}"
         dr = load_dr(prime_id, month)
-        results = prov.setdefault("results", {})
-        old = Decimal(str(results.get("distribution_rewards", "0")))
-        new = dr["total"] if dr else Decimal("0")
+        if dr is None:
+            # No DR source for this prime/month (unmapped prime, missing
+            # submodule, or out-of-range month) — leave the report untouched
+            # rather than destructively zeroing a previously-published value.
+            print(f"  {month}: no DR data — left unchanged")
+            continue
+        results = prov["results"]
+        new = dr["total"]
+        par = Decimal(str(results.get("prime_agent_revenue", "0")))
+        ar = Decimal(str(results.get("agent_rate", "0")))
+        sky = Decimal(str(results.get("sky_revenue", "0")))
+        # Recompute the dependent totals from components (not a delta patch),
+        # so an already-stale provenance is corrected and the result is
+        # idempotent. Mirrors MonthlyPnL.prime_agent_total_revenue and the
+        # __post_init__ monthly_pnl invariant.
         results["distribution_rewards"] = str(new)
-        if "monthly_pnl" in results:
-            results["monthly_pnl"] = str(Decimal(str(results["monthly_pnl"])) + (new - old))
+        results["prime_agent_total_revenue"] = str(par + ar + new)
+        results["monthly_pnl"] = str(par + ar + new - sky)
         prov["dr_breakdown"] = [
             {"ref_code": r["ref_code"], "amount": str(r["amount"]), "notes": r["notes"]}
-            for r in (dr["rows"] if dr else [])
+            for r in dr["rows"]
         ]
         with prov_path.open("w") as f:
             json.dump(prov, f, indent=2)
         out_dir = prov_path.parent
         write_summary(prov_path, out_dir / "summary.md")
         _build_canonical_xlsx(prime_id, month, out_dir)
-        n = len(prov["dr_breakdown"])
-        print(f"  {month}: distribution_rewards={float(new):,.2f} ({n} ref codes)")
+        print(f"  {month}: distribution_rewards={float(new):,.2f} ({len(dr['rows'])} ref codes)")
         updated.append(out_dir)
     return updated
 
