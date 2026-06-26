@@ -157,6 +157,18 @@ def render_provenance(
             }
             for v in pnl.display_only_breakdown
         ],
+        # Distribution Rewards per ref code for the period (settle-dr-dune
+        # Summary tab). Sums to ``results.distribution_rewards``. Empty for
+        # primes without tagged DR. Rendered as the summary.md "DR per ref
+        # code" table.
+        "dr_breakdown": [
+            {
+                "ref_code": d.get("ref_code", ""),
+                "amount": str(d.get("amount", "0")),
+                "notes": d.get("notes", ""),
+            }
+            for d in pnl.dr_breakdown
+        ],
         # Day-by-day Sky-revenue breakdown: cum_debt (= Σ Vat dart from
         # frob+grab, then scaled by Vat.ilks[ilk].rate_d / 1e27 at that
         # day's EoD block — i.e. actual outstanding USDS, not raw

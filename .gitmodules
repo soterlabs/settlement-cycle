@@ -1,0 +1,3 @@
+[submodule "settle-dr-dune"]
+	path = settle-dr-dune
+	url = https://github.com/soterlabs/settle-dr-dune.git

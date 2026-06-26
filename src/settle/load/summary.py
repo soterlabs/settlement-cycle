@@ -196,6 +196,10 @@ def render_summary(prov: dict) -> str:
         prime_agent_net_revenue = non_sde_revenue_gross - prime_cof
     agent_rate     = _D(r.get("agent_rate"))
     dist_rewards   = _D(r.get("distribution_rewards"))
+    # DR is "sourced" once dr_breakdown is present — then show the value even
+    # when it's 0 (a real $0 month), and reserve "TBD" for primes/months with
+    # no DR source at all.
+    dr_rows        = prov.get("dr_breakdown") or []
     prime_profit   = agent_rate + dist_rewards + prime_agent_net_revenue + prime_side_sde
 
     def _row(label: str, val) -> str:
@@ -210,7 +214,10 @@ def render_summary(prov: dict) -> str:
     lines.append("| Field | USDS |")
     lines.append("|---|---:|")
     lines.append(_row("agent rate", agent_rate))
-    lines.append(_row("distribution rewards", "TBD" if dist_rewards == 0 else _usds(dist_rewards)))
+    lines.append(_row(
+        "distribution rewards",
+        _usds(dist_rewards) if (dr_rows or dist_rewards != 0) else "TBD",
+    ))
     lines.append(_row("prime agent net revenue", prime_agent_net_revenue))
     lines.append(_row("prime side sky direct exposure", prime_side_sde))
     lines.append(_row("**prime agent profit**", f"**{_usds(prime_profit)}**"))
@@ -284,6 +291,25 @@ def render_summary(prov: dict) -> str:
             f"VSR, will differ by ≈ the period's VSR accrual. "
             f"Per-vault values remain in `provenance.json` under `venue_breakdown[]`."
         )
+        lines.append("")
+
+    # ── DR per ref code ─────────────────────────────────────────────
+    # Distribution Rewards breakdown for the period, from the settle-dr-dune
+    # reconciliation workbook (Summary tab). Sums to the "distribution
+    # rewards" headline row above.
+    if dr_rows:
+        lines.append("## DR per ref code")
+        lines.append("")
+        lines.append("| ref_code | DR (USD) | notes |")
+        lines.append("|---|---:|---|")
+        for d in dr_rows:
+            amt = _D(d.get("amount"))
+            note = (d.get("notes") or "").replace("|", "／").replace("\n", " ").strip()
+            lines.append(f"| {d.get('ref_code', '')} | {_usd(amt)} | {note} |")
+        # Total = the authoritative group total (the workbook's Total row,
+        # = the "distribution rewards" headline). Matches the headline exactly;
+        # may differ from the visible row sum by sub-cent workbook rounding.
+        lines.append(f"| **Total** | **{_usd(dist_rewards)}** | |")
         lines.append("")
 
     # ── Off-protocol (display-only) ─────────────────────────────────

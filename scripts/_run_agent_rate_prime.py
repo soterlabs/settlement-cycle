@@ -82,6 +82,14 @@ def _live_sources() -> Sources:
 
 
 def run(prime_id: str) -> int:
+    if "--dr-only" in sys.argv:
+        # Refresh Distribution Rewards from settle-dr-dune into the existing
+        # reports — no recompute (no RPC / Dune). Needs a prior full run.
+        from settle.load import refresh_dr_only
+        print(f"{prime_id.upper()} — DR-only refresh from settle-dr-dune (no recompute)")
+        refresh_dr_only(prime_id)
+        return 0
+
     logging.basicConfig(
         level=os.environ.get("LOG_LEVEL", "INFO"),
         format='%(asctime)s %(name)s %(levelname)s %(message)s',

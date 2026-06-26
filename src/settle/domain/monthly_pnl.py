@@ -268,6 +268,14 @@ class MonthlyPnL:
     # does no economics of its own, so it cannot drift from what was charged.
     subsidy_summary: dict | None = None
 
+    # Distribution Rewards per ref code for the period, from the
+    # ``settle-dr-dune`` reconciliation workbook (Summary tab). Each entry is
+    # ``{"ref_code", "amount" (Decimal), "notes"}``. Their sum equals
+    # ``distribution_rewards``. Empty for primes without tagged DR. Surfaced
+    # for the summary.md "DR per ref code" table; populated at report-write
+    # time by ``settle.load.dr_rewards.enrich_with_dr``.
+    dr_breakdown: list[dict] = field(default_factory=list)
+
     @property
     def prime_agent_total_revenue(self) -> Decimal:
         """Sum of all revenue streams to the prime — the reported headline.

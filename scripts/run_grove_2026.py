@@ -112,6 +112,14 @@ def _sources_manifest(fixture_dir: str) -> dict[str, str]:
 
 
 def main() -> int:
+    if "--dr-only" in sys.argv:
+        # Refresh Distribution Rewards from settle-dr-dune into the existing
+        # reports — no recompute (no RPC / Dune). Needs a prior full run.
+        from settle.load import refresh_dr_only
+        print("Grove — DR-only refresh from settle-dr-dune (no recompute)")
+        refresh_dr_only("grove")
+        return 0
+
     print("Grove 2026 multi-month settlement (Jan → May)")
     print("=" * 110)
     print(f"{'Month':<10} {'prime_agent_total':>20} {'sky_revenue':>16} "
