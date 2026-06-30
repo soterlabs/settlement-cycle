@@ -9,10 +9,10 @@ Period: 2026-01-01 → 2026-01-31 (31 days)
 | Field | USDS |
 |---|---:|
 | agent rate | 0.00 |
-| distribution rewards | 225,547.98 |
+| distribution rewards | 147,764.16 |
 | prime agent net revenue | 0.00 |
 | prime side sky direct exposure | 0.00 |
-| **prime agent profit** | **225,547.98** |
+| **prime agent profit** | **147,764.16** |
 
 ### Sky side
 
@@ -26,7 +26,7 @@ Period: 2026-01-01 → 2026-01-31 (31 days)
 
 | ref_code | DR (USD) | notes |
 |---|---:|---|
-| 0 | $79,875.62 | Methodology needs review. Results in agreement with other parties, but swaps using default ref code may be incorrectly applied. |
+| 0 | $2,091.79 | Explicit on-chain referral on Ethereum. L2 sUSDS is split out to 10000/10001 in the PSM3 queries. |
 | 1 | $129,628.40 |  |
 | 1001 | $2,254.80 | From Feb. 2026, payments may have been applied to 1016. |
 | 1002 | $1,969.51 |  |
@@ -35,5 +35,5 @@ Period: 2026-01-01 → 2026-01-31 (31 days)
 | 1015 | $0.00 |  |
 | 1016 | $1,201.05 | Included in aggregators, needs methodology update. |
 | 1017 | $536.08 |  |
-| **Total** | **$225,547.98** | |
+| **Total** | **$147,764.16** | |
 
