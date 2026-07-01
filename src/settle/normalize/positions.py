@@ -22,9 +22,11 @@ from .protocols import (
     IConvertToAssetsSource,
     IPositionBalanceSource,
     IV3PositionSource,
+    IV4PositionSource,
 )
 from .registry import get_balance_source, get_position_balance_source
 from .sources.uniswap_v3 import RPCUniswapV3PositionSource
+from .sources.uniswap_v4 import RPCUniswapV4PositionSource
 
 
 def get_position_balance(
@@ -63,6 +65,11 @@ def get_position_balance(
     if venue.lp_kind == "uniswap_v3":
         raise UnsupportedPricingError(
             f"Venue {venue.id} (Uni V3): no scalar balance defined for non-fungible "
+            "NFT positions. Call get_position_value(prime, venue, block) instead."
+        )
+    if venue.lp_kind == "uniswap_v4":
+        raise UnsupportedPricingError(
+            f"Venue {venue.id} (Uni V4): no scalar balance defined for non-fungible "
             "NFT positions. Call get_position_value(prime, venue, block) instead."
         )
     holder = venue.holder_override or prime.alm[venue.chain]
@@ -189,6 +196,7 @@ def get_position_value(
     flow_source: IBalanceSource | None = None,
     erc4626_source: IConvertToAssetsSource | None = None,
     v3_position_source: IV3PositionSource | None = None,
+    v4_position_source: IV4PositionSource | None = None,
     curve_pool_source=None,
     block_resolver=None,
     nav_oracle_resolver=None,
@@ -212,6 +220,18 @@ def get_position_value(
             )
             v3_position_source = RPCUniswapV3PositionSource(nfpm_per_chain=overrides)
         return _uniswap_v3_value(prime, venue, block, source=v3_position_source)
+
+    if venue.lp_kind == "uniswap_v4":
+        if v4_position_source is None:
+            overrides = (
+                {venue.chain: venue.nft_position_manager}
+                if venue.nft_position_manager is not None
+                else None
+            )
+            v4_position_source = RPCUniswapV4PositionSource(
+                position_manager_per_chain=overrides,
+            )
+        return _uniswap_v4_value(prime, venue, block, source=v4_position_source)
 
     balance = get_position_balance(
         prime, venue, block,
@@ -297,6 +317,160 @@ def _uniswap_v3_value(
             _symbol, decimals = info
             total += Decimal(amount_raw) / Decimal(10**decimals)   # par-stable @ $1
     return total
+
+
+def _venue_v4_pool_key(venue: Venue):
+    """Build an ``extract.uniswap_v4.V4PoolKey`` from the venue's domain pool key."""
+    from ..extract.uniswap_v4 import V4PoolKey
+    pk = venue.univ4_pool_key
+    if pk is None:
+        raise UnsupportedPricingError(
+            f"Venue {venue.id} (Uni V4): univ4_pool_key is required."
+        )
+    return V4PoolKey(
+        currency0=pk.currency0,
+        currency1=pk.currency1,
+        fee=pk.fee,
+        tick_spacing=pk.tick_spacing,
+        hooks=pk.hooks,
+    )
+
+
+def _uniswap_v4_value(
+    prime: Prime,
+    venue: Venue,
+    block: int,
+    *,
+    source: IV4PositionSource,
+) -> Decimal:
+    """Sum redeemable USD value across the venue's V4 positions in the target pool.
+
+    Each position contributes ``amount0 × p(token0) + amount1 × p(token1)`` at
+    par ($1) for the par-stable underlyings in scope. Uncollected LP fees are
+    not added (negligible for tight stable ranges — see the source docstring).
+    Mirrors ``_uniswap_v3_value``: empty/uninitialized → $0, RPC failure
+    degrades to $0 with a WARNING rather than aborting the run.
+    """
+    registry = PAR_STABLES_BY_CHAIN.get(venue.chain)
+    if registry is None:
+        raise UnsupportedPricingError(
+            f"Venue {venue.id}: no par-stable registry for chain {venue.chain.value!r} "
+            "— add the chain's par-stable token addresses to PAR_STABLES_BY_CHAIN "
+            "in sky_tokens.py."
+        )
+    holder = venue.holder_override or prime.alm[venue.chain]
+    pool_key = _venue_v4_pool_key(venue)
+
+    from ..extract.rpc import RPCError as _RPCError
+    import requests as _requests
+    try:
+        positions = source.positions_in_pool(
+            chain=venue.chain.value,
+            owner=holder.value,
+            token_ids=list(venue.univ4_token_ids),
+            pool_key=pool_key,
+            block=block,
+        )
+    except (_RPCError, _requests.HTTPError, _requests.ConnectionError,
+            _requests.Timeout) as _e:
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "_uniswap_v4_value: V4 pool read failed for %s on %s at block %d "
+            "(%s) — degrading to value=$0.",
+            venue.id, venue.chain.value, block, _e,
+        )
+        return Decimal("0")
+    if not positions:
+        return Decimal("0")
+    total = Decimal("0")
+    for p in positions:
+        for token, amount_raw in ((p.currency0, p.amount0), (p.currency1, p.amount1)):
+            if amount_raw == 0:
+                continue
+            info = registry.get(token.value)
+            if info is None:
+                raise UnsupportedPricingError(
+                    f"V4 position {p.token_id}: token {token.hex} is not in the "
+                    "par-stable registry — recursive pricing not supported."
+                )
+            _symbol, decimals = info
+            total += Decimal(amount_raw) / Decimal(10**decimals)   # par-stable @ $1
+    return total
+
+
+def _uniswap_v4_inflow_timeseries(
+    prime: Prime,
+    venue: Venue,
+    from_block: int,
+    to_block: int,
+    *,
+    source: IV4PositionSource,
+    block_to_date,
+):
+    """Per-day USD capital inflow into the venue's V4 positions, from
+    ``ModifyLiquidity`` events (liquidityDelta priced at the event block).
+
+    Returns a DataFrame ``[block_date, daily_inflow, cum_inflow]`` matching the
+    Dune-backed shape so Compute treats all venues uniformly. Degrades to an
+    empty frame on RPC failure (same contract as the V3 inflow path).
+    """
+    import pandas as pd
+
+    pool_key = _venue_v4_pool_key(venue)
+    registry = PAR_STABLES_BY_CHAIN.get(venue.chain, KNOWN_PAR_STABLES_ETHEREUM)
+    empty = pd.DataFrame({"block_date": [], "daily_inflow": [], "cum_inflow": []})
+
+    from ..extract.rpc import RPCError as _RPCError
+    import requests as _requests
+    try:
+        flows = source.liquidity_flows_in_pool(
+            chain=venue.chain.value,
+            token_ids=list(venue.univ4_token_ids),
+            pool_key=pool_key,
+            from_block=from_block,
+            to_block=to_block,
+        )
+    except (_RPCError, _requests.HTTPError, _requests.ConnectionError,
+            _requests.Timeout) as _e:
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "_uniswap_v4_inflow_timeseries: flows read failed for %s on %s "
+            "[from %d to %d] (%s) — degrading to empty inflow.",
+            venue.id, venue.chain.value, from_block, to_block, _e,
+        )
+        return empty
+    if not flows:
+        return empty
+
+    info0 = registry.get(pool_key.currency0.value)
+    info1 = registry.get(pool_key.currency1.value)
+    if info0 is None or info1 is None:
+        raise UnsupportedPricingError(
+            f"Venue {venue.id}: V4 pool tokens not in par-stable registry for "
+            f"chain {venue.chain.value!r} — add them to PAR_STABLES_BY_CHAIN."
+        )
+    _, dec0 = info0
+    _, dec1 = info1
+
+    rows = [
+        {
+            "block_date": block_to_date(f.block_number),
+            "daily_inflow": (
+                Decimal(f.amount0) / Decimal(10**dec0)
+                + Decimal(f.amount1) / Decimal(10**dec1)
+            ),
+        }
+        for f in flows
+    ]
+    daily = (
+        pd.DataFrame(rows)
+        .groupby("block_date", as_index=False)["daily_inflow"]
+        .sum()
+        .sort_values("block_date")
+        .reset_index(drop=True)
+    )
+    daily["cum_inflow"] = daily["daily_inflow"].cumsum()
+    return daily
 
 
 def _uniswap_v3_inflow_timeseries(
