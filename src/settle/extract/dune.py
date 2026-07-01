@@ -484,8 +484,13 @@ def _execute_query_cached(
     See the wrapper ``execute_query`` for the public entry point.
     """
     _log.info("Dune query %s (id=%d) submitting...", sql_path_str, query_id)
-    full_params = {**params, "pin_block": pin_block}
-    dune_params = {k: _format_param(v) for k, v in full_params.items()}
+    # ``pin_block`` is part of the cache key (distinct EoM blocks → distinct
+    # cache entries) but is NOT forwarded to Dune as a query parameter — Dune
+    # validates submitted params against the query's declared schema and rejects
+    # unknown names with HTTP 400.  The date-range filter in the SQL already
+    # constrains results to the period; the pin_block upper-bound filter in SQL
+    # was removed for the same reason (and is redundant given the date filter).
+    dune_params = {k: _format_param(v) for k, v in params.items()}
     execution_id = _execute_query(query_id, dune_params, performance)
     rows = _fetch_all_rows(execution_id)
     _log.info("Dune query %s → %d rows", sql_path_str, len(rows))
@@ -496,10 +501,11 @@ def execute_query(sql_path: Path, params: dict[str, Any], pin_block: int,
                   performance: str = DEFAULT_PERFORMANCE) -> pd.DataFrame:
     """Execute a saved Dune query and return its results as a DataFrame.
 
-    `pin_block` is folded into the param set as `pin_block` and is also part of the
-    cache key. `params` keys must match named parameters declared in the SQL file.
-    Callers MUST NOT pass ``pin_block`` inside ``params`` — that's an alias for
-    the positional argument and would silently get overwritten.
+    `pin_block` is used only as part of the cache key (so that re-runs at a
+    different EoM block get a fresh Dune result). It is NOT forwarded to Dune
+    as a query parameter. `params` keys must match named parameters declared in
+    the SQL file and in the saved Dune query's parameter schema.
+    Callers MUST NOT pass ``pin_block`` inside ``params``.
 
     The cache key includes the resolved Dune ``query_id`` so that re-pointing
     ``cache/dune_published.json`` to a different query (e.g. migrating from

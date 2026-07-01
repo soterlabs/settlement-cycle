@@ -83,8 +83,17 @@ def test_all_sql_files_present(queries_dir: Path):
 
 
 def test_all_sql_files_use_pin_block(queries_dir: Path):
-    """Every shared query MUST gate on ``{{pin_block}}`` for reproducibility."""
+    """Most shared queries gate on ``{{pin_block}}`` for reproducibility.
+
+    ``blocks_at_eod.sql`` is the deliberate exception: it uses pin_block only
+    as a Python-layer cache-key discriminator and must NOT include it in the SQL
+    because Dune rejects parameters not declared in the saved query's schema
+    (HTTP 400 "unknown parameters"). Its date-range filter already bounds results.
+    """
+    exempt = {"blocks_at_eod.sql"}
     for name in EXPECTED_SQL_FILES:
+        if name in exempt:
+            continue
         text = (queries_dir / name).read_text()
         assert "{{pin_block}}" in text, f"{name} is missing the pin_block parameter"
 
