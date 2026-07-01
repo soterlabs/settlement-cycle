@@ -44,7 +44,7 @@ from settle.normalize.registry import (  # noqa: E402
     get_ssr_source,
 )
 
-_MONTHS = [Month(2026, m) for m in (1, 2, 3, 4, 5)]
+_MONTHS = [Month(2026, m) for m in (1, 2, 3, 4, 5, 6)]
 
 # Documented in provenance.json so an auditor can see at a glance which
 # upstream sources fed each settlement run. The debt source is listed for
@@ -98,7 +98,7 @@ def run(prime_id: str) -> int:
 
     prime = load_prime(_REPO / "config" / f"{prime_id}.yaml")
 
-    print(f"{prime_id.upper()} 2026 multi-month settlement (Jan → May) — agent-rate-only")
+    print(f"{prime_id.upper()} 2026 multi-month settlement (Jan → June) — agent-rate-only")
     print("=" * 96)
     print(f"{'Month':<10} {'agent_rate':>16} {'prime_agent_total':>21} "
           f"{'sky_revenue':>15} {'monthly_pnl':>15}")

@@ -31,7 +31,7 @@ import pandas as pd
 from settle.compute import Sources
 from settle.domain import Chain
 from settle.domain.config import load_prime
-from tests.fixtures.mock_sources import (
+from replay.mock_sources import (
     MockBalanceSource,
     MockDebtSource,
     MockSSRSource,
@@ -74,7 +74,7 @@ def load_grove_and_fixtures(repo: Path, fixture_dir: str = "grove_2026_03"):
     etc.). Returns ``(grove, dune_outputs, blocks_by_chain)``.
     """
     grove = load_prime(repo / "config" / "grove.yaml")
-    base = repo / "tests/fixtures" / fixture_dir
+    base = repo / "replay" / fixture_dir
     fixtures = json.loads((base / "dune_outputs.json").read_text())
     blocks_by_chain = {
         "ethereum":    json.loads((base / "blocks_at_eod.json").read_text()),

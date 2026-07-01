@@ -13,7 +13,7 @@ treats every Δvalue as yield, producing the bogus $483M Apr S27 revenue.
 
 This script runs Dune query 7432797 (published ``inflow_by_counterparty.sql``)
 for every Cat A venue × Spark ALM holder, merges results into a single JSON
-fixture: ``tests/fixtures/spark_2026_q1/inflow_by_counterparty.json``.
+fixture: ``replay/spark_2026_q1/inflow_by_counterparty.json``.
 
 Usage:
     DUNE_API_KEY=... python3 scripts/capture_spark_inflow_by_counterparty.py
@@ -28,8 +28,12 @@ import time
 import urllib.request
 from pathlib import Path
 
+
 REPO = Path(__file__).resolve().parent.parent
-FIXTURE_DIR = REPO / "tests" / "fixtures" / "spark_2026_q1"
+FIXTURE_DIR = REPO / "replay" / "spark_2026_q1"
+
+sys.path.insert(0, str(REPO / "src"))
+from settle.domain.pin_blocks import eom_blocks_str  # noqa: E402
 
 DUNE_API_KEY = os.environ.get("DUNE_API_KEY")
 if not DUNE_API_KEY:
@@ -49,14 +53,11 @@ SPARK_ALM = {
     "avalanche_c": "0xece6b0e8a54c2f44e066fbb9234e7157b15b7fec",
 }
 
-MAY_31_PIN_BLOCK = {
-    "ethereum":    25300000,
-    "base":        47000000,
-    "arbitrum":   470000000,
-    "optimism":   152500000,
-    "unichain":    50000000,
-    "avalanche_c": 87500000,
-}
+# June 2026 EoM blocks — single source of truth in ``config/pin_blocks.yaml``
+# (shared with the runners). The captured fixture must reach the same EoM
+# block the runner reads balances at, or the run pairs fresh EoM balances
+# with stale flow fixtures → phantom PnL (the S27/S28 June 2026 case).
+JUNE_30_PIN_BLOCK = eom_blocks_str(2026, 6)
 
 # Cat A "raw idle" venues only (par-stable tokens at the ALM).
 # (venue_id, chain, token_address). Excludes S31 USDS-on-Eth (it's the
@@ -119,7 +120,7 @@ def execute_and_poll(params):
         if len(page) < 1000:
             break
         offset += 1000
-    print(f"    → {len(rows)} rows", flush=True)
+    print(f"    -> {len(rows)} rows", flush=True)
     return rows
 
 
@@ -132,7 +133,7 @@ def main() -> int:
                 "holder":     SPARK_ALM[chain],
                 "token":      "0x" + token.replace("0x", ""),
                 "start_date": "2024-11-18",
-                "pin_block":  str(MAY_31_PIN_BLOCK[chain]),
+                "pin_block":  str(JUNE_30_PIN_BLOCK[chain]),
             })
             for r in rows:
                 r["venue_id"] = vid
@@ -146,7 +147,7 @@ def main() -> int:
         "_about": (
             f"Spark Cat A inflow_by_counterparty — captured {time.strftime('%Y-%m-%d')} "
             f"via published inflow_by_counterparty.sql (Dune query {QUERY_ID}). "
-            "holder = chain-specific Spark ALM. Covers 2024-11-18 → 2026-05-31."
+            f"holder = chain-specific Spark ALM. Covers 2024-11-18 to 2026-06-30."
         ),
         "_dune_query_id": QUERY_ID,
         "_columns": ["venue_id", "chain", "block_date", "counterparty", "signed_amount"],

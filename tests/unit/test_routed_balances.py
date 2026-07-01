@@ -21,7 +21,7 @@ from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
-from tests.fixtures.grove_fixture_loader import (
+from replay.grove_fixture_loader import (
     build_grove_sources,
     load_grove_and_fixtures,
 )

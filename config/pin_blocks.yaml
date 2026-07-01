@@ -1,0 +1,142 @@
+# Centralized per-month settlement pin blocks — the single source of truth.
+#
+# Each value is the last block on that chain whose timestamp is
+# <= <period boundary> 23:59:59 UTC (an "end-of-day" block). For a given
+# month M: `som` = start-of-month boundary (= previous month's `eom`),
+# `eom` = end-of-month boundary.
+#
+# Consumed by (via src/settle/domain/pin_blocks.py):
+#   * scripts/run_spark_2026.py, scripts/run_grove_2026.py  (som + eom)
+#   * scripts/extend_spark_fixtures.py,
+#     scripts/capture_spark_inflow_by_counterparty.py        (eom)
+#   * replay/grove_2026_06/_capture_dune_fixtures.py       (som + eom)
+#
+# Each entry carries the union of chains across primes; consumers filter to
+# the chains their prime actually uses. Shared chains (ethereum, base,
+# avalanche_c) are identical across primes.
+#
+# Resolution: eth/base/arb/op/avax via Dune evms.blocks; unichain/plume/monad
+# via RPC binary search (rpc.find_block_at_or_before). 2026-06 eth EoM is
+# 25433938 == 2026-06-30T23:59:59Z (25433939 is already next-day).
+#
+# NOTE (Monad Q1): Monad mainnet was not active for Grove in Q1 2026, so its
+# Jan-Mar boundary blocks are monotonic placeholders (1,2,3,4) — E33/E34/E35
+# V3 reads degrade to $0 there. Monad becomes real from the Apr SoM onward,
+# which is why 2026-04 `som.monad` (65143725) intentionally differs from
+# 2026-03 `eom.monad` (4).
+
+months:
+  "2026-01":
+    som:
+      ethereum: 24136052
+      base: 40218126
+      arbitrum: 416593973
+      optimism: 145813411
+      unichain: 36477240
+      avalanche_c: 74824633
+      plume: 44691271
+      monad: 1
+    eom:
+      ethereum: 24358292
+      base: 41557326
+      arbitrum: 427315178
+      optimism: 147152611
+      unichain: 39155640
+      avalanche_c: 76986991
+      plume: 49010253
+      monad: 2
+  "2026-02":
+    som:
+      ethereum: 24358292
+      base: 41557326
+      arbitrum: 427315178
+      optimism: 147152611
+      unichain: 39155640
+      avalanche_c: 76986991
+      plume: 49010253
+      monad: 2
+    eom:
+      ethereum: 24558867
+      base: 42766926
+      arbitrum: 437025050
+      optimism: 148362211
+      unichain: 41574840
+      avalanche_c: 79250451
+      plume: 52322002
+      monad: 3
+  "2026-03":
+    som:
+      ethereum: 24558867
+      base: 42766926
+      arbitrum: 437025050
+      optimism: 148362211
+      unichain: 41574840
+      avalanche_c: 79250451
+      plume: 52322002
+      monad: 3
+    eom:
+      ethereum: 24781026
+      base: 44106126
+      arbitrum: 447736930
+      optimism: 149701411
+      unichain: 44253240
+      avalanche_c: 81789468
+      plume: 58679343
+      monad: 4
+  "2026-04":
+    som:
+      ethereum: 24781026
+      base: 44106126
+      arbitrum: 447736930
+      optimism: 149701411
+      unichain: 44253240
+      avalanche_c: 81789468
+      plume: 58679343
+      monad: 65143725
+    eom:
+      ethereum: 24996367
+      base: 45402126
+      arbitrum: 458085623
+      optimism: 150997411
+      unichain: 46845240
+      avalanche_c: 84298393
+      plume: 65382097
+      monad: 71616121
+  "2026-05":
+    som:
+      ethereum: 24996367
+      base: 45402126
+      arbitrum: 458085623
+      optimism: 150997411
+      unichain: 46845240
+      avalanche_c: 84298393
+      plume: 65382097
+      monad: 71616121
+    eom:
+      ethereum: 25218797
+      base: 46741326
+      arbitrum: 468748167
+      optimism: 152336611
+      unichain: 49523640
+      avalanche_c: 86865826
+      plume: 71786194
+      monad: 78309381
+  "2026-06":
+    som:
+      ethereum: 25218797
+      base: 46741326
+      arbitrum: 468748167
+      optimism: 152336611
+      unichain: 49523640
+      avalanche_c: 86865826
+      plume: 71786194
+      monad: 78309381
+    eom:
+      ethereum: 25433938
+      base: 48037326
+      arbitrum: 479089705
+      optimism: 153632611
+      unichain: 52115640
+      avalanche_c: 89166730
+      plume: 78267500
+      monad: 84784216

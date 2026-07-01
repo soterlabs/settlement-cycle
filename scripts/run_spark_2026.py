@@ -1,14 +1,14 @@
 """Spark 2026 multi-month settlement runner.
 
-Single entry point that runs every Spark month for which a fixture set
-currently exists. Today that's Q1 only:
+Single entry point that runs every Spark month in ``_MONTH_PLAN``
+(Jan → June 2026). All months replay the same captured fixture set:
 
-  * Jan / Feb / Mar → ``tests/fixtures/spark_2026_q1/``.
+  * ``replay/spark_2026_q1/`` (name is historical — it now covers
+    Jan → June, extended month-by-month via the capture scripts).
 
-Apr+ are not yet runnable from this script — extending coverage means
-capturing a new Spark fixture set (debt timeseries, Cat B/E cum_balance,
-L2 block resolvers) for the relevant months and adding entries to
-``PIN_BLOCKS_BY_MONTH`` + ``_MONTH_PLAN`` below.
+Extending coverage to a new month means advancing the pin blocks in
+``config/pin_blocks.yaml``, re-running the Spark capture scripts to
+extend the fixtures, and adding a ``_MONTH_PLAN`` entry below.
 
 For each month, the loop:
   1. (Re)loads the right fixture set.
@@ -23,7 +23,7 @@ This script sets ``SETTLE_SPARK_ALLOW_PRE_PERIOD_ANCHOR=1`` on import so
 the Cat B anchor-row check in the fixture loader is bypassed for Spark
 venues whose ``cat_b_cum_balance.json`` has no in-period rows. Confirmed
 safe (no Q1 flows for those venues, per Spark team) — see
-``tests/fixtures/spark_fixture_loader.py`` for the check itself.
+``replay/spark_fixture_loader.py`` for the check itself.
 
 Known limitation: the PSM3 holder-history source pulls Dune query
 ``7483773`` live, and that query returns HTTP 404 ("Query not found")
@@ -47,15 +47,17 @@ from pathlib import Path
 # fixture loader so the module-level read sees it.
 os.environ.setdefault("SETTLE_SPARK_ALLOW_PRE_PERIOD_ANCHOR", "1")
 
+
 _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO / "src"))
 sys.path.insert(0, str(_REPO))
 
 from settle.compute import compute_monthly_pnl
-from settle.domain import Chain, Month
+from settle.domain import Month
+from settle.domain.pin_blocks import month_pins
 from settle.load import write_settlement
 from settle.normalize.registry import get_ssr_source
-from tests.fixtures.spark_fixture_loader import (
+from replay.spark_fixture_loader import (
     build_spark_sources,
     load_spark_and_fixtures,
 )
@@ -69,7 +71,7 @@ def _period_dates(year: int, month: int) -> tuple[date, date]:
 
 
 _SETTLEMENT_SOURCES = {
-    "debt":             "MockDebtSource backed by tests/fixtures/spark_2026_q1/debt_timeseries.json",
+    "debt":             "MockDebtSource backed by replay/spark_2026_q1/debt_timeseries.json",
     "balance":          (
         "Routed MockBalanceSource (Cat B + Cat E from spark_2026_q1 fixtures; "
         "Cat A stubbed; Ethereum `directed_flow` PSM returns empty — mainnet "
@@ -83,54 +85,9 @@ _SETTLEMENT_SOURCES = {
     "curve_pool":       "CurvePoolSource",
 }
 
-# Pin blocks per (month, chain). Eth + Base from Grove's fixtures
-# (verified); Arb/Op/Uni from Dune query 7401735; Avalanche-C from Dune
-# query 7402172.
-PIN_BLOCKS_BY_MONTH = {
-    (2026, 1): {
-        "som": {Chain.ETHEREUM: 24136052, Chain.BASE: 40218126,
-                Chain.ARBITRUM: 416593973, Chain.OPTIMISM: 145813411,
-                Chain.UNICHAIN: 36477240, Chain.AVALANCHE_C: 74824633},
-        "eom": {Chain.ETHEREUM: 24358292, Chain.BASE: 41557326,
-                Chain.ARBITRUM: 427315178, Chain.OPTIMISM: 147152611,
-                Chain.UNICHAIN: 39155640, Chain.AVALANCHE_C: 76986991},
-    },
-    (2026, 2): {
-        "som": {Chain.ETHEREUM: 24358292, Chain.BASE: 41557326,
-                Chain.ARBITRUM: 427315178, Chain.OPTIMISM: 147152611,
-                Chain.UNICHAIN: 39155640, Chain.AVALANCHE_C: 76986991},
-        "eom": {Chain.ETHEREUM: 24558867, Chain.BASE: 42766926,
-                Chain.ARBITRUM: 437025050, Chain.OPTIMISM: 148362211,
-                Chain.UNICHAIN: 41574840, Chain.AVALANCHE_C: 79250451},
-    },
-    (2026, 3): {
-        "som": {Chain.ETHEREUM: 24558867, Chain.BASE: 42766926,
-                Chain.ARBITRUM: 437025050, Chain.OPTIMISM: 148362211,
-                Chain.UNICHAIN: 41574840, Chain.AVALANCHE_C: 79250451},
-        "eom": {Chain.ETHEREUM: 24781026, Chain.BASE: 44106126,
-                Chain.ARBITRUM: 447736930, Chain.OPTIMISM: 149701411,
-                Chain.UNICHAIN: 44253240, Chain.AVALANCHE_C: 81789468},
-    },
-    # Apr/May added 2026-06-05. Eth+Base+Avalanche-C blocks copied from
-    # Grove's Apr/May fixtures; Arb/Op/Uni resolved via RPC binary search
-    # (Dune credits exhausted before fixture refresh).
-    (2026, 4): {
-        "som": {Chain.ETHEREUM: 24781026, Chain.BASE: 44106126,
-                Chain.ARBITRUM: 447736930, Chain.OPTIMISM: 149701411,
-                Chain.UNICHAIN: 44253240, Chain.AVALANCHE_C: 81789468},
-        "eom": {Chain.ETHEREUM: 24996367, Chain.BASE: 45402126,
-                Chain.ARBITRUM: 458085623, Chain.OPTIMISM: 150997411,
-                Chain.UNICHAIN: 46845240, Chain.AVALANCHE_C: 84298393},
-    },
-    (2026, 5): {
-        "som": {Chain.ETHEREUM: 24996367, Chain.BASE: 45402126,
-                Chain.ARBITRUM: 458085623, Chain.OPTIMISM: 150997411,
-                Chain.UNICHAIN: 46845240, Chain.AVALANCHE_C: 84298393},
-        "eom": {Chain.ETHEREUM: 25218797, Chain.BASE: 46741326,
-                Chain.ARBITRUM: 468748167, Chain.OPTIMISM: 152336611,
-                Chain.UNICHAIN: 49523640, Chain.AVALANCHE_C: 86865826},
-    },
-}
+# Pin blocks live in ``config/pin_blocks.yaml`` (single source of truth,
+# shared with the capture scripts and the Grove runner). Read via
+# ``settle.domain.pin_blocks.month_pins`` below.
 
 # (year, month, fixture_dir). The ``spark_2026_q1`` fixture set was
 # refreshed 2026-06-05 to extend lifetime coverage through 2026-05-31:
@@ -145,6 +102,7 @@ _MONTH_PLAN = [
     (2026, 3, "spark_2026_q1"),
     (2026, 4, "spark_2026_q1"),
     (2026, 5, "spark_2026_q1"),
+    (2026, 6, "spark_2026_q1"),
 ]
 
 
@@ -157,7 +115,7 @@ def main() -> int:
         refresh_dr_only("spark")
         return 0
 
-    print("Spark 2026 multi-month settlement (Jan → May)")
+    print("Spark 2026 settlement (Jan → June)")
     print("=" * 110)
     print(f"{'Month':<10} {'prime_agent_total':>20} {'sky_revenue':>16} "
           f"{'sky_direct_shortfall':>22} {'monthly_pnl':>16}")
@@ -172,7 +130,7 @@ def main() -> int:
             spark, fixtures = load_spark_and_fixtures(_REPO)
             cached_fixture = fixture_dir
 
-        pins = PIN_BLOCKS_BY_MONTH[(y, m)]
+        pins = month_pins(y, m, chains=spark.chains)
         period_start, period_end = _period_dates(y, m)
         sources = build_spark_sources(
             spark, fixtures,

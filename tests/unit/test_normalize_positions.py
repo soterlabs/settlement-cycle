@@ -11,7 +11,7 @@ from settle.domain import Chain, Month, Period, PricingCategory
 from settle.domain.config import load_prime
 from settle.normalize.positions import get_position_balance, get_position_value
 
-from ..fixtures.mock_sources import MockConvertToAssetsSource, MockPositionBalanceSource
+from replay.mock_sources import MockConvertToAssetsSource, MockPositionBalanceSource
 
 
 def _obex(config_dir: Path):

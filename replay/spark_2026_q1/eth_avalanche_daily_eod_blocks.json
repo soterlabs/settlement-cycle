@@ -1,5 +1,5 @@
 {
-  "_about": "Daily EoD blocks for ethereum + avalanche_c, 2024-11-18 \u2192 2026-05-31. Refreshed via extend_spark_fixtures.py.",
+  "_about": "Daily EoD blocks for ethereum + avalanche_c, 2024-11-18 \u2192 2026-06-30. Refreshed via extend_spark_fixtures.py.",
   "_dune_query_id": 7474490,
   "_columns": [
     "chain",
@@ -768,6 +768,156 @@
       "block_number": 86865826
     },
     {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-01",
+      "block_number": 86950294
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-02",
+      "block_number": 87034291
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-03",
+      "block_number": 87118282
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-04",
+      "block_number": 87199482
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-05",
+      "block_number": 87279034
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-06",
+      "block_number": 87359263
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-07",
+      "block_number": 87442749
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-08",
+      "block_number": 87527226
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-09",
+      "block_number": 87611865
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-10",
+      "block_number": 87696741
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-11",
+      "block_number": 87780908
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-12",
+      "block_number": 87865713
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-13",
+      "block_number": 87950628
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-14",
+      "block_number": 88034858
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-15",
+      "block_number": 88118988
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-16",
+      "block_number": 88190412
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-17",
+      "block_number": 88259636
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-18",
+      "block_number": 88329514
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-19",
+      "block_number": 88399832
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-20",
+      "block_number": 88468763
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-21",
+      "block_number": 88537528
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-22",
+      "block_number": 88608035
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-23",
+      "block_number": 88678582
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-24",
+      "block_number": 88746065
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-25",
+      "block_number": 88815089
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-26",
+      "block_number": 88884639
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-27",
+      "block_number": 88954210
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-28",
+      "block_number": 89023656
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-29",
+      "block_number": 89092387
+    },
+    {
+      "chain": "avalanche_c",
+      "block_date": "2026-06-30",
+      "block_number": 89166730
+    },
+    {
       "chain": "ethereum",
       "block_date": "2025-12-31",
       "block_number": 24136052
@@ -1526,6 +1676,156 @@
       "chain": "ethereum",
       "block_date": "2026-05-31",
       "block_number": 25218797
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-01",
+      "block_number": 25225970
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-02",
+      "block_number": 25233136
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-03",
+      "block_number": 25240302
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-04",
+      "block_number": 25247461
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-05",
+      "block_number": 25254619
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-06",
+      "block_number": 25261799
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-07",
+      "block_number": 25268963
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-08",
+      "block_number": 25276141
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-09",
+      "block_number": 25283318
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-10",
+      "block_number": 25290492
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-11",
+      "block_number": 25297657
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-12",
+      "block_number": 25304829
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-13",
+      "block_number": 25312002
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-14",
+      "block_number": 25319172
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-15",
+      "block_number": 25326350
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-16",
+      "block_number": 25333536
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-17",
+      "block_number": 25340718
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-18",
+      "block_number": 25347893
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-19",
+      "block_number": 25355071
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-20",
+      "block_number": 25362242
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-21",
+      "block_number": 25369413
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-22",
+      "block_number": 25376588
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-23",
+      "block_number": 25383756
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-24",
+      "block_number": 25390910
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-25",
+      "block_number": 25398082
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-26",
+      "block_number": 25405251
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-27",
+      "block_number": 25412424
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-28",
+      "block_number": 25419597
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-29",
+      "block_number": 25426766
+    },
+    {
+      "chain": "ethereum",
+      "block_date": "2026-06-30",
+      "block_number": 25433093
     }
   ]
 }

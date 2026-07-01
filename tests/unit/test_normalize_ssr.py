@@ -13,7 +13,7 @@ from settle.domain.config import load_prime
 from settle.normalize.ssr import get_ssr_history
 from settle.validation import SchemaError
 
-from ..fixtures.mock_sources import MockSSRSource
+from replay.mock_sources import MockSSRSource
 
 
 def _obex(config_dir: Path):

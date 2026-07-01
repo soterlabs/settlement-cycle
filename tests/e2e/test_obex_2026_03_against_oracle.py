@@ -57,7 +57,7 @@ from settle.compute import Sources, compute_monthly_pnl
 from settle.domain import Chain, Month
 from settle.domain.config import load_prime
 
-from ..fixtures.mock_sources import (
+from replay.mock_sources import (
     MockBalanceSource,
     MockConvertToAssetsSource,
     MockDebtSource,

@@ -1,11 +1,12 @@
-"""Grove 2026 multi-month settlement runner — Jan through May.
+"""Grove 2026 multi-month settlement runner — Jan through June.
 
 Single entry point that exercises every existing Grove fixture:
 
-  * Jan / Feb / Mar → ``tests/fixtures/grove_2026_03/`` (each month uses
+  * Jan / Feb / Mar → ``replay/grove_2026_03/`` (each month uses
     its own SoM / EoM pin blocks; the Dune/RPC inputs cover Q1 entirely).
-  * Apr            → ``tests/fixtures/grove_2026_04/``.
-  * May            → ``tests/fixtures/grove_2026_05/``.
+  * Apr            → ``replay/grove_2026_04/``.
+  * May            → ``replay/grove_2026_05/``.
+  * Jun            → ``replay/grove_2026_06/``.
 
 For each month, the loop:
   1. (Re)loads the right fixture set.
@@ -30,62 +31,18 @@ sys.path.insert(0, str(_REPO / "src"))
 sys.path.insert(0, str(_REPO))
 
 from settle.compute import compute_monthly_pnl
-from settle.domain import Chain, Month
+from settle.domain import Month
+from settle.domain.pin_blocks import month_pins
 from settle.load import write_settlement
 from settle.normalize.registry import get_ssr_source
-from tests.fixtures.grove_fixture_loader import (
+from replay.grove_fixture_loader import (
     build_grove_sources,
     load_grove_and_fixtures,
 )
 
-# ── Pin blocks per (year, month). EoM block = last block ≤ <last day of
-#    month> 23:59:59 UTC. SoM = previous month's EoM. Monad blocks for Q1
-#    are monotonic placeholders (Monad mainnet wasn't active for Grove in
-#    Q1 2026; E33 V3 reads degrade to $0 via the wrap in
-#    ``normalize.positions._uniswap_v3_value``).
-# ───────────────────────────────────────────────────────────────────────
-PIN_BLOCKS_BY_MONTH = {
-    (2026, 1): {
-        "som": {Chain.ETHEREUM: 24136052, Chain.BASE: 40218126,
-                Chain.AVALANCHE_C: 74824633, Chain.PLUME: 44691271,
-                Chain.MONAD: 1},
-        "eom": {Chain.ETHEREUM: 24358292, Chain.BASE: 41557326,
-                Chain.AVALANCHE_C: 76986991, Chain.PLUME: 49010253,
-                Chain.MONAD: 2},
-    },
-    (2026, 2): {
-        "som": {Chain.ETHEREUM: 24358292, Chain.BASE: 41557326,
-                Chain.AVALANCHE_C: 76986991, Chain.PLUME: 49010253,
-                Chain.MONAD: 2},
-        "eom": {Chain.ETHEREUM: 24558867, Chain.BASE: 42766926,
-                Chain.AVALANCHE_C: 79250451, Chain.PLUME: 52322002,
-                Chain.MONAD: 3},
-    },
-    (2026, 3): {
-        "som": {Chain.ETHEREUM: 24558867, Chain.BASE: 42766926,
-                Chain.AVALANCHE_C: 79250451, Chain.PLUME: 52322002,
-                Chain.MONAD: 3},
-        "eom": {Chain.ETHEREUM: 24781026, Chain.BASE: 44106126,
-                Chain.AVALANCHE_C: 81789468, Chain.PLUME: 58679343,
-                Chain.MONAD: 4},
-    },
-    (2026, 4): {
-        "som": {Chain.ETHEREUM: 24781026, Chain.BASE: 44106126,
-                Chain.AVALANCHE_C: 81789468, Chain.PLUME: 58679343,
-                Chain.MONAD: 65143725},
-        "eom": {Chain.ETHEREUM: 24996367, Chain.BASE: 45402126,
-                Chain.AVALANCHE_C: 84298393, Chain.PLUME: 65382097,
-                Chain.MONAD: 71616121},
-    },
-    (2026, 5): {
-        "som": {Chain.ETHEREUM: 24996367, Chain.BASE: 45402126,
-                Chain.AVALANCHE_C: 84298393, Chain.PLUME: 65382097,
-                Chain.MONAD: 71616121},
-        "eom": {Chain.ETHEREUM: 25218797, Chain.BASE: 46741326,
-                Chain.AVALANCHE_C: 86865826, Chain.PLUME: 71786194,
-                Chain.MONAD: 78309381},
-    },
-}
+# Pin blocks live in ``config/pin_blocks.yaml`` (single source of truth,
+# shared with the Spark runner + capture scripts). Read via
+# ``settle.domain.pin_blocks.month_pins`` below.
 
 # (year, month, fixture_dir). Q1 months all share grove_2026_03.
 _MONTH_PLAN = [
@@ -94,6 +51,7 @@ _MONTH_PLAN = [
     (2026, 3, "grove_2026_03"),
     (2026, 4, "grove_2026_04"),
     (2026, 5, "grove_2026_05"),
+    (2026, 6, "grove_2026_06"),
 ]
 
 
@@ -120,7 +78,7 @@ def main() -> int:
         refresh_dr_only("grove")
         return 0
 
-    print("Grove 2026 multi-month settlement (Jan → May)")
+    print("Grove 2026 multi-month settlement (Jan → June)")
     print("=" * 110)
     print(f"{'Month':<10} {'prime_agent_total':>20} {'sky_revenue':>16} "
           f"{'sky_direct_shortfall':>22} {'monthly_pnl':>16}")
@@ -145,7 +103,7 @@ def main() -> int:
         # the per-month fixture snapshot (deterministic historical read; keeps
         # SSR always current — see run_spark_2026.py for the rationale).
         sources = dataclasses.replace(sources, ssr=get_ssr_source())
-        pin = PIN_BLOCKS_BY_MONTH[(y, m)]
+        pin = month_pins(y, m, chains=grove.chains)
 
         result = compute_monthly_pnl(
             grove, Month(y, m),

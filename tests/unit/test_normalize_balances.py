@@ -16,7 +16,7 @@ from settle.normalize.balances import (
     get_venue_inflow_timeseries,
 )
 
-from ..fixtures.mock_sources import MockBalanceSource
+from replay.mock_sources import MockBalanceSource
 
 
 def _obex(config_dir: Path):

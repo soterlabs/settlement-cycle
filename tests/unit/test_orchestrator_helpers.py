@@ -25,7 +25,7 @@ from settle.domain import Chain, Month, Period
 from settle.domain.config import load_prime
 from settle.domain.primes import Address
 from settle.domain.sky_tokens import PSM3_LEG_TOKENS, sUSDS_ETHEREUM
-from tests.fixtures.mock_sources import (
+from replay.mock_sources import (
     MockBalanceSource,
     MockBlockResolver,
     MockConvertToAssetsSource,

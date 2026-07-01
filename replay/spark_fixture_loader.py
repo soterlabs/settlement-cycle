@@ -29,7 +29,7 @@ import pandas as pd
 from settle.compute import Sources
 from settle.domain import Chain
 from settle.domain.config import load_prime
-from tests.fixtures.mock_sources import (
+from replay.mock_sources import (
     MockBalanceSource,
     MockDebtSource,
     MockSSRSource,
@@ -68,7 +68,7 @@ def _empty_directed_df() -> pd.DataFrame:
 def load_spark_and_fixtures(repo: Path):
     """Load the ``spark`` Prime + fixture bundles. Returns ``(spark, fixtures)``."""
     spark = load_prime(repo / "config" / "spark.yaml")
-    fdir = repo / "tests" / "fixtures" / "spark_2026_q1"
+    fdir = repo / "replay" / "spark_2026_q1"
     fixtures = {
         "debt": json.loads((fdir / "debt_timeseries.json").read_text()),
         "cat_b": json.loads((fdir / "cat_b_cum_balance.json").read_text()),
@@ -79,7 +79,7 @@ def load_spark_and_fixtures(repo: Path):
         "blocks_eth_ava": json.loads((fdir / "eth_avalanche_daily_eod_blocks.json").read_text()),
         # SSR comes from Grove's fixture (Sky-wide).
         "ssr": json.loads(
-            (repo / "tests/fixtures/grove_2026_03/dune_outputs.json").read_text()
+            (repo / "replay/grove_2026_03/dune_outputs.json").read_text()
         )["ssr"],
     }
     # Optional Cat A inflow_by_counterparty fixture — populated by
@@ -366,7 +366,7 @@ def build_spark_sources(
             return _empty_directed_df()
 
         def inflow_by_counterparty(self, chain, token, holder, start, pin_block):
-            # Source: ``tests/fixtures/spark_2026_q1/inflow_by_counterparty.json``
+            # Source: ``replay/spark_2026_q1/inflow_by_counterparty.json``
             # captured via published Dune query 7432797 (one execution per
             # Cat A venue × Spark ALM holder pair). The fixture rows are
             # tagged with ``venue_id`` + ``chain``; look up the matching

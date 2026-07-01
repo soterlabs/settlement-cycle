@@ -2,9 +2,9 @@
 incentives) data, captured via Dune at each fixture's existing pin block.
 
 Adds to each of:
-  * ``tests/fixtures/grove_2026_03/dune_outputs.json``  (Q1: Jan/Feb/Mar 2026)
-  * ``tests/fixtures/grove_2026_04/dune_outputs.json``  (Apr 2026)
-  * ``tests/fixtures/grove_2026_05/dune_outputs.json``  (May 2026)
+  * ``replay/grove_2026_03/dune_outputs.json``  (Q1: Jan/Feb/Mar 2026)
+  * ``replay/grove_2026_04/dune_outputs.json``  (Apr 2026)
+  * ``replay/grove_2026_05/dune_outputs.json``  (May 2026)
 
 Per fixture, four new keys:
   * ``vault_e37_mints``      — syrupUSDC Transfers from ZERO to Grove ALM
@@ -80,7 +80,7 @@ def venue_inflow(chain: str, token: bytes, from_addr: bytes, to_addr: bytes, pin
 
 def main() -> int:
     for fixture_dir, eth_eom in FIXTURES:
-        out_path = REPO / "tests" / "fixtures" / fixture_dir / "dune_outputs.json"
+        out_path = REPO / "replay" / fixture_dir / "dune_outputs.json"
         print(f"\n=== {fixture_dir} (Eth pin = {eth_eom}) ===")
         with open(out_path) as f:
             fx = json.load(f)

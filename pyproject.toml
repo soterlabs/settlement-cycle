@@ -40,7 +40,7 @@ packages = ["src/settle"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["src", "."]
 addopts = "-ra --strict-markers"
 markers = [
     "live: tests that hit live RPC / Dune / API (skipped by default)",

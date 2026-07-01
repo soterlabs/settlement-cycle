@@ -14,7 +14,7 @@ from settle.normalize.prices import (
     par_stable_price,
 )
 
-from ..fixtures.mock_sources import MockConvertToAssetsSource, MockNavOracleSource
+from replay.mock_sources import MockConvertToAssetsSource, MockNavOracleSource
 
 
 def _addr(seed: str) -> Address:

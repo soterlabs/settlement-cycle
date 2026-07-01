@@ -17,7 +17,7 @@ from settle.domain import Chain, Month, Period
 from settle.domain.config import load_prime
 from settle.normalize.positions import _cat_a_capital_inflow_timeseries
 
-from ..fixtures.mock_sources import MockBalanceSource
+from replay.mock_sources import MockBalanceSource
 
 
 def _grove_e15(config_dir: Path):

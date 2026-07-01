@@ -16,7 +16,7 @@ from settle.domain.config import load_prime
 from settle.normalize.debt import get_debt_timeseries
 from settle.validation import SchemaError
 
-from ..fixtures.mock_sources import MockDebtSource
+from replay.mock_sources import MockDebtSource
 
 
 @dataclass

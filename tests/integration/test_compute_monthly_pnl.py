@@ -20,7 +20,7 @@ from settle.compute.sky_revenue import BASE_RATE_OVER_SSR
 from settle.domain import Chain, Month
 from settle.domain.config import load_prime
 
-from ..fixtures.mock_sources import (
+from replay.mock_sources import (
     MockBalanceSource,
     MockBlockResolver,
     MockConvertToAssetsSource,
@@ -1023,7 +1023,7 @@ def test_monthly_pnl_invokes_block_resolver_for_both_som_and_eom(obex):
     by ~1 month."""
     from datetime import datetime, time, timedelta, timezone
 
-    from ..fixtures.mock_sources import MockBlockResolver
+    from replay.mock_sources import MockBlockResolver
 
     resolver = MockBlockResolver(default=99)  # ALM uses this for any unknown anchor
     sources = Sources(
