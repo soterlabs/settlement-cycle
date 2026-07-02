@@ -248,18 +248,33 @@ def read_modify_liquidity_events(
     pool_id: bytes,
     from_block: int,
     to_block: int,
+    *,
+    sender: Address | None = None,
 ) -> list[V4LiquidityEvent]:
     """All ``ModifyLiquidity`` events for ``pool_id`` in ``(from_block, to_block]``.
 
     Filtered on-chain by ``topics=[ModifyLiquidity, poolId]``; the per-position
     ``salt`` (= token id) is decoded from the data so callers can match against
     a known token-id set. Pagination handled by ``eth_get_logs``.
+
+    ``sender`` (indexed topic 2) is the ``msg.sender`` to
+    ``PoolManager.modifyLiquidity`` — for NFT positions this is the
+    PositionManager, which is also the position ``owner`` in the pool's state
+    key ``keccak(owner, tickLower, tickUpper, salt)``. Passing it scopes the
+    query to positions owned by that manager and prevents mis-attribution:
+    ``salt`` is only unique *per owner*, so a different LP in the same pool
+    using a colliding salt (e.g. the common ``salt=0``, or another
+    PositionManager's sequential token ids) would otherwise be matched by the
+    caller's token-id filter. ``None`` leaves the query unscoped (all owners).
     """
     if from_block > to_block:
         return []
+    topics: list[str] = [TOPIC_MODIFY_LIQUIDITY, "0x" + pool_id.hex()]
+    if sender is not None:
+        topics.append("0x" + _pad_address(sender))
     logs = eth_get_logs(
         chain, pool_manager,
-        topics=[TOPIC_MODIFY_LIQUIDITY, "0x" + pool_id.hex()],
+        topics=topics,
         from_block=from_block, to_block=to_block,
     )
     out: list[V4LiquidityEvent] = []

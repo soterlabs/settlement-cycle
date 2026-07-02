@@ -136,8 +136,15 @@ class RPCUniswapV4PositionSource:
         pool_id = pool_key.pool_id()
         token_id_set = set(token_ids)
 
+        # Scope events to our PositionManager (the on-chain position ``owner`` /
+        # event ``sender``). ``salt`` (= token id) is only unique per owner, so
+        # without this a colliding salt from another LP in the same pool would
+        # be picked up by the ``token_id_set`` filter below. Uses the same
+        # PositionManager the value path (``positions_in_pool``) resolves, so
+        # the two paths stay consistent by construction.
         events = v4.read_modify_liquidity_events(
             chain_e, poolmgr, pool_id, from_block + 1, to_block,
+            sender=self._position_manager(chain_e),
         )
         out: list[V4LiquidityFlow] = []
         for ev in events:

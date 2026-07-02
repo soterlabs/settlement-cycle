@@ -251,6 +251,56 @@ def test_read_modify_liquidity_events_decodes_and_skips_noop(monkeypatch):
     assert all(e.token_id == 161205 for e in evs)
 
 
+def test_read_modify_liquidity_events_scopes_by_sender(monkeypatch):
+    """When ``sender`` is passed it becomes indexed topic 2 (left-padded);
+    omitting it leaves the query unscoped to two topics."""
+    key = v4.V4PoolKey(PYUSD, USDS, 5, 1, ZERO)
+    pid = key.pool_id()
+    captured: dict = {}
+    monkeypatch.setattr(
+        v4, "eth_get_logs",
+        lambda *a, **k: (captured.update(k), [])[1],
+    )
+
+    v4.read_modify_liquidity_events(
+        Chain.ETHEREUM, v4.POOL_MANAGER_CANONICAL, pid, 1, 2000,
+        sender=v4.POSITION_MANAGER_CANONICAL,
+    )
+    topics = captured["topics"]
+    assert topics[0] == v4.TOPIC_MODIFY_LIQUIDITY
+    assert topics[1] == "0x" + pid.hex()
+    assert topics[2] == "0x" + "0" * 24 + v4.POSITION_MANAGER_CANONICAL.value.hex()
+
+    v4.read_modify_liquidity_events(
+        Chain.ETHEREUM, v4.POOL_MANAGER_CANONICAL, pid, 1, 2000,
+    )
+    assert len(captured["topics"]) == 2
+
+
+def test_liquidity_flows_scopes_events_to_position_manager(monkeypatch):
+    """The inflow path must pass its PositionManager as the event ``sender``
+    (owner), honoring a per-chain override so it matches the value path."""
+    key = v4.V4PoolKey(PYUSD, USDS, 5, 1, ZERO)
+    captured: dict = {}
+    monkeypatch.setattr(
+        v4, "read_modify_liquidity_events",
+        lambda *a, **k: (captured.update(k), [])[1],
+    )
+
+    RPCUniswapV4PositionSource().liquidity_flows_in_pool(
+        chain="ethereum", token_ids=[161205], pool_key=key, from_block=1, to_block=2000,
+    )
+    assert captured["sender"] == v4.POSITION_MANAGER_CANONICAL
+
+    custom = Address.from_str("0x" + "ab" * 20)
+    RPCUniswapV4PositionSource(
+        position_manager_per_chain={Chain.ETHEREUM: custom},
+    ).liquidity_flows_in_pool(
+        chain="ethereum", token_ids=[161205], pool_key=key, from_block=1, to_block=2000,
+    )
+    assert captured["sender"] == custom
+
+
 def test_liquidity_flows_sign_and_filter(monkeypatch):
     key = v4.V4PoolKey(PYUSD, USDS, 5, 1, ZERO)
     pid = key.pool_id()
