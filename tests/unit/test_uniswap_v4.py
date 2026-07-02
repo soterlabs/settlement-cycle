@@ -8,6 +8,7 @@ from decimal import Decimal
 import pytest
 
 from settle.domain import Address, Chain, PricingCategory, Token, Venue
+from settle.domain.period import Period
 from settle.domain.primes import CurveIdleUsdsConfig, Prime, UniV4PoolKey
 from settle.extract._keccak import keccak256
 from settle.extract import uniswap_v4 as v4
@@ -438,3 +439,99 @@ def test_venue_v4_pool_key_builder_roundtrip():
     k = _venue_v4_pool_key(venue)
     assert isinstance(k, v4.V4PoolKey)
     assert k.currency0 == PYUSD and k.currency1 == USDS and k.fee == 5
+
+
+def test_position_legs_raises_on_unsupported_token():
+    """A non-zero leg in a coin absent from KNOWN_PAR_STABLES_ETHEREUM is a
+    scope/config error — fail loud like the Curve pool, don't silently skip."""
+    from settle.compute.monthly_pnl import _univ4_position_legs
+
+    unknown = Address.from_str("0x" + "11" * 20)
+    venue = _v4_venue(currency0=unknown, currency1=USDS)
+    positions = [
+        V4PositionAmounts(1, unknown, USDS, amount0=10**18, amount1=700_000 * 10**18),
+    ]
+    with pytest.raises(UnsupportedPricingError, match="KNOWN_PAR_STABLES_ETHEREUM"):
+        _univ4_position_legs(venue, positions)
+
+
+# ----------------------------------------------------------------------------
+# carry-forward on transient RPC failure (idle + SDE daily aggregators)
+# ----------------------------------------------------------------------------
+
+class _FlakyV4Source:
+    """Returns fixed positions for the first ``ok_calls`` reads, then raises."""
+
+    def __init__(self, positions, ok_calls):
+        self.positions = positions
+        self.ok_calls = ok_calls
+        self.calls = 0
+
+    def positions_in_pool(self, chain, owner, token_ids, pool_key, block):
+        from settle.extract.rpc import RPCError
+        self.calls += 1
+        if self.calls > self.ok_calls:
+            raise RPCError("simulated transient RPC failure")
+        return self.positions
+
+
+class _StubResolver:
+    def block_at_or_before(self, chain, eod):
+        return 100
+
+
+def _period_3day():
+    from datetime import date
+    return Period(date(2025, 1, 1), date(2025, 1, 3))
+
+
+def _idle_prime():
+    from datetime import date
+    return Prime(
+        id="spark", ilk_bytes32=b"\x00" * 32, start_date=date(2024, 11, 18),
+        alm={Chain.ETHEREUM: ALM}, venues=[_v4_venue(currency0=USDT, currency1=USDS)],
+    )
+
+
+def test_univ4_idle_carries_forward_on_rpc_failure():
+    """Day-1 succeeds ($700k USDS leg); days 2–3 fail transiently and must
+    carry the last-known value rather than booking $0."""
+    from settle.compute.monthly_pnl import _aggregate_univ4_idle_usds
+
+    src = _FlakyV4Source(
+        [V4PositionAmounts(1, USDT, USDS, amount0=0, amount1=700_000 * 10**18)],
+        ok_calls=1,
+    )
+    df = _aggregate_univ4_idle_usds(
+        _idle_prime(), _period_3day(), v4_source=src, block_resolver=_StubResolver(),
+    )
+    assert list(df["cum_balance"]) == [Decimal("700000")] * 3
+
+
+def test_univ4_idle_raises_when_first_day_fails():
+    """No prior value to carry → propagate rather than seed a month of $0."""
+    from settle.compute.monthly_pnl import _aggregate_univ4_idle_usds
+    from settle.extract.rpc import RPCError
+
+    src = _FlakyV4Source([], ok_calls=0)
+    with pytest.raises(RPCError):
+        _aggregate_univ4_idle_usds(
+            _idle_prime(), _period_3day(),
+            v4_source=src, block_resolver=_StubResolver(),
+        )
+
+
+def test_univ4_sde_carries_forward_on_rpc_failure():
+    """SDE leg (USDT) carries forward on transient failure."""
+    from settle.compute.monthly_pnl import _univ4_sde_asset_value_timeseries
+
+    venue = _v4_venue(currency0=USDT, currency1=USDS)  # sde=USDT
+    src = _FlakyV4Source(
+        [V4PositionAmounts(1, USDT, USDS, amount0=250_000 * 10**6, amount1=0)],
+        ok_calls=1,
+    )
+    df = _univ4_sde_asset_value_timeseries(
+        _idle_prime(), venue, _period_3day(),
+        v4_source=src, block_resolver=_StubResolver(),
+    )
+    assert list(df["uncapped_value"]) == [Decimal("250000")] * 3

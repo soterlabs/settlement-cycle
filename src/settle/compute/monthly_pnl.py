@@ -412,6 +412,7 @@ def _univ4_position_legs(venue, positions) -> tuple[Decimal, Decimal]:
     be absent from the pool (returns $0 for that leg).
     """
     from ..domain.sky_tokens import KNOWN_PAR_STABLES_ETHEREUM
+    from ..normalize.prices import UnsupportedPricingError
 
     cfg = venue.curve_idle_usds
     idle_coin = cfg.coin.value if cfg is not None else None
@@ -425,7 +426,16 @@ def _univ4_position_legs(venue, positions) -> tuple[Decimal, Decimal]:
                 continue
             par = KNOWN_PAR_STABLES_ETHEREUM.get(coin.value)
             if par is None:
-                continue
+                # Mirror the Curve pool's ``_par_stable_usds`` and the V4 value
+                # path (``_uniswap_v4_value``): a non-zero position leg in a
+                # coin we can't price is a config/scope error, not a silently-
+                # droppable $0. Failing loud stops a mis-scoped pool from
+                # under-reporting the idle/SDE legs.
+                raise UnsupportedPricingError(
+                    f"univ4 position {p.token_id}: coin {coin.hex} is not in "
+                    "KNOWN_PAR_STABLES_ETHEREUM — add it to sky_tokens.py or "
+                    "correct the venue's pool scope."
+                )
             _sym, dec = par
             usd = Decimal(amount_raw) / Decimal(10 ** dec)
             if idle_coin is not None and coin.value == idle_coin:
@@ -467,10 +477,18 @@ def _aggregate_univ4_idle_usds(
             "univ4_idle_usds: %s — resolving %d days × %d token ids (first run: RPC, "
             "subsequent: cache)...", venue.id, n_days, len(venue.univ4_token_ids),
         )
+        # Per-venue last-known carry-forward, mirroring
+        # ``_aggregate_curve_idle_usds`` / ``_aggregate_lending_idle_usds``.
+        # ``None`` = no successful read yet, so an early transport failure
+        # re-raises rather than silently seeding a month of $0. Only transient
+        # transport errors are caught; config errors (e.g.
+        # ``UnsupportedPricingError`` from ``_univ4_position_legs``) propagate.
+        from ..extract.rpc import RPCError as _RPCError
+        import requests as _requests
+        venue_last_idle: Decimal | None = None
         current = period.start
         while current <= period.end:
             eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
-            idle = Decimal("0")
             try:
                 block = block_resolver.block_at_or_before(chain_str, eod)
                 positions = src.positions_in_pool(
@@ -479,11 +497,20 @@ def _aggregate_univ4_idle_usds(
                     pool_key=pool_key, block=block,
                 )
                 idle, _sde = _univ4_position_legs(venue, positions)
-            except Exception as exc:
+            except (_RPCError, _requests.HTTPError, _requests.ConnectionError,
+                    _requests.Timeout) as exc:
+                if venue_last_idle is None:
+                    # Nothing to carry forward — fail loud instead of booking a
+                    # cache-of-zeros for the rest of the period.
+                    raise
                 _log.warning(
-                    "univ4_idle_usds: RPC error for venue %s on %s; using $0 (error: %s).",
-                    venue.id, current, type(exc).__name__,
+                    "univ4_idle_usds: RPC error for venue %s on %s; carrying "
+                    "forward prior value $%s (error: %s).",
+                    venue.id, current, venue_last_idle, type(exc).__name__,
                 )
+                idle = venue_last_idle
+            else:
+                venue_last_idle = idle
             daily_by_date[current] = daily_by_date.get(current, Decimal("0")) + idle
             current = current + timedelta(days=1)
         _log.info("univ4_idle_usds: %s done.", venue.id)
@@ -525,11 +552,17 @@ def _univ4_sde_asset_value_timeseries(
         "univ4 SDE: %s — resolving %d days × %d token ids (first run: RPC, "
         "subsequent: cache)...", venue.id, n_days, len(venue.univ4_token_ids),
     )
+    # Per-venue carry-forward (see ``_aggregate_univ4_idle_usds``): carry the
+    # last good raw SDE value on transient RPC failure rather than booking $0,
+    # which would understate SDE asset value (→ mis-split SDE revenue /
+    # utilized). Only transport errors are caught; config errors propagate.
+    from ..extract.rpc import RPCError as _RPCError
+    import requests as _requests
+    venue_last_raw: Decimal | None = None
     rows = []
     current = period.start
     while current <= period.end:
         eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
-        raw_value = Decimal("0")
         try:
             block = block_resolver.block_at_or_before(chain_str, eod)
             positions = src.positions_in_pool(
@@ -538,11 +571,19 @@ def _univ4_sde_asset_value_timeseries(
                 pool_key=pool_key, block=block,
             )
             _idle, raw_value = _univ4_position_legs(venue, positions)
-        except Exception as exc:
+        except (_RPCError, _requests.HTTPError, _requests.ConnectionError,
+                _requests.Timeout) as exc:
+            if venue_last_raw is None:
+                # Nothing to carry forward — fail loud rather than seeding $0.
+                raise
             _log.warning(
-                "univ4 SDE: RPC error for venue %s on %s; using $0 (error: %s).",
-                venue.id, current, type(exc).__name__,
+                "univ4 SDE: RPC error for venue %s on %s; carrying forward "
+                "prior value $%s (error: %s).",
+                venue.id, current, venue_last_raw, type(exc).__name__,
             )
+            raw_value = venue_last_raw
+        else:
+            venue_last_raw = raw_value
         capped_value = min(cap_usd, raw_value) if cap_usd is not None else raw_value
         rows.append({
             "block_date": current,
