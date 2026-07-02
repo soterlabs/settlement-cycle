@@ -348,8 +348,19 @@ def _uniswap_v4_value(
     Each position contributes ``amount0 × p(token0) + amount1 × p(token1)`` at
     par ($1) for the par-stable underlyings in scope. Uncollected LP fees are
     not added (negligible for tight stable ranges — see the source docstring).
-    Mirrors ``_uniswap_v3_value``: empty/uninitialized → $0, RPC failure
-    degrades to $0 with a WARNING rather than aborting the run.
+
+    The two failure modes are handled DIFFERENTLY on purpose:
+
+    * **Not live yet** — the pool is uninitialized at ``block`` or the token
+      ids aren't minted / owned → ``positions_in_pool`` returns an empty list
+      → ``$0``. That is the correct economic value for a not-yet-funded venue.
+    * **Read failure** — the pool read raises (after ``rpc.py``'s retry /
+      backoff) → we RE-RAISE and block the run. Silently booking ``$0`` here
+      would corrupt the SoM/EoM MtM ``(value_eom − value_som) − inflow`` for a
+      possibly-funded position (e.g. make it look fully drained). Genuine
+      uncertainty must fail loud, not degrade. (This is why it no longer
+      mirrors ``_uniswap_v3_value``, which still degrades for the Monad
+      free-tier display-only venue.)
     """
     registry = PAR_STABLES_BY_CHAIN.get(venue.chain)
     if registry is None:
@@ -372,14 +383,17 @@ def _uniswap_v4_value(
             block=block,
         )
     except (_RPCError, _requests.HTTPError, _requests.ConnectionError,
-            _requests.Timeout) as _e:
+            _requests.Timeout):
         import logging as _logging
-        _logging.getLogger(__name__).warning(
-            "_uniswap_v4_value: V4 pool read failed for %s on %s at block %d "
-            "(%s) — degrading to value=$0.",
-            venue.id, venue.chain.value, block, _e,
+        _logging.getLogger(__name__).error(
+            "_uniswap_v4_value: V4 pool read for %s on %s at block %d failed "
+            "after retries — refusing to book $0 for a possibly-funded "
+            "position; failing the run. (An uninitialized pool / unminted "
+            "token ids return an empty list and are booked as a legitimate "
+            "$0 — those do NOT reach here.)",
+            venue.id, venue.chain.value, block,
         )
-        return Decimal("0")
+        raise
     if not positions:
         return Decimal("0")
     total = Decimal("0")

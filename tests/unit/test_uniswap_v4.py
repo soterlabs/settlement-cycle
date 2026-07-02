@@ -382,6 +382,20 @@ def test_v4_value_aggregates_positions():
     assert _uniswap_v4_value(_prime(), _v4_venue(), block=1, source=src) == Decimal("3000000")
 
 
+def test_v4_value_raises_on_rpc_failure():
+    """A pool read that FAILS (after retries) must block the run, not silently
+    book $0 — the latter would corrupt the SoM/EoM MtM for a funded position.
+    (Not-deployed venues return an empty list → $0 and never reach here.)"""
+    from settle.extract.rpc import RPCError
+
+    class _FailingSource:
+        def positions_in_pool(self, chain, owner, token_ids, pool_key, block):
+            raise RPCError("simulated sustained RPC failure")
+
+    with pytest.raises(RPCError):
+        _uniswap_v4_value(_prime(), _v4_venue(), block=1, source=_FailingSource())
+
+
 def test_v4_value_raises_on_non_par_stable():
     unknown = Address.from_str("0x" + "11" * 20)
     src = _MockV4Source([
