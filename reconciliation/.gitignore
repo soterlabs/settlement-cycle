@@ -1,0 +1,13 @@
+# Python build artifacts
+__pycache__/
+*.py[cod]
+
+# Generated cache (rebuilt by extract_soter.py from live sources; not source of truth)
+soter_data.json
+
+# OS / editor cruft
+.DS_Store
+*.swp
+
+# Note: reconciliation_post.md (the deliverable) and forum_data.json (hand-maintained
+# as-paid figures) are intentionally NOT ignored — keep them in git.

@@ -1,0 +1,24 @@
+{
+  "_comment": "Data sources for the Soter side. URLs are primary; if a fetch fails, extract_soter.py falls back to the computed local path (sibling repos under nebula/). The settlements location is overridable via env (SETTLEMENTS_BASE_URL or SETTLEMENTS_DIR); the DR workbook is URL-driven here only.",
+  "dr_xlsx": {
+    "url": "https://raw.githubusercontent.com/soterlabs/settle-dr-dune/main/dune-results/dr_comparison_latest.xlsx",
+    "local_fallback_relpath": "settle-dr-dune/dune-results/dr_comparison_latest.xlsx",
+    "sheets": {
+      "summary": "Summary",
+      "soter": "Soter by Ref Code",
+      "payouts": "Payouts",
+      "amatsu": "Amatsu",
+      "ba": "BA"
+    },
+    "grouping": "summary_group_column",
+    "dr_baseline_sheet": "payouts"
+  },
+  "settlements": {
+    "base_url": "https://raw.githubusercontent.com/soterlabs/settlement-reports/main/reports",
+    "local_fallback_relpath": "settle/msc/settlement-cycle/settlements"
+  },
+  "prime_dir": {
+    "Spark": "spark", "Grove": "grove", "Obex": "obex",
+    "Skybase": "skybase", "Keel": "keel"
+  }
+}
