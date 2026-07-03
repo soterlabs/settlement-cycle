@@ -397,6 +397,43 @@ def test_v4_value_raises_on_rpc_failure():
         _uniswap_v4_value(_prime(), _v4_venue(), block=1, source=_FailingSource())
 
 
+def test_v4_inflow_timeseries_raises_on_rpc_failure():
+    """A failed flows read must block the run, not degrade to an empty inflow
+    frame — a dropped mid-period mint would be booked as revenue in
+    ``revenue = Δvalue − Σ inflow``. (A range with genuinely no events still
+    returns the empty frame.)"""
+    from settle.extract.rpc import RPCError
+    from settle.normalize.positions import _uniswap_v4_inflow_timeseries
+
+    class _FailingFlowsSource:
+        def liquidity_flows_in_pool(self, chain, token_ids, pool_key,
+                                    from_block, to_block):
+            raise RPCError("simulated sustained RPC failure")
+
+    with pytest.raises(RPCError):
+        _uniswap_v4_inflow_timeseries(
+            _prime(), _v4_venue(), from_block=1, to_block=2000,
+            source=_FailingFlowsSource(), block_to_date=lambda b: None,
+        )
+
+
+def test_v4_inflow_timeseries_empty_on_no_events():
+    """No events in range is NOT a failure — it's a legitimate $0 inflow."""
+    from settle.normalize.positions import _uniswap_v4_inflow_timeseries
+
+    class _NoFlowsSource:
+        def liquidity_flows_in_pool(self, chain, token_ids, pool_key,
+                                    from_block, to_block):
+            return []
+
+    df = _uniswap_v4_inflow_timeseries(
+        _prime(), _v4_venue(), from_block=1, to_block=2000,
+        source=_NoFlowsSource(), block_to_date=lambda b: None,
+    )
+    assert len(df) == 0
+    assert list(df.columns) == ["block_date", "daily_inflow", "cum_inflow"]
+
+
 def test_v4_value_raises_on_non_par_stable():
     unknown = Address.from_str("0x" + "11" * 20)
     src = _MockV4Source([

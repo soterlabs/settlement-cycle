@@ -425,8 +425,15 @@ def _uniswap_v4_inflow_timeseries(
     ``ModifyLiquidity`` events (liquidityDelta priced at the event block).
 
     Returns a DataFrame ``[block_date, daily_inflow, cum_inflow]`` matching the
-    Dune-backed shape so Compute treats all venues uniformly. Degrades to an
-    empty frame on RPC failure (same contract as the V3 inflow path).
+    Dune-backed shape so Compute treats all venues uniformly.
+
+    A failed event read RE-RAISES (after ``rpc.py``'s retry/backoff) rather
+    than degrading to an empty frame: the inflow feeds
+    ``revenue = Δvalue − Σ inflow``, so a silently dropped mid-period mint
+    would be booked as revenue — the same corruption ``_uniswap_v4_value``
+    refuses for the value side. A range with genuinely no events returns the
+    empty frame ($0 inflow), which is the correct economic answer. (The V3
+    inflow path still degrades for the Monad free-tier display-only venue.)
     """
     import pandas as pd
 
@@ -445,14 +452,16 @@ def _uniswap_v4_inflow_timeseries(
             to_block=to_block,
         )
     except (_RPCError, _requests.HTTPError, _requests.ConnectionError,
-            _requests.Timeout) as _e:
+            _requests.Timeout):
         import logging as _logging
-        _logging.getLogger(__name__).warning(
-            "_uniswap_v4_inflow_timeseries: flows read failed for %s on %s "
-            "[from %d to %d] (%s) — degrading to empty inflow.",
-            venue.id, venue.chain.value, from_block, to_block, _e,
+        _logging.getLogger(__name__).error(
+            "_uniswap_v4_inflow_timeseries: flows read for %s on %s "
+            "[from %d to %d] failed after retries — refusing to book $0 "
+            "inflow (a dropped mid-period mint would be counted as revenue); "
+            "failing the run.",
+            venue.id, venue.chain.value, from_block, to_block,
         )
-        return empty
+        raise
     if not flows:
         return empty
 
