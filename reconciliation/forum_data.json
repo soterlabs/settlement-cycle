@@ -1,0 +1,80 @@
+{
+  "_comment": "As-PAID figures taken from the MSC forum settlement summaries. These are NOT auto-derivable; refresh by fetching each URL below and updating mint / subproxy. mint=null means the prime had no mint-debt allocator that month; a missing prime/month means it was not settled that month. GAR and CP are NOT per-forum-entry fields: GAR is computed from the top-level 'gar' config block (rate x base + backlog true-up), CP from the 'cp' block.",
+  "window_months": ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05"],
+  "_supply_side_comment": "First month the settlement minted (and paid the prime) its SUPPLY-SIDE revenue share (SV). Before this, only the demand side was settled, so mint == sky_revenue. From this month, mint == sky_revenue + SV, where SV = profit - agent_rate - DR (prime_agent_profit now INCLUDES DR, so DR is subtracted out — both AR and DR are demand-side, not minted). Used by §3.",
+  "supply_side_paid_from": "2026-05",
+  "msc_label": {
+    "2026-01": "MSC#5", "2026-02": "MSC#6", "2026-03": "MSC#7",
+    "2026-04": "MSC#8", "2026-05": "MSC#9"
+  },
+  "urls": {
+    "2026-01": "https://forum.skyeco.com/t/msc-5-settlement-summary-january-2026-spark-and-grove/27709/4",
+    "2026-02": "https://forum.skyeco.com/t/msc-6-settlement-summary-february-2026/27778/3",
+    "2026-03": "https://forum.skyeco.com/t/msc-7-settlement-summary-march-2026/27844/2",
+    "2026-04": "https://forum.skyeco.com/t/msc-8-settlement-summary-april-2026/27888/4",
+    "2026-05": "https://forum.skyeco.com/t/msc-9-settlement-summary-may-2026/27962/3"
+  },
+  "raw_endpoint_hint": "Discourse raw text is at https://forum.skyeco.com/raw/<topic_id>/<post_number> (e.g. /raw/27962/3). Prefer the raw endpoint to verify exact figures.",
+  "forum": {
+    "Spark": {
+      "2026-01": {"mint": 8079210, "subproxy": 1387824},
+      "2026-02": {"mint": 7746811, "subproxy": 1265132},
+      "2026-03": {"mint": 7662339, "subproxy": 1725726},
+      "2026-04": {"mint": 9179021, "subproxy": 1512762},
+      "2026-05": {"mint": 13427874, "subproxy": 4204857}
+    },
+    "Grove": {
+      "2026-01": {"mint": 6205320, "subproxy": 6090},
+      "2026-02": {"mint": 6346829, "subproxy": 5630},
+      "2026-03": {"mint": 6290684, "subproxy": 138412},
+      "2026-04": {"mint": 9385986, "subproxy": 241690},
+      "2026-05": {"mint": 8877823, "subproxy": 271843}
+    },
+    "Obex": {
+      "2026-01": {"mint": 2095775, "subproxy": 71342},
+      "2026-02": {"mint": 1948422, "subproxy": 65719},
+      "2026-03": {"mint": 2075648, "subproxy": 69793},
+      "2026-04": {"mint": 1969499, "subproxy": 64862},
+      "2026-05": {"mint": 2461845, "subproxy": 526204}
+    },
+    "Skybase": {
+      "2026-02": {"mint": null, "subproxy": 203134},
+      "2026-03": {"mint": null, "subproxy": 225299},
+      "2026-04": {"mint": null, "subproxy": 201469},
+      "2026-05": {"mint": null, "subproxy": 1806616}
+    },
+    "Keel": {
+      "2026-03": {"mint": null, "subproxy": 30241},
+      "2026-04": {"mint": null, "subproxy": 52915},
+      "2026-05": {"mint": null, "subproxy": 32279}
+    }
+  },
+  "_demand_side_comment": "Per-prime 'Demand Side Total' (Distribution Rewards + SSR/agent-rate on subproxy treasury) from each MSC thread's detailed OP (post #1). Pre-May (MSC#5-#8) the Demand Side Total equals the SubProxy, since only the demand side was paid out then; Apr values are the SubProxy (OP detail not itemized that month). From MSC#9 (May) the SubProxy adds supply-side revenue (+ GAR for Skybase), so DST < SubProxy. Skybase DST EXCLUDES GAR (GAR is a separate SubProxy component).",
+  "_gar_comment": "GAR (Governance Accessibility Rewards) = rate × base, monthly. Only Skybase earns it. GAR began being SETTLED in settle_from (2026-05): from that month, the month's own GAR is bundled into the Demand Side Total / SubProxy, AND a one-time true-up for the accrued backlog over trueup_period (2025-05..2026-04) was paid in trueup_paid_month (2026-05). base is the monthly metric GAR is 1% of (verified: 1% × Σ base over trueup_period = 1,383,235 = the stated true-up).",
+  "gar": {
+    "prime": "Skybase",
+    "rate": 0.01,
+    "settle_from": "2026-05",
+    "trueup_period": ["2025-05", "2026-04"],
+    "trueup_paid_month": "2026-05",
+    "base": {
+      "2025-05": 4449448.681, "2025-06": 6843708.092, "2025-07": 17313711.3,
+      "2025-08": 19367774.48, "2025-09": -5342542.438, "2025-10": 17808444.2,
+      "2025-11": -1279430.294, "2025-12": 7354690.914, "2026-01": 9420165.362,
+      "2026-02": 32341319.5, "2026-03": 18969175.22, "2026-04": 11077073.55,
+      "2026-05": 13998960.66
+    }
+  },
+  "_cp_comment": "Chronicle Points (CP) = 20% of base rate (SSR+0.30%) on the Chronicle Farm USDS balance (Dune query 7696411). Only Grove. Paid Surplus Buffer → SubProxy (part of demand side, DV). MSC#8 (2026-04 settlement) paid the backlog Jul-2025→Mar-2026 (144412.94+19323.86+19170.72=182907.52); MSC#9 (2026-05) paid Apr+May (17001.13+18585.45=35586.58). 'subproxy' = CP included in that settlement month's SubProxy. Reconciles to 0 (we add the same amount we paid).",
+  "cp": {
+    "prime": "Grove",
+    "subproxy": {"2026-04": 182907.52, "2026-05": 35586.58}
+  },
+  "demand_side_total": {
+    "Spark":   {"2026-01": 1387824, "2026-02": 1265132, "2026-03": 1725726, "2026-04": 1512762, "2026-05": 1657338},
+    "Grove":   {"2026-01": 6090, "2026-02": 5630, "2026-03": 138412, "2026-04": 241690, "2026-05": 99029},
+    "Obex":    {"2026-01": 71342, "2026-02": 65719, "2026-03": 69793, "2026-04": 64862, "2026-05": 69563},
+    "Skybase": {"2026-02": 203134, "2026-03": 225299, "2026-04": 201469, "2026-05": 423381},
+    "Keel":    {"2026-03": 30241, "2026-04": 52915, "2026-05": 32279}
+  }
+}
