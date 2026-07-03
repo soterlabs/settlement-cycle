@@ -75,7 +75,7 @@ _SETTLEMENT_SOURCES = {
         "Cat A stubbed; Ethereum `directed_flow` PSM returns empty — mainnet "
         "LITE-PSM is non-custodial for USDS, see PRD §17.11)"
     ),
-    "ssr":              "DuneSSRSource (live on-chain read at the period pin block)",
+    "ssr":              "DuneSSRSource (live Dune query of on-chain SSR events at the period pin block)",
     "position_balance": "RPCPositionBalanceSource",
     "convert_to_assets": "RPCConvertToAssetsSource",
     "psm3":             "RPCPsm3Source (drpc — cached from sky_revenue run)",
@@ -130,6 +130,16 @@ PIN_BLOCKS_BY_MONTH = {
                 Chain.ARBITRUM: 468748167, Chain.OPTIMISM: 152336611,
                 Chain.UNICHAIN: 49523640, Chain.AVALANCHE_C: 86865826},
     },
+    # June added 2026-07-03: EoM = June 30 EoD blocks from the refreshed
+    # daily_eod_blocks fixtures (extend_spark_fixtures.py, Dune 7474490).
+    (2026, 6): {
+        "som": {Chain.ETHEREUM: 25218797, Chain.BASE: 46741326,
+                Chain.ARBITRUM: 468748167, Chain.OPTIMISM: 152336611,
+                Chain.UNICHAIN: 49523640, Chain.AVALANCHE_C: 86865826},
+        "eom": {Chain.ETHEREUM: 25433938, Chain.BASE: 48037326,
+                Chain.ARBITRUM: 479089705, Chain.OPTIMISM: 153632611,
+                Chain.UNICHAIN: 52115640, Chain.AVALANCHE_C: 89166730},
+    },
 }
 
 # (year, month, fixture_dir). The ``spark_2026_q1`` fixture set was
@@ -145,6 +155,7 @@ _MONTH_PLAN = [
     (2026, 3, "spark_2026_q1"),
     (2026, 4, "spark_2026_q1"),
     (2026, 5, "spark_2026_q1"),
+    (2026, 6, "spark_2026_q1"),
 ]
 
 
@@ -157,7 +168,7 @@ def main() -> int:
         refresh_dr_only("spark")
         return 0
 
-    print("Spark 2026 multi-month settlement (Jan → May)")
+    print("Spark 2026 multi-month settlement (Jan → Jun)")
     print("=" * 110)
     print(f"{'Month':<10} {'prime_agent_total':>20} {'sky_revenue':>16} "
           f"{'sky_direct_shortfall':>22} {'monthly_pnl':>16}")
