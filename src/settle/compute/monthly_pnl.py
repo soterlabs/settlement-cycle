@@ -40,6 +40,7 @@ from ..normalize.protocols import (
     ISavingsV2DeployedSource,
     ISSRSource,
     IV3PositionSource,
+    IV4PositionSource,
 )
 from ..normalize.registry import (
     get_balance_source,
@@ -67,6 +68,7 @@ class Sources:
     psm3: IPsm3Source | None = None
     block_resolver: IBlockResolver | None = None
     v3_position: IV3PositionSource | None = None
+    v4_position: IV4PositionSource | None = None
     curve_pool: ICurvePoolSource | None = None
     savings_v2_deployed: ISavingsV2DeployedSource | None = None
     # Optional NAV-oracle resolver: ``Callable[[str], INavOracleSource]`` that
@@ -382,6 +384,214 @@ def _curve_sde_asset_value_timeseries(
             "uncapped_value": raw_value,
         })
         current = current + timedelta(days=1)
+    return pd.DataFrame(rows)
+
+
+def _univ4_default_source(venue):
+    """Build a default RPC v4 position source honoring the venue's
+    ``nft_position_manager`` override (the v4 PositionManager)."""
+    from ..normalize.sources.uniswap_v4 import RPCUniswapV4PositionSource
+    overrides = (
+        {venue.chain: venue.nft_position_manager}
+        if venue.nft_position_manager is not None
+        else None
+    )
+    return RPCUniswapV4PositionSource(position_manager_per_chain=overrides)
+
+
+def _univ4_pool_key_for(venue):
+    from ..normalize.positions import _venue_v4_pool_key
+    return _venue_v4_pool_key(venue)
+
+
+def _univ4_position_legs(venue, positions) -> tuple[Decimal, Decimal]:
+    """Sum a v4 venue's positions into ``(idle_usds_value, sde_coin_value)`` USD.
+
+    ``curve_idle_usds.coin`` selects the idle (USDS) leg; ``curve_idle_usds
+    .sde_coin`` selects the SDE leg. Both are par-stable ($1/unit). Either may
+    be absent from the pool (returns $0 for that leg).
+    """
+    from ..domain.sky_tokens import KNOWN_PAR_STABLES_ETHEREUM
+    from ..normalize.prices import UnsupportedPricingError
+
+    cfg = venue.curve_idle_usds
+    idle_coin = cfg.coin.value if cfg is not None else None
+    sde_coin = cfg.sde_coin.value if (cfg is not None and cfg.sde_coin is not None) else None
+
+    idle_total = Decimal("0")
+    sde_total = Decimal("0")
+    for p in positions:
+        for coin, amount_raw in ((p.currency0, p.amount0), (p.currency1, p.amount1)):
+            if amount_raw == 0:
+                continue
+            par = KNOWN_PAR_STABLES_ETHEREUM.get(coin.value)
+            if par is None:
+                # Mirror the Curve pool's ``_par_stable_usds`` and the V4 value
+                # path (``_uniswap_v4_value``): a non-zero position leg in a
+                # coin we can't price is a config/scope error, not a silently-
+                # droppable $0. Failing loud stops a mis-scoped pool from
+                # under-reporting the idle/SDE legs.
+                raise UnsupportedPricingError(
+                    f"univ4 position {p.token_id}: coin {coin.hex} is not in "
+                    "KNOWN_PAR_STABLES_ETHEREUM — add it to sky_tokens.py or "
+                    "correct the venue's pool scope."
+                )
+            _sym, dec = par
+            usd = Decimal(amount_raw) / Decimal(10 ** dec)
+            if idle_coin is not None and coin.value == idle_coin:
+                idle_total += usd
+            elif sde_coin is not None and coin.value == sde_coin:
+                sde_total += usd
+    return idle_total, sde_total
+
+
+def _aggregate_univ4_idle_usds(
+    prime: Prime,
+    period: Period,
+    *,
+    v4_source,
+    block_resolver,
+) -> "pd.DataFrame":
+    """Daily USDS-leg value held inside Uniswap V4 LP positions, summed across
+    all ``lp_kind=uniswap_v4`` venues — the v4 analog of
+    ``_aggregate_curve_idle_usds`` (par-stable USDS leg only; no sUSDS spread
+    in scope). Returns ``[block_date, daily_net, cum_balance]`` where
+    ``cum_balance`` is the day's USDS snapshot (PSM convention)."""
+    from datetime import time
+
+    venues = [
+        v for v in prime.venues
+        if v.lp_kind == "uniswap_v4" and v.curve_idle_usds is not None and not v.skip
+    ]
+    if not venues:
+        return _empty_psm_df()
+
+    daily_by_date: dict = {}
+    for venue in venues:
+        src = v4_source if v4_source is not None else _univ4_default_source(venue)
+        pool_key = _univ4_pool_key_for(venue)
+        holder = (venue.holder_override or prime.alm[venue.chain]).value
+        chain_str = venue.chain.value
+        n_days = (period.end - period.start).days + 1
+        _log.info(
+            "univ4_idle_usds: %s — resolving %d days × %d token ids (first run: RPC, "
+            "subsequent: cache)...", venue.id, n_days, len(venue.univ4_token_ids),
+        )
+        # Per-venue last-known carry-forward, mirroring
+        # ``_aggregate_curve_idle_usds`` / ``_aggregate_lending_idle_usds``.
+        # ``None`` = no successful read yet, so an early transport failure
+        # re-raises rather than silently seeding a month of $0. Only transient
+        # transport errors are caught; config errors (e.g.
+        # ``UnsupportedPricingError`` from ``_univ4_position_legs``) propagate.
+        from ..extract.rpc import RPCError as _RPCError
+        import requests as _requests
+        venue_last_idle: Decimal | None = None
+        current = period.start
+        while current <= period.end:
+            eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
+            try:
+                block = block_resolver.block_at_or_before(chain_str, eod)
+                positions = src.positions_in_pool(
+                    chain=chain_str, owner=holder,
+                    token_ids=list(venue.univ4_token_ids),
+                    pool_key=pool_key, block=block,
+                )
+                idle, _sde = _univ4_position_legs(venue, positions)
+            except (_RPCError, _requests.HTTPError, _requests.ConnectionError,
+                    _requests.Timeout) as exc:
+                if venue_last_idle is None:
+                    # Nothing to carry forward — fail loud instead of booking a
+                    # cache-of-zeros for the rest of the period.
+                    raise
+                _log.warning(
+                    "univ4_idle_usds: RPC error for venue %s on %s; carrying "
+                    "forward prior value $%s (error: %s).",
+                    venue.id, current, venue_last_idle, type(exc).__name__,
+                )
+                idle = venue_last_idle
+            else:
+                venue_last_idle = idle
+            daily_by_date[current] = daily_by_date.get(current, Decimal("0")) + idle
+            current = current + timedelta(days=1)
+        _log.info("univ4_idle_usds: %s done.", venue.id)
+
+    rows = []
+    prev = Decimal("0")
+    for d in sorted(daily_by_date):
+        snap = daily_by_date[d]
+        rows.append({
+            "block_date": d, "daily_net": snap - prev, "cum_balance": snap,
+            "cum_usdc": Decimal("0"), "cum_usds_leg": snap, "cum_susds": Decimal("0"),
+        })
+        prev = snap
+    return pd.DataFrame(rows)
+
+
+def _univ4_sde_asset_value_timeseries(
+    prime: Prime,
+    venue,
+    period: Period,
+    *,
+    v4_source,
+    block_resolver,
+    cap_usd: Decimal | None = None,
+) -> "pd.DataFrame":
+    """Daily SDE asset value (USDT/PYUSD leg) for a v4 LP venue — the v4 analog
+    of ``_curve_sde_asset_value_timeseries``. Emits ``[block_date, cum_value,
+    uncapped_value]`` so it feeds both the utilized exclusion (via
+    ``sde_av_total``) and the per-venue SDE revenue split."""
+    from datetime import time
+
+    src = v4_source if v4_source is not None else _univ4_default_source(venue)
+    pool_key = _univ4_pool_key_for(venue)
+    holder = (venue.holder_override or prime.alm[venue.chain]).value
+    chain_str = venue.chain.value
+
+    n_days = (period.end - period.start).days + 1
+    _log.info(
+        "univ4 SDE: %s — resolving %d days × %d token ids (first run: RPC, "
+        "subsequent: cache)...", venue.id, n_days, len(venue.univ4_token_ids),
+    )
+    # Per-venue carry-forward (see ``_aggregate_univ4_idle_usds``): carry the
+    # last good raw SDE value on transient RPC failure rather than booking $0,
+    # which would understate SDE asset value (→ mis-split SDE revenue /
+    # utilized). Only transport errors are caught; config errors propagate.
+    from ..extract.rpc import RPCError as _RPCError
+    import requests as _requests
+    venue_last_raw: Decimal | None = None
+    rows = []
+    current = period.start
+    while current <= period.end:
+        eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
+        try:
+            block = block_resolver.block_at_or_before(chain_str, eod)
+            positions = src.positions_in_pool(
+                chain=chain_str, owner=holder,
+                token_ids=list(venue.univ4_token_ids),
+                pool_key=pool_key, block=block,
+            )
+            _idle, raw_value = _univ4_position_legs(venue, positions)
+        except (_RPCError, _requests.HTTPError, _requests.ConnectionError,
+                _requests.Timeout) as exc:
+            if venue_last_raw is None:
+                # Nothing to carry forward — fail loud rather than seeding $0.
+                raise
+            _log.warning(
+                "univ4 SDE: RPC error for venue %s on %s; carrying forward "
+                "prior value $%s (error: %s).",
+                venue.id, current, venue_last_raw, type(exc).__name__,
+            )
+            raw_value = venue_last_raw
+        else:
+            venue_last_raw = raw_value
+        capped_value = min(cap_usd, raw_value) if cap_usd is not None else raw_value
+        rows.append({
+            "block_date": current,
+            "cum_value": capped_value,
+            "uncapped_value": raw_value,
+        })
+        current = current + timedelta(days=1)
+    _log.info("univ4 SDE: %s done.", venue.id)
     return pd.DataFrame(rows)
 
 
@@ -1328,7 +1538,15 @@ def _aggregate_curve_idle_usds(
     from .sky_revenue import BASE_RATE_OVER_SSR
     from ._helpers import daily_compounding_factor, ssr_at_or_before
 
-    venues_with_config = [v for v in prime.venues if v.curve_idle_usds is not None]
+    # Exclude uniswap_v4 venues — they reuse the curve_idle_usds schema but
+    # their daily idle/SDE values are computed by _aggregate_univ4_idle_usds
+    # and _univ4_sde_asset_value_timeseries, which read V4 position data rather
+    # than Curve pool reserves. Including them here would attempt to call
+    # pool_src.read_pool() on the v4 PositionManager address (not a Curve pool).
+    venues_with_config = [
+        v for v in prime.venues
+        if v.curve_idle_usds is not None and v.lp_kind != "uniswap_v4"
+    ]
     if not venues_with_config:
         return _empty_psm_df(), Decimal("0"), {}
 
@@ -2102,6 +2320,27 @@ def compute_monthly_pnl(
             ssr_history=ssr,
         )
     )
+    # Uniswap V4 idle USDS (USDS leg of v4 LP positions) — Step 2 idle AMM USDS,
+    # same utilized-deduction role as the Curve idle path. Merged into
+    # ``curve_idle_usds`` by summing the daily ``cum_balance`` snapshots so
+    # ``compute_sky_revenue`` deducts the combined AMM idle USDS.
+    _univ4_idle = _aggregate_univ4_idle_usds(
+        prime, period,
+        v4_source=sources.v4_position,
+        block_resolver=resolver,
+    )
+    if not _univ4_idle.empty:
+        if curve_idle_usds is None or curve_idle_usds.empty:
+            curve_idle_usds = _univ4_idle
+        else:
+            curve_idle_usds = (
+                pd.concat([
+                    curve_idle_usds[["block_date", "daily_net", "cum_balance"]],
+                    _univ4_idle[["block_date", "daily_net", "cum_balance"]],
+                ])
+                .groupby("block_date", as_index=False)[["daily_net", "cum_balance"]].sum()
+                .sort_values("block_date").reset_index(drop=True)
+            )
     # Prime's share of unborrowed underlying in configured lending pools — Step 2
     # idle lending pool USDS. Computed daily via ``balanceOf`` + ``totalSupply``.
     # Returns (empty frame, {}) if no venue has ``lending_idle_usds=True``.
@@ -2109,9 +2348,7 @@ def compute_monthly_pnl(
         prime, period,
         block_resolver=resolver,
     )
-    _log.info("  2h: Centrifuge vault in-flight request check...")
     _check_centrifuge_in_flight(prime, pin_blocks_som, pin_blocks_eom)
-    _log.info("  step 2 complete.")
 
     # SDE table — config-driven Sky Direct exposures (replaces the legacy
     # ``Venue.sky_direct: bool`` flag). Empty table = no venues are SDE.
@@ -2168,6 +2405,7 @@ def compute_monthly_pnl(
                     flow_source=sources.balance,
                     erc4626_source=sources.convert_to_assets,
                     v3_position_source=sources.v3_position,
+                    v4_position_source=sources.v4_position,
                     curve_pool_source=sources.curve_pool,
                     block_resolver=resolver,
                     nav_oracle_resolver=sources.nav_oracle_resolver,
@@ -2178,6 +2416,7 @@ def compute_monthly_pnl(
                     flow_source=sources.balance,
                     erc4626_source=sources.convert_to_assets,
                     v3_position_source=sources.v3_position,
+                    v4_position_source=sources.v4_position,
                     curve_pool_source=sources.curve_pool,
                     block_resolver=resolver,
                     nav_oracle_resolver=sources.nav_oracle_resolver,
@@ -2384,6 +2623,7 @@ def compute_monthly_pnl(
                 flow_source=sources.balance,
                 erc4626_source=sources.convert_to_assets,
                 v3_position_source=sources.v3_position,
+                v4_position_source=sources.v4_position,
                 curve_pool_source=sources.curve_pool,
                 block_resolver=resolver,
                 nav_oracle_resolver=sources.nav_oracle_resolver,
@@ -2394,6 +2634,7 @@ def compute_monthly_pnl(
                 flow_source=sources.balance,
                 erc4626_source=sources.convert_to_assets,
                 v3_position_source=sources.v3_position,
+                v4_position_source=sources.v4_position,
                 curve_pool_source=sources.curve_pool,
                 block_resolver=resolver,
                 nav_oracle_resolver=sources.nav_oracle_resolver,
@@ -2478,6 +2719,27 @@ def compute_monthly_pnl(
             inflow_ts = _uniswap_v3_inflow_timeseries(
                 prime, venue, som_block, eom_block,
                 source=v3_src,
+                block_to_date=lambda b, _c=venue.chain.value: resolver.block_to_date(_c, b),
+            )
+        elif venue.lp_kind == "uniswap_v4":
+            # V4 capital inflow from ``ModifyLiquidity`` events (liquidityDelta
+            # priced at the event block). Mirrors the V3 path so revenue =
+            # Δvalue − Σ inflow holds even when positions are minted/burned
+            # mid-period (e.g. the 324004/324005 PYUSD/USDS positions minted
+            # 2026-06). See ``_uniswap_v4_inflow_timeseries``.
+            from ..normalize.positions import _uniswap_v4_inflow_timeseries
+            v4_src = sources.v4_position
+            if v4_src is None:
+                from ..normalize.sources.uniswap_v4 import RPCUniswapV4PositionSource
+                pm_overrides = (
+                    {venue.chain: venue.nft_position_manager}
+                    if venue.nft_position_manager is not None
+                    else None
+                )
+                v4_src = RPCUniswapV4PositionSource(position_manager_per_chain=pm_overrides)
+            inflow_ts = _uniswap_v4_inflow_timeseries(
+                prime, venue, som_block, eom_block,
+                source=v4_src,
                 block_to_date=lambda b, _c=venue.chain.value: resolver.block_to_date(_c, b),
             )
         elif venue.lp_kind == "curve_stableswap":
@@ -3261,7 +3523,18 @@ def compute_monthly_pnl(
         _sde_ts: pd.DataFrame | None = None
         if sde_entry is not None:
             ciuc = venue.curve_idle_usds
-            if ciuc is not None and ciuc.sde_coin is not None:
+            if venue.lp_kind == "uniswap_v4" and ciuc is not None and ciuc.sde_coin is not None:
+                # Uniswap V4 LP pool SDE: the exposure is a par-stable coin
+                # (USDT or PYUSD) leg of the v4 position. Decompose the
+                # position's amounts rather than reading pool reserves.
+                _sde_ts = _univ4_sde_asset_value_timeseries(
+                    prime, venue, period,
+                    v4_source=sources.v4_position,
+                    block_resolver=resolver,
+                    cap_usd=sde_entry.cap_usd,
+                )
+                sde_asset_value_per_venue.append((venue.id, _sde_ts))
+            elif ciuc is not None and ciuc.sde_coin is not None:
                 # Curve LP pool SDE: the exposure is a par-stable coin in the pool
                 # (e.g. USDT in sUSDS/USDT). Use pool-state coin balance rather than
                 # an RWA NAV oracle. See CurveIdleUsdsConfig.sde_coin for details.

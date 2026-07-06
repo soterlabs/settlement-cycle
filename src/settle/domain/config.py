@@ -21,6 +21,7 @@ from .primes import (
     PsmConfig,
     PsmKind,
     Token,
+    UniV4PoolKey,
     Venue,
 )
 from .subsidy import SubsidyConfig
@@ -212,6 +213,18 @@ def load_prime(config_path: Path) -> Prime:
                 sde_coin=Address.from_str(ciu["sde_coin"]) if ciu.get("sde_coin") else None,
             )
 
+        univ4_pool_key = None
+        if "univ4_pool_key" in v:
+            pk = v["univ4_pool_key"]
+            univ4_pool_key = UniV4PoolKey(
+                currency0=Address.from_str(pk["currency0"]),
+                currency1=Address.from_str(pk["currency1"]),
+                fee=int(pk["fee"]),
+                tick_spacing=int(pk["tick_spacing"]),
+                hooks=Address.from_str(pk.get("hooks", "0x0000000000000000000000000000000000000000")),
+            )
+        univ4_token_ids = tuple(int(t) for t in v.get("univ4_token_ids", []))
+
         venues.append(
             Venue(
                 id=v["id"],
@@ -227,6 +240,8 @@ def load_prime(config_path: Path) -> Prime:
                     if v.get("nft_position_manager")
                     else None
                 ),
+                univ4_pool_key=univ4_pool_key,
+                univ4_token_ids=univ4_token_ids,
                 cof_excluded=bool(v.get("cof_excluded", False)),
                 hide_per_venue_pnl=bool(v.get("hide_per_venue_pnl", False)),
                 min_transfer_amount_usd=_parse_min_transfer(v),

@@ -224,6 +224,41 @@ class IV3PositionSource(Protocol):
         ...
 
 
+class IV4PositionSource(Protocol):
+    """Read Uniswap V4 LP positions a holder owns in a target pool, plus the
+    liquidity flows in/out of those positions over a block range.
+
+    V4 is a singleton: the pool is identified by a ``V4PoolKey`` (not a pool
+    address) and token ids are supplied explicitly (the v4 PositionManager is
+    not enumerable). Used by the Cat F (Uniswap V4) branch of
+    ``get_position_value`` and by per-venue inflow tracking.
+    """
+
+    def positions_in_pool(
+        self,
+        chain: str,
+        owner: bytes,
+        token_ids: list[int],
+        pool_key,
+        block: int,
+    ) -> list:
+        """Returns list[V4PositionAmounts] — sized 0 when none of ``token_ids``
+        are owned by ``owner`` in the target pool at ``block``."""
+        ...
+
+    def liquidity_flows_in_pool(
+        self,
+        chain: str,
+        token_ids: list[int],
+        pool_key,
+        from_block: int,
+        to_block: int,
+    ) -> list:
+        """Returns list[V4LiquidityFlow] for the venue's token ids across
+        (from_block, to_block]. Signed amounts: ``+`` add, ``−`` remove."""
+        ...
+
+
 class ICurvePoolSource(Protocol):
     """Read Curve stableswap pool state + Add/Remove liquidity events.
 

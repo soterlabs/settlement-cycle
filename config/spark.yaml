@@ -519,6 +519,70 @@ venues:
       coin: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'  # USDS — par-stable, $1
 
   # ─────────────────────────────────────────────────────────────
+  # Ethereum — Uniswap V4 LP (Cat F)
+  # ─────────────────────────────────────────────────────────────
+  # Spark Liquidity Layer LP positions in Uniswap V4. V4 is a singleton (one
+  # PoolManager), so each pool is identified by its PoolKey (→ poolId) rather
+  # than a pool contract address, and the holder's positions are listed
+  # explicitly in ``univ4_token_ids`` because the v4 PositionManager is NOT
+  # ERC-721-enumerable. ``token.address`` / ``nft_position_manager`` are the
+  # canonical Ethereum PositionManager (the NFT contract); the canonical
+  # PoolManager is used for price (slot0) reads. See src/settle/extract/
+  # uniswap_v4.py and docs comments in normalize/sources/uniswap_v4.py.
+  #
+  # Pricing of the two legs mirrors the Curve venues S24/S25:
+  #   * USDS leg  → idle USDS (``curve_idle_usds.coin``): par $1, deducted from
+  #     ``utilized`` (prime-settlement-methodology Step 2 — idle AMM USDS).
+  #   * USDT / PYUSD leg → Sky Direct Exposure (``curve_idle_usds.sde_coin``):
+  #     par $1, registered in config/sky_direct_exposures.yaml (kind: fixed),
+  #     so its asset value is excluded from utilized and its revenue floors to
+  #     Sky — same treatment as the USDT leg of the S24 sUSDS/USDT Curve pool.
+  #
+  # Uncollected LP fees are not added to the position value (negligible for
+  # these tight par-stable ranges; see normalize/sources/uniswap_v4.py).
+  - id: S61
+    chain: ethereum
+    label: 'Spark.fi PYUSD Reserve Uniswap V4 (PYUSD/USDS)'
+    pricing_category: F
+    lp_kind: uniswap_v4
+    token:
+      address: '0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e'   # v4 PositionManager (NFT contract; not a pool)
+      symbol: 'UNIV4-PYUSD/USDS'
+      decimals: 18
+    nft_position_manager: '0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e'
+    univ4_pool_key:
+      currency0: '0x6c3ea9036406852006290770bedfcaba0e23a0e8'  # PYUSD (6 decimals)
+      currency1: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'  # USDS (18 decimals)
+      fee: 5                # 0.0005% (hundredths of a bip)
+      tick_spacing: 1
+      hooks: '0x0000000000000000000000000000000000000000'
+    univ4_token_ids: [161205, 161283, 161284, 161285, 324004, 324005]
+    curve_idle_usds:
+      coin: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'      # USDS — idle, par $1
+      sde_coin: '0x6c3ea9036406852006290770bedfcaba0e23a0e8'  # PYUSD — SDE asset value, par $1
+
+  - id: S62
+    chain: ethereum
+    label: 'Spark.fi USDT Reserve Uniswap V4 (USDT/USDS)'
+    pricing_category: F
+    lp_kind: uniswap_v4
+    token:
+      address: '0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e'   # v4 PositionManager (NFT contract; not a pool)
+      symbol: 'UNIV4-USDT/USDS'
+      decimals: 18
+    nft_position_manager: '0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e'
+    univ4_pool_key:
+      currency0: '0xdac17f958d2ee523a2206206994597c13d831ec7'  # USDT (6 decimals)
+      currency1: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'  # USDS (18 decimals)
+      fee: 5                # 0.0005% (hundredths of a bip)
+      tick_spacing: 1
+      hooks: '0x0000000000000000000000000000000000000000'
+    univ4_token_ids: [161345, 161346, 161347, 161348, 293902, 293903, 293904, 293905, 293906]
+    curve_idle_usds:
+      coin: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'      # USDS — idle, par $1
+      sde_coin: '0xdac17f958d2ee523a2206206994597c13d831ec7'  # USDT — SDE asset value, par $1
+
+  # ─────────────────────────────────────────────────────────────
   # Ethereum — idle ALM stables (Cat A)
   # Same role as Grove E13–E17: holdings sitting at the ALM proxy. Subtracted
   # from utilized via the Cat A inflow accounting (external_alm_sources).

@@ -150,8 +150,15 @@ class Venue:
     underlying: Token | None = None      # for B/C/D/F where price chains via underlying
     label: str = ""                      # human-readable (e.g. 'Maple syrupUSDC')
     nav_oracle: NavOracle | None = None  # Category E only — see NavOracle
-    lp_kind: str | None = None           # Category F only: 'curve_stableswap' | 'uniswap_v3'
-    nft_position_manager: Address | None = None  # Category F (uniswap_v3) only
+    lp_kind: str | None = None           # Category F only: 'curve_stableswap' | 'uniswap_v3' | 'uniswap_v4'
+    nft_position_manager: Address | None = None  # Category F (uniswap_v3 / uniswap_v4) — NFT PositionManager
+    # Uniswap V4 only. V4 is a singleton (no per-pool contract): the pool is
+    # identified by ``univ4_pool_key`` (→ poolId = keccak256(abi.encode(key)))
+    # and the holder's positions are listed explicitly in ``univ4_token_ids``
+    # because the v4 PositionManager is not ERC-721-enumerable. See
+    # ``extract/uniswap_v4.py`` and ``normalize/sources/uniswap_v4.py``.
+    univ4_pool_key: "UniV4PoolKey | None" = None
+    univ4_token_ids: tuple[int, ...] = ()
     # When True, this venue's avg_value is excluded from the CoF allocation
     # denominator in post-hoc reporting (build_monthly_report). Two distinct
     # use cases share this flag:
@@ -422,6 +429,20 @@ class CurveIdleUsdsConfig:
     coin: Address          # address of the target coin in the Curve pool
     sky_savings_token: bool = False  # True → 30bps spread deducted from Sky Revenue; no utilized deduction
     sde_coin: "Address | None" = None  # par-stable coin that is the SDE exposure (optional)
+
+
+@dataclass(frozen=True, slots=True)
+class UniV4PoolKey:
+    """A Uniswap V4 ``PoolKey``. ``currency0 < currency1`` (sorted), ``fee`` in
+    hundredths of a bip, ``tick_spacing`` per pool, ``hooks`` = 0x0 for an
+    unhooked pool. The poolId is ``keccak256(abi.encode(PoolKey))`` — computed
+    in the extract layer (``extract.uniswap_v4.V4PoolKey.pool_id``)."""
+
+    currency0: Address
+    currency1: Address
+    fee: int
+    tick_spacing: int
+    hooks: Address
 
 
 class PsmKind(StrEnum):

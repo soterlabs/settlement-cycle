@@ -127,6 +127,30 @@ active:
     label: 'USDT in sUSDS/USDT Curve'
     source: 'Atlas A.2.2.9.1.1.1.1.3 — Curve Pools'
 
+  # Spark PYUSD in the Uniswap V4 PYUSD/USDS pool (S61). The SDE asset value
+  # is computed daily from the on-chain position's PYUSD leg, so it is $0 on
+  # days before the first position was minted — ``start_date`` only needs to be
+  # at/before the first mint (the Spark Liquidity Layer's earliest v4 LP mints
+  # were ~2026-02-20). Set conservatively early; daily on-chain values handle
+  # the partial-period correctly.
+  - prime: spark
+    venue_id: S61
+    chain: ethereum
+    kind: fixed
+    start_date: '2026-02-01'
+    end_date: null
+    label: 'PYUSD in PYUSD/USDS Uniswap V4'
+
+  # Spark USDT in the Uniswap V4 USDT/USDS pool (S62). Same daily-value
+  # semantics as S61 above.
+  - prime: spark
+    venue_id: S62
+    chain: ethereum
+    kind: fixed
+    start_date: '2026-02-01'
+    end_date: null
+    label: 'USDT in USDT/USDS Uniswap V4'
+
 historical:
   # JAAA on Eth — capped at $325M. SDE during 2025-10-23 → 2026-03-12.
   # Grove team's Feb 2026 PnL workbook treats this as 71.85% Sky Direct
