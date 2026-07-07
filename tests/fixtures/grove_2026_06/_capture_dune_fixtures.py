@@ -1,8 +1,8 @@
 """Capture Grove June-2026 (full month) Dune fixture set.
 
-Same query inventory as the May capture, but June is INCOMPLETE: the EoM
-pins are the last full UTC day available at capture time (June 16, 2026),
-not a true month-end. SoM = May 31 EoM. Re-capture after June 30 for the
+Same query inventory as the May capture. Re-captured 2026-07-03 with the
+actual June-30 EoM pins (the initial 2026-06-17 capture was month-to-date
+through June 16). SoM = May 31 EoM. This is the
 final monthly settlement.
 """
 

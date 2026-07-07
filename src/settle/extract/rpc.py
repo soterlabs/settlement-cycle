@@ -498,13 +498,9 @@ def block_timestamp(chain: Chain, block: int) -> int:
 LOGS_CHUNK_BLOCKS = 10_000
 
 # Per-chain overrides. Monad's public RPC (rpc.monad.xyz) rejects ranges
-# larger than 100 blocks; use that as a safe hardcoded limit. Ethereum:
-# drpc.live times out above ~2K blocks and Alchemy's free tier caps
-# eth_getLogs at 10 blocks — 2K works on drpc (point ETH_RPC there for
-# log-heavy runs; the Uni v4 flow reader scans month-long ranges).
+# larger than 100 blocks; use that as a safe hardcoded limit.
 _LOGS_CHUNK_BY_CHAIN: dict[Chain, int] = {
     Chain.MONAD: 100,
-    Chain.ETHEREUM: 2_000,
 }
 
 

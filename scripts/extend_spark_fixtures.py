@@ -298,21 +298,35 @@ def refresh_subproxy_timeseries() -> None:
         print(f"  wrote {dest} ({len(rows)} rows)")
 
 
-def refresh_cat_b_cum_balance() -> None:
-    """Rebuild cat_b_cum_balance.json for every Cat B venue through FIXTURE_END_DATE.
+def refresh_cat_be_cum_balance() -> None:
+    """Rebuild cat_b_cum_balance.json + cat_e_cum_balance.json for every Cat
+    B / Cat E venue through FIXTURE_END_DATE.
 
-    Same construction as the 2026-06-05 refresh (see the fixture's _about):
+    Same construction as the 2026-06-05 refresh (see the fixtures' _about):
     published transfer_timeseries.sql (query 7432800) per venue, holder =
     the venue chain's Spark ALM, full lifetime window. Needed whenever a
-    month has real Cat B flows — June 2026 moved ~$400M of sUSDS from the
-    Eth ALM (S32) to the Base/Optimism proxies (S37/S47); stale events
-    turn those into phantom venue P&L.
+    month has real flows — June 2026 moved ~$400M of sUSDS from the Eth ALM
+    (S32) to the Base/Optimism proxies (S37/S47); stale events turn those
+    into phantom venue P&L. Cat E has been $0 since Spark exited its RWA
+    tranches (Jul–Dec 2025) — refreshed anyway so a re-entry can't be
+    silently missed. Replaces scripts/refresh_spark_cat_b_e.py (deleted:
+    its pins were frozen at May 31 and its venue lists were hardcoded;
+    this reads config/spark.yaml so new venues are picked up).
     """
     import yaml
     cfg = yaml.safe_load((REPO / "config" / "spark.yaml").read_text())
     alm_by_chain = {c: a["alm"] for c, a in cfg["addresses"].items() if "alm" in a}
-    venues = [v for v in cfg["venues"] if v.get("pricing_category") == "B" and not v.get("skip")]
-    print(f"  {len(venues)} Cat B venues")
+    for cat, dest_name in (("B", "cat_b_cum_balance.json"), ("E", "cat_e_cum_balance.json")):
+        # S23 Anchorage is Cat E but lives at a custody escrow, not the ALM —
+        # holder-specific handling elsewhere; excluded here as in the old script.
+        venues = [v for v in cfg["venues"]
+                  if v.get("pricing_category") == cat and not v.get("skip")
+                  and v["id"] != "S23"]
+        print(f"  Cat {cat}: {len(venues)} venues → {dest_name}")
+        _refresh_cum_balance_file(venues, alm_by_chain, cat, dest_name)
+
+
+def _refresh_cum_balance_file(venues, alm_by_chain, cat: str, dest_name: str) -> None:
 
     all_rows: list[dict] = []
     for v in venues:
@@ -320,11 +334,11 @@ def refresh_cat_b_cum_balance() -> None:
         token = v["token"]["address"]
         holder = alm_by_chain[chain]
         pin = SAFETY_PIN_BLOCK[chain]
-        print(f"  {vid} ({chain}, {v['token'].get('symbol','?')})")
+        print(f"    {vid} ({chain}, {v['token'].get('symbol','?')})")
         rows = execute_and_poll(
             7432800,
             {
-                "chain":               chain.replace("_c", "_c"),
+                "chain":               chain,
                 "token":               token,
                 "holder":              holder,
                 "start_date":          SPARK_FIRST_FROB_DATE,
@@ -345,7 +359,7 @@ def refresh_cat_b_cum_balance() -> None:
     all_rows.sort(key=lambda r: (r["venue_id"], r["block_date"]))
     out = {
         "_about": (
-            f"Spark Cat B cum_balance — refreshed via published transfer_timeseries.sql "
+            f"Spark Cat {cat} cum_balance — refreshed via published transfer_timeseries.sql "
             f"(query 7432800), holder = chain-specific Spark ALM. Lifetime to {FIXTURE_END_DATE}."
         ),
         "_dune_query_id": 7432800,
@@ -353,7 +367,7 @@ def refresh_cat_b_cum_balance() -> None:
         "_row_count": len(all_rows),
         "rows": all_rows,
     }
-    dest = FIXTURE_DIR / "cat_b_cum_balance.json"
+    dest = FIXTURE_DIR / dest_name
     dest.write_text(json.dumps(out, indent=2))
     print(f"  wrote {dest} ({len(all_rows)} rows)")
 
@@ -374,8 +388,8 @@ def main() -> int:
     refresh_subproxy_timeseries()
     print()
 
-    print("4. Cat B cum_balance (all venues)")
-    refresh_cat_b_cum_balance()
+    print("4. Cat B + Cat E cum_balance (all venues)")
+    refresh_cat_be_cum_balance()
     print()
 
     print("Done.")

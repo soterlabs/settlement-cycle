@@ -242,10 +242,21 @@ def default_v4_source(venue) -> RPCUniswapV4PositionSource:
     ``nft_position_manager`` override. Single construction point — every
     caller (value, SDE-daily, and inflow paths) must build through here so
     the Dune/RPC split can't silently diverge per path.
+
+    Falls back to the pure-RPC variant when ``DUNE_API_KEY`` is unset
+    (mirrors the v3 gate in monthly_pnl) — that path needs a provider that
+    survives month-long ``eth_getLogs``, but it keeps key-less environments
+    with a capable paid node runnable instead of crashing mid-run.
     """
+    import os
     overrides = (
         {venue.chain: venue.nft_position_manager}
         if venue.nft_position_manager is not None
         else None
     )
-    return DuneUniswapV4FlowsSource(position_manager_per_chain=overrides)
+    cls = (
+        DuneUniswapV4FlowsSource
+        if os.environ.get("DUNE_API_KEY")
+        else RPCUniswapV4PositionSource
+    )
+    return cls(position_manager_per_chain=overrides)
