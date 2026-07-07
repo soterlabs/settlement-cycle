@@ -1,10 +1,10 @@
 {
-  "_about": "Spark Q1 2026 fixture-capture status (updated 2026-06-09 — sky_revenue shipped; prime_agent_revenue slice in progress; SubProxy USDS/sUSDS captured 2026-06-09 to close the fixture-loader mid-period gap, see PRD §17.13).",
+  "_about": "HISTORICAL capture record from the Q1 2026 bring-up (last updated 2026-06-09) \u2014 per-file coverage claims below are STALE. The current coverage record is each fixture JSON's own _about string: the whole set is refreshed through 2026-06-30 (captures pinned at post-EoM safety blocks, so rows may extend a few days past) via scripts/extend_spark_fixtures.py + scripts/capture_spark_inflow_by_counterparty.py. | Original note: Spark Q1 2026 fixture-capture status (updated 2026-06-09 \u2014 sky_revenue shipped; prime_agent_revenue slice in progress; SubProxy USDS/sUSDS captured 2026-06-09 to close the fixture-loader mid-period gap, see PRD \u00a717.13).",
   "spark_identifiers": {
     "ilk_bytes32": "0x414c4c4f4341544f522d535041524b2d41000000000000000000000000000000",
     "ilk_human": "ALLOCATOR-SPARK-A",
     "subproxy_ethereum": "0x3300f198988e4C9C63F75dF86De36421f06af8c4",
-    "urn_ethereum_DEPRECATED": "0x691a6c29e9e96dd897718305427ad5d534db16ba (this is the urn, not the SubProxy; pre-2026-06-09 config mislabeled it — see PRD §17.12 + §17.13)",
+    "urn_ethereum_DEPRECATED": "0x691a6c29e9e96dd897718305427ad5d534db16ba (this is the urn, not the SubProxy; pre-2026-06-09 config mislabeled it \u2014 see PRD \u00a717.12 + \u00a717.13)",
     "alm_ethereum": "0x1601843c5e9bc251a3272907010afa41fa18347e",
     "first_frob_date": "2024-11-18",
     "first_frob_block": 21215063,
@@ -40,18 +40,24 @@
       "status": "persisted",
       "covers": "2024-11-18 -> 2026-05-12 (last transfer event; balance carries forward to 2026-05-31 EoM)",
       "captured": "2026-06-09",
-      "params": {"holder": "0x3300f198988e4c9c63f75df86de36421f06af8c4", "token": "USDS"},
-      "purpose": "Feeds agent_rate base (SSR+20bps × subproxy_usds). Replaces _empty_balance_df() fallback that masked ~$18.6K of agent_rate Jan-May 2026 — see PRD §17.13. Refreshable via scripts/extend_spark_fixtures.py::refresh_subproxy_timeseries()."
+      "params": {
+        "holder": "0x3300f198988e4c9c63f75df86de36421f06af8c4",
+        "token": "USDS"
+      },
+      "purpose": "Feeds agent_rate base (SSR+20bps \u00d7 subproxy_usds). Replaces _empty_balance_df() fallback that masked ~$18.6K of agent_rate Jan-May 2026 \u2014 see PRD \u00a717.13. Refreshable via scripts/extend_spark_fixtures.py::refresh_subproxy_timeseries()."
     },
     "subproxy_susds_timeseries.json": {
       "dune_query_id": 7432800,
       "dune_query_path": "src/settle/queries/transfer_timeseries.sql",
       "rows": 5,
       "status": "persisted",
-      "covers": "2024-11-18 -> 2026-05-31 (all-zero — SubProxy doesn't hold sUSDS)",
+      "covers": "2024-11-18 -> 2026-05-31 (all-zero \u2014 SubProxy doesn't hold sUSDS)",
       "captured": "2026-06-09",
-      "params": {"holder": "0x3300f198988e4c9c63f75df86de36421f06af8c4", "token": "sUSDS"},
-      "purpose": "Symmetry with subproxy_usds_timeseries.json — confirms no sUSDS contribution to agent_rate. Refreshable via the same function."
+      "params": {
+        "holder": "0x3300f198988e4c9c63f75df86de36421f06af8c4",
+        "token": "sUSDS"
+      },
+      "purpose": "Symmetry with subproxy_usds_timeseries.json \u2014 confirms no sUSDS contribution to agent_rate. Refreshable via the same function."
     }
   },
   "in_flight_fixtures": {

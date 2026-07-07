@@ -5,5 +5,6 @@
   "src/settle/queries/ssr_history.sql": 7432798,
   "src/settle/queries/transfer_timeseries.sql": 7432800,
   "src/settle/queries/v3_liquidity_events.sql": 7432801,
+  "src/settle/queries/v4_liquidity_events.sql": 7902172,
   "src/settle/queries/venue_inflow.sql": 7432803
 }

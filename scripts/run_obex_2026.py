@@ -57,7 +57,7 @@ from settle.normalize.registry import (  # noqa: E402
 )
 
 _OBEX_YAML = _REPO / "config" / "obex.yaml"
-_MONTHS = [Month(2026, m) for m in (1, 2, 3, 4, 5)]
+_MONTHS = [Month(2026, m) for m in (1, 2, 3, 4, 5, 6)]
 
 # Documented in provenance.json so an auditor can see at a glance which
 # upstream sources fed each settlement run.
@@ -113,7 +113,7 @@ def main() -> int:
 
     prime = load_prime(_OBEX_YAML)
 
-    print(f"OBEX 2026 multi-month settlement (Jan → May)")
+    print(f"OBEX 2026 multi-month settlement (Jan → Jun)")
     print("=" * 110)
     print(f"{'Month':<10} {'prime_agent_total':>21} {'sky_revenue':>17} "
           f"{'sky_direct_shortfall':>22} {'monthly_pnl':>17}")

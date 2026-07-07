@@ -1,19 +1,19 @@
 {
-  "_about": "Spark Cat E cum_balance \u2014 refreshed 2026-06-05 via published transfer_timeseries.sql (query 7432800), holder = chain-specific Spark ALM. Lifetime to 2026-05-31.",
+  "_about": "Spark Cat E cum_balance \u2014 refreshed via published transfer_timeseries.sql (query 7432800), holder = chain-specific Spark ALM. Lifetime to 2026-06-30.",
   "_dune_query_id": 7432800,
   "_columns": [
-    "venue_id",
-    "chain",
     "block_date",
+    "cum_balance",
     "daily_net",
-    "cum_balance"
+    "venue_id",
+    "chain"
   ],
   "_row_count": 108,
   "rows": [
     {
       "block_date": "2025-04-07",
-      "cum_balance": 100000,
-      "daily_net": 100000,
+      "cum_balance": 100000.0,
+      "daily_net": 100000.0,
       "venue_id": "S19",
       "chain": "ethereum"
     },
@@ -349,7 +349,7 @@
     {
       "block_date": "2025-06-16",
       "cum_balance": 804713473.32,
-      "daily_net": 274206,
+      "daily_net": 274206.0,
       "venue_id": "S19",
       "chain": "ethereum"
     },
@@ -677,7 +677,7 @@
     },
     {
       "block_date": "2025-07-28",
-      "cum_balance": 0,
+      "cum_balance": 0.0,
       "daily_net": -376701261.673992,
       "venue_id": "S20",
       "chain": "ethereum"
@@ -720,13 +720,13 @@
     {
       "block_date": "2025-05-14",
       "cum_balance": 28190683.110178,
-      "daily_net": -10,
+      "daily_net": -10.0,
       "venue_id": "S21",
       "chain": "ethereum"
     },
     {
       "block_date": "2025-07-17",
-      "cum_balance": 0,
+      "cum_balance": 0.0,
       "daily_net": -28190683.110178,
       "venue_id": "S21",
       "chain": "ethereum"

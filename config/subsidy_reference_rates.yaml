@@ -155,3 +155,23 @@ rates:
   - effective_date: '2026-05-25'
     tbill_3m_apy: 0.0368
     effr_apy: 0.0362
+  # June 2026 — pulled 2026-07-03 from primary sources: EFFR via the NY Fed
+  # API (markets.newyorkfed.org/api/rates/unsecured/effr): 3.62% Jun 1–12,
+  # 3.63% from Jun 15. 3M T-Bill via treasury.gov daily yield curve: stepped
+  # up from 3.78% (Jun 1) to 3.87% (Jun 29–30). Weekly Monday rows,
+  # carry-forward fills the gaps (same convention as prior months).
+  - effective_date: '2026-06-01'
+    tbill_3m_apy: 0.0378
+    effr_apy: 0.0362
+  - effective_date: '2026-06-08'
+    tbill_3m_apy: 0.0380
+    effr_apy: 0.0362
+  - effective_date: '2026-06-15'
+    tbill_3m_apy: 0.0379
+    effr_apy: 0.0363
+  - effective_date: '2026-06-22'
+    tbill_3m_apy: 0.0385
+    effr_apy: 0.0363
+  - effective_date: '2026-06-29'
+    tbill_3m_apy: 0.0387
+    effr_apy: 0.0363

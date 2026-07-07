@@ -26,7 +26,7 @@ from .protocols import (
 )
 from .registry import get_balance_source, get_position_balance_source
 from .sources.uniswap_v3 import RPCUniswapV3PositionSource
-from .sources.uniswap_v4 import RPCUniswapV4PositionSource
+from .sources.uniswap_v4 import default_v4_source
 
 
 def get_position_balance(
@@ -223,14 +223,7 @@ def get_position_value(
 
     if venue.lp_kind == "uniswap_v4":
         if v4_position_source is None:
-            overrides = (
-                {venue.chain: venue.nft_position_manager}
-                if venue.nft_position_manager is not None
-                else None
-            )
-            v4_position_source = RPCUniswapV4PositionSource(
-                position_manager_per_chain=overrides,
-            )
+            v4_position_source = default_v4_source(venue)
         return _uniswap_v4_value(prime, venue, block, source=v4_position_source)
 
     balance = get_position_balance(

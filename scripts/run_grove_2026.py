@@ -85,6 +85,16 @@ PIN_BLOCKS_BY_MONTH = {
                 Chain.AVALANCHE_C: 86865826, Chain.PLUME: 71786194,
                 Chain.MONAD: 78309381},
     },
+    # June added 2026-07-03: EoM = June 30 EoD blocks (blocks_at_eod via
+    # Dune; eth/base/avax cross-checked against the Spark fixture refresh).
+    (2026, 6): {
+        "som": {Chain.ETHEREUM: 25218797, Chain.BASE: 46741326,
+                Chain.AVALANCHE_C: 86865826, Chain.PLUME: 71786194,
+                Chain.MONAD: 78309381},
+        "eom": {Chain.ETHEREUM: 25433938, Chain.BASE: 48037326,
+                Chain.AVALANCHE_C: 89166730, Chain.PLUME: 78267500,
+                Chain.MONAD: 84784216},
+    },
 }
 
 # (year, month, fixture_dir). Q1 months all share grove_2026_03.
@@ -94,6 +104,7 @@ _MONTH_PLAN = [
     (2026, 3, "grove_2026_03"),
     (2026, 4, "grove_2026_04"),
     (2026, 5, "grove_2026_05"),
+    (2026, 6, "grove_2026_06"),
 ]
 
 
@@ -101,7 +112,7 @@ def _sources_manifest(fixture_dir: str) -> dict[str, str]:
     return {
         "debt":                    f"DuneDebtSource (MCP fixture: {fixture_dir}/dune_outputs.json)",
         "balance":                 "DuneBalanceSource (MCP fixture)",
-        "ssr":                     "DuneSSRSource (live on-chain read at the period pin block)",
+        "ssr":                     "DuneSSRSource (live Dune query of on-chain SSR events at the period pin block)",
         "position_balance":        "RPCPositionBalanceSource",
         "convert_to_assets":       "RPCConvertToAssetsSource",
         "nav_oracle (chronicle)":  "ChronicleNavSource",
@@ -120,7 +131,7 @@ def main() -> int:
         refresh_dr_only("grove")
         return 0
 
-    print("Grove 2026 multi-month settlement (Jan → May)")
+    print("Grove 2026 multi-month settlement (Jan → Jun)")
     print("=" * 110)
     print(f"{'Month':<10} {'prime_agent_total':>20} {'sky_revenue':>16} "
           f"{'sky_direct_shortfall':>22} {'monthly_pnl':>16}")

@@ -49,13 +49,15 @@ SPARK_ALM = {
     "avalanche_c": "0xece6b0e8a54c2f44e066fbb9234e7157b15b7fec",
 }
 
-MAY_31_PIN_BLOCK = {
-    "ethereum":    25300000,
-    "base":        47000000,
-    "arbitrum":   470000000,
-    "optimism":   152500000,
-    "unichain":    50000000,
-    "avalanche_c": 87500000,
+# Safety pins at-or-after June 30 EoM (rows past the period are harmless;
+# the runner slices by period). Updated 2026-07-03 for the June extension.
+JUNE_30_PIN_BLOCK = {
+    "ethereum":    25500000,
+    "base":        48300000,
+    "arbitrum":   480800000,
+    "optimism":   153900000,
+    "unichain":    52600000,
+    "avalanche_c": 89800000,
 }
 
 # Cat A "raw idle" venues only (par-stable tokens at the ALM).
@@ -132,7 +134,7 @@ def main() -> int:
                 "holder":     SPARK_ALM[chain],
                 "token":      "0x" + token.replace("0x", ""),
                 "start_date": "2024-11-18",
-                "pin_block":  str(MAY_31_PIN_BLOCK[chain]),
+                "pin_block":  str(JUNE_30_PIN_BLOCK[chain]),
             })
             for r in rows:
                 r["venue_id"] = vid
@@ -146,7 +148,7 @@ def main() -> int:
         "_about": (
             f"Spark Cat A inflow_by_counterparty — captured {time.strftime('%Y-%m-%d')} "
             f"via published inflow_by_counterparty.sql (Dune query {QUERY_ID}). "
-            "holder = chain-specific Spark ALM. Covers 2024-11-18 → 2026-05-31."
+            "holder = chain-specific Spark ALM. Covers 2024-11-18 → 2026-06-30."
         ),
         "_dune_query_id": QUERY_ID,
         "_columns": ["venue_id", "chain", "block_date", "counterparty", "signed_amount"],

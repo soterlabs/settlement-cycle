@@ -388,15 +388,15 @@ def _curve_sde_asset_value_timeseries(
 
 
 def _univ4_default_source(venue):
-    """Build a default RPC v4 position source honoring the venue's
-    ``nft_position_manager`` override (the v4 PositionManager)."""
-    from ..normalize.sources.uniswap_v4 import RPCUniswapV4PositionSource
-    overrides = (
-        {venue.chain: venue.nft_position_manager}
-        if venue.nft_position_manager is not None
-        else None
-    )
-    return RPCUniswapV4PositionSource(position_manager_per_chain=overrides)
+    """Build the default v4 position source honoring the venue's
+    ``nft_position_manager`` override (the v4 PositionManager).
+
+    Dune-backed flows + RPC valuations — see
+    ``normalize.sources.uniswap_v4.default_v4_source`` (the single
+    construction point for all v4 paths).
+    """
+    from ..normalize.sources.uniswap_v4 import default_v4_source
+    return default_v4_source(venue)
 
 
 def _univ4_pool_key_for(venue):
@@ -2730,13 +2730,7 @@ def compute_monthly_pnl(
             from ..normalize.positions import _uniswap_v4_inflow_timeseries
             v4_src = sources.v4_position
             if v4_src is None:
-                from ..normalize.sources.uniswap_v4 import RPCUniswapV4PositionSource
-                pm_overrides = (
-                    {venue.chain: venue.nft_position_manager}
-                    if venue.nft_position_manager is not None
-                    else None
-                )
-                v4_src = RPCUniswapV4PositionSource(position_manager_per_chain=pm_overrides)
+                v4_src = _univ4_default_source(venue)
             inflow_ts = _uniswap_v4_inflow_timeseries(
                 prime, venue, som_block, eom_block,
                 source=v4_src,

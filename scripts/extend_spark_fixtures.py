@@ -1,4 +1,4 @@
-"""Extend ``tests/fixtures/spark_2026_q1/`` fixture files to cover Apr+May 2026.
+"""Extend ``tests/fixtures/spark_2026_q1/`` fixture files through ``FIXTURE_END_DATE``.
 
 Refreshes (additively) the following files using the published Dune queries:
   * ``debt_timeseries.json``                  — Dune query 7642450
@@ -7,12 +7,13 @@ Refreshes (additively) the following files using the published Dune queries:
   * ``subproxy_usds_timeseries.json``         — Dune query 7432800
   * ``subproxy_susds_timeseries.json``        — Dune query 7432800
 
-Cat B / Cat E cum_balance JSONs are NOT refreshed (would require
-re-capturing the per-venue queries that were auto-created at Q1 time and
-have since been archived). The runner is robust to no in-period rows
-because ``SETTLE_SPARK_ALLOW_PRE_PERIOD_ANCHOR=1`` is set inside
-``scripts/run_spark_2026.py`` — value_eom comes from RPC ``balanceOf``
-at pin blocks, which doesn't depend on the cum_balance fixture.
+Cat B + Cat E cum_balance JSONs ARE refreshed too (step 4,
+``refresh_cat_be_cum_balance`` — published per-venue
+``transfer_timeseries.sql``, venues read from config/spark.yaml). Do NOT
+skip that step: months with real Cat B flows otherwise book them as
+phantom venue P&L (June 2026 moved ~$400M of sUSDS between ALMs). Note
+the captures pin at post-EoM safety blocks, so rows may extend a few
+days past FIXTURE_END_DATE — the runner slices by period.
 
 Usage:
     DUNE_API_KEY=... python3 scripts/extend_spark_fixtures.py
@@ -56,27 +57,27 @@ SUSDS_ETH = "0xa3931d71877c0e7a3148cb7eb4463524fec27fbd"
 # debt_timeseries window — full prime history through May EoM).
 SPARK_FIRST_FROB_DATE = "2024-11-18"
 
-# Pin blocks at May 31 EoM (= upper bound for the extended fetch) — these
-# should be at-or-after the actual May 31 23:59:59 UTC blocks. Adding a
-# small buffer for safety on the bulk-date queries (debt + blocks).
+# Capture window end — last day of the most recent complete month.
+FIXTURE_END_DATE = "2026-06-30"
+
+# Pin blocks safely AFTER the June 30 EoM (= upper bound for the extended
+# fetch) — these should be at-or-after the actual June 30 23:59:59 UTC
+# blocks. Rough early-July head estimates; rows past FIXTURE_END_DATE are
+# harmless (the runner slices by period).
 #
 # NOTE: the SubProxy USDS/sUSDS capture (``refresh_subproxy_timeseries``)
-# uses ``MAY_31_PIN_BLOCK_EXACT`` instead so it matches the actual EoM
-# block used by ``scripts/run_spark_2026.py`` (May 2026 EoM eth pin =
-# 25218797 per PIN_BLOCKS_BY_MONTH). Using the safety-buffer value here
-# would cause the captured fixture to include any post-May-31 transfers,
-# making the fixture metadata's pin_block diverge from what the EoM
-# cross-check in ``get_subproxy_balance_timeseries`` reads.
-MAY_31_PIN_BLOCK_EXACT = {
-    "ethereum": 25218797,  # = PIN_BLOCKS_BY_MONTH[(2026,5)]["eom"][ethereum]
-}
-MAY_31_PIN_BLOCK = {
-    "ethereum":    25300000,  # ~2026-06-02
-    "base":        47000000,
-    "arbitrum":   470000000,  # arbitrum block numbers are 9-figure already by Q4 2025
-    "optimism":   152500000,  # above the actual May EoM Op block 152336611
-    "unichain":    73000000,
-    "avalanche_c": 87500000,
+# uses the EXACT June-30 EoM eth block instead, resolved dynamically from
+# the just-refreshed ``eth_avalanche_daily_eod_blocks.json`` (so the
+# fixture metadata's pin_block matches what the EoM cross-check in
+# ``get_subproxy_balance_timeseries`` reads, and what
+# ``run_spark_2026.PIN_BLOCKS_BY_MONTH`` should carry for June).
+SAFETY_PIN_BLOCK = {
+    "ethereum":    25500000,  # ~2026-07-03
+    "base":        48300000,
+    "arbitrum":   480800000,  # arbitrum block numbers are 9-figure already by Q4 2025
+    "optimism":   153900000,
+    "unichain":    52600000,
+    "avalanche_c": 89800000,
 }
 
 # Spark prime needs blocks on these chains.
@@ -142,13 +143,13 @@ def execute_and_poll(query_id: int, params: dict[str, Any]) -> list[dict]:
 
 
 def refresh_debt_timeseries() -> None:
-    """Re-run debt_timeseries (frob+grab) for Spark ilk through May 31 EoM."""
+    """Re-run debt_timeseries (frob+grab) for Spark ilk through the fixture end date."""
     rows = execute_and_poll(
         7642450,
         {
             "ilk_bytes32": ILK_BYTES32,
             "start_date":  "2024-11-18",
-            "pin_block":   str(MAY_31_PIN_BLOCK["ethereum"]),
+            "pin_block":   str(SAFETY_PIN_BLOCK["ethereum"]),
         },
     )
 
@@ -157,7 +158,7 @@ def refresh_debt_timeseries() -> None:
     # The query already returns block_date, daily_dart, cum_debt — types
     # land as strings from the Dune API.
     out = {
-        "_about": "Spark ALLOCATOR-A debt timeseries (frob+grab), 2024-11-18 → 2026-05-31. Refreshed via extend_spark_fixtures.py.",
+        "_about": f"Spark ALLOCATOR-A debt timeseries (frob+grab), 2024-11-18 → {FIXTURE_END_DATE}. Refreshed via extend_spark_fixtures.py.",
         "_dune_query_id": 7642450,
         "_columns": ["block_date", "daily_dart", "cum_debt"],
         "_units": "USDS (18 decimals, human units)",
@@ -172,7 +173,7 @@ def refresh_blocks() -> None:
     """Re-run blocks_at_eod (7474490) per chain, write into the two fixture files."""
     by_chain: dict[str, list[dict]] = {}
     for our_chain, dune_chain in SPARK_CHAINS_DUNE.items():
-        pin = MAY_31_PIN_BLOCK[our_chain]
+        pin = SAFETY_PIN_BLOCK[our_chain]
         rows = execute_and_poll(
             7474490,
             {
@@ -181,7 +182,7 @@ def refresh_blocks() -> None:
                 # avoid bloating the file with pre-Q1 dates the runner never
                 # consults.
                 "start_date": "2025-12-31",
-                "end_date":   "2026-05-31",
+                "end_date":   FIXTURE_END_DATE,
                 "pin_block":  str(pin),
             },
         )
@@ -215,7 +216,7 @@ def refresh_blocks() -> None:
 
     eth_path = FIXTURE_DIR / "eth_avalanche_daily_eod_blocks.json"
     eth_path.write_text(json.dumps({
-        "_about": "Daily EoD blocks for ethereum + avalanche_c, 2024-11-18 → 2026-05-31. Refreshed via extend_spark_fixtures.py.",
+        "_about": f"Daily EoD blocks for ethereum + avalanche_c, 2025-12-31 → {FIXTURE_END_DATE}. Refreshed via extend_spark_fixtures.py.",
         "_dune_query_id": 7474490,
         "_columns": ["chain", "block_date", "block_number"],
         "rows": eth_ava_rows,
@@ -224,7 +225,7 @@ def refresh_blocks() -> None:
 
     l2_path = FIXTURE_DIR / "l2_daily_eod_blocks.json"
     l2_path.write_text(json.dumps({
-        "_about": "Daily EoD blocks for base/arbitrum/optimism/unichain, 2024-11-18 → 2026-05-31. Refreshed via extend_spark_fixtures.py.",
+        "_about": f"Daily EoD blocks for base/arbitrum/optimism/unichain, 2025-12-31 → {FIXTURE_END_DATE}. Refreshed via extend_spark_fixtures.py.",
         "_dune_query_id": 7474490,
         "_chains": ["base", "arbitrum", "optimism", "unichain"],
         "_columns": ["chain", "block_date", "block_number"],
@@ -244,7 +245,20 @@ def refresh_subproxy_timeseries() -> None:
     the agent_rate base. ~$23K underpayment cumulative Jan–May 2026 in
     practice.
     """
-    pin_block = MAY_31_PIN_BLOCK_EXACT["ethereum"]
+    # Exact eth EoM pin = the FIXTURE_END_DATE EoD block from the blocks
+    # fixture refreshed in the previous step (refresh_blocks runs first in
+    # main()). This is also the value run_spark_2026.PIN_BLOCKS_BY_MONTH
+    # must carry for the month's eth EoM.
+    blocks = json.loads((FIXTURE_DIR / "eth_avalanche_daily_eod_blocks.json").read_text())
+    eom_rows = [r for r in blocks["rows"]
+                if r["chain"] == "ethereum" and r["block_date"][:10] == FIXTURE_END_DATE]
+    if not eom_rows:
+        raise RuntimeError(
+            f"no ethereum EoD block for {FIXTURE_END_DATE} in the refreshed blocks fixture — "
+            "run refresh_blocks() first"
+        )
+    pin_block = int(eom_rows[0]["block_number"])
+    print(f"  exact eth EoM pin for {FIXTURE_END_DATE}: {pin_block}")
     for tok_label, tok_addr, dest_name in [
         ("USDS",  USDS_ETH,  "subproxy_usds_timeseries.json"),
         ("sUSDS", SUSDS_ETH, "subproxy_susds_timeseries.json"),
@@ -264,7 +278,7 @@ def refresh_subproxy_timeseries() -> None:
         out = {
             "_about": (
                 f"Spark SubProxy {tok_label} daily-net + cum_balance timeseries, "
-                f"{SPARK_FIRST_FROB_DATE} → 2026-05-31. Source-of-truth for the "
+                f"{SPARK_FIRST_FROB_DATE} → {FIXTURE_END_DATE}. Source-of-truth for the "
                 f"agent_rate base on this token. Refreshed via extend_spark_fixtures.py."
             ),
             "_dune_query_id": 7432800,
@@ -285,8 +299,82 @@ def refresh_subproxy_timeseries() -> None:
         print(f"  wrote {dest} ({len(rows)} rows)")
 
 
+def refresh_cat_be_cum_balance() -> None:
+    """Rebuild cat_b_cum_balance.json + cat_e_cum_balance.json for every Cat
+    B / Cat E venue through FIXTURE_END_DATE.
+
+    Same construction as the 2026-06-05 refresh (see the fixtures' _about):
+    published transfer_timeseries.sql (query 7432800) per venue, holder =
+    the venue chain's Spark ALM, full lifetime window. Needed whenever a
+    month has real flows — June 2026 moved ~$400M of sUSDS from the Eth ALM
+    (S32) to the Base/Optimism proxies (S37/S47); stale events turn those
+    into phantom venue P&L. Cat E has been $0 since Spark exited its RWA
+    tranches (Jul–Dec 2025) — refreshed anyway so a re-entry can't be
+    silently missed. Replaces scripts/refresh_spark_cat_b_e.py (deleted:
+    its pins were frozen at May 31 and its venue lists were hardcoded;
+    this reads config/spark.yaml so new venues are picked up).
+    """
+    import yaml
+    cfg = yaml.safe_load((REPO / "config" / "spark.yaml").read_text())
+    alm_by_chain = {c: a["alm"] for c, a in cfg["addresses"].items() if "alm" in a}
+    for cat, dest_name in (("B", "cat_b_cum_balance.json"), ("E", "cat_e_cum_balance.json")):
+        # S23 Anchorage is Cat E but lives at a custody escrow, not the ALM —
+        # holder-specific handling elsewhere; excluded here as in the old script.
+        venues = [v for v in cfg["venues"]
+                  if v.get("pricing_category") == cat and not v.get("skip")
+                  and v["id"] != "S23"]
+        print(f"  Cat {cat}: {len(venues)} venues → {dest_name}")
+        _refresh_cum_balance_file(venues, alm_by_chain, cat, dest_name)
+
+
+def _refresh_cum_balance_file(venues, alm_by_chain, cat: str, dest_name: str) -> None:
+
+    all_rows: list[dict] = []
+    for v in venues:
+        vid, chain = v["id"], v["chain"]
+        token = v["token"]["address"]
+        holder = alm_by_chain[chain]
+        pin = SAFETY_PIN_BLOCK[chain]
+        print(f"    {vid} ({chain}, {v['token'].get('symbol','?')})")
+        rows = execute_and_poll(
+            7432800,
+            {
+                "chain":               chain,
+                "token":               token,
+                "holder":              holder,
+                "start_date":          SPARK_FIRST_FROB_DATE,
+                "pin_block":           str(pin),
+                "min_transfer_amount": "0",
+            },
+        )
+        for r in rows:
+            all_rows.append({
+                "block_date":  r["block_date"][:10],
+                "cum_balance": float(r["cum_balance"]),
+                "daily_net":   float(r["daily_net"]),
+                "venue_id":    vid,
+                "chain":       chain,
+            })
+        time.sleep(1)
+
+    all_rows.sort(key=lambda r: (r["venue_id"], r["block_date"]))
+    out = {
+        "_about": (
+            f"Spark Cat {cat} cum_balance — refreshed via published transfer_timeseries.sql "
+            f"(query 7432800), holder = chain-specific Spark ALM. Lifetime to {FIXTURE_END_DATE}."
+        ),
+        "_dune_query_id": 7432800,
+        "_columns": ["block_date", "cum_balance", "daily_net", "venue_id", "chain"],
+        "_row_count": len(all_rows),
+        "rows": all_rows,
+    }
+    dest = FIXTURE_DIR / dest_name
+    dest.write_text(json.dumps(out, indent=2))
+    print(f"  wrote {dest} ({len(all_rows)} rows)")
+
+
 def main() -> int:
-    print("Refreshing Spark fixtures (Q1 → Q2 extension)")
+    print(f"Refreshing Spark fixtures (through {FIXTURE_END_DATE})")
     print()
 
     print("1. debt_timeseries.json")
@@ -299,6 +387,10 @@ def main() -> int:
 
     print("3. subproxy USDS + sUSDS timeseries")
     refresh_subproxy_timeseries()
+    print()
+
+    print("4. Cat B + Cat E cum_balance (all venues)")
+    refresh_cat_be_cum_balance()
     print()
 
     print("Done.")
