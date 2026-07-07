@@ -165,6 +165,15 @@ def build_spark_sources(
         for _, r in df.iterrows():
             if r["block_date"] < period_filter_start:
                 continue
+            # Symmetric end-side filter: the fixtures are captured at a
+            # post-EoM safety pin, so rows can extend a few days past the
+            # period. Post-period rows don't affect period revenue, but
+            # _shares_to_usd_inflow_timeseries iterates EVERY row date and
+            # would resolve blocks beyond the blocks-fixture coverage
+            # (forcing the fragile RPC fallback). Same rationale as the
+            # start-side filter above.
+            if period_end is not None and r["block_date"] > period_end:
+                continue
             net = r["daily_net"]
             if net > 0:
                 cum_mint += net

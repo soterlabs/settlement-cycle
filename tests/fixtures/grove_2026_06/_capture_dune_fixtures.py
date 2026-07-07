@@ -146,6 +146,13 @@ def main() -> int:
         "e4": bytes.fromhex("beeff08df54897e7544ab01d0e86f013da354111"),
         "e5": bytes.fromhex("beef2b5fd3d94469b7782aebe6364e6e6fb1b709"),
         "e6": bytes.fromhex("beeff0d672ab7f5018dfb614c93981045d4aa98a"),
+        # E37 Maple syrupUSDC (~$100M since 2026-05) — was missing from the
+        # initial June capture (review finding: the loader silently books
+        # $0 flows for absent vault sections). Verified no June flows
+        # (inflow_by_counterparty_e15 shows no June USDC legs to Maple),
+        # so June numbers were correct; kept in the inventory so a July
+        # copy can't silently drop real flows.
+        "e37": bytes.fromhex("80ac24aa929eaf5013f6436cda2a7ba190f5cc0b"),
     }
     for vid, vt in VAULTS_ETH.items():
         print(f"  fetching vault_{vid}_mints / burns …")
@@ -274,6 +281,23 @@ def main() -> int:
         "_chain": "ethereum", "_token": "0x" + USDC.hex(),
         "_from": "0x" + galaxy.hex(), "_to": "0x" + GROVE_ALM_ETH.hex(),
         "rows": venue_inflow("ethereum", USDC, galaxy, GROVE_ALM_ETH, eth_eom)}
+
+    # E38 Agora AUSD incentives — two payers (config/grove.yaml
+    # cash_distributions order = p0, p1). Missing from the initial June
+    # capture; verified no June payments (last: 2026-05-29, $398,324.92),
+    # so June numbers were correct. Kept so a July copy can't silently
+    # drop a payment (~monthly cadence Feb–May).
+    AUSD = bytes.fromhex("00000000efe302beaa2b3e6e1b18d08d69a9012a")
+    for i, payer_hex in enumerate((
+        "4a4593c5d963473a95f0762bd6df4571542af651",
+        "df27ac19cb1da767e181748aaa54e1535aaa3a1d",
+    )):
+        payer = bytes.fromhex(payer_hex)
+        print(f"  fetching cash_dist_e38_p{i} (Agora → ALM) …")
+        fx[f"cash_dist_e38_p{i}"] = {
+            "_chain": "ethereum", "_token": "0x" + AUSD.hex(),
+            "_from": "0x" + payer.hex(), "_to": "0x" + GROVE_ALM_ETH.hex(),
+            "rows": venue_inflow("ethereum", AUSD, payer, GROVE_ALM_ETH, eth_eom)}
 
     with open(_REPO / "tests/fixtures/grove_2026_05/dune_outputs.json") as f:
         prev = json.load(f)

@@ -7,12 +7,13 @@ Refreshes (additively) the following files using the published Dune queries:
   * ``subproxy_usds_timeseries.json``         — Dune query 7432800
   * ``subproxy_susds_timeseries.json``        — Dune query 7432800
 
-Cat B / Cat E cum_balance JSONs are NOT refreshed (would require
-re-capturing the per-venue queries that were auto-created at Q1 time and
-have since been archived). The runner is robust to no in-period rows
-because ``SETTLE_SPARK_ALLOW_PRE_PERIOD_ANCHOR=1`` is set inside
-``scripts/run_spark_2026.py`` — value_eom comes from RPC ``balanceOf``
-at pin blocks, which doesn't depend on the cum_balance fixture.
+Cat B + Cat E cum_balance JSONs ARE refreshed too (step 4,
+``refresh_cat_be_cum_balance`` — published per-venue
+``transfer_timeseries.sql``, venues read from config/spark.yaml). Do NOT
+skip that step: months with real Cat B flows otherwise book them as
+phantom venue P&L (June 2026 moved ~$400M of sUSDS between ALMs). Note
+the captures pin at post-EoM safety blocks, so rows may extend a few
+days past FIXTURE_END_DATE — the runner slices by period.
 
 Usage:
     DUNE_API_KEY=... python3 scripts/extend_spark_fixtures.py
