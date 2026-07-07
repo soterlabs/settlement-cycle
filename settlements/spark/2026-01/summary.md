@@ -77,6 +77,8 @@ Period: 2026-01-01 → 2026-01-31 (31 days)
 | S53 | USDC raw (Unichain — ALM idle) | $5,000,000.00 | $5,000,000.00 | -$0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S54 | Aave Avalanche USDC (aAvaUSDC) | $10,000,438.06 | $10,000,965.04 | -$31,069.97 | $31,596.95 | $31,596.95 | $0.00 | 0% | $0.00 |
 | S55 | USDC raw (Avalanche-C — ALM idle) | $0.00 | $0.00 | $0.00 | -$0.00 | -$0.00 | $-0.00 | 0% | $0.00 |
+| S61 | Spark.fi PYUSD Reserve Uniswap V4 (PYUSD/USDS) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
+| S62 | Spark.fi USDT Reserve Uniswap V4 (USDT/USDS) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 
 ## Position-only venues (excluded from `prime_agent_revenue`)
 

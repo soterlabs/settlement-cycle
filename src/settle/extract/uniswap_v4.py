@@ -279,21 +279,36 @@ def read_modify_liquidity_events(
     )
     out: list[V4LiquidityEvent] = []
     for log in logs:
-        h = log["data"].removeprefix("0x")
-        tick_lower = _decode_int24(h[0:64])
-        tick_upper = _decode_int24(h[64:128])
-        liquidity_delta = _decode_int256(h[128:192])
-        salt = int(h[192:256], 16)
-        if liquidity_delta == 0:
-            continue  # fee-collect / no-op modify
-        out.append(V4LiquidityEvent(
-            block_number=int(log["blockNumber"], 16),
-            tx_hash=log["transactionHash"],
-            log_index=int(log["logIndex"], 16),
-            token_id=salt,
-            tick_lower=tick_lower,
-            tick_upper=tick_upper,
-            liquidity_delta=liquidity_delta,
-        ))
+        ev = decode_modify_liquidity_log(log)
+        if ev is not None:
+            out.append(ev)
     out.sort(key=lambda e: (e.block_number, e.log_index))
     return out
+
+
+def decode_modify_liquidity_log(log: dict) -> V4LiquidityEvent | None:
+    """Decode one raw ``ModifyLiquidity`` log dict into a ``V4LiquidityEvent``.
+
+    ``log`` uses the RPC shape (``blockNumber``/``logIndex`` hex or int,
+    ``data`` 0x-hex). Returns ``None`` for zero-delta logs (fee-collect /
+    no-op modifies). Shared by the RPC scan above and the Dune-backed
+    ``DuneUniswapV4FlowsSource``.
+    """
+    h = log["data"].removeprefix("0x")
+    tick_lower = _decode_int24(h[0:64])
+    tick_upper = _decode_int24(h[64:128])
+    liquidity_delta = _decode_int256(h[128:192])
+    salt = int(h[192:256], 16)
+    if liquidity_delta == 0:
+        return None
+    def _as_int(v):
+        return int(v, 16) if isinstance(v, str) else int(v)
+    return V4LiquidityEvent(
+        block_number=_as_int(log["blockNumber"]),
+        tx_hash=log["transactionHash"],
+        log_index=_as_int(log["logIndex"]),
+        token_id=salt,
+        tick_lower=tick_lower,
+        tick_upper=tick_upper,
+        liquidity_delta=liquidity_delta,
+    )

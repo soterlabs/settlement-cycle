@@ -10,17 +10,17 @@ Period: 2026-02-01 → 2026-02-28 (28 days)
 |---|---:|
 | agent rate | 114,973.50 |
 | distribution rewards | 1,022,253.36 |
-| prime agent net revenue | 2,774,130.72 |
+| prime agent net revenue | 2,774,639.65 |
 | prime side sky direct exposure | 30,517.19 |
-| **prime agent profit** | **3,941,874.76** |
+| **prime agent profit** | **3,942,383.70** |
 
 ### Sky side
 
 | Field | USDS |
 |---|---:|
-| prime cost of funds | 7,486,766.17 |
-| sky side sky direct exposure | 3,733.88 |
-| **sky revenue** | **7,490,500.05** |
+| prime cost of funds | 7,486,257.24 |
+| sky side sky direct exposure | 3,731.28 |
+| **sky revenue** | **7,489,988.52** |
 
 ## Per-venue
 
@@ -77,6 +77,8 @@ Period: 2026-02-01 → 2026-02-28 (28 days)
 | S53 | USDC raw (Unichain — ALM idle) | $5,000,000.00 | $4,997,665.83 | -$2,334.17 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S54 | Aave Avalanche USDC (aAvaUSDC) | $10,000,965.04 | $10,000,143.51 | -$20,243.63 | $19,422.10 | $19,422.10 | $0.00 | 0% | $0.00 |
 | S55 | USDC raw (Avalanche-C — ALM idle) | $0.00 | $0.00 | -$0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
+| S61 | Spark.fi PYUSD Reserve Uniswap V4 (PYUSD/USDS) | $0.00 | $220,000.03 | $220,000.00 | $0.03 | $0.00 | $0.03 | 100.00% | $0.00 |
+| S62 | Spark.fi USDT Reserve Uniswap V4 (USDT/USDS) | $0.00 | $219,994.26 | $219,996.88 | -$2.63 | $0.00 | -$2.63 | 100.00% | $0.00 |
 
 ## Position-only venues (excluded from `prime_agent_revenue`)
 

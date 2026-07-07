@@ -142,9 +142,8 @@ class RPCUniswapV4PositionSource:
         # be picked up by the ``token_id_set`` filter below. Uses the same
         # PositionManager the value path (``positions_in_pool``) resolves, so
         # the two paths stay consistent by construction.
-        events = v4.read_modify_liquidity_events(
-            chain_e, poolmgr, pool_id, from_block + 1, to_block,
-            sender=self._position_manager(chain_e),
+        events = self._modify_liquidity_events(
+            chain_e, poolmgr, pool_id, from_block, to_block,
         )
         out: list[V4LiquidityFlow] = []
         for ev in events:
@@ -166,3 +165,87 @@ class RPCUniswapV4PositionSource:
                 amount1=sign * mag1,
             ))
         return out
+
+    def _modify_liquidity_events(
+        self,
+        chain_e: Chain,
+        pool_manager: Address,
+        pool_id: bytes,
+        from_block: int,
+        to_block: int,
+    ) -> list[v4.V4LiquidityEvent]:
+        """Range scan for the pool's ``ModifyLiquidity`` events — the one
+        piece of ``liquidity_flows_in_pool`` that hits ``eth_getLogs``.
+        Overridden by ``DuneUniswapV4FlowsSource`` to scan via Dune instead
+        (free-tier RPC providers cap/time-out on month-long log ranges)."""
+        return v4.read_modify_liquidity_events(
+            chain_e, pool_manager, pool_id, from_block + 1, to_block,
+            sender=self._position_manager(chain_e),
+        )
+
+
+class DuneUniswapV4FlowsSource(RPCUniswapV4PositionSource):
+    """RPC valuations + Dune event scan.
+
+    Inherits ``positions_in_pool`` (point-in-time ``eth_call`` snapshots —
+    fine on any provider) and overrides the ``ModifyLiquidity`` range scan
+    with one cached Dune execution over ``evms.logs``. Mirrors
+    ``DuneV3InflowSource`` — same split, same rationale: Alchemy free tier
+    caps ``eth_getLogs`` at 10 blocks and drpc times out on the busy v4
+    PoolManager, while the settlement month is a ~200K-block range.
+    """
+
+    def _modify_liquidity_events(
+        self,
+        chain_e: Chain,
+        pool_manager: Address,
+        pool_id: bytes,
+        from_block: int,
+        to_block: int,
+    ) -> list[v4.V4LiquidityEvent]:
+        from ...extract._abi import pad_address
+        from ...extract.dune import execute_query
+        from ._paths import QUERIES_DIR
+
+        sender = self._position_manager(chain_e)
+        df = execute_query(
+            QUERIES_DIR / "v4_liquidity_events.sql",
+            params={
+                "chain": chain_e.value,
+                "pool_manager": pool_manager.value,  # bytes → 0x-prefixed text
+                "topic0": v4.TOPIC_MODIFY_LIQUIDITY,
+                "pool_id": "0x" + pool_id.hex(),
+                "sender_padded": "0x" + pad_address(sender),
+                "from_block": from_block,
+            },
+            pin_block=to_block,
+        )
+        if df.empty:
+            return []
+        events = []
+        for _, row in df.iterrows():
+            ev = v4.decode_modify_liquidity_log({
+                "blockNumber": int(row["block_number"]),
+                "transactionHash": row["tx_hash"],
+                "logIndex": int(row["log_index"]),
+                "data": row["data"],
+            })
+            if ev is not None:
+                events.append(ev)
+        events.sort(key=lambda e: (e.block_number, e.log_index))
+        return events
+
+
+def default_v4_source(venue) -> RPCUniswapV4PositionSource:
+    """The default v4 source for a venue when none is injected via Sources:
+    Dune-backed event scans + RPC valuations, honoring the venue's
+    ``nft_position_manager`` override. Single construction point — every
+    caller (value, SDE-daily, and inflow paths) must build through here so
+    the Dune/RPC split can't silently diverge per path.
+    """
+    overrides = (
+        {venue.chain: venue.nft_position_manager}
+        if venue.nft_position_manager is not None
+        else None
+    )
+    return DuneUniswapV4FlowsSource(position_manager_per_chain=overrides)
