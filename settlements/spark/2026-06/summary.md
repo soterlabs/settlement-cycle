@@ -9,10 +9,10 @@ Period: 2026-06-01 → 2026-06-30 (30 days)
 | Field | USDS |
 |---|---:|
 | agent rate | 114,862.81 |
-| distribution rewards | TBD |
+| distribution rewards | 1,650,764.59 |
 | prime agent net revenue | 2,323,413.18 |
 | prime side sky direct exposure | 11,483.07 |
-| **prime agent profit** | **2,449,759.06** |
+| **prime agent profit** | **4,100,523.65** |
 
 ### Sky side
 
@@ -90,4 +90,47 @@ Period: 2026-06-01 → 2026-06-30 (30 days)
 | S60 | Spark Savings V2 — spUSDC vault (Avalanche-C, CREATE2 same address) | $25,647,247.42 | $19,103,797.29 |
 
 > Position values above are **excluded from `prime_agent_revenue`** per the Savings V2 scope decision (the depositor-side VSR liability is outside the MSC/ALM accounting boundary — see `docs/spark/PRD_savings_vaults.md` §3 and `QUESTIONS.md` S30). Reconciliations against Spark / BA Labs dashboards, which net the VSR, will differ by ≈ the period's VSR accrual. Per-vault values remain in `provenance.json` under `venue_breakdown[]`.
+
+## DR per ref code
+
+| ref_code | DR (USD) | notes |
+|---|---:|---|
+| 2 | $0.00 |  |
+| 100 | $0.00 |  |
+| 127 | $5,924.87 | Synthetic code: untagged sUSDC |
+| 128 | $1,499,156.69 |  |
+| 129 | $41.85 |  |
+| 130 | $3,451.90 | Synthetic code: Untagged spUSDT. |
+| 131 | $3,547.80 | Synthetic code: Untagged spUSDC. Combined into 128 by Spark on Dune. |
+| 132 | $0.27 | Synthetic code: Untagged spPYUSD. Combined into 128 by Spark on Dune. |
+| 170 | $0.00 |  |
+| 171 | $0.00 |  |
+| 182 | $0.02 |  |
+| 183 | $8,767.66 |  |
+| 184 | $0.00 |  |
+| 186 | $2,221.61 |  |
+| 188 | $50,842.36 |  |
+| 190 | $1,418.46 |  |
+| 191 | $26,001.77 |  |
+| 192 | $19,027.37 |  |
+| 194 | $4.13 |  |
+| 195 | $835.13 |  |
+| 196 | $0.25 |  |
+| 197 | $8,925.20 | stUSDS |
+| 198 | $0.01 |  |
+| 200 | $1,728.25 |  |
+| 202 | $31.17 |  |
+| 204 | $71.04 |  |
+| 205 | $0.20 |  |
+| 206 | $0.00 |  |
+| 214 | $0.15 |  |
+| 216 | $372.39 |  |
+| 219 | $0.00 |  |
+| 223 | $0.00 |  |
+| 224 | $12,654.03 |  |
+| 303 | $0.00 |  |
+| 555 | $0.00 |  |
+| 999 | $0.00 |  |
+| 9001 | $5,739.95 | Synthetic code: USDS in Aave aEthUSDS (0x32a6268f9Ba3642Dda7892aDd74f1D34469A4259). No on-chain Referral event; entire contract balance attributed. XR rate. |
+| **Total** | **$1,650,764.59** | |
 

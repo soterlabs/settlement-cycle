@@ -96,16 +96,18 @@ Period: 2026-01-01 → 2026-01-31 (31 days)
 | ref_code | DR (USD) | notes |
 |---|---:|---|
 | 2 | $0.00 |  |
+| 100 | $0.00 |  |
 | 127 | $7,581.55 | Synthetic code: untagged sUSDC |
 | 128 | $1,021,651.00 |  |
 | 129 | $2.58 |  |
-| 130 | $2,533.88 | Synthetic code: Untagged spUSDT. |
-| 131 | $284.57 | Synthetic code: Untagged spUSDC. Combined into 128 by Spark on Dune. |
+| 130 | $284.57 | Synthetic code: Untagged spUSDT. |
+| 131 | $2,533.88 | Synthetic code: Untagged spUSDC. Combined into 128 by Spark on Dune. |
 | 132 | $0.00 | Synthetic code: Untagged spPYUSD. Combined into 128 by Spark on Dune. |
 | 170 | $0.00 |  |
 | 171 | $0.00 |  |
 | 182 | $0.02 |  |
 | 183 | $21,333.38 |  |
+| 184 | $0.00 |  |
 | 186 | $978.23 |  |
 | 188 | $1,186.52 |  |
 | 190 | $10,486.78 |  |
@@ -128,6 +130,7 @@ Period: 2026-01-01 → 2026-01-31 (31 days)
 | 224 | $0.00 |  |
 | 303 | $0.00 |  |
 | 555 | $0.00 |  |
+| 999 | $0.00 |  |
 | 9001 | $17,637.13 | Synthetic code: USDS in Aave aEthUSDS (0x32a6268f9Ba3642Dda7892aDd74f1D34469A4259). No on-chain Referral event; entire contract balance attributed. XR rate. |
 | **Total** | **$1,154,488.13** | |
 
