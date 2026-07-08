@@ -216,10 +216,16 @@ def main() -> int:
     # changes at the ALM get misclassified as actual_revenue (E14 April $1M
     # phantom was the symptom; same risk applies on May).
     AUSD = bytes.fromhex("00000000efe302beaa2b3e6e1b18d08d69a9012a")
+    RLUSD_ETH = bytes.fromhex("8292bb45bf1ee4d140127049757c2e0ff06317ed")
     USDC_MONAD = bytes.fromhex("754704bc059f8c67012fed69bc8a327a5aafb603")
     ALT_HOLDER = bytes.fromhex("94b398acb2fce988871218221ea6a4a2b26cccbc")
     INFLOW_BY_CP: list[tuple[str, str, bytes, bytes, int]] = [
         # (vid, chain, token, holder, pin_block)
+        # E13 RLUSD raw at the ALM — added after the May/June ±$49,596
+        # phantom: $49,596 of RLUSD transited the ALM (in 2026-05-07, out
+        # 2026-06-01) and, with no counterparty log, the Cat A classifier
+        # booked the balance delta as ±yield instead of capital.
+        ("e13", "ethereum", RLUSD_ETH, GROVE_ALM_ETH, eth_eom),
         ("e14", "ethereum", AUSD, GROVE_ALM_ETH, eth_eom),
         ("e15", "ethereum", USDC, GROVE_ALM_ETH, eth_eom),
         ("e31", "ethereum", AUSD, ALT_HOLDER, eth_eom),
@@ -288,6 +294,7 @@ def main() -> int:
     # so June numbers were correct. Kept so a July copy can't silently
     # drop a payment (~monthly cadence Feb–May).
     AUSD = bytes.fromhex("00000000efe302beaa2b3e6e1b18d08d69a9012a")
+    RLUSD_ETH = bytes.fromhex("8292bb45bf1ee4d140127049757c2e0ff06317ed")
     for i, payer_hex in enumerate((
         "4a4593c5d963473a95f0762bd6df4571542af651",
         "df27ac19cb1da767e181748aaa54e1535aaa3a1d",
