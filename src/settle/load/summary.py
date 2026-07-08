@@ -190,6 +190,8 @@ def render_summary(prov: dict) -> str:
     lines.append("")
     lines.append("#### Supply-Side revenue")
     lines.append("")
+    lines.append("| Field | USDS |")
+    lines.append("|---|---:|")
     lines.append(_row("**supply-side revenue**", f"**{_usds(supply_side_revenue)}**"))
     lines.append("")
 

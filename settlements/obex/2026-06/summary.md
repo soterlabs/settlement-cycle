@@ -16,6 +16,8 @@ Period: 2026-06-01 → 2026-06-30 (30 days)
 
 #### Supply-Side revenue
 
+| Field | USDS |
+|---|---:|
 | **supply-side revenue** | **414,440.24** |
 
 ### Sky side
