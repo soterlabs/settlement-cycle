@@ -162,9 +162,6 @@ def render_summary(prov: dict) -> str:
         supply_side_revenue = _D(r.get("prime_agent_revenue")) - prime_cof
     agent_rate     = _D(r.get("agent_rate"))
     dist_rewards   = _D(r.get("distribution_rewards"))
-    # DR is "sourced" once dr_breakdown is present — then show the value even
-    # when it's 0 (a real $0 month), and reserve "TBD" for primes/months with
-    # no DR source at all.
     dr_rows        = prov.get("dr_breakdown") or []
     demand_side_revenue = agent_rate + dist_rewards
 
@@ -182,10 +179,9 @@ def render_summary(prov: dict) -> str:
     lines.append("| Field | USDS |")
     lines.append("|---|---:|")
     lines.append(_row("agent rate", agent_rate))
-    lines.append(_row(
-        "distribution rewards",
-        _usds(dist_rewards) if (dr_rows or dist_rewards != 0) else "TBD",
-    ))
+    # Primes with no DR source (e.g. obex — no group in the settle-dr-dune
+    # workbook) earn no DR by definition: render 0.00, not "TBD".
+    lines.append(_row("distribution rewards", dist_rewards))
     lines.append(_row("**demand-side revenue**", f"**{_usds(demand_side_revenue)}**"))
     lines.append("")
     lines.append("#### Supply-Side revenue")
