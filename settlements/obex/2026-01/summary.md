@@ -6,21 +6,27 @@ Period: 2026-01-01 → 2026-01-31 (31 days)
 
 ### Prime side
 
+#### Demand-Side revenue
+
 | Field | USDS |
 |---|---:|
 | agent rate | 73,520.27 |
-| distribution rewards | TBD |
-| prime agent net revenue | 439,227.68 |
-| prime side sky direct exposure | 0.00 |
-| **prime agent profit** | **512,747.96** |
+| distribution rewards | 0.00 |
+| **demand-side revenue** | **73,520.27** |
+
+#### Supply-Side revenue
+
+| Field | USDS |
+|---|---:|
+| **supply-side revenue** | **439,227.68** |
 
 ### Sky side
 
 | Field | USDS |
 |---|---:|
 | prime cost of funds | 2,110,933.27 |
-| sky side sky direct exposure | 0.00 |
-| **sky revenue** | **2,110,933.27** |
+| sky direct exposure | 0.00 |
+| **supply-side revenue** | **2,110,933.27** |
 
 ## Per-venue
 

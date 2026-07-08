@@ -23,7 +23,7 @@ The other revenue quantities have a single canonical formula at a single compute
 
 The convention we believe we have:
 
-> Per-venue `actual_revenue` is **NAV growth net of new principal that arrived**, **gross of Sky's BR**. Sky's BR is captured separately via `sky_revenue` and netted at the prime-side level. The prime's true profit (the `prime agent profit` row in summary.md) = `agent_rate + distribution_rewards + prime_agent_revenue − prime_cof`, where `prime_cof = sky_revenue − sde_revenue`.
+> Per-venue `actual_revenue` is **NAV growth net of new principal that arrived**, **gross of Sky's BR**. Sky's BR is captured separately via `sky_revenue` and netted at the prime-side level. The prime's true profit (= summary.md's `demand-side revenue` + `supply-side revenue`) = `agent_rate + distribution_rewards + prime_agent_revenue − prime_cof`, where `prime_cof = sky_revenue − sde_revenue`.
 
 Concretely, for a venue funded by USDS the prime drew from the ilk:
 
@@ -82,7 +82,7 @@ Every current pricing category's value reading was verified to carry no CoF-equi
 ## 6. Other items worth confirming alongside
 
 1. **PSM3 BR exclusion** — Sky Atlas (#e15caed7-276c-4489-95dc-9ba628566bf4) says Spark should not pay BR on USDS held in PSM3. **Confirmed implemented**: `src/settle/compute/sky_revenue.py:11` declares the deduction and `monthly_pnl.py:1977 + 3311` wires `psm_usds` through to `compute_sky_revenue_daily`. Spark's PSM3 USDS is subtracted from `utilized` — no BR charged on it.
-2. **Headline summary format (post-2026-06-10).** The summary.md headline is a two-table breakdown — prime side (`agent_rate + distribution_rewards + prime_agent_net_revenue + prime_side_sde` → `prime agent profit`) and Sky side (`prime_cof + sky_side_sde` → `sky revenue`). All amounts denominated in USDS (column header), no `$` prefix on values. Previous `(gross)`/`(net)` field suffix convention was removed.
+2. **Headline summary format (post-2026-07-08).** The summary.md headline splits the prime side into **Demand-Side revenue** (`agent_rate + distribution_rewards`) and **Supply-Side revenue** (`prime_agent_revenue − prime_cof`, the venue book net of CoF — the SDE-venue residual is folded in, since SDE is a Sky-side concept and "prime side sky direct exposure" was a misnomer); the Sky side is `prime_cof + sky direct exposure → supply-side revenue` (formerly `sky revenue`). All amounts denominated in USDS (column header), no `$` prefix on values.
 
 ## 7. Deliverables
 
