@@ -685,12 +685,18 @@ venues:
     pricing_category: B
     sky_savings_token: true
     demand_side_spread: true         # spread handled via Demand Side Distribution Rewards, not here
-    # TODO: deduct_savings_v2_deployed is currently a no-op — the upstream Dune
-    # table (dune.sparkdotfi.result_savings_v_2_deployment_metrics) is no longer
-    # accessible. A new data source for daily sUSDS deployed into Savings V2
-    # must be created before this deduction can be re-enabled.
+    # deduct_savings_v2_deployed carves the depositor-sourced spUSDC V2 slice
+    # out of S32's raw MtM. It IS active and applied. The original Dune table
+    # (dune.sparkdotfi.result_savings_v_2_deployment_metrics) is gone, but the
+    # source was reimplemented as a live RPC read of the spUSDC V2 vault's
+    # `assetsOutstanding()` (the USDC deployed to the ALM, held there as sUSDS),
+    # integrated daily against SSR in `_savings_v2_depositor_ssr` and subtracted
+    # from S32. Verified against on-chain data Jan–May 2026: the carve-out sums
+    # to $5.71M (vs Spark's independently-computed $5.71M "unrecognised"), and
+    # S32's booked $10.69M + carve-out $5.71M = $16.40M gross, matching Spark's
+    # on-chain value-growth-net-of-inflows to 0.04%.
     # See src/settle/normalize/sources/dune_savings_v2_deployed.py.
-    deduct_savings_v2_deployed: true  # flag preserved; implementation stubbed pending new data source
+    deduct_savings_v2_deployed: true  # active — live RPC read of spUSDC V2 assetsOutstanding
     token:
       address: '0xa3931d71877c0e7a3148cb7eb4463524fec27fbd'
       symbol: 'sUSDS'
