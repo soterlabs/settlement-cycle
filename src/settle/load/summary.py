@@ -198,6 +198,51 @@ def render_summary(prov: dict) -> str:
     lines.append(_row("**supply-side revenue**", f"**{_usds(supply_side_revenue)}**"))
     lines.append("")
 
+    # Non-venue supply-side components. These are booked at the orchestrator
+    # level and carry NO per-venue row, so they don't appear in the Per-venue
+    # table below and were previously invisible in the published report (the
+    # "non-venue layer" flagged in the 2026-07 Spark reconciliation, §8 item 2).
+    # PSM3 is a basket contract (USDC + USDS + sUSDS legs), not a venue: its
+    # sUSDS-leg SSR appreciation is credited straight into prime_agent_revenue
+    # and its 30bps spread reimbursement reduces cost of funds. The Curve sUSDS
+    # spread is the same shape. The Cat B L2 sUSDS proxies' 30bps DOES show
+    # per-venue (spread_reimb column) — surfaced here as a total for tie-out.
+    psm3_appreciation = _D(r.get("psm3_susds_appreciation"))
+    psm3_spread       = _D(r.get("psm3_susds_spread"))
+    curve_spread      = _D(r.get("curve_susds_spread"))
+    total_spread      = _D(r.get("susds_spread_reimbursement"))
+    catb_l2_spread    = total_spread - psm3_spread - curve_spread
+    if psm3_appreciation or total_spread:
+        lines.append("##### Non-venue components (orchestrator-level)")
+        lines.append("")
+        lines.append("| Component | USDS | Effect |")
+        lines.append("|---|---:|---|")
+        if psm3_appreciation:
+            lines.append(
+                f"| PSM3 sUSDS SSR appreciation | {_usds(psm3_appreciation)} "
+                f"| adds to prime revenue |"
+            )
+        if psm3_spread:
+            lines.append(
+                f"| PSM3 sUSDS 30bps spread reimbursement | {_usds(psm3_spread)} "
+                f"| reduces cost of funds |"
+            )
+        if curve_spread:
+            lines.append(
+                f"| Curve sUSDS 30bps spread reimbursement | {_usds(curve_spread)} "
+                f"| reduces cost of funds |"
+            )
+        if catb_l2_spread:
+            lines.append(
+                f"| Cat B L2 sUSDS 30bps spread reimbursement | "
+                f"{_usds(catb_l2_spread)} | reduces cost of funds (per-venue) |"
+            )
+        lines.append(
+            f"| **total sUSDS spread reimbursement** | "
+            f"**{_usds(total_spread)}** | (netted into cost of funds above) |"
+        )
+        lines.append("")
+
     lines.append("### Sky side")
     lines.append("")
     lines.append("| Field | USDS |")
