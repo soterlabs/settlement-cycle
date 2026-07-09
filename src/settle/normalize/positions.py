@@ -1008,6 +1008,7 @@ def _atoken_index_weighted_inflow(
     scaled_balance_at,
     balance_at,
     transfer_event_blocks=None,
+    daily_boundary_blocks=None,
 ):
     """Closed-form rebasing-token inflow for Cat C/D (Aave aToken, SparkLend
     spToken).
@@ -1124,6 +1125,53 @@ def _atoken_index_weighted_inflow(
             balance_at=balance_at,
             scaled_balance_at=scaled_balance_at,
         )
+        # Degenerate-closed-form recovery — fires ONLY when the computation
+        # above recovered ~0 yield. With no event data, the per-segment call
+        # collapses to the whole-period closed-form, which returns ~0 for two
+        # patterns: a mid-period ENTRY (``scaled_som == 0`` → no basis) and a
+        # staged EXIT to dust (the clean-exit binary search lands on the final
+        # drain → negative → clamped to 0). Spark S9/S2/S54 hit these and
+        # booked $0 on real interest. Retry on a DAILY segment grid so each
+        # deposit/withdrawal is isolated in its own segment and the per-segment
+        # closed-form attributes rebase yield correctly.
+        #
+        # Non-interference guarantees, by construction:
+        #   * ``not boundaries`` — venues WITH event data (e.g. Grove's Horizon
+        #     aTokens, which carry Merkl claim/burn days) never enter here.
+        #   * ``yield_raw <= ~0`` — a value the normal path already recovered
+        #     (e.g. a single-withdrawal clean exit via the binary search) is
+        #     never overwritten; we only turn a 0 into a positive.
+        #   * ``daily_yield > yield_raw`` — the recovery can only INCREASE the
+        #     booked yield, never reduce it.
+        #   * ``max(bal_som, bal_eom) > 0`` — a genuinely empty venue-month
+        #     (0 → 0) is skipped, no wasted RPC.
+        _dust_yield = max(1, scale // 100)          # ≤ $0.01 in raw units
+        if (not boundaries and daily_boundary_blocks is not None
+                and yield_raw <= _dust_yield
+                and max(bal_som, bal_eom) > 0
+                and (scaled_som == 0 or is_clean_exit)):
+            daily_bounds = list(daily_boundary_blocks(
+                chain_value, token_addr, holder.value, som_block, eom_block,
+            ))
+            daily_segments = sorted({post for pre, post, *_ in daily_bounds})
+            if daily_segments:
+                daily_yield = _atoken_per_segment_yield(
+                    chain_value, token_addr, holder.value,
+                    som_block, eom_block, daily_segments,
+                    balance_at=balance_at,
+                    scaled_balance_at=scaled_balance_at,
+                )
+                if daily_yield > yield_raw:
+                    import logging as _logging
+                    _logging.getLogger(__name__).info(
+                        "_atoken_index_weighted_inflow: venue %s — no event "
+                        "boundaries + degenerate closed-form (scaled_som=%s, "
+                        "clean_exit=%s) recovered ~0; re-recovered yield=%s "
+                        "via %d daily segments.",
+                        venue.id, scaled_som, is_clean_exit, daily_yield,
+                        len(daily_segments),
+                    )
+                    yield_raw = daily_yield
         period_inflow_raw = delta_raw - yield_raw
         period_inflow_usd = Decimal(period_inflow_raw) / scale
         if boundaries:
