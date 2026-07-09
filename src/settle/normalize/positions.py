@@ -1413,10 +1413,48 @@ def _cat_a_capital_inflow_timeseries(
     })
     if detail.empty:
         if external_sources:
-            # External yield source registered but no per-counterparty data
-            # available — can't classify; refuse to guess. Caller sees
-            # period_inflow = 0 and revenue = Δvalue, which is wrong but
-            # explicit (vs. silently zeroing real yield).
+            # External yield source registered but no per-counterparty data.
+            # Before assuming $0 flows, check whether the balance actually
+            # moved in-period: balances only change via transfers, so
+            # in-period movement + an EMPTY counterparty log is a guaranteed
+            # capture gap, never a legitimate state. Proceeding would book
+            # the whole balance delta as ±yield — the Grove E13 ±$49,596
+            # May/June 2026 incident (E32 Mar/Apr was the same class).
+            cum_df = balance_source.cumulative_balance_timeseries(
+                chain=venue.chain.value,
+                token=venue.token.address.value,
+                holder=holder.value,
+                start=prime.start_date,
+                pin_block=pin_block,
+            )
+            moved = pd.DataFrame()
+            if not cum_df.empty:
+                bd = pd.to_datetime(cum_df["block_date"])
+                net = pd.to_numeric(cum_df["daily_net"], errors="coerce").fillna(0)
+                in_period = (
+                    (bd >= pd.Timestamp(period.start))
+                    & (bd <= pd.Timestamp(period.end))
+                )
+                moved = cum_df[in_period & (net != 0)]
+            if not moved.empty:
+                import os as _os
+                msg = (
+                    f"Cat A venue {venue.id} ({venue.token.symbol}) has "
+                    f"in-period balance movement but an EMPTY counterparty "
+                    f"log — the inflow_by_counterparty capture for this "
+                    f"venue is missing, and proceeding would misclassify "
+                    f"the balance delta as ±yield. Capture the venue's "
+                    f"transfer log (see the fixture capture script's "
+                    f"INFLOW_BY_CP list) or set "
+                    f"SETTLE_ALLOW_UNCLASSIFIED_CAT_A=1 to accept the "
+                    f"misclassification for this run."
+                )
+                if _os.environ.get("SETTLE_ALLOW_UNCLASSIFIED_CAT_A") != "1":
+                    raise RuntimeError(msg)
+                import logging as _logging
+                _logging.getLogger(__name__).warning(msg)
+            # No in-period movement (dormant venue) — $0 flows is the
+            # correct answer; revenue stays Δvalue-driven (= 0).
             return empty
         # No registered external yield source AND no per-counterparty data.
         # Methodology: par-stables don't generate yield by themselves; any

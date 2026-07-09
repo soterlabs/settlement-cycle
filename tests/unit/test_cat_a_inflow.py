@@ -644,3 +644,56 @@ def test_load_prime_parses_override_blocks_from_spark_yaml(
         e.date == date(2026, 5, 14) and e.amount == Decimal("5270830")
         for e in entries
     )
+
+
+def test_cat_a_missing_counterparty_log_with_movement_raises(config_dir: Path, monkeypatch):
+    """In-period balance movement + EMPTY counterparty log = guaranteed
+    capture gap (balances only change via transfers). Must raise, not
+    silently book the delta as ±yield — the Grove E13 ±$49,596 incident."""
+    import pytest
+
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()
+    src = MockBalanceSource()
+    src.inflow_by_counterparty = lambda **_: pd.DataFrame()  # missing capture
+    src.cumulative_balance_timeseries = lambda **_: pd.DataFrame({
+        "block_date": [date(2026, 3, 7)],           # in-period movement
+        "daily_net":  [Decimal("49596")],
+        "cum_balance": [Decimal("49596")],
+    })
+    external = {_bytes20("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")}
+
+    with pytest.raises(RuntimeError, match="EMPTY counterparty log"):
+        _cat_a_capital_inflow_timeseries(
+            grove, venue, period,
+            balance_source=src, external_sources=external,
+        )
+
+    # Escape hatch: explicit env opt-in degrades to the old warn-and-return.
+    monkeypatch.setenv("SETTLE_ALLOW_UNCLASSIFIED_CAT_A", "1")
+    out = _cat_a_capital_inflow_timeseries(
+        grove, venue, period,
+        balance_source=src, external_sources=external,
+    )
+    assert out.empty
+
+
+def test_cat_a_missing_counterparty_log_dormant_venue_ok(config_dir: Path):
+    """No in-period movement → empty log is legitimate (dormant venue);
+    returns the empty capital frame without raising."""
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()
+    src = MockBalanceSource()
+    src.inflow_by_counterparty = lambda **_: pd.DataFrame()
+    src.cumulative_balance_timeseries = lambda **_: pd.DataFrame({
+        "block_date": [date(2025, 12, 1)],          # pre-period only
+        "daily_net":  [Decimal("100")],
+        "cum_balance": [Decimal("100")],
+    })
+    external = {_bytes20("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")}
+
+    out = _cat_a_capital_inflow_timeseries(
+        grove, venue, period,
+        balance_source=src, external_sources=external,
+    )
+    assert out.empty
