@@ -32,7 +32,10 @@ import requests
 from .cache import cache_dir, cached
 
 DUNE_API_BASE = "https://api.dune.com/api/v1"
-DEFAULT_PERFORMANCE = "medium"
+# Dune engine tier for executions. Env-overridable because key plans vary:
+# free-tier keys reject anything above "free" (HTTP 400 "Invalid
+# performance tier"), while paid keys default sensibly to "medium".
+DEFAULT_PERFORMANCE = os.environ.get("SETTLE_DUNE_PERFORMANCE", "medium")
 DEFAULT_POLL_TIMEOUT_SEC = 300
 DEFAULT_POLL_INTERVAL_SEC = 3
 
