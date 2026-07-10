@@ -404,6 +404,28 @@ class Venue:
                 f"semantics only makes sense for par-stable positions on "
                 f"chains without reliable transfer-event coverage."
             )
+        # ``external_yield_source`` routes the venue into the Cat A
+        # counterparty classifier (see ``compute.monthly_pnl``); it has no
+        # meaning outside PAR_STABLE and a YAML typo must not silently no-op.
+        if self.external_yield_source and self.pricing_category != PricingCategory.PAR_STABLE:
+            raise ValueError(
+                f"Venue {self.id}: external_yield_source is only valid on "
+                f"PricingCategory.PAR_STABLE venues (got "
+                f"{self.pricing_category.name}). Non-par venues recognise "
+                f"yield through NAV/price/share pricing, not the Cat A "
+                f"external-source classifier."
+            )
+        # Contradictory combination: force_capital_inflow would short-circuit
+        # first and silently zero the revenue that external_yield_source
+        # promises to classify (and to guard with a capture-gap error).
+        if self.external_yield_source and self.force_capital_inflow:
+            raise ValueError(
+                f"Venue {self.id}: external_yield_source and "
+                f"force_capital_inflow are mutually exclusive — "
+                f"force_capital_inflow declares revenue=$0 with no transfer "
+                f"data, external_yield_source declares classifiable external "
+                f"yield; setting both would silently zero real yield."
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -595,6 +617,20 @@ class Prime:
                 "supply-side venues need ilk debt for the BR charge. Either add "
                 "the allocator ilk or remove the venues (agent-rate-only prime)."
             )
+        # A venue flagged external_yield_source needs at least one registered
+        # external sender on its chain: with an empty allowlist the Cat A
+        # classifier nets EVERY inflow to capital and the venue's real yield
+        # silently becomes $0 — the exact failure the flag exists to prevent.
+        for v in self.venues:
+            if v.external_yield_source and not self.external_alm_sources.get(v.chain):
+                raise ValueError(
+                    f"prime {self.id!r}: venue {v.id} sets "
+                    f"external_yield_source but external_alm_sources has no "
+                    f"entry for chain {v.chain.value!r} — the classifier "
+                    f"would treat every inflow as capital and silently zero "
+                    f"the venue's yield. Register the external sender(s) or "
+                    f"drop the flag."
+                )
 
     @property
     def chains(self) -> set[Chain]:
