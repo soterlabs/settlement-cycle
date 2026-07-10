@@ -697,3 +697,26 @@ def test_cat_a_missing_counterparty_log_dormant_venue_ok(config_dir: Path):
         balance_source=src, external_sources=external,
     )
     assert out.empty
+
+
+def test_cat_a_missing_counterparty_log_boundary_neutral_transit_ok(config_dir: Path):
+    """In-and-out transit that NETS to zero within the period leaves
+    revenue = Δvalue = 0 regardless of classification — an empty log is
+    harmless and must NOT raise (Grove E13's Q1 transits; the first guard
+    version fired on these)."""
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()
+    src = MockBalanceSource()
+    src.inflow_by_counterparty = lambda **_: pd.DataFrame()
+    src.cumulative_balance_timeseries = lambda **_: pd.DataFrame({
+        "block_date": [date(2026, 3, 5), date(2026, 3, 20)],
+        "daily_net":  [Decimal("49596"), Decimal("-49596")],
+        "cum_balance": [Decimal("49596"), Decimal("0")],
+    })
+    external = {_bytes20("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")}
+
+    out = _cat_a_capital_inflow_timeseries(
+        grove, venue, period,
+        balance_source=src, external_sources=external,
+    )
+    assert out.empty

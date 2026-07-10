@@ -1427,7 +1427,13 @@ def _cat_a_capital_inflow_timeseries(
                 start=prime.start_date,
                 pin_block=pin_block,
             )
-            moved = pd.DataFrame()
+            # Fire on NET in-period movement only: an intra-month transit
+            # that nets to zero (in-and-out within the period) leaves the
+            # boundary values — and therefore revenue = Δvalue — untouched,
+            # so an empty log is harmless there (Grove E13 had exactly such
+            # Q1 transits; requiring captures for them would be noise).
+            # Misclassification is only possible when the period's net ≠ 0.
+            period_net = 0.0
             if not cum_df.empty:
                 bd = pd.to_datetime(cum_df["block_date"])
                 net = pd.to_numeric(cum_df["daily_net"], errors="coerce").fillna(0)
@@ -1435,12 +1441,13 @@ def _cat_a_capital_inflow_timeseries(
                     (bd >= pd.Timestamp(period.start))
                     & (bd <= pd.Timestamp(period.end))
                 )
-                moved = cum_df[in_period & (net != 0)]
-            if not moved.empty:
+                period_net = float(net[in_period].sum())
+            if abs(period_net) > 0.01:
                 import os as _os
                 msg = (
                     f"Cat A venue {venue.id} ({venue.token.symbol}) has "
-                    f"in-period balance movement but an EMPTY counterparty "
+                    f"net in-period balance movement ({period_net:+,.2f}) "
+                    f"but an EMPTY counterparty "
                     f"log — the inflow_by_counterparty capture for this "
                     f"venue is missing, and proceeding would misclassify "
                     f"the balance delta as ±yield. Capture the venue's "
