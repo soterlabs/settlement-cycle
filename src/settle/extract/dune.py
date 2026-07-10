@@ -38,6 +38,9 @@ DUNE_API_BASE = "https://api.dune.com/api/v1"
 # call via ``_resolve_performance`` (not bound at import) so a runtime
 # ``SETTLE_DUNE_PERFORMANCE`` / monkeypatch.setenv takes effect, and validated
 # so a stale/typo'd value fails fast rather than 400-ing every execution.
+# NOTE: the tier is part of the execute cache key, so switching tiers
+# re-executes previously cached queries — intended (engine tiers can differ),
+# but budget for the re-runs when flipping a populated cache to a new tier.
 DEFAULT_PERFORMANCE = "medium"
 _VALID_PERFORMANCE = {"free", "medium", "large"}
 
