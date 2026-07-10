@@ -211,3 +211,23 @@ def test_infer_parameters_preserves_order_of_first_appearance():
     sql = "WHERE x = {{chain}} AND y <= {{pin_block}} AND z = {{token}}"
     keys = [p["key"] for p in _infer_parameters(sql)]
     assert keys == ["chain", "pin_block", "token"]
+
+
+# ── _resolve_performance: lazy env read + validation (PR review finding) ──────
+
+def test_resolve_performance_lazy_env_and_validation(monkeypatch):
+    """SETTLE_DUNE_PERFORMANCE is read at CALL time (not import), and an
+    invalid value fails fast instead of 400-ing every execution."""
+    import pytest
+    from settle.extract.dune import _resolve_performance
+
+    monkeypatch.delenv("SETTLE_DUNE_PERFORMANCE", raising=False)
+    assert _resolve_performance() == "medium"           # default
+    assert _resolve_performance("free") == "free"        # explicit arg wins
+
+    monkeypatch.setenv("SETTLE_DUNE_PERFORMANCE", "free")
+    assert _resolve_performance() == "free"              # runtime override honoured
+
+    monkeypatch.setenv("SETTLE_DUNE_PERFORMANCE", "turbo")
+    with pytest.raises(ValueError, match="Invalid Dune performance tier"):
+        _resolve_performance()

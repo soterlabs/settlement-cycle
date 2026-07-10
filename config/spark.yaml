@@ -600,6 +600,7 @@ venues:
     chain: ethereum
     label: 'USDC raw (ALM idle)'
     pricing_category: A
+    external_yield_source: true   # Anchorage tri-party interest sweeps (external_alm_sources 0x4950…6872)
     token:
       address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
       symbol: 'USDC'
@@ -618,6 +619,7 @@ venues:
     chain: ethereum
     label: 'PYUSD raw (ALM idle — $677M as of 2026-04)'
     pricing_category: A
+    external_yield_source: true   # PayPal/Paxos PYUSD rewards (external_alm_sources 0xfc05…5e87)
     token:
       address: '0x6c3ea9036406852006290770bedfcaba0e23a0e8'
       symbol: 'PYUSD'

@@ -1339,6 +1339,14 @@ def _erc4626_shares_weighted_inflow(
     }])
 
 
+# Materiality floor for the Cat A capture-gap guard: in-period balance
+# movement below this (in USD-equivalent, par-stable) is treated as dust/noise
+# and does not trigger the empty-counterparty-log RuntimeError. Set well above
+# spam-wei dust and far below any real capture gap (the incidents were tens of
+# thousands of dollars: Grove E13 ±$49,596, Spark S27 ~$194K).
+_CAT_A_CAPTURE_GAP_FLOOR_USD = Decimal("1")
+
+
 def _cat_a_capital_inflow_timeseries(
     prime: Prime,
     venue: Venue,
@@ -1427,6 +1435,11 @@ def _cat_a_capital_inflow_timeseries(
                 start=prime.start_date,
                 pin_block=pin_block,
             )
+            # Materiality floor: ``daily_net`` is $-equivalent for par-stables
+            # (the cumulative fallback below sums it directly as USD capital).
+            # Sub-dollar dust (spam wei transfers) must NOT abort the run — the
+            # summary layer already treats sub-cent as noise. Only MATERIAL
+            # in-period movement with an empty log signals a real capture gap.
             moved = pd.DataFrame()
             if not cum_df.empty:
                 bd = pd.to_datetime(cum_df["block_date"])
@@ -1435,21 +1448,28 @@ def _cat_a_capital_inflow_timeseries(
                     (bd >= pd.Timestamp(period.start))
                     & (bd <= pd.Timestamp(period.end))
                 )
-                moved = cum_df[in_period & (net != 0)]
+                moved = cum_df[in_period & (net.abs() >= _CAT_A_CAPTURE_GAP_FLOOR_USD)]
             if not moved.empty:
                 import os as _os
+                # Override accepts "1" (all venues) or a comma-separated venue-id
+                # allowlist (e.g. "S26,E13") so bypassing one known-immaterial
+                # gap does NOT globally downgrade every other venue's guard.
+                _allow = _os.environ.get("SETTLE_ALLOW_UNCLASSIFIED_CAT_A", "")
+                _allowed = _allow == "1" or venue.id in {
+                    s.strip() for s in _allow.split(",") if s.strip()
+                }
                 msg = (
-                    f"Cat A venue {venue.id} ({venue.token.symbol}) has "
-                    f"in-period balance movement but an EMPTY counterparty "
-                    f"log — the inflow_by_counterparty capture for this "
-                    f"venue is missing, and proceeding would misclassify "
-                    f"the balance delta as ±yield. Capture the venue's "
-                    f"transfer log (see the fixture capture script's "
-                    f"INFLOW_BY_CP list) or set "
-                    f"SETTLE_ALLOW_UNCLASSIFIED_CAT_A=1 to accept the "
-                    f"misclassification for this run."
+                    f"Cat A venue {venue.id} ({venue.token.symbol}, "
+                    f"external_yield_source) has material in-period balance "
+                    f"movement (>= ${_CAT_A_CAPTURE_GAP_FLOOR_USD}) but an EMPTY "
+                    f"counterparty log — the inflow_by_counterparty capture for "
+                    f"this venue is missing, and proceeding would misclassify "
+                    f"the balance delta as ±yield. Capture the venue's transfer "
+                    f"log (see the fixture capture script's INFLOW_BY_CP list) "
+                    f"or set SETTLE_ALLOW_UNCLASSIFIED_CAT_A={venue.id} (or =1) "
+                    f"to accept the misclassification for this run."
                 )
-                if _os.environ.get("SETTLE_ALLOW_UNCLASSIFIED_CAT_A") != "1":
+                if not _allowed:
                     raise RuntimeError(msg)
                 import logging as _logging
                 _logging.getLogger(__name__).warning(msg)

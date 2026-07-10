@@ -697,3 +697,64 @@ def test_cat_a_missing_counterparty_log_dormant_venue_ok(config_dir: Path):
         balance_source=src, external_sources=external,
     )
     assert out.empty
+
+
+# ── reconciled external_yield_source model (supersedes #151 .attrs collapse) ──
+
+def test_cat_a_missing_log_dust_movement_does_not_raise(config_dir: Path):
+    """Sub-$1 in-period movement (spam dust) with an empty counterparty log
+    must NOT abort the run — only material gaps raise (materiality floor)."""
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()
+    src = MockBalanceSource()
+    src.inflow_by_counterparty = lambda **_: pd.DataFrame()
+    src.cumulative_balance_timeseries = lambda **_: pd.DataFrame({
+        "block_date": [date(2026, 3, 7)],
+        "daily_net":  [Decimal("0.5")],          # dust, < $1 floor
+        "cum_balance": [Decimal("0.5")],
+    })
+    external = {_bytes20("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")}
+    out = _cat_a_capital_inflow_timeseries(
+        grove, venue, period, balance_source=src, external_sources=external,
+    )
+    assert out.empty            # no raise, dormant-equivalent
+
+
+def test_cat_a_missing_log_override_is_per_venue(config_dir: Path, monkeypatch):
+    """The capture-gap override accepts a per-venue allowlist, so bypassing one
+    venue does not globally downgrade the guard for others."""
+    import pytest
+    grove, venue = _grove_e15(config_dir)        # venue.id == "E15"
+    period = _eth_period()
+    src = MockBalanceSource()
+    src.inflow_by_counterparty = lambda **_: pd.DataFrame()
+    src.cumulative_balance_timeseries = lambda **_: pd.DataFrame({
+        "block_date": [date(2026, 3, 7)], "daily_net": [Decimal("49596")],
+        "cum_balance": [Decimal("49596")],
+    })
+    external = {_bytes20("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")}
+    # Allowlisting OTHER venues must not bypass E15's guard.
+    monkeypatch.setenv("SETTLE_ALLOW_UNCLASSIFIED_CAT_A", "S99,S26")
+    with pytest.raises(RuntimeError, match="EMPTY counterparty log"):
+        _cat_a_capital_inflow_timeseries(
+            grove, venue, period, balance_source=src, external_sources=external,
+        )
+    # Allowlisting E15 specifically degrades to warn-and-return.
+    monkeypatch.setenv("SETTLE_ALLOW_UNCLASSIFIED_CAT_A", "E15")
+    out = _cat_a_capital_inflow_timeseries(
+        grove, venue, period, balance_source=src, external_sources=external,
+    )
+    assert out.empty
+
+
+def test_external_yield_source_flag_parses(config_dir: Path):
+    """The Spark venues that receive external yield are flagged True (so the
+    orchestrator runs the classifier); idle par-stables default False (so the
+    orchestrator collapses their revenue to $0)."""
+    from settle.domain.config import load_prime
+    spark = load_prime(config_dir / "spark.yaml")
+    by_id = {v.id: v for v in spark.venues}
+    assert by_id["S26"].external_yield_source is True    # Anchorage USDC
+    assert by_id["S28"].external_yield_source is True    # PayPal PYUSD
+    assert by_id["S27"].external_yield_source is False   # idle USDT → revenue $0
+    assert by_id["S29"].external_yield_source is False   # idle DAI  → revenue $0

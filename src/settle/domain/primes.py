@@ -349,6 +349,18 @@ class Venue:
     # Δvalue to inflow. The venue still participates in CoF allocation via its
     # tw_avg_value_usd. Only valid on PricingCategory.PAR_STABLE venues.
     force_capital_inflow: bool = False
+    # Declares that this Cat A par-stable venue receives realized yield from an
+    # off-chain / external source (an ``external_alm_sources`` sender), e.g.
+    # Spark S26 (Anchorage USDC sweeps) and S28 (PayPal/Paxos PYUSD rewards).
+    # Default False: a par-stable holding earns NO yield by itself, so its
+    # revenue is $0 by construction and the compute layer attributes the whole
+    # Δvalue to capital (any residual is a transfer-capture artifact, never
+    # yield — this is what fixed Spark S27 −$194,444 and Grove E13/E31/E32).
+    # When True, the Cat A classifier runs and must reconcile the external
+    # inflows; if it can't (empty counterparty log with in-period movement) it
+    # raises a capture-gap error rather than silently zeroing real yield.
+    # A future external source on a currently-idle venue MUST flip this to True.
+    external_yield_source: bool = False
     # Off-chain notional principal used by the CoF allocation when on-chain
     # ``tw_avg_value_usd`` doesn't reflect the principal Sky is implicitly
     # charging interest on. Primary use case: cash-distribution-only venues
