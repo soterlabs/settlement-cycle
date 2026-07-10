@@ -212,7 +212,10 @@ def render_summary(prov: dict) -> str:
     curve_spread      = _D(r.get("curve_susds_spread"))
     total_spread      = _D(r.get("susds_spread_reimbursement"))
     catb_l2_spread    = total_spread - psm3_spread - curve_spread
-    if psm3_appreciation or total_spread:
+    # Gate on ANY component, not just the aggregate: an upstream inconsistency
+    # that leaves ``total_spread`` 0 while a component spread is populated must
+    # still render the section (else the very layer this surfaces stays hidden).
+    if psm3_appreciation or total_spread or psm3_spread or curve_spread:
         lines.append("##### Non-venue components (orchestrator-level)")
         lines.append("")
         lines.append("| Component | USDS | Effect |")
@@ -232,15 +235,23 @@ def render_summary(prov: dict) -> str:
                 f"| Curve sUSDS 30bps spread reimbursement | {_usds(curve_spread)} "
                 f"| reduces cost of funds |"
             )
-        if catb_l2_spread:
+        # Only the POSITIVE residual is a real per-venue reimbursement. A
+        # non-positive value is definitional drift (e.g. sky_only zeroes the
+        # component spreads while retaining the aggregate, or partial fixtures)
+        # — omit it rather than print a nonsensical negative "reimbursement".
+        if catb_l2_spread > 0:
             lines.append(
                 f"| Cat B L2 sUSDS 30bps spread reimbursement | "
                 f"{_usds(catb_l2_spread)} | reduces cost of funds (per-venue) |"
             )
-        lines.append(
-            f"| **total sUSDS spread reimbursement** | "
-            f"**{_usds(total_spread)}** | (netted into cost of funds above) |"
-        )
+        # The total row only makes sense when there IS a reimbursement; an
+        # appreciation-only prime (total_spread == 0) would otherwise print a
+        # spurious "0.00 (netted into cost of funds)".
+        if total_spread:
+            lines.append(
+                f"| **total sUSDS spread reimbursement** | "
+                f"**{_usds(total_spread)}** | (netted into cost of funds above) |"
+            )
         lines.append("")
 
     lines.append("### Sky side")
