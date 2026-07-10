@@ -1411,13 +1411,28 @@ def _cat_a_capital_inflow_timeseries(
     empty = pd.DataFrame({
         "block_date": [], "daily_inflow": [], "cum_inflow": [],
     })
+
+    def _flag(df, has_external_inflow: bool):
+        """Tag the returned frame with whether ANY external yield was
+        classified for this venue in this period. The orchestrator reads
+        ``df.attrs['has_external_inflow']``: when False, the venue is a pure
+        par-stable with no yield source, so its revenue is $0 by construction
+        and the ``Δvalue − captured_inflow`` residual (capture noise or
+        uncaptured capital, e.g. Spark S27 / Grove E13) must not leak into
+        revenue. Attrs is a side-channel so the return type stays a DataFrame
+        (existing callers/tests are unaffected). See the collapse in
+        ``compute_monthly_pnl``'s Cat A branch."""
+        df.attrs["has_external_inflow"] = bool(has_external_inflow)
+        return df
+
     if detail.empty:
+        # No per-counterparty transfer data — nothing can be classified as
+        # external yield, so ``has_external_inflow=False``. Previously this
+        # returned an untagged empty frame (period_inflow=0 → revenue=Δvalue,
+        # the phantom Grove flagged on E13/E31/E32). The frame is still empty;
+        # the orchestrator now collapses revenue to $0 via the flag.
         if external_sources:
-            # External yield source registered but no per-counterparty data
-            # available — can't classify; refuse to guess. Caller sees
-            # period_inflow = 0 and revenue = Δvalue, which is wrong but
-            # explicit (vs. silently zeroing real yield).
-            return empty
+            return _flag(empty, False)
         # No registered external yield source AND no per-counterparty data.
         # Methodology: par-stables don't generate yield by themselves; any
         # balance change at the ALM must be value-preserving capital movement
@@ -1445,13 +1460,15 @@ def _cat_a_capital_inflow_timeseries(
             pin_block=pin_block,
         )
         if cum_df.empty:
-            return empty
+            return _flag(empty, False)
         out = pd.DataFrame({
             "block_date": cum_df["block_date"],
             "daily_inflow": cum_df["daily_net"],
         })
         out["cum_inflow"] = out["daily_inflow"].cumsum()
-        return out
+        # No external source data here → capital absorbs the whole balance
+        # change → revenue 0 (correct par-stable default).
+        return _flag(out, False)
 
     # Counterparties may arrive as bytes / bytearray / memoryview (Dune
     # varbinary, possibly with leading zeros stripped) or as a "0x"-prefixed
@@ -1590,9 +1607,24 @@ def _cat_a_capital_inflow_timeseries(
             consumed[cp] += capital_portion
             detail.at[idx, "_capital_amount"] = capital_portion
 
+    # Did ANY transfer in the settlement period get classified as yield
+    # (i.e. its capital portion differs from its signed amount)? This is the
+    # signal the orchestrator uses to decide whether the venue has a live
+    # external yield source this period. Covers external-source inflows,
+    # paired-cap excess, and (negatively) yield reversals; excludes rows
+    # fully reclassified back to capital by principal-return overrides.
+    _in_period = (
+        (detail["block_date"] >= period.start)
+        & (detail["block_date"] <= period.end)
+    )
+    has_period_yield = bool(any(
+        _Decimal(str(detail["signed_amount"].iloc[i])) != detail["_capital_amount"].iloc[i]
+        for i in range(len(detail)) if _in_period.iloc[i]
+    ))
+
     nonzero = detail[detail["_capital_amount"] != _Decimal("0")]
     if nonzero.empty:
-        return empty
+        return _flag(empty, has_period_yield)
 
     daily = (
         nonzero.groupby("block_date", as_index=False)["_capital_amount"]
@@ -1603,7 +1635,7 @@ def _cat_a_capital_inflow_timeseries(
     )
     # Par-stable: each unit is $1, so signed_amount is already USD-equivalent.
     daily["cum_inflow"] = daily["daily_inflow"].cumsum()
-    return daily
+    return _flag(daily, has_period_yield)
 
 
 def _rwa_inflow_timeseries(

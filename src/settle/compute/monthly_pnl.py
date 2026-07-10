@@ -113,6 +113,42 @@ def _merge_cap_series(df1, df2):
     return _pd.DataFrame(rows)
 
 
+def _collapse_cat_a_if_no_external_yield(
+    inflow_ts, value_som, value_eom, period_start, venue_id="?",
+):
+    """Collapse a Cat A par-stable venue's revenue to $0 when no external
+    yield was classified this period.
+
+    ``_cat_a_capital_inflow_timeseries`` tags its result with
+    ``attrs['has_external_inflow']``. When that is ``False`` the venue is a
+    pure par-stable idle holding with no yield source, so its revenue is $0 by
+    construction — but ``revenue = Δvalue − captured_inflow`` can be non-zero
+    from a transfer-capture residual (Spark S27 May 2026: −$194,444) or an
+    uncaptured capital movement (Grove E13/E31/E32: the whole balance change).
+    In that case return a single-row frame with ``inflow = Δvalue`` so revenue
+    collapses to exactly $0.
+
+    Venues WITH an external source that paid in this period (Spark S26
+    Anchorage, S28 PYUSD) are flagged ``True`` → returned unchanged. A missing
+    flag (older/other callers) is treated as "leave alone" — the collapse only
+    fires on an explicit ``False``. (Cash-distribution venues like Grove's E38
+    Agora never reach this path.)
+    """
+    if inflow_ts.attrs.get("has_external_inflow") is False:
+        delta = value_eom - value_som
+        _log.info(
+            "  [%s] Cat A par-stable, no external yield this period — "
+            "collapsing revenue to $0 (Δvalue=$%.2f → capital).",
+            venue_id, float(delta),
+        )
+        return pd.DataFrame({
+            "block_date": [period_start],
+            "daily_inflow": [delta],
+            "cum_inflow": [delta],
+        })
+    return inflow_ts
+
+
 def _build_paired_principal_caps(prime, venue, period, balance_src) -> dict:
     """Build the ``paired_principal_caps`` map for a Cat A anchor venue.
 
@@ -3356,6 +3392,11 @@ def compute_monthly_pnl(
                     principal_return_overrides=overrides_by_bytes,
                     yield_reversal_overrides=reversals_by_bytes or None,
                     paired_principal_caps=paired_principal_caps or None,
+                )
+                # No external yield source contributed this period → collapse
+                # revenue to $0 (see ``_collapse_cat_a_if_no_external_yield``).
+                inflow_ts = _collapse_cat_a_if_no_external_yield(
+                    inflow_ts, value_som, value_eom, period.start, venue.id,
                 )
         elif venue.pricing_category == PricingCategory.EOA:
             # Cat EOA — Off-protocol relay/staging address. The venue tracks

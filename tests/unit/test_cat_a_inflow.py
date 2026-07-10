@@ -644,3 +644,133 @@ def test_load_prime_parses_override_blocks_from_spark_yaml(
         e.date == date(2026, 5, 14) and e.amount == Decimal("5270830")
         for e in entries
     )
+
+
+# ── has_external_inflow flag (drives the orchestrator's revenue-collapse) ────
+# The flag tells compute_monthly_pnl whether any external yield was classified
+# this period. False → the venue is a pure par-stable idle holding whose
+# revenue is $0 by construction, so the orchestrator collapses the
+# `Δvalue − captured_inflow` residual to $0 (Spark S27, Grove E13/E31/E32).
+# True → a live yield source (Spark S26 Anchorage / S28 PYUSD) — untouched.
+
+def test_flag_false_when_no_external_inflow(config_dir: Path):
+    """Spark S27 / Grove E31,E32 shape: transfers exist but none from an
+    external source → no yield classified → has_external_inflow=False."""
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()
+    cp_internal = _bytes20("0x37305b1cd40574e4c5ce33f8e8306be057fd7341")
+    src = MockBalanceSource()
+    src.inflow_by_counterparty = lambda **_: pd.DataFrame({
+        "block_date":   [date(2026, 3, 5),        date(2026, 3, 10)],
+        "counterparty": [cp_internal,             cp_internal],
+        "signed_amount":[Decimal("125000000"),    Decimal("436563")],  # capital only
+    })
+    out = _cat_a_capital_inflow_timeseries(
+        grove, venue, period, balance_source=src, external_sources=set(),
+    )
+    assert out.attrs["has_external_inflow"] is False
+
+
+def test_flag_true_when_external_inflow_present(config_dir: Path):
+    """Spark S26 (Anchorage) / S28 (PYUSD) shape: an inflow from an external
+    source is classified as yield → has_external_inflow=True → untouched."""
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()
+    cp_internal = _bytes20("0x37305b1cd40574e4c5ce33f8e8306be057fd7341")
+    cp_external = _bytes20("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    src = MockBalanceSource()
+    src.inflow_by_counterparty = lambda **_: pd.DataFrame({
+        "block_date":   [date(2026, 3, 5),   date(2026, 3, 10)],
+        "counterparty": [cp_internal,        cp_external],
+        "signed_amount":[Decimal("100000"),  Decimal("891780")],  # external sweep
+    })
+    out = _cat_a_capital_inflow_timeseries(
+        grove, venue, period, balance_source=src, external_sources={cp_external},
+    )
+    assert out.attrs["has_external_inflow"] is True
+
+
+def test_flag_false_when_detail_empty(config_dir: Path):
+    """Grove E13 shape: total capture gap (no per-counterparty data) with a
+    chain-level external source registered. Previously returned an untagged
+    empty frame → revenue=Δvalue phantom. Now flagged False → collapse to $0."""
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()
+    cp_external = _bytes20("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    src = MockBalanceSource()
+    src.inflow_by_counterparty = lambda **_: pd.DataFrame({
+        "block_date": [], "counterparty": [], "signed_amount": [],
+    })
+    out = _cat_a_capital_inflow_timeseries(
+        grove, venue, period, balance_source=src, external_sources={cp_external},
+    )
+    assert out.empty
+    assert out.attrs["has_external_inflow"] is False
+
+
+def test_flag_false_when_external_inflow_outside_period(config_dir: Path):
+    """A prior-period external sweep must NOT set the flag True for a quiet
+    month — only period yield counts, else a January sweep would suppress the
+    collapse in an idle March."""
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()  # March 2026
+    cp_internal = _bytes20("0x37305b1cd40574e4c5ce33f8e8306be057fd7341")
+    cp_external = _bytes20("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    src = MockBalanceSource()
+    src.inflow_by_counterparty = lambda **_: pd.DataFrame({
+        "block_date":   [date(2026, 1, 5),   date(2026, 3, 10)],   # Jan (pre-period), Mar
+        "counterparty": [cp_external,        cp_internal],
+        "signed_amount":[Decimal("500000"),  Decimal("100000")],
+    })
+    out = _cat_a_capital_inflow_timeseries(
+        grove, venue, period, balance_source=src, external_sources={cp_external},
+    )
+    assert out.attrs["has_external_inflow"] is False
+
+
+# ── _collapse_cat_a_if_no_external_yield (orchestrator revenue-collapse gate) ─
+
+def test_collapse_when_flag_false_forces_revenue_zero():
+    """attrs['has_external_inflow'] is False → inflow collapses to Δvalue, so
+    revenue = Δvalue − period_inflow = 0. (Spark S27, Grove E13/E31/E32.)"""
+    from settle.compute.monthly_pnl import _collapse_cat_a_if_no_external_yield
+    df = pd.DataFrame({"block_date": [], "daily_inflow": [], "cum_inflow": []})
+    df.attrs["has_external_inflow"] = False
+    out = _collapse_cat_a_if_no_external_yield(
+        df, value_som=Decimal("483436565.92"), value_eom=Decimal("608678684.52"),
+        period_start=date(2026, 5, 1), venue_id="S27",
+    )
+    delta = Decimal("608678684.52") - Decimal("483436565.92")
+    assert out["cum_inflow"].iloc[-1] == delta          # inflow == Δvalue
+    # revenue = Δvalue − period_inflow == 0
+    assert (Decimal("608678684.52") - Decimal("483436565.92")) - out["cum_inflow"].iloc[-1] == 0
+
+
+def test_collapse_noop_when_flag_true():
+    """attrs True (external source paid in, e.g. Spark S26/S28) → unchanged."""
+    from settle.compute.monthly_pnl import _collapse_cat_a_if_no_external_yield
+    df = pd.DataFrame({
+        "block_date": [date(2026, 5, 4)],
+        "daily_inflow": [Decimal("-891780.28")],
+        "cum_inflow": [Decimal("-891780.28")],
+    })
+    df.attrs["has_external_inflow"] = True
+    out = _collapse_cat_a_if_no_external_yield(
+        df, value_som=Decimal("0"), value_eom=Decimal("0"),
+        period_start=date(2026, 5, 1), venue_id="S26",
+    )
+    assert out is df                                     # untouched
+
+
+def test_collapse_noop_when_flag_missing():
+    """No flag set → leave alone (collapse only fires on an explicit False)."""
+    from settle.compute.monthly_pnl import _collapse_cat_a_if_no_external_yield
+    df = pd.DataFrame({
+        "block_date": [date(2026, 5, 4)], "daily_inflow": [Decimal("5")],
+        "cum_inflow": [Decimal("5")],
+    })
+    out = _collapse_cat_a_if_no_external_yield(
+        df, value_som=Decimal("0"), value_eom=Decimal("10"),
+        period_start=date(2026, 5, 1),
+    )
+    assert out is df
