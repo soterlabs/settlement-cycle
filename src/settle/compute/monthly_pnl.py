@@ -2910,29 +2910,32 @@ def compute_monthly_pnl(
             def _atoken_daily_blocks(
                 chain_value: str, token_addr: bytes, holder_addr: bytes,
                 som: int, eom: int,
-            ) -> list[tuple[int, int, object]]:
-                """Daily ``(pre_block, post_block, date)`` boundaries across
-                the period — the degenerate-closed-form fallback used by
+            ) -> list[int]:
+                """Daily EoD *post-block* boundaries across the period — the
+                degenerate-closed-form fallback used by
                 ``_atoken_index_weighted_inflow`` when a Cat C venue has no
                 captured mint/burn event days AND the whole-period closed-form
                 would silently return 0 (mid-period entry or clean exit).
-                Each calendar day becomes one segment so rebase yield is
-                attributed correctly across staged deposits/withdrawals.
+
+                Returns only the post-blocks (``_atoken_daily_capped_yield``
+                prepends ``som_block`` itself). We deliberately do NOT resolve a
+                per-day ``pre_block``: it was discarded downstream, and
+                resolving ``EOD(period.start − 1)`` would hit
+                ``period.start − 1 < prime.start_date`` and raise on the Dune
+                resolver when settling a prime's genesis month.
                 """
                 from datetime import datetime as _dt, time as _time, timezone as _tz, timedelta as _td
                 if som + 1 > eom:
                     return []
-                out: list[tuple[int, int, object]] = []
+                out: list[int] = []
                 d = period.start
                 while d <= period.end:
-                    pre_eod = _dt.combine(d - _td(days=1), _time.max, tzinfo=_tz.utc)
                     post_eod = _dt.combine(d, _time.max, tzinfo=_tz.utc)
-                    pre_block = resolver.block_at_or_before(chain_value, pre_eod)
                     post_block = resolver.block_at_or_before(chain_value, post_eod)
                     if som < post_block <= eom:
-                        out.append((pre_block, post_block, d))
+                        out.append(post_block)
                     d += _td(days=1)
-                return sorted(set(out), key=lambda t: t[1])
+                return sorted(set(out))
 
             inflow_ts = _atoken_index_weighted_inflow(
                 prime, venue, som_block, eom_block,

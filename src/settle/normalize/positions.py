@@ -998,6 +998,68 @@ def _atoken_per_segment_yield(
 _atoken_per_event_yield = _atoken_per_segment_yield
 
 
+# Max plausible aToken/spToken APR used to cap a single day's recovered rebase
+# in the no-event-data daily fallback. Real stablecoin lending yields are a few
+# percent; 25% is an absurd ceiling that only an intraday principal event could
+# exceed. Anything above ``balance × this / 365`` in one day is not interest.
+_ATOKEN_DAILY_MAX_APR = Decimal("0.25")
+
+
+def _atoken_daily_capped_yield(
+    chain_value: str,
+    token_addr: bytes,
+    holder_addr: bytes,
+    som_block: int,
+    eom_block: int,
+    day_blocks: list[int],
+    *,
+    balance_at,
+    scaled_balance_at,
+) -> int:
+    """Per-day rebase yield for the degenerate no-event-data daily fallback.
+
+    Like ``_atoken_per_segment_yield`` (closed-form rebase per segment) but
+    with two guards that path lacks, because the daily grid is a *last-resort*
+    reconstruction with no event boundaries to trust:
+
+    * **Clean-exit within a day → 0.** If scaled drops to dust inside a day we
+      cannot distinguish real rebase from an intraday deposit-then-drain, and
+      the per-segment binary search would read the deposited principal as
+      yield (the phantom flagged in review). The lost genuine rebase is at most
+      one day — negligible — so we book 0 for that day.
+    * **Per-day cap.** Each day's yield is clamped to
+      ``bal_start × _ATOKEN_DAILY_MAX_APR / 365`` so no single day can turn a
+      principal jump into interest.
+
+    Segments are ~1 calendar day (daily boundaries), so the 1-day cap is exact;
+    a boundary dropped as out-of-range makes at most a 2-day segment, which the
+    cap under-credits by <1 day (immaterial).
+    """
+    from decimal import Decimal as _D
+
+    blocks = sorted({som_block, eom_block,
+                     *[b for b in day_blocks if som_block <= b <= eom_block]})
+    if len(blocks) < 2:
+        return 0
+    total = 0
+    bal_prev = balance_at(chain_value, token_addr, holder_addr, blocks[0])
+    scaled_prev = scaled_balance_at(chain_value, token_addr, holder_addr, blocks[0])
+    for i in range(1, len(blocks)):
+        b = blocks[i]
+        bal_cur = balance_at(chain_value, token_addr, holder_addr, b)
+        scaled_cur = scaled_balance_at(chain_value, token_addr, holder_addr, b)
+        if scaled_prev == 0:
+            seg = 0                                   # no entering principal
+        elif scaled_cur == 0 or scaled_cur * 1000 < scaled_prev:
+            seg = 0                                   # clean exit within day
+        else:
+            seg = int(_D(bal_cur) * _D(scaled_prev) / _D(scaled_cur)) - bal_prev
+        cap = int(_D(bal_prev) * _ATOKEN_DAILY_MAX_APR / _D(365))
+        total += max(0, min(seg, cap))
+        bal_prev, scaled_prev = bal_cur, scaled_cur
+    return total
+
+
 def _atoken_index_weighted_inflow(
     prime: Prime,
     venue: Venue,
@@ -1150,12 +1212,17 @@ def _atoken_index_weighted_inflow(
                 and yield_raw <= _dust_yield
                 and max(bal_som, bal_eom) > 0
                 and (scaled_som == 0 or is_clean_exit)):
-            daily_bounds = list(daily_boundary_blocks(
+            daily_segments = sorted(set(daily_boundary_blocks(
                 chain_value, token_addr, holder.value, som_block, eom_block,
-            ))
-            daily_segments = sorted({post for pre, post, *_ in daily_bounds})
+            )))
             if daily_segments:
-                daily_yield = _atoken_per_segment_yield(
+                # Use the CAPPED per-day helper, not _atoken_per_segment_yield:
+                # on the daily grid a clean-exit *within a day* must contribute
+                # 0 (we can't tell an intraday deposit-then-drain from rebase,
+                # and the per-segment binary search would otherwise read the
+                # deposited principal as yield), and each day is capped at one
+                # day of plausible interest so no principal jump leaks in.
+                daily_yield = _atoken_daily_capped_yield(
                     chain_value, token_addr, holder.value,
                     som_block, eom_block, daily_segments,
                     balance_at=balance_at,

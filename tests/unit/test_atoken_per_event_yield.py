@@ -305,14 +305,11 @@ def _s9_venue_prime():
 
 
 def _daily_blocks_1_to_31(chain, token, holder, som, eom):
-    """Daily (pre, post, date) triples spanning blocks 2..31 = one per day."""
-    from datetime import date, timedelta
-    d0 = date(2026, 3, 1)
-    return [
-        (b - 1, b, d0 + timedelta(days=b - 1))
-        for b in range(2, 32)
-        if som < b <= eom
-    ]
+    """Daily post-block boundaries spanning blocks 2..31 = one per day.
+    (The daily-fallback helper returns post-blocks only and prepends
+    ``som_block`` itself — no pre-blocks, avoiding a ``period.start − 1``
+    resolve.)"""
+    return [b for b in range(2, 32) if som < b <= eom]
 
 
 def test_daily_fallback_recovers_mid_period_entry_yield():
@@ -328,14 +325,15 @@ def test_daily_fallback_recovers_mid_period_entry_yield():
 
     venue, prime = _s9_venue_prime()
     SOM, EOM = 1, 31
-    # Empty until block 15, then a 1000-unit deposit held to EOM; balance
-    # rebases +1/block (16 units of yield over blocks 15→31).
+    # Empty until block 15, then a $1,000,000 deposit held to EOM; balance
+    # rebases +40/block (~1.5% APR, well under the daily cap). Post-entry
+    # rebase = bal(31) − bal(15) = 16 × 40 = 640.
     balances, scaleds = {}, {}
     for b in range(1, 32):
         if b < 15:
             balances[b], scaleds[b] = 0, 0
         else:
-            balances[b], scaleds[b] = 1000 + (b - 15), 1000
+            balances[b], scaleds[b] = 1_000_000 + (b - 15) * 40, 1_000_000
     bal_at, sb_at = _factory(balances, scaleds)
 
     common = dict(
@@ -346,15 +344,15 @@ def test_daily_fallback_recovers_mid_period_entry_yield():
     )
     # Without the daily fallback: yield 0 → inflow = Δvalue = full balance.
     ts_broken = _atoken_index_weighted_inflow(prime, venue, SOM, EOM, **common)
-    assert ts_broken["cum_inflow"].iloc[-1] == Decimal("1016")  # yield lost
+    assert ts_broken["cum_inflow"].iloc[-1] == Decimal("1000640")  # yield lost
 
-    # With the daily fallback: yield 16 recovered → inflow = principal 1000.
+    # With the daily fallback: yield 640 recovered → inflow = principal 1,000,000.
     ts_fixed = _atoken_index_weighted_inflow(
         prime, venue, SOM, EOM,
         daily_boundary_blocks=_daily_blocks_1_to_31, **common,
     )
-    assert ts_fixed["cum_inflow"].iloc[-1] == Decimal("1000")
-    # revenue = Δvalue − inflow = 1016 − 1000 = 16 (the recovered rebase).
+    assert ts_fixed["cum_inflow"].iloc[-1] == Decimal("1000000")
+    # revenue = Δvalue − inflow = 1_000_640 − 1_000_000 = 640 (recovered rebase).
 
 
 def test_daily_fallback_recovers_multi_withdrawal_exit_yield():
@@ -371,11 +369,11 @@ def test_daily_fallback_recovers_multi_withdrawal_exit_yield():
     venue, prime = _s9_venue_prime()
     SOM, EOM = 1, 31
     balances, scaleds = {}, {}
-    for b in range(1, 21):            # held 1_000_000 scaled, +1000/block rebase
-        balances[b], scaleds[b] = 1_000_000 + (b - 1) * 1000, 1_000_000
-    balances[21], scaleds[21] = 510_000, 500_000   # withdraw half at block 21
+    for b in range(1, 21):            # held 1_000_000 scaled, +40/block rebase
+        balances[b], scaleds[b] = 1_000_000 + (b - 1) * 40, 1_000_000
+    balances[21], scaleds[21] = 500_400, 500_000   # withdraw half at block 21 (+40 rebase)
     for b in range(22, 26):
-        balances[b], scaleds[b] = 510_000 + (b - 21) * 1000, 500_000
+        balances[b], scaleds[b] = 500_400 + (b - 21) * 40, 500_000
     for b in range(26, 32):           # full drain to dust at block 26
         balances[b], scaleds[b] = 1, 1
     bal_at, sb_at = _factory(balances, scaleds)
@@ -390,14 +388,15 @@ def test_daily_fallback_recovers_multi_withdrawal_exit_yield():
     ts_broken = _atoken_index_weighted_inflow(prime, venue, SOM, EOM, **common)
     assert ts_broken["cum_inflow"].iloc[-1] == Decimal("-999999")  # yield lost
 
-    # With the fallback: yield 24_000 recovered (19k held@1M + 1k rebase on
-    # the withdrawal segment + 4k held@500k).
+    # With the fallback: recovered rebase = 760 (held@1M, blocks 1→20)
+    # + 40 (withdrawal day 20→21) + 160 (held@500k, blocks 21→25) + 0 (the
+    # drain day 25→26 is a clean-exit-within-day → 0, no phantom) = 960.
     ts_fixed = _atoken_index_weighted_inflow(
         prime, venue, SOM, EOM,
         daily_boundary_blocks=_daily_blocks_1_to_31, **common,
     )
-    assert ts_fixed["cum_inflow"].iloc[-1] == Decimal("-1023999")
-    # revenue = Δvalue − inflow = −999999 − (−1023999) = 24_000.
+    assert ts_fixed["cum_inflow"].iloc[-1] == Decimal("-1000959")
+    # revenue = Δvalue − inflow = −999999 − (−1000959) = 960.
 
 
 def test_daily_fallback_does_not_fire_for_constant_hold():
@@ -470,3 +469,36 @@ def test_daily_fallback_does_not_touch_recoverable_single_withdrawal():
     # (yield_raw = 14_000) — result must be byte-for-byte identical both ways.
     assert ts_no_daily["cum_inflow"].iloc[-1] == Decimal("-1013999")
     assert ts_with_daily["cum_inflow"].iloc[-1] == ts_no_daily["cum_inflow"].iloc[-1]
+
+
+def test_daily_capped_yield_ignores_intraday_deposit_drain():
+    """Finding #2 regression: a day with an intraday deposit-then-full-drain
+    must NOT book the deposited principal as yield. The per-segment binary
+    search reads the pre-burn balance (phantom); the capped daily helper books
+    0 for a clean-exit-within-day."""
+    from settle.normalize.positions import (
+        _atoken_daily_capped_yield, _atoken_per_segment_yield,
+    )
+    # One "day": som=100 → post=200. scaled held at 500k, then intraday
+    # deposited to 2M (~blocks 101-189), then fully drained to dust by 200.
+    bal = {100: 500_000, 200: 1}
+    scaled = {100: 500_000, 200: 1}
+    for b in range(101, 200):
+        bal[b] = 2_000_000 if b < 190 else 1
+        scaled[b] = 2_000_000 if b < 190 else 1
+    b_at, s_at = _factory(bal, scaled)
+
+    # Old per-segment path: clean-exit binary search → bal_pre_burn (2M) −
+    # bal_start (500k) = 1.5M of deposited principal mis-booked as yield.
+    old = _atoken_per_segment_yield(
+        CHAIN, TOKEN, HOLDER, 100, 200, [200],
+        balance_at=b_at, scaled_balance_at=s_at,
+    )
+    assert old >= 1_000_000                    # phantom present in the old path
+
+    # New capped daily helper: clean-exit-within-day → 0. No phantom.
+    new = _atoken_daily_capped_yield(
+        CHAIN, TOKEN, HOLDER, 100, 200, [200],
+        balance_at=b_at, scaled_balance_at=s_at,
+    )
+    assert new == 0
