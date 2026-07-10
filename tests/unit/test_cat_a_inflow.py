@@ -758,3 +758,150 @@ def test_external_yield_source_flag_parses(config_dir: Path):
     assert by_id["S28"].external_yield_source is True    # PayPal PYUSD
     assert by_id["S27"].external_yield_source is False   # idle USDT → revenue $0
     assert by_id["S29"].external_yield_source is False   # idle DAI  → revenue $0
+
+
+def test_cat_a_stale_partial_log_raises(config_dir: Path):
+    """A log with rows from EARLIER months but none covering material
+    in-period movement is a capture gap too (stale/partial capture) — the
+    guard reconciles aggregates, not mere log presence."""
+    import pytest
+
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()                       # March 2026
+    src = MockBalanceSource()
+    cp = _bytes20("0x37305b1cd40574e4c5ce33f8e8306be057fd7341")
+    src.inflow_by_counterparty = lambda **_: pd.DataFrame({
+        "block_date":    [date(2026, 1, 10)],    # pre-period rows only
+        "counterparty":  [cp],
+        "signed_amount": [Decimal("100000")],
+    })
+    src.cumulative_df = pd.DataFrame({
+        "block_date": [date(2026, 1, 10), date(2026, 3, 12)],
+        "daily_net":  [Decimal("100000"), Decimal("891780")],  # March moved
+        "cum_balance": [Decimal("100000"), Decimal("991780")],
+    })
+    external = {_bytes20("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")}
+
+    with pytest.raises(RuntimeError, match="stale or partial capture"):
+        _cat_a_capital_inflow_timeseries(
+            grove, venue, period, balance_source=src, external_sources=external,
+        )
+
+
+def test_cat_a_drip_gap_aggregate_floor_raises(config_dir: Path):
+    """Many individually-sub-$1 daily nets that are material in AGGREGATE
+    must still trip the guard — the floor applies to the period sum, not to
+    each daily row."""
+    import pytest
+
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()
+    src = MockBalanceSource()
+    src.inflow_by_counterparty = lambda **_: pd.DataFrame()   # missing capture
+    src.cumulative_df = pd.DataFrame({
+        "block_date": [date(2026, 3, d) for d in (5, 6, 7, 8)],
+        "daily_net":  [Decimal("0.5")] * 4,       # each < $1, sum $2 >= floor
+        "cum_balance": [Decimal("0.5") * i for i in range(1, 5)],
+    })
+    external = {_bytes20("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")}
+
+    with pytest.raises(RuntimeError, match="EMPTY counterparty log"):
+        _cat_a_capital_inflow_timeseries(
+            grove, venue, period, balance_source=src, external_sources=external,
+        )
+
+
+def test_cat_a_boundary_neutral_transit_ok(config_dir: Path):
+    """In-and-out movement netting to ~zero within the period cannot affect
+    revenue (Δvalue is boundary-to-boundary), so an empty log must NOT trip
+    the guard — the Grove E13 Q1 transit pattern."""
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()
+    src = MockBalanceSource()
+    src.inflow_by_counterparty = lambda **_: pd.DataFrame()
+    src.cumulative_df = pd.DataFrame({
+        "block_date": [date(2026, 3, 7), date(2026, 3, 9)],
+        "daily_net":  [Decimal("49596"), Decimal("-49596")],   # transit
+        "cum_balance": [Decimal("49596"), Decimal("0")],
+    })
+    external = {_bytes20("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")}
+
+    out = _cat_a_capital_inflow_timeseries(
+        grove, venue, period, balance_source=src, external_sources=external,
+    )
+    assert out.empty
+
+
+def test_cat_a_reconciled_log_with_movement_proceeds(config_dir: Path):
+    """When the counterparty log accounts for the in-period balance movement,
+    the guard passes and the classifier runs normally."""
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()
+    src = MockBalanceSource()
+    cp = _bytes20("0x37305b1cd40574e4c5ce33f8e8306be057fd7341")
+    src.inflow_by_counterparty = lambda **_: pd.DataFrame({
+        "block_date":    [date(2026, 3, 12)],
+        "counterparty":  [cp],
+        "signed_amount": [Decimal("891780")],
+    })
+    src.cumulative_df = pd.DataFrame({
+        "block_date": [date(2026, 3, 12)],
+        "daily_net":  [Decimal("891780")],
+        "cum_balance": [Decimal("891780")],
+    })
+    external = {_bytes20("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")}
+
+    out = _cat_a_capital_inflow_timeseries(
+        grove, venue, period, balance_source=src, external_sources=external,
+    )
+    assert out["cum_inflow"].iloc[-1] == Decimal("891780")    # capital, not yield
+
+
+# ── dated all-capital series (unflagged venues: revenue $0, real dates) ──
+
+
+def test_all_capital_series_keeps_dates_and_absorbs_residual(config_dir: Path):
+    """Unflagged Cat A venues get a DATED capital series (CoF time-weighting
+    must see mid-month flows on their real dates), with a period-start
+    residual row forcing the in-period sum to Δvalue exactly (revenue $0
+    even when the transfer scan missed something)."""
+    from settle.normalize.positions import _cat_a_all_capital_inflow_timeseries
+
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()
+    src = MockBalanceSource()
+    src.cumulative_df = pd.DataFrame({
+        "block_date": [date(2026, 3, 28)],
+        "daily_net":  [Decimal("100")],
+        "cum_balance": [Decimal("100")],
+    })
+
+    out = _cat_a_all_capital_inflow_timeseries(
+        grove, venue, period, balance_source=src,
+        target_delta=Decimal("120"),                 # scan missed $20
+    )
+    assert list(out["block_date"]) == [date(2026, 3, 1), date(2026, 3, 28)]
+    assert list(out["daily_inflow"]) == [Decimal("20"), Decimal("100")]
+    assert out["cum_inflow"].iloc[-1] == Decimal("120")   # revenue = Δvalue − 120 = 0
+
+
+def test_all_capital_series_no_residual_when_scan_complete(config_dir: Path):
+    """When the scan already accounts for the full Δvalue, no synthetic row
+    is added — the series is exactly the dated daily nets."""
+    from settle.normalize.positions import _cat_a_all_capital_inflow_timeseries
+
+    grove, venue = _grove_e15(config_dir)
+    period = _eth_period()
+    src = MockBalanceSource()
+    src.cumulative_df = pd.DataFrame({
+        "block_date": [date(2026, 3, 5), date(2026, 3, 28)],
+        "daily_net":  [Decimal("70"), Decimal("50")],
+        "cum_balance": [Decimal("70"), Decimal("120")],
+    })
+
+    out = _cat_a_all_capital_inflow_timeseries(
+        grove, venue, period, balance_source=src,
+        target_delta=Decimal("120"),
+    )
+    assert len(out) == 2
+    assert out["cum_inflow"].iloc[-1] == Decimal("120")

@@ -3297,45 +3297,62 @@ def compute_monthly_pnl(
             # value-preserving capital and netted out. Default empty set →
             # revenue = 0, which is correct for par-stables with no
             # off-chain yield source.
-            from ..normalize.positions import _cat_a_capital_inflow_timeseries
+            from ..normalize.positions import (
+                _cat_a_all_capital_inflow_timeseries,
+                _cat_a_capital_inflow_timeseries,
+            )
             balance_src = sources.balance if sources.balance is not None else get_balance_source()
             external = {
                 addr.value
                 for addr in prime.external_alm_sources.get(venue.chain, [])
             }
             # Map override list keyed by raw 20-byte address (matches the
-            if venue.force_capital_inflow or not venue.external_yield_source:
-                # Revenue = $0 by construction. Two cases collapse here:
-                #  * ``force_capital_inflow`` — chains without reliable
-                #    transfer-event coverage (e.g. Monad): can't distinguish
-                #    capital from yield, so declare no yield.
-                #  * ``not external_yield_source`` (the default) — a par-stable
-                #    idle holding with NO declared off-chain yield source earns
-                #    nothing by itself, so its entire Δvalue is capital. This
-                #    is what turns Spark S27's −$194,444 transfer-capture
-                #    residual and Grove E13/E31/E32's uncaptured-movement
-                #    phantom into a clean $0 (2026-07 reconciliation §8 item 5),
-                #    WITHOUT calling the classifier — so no Dune fetches, and
-                #    no way for a capture artifact to leak into revenue.
-                # A single period-start row synthesises inflow = Δvalue so
-                # tw_avg_value_usd still reflects the EoM balance for CoF
-                # allocation. Venues that DO earn external yield (Spark S26
-                # Anchorage, S28 PYUSD) set external_yield_source: true and
-                # fall through to the classifier below.
+            if venue.force_capital_inflow:
+                # Revenue = $0 by construction — chains without reliable
+                # transfer-event coverage (e.g. Monad): can't distinguish
+                # capital from yield OR date the flows, so declare no yield
+                # and synthesise the whole Δvalue as a single period-start
+                # inflow (the only defensible dating with no transfer data).
                 _delta = value_eom - value_som
                 _log.info(
-                    "  [%s] Cat A revenue=$0 (%s) — synthesising inflow $%.2f "
-                    "(value_som=$%.2f, value_eom=$%.2f)",
-                    venue.id,
-                    "force_capital_inflow" if venue.force_capital_inflow
-                    else "no external_yield_source",
-                    float(_delta), float(value_som), float(value_eom),
+                    "  [%s] Cat A revenue=$0 (force_capital_inflow) — "
+                    "synthesising inflow $%.2f (value_som=$%.2f, "
+                    "value_eom=$%.2f)",
+                    venue.id, float(_delta), float(value_som), float(value_eom),
                 )
                 inflow_ts = pd.DataFrame({
                     "block_date": [period.start],
                     "daily_inflow": [_delta],
                     "cum_inflow": [_delta],
                 })
+            elif not venue.external_yield_source:
+                # Revenue = $0 by construction (the default) — a par-stable
+                # idle holding with NO declared off-chain yield source earns
+                # nothing by itself, so its entire Δvalue is capital. This is
+                # what turns Spark S27's −$194,444 transfer-capture residual
+                # and Grove E13/E31/E32's uncaptured-movement phantom into a
+                # clean $0 (2026-07 reconciliation §8 item 5), without
+                # running the counterparty classifier.
+                # Unlike ``force_capital_inflow``, transfer data EXISTS here,
+                # so capital keeps its real dates (a single period-start lump
+                # would re-time mid-month flows to day 1 and misstate CoF
+                # time-weighting on late-month deposits); the ``target_delta``
+                # residual row still guarantees revenue = $0 even if the
+                # transfer scan is imperfect. Venues that DO earn external
+                # yield (Spark S26 Anchorage, S28 PYUSD) set
+                # external_yield_source: true and fall through to the
+                # classifier below.
+                _delta = value_eom - value_som
+                _log.info(
+                    "  [%s] Cat A revenue=$0 (no external_yield_source) — "
+                    "dated all-capital series, Δvalue $%.2f",
+                    venue.id, float(_delta),
+                )
+                inflow_ts = _cat_a_all_capital_inflow_timeseries(
+                    prime, venue, period,
+                    balance_source=balance_src,
+                    target_delta=_delta,
+                )
             else:
                 # ``_to_bytes`` normalisation inside the helper).
                 overrides_for_chain = prime.principal_return_overrides.get(venue.chain, {})
