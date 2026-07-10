@@ -59,7 +59,10 @@ def _usd(x) -> str:
     locales / editors. Sub-cent magnitudes collapse to $0.00 — float dust
     from flow netting would otherwise render as "-$0.00"."""
     d = _D(x)
-    if abs(d) < Decimal("0.005"):
+    if d.quantize(Decimal("0.01")) == 0:
+        # Collapses anything that would PRINT as zero at 2dp — including the
+        # exact ±0.005 boundary, which a "< 0.005" test lets through as
+        # "-$0.00" (banker's rounding sends 0.005 to 0.00).
         return "$0.00"
     if d < 0:
         return f"-${-d:,.2f}"
@@ -70,7 +73,7 @@ def _usds(x) -> str:
     """Same as ``_usd`` but with no leading currency sign — used in the
     headline tables where the column header carries the unit (``USDS``)."""
     d = _D(x)
-    if abs(d) < Decimal("0.005"):
+    if d.quantize(Decimal("0.01")) == 0:
         return "0.00"
     if d < 0:
         return f"-{-d:,.2f}"

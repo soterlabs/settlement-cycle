@@ -663,14 +663,22 @@ def test_cat_a_missing_counterparty_log_with_movement_raises(config_dir: Path, m
     })
     external = {_bytes20("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")}
 
+    monkeypatch.delenv("SETTLE_ALLOW_UNCLASSIFIED_CAT_A", raising=False)
     with pytest.raises(RuntimeError, match="EMPTY counterparty log"):
         _cat_a_capital_inflow_timeseries(
             grove, venue, period,
             balance_source=src, external_sources=external,
         )
 
-    # Escape hatch: explicit env opt-in degrades to the old warn-and-return.
-    monkeypatch.setenv("SETTLE_ALLOW_UNCLASSIFIED_CAT_A", "1")
+    # Escape hatch is venue-scoped: a different venue id does NOT bypass...
+    monkeypatch.setenv("SETTLE_ALLOW_UNCLASSIFIED_CAT_A", "E99")
+    with pytest.raises(RuntimeError, match="EMPTY counterparty log"):
+        _cat_a_capital_inflow_timeseries(
+            grove, venue, period,
+            balance_source=src, external_sources=external,
+        )
+    # ...this venue's id (or "1"/"all") does.
+    monkeypatch.setenv("SETTLE_ALLOW_UNCLASSIFIED_CAT_A", venue.id)
     out = _cat_a_capital_inflow_timeseries(
         grove, venue, period,
         balance_source=src, external_sources=external,

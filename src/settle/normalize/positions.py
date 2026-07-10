@@ -1453,10 +1453,18 @@ def _cat_a_capital_inflow_timeseries(
                     f"the balance delta as ±yield. Capture the venue's "
                     f"transfer log (see the fixture capture script's "
                     f"INFLOW_BY_CP list) or set "
-                    f"SETTLE_ALLOW_UNCLASSIFIED_CAT_A=1 to accept the "
-                    f"misclassification for this run."
+                    f"SETTLE_ALLOW_UNCLASSIFIED_CAT_A={venue.id} (venue-"
+                    f"scoped; comma-separate for several, '1' for all) to "
+                    f"accept the misclassification for this run."
                 )
-                if _os.environ.get("SETTLE_ALLOW_UNCLASSIFIED_CAT_A") != "1":
+                # Hatch is venue-scoped: a comma-separated venue-id list
+                # (e.g. "E13,E32") only bypasses those venues; "1"/"all"
+                # bypasses everything. A blanket opt-in left in a CI env to
+                # unblock one venue must not silently disarm the guard for
+                # every other venue and every later run.
+                _hatch = _os.environ.get("SETTLE_ALLOW_UNCLASSIFIED_CAT_A", "")
+                _allowed = {v.strip().upper() for v in _hatch.split(",") if v.strip()}
+                if not (_hatch in ("1", "all") or venue.id.upper() in _allowed):
                     raise RuntimeError(msg)
                 import logging as _logging
                 _logging.getLogger(__name__).warning(msg)

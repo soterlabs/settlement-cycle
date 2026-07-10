@@ -32,10 +32,12 @@ import requests
 from .cache import cache_dir, cached
 
 DUNE_API_BASE = "https://api.dune.com/api/v1"
-# Dune engine tier for executions. Env-overridable because key plans vary:
-# free-tier keys reject anything above "free" (HTTP 400 "Invalid
-# performance tier"), while paid keys default sensibly to "medium".
-DEFAULT_PERFORMANCE = os.environ.get("SETTLE_DUNE_PERFORMANCE", "medium")
+# Dune engine tier for executions. Env-overridable (SETTLE_DUNE_PERFORMANCE)
+# because key plans vary: free-tier keys reject anything above "free"
+# (HTTP 400 "Invalid performance tier"), while paid keys default sensibly
+# to "medium". Resolved at CALL time in execute_query — an import-time
+# read would freeze a stale env value for the whole process.
+DEFAULT_PERFORMANCE = "medium"
 DEFAULT_POLL_TIMEOUT_SEC = 300
 DEFAULT_POLL_INTERVAL_SEC = 3
 
@@ -496,7 +498,7 @@ def _execute_query_cached(
 
 
 def execute_query(sql_path: Path, params: dict[str, Any], pin_block: int,
-                  performance: str = DEFAULT_PERFORMANCE) -> pd.DataFrame:
+                  performance: str | None = None) -> pd.DataFrame:
     """Execute a saved Dune query and return its results as a DataFrame.
 
     `pin_block` is folded into the param set as `pin_block` and is also part of the
@@ -514,6 +516,8 @@ def execute_query(sql_path: Path, params: dict[str, Any], pin_block: int,
             "execute_query: pass pin_block as the positional arg, not via params"
         )
     query_id = _resolve_query_id(sql_path)
+    if performance is None:
+        performance = os.environ.get("SETTLE_DUNE_PERFORMANCE", DEFAULT_PERFORMANCE)
     return _execute_query_cached(
         query_id, sql_path.name, params, pin_block, performance,
     )
