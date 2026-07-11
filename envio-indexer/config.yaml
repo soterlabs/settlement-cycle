@@ -6,7 +6,8 @@ description: >-
   ../scripts/compare_debt_sources.py).
 
 # HyperSync is the default data source — no archive RPC key required.
-networks:
+# (v3 renamed the top-level `networks` key to `chains`.)
+chains:
   - id: 1 # Ethereum mainnet
     # Set to a block AT OR BEFORE the earliest allocator frob you'll query.
     # Allocator ilks (ALLOCATOR-SPARK-A first frob 2024-11-18, ALLOCATOR-BLOOM-A
@@ -38,6 +39,5 @@ field_selection:
   transaction_fields:
     - hash
 
-# Anonymous-event note-modifier decode is offset-sensitive; refuse to serve
-# partial data on a reorg.
-rollback_on_reorg: true
+# (v3 does reorg handling by default; the v2 `rollback_on_reorg` flag is gone.
+# Tune `max_reorg_depth` per-chain only if the default proves too shallow.)

@@ -7,13 +7,16 @@ to match the Dune `debt_timeseries.sql` byte-for-byte, then retire Dune.
 
 Design rationale, indexer contract, and free-plan analysis: [`../docs/envio/README.md`](../docs/envio/README.md).
 
+Built on **HyperIndex v3** (Node 22+ required; v3 handlers register via
+`indexer.onEvent(...)` from the `envio` package).
+
 ## Quickstart
 
 ```bash
 cd envio-indexer
 pnpm install            # or npm install
-cp .env.example .env    # optional — HyperSync runs keyless
-pnpm codegen            # generates ./generated (the `generated` import)
+cp .env.example .env    # set ENVIO_API_TOKEN — v3 HyperSync wants a (free) token
+pnpm codegen            # emits types to ./.envio/ (v3; v2 used ./generated)
 pnpm dev                # indexer + Postgres + Hasura GraphQL on :8080
 ```
 

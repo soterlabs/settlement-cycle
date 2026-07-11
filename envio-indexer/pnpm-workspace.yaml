@@ -1,5 +1,0 @@
-allowBuilds:
-  # ReScript must run its native build to emit the *.gen.ts handler/entity
-  # types; without this, pnpm's supply-chain gate blocks it and handlers see
-  # `any`. Envio-authored ReScript, safe to allow.
-  rescript: true

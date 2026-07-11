@@ -2,7 +2,11 @@
   "name": "settle-debt-envio",
   "version": "0.1.0",
   "private": true,
-  "description": "Envio HyperIndex for Sky allocator ilk debt (frob+grab) — feeds settlement-cycle's EnvioDebtSource.",
+  "type": "module",
+  "description": "Envio HyperIndex (v3) for Sky allocator ilk debt (frob+grab) — feeds settlement-cycle's EnvioDebtSource.",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "codegen": "envio codegen",
     "dev": "envio dev",
@@ -10,9 +14,10 @@
     "stop": "envio stop"
   },
   "dependencies": {
-    "envio": "^2.0.0"
+    "envio": "^3.2.1"
   },
   "devDependencies": {
-    "typescript": "^5.4.0"
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
   }
 }

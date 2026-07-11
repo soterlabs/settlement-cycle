@@ -9,8 +9,12 @@
  *
  * The Python side (EnvioDebtSource) aggregates per-day and cumsums, so this
  * stays a flat, un-scaled event log.
+ *
+ * V3 API: handlers register via `indexer.onEvent({ contract, event }, cb)` from
+ * the `envio` package (the old `Contract.Event.handler` + `generated` import
+ * were removed in HyperIndex v3).
  */
-import { Vat } from "generated";
+import { indexer } from "envio";
 
 // 4-byte selectors, left-aligned in the anonymous LogNote's topic0.
 const SEL_FROB = "0x76088703";
@@ -43,29 +47,32 @@ function decodeDart(data: string): bigint {
   if (word.length !== 64) {
     throw new Error(
       `note payload too short for dart: got ${hex.length} hex chars, ` +
-        `need ≥ ${start + 64}`
+        `need >= ${start + 64}`,
     );
   }
   return toInt256(word);
 }
 
-Vat.LogNote.handler(async ({ event, context }) => {
-  const sig = event.params.sig.toLowerCase();
-  if (sig !== SEL_FROB && sig !== SEL_GRAB) return;
+indexer.onEvent(
+  { contract: "Vat", event: "LogNote" },
+  async ({ event, context }) => {
+    const sig = event.params.sig.toLowerCase();
+    if (sig !== SEL_FROB && sig !== SEL_GRAB) return;
 
-  const ilk = event.params.arg1.toLowerCase();
-  if (!ilk.startsWith(ALLOCATOR_ILK_PREFIX)) return;
+    const ilk = event.params.arg1.toLowerCase();
+    if (!ilk.startsWith(ALLOCATOR_ILK_PREFIX)) return;
 
-  const dart = decodeDart(event.params.data);
+    const dart = decodeDart(event.params.data);
 
-  context.VatDebtEvent.set({
-    id: `${event.chainId}_${event.block.number}_${event.logIndex}`,
-    ilk,
-    sig,
-    dart,
-    urn: event.params.arg2.toLowerCase(),
-    blockNumber: event.block.number,
-    blockTimestamp: event.block.timestamp,
-    txHash: event.transaction.hash,
-  });
-});
+    context.VatDebtEvent.set({
+      id: `${event.chainId}_${event.block.number}_${event.logIndex}`,
+      ilk,
+      sig,
+      dart,
+      urn: event.params.arg2.toLowerCase(),
+      blockNumber: event.block.number,
+      blockTimestamp: event.block.timestamp,
+      txHash: event.transaction.hash,
+    });
+  },
+);
