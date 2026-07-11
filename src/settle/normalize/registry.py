@@ -23,6 +23,7 @@ from .protocols import (
 from .sources.dune_balances import DuneBalanceSource
 from .sources.dune_debt import DuneDebtSource
 from .sources.envio_debt import EnvioDebtSource
+from .sources.hypersync_debt import HyperSyncDebtSource
 from .sources.dune_savings_v2_deployed import DuneSavingsV2DeployedSource
 from .sources.dune_ssr import DuneSSRSource
 from .sources.oracles import (
@@ -42,9 +43,15 @@ from .sources.rpc_position import (
 
 _DEBT_SOURCES: dict[str, type[IDebtSource]] = {
     "dune": DuneDebtSource,
-    # Spike: self-hosted Envio HyperIndex. Runs side-by-side with ``dune``
-    # (see scripts/compare_debt_sources.py); retire ``dune`` only once the
-    # two agree for a full month. Requires ENVIO_GRAPHQL_URL.
+    # HyperSync-direct (recommended Envio path): raw-log query filtered by the
+    # frob/grab topic0 selector. Works around HyperIndex's inability to decode
+    # the Vat's anonymous 4-indexed LogNote (enviodev/hyperindex#990). Requires
+    # ENVIO_API_TOKEN. Run side-by-side with ``dune`` via
+    # scripts/compare_debt_sources.py; retire ``dune`` only once they agree.
+    "hypersync": HyperSyncDebtSource,
+    # HyperIndex-via-GraphQL. NON-FUNCTIONAL for this contract: the Vat's
+    # anonymous LogNote can't be indexed by HyperIndex (see #990). Kept for the
+    # non-anonymous event surface and in case #990 lands. Requires ENVIO_GRAPHQL_URL.
     "envio": EnvioDebtSource,
 }
 

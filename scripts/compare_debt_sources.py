@@ -88,6 +88,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--prime", required=True, help="Prime id (e.g. 'spark')")
     p.add_argument("--month", help="Settlement month YYYY-MM (resolves pin block via RPC)")
     p.add_argument("--pin-block", type=int, help="Ethereum pin block (skips RPC resolution)")
+    p.add_argument("--envio-source", default="hypersync", choices=["hypersync", "envio"],
+                   help="Envio-side source to diff against Dune: 'hypersync' (raw-log, "
+                        "recommended) or 'envio' (HyperIndex GraphQL; blocked for the "
+                        "Vat's anonymous LogNote — see enviodev/hyperindex#990). Default: hypersync")
     p.add_argument("--tol", default="0", help="Absolute cum_debt tolerance in wad-USDS (default: 0 = exact)")
     p.add_argument("--full", action="store_true",
                    help="Also compare rate-scaled get_debt_timeseries (adds ~28 RPC rate reads)")
@@ -107,7 +111,8 @@ def main(argv: list[str] | None = None) -> int:
           f"start={prime.start_date}  pin_block={pin}")
 
     dune_src = get_debt_source("dune")
-    envio_src = get_debt_source("envio")
+    envio_src = get_debt_source(args.envio_source)
+    print(f"comparing dune  vs  {args.envio_source}")
 
     # --- Primary comparison: raw IDebtSource output (the exact Dune→Envio swap).
     dune_raw = dune_src.debt_timeseries(prime.ilk_bytes32, prime.start_date, pin)

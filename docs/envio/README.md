@@ -5,9 +5,30 @@ This is the "indexer alternative spike" from
 an [Envio HyperIndex](https://docs.envio.dev) that produces the **daily ilk debt
 series** and prove it matches Dune byte-for-byte before we retire the Dune query.
 
-We deliberately keep **both** sources live. `EnvioDebtSource` is registered
-alongside `DuneDebtSource` under the same `IDebtSource` protocol; the comparison
-harness runs them together and only a clean match unlocks Dune removal.
+We deliberately keep **both** sources live under the same `IDebtSource`
+protocol; the comparison harness runs them together and only a clean match
+unlocks Dune removal.
+
+> **⚠️ Update (2026-07-11) — the Envio path is HyperSync-direct, not HyperIndex.**
+> HyperIndex **cannot index** the Vat's frob/grab: they're emitted via the
+> `note` modifier as an **anonymous `LogNote` with 4 indexed topics**, and
+> HyperIndex's decoder reserves topic0 for the event-signature hash → 5 topics →
+> `topic_count must be 1..=4` at build time. This is an open, unimplemented
+> feature request: [enviodev/hyperindex#990](https://github.com/enviodev/hyperindex/issues/990)
+> (maintainer: "quite big… not on the roadmap until after v3"). Confirmed at
+> runtime — the deployed HyperIndex crash-loops on decoder build.
+>
+> **Working source: `HyperSyncDebtSource`** (`sources/hypersync_debt.py`, registry
+> name `hypersync`) — queries HyperSync's raw-log API filtered by the frob/grab
+> `topic0` selector (which HyperIndex can't express) and decodes `dart` directly.
+> No indexer to host; needs a free `ENVIO_API_TOKEN`. The `envio` (HyperIndex)
+> source is kept only for the non-anonymous event surface / if #990 ever lands.
+>
+> ```bash
+> export ENVIO_API_TOKEN=...   # free: https://app.envio.dev/api-tokens
+> python scripts/compare_debt_sources.py --prime spark --month 2026-06 --full
+> #   (--envio-source hypersync is the default)
+> ```
 
 ## What's already wired in this repo
 
