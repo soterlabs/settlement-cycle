@@ -67,6 +67,11 @@ flat event log — no server-side date views needed.
 
 ## What to build on the Envio side
 
+> **Already drafted** in [`../../envio-indexer/`](../../envio-indexer/) —
+> `config.yaml`, `schema.graphql`, `abis/vat.json`, `src/EventHandlers.ts`,
+> ready to `pnpm install && pnpm codegen && pnpm dev`. The steps below explain
+> what those files do.
+
 ### 1. Install & scaffold
 
 ```bash

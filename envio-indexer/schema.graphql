@@ -1,0 +1,23 @@
+"""
+One row per frob/grab contribution to urns[ilk][u].art on the MakerDAO Vat.
+
+This is the exact contract that src/settle/normalize/sources/envio_debt.py
+queries. Field names/types are load-bearing — the Python source references
+`ilk`, `dart`, `blockNumber`, `blockTimestamp` verbatim.
+
+  * dart is the RAW signed int256 in WAD (1e18). NOT divided, NOT rate-scaled.
+    The Vat.rate index is applied downstream in normalize/debt.py via RPC.
+  * Both frob (0x76088703) and grab (0x7bab3f40) are written — grab is the
+    stability-fee capitalisation path for allocator ilks (omitting it
+    under-counts). See src/settle/queries/debt_timeseries.sql.
+"""
+type VatDebtEvent {
+  id: ID! # `${chainId}_${blockNumber}_${logIndex}`
+  ilk: String! # 0x-prefixed 32-byte hex, lower-case
+  sig: String! # 0x76088703 (frob) | 0x7bab3f40 (grab)
+  dart: BigInt! # raw signed int256, WAD
+  urn: String! # arg2 of the note = urn address, bytes32-padded
+  blockNumber: Int!
+  blockTimestamp: Int!
+  txHash: String!
+}

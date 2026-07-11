@@ -1,0 +1,44 @@
+name: settle-debt-envio
+description: >-
+  Daily ilk-debt (frob + grab dart) for Sky allocator primes, reconstructed
+  from the MakerDAO Vat. Feeds settlement-cycle's EnvioDebtSource; run
+  side-by-side with the Dune debt_timeseries.sql until they match (see
+  ../scripts/compare_debt_sources.py).
+
+# HyperSync is the default data source — no archive RPC key required.
+networks:
+  - id: 1 # Ethereum mainnet
+    # Set to a block AT OR BEFORE the earliest allocator frob you'll query.
+    # Allocator ilks (ALLOCATOR-SPARK-A first frob 2024-11-18, ALLOCATOR-BLOOM-A
+    # similar) postdate the Sky launch, so we skip years of pre-allocator Vat
+    # history. If cum_debt from inception disagrees with Dune in the --full
+    # comparison, this is the first thing to lower.
+    start_block: 20800000 # ~2024-10
+    contracts:
+      - name: Vat
+        abi_file_path: abis/vat.json
+        address:
+          - 0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B
+        handler: src/EventHandlers.ts
+        events:
+          # LogNote is ANONYMOUS: its topic0 is the 4-byte function selector
+          # (not an event-signature hash), topic1 is the ilk. We reference it
+          # by NAME so Envio reads `anonymous: true` from abis/vat.json and
+          # matches on the selector. The handler filters sig ∈ {frob, grab}
+          # and ilk = ALLOCATOR-* — Vat.note also fires for file/move/heal/etc.
+          #
+          # Optimisation for production volume: add an `eventFilters` topic1
+          # allowlist of the exact allocator ilk bytes32 values so HyperSync
+          # filters server-side instead of streaming every vault's frob/grab.
+          - event: LogNote
+
+# Envio includes block.number by default; timestamp + tx hash are opt-in.
+field_selection:
+  block_fields:
+    - timestamp
+  transaction_fields:
+    - hash
+
+# Anonymous-event note-modifier decode is offset-sensitive; refuse to serve
+# partial data on a reorg.
+rollback_on_reorg: true

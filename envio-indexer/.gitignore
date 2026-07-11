@@ -1,0 +1,7 @@
+node_modules/
+generated/
+.env
+*.log
+# Envio's local Postgres data / docker volumes
+.envio/
+db_data/
