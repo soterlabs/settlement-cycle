@@ -22,6 +22,7 @@ from .protocols import (
 )
 from .sources.dune_balances import DuneBalanceSource
 from .sources.dune_debt import DuneDebtSource
+from .sources.envio_debt import EnvioDebtSource
 from .sources.dune_savings_v2_deployed import DuneSavingsV2DeployedSource
 from .sources.dune_ssr import DuneSSRSource
 from .sources.oracles import (
@@ -41,6 +42,10 @@ from .sources.rpc_position import (
 
 _DEBT_SOURCES: dict[str, type[IDebtSource]] = {
     "dune": DuneDebtSource,
+    # Spike: self-hosted Envio HyperIndex. Runs side-by-side with ``dune``
+    # (see scripts/compare_debt_sources.py); retire ``dune`` only once the
+    # two agree for a full month. Requires ENVIO_GRAPHQL_URL.
+    "envio": EnvioDebtSource,
 }
 
 _BALANCE_SOURCES: dict[str, type[IBalanceSource]] = {
