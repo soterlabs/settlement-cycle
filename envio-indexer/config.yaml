@@ -32,10 +32,9 @@ networks:
           # filters server-side instead of streaming every vault's frob/grab.
           - event: LogNote
 
-# Envio includes block.number by default; timestamp + tx hash are opt-in.
+# block.number and block.timestamp are always available; only the tx hash is
+# opt-in here (the handler builds VatDebtEvent.txHash from it).
 field_selection:
-  block_fields:
-    - timestamp
   transaction_fields:
     - hash
 

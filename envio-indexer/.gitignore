@@ -5,3 +5,4 @@ generated/
 # Envio's local Postgres data / docker volumes
 .envio/
 db_data/
+package-lock.json
