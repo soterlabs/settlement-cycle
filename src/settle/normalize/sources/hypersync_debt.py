@@ -26,7 +26,7 @@ from __future__ import annotations
 import os
 from collections.abc import Callable
 from datetime import date, datetime, timezone
-from decimal import Decimal
+from decimal import Decimal, localcontext
 from typing import Any
 
 import pandas as pd
@@ -70,12 +70,14 @@ def _to_int(v: Any) -> int:
     return int(s, 16) if s.startswith("0x") else int(s)
 
 
-def _decode_dart(data_hex: str) -> Decimal:
-    """Decode the signed int256 ``dart`` from a raw LogNote ``data`` field.
+def _decode_dart(data_hex: str) -> int:
+    """Decode the signed int256 ``dart`` (raw wad) from a raw LogNote ``data``.
 
     ``data`` is the ABI encoding of the note's ``bytes`` payload:
     ``[offset word][length word][payload...]`` — so skip the two 32-byte words,
-    then read the dart int256 at payload byte 164. Two's-complement.
+    then read the dart int256 at payload byte 164. Two's-complement. Returned as
+    a Python ``int`` (exact) so per-day sums stay exact; the ÷1e18 happens once,
+    at the end, under a high-precision Decimal context (matches Dune's DECIMAL).
     """
     raw = data_hex[2:] if data_hex.startswith("0x") else data_hex
     length = int(raw[64:128], 16)              # bytes 32..63 = payload length
@@ -90,7 +92,7 @@ def _decode_dart(data_hex: str) -> Decimal:
     v = int(word, 16)
     if v >= 1 << 255:                          # two's-complement sign
         v -= 1 << 256
-    return Decimal(v)
+    return v
 
 
 class HyperSyncDebtSource:
@@ -114,14 +116,21 @@ class HyperSyncDebtSource:
         df["block_date"] = df["ts"].apply(
             lambda t: datetime.fromtimestamp(int(t), tz=timezone.utc).date()
         )
+        # Sum + cumsum in EXACT integer wad (Python ints), then ÷1e18 once at the
+        # end under a wide Decimal context. Dividing per-row under the default
+        # 28-digit context loses ~1e-6 wad vs Dune's DECIMAL(38,18); this matches
+        # Dune byte-for-byte.
         daily = (
-            df.groupby("block_date")["dart"]
-            .apply(lambda s: sum(s, Decimal(0)) / _WAD)   # wad → USDS-normalised Art
-            .reset_index(name="daily_dart")
+            df.groupby("block_date")["dart"].sum()        # exact int per day
+            .reset_index(name="daily_wad")
             .sort_values("block_date")
             .reset_index(drop=True)
         )
-        daily["cum_debt"] = daily["daily_dart"].cumsum()
+        daily["cum_wad"] = daily["daily_wad"].cumsum()    # exact int cumulative
+        with localcontext() as ctx:
+            ctx.prec = 60
+            daily["daily_dart"] = daily["daily_wad"].apply(lambda w: Decimal(int(w)) / _WAD)
+            daily["cum_debt"] = daily["cum_wad"].apply(lambda w: Decimal(int(w)) / _WAD)
         return daily[cols]
 
     # -- transport ---------------------------------------------------------

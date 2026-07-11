@@ -25,10 +25,18 @@ unlocks Dune removal.
 > source is kept only for the non-anonymous event surface / if #990 ever lands.
 >
 > ```bash
-> export ENVIO_API_TOKEN=...   # free: https://app.envio.dev/api-tokens
-> python scripts/compare_debt_sources.py --prime spark --month 2026-06 --full
+> export ENVIO_API_TOKEN=...            # free: https://app.envio.dev/api-tokens
+> export HYPERSYNC_START_BLOCK=20800000 # skip pre-allocator history (optional, faster)
+> python scripts/compare_debt_sources.py --prime spark --month 2026-06 --tol 0.001
 > #   (--envio-source hypersync is the default)
 > ```
+>
+> **✅ Validated 2026-07-11 (Spark, 2026-06):** Dune and HyperSync match on all
+> **544 days** (Nov 2024 → Jun 2026). Max |cum_debt diff| = `2.4e-4` wad — that
+> residual is **Dune's** Trino `DECIMAL(38,0)/DECIMAL(38,0)` division truncating
+> to ~6 decimals; HyperSync carries the exact 18-decimal integer sum, so it's the
+> *more* precise source. Use `--tol 0.001` (a tenth of a cent) rather than exact-0
+> for the gate — bit-exact equality with a Trino decimal query isn't meaningful.
 
 ## What's already wired in this repo
 
