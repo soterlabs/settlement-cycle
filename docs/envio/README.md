@@ -31,12 +31,20 @@ unlocks Dune removal.
 > #   (--envio-source hypersync is the default)
 > ```
 >
-> **✅ Validated 2026-07-11 (Spark, 2026-06):** Dune and HyperSync match on all
-> **544 days** (Nov 2024 → Jun 2026). Max |cum_debt diff| = `2.4e-4` wad — that
-> residual is **Dune's** Trino `DECIMAL(38,0)/DECIMAL(38,0)` division truncating
-> to ~6 decimals; HyperSync carries the exact 18-decimal integer sum, so it's the
-> *more* precise source. Use `--tol 0.001` (a tenth of a cent) rather than exact-0
-> for the gate — bit-exact equality with a Trino decimal query isn't meaningful.
+> **✅ Validated 2026-07-12 — all debt-bearing primes, 2026-06, `--full`:**
+>
+> | Prime | Source-level (Art, wad) | Rate-scaled (feeds compute) |
+> |---|---|---|
+> | spark (SPARK-A) | ✅ 544 days, max diff 2.4e-4 | ✅ 30 days, 1.9e-4 |
+> | grove (BLOOM-A) | ✅ 182 days, **0** | ✅ 30 days, **0** |
+> | obex (OBEX-A)   | ✅ 31 days, **0**  | ✅ 30 days, **0** |
+>
+> Grove/OBEX match Dune bit-for-bit. Spark's `2.4e-4` wad residual is **Dune's**
+> Trino `DECIMAL(38,0)/DECIMAL(38,0)` truncating to ~6 decimals; HyperSync carries
+> the exact 18-decimal integer sum, so it's the *more* precise source. Use
+> `--tol 0.001` (a tenth of a cent) for the gate — bit-exact equality with a
+> Trino decimal query isn't meaningful. Keel/Skybase are agent-rate-only (no ilk,
+> nothing to compare).
 
 ## What's already wired in this repo
 
