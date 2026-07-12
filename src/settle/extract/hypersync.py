@@ -1,0 +1,179 @@
+"""Low-level Envio HyperSync client — raw log queries over HTTP.
+
+HyperSync is a stateless query API (not an indexer): you POST a selection
+(addresses + topic filters + block range) and it streams back matching logs,
+paginating by a server-side time budget via ``next_block``. Auth is a bearer
+``ENVIO_API_TOKEN`` (free at https://app.envio.dev/api-tokens; 401 without one).
+
+This module is transport only — no decoding, no persistence. The reorg-safe
+persistence layer is ``hypersync_store``; domain decoding lives in the
+``normalize/sources/hypersync_*`` sources.
+"""
+
+from __future__ import annotations
+
+import os
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from typing import Any
+
+import requests
+
+_DEFAULT_TIMEOUT = 40
+_MAX_PAGES = 100_000  # runaway backstop
+
+# chain value (domain.Chain.value) → HyperSync host.
+HYPERSYNC_HOSTS: dict[str, str] = {
+    "ethereum": "eth.hypersync.xyz",
+    "base": "base.hypersync.xyz",
+    "arbitrum": "arbitrum.hypersync.xyz",
+    "optimism": "optimism.hypersync.xyz",
+    "unichain": "unichain.hypersync.xyz",
+    "avalanche_c": "avalanche.hypersync.xyz",
+    "plume": "plume.hypersync.xyz",
+}
+
+_DEFAULT_LOG_FIELDS = [
+    "block_number", "log_index", "address",
+    "topic0", "topic1", "topic2", "topic3", "data",
+]
+_DEFAULT_BLOCK_FIELDS = ["number", "timestamp"]
+
+
+class HyperSyncError(RuntimeError):
+    """Raised on HyperSync transport / auth / query errors."""
+
+
+@dataclass(frozen=True)
+class LogRow:
+    block_number: int
+    log_index: int
+    block_time: int          # unix seconds, UTC
+    address: str
+    topic0: str | None
+    topic1: str | None
+    topic2: str | None
+    topic3: str | None
+    data: str
+
+
+@dataclass
+class QueryResult:
+    rows: list[LogRow] = field(default_factory=list)
+    archive_height: int = 0  # HyperSync's indexed chain head
+
+
+def endpoint(chain: str) -> str:
+    """Resolve the HyperSync ``/query`` URL for ``chain``.
+
+    Override per chain with ``HYPERSYNC_URL_<CHAIN>`` (e.g. ``HYPERSYNC_URL_ETHEREUM``);
+    ``HYPERSYNC_URL`` overrides ethereum (back-compat with the debt source / tests).
+    """
+    override = os.environ.get(f"HYPERSYNC_URL_{chain.upper()}")
+    if override:
+        return override
+    if chain == "ethereum" and os.environ.get("HYPERSYNC_URL"):
+        return os.environ["HYPERSYNC_URL"]
+    host = HYPERSYNC_HOSTS.get(chain)
+    if not host:
+        raise HyperSyncError(f"No HyperSync host mapping for chain {chain!r}")
+    return f"https://{host}/query"
+
+
+def _token() -> str:
+    tok = os.environ.get("ENVIO_API_TOKEN")
+    if not tok:
+        raise HyperSyncError(
+            "Missing env var ENVIO_API_TOKEN (free token at "
+            "https://app.envio.dev/api-tokens; HyperSync returns 401 without it)"
+        )
+    return tok
+
+
+def to_int(v: Any) -> int:
+    """HyperSync JSON returns numerics as hex strings ('0x..') or ints."""
+    if isinstance(v, int):
+        return v
+    s = str(v)
+    return int(s, 16) if s.startswith("0x") else int(s)
+
+
+def query_logs(
+    chain: str,
+    selections: list[dict[str, Any]],
+    from_block: int,
+    to_block: int,
+    *,
+    log_fields: list[str] | None = None,
+    block_fields: list[str] | None = None,
+    post: Callable[..., Any] = requests.post,
+) -> QueryResult:
+    """Fetch all logs matching ``selections`` in ``[from_block, to_block]`` (inclusive).
+
+    ``selections`` is HyperSync's ``logs`` array — each entry is
+    ``{"address": [...], "topics": [[topic0...], [topic1...], ...]}``; multiple
+    entries are OR'd. Pages are followed via ``next_block`` until ``to_block``.
+    """
+    lf = log_fields or _DEFAULT_LOG_FIELDS
+    bf = block_fields or _DEFAULT_BLOCK_FIELDS
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {_token()}"}
+    base = {
+        "logs": selections,
+        "field_selection": {"log": lf, "block": bf},
+    }
+    result = QueryResult()
+    cursor = from_block
+    end_exclusive = to_block + 1  # HyperSync to_block is exclusive
+    for _ in range(_MAX_PAGES):
+        if cursor >= end_exclusive:
+            break
+        body = {**base, "from_block": cursor, "to_block": end_exclusive}
+        page = _execute(chain, body, headers, post)
+        result.archive_height = max(result.archive_height, to_int(page.get("archive_height", 0) or 0))
+        for group in page.get("data") or []:
+            ts_by_block = {
+                to_int(b["number"]): to_int(b["timestamp"])
+                for b in (group.get("blocks") or [])
+            }
+            for lg in group.get("logs") or []:
+                bn = to_int(lg["block_number"])
+                result.rows.append(
+                    LogRow(
+                        block_number=bn,
+                        log_index=to_int(lg.get("log_index", 0)),
+                        block_time=ts_by_block.get(bn, 0),
+                        address=(lg.get("address") or "").lower(),
+                        topic0=_lower(lg.get("topic0")),
+                        topic1=_lower(lg.get("topic1")),
+                        topic2=_lower(lg.get("topic2")),
+                        topic3=_lower(lg.get("topic3")),
+                        data=lg.get("data") or "0x",
+                    )
+                )
+        nxt = page.get("next_block")
+        if nxt is None or to_int(nxt) <= cursor:
+            break
+        cursor = to_int(nxt)
+    return result
+
+
+def archive_height(chain: str, *, post: Callable[..., Any] = requests.post) -> int:
+    """Current HyperSync-indexed chain head — a cheap zero-row probe."""
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {_token()}"}
+    body = {"from_block": 0, "to_block": 1, "logs": [], "field_selection": {"block": ["number"]}}
+    return to_int(_execute(chain, body, headers, post).get("archive_height", 0) or 0)
+
+
+def _lower(v: Any) -> str | None:
+    return v.lower() if isinstance(v, str) else v
+
+
+def _execute(chain: str, body: dict[str, Any], headers: dict[str, str], post) -> dict[str, Any]:
+    try:
+        resp = post(endpoint(chain), json=body, headers=headers, timeout=_DEFAULT_TIMEOUT)
+    except requests.RequestException as exc:
+        raise HyperSyncError(f"HyperSync request failed: {exc}") from exc
+    if not resp.ok:
+        raise HyperSyncError(f"HyperSync {chain} -> HTTP {resp.status_code}: {resp.text[:400]}")
+    data: dict[str, Any] = resp.json()
+    return data

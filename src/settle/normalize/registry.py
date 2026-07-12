@@ -23,6 +23,7 @@ from .protocols import (
 from .sources.dune_balances import DuneBalanceSource
 from .sources.dune_debt import DuneDebtSource
 from .sources.envio_debt import EnvioDebtSource
+from .sources.hypersync_balances import HyperSyncBalanceSource
 from .sources.hypersync_debt import HyperSyncDebtSource
 from .sources.dune_savings_v2_deployed import DuneSavingsV2DeployedSource
 from .sources.dune_ssr import DuneSSRSource
@@ -57,6 +58,10 @@ _DEBT_SOURCES: dict[str, type[IDebtSource]] = {
 
 _BALANCE_SOURCES: dict[str, type[IBalanceSource]] = {
     "dune": DuneBalanceSource,
+    # HyperSync-direct: reconstructs balances/inflows from raw Transfer logs via
+    # the reorg-safe hypersync_store. Requires ENVIO_API_TOKEN. Same output
+    # contract as ``dune``. See sources/hypersync_balances.py.
+    "hypersync": HyperSyncBalanceSource,
 }
 
 _SSR_SOURCES: dict[str, type[ISSRSource]] = {

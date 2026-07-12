@@ -607,6 +607,12 @@ class Prime:
     # full BR on utilized). When enabled, Sky charges subsidised rate on the
     # first ``cap_usd`` of utilized USDS; any excess at full BR.
     subsidy: SubsidyConfig = field(default_factory=lambda: SubsidyConfig(enabled=False))
+    # Per-protocol source backend overrides, e.g. ``{"debt": "hypersync",
+    # "balance": "hypersync"}``. Keys map to the registry's source families
+    # (debt, balance, ssr, …); unspecified keys fall back to the registry
+    # default (``dune``/``rpc``). This is the per-prime migration switch —
+    # flip a prime onto HyperSync one key at a time. See registry.py.
+    sources: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.ilk_bytes32 is not None and len(self.ilk_bytes32) != 32:

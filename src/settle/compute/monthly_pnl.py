@@ -85,6 +85,31 @@ class Sources:
     atoken_event_blocks: object = None
 
 
+def _sources_from_prime(prime: "Prime") -> Sources:
+    """Build a ``Sources`` from ``prime.sources`` config overrides (registry-resolved).
+
+    Empty overrides → ``Sources()`` (all None → registry defaults at each call
+    site), i.e. identical to the prior default. This is the per-prime migration
+    hook: a prime's YAML ``sources:`` block flips individual backends (e.g.
+    ``debt: hypersync``, ``balance: hypersync``) without touching any other prime.
+    """
+    from ..normalize.registry import (
+        get_balance_source,
+        get_debt_source,
+        get_ssr_source,
+    )
+
+    ov = getattr(prime, "sources", None) or {}
+    kw: dict[str, object] = {}
+    if "debt" in ov:
+        kw["debt"] = get_debt_source(ov["debt"])
+    if "balance" in ov:
+        kw["balance"] = get_balance_source(ov["balance"])
+    if "ssr" in ov:
+        kw["ssr"] = get_ssr_source(ov["ssr"])
+    return Sources(**kw)  # type: ignore[arg-type]
+
+
 def _previous_day_eod_utc(d) -> datetime:
     return datetime.combine(d - timedelta(days=1), time.max, tzinfo=timezone.utc)
 
@@ -2062,7 +2087,7 @@ def compute_monthly_pnl(
     ``prime_agent_revenue`` is pinned to 0 — an expected display asymmetry
     of the debug mode, not an accounting hole.
     """
-    sources = sources if sources is not None else Sources()
+    sources = sources if sources is not None else _sources_from_prime(prime)
 
     # sky_only debug-mode warning — see docstring above.
     if sky_only:

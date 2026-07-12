@@ -345,6 +345,7 @@ def load_prime(config_path: Path) -> Prime:
         principal_return_overrides=principal_return_overrides,
         yield_reversal_overrides=yield_reversal_overrides,
         subsidy=SubsidyConfig.from_dict(cfg.get("subsidy")),
+        sources=dict(cfg.get("sources") or {}),
     )
 
 
