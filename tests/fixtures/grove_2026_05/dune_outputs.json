@@ -9512,5 +9512,522 @@
         "daily_inflow": "398324.92"
       }
     ]
+  },
+  "inflow_by_counterparty_e13": {
+    "_chain": "ethereum",
+    "_token": "0x8292bb45bf1ee4d140127049757c2e0ff06317ed",
+    "_holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+    "rows": [
+      {
+        "block_date": "2025-11-03",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "14993718.502182268"
+      },
+      {
+        "block_date": "2025-11-04",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "30002909.809040956"
+      },
+      {
+        "block_date": "2025-11-04",
+        "counterparty": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
+        "signed_amount": "-25000000.0"
+      },
+      {
+        "block_date": "2025-11-04",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "-19996192.0"
+      },
+      {
+        "block_date": "2025-11-05",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "39981698.00609647"
+      },
+      {
+        "block_date": "2025-11-05",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "-39982134.31731969"
+      },
+      {
+        "block_date": "2025-11-06",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "19986032.593878098"
+      },
+      {
+        "block_date": "2025-11-06",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "-19986032.593878098"
+      },
+      {
+        "block_date": "2025-11-07",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "19990589.96083103"
+      },
+      {
+        "block_date": "2025-11-07",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "-19990589.96083103"
+      },
+      {
+        "block_date": "2025-11-08",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "14993479.639775261"
+      },
+      {
+        "block_date": "2025-11-08",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "-4998341.88228522"
+      },
+      {
+        "block_date": "2025-11-09",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "-9995137.757490043"
+      },
+      {
+        "block_date": "2025-11-11",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "14991483.573900744"
+      },
+      {
+        "block_date": "2025-11-11",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "-14991483.573900744"
+      },
+      {
+        "block_date": "2025-11-12",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "14991771.045546714"
+      },
+      {
+        "block_date": "2025-11-12",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "-14991771.045546714"
+      },
+      {
+        "block_date": "2025-11-13",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "14991000.625501238"
+      },
+      {
+        "block_date": "2025-11-13",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "-14991000.625501238"
+      },
+      {
+        "block_date": "2025-11-14",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "14989638.910035275"
+      },
+      {
+        "block_date": "2025-11-14",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "-14989638.910035275"
+      },
+      {
+        "block_date": "2025-11-15",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "13990214.06675107"
+      },
+      {
+        "block_date": "2025-11-16",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "-13905214.066751068"
+      },
+      {
+        "block_date": "2025-11-17",
+        "counterparty": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
+        "signed_amount": "-25150000.0"
+      },
+      {
+        "block_date": "2025-11-17",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "25065000.0"
+      },
+      {
+        "block_date": "2025-11-18",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "15002379.191859417"
+      },
+      {
+        "block_date": "2025-11-18",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "-15000000.0"
+      },
+      {
+        "block_date": "2025-11-19",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "13402817.407221451"
+      },
+      {
+        "block_date": "2025-11-19",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "-13400000.0"
+      },
+      {
+        "block_date": "2025-11-21",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "15005597.65967257"
+      },
+      {
+        "block_date": "2025-11-21",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "-15005196.599080868"
+      },
+      {
+        "block_date": "2025-11-23",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "21094909.766575508"
+      },
+      {
+        "block_date": "2025-11-23",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "-21100507.426248074"
+      },
+      {
+        "block_date": "2025-11-25",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "1399568.91464096"
+      },
+      {
+        "block_date": "2025-11-25",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "-1399568.91464096"
+      },
+      {
+        "block_date": "2025-11-26",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "2294343.0049431697"
+      },
+      {
+        "block_date": "2025-11-26",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "-2290000.0"
+      },
+      {
+        "block_date": "2025-12-11",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "-4343.004943169698"
+      },
+      {
+        "block_date": "2025-12-16",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "10000058.707223559"
+      },
+      {
+        "block_date": "2025-12-17",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "-10000058.707223559"
+      },
+      {
+        "block_date": "2025-12-19",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "9756915.44180536"
+      },
+      {
+        "block_date": "2025-12-19",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "-9756915.441805359"
+      },
+      {
+        "block_date": "2026-01-06",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "14994172.455701394"
+      },
+      {
+        "block_date": "2026-01-06",
+        "counterparty": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
+        "signed_amount": "-14957200.0"
+      },
+      {
+        "block_date": "2026-01-07",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "4251622.599203486"
+      },
+      {
+        "block_date": "2026-01-07",
+        "counterparty": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
+        "signed_amount": "-122095.05490488121"
+      },
+      {
+        "block_date": "2026-01-07",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "-4166500.0"
+      },
+      {
+        "block_date": "2026-01-14",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "5500326.864403698"
+      },
+      {
+        "block_date": "2026-01-14",
+        "counterparty": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
+        "signed_amount": "-3098900.0"
+      },
+      {
+        "block_date": "2026-01-14",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "-2398800.0"
+      },
+      {
+        "block_date": "2026-01-15",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "-2626.8644036975143"
+      },
+      {
+        "block_date": "2026-01-20",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "1149578.4717976314"
+      },
+      {
+        "block_date": "2026-01-20",
+        "counterparty": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
+        "signed_amount": "-1139440.0"
+      },
+      {
+        "block_date": "2026-01-21",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "399844.8818448635"
+      },
+      {
+        "block_date": "2026-01-21",
+        "counterparty": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
+        "signed_amount": "-409728.32393660105"
+      },
+      {
+        "block_date": "2026-01-22",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "18593795.77030903"
+      },
+      {
+        "block_date": "2026-01-22",
+        "counterparty": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
+        "signed_amount": "-14594702.844287284"
+      },
+      {
+        "block_date": "2026-01-22",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "-3996000.0"
+      },
+      {
+        "block_date": "2026-01-24",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "1099818.1898246822"
+      },
+      {
+        "block_date": "2026-01-24",
+        "counterparty": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
+        "signed_amount": "-1100000.0"
+      },
+      {
+        "block_date": "2026-01-26",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "13497952.828788418"
+      },
+      {
+        "block_date": "2026-01-26",
+        "counterparty": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
+        "signed_amount": "-13492500.0"
+      },
+      {
+        "block_date": "2026-01-27",
+        "counterparty": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
+        "signed_amount": "-8618.974340740348"
+      },
+      {
+        "block_date": "2026-01-29",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "2050997.126151652"
+      },
+      {
+        "block_date": "2026-01-29",
+        "counterparty": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
+        "signed_amount": "-2050000.0"
+      },
+      {
+        "block_date": "2026-01-30",
+        "counterparty": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
+        "signed_amount": "-997.1261516522075"
+      },
+      {
+        "block_date": "2026-02-01",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "1999212.8188209035"
+      },
+      {
+        "block_date": "2026-02-01",
+        "counterparty": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
+        "signed_amount": "-1998000.0"
+      },
+      {
+        "block_date": "2026-02-02",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "15457242.989252545"
+      },
+      {
+        "block_date": "2026-02-02",
+        "counterparty": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
+        "signed_amount": "-15450000.0"
+      },
+      {
+        "block_date": "2026-02-03",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "1701015.9605771678"
+      },
+      {
+        "block_date": "2026-02-03",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "-1700000.0"
+      },
+      {
+        "block_date": "2026-02-04",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "2199351.1795175537"
+      },
+      {
+        "block_date": "2026-02-04",
+        "counterparty": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
+        "signed_amount": "-1209136.8327842872"
+      },
+      {
+        "block_date": "2026-02-04",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "-999686.1153838813"
+      },
+      {
+        "block_date": "2026-02-05",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "20790614.157927852"
+      },
+      {
+        "block_date": "2026-02-05",
+        "counterparty": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
+        "signed_amount": "-16283700.0"
+      },
+      {
+        "block_date": "2026-02-05",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "-4498800.0"
+      },
+      {
+        "block_date": "2026-02-06",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "7995016.525770277"
+      },
+      {
+        "block_date": "2026-02-06",
+        "counterparty": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
+        "signed_amount": "-7992000.0"
+      },
+      {
+        "block_date": "2026-02-12",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "-11130.683698129595"
+      },
+      {
+        "block_date": "2026-02-18",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "-5000000.0"
+      },
+      {
+        "block_date": "2026-02-18",
+        "counterparty": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
+        "signed_amount": "5000000.0"
+      },
+      {
+        "block_date": "2026-03-02",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "-5000000.0"
+      },
+      {
+        "block_date": "2026-03-02",
+        "counterparty": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
+        "signed_amount": "5000000.0"
+      },
+      {
+        "block_date": "2026-03-05",
+        "counterparty": "0xd001ae433f254283fece51d4acce8c53263aa186",
+        "signed_amount": "-5000000.0"
+      },
+      {
+        "block_date": "2026-03-05",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "5000000.0"
+      },
+      {
+        "block_date": "2026-03-06",
+        "counterparty": "0xd178a90c41ff3dcffbfdef7de0baf76cbfe6a121",
+        "signed_amount": "-50000000.0"
+      },
+      {
+        "block_date": "2026-03-06",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "50000000.0"
+      },
+      {
+        "block_date": "2026-03-09",
+        "counterparty": "0xd178a90c41ff3dcffbfdef7de0baf76cbfe6a121",
+        "signed_amount": "-20000000.0"
+      },
+      {
+        "block_date": "2026-03-09",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "20000000.0"
+      },
+      {
+        "block_date": "2026-03-19",
+        "counterparty": "0xd178a90c41ff3dcffbfdef7de0baf76cbfe6a121",
+        "signed_amount": "-50000000.0"
+      },
+      {
+        "block_date": "2026-03-19",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "50000000.0"
+      },
+      {
+        "block_date": "2026-04-17",
+        "counterparty": "0xd178a90c41ff3dcffbfdef7de0baf76cbfe6a121",
+        "signed_amount": "-25000000.0"
+      },
+      {
+        "block_date": "2026-04-17",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "25000000.0"
+      },
+      {
+        "block_date": "2026-04-18",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "113331405.21914965"
+      },
+      {
+        "block_date": "2026-04-22",
+        "counterparty": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
+        "signed_amount": "-50000000.0"
+      },
+      {
+        "block_date": "2026-04-23",
+        "counterparty": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
+        "signed_amount": "-22500000.0"
+      },
+      {
+        "block_date": "2026-04-24",
+        "counterparty": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
+        "signed_amount": "-33000000.0"
+      },
+      {
+        "block_date": "2026-04-24",
+        "counterparty": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+        "signed_amount": "1411912.295726984"
+      },
+      {
+        "block_date": "2026-04-25",
+        "counterparty": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
+        "signed_amount": "-9243317.514876626"
+      },
+      {
+        "block_date": "2026-05-07",
+        "counterparty": "0xf9a7fb2887ad9d1b167a25832451b06df63b9f8d",
+        "signed_amount": "49596.0"
+      }
+    ]
   }
 }

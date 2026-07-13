@@ -81,3 +81,78 @@ def test_error_message_names_offending_venue_and_category():
     assert "E99" in msg
     assert "ERC4626_VAULT" in msg
     assert "PAR_STABLE" in msg
+
+
+# ── external_yield_source validation (same fail-at-load philosophy) ──
+
+
+def _venue_eys(
+    pricing_category: PricingCategory,
+    *,
+    external_yield_source: bool = False,
+    force_capital_inflow: bool = False,
+    vid: str = "V1",
+) -> Venue:
+    return Venue(
+        id=vid,
+        chain=_CHAIN,
+        token=_TOKEN,
+        pricing_category=pricing_category,
+        external_yield_source=external_yield_source,
+        force_capital_inflow=force_capital_inflow,
+    )
+
+
+def test_par_stable_accepts_external_yield_source():
+    v = _venue_eys(PricingCategory.PAR_STABLE, external_yield_source=True)
+    assert v.external_yield_source is True
+
+
+def test_non_par_stable_rejects_external_yield_source():
+    """The flag routes into the Cat A classifier; on Cat B/C/D/E venues it is
+    meaningless and a YAML typo must not silently no-op."""
+    with pytest.raises(ValueError, match="external_yield_source"):
+        _venue_eys(PricingCategory.ERC4626_VAULT, external_yield_source=True, vid="E98")
+
+
+def test_external_yield_source_and_force_capital_inflow_conflict():
+    """force wins the compute short-circuit, silently zeroing the yield the
+    other flag promises to classify — reject the contradiction at load."""
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        _venue_eys(
+            PricingCategory.PAR_STABLE,
+            external_yield_source=True,
+            force_capital_inflow=True,
+        )
+
+
+def test_prime_rejects_flagged_venue_without_external_sources():
+    """external_yield_source with an empty external_alm_sources allowlist for
+    the venue's chain nets every inflow to capital — real yield silently
+    becomes $0. Must fail at config load, not at settlement time."""
+    from settle.domain import Prime
+
+    v = _venue_eys(PricingCategory.PAR_STABLE, external_yield_source=True, vid="S98")
+    with pytest.raises(ValueError, match="external_alm_sources"):
+        Prime(
+            id="testprime",
+            ilk_bytes32=b"\x00" * 32,
+            start_date=date(2026, 1, 1),
+            alm={_CHAIN: _ADDR},
+            venues=[v],
+        )
+
+
+def test_prime_accepts_flagged_venue_with_external_sources():
+    from settle.domain import Prime
+
+    v = _venue_eys(PricingCategory.PAR_STABLE, external_yield_source=True, vid="S98")
+    p = Prime(
+        id="testprime",
+        ilk_bytes32=b"\x00" * 32,
+        start_date=date(2026, 1, 1),
+        alm={_CHAIN: _ADDR},
+        venues=[v],
+        external_alm_sources={_CHAIN: [Address.from_str("0x" + "22" * 20)]},
+    )
+    assert p.venues[0].external_yield_source is True

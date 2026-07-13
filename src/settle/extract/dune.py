@@ -32,7 +32,30 @@ import requests
 from .cache import cache_dir, cached
 
 DUNE_API_BASE = "https://api.dune.com/api/v1"
+# Dune engine tier for executions. Env-overridable because key plans vary:
+# free-tier keys reject anything above "free" (HTTP 400 "Invalid performance
+# tier"), while paid keys default sensibly to "medium". Resolved LAZILY per
+# call via ``_resolve_performance`` (not bound at import) so a runtime
+# ``SETTLE_DUNE_PERFORMANCE`` / monkeypatch.setenv takes effect, and validated
+# so a stale/typo'd value fails fast rather than 400-ing every execution.
+# NOTE: the tier is part of the execute cache key, so switching tiers
+# re-executes previously cached queries — intended (engine tiers can differ),
+# but budget for the re-runs when flipping a populated cache to a new tier.
 DEFAULT_PERFORMANCE = "medium"
+_VALID_PERFORMANCE = {"free", "medium", "large"}
+
+
+def _resolve_performance(performance: str | None = None) -> str:
+    p = performance if performance is not None else os.environ.get(
+        "SETTLE_DUNE_PERFORMANCE", DEFAULT_PERFORMANCE
+    )
+    if p not in _VALID_PERFORMANCE:
+        raise ValueError(
+            f"Invalid Dune performance tier {p!r} "
+            f"(from SETTLE_DUNE_PERFORMANCE or the performance arg); "
+            f"expected one of {sorted(_VALID_PERFORMANCE)}."
+        )
+    return p
 DEFAULT_POLL_TIMEOUT_SEC = 300
 DEFAULT_POLL_INTERVAL_SEC = 3
 
@@ -493,7 +516,7 @@ def _execute_query_cached(
 
 
 def execute_query(sql_path: Path, params: dict[str, Any], pin_block: int,
-                  performance: str = DEFAULT_PERFORMANCE) -> pd.DataFrame:
+                  performance: str | None = None) -> pd.DataFrame:
     """Execute a saved Dune query and return its results as a DataFrame.
 
     `pin_block` is folded into the param set as `pin_block` and is also part of the
@@ -510,6 +533,7 @@ def execute_query(sql_path: Path, params: dict[str, Any], pin_block: int,
         raise ValueError(
             "execute_query: pass pin_block as the positional arg, not via params"
         )
+    performance = _resolve_performance(performance)
     query_id = _resolve_query_id(sql_path)
     return _execute_query_cached(
         query_id, sql_path.name, params, pin_block, performance,

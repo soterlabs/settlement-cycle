@@ -56,8 +56,13 @@ def _D(x) -> Decimal:
 def _usd(x) -> str:
     """Fixed 2-decimal USD format with thousands separators. Negative values
     use a plain ASCII minus so the markdown diff stays stable across
-    locales / editors."""
+    locales / editors. Sub-cent magnitudes collapse to $0.00 — float dust
+    from flow netting would otherwise render as "-$0.00". Quantize-based so
+    the exact ±0.005 tie (which banker's-rounds to 0.00 in the f-string)
+    collapses too."""
     d = _D(x)
+    if d.quantize(Decimal("0.01")) == 0:
+        return "$0.00"
     if d < 0:
         return f"-${-d:,.2f}"
     return f"${d:,.2f}"
@@ -67,6 +72,8 @@ def _usds(x) -> str:
     """Same as ``_usd`` but with no leading currency sign — used in the
     headline tables where the column header carries the unit (``USDS``)."""
     d = _D(x)
+    if d.quantize(Decimal("0.01")) == 0:
+        return "0.00"
     if d < 0:
         return f"-{-d:,.2f}"
     return f"{d:,.2f}"

@@ -1339,6 +1339,105 @@ def _erc4626_shares_weighted_inflow(
     }])
 
 
+# Materiality floor for the Cat A capture-gap guard: in-period balance
+# movement below this (in USD-equivalent, par-stable) is treated as dust/noise
+# and does not trigger the empty-counterparty-log RuntimeError. Set well above
+# spam-wei dust and far below any real capture gap (the incidents were tens of
+# thousands of dollars: Grove E13 ±$49,596, Spark S27 ~$194K).
+_CAT_A_CAPTURE_GAP_FLOOR_USD = Decimal("1")
+
+
+def _cat_a_all_capital_inflow_timeseries(
+    prime: Prime,
+    venue: Venue,
+    period,
+    *,
+    balance_source,
+    target_delta: Decimal | None = None,
+):
+    """Dated all-capital inflow series for a Cat A par-stable with NO external
+    yield source: par-stables earn nothing by themselves, so every balance
+    change is a value-preserving capital movement. Sourced from the
+    cumulative-balance timeseries (full transfer scan) so mid-period flows
+    keep their REAL dates — CoF time-weighting must see a late-month deposit
+    on the day it landed, not re-timed to period start.
+
+    ``target_delta``: when given (the venue's period Δvalue), a residual row
+    is appended at ``period.start`` so the in-period capital sum equals
+    Δvalue EXACTLY and revenue collapses to $0 by construction — a
+    transfer-capture artifact (the Spark S27 −$194,444 class) is absorbed
+    into capital instead of leaking into revenue. Material residuals are
+    logged as warnings (they indicate an incomplete balance scan).
+
+    Only valid for par-stables: the series equates 1 token unit with $1.
+    """
+    import pandas as pd
+
+    holder = venue.holder_override or prime.alm[venue.chain]
+    pin_block = period.pin_blocks[venue.chain]
+    from .prices import is_par_stable
+    if not is_par_stable(venue.token):
+        raise ValueError(
+            f"Cat A all-capital series requested for non-par-stable token "
+            f"{venue.token.symbol!r} (venue {venue.id}). The series treats "
+            "balance as $1/unit which is only valid for par-stables; either "
+            "add the token to PAR_STABLE_SYMBOLS or provide "
+            "inflow_by_counterparty data."
+        )
+    cum_df = balance_source.cumulative_balance_timeseries(
+        chain=venue.chain.value,
+        token=venue.token.address.value,
+        holder=holder.value,
+        start=prime.start_date,
+        pin_block=pin_block,
+    )
+    if cum_df.empty:
+        out = pd.DataFrame({"block_date": [], "daily_inflow": []})
+    else:
+        out = pd.DataFrame({
+            "block_date": cum_df["block_date"],
+            # Normalize to Decimal: downstream arithmetic (period_inflow,
+            # revenue = Δvalue − capital) is Decimal end-to-end.
+            "daily_inflow": [Decimal(str(v)) for v in cum_df["daily_net"]],
+        })
+    if target_delta is not None:
+        if out.empty:
+            period_sum = Decimal("0")
+        else:
+            bd = pd.to_datetime(out["block_date"])
+            in_period = (
+                (bd >= pd.Timestamp(period.start))
+                & (bd <= pd.Timestamp(period.end))
+            )
+            period_sum = sum(
+                (v for v in out.loc[in_period, "daily_inflow"]), Decimal("0"),
+            )
+        residual = Decimal(target_delta) - period_sum
+        if residual != 0:
+            if abs(residual) >= _CAT_A_CAPTURE_GAP_FLOOR_USD:
+                import logging as _logging
+                _logging.getLogger(__name__).warning(
+                    "Cat A venue %s (%s): transfer scan misses $%s of the "
+                    "period Δvalue — absorbing the residual as a "
+                    "period-start capital row so revenue stays $0.",
+                    venue.id, venue.token.symbol, residual,
+                )
+            row = pd.DataFrame({
+                "block_date": [period.start], "daily_inflow": [residual],
+            })
+            out = row if out.empty else (
+                pd.concat([out, row], ignore_index=True)
+                .sort_values("block_date", kind="stable")
+                .reset_index(drop=True)
+            )
+    if out.empty:
+        return pd.DataFrame({
+            "block_date": [], "daily_inflow": [], "cum_inflow": [],
+        })
+    out["cum_inflow"] = out["daily_inflow"].cumsum()
+    return out
+
+
 def _cat_a_capital_inflow_timeseries(
     prime: Prime,
     venue: Venue,
@@ -1411,32 +1510,23 @@ def _cat_a_capital_inflow_timeseries(
     empty = pd.DataFrame({
         "block_date": [], "daily_inflow": [], "cum_inflow": [],
     })
-    if detail.empty:
-        if external_sources:
-            # External yield source registered but no per-counterparty data
-            # available — can't classify; refuse to guess. Caller sees
-            # period_inflow = 0 and revenue = Δvalue, which is wrong but
-            # explicit (vs. silently zeroing real yield).
-            return empty
-        # No registered external yield source AND no per-counterparty data.
-        # Methodology: par-stables don't generate yield by themselves; any
-        # balance change at the ALM must be value-preserving capital movement
-        # (PSM swap, allocator buffer, etc.) → capital_net = Δvalue → revenue
-        # = 0. Fall back to the cumulative-balance timeseries: every balance
-        # change becomes capital. For par-stables, 1 token unit = $1 so
-        # daily_net is already $-equivalent.
-        # Guard: this fallback equates token units with USD which is only
-        # valid for par-stable tokens. Refuse non-par tokens loudly rather
-        # than silently mispricing balance changes (config bug surface).
-        from .prices import is_par_stable
-        if not is_par_stable(venue.token):
-            raise ValueError(
-                f"Cat A fallback to cumulative_balance reached for non-par-stable "
-                f"token {venue.token.symbol!r} (venue {venue.id}). The fallback "
-                "treats balance as $1/unit which is only valid for par-stables; "
-                "either add the token to PAR_STABLE_SYMBOLS or provide "
-                "inflow_by_counterparty data."
-            )
+    if external_sources:
+        # Capture-gap reconciliation guard. Balances only change via
+        # transfers, so the counterparty log must account for the venue's
+        # in-period balance movement — comparing AGGREGATE in-period nets
+        # (log vs cumulative-balance scan) catches every coverage failure:
+        #   * completely missing capture (empty log) — the Grove E13
+        #     ±$49,596 May/June 2026 incident (E32 Mar/Apr, same class);
+        #   * stale/partial capture (rows from earlier months but none for
+        #     a period in which the balance moved);
+        #   * drip-style gaps whose individual days are sub-floor but
+        #     material in sum.
+        # Proceeding on an unreconciled log would misbook the uncaptured
+        # movement as ±yield (revenue = Δvalue − capital). Aggregate netting
+        # also keeps boundary-neutral transits (in-and-out within the
+        # period) from tripping the guard: they cannot affect revenue.
+        # Materiality floor: sub-$1 aggregate drift (spam-wei dust) must not
+        # abort a run — ``daily_net`` is $-equivalent for par-stables.
         cum_df = balance_source.cumulative_balance_timeseries(
             chain=venue.chain.value,
             token=venue.token.address.value,
@@ -1444,14 +1534,76 @@ def _cat_a_capital_inflow_timeseries(
             start=prime.start_date,
             pin_block=pin_block,
         )
-        if cum_df.empty:
+        # An empty balance series means NO scan data for this venue (not
+        # "the balance never moved") — nothing to reconcile against, so the
+        # guard cannot run. Matches the pre-reconciliation semantics.
+        gap = 0.0
+        if not cum_df.empty:
+            bd = pd.to_datetime(cum_df["block_date"])
+            net = pd.to_numeric(cum_df["daily_net"], errors="coerce").fillna(0)
+            in_period = (
+                (bd >= pd.Timestamp(period.start))
+                & (bd <= pd.Timestamp(period.end))
+            )
+            period_net = float(net[in_period].sum())
+            logged_net = 0.0
+            if not detail.empty:
+                dbd = pd.to_datetime(detail["block_date"])
+                damt = pd.to_numeric(
+                    detail["signed_amount"], errors="coerce",
+                ).fillna(0)
+                d_in_period = (
+                    (dbd >= pd.Timestamp(period.start))
+                    & (dbd <= pd.Timestamp(period.end))
+                )
+                logged_net = float(damt[d_in_period].sum())
+            gap = period_net - logged_net
+        if abs(gap) >= float(_CAT_A_CAPTURE_GAP_FLOOR_USD):
+            import os as _os
+            # Override accepts "1" (all venues) or a comma-separated venue-id
+            # allowlist (e.g. "S26,E13") so bypassing one known-immaterial
+            # gap does NOT globally downgrade every other venue's guard.
+            _allow = _os.environ.get("SETTLE_ALLOW_UNCLASSIFIED_CAT_A", "")
+            _allowed = _allow == "1" or venue.id in {
+                s.strip() for s in _allow.split(",") if s.strip()
+            }
+            _log_state = (
+                "an EMPTY counterparty log" if detail.empty
+                else "a counterparty log that does not cover it "
+                     "(stale or partial capture)"
+            )
+            msg = (
+                f"Cat A venue {venue.id} ({venue.token.symbol}, "
+                f"external_yield_source) has material in-period balance "
+                f"movement unaccounted for (${gap:,.2f} = balance net "
+                f"${period_net:,.2f} − logged net ${logged_net:,.2f}, floor "
+                f"${_CAT_A_CAPTURE_GAP_FLOOR_USD}) with {_log_state} — the "
+                f"inflow_by_counterparty capture for this venue is missing "
+                f"or incomplete, and proceeding would misclassify the "
+                f"uncaptured movement as ±yield. Re-capture the venue's "
+                f"transfer log (see the fixture capture script's "
+                f"INFLOW_BY_CP list) or set "
+                f"SETTLE_ALLOW_UNCLASSIFIED_CAT_A={venue.id} (or =1) to "
+                f"accept the misclassification for this run."
+            )
+            if not _allowed:
+                raise RuntimeError(msg)
+            import logging as _logging
+            _logging.getLogger(__name__).warning(msg)
+    if detail.empty:
+        if external_sources:
+            # Reconciled above: no material in-period movement (dormant
+            # venue) or explicitly hatch-bypassed — $0 flows is the answer;
+            # revenue stays Δvalue-driven (= 0).
             return empty
-        out = pd.DataFrame({
-            "block_date": cum_df["block_date"],
-            "daily_inflow": cum_df["daily_net"],
-        })
-        out["cum_inflow"] = out["daily_inflow"].cumsum()
-        return out
+        # No registered external yield source AND no per-counterparty data.
+        # Methodology: par-stables don't generate yield by themselves; any
+        # balance change at the ALM must be value-preserving capital movement
+        # (PSM swap, allocator buffer, etc.) → capital_net = Δvalue → revenue
+        # = 0. Every balance change becomes dated capital.
+        return _cat_a_all_capital_inflow_timeseries(
+            prime, venue, period, balance_source=balance_source,
+        )
 
     # Counterparties may arrive as bytes / bytearray / memoryview (Dune
     # varbinary, possibly with leading zeros stripped) or as a "0x"-prefixed

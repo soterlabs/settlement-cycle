@@ -6,27 +6,21 @@ Period: 2026-02-01 → 2026-02-28 (28 days)
 
 ### Prime side
 
-#### Demand-Side revenue
-
 | Field | USDS |
 |---|---:|
 | agent rate | 5,809.87 |
 | distribution rewards | 0.00 |
-| **demand-side revenue** | **5,809.87** |
-
-#### Supply-Side revenue
-
-| Field | USDS |
-|---|---:|
-| **supply-side revenue** | **2,879,437.28** |
+| prime agent net revenue | 2,486,848.38 |
+| prime side sky direct exposure | 396,689.67 |
+| **prime agent profit** | **2,889,347.93** |
 
 ### Sky side
 
 | Field | USDS |
 |---|---:|
-| prime cost of funds | 2,998,286.45 |
-| sky direct exposure | 3,138,915.45 |
-| **supply-side revenue** | **6,137,201.90** |
+| prime cost of funds | 2,998,286.44 |
+| sky side sky direct exposure | 3,138,915.45 |
+| **sky revenue** | **6,137,201.89** |
 
 ## Per-venue
 
@@ -35,9 +29,9 @@ Period: 2026-02-01 → 2026-02-28 (28 days)
 | E1 | Aave Horizon RWA RLUSD (aToken) | $101,329,036.60 | $140,173,858.07 | $38,754,503.92 | $90,317.55 | $911,623.58 | $0.00 | 0% | $0.00 |
 | E2 | Aave Horizon RWA USDC (aToken) | $11,600,502.75 | $0.00 | -$11,619,098.35 | $18,595.61 | $18,595.61 | $0.00 | 0% | $0.00 |
 | E3 | Aave Ethereum RLUSD (aToken) | $252,762,587.50 | $263,125,087.29 | $10,173,263.67 | $189,236.11 | $3,152,797.75 | $0.00 | 0% | $0.00 |
-| E4 | Grove x Steakhouse USDC (Morpho 4626) | $0.00 | $1,002,368.85 | $1,000,032.96 | $2,335.90 | $2,335.90 | $0.00 | 0% | $0.00 |
+| E4 | Grove x Steakhouse USDC (Morpho 4626) | $0.00 | $1,002,368.85 | $1,000,032.95 | $2,335.90 | $2,335.90 | $0.00 | 0% | $0.00 |
 | E5 | Grove x Steakhouse USDC High Yield (Morpho 4626) | $1,009,793.26 | $1,012,325.68 | $0.00 | $2,532.42 | $2,532.42 | $0.00 | 0% | $0.00 |
-| E6 | Grove x Steakhouse AUSD (Morpho 4626) | $0.00 | $15,806,005.10 | $15,800,308.84 | $5,696.25 | $5,696.25 | $0.00 | 0% | $0.00 |
+| E6 | Grove x Steakhouse AUSD (Morpho 4626) | $0.00 | $15,806,005.10 | $15,800,308.84 | $5,696.26 | $5,696.26 | $0.00 | 0% | $0.00 |
 | E7 | Securitize Tokenized AAA CLO Fund (STAC) | $100,616,387.90 | $100,804,666.10 | $0.00 | $188,278.20 | $188,278.20 | $0.00 | 0% | $0.00 |
 | E8 | Janus Henderson Anemoy AAA CLO (JAAA) | $454,188,405.33 | $455,576,922.49 | $0.00 | $1,388,517.16 | $396,689.67 | $991,827.49 | 71.43% | $0.00 |
 | E9 | Janus Henderson Anemoy Treasury Fund (JTRSY) | $559,853,396.47 | $561,291,355.38 | $0.00 | $1,437,958.91 | $0.00 | $1,437,958.91 | 100.00% | $0.00 |
@@ -45,7 +39,7 @@ Period: 2026-02-01 → 2026-02-28 (28 days)
 | E11 | Curve AUSD/USDC stableswap LP | $0.00 | $25,000,444.78 | $25,000,444.78 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E12 | Uniswap V3 AUSD/USDC pool (NFT positions) | $0.00 | $25,008,038.97 | $25,000,000.00 | $8,038.97 | $8,038.97 | $0.00 | 0% | $0.00 |
 | E13 | RLUSD raw (ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
-| E15 | USDC raw (ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
+| E15 | USDC raw (ALM idle) | $0.00 | $0.00 | -$0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E16 | DAI raw (ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E17 | USDS raw / POL (ALM idle — already netted out of utilized) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E18 | sUSDS raw / POL (ALM idle — Cat B 4626) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
@@ -57,11 +51,9 @@ Period: 2026-02-01 → 2026-02-28 (28 days)
 | E24 | Steakhouse High Yield PYUSD (Morpho 4626) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E26 | PYUSD raw (ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E27 | USDC raw on Base (ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
-| E30 | Uniswap V3 AUSD/USDC pool (NFT positions — alt holder) | $25,003,445.42 | $0.00 | -$25,001,755.88 | -$1,689.54 | -$1,689.54 | $0.00 | 0% | $0.00 |
-| E31 | AUSD raw (alt holder idle) | $3,688.95 | $10,068.98 | $6,380.03 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
-| E32 | USDC raw (alt holder idle) | $2,254.27 | $0.00 | -$2,254.27 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
-| E37 | Maple syrupUSDC (ERC-4626) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
-| E38 | Agora AUSD incentives (cash distribution to Grove Eth ALM) | $0.00 | $0.00 | $0.00 | $25.00 | $25.00 | $0.00 | 0% | $0.00 |
+| E30 | Uniswap V3 AUSD/USDC pool (NFT positions — alt holder) | $25,003,445.42 | $0.00 | -$25,001,755.88 | -$1,689.54 | -$1,689.54 | $-0.00 | 0% | $0.00 |
+| E31 | AUSD raw (alt holder idle) | $3,688.95 | $10,068.98 | $0.00 | $6,380.03 | $6,380.03 | $0.00 | 0% | $0.00 |
+| E32 | USDC raw (alt holder idle) | $2,254.27 | $0.00 | $0.00 | -$2,254.27 | -$2,254.27 | $-0.00 | 0% | $0.00 |
 
 ## DR per ref code
 
