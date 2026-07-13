@@ -954,17 +954,13 @@ def _atoken_per_segment_yield(
         bal_end = balance_at(chain_value, token_addr, holder_addr, end_block)
         scaled_end = scaled_balance_at(chain_value, token_addr, holder_addr, end_block)
 
-        if scaled_start == 0:
-            # Pre-deployment / empty position at segment start. Anything
-            # at end is principal injection, not yield.
-            seg_yield = 0
-        elif scaled_end == 0 or scaled_end * 1000 < scaled_start:
-            # Clean exit within this segment — Aave leaves 1 wei dust on
-            # full withdrawal so the literal ``scaled_end == 0`` check
-            # misses it. Use the same relative-threshold definition as
-            # the outer function's ``is_clean_exit``. Closed-form
-            # denominator blows up here; instead binary-search for the
-            # burn block and read balance just before.
+        seg_yield = _atoken_closed_form_seg_yield(
+            bal_start, scaled_start, bal_end, scaled_end,
+        )
+        if seg_yield is None:
+            # Clean exit within this segment (dust) — closed-form
+            # denominator blows up; binary-search for the burn block and
+            # read balance just before.
             lo, hi = blocks[i - 1] + 1, end_block
             threshold = max(1, scaled_start // 10)
             while lo < hi:
@@ -978,11 +974,6 @@ def _atoken_per_segment_yield(
                 chain_value, token_addr, holder_addr, lo - 1,
             )
             seg_yield = bal_pre_burn - bal_start
-        else:
-            # Standard per-segment closed-form.
-            seg_yield = int(
-                _D(bal_end) * _D(scaled_start) / _D(scaled_end)
-            ) - bal_start
 
         total_yield += max(0, seg_yield)
         bal_start = bal_end
@@ -998,6 +989,125 @@ def _atoken_per_segment_yield(
 _atoken_per_event_yield = _atoken_per_segment_yield
 
 
+# Max plausible aToken/spToken APR used to cap a single day's recovered rebase
+# in the no-event-data daily fallback. Real stablecoin lending yields are a few
+# percent; 25% is an absurd ceiling that only an intraday principal event could
+# exceed. Anything above ``balance × this / 365`` in one day is not interest.
+_ATOKEN_DAILY_MAX_APR = Decimal("0.25")
+
+# Dust-exit ratio shared by every aToken closed-form consumer: Aave leaves
+# 1 wei of scaled balance on full withdrawal, so "position is gone" is a
+# RELATIVE test (scaled dropped >1000×), never a literal == 0.
+_ATOKEN_EXIT_DUST_RATIO = 1000
+
+
+def _atoken_closed_form_seg_yield(
+    bal_prev: int, scaled_prev: int, bal_cur: int, scaled_cur: int,
+) -> int | None:
+    """Closed-form rebase yield for ONE segment with (assumed) constant
+    scaled balance: ``bal_cur × scaled_prev / scaled_cur − bal_prev``.
+
+    The single implementation of the formula + its two guards, shared by
+    ``_atoken_per_segment_yield`` and ``_atoken_daily_capped_yield`` so the
+    math and the dust-exit definition can't drift apart. Returns:
+
+    * ``0`` — no entering principal (``scaled_prev == 0``): anything at the
+      segment end is a principal injection, not yield;
+    * ``None`` — the segment ends in a dust exit (denominator degenerates);
+      the CALLER decides the attribution (binary-search recovery on the
+      event path, conservative 0 on the daily grid);
+    * the rounded closed-form otherwise (ROUND_HALF_EVEN, matching the
+      whole-period path — plain ``int()`` truncation biases a slightly-
+      negative result up by one raw unit).
+    """
+    from decimal import Decimal as _D
+
+    if scaled_prev == 0:
+        return 0
+    if scaled_cur == 0 or scaled_cur * _ATOKEN_EXIT_DUST_RATIO < scaled_prev:
+        return None
+    return int(
+        (_D(bal_cur) * _D(scaled_prev) / _D(scaled_cur) - _D(bal_prev))
+        .to_integral_value(rounding="ROUND_HALF_EVEN")
+    )
+
+
+def _atoken_daily_capped_yield(
+    chain_value: str,
+    token_addr: bytes,
+    holder_addr: bytes,
+    som_block: int,
+    eom_block: int,
+    day_blocks: list[int],
+    *,
+    balance_at,
+    scaled_balance_at,
+) -> int:
+    """Per-day rebase yield for the degenerate no-event-data daily fallback.
+
+    Like ``_atoken_per_segment_yield`` (closed-form rebase per segment) but
+    with two guards that path lacks, because the daily grid is a *last-resort*
+    reconstruction with no event boundaries to trust:
+
+    * **Clean-exit within a day → 0.** If scaled drops to dust inside a day we
+      cannot distinguish real rebase from an intraday deposit-then-drain, and
+      the per-segment binary search would read the deposited principal as
+      yield (the phantom flagged in review). The lost genuine rebase is at most
+      one day — negligible — so we book 0 for that day.
+    * **Per-day cap.** Each day's yield is clamped to
+      ``bal_start × _ATOKEN_DAILY_MAX_APR / 365`` so no single day can turn a
+      principal jump into interest.
+
+    Segments are ~1 calendar day (daily boundaries), so the 1-day cap is exact;
+    a boundary dropped as out-of-range makes at most a 2-day segment, which the
+    cap under-credits by <1 day (immaterial).
+
+    Returns ``(total_yield, per_segment)`` where ``per_segment`` is a list of
+    ``{"block", "delta", "yield"}`` dicts (one per segment, keyed by the
+    segment's END block) — the caller uses it to stamp recovered inflows on
+    their real calendar days instead of period end.
+    """
+    from decimal import Decimal as _D
+
+    blocks = sorted({som_block, eom_block,
+                     *[b for b in day_blocks if som_block <= b <= eom_block]})
+    if len(blocks) < 2:
+        return 0, []
+    total = 0
+    per_segment: list[dict] = []
+    capped_days = 0
+    bal_prev = balance_at(chain_value, token_addr, holder_addr, blocks[0])
+    scaled_prev = scaled_balance_at(chain_value, token_addr, holder_addr, blocks[0])
+    for i in range(1, len(blocks)):
+        b = blocks[i]
+        bal_cur = balance_at(chain_value, token_addr, holder_addr, b)
+        scaled_cur = scaled_balance_at(chain_value, token_addr, holder_addr, b)
+        seg = _atoken_closed_form_seg_yield(bal_prev, scaled_prev, bal_cur, scaled_cur)
+        if seg is None:
+            seg = 0                                   # clean exit within day
+        cap = int(_D(bal_prev) * _ATOKEN_DAILY_MAX_APR / _D(365))
+        if seg > cap:
+            capped_days += 1
+        booked = max(0, min(seg, cap))
+        total += booked
+        per_segment.append({"block": b, "delta": bal_cur - bal_prev, "yield": booked})
+        bal_prev, scaled_prev = bal_cur, scaled_cur
+    if capped_days:
+        # The cap exists to keep intraday principal jumps out of yield, but
+        # it also clips GENUINE rebase on days when the pool rate exceeds
+        # the ceiling (rate spikes have historically crossed 25%). A bound
+        # cap must be visible — the clipped interest lands in capital inflow.
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "_atoken_daily_capped_yield: per-day %s%% APR cap bound on %d of "
+            "%d segment(s) — clipped rebase is booked as capital inflow, "
+            "not yield. If the pool rate genuinely spiked, raise "
+            "_ATOKEN_DAILY_MAX_APR or wire event data for this venue.",
+            _ATOKEN_DAILY_MAX_APR * 100, capped_days, len(blocks) - 1,
+        )
+    return total, per_segment
+
+
 def _atoken_index_weighted_inflow(
     prime: Prime,
     venue: Venue,
@@ -1008,6 +1118,7 @@ def _atoken_index_weighted_inflow(
     scaled_balance_at,
     balance_at,
     transfer_event_blocks=None,
+    daily_boundary_blocks=None,
 ):
     """Closed-form rebasing-token inflow for Cat C/D (Aave aToken, SparkLend
     spToken).
@@ -1124,6 +1235,108 @@ def _atoken_index_weighted_inflow(
             balance_at=balance_at,
             scaled_balance_at=scaled_balance_at,
         )
+        # Degenerate-closed-form recovery — fires ONLY when the computation
+        # above recovered ~0 yield. With no event data, the per-segment call
+        # collapses to the whole-period closed-form, which returns ~0 for two
+        # patterns: a mid-period ENTRY (``scaled_som == 0`` → no basis) and a
+        # staged EXIT to dust (the clean-exit binary search lands on the final
+        # drain → negative → clamped to 0). Spark S9/S2/S54 hit these and
+        # booked $0 on real interest. Retry on a DAILY segment grid so each
+        # deposit/withdrawal is isolated in its own segment and the per-segment
+        # closed-form attributes rebase yield correctly.
+        #
+        # Non-interference guarantees, by construction:
+        #   * ``not boundaries`` — venues WITH event data (e.g. Grove's Horizon
+        #     aTokens, which carry Merkl claim/burn days) never enter here.
+        #   * ``yield_raw <= ~0`` — a value the normal path already recovered
+        #     (e.g. a single-withdrawal clean exit via the binary search) is
+        #     never overwritten; we only turn a 0 into a positive.
+        #   * ``daily_yield > yield_raw`` — the recovery can only INCREASE the
+        #     booked yield, never reduce it.
+        #   * genuinely empty venue-months are skipped via the boundary
+        #     balances PLUS three cached quartile probes — a mid-month
+        #     enter-then-exit round trip (0 → 0 boundaries) held for ≥¼ of
+        #     the period still fires; only sub-quarter round trips are
+        #     missed (bounded: days of interest).
+        # Entry test is DUST-AWARE: after a dusted exit the next month
+        # opens with scaled_som == 1 wei (not 0), and the closed-form
+        # degenerates exactly as it does from 0 — a literal ``== 0`` here
+        # re-created the S9 $0-yield bug one month after any exit.
+        _dust_entry = (
+            scaled_som == 0
+            or (scaled_eom > 0
+                and scaled_som * _ATOKEN_EXIT_DUST_RATIO < scaled_eom)
+        )
+        _dust_yield = max(1, scale // 100)          # ≤ $0.01 in raw units
+        if (not boundaries and daily_boundary_blocks is not None
+                and yield_raw <= _dust_yield
+                and (_dust_entry or is_clean_exit)):
+            _held_in_period = max(bal_som, bal_eom) > 0 or any(
+                scaled_balance_at(chain_value, token_addr, holder.value, qb) > 0
+                for qb in sorted(
+                    {som_block + (eom_block - som_block) * q // 4
+                     for q in (1, 2, 3)} - {som_block, eom_block}
+                )
+            )
+        else:
+            _held_in_period = False
+        if _held_in_period:
+            # (block, date) pairs — dates let the recovered inflows land on
+            # their real calendar days below.
+            daily_pairs = list(daily_boundary_blocks(
+                chain_value, token_addr, holder.value, som_block, eom_block,
+            ))
+            if daily_pairs:
+                # Use the CAPPED per-day helper, not _atoken_per_segment_yield:
+                # on the daily grid a clean-exit *within a day* must contribute
+                # 0 (we can't tell an intraday deposit-then-drain from rebase,
+                # and the per-segment binary search would otherwise read the
+                # deposited principal as yield), and each day is capped at one
+                # day of plausible interest so no principal jump leaks in.
+                daily_yield, day_detail = _atoken_daily_capped_yield(
+                    chain_value, token_addr, holder.value,
+                    som_block, eom_block, [b for b, _ in daily_pairs],
+                    balance_at=balance_at,
+                    scaled_balance_at=scaled_balance_at,
+                )
+                if daily_yield > yield_raw:
+                    import logging as _logging
+                    _logging.getLogger(__name__).info(
+                        "_atoken_index_weighted_inflow: venue %s — no event "
+                        "boundaries + degenerate closed-form (scaled_som=%s, "
+                        "clean_exit=%s) recovered ~0; re-recovered yield=%s "
+                        "via %d daily segments.",
+                        venue.id, scaled_som, is_clean_exit, daily_yield,
+                        len(daily_pairs),
+                    )
+                    # Stamp each day's inflow (Δbalance − rebase) on its real
+                    # calendar date so _time_weighted_avg_value sees the
+                    # position change when it happened — a single period-end
+                    # row would give a mid-month entry a ~1-day time weight
+                    # and misallocate CoF for exactly the venues this
+                    # recovery targets. Segments ending at eom_block (not a
+                    # day boundary) fall back to period_end_date.
+                    date_by_block = dict(daily_pairs)
+                    by_date: dict = {}
+                    for seg in day_detail:
+                        inflow_raw = seg["delta"] - seg["yield"]
+                        if inflow_raw == 0:
+                            continue
+                        d = date_by_block.get(seg["block"], period_end_date)
+                        by_date[d] = by_date.get(d, Decimal(0)) + (
+                            Decimal(inflow_raw) / scale
+                        )
+                    rows, cum = [], Decimal(0)
+                    for d in sorted(by_date):
+                        cum += by_date[d]
+                        rows.append({
+                            "block_date": d,
+                            "daily_inflow": by_date[d],
+                            "cum_inflow": cum,
+                        })
+                    if rows:
+                        return pd.DataFrame(rows)
+                    yield_raw = daily_yield
         period_inflow_raw = delta_raw - yield_raw
         period_inflow_usd = Decimal(period_inflow_raw) / scale
         if boundaries:
