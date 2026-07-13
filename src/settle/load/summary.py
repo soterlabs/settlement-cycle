@@ -198,6 +198,62 @@ def render_summary(prov: dict) -> str:
     lines.append(_row("**supply-side revenue**", f"**{_usds(supply_side_revenue)}**"))
     lines.append("")
 
+    # Non-venue supply-side components. These are booked at the orchestrator
+    # level and carry NO per-venue row, so they don't appear in the Per-venue
+    # table below and were previously invisible in the published report (the
+    # "non-venue layer" flagged in the 2026-07 Spark reconciliation, §8 item 2).
+    # PSM3 is a basket contract (USDC + USDS + sUSDS legs), not a venue: its
+    # sUSDS-leg SSR appreciation is credited straight into prime_agent_revenue
+    # and its 30bps spread reimbursement reduces cost of funds. The Curve sUSDS
+    # spread is the same shape. The Cat B L2 sUSDS proxies' 30bps DOES show
+    # per-venue (spread_reimb column) — surfaced here as a total for tie-out.
+    psm3_appreciation = _D(r.get("psm3_susds_appreciation"))
+    psm3_spread       = _D(r.get("psm3_susds_spread"))
+    curve_spread      = _D(r.get("curve_susds_spread"))
+    total_spread      = _D(r.get("susds_spread_reimbursement"))
+    catb_l2_spread    = total_spread - psm3_spread - curve_spread
+    # Gate on ANY component, not just the aggregate: an upstream inconsistency
+    # that leaves ``total_spread`` 0 while a component spread is populated must
+    # still render the section (else the very layer this surfaces stays hidden).
+    if psm3_appreciation or total_spread or psm3_spread or curve_spread:
+        lines.append("##### Non-venue sUSDS credits")
+        lines.append("")
+        lines.append("| Component | USDS | Effect |")
+        lines.append("|---|---:|---|")
+        if psm3_appreciation:
+            lines.append(
+                f"| PSM3 sUSDS SSR appreciation | {_usds(psm3_appreciation)} "
+                f"| adds to prime revenue |"
+            )
+        if psm3_spread:
+            lines.append(
+                f"| PSM3 sUSDS 30bps spread reimbursement | {_usds(psm3_spread)} "
+                f"| reduces cost of funds |"
+            )
+        if curve_spread:
+            lines.append(
+                f"| Curve sUSDS 30bps spread reimbursement | {_usds(curve_spread)} "
+                f"| reduces cost of funds |"
+            )
+        # Only the POSITIVE residual is a real per-venue reimbursement. A
+        # non-positive value is definitional drift (e.g. sky_only zeroes the
+        # component spreads while retaining the aggregate, or partial fixtures)
+        # — omit it rather than print a nonsensical negative "reimbursement".
+        if catb_l2_spread > 0:
+            lines.append(
+                f"| Cat B L2 sUSDS 30bps spread reimbursement | "
+                f"{_usds(catb_l2_spread)} | reduces cost of funds (per-venue) |"
+            )
+        # The total row only makes sense when there IS a reimbursement; an
+        # appreciation-only prime (total_spread == 0) would otherwise print a
+        # spurious "0.00 (netted into cost of funds)".
+        if total_spread:
+            lines.append(
+                f"| **total sUSDS spread reimbursement** | "
+                f"**{_usds(total_spread)}** | (netted into cost of funds above) |"
+            )
+        lines.append("")
+
     lines.append("### Sky side")
     lines.append("")
     lines.append("| Field | USDS |")
