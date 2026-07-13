@@ -216,7 +216,7 @@ def render_summary(prov: dict) -> str:
     # that leaves ``total_spread`` 0 while a component spread is populated must
     # still render the section (else the very layer this surfaces stays hidden).
     if psm3_appreciation or total_spread or psm3_spread or curve_spread:
-        lines.append("##### Non-venue components (orchestrator-level)")
+        lines.append("##### Non-venue sUSDS credits")
         lines.append("")
         lines.append("| Component | USDS | Effect |")
         lines.append("|---|---:|---|")

@@ -45,7 +45,7 @@ def test_nonvenue_section_itemises_psm3_and_spreads():
         curve_susds_spread="15000.00",
         susds_spread_reimbursement="184911.00",
     ))
-    assert "##### Non-venue components (orchestrator-level)" in out
+    assert "##### Non-venue sUSDS credits" in out
     assert "PSM3 sUSDS SSR appreciation | 1,069,000.00" in out
     assert "PSM3 sUSDS 30bps spread reimbursement | 88,000.00" in out
     assert "Curve sUSDS 30bps spread reimbursement | 15,000.00" in out
@@ -58,14 +58,14 @@ def test_nonvenue_section_omitted_when_no_susds_activity():
     """A prime with no PSM3/Curve/Cat-B sUSDS (e.g. Obex) must not render the
     section at all — no empty table, no zero rows."""
     out = render_summary(_prov())  # all sUSDS fields 0
-    assert "Non-venue components" not in out
+    assert "Non-venue sUSDS" not in out
 
 
 def test_nonvenue_section_appreciation_only():
     """Spread reimbursement can be 0 while appreciation is non-zero — the
     section still renders with just the appreciation row."""
     out = render_summary(_prov(psm3_susds_appreciation="500000.00"))
-    assert "##### Non-venue components (orchestrator-level)" in out
+    assert "##### Non-venue sUSDS credits" in out
     assert "PSM3 sUSDS SSR appreciation | 500,000.00" in out
     assert "spread reimbursement | 88,000.00" not in out
 
@@ -79,7 +79,7 @@ def test_nonvenue_negative_catb_l2_row_omitted():
         curve_susds_spread="80000.00",
         susds_spread_reimbursement="150000.00",   # < 120k + 80k → catb = -50k
     ))
-    assert "##### Non-venue components (orchestrator-level)" in out
+    assert "##### Non-venue sUSDS credits" in out
     assert "Cat B L2 sUSDS 30bps spread reimbursement" not in out
     assert "-50,000" not in out and "-$50,000" not in out
 
@@ -92,7 +92,7 @@ def test_nonvenue_renders_when_total_zero_but_component_present():
         psm3_susds_spread="88000.00",
         susds_spread_reimbursement="0",            # aggregate missing/zero
     ))
-    assert "##### Non-venue components (orchestrator-level)" in out
+    assert "##### Non-venue sUSDS credits" in out
     assert "PSM3 sUSDS 30bps spread reimbursement | 88,000.00" in out
 
 
