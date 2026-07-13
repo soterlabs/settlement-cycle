@@ -137,11 +137,22 @@ def query_logs(
             }
             for lg in group.get("logs") or []:
                 bn = to_int(lg["block_number"])
+                ts = ts_by_block.get(bn)
+                if ts is None:
+                    # A log whose block entry is missing from the same
+                    # response group would otherwise be dated 1970 and
+                    # silently dropped by every ``block_date >= start``
+                    # filter downstream (and persisted misdated).
+                    raise HyperSyncError(
+                        f"HyperSync {chain} response has a log at block {bn} "
+                        f"with no matching block timestamp — refusing to "
+                        f"misdate the row."
+                    )
                 result.rows.append(
                     LogRow(
                         block_number=bn,
                         log_index=to_int(lg.get("log_index", 0)),
-                        block_time=ts_by_block.get(bn, 0),
+                        block_time=ts,
                         address=(lg.get("address") or "").lower(),
                         topic0=_lower(lg.get("topic0")),
                         topic1=_lower(lg.get("topic1")),
@@ -154,6 +165,24 @@ def query_logs(
         if nxt is None or to_int(nxt) <= cursor:
             break
         cursor = to_int(nxt)
+    # Completeness check — Dune-parity semantics are "complete data up to
+    # pin_block or FAIL". When the archive has not indexed the requested
+    # range yet (archive lag, or a pin beyond the archive head), pagination
+    # stops advancing at the archive height; returning the partial rows as
+    # if complete silently understates every downstream cum series. Only
+    # enforceable when the server reports archive_height (real HyperSync
+    # always does; minimal test doubles may not).
+    if cursor < end_exclusive and result.archive_height:
+        raise HyperSyncError(
+            f"HyperSync {chain} returned an incomplete range: pagination "
+            f"stopped at block {cursor} < requested to_block {to_block} "
+            f"(archive_height={result.archive_height}). "
+            + ("The archive has not indexed the requested range yet — "
+               "retry once it catches up."
+               if result.archive_height < to_block
+               else "The server stopped advancing inside an indexed range "
+                    "(server anomaly).")
+        )
     return result
 
 

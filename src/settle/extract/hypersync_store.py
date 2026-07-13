@@ -73,27 +73,47 @@ def fetch_logs(
     if cov is not None and cov[0] <= from_block and to_block <= cov[1]:
         return _read_rows(conn, stream, from_block, to_block)
 
-    # Miss. Fetch either the contiguous growth tail (common: fixed from, growing
-    # to) or the whole range (first-time / non-contiguous), so coverage stays
-    # honestly contiguous — never claim a block range we didn't fetch.
-    if cov is not None and from_block >= cov[0] and to_block > cov[1]:
-        fetch_from, fetch_to = cov[1] + 1, to_block
-        new_from, new_to = cov[0], to_block
+    # Miss. Build the honest fetch plan — coverage must NEVER claim a block
+    # range we didn't fetch:
+    #  * request overlaps/touches existing coverage → fetch only the missing
+    #    edge range(s); the merged coverage stays contiguous.
+    #  * request DISJOINT from existing coverage → fetch the requested range
+    #    and persist the rows, but leave coverage untouched. A LEAST/GREATEST
+    #    widening here would claim the unfetched gap between the two islands
+    #    and permanently serve later reads with logs silently missing.
+    if cov is None:
+        fetch_ranges = [(from_block, to_block)]
+        new_cov: tuple[int, int] | None = (from_block, to_block)
     else:
-        fetch_from, fetch_to = from_block, to_block
-        new_from, new_to = from_block, to_block
+        clo, chi = cov
+        if from_block <= chi + 1 and to_block >= clo - 1:   # overlap / adjacent
+            fetch_ranges = []
+            if from_block < clo:
+                fetch_ranges.append((from_block, clo - 1))
+            if to_block > chi:
+                fetch_ranges.append((chi + 1, to_block))
+            new_cov = (min(from_block, clo), max(to_block, chi))
+        else:                                               # disjoint island
+            fetch_ranges = [(from_block, to_block)]
+            new_cov = None
 
-    res = hypersync.query_logs(chain, selections, fetch_from, fetch_to, post=post)
-    safe_ceiling = res.archive_height - _reorg_margin() if res.archive_height else -1
+    live_rows: list[hypersync.LogRow] = []
+    archive = 0
+    for f_lo, f_hi in fetch_ranges:
+        res = hypersync.query_logs(chain, selections, f_lo, f_hi, post=post)
+        live_rows.extend(res.rows)
+        archive = max(archive, res.archive_height)
+    safe_ceiling = archive - _reorg_margin() if archive else -1
 
     if to_block > safe_ceiling:
         # Upper bound is inside the reorg window — serve live, store NOTHING.
         db_rows = _read_rows(conn, stream, from_block, to_block) if cov is not None else []
-        return _merge(db_rows, res.rows, from_block, to_block)
+        return _merge(db_rows, live_rows, from_block, to_block)
 
     # Historical (to_block ≤ safe_ceiling): every fetched row is finalized.
-    _persist(conn, stream, res.rows)
-    _set_coverage(conn, stream, new_from, new_to)
+    _persist(conn, stream, live_rows)
+    if new_cov is not None:
+        _set_coverage(conn, stream, *new_cov)
     return _read_rows(conn, stream, from_block, to_block)
 
 
@@ -139,8 +159,11 @@ def _set_coverage(conn: Any, stream: str, cfrom: int, cto: int) -> None:
             INSERT INTO hypersync_coverage (stream, covered_from, covered_to)
             VALUES (%s, %s, %s)
             ON CONFLICT (stream) DO UPDATE SET
-                covered_from = LEAST(hypersync_coverage.covered_from, EXCLUDED.covered_from),
-                covered_to   = GREATEST(hypersync_coverage.covered_to, EXCLUDED.covered_to),
+                -- Plain overwrite: the caller passes the already-merged honest
+                -- range. A LEAST/GREATEST merge here would silently bridge
+                -- disjoint fetches, claiming an unfetched gap (see fetch_logs).
+                covered_from = EXCLUDED.covered_from,
+                covered_to   = EXCLUDED.covered_to,
                 updated_at   = NOW()
             """,
             (stream, cfrom, cto),

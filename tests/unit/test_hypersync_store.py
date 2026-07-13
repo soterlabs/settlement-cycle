@@ -74,11 +74,10 @@ class _FakeCursor:
                 if lo <= r.block_number <= hi
             ]
         elif s.startswith("INSERT INTO hypersync_coverage"):
+            # Mirrors the real SQL: plain overwrite (the caller passes the
+            # already-merged honest range; see _set_coverage).
             stream, cf, ct = params
-            cur = self._s["coverage"].get(stream)
-            self._s["coverage"][stream] = (
-                (min(cur[0], cf), max(cur[1], ct)) if cur else (cf, ct)
-            )
+            self._s["coverage"][stream] = (cf, ct)
         # CREATE TABLE / others: no-op
 
     def executemany(self, sql, seq):
@@ -140,3 +139,102 @@ def test_near_head_not_persisted(monkeypatch):
     assert [r.block_number for r in rows] == [950]
     assert conn.store["coverage"] == {}   # nothing persisted
     assert conn.store["logs"] == {}
+
+
+def test_disjoint_backfill_does_not_claim_the_gap(monkeypatch):
+    """A backfill DISJOINT from existing coverage must not bridge the two
+    islands: LEAST/GREATEST-merging coverage would claim the unfetched gap
+    and permanently serve later reads with logs silently missing."""
+    conn = _FakeConn()
+    monkeypatch.setattr(hypersync_store.postgres_store, "_get_conn", lambda: conn)
+    monkeypatch.setenv("HYPERSYNC_REORG_MARGIN", "100")
+
+    fetched: list[tuple[int, int]] = []
+    def fake_query(chain, sel, frm, to, post=None):
+        fetched.append((frm, to))
+        return QueryResult(rows=[_row(frm), _row(to)], archive_height=10_000)
+    monkeypatch.setattr(hypersync, "query_logs", fake_query)
+
+    sel = [{"address": ["0xtok"], "topics": [["0xt0"]]}]
+
+    # Recent month first: coverage (1000, 2000).
+    hypersync_store.fetch_logs("ethereum", sel, 1000, 2000)
+    stream = hypersync_store._stream_key("ethereum", sel)
+    assert conn.store["coverage"][stream] == (1000, 2000)
+
+    # Disjoint backfill (100, 200): rows fetched, coverage UNCHANGED —
+    # blocks 201..999 were never fetched and must not be claimed.
+    hypersync_store.fetch_logs("ethereum", sel, 100, 200)
+    assert fetched[-1] == (100, 200)
+    assert conn.store["coverage"][stream] == (1000, 2000)
+
+    # A read overlapping the gap must NOT be served from the DB fast path:
+    # it re-fetches (a miss), because coverage stayed honest.
+    n_before = len(fetched)
+    hypersync_store.fetch_logs("ethereum", sel, 150, 1500)
+    assert len(fetched) > n_before
+
+
+def test_adjacent_backfill_extends_coverage_contiguously(monkeypatch):
+    """Overlap/adjacency with existing coverage fetches only the missing
+    edge range and merges coverage honestly."""
+    conn = _FakeConn()
+    monkeypatch.setattr(hypersync_store.postgres_store, "_get_conn", lambda: conn)
+    monkeypatch.setenv("HYPERSYNC_REORG_MARGIN", "100")
+
+    fetched: list[tuple[int, int]] = []
+    def fake_query(chain, sel, frm, to, post=None):
+        fetched.append((frm, to))
+        return QueryResult(rows=[_row(frm), _row(to)], archive_height=10_000)
+    monkeypatch.setattr(hypersync, "query_logs", fake_query)
+
+    sel = [{"address": ["0xtok"], "topics": [["0xt0"]]}]
+    hypersync_store.fetch_logs("ethereum", sel, 1000, 2000)
+
+    # Backfill touching the existing range: only (100, 999) is fetched.
+    hypersync_store.fetch_logs("ethereum", sel, 100, 1500)
+    assert fetched[-1] == (100, 999)
+    stream = hypersync_store._stream_key("ethereum", sel)
+    assert conn.store["coverage"][stream] == (100, 2000)
+
+    # Now fully covered — no new fetch.
+    n = len(fetched)
+    hypersync_store.fetch_logs("ethereum", sel, 100, 2000)
+    assert len(fetched) == n
+
+
+# --- transport completeness (query_logs) ------------------------------------
+
+class _PagePost:
+    """Replays canned HyperSync response pages."""
+    def __init__(self, pages):
+        self._pages = list(pages)
+    def __call__(self, url, json, headers, timeout):
+        import json as _json
+        class _R:
+            def __init__(self, p): self._p, self.ok, self.status_code, self.text = p, True, 200, _json.dumps(p)
+            def json(self): return self._p
+        return _R(self._pages.pop(0) if self._pages else {"data": [], "next_block": None})
+
+
+def test_query_logs_raises_on_archive_below_to_block(monkeypatch):
+    """Dune-parity semantics: complete data up to the pin block or FAIL.
+    Pagination stalling at the archive head must raise, not return a
+    silently truncated range."""
+    monkeypatch.setenv("ENVIO_API_TOKEN", "t")
+    page = {"data": [], "next_block": 500, "archive_height": 500}
+    stall = {"data": [], "next_block": 500, "archive_height": 500}
+    with pytest.raises(hypersync.HyperSyncError, match="incomplete"):
+        hypersync.query_logs("ethereum", [], 0, 1000, post=_PagePost([page, stall]))
+
+
+def test_query_logs_raises_on_missing_block_timestamp(monkeypatch):
+    """A log with no matching block entry must raise, not be dated 1970
+    (which every downstream ``block_date >= start`` filter silently drops)."""
+    monkeypatch.setenv("ENVIO_API_TOKEN", "t")
+    page = {
+        "data": [{"blocks": [], "logs": [{"block_number": 42, "data": "0x"}]}],
+        "next_block": 101, "archive_height": 10_000,
+    }
+    with pytest.raises(hypersync.HyperSyncError, match="no matching block timestamp"):
+        hypersync.query_logs("ethereum", [], 0, 100, post=_PagePost([page]))
