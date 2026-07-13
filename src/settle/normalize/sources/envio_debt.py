@@ -144,7 +144,7 @@ class EnvioDebtSource:
               blockNumber: {{ _lte: $pin }},
               blockTimestamp: {{ _gte: $startTs }}
             }},
-            order_by: {{ blockNumber: asc }},
+            order_by: [{{ blockNumber: asc }}, {{ id: asc }}],
             limit: $limit,
             offset: $offset
           ) {{

@@ -8,22 +8,24 @@ for the event-signature hash, so 4 indexed → 5 topics → decoder build fails
 https://github.com/enviodev/hyperindex/issues/990
 
 HyperSync's low-level query API, however, filters logs by **raw topic0**, so we
-match the frob/grab selector directly. This source queries HyperSync over HTTP
-and returns the same contract as ``DuneDebtSource`` — normalised Art (Σ dart,
-wad), NOT rate-scaled; the Vat.rate index is applied downstream in
-``normalize/debt.py``.
+match the frob/grab selector directly. Transport + pagination + persistence are
+the shared ``extract.hypersync`` / ``extract.hypersync_store`` layers (the same
+reorg-safe path the balance source uses — logs are fetched once and served from
+Postgres on re-runs); this module only decodes darts and aggregates. The output
+contract matches ``DuneDebtSource`` — normalised Art (Σ dart, wad), NOT
+rate-scaled; the Vat.rate index is applied downstream in ``normalize/debt.py``.
+
+Dune parity: the SQL enforces ``block_date >= start_date`` per call — the same
+per-call ``start`` filter is applied here (never a process-wide env knob, which
+would silently under/over-count any second prime sharing the process).
 
 Config (env):
     ENVIO_API_TOKEN   required — free token from https://app.envio.dev/api-tokens
-    HYPERSYNC_URL     optional — default https://eth.hypersync.xyz/query
-    HYPERSYNC_START_BLOCK  optional — scan floor (default 0; topic filter keeps
-                      it cheap, but set to the allocator-era block to skip
-                      pre-allocator history).
+    HYPERSYNC_URL     optional — endpoint override (see ``extract.hypersync``).
 """
 
 from __future__ import annotations
 
-import os
 from collections.abc import Callable
 from datetime import date, datetime, timezone
 from decimal import Decimal, localcontext
@@ -31,6 +33,11 @@ from typing import Any
 
 import pandas as pd
 import requests
+
+from ...extract import hypersync_store
+from ...extract.hypersync import HyperSyncError
+
+__all__ = ["HyperSyncDebtSource", "HyperSyncError", "_decode_dart"]
 
 _WAD = Decimal(10) ** 18
 _VAT = "0x35d1b3f3d7966a1dfe207aa4514c12a259a0492b"
@@ -41,33 +48,6 @@ _GRAB_T0 = "0x7bab3f4000000000000000000000000000000000000000000000000000000000"
 # `bytes` payload is preceded by two ABI words (offset + length = 64 bytes),
 # so within raw data dart starts at byte 164 + 64 = 228.
 _DART_PAYLOAD_OFFSET = 164
-_DEFAULT_TIMEOUT = 40
-
-
-class HyperSyncError(RuntimeError):
-    """Raised on HyperSync transport / auth / query errors."""
-
-
-def _endpoint() -> str:
-    return os.environ.get("HYPERSYNC_URL", "https://eth.hypersync.xyz/query")
-
-
-def _token() -> str:
-    tok = os.environ.get("ENVIO_API_TOKEN")
-    if not tok:
-        raise HyperSyncError(
-            "Missing env var ENVIO_API_TOKEN (free token at "
-            "https://app.envio.dev/api-tokens; HyperSync returns 401 without it)"
-        )
-    return tok
-
-
-def _to_int(v: Any) -> int:
-    """HyperSync JSON returns numerics as hex strings ('0x..') or ints."""
-    if isinstance(v, int):
-        return v
-    s = str(v)
-    return int(s, 16) if s.startswith("0x") else int(s)
 
 
 def _decode_dart(data_hex: str) -> int:
@@ -96,7 +76,7 @@ def _decode_dart(data_hex: str) -> int:
 
 
 class HyperSyncDebtSource:
-    """Implements ``IDebtSource`` via direct HyperSync raw-log queries.
+    """Implements ``IDebtSource`` via the shared HyperSync transport + store.
 
     Injectable ``post`` for tests: any ``(url, json, headers, timeout) -> resp``
     with ``.ok``/``.status_code``/``.text``/``.json()``. Defaults to
@@ -108,89 +88,48 @@ class HyperSyncDebtSource:
 
     def debt_timeseries(self, ilk: bytes, start: date, pin_block: int) -> pd.DataFrame:
         cols = ["block_date", "daily_dart", "cum_debt"]
-        rows = self._fetch_logs(ilk, pin_block)
-        if not rows:
+        # Aggregate in EXACT integer wad using a plain Python dict — a pandas
+        # int column would be coerced to int64 whenever every dart fits, and
+        # numpy sums/cumsums then WRAP silently past 2^63. Python ints are
+        # arbitrary-precision; the ÷1e18 happens once at the end under a wide
+        # Decimal context (matches Dune's DECIMAL(38,18) byte-for-byte).
+        daily: dict[date, int] = {}
+        for row in self._fetch_logs(ilk, pin_block):
+            d = datetime.fromtimestamp(int(row["ts"]), tz=timezone.utc).date()
+            if d < start:                      # Dune parity: block_date >= start_date
+                continue
+            daily[d] = daily.get(d, 0) + row["dart"]
+        if not daily:
             return pd.DataFrame(columns=cols)
-
-        df = pd.DataFrame(rows)
-        df["block_date"] = df["ts"].apply(
-            lambda t: datetime.fromtimestamp(int(t), tz=timezone.utc).date()
-        )
-        # Sum + cumsum in EXACT integer wad (Python ints), then ÷1e18 once at the
-        # end under a wide Decimal context. Dividing per-row under the default
-        # 28-digit context loses ~1e-6 wad vs Dune's DECIMAL(38,18); this matches
-        # Dune byte-for-byte.
-        daily = (
-            df.groupby("block_date")["dart"].sum()        # exact int per day
-            .reset_index(name="daily_wad")
-            .sort_values("block_date")
-            .reset_index(drop=True)
-        )
-        daily["cum_wad"] = daily["daily_wad"].cumsum()    # exact int cumulative
+        out: list[dict[str, Any]] = []
+        cum = 0
         with localcontext() as ctx:
             ctx.prec = 60
-            daily["daily_dart"] = daily["daily_wad"].apply(lambda w: Decimal(int(w)) / _WAD)
-            daily["cum_debt"] = daily["cum_wad"].apply(lambda w: Decimal(int(w)) / _WAD)
-        return daily[cols]
+            for d in sorted(daily):
+                cum += daily[d]
+                out.append({
+                    "block_date": d,
+                    "daily_dart": Decimal(daily[d]) / _WAD,
+                    "cum_debt": Decimal(cum) / _WAD,
+                })
+        return pd.DataFrame(out)[cols]
 
-    # -- transport ---------------------------------------------------------
+    # -- transport (shared reorg-safe store) --------------------------------
 
     def _fetch_logs(self, ilk: bytes, pin_block: int) -> list[dict[str, Any]]:
         ilk_topic = "0x" + bytes(ilk).hex()
-        from_block = int(os.environ.get("HYPERSYNC_START_BLOCK", "0"))
-        to_block = pin_block + 1                     # HyperSync to_block is exclusive
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {_token()}",
-        }
-        query_base = {
-            "logs": [
-                {
-                    "address": [_VAT],
-                    # topics[0] = topic0 (selector) OR-set; topics[1] = ilk.
-                    "topics": [[_FROB_T0, _GRAB_T0], [ilk_topic]],
-                }
-            ],
-            "field_selection": {
-                "log": ["block_number", "log_index", "data", "topic0", "topic1"],
-                "block": ["number", "timestamp"],
-            },
-        }
-
-        out: list[dict[str, Any]] = []
-        cursor = from_block
-        guard = 0
-        while cursor < to_block:
-            guard += 1
-            if guard > 100_000:                       # runaway backstop
-                raise HyperSyncError("HyperSync pagination exceeded 100k pages")
-            body = {**query_base, "from_block": cursor, "to_block": to_block}
-            page = self._execute(body, headers)
-            ts_by_block: dict[int, int] = {}
-            groups = page.get("data") or []
-            for g in groups:
-                for b in g.get("blocks") or []:
-                    ts_by_block[_to_int(b["number"])] = _to_int(b["timestamp"])
-            for g in groups:
-                for lg in g.get("logs") or []:
-                    bn = _to_int(lg["block_number"])
-                    out.append(
-                        {"dart": _decode_dart(lg["data"]), "ts": ts_by_block.get(bn, 0)}
-                    )
-            nxt = page.get("next_block")
-            if nxt is None or _to_int(nxt) <= cursor:  # no progress → done
-                break
-            cursor = _to_int(nxt)
-        return out
-
-    def _execute(self, body: dict[str, Any], headers: dict[str, str]) -> dict[str, Any]:
-        try:
-            resp = self._post(_endpoint(), json=body, headers=headers, timeout=_DEFAULT_TIMEOUT)
-        except requests.RequestException as exc:
-            raise HyperSyncError(f"HyperSync request failed: {exc}") from exc
-        if not resp.ok:
-            raise HyperSyncError(
-                f"HyperSync -> HTTP {resp.status_code}: {resp.text[:400]}"
-            )
-        data: dict[str, Any] = resp.json()
-        return data
+        selections = [
+            {
+                "address": [_VAT],
+                # topics[0] = topic0 (selector) OR-set; topics[1] = ilk.
+                "topics": [[_FROB_T0, _GRAB_T0], [ilk_topic]],
+            }
+        ]
+        # Scan floor 0: the Vat predates every allocator ilk and the topic
+        # filter keeps the scan cheap; the store persists the finalized
+        # history so re-runs fetch only the incremental range. The per-call
+        # ``start`` date filter (Dune parity) is applied in debt_timeseries.
+        rows = hypersync_store.fetch_logs(
+            "ethereum", selections, 0, pin_block, post=self._post,
+        )
+        return [{"dart": _decode_dart(r.data), "ts": r.block_time} for r in rows]

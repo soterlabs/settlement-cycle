@@ -68,6 +68,9 @@ def _token_env(monkeypatch):
     monkeypatch.setenv("ENVIO_API_TOKEN", "test-token")
     monkeypatch.delenv("HYPERSYNC_URL", raising=False)
     monkeypatch.delenv("HYPERSYNC_START_BLOCK", raising=False)
+    # The source routes through hypersync_store; an ambient DATABASE_URL
+    # would make unit tests read/write a real Postgres. Force pass-through.
+    monkeypatch.delenv("DATABASE_URL", raising=False)
 
 
 # -- dart decode ----------------------------------------------------------
@@ -166,3 +169,51 @@ def test_http_error_raises():
 
     with pytest.raises(HyperSyncError, match="401"):
         HyperSyncDebtSource(post=_ErrPost()).debt_timeseries(_ILK, date(2024, 1, 1), 100)
+
+
+def test_start_date_filter_matches_dune_semantics():
+    """Dune's SQL enforces ``block_date >= start_date`` per call; the
+    HyperSync source must apply the same per-call filter (never a
+    process-wide env knob) — otherwise two primes sharing the process
+    silently under/over-count each other's history."""
+    page = {
+        "data": [
+            {
+                "blocks": [
+                    {"number": 10, "timestamp": _ts(2025, 10, 30)},   # pre-start
+                    {"number": 20, "timestamp": _ts(2025, 11, 2)},
+                ],
+                "logs": [
+                    {"block_number": 10, "data": _raw_lognote_data(7_000_000 * _WAD)},
+                    {"block_number": 20, "data": _raw_lognote_data(3_000_000 * _WAD)},
+                ],
+            }
+        ],
+        "next_block": 21,
+    }
+    df = HyperSyncDebtSource(post=_Post([page])).debt_timeseries(_ILK, date(2025, 11, 1), 20)
+    # The 2025-10-30 dart is excluded; cum starts from the in-range event.
+    assert df["block_date"].tolist() == [date(2025, 11, 2)]
+    assert df["cum_debt"].tolist() == [Decimal("3000000")]
+
+
+def test_small_darts_stay_exact_python_ints():
+    """Aggregation must not round-trip through numpy int64 (silent wraparound
+    past 2^63): 40 darts of 0.5e18 wad each must sum exactly, and the sum
+    type must be an exact Decimal derived from Python ints."""
+    n = 40
+    page = {
+        "data": [
+            {
+                "blocks": [{"number": 10, "timestamp": _ts(2025, 11, 18)}],
+                "logs": [
+                    {"block_number": 10, "log_index": i,
+                     "data": _raw_lognote_data(_WAD // 2)}
+                    for i in range(n)
+                ],
+            }
+        ],
+        "next_block": 11,
+    }
+    df = HyperSyncDebtSource(post=_Post([page])).debt_timeseries(_ILK, date(2025, 11, 1), 10)
+    assert df["cum_debt"].tolist() == [Decimal(n) / 2]
