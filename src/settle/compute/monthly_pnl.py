@@ -85,14 +85,22 @@ class Sources:
     atoken_event_blocks: object = None
 
 
-def _sources_from_prime(prime: "Prime") -> Sources:
-    """Build a ``Sources`` from ``prime.sources`` config overrides (registry-resolved).
+def _sources_from_prime(prime: "Prime", base: "Sources | None" = None) -> Sources:
+    """Merge ``prime.sources`` config overrides (registry-resolved) into ``base``.
 
-    Empty overrides → ``Sources()`` (all None → registry defaults at each call
-    site), i.e. identical to the prior default. This is the per-prime migration
-    hook: a prime's YAML ``sources:`` block flips individual backends (e.g.
-    ``debt: hypersync``, ``balance: hypersync``) without touching any other prime.
+    Fill semantics: a field the CALLER set explicitly on ``base`` always wins;
+    a field left ``None`` is filled from the prime's YAML ``sources:`` block if
+    declared there; otherwise it stays ``None`` (→ registry defaults at each
+    call site, identical to the prior behaviour). This is the per-prime
+    migration hook: a prime's YAML flips individual backends (e.g.
+    ``debt: hypersync``) without touching any other prime — and it must apply
+    on EVERY entry point (CLI, production runners, snapshot), not only when
+    ``compute_monthly_pnl`` is called with ``sources=None``; two entry points
+    silently settling the same prime on different backends is the failure
+    this merge exists to prevent.
     """
+    import dataclasses
+
     from ..normalize.registry import (
         get_balance_source,
         get_debt_source,
@@ -100,14 +108,15 @@ def _sources_from_prime(prime: "Prime") -> Sources:
     )
 
     ov = getattr(prime, "sources", None) or {}
+    base = base if base is not None else Sources()
     kw: dict[str, object] = {}
-    if "debt" in ov:
+    if base.debt is None and "debt" in ov:
         kw["debt"] = get_debt_source(ov["debt"])
-    if "balance" in ov:
+    if base.balance is None and "balance" in ov:
         kw["balance"] = get_balance_source(ov["balance"])
-    if "ssr" in ov:
+    if base.ssr is None and "ssr" in ov:
         kw["ssr"] = get_ssr_source(ov["ssr"])
-    return Sources(**kw)  # type: ignore[arg-type]
+    return dataclasses.replace(base, **kw) if kw else base  # type: ignore[arg-type]
 
 
 def _previous_day_eod_utc(d) -> datetime:
@@ -2087,7 +2096,7 @@ def compute_monthly_pnl(
     ``prime_agent_revenue`` is pinned to 0 — an expected display asymmetry
     of the debug mode, not an accounting hole.
     """
-    sources = sources if sources is not None else _sources_from_prime(prime)
+    sources = _sources_from_prime(prime, sources)
 
     # sky_only debug-mode warning — see docstring above.
     if sky_only:

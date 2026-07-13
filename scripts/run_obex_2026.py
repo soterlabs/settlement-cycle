@@ -49,11 +49,8 @@ from settle.domain import Month  # noqa: E402
 from settle.domain.config import load_prime  # noqa: E402
 from settle.load import write_settlement  # noqa: E402
 from settle.normalize.registry import (  # noqa: E402
-    get_balance_source,
     get_convert_to_assets_source,
-    get_debt_source,
     get_position_balance_source,
-    get_ssr_source,
 )
 
 _OBEX_YAML = _REPO / "config" / "obex.yaml"
@@ -87,9 +84,10 @@ def _live_sources() -> Sources:
     orchestrator upgrades it to ``DuneBlockResolver`` per chain (one
     Dune query per chain replaces ~25 binary-search RPC calls/day)."""
     return Sources(
-        debt=get_debt_source(),
-        balance=get_balance_source(),
-        ssr=get_ssr_source(),
+        # debt / balance / ssr deliberately left None: compute_monthly_pnl
+        # merges the prime's YAML ``sources:`` overrides into None fields
+        # (per-prime backend pilots, e.g. OBEX on hypersync); unset primes
+        # fall back to registry defaults at each call site as before.
         position_balance=get_position_balance_source(),
         convert_to_assets=get_convert_to_assets_source(),
     )

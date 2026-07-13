@@ -327,6 +327,8 @@ def load_prime(config_path: Path) -> Prime:
     principal_return_overrides = _parse_event_overrides("principal_return_overrides")
     yield_reversal_overrides = _parse_event_overrides("yield_reversal_overrides")
 
+    sources = _validate_sources(dict(cfg.get("sources") or {}), cfg["id"])
+
     return Prime(
         id=cfg["id"],
         # Optional for agent-rate-only primes (Keel, Skybase) — no allocator
@@ -345,8 +347,41 @@ def load_prime(config_path: Path) -> Prime:
         principal_return_overrides=principal_return_overrides,
         yield_reversal_overrides=yield_reversal_overrides,
         subsidy=SubsidyConfig.from_dict(cfg.get("subsidy")),
-        sources=dict(cfg.get("sources") or {}),
+        sources=sources,
     )
+
+
+def _validate_sources(sources: dict, prime_id: str) -> dict:
+    """Fail at config load on a malformed ``sources:`` block.
+
+    The block flips the data backend behind counterparty-facing settlement
+    numbers, so a typo'd key (``balances:``) or value (``hypersnc``) must not
+    silently no-op back to the default backend. Keys and values are checked
+    against the actual source registries (lazy import — ``normalize`` imports
+    ``domain``, not the reverse, so the import lives inside this function).
+    """
+    if not sources:
+        return sources
+    from ..normalize import registry as _reg
+
+    allowed: dict[str, dict] = {
+        "debt": _reg._DEBT_SOURCES,
+        "balance": _reg._BALANCE_SOURCES,
+        "ssr": _reg._SSR_SOURCES,
+    }
+    for key, value in sources.items():
+        if key not in allowed:
+            raise ValueError(
+                f"prime {prime_id!r}: unknown sources key {key!r} — allowed "
+                f"keys: {sorted(allowed)}. A typo here would silently keep "
+                f"the default backend."
+            )
+        if value not in allowed[key]:
+            raise ValueError(
+                f"prime {prime_id!r}: unknown sources.{key} backend "
+                f"{value!r} — registered backends: {sorted(allowed[key])}."
+            )
+    return sources
 
 
 def load_prime_by_id(prime_id: str, config_dir: Path | None = None) -> Prime:
