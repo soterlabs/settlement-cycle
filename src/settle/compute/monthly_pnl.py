@@ -2910,32 +2910,40 @@ def compute_monthly_pnl(
             def _atoken_daily_blocks(
                 chain_value: str, token_addr: bytes, holder_addr: bytes,
                 som: int, eom: int,
-            ) -> list[int]:
-                """Daily EoD *post-block* boundaries across the period — the
-                degenerate-closed-form fallback used by
+            ) -> list[tuple[int, date]]:
+                """Daily ``(EoD post-block, date)`` boundaries across the
+                period — the degenerate-closed-form fallback used by
                 ``_atoken_index_weighted_inflow`` when a Cat C venue has no
                 captured mint/burn event days AND the whole-period closed-form
-                would silently return 0 (mid-period entry or clean exit).
+                would silently return 0 (mid-period entry or clean exit). The
+                dates let the recovery stamp inflows on their real calendar
+                days.
 
                 Returns only the post-blocks (``_atoken_daily_capped_yield``
                 prepends ``som_block`` itself). We deliberately do NOT resolve a
                 per-day ``pre_block``: it was discarded downstream, and
                 resolving ``EOD(period.start − 1)`` would hit
                 ``period.start − 1 < prime.start_date`` and raise on the Dune
-                resolver when settling a prime's genesis month.
+                resolver when settling a prime's genesis month. The day grid
+                itself is clamped to ``prime.start_date`` for the same reason:
+                mid-month prime starts are the norm (Spark 2024-11-18, OBEX
+                2025-11-17), and EoD anchors before the resolver's first
+                indexed date raise ValueError.
                 """
                 from datetime import datetime as _dt, time as _time, timezone as _tz, timedelta as _td
                 if som + 1 > eom:
                     return []
-                out: list[int] = []
-                d = period.start
+                out: list[tuple[int, date]] = []
+                seen: set[int] = set()
+                d = max(period.start, prime.start_date)
                 while d <= period.end:
                     post_eod = _dt.combine(d, _time.max, tzinfo=_tz.utc)
                     post_block = resolver.block_at_or_before(chain_value, post_eod)
-                    if som < post_block <= eom:
-                        out.append(post_block)
+                    if som < post_block <= eom and post_block not in seen:
+                        seen.add(post_block)
+                        out.append((post_block, d))
                     d += _td(days=1)
-                return sorted(set(out))
+                return out
 
             inflow_ts = _atoken_index_weighted_inflow(
                 prime, venue, som_block, eom_block,

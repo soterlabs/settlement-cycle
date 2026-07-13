@@ -104,7 +104,10 @@ def test_per_segment_recovers_post_mint_yield():
     # day-resolution boundaries can't separate from the mint itself.
     # For end-of-day-event boundaries on Aave's slow-growing index,
     # this loss is bounded to ~V × half-day-growth ≈ pennies per event.)
-    assert out == 2_166_665
+    # 2_166_666, not ..._665: the closed-form rounds ROUND_HALF_EVEN
+    # (shared _atoken_closed_form_seg_yield); plain int() truncation lost
+    # one raw unit here.
+    assert out == 2_166_666
 
 
 def test_per_segment_with_pre_and_post_event_boundaries():
@@ -305,11 +308,12 @@ def _s9_venue_prime():
 
 
 def _daily_blocks_1_to_31(chain, token, holder, som, eom):
-    """Daily post-block boundaries spanning blocks 2..31 = one per day.
-    (The daily-fallback helper returns post-blocks only and prepends
-    ``som_block`` itself — no pre-blocks, avoiding a ``period.start − 1``
-    resolve.)"""
-    return [b for b in range(2, 32) if som < b <= eom]
+    """Daily ``(post-block, date)`` boundaries spanning blocks 2..31 = one
+    per day (block b ↔ 2026-03-b). The daily-fallback helper returns
+    post-blocks only and prepends ``som_block`` itself — no pre-blocks,
+    avoiding a ``period.start − 1`` resolve."""
+    from datetime import date
+    return [(b, date(2026, 3, b)) for b in range(2, 32) if som < b <= eom]
 
 
 def test_daily_fallback_recovers_mid_period_entry_yield():
@@ -353,6 +357,9 @@ def test_daily_fallback_recovers_mid_period_entry_yield():
     )
     assert ts_fixed["cum_inflow"].iloc[-1] == Decimal("1000000")
     # revenue = Δvalue − inflow = 1_000_640 − 1_000_000 = 640 (recovered rebase).
+    # The recovered inflow is stamped on the ENTRY day (not period end), so
+    # _time_weighted_avg_value weights the position from when it existed.
+    assert list(ts_fixed["block_date"]) == [date(2026, 3, 15)]
 
 
 def test_daily_fallback_recovers_multi_withdrawal_exit_yield():
@@ -497,8 +504,84 @@ def test_daily_capped_yield_ignores_intraday_deposit_drain():
     assert old >= 1_000_000                    # phantom present in the old path
 
     # New capped daily helper: clean-exit-within-day → 0. No phantom.
-    new = _atoken_daily_capped_yield(
+    new, detail = _atoken_daily_capped_yield(
         CHAIN, TOKEN, HOLDER, 100, 200, [200],
         balance_at=b_at, scaled_balance_at=s_at,
     )
     assert new == 0
+    assert [d["block"] for d in detail] == [200]
+
+
+def test_daily_fallback_recovers_dust_reentry_yield():
+    """Re-entry ONE MONTH AFTER a dusted exit: Aave leaves 1 wei of scaled
+    dust on full withdrawal, so the month opens with scaled_som == 1 (not 0)
+    and a literal ``scaled_som == 0`` gate would skip recovery — re-creating
+    the S9 $0-yield bug one month later. The gate is dust-aware."""
+    from datetime import date
+    from decimal import Decimal
+    from settle.normalize.positions import _atoken_index_weighted_inflow
+
+    venue, prime = _s9_venue_prime()
+    SOM, EOM = 1, 31
+    # 1-wei dust until block 15 (prior month's dusted exit), then a
+    # $1,000,000 re-entry held to EOM, rebasing +40/block.
+    balances, scaleds = {}, {}
+    for b in range(1, 32):
+        if b < 15:
+            balances[b], scaleds[b] = 1, 1
+        else:
+            balances[b], scaleds[b] = 1_000_000 + (b - 15) * 40, 1_000_000
+    bal_at, sb_at = _factory(balances, scaleds)
+
+    ts = _atoken_index_weighted_inflow(
+        prime, venue, SOM, EOM,
+        period_end_date=date(2026, 3, 31),
+        balance_at=lambda c, t, h, b: bal_at(c, t, h, b),
+        scaled_balance_at=lambda c, t, h, b: sb_at(c, t, h, b),
+        transfer_event_blocks=lambda c, t, h, som, eom: [],
+        daily_boundary_blocks=_daily_blocks_1_to_31,
+    )
+    # Δvalue = 1_000_640 − 1 = 1_000_639; recovered rebase = 16 × 40 = 640;
+    # inflow = 999_999 stamped on the re-entry day.
+    assert ts["cum_inflow"].iloc[-1] == Decimal("999999")
+    assert list(ts["block_date"]) == [date(2026, 3, 15)]
+
+
+def test_daily_fallback_recovers_enter_exit_roundtrip_yield():
+    """Mid-month enter → hold → full TRANSFER-OUT (exact 0, no dust): both
+    boundary balances are 0, but the position earned weeks of real rebase.
+    The quartile probes detect the intra-month hold and the daily grid
+    recovers the yield; a ``max(bal_som, bal_eom) > 0`` gate alone would
+    book $0."""
+    from datetime import date
+    from decimal import Decimal
+    from settle.normalize.positions import _atoken_index_weighted_inflow
+
+    venue, prime = _s9_venue_prime()
+    SOM, EOM = 1, 31
+    # Empty until block 5; $1,000,000 held blocks 5..24 (+40/block rebase);
+    # transferred out to EXACT zero at block 25.
+    balances, scaleds = {}, {}
+    for b in range(1, 32):
+        if b < 5 or b >= 25:
+            balances[b], scaleds[b] = 0, 0
+        else:
+            balances[b], scaleds[b] = 1_000_000 + (b - 5) * 40, 1_000_000
+    bal_at, sb_at = _factory(balances, scaleds)
+
+    ts = _atoken_index_weighted_inflow(
+        prime, venue, SOM, EOM,
+        period_end_date=date(2026, 3, 31),
+        balance_at=lambda c, t, h, b: bal_at(c, t, h, b),
+        scaled_balance_at=lambda c, t, h, b: sb_at(c, t, h, b),
+        transfer_event_blocks=lambda c, t, h, som, eom: [],
+        daily_boundary_blocks=_daily_blocks_1_to_31,
+    )
+    # Recovered rebase: days 5→24 = 19 segments × 40 = 760 (the exit day
+    # itself books 0 — clean-exit-within-day is indistinguishable from an
+    # intraday deposit-drain). Δvalue = 0, so net inflow = −760: the
+    # principal went out carrying 760 of earned interest.
+    assert ts["cum_inflow"].iloc[-1] == Decimal("-760")
+    # Entry stamped on day 5, exit on day 25 — real dates, not period end.
+    assert list(ts["block_date"]) == [date(2026, 3, 5), date(2026, 3, 25)]
+    assert ts["daily_inflow"].iloc[0] == Decimal("1000000")
