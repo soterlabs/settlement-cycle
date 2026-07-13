@@ -20,6 +20,16 @@ Period: 2026-03-01 → 2026-03-31 (31 days)
 |---|---:|
 | **supply-side revenue** | **2,350,300.04** |
 
+##### Non-venue sUSDS credits
+
+| Component | USDS | Effect |
+|---|---:|---|
+| PSM3 sUSDS SSR appreciation | 1,131,378.56 | adds to prime revenue |
+| PSM3 sUSDS 30bps spread reimbursement | 90,618.55 | reduces cost of funds |
+| Curve sUSDS 30bps spread reimbursement | 6,179.19 | reduces cost of funds |
+| Cat B L2 sUSDS 30bps spread reimbursement | 83,672.89 | reduces cost of funds (per-venue) |
+| **total sUSDS spread reimbursement** | **180,470.62** | (netted into cost of funds above) |
+
 ### Sky side
 
 | Field | USDS |
