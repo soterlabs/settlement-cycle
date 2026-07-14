@@ -19,6 +19,8 @@ from typing import Any
 
 import requests
 
+from .cache import cached
+
 _DEFAULT_TIMEOUT = 40
 _MAX_PAGES = 100_000  # runaway backstop
 
@@ -31,6 +33,7 @@ HYPERSYNC_HOSTS: dict[str, str] = {
     "unichain": "unichain.hypersync.xyz",
     "avalanche_c": "avalanche.hypersync.xyz",
     "plume": "plume.hypersync.xyz",
+    "monad": "monad.hypersync.xyz",
 }
 
 _DEFAULT_LOG_FIELDS = [
@@ -191,6 +194,58 @@ def archive_height(chain: str, *, post: Callable[..., Any] = requests.post) -> i
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {_token()}"}
     body = {"from_block": 0, "to_block": 1, "logs": [], "field_selection": {"block": ["number"]}}
     return to_int(_execute(chain, body, headers, post).get("archive_height", 0) or 0)
+
+
+@cached(source_id="hypersync.block_timestamp")
+def block_timestamp(chain: str, block: int) -> int:
+    """UNIX timestamp of a single ``block`` via HyperSync.
+
+    ``include_all_blocks`` returns the block even with no matching logs. Cached
+    (deterministic given chain+block) — the binary search reuses probes across
+    dates/venues/primes. Verified byte-identical to ``extract.rpc.block_timestamp``.
+    """
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {_token()}"}
+    body = {
+        "from_block": block,
+        "to_block": block + 1,
+        "include_all_blocks": True,
+        "logs": [],
+        "field_selection": {"block": ["number", "timestamp"]},
+    }
+    data = _execute(chain, body, headers, requests.post)
+    for group in data.get("data") or []:
+        for b in group.get("blocks") or []:
+            if to_int(b["number"]) == block:
+                return to_int(b["timestamp"])
+    raise HyperSyncError(f"HyperSync {chain}: block {block} not returned")
+
+
+@cached(source_id="hypersync.find_block_at_or_before")
+def find_block_at_or_before(chain: str, target_ts: int) -> int:
+    """Highest block on ``chain`` whose timestamp <= ``target_ts`` (unix, UTC).
+
+    Binary search over HyperSync block timestamps — mirrors
+    ``extract.rpc._find_block_at_or_before_rpc`` exactly, so the result is
+    identical to the RPC resolver, but every probe hits HyperSync (fast, cheap,
+    off the archive RPC — and works on chains whose RPC is lagging, e.g. monad).
+    Result is cached, so repeat (chain, target_ts) is free.
+    """
+    high = archive_height(chain)
+    if block_timestamp(chain, high) <= target_ts:
+        return high
+    if block_timestamp(chain, 0) > target_ts:
+        raise HyperSyncError(
+            f"find_block_at_or_before({chain}, ts={target_ts}): target precedes "
+            f"genesis (block 0 ts = {block_timestamp(chain, 0)})."
+        )
+    low = 0
+    while low < high:
+        mid = (low + high + 1) // 2
+        if block_timestamp(chain, mid) <= target_ts:
+            low = mid
+        else:
+            high = mid - 1
+    return low
 
 
 def _lower(v: Any) -> str | None:

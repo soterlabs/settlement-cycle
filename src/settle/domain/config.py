@@ -368,6 +368,7 @@ def _validate_sources(sources: dict, prime_id: str) -> dict:
         "debt": _reg._DEBT_SOURCES,
         "balance": _reg._BALANCE_SOURCES,
         "ssr": _reg._SSR_SOURCES,
+        "block_resolver": _reg._BLOCK_RESOLVER_SOURCES,
     }
     for key, value in sources.items():
         if key not in allowed:

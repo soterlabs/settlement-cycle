@@ -103,6 +103,7 @@ def _sources_from_prime(prime: "Prime", base: "Sources | None" = None) -> Source
 
     from ..normalize.registry import (
         get_balance_source,
+        get_block_resolver,
         get_debt_source,
         get_ssr_source,
     )
@@ -116,6 +117,8 @@ def _sources_from_prime(prime: "Prime", base: "Sources | None" = None) -> Source
         kw["balance"] = get_balance_source(ov["balance"])
     if base.ssr is None and "ssr" in ov:
         kw["ssr"] = get_ssr_source(ov["ssr"])
+    if base.block_resolver is None and "block_resolver" in ov:
+        kw["block_resolver"] = get_block_resolver(ov["block_resolver"])
     return dataclasses.replace(base, **kw) if kw else base  # type: ignore[arg-type]
 
 

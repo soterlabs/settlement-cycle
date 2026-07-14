@@ -35,6 +35,7 @@ from .sources.oracles import (
     PricePerShareNavSource,
     RedstoneNavSource,
 )
+from .sources.hypersync_block_resolver import HyperSyncBlockResolver
 from .sources.rpc_block_resolver import RPCBlockResolver
 from .sources.rpc_position import (
     RPCConvertToAssetsSource,
@@ -86,6 +87,10 @@ _PSM3_SOURCES: dict[str, type[IPsm3Source]] = {
 
 _BLOCK_RESOLVER_SOURCES: dict[str, type[IBlockResolver]] = {
     "rpc": RPCBlockResolver,
+    # HyperSync-backed: block↔timestamp off HyperSync instead of the archive
+    # RPC (identical results, faster, and works on lagging RPC chains like
+    # monad). See sources/hypersync_block_resolver.py. Requires ENVIO_API_TOKEN.
+    "hypersync": HyperSyncBlockResolver,
     # ``dune`` requires a date range at construction time — instantiated by
     # the caller with explicit (chain, start_date, end_date, pin_block), not
     # via the no-arg ``get_block_resolver()`` factory. See
