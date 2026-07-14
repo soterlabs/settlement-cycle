@@ -17,3 +17,11 @@ start_date: '2025-12-01'
 addresses:
   ethereum:
     subproxy: '0x08978E3700859E476201c1D7438B3427e3C81140'
+
+# Source backend: Envio HyperSync instead of Dune for debt + balances (see
+# registry.py / normalize/sources/hypersync_*). Skybase is agent-rate-only, so
+# debt is a no-op (no ilk); balance drives the subproxy USDS/sUSDS agent-rate
+# base. Prices/SSR/DR unaffected. Requires ENVIO_API_TOKEN.
+sources:
+  debt: hypersync
+  balance: hypersync
