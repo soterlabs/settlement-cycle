@@ -30,19 +30,14 @@
 -- error ~1e-15, sub-cent on $M lines; validated to the dollar vs the target).
 
 WITH fee_ilks AS (
-  -- The 9 whitelisted core-vault ilks (config/non_msc.yaml documents this list;
-  -- the SQL is the executable copy).
-  SELECT * FROM (VALUES
-    (0x4554482d41000000000000000000000000000000000000000000000000000000, 'ETH-A'),
-    (0x4554482d42000000000000000000000000000000000000000000000000000000, 'ETH-B'),
-    (0x4554482d43000000000000000000000000000000000000000000000000000000, 'ETH-C'),
-    (0x5753544554482d41000000000000000000000000000000000000000000000000, 'WSTETH-A'),
-    (0x5753544554482d42000000000000000000000000000000000000000000000000, 'WSTETH-B'),
-    (0x574254432d410000000000000000000000000000000000000000000000000000, 'WBTC-A'),
-    (0x574254432d420000000000000000000000000000000000000000000000000000, 'WBTC-B'),
-    (0x574254432d430000000000000000000000000000000000000000000000000000, 'WBTC-C'),
-    (0x4c534556322d534b592d41000000000000000000000000000000000000000000, 'LSEV2-SKY-A')
-  ) AS t(ilk, label)
+  -- The full ilk universe (every vat.init since genesis) EXCEPT the
+  -- ALLOCATOR-* ilks, whose BR income is the MSC (prime) side. This
+  -- subsumes the 9 core-vault ilks (ETH-A/B/C, WSTETH-A/B, WBTC-A/B/C,
+  -- LSEV2-SKY-A) plus any residual fee-earning ilk (2026: RWA002-A,
+  -- ~$200K/mo) — future onboardings are included automatically.
+  SELECT DISTINCT ilk FROM maker_ethereum.vat_call_init
+  WHERE call_success
+    AND from_utf8(ilk) NOT LIKE 'ALLOCATOR-%'
 ),
 prime_holders AS (
   -- Prime sUSDS holders on Ethereum (ALM proxies + subproxies) whose SSR is
@@ -102,12 +97,13 @@ vat_running AS (
   FROM vat_events
 ),
 fees AS (
-  SELECT l.label,
+  SELECT rtrim(from_utf8(r.i), U&'\0000') AS label,
          SUM(CAST(r.art AS DOUBLE) / 1e18 * CAST(r.rate AS DOUBLE) / 1e27) AS amount
-  FROM vat_running r JOIN fee_ilks l ON l.ilk = r.i
+  FROM vat_running r
   WHERE r.rate IS NOT NULL
     AND r.d >= DATE '{{month_start}}' AND r.d < DATE '{{month_end_excl}}'
   GROUP BY 1
+  HAVING ABS(SUM(CAST(r.art AS DOUBLE) / 1e18 * CAST(r.rate AS DOUBLE) / 1e27)) >= 0.01
 ),
 
 -- ── expense: savings drips ──────────────────────────────────────────────────
@@ -133,6 +129,35 @@ dsr AS (
 ),
 
 -- ── expense deduction: SSR on prime-held sUSDS ──────────────────────────────
+-- L1 leg: direct sUSDS holdings at prime ALM/subproxy addresses.
+-- L2 legs: prime-held bridged sUSDS (L2 ALM proxies + PSM3 reserves). The
+-- canonical L1 tokens sit in bridge escrows, but the SSR claim belongs to
+-- the L2 holders — prime L2 balances × the SAME global Δchi is their
+-- accrual, and it is MSC-accounted (PSM3 appreciation, S37/S43/S47/S51
+-- POL proxies), so it is carved out here alongside the L1 leg.
+-- NOTE: L2 rows are cut by calendar DATE, not {{pin_block}} — L2 chains
+-- have their own block numbering; dates are final once the month is past.
+prime_l2_holders AS (
+  SELECT * FROM (VALUES
+    -- (chain, sUSDS token, holder, label) — from config/spark.yaml
+    ('base',     0x5875eee11cf8398102fdad704c9e96607675467a,
+                 0x2917956eff0b5eaf030abdb4ef4296df775009ca, 'spark_alm_base'),
+    ('base',     0x5875eee11cf8398102fdad704c9e96607675467a,
+                 0x1601843c5e9bc251a3272907010afa41fa18347e, 'spark_psm3_base'),
+    ('arbitrum', 0xddb46999f8891663a8f2828d25298f70416d7610,
+                 0x92afd6f2385a90e44da3a8b60fe36f6cbe1d8709, 'spark_alm_arbitrum'),
+    ('arbitrum', 0xddb46999f8891663a8f2828d25298f70416d7610,
+                 0x2b05f8e1cacc6974fd79a673a341fe1f58d27266, 'spark_psm3_arbitrum'),
+    ('optimism', 0xb5b2dc7fd34c249f4be7fb1fcea07950784229e0,
+                 0x876664f0c9ff24d1aa355ce9f1680ae1a5bf36fb, 'spark_alm_optimism'),
+    ('optimism', 0xb5b2dc7fd34c249f4be7fb1fcea07950784229e0,
+                 0xe0f9978b907853f354d79188a3defbd41978af62, 'spark_psm3_optimism'),
+    ('unichain', 0xa06b10db9f390990364a3984c04fadf1c13691b5,
+                 0x345e368fccd62266b3f5f37c9a131fd1c39f5869, 'spark_alm_unichain'),
+    ('unichain', 0xa06b10db9f390990364a3984c04fadf1c13691b5,
+                 0x7b42ed932f26509465f7ce3faf76ffce1275312f, 'spark_psm3_unichain')
+  ) AS t(chain, token, addr, label)
+),
 prime_xfers AS (
   SELECT evt_block_date AS d, h.label,
          SUM(CASE WHEN "to" = h.addr THEN CAST(value AS DECIMAL(38,0))
@@ -143,17 +168,58 @@ prime_xfers AS (
     AND "to" <> "from"
     AND evt_block_number <= {{pin_block}}
   GROUP BY 1, 2
+  UNION ALL
+  SELECT evt_block_date, h.label,
+         SUM(CASE WHEN "to" = h.addr THEN CAST(value AS DECIMAL(38,0))
+                  ELSE -CAST(value AS DECIMAL(38,0)) END)
+  FROM erc20_base.evt_transfer x
+  JOIN prime_l2_holders h ON h.chain = 'base' AND h.addr IN (x."to", x."from")
+  WHERE contract_address = 0x5875eee11cf8398102fdad704c9e96607675467a
+    AND "to" <> "from" AND evt_block_date < DATE '{{month_end_excl}}'
+  GROUP BY 1, 2
+  UNION ALL
+  SELECT evt_block_date, h.label,
+         SUM(CASE WHEN "to" = h.addr THEN CAST(value AS DECIMAL(38,0))
+                  ELSE -CAST(value AS DECIMAL(38,0)) END)
+  FROM erc20_arbitrum.evt_transfer x
+  JOIN prime_l2_holders h ON h.chain = 'arbitrum' AND h.addr IN (x."to", x."from")
+  WHERE contract_address = 0xddb46999f8891663a8f2828d25298f70416d7610
+    AND "to" <> "from" AND evt_block_date < DATE '{{month_end_excl}}'
+  GROUP BY 1, 2
+  UNION ALL
+  SELECT evt_block_date, h.label,
+         SUM(CASE WHEN "to" = h.addr THEN CAST(value AS DECIMAL(38,0))
+                  ELSE -CAST(value AS DECIMAL(38,0)) END)
+  FROM erc20_optimism.evt_transfer x
+  JOIN prime_l2_holders h ON h.chain = 'optimism' AND h.addr IN (x."to", x."from")
+  WHERE contract_address = 0xb5b2dc7fd34c249f4be7fb1fcea07950784229e0
+    AND "to" <> "from" AND evt_block_date < DATE '{{month_end_excl}}'
+  GROUP BY 1, 2
+  UNION ALL
+  SELECT evt_block_date, h.label,
+         SUM(CASE WHEN "to" = h.addr THEN CAST(value AS DECIMAL(38,0))
+                  ELSE -CAST(value AS DECIMAL(38,0)) END)
+  FROM erc20_unichain.evt_transfer x
+  JOIN prime_l2_holders h ON h.chain = 'unichain' AND h.addr IN (x."to", x."from")
+  WHERE contract_address = 0xa06b10db9f390990364a3984c04fadf1c13691b5
+    AND "to" <> "from" AND evt_block_date < DATE '{{month_end_excl}}'
+  GROUP BY 1, 2
 ),
 carve_days AS (
   SELECT s.d
   FROM UNNEST(SEQUENCE(DATE '{{month_start}}' - INTERVAL '1' DAY,
                        DATE '{{month_end_excl}}' - INTERVAL '1' DAY)) AS s(d)
 ),
+all_prime_labels AS (
+  SELECT label FROM prime_holders
+  UNION ALL
+  SELECT label FROM prime_l2_holders
+),
 prime_bal AS (   -- EOD sUSDS shares per holder per day (running sum, full history)
   SELECT dd.d, hh.label,
          COALESCE((SELECT SUM(x.net) FROM prime_xfers x
                    WHERE x.label = hh.label AND x.d <= dd.d), 0) AS shares
-  FROM carve_days dd CROSS JOIN prime_holders hh
+  FROM carve_days dd CROSS JOIN all_prime_labels hh
 ),
 chi_eod AS (
   SELECT d.d,

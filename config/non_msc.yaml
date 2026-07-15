@@ -28,8 +28,11 @@ income:
   stability_fees:
     # Income = Art(ilk) × Δrate at each vat.fold — exactly what fold credits
     # to the vow. Art = running Σ dart (frob + grab) since genesis.
+    # Scope: the FULL ilk universe (every vat.init) except ALLOCATOR-* (MSC).
+    # This subsumes the 9 core-vault ilks below plus any residual fee-earning
+    # ilk (2026: RWA002-A ~$200K/mo); future onboardings included automatically.
     vat: '0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B'
-    ilks: [ETH-A, ETH-B, ETH-C, WSTETH-A, WSTETH-B, WBTC-A, WBTC-B, WBTC-C, LSEV2-SKY-A]
+    core_ilks: [ETH-A, ETH-B, ETH-C, WSTETH-A, WSTETH-B, WBTC-A, WBTC-B, WBTC-C, LSEV2-SKY-A]
 
 expense:
   # Savings interest is recognized at the drip event (not accrual date).
@@ -49,9 +52,24 @@ expense:
       obex_sub:    '0x8be042581f581e3620e29f213ea8b94afa1c8071'
       keel_sub:    '0x355cd90ecb1b409fdf8b64c4473c3b858da2c310'
       skybase_sub: '0x08978e3700859e476201c1d7438b3427e3c81140'
-    # Known approximation: sUSDS bridged to L2s sits in L1 bridge escrows,
-    # not at prime addresses — prime L2 sUSDS (PSM3 etc.) is therefore NOT
-    # carved out yet. Refinement tracked in PRD §17.13.
+    # L2 leg: bridged sUSDS sits in L1 escrows, but the SSR claim belongs
+    # to the L2 holders — prime L2 balances (ALM proxies + PSM3 reserves,
+    # MSC-accounted via PSM3 appreciation / S37-S43-S47-S51 POL) × the same
+    # global Δchi are carved out too:
+    prime_l2_holders:
+      spark_alm_base:      '0x2917956eff0b5eaf030abdb4ef4296df775009ca'
+      spark_psm3_base:     '0x1601843c5e9bc251a3272907010afa41fa18347e'
+      spark_alm_arbitrum:  '0x92afd6f2385a90e44da3a8b60fe36f6cbe1d8709'
+      spark_psm3_arbitrum: '0x2b05f8e1cacc6974fd79a673a341fe1f58d27266'
+      spark_alm_optimism:  '0x876664f0c9ff24d1aa355ce9f1680ae1a5bf36fb'
+      spark_psm3_optimism: '0xe0f9978b907853f354d79188a3defbd41978af62'
+      spark_alm_unichain:  '0x345e368fccd62266b3f5f37c9a131fd1c39f5869'
+      spark_psm3_unichain: '0x7b42ed932f26509465f7ce3faf76ffce1275312f'
+    l2_susds_tokens:
+      base:     '0x5875eee11cf8398102fdad704c9e96607675467a'
+      arbitrum: '0xddb46999f8891663a8f2828d25298f70416d7610'
+      optimism: '0xb5b2dc7fd34c249f4be7fb1fcea07950784229e0'
+      unichain: '0xa06b10db9f390990364a3984c04fadf1c13691b5'
   dsr:
     pot: '0x197e90f9fad81970ba7976f33cbd77088e5d7cf7'   # MCD_POT (vat.suck v=pot)
   stusds:

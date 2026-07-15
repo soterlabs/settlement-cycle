@@ -10,10 +10,11 @@ Sky protocol P&L outside the prime-agent (MSC) perimeter. Methodology: PSM incom
 | stability fee ETH-C | 1,961,250.55 |
 | stability fee LSEV2-SKY-A | 1,068,390.07 |
 | stability fee ETH-A | 1,009,068.26 |
+| stability fee RWA002-A | 194,686.56 |
 | stability fee WSTETH-A | 134,402.06 |
 | stability fee WSTETH-B | 96,200.61 |
 | stability fee ETH-B | 56,920.13 |
-| **total income** | **14,591,843.11** |
+| **total income** | **14,786,529.67** |
 
 ## Expense
 
@@ -21,13 +22,21 @@ Sky protocol P&L outside the prime-agent (MSC) perimeter. Methodology: PSM incom
 |---|---:|
 | sUSDS SSR (gross, all holders) | 18,304,617.83 |
 | less: prime-held sUSDS SSR — spark_alm (MSC-accounted) | -4,063,315.84 |
-| sUSDS SSR to non-prime users | 14,241,301.99 |
+| less: prime-held sUSDS SSR — spark_alm_arbitrum (MSC-accounted) | -429,939.08 |
+| less: prime-held sUSDS SSR — spark_psm3_base (MSC-accounted) | -369,331.90 |
+| less: prime-held sUSDS SSR — spark_psm3_unichain (MSC-accounted) | -307,653.86 |
+| less: prime-held sUSDS SSR — spark_alm_optimism (MSC-accounted) | -306,089.78 |
+| less: prime-held sUSDS SSR — spark_psm3_optimism (MSC-accounted) | -254,090.83 |
+| less: prime-held sUSDS SSR — spark_alm_base (MSC-accounted) | -227,294.07 |
+| less: prime-held sUSDS SSR — spark_psm3_arbitrum (MSC-accounted) | -180,157.25 |
+| less: prime-held sUSDS SSR — spark_alm_unichain (MSC-accounted) | -2,946.90 |
+| sUSDS SSR to non-prime users | 12,163,798.30 |
 | DSR (legacy pot) | 250,769.05 |
 | stUSDS | 1,093,246.40 |
-| **total expense** | **15,585,317.44** |
+| **total expense** | **13,507,813.74** |
 
 ## Net
 
 | Field | USDS |
 |---|---:|
-| **non-MSC net revenue** | **-993,474.33** |
+| **non-MSC net revenue** | **1,278,715.93** |
