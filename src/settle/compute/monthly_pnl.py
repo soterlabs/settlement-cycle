@@ -105,6 +105,7 @@ def _sources_from_prime(prime: "Prime", base: "Sources | None" = None) -> Source
         get_balance_source,
         get_block_resolver,
         get_debt_source,
+        get_position_balance_source,
         get_ssr_source,
     )
 
@@ -119,6 +120,8 @@ def _sources_from_prime(prime: "Prime", base: "Sources | None" = None) -> Source
         kw["ssr"] = get_ssr_source(ov["ssr"])
     if base.block_resolver is None and "block_resolver" in ov:
         kw["block_resolver"] = get_block_resolver(ov["block_resolver"])
+    if base.position_balance is None and "position_balance" in ov:
+        kw["position_balance"] = get_position_balance_source(ov["position_balance"])
     return dataclasses.replace(base, **kw) if kw else base  # type: ignore[arg-type]
 
 

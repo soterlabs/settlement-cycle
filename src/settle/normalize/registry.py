@@ -36,6 +36,7 @@ from .sources.oracles import (
     RedstoneNavSource,
 )
 from .sources.hypersync_block_resolver import HyperSyncBlockResolver
+from .sources.hypersync_position_balance import HyperSyncPositionBalanceSource
 from .sources.rpc_block_resolver import RPCBlockResolver
 from .sources.rpc_position import (
     RPCConvertToAssetsSource,
@@ -75,6 +76,10 @@ _SAVINGS_V2_DEPLOYED_SOURCES: dict[str, type[ISavingsV2DeployedSource]] = {
 
 _POSITION_BALANCE_SOURCES: dict[str, type[IPositionBalanceSource]] = {
     "rpc": RPCPositionBalanceSource,
+    # Self-verifying event/RPC hybrid: reconstructs balanceOf from Transfer logs
+    # for non-rebasing tokens (proven equal to RPC before trusting), falls back
+    # to RPC for rebasing aTokens/spTokens. See hypersync_position_balance.py.
+    "hypersync": HyperSyncPositionBalanceSource,
 }
 
 _CONVERT_TO_ASSETS_SOURCES: dict[str, type[IConvertToAssetsSource]] = {
