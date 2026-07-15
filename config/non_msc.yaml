@@ -15,13 +15,17 @@ label: 'Sky non-MSC protocol P&L'
 
 income:
   psm_jar:
-    # Coinbase PSM payments accumulate in the LitePSM jar and are burned
-    # monthly (~10 days after month-end). Recognition is CASH at burn, per
-    # the methodology doc's literal rule: "the first jar burn after a month
-    # ends is that month's income". Any EXTRA burn in the same window (e.g.
-    # 2026-01-08 after the 2026-01-02 burn) is NOT attributed — it is
-    # surfaced with a warning instead, pending confirmation from the
-    # methodology author on what it represents.
+    # Coinbase PSM payments arrive as ONE payment per month (sender
+    # 0xf6e7…3042, burned same day), on days 2-14 of the following month.
+    # Recognition is CASH at burn, per the methodology doc's rule: "the
+    # first jar burn after a month ends is that month's income". Any EXTRA
+    # burn in the same window is NOT attributed and warns loudly.
+    # ⚠ Resolved on-chain (2026-07-15): the December 2025 slot is empty and
+    # January 2026 has two burns — cadence + amounts prove Jan 2 ($9.62M)
+    # is NOVEMBER's late payment and Jan 8 ($11.05M) is DECEMBER's on-slot
+    # payment. All 2026 months have one burn per window (rules agree); if
+    # this report is ever extended back to 2025, switch to SEQUENTIAL
+    # burn-to-month matching (burns consumed in chronological order).
     jar: '0x69cA348Bd928A158ADe7aa193C133f315803b06e'
     tokens:
       - '0x6b175474e89094c44da98b954eedeac495271d0f'   # DAI
