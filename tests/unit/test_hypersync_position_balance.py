@@ -71,6 +71,39 @@ def test_zero_balance_does_not_classify_prematurely():
     assert rpc.calls == 3                            # 2 probes + 1 post-classification
 
 
+class _AaveStub:
+    def __init__(self, value):
+        self.value = value
+        self.calls = 0
+    def reconstruct_balance(self, chain, token, holder, block):
+        self.calls += 1
+        return self.value
+
+
+def test_rebasing_atoken_uses_aave_reconstruction():
+    # RPC (rebased) = 85; Σtransfers = 70 (rebasing); Aave reconstruction = 85 → "aave".
+    rpc = _RPC(lambda block: 85)
+    aave = _AaveStub(85)
+    src = HyperSyncPositionBalanceSource(
+        rpc, fetch_logs=lambda c, s, f, t: list(_ROWS), aave_source=aave)
+    assert src.balance_at("ethereum", _TOKEN, _H, 25) == 85   # probe: rpc, classify aave
+    assert src.balance_at("ethereum", _TOKEN, _H, 25) == 85   # served from aave
+    assert src.balance_at("ethereum", _TOKEN, _H, 25) == 85
+    assert rpc.calls == 1          # only the probe hit RPC
+    assert aave.calls == 3         # 1 verify + 2 served
+
+
+def test_rebasing_falls_back_to_rpc_if_aave_mismatches():
+    # Aave reconstruction disagrees with RPC → do NOT trust it → "rpc".
+    rpc = _RPC(lambda block: 85)
+    aave = _AaveStub(999)          # wrong → must not be trusted
+    src = HyperSyncPositionBalanceSource(
+        rpc, fetch_logs=lambda c, s, f, t: list(_ROWS), aave_source=aave)
+    assert src.balance_at("ethereum", _TOKEN, _H, 25) == 85
+    assert src.balance_at("ethereum", _TOKEN, _H, 25) == 85
+    assert rpc.calls == 2          # every call hits RPC (classified rpc)
+
+
 def test_events_balance_dedups_self_transfer():
     rpc = _RPC(lambda block: 0)
     src = HyperSyncPositionBalanceSource(rpc, fetch_logs=lambda c, s, f, t: [

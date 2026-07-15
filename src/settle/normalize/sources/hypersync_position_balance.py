@@ -35,27 +35,41 @@ class HyperSyncPositionBalanceSource:
         rpc_fallback: Any = None,
         *,
         fetch_logs: Callable[..., list[Any]] = hypersync_store.fetch_logs,
+        aave_source: Any = None,
     ) -> None:
         if rpc_fallback is None:
             from .rpc_position import RPCPositionBalanceSource
             rpc_fallback = RPCPositionBalanceSource()
+        if aave_source is None:
+            from .hypersync_atoken import HyperSyncAaveSource
+            aave_source = HyperSyncAaveSource(fetch_logs=fetch_logs)
         self._rpc = rpc_fallback
         self._fetch = fetch_logs
-        self._verdict: dict[tuple[str, str], str] = {}  # (chain, token_hex) -> events|rpc
+        self._aave = aave_source
+        self._verdict: dict[tuple[str, str], str] = {}  # -> events|aave|rpc
 
     def balance_at(self, chain: str, token: bytes, holder: bytes, block: int) -> int:
         key = (chain, bytes(token).hex())
         verdict = self._verdict.get(key)
         if verdict == "events":
             return self._events_balance(chain, token, holder, block)
+        if verdict == "aave":
+            return self._aave.reconstruct_balance(chain, token, holder, block)
         if verdict == "rpc":
             return self._rpc.balance_at(chain, token, holder, block)
 
-        # Unknown token → probe: trust RPC, and classify on a non-zero comparison.
+        # Unknown token → probe: trust RPC, classify on a non-zero comparison.
         rpc_bal = self._rpc.balance_at(chain, token, holder, block)
         if rpc_bal != 0:  # zero tells us nothing (Σtransfers==balanceOf==0 trivially)
-            ev_bal = self._events_balance(chain, token, holder, block)
-            self._verdict[key] = "events" if ev_bal == rpc_bal else "rpc"
+            if self._events_balance(chain, token, holder, block) == rpc_bal:
+                self._verdict[key] = "events"       # non-rebasing
+            else:
+                # rebasing → try wei-exact Aave event reconstruction (Cat C)
+                try:
+                    recon = self._aave.reconstruct_balance(chain, token, holder, block)
+                except Exception:                   # not an aToken / metadata read failed
+                    recon = None
+                self._verdict[key] = "aave" if recon == rpc_bal else "rpc"
         return rpc_bal
 
     def _events_balance(self, chain: str, token: bytes, holder: bytes, block: int) -> int:

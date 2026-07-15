@@ -350,6 +350,25 @@ def scaled_balance_of(chain: Chain, token: Address, holder: Address, block: int)
         raise
 
 
+SEL_POOL = "0x7535d246"                  # POOL()
+SEL_UNDERLYING_ASSET = "0xb16a19de"      # UNDERLYING_ASSET_ADDRESS()
+
+
+@cached(source_id="rpc.aave_pool")
+def aave_pool(chain: Chain, token: Address, block: int) -> bytes:
+    """``POOL()`` on an Aave V3 aToken / SparkLend spToken — the LendingPool
+    that emits ``ReserveDataUpdated`` for the reserve. Immutable per aToken;
+    one cached read is enough. Returns the 20-byte pool address."""
+    return _decode_uint(eth_call(chain, token, SEL_POOL, block)).to_bytes(20, "big")
+
+
+@cached(source_id="rpc.aave_underlying_asset")
+def aave_underlying_asset(chain: Chain, token: Address, block: int) -> bytes:
+    """``UNDERLYING_ASSET_ADDRESS()`` on an aToken/spToken — the reserve key
+    (topic1) of its ``ReserveDataUpdated`` events. Immutable; cached."""
+    return _decode_uint(eth_call(chain, token, SEL_UNDERLYING_ASSET, block)).to_bytes(20, "big")
+
+
 @cached(source_id="rpc.ilk_rate")
 def ilk_rate(chain: Chain, vat: Address, ilk: bytes, block: int) -> int:
     """``Vat.ilks(ilk).rate`` at ``block`` — the accumulated stability-fee
