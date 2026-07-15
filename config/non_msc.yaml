@@ -1,0 +1,58 @@
+# non_msc — Sky protocol-level P&L that does NOT flow through prime agents.
+#
+# This is NOT a prime: no ilk debt, no ALM, no BR/CoF/agent-rate machinery.
+# It is the sixth reporting unit next to the five primes; its net plus the
+# primes' sky-side revenue approximates Sky's total net revenue (reference
+# series: https://info-sky.blockanalitica.com/financials/settlements/historic/,
+# reference only — never blended into our numbers).
+#
+# Methodology: https://hackmd.io/@W57nO5PyRMKhcLqjvsLifw/S1zxTDpXMg
+# Executable copy of every address/ilk below lives in
+# src/settle/queries/non_msc_streams.sql — keep the two in sync.
+
+id: non_msc
+label: 'Sky non-MSC protocol P&L'
+
+income:
+  psm_jar:
+    # Coinbase PSM payments accumulate in the LitePSM jar and are burned
+    # monthly (~10 days after month-end). Recognition is CASH at burn:
+    # burns dated in (month_end, next_month_end] are that month's income —
+    # the "first burn after month end" rule, extended to the full window so
+    # a second burn in the same window (e.g. 2026-01-02 + 2026-01-08) is
+    # never silently dropped.
+    jar: '0x69cA348Bd928A158ADe7aa193C133f315803b06e'
+    tokens:
+      - '0x6b175474e89094c44da98b954eedeac495271d0f'   # DAI
+      - '0xdc035d45d973e3ec169d2276ddab16f1e407384f'   # USDS
+  stability_fees:
+    # Income = Art(ilk) × Δrate at each vat.fold — exactly what fold credits
+    # to the vow. Art = running Σ dart (frob + grab) since genesis.
+    vat: '0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B'
+    ilks: [ETH-A, ETH-B, ETH-C, WSTETH-A, WSTETH-B, WBTC-A, WBTC-B, WBTC-C, LSEV2-SKY-A]
+
+expense:
+  # Savings interest is recognized at the drip event (not accrual date).
+  susds:
+    contract: '0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD'
+    # Sky offers sUSDS to ALL users; the SSR accrued to PRIME-held sUSDS is
+    # already netted inside MSC (BR charged − 30bps reimbursed, or agent
+    # rate), so it is DEDUCTED here and only user-held SSR counts as
+    # non-MSC expense. Prime holders (Ethereum ALM + subproxy, from the
+    # prime configs — keep in sync with the SQL):
+    prime_holders:
+      spark_alm:   '0x1601843c5e9bc251a3272907010afa41fa18347e'
+      grove_alm:   '0x491edfb0b8b608044e227225c715981a30f3a44e'
+      obex_alm:    '0xb6dd7ae22c9922afee0642f9ac13e58633f715a2'
+      spark_sub:   '0x3300f198988e4c9c63f75df86de36421f06af8c4'
+      grove_sub:   '0x1369f7b2b38c76b6478c0f0e66d94923421891ba'
+      obex_sub:    '0x8be042581f581e3620e29f213ea8b94afa1c8071'
+      keel_sub:    '0x355cd90ecb1b409fdf8b64c4473c3b858da2c310'
+      skybase_sub: '0x08978e3700859e476201c1d7438b3427e3c81140'
+    # Known approximation: sUSDS bridged to L2s sits in L1 bridge escrows,
+    # not at prime addresses — prime L2 sUSDS (PSM3 etc.) is therefore NOT
+    # carved out yet. Refinement tracked in PRD §17.13.
+  dsr:
+    pot: '0x197e90f9fad81970ba7976f33cbd77088e5d7cf7'   # MCD_POT (vat.suck v=pot)
+  stusds:
+    contract: '0x99CD4Ec3f88A45940936F469E4bB72A2A701EEB9'
