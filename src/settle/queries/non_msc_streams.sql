@@ -11,10 +11,10 @@
 --
 -- Output rows: (stream, label, event_date, amount) —
 --   income:psm_jar       one row per jar burn in (month_end, next_month_end]
---                        ("the first jar burn after a month ends is that month's
---                        income"; windowing by (m_end, m_end_next] additionally
---                        attributes any EXTRA burn in the window to the same
---                        month so no burn is ever dropped)
+--                        (attribution happens in compute: "the first jar burn
+--                        after a month ends is that month's income" — the
+--                        FIRST burn-date's burns count as income; any extra
+--                        burn in the window is surfaced but NOT attributed)
 --   income:stability_fee one row per ilk (Σ over the month's vat.fold calls of
 --                        Art(ilk, at that trace) × Δrate/1e27 — exactly what
 --                        fold credits to the vow)

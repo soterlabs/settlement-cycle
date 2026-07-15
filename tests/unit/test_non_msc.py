@@ -85,19 +85,21 @@ def test_missing_burn_warns_not_crashes(fake_query):
     assert any("no jar burn" in w for w in r.warnings)
 
 
-def test_two_burns_in_window_both_attributed(fake_query):
-    """The 2026-01 window shape: two burns after Dec month-end — both count
-    (the naive 'first burn only' reading would silently drop the second)."""
+def test_two_burns_in_window_first_only_attributed(fake_query):
+    """The 2026-01 window shape: two burns after Dec month-end. Per the
+    methodology doc's LITERAL rule, only the FIRST burn is that month's
+    income; the extra burn is surfaced loudly but not attributed."""
     fake_query["df"] = _rows(
-        ("income:psm_jar", "2026-01-02", None, 9_618_048.74),
         ("income:psm_jar", "2026-01-08", None, 11_046_889.78),
+        ("income:psm_jar", "2026-01-02", None, 9_618_048.74),   # out of order on purpose
         ("expense:susds_drip", "gross", None, 0.0),
         ("expense:dsr_drip", "DSR (pot)", None, 0.0),
         ("expense:stusds_drip", "stUSDS", None, 0.0),
     )
     r = compute_non_msc_monthly(Month(2025, 12), pin_block=1)
-    assert r.psm_jar_income == Decimal("9618048.74") + Decimal("11046889.78")
-    assert any("2 jar burns" in w for w in r.warnings)
+    assert r.psm_jar_income == Decimal("9618048.74")            # first burn only
+    assert [b["date"] for b in r.jar_burns] == ["2026-01-02"]
+    assert any("NOT attributed" in w and "2026-01-08" in w for w in r.warnings)
 
 
 def test_unknown_stream_raises(fake_query):

@@ -151,6 +151,18 @@ def compute_non_msc_monthly(month: Month, pin_block: int | None = None) -> NonMs
         else:
             raise ValueError(f"non_msc: unknown stream {stream!r} from query")
 
+    # Attribution: "the first jar burn after a month ends is that month's
+    # income" (methodology doc, literal). The first burn-DATE's burns count
+    # (rows are date-granular; multiple burns in the same settlement day are
+    # one payment); any LATER burn in the window is surfaced for
+    # transparency but NOT attributed — it is loud because the rule leaves
+    # that money unattributed (e.g. 2026-01-08, tracked with the
+    # methodology author).
+    burns.sort(key=lambda b: b["date"])
+    first_date = burns[0]["date"] if burns else None
+    attributed = [b for b in burns if b["date"] == first_date]
+    excluded = [b for b in burns if b["date"] != first_date]
+
     if not burns:
         # Legitimate only while the burn window hasn't elapsed (report run
         # before the ~day-10 burn of month+1); loud either way.
@@ -159,10 +171,12 @@ def compute_non_msc_monthly(month: Month, pin_block: int | None = None) -> NonMs
             f"{burn_end_excl - timedelta(days=1)}] at pin {pin_block} — PSM "
             "income is $0 in this run; re-run after the monthly burn lands."
         )
-    if len(burns) > 1:
+    if excluded:
+        skipped = ", ".join(f"{b['date']} (${b['amount']:,.2f})" for b in excluded)
         warnings.append(
-            f"{len(burns)} jar burns in the attribution window (expected 1) — "
-            "all attributed to this month per the windowed burn rule."
+            f"{len(excluded)} extra jar burn(s) in the attribution window "
+            f"NOT attributed per the first-burn rule: {skipped} — confirm "
+            "attribution with the methodology author."
         )
     for w in warnings:
         _log.warning("non_msc %s: %s", month, w)
@@ -170,8 +184,8 @@ def compute_non_msc_monthly(month: Month, pin_block: int | None = None) -> NonMs
     return NonMscMonthly(
         month=f"{month.year}-{month.month:02d}",
         pin_block=pin_block,
-        psm_jar_income=sum((b["amount"] for b in burns), Decimal(0)),
-        jar_burns=burns,
+        psm_jar_income=sum((b["amount"] for b in attributed), Decimal(0)),
+        jar_burns=attributed,
         stability_fee_income=sum(fees.values(), Decimal(0)),
         stability_fees_by_ilk=fees,
         susds_expense_gross=susds_gross,
