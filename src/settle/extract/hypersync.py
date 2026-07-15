@@ -230,8 +230,27 @@ def find_block_at_or_before(chain: str, target_ts: int) -> int:
     off the archive RPC — and works on chains whose RPC is lagging, e.g. monad).
     Result is cached, so repeat (chain, target_ts) is free.
     """
+    # ``archive_height`` can report a head block whose data isn't yet
+    # query-returnable (``include_all_blocks`` returns nothing for the very
+    # tip). Step back to the newest block HyperSync will actually serve — for
+    # historical settlement anchors this is still far above the target, so the
+    # search result is unaffected.
     high = archive_height(chain)
-    if block_timestamp(chain, high) <= target_ts:
+    head_ts: int | None = None
+    for _ in range(64):
+        if high <= 0:
+            break
+        try:
+            head_ts = block_timestamp(chain, high)
+            break
+        except HyperSyncError:
+            high -= 16
+    if head_ts is None:
+        raise HyperSyncError(
+            f"find_block_at_or_before({chain}): no returnable block near head "
+            f"{archive_height(chain)}"
+        )
+    if head_ts <= target_ts:
         return high
     if block_timestamp(chain, 0) > target_ts:
         raise HyperSyncError(

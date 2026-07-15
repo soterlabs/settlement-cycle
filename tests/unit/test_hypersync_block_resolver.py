@@ -75,6 +75,23 @@ def test_binary_search_rejects_pre_genesis(monkeypatch):
         hypersync.find_block_at_or_before("ethereum", 500)
 
 
+def test_binary_search_backs_off_unreturnable_head(monkeypatch):
+    # archive_height reports 1000, but blocks > 990 aren't query-returnable yet
+    # (head-edge race). Search must back off, not raise.
+    RETURNABLE = 990
+    monkeypatch.setattr(hypersync, "archive_height", lambda chain: 1000)
+    def bts(chain, block):
+        if block > RETURNABLE:
+            raise HyperSyncError(f"block {block} not returned")
+        return block * 12
+    monkeypatch.setattr(hypersync, "block_timestamp", bts)
+    # historical target still resolves exactly despite the head back-off
+    assert hypersync.find_block_at_or_before("ethereum", 6005) == 500
+    # target beyond the returnable head → newest returnable block, no crash
+    r = hypersync.find_block_at_or_before("ethereum", 10**9)
+    assert 0 < r <= RETURNABLE
+
+
 def test_binary_search_matches_reference_algorithm(monkeypatch):
     # irregular block times; compare against a brute-force reference.
     ts_map = {b: b * 13 + (b % 7) for b in range(0, 501)}
