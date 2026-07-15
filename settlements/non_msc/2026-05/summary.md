@@ -24,22 +24,22 @@ Sky protocol P&L outside the prime-agent (MSC) perimeter. Methodology: PSM incom
 | Stream | USDS |
 |---|---:|
 | sUSDS SSR (gross, all holders) | 18,107,793.46 |
-| less: prime-held sUSDS SSR — spark_alm (MSC-accounted) | -5,799,596.59 |
-| less: prime-held sUSDS SSR — spark_alm_arbitrum (MSC-accounted) | -436,050.87 |
-| less: prime-held sUSDS SSR — spark_psm3_base (MSC-accounted) | -388,441.38 |
-| less: prime-held sUSDS SSR — spark_psm3_unichain (MSC-accounted) | -312,524.77 |
-| less: prime-held sUSDS SSR — spark_alm_optimism (MSC-accounted) | -310,441.00 |
-| less: prime-held sUSDS SSR — spark_psm3_optimism (MSC-accounted) | -281,223.00 |
-| less: prime-held sUSDS SSR — spark_alm_base (MSC-accounted) | -230,525.17 |
-| less: prime-held sUSDS SSR — spark_psm3_arbitrum (MSC-accounted) | -212,368.59 |
-| less: prime-held sUSDS SSR — spark_alm_unichain (MSC-accounted) | -2,988.80 |
-| sUSDS SSR to non-prime users | 10,133,633.30 |
+| — of which: non-prime users (informational) | 10,133,633.30 |
+| — of which: prime-held, spark_alm (offset by BR in MSC) | 5,799,596.59 |
+| — of which: prime-held, spark_alm_arbitrum (offset by BR in MSC) | 436,050.87 |
+| — of which: prime-held, spark_psm3_base (offset by BR in MSC) | 388,441.38 |
+| — of which: prime-held, spark_psm3_unichain (offset by BR in MSC) | 312,524.77 |
+| — of which: prime-held, spark_alm_optimism (offset by BR in MSC) | 310,441.00 |
+| — of which: prime-held, spark_psm3_optimism (offset by BR in MSC) | 281,223.00 |
+| — of which: prime-held, spark_alm_base (offset by BR in MSC) | 230,525.17 |
+| — of which: prime-held, spark_psm3_arbitrum (offset by BR in MSC) | 212,368.59 |
+| — of which: prime-held, spark_alm_unichain (offset by BR in MSC) | 2,988.80 |
 | DSR (legacy pot) | 249,020.80 |
 | stUSDS | 1,061,298.20 |
-| **total expense** | **11,443,952.30** |
+| **total expense** | **19,418,112.46** |
 
 ## Net
 
 | Field | USDS |
 |---|---:|
-| **non-MSC net revenue** | **3,879,464.53** |
+| **non-MSC net revenue** | **-4,094,695.63** |

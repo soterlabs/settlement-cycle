@@ -6,13 +6,12 @@ Pure aggregation of already-generated artifacts (no Dune / no RPC): reads
 ``settlements/non_msc/<YYYY-MM>/provenance.json``, writes
 ``settlements/sky_total/<YYYY-MM>/{provenance.json,summary.md}``.
 
-Two headline lines per month:
-  * ``sky total net revenue``  = Σ prime supply-side sky revenue + non-MSC net
-    (the requested definition — what Sky earns from the prime book plus the
-    protocol P&L outside it);
-  * ``… net of prime demand-side payments`` = the above MINUS the agent rate
-    and Distribution Rewards Sky pays TO the primes — the stricter "all
-    Sky-side cash flows" view.
+Headline: ``sky total net revenue`` = Σ prime supply-side sky revenue
+− prime demand-side payments (agent rate + Distribution Rewards Sky pays TO
+the primes) + non-MSC net (income − GROSS expense — the SSR Sky pays on
+prime-held sUSDS stays in the expense because the MSC leg carries the
+offsetting BR income; see PRD §17.13 item 14). The pre-demand subtotal is
+kept as a component line.
 
 The BA Labs series (info-sky.blockanalitica.com/financials/settlements/
 historic/) is rendered as a REFERENCE column when reachable — never blended
@@ -94,8 +93,7 @@ def build_month(month: str, ba_ref: dict[str, Decimal]) -> dict | None:
         Decimal(0),
     )
     non_msc_net = _D(non_msc["net_revenue"])
-    total = prime_sky + non_msc_net
-    total_net_of_demand = total - demand_side
+    total = prime_sky - demand_side + non_msc_net
 
     out_dir = _REPO / "settlements" / "sky_total" / month
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -112,10 +110,9 @@ def build_month(month: str, ba_ref: dict[str, Decimal]) -> dict | None:
         },
         "results": {
             "prime_sky_revenue_total": str(prime_sky),
+            "prime_demand_side_payments": str(demand_side),
             "non_msc_net_revenue": str(non_msc_net),
             "sky_total_net_revenue": str(total),
-            "prime_demand_side_payments": str(demand_side),
-            "sky_total_net_of_demand_side": str(total_net_of_demand),
         },
     }
     (out_dir / "provenance.json").write_text(json.dumps(prov, indent=2) + "\n")
@@ -129,17 +126,9 @@ def build_month(month: str, ba_ref: dict[str, Decimal]) -> dict | None:
     for prime in _PRIMES:
         L.append(f"| sky revenue — {prime} | {_usds(primes[prime]['sky_revenue'])} |")
     L.append(f"| Σ prime sky revenue | {_usds(prime_sky)} |")
+    L.append(f"| less: prime demand-side payments (agent rate + DR) | -{_usds(demand_side)} |")
     L.append(f"| non-MSC net revenue | {_usds(non_msc_net)} |")
     L.append(f"| **sky total net revenue** | **{_usds(total)}** |")
-    L.append("")
-    L.append("Demand-side payments Sky makes TO the primes (agent rate + "
-             "Distribution Rewards) are not part of the definition above; the "
-             "stricter all-flows view nets them out:")
-    L.append("")
-    L.append("| Field | USDS |")
-    L.append("|---|---:|")
-    L.append(f"| less: prime demand-side payments (agent rate + DR) | -{_usds(demand_side)} |")
-    L.append(f"| **sky total net of demand-side payments** | **{_usds(total_net_of_demand)}** |")
     L.append("")
     ref = ba_ref.get(month)
     L.append(f"> Reference (BA Labs `financials/settlements/historic`, not "
@@ -152,8 +141,8 @@ def build_month(month: str, ba_ref: dict[str, Decimal]) -> dict | None:
     (out_dir / "summary.md").write_text("\n".join(L))
 
     return {
-        "month": month, "prime_sky": prime_sky, "non_msc": non_msc_net,
-        "total": total, "net_of_demand": total_net_of_demand, "ba": ref,
+        "month": month, "prime_sky": prime_sky, "demand": demand_side,
+        "non_msc": non_msc_net, "total": total, "ba": ref,
     }
 
 
@@ -161,8 +150,8 @@ def main() -> int:
     ba_ref = _ba_reference()
     print("SKY_TOTAL 2026 (Jan → Jun)")
     print("=" * 100)
-    print(f"{'Month':<9} {'Σ prime sky':>15} {'non-MSC net':>15} {'sky total':>15} "
-          f"{'net of demand':>15} {'BA ref':>15}")
+    print(f"{'Month':<9} {'Σ prime sky':>15} {'− demand-side':>15} {'non-MSC net':>15} "
+          f"{'sky total':>15} {'BA ref':>15}")
     print("-" * 100)
     failures = 0
     for month in _MONTHS:
@@ -172,8 +161,8 @@ def main() -> int:
             continue
         ba = f"{float(row['ba']):>15,.2f}" if row["ba"] is not None else f"{'n/a':>15}"
         print(f"{row['month']:<9} {float(row['prime_sky']):>15,.2f} "
-              f"{float(row['non_msc']):>15,.2f} {float(row['total']):>15,.2f} "
-              f"{float(row['net_of_demand']):>15,.2f} {ba}")
+              f"{float(row['demand']):>15,.2f} {float(row['non_msc']):>15,.2f} "
+              f"{float(row['total']):>15,.2f} {ba}")
     print("-" * 100)
     return 1 if failures else 0
 

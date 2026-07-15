@@ -8,8 +8,9 @@ the dollar for May 2026, see PRD §17.13):
   income   = PSM/Coinbase jar burns (cash at burn, attributed to the month the
              burn follows) + stability fees on the 9 core-vault ilks (Art × Δrate
              at each vat.fold — what fold credits to the vow)
-  expense  = sUSDS SSR at drip (NET of the prime-held carve-out, which MSC
-             already accounts via BR − 30bps / agent rate) + legacy DSR + stUSDS
+  expense  = sUSDS SSR at drip (GROSS — prime-held SSR stays in the expense
+             because MSC sky_revenue carries the offsetting BR income; the
+             prime/user split is informational) + legacy DSR + stUSDS
 
 All extraction happens in ONE Dune execution
 (``queries/non_msc_streams.sql``); this module buckets the rows and renders
@@ -70,10 +71,13 @@ class NonMscMonthly:
     warnings: list[str] = field(default_factory=list)
 
     @property
-    def susds_expense_net(self) -> Decimal:
-        return self.susds_expense_gross - sum(
-            self.susds_prime_carveout.values(), Decimal(0),
-        )
+    def susds_prime_held(self) -> Decimal:
+        return sum(self.susds_prime_carveout.values(), Decimal(0))
+
+    @property
+    def susds_expense_to_users(self) -> Decimal:
+        """Informational split: SSR accrued to NON-prime holders."""
+        return self.susds_expense_gross - self.susds_prime_held
 
     @property
     def total_income(self) -> Decimal:
@@ -81,7 +85,13 @@ class NonMscMonthly:
 
     @property
     def total_expense(self) -> Decimal:
-        return self.susds_expense_net + self.dsr_expense + self.stusds_expense
+        # GROSS sUSDS: the SSR Sky pays on PRIME-held sUSDS must stay in the
+        # expense — MSC sky_revenue already carries the offsetting BR income
+        # on the debt backing those positions (Rule 5 neutrality), so
+        # deducting the prime-held slice here would double-count income at
+        # the consolidated (sky_total) level. The prime/user split is kept
+        # as an INFORMATIONAL breakdown only.
+        return self.susds_expense_gross + self.dsr_expense + self.stusds_expense
 
     @property
     def net_revenue(self) -> Decimal:
@@ -234,11 +244,11 @@ def render_summary(r: NonMscMonthly) -> str:
     L.append("| Stream | USDS |")
     L.append("|---|---:|")
     L.append(f"| sUSDS SSR (gross, all holders) | {_usds(r.susds_expense_gross)} |")
+    L.append(f"| — of which: non-prime users (informational) | {_usds(r.susds_expense_to_users)} |")
     for holder, v in sorted(r.susds_prime_carveout.items(), key=lambda kv: -kv[1]):
         if v.quantize(Decimal("0.01")) == 0:
-            continue   # sub-cent dust holder — still counted in the net line
-        L.append(f"| less: prime-held sUSDS SSR — {holder} (MSC-accounted) | -{_usds(v)} |")
-    L.append(f"| sUSDS SSR to non-prime users | {_usds(r.susds_expense_net)} |")
+            continue   # sub-cent dust holder
+        L.append(f"| — of which: prime-held, {holder} (offset by BR in MSC) | {_usds(v)} |")
     L.append(f"| DSR (legacy pot) | {_usds(r.dsr_expense)} |")
     L.append(f"| stUSDS | {_usds(r.stusds_expense)} |")
     L.append(f"| **total expense** | **{_usds(r.total_expense)}** |")
@@ -269,7 +279,8 @@ def write_non_msc(r: NonMscMonthly, out_dir: Path) -> dict[str, Path]:
             "stability_fees_by_ilk": {k: str(v) for k, v in r.stability_fees_by_ilk.items()},
             "susds_expense_gross": str(r.susds_expense_gross),
             "susds_prime_carveout": {k: str(v) for k, v in r.susds_prime_carveout.items()},
-            "susds_expense_net": str(r.susds_expense_net),
+            "susds_prime_held": str(r.susds_prime_held),
+            "susds_expense_to_users": str(r.susds_expense_to_users),
             "dsr_expense": str(r.dsr_expense),
             "stusds_expense": str(r.stusds_expense),
             "total_income": str(r.total_income),

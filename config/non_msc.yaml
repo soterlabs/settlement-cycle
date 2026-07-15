@@ -39,11 +39,13 @@ expense:
   # Savings interest is recognized at the drip event (not accrual date).
   susds:
     contract: '0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD'
-    # Sky offers sUSDS to ALL users; the SSR accrued to PRIME-held sUSDS is
-    # already netted inside MSC (BR charged − 30bps reimbursed, or agent
-    # rate), so it is DEDUCTED here and only user-held SSR counts as
-    # non-MSC expense. Prime holders (Ethereum ALM + subproxy, from the
-    # prime configs — keep in sync with the SQL):
+    # The expense counts the GROSS drip (all holders): the SSR Sky pays on
+    # PRIME-held sUSDS must stay in the expense because MSC sky_revenue
+    # carries the offsetting BR income on the debt backing those positions
+    # (Rule 5 neutrality) — deducting it would double-count income at the
+    # consolidated sky_total level. The prime/user split below is rendered
+    # as an INFORMATIONAL breakdown. Prime holders (Ethereum ALM +
+    # subproxy, from the prime configs — keep in sync with the SQL):
     prime_holders:
       spark_alm:   '0x1601843c5e9bc251a3272907010afa41fa18347e'
       grove_alm:   '0x491edfb0b8b608044e227225c715981a30f3a44e'
@@ -53,10 +55,9 @@ expense:
       obex_sub:    '0x8be042581f581e3620e29f213ea8b94afa1c8071'
       keel_sub:    '0x355cd90ecb1b409fdf8b64c4473c3b858da2c310'
       skybase_sub: '0x08978e3700859e476201c1d7438b3427e3c81140'
-    # L2 leg: bridged sUSDS sits in L1 escrows, but the SSR claim belongs
-    # to the L2 holders — prime L2 balances (ALM proxies + PSM3 reserves,
-    # MSC-accounted via PSM3 appreciation / S37-S43-S47-S51 POL) × the same
-    # global Δchi are carved out too:
+    # L2 leg of the informational split: bridged sUSDS sits in L1 escrows,
+    # but the SSR claim belongs to the L2 holders — prime L2 balances (ALM
+    # proxies + PSM3 reserves) × the same global Δchi:
     prime_l2_holders:
       spark_alm_base:      '0x2917956eff0b5eaf030abdb4ef4296df775009ca'
       spark_psm3_base:     '0x1601843c5e9bc251a3272907010afa41fa18347e'
