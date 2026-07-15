@@ -10,14 +10,14 @@ Consolidated Sky net revenue: supply-side sky revenue from the five prime agents
 | sky revenue — keel | 0.00 |
 | sky revenue — skybase | 0.00 |
 | Σ prime sky revenue | 21,274,831.09 |
-| non-MSC net revenue | 1,502,471.80 |
-| **sky total net revenue** | **22,777,302.90** |
+| non-MSC net revenue | 3,879,464.53 |
+| **sky total net revenue** | **25,154,295.62** |
 
 Demand-side payments Sky makes TO the primes (agent rate + Distribution Rewards) are not part of the definition above; the stricter all-flows view nets them out:
 
 | Field | USDS |
 |---|---:|
 | less: prime demand-side payments (agent rate + DR) | -2,191,106.27 |
-| **sky total net of demand-side payments** | **20,586,196.63** |
+| **sky total net of demand-side payments** | **22,963,189.36** |
 
 > Reference (BA Labs `financials/settlements/historic`, not blended): net_revenue = 14,847,130.66
