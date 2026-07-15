@@ -24,22 +24,22 @@ Sky protocol P&L outside the prime-agent (MSC) perimeter. Methodology: PSM incom
 | Stream | USDS |
 |---|---:|
 | sUSDS SSR (gross, all holders) | 19,513,274.75 |
-| less: prime-held sUSDS SSR — spark_alm (MSC-accounted) | -2,998,729.24 |
-| less: prime-held sUSDS SSR — spark_alm_arbitrum (MSC-accounted) | -489,316.27 |
-| less: prime-held sUSDS SSR — spark_psm3_base (MSC-accounted) | -396,362.67 |
-| less: prime-held sUSDS SSR — spark_psm3_unichain (MSC-accounted) | -324,078.26 |
-| less: prime-held sUSDS SSR — spark_alm_optimism (MSC-accounted) | -323,368.97 |
-| less: prime-held sUSDS SSR — spark_psm3_optimism (MSC-accounted) | -250,315.52 |
-| less: prime-held sUSDS SSR — spark_alm_base (MSC-accounted) | -240,125.13 |
-| less: prime-held sUSDS SSR — spark_psm3_arbitrum (MSC-accounted) | -157,399.01 |
-| less: prime-held sUSDS SSR — spark_alm_unichain (MSC-accounted) | -3,113.26 |
-| sUSDS SSR to non-prime users | 14,330,466.42 |
+| — of which: non-prime users (informational) | 14,330,466.42 |
+| — of which: prime-held, spark_alm (offset by BR in MSC) | 2,998,729.24 |
+| — of which: prime-held, spark_alm_arbitrum (offset by BR in MSC) | 489,316.27 |
+| — of which: prime-held, spark_psm3_base (offset by BR in MSC) | 396,362.67 |
+| — of which: prime-held, spark_psm3_unichain (offset by BR in MSC) | 324,078.26 |
+| — of which: prime-held, spark_alm_optimism (offset by BR in MSC) | 323,368.97 |
+| — of which: prime-held, spark_psm3_optimism (offset by BR in MSC) | 250,315.52 |
+| — of which: prime-held, spark_alm_base (offset by BR in MSC) | 240,125.13 |
+| — of which: prime-held, spark_psm3_arbitrum (offset by BR in MSC) | 157,399.01 |
+| — of which: prime-held, spark_alm_unichain (offset by BR in MSC) | 3,113.26 |
 | DSR (legacy pot) | 259,100.77 |
 | stUSDS | 961,972.45 |
-| **total expense** | **15,551,539.64** |
+| **total expense** | **20,734,347.97** |
 
 ## Net
 
 | Field | USDS |
 |---|---:|
-| **non-MSC net revenue** | **2,556,129.49** |
+| **non-MSC net revenue** | **-2,626,678.84** |

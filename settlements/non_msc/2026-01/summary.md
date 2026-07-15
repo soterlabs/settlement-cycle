@@ -21,22 +21,22 @@ Sky protocol P&L outside the prime-agent (MSC) perimeter. Methodology: PSM incom
 | Stream | USDS |
 |---|---:|
 | sUSDS SSR (gross, all holders) | 14,667,931.44 |
-| less: prime-held sUSDS SSR — spark_alm (MSC-accounted) | -1,735,361.42 |
-| less: prime-held sUSDS SSR — spark_psm3_base (MSC-accounted) | -411,033.86 |
-| less: prime-held sUSDS SSR — spark_psm3_unichain (MSC-accounted) | -329,073.27 |
-| less: prime-held sUSDS SSR — spark_alm_arbitrum (MSC-accounted) | -253,240.86 |
-| less: prime-held sUSDS SSR — spark_alm_base (MSC-accounted) | -249,659.53 |
-| less: prime-held sUSDS SSR — spark_alm_optimism (MSC-accounted) | -132,252.66 |
-| less: prime-held sUSDS SSR — spark_psm3_optimism (MSC-accounted) | -91,986.01 |
-| less: prime-held sUSDS SSR — spark_psm3_arbitrum (MSC-accounted) | -52,316.32 |
-| less: prime-held sUSDS SSR — spark_alm_unichain (MSC-accounted) | -3,236.88 |
-| sUSDS SSR to non-prime users | 11,409,770.64 |
+| — of which: non-prime users (informational) | 11,409,770.64 |
+| — of which: prime-held, spark_alm (offset by BR in MSC) | 1,735,361.42 |
+| — of which: prime-held, spark_psm3_base (offset by BR in MSC) | 411,033.86 |
+| — of which: prime-held, spark_psm3_unichain (offset by BR in MSC) | 329,073.27 |
+| — of which: prime-held, spark_alm_arbitrum (offset by BR in MSC) | 253,240.86 |
+| — of which: prime-held, spark_alm_base (offset by BR in MSC) | 249,659.53 |
+| — of which: prime-held, spark_alm_optimism (offset by BR in MSC) | 132,252.66 |
+| — of which: prime-held, spark_psm3_optimism (offset by BR in MSC) | 91,986.01 |
+| — of which: prime-held, spark_psm3_arbitrum (offset by BR in MSC) | 52,316.32 |
+| — of which: prime-held, spark_alm_unichain (offset by BR in MSC) | 3,236.88 |
 | DSR (legacy pot) | 277,769.71 |
 | stUSDS | 977,523.27 |
-| **total expense** | **12,665,063.61** |
+| **total expense** | **15,923,224.42** |
 
 ## Net
 
 | Field | USDS |
 |---|---:|
-| **non-MSC net revenue** | **2,329,540.70** |
+| **non-MSC net revenue** | **-928,620.10** |

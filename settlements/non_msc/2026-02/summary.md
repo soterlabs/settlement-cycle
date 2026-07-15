@@ -22,22 +22,22 @@ Sky protocol P&L outside the prime-agent (MSC) perimeter. Methodology: PSM incom
 | Stream | USDS |
 |---|---:|
 | sUSDS SSR (gross, all holders) | 14,542,279.21 |
-| less: prime-held sUSDS SSR — spark_alm (MSC-accounted) | -1,744,014.19 |
-| less: prime-held sUSDS SSR — spark_alm_arbitrum (MSC-accounted) | -591,373.12 |
-| less: prime-held sUSDS SSR — spark_psm3_base (MSC-accounted) | -376,822.12 |
-| less: prime-held sUSDS SSR — spark_alm_optimism (MSC-accounted) | -304,649.00 |
-| less: prime-held sUSDS SSR — spark_psm3_unichain (MSC-accounted) | -302,550.89 |
-| less: prime-held sUSDS SSR — spark_alm_base (MSC-accounted) | -226,224.18 |
-| less: prime-held sUSDS SSR — spark_psm3_optimism (MSC-accounted) | -182,348.98 |
-| less: prime-held sUSDS SSR — spark_psm3_arbitrum (MSC-accounted) | -92,653.47 |
-| less: prime-held sUSDS SSR — spark_alm_unichain (MSC-accounted) | -2,933.03 |
-| sUSDS SSR to non-prime users | 10,718,710.23 |
+| — of which: non-prime users (informational) | 10,718,710.23 |
+| — of which: prime-held, spark_alm (offset by BR in MSC) | 1,744,014.19 |
+| — of which: prime-held, spark_alm_arbitrum (offset by BR in MSC) | 591,373.12 |
+| — of which: prime-held, spark_psm3_base (offset by BR in MSC) | 376,822.12 |
+| — of which: prime-held, spark_alm_optimism (offset by BR in MSC) | 304,649.00 |
+| — of which: prime-held, spark_psm3_unichain (offset by BR in MSC) | 302,550.89 |
+| — of which: prime-held, spark_alm_base (offset by BR in MSC) | 226,224.18 |
+| — of which: prime-held, spark_psm3_optimism (offset by BR in MSC) | 182,348.98 |
+| — of which: prime-held, spark_psm3_arbitrum (offset by BR in MSC) | 92,653.47 |
+| — of which: prime-held, spark_alm_unichain (offset by BR in MSC) | 2,933.03 |
 | DSR (legacy pot) | 222,504.41 |
 | stUSDS | 1,170,692.39 |
-| **total expense** | **12,111,907.03** |
+| **total expense** | **15,935,476.02** |
 
 ## Net
 
 | Field | USDS |
 |---|---:|
-| **non-MSC net revenue** | **3,093,679.36** |
+| **non-MSC net revenue** | **-729,889.62** |

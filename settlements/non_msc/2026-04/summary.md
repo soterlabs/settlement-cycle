@@ -21,22 +21,22 @@ Sky protocol P&L outside the prime-agent (MSC) perimeter. Methodology: PSM incom
 | Stream | USDS |
 |---|---:|
 | sUSDS SSR (gross, all holders) | 18,304,617.83 |
-| less: prime-held sUSDS SSR — spark_alm (MSC-accounted) | -4,063,315.84 |
-| less: prime-held sUSDS SSR — spark_alm_arbitrum (MSC-accounted) | -429,939.08 |
-| less: prime-held sUSDS SSR — spark_psm3_base (MSC-accounted) | -369,331.90 |
-| less: prime-held sUSDS SSR — spark_psm3_unichain (MSC-accounted) | -307,653.86 |
-| less: prime-held sUSDS SSR — spark_alm_optimism (MSC-accounted) | -306,089.78 |
-| less: prime-held sUSDS SSR — spark_psm3_optimism (MSC-accounted) | -254,090.83 |
-| less: prime-held sUSDS SSR — spark_alm_base (MSC-accounted) | -227,294.07 |
-| less: prime-held sUSDS SSR — spark_psm3_arbitrum (MSC-accounted) | -180,157.25 |
-| less: prime-held sUSDS SSR — spark_alm_unichain (MSC-accounted) | -2,946.90 |
-| sUSDS SSR to non-prime users | 12,163,798.30 |
+| — of which: non-prime users (informational) | 12,163,798.30 |
+| — of which: prime-held, spark_alm (offset by BR in MSC) | 4,063,315.84 |
+| — of which: prime-held, spark_alm_arbitrum (offset by BR in MSC) | 429,939.08 |
+| — of which: prime-held, spark_psm3_base (offset by BR in MSC) | 369,331.90 |
+| — of which: prime-held, spark_psm3_unichain (offset by BR in MSC) | 307,653.86 |
+| — of which: prime-held, spark_alm_optimism (offset by BR in MSC) | 306,089.78 |
+| — of which: prime-held, spark_psm3_optimism (offset by BR in MSC) | 254,090.83 |
+| — of which: prime-held, spark_alm_base (offset by BR in MSC) | 227,294.07 |
+| — of which: prime-held, spark_psm3_arbitrum (offset by BR in MSC) | 180,157.25 |
+| — of which: prime-held, spark_alm_unichain (offset by BR in MSC) | 2,946.90 |
 | DSR (legacy pot) | 250,769.05 |
 | stUSDS | 1,093,246.40 |
-| **total expense** | **13,507,813.74** |
+| **total expense** | **19,648,633.28** |
 
 ## Net
 
 | Field | USDS |
 |---|---:|
-| **non-MSC net revenue** | **1,278,715.93** |
+| **non-MSC net revenue** | **-4,862,103.61** |

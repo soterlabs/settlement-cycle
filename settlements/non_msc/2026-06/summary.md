@@ -22,24 +22,24 @@ Sky protocol P&L outside the prime-agent (MSC) perimeter. Methodology: PSM incom
 | Stream | USDS |
 |---|---:|
 | sUSDS SSR (gross, all holders) | 17,504,764.66 |
-| less: prime-held sUSDS SSR — spark_alm (MSC-accounted) | -3,923,041.52 |
-| less: prime-held sUSDS SSR — spark_alm_arbitrum (MSC-accounted) | -418,498.23 |
-| less: prime-held sUSDS SSR — spark_alm_optimism (MSC-accounted) | -393,316.31 |
-| less: prime-held sUSDS SSR — spark_alm_base (MSC-accounted) | -352,243.28 |
-| less: prime-held sUSDS SSR — spark_psm3_base (MSC-accounted) | -259,745.35 |
-| less: prime-held sUSDS SSR — spark_psm3_unichain (MSC-accounted) | -199,933.97 |
-| less: prime-held sUSDS SSR — spark_psm3_arbitrum (MSC-accounted) | -198,643.95 |
-| less: prime-held sUSDS SSR — spark_psm3_optimism (MSC-accounted) | -185,384.85 |
-| less: prime-held sUSDS SSR — spark_alm_unichain (MSC-accounted) | -103,007.63 |
-| sUSDS SSR to non-prime users | 11,470,949.56 |
+| — of which: non-prime users (informational) | 11,470,949.56 |
+| — of which: prime-held, spark_alm (offset by BR in MSC) | 3,923,041.52 |
+| — of which: prime-held, spark_alm_arbitrum (offset by BR in MSC) | 418,498.23 |
+| — of which: prime-held, spark_alm_optimism (offset by BR in MSC) | 393,316.31 |
+| — of which: prime-held, spark_alm_base (offset by BR in MSC) | 352,243.28 |
+| — of which: prime-held, spark_psm3_base (offset by BR in MSC) | 259,745.35 |
+| — of which: prime-held, spark_psm3_unichain (offset by BR in MSC) | 199,933.97 |
+| — of which: prime-held, spark_psm3_arbitrum (offset by BR in MSC) | 198,643.95 |
+| — of which: prime-held, spark_psm3_optimism (offset by BR in MSC) | 185,384.85 |
+| — of which: prime-held, spark_alm_unichain (offset by BR in MSC) | 103,007.63 |
 | DSR (legacy pot) | 222,412.90 |
 | stUSDS | 1,037,444.16 |
-| **total expense** | **12,730,806.62** |
+| **total expense** | **18,764,621.72** |
 
 ## Net
 
 | Field | USDS |
 |---|---:|
-| **non-MSC net revenue** | **-7,838,631.90** |
+| **non-MSC net revenue** | **-13,872,447.01** |
 
-> ⚠ no jar burn found in (2026-06-30, 2026-07-31] at pin 25537523 — PSM income is $0 in this run; re-run after the monthly burn lands.
+> ⚠ no jar burn found in (2026-06-30, 2026-07-31] at pin 25537714 — PSM income is $0 in this run; re-run after the monthly burn lands.

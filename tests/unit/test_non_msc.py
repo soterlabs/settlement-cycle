@@ -63,9 +63,11 @@ def test_bucketing_and_totals(fake_query):
     r = compute_non_msc_monthly(Month(2026, 5), pin_block=23_500_000)
     assert r.psm_jar_income == Decimal("10644203.21")
     assert r.stability_fee_income == Decimal("1101413.66") + Decimal("2037068.96")
-    assert r.susds_expense_net == Decimal("18107793.46") - Decimal("5799596.59")
+    assert r.susds_expense_to_users == Decimal("18107793.46") - Decimal("5799596.59")
     assert r.total_income == r.psm_jar_income + r.stability_fee_income
-    assert r.total_expense == r.susds_expense_net + Decimal("249020.80") + Decimal("1061298.20")
+    # GROSS sUSDS in the total — the prime-held slice is offset by BR inside
+    # MSC; deducting it here would double-count at the sky_total level.
+    assert r.total_expense == Decimal("18107793.46") + Decimal("249020.80") + Decimal("1061298.20")
     assert r.net_revenue == r.total_income - r.total_expense
     assert not r.warnings
     # The query received the calendar window, not pin-derived dates.
@@ -114,6 +116,6 @@ def test_render_summary_shape(fake_query):
     out = render_summary(r)
     assert "# NON_MSC — 2026-05" in out
     assert "| PSM/Coinbase jar burn (2026-06-11) | 10,644,203.21 |" in out
-    assert "| less: prime-held sUSDS SSR — spark_alm (MSC-accounted) | -5,799,596.59 |" in out
-    assert "| sUSDS SSR to non-prime users | 12,308,196.87 |" in out
+    assert "| — of which: prime-held, spark_alm (offset by BR in MSC) | 5,799,596.59 |" in out
+    assert "| — of which: non-prime users (informational) | 12,308,196.87 |" in out
     assert "**non-MSC net revenue**" in out
