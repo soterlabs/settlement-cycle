@@ -8,9 +8,13 @@ event reconstruction would be silently wrong for aTokens.
 This source is therefore a **self-verifying hybrid** that can never be wrong:
   * First time it sees a `(chain, token)` with a non-zero balance, it computes
     BOTH the event-reconstructed balance and the RPC balanceOf and compares.
-  * Equal ⇒ the token is non-rebasing ⇒ classify "events" and serve every later
-    query for that token from Transfer logs (no RPC).
-  * Unequal (rebasing) ⇒ classify "rpc" and always delegate to RPC.
+  * Equal AND not a structural aToken (no `POOL()`/`UNDERLYING_ASSET_ADDRESS()`)
+    ⇒ non-rebasing ⇒ classify "events" and serve every later query for that
+    token from Transfer logs (no RPC). The aToken gate matters: Σ(Transfer)
+    also equals balanceOf for a rebasing aToken probed with no accrued interest
+    (index ~RAY right after mint), so a value match alone is not sufficient.
+  * Rebasing (aToken, or a value mismatch) ⇒ prefer the wei-exact Aave event
+    reconstruction; if that disagrees with RPC, classify "rpc" and delegate.
   * Until classified (or on the probe itself) it returns the trusted RPC value.
 
 Net: non-rebasing tokens (par-stables, 4626 shares, EOA principal) cost one RPC
@@ -61,16 +65,35 @@ class HyperSyncPositionBalanceSource:
         # Unknown token → probe: trust RPC, classify on a non-zero comparison.
         rpc_bal = self._rpc.balance_at(chain, token, holder, block)
         if rpc_bal != 0:  # zero tells us nothing (Σtransfers==balanceOf==0 trivially)
-            if self._events_balance(chain, token, holder, block) == rpc_bal:
-                self._verdict[key] = "events"       # non-rebasing
+            events_bal = self._events_balance(chain, token, holder, block)
+            if events_bal == rpc_bal and not self._is_atoken(chain, token, block):
+                # Σ(Transfer) == balanceOf AND not a rebasing aToken ⇒ non-rebasing.
+                # The is_atoken gate is essential: a rebasing aToken first probed
+                # with no accrued interest (liquidityIndex ~RAY right after mint)
+                # ALSO has Σ(Transfer) == balanceOf, and classifying it "events"
+                # here would pin it to a stale event sum forever — silently
+                # dropping every later block's accrued interest.
+                self._verdict[key] = "events"
             else:
-                # rebasing → try wei-exact Aave event reconstruction (Cat C)
+                # Rebasing (or an aToken that momentarily matches) → prefer the
+                # wei-exact Aave event reconstruction (Cat C); else delegate to RPC.
                 try:
                     recon = self._aave.reconstruct_balance(chain, token, holder, block)
                 except Exception:                   # not an aToken / metadata read failed
                     recon = None
                 self._verdict[key] = "aave" if recon == rpc_bal else "rpc"
         return rpc_bal
+
+    def _is_atoken(self, chain: str, token: bytes, block: int) -> bool:
+        """Structural rebasing test via the Aave source, tolerant of a stub
+        source that doesn't implement it (treated as non-aToken)."""
+        check = getattr(self._aave, "is_atoken", None)
+        if check is None:
+            return False
+        try:
+            return bool(check(chain, token, block))
+        except Exception:
+            return False
 
     def _events_balance(self, chain: str, token: bytes, holder: bytes, block: int) -> int:
         """Σ(Transfer value to holder) − Σ(from holder) for ``token`` at ``block`` (raw)."""

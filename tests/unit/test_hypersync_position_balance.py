@@ -39,7 +39,10 @@ _ROWS = [_xfer(10, 0, _OTHER, _H, 100), _xfer(20, 0, _H, _OTHER, 30)]
 
 def test_non_rebasing_probes_once_then_events_only():
     rpc = _RPC(lambda block: 70)                    # RPC agrees with Σtransfers
-    src = HyperSyncPositionBalanceSource(rpc, fetch_logs=lambda c, s, f, t: list(_ROWS))
+    src = HyperSyncPositionBalanceSource(
+        rpc, fetch_logs=lambda c, s, f, t: list(_ROWS),
+        aave_source=_AaveStub(70, is_atoken=False),  # plain ERC-20 → not an aToken
+    )
     # First call: probes RPC (+1), classifies "events" (70==70), returns 70
     assert src.balance_at("ethereum", _TOKEN, _H, 25) == 70
     assert rpc.calls == 1
@@ -72,12 +75,16 @@ def test_zero_balance_does_not_classify_prematurely():
 
 
 class _AaveStub:
-    def __init__(self, value):
-        self.value = value
+    def __init__(self, value, is_atoken=True):
+        # ``value`` may be a constant or a per-block callable.
+        self._value_fn = value if callable(value) else (lambda b: value)
         self.calls = 0
+        self._is_atoken = is_atoken
+    def is_atoken(self, chain, token, block):
+        return self._is_atoken
     def reconstruct_balance(self, chain, token, holder, block):
         self.calls += 1
-        return self.value
+        return self._value_fn(block)
 
 
 def test_rebasing_atoken_uses_aave_reconstruction():
@@ -102,6 +109,20 @@ def test_rebasing_falls_back_to_rpc_if_aave_mismatches():
     assert src.balance_at("ethereum", _TOKEN, _H, 25) == 85
     assert src.balance_at("ethereum", _TOKEN, _H, 25) == 85
     assert rpc.calls == 2          # every call hits RPC (classified rpc)
+
+
+def test_atoken_matching_at_probe_is_not_pinned_to_events():
+    # Regression: a rebasing aToken first probed with NO accrued interest has
+    # Σtransfers == balanceOf at the probe (70 == 70). Classifying it "events"
+    # would return a stale 70 at every later block; the is_atoken gate must
+    # route it to the Aave reconstruction instead.
+    rpc = _RPC(lambda block: 70 if block <= 25 else 85)   # accrues after probe
+    aave = _AaveStub(lambda block: 70 if block <= 25 else 85, is_atoken=True)
+    src = HyperSyncPositionBalanceSource(
+        rpc, fetch_logs=lambda c, s, f, t: list(_ROWS), aave_source=aave)
+    assert src.balance_at("ethereum", _TOKEN, _H, 25) == 70    # probe → classify aave
+    assert src._verdict[("ethereum", _TOKEN.hex())] == "aave"  # NOT "events"
+    assert src.balance_at("ethereum", _TOKEN, _H, 100) == 85   # accrued interest, from aave
 
 
 def test_events_balance_dedups_self_transfer():

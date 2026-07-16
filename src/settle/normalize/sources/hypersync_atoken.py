@@ -50,6 +50,23 @@ class HyperSyncAaveSource:
             self._meta[key] = self._metadata_fn(chain, token, block)
         return self._meta[key]
 
+    def is_atoken(self, chain: str, token: bytes, block: int) -> bool:
+        """True iff ``token`` is an Aave V3 / SparkLend aToken — i.e. it exposes
+        ``POOL()`` and ``UNDERLYING_ASSET_ADDRESS()`` as non-zero addresses.
+
+        This is the *structural* rebasing test the position-balance hybrid needs:
+        Σ(Transfer) can equal ``balanceOf`` for a rebasing aToken at a block with
+        no accrued interest (index ~RAY right after mint), so a value match alone
+        can't tell rebasing from non-rebasing — but only aTokens carry these two
+        immutable getters. The reads are memoised via the metadata cache, so a
+        subsequent ``reconstruct_balance`` reuses them (no extra RPC)."""
+        try:
+            pool, reserve = self._metadata(chain, token, block)
+        except Exception:                       # not a contract with POOL() / read failed
+            return False
+        zero = b"\x00" * 20
+        return pool != zero and reserve != zero
+
     def reconstruct_scaled(self, chain: str, token: bytes, holder: bytes, block: int) -> int:
         return aave_reconstruct.scaled_balance_at(
             chain, token, holder, block, fetch_logs=self._fetch
