@@ -73,7 +73,18 @@ def scaled_balance_at(
         seen.add(k)
         w = _words(r.data)
         if r.topic0 == MINT_T0:                      # value, balanceIncrease, index
-            scaled += ray_div(w[0] - w[1], w[2])     # amount = value − balanceIncrease
+            d = w[0] - w[1]                          # signed amount = value − balanceIncrease
+            if d >= 0:
+                scaled += ray_div(d, w[2])           # genuine mint (deposit)
+            else:
+                # _burnScaled emits a Mint when balanceIncrease > amount (accrued
+                # interest exceeds the withdrawal): value = balanceIncrease − amount,
+                # so d = −amount < 0. The contract DECREASED scaled by
+                # rayDiv(amount, index) computed on the POSITIVE amount = −d.
+                # ray_div(d, ·) with d < 0 ≠ −ray_div(−d, ·) at rounding boundaries
+                # (e.g. amount=3, index=2·RAY → −2 vs −1), so negate the
+                # positive-numerator rayDiv to match Solidity WadRayMath exactly.
+                scaled -= ray_div(-d, w[2])
         elif r.topic0 == BURN_T0:
             scaled -= ray_div(w[0] + w[1], w[2])     # amount = value + balanceIncrease
         elif r.topic0 == BT_T0:                      # value (already scaled), index

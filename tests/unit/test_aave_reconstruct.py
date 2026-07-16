@@ -46,6 +46,22 @@ def test_scaled_balance_from_events():
     assert scaled == 1000 - 300 + 50
 
 
+def test_scaled_burn_emitted_as_mint_when_interest_exceeds_withdrawal():
+    # When a withdrawal is smaller than the interest accrued since the last
+    # interaction, _burnScaled emits a *Mint* with value = balanceIncrease −
+    # amount, so value − balanceIncrease = −amount (negative). The contract
+    # decreased the scaled balance by rayDiv(amount, index) on the POSITIVE
+    # amount. amount=3, index=2·RAY → rayDiv(3, 2·RAY)=2, so scaledΔ = −2 (NOT
+    # −1, which naive ray_div(−3, 2·RAY) floor-division would give).
+    rows = [
+        _log(10, 0, MINT_T0, _OTHER, _H, _data(1000, 0, RAY)),        # +1000 scaled
+        _log(20, 0, MINT_T0, _H, _H, _data(7, 10, 2 * RAY)),          # value=7, balInc=10
+    ]
+    scaled = ar.scaled_balance_at("ethereum", _ATOKEN, _H, 100,
+                                  fetch_logs=lambda c, s, f, t: list(rows))
+    assert scaled == 1000 - 2
+
+
 def test_scaled_dedups_and_ignores_out_transfers():
     rows = [
         _log(10, 0, MINT_T0, _OTHER, _H, _data(1000, 0, RAY)),
