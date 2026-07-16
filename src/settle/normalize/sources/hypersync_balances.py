@@ -43,10 +43,14 @@ def _topic_to_addr(topic: str) -> bytes:
 
 
 def _default_start_block(chain: str, start: date) -> int:
-    from ...domain.primes import Chain
-    from ...extract import rpc
+    # Resolve the start-of-range block floor off HyperSync (not the archive RPC):
+    # it's the same result as rpc.find_block_at_or_before but keeps this path off
+    # the archive RPC and working on lagging-RPC chains (e.g. monad) — the whole
+    # point of the migration. Only a safe lower bound anyway (the caller re-applies
+    # the ``block_date >= start`` filter in Python), so exactness is not required.
+    from ...extract import hypersync
     midnight = datetime.combine(start, time.min, tzinfo=timezone.utc)
-    return rpc.find_block_at_or_before(Chain(chain), midnight)
+    return hypersync.find_block_at_or_before(chain, int(midnight.timestamp()))
 
 
 def _default_decimals(chain: str, token: bytes, block: int) -> int:
