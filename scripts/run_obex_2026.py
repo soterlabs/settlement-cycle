@@ -48,10 +48,6 @@ from settle.compute import Sources, compute_monthly_pnl  # noqa: E402
 from settle.domain import Month  # noqa: E402
 from settle.domain.config import load_prime  # noqa: E402
 from settle.load import write_settlement  # noqa: E402
-from settle.normalize.registry import (  # noqa: E402
-    get_convert_to_assets_source,
-    get_position_balance_source,
-)
 
 _OBEX_YAML = _REPO / "config" / "obex.yaml"
 _MONTHS = [Month(2026, m) for m in (1, 2, 3, 4, 5, 6)]
@@ -80,17 +76,17 @@ def _check_env() -> None:
 
 
 def _live_sources() -> Sources:
-    """Live sources with ``block_resolver`` left ``None`` so the
-    orchestrator upgrades it to ``DuneBlockResolver`` per chain (one
-    Dune query per chain replaces ~25 binary-search RPC calls/day)."""
-    return Sources(
-        # debt / balance / ssr deliberately left None: compute_monthly_pnl
-        # merges the prime's YAML ``sources:`` overrides into None fields
-        # (per-prime backend pilots, e.g. OBEX on hypersync); unset primes
-        # fall back to registry defaults at each call site as before.
-        position_balance=get_position_balance_source(),
-        convert_to_assets=get_convert_to_assets_source(),
-    )
+    """Live sources — every field left ``None`` on purpose.
+
+    ``block_resolver`` left ``None`` so the orchestrator upgrades it to
+    ``DuneBlockResolver`` per chain (one Dune query per chain replaces ~25
+    binary-search RPC calls/day). ``position_balance`` / ``convert_to_assets``
+    are likewise left ``None``: ``compute_monthly_pnl`` merges the prime's
+    YAML ``sources:`` overrides into ``None`` fields and defaults any
+    still-``None`` field to its registry default. Pinning them to RPC here
+    would silently drop a per-prime pilot (e.g. ``position_balance:
+    hypersync``) because ``_sources_from_prime`` fills only ``None`` fields."""
+    return Sources()
 
 
 def main() -> int:

@@ -66,3 +66,42 @@ def test_no_override_returns_base_unchanged():
     base = Sources()
     assert _sources_from_prime(_prime({}), base) is base
     assert _sources_from_prime(SimpleNamespace(sources=None), None) is not None
+
+
+# --- production runners must not pin migratable fields -----------------------
+#
+# Regression guard for the silent no-op the review surfaced: a runner that
+# pre-set ``position_balance`` (or any migratable field) to a concrete source
+# made ``position_balance: hypersync`` in a prime YAML a no-op, because
+# ``_sources_from_prime`` fills only ``None`` fields. Every runner's
+# ``_live_sources()`` must therefore leave these fields ``None`` and let
+# ``compute_monthly_pnl`` default them per call site.
+
+import importlib.util
+from pathlib import Path
+
+_SCRIPTS = Path(__file__).resolve().parents[2] / "scripts"
+
+# Fields that have (or will have) a per-prime backend pilot; a runner pinning
+# any of these here silently disables the YAML override for it.
+_MIGRATABLE = ("debt", "balance", "ssr", "position_balance",
+               "convert_to_assets", "block_resolver", "psm3")
+
+
+def _load_runner(name: str):
+    spec = importlib.util.spec_from_file_location(name, _SCRIPTS / f"{name}.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+@pytest.mark.parametrize(
+    "runner", ["run_live_2026", "run_obex_2026", "_run_agent_rate_prime"]
+)
+def test_runner_live_sources_leaves_migratable_fields_none(runner):
+    src = _load_runner(runner)._live_sources()
+    pinned = [f for f in _MIGRATABLE if getattr(src, f) is not None]
+    assert not pinned, (
+        f"{runner}._live_sources() pins {pinned}; leave them None so a prime's "
+        f"YAML `sources:` override applies (see _sources_from_prime)."
+    )

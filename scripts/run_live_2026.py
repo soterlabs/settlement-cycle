@@ -44,10 +44,6 @@ from settle.compute import Sources, compute_monthly_pnl  # noqa: E402
 from settle.domain import Month  # noqa: E402
 from settle.domain.config import load_prime  # noqa: E402
 from settle.load import write_settlement  # noqa: E402
-from settle.normalize.registry import (  # noqa: E402
-    get_convert_to_assets_source,
-    get_position_balance_source,
-)
 
 _PRIMES = {
     "obex":  _REPO / "config" / "obex.yaml",
@@ -110,23 +106,22 @@ def _check_env() -> None:
 
 
 def _live_sources() -> Sources:
-    """Live sources with intentional ``None`` defaults for the sources whose
-    Dune-backed variant the orchestrator picks based on ``DUNE_API_KEY``:
+    """Live sources — every field left ``None`` on purpose.
 
-      * ``block_resolver`` → upgraded to ``DuneBlockResolver`` per chain.
-      * ``psm3``           → upgraded to ``DunePsm3Source`` for Spark L2 PSMs.
-      * ``v3_position``    → upgraded to ``DuneV3InflowSource`` for V3 events.
+    ``compute_monthly_pnl`` merges each prime's YAML ``sources:`` overrides
+    into the ``None`` fields (``_sources_from_prime``) and then defaults any
+    still-``None`` field to its registry default at each call site
+    (``sources.X or get_X()``). Passing a concrete source here would:
 
-    Passing concrete RPC sources here would short-circuit those upgrades.
+      * short-circuit the orchestrator's Dune upgrades for
+        ``block_resolver`` / ``psm3`` / ``v3_position`` (picked from
+        ``DUNE_API_KEY``), and
+      * silently drop a prime's per-prime backend pilot for that field —
+        ``_sources_from_prime`` only fills ``None`` fields, so a non-``None``
+        ``position_balance`` here would make ``position_balance: hypersync``
+        in a prime YAML a no-op (the exact bug this leaves ``None`` to avoid).
     """
-    return Sources(
-        # debt / balance / ssr deliberately left None: compute_monthly_pnl
-        # merges the prime's YAML ``sources:`` overrides into None fields
-        # (per-prime backend pilots, e.g. OBEX on hypersync); unset primes
-        # fall back to registry defaults at each call site as before.
-        position_balance=get_position_balance_source(),
-        convert_to_assets=get_convert_to_assets_source(),
-    )
+    return Sources()
 
 
 def _parse_months(s: str | None) -> list[Month]:
