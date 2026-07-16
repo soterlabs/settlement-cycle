@@ -87,9 +87,25 @@ def test_binary_search_backs_off_unreturnable_head(monkeypatch):
     monkeypatch.setattr(hypersync, "block_timestamp", bts)
     # historical target still resolves exactly despite the head back-off
     assert hypersync.find_block_at_or_before("ethereum", 6005) == 500
-    # target beyond the returnable head → newest returnable block, no crash
-    r = hypersync.find_block_at_or_before("ethereum", 10**9)
-    assert 0 < r <= RETURNABLE
+    # target beyond the returnable head → the EXACT newest returnable block
+    # (the upward refine finds 990, not the coarse stepped-back 984).
+    assert hypersync.find_block_at_or_before("ethereum", 10**9) == RETURNABLE
+
+
+def test_backoff_refines_to_exact_returnable_head(monkeypatch):
+    # Returnable boundary (993) is NOT on a step-back multiple of archive_height
+    # (1000) — the coarse step lands on 984; the upward binary-search refine must
+    # recover the exact highest returnable block for a near-head target.
+    RETURNABLE = 993
+    monkeypatch.setattr(hypersync, "archive_height", lambda chain: 1000)
+    def bts(chain, block):
+        if block > RETURNABLE:
+            raise HyperSyncError(f"block {block} not returned")
+        return block * 12
+    monkeypatch.setattr(hypersync, "block_timestamp", bts)
+    assert hypersync.find_block_at_or_before("ethereum", 10**9) == RETURNABLE
+    # a target just below the head still lands on the exact block
+    assert hypersync.find_block_at_or_before("ethereum", 992 * 12) == 992
 
 
 def test_binary_search_matches_reference_algorithm(monkeypatch):

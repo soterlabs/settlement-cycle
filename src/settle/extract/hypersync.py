@@ -232,10 +232,14 @@ def find_block_at_or_before(chain: str, target_ts: int) -> int:
     """
     # ``archive_height`` can report a head block whose data isn't yet
     # query-returnable (``include_all_blocks`` returns nothing for the very
-    # tip). Step back to the newest block HyperSync will actually serve — for
-    # historical settlement anchors this is still far above the target, so the
-    # search result is unaffected.
+    # tip). Step back by STEP until a block is returnable, then binary-search
+    # the (returnable, non-returnable) gap so ``high`` is the EXACT highest
+    # serveable block. Returning the coarse stepped-back block directly would
+    # mis-resolve a near-head target by up to STEP blocks; historical
+    # settlement anchors sit far below head and are unaffected either way.
+    _STEP = 16
     high = archive_height(chain)
+    above: int | None = None          # a known NON-returnable block just above ``high``
     head_ts: int | None = None
     for _ in range(64):
         if high <= 0:
@@ -244,12 +248,25 @@ def find_block_at_or_before(chain: str, target_ts: int) -> int:
             head_ts = block_timestamp(chain, high)
             break
         except HyperSyncError:
-            high -= 16
+            above = high
+            high -= _STEP
     if head_ts is None:
         raise HyperSyncError(
             f"find_block_at_or_before({chain}): no returnable block near head "
             f"{archive_height(chain)}"
         )
+    # Refine upward: the highest returnable block is in [high, above).
+    if above is not None and above - high > 1:
+        lo, hi = high, above          # lo returnable, hi not
+        while lo + 1 < hi:
+            mid = (lo + hi) // 2
+            try:
+                block_timestamp(chain, mid)
+                lo = mid
+            except HyperSyncError:
+                hi = mid
+        high = lo
+        head_ts = block_timestamp(chain, high)   # cached — free
     if head_ts <= target_ts:
         return high
     if block_timestamp(chain, 0) > target_ts:
