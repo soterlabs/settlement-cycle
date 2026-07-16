@@ -38,3 +38,4 @@ venues:
 sources:
   debt: hypersync
   balance: hypersync
+  position_balance: hypersync

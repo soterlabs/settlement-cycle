@@ -43,10 +43,10 @@ _MONTHS = [Month(2026, m) for m in (1, 2, 3, 4, 5, 6)]
 # upstream sources fed each settlement run. The debt source is listed for
 # completeness but is never queried (no ilk).
 _SOURCES_LIVE = {
-    "debt":              "(none — agent-rate-only prime, zero-debt series)",
-    "balance":           "DuneBalanceSource",
+    "debt":              "HyperSyncDebtSource (unused — agent-rate-only prime, no ilk)",
+    "balance":           "HyperSyncBalanceSource",
     "ssr":               "DuneSSRSource",
-    "position_balance":  "RPCPositionBalanceSource",
+    "position_balance":  "HyperSyncPositionBalanceSource",
     "convert_to_assets": "RPCConvertToAssetsSource",
     "block_resolver":    "DuneBlockResolver (orchestrator-upgraded) + RPC fallback",
 }

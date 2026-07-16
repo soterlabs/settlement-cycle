@@ -55,10 +55,10 @@ _MONTHS = [Month(2026, m) for m in (1, 2, 3, 4, 5, 6)]
 # Documented in provenance.json so an auditor can see at a glance which
 # upstream sources fed each settlement run.
 _SOURCES_LIVE = {
-    "debt":              "DuneDebtSource",
-    "balance":           "DuneBalanceSource",
+    "debt":              "HyperSyncDebtSource",
+    "balance":           "HyperSyncBalanceSource",
     "ssr":               "DuneSSRSource",
-    "position_balance":  "RPCPositionBalanceSource",
+    "position_balance":  "HyperSyncPositionBalanceSource",
     "convert_to_assets": "RPCConvertToAssetsSource",
     "block_resolver":    "DuneBlockResolver (orchestrator-upgraded) + RPC fallback",
 }
