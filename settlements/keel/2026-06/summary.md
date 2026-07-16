@@ -10,9 +10,9 @@ Period: 2026-06-01 → 2026-06-30 (30 days)
 
 | Field | USDS |
 |---|---:|
-| agent rate | 32,198.13 |
+| agent rate | 30,997.79 |
 | distribution rewards | 19,571.76 |
-| **demand-side revenue** | **51,769.89** |
+| **demand-side revenue** | **50,569.55** |
 
 #### Supply-Side revenue
 
