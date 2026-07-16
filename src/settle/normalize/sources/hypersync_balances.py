@@ -118,6 +118,14 @@ class HyperSyncBalanceSource:
         h = _addr_topic(holder)
         agg: dict[tuple[date, str], int] = {}      # (block_date, counterparty_topic) → signed raw
         for x in self._transfers_touching(chain, token, holder, start, pin_block):
+            if x["from"] == h and x["to"] == h:
+                # Self-transfer (holder→holder): no external counterparty and
+                # nets to zero. ``_transfers_touching`` dedups it to one row,
+                # so the ``x["to"] == h`` branch below would otherwise record a
+                # spurious one-sided +value inflow attributed to the holder
+                # itself, with no offsetting outflow leg. Skip it — matching
+                # ``cumulative_balance_timeseries``, which nets it to 0.
+                continue
             if x["to"] == h:                       # inflow: counterparty = from
                 key = (x["date"], x["from"])
                 agg[key] = agg.get(key, 0) + x["value"]

@@ -111,3 +111,18 @@ def test_dedup_self_transfer():
     df = _src([r, r]).cumulative_balance_timeseries("ethereum", _TOKEN, _H, date(2025, 11, 1), 25_000_000)
     # self-transfer nets to 0, counted once
     assert df["daily_net"].tolist() == [Decimal("0")]
+
+
+def test_inflow_by_counterparty_ignores_self_transfer():
+    U = 10**_DEC
+    rows = [
+        _xfer(10, 0, _ts(2025, 11, 18), _A, _H, 100 * U),   # +100 from A (real inflow)
+        # holder→holder: no external counterparty, nets to 0. Dedups to one
+        # row matching both selections; must NOT show up as a spurious inflow
+        # attributed to the holder itself.
+        _xfer(11, 0, _ts(2025, 11, 18), _H, _H, 5 * U),
+        _xfer(11, 0, _ts(2025, 11, 18), _H, _H, 5 * U),     # dup (both selections)
+    ]
+    df = _src(rows).inflow_by_counterparty("ethereum", _TOKEN, _H, date(2025, 11, 1), 25_000_000)
+    by_cp = {row.counterparty: row.signed_amount for row in df.itertuples()}
+    assert by_cp == {_A: Decimal("100")}                    # holder not a counterparty
