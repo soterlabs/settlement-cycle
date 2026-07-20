@@ -75,6 +75,18 @@ def _check_env() -> None:
         raise SystemExit(1)
 
 
+def _check_envio_token(*primes) -> None:
+    """Fail fast when a prime's YAML ``sources:`` block resolves any family to
+    hypersync but ENVIO_API_TOKEN is missing — otherwise the run burns minutes
+    of Dune/RPC work before dying on the first HyperSync fetch."""
+    needs = [p.id for p in primes
+             if "hypersync" in (getattr(p, "sources", None) or {}).values()]
+    if needs and not os.environ.get("ENVIO_API_TOKEN"):
+        print(f"Missing ENVIO_API_TOKEN — required by prime(s) {needs} "
+              f"(YAML sources: hypersync). Free token: https://app.envio.dev/api-tokens")
+        raise SystemExit(1)
+
+
 def _live_sources() -> Sources:
     """Live sources — every field left ``None`` on purpose.
 
@@ -106,6 +118,7 @@ def main() -> int:
     _check_env()
 
     prime = load_prime(_OBEX_YAML)
+    _check_envio_token(prime)
 
     print(f"OBEX 2026 multi-month settlement (Jan → Jun)")
     print("=" * 110)

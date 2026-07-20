@@ -101,27 +101,16 @@ def _sources_from_prime(prime: "Prime", base: "Sources | None" = None) -> Source
     """
     import dataclasses
 
-    from ..normalize.registry import (
-        get_balance_source,
-        get_block_resolver,
-        get_debt_source,
-        get_position_balance_source,
-        get_ssr_source,
-    )
+    from ..normalize.registry import SOURCE_FAMILIES
 
     ov = getattr(prime, "sources", None) or {}
     base = base if base is not None else Sources()
     kw: dict[str, object] = {}
-    if base.debt is None and "debt" in ov:
-        kw["debt"] = get_debt_source(ov["debt"])
-    if base.balance is None and "balance" in ov:
-        kw["balance"] = get_balance_source(ov["balance"])
-    if base.ssr is None and "ssr" in ov:
-        kw["ssr"] = get_ssr_source(ov["ssr"])
-    if base.block_resolver is None and "block_resolver" in ov:
-        kw["block_resolver"] = get_block_resolver(ov["block_resolver"])
-    if base.position_balance is None and "position_balance" in ov:
-        kw["position_balance"] = get_position_balance_source(ov["position_balance"])
+    # Table-driven over the SAME family map config validation uses — a family
+    # present in one but not the other can't silently no-op.
+    for family, (_registry, getter) in SOURCE_FAMILIES.items():
+        if family in ov and getattr(base, family) is None:
+            kw[family] = getter(ov[family])
     return dataclasses.replace(base, **kw) if kw else base  # type: ignore[arg-type]
 
 

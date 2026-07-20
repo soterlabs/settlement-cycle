@@ -27,13 +27,16 @@ import pandas as pd
 
 from ...extract import hypersync_store
 
-# Transfer(address indexed from, address indexed to, uint256 value)
-_TRANSFER_T0 = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+# Transfer topic0 + the 20↔32-byte topic codec live in extract/transfer_logs
+# (single implementation; the strict 20-byte check there raises on a wrong-
+# width address instead of silently padding into a topic that matches nothing).
+from ...extract.transfer_logs import TRANSFER_TOPIC0 as _TRANSFER_T0
 
 
 def _addr_topic(addr: bytes) -> str:
     """20-byte address → 32-byte topic hex (left-zero-padded), lower-case."""
-    return "0x" + bytes(addr).hex().rjust(64, "0")
+    from ...extract.transfer_logs import _to_topic_hex
+    return _to_topic_hex(bytes(addr))
 
 
 def _topic_to_addr(topic: str) -> bytes:

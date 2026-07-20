@@ -117,6 +117,27 @@ class UnknownSourceError(KeyError):
     """Raised when a config requests a source name that isn't registered."""
 
 
+# The five per-prime-overridable source families (the YAML ``sources:`` block).
+# ONE table shared by config validation (domain/config._validate_sources), the
+# compute-layer override merge (compute.monthly_pnl._sources_from_prime), and
+# provenance labeling (resolved_source_labels) — adding a family here wires all
+# three; a family added in only one place silently no-ops (2026-07 review).
+SOURCE_FAMILIES: dict[str, tuple[dict, "object"]] = {}
+
+
+def resolved_source_labels(prime, defaults: dict[str, str]) -> dict[str, str]:
+    """Provenance labels for ``prime``: ``defaults`` with every family the
+    prime's YAML ``sources:`` block overrides replaced by the actual resolved
+    class name. Keeps the auditor-facing ``provenance.json`` truthful when a
+    per-prime pilot (e.g. obex on hypersync) diverges from the fleet default."""
+    ov = getattr(prime, "sources", None) or {}
+    out = dict(defaults)
+    for family, name in ov.items():
+        registry, _getter = SOURCE_FAMILIES[family]
+        out[family] = registry[name].__name__
+    return out
+
+
 def get_debt_source(name: str = "dune") -> IDebtSource:
     if name not in _DEBT_SOURCES:
         raise UnknownSourceError(
@@ -232,3 +253,13 @@ def get_nav_oracle_source(kind: str) -> INavOracleSource:
         f"Available: {sorted(_NAV_ORACLE_SOURCES)}, const_<decimal_value>, "
         f"or erc4626_<underlying_decimals>_<share_decimals> (e.g. erc4626_6_18)."
     )
+
+
+# Populated last so every registry dict and getter above is defined.
+SOURCE_FAMILIES.update({
+    "debt": (_DEBT_SOURCES, get_debt_source),
+    "balance": (_BALANCE_SOURCES, get_balance_source),
+    "ssr": (_SSR_SOURCES, get_ssr_source),
+    "position_balance": (_POSITION_BALANCE_SOURCES, get_position_balance_source),
+    "block_resolver": (_BLOCK_RESOLVER_SOURCES, get_block_resolver),
+})

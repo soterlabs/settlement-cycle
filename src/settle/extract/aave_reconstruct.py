@@ -42,7 +42,9 @@ def ray_mul(a: int, b: int) -> int:
 
 
 def _addr_topic(addr: bytes) -> str:
-    return "0x" + bytes(addr).hex().rjust(64, "0")
+    # Single codec implementation (strict 20-byte check) lives in transfer_logs.
+    from .transfer_logs import _to_topic_hex
+    return _to_topic_hex(bytes(addr))
 
 
 def _words(data: str) -> list[int]:

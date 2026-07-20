@@ -44,6 +44,7 @@ from settle.compute import Sources, compute_monthly_pnl  # noqa: E402
 from settle.domain import Month  # noqa: E402
 from settle.domain.config import load_prime  # noqa: E402
 from settle.load import write_settlement  # noqa: E402
+from settle.normalize.registry import resolved_source_labels  # noqa: E402
 
 _PRIMES = {
     "obex":  _REPO / "config" / "obex.yaml",
@@ -103,6 +104,18 @@ def _check_env() -> None:
         raise SystemExit(1)
     if not os.environ.get("DATABASE_URL"):
         print("Note: DATABASE_URL not set — Postgres cache layer disabled.")
+
+def _check_envio_token(*primes) -> None:
+    """Fail fast when a prime's YAML ``sources:`` block resolves any family to
+    hypersync but ENVIO_API_TOKEN is missing — otherwise the run burns minutes
+    of Dune/RPC work before dying on the first HyperSync fetch."""
+    needs = [p.id for p in primes
+             if "hypersync" in (getattr(p, "sources", None) or {}).values()]
+    if needs and not os.environ.get("ENVIO_API_TOKEN"):
+        print(f"Missing ENVIO_API_TOKEN — required by prime(s) {needs} "
+              f"(YAML sources: hypersync). Free token: https://app.envio.dev/api-tokens")
+        raise SystemExit(1)
+
 
 
 def _live_sources() -> Sources:
@@ -176,6 +189,7 @@ def main() -> int:
 
     for prime_id in primes:
         prime = load_prime(_PRIMES[prime_id])
+        _check_envio_token(prime)
         for month in months:
             idx += 1
             label = f"{month.year}-{month.month:02d}"
@@ -192,7 +206,8 @@ def main() -> int:
                     "sky_direct_shortfall": float(result.sky_direct_shortfall),
                 }
                 out_dir = _REPO / "settlements" / prime_id / label
-                write_settlement(result, out_dir, sources=_SOURCES_LIVE)
+                write_settlement(result, out_dir,
+                                 sources=resolved_source_labels(prime, _SOURCES_LIVE))
                 print(
                     f"  prime_agent_revenue: ${float(result.prime_agent_revenue):>18,.2f}\n"
                     f"  agent_rate:          ${float(result.agent_rate):>18,.2f}\n"
