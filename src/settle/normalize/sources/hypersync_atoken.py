@@ -60,10 +60,13 @@ class HyperSyncAaveSource:
         can't tell rebasing from non-rebasing — but only aTokens carry these two
         immutable getters. The reads are memoised via the metadata cache, so a
         subsequent ``reconstruct_balance`` reuses them (no extra RPC)."""
-        try:
-            pool, reserve = self._metadata(chain, token, block)
-        except Exception:                       # not a contract with POOL() / read failed
-            return False
+        # Clean negative (non-aToken) is NOT an exception: ``rpc._decode_uint``
+        # maps reverts / empty returns ("0x") to 0, so a plain ERC-20 yields
+        # zero addresses here. A raised exception is therefore a TRANSPORT
+        # failure (timeout, rate limit) and MUST propagate — swallowing it as
+        # "not an aToken" would let a network blip bypass the structural gate
+        # and pin a rebasing token to stale event sums (fail-open).
+        pool, reserve = self._metadata(chain, token, block)
         zero = b"\x00" * 20
         return pool != zero and reserve != zero
 

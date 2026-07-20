@@ -38,18 +38,22 @@ _ROWS = [_xfer(10, 0, _OTHER, _H, 100), _xfer(20, 0, _H, _OTHER, 30)]
 
 
 def test_non_rebasing_probes_once_then_events_only():
-    rpc = _RPC(lambda block: 70)                    # RPC agrees with Σtransfers
+    # Block-aware fake: the TRUE balance timeline of a non-rebasing token
+    # (+100 at block 10, −30 at block 20) — the two-point probe reads the
+    # midpoint too, and a non-rebasing token matches there as well.
+    rpc = _RPC(lambda block: 100 if block < 20 else 70)
     src = HyperSyncPositionBalanceSource(
-        rpc, fetch_logs=lambda c, s, f, t: list(_ROWS),
+        rpc, fetch_logs=lambda c, s, f, t: [r for r in _ROWS if r.block_number <= t],
         aave_source=_AaveStub(70, is_atoken=False),  # plain ERC-20 → not an aToken
     )
-    # First call: probes RPC (+1), classifies "events" (70==70), returns 70
+    # First call: probe RPC at 25 (+1) and at the midpoint 17 (+1) — both
+    # match Σtransfers → classified "events", returns 70.
     assert src.balance_at("ethereum", _TOKEN, _H, 25) == 70
-    assert rpc.calls == 1
+    assert rpc.calls == 2
     # Subsequent calls: events only, no more RPC
     assert src.balance_at("ethereum", _TOKEN, _H, 25) == 70
     assert src.balance_at("ethereum", _TOKEN, _H, 25) == 70
-    assert rpc.calls == 1
+    assert rpc.calls == 2
 
 
 def test_rebasing_classified_rpc_and_always_delegates():
@@ -132,3 +136,46 @@ def test_events_balance_dedups_self_transfer():
     ])
     # self-transfer nets 0, counted once — internal helper
     assert src._events_balance("ethereum", _TOKEN, _H, 25) == 0
+
+
+class _RaisingAave:
+    """Aave source whose structural probe dies with a transport error."""
+    def is_atoken(self, chain, token, block):
+        raise RuntimeError("rpc timeout")
+    def reconstruct_balance(self, chain, token, holder, block):
+        raise RuntimeError("rpc timeout")
+
+
+def test_is_atoken_transport_error_fails_closed():
+    """A transport blip during the structural probe must NOT classify the
+    token 'events' (which would pin a rebasing aToken to stale transfer sums
+    and silently drop its interest) — it routes to the safe rpc path."""
+    rpc = _RPC(lambda block: 100 if block < 20 else 70)   # matches Σtransfers
+    src = HyperSyncPositionBalanceSource(
+        rpc, fetch_logs=lambda c, s, f, t: [r for r in _ROWS if r.block_number <= t],
+        aave_source=_RaisingAave(),
+    )
+    assert src.balance_at("ethereum", _TOKEN, _H, 25) == 70   # trusted RPC value
+    # Fail-closed: NOT pinned to events — later calls still consult RPC.
+    calls_after_probe = rpc.calls
+    assert src.balance_at("ethereum", _TOKEN, _H, 25) == 70
+    assert rpc.calls > calls_after_probe
+
+
+def test_non_aave_rebaser_caught_by_two_point_probe():
+    """A rebasing token WITHOUT Aave getters (stETH-style) that coincidentally
+    matches Σtransfers at the probe block must not be pinned to 'events' —
+    the midpoint probe sees the accrued drift and rejects it."""
+    # True (rebasing) balance: 100 at mint, drifts upward; by block 20 the
+    # holder sent 30 away; at 25 rebased balance is exactly 70 (coincidental
+    # match with Σtransfers), but at the midpoint 17 it had drifted to 104.
+    rpc = _RPC(lambda block: 104 if block < 20 else 70)
+    src = HyperSyncPositionBalanceSource(
+        rpc, fetch_logs=lambda c, s, f, t: [r for r in _ROWS if r.block_number <= t],
+        aave_source=_AaveStub(0, is_atoken=False),   # no Aave getters
+    )
+    assert src.balance_at("ethereum", _TOKEN, _H, 25) == 70   # trusted RPC value
+    # Rejected by the two-point check → classified rpc, not events.
+    calls_after_probe = rpc.calls
+    assert src.balance_at("ethereum", _TOKEN, _H, 17) == 104  # rpc path, correct
+    assert rpc.calls > calls_after_probe
