@@ -15,9 +15,13 @@
 --                        after a month ends is that month's income" — the
 --                        FIRST burn-date's burns count as income; any extra
 --                        burn in the window is surfaced but NOT attributed)
---   income:stability_fee one row per ilk (Σ over the month's vat.fold calls of
---                        Art(ilk, at that trace) × Δrate/1e27 — exactly what
---                        fold credits to the vow)
+--   income:stability_fee one row per ilk, ACCRUAL basis: Σ over checkpoints
+--                        (month bounds + every in-month Art change) of
+--                        Art(t_i) × (r_true(t_{i+1}) − r_true(t_i)), where
+--                        r_true(t) = rate(last fold ≤ t) × duty^(t − rho) is
+--                        reconstructed from `duty` directly (NOT from when
+--                        jug.drip/vat.fold happened to fire). See §"accrual
+--                        basis" note below.
 --   expense:susds_drip   sUSDS SSR recognized at drip (gross, all holders)
 --   expense:susds_prime  SSR accrued to PRIME-held sUSDS (ALM + subproxy
 --                        holders) — already netted inside MSC via BR − 30bps /
@@ -28,16 +32,34 @@
 -- Precision: drip/burn lines are exact DECIMAL sums ÷ 1e18. The fee and
 -- prime-carve-out lines multiply 1e27-scale factors and use DOUBLE (relative
 -- error ~1e-15, sub-cent on $M lines; validated to the dollar vs the target).
+--
+-- Accrual basis (stability fees): an ilk's debt earns interest continuously at
+-- its jug `duty`; the chain only records it when someone calls jug.drip →
+-- vat.fold, which can lag hours (ETH ilks) or YEARS (legacy RWA). Booking at
+-- fold slushes that catch-up into whatever month the keeper poked. Instead we
+-- reconstruct the true rate index r_true(t) = rate(last fold ≤ t) ×
+-- duty^(t − rho_lastfold) and integrate Art × Δr_true across the month. This
+-- needs NO future fold — r_true is projected from the last fold + duty (both
+-- past data) and lands exactly on the next fold when it fires. Exact given two
+-- mainnet invariants: (1) every duty change ships with a drip in the same
+-- spell, so duty is constant across each inter-fold interval and r_true never
+-- crosses a duty change; (2) jug.base has always been 0. Validated May/Jun
+-- 2026 to the dollar against BA Labs' published per-ilk P&L (see PRD §17.13).
 
 WITH fee_ilks AS (
-  -- The full ilk universe (every vat.init since genesis) EXCEPT the
-  -- ALLOCATOR-* ilks, whose BR income is the MSC (prime) side. This
-  -- subsumes the 9 core-vault ilks (ETH-A/B/C, WSTETH-A/B, WBTC-A/B/C,
-  -- LSEV2-SKY-A) plus any residual fee-earning ilk (2026: RWA002-A,
-  -- ~$200K/mo) — future onboardings are included automatically.
+  -- The full ilk universe (every vat.init since genesis) MINUS the prime-side
+  -- and defunct prefixes: ALLOCATOR-%/DIRECT-% are the MSC (prime) BR side,
+  -- PSM-%/TELEPORT% are defunct. This leaves the 9 core-vault ilks (ETH-A/B/C,
+  -- WSTETH-A/B, WBTC-A/B/C, LSEV2-SKY-A) plus the fee-earning legacy RWA ilks
+  -- (2026: RWA002-A ~$200K/mo, RWA004-A/RWA005-A ~$10K/mo each — the latter
+  -- two never drip, so the accrual basis is what surfaces them at all).
+  -- Future onboardings are included automatically; no whitelist.
   SELECT DISTINCT ilk FROM maker_ethereum.vat_call_init
   WHERE call_success
     AND from_utf8(ilk) NOT LIKE 'ALLOCATOR-%'
+    AND from_utf8(ilk) NOT LIKE 'DIRECT-%'
+    AND from_utf8(ilk) NOT LIKE 'PSM-%'
+    AND from_utf8(ilk) NOT LIKE 'TELEPORT%'
 ),
 prime_holders AS (
   -- Prime sUSDS holders on Ethereum (ALM proxies + subproxies) whose SSR is
@@ -69,41 +91,114 @@ jar_burns AS (
     AND evt_block_number <= {{pin_block}}
 ),
 
--- ── income: stability fees at fold ──────────────────────────────────────────
-vat_events AS (
-  SELECT i, call_block_number AS bn, call_tx_index AS txi, call_trace_address AS tr,
-         CAST(dart AS DECIMAL(38,0)) AS dart, CAST(NULL AS DECIMAL(38,0)) AS rate,
-         call_block_date AS d
-  FROM maker_ethereum.vat_call_frob
-  WHERE call_success AND i IN (SELECT ilk FROM fee_ilks)
-    AND call_block_number <= {{pin_block}}
-  UNION ALL
-  SELECT i, call_block_number, call_tx_index, call_trace_address,
-         CAST(dart AS DECIMAL(38,0)), CAST(NULL AS DECIMAL(38,0)), call_block_date
-  FROM maker_ethereum.vat_call_grab
-  WHERE call_success AND i IN (SELECT ilk FROM fee_ilks)
-    AND call_block_number <= {{pin_block}}
-  UNION ALL
-  SELECT i, call_block_number, call_tx_index, call_trace_address,
-         CAST(0 AS DECIMAL(38,0)), CAST(rate AS DECIMAL(38,0)), call_block_date
+-- ── income: stability fees, ACCRUAL basis ───────────────────────────────────
+-- Per ilk: reconstruct r_true(t) and integrate Art × Δr_true over the month.
+folds AS (
+  SELECT i, CAST(call_block_time AS TIMESTAMP) AS t,
+         call_block_number AS bn, call_tx_index AS txi, call_trace_address AS tr,
+         CAST(rate AS DECIMAL(38,0)) AS drate
   FROM maker_ethereum.vat_call_fold
-  WHERE call_success AND i IN (SELECT ilk FROM fee_ilks)
-    AND call_block_number <= {{pin_block}}
+  WHERE call_success AND i IN (SELECT ilk FROM fee_ilks) AND call_block_number <= {{pin_block}}
 ),
-vat_running AS (
-  SELECT i, d, rate,
-         SUM(dart) OVER (PARTITION BY i ORDER BY bn, txi, tr
-                         ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS art
-  FROM vat_events
+duty_hist AS (   -- per-ilk jug `duty` (RAY per-second) over time
+  SELECT ilk AS i, CAST(call_block_time AS TIMESTAMP) AS t,
+         CAST(data_uint256 AS DOUBLE) AS duty
+  FROM maker_ethereum.jug_call_file
+  WHERE call_success AND from_utf8(what) LIKE 'duty%'
+    AND ilk IN (SELECT ilk FROM fee_ilks) AND call_block_number <= {{pin_block}}
+),
+art_events AS (   -- every Art change (draw / repay / liquidation seizure)
+  SELECT i, CAST(call_block_time AS TIMESTAMP) AS t,
+         call_block_number AS bn, call_tx_index AS txi, call_trace_address AS tr,
+         CAST(dart AS DECIMAL(38,0)) AS dart
+  FROM maker_ethereum.vat_call_frob
+  WHERE call_success AND i IN (SELECT ilk FROM fee_ilks) AND call_block_number <= {{pin_block}}
+  UNION ALL
+  SELECT i, CAST(call_block_time AS TIMESTAMP), call_block_number, call_tx_index, call_trace_address,
+         CAST(dart AS DECIMAL(38,0))
+  FROM maker_ethereum.vat_call_grab
+  WHERE call_success AND i IN (SELECT ilk FROM fee_ilks) AND call_block_number <= {{pin_block}}
+),
+-- Carried-in state at month_start (cheap GROUP-BY aggregations over genesis —
+-- keeps the per-row windowing below confined to the small in-month event set).
+art0 AS (
+  SELECT i, SUM(dart) AS art
+  FROM art_events WHERE t < CAST(DATE '{{month_start}}' AS TIMESTAMP) GROUP BY i
+),
+fold0 AS (   -- rate accumulator (RAY + Σ prior deltas) & rho at last fold < month_start
+  SELECT i, DECIMAL '1000000000000000000000000000' + SUM(drate) AS rate_abs, MAX(t) AS rho
+  FROM folds WHERE t < CAST(DATE '{{month_start}}' AS TIMESTAMP) GROUP BY i
+),
+duty0 AS (   -- duty at month_start (last file ≤ rho0 == last file < month_start)
+  SELECT i, duty FROM (
+    SELECT i, duty, ROW_NUMBER() OVER (PARTITION BY i ORDER BY t DESC) AS rn
+    FROM duty_hist WHERE t < CAST(DATE '{{month_start}}' AS TIMESTAMP)
+  ) WHERE rn = 1
+),
+-- Unified rows: one seed row per ilk at month_start carrying the carried-in
+-- state (art0 as initial dart, rate0 as initial rate delta), then the in-month
+-- folds / Art-changes / duty files, then a month_end boundary row. The seed +
+-- month-bound rows sort around same-second events via bn sentinels.
+-- Columns: i, ts, bn, txi, tr, dart, rate_delta, rho_src, duty, is_ckpt
+rows_u AS (
+  SELECT f.i, CAST(DATE '{{month_start}}' AS TIMESTAMP) AS ts,
+         CAST(-1 AS BIGINT) AS bn, 0 AS txi, CAST(ARRAY[] AS ARRAY(BIGINT)) AS tr,
+         COALESCE(a.art, CAST(0 AS DECIMAL(38,0))) AS dart,
+         f.rate_abs AS rate_delta, f.rho AS rho_src, d.duty AS duty, true AS is_ckpt
+  FROM fold0 f
+  LEFT JOIN art0 a ON a.i = f.i
+  LEFT JOIN duty0 d ON d.i = f.i
+  UNION ALL
+  SELECT i, t, bn, txi, tr, CAST(0 AS DECIMAL(38,0)), drate, t, CAST(NULL AS DOUBLE), false
+  FROM folds
+  WHERE t >= CAST(DATE '{{month_start}}' AS TIMESTAMP) AND t < CAST(DATE '{{month_end_excl}}' AS TIMESTAMP)
+  UNION ALL
+  SELECT i, t, bn, txi, tr, dart, CAST(0 AS DECIMAL(38,0)), CAST(NULL AS TIMESTAMP), CAST(NULL AS DOUBLE), true
+  FROM art_events
+  WHERE t >= CAST(DATE '{{month_start}}' AS TIMESTAMP) AND t < CAST(DATE '{{month_end_excl}}' AS TIMESTAMP)
+  UNION ALL
+  SELECT i, t, 9223372036854775806, 0, CAST(ARRAY[] AS ARRAY(BIGINT)),
+         CAST(0 AS DECIMAL(38,0)), CAST(0 AS DECIMAL(38,0)), CAST(NULL AS TIMESTAMP), duty, false
+  FROM duty_hist
+  WHERE t >= CAST(DATE '{{month_start}}' AS TIMESTAMP) AND t < CAST(DATE '{{month_end_excl}}' AS TIMESTAMP)
+  UNION ALL
+  SELECT fi.ilk, CAST(DATE '{{month_end_excl}}' AS TIMESTAMP), 9223372036854775807, 0,
+         CAST(ARRAY[] AS ARRAY(BIGINT)), CAST(0 AS DECIMAL(38,0)), CAST(0 AS DECIMAL(38,0)),
+         CAST(NULL AS TIMESTAMP), CAST(NULL AS DOUBLE), true
+  FROM fee_ilks fi
+),
+filled AS (   -- running Art + rate accumulator + forward-filled (rho, duty)
+  SELECT i, ts, bn, txi, tr, is_ckpt,
+         SUM(dart)       OVER w AS art,
+         SUM(rate_delta) OVER w AS rate_abs,
+         LAST_VALUE(rho_src) IGNORE NULLS OVER w AS rho,
+         LAST_VALUE(duty)    IGNORE NULLS OVER w AS duty
+  FROM rows_u
+  WINDOW w AS (PARTITION BY i ORDER BY ts, bn, txi, tr
+               ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+),
+ckpt_pick AS (   -- collapse to one row per (ilk, checkpoint ts): last-ordered state
+  SELECT i, ts, art, rate_abs, rho, duty,
+         ROW_NUMBER() OVER (PARTITION BY i, ts ORDER BY bn DESC, txi DESC, tr DESC) AS rn
+  FROM filled WHERE is_ckpt
+),
+ckpt AS (   -- r_true(ts) = rate(last fold ≤ ts) × duty^(ts − rho)
+  SELECT i, ts, art,
+         CAST(rate_abs AS DOUBLE)
+           * POWER(duty / 1e27, CAST(date_diff('second', rho, ts) AS DOUBLE)) AS rtrue
+  FROM ckpt_pick
+  WHERE rn = 1 AND rate_abs IS NOT NULL AND rho IS NOT NULL AND duty IS NOT NULL
+),
+fee_iv AS (   -- interval contribution: Art(t_i) × (r_true(t_{i+1}) − r_true(t_i))
+  SELECT i, CAST(art AS DOUBLE) / 1e18
+             * (LEAD(rtrue) OVER (PARTITION BY i ORDER BY ts) - rtrue) AS contrib
+  FROM ckpt
 ),
 fees AS (
-  SELECT rtrim(from_utf8(r.i), U&'\0000') AS label,
-         SUM(CAST(r.art AS DOUBLE) / 1e18 * CAST(r.rate AS DOUBLE) / 1e27) AS amount
-  FROM vat_running r
-  WHERE r.rate IS NOT NULL
-    AND r.d >= DATE '{{month_start}}' AND r.d < DATE '{{month_end_excl}}'
+  SELECT rtrim(from_utf8(i), U&'\0000') AS label, SUM(contrib) / 1e27 AS amount
+  FROM fee_iv
   GROUP BY 1
-  HAVING ABS(SUM(CAST(r.art AS DOUBLE) / 1e18 * CAST(r.rate AS DOUBLE) / 1e27)) >= 0.01
+  HAVING ABS(SUM(contrib) / 1e27) >= 0.01
 ),
 
 -- ── expense: savings drips ──────────────────────────────────────────────────

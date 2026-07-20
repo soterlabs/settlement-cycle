@@ -11,7 +11,7 @@ Consolidated Sky net revenue: supply-side sky revenue from the five prime agents
 | sky revenue — skybase | 0.00 |
 | Σ prime sky revenue | 20,568,342.92 |
 | less: prime demand-side payments (agent rate + DR) | -2,119,439.52 |
-| non-MSC net revenue | -4,862,103.61 |
-| **sky total net revenue** | **13,586,799.80** |
+| non-MSC net revenue | -4,779,038.14 |
+| **sky total net revenue** | **13,669,865.26** |
 
 > Reference (BA Labs `financials/settlements/historic`, not blended): net_revenue = 15,698,681.55

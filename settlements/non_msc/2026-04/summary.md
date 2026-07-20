@@ -1,20 +1,25 @@
 # NON_MSC — 2026-04
 
-Sky protocol P&L outside the prime-agent (MSC) perimeter. Methodology: PSM income cash-recognized at the jar burn following month-end; stability fees at `vat.fold` (Art × Δrate); savings interest at `drip`, sUSDS net of the prime-held carve-out (MSC-accounted).
+Sky protocol P&L outside the prime-agent (MSC) perimeter. Methodology: PSM income cash-recognized at the jar burn following month-end; stability fees on the accrual basis (Art × Δr_true, r_true reconstructed from `duty`); savings interest at `drip`, sUSDS net of the prime-held carve-out (MSC-accounted).
 
 ## Income
 
 | Stream | USDS |
 |---|---:|
 | PSM/Coinbase jar burn (2026-05-14) | 10,265,611.43 |
-| stability fee ETH-C | 1,961,250.55 |
-| stability fee LSEV2-SKY-A | 1,068,390.07 |
-| stability fee ETH-A | 1,009,068.26 |
-| stability fee RWA002-A | 194,686.56 |
-| stability fee WSTETH-A | 134,402.06 |
-| stability fee WSTETH-B | 96,200.61 |
-| stability fee ETH-B | 56,920.13 |
-| **total income** | **14,786,529.67** |
+| stability fee ETH-C | 1,958,917.35 |
+| stability fee LSEV2-SKY-A | 1,067,678.81 |
+| stability fee ETH-A | 1,049,556.59 |
+| stability fee RWA002-A | 194,733.50 |
+| stability fee WSTETH-A | 144,526.84 |
+| stability fee WSTETH-B | 90,854.10 |
+| stability fee ETH-B | 54,614.11 |
+| stability fee WBTC-C | 11,633.98 |
+| stability fee RWA005-A | 10,923.76 |
+| stability fee RWA004-A | 10,021.08 |
+| stability fee WBTC-A | 8,572.96 |
+| stability fee WBTC-B | 1,950.62 |
+| **total income** | **14,869,595.14** |
 
 ## Expense
 
@@ -39,4 +44,4 @@ Sky protocol P&L outside the prime-agent (MSC) perimeter. Methodology: PSM incom
 
 | Field | USDS |
 |---|---:|
-| **non-MSC net revenue** | **-4,862,103.61** |
+| **non-MSC net revenue** | **-4,779,038.14** |
