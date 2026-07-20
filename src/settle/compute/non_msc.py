@@ -6,8 +6,9 @@ https://hackmd.io/@W57nO5PyRMKhcLqjvsLifw/S1zxTDpXMg — every line validated to
 the dollar for May 2026, see PRD §17.13):
 
   income   = PSM/Coinbase jar burns (cash at burn, attributed to the month the
-             burn follows) + stability fees on the 9 core-vault ilks (Art × Δrate
-             at each vat.fold — what fold credits to the vow)
+             burn follows) + stability fees on the non-ALLOCATOR ilk universe,
+             ACCRUAL basis (Art × Δr_true integrated across the month, r_true
+             reconstructed from `duty` — independent of when jug.drip fired)
   expense  = sUSDS SSR at drip (GROSS — prime-held SSR stays in the expense
              because MSC sky_revenue carries the offsetting BR income; the
              prime/user split is informational) + legacy DSR + stUSDS
@@ -223,7 +224,8 @@ def render_summary(r: NonMscMonthly) -> str:
     L.append("")
     L.append("Sky protocol P&L outside the prime-agent (MSC) perimeter. "
              "Methodology: PSM income cash-recognized at the jar burn "
-             "following month-end; stability fees at `vat.fold` (Art × Δrate); "
+             "following month-end; stability fees on the accrual basis "
+             "(Art × Δr_true, r_true reconstructed from `duty`); "
              "savings interest at `drip`, sUSDS net of the prime-held "
              "carve-out (MSC-accounted).")
     L.append("")

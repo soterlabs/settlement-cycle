@@ -11,8 +11,8 @@ Consolidated Sky net revenue: supply-side sky revenue from the five prime agents
 | sky revenue — skybase | 0.00 |
 | Σ prime sky revenue | 18,957,484.61 |
 | less: prime demand-side payments (agent rate + DR) | -2,209,588.72 |
-| non-MSC net revenue | -13,872,447.01 |
-| **sky total net revenue** | **2,875,448.88** |
+| non-MSC net revenue | -13,974,441.48 |
+| **sky total net revenue** | **2,773,454.41** |
 
 > Reference (BA Labs `financials/settlements/historic`, not blended): net_revenue = n/a
-> ⚠ non_msc: no jar burn found in (2026-06-30, 2026-07-31] at pin 25537714 — PSM income is $0 in this run; re-run after the monthly burn lands.
+> ⚠ non_msc: no jar burn found in (2026-06-30, 2026-07-31] at pin 25553046 — PSM income is $0 in this run; re-run after the monthly burn lands.

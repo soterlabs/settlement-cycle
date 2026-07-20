@@ -1,21 +1,25 @@
 # NON_MSC — 2026-06
 
-Sky protocol P&L outside the prime-agent (MSC) perimeter. Methodology: PSM income cash-recognized at the jar burn following month-end; stability fees at `vat.fold` (Art × Δrate); savings interest at `drip`, sUSDS net of the prime-held carve-out (MSC-accounted).
+Sky protocol P&L outside the prime-agent (MSC) perimeter. Methodology: PSM income cash-recognized at the jar burn following month-end; stability fees on the accrual basis (Art × Δr_true, r_true reconstructed from `duty`); savings interest at `drip`, sUSDS net of the prime-held carve-out (MSC-accounted).
 
 ## Income
 
 | Stream | USDS |
 |---|---:|
 | PSM/Coinbase jar burn (none in window yet) | 0.00 |
-| stability fee ETH-C | 2,185,116.90 |
-| stability fee ETH-A | 1,209,713.96 |
-| stability fee LSEV2-SKY-A | 1,047,487.76 |
-| stability fee RWA002-A | 201,039.51 |
-| stability fee WSTETH-A | 145,270.44 |
-| stability fee WSTETH-B | 58,038.13 |
-| stability fee ETH-B | 42,113.33 |
-| stability fee WBTC-A | 3,394.68 |
-| **total income** | **4,892,174.71** |
+| stability fee ETH-C | 2,121,022.19 |
+| stability fee ETH-A | 1,133,403.64 |
+| stability fee LSEV2-SKY-A | 1,045,965.09 |
+| stability fee RWA002-A | 201,032.40 |
+| stability fee WSTETH-A | 147,861.91 |
+| stability fee WSTETH-B | 53,446.52 |
+| stability fee ETH-B | 44,018.77 |
+| stability fee WBTC-C | 11,742.85 |
+| stability fee RWA005-A | 11,004.41 |
+| stability fee RWA004-A | 10,135.04 |
+| stability fee WBTC-A | 8,547.75 |
+| stability fee WBTC-B | 1,999.67 |
+| **total income** | **4,790,180.24** |
 
 ## Expense
 
@@ -40,6 +44,6 @@ Sky protocol P&L outside the prime-agent (MSC) perimeter. Methodology: PSM incom
 
 | Field | USDS |
 |---|---:|
-| **non-MSC net revenue** | **-13,872,447.01** |
+| **non-MSC net revenue** | **-13,974,441.48** |
 
-> ⚠ no jar burn found in (2026-06-30, 2026-07-31] at pin 25537714 — PSM income is $0 in this run; re-run after the monthly burn lands.
+> ⚠ no jar burn found in (2026-06-30, 2026-07-31] at pin 25553046 — PSM income is $0 in this run; re-run after the monthly burn lands.
