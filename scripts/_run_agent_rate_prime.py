@@ -36,13 +36,6 @@ from settle.compute import Sources, compute_monthly_pnl  # noqa: E402
 from settle.domain import Month  # noqa: E402
 from settle.domain.config import load_prime  # noqa: E402
 from settle.load import write_settlement  # noqa: E402
-from settle.normalize.registry import (  # noqa: E402
-    get_balance_source,
-    get_convert_to_assets_source,
-    get_debt_source,
-    get_position_balance_source,
-    get_ssr_source,
-)
 
 _MONTHS = [Month(2026, m) for m in (1, 2, 3, 4, 5, 6)]
 
@@ -50,10 +43,10 @@ _MONTHS = [Month(2026, m) for m in (1, 2, 3, 4, 5, 6)]
 # upstream sources fed each settlement run. The debt source is listed for
 # completeness but is never queried (no ilk).
 _SOURCES_LIVE = {
-    "debt":              "(none — agent-rate-only prime, zero-debt series)",
-    "balance":           "DuneBalanceSource",
+    "debt":              "HyperSyncDebtSource (unused — agent-rate-only prime, no ilk)",
+    "balance":           "HyperSyncBalanceSource",
     "ssr":               "DuneSSRSource",
-    "position_balance":  "RPCPositionBalanceSource",
+    "position_balance":  "HyperSyncPositionBalanceSource",
     "convert_to_assets": "RPCConvertToAssetsSource",
     "block_resolver":    "DuneBlockResolver (orchestrator-upgraded) + RPC fallback",
 }
@@ -69,16 +62,30 @@ def _check_env() -> None:
         raise SystemExit(1)
 
 
+def _check_envio_token(*primes) -> None:
+    """Fail fast when a prime's YAML ``sources:`` block resolves any family to
+    hypersync but ENVIO_API_TOKEN is missing — otherwise the run burns minutes
+    of Dune/RPC work before dying on the first HyperSync fetch."""
+    needs = [p.id for p in primes
+             if "hypersync" in (getattr(p, "sources", None) or {}).values()]
+    if needs and not os.environ.get("ENVIO_API_TOKEN"):
+        print(f"Missing ENVIO_API_TOKEN — required by prime(s) {needs} "
+              f"(YAML sources: hypersync). Free token: https://app.envio.dev/api-tokens")
+        raise SystemExit(1)
+
+
 def _live_sources() -> Sources:
-    """Live sources; ``block_resolver`` left ``None`` so the orchestrator
-    upgrades it to ``DuneBlockResolver``."""
-    return Sources(
-        debt=get_debt_source(),
-        balance=get_balance_source(),
-        ssr=get_ssr_source(),
-        position_balance=get_position_balance_source(),
-        convert_to_assets=get_convert_to_assets_source(),
-    )
+    """Live sources — every field left ``None`` on purpose.
+
+    ``compute_monthly_pnl`` merges each prime's YAML ``sources:`` overrides
+    into the ``None`` fields (``_sources_from_prime``) and defaults any
+    still-``None`` field to its registry default at each call site. Passing a
+    concrete source here would short-circuit the orchestrator's
+    ``block_resolver`` Dune upgrade and silently drop a prime's per-prime
+    backend pilot for that field (``_sources_from_prime`` fills only ``None``
+    fields, so a non-``None`` ``position_balance`` would make
+    ``position_balance: hypersync`` in a prime YAML a no-op)."""
+    return Sources()
 
 
 def run(prime_id: str) -> int:
@@ -97,6 +104,7 @@ def run(prime_id: str) -> int:
     _check_env()
 
     prime = load_prime(_REPO / "config" / f"{prime_id}.yaml")
+    _check_envio_token(prime)
 
     print(f"{prime_id.upper()} 2026 multi-month settlement (Jan → Jun) — agent-rate-only")
     print("=" * 96)

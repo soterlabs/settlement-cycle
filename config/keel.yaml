@@ -15,3 +15,12 @@ start_date: '2025-12-01'
 addresses:
   ethereum:
     subproxy: '0x355CD90Ecb1b409Fdf8b64c4473C3B858dA2c310'
+
+# Source backend: Envio HyperSync instead of Dune for debt + balances (see
+# registry.py / normalize/sources/hypersync_*). Keel is agent-rate-only, so
+# debt is a no-op (no ilk); balance drives the subproxy USDS/sUSDS agent-rate
+# base. Prices/SSR/DR unaffected. Requires ENVIO_API_TOKEN.
+sources:
+  debt: hypersync
+  balance: hypersync
+  position_balance: hypersync

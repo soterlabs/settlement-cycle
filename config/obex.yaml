@@ -30,5 +30,12 @@ venues:
       symbol: 'USDC'
       decimals: 6
 
-# Source dispatch (debt → Dune, prices → RPC + on-chain oracles, etc.) is
-# resolved by `src/settle/normalize/registry.py`, not by this file.
+# Source dispatch. Defaults (debt → Dune, balances → Dune, prices → RPC +
+# on-chain oracles) live in `src/settle/normalize/registry.py`. Overrides below
+# migrate individual backends per-prime. OBEX is the HyperSync pilot: debt and
+# balances come from Envio HyperSync (raw logs, reorg-safe store) instead of
+# Dune. Requires ENVIO_API_TOKEN. Prices/oracles still use RPC.
+sources:
+  debt: hypersync
+  balance: hypersync
+  position_balance: hypersync

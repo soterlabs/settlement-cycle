@@ -22,6 +22,9 @@ from .protocols import (
 )
 from .sources.dune_balances import DuneBalanceSource
 from .sources.dune_debt import DuneDebtSource
+from .sources.envio_debt import EnvioDebtSource
+from .sources.hypersync_balances import HyperSyncBalanceSource
+from .sources.hypersync_debt import HyperSyncDebtSource
 from .sources.dune_savings_v2_deployed import DuneSavingsV2DeployedSource
 from .sources.dune_ssr import DuneSSRSource
 from .sources.oracles import (
@@ -32,6 +35,8 @@ from .sources.oracles import (
     PricePerShareNavSource,
     RedstoneNavSource,
 )
+from .sources.hypersync_block_resolver import HyperSyncBlockResolver
+from .sources.hypersync_position_balance import HyperSyncPositionBalanceSource
 from .sources.rpc_block_resolver import RPCBlockResolver
 from .sources.rpc_position import (
     RPCConvertToAssetsSource,
@@ -41,10 +46,24 @@ from .sources.rpc_position import (
 
 _DEBT_SOURCES: dict[str, type[IDebtSource]] = {
     "dune": DuneDebtSource,
+    # HyperSync-direct (recommended Envio path): raw-log query filtered by the
+    # frob/grab topic0 selector. Works around HyperIndex's inability to decode
+    # the Vat's anonymous 4-indexed LogNote (enviodev/hyperindex#990). Requires
+    # ENVIO_API_TOKEN. Run side-by-side with ``dune`` via
+    # scripts/compare_debt_sources.py; retire ``dune`` only once they agree.
+    "hypersync": HyperSyncDebtSource,
+    # HyperIndex-via-GraphQL. NON-FUNCTIONAL for this contract: the Vat's
+    # anonymous LogNote can't be indexed by HyperIndex (see #990). Kept for the
+    # non-anonymous event surface and in case #990 lands. Requires ENVIO_GRAPHQL_URL.
+    "envio": EnvioDebtSource,
 }
 
 _BALANCE_SOURCES: dict[str, type[IBalanceSource]] = {
     "dune": DuneBalanceSource,
+    # HyperSync-direct: reconstructs balances/inflows from raw Transfer logs via
+    # the reorg-safe hypersync_store. Requires ENVIO_API_TOKEN. Same output
+    # contract as ``dune``. See sources/hypersync_balances.py.
+    "hypersync": HyperSyncBalanceSource,
 }
 
 _SSR_SOURCES: dict[str, type[ISSRSource]] = {
@@ -57,6 +76,10 @@ _SAVINGS_V2_DEPLOYED_SOURCES: dict[str, type[ISavingsV2DeployedSource]] = {
 
 _POSITION_BALANCE_SOURCES: dict[str, type[IPositionBalanceSource]] = {
     "rpc": RPCPositionBalanceSource,
+    # Self-verifying event/RPC hybrid: reconstructs balanceOf from Transfer logs
+    # for non-rebasing tokens (proven equal to RPC before trusting), falls back
+    # to RPC for rebasing aTokens/spTokens. See hypersync_position_balance.py.
+    "hypersync": HyperSyncPositionBalanceSource,
 }
 
 _CONVERT_TO_ASSETS_SOURCES: dict[str, type[IConvertToAssetsSource]] = {
@@ -69,6 +92,10 @@ _PSM3_SOURCES: dict[str, type[IPsm3Source]] = {
 
 _BLOCK_RESOLVER_SOURCES: dict[str, type[IBlockResolver]] = {
     "rpc": RPCBlockResolver,
+    # HyperSync-backed: block↔timestamp off HyperSync instead of the archive
+    # RPC (identical results, faster, and works on lagging RPC chains like
+    # monad). See sources/hypersync_block_resolver.py. Requires ENVIO_API_TOKEN.
+    "hypersync": HyperSyncBlockResolver,
     # ``dune`` requires a date range at construction time — instantiated by
     # the caller with explicit (chain, start_date, end_date, pin_block), not
     # via the no-arg ``get_block_resolver()`` factory. See
@@ -88,6 +115,27 @@ _NAV_ORACLE_SOURCES: dict[str, type[INavOracleSource]] = {
 
 class UnknownSourceError(KeyError):
     """Raised when a config requests a source name that isn't registered."""
+
+
+# The five per-prime-overridable source families (the YAML ``sources:`` block).
+# ONE table shared by config validation (domain/config._validate_sources), the
+# compute-layer override merge (compute.monthly_pnl._sources_from_prime), and
+# provenance labeling (resolved_source_labels) — adding a family here wires all
+# three; a family added in only one place silently no-ops (2026-07 review).
+SOURCE_FAMILIES: dict[str, tuple[dict, "object"]] = {}
+
+
+def resolved_source_labels(prime, defaults: dict[str, str]) -> dict[str, str]:
+    """Provenance labels for ``prime``: ``defaults`` with every family the
+    prime's YAML ``sources:`` block overrides replaced by the actual resolved
+    class name. Keeps the auditor-facing ``provenance.json`` truthful when a
+    per-prime pilot (e.g. obex on hypersync) diverges from the fleet default."""
+    ov = getattr(prime, "sources", None) or {}
+    out = dict(defaults)
+    for family, name in ov.items():
+        registry, _getter = SOURCE_FAMILIES[family]
+        out[family] = registry[name].__name__
+    return out
 
 
 def get_debt_source(name: str = "dune") -> IDebtSource:
@@ -205,3 +253,13 @@ def get_nav_oracle_source(kind: str) -> INavOracleSource:
         f"Available: {sorted(_NAV_ORACLE_SOURCES)}, const_<decimal_value>, "
         f"or erc4626_<underlying_decimals>_<share_decimals> (e.g. erc4626_6_18)."
     )
+
+
+# Populated last so every registry dict and getter above is defined.
+SOURCE_FAMILIES.update({
+    "debt": (_DEBT_SOURCES, get_debt_source),
+    "balance": (_BALANCE_SOURCES, get_balance_source),
+    "ssr": (_SSR_SOURCES, get_ssr_source),
+    "position_balance": (_POSITION_BALANCE_SOURCES, get_position_balance_source),
+    "block_resolver": (_BLOCK_RESOLVER_SOURCES, get_block_resolver),
+})
