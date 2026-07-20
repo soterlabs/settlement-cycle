@@ -220,23 +220,17 @@ def block_timestamp(chain: str, block: int) -> int:
     raise HyperSyncError(f"HyperSync {chain}: block {block} not returned")
 
 
-@cached(source_id="hypersync.find_block_at_or_before")
-def find_block_at_or_before(chain: str, target_ts: int) -> int:
-    """Highest block on ``chain`` whose timestamp <= ``target_ts`` (unix, UTC).
+def _returnable_head(chain: str) -> tuple[int, int]:
+    """Exact highest query-returnable block on ``chain`` and its timestamp.
 
-    Binary search over HyperSync block timestamps — mirrors
-    ``extract.rpc._find_block_at_or_before_rpc`` exactly, so the result is
-    identical to the RPC resolver, but every probe hits HyperSync (fast, cheap,
-    off the archive RPC — and works on chains whose RPC is lagging, e.g. monad).
-    Result is cached, so repeat (chain, target_ts) is free.
+    ``archive_height`` can report a head block whose data isn't yet
+    query-returnable (``include_all_blocks`` returns nothing for the very
+    tip). Step back by STEP until a block is returnable, then binary-search
+    the (returnable, non-returnable) gap so the result is the EXACT highest
+    serveable block. Returning the coarse stepped-back block directly would
+    mis-resolve a near-head target by up to STEP blocks; historical
+    settlement anchors sit far below head and are unaffected either way.
     """
-    # ``archive_height`` can report a head block whose data isn't yet
-    # query-returnable (``include_all_blocks`` returns nothing for the very
-    # tip). Step back by STEP until a block is returnable, then binary-search
-    # the (returnable, non-returnable) gap so ``high`` is the EXACT highest
-    # serveable block. Returning the coarse stepped-back block directly would
-    # mis-resolve a near-head target by up to STEP blocks; historical
-    # settlement anchors sit far below head and are unaffected either way.
     _STEP = 16
     high = archive_height(chain)
     above: int | None = None          # a known NON-returnable block just above ``high``
@@ -252,7 +246,7 @@ def find_block_at_or_before(chain: str, target_ts: int) -> int:
             high -= _STEP
     if head_ts is None:
         raise HyperSyncError(
-            f"find_block_at_or_before({chain}): no returnable block near head "
+            f"_returnable_head({chain}): no returnable block near head "
             f"{archive_height(chain)}"
         )
     # Refine upward: the highest returnable block is in [high, above).
@@ -267,8 +261,42 @@ def find_block_at_or_before(chain: str, target_ts: int) -> int:
                 hi = mid
         high = lo
         head_ts = block_timestamp(chain, high)   # cached — free
+    return high, head_ts
+
+
+def find_block_at_or_before(chain: str, target_ts: int) -> int:
+    """Highest block on ``chain`` whose timestamp <= ``target_ts`` (unix, UTC).
+
+    Binary search over HyperSync block timestamps — mirrors
+    ``extract.rpc._find_block_at_or_before_rpc`` exactly, so the result is
+    identical to the RPC resolver, but every probe hits HyperSync (fast, cheap,
+    off the archive RPC — and works on chains whose RPC is lagging, e.g. monad).
+
+    Caching: a resolution where the archive HEAD is at/behind the target is a
+    provisional head-clamp — it changes as the archive catches up, and durably
+    caching it is exactly the poisoned-EoD-block class behind the #156 June
+    restatement. Only resolutions the archive fully covers are cached
+    (``_find_block_at_or_before_cached``); head-clamps are served live with a
+    warning and re-resolved on every call.
+    """
+    high, head_ts = _returnable_head(chain)
     if head_ts <= target_ts:
+        import logging
+        logging.getLogger(__name__).warning(
+            "find_block_at_or_before(%s, ts=%d): archive head (block %d, "
+            "ts %d) is at/behind the target — returning the head WITHOUT "
+            "caching; re-run after the archive catches up for a stable pin.",
+            chain, target_ts, high, head_ts,
+        )
         return high
+    return _find_block_at_or_before_cached(chain, target_ts)
+
+
+@cached(source_id="hypersync.find_block_at_or_before")
+def _find_block_at_or_before_cached(chain: str, target_ts: int) -> int:
+    """Cache-backed binary search — only reached when the archive head is
+    strictly past ``target_ts``, so the result is final and safe to cache."""
+    high, _head_ts = _returnable_head(chain)
     if block_timestamp(chain, 0) > target_ts:
         raise HyperSyncError(
             f"find_block_at_or_before({chain}, ts={target_ts}): target precedes "

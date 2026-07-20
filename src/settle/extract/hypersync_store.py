@@ -106,7 +106,21 @@ def fetch_logs(
     safe_ceiling = archive - _reorg_margin() if archive else -1
 
     if to_block > safe_ceiling:
-        # Upper bound is inside the reorg window — serve live, store NOTHING.
+        # Upper bound is inside the reorg window — serve live. The rows AT OR
+        # BELOW the safe ceiling are finalized and safe to persist, so a
+        # live-pinned run (e.g. a mid-month preview of the from-genesis Vat
+        # debt scan) doesn't re-download the whole finalized history on every
+        # invocation; only the unfinalized tail stays fetch-always.
+        if safe_ceiling >= 0:
+            finalized = [r for r in live_rows if r.block_number <= safe_ceiling]
+            _persist(conn, stream, finalized)
+            if new_cov is not None and new_cov[0] <= safe_ceiling:
+                # Clamp the claim to the finalized prefix; never let it
+                # shrink below what's already honestly covered.
+                hi = min(new_cov[1], safe_ceiling)
+                if cov is not None:
+                    hi = max(hi, cov[1])
+                _set_coverage(conn, stream, new_cov[0], hi)
         db_rows = _read_rows(conn, stream, from_block, to_block) if cov is not None else []
         return _merge(db_rows, live_rows, from_block, to_block)
 

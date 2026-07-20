@@ -126,19 +126,37 @@ def test_persists_only_finalized_and_serves_incrementally(monkeypatch):
     assert 800 in [r.block_number for r in r3] and 0 in [r.block_number for r in r3]
 
 
-def test_near_head_not_persisted(monkeypatch):
+def test_near_head_unfinalized_tail_not_persisted(monkeypatch):
+    """A reorg-window fetch persists ONLY the finalized prefix (blocks at or
+    below head − margin); the unfinalized tail is served live and never
+    written, and coverage never claims past the safe ceiling."""
     conn = _FakeConn()
     monkeypatch.setattr(hypersync_store.postgres_store, "_get_conn", lambda: conn)
     monkeypatch.setenv("HYPERSYNC_REORG_MARGIN", "100")
     monkeypatch.setattr(hypersync, "query_logs",
-                        lambda *a, **k: QueryResult(rows=[_row(950)], archive_height=1000))
+                        lambda *a, **k: QueryResult(rows=[_row(850), _row(950)],
+                                                    archive_height=1000))
 
     sel = [{"address": ["0xtok"], "topics": [["0xt0"]]}]
-    # to_block=980 is within reorg window (head 1000 - margin 100 = 900) → serve live, store nothing.
-    rows = hypersync_store.fetch_logs("ethereum", sel, 900, 980)
-    assert [r.block_number for r in rows] == [950]
-    assert conn.store["coverage"] == {}   # nothing persisted
-    assert conn.store["logs"] == {}
+    # to_block=980 is inside the reorg window (head 1000 − margin 100 = 900):
+    # row 850 is finalized → persisted; row 950 is not → live-only.
+    rows = hypersync_store.fetch_logs("ethereum", sel, 800, 980)
+    assert [r.block_number for r in rows] == [850, 950]
+    stream = hypersync_store._stream_key("ethereum", sel)
+    assert [r.block_number for r in conn.store["logs"][stream]] == [850]
+    assert conn.store["coverage"][stream] == (800, 900)   # clamped to ceiling
+
+    # Re-fetch same range: finalized prefix now served from DB; only the
+    # uncovered tail (901..980) needs the network.
+    calls = {"n": 0}
+    def counting_query(chain, s, frm, to, post=None):
+        calls["n"] += 1
+        assert frm == 901                      # incremental: past the ceiling
+        return QueryResult(rows=[_row(950)], archive_height=1000)
+    monkeypatch.setattr(hypersync, "query_logs", counting_query)
+    rows2 = hypersync_store.fetch_logs("ethereum", sel, 800, 980)
+    assert [r.block_number for r in rows2] == [850, 950]
+    assert calls["n"] == 1
 
 
 def test_disjoint_backfill_does_not_claim_the_gap(monkeypatch):
