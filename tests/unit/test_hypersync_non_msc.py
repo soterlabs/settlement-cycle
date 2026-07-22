@@ -181,7 +181,11 @@ class _FakeResp:
         return self.payload
 
 
-def test_surplus_classification():
+def test_surplus_classification(monkeypatch):
+    # hypersync.query_logs reads ENVIO_API_TOKEN before calling `post`; set it so
+    # the token guard passes while the injected mock transport is what actually
+    # answers the request.
+    monkeypatch.setenv("ENVIO_API_TOKEN", "test")
     RAD = 10**45
     ts = 1_781_000_000  # inside the window below
     moves = [
