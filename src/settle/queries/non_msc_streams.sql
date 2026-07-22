@@ -6,15 +6,14 @@
 -- Parameters:
 --   {{month_start}}      date  — first day of the reported month
 --   {{month_end_excl}}   date  — first day of the NEXT month
---   {{burn_end_excl}}    date  — first day of month+2 (jar-burn attribution window end)
---   {{pin_block}}        number — upper block cutoff (must be ≥ the burn window)
+--   {{pin_block}}        number — upper block cutoff (≥ the last block of the month)
 --
 -- Output rows: (stream, label, event_date, amount) —
---   income:psm_jar       one row per jar burn in (month_end, next_month_end]
---                        (attribution happens in compute: "the first jar burn
---                        after a month ends is that month's income" — the
---                        FIRST burn-date's burns count as income; any extra
---                        burn in the window is surfaced but NOT attributed)
+--   income:psm_jar       one row per jar burn that LANDS in the calendar month
+--                        [month_start, month_end_excl) — cash / transfer-date
+--                        basis. Compute sums ALL of them (a month can have >1,
+--                        e.g. Jan 2026: December's on-slot burn + November's
+--                        late burn, both landing in January).
 --   income:stability_fee one row per ilk, ACCRUAL basis: Σ over checkpoints
 --                        (month bounds + every in-month Art change) of
 --                        Art(t_i) × (r_true(t_{i+1}) − r_true(t_i)), where
@@ -22,12 +21,22 @@
 --                        reconstructed from `duty` directly (NOT from when
 --                        jug.drip/vat.fold happened to fire). See §"accrual
 --                        basis" note below.
+--   income:liq_owe       Σ owe over clip.take in the month (rad → USDS)
+--   income:liq_due       Σ due over dog.bark in the month; liquidation revenue
+--                        = owe − due (realized penalty; negative if under-recovered)
+--   income:surplus_return one row per join→vow move NOT attributable to the
+--                        PSM/RWA jar (vest-budget refunds in 2026)
+--   income:rwa_void      Σ join→vow moves whose tx voided a legacy-RWA jar
+--                        (tripwire — ~0 in 2026)
 --   expense:susds_drip   sUSDS SSR recognized at drip (gross, all holders)
 --   expense:susds_prime  SSR accrued to PRIME-held sUSDS (ALM + subproxy
 --                        holders) — already netted inside MSC via BR − 30bps /
---                        agent rate; the report DEDUCTS this from the gross
+--                        agent rate; INFORMATIONAL split (NOT deducted — gross
+--                        stays in, the MSC leg carries the offsetting BR income)
 --   expense:dsr_drip     legacy DSR (vat.suck minting to the pot)
 --   expense:stusds_drip  stUSDS staking interest recognized at drip
+--   expense:liq_coin     Σ coin over clip kicks + redos (keeper incentives)
+--   expense:vest         Σ amt over DssVest suckable payouts (DAI + USDS vests)
 --
 -- Precision: drip/burn lines are exact DECIMAL sums ÷ 1e18. The fee and
 -- prime-carve-out lines multiply 1e27-scale factors and use DOUBLE (relative
@@ -79,15 +88,15 @@ prime_holders AS (
 
 -- ── income: PSM / Coinbase jar burns ───────────────────────────────────────
 jar_burns AS (
-  SELECT evt_block_date AS d,
+  SELECT evt_block_date AS d, evt_tx_hash AS tx,
          CAST(CAST(value AS DECIMAL(38,0)) AS DOUBLE) / 1e18 AS amount
   FROM erc20_ethereum.evt_transfer
   WHERE "from" = 0x69cA348Bd928A158ADe7aa193C133f315803b06e   -- LitePSM jar
     AND "to"   = 0x0000000000000000000000000000000000000000
     AND contract_address IN (0x6b175474e89094c44da98b954eedeac495271d0f,   -- DAI
                              0xdc035d45d973e3ec169d2276ddab16f1e407384f)   -- USDS
-    AND evt_block_date >= DATE '{{month_end_excl}}'
-    AND evt_block_date <  DATE '{{burn_end_excl}}'
+    AND evt_block_date >= DATE '{{month_start}}'
+    AND evt_block_date <  DATE '{{month_end_excl}}'
     AND evt_block_number <= {{pin_block}}
 ),
 
@@ -334,12 +343,126 @@ prime_carve AS (
   WHERE dl.dchi IS NOT NULL AND dl.d >= DATE '{{month_start}}'
   GROUP BY 1
   HAVING SUM(CAST(b.shares AS DOUBLE) / 1e18 * CAST(dl.dchi AS DOUBLE) / 1e27) <> 0
+),
+
+-- ── liquidations (Liquidations 2.0) ─────────────────────────────────────────
+-- Matched by RAW topic0 on ethereum.logs (the same hashes the HyperSync port
+-- uses), so no decoded-table schema is assumed and every Clipper instance is
+-- covered. Amounts are rad (1e45) → USDS via DOUBLE (relative err ~1e-15,
+-- sub-cent). Clipper instances are discovered from the Dog's Bark `clip` field
+-- so takes on auctions barked in a PRIOR month are still attributed here.
+--   Bark(ilk,urn,ink,art,due,clip,id)  due=word[2]  clip=word[3][12:]
+--   Take(id,max,price,owe,tab,lot,usr) owe=word[2]
+--   Kick(id,top,tab,lot,usr,kpr,coin)  coin=word[3]   (indexed: id,usr,kpr)
+--   Redo(id,top,tab,lot,usr,kpr,coin)  coin=word[3]
+liq_clippers AS (
+  SELECT DISTINCT bytearray_substring(data, 109, 20) AS clip
+  FROM ethereum.logs
+  WHERE contract_address = 0x135954d155898d42c90d2a57824c690e0c7bef1b   -- MCD_DOG
+    AND topic0 = 0x85258d09e1e4ef299ff3fc11e74af99563f022d21f3f940db982229dc2a3358c  -- Bark
+    AND block_number <= {{pin_block}}
+),
+liq_due AS (
+  SELECT SUM(CAST(bytearray_to_uint256(bytearray_substring(data, 65, 32)) AS DOUBLE)) / 1e45 AS amount
+  FROM ethereum.logs
+  WHERE contract_address = 0x135954d155898d42c90d2a57824c690e0c7bef1b
+    AND topic0 = 0x85258d09e1e4ef299ff3fc11e74af99563f022d21f3f940db982229dc2a3358c
+    AND block_time >= CAST(DATE '{{month_start}}' AS TIMESTAMP)
+    AND block_time <  CAST(DATE '{{month_end_excl}}' AS TIMESTAMP)
+    AND block_number <= {{pin_block}}
+),
+liq_owe AS (
+  SELECT SUM(CAST(bytearray_to_uint256(bytearray_substring(data, 65, 32)) AS DOUBLE)) / 1e45 AS amount
+  FROM ethereum.logs
+  WHERE topic0 = 0x05e309fd6ce72f2ab888a20056bb4210df08daed86f21f95053deb19964d86b1  -- Take
+    AND contract_address IN (SELECT clip FROM liq_clippers)
+    AND block_time >= CAST(DATE '{{month_start}}' AS TIMESTAMP)
+    AND block_time <  CAST(DATE '{{month_end_excl}}' AS TIMESTAMP)
+    AND block_number <= {{pin_block}}
+),
+liq_coin AS (
+  SELECT SUM(CAST(bytearray_to_uint256(bytearray_substring(data, 97, 32)) AS DOUBLE)) / 1e45 AS amount
+  FROM ethereum.logs
+  WHERE topic0 IN (0x7c5bfdc0a5e8192f6cd4972f382cec69116862fb62e6abff8003874c58e064b8,  -- Kick
+                   0x275de7ecdd375b5e8049319f8b350686131c219dd4dc450a08e9cf83b03c865f)  -- Redo
+    AND contract_address IN (SELECT clip FROM liq_clippers)
+    AND block_time >= CAST(DATE '{{month_start}}' AS TIMESTAMP)
+    AND block_time <  CAST(DATE '{{month_end_excl}}' AS TIMESTAMP)
+    AND block_number <= {{pin_block}}
+),
+
+-- ── vest (gross suckable DssVest payouts) ───────────────────────────────────
+-- Vest(uint256 indexed id, uint256 amt); amt = data word[0], /1e18. Covers the
+-- DAI + USDS + legacy-DAI vest contracts (token vests never touch the vow —
+-- excluded). Booked gross at call time (the refund half lands in Surplus below).
+vest AS (
+  SELECT SUM(CAST(bytearray_to_uint256(bytearray_substring(data, 1, 32)) AS DOUBLE)) / 1e18 AS amount
+  FROM ethereum.logs
+  WHERE contract_address IN (0xa4c22f0e25C6630B2017979AcF1f865e94695C4b,   -- MCD_VEST_DAI
+                             0xc447a9745aDe9A44Bb9E37B7F6C92f9582544110,   -- MCD_VEST_USDS
+                             0x2Cc583c0AaCDaC9e23CB601fDA8F1A0c56Cdcb71)   -- MCD_VEST_DAI_LEGACY
+    AND topic0 = 0xa2906882572b0e9dfe893158bb064bc308eb1bd87d1da481850f9d17fc293847  -- Vest
+    AND block_time >= CAST(DATE '{{month_start}}' AS TIMESTAMP)
+    AND block_time <  CAST(DATE '{{month_end_excl}}' AS TIMESTAMP)
+    AND block_number <= {{pin_block}}
+),
+
+-- ── surplus returns / RWA jar voids (join → vow) ────────────────────────────
+-- Cash paid straight into the surplus buffer: {dai,usds}Join.join(vow, wad),
+-- on-chain as Vat.move(join → vow). The Vat `note` modifier logs
+-- topic1=arg1(src), topic2=arg2(dst), topic3=arg3(rad) — so rad is topic3
+-- directly (no calldata decode). This mechanism is SHARED with the LitePSM jar
+-- payment (routes to the PSM line) and RWA jar voids (routes to the RWA line),
+-- so each move is classified by its transaction's burn source:
+--   tx has a LitePSM jar burn  → PSM (already booked as income:psm_jar)
+--   tx has an RWA jar transfer → income:rwa_void
+--   otherwise                  → income:surplus_return
+vow_moves AS (
+  SELECT tx_hash, block_date AS d,
+         CAST(bytearray_to_uint256(topic3) AS DOUBLE) / 1e45 AS amount
+  FROM ethereum.logs
+  WHERE contract_address = 0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B   -- Vat
+    AND topic0 = 0xbb35783b00000000000000000000000000000000000000000000000000000000  -- move sig
+    AND topic1 IN (0x0000000000000000000000009759a6ac90977b93b58547b4a71c78317f391a28,  -- MCD_JOIN_DAI
+                   0x0000000000000000000000003c0f895007ca717aa01c8693e59df1e8c3777feb)  -- USDS_JOIN
+    AND topic2 = 0x000000000000000000000000a950524441892a31ebddf91d3ceefa04bf454466       -- MCD_VOW
+    AND block_time >= CAST(DATE '{{month_start}}' AS TIMESTAMP)
+    AND block_time <  CAST(DATE '{{month_end_excl}}' AS TIMESTAMP)
+    AND block_number <= {{pin_block}}
+),
+rwa_void_txs AS (   -- txs in which a known RWA jar moved stablecoins (void())
+  SELECT DISTINCT evt_tx_hash AS tx
+  FROM erc20_ethereum.evt_transfer
+  WHERE "from" IN (0xef1B095F700BE471981aae025f92B03091c3AD47,   -- RWA007_A_JAR
+                   0x6C6d4Be2223B5d202263515351034861dD9aFdb6,   -- RWA009_A_JAR (H.V.Bank)
+                   0x71eC6d5Ee95B12062139311CA1fE8FD698Cbe0Cf,   -- RWA014_A_JAR
+                   0xc27C3D3130563C1171feCC4F76C217Db603997cf)   -- RWA015_A_JAR
+    AND evt_block_date >= DATE '{{month_start}}'
+    AND evt_block_date <  DATE '{{month_end_excl}}'
+    AND evt_block_number <= {{pin_block}}
+),
+surplus AS (
+  SELECT d, amount FROM vow_moves
+  WHERE tx_hash NOT IN (SELECT tx FROM jar_burns)      -- PSM jar → PSM line
+    AND tx_hash NOT IN (SELECT tx FROM rwa_void_txs)   -- RWA jar → RWA line
+),
+rwa_void AS (
+  SELECT COALESCE(SUM(amount), 0) AS amount FROM vow_moves
+  WHERE tx_hash IN (SELECT tx FROM rwa_void_txs)
 )
 
 SELECT 'income:psm_jar' AS stream, CAST(d AS VARCHAR) AS label, d AS event_date, amount
 FROM jar_burns
 UNION ALL
 SELECT 'income:stability_fee', label, CAST(NULL AS DATE), amount FROM fees
+UNION ALL
+SELECT 'income:liq_owe', 'liquidation owe (takes)', CAST(NULL AS DATE), COALESCE(amount, 0) FROM liq_owe
+UNION ALL
+SELECT 'income:liq_due', 'liquidation due (barks)', CAST(NULL AS DATE), COALESCE(amount, 0) FROM liq_due
+UNION ALL
+SELECT 'income:surplus_return', CAST(d AS VARCHAR), d, amount FROM surplus
+UNION ALL
+SELECT 'income:rwa_void', 'RWA jars (void)', CAST(NULL AS DATE), COALESCE(amount, 0) FROM rwa_void
 UNION ALL
 SELECT 'expense:susds_drip', 'sUSDS SSR (gross, all holders)', CAST(NULL AS DATE),
        COALESCE(amount, 0) FROM susds
@@ -349,4 +472,9 @@ UNION ALL
 SELECT 'expense:dsr_drip', 'DSR (pot)', CAST(NULL AS DATE), COALESCE(amount, 0) FROM dsr
 UNION ALL
 SELECT 'expense:stusds_drip', 'stUSDS', CAST(NULL AS DATE), COALESCE(amount, 0) FROM stusds
+UNION ALL
+SELECT 'expense:liq_coin', 'keeper incentives (kicks + redos)', CAST(NULL AS DATE),
+       COALESCE(amount, 0) FROM liq_coin
+UNION ALL
+SELECT 'expense:vest', 'vest (gross suckable)', CAST(NULL AS DATE), COALESCE(amount, 0) FROM vest
 ORDER BY 1, 2

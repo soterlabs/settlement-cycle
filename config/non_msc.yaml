@@ -6,9 +6,13 @@
 # series: https://info-sky.blockanalitica.com/financials/settlements/historic/,
 # reference only — never blended into our numbers).
 #
-# Methodology: https://hackmd.io/@W57nO5PyRMKhcLqjvsLifw/S1zxTDpXMg
-# Executable copy of every address/ilk below lives in
-# src/settle/queries/non_msc_streams.sql — keep the two in sync.
+# Methodology: "Sky Net Revenue — Non-MSC" handoff (2026-07-16), validated
+# against May & June 2026 published BA/SFF figures (see PRD §17.13).
+# Two backends produce the identical stream rows (side-by-side, retire Dune
+# once they agree — scripts/compare_non_msc_sources.py):
+#   - Dune  : src/settle/queries/non_msc_streams.sql (decoded + raw ethereum.logs)
+#   - Envio : src/settle/normalize/sources/hypersync_non_msc.py (raw HyperSync logs)
+# Keep every address/ilk below in sync with both.
 
 id: non_msc
 label: 'Sky non-MSC protocol P&L'
@@ -17,22 +21,35 @@ income:
   psm_jar:
     # Coinbase PSM payments arrive as ONE payment per month (sender
     # 0xf6e7…3042, burned same day), on days 2-14 of the following month.
-    # Recognition is CASH at burn, per the methodology doc's rule: "the
-    # first jar burn after a month ends is that month's income". Any EXTRA
-    # burn in the same window is NOT attributed and warns loudly.
-    # ⚠ Resolved on-chain (2026-07-15): the December 2025 slot is empty and
-    # January 2026 has two burns — cadence + amounts prove Jan 2 ($9.62M)
-    # is NOVEMBER's late payment and Jan 8 ($11.05M) is DECEMBER's on-slot
-    # payment. All 2026 months have one burn per window (rules agree); if
-    # this report is ever extended back to 2025, switch to SEQUENTIAL
-    # burn-to-month matching (burns consumed in chronological order).
+    # Recognition is CASH at burn, in the calendar month the burn LANDS
+    # (methodology 2026-07-16). Every in-month burn counts (Jan 2026 has two:
+    # November's late payment on Jan 2 + December's on-slot on Jan 8).
     jar: '0x69cA348Bd928A158ADe7aa193C133f315803b06e'
     tokens:
       - '0x6b175474e89094c44da98b954eedeac495271d0f'   # DAI
       - '0xdc035d45d973e3ec169d2276ddab16f1e407384f'   # USDS
+  liquidations:
+    # Liquidation revenue = Σ owe (clip.take) − Σ due (dog.bark), in-month.
+    # Clipper instances discovered from the Dog's Bark `clip` field.
+    dog: '0x135954d155898d42c90d2a57824c690e0c7bef1b'
+  surplus_returns:
+    # {dai,usds}Join.join(vow) → Vat.move(join → vow). Classified by the tx's
+    # burn source: LitePSM jar → PSM line; RWA jar → rwa_void; else surplus.
+    dai_join:  '0x9759A6Ac90977b93B58547b4A71c78317f391A28'
+    usds_join: '0x3C0f895007CA717Aa01c8693e59DF1e8C3777FEB'
+    vow:       '0xA950524441892A31ebddF91d3cEEFa04Bf454466'
+  rwa_jars:
+    # Legacy-RWA jar voids (RwaJar.void → vow) — tripwire, ~0 in 2026.
+    - '0xef1B095F700BE471981aae025f92B03091c3AD47'   # RWA007_A_JAR
+    - '0x6C6d4Be2223B5d202263515351034861dD9aFdb6'   # RWA009_A_JAR (H.V.Bank)
+    - '0x71eC6d5Ee95B12062139311CA1fE8FD698Cbe0Cf'   # RWA014_A_JAR
+    - '0xc27C3D3130563C1171feCC4F76C217Db603997cf'   # RWA015_A_JAR
   stability_fees:
-    # Income = Art(ilk) × Δrate at each vat.fold — exactly what fold credits
-    # to the vow. Art = running Σ dart (frob + grab) since genesis.
+    # Income = stability fees on the ACCRUAL basis: Σ over checkpoints of
+    # Art × Δr_true, where r_true(t) = rate(last fold ≤ t) × duty^(t − rho) is
+    # reconstructed from `duty` directly (independent of when jug.drip/vat.fold
+    # fired). Checkpoints = month bounds + every in-month Art change. Art =
+    # running Σ dart (frob + grab) since genesis, in execution order.
     # Scope: the FULL ilk universe (every vat.init) except ALLOCATOR-* (MSC).
     # This subsumes the 9 core-vault ilks below plus any residual fee-earning
     # ilk (2026: RWA002-A ~$200K/mo); future onboardings included automatically.
@@ -80,3 +97,15 @@ expense:
     pot: '0x197e90f9fad81970ba7976f33cbd77088e5d7cf7'   # MCD_POT (vat.suck v=pot)
   stusds:
     contract: '0x99CD4Ec3f88A45940936F469E4bB72A2A701EEB9'
+  liquidation_incentives:
+    # Keeper incentives = Σ coin over clip.kick + clip.redo, in-month (minted
+    # from the vow via vat.suck). Clippers discovered from Dog barks (above).
+    dog: '0x135954d155898d42c90d2a57824c690e0c7bef1b'
+  vest:
+    # Gross suckable DssVest payouts (Vest event amt, /1e18), booked at call
+    # time. Token vests (*_TREASURY) are treasury-funded — excluded. The unused
+    # remainder is refunded to the vow (booked as income:surplus_return).
+    contracts:
+      - '0xa4c22f0e25C6630B2017979AcF1f865e94695C4b'   # MCD_VEST_DAI
+      - '0xc447a9745aDe9A44Bb9E37B7F6C92f9582544110'   # MCD_VEST_USDS
+      - '0x2Cc583c0AaCDaC9e23CB601fDA8F1A0c56Cdcb71'   # MCD_VEST_DAI_LEGACY
