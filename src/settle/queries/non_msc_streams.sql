@@ -28,13 +28,16 @@
 --                        PSM/RWA jar (vest-budget refunds in 2026)
 --   income:rwa_void      Σ join→vow moves whose tx voided a legacy-RWA jar
 --                        (tripwire — ~0 in 2026)
---   expense:susds_drip   sUSDS SSR recognized at drip (gross, all holders)
+--   expense:susds_drip   sUSDS SSR accrued in-month (gross, all holders; drip
+--                        amounts apportioned by chi-boundary interpolation)
 --   expense:susds_prime  SSR accrued to PRIME-held sUSDS (ALM + subproxy
 --                        holders) — already netted inside MSC via BR − 30bps /
 --                        agent rate; INFORMATIONAL split (NOT deducted — gross
 --                        stays in, the MSC leg carries the offsetting BR income)
---   expense:dsr_drip     legacy DSR (vat.suck minting to the pot)
---   expense:stusds_drip  stUSDS staking interest recognized at drip
+--   expense:dsr_drip     legacy DSR (vat.suck minting to the pot; accrued
+--                        in-month, boundary intervals split by time-fraction)
+--   expense:stusds_drip  stUSDS staking interest accrued in-month (drip amounts
+--                        apportioned by chi-boundary interpolation)
 --   expense:liq_coin     Σ coin over clip kicks + redos (keeper incentives)
 --   expense:vest         Σ amt over DssVest suckable payouts (DAI + USDS vests)
 --
@@ -210,26 +213,104 @@ fees AS (
   HAVING ABS(SUM(contrib) / 1e27) >= 0.01
 ),
 
--- ── expense: savings drips ──────────────────────────────────────────────────
-susds AS (
-  SELECT CAST(SUM(CAST(diff AS DECIMAL(38,0))) AS DOUBLE) / 1e18 AS amount
+-- ── expense: savings interest, ACCRUAL basis (chi-boundary interpolation) ────
+-- Each drip's minted interest is apportioned to the month by interpolating the
+-- accumulator at the month boundaries — the drip-contract analog of r_true. A
+-- drip's `diff` covers the interval since the previous drip; intervals fully
+-- inside the month are booked whole (exact DECIMAL sum), the two straddling the
+-- month bounds are split — geometrically in `chi` for sUSDS/stUSDS (which carry
+-- chi in the Drip event), by elapsed-time fraction for the pot suck (no chi;
+-- exact to the cent since the pot drips many times a day). The window widens
+-- ±3 days: the end-boundary interval is closed by the FIRST drip AFTER
+-- month_end (it realizes the month's accrued-but-not-yet-dripped tail), which
+-- lands just past pin_block — so these series are cut by DATE (final once the
+-- month is past), NOT by {{pin_block}}. Exact for the same two invariants as
+-- the fee accrual: normalized supply can't change between drips (every
+-- join/exit forces a drip in the same tx) and chi grows at a constant rate
+-- within each drip interval.
+bounds AS (
+  SELECT CAST(DATE '{{month_start}}'    AS TIMESTAMP) AS ms,
+         CAST(DATE '{{month_end_excl}}' AS TIMESTAMP) AS me
+),
+susds_iv AS (
+  SELECT CAST(diff AS DECIMAL(38,0)) AS diff, evt_block_time AS t,
+         LAG(evt_block_time)                  OVER w AS tp,
+         CAST(CAST(chi AS DECIMAL(38,0)) AS DOUBLE) AS chi,
+         LAG(CAST(CAST(chi AS DECIMAL(38,0)) AS DOUBLE)) OVER w AS cp
   FROM sky_ethereum.susds_evt_drip
-  WHERE evt_block_date >= DATE '{{month_start}}' AND evt_block_date < DATE '{{month_end_excl}}'
-    AND evt_block_number <= {{pin_block}}
+  WHERE evt_block_date >= DATE '{{savings_start}}'
+    AND evt_block_date <  DATE '{{savings_end}}'
+  WINDOW w AS (ORDER BY evt_block_number, evt_index)
+),
+susds AS (
+  SELECT (CAST(SUM(whole) AS DOUBLE) + SUM(part)) / 1e18 AS amount
+  FROM (SELECT whole, part FROM susds_iv CROSS JOIN bounds b
+        CROSS JOIN LATERAL (VALUES (GREATEST(tp, b.ms), LEAST(t, b.me))) AS o(os, oe)
+        CROSS JOIN LATERAL (VALUES (
+          CASE WHEN tp IS NOT NULL AND tp >= b.ms AND t <= b.me THEN diff
+               ELSE CAST(0 AS DECIMAL(38,0)) END,
+          CASE
+            WHEN tp IS NULL OR (tp >= b.ms AND t <= b.me) THEN 0.0
+            WHEN oe <= os THEN 0.0
+            WHEN chi <> cp THEN CAST(diff AS DOUBLE) * (
+                 cp * POWER(chi / cp, CAST(date_diff('second', tp, oe) AS DOUBLE)
+                                      / date_diff('second', tp, t))
+               - cp * POWER(chi / cp, CAST(date_diff('second', tp, os) AS DOUBLE)
+                                      / date_diff('second', tp, t))) / (chi - cp)
+            ELSE CAST(diff AS DOUBLE) * CAST(date_diff('second', os, oe) AS DOUBLE)
+                                      / date_diff('second', tp, t)
+          END)) AS c(whole, part))
+),
+stusds_iv AS (
+  SELECT CAST(diff AS DECIMAL(38,0)) AS diff, evt_block_time AS t,
+         LAG(evt_block_time)                  OVER w AS tp,
+         CAST(CAST(chi AS DECIMAL(38,0)) AS DOUBLE) AS chi,
+         LAG(CAST(CAST(chi AS DECIMAL(38,0)) AS DOUBLE)) OVER w AS cp
+  FROM sky_ethereum.stusds_evt_drip
+  WHERE evt_block_date >= DATE '{{savings_start}}'
+    AND evt_block_date <  DATE '{{savings_end}}'
+  WINDOW w AS (ORDER BY evt_block_number, evt_index)
 ),
 stusds AS (
-  SELECT CAST(SUM(CAST(diff AS DECIMAL(38,0))) AS DOUBLE) / 1e18 AS amount
-  FROM sky_ethereum.stusds_evt_drip
-  WHERE evt_block_date >= DATE '{{month_start}}' AND evt_block_date < DATE '{{month_end_excl}}'
-    AND evt_block_number <= {{pin_block}}
+  SELECT (CAST(SUM(whole) AS DOUBLE) + SUM(part)) / 1e18 AS amount
+  FROM (SELECT whole, part FROM stusds_iv CROSS JOIN bounds b
+        CROSS JOIN LATERAL (VALUES (GREATEST(tp, b.ms), LEAST(t, b.me))) AS o(os, oe)
+        CROSS JOIN LATERAL (VALUES (
+          CASE WHEN tp IS NOT NULL AND tp >= b.ms AND t <= b.me THEN diff
+               ELSE CAST(0 AS DECIMAL(38,0)) END,
+          CASE
+            WHEN tp IS NULL OR (tp >= b.ms AND t <= b.me) THEN 0.0
+            WHEN oe <= os THEN 0.0
+            WHEN chi <> cp THEN CAST(diff AS DOUBLE) * (
+                 cp * POWER(chi / cp, CAST(date_diff('second', tp, oe) AS DOUBLE)
+                                      / date_diff('second', tp, t))
+               - cp * POWER(chi / cp, CAST(date_diff('second', tp, os) AS DOUBLE)
+                                      / date_diff('second', tp, t))) / (chi - cp)
+            ELSE CAST(diff AS DOUBLE) * CAST(date_diff('second', os, oe) AS DOUBLE)
+                                      / date_diff('second', tp, t)
+          END)) AS c(whole, part))
 ),
-dsr AS (
-  SELECT CAST(SUM(CAST(rad AS DOUBLE)) / 1e45 AS DOUBLE) AS amount
+dsr_iv AS (   -- pot suck carries no chi → time-fraction split only
+  SELECT CAST(rad AS DOUBLE) AS diff, call_block_time AS t,
+         LAG(call_block_time) OVER w AS tp
   FROM maker_ethereum.vat_call_suck
   WHERE v = 0x197e90f9fad81970ba7976f33cbd77088e5d7cf7           -- MCD_POT
     AND call_success
-    AND call_block_date >= DATE '{{month_start}}' AND call_block_date < DATE '{{month_end_excl}}'
-    AND call_block_number <= {{pin_block}}
+    AND call_block_date >= DATE '{{savings_start}}'
+    AND call_block_date <  DATE '{{savings_end}}'
+  WINDOW w AS (ORDER BY call_block_number, call_tx_index)
+),
+dsr AS (
+  SELECT SUM(part) / 1e45 AS amount
+  FROM (SELECT
+          CASE
+            WHEN tp IS NULL THEN 0.0
+            WHEN tp >= b.ms AND t <= b.me THEN diff
+            WHEN LEAST(t, b.me) <= GREATEST(tp, b.ms) THEN 0.0
+            ELSE diff * CAST(date_diff('second', GREATEST(tp, b.ms), LEAST(t, b.me)) AS DOUBLE)
+                      / date_diff('second', tp, t)
+          END AS part
+        FROM dsr_iv CROSS JOIN bounds b)
 ),
 
 -- ── expense deduction: SSR on prime-held sUSDS ──────────────────────────────

@@ -83,6 +83,46 @@ def test_integrate_fee_weights_in_month_art_change():
     assert math.isclose(got, seg1 + seg2, rel_tol=1e-9)
 
 
+# ── savings accrual (chi-boundary interpolation) ────────────────────────────
+
+def test_accrue_savings_whole_intervals_sum_exactly():
+    # Three drips, all intervals fully inside [1000, 2000): diffs summed as ints.
+    ev = [(900, 100, 0), (1200, 110, 5 * 10**18), (1600, 121, 7 * 10**18)]
+    # interval (900,1200] straddles start=1000; (1200,1600] fully inside.
+    got = H._accrue_savings(ev, start_ts=1200, end_ts=2000)
+    assert got == Decimal(7 * 10**18)          # only the fully-inside interval
+
+
+def test_accrue_savings_geometric_boundary_split():
+    RAY = 10**27
+    # One interval (0,100] with chi growing geometrically; month starts at t=40.
+    # supply implied by diff = shares*(chi_b-chi_a); split by geometric chi.
+    chi_a, chi_b = RAY, int(RAY * 1.00001)
+    diff = 5000 * 10**18
+    ev = [(0, chi_a, 0), (100, chi_b, diff)]
+    got = float(H._accrue_savings(ev, start_ts=40, end_ts=1000))
+    g = chi_b / chi_a
+    chi_40 = chi_a * g ** (40 / 100)
+    expected = diff * (chi_b - chi_40) / (chi_b - chi_a)
+    assert math.isclose(got, expected, rel_tol=1e-9)
+
+
+def test_accrue_savings_time_fraction_when_no_chi():
+    # acc=None (pot suck) → straddle split by elapsed-time fraction.
+    diff = 3000 * 10**45
+    ev = [(0, None, 0), (100, None, diff)]
+    got = float(H._accrue_savings(ev, start_ts=25, end_ts=1000))
+    assert math.isclose(got, diff * (100 - 25) / 100, rel_tol=1e-12)
+
+
+def test_accrue_savings_end_straddle_adds_in_month_portion():
+    # Interval (900,1100] straddles end=1000: only the [900,1000] portion counts.
+    diff = 2000 * 10**18
+    ev = [(900, None, 0), (1100, None, diff)]
+    got = float(H._accrue_savings(ev, start_ts=0, end_ts=1000))
+    assert math.isclose(got, diff * (1000 - 900) / (1100 - 900), rel_tol=1e-12)
+
+
 # ── surplus / PSM / RWA classification (fake transport) ─────────────────────
 
 def _resp(logs, to_block):

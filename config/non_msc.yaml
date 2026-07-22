@@ -57,7 +57,11 @@ income:
     core_ilks: [ETH-A, ETH-B, ETH-C, WSTETH-A, WSTETH-B, WBTC-A, WBTC-B, WBTC-C, LSEV2-SKY-A]
 
 expense:
-  # Savings interest is recognized at the drip event (not accrual date).
+  # Savings interest is on the ACCRUAL basis: each drip's minted amount is
+  # apportioned to the calendar month by interpolating the accumulator at the
+  # month boundaries (geometric in chi for sUSDS/stUSDS, time-fraction for the
+  # pot suck). The two intervals straddling the month bounds are split; the
+  # end-boundary tail is closed by the first drip in the next month.
   susds:
     contract: '0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD'
     # The expense counts the GROSS drip (all holders): the SSR Sky pays on

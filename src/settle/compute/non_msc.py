@@ -13,9 +13,11 @@ through prime agents. Methodology: "Sky Net Revenue — Non-MSC" handoff
              calendar month) + liquidation revenue (Σ clip.take owe − Σ dog.bark
              due) + surplus returns (join→vow moves not attributable to the PSM
              jar or an RWA jar)
-  expense  = savings interest at `drip` — sUSDS SSR (GROSS: prime-held SSR
-             stays in because MSC sky_revenue carries the offsetting BR income;
-             the prime/user split is informational) + legacy DSR + stUSDS —
+  expense  = savings interest on the ACCRUAL basis (each drip's minted amount
+             apportioned to the month by chi-boundary interpolation) — sUSDS SSR
+             (GROSS: prime-held SSR stays in because MSC sky_revenue carries the
+             offsetting BR income; the prime/user split is informational) +
+             legacy DSR + stUSDS —
              plus liquidation keeper incentives (Σ clip coin over kicks+redos)
              and Vest (gross suckable DssVest payouts sucked from the vow)
 
@@ -155,11 +157,18 @@ def _dune_streams(month: Month, pin_block: int):
     from ..extract.dune import execute_query
 
     start, end_excl = _month_bounds(month)
+    # Widened literal bounds for the savings series: the accrual basis needs the
+    # drip intervals straddling the month bounds (incl. the first drip AFTER
+    # month_end). These MUST stay date literals — a computed
+    # `DATE '…' - INTERVAL '3' DAY` defeats partition pruning and full-scans the
+    # drip tables (Dune resource cap).
     return execute_query(
         _SQL,
         params={
             "month_start": start.isoformat(),
             "month_end_excl": end_excl.isoformat(),
+            "savings_start": (start - timedelta(days=3)).isoformat(),
+            "savings_end": (end_excl + timedelta(days=3)).isoformat(),
         },
         pin_block=pin_block,
     )
@@ -295,9 +304,11 @@ def render_summary(r: NonMscMonthly) -> str:
              "basis (Art × Δr_true, r_true reconstructed from `duty`); PSM "
              "income at the jar burn's landing month (cash basis); liquidation "
              "revenue = Σ take.owe − Σ bark.due; surplus returns = join→vow "
-             "moves not attributable to the PSM/RWA jar; savings interest at "
-             "`drip` (sUSDS gross, prime split informational); liquidation "
-             "keeper incentives and Vest suckable payouts on the expense side.")
+             "moves not attributable to the PSM/RWA jar; savings interest on "
+             "the accrual basis (drips apportioned by chi-boundary "
+             "interpolation; sUSDS gross, prime split informational); "
+             "liquidation keeper incentives and Vest suckable payouts on the "
+             "expense side.")
     L.append("")
 
     vault_fees = {k: v for k, v in r.stability_fees_by_ilk.items() if not _is_rwa(k)}

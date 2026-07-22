@@ -26,8 +26,9 @@ decoded positionally.
 Accounting basis is identical to the SQL (see that file's header): stability
 fees on the accrual basis (Art × Δr_true from ``duty``); PSM at the jar burn's
 landing month; liquidation revenue = Σ take.owe − Σ bark.due; surplus returns =
-join→vow moves not attributable to the PSM/RWA jar; savings at ``drip``; vest
-gross at call time.
+join→vow moves not attributable to the PSM/RWA jar; savings interest on the
+accrual basis (each drip apportioned to the month by chi-boundary
+interpolation); vest gross at call time.
 
 Config (env):
     ENVIO_API_TOKEN   required — free token from https://app.envio.dev/api-tokens
@@ -57,6 +58,10 @@ _CHAIN = "ethereum"
 _WAD = Decimal(10) ** 18
 _RAD = Decimal(10) ** 45
 _RAY = 10 ** 27
+# Seconds of slack each side of the month when fetching savings drips, so the
+# two drip intervals straddling the month boundaries are captured. sUSDS/stUSDS
+# drip ~hourly-or-faster and the pot many times a day, so 3 days is ample.
+_SAVINGS_BUFFER = 3 * 86400
 
 # ── addresses (lower-case) ──────────────────────────────────────────────────
 _VAT = "0x35d1b3f3d7966a1dfe207aa4514c12a259a0492b"
@@ -187,7 +192,7 @@ class HyperSyncNonMscSource:
         rows += self._liquidations(start_ts, end_ts, fb, tb, pin_block)
         rows += self._surplus_and_rwa(start_ts, end_ts, fb, tb)
         rows += self._vest(start_ts, end_ts, fb, tb)
-        rows += self._savings(start_ts, end_ts, fb, tb)
+        rows += self._savings(start_ts, end_ts)
         return pd.DataFrame(rows, columns=["stream", "label", "event_date", "amount"])
 
     # -- income: PSM jar burns ----------------------------------------------
@@ -343,28 +348,50 @@ class HyperSyncNonMscSource:
                 total += Decimal(_word(r.data, 0)) / _WAD               # amt = data word[0]
         return [_row("expense:vest", "vest (gross suckable)", None, total)]
 
-    # -- expense: savings drips ---------------------------------------------
+    # -- expense: savings interest (ACCRUAL, chi-boundary interpolation) ------
 
-    def _savings(self, start_ts, end_ts, fb, tb) -> list[dict]:
-        def drip_sum(addr: str) -> Decimal:
-            s = Decimal(0)
-            for r in hypersync.query_logs(
-                _CHAIN, [{"address": [addr], "topics": [[_DRIP]]}], fb, tb, post=self._post
-            ).rows:
-                if start_ts <= r.block_time < end_ts:
-                    s += Decimal(_word(r.data, 1)) / _WAD               # diff = data word[1]
-            return s
+    def _savings(self, start_ts, end_ts) -> list[dict]:
+        # Methodology §2: each drip's minted interest is apportioned to the month
+        # by interpolating the accumulator at the month boundaries — the
+        # drip-contract analog of r_true. A drip's `diff` covers the interval
+        # since the previous drip; the two intervals straddling month_start /
+        # month_end are split (geometric in chi for sUSDS/stUSDS, which carry chi
+        # in the Drip event; by time-fraction for the pot suck, which does not —
+        # exact to the cent since the pot drips many times a day), everything
+        # in-between is booked whole. The end-boundary interval is closed by the
+        # FIRST drip after month_end (it realizes the month's accrued-but-not-yet
+        # -dripped tail) — that drip lands just past pin_block (which is
+        # month-end), so the savings window deliberately extends to end_ts +
+        # buffer rather than capping at pin_block. For a finalized month those
+        # blocks are fully mined and deterministic; an in-progress month simply
+        # has no such drip yet (its last-day tail is not final regardless).
+        wb = hypersync.find_block_at_or_before(_CHAIN, start_ts - _SAVINGS_BUFFER)
+        we = hypersync.find_block_at_or_before(_CHAIN, end_ts + _SAVINGS_BUFFER)
 
-        susds = drip_sum(_SUSDS)
-        stusds = drip_sum(_STUSDS)
-        # DSR — Vat.suck(u=vow, v=pot, rad); v = arg2 = topic2, rad = topic3.
-        dsr = Decimal(0)
-        for r in hypersync.query_logs(
-            _CHAIN, [{"address": [_VAT], "topics": [[_SUCK], [], [_addr_topic(_POT)]]}],
-            fb, tb, post=self._post
-        ).rows:
-            if start_ts <= r.block_time < end_ts:
-                dsr += Decimal(int(r.topic3, 16)) / _RAD
+        def drip_events(addr: str) -> list[tuple[int, int, int]]:
+            rows = sorted(
+                hypersync.query_logs(
+                    _CHAIN, [{"address": [addr], "topics": [[_DRIP]]}], wb, we, post=self._post
+                ).rows,
+                key=lambda r: (r.block_number, r.log_index),
+            )
+            # (block_time, chi = data word[0], diff = data word[1])
+            return [(r.block_time, _word(r.data, 0), _word(r.data, 1)) for r in rows]
+
+        susds = _accrue_savings(drip_events(_SUSDS), start_ts, end_ts) / _WAD
+        stusds = _accrue_savings(drip_events(_STUSDS), start_ts, end_ts) / _WAD
+
+        # DSR — Vat.suck(u=vow, v=pot, rad); v = arg2 = topic2, rad = topic3. The
+        # pot suck carries no chi, so acc=None → time-fraction split.
+        sk = sorted(
+            hypersync.query_logs(
+                _CHAIN, [{"address": [_VAT], "topics": [[_SUCK], [], [_addr_topic(_POT)]]}],
+                wb, we, post=self._post
+            ).rows,
+            key=lambda r: (r.block_number, r.log_index),
+        )
+        dsr = _accrue_savings([(r.block_time, None, int(r.topic3, 16)) for r in sk],
+                              start_ts, end_ts) / _RAD
         return [
             _row("expense:susds_drip", "sUSDS SSR (gross, all holders)", None, susds),
             _row("expense:stusds_drip", "stUSDS", None, stusds),
@@ -427,6 +454,52 @@ def _integrate_fee(
         (pts[i][0] / 1e18) * (pts[i + 1][1] - pts[i][1]) for i in range(len(pts) - 1)
     )
     return Decimal(str(total / 1e27))
+
+
+def _accrue_savings(
+    events: list[tuple[int, int | None, int]],
+    start_ts: int,
+    end_ts: int,
+) -> Decimal:
+    """Interest accrued in [start_ts, end_ts) from a drip series — the pure
+    chi-boundary interpolation (no I/O), mirroring ``non_msc_streams.sql``.
+
+    Each event is ``(block_time, acc, diff)`` sorted ascending: ``diff`` is the
+    amount minted at that drip (raw units) for the interval since the previous
+    drip; ``acc`` is the accumulator (chi) at the drip, or ``None`` to fall back
+    to time-fraction splitting (the pot suck carries no chi).
+
+    Intervals fully inside the month contribute their whole ``diff`` (summed
+    exactly as ints); the ≤2 intervals straddling a boundary are split — by the
+    geometric growth of ``acc`` when present (a boundary at time ``τ`` in an
+    interval ``(t_prev, t]`` maps to ``chi(τ) = acc_prev ×
+    (acc/acc_prev)^((τ−t_prev)/(t−t_prev))``), else by elapsed-time fraction.
+    Intervals fully outside contribute nothing. Returns raw units (caller scales
+    by WAD/RAD).
+    """
+    whole = 0            # exact int sum of fully-in-month drips
+    part = 0.0           # float sum of the (≤2) boundary-straddling intervals
+    for i in range(1, len(events)):
+        tp, ap, _ = events[i - 1]
+        t, a, d = events[i]
+        if t <= tp:
+            continue
+        if start_ts <= tp and t <= end_ts:
+            whole += d                       # interval fully inside the month
+            continue
+        os = max(tp, start_ts)
+        oe = min(t, end_ts)
+        if oe <= os:
+            continue                         # interval fully outside the month
+        if a is not None and ap is not None and a != ap:
+            g = a / ap
+            chi_os = ap * g ** ((os - tp) / (t - tp))
+            chi_oe = ap * g ** ((oe - tp) / (t - tp))
+            frac = (chi_oe - chi_os) / (a - ap)
+        else:
+            frac = (oe - os) / (t - tp)
+        part += d * frac
+    return Decimal(whole) + Decimal(str(part))
 
 
 def _row(stream: str, label: str, event_date: date | None, amount: Decimal) -> dict:
