@@ -1,0 +1,115 @@
+# non_msc — Sky protocol-level P&L that does NOT flow through prime agents.
+#
+# This is NOT a prime: no ilk debt, no ALM, no BR/CoF/agent-rate machinery.
+# It is the sixth reporting unit next to the five primes; its net plus the
+# primes' sky-side revenue approximates Sky's total net revenue (reference
+# series: https://info-sky.blockanalitica.com/financials/settlements/historic/,
+# reference only — never blended into our numbers).
+#
+# Methodology: "Sky Net Revenue — Non-MSC" handoff (2026-07-16), validated
+# against May & June 2026 published BA/SFF figures (see PRD §17.13).
+# Two backends produce the identical stream rows (side-by-side, retire Dune
+# once they agree — scripts/compare_non_msc_sources.py):
+#   - Dune  : src/settle/queries/non_msc_streams.sql (decoded + raw ethereum.logs)
+#   - Envio : src/settle/normalize/sources/hypersync_non_msc.py (raw HyperSync logs)
+# Keep every address/ilk below in sync with both.
+
+id: non_msc
+label: 'Sky non-MSC protocol P&L'
+
+income:
+  psm_jar:
+    # Coinbase PSM payments arrive as ONE payment per month (sender
+    # 0xf6e7…3042, burned same day), on days 2-14 of the following month.
+    # Recognition is CASH at burn, in the calendar month the burn LANDS
+    # (methodology 2026-07-16). Every in-month burn counts (Jan 2026 has two:
+    # November's late payment on Jan 2 + December's on-slot on Jan 8).
+    jar: '0x69cA348Bd928A158ADe7aa193C133f315803b06e'
+    tokens:
+      - '0x6b175474e89094c44da98b954eedeac495271d0f'   # DAI
+      - '0xdc035d45d973e3ec169d2276ddab16f1e407384f'   # USDS
+  liquidations:
+    # Liquidation revenue = Σ owe (clip.take) − Σ due (dog.bark), in-month.
+    # Clipper instances discovered from the Dog's Bark `clip` field.
+    dog: '0x135954d155898d42c90d2a57824c690e0c7bef1b'
+  surplus_returns:
+    # {dai,usds}Join.join(vow) → Vat.move(join → vow). Classified by the tx's
+    # burn source: LitePSM jar → PSM line; RWA jar → rwa_void; else surplus.
+    dai_join:  '0x9759A6Ac90977b93B58547b4A71c78317f391A28'
+    usds_join: '0x3C0f895007CA717Aa01c8693e59DF1e8C3777FEB'
+    vow:       '0xA950524441892A31ebddF91d3cEEFa04Bf454466'
+  rwa_jars:
+    # Legacy-RWA jar voids (RwaJar.void → vow) — tripwire, ~0 in 2026.
+    - '0xef1B095F700BE471981aae025f92B03091c3AD47'   # RWA007_A_JAR
+    - '0x6C6d4Be2223B5d202263515351034861dD9aFdb6'   # RWA009_A_JAR (H.V.Bank)
+    - '0x71eC6d5Ee95B12062139311CA1fE8FD698Cbe0Cf'   # RWA014_A_JAR
+    - '0xc27C3D3130563C1171feCC4F76C217Db603997cf'   # RWA015_A_JAR
+  stability_fees:
+    # Income = stability fees on the ACCRUAL basis: Σ over checkpoints of
+    # Art × Δr_true, where r_true(t) = rate(last fold ≤ t) × duty^(t − rho) is
+    # reconstructed from `duty` directly (independent of when jug.drip/vat.fold
+    # fired). Checkpoints = month bounds + every in-month Art change. Art =
+    # running Σ dart (frob + grab) since genesis, in execution order.
+    # Scope: the FULL ilk universe (every vat.init) except ALLOCATOR-* (MSC).
+    # This subsumes the 9 core-vault ilks below plus any residual fee-earning
+    # ilk (2026: RWA002-A ~$200K/mo); future onboardings included automatically.
+    vat: '0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B'
+    core_ilks: [ETH-A, ETH-B, ETH-C, WSTETH-A, WSTETH-B, WBTC-A, WBTC-B, WBTC-C, LSEV2-SKY-A]
+
+expense:
+  # Savings interest is on the ACCRUAL basis: each drip's minted amount is
+  # apportioned to the calendar month by interpolating the accumulator at the
+  # month boundaries (geometric in chi for sUSDS/stUSDS, time-fraction for the
+  # pot suck). The two intervals straddling the month bounds are split; the
+  # end-boundary tail is closed by the first drip in the next month.
+  susds:
+    contract: '0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD'
+    # The expense counts the GROSS drip (all holders): the SSR Sky pays on
+    # PRIME-held sUSDS must stay in the expense because MSC sky_revenue
+    # carries the offsetting BR income on the debt backing those positions
+    # (Rule 5 neutrality) — deducting it would double-count income at the
+    # consolidated sky_total level. The prime/user split below is rendered
+    # as an INFORMATIONAL breakdown. Prime holders (Ethereum ALM +
+    # subproxy, from the prime configs — keep in sync with the SQL):
+    prime_holders:
+      spark_alm:   '0x1601843c5e9bc251a3272907010afa41fa18347e'
+      grove_alm:   '0x491edfb0b8b608044e227225c715981a30f3a44e'
+      obex_alm:    '0xb6dd7ae22c9922afee0642f9ac13e58633f715a2'
+      spark_sub:   '0x3300f198988e4c9c63f75df86de36421f06af8c4'
+      grove_sub:   '0x1369f7b2b38c76b6478c0f0e66d94923421891ba'
+      obex_sub:    '0x8be042581f581e3620e29f213ea8b94afa1c8071'
+      keel_sub:    '0x355cd90ecb1b409fdf8b64c4473c3b858da2c310'
+      skybase_sub: '0x08978e3700859e476201c1d7438b3427e3c81140'
+    # L2 leg of the informational split: bridged sUSDS sits in L1 escrows,
+    # but the SSR claim belongs to the L2 holders — prime L2 balances (ALM
+    # proxies + PSM3 reserves) × the same global Δchi:
+    prime_l2_holders:
+      spark_alm_base:      '0x2917956eff0b5eaf030abdb4ef4296df775009ca'
+      spark_psm3_base:     '0x1601843c5e9bc251a3272907010afa41fa18347e'
+      spark_alm_arbitrum:  '0x92afd6f2385a90e44da3a8b60fe36f6cbe1d8709'
+      spark_psm3_arbitrum: '0x2b05f8e1cacc6974fd79a673a341fe1f58d27266'
+      spark_alm_optimism:  '0x876664f0c9ff24d1aa355ce9f1680ae1a5bf36fb'
+      spark_psm3_optimism: '0xe0f9978b907853f354d79188a3defbd41978af62'
+      spark_alm_unichain:  '0x345e368fccd62266b3f5f37c9a131fd1c39f5869'
+      spark_psm3_unichain: '0x7b42ed932f26509465f7ce3faf76ffce1275312f'
+    l2_susds_tokens:
+      base:     '0x5875eee11cf8398102fdad704c9e96607675467a'
+      arbitrum: '0xddb46999f8891663a8f2828d25298f70416d7610'
+      optimism: '0xb5b2dc7fd34c249f4be7fb1fcea07950784229e0'
+      unichain: '0xa06b10db9f390990364a3984c04fadf1c13691b5'
+  dsr:
+    pot: '0x197e90f9fad81970ba7976f33cbd77088e5d7cf7'   # MCD_POT (vat.suck v=pot)
+  stusds:
+    contract: '0x99CD4Ec3f88A45940936F469E4bB72A2A701EEB9'
+  liquidation_incentives:
+    # Keeper incentives = Σ coin over clip.kick + clip.redo, in-month (minted
+    # from the vow via vat.suck). Clippers discovered from Dog barks (above).
+    dog: '0x135954d155898d42c90d2a57824c690e0c7bef1b'
+  vest:
+    # Gross suckable DssVest payouts (Vest event amt, /1e18), booked at call
+    # time. Token vests (*_TREASURY) are treasury-funded — excluded. The unused
+    # remainder is refunded to the vow (booked as income:surplus_return).
+    contracts:
+      - '0xa4c22f0e25C6630B2017979AcF1f865e94695C4b'   # MCD_VEST_DAI
+      - '0xc447a9745aDe9A44Bb9E37B7F6C92f9582544110'   # MCD_VEST_USDS
+      - '0x2Cc583c0AaCDaC9e23CB601fDA8F1A0c56Cdcb71'   # MCD_VEST_DAI_LEGACY

@@ -58,6 +58,10 @@ class LogRow:
     topic2: str | None
     topic3: str | None
     data: str
+    # Populated only when the caller requests "transaction_hash" in
+    # ``log_fields`` (default field set omits it); None otherwise. Used for
+    # same-transaction classification (e.g. non_msc surplus vs PSM/RWA jar).
+    transaction_hash: str | None = None
 
 
 @dataclass
@@ -162,6 +166,7 @@ def query_logs(
                         topic2=_lower(lg.get("topic2")),
                         topic3=_lower(lg.get("topic3")),
                         data=lg.get("data") or "0x",
+                        transaction_hash=_lower(lg.get("transaction_hash")),
                     )
                 )
         nxt = page.get("next_block")
