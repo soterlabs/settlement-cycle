@@ -1,6 +1,6 @@
 # NON_MSC — 2026-04
 
-Sky protocol P&L outside the prime-agent (MSC) perimeter. Methodology (handoff 2026-07-16): stability fees on the accrual basis (Art × Δr_true, r_true reconstructed from `duty`); PSM income at the jar burn's landing month (cash basis); liquidation revenue = Σ take.owe − Σ bark.due; surplus returns = join→vow moves not attributable to the PSM/RWA jar; savings interest at `drip` (sUSDS gross, prime split informational); liquidation keeper incentives and Vest suckable payouts on the expense side.
+Sky protocol P&L outside the prime-agent (MSC) perimeter. Methodology (handoff 2026-07-16): stability fees on the accrual basis (Art × Δr_true, r_true reconstructed from `duty`); PSM income at the jar burn's landing month (cash basis); liquidation revenue = Σ take.owe − Σ bark.due; surplus returns = join→vow moves not attributable to the PSM/RWA jar; savings interest on the accrual basis (drips apportioned by chi-boundary interpolation; sUSDS gross, prime split informational); liquidation keeper incentives and Vest suckable payouts on the expense side.
 
 ## Income
 
@@ -31,25 +31,16 @@ Sky protocol P&L outside the prime-agent (MSC) perimeter. Methodology (handoff 2
 
 | Section | Line | USDS |
 |---|---|---:|
-| Savings | sUSDS SSR (gross, all holders) | 18,304,617.83 |
-| Savings | — of which: non-prime users (informational) | 12,163,798.30 |
-| Savings | — of which: prime-held, spark_alm (offset by BR in MSC) | 4,063,315.84 |
-| Savings | — of which: prime-held, spark_alm_arbitrum (offset by BR in MSC) | 429,939.08 |
-| Savings | — of which: prime-held, spark_psm3_base (offset by BR in MSC) | 369,331.90 |
-| Savings | — of which: prime-held, spark_psm3_unichain (offset by BR in MSC) | 307,653.86 |
-| Savings | — of which: prime-held, spark_alm_optimism (offset by BR in MSC) | 306,089.78 |
-| Savings | — of which: prime-held, spark_psm3_optimism (offset by BR in MSC) | 254,090.83 |
-| Savings | — of which: prime-held, spark_alm_base (offset by BR in MSC) | 227,294.07 |
-| Savings | — of which: prime-held, spark_psm3_arbitrum (offset by BR in MSC) | 180,157.25 |
-| Savings | — of which: prime-held, spark_alm_unichain (offset by BR in MSC) | 2,946.90 |
-| Savings | stUSDS | 1,093,246.40 |
-| Savings | DSR (legacy pot) | 250,769.05 |
+| Savings | sUSDS SSR (gross, all holders) | 18,300,475.38 |
+| Savings | — of which: non-prime users (informational) | 18,300,475.38 |
+| Savings | stUSDS | 1,094,061.32 |
+| Savings | DSR (legacy pot) | 250,614.71 |
 | Liquidations | keeper incentives (Σ coin, kicks + redos) | 0.00 |
 | Vest | gross suckable payouts | 0.00 |
-| **Total** | | **19,648,633.28** |
+| **Total** | | **19,645,151.42** |
 
 ## Net
 
 | Field | USDS |
 |---|---:|
-| **non-MSC net revenue** | **-1,354,178.81** |
+| **non-MSC net revenue** | **-1,350,696.95** |
