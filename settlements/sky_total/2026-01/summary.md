@@ -15,7 +15,8 @@ Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3).
 | Sent to prime subproxy | obex | -442,327.00 |
 | Sent to prime subproxy | keel | -0.00 |
 | Sent to prime subproxy | skybase | -10,000,000.00 |
-| Sent to prime subproxy | **subtotal** | **-17,513,666.00** |
+| Sent to prime subproxy | — of which: one-off capital seeding (value-neutral; matched by allocator mint) | 10,000,000.00 |
+| Sent to prime subproxy | **subtotal (raw)** | **-17,513,666.00** |
 | Sent to Demand-side Buffer |  | -0.00 |
 | Sent to Core Council | on-chain gross | -6,632,421.00 |
 | Sent to Core Council | of which: Step 1 Capital (20% × SNR, add-back) | +6,398,285.17 |
@@ -40,3 +41,4 @@ Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3).
 | **Sky Net Revenue** | **31,991,425.85** |
 
 > ⚠ grove_tge_penalty: no override for 2026-01 in config/sky_total.yaml — booked $0. The methodology doc's §3 line was 1,396,260 for 2026-06; back-fill earlier months from the corresponding MSC forum posts.
+> ⚠ one_off_transfers: excluding 10,000,000.00 USDS from 'skybase' subproxy (config/sky_total.yaml → one_off_transfers[2026-01][skybase])

@@ -129,6 +129,10 @@ def load_config(path: Path | None = None) -> dict[str, Any]:
             k: (None if v is None else Decimal(str(v)))
             for k, v in (cfg.get("grove_tge_penalty") or {}).items()
         },
+        "one_off_transfers": {
+            month: {prime: Decimal(str(amt)) for prime, amt in (byprime or {}).items()}
+            for month, byprime in (cfg.get("one_off_transfers") or {}).items()
+        },
     }
 
 

@@ -31,6 +31,18 @@ The Grove TGE penalty is a per-month config override (its on-chain mechanism
 is "still open with BA" — PRD §17.13 B16); the June 2026 value from the doc
 is pinned in ``config/sky_total.yaml``, other months surface a warning until
 back-filled.
+
+**One-off subproxy inflows** (initial capital seeding, e.g. Skybase's $10M in
+MSC#5, Keel's $10M in MSC#6) are read from ``config/sky_total.yaml``. These
+events are VALUE-NEUTRAL for Sky Net Revenue: the same amount that gets sent
+to the seeded prime is minted from Sky's allocator debt in the same
+settlement, so the mint (+) and send (−) cancel in the buffer-basis formula.
+The formula therefore uses RAW subproxy sends (equivalent to excluding the
+one-off from both sides); the summary renders the raw / one-off / adjusted
+split for transparency, and provenance carries both figures. Subproxy-only
+exclusion (mint side left raw) inflates SNR by ``one_off/0.8`` per event and
+can push cc_genesis negative when 0.2·SNR > cc_gross, so we deliberately
+avoid it.
 """
 
 from __future__ import annotations
@@ -73,7 +85,8 @@ class SkyTotalMonthly:
     settlement_ts: int
     # Buffer-basis MSC components (USDS).
     mint_per_prime: dict[str, Decimal]              # spark/grove/obex only
-    subproxy_per_prime: dict[str, Decimal]          # all 5 primes
+    subproxy_raw_per_prime: dict[str, Decimal]      # all 5, on-chain settlement-block mint
+    one_off_per_prime: dict[str, Decimal]           # config-driven exclusions (initial capital, etc.)
     dsb: Decimal
     cc_gross: Decimal                               # on-chain USDS mint to CC
     grove_tge_penalty: Decimal
@@ -84,12 +97,31 @@ class SkyTotalMonthly:
     warnings: list[str] = field(default_factory=list)
 
     @property
+    def subproxy_adjusted_per_prime(self) -> dict[str, Decimal]:
+        """Display-only: raw settlement-block mint − configured one-off
+        exclusions. Rendered in the summary next to the raw figure so a
+        reader sees the revenue-distribution vs capital-seeding split. Does
+        NOT feed the buffer-basis formula — see the module docstring."""
+        return {
+            p: self.subproxy_raw_per_prime[p] - self.one_off_per_prime.get(p, Decimal(0))
+            for p in self.subproxy_raw_per_prime
+        }
+
+    @property
     def total_mint(self) -> Decimal:
         return sum(self.mint_per_prime.values(), Decimal(0))
 
     @property
-    def total_subproxy(self) -> Decimal:
-        return sum(self.subproxy_per_prime.values(), Decimal(0))
+    def total_subproxy_raw(self) -> Decimal:
+        return sum(self.subproxy_raw_per_prime.values(), Decimal(0))
+
+    @property
+    def total_one_off(self) -> Decimal:
+        return sum(self.one_off_per_prime.values(), Decimal(0))
+
+    @property
+    def total_subproxy_adjusted(self) -> Decimal:
+        return self.total_subproxy_raw - self.total_one_off
 
     @property
     def non_msc_net(self) -> Decimal:
@@ -97,10 +129,12 @@ class SkyTotalMonthly:
 
     @property
     def sky_net_revenue(self) -> Decimal:
-        """Algebraic derivation — see module docstring."""
+        """Algebraic derivation — see module docstring. Uses RAW subproxy
+        sends (one-offs cancel against the corresponding allocator mint that
+        raised the same debt in the same settlement)."""
         num = (
             self.total_mint
-            - self.total_subproxy
+            - self.total_subproxy_raw
             - self.dsb
             - self.cc_gross
             - self.grove_tge_penalty
@@ -207,8 +241,9 @@ def compute_sky_total_monthly(
         else:
             raise ValueError(f"sky_total: unknown stream {stream!r}")
 
-    # Grove TGE penalty: config override per month.
     label = f"{month.year}-{month.month:02d}"
+
+    # Grove TGE penalty: config override per month.
     penalty_map = source._cfg.get("grove_tge_penalty") or {}
     if label in penalty_map and penalty_map[label] is not None:
         penalty = Decimal(penalty_map[label])
@@ -222,20 +257,37 @@ def compute_sky_total_monthly(
             "back-fill earlier months from the corresponding MSC forum posts."
         )
 
+    # One-off subproxy exclusions (initial capital seeding, etc.).
+    one_off_map = (source._cfg.get("one_off_transfers") or {}).get(label) or {}
+    one_off_per_prime: dict[str, Decimal] = {p: Decimal(0) for p in _ALL_PRIMES}
+    for prime, amt in one_off_map.items():
+        if prime not in _ALL_PRIMES:
+            raise ValueError(f"sky_total: one_off_transfers[{label}] has unknown prime {prime!r}")
+        d = Decimal(str(amt))
+        if d > subs[prime]:
+            raise ValueError(
+                f"sky_total {label}: one_off_transfers[{prime}] = {d} exceeds "
+                f"the on-chain settlement-block mint to that subproxy ({subs[prime]}). "
+                "Cross-check the config value against the on-chain settlement block."
+            )
+        one_off_per_prime[prime] = d
+        warnings.append(
+            f"one_off_transfers: excluding {d:,.2f} USDS from '{prime}' subproxy "
+            f"(config/sky_total.yaml → one_off_transfers[{label}][{prime}])"
+        )
+
     # Non-MSC inputs.
     inc, exp, non_msc_warns = _load_non_msc(repo_root, month)
     for w in non_msc_warns:
         warnings.append(f"non_msc: {w}")
 
-    for w in warnings:
-        _log.warning("sky_total %s: %s", label, w)
-
-    return SkyTotalMonthly(
+    result = SkyTotalMonthly(
         month=label,
         settlement_block=settlement_block,
         settlement_ts=settlement_ts,
         mint_per_prime=mints,
-        subproxy_per_prime=subs,
+        subproxy_raw_per_prime=subs,
+        one_off_per_prime=one_off_per_prime,
         dsb=dsb,
         cc_gross=cc,
         grove_tge_penalty=penalty,
@@ -244,6 +296,27 @@ def compute_sky_total_monthly(
         non_msc_expense=exp,
         warnings=warnings,
     )
+
+    # Sanity guard: cc_genesis is what's left of the on-chain CC transfer
+    # after carving out the algebraic 20% Step 1 Capital slice. It should be
+    # non-negative — if it's not, either (a) the 20% ratio didn't apply in
+    # this cycle (e.g. pre-methodology-change), or (b) an unmodeled outflow
+    # is inflating SNR (mint side too high, or an outflow we're missing).
+    if result.cc_genesis_repayment < 0:
+        warnings.append(
+            f"cc_genesis_repayment is NEGATIVE ({result.cc_genesis_repayment:,.2f}) — "
+            "the 20% Step 1 Capital rule (doc §3) doesn't hold for this cycle, or "
+            "an outflow is unmodeled. Cross-check against BA's forum figure for "
+            f"MSC#{result.month} before treating this month's Sky Net Revenue as "
+            "reconciled."
+        )
+        # Refresh the warnings on the object.
+        result.warnings = warnings
+
+    for w in warnings:
+        _log.warning("sky_total %s: %s", label, w)
+
+    return result
 
 
 # ── artifacts ────────────────────────────────────────────────────────────────
@@ -280,13 +353,30 @@ def render_summary(r: SkyTotalMonthly) -> str:
     for prime in _MINT_PRIMES:
         L.append(f"| Debt minted to buffer | {prime} | {_usds(r.mint_per_prime[prime])} |")
     L.append(f"| Debt minted to buffer | **subtotal** | **{_usds(r.total_mint)}** |")
+    # Buffer-basis formula uses RAW subproxy sends (one-offs cancel against
+    # the corresponding allocator mint). Rendered lines show raw amounts;
+    # the one-off carve-out is shown as an informational sub-row so the
+    # revenue-distribution vs capital-seeding split is visible.
     for prime in _ALL_PRIMES:
-        L.append(f"| Sent to prime subproxy | {prime} | -{_usds(r.subproxy_per_prime[prime])} |")
-    L.append(f"| Sent to prime subproxy | **subtotal** | **-{_usds(r.total_subproxy)}** |")
+        raw = r.subproxy_raw_per_prime[prime]
+        one_off = r.one_off_per_prime.get(prime, Decimal(0))
+        L.append(f"| Sent to prime subproxy | {prime} | -{_usds(raw)} |")
+        if one_off.quantize(Decimal("0.01")) != 0:
+            L.append(
+                f"| Sent to prime subproxy | — of which: one-off capital seeding "
+                f"(value-neutral; matched by allocator mint) | {_usds(one_off)} |"
+            )
+    L.append(f"| Sent to prime subproxy | **subtotal (raw)** | **-{_usds(r.total_subproxy_raw)}** |")
     L.append(f"| Sent to Demand-side Buffer |  | -{_usds(r.dsb)} |")
     L.append(f"| Sent to Core Council | on-chain gross | -{_usds(r.cc_gross)} |")
     L.append(f"| Sent to Core Council | of which: Step 1 Capital (20% × SNR, add-back) | +{_usds(r.cc_step1_capital)} |")
-    L.append(f"| Sent to Core Council | of which: **genesis repayment (net cost)** | **-{_usds(r.cc_genesis_repayment)}** |")
+    # Guard against the `--<value>` double-minus that appears when
+    # cc_genesis_repayment goes negative (the 20% rule doesn't hold for the
+    # cycle — a warning is also surfaced below).
+    if r.cc_genesis_repayment >= 0:
+        L.append(f"| Sent to Core Council | of which: **genesis repayment (net cost)** | **-{_usds(r.cc_genesis_repayment)}** |")
+    else:
+        L.append(f"| Sent to Core Council | of which: **genesis repayment (NEGATIVE — see warning)** | **{_usds(r.cc_genesis_repayment)}** |")
     L.append(
         f"| Grove TGE penalty (excluded from Sky revenue) | {r.grove_tge_penalty_source} "
         f"| -{_usds(r.grove_tge_penalty)} |"
@@ -329,8 +419,12 @@ def write_sky_total(r: SkyTotalMonthly, out_dir: Path) -> dict[str, Path]:
         "results": {
             "mint_per_prime": {k: str(v) for k, v in r.mint_per_prime.items()},
             "total_mint": str(r.total_mint),
-            "subproxy_per_prime": {k: str(v) for k, v in r.subproxy_per_prime.items()},
-            "total_subproxy": str(r.total_subproxy),
+            "subproxy_raw_per_prime": {k: str(v) for k, v in r.subproxy_raw_per_prime.items()},
+            "one_off_per_prime": {k: str(v) for k, v in r.one_off_per_prime.items()},
+            "subproxy_adjusted_per_prime": {k: str(v) for k, v in r.subproxy_adjusted_per_prime.items()},
+            "total_subproxy_raw": str(r.total_subproxy_raw),
+            "total_one_off": str(r.total_one_off),
+            "total_subproxy_adjusted": str(r.total_subproxy_adjusted),
             "dsb": str(r.dsb),
             "cc_gross": str(r.cc_gross),
             "cc_step1_capital": str(r.cc_step1_capital),

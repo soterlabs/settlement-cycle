@@ -15,7 +15,7 @@ Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3).
 | Sent to prime subproxy | obex | -526,204.00 |
 | Sent to prime subproxy | keel | -32,279.00 |
 | Sent to prime subproxy | skybase | -1,806,616.00 |
-| Sent to prime subproxy | **subtotal** | **-6,841,799.00** |
+| Sent to prime subproxy | **subtotal (raw)** | **-6,841,799.00** |
 | Sent to Demand-side Buffer |  | -0.00 |
 | Sent to Core Council | on-chain gross | -2,946,125.00 |
 | Sent to Core Council | of which: Step 1 Capital (20% × SNR, add-back) | +2,500,713.22 |

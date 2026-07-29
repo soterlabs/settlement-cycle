@@ -48,3 +48,36 @@ grove_tge_penalty:
   # '2026-03': null
   # '2026-04': null
   # '2026-05': null
+
+# ── One-off subproxy inflows to exclude from "sent to prime subproxy".
+#
+# The on-chain scan of USDS mints (from=0x0, to=<subproxy>) on the settlement
+# block picks up TWO different kinds of event with the same signature:
+#
+#   (a) the monthly revenue distribution to the prime (what the doc §3's
+#       "sent to prime subproxies" line means), and
+#   (b) one-off treasury endowments seeding a brand-new prime (NOT a revenue
+#       distribution — Sky isn't paying the prime for services rendered, it's
+#       funding a new counterparty).
+#
+# Only (a) should reduce Sky's revenue. (b) is off-methodology and needs to
+# be carved out. This map lists the confirmed one-off inflows by
+# YYYY-MM → prime → USDS amount; the compute layer subtracts them from the
+# raw settlement-block subproxy sends before applying the buffer-basis
+# formula, and the summary renders both the raw and adjusted figures for
+# audit.
+#
+# Confirmed events (Jan–Jun 2026):
+#   * 2026-01 skybase = 10,000,000 — Skybase seeding on the MSC#5 block
+#     (2026-02-02 block 24369632). Skybase earned $0 in Jan (no debt yet),
+#     so the entire mint is initial capital.
+#   * 2026-02 keel    = 10,000,000 — Keel seeding on the MSC#6 block
+#     (2026-03-02 block 24570218). Keel earned ~$30K/mo in this era; the
+#     $10M is initial capital. NB: PRD §17.13 references "around Mar 29"
+#     for Keel's funding date — the settlement-block landing is 27 days
+#     earlier; cross-check when back-filling BA forum figures.
+one_off_transfers:
+  '2026-01':
+    skybase: 10000000.00
+  '2026-02':
+    keel: 10000000.00
