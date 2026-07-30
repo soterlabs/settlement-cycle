@@ -19,9 +19,9 @@ start_date: '2025-05-14'  # First frob (test mint, unwound 2025-06-25)
 # Grove team's PnL workbook exactly. Reference rate values live in
 # config/subsidy_reference_rates.yaml.
 #
-# ref_rate_kind: per Sky governance (2026-05-02), Grove uses 3-month T-Bill,
-# Spark uses EFFR. Both daily series are stored in
-# config/subsidy_reference_rates.yaml.
+# ref_rate_kind: 3-month T-Bill, per Atlas A.2.8.2.2.2.2.2. Unchanged for
+# Grove; as of 2026-07-30 Spark is on the same series (QUESTIONS.md S5), so
+# tbill_3m is now the only kind the loader accepts.
 subsidy:
   enabled: true
   cap_usd: 1000000000      # First $1B at subsidised rate; excess at full BR

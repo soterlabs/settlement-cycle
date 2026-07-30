@@ -52,7 +52,7 @@ When ``subsidy_config.enabled`` is True:
   subsidised rate; any excess at the full base rate.
 * T = months elapsed since ``subsidy_config.program_start`` (default
   2026-01-01). Jan 2026 → T=0, Feb 2026 → T=1, …
-* ``ref_rate_history`` provides the daily reference rate (EFFR or 3M T-Bill).
+* ``ref_rate_history`` provides the daily reference rate (3M T-Bill).
 
 NOTE on what this function does NOT compute:
 * Sky Direct revenue (doc Step 4) is computed in the orchestrator from the
@@ -319,10 +319,11 @@ def compute_sky_revenue_daily(
     # consumes, so the warning and the spreadsheet's zero-benefit flag can
     # never disagree. When the subsidy is enabled but the reference rate sits
     # at/above base_apy on every active day, the ramp clamps to base and the
-    # prime gets $0 benefit. Occasionally legitimate (genuinely high
-    # EFFR/T-Bill), but also the exact signature of a stale/placeholder
-    # reference rate — the May 2026 Spark run carried a January EFFR of 4.33%
-    # (> BR) all month, silently zeroing a ~$0.2M subsidy. The date-staleness
+    # prime gets $0 benefit. Occasionally legitimate (a genuinely high
+    # T-Bill — the June 2026 3.87% print is within 9bps of base), but also
+    # the exact signature of a stale/placeholder reference rate: the May 2026
+    # Spark run carried a January rate of 4.33% (> BR) all month, silently
+    # zeroing a ~$0.2M subsidy. The date-staleness
     # guard in ReferenceRateHistory.at() can't catch it (rows present, just
     # wrong), so flag the zero-benefit outcome directly.
     if subsidy_summary is not None and subsidy_summary["zero_benefit"]:

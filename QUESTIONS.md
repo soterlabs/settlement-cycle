@@ -904,6 +904,19 @@ from Spark's side as a real disagreement, not a documentation
 mistake. Resolution still needs Sky / BA to arbitrate which is
 canonical for Spark.
 
+**Implementation decision (2026-07-30, PR `feat/spark-tbill-subsidy`):**
+we have moved Spark to `tbill_3m` and **deleted the EFFR series from
+the codebase** — Atlas is treated as canonical. This is a Soter-side
+decision taken ahead of Sky/BA arbitration, not the arbitration
+itself: **this question stays OPEN until Sky or BA confirms in
+writing.** If they rule for EFFR, the series has to be restored from
+git history and Jan–Jun 2026 re-run. Numerical consequence of the
+switch, rate-only with published `utilized` held fixed: Spark's
+`sky_revenue` rises **+$236,706** across Jan–Jun 2026 (Spark's
+supply-side revenue falls by the same amount), and the gap is
+widening — June alone is +$115,400 because the 3M T-Bill stepped up
+to 3.78–3.87% while EFFR held at 3.62–3.63%.
+
 #### S10. L2 sUSDS proxies (S37 Base, S43 Arbitrum, S47 Optimism, S51 Unichain) — Q1 flow confirmation
 Each has only one row in our captured fixture (pre-period anchor only).
 The Q1 filter drops some entirely; the math happens to work because no

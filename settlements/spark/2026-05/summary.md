@@ -18,7 +18,7 @@ Period: 2026-05-01 → 2026-05-31 (31 days)
 
 | Field | USDS |
 |---|---:|
-| **supply-side revenue** | **2,962,800.60** |
+| **supply-side revenue** | **2,921,628.83** |
 
 ##### Non-venue sUSDS credits
 
@@ -34,9 +34,9 @@ Period: 2026-05-01 → 2026-05-31 (31 days)
 
 | Field | USDS |
 |---|---:|
-| prime cost of funds | 10,640,588.59 |
+| prime cost of funds | 10,681,760.36 |
 | sky direct exposure | 40,533.96 |
-| **supply-side revenue** | **10,681,122.55** |
+| **supply-side revenue** | **10,722,294.31** |
 
 ## Per-venue
 
