@@ -49,7 +49,7 @@ import requests
 
 from ...extract import hypersync
 from ...extract import hypersync_store
-from ._hypersync_common import _addr_topic, _evt, _sel, _word
+from ._hypersync_common import _addr_topic, _evt, _row, _sel, _word
 from .hypersync_debt import _decode_dart
 
 __all__ = ["HyperSyncNonMscSource"]
@@ -186,7 +186,7 @@ class HyperSyncNonMscSource:
             if start_ts <= r.block_time < end_ts:
                 d = datetime.fromtimestamp(r.block_time, tz=timezone.utc).date()
                 amt = Decimal(_word(r.data, 0)) / _WAD
-                out.append(_row("income:psm_jar", str(d), d, amt))
+                out.append(_row("income:psm_jar", str(d), amt, event_date=d))
         return out
 
     # -- income: stability fees (accrual) -----------------------------------
@@ -196,7 +196,7 @@ class HyperSyncNonMscSource:
         for ilk in self._fee_ilks(pin_block):
             amt = self._accrued_fee(ilk, start_ts, end_ts, pin_block)
             if amt is not None and abs(amt) >= Decimal("0.01"):
-                out.append(_row("income:stability_fee", ilk, None, amt))
+                out.append(_row("income:stability_fee", ilk, amt))
         return out
 
     def _fee_ilks(self, pin_block: int) -> list[str]:
@@ -264,9 +264,9 @@ class HyperSyncNonMscSource:
                 coin += Decimal(_word(r.data, 3)) / _RAD                # Kick/Redo coin = word[3]
 
         return [
-            _row("income:liq_owe", "liquidation owe (takes)", None, owe),
-            _row("income:liq_due", "liquidation due (barks)", None, due),
-            _row("expense:liq_coin", "keeper incentives (kicks + redos)", None, coin),
+            _row("income:liq_owe", "liquidation owe (takes)", owe),
+            _row("income:liq_due", "liquidation due (barks)", due),
+            _row("expense:liq_coin", "keeper incentives (kicks + redos)", coin),
         ]
 
     # -- income: surplus returns + RWA jar voids (join → vow) ----------------
@@ -298,8 +298,8 @@ class HyperSyncNonMscSource:
                 rwa_void += amt                 # RWA jar → RWA void line
             else:
                 d = datetime.fromtimestamp(r.block_time, tz=timezone.utc).date()
-                out.append(_row("income:surplus_return", str(d), d, amt))
-        out.append(_row("income:rwa_void", "RWA jars (void)", None, rwa_void))
+                out.append(_row("income:surplus_return", str(d), amt, event_date=d))
+        out.append(_row("income:rwa_void", "RWA jars (void)", rwa_void))
         return out
 
     def _burn_txs(self, senders, start_ts, end_ts, fb, tb) -> set[str]:
@@ -325,7 +325,7 @@ class HyperSyncNonMscSource:
         ).rows:
             if start_ts <= r.block_time < end_ts:
                 total += Decimal(_word(r.data, 0)) / _WAD               # amt = data word[0]
-        return [_row("expense:vest", "vest (gross suckable)", None, total)]
+        return [_row("expense:vest", "vest (gross suckable)", total)]
 
     # -- expense: savings interest (ACCRUAL, chi-boundary interpolation) ------
 
@@ -372,9 +372,9 @@ class HyperSyncNonMscSource:
         dsr = _accrue_savings([(r.block_time, None, int(r.topic3, 16)) for r in sk],
                               start_ts, end_ts) / _RAD
         return [
-            _row("expense:susds_drip", "sUSDS SSR (gross, all holders)", None, susds),
-            _row("expense:stusds_drip", "stUSDS", None, stusds),
-            _row("expense:dsr_drip", "DSR (pot)", None, dsr),
+            _row("expense:susds_drip", "sUSDS SSR (gross, all holders)", susds),
+            _row("expense:stusds_drip", "stUSDS", stusds),
+            _row("expense:dsr_drip", "DSR (pot)", dsr),
         ]
 
 
@@ -481,5 +481,3 @@ def _accrue_savings(
     return Decimal(whole) + Decimal(str(part))
 
 
-def _row(stream: str, label: str, event_date: date | None, amount: Decimal) -> dict:
-    return {"stream": stream, "label": label, "event_date": event_date, "amount": amount}

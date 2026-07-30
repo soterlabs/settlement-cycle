@@ -163,11 +163,12 @@ class SkyTotalMonthly:
 
 
 def resolve_pin_block(month: Month) -> int:
-    """Pin block: end of month M+1 (safe ceiling covering any late-M or
-    early-M+1 settlement execution). Unlike ``non_msc.resolve_pin_block``
-    which pins end-of-M, this unit needs to see through the following
-    month's settlement window since MSC cycle timing straddles M / M+1.
-    Clamped to a safe head for months still in progress."""
+    """Pin block: end of month M+1 (safe ceiling covering the M+1 settlement
+    window). Unlike ``non_msc.resolve_pin_block`` which pins end-of-M, this
+    unit pins end-of-M+1 because month M's MSC settlement fires somewhere in
+    M+1 (the exact day varies from early-Feb-2 to mid-Jul-20 across MSC#5–10,
+    but the M+1 rule holds). Clamped to a safe head for months still in
+    progress."""
     from ..domain import Chain
     from ..extract import rpc
 

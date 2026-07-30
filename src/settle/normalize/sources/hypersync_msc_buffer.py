@@ -3,18 +3,20 @@
 The MSC leg is settled in a single atomic transaction whose components (the
 debt mint via Vat.grab on the three ALLOCATOR ilks, all USDS transfers to
 prime subproxies, the Demand-side Buffer transfer, and the Core Council
-Buffer Multisig transfer) fire in one block. Cycle-to-cycle timing is
-IRREGULAR: some cycles execute in month M itself (MSC#7 on 2026-03-30,
-MSC#8 on 2026-04-27, MSC#9 on 2026-06-22), others in M+1 (MSC#5 on
-2026-02-02, MSC#6 on 2026-03-02, MSC#10 on 2026-07-20). This extractor
-therefore requires the settlement block to be pinned per-month in
-``config/sky_total.yaml → settlement_blocks``.
+Buffer Multisig transfer) fire in one block. **Month M's cycle is always
+settled in month M+1** — the specific day varies across cycles (early to
+late in M+1) but the M+1 rule holds. Mid-cycle capital events (Keel's $10M
+seeding on 2026-03-30, small CC-only corrections) can also look
+settlement-shaped on-chain but are NOT MSC settlements; they sit outside
+the monthly cycle. To avoid confusing them, each report month is anchored
+to its canonical settlement block in ``config/sky_total.yaml →
+settlement_blocks``.
 
 An auto-detect fallback exists (scan M+1 for USDS
 ``Transfer(from=0x0, to=CC_multisig)``) but is gated by the
-``SKY_TOTAL_ALLOW_AUTODETECT=1`` env var — it silently picked wrong cycles
-before we locked it down. Use only for a freshly-landed cycle; back-fill
-the config anchor immediately after.
+``SKY_TOTAL_ALLOW_AUTODETECT=1`` env var — an earlier iteration picked
+mid-cycle capital events instead of the real MSC settlement. Use only for
+a brand-new cycle; back-fill the config anchor immediately after.
 
 Cross-checked on June 2026 (block 25574490 @ 2026-07-20 14:21:59) — every
 transfer amount ties to the methodology doc §3 to the dollar for all seven
@@ -66,7 +68,7 @@ import requests
 import yaml
 
 from ...extract import hypersync
-from ._hypersync_common import _addr_topic, _evt, _sel, _word
+from ._hypersync_common import _addr_topic, _evt, _row, _sel, _word
 from .hypersync_debt import _decode_dart
 
 __all__ = ["HyperSyncMscBufferSource", "load_config", "SettlementNotFoundError"]
@@ -85,10 +87,6 @@ _TRANSFER = _evt("Transfer(address,address,uint256)")
 
 # Self-check.
 assert _sel("grab(bytes32,address,address,address,int256,int256)") == _GRAB
-
-
-def _row(stream: str, label: str, amount: Any) -> dict[str, Any]:
-    return {"stream": stream, "label": label, "amount": amount}
 
 
 class SettlementNotFoundError(Exception):
@@ -195,11 +193,13 @@ class HyperSyncMscBufferSource:
                 )
             settlement_block, settlement_ts = override, rows[0].block_time
         elif os.environ.get("SKY_TOTAL_ALLOW_AUTODETECT") == "1":
-            # Opt-in escape hatch — the auto-detect is known to pick the
-            # wrong cycle when settlements execute in M rather than M+1
-            # (MSC#7, MSC#8, MSC#9 all did this). Use only for a brand-new
-            # cycle before back-filling the config; expect to `git blame`
-            # this run when audit questions land.
+            # Opt-in escape hatch. Even though month M's MSC settlement is
+            # always in M+1, the fallback can still latch onto a
+            # mid-cycle capital event (Mar-30's Keel seeding, Mar-06's
+            # CC-only correction) if one lands in M+1 later than the real
+            # settlement. Use only for a brand-new cycle before
+            # back-filling the config, and expect to `git blame` this run
+            # when audit questions land.
             start_ts, end_ts = _next_month_range(month)
             fb = hypersync.find_block_at_or_before(_CHAIN, start_ts)
             tb = min(pin_block, hypersync.find_block_at_or_before(_CHAIN, end_ts))
@@ -213,9 +213,9 @@ class HyperSyncMscBufferSource:
         else:
             raise SettlementNotFoundError(
                 f"month {label}: no settlement_block in config/sky_total.yaml. "
-                "MSC cycle timing is irregular (some settle in M, some in M+1), "
-                "so we don't auto-detect by default — silently picking the wrong "
-                "cycle has already burned us. Fix: add an entry under "
+                "MSC settlements are always in M+1 but the day varies, and "
+                "mid-cycle capital events can masquerade as settlements — so "
+                "we don't auto-detect by default. Fix: add an entry under "
                 f"`settlement_blocks: {label!r}: <block_number>` in config, or "
                 "set SKY_TOTAL_ALLOW_AUTODETECT=1 to opt into the fallback for "
                 "a freshly-landed cycle."

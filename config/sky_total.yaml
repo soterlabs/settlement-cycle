@@ -34,26 +34,25 @@ core_council_multisig:   '0x210CFcF53d1f9648C1c4dcaEE677f0Cb06914364'
 
 # ── Settlement-block override per report month.
 #
-# The MSC settlement executes as a single atomic tx on a specific block. Cycle
-# timing is NOT a clean "M+1" rule — some cycles execute in month M itself
-# (MSC#7 on 2026-03-30 falls in March; MSC#8 on 2026-04-27 falls in April),
-# others in M+1 (MSC#5 on 2026-02-02, MSC#10 on 2026-07-20). Auto-detecting
-# "latest CC-mint in M+1" therefore picks up the wrong cycle for most months
-# (e.g. Feb 2026 → picks up MSC#7's block instead of MSC#6's).
+# **MSC settlement rule: month M's cycle is always paid in month M+1.** The
+# on-chain settlement is a single atomic tx that executes some time during
+# the M+1 window (day varies — early Feb / early Mar / late Apr / mid May /
+# late Jun / mid Jul across MSC#5–10).
 #
-# So we anchor each report month to its canonical settlement block explicitly.
+# Mid-cycle capital events (e.g. Keel's $10M seeding on 2026-03-30, and a
+# small CC-only correction on 2026-03-06) sit OUTSIDE the monthly cycle and
+# are NOT settlements — they are not indexed here. If we ever want to
+# attribute those to a report month for balance-sheet purposes we should do
+# it explicitly, not by conflating them with an MSC block.
+#
 # Cross-checked against USDS mints and Vat.grab dart on the three ALLOCATOR
 # ilks; each block is the SINGLE atomic MSC settlement tx for that cycle.
-#
-# Absence of an entry ⇒ auto-detect fallback (latest CC-mint in M+1); use this
-# only for months where a fresh cycle has landed and you haven't back-filled
-# the config yet.
 settlement_blocks:
   '2026-01': 24369632   # MSC#5,  2026-02-02 14:00 UTC
   '2026-02': 24570218   # MSC#6,  2026-03-02 14:00 UTC
-  '2026-03': 24772796   # MSC#7,  2026-03-30 20:26 UTC  (includes Keel +$10M seeding)
-  '2026-04': 24971851   # MSC#8,  2026-04-27 14:02 UTC
-  '2026-05': 25373623   # MSC#9,  2026-06-22 14:04 UTC  (block 25072324 on 2026-05-11 is a smaller partial; MSC#9 is the June-executed block)
+  '2026-03': 24971851   # MSC#7,  2026-04-27 14:02 UTC
+  '2026-04': 25072324   # MSC#8,  2026-05-11 14:01 UTC
+  '2026-05': 25373623   # MSC#9,  2026-06-22 14:04 UTC
   '2026-06': 25574490   # MSC#10, 2026-07-20 14:21 UTC
 
 # ── Grove token-launch (TGE) penalty — deducted from the MSC net per §3
@@ -91,17 +90,19 @@ grove_tge_penalty:
 # formula, and the summary renders both the raw and adjusted figures for
 # audit.
 #
-# Confirmed events (Jan–Jun 2026):
-#   * 2026-01 skybase = 10,000,000 — Skybase seeding on the MSC#5 block
-#     (2026-02-02 block 24369632). Skybase earned $0 in Jan (no debt yet),
-#     so the entire mint is initial capital.
-#   * 2026-03 keel    = 10,000,000 — Keel seeding on the MSC#7 block
-#     (2026-03-30 block 24772796). Matches PRD §17.13 which references
-#     "around Mar 29" for Keel's funding date. This lands in March's cycle,
-#     not February's (earlier configs had it on 2026-02 due to a settlement-
-#     block auto-detect bug now fixed via `settlement_blocks` overrides).
+# Confirmed events:
+#   * 2026-01 skybase = 10,000,000 — Skybase seeding riding IN the MSC#5
+#     settlement block (2026-02-02 block 24369632). Skybase earned $0 in
+#     Jan (no debt yet), so the entire mint is initial capital.
+#
+# Keel's $10M seeding on 2026-03-30 (block 24772796) is NOT indexed here
+# because that block is a mid-cycle capital event, not a monthly MSC
+# settlement (MSC#7 is 2026-04-27). Our extraction only reads
+# `settlement_blocks`, so the Keel event doesn't get picked up as a
+# subproxy send in any month's report — and therefore doesn't need an
+# offsetting one_off. If we later want to reflect the Keel funding in
+# March's Sky-total, that's a separate attribution decision (out of
+# scope for the doc §3 buffer-basis methodology).
 one_off_transfers:
   '2026-01':
     skybase: 10000000.00
-  '2026-03':
-    keel: 10000000.00
