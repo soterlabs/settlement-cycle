@@ -873,49 +873,6 @@ venue + a within-month end_date.
 
 ### P2 — sanity checks / confirmations
 
-#### S5. Subsidy reference rate — Atlas says T-Bill, current config says EFFR
-Spark is currently configured with `ref_rate_kind: effr` per a 2026-05-02
-governance note (also reflected in `config/subsidy_reference_rates.yaml`
-header), but the canonical Atlas text (A.2.8.2.2.2.2.2 — Borrow Rate
-Mechanism) says BOTH Spark and Grove are subsidised at:
-`t-bill_rate + (base_rate − t-bill_rate) × T/24` over the first $1B of
-USDS for 24 months from 2026-01-01.
-
-That phrasing reads "t-bill" for both primes — i.e. EFFR isn't named
-in Atlas at all. **Q for Spark (and BA/Sky for arbitration):** which
-is canonical for Spark — Atlas's `t-bill_rate` (in which case our
-EFFR config is wrong and Q1 2026 Spark numbers must be re-run with
-T-Bill, materially changing the subsidy benefit since EFFR Q1 2026
-≈ 4.33% sat at-or-above BR and gave ~0 subsidy, whereas 3M T-Bill
-≈ 3.67–3.74% gives ~26bps subsidy below BR), or the EFFR governance
-note (in which case Atlas needs an edit to name EFFR explicitly for
-Spark, or document the carve-out).
-
-If T-Bill is confirmed canonical, then S5 collapses into G5 (same
-question for both primes); otherwise we need a documentation pointer
-explaining the Spark-specific EFFR override.
-
-**Update from Spark interview (2026-05-06):** Spark **reaffirmed
-EFFR** as their expectation for the subsidy reference rate (their
-note: rate source = "EFRR" with link to
-`newyorkfed.org/markets/reference-rates/effr`). This stacks against
-Atlas's "t-bill_rate" text — i.e. the contradiction is now confirmed
-from Spark's side as a real disagreement, not a documentation
-mistake. Resolution still needs Sky / BA to arbitrate which is
-canonical for Spark.
-
-**Implementation decision (2026-07-30, PR `feat/spark-tbill-subsidy`):**
-we have moved Spark to `tbill_3m` and **deleted the EFFR series from
-the codebase** — Atlas is treated as canonical. This is a Soter-side
-decision taken ahead of Sky/BA arbitration, not the arbitration
-itself: **this question stays OPEN until Sky or BA confirms in
-writing.** If they rule for EFFR, the series has to be restored from
-git history and Jan–Jun 2026 re-run. Numerical consequence of the
-switch, rate-only with published `utilized` held fixed: Spark's
-`sky_revenue` rises **+$236,706** across Jan–Jun 2026 (Spark's
-supply-side revenue falls by the same amount), and the gap is
-widening — June alone is +$115,400 because the 3M T-Bill stepped up
-to 3.78–3.87% while EFFR held at 3.62–3.63%.
 
 #### S10. L2 sUSDS proxies (S37 Base, S43 Arbitrum, S47 Optimism, S51 Unichain) — Q1 flow confirmation
 Each has only one row in our captured fixture (pre-period anchor only).
@@ -1531,6 +1488,9 @@ Resolved questions move here from their open section when their GitHub
 issue is closed. The full resolution narrative lives in
 `PRD.md §17.13` (review-acks); this section keeps a compact pointer
 trail (Q-ID, title, close date, issue link).
+
+### S5. Subsidy reference rate — Atlas says T-Bill, current config says EFFR
+**Resolved 2026-07-30** via [#25](https://github.com/soterlabs/settlement-cycle/issues/25). See `PRD.md §17.13`.
 
 ### G2. External ALM sources / off-chain yield distributors
 **Resolved 2026-06-01** via [#2](https://github.com/soterlabs/settlement-cycle/issues/2). See `PRD.md §17.13`.
