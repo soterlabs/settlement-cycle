@@ -15,7 +15,7 @@ Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3).
 | Sent to prime subproxy | obex | -442,327.00 |
 | Sent to prime subproxy | keel | -0.00 |
 | Sent to prime subproxy | skybase | -10,000,000.00 |
-| Sent to prime subproxy | — of which: one-off capital seeding (value-neutral; matched by allocator mint) | 10,000,000.00 |
+| Sent to prime subproxy | — of which: one-off capital seeding (Vat.suck on vow; real cost) | 10,000,000.00 |
 | Sent to prime subproxy | **subtotal (raw)** | **-17,513,666.00** |
 | Sent to Demand-side Buffer |  | -0.00 |
 | Sent to Core Council | on-chain gross | -6,632,421.00 |

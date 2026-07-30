@@ -33,16 +33,19 @@ is pinned in ``config/sky_total.yaml``, other months surface a warning until
 back-filled.
 
 **One-off subproxy inflows** (initial capital seeding, e.g. Skybase's $10M in
-MSC#5, Keel's $10M in MSC#6) are read from ``config/sky_total.yaml``. These
-events are VALUE-NEUTRAL for Sky Net Revenue: the same amount that gets sent
-to the seeded prime is minted from Sky's allocator debt in the same
-settlement, so the mint (+) and send (−) cancel in the buffer-basis formula.
-The formula therefore uses RAW subproxy sends (equivalent to excluding the
-one-off from both sides); the summary renders the raw / one-off / adjusted
-split for transparency, and provenance carries both figures. Subproxy-only
-exclusion (mint side left raw) inflates SNR by ``one_off/0.8`` per event and
-can push cc_genesis negative when 0.2·SNR > cc_gross, so we deliberately
-avoid it.
+MSC#5, Keel's $10M in MSC#7) are read from ``config/sky_total.yaml``.
+On-chain trace (tx 0xe5a95157… / 0xbebdd875…) shows the $10M came from
+``Vat.suck(u=vow, v=<intermediate>, rad=10M×RAD)`` — a direct draw on Sky's
+surplus buffer, NOT from the allocator ilks' GRAB dart. So the seeding
+REDUCES Sky's monthly buffer-basis Net Revenue (it's a real cost, backed by
+new sin on vow — a claim on future revenue to be paid back via ilk folds).
+The formula uses raw subproxy sends (which include the $10M), correctly
+subtracting the seeding from MSC net. The summary renders the one-off as an
+informational sub-row so audit can see what portion of a subproxy line is
+capital-seeding vs recurring revenue distribution. If a policy view wants
+"operational" Sky Net Revenue that excludes capital seeding, add ``one_off``
+back to SNR downstream — but the doc §3 methodology (literal
+"debt minted…minus everything sent back out…minus penalty") subtracts it.
 """
 
 from __future__ import annotations
@@ -353,10 +356,11 @@ def render_summary(r: SkyTotalMonthly) -> str:
     for prime in _MINT_PRIMES:
         L.append(f"| Debt minted to buffer | {prime} | {_usds(r.mint_per_prime[prime])} |")
     L.append(f"| Debt minted to buffer | **subtotal** | **{_usds(r.total_mint)}** |")
-    # Buffer-basis formula uses RAW subproxy sends (one-offs cancel against
-    # the corresponding allocator mint). Rendered lines show raw amounts;
-    # the one-off carve-out is shown as an informational sub-row so the
-    # revenue-distribution vs capital-seeding split is visible.
+    # Buffer-basis formula uses RAW subproxy sends. The one-off (initial
+    # capital seeding via Vat.suck(vow) — a real draw on Sky's surplus
+    # buffer) is a real cost and IS included in the total; the sub-row here
+    # exposes what portion of a line is capital-seeding vs recurring revenue
+    # distribution for audit.
     for prime in _ALL_PRIMES:
         raw = r.subproxy_raw_per_prime[prime]
         one_off = r.one_off_per_prime.get(prime, Decimal(0))
@@ -364,7 +368,7 @@ def render_summary(r: SkyTotalMonthly) -> str:
         if one_off.quantize(Decimal("0.01")) != 0:
             L.append(
                 f"| Sent to prime subproxy | — of which: one-off capital seeding "
-                f"(value-neutral; matched by allocator mint) | {_usds(one_off)} |"
+                f"(Vat.suck on vow; real cost) | {_usds(one_off)} |"
             )
     L.append(f"| Sent to prime subproxy | **subtotal (raw)** | **-{_usds(r.total_subproxy_raw)}** |")
     L.append(f"| Sent to Demand-side Buffer |  | -{_usds(r.dsb)} |")

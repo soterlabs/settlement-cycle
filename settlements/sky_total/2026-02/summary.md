@@ -1,28 +1,27 @@
 # SKY_TOTAL — 2026-02
 
-Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3). Extracted from the MSC settlement block **24772796** (2026-03-30 20:26 UTC) — the single atomic settlement transaction for this cycle. MSC net = Σ debt minted to buffer per prime − Σ sent to prime subproxies − sent to Demand-side Buffer − sent to Core Council (genesis portion) − Grove TGE penalty. The Core Council on-chain mint is GROSS; the 20% Step 1 Capital distribution is carved out algebraically from Sky Net Revenue.
+Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3). Extracted from the MSC settlement block **24570218** (2026-03-02 14:00 UTC) — the single atomic settlement transaction for this cycle. MSC net = Σ debt minted to buffer per prime − Σ sent to prime subproxies − sent to Demand-side Buffer − sent to Core Council (genesis portion) − Grove TGE penalty. The Core Council on-chain mint is GROSS; the 20% Step 1 Capital distribution is carved out algebraically from Sky Net Revenue.
 
 ## MSC leg (buffer basis)
 
 | Section | Line | USDS |
 |---|---|---:|
-| Debt minted to buffer | spark | 7,411,014.45 |
-| Debt minted to buffer | grove | 6,346,829.00 |
-| Debt minted to buffer | obex | 1,948,422.00 |
-| Debt minted to buffer | **subtotal** | **15,706,265.45** |
-| Sent to prime subproxy | spark | -1,265,132.00 |
-| Sent to prime subproxy | grove | -5,630.00 |
-| Sent to prime subproxy | obex | -65,719.00 |
-| Sent to prime subproxy | keel | -10,000,000.00 |
-| Sent to prime subproxy | — of which: one-off capital seeding (value-neutral; matched by allocator mint) | 10,000,000.00 |
-| Sent to prime subproxy | skybase | -203,134.00 |
-| Sent to prime subproxy | **subtotal (raw)** | **-11,539,615.00** |
+| Debt minted to buffer | spark | 7,729,005.14 |
+| Debt minted to buffer | grove | 6,205,320.00 |
+| Debt minted to buffer | obex | 2,095,775.00 |
+| Debt minted to buffer | **subtotal** | **16,030,100.14** |
+| Sent to prime subproxy | spark | -1,387,824.00 |
+| Sent to prime subproxy | grove | -6,090.00 |
+| Sent to prime subproxy | obex | -71,342.00 |
+| Sent to prime subproxy | keel | -0.00 |
+| Sent to prime subproxy | skybase | -0.00 |
+| Sent to prime subproxy | **subtotal (raw)** | **-1,465,256.00** |
 | Sent to Demand-side Buffer |  | -0.00 |
-| Sent to Core Council | on-chain gross | -2,545,907.00 |
-| Sent to Core Council | of which: Step 1 Capital (20% × SNR, add-back) | +161,989.14 |
-| Sent to Core Council | of which: **genesis repayment (net cost)** | **-2,383,917.86** |
+| Sent to Core Council | on-chain gross | -4,808,248.00 |
+| Sent to Core Council | of which: Step 1 Capital (20% × SNR, add-back) | +2,195,952.32 |
+| Sent to Core Council | of which: **genesis repayment (net cost)** | **-2,612,295.68** |
 | Grove TGE penalty (excluded from Sky revenue) | unset | -0.00 |
-| **MSC net (buffer basis)** | | **1,782,732.59** |
+| **MSC net (buffer basis)** | | **11,952,548.46** |
 
 ## Non-MSC leg
 
@@ -36,9 +35,8 @@ Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3).
 
 | Field | USDS |
 |---|---:|
-| MSC net (buffer basis) | 1,782,732.59 |
+| MSC net (buffer basis) | 11,952,548.46 |
 | non-MSC net | -972,786.88 |
-| **Sky Net Revenue** | **809,945.71** |
+| **Sky Net Revenue** | **10,979,761.58** |
 
 > ⚠ grove_tge_penalty: no override for 2026-02 in config/sky_total.yaml — booked $0. The methodology doc's §3 line was 1,396,260 for 2026-06; back-fill earlier months from the corresponding MSC forum posts.
-> ⚠ one_off_transfers: excluding 10,000,000.00 USDS from 'keel' subproxy (config/sky_total.yaml → one_off_transfers[2026-02][keel])

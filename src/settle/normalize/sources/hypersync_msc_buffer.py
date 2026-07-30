@@ -125,6 +125,9 @@ def load_config(path: Path | None = None) -> dict[str, Any]:
         "subproxies": {k: v.lower() for k, v in cfg["subproxies"].items()},
         "demand_side_buffer": cfg["demand_side_buffer"].lower(),
         "core_council_multisig": cfg["core_council_multisig"].lower(),
+        "settlement_blocks": {
+            k: int(v) for k, v in (cfg.get("settlement_blocks") or {}).items()
+        },
         "grove_tge_penalty": {
             k: (None if v is None else Decimal(str(v)))
             for k, v in (cfg.get("grove_tge_penalty") or {}).items()
@@ -169,24 +172,54 @@ class HyperSyncMscBufferSource:
     # -- public --------------------------------------------------------------
 
     def streams(self, month: Any, pin_block: int) -> pd.DataFrame:
-        """Locate month M's settlement block (fires in M+1), extract the seven
-        buffer-basis components from that block. ``pin_block`` is a safety
-        ceiling — if it's before the M+1 settlement (i.e., the settlement
-        hasn't happened yet), raise ``SettlementNotFoundError``.
-        """
-        start_ts, end_ts = _next_month_range(month)
-        # Cap the M+1 scan to the pin_block so a mid-cycle re-run doesn't
-        # accidentally pick up a future settlement.
-        fb = hypersync.find_block_at_or_before(_CHAIN, start_ts)
-        tb = min(pin_block, hypersync.find_block_at_or_before(_CHAIN, end_ts))
-        if tb < fb:
-            raise SettlementNotFoundError(
-                f"month {month}: pin_block {pin_block} is before the start of "
-                f"the following month ({start_ts}) — the settlement hasn't "
-                "happened yet"
-            )
+        """Locate month M's settlement block, extract the seven buffer-basis
+        components from that block.
 
-        settlement_block, settlement_ts = self._find_settlement(fb, tb, start_ts, end_ts)
+        Preference order:
+          1. ``config/sky_total.yaml → settlement_blocks[YYYY-MM]`` if present
+             (per-month explicit anchor, the audited path for validated
+             months).
+          2. Auto-detect fallback: latest USDS ``Transfer(from=0x0, to=CC)``
+             in month M+1. Vulnerable to picking up the WRONG cycle when the
+             settlement executes in M itself (MSC#7, MSC#8, …) — use only
+             for freshly-landed cycles before back-filling the config.
+        """
+        label = f"{month.year}-{month.month:02d}"
+        override = self._cfg.get("settlement_blocks", {}).get(label)
+        if override is not None:
+            if override > pin_block:
+                raise SettlementNotFoundError(
+                    f"month {label}: configured settlement_block {override} is "
+                    f"past pin_block {pin_block} — archive not caught up yet"
+                )
+            # Discover the block's timestamp via any log in it (the CC-mint
+            # signature that anchored this block in the first place will
+            # always fire, so it's a reliable source).
+            cc = self._cfg["core_council_multisig"]
+            rows = hypersync.query_logs(
+                _CHAIN,
+                [{"address": [_USDS], "topics": [
+                    [_TRANSFER], [_addr_topic(_ZERO)], [_addr_topic(cc)]]}],
+                override, override, post=self._post,
+            ).rows
+            if not rows:
+                raise SettlementNotFoundError(
+                    f"month {label}: configured settlement_block {override} "
+                    "does not contain the expected USDS mint(from=0x0, to=CC) "
+                    "signature. Cross-check the block number in config."
+                )
+            settlement_block, settlement_ts = override, rows[0].block_time
+        else:
+            start_ts, end_ts = _next_month_range(month)
+            fb = hypersync.find_block_at_or_before(_CHAIN, start_ts)
+            tb = min(pin_block, hypersync.find_block_at_or_before(_CHAIN, end_ts))
+            if tb < fb:
+                raise SettlementNotFoundError(
+                    f"month {label}: pin_block {pin_block} is before the start "
+                    f"of the following month ({start_ts}) — the settlement "
+                    "hasn't happened yet"
+                )
+            settlement_block, settlement_ts = self._find_settlement(fb, tb, start_ts, end_ts)
 
         rows: list[dict[str, Any]] = [
             _row("settlement_block", str(settlement_block), settlement_block),
