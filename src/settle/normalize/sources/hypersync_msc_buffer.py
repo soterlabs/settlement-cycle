@@ -1,17 +1,22 @@
 """HyperSync-direct extractor for the MSC leg (buffer basis) of Sky Net Revenue.
 
-The MSC leg is settled in a single atomic transaction that fires **in month
-M+1**, not in month M itself: the settlement block for month M's cycle
-contains the debt mint (Vat.grab on the three ALLOCATOR ilks), all USDS
-transfers to prime subproxies, the transfer to the Demand-side Buffer, and
-the transfer to the Core Council Buffer Multisig. This extractor auto-detects
-that block and reads the whole set of components from it.
+The MSC leg is settled in a single atomic transaction whose components (the
+debt mint via Vat.grab on the three ALLOCATOR ilks, all USDS transfers to
+prime subproxies, the Demand-side Buffer transfer, and the Core Council
+Buffer Multisig transfer) fire in one block. Cycle-to-cycle timing is
+IRREGULAR: some cycles execute in month M itself (MSC#7 on 2026-03-30,
+MSC#8 on 2026-04-27, MSC#9 on 2026-06-22), others in M+1 (MSC#5 on
+2026-02-02, MSC#6 on 2026-03-02, MSC#10 on 2026-07-20). This extractor
+therefore requires the settlement block to be pinned per-month in
+``config/sky_total.yaml → settlement_blocks``.
 
-Settlement-block detection: for month M we scan month M+1 for USDS
-``Transfer(from=0x0, to=CC_multisig)`` — a signature that has fired at every
-MSC settlement since MSC#5 (Jan 2026, dated 2026-02-02). The latest such
-transfer in M+1 is the settlement block for M's cycle. This detection was
-cross-checked on June 2026 (block 25574490 @ 2026-07-20 14:21:59) — every
+An auto-detect fallback exists (scan M+1 for USDS
+``Transfer(from=0x0, to=CC_multisig)``) but is gated by the
+``SKY_TOTAL_ALLOW_AUTODETECT=1`` env var — it silently picked wrong cycles
+before we locked it down. Use only for a freshly-landed cycle; back-fill
+the config anchor immediately after.
+
+Cross-checked on June 2026 (block 25574490 @ 2026-07-20 14:21:59) — every
 transfer amount ties to the methodology doc §3 to the dollar for all seven
 non-mint components; the Spark mint is ~4% shy of the doc's figure (open
 item — see the summary's warning).
@@ -49,6 +54,7 @@ Config (env):
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable
 from datetime import date, datetime, time, timezone
 from decimal import Decimal
@@ -60,7 +66,7 @@ import requests
 import yaml
 
 from ...extract import hypersync
-from ...extract._keccak import keccak256
+from ._hypersync_common import _addr_topic, _evt, _sel, _word
 from .hypersync_debt import _decode_dart
 
 __all__ = ["HyperSyncMscBufferSource", "load_config", "SettlementNotFoundError"]
@@ -74,32 +80,11 @@ _USDS = "0xdc035d45d973e3ec169d2276ddab16f1e407384f"
 _ZERO = "0x0000000000000000000000000000000000000000"
 
 
-# ── topic0 helpers ──────────────────────────────────────────────────────────
-def _sel(sig: str) -> str:
-    """LogNote topic0 — 4-byte fn selector left-aligned in a 32-byte word."""
-    return "0x" + keccak256(sig.encode()).hex()[:8] + "0" * 56
-
-
-def _evt(sig: str) -> str:
-    """Real (non-anonymous) event topic0 — full keccak of the signature."""
-    return "0x" + keccak256(sig.encode()).hex()
-
-
 _GRAB = "0x7bab3f4000000000000000000000000000000000000000000000000000000000"
 _TRANSFER = _evt("Transfer(address,address,uint256)")
 
 # Self-check.
 assert _sel("grab(bytes32,address,address,address,int256,int256)") == _GRAB
-
-
-def _addr_topic(addr: str) -> str:
-    return "0x" + "0" * 24 + addr.lower().replace("0x", "")
-
-
-def _word(data_hex: str, idx: int) -> int:
-    """Return 32-byte word ``idx`` of a ``data`` blob as an unsigned int."""
-    raw = data_hex[2:] if data_hex.startswith("0x") else data_hex
-    return int(raw[idx * 64 : idx * 64 + 64] or "0", 16)
 
 
 def _row(stream: str, label: str, amount: Any) -> dict[str, Any]:
@@ -209,7 +194,12 @@ class HyperSyncMscBufferSource:
                     "signature. Cross-check the block number in config."
                 )
             settlement_block, settlement_ts = override, rows[0].block_time
-        else:
+        elif os.environ.get("SKY_TOTAL_ALLOW_AUTODETECT") == "1":
+            # Opt-in escape hatch — the auto-detect is known to pick the
+            # wrong cycle when settlements execute in M rather than M+1
+            # (MSC#7, MSC#8, MSC#9 all did this). Use only for a brand-new
+            # cycle before back-filling the config; expect to `git blame`
+            # this run when audit questions land.
             start_ts, end_ts = _next_month_range(month)
             fb = hypersync.find_block_at_or_before(_CHAIN, start_ts)
             tb = min(pin_block, hypersync.find_block_at_or_before(_CHAIN, end_ts))
@@ -220,6 +210,16 @@ class HyperSyncMscBufferSource:
                     "hasn't happened yet"
                 )
             settlement_block, settlement_ts = self._find_settlement(fb, tb, start_ts, end_ts)
+        else:
+            raise SettlementNotFoundError(
+                f"month {label}: no settlement_block in config/sky_total.yaml. "
+                "MSC cycle timing is irregular (some settle in M, some in M+1), "
+                "so we don't auto-detect by default — silently picking the wrong "
+                "cycle has already burned us. Fix: add an entry under "
+                f"`settlement_blocks: {label!r}: <block_number>` in config, or "
+                "set SKY_TOTAL_ALLOW_AUTODETECT=1 to opt into the fallback for "
+                "a freshly-landed cycle."
+            )
 
         rows: list[dict[str, Any]] = [
             _row("settlement_block", str(settlement_block), settlement_block),
@@ -300,7 +300,6 @@ class HyperSyncMscBufferSource:
             dsb: "dsb",
             cc: "cc",
         }
-        dst_labels = {**{v: v for v in dst_to_stream}}
         # Preseed all streams with $0 so a subproxy with no receipt still
         # appears in the output.
         totals: dict[str, Decimal] = {stream: Decimal(0) for stream in dst_to_stream.values()}
@@ -321,7 +320,4 @@ class HyperSyncMscBufferSource:
                 continue
             totals[stream] += Decimal(_word(r.data, 0)) / _WAD
 
-        out: list[dict] = []
-        for dst, stream in dst_to_stream.items():
-            out.append(_row(stream, dst_labels[dst], totals[stream]))
-        return out
+        return [_row(stream, dst, totals[stream]) for dst, stream in dst_to_stream.items()]

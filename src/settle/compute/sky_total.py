@@ -163,14 +163,14 @@ class SkyTotalMonthly:
 
 
 def resolve_pin_block(month: Month) -> int:
-    """Pin block: last block of month M+1 (so the settlement in M+1 falls
-    within the scan window). Clamped to a safe head for months still in
-    progress. Same convention as the other units."""
+    """Pin block: end of month M+1 (safe ceiling covering any late-M or
+    early-M+1 settlement execution). Unlike ``non_msc.resolve_pin_block``
+    which pins end-of-M, this unit needs to see through the following
+    month's settlement window since MSC cycle timing straddles M / M+1.
+    Clamped to a safe head for months still in progress."""
     from ..domain import Chain
     from ..extract import rpc
 
-    # We need to see through the settlement, which lands mid-M+1 — pinning to
-    # end of M+1 gives us the whole window.
     if month.month >= 11:
         end_excl = date(month.year + 1, (month.month + 2 - 12), 1)
     else:
@@ -205,9 +205,27 @@ def compute_sky_total_monthly(
     source: Any,
     repo_root: Path,
     pin_block: int | None = None,
+    config: dict[str, Any] | None = None,
 ) -> SkyTotalMonthly:
+    """Compute the buffer-basis Sky Net Revenue for ``month``.
+
+    ``config`` is the parsed ``sky_total.yaml`` dict (see ``load_config`` in
+    ``hypersync_msc_buffer``). When omitted, we fall back to the source's own
+    config via ``source._cfg`` — convenient for the usual path where the
+    caller instantiates both from the same file — but the parameter is the
+    supported protocol boundary. Passing an explicit ``config`` lets tests
+    (or alternate sources) drive the compute layer without exposing
+    ``_cfg`` on the source.
+    """
     if pin_block is None:
         pin_block = resolve_pin_block(month)
+    if config is None:
+        config = getattr(source, "_cfg", None)
+    if config is None:
+        raise ValueError(
+            "sky_total: no config provided and source has no _cfg fallback — "
+            "pass `config=load_config()` explicitly"
+        )
 
     df = source.streams(month, pin_block)
 
@@ -247,7 +265,7 @@ def compute_sky_total_monthly(
     label = f"{month.year}-{month.month:02d}"
 
     # Grove TGE penalty: config override per month.
-    penalty_map = source._cfg.get("grove_tge_penalty") or {}
+    penalty_map = config.get("grove_tge_penalty") or {}
     if label in penalty_map and penalty_map[label] is not None:
         penalty = Decimal(penalty_map[label])
         penalty_source = f"config:{label}"
@@ -261,7 +279,7 @@ def compute_sky_total_monthly(
         )
 
     # One-off subproxy exclusions (initial capital seeding, etc.).
-    one_off_map = (source._cfg.get("one_off_transfers") or {}).get(label) or {}
+    one_off_map = (config.get("one_off_transfers") or {}).get(label) or {}
     one_off_per_prime: dict[str, Decimal] = {p: Decimal(0) for p in _ALL_PRIMES}
     for prime, amt in one_off_map.items():
         if prime not in _ALL_PRIMES:
@@ -284,7 +302,36 @@ def compute_sky_total_monthly(
     for w in non_msc_warns:
         warnings.append(f"non_msc: {w}")
 
-    result = SkyTotalMonthly(
+    # Precompute the sky_net_revenue / cc_genesis so the guard warning is
+    # part of the warnings list BEFORE we instantiate — keeps SkyTotalMonthly
+    # frozen at construction and avoids any post-hoc mutation.
+    _snr, _cc_genesis = _derived_sky_net_and_cc_genesis(
+        total_mint=sum(mints.values(), Decimal(0)),
+        total_subproxy_raw=sum(subs.values(), Decimal(0)),
+        dsb=dsb,
+        cc_gross=cc,
+        grove_tge_penalty=penalty,
+        non_msc_net=inc - exp,
+    )
+    if _cc_genesis < 0:
+        # Sanity guard: cc_genesis is what's left of the on-chain CC transfer
+        # after carving out the algebraic 20% Step 1 Capital slice. It should
+        # be non-negative — if it's not, either (a) the 20% ratio didn't
+        # apply in this cycle (e.g. pre-methodology-change), or (b) an
+        # unmodeled outflow is inflating SNR (mint side too high, or an
+        # outflow we're missing).
+        warnings.append(
+            f"cc_genesis_repayment is NEGATIVE ({_cc_genesis:,.2f}) — "
+            "the 20% Step 1 Capital rule (doc §3) doesn't hold for this cycle, or "
+            "an outflow is unmodeled. Cross-check against BA's forum figure for "
+            f"MSC#{label} before treating this month's Sky Net Revenue as "
+            "reconciled."
+        )
+
+    for w in warnings:
+        _log.warning("sky_total %s: %s", label, w)
+
+    return SkyTotalMonthly(
         month=label,
         settlement_block=settlement_block,
         settlement_ts=settlement_ts,
@@ -300,26 +347,25 @@ def compute_sky_total_monthly(
         warnings=warnings,
     )
 
-    # Sanity guard: cc_genesis is what's left of the on-chain CC transfer
-    # after carving out the algebraic 20% Step 1 Capital slice. It should be
-    # non-negative — if it's not, either (a) the 20% ratio didn't apply in
-    # this cycle (e.g. pre-methodology-change), or (b) an unmodeled outflow
-    # is inflating SNR (mint side too high, or an outflow we're missing).
-    if result.cc_genesis_repayment < 0:
-        warnings.append(
-            f"cc_genesis_repayment is NEGATIVE ({result.cc_genesis_repayment:,.2f}) — "
-            "the 20% Step 1 Capital rule (doc §3) doesn't hold for this cycle, or "
-            "an outflow is unmodeled. Cross-check against BA's forum figure for "
-            f"MSC#{result.month} before treating this month's Sky Net Revenue as "
-            "reconciled."
-        )
-        # Refresh the warnings on the object.
-        result.warnings = warnings
 
-    for w in warnings:
-        _log.warning("sky_total %s: %s", label, w)
-
-    return result
+def _derived_sky_net_and_cc_genesis(
+    total_mint: Decimal,
+    total_subproxy_raw: Decimal,
+    dsb: Decimal,
+    cc_gross: Decimal,
+    grove_tge_penalty: Decimal,
+    non_msc_net: Decimal,
+) -> tuple[Decimal, Decimal]:
+    """Pure form of the algebraic derivation, matching the ``SkyTotalMonthly``
+    properties. Extracted so ``compute_sky_total_monthly`` can compute the
+    warning-triggering ``cc_genesis`` before instantiation.
+    """
+    numerator = (
+        total_mint - total_subproxy_raw - dsb - cc_gross - grove_tge_penalty + non_msc_net
+    )
+    snr = numerator / (Decimal(1) - _STEP1_CAPITAL_RATIO)
+    cc_genesis = cc_gross - _STEP1_CAPITAL_RATIO * snr
+    return snr, cc_genesis
 
 
 # ── artifacts ────────────────────────────────────────────────────────────────
