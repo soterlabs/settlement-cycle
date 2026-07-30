@@ -1,171 +1,73 @@
 #!/usr/bin/env python
-"""Consolidated Sky total net revenue — Σ prime sky revenue + non_msc net.
+"""Generate the sky_total (Sky Net Revenue, buffer basis) reports for 2026 Jan–Jun.
 
-Pure aggregation of already-generated artifacts (no Dune / no RPC): reads
-``settlements/<prime>/<YYYY-MM>/provenance.json`` for the five primes and
-``settlements/non_msc/<YYYY-MM>/provenance.json``, writes
-``settlements/sky_total/<YYYY-MM>/{provenance.json,summary.md}``.
+Implements the 2026-07-16 handoff methodology §3:
 
-Headline: ``sky total net revenue`` = Σ prime supply-side sky revenue
-− prime demand-side payments (agent rate + Distribution Rewards Sky pays TO
-the primes) + non-MSC net (income − GROSS expense — the SSR Sky pays on
-prime-held sUSDS stays in the expense because the MSC leg carries the
-offsetting BR income; see PRD §17.13 item 14). The pre-demand subtotal is
-kept as a component line.
+    MSC net (buffer basis) = Σ debt minted to buffer per prime
+                           − Σ sent to prime subproxies
+                           − sent to Demand-side Buffer
+                           − sent to Core Council Buffer Multisig
+                           − Grove token-launch penalty (excluded from Sky revenue)
+    Sky Net Revenue        = MSC net + non-MSC income − non-MSC expense
 
-The BA Labs series (info-sky.blockanalitica.com/financials/settlements/
-historic/) is rendered as a REFERENCE column when reachable — never blended
-into our numbers.
+Extraction is on-chain via HyperSync (no Dune quota dependency). Requires
+``ENVIO_API_TOKEN`` (+ RPC for the pin block); ``DATABASE_URL`` optional for
+the reorg-safe log store. Reads ``settlements/non_msc/<YYYY-MM>/provenance.json``
+for the non-MSC leg — run ``scripts/run_non_msc_2026.py`` first.
+
+Artifacts land under ``settlements/sky_total/<YYYY-MM>/{summary.md,provenance.json}``.
 """
 
 from __future__ import annotations
 
-import json
+import logging
+import os
 import sys
-from decimal import Decimal
 from pathlib import Path
 
 _REPO = Path(__file__).resolve().parents[1]
-_PRIMES = ["spark", "grove", "obex", "keel", "skybase"]
-_MONTHS = [f"2026-{m:02d}" for m in range(1, 7)]
+sys.path.insert(0, str(_REPO / "src"))
 
+from settle.compute.sky_total import (  # noqa: E402
+    compute_sky_total_monthly,
+    write_sky_total,
+)
+from settle.domain import Month  # noqa: E402
+from settle.normalize.sources.hypersync_msc_buffer import HyperSyncMscBufferSource  # noqa: E402
 
-def _D(x) -> Decimal:
-    return Decimal(str(x)) if x not in (None, "") else Decimal(0)
-
-
-def _usds(d: Decimal) -> str:
-    if d.quantize(Decimal("0.01")) == 0:
-        return "0.00"
-    return f"-{-d:,.2f}" if d < 0 else f"{d:,.2f}"
-
-
-def _load_results(unit: str, month: str) -> dict | None:
-    p = _REPO / "settlements" / unit / month / "provenance.json"
-    if not p.exists():
-        return None
-    return json.loads(p.read_text())["results"]
-
-
-def _ba_reference() -> dict[str, Decimal]:
-    """Monthly BA Labs net_revenue keyed by YYYY-MM. Reference only; empty on
-    any network failure (the report renders 'n/a')."""
-    try:
-        import requests
-        resp = requests.get(
-            "https://info-sky.blockanalitica.com/financials/settlements/historic/",
-            headers={"accept": "*/*", "origin": "https://info.skyeco.com",
-                     "referer": "https://info.skyeco.com/"},
-            timeout=15,
-        )
-        resp.raise_for_status()
-        out: dict[str, Decimal] = {}
-        for row in resp.json()["data"]:
-            start, end = row["reporting_start_date"][:7], row["reporting_end_date"][:7]
-            if start == end:                     # single-month cycles only
-                out[start] = Decimal(row["net_revenue"])
-        return out
-    except Exception:
-        return {}
-
-
-def build_month(month: str, ba_ref: dict[str, Decimal]) -> dict | None:
-    non_msc = _load_results("non_msc", month)
-    if non_msc is None:
-        print(f"{month}: missing non_msc provenance — run scripts/run_non_msc_2026.py first")
-        return None
-
-    primes: dict[str, dict[str, Decimal]] = {}
-    for prime in _PRIMES:
-        r = _load_results(prime, month)
-        if r is None:
-            print(f"{month}: missing {prime} provenance — skipping month")
-            return None
-        primes[prime] = {
-            "sky_revenue": _D(r.get("sky_revenue")),
-            "agent_rate": _D(r.get("agent_rate")),
-            "distribution_rewards": _D(r.get("distribution_rewards")),
-        }
-
-    prime_sky = sum((p["sky_revenue"] for p in primes.values()), Decimal(0))
-    demand_side = sum(
-        (p["agent_rate"] + p["distribution_rewards"] for p in primes.values()),
-        Decimal(0),
-    )
-    non_msc_net = _D(non_msc["net_revenue"])
-    total = prime_sky - demand_side + non_msc_net
-
-    out_dir = _REPO / "settlements" / "sky_total" / month
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    prov = {
-        "id": "sky_total",
-        "month": month,
-        "inputs": {
-            "primes": {k: {f: str(v) for f, v in p.items()} for k, p in primes.items()},
-            "non_msc_net_revenue": str(non_msc_net),
-            "non_msc_warnings": json.loads(
-                (_REPO / "settlements" / "non_msc" / month / "provenance.json").read_text()
-            ).get("warnings", []),
-        },
-        "results": {
-            "prime_sky_revenue_total": str(prime_sky),
-            "prime_demand_side_payments": str(demand_side),
-            "non_msc_net_revenue": str(non_msc_net),
-            "sky_total_net_revenue": str(total),
-        },
-    }
-    (out_dir / "provenance.json").write_text(json.dumps(prov, indent=2) + "\n")
-
-    L = [f"# SKY_TOTAL — {month}", ""]
-    L.append("Consolidated Sky net revenue: supply-side sky revenue from the "
-             "five prime agents (MSC) plus the non-MSC protocol P&L.")
-    L.append("")
-    L.append("| Component | USDS |")
-    L.append("|---|---:|")
-    for prime in _PRIMES:
-        L.append(f"| sky revenue — {prime} | {_usds(primes[prime]['sky_revenue'])} |")
-    L.append(f"| Σ prime sky revenue | {_usds(prime_sky)} |")
-    L.append(f"| less: prime demand-side payments (agent rate + DR) | -{_usds(demand_side)} |")
-    L.append(f"| non-MSC net revenue | {_usds(non_msc_net)} |")
-    L.append(f"| **sky total net revenue** | **{_usds(total)}** |")
-    L.append("")
-    ref = ba_ref.get(month)
-    L.append(f"> Reference (BA Labs `financials/settlements/historic`, not "
-             f"blended): net_revenue = "
-             f"{_usds(ref) if ref is not None else 'n/a'}")
-    warns = prov["inputs"]["non_msc_warnings"]
-    for w in warns:
-        L.append(f"> ⚠ non_msc: {w}")
-    L.append("")
-    (out_dir / "summary.md").write_text("\n".join(L))
-
-    return {
-        "month": month, "prime_sky": prime_sky, "demand": demand_side,
-        "non_msc": non_msc_net, "total": total, "ba": ref,
-    }
+_MONTHS = [Month(2026, m) for m in range(1, 7)]
 
 
 def main() -> int:
-    ba_ref = _ba_reference()
-    print("SKY_TOTAL 2026 (Jan → Jun)")
+    logging.basicConfig(
+        level=os.environ.get("LOG_LEVEL", "INFO"),
+        format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    )
+    if not os.environ.get("ENVIO_API_TOKEN"):
+        print("Missing ENVIO_API_TOKEN (hint: `set -a; source .env; set +a`).")
+        return 1
+
+    source = HyperSyncMscBufferSource()
+    print("SKY_TOTAL 2026 (Jan → Jun) — Sky Net Revenue, buffer basis (HyperSync)")
     print("=" * 100)
-    print(f"{'Month':<9} {'Σ prime sky':>15} {'− demand-side':>15} {'non-MSC net':>15} "
-          f"{'sky total':>15} {'BA ref':>15}")
+    print(f"{'Month':<10} {'MSC net':>16} {'non-MSC net':>16} {'Sky Net Revenue':>18}")
     print("-" * 100)
     failures = 0
     for month in _MONTHS:
-        row = build_month(month, ba_ref)
-        if row is None:
+        label = f"{month.year}-{month.month:02d}"
+        try:
+            r = compute_sky_total_monthly(month, source=source, repo_root=_REPO)
+            write_sky_total(r, _REPO / "settlements" / "sky_total" / label)
+            flag = "  ⚠" if r.warnings else ""
+            print(f"{label:<10} {float(r.msc_net):>16,.2f} "
+                  f"{float(r.non_msc_net):>16,.2f} "
+                  f"{float(r.sky_net_revenue):>18,.2f}{flag}")
+        except Exception as exc:  # keep going; report at the end
             failures += 1
-            continue
-        ba = f"{float(row['ba']):>15,.2f}" if row["ba"] is not None else f"{'n/a':>15}"
-        print(f"{row['month']:<9} {float(row['prime_sky']):>15,.2f} "
-              f"{float(row['demand']):>15,.2f} {float(row['non_msc']):>15,.2f} "
-              f"{float(row['total']):>15,.2f} {ba}")
+            print(f"{label:<10} FAILED: {exc}")
     print("-" * 100)
     return 1 if failures else 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

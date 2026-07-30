@@ -1,0 +1,108 @@
+# Consolidated Sky Net Revenue (buffer basis) — configuration.
+#
+# Methodology: the 2026-07-16 handoff doc's §3.
+#   MSC net (buffer basis) = Σ debt minted to buffer per prime
+#                          − Σ sent to prime subproxies
+#                          − sent to Demand-side Buffer
+#                          − sent to Core Council Buffer Multisig
+#                          − Grove token-launch penalty (excluded from Sky revenue)
+#   Sky Net Revenue        = MSC net + non-MSC income − non-MSC expense
+#
+# All addresses are Ethereum mainnet, checksum-encoded but read case-insensitively.
+
+# ── Allocator ilks (bytes32 hex) — one per "big" prime that mints debt to buffer.
+# Keel and Skybase have NO ilk (agent-rate only).
+allocator_ilks:
+  spark: '0x414c4c4f4341544f522d535041524b2d41000000000000000000000000000000'   # ALLOCATOR-SPARK-A
+  grove: '0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000'   # ALLOCATOR-BLOOM-A
+  obex:  '0x414c4c4f4341544f522d4f4245582d4100000000000000000000000000000000'   # ALLOCATOR-OBEX-A
+
+# ── Prime subproxy addresses (destination of "sent to prime subproxies" USDS
+# transfers, per methodology §3). Mirrors the same addresses in each prime's
+# own config file; kept here for the sky_total pipeline's single source of
+# truth. Cross-check when a prime's subproxy is rotated.
+subproxies:
+  spark:   '0x3300f198988e4C9C63F75dF86De36421f06af8c4'
+  grove:   '0x1369f7b2b38c76B6478c0f0E66D94923421891Ba'
+  obex:    '0x8be042581f581E3620e29F213EA8b94afA1C8071'
+  keel:    '0x355CD90Ecb1b409Fdf8b64c4473C3B858dA2c310'
+  skybase: '0x08978E3700859E476201c1D7438B3427e3C81140'
+
+# ── Other buffer-basis outflow destinations.
+demand_side_buffer:      '0x5e2fEc3a3C4E63A422e45C1BB83EdB3a5aD0543B'
+core_council_multisig:   '0x210CFcF53d1f9648C1c4dcaEE677f0Cb06914364'
+
+# ── Settlement-block override per report month.
+#
+# **MSC settlement rule: month M's cycle is always paid in month M+1.** The
+# on-chain settlement is a single atomic tx that executes some time during
+# the M+1 window (day varies — early Feb / early Mar / late Apr / mid May /
+# late Jun / mid Jul across MSC#5–10).
+#
+# Mid-cycle capital events (e.g. Keel's $10M seeding on 2026-03-30, and a
+# small CC-only correction on 2026-03-06) sit OUTSIDE the monthly cycle and
+# are NOT settlements — they are not indexed here. If we ever want to
+# attribute those to a report month for balance-sheet purposes we should do
+# it explicitly, not by conflating them with an MSC block.
+#
+# Cross-checked against USDS mints and Vat.grab dart on the three ALLOCATOR
+# ilks; each block is the SINGLE atomic MSC settlement tx for that cycle.
+settlement_blocks:
+  '2026-01': 24369632   # MSC#5,  2026-02-02 14:00 UTC
+  '2026-02': 24570218   # MSC#6,  2026-03-02 14:00 UTC
+  '2026-03': 24971851   # MSC#7,  2026-04-27 14:02 UTC
+  '2026-04': 25072324   # MSC#8,  2026-05-11 14:01 UTC
+  '2026-05': 25373623   # MSC#9,  2026-06-22 14:04 UTC
+  '2026-06': 25574490   # MSC#10, 2026-07-20 14:21 UTC
+
+# ── Grove token-launch (TGE) penalty — deducted from the MSC net per §3
+# ("excluded from Sky revenue, per forum"). This is an off-chain accounting
+# adjustment whose on-chain mechanism is "still open with BA" (see PRD §17.13
+# B16), so it's carried here as a per-month override. Absence of an entry ⇒
+# treated as $0 with a warning rendered in the report.
+#
+# June 2026 is the only month with a published figure in the methodology doc;
+# earlier months should be back-filled from the corresponding MSC forum posts
+# as they land, else left null and the summary will surface the gap.
+grove_tge_penalty:
+  '2026-06': 1396260.00
+  # '2026-01': null
+  # '2026-02': null
+  # '2026-03': null
+  # '2026-04': null
+  # '2026-05': null
+
+# ── One-off subproxy inflows to exclude from "sent to prime subproxy".
+#
+# The on-chain scan of USDS mints (from=0x0, to=<subproxy>) on the settlement
+# block picks up TWO different kinds of event with the same signature:
+#
+#   (a) the monthly revenue distribution to the prime (what the doc §3's
+#       "sent to prime subproxies" line means), and
+#   (b) one-off treasury endowments seeding a brand-new prime (NOT a revenue
+#       distribution — Sky isn't paying the prime for services rendered, it's
+#       funding a new counterparty).
+#
+# Only (a) should reduce Sky's revenue. (b) is off-methodology and needs to
+# be carved out. This map lists the confirmed one-off inflows by
+# YYYY-MM → prime → USDS amount; the compute layer subtracts them from the
+# raw settlement-block subproxy sends before applying the buffer-basis
+# formula, and the summary renders both the raw and adjusted figures for
+# audit.
+#
+# Confirmed events:
+#   * 2026-01 skybase = 10,000,000 — Skybase seeding riding IN the MSC#5
+#     settlement block (2026-02-02 block 24369632). Skybase earned $0 in
+#     Jan (no debt yet), so the entire mint is initial capital.
+#
+# Keel's $10M seeding on 2026-03-30 (block 24772796) is NOT indexed here
+# because that block is a mid-cycle capital event, not a monthly MSC
+# settlement (MSC#7 is 2026-04-27). Our extraction only reads
+# `settlement_blocks`, so the Keel event doesn't get picked up as a
+# subproxy send in any month's report — and therefore doesn't need an
+# offsetting one_off. If we later want to reflect the Keel funding in
+# March's Sky-total, that's a separate attribution decision (out of
+# scope for the doc §3 buffer-basis methodology).
+one_off_transfers:
+  '2026-01':
+    skybase: 10000000.00
