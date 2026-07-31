@@ -11,8 +11,8 @@ Period: 2026-02-01 → 2026-02-28 (28 days)
 | Field | USDS |
 |---|---:|
 | agent rate | 30,492.28 |
-| distribution rewards | 114,125.87 |
-| **demand-side revenue** | **144,618.15** |
+| distribution rewards | 177,401.87 |
+| **demand-side revenue** | **207,894.15** |
 
 #### Supply-Side revenue
 
@@ -36,9 +36,10 @@ Period: 2026-02-01 → 2026-02-28 (28 days)
 | 1 | $93,394.61 |  |
 | 1001 | $1,597.63 |  |
 | 1002 | $2,970.51 |  |
+| 1003 | $63,276.00 | CowSwap — synthetic delivery tagging in the unified stream (event-derived). |
 | 1004 | $1,098.69 | Paraswap — re-routed router-owned Referral(1004) in the unified stream. |
 | 1007 | $13,745.06 |  |
 | 1016 | $167.54 | lazysummer — only the on-chain farm Referral(1016) events appear here; Amatsu additionally tags fleet ark balances DB-side (docs/lazysummer-1016.md). |
 | 1017 | $350.18 |  |
-| **Total** | **$114,125.87** | |
+| **Total** | **$177,401.87** | |
 

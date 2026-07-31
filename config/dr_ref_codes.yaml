@@ -85,7 +85,8 @@ primes:
     - '1'
     - '1001'     # from Feb 2026 payments may have been applied to 1016
     - '1002'
-    - '1004'     # aggregator (Paraswap) — see `aggregators` note below
+    - '1003'     # aggregator (CowSwap) — see `aggregator treatment` below
+    - '1004'     # aggregator (Paraswap)
     - '1007'     # aggregator (Yearn)
     - '1016'     # aggregator
     - '1017'
@@ -121,15 +122,25 @@ unattributed:
     - '13425'
     - '9998'     # absent from the HyperSync workbook
 
-  # Newly attributed by the HyperSync aggregator work (settle-dr-dune b287c02)
-  # and NOT present in the legacy Summary, so it has never been settled to any
-  # prime. Aggregator DR is out of scope pending a methodology decision
-  # (2026-06 scope call; reconciliation post §2.2) — note that the aggregator
-  # codes already sitting under skybase/keel above (1004, 1007, 1016, 4011)
-  # predate that call and are grandfathered, which is itself inconsistent and
-  # wants resolving.
-  #
-  # Leaving 1003 here preserves current behaviour exactly: it was never paid.
-  # Moving it under a prime would transfer ~$301.6K (Jan–Jun 2026).
-  pending_methodology:
-    - '1003'     # CowSwap — synthetic delivery tagging in the unified stream
+  # (none currently — see `aggregator treatment` below)
+
+# AGGREGATOR TREATMENT
+# --------------------
+# Every aggregator code the workbook carries is now attributed:
+#   1003 CowSwap  → skybase   (assigned 2026-07-31)
+#   1004 Paraswap → skybase
+#   1007 Yearn    → skybase
+#   1016          → skybase
+#   4011 1inch    → keel
+#
+# 1003 is new in the HyperSync workbook (settle-dr-dune b287c02, aggregator
+# attribution in the unified TWA stream) and was absent from the legacy
+# Summary, so it had never been settled to anyone. Attributing it to Skybase
+# moves ~$301.6K (Jan–Jun 2026) onto Skybase's demand side.
+#
+# Note this supersedes the "aggregators are out of scope" language in
+# reconciliation post §2.2 / the 2026-06 scope call. That exclusion was
+# already only half-honoured — 1004/1007/1016/4011 were attributed in the
+# legacy Summary and flagged "needs methodology update" — so aggregator DR is
+# now uniformly included rather than inconsistently split. §2.2 should be
+# updated to match on the next reconciliation post.
