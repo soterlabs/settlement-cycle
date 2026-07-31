@@ -11,8 +11,8 @@ Period: 2026-01-01 → 2026-01-31 (31 days)
 | Field | USDS |
 |---|---:|
 | agent rate | 0.00 |
-| distribution rewards | 28,435.59 |
-| **demand-side revenue** | **28,435.59** |
+| distribution rewards | 28,500.23 |
+| **demand-side revenue** | **28,500.23** |
 
 #### Supply-Side revenue
 
@@ -32,8 +32,7 @@ Period: 2026-01-01 → 2026-01-31 (31 days)
 
 | ref_code | DR (USD) | notes |
 |---|---:|---|
-| 4001 | $28,435.59 | Synthetic code: USDS in Solana OFT Bridge (0x1e1D42781FC170EF9da004Fb735f56F0276d01B8). No on-chain Referral event; entire contract balance attributed. XR rate. |
-| 4011 | $0.00 | Included in aggregators, needs methodology update. 1inch |
-| 4012 | $0.00 |  |
-| **Total** | **$28,435.59** | |
+| 4001 | $28,500.23 | Synthetic code: USDS in Solana OFT Bridge; entire contract balance. Intraday TWA (clean methodology; Dune query used EOD snapshots). |
+| 4011 | $0.00 | 1inch — re-routed executor-owned Referral(4011) in the unified stream. |
+| **Total** | **$28,500.23** | |
 

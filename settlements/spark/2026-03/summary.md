@@ -11,8 +11,8 @@ Period: 2026-03-01 → 2026-03-31 (31 days)
 | Field | USDS |
 |---|---:|
 | agent rate | 122,911.67 |
-| distribution rewards | 1,412,270.82 |
-| **demand-side revenue** | **1,535,182.49** |
+| distribution rewards | 1,404,826.44 |
+| **demand-side revenue** | **1,527,738.11** |
 
 #### Supply-Side revenue
 
@@ -111,21 +111,17 @@ Period: 2026-03-01 → 2026-03-31 (31 days)
 
 | ref_code | DR (USD) | notes |
 |---|---:|---|
-| 2 | $0.00 |  |
-| 100 | $0.00 |  |
 | 127 | $5,410.52 | Synthetic code: untagged sUSDC |
-| 128 | $1,278,806.71 |  |
+| 128 | $1,271,361.94 |  |
 | 129 | $0.91 |  |
 | 130 | $6,315.99 | Synthetic code: Untagged spUSDT. |
-| 131 | $4,314.49 | Synthetic code: Untagged spUSDC. Combined into 128 by Spark on Dune. |
-| 132 | $0.01 | Synthetic code: Untagged spPYUSD. Combined into 128 by Spark on Dune. |
-| 170 | $0.00 |  |
+| 131 | $4,314.49 | Synthetic code: Untagged spUSDC. |
+| 132 | $0.01 | Synthetic code: Untagged spPYUSD. |
 | 171 | $0.00 |  |
 | 182 | $0.02 |  |
 | 183 | $11,113.76 |  |
-| 184 | $0.00 |  |
 | 186 | $2,578.98 |  |
-| 188 | $9,419.73 |  |
+| 188 | $9,419.76 |  |
 | 190 | $4,238.45 |  |
 | 191 | $8,706.61 |  |
 | 192 | $48,284.11 |  |
@@ -138,15 +134,12 @@ Period: 2026-03-01 → 2026-03-31 (31 days)
 | 202 | $43.57 |  |
 | 204 | $37.60 |  |
 | 205 | $0.20 |  |
-| 206 | $0.00 |  |
 | 214 | $0.00 |  |
 | 216 | $216.61 |  |
 | 219 | $0.00 |  |
-| 223 | $0.00 |  |
 | 224 | $0.00 |  |
 | 303 | $0.00 |  |
 | 555 | $0.00 |  |
-| 999 | $0.00 |  |
-| 9001 | $19,582.08 | Synthetic code: USDS in Aave aEthUSDS (0x32a6268f9Ba3642Dda7892aDd74f1D34469A4259). No on-chain Referral event; entire contract balance attributed. XR rate. |
-| **Total** | **$1,412,270.82** | |
+| 9001 | $19,582.45 | Synthetic code: USDS in Aave aEthUSDS; entire contract balance. Intraday TWA (clean methodology) — the deployed Dune query used EOD snapshots, which under-count ~20% on heavy-flow months. |
+| **Total** | **$1,404,826.44** | |
 

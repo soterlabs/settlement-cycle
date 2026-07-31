@@ -1,0 +1,135 @@
+# Distribution Rewards: referral code → prime agent attribution.
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# Until 2026-07 the mapping lived in the `group` column of the `Summary` tab
+# of `settle-dr-dune/dune-results/dr_comparison_latest.xlsx`. The HyperSync
+# rebuild of that pipeline (`hypersync-results/dr_comparison_hypersync.xlsx`)
+# emits no `Summary` tab and no `group` column — `Soter by Ref Code` is a flat
+# `ref_code | month… | total | tokens | notes` sheet. Attribution therefore
+# moves here, versioned next to the settlement logic that depends on it.
+#
+# The initial contents were lifted verbatim from the old `Summary` tab's
+# `group` column at submodule pin 962f9f6, so the migration is behaviour-
+# preserving for every code that existed before.
+#
+# CONTRACT
+# --------
+# * A ref code appearing under a prime key is that prime's DR.
+# * `unattributed:` lists codes deliberately NOT paid to any prime. They must
+#   be listed explicitly — the loader treats an unknown code as an error-level
+#   warning naming the dollar amount, so newly-appearing codes can never
+#   silently vanish from a settlement.
+# * Codes may appear exactly once across the whole file; the loader enforces
+#   this at load time.
+# * Codes marked `absent` were in the legacy Summary but carry no row in the
+#   HyperSync workbook. Retained for provenance; they contribute $0.
+# * Amounts and notes come from the workbook, never from here. This file
+#   answers only "whose is it?".
+
+primes:
+
+  spark:
+    - '127'      # synthetic: untagged sUSDC
+    - '128'
+    - '129'
+    - '130'      # synthetic: untagged spUSDT
+    - '131'      # synthetic: untagged spUSDC (combined into 128 by Spark on Dune)
+    - '132'      # synthetic: untagged spPYUSD (combined into 128 by Spark on Dune)
+    - '171'
+    - '182'
+    - '183'
+    - '186'
+    - '188'
+    - '190'
+    - '191'
+    - '192'
+    - '194'
+    - '195'
+    - '196'
+    - '197'      # stUSDS
+    - '198'
+    - '200'
+    - '202'
+    - '204'
+    - '205'
+    - '214'
+    - '216'
+    - '219'
+    - '224'
+    - '303'
+    - '555'
+    - '9001'     # synthetic: USDS in Aave aEthUSDS; no Referral event, whole balance attributed
+    # absent from the HyperSync workbook (legacy Summary only):
+    - '2'
+    - '100'
+    - '170'
+    - '184'
+    - '206'
+    - '223'
+    - '999'
+
+  grove:
+    - '2001'
+    - '2002'
+    - '2005'
+    - '2008'
+    - '2222'
+    # absent from the HyperSync workbook:
+    - '2000'
+    - '2003'
+    - '2012'
+
+  skybase:
+    - '0'        # explicit on-chain referral, Ethereum. L2 sUSDS splits to 10000/10001
+    - '1'
+    - '1001'     # from Feb 2026 payments may have been applied to 1016
+    - '1002'
+    - '1004'     # aggregator (Paraswap) — see `aggregators` note below
+    - '1007'     # aggregator (Yearn)
+    - '1016'     # aggregator
+    - '1017'
+    # absent from the HyperSync workbook:
+    - '1015'
+
+  keel:
+    - '4001'     # synthetic: USDS in Solana OFT Bridge; no Referral event, whole balance attributed
+    - '4011'     # aggregator (1inch)
+    # absent from the HyperSync workbook:
+    - '4012'
+
+  # No config or runner in this repo; listed so its codes are not flagged
+  # unknown if the workbook carries them.
+  osero:
+    - '3000'
+    - '3333'
+    # absent from the HyperSync workbook:
+    - '3001'
+    - '3007'
+    - '3008'
+
+# Codes deliberately not paid to any prime.
+unattributed:
+
+  # Untagged / synthetic buckets that belong to no single prime. These were
+  # the legacy Summary's "Other" group.
+  other:
+    - '-999999'  # synthetic: untagged USDS-CLE / USDS-SKY / USDS-SPK / stUSDS
+    - '99'       # synthetic: untagged sUSDS
+    - '10000'    # synthetic: L2 sUSDS tagged by default PSM3 Swap events (split from code 0)
+    - '10001'    # synthetic: smart-contract-held L2 sUSDS (split from code 0)
+    - '13425'
+    - '9998'     # absent from the HyperSync workbook
+
+  # Newly attributed by the HyperSync aggregator work (settle-dr-dune b287c02)
+  # and NOT present in the legacy Summary, so it has never been settled to any
+  # prime. Aggregator DR is out of scope pending a methodology decision
+  # (2026-06 scope call; reconciliation post §2.2) — note that the aggregator
+  # codes already sitting under skybase/keel above (1004, 1007, 1016, 4011)
+  # predate that call and are grandfathered, which is itself inconsistent and
+  # wants resolving.
+  #
+  # Leaving 1003 here preserves current behaviour exactly: it was never paid.
+  # Moving it under a prime would transfer ~$301.6K (Jan–Jun 2026).
+  pending_methodology:
+    - '1003'     # CowSwap — synthetic delivery tagging in the unified stream
