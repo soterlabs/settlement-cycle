@@ -5,7 +5,7 @@ Per debt-rate-methodology Step 1 (subsidy):
     subsidised_apy_d = ref_rate_d + (base_apy_d − ref_rate_d) × T / 24
 
 where:
-    ref_rate_d  = NY Fed EFFR or 3M T-Bill on date d (carry-forward)
+    ref_rate_d  = 3M T-Bill on date d (carry-forward)
     base_apy_d  = SSR_d + 30bps (the un-subsidised borrow rate)
     T           = months elapsed since the subsidy program start
                   (Sky governance: 2026-01-01)
@@ -27,7 +27,7 @@ import pandas as pd
 import yaml
 
 _log = logging.getLogger(__name__)
-_VALID_REF_RATE_KINDS = ("tbill_3m", "effr")
+_VALID_REF_RATE_KINDS = ("tbill_3m",)
 
 # Subsidy program kicked in 2026-01-01; T=0 in Jan, T=1 in Feb, ... T=24+ → no subsidy.
 SUBSIDY_PROGRAM_START = date(2026, 1, 1)
@@ -40,16 +40,18 @@ class SubsidyConfig:
     """Per-prime subsidy parameters loaded from YAML.
 
     ``ref_rate_kind`` selects which reference rate this prime uses in the
-    subsidy formula. Sky governance (2026-05-02): Grove uses 3-month T-Bill,
-    Spark uses EFFR. Both columns live in
-    ``config/subsidy_reference_rates.yaml``.
+    subsidy formula. Per Atlas A.2.8.2.2.2.2.2 (Borrow Rate Mechanism) every
+    prime is subsidised against the 3-month T-Bill, so ``tbill_3m`` is the
+    only valid kind — the field is retained (rather than dropped) so a future
+    per-prime divergence has a place to land without a schema change. The
+    series lives in ``config/subsidy_reference_rates.yaml``.
     """
 
     enabled: bool
     cap_usd: Decimal = DEFAULT_SUBSIDY_CAP_USD
     program_start: date = SUBSIDY_PROGRAM_START
     ramp_months: int = SUBSIDY_RAMP_MONTHS
-    ref_rate_kind: str = "tbill_3m"   # 'tbill_3m' | 'effr'
+    ref_rate_kind: str = "tbill_3m"   # 'tbill_3m' (only supported kind)
 
     @classmethod
     def from_dict(cls, d: dict | None) -> "SubsidyConfig":
@@ -82,7 +84,7 @@ class ReferenceRateHistory:
     """
 
     rates: pd.DataFrame
-    kind: str  # 'effr' | 'tbill_3m'
+    kind: str  # 'tbill_3m'
 
     # Beyond this carry-forward span (calendar days) emit a loud warning —
     # rates moved often enough that quietly using a 3-week-old value is
@@ -128,8 +130,9 @@ def load_reference_rates(
 ) -> ReferenceRateHistory:
     """Load `config/subsidy_reference_rates.yaml` for the given rate kind.
 
-    The YAML file carries both ``tbill_3m_apy`` and ``effr_apy`` columns;
-    callers pick which series to read via ``kind``. Defaults to T-Bill 3M.
+    The YAML carries a single ``tbill_3m_apy`` column (the Atlas-canonical
+    reference rate for every prime). ``kind`` is still threaded through so a
+    future second series only needs a column plus a registry entry.
     """
     if kind not in _VALID_REF_RATE_KINDS:
         raise ValueError(f"Unknown ref_rate kind {kind!r} ({'|'.join(_VALID_REF_RATE_KINDS)})")
@@ -141,7 +144,7 @@ def load_reference_rates(
     with config_path.open() as f:
         cfg = yaml.safe_load(f)
 
-    col = "effr_apy" if kind == "effr" else "tbill_3m_apy"
+    col = "tbill_3m_apy"
     rows = [
         {
             "effective_date": date.fromisoformat(r["effective_date"]),
@@ -175,7 +178,7 @@ def subsidised_apy(
     At T=0: subsidised_apy = ref_rate (full subsidy).
     At T=24: subsidised_apy = base_apy (no subsidy).
 
-    Clamp guards the case where ``ref_rate ≥ base_apy`` (e.g. EFFR ≥ BR for
+    Clamp guards the case where ``ref_rate ≥ base_apy`` (e.g. T-Bill ≥ BR for
     Spark in some periods) — without it the linear interpolation would give
     a result *above* base_apy, charging the prime more than the unsubsidised
     rate. The subsidy intent is one-sided: the prime never pays more than BR.

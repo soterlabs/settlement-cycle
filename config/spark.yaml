@@ -25,14 +25,25 @@ start_date: '2024-11-18'   # first frob on ALLOCATOR-SPARK-A (Dune query 7399640
 # parameters as Grove. Daily reference rates in
 # config/subsidy_reference_rates.yaml.
 #
-# ref_rate_kind: per Sky governance (2026-05-02), Spark uses EFFR (NY Fed
-# Effective Federal Funds Rate). Grove uses 3M T-Bill instead.
+# ref_rate_kind: 3-month T-Bill, per Atlas A.2.8.2.2.2.2.2 (Borrow Rate
+# Mechanism), which names `t-bill_rate` for every prime. This supersedes the
+# 2026-05-02 governance note (and Spark's 2026-05-06 reaffirmation) that had
+# Spark on EFFR — see QUESTIONS.md S5. Same series Grove uses; the EFFR
+# column was removed from config/subsidy_reference_rates.yaml on 2026-07-30.
 subsidy:
   enabled: true
   cap_usd: 1000000000      # First $1B at subsidised rate; excess at full BR
   program_start: '2026-01-01'
   ramp_months: 24
-  ref_rate_kind: effr
+  ref_rate_kind: tbill_3m
+
+# Ilk debt from Envio HyperSync (raw Vat logs against the reorg-safe store)
+# rather than Dune, so the BR charge is priced off an independently sourced
+# debt timeseries. Requires ENVIO_API_TOKEN. Balances/positions stay on the
+# fleet defaults — this pilot is scoped to debt and the interest charged on
+# it. Same family switch Obex runs (config/obex.yaml).
+sources:
+  debt: hypersync
 
 addresses:
   ethereum:

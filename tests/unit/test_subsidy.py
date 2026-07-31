@@ -112,7 +112,7 @@ def test_subsidised_apy_midway():
 
 
 def test_subsidised_apy_clamps_when_ref_rate_above_base():
-    """EFFR (4.33%) > BR (4.30%): clamp at base_apy, prime never pays MORE
+    """ref_rate (4.33%) > BR (4.30%): clamp at base_apy, prime never pays MORE
     than the unsubsidised rate. This is the live Spark Jan-Feb 2026 case."""
     out = subsidised_apy(
         base_apy=Decimal("0.043"),

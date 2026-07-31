@@ -191,7 +191,7 @@ def test_subsidy_zero_benefit_warns(caplog):
     """When the reference rate sits at/above base every day, the ramp clamps
     to base and the subsidy yields $0 — the stale/placeholder-rate signature.
     Compute must warn (the May 2026 Spark mis-pricing went unflagged because
-    a Jan EFFR of 4.33% > BR silently nullified the subsidy)."""
+    a Jan reference rate of 4.33% > BR silently nullified the subsidy)."""
     import logging
 
     period = _period(date(2026, 5, 1), date(2026, 5, 31))
@@ -199,14 +199,14 @@ def test_subsidy_zero_benefit_warns(caplog):
     ssr_df = _ssr_const(0.0365)  # base ≈ 3.95% < stale ref 4.33%
     subsidy = SubsidyConfig(
         enabled=True, program_start=date(2026, 1, 1),
-        cap_usd=Decimal("1000000000"), ramp_months=24, ref_rate_kind="effr",
+        cap_usd=Decimal("1000000000"), ramp_months=24, ref_rate_kind="tbill_3m",
     )
     ref_rates = ReferenceRateHistory(
         rates=pd.DataFrame({
             "effective_date": [date(2026, 5, 1)],
             "ref_rate_apy":   [Decimal("0.0433")],   # placeholder value above BR
         }),
-        kind="effr",
+        kind="tbill_3m",
     )
     with caplog.at_level(logging.WARNING):
         _total, df, _ = compute_sky_revenue_daily(
@@ -228,14 +228,14 @@ def test_subsidy_real_benefit_does_not_warn(caplog):
     ssr_df = _ssr_const(0.0365)
     subsidy = SubsidyConfig(
         enabled=True, program_start=date(2026, 1, 1),
-        cap_usd=Decimal("1000000000"), ramp_months=24, ref_rate_kind="effr",
+        cap_usd=Decimal("1000000000"), ramp_months=24, ref_rate_kind="tbill_3m",
     )
     ref_rates = ReferenceRateHistory(
         rates=pd.DataFrame({
             "effective_date": [date(2026, 5, 1)],
-            "ref_rate_apy":   [Decimal("0.0362")],   # real EFFR, below BR
+            "ref_rate_apy":   [Decimal("0.0362")],   # real T-Bill, below BR
         }),
-        kind="effr",
+        kind="tbill_3m",
     )
     with caplog.at_level(logging.WARNING):
         compute_sky_revenue_daily(
@@ -255,11 +255,11 @@ def test_summarize_subsidy_reconciles():
     ssr_df = _ssr_const(0.0365)
     subsidy = SubsidyConfig(
         enabled=True, program_start=date(2026, 1, 1),
-        cap_usd=Decimal("1000000000"), ramp_months=24, ref_rate_kind="effr",
+        cap_usd=Decimal("1000000000"), ramp_months=24, ref_rate_kind="tbill_3m",
     )
     ref = ReferenceRateHistory(
         rates=pd.DataFrame({"effective_date": [date(2026, 5, 1)],
-                            "ref_rate_apy": [Decimal("0.0362")]}), kind="effr")
+                            "ref_rate_apy": [Decimal("0.0362")]}), kind="tbill_3m")
     total, df, _ = compute_sky_revenue_daily(
         period, debt_df, _empty(["block_date", "cum_balance"]), ssr_df,
         subsidy_config=subsidy, ref_rate_history=ref)
@@ -272,7 +272,7 @@ def test_summarize_subsidy_reconciles():
     assert abs(actual - total) < Decimal("0.01")                     # actual == summed daily charge
     assert abs(full_br - actual - benefit) < Decimal("0.0000001")    # benefit identity
     assert s["zero_benefit"] is False and benefit > 0
-    assert s["ref_rate_kind"] == "effr"
+    assert s["ref_rate_kind"] == "tbill_3m"
 
 
 def test_summarize_subsidy_none_when_disabled():
@@ -294,10 +294,10 @@ def test_summarize_subsidy_handles_program_start_midperiod(caplog):
     ssr_df = _ssr_const(0.0365)
     subsidy = SubsidyConfig(
         enabled=True, program_start=date(2026, 2, 2),
-        cap_usd=Decimal("1000000000"), ramp_months=24, ref_rate_kind="effr")
+        cap_usd=Decimal("1000000000"), ramp_months=24, ref_rate_kind="tbill_3m")
     ref = ReferenceRateHistory(
         rates=pd.DataFrame({"effective_date": [date(2026, 2, 2)],
-                            "ref_rate_apy": [Decimal("0.0362")]}), kind="effr")
+                            "ref_rate_apy": [Decimal("0.0362")]}), kind="tbill_3m")
     total, df, _ = compute_sky_revenue_daily(
         period, debt_df, _empty(["block_date", "cum_balance"]), ssr_df,
         subsidy_config=subsidy, ref_rate_history=ref)
@@ -318,10 +318,10 @@ def test_summarize_subsidy_no_warning_before_program_start(caplog):
     ssr_df = _ssr_const(0.04)
     subsidy = SubsidyConfig(
         enabled=True, program_start=date(2026, 1, 1),
-        cap_usd=Decimal("1000000000"), ramp_months=24, ref_rate_kind="effr")
+        cap_usd=Decimal("1000000000"), ramp_months=24, ref_rate_kind="tbill_3m")
     ref = ReferenceRateHistory(
         rates=pd.DataFrame({"effective_date": [date(2026, 1, 1)],
-                            "ref_rate_apy": [Decimal("0.0362")]}), kind="effr")
+                            "ref_rate_apy": [Decimal("0.0362")]}), kind="tbill_3m")
     with caplog.at_level(logging.WARNING):
         _t, df, _ = compute_sky_revenue_daily(
             period, debt_df, _empty(["block_date", "cum_balance"]), ssr_df,
