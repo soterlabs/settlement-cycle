@@ -11,8 +11,8 @@ Period: 2026-06-01 → 2026-06-30 (30 days)
 | Field | USDS |
 |---|---:|
 | agent rate | 34,311.83 |
-| distribution rewards | 164,694.33 |
-| **demand-side revenue** | **199,006.16** |
+| distribution rewards | 191,228.52 |
+| **demand-side revenue** | **225,540.35** |
 
 #### Supply-Side revenue
 
@@ -32,14 +32,14 @@ Period: 2026-06-01 → 2026-06-30 (30 days)
 
 | ref_code | DR (USD) | notes |
 |---|---:|---|
-| 0 | $7,498.14 | Explicit on-chain referral on Ethereum. L2 sUSDS is split out to 10000/10001 in the PSM3 queries. |
-| 1 | $117,784.43 |  |
-| 1001 | $809.82 | From Feb. 2026, payments may have been applied to 1016. |
+| 0 | $7,116.48 | Explicit on-chain referral on Ethereum. L2 sUSDS split to 10000/10001. |
+| 1 | $115,668.07 |  |
+| 1001 | $805.69 |  |
 | 1002 | $38,593.10 |  |
-| 1004 | $0.01 | Included in aggregators, needs methodology update. Paraswap |
-| 1007 | $0.45 | Included in aggregators, needs methodology update. Yearn |
-| 1015 | $0.00 |  |
-| 1016 | $0.00 | Included in aggregators, needs methodology update. |
+| 1003 | $27,312.91 | CowSwap — synthetic delivery tagging in the unified stream (event-derived). |
+| 1004 | $1,723.45 | Paraswap — re-routed router-owned Referral(1004) in the unified stream. |
+| 1007 | $0.45 |  |
+| 1016 | $0.00 | lazysummer — only the on-chain farm Referral(1016) events appear here; Amatsu additionally tags fleet ark balances DB-side (docs/lazysummer-1016.md). |
 | 1017 | $8.37 |  |
-| **Total** | **$164,694.33** | |
+| **Total** | **$191,228.52** | |
 
