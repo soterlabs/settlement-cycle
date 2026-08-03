@@ -104,7 +104,7 @@ Period: 2026-07-01 → 2026-07-31 (31 days)
 | S57 | Spark Savings V2 — spUSDT vault | $863,439,216.48 | $404,579,096.14 |
 | S59 | Spark Savings V2 — spPYUSD vault | $797,030.38 | $30,570.49 |
 | S60 | Spark Savings V2 — spUSDC vault (Avalanche-C, CREATE2 same address) | $19,103,797.29 | $12,460,370.15 |
-| S63 | Spark Savings V2 — spUSDG vault (Robinhood Chain) | $440,178.18 | $21,718,295.24 |
+| S63 | Spark Savings V2 — spUSDG vault (Robinhood Chain) | $440,606.06 | $21,723,212.72 |
 
 > Position values above are **excluded from `prime_agent_revenue`** per the Savings V2 scope decision (the depositor-side VSR liability is outside the MSC/ALM accounting boundary — see `docs/spark/PRD_savings_vaults.md` §3 and `QUESTIONS.md` S30). Reconciliations against Spark / BA Labs dashboards, which net the VSR, will differ by ≈ the period's VSR accrual. Per-vault values remain in `provenance.json` under `venue_breakdown[]`.
 

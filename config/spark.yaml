@@ -1097,16 +1097,14 @@ venues:
   # (forum.skyeco.com t/28031). Ops began 2026-06-19; public launch
   # 2026-07-01. Deposit cap 500M USDG; VSR 3.2% (set 2026-06-19).
   #
-  # ``total_assets_source: hypersync_underlying`` — Robinhood has NO public
-  # archive RPC (the official endpoint keeps only minutes of state), so the
-  # SoM/EoM reads reconstruct the vault's USDG balance from HyperSync
-  # Transfer logs instead of calling totalAssets(). Verified exact against
-  # live balanceOf (block 26,828,003); understates totalAssets by the
-  # deployed assetsOutstanding slice — $6.7K on $23.8M (0.03%) as of
-  # 2026-08-03, since virtually all depositor USDG still sits in the vault
-  # (Grove Morpho vault held $1.97; the ALM proxy 0xfD2fD4B0…dB24 held
-  # ~$2K USDG). Revisit (archive RPC or an assetsOutstanding event path)
-  # if the Take→ALM→Grove-vault deployment ramps.
+  # Reads exact ``totalAssets()`` over archive RPC (Alchemy serves full
+  # Robinhood archive; the official public endpoint keeps only minutes of
+  # state, and PublicNode/dRPC/Ankr gate archive). If the archive endpoint
+  # is ever lost, flip ``total_assets_source: hypersync_underlying`` — the
+  # HyperSync Transfer-log reconstruction of the vault's USDG balance,
+  # verified exact against live balanceOf (block 26,828,003); it
+  # understates totalAssets only by the deployed assetsOutstanding slice
+  # (July 2026: $542 at SoM, $12.9K on $21.7M at EoM, 0.06%).
   - id: S63
     chain: robinhood
     label: 'Spark Savings V2 — spUSDG vault (Robinhood Chain)'
@@ -1114,7 +1112,6 @@ venues:
     cof_excluded: true
     hide_per_venue_pnl: true
     holder_override: '0xde770c84fe66e063336b31737cfe9790f18c4087'
-    total_assets_source: hypersync_underlying
     token:
       address: '0xde770c84fe66e063336b31737cfe9790f18c4087'
       symbol: 'spUSDG'
