@@ -449,7 +449,19 @@ def build_grove_sources(grove, fixtures: dict, blocks_by_chain: dict[str, Any]) 
         return [b for b in blocks if som < b <= eom]
 
     return Sources(
-        debt=MockDebtSource(debt_df),
+        debt=MockDebtSource(
+            debt_df,
+            # Multi-ilk (Diamond PAU): serve each ilk its own captured frame.
+            # "debt" = legacy ALLOCATOR-BLOOM-A; "debt_grove_a" (July 2026+
+            # captures) = ALLOCATOR-GROVE-A. Unknown ilks get an empty frame
+            # (see MockDebtSource) so pre-PAU fixture sets stay correct.
+            df_by_ilk={
+                bytes.fromhex("414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000"): debt_df,
+                **({bytes.fromhex("414c4c4f4341544f522d47524f56452d41000000000000000000000000000000"):
+                        df_with_dates(fixtures["debt_grove_a"]["rows"], "block_date")}
+                   if "debt_grove_a" in fixtures else {}),
+            },
+        ),
         balance=_RoutedBalances(),
         ssr=MockSSRSource(ssr_df),
         v3_position=_V3Mixed(),

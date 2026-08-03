@@ -18,15 +18,15 @@ Period: 2026-07-01 → 2026-07-31 (31 days)
 
 | Field | USDS |
 |---|---:|
-| **supply-side revenue** | **74,989.84** |
+| **supply-side revenue** | **73,880.24** |
 
 ### Sky side
 
 | Field | USDS |
 |---|---:|
-| prime cost of funds | 3,297,907.54 |
+| prime cost of funds | 3,299,017.14 |
 | sky direct exposure | 4,704,533.20 |
-| **supply-side revenue** | **8,002,440.73** |
+| **supply-side revenue** | **8,003,550.33** |
 
 ## Per-venue
 
@@ -62,6 +62,8 @@ Period: 2026-07-01 → 2026-07-31 (31 days)
 | E32 | USDC raw (alt holder idle) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E37 | Maple syrupUSDC (ERC-4626) | $100,671,412.01 | $0.00 | -$100,934,142.04 | $262,730.04 | $262,730.04 | $0.00 | 0% | $0.00 |
 | E38 | Agora AUSD incentives (cash distribution to Grove Eth ALM) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
+| E40 | USDS raw (Diamond PAU ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
+| E41 | JTRSY Basin escrow — USDS pending subscription (Diamond PAU) | $1.00 | $1,000,000.00 | $999,999.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 
 ## Off-protocol holdings
 

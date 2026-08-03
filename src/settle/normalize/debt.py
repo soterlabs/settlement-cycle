@@ -84,12 +84,22 @@ def get_debt_timeseries(
     src = source if source is not None else get_debt_source()
     # Sparse Dune series: one row per day with frob/grab activity.
     # cum_debt here = Art (normalised), NOT actual USDS yet.
-    sparse = src.debt_timeseries(
-        ilk=prime.ilk_bytes32,
-        start=prime.start_date,
-        pin_block=period.pin_blocks[Chain.ETHEREUM],
-    )
-    assert_columns(sparse, ["block_date", "daily_dart", "cum_debt"])
+    #
+    # Multi-ilk primes (``prime.extra_ilks`` — Grove's Diamond PAU
+    # compartment ALLOCATOR-GROVE-A alongside legacy ALLOCATOR-BLOOM-A):
+    # each ilk gets its own sparse series and its OWN Vat rate in the daily
+    # expansion; the rate-scaled cum_debt values are summed per day.
+    ilks: list[bytes] = [prime.ilk_bytes32, *prime.extra_ilks]
+    sparse_by_ilk = {}
+    for _ilk in ilks:
+        _sparse = src.debt_timeseries(
+            ilk=_ilk,
+            start=prime.start_date,
+            pin_block=period.pin_blocks[Chain.ETHEREUM],
+        )
+        assert_columns(_sparse, ["block_date", "daily_dart", "cum_debt"])
+        sparse_by_ilk[_ilk] = _sparse
+    sparse = sparse_by_ilk[prime.ilk_bytes32]
 
     from ..extract.rpc import ilk_rate as _ilk_rate
 
@@ -99,11 +109,15 @@ def get_debt_timeseries(
         prev_cum: Decimal = Decimal("0")
         current = period.start
         while current <= period.end:
-            art_d = _art_at_or_before(sparse, current)
             eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
             block_d = block_resolver.block_at_or_before(Chain.ETHEREUM.value, eod)
-            rate_raw = _ilk_rate(Chain.ETHEREUM, _VAT, prime.ilk_bytes32, block_d)
-            cum_d = art_d * Decimal(rate_raw) / _RAY
+            cum_d = Decimal("0")
+            for _ilk in ilks:
+                art_d = _art_at_or_before(sparse_by_ilk[_ilk], current)
+                if art_d == 0:
+                    continue  # skip the rate read for a zero-Art ilk/day
+                rate_raw = _ilk_rate(Chain.ETHEREUM, _VAT, _ilk, block_d)
+                cum_d += art_d * Decimal(rate_raw) / _RAY
             rows.append({
                 "block_date": current,
                 "daily_dart": cum_d - prev_cum,

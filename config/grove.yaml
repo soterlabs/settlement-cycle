@@ -32,6 +32,37 @@ subsidy:
     - { kind: tbill_3m, from: '2026-01-01' }
     - { kind: sofr,     from: '2026-07-23' }
 
+# ── Diamond PAU compartment (2026-07-02 spell) ──────────────────────────
+# Grove's second, facet-based PAU controller lives ALONGSIDE the legacy
+# ALM ("additive capacity"; migration over the coming months). It has its
+# OWN allocator instance — ilk ALLOCATOR-GROVE-A — whose debt is summed
+# with ALLOCATOR-BLOOM-A's via ``extra_ilks`` (each rate-scaled with its
+# own Vat rate; see normalize/debt.py).
+#
+# Stack (mainnet):
+#   ALMProxy          0x0DcD9298e163dFD3c0B5b00F0d9093C36e40A153
+#   Controller        0xbf83F5974B932c7D842254042717D6A2706CE5eE
+#   RateLimits        0xE016Ae733A77Ba77E7907aAA749394Fc5e75C0e1
+#   AccessControls    0x4F6d1704700cd494DD4cd9bF59c0C39DA1Bc9164
+#   AdministeredAgent 0xdBD17832Df0E57b1732CE1C84c652E820E549BAa
+#   AllocatorVault    0xf739a30c74927dc6cFA3B67E4933872a1FC5F4EB
+#   AllocatorBuffer   0x436DABce608f73BeA2b75fba35bffe72739697d5
+#   Basin (JTRSY)     0xf08943f817e1F902dEbC884c7B19Ea5764594Ac9
+#   Basin (BUIDL)     0xCBa428fB052B365557DAf52b744DFfF20d5FbEdD
+#   Basin JTRSY escrow 0x2cd296095788a2741e72056d66b3ae1faee23ea2
+# Phase-1 rate limits: USDS mint/burn 5M/day, PSM swap 5M/day, Basin
+# deposit 5M/day. Forum: t/27976.
+#
+# On-chain July 2026 (verified 2026-08-03): dust tests Jul 9; 1,000,000
+# USDS drawn Jul 21 16:19 UTC (tx 0xfd8861ed…df42) and deposited into the
+# JTRSY Basin the same tx (USDS parked at the basin's escrow 0x2cd29609…
+# pending subscription); Jul 29: basin returned $111,084.67 USDC →
+# swapped via LitePSM → 111,084.67 USDS repaid, then 111,072.72 re-drawn
+# and re-deposited. EoM: escrow holds 1,000,000 USDS; ALLOCATOR-GROVE-A
+# debt ≈ 999,988; PAU ALM itself $0.
+extra_ilks:
+  - '0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000'  # ALLOCATOR-GROVE-A
+
 addresses:
   ethereum:
     subproxy: '0x1369f7b2b38c76B6478c0f0E66D94923421891Ba'    # holds idle USDS / sUSDS — earns agent rate
@@ -805,6 +836,35 @@ venues:
       - payer: '0xdf27ac19cb1da767e181748aaa54e1535aaa3a1d'  # Agora payer #2 (Apr-May 2026)
         token: '0x00000000efe302beaa2b3e6e1b18d08d69a9012a'  # AUSD
         chain: ethereum
+
+  # ── Diamond PAU venues (ALLOCATOR-GROVE-A compartment, Jul 2026+) ────
+  # Raw USDS at the Diamond PAU ALMProxy — idle between draw and Basin
+  # deploy ($0 at 2026-07-31 EoD; draws deploy in the same tx so far).
+  - id: E40
+    chain: ethereum
+    label: 'USDS raw (Diamond PAU ALM idle)'
+    pricing_category: A
+    holder_override: '0x0dcd9298e163dfd3c0b5b00f0d9093c36e40a153'
+    token:
+      address: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'
+      symbol: 'USDS'
+      decimals: 18
+
+  # JTRSY Basin deposit escrow — USDS parked by the Basin pending JTRSY
+  # subscription settlement (1,000,000 USDS at 2026-07-31 EoD; deposited
+  # 2026-07-21 tx 0xfd8861ed…df42 + re-deposit churn Jul 29). Once the
+  # subscription settles into JTRSY tokens this balance migrates to a
+  # JTRSY venue at the PAU ALM (add a Cat E venue with the E9 Chronicle
+  # oracle when that happens).
+  - id: E41
+    chain: ethereum
+    label: 'JTRSY Basin escrow — USDS pending subscription (Diamond PAU)'
+    pricing_category: A
+    holder_override: '0x2cd296095788a2741e72056d66b3ae1faee23ea2'
+    token:
+      address: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'
+      symbol: 'USDS'
+      decimals: 18
 
   # Plume venues — held $0 throughout Q1 2026 (wound down Oct 2025) but
   # listed for completeness with Grove team's inventory. Bridged-token

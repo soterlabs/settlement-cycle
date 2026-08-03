@@ -1,0 +1,83 @@
+# Osero prime agent — first "Diamond PAU" prime (facet-based PAU controller
+# replacing the classic ALM controller stack; see forum "July 16, 2026:
+# Proposed Changes to Osero for Upcoming Spell", t/28023).
+#
+# NOTE ON NAMING: Osero runs on the allocator instance chainlogged as
+# PRYSM — ilk ALLOCATOR-PRYSM-A, subproxy chainlog key PRYSM_SUBPROXY.
+# "Osero" is the prime's current name; the repo's docs/prysm/ background
+# refers to the same prime.
+#
+# Diamond PAU stack (deployed 2026-06-23 via DefaultPAUAssembler, block
+# 25383064; spell executed 2026-07-16):
+#   ALMProxy          0x6d370e359e9cbd0Fd35Bb38fAF705D84238CB884
+#   Controller        0x24169Afb34fAe4D4356BC54Bd80319131e35ca38
+#   RateLimits        0xE9a78f34fe497e2186f81B8c014cd93B308BC62a
+#   AccessControls    0x791D2a017532CfAD881c446e6bF93BbC3c0778b2
+#   AdministeredAgent 0x1837505D104F7a6D8b7e19452610B0A3D652EF12
+#   AllocatorVault    0x146181Aa9B362EaEC2eC3aDd7429a06D53B43d1a
+#   AllocatorBuffer   0xD0BB61b34771146e31055f20f329cDf97429F889
+# For settlement purposes the Diamond PAU is drop-in equivalent to the
+# classic stack: debt lives on the ilk in the Vat, assets at the ALMProxy.
+# Phase-1 rate limits: USDS mint 5M cap / 5M-per-day; SparkLend deposit
+# same; burn/withdraw unlimited. maxLine 5M (DC-IAM).
+#
+# On-chain timeline (verified via HyperSync/RPC 2026-08-03):
+#   2026-03-30 20:26 UTC  10,000,000 USDS minted to the SubProxy (treasury
+#                         seed — block 24772796). NOT allocation-effective.
+#   2026-07-16            spell executes (allocator wired, PSM kiss).
+#   2026-07-24 08:35 UTC  first ilk draw: 1,000,000 USDS minted via the
+#                         buffer, deposited into SparkLend the same tx
+#                         (block 25601435).
+#
+# ``agent_rate_start_date``: Sky pays Osero the agent rate from its first
+# allocation, NOT from the March treasury seed. Set to 2026-07-20 per the
+# MSC operator's directive ("July 19 or July 20" — CONFIRM which; each day
+# on the 10M treasury is ≈ $1,050). The subproxy balance history itself
+# starts 2026-03-30, so without this gate July would accrue from Jul 1.
+
+id: osero
+ilk_bytes32: '0x414c4c4f4341544f522d505259534d2d41000000000000000000000000000000'  # ALLOCATOR-PRYSM-A
+start_date: '2026-03-30'          # subproxy seed — earliest on-chain activity
+agent_rate_start_date: '2026-07-20'
+
+addresses:
+  ethereum:
+    subproxy: '0x24fdcd3bFA5C2553e05B2f9AD0365EBC296278D3'   # PRYSM_SUBPROXY — holds the 10M USDS treasury
+    alm:      '0x6d370e359e9cbd0Fd35Bb38fAF705D84238CB884'   # Diamond PAU ALMProxy
+    # No PSM tracking: mainnet LitePSM is non-custodial (ALMProxy kissed on
+    # MCD_LITE_PSM_USDC_A at the 2026-07-16 spell; swaps are atomic). No L2s.
+
+venues:
+  # SparkLend USDS — the only funded venue so far (1M deposited 2026-07-24).
+  # Same token/params as Spark's S1; rebasing Cat C spToken.
+  - id: O1
+    chain: ethereum
+    label: 'Spark USDS (SparkLend spToken)'
+    pricing_category: C
+    token:
+      address: '0xc02ab1a5eaa8d1b114ef786d9bde108cd4364359'
+      symbol: 'spUSDS'
+      decimals: 18
+    underlying:
+      address: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'
+      symbol: 'USDS'
+      decimals: 18
+    # Deduct Osero's share of unborrowed USDS in the SparkLend pool from
+    # utilized daily (same treatment as Spark S1).
+    lending_idle_usds: true
+
+  # Raw USDS at the Diamond PAU ALMProxy — idle between draw and deploy
+  # ($0 at 2026-07-31 EoD; the Jul-24 draw was deployed in the same tx).
+  - id: O2
+    chain: ethereum
+    label: 'USDS raw (Diamond PAU ALM idle)'
+    pricing_category: A
+    token:
+      address: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'
+      symbol: 'USDS'
+      decimals: 18
+
+sources:
+  debt: hypersync
+  balance: hypersync
+  position_balance: hypersync

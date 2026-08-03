@@ -15,17 +15,31 @@ import pandas as pd
 
 @dataclass
 class MockDebtSource:
-    """In-memory `IDebtSource`. Returns a canned DataFrame."""
+    """In-memory `IDebtSource`. Returns a canned DataFrame.
+
+    ``df_by_ilk`` (optional): per-ilk frames for multi-ilk primes
+    (``Prime.extra_ilks`` — Grove's Diamond PAU ALLOCATOR-GROVE-A). An ilk
+    present in the map is served its own frame; an ilk NOT in the map is
+    served ``df`` ONLY when the map is empty (single-ilk legacy behaviour) —
+    with a non-empty map, unknown ilks get an EMPTY frame so a missing
+    fixture can never double-count the primary ilk's debt.
+    """
 
     df: pd.DataFrame = field(
         default_factory=lambda: pd.DataFrame(
             {"block_date": [], "daily_dart": [], "cum_debt": []}
         )
     )
+    df_by_ilk: dict[bytes, pd.DataFrame] = field(default_factory=dict)
     calls: list[tuple] = field(default_factory=list)
 
     def debt_timeseries(self, ilk: bytes, start: date, pin_block: int) -> pd.DataFrame:
         self.calls.append((ilk, start, pin_block))
+        if self.df_by_ilk:
+            hit = self.df_by_ilk.get(bytes(ilk))
+            if hit is not None:
+                return hit
+            return pd.DataFrame({"block_date": [], "daily_dart": [], "cum_debt": []})
         return self.df
 
 

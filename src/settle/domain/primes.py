@@ -625,6 +625,19 @@ class Prime:
     # default (``dune``/``rpc``). This is the per-prime migration switch —
     # flip a prime onto HyperSync one key at a time. See registry.py.
     sources: dict[str, str] = field(default_factory=dict)
+    # Additional allocator ilks whose debt is SUMMED with ``ilk_bytes32``'s
+    # in ``get_debt_timeseries`` (each ilk rate-scaled with its OWN Vat
+    # rate). First use: Grove's Diamond PAU compartment ALLOCATOR-GROVE-A
+    # (July 2026), which runs alongside the legacy ALLOCATOR-BLOOM-A ilk
+    # during the PAU migration. Only meaningful when ``ilk_bytes32`` is set.
+    extra_ilks: tuple[bytes, ...] = ()
+    # When set, ``compute_agent_rate`` accrues NOTHING before this date even
+    # if the subproxy already holds balances — for primes whose treasury was
+    # seeded before their allocation agreement became effective (Osero: 10M
+    # USDS at the subproxy since 2026-03-30, agent rate payable only from
+    # first allocation in July 2026 per Sky). ``None`` = accrue from balance
+    # history alone (all other primes).
+    agent_rate_start_date: date | None = None
 
     def __post_init__(self) -> None:
         if self.ilk_bytes32 is not None and len(self.ilk_bytes32) != 32:

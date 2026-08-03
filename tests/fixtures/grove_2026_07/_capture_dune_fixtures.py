@@ -103,6 +103,19 @@ def main() -> int:
                   "_params": {"ilk_bytes32": GROVE_ILK, "start_date": "2025-05-14"},
                   "rows": _rows(df)}
 
+    # ALLOCATOR-GROVE-A (Diamond PAU compartment) — second ilk, summed with
+    # BLOOM via config extra_ilks. First draws July 2026 (see grove.yaml).
+    print("  fetching debt (ALLOCATOR-GROVE-A / Diamond PAU) …")
+    GROVE_A_ILK = "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000"
+    df = execute_query(
+        QUERIES / "debt_timeseries.sql",
+        params={"ilk_bytes32": GROVE_A_ILK, "start_date": "2026-07-01"},
+        pin_block=eth_eom,
+    )
+    fx["debt_grove_a"] = {"_query": "debt_timeseries.sql", "_ilk": GROVE_A_ILK,
+                          "_about": "Diamond PAU compartment debt — summed with BLOOM via extra_ilks",
+                          "rows": _rows(df)}
+
     print("  fetching ssr …")
     df = execute_query(QUERIES / "ssr_history.sql", params={}, pin_block=eth_eom)
     fx["ssr"] = {"_anchor": "global", "rows": _rows(df)}

@@ -20,7 +20,7 @@ already accrued via the token index.
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 
 import pandas as pd
@@ -49,11 +49,23 @@ def compute_agent_rate(
     subproxy_usds: pd.DataFrame,
     subproxy_susds: pd.DataFrame,
     ssr: pd.DataFrame,
+    *,
+    start_date: date | None = None,
 ) -> Decimal:
-    """Sum of daily agent rate over ``period``."""
+    """Sum of daily agent rate over ``period``.
+
+    ``start_date`` (``Prime.agent_rate_start_date``): days strictly before
+    it accrue NOTHING even when the subproxy holds balances — for primes
+    whose treasury was seeded before the allocation agreement became
+    effective (Osero: 10M USDS since 2026-03-30, payable only from first
+    allocation in July 2026). ``None`` = accrue from balance history alone.
+    """
     total = Decimal("0")
     current = period.start
     while current <= period.end:
+        if start_date is not None and current < start_date:
+            current = current + timedelta(days=1)
+            continue
         cum_usds = cum_at_or_before(subproxy_usds, "cum_balance", current)
         cum_susds = cum_at_or_before(subproxy_susds, "cum_balance", current)
 

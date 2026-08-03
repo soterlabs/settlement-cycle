@@ -19710,5 +19710,32 @@
     "_token": "0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b",
     "_from": "0x1601843c5e9bc251a3272907010afa41fa18347e",
     "rows": []
+  },
+  "debt_grove_a": {
+    "_query": "debt_timeseries.sql",
+    "_ilk": "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000",
+    "_about": "ALLOCATOR-GROVE-A (Diamond PAU compartment) debt \u2014 summed with BLOOM via extra_ilks",
+    "rows": [
+      {
+        "block_date": "2026-07-09",
+        "cum_debt": "0.999900",
+        "daily_dart": "0.999900"
+      },
+      {
+        "block_date": "2026-07-21",
+        "cum_debt": "1000000.999900",
+        "daily_dart": "1000000.000000"
+      },
+      {
+        "block_date": "2026-07-22",
+        "cum_debt": "1000000.989900",
+        "daily_dart": "-0.010000"
+      },
+      {
+        "block_date": "2026-07-29",
+        "cum_debt": "999989.038515",
+        "daily_dart": "-11.951385"
+      }
+    ]
   }
 }

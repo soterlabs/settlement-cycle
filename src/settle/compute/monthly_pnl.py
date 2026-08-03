@@ -3833,7 +3833,10 @@ def compute_monthly_pnl(
         agent_rate = Decimal("0")
         prime_rev = Decimal("0")
     else:
-        agent_rate = compute_agent_rate(period, sub_usds, sub_susds, ssr)
+        agent_rate = compute_agent_rate(
+            period, sub_usds, sub_susds, ssr,
+            start_date=prime.agent_rate_start_date,
+        )
         prime_rev, breakdown = compute_prime_agent_revenue(period, venue_inputs)
         # Case 3a (PRD §10): book the SSR appreciation on the PSM3 sUSDS
         # slice as Prime Revenue. PSM3 is not a venue (no per-venue row,

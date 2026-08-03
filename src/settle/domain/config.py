@@ -387,6 +387,14 @@ def load_prime(config_path: Path) -> Prime:
         yield_reversal_overrides=yield_reversal_overrides,
         subsidy=SubsidyConfig.from_dict(cfg.get("subsidy")),
         sources=sources,
+        extra_ilks=tuple(
+            _parse_ilk_bytes32(x) for x in (cfg.get("extra_ilks") or [])
+        ),
+        agent_rate_start_date=(
+            date.fromisoformat(cfg["agent_rate_start_date"])
+            if cfg.get("agent_rate_start_date") is not None
+            else None
+        ),
     )
 
 
