@@ -50,7 +50,16 @@ from settle.domain.config import load_prime  # noqa: E402
 from settle.load import write_settlement  # noqa: E402
 
 _OBEX_YAML = _REPO / "config" / "obex.yaml"
-_MONTHS = [Month(2026, m) for m in (1, 2, 3, 4, 5, 6)]
+_MONTHS = [Month(2026, m) for m in (1, 2, 3, 4, 5, 6, 7)]
+
+
+def _selected_months() -> list[Month]:
+    """``--months 2026-07[,2026-06]`` narrows the run; default = all."""
+    if "--months" in sys.argv:
+        raw = sys.argv[sys.argv.index("--months") + 1]
+        want = {tuple(int(x) for x in p.split("-")) for p in raw.split(",")}
+        return [m for m in _MONTHS if (m.year, m.month) in want]
+    return _MONTHS
 
 # Documented in provenance.json so an auditor can see at a glance which
 # upstream sources fed each settlement run.
@@ -120,7 +129,7 @@ def main() -> int:
     prime = load_prime(_OBEX_YAML)
     _check_envio_token(prime)
 
-    print(f"OBEX 2026 multi-month settlement (Jan → Jun)")
+    print("OBEX 2026 multi-month settlement")
     print("=" * 110)
     print(f"{'Month':<10} {'prime_agent_total':>21} {'sky_revenue':>17} "
           f"{'sky_direct_shortfall':>22} {'monthly_pnl':>17}")
@@ -129,7 +138,7 @@ def main() -> int:
     errors: list[tuple[str, str]] = []
     artifacts: list[tuple[str, dict[str, Path]]] = []
 
-    for month in _MONTHS:
+    for month in _selected_months():
         label = f"{month.year}-{month.month:02d}"
         try:
             sources = _live_sources()
