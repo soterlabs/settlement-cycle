@@ -170,6 +170,18 @@ venues:
     share_burn_destinations:
       - '0x7ad5ffa5fdf509e30186f4609c2f6269f4b6158f'   # actual syrupUSDC redemption escrow
       - '0x1bc47a0dd0fdab96e9ef982fdf1f34dc6207cfe3'   # public WithdrawalManagerQueue (kept for safety)
+      # Spark Ethereum ALM proxy — NOT a Maple queue. On 2026-07-20 (block
+      # 25574524, ~30 blocks after the MSC#10 settlement tx) the ENTIRE
+      # 85,943,747.637271-share position Transferred from Grove's ALM to
+      # Spark's ALM — an inter-prime position transfer, i.e. a capital
+      # movement, not a redemption and NOT Grove P&L. Listing the Spark ALM
+      # here nets the share Transfer out of the inflow stream (same
+      # direction-symmetric mechanism as the queue legs), so July books
+      # only the yield accrued while Grove held the position. Without it
+      # the Cat B classifier saw som=$100.67M → eom=$0 with no outflow and
+      # booked a −$100.67M phantom loss. Spark S14 carries the mirror
+      # entry (Grove ALM) so the arrival books as capital, not revenue.
+      - '0x1601843c5e9bc251a3272907010afa41fa18347e'   # Spark Eth ALM (inter-prime transfer 2026-07-20)
 
   # ─────────────────────────────────────────────────────────────
   # Category E — RWA tranche / issuer tokens
