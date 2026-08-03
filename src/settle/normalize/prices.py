@@ -58,6 +58,11 @@ _log = logging.getLogger(__name__)
 # from this set and add a Source implementation that reads the relevant oracle.
 PAR_STABLE_SYMBOLS: frozenset[str] = frozenset({
     "USDC", "USDS", "DAI", "USDT", "PYUSD", "RLUSD", "AUSD", "USDe",
+    # USDG — Paxos Global Dollar (NYDFS-regulated fiat-backed, same issuer
+    # class as PYUSD). Underlying of the spUSDG Savings V2 vault on
+    # Robinhood Chain (Spark S63); without it the S2 position-only branch
+    # skips the venue as "not a par-stable".
+    "USDG",
     # sUSDS treated as $1 par when used as the underlying of an outer 4626
     # vault (e.g. fsUSDS). The outer vault's ``convertToAssets`` has already
     # converted shares → sUSDS amount; the additional ~SSR-driven ~5% sUSDS

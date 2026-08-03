@@ -1,12 +1,12 @@
 {
-  "_about": "Spark SubProxy USDS daily-net + cum_balance timeseries, 2024-11-18 \u2192 2026-06-30. Source-of-truth for the agent_rate base on this token. Refreshed via extend_spark_fixtures.py.",
+  "_about": "Spark SubProxy USDS daily-net + cum_balance timeseries, 2024-11-18 \u2192 2026-07-31. Source-of-truth for the agent_rate base on this token. Refreshed via extend_spark_fixtures.py.",
   "_dune_query_id": 7432800,
   "_query_params": {
     "chain": "ethereum",
     "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
     "holder": "0x3300f198988e4c9c63f75df86de36421f06af8c4",
     "start_date": "2024-11-18",
-    "pin_block": 25433938,
+    "pin_block": 25656292,
     "min_transfer_amount": 0
   },
   "_columns": [
@@ -190,6 +190,11 @@
       "block_date": "2026-06-22",
       "cum_balance": 39309297.249708906,
       "daily_net": 2949857
+    },
+    {
+      "block_date": "2026-07-20",
+      "cum_balance": 45236509.249708906,
+      "daily_net": 5927212
     }
   ]
 }

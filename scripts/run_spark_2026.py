@@ -140,6 +140,20 @@ PIN_BLOCKS_BY_MONTH = {
                 Chain.ARBITRUM: 479089705, Chain.OPTIMISM: 153632611,
                 Chain.UNICHAIN: 52115640, Chain.AVALANCHE_C: 89166730},
     },
+    # July added 2026-08-03: EoM = July 31 EoD blocks resolved via
+    # HyperSync binary search (June-30 re-derivation matched the June pins
+    # on every chain). ROBINHOOD pins cover the new S63 spUSDG venue
+    # (som = EoD Jun 30 block 653324, eom = EoD Jul 31 block 24591562).
+    (2026, 7): {
+        "som": {Chain.ETHEREUM: 25433938, Chain.BASE: 48037326,
+                Chain.ARBITRUM: 479089705, Chain.OPTIMISM: 153632611,
+                Chain.UNICHAIN: 52115640, Chain.AVALANCHE_C: 89166730,
+                Chain.ROBINHOOD: 653324},
+        "eom": {Chain.ETHEREUM: 25656292, Chain.BASE: 49376526,
+                Chain.ARBITRUM: 489802913, Chain.OPTIMISM: 154971811,
+                Chain.UNICHAIN: 54794040, Chain.AVALANCHE_C: 91716609,
+                Chain.ROBINHOOD: 24591562},
+    },
 }
 
 # (year, month, fixture_dir). The ``spark_2026_q1`` fixture set was
@@ -156,7 +170,17 @@ _MONTH_PLAN = [
     (2026, 4, "spark_2026_q1"),
     (2026, 5, "spark_2026_q1"),
     (2026, 6, "spark_2026_q1"),
+    (2026, 7, "spark_2026_q1"),
 ]
+
+
+def _selected_plan() -> list[tuple[int, int, str]]:
+    """``--months 2026-07[,2026-06]`` narrows the run; default = all."""
+    if "--months" in sys.argv:
+        raw = sys.argv[sys.argv.index("--months") + 1]
+        want = {tuple(int(x) for x in p.split("-")) for p in raw.split(",")}
+        return [e for e in _MONTH_PLAN if (e[0], e[1]) in want]
+    return _MONTH_PLAN
 
 
 def main() -> int:
@@ -178,7 +202,7 @@ def main() -> int:
     cached_fixture: str | None = None
     spark = fixtures = None
 
-    for (y, m, fixture_dir) in _MONTH_PLAN:
+    for (y, m, fixture_dir) in _selected_plan():
         if fixture_dir != cached_fixture:
             spark, fixtures = load_spark_and_fixtures(_REPO)
             cached_fixture = fixture_dir

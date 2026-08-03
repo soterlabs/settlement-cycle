@@ -333,7 +333,7 @@ deployment leg goes live we need to know:
    prime, given it is depositor-funded (like the other Savings V2
    vaults, which we track position-only outside the perimeter)?
 
-Current treatment: Spark venue **S61** tracks the spUSDG vault
+Current treatment: Spark venue **S63** tracks the spUSDG vault
 position-only (config/spark.yaml); the Grove-side venue is a commented
 stub (**E39**, config/grove.yaml) pending this answer.
 

@@ -844,7 +844,7 @@ venues:
   #      (curator/performance fee to Grove vs vault yield to Spark) is not
   #      specified in the technical-scope post → QUESTIONS.md G25;
   #      activate once the counterparties confirm.
-  #   2. Robinhood has no archive RPC (see config/spark.yaml S61), so a
+  #   2. Robinhood has no archive RPC (see config/spark.yaml S63), so a
   #      Cat B convertToAssets path can't run there yet anyway.
   # - id: E39
   #   chain: robinhood

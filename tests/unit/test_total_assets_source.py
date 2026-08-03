@@ -22,14 +22,14 @@ def test_hypersync_underlying_requires_s2():
 def test_invalid_value_raises():
     with pytest.raises(ValueError, match="invalid total_assets_source"):
         _parse_total_assets_source({
-            "id": "S61", "pricing_category": "S2",
+            "id": "S63", "pricing_category": "S2",
             "total_assets_source": "hypersync",
         })
 
 
 def test_s2_hypersync_underlying_ok():
     assert _parse_total_assets_source({
-        "id": "S61", "pricing_category": "S2",
+        "id": "S63", "pricing_category": "S2",
         "total_assets_source": "hypersync_underlying",
     }) == "hypersync_underlying"
 

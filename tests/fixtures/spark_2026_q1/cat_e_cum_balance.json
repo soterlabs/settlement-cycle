@@ -1,5 +1,5 @@
 {
-  "_about": "Spark Cat E cum_balance \u2014 refreshed via published transfer_timeseries.sql (query 7432800), holder = chain-specific Spark ALM. Lifetime to 2026-06-30.",
+  "_about": "Spark Cat E cum_balance \u2014 refreshed via published transfer_timeseries.sql (query 7432800), holder = chain-specific Spark ALM. Lifetime to 2026-07-31.",
   "_dune_query_id": 7432800,
   "_columns": [
     "block_date",

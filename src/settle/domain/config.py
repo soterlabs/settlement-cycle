@@ -187,6 +187,20 @@ def load_prime(config_path: Path) -> Prime:
             )
 
     venues: list[Venue] = []
+    # Duplicate venue ids corrupt every per-venue surface silently (two
+    # rows share one id in summaries; SDE-table and pin-block lookups hit
+    # whichever parses last) — caught only by eyeballing output. Fail loud
+    # at load time instead. (Found the hard way: a second 'S61' added for
+    # spUSDG on 2026-08-03 while S61 was already the PYUSD Uniswap V4
+    # reserve.)
+    _ids = [v["id"] for v in cfg.get("venues", [])]
+    _dupes = sorted({i for i in _ids if _ids.count(i) > 1})
+    if _dupes:
+        raise ValueError(
+            f"{config_path.name}: duplicate venue id(s) {_dupes} — venue ids "
+            "must be unique; pick the next free id for the new venue."
+        )
+
     for v in cfg.get("venues", []):
         chain = Chain(v["chain"])
         token = Token.from_dict(chain, v["token"])
