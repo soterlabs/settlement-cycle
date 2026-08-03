@@ -313,6 +313,30 @@ Cross-ref **PRD §17.13 item 8**.
 
 ### P2 — sanity checks / confirmations
 
+#### G25. spUSDG on Robinhood — how is the Spark–Grove two-Star revenue split settled?
+The spUSDG deployment on Robinhood Chain (forum t/28031) routes Spark
+Savings USDG deposits through Spark's ALM proxy (`0xfD2fD4B0…dB24`) into
+the Grove USDG Morpho Vault (`0xBEEff039…54d9`, Steakhouse-curated). The
+technical-scope post specifies the contract architecture but not the
+financial terms. As of 2026-08-03 the Morpho vault held $1.97 and
+Spark's ALM held zero shares (all ~$23.8M of depositor USDG still sits
+in the spUSDG vault), so there is no numerical impact yet — but once the
+deployment leg goes live we need to know:
+
+1. How is the yield split between Spark (savings product, VSR payer) and
+   Grove (vault curation)? Fixed curator/performance fee to Grove, or a
+   negotiated share?
+2. Should the Morpho-vault position appear on Spark's books (its ALM
+   holds the shares — our current plan), on Grove's, or both with an
+   offsetting liability?
+3. Does the deposited USDG count as MSC-perimeter capital for either
+   prime, given it is depositor-funded (like the other Savings V2
+   vaults, which we track position-only outside the perimeter)?
+
+Current treatment: Spark venue **S61** tracks the spUSDG vault
+position-only (config/spark.yaml); the Grove-side venue is a commented
+stub (**E39**, config/grove.yaml) pending this answer.
+
 #### G4. Sky Direct venue set re-confirmation
 Per the Atlas spec: Treasury Bills on Eth (BUIDL/JTRSY/USTB) +
 USDC in PSM3 non-Eth + USDT in sUSDS/USDT Curve. Grove's currently

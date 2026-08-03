@@ -2556,12 +2556,29 @@ def compute_monthly_pnl(
             import requests as _requests
             _ud = venue.underlying.decimals
             try:
-                total_som = Decimal(_rpc_sv2.total_assets_of(
-                    venue.chain, venue.token.address, som_block,
-                )) / Decimal(10 ** _ud)
-                total_eom = Decimal(_rpc_sv2.total_assets_of(
-                    venue.chain, venue.token.address, eom_block,
-                )) / Decimal(10 ** _ud)
+                if venue.total_assets_source == "hypersync_underlying":
+                    # No archive RPC on this chain (Robinhood) — reconstruct
+                    # the vault's underlying balance from Transfer logs. See
+                    # Venue.total_assets_source for the (small, documented)
+                    # assetsOutstanding underestimate vs true totalAssets.
+                    from ..normalize.sources.hypersync_position_balance import (
+                        erc20_balance_from_transfers as _ebal,
+                    )
+                    _tok = venue.underlying.address.value
+                    _hold = venue.token.address.value
+                    total_som = Decimal(_ebal(
+                        venue.chain.value, _tok, _hold, som_block,
+                    )) / Decimal(10 ** _ud)
+                    total_eom = Decimal(_ebal(
+                        venue.chain.value, _tok, _hold, eom_block,
+                    )) / Decimal(10 ** _ud)
+                else:
+                    total_som = Decimal(_rpc_sv2.total_assets_of(
+                        venue.chain, venue.token.address, som_block,
+                    )) / Decimal(10 ** _ud)
+                    total_eom = Decimal(_rpc_sv2.total_assets_of(
+                        venue.chain, venue.token.address, eom_block,
+                    )) / Decimal(10 ** _ud)
             except (_RPCError, _requests.HTTPError,
                     _requests.ConnectionError, _requests.Timeout) as _e:
                 # Transient transport failure only — programming errors

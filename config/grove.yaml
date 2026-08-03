@@ -817,6 +817,36 @@ venues:
   #     symbol: 'USDC'
   #     decimals: 6
 
+  # Grove USDG Morpho Vault on Robinhood Chain (id 4663) — Grove's side of
+  # the Spark–Grove two-Star spUSDG arrangement (forum.skyeco.com t/28031):
+  # Spark's spUSDG savings vault Takes USDG through Spark's ALM proxy
+  # (0xfD2fD4B0…dB24, ForeignController-driven) and deposits into this
+  # Steakhouse-curated Morpho vault. On-chain as of 2026-08-03 the vault
+  # held $1.97 total and Spark's ALM held ZERO shares — the deployment leg
+  # is not yet live, so Grove's July 2026 revenue from it is $0.00.
+  #
+  # Left as a stub rather than a live venue for two reasons:
+  #   1. The shares (once funded) are held by SPARK's ALM proxy, not
+  #      Grove's — booking the position here would double-count it against
+  #      Spark's books. How the two-Star revenue split should be settled
+  #      (curator/performance fee to Grove vs vault yield to Spark) is not
+  #      specified in the technical-scope post → QUESTIONS.md G25;
+  #      activate once the counterparties confirm.
+  #   2. Robinhood has no archive RPC (see config/spark.yaml S61), so a
+  #      Cat B convertToAssets path can't run there yet anyway.
+  # - id: E39
+  #   chain: robinhood
+  #   label: 'Grove x Steakhouse USDG (Robinhood, Morpho 4626) — two-Star spUSDG deployment'
+  #   pricing_category: B
+  #   token:
+  #     address: '0xbeeff039907422219fb367e525954ddc092854d9'
+  #     symbol: 'grUSDG-morpho'
+  #     decimals: 18
+  #   underlying:
+  #     address: '0x5fc5360d0400a0fd4f2af552add042d716f1d168'
+  #     symbol: 'USDG'
+  #     decimals: 6
+
 # Source dispatch (debt → Dune, prices → RPC + on-chain oracles, etc.) is
 # resolved by `src/settle/normalize/registry.py`, not by this file.
 # Per-venue oracle choices are encoded in each venue's `nav_oracle` block.

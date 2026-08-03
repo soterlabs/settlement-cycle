@@ -31,6 +31,48 @@ from ...extract import hypersync_store
 from .hypersync_balances import _TRANSFER_T0, _addr_topic
 
 
+def erc20_balance_from_transfers(
+    chain: str,
+    token: bytes,
+    holder: bytes,
+    block: int,
+    *,
+    fetch_logs: Callable[..., list[Any]] = hypersync_store.fetch_logs,
+) -> int:
+    """Σ(Transfer to holder) − Σ(Transfer from holder) at ``block`` (raw units).
+
+    Pure event reconstruction with NO RPC probe — for chains without archive
+    RPC access (Robinhood: the official public endpoint keeps only minutes of
+    state, so ``HyperSyncPositionBalanceSource``'s self-verifying probe can't
+    run there). ONLY correct for non-rebasing tokens; the caller owns that
+    guarantee (used by the S2 ``total_assets_source: hypersync_underlying``
+    path, where the token is the vault's par-stable underlying).
+
+    Verified exact against live ``balanceOf`` for spUSDG/USDG on Robinhood
+    (block 26,828,003, 2026-08-03).
+    """
+    ht = _addr_topic(holder)
+    tok = "0x" + bytes(token).hex()
+    sel = [
+        {"address": [tok], "topics": [[_TRANSFER_T0], [ht]]},        # from == holder
+        {"address": [tok], "topics": [[_TRANSFER_T0], [], [ht]]},    # to == holder
+    ]
+    rows = fetch_logs(chain, sel, 0, block)
+    seen: set[tuple[int, int]] = set()
+    bal = 0
+    for r in rows:
+        k = (r.block_number, r.log_index)
+        if k in seen:                    # self-transfer matches both selections
+            continue
+        seen.add(k)
+        v = int(r.data, 16)
+        if r.topic2 == ht:               # inflow
+            bal += v
+        if r.topic1 == ht:               # outflow
+            bal -= v
+    return bal
+
+
 class HyperSyncPositionBalanceSource:
     """Implements ``IPositionBalanceSource`` via a self-verifying event/RPC hybrid."""
 

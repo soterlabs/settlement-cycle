@@ -27,6 +27,7 @@ class Chain(StrEnum):
     AVALANCHE_C = "avalanche_c"
     PLUME = "plume"
     MONAD = "monad"
+    ROBINHOOD = "robinhood"   # Robinhood Chain (Arbitrum-style L2, id 4663)
 
 
 @dataclass(frozen=True, slots=True)
@@ -234,6 +235,17 @@ class Venue:
     # volatile or whose oracle isn't trustworthy to include in MSC. The venue
     # stays in YAML for documentation and historical reproducibility.
     skip: bool = False
+    # S2 (Spark Savings V2) venues only — how the position-only
+    # ``totalAssets`` SoM/EoM reads are sourced:
+    #   'rpc'                  — archive ``totalAssets()`` eth_call (default)
+    #   'hypersync_underlying' — Σ(underlying Transfer to/from the vault)
+    #     via HyperSync logs. For chains with NO public archive RPC
+    #     (Robinhood: the official endpoint keeps only minutes of state).
+    #     Exact for the vault's underlying balance (verified == balanceOf);
+    #     understates totalAssets by the deployed ``assetsOutstanding``
+    #     slice (spUSDG 2026-08-03: $6.7K on $23.8M, 0.03%) — acceptable
+    #     for a position-only reporting row, revisit if deployment ramps.
+    total_assets_source: str = "rpc"
     # Realized cash yield streams paid directly to the ALM by a known payer —
     # e.g. monthly USDC distributions from CLO issuers. The compute layer sums
     # actual on-chain transfers and records the total as ``actual_revenue_override``

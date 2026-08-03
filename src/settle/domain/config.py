@@ -140,6 +140,30 @@ def _parse_min_transfer(v: dict) -> Decimal | None:
     return Decimal(str(raw)) if raw is not None else None
 
 
+_VALID_TOTAL_ASSETS_SOURCES = ("rpc", "hypersync_underlying")
+
+
+def _parse_total_assets_source(v: dict) -> str:
+    """Read ``total_assets_source`` from a venue stanza (S2 venues only).
+
+    Validated eagerly so a typo can't silently fall back to the archive-RPC
+    path on a chain that has none (the exact misconfiguration this option
+    exists to avoid — see Venue.total_assets_source).
+    """
+    raw = v.get("total_assets_source", "rpc")
+    if raw not in _VALID_TOTAL_ASSETS_SOURCES:
+        raise ValueError(
+            f"venue {v.get('id')!r}: invalid total_assets_source {raw!r}; "
+            f"expected one of {_VALID_TOTAL_ASSETS_SOURCES}"
+        )
+    if raw != "rpc" and v.get("pricing_category") != "S2":
+        raise ValueError(
+            f"venue {v.get('id')!r}: total_assets_source={raw!r} is only "
+            "supported on pricing_category S2 (Spark Savings V2) venues"
+        )
+    return str(raw)
+
+
 def load_prime(config_path: Path) -> Prime:
     """Load a `Prime` value object from a YAML file."""
     with config_path.open() as f:
@@ -260,6 +284,7 @@ def load_prime(config_path: Path) -> Prime:
                     else None
                 ),
                 skip=bool(v.get("skip", False)),
+                total_assets_source=_parse_total_assets_source(v),
                 cash_distributions=[
                     CashDistributionSource(
                         payer=Address.from_str(d["payer"]),

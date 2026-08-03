@@ -34,6 +34,7 @@ HYPERSYNC_HOSTS: dict[str, str] = {
     "avalanche_c": "avalanche.hypersync.xyz",
     "plume": "plume.hypersync.xyz",
     "monad": "monad.hypersync.xyz",
+    "robinhood": "robinhood.hypersync.xyz",
 }
 
 _DEFAULT_LOG_FIELDS = [
