@@ -338,9 +338,19 @@ E19 Steakhouse Prime Instant (Base) grew +$69.0M and E23 Steakhouse
 USDC-HY (Base) +$30.7M. Confirm this is the intended rotation and that
 it completed in-period (no in-flight capital at Jul 31 23:59:59 UTC).
 
-**3. E21 Galaxy Arch CLO — July revenue is $104K below June.** Did the
-~monthly USDC distribution slip past Jul 31 (lands in August), or was
-July genuinely a lower-coupon month?
+**3. E21 Galaxy Arch CLO — July coupon 28% below June.** The monthly
+USDC distribution DID arrive on schedule (2026-07-10 14:35 UTC, block
+25502822, $267,818.71) but is well below the recent run-rate:
+
+| date | USDC |
+|---|---:|
+| 2026-05-11 | 389,109.90 |
+| 2026-06-10 | 371,738.69 |
+| 2026-07-10 | 267,818.71 |
+
+Confirm the driver — normal CLO coupon variability, a partial
+call/paydown in the underlying, or a fee/waterfall change we should
+model going forward.
 
 #### G25. spUSDG on Robinhood — how is the Spark–Grove two-Star revenue split settled?
 The spUSDG deployment on Robinhood Chain (forum t/28031) routes Spark
