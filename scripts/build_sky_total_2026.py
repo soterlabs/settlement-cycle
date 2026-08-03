@@ -35,7 +35,16 @@ from settle.compute.sky_total import (  # noqa: E402
 from settle.domain import Month  # noqa: E402
 from settle.normalize.sources.hypersync_msc_buffer import HyperSyncMscBufferSource  # noqa: E402
 
-_MONTHS = [Month(2026, m) for m in range(1, 7)]
+_MONTHS = [Month(2026, m) for m in range(1, 8)]
+
+
+def _selected_months() -> list[Month]:
+    """``--months 2026-07[,2026-06]`` narrows the run; default = all."""
+    if "--months" in sys.argv:
+        raw = sys.argv[sys.argv.index("--months") + 1]
+        want = {tuple(int(x) for x in p.split("-")) for p in raw.split(",")}
+        return [m for m in _MONTHS if (m.year, m.month) in want]
+    return _MONTHS
 
 
 def main() -> int:
@@ -48,12 +57,12 @@ def main() -> int:
         return 1
 
     source = HyperSyncMscBufferSource()
-    print("SKY_TOTAL 2026 (Jan → Jun) — Sky Net Revenue, buffer basis (HyperSync)")
+    print("SKY_TOTAL 2026 — Sky Net Revenue, buffer basis (HyperSync)")
     print("=" * 100)
     print(f"{'Month':<10} {'MSC net':>16} {'non-MSC net':>16} {'Sky Net Revenue':>18}")
     print("-" * 100)
     failures = 0
-    for month in _MONTHS:
+    for month in _selected_months():
         label = f"{month.year}-{month.month:02d}"
         try:
             r = compute_sky_total_monthly(month, source=source, repo_root=_REPO)
