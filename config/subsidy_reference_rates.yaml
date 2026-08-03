@@ -6,14 +6,29 @@
 # where T is the number of months elapsed since the subsidy program start
 # (2026-01-01 per Sky governance — i.e. T=1 for Feb 2026, T=2 for Mar, …).
 #
-# The reference rate is the **3-month T-Bill** for EVERY prime, per Atlas
-# A.2.8.2.2.2.2.2 (Borrow Rate Mechanism): both Spark and Grove are
-# subsidised at `t-bill_rate + (base_rate − t-bill_rate) × T/24` over the
-# first $1B of USDS for 24 months from 2026-01-01. Atlas names no other
-# series. (QUESTIONS.md S5, resolved 2026-07-30.)
+# TWO series live here, one column each; each prime's ``subsidy.
+# ref_rate_kind`` (scalar or dated list) selects per date:
 #
-# SOURCE — every row below is the `3 Mo` column of the Treasury's **daily
-# yield curve**, verbatim, one row per published business day:
+#   tbill_3m_apy — reference rate through 2026-07-22, per Atlas
+#     A.2.8.2.2.2.2.2 (Borrow Rate Mechanism): both Spark and Grove are
+#     subsidised at `t-bill_rate + (base_rate − t-bill_rate) × T/24` over
+#     the first $1B of USDS for 24 months from 2026-01-01.
+#     (QUESTIONS.md S5, resolved 2026-07-30.)
+#   sofr_apy — reference rate FROM 2026-07-23 (inclusive): the 2026-07-23
+#     Stability Scope change (same executive vote that cut SSR 3.60% →
+#     3.52% and the BR−SSR spread 30 → 20 bps) switched the subsidy
+#     formula to `sofr + (base_rate − sofr) × T/24`.
+#
+# SOURCE (sofr_apy) — the NY Fed's official SOFR publication, `percentRate`
+# per effective date, verbatim:
+#
+#   https://markets.newyorkfed.org/api/rates/secured/sofr/search.json
+#     ?startDate=2026-07-01&endDate=2026-07-31
+#
+# (fetched 2026-08-03; SOFR for date d publishes the next business day.)
+#
+# SOURCE (tbill_3m_apy) — every row is the `3 Mo` column of the Treasury's
+# **daily yield curve**, verbatim, one row per published business day:
 #
 #   https://home.treasury.gov/resource-center/data-chart-center/
 #   interest-rates/TextView?type=daily_treasury_yield_curve
@@ -46,9 +61,12 @@
 # that commit is the only way to reproduce them.
 #
 #   tbill_3m_apy:  treasury.gov daily yield curve, `3 Mo`
+#   sofr_apy:      markets.newyorkfed.org SOFR `percentRate`
 #
-# Each prime's ``subsidy.ref_rate_kind`` selects the column. ``tbill_3m`` is
-# the only valid value (see ``settle.domain.subsidy._VALID_REF_RATE_KINDS``).
+# Each prime's ``subsidy.ref_rate_kind`` selects the column(s); valid kinds
+# are ``tbill_3m`` and ``sofr`` (``settle.domain.subsidy._VALID_REF_RATE_KINDS``).
+# A row may carry either column or both; the loader skips rows lacking the
+# requested column, so the two series need not cover the same dates.
 
 # Use the most-recent rate ≤ the target date (carry-forward, like SSR).
 # With a row per business day the only carry-forward is across weekends and
@@ -351,15 +369,25 @@ rates:
     tbill_3m_apy: 0.0387
   - effective_date: '2026-07-22'
     tbill_3m_apy: 0.0389
+  # From 2026-07-23 the subsidy formula reads sofr_apy (see header). The
+  # tbill_3m_apy values continue to be recorded for reference/audit.
   - effective_date: '2026-07-23'
     tbill_3m_apy: 0.0395
+    sofr_apy: 0.0364
   - effective_date: '2026-07-24'
     tbill_3m_apy: 0.0396
+    sofr_apy: 0.0364
   - effective_date: '2026-07-27'
     tbill_3m_apy: 0.0396
+    sofr_apy: 0.0364
   - effective_date: '2026-07-28'
     tbill_3m_apy: 0.0390
+    sofr_apy: 0.0365
   - effective_date: '2026-07-29'
     tbill_3m_apy: 0.0383
+    sofr_apy: 0.0365
   - effective_date: '2026-07-30'
     tbill_3m_apy: 0.0382
+    sofr_apy: 0.0365
+  - effective_date: '2026-07-31'
+    sofr_apy: 0.0366

@@ -204,8 +204,8 @@ def render_summary(prov: dict) -> str:
     # "non-venue layer" flagged in the 2026-07 Spark reconciliation, §8 item 2).
     # PSM3 is a basket contract (USDC + USDS + sUSDS legs), not a venue: its
     # sUSDS-leg SSR appreciation is credited straight into prime_agent_revenue
-    # and its 30bps spread reimbursement reduces cost of funds. The Curve sUSDS
-    # spread is the same shape. The Cat B L2 sUSDS proxies' 30bps DOES show
+    # and its BR-spread reimbursement reduces cost of funds. The Curve sUSDS
+    # spread is the same shape. The Cat B L2 sUSDS proxies' spread DOES show
     # per-venue (spread_reimb column) — surfaced here as a total for tie-out.
     psm3_appreciation = _D(r.get("psm3_susds_appreciation"))
     psm3_spread       = _D(r.get("psm3_susds_spread"))
@@ -227,12 +227,12 @@ def render_summary(prov: dict) -> str:
             )
         if psm3_spread:
             lines.append(
-                f"| PSM3 sUSDS 30bps spread reimbursement | {_usds(psm3_spread)} "
+                f"| PSM3 sUSDS BR-spread reimbursement | {_usds(psm3_spread)} "
                 f"| reduces cost of funds |"
             )
         if curve_spread:
             lines.append(
-                f"| Curve sUSDS 30bps spread reimbursement | {_usds(curve_spread)} "
+                f"| Curve sUSDS BR-spread reimbursement | {_usds(curve_spread)} "
                 f"| reduces cost of funds |"
             )
         # Only the POSITIVE residual is a real per-venue reimbursement. A
@@ -241,7 +241,7 @@ def render_summary(prov: dict) -> str:
         # — omit it rather than print a nonsensical negative "reimbursement".
         if catb_l2_spread > 0:
             lines.append(
-                f"| Cat B L2 sUSDS 30bps spread reimbursement | "
+                f"| Cat B L2 sUSDS BR-spread reimbursement | "
                 f"{_usds(catb_l2_spread)} | reduces cost of funds (per-venue) |"
             )
         # The total row only makes sense when there IS a reimbursement; an

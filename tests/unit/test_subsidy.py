@@ -146,3 +146,88 @@ def test_months_elapsed_jan_is_zero():
 
 def test_months_elapsed_before_anchor_returns_zero():
     assert months_elapsed_since(date(2025, 12, 15), date(2026, 1, 1)) == 0
+
+# --- dated ref_rate_kind schedule (tbill_3m → sofr on 2026-07-23) ------------
+
+def test_subsidy_config_scalar_kind_unchanged():
+    from settle.domain.subsidy import SubsidyConfig
+
+    cfg = SubsidyConfig.from_dict({"enabled": True, "ref_rate_kind": "sofr"})
+    assert cfg.ref_rate_kind == "sofr"
+    assert cfg.ref_rate_schedule == ()
+
+
+def test_subsidy_config_dated_kind_list():
+    from settle.domain.subsidy import SubsidyConfig
+
+    cfg = SubsidyConfig.from_dict({
+        "enabled": True,
+        "ref_rate_kind": [
+            {"kind": "tbill_3m", "from": "2026-01-01"},
+            {"kind": "sofr", "from": "2026-07-23"},
+        ],
+    })
+    assert cfg.ref_rate_schedule == (
+        (date(2026, 1, 1), "tbill_3m"),
+        (date(2026, 7, 23), "sofr"),
+    )
+    assert cfg.ref_rate_kind == "tbill_3m→sofr@2026-07-23"
+
+
+def test_subsidy_config_rejects_unknown_kind_in_list():
+    from settle.domain.subsidy import SubsidyConfig
+
+    with pytest.raises(ValueError, match=r"Invalid subsidy\.ref_rate_kind"):
+        SubsidyConfig.from_dict({
+            "enabled": True,
+            "ref_rate_kind": [{"kind": "effr", "from": "2026-01-01"}],
+        })
+
+
+def test_subsidy_config_rejects_unsorted_schedule():
+    from settle.domain.subsidy import SubsidyConfig
+
+    with pytest.raises(ValueError, match="ascending"):
+        SubsidyConfig.from_dict({
+            "enabled": True,
+            "ref_rate_kind": [
+                {"kind": "sofr", "from": "2026-07-23"},
+                {"kind": "tbill_3m", "from": "2026-01-01"},
+            ],
+        })
+
+
+def test_scheduled_history_dispatches_by_date():
+    """Before the switch date the tbill series answers; from the switch date
+    (inclusive) the sofr series answers — even across a weekend right after
+    the switch (carry-forward must not fall back into the old series)."""
+    from settle.domain.subsidy import ScheduledReferenceRateHistory
+
+    tbill = _hist([("2026-07-21", 0.0387), ("2026-07-22", 0.0389)], kind="tbill_3m")
+    sofr = _hist([("2026-07-23", 0.0364), ("2026-07-24", 0.0364)], kind="sofr")
+    h = ScheduledReferenceRateHistory(
+        histories={"tbill_3m": tbill, "sofr": sofr},
+        schedule=((date(2026, 1, 1), "tbill_3m"), (date(2026, 7, 23), "sofr")),
+        kind="tbill_3m→sofr@2026-07-23",
+    )
+    assert h.at(date(2026, 7, 22)) == Decimal("0.0389")
+    assert h.at(date(2026, 7, 23)) == Decimal("0.0364")
+    # Sunday 2026-07-26: carry-forward within the sofr series (Fri print).
+    assert h.at(date(2026, 7, 26)) == Decimal("0.0364")
+
+
+def test_load_reference_rates_sofr_column_from_repo_config():
+    """The repo YAML must satisfy a July 2026 scheduled lookup end-to-end."""
+    from settle.domain.subsidy import SubsidyConfig, load_reference_rates_for
+
+    cfg = SubsidyConfig.from_dict({
+        "enabled": True,
+        "ref_rate_kind": [
+            {"kind": "tbill_3m", "from": "2026-01-01"},
+            {"kind": "sofr", "from": "2026-07-23"},
+        ],
+    })
+    h = load_reference_rates_for(cfg)
+    assert h.at(date(2026, 7, 22)) == Decimal("0.0389")   # tbill 3 Mo print
+    assert h.at(date(2026, 7, 23)) == Decimal("0.0364")   # SOFR print
+    assert h.at(date(2026, 7, 31)) == Decimal("0.0366")   # SOFR print

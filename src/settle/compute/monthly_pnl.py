@@ -20,7 +20,7 @@ from ..domain.pricing import PricingCategory
 from ..domain.primes import Chain, Prime, PsmKind
 from ..domain.sde import load_sde_table
 from ..domain.sky_tokens import USDS_ETHEREUM, sUSDS_ETHEREUM
-from ..domain.subsidy import load_reference_rates
+from ..domain.subsidy import load_reference_rates_for
 from ..normalize import (
     get_debt_timeseries,
     get_position_value,
@@ -923,14 +923,15 @@ def _df_from_daily_dict(daily_by_date: dict) -> pd.DataFrame:
 def _susds_cat_b_spread_reimb(
     value_som: Decimal, inflow_ts: pd.DataFrame | None, period: Period,
 ) -> Decimal:
-    """30 bps daily-compounded Sky Revenue reduction for a Cat B
+    """BR−SSR spread daily-compounded Sky Revenue reduction for a Cat B
     ``sky_savings_token`` venue (S32 / S37 / S43 / S47 / S51).
 
     Sky charges full BR on the underlying USDS (sUSDS is NOT subtracted from
-    utilized), then refunds 30 bps as a sky_revenue reduction so the prime's
-    net cost is SSR × V (economic neutrality, Rule 5).
+    utilized), then refunds the BR−SSR spread as a sky_revenue reduction so
+    the prime's net cost is SSR × V (economic neutrality, Rule 5). The
+    spread is date-resolved (30bps; 20bps from 2026-07-23).
 
-    Formula: ``Σ_d V_d × daily_compounding_factor(BASE_RATE_OVER_SSR)``
+    Formula: ``Σ_d V_d × daily_compounding_factor(base_rate_spread_at(d))``
     where ``V_d = value_som + (cum_inflow_d − cum_inflow_{som-1})`` is the
     daily sUSDS position value across ``[period.start, period.end]``.
 
@@ -948,13 +949,18 @@ def _susds_cat_b_spread_reimb(
     clamped to zero per day so the spread reimbursement stays non-negative.
     """
     from ._helpers import daily_compounding_factor
-    from .sky_revenue import BASE_RATE_OVER_SSR
-    spread_daily = daily_compounding_factor(BASE_RATE_OVER_SSR)
+    from .sky_revenue import base_rate_spread_at
     if inflow_ts is None or inflow_ts.empty:
-        # Stable position throughout — V_d = value_som for every day.
+        # Stable position throughout — V_d = value_som for every day. Still
+        # integrate daily: the spread itself can step mid-period.
         if value_som <= 0:
             return Decimal("0")
-        return value_som * spread_daily * Decimal(period.n_days)
+        total = Decimal("0")
+        current = period.start
+        while current <= period.end:
+            total += value_som * daily_compounding_factor(base_rate_spread_at(current))
+            current = current + timedelta(days=1)
+        return total
     cum_baseline = cum_at_or_before(
         inflow_ts, "cum_inflow", period.start - timedelta(days=1),
     )
@@ -964,7 +970,7 @@ def _susds_cat_b_spread_reimb(
         cum_d = cum_at_or_before(inflow_ts, "cum_inflow", current)
         v_d = value_som + (cum_d - cum_baseline)
         if v_d > 0:
-            total += v_d * spread_daily
+            total += v_d * daily_compounding_factor(base_rate_spread_at(current))
         current = current + timedelta(days=1)
     return total
 
@@ -1031,32 +1037,32 @@ def _savings_v2_depositor_ssr(
 
 
 def _psm3_susds_spread(psm_usds: pd.DataFrame | None, period: Period) -> Decimal:
-    """30 bps daily-compounded Prime Revenue credit on the sUSDS slice of
-    PSM3 holdings.
+    """BR−SSR spread daily-compounded Prime Revenue credit on the sUSDS
+    slice of PSM3 holdings.
 
     The sUSDS leg of PSM3 is yield-bearing — the prime captures SSR
     automatically via ``convertToAssetValue`` growth of its PSM3 share. To
     keep the prime economically neutral on idle sUSDS (it shouldn't earn
     money for just parking capital), ``compute_sky_revenue`` charges full
     BR on this slice (no ``utilized`` reduction for the sUSDS leg), and
-    this function credits back the 30 bps spread so the
-    SSR-+-BR-charge-+-30-bps-credit composite nets to zero. See PRD §17.11.
+    this function credits back the BR−SSR spread so the
+    SSR-+-BR-charge-+-spread-credit composite nets to zero. See PRD §17.11.
+    The spread is date-resolved (30bps; 20bps from 2026-07-23).
 
-    Formula: ``Σ_d cum_susds_d × daily_compounding_factor(BASE_RATE_OVER_SSR)``
+    Formula: ``Σ_d cum_susds_d × daily_compounding_factor(base_rate_spread_at(d))``
     where d ranges over days in ``[period.start, period.end]``.
     """
     if psm_usds is None or psm_usds.empty or "cum_susds" not in psm_usds.columns:
         return Decimal("0")
     # Lazy import to avoid module-cycle (sky_revenue imports from _helpers).
     from ._helpers import daily_compounding_factor
-    from .sky_revenue import BASE_RATE_OVER_SSR
-    spread_factor = daily_compounding_factor(BASE_RATE_OVER_SSR)
+    from .sky_revenue import base_rate_spread_at
     total = Decimal("0")
     current = period.start
     while current <= period.end:
         cum_susds = cum_at_or_before(psm_usds, "cum_susds", current)
         if cum_susds > 0:
-            total += cum_susds * spread_factor
+            total += cum_susds * daily_compounding_factor(base_rate_spread_at(current))
         current = current + timedelta(days=1)
     return total
 
@@ -1553,9 +1559,10 @@ def _aggregate_curve_idle_usds(
         prime_usds_d = (alm_lp_d / pool_total_d) × coin_reserve_d
 
     **sUSDS / sky-savings-token venues** (``sky_savings_token=True``):
-    No ``utilized`` deduction. Instead the prime earns the 30 bps spread::
+    No ``utilized`` deduction. Instead the prime earns the BR−SSR spread
+    (date-resolved: 30bps; 20bps from 2026-07-23)::
 
-        spread_d = (alm_lp_d / pool_total_d) × (sUSDS_reserve_d × pps_d) × 30bps_daily
+        spread_d = (alm_lp_d / pool_total_d) × (sUSDS_reserve_d × pps_d) × spread_daily_d
 
     where ``pps_d = convertToAssets(1 share, block_d) / 10**underlying_decimals``,
     plus the full-SSR integral on the same daily values for ``susds_ssr_by_venue``.
@@ -1564,7 +1571,7 @@ def _aggregate_curve_idle_usds(
     from ..domain.sky_tokens import KNOWN_PAR_STABLES_ETHEREUM, KNOWN_YIELD_BEARING_ETHEREUM
     from ..extract.rpc import balance_of as _balance_of
     from ..normalize.sources.curve_pool import CurvePoolSource
-    from .sky_revenue import BASE_RATE_OVER_SSR
+    from .sky_revenue import base_rate_spread_at
     from ._helpers import daily_compounding_factor, ssr_at_or_before
 
     # Exclude uniswap_v4 venues — they reuse the curve_idle_usds schema but
@@ -1595,8 +1602,9 @@ def _aggregate_curve_idle_usds(
         from ..normalize.registry import get_convert_to_assets_source as _get_c2a
         c2a = convert_to_assets_source if convert_to_assets_source is not None else _get_c2a()
 
-    # Spread = BR − SSR = BASE_RATE_OVER_SSR (30bps).
-    spread_daily_factor = daily_compounding_factor(BASE_RATE_OVER_SSR)
+    # Spread = BR − SSR, date-resolved per day (30bps; 20bps from 2026-07-23)
+    # — resolved inside the day loop, NOT hoisted, so a mid-period step is
+    # applied only to the days it covers.
 
     def _par_stable_usds(coin_addr: bytes, raw_balance: int) -> Decimal:
         par = KNOWN_PAR_STABLES_ETHEREUM.get(coin_addr)
@@ -1697,7 +1705,9 @@ def _aggregate_curve_idle_usds(
                             * (Decimal(raw_coin_balance) / Decimal(10 ** share_decimals))
                             * pps
                         ) if pool_total > 0 else Decimal(0)
-                        prime_spread = prime_susds_value * spread_daily_factor
+                        prime_spread = prime_susds_value * daily_compounding_factor(
+                            base_rate_spread_at(current),
+                        )
                     elif target_coin in KNOWN_YIELD_BEARING_ETHEREUM:
                         # Yield-bearing but not sky_savings_token: data fetched for
                         # future use; no utilized deduction and no spread revenue yet.
@@ -3867,7 +3877,7 @@ def compute_monthly_pnl(
     # ``prime.subsidy.enabled`` is False this collapses to full-BR and
     # ``ref_rate_history`` is never read.
     ref_rate_history = (
-        load_reference_rates(kind=prime.subsidy.ref_rate_kind)
+        load_reference_rates_for(prime.subsidy)
         if prime.subsidy.enabled else None
     )
     sky_rev_br, sky_rev_daily, subsidy_summary = compute_sky_revenue_daily(

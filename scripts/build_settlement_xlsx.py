@@ -509,7 +509,15 @@ def _write_sky_revenue(ws, prov: dict, sheet_rows: list[dict], prime_cfg: dict) 
         ws.cell(ws.max_row, 2).number_format = _USD0
         ws.append(["program_start",  sub_cfg.get("program_start", "")])
         ws.append(["ramp_months",    sub_cfg.get("ramp_months", "")])
-        ws.append(["ref_rate_kind",  sub_cfg.get("ref_rate_kind", "")])
+        # ref_rate_kind may be a scalar kind or a dated list of
+        # {kind, from} entries (the 2026-07-23 tbill_3m→sofr switch) —
+        # render the list as the same compact label SubsidyConfig builds.
+        raw_kind = sub_cfg.get("ref_rate_kind", "")
+        if isinstance(raw_kind, list):
+            raw_kind = raw_kind[0]["kind"] + "".join(
+                f"→{e['kind']}@{e['from']}" for e in raw_kind[1:]
+            )
+        ws.append(["ref_rate_kind",  raw_kind])
 
         # T value for this period
         from settle.domain.subsidy import months_elapsed_since

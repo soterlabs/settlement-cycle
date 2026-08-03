@@ -19,15 +19,18 @@ start_date: '2025-05-14'  # First frob (test mint, unwound 2025-06-25)
 # Grove team's PnL workbook exactly. Reference rate values live in
 # config/subsidy_reference_rates.yaml.
 #
-# ref_rate_kind: 3-month T-Bill, per Atlas A.2.8.2.2.2.2.2. Unchanged for
-# Grove; as of 2026-07-30 Spark is on the same series (QUESTIONS.md S5), so
-# tbill_3m is now the only kind the loader accepts.
+# ref_rate_kind is DATED: 3-month T-Bill through 2026-07-22, per Atlas
+# A.2.8.2.2.2.2.2 (QUESTIONS.md S5); SOFR from 2026-07-23 — the Stability
+# Scope change that cut SSR to 3.52% and the BR−SSR spread to 20bps also
+# switched the subsidy reference series. Same schedule Spark uses.
 subsidy:
   enabled: true
   cap_usd: 1000000000      # First $1B at subsidised rate; excess at full BR
   program_start: '2026-01-01'
   ramp_months: 24
-  ref_rate_kind: tbill_3m
+  ref_rate_kind:
+    - { kind: tbill_3m, from: '2026-01-01' }
+    - { kind: sofr,     from: '2026-07-23' }
 
 addresses:
   ethereum:

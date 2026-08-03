@@ -139,9 +139,18 @@ def test_skips_days_when_utilized_is_negative():
     assert rev == Decimal("0")
 
 
-def test_borrow_rate_spread_is_30_bps():
-    """Constant from RULES.md Rule 4: borrow rate = SSR + 0.30%."""
-    assert BASE_RATE_OVER_SSR == Decimal("0.003")
+def test_borrow_rate_spread_schedule():
+    """RULES.md Rule 4 spread, dated: 30bps at inception, 20bps from the
+    2026-07-23 Stability Scope change (same vote that cut SSR to 3.52%)."""
+    from settle.compute.sky_revenue import base_rate_spread_at
+
+    assert BASE_RATE_OVER_SSR == Decimal("0.003")   # pre-cutover constant
+    assert base_rate_spread_at(date(2024, 1, 1)) == Decimal("0.003")
+    assert base_rate_spread_at(date(2026, 7, 22)) == Decimal("0.003")
+    # The whole cutover day uses the new spread (end-of-day carry-forward,
+    # matching the SSR series convention).
+    assert base_rate_spread_at(date(2026, 7, 23)) == Decimal("0.002")
+    assert base_rate_spread_at(date(2027, 1, 1)) == Decimal("0.002")
 
 
 def test_subsidy_enabled_but_period_before_program_start():

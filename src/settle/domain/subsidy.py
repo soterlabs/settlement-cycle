@@ -5,10 +5,19 @@ Per debt-rate-methodology Step 1 (subsidy):
     subsidised_apy_d = ref_rate_d + (base_apy_d − ref_rate_d) × T / 24
 
 where:
-    ref_rate_d  = 3M T-Bill on date d (carry-forward)
-    base_apy_d  = SSR_d + 30bps (the un-subsidised borrow rate)
+    ref_rate_d  = the prime's reference rate on date d (carry-forward):
+                  3M T-Bill through 2026-07-22, SOFR from 2026-07-23
+                  (the same Stability Scope change that cut SSR to 3.52%
+                  and the BR−SSR spread to 20bps switched the subsidy
+                  reference series to SOFR)
+    base_apy_d  = SSR_d ⊕ spread_d (the un-subsidised borrow rate;
+                  spread 30bps, 20bps from 2026-07-23)
     T           = months elapsed since the subsidy program start
                   (Sky governance: 2026-01-01)
+
+The dated series switch is expressed in the prime YAML as a list-valued
+``ref_rate_kind`` (see ``SubsidyConfig.from_dict``); a scalar string keeps
+the legacy single-series behaviour.
 
 The subsidy is capped: only the first ``subsidy_cap_usd`` of utilized USDS
 is charged at the subsidised rate; any utilized excess is charged at the
@@ -27,7 +36,7 @@ import pandas as pd
 import yaml
 
 _log = logging.getLogger(__name__)
-_VALID_REF_RATE_KINDS = ("tbill_3m",)
+_VALID_REF_RATE_KINDS = ("tbill_3m", "sofr")
 
 # Subsidy program kicked in 2026-01-01; T=0 in Jan, T=1 in Feb, ... T=24+ → no subsidy.
 SUBSIDY_PROGRAM_START = date(2026, 1, 1)
@@ -40,27 +49,62 @@ class SubsidyConfig:
     """Per-prime subsidy parameters loaded from YAML.
 
     ``ref_rate_kind`` selects which reference rate this prime uses in the
-    subsidy formula. Per Atlas A.2.8.2.2.2.2.2 (Borrow Rate Mechanism) every
-    prime is subsidised against the 3-month T-Bill, so ``tbill_3m`` is the
-    only valid kind — the field is retained (rather than dropped) so a future
-    per-prime divergence has a place to land without a schema change. The
-    series lives in ``config/subsidy_reference_rates.yaml``.
+    subsidy formula. In YAML it is either a scalar kind (``tbill_3m`` /
+    ``sofr``, single series for the whole program) or a list of dated
+    entries for a mid-program series switch::
+
+        ref_rate_kind:
+          - { kind: tbill_3m, from: '2026-01-01' }
+          - { kind: sofr,     from: '2026-07-23' }
+
+    The list form populates ``ref_rate_schedule`` (sorted ``(from, kind)``
+    pairs; each kind applies from its ``from`` date, inclusive, until the
+    next entry) and sets ``ref_rate_kind`` to a human-readable label (e.g.
+    ``tbill_3m→sofr@2026-07-23``) used in provenance / the xlsx panel.
+    The series live as per-kind columns in
+    ``config/subsidy_reference_rates.yaml``.
     """
 
     enabled: bool
     cap_usd: Decimal = DEFAULT_SUBSIDY_CAP_USD
     program_start: date = SUBSIDY_PROGRAM_START
     ramp_months: int = SUBSIDY_RAMP_MONTHS
-    ref_rate_kind: str = "tbill_3m"   # 'tbill_3m' (only supported kind)
+    ref_rate_kind: str = "tbill_3m"   # scalar kind, or label when scheduled
+    ref_rate_schedule: tuple[tuple[date, str], ...] = ()  # dated (from, kind)
 
     @classmethod
     def from_dict(cls, d: dict | None) -> "SubsidyConfig":
         if not d:
             return cls(enabled=False)
-        kind = d.get("ref_rate_kind", "tbill_3m")
-        if kind not in _VALID_REF_RATE_KINDS:
-            raise ValueError(
-                f"Invalid subsidy.ref_rate_kind {kind!r}; expected one of {_VALID_REF_RATE_KINDS}"
+        raw_kind = d.get("ref_rate_kind", "tbill_3m")
+        schedule: tuple[tuple[date, str], ...] = ()
+        if isinstance(raw_kind, str):
+            kind = raw_kind
+            if kind not in _VALID_REF_RATE_KINDS:
+                raise ValueError(
+                    f"Invalid subsidy.ref_rate_kind {kind!r}; "
+                    f"expected one of {_VALID_REF_RATE_KINDS}"
+                )
+        else:
+            entries = []
+            for e in raw_kind:
+                k = e["kind"]
+                if k not in _VALID_REF_RATE_KINDS:
+                    raise ValueError(
+                        f"Invalid subsidy.ref_rate_kind entry {k!r}; "
+                        f"expected one of {_VALID_REF_RATE_KINDS}"
+                    )
+                entries.append((date.fromisoformat(str(e["from"])), k))
+            if not entries:
+                raise ValueError("subsidy.ref_rate_kind list is empty")
+            if entries != sorted(entries, key=lambda x: x[0]):
+                raise ValueError(
+                    "subsidy.ref_rate_kind entries must be in ascending "
+                    f"'from' order: {entries}"
+                )
+            schedule = tuple(entries)
+            kind = entries[0][1] + "".join(
+                f"→{k}@{frm.isoformat()}" for frm, k in entries[1:]
             )
         program_start = (
             date.fromisoformat(d["program_start"])
@@ -72,6 +116,7 @@ class SubsidyConfig:
             program_start=program_start,
             ramp_months=int(d.get("ramp_months", SUBSIDY_RAMP_MONTHS)),
             ref_rate_kind=kind,
+            ref_rate_schedule=schedule,
         )
 
 
@@ -124,15 +169,46 @@ class ReferenceRateHistory:
         return Decimal(str(eligible.loc[idx, "ref_rate_apy"]))
 
 
+@dataclass(frozen=True, slots=True)
+class ScheduledReferenceRateHistory:
+    """Date-dispatched composite of per-kind ``ReferenceRateHistory``.
+
+    ``schedule`` is sorted ``(from_date, kind)`` pairs — each kind applies
+    from its ``from_date`` (inclusive) until the next entry. ``at(target)``
+    dispatches to that kind's OWN full history, so carry-forward around a
+    switch date never crosses series (a Saturday right after the switch
+    reads the new series' latest print, not the old series').
+
+    Duck-types ``ReferenceRateHistory`` for the compute layer: only
+    ``at(date)`` and ``kind`` (a human label) are consumed there.
+    """
+
+    histories: dict[str, ReferenceRateHistory]
+    schedule: tuple[tuple[date, str], ...]
+    kind: str  # human label, e.g. 'tbill_3m→sofr@2026-07-23'
+
+    def kind_at(self, target: date) -> str:
+        active = self.schedule[0][1]
+        for frm, k in self.schedule:
+            if frm <= target:
+                active = k
+            else:
+                break
+        return active
+
+    def at(self, target: date) -> Decimal:
+        return self.histories[self.kind_at(target)].at(target)
+
+
 def load_reference_rates(
     kind: str = "tbill_3m",
     config_path: Path | None = None,
 ) -> ReferenceRateHistory:
     """Load `config/subsidy_reference_rates.yaml` for the given rate kind.
 
-    The YAML carries a single ``tbill_3m_apy`` column (the Atlas-canonical
-    reference rate for every prime). ``kind`` is still threaded through so a
-    future second series only needs a column plus a registry entry.
+    The YAML carries one ``<kind>_apy`` column per series (``tbill_3m_apy``,
+    ``sofr_apy``). Rows that lack the requested column are skipped — the
+    series don't have to cover the same date ranges.
     """
     if kind not in _VALID_REF_RATE_KINDS:
         raise ValueError(f"Unknown ref_rate kind {kind!r} ({'|'.join(_VALID_REF_RATE_KINDS)})")
@@ -144,16 +220,41 @@ def load_reference_rates(
     with config_path.open() as f:
         cfg = yaml.safe_load(f)
 
-    col = "tbill_3m_apy"
+    col = f"{kind}_apy"
     rows = [
         {
             "effective_date": date.fromisoformat(r["effective_date"]),
             "ref_rate_apy": Decimal(str(r[col])),
         }
         for r in cfg["rates"]
+        if col in r
     ]
+    if not rows:
+        raise ValueError(
+            f"No rows with column {col!r} in {config_path} — add the "
+            f"{kind} series before enabling it in a prime's subsidy config."
+        )
     df = pd.DataFrame(rows).sort_values("effective_date").reset_index(drop=True)
     return ReferenceRateHistory(rates=df, kind=kind)
+
+
+def load_reference_rates_for(
+    subsidy: SubsidyConfig,
+    config_path: Path | None = None,
+) -> ReferenceRateHistory | ScheduledReferenceRateHistory:
+    """Reference-rate history matching ``subsidy.ref_rate_schedule``.
+
+    Single-kind configs return the plain ``ReferenceRateHistory``; scheduled
+    configs return the date-dispatching composite.
+    """
+    if not subsidy.ref_rate_schedule:
+        return load_reference_rates(subsidy.ref_rate_kind, config_path)
+    kinds = {k for _, k in subsidy.ref_rate_schedule}
+    return ScheduledReferenceRateHistory(
+        histories={k: load_reference_rates(k, config_path) for k in kinds},
+        schedule=subsidy.ref_rate_schedule,
+        kind=subsidy.ref_rate_kind,
+    )
 
 
 def months_elapsed_since(d: date, anchor: date = SUBSIDY_PROGRAM_START) -> int:

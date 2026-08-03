@@ -37,6 +37,17 @@ Source: [Dune query 6953056](https://dune.com/queries/6953056) — reads `file(b
 | **Dec 2, 2025** | **4.25%** | **4.55%** | `0xac1db72...` |
 | **Dec 16, 2025** | **4.00%** | **4.30%** | `0xef4bc6f...` |
 | **Mar 9, 2026** | **3.75%** | **4.05%** | `0x9c48c28...` |
+| **Apr 22, 2026** | **3.65%** | **3.95%** | `0x0b5cec5...` |
+| **May 26, 2026** | **3.60%** | **3.90%** | `0x879f269...` |
+| **Jul 23, 2026** | **3.52%** | **3.72%** † | `0x12435f6...` |
+
+† The Jul 23, 2026 Stability Scope change ALSO narrowed the BR − SSR
+spread from **30 bps to 20 bps** (borrow rate column is SSR+0.20% from
+this row on) and switched the subsidy reference rate from the 3M T-Bill
+to **SOFR** (see PRD §17.7 / `config/subsidy_reference_rates.yaml`).
+Code: `BASE_RATE_SPREAD_SCHEDULE` in `src/settle/compute/sky_revenue.py`.
+Day-granularity convention: the whole UTC day of the change uses the new
+values, matching the SSR series (last `file()` call per day wins).
 
 ## Rule 3: Track subproxy USDS and sUSDS balances for agent rate calculation
 
@@ -64,7 +75,7 @@ Subproxy balance histories are tracked per agent — see each agent's README und
 daily_sky_revenue = utilized_usds × [(1 + borrow_rate)^(1/365) - 1]
 ```
 
-- **Borrow rate = SSR + 0.30%** (a subsidised step-down applies — see PRD §17.7)
+- **Borrow rate = SSR + 0.30%; SSR + 0.20% from 2026-07-23** (dated schedule; a subsidised step-down also applies — see PRD §17.7)
 - **Utilized USDS = cum_debt − alm_proxy_usds − psm_usds − sde_asset_value − curve_idle_usds − lending_idle_usds**
 
   | Term | Description |
@@ -80,7 +91,7 @@ daily_sky_revenue = utilized_usds × [(1 + borrow_rate)^(1/365) - 1]
 - Subproxy USDS and subproxy sUSDS are **not** deducted from utilized. They are treasury/risk capital that does not correspond solely to ilk debt.
 - The MSC settlement figures imply a slightly higher effective demand than our "utilized USDS" (~1-2% gap growing over time), possibly due to accumulated Vat rate on the ilk art. This is flagged in findings.
 
-## Rule 5: sUSDS spread — 30 bps deducted from Sky Revenue
+## Rule 5: sUSDS spread — BR−SSR spread (30 bps; 20 bps from 2026-07-23) deducted from Sky Revenue
 
 For sUSDS holdings at the ALM or inside LP pools, crediting the SSR appreciation as Prime Revenue double-counts: the prime already receives SSR through the sUSDS share price, so an additional model credit would yield `(2×SSR − BR) × V > 0` — an overcredit of ~3.7%/yr. The intent is economic neutrality (net = 0).
 

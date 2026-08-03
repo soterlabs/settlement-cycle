@@ -25,17 +25,21 @@ start_date: '2024-11-18'   # first frob on ALLOCATOR-SPARK-A (Dune query 7399640
 # parameters as Grove. Daily reference rates in
 # config/subsidy_reference_rates.yaml.
 #
-# ref_rate_kind: 3-month T-Bill, per Atlas A.2.8.2.2.2.2.2 (Borrow Rate
-# Mechanism), which names `t-bill_rate` for every prime. This supersedes the
-# 2026-05-02 governance note (and Spark's 2026-05-06 reaffirmation) that had
-# Spark on EFFR — see QUESTIONS.md S5. Same series Grove uses; the EFFR
-# column was removed from config/subsidy_reference_rates.yaml on 2026-07-30.
+# ref_rate_kind is DATED: 3-month T-Bill through 2026-07-22, per Atlas
+# A.2.8.2.2.2.2.2 (Borrow Rate Mechanism), which names `t-bill_rate` for
+# every prime (supersedes the 2026-05-02 governance note that had Spark on
+# EFFR — see QUESTIONS.md S5; the EFFR column was removed from
+# config/subsidy_reference_rates.yaml on 2026-07-30). From 2026-07-23 the
+# formula reads SOFR — same Stability Scope change that cut SSR to 3.52%
+# and the BR−SSR spread to 20bps. Same schedule Grove uses.
 subsidy:
   enabled: true
   cap_usd: 1000000000      # First $1B at subsidised rate; excess at full BR
   program_start: '2026-01-01'
   ramp_months: 24
-  ref_rate_kind: tbill_3m
+  ref_rate_kind:
+    - { kind: tbill_3m, from: '2026-01-01' }
+    - { kind: sofr,     from: '2026-07-23' }
 
 # Ilk debt from Envio HyperSync (raw Vat logs against the reorg-safe store)
 # rather than Dune, so the BR charge is priced off an independently sourced
