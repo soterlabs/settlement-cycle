@@ -313,46 +313,31 @@ Cross-ref **PRD §17.13 item 8**.
 
 ### P2 — sanity checks / confirmations
 
-#### G26. July 2026 — three capital events to confirm (E37 Maple exit route, E1 wind-down, E21 cadence)
-
-**1. E37 Maple syrupUSDC — why was the exit routed through Spark's ALM?**
-On 2026-07-20 Grove's entire syrupUSDC position (85,943,747.637271
-shares, ~$100.93M) was Transferred to Spark's Ethereum ALM
+#### G26. July 2026 — Maple redemption routed via Spark, Galaxy payout size
+**a. Maple redemption routed through Spark's ALM proxy — how do we
+handle it?** On 2026-07-20 Grove's entire syrupUSDC position
+(85,943,747.637271 shares, ~$100.93M) was Transferred to Spark's Eth ALM
 (tx `0xfafb7edda92afb685a8ea0cfb8b26648220cc533219d3f4a7059e7171046f464`,
-block 25574524 — ~30 blocks after the MSC#10 settlement tx). Spark
-queued the exact same amount into the Maple redemption escrow 23 blocks
-later (tx `0x204008d55711ece7843b4d11358f5bb1400dfb70199116ac6fff7bf74e64eeff`)
-and received $100,930,005.12 USDC the same day. Questions:
-  a. Why was Grove's redemption routed through Spark's ALM instead of
-     redeemed from Grove's ALM directly?
-  b. Was the transfer at par, with no separate consideration between
-     the two Stars?
-  c. The $100.93M of redemption USDC now sits on SPARK's books. How is
-     this reflected in the MSC#10/MSC#11 true-up between Grove and
-     Spark? We booked it for Grove as a capital outflow at that day's
-     share price (Grove keeps $262,730 of Jul 1–20 Maple yield, nothing
-     after).
+~30 blocks after the MSC#10 settlement tx) and redeemed same-day from
+there — the $100,930,005.12 of redemption USDC now sits on Spark's
+books. Will a core spell trigger a direct transfer from Spark's
+subproxy to Grove's, or how will the value be returned/trued-up?
+(Currently booked on our side as an inter-prime capital transfer at
+that day's share price; Grove keeps the Jul 1–20 Maple yield of
+$262,730.)
 
-**2. E1 Aave Horizon RLUSD ($171.7M) wound down to $0 mid-July**, while
-E19 Steakhouse Prime Instant (Base) grew +$69.0M and E23 Steakhouse
-USDC-HY (Base) +$30.7M. Confirm this is the intended rotation and that
-it completed in-period (no in-flight capital at Jul 31 23:59:59 UTC).
+**b. Galaxy Arch CLO (E21) payout smaller than usual.** July's
+distribution was ~$270K (2026-07-10, $267,818.71) vs ~$380K in May and
+June (2026-05-11 $389,109.90; 2026-06-10 $371,738.69). Did anything
+change in the loan config, or have we missed a second payout mid-month?
+(On-chain we see a single payment per month from
+`0xaC3D86f9…DF1B`; nothing else in July.)
 
-**3. E21 Galaxy Arch CLO — July coupon 28% below June.** The monthly
-USDC distribution DID arrive on schedule (2026-07-10 14:35 UTC, block
-25502822, $267,818.71) but is well below the recent run-rate:
-
-| date | USDC |
-|---|---:|
-| 2026-05-11 | 389,109.90 |
-| 2026-06-10 | 371,738.69 |
-| 2026-07-10 | 267,818.71 |
-
-Confirm the driver — normal CLO coupon variability, a partial
-call/paydown in the underlying, or a fee/waterfall change we should
-model going forward.
-
-#### G25. spUSDG on Robinhood — how is the Spark–Grove two-Star revenue split settled?
+#### G25. spUSDG — future yield split between Spark and Grove
+spUSDG wasn't really active in July (the Grove Morpho yield vault held
+$1.97 all month; ~$21.7M of depositor USDG sat undeployed in the vault).
+In the future, how will the spUSDG yield be split between Spark and
+Grove?
 The spUSDG deployment on Robinhood Chain (forum t/28031) routes Spark
 Savings USDG deposits through Spark's ALM proxy (`0xfD2fD4B0…dB24`) into
 the Grove USDG Morpho Vault (`0xBEEff039…54d9`, Steakhouse-curated). The
@@ -936,50 +921,28 @@ venue + a within-month end_date.
 
 ### P2 — sanity checks / confirmations
 
-#### S32. July 2026 — three confirmations (Anchorage rollover split, Maple exit, spUSDG)
+#### S32. July 2026 — Grove's Maple redemption at Spark's ALM, Anchorage ±$10M transfers
+**a. Grove's Maple redemption arrived in Spark's ALM proxy — how do we
+handle it?** Spark received Grove's 85,943,747.637271 syrupUSDC shares
+on 2026-07-20 (tx `0xfafb7edd…f464`), queued them into the Maple escrow
+23 blocks later (tx `0x204008d5…4eeff`) and received $100,930,005.12
+USDC the same day (fully reconciled on-chain: total July USDC from the
+pool $206,449,661.48 for 175.8M shares queued, nothing pending in the
+escrow at Jul 31 EoD). Will a core spell trigger a direct transfer of
+the ~$100.93M back to Grove's side, or how is it trued-up?
 
-**1. Anchorage — confirm the principal/interest split of the Jul-16
-inflow.** July flows between the escrow
-(`0x49506c3aa028693458d6ee816b2ec28522946872`) and the Eth ALM:
+**b. What was the reason for the ±$10M transfers with Anchorage —
+anything changed in the loan config?** July flows with the escrow
+(`0x49506c3a…6872`): Jul 12 in $1,198,969.00; Jul 16 in $10,036,438.00;
+Jul 21 out $10,000,008.64 sent TWICE, with one leg returned the same
+day (+$10,000,017.29). Net July flow +$1,235,407.01. We currently book
+the Jul-16 inflow as a principal return (capital) and only the Jul-12
+sweep as yield — if the $10,036,438 contains a final-interest component
+(~$36.4K) we will restate July prime revenue by that amount.
 
-| date | direction | USDC | our treatment |
-|---|---|---:|---|
-| Jul 12 | in | 1,198,969.00 | interest (yield) |
-| Jul 16 | in | 10,036,438.00 | principal return (capital) |
-| Jul 21 | out ×2 | 10,000,008.64 each | re-disbursement, double-sent |
-| Jul 21 | in | 10,000,017.29 | duplicate returned |
-
-Net July flow: **+$1,235,407.01** to the ALM; we recognised
-$1,198,969.00 as yield and the +$36,438.01 residual as capital.
-Questions:
-  a. Is the Jul-16 $10,036,438 exactly $10.0M principal + $36,438
-     final tranche interest? If yes we will restate July prime revenue
-     **+$36,438** (a single combined transfer can't be split by our
-     (date, amount) override matcher, so it is currently all capital —
-     conservative for Spark).
-  b. Confirm the Jul-21 double-send (one leg returned same day) was
-     purely operational.
-
-**2. Maple syrupUSDC (S14) — confirm the consolidate-and-exit.** Spark
-redeemed its own ~89.9M shares on Jul 15/17 ($40,034,406.49 +
-$65,313,231.04 USDC), then received Grove's 85,943,747.637271 shares on
-Jul 20 (tx `0xfafb7edd…046f464`) and queued them 23 blocks later
-(tx `0x204008d5…4eeff`), receiving $100,930,005.12 the same day. Total
-July USDC from the pool: **$206,449,661.48**; ALM share balance at Jul
-31 EoD: **0**; no Maple activity Jul 21–31 — so per our on-chain
-reconciliation NOTHING was pending in the redemption escrow at Jul 31
-23:59:59 UTC and no NAV sat in flight at the month boundary. Confirm:
-  a. this matches Spark's records (full exit, no pending redemption or
-     residual claim at EoM), and
-  b. why Grove's leg was routed through Spark's ALM (same question
-     posed to Grove as G26.1) and how the $100.93M is treated in the
-     Grove↔Spark true-up.
-
-**3. spUSDG (S63, Robinhood Chain)** — we track the vault
-position-only: totalAssets $440,606.06 (Jun 30 EoD) → $21,723,213.03
-(Jul 31 EoD), with the depositor VSR liability outside the MSC boundary
-like the other Savings V2 vaults. Confirm this matches Spark's product
-accounting. Cross-ref **G25** (two-Star split).
+**c. spUSDG future yield split** — same question as **G25** (posed to
+both Stars): spUSDG wasn't really active in July; how will its yield be
+split between Spark and Grove going forward?
 
 #### S10. L2 sUSDS proxies (S37 Base, S43 Arbitrum, S47 Optimism, S51 Unichain) — Q1 flow confirmation
 Each has only one row in our captured fixture (pre-period anchor only).
