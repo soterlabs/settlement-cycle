@@ -11,8 +11,8 @@ Period: 2026-07-01 → 2026-07-31 (31 days)
 | Field | USDS |
 |---|---:|
 | agent rate | 131,173.46 |
-| distribution rewards | 0.00 |
-| **demand-side revenue** | **131,173.46** |
+| distribution rewards | 943,409.92 |
+| **demand-side revenue** | **1,074,583.38** |
 
 #### Supply-Side revenue
 
@@ -107,4 +107,41 @@ Period: 2026-07-01 → 2026-07-31 (31 days)
 | S63 | Spark Savings V2 — spUSDG vault (Robinhood Chain) | $440,606.06 | $21,723,212.72 |
 
 > Position values above are **excluded from `prime_agent_revenue`** per the Savings V2 scope decision (the depositor-side VSR liability is outside the MSC/ALM accounting boundary — see `docs/spark/PRD_savings_vaults.md` §3 and `QUESTIONS.md` S30). Reconciliations against Spark / BA Labs dashboards, which net the VSR, will differ by ≈ the period's VSR accrual. Per-vault values remain in `provenance.json` under `venue_breakdown[]`.
+
+## DR per ref code
+
+| ref_code | DR (USD) | notes |
+|---|---:|---|
+| 127 | $2,653.18 | Synthetic code: untagged sUSDC |
+| 128 | $828,854.02 |  |
+| 129 | $44.01 |  |
+| 130 | $3,407.99 | Synthetic code: Untagged spUSDT — Spark's own product; Spark reports this code directly (payable to Spark). |
+| 131 | $4,276.77 | Synthetic code: Untagged spUSDC — folded into 128 by Spark on their side (payable to Spark). |
+| 132 | $10.54 | Synthetic code: Untagged spPYUSD — folded into 128 by Spark on their side (payable to Spark). |
+| 171 | $0.00 |  |
+| 182 | $0.01 |  |
+| 183 | $4,452.02 |  |
+| 186 | $2,572.15 |  |
+| 188 | $29,169.76 |  |
+| 190 | $329.97 |  |
+| 191 | $25,422.78 |  |
+| 192 | $18,103.03 |  |
+| 194 | $2.31 |  |
+| 195 | $539.55 |  |
+| 196 | $0.14 |  |
+| 197 | $9,664.01 | stUSDS |
+| 198 | $0.00 |  |
+| 200 | $4,390.29 |  |
+| 202 | $37.53 |  |
+| 204 | $2.21 |  |
+| 205 | $0.21 |  |
+| 214 | $3.82 |  |
+| 216 | $279.56 |  |
+| 217 | $0.50 |  |
+| 219 | $0.00 |  |
+| 224 | $6,442.69 |  |
+| 303 | $0.00 |  |
+| 555 | $0.00 |  |
+| 9001 | $2,750.87 | Synthetic code: USDS in Aave aEthUSDS; entire contract balance. Intraday TWA (clean methodology) — the deployed Dune query used EOD snapshots, which under-count ~20% on heavy-flow months. |
+| **Total** | **$943,409.92** | |
 
