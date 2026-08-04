@@ -25,9 +25,9 @@ Period: 2026-01-01 → 2026-01-31 (31 days)
 | Component | USDS | Effect |
 |---|---:|---|
 | PSM3 sUSDS SSR appreciation | 893,608.19 | adds to prime revenue |
-| PSM3 sUSDS 30bps spread reimbursement | 68,246.55 | reduces cost of funds |
-| Curve sUSDS 30bps spread reimbursement | 1,945.49 | reduces cost of funds |
-| Cat B L2 sUSDS 30bps spread reimbursement | 51,139.70 | reduces cost of funds (per-venue) |
+| PSM3 sUSDS BR-spread reimbursement | 68,246.55 | reduces cost of funds |
+| Curve sUSDS BR-spread reimbursement | 1,945.49 | reduces cost of funds |
+| Cat B L2 sUSDS BR-spread reimbursement | 51,139.70 | reduces cost of funds (per-venue) |
 | **total sUSDS spread reimbursement** | **121,331.74** | (netted into cost of funds above) |
 
 ### Sky side
@@ -114,9 +114,9 @@ Period: 2026-01-01 → 2026-01-31 (31 days)
 | 127 | $7,581.55 | Synthetic code: untagged sUSDC |
 | 128 | $1,007,554.52 |  |
 | 129 | $2.58 |  |
-| 130 | $284.57 | Synthetic code: Untagged spUSDT. |
-| 131 | $2,533.88 | Synthetic code: Untagged spUSDC. |
-| 132 | $0.00 | Synthetic code: Untagged spPYUSD. |
+| 130 | $284.57 | Synthetic code: Untagged spUSDT — Spark's own product; Spark reports this code directly (payable to Spark). |
+| 131 | $2,533.88 | Synthetic code: Untagged spUSDC — folded into 128 by Spark on their side (payable to Spark). |
+| 132 | $0.00 | Synthetic code: Untagged spPYUSD — folded into 128 by Spark on their side (payable to Spark). |
 | 171 | $0.00 |  |
 | 182 | $0.02 |  |
 | 183 | $21,333.38 |  |
@@ -136,6 +136,7 @@ Period: 2026-01-01 → 2026-01-31 (31 days)
 | 205 | $0.00 |  |
 | 214 | $0.00 |  |
 | 216 | $0.00 |  |
+| 217 | $0.00 |  |
 | 219 | $0.00 |  |
 | 224 | $0.00 |  |
 | 303 | $0.00 |  |

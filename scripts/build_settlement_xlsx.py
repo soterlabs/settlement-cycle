@@ -386,7 +386,7 @@ def _write_subsidy_panel(ws, summary: dict) -> None:
          float(_D(summary["sub_tranche_balance"])), _USD0)
     _row("  — excess (full base-rate tranche)",
          float(_D(summary["exc_tranche_balance"])), _USD0)
-    _row("Base rate (BR = SSR + 30bps), period avg", float(summary["base_apy_avg"]), _PCT)
+    _row("Base rate (BR = SSR (+) spread; 30bps, 20bps from 2026-07-23), period avg", float(summary["base_apy_avg"]), _PCT)
     _row(f"Reference rate ({kind}), period avg", *_pct("ref_apy_avg"))
     _row("Subsidised rate (BR*), period avg", *_pct("sub_apy_avg"))
     _row("Effective blended rate charged", float(summary["effective_apy"]), _PCT, bold=True)
@@ -487,10 +487,11 @@ def _write_sky_revenue(ws, prov: dict, sheet_rows: list[dict], prime_cfg: dict) 
     # sUSDS spread — Sky Revenue reduction (Cat B refund).
     if spread_reimb != 0:
         ws.append([
-            "sUSDS spread (Curve LP + PSM3) — 30 bps × value × n_days "
-            "deducted from sky_revenue. Sky charges full BR on the "
-            "underlying utilized; this row is the offsetting refund to the "
-            "prime so SSR + BR + 30 bps nets to zero economically.",
+            "sUSDS spread (Curve LP + PSM3) — the BR−SSR spread (30 bps; "
+            "20 bps from 2026-07-23) × value, integrated daily, deducted "
+            "from sky_revenue. Sky charges full BR on the underlying "
+            "utilized; this row is the offsetting refund to the prime so "
+            "SSR + BR + spread nets to zero economically.",
             float(spread_reimb),
         ])
         ws.cell(ws.max_row, 2).number_format = _USD
@@ -509,7 +510,15 @@ def _write_sky_revenue(ws, prov: dict, sheet_rows: list[dict], prime_cfg: dict) 
         ws.cell(ws.max_row, 2).number_format = _USD0
         ws.append(["program_start",  sub_cfg.get("program_start", "")])
         ws.append(["ramp_months",    sub_cfg.get("ramp_months", "")])
-        ws.append(["ref_rate_kind",  sub_cfg.get("ref_rate_kind", "")])
+        # ref_rate_kind may be a scalar kind or a dated list of
+        # {kind, from} entries (the 2026-07-23 tbill_3m→sofr switch) —
+        # render the list as the same compact label SubsidyConfig builds.
+        raw_kind = sub_cfg.get("ref_rate_kind", "")
+        if isinstance(raw_kind, list):
+            raw_kind = raw_kind[0]["kind"] + "".join(
+                f"→{e['kind']}@{e['from']}" for e in raw_kind[1:]
+            )
+        ws.append(["ref_rate_kind",  raw_kind])
 
         # T value for this period
         from settle.domain.subsidy import months_elapsed_since
@@ -529,7 +538,7 @@ def _write_sky_revenue(ws, prov: dict, sheet_rows: list[dict], prime_cfg: dict) 
         ws.cell(ws.max_row, 1).font = _MUTED
 
     ws.append([])
-    ws.append(["Base rate composition: base_apy = (1 + SSR)(1 + 30bps) − 1 (multiplicative)"])
+    ws.append(["Base rate composition: base_apy = (1 + SSR)(1 + spread) − 1 (multiplicative; spread 30bps, 20bps from 2026-07-23)"])
     ws.cell(ws.max_row, 1).font = _MUTED
 
     _set_widths(ws, {1: 80, 2: 22})
@@ -753,8 +762,9 @@ def _write_debt(ws, prov: dict) -> None:
         CoF charge — the daily delta is the cumulative-grab dart through
         that date.
 
-      * **Rate composition**: ``base_apy`` = (1 + SSR)(1 + 30bps) − 1
-        (multiplicative), not the naive sum SSR + 30bps. ``sub_apy`` is
+      * **Rate composition**: ``base_apy`` = (1 + SSR)(1 + spread) − 1
+        (multiplicative; spread 30bps, 20bps from 2026-07-23), not the
+        naive sum SSR + spread. ``sub_apy`` is
         the subsidised rate after the ramp: ``ref_rate + (base − ref_rate)
         × T/24``, clamped at base_apy when ref_rate exceeds base_apy.
         ``daily_sky_rev`` applies sub_apy to the first $1B of utilized and
@@ -777,7 +787,8 @@ def _write_debt(ws, prov: dict) -> None:
         "(0x7bab3f40), then scaled by Vat.ilks[ilk].rate_d / 1e27 read "
         "at each day's EoD block — actual outstanding USDS per day, not "
         "raw normalised Art. utilized = cum_debt − Σ deductions. base_apy "
-        "= (1+SSR)(1+0.003)−1 (multiplicative). sub_apy applies on the "
+        "= (1+SSR)(1+spread)−1 (multiplicative; spread 30bps, 20bps from "
+        "2026-07-23). sub_apy applies on the "
         "first cap_usd of utilized when the subsidy is active; excess "
         "pays base_apy."
     ])

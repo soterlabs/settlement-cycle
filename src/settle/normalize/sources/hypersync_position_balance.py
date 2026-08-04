@@ -31,6 +31,90 @@ from ...extract import hypersync_store
 from .hypersync_balances import _TRANSFER_T0, _addr_topic
 
 
+def _transfer_selections(token: bytes, holder_topic: str) -> list[dict[str, Any]]:
+    """The two Transfer selections (holder as from / as to) for ``token``."""
+    tok = "0x" + bytes(token).hex()
+    return [
+        {"address": [tok], "topics": [[_TRANSFER_T0], [holder_topic]]},      # from == holder
+        {"address": [tok], "topics": [[_TRANSFER_T0], [], [holder_topic]]},  # to == holder
+    ]
+
+
+def _signed_balance_and_first(
+    rows: list[Any], holder_topic: str,
+) -> tuple[int, int | None]:
+    """Σ(Transfer to holder) − Σ(from holder) over ``rows`` (raw units), plus
+    the holder's first Transfer block (``None`` if no transfers). Dedups on
+    (block_number, log_index) — a self-transfer matches both selections.
+
+    SINGLE implementation of the event reconstruction — shared by the S2
+    ``hypersync_underlying`` path (module functions below) and
+    ``HyperSyncPositionBalanceSource`` so a fix to topic parsing, dedup, or
+    value handling can never land in one copy only.
+    """
+    seen: set[tuple[int, int]] = set()
+    bal = 0
+    first: int | None = None
+    for r in rows:
+        k = (r.block_number, r.log_index)
+        if k in seen:
+            continue
+        seen.add(k)
+        if first is None or r.block_number < first:
+            first = r.block_number
+        v = int(r.data, 16)
+        if r.topic2 == holder_topic:     # inflow
+            bal += v
+        if r.topic1 == holder_topic:     # outflow
+            bal -= v
+    return bal, first
+
+
+def erc20_balances_from_transfers(
+    chain: str,
+    token: bytes,
+    holder: bytes,
+    blocks: "tuple[int, ...] | list[int]",
+    *,
+    fetch_logs: Callable[..., list[Any]] = hypersync_store.fetch_logs,
+) -> dict[int, int]:
+    """Balance of ``holder`` in ``token`` at EACH of ``blocks`` (raw units),
+    from ONE Transfer-log fetch spanning ``[0, max(blocks)]``.
+
+    Pure event reconstruction with NO RPC probe — for chains without archive
+    RPC access (Robinhood: the official public endpoint keeps only minutes of
+    state, so ``HyperSyncPositionBalanceSource``'s self-verifying probe can't
+    run there). ONLY correct for non-rebasing tokens; the caller owns that
+    guarantee (used by the S2 ``total_assets_source: hypersync_underlying``
+    path, where the token is the vault's par-stable underlying).
+
+    Verified exact against live ``balanceOf`` for spUSDG/USDG on Robinhood
+    (block 26,828,003, 2026-08-03).
+    """
+    ht = _addr_topic(holder)
+    rows = fetch_logs(chain, _transfer_selections(token, ht), 0, max(blocks))
+    return {
+        b: _signed_balance_and_first(
+            [r for r in rows if r.block_number <= b], ht,
+        )[0]
+        for b in set(blocks)
+    }
+
+
+def erc20_balance_from_transfers(
+    chain: str,
+    token: bytes,
+    holder: bytes,
+    block: int,
+    *,
+    fetch_logs: Callable[..., list[Any]] = hypersync_store.fetch_logs,
+) -> int:
+    """Single-cutoff convenience wrapper — see ``erc20_balances_from_transfers``."""
+    return erc20_balances_from_transfers(
+        chain, token, holder, (block,), fetch_logs=fetch_logs,
+    )[block]
+
+
 class HyperSyncPositionBalanceSource:
     """Implements ``IPositionBalanceSource`` via a self-verifying event/RPC hybrid."""
 
@@ -135,27 +219,8 @@ class HyperSyncPositionBalanceSource:
     ) -> tuple[int, int | None]:
         """Σ(Transfer value to holder) − Σ(from holder) for ``token`` at
         ``block`` (raw), plus the holder's first Transfer block (None if no
-        transfers)."""
+        transfers). Delegates to the module-level shared core so the
+        reconstruction logic exists exactly once."""
         ht = _addr_topic(holder)
-        tok = "0x" + bytes(token).hex()
-        sel = [
-            {"address": [tok], "topics": [[_TRANSFER_T0], [ht]]},        # from == holder
-            {"address": [tok], "topics": [[_TRANSFER_T0], [], [ht]]},    # to == holder
-        ]
-        rows = self._fetch(chain, sel, 0, block)
-        seen: set[tuple[int, int]] = set()
-        bal = 0
-        first: int | None = None
-        for r in rows:
-            k = (r.block_number, r.log_index)
-            if k in seen:                # self-transfer matches both selections
-                continue
-            seen.add(k)
-            if first is None or r.block_number < first:
-                first = r.block_number
-            v = int(r.data, 16)
-            if r.topic2 == ht:           # inflow
-                bal += v
-            if r.topic1 == ht:           # outflow
-                bal -= v
-        return bal, first
+        rows = self._fetch(chain, _transfer_selections(token, ht), 0, block)
+        return _signed_balance_and_first(rows, ht)

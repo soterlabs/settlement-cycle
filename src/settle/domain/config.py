@@ -140,6 +140,30 @@ def _parse_min_transfer(v: dict) -> Decimal | None:
     return Decimal(str(raw)) if raw is not None else None
 
 
+_VALID_TOTAL_ASSETS_SOURCES = ("rpc", "hypersync_underlying")
+
+
+def _parse_total_assets_source(v: dict) -> str:
+    """Read ``total_assets_source`` from a venue stanza (S2 venues only).
+
+    Validated eagerly so a typo can't silently fall back to the archive-RPC
+    path on a chain that has none (the exact misconfiguration this option
+    exists to avoid — see Venue.total_assets_source).
+    """
+    raw = v.get("total_assets_source", "rpc")
+    if raw not in _VALID_TOTAL_ASSETS_SOURCES:
+        raise ValueError(
+            f"venue {v.get('id')!r}: invalid total_assets_source {raw!r}; "
+            f"expected one of {_VALID_TOTAL_ASSETS_SOURCES}"
+        )
+    if raw != "rpc" and v.get("pricing_category") != "S2":
+        raise ValueError(
+            f"venue {v.get('id')!r}: total_assets_source={raw!r} is only "
+            "supported on pricing_category S2 (Spark Savings V2) venues"
+        )
+    return str(raw)
+
+
 def load_prime(config_path: Path) -> Prime:
     """Load a `Prime` value object from a YAML file."""
     with config_path.open() as f:
@@ -163,6 +187,20 @@ def load_prime(config_path: Path) -> Prime:
             )
 
     venues: list[Venue] = []
+    # Duplicate venue ids corrupt every per-venue surface silently (two
+    # rows share one id in summaries; SDE-table and pin-block lookups hit
+    # whichever parses last) — caught only by eyeballing output. Fail loud
+    # at load time instead. (Found the hard way: a second 'S61' added for
+    # spUSDG on 2026-08-03 while S61 was already the PYUSD Uniswap V4
+    # reserve.)
+    _ids = [v["id"] for v in cfg.get("venues", [])]
+    _dupes = sorted({i for i in _ids if _ids.count(i) > 1})
+    if _dupes:
+        raise ValueError(
+            f"{config_path.name}: duplicate venue id(s) {_dupes} — venue ids "
+            "must be unique; pick the next free id for the new venue."
+        )
+
     for v in cfg.get("venues", []):
         chain = Chain(v["chain"])
         token = Token.from_dict(chain, v["token"])
@@ -260,6 +298,7 @@ def load_prime(config_path: Path) -> Prime:
                     else None
                 ),
                 skip=bool(v.get("skip", False)),
+                total_assets_source=_parse_total_assets_source(v),
                 cash_distributions=[
                     CashDistributionSource(
                         payer=Address.from_str(d["payer"]),
@@ -348,6 +387,14 @@ def load_prime(config_path: Path) -> Prime:
         yield_reversal_overrides=yield_reversal_overrides,
         subsidy=SubsidyConfig.from_dict(cfg.get("subsidy")),
         sources=sources,
+        extra_ilks=tuple(
+            _parse_ilk_bytes32(x) for x in (cfg.get("extra_ilks") or [])
+        ),
+        agent_rate_start_date=(
+            date.fromisoformat(cfg["agent_rate_start_date"])
+            if cfg.get("agent_rate_start_date") is not None
+            else None
+        ),
     )
 
 

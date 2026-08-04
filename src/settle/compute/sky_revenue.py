@@ -4,7 +4,8 @@ Per the prime-settlement-methodology and debt-rate-methodology docs:
 
     daily_sky_revenue = utilized × [(1 + apy)^(1/365) - 1]
     apy               = base_apy (default) | subsidised_apy (when enabled)
-    base_apy          = SSR + 30bps
+    base_apy          = SSR ⊕ spread   (30bps; 20bps from 2026-07-23 —
+                        see BASE_RATE_SPREAD_SCHEDULE)
     subsidised_apy    = ref_rate + (base − ref_rate) × T / 24    [Step 1.b]
     utilized          = cum_debt
                       − alm_proxy_usds                 ←  Step 2 (idle USDS at ALM proxy)
@@ -19,7 +20,7 @@ would over-reimburse the prime for capital it did not borrow from Sky.
 Subproxy balances earn the agent rate instead (see ``compute_agent_rate``).
 
 sUSDS venues (``sky_savings_token: true`` in the prime YAML config) are also
-NOT subtracted from utilized. The prime earns only the 30 bps spread (BR − SSR)
+NOT subtracted from utilized. The prime earns only the BR − SSR spread
 on these positions — the SSR appreciation flows back to Sky via this
 borrow-rate charge. The spread is computed in ``compute_monthly_pnl`` and
 injected as ``VenueRevenueInputs.actual_revenue_override``; sky_revenue
@@ -52,7 +53,8 @@ When ``subsidy_config.enabled`` is True:
   subsidised rate; any excess at the full base rate.
 * T = months elapsed since ``subsidy_config.program_start`` (default
   2026-01-01). Jan 2026 → T=0, Feb 2026 → T=1, …
-* ``ref_rate_history`` provides the daily reference rate (3M T-Bill).
+* ``ref_rate_history`` provides the daily reference rate (3M T-Bill through
+  2026-07-22; SOFR from 2026-07-23 via the dated ``ref_rate_kind`` schedule).
 
 NOTE on what this function does NOT compute:
 * Sky Direct revenue (doc Step 4) is computed in the orchestrator from the
@@ -69,7 +71,7 @@ The orchestrator (compute_monthly_pnl) is responsible for gathering inputs.
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 
 import pandas as pd
@@ -77,6 +79,7 @@ import pandas as pd
 from ..domain.period import Period
 from ..domain.subsidy import (
     ReferenceRateHistory,
+    ScheduledReferenceRateHistory,
     SubsidyConfig,
     months_elapsed_since,
     subsidised_apy,
@@ -92,8 +95,33 @@ from ._helpers import (
 _log = logging.getLogger(__name__)
 
 # Spread Sky charges over SSR for utilized debt. Per prime-settlement-
-# methodology §1 + debt-rate-methodology, the base rate = SSR + 30bps.
-BASE_RATE_OVER_SSR = Decimal("0.003")
+# methodology §1 + debt-rate-methodology, the base rate = SSR ⊕ spread.
+#
+# The spread is DATED: the 2026-07-23 Stability Scope change that cut the
+# SSR 3.60% → 3.52% (on-chain sUSDS ``file("ssr")`` at 2026-07-23 14:43:23
+# UTC) also narrowed the BR − SSR spread from 30 bps to 20 bps. Same
+# day-granularity carry-forward convention as the SSR series itself
+# (``ssr_history.sql`` keeps the last call per UTC day), so the WHOLE of
+# 2026-07-23 is charged at the new spread.
+BASE_RATE_SPREAD_SCHEDULE: tuple[tuple[date, Decimal], ...] = (
+    (date(2024, 9, 1), Decimal("0.003")),   # inception (SSR_HISTORY_ANCHOR)
+    (date(2026, 7, 23), Decimal("0.002")),  # SSR 3.52% vote, spread 30→20bps
+)
+
+# Pre-2026-07-23 value, kept ONLY for tests that reconstruct expected values
+# for earlier periods. Production code must use ``base_rate_spread_at``.
+BASE_RATE_OVER_SSR = BASE_RATE_SPREAD_SCHEDULE[0][1]
+
+
+def base_rate_spread_at(target: date) -> Decimal:
+    """BR − SSR spread in effect on ``target`` (carry-forward, like SSR)."""
+    spread = BASE_RATE_SPREAD_SCHEDULE[0][1]
+    for effective, value in BASE_RATE_SPREAD_SCHEDULE:
+        if effective <= target:
+            spread = value
+        else:
+            break
+    return spread
 
 
 def compute_sky_revenue(
@@ -104,7 +132,7 @@ def compute_sky_revenue(
     psm_usds: pd.DataFrame | None = None,
     *,
     subsidy_config: SubsidyConfig | None = None,
-    ref_rate_history: ReferenceRateHistory | None = None,
+    ref_rate_history: ReferenceRateHistory | ScheduledReferenceRateHistory | None = None,
     sde_asset_value: pd.DataFrame | None = None,
     curve_idle_usds: pd.DataFrame | None = None,
     lending_idle_usds: pd.DataFrame | None = None,
@@ -130,7 +158,7 @@ def compute_sky_revenue_daily(
     psm_usds: pd.DataFrame | None = None,
     *,
     subsidy_config: SubsidyConfig | None = None,
-    ref_rate_history: ReferenceRateHistory | None = None,
+    ref_rate_history: ReferenceRateHistory | ScheduledReferenceRateHistory | None = None,
     sde_asset_value: pd.DataFrame | None = None,
     curve_idle_usds: pd.DataFrame | None = None,
     lending_idle_usds: pd.DataFrame | None = None,
@@ -249,9 +277,10 @@ def compute_sky_revenue_daily(
         # gross (cum_debt) revenue.  When cum_debt is 0 both will be 0.
         ssr_apy  = ssr_at_or_before(ssr, current)
         # APYs combine multiplicatively, not additively: naive
-        # ``ssr_apy + 30bps`` loses the cross-term ``ssr_apy × 30bps``
+        # ``ssr_apy + spread`` loses the cross-term ``ssr_apy × spread``
         # (~1.2 bps at SSR=4%). See ``combine_apys`` in ``_helpers.py``.
-        base_apy = combine_apys(ssr_apy, BASE_RATE_OVER_SSR)
+        # Spread is date-resolved (30bps → 20bps on 2026-07-23).
+        base_apy = combine_apys(ssr_apy, base_rate_spread_at(current))
 
         # Subsidy params — computed once and reused for both actual + gross.
         _sub_apy: Decimal | None = None

@@ -25,17 +25,21 @@ start_date: '2024-11-18'   # first frob on ALLOCATOR-SPARK-A (Dune query 7399640
 # parameters as Grove. Daily reference rates in
 # config/subsidy_reference_rates.yaml.
 #
-# ref_rate_kind: 3-month T-Bill, per Atlas A.2.8.2.2.2.2.2 (Borrow Rate
-# Mechanism), which names `t-bill_rate` for every prime. This supersedes the
-# 2026-05-02 governance note (and Spark's 2026-05-06 reaffirmation) that had
-# Spark on EFFR — see QUESTIONS.md S5. Same series Grove uses; the EFFR
-# column was removed from config/subsidy_reference_rates.yaml on 2026-07-30.
+# ref_rate_kind is DATED: 3-month T-Bill through 2026-07-22, per Atlas
+# A.2.8.2.2.2.2.2 (Borrow Rate Mechanism), which names `t-bill_rate` for
+# every prime (supersedes the 2026-05-02 governance note that had Spark on
+# EFFR — see QUESTIONS.md S5; the EFFR column was removed from
+# config/subsidy_reference_rates.yaml on 2026-07-30). From 2026-07-23 the
+# formula reads SOFR — same Stability Scope change that cut SSR to 3.52%
+# and the BR−SSR spread to 20bps. Same schedule Grove uses.
 subsidy:
   enabled: true
   cap_usd: 1000000000      # First $1B at subsidised rate; excess at full BR
   program_start: '2026-01-01'
   ramp_months: 24
-  ref_rate_kind: tbill_3m
+  ref_rate_kind:
+    - { kind: tbill_3m, from: '2026-01-01' }
+    - { kind: sofr,     from: '2026-07-23' }
 
 # Ilk debt from Envio HyperSync (raw Vat logs against the reorg-safe store)
 # rather than Dune, so the BR charge is priced off an independently sourced
@@ -296,7 +300,18 @@ venues:
       # Apr 2026 → this address). Likely a Maple internal escrow / upgraded
       # queue contract that fronts the public WithdrawalManagerQueue.
       - '0x7ad5ffa5fdf509e30186f4609c2f6269f4b6158f'   # actual syrupUSDC redemption escrow
-      - '0x1bc47a0dd0fdab96e9ef982fdf1f34dc6207cfe3'   # public WithdrawalManagerQueue (kept for safety)
+      - '0x1bc47a0dd0fdab96e9ef982fdf1f34dc6207cfe3'   # public WithdrawalManagerQueue
+      # Grove Ethereum ALM proxy — NOT a Maple queue. On 2026-07-20 (tx
+      # 0xfafb7edd…f464) Grove transferred its entire 85,943,747.637271-share
+      # syrupUSDC position to Spark's ALM (redeemed same-day via the queue).
+      # Listing Grove's ALM here makes the direction-symmetric netting book
+      # inter-prime share transfers as CAPITAL in the live directed-inflow
+      # path (dest→ALM leg = +capital inflow). The July 2026 fixture run was
+      # correct without it only because the fixture loader synthesizes Cat B
+      # flows from net daily share flow; a live-source run would book the
+      # arrival as ~$100.9M phantom revenue. Mirror of grove.yaml E37's
+      # Spark-ALM entry.
+      - '0x491edfb0b8b608044e227225c715981a30f3a44e'   # Grove Eth ALM (inter-prime transfer 2026-07-20) (kept for safety)
 
   - id: S15
     chain: ethereum
@@ -1086,6 +1101,37 @@ venues:
       symbol: 'USDC'
       decimals: 6
 
+  # spUSDG on Robinhood Chain (id 4663) — Spark–Grove two-Star arrangement:
+  # Spark provides the savings product, Grove the yield venue (Grove USDG
+  # Morpho Vault 0xBEEff039…54d9, Steakhouse-curated). Forum: "Technical
+  # Scope: Spark Savings USDG (spUSDG) Deployment on Robinhood Chain"
+  # (forum.skyeco.com t/28031). Ops began 2026-06-19; public launch
+  # 2026-07-01. Deposit cap 500M USDG; VSR 3.2% (set 2026-06-19).
+  #
+  # Reads exact ``totalAssets()`` over archive RPC (Alchemy serves full
+  # Robinhood archive; the official public endpoint keeps only minutes of
+  # state, and PublicNode/dRPC/Ankr gate archive). If the archive endpoint
+  # is ever lost, flip ``total_assets_source: hypersync_underlying`` — the
+  # HyperSync Transfer-log reconstruction of the vault's USDG balance,
+  # verified exact against live balanceOf (block 26,828,003); it
+  # understates totalAssets only by the deployed assetsOutstanding slice
+  # (July 2026: $542 at SoM, $12.9K on $21.7M at EoM, 0.06%).
+  - id: S63
+    chain: robinhood
+    label: 'Spark Savings V2 — spUSDG vault (Robinhood Chain)'
+    pricing_category: S2
+    cof_excluded: true
+    hide_per_venue_pnl: true
+    holder_override: '0xde770c84fe66e063336b31737cfe9790f18c4087'
+    token:
+      address: '0xde770c84fe66e063336b31737cfe9790f18c4087'
+      symbol: 'spUSDG'
+      decimals: 6
+    underlying:
+      address: '0x5fc5360d0400a0fd4f2af552add042d716f1d168'
+      symbol: 'USDG'
+      decimals: 6
+
 # Cat A revenue allowlist — counterparties that send REALIZED YIELD directly
 # to the ALM proxy.
 external_alm_sources:
@@ -1141,6 +1187,23 @@ principal_return_overrides:
         amount: 5270830
         token: 'USDC'
         note: 'over-shoot correction during the May $100M tranche deployment, not yield'
+      # 2026-07-16: +$10,036,438 USDC in ONE transfer (block 25547403) —
+      # the monthly rollover of a ~$10M tranche: Anchorage returned
+      # principal + final interest, and $10,000,008.64 was re-disbursed on
+      # 2026-07-21 (sent twice, blocks 25580701/25580707; the duplicate
+      # came back same day +$10,000,017.29 — day-net −$10.0M, capital by
+      # the directional default). Without this entry the whole $10.04M
+      # inflow books as external yield and S26 July revenue is overstated
+      # ~6×. The ~$36.4K final-interest component embedded in the single
+      # transfer CANNOT be split by the (date, amount) matcher — classified
+      # capital along with the principal (conservative for the prime),
+      # pending Anchorage's principal/interest split confirmation (S31).
+      # July Anchorage yield therefore = the $1,198,969 Jul-12 interest
+      # sweep only.
+      - date: '2026-07-16'
+        amount: 10036438
+        token: 'USDC'
+        note: 'monthly-rollover principal return (+embedded ~$36.4K final interest, unsplittable), not standalone yield'
       # STANDING RULE (no fixed maturity any more — the loan rolled over
       # at 2026-06-16 and renews monthly per Spark, 2026-07): whenever a
       # principal-sized inflow from this escrow appears (i.e. not in the

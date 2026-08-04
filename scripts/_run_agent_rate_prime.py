@@ -37,7 +37,14 @@ from settle.domain import Month  # noqa: E402
 from settle.domain.config import load_prime  # noqa: E402
 from settle.load import write_settlement  # noqa: E402
 
-_MONTHS = [Month(2026, m) for m in (1, 2, 3, 4, 5, 6)]
+_MONTHS = [Month(2026, m) for m in (1, 2, 3, 4, 5, 6, 7)]
+
+
+def _selected_months() -> list[Month]:
+    """``--months 2026-07[,2026-06]`` narrows the run; default = all.
+    Loud on bad/missing/zero-match values — see scripts/_months_arg.py."""
+    from _months_arg import filter_by_months
+    return filter_by_months(_MONTHS, lambda m: (m.year, m.month))
 
 # Documented in provenance.json so an auditor can see at a glance which
 # upstream sources fed each settlement run. The debt source is listed for
@@ -106,7 +113,7 @@ def run(prime_id: str) -> int:
     prime = load_prime(_REPO / "config" / f"{prime_id}.yaml")
     _check_envio_token(prime)
 
-    print(f"{prime_id.upper()} 2026 multi-month settlement (Jan → Jun) — agent-rate-only")
+    print(f"{prime_id.upper()} 2026 multi-month settlement — agent-rate-only")
     print("=" * 96)
     print(f"{'Month':<10} {'agent_rate':>16} {'prime_agent_total':>21} "
           f"{'sky_revenue':>15} {'monthly_pnl':>15}")
@@ -115,7 +122,7 @@ def run(prime_id: str) -> int:
     errors: list[tuple[str, str]] = []
     artifacts: list[tuple[str, dict[str, Path]]] = []
 
-    for month in _MONTHS:
+    for month in _selected_months():
         label = f"{month.year}-{month.month:02d}"
         try:
             result = compute_monthly_pnl(prime, month, sources=_live_sources())

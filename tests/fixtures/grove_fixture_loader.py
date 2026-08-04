@@ -138,6 +138,34 @@ def build_grove_sources(grove, fixtures: dict, blocks_by_chain: dict[str, Any]) 
             burns = fixtures.get(f"vault_{vid}_burns", {}).get("rows", [])
             directed_inflow_fixtures[(token, ZERO, alm)] = df_with_dates(mints, "block_date")
             directed_inflow_fixtures[(token, alm, ZERO)] = df_with_dates(burns, "block_date")
+            # share_burn_destinations legs (Maple queue / inter-prime
+            # transfers). ``_shares_to_usd_inflow_timeseries`` queries BOTH
+            # directions per destination; fixture keys are positional
+            # (``vault_{vid}_queue{i}_out`` = ALM→dest, ``…_in`` = dest→ALM)
+            # with ``_to``/``_from`` metadata checked against the YAML so a
+            # reordered destination list can't silently swap the mappings.
+            # Missing keys fall through to the mock's empty-frame default —
+            # correct for months with no queue traffic (pre-July captures).
+            for i, dest in enumerate(v.share_burn_destinations):
+                for key, frm, to, meta in (
+                    (f"vault_{vid}_queue{i}_out", alm, dest.value, "_to"),
+                    (f"vault_{vid}_queue{i}_in", dest.value, alm, "_from"),
+                ):
+                    if key not in fixtures:
+                        continue
+                    fx_addr = fixtures[key].get(meta)
+                    if fx_addr is not None:
+                        fx_bytes = bytes.fromhex(fx_addr.removeprefix("0x")).rjust(20, b"\x00")
+                        if fx_bytes != dest.value:
+                            raise ValueError(
+                                f"fixture {key!r} carries {meta}={fx_addr} but YAML "
+                                f"share_burn_destinations[{i}]=0x{dest.value.hex()} "
+                                f"for venue {v.id}. Re-capture or restore the "
+                                "original YAML order."
+                            )
+                    directed_inflow_fixtures[(token, frm, to)] = df_with_dates(
+                        fixtures[key]["rows"], "block_date",
+                    )
         # Cash-distribution sources (e.g. Galaxy CLO USDC sweeps for E21,
         # Agora AUSD incentives for E38). ``cash_distributions`` queries
         # ``directed_inflow_timeseries`` keyed by (token, payer, ALM-on-
@@ -421,7 +449,19 @@ def build_grove_sources(grove, fixtures: dict, blocks_by_chain: dict[str, Any]) 
         return [b for b in blocks if som < b <= eom]
 
     return Sources(
-        debt=MockDebtSource(debt_df),
+        debt=MockDebtSource(
+            debt_df,
+            # Multi-ilk (Diamond PAU): serve each ilk its own captured frame.
+            # "debt" = legacy ALLOCATOR-BLOOM-A; "debt_grove_a" (July 2026+
+            # captures) = ALLOCATOR-GROVE-A. Unknown ilks get an empty frame
+            # (see MockDebtSource) so pre-PAU fixture sets stay correct.
+            df_by_ilk={
+                bytes.fromhex("414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000"): debt_df,
+                **({bytes.fromhex("414c4c4f4341544f522d47524f56452d41000000000000000000000000000000"):
+                        df_with_dates(fixtures["debt_grove_a"]["rows"], "block_date")}
+                   if "debt_grove_a" in fixtures else {}),
+            },
+        ),
         balance=_RoutedBalances(),
         ssr=MockSSRSource(ssr_df),
         v3_position=_V3Mixed(),

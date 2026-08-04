@@ -313,6 +313,54 @@ Cross-ref **PRD §17.13 item 8**.
 
 ### P2 — sanity checks / confirmations
 
+#### G26. July 2026 — Maple redemption routed via Spark, Galaxy payout size
+**a. Maple redemption routed through Spark's ALM proxy — how do we
+handle it?** On 2026-07-20 Grove's entire syrupUSDC position
+(85,943,747.637271 shares, ~$100.93M) was Transferred to Spark's Eth ALM
+(tx `0xfafb7edda92afb685a8ea0cfb8b26648220cc533219d3f4a7059e7171046f464`,
+~30 blocks after the MSC#10 settlement tx) and redeemed same-day from
+there — the $100,930,005.12 of redemption USDC now sits on Spark's
+books. Will a core spell trigger a direct transfer from Spark's
+subproxy to Grove's, or how will the value be returned/trued-up?
+(Currently booked on our side as an inter-prime capital transfer at
+that day's share price; Grove keeps the Jul 1–20 Maple yield of
+$262,730.)
+
+**b. Galaxy Arch CLO (E21) payout smaller than usual.** July's
+distribution was ~$270K (2026-07-10, $267,818.71) vs ~$380K in May and
+June (2026-05-11 $389,109.90; 2026-06-10 $371,738.69). Did anything
+change in the loan config, or have we missed a second payout mid-month?
+(On-chain we see a single payment per month from
+`0xaC3D86f9…DF1B`; nothing else in July.)
+
+#### G25. spUSDG — future yield split between Spark and Grove
+spUSDG wasn't really active in July (the Grove Morpho yield vault held
+$1.97 all month; ~$21.7M of depositor USDG sat undeployed in the vault).
+In the future, how will the spUSDG yield be split between Spark and
+Grove?
+The spUSDG deployment on Robinhood Chain (forum t/28031) routes Spark
+Savings USDG deposits through Spark's ALM proxy (`0xfD2fD4B0…dB24`) into
+the Grove USDG Morpho Vault (`0xBEEff039…54d9`, Steakhouse-curated). The
+technical-scope post specifies the contract architecture but not the
+financial terms. As of 2026-08-03 the Morpho vault held $1.97 and
+Spark's ALM held zero shares (all ~$23.8M of depositor USDG still sits
+in the spUSDG vault), so there is no numerical impact yet — but once the
+deployment leg goes live we need to know:
+
+1. How is the yield split between Spark (savings product, VSR payer) and
+   Grove (vault curation)? Fixed curator/performance fee to Grove, or a
+   negotiated share?
+2. Should the Morpho-vault position appear on Spark's books (its ALM
+   holds the shares — our current plan), on Grove's, or both with an
+   offsetting liability?
+3. Does the deposited USDG count as MSC-perimeter capital for either
+   prime, given it is depositor-funded (like the other Savings V2
+   vaults, which we track position-only outside the perimeter)?
+
+Current treatment: Spark venue **S63** tracks the spUSDG vault
+position-only (config/spark.yaml); the Grove-side venue is a commented
+stub (**E39**, config/grove.yaml) pending this answer.
+
 #### G4. Sky Direct venue set re-confirmation
 Per the Atlas spec: Treasury Bills on Eth (BUIDL/JTRSY/USTB) +
 USDC in PSM3 non-Eth + USDT in sUSDS/USDT Curve. Grove's currently
@@ -873,6 +921,28 @@ venue + a within-month end_date.
 
 ### P2 — sanity checks / confirmations
 
+#### S32. July 2026 — Grove's Maple redemption at Spark's ALM, Anchorage ±$10M transfers
+**a. Grove's Maple redemption arrived in Spark's ALM proxy — how do we
+handle it?** Spark received Grove's 85,943,747.637271 syrupUSDC shares
+on 2026-07-20 (tx `0xfafb7edd…f464`), queued them into the Maple escrow
+23 blocks later (tx `0x204008d5…4eeff`) and received $100,930,005.12
+USDC the same day (fully reconciled on-chain: total July USDC from the
+pool $206,449,661.48 for 175.8M shares queued, nothing pending in the
+escrow at Jul 31 EoD). Will a core spell trigger a direct transfer of
+the ~$100.93M back to Grove's side, or how is it trued-up?
+
+**b. What was the reason for the ±$10M transfers with Anchorage —
+anything changed in the loan config?** July flows with the escrow
+(`0x49506c3a…6872`): Jul 12 in $1,198,969.00; Jul 16 in $10,036,438.00;
+Jul 21 out $10,000,008.64 sent TWICE, with one leg returned the same
+day (+$10,000,017.29). Net July flow +$1,235,407.01. We currently book
+the Jul-16 inflow as a principal return (capital) and only the Jul-12
+sweep as yield — if the $10,036,438 contains a final-interest component
+(~$36.4K) we will restate July prime revenue by that amount.
+
+**c. spUSDG future yield split** — same question as **G25** (posed to
+both Stars): spUSDG wasn't really active in July; how will its yield be
+split between Spark and Grove going forward?
 
 #### S10. L2 sUSDS proxies (S37 Base, S43 Arbitrum, S47 Optimism, S51 Unichain) — Q1 flow confirmation
 Each has only one row in our captured fixture (pre-period anchor only).
@@ -1052,6 +1122,20 @@ ilk), or computed at the Sky-protocol level via a different metric? We'd
 like to reproduce the same number from on-chain primitives.
 
 ### P1 — methodology unknowns affecting accuracy
+
+#### B18. Osero agent-rate effective date — 2026-07-19 or 2026-07-20?
+Osero (allocator instance ALLOCATOR-PRYSM-A, chainlog PRYSM_SUBPROXY)
+is to be paid the agent rate "from the date of their first allocation
+— July 19 or July 20" (MSC operator directive, 2026-08-03; exact day
+unconfirmed). On-chain gives no Jul 19/20 anchor: the enabling spell
+executed 2026-07-16, the subproxy's 10M USDS treasury was seeded back
+on 2026-03-30 (block 24772796), and the first ilk draw is 2026-07-24
+08:35 UTC (block 25601435). Each day on the 10M treasury is ≈ $1,050
+of agent rate, so the 19-vs-20 choice moves Osero's July settlement by
+that amount. ``config/osero.yaml`` currently pins
+``agent_rate_start_date: '2026-07-20'``; confirm the effective date
+(and its source — allocation agreement? Atlas edit?) so July can be
+restated with one config line + re-run if needed.
 
 #### B2. Spark `treasury_balance` ($37M) — likely Eth ALM USDS balance
 No `result_spark_*_treasury_*` table exists. The most plausible source

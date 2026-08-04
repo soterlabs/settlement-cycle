@@ -27,6 +27,7 @@ class Chain(StrEnum):
     AVALANCHE_C = "avalanche_c"
     PLUME = "plume"
     MONAD = "monad"
+    ROBINHOOD = "robinhood"   # Robinhood Chain (Arbitrum-style L2, id 4663)
 
 
 @dataclass(frozen=True, slots=True)
@@ -234,6 +235,17 @@ class Venue:
     # volatile or whose oracle isn't trustworthy to include in MSC. The venue
     # stays in YAML for documentation and historical reproducibility.
     skip: bool = False
+    # S2 (Spark Savings V2) venues only — how the position-only
+    # ``totalAssets`` SoM/EoM reads are sourced:
+    #   'rpc'                  — archive ``totalAssets()`` eth_call (default)
+    #   'hypersync_underlying' — Σ(underlying Transfer to/from the vault)
+    #     via HyperSync logs. For chains with NO public archive RPC
+    #     (Robinhood: the official endpoint keeps only minutes of state).
+    #     Exact for the vault's underlying balance (verified == balanceOf);
+    #     understates totalAssets by the deployed ``assetsOutstanding``
+    #     slice (spUSDG 2026-08-03: $6.7K on $23.8M, 0.03%) — acceptable
+    #     for a position-only reporting row, revisit if deployment ramps.
+    total_assets_source: str = "rpc"
     # Realized cash yield streams paid directly to the ALM by a known payer —
     # e.g. monthly USDC distributions from CLO issuers. The compute layer sums
     # actual on-chain transfers and records the total as ``actual_revenue_override``
@@ -613,6 +625,19 @@ class Prime:
     # default (``dune``/``rpc``). This is the per-prime migration switch —
     # flip a prime onto HyperSync one key at a time. See registry.py.
     sources: dict[str, str] = field(default_factory=dict)
+    # Additional allocator ilks whose debt is SUMMED with ``ilk_bytes32``'s
+    # in ``get_debt_timeseries`` (each ilk rate-scaled with its OWN Vat
+    # rate). First use: Grove's Diamond PAU compartment ALLOCATOR-GROVE-A
+    # (July 2026), which runs alongside the legacy ALLOCATOR-BLOOM-A ilk
+    # during the PAU migration. Only meaningful when ``ilk_bytes32`` is set.
+    extra_ilks: tuple[bytes, ...] = ()
+    # When set, ``compute_agent_rate`` accrues NOTHING before this date even
+    # if the subproxy already holds balances — for primes whose treasury was
+    # seeded before their allocation agreement became effective (Osero: 10M
+    # USDS at the subproxy since 2026-03-30, agent rate payable only from
+    # first allocation in July 2026 per Sky). ``None`` = accrue from balance
+    # history alone (all other primes).
+    agent_rate_start_date: date | None = None
 
     def __post_init__(self) -> None:
         if self.ilk_bytes32 is not None and len(self.ilk_bytes32) != 32:

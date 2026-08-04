@@ -95,6 +95,17 @@ PIN_BLOCKS_BY_MONTH = {
                 Chain.AVALANCHE_C: 89166730, Chain.PLUME: 78267500,
                 Chain.MONAD: 84784216},
     },
+    # July added 2026-08-03: EoM = July 31 EoD blocks resolved via
+    # HyperSync binary search (June-30 re-derivation matched the June
+    # pins on every chain).
+    (2026, 7): {
+        "som": {Chain.ETHEREUM: 25433938, Chain.BASE: 48037326,
+                Chain.AVALANCHE_C: 89166730, Chain.PLUME: 78267500,
+                Chain.MONAD: 84784216},
+        "eom": {Chain.ETHEREUM: 25656292, Chain.BASE: 49376526,
+                Chain.AVALANCHE_C: 91716609, Chain.PLUME: 84574746,
+                Chain.MONAD: 92053501},
+    },
 }
 
 # (year, month, fixture_dir). Q1 months all share grove_2026_03.
@@ -105,7 +116,15 @@ _MONTH_PLAN = [
     (2026, 4, "grove_2026_04"),
     (2026, 5, "grove_2026_05"),
     (2026, 6, "grove_2026_06"),
+    (2026, 7, "grove_2026_07"),
 ]
+
+
+def _selected_plan() -> list[tuple[int, int, str]]:
+    """``--months 2026-07[,2026-06]`` narrows the run; default = all.
+    Loud on bad/missing/zero-match values — see scripts/_months_arg.py."""
+    from _months_arg import filter_by_months
+    return filter_by_months(_MONTH_PLAN, lambda e: (e[0], e[1]))
 
 
 def _sources_manifest(fixture_dir: str) -> dict[str, str]:
@@ -141,7 +160,7 @@ def main() -> int:
     cached_fixture: str | None = None
     grove = fixtures = blocks_by_chain = None
 
-    for (y, m, fixture_dir) in _MONTH_PLAN:
+    for (y, m, fixture_dir) in _selected_plan():
         # Only reload fixtures when the fixture dir changes — Q1 shares one.
         if fixture_dir != cached_fixture:
             grove, fixtures, blocks_by_chain = load_grove_and_fixtures(

@@ -16,6 +16,11 @@ allocator_ilks:
   spark: '0x414c4c4f4341544f522d535041524b2d41000000000000000000000000000000'   # ALLOCATOR-SPARK-A
   grove: '0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000'   # ALLOCATOR-BLOOM-A
   obex:  '0x414c4c4f4341544f522d4f4245582d4100000000000000000000000000000000'   # ALLOCATOR-OBEX-A
+  # Diamond PAU compartments (added 2026-08-04 BEFORE the first sky_total
+  # run that could see their grabs — MSC#11). Keys are stream labels only;
+  # the compute layer sums every entry, so per-prime totals stay correct.
+  grove_pau: '0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000'  # ALLOCATOR-GROVE-A (Grove Diamond PAU, first draw 2026-07-21)
+  osero: '0x414c4c4f4341544f522d505259534d2d41000000000000000000000000000000'      # ALLOCATOR-PRYSM-A (Osero, first draw 2026-07-24)
 
 # ── Prime subproxy addresses (destination of "sent to prime subproxies" USDS
 # transfers, per methodology §3). Mirrors the same addresses in each prime's
@@ -27,6 +32,30 @@ subproxies:
   obex:    '0x8be042581f581E3620e29F213EA8b94afA1C8071'
   keel:    '0x355CD90Ecb1b409Fdf8b64c4473C3B858dA2c310'
   skybase: '0x08978E3700859E476201c1D7438B3427e3C81140'
+  osero:   '0x24fdcd3bFA5C2553e05B2f9AD0365EBC296278D3'   # PRYSM_SUBPROXY (added 2026-08-04; Grove's Diamond PAU shares Grove's existing subproxy)
+
+# ── Accrual basis (2026-07 onward) ──────────────────────────────────────
+# From July 2026 this repo computes BOTH sides of the MSC ledger (per-prime
+# revenue and Sky revenue), so sky_total no longer waits for the M+1 MSC
+# settlement tx. Months >= accrual_from are built from the repo's own
+# settlement artifacts (settlements/<prime>/<month>/provenance.json):
+#
+#   MSC net (accrual) = Σ sky_revenue − Σ agent_rate − Σ distribution_rewards
+#                       − grove_tge_penalty[month]
+#   Sky Net Revenue   = MSC net + non_msc_net
+#
+# Sky's payments to primes are exactly agent_rate + distribution_rewards;
+# venue revenue is prime income from third parties, not a Sky expense.
+# Like the buffer basis, the figure is PRE Core-Council split. Buffer basis
+# (settlement_blocks above) remains authoritative for 2026-01…2026-06.
+accrual_from: '2026-07'
+accrual_primes:          # every prime whose artifacts feed the accrual MSC net
+  - spark
+  - grove
+  - obex
+  - keel
+  - skybase
+  - osero
 
 # ── Other buffer-basis outflow destinations.
 demand_side_buffer:      '0x5e2fEc3a3C4E63A422e45C1BB83EdB3a5aD0543B'

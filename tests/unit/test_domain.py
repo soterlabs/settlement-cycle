@@ -159,7 +159,7 @@ def test_load_prime_grove(config_dir: Path):
     # Category breakdown.
     by_cat = {c: [v for v in grove.venues if v.pricing_category.value == c]
               for c in ["A", "B", "C", "D", "E", "F", "EOA"]}
-    assert len(grove.venues) == 36
+    assert len(grove.venues) == 38
     assert len(by_cat["C"]) == 3, "E1+E2+E3 Aave aTokens"
     # E25 (grove-bbqAUSD on Monad) joins Cat B as of 2026-05-14.
     # E37 (Maple syrupUSDC) joins Cat B as of 2026-06-08.
@@ -167,7 +167,8 @@ def test_load_prime_grove(config_dir: Path):
     assert len(by_cat["E"]) == 7, "E7-E10 ETH RWA + E20 JAAA-avax + E21 GACLO-1 + E22 ACRDX-plume"
     assert len(by_cat["F"]) == 4, "E11 Curve LP + E12 Uni V3 + E30 Uni V3 alt-holder (ETH) + E33 Uni V3 alt-holder (Monad)"
     # E38 (Agora AUSD incentives — cash distribution) joins Cat A as of 2026-06-08.
-    assert len(by_cat["A"]) == 12, "E13 RLUSD + E14 AUSD + E15 USDC + E16 DAI + E17 USDS + E26 PYUSD + E27 USDC-Base + E31/E32 alt-holder ETH + E34/E35 alt-holder Monad + E38 Agora incentives"
+    # E40/E41 (Diamond PAU ALM idle + JTRSY Basin escrow) join Cat A as of 2026-08-03.
+    assert len(by_cat["A"]) == 14, "E13 RLUSD + E14 AUSD + E15 USDC + E16 DAI + E17 USDS + E26 PYUSD + E27 USDC-Base + E31/E32 alt-holder ETH + E34/E35 alt-holder Monad + E38 Agora incentives + E40/E41 Diamond PAU"
     assert len(by_cat["EOA"]) == 1, "E36 OOB principal via 0xd94f → Monad ALM EOA"
 
     # Multi-chain: E19 is on Base; E20/E21 on Avalanche.

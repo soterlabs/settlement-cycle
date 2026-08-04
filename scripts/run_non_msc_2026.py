@@ -22,7 +22,14 @@ from settle.compute.non_msc import compute_non_msc_monthly, write_non_msc  # noq
 from settle.domain import Month  # noqa: E402
 from settle.normalize.sources.hypersync_non_msc import HyperSyncNonMscSource  # noqa: E402
 
-_MONTHS = [Month(2026, m) for m in range(1, 7)]
+_MONTHS = [Month(2026, m) for m in range(1, 8)]
+
+
+def _selected_months() -> list[Month]:
+    """``--months 2026-07[,2026-06]`` narrows the run; default = all.
+    Loud on bad/missing/zero-match values — see scripts/_months_arg.py."""
+    from _months_arg import filter_by_months
+    return filter_by_months(_MONTHS, lambda m: (m.year, m.month))
 
 
 def main() -> int:
@@ -35,12 +42,12 @@ def main() -> int:
         return 1
 
     source = HyperSyncNonMscSource()
-    print("NON_MSC 2026 (Jan → Jun) — Sky protocol P&L outside MSC (HyperSync)")
+    print("NON_MSC 2026 — Sky protocol P&L outside MSC (HyperSync)")
     print("=" * 88)
     print(f"{'Month':<10} {'income':>16} {'expense':>16} {'net_revenue':>16}")
     print("-" * 88)
     failures = 0
-    for month in _MONTHS:
+    for month in _selected_months():
         label = f"{month.year}-{month.month:02d}"
         try:
             r = compute_non_msc_monthly(month, source=source)

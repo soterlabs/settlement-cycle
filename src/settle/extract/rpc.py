@@ -53,6 +53,7 @@ RPC_ENV_VARS: dict[Chain, str] = {
     Chain.AVALANCHE_C: "AVALANCHE_C_RPC",
     Chain.PLUME:       "PLUME_RPC",
     Chain.MONAD:       "MONAD_RPC",
+    Chain.ROBINHOOD:   "ROBINHOOD_RPC",
 }
 
 

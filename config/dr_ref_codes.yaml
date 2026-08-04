@@ -55,6 +55,7 @@ primes:
     - '205'
     - '214'
     - '216'
+    - '217'      # new in the 2026-07 workbook: spUSDC/spUSDT integrator ($0.50 Jul 2026); in Spark's 100–999 ref-code range (Q-S21)
     - '219'
     - '224'
     - '303'
