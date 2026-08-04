@@ -39,6 +39,11 @@ def render_provenance(
             "agent_rate": str(pnl.agent_rate),
             "prime_agent_revenue": str(pnl.prime_agent_revenue),
             "distribution_rewards": str(pnl.distribution_rewards),
+            # Chronicle Points (Grove only today) — Demand-Side component,
+            # summed into prime_agent_total_revenue. Written for every
+            # prime ($0 when the program doesn't apply); the summary
+            # renderer shows the row only when non-zero.
+            "chronicle_points": str(pnl.chronicle_points),
             "prime_agent_total_revenue": str(pnl.prime_agent_total_revenue),
             # 30 bps Prime Revenue components computed outside the venue loop
             # (PRD §17.11). Surfaced here so downstream reporting can

@@ -169,8 +169,11 @@ def render_summary(prov: dict) -> str:
         supply_side_revenue = _D(r.get("prime_agent_revenue")) - prime_cof
     agent_rate     = _D(r.get("agent_rate"))
     dist_rewards   = _D(r.get("distribution_rewards"))
+    # Chronicle Points (Grove only today) — Demand-Side component; the row
+    # renders only when non-zero so other primes' summaries are unchanged.
+    chron_points   = _D(r.get("chronicle_points"))
     dr_rows        = prov.get("dr_breakdown") or []
-    demand_side_revenue = agent_rate + dist_rewards
+    demand_side_revenue = agent_rate + dist_rewards + chron_points
 
     def _row(label: str, val) -> str:
         if isinstance(val, str):
@@ -189,6 +192,8 @@ def render_summary(prov: dict) -> str:
     # Primes with no DR source (e.g. obex — no group in the settle-dr-dune
     # workbook) earn no DR by definition: render 0.00, not "TBD".
     lines.append(_row("distribution rewards", dist_rewards))
+    if chron_points:
+        lines.append(_row("chronicle points", chron_points))
     lines.append(_row("**demand-side revenue**", f"**{_usds(demand_side_revenue)}**"))
     lines.append("")
     lines.append("#### Supply-Side revenue")

@@ -181,6 +181,14 @@ class MonthlyPnL:
     # this rolls out.
     distribution_rewards: Decimal = Decimal("0")
 
+    # Chronicle Points — 20% of the base rate on Chronicle Farm USDS,
+    # per the soterlabs/chronicle-points-dune-dash methodology. Demand-Side
+    # revenue component: summed into ``prime_agent_total_revenue`` alongside
+    # agent_rate + distribution_rewards. Only computed for primes whose
+    # config carries a ``chronicle_points:`` block (Grove today); $0 and no
+    # summary row for everyone else.
+    chronicle_points: Decimal = Decimal("0")
+
     # Legacy: kept for provenance round-trip. Always 0 under the SDE-config
     # model (Sky takes actual SDE revenue; no floor → no shortfall).
     sky_direct_shortfall: Decimal = Decimal("0")
@@ -280,14 +288,20 @@ class MonthlyPnL:
     def prime_agent_total_revenue(self) -> Decimal:
         """Sum of all revenue streams to the prime — the reported headline.
 
-        ``= prime_agent_revenue + agent_rate + distribution_rewards``
+        ``= prime_agent_revenue + agent_rate + distribution_rewards
+           + chronicle_points``
 
         Note: per-venue ``external_revenue`` (off-pool rewards like Merkl
         drops on aTokens) is already folded into ``prime_agent_revenue``
         via ``vr.revenue`` in the per-venue rollup — this property doesn't
         add it again.
         """
-        return self.prime_agent_revenue + self.agent_rate + self.distribution_rewards
+        return (
+            self.prime_agent_revenue
+            + self.agent_rate
+            + self.distribution_rewards
+            + self.chronicle_points
+        )
 
     def __post_init__(self) -> None:
         # Sanity invariant — sum holds at the Decimal level. Kept (per design
@@ -301,10 +315,12 @@ class MonthlyPnL:
             self.prime_agent_revenue
             + self.agent_rate
             + self.distribution_rewards
+            + self.chronicle_points
             - self.sky_revenue
         )
         if self.monthly_pnl != expected:
             raise ValueError(
                 f"monthly_pnl invariant broken: stored {self.monthly_pnl} != "
-                f"expected {expected} (prime_rev + agent_rate + distribution_rewards − sky_rev)"
+                f"expected {expected} (prime_rev + agent_rate + "
+                "distribution_rewards + chronicle_points − sky_rev)"
             )

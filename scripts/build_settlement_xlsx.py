@@ -175,6 +175,11 @@ def _write_summary(ws, prov: dict, sheet_rows: list[dict]) -> None:
     ]
     if dr != 0:
         prime_rows.append(("+ distribution_rewards (settle-dr-dune)", dr))
+    # Chronicle Points (Grove only) — keeps the tab's addends summing to
+    # prime_agent_total_revenue, which includes the component.
+    cp = _D(res.get("chronicle_points") or 0)
+    if cp != 0:
+        prime_rows.append(("+ chronicle_points (20% of base rate on Chronicle Farm USDS)", cp))
     _block("Prime side", rows=prime_rows, total=par_t)
     ws.append([])
 
