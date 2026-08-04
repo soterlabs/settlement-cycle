@@ -31,8 +31,8 @@
 #
 # ``agent_rate_start_date``: Sky pays Osero the agent rate from its first
 # allocation, NOT from the March treasury seed. Set to 2026-07-20 per the
-# MSC operator's directive ("July 19 or July 20" — CONFIRM which; each day
-# on the 10M treasury is ≈ $1,050). The subproxy balance history itself
+# MSC operator's directive ("July 19 or July 20" — tracked as QUESTIONS.md
+# **B18**; each day on the 10M treasury is ≈ $1,050). The subproxy balance history itself
 # starts 2026-03-30, so without this gate July would accrue from Jul 1.
 
 id: osero

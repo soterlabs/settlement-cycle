@@ -3,15 +3,16 @@
 Single entry point for the Osero prime (Diamond PAU, ilk ALLOCATOR-PRYSM-A —
 see config/osero.yaml for the architecture notes). Osero is single-chain
 (Ethereum-only)
-with two venues (O1 SparkLend spUSDS, O2 raw USDS at the PAU ALM), so the run loop is much simpler
-than Spark/Grove and doesn't need pre-captured fixtures — live Dune + RPC
-sources cover everything needed in well under a minute per month from a
-warm cache (~28 RPC ``ilk_rate`` calls/month + 1 Dune ``debt_timeseries``
-query + per-day balance reads).
+with two venues (O1 SparkLend spUSDS, O2 raw USDS at the PAU ALM), so the run
+loop is much simpler than Spark/Grove and doesn't need pre-captured fixtures.
+Sources are LIVE and mostly HyperSync: config/osero.yaml routes debt /
+balance / position_balance to HyperSync (requires ENVIO_API_TOKEN); SSR is
+the Dune on-chain query; RPC covers ``ilk_rate`` + convertToAssets reads.
 
 For each month, the loop:
-  1. Builds live ``Sources`` (Dune for debt + balances + SSR, RPC for
-     position balances + ERC-4626 convertToAssets). The orchestrator
+  1. Builds live ``Sources`` (HyperSync for debt + balances + position
+     balances per the YAML ``sources:`` block, Dune for SSR, RPC for
+     ``ilk_rate`` + ERC-4626 convertToAssets). The orchestrator
      upgrades the block resolver to ``DuneBlockResolver`` when
      ``DUNE_API_KEY`` is set, replacing ~25 per-day binary-search RPC
      calls with one Dune query.
@@ -56,12 +57,10 @@ _MONTHS = [Month(2026, m) for m in (7,)]   # prime effective July 2026
 
 
 def _selected_months() -> list[Month]:
-    """``--months 2026-07[,2026-06]`` narrows the run; default = all."""
-    if "--months" in sys.argv:
-        raw = sys.argv[sys.argv.index("--months") + 1]
-        want = {tuple(int(x) for x in p.split("-")) for p in raw.split(",")}
-        return [m for m in _MONTHS if (m.year, m.month) in want]
-    return _MONTHS
+    """``--months 2026-07[,2026-06]`` narrows the run; default = all.
+    Loud on bad/missing/zero-match values — see scripts/_months_arg.py."""
+    from _months_arg import filter_by_months
+    return filter_by_months(_MONTHS, lambda m: (m.year, m.month))
 
 # Documented in provenance.json so an auditor can see at a glance which
 # upstream sources fed each settlement run.

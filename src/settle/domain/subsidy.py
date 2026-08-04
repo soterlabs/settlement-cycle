@@ -221,6 +221,20 @@ def load_reference_rates(
         cfg = yaml.safe_load(f)
 
     col = f"{kind}_apy"
+    # A row missing the REQUESTED column is legitimate (the two series need
+    # not cover the same dates), but a row carrying NO known rate column at
+    # all is a typo (e.g. ``tbil_3m_apy``) — the old per-row ``r[col]`` read
+    # failed loud on those; keep that property rather than silently dropping
+    # the day into the carry-forward.
+    known_cols = {f"{k}_apy" for k in _VALID_REF_RATE_KINDS}
+    for r in cfg["rates"]:
+        if not (known_cols & r.keys()):
+            raise ValueError(
+                f"{config_path}: rates row for {r.get('effective_date')!r} has "
+                f"none of the known rate columns {sorted(known_cols)} — "
+                "probable column-name typo; the day would silently fall into "
+                "carry-forward."
+            )
     rows = [
         {
             "effective_date": date.fromisoformat(r["effective_date"]),

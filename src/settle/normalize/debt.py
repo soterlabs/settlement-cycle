@@ -139,4 +139,26 @@ def get_debt_timeseries(
         "Vat ilk rate (~4.5%% for ALLOCATOR-SPARK-A by early 2026).",
         prime.ilk_bytes32.hex(), prime.id,
     )
-    return sparse
+    if len(ilks) == 1:
+        return sparse
+    # Multi-ilk: merge the sparse Art frames so extra_ilks debt isn't
+    # silently dropped on this path either. Per-date cum = Σ over ilks of
+    # each ilk's carried-forward Art (unscaled — same wad convention as the
+    # single-ilk return above); daily_dart = first difference.
+    all_dates = sorted({
+        d for f in sparse_by_ilk.values() for d in f["block_date"]
+    })
+    rows = []
+    prev_cum = Decimal("0")
+    for d in all_dates:
+        cum_d = sum(
+            (_art_at_or_before(f, d) for f in sparse_by_ilk.values()),
+            Decimal("0"),
+        )
+        rows.append({
+            "block_date": d,
+            "daily_dart": cum_d - prev_cum,
+            "cum_debt":   cum_d,
+        })
+        prev_cum = cum_d
+    return pd.DataFrame(rows)

@@ -2553,25 +2553,28 @@ def compute_monthly_pnl(
             eom_block = period.pin_blocks[venue.chain]
             from ..extract import rpc as _rpc_sv2
             from ..extract.rpc import RPCError as _RPCError
+            from ..extract.hypersync import HyperSyncError as _HSError
             import requests as _requests
             _ud = venue.underlying.decimals
             try:
                 if venue.total_assets_source == "hypersync_underlying":
                     # No archive RPC on this chain (Robinhood) — reconstruct
-                    # the vault's underlying balance from Transfer logs. See
-                    # Venue.total_assets_source for the (small, documented)
-                    # assetsOutstanding underestimate vs true totalAssets.
+                    # the vault's underlying balance from Transfer logs (ONE
+                    # fetch serves both cutoffs — the SoM rows are a subset
+                    # of the EoM range). See Venue.total_assets_source for
+                    # the (small, documented) assetsOutstanding
+                    # underestimate vs true totalAssets.
                     from ..normalize.sources.hypersync_position_balance import (
-                        erc20_balance_from_transfers as _ebal,
+                        erc20_balances_from_transfers as _ebals,
                     )
-                    _tok = venue.underlying.address.value
-                    _hold = venue.token.address.value
-                    total_som = Decimal(_ebal(
-                        venue.chain.value, _tok, _hold, som_block,
-                    )) / Decimal(10 ** _ud)
-                    total_eom = Decimal(_ebal(
-                        venue.chain.value, _tok, _hold, eom_block,
-                    )) / Decimal(10 ** _ud)
+                    _by_block = _ebals(
+                        venue.chain.value,
+                        venue.underlying.address.value,
+                        venue.token.address.value,
+                        (som_block, eom_block),
+                    )
+                    total_som = Decimal(_by_block[som_block]) / Decimal(10 ** _ud)
+                    total_eom = Decimal(_by_block[eom_block]) / Decimal(10 ** _ud)
                 else:
                     total_som = Decimal(_rpc_sv2.total_assets_of(
                         venue.chain, venue.token.address, som_block,
@@ -2579,7 +2582,12 @@ def compute_monthly_pnl(
                     total_eom = Decimal(_rpc_sv2.total_assets_of(
                         venue.chain, venue.token.address, eom_block,
                     )) / Decimal(10 ** _ud)
-            except (_RPCError, _requests.HTTPError,
+            # _HSError covers the hypersync_underlying path's transport
+            # failures (the HyperSync client wraps its transient errors in
+            # HyperSyncError) — same warn-and-skip degradation the RPC path
+            # gets. DB errors from the optional log store still propagate:
+            # a broken DATABASE_URL is misconfiguration, not transience.
+            except (_RPCError, _HSError, _requests.HTTPError,
                     _requests.ConnectionError, _requests.Timeout) as _e:
                 # Transient transport failure only — programming errors
                 # propagate so a position doesn't silently vanish from the

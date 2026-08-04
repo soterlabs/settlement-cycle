@@ -71,3 +71,77 @@ def test_mock_debt_source_dispatches_by_ilk():
     # Legacy single-ilk behaviour: empty map → default frame for any ilk.
     legacy = MockDebtSource(bloom_df)
     assert legacy.debt_timeseries(other, date(2026, 7, 1), 1)["cum_debt"].iloc[0] == 5
+
+
+def test_debt_fallback_merges_extra_ilks():
+    """The no-resolver fallback must include extra_ilks Art, not drop it
+    (PR-164 review finding: extra series were fetched then discarded)."""
+    from settle.domain.config import load_prime
+    from settle.domain.period import Period as _P
+    from settle.domain import Chain
+    from settle.normalize.debt import get_debt_timeseries
+    from tests.fixtures.mock_sources import MockDebtSource
+    from pathlib import Path
+
+    grove = load_prime(Path("config/grove.yaml"))
+    assert grove.extra_ilks  # ALLOCATOR-GROVE-A
+    bloom = grove.ilk_bytes32
+    grove_a = grove.extra_ilks[0]
+    src = MockDebtSource(df_by_ilk={
+        bloom: pd.DataFrame({"block_date": [date(2026, 7, 1)],
+                             "daily_dart": [Decimal(2_500_000_000)],
+                             "cum_debt": [Decimal(2_500_000_000)]}),
+        grove_a: pd.DataFrame({"block_date": [date(2026, 7, 21)],
+                               "daily_dart": [Decimal(1_000_000)],
+                               "cum_debt": [Decimal(1_000_000)]}),
+    })
+    period = _P(start=date(2026, 7, 1), end=date(2026, 7, 31),
+                pin_blocks={Chain.ETHEREUM: 25656292})
+    df = get_debt_timeseries(grove, period, source=src, block_resolver=None)
+    assert df["cum_debt"].iloc[0] == Decimal(2_500_000_000)          # Jul 1: bloom only
+    assert df["cum_debt"].iloc[-1] == Decimal(2_501_000_000)         # Jul 21+: summed
+
+
+def test_subsidy_loader_rejects_typo_column(tmp_path):
+    """A rates row with NO known rate column is a typo, not a sparse series —
+    must raise instead of silently dropping the day into carry-forward."""
+    import pytest as _pytest
+    from settle.domain.subsidy import load_reference_rates
+
+    p = tmp_path / "rates.yaml"
+    p.write_text(
+        "rates:\n"
+        "  - effective_date: '2026-07-22'\n"
+        "    tbill_3m_apy: 0.0389\n"
+        "  - effective_date: '2026-07-23'\n"
+        "    tbil_3m_apy: 0.0395\n"     # typo'd column
+    )
+    with _pytest.raises(ValueError, match="none of the known rate columns"):
+        load_reference_rates("tbill_3m", config_path=p)
+
+
+def test_erc20_balances_multi_cutoff_single_fetch():
+    """One fetch serves every cutoff; per-cutoff sums honour block bounds."""
+    from settle.normalize.sources.hypersync_position_balance import (
+        erc20_balances_from_transfers,
+    )
+
+    holder = bytes.fromhex("de770c84fe66e063336b31737cfe9790f18c4087")
+    token = bytes.fromhex("5fc5360d0400a0fd4f2af552add042d716f1d168")
+    ht = "0x" + "00" * 12 + holder.hex()
+    other = "0x" + "00" * 12 + "ab" * 20
+
+    class Row:
+        def __init__(self, bn, li, t1, t2, data):
+            self.block_number, self.log_index = bn, li
+            self.topic1, self.topic2, self.data = t1, t2, data
+
+    calls = []
+    def fetch(chain, sel, frm, to):
+        calls.append((frm, to))
+        return [Row(5, 0, other, ht, hex(100)), Row(20, 0, ht, other, hex(30))]
+
+    out = erc20_balances_from_transfers("robinhood", token, holder, (10, 25),
+                                        fetch_logs=fetch)
+    assert calls == [(0, 25)]           # exactly ONE fetch, to max(blocks)
+    assert out == {10: 100, 25: 70}     # block-10 cutoff excludes the outflow

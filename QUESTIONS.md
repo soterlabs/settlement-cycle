@@ -1123,6 +1123,20 @@ like to reproduce the same number from on-chain primitives.
 
 ### P1 — methodology unknowns affecting accuracy
 
+#### B18. Osero agent-rate effective date — 2026-07-19 or 2026-07-20?
+Osero (allocator instance ALLOCATOR-PRYSM-A, chainlog PRYSM_SUBPROXY)
+is to be paid the agent rate "from the date of their first allocation
+— July 19 or July 20" (MSC operator directive, 2026-08-03; exact day
+unconfirmed). On-chain gives no Jul 19/20 anchor: the enabling spell
+executed 2026-07-16, the subproxy's 10M USDS treasury was seeded back
+on 2026-03-30 (block 24772796), and the first ilk draw is 2026-07-24
+08:35 UTC (block 25601435). Each day on the 10M treasury is ≈ $1,050
+of agent rate, so the 19-vs-20 choice moves Osero's July settlement by
+that amount. ``config/osero.yaml`` currently pins
+``agent_rate_start_date: '2026-07-20'``; confirm the effective date
+(and its source — allocation agreement? Atlas edit?) so July can be
+restated with one config line + re-run if needed.
+
 #### B2. Spark `treasury_balance` ($37M) — likely Eth ALM USDS balance
 No `result_spark_*_treasury_*` table exists. The most plausible source
 is the Eth ALM proxy's USDS balance (`balanceOf(USDS, 0x1601…347e)` at

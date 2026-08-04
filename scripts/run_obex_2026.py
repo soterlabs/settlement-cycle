@@ -54,12 +54,10 @@ _MONTHS = [Month(2026, m) for m in (1, 2, 3, 4, 5, 6, 7)]
 
 
 def _selected_months() -> list[Month]:
-    """``--months 2026-07[,2026-06]`` narrows the run; default = all."""
-    if "--months" in sys.argv:
-        raw = sys.argv[sys.argv.index("--months") + 1]
-        want = {tuple(int(x) for x in p.split("-")) for p in raw.split(",")}
-        return [m for m in _MONTHS if (m.year, m.month) in want]
-    return _MONTHS
+    """``--months 2026-07[,2026-06]`` narrows the run; default = all.
+    Loud on bad/missing/zero-match values — see scripts/_months_arg.py."""
+    from _months_arg import filter_by_months
+    return filter_by_months(_MONTHS, lambda m: (m.year, m.month))
 
 # Documented in provenance.json so an auditor can see at a glance which
 # upstream sources fed each settlement run.

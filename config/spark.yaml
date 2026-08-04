@@ -300,7 +300,18 @@ venues:
       # Apr 2026 → this address). Likely a Maple internal escrow / upgraded
       # queue contract that fronts the public WithdrawalManagerQueue.
       - '0x7ad5ffa5fdf509e30186f4609c2f6269f4b6158f'   # actual syrupUSDC redemption escrow
-      - '0x1bc47a0dd0fdab96e9ef982fdf1f34dc6207cfe3'   # public WithdrawalManagerQueue (kept for safety)
+      - '0x1bc47a0dd0fdab96e9ef982fdf1f34dc6207cfe3'   # public WithdrawalManagerQueue
+      # Grove Ethereum ALM proxy — NOT a Maple queue. On 2026-07-20 (tx
+      # 0xfafb7edd…f464) Grove transferred its entire 85,943,747.637271-share
+      # syrupUSDC position to Spark's ALM (redeemed same-day via the queue).
+      # Listing Grove's ALM here makes the direction-symmetric netting book
+      # inter-prime share transfers as CAPITAL in the live directed-inflow
+      # path (dest→ALM leg = +capital inflow). The July 2026 fixture run was
+      # correct without it only because the fixture loader synthesizes Cat B
+      # flows from net daily share flow; a live-source run would book the
+      # arrival as ~$100.9M phantom revenue. Mirror of grove.yaml E37's
+      # Spark-ALM entry.
+      - '0x491edfb0b8b608044e227225c715981a30f3a44e'   # Grove Eth ALM (inter-prime transfer 2026-07-20) (kept for safety)
 
   - id: S15
     chain: ethereum

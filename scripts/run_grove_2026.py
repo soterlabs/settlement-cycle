@@ -121,12 +121,10 @@ _MONTH_PLAN = [
 
 
 def _selected_plan() -> list[tuple[int, int, str]]:
-    """``--months 2026-07[,2026-06]`` narrows the run; default = all."""
-    if "--months" in sys.argv:
-        raw = sys.argv[sys.argv.index("--months") + 1]
-        want = {tuple(int(x) for x in p.split("-")) for p in raw.split(",")}
-        return [e for e in _MONTH_PLAN if (e[0], e[1]) in want]
-    return _MONTH_PLAN
+    """``--months 2026-07[,2026-06]`` narrows the run; default = all.
+    Loud on bad/missing/zero-match values — see scripts/_months_arg.py."""
+    from _months_arg import filter_by_months
+    return filter_by_months(_MONTH_PLAN, lambda e: (e[0], e[1]))
 
 
 def _sources_manifest(fixture_dir: str) -> dict[str, str]:
