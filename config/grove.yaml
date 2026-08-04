@@ -63,6 +63,17 @@ subsidy:
 extra_ilks:
   - '0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000'  # ALLOCATOR-GROVE-A
 
+# Chronicle Points — 20% of the base rate (SSR + 30bps, additive per the
+# source methodology) on the USDS balance of the Chronicle Farm
+# (StakingRewards) contract, accrued daily; a Demand-Side revenue
+# component summed with agent_rate + distribution_rewards. Methodology +
+# source queries: github.com/soterlabs/chronicle-points-dune-dash
+# (program start 2025-07-24). Implemented via HyperSync
+# (compute/chronicle_points.py). Grove is the only participating prime.
+chronicle_points:
+  enabled: true
+  farm: '0x10ab606B067C9C461d8893c47C7512472E19e2Ce'   # Chronicle Farm (StakingRewards)
+
 addresses:
   ethereum:
     subproxy: '0x1369f7b2b38c76B6478c0f0E66D94923421891Ba'    # holds idle USDS / sUSDS — earns agent rate

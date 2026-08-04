@@ -13,6 +13,7 @@ from .primes import (
     Address,
     CashDistributionSource,
     Chain,
+    ChroniclePointsConfig,
     CurveIdleUsdsConfig,
     NavOracle,
     NotionalScheduleEntry,
@@ -393,6 +394,14 @@ def load_prime(config_path: Path) -> Prime:
         agent_rate_start_date=(
             date.fromisoformat(cfg["agent_rate_start_date"])
             if cfg.get("agent_rate_start_date") is not None
+            else None
+        ),
+        chronicle_points=(
+            ChroniclePointsConfig(
+                enabled=bool(cfg["chronicle_points"].get("enabled", True)),
+                farm=Address.from_str(cfg["chronicle_points"]["farm"]),
+            )
+            if cfg.get("chronicle_points") is not None
             else None
         ),
     )

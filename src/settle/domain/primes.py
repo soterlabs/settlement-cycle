@@ -129,6 +129,21 @@ class NavOracle:
 
 
 @dataclass(frozen=True, slots=True)
+class ChroniclePointsConfig:
+    """Chronicle Points program config (Grove only today).
+
+    20% of the base rate (SSR + 30bps, additive — the dash's formula) on
+    the USDS balance of the Chronicle Farm (StakingRewards) contract,
+    accrued daily and reported as a Demand-Side revenue component. See
+    ``compute/chronicle_points.py`` and the source methodology at
+    ``soterlabs/chronicle-points-dune-dash``.
+    """
+
+    enabled: bool
+    farm: Address                     # Chronicle Farm (StakingRewards)
+
+
+@dataclass(frozen=True, slots=True)
 class NotionalScheduleEntry:
     """One step of a venue's off-chain notional-principal schedule.
 
@@ -638,6 +653,9 @@ class Prime:
     # first allocation in July 2026 per Sky). ``None`` = accrue from balance
     # history alone (all other primes).
     agent_rate_start_date: date | None = None
+    # Chronicle Points program (Grove only today) — see ChroniclePointsConfig.
+    # ``None`` = prime doesn't participate; no row rendered, $0 contribution.
+    chronicle_points: "ChroniclePointsConfig | None" = None
 
     def __post_init__(self) -> None:
         if self.ilk_bytes32 is not None and len(self.ilk_bytes32) != 32:

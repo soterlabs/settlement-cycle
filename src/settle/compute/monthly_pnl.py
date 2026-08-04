@@ -3846,6 +3846,42 @@ def compute_monthly_pnl(
             start_date=prime.agent_rate_start_date,
         )
         prime_rev, breakdown = compute_prime_agent_revenue(period, venue_inputs)
+
+    # Chronicle Points (Grove only today) — Demand-Side revenue component
+    # per the soterlabs/chronicle-points-dune-dash methodology: 20% of
+    # (SSR + 30bps additive) on the Chronicle Farm's daily USDS balance.
+    # The farm balance is fetched via a DIRECT HyperSyncBalanceSource — not
+    # ``sources.balance`` — so fixture-driven runs (whose balance source is
+    # a per-venue mock that knows nothing about the farm) still compute it
+    # from live HyperSync data, matching how S2 hypersync reads work.
+    chronicle_points = Decimal("0")
+    if (
+        not sky_only
+        and prime.chronicle_points is not None
+        and prime.chronicle_points.enabled
+    ):
+        from ..normalize.sources.hypersync_balances import HyperSyncBalanceSource
+        from .chronicle_points import compute_chronicle_points
+        # Balance scan starts at USDS genesis, NOT the program start: the
+        # farm has held USDS since 2024-09-17, and a scan starting at the
+        # program's 2025-07-24 accrual start misses the pre-existing ~24M
+        # (the cum series even goes negative). Verified: full-history
+        # reconstruction == RPC balanceOf to the wei at Feb-28/Jul-31 2026
+        # EoD blocks. Only the ACCRUAL window is the settlement period.
+        _farm_usds = HyperSyncBalanceSource().cumulative_balance_timeseries(
+            chain=Chain.ETHEREUM.value,
+            token=USDS_ETHEREUM.address.value,
+            holder=prime.chronicle_points.farm.value,
+            start=date(2024, 9, 1),
+            pin_block=period.pin_blocks[Chain.ETHEREUM],
+        )
+        chronicle_points = compute_chronicle_points(period, _farm_usds, ssr)
+        _log.info(
+            "chronicle_points: %s earns $%.2f for %s (farm 0x%s)",
+            prime.id, float(chronicle_points),
+            f"{month.year}-{month.month:02d}",
+            prime.chronicle_points.farm.value.hex(),
+        )
         # Case 3a (PRD §10): book the SSR appreciation on the PSM3 sUSDS
         # slice as Prime Revenue. PSM3 is not a venue (no per-venue row,
         # no SDE interaction), so this is a prime-level addition. It nets
@@ -4012,7 +4048,8 @@ def compute_monthly_pnl(
         sky_revenue=sky_rev,
         agent_rate=agent_rate,
         prime_agent_revenue=prime_rev,
-        monthly_pnl=prime_rev + agent_rate - sky_rev,
+        chronicle_points=chronicle_points,
+        monthly_pnl=prime_rev + agent_rate + chronicle_points - sky_rev,
         venue_breakdown=breakdown,
         pin_blocks_som=pin_blocks_som,
         sky_direct_shortfall=sky_direct_shortfall,

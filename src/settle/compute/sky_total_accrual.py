@@ -9,6 +9,7 @@ authoritative for 2026-01…2026-06; months ≥ ``accrual_from`` in
     MSC net (accrual) = Σ_primes sky_revenue
                       − Σ_primes agent_rate
                       − Σ_primes distribution_rewards
+                      − Σ_primes chronicle_points          (Sky-funded)
                       − grove_tge_penalty[month]          (config override)
     Sky Net Revenue   = MSC net + non_msc_net
 
@@ -17,8 +18,9 @@ authoritative for 2026-01…2026-06; months ≥ ``accrual_from`` in
 truth for both sides per the MSC operator decision, 2026-08-04);
 ``non_msc_net`` from the accrual non-MSC report. The primes' VENUE revenue
 is income from third parties, not a Sky expense — Sky's payments to primes
-are exactly ``agent_rate + distribution_rewards``. Like the buffer basis,
-the headline is PRE Core-Council split.
+are exactly ``agent_rate + distribution_rewards + chronicle_points``
+(Chronicle Points confirmed Sky-funded, MSC operator 2026-08-04). Like the
+buffer basis, the headline is PRE Core-Council split.
 """
 
 from __future__ import annotations
@@ -44,10 +46,16 @@ class PrimeAccrualRow:
     sky_revenue: Decimal            # income to Sky (BR on utilized + SDE)
     agent_rate: Decimal             # Sky pays: treasury agent rate
     distribution_rewards: Decimal   # Sky pays: demand-side DR
+    chronicle_points: Decimal       # Sky pays: Chronicle Points (Grove)
 
     @property
     def net_to_sky(self) -> Decimal:
-        return self.sky_revenue - self.agent_rate - self.distribution_rewards
+        return (
+            self.sky_revenue
+            - self.agent_rate
+            - self.distribution_rewards
+            - self.chronicle_points
+        )
 
 
 @dataclass(frozen=True)
@@ -113,6 +121,7 @@ def compute_sky_total_accrual(
             sky_revenue=Decimal(str(r["sky_revenue"])),
             agent_rate=Decimal(str(r.get("agent_rate") or 0)),
             distribution_rewards=Decimal(str(r.get("distribution_rewards") or 0)),
+            chronicle_points=Decimal(str(r.get("chronicle_points") or 0)),
         ))
 
     # Grove TGE penalty — same per-month config override as the buffer basis.
@@ -161,28 +170,30 @@ def write_sky_total_accrual(r: SkyTotalAccrual, out_dir: Path) -> dict[str, Path
         "M+1 MSC settlement transaction — MSC operator decision 2026-08-04; "
         "2026-01…2026-06 remain on the buffer basis). "
         "MSC net = Σ sky_revenue − Σ agent_rate − Σ distribution_rewards − "
-        "Grove TGE penalty. Sky's payments to primes are exactly agent_rate "
-        "+ distribution_rewards; venue revenue is prime income from third "
+        "Σ chronicle_points − Grove TGE penalty. Sky's payments to primes "
+        "are exactly agent_rate + distribution_rewards + chronicle_points "
+        "(Chronicle Points are Sky-funded); venue revenue is prime income "
+        "from third "
         "parties, not a Sky expense. The figure is PRE Core-Council split."
     )
     L.append("")
     L.append("## MSC leg (accrual basis)")
     L.append("")
-    L.append("| Prime | sky_revenue | − agent_rate | − distribution_rewards | net to Sky |")
-    L.append("|---|---:|---:|---:|---:|")
+    L.append("| Prime | sky_revenue | − agent_rate | − distribution_rewards | − chronicle_points | net to Sky |")
+    L.append("|---|---:|---:|---:|---:|---:|")
     for row in r.rows:
         L.append(
             f"| {row.prime} | {_usds(row.sky_revenue)} "
             f"| {_usds(-row.agent_rate)} | {_usds(-row.distribution_rewards)} "
-            f"| {_usds(row.net_to_sky)} |"
+            f"| {_usds(-row.chronicle_points)} | {_usds(row.net_to_sky)} |"
         )
     subtotal = sum((x.net_to_sky for x in r.rows), Decimal(0))
-    L.append(f"| **subtotal** | | | | **{_usds(subtotal)}** |")
+    L.append(f"| **subtotal** | | | | | **{_usds(subtotal)}** |")
     L.append(
-        f"| Grove TGE penalty ({r.grove_tge_penalty_source}) | | | "
+        f"| Grove TGE penalty ({r.grove_tge_penalty_source}) | | | | "
         f"| {_usds(-r.grove_tge_penalty)} |"
     )
-    L.append(f"| **MSC net (accrual basis)** | | | | **{_usds(r.msc_net)}** |")
+    L.append(f"| **MSC net (accrual basis)** | | | | | **{_usds(r.msc_net)}** |")
     L.append("")
     L.append("## Non-MSC leg")
     L.append("")
@@ -220,6 +231,7 @@ def write_sky_total_accrual(r: SkyTotalAccrual, out_dir: Path) -> dict[str, Path
                     "sky_revenue": str(row.sky_revenue),
                     "agent_rate": str(row.agent_rate),
                     "distribution_rewards": str(row.distribution_rewards),
+                    "chronicle_points": str(row.chronicle_points),
                     "net_to_sky": str(row.net_to_sky),
                 }
                 for row in r.rows
