@@ -55,16 +55,34 @@ def main() -> int:
         return 1
 
     source = HyperSyncMscBufferSource()
-    print("SKY_TOTAL 2026 — Sky Net Revenue, buffer basis (HyperSync)")
+    print("SKY_TOTAL 2026 — Sky Net Revenue (buffer basis through 2026-06; accrual basis from 2026-07)")
     print("=" * 100)
     print(f"{'Month':<10} {'MSC net':>16} {'non-MSC net':>16} {'Sky Net Revenue':>18}")
     print("-" * 100)
     failures = 0
+    # Basis switch: months >= accrual_from (config/sky_total.yaml) are built
+    # from the repo's own per-prime artifacts; earlier months stay on the
+    # buffer basis (anchored on the M+1 MSC settlement tx).
+    from settle.compute.sky_total_accrual import (
+        compute_sky_total_accrual,
+        write_sky_total_accrual,
+    )
+    from settle.normalize.sources.hypersync_msc_buffer import load_config
+    cfg = load_config()
+    import yaml as _yaml
+    raw_cfg = _yaml.safe_load((_REPO / "config" / "sky_total.yaml").read_text())
+    acc_from = str(raw_cfg.get("accrual_from") or "9999-12")
+    acc_y, acc_m = (int(x) for x in acc_from.split("-"))
+
     for month in _selected_months():
         label = f"{month.year}-{month.month:02d}"
         try:
-            r = compute_sky_total_monthly(month, source=source, repo_root=_REPO)
-            write_sky_total(r, _REPO / "settlements" / "sky_total" / label)
+            if (month.year, month.month) >= (acc_y, acc_m):
+                r = compute_sky_total_accrual(month, repo_root=_REPO, config=raw_cfg)
+                write_sky_total_accrual(r, _REPO / "settlements" / "sky_total" / label)
+            else:
+                r = compute_sky_total_monthly(month, source=source, repo_root=_REPO)
+                write_sky_total(r, _REPO / "settlements" / "sky_total" / label)
             flag = "  ⚠" if r.warnings else ""
             print(f"{label:<10} {float(r.msc_net):>16,.2f} "
                   f"{float(r.non_msc_net):>16,.2f} "
