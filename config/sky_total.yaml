@@ -41,7 +41,7 @@ subproxies:
 # settlement artifacts (settlements/<prime>/<month>/provenance.json):
 #
 #   MSC net (accrual) = Σ sky_revenue − Σ agent_rate − Σ distribution_rewards
-#                       − grove_tge_penalty[month]
+#                       − Σ chronicle_points − grove_tge_penalty[month]
 #   Sky Net Revenue   = MSC net + non_msc_net
 #
 # Sky's payments to primes are exactly agent_rate + distribution_rewards;

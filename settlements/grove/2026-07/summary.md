@@ -12,8 +12,8 @@ Period: 2026-07-01 → 2026-07-31 (31 days)
 |---|---:|
 | agent rate | 72,023.77 |
 | distribution rewards | 28,898.24 |
-| chronicle points | 13,214.78 |
-| **demand-side revenue** | **114,136.79** |
+| chronicle points | 13,102.08 |
+| **demand-side revenue** | **114,024.09** |
 
 #### Supply-Side revenue
 

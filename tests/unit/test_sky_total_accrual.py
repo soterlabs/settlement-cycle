@@ -11,12 +11,13 @@ from settle.compute.sky_total_accrual import compute_sky_total_accrual
 from settle.domain import Month
 
 
-def _write_prov(root, prime, label, sky, agent, dr):
+def _write_prov(root, prime, label, sky, agent, dr, cp=0):
     d = root / "settlements" / prime / label
     d.mkdir(parents=True)
     (d / "provenance.json").write_text(json.dumps({
         "results": {"sky_revenue": str(sky), "agent_rate": str(agent),
-                    "distribution_rewards": str(dr)},
+                    "distribution_rewards": str(dr),
+                    "chronicle_points": str(cp)},
     }))
 
 
@@ -31,12 +32,13 @@ def _write_non_msc(root, label, income, expense):
 
 def test_accrual_msc_net_and_snr(tmp_path):
     _write_prov(tmp_path, "spark", "2026-07", 100, 10, 5)
-    _write_prov(tmp_path, "keel", "2026-07", 0, 3, 1)
+    _write_prov(tmp_path, "keel", "2026-07", 0, 3, 1, cp=2)
     _write_non_msc(tmp_path, "2026-07", 50, 20)
     cfg = {"accrual_primes": ["spark", "keel"],
            "grove_tge_penalty": {"2026-07": 7}}
     r = compute_sky_total_accrual(Month(2026, 7), repo_root=tmp_path, config=cfg)
-    assert r.msc_net == Decimal(100 - 10 - 5) + Decimal(0 - 3 - 1) - Decimal(7)
+    # chronicle_points is a Sky expense, subtracted like agent_rate/DR.
+    assert r.msc_net == Decimal(100 - 10 - 5) + Decimal(0 - 3 - 1 - 2) - Decimal(7)
     assert r.non_msc_net == Decimal(30)
     assert r.sky_net_revenue == r.msc_net + Decimal(30)
     assert r.grove_tge_penalty_source == "config:2026-07"
