@@ -1,6 +1,6 @@
 # SKY_TOTAL — 2026-03
 
-Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3). Extracted from the 2 MSC settlement blocks **24570218**, **24772796** — every settlement transaction executed in this calendar month, components summed (execution-month bucketing, aligned with Block Analitica's P&L from 2026-08-05). MSC net = Σ debt minted to buffer per prime − Σ sent to prime subproxies − sent to Core Council (genesis portion) − Grove TGE penalty. The Demand-side Buffer transfer is paid inside the settlement tx but classified under the non-MSC leg as an Operating expense, mirroring Block Analitica's P&L. The Core Council on-chain mint is GROSS; the Step 1 Capital slice (20% of the cycle month's net revenue, PAID figure from the MSC post) is added back and only the genesis/repayment remainder is a cost.
+Consolidated Sky Net Revenue, buffer basis, defined to match Block Analitica's "Net revenue" dashboard line (operator decision 2026-08-06). Extracted from the 2 MSC settlement blocks **24570218**, **24772796** — every settlement transaction executed in this calendar month, components summed (execution-month bucketing, aligned with Block Analitica's P&L from 2026-08-05). MSC net = Σ debt minted to buffer per prime − Σ sent to prime subproxies (net of capital seedings). The Demand-side Buffer transfer is paid inside the settlement tx but classified under the non-MSC leg as an Operating expense. The FULL Core Council Buffer transfer (Step 1 Capital distribution + genesis/expense repayments = BA's "Security and Maintenance") sits BELOW net revenue, and the Grove TGE penalty is income Sky retains (already inside mint − subproxy) — neither reduces SNR.
 
 ## MSC leg (buffer basis)
 
@@ -21,10 +21,6 @@ Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3).
 | Sent to prime subproxy | osero | -0.00 |
 | Sent to prime subproxy | — excluded: one-off capital seeding (below the line; on-chain send was 10,000,000.00) | (10,000,000.00) |
 | Sent to prime subproxy | **subtotal (net of seedings)** | **-3,004,871.00** |
-| Sent to Core Council | on-chain gross | -7,354,155.00 |
-| Sent to Core Council | of which: Step 1 Capital (paid, per MSC post; add-back) | +7,354,155.00 |
-| Sent to Core Council | of which: **genesis repayment (net cost)** | **-0.00** |
-| Grove TGE penalty (excluded from Sky revenue) | config:none | -0.00 |
 | **MSC net (buffer basis)** | | **29,417,496.00** |
 
 ## Non-MSC leg
@@ -49,11 +45,13 @@ Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3).
 | Field | USDS |
 |---|---:|
 | Sky Net Revenue | 21,840,905.18 |
-| − Step 1 Capital distribution (paid) | -7,354,155.00 |
+| − Core Council Buffer transfer (BA: "Security and Maintenance") | -7,354,155.00 |
+| &nbsp;&nbsp;of which: Step 1 Capital distribution (20% of cycle-month net, paid per MSC post) | -7,354,155.00 |
+| &nbsp;&nbsp;of which: genesis / expense repayments | -0.00 |
 | − capital seedings (one-off subproxy endowments) | -20,000,000.00 |
 | **remitted to Sky reserves (known items only)** | **-5,513,249.82** |
 
-*BA's dashboard line additionally deducts buybacks, the Aligned Delegates Buffer, and GAR (not tracked here).*
+*BA's dashboard line additionally deducts buybacks ("Revenue Allocation"), the Aligned Delegates Buffer, and GAR (not tracked here).*
 
 > ⚠ one_off_transfers: excluding 10,000,000.00 USDS from 'keel' subproxy (config/sky_total.yaml → one_off_transfers[2026-03][keel])
 > ⚠ one_off_transfers: excluding 10,000,000.00 USDS from 'osero' subproxy (config/sky_total.yaml → one_off_transfers[2026-03][osero])

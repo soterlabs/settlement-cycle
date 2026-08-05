@@ -189,6 +189,19 @@ class MonthlyPnL:
     # summary row for everyone else.
     chronicle_points: Decimal = Decimal("0")
 
+    # Governance Accessibility Rewards — ``GarConfig.share`` (1%) of the
+    # month's consolidated Sky Net Revenue (settlements/sky_total).
+    # Demand-Side revenue component: summed into
+    # ``prime_agent_total_revenue`` alongside agent_rate +
+    # distribution_rewards. Only computed for primes whose config carries a
+    # ``gar:`` block (Skybase today); $0 and no summary row for everyone
+    # else.
+    gar: Decimal = Decimal("0")
+    # Audit string from compute/gar.py: "" (no program / pre-from_month),
+    # "n/a: …" (base month predates the sky_total series — the summary
+    # renders the row as N/A), or the share × base-SNR derivation.
+    gar_basis: str = ""
+
     # Legacy: kept for provenance round-trip. Always 0 under the SDE-config
     # model (Sky takes actual SDE revenue; no floor → no shortfall).
     sky_direct_shortfall: Decimal = Decimal("0")
@@ -289,7 +302,7 @@ class MonthlyPnL:
         """Sum of all revenue streams to the prime — the reported headline.
 
         ``= prime_agent_revenue + agent_rate + distribution_rewards
-           + chronicle_points``
+           + chronicle_points + gar``
 
         Note: per-venue ``external_revenue`` (off-pool rewards like Merkl
         drops on aTokens) is already folded into ``prime_agent_revenue``
@@ -301,6 +314,7 @@ class MonthlyPnL:
             + self.agent_rate
             + self.distribution_rewards
             + self.chronicle_points
+            + self.gar
         )
 
     def __post_init__(self) -> None:
@@ -316,11 +330,12 @@ class MonthlyPnL:
             + self.agent_rate
             + self.distribution_rewards
             + self.chronicle_points
+            + self.gar
             - self.sky_revenue
         )
         if self.monthly_pnl != expected:
             raise ValueError(
                 f"monthly_pnl invariant broken: stored {self.monthly_pnl} != "
                 f"expected {expected} (prime_rev + agent_rate + "
-                "distribution_rewards + chronicle_points − sky_rev)"
+                "distribution_rewards + chronicle_points + gar − sky_rev)"
             )

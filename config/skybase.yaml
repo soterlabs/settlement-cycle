@@ -14,6 +14,16 @@
 id: skybase
 start_date: '2025-12-01'
 
+# Governance Accessibility Rewards — Demand-Side primitive: 1% of the
+# PRIOR month's consolidated Sky Net Revenue (settlements/sky_total, whose
+# SNR definition matches BA's "Net revenue" line). Applied to every report
+# month from 2026-01 (operator decision 2026-08-06); the 2026-01 report
+# renders "N/A" because its base month (2025-12) predates the sky_total
+# series. See src/settle/compute/gar.py for the basis rules.
+gar:
+  share: 0.01
+  from: '2026-01'
+
 addresses:
   ethereum:
     subproxy: '0x08978E3700859E476201c1D7438B3427e3C81140'

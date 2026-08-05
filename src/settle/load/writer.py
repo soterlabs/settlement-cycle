@@ -149,13 +149,18 @@ def refresh_dr_only(prime_id: str) -> list[Path]:
         par = Decimal(str(results.get("prime_agent_revenue", "0")))
         ar = Decimal(str(results.get("agent_rate", "0")))
         sky = Decimal(str(results.get("sky_revenue", "0")))
+        # Demand-side components that live alongside DR in the totals —
+        # dropping them here silently strips them from a previously
+        # published provenance (Grove: chronicle_points; Skybase: gar).
+        cp = Decimal(str(results.get("chronicle_points", "0")))
+        gar = Decimal(str(results.get("gar", "0")))
         # Recompute the dependent totals from components (not a delta patch),
         # so an already-stale provenance is corrected and the result is
         # idempotent. Mirrors MonthlyPnL.prime_agent_total_revenue and the
         # __post_init__ monthly_pnl invariant.
         results["distribution_rewards"] = str(new)
-        results["prime_agent_total_revenue"] = str(par + ar + new)
-        results["monthly_pnl"] = str(par + ar + new - sky)
+        results["prime_agent_total_revenue"] = str(par + ar + new + cp + gar)
+        results["monthly_pnl"] = str(par + ar + new + cp + gar - sky)
         prov["dr_breakdown"] = [
             {"ref_code": r["ref_code"], "amount": str(r["amount"]), "notes": r["notes"]}
             for r in dr["rows"]

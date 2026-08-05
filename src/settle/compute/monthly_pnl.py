@@ -3846,6 +3846,24 @@ def compute_monthly_pnl(
             start_date=prime.agent_rate_start_date,
         )
         prime_rev, breakdown = compute_prime_agent_revenue(period, venue_inputs)
+        # Case 3a (PRD §10): book the SSR appreciation on the PSM3 sUSDS
+        # slice as Prime Revenue. PSM3 is not a venue (no per-venue row,
+        # no SDE interaction), so this is a prime-level addition. It nets
+        # against Sky's existing BR − 30bps = SSR collection on the same
+        # slice → the composite contributes ~0 to the prime's profit,
+        # matching the physical reality (the appreciation accrues inside
+        # the prime's PSM3 share value).
+        # NB: applies to EVERY non-sky_only prime — PR #166 accidentally
+        # moved this into the chronicle_points (Grove-only) block below,
+        # which would have silently dropped it on the next Spark
+        # regeneration (July 2026: $111,594.67).
+        prime_rev += psm3_susds_appreciation
+        # Per ``d255ed2`` (Rule 5 consistency): the 30 bps spread on sUSDS held
+        # in Curve LP pools and PSM3 is treated as a Sky Revenue REDUCTION (not
+        # a Prime Revenue credit), matching the treatment of sky_savings_token
+        # Cat B ALM venues. ``curve_susds_spread`` and ``psm3_susds_spread`` are
+        # folded into ``total_susds_spread_reimb`` below instead of being added
+        # to ``prime_rev``.
 
     # Chronicle Points (Grove only today) — Demand-Side revenue component
     # per the soterlabs/chronicle-points-dune-dash methodology: 20% of
@@ -3882,20 +3900,17 @@ def compute_monthly_pnl(
             f"{month.year}-{month.month:02d}",
             prime.chronicle_points.farm.value.hex(),
         )
-        # Case 3a (PRD §10): book the SSR appreciation on the PSM3 sUSDS
-        # slice as Prime Revenue. PSM3 is not a venue (no per-venue row,
-        # no SDE interaction), so this is a prime-level addition. It nets
-        # against Sky's existing BR − 30bps = SSR collection on the same
-        # slice → the composite contributes ~0 to the prime's profit,
-        # matching the physical reality (the appreciation accrues inside
-        # the prime's PSM3 share value).
-        prime_rev += psm3_susds_appreciation
-        # Per ``d255ed2`` (Rule 5 consistency): the 30 bps spread on sUSDS held
-        # in Curve LP pools and PSM3 is treated as a Sky Revenue REDUCTION (not
-        # a Prime Revenue credit), matching the treatment of sky_savings_token
-        # Cat B ALM venues. ``curve_susds_spread`` and ``psm3_susds_spread`` are
-        # folded into ``total_susds_spread_reimb`` below instead of being added
-        # to ``prime_rev``.
+
+    # Governance Accessibility Rewards (Skybase only today) — Demand-Side
+    # component: ``GarConfig.share`` (1%) × the PRIOR month's consolidated
+    # Sky Net Revenue (settlements/sky_total). See compute/gar.py for the
+    # basis rules (prior-month base → no same-month circularity; N/A when
+    # the base predates the sky_total series; fail-loud otherwise).
+    gar = Decimal("0")
+    gar_basis = ""
+    if not sky_only:
+        from .gar import compute_gar
+        gar, gar_basis = compute_gar(prime, month)
     # Annotate each venue's VenueRevenue with (a) its lending-idle tw_avg —
     # post-hoc report scripts deduct it from avg_value for CoF allocation
     # since the idle portion is already subtracted from utilized — and
@@ -4049,7 +4064,9 @@ def compute_monthly_pnl(
         agent_rate=agent_rate,
         prime_agent_revenue=prime_rev,
         chronicle_points=chronicle_points,
-        monthly_pnl=prime_rev + agent_rate + chronicle_points - sky_rev,
+        gar=gar,
+        gar_basis=gar_basis,
+        monthly_pnl=prime_rev + agent_rate + chronicle_points + gar - sky_rev,
         venue_breakdown=breakdown,
         pin_blocks_som=pin_blocks_som,
         sky_direct_shortfall=sky_direct_shortfall,

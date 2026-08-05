@@ -1,12 +1,20 @@
-# Sky Total Net Revenue — open questions per month (vs BA Labs dashboard)
+# SNR — open questions per month (vs BA Labs dashboard)
 
-*Maintained alongside `settlements/sky_total/`. Each month compares our
-paid-basis Sky Net Revenue, restated on BA's P&L perimeter
-(`SNR + CC-genesis + TGE penalty`), against the BA dashboard net
+*Maintained alongside `settlements/sky_total/`. Since 2026-08-06 our Sky
+Net Revenue is DEFINED to match BA's "Net revenue" dashboard line, so each
+month compares our SNR directly against the BA dashboard net
 (`sky.data.blockanalitica.com/v1/accounting/profit-and-loss/`).
-Status as of 2026-08-05, after PR #168's paid-basis restatement.*
+Status as of 2026-08-06.*
 
 **Confirmed rules (no longer questions):**
+
+- *SNR definition (2026-08-06)*: `SNR = Σ mints − Σ subproxy sends (net of
+  capital seedings) + non-MSC net` — nothing else above the line. The FULL
+  Core Council Buffer transfer (Step-1 distribution + genesis/expense
+  repayments) sits below net revenue (BA's "Security and Maintenance" =
+  CC Buffer + Aligned Delegates transfers); the Grove TGE penalty is
+  income Sky retains (already inside mint − subproxy), never a deduction;
+  buybacks are BA's "Revenue Allocation" (below the line, untracked here).
 
 - *Recognition*: month M books the incomes/expenses that happen during M;
   Sky receives payment for cycle M−1 during M. BA's per-prime
@@ -31,7 +39,7 @@ Status as of 2026-08-05, after PR #168's paid-basis restatement.*
   `config/sky_total.yaml → cc_step1_paid`). Aligned Delegates (1%) and GAR
   (0.5% + 0.5%) are separate below-the-line allocations.
 
-| Month | ours (BA basis) | BA net | Δ | Status |
+| Month | our SNR | BA net | Δ | Status |
 |---|---:|---:|---:|---|
 | 2026-01 | 9,218,714 | 9,325,455 | −106,741 | open |
 | 2026-02 | 33,141,443 | 32,710,465 | +430,978 | open |
@@ -61,7 +69,9 @@ sides are non-MSC only.
 2. **[Amatsu/BA]** The MSC#4 CC Buffer transfer was 6,632,421 on-chain,
    but Nov + Dec Step-1 per t/27617/4 is 3,444,400 + 2,400,938 =
    5,845,338. What is the remaining **787,083**? (Sep/Oct 2025 Step-1
-   arrears? A genesis/expense repayment? We currently book it as a cost.)
+   arrears? A genesis/expense repayment? SNR-neutral either way — the
+   full transfer sits below the line — but the Security-and-Maintenance
+   decomposition should name it.)
 3. **[BA]** After the two items above, ~348K of the Feb delta remains on
    your expense side — please itemize February's expense categories.
 
@@ -101,3 +111,14 @@ Operating expense on both sides.
   `cc_step1_paid['2026-08']` (20% of July net from the MSC#11 post) and
   any genesis/repayment lines when the post lands. Our July restatements
   (MSC11_CARRYOVER.md) will appear inside BA's August per-prime items.
+- **GAR (operator decision 2026-08-06):** Skybase's GAR = 1% × the PRIOR
+  month's SNR, applied to every report month from 2026-01 (Jan renders
+  N/A — its base, 2025-12, predates the series). The payment rides the
+  subproxy send and INTENTIONALLY reduces the receiving month's SNR
+  (GAR is demand-side revenue like agent rate / DR); no same-month
+  circularity because the base SNR is final at report time.
+  **[BA question]** BA's dashboard historically shows GAR as a
+  below-the-line Step-1 allocation (0.5% Integrators + 0.5% Prime
+  Agents) — confirm how the GAR portion of Skybase's settlement payment
+  is classified in "Net revenue" from MSC#11 on; if below the line, a
+  ~GAR-sized monthly delta will appear vs our series.
