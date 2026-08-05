@@ -117,6 +117,31 @@ def test_missing_cc_step1_books_full_cc_as_cost_and_warns(tmp_path):
     assert any("cc_step1_paid: no entry" in w for w in result.warnings)
 
 
+def test_one_off_seeding_excluded_from_snr(tmp_path):
+    """Capital seedings sit BELOW net revenue (operator 2026-08-05,
+    following BA's remitted-to-reserves treatment): a configured one-off
+    must NOT reduce SNR, and the below-the-line property must deduct it."""
+    month = Month(2026, 3)
+    _seed_non_msc(tmp_path, month, Decimal("0"), Decimal("0"))
+    rows = _rows(
+        mint={"spark": Decimal("20000000"), "grove": Decimal("0"), "obex": Decimal("0")},
+        subs={"spark": Decimal("2000000"), "grove": Decimal("0"), "obex": Decimal("0"),
+              "keel": Decimal("10000000"), "skybase": Decimal("0")},
+        dsb=Decimal("0"), cc=Decimal("1000000"),
+    )
+    cfg = {**_base_cfg(),
+           "one_off_transfers": {"2026-03": {"keel": Decimal("10000000")}},
+           "cc_step1_paid": {"2026-03": Decimal("1000000")}}
+    src = _StubSource(rows)
+    result = ST.compute_sky_total_monthly(
+        month, source=src, repo_root=tmp_path, pin_block=25574490, config=cfg,
+    )
+    # 20M mint − (12M subs − 10M seeding) − 0 genesis = 18M; seeding excluded.
+    assert result.sky_net_revenue == Decimal("18000000")
+    # Below the line: 18M − 1M Step-1 − 10M seeding.
+    assert result.remitted_to_reserves_known == Decimal("7000000")
+
+
 def test_one_off_exceeding_raw_raises(tmp_path):
     month = Month(2026, 1)
     _seed_non_msc(tmp_path, month, Decimal("0"), Decimal("0"))

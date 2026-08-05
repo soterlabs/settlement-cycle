@@ -16,15 +16,15 @@ Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3).
 | Sent to prime subproxy | grove | -0.00 |
 | Sent to prime subproxy | obex | -442,327.00 |
 | Sent to prime subproxy | keel | -0.00 |
-| Sent to prime subproxy | skybase | -10,000,000.00 |
-| Sent to prime subproxy | — of which: one-off capital seeding (Vat.suck on vow; real cost) | 10,000,000.00 |
+| Sent to prime subproxy | skybase | -0.00 |
+| Sent to prime subproxy | — excluded: one-off capital seeding (below the line; on-chain send was 10,000,000.00) | (10,000,000.00) |
 | Sent to prime subproxy | osero | -0.00 |
-| Sent to prime subproxy | **subtotal (raw)** | **-17,513,666.00** |
+| Sent to prime subproxy | **subtotal (net of seedings)** | **-7,513,666.00** |
 | Sent to Core Council | on-chain gross | -6,632,421.00 |
 | Sent to Core Council | of which: Step 1 Capital (paid, per MSC post; add-back) | +5,845,338.00 |
 | Sent to Core Council | of which: **genesis repayment (net cost)** | **-787,083.00** |
-| Grove TGE penalty (excluded from Sky revenue) | unset | -0.00 |
-| **MSC net (buffer basis)** | | **23,327,147.00** |
+| Grove TGE penalty (excluded from Sky revenue) | config:none | -0.00 |
+| **MSC net (buffer basis)** | | **33,327,147.00** |
 
 ## Non-MSC leg
 
@@ -39,9 +39,19 @@ Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3).
 
 | Field | USDS |
 |---|---:|
-| MSC net (buffer basis) | 23,327,147.00 |
+| MSC net (buffer basis) | 33,327,147.00 |
 | non-MSC net | -972,786.88 |
-| **Sky Net Revenue** | **22,354,360.12** |
+| **Sky Net Revenue** | **32,354,360.12** |
 
-> ⚠ grove_tge_penalty: no override for 2026-02 in config/sky_total.yaml — booked $0. The methodology doc's §3 line was 1,396,260 for 2026-06; back-fill earlier months from the corresponding MSC forum posts.
+## Below the line (toward "remitted to Sky reserves")
+
+| Field | USDS |
+|---|---:|
+| Sky Net Revenue | 32,354,360.12 |
+| − Step 1 Capital distribution (paid) | -5,845,338.00 |
+| − capital seedings (one-off subproxy endowments) | -10,000,000.00 |
+| **remitted to Sky reserves (known items only)** | **16,509,022.12** |
+
+*BA's dashboard line additionally deducts buybacks, the Aligned Delegates Buffer, and GAR (not tracked here).*
+
 > ⚠ one_off_transfers: excluding 10,000,000.00 USDS from 'skybase' subproxy (config/sky_total.yaml → one_off_transfers[2026-02][skybase])

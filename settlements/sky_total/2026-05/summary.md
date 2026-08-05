@@ -18,11 +18,11 @@ Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3).
 | Sent to prime subproxy | keel | -52,915.00 |
 | Sent to prime subproxy | skybase | -201,469.00 |
 | Sent to prime subproxy | osero | -0.00 |
-| Sent to prime subproxy | **subtotal (raw)** | **-2,073,698.00** |
+| Sent to prime subproxy | **subtotal (net of seedings)** | **-2,073,698.00** |
 | Sent to Core Council | on-chain gross | -3,144,308.00 |
 | Sent to Core Council | of which: Step 1 Capital (paid, per MSC post; add-back) | +3,144,308.00 |
 | Sent to Core Council | of which: **genesis repayment (net cost)** | **-0.00** |
-| Grove TGE penalty (excluded from Sky revenue) | unset | -0.00 |
+| Grove TGE penalty (excluded from Sky revenue) | config:none | -0.00 |
 | **MSC net (buffer basis)** | | **18,460,808.00** |
 
 ## Non-MSC leg
@@ -42,4 +42,13 @@ Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3).
 | non-MSC net | -4,394,714.81 |
 | **Sky Net Revenue** | **14,066,093.19** |
 
-> ⚠ grove_tge_penalty: no override for 2026-05 in config/sky_total.yaml — booked $0. The methodology doc's §3 line was 1,396,260 for 2026-06; back-fill earlier months from the corresponding MSC forum posts.
+## Below the line (toward "remitted to Sky reserves")
+
+| Field | USDS |
+|---|---:|
+| Sky Net Revenue | 14,066,093.19 |
+| − Step 1 Capital distribution (paid) | -3,144,308.00 |
+| − capital seedings (one-off subproxy endowments) | -0.00 |
+| **remitted to Sky reserves (known items only)** | **10,921,785.19** |
+
+*BA's dashboard line additionally deducts buybacks, the Aligned Delegates Buffer, and GAR (not tracked here).*

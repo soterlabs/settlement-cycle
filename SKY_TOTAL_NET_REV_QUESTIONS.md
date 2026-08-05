@@ -2,8 +2,8 @@
 
 *Maintained alongside `settlements/sky_total/`. Each month compares our
 paid-basis Sky Net Revenue, restated on BA's P&L perimeter
-(`SNR + CC-genesis + TGE penalty + capital-seeding add-backs`), against the
-BA dashboard net (`sky.data.blockanalitica.com/v1/accounting/profit-and-loss/`).
+(`SNR + CC-genesis + TGE penalty`), against the BA dashboard net
+(`sky.data.blockanalitica.com/v1/accounting/profit-and-loss/`).
 Status as of 2026-08-05, after PR #168's paid-basis restatement.*
 
 **Confirmed rules (no longer questions):**
@@ -14,9 +14,15 @@ Status as of 2026-08-05, after PR #168's paid-basis restatement.*
   transfer + demand-side total` (as-settled Sky Share incl. reconciliation
   corrections). Verified exact to the dollar Feb–Jul.
 - *Capital seedings* (Skybase $10M @ MSC#4, Keel + Osero/PRYSM $10M each
-  @ MSC#6) are NOT in BA's net revenue — they sit below the line, hitting
-  only "remitted to Sky reserves". Verified: absent from BA's revenue,
-  expense, and revenue_distribution groups.
+  @ MSC#6) are NOT in net revenue — they sit below the line, hitting only
+  "remitted to Sky reserves". Verified: absent from BA's revenue, expense,
+  and revenue_distribution groups. Adopted on our side 2026-08-05: SNR
+  excludes them; the summary carries a below-the-line section.
+- *Grove TGE penalties before 2026-07* are NOT separate deductions — they
+  were netted inside Grove's demand-side payment (e.g. MSC#7: 197,732 →
+  138,412 paid), so they're already in the subproxy sends. Only MSC#10's
+  1,396,260 settled as its own line (operator decision 2026-08-05: no
+  back-fill).
 - *DSB transfers* are Operating expenses (BA classification, adopted by us
   2026-08-05).
 - *Step 1 Capital* = 20% of the cycle month's net revenue, split evenly
@@ -95,7 +101,3 @@ Operating expense on both sides.
   `cc_step1_paid['2026-08']` (20% of July net from the MSC#11 post) and
   any genesis/repayment lines when the post lands. Our July restatements
   (MSC11_CARRYOVER.md) will appear inside BA's August per-prime items.
-- **Grove TGE penalty back-fill:** months before 2026-07 book $0 with a
-  warning; MSC#7's post shows a March penalty (Grove DV 197,732 → 138,412,
-  i.e. −59,320 penalty netted inside the DV) — decide whether pre-July
-  penalties need entries in `grove_tge_penalty`.

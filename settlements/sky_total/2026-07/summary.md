@@ -18,7 +18,7 @@ Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3).
 | Sent to prime subproxy | keel | -77,284.00 |
 | Sent to prime subproxy | skybase | -204,242.00 |
 | Sent to prime subproxy | osero | -0.00 |
-| Sent to prime subproxy | **subtotal (raw)** | **-13,875,840.00** |
+| Sent to prime subproxy | **subtotal (net of seedings)** | **-13,875,840.00** |
 | Sent to Core Council | on-chain gross | -3,378,069.00 |
 | Sent to Core Council | of which: Step 1 Capital (paid, per MSC post; add-back) | +2,742,939.00 |
 | Sent to Core Council | of which: **genesis repayment (net cost)** | **-635,130.00** |
@@ -41,3 +41,14 @@ Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3).
 | MSC net (buffer basis) | 16,809,393.00 |
 | non-MSC net | -3,615,194.19 |
 | **Sky Net Revenue** | **13,194,198.81** |
+
+## Below the line (toward "remitted to Sky reserves")
+
+| Field | USDS |
+|---|---:|
+| Sky Net Revenue | 13,194,198.81 |
+| − Step 1 Capital distribution (paid) | -2,742,939.00 |
+| − capital seedings (one-off subproxy endowments) | -0.00 |
+| **remitted to Sky reserves (known items only)** | **10,451,259.81** |
+
+*BA's dashboard line additionally deducts buybacks, the Aligned Delegates Buffer, and GAR (not tracked here).*

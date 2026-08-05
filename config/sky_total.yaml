@@ -106,23 +106,24 @@ settlement_blocks:
   '2026-07': 25574490   # MSC#10 (Jun cycle),  executed 2026-07-20 14:21 UTC
 
 # ── Grove token-launch (TGE) penalty — deducted from the MSC net per §3
-# ("excluded from Sky revenue, per forum"). This is an off-chain accounting
-# adjustment whose on-chain mechanism is "still open with BA" (see PRD §17.13
-# B16), so it's carried here as a per-month override. Absence of an entry ⇒
-# treated as $0 with a warning rendered in the report.
+# ("excluded from Sky revenue, per forum"). Carried as a per-month override,
+# keyed by EXECUTION month like settlement_blocks.
 #
-# June 2026 is the only month with a published figure in the methodology doc;
-# earlier months should be back-filled from the corresponding MSC forum posts
-# as they land, else left null and the summary will surface the gap.
+# Only MSC#10 (executed 2026-07) settled a penalty as its own line
+# (1,396,260). Operator decision 2026-08-05: earlier months are NOT
+# back-filled — pre-July penalties were netted inside Grove's demand-side
+# payment (e.g. MSC#7: DV 197,732 → 138,412 paid), so they're already
+# reflected in the subproxy sends and a separate deduction would
+# double-count. Explicit null = confirmed none / netted-in-DV (no warning);
+# a missing key warns until confirmed either way.
 grove_tge_penalty:
-  # Keyed by EXECUTION month like settlement_blocks: the TGE penalty rides
-  # the June-cycle settlement (MSC#10), executed 2026-07-20.
-  '2026-07': 1396260.00
-  # '2026-01': null
-  # '2026-02': null
-  # '2026-03': null
-  # '2026-04': null
-  # '2026-05': null
+  '2026-01': null
+  '2026-02': null
+  '2026-03': null
+  '2026-04': null
+  '2026-05': null
+  '2026-06': null
+  '2026-07': 1396260.00   # MSC#10 (June cycle), separately-settled line
 
 # ── One-off subproxy inflows to exclude from "sent to prime subproxy".
 #

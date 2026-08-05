@@ -18,11 +18,11 @@ Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3).
 | Sent to prime subproxy | keel | -0.00 |
 | Sent to prime subproxy | skybase | -0.00 |
 | Sent to prime subproxy | osero | -0.00 |
-| Sent to prime subproxy | **subtotal (raw)** | **-0.00** |
+| Sent to prime subproxy | **subtotal (net of seedings)** | **-0.00** |
 | Sent to Core Council | on-chain gross | -0.00 |
 | Sent to Core Council | of which: Step 1 Capital (paid, per MSC post; add-back) | +0.00 |
 | Sent to Core Council | of which: **genesis repayment (net cost)** | **-0.00** |
-| Grove TGE penalty (excluded from Sky revenue) | unset | -0.00 |
+| Grove TGE penalty (excluded from Sky revenue) | config:none | -0.00 |
 | **MSC net (buffer basis)** | | **0.00** |
 
 ## Non-MSC leg
@@ -41,5 +41,3 @@ Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3).
 | MSC net (buffer basis) | 0.00 |
 | non-MSC net | 9,218,713.81 |
 | **Sky Net Revenue** | **9,218,713.81** |
-
-> ⚠ grove_tge_penalty: no override for 2026-01 in config/sky_total.yaml — booked $0. The methodology doc's §3 line was 1,396,260 for 2026-06; back-fill earlier months from the corresponding MSC forum posts.
