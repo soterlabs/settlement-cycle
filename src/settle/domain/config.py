@@ -14,6 +14,7 @@ from .primes import (
     CashDistributionSource,
     Chain,
     ChroniclePointsConfig,
+    GarConfig,
     CurveIdleUsdsConfig,
     NavOracle,
     NotionalScheduleEntry,
@@ -402,6 +403,14 @@ def load_prime(config_path: Path) -> Prime:
                 farm=Address.from_str(cfg["chronicle_points"]["farm"]),
             )
             if cfg.get("chronicle_points") is not None
+            else None
+        ),
+        gar=(
+            GarConfig(
+                share=Decimal(str(cfg["gar"]["share"])),
+                from_month=str(cfg["gar"]["from"]),
+            )
+            if cfg.get("gar") is not None
             else None
         ),
     )

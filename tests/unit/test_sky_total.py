@@ -64,10 +64,11 @@ def _base_cfg():
 
 
 def test_compute_populates_all_fields(tmp_path):
-    """MSC#10 (June-cycle) paid figures. With the PAID Step-1 (2,742,939,
-    from the MSC#10 post's BA section) the doc §3 headline SNR of
-    13,723,823 reproduces EXACTLY: 32,716,623 − 13,875,840 − 34,902 −
-    (3,378,069 − 2,742,939) − 1,396,260 + (15,881,200 − 18,931,868)."""
+    """MSC#10 (June-cycle) paid figures under the BA-matching SNR
+    definition (2026-08-06): neither the CC transfer nor the TGE penalty
+    reduces SNR — SNR = 32,716,623 − 13,875,840 − 34,902 + (15,881,200 −
+    18,931,868) = 15,755,213. The CC transfer decomposes below the line
+    (Step-1 2,742,939 paid + 635,130 Grove genesis-expense repayment)."""
     month = Month(2026, 6)
     _seed_non_msc(tmp_path, month, Decimal("15881200"), Decimal("18931868"))
     rows = _rows(
@@ -93,12 +94,15 @@ def test_compute_populates_all_fields(tmp_path):
     assert result.cc_genesis_repayment == Decimal("635130")
     assert result.grove_tge_penalty == Decimal("1396260")
     assert result.grove_tge_penalty_source == "config:2026-06"
-    assert result.sky_net_revenue == Decimal("13723823")
+    assert result.sky_net_revenue == Decimal("15755213")
+    # Below the line: SNR − full CC transfer − seedings (none here).
+    assert result.remitted_to_reserves_known == Decimal("12377144")
 
 
-def test_missing_cc_step1_books_full_cc_as_cost_and_warns(tmp_path):
-    """A settlement month without a cc_step1_paid entry books the FULL CC
-    transfer as genesis/repayment cost and surfaces a warning."""
+def test_missing_cc_step1_warns_but_leaves_snr_untouched(tmp_path):
+    """A settlement month without a cc_step1_paid entry surfaces a warning
+    and shows the full CC transfer as genesis/repayments in the
+    below-the-line decomposition — SNR itself never depends on it."""
     month = Month(2026, 6)
     _seed_non_msc(tmp_path, month, Decimal("0"), Decimal("0"))
     rows = _rows(
@@ -113,7 +117,8 @@ def test_missing_cc_step1_books_full_cc_as_cost_and_warns(tmp_path):
     )
     assert result.cc_step1_capital == Decimal("0")
     assert result.cc_genesis_repayment == Decimal("2000000")
-    assert result.sky_net_revenue == Decimal("8000000")
+    assert result.sky_net_revenue == Decimal("10000000")
+    assert result.remitted_to_reserves_known == Decimal("8000000")
     assert any("cc_step1_paid: no entry" in w for w in result.warnings)
 
 

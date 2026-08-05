@@ -44,6 +44,12 @@ def render_provenance(
             # prime ($0 when the program doesn't apply); the summary
             # renderer shows the row only when non-zero.
             "chronicle_points": str(pnl.chronicle_points),
+            # Governance Accessibility Rewards (Skybase only today) —
+            # Demand-Side component: GarConfig.share (1%) × the month's
+            # consolidated Sky Net Revenue. Same render convention as
+            # chronicle_points: written for every prime, row shown only
+            # when non-zero.
+            "gar": str(pnl.gar),
             "prime_agent_total_revenue": str(pnl.prime_agent_total_revenue),
             # 30 bps Prime Revenue components computed outside the venue loop
             # (PRD §17.11). Surfaced here so downstream reporting can

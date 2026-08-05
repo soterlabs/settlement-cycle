@@ -1,6 +1,6 @@
 # SKY_TOTAL — 2026-01
 
-Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3). No MSC settlement transaction executed in this calendar month (execution-month bucketing: each month carries the settlement that EXECUTED in it — the prior month's cycle), so the MSC leg is zero. MSC net = Σ debt minted to buffer per prime − Σ sent to prime subproxies − sent to Core Council (genesis portion) − Grove TGE penalty. The Demand-side Buffer transfer is paid inside the settlement tx but classified under the non-MSC leg as an Operating expense, mirroring Block Analitica's P&L. The Core Council on-chain mint is GROSS; the Step 1 Capital slice (20% of the cycle month's net revenue, PAID figure from the MSC post) is added back and only the genesis/repayment remainder is a cost.
+Consolidated Sky Net Revenue, buffer basis, defined to match Block Analitica's "Net revenue" dashboard line (operator decision 2026-08-06). No MSC settlement transaction executed in this calendar month (execution-month bucketing: each month carries the settlement that EXECUTED in it — the prior month's cycle), so the MSC leg is zero. MSC net = Σ debt minted to buffer per prime − Σ sent to prime subproxies (net of capital seedings). The Demand-side Buffer transfer is paid inside the settlement tx but classified under the non-MSC leg as an Operating expense. The FULL Core Council Buffer transfer (Step 1 Capital distribution + genesis/expense repayments = BA's "Security and Maintenance") sits BELOW net revenue, and the Grove TGE penalty is income Sky retains (already inside mint − subproxy) — neither reduces SNR.
 
 ## MSC leg (buffer basis)
 
@@ -19,10 +19,6 @@ Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3).
 | Sent to prime subproxy | skybase | -0.00 |
 | Sent to prime subproxy | osero | -0.00 |
 | Sent to prime subproxy | **subtotal (net of seedings)** | **-0.00** |
-| Sent to Core Council | on-chain gross | -0.00 |
-| Sent to Core Council | of which: Step 1 Capital (paid, per MSC post; add-back) | +0.00 |
-| Sent to Core Council | of which: **genesis repayment (net cost)** | **-0.00** |
-| Grove TGE penalty (excluded from Sky revenue) | config:none | -0.00 |
 | **MSC net (buffer basis)** | | **0.00** |
 
 ## Non-MSC leg

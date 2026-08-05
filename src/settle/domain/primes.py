@@ -144,6 +144,22 @@ class ChroniclePointsConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class GarConfig:
+    """Governance Accessibility Rewards (Skybase only today).
+
+    A Demand-Side primitive equal to ``share`` (1%) of the month's
+    consolidated Sky Net Revenue, read from the ``settlements/sky_total``
+    artifact (whose SNR definition matches BA's "Net revenue" dashboard
+    line). Active from cycle month ``from_month`` (inclusive) — earlier
+    cycles' GAR was settled externally (MSC#9 backlog true-up + monthly
+    lines) and must not be restated into the reports.
+    """
+
+    share: Decimal                    # e.g. Decimal("0.01")
+    from_month: str                   # 'YYYY-MM', first cycle month included
+
+
+@dataclass(frozen=True, slots=True)
 class NotionalScheduleEntry:
     """One step of a venue's off-chain notional-principal schedule.
 
@@ -653,6 +669,8 @@ class Prime:
     # first allocation in July 2026 per Sky). ``None`` = accrue from balance
     # history alone (all other primes).
     agent_rate_start_date: date | None = None
+    # Governance Accessibility Rewards (Skybase only today) — see GarConfig.
+    gar: "GarConfig | None" = None
     # Chronicle Points program (Grove only today) — see ChroniclePointsConfig.
     # ``None`` = prime doesn't participate; no row rendered, $0 contribution.
     chronicle_points: "ChroniclePointsConfig | None" = None

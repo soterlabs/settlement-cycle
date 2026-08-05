@@ -180,6 +180,10 @@ def _write_summary(ws, prov: dict, sheet_rows: list[dict]) -> None:
     cp = _D(res.get("chronicle_points") or 0)
     if cp != 0:
         prime_rows.append(("+ chronicle_points (20% of base rate on Chronicle Farm USDS)", cp))
+    # Governance Accessibility Rewards (Skybase only) — same convention.
+    gar = _D(res.get("gar") or 0)
+    if gar != 0:
+        prime_rows.append(("+ governance_accessibility_rewards (1% of Sky Net Revenue)", gar))
     _block("Prime side", rows=prime_rows, total=par_t)
     ws.append([])
 
