@@ -42,6 +42,21 @@ subproxies:
 # true-ups relative to what month M actually paid, so mixing report
 # figures in would double-count every restatement.
 
+# ── Step 1 Capital actually PAID to the Core Council Buffer, per execution
+# month. Source: each MSC post's BA capital-allocations section (20% of the
+# cycle month's net revenue, split evenly Core Council / Fortification,
+# riding the single CC Buffer transfer). The compute layer books only
+# cc_gross − cc_step1_paid (genesis / expense repayments) as a cost.
+# A settlement month missing an entry books the FULL CC transfer as cost
+# and surfaces a warning — back-fill when the MSC post lands.
+cc_step1_paid:
+  '2026-02': 5845338.00   # MSC#4: Nov 3,444,400 + Dec 2,400,938 (t/27617/4). On-chain CC 6,632,421 → 787,083 genesis/repayment (open question B-series)
+  '2026-03': 7354155.00   # MSC#5 4,808,248 (Jan net 24,041,243 × 20%, t/27709/3) + MSC#6 2,545,907 (Feb net 12,729,537 × 20%, t/27778/2); both PURE Step-1
+  '2026-04': 678176.00    # MSC#7: Mar net 3,390,879 × 20% (t/27844/2); pure Step-1
+  '2026-05': 3144308.00   # MSC#8: Apr net 15,721,541 × 20% (t/27888/2); pure Step-1
+  '2026-06': 2946125.00   # MSC#9: May net 14,730,625 × 20% (t/27962/2); pure Step-1
+  '2026-07': 2742939.00   # MSC#10: Jun net 13,714,694 × 20% (t/28038/2); on-chain 3,378,069 = this + 635,130 Grove genesis-capital expense repayment (t/28038/3)
+
 # ── Other buffer-basis outflow destinations.
 demand_side_buffer:      '0x5e2fEc3a3C4E63A422e45C1BB83EdB3a5aD0543B'
 core_council_multisig:   '0x210CFcF53d1f9648C1c4dcaEE677f0Cb06914364'
@@ -71,17 +86,19 @@ core_council_multisig:   '0x210CFcF53d1f9648C1c4dcaEE677f0Cb06914364'
 settlement_blocks:
   # Identification re-verified on-chain 2026-08-05 (dart × ilk-rate mints and
   # subproxy sends tie to the MSC forum posts' paid figures to the dollar):
-  #   * block 24369632 (2026-02-02) is the GENESIS CAPITALIZATION, not MSC#5 —
-  #     its amounts (spark mint 25,547,255 / subproxy 7,071,339, skybase $10M
-  #     seed, CC 6,632,421) match no MSC post. Excluded: capital, not revenue.
+  #   * MSC#4 (Nov+Dec 2025 cycles, forum t/27617) executed 2026-02-02 block
+  #     24369632 — spark mint 25,547,255 / subproxy 7,071,339 and grove mint
+  #     14,311,822 / subproxy 0 equal the post exactly. Skybase's $10M seed
+  #     rode the same block (one_off below).
   #   * MSC#5 (Jan cycle) executed 2026-03-02 block 24570218 — mints
   #     8,079,210 / 6,205,320 / 2,095,775 and subproxies 1,387,824 / 6,090 /
   #     71,342 all equal the MSC#5 post exactly.
   #   * MSC#6 (Feb cycle) executed 2026-03-30 block 24772796 (same block as
-  #     Keel's $10M seeding) — mints 7,746,811 / 6,346,829 / 1,948,422 equal
-  #     the MSC#6 post exactly. March therefore carries TWO settlements.
+  #     the Keel and Osero/PRYSM $10M seedings) — mints 7,746,811 /
+  #     6,346,829 / 1,948,422 equal the MSC#6 post exactly. March therefore
+  #     carries TWO settlements.
   '2026-01': null                     # no MSC settlement executed in Jan 2026
-  '2026-02': null                     # only the genesis capitalization (block 24369632) — capital, excluded
+  '2026-02': 24369632                 # MSC#4 (Nov+Dec 2025 cycles), executed 2026-02-02 14:00 UTC
   '2026-03': [24570218, 24772796]     # MSC#5 (Jan cycle, Mar 2) + MSC#6 (Feb cycle, Mar 30)
   '2026-04': 24971851   # MSC#7  (Mar cycle),  executed 2026-04-27 14:02 UTC
   '2026-05': 25072324   # MSC#8  (Apr cycle),  executed 2026-05-11 14:01 UTC
@@ -126,9 +143,10 @@ grove_tge_penalty:
 # audit.
 #
 # Confirmed events:
-#   * Skybase's $10M seed rode the GENESIS CAPITALIZATION block (2026-02-02
-#     block 24369632), which is excluded from the series entirely
-#     (settlement_blocks['2026-02'] = null) — so it needs no carve-out here.
+#   * 2026-02 skybase = 10,000,000 — Skybase seeding riding IN the MSC#4
+#     settlement block (2026-02-02 block 24369632). Skybase earned $0 in
+#     the covered period (no debt yet), so the entire mint is initial
+#     capital.
 #   * 2026-03 keel = 10,000,000 — Keel seeding riding IN the MSC#6
 #     settlement block (2026-03-30 block 24772796). Keel earned $0 in
 #     Feb (no debt), so the entire mint is initial capital.
@@ -137,6 +155,8 @@ grove_tge_penalty:
 #     allocation was 2026-07, so the entire mint is initial capital).
 one_off_transfers:
   # Keyed by EXECUTION month (like settlement_blocks).
+  '2026-02':
+    skybase: 10000000.00
   '2026-03':
     keel: 10000000.00
     osero: 10000000.00

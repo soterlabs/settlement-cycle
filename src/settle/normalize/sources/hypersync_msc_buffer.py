@@ -7,11 +7,11 @@ Buffer Multisig transfer) fire in one block. **Month M's cycle is always
 settled in month M+1** — the specific day varies across cycles (early to
 late in M+1) but the M+1 rule holds, and a calendar month can carry MORE
 THAN ONE settlement (March 2026 carried both MSC#5 on Mar 2 and MSC#6 on
-Mar 30). Capital events (the 2026-02-02 genesis capitalization, prime
-seedings) can also look settlement-shaped on-chain but are NOT MSC
-settlements. To avoid confusing them, each report month is anchored to
-its canonical settlement block(s) in ``config/sky_total.yaml →
-settlement_blocks`` (int, list of ints, or null for a month with no
+Mar 30; February 2026 carried MSC#4, the Nov+Dec-2025 catch-up). Prime
+capital seedings ride settlement blocks too (Skybase in MSC#4, Keel and
+Osero/PRYSM in MSC#6) — see ``one_off_transfers``. Each report month is
+anchored to its canonical settlement block(s) in ``config/sky_total.yaml
+→ settlement_blocks`` (int, list of ints, or null for a month with no
 settlement).
 
 An auto-detect fallback exists (scan M+1 for USDS
@@ -127,6 +127,10 @@ def load_config(path: Path | None = None) -> dict[str, Any]:
         "grove_tge_penalty": {
             k: (None if v is None else Decimal(str(v)))
             for k, v in (cfg.get("grove_tge_penalty") or {}).items()
+        },
+        "cc_step1_paid": {
+            k: (None if v is None else Decimal(str(v)))
+            for k, v in (cfg.get("cc_step1_paid") or {}).items()
         },
         "one_off_transfers": {
             month: {prime: Decimal(str(amt)) for prime, amt in (byprime or {}).items()}

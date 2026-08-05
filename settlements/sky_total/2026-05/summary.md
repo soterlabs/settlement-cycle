@@ -1,6 +1,6 @@
 # SKY_TOTAL — 2026-05
 
-Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3). Extracted from the MSC settlement block **25072324** (2026-05-11 14:01 UTC) — the single atomic settlement transaction executed in this month (execution-month bucketing, aligned with Block Analitica's P&L from 2026-08-05: month M carries cycle M−1's settlement). MSC net = Σ debt minted to buffer per prime − Σ sent to prime subproxies − sent to Demand-side Buffer − sent to Core Council (genesis portion) − Grove TGE penalty. The Core Council on-chain mint is GROSS; the 20% Step 1 Capital distribution is carved out algebraically from Sky Net Revenue.
+Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3). Extracted from the MSC settlement block **25072324** (2026-05-11 14:01 UTC) — the single atomic settlement transaction executed in this month (execution-month bucketing, aligned with Block Analitica's P&L from 2026-08-05: month M carries cycle M−1's settlement). MSC net = Σ debt minted to buffer per prime − Σ sent to prime subproxies − sent to Core Council (genesis portion) − Grove TGE penalty. The Demand-side Buffer transfer is paid inside the settlement tx but classified under the non-MSC leg as an Operating expense, mirroring Block Analitica's P&L. The Core Council on-chain mint is GROSS; the Step 1 Capital slice (20% of the cycle month's net revenue, PAID figure from the MSC post) is added back and only the genesis/repayment remainder is a cost.
 
 ## MSC leg (buffer basis)
 
@@ -19,12 +19,11 @@ Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3).
 | Sent to prime subproxy | skybase | -201,469.00 |
 | Sent to prime subproxy | osero | -0.00 |
 | Sent to prime subproxy | **subtotal (raw)** | **-2,073,698.00** |
-| Sent to Demand-side Buffer |  | -0.00 |
 | Sent to Core Council | on-chain gross | -3,144,308.00 |
-| Sent to Core Council | of which: Step 1 Capital (20% × SNR, add-back) | +2,730,446.30 |
-| Sent to Core Council | of which: **genesis repayment (net cost)** | **-413,861.70** |
+| Sent to Core Council | of which: Step 1 Capital (paid, per MSC post; add-back) | +3,144,308.00 |
+| Sent to Core Council | of which: **genesis repayment (net cost)** | **-0.00** |
 | Grove TGE penalty (excluded from Sky revenue) | unset | -0.00 |
-| **MSC net (buffer basis)** | | **18,046,946.30** |
+| **MSC net (buffer basis)** | | **18,460,808.00** |
 
 ## Non-MSC leg
 
@@ -32,14 +31,15 @@ Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3).
 |---|---:|
 | non-MSC income | 15,022,235.50 |
 | non-MSC expense | -19,416,950.31 |
+| Demand-side Buffer transfer (Operating, per BA classification) | -0.00 |
 | **non-MSC net** | **-4,394,714.81** |
 
 ## Sky Net Revenue
 
 | Field | USDS |
 |---|---:|
-| MSC net (buffer basis) | 18,046,946.30 |
+| MSC net (buffer basis) | 18,460,808.00 |
 | non-MSC net | -4,394,714.81 |
-| **Sky Net Revenue** | **13,652,231.48** |
+| **Sky Net Revenue** | **14,066,093.19** |
 
 > ⚠ grove_tge_penalty: no override for 2026-05 in config/sky_total.yaml — booked $0. The methodology doc's §3 line was 1,396,260 for 2026-06; back-fill earlier months from the corresponding MSC forum posts.
