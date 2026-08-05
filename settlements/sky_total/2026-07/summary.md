@@ -6,12 +6,12 @@ Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3).
 
 | Section | Line | USDS |
 |---|---|---:|
-| Debt minted to buffer | spark | 16,190,100.91 |
+| Debt minted to buffer | spark | 16,923,682.00 |
 | Debt minted to buffer | grove | 12,342,158.00 |
 | Debt minted to buffer | obex | 3,450,783.00 |
 | Debt minted to buffer | grove_pau | 0.00 |
 | Debt minted to buffer | osero | 0.00 |
-| Debt minted to buffer | **subtotal** | **31,983,041.91** |
+| Debt minted to buffer | **subtotal** | **32,716,623.00** |
 | Sent to prime subproxy | spark | -9,746,443.00 |
 | Sent to prime subproxy | grove | -2,328,332.00 |
 | Sent to prime subproxy | obex | -1,519,539.00 |
@@ -21,10 +21,10 @@ Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3).
 | Sent to prime subproxy | **subtotal (raw)** | **-13,875,840.00** |
 | Sent to Demand-side Buffer |  | -34,902.00 |
 | Sent to Core Council | on-chain gross | -3,378,069.00 |
-| Sent to Core Council | of which: Step 1 Capital (20% × SNR, add-back) | +2,429,419.68 |
-| Sent to Core Council | of which: **genesis repayment (net cost)** | **-948,649.32** |
+| Sent to Core Council | of which: Step 1 Capital (20% × SNR, add-back) | +2,612,814.95 |
+| Sent to Core Council | of which: **genesis repayment (net cost)** | **-765,254.05** |
 | Grove TGE penalty (excluded from Sky revenue) | config:2026-07 | -1,396,260.00 |
-| **MSC net (buffer basis)** | | **15,727,390.60** |
+| **MSC net (buffer basis)** | | **16,644,366.95** |
 
 ## Non-MSC leg
 
@@ -38,6 +38,6 @@ Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3).
 
 | Field | USDS |
 |---|---:|
-| MSC net (buffer basis) | 15,727,390.60 |
+| MSC net (buffer basis) | 16,644,366.95 |
 | non-MSC net | -3,580,292.19 |
-| **Sky Net Revenue** | **12,147,098.40** |
+| **Sky Net Revenue** | **13,064,074.76** |

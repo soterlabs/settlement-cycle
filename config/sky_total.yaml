@@ -34,32 +34,13 @@ subproxies:
   skybase: '0x08978E3700859E476201c1D7438B3427e3C81140'
   osero:   '0x24fdcd3bFA5C2553e05B2f9AD0365EBC296278D3'   # PRYSM_SUBPROXY (added 2026-08-04; Grove's Diamond PAU shares Grove's existing subproxy)
 
-# ── Accrual basis (2026-07 onward) ──────────────────────────────────────
-# From July 2026 this repo computes BOTH sides of the MSC ledger (per-prime
-# revenue and Sky revenue), so sky_total no longer waits for the M+1 MSC
-# settlement tx. Months >= accrual_from are built from the repo's own
-# settlement artifacts (settlements/<prime>/<month>/provenance.json):
-#
-#   MSC net (accrual) = Σ sky_revenue − Σ agent_rate − Σ distribution_rewards
-#                       − Σ chronicle_points − grove_tge_penalty[month]
-#   Sky Net Revenue   = MSC net + non_msc_net
-#
-# Sky's payments to primes are exactly agent_rate + distribution_rewards;
-# venue revenue is prime income from third parties, not a Sky expense.
-# Like the buffer basis, the figure is PRE Core-Council split. Buffer basis
-# (settlement_blocks above) remains authoritative for 2026-01…2026-06.
-# accrual_from: DISABLED 2026-08-05 — superseded by the execution-month
-# bucketing above (BA-aligned), per the MSC operator. The accrual
-# machinery (compute/sky_total_accrual.py, accrual_primes below) is
-# retained; re-enable by uncommenting if the basis ever switches back.
-# accrual_from: '2026-07'
-accrual_primes:          # every prime whose artifacts feed the accrual MSC net
-  - spark
-  - grove
-  - obex
-  - keel
-  - skybase
-  - osero
+# ── Basis note (2026-08-05, per the MSC operator) ───────────────────────
+# sky_total is PAID basis only: every month is anchored on the MSC
+# settlement tx that EXECUTED in it (settlement_blocks below) — the
+# amounts actually paid on-chain. A report-based (accrual) series was
+# prototyped for 2026-07 and removed: month M+1's settlement carries
+# true-ups relative to what month M actually paid, so mixing report
+# figures in would double-count every restatement.
 
 # ── Other buffer-basis outflow destinations.
 demand_side_buffer:      '0x5e2fEc3a3C4E63A422e45C1BB83EdB3a5aD0543B'
@@ -88,9 +69,20 @@ core_council_multisig:   '0x210CFcF53d1f9648C1c4dcaEE677f0Cb06914364'
 # two-different-cycles artifact (see comparison.pdf). '2026-01' is
 # explicitly null: no settlement executed in January (MSC#5 ran Feb 2).
 settlement_blocks:
-  '2026-01': null       # no MSC settlement executed in Jan 2026
-  '2026-02': 24369632   # MSC#5  (Jan cycle),  executed 2026-02-02 14:00 UTC
-  '2026-03': 24570218   # MSC#6  (Feb cycle),  executed 2026-03-02 14:00 UTC
+  # Identification re-verified on-chain 2026-08-05 (dart × ilk-rate mints and
+  # subproxy sends tie to the MSC forum posts' paid figures to the dollar):
+  #   * block 24369632 (2026-02-02) is the GENESIS CAPITALIZATION, not MSC#5 —
+  #     its amounts (spark mint 25,547,255 / subproxy 7,071,339, skybase $10M
+  #     seed, CC 6,632,421) match no MSC post. Excluded: capital, not revenue.
+  #   * MSC#5 (Jan cycle) executed 2026-03-02 block 24570218 — mints
+  #     8,079,210 / 6,205,320 / 2,095,775 and subproxies 1,387,824 / 6,090 /
+  #     71,342 all equal the MSC#5 post exactly.
+  #   * MSC#6 (Feb cycle) executed 2026-03-30 block 24772796 (same block as
+  #     Keel's $10M seeding) — mints 7,746,811 / 6,346,829 / 1,948,422 equal
+  #     the MSC#6 post exactly. March therefore carries TWO settlements.
+  '2026-01': null                     # no MSC settlement executed in Jan 2026
+  '2026-02': null                     # only the genesis capitalization (block 24369632) — capital, excluded
+  '2026-03': [24570218, 24772796]     # MSC#5 (Jan cycle, Mar 2) + MSC#6 (Feb cycle, Mar 30)
   '2026-04': 24971851   # MSC#7  (Mar cycle),  executed 2026-04-27 14:02 UTC
   '2026-05': 25072324   # MSC#8  (Apr cycle),  executed 2026-05-11 14:01 UTC
   '2026-06': 25373623   # MSC#9  (May cycle),  executed 2026-06-22 14:04 UTC
@@ -134,20 +126,17 @@ grove_tge_penalty:
 # audit.
 #
 # Confirmed events:
-#   * 2026-01 skybase = 10,000,000 — Skybase seeding riding IN the MSC#5
-#     settlement block (2026-02-02 block 24369632). Skybase earned $0 in
-#     Jan (no debt yet), so the entire mint is initial capital.
-#
-# Keel's $10M seeding on 2026-03-30 (block 24772796) is NOT indexed here
-# because that block is a mid-cycle capital event, not a monthly MSC
-# settlement (MSC#7 is 2026-04-27). Our extraction only reads
-# `settlement_blocks`, so the Keel event doesn't get picked up as a
-# subproxy send in any month's report — and therefore doesn't need an
-# offsetting one_off. If we later want to reflect the Keel funding in
-# March's Sky-total, that's a separate attribution decision (out of
-# scope for the doc §3 buffer-basis methodology).
+#   * Skybase's $10M seed rode the GENESIS CAPITALIZATION block (2026-02-02
+#     block 24369632), which is excluded from the series entirely
+#     (settlement_blocks['2026-02'] = null) — so it needs no carve-out here.
+#   * 2026-03 keel = 10,000,000 — Keel seeding riding IN the MSC#6
+#     settlement block (2026-03-30 block 24772796). Keel earned $0 in
+#     Feb (no debt), so the entire mint is initial capital.
+#   * 2026-03 osero = 10,000,000 — Osero (PRYSM) subproxy seeding in the
+#     same MSC#6 block (osero start_date is 2026-03-30; its first
+#     allocation was 2026-07, so the entire mint is initial capital).
 one_off_transfers:
-  # Keyed by EXECUTION month (like settlement_blocks): the skybase seed
-  # rode the Jan-cycle settlement MSC#5, executed 2026-02-02.
-  '2026-02':
-    skybase: 10000000.00
+  # Keyed by EXECUTION month (like settlement_blocks).
+  '2026-03':
+    keel: 10000000.00
+    osero: 10000000.00

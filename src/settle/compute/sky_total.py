@@ -88,7 +88,7 @@ def _month_bounds(month: Month) -> tuple[date, date]:
 @dataclass
 class SkyTotalMonthly:
     month: str
-    settlement_block: int
+    settlement_block: int          # latest settlement block of the month (0 = none)
     settlement_ts: int
     # Buffer-basis MSC components (USDS).
     mint_per_prime: dict[str, Decimal]              # spark/grove/obex only
@@ -101,6 +101,10 @@ class SkyTotalMonthly:
     # Non-MSC inputs (pulled from settlements/non_msc/<month>/provenance.json).
     non_msc_income: Decimal
     non_msc_expense: Decimal
+    # Every settlement executed in the month (ascending; empty = none).
+    # More than one entry when a month carried multiple settlements
+    # (2026-03: MSC#5 executed Mar 2 + MSC#6 executed Mar 30).
+    settlement_blocks: list[int] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
     @property
@@ -247,6 +251,7 @@ def compute_sky_total_monthly(
 
     settlement_block = 0
     settlement_ts = 0
+    settlement_blocks: list[int] = []
     mints: dict[str, Decimal] = {p: Decimal(0) for p in _MINT_PRIMES}
     subs: dict[str, Decimal] = {p: Decimal(0) for p in _ALL_PRIMES}
     dsb = cc = Decimal(0)
@@ -256,6 +261,8 @@ def compute_sky_total_monthly(
         stream = row["stream"]
         if stream == "settlement_block":
             settlement_block = int(row["amount"])
+            if settlement_block:
+                settlement_blocks.append(settlement_block)
             continue
         if stream == "settlement_ts":
             settlement_ts = int(row["amount"])
@@ -351,6 +358,7 @@ def compute_sky_total_monthly(
         month=label,
         settlement_block=settlement_block,
         settlement_ts=settlement_ts,
+        settlement_blocks=sorted(settlement_blocks),
         mint_per_prime=mints,
         subproxy_raw_per_prime=subs,
         one_off_per_prime=one_off_per_prime,
@@ -404,6 +412,15 @@ def render_summary(r: SkyTotalMonthly) -> str:
             "that EXECUTED in it — the prior month's cycle), so the MSC leg "
             "is zero. MSC net = Σ "
         )
+    elif len(r.settlement_blocks) > 1:
+        blocks_txt = ", ".join(f"**{b}**" for b in r.settlement_blocks)
+        anchor_txt = (
+            f"Extracted from the {len(r.settlement_blocks)} MSC settlement "
+            f"blocks {blocks_txt} — every settlement transaction executed in "
+            f"this calendar month, components summed (execution-month "
+            f"bucketing, aligned with Block Analitica's P&L from "
+            f"2026-08-05). MSC net = Σ "
+        )
     else:
         settlement_dt = datetime.fromtimestamp(r.settlement_ts, tz=timezone.utc)
         anchor_txt = (
@@ -449,7 +466,11 @@ def render_summary(r: SkyTotalMonthly) -> str:
     L.append(f"| Sent to prime subproxy | **subtotal (raw)** | **-{_usds(r.total_subproxy_raw)}** |")
     L.append(f"| Sent to Demand-side Buffer |  | -{_usds(r.dsb)} |")
     L.append(f"| Sent to Core Council | on-chain gross | -{_usds(r.cc_gross)} |")
-    L.append(f"| Sent to Core Council | of which: Step 1 Capital (20% × SNR, add-back) | +{_usds(r.cc_step1_capital)} |")
+    step1_txt = (
+        f"+{_usds(r.cc_step1_capital)}" if r.cc_step1_capital >= 0
+        else _usds(r.cc_step1_capital)  # negative SNR → negative carve; no '+-'
+    )
+    L.append(f"| Sent to Core Council | of which: Step 1 Capital (20% × SNR, add-back) | {step1_txt} |")
     # Guard against the `--<value>` double-minus that appears when
     # cc_genesis_repayment goes negative (the 20% rule doesn't hold for the
     # cycle — a warning is also surfaced below).
@@ -495,6 +516,7 @@ def write_sky_total(r: SkyTotalMonthly, out_dir: Path) -> dict[str, Path]:
         "id": "sky_total",
         "month": r.month,
         "settlement_block": r.settlement_block,
+        "settlement_blocks": r.settlement_blocks,
         "settlement_ts": r.settlement_ts,
         "results": {
             "mint_per_prime": {k: str(v) for k, v in r.mint_per_prime.items()},
