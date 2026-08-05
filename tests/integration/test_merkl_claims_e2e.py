@@ -1,4 +1,5 @@
-"""End-to-end test for the Merkl Claimed+Mint JOIN SQL.
+"""End-to-end test for the two-leg Merkl claims SQL (Pattern A wrapper
+JOIN + Pattern B direct-aToken payout).
 
 The unit tests for ``_atoken_external_revenue_usd`` stub ``execute_query``,
 so they cover dispatcher routing + parameter wiring but do NOT exercise
@@ -8,13 +9,23 @@ the SQL itself against Dune. The first iteration of
 test failed; this integration test guards against silent regressions of
 that kind.
 
-Pins the SQL's behaviour against the two on-chain Merkl claim txs known
-to have credited Grove's Ethereum ALM in 2026:
+Pins the SQL's behaviour against the on-chain Merkl claim txs known to
+have credited Grove's Ethereum ALM in 2026:
 
-  * Feb 6  (tx 0x8a81d6dd…704a) → E1 ≈ $821K + E3 ≈ $2.96M
-  * Apr 24 (tx 0xd374d598…e3e7) → E1 ≈ $979K + E3 ≈ $1.41M
+  * Feb 6  (tx 0x8a81d6dd…704a) → E1 ≈ $821K + E3 ≈ $2.96M   (Pattern A)
+  * Apr 24 (tx 0xd374d598…e3e7) → E1 ≈ $979K + E3 ≈ $1.41M   (Pattern A)
+  * Jul 13 (tx 0x0af33386…e492) → E1 ≈ $1.43M                 (Pattern B)
+  * Jul 21 (tx 0xf960709c…ec9b) → E1 ≈ $42.6K                 (Pattern B)
 
-Total $6,175,678.65 ± $1 (allow rounding on Decimal conversion).
+Total $7,643,860.09 ± $1 (allow rounding on Decimal conversion).
+
+The July rows pin **Pattern B** (direct-aToken payout — ``Claimed.token``
+IS the aToken, amount taken from the receipt Transfer Distributor → ALM).
+The first shipped version of the SQL only handled Pattern A and silently
+returned $0 for these claims, understating Grove's Jul 2026 E1 revenue by
+$1,468,181.44. The July E3 row pins $0: no aEthRLUSD claims fired in July,
+and any cross-venue leakage (a direct E1 payout bleeding into E3's
+Pattern-A candidate set, or vice versa) would surface here as a non-zero.
 
 Live test, gated behind ``@pytest.mark.live`` AND ``DUNE_API_KEY``.
 Default ``pytest`` runs skip it. Run explicitly:
@@ -48,6 +59,11 @@ _EXPECTED: dict[tuple[str, str], Decimal] = {
     ("2026-02", "E3"): Decimal("2963561.64"),
     ("2026-04", "E1"): Decimal("978913.67"),
     ("2026-04", "E3"): Decimal("1411897.31"),
+    # Pattern B (direct-aToken payout): 1,425,596.0044 (Jul 13) +
+    # 42,585.4312 (Jul 21), receipt-verified via the aToken Transfer legs.
+    ("2026-07", "E1"): Decimal("1468181.44"),
+    # No aEthRLUSD claims in July — non-zero here means cross-venue leakage.
+    ("2026-07", "E3"): Decimal("0"),
 }
 _TOLERANCE = Decimal("1")
 
@@ -78,6 +94,8 @@ def test_merkl_claims_e2e_matches_onchain_amounts():
                            pin_blocks={Chain.ETHEREUM: 24_558_867})),
         ("2026-04", Period(start=date(2026, 4, 1), end=date(2026, 4, 30),
                            pin_blocks={Chain.ETHEREUM: 25_000_000})),
+        ("2026-07", Period(start=date(2026, 7, 1), end=date(2026, 7, 31),
+                           pin_blocks={Chain.ETHEREUM: 25_655_000})),
     ]
 
     print()

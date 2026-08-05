@@ -19,7 +19,7 @@ Period: 2026-07-01 → 2026-07-31 (31 days)
 
 | Field | USDS |
 |---|---:|
-| **supply-side revenue** | **73,880.24** |
+| **supply-side revenue** | **1,542,061.67** |
 
 ### Sky side
 
@@ -33,7 +33,7 @@ Period: 2026-07-01 → 2026-07-31 (31 days)
 
 | Venue | Label | value_som | value_eom | period_inflow | actual_rev | revenue | sd_revenue | sd_share | spread_reimb |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| E1 | Aave Horizon RWA RLUSD (aToken) | $171,742,374.63 | $0.01 | -$171,860,336.42 | $117,961.80 | $117,961.80 | $0.00 | 0% | $0.00 |
+| E1 | Aave Horizon RWA RLUSD (aToken) | $171,742,374.63 | $0.01 | -$171,860,336.42 | $117,961.80 | $1,586,143.24 | $0.00 | 0% | $0.00 |
 | E2 | Aave Horizon RWA USDC (aToken) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E3 | Aave Ethereum RLUSD (aToken) | $0.37 | $0.37 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E4 | Grove x Steakhouse USDC (Morpho 4626) | $1,000,397.09 | $1,003,527.32 | $0.00 | $3,130.22 | $3,130.22 | $0.00 | 0% | $0.00 |
