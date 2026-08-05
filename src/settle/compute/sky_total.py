@@ -511,7 +511,10 @@ def render_summary(r: SkyTotalMonthly) -> str:
     # (BA dashboard). Only the items this pipeline tracks; BA additionally
     # deducts buybacks ("Revenue Allocation"), the Aligned Delegates
     # Buffer, and GAR.
-    if (r.cc_gross or r.total_one_off).quantize(Decimal("0.01")) != 0:
+    # NB: explicit != 0 on both operands — `(a or b).quantize(...)` would
+    # short-circuit on a truthy-but-sub-cent cc_gross and hide the section
+    # even when seedings are in the millions.
+    if r.cc_gross != 0 or r.total_one_off != 0:
         L.append("## Below the line (toward \"remitted to Sky reserves\")")
         L.append("")
         L.append("| Field | USDS |")
@@ -558,6 +561,7 @@ def write_sky_total(r: SkyTotalMonthly, out_dir: Path) -> dict[str, Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
     prov = {
         "id": "sky_total",
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "month": r.month,
         "settlement_block": r.settlement_block,
         "settlement_blocks": r.settlement_blocks,

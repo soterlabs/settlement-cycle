@@ -3902,41 +3902,15 @@ def compute_monthly_pnl(
         )
 
     # Governance Accessibility Rewards (Skybase only today) — Demand-Side
-    # component: ``GarConfig.share`` (1%) × the month's consolidated Sky
-    # Net Revenue, read from the sky_total artifact (whose SNR definition
-    # matches BA's "Net revenue" line). Fails loud when the artifact is
-    # missing — run scripts/build_sky_total_2026.py BEFORE the GAR prime's
-    # monthly report. Gated on ``from_month``: earlier cycles' GAR was
-    # settled externally (MSC#9 backlog true-up + monthly lines) and must
-    # not be restated into the reports.
+    # component: ``GarConfig.share`` (1%) × the PRIOR month's consolidated
+    # Sky Net Revenue (settlements/sky_total). See compute/gar.py for the
+    # basis rules (prior-month base → no same-month circularity; N/A when
+    # the base predates the sky_total series; fail-loud otherwise).
     gar = Decimal("0")
-    _month_label = f"{month.year}-{month.month:02d}"
-    if (
-        not sky_only
-        and prime.gar is not None
-        and _month_label >= prime.gar.from_month
-    ):
-        import json as _json
-        from pathlib import Path as _Path
-        _snr_prov = (
-            _Path(__file__).resolve().parents[3]
-            / "settlements" / "sky_total" / _month_label / "provenance.json"
-        )
-        if not _snr_prov.exists():
-            raise FileNotFoundError(
-                f"gar: {prime.id} {_month_label} needs "
-                f"settlements/sky_total/{_month_label}/provenance.json — "
-                "run scripts/build_sky_total_2026.py first "
-                "(GAR = share × Sky Net Revenue)"
-            )
-        _snr = Decimal(
-            _json.loads(_snr_prov.read_text())["results"]["sky_net_revenue"]
-        )
-        gar = prime.gar.share * _snr
-        _log.info(
-            "gar: %s earns $%.2f (= %s × SNR $%.2f) for %s",
-            prime.id, float(gar), prime.gar.share, float(_snr), _month_label,
-        )
+    gar_basis = ""
+    if not sky_only:
+        from .gar import compute_gar
+        gar, gar_basis = compute_gar(prime, month)
     # Annotate each venue's VenueRevenue with (a) its lending-idle tw_avg —
     # post-hoc report scripts deduct it from avg_value for CoF allocation
     # since the idle portion is already subtracted from utilized — and
@@ -4091,6 +4065,7 @@ def compute_monthly_pnl(
         prime_agent_revenue=prime_rev,
         chronicle_points=chronicle_points,
         gar=gar,
+        gar_basis=gar_basis,
         monthly_pnl=prime_rev + agent_rate + chronicle_points + gar - sky_rev,
         venue_breakdown=breakdown,
         pin_blocks_som=pin_blocks_som,

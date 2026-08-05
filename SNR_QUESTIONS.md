@@ -111,11 +111,14 @@ Operating expense on both sides.
   `cc_step1_paid['2026-08']` (20% of July net from the MSC#11 post) and
   any genesis/repayment lines when the post lands. Our July restatements
   (MSC11_CARRYOVER.md) will appear inside BA's August per-prime items.
-- **GAR classification watch (from MSC#11):** the new Skybase GAR
-  primitive (1% × SNR, in `settlements/skybase` from the 2026-07 cycle)
-  will be paid inside Skybase's subproxy send at MSC#11 and therefore
-  reduce our August SNR — but on BA's dashboard GAR is a below-the-line
-  Step-1 allocation (0.5% Integrators + 0.5% Prime Agents). Expect an
-  August delta of ~the GAR amount unless BA books the payment above the
-  line; may need the GAR slice of the subproxy send carved below the
-  line like the seedings.
+- **GAR (operator decision 2026-08-06):** Skybase's GAR = 1% × the PRIOR
+  month's SNR, applied to every report month from 2026-01 (Jan renders
+  N/A — its base, 2025-12, predates the series). The payment rides the
+  subproxy send and INTENTIONALLY reduces the receiving month's SNR
+  (GAR is demand-side revenue like agent rate / DR); no same-month
+  circularity because the base SNR is final at report time.
+  **[BA question]** BA's dashboard historically shows GAR as a
+  below-the-line Step-1 allocation (0.5% Integrators + 0.5% Prime
+  Agents) — confirm how the GAR portion of Skybase's settlement payment
+  is classified in "Net revenue" from MSC#11 on; if below the line, a
+  ~GAR-sized monthly delta will appear vs our series.

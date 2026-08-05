@@ -197,6 +197,10 @@ class MonthlyPnL:
     # ``gar:`` block (Skybase today); $0 and no summary row for everyone
     # else.
     gar: Decimal = Decimal("0")
+    # Audit string from compute/gar.py: "" (no program / pre-from_month),
+    # "n/a: …" (base month predates the sky_total series — the summary
+    # renders the row as N/A), or the share × base-SNR derivation.
+    gar_basis: str = ""
 
     # Legacy: kept for provenance round-trip. Always 0 under the SDE-config
     # model (Sky takes actual SDE revenue; no floor → no shortfall).

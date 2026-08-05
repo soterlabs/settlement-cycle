@@ -8,6 +8,7 @@ from pathlib import Path
 
 import yaml
 
+from .period import Month as _Month
 from .pricing import PricingCategory
 from .primes import (
     Address,
@@ -408,7 +409,10 @@ def load_prime(config_path: Path) -> Prime:
         gar=(
             GarConfig(
                 share=Decimal(str(cfg["gar"]["share"])),
-                from_month=str(cfg["gar"]["from"]),
+                # Parse + re-render so a malformed / unpadded value
+                # ('2026-7', a full date, …) can't silently break the
+                # lexicographic month gate in compute/gar.py.
+                from_month=str(_Month.parse(str(cfg["gar"]["from"]))),
             )
             if cfg.get("gar") is not None
             else None
