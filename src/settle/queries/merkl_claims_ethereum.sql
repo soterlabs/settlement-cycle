@@ -25,17 +25,41 @@
 -- which pays out via an ordinary aToken Transfer — ``Claimed.token`` IS
 -- the aToken and NO wrapper-redeem ``Mint`` fires (the only Mint events in
 -- the tx are Aave interest accruals with ``caller = Distributor``, so the
--- Pattern-A JOIN matches zero rows). Detected by ``Claimed.topic2 =
--- atoken`` directly. Verified on txs 0x0af33386…be492 (Jul 13 2026,
--- 1,425,596.00 aHorRwaRLUSD) and 0xf960709c…6ec9b (Jul 21 2026,
--- 42,585.43 aHorRwaRLUSD) — before Pattern B existed here, those two
--- claims were bucketed as principal inflow and Grove's Jul 2026 E1
--- revenue was understated by $1,468,181.44.
+-- Pattern-A JOIN matches zero rows). Verified on txs 0x0af33386…be492
+-- (Jul 13 2026, 1,425,596.0044 aHorRwaRLUSD) and 0xf960709c…6ec9b (Jul 21
+-- 2026, 42,585.4312 aHorRwaRLUSD) — before Pattern B existed here, those
+-- two claims were bucketed as principal inflow and Grove's Jul 2026 E1
+-- revenue was understated by $1,468,181.4356.
 --
--- The two legs are provably disjoint: Pattern A explicitly excludes
--- ``Claimed.topic2 = atoken`` rows (they belong to Pattern B), so a claim
--- can never be counted twice even if a pathological tx contained both a
--- direct payout and an aToken Mint with ``caller = atoken``.
+-- Pattern B amounts come from the RECEIPT — the aToken ``Transfer``
+-- Distributor → ALM — gated on a same-tx ``Claimed`` marker, NOT from
+-- ``Claimed.amount``. Two invariants this preserves from the Pattern-A
+-- JOIN:
+--   1. Receipt verification: a claim routed to an operator / alternate
+--      recipient (Merkl supports both) books $0 here — we never credit
+--      revenue the ALM did not receive.
+--   2. Denomination: ``Claimed.amount`` is denominated in the *reward
+--      token's* units (for wrapper campaigns that means wrapper shares,
+--      not aToken units). The Transfer amount is in the venue aToken's
+--      own units by construction, so a mis-registered campaign can't
+--      misprice the venue.
+--
+-- Leg disjointness. The legs split on ``Claimed.token``:
+--   * ``direct_claims`` counts receipt Transfers only for claims where
+--     ``Claimed.token = {{atoken}}``;
+--   * ``wrapper_claims`` excludes those rows (``reward_token <> atoken``),
+--     so a same-venue claim can never hit both legs.
+-- NOTE the wrapper Transfer path is NOT a usable discriminator: wrapper
+-- campaigns ALSO transfer the reward (wrapper) token Distributor → ALM
+-- before the in-tx redeem, so "reward token moved Distributor → ALM"
+-- holds for BOTH patterns (a same-tx exclusion keyed on it zeroes
+-- legitimate Feb/Apr claims — verified empirically). Cross-venue: a
+-- direct claim of aToken Y enters venue X's Pattern-A candidates only if
+-- Y itself appears as ``Mint.caller`` on X — i.e. the aToken Y contract
+-- called ``pool.supply`` — which Aave V3 aTokens never do; the invariant
+-- is pinned empirically by the Jul-2026 E3 = $0 row in
+-- ``tests/integration/test_merkl_claims_e2e.py`` (July's direct E1
+-- claims must not leak into E3).
 --
 -- Event signatures
 -- ----------------
@@ -45,6 +69,9 @@
 --   Mint(address indexed caller, address indexed onBehalfOf, uint256 value,
 --        uint256 balanceIncrease, uint256 index)              (Aave V3 aToken)
 --     topic0 = 0x458f5fa412d0f69b08dd84872b0215675cc67bc1d5b6fd93300a1c3878b86196
+--
+--   Transfer(address indexed from, address indexed to, uint256 value)
+--     topic0 = 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef
 --
 -- Direct-sweep flows (Anchorage interest, BUIDL yield mints) don't fire a
 -- Merkl Claimed event and are routed through the generic Transfer-based
@@ -56,42 +83,61 @@
 --
 -- Parameters
 -- ----------
---   {{distributor}}        varbinary  — Merkl Distributor contract address.
---   {{user_padded_hex}}    text       — 64-char hex (NO ``0x`` prefix) of the
---                                       32-byte left-padded ALM address. Used
---                                       for indexed-topic comparison.
---   {{atoken}}             varbinary  — The Aave aToken contract address for
---                                       the venue. Joins on Mint event's
---                                       ``contract_address`` (Pattern A).
---   {{atoken_padded_hex}}  text       — 64-char hex (NO ``0x`` prefix) of the
---                                       32-byte left-padded aToken address.
---                                       Matched against ``Claimed.topic2``
---                                       (Pattern B / Pattern A exclusion).
---   {{start_date}}         text       — 'YYYY-MM-DD' (inclusive).
---   {{end_date}}           text       — 'YYYY-MM-DD' (inclusive).
---   {{pin_block}}          number     — upper-bound block_number (also the cache key).
+--   {{distributor}}             varbinary  — Merkl Distributor contract address.
+--   {{distributor_padded_hex}}  text       — 64-char hex (NO ``0x`` prefix) of
+--                                            the 32-byte left-padded Distributor
+--                                            address, for indexed-topic
+--                                            comparison (Transfer ``from``).
+--   {{user_padded_hex}}         text       — 64-char hex (NO ``0x`` prefix) of
+--                                            the 32-byte left-padded ALM address.
+--   {{atoken}}                  varbinary  — The Aave aToken contract address
+--                                            for the venue.
+--   {{atoken_padded_hex}}       text       — 64-char hex (NO ``0x`` prefix) of
+--                                            the 32-byte left-padded aToken
+--                                            address, matched against
+--                                            ``Claimed.topic2``.
+--   {{start_date}}              text       — 'YYYY-MM-DD' (inclusive).
+--   {{end_date}}                text       — 'YYYY-MM-DD' (inclusive).
+--   {{pin_block}}               number     — upper-bound block_number (also the
+--                                            cache key).
 --
 -- Output: single row, single column ``total_amount_raw`` — the sum of
--- matching ``Claimed.amount`` values as uint256 in the aToken's raw
--- decimals. Python converts to USD via ``venue.token.decimals`` (assumes
--- par-stable underlying — same constraint as the Transfer-based helper,
--- enforced upstream in ``_atoken_external_revenue_usd``).
+-- matching amounts as uint256 in the aToken's raw decimals. Python
+-- converts to USD via ``venue.token.decimals`` (assumes par-stable
+-- underlying — same constraint as the Transfer-based helper, enforced
+-- upstream in ``_atoken_external_revenue_usd``).
 
-WITH wrapper_claims AS (
-  -- Pattern A: Claimed.token = staticAToken wrapper; attribute via the
-  -- same-tx aToken Mint with caller = wrapper, onBehalfOf = ALM.
-  SELECT varbinary_to_uint256(c.data) AS amount_raw
+WITH claims AS (
+  -- All Claimed(user = ALM) events from the Distributor in the window.
+  -- Single base filter shared by both legs — a date / pin edit here can't
+  -- desynchronise them.
+  SELECT
+    c.tx_hash,
+    c.topic2                     AS reward_token,       -- 32-byte padded Claimed.token
+    varbinary_to_uint256(c.data) AS claimed_amount_raw
   FROM ethereum.logs c
-  INNER JOIN ethereum.logs m
-    ON c.tx_hash = m.tx_hash
-   AND m.topic1  = c.topic2
   WHERE c.contract_address = {{distributor}}
     AND c.topic0 = 0xf7a40077ff7a04c7e61f6f26fb13774259ddf1b6bce9ecf26a8276cdd3992683
     AND c.topic1 = from_hex('{{user_padded_hex}}')
-    AND c.topic2 <> from_hex('{{atoken_padded_hex}}')   -- direct payouts → Pattern B
     AND c.block_date >= DATE '{{start_date}}'
     AND c.block_date <= DATE '{{end_date}}'
     AND c.block_number <= {{pin_block}}
+),
+
+wrapper_claims AS (
+  -- Pattern A: Claimed.token = staticAToken wrapper; attribute via the
+  -- same-tx aToken Mint with caller = wrapper, onBehalfOf = ALM. The
+  -- Claimed amount is authoritative here (verified to the cent against
+  -- Grove's Feb/Apr claim amounts).
+  SELECT cl.claimed_amount_raw AS amount_raw
+  FROM claims cl
+  INNER JOIN ethereum.logs m
+    ON m.tx_hash = cl.tx_hash
+   AND m.topic1  = cl.reward_token
+  -- A claim OF this venue's aToken is Pattern B by definition (even one
+  -- whose receipt was routed away from the ALM and books $0 there) —
+  -- never a wrapper-redeem candidate.
+  WHERE cl.reward_token <> from_hex('{{atoken_padded_hex}}')
     AND m.contract_address = {{atoken}}
     AND m.topic0 = 0x458f5fa412d0f69b08dd84872b0215675cc67bc1d5b6fd93300a1c3878b86196
     AND m.topic2 = from_hex('{{user_padded_hex}}')
@@ -100,18 +146,23 @@ WITH wrapper_claims AS (
 ),
 
 direct_claims AS (
-  -- Pattern B: Claimed.token IS the aToken — the Distributor transfers its
-  -- own aToken balance to the ALM; no wrapper Mint fires. No JOIN needed:
-  -- ``Claimed.topic2 = atoken`` already attributes the claim to this venue.
-  SELECT varbinary_to_uint256(c.data) AS amount_raw
-  FROM ethereum.logs c
-  WHERE c.contract_address = {{distributor}}
-    AND c.topic0 = 0xf7a40077ff7a04c7e61f6f26fb13774259ddf1b6bce9ecf26a8276cdd3992683
-    AND c.topic1 = from_hex('{{user_padded_hex}}')
-    AND c.topic2 = from_hex('{{atoken_padded_hex}}')
-    AND c.block_date >= DATE '{{start_date}}'
-    AND c.block_date <= DATE '{{end_date}}'
-    AND c.block_number <= {{pin_block}}
+  -- Pattern B: sum the RECEIPT Transfers (this venue's aToken, Distributor
+  -- → ALM) in txs carrying a Claimed marker for this aToken. See header
+  -- for why the Transfer, not Claimed.amount, is the value source.
+  SELECT varbinary_to_uint256(t.data) AS amount_raw
+  FROM ethereum.logs t
+  WHERE t.contract_address = {{atoken}}
+    AND t.topic0 = 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef
+    AND t.topic1 = from_hex('{{distributor_padded_hex}}')
+    AND t.topic2 = from_hex('{{user_padded_hex}}')
+    AND t.block_date >= DATE '{{start_date}}'
+    AND t.block_date <= DATE '{{end_date}}'
+    AND t.block_number <= {{pin_block}}
+    AND EXISTS (
+      SELECT 1 FROM claims cl
+      WHERE cl.tx_hash = t.tx_hash
+        AND cl.reward_token = from_hex('{{atoken_padded_hex}}')
+    )
 )
 
 SELECT COALESCE(SUM(amount_raw), 0) AS total_amount_raw

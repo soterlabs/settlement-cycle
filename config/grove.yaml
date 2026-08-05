@@ -956,9 +956,10 @@ external_alm_sources:
     # closed-form yield formula treats the drops as principal injection
     # and the off-pool yield is uncredited (PRD §17.13 / QUESTIONS.md G3).
     #
-    # Jul 2026 update: two more claims — Jul 13 (1,425,596.00 aHorRwaRLUSD,
-    # tx 0x0af33386…be492) and Jul 21 (42,585.43, tx 0xf960709c…6ec9b,
-    # hours before Grove zeroed the E1 Horizon position). The Jul campaign
+    # Jul 2026 update: two more claims, totalling 1,468,181.4356
+    # aHorRwaRLUSD — Jul 13 (1,425,596.0044, tx 0x0af33386…be492) and
+    # Jul 21 (42,585.4312, tx 0xf960709c…6ec9b, hours before Grove zeroed
+    # the E1 Horizon position). The Jul campaign
     # (funded from 0xcc6dede7…ee000 starting Apr 23) pays the aToken
     # DIRECTLY from the distributor — ``Claimed.token`` is the aToken, no
     # staticAToken wrapper redeem — a second payout mechanic handled as

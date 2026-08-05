@@ -757,7 +757,10 @@ def _merkl_claims_revenue_usd(
       aToken itself, ``Claimed.token = venue.token``, and the distributor
       pays via plain aToken Transfer (first seen Jul 13 / Jul 21 2026,
       txs 0x0af33386… / 0xf960709c…). No wrapper Mint fires, so Pattern A
-      matches zero rows; matched instead on ``Claimed.topic2 = aToken``.
+      matches zero rows. The value source is the RECEIPT Transfer
+      (distributor → ALM) gated on the same-tx Claimed marker, not
+      ``Claimed.amount`` — this verifies the funds actually reached the
+      ALM and keeps the amount in the venue aToken's own units.
 
     See ``queries/merkl_claims_ethereum.sql`` for the full SQL and the
     disjointness argument (no claim can hit both legs).
@@ -796,6 +799,7 @@ def _merkl_claims_revenue_usd(
     # ``Claimed.token`` IS the aToken (Pattern B — Jul 2026 campaign).
     user_padded_hex = "00" * 12 + (venue.holder_override or prime.alm[venue.chain]).value.hex()
     atoken_padded_hex = "00" * 12 + venue.token.address.value.hex()
+    distributor_padded_hex = "00" * 12 + distributor.value.hex()
 
     queries_dir = _Path(__file__).resolve().parent.parent / "queries"
     # Wrap the Dune call so a 402 / network blip degrades the venue to $0
@@ -810,12 +814,13 @@ def _merkl_claims_revenue_usd(
         df = execute_query(
             queries_dir / sql_name,
             params={
-                "distributor":       distributor.value,
-                "user_padded_hex":   user_padded_hex,
-                "atoken":            venue.token.address.value,
-                "atoken_padded_hex": atoken_padded_hex,
-                "start_date":        period.start.isoformat(),
-                "end_date":          period.end.isoformat(),
+                "distributor":            distributor.value,
+                "distributor_padded_hex": distributor_padded_hex,
+                "user_padded_hex":        user_padded_hex,
+                "atoken":                 venue.token.address.value,
+                "atoken_padded_hex":      atoken_padded_hex,
+                "start_date":             period.start.isoformat(),
+                "end_date":               period.end.isoformat(),
             },
             pin_block=period.pin_blocks[venue.chain],
         )

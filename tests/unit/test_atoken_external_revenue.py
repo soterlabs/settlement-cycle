@@ -180,11 +180,16 @@ def test_merkl_sender_uses_claimed_event_sql(monkeypatch):
 
     out = _atoken_external_revenue_usd(prime, venue, _period())
     assert [name for name, _ in hits] == ["merkl_claims_ethereum.sql"]
-    # JOIN-attribution param contract: ``atoken`` carries the venue's
-    # aToken address (raw 20-byte value), no padded-hex token field.
+    # Param contract for the two-leg SQL: ``atoken`` (raw 20-byte value)
+    # drives the Pattern-A Mint JOIN + Pattern-B receipt-Transfer filter;
+    # ``atoken_padded_hex`` matches Claimed.topic2 (Pattern-B marker and
+    # Pattern-A exclusion); ``distributor_padded_hex`` matches the receipt
+    # Transfer's ``from`` topic. A silently-dropped padded param would
+    # regress direct-aToken payouts to $0 — the Jul 2026 E1 $1.47M miss.
     _, params = hits[0]
     assert params["atoken"] == venue.token.address.value
-    assert "token_padded_hex" not in params
+    assert params["atoken_padded_hex"] == "00" * 12 + venue.token.address.value.hex()
+    assert params["distributor_padded_hex"] == "00" * 12 + _merkl_eth().value.hex()
     assert out == Decimal("1.5")
 
 
