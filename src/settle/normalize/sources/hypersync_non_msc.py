@@ -41,7 +41,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import date, datetime, time, timezone
-from decimal import Decimal
+from decimal import Decimal, localcontext
 from typing import Any
 
 import pandas as pd
@@ -171,6 +171,7 @@ class HyperSyncNonMscSource:
         rows += self._liquidations(start_ts, end_ts, fb, tb, pin_block)
         rows += self._surplus_and_rwa(start_ts, end_ts, fb, tb)
         rows += self._vest(start_ts, end_ts, fb, tb)
+        rows += self._bad_debt_writeoffs(start_ts, end_ts, fb, tb)
         rows += self._savings(start_ts, end_ts)
         return pd.DataFrame(rows, columns=["stream", "label", "event_date", "amount"])
 
@@ -326,6 +327,74 @@ class HyperSyncNonMscSource:
             if start_ts <= r.block_time < end_ts:
                 total += Decimal(_word(r.data, 0)) / _WAD               # amt = data word[0]
         return [_row("expense:vest", "vest (gross suckable)", total)]
+
+    # -- bad-debt write-offs (vat.grab on legacy ilks) ----------------------
+
+    def _bad_debt_writeoffs(
+        self, start_ts: int, end_ts: int, fb: int, tb: int
+    ) -> list[dict[str, Any]]:
+        """Protocol bad debt realized against the surplus buffer via
+        ``vat.grab`` with negative ``dart`` on NON-allocator ilks — legacy
+        vault offboardings (first case: RWA001-A's ``cull()`` on 2026-07-20,
+        block 25574490, writing off 3,019,173.48 DAI; forum t/27706).
+
+        Expense = |dart| × ilk rate at the grab block (normalised Art →
+        actual DAI/USDS). Exclusions:
+          * ``_EXCLUDE_ILK_PREFIXES`` ilks — allocator grabs are MSC
+            settlement mechanics, not non-MSC P&L;
+          * grabs in transactions that also emit a ``Dog.Bark`` — those are
+            Liquidations-2.0 kicks whose debt is already accounted by the
+            ``liq_owe − liq_due`` netting; counting the grab too would
+            double-book every barked auction.
+        """
+        from ...domain.primes import Address as _Addr, Chain as _ChainEnum
+        from ...extract.rpc import ilk_rate as _ilk_rate
+
+        bark_txs = {
+            r.transaction_hash
+            for r in hypersync.query_logs(
+                _CHAIN, [{"address": [_DOG], "topics": [[_BARK]]}], fb, tb,
+                log_fields=["block_number", "log_index", "transaction_hash",
+                            "topic0", "data"],
+                post=self._post,
+            ).rows
+            if r.transaction_hash is not None
+            and start_ts <= r.block_time < end_ts
+        }
+        out: list[dict[str, Any]] = []
+        for r in hypersync.query_logs(
+            _CHAIN, [{"address": [_VAT], "topics": [[_GRAB]]}], fb, tb,
+            log_fields=["block_number", "log_index", "transaction_hash",
+                        "topic0", "topic1", "data"],
+            post=self._post,
+        ).rows:
+            if not (start_ts <= r.block_time < end_ts):
+                continue
+            if r.transaction_hash in bark_txs:
+                continue
+            if r.topic1 is None:
+                continue   # malformed log — grab always carries the ilk topic
+            ilk_bytes = bytes.fromhex(r.topic1[2:])
+            ilk_name = ilk_bytes.rstrip(b"\x00").decode(errors="replace")
+            if ilk_name.startswith(_EXCLUDE_ILK_PREFIXES):
+                continue
+            dart = _decode_dart(r.data)
+            if dart >= 0:
+                continue
+            rate_ray = _ilk_rate(
+                _ChainEnum.ETHEREUM, _Addr.from_str(_VAT), ilk_bytes,
+                r.block_number,
+            )
+            with localcontext() as ctx:
+                ctx.prec = 60
+                amt = Decimal(-dart) * Decimal(rate_ray) / Decimal(10) ** 45
+            d = datetime.fromtimestamp(r.block_time, tz=timezone.utc).date()
+            out.append(_row(
+                "expense:bad_debt",
+                f"{ilk_name} write-off (vat.grab)",
+                amt, event_date=d,
+            ))
+        return out
 
     # -- expense: savings interest (ACCRUAL, chi-boundary interpolation) ------
 

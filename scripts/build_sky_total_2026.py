@@ -55,7 +55,7 @@ def main() -> int:
         return 1
 
     source = HyperSyncMscBufferSource()
-    print("SKY_TOTAL 2026 — Sky Net Revenue (buffer basis through 2026-06; accrual basis from 2026-07)")
+    print("SKY_TOTAL 2026 — Sky Net Revenue, buffer basis, EXECUTION-MONTH bucketing (BA-aligned)")
     print("=" * 100)
     print(f"{'Month':<10} {'MSC net':>16} {'non-MSC net':>16} {'Sky Net Revenue':>18}")
     print("-" * 100)

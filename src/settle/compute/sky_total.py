@@ -68,8 +68,12 @@ _log = logging.getLogger(__name__)
 # through here.
 _STEP1_CAPITAL_RATIO = Decimal("0.20")
 
-_MINT_PRIMES = ("spark", "grove", "obex")
-_ALL_PRIMES = ("spark", "grove", "obex", "keel", "skybase")
+# Extended 2026-08-05 with the Diamond PAU compartments + Osero, matching
+# config/sky_total.yaml's allocator_ilks / subproxies keys (the review-fix
+# that registered the new ilks left these compute-side allowlists behind —
+# any mismatch fails loud here).
+_MINT_PRIMES = ("spark", "grove", "obex", "grove_pau", "osero")
+_ALL_PRIMES = ("spark", "grove", "obex", "keel", "skybase", "osero")
 
 
 def _month_bounds(month: Month) -> tuple[date, date]:
@@ -143,12 +147,23 @@ class SkyTotalMonthly:
             - self.grove_tge_penalty
             + self.non_msc_net
         )
+        if self.settlement_block == 0:
+            # No settlement executed this month (execution-month bucketing,
+            # 2026-01): nothing was distributed to CC, so there is no 20%
+            # Step-1 component inside cc_gross to back out — the /0.80
+            # gross-up would fabricate revenue (+25% of the non-MSC net).
+            # This month's 20% is carved at the NEXT month's settlement.
+            return num
         return num / (Decimal(1) - _STEP1_CAPITAL_RATIO)
 
     @property
     def cc_step1_capital(self) -> Decimal:
         """20% of Sky Net Revenue distributed to CC + Fortification. NOT a
-        cost — Sky is distributing its own already-earned revenue."""
+        cost — Sky is distributing its own already-earned revenue. Zero in
+        a no-settlement month (nothing was distributed; the carve happens
+        at the next month's settlement)."""
+        if self.settlement_block == 0:
+            return Decimal(0)
         return _STEP1_CAPITAL_RATIO * self.sky_net_revenue
 
     @property
@@ -382,12 +397,26 @@ def render_summary(r: SkyTotalMonthly) -> str:
     L: list[str] = []
     L.append(f"# SKY_TOTAL — {r.month}")
     L.append("")
-    settlement_dt = datetime.fromtimestamp(r.settlement_ts, tz=timezone.utc)
+    if r.settlement_block == 0:
+        anchor_txt = (
+            "No MSC settlement transaction executed in this calendar month "
+            "(execution-month bucketing: each month carries the settlement "
+            "that EXECUTED in it — the prior month's cycle), so the MSC leg "
+            "is zero. MSC net = Σ "
+        )
+    else:
+        settlement_dt = datetime.fromtimestamp(r.settlement_ts, tz=timezone.utc)
+        anchor_txt = (
+            f"Extracted from the MSC settlement block "
+            f"**{r.settlement_block}** ({settlement_dt:%Y-%m-%d %H:%M UTC}) — "
+            f"the single atomic settlement transaction executed in this "
+            f"month (execution-month bucketing, aligned with Block "
+            f"Analitica's P&L from 2026-08-05: month M carries cycle M−1's "
+            f"settlement). MSC net = Σ "
+        )
     L.append(
         f"Consolidated Sky Net Revenue, buffer basis (methodology handoff "
-        f"2026-07-16 §3). Extracted from the MSC settlement block "
-        f"**{r.settlement_block}** ({settlement_dt:%Y-%m-%d %H:%M UTC}) — the "
-        f"single atomic settlement transaction for this cycle. MSC net = Σ "
+        f"2026-07-16 §3). {anchor_txt}"
         f"debt minted to buffer per prime − Σ sent to prime subproxies − sent "
         f"to Demand-side Buffer − sent to Core Council (genesis portion) − "
         f"Grove TGE penalty. The Core Council on-chain mint is GROSS; the "

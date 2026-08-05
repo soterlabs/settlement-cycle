@@ -109,7 +109,11 @@ def load_config(path: Path | None = None) -> dict[str, Any]:
         "demand_side_buffer": cfg["demand_side_buffer"].lower(),
         "core_council_multisig": cfg["core_council_multisig"].lower(),
         "settlement_blocks": {
-            k: int(v) for k, v in (cfg.get("settlement_blocks") or {}).items()
+            # ``null`` = "no MSC settlement executed in this month" (only
+            # 2026-01 under the execution-month bucketing) — the source
+            # emits a zero MSC leg instead of auto-detecting.
+            k: (None if v is None else int(v))
+            for k, v in (cfg.get("settlement_blocks") or {}).items()
         },
         "grove_tge_penalty": {
             k: (None if v is None else Decimal(str(v)))
@@ -168,7 +172,16 @@ class HyperSyncMscBufferSource:
              for freshly-landed cycles before back-filling the config.
         """
         label = f"{month.year}-{month.month:02d}"
-        override = self._cfg.get("settlement_blocks", {}).get(label)
+        blocks_cfg = self._cfg.get("settlement_blocks", {})
+        override = blocks_cfg.get(label)
+        if label in blocks_cfg and override is None:
+            # Explicit null: no MSC settlement executed in this month
+            # (execution-month bucketing; 2026-01). Zero MSC leg.
+            return pd.DataFrame(
+                [_row("settlement_block", "0", 0),
+                 _row("settlement_ts", "0", 0)],
+                columns=["stream", "label", "amount"],
+            )
         if override is not None:
             if override > pin_block:
                 raise SettlementNotFoundError(

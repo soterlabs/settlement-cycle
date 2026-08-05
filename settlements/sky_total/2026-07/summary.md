@@ -1,37 +1,43 @@
 # SKY_TOTAL — 2026-07
 
-Consolidated Sky Net Revenue, **accrual basis** (from 2026-07 this repo computes both sides of the MSC ledger, so the report is derived from the per-prime settlement artifacts instead of the M+1 MSC settlement transaction — MSC operator decision 2026-08-04; 2026-01…2026-06 remain on the buffer basis). MSC net = Σ sky_revenue − Σ agent_rate − Σ distribution_rewards − Σ chronicle_points − Grove TGE penalty. Sky's payments to primes are exactly agent_rate + distribution_rewards + chronicle_points (Chronicle Points are Sky-funded); venue revenue is prime income from third parties, not a Sky expense. The figure is PRE Core-Council split.
+Consolidated Sky Net Revenue, buffer basis (methodology handoff 2026-07-16 §3). Extracted from the MSC settlement block **25574490** (2026-07-20 14:21 UTC) — the single atomic settlement transaction executed in this month (execution-month bucketing, aligned with Block Analitica's P&L from 2026-08-05: month M carries cycle M−1's settlement). MSC net = Σ debt minted to buffer per prime − Σ sent to prime subproxies − sent to Demand-side Buffer − sent to Core Council (genesis portion) − Grove TGE penalty. The Core Council on-chain mint is GROSS; the 20% Step 1 Capital distribution is carved out algebraically from Sky Net Revenue.
 
-## MSC leg (accrual basis)
+## MSC leg (buffer basis)
 
-| Prime | sky_revenue | − agent_rate | − distribution_rewards | − chronicle_points | net to Sky |
-|---|---:|---:|---:|---:|---:|
-| spark | 5,750,694.26 | -131,173.46 | -943,409.92 | 0.00 | 4,676,110.88 |
-| grove | 8,003,550.33 | -72,023.77 | -28,898.24 | -13,102.08 | 7,889,526.24 |
-| obex | 1,761,245.42 | -71,996.70 | 0.00 | 0.00 | 1,689,248.72 |
-| keel | 0.00 | -32,003.53 | -4,227.11 | 0.00 | -36,230.64 |
-| skybase | 0.00 | -37,629.25 | -95,303.38 | 0.00 | -132,932.63 |
-| osero | 496.99 | -12,094.56 | -54.87 | 0.00 | -11,652.44 |
-| **subtotal** | | | | | **14,074,070.14** |
-| Grove TGE penalty (unset) | | | | | 0.00 |
-| **MSC net (accrual basis)** | | | | | **14,074,070.14** |
+| Section | Line | USDS |
+|---|---|---:|
+| Debt minted to buffer | spark | 16,190,100.91 |
+| Debt minted to buffer | grove | 12,342,158.00 |
+| Debt minted to buffer | obex | 3,450,783.00 |
+| Debt minted to buffer | grove_pau | 0.00 |
+| Debt minted to buffer | osero | 0.00 |
+| Debt minted to buffer | **subtotal** | **31,983,041.91** |
+| Sent to prime subproxy | spark | -9,746,443.00 |
+| Sent to prime subproxy | grove | -2,328,332.00 |
+| Sent to prime subproxy | obex | -1,519,539.00 |
+| Sent to prime subproxy | keel | -77,284.00 |
+| Sent to prime subproxy | skybase | -204,242.00 |
+| Sent to prime subproxy | osero | -0.00 |
+| Sent to prime subproxy | **subtotal (raw)** | **-13,875,840.00** |
+| Sent to Demand-side Buffer |  | -34,902.00 |
+| Sent to Core Council | on-chain gross | -3,378,069.00 |
+| Sent to Core Council | of which: Step 1 Capital (20% × SNR, add-back) | +2,429,419.68 |
+| Sent to Core Council | of which: **genesis repayment (net cost)** | **-948,649.32** |
+| Grove TGE penalty (excluded from Sky revenue) | config:2026-07 | -1,396,260.00 |
+| **MSC net (buffer basis)** | | **15,727,390.60** |
 
 ## Non-MSC leg
 
 | Line | USDS |
 |---|---:|
 | non-MSC income | 15,638,940.23 |
-| non-MSC expense | -16,200,058.95 |
-| **non-MSC net** | **-561,118.72** |
+| non-MSC expense | -19,219,232.42 |
+| **non-MSC net** | **-3,580,292.19** |
 
 ## Sky Net Revenue
 
 | Field | USDS |
 |---|---:|
-| MSC net (accrual basis) | 14,074,070.14 |
-| non-MSC net | -561,118.72 |
-| **Sky Net Revenue** | **13,512,951.42** |
-
-## Warnings
-
-- ⚠ grove_tge_penalty: no override for 2026-07 in config/sky_total.yaml — treated as $0. Back-fill from the MSC forum post if a penalty applies to this month.
+| MSC net (buffer basis) | 15,727,390.60 |
+| non-MSC net | -3,580,292.19 |
+| **Sky Net Revenue** | **12,147,098.40** |
