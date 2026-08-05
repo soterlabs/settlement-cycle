@@ -643,16 +643,20 @@ def _atoken_external_revenue_usd(prime: Prime, venue: Venue, period) -> Decimal:
     **Sender dispatch.** Each entry in ``prime.external_alm_sources[venue.chain]``
     is routed by data source:
 
-      * **Merkl distributors** (per ``_MERKL_DISTRIBUTORS``) → JOIN the
-        distributor's ``Claimed(user, token, amount)`` event with the
-        aToken's ``Mint(caller, onBehalfOf, value, …)`` event in the same
-        tx, where ``caller = Claimed.token`` (the staticAToken wrapper)
-        and ``onBehalfOf = user = ALM``. The aToken venue is identified by
+      * **Merkl distributors** (per ``_MERKL_DISTRIBUTORS``) → read the
+        distributor's ``Claimed(user, token, amount)`` events for the ALM,
+        matched to the venue by either of Merkl's two payout mechanics:
+        (A) *wrapper redeem* — ``Claimed.token`` is the staticAToken / LM
+        wrapper, which unwinds in-tx to an aToken ``Mint(caller,
+        onBehalfOf, …)`` with ``caller = Claimed.token`` and
+        ``onBehalfOf = user = ALM``; the venue is identified by
         ``Mint.contract_address``, so no Merkl-internal addresses ever
-        touch the YAML — only ``venue.token.address``. Robust against
-        Merkl's wrapper routing where ``Claimed.token`` is the staticAToken
-        (not the aToken) and the aToken Transfer's ``from`` is the Aave
-        pool proxy (used for every Aave operation, so unsafe to allowlist).
+        touch the YAML — only ``venue.token.address``. (B) *direct
+        payout* — ``Claimed.token`` IS the aToken and the distributor
+        transfers its own aToken balance (Jul 2026 campaign; no wrapper
+        Mint fires, so pattern A alone silently returns zero — the
+        $1.47M Jul 2026 Grove E1 miss). Both are handled in
+        ``merkl_claims_<chain>.sql``; the legs are mutually exclusive.
       * **Generic senders** (everything else) → sum aToken
         ``Transfer(from=sender, to=ALM)`` events. Suitable for direct
         sweeps (Anchorage interest, BUIDL yield mints) where the sender
@@ -736,20 +740,27 @@ def _merkl_claims_revenue_usd(
     prime: Prime, venue: Venue, period, distributor,
 ) -> Decimal:
     """Read the Merkl distributor's ``Claimed(user, token, amount)`` events
-    for ``user = ALM`` in the period, attributed to ``venue.token`` via a
-    JOIN to the Aave V3 aToken ``Mint`` event in the same tx.
+    for ``user = ALM`` in the period, attributed to ``venue.token`` by one
+    of two mutually-exclusive patterns:
 
-    Why the JOIN: Merkl's ``Claimed.token`` is the *Merkl reward token*
-    (Aave's staticAToken / LM wrapper), NOT the underlying aToken the ALM
-    actually receives. Filtering on the aToken address against Claimed
-    returns zero rows. The aToken's own ``Mint(caller, onBehalfOf, …)``
-    event fires in the same tx with ``caller = staticAToken = Claimed.token``
-    and ``onBehalfOf = ALM``, so the JOIN
-    ``(c.tx_hash, c.topic2) == (m.tx_hash, m.topic1) AND
-    m.contract_address = venue.token`` deterministically routes each Claimed
-    amount to its venue — even when a single tx claims rewards for multiple
-    aTokens, each Claimed pairs with exactly one Mint. See
-    ``queries/merkl_claims_ethereum.sql`` for the full SQL.
+    * **Pattern A (wrapper redeem)** — Merkl's ``Claimed.token`` is the
+      *Merkl reward token* (Aave's staticAToken / LM wrapper), NOT the
+      underlying aToken the ALM actually receives; the wrapper redeems
+      in-tx via Aave ``mint``. The aToken's ``Mint(caller, onBehalfOf, …)``
+      event fires with ``caller = staticAToken = Claimed.token`` and
+      ``onBehalfOf = ALM``, so the JOIN
+      ``(c.tx_hash, c.topic2) == (m.tx_hash, m.topic1) AND
+      m.contract_address = venue.token`` deterministically routes each
+      Claimed amount to its venue — even when a single tx claims rewards
+      for multiple aTokens, each Claimed pairs with exactly one Mint.
+    * **Pattern B (direct payout)** — the campaign is funded with the
+      aToken itself, ``Claimed.token = venue.token``, and the distributor
+      pays via plain aToken Transfer (first seen Jul 13 / Jul 21 2026,
+      txs 0x0af33386… / 0xf960709c…). No wrapper Mint fires, so Pattern A
+      matches zero rows; matched instead on ``Claimed.topic2 = aToken``.
+
+    See ``queries/merkl_claims_ethereum.sql`` for the full SQL and the
+    disjointness argument (no claim can hit both legs).
 
     Returns the sum × 10**-decimals in the underlying's units (= USD for
     par-stable underlyings, which the caller has already validated).
@@ -774,14 +785,17 @@ def _merkl_claims_revenue_usd(
         )
         return _Decimal("0")
 
-    # ``user_padded_hex`` is a 32-byte left-padded address for indexed-topic
-    # comparison (topic1 / topic2 in event logs). Pass as hex without the
-    # ``0x`` prefix; the SQL applies ``from_hex(...)`` to land back at
-    # varbinary. ``atoken`` is the raw venue.token address — the SQL JOINs
-    # against ``ethereum.logs.contract_address`` on the Mint side to attribute
-    # the Claimed amount to this venue without needing the (Merkl-internal)
-    # staticAToken address in config.
+    # ``user_padded_hex`` / ``atoken_padded_hex`` are 32-byte left-padded
+    # addresses for indexed-topic comparison (topic1 / topic2 in event logs).
+    # Pass as hex without the ``0x`` prefix; the SQL applies ``from_hex(...)``
+    # to land back at varbinary. ``atoken`` is the raw venue.token address —
+    # the SQL JOINs against ``ethereum.logs.contract_address`` on the Mint
+    # side (Pattern A) to attribute the Claimed amount to this venue without
+    # needing the (Merkl-internal) staticAToken address in config;
+    # ``atoken_padded_hex`` additionally matches direct-aToken payouts where
+    # ``Claimed.token`` IS the aToken (Pattern B — Jul 2026 campaign).
     user_padded_hex = "00" * 12 + (venue.holder_override or prime.alm[venue.chain]).value.hex()
+    atoken_padded_hex = "00" * 12 + venue.token.address.value.hex()
 
     queries_dir = _Path(__file__).resolve().parent.parent / "queries"
     # Wrap the Dune call so a 402 / network blip degrades the venue to $0
@@ -796,11 +810,12 @@ def _merkl_claims_revenue_usd(
         df = execute_query(
             queries_dir / sql_name,
             params={
-                "distributor":     distributor.value,
-                "user_padded_hex": user_padded_hex,
-                "atoken":          venue.token.address.value,
-                "start_date":      period.start.isoformat(),
-                "end_date":        period.end.isoformat(),
+                "distributor":       distributor.value,
+                "user_padded_hex":   user_padded_hex,
+                "atoken":            venue.token.address.value,
+                "atoken_padded_hex": atoken_padded_hex,
+                "start_date":        period.start.isoformat(),
+                "end_date":          period.end.isoformat(),
             },
             pin_block=period.pin_blocks[venue.chain],
         )
