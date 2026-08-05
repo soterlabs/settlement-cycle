@@ -5,12 +5,14 @@ debt mint via Vat.grab on the three ALLOCATOR ilks, all USDS transfers to
 prime subproxies, the Demand-side Buffer transfer, and the Core Council
 Buffer Multisig transfer) fire in one block. **Month M's cycle is always
 settled in month M+1** — the specific day varies across cycles (early to
-late in M+1) but the M+1 rule holds. Mid-cycle capital events (Keel's $10M
-seeding on 2026-03-30, small CC-only corrections) can also look
-settlement-shaped on-chain but are NOT MSC settlements; they sit outside
-the monthly cycle. To avoid confusing them, each report month is anchored
-to its canonical settlement block in ``config/sky_total.yaml →
-settlement_blocks``.
+late in M+1) but the M+1 rule holds, and a calendar month can carry MORE
+THAN ONE settlement (March 2026 carried both MSC#5 on Mar 2 and MSC#6 on
+Mar 30; February 2026 carried MSC#4, the Nov+Dec-2025 catch-up). Prime
+capital seedings ride settlement blocks too (Skybase in MSC#4, Keel and
+Osero/PRYSM in MSC#6) — see ``one_off_transfers``. Each report month is
+anchored to its canonical settlement block(s) in ``config/sky_total.yaml
+→ settlement_blocks`` (int, list of ints, or null for a month with no
+settlement).
 
 An auto-detect fallback exists (scan M+1 for USDS
 ``Transfer(from=0x0, to=CC_multisig)``) but is gated by the
@@ -20,8 +22,12 @@ a brand-new cycle; back-fill the config anchor immediately after.
 
 Cross-checked on June 2026 (block 25574490 @ 2026-07-20 14:21:59) — every
 transfer amount ties to the methodology doc §3 to the dollar for all seven
-non-mint components; the Spark mint is ~4% shy of the doc's figure (open
-item — see the summary's warning).
+non-mint components. The mint is the GRAB ``dart`` (normalised debt) scaled
+by ``Vat.ilks[ilk].rate`` at the settlement block — the actual USDS minted
+to the buffer, matching the forum posts' "Mint X USDS debt" figure exactly
+(Spark MSC#10: dart 16,190,100.91 × rate 1.0453… = 16,923,682). An earlier
+iteration emitted the raw dart, understating Spark's mint ~4% (its ilk
+carries a stability-fee index > 1; Grove/Obex sit at rate = 1.0).
 
 Emitted stream rows (same ``[stream, label, amount]`` idiom as
 ``HyperSyncNonMscSource``):
@@ -29,9 +35,9 @@ Emitted stream rows (same ``[stream, label, amount]`` idiom as
     stream                label                  amount
     settlement_block      <block number>         <block>          (metadata)
     settlement_ts         <unix ts>              <ts>             (metadata)
-    mint:spark            ALLOCATOR-SPARK-A      Σ grab dart (USDS)
-    mint:grove            ALLOCATOR-BLOOM-A      Σ grab dart (USDS)
-    mint:obex             ALLOCATOR-OBEX-A       Σ grab dart (USDS)
+    mint:spark            ALLOCATOR-SPARK-A      Σ grab dart × ilk rate (USDS minted)
+    mint:grove            ALLOCATOR-BLOOM-A      Σ grab dart × ilk rate (USDS minted)
+    mint:obex             ALLOCATOR-OBEX-A       Σ grab dart × ilk rate (USDS minted)
     subproxy:spark        <subproxy addr>        Σ USDS mint to subproxy
     subproxy:grove        ...                    ...
     subproxy:obex         ...                    ...
@@ -59,7 +65,7 @@ from __future__ import annotations
 import os
 from collections.abc import Callable
 from datetime import date, datetime, time, timezone
-from decimal import Decimal
+from decimal import Decimal, localcontext
 from pathlib import Path
 from typing import Any
 
@@ -109,11 +115,22 @@ def load_config(path: Path | None = None) -> dict[str, Any]:
         "demand_side_buffer": cfg["demand_side_buffer"].lower(),
         "core_council_multisig": cfg["core_council_multisig"].lower(),
         "settlement_blocks": {
-            k: int(v) for k, v in (cfg.get("settlement_blocks") or {}).items()
+            # ``null`` = "no MSC settlement executed in this month" (2026-01,
+            # and 2026-02 whose only event was the genesis capitalization) —
+            # the source emits a zero MSC leg instead of auto-detecting.
+            # A list = multiple settlements executed in the same calendar
+            # month (2026-03: MSC#5 on Mar 2 + MSC#6 on Mar 30); components
+            # are summed across the blocks.
+            k: (None if v is None else [int(b) for b in v] if isinstance(v, list) else [int(v)])
+            for k, v in (cfg.get("settlement_blocks") or {}).items()
         },
         "grove_tge_penalty": {
             k: (None if v is None else Decimal(str(v)))
             for k, v in (cfg.get("grove_tge_penalty") or {}).items()
+        },
+        "cc_step1_paid": {
+            k: (None if v is None else Decimal(str(v)))
+            for k, v in (cfg.get("cc_step1_paid") or {}).items()
         },
         "one_off_transfers": {
             month: {prime: Decimal(str(amt)) for prime, amt in (byprime or {}).items()}
@@ -168,30 +185,44 @@ class HyperSyncMscBufferSource:
              for freshly-landed cycles before back-filling the config.
         """
         label = f"{month.year}-{month.month:02d}"
-        override = self._cfg.get("settlement_blocks", {}).get(label)
+        blocks_cfg = self._cfg.get("settlement_blocks", {})
+        override = blocks_cfg.get(label)
+        if label in blocks_cfg and override is None:
+            # Explicit null: no MSC settlement executed in this month
+            # (execution-month bucketing; 2026-01). Zero MSC leg.
+            return pd.DataFrame(
+                [_row("settlement_block", "0", 0),
+                 _row("settlement_ts", "0", 0)],
+                columns=["stream", "label", "amount"],
+            )
         if override is not None:
-            if override > pin_block:
-                raise SettlementNotFoundError(
-                    f"month {label}: configured settlement_block {override} is "
-                    f"past pin_block {pin_block} — archive not caught up yet"
-                )
-            # Discover the block's timestamp via any log in it (the CC-mint
-            # signature that anchored this block in the first place will
-            # always fire, so it's a reliable source).
+            # Tolerate a bare int (tests / hand-built configs); load_config
+            # normalizes to a list.
+            blocks = [override] if isinstance(override, int) else sorted(override)
+            settlements: list[tuple[int, int]] = []
             cc = self._cfg["core_council_multisig"]
-            rows = hypersync.query_logs(
-                _CHAIN,
-                [{"address": [_USDS], "topics": [
-                    [_TRANSFER], [_addr_topic(_ZERO)], [_addr_topic(cc)]]}],
-                override, override, post=self._post,
-            ).rows
-            if not rows:
-                raise SettlementNotFoundError(
-                    f"month {label}: configured settlement_block {override} "
-                    "does not contain the expected USDS mint(from=0x0, to=CC) "
-                    "signature. Cross-check the block number in config."
-                )
-            settlement_block, settlement_ts = override, rows[0].block_time
+            for blk in blocks:
+                if blk > pin_block:
+                    raise SettlementNotFoundError(
+                        f"month {label}: configured settlement_block {blk} is "
+                        f"past pin_block {pin_block} — archive not caught up yet"
+                    )
+                # Discover the block's timestamp via any log in it (the
+                # CC-mint signature that anchored this block in the first
+                # place will always fire, so it's a reliable source).
+                rows = hypersync.query_logs(
+                    _CHAIN,
+                    [{"address": [_USDS], "topics": [
+                        [_TRANSFER], [_addr_topic(_ZERO)], [_addr_topic(cc)]]}],
+                    blk, blk, post=self._post,
+                ).rows
+                if not rows:
+                    raise SettlementNotFoundError(
+                        f"month {label}: configured settlement_block {blk} "
+                        "does not contain the expected USDS mint(from=0x0, to=CC) "
+                        "signature. Cross-check the block number in config."
+                    )
+                settlements.append((blk, rows[0].block_time))
         elif os.environ.get("SKY_TOTAL_ALLOW_AUTODETECT") == "1":
             # Opt-in escape hatch. Even though month M's MSC settlement is
             # always in M+1, the fallback can still latch onto a
@@ -209,7 +240,7 @@ class HyperSyncMscBufferSource:
                     f"of the following month ({start_ts}) — the settlement "
                     "hasn't happened yet"
                 )
-            settlement_block, settlement_ts = self._find_settlement(fb, tb, start_ts, end_ts)
+            settlements = [self._find_settlement(fb, tb, start_ts, end_ts)]
         else:
             raise SettlementNotFoundError(
                 f"month {label}: no settlement_block in config/sky_total.yaml. "
@@ -221,13 +252,23 @@ class HyperSyncMscBufferSource:
                 "a freshly-landed cycle."
             )
 
-        rows: list[dict[str, Any]] = [
-            _row("settlement_block", str(settlement_block), settlement_block),
-            _row("settlement_ts", str(settlement_ts), settlement_ts),
-        ]
-        rows += self._mints(settlement_block)
-        rows += self._usds_receivers(settlement_block)
-        return pd.DataFrame(rows, columns=["stream", "label", "amount"])
+        # One metadata pair per settlement (ascending); component amounts are
+        # summed across the blocks (a month can carry more than one
+        # settlement — 2026-03 carried MSC#5 and MSC#6).
+        out_rows: list[dict[str, Any]] = []
+        for blk, ts in settlements:
+            out_rows.append(_row("settlement_block", str(blk), blk))
+            out_rows.append(_row("settlement_ts", str(ts), ts))
+        merged: dict[str, dict[str, Any]] = {}
+        for blk, _ in settlements:
+            for r in self._mints(blk) + self._usds_receivers(blk):
+                prev = merged.get(r["stream"])
+                if prev is None:
+                    merged[r["stream"]] = dict(r)
+                else:
+                    prev["amount"] += r["amount"]
+        out_rows += list(merged.values())
+        return pd.DataFrame(out_rows, columns=["stream", "label", "amount"])
 
     # -- settlement-block auto-detect --------------------------------------
 
@@ -239,9 +280,10 @@ class HyperSyncMscBufferSource:
         Signature: USDS Transfer(from=0x0, to=CC_multisig). CC has received a
         mint at every MSC settlement observed on-chain (Feb 2026 → present),
         so this is the reliable detector. If more than one such event lands
-        in the same month M+1, take the LATEST (which corresponds to the
-        current cycle rather than a prior-month catch-up — see MSC#7 in
-        March 2026 for a two-in-one-month example).
+        in the same month M+1, take the LATEST — but beware: March 2026
+        carried TWO real settlements (MSC#5 on Mar 2 + MSC#6 on Mar 30), so
+        auto-detect can only ever anchor one of them. Back-fill the config
+        with the full block list for such months.
         """
         cc = self._cfg["core_council_multisig"]
         rows = hypersync.query_logs(
@@ -264,24 +306,40 @@ class HyperSyncMscBufferSource:
     # -- mints: Σ Vat.grab dart per allocator ilk in the settlement block --
 
     def _mints(self, block: int) -> list[dict]:
-        """Sum of GRAB dart on each allocator ilk in the settlement block.
+        """Actual USDS minted per allocator ilk in the settlement block:
+        Σ GRAB dart × ``Vat.ilks[ilk].rate`` at that block. The dart is
+        normalised debt; the settlement mints ``dart × rate`` USDS to the
+        buffer — the paid amount in the MSC forum posts ("Mint X USDS
+        debt"). Emitting the raw dart understates any ilk whose
+        stability-fee index exceeds 1 (Spark: ~4% by mid-2026).
 
         (FROB isn't used at MSC settlement — the allocator vaults transfer
         debt via GRAB. Verified on 2026-07-20 block 25574490.)
         """
+        from ...domain.primes import Address as _Addr, Chain as _ChainEnum
+        from ...extract.rpc import ilk_rate as _ilk_rate
+
         out: list[dict] = []
         for prime, ilk_bytes32 in self._cfg["allocator_ilks"].items():
-            total_wad = 0
             rows = hypersync.query_logs(
                 _CHAIN,
                 [{"address": [_VAT], "topics": [[_GRAB], [ilk_bytes32]]}],
                 block, block, post=self._post,
             ).rows
-            for r in rows:
-                total_wad += _decode_dart(r.data)
-            out.append(
-                _row(f"mint:{prime}", ilk_bytes32, Decimal(total_wad) / _WAD)
-            )
+            total = Decimal(0)
+            if rows:
+                rate_ray = _ilk_rate(
+                    _ChainEnum.ETHEREUM, _Addr.from_str(_VAT),
+                    bytes.fromhex(ilk_bytes32[2:]), block,
+                )
+                with localcontext() as ctx:
+                    ctx.prec = 60
+                    for r in rows:
+                        total += (
+                            Decimal(_decode_dart(r.data))
+                            * Decimal(rate_ray) / Decimal(10) ** 45
+                        )
+            out.append(_row(f"mint:{prime}", ilk_bytes32, total))
         return out
 
     # -- USDS mints (from=0x0) to subproxies / DSB / CC --------------------

@@ -81,6 +81,12 @@ class NonMscMonthly:
     rwa_jar_void: Decimal = Decimal(0)
     # Vest: gross suckable DssVest payouts (DAI + USDS vest contracts).
     vest_expense: Decimal = Decimal(0)
+    # Bad-debt write-offs: vat.grab with negative dart on legacy (non-
+    # allocator) ilks, |dart| × ilk rate at the grab block — protocol bad
+    # debt realized against the surplus buffer (first case: RWA001-A cull,
+    # 2026-07-20, 3,019,173.48 DAI; forum t/27706). Bark-tx grabs are
+    # excluded upstream (already netted in liq_owe − liq_due).
+    bad_debt_by_ilk: dict[str, Decimal] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
 
     @property
@@ -125,7 +131,12 @@ class NonMscMonthly:
             + self.stusds_expense
             + self.liq_expense
             + self.vest_expense
+            + self.bad_debt_expense
         )
+
+    @property
+    def bad_debt_expense(self) -> Decimal:
+        return sum(self.bad_debt_by_ilk.values(), Decimal(0))
 
     @property
     def net_revenue(self) -> Decimal:
@@ -205,6 +216,7 @@ def compute_non_msc_monthly(
     surplus: list[dict] = []
     susds_gross = dsr = stusds = Decimal(0)
     liq_owe = liq_due = liq_coin = rwa_void = vest = Decimal(0)
+    bad_debt: dict[str, Decimal] = {}
     warnings: list[str] = []
 
     for _, row in df.iterrows():
@@ -234,6 +246,8 @@ def compute_non_msc_monthly(
             liq_coin = amount
         elif stream == "expense:vest":
             vest = amount
+        elif stream == "expense:bad_debt":
+            bad_debt[row["label"]] = bad_debt.get(row["label"], Decimal(0)) + amount
         else:
             raise ValueError(f"non_msc: unknown stream {stream!r} from query")
 
@@ -276,6 +290,7 @@ def compute_non_msc_monthly(
         surplus_returns=surplus,
         rwa_jar_void=rwa_void,
         vest_expense=vest,
+        bad_debt_by_ilk=bad_debt,
         warnings=warnings,
     )
 
@@ -359,6 +374,8 @@ def render_summary(r: NonMscMonthly) -> str:
     L.append(f"| Savings | DSR (legacy pot) | {_usds(r.dsr_expense)} |")
     L.append(f"| Liquidations | keeper incentives (Σ coin, kicks + redos) | {_usds(r.liq_expense)} |")
     L.append(f"| Vest | gross suckable payouts | {_usds(r.vest_expense)} |")
+    for ilk_label, amt in sorted(r.bad_debt_by_ilk.items(), key=lambda kv: -kv[1]):
+        L.append(f"| Write-offs | {ilk_label} — bad debt vs surplus buffer | {_usds(amt)} |")
     L.append(f"| **Total** | | **{_usds(r.total_expense)}** |")
     L.append("")
     L.append("## Net")
@@ -395,6 +412,8 @@ def write_non_msc(r: NonMscMonthly, out_dir: Path) -> dict[str, Path]:
             "liq_due": str(r.liq_due),
             "liq_revenue": str(r.liq_revenue),
             "liq_expense": str(r.liq_expense),
+            "bad_debt_by_ilk": {k: str(v) for k, v in r.bad_debt_by_ilk.items()},
+            "bad_debt_expense": str(r.bad_debt_expense),
             "surplus_returns": [{"date": s["date"], "amount": str(s["amount"])} for s in r.surplus_returns],
             "surplus_return_income": str(r.surplus_return_income),
             "rwa_jar_void": str(r.rwa_jar_void),

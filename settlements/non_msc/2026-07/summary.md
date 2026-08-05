@@ -37,10 +37,11 @@ Sky protocol P&L outside the prime-agent (MSC) perimeter. Methodology (handoff 2
 | Savings | DSR (legacy pot) | 225,039.19 |
 | Liquidations | keeper incentives (Σ coin, kicks + redos) | 0.00 |
 | Vest | gross suckable payouts | 0.00 |
-| **Total** | | **16,200,058.95** |
+| Write-offs | RWA001-A write-off (vat.grab) — bad debt vs surplus buffer | 3,019,173.48 |
+| **Total** | | **19,219,232.42** |
 
 ## Net
 
 | Field | USDS |
 |---|---:|
-| **non-MSC net revenue** | **-561,118.72** |
+| **non-MSC net revenue** | **-3,580,292.19** |

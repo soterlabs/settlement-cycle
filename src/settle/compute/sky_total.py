@@ -11,41 +11,44 @@ details):
                            − Grove token-launch penalty (excluded per forum)
     Sky Net Revenue        = MSC net + non-MSC income − non-MSC expense
 
-The Core Council on-chain mint is GROSS — it bundles the genesis-capital
-repayment (which reduces Sky's revenue) with the Step 1 Capital 20%
-distribution (which is Sky's revenue being distributed, NOT a cost). We
-separate them algebraically: if ``x`` is Sky Net Revenue and ``g`` is the
-CC-genesis component, then
+The Core Council on-chain mint is GROSS — it bundles the Step 1 Capital
+distribution (Sky's revenue being distributed, NOT a cost: 20% of the cycle
+month's net revenue, split evenly Core Council / Fortification per Atlas
+A.2.3.1) with occasional genesis-capital / expense repayments (which DO
+reduce Sky's revenue). Since 2026-08-05 the split uses the PAID Step-1
+figure published in each MSC post's BA capital-allocations section
+(``config/sky_total.yaml → cc_step1_paid``, keyed by execution month):
 
-    x = mint − subproxies − DSB − g − grove_penalty + non_msc_net
-    x = mint − subproxies − DSB − (cc_gross − 0.20·x) − grove_penalty + non_msc_net
-    0.80·x = mint − subproxies − DSB − cc_gross − grove_penalty + non_msc_net
-    x = (mint − subproxies − DSB − cc_gross − grove_penalty + non_msc_net) / 0.80
-    g = cc_gross − 0.20·x
+    step1   = cc_step1_paid[month]                     (paid, from the post)
+    g       = cc_gross − step1                          (genesis / repayments)
+    x (SNR) = mint − subproxies − DSB − g − grove_penalty + non_msc_net
     MSC net = x − non_msc_net
 
-This ties BA's cross-check exactly ("20% of BA's net = Step 1 Capital split to
-Core Council + Fortification = 2,742,939" for June 2026).
+Verified: MSC#5–#9's CC transfers are PURE Step-1 (g = 0); MSC#10 carries
+g = 635,130 (Grove's genesis-capital expense repayment, itemized in the
+post); MSC#4 carries g = 787,083 (open question). An earlier iteration
+derived the split algebraically (x = num/0.80), which fabricated small
+genesis components whenever our recomputed SNR differed from BA's posted
+net revenue.
 
 The Grove TGE penalty is a per-month config override (its on-chain mechanism
 is "still open with BA" — PRD §17.13 B16); the June 2026 value from the doc
 is pinned in ``config/sky_total.yaml``, other months surface a warning until
 back-filled.
 
-**One-off subproxy inflows** (initial capital seeding, e.g. Skybase's $10M in
-MSC#5, Keel's $10M in MSC#7) are read from ``config/sky_total.yaml``.
-On-chain trace (tx 0xe5a95157… / 0xbebdd875…) shows the $10M came from
-``Vat.suck(u=vow, v=<intermediate>, rad=10M×RAD)`` — a direct draw on Sky's
-surplus buffer, NOT from the allocator ilks' GRAB dart. So the seeding
-REDUCES Sky's monthly buffer-basis Net Revenue (it's a real cost, backed by
-new sin on vow — a claim on future revenue to be paid back via ilk folds).
-The formula uses raw subproxy sends (which include the $10M), correctly
-subtracting the seeding from MSC net. The summary renders the one-off as an
-informational sub-row so audit can see what portion of a subproxy line is
-capital-seeding vs recurring revenue distribution. If a policy view wants
-"operational" Sky Net Revenue that excludes capital seeding, add ``one_off``
-back to SNR downstream — but the doc §3 methodology (literal
-"debt minted…minus everything sent back out…minus penalty") subtracts it.
+**One-off subproxy inflows** (initial capital seeding: Skybase's $10M in
+MSC#4, Keel's and Osero/PRYSM's $10M each in MSC#6) are read from
+``config/sky_total.yaml``. On-chain trace (tx 0xe5a95157… / 0xbebdd875…)
+shows the $10M came from ``Vat.suck(u=vow, v=<intermediate>, rad=10M×RAD)``
+— a direct draw on Sky's surplus buffer, NOT from the allocator ilks' GRAB
+dart. **Classification (operator decision 2026-08-05, following BA):
+capital seedings do NOT reduce Sky Net Revenue.** They are balance-sheet
+capital allocations that sit BELOW net revenue, reducing only what is
+ultimately *remitted to Sky reserves* (BA dashboard line) — alongside the
+Step-1 Capital distribution, buybacks, Aligned Delegates, and GAR. The
+formula therefore uses subproxy sends NET of the configured one-offs; the
+summary renders the seeding in a below-the-line section so the
+net-revenue vs remitted-to-reserves distinction stays visible.
 """
 
 from __future__ import annotations
@@ -62,14 +65,12 @@ from ..domain import Month
 
 _log = logging.getLogger(__name__)
 
-# Step 1 Capital ratio — 20% of Sky Net Revenue is distributed to Core Council
-# + Fortification per BA methodology (doc §3 cross-check). If Sky ever changes
-# this ratio, update the config schema to carry it per-month and pass it
-# through here.
-_STEP1_CAPITAL_RATIO = Decimal("0.20")
-
-_MINT_PRIMES = ("spark", "grove", "obex")
-_ALL_PRIMES = ("spark", "grove", "obex", "keel", "skybase")
+# Extended 2026-08-05 with the Diamond PAU compartments + Osero, matching
+# config/sky_total.yaml's allocator_ilks / subproxies keys (the review-fix
+# that registered the new ilks left these compute-side allowlists behind —
+# any mismatch fails loud here).
+_MINT_PRIMES = ("spark", "grove", "obex", "grove_pau", "osero")
+_ALL_PRIMES = ("spark", "grove", "obex", "keel", "skybase", "osero")
 
 
 def _month_bounds(month: Month) -> tuple[date, date]:
@@ -84,7 +85,7 @@ def _month_bounds(month: Month) -> tuple[date, date]:
 @dataclass
 class SkyTotalMonthly:
     month: str
-    settlement_block: int
+    settlement_block: int          # latest settlement block of the month (0 = none)
     settlement_ts: int
     # Buffer-basis MSC components (USDS).
     mint_per_prime: dict[str, Decimal]              # spark/grove/obex only
@@ -97,14 +98,24 @@ class SkyTotalMonthly:
     # Non-MSC inputs (pulled from settlements/non_msc/<month>/provenance.json).
     non_msc_income: Decimal
     non_msc_expense: Decimal
+    # Step 1 Capital actually paid to the CC Buffer this month (from the MSC
+    # post's BA capital-allocations section, via config cc_step1_paid).
+    # $0 when the month has no settlement or the figure isn't back-filled
+    # yet (the latter also fires a warning).
+    cc_step1_paid: Decimal = Decimal(0)
+    # Every settlement executed in the month (ascending; empty = none).
+    # More than one entry when a month carried multiple settlements
+    # (2026-03: MSC#5 executed Mar 2 + MSC#6 executed Mar 30).
+    settlement_blocks: list[int] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
     @property
     def subproxy_adjusted_per_prime(self) -> dict[str, Decimal]:
-        """Display-only: raw settlement-block mint − configured one-off
-        exclusions. Rendered in the summary next to the raw figure so a
-        reader sees the revenue-distribution vs capital-seeding split. Does
-        NOT feed the buffer-basis formula — see the module docstring."""
+        """Raw settlement-block mint − configured one-off exclusions. This
+        IS what feeds the buffer-basis formula (capital seedings sit below
+        net revenue — see the module docstring); the summary renders both
+        figures so a reader sees the revenue-distribution vs
+        capital-seeding split."""
         return {
             p: self.subproxy_raw_per_prime[p] - self.one_off_per_prime.get(p, Decimal(0))
             for p in self.subproxy_raw_per_prime
@@ -128,34 +139,56 @@ class SkyTotalMonthly:
 
     @property
     def non_msc_net(self) -> Decimal:
-        return self.non_msc_income - self.non_msc_expense
+        """Non-MSC net INCLUDING the DSB transfer, which is classified as an
+        Operating expense to mirror Block Analitica's P&L (operator decision
+        2026-08-05) even though it is paid inside the settlement tx. SNR is
+        unchanged — only the MSC / non-MSC split moves."""
+        return self.non_msc_income - self.non_msc_expense - self.dsb
 
     @property
     def sky_net_revenue(self) -> Decimal:
-        """Algebraic derivation — see module docstring. Uses RAW subproxy
-        sends (one-offs cancel against the corresponding allocator mint that
-        raised the same debt in the same settlement)."""
-        num = (
+        """Paid-basis derivation — see module docstring. Uses subproxy
+        sends NET of one-off capital seedings (seedings sit below net
+        revenue, per BA's remitted-to-reserves treatment). Only the
+        genesis / repayment slice of the CC transfer (cc_gross − paid
+        Step-1) is a cost; the Step-1 slice is Sky's own revenue being
+        distributed."""
+        # NB: uses the raw non-MSC pipeline figures, not the ``non_msc_net``
+        # property (which folds the DSB in for display) — the DSB is already
+        # subtracted on its own line here.
+        return (
             self.total_mint
-            - self.total_subproxy_raw
+            - self.total_subproxy_adjusted
             - self.dsb
-            - self.cc_gross
+            - self.cc_genesis_repayment
             - self.grove_tge_penalty
-            + self.non_msc_net
+            + (self.non_msc_income - self.non_msc_expense)
         )
-        return num / (Decimal(1) - _STEP1_CAPITAL_RATIO)
+
+    @property
+    def remitted_to_reserves_known(self) -> Decimal:
+        """Below-the-line view (partial): Sky Net Revenue − Step-1 Capital
+        distribution − capital seedings. BA's dashboard "remitted to Sky
+        reserves" additionally deducts buybacks, the Aligned Delegates
+        Buffer, and GAR, which this pipeline does not track — so this is a
+        ceiling, rendered for the net-revenue vs remitted distinction, not
+        a reconciled figure."""
+        return self.sky_net_revenue - self.cc_step1_paid - self.total_one_off
 
     @property
     def cc_step1_capital(self) -> Decimal:
-        """20% of Sky Net Revenue distributed to CC + Fortification. NOT a
-        cost — Sky is distributing its own already-earned revenue."""
-        return _STEP1_CAPITAL_RATIO * self.sky_net_revenue
+        """Step 1 Capital actually paid: 20% of the cycle month's net
+        revenue per the MSC post (split evenly CC / Fortification, riding
+        the CC Buffer transfer). NOT a cost — Sky distributing its own
+        already-earned revenue. Zero in a no-settlement month."""
+        return self.cc_step1_paid
 
     @property
     def cc_genesis_repayment(self) -> Decimal:
-        """Portion of the on-chain CC mint that reduces Sky's revenue (the
-        actual "cost" carved out of ``cc_gross``)."""
-        return self.cc_gross - self.cc_step1_capital
+        """Portion of the on-chain CC mint that reduces Sky's revenue —
+        genesis-capital / expense repayments (e.g. Grove's 635,130 at
+        MSC#10). = cc_gross − paid Step-1."""
+        return self.cc_gross - self.cc_step1_paid
 
     @property
     def msc_net(self) -> Decimal:
@@ -232,6 +265,7 @@ def compute_sky_total_monthly(
 
     settlement_block = 0
     settlement_ts = 0
+    settlement_blocks: list[int] = []
     mints: dict[str, Decimal] = {p: Decimal(0) for p in _MINT_PRIMES}
     subs: dict[str, Decimal] = {p: Decimal(0) for p in _ALL_PRIMES}
     dsb = cc = Decimal(0)
@@ -241,6 +275,8 @@ def compute_sky_total_monthly(
         stream = row["stream"]
         if stream == "settlement_block":
             settlement_block = int(row["amount"])
+            if settlement_block:
+                settlement_blocks.append(settlement_block)
             continue
         if stream == "settlement_ts":
             settlement_ts = int(row["amount"])
@@ -265,18 +301,23 @@ def compute_sky_total_monthly(
 
     label = f"{month.year}-{month.month:02d}"
 
-    # Grove TGE penalty: config override per month.
+    # Grove TGE penalty: config override per month. An explicit ``null``
+    # means "confirmed: no separately-settled penalty this month" (operator
+    # 2026-08-05: pre-July penalties were netted inside the DV payment, not
+    # settled as their own line — do NOT back-fill). Only a MISSING key
+    # warns, so future months surface until confirmed either way.
     penalty_map = config.get("grove_tge_penalty") or {}
-    if label in penalty_map and penalty_map[label] is not None:
-        penalty = Decimal(penalty_map[label])
-        penalty_source = f"config:{label}"
+    if label in penalty_map:
+        penalty = Decimal(penalty_map[label] or 0)
+        penalty_source = f"config:{label}" if penalty_map[label] is not None else "config:none"
     else:
         penalty = Decimal(0)
         penalty_source = "unset"
         warnings.append(
-            f"grove_tge_penalty: no override for {label} in config/sky_total.yaml — "
-            "booked $0. The methodology doc's §3 line was 1,396,260 for 2026-06; "
-            "back-fill earlier months from the corresponding MSC forum posts."
+            f"grove_tge_penalty: no entry for {label} in config/sky_total.yaml — "
+            "booked $0. Add the month's figure from the MSC post if a penalty "
+            "was settled as its own line (like MSC#10's 1,396,260), or an "
+            "explicit null if none / netted inside the DV payment."
         )
 
     # One-off subproxy exclusions (initial capital seeding, etc.).
@@ -303,30 +344,34 @@ def compute_sky_total_monthly(
     for w in non_msc_warns:
         warnings.append(f"non_msc: {w}")
 
-    # Precompute the sky_net_revenue / cc_genesis so the guard warning is
-    # part of the warnings list BEFORE we instantiate — keeps SkyTotalMonthly
-    # frozen at construction and avoids any post-hoc mutation.
-    _snr, _cc_genesis = _derived_sky_net_and_cc_genesis(
-        total_mint=sum(mints.values(), Decimal(0)),
-        total_subproxy_raw=sum(subs.values(), Decimal(0)),
-        dsb=dsb,
-        cc_gross=cc,
-        grove_tge_penalty=penalty,
-        non_msc_net=inc - exp,
-    )
+    # Step 1 Capital actually paid (from the MSC post's BA
+    # capital-allocations section) — the paid figure the CC transfer
+    # decomposes against. Missing entry on a settlement month ⇒ the FULL
+    # CC transfer is booked as genesis/repayment cost (conservative) with
+    # a warning.
+    step1_map = config.get("cc_step1_paid") or {}
+    if label in step1_map and step1_map[label] is not None:
+        step1 = Decimal(str(step1_map[label]))
+    else:
+        step1 = Decimal(0)
+        if cc > 0:
+            warnings.append(
+                f"cc_step1_paid: no entry for {label} in config/sky_total.yaml — "
+                f"booking the FULL Core Council transfer ({cc:,.2f}) as "
+                "genesis/repayment cost. Back-fill the paid Step-1 figure from "
+                "the MSC post's BA capital-allocations section (20% of the "
+                "cycle month's net revenue)."
+            )
+
+    _cc_genesis = cc - step1
     if _cc_genesis < 0:
-        # Sanity guard: cc_genesis is what's left of the on-chain CC transfer
-        # after carving out the algebraic 20% Step 1 Capital slice. It should
-        # be non-negative — if it's not, either (a) the 20% ratio didn't
-        # apply in this cycle (e.g. pre-methodology-change), or (b) an
-        # unmodeled outflow is inflating SNR (mint side too high, or an
-        # outflow we're missing).
+        # The paid Step-1 figure exceeds the on-chain CC transfer — either
+        # the config value is wrong or part of Step-1 was paid elsewhere.
         warnings.append(
             f"cc_genesis_repayment is NEGATIVE ({_cc_genesis:,.2f}) — "
-            "the 20% Step 1 Capital rule (doc §3) doesn't hold for this cycle, or "
-            "an outflow is unmodeled. Cross-check against BA's forum figure for "
-            f"MSC#{label} before treating this month's Sky Net Revenue as "
-            "reconciled."
+            f"cc_step1_paid[{label}] exceeds the on-chain CC transfer. "
+            "Cross-check the config value against the MSC post and the "
+            "settlement tx."
         )
 
     for w in warnings:
@@ -336,6 +381,7 @@ def compute_sky_total_monthly(
         month=label,
         settlement_block=settlement_block,
         settlement_ts=settlement_ts,
+        settlement_blocks=sorted(settlement_blocks),
         mint_per_prime=mints,
         subproxy_raw_per_prime=subs,
         one_off_per_prime=one_off_per_prime,
@@ -345,28 +391,9 @@ def compute_sky_total_monthly(
         grove_tge_penalty_source=penalty_source,
         non_msc_income=inc,
         non_msc_expense=exp,
+        cc_step1_paid=step1,
         warnings=warnings,
     )
-
-
-def _derived_sky_net_and_cc_genesis(
-    total_mint: Decimal,
-    total_subproxy_raw: Decimal,
-    dsb: Decimal,
-    cc_gross: Decimal,
-    grove_tge_penalty: Decimal,
-    non_msc_net: Decimal,
-) -> tuple[Decimal, Decimal]:
-    """Pure form of the algebraic derivation, matching the ``SkyTotalMonthly``
-    properties. Extracted so ``compute_sky_total_monthly`` can compute the
-    warning-triggering ``cc_genesis`` before instantiation.
-    """
-    numerator = (
-        total_mint - total_subproxy_raw - dsb - cc_gross - grove_tge_penalty + non_msc_net
-    )
-    snr = numerator / (Decimal(1) - _STEP1_CAPITAL_RATIO)
-    cc_genesis = cc_gross - _STEP1_CAPITAL_RATIO * snr
-    return snr, cc_genesis
 
 
 # ── artifacts ────────────────────────────────────────────────────────────────
@@ -382,17 +409,43 @@ def render_summary(r: SkyTotalMonthly) -> str:
     L: list[str] = []
     L.append(f"# SKY_TOTAL — {r.month}")
     L.append("")
-    settlement_dt = datetime.fromtimestamp(r.settlement_ts, tz=timezone.utc)
+    if r.settlement_block == 0:
+        anchor_txt = (
+            "No MSC settlement transaction executed in this calendar month "
+            "(execution-month bucketing: each month carries the settlement "
+            "that EXECUTED in it — the prior month's cycle), so the MSC leg "
+            "is zero. MSC net = Σ "
+        )
+    elif len(r.settlement_blocks) > 1:
+        blocks_txt = ", ".join(f"**{b}**" for b in r.settlement_blocks)
+        anchor_txt = (
+            f"Extracted from the {len(r.settlement_blocks)} MSC settlement "
+            f"blocks {blocks_txt} — every settlement transaction executed in "
+            f"this calendar month, components summed (execution-month "
+            f"bucketing, aligned with Block Analitica's P&L from "
+            f"2026-08-05). MSC net = Σ "
+        )
+    else:
+        settlement_dt = datetime.fromtimestamp(r.settlement_ts, tz=timezone.utc)
+        anchor_txt = (
+            f"Extracted from the MSC settlement block "
+            f"**{r.settlement_block}** ({settlement_dt:%Y-%m-%d %H:%M UTC}) — "
+            f"the single atomic settlement transaction executed in this "
+            f"month (execution-month bucketing, aligned with Block "
+            f"Analitica's P&L from 2026-08-05: month M carries cycle M−1's "
+            f"settlement). MSC net = Σ "
+        )
     L.append(
         f"Consolidated Sky Net Revenue, buffer basis (methodology handoff "
-        f"2026-07-16 §3). Extracted from the MSC settlement block "
-        f"**{r.settlement_block}** ({settlement_dt:%Y-%m-%d %H:%M UTC}) — the "
-        f"single atomic settlement transaction for this cycle. MSC net = Σ "
-        f"debt minted to buffer per prime − Σ sent to prime subproxies − sent "
-        f"to Demand-side Buffer − sent to Core Council (genesis portion) − "
-        f"Grove TGE penalty. The Core Council on-chain mint is GROSS; the "
-        f"20% Step 1 Capital distribution is carved out algebraically from "
-        f"Sky Net Revenue."
+        f"2026-07-16 §3). {anchor_txt}"
+        f"debt minted to buffer per prime − Σ sent to prime subproxies − "
+        f"sent to Core Council (genesis portion) − Grove TGE penalty. The "
+        f"Demand-side Buffer transfer is paid inside the settlement tx but "
+        f"classified under the non-MSC leg as an Operating expense, "
+        f"mirroring Block Analitica's P&L. The Core Council on-chain mint "
+        f"is GROSS; the Step 1 Capital slice (20% of the cycle month's net "
+        f"revenue, PAID figure from the MSC post) is added back and only "
+        f"the genesis/repayment remainder is a cost."
     )
     L.append("")
 
@@ -403,24 +456,27 @@ def render_summary(r: SkyTotalMonthly) -> str:
     for prime in _MINT_PRIMES:
         L.append(f"| Debt minted to buffer | {prime} | {_usds(r.mint_per_prime[prime])} |")
     L.append(f"| Debt minted to buffer | **subtotal** | **{_usds(r.total_mint)}** |")
-    # Buffer-basis formula uses RAW subproxy sends. The one-off (initial
-    # capital seeding via Vat.suck(vow) — a real draw on Sky's surplus
-    # buffer) is a real cost and IS included in the total; the sub-row here
-    # exposes what portion of a line is capital-seeding vs recurring revenue
-    # distribution for audit.
+    # Buffer-basis formula uses subproxy sends NET of one-off capital
+    # seedings — seedings sit below net revenue (BA's remitted-to-reserves
+    # treatment, operator decision 2026-08-05). The sub-row exposes the
+    # excluded seeding portion for audit.
     for prime in _ALL_PRIMES:
         raw = r.subproxy_raw_per_prime[prime]
+        adj = r.subproxy_adjusted_per_prime[prime]
         one_off = r.one_off_per_prime.get(prime, Decimal(0))
-        L.append(f"| Sent to prime subproxy | {prime} | -{_usds(raw)} |")
+        L.append(f"| Sent to prime subproxy | {prime} | -{_usds(adj)} |")
         if one_off.quantize(Decimal("0.01")) != 0:
             L.append(
-                f"| Sent to prime subproxy | — of which: one-off capital seeding "
-                f"(Vat.suck on vow; real cost) | {_usds(one_off)} |"
+                f"| Sent to prime subproxy | — excluded: one-off capital seeding "
+                f"(below the line; on-chain send was {_usds(raw)}) | ({_usds(one_off)}) |"
             )
-    L.append(f"| Sent to prime subproxy | **subtotal (raw)** | **-{_usds(r.total_subproxy_raw)}** |")
-    L.append(f"| Sent to Demand-side Buffer |  | -{_usds(r.dsb)} |")
+    L.append(f"| Sent to prime subproxy | **subtotal (net of seedings)** | **-{_usds(r.total_subproxy_adjusted)}** |")
     L.append(f"| Sent to Core Council | on-chain gross | -{_usds(r.cc_gross)} |")
-    L.append(f"| Sent to Core Council | of which: Step 1 Capital (20% × SNR, add-back) | +{_usds(r.cc_step1_capital)} |")
+    step1_txt = (
+        f"+{_usds(r.cc_step1_capital)}" if r.cc_step1_capital >= 0
+        else _usds(r.cc_step1_capital)  # negative SNR → negative carve; no '+-'
+    )
+    L.append(f"| Sent to Core Council | of which: Step 1 Capital (paid, per MSC post; add-back) | {step1_txt} |")
     # Guard against the `--<value>` double-minus that appears when
     # cc_genesis_repayment goes negative (the 20% rule doesn't hold for the
     # cycle — a warning is also surfaced below).
@@ -441,6 +497,9 @@ def render_summary(r: SkyTotalMonthly) -> str:
     L.append("|---|---:|")
     L.append(f"| non-MSC income | {_usds(r.non_msc_income)} |")
     L.append(f"| non-MSC expense | -{_usds(r.non_msc_expense)} |")
+    # Paid inside the settlement tx, but classified as an Operating expense
+    # to mirror BA's P&L (operator decision 2026-08-05).
+    L.append(f"| Demand-side Buffer transfer (Operating, per BA classification) | -{_usds(r.dsb)} |")
     L.append(f"| **non-MSC net** | **{_usds(r.non_msc_net)}** |")
     L.append("")
 
@@ -452,6 +511,27 @@ def render_summary(r: SkyTotalMonthly) -> str:
     L.append(f"| non-MSC net | {_usds(r.non_msc_net)} |")
     L.append(f"| **Sky Net Revenue** | **{_usds(r.sky_net_revenue)}** |")
     L.append("")
+
+    # Below the line — net revenue vs remitted-to-reserves distinction
+    # (BA dashboard). Only the items this pipeline tracks; BA additionally
+    # deducts buybacks, the Aligned Delegates Buffer, and GAR.
+    if (r.cc_step1_paid or r.total_one_off).quantize(Decimal("0.01")) != 0:
+        L.append("## Below the line (toward \"remitted to Sky reserves\")")
+        L.append("")
+        L.append("| Field | USDS |")
+        L.append("|---|---:|")
+        L.append(f"| Sky Net Revenue | {_usds(r.sky_net_revenue)} |")
+        L.append(f"| − Step 1 Capital distribution (paid) | -{_usds(r.cc_step1_paid)} |")
+        L.append(f"| − capital seedings (one-off subproxy endowments) | -{_usds(r.total_one_off)} |")
+        L.append(
+            f"| **remitted to Sky reserves (known items only)** | "
+            f"**{_usds(r.remitted_to_reserves_known)}** |"
+        )
+        L.append(
+            "\n*BA's dashboard line additionally deducts buybacks, the "
+            "Aligned Delegates Buffer, and GAR (not tracked here).*"
+        )
+        L.append("")
 
     for w in r.warnings:
         L.append(f"> ⚠ {w}")
@@ -466,6 +546,7 @@ def write_sky_total(r: SkyTotalMonthly, out_dir: Path) -> dict[str, Path]:
         "id": "sky_total",
         "month": r.month,
         "settlement_block": r.settlement_block,
+        "settlement_blocks": r.settlement_blocks,
         "settlement_ts": r.settlement_ts,
         "results": {
             "mint_per_prime": {k: str(v) for k, v in r.mint_per_prime.items()},
@@ -478,6 +559,8 @@ def write_sky_total(r: SkyTotalMonthly, out_dir: Path) -> dict[str, Path]:
             "total_subproxy_adjusted": str(r.total_subproxy_adjusted),
             "dsb": str(r.dsb),
             "cc_gross": str(r.cc_gross),
+            # Paid figure from the MSC post's BA capital-allocations section
+            # (config cc_step1_paid) — not derived.
             "cc_step1_capital": str(r.cc_step1_capital),
             "cc_genesis_repayment": str(r.cc_genesis_repayment),
             "grove_tge_penalty": str(r.grove_tge_penalty),

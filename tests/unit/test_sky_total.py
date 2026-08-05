@@ -53,55 +53,21 @@ def _seed_non_msc(tmp_path: Path, month: Month, income: Decimal, expense: Decima
     }))
 
 
-# ── pure algebra ────────────────────────────────────────────────────────────
-
-def test_derived_reproduces_doc_june_2026():
-    """June 2026 doc §3 figures. Our derivation and the doc's own reported
-    SNR differ by ~2.3K due to rounding in the published Step-1 Capital
-    figure (BA publishes 20% × 13,714,694 = 2,742,939, whereas our exact
-    formula uses 20% × our SNR = 2,745,221). Tolerance is set at 3K to
-    absorb this while still catching a real regression."""
-    snr, cc_gen = ST._derived_sky_net_and_cc_genesis(
-        total_mint=Decimal("32716623"),
-        total_subproxy_raw=Decimal("13875840"),
-        dsb=Decimal("34902"),
-        cc_gross=Decimal("3378069"),
-        grove_tge_penalty=Decimal("1396260"),
-        non_msc_net=Decimal("-3050668"),
-    )
-    # Doc §3 headline: Sky Net Revenue 13,723,823 (ties BA to +0.067%).
-    assert abs(snr - Decimal("13723823")) < Decimal("3000")
-    # Cross-check: 20% × BA's net = Step 1 Capital 2,742,939 → cc_genesis
-    # ≈ 3,378,069 − 2,742,939 = 635,130. (Our exact value differs by the
-    # same rounding as above.)
-    assert abs(cc_gen - Decimal("635130")) < Decimal("3000")
-
-
-def test_snr_scales_linearly_with_non_msc_net():
-    """Sanity check: bumping non_msc_net by X should bump SNR by X / 0.8
-    (because the 20% Step-1 Capital gets carved out of Sky's own SNR)."""
-    kw = dict(
-        total_mint=Decimal("30_000_000"),
-        total_subproxy_raw=Decimal("15_000_000"),
-        dsb=Decimal("0"),
-        cc_gross=Decimal("2_000_000"),
-        grove_tge_penalty=Decimal("0"),
-    )
-    snr0, _ = ST._derived_sky_net_and_cc_genesis(non_msc_net=Decimal("0"), **kw)
-    snr1, _ = ST._derived_sky_net_and_cc_genesis(non_msc_net=Decimal("1_000_000"), **kw)
-    assert (snr1 - snr0) == Decimal("1_000_000") / Decimal("0.8")
-
-
 # ── compute integration ─────────────────────────────────────────────────────
 
 def _base_cfg():
     return {
         "grove_tge_penalty": {},
         "one_off_transfers": {},
+        "cc_step1_paid": {},
     }
 
 
 def test_compute_populates_all_fields(tmp_path):
+    """MSC#10 (June-cycle) paid figures. With the PAID Step-1 (2,742,939,
+    from the MSC#10 post's BA section) the doc §3 headline SNR of
+    13,723,823 reproduces EXACTLY: 32,716,623 − 13,875,840 − 34,902 −
+    (3,378,069 − 2,742,939) − 1,396,260 + (15,881,200 − 18,931,868)."""
     month = Month(2026, 6)
     _seed_non_msc(tmp_path, month, Decimal("15881200"), Decimal("18931868"))
     rows = _rows(
@@ -110,7 +76,9 @@ def test_compute_populates_all_fields(tmp_path):
               "keel": Decimal("77284"), "skybase": Decimal("204242")},
         dsb=Decimal("34902"), cc=Decimal("3378069"),
     )
-    cfg = {**_base_cfg(), "grove_tge_penalty": {"2026-06": Decimal("1396260")}}
+    cfg = {**_base_cfg(),
+           "grove_tge_penalty": {"2026-06": Decimal("1396260")},
+           "cc_step1_paid": {"2026-06": Decimal("2742939")}}
     src = _StubSource(rows)
     result = ST.compute_sky_total_monthly(
         month, source=src, repo_root=tmp_path, pin_block=25574490, config=cfg,
@@ -121,12 +89,57 @@ def test_compute_populates_all_fields(tmp_path):
     assert result.total_subproxy_raw == Decimal("13875840")
     assert result.dsb == Decimal("34902")
     assert result.cc_gross == Decimal("3378069")
+    assert result.cc_step1_capital == Decimal("2742939")
+    assert result.cc_genesis_repayment == Decimal("635130")
     assert result.grove_tge_penalty == Decimal("1396260")
     assert result.grove_tge_penalty_source == "config:2026-06"
-    # Doc's target SNR is 13,723,823 (+0.067% vs BA 13,714,694). Tolerance
-    # 3K absorbs the Step-1-Capital rounding gap (see
-    # test_derived_reproduces_doc_june_2026).
-    assert abs(result.sky_net_revenue - Decimal("13723823")) < Decimal("3000")
+    assert result.sky_net_revenue == Decimal("13723823")
+
+
+def test_missing_cc_step1_books_full_cc_as_cost_and_warns(tmp_path):
+    """A settlement month without a cc_step1_paid entry books the FULL CC
+    transfer as genesis/repayment cost and surfaces a warning."""
+    month = Month(2026, 6)
+    _seed_non_msc(tmp_path, month, Decimal("0"), Decimal("0"))
+    rows = _rows(
+        mint={"spark": Decimal("10000000"), "grove": Decimal("0"), "obex": Decimal("0")},
+        subs={"spark": Decimal("0"), "grove": Decimal("0"), "obex": Decimal("0"),
+              "keel": Decimal("0"), "skybase": Decimal("0")},
+        dsb=Decimal("0"), cc=Decimal("2000000"),
+    )
+    src = _StubSource(rows)
+    result = ST.compute_sky_total_monthly(
+        month, source=src, repo_root=tmp_path, pin_block=25574490, config=_base_cfg(),
+    )
+    assert result.cc_step1_capital == Decimal("0")
+    assert result.cc_genesis_repayment == Decimal("2000000")
+    assert result.sky_net_revenue == Decimal("8000000")
+    assert any("cc_step1_paid: no entry" in w for w in result.warnings)
+
+
+def test_one_off_seeding_excluded_from_snr(tmp_path):
+    """Capital seedings sit BELOW net revenue (operator 2026-08-05,
+    following BA's remitted-to-reserves treatment): a configured one-off
+    must NOT reduce SNR, and the below-the-line property must deduct it."""
+    month = Month(2026, 3)
+    _seed_non_msc(tmp_path, month, Decimal("0"), Decimal("0"))
+    rows = _rows(
+        mint={"spark": Decimal("20000000"), "grove": Decimal("0"), "obex": Decimal("0")},
+        subs={"spark": Decimal("2000000"), "grove": Decimal("0"), "obex": Decimal("0"),
+              "keel": Decimal("10000000"), "skybase": Decimal("0")},
+        dsb=Decimal("0"), cc=Decimal("1000000"),
+    )
+    cfg = {**_base_cfg(),
+           "one_off_transfers": {"2026-03": {"keel": Decimal("10000000")}},
+           "cc_step1_paid": {"2026-03": Decimal("1000000")}}
+    src = _StubSource(rows)
+    result = ST.compute_sky_total_monthly(
+        month, source=src, repo_root=tmp_path, pin_block=25574490, config=cfg,
+    )
+    # 20M mint − (12M subs − 10M seeding) − 0 genesis = 18M; seeding excluded.
+    assert result.sky_net_revenue == Decimal("18000000")
+    # Below the line: 18M − 1M Step-1 − 10M seeding.
+    assert result.remitted_to_reserves_known == Decimal("7000000")
 
 
 def test_one_off_exceeding_raw_raises(tmp_path):
@@ -186,8 +199,8 @@ def test_missing_grove_tge_penalty_warns_and_books_zero(tmp_path):
 def test_negative_cc_genesis_fires_warning_before_construction(tmp_path):
     """The warning MUST be present on the returned object — earlier code
     reassigned result.warnings after construction; this guards regressions.
-    Set up: keep cc_gross small so 0.2·SNR > cc_gross and cc_genesis flips
-    negative."""
+    Set up: cc_step1_paid exceeds the on-chain CC transfer, so cc_genesis
+    flips negative."""
     month = Month(2026, 4)
     _seed_non_msc(tmp_path, month, Decimal("5000000"), Decimal("2000000"))
     rows = _rows(
@@ -196,7 +209,7 @@ def test_negative_cc_genesis_fires_warning_before_construction(tmp_path):
               "keel": Decimal("50000"), "skybase": Decimal("100000")},
         dsb=Decimal("30000"), cc=Decimal("500000"),
     )
-    cfg = _base_cfg()
+    cfg = {**_base_cfg(), "cc_step1_paid": {"2026-04": Decimal("600000")}}
     src = _StubSource(rows)
     result = ST.compute_sky_total_monthly(
         month, source=src, repo_root=tmp_path, pin_block=25574490, config=cfg,
@@ -216,7 +229,7 @@ def test_render_summary_avoids_double_minus_on_negative_cc_genesis(tmp_path):
               "keel": Decimal("50000"), "skybase": Decimal("100000")},
         dsb=Decimal("30000"), cc=Decimal("500000"),
     )
-    cfg = _base_cfg()
+    cfg = {**_base_cfg(), "cc_step1_paid": {"2026-04": Decimal("600000")}}
     src = _StubSource(rows)
     result = ST.compute_sky_total_monthly(
         month, source=src, repo_root=tmp_path, pin_block=25574490, config=cfg,
