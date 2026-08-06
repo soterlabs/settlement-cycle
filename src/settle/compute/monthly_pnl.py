@@ -3902,10 +3902,10 @@ def compute_monthly_pnl(
         )
 
     # Governance Accessibility Rewards (Skybase only today) — Demand-Side
-    # component: ``GarConfig.share`` (1%) × the PRIOR month's consolidated
-    # Sky Net Revenue (settlements/sky_total). See compute/gar.py for the
-    # basis rules (prior-month base → no same-month circularity; N/A when
-    # the base predates the sky_total series; fail-loud otherwise).
+    # component: ``GarConfig.share`` (1%) × the month's consolidated Sky
+    # Net Revenue (settlements/sky_total; must be built first — fail-loud
+    # otherwise). Paid at the MSC executing the following month, which is
+    # what keeps the derivation non-circular. See compute/gar.py.
     gar = Decimal("0")
     gar_basis = ""
     if not sky_only:

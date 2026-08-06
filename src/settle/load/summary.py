@@ -173,11 +173,9 @@ def render_summary(prov: dict) -> str:
     # renders only when non-zero so other primes' summaries are unchanged.
     chron_points   = _D(r.get("chronicle_points"))
     # Governance Accessibility Rewards (Skybase only today) — Demand-Side
-    # component (share × PRIOR month's Sky Net Revenue). Renders when
-    # non-zero, or as "N/A" when the base month predates the sky_total
-    # series (gar_basis carries the marker).
+    # component (share × the month's Sky Net Revenue, paid at the MSC
+    # executing the following month). Renders when non-zero.
     gar            = _D(r.get("gar"))
-    gar_basis      = str(r.get("gar_basis") or "")
     dr_rows        = prov.get("dr_breakdown") or []
     demand_side_revenue = agent_rate + dist_rewards + chron_points + gar
 
@@ -202,8 +200,6 @@ def render_summary(prov: dict) -> str:
         lines.append(_row("chronicle points", chron_points))
     if gar:
         lines.append(_row("governance accessibility rewards", gar))
-    elif gar_basis.startswith("n/a"):
-        lines.append(_row("governance accessibility rewards", "N/A"))
     lines.append(_row("**demand-side revenue**", f"**{_usds(demand_side_revenue)}**"))
     lines.append("")
     lines.append("#### Supply-Side revenue")

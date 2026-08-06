@@ -147,16 +147,15 @@ class ChroniclePointsConfig:
 class GarConfig:
     """Governance Accessibility Rewards (Skybase only today).
 
-    A Demand-Side primitive equal to ``share`` (1%) of the PRIOR month's
+    A Demand-Side primitive equal to ``share`` (1%) of the SAME month's
     consolidated Sky Net Revenue, read from the ``settlements/sky_total``
     artifact (whose SNR definition matches BA's "Net revenue" dashboard
-    line). The prior-month base keeps the derivation non-circular: the
-    base SNR is final at report time, and the GAR cash reduces a later
-    month's SNR through the normal subproxy send. Reports from
-    ``from_month`` (inclusive) carry the row; a report whose BASE month
-    predates ``from_month`` (concretely: the from_month report itself,
-    whose base is the month before the series starts) renders "N/A".
-    See ``compute/gar.py``.
+    line). The month-N report carries month N's GAR; the cash is PAID at
+    the MSC settling cycle N (executing in N+1 — July's GAR rides MSC#11
+    in August) and reduces THAT month's SNR through the normal subproxy
+    send, so the derivation is non-circular: SNR(N) is paid-basis and
+    never contains month N's own GAR. Reports from ``from_month``
+    (inclusive) carry the row. See ``compute/gar.py``.
     """
 
     share: Decimal                    # e.g. Decimal("0.01")

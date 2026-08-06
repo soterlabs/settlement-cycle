@@ -44,29 +44,22 @@ def test_month_before_from_month_is_silent(tmp_path):
     assert (gar, basis) == (Decimal("0"), "")
 
 
-def test_base_month_before_series_renders_na(tmp_path):
-    """The 2026-01 report's base is 2025-12 — before the sky_total series:
-    $0 booked, basis carries the n/a marker for the summary row."""
-    gar, basis = compute_gar(_prime(_CFG), Month(2026, 1), repo_root=tmp_path)
-    assert gar == Decimal("0")
-    assert basis.startswith("n/a")
-    assert "2025-12" in basis
-
-
-def test_gar_is_share_times_prior_month_snr(tmp_path):
-    _seed_snr(tmp_path, "2026-06", "14875074.63")
+def test_gar_is_share_times_same_month_snr(tmp_path):
+    """The month-N report carries 1% × SNR(N); the cash is paid at the MSC
+    executing in N+1 (July's GAR rides MSC#11 in August)."""
+    _seed_snr(tmp_path, "2026-07", "15225588.81")
     gar, basis = compute_gar(_prime(_CFG), Month(2026, 7), repo_root=tmp_path)
-    assert gar == Decimal("0.01") * Decimal("14875074.63")
-    assert "2026-06" in basis and "14875074.63" in basis
+    assert gar == Decimal("0.01") * Decimal("15225588.81")
+    assert "2026-07" in basis and "15225588.81" in basis
 
 
-def test_missing_base_artifact_inside_series_fails_loud(tmp_path):
-    with pytest.raises(FileNotFoundError, match="2026-05"):
+def test_missing_artifact_fails_loud(tmp_path):
+    with pytest.raises(FileNotFoundError, match="2026-06"):
         compute_gar(_prime(_CFG), Month(2026, 6), repo_root=tmp_path)
 
 
-def test_negative_base_snr_floors_to_zero(tmp_path):
-    _seed_snr(tmp_path, "2026-02", "-972786.88")
+def test_negative_snr_floors_to_zero(tmp_path):
+    _seed_snr(tmp_path, "2026-03", "-972786.88")
     gar, basis = compute_gar(_prime(_CFG), Month(2026, 3), repo_root=tmp_path)
     assert gar == Decimal("0")
     assert "NEGATIVE" in basis and "floored" in basis
