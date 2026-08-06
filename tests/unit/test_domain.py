@@ -208,7 +208,10 @@ def test_load_prime_grove_nav_oracles(config_dir: Path):
     assert jtrsy.nav_oracle.kind == "price_per_share_feed"
     assert jtrsy.nav_oracle.address.hex == "0xfe6920eb6c421f1179ca8c8d4170530cdbdfd77a"
     assert jtrsy.nav_oracle.fallback == "chronicle"
-    assert jtrsy.nav_oracle.fallback_address.hex == "0x59ef4be3eddf0270c4878b7b945bbee13fb33d0d"
+    # 2026-08-06: Chronicle addresses point at the per-asset VAO Router
+    # (stable across consumer rotations), not a Consumer_N instance — the
+    # ACRDX Consumer_2 froze on 2026-05-07 and silently pinned E22's NAV.
+    assert jtrsy.nav_oracle.fallback_address.hex == "0xe980a33efa3eddaa689ecbdce4b2278d4db94471"
 
     # STAC → Chronicle primary + Redstone fallback. Redstone publishes the
     # same Securitize NAV via a Chainlink-AggregatorV3 adapter and has been

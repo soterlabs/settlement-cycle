@@ -240,11 +240,17 @@ venues:
     # Underlying value = $1-equivalent USDC; NAV via Chronicle oracle.
     nav_oracle:
       kind: chronicle
-      address: '0x9d77e4ca90e25114afb24df908f5918f572d958b'
+      # 2026-08-06: switched from ChronicleVAO_…_STAC_Consumer_1
+      # (0x9d77e4ca…) to the per-asset ROUTER — same rotation-proofing as
+      # E22 (whose Consumer_2 froze on 2026-05-07 and silently pinned NAV).
+      # Router verified byte-identical to Consumer_1 at every 2026 SoM/EoM
+      # pin block, including the pre-deployment revert at the Jan SoM.
+      address: '0x802cacc19b9b3eb474c7def6f28c64ab67fb0753'  # ChronicleVAO_Securitize_STAC_Router_1
       # STAC tokens were received 2025-12-16 at ~$1,000/token (issue price).
-      # The Chronicle oracle above was deployed 2026-01-09 (block 24 195 721)
-      # — pre-deployment reads return empty bytes from read(), surfacing as
-      # an oracle failure that triggers the fallback below.
+      # The Chronicle router above was deployed 2026-01-09 (block 24 195 710,
+      # 11 blocks before its Consumer_1) — pre-deployment reads return empty
+      # bytes from read(), surfacing as an oracle failure that triggers the
+      # fallback below.
       #
       # Redstone fallback: the same NAV feed published by Securitize via a
       # Chainlink-compatible AggregatorV3 adapter (single-round-overwrite
@@ -279,7 +285,9 @@ venues:
       kind: price_per_share_feed
       address: '0x4880799eE5200fC58DA299e965df644fBf46780B'
       fallback: chronicle
-      fallback_address: '0x02cf8C9fBa24d79886dAc40cb620f0930C6E8eC0'
+      # 2026-08-06: JAAA Consumer_1 (0x02cf8C9f…) → Router (rotation-proof,
+      # same values at all 2026 pins — see E22 incident).
+      fallback_address: '0x5d44916e0db13ecd661b20df4d645904e57589c8'  # ChronicleVAO_Centrifuge_JAAA_Router_1
     # ERC-4626 vault the ALM deposits into / withdraws from. Emits
     # Deposit(sender, owner, assets, shares) and Withdraw(sender, receiver,
     # owner, assets, shares) events whose `assets` field is the exact USDC
@@ -307,7 +315,9 @@ venues:
       kind: price_per_share_feed
       address: '0xFE6920eB6C421f1179cA8c8d4170530CDBdfd77A'
       fallback: chronicle
-      fallback_address: '0x59ef4BE3eDDF0270c4878b7B945bbeE13fb33d0D'
+      # 2026-08-06: JTRSY Consumer_1 (0x59ef4BE3…) → Router (rotation-proof,
+      # same values at all 2026 pins — see E22 incident).
+      fallback_address: '0xe980a33efa3eddaa689ecbdce4b2278d4db94471'  # ChronicleVAO_Centrifuge_JTRSY_Router_1
     # ERC-4626 vault (same address as nav_oracle for JTRSY). Confirmed via
     # on-chain event inspection: Grove ALM 0x491edf... deposits/withdraws
     # directly with this contract.
@@ -638,7 +648,8 @@ venues:
       address: '0x4880799eE5200fC58DA299e965df644fBf46780B'
       oracle_chain: ethereum
       fallback: chronicle
-      fallback_address: '0x02cf8C9fBa24d79886dAc40cb620f0930C6E8eC0'
+      # 2026-08-06: JAAA Consumer_1 → Router (rotation-proof, same as E8).
+      fallback_address: '0x5d44916e0db13ecd661b20df4d645904e57589c8'  # ChronicleVAO_Centrifuge_JAAA_Router_1
 
   - id: E21
     chain: avalanche_c
@@ -690,8 +701,20 @@ venues:
       # ACRDX Chronicle feed lives on Ethereum mainnet only — cross-chain
       # read same pattern as JAAA-avax. NAV moves slowly per credit-fund
       # cycle (was DOWN 0.69% in March 2026 — real loss month).
+      #
+      # 2026-08-06: address switched from ChronicleVAO_…_ACRDX_Consumer_2
+      # (0x51cc9463…) to the per-asset ROUTER. Chronicle rotates consumer
+      # instances (ACRDX was on Consumer_7 by Aug 2026); Consumer_2 was
+      # abandoned and froze at 1.016057 on 2026-05-07 — read() kept
+      # succeeding with the stale value, so the fallback never fired and
+      # E22 booked $0 revenue for Jun+Jul 2026 (and diverged from the
+      # canonical NAV from ~April). The Router (deployed 2025-10-17,
+      # block 23,596,882) always forwards to the live consumer; verified
+      # equal to the canonical erc4626 vault NAV within 1e-6 at every
+      # 2026 SoM/EoM pin block. Apr–Jul 2026 restated (reconciliation
+      # item) — see PRD §17.13 Update 2026-08-06.
       kind: chronicle
-      address: '0x51cc9463788b870d1e9bacd111a9bbb2c9820c7e'
+      address: '0x87603527aebbbdf46d73e524830be81f93778ffa'  # ChronicleVAO_Centrifuge_ACRDX_Router_1
       oracle_chain: ethereum
       # Fallback: ACRDX vault on Ethereum (erc4626, asset_decimals=6).
       # Covers SoM blocks before Chronicle's first published price (~block
