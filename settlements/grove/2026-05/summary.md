@@ -1,5 +1,17 @@
 # GROVE — 2026-05
 
+> **⚠ RESTATED 2026-08-06** — this month was settled at MSC#9; the figures
+> below supersede the as-settled record (reconciliation item, PRD §17.13
+> Update 2026-08-06 / QUESTIONS.md G27). Deltas vs as-settled:
+>
+> | Figure | As settled (MSC#9) | Restated | Δ | Cause |
+> |---|---:|---:|---:|---|
+> | Prime supply-side revenue | $242,126.43 | $369,669.53 | +$127,543.10 | E22 ACRDX oracle correction (frozen/diverged Chronicle Consumer_2 → Router) |
+> | Prime demand-side revenue | $92,479.12 | $111,064.57 | +$18,585.45 | Chronicle Points component (#166) — pipeline version skew, not part of the oracle correction |
+>
+> Sky-side revenue is unchanged (E22 is 0% SDE). Banner added manually —
+> a regeneration of this month drops it; re-add per PRD §17.13.
+
 Period: 2026-05-01 → 2026-05-31 (31 days)
 
 ## Headline

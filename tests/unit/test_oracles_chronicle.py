@@ -109,6 +109,31 @@ def test_read_warns_on_stale_feed(
     assert out == Decimal("1.016057")
     assert any("STALE" in r.message for r in caplog.records)
 
+    # The tripwire must fire on EVERY read — including re-runs served from
+    # the cache. (The first shipped version put the check below @cached, so
+    # a settlement regenerated later never saw the warning.)
+    caplog.clear()
+    with caplog.at_level(logging.WARNING, logger="settle.extract.oracles.chronicle"):
+        chronicle.read(Chain.ETHEREUM, _addr("ee"), 25218797)
+    assert any("STALE" in r.message for r in caplog.records), (
+        "staleness warning suppressed on cached re-read"
+    )
+
+
+def test_read_raises_on_zero_value(
+    tmp_cache_dir, monkeypatch: pytest.MonkeyPatch,
+):
+    """A well-formed zero from ``readWithAge()`` (e.g. a Router forwarding
+    to an unset consumer) is a no-value state — it must raise so the
+    dispatch layer prices the venue off its configured fallback instead of
+    marking the position at $0."""
+    monkeypatch.setattr(
+        chronicle, "eth_call",
+        lambda chain, contract, data, block: _encode_read_with_age(0, 1_000_000),
+    )
+    with pytest.raises(chronicle.ChronicleReadError, match="zero value"):
+        chronicle.read(Chain.ETHEREUM, _addr("ab"), 12345)
+
 
 def test_read_no_warning_on_fresh_feed(
     tmp_cache_dir, monkeypatch: pytest.MonkeyPatch, caplog,

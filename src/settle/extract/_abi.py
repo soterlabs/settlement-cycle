@@ -28,3 +28,16 @@ def decode_address(hex_word: str) -> Address:
     if len(h) != 64:
         raise ValueError(f"expected 64-hex-char ABI word, got {len(h)}: {hex_word!r}")
     return Address(bytes.fromhex(h[-40:]))
+
+
+def decode_uint_words(result: str, n_words: int) -> list[int]:
+    """Decode the first ``n_words`` 32-byte words of an ``eth_call`` return
+    as unsigned ints. Raises ``ValueError`` when the return is shorter than
+    ``n_words`` words or not valid hex — callers treat that as "selector not
+    supported / empty return" and fall through to their legacy path."""
+    h = result.removeprefix("0x")
+    if len(h) < 64 * n_words:
+        raise ValueError(
+            f"expected ≥{n_words} ABI words ({64 * n_words} hex chars), got {len(h)}"
+        )
+    return [int(h[i * 64:(i + 1) * 64], 16) for i in range(n_words)]

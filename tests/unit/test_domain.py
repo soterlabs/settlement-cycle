@@ -221,10 +221,27 @@ def test_load_prime_grove_nav_oracles(config_dir: Path):
     # live NAV at the pin block instead of a fixed issue-time estimate.
     stac = by_id["E7"]
     assert stac.nav_oracle.kind == "chronicle"
+    assert stac.nav_oracle.address.hex == "0x802cacc19b9b3eb474c7def6f28c64ab67fb0753"  # STAC Router_1
     assert stac.nav_oracle.fallback == "redstone"
     assert stac.nav_oracle.fallback_address is not None
     assert stac.nav_oracle.fallback_address.hex == \
         "0xedc6287d3d41b322af600317628d7e226dd3add4"
+
+    # E22 ACRDX — THE incident venue: its Consumer_2 feed froze on
+    # 2026-05-07 and silently pinned NAV for two settlement months. Pin the
+    # Router address so a config revert to any Consumer_N instance fails
+    # the suite instead of re-freezing E22.
+    acrdx = by_id["E22"]
+    assert acrdx.nav_oracle.kind == "chronicle"
+    assert acrdx.nav_oracle.address.hex == "0x87603527aebbbdf46d73e524830be81f93778ffa"  # ACRDX Router_1
+    assert acrdx.nav_oracle.address.hex != "0x51cc9463788b870d1e9bacd111a9bbb2c9820c7e"  # frozen Consumer_2
+
+    # E8 + E20 JAAA — chronicle fallbacks must also be the Router.
+    for vid in ("E8", "E20"):
+        jaaa = by_id[vid]
+        assert jaaa.nav_oracle.fallback == "chronicle"
+        assert jaaa.nav_oracle.fallback_address.hex == \
+            "0x5d44916e0db13ecd661b20df4d645904e57589c8", vid  # JAAA Router_1
 
     # BUIDL-I → const_one (yield via rewards, NAV pinned at $1).
     buidl = by_id["E10"]

@@ -408,7 +408,10 @@ venues:
       kind: price_per_share_feed
       address: '0xFE6920eB6C421f1179cA8c8d4170530CDBdfd77A'
       fallback: chronicle
-      fallback_address: '0x59ef4BE3eDDF0270c4878b7B945bbeE13fb33d0D'
+      # 2026-08-06: JTRSY Consumer_1 (0x59ef4BE3…) → Router, matching
+      # grove.yaml E9 — abandoned Consumer_N instances keep answering
+      # read() with a frozen value (Grove E22 incident, PRD §17.13).
+      fallback_address: '0xe980a33efa3eddaa689ecbdce4b2278d4db94471'  # ChronicleVAO_Centrifuge_JTRSY_Router_1
 
   - id: S21
     chain: ethereum
