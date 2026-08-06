@@ -12,8 +12,8 @@ Period: 2026-01-01 → 2026-01-31 (31 days)
 |---|---:|
 | agent rate | 0.00 |
 | distribution rewards | 222,064.54 |
-| governance accessibility rewards | N/A |
-| **demand-side revenue** | **222,064.54** |
+| governance accessibility rewards | 92,187.14 |
+| **demand-side revenue** | **314,251.68** |
 
 #### Supply-Side revenue
 
