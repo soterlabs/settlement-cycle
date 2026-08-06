@@ -167,6 +167,41 @@ flowing through ALM ingress or names a new source we need to plumb.
 ### P1 — methodology unknowns affecting accuracy
 
 
+#### G27. Apr–Jul 2026 E22 ACRDX restatement — frozen Chronicle feed; acknowledge reconciliation
+The Chronicle feed MSC used for E22 (ACRDX, Plume) was
+`ChronicleVAO_Centrifuge_ACRDX_Consumer_2` (`0x51cc9463…`) — a consumer
+*instance* Chronicle rotated away from (Consumer_7 by Aug 2026). The
+abandoned instance kept answering `read()` with its last value
+(1.016057, written 2026-05-07), so E22's NAV silently froze: **Jun+Jul
+2026 booked $0 E22 revenue** and Apr/May EoM marks diverged from the
+canonical Centrifuge vault NAV. MSC has migrated all Chronicle
+addresses to the per-asset **Router** contracts (always forward to the
+live consumer; verified equal to the canonical erc4626 vault NAV within
+1e-6 at every 2026 pin block) and **restated Apr–Jul 2026**
+(PRD §17.13 Update 2026-08-06). E22 prime-revenue deltas:
+
+| Month | As settled | Restated | Δ |
+|---|---:|---:|---:|
+| Apr (MSC#8) | $191,054.36 | $108,680.20 | −$82,374.16 |
+| May (MSC#9) | −$48,513.80 | +$79,029.30 | +$127,543.10 |
+| Jun (MSC#10) | $0.00 | +$77,179.62 | +$77,179.62 |
+| Jul (MSC#11, unsettled) | $0.00 | +$21,697.22 | +$21,697.22 |
+
+Net **+$144,045.78** prime-side across the four months. E22 is 0% SDE,
+so **Sky-side revenue (CoF + SDE) is unchanged — no MSC payment leg
+moves**; this is a prime-book restatement, not a payment adjustment.
+
+**Q for Grove:**
+1. Please confirm the restated E22 figures against your ACRDX marks
+   (which NAV feed does your workbook use — the Centrifuge vault, a
+   Chronicle consumer, or Apollo's reported NAV?).
+2. Acknowledge the Apr–Jun restatement as a reconciliation item on the
+   settled MSC#8–#10 months (no payment impact).
+3. Going forward, is the ChronicleVAO Router (`0x87603527…`) an
+   acceptable canonical feed for E22, or do you prefer the Centrifuge
+   erc4626 vault (`0x74A739EA…`) as primary?
+
+
 #### G6. Chronicle adapter — pre-deployment silent fallback to const_one
 E7 STAC, E8 JAAA, E9 JTRSY, E22 ACRDX use Chronicle NAV oracles. Several
 were deployed mid-2025; reads at SoM blocks before deployment **revert**
@@ -333,33 +368,6 @@ change in the loan config, or have we missed a second payout mid-month?
 (On-chain we see a single payment per month from
 `0xaC3D86f9…DF1B`; nothing else in July.)
 
-#### G25. spUSDG — future yield split between Spark and Grove
-spUSDG wasn't really active in July (the Grove Morpho yield vault held
-$1.97 all month; ~$21.7M of depositor USDG sat undeployed in the vault).
-In the future, how will the spUSDG yield be split between Spark and
-Grove?
-The spUSDG deployment on Robinhood Chain (forum t/28031) routes Spark
-Savings USDG deposits through Spark's ALM proxy (`0xfD2fD4B0…dB24`) into
-the Grove USDG Morpho Vault (`0xBEEff039…54d9`, Steakhouse-curated). The
-technical-scope post specifies the contract architecture but not the
-financial terms. As of 2026-08-03 the Morpho vault held $1.97 and
-Spark's ALM held zero shares (all ~$23.8M of depositor USDG still sits
-in the spUSDG vault), so there is no numerical impact yet — but once the
-deployment leg goes live we need to know:
-
-1. How is the yield split between Spark (savings product, VSR payer) and
-   Grove (vault curation)? Fixed curator/performance fee to Grove, or a
-   negotiated share?
-2. Should the Morpho-vault position appear on Spark's books (its ALM
-   holds the shares — our current plan), on Grove's, or both with an
-   offsetting liability?
-3. Does the deposited USDG count as MSC-perimeter capital for either
-   prime, given it is depositor-funded (like the other Savings V2
-   vaults, which we track position-only outside the perimeter)?
-
-Current treatment: Spark venue **S63** tracks the spUSDG vault
-position-only (config/spark.yaml); the Grove-side venue is a commented
-stub (**E39**, config/grove.yaml) pending this answer.
 
 #### G4. Sky Direct venue set re-confirmation
 Per the Atlas spec: Treasury Bills on Eth (BUIDL/JTRSY/USTB) +
@@ -1572,6 +1580,9 @@ Resolved questions move here from their open section when their GitHub
 issue is closed. The full resolution narrative lives in
 `PRD.md §17.13` (review-acks); this section keeps a compact pointer
 trail (Q-ID, title, close date, issue link).
+
+### G25. spUSDG — future yield split between Spark and Grove
+**Resolved 2026-08-04** via [#161](https://github.com/soterlabs/settlement-cycle/issues/161). See `PRD.md §17.13`.
 
 ### S5. Subsidy reference rate — Atlas says T-Bill, current config says EFFR
 **Resolved 2026-07-30** via [#25](https://github.com/soterlabs/settlement-cycle/issues/25). See `PRD.md §17.13`.

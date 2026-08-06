@@ -7677,7 +7677,7 @@
     "_about": "Historical NAV values for venues where Chronicle returned 0x at older blocks (oracle not yet deployed). Values are best-effort approximations based on deposit price (par) since the on-chain feed had not yet started writing.",
     "rows": [
       {
-        "oracle": "0x9d77e4ca90e25114afb24df908f5918f572d958b",
+        "oracle": "0x802cacc19b9b3eb474c7def6f28c64ab67fb0753",
         "block": 24136052,
         "nav": "1000.00",
         "_note": "STAC deposit-time par; Chronicle had not yet started writing"

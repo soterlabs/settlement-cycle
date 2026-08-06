@@ -1,5 +1,17 @@
 # GROVE — 2026-06
 
+> **⚠ RESTATED 2026-08-06** — this month was settled at MSC#10; the figures
+> below supersede the as-settled record (reconciliation item, PRD §17.13
+> Update 2026-08-06 / QUESTIONS.md G27). Deltas vs as-settled:
+>
+> | Figure | As settled (MSC#10) | Restated | Δ | Cause |
+> |---|---:|---:|---:|---|
+> | Prime supply-side revenue | −$348,127.89 | −$270,948.27 | +$77,179.62 | E22 ACRDX oracle correction (frozen Chronicle Consumer_2 → Router; E22 had booked $0) |
+> | Prime demand-side revenue | $122,080.95 | $137,730.85 | +$15,649.90 | Chronicle Points component (#166) — pipeline version skew, not part of the oracle correction |
+>
+> Sky-side revenue is unchanged (E22 is 0% SDE). Banner added manually —
+> a regeneration of this month drops it; re-add per PRD §17.13.
+
 Period: 2026-06-01 → 2026-06-30 (30 days)
 
 ## Headline
@@ -12,13 +24,14 @@ Period: 2026-06-01 → 2026-06-30 (30 days)
 |---|---:|
 | agent rate | 66,624.62 |
 | distribution rewards | 55,456.33 |
-| **demand-side revenue** | **122,080.95** |
+| chronicle points | 15,649.90 |
+| **demand-side revenue** | **137,730.85** |
 
 #### Supply-Side revenue
 
 | Field | USDS |
 |---|---:|
-| **supply-side revenue** | **-348,127.89** |
+| **supply-side revenue** | **-270,948.27** |
 
 ### Sky side
 
@@ -52,7 +65,7 @@ Period: 2026-06-01 → 2026-06-30 (30 days)
 | E19 | Grove x Steakhouse USDC High Yield (Base, Morpho 4626) | $1,014,520.90 | $6,027,300.89 | $5,000,649.41 | $12,130.58 | $12,130.58 | $0.00 | 0% | $0.00 |
 | E20 | Janus Henderson Anemoy AAA CLO (JAAA-avalanche) | $259,054,698.77 | $259,827,767.94 | $0.00 | $773,069.17 | $773,069.17 | $0.00 | 0% | $0.00 |
 | E21 | Galaxy Arch CLO Token (GACLO-1) | $46,308,344.52 | $27,586,956.37 | $0.00 | $371,738.69 | $371,738.69 | $0.00 | 0% | $0.00 |
-| E22 | Anemoy Tokenized Apollo Diversified Credit Fund (ACRDX) | $32,739,638.94 | $32,739,638.94 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
+| E22 | Anemoy Tokenized Apollo Diversified Credit Fund (ACRDX) | $32,754,774.89 | $32,831,954.51 | $0.00 | $77,179.62 | $77,179.62 | $0.00 | 0% | $0.00 |
 | E23 | Steakhouse Prime Instant (Base, Morpho V2) | $103,110,534.95 | $173,617,481.65 | $69,992,553.38 | $514,393.32 | $514,393.32 | $0.00 | 0% | $0.00 |
 | E24 | Steakhouse High Yield PYUSD (Morpho 4626) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E26 | PYUSD raw (ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
@@ -62,6 +75,8 @@ Period: 2026-06-01 → 2026-06-30 (30 days)
 | E32 | USDC raw (alt holder idle) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E37 | Maple syrupUSDC (ERC-4626) | $100,275,383.22 | $100,671,412.01 | $0.00 | $396,028.79 | $396,028.79 | $0.00 | 0% | $0.00 |
 | E38 | Agora AUSD incentives (cash distribution to Grove Eth ALM) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
+| E40 | USDS raw (Diamond PAU ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
+| E41 | JTRSY Basin escrow — USDS pending subscription (Diamond PAU) | $0.00 | $1.00 | $1.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 
 ## DR per ref code
 
