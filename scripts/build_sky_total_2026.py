@@ -60,16 +60,29 @@ def main() -> int:
     print(f"{'Month':<10} {'MSC net':>16} {'non-MSC net':>16} {'Sky Net Revenue':>18}")
     print("-" * 100)
     failures = 0
-    # Paid basis only (2026-08-05, per the MSC operator): every month is
-    # anchored on the settlement tx that EXECUTED in it — the amounts
-    # actually paid on-chain, never the repo's own report figures. Month
-    # M+1's settlement carries true-ups relative to what month M paid, so
-    # a report-based (accrual) series would double-count restatements.
+    # Basis switch (2026-08-07, per the MSC operator): months >=
+    # accrual_from use the ACCRUAL basis (prime revenue earned in the
+    # month, paid at the next MSC — the settlement-preview view, pinned to
+    # the MSC post / sheet); earlier, settled months stay on the PAID
+    # basis (anchored on the settlement tx that executed in the month).
+    import yaml as _yaml
+    from settle.compute.sky_total_accrual import (
+        compute_sky_total_accrual,
+        write_sky_total_accrual,
+    )
+    raw_cfg = _yaml.safe_load((_REPO / "config" / "sky_total.yaml").read_text())
+    acc_from = str(raw_cfg.get("accrual_from") or "9999-12")
+    acc_y, acc_m = (int(x) for x in acc_from.split("-"))
+
     for month in _selected_months():
         label = f"{month.year}-{month.month:02d}"
         try:
-            r = compute_sky_total_monthly(month, source=source, repo_root=_REPO)
-            write_sky_total(r, _REPO / "settlements" / "sky_total" / label)
+            if (month.year, month.month) >= (acc_y, acc_m):
+                r = compute_sky_total_accrual(month, repo_root=_REPO, config=raw_cfg)
+                write_sky_total_accrual(r, _REPO / "settlements" / "sky_total" / label)
+            else:
+                r = compute_sky_total_monthly(month, source=source, repo_root=_REPO)
+                write_sky_total(r, _REPO / "settlements" / "sky_total" / label)
             flag = "  ⚠" if r.warnings else ""
             print(f"{label:<10} {float(r.msc_net):>16,.2f} "
                   f"{float(r.non_msc_net):>16,.2f} "
