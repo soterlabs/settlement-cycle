@@ -152,10 +152,16 @@ class GarConfig:
     artifact (whose SNR definition matches BA's "Net revenue" dashboard
     line). The month-N report carries month N's GAR; the cash is PAID at
     the MSC settling cycle N (executing in N+1 — July's GAR rides MSC#11
-    in August) and reduces THAT month's SNR through the normal subproxy
-    send, so the derivation is non-circular: SNR(N) is paid-basis and
-    never contains month N's own GAR. Reports from ``from_month``
-    (inclusive) carry the row. See ``compute/gar.py``.
+    in August). Reports from ``from_month`` (inclusive) carry the row.
+
+    **Circularity (accrual months).** From ``accrual_from`` the month's
+    SNR is itself built from that month's prime reports, so SNR ↔ GAR is
+    a cycle. It is broken by FREEZING: the month's SNR is computed with
+    the GAR that was in the demand side at freeze time (pinned in
+    ``config/sky_total.yaml → msc_preview.<month>.<prime>.gar_in_dv``),
+    then the report's GAR is set to ``share × frozen SNR`` and the SNR is
+    NOT recomputed. Known and accepted by the operator (2026-08-07); the
+    bootstrap order is documented in ``compute/gar.py``.
     """
 
     share: Decimal                    # e.g. Decimal("0.01")

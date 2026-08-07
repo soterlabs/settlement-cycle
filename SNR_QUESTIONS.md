@@ -1,10 +1,17 @@
 # SNR — open questions per month (vs BA Labs dashboard)
 
-*Maintained alongside `settlements/sky_total/`. Since 2026-08-06 our Sky
-Net Revenue is DEFINED to match BA's "Net revenue" dashboard line, so each
-month compares our SNR directly against the BA dashboard net
-(`sky.data.blockanalitica.com/v1/accounting/profit-and-loss/`).
-Status as of 2026-08-06.*
+*Maintained alongside `settlements/sky_total/`. Status as of 2026-08-07.*
+
+**Basis (2026-08-07):** months **≤ 2026-06** are PAID basis, defined to
+match BA's "Net revenue" dashboard line (the comparison below). Months
+**≥ 2026-07** are ACCRUAL basis (operator decision): SNR = prime revenue
+EARNED in the month (paid the following month at the MSC settling the
+cycle; per-prime preview pinned to the MSC post / settlement sheet) + the
+month's non-MSC net. July 2026 is frozen at **10,517,425.81 ≈
+10,517,426** (MSC net 14,097,718 − non-MSC 3,580,292). The BA-dashboard
+July net (15,225,814) corresponds to the PAID view (MSC#10 executed in
+July) and is no longer our July headline; the two coincide one month
+apart — accrual(M) ≡ paid(M+1) up to execution variance.*
 
 **Confirmed rules (no longer questions):**
 
@@ -31,8 +38,10 @@ Status as of 2026-08-06.*
   138,412 paid), so they're already in the subproxy sends. Only MSC#10's
   1,396,260 settled as its own line (operator decision 2026-08-05: no
   back-fill).
-- *DSB transfers* are Operating expenses (BA classification, adopted by us
-  2026-08-05).
+- *DSB transfers* are Operating expenses (BA classification) on the PAID
+  basis. On the accrual basis a DSB rides the previewed settlement and is
+  deducted from the MSC leg via `msc_preview.<month>.dsb` — MSC#11
+  announces none, so July carries $0.
 - *Step 1 Capital* = 20% of the cycle month's net revenue, split evenly
   Core Council / Fortification, riding the CC Buffer transfer; the paid
   figures are in each MSC post's BA capital-allocations section (now in
@@ -105,19 +114,33 @@ June −253 and July −225 are cent-rounding tails in the accrual-basis
 non-MSC leg. July's DSB transfer (34,902) is now classified as an
 Operating expense on both sides.
 
+## Basis-transition gap (2026-08-07)
+
+Switching to the accrual basis at 2026-07 leaves **MSC#10 — the June
+cycle, executed 2026-07-20 — carried by no month** in this series: June
+stays paid basis (MSC#9, executed in June) and July is the MSC#11
+preview. Inherent to a mid-series basis switch, not a defect, but it
+means **`settlements/sky_total/2026-01…07` must not be summed as a YTD
+figure** (it would omit ~15.2M). The June cycle's prime-side economics
+are in `settlements/<prime>/2026-06`; its paid Sky figures remain
+reconstructible from `settlement_blocks['2026-07']`.
+
 ## Cross-cutting (internal follow-ups)
 
 - **MSC#11 (August 2026):** back-fill `settlement_blocks['2026-08']`,
   `cc_step1_paid['2026-08']` (20% of July net from the MSC#11 post) and
   any genesis/repayment lines when the post lands. Our July restatements
   (MSC11_CARRYOVER.md) will appear inside BA's August per-prime items.
-- **GAR (operator decision 2026-08-06):** Skybase's GAR = 1% × the SAME
-  month's SNR, applied to every report month from 2026-01. The month-N
-  report carries month N's GAR; the cash is paid at the MSC executing in
-  N+1 (July's GAR, 152,255.89, rides MSC#11 in August) and INTENTIONALLY
-  reduces THAT month's SNR (GAR is demand-side revenue like agent rate /
-  DR). No circularity: SNR(N) is paid-basis and never contains month N's
-  own GAR.
+- **GAR (operator decisions 2026-08-06/07):** Skybase's GAR = 1% × the
+  SAME month's SNR (July: 1% × the frozen 10,517,426 = **105,174.26**,
+  paid at MSC#11 per the updated post — send 327,407). The freeze
+  convention avoids the fixed point: the month's SNR is computed with
+  whatever GAR the report carried at freeze time (July: 152,255.89,
+  pinned in config `msc_preview.skybase.gar_in_dv`), then the report's
+  GAR is reset to 1% × the frozen SNR and the SNR is NOT recomputed.
+  NOTE: the frozen sheet keeps skybase send 374,489 while the post pays
+  327,407 — the 47,082 delta will surface in August's paid-vs-preview
+  reconciliation.
   **[BA question]** BA's dashboard historically shows GAR as a
   below-the-line Step-1 allocation (0.5% Integrators + 0.5% Prime
   Agents) — confirm how the GAR portion of Skybase's settlement payment

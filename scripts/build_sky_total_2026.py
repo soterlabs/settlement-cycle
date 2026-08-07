@@ -50,26 +50,47 @@ def main() -> int:
         level=os.environ.get("LOG_LEVEL", "INFO"),
         format="%(asctime)s %(name)s %(levelname)s %(message)s",
     )
-    if not os.environ.get("ENVIO_API_TOKEN"):
-        print("Missing ENVIO_API_TOKEN (hint: `set -a; source .env; set +a`).")
-        return 1
-
-    source = HyperSyncMscBufferSource()
+    # The accrual branch reads only local artifacts — require the HyperSync
+    # credential (and build the source) lazily, so an accrual-only run works
+    # without chain access.
+    source = None
     print("SKY_TOTAL 2026 — Sky Net Revenue, buffer basis, EXECUTION-MONTH bucketing (BA-aligned)")
     print("=" * 100)
     print(f"{'Month':<10} {'MSC net':>16} {'non-MSC net':>16} {'Sky Net Revenue':>18}")
     print("-" * 100)
     failures = 0
-    # Paid basis only (2026-08-05, per the MSC operator): every month is
-    # anchored on the settlement tx that EXECUTED in it — the amounts
-    # actually paid on-chain, never the repo's own report figures. Month
-    # M+1's settlement carries true-ups relative to what month M paid, so
-    # a report-based (accrual) series would double-count restatements.
+    # Basis switch (2026-08-07, per the MSC operator): months >=
+    # accrual_from use the ACCRUAL basis (prime revenue earned in the
+    # month, paid at the next MSC — the settlement-preview view, pinned to
+    # the MSC post / sheet); earlier, settled months stay on the PAID
+    # basis (anchored on the settlement tx that executed in the month).
+    import yaml as _yaml
+    from settle.compute.sky_total_accrual import (
+        compute_sky_total_accrual,
+        write_sky_total_accrual,
+    )
+    raw_cfg = _yaml.safe_load((_REPO / "config" / "sky_total.yaml").read_text())
+    acc_from = raw_cfg.get("accrual_from")
+    acc_key = (
+        (Month.parse(str(acc_from)).year, Month.parse(str(acc_from)).month)
+        if acc_from else (9999, 12)
+    )
+
     for month in _selected_months():
         label = f"{month.year}-{month.month:02d}"
         try:
-            r = compute_sky_total_monthly(month, source=source, repo_root=_REPO)
-            write_sky_total(r, _REPO / "settlements" / "sky_total" / label)
+            if (month.year, month.month) >= acc_key:
+                r = compute_sky_total_accrual(month, repo_root=_REPO, config=raw_cfg)
+                write_sky_total_accrual(r, _REPO / "settlements" / "sky_total" / label)
+            else:
+                if source is None:
+                    if not os.environ.get("ENVIO_API_TOKEN"):
+                        print("Missing ENVIO_API_TOKEN — needed for paid-basis "
+                              "months (hint: `set -a; source .env; set +a`).")
+                        return 1
+                    source = HyperSyncMscBufferSource()
+                r = compute_sky_total_monthly(month, source=source, repo_root=_REPO)
+                write_sky_total(r, _REPO / "settlements" / "sky_total" / label)
             flag = "  ⚠" if r.warnings else ""
             print(f"{label:<10} {float(r.msc_net):>16,.2f} "
                   f"{float(r.non_msc_net):>16,.2f} "

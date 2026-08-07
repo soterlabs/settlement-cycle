@@ -34,13 +34,64 @@ subproxies:
   skybase: '0x08978E3700859E476201c1D7438B3427e3C81140'
   osero:   '0x24fdcd3bFA5C2553e05B2f9AD0365EBC296278D3'   # PRYSM_SUBPROXY (added 2026-08-04; Grove's Diamond PAU shares Grove's existing subproxy)
 
-# ── Basis note (2026-08-05, per the MSC operator) ───────────────────────
-# sky_total is PAID basis only: every month is anchored on the MSC
-# settlement tx that EXECUTED in it (settlement_blocks below) — the
-# amounts actually paid on-chain. A report-based (accrual) series was
-# prototyped for 2026-07 and removed: month M+1's settlement carries
-# true-ups relative to what month M actually paid, so mixing report
-# figures in would double-count every restatement.
+# ── Basis (2026-08-07, per the MSC operator) ────────────────────────────
+# Months < accrual_from: PAID basis — anchored on the MSC settlement tx
+# that EXECUTED in the month (settlement_blocks below), amounts as paid
+# on-chain. These months are settled, published history.
+#
+# Months >= accrual_from: ACCRUAL basis — Sky Net Revenue = prime revenue
+# EARNED in the month (paid the following month at the MSC settling the
+# cycle; per-prime mint/send preview pinned to the MSC post / settlement
+# sheet in msc_preview below) + the month's non-MSC net. See
+# compute/sky_total_accrual.py. For a CLOSED month the two bases coincide
+# up to execution variance: accrual(M) ≡ paid(M+1).
+accrual_from: '2026-07'
+
+# Primes included in the accrual MSC leg (every settling prime with a
+# monthly report; grove_pau rides grove's report).
+accrual_primes:
+  - spark
+  - grove
+  - obex
+  - osero
+  - keel
+  - skybase
+
+# Per-month settlement preview: prior-cycle corrections riding the MSC
+# (sky_adj / dv_adj / sv_adj / send_credit, from the MSC post's
+# Adjustments sections) and the as-published mint/send integers (pinned —
+# the post rounds unpublished adjustment decimals, so derived values can
+# sit ±$1 off; a warning fires beyond ±$2).
+#
+# 2026-07 (MSC#11 preview, forum t/28151 + the operator's settlement
+# sheet, FROZEN 2026-08-07 at SNR 10,517,425.80 ≈ 10,517,426):
+#   * skybase gar_in_dv = 152,255.89 — the GAR inside the demand side at
+#     freeze time (computed under the former paid-basis definition). The
+#     final skybase report carries GAR = 1% x frozen SNR = 105,174.26 and
+#     the post pays 327,407, but the frozen sheet keeps 374,489; this pin
+#     makes the frozen SNR reproducible regardless of report regeneration.
+#   * non_msc pins the month's non-MSC leg as frozen (the MSC pins alone
+#     don't freeze the SNR — the non-MSC artifact is regenerated whenever
+#     its sources refresh). Drift beyond ±$2 warns; the pinned values win.
+#   * dsb: a Demand-side Buffer transfer riding the previewed settlement,
+#     when the MSC post announces one (MSC#11 does not — omitted = 0).
+#
+# **Transition note.** accrual_from 2026-07 means June stays paid basis
+# (MSC#9, executed in June) while July becomes the MSC#11 preview — so
+# **MSC#10 (the June cycle, executed 2026-07-20) is carried by no month in
+# this series.** That is inherent to switching basis mid-series, not a
+# defect: the June cycle's economics live in `settlements/grove|spark|…/
+# 2026-06` on the prime side, and its paid figures remain reconstructible
+# from settlement_blocks['2026-07'] above. Documented in SNR_QUESTIONS.md.
+msc_preview:
+  '2026-07':
+    non_msc: {income: 15638940.230161597548, expense: 19219232.42222744613186680462}
+    spark:   {mint: 9465419, send: 4442924, dv_adj: -41908, sv_adj: 563527, sky_adj: 304476}
+    grove:   {mint: 9685438, send: 1808084, sv_adj: 52429, sky_adj: 65701, send_credit: 77872}
+    obex:    {mint: 2535968, send: 916736, dv_adj: -2601, sv_adj: 82606, sky_adj: -72618}
+    osero:   {mint: 497, send: 12043}
+    keel:    {mint: 0, send: 35328, dv_adj: -903}
+    skybase: {mint: 0, send: 374489, dv_adj: 89300, gar_in_dv: 152255.89}
 
 # ── Step 1 Capital actually PAID to the Core Council Buffer, per execution
 # month. Source: each MSC post's BA capital-allocations section (20% of the
