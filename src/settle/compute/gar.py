@@ -60,7 +60,14 @@ def compute_gar(
         raise FileNotFoundError(
             f"gar: {prime.id} {label} needs settlements/sky_total/"
             f"{label}/provenance.json (GAR = share × the month's SNR) — "
-            "run scripts/build_sky_total_2026.py first"
+            "run scripts/build_sky_total_2026.py first.\n"
+            "NOTE (accrual months): sky_total in turn reads this prime's "
+            "report, so the two bootstrap in a cycle. Break it the way the "
+            f"July cycle was: generate {prime.id} once (the run fails here), "
+            "pin the intended GAR for the month under "
+            f"config/sky_total.yaml → msc_preview['{label}']['{prime.id}']"
+            ".gar_in_dv, build sky_total, then re-run this report — its GAR "
+            "becomes share × the now-frozen SNR."
         )
 
     prov = json.loads(prov_path.read_text())

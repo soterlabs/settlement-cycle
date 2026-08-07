@@ -7,7 +7,7 @@ match BA's "Net revenue" dashboard line (the comparison below). Months
 **≥ 2026-07** are ACCRUAL basis (operator decision): SNR = prime revenue
 EARNED in the month (paid the following month at the MSC settling the
 cycle; per-prime preview pinned to the MSC post / settlement sheet) + the
-month's non-MSC net. July 2026 is frozen at **10,517,425.80 ≈
+month's non-MSC net. July 2026 is frozen at **10,517,425.81 ≈
 10,517,426** (MSC net 14,097,718 − non-MSC 3,580,292). The BA-dashboard
 July net (15,225,814) corresponds to the PAID view (MSC#10 executed in
 July) and is no longer our July headline; the two coincide one month
@@ -38,8 +38,10 @@ apart — accrual(M) ≡ paid(M+1) up to execution variance.*
   138,412 paid), so they're already in the subproxy sends. Only MSC#10's
   1,396,260 settled as its own line (operator decision 2026-08-05: no
   back-fill).
-- *DSB transfers* are Operating expenses (BA classification, adopted by us
-  2026-08-05).
+- *DSB transfers* are Operating expenses (BA classification) on the PAID
+  basis. On the accrual basis a DSB rides the previewed settlement and is
+  deducted from the MSC leg via `msc_preview.<month>.dsb` — MSC#11
+  announces none, so July carries $0.
 - *Step 1 Capital* = 20% of the cycle month's net revenue, split evenly
   Core Council / Fortification, riding the CC Buffer transfer; the paid
   figures are in each MSC post's BA capital-allocations section (now in
@@ -111,6 +113,17 @@ sides are non-MSC only.
 June −253 and July −225 are cent-rounding tails in the accrual-basis
 non-MSC leg. July's DSB transfer (34,902) is now classified as an
 Operating expense on both sides.
+
+## Basis-transition gap (2026-08-07)
+
+Switching to the accrual basis at 2026-07 leaves **MSC#10 — the June
+cycle, executed 2026-07-20 — carried by no month** in this series: June
+stays paid basis (MSC#9, executed in June) and July is the MSC#11
+preview. Inherent to a mid-series basis switch, not a defect, but it
+means **`settlements/sky_total/2026-01…07` must not be summed as a YTD
+figure** (it would omit ~15.2M). The June cycle's prime-side economics
+are in `settlements/<prime>/2026-06`; its paid Sky figures remain
+reconstructible from `settlement_blocks['2026-07']`.
 
 ## Cross-cutting (internal follow-ups)
 

@@ -30,3 +30,5 @@ Consolidated Sky Net Revenue, ACCRUAL basis (operator definition 2026-08-07): pr
 | MSC net (accrual) | 14,097,718.00 |
 | non-MSC net | -3,580,292.19 |
 | **Sky Net Revenue** | **10,517,425.81** |
+
+*Below the line (not deducted above): the Core Council Buffer transfer — Step 1 Capital (20% of this SNR) plus any genesis / expense repayments — buybacks, the Aligned Delegates Buffer, GAR allocations, and prime capital seedings. On the accrual basis those figures are only known once the settlement executes; the paid-basis months itemise them.*

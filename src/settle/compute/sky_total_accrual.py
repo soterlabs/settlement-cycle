@@ -62,6 +62,12 @@ _PIN_TOLERANCE = Decimal("2")
 
 _D0 = Decimal("1")  # quantize target: whole USDS
 
+# Accepted per-prime keys in ``msc_preview.<month>.<prime>`` — anything
+# else is a typo and raises (these keys move settlement figures).
+_PREVIEW_FIELDS = frozenset({
+    "mint", "send", "sky_adj", "dv_adj", "sv_adj", "send_credit", "gar_in_dv",
+})
+
 
 def _round0(x: Decimal) -> Decimal:
     return x.quantize(_D0, rounding=ROUND_HALF_UP)
@@ -90,6 +96,12 @@ class SkyTotalAccrualMonthly:
     rows: list[AccrualPrimeRow]
     non_msc_income: Decimal
     non_msc_expense: Decimal
+    # Demand-side Buffer transfer riding the PREVIEWED settlement, when the
+    # MSC post announces one (config ``msc_preview.<month>.dsb``). MSC#11
+    # has none, so July is 0. Deducted from the MSC leg — the paid basis
+    # books its DSB as a non-MSC Operating expense instead, but there the
+    # figure comes from the executed settlement block.
+    dsb: Decimal = Decimal(0)
     warnings: list[str] = field(default_factory=list)
 
     @property
@@ -102,7 +114,7 @@ class SkyTotalAccrualMonthly:
 
     @property
     def msc_net(self) -> Decimal:
-        return self.total_mint - self.total_send
+        return self.total_mint - self.total_send - self.dsb
 
     @property
     def non_msc_net(self) -> Decimal:
@@ -120,7 +132,10 @@ def _load_prime_components(
     p = repo_root / "settlements" / prime / label / "provenance.json"
     if not p.exists():
         raise FileNotFoundError(
-            f"sky_total accrual: missing {p} — generate {prime} {label} first"
+            f"sky_total accrual: missing {p} — generate {prime} {label} "
+            "first. (If that report itself needs this month's SNR — the "
+            "GAR prime — see the bootstrap note in compute/gar.py: pin "
+            "gar_in_dv, build sky_total, then re-run the prime.)"
         )
     r = json.loads(p.read_text())["results"]
     sky = Decimal(r["sky_revenue"])
@@ -166,6 +181,34 @@ def compute_sky_total_accrual(
     preview: dict[str, Any] = (config.get("msc_preview") or {}).get(label) or {}
 
     warnings: list[str] = []
+    # Fail loud on a typo'd prime or field name — the paid path raises on
+    # unknown streams / one_off primes for the same reason: these keys move
+    # counterparty-facing settlement figures, so a silently-ignored typo
+    # would publish an unadjusted number.
+    for key in preview:
+        if key not in primes and key != "dsb" and key != "non_msc":
+            raise ValueError(
+                f"sky_total accrual {label}: msc_preview has unknown key "
+                f"{key!r} — expected one of {sorted(primes)} (or 'dsb' / "
+                "'non_msc')"
+            )
+    for prime, adj in preview.items():
+        if prime in ("dsb", "non_msc") or not isinstance(adj, dict):
+            continue
+        unknown = set(adj) - _PREVIEW_FIELDS
+        if unknown:
+            raise ValueError(
+                f"sky_total accrual {label}: msc_preview[{prime}] has unknown "
+                f"field(s) {sorted(unknown)} — expected {sorted(_PREVIEW_FIELDS)}"
+            )
+    if not preview:
+        warnings.append(
+            f"msc_preview: no entry for {label} in config/sky_total.yaml — "
+            "every prime's mint/send is DERIVED from the monthly reports and "
+            "cross-checks against nothing. Pin the MSC post's published "
+            "figures (and any prior-cycle corrections riding the settlement) "
+            "before treating this month as reconciled."
+        )
     rows: list[AccrualPrimeRow] = []
     for prime in primes:
         sky, dv, sv = _load_prime_components(repo_root, prime, label)
@@ -186,6 +229,15 @@ def compute_sky_total_accrual(
 
         has_ilk = prime in ilk_primes
         sv_t = sv + sv_adj
+        if not has_ilk and (sky != 0 or sky_adj != 0):
+            # A prime with no allocator ilk cannot mint, so a non-zero Sky
+            # share would silently vanish from both mint and send.
+            raise ValueError(
+                f"sky_total accrual {label}: {prime} has no allocator ilk but "
+                f"a non-zero Sky share (sky={sky}, sky_adj={sky_adj}) — it "
+                "cannot be minted. Register the prime's ilk in "
+                "allocator_ilks or fix its monthly report."
+            )
         derived_mint = (sky + sky_adj + max(sv_t, Decimal(0))) if has_ilk else Decimal(0)
         derived_send = dv + dv_adj + sv_t + send_credit
 
@@ -212,12 +264,39 @@ def compute_sky_total_accrual(
     inc, exp, non_msc_warns = _load_non_msc(repo_root, label)
     for w in non_msc_warns:
         warnings.append(f"non_msc: {w}")
+
+    # A FROZEN month pins its non-MSC leg too: the MSC pins alone don't make
+    # the published SNR reproducible, because the non-MSC artifact is
+    # regenerated whenever its sources are refreshed. Drift beyond $2 warns
+    # (same tolerance as the MSC pins) and the pinned values win.
+    non_msc_pin = preview.get("non_msc") or {}
+    if non_msc_pin:
+        for name, live, pinned_raw in (
+            ("income", inc, non_msc_pin.get("income")),
+            ("expense", exp, non_msc_pin.get("expense")),
+        ):
+            if pinned_raw is None:
+                continue
+            pinned = Decimal(str(pinned_raw))
+            if abs(pinned - live) > _PIN_TOLERANCE:
+                warnings.append(
+                    f"non_msc {name}: pinned {pinned:,.2f} vs live artifact "
+                    f"{live:,.2f} (Δ {pinned - live:+,.2f}) — the frozen month "
+                    "no longer matches settlements/non_msc. Re-freeze "
+                    "deliberately or investigate the drift."
+                )
+            if name == "income":
+                inc = pinned
+            else:
+                exp = pinned
+
+    dsb = Decimal(str(preview.get("dsb") or 0))
     for w in warnings:
         _log.warning("sky_total accrual %s: %s", label, w)
 
     return SkyTotalAccrualMonthly(
         month=label, rows=rows,
-        non_msc_income=inc, non_msc_expense=exp,
+        non_msc_income=inc, non_msc_expense=exp, dsb=dsb,
         warnings=warnings,
     )
 
@@ -250,8 +329,12 @@ def render_summary(r: SkyTotalAccrualMonthly) -> str:
     L.append("| Prime | MSC debt (mint) | Send to prime |")
     L.append("|---|---:|---:|")
     for row in r.rows:
-        L.append(f"| {row.prime} | {_usds(row.mint)} | -{_usds(row.send)} |")
-    L.append(f"| **total** | **{_usds(r.total_mint)}** | **-{_usds(r.total_send)}** |")
+        # _usds() already carries the sign — negate rather than prefixing a
+        # literal '-', which would double-sign a negative net send.
+        L.append(f"| {row.prime} | {_usds(row.mint)} | {_usds(-row.send)} |")
+    L.append(f"| **total** | **{_usds(r.total_mint)}** | **{_usds(-r.total_send)}** |")
+    if r.dsb != 0:
+        L.append(f"| Demand-side Buffer (rides the settlement) | | {_usds(-r.dsb)} |")
     L.append(f"| **MSC net (accrual)** | | **{_usds(r.msc_net)}** |")
     L.append("")
     L.append("## Non-MSC leg")
@@ -269,6 +352,15 @@ def render_summary(r: SkyTotalAccrualMonthly) -> str:
     L.append(f"| MSC net (accrual) | {_usds(r.msc_net)} |")
     L.append(f"| non-MSC net | {_usds(r.non_msc_net)} |")
     L.append(f"| **Sky Net Revenue** | **{_usds(r.sky_net_revenue)}** |")
+    L.append("")
+    L.append(
+        "*Below the line (not deducted above): the Core Council Buffer "
+        "transfer — Step 1 Capital (20% of this SNR) plus any genesis / "
+        "expense repayments — buybacks, the Aligned Delegates Buffer, GAR "
+        "allocations, and prime capital seedings. On the accrual basis "
+        "those figures are only known once the settlement executes; the "
+        "paid-basis months itemise them.*"
+    )
     L.append("")
     for w in r.warnings:
         L.append(f"> ⚠ {w}")
@@ -302,6 +394,7 @@ def write_sky_total_accrual(
             },
             "total_mint": str(r.total_mint),
             "total_send": str(r.total_send),
+            "dsb": str(r.dsb),
             "msc_net": str(r.msc_net),
             "non_msc_income": str(r.non_msc_income),
             "non_msc_expense": str(r.non_msc_expense),

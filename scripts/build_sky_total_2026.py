@@ -50,11 +50,10 @@ def main() -> int:
         level=os.environ.get("LOG_LEVEL", "INFO"),
         format="%(asctime)s %(name)s %(levelname)s %(message)s",
     )
-    if not os.environ.get("ENVIO_API_TOKEN"):
-        print("Missing ENVIO_API_TOKEN (hint: `set -a; source .env; set +a`).")
-        return 1
-
-    source = HyperSyncMscBufferSource()
+    # The accrual branch reads only local artifacts — require the HyperSync
+    # credential (and build the source) lazily, so an accrual-only run works
+    # without chain access.
+    source = None
     print("SKY_TOTAL 2026 — Sky Net Revenue, buffer basis, EXECUTION-MONTH bucketing (BA-aligned)")
     print("=" * 100)
     print(f"{'Month':<10} {'MSC net':>16} {'non-MSC net':>16} {'Sky Net Revenue':>18}")
@@ -71,16 +70,25 @@ def main() -> int:
         write_sky_total_accrual,
     )
     raw_cfg = _yaml.safe_load((_REPO / "config" / "sky_total.yaml").read_text())
-    acc_from = str(raw_cfg.get("accrual_from") or "9999-12")
-    acc_y, acc_m = (int(x) for x in acc_from.split("-"))
+    acc_from = raw_cfg.get("accrual_from")
+    acc_key = (
+        (Month.parse(str(acc_from)).year, Month.parse(str(acc_from)).month)
+        if acc_from else (9999, 12)
+    )
 
     for month in _selected_months():
         label = f"{month.year}-{month.month:02d}"
         try:
-            if (month.year, month.month) >= (acc_y, acc_m):
+            if (month.year, month.month) >= acc_key:
                 r = compute_sky_total_accrual(month, repo_root=_REPO, config=raw_cfg)
                 write_sky_total_accrual(r, _REPO / "settlements" / "sky_total" / label)
             else:
+                if source is None:
+                    if not os.environ.get("ENVIO_API_TOKEN"):
+                        print("Missing ENVIO_API_TOKEN — needed for paid-basis "
+                              "months (hint: `set -a; source .env; set +a`).")
+                        return 1
+                    source = HyperSyncMscBufferSource()
                 r = compute_sky_total_monthly(month, source=source, repo_root=_REPO)
                 write_sky_total(r, _REPO / "settlements" / "sky_total" / label)
             flag = "  ⚠" if r.warnings else ""

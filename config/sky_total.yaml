@@ -70,8 +70,22 @@ accrual_primes:
 #     final skybase report carries GAR = 1% x frozen SNR = 105,174.26 and
 #     the post pays 327,407, but the frozen sheet keeps 374,489; this pin
 #     makes the frozen SNR reproducible regardless of report regeneration.
+#   * non_msc pins the month's non-MSC leg as frozen (the MSC pins alone
+#     don't freeze the SNR — the non-MSC artifact is regenerated whenever
+#     its sources refresh). Drift beyond ±$2 warns; the pinned values win.
+#   * dsb: a Demand-side Buffer transfer riding the previewed settlement,
+#     when the MSC post announces one (MSC#11 does not — omitted = 0).
+#
+# **Transition note.** accrual_from 2026-07 means June stays paid basis
+# (MSC#9, executed in June) while July becomes the MSC#11 preview — so
+# **MSC#10 (the June cycle, executed 2026-07-20) is carried by no month in
+# this series.** That is inherent to switching basis mid-series, not a
+# defect: the June cycle's economics live in `settlements/grove|spark|…/
+# 2026-06` on the prime side, and its paid figures remain reconstructible
+# from settlement_blocks['2026-07'] above. Documented in SNR_QUESTIONS.md.
 msc_preview:
   '2026-07':
+    non_msc: {income: 15638940.230161597548, expense: 19219232.42222744613186680462}
     spark:   {mint: 9465419, send: 4442924, dv_adj: -41908, sv_adj: 563527, sky_adj: 304476}
     grove:   {mint: 9685438, send: 1808084, sv_adj: 52429, sky_adj: 65701, send_credit: 77872}
     obex:    {mint: 2535968, send: 916736, dv_adj: -2601, sv_adj: 82606, sky_adj: -72618}

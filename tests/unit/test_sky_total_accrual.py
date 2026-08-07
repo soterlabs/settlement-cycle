@@ -55,7 +55,11 @@ def _july_repo(tmp_path: Path) -> Path:
     # config gar_in_dv pin must swap the frozen 152,255.89 back in.
     _seed_prime(tmp_path, "skybase", L, sky="0", par="0", ar="37629.25",
                 dr="95303.38", gar="105174.26")
-    _seed_non_msc(tmp_path, L, "15638940.23", "19219232.4271")
+    # The REAL July artifact values (settlements/non_msc/2026-07) — a
+    # hand-tuned literal would let the freeze assertion pass while the
+    # pipeline emitted something else.
+    _seed_non_msc(tmp_path, L, "15638940.230161597548",
+                  "19219232.42222744613186680462")
     return tmp_path
 
 
@@ -79,14 +83,15 @@ _JULY_CFG = {
 
 
 def test_july_2026_reproduces_frozen_sheet(tmp_path):
-    """MSC net 14,097,718 and SNR 10,517,425.80 (the sheet's 10,517,426
-    at whole-dollar display) from the pinned MSC#11 preview."""
+    """MSC net 14,097,718 and SNR 10,517,425.81 (the sheet's 10,517,426
+    at whole-dollar display) from the pinned MSC#11 preview + the real
+    July non-MSC artifact values."""
     root = _july_repo(tmp_path)
     r = compute_sky_total_accrual(Month(2026, 7), repo_root=root, config=_JULY_CFG)
     assert r.total_mint == Decimal("21687322")
     assert r.total_send == Decimal("7589604")
     assert r.msc_net == Decimal("14097718")
-    assert r.sky_net_revenue.quantize(Decimal("0.01")) == Decimal("10517425.80")
+    assert r.sky_net_revenue.quantize(Decimal("0.01")) == Decimal("10517425.81")
     # No cross-check warnings: every pinned figure within $2 of derived.
     assert not [w for w in r.warnings if "pinned" in w], r.warnings
 
@@ -144,6 +149,74 @@ def test_render_summary_carries_headline(tmp_path):
     root = _july_repo(tmp_path)
     r = compute_sky_total_accrual(Month(2026, 7), repo_root=root, config=_JULY_CFG)
     md = render_summary(r)
-    assert "10,517,425.80" in md
+    assert "10,517,425.81" in md
     assert "14,097,718" in md
     assert "ACCRUAL basis" in md
+
+
+def test_unknown_preview_prime_raises(tmp_path):
+    """A typo'd prime key must fail loud — it would otherwise silently drop
+    that prime's prior-cycle corrections from a published figure."""
+    root = _july_repo(tmp_path)
+    cfg = json.loads(json.dumps(_JULY_CFG))
+    cfg["msc_preview"]["2026-07"]["sparkk"] = {"mint": 1, "send": 1}
+    with pytest.raises(ValueError, match="unknown key"):
+        compute_sky_total_accrual(Month(2026, 7), repo_root=root, config=cfg)
+
+
+def test_unknown_preview_field_raises(tmp_path):
+    root = _july_repo(tmp_path)
+    cfg = json.loads(json.dumps(_JULY_CFG))
+    cfg["msc_preview"]["2026-07"]["obex"]["skyadj"] = 100
+    with pytest.raises(ValueError, match="unknown field"):
+        compute_sky_total_accrual(Month(2026, 7), repo_root=root, config=cfg)
+
+
+def test_month_without_preview_warns(tmp_path):
+    root = _july_repo(tmp_path)
+    cfg = json.loads(json.dumps(_JULY_CFG))
+    cfg["msc_preview"] = {}
+    r = compute_sky_total_accrual(Month(2026, 7), repo_root=root, config=cfg)
+    assert any("no entry for 2026-07" in w for w in r.warnings)
+
+
+def test_non_msc_pin_freezes_the_leg_and_warns_on_drift(tmp_path):
+    """The MSC pins alone don't freeze SNR — the non-MSC artifact is
+    regenerated whenever its sources refresh."""
+    root = _july_repo(tmp_path)
+    cfg = json.loads(json.dumps(_JULY_CFG))
+    cfg["msc_preview"]["2026-07"]["non_msc"] = {
+        "income": "15638940.230161597548",
+        "expense": "19219232.42222744613186680462",
+    }
+    # Live artifact drifts by 1,000 — the pin must win, with a warning.
+    _seed = root / "settlements" / "non_msc" / "2026-07" / "provenance.json"
+    _seed.write_text(json.dumps({"results": {
+        "total_income": "15637940.230161597548",
+        "total_expense": "19219232.42222744613186680462"}, "warnings": []}))
+    r = compute_sky_total_accrual(Month(2026, 7), repo_root=root, config=cfg)
+    assert r.sky_net_revenue.quantize(Decimal("0.01")) == Decimal("10517425.81")
+    assert any("non_msc income: pinned" in w for w in r.warnings)
+
+
+def test_dsb_rides_the_previewed_settlement(tmp_path):
+    """MSC#11 announces no DSB (July = 0), but a cycle that does must
+    deduct it from the MSC leg."""
+    root = _july_repo(tmp_path)
+    cfg = json.loads(json.dumps(_JULY_CFG))
+    cfg["msc_preview"]["2026-07"]["dsb"] = 34902
+    r = compute_sky_total_accrual(Month(2026, 7), repo_root=root, config=cfg)
+    assert r.msc_net == Decimal("14097718") - Decimal("34902")
+
+
+def test_non_ilk_prime_with_sky_share_raises(tmp_path):
+    """A prime with no allocator ilk cannot mint — a non-zero Sky share
+    would vanish from both mint and send."""
+    root = _july_repo(tmp_path)
+    p = root / "settlements" / "keel" / "2026-07" / "provenance.json"
+    d = json.loads(p.read_text())
+    d["results"]["sky_revenue"] = "5000"
+    d["results"]["prime_agent_revenue"] = "5000"
+    p.write_text(json.dumps(d))
+    with pytest.raises(ValueError, match="no allocator ilk"):
+        compute_sky_total_accrual(Month(2026, 7), repo_root=root, config=_JULY_CFG)
