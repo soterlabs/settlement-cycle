@@ -85,7 +85,6 @@ from ..domain.subsidy import (
     subsidised_apy,
 )
 from ._helpers import (
-    CompoundingAccrual,
     add_spread,
     cum_at_or_before,
     daily_compounding_factor,
@@ -238,10 +237,12 @@ def compute_sky_revenue_daily(
 
     rows: list[dict] = []
     # Accrued interest compounds — day d is charged on principal + interest
-    # accrued on days < d (operator decision 2026-08-24; see
-    # ``CompoundingAccrual``). Actual and gross accrue independently.
-    accrual = CompoundingAccrual()
-    accrual_gross = CompoundingAccrual()
+    # accrued on days < d (operator decision 2026-08-24). Tracked inline
+    # rather than via ``CompoundingAccrual`` because the subsidy cap splits
+    # principal and accrued across different rates (see ``_day_interest``).
+    # Actual and gross accrue independently.
+    accrued = Decimal("0")
+    accrued_gross = Decimal("0")
     current = period.start
     while current <= period.end:
         cum_debt = cum_at_or_before(debt, "cum_debt", current)
@@ -298,32 +299,46 @@ def compute_sky_revenue_daily(
             _t        = months_elapsed_since(current, subsidy_config.program_start)  # type: ignore[union-attr]
             _sub_apy  = subsidised_apy(base_apy, _ref_rate, _t, subsidy_config.ramp_months)  # type: ignore[union-attr]
 
-        def _daily_factor_for(principal: Decimal) -> Decimal:
-            """Blended one-day factor on ``principal`` — the subsidy cap
-            splits the PRINCIPAL across two rates, so the effective factor
-            is the tranche-weighted mean. Returning a factor (rather than a
-            dollar amount) lets the compounding accumulator charge the same
-            rate on previously accrued interest."""
-            if principal <= 0:
-                return Decimal("0")
-            if _sub_apy is not None:
-                cap     = subsidy_config.cap_usd  # type: ignore[union-attr]
-                sub_p   = min(principal, cap)
-                exc_p   = max(Decimal("0"), principal - cap)
-                rev     = sub_p * daily_compounding_factor(_sub_apy)
-                if exc_p > 0:
-                    rev += exc_p * daily_compounding_factor(base_apy)
-                return rev / principal
-            return daily_compounding_factor(base_apy)
+        base_f = daily_compounding_factor(base_apy)
+        sub_f = (
+            daily_compounding_factor(_sub_apy) if _sub_apy is not None else base_f
+        )
 
-        # ``add`` charges (principal + accrued) × factor and returns the day's
-        # increment, so the per-day rows below still sum to the total.
-        daily_rev       = accrual.add(utilized, _daily_factor_for(utilized))
+        def _day_interest(principal: Decimal, accrued: Decimal) -> Decimal:
+            """One day's charge on ``principal`` plus interest already
+            accrued this period.
+
+            The subsidy caps the first ``cap_usd`` of UTILIZED DEBT, so only
+            principal is split across the two rates; accrued interest is not
+            borrowed debt and pays the full base rate. (Applying a
+            cap-weighted blended factor to the accrued balance would extend
+            the subsidised rate past the $1B cap and under-bill Sky.)
+            """
+            if principal <= 0:
+                # No debt today: nothing accrues, and the accrued balance
+                # does not earn either — it is capitalised into the ilk at
+                # settlement, not carried as an interest-bearing balance
+                # here. Keeps the actual charge and the ``full_br``
+                # counterfactual on identical footing.
+                return Decimal("0")
+            if _sub_apy is None:
+                return (principal + accrued) * base_f
+            cap   = subsidy_config.cap_usd  # type: ignore[union-attr]
+            sub_p = min(principal, cap)
+            exc_p = max(Decimal("0"), principal - cap)
+            return sub_p * sub_f + (exc_p + accrued) * base_f
+
+        # Charge the day, then roll it into the accrued balance. The per-day
+        # rows below record the day's total charge (principal interest +
+        # interest on prior accruals), so they still sum to the period total.
+        daily_rev = _day_interest(utilized, accrued)
+        accrued += daily_rev
         # Gross: BR on the full ilk debt before any utilized deductions.
         # Captures "what sky_revenue would be if no idle USDS / SDE / PSM /
         # Curve / lending deductions were applied."  Stored per-day so the
         # orchestrator can sum it and write sky_revenue_gross to provenance.
-        daily_rev_gross = accrual_gross.add(cum_debt, _daily_factor_for(cum_debt))
+        daily_rev_gross = _day_interest(cum_debt, accrued_gross)
+        accrued_gross += daily_rev_gross
         rows.append({
             "date":               current,
             "cum_debt":           cum_debt,
@@ -345,6 +360,12 @@ def compute_sky_revenue_daily(
             "t_months":           _t,
             "daily_sky_rev":      daily_rev,
             "daily_sky_rev_gross": daily_rev_gross,
+            # Interest accrued BEFORE this day, i.e. the extra balance the
+            # day's factor was applied to on top of ``utilized``. Lets a
+            # counterparty reconcile any single row: principal-only
+            # interest = daily_sky_rev − accrued_before × factor. Zero on
+            # day 1 and on any day with no debt.
+            "accrued_before":     accrued - daily_rev,
         })
         current = current + timedelta(days=1)
 
@@ -378,7 +399,7 @@ def compute_sky_revenue_daily(
             subsidy_config.ref_rate_kind,  # type: ignore[union-attr]
         )
 
-    return accrual.total, daily_df, subsidy_summary
+    return accrued, daily_df, subsidy_summary
 
 
 def summarize_subsidy(
@@ -412,8 +433,12 @@ def summarize_subsidy(
     actual_cof = sub_cof = exc_cof = Decimal("0")
     # The no-subsidy counterfactual must compound on the same basis as the
     # actual charge, else ``subsidy_benefit`` would absorb the compounding
-    # difference instead of measuring only the rate discount.
-    full_br = CompoundingAccrual()
+    # difference instead of measuring only the rate discount. Tracked as a
+    # running balance so a zero-utilized day accrues NOTHING here too —
+    # charging the accrued balance on days the real charge skips fabricated
+    # a non-zero ``subsidy_benefit`` in months with a mid-period repayment,
+    # even alongside ``zero_benefit=True``.
+    full_br_accrued = Decimal("0")
     ref_sum = sub_sum = Decimal("0")
     active = 0
     any_benefit_day = False
@@ -454,7 +479,8 @@ def summarize_subsidy(
         if simple_tot > 0:
             sub_cof += charged * simple_sub / simple_tot
             exc_cof += charged * simple_exc / simple_tot
-        full_br.add(u, base_f)
+        if u > 0:
+            full_br_accrued += (u + full_br_accrued) * base_f
         ref_raw = r["ref_rate_apy"]
         if sub_present and ref_raw is not None and not pd.isna(ref_raw):
             ref_sum += Decimal(str(ref_raw))
@@ -465,7 +491,7 @@ def summarize_subsidy(
 
     wbase = (wbase_num / util_sum) if util_sum else Decimal("0")
     eff = (weff_num / util_sum) if util_sum else Decimal("0")
-    full_br_cof = full_br.total
+    full_br_cof = full_br_accrued
     benefit = full_br_cof - actual_cof
     return {
         "cap_usd":              str(cap),

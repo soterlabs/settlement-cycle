@@ -179,8 +179,11 @@ def _months_elapsed(d: date) -> int:
 def base_apy_for_date(d: date) -> Decimal:
     """Approximate full BR APY at date d."""
     ssr = _SSR_BY_MONTH.get((d.year, d.month), Decimal("0.0450"))
-    # Multiplicative compounding (1+SSR)(1+30bps) - 1 per build_settlement.
-    return (Decimal(1) + ssr) * (Decimal(1) + _BR_SPREAD) - Decimal(1)
+    # Plain addition, matching ``_helpers.add_spread``: BR = SSR + spread is
+    # a rate definition (3.7200% at SSR 3.52% + 20bps). Composed
+    # multiplicatively here until 2026-08-24, which overstated the base by
+    # SSR x spread (0.70 bps).
+    return ssr + _BR_SPREAD
 
 
 def subsidised_apy_for_date(d: date, ref_rate: Decimal) -> Decimal:

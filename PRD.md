@@ -1166,6 +1166,76 @@ canonical pricing).
 
 ### 17.13 Open questions (priority-ordered)
 
+#### Methodology — resolved 2026-08-24: BR/SSR rate application (operator-confirmed)
+
+**Two independent corrections to how the Base Rate and SSR-derived accruals
+are applied.** Raised while auditing whether the per-second SSR is honoured
+at daily granularity; both confirmed by the MSC operator on 2026-08-24 and
+applied **going forward only** (no restatement — July 2026 was already
+settled at MSC#11, and its `sky_total` figure stays frozen at 10,517,425.81
+via the `msc_preview` pins, which now emit drift warnings if July is
+regenerated).
+
+1. **Accruals compound within the settlement period.** The per-day rate
+   conversion was always exact per-second (`ssr_history.sql` reads the
+   on-chain per-second ray and `POWER(ray/1e27, 31536000)-1`;
+   `daily_compounding_factor` applies `(1+APY)^(1/365)-1`, which is
+   algebraically `ray^86400 - 1`). What was wrong was the accrual *across*
+   days: the daily loops summed `principal_d × factor_d`, so day *d*'s
+   interest never earned. A 31-day month understated the charge by
+   ~0.15–0.17%. Now every rate-derived leg accrues via
+   `_helpers.CompoundingAccrual` — the BR charge (and its gross series),
+   the agent rate, the Cat B / PSM3 / Curve sUSDS spread reimbursements,
+   the PSM3 SSR appreciation and the Savings-V2 depositor SSR. Measured
+   July 2026 effect: **+$18,148/month** Sky-side.
+
+   *Cross-month compounding needs no code:* the month's charge is
+   capitalised into the prime's ilk debt at settlement via `vat.grab` with
+   positive `dart` (allocator ilks have a frozen `vat.rate` and no `jug`
+   duty — see the selector notes in `queries/debt_timeseries.sql`), and
+   `cum_debt` sums frob + grab. So the enlarged principal pays BR from the
+   settlement day automatically. A cross-month carry of accrued-but-unpaid
+   interest was considered and **rejected**: it would bill the same
+   interest twice (once as a carried balance, once as the debt minted to
+   capitalise it). The only uncompensated window is month-end → settlement
+   date (~20 days, ~$38K/month) — a settlement-lag question, not a
+   compounding one, and left open.
+
+   *Not migrated:* `compute_chronicle_points` deliberately still sums
+   simple daily interest, because it is reconciled against the external
+   `soterlabs/chronicle-points-dune-dash` query. Revisit only together
+   with that dashboard.
+
+2. **`BR = SSR + spread` is plain arithmetic addition.** It was composed
+   multiplicatively (`(1+SSR)(1+spread)−1`), charging **3.72704%** at SSR
+   3.52% + 20bps instead of 3.72000%. The Base Rate is a rate
+   *definition*, not two stacked yields — and additive composition is what
+   makes `BR − SSR − spread` net to **exactly 0** at the APY level, which
+   is the entire purpose of the idle-sUSDS spread reimbursement (Sky nets
+   nothing on sUSDS the prime already earns SSR on). Multiplicative left
+   `SSR × spread` = 0.7040 bps with Sky. Helper renamed
+   `combine_apys` → `add_spread` to make the convention greppable.
+   Measured July 2026 effect: **−$15,643/month** Sky-side.
+
+   *Known residual (accepted).* Because each leg compounds separately,
+   the netting is exact only at the APY level, not in settled dollars:
+   the monthly residual on idle sUSDS moves from **+$499 per $1B**
+   (multiplicative, Sky's favour) to **−$5,283 per $1B** (additive,
+   prime's favour) — 0.06 → 0.63 bps/yr of the position. Deriving the
+   reimbursement as `BR charge − SSR received` would zero it by
+   construction, but was **rejected**: the 20 bps is an Atlas *input*, and
+   deriving it would invert the specification and hide the residual rather
+   than represent it.
+
+**Combined July 2026 effect: +$2,505/month Sky revenue (+$2,648 net to Sky
+after the smaller agent rate), ~+$32K/yr** — the two corrections very
+nearly cancel. Counterparty-facing surfaces updated with them: the
+settlement workbook's rate-composition cells, the Debt tab's per-day
+legend (the daily charge is no longer `utilized_d × factor` — a new
+"interest accrued to date" column lets any row be reconciled), and
+`scripts/compare_sky_revenue_ba_labs.py`.
+
+
 #### High priority (Grove Q1 — added 2026-05-02 after Grove team workbook reconciliation)
 **E1 aHorRwaRLUSD off-pool yield channel.** Aave Horizon's on-chain `liquidityIndex` only grows ~0.87% APY (matches our $67K Feb 2026 revenue exactly); the remaining $447K of Grove team's $514K is **off-chain rewards accrual** (Holdings sheet `Rewards` column grew +$431K with `claimed` flat). Most likely fed from Merkl (`MERKL_DISTRIBUTOR = 0x3Ef3D8bA38EBe18DB133cEc108f4D14CE00Dd9Ae` in Grove address registry) or Aave Horizon's own RWA-fund accrual API. Until Grove confirms the canonical feed we won't integrate (mis-attribution risk). **See QUESTIONS.md G3.**
 

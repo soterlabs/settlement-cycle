@@ -1641,10 +1641,20 @@ def _aggregate_curve_idle_usds(
     # Separate accumulators for par-stable (utilized deduction) and
     # sky-savings-token (spread revenue + full-SSR appreciation).
     daily_util: dict = {}
-    # Per-venue compounding state. Accruing per venue is identical to
-    # accruing the cross-venue aggregate — the daily factor is date-only,
-    # so (ΣP_v + Σacc_v) × f == Σ (P_v + acc_v) × f — and it keeps the
-    # spread and SSR legs symmetric.
+    # Per-venue compounding state, deliberately per venue rather than on the
+    # cross-venue aggregate: each venue's accrued spread/SSR belongs to that
+    # venue's position, and ``susds_ssr_by_venue`` needs the per-venue split
+    # anyway for the Case-3b re-attribution.
+    #
+    # The two agree exactly only while every venue holds a position on the
+    # same days — then (ΣP_v + Σacc_v) × f == Σ (P_v + acc_v) × f, since the
+    # factor is date-only. They diverge when active windows differ, because
+    # a venue with no position on day d skips accrual entirely, so its
+    # already-accrued balance stops earning while a pooled balance would
+    # keep going (two $500M venues on disjoint halves of a 31-day month at
+    # 20bps: $84,850.29 per-venue vs $84,853.89 aggregate — $3.60). Per
+    # venue is the intended semantics; today only spark.yaml S24 uses a
+    # sky_savings_token curve coin, so the difference is not yet live.
     _venue_spread_acc: dict[str, CompoundingAccrual] = {}
     susds_ssr_by_venue: dict[str, Decimal] = {}
     # Per-venue compounding state for the Case-3b SSR integral.

@@ -56,6 +56,16 @@ def compute_chronicle_points(
     for (USDS, Chronicle Farm) — HyperSync-sourced by the orchestrator.
     ``ssr`` is the canonical SSR history frame.
     """
+    # DELIBERATELY simple daily summing — the one rate-derived accrual not
+    # migrated to ``CompoundingAccrual`` on 2026-08-24. Chronicle Points is
+    # reproduced from the external soterlabs/chronicle-points-dune-dash
+    # query, which sums ``balance_d × daily_factor`` without compounding;
+    # this figure is reconciled against that dashboard, so compounding here
+    # would silently diverge from the counterparty's source of truth
+    # (~0.15%/month, ≈$20 on a $13K monthly accrual). Revisit only together
+    # with the dashboard. NOTE: ``base`` is already a plain addition of SSR
+    # and the dated spread — the same convention ``_helpers.add_spread``
+    # now uses everywhere else.
     total = Decimal("0")
     current = period.start
     while current <= period.end:

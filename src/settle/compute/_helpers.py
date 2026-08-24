@@ -20,9 +20,8 @@ import pandas as pd
 # ``apr_per_sec = ln(1+APY) / SECONDS_PER_YEAR``.
 #
 # NOTE (2026-08-24): the per-day factor was always exact, but the daily
-# amounts used to be SUMMED, which charged simple interest across days and
-# billed ``ln(1+APY)`` over a year instead of the APY (−6.7 bps at BR
-# 3.72%). Accruals now compound via ``CompoundingAccrual`` below.
+# amounts used to be SUMMED, which charged simple interest across days.
+# Accruals now compound via ``CompoundingAccrual`` below.
 SECONDS_PER_DAY = 86_400
 SECONDS_PER_YEAR = 365 * SECONDS_PER_DAY  # 31,536,000
 
@@ -87,9 +86,8 @@ class CompoundingAccrual:
     per-second (``(1+APY)^(1/365) ≡ ray^86400``), but *summing* those daily
     amounts charges simple interest: day d's interest is computed on the
     principal alone, never on interest accrued on days < d. Over a 31-day
-    month that understates the true accrual by ~0.15% of the interest, and
-    over a year it bills ``ln(1+APY)`` (≈3.6527% at APY 3.72%) instead of
-    the APY — a 6.7 bps shortfall. Sky's own SSR cost compounds per-second
+    month that understates the accrual by ~0.15% of the interest (~$18.1K
+    across primes in July 2026). Sky's own SSR cost compounds per-second
     on-chain, so the asymmetry favoured the primes.
 
     Per the MSC operator (2026-08-24) the Base Rate and SSR-derived
@@ -105,10 +103,22 @@ class CompoundingAccrual:
     factor is the *current* day's, so a mid-period rate change applies to
     the accrued balance from that day forward.
 
-    Scope: the accrual compounds within one settlement period and starts
-    fresh each month — the charge is settled in cash at the MSC, and
-    nothing capitalises on-chain (allocator ilks carry a frozen
-    ``vat.rate``; no ``jug`` duty).
+    Scope: WITHIN one settlement period. The accrual starts fresh each
+    month, and that is not a gap — the month's charge is **capitalised into
+    the prime's ilk debt** at the settlement, so it compounds across months
+    through the debt base instead. Allocator ilks carry a frozen
+    ``vat.rate`` and no ``jug`` duty, but Sky governance calls ``vat.grab``
+    with positive ``dart`` to fold accrued interest into
+    ``urns[ilk][u].art`` (see the selector notes in
+    ``queries/debt_timeseries.sql``), and ``cum_debt`` sums frob + grab —
+    so from the settlement day the enlarged principal pays the Base Rate
+    automatically, with no code here.
+
+    Consequence: do NOT also carry an accrued-interest balance across the
+    month boundary. Charging BR on unpaid interest AND on the debt minted
+    to capitalise that same interest bills it twice. The only genuinely
+    uncompensated window is between month-end and the settlement date
+    (~20 days), which is a settlement-lag question, not a compounding one.
     """
 
     __slots__ = ("total",)
