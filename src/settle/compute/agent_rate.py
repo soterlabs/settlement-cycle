@@ -27,6 +27,7 @@ import pandas as pd
 
 from ..domain.period import Period
 from ._helpers import (
+    CompoundingAccrual,
     combine_apys,
     cum_at_or_before,
     daily_compounding_factor,
@@ -60,7 +61,12 @@ def compute_agent_rate(
     effective (Osero: 10M USDS since 2026-03-30, payable only from first
     allocation in July 2026). ``None`` = accrue from balance history alone.
     """
-    total = Decimal("0")
+    # Accrued agent rate compounds (operator decision 2026-08-24) — the
+    # two legs accrue independently since they carry different rates: USDS
+    # at SSR ⊕ 20bps, sUSDS at the 20bps spread alone (its SSR is already
+    # inside the daily principal via chi).
+    usds_acc = CompoundingAccrual()
+    susds_acc = CompoundingAccrual()
     current = period.start
     while current <= period.end:
         if start_date is not None and current < start_date:
@@ -75,11 +81,11 @@ def compute_agent_rate(
             # APYs combine multiplicatively, not additively. See
             # ``combine_apys`` in ``_helpers.py``.
             usds_apy = combine_apys(ssr_apy, AGENT_RATE_OVER_SSR)
-            total += cum_usds * daily_compounding_factor(usds_apy)
+            usds_acc.add(cum_usds, daily_compounding_factor(usds_apy))
 
         if cum_susds > 0:
-            total += cum_susds * _SUSDS_DAILY_FACTOR
+            susds_acc.add(cum_susds, _SUSDS_DAILY_FACTOR)
 
         current = current + timedelta(days=1)
 
-    return total
+    return usds_acc.total + susds_acc.total

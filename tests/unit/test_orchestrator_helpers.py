@@ -359,8 +359,11 @@ def test_psm3_susds_spread_30bps_daily():
                     pin_blocks={Chain.BASE: 1, Chain.ETHEREUM: 1})
 
     out = _psm3_susds_spread(df, period)
-    expected = Decimal("100000000") * daily_compounding_factor(BASE_RATE_OVER_SSR) * 10
-    assert out == expected
+    # Compounds (2026-08-24) like the BR charge it offsets: closed form
+    # P × ((1+f)^n − 1) for constant principal + rate.
+    _f = daily_compounding_factor(BASE_RATE_OVER_SSR)
+    expected = Decimal("100000000") * ((1 + _f) ** 10 - 1)
+    assert abs(out - expected) < Decimal("1e-9")
     assert Decimal("8000") < out < Decimal("8500")
 
 
@@ -404,8 +407,10 @@ def test_psm3_susds_appreciation_full_ssr_daily():
                     pin_blocks={Chain.BASE: 1, Chain.ETHEREUM: 1})
 
     out = _psm3_susds_appreciation(df, period, ssr)
-    expected = Decimal("100000000") * daily_compounding_factor(Decimal("0.045")) * 10
-    assert out == expected
+    # Compounds (2026-08-24) — on-chain the sUSDS index itself compounds.
+    _f = daily_compounding_factor(Decimal("0.045"))
+    expected = Decimal("100000000") * ((1 + _f) ** 10 - 1)
+    assert abs(out - expected) < Decimal("1e-9")
     assert Decimal("115000") < out < Decimal("125000")
 
 
@@ -432,11 +437,13 @@ def test_psm3_susds_appreciation_tracks_ssr_changes():
 
     out = _psm3_susds_appreciation(df, period, ssr)
     v = Decimal("100000000")
-    expected = (
-        v * daily_compounding_factor(Decimal("0.045")) * 5   # Mar 1–5
-        + v * daily_compounding_factor(Decimal("0.040")) * 5  # Mar 6–10
-    )
-    assert out == expected
+    # Compounds across the rate step: 5 days at 4.5%, then the accrued
+    # balance also earns the 4.0% factor for 5 more days.
+    f1 = daily_compounding_factor(Decimal("0.045"))
+    f2 = daily_compounding_factor(Decimal("0.040"))
+    stage1 = v * ((1 + f1) ** 5 - 1)
+    expected = (v + stage1) * ((1 + f2) ** 5 - 1) + stage1
+    assert abs(out - expected) < Decimal("1e-9")
 
 
 def test_psm3_susds_appreciation_empty_returns_zero():

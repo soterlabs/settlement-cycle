@@ -58,10 +58,13 @@ def test_no_deductions_gross_equals_actual():
     assert len(daily) == 31
     assert (daily["daily_sky_rev"] == daily["daily_sky_rev_gross"]).all()
     # Both sums match the closed-form 31 × daily_factor × 100M
-    expected_daily = Decimal("100000000") * daily_compounding_factor(
+    _f = daily_compounding_factor(
         combine_apys(Decimal("0.047"), BASE_RATE_OVER_SSR)
     )
-    assert Decimal(str(daily["daily_sky_rev_gross"].sum())) == expected_daily * 31
+    # Compounds (2026-08-24): closed form P × ((1+f)^n − 1) for constant
+    # principal + rate; the per-day rows still sum to the total.
+    expected = Decimal("100000000") * ((1 + _f) ** 31 - 1)
+    assert abs(Decimal(str(daily["daily_sky_rev_gross"].sum())) - expected) < Decimal("1e-9")
 
 
 def test_idle_alm_deduction_makes_gross_exceed_actual():
@@ -160,10 +163,10 @@ def test_gross_sums_match_orchestrator_pattern():
         period, debt=debt, alm_usds=alm, ssr=_ssr_const(0.047),
     )
     f = daily_compounding_factor(combine_apys(Decimal("0.047"), BASE_RATE_OVER_SSR))
-    expected_gross_total = Decimal("250000000") * 31 * f
-    expected_actual_total = Decimal("240000000") * 31 * f
+    expected_gross_total = Decimal("250000000") * ((1 + f) ** 31 - 1)
+    expected_actual_total = Decimal("240000000") * ((1 + f) ** 31 - 1)
     gross_sum = Decimal(str(daily["daily_sky_rev_gross"].sum()))
     actual_sum = Decimal(str(daily["daily_sky_rev"].sum()))
-    assert gross_sum == expected_gross_total
-    assert actual_sum == expected_actual_total
+    assert abs(gross_sum - expected_gross_total) < Decimal("1e-9")
+    assert abs(actual_sum - expected_actual_total) < Decimal("1e-9")
     assert gross_sum > actual_sum

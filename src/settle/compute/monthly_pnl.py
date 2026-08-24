@@ -948,31 +948,33 @@ def _susds_cat_b_spread_reimb(
     the timeseries while the subsequent on-chain outflow is included) are
     clamped to zero per day so the spread reimbursement stays non-negative.
     """
-    from ._helpers import daily_compounding_factor
+    from ._helpers import CompoundingAccrual, daily_compounding_factor
     from .sky_revenue import base_rate_spread_at
+    # Compounds like the BR charge it offsets (2026-08-24) — otherwise the
+    # Rule 5 netting (+SSR − BR + spread = 0) leaves a phantom residual on
+    # idle sUSDS.
+    acc = CompoundingAccrual()
     if inflow_ts is None or inflow_ts.empty:
         # Stable position throughout — V_d = value_som for every day. Still
         # integrate daily: the spread itself can step mid-period.
         if value_som <= 0:
             return Decimal("0")
-        total = Decimal("0")
         current = period.start
         while current <= period.end:
-            total += value_som * daily_compounding_factor(base_rate_spread_at(current))
+            acc.add(value_som, daily_compounding_factor(base_rate_spread_at(current)))
             current = current + timedelta(days=1)
-        return total
+        return acc.total
     cum_baseline = cum_at_or_before(
         inflow_ts, "cum_inflow", period.start - timedelta(days=1),
     )
-    total = Decimal("0")
     current = period.start
     while current <= period.end:
         cum_d = cum_at_or_before(inflow_ts, "cum_inflow", current)
         v_d = value_som + (cum_d - cum_baseline)
         if v_d > 0:
-            total += v_d * daily_compounding_factor(base_rate_spread_at(current))
+            acc.add(v_d, daily_compounding_factor(base_rate_spread_at(current)))
         current = current + timedelta(days=1)
-    return total
+    return acc.total
 
 
 def _savings_v2_depositor_ssr(
@@ -1009,9 +1011,11 @@ def _savings_v2_depositor_ssr(
     cached when ``DUNE_API_KEY`` is set (the upgrade happens before the
     venue loop), so the ~31 daily lookups are cheap on re-runs.
     """
-    from ._helpers import daily_compounding_factor, ssr_at_or_before
+    from ._helpers import (
+        CompoundingAccrual, daily_compounding_factor, ssr_at_or_before,
+    )
 
-    total = Decimal("0")
+    acc = CompoundingAccrual()   # compounds like the BR charge it offsets
     prev_ta = Decimal("0")
     current = period.start
     while current <= period.end:
@@ -1028,12 +1032,12 @@ def _savings_v2_depositor_ssr(
             )
             ta = prev_ta
         if ta > 0:
-            total += ta * daily_compounding_factor(
+            acc.add(ta, daily_compounding_factor(
                 ssr_at_or_before(ssr_history, current),
-            )
+            ))
         prev_ta = ta
         current = current + timedelta(days=1)
-    return total
+    return acc.total
 
 
 def _psm3_susds_spread(psm_usds: pd.DataFrame | None, period: Period) -> Decimal:
@@ -1055,16 +1059,16 @@ def _psm3_susds_spread(psm_usds: pd.DataFrame | None, period: Period) -> Decimal
     if psm_usds is None or psm_usds.empty or "cum_susds" not in psm_usds.columns:
         return Decimal("0")
     # Lazy import to avoid module-cycle (sky_revenue imports from _helpers).
-    from ._helpers import daily_compounding_factor
+    from ._helpers import CompoundingAccrual, daily_compounding_factor
     from .sky_revenue import base_rate_spread_at
-    total = Decimal("0")
+    acc = CompoundingAccrual()   # compounds like the BR charge it offsets
     current = period.start
     while current <= period.end:
         cum_susds = cum_at_or_before(psm_usds, "cum_susds", current)
         if cum_susds > 0:
-            total += cum_susds * daily_compounding_factor(base_rate_spread_at(current))
+            acc.add(cum_susds, daily_compounding_factor(base_rate_spread_at(current)))
         current = current + timedelta(days=1)
-    return total
+    return acc.total
 
 
 def _psm3_susds_appreciation(
@@ -1092,17 +1096,21 @@ def _psm3_susds_appreciation(
     """
     if psm_usds is None or psm_usds.empty or "cum_susds" not in psm_usds.columns:
         return Decimal("0")
-    from ._helpers import daily_compounding_factor, ssr_at_or_before
-    total = Decimal("0")
+    from ._helpers import (
+        CompoundingAccrual, daily_compounding_factor, ssr_at_or_before,
+    )
+    # Compounds: on-chain the sUSDS share price itself compounds per-second,
+    # and this leg must net exactly against the compounding BR charge.
+    acc = CompoundingAccrual()
     current = period.start
     while current <= period.end:
         cum_susds = cum_at_or_before(psm_usds, "cum_susds", current)
         if cum_susds > 0:
-            total += cum_susds * daily_compounding_factor(
+            acc.add(cum_susds, daily_compounding_factor(
                 ssr_at_or_before(ssr_history, current),
-            )
+            ))
         current = current + timedelta(days=1)
-    return total
+    return acc.total
 
 
 def _aggregate_alm_usds(
@@ -1572,7 +1580,9 @@ def _aggregate_curve_idle_usds(
     from ..extract.rpc import balance_of as _balance_of
     from ..normalize.sources.curve_pool import CurvePoolSource
     from .sky_revenue import base_rate_spread_at
-    from ._helpers import daily_compounding_factor, ssr_at_or_before
+    from ._helpers import (
+        CompoundingAccrual, daily_compounding_factor, ssr_at_or_before,
+    )
 
     # Exclude uniswap_v4 venues — they reuse the curve_idle_usds schema but
     # their daily idle/SDE values are computed by _aggregate_univ4_idle_usds
@@ -1622,6 +1632,8 @@ def _aggregate_curve_idle_usds(
     daily_util: dict = {}
     daily_spread: dict = {}
     susds_ssr_by_venue: dict[str, Decimal] = {}
+    # Per-venue compounding state for the Case-3b SSR integral.
+    _venue_ssr_acc: dict[str, CompoundingAccrual] = {}
 
     for venue in venues_with_config:
         cfg = venue.curve_idle_usds
@@ -1742,12 +1754,13 @@ def _aggregate_curve_idle_usds(
             # attributed per venue (consumed by the orchestrator to
             # re-book the sUSDS-leg appreciation out of the SDE pot).
             if ssr_history is not None and prime_susds_value > 0:
-                susds_ssr_by_venue[venue.id] = (
-                    susds_ssr_by_venue.get(venue.id, Decimal(0))
-                    + prime_susds_value * daily_compounding_factor(
-                        ssr_at_or_before(ssr_history, current),
-                    )
+                # Compounds per venue (2026-08-24), matching the BR charge
+                # this leg re-books against.
+                _venue_ssr_acc.setdefault(venue.id, CompoundingAccrual()).add(
+                    prime_susds_value,
+                    daily_compounding_factor(ssr_at_or_before(ssr_history, current)),
                 )
+                susds_ssr_by_venue[venue.id] = _venue_ssr_acc[venue.id].total
             current = current + timedelta(days=1)
 
     # Build utilized deduction DataFrame (par-stable coins).
@@ -1765,7 +1778,15 @@ def _aggregate_curve_idle_usds(
     else:
         util_df = _empty_psm_df()
 
-    susds_spread = sum(daily_spread.values(), Decimal("0"))
+    # Compound the per-date spread aggregate in date order: each day's
+    # amount is interest on principal, and previously accrued interest earns
+    # the same day's factor (2026-08-24 — matches the BR charge it offsets).
+    _spread_acc = CompoundingAccrual()
+    for _d in sorted(daily_spread):
+        _spread_acc.add_interest(
+            daily_spread[_d], daily_compounding_factor(base_rate_spread_at(_d)),
+        )
+    susds_spread = _spread_acc.total
     return util_df, susds_spread, susds_ssr_by_venue
 
 

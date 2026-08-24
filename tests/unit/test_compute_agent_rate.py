@@ -55,10 +55,11 @@ def test_usds_only_for_31_days():
         subproxy_susds=_empty(["block_date", "cum_balance"]),
         ssr=_ssr_const(0.04),
     )
-    expected = Decimal("20000000") * 31 * daily_compounding_factor(
-        combine_apys(Decimal("0.04"), AGENT_RATE_OVER_SSR)
-    )
-    assert rate == expected
+    # Accrual COMPOUNDS (2026-08-24): closed form P × ((1+f)^n − 1).
+    f = daily_compounding_factor(combine_apys(Decimal("0.04"), AGENT_RATE_OVER_SSR))
+    expected = Decimal("20000000") * ((1 + f) ** 31 - 1)
+    assert abs(rate - expected) < Decimal("1e-9")
+    assert rate > Decimal("20000000") * f * 31   # more than the simple sum
 
 
 def test_susds_only_uses_flat_two_pct():
@@ -106,5 +107,8 @@ def test_handles_balance_change_mid_period():
     f = daily_compounding_factor(combine_apys(Decimal("0.04"), AGENT_RATE_OVER_SSR))
     # Feb 1: 21,000,000 (still pre-settlement)
     # Feb 2-5: 21,442,327 (post-settlement)
-    expected = Decimal("21000000") * f + Decimal("21442327") * 4 * f
-    assert rate == expected
+    # Compounds day over day: each day charges (balance + accrued) × f.
+    acc = Decimal("0")
+    for bal_d in [Decimal("21000000")] + [Decimal("21442327")] * 4:
+        acc += (bal_d + acc) * f
+    assert abs(rate - acc) < Decimal("1e-9")

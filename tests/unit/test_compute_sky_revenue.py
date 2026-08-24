@@ -76,11 +76,18 @@ def test_constant_debt_constant_ssr_31_days():
         alm_usds=_empty(["block_date", "cum_balance"]),
         ssr=_ssr_const(0.047),                                 # borrow = 5.0%
     )
-    expected_daily = Decimal("100000000") * daily_compounding_factor(
+    # The charge COMPOUNDS (2026-08-24): for a constant principal and rate
+    # the closed form is P × ((1+f)^n − 1) — analytically Σ over n days of
+    # (P + accrued) × f, and equal to P × ((1+APY)^(n/365) − 1).
+    f = daily_compounding_factor(
         combine_apys(Decimal("0.047"), BASE_RATE_OVER_SSR)
     )
-    expected = expected_daily * 31
-    assert rev == expected
+    expected = Decimal("100000000") * ((1 + f) ** 31 - 1)
+    # Tolerance: the closed form and the day-by-day accumulation differ only
+    # in Decimal context rounding (~1e-22 on $400K).
+    assert abs(rev - expected) < Decimal("1e-9")
+    # Compounding adds ~0.2% over the simple sum of daily interest.
+    assert rev > Decimal("100000000") * f * 31
     # ~$100M × 31 × 0.0001337 ≈ $414K — sanity bound
     assert Decimal("400000") < rev < Decimal("420000")
 
@@ -122,8 +129,12 @@ def test_handles_ssr_change_mid_period():
     f2 = daily_compounding_factor(combine_apys(Decimal("0.0375"), BASE_RATE_OVER_SSR))
     # March 1-8 at 4.00% + spread = 4.30% → 8 days
     # March 9-31 at 3.75% + spread = 4.05% → 23 days
-    expected = Decimal("100000000") * (8 * f1 + 23 * f2)
-    assert rev == expected
+    # Compounding across the rate step: the 8 days at f1 accrue, then that
+    # accrued balance earns f2 for the remaining 23 days.
+    P = Decimal("100000000")
+    stage1 = P * ((1 + f1) ** 8 - 1)
+    expected = (P + stage1) * ((1 + f2) ** 23 - 1) + stage1
+    assert abs(rev - expected) < Decimal("1e-9")
 
 
 def test_skips_days_when_utilized_is_negative():
@@ -192,8 +203,9 @@ def test_subsidy_enabled_but_period_before_program_start():
 
     # Expect full BR (no subsidy) for all 31 days of Dec 2025.
     base_apy = combine_apys(Decimal("0.04"), BASE_RATE_OVER_SSR)
-    expected = Decimal("100000000") * 31 * daily_compounding_factor(base_apy)
-    assert rev == expected
+    f = daily_compounding_factor(base_apy)
+    expected = Decimal("100000000") * ((1 + f) ** 31 - 1)
+    assert abs(rev - expected) < Decimal("1e-9")
 
 
 def test_subsidy_zero_benefit_warns(caplog):

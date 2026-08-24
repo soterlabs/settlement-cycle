@@ -85,6 +85,7 @@ from ..domain.subsidy import (
     subsidised_apy,
 )
 from ._helpers import (
+    CompoundingAccrual,
     combine_apys,
     cum_at_or_before,
     daily_compounding_factor,
@@ -235,7 +236,11 @@ def compute_sky_revenue_daily(
         )
 
     rows: list[dict] = []
-    total = Decimal("0")
+    # Accrued interest compounds — day d is charged on principal + interest
+    # accrued on days < d (operator decision 2026-08-24; see
+    # ``CompoundingAccrual``). Actual and gross accrue independently.
+    accrual = CompoundingAccrual()
+    accrual_gross = CompoundingAccrual()
     current = period.start
     while current <= period.end:
         cum_debt = cum_at_or_before(debt, "cum_debt", current)
@@ -291,8 +296,12 @@ def compute_sky_revenue_daily(
             _t        = months_elapsed_since(current, subsidy_config.program_start)  # type: ignore[union-attr]
             _sub_apy  = subsidised_apy(base_apy, _ref_rate, _t, subsidy_config.ramp_months)  # type: ignore[union-attr]
 
-        def _daily_rev_for(principal: Decimal) -> Decimal:
-            """BR revenue on ``principal`` with subsidy applied where active."""
+        def _daily_factor_for(principal: Decimal) -> Decimal:
+            """Blended one-day factor on ``principal`` — the subsidy cap
+            splits the PRINCIPAL across two rates, so the effective factor
+            is the tranche-weighted mean. Returning a factor (rather than a
+            dollar amount) lets the compounding accumulator charge the same
+            rate on previously accrued interest."""
             if principal <= 0:
                 return Decimal("0")
             if _sub_apy is not None:
@@ -302,17 +311,17 @@ def compute_sky_revenue_daily(
                 rev     = sub_p * daily_compounding_factor(_sub_apy)
                 if exc_p > 0:
                     rev += exc_p * daily_compounding_factor(base_apy)
-                return rev
-            return principal * daily_compounding_factor(base_apy)
+                return rev / principal
+            return daily_compounding_factor(base_apy)
 
-        daily_rev       = _daily_rev_for(utilized)
+        # ``add`` charges (principal + accrued) × factor and returns the day's
+        # increment, so the per-day rows below still sum to the total.
+        daily_rev       = accrual.add(utilized, _daily_factor_for(utilized))
         # Gross: BR on the full ilk debt before any utilized deductions.
         # Captures "what sky_revenue would be if no idle USDS / SDE / PSM /
         # Curve / lending deductions were applied."  Stored per-day so the
         # orchestrator can sum it and write sky_revenue_gross to provenance.
-        daily_rev_gross = _daily_rev_for(cum_debt)
-
-        total += daily_rev
+        daily_rev_gross = accrual_gross.add(cum_debt, _daily_factor_for(cum_debt))
         rows.append({
             "date":               current,
             "cum_debt":           cum_debt,
@@ -367,7 +376,7 @@ def compute_sky_revenue_daily(
             subsidy_config.ref_rate_kind,  # type: ignore[union-attr]
         )
 
-    return total, daily_df, subsidy_summary
+    return accrual.total, daily_df, subsidy_summary
 
 
 def summarize_subsidy(
@@ -398,7 +407,11 @@ def summarize_subsidy(
     n = len(daily)
     util_sum = sub_tr = exc_tr = Decimal("0")
     wbase_num = weff_num = Decimal("0")
-    actual_cof = full_br_cof = sub_cof = exc_cof = Decimal("0")
+    actual_cof = sub_cof = exc_cof = Decimal("0")
+    # The no-subsidy counterfactual must compound on the same basis as the
+    # actual charge, else ``subsidy_benefit`` would absorb the compounding
+    # difference instead of measuring only the rate discount.
+    full_br = CompoundingAccrual()
     ref_sum = sub_sum = Decimal("0")
     active = 0
     any_benefit_day = False
@@ -422,14 +435,24 @@ def summarize_subsidy(
         exc_tr += ex
         wbase_num += u * base
         weff_num += st * sub + ex * base
-        sub_cof += st * daily_compounding_factor(sub)
-        exc_cof += ex * base_f
         # actual_cof reuses the per-day charge the daily loop already
-        # computed (``_daily_rev_for(utilized)``) so the reconciliation
+        # computed so the reconciliation
         # ``sub_tranche_cof + exc_tranche_cof == actual_cof == Σ daily_sky_rev``
         # holds by construction, not by a duplicated formula.
-        actual_cof += Decimal(str(r["daily_sky_rev"]))
-        full_br_cof += u * base_f
+        charged = Decimal(str(r["daily_sky_rev"]))
+        actual_cof += charged
+        # Since 2026-08-24 the charge COMPOUNDS (accrued interest earns), so
+        # the day's amount exceeds the tranche-split simple figures. Allocate
+        # it pro-rata by each tranche's simple share — the accrued interest
+        # is charged at the blended rate, so it splits in the same
+        # proportions and the identity above survives to the cent.
+        simple_sub = st * daily_compounding_factor(sub)
+        simple_exc = ex * base_f
+        simple_tot = simple_sub + simple_exc
+        if simple_tot > 0:
+            sub_cof += charged * simple_sub / simple_tot
+            exc_cof += charged * simple_exc / simple_tot
+        full_br.add(u, base_f)
         ref_raw = r["ref_rate_apy"]
         if sub_present and ref_raw is not None and not pd.isna(ref_raw):
             ref_sum += Decimal(str(ref_raw))
@@ -440,6 +463,7 @@ def summarize_subsidy(
 
     wbase = (wbase_num / util_sum) if util_sum else Decimal("0")
     eff = (weff_num / util_sum) if util_sum else Decimal("0")
+    full_br_cof = full_br.total
     benefit = full_br_cof - actual_cof
     return {
         "cap_usd":              str(cap),
