@@ -8,7 +8,7 @@ from decimal import Decimal
 import pandas as pd
 import pytest
 
-from settle.compute._helpers import combine_apys, daily_compounding_factor
+from settle.compute._helpers import add_spread, daily_compounding_factor
 from settle.compute.sky_revenue import (
     BASE_RATE_OVER_SSR,
     compute_sky_revenue,
@@ -80,7 +80,7 @@ def test_constant_debt_constant_ssr_31_days():
     # the closed form is P × ((1+f)^n − 1) — analytically Σ over n days of
     # (P + accrued) × f, and equal to P × ((1+APY)^(n/365) − 1).
     f = daily_compounding_factor(
-        combine_apys(Decimal("0.047"), BASE_RATE_OVER_SSR)
+        add_spread(Decimal("0.047"), BASE_RATE_OVER_SSR)
     )
     expected = Decimal("100000000") * ((1 + f) ** 31 - 1)
     # Tolerance: the closed form and the day-by-day accumulation differ only
@@ -104,7 +104,7 @@ def test_subtracts_alm_balance_from_utilized():
     )
     utilized = Decimal("100000000") - Decimal("3000000")
     expected = utilized * daily_compounding_factor(
-        combine_apys(Decimal("0.047"), BASE_RATE_OVER_SSR)
+        add_spread(Decimal("0.047"), BASE_RATE_OVER_SSR)
     )
     assert rev == expected
 
@@ -125,8 +125,8 @@ def test_handles_ssr_change_mid_period():
         ssr=ssr_df,
     )
 
-    f1 = daily_compounding_factor(combine_apys(Decimal("0.0400"), BASE_RATE_OVER_SSR))
-    f2 = daily_compounding_factor(combine_apys(Decimal("0.0375"), BASE_RATE_OVER_SSR))
+    f1 = daily_compounding_factor(add_spread(Decimal("0.0400"), BASE_RATE_OVER_SSR))
+    f2 = daily_compounding_factor(add_spread(Decimal("0.0375"), BASE_RATE_OVER_SSR))
     # March 1-8 at 4.00% + spread = 4.30% → 8 days
     # March 9-31 at 3.75% + spread = 4.05% → 23 days
     # Compounding across the rate step: the 8 days at f1 accrue, then that
@@ -202,7 +202,7 @@ def test_subsidy_enabled_but_period_before_program_start():
     )
 
     # Expect full BR (no subsidy) for all 31 days of Dec 2025.
-    base_apy = combine_apys(Decimal("0.04"), BASE_RATE_OVER_SSR)
+    base_apy = add_spread(Decimal("0.04"), BASE_RATE_OVER_SSR)
     f = daily_compounding_factor(base_apy)
     expected = Decimal("100000000") * ((1 + f) ** 31 - 1)
     assert abs(rev - expected) < Decimal("1e-9")

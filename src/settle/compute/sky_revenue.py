@@ -4,8 +4,8 @@ Per the prime-settlement-methodology and debt-rate-methodology docs:
 
     daily_sky_revenue = utilized × [(1 + apy)^(1/365) - 1]
     apy               = base_apy (default) | subsidised_apy (when enabled)
-    base_apy          = SSR ⊕ spread   (30bps; 20bps from 2026-07-23 —
-                        see BASE_RATE_SPREAD_SCHEDULE)
+    base_apy          = SSR + spread   (plain addition; 30bps, 20bps from
+                        2026-07-23 — see BASE_RATE_SPREAD_SCHEDULE)
     subsidised_apy    = ref_rate + (base − ref_rate) × T / 24    [Step 1.b]
     utilized          = cum_debt
                       − alm_proxy_usds                 ←  Step 2 (idle USDS at ALM proxy)
@@ -86,7 +86,7 @@ from ..domain.subsidy import (
 )
 from ._helpers import (
     CompoundingAccrual,
-    combine_apys,
+    add_spread,
     cum_at_or_before,
     daily_compounding_factor,
     require_non_empty,
@@ -96,7 +96,8 @@ from ._helpers import (
 _log = logging.getLogger(__name__)
 
 # Spread Sky charges over SSR for utilized debt. Per prime-settlement-
-# methodology §1 + debt-rate-methodology, the base rate = SSR ⊕ spread.
+# methodology §1 + debt-rate-methodology, the base rate = SSR + spread
+# (plain arithmetic addition — see ``_helpers.add_spread``).
 #
 # The spread is DATED: the 2026-07-23 Stability Scope change that cut the
 # SSR 3.60% → 3.52% (on-chain sUSDS ``file("ssr")`` at 2026-07-23 14:43:23
@@ -281,11 +282,12 @@ def compute_sky_revenue_daily(
         # Always compute the rate — needed for both actual (utilized) and
         # gross (cum_debt) revenue.  When cum_debt is 0 both will be 0.
         ssr_apy  = ssr_at_or_before(ssr, current)
-        # APYs combine multiplicatively, not additively: naive
-        # ``ssr_apy + spread`` loses the cross-term ``ssr_apy × spread``
-        # (~1.2 bps at SSR=4%). See ``combine_apys`` in ``_helpers.py``.
-        # Spread is date-resolved (30bps → 20bps on 2026-07-23).
-        base_apy = combine_apys(ssr_apy, base_rate_spread_at(current))
+        # ``BR = SSR + spread`` is a rate DEFINITION — plain arithmetic
+        # addition, so BR is exactly 3.72% at SSR 3.52% + 20bps and
+        # ``BR − SSR − spread`` nets to 0 on idle sUSDS. See
+        # ``add_spread`` for why the former multiplicative composition was
+        # wrong. Spread is date-resolved (30bps → 20bps on 2026-07-23).
+        base_apy = add_spread(ssr_apy, base_rate_spread_at(current))
 
         # Subsidy params — computed once and reused for both actual + gross.
         _sub_apy: Decimal | None = None

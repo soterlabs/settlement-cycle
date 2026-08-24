@@ -28,7 +28,7 @@ import pandas as pd
 from ..domain.period import Period
 from ._helpers import (
     CompoundingAccrual,
-    combine_apys,
+    add_spread,
     cum_at_or_before,
     daily_compounding_factor,
     ssr_at_or_before,
@@ -78,9 +78,9 @@ def compute_agent_rate(
         # USDS earns the full agent rate = SSR + 20bps.
         if cum_usds > 0:
             ssr_apy = ssr_at_or_before(ssr, current)
-            # APYs combine multiplicatively, not additively. See
-            # ``combine_apys`` in ``_helpers.py``.
-            usds_apy = combine_apys(ssr_apy, AGENT_RATE_OVER_SSR)
+            # ``agent rate = SSR + 20bps`` — plain arithmetic addition (a
+            # rate definition, not two stacked yields). See ``add_spread``.
+            usds_apy = add_spread(ssr_apy, AGENT_RATE_OVER_SSR)
             usds_acc.add(cum_usds, daily_compounding_factor(usds_apy))
 
         if cum_susds > 0:

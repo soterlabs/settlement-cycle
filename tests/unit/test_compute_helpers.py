@@ -9,43 +9,37 @@ import pandas as pd
 import pytest
 
 from settle.compute._helpers import (
-    combine_apys,
+    add_spread,
     cum_at_or_before,
     daily_compounding_factor,
     ssr_at_or_before,
 )
 
 
-# --- combine_apys ---------------------------------------------------------
+# --- add_spread -----------------------------------------------------------
 
-def test_combine_apys_identity():
-    assert combine_apys(Decimal("0")) == Decimal("0")
-    assert combine_apys(Decimal("0.05")) == Decimal("0.05")
-
-
-def test_combine_apys_zero_drops_out():
-    assert combine_apys(Decimal("0.04"), Decimal("0")) == Decimal("0.04")
+def test_add_spread_zero_drops_out():
+    assert add_spread(Decimal("0.04"), Decimal("0")) == Decimal("0.04")
 
 
-def test_combine_apys_two_rates_multiplicative():
-    """(1.04 × 1.003) − 1 = 0.04312 (NOT 0.043)."""
-    out = combine_apys(Decimal("0.04"), Decimal("0.003"))
-    assert out == Decimal("0.04312")
+def test_add_spread_is_plain_arithmetic():
+    """``BR = SSR + 20bps`` is a rate DEFINITION: at SSR 3.52% the Base Rate
+    is exactly 3.7200%, not the 3.72704% the former multiplicative compose
+    produced."""
+    assert add_spread(Decimal("0.0352"), Decimal("0.002")) == Decimal("0.0372")
+    assert add_spread(Decimal("0.04"), Decimal("0.003")) == Decimal("0.043")
 
 
-def test_combine_apys_order_independent():
-    a, b, c = Decimal("0.04"), Decimal("0.003"), Decimal("0.002")
-    assert combine_apys(a, b, c) == combine_apys(c, a, b)
-
-
-def test_combine_apys_differs_from_naive_sum_by_cross_term():
-    """At SSR=4%, spread=30bps the cross-term ssr × spread = 0.04 × 0.003 =
-    1.2 bps — the difference between the proper compose and naive addition."""
-    proper = combine_apys(Decimal("0.04"), Decimal("0.003"))
-    naive  = Decimal("0.04") + Decimal("0.003")
-    delta  = proper - naive
-    # 1.2 bps == 0.00012
-    assert Decimal("0.00011") < delta < Decimal("0.00013")
+def test_add_spread_nets_the_reimbursement_to_zero():
+    """The reason it must be additive: on idle sUSDS the prime receives SSR,
+    pays BR and is reimbursed the spread, so ``BR − SSR − spread`` has to be
+    0 — Sky nets nothing. The multiplicative form left SSR × spread
+    (0.7040 bps at 3.52% + 20bps) on the table."""
+    ssr, spread = Decimal("0.0352"), Decimal("0.002")
+    assert add_spread(ssr, spread) - ssr - spread == Decimal("0")
+    multiplicative = (1 + ssr) * (1 + spread) - 1
+    assert multiplicative - ssr - spread == ssr * spread
+    assert Decimal("0.00007") < ssr * spread < Decimal("0.00008")   # 0.70 bps
 
 
 # --- daily_compounding_factor ---------------------------------------------

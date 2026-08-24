@@ -37,23 +37,33 @@ def apy_to_apr_per_second(apy: Decimal) -> Decimal:
     return Decimal(str(apr / SECONDS_PER_YEAR))
 
 
-def combine_apys(*apys: Decimal) -> Decimal:
-    """Combine APY-quoted rates multiplicatively.
+def add_spread(rate: Decimal, spread: Decimal) -> Decimal:
+    """Rate plus a governance-defined spread — PLAIN ARITHMETIC addition.
 
-    Two APYs add as ``(1 + APY_1) × (1 + APY_2) − 1``, not as ``APY_1 + APY_2``
-    — the latter loses the cross-term ``APY_1 × APY_2``. For typical Sky
-    values (SSR ≈ 4 %, spread = 30 bps) the naive sum is off by ~1.2 bps,
-    which is ~$14K/month on Grove's $1.4B utilized.
+    ``BR = SSR + 20 bps`` (Atlas) is a rate *definition*: the Base Rate is
+    the number 20 bps above the SSR number. At SSR 3.52% the Base Rate is
+    3.7200%, full stop.
 
-    Equivalent continuous form: ``ln(1+APY_combined) = Σ ln(1+APY_i)``.
-    Used to compose:
-      * Base rate    = SSR ⊕ 30bps   (sky_revenue's BR charge on utilized)
-      * Agent rate   = SSR ⊕ 20bps   (USDS in subproxy)
+    Until 2026-08-24 this composed multiplicatively
+    (``(1+SSR)(1+spread) − 1``), which yielded 3.72704% — treating the
+    20 bps as a second yield stacked on top of SSR. That is the right
+    treatment for compounding two independent return streams on the same
+    principal, but the wrong one for a defined rate, and it left Sky
+    charging a 0.7040 bps (= SSR × spread) sliver it never intended:
+    ``BR − SSR − 20bps`` should be exactly 0, since the whole point of the
+    sUSDS spread reimbursement is that Sky nets nothing on idle sUSDS.
+    Corrected per the MSC operator (2026-08-24) — worth ~−$123K/yr of Sky
+    revenue at July 2026 balances.
+
+    Used for:
+      * Base rate  = SSR + spread   (30 bps; 20 bps from 2026-07-23)
+      * Agent rate = SSR + 20 bps   (USDS in subproxy)
+
+    NOTE: this is deliberately NOT a general rate-composition helper. Do
+    not use it to chain genuinely independent yields (e.g. a venue APY on
+    top of SSR appreciation) — those still compound multiplicatively.
     """
-    factor = Decimal("1")
-    for a in apys:
-        factor *= (Decimal("1") + a)
-    return factor - Decimal("1")
+    return rate + spread
 
 
 def daily_compounding_factor(apy: Decimal) -> Decimal:

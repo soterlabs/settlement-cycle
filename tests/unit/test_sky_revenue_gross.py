@@ -24,7 +24,7 @@ from decimal import Decimal
 
 import pandas as pd
 
-from settle.compute._helpers import combine_apys, daily_compounding_factor
+from settle.compute._helpers import add_spread, daily_compounding_factor
 from settle.compute.sky_revenue import BASE_RATE_OVER_SSR, compute_sky_revenue_daily
 from settle.domain import Chain, Period
 from settle.domain.subsidy import ReferenceRateHistory, SubsidyConfig
@@ -59,7 +59,7 @@ def test_no_deductions_gross_equals_actual():
     assert (daily["daily_sky_rev"] == daily["daily_sky_rev_gross"]).all()
     # Both sums match the closed-form 31 × daily_factor × 100M
     _f = daily_compounding_factor(
-        combine_apys(Decimal("0.047"), BASE_RATE_OVER_SSR)
+        add_spread(Decimal("0.047"), BASE_RATE_OVER_SSR)
     )
     # Compounds (2026-08-24): closed form P × ((1+f)^n − 1) for constant
     # principal + rate; the per-day rows still sum to the total.
@@ -76,7 +76,7 @@ def test_idle_alm_deduction_makes_gross_exceed_actual():
     _total, daily, _ = compute_sky_revenue_daily(
         period, debt=debt, alm_usds=alm, ssr=_ssr_const(0.047),
     )
-    f = daily_compounding_factor(combine_apys(Decimal("0.047"), BASE_RATE_OVER_SSR))
+    f = daily_compounding_factor(add_spread(Decimal("0.047"), BASE_RATE_OVER_SSR))
     actual = Decimal("70000000") * f       # 100M - 30M = 70M utilized
     gross  = Decimal("100000000") * f
     assert Decimal(str(daily["daily_sky_rev"].iloc[0])) == actual
@@ -97,7 +97,7 @@ def test_sde_deduction_makes_gross_exceed_actual():
         ssr=_ssr_const(0.047),
         sde_asset_value=sde,
     )
-    f = daily_compounding_factor(combine_apys(Decimal("0.047"), BASE_RATE_OVER_SSR))
+    f = daily_compounding_factor(add_spread(Decimal("0.047"), BASE_RATE_OVER_SSR))
     actual = Decimal("175000000") * f      # 500M - 325M utilized
     gross  = Decimal("500000000") * f
     assert Decimal(str(daily["daily_sky_rev"].iloc[0])) == actual
@@ -162,7 +162,7 @@ def test_gross_sums_match_orchestrator_pattern():
     _total, daily, _ = compute_sky_revenue_daily(
         period, debt=debt, alm_usds=alm, ssr=_ssr_const(0.047),
     )
-    f = daily_compounding_factor(combine_apys(Decimal("0.047"), BASE_RATE_OVER_SSR))
+    f = daily_compounding_factor(add_spread(Decimal("0.047"), BASE_RATE_OVER_SSR))
     expected_gross_total = Decimal("250000000") * ((1 + f) ** 31 - 1)
     expected_actual_total = Decimal("240000000") * ((1 + f) ** 31 - 1)
     gross_sum = Decimal(str(daily["daily_sky_rev_gross"].sum()))

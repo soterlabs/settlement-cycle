@@ -7,7 +7,7 @@ from decimal import Decimal
 
 import pandas as pd
 
-from settle.compute._helpers import combine_apys, daily_compounding_factor
+from settle.compute._helpers import add_spread, daily_compounding_factor
 from settle.compute.agent_rate import (
     AGENT_RATE_OVER_SSR,
     AGENT_RATE_SUSDS_ONLY,
@@ -56,7 +56,7 @@ def test_usds_only_for_31_days():
         ssr=_ssr_const(0.04),
     )
     # Accrual COMPOUNDS (2026-08-24): closed form P × ((1+f)^n − 1).
-    f = daily_compounding_factor(combine_apys(Decimal("0.04"), AGENT_RATE_OVER_SSR))
+    f = daily_compounding_factor(add_spread(Decimal("0.04"), AGENT_RATE_OVER_SSR))
     expected = Decimal("20000000") * ((1 + f) ** 31 - 1)
     assert abs(rate - expected) < Decimal("1e-9")
     assert rate > Decimal("20000000") * f * 31   # more than the simple sum
@@ -85,7 +85,7 @@ def test_combined_usds_and_susds():
         ssr=_ssr_const(0.04),
     )
     expected_usds = Decimal("20000000") * daily_compounding_factor(
-        combine_apys(Decimal("0.04"), AGENT_RATE_OVER_SSR)
+        add_spread(Decimal("0.04"), AGENT_RATE_OVER_SSR)
     )
     expected_susds = Decimal("5000000") * daily_compounding_factor(Decimal("0.002"))
     assert rate == expected_usds + expected_susds
@@ -104,7 +104,7 @@ def test_handles_balance_change_mid_period():
         subproxy_susds=_empty(["block_date", "cum_balance"]),
         ssr=_ssr_const(0.04),
     )
-    f = daily_compounding_factor(combine_apys(Decimal("0.04"), AGENT_RATE_OVER_SSR))
+    f = daily_compounding_factor(add_spread(Decimal("0.04"), AGENT_RATE_OVER_SSR))
     # Feb 1: 21,000,000 (still pre-settlement)
     # Feb 2-5: 21,442,327 (post-settlement)
     # Compounds day over day: each day charges (balance + accrued) × f.

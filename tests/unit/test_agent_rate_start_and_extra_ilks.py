@@ -41,9 +41,9 @@ def test_agent_rate_start_date_gates_accrual():
     # (2026-08-24), so the gated figure is NOT the linear 12/31 of the full
     # month — it is P × ((1+f)^12 − 1) against the full month's
     # P × ((1+f)^31 − 1).
-    from settle.compute._helpers import combine_apys, daily_compounding_factor
+    from settle.compute._helpers import add_spread, daily_compounding_factor
     from settle.compute.agent_rate import AGENT_RATE_OVER_SSR
-    f = daily_compounding_factor(combine_apys(Decimal("0.0352"), AGENT_RATE_OVER_SSR))
+    f = daily_compounding_factor(add_spread(Decimal("0.0352"), AGENT_RATE_OVER_SSR))
     P = Decimal("10000000")
     assert abs(gated - P * ((1 + f) ** 12 - 1)) < Decimal("1e-9")
     assert abs(full - P * ((1 + f) ** 31 - 1)) < Decimal("1e-9")
