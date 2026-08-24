@@ -122,16 +122,6 @@ class CompoundingAccrual:
         self.total += interest
         return interest
 
-    def add_interest(self, interest: Decimal, factor: Decimal) -> Decimal:
-        """Same as ``add`` for callers that already hold the day's interest
-        on principal (e.g. a per-venue amount summed across venues before
-        accrual): charges ``factor`` on previously accrued interest and adds
-        the supplied principal interest. Equivalent to
-        ``add(interest / factor, factor)`` without the division."""
-        total_interest = interest + self.total * factor
-        self.total += total_interest
-        return total_interest
-
 
 def cum_at_or_before(
     timeseries: pd.DataFrame,

@@ -112,13 +112,16 @@ def test_zero_principal_days_do_not_stop_accrued_from_earning():
     assert abs(acc.total - after_first * (1 + f)) < _TOL
 
 
-def test_add_interest_equivalent_to_add():
-    """``add_interest`` is the pre-multiplied variant used where per-venue
-    amounts are summed before accrual."""
-    f = daily_compounding_factor(Decimal("0.03"))
-    P = Decimal("5000000")
-    a, b = CompoundingAccrual(), CompoundingAccrual()
-    for _ in range(10):
-        a.add(P, f)
-        b.add_interest(P * f, f)
-    assert abs(a.total - b.total) < _TOL
+def test_per_venue_accrual_equals_aggregate_accrual():
+    """Why the Curve sUSDS legs can accrue per venue: with a common daily
+    factor, ``(ΣP_v + Σacc_v) × f == Σ (P_v + acc_v) × f``, so splitting the
+    accrual by venue is identical to accruing the aggregate."""
+    f = daily_compounding_factor(Decimal("0.003"))
+    per_venue = [Decimal("400000000"), Decimal("250000000"), Decimal("90000000")]
+    split = [CompoundingAccrual() for _ in per_venue]
+    agg = CompoundingAccrual()
+    for _ in range(31):
+        for acc, P in zip(split, per_venue, strict=True):
+            acc.add(P, f)
+        agg.add(sum(per_venue, Decimal("0")), f)
+    assert abs(sum((a.total for a in split), Decimal("0")) - agg.total) < _TOL
