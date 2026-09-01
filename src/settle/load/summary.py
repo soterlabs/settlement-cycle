@@ -339,12 +339,20 @@ def render_summary(prov: dict) -> str:
     # Distribution Rewards breakdown for the period, from the settle-dr-dune
     # reconciliation workbook (Summary tab). Sums to the "distribution
     # rewards" headline row above.
-    if dr_rows:
+    # Zero-amount codes are omitted: a code that earned nothing this period
+    # contributes nothing to read, and rendering it makes the report churn
+    # every time the upstream workbook starts carrying a zero row for a
+    # previously-absent code (spark 2026-06/07 gained a bare `223 | $0.00`
+    # line on the settle-dr-dune 5bb3d4a bump, with no economic change).
+    # ``dr_breakdown`` in provenance.json keeps every row, so the machine-
+    # readable audit trail is unaffected — this is a display filter only.
+    dr_rows_nonzero = [d for d in dr_rows if _D(d.get("amount")) != 0]
+    if dr_rows_nonzero:
         lines.append("## DR per ref code")
         lines.append("")
         lines.append("| ref_code | DR (USD) | notes |")
         lines.append("|---|---:|---|")
-        for d in dr_rows:
+        for d in dr_rows_nonzero:
             amt = _D(d.get("amount"))
             note = (d.get("notes") or "").replace("|", "／").replace("\n", " ").strip()
             lines.append(f"| {d.get('ref_code', '')} | {_usd(amt)} | {note} |")

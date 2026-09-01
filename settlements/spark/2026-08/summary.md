@@ -119,8 +119,6 @@ Period: 2026-08-01 → 2026-08-31 (31 days)
 | 129 | $31.60 |  |
 | 130 | $3,325.47 | Synthetic code: Untagged spUSDT — Spark's own product; Spark reports this code directly (payable to Spark). |
 | 131 | $4,014.11 | Synthetic code: Untagged spUSDC — folded into 128 by Spark on their side (payable to Spark). |
-| 132 | $0.00 | Synthetic code: Untagged spPYUSD — folded into 128 by Spark on their side (payable to Spark). |
-| 171 | $0.00 |  |
 | 182 | $0.01 |  |
 | 183 | $3,686.17 |  |
 | 186 | $1,997.35 |  |
@@ -132,7 +130,6 @@ Period: 2026-08-01 → 2026-08-31 (31 days)
 | 195 | $221.90 |  |
 | 196 | $0.10 |  |
 | 197 | $11,231.95 | stUSDS |
-| 198 | $0.00 |  |
 | 200 | $5,867.13 |  |
 | 202 | $33.37 |  |
 | 204 | $0.54 |  |
@@ -140,11 +137,7 @@ Period: 2026-08-01 → 2026-08-31 (31 days)
 | 214 | $20.28 |  |
 | 216 | $222.08 |  |
 | 217 | $58.96 |  |
-| 219 | $0.00 |  |
-| 223 | $0.00 |  |
 | 224 | $2,669.74 |  |
-| 303 | $0.00 |  |
-| 555 | $0.00 |  |
 | 9001 | $1,993.60 | Synthetic code: USDS in Aave aEthUSDS; entire contract balance. Intraday TWA (clean methodology) — the deployed Dune query used EOD snapshots, which under-count ~20% on heavy-flow months. |
 | **Total** | **$694,641.15** | |
 
