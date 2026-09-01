@@ -8,7 +8,7 @@ from decimal import Decimal
 import pandas as pd
 import pytest
 
-from settle.compute._helpers import combine_apys, daily_compounding_factor
+from settle.compute._helpers import apr_daily, apy_to_apr
 from settle.compute.sky_revenue import (
     BASE_RATE_OVER_SSR,
     compute_sky_revenue,
@@ -76,11 +76,12 @@ def test_constant_debt_constant_ssr_31_days():
         alm_usds=_empty(["block_date", "cum_balance"]),
         ssr=_ssr_const(0.047),                                 # borrow = 5.0%
     )
-    expected_daily = Decimal("100000000") * daily_compounding_factor(
-        combine_apys(Decimal("0.047"), BASE_RATE_OVER_SSR)
-    )
-    expected = expected_daily * 31
-    assert rev == expected
+    # NOMINAL (2026-09-01): the charge is P × apr × days/365, summed, with
+    # no intra-period compounding. SSR is converted at n=12 before the
+    # spread is added.
+    apr = apy_to_apr(Decimal("0.047")) + BASE_RATE_OVER_SSR
+    expected = Decimal("100000000") * apr_daily(apr, 31)
+    assert abs(rev - expected) < Decimal("1e-9")
     # ~$100M × 31 × 0.0001337 ≈ $414K — sanity bound
     assert Decimal("400000") < rev < Decimal("420000")
 
@@ -96,10 +97,8 @@ def test_subtracts_alm_balance_from_utilized():
         ssr=_ssr_const(0.047),
     )
     utilized = Decimal("100000000") - Decimal("3000000")
-    expected = utilized * daily_compounding_factor(
-        combine_apys(Decimal("0.047"), BASE_RATE_OVER_SSR)
-    )
-    assert rev == expected
+    apr = apy_to_apr(Decimal("0.047")) + BASE_RATE_OVER_SSR
+    assert abs(rev - utilized * apr_daily(apr)) < Decimal("1e-9")
 
 
 def test_handles_ssr_change_mid_period():
@@ -118,12 +117,12 @@ def test_handles_ssr_change_mid_period():
         ssr=ssr_df,
     )
 
-    f1 = daily_compounding_factor(combine_apys(Decimal("0.0400"), BASE_RATE_OVER_SSR))
-    f2 = daily_compounding_factor(combine_apys(Decimal("0.0375"), BASE_RATE_OVER_SSR))
-    # March 1-8 at 4.00% + spread = 4.30% → 8 days
-    # March 9-31 at 3.75% + spread = 4.05% → 23 days
-    expected = Decimal("100000000") * (8 * f1 + 23 * f2)
-    assert rev == expected
+    # March 1-8 at SSR 4.00%, March 9-31 at 3.75%; each day nominal.
+    a1 = apy_to_apr(Decimal("0.0400")) + BASE_RATE_OVER_SSR
+    a2 = apy_to_apr(Decimal("0.0375")) + BASE_RATE_OVER_SSR
+    P = Decimal("100000000")
+    expected = P * apr_daily(a1, 8) + P * apr_daily(a2, 23)
+    assert abs(rev - expected) < Decimal("1e-9")
 
 
 def test_skips_days_when_utilized_is_negative():
@@ -176,7 +175,7 @@ def test_subsidy_enabled_but_period_before_program_start():
     ref_rates = ReferenceRateHistory(
         rates=pd.DataFrame({
             "effective_date": [date(2026, 1, 1)],
-            "ref_rate_apy":   [Decimal("0.0367")],
+            "ref_rate_apr":   [Decimal("0.0367")],
         }),
         kind="tbill_3m",
     )
@@ -191,9 +190,9 @@ def test_subsidy_enabled_but_period_before_program_start():
     )
 
     # Expect full BR (no subsidy) for all 31 days of Dec 2025.
-    base_apy = combine_apys(Decimal("0.04"), BASE_RATE_OVER_SSR)
-    expected = Decimal("100000000") * 31 * daily_compounding_factor(base_apy)
-    assert rev == expected
+    base_apr = apy_to_apr(Decimal("0.04")) + BASE_RATE_OVER_SSR
+    expected = Decimal("100000000") * apr_daily(base_apr, 31)
+    assert abs(rev - expected) < Decimal("1e-9")
 
 
 def test_subsidy_zero_benefit_warns(caplog):
@@ -213,7 +212,7 @@ def test_subsidy_zero_benefit_warns(caplog):
     ref_rates = ReferenceRateHistory(
         rates=pd.DataFrame({
             "effective_date": [date(2026, 5, 1)],
-            "ref_rate_apy":   [Decimal("0.0433")],   # placeholder value above BR
+            "ref_rate_apr":   [Decimal("0.0433")],   # placeholder value above BR
         }),
         kind="tbill_3m",
     )
@@ -224,7 +223,7 @@ def test_subsidy_zero_benefit_warns(caplog):
         )
     assert any("$0 benefit" in r.message for r in caplog.records)
     # Every day's subsidised rate clamped up to base (no benefit).
-    assert all(r["sub_apy"] == r["base_apy"] for r in df.to_dict("records"))
+    assert all(r["sub_apr"] == r["base_apr"] for r in df.to_dict("records"))
 
 
 def test_subsidy_real_benefit_does_not_warn(caplog):
@@ -242,7 +241,7 @@ def test_subsidy_real_benefit_does_not_warn(caplog):
     ref_rates = ReferenceRateHistory(
         rates=pd.DataFrame({
             "effective_date": [date(2026, 5, 1)],
-            "ref_rate_apy":   [Decimal("0.0362")],   # real T-Bill, below BR
+            "ref_rate_apr":   [Decimal("0.0362")],   # real T-Bill, below BR
         }),
         kind="tbill_3m",
     )
@@ -268,7 +267,7 @@ def test_summarize_subsidy_reconciles():
     )
     ref = ReferenceRateHistory(
         rates=pd.DataFrame({"effective_date": [date(2026, 5, 1)],
-                            "ref_rate_apy": [Decimal("0.0362")]}), kind="tbill_3m")
+                            "ref_rate_apr": [Decimal("0.0362")]}), kind="tbill_3m")
     total, df, _ = compute_sky_revenue_daily(
         period, debt_df, _empty(["block_date", "cum_balance"]), ssr_df,
         subsidy_config=subsidy, ref_rate_history=ref)
@@ -286,14 +285,14 @@ def test_summarize_subsidy_reconciles():
 
 def test_summarize_subsidy_none_when_disabled():
     from settle.compute.sky_revenue import summarize_subsidy
-    df = pd.DataFrame({"utilized": [1.0], "base_apy": [0.04],
-                       "sub_apy": [None], "ref_rate_apy": [None]})
+    df = pd.DataFrame({"utilized": [1.0], "base_apr": [0.04],
+                       "sub_apr": [None], "ref_rate_apr": [None]})
     assert summarize_subsidy(df, None) is None
     assert summarize_subsidy(df, SubsidyConfig(enabled=False)) is None
 
 
 def test_summarize_subsidy_handles_program_start_midperiod(caplog):
-    """A period that straddles program_start has mixed None/float sub_apy →
+    """A period that straddles program_start has mixed None/float sub_apr →
     pandas coerces the column to float64 with NaN. summarize_subsidy must not
     crash on Decimal('NaN') < base, and must still reconcile. Regression for
     the InvalidOperation introduced by the panel→provenance refactor."""
@@ -306,7 +305,7 @@ def test_summarize_subsidy_handles_program_start_midperiod(caplog):
         cap_usd=Decimal("1000000000"), ramp_months=24, ref_rate_kind="tbill_3m")
     ref = ReferenceRateHistory(
         rates=pd.DataFrame({"effective_date": [date(2026, 2, 2)],
-                            "ref_rate_apy": [Decimal("0.0362")]}), kind="tbill_3m")
+                            "ref_rate_apr": [Decimal("0.0362")]}), kind="tbill_3m")
     total, df, _ = compute_sky_revenue_daily(
         period, debt_df, _empty(["block_date", "cum_balance"]), ssr_df,
         subsidy_config=subsidy, ref_rate_history=ref)
@@ -330,7 +329,7 @@ def test_summarize_subsidy_no_warning_before_program_start(caplog):
         cap_usd=Decimal("1000000000"), ramp_months=24, ref_rate_kind="tbill_3m")
     ref = ReferenceRateHistory(
         rates=pd.DataFrame({"effective_date": [date(2026, 1, 1)],
-                            "ref_rate_apy": [Decimal("0.0362")]}), kind="tbill_3m")
+                            "ref_rate_apr": [Decimal("0.0362")]}), kind="tbill_3m")
     with caplog.at_level(logging.WARNING):
         _t, df, _ = compute_sky_revenue_daily(
             period, debt_df, _empty(["block_date", "cum_balance"]), ssr_df,

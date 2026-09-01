@@ -1,21 +1,21 @@
 """Chronicle Points — 20% of the base rate on Chronicle Farm USDS (Grove).
 
-Faithful port of the ``soterlabs/chronicle-points-dune-dash`` methodology
-(queries 7322636/7322608), computed per settlement month from HyperSync
-Transfer logs instead of Dune::
+Originally a port of the ``soterlabs/chronicle-points-dune-dash``
+methodology (queries 7322636/7322608), computed per settlement month from
+HyperSync Transfer logs instead of Dune. Since 2026-09-01 it follows the
+repo's rate convention rather than the dash's, so the two series no longer
+reconcile and the dashboard comparison has been retired::
 
-    base_rate_apy = SSR_APY + spread_d       (ADDITIVE, per the dash's
-                                              formula; spread_d follows the
-                                              repo's DATED schedule — 30bps,
-                                              20bps from 2026-07-23 — per
-                                              the MSC operator directive
-                                              2026-08-04. The dash hardcodes
-                                              a flat 30bps, so both series
-                                              are identical through
-                                              2026-07-22 and diverge only
-                                              from the spread step.)
-    effective_apy = 0.20 × base_rate_apy
-    daily_accrual = farm_USDS_balance_d × ((1 + effective_apy)^(1/365) − 1)
+    base_apr      = apy_to_apr(SSR_APY, n=12) + spread_d
+    effective_apr = 0.20 × base_apr
+    daily_accrual = farm_USDS_balance_d × effective_apr / 365
+
+Two deliberate divergences from the dash: (1) SSR is converted from its
+APY quote to a nominal APR before the spread is added, since the spread is
+a governance APR (see ``_helpers.apy_to_apr``); (2) the accrual is nominal
+— no intra-period compounding — matching the Base Rate this is a 20% share
+of. ``spread_d`` also follows the repo's DATED schedule (30bps, 20bps from
+2026-07-23) where the dash hardcodes a flat 30bps.
 
 ``farm_USDS_balance_d`` is the day's END-of-day balance of the Chronicle
 Farm (StakingRewards) contract, reconstructed from USDS Transfer logs with
@@ -37,7 +37,7 @@ from decimal import Decimal
 import pandas as pd
 
 from ..domain.period import Period
-from ._helpers import cum_at_or_before, daily_compounding_factor, ssr_at_or_before
+from ._helpers import apr_daily, apy_to_apr, cum_at_or_before, ssr_at_or_before
 from .sky_revenue import base_rate_spread_at
 
 _RATE_SHARE = Decimal("0.20")
@@ -56,12 +56,16 @@ def compute_chronicle_points(
     for (USDS, Chronicle Farm) — HyperSync-sourced by the orchestrator.
     ``ssr`` is the canonical SSR history frame.
     """
+    # NOMINAL (APR) accrual, same convention as the Base Rate it is a share
+    # of (2026-09-01): SSR converted to an APR at n=12, plus the dated
+    # spread, times the 20% share, sliced ``x days/365`` with no intra-period
+    # compounding. See ``_helpers.apy_to_apr``.
     total = Decimal("0")
     current = period.start
     while current <= period.end:
         balance = cum_at_or_before(farm_usds, "cum_balance", current)
         if balance > 0:
-            base = ssr_at_or_before(ssr, current) + base_rate_spread_at(current)
-            total += balance * daily_compounding_factor(_RATE_SHARE * base)
+            base_apr = apy_to_apr(ssr_at_or_before(ssr, current)) + base_rate_spread_at(current)
+            total += balance * apr_daily(_RATE_SHARE * base_apr)
         current = current + timedelta(days=1)
     return total

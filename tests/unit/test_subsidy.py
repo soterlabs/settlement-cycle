@@ -19,7 +19,7 @@ import pytest
 from settle.domain.subsidy import (
     ReferenceRateHistory,
     months_elapsed_since,
-    subsidised_apy,
+    subsidised_apr,
 )
 
 
@@ -27,7 +27,7 @@ def _hist(rows: list[tuple[str, float]], kind: str = "tbill_3m") -> ReferenceRat
     return ReferenceRateHistory(
         rates=pd.DataFrame({
             "effective_date": [date.fromisoformat(d) for d, _ in rows],
-            "ref_rate_apy":   [r for _, r in rows],
+            "ref_rate_apr":   [r for _, r in rows],
         }),
         kind=kind,
     )
@@ -78,56 +78,56 @@ def test_at_fresh_no_warning(caplog):
     assert not any("carried forward" in rec.message for rec in caplog.records)
 
 
-# --- subsidised_apy ---------------------------------------------------------
+# --- subsidised_apr ---------------------------------------------------------
 
-def test_subsidised_apy_t_zero_full_subsidy():
+def test_subsidised_apr_t_zero_full_subsidy():
     """T=0: subsidised = ref_rate (full subsidy)."""
-    out = subsidised_apy(
-        base_apy=Decimal("0.043"),
-        ref_rate_apy=Decimal("0.0367"),
+    out = subsidised_apr(
+        base_apr=Decimal("0.043"),
+        ref_rate_apr=Decimal("0.0367"),
         months_elapsed=0,
     )
     assert out == Decimal("0.0367")
 
 
-def test_subsidised_apy_t_full_ramp_returns_base():
+def test_subsidised_apr_t_full_ramp_returns_base():
     """T=24 (or above): subsidised = base_apy (no subsidy)."""
-    out = subsidised_apy(
-        base_apy=Decimal("0.043"),
-        ref_rate_apy=Decimal("0.0367"),
+    out = subsidised_apr(
+        base_apr=Decimal("0.043"),
+        ref_rate_apr=Decimal("0.0367"),
         months_elapsed=24,
     )
     assert out == Decimal("0.043")
 
 
-def test_subsidised_apy_midway():
+def test_subsidised_apr_midway():
     """T=12: halfway between ref_rate and base_apy."""
-    out = subsidised_apy(
-        base_apy=Decimal("0.043"),
-        ref_rate_apy=Decimal("0.0367"),
+    out = subsidised_apr(
+        base_apr=Decimal("0.043"),
+        ref_rate_apr=Decimal("0.0367"),
         months_elapsed=12,
     )
     expected = Decimal("0.0367") + (Decimal("0.043") - Decimal("0.0367")) * Decimal("12") / Decimal("24")
     assert out == expected
 
 
-def test_subsidised_apy_clamps_when_ref_rate_above_base():
+def test_subsidised_apr_clamps_when_ref_rate_above_base():
     """ref_rate (4.33%) > BR (4.30%): clamp at base_apy, prime never pays MORE
     than the unsubsidised rate. This is the live Spark Jan-Feb 2026 case."""
-    out = subsidised_apy(
-        base_apy=Decimal("0.043"),
-        ref_rate_apy=Decimal("0.0433"),
+    out = subsidised_apr(
+        base_apr=Decimal("0.043"),
+        ref_rate_apr=Decimal("0.0433"),
         months_elapsed=0,
     )
     # Without the clamp, T=0 would give 4.33% (above 4.30%).
     assert out == Decimal("0.043")
 
 
-def test_subsidised_apy_negative_months_treated_as_zero():
+def test_subsidised_apr_negative_months_treated_as_zero():
     """Period entirely before program_start (negative T) → full subsidy."""
-    out = subsidised_apy(
-        base_apy=Decimal("0.043"),
-        ref_rate_apy=Decimal("0.0367"),
+    out = subsidised_apr(
+        base_apr=Decimal("0.043"),
+        ref_rate_apr=Decimal("0.0367"),
         months_elapsed=-3,
     )
     assert out == Decimal("0.0367")

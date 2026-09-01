@@ -13,11 +13,22 @@ from decimal import Decimal
 
 import pandas as pd
 
-# All rates compound at per-second APR — same granularity as the SSR's
-# on-chain accrual (`drip()` advances per `block.timestamp`). Daily summing
-# (PRD §17.5) integrates the per-second factor across `SECONDS_PER_DAY` —
-# mathematically identical to ``(1+APY)^(1/365)-1`` since
-# ``apr_per_sec = ln(1+APY) / SECONDS_PER_YEAR``.
+# TWO daily factors live here, and which one applies is a property of the
+# RATE, not of the caller (2026-09-01; see PRD §17.13 and docs/RULES.md):
+#
+#   * ``apr_daily`` — for NOMINAL rates: the Base Rate, the agent rate, the
+#     20 bps reimbursement legs, Chronicle Points. An APR's compounding
+#     happens when the MSC capitalises the charge into the ilk debt, not
+#     inside the settlement period.
+#   * ``daily_compounding_factor`` — for APY-quoted rates, i.e. the
+#     SSR-appreciation legs, whose per-second growth the sUSDS index really
+#     does deliver.
+#
+# NEITHER is accumulated with interest-on-interest inside a period. For the
+# nominal legs that would contradict the APR definition; for the SSR legs
+# it would DOUBLE-COUNT, because their principal is already mark-to-market
+# (re-read via ``convertToAssets`` daily, so it carries the compounding
+# already). See ``monthly_pnl._accrue_daily``.
 SECONDS_PER_DAY = 86_400
 SECONDS_PER_YEAR = 365 * SECONDS_PER_DAY  # 31,536,000
 
@@ -32,23 +43,70 @@ def apy_to_apr_per_second(apy: Decimal) -> Decimal:
     return Decimal(str(apr / SECONDS_PER_YEAR))
 
 
-def combine_apys(*apys: Decimal) -> Decimal:
-    """Combine APY-quoted rates multiplicatively.
+# Compounding frequency used to convert an APY into an APR. The MSC settles
+# monthly and the charge is capitalised into the prime's ilk debt at each
+# settlement (``vat.grab`` positive dart), so the accrual compounds ~12x a
+# year. Converting at the SAME frequency makes the round trip exact:
+# ``(1 + apy_to_apr(APY)/12)^12 - 1 == APY``. Converting at a different
+# frequency (e.g. per-second, which yields ln(1+APY)) leaves a residual —
+# 0.52 bps/yr at SSR 3.52% — because the conversion would assume continuous
+# compounding the settlement cycle doesn't provide.
+APR_COMPOUNDING_PERIODS = 12
 
-    Two APYs add as ``(1 + APY_1) × (1 + APY_2) − 1``, not as ``APY_1 + APY_2``
-    — the latter loses the cross-term ``APY_1 × APY_2``. For typical Sky
-    values (SSR ≈ 4 %, spread = 30 bps) the naive sum is off by ~1.2 bps,
-    which is ~$14K/month on Grove's $1.4B utilized.
 
-    Equivalent continuous form: ``ln(1+APY_combined) = Σ ln(1+APY_i)``.
-    Used to compose:
-      * Base rate    = SSR ⊕ 30bps   (sky_revenue's BR charge on utilized)
-      * Agent rate   = SSR ⊕ 20bps   (USDS in subproxy)
+def apy_to_apr(apy: Decimal, n: int = APR_COMPOUNDING_PERIODS) -> Decimal:
+    """Convert an APY-quoted rate to its APR (nominal) equivalent.
+
+    ``APR = n x [(1 + APY)^(1/n) - 1]``
+
+    Why this exists: the Base Rate is ``SSR + spread``, and the two are
+    quoted in different units. SSR is an APY (it compounds per-second into
+    the sUSDS index on-chain); the spread is a governance-set APR. Adding
+    them directly mixes an effective rate with a nominal one. Converting
+    SSR to an APR first puts both on the nominal basis, and then plain
+    addition is exact AT THE RATE LEVEL: ``BR_apr - SSR_apr - spread = 0``.
+
+    And it carries into settled dollars: the idle-sUSDS legs DO net to zero over a
+    settlement year — but by two different compounding paths that n=12 is
+    precisely chosen to reconcile. The credit's principal (the sUSDS index)
+    compounds continuously and reaches ``(1+SSR)^1 - 1``; the charge's
+    principal (the debt) steps up monthly as the MSC capitalises the net
+    charge, reaching ``(1 + SSR_apr/12)^12 - 1`` — the same 3.5200%.
+    Comparing the two DAILY slices in isolation shows a 0.14% gap and is
+    misleading: it ignores that the credit accrues on a growing balance
+    while the charge accrues on one that is static within the month.
+    Simulated over 12 months on $1B: net +0.034 bps/yr (day-count noise).
+    Converting at n -> inf would BREAK this — the debt would then reach only
+    3.5148% and the netting would run +0.549 bps/yr. See PRD §17.13.
+
+    At SSR 3.52% and n=12 this gives 3.464456%, so ``BR_apr`` = 3.664456%.
+
+    (Supersedes the former APY composition — multiplicative
+    ``(1+SSR)(1+spread)-1`` originally, briefly additive-on-APYs. Both
+    mixed an effective rate with a nominal one. See PRD SS17.13.)
     """
-    factor = Decimal("1")
-    for a in apys:
-        factor *= (Decimal("1") + a)
-    return factor - Decimal("1")
+    if n < 1:
+        raise ValueError(f"apy_to_apr: n must be >= 1, got {n}")
+    # ``expm1(log1p(x)/n)`` rather than ``(1+x)**(1/n) - 1``: the latter
+    # computes a number just above 1.0 and then subtracts 1, throwing away
+    # most of the mantissa. At n = 12 both are fine, but at per-second n the
+    # naive form loses ~9 significant digits (it disagreed with the exact
+    # series expansion at the 9th decimal instead of the 11th).
+    f = math.expm1(math.log1p(float(apy)) / n)
+    return Decimal(str(f)) * Decimal(n)
+
+
+def apr_daily(apr: Decimal, days: int = 1) -> Decimal:
+    """Interest factor for ``days`` at a nominal annual rate — ``apr x days/365``.
+
+    NOMINAL means no compounding inside the settlement period: an APR is
+    defined by its periodic rate, and the compounding that does occur
+    happens at the MSC when the charge is capitalised into the ilk debt.
+    Contrast ``daily_compounding_factor``, which is the APY equivalent and
+    is still used for the SSR-appreciation legs (the sUSDS index genuinely
+    compounds per-second, so those model a physical receipt).
+    """
+    return apr * Decimal(days) / Decimal(365)
 
 
 def daily_compounding_factor(apy: Decimal) -> Decimal:

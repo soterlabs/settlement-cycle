@@ -331,16 +331,16 @@ def test_compute_sky_revenue_subtracts_usds_leg_only_routes_usdc_to_sde():
     # utilized = 100M − 0 − 30M (USDS leg) − 30M (USDC via SDE) = $40M
     # sUSDS leg ($30M) stays in the BR base; the prime gets a separate
     # 30 bps credit through ``_psm3_susds_spread`` (tested below).
-    from settle.compute._helpers import combine_apys
+    from settle.compute._helpers import apr_daily, apy_to_apr
     from settle.compute.sky_revenue import BASE_RATE_OVER_SSR as _BR_SPREAD
-    expected = Decimal("40000000") * daily_compounding_factor(
-        combine_apys(Decimal("0.047"), _BR_SPREAD)
+    expected = Decimal("40000000") * apr_daily(
+        apy_to_apr(Decimal("0.047")) + _BR_SPREAD
     )
-    assert rev == expected
+    assert abs(rev - expected) < Decimal("1e-9")
 
 
 def test_psm3_susds_spread_30bps_daily():
-    """``_psm3_susds_spread`` returns Σ_d cum_susds × daily_factor(30bps).
+    """``_psm3_susds_spread`` returns Σ_d cum_susds × 30bps/365 (nominal).
     Verifies the neutralising credit's magnitude: $100M sUSDS leg over 10
     days at 30 bps ≈ $100M × 30bps × 10/365 ≈ $8,219."""
     from settle.compute._helpers import daily_compounding_factor
@@ -359,8 +359,10 @@ def test_psm3_susds_spread_30bps_daily():
                     pin_blocks={Chain.BASE: 1, Chain.ETHEREUM: 1})
 
     out = _psm3_susds_spread(df, period)
-    expected = Decimal("100000000") * daily_compounding_factor(BASE_RATE_OVER_SSR) * 10
-    assert out == expected
+    # NOMINAL (2026-09-01), like the BR charge it offsets: V × rate × n/365.
+    from settle.compute._helpers import apr_daily
+    expected = Decimal("100000000") * apr_daily(BASE_RATE_OVER_SSR, 10)
+    assert abs(out - expected) < Decimal("1e-9")
     assert Decimal("8000") < out < Decimal("8500")
 
 
@@ -404,8 +406,10 @@ def test_psm3_susds_appreciation_full_ssr_daily():
                     pin_blocks={Chain.BASE: 1, Chain.ETHEREUM: 1})
 
     out = _psm3_susds_appreciation(df, period, ssr)
-    expected = Decimal("100000000") * daily_compounding_factor(Decimal("0.045")) * 10
-    assert out == expected
+    # Simple sum: cum_susds is mark-to-market, so V_d already carries the
+    # compounding — accumulating it again would double-count (~+0.14%).
+    _f = daily_compounding_factor(Decimal("0.045"))
+    assert abs(out - Decimal("100000000") * _f * 10) < Decimal("1e-9")
     assert Decimal("115000") < out < Decimal("125000")
 
 
@@ -432,11 +436,10 @@ def test_psm3_susds_appreciation_tracks_ssr_changes():
 
     out = _psm3_susds_appreciation(df, period, ssr)
     v = Decimal("100000000")
-    expected = (
-        v * daily_compounding_factor(Decimal("0.045")) * 5   # Mar 1–5
-        + v * daily_compounding_factor(Decimal("0.040")) * 5  # Mar 6–10
-    )
-    assert out == expected
+    # 5 days at 4.5%, 5 at 4.0% — simple sum (mark-to-market principal).
+    f1 = daily_compounding_factor(Decimal("0.045"))
+    f2 = daily_compounding_factor(Decimal("0.040"))
+    assert abs(out - v * (5 * f1 + 5 * f2)) < Decimal("1e-9")
 
 
 def test_psm3_susds_appreciation_empty_returns_zero():

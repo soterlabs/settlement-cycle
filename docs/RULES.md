@@ -2,15 +2,59 @@
 
 Reference rules for computing prime agent revenues in the Sky ecosystem. These rules apply to all agents (OBEX, Skybase, Grove, Spark). Established after reconciling Dune queries against MSC settlement posts.
 
-## Rule 1: Use APY, not APR
+## Rule 1: The Base Rate is NOMINAL (APR); SSR is an APY and is converted
 
-All calculations use **APY with per-second compounding**, matching how the SSR accrues onchain:
+**Revised 2026-09-01** (see PRD §17.13). The two rates in `BR = SSR + spread`
+are quoted in different units, and mixing them was the root of a long-running
+discrepancy:
+
+* **SSR is an APY** — it compounds per-second into the sUSDS index on-chain.
+* **The spread (and the subsidy reference rate) are nominal APRs.**
+
+So SSR is converted to its nominal equivalent before the two are added:
 
 ```
-daily_interest = D × [(1 + APY)^(1/365) - 1]
+SSR_apr        = 12 × [(1 + SSR_apy)^(1/12) - 1]      # n=12: the settlement cadence
+base_apr       = SSR_apr + spread                      # 3.464456% + 0.20% = 3.664456%
+daily_interest = D × base_apr / 365                    # NOMINAL — no intra-period compounding
 ```
 
-The MSC settlement posts use a simpler APR approach (`D × rate / 365`), which overstates daily interest by ~1.8%. This is flagged as a discrepancy in `agents/obex/findings/` for each month.
+Three properties this buys:
+
+1. `BR_apr − SSR_apr − spread = 0` exactly, so Sky nets zero on idle sUSDS —
+   and it holds in **settled dollars**, not just at the rate level, once the
+   MSC's monthly capitalisation is counted. The two legs get there by
+   different compounding paths: the credit's principal (the sUSDS index)
+   compounds continuously to `(1+SSR)^1 − 1`, while the charge's principal
+   (the debt) steps up monthly to `(1 + SSR_apr/12)^12 − 1` — the same
+   3.5200%. **Comparing the daily slices alone is misleading** (they differ
+   by 0.14%): that ignores the credit accruing on a growing balance and the
+   charge on one static within the month. Simulated over 12 months on $1B:
+   +0.034 bps/yr, day-count noise. This is what `n = 12` buys — converting
+   at `n → ∞` would leave the debt at 3.5148% and break the netting by
+   +0.549 bps/yr.
+2. The conversion round-trips: `(1 + SSR_apr/12)^12 − 1` returns the SSR APY
+   (3.52%) exactly, because the conversion frequency matches the frequency at
+   which the charge actually compounds. NB this holds for the *converted leg*,
+   not for `base_apr` — compounding `base_apr` monthly gives 3.7266%, which is
+   the APY equivalent of the Base Rate, not the SSR.
+3. It matches the MSC settlement posts, which have always used `D × rate/365`.
+
+**The charge still compounds — just not inside the period.** Each month's
+charge is capitalised into the prime's ilk debt at the MSC (`vat.grab` with
+positive `dart`; allocator ilks have `duty = 0` and a frozen `vat.rate`, so
+this is the capitalisation mechanism), and `cum_debt` sums frob + grab. The
+enlarged principal then pays BR from the settlement day onward, with no code
+required.
+
+**Still an APY, deliberately:** the SSR-appreciation legs (PSM3 sUSDS
+appreciation, the Curve Case-3b integral, Savings-V2 depositor SSR). Those
+model a *physical receipt* — the index really does compound per-second — so
+a nominal sum would under-credit what the prime demonstrably received.
+
+*Superseded:* "All calculations use APY with per-second compounding", which
+applied `D × [(1+APY)^(1/365) − 1]` to every leg. It made `BR − SSR − spread`
+non-zero and billed `ln(1+APY)` over a year instead of the APY.
 
 ## Rule 2: Track SSR changes via SP-BEAM
 

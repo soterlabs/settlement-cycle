@@ -148,9 +148,9 @@ def ref_rate_at(d: date, rates: list[tuple[date, Decimal]]) -> Decimal:
 
 
 # Grove subsidy curve (from config/grove.yaml):
-#   subsidised_apy = ref_rate + (base_apy - ref_rate) × min(T, 24) / 24
+#   subsidised_apr = ref_rate + (base_apr - ref_rate) × min(T, 24) / 24
 # where T = full months since 2026-01-01, applied to first $1B of utilised.
-# base_apy = SSR + 30bps; we approximate SSR ≈ 6.0% (Sky SSR was 6% in early 2026,
+# base_apr = apy_to_apr(SSR,12) + 30bps; we approximate SSR ≈ 6.0% (Sky SSR was 6% in early 2026,
 # trending down). For the BA Labs comparison the absolute rate matters less
 # than the formula shape — we honour the SSR variation by reading it from
 # our own daily compute output when possible.
@@ -176,24 +176,31 @@ def _months_elapsed(d: date) -> int:
     return max(0, (d.year - _PROGRAM_START.year) * 12 + (d.month - _PROGRAM_START.month))
 
 
-def base_apy_for_date(d: date) -> Decimal:
-    """Approximate full BR APY at date d."""
+def base_apr_for_date(d: date) -> Decimal:
+    """Approximate full BR APR at date d (nominal)."""
     ssr = _SSR_BY_MONTH.get((d.year, d.month), Decimal("0.0450"))
-    # Multiplicative compounding (1+SSR)(1+30bps) - 1 per build_settlement.
-    return (Decimal(1) + ssr) * (Decimal(1) + _BR_SPREAD) - Decimal(1)
+    # NOMINAL base rate, matching ``_helpers.apy_to_apr``: SSR is an APY and
+    # is converted at n=12 (the settlement cadence) before the APR spread is
+    # added. 3.464456% + 0.20% = 3.664456% at SSR 3.52% + 20bps.
+    from settle.compute._helpers import apy_to_apr
+    return apy_to_apr(ssr) + _BR_SPREAD
 
 
-def subsidised_apy_for_date(d: date, ref_rate: Decimal) -> Decimal:
-    base = base_apy_for_date(d)
+def subsidised_apr_for_date(d: date, ref_rate: Decimal) -> Decimal:
+    base = base_apr_for_date(d)
     t = min(_months_elapsed(d), _SUBSIDY_RAMP_MONTHS)
     return ref_rate + (base - ref_rate) * Decimal(t) / Decimal(_SUBSIDY_RAMP_MONTHS)
 
 
-def daily_compound(apy: Decimal) -> Decimal:
-    """Convert APY to daily compound factor: (1+apy)^(1/365) - 1."""
-    from decimal import getcontext
-    getcontext().prec = 50
-    return (Decimal(1) + apy) ** (Decimal(1) / Decimal(365)) - Decimal(1)
+def apr_daily(apr: Decimal) -> Decimal:
+    """One day of a NOMINAL annual rate: apr / 365.
+
+    Mirrors ``settle.compute._helpers.apr_daily``. Replaced the former
+    ``daily_compound`` (an APY -> daily-factor converter) on 2026-09-01:
+    ``base_apr_for_date`` now returns a nominal rate, and feeding a nominal
+    rate through ``(1+x)^(1/365)-1`` under-accrues it by ~1.8%.
+    """
+    return apr / Decimal(365)
 
 
 # ----------------------------------------------------------------------------
@@ -274,13 +281,13 @@ def implied_for_month(
             continue
         util = max(Decimal(0), last_debt - last_idle)
         ref = ref_rate_at(d, rates)
-        base = base_apy_for_date(d)
-        sub = subsidised_apy_for_date(d, ref)
+        base = base_apr_for_date(d)
+        sub = subsidised_apr_for_date(d, ref)
         # Apply subsidy only to first $1B of utilised.
         sub_part = min(util, _SUBSIDY_CAP_USD)
         excess_part = max(Decimal(0), util - _SUBSIDY_CAP_USD)
-        daily_int_full = util * daily_compound(base)
-        daily_int_sub = sub_part * daily_compound(sub) + excess_part * daily_compound(base)
+        daily_int_full = util * apr_daily(base)
+        daily_int_sub = sub_part * apr_daily(sub) + excess_part * apr_daily(base)
         debt_sum += last_debt
         idle_sum += last_idle
         util_sum += util

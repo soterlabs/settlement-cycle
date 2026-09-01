@@ -8,6 +8,7 @@ timeseries before composing the three revenue components.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
@@ -920,10 +921,49 @@ def _df_from_daily_dict(daily_by_date: dict) -> pd.DataFrame:
     return df
 
 
+def _accrue_daily(
+    period: Period,
+    value_at: Callable[[date], Decimal],
+    factor_at: Callable[[date], Decimal],
+) -> Decimal:
+    """``Σ_d value_at(d) × factor_at(d)`` over ``period`` — a simple sum.
+
+    Days with a non-positive value are skipped, so a transient negative
+    position (external arrival excluded from the timeseries while the
+    outbound leg is included) can never reduce the accrual.
+
+    **Nothing compounds inside the period, and that is right for both kinds
+    of caller**, for different reasons:
+
+      * The 20 bps reimbursement legs are NOMINAL (``apr_daily``) — an
+        APR's compounding happens at the MSC, when the amount is settled.
+        They mirror the equally-nominal BR charge they offset.
+      * The SSR-APPRECIATION legs use the APY daily factor
+        (``daily_compounding_factor``) but must still be summed simply,
+        because their ``value_at`` is already MARK-TO-MARKET: the sUSDS
+        position is re-read via ``convertToAssets`` at each day's block, so
+        ``V_d`` already contains every prior day's appreciation.
+        Accumulating ``(V_d + accrued) × f`` would count the compounding a
+        second time — measured at +0.14% of the leg, i.e. ~$1,256/month on
+        a $300M slice, credited over what the position actually earned.
+
+    ``factor_at`` returns the day's DAILY FACTOR (not the annual rate), so
+    the caller owns the units and this loop stays neutral.
+    """
+    total = Decimal("0")
+    current = period.start
+    while current <= period.end:
+        value = value_at(current)
+        if value > 0:
+            total += value * factor_at(current)
+        current = current + timedelta(days=1)
+    return total
+
+
 def _susds_cat_b_spread_reimb(
     value_som: Decimal, inflow_ts: pd.DataFrame | None, period: Period,
 ) -> Decimal:
-    """BR−SSR spread daily-compounded Sky Revenue reduction for a Cat B
+    """BR−SSR spread, daily-integrated Sky Revenue reduction for a Cat B
     ``sky_savings_token`` venue (S32 / S37 / S43 / S47 / S51).
 
     Sky charges full BR on the underlying USDS (sUSDS is NOT subtracted from
@@ -931,7 +971,7 @@ def _susds_cat_b_spread_reimb(
     the prime's net cost is SSR × V (economic neutrality, Rule 5). The
     spread is date-resolved (30bps; 20bps from 2026-07-23).
 
-    Formula: ``Σ_d V_d × daily_compounding_factor(base_rate_spread_at(d))``
+    Formula: ``Σ_d V_d × base_rate_spread_at(d) / 365``  (nominal)
     where ``V_d = value_som + (cum_inflow_d − cum_inflow_{som-1})`` is the
     daily sUSDS position value across ``[period.start, period.end]``.
 
@@ -948,31 +988,25 @@ def _susds_cat_b_spread_reimb(
     the timeseries while the subsequent on-chain outflow is included) are
     clamped to zero per day so the spread reimbursement stays non-negative.
     """
-    from ._helpers import daily_compounding_factor
+    from ._helpers import apr_daily
     from .sky_revenue import base_rate_spread_at
+
     if inflow_ts is None or inflow_ts.empty:
-        # Stable position throughout — V_d = value_som for every day. Still
+        # Stable position throughout — V_d = value_som every day. Still
         # integrate daily: the spread itself can step mid-period.
         if value_som <= 0:
             return Decimal("0")
-        total = Decimal("0")
-        current = period.start
-        while current <= period.end:
-            total += value_som * daily_compounding_factor(base_rate_spread_at(current))
-            current = current + timedelta(days=1)
-        return total
-    cum_baseline = cum_at_or_before(
-        inflow_ts, "cum_inflow", period.start - timedelta(days=1),
-    )
-    total = Decimal("0")
-    current = period.start
-    while current <= period.end:
-        cum_d = cum_at_or_before(inflow_ts, "cum_inflow", current)
-        v_d = value_som + (cum_d - cum_baseline)
-        if v_d > 0:
-            total += v_d * daily_compounding_factor(base_rate_spread_at(current))
-        current = current + timedelta(days=1)
-    return total
+        value_at = lambda _d: value_som                      # noqa: E731
+    else:
+        cum_baseline = cum_at_or_before(
+            inflow_ts, "cum_inflow", period.start - timedelta(days=1),
+        )
+
+        def value_at(d: date) -> Decimal:
+            cum_d = cum_at_or_before(inflow_ts, "cum_inflow", d)
+            return value_som + (cum_d - cum_baseline)
+
+    return _accrue_daily(period, value_at, lambda d: apr_daily(base_rate_spread_at(d)))
 
 
 def _savings_v2_depositor_ssr(
@@ -1011,11 +1045,11 @@ def _savings_v2_depositor_ssr(
     """
     from ._helpers import daily_compounding_factor, ssr_at_or_before
 
-    total = Decimal("0")
     prev_ta = Decimal("0")
-    current = period.start
-    while current <= period.end:
-        eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
+
+    def value_at(d: date) -> Decimal:
+        nonlocal prev_ta
+        eod = datetime.combine(d, time.max, tzinfo=timezone.utc)
         block = resolver.block_at_or_before(Chain.ETHEREUM.value, eod)
         ta = sv2_src.at_block(block)
         if ta == 0 and prev_ta > 0:
@@ -1024,20 +1058,20 @@ def _savings_v2_depositor_ssr(
                 "block %d (day %s) after $%.0f the previous day — treating "
                 "as a transient read failure and carrying the previous "
                 "day's value forward.",
-                block, current.isoformat(), float(prev_ta),
+                block, d.isoformat(), float(prev_ta),
             )
             ta = prev_ta
-        if ta > 0:
-            total += ta * daily_compounding_factor(
-                ssr_at_or_before(ssr_history, current),
-            )
         prev_ta = ta
-        current = current + timedelta(days=1)
-    return total
+        return ta
+
+    return _accrue_daily(
+        period, value_at,
+        lambda d: daily_compounding_factor(ssr_at_or_before(ssr_history, d)),
+    )
 
 
 def _psm3_susds_spread(psm_usds: pd.DataFrame | None, period: Period) -> Decimal:
-    """BR−SSR spread daily-compounded Prime Revenue credit on the sUSDS
+    """BR−SSR spread, daily-integrated Prime Revenue credit on the sUSDS
     slice of PSM3 holdings.
 
     The sUSDS leg of PSM3 is yield-bearing — the prime captures SSR
@@ -1049,22 +1083,19 @@ def _psm3_susds_spread(psm_usds: pd.DataFrame | None, period: Period) -> Decimal
     SSR-+-BR-charge-+-spread-credit composite nets to zero. See PRD §17.11.
     The spread is date-resolved (30bps; 20bps from 2026-07-23).
 
-    Formula: ``Σ_d cum_susds_d × daily_compounding_factor(base_rate_spread_at(d))``
+    Formula: ``Σ_d cum_susds_d × base_rate_spread_at(d) / 365``  (nominal)
     where d ranges over days in ``[period.start, period.end]``.
     """
     if psm_usds is None or psm_usds.empty or "cum_susds" not in psm_usds.columns:
         return Decimal("0")
     # Lazy import to avoid module-cycle (sky_revenue imports from _helpers).
-    from ._helpers import daily_compounding_factor
+    from ._helpers import apr_daily
     from .sky_revenue import base_rate_spread_at
-    total = Decimal("0")
-    current = period.start
-    while current <= period.end:
-        cum_susds = cum_at_or_before(psm_usds, "cum_susds", current)
-        if cum_susds > 0:
-            total += cum_susds * daily_compounding_factor(base_rate_spread_at(current))
-        current = current + timedelta(days=1)
-    return total
+    return _accrue_daily(
+        period,
+        lambda d: cum_at_or_before(psm_usds, "cum_susds", d),
+        lambda d: apr_daily(base_rate_spread_at(d)),
+    )
 
 
 def _psm3_susds_appreciation(
@@ -1093,16 +1124,13 @@ def _psm3_susds_appreciation(
     if psm_usds is None or psm_usds.empty or "cum_susds" not in psm_usds.columns:
         return Decimal("0")
     from ._helpers import daily_compounding_factor, ssr_at_or_before
-    total = Decimal("0")
-    current = period.start
-    while current <= period.end:
-        cum_susds = cum_at_or_before(psm_usds, "cum_susds", current)
-        if cum_susds > 0:
-            total += cum_susds * daily_compounding_factor(
-                ssr_at_or_before(ssr_history, current),
-            )
-        current = current + timedelta(days=1)
-    return total
+    # Simple sum on a MARK-TO-MARKET principal: cum_susds is re-read via
+    # convertToAssets each day, so it already carries the compounding.
+    return _accrue_daily(
+        period,
+        lambda d: cum_at_or_before(psm_usds, "cum_susds", d),
+        lambda d: daily_compounding_factor(ssr_at_or_before(ssr_history, d)),
+    )
 
 
 def _aggregate_alm_usds(
@@ -1572,7 +1600,7 @@ def _aggregate_curve_idle_usds(
     from ..extract.rpc import balance_of as _balance_of
     from ..normalize.sources.curve_pool import CurvePoolSource
     from .sky_revenue import base_rate_spread_at
-    from ._helpers import daily_compounding_factor, ssr_at_or_before
+    from ._helpers import apr_daily, daily_compounding_factor, ssr_at_or_before
 
     # Exclude uniswap_v4 venues — they reuse the curve_idle_usds schema but
     # their daily idle/SDE values are computed by _aggregate_univ4_idle_usds
@@ -1620,7 +1648,15 @@ def _aggregate_curve_idle_usds(
     # Separate accumulators for par-stable (utilized deduction) and
     # sky-savings-token (spread revenue + full-SSR appreciation).
     daily_util: dict = {}
-    daily_spread: dict = {}
+    # Per-venue running totals. Both legs are SIMPLE SUMS: the 20 bps spread
+    # is nominal, and the Case-3b SSR integral runs on a mark-to-market
+    # ``prime_susds_value`` (a fresh ``convertToAssets`` every day), so its
+    # daily values already carry the compounding — accumulating it again
+    # would over-carve the SDE pot. ``_venue_spread`` is keyed by venue only
+    # to mirror ``susds_ssr_by_venue`` (which genuinely is consumed per
+    # venue, for the Case-3b re-attribution); it is summed before use, and
+    # being a plain sum that is exactly the pooled figure.
+    _venue_spread: dict[str, Decimal] = {}
     susds_ssr_by_venue: dict[str, Decimal] = {}
 
     for venue in venues_with_config:
@@ -1631,19 +1667,17 @@ def _aggregate_curve_idle_usds(
         chain_str = venue.chain.value
 
         # Per-VENUE last-known carry-forward state. Reading from the shared
-        # ``daily_util`` / ``daily_spread`` dicts would (a) carry the
-        # cross-venue aggregate, not this venue's prior value, and (b)
-        # compound on consecutive failures into a zero or doubled value.
-        # Keep per-venue state local to the venue's day loop.
+        # ``daily_util`` dict would (a) carry the cross-venue aggregate, not
+        # this venue's prior value, and (b) compound on consecutive failures
+        # into a zero or doubled value. Keep per-venue state local to the
+        # venue's day loop.
         venue_last_usds = Decimal(0)
-        venue_last_spread = Decimal(0)
         venue_last_susds_value = Decimal(0)
 
         current = period.start
         while current <= period.end:
             eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
             prime_usds = Decimal(0)
-            prime_spread = Decimal(0)
             prime_susds_value = Decimal(0)
             # Sentinel: when True, the day's computation produced no data
             # (pool not yet seeded, configured coin absent), so we treat it
@@ -1705,9 +1739,6 @@ def _aggregate_curve_idle_usds(
                             * (Decimal(raw_coin_balance) / Decimal(10 ** share_decimals))
                             * pps
                         ) if pool_total > 0 else Decimal(0)
-                        prime_spread = prime_susds_value * daily_compounding_factor(
-                            base_rate_spread_at(current),
-                        )
                     elif target_coin in KNOWN_YIELD_BEARING_ETHEREUM:
                         # Yield-bearing but not sky_savings_token: data fetched for
                         # future use; no utilized deduction and no spread revenue yet.
@@ -1728,26 +1759,32 @@ def _aggregate_curve_idle_usds(
                 # cross-venue aggregate in ``daily_util`` — that was the
                 # source of the consecutive-failure → zero-out bug.
                 prime_usds = venue_last_usds
-                prime_spread = venue_last_spread
                 prime_susds_value = venue_last_susds_value
             else:
                 # On success, update this venue's running carry-forward.
                 venue_last_usds = prime_usds
-                venue_last_spread = prime_spread
                 venue_last_susds_value = prime_susds_value
 
             daily_util[current] = daily_util.get(current, Decimal(0)) + prime_usds
-            daily_spread[current] = daily_spread.get(current, Decimal(0)) + prime_spread
-            # Case 3b: full-SSR integral on the same daily sUSDS values,
-            # attributed per venue (consumed by the orchestrator to
-            # re-book the sUSDS-leg appreciation out of the SDE pot).
-            if ssr_history is not None and prime_susds_value > 0:
-                susds_ssr_by_venue[venue.id] = (
-                    susds_ssr_by_venue.get(venue.id, Decimal(0))
-                    + prime_susds_value * daily_compounding_factor(
-                        ssr_at_or_before(ssr_history, current),
-                    )
+            if prime_susds_value > 0:
+                # BR−SSR spread the prime earns on its sUSDS slice, and
+                # (Case 3b) the full-SSR integral on the same daily values,
+                # which the orchestrator uses to re-book the sUSDS-leg
+                # appreciation out of the SDE pot. The spread leg is NOMINAL
+                # (it mirrors the equally-nominal BR charge it offsets); the
+                # SSR leg compounds (physical receipt). 2026-09-01.
+                # NB: on an RPC-failure day the carried-forward value is
+                # accrued at the CURRENT day's rate, not the last
+                # successful day's — correct across the 30→20bps step.
+                _venue_spread[venue.id] = _venue_spread.get(venue.id, Decimal(0)) + (
+                    prime_susds_value * apr_daily(base_rate_spread_at(current))
                 )
+                if ssr_history is not None:
+                    susds_ssr_by_venue[venue.id] = (
+                        susds_ssr_by_venue.get(venue.id, Decimal(0))
+                        + prime_susds_value * daily_compounding_factor(
+                            ssr_at_or_before(ssr_history, current))
+                    )
             current = current + timedelta(days=1)
 
     # Build utilized deduction DataFrame (par-stable coins).
@@ -1765,7 +1802,7 @@ def _aggregate_curve_idle_usds(
     else:
         util_df = _empty_psm_df()
 
-    susds_spread = sum(daily_spread.values(), Decimal("0"))
+    susds_spread = sum(_venue_spread.values(), Decimal("0"))
     return util_df, susds_spread, susds_ssr_by_venue
 
 
@@ -1950,7 +1987,7 @@ def _log_sky_revenue_debug(
             f"{float(row['lending_idle'])/1e6:>8.2f}M  "
             f"{float(row['utilized'])/1e6:>9.2f}M  "
             f"{row['ssr_apy']*100:>5.2f}%  "
-            f"{row['base_apy']*100:>5.2f}%  "
+            f"{row['base_apr']*100:>5.2f}%  "
             f"${float(row['daily_sky_rev']):>11,.2f}"
         )
     lines.append("  " + "─" * len(hdr))
@@ -4045,10 +4082,12 @@ def compute_monthly_pnl(
             "curve_idle":          str(row["curve_idle"]),
             "lending_idle":        str(row["lending_idle"]),
             "utilized":            str(row["utilized"]),
+            # ssr_apy stays an APY (that is what the chain quotes); the
+            # derived rates below are NOMINAL (APR) since 2026-09-01.
             "ssr_apy":             row["ssr_apy"],
-            "base_apy":            row["base_apy"],
-            "ref_rate_apy":        row["ref_rate_apy"],
-            "sub_apy":             row["sub_apy"],
+            "base_apr":            row["base_apr"],
+            "ref_rate_apr":        row["ref_rate_apr"],
+            "sub_apr":             row["sub_apr"],
             "t_months":            row["t_months"],
             "daily_sky_rev":       str(row["daily_sky_rev"]),
             "daily_sky_rev_gross": str(row["daily_sky_rev_gross"]),

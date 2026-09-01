@@ -27,9 +27,9 @@ import pandas as pd
 
 from ..domain.period import Period
 from ._helpers import (
-    combine_apys,
+    apr_daily,
+    apy_to_apr,
     cum_at_or_before,
-    daily_compounding_factor,
     ssr_at_or_before,
 )
 
@@ -41,7 +41,10 @@ AGENT_RATE_OVER_SSR = Decimal("0.002")
 AGENT_RATE_SUSDS_ONLY = AGENT_RATE_OVER_SSR  # alias for readability at the call site
 
 # Pre-compute the sUSDS daily factor — it doesn't depend on SSR.
-_SUSDS_DAILY_FACTOR = daily_compounding_factor(AGENT_RATE_SUSDS_ONLY)
+# sUSDS in the subproxy earns the 20bps alone (SSR already accrues via the
+# token index and is kept by the prime). The 20bps is a governance APR, so
+# it needs no conversion — just the nominal daily slice.
+_SUSDS_DAILY_RATE = apr_daily(AGENT_RATE_SUSDS_ONLY)
 
 
 def compute_agent_rate(
@@ -60,6 +63,9 @@ def compute_agent_rate(
     effective (Osero: 10M USDS since 2026-03-30, payable only from first
     allocation in July 2026). ``None`` = accrue from balance history alone.
     """
+    # NOMINAL (APR) accrual, no intra-period compounding — the agent rate
+    # is ``SSR_apr + 20bps`` and an APR's compounding happens at the MSC,
+    # when the amount is settled (2026-09-01; see ``apy_to_apr``).
     total = Decimal("0")
     current = period.start
     while current <= period.end:
@@ -69,16 +75,16 @@ def compute_agent_rate(
         cum_usds = cum_at_or_before(subproxy_usds, "cum_balance", current)
         cum_susds = cum_at_or_before(subproxy_susds, "cum_balance", current)
 
-        # USDS earns the full agent rate = SSR + 20bps.
+        # USDS earns the full agent rate = SSR_apr + 20bps. SSR is an APY
+        # (it compounds per-second on-chain); the 20bps is a governance APR.
+        # Convert the first before adding, so both are nominal.
         if cum_usds > 0:
             ssr_apy = ssr_at_or_before(ssr, current)
-            # APYs combine multiplicatively, not additively. See
-            # ``combine_apys`` in ``_helpers.py``.
-            usds_apy = combine_apys(ssr_apy, AGENT_RATE_OVER_SSR)
-            total += cum_usds * daily_compounding_factor(usds_apy)
+            usds_apr = apy_to_apr(ssr_apy) + AGENT_RATE_OVER_SSR
+            total += cum_usds * apr_daily(usds_apr)
 
         if cum_susds > 0:
-            total += cum_susds * _SUSDS_DAILY_FACTOR
+            total += cum_susds * _SUSDS_DAILY_RATE
 
         current = current + timedelta(days=1)
 

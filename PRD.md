@@ -17,7 +17,7 @@ The MSC framework currently exists as:
 - A POC ([`agents/shared/valuation_poc/`](docs/valuation_poc/)) that proved Dune and Python converge on the same numbers but that the per-asset valuation work is dramatically simpler in Python — `convertToAssets`, `balanceOf` of a rebasing aToken, Curve `pool.balances(i)` math, and RWA NAV feeds either don't exist on Dune or balloon to 50-line CTEs.
 - Architectural design ([`agents/shared/SETTLEMENT_ARCHITECTURE.md`](docs/SETTLEMENT_ARCHITECTURE.md)) that prescribes a hybrid Dune + RPC + off-chain pipeline.
 
-This PRD is the kickoff for the implementation. The deliverable is the Python package in this repo (`settlement-cycle`) that replaces the monolithic Dune query approach with a 4-stage Extract / Normalize / Compute / Load pipeline. The existing OBEX Dune query is preserved as a reconciliation oracle in [`reference/obex_monthly_pnl.sql`](reference/obex_monthly_pnl.sql) (used by the Phase-1 e2e test).
+This PRD is the kickoff for the implementation. The deliverable is the Python package in this repo (`settlement-cycle`) that replaces the monolithic Dune query approach with a 4-stage Extract / Normalize / Compute / Load pipeline. The existing OBEX Dune query is preserved in [`reference/obex_monthly_pnl.sql`](reference/obex_monthly_pnl.sql) as the historical reconciliation oracle. Its e2e test was retired 2026-09-01 — see §17.13: the rate methodology changed and past settlements are not restated, so a query on the old convention can no longer be a parity target.
 
 ### 1.1 Reference documents
 
@@ -386,7 +386,7 @@ settlement-cycle/                       ← this repo
 │       └── invariants.py               ← Compute-layer sanity checks
 ├── tests/
 │   ├── fixtures/                       ← frozen Extract outputs (Parquet)
-│   │   ├── obex_2026_03/
+│   │   ├── <prime>_<month>/          ← per-prime capture dirs
 │   │   └── grove_2026_03/
 │   ├── unit/
 │   │   ├── test_compute_sky_revenue.py
@@ -395,7 +395,7 @@ settlement-cycle/                       ← this repo
 │   ├── integration/
 │   │   └── test_normalize_with_mock_sources.py
 │   └── e2e/
-│       └── test_obex_2026_03_against_dune_oracle.py
+│       └── (e2e oracle test retired 2026-09-01 — see §17.13)
 ├── docs/                               ← design + per-prime context
 │   ├── RULES.md
 │   ├── SETTLEMENT_ARCHITECTURE.md, ASSET_CATALOG.md, VALUATION_METHODOLOGY.md
@@ -405,7 +405,7 @@ settlement-cycle/                       ← this repo
 │   ├── grove/                          ← Grove PRD/README/QUESTIONS (Phase 2)
 │   └── {keel,prysm,skybase,spark}/     ← Phase 3+ prime READMEs
 ├── reference/
-│   └── obex_monthly_pnl.sql            ← Phase-1 oracle target
+│   └── obex_monthly_pnl.sql            ← historical reference implementation
 ├── settlements/                        ← committed settlement artifacts
 │   └── <prime>/<month>/                ← {pnl.md, pnl.csv, venues.csv, provenance.json}
 ├── queries/                            ← Dune SQL files, parameterized
@@ -455,7 +455,7 @@ settlement-cycle/                       ← this repo
 
 - **Unit tests** at every Compute function with hand-built input DataFrames. Pure functions = trivial assertions.
 - **Integration tests** that call Normalize with `MockDebtSource`, `MockBalanceSource`, `MockPriceSource` injected; assert source-agnostic behavior.
-- **Fixture-based replay tests**: freeze Extract outputs to Parquet under `tests/fixtures/obex_2026_03/`; replay through Normalize → Compute → Load; assert the artifact matches a committed expected result.
+- **Fixture-based replay tests**: freeze Extract outputs under `tests/fixtures/<prime>_<month>/`; replay through Normalize → Compute → Load; assert the artifact matches a committed expected result. (The original `obex_2026_03` oracle capture was retired 2026-09-01 — see §17.13.)
 - **End-to-end oracle test**: run the live pipeline for OBEX 2026-03 against Dune; compare to the pre-existing `obex_monthly_pnl.sql` output. Must match within 0.01% modulo documented APR/APY discrepancy.
 
 ---
@@ -486,7 +486,7 @@ Concrete first-PR sequence:
 6. **Compute — sky_revenue + agent_rate** — pure-Python implementations of [`RULES.md`](docs/RULES.md) §3 and §4 formulae. Match Dune oracle.
 7. **Compute — prime_agent_revenue + monthly_pnl** — composes per-venue value deltas. Match Dune oracle.
 8. **Load** — Markdown + CSV + provenance writers. Commit `settlements/obex/2026-03/`.
-9. **E2E test** — `tests/e2e/test_obex_2026_03_against_dune_oracle.py`. CI gate.
+9. **E2E test** — `(retired — see §17.13)`. CI gate.
 
 Each step is one PR. Rough total: 9 PRs to ship Phase 1.
 
@@ -1165,6 +1165,118 @@ canonical pricing).
   there's a non-zero case.
 
 ### 17.13 Open questions (priority-ordered)
+
+#### Methodology — resolved 2026-09-01: BR/SSR rate units (operator-confirmed)
+
+**The Base Rate is NOMINAL (APR); the SSR is an APY and is converted before
+the spread is added.** Raised while auditing whether the per-second SSR is
+honoured at daily granularity, and sharpened by Cloaky's observation that
+the Atlas defines the demand-side rate as an APR. Confirmed by the MSC
+operator 2026-09-01. Applied **going forward only** — no restatement; July
+2026 settled at MSC#11 and its `sky_total` stays frozen at 10,517,425.81
+via the `msc_preview` pins.
+
+```
+SSR_apr  = 12 x [(1 + SSR_apy)^(1/12) - 1]    = 3.464456%   at SSR 3.52%
+BR_apr   = SSR_apr + spread                    = 3.664456%   (+20bps)
+charge_d = utilized_d x BR_apr / 365                         (nominal)
+```
+
+**Why the units differ.** SSR compounds per-second into the sUSDS index
+on-chain, so it is an effective rate. The spread and the subsidy reference
+rate are governance/money-market numbers, i.e. nominal. Adding an APY to an
+APR produces a rate of no defined type — which is what the code did, first
+multiplicatively and then (2026-08-24) additively.
+
+**Why n = 12.** The conversion is exactly invertible only if the accrual
+compounds at the same frequency the conversion assumed. The charge
+compounds when the MSC capitalises it into the ilk debt — monthly — so
+n = 12 makes the conversion round-trip: `(1 + SSR_apr/12)^12 − 1` returns
+the SSR APY (3.52%) to the digit. NB this holds for the CONVERTED leg, not
+for `base_apr` — compounding that monthly gives 3.7266%, the APY equivalent
+of the Base Rate. Converting at n → ∞ (`ln(1+APY)` = 3.459464%) and then
+compounding monthly leaves a 0.52 bps/yr residual in the prime's favour;
+n = 12 zeroes it.
+
+**Cross-month compounding needs no code.** Allocator ilks carry `duty = 0`
+and a frozen `vat.rate`, but Sky calls `vat.grab` with positive `dart` at
+each settlement to fold the accrued charge into `urns[ilk].art`, and
+`cum_debt` sums frob + grab. The enlarged principal pays BR from the
+settlement day onward. A cross-month carry of accrued-but-unpaid interest
+was considered and **rejected** — it would bill the same interest twice.
+
+**Scope.** BR charge (and its gross series), agent rate, all 20 bps
+reimbursement legs (Cat B sUSDS, PSM3, Curve) and Chronicle Points are
+nominal and accrue simply. The **SSR-appreciation** legs (PSM3 appreciation,
+Curve Case-3b, Savings-V2 depositor SSR) keep the APY daily factor and are
+UNCHANGED from before this PR — simple sums. Their principal is already
+mark-to-market (`convertToAssets` re-read daily), so it carries the
+compounding; accumulating it again over-credits by ~0.14%. Nothing in the
+repo compounds inside a settlement period, and `CompoundingAccrual` was
+deleted.
+
+**Why n = 12, and what it buys.** The conversion is exactly invertible only
+if the accrual compounds at the frequency the conversion assumed. Two things
+compound at exactly that frequency, and n = 12 reconciles both:
+
+| | compounds | reaches over a year |
+|---|---|---|
+| prime's debt | monthly, as the MSC capitalises the net charge | `(1 + SSR_apr/12)^12 − 1` = **3.5200%** |
+| prime's sUSDS | continuously, via the index | `(1 + SSR)^1 − 1` = **3.5200%** |
+
+So the idle-sUSDS legs net to zero in **settled dollars**, not merely at the
+rate level — simulated over 12 months on $1B financed 1:1, the Rule 5
+composite is **+0.034 bps/yr** (day-count noise). Converting at `n → ∞`
+(`ln(1+APY)` = 3.459464%) would leave the debt reaching only 3.5148% and
+break the netting by **+0.549 bps/yr**, as well as under-charging BR on all
+utilized debt by ~0.5 bps.
+
+**A caution for anyone re-deriving this.** Comparing the two DAILY slices in
+isolation — `SSR_apr/365` = 9.4917e-5 against the index's
+`(1+SSR)^(1/365)−1` = 9.4784e-5 — shows a 0.14% gap and suggests a
+−0.48 bps/yr residual. That comparison is wrong: it holds both principals
+static, when in fact the credit accrues on a balance growing continuously
+and the charge on one that is static within the month and steps up at
+settlement. The two effects cancel by construction of n = 12.
+
+**Reference rates.** Re-typed as APRs and used as published: the NY Fed
+publishes SOFR as an annualised simple rate and the Atlas defines it as "the
+rate (expressed as an annual rate) ... as administered and published by the
+Federal Reserve Bank of New York", with a most-recent-prior carry-forward
+that `ReferenceRateHistory.at()` already implements. Config field renamed
+`sofr_apy` → `sofr_apr`; August 2026 back-filled from the API. The 3M T-Bill
+column is deliberately NOT re-typed — it stopped being the reference on
+2026-07-23 and its months are settled.
+
+**Measured effect (July 2026 rates, per $1B):** unsubsidised 31-day charge
+3,106,921 → 3,112,278 (+5,357/month, +0.13 bps); subsidised tranche
+3,064,438 → 3,101,776 (+37,338/month, ≈+4.3 bps) — nearly all of the latter
+from the reference rate being re-read as an APR without a compensating
+conversion, weighted 70.8% by the ramp at T=6.
+
+**Two residuals, both accepted and both in the prime's favour:**
+
+1. **~0.66 bps/yr — the settlement lag.** The charge accrues to month-end
+   but is capitalised ~20 days into the next month, earning nothing in
+   between, while Sky's SSR cost compounds continuously. Not fixable by any
+   choice of units; only a shorter settlement cadence (DSC) or a non-zero
+   nominal Sky spread addresses it. At a 0 bps nominal spread Sky is
+   structurally short ~0.66 bps ≈ $370K/yr on ~$5.6B of prime debt.
+2. **The SOFR day-count basis.** The Fed annualises SOFR on actual/360; we
+   accrue on n/365, so we under-accrue it by ~1.39% of its value (~5 bps on
+   the reference). Using it as published keeps the subsidy alive; converting
+   to a /365-equivalent (3.6977%) would push the reference above BR_apr and
+   clamp the subsidy to zero. The Atlas does not specify a basis — tracked
+   in `SNR_QUESTIONS.md` as a clarification request.
+
+**Note on thin headroom.** BR_apr (3.664456%) now sits only ~1.4 bps above
+SOFR. August 2026's prints ranged 3.62%-3.66%, so the subsidy applied on
+every day of the month — but the highest print (3.66%, 2026-08-25) came
+within 0.45 bps of BR_apr. A further SSR cut or a SOFR uptick of half a
+basis point would clamp the subsidy to zero on individual days, so
+`zero_benefit` warnings become a live possibility rather than a signal of
+stale data. Judge them against the day's prints before treating one as a
+defect.
 
 #### High priority (Grove Q1 — added 2026-05-02 after Grove team workbook reconciliation)
 **E1 aHorRwaRLUSD off-pool yield channel.** Aave Horizon's on-chain `liquidityIndex` only grows ~0.87% APY (matches our $67K Feb 2026 revenue exactly); the remaining $447K of Grove team's $514K is **off-chain rewards accrual** (Holdings sheet `Rewards` column grew +$431K with `claimed` flat). Most likely fed from Merkl (`MERKL_DISTRIBUTOR = 0x3Ef3D8bA38EBe18DB133cEc108f4D14CE00Dd9Ae` in Grove address registry) or Aave Horizon's own RWA-fund accrual API. Until Grove confirms the canonical feed we won't integrate (mis-attribution risk). **See QUESTIONS.md G3.**

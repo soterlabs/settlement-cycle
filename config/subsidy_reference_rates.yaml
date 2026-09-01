@@ -1,7 +1,7 @@
 # Subsidy reference rate — daily values used in the subsidised borrowing
 # rate formula (debt-rate-methodology):
 #
-#   subsidised_apy_d = ref_rate_d + (base_apy − ref_rate_d) × T / 24
+#   subsidised_apr_d = ref_rate_d + (base_apr − ref_rate_d) × T / 24
 #
 # where T is the number of months elapsed since the subsidy program start
 # (2026-01-01 per Sky governance — i.e. T=1 for Feb 2026, T=2 for Mar, …).
@@ -14,12 +14,18 @@
 #     subsidised at `t-bill_rate + (base_rate − t-bill_rate) × T/24` over
 #     the first $1B of USDS for 24 months from 2026-01-01.
 #     (QUESTIONS.md S5, resolved 2026-07-30.)
-#   sofr_apy — reference rate FROM 2026-07-23 (inclusive): the 2026-07-23
+#   sofr_apr — reference rate FROM 2026-07-23 (inclusive). NOMINAL (APR),
+#     used exactly as published: the NY Fed publishes SOFR as an annualised
+#     simple rate and Atlas defines it as "expressed as an annual rate", so
+#     no APY conversion is applied (2026-09-01; PRD §17.13). NB the Fed
+#     annualises on actual/360 while we accrue on n/365 — a known ~1.39%
+#     under-accrual, tracked in SNR_QUESTIONS.md pending an Atlas
+#     clarification. The 2026-07-23
 #     Stability Scope change (same executive vote that cut SSR 3.60% →
 #     3.52% and the BR−SSR spread 30 → 20 bps) switched the subsidy
 #     formula to `sofr + (base_rate − sofr) × T/24`.
 #
-# SOURCE (sofr_apy) — the NY Fed's official SOFR publication, `percentRate`
+# SOURCE (sofr_apr) — the NY Fed's official SOFR publication, `percentRate`
 # per effective date, verbatim:
 #
 #   https://markets.newyorkfed.org/api/rates/secured/sofr/search.json
@@ -61,7 +67,7 @@
 # that commit is the only way to reproduce them.
 #
 #   tbill_3m_apy:  treasury.gov daily yield curve, `3 Mo`
-#   sofr_apy:      markets.newyorkfed.org SOFR `percentRate`
+#   sofr_apr:      markets.newyorkfed.org SOFR `percentRate`
 #
 # Each prime's ``subsidy.ref_rate_kind`` selects the column(s); valid kinds
 # are ``tbill_3m`` and ``sofr`` (``settle.domain.subsidy._VALID_REF_RATE_KINDS``).
@@ -369,25 +375,77 @@ rates:
     tbill_3m_apy: 0.0387
   - effective_date: '2026-07-22'
     tbill_3m_apy: 0.0389
-  # From 2026-07-23 the subsidy formula reads sofr_apy (see header). The
+  # From 2026-07-23 the subsidy formula reads sofr_apr (see header). The
   # tbill_3m_apy values continue to be recorded for reference/audit.
   - effective_date: '2026-07-23'
     tbill_3m_apy: 0.0395
-    sofr_apy: 0.0364
+    sofr_apr: 0.0364
   - effective_date: '2026-07-24'
     tbill_3m_apy: 0.0396
-    sofr_apy: 0.0364
+    sofr_apr: 0.0364
   - effective_date: '2026-07-27'
     tbill_3m_apy: 0.0396
-    sofr_apy: 0.0364
+    sofr_apr: 0.0364
   - effective_date: '2026-07-28'
     tbill_3m_apy: 0.0390
-    sofr_apy: 0.0365
+    sofr_apr: 0.0365
   - effective_date: '2026-07-29'
     tbill_3m_apy: 0.0383
-    sofr_apy: 0.0365
+    sofr_apr: 0.0365
   - effective_date: '2026-07-30'
     tbill_3m_apy: 0.0382
-    sofr_apy: 0.0365
+    sofr_apr: 0.0365
   - effective_date: '2026-07-31'
-    sofr_apy: 0.0366
+    sofr_apr: 0.0366
+
+  # August 2026 — fetched from the NY Fed API on 2026-09-01
+  # (markets.newyorkfed.org/api/rates/secured/sofr), `percentRate` verbatim.
+  # Business days only; weekends/holidays resolve via the Atlas carry-forward
+  # rule ("the most recently published rate prior to that date").
+  #
+  # ENDS 2026-08-28. Monday 2026-08-31 is a business day whose rate publishes
+  # on 09-01 and was not yet available when this was fetched — re-checked the
+  # same day, still absent. It therefore carries forward from 08-28 (3 days,
+  # well inside the staleness guard), which is exactly the Atlas rule, but
+  # ADD THE 08-31 PRINT BEFORE RUNNING MSC#12 so the last day of the August
+  # settlement period uses its own rate.
+  - effective_date: '2026-08-03'
+    sofr_apr: 0.0365
+  - effective_date: '2026-08-04'
+    sofr_apr: 0.0366
+  - effective_date: '2026-08-05'
+    sofr_apr: 0.0364
+  - effective_date: '2026-08-06'
+    sofr_apr: 0.0365
+  - effective_date: '2026-08-07'
+    sofr_apr: 0.0362
+  - effective_date: '2026-08-10'
+    sofr_apr: 0.0363
+  - effective_date: '2026-08-11'
+    sofr_apr: 0.0364
+  - effective_date: '2026-08-12'
+    sofr_apr: 0.0362
+  - effective_date: '2026-08-13'
+    sofr_apr: 0.0362
+  - effective_date: '2026-08-14'
+    sofr_apr: 0.0362
+  - effective_date: '2026-08-17'
+    sofr_apr: 0.0366
+  - effective_date: '2026-08-18'
+    sofr_apr: 0.0365
+  - effective_date: '2026-08-19'
+    sofr_apr: 0.0362
+  - effective_date: '2026-08-20'
+    sofr_apr: 0.0363
+  - effective_date: '2026-08-21'
+    sofr_apr: 0.0365
+  - effective_date: '2026-08-24'
+    sofr_apr: 0.0365
+  - effective_date: '2026-08-25'
+    sofr_apr: 0.0366
+  - effective_date: '2026-08-26'
+    sofr_apr: 0.0364
+  - effective_date: '2026-08-27'
+    sofr_apr: 0.0364
+  - effective_date: '2026-08-28'
+    sofr_apr: 0.0365

@@ -2,11 +2,22 @@
 
 Per the prime-settlement-methodology and debt-rate-methodology docs:
 
-    daily_sky_revenue = utilized × [(1 + apy)^(1/365) - 1]
-    apy               = base_apy (default) | subsidised_apy (when enabled)
-    base_apy          = SSR ⊕ spread   (30bps; 20bps from 2026-07-23 —
-                        see BASE_RATE_SPREAD_SCHEDULE)
-    subsidised_apy    = ref_rate + (base − ref_rate) × T / 24    [Step 1.b]
+    daily_sky_revenue = utilized × apr / 365          (nominal, no compounding)
+    apr               = base_apr (default) | subsidised_apr (when enabled)
+    base_apr          = apy_to_apr(SSR, n=12) + spread   (30bps; 20bps from
+                        2026-07-23 — see BASE_RATE_SPREAD_SCHEDULE)
+    subsidised_apr    = ref_rate + (base − ref_rate) × T / 24    [Step 1.b]
+
+    SSR is quoted as an APY (it compounds per-second into the sUSDS index
+    on-chain); the spread and the subsidy reference rate are nominal (APR).
+    Converting SSR at n=12 — the settlement cadence — puts everything on one
+    nominal basis and lets the round trip ``(1 + SSR_apr/12)^12`` recover
+    the SSR APY exactly — which is also what makes the idle-sUSDS legs net
+    to zero over a year once the MSC's monthly capitalisation is counted.
+    See PRD §17.13.
+    The compounding that happens in reality is the MSC capitalising each
+    month's charge into the ilk debt (``vat.grab`` positive dart), which the
+    ``cum_debt`` series picks up on its own. (2026-09-01; PRD §17.13.)
     utilized          = cum_debt
                       − alm_proxy_usds                 ←  Step 2 (idle USDS at ALM proxy)
                       − psm_usds                       ←  Step 2 (idle USDS in PSM3)
@@ -82,12 +93,12 @@ from ..domain.subsidy import (
     ScheduledReferenceRateHistory,
     SubsidyConfig,
     months_elapsed_since,
-    subsidised_apy,
+    subsidised_apr,
 )
 from ._helpers import (
-    combine_apys,
+    apr_daily,
+    apy_to_apr,
     cum_at_or_before,
-    daily_compounding_factor,
     require_non_empty,
     ssr_at_or_before,
 )
@@ -95,7 +106,8 @@ from ._helpers import (
 _log = logging.getLogger(__name__)
 
 # Spread Sky charges over SSR for utilized debt. Per prime-settlement-
-# methodology §1 + debt-rate-methodology, the base rate = SSR ⊕ spread.
+# methodology §1 + debt-rate-methodology, the base rate = SSR + spread
+# NOMINAL: ``apy_to_apr(SSR, n=12) + spread`` — see ``_helpers.apy_to_apr``.
 #
 # The spread is DATED: the 2026-07-23 Stability Scope change that cut the
 # SSR 3.60% → 3.52% (on-chain sUSDS ``file("ssr")`` at 2026-07-23 14:43:23
@@ -182,7 +194,7 @@ def compute_sky_revenue_daily(
         lending_idle    — lending pool idle USDS deducted
         utilized        — net charged base  (= cum_debt − all deductions above)
         ssr_apy         — Sky Savings Rate APY on that day (float, e.g. 0.1250)
-        base_apy        — borrow rate APY  (= ssr_apy + 30bps)
+        base_apr        — borrow rate APR  (= apy_to_apr(ssr) + spread)
         daily_sky_rev   — BR revenue for that day (Decimal)
 
     Inputs (all Normalize outputs):
@@ -234,7 +246,17 @@ def compute_sky_revenue_daily(
             "config/subsidy_reference_rates.yaml."
         )
 
+    # Period-boundary check on the reference series: a print that publishes
+    # a day late slips under the calendar-span staleness thresholds, but the
+    # period's last day carries full weight in the charge.
+    if use_subsidy and ref_rate_history is not None:
+        ref_rate_history.warn_if_period_end_missing(period.end)
+
     rows: list[dict] = []
+    # NOMINAL (APR) accrual: the day's charge is principal x rate x 1/365,
+    # with NO intra-period compounding (2026-09-01 — see ``apy_to_apr``).
+    # The compounding that does happen is the MSC capitalising the charge
+    # into the prime's ilk debt, which shows up in ``cum_debt`` on its own.
     total = Decimal("0")
     current = period.start
     while current <= period.end:
@@ -276,43 +298,47 @@ def compute_sky_revenue_daily(
         # Always compute the rate — needed for both actual (utilized) and
         # gross (cum_debt) revenue.  When cum_debt is 0 both will be 0.
         ssr_apy  = ssr_at_or_before(ssr, current)
-        # APYs combine multiplicatively, not additively: naive
-        # ``ssr_apy + spread`` loses the cross-term ``ssr_apy × spread``
-        # (~1.2 bps at SSR=4%). See ``combine_apys`` in ``_helpers.py``.
-        # Spread is date-resolved (30bps → 20bps on 2026-07-23).
-        base_apy = combine_apys(ssr_apy, base_rate_spread_at(current))
+        # ``BR_apr = SSR_apr + spread``. SSR is an APY (compounds
+        # per-second on-chain); the spread is a governance APR. Convert the
+        # first so both are nominal, then plain addition is exact. The
+        # idle-sUSDS netting holds over a settlement year: this bills
+        # SSR_apr/365 on a debt that capitalises monthly, the appreciation
+        # legs credit the index that compounds continuously, and n=12 is
+        # the conversion that makes both reach 3.52%/yr. Spread is
+        # date-resolved (30bps → 20bps on 2026-07-23).
+        base_apr = apy_to_apr(ssr_apy) + base_rate_spread_at(current)
 
         # Subsidy params — computed once and reused for both actual + gross.
-        _sub_apy: Decimal | None = None
+        _sub_apr: Decimal | None = None
         _ref_rate: Decimal | None = None
         _t: int | None = None
         if use_subsidy and current >= subsidy_config.program_start:  # type: ignore[union-attr]
             _ref_rate = ref_rate_history.at(current)                  # type: ignore[union-attr]
             _t        = months_elapsed_since(current, subsidy_config.program_start)  # type: ignore[union-attr]
-            _sub_apy  = subsidised_apy(base_apy, _ref_rate, _t, subsidy_config.ramp_months)  # type: ignore[union-attr]
+            _sub_apr  = subsidised_apr(base_apr, _ref_rate, _t, subsidy_config.ramp_months)  # type: ignore[union-attr]
 
-        def _daily_rev_for(principal: Decimal) -> Decimal:
-            """BR revenue on ``principal`` with subsidy applied where active."""
+        base_f = apr_daily(base_apr)
+        sub_f = apr_daily(_sub_apr) if _sub_apr is not None else base_f
+
+        def _day_interest(principal: Decimal) -> Decimal:
+            """One day's charge on ``principal`` — the subsidy caps the
+            first ``cap_usd`` of utilized debt, the excess pays full BR."""
             if principal <= 0:
                 return Decimal("0")
-            if _sub_apy is not None:
-                cap     = subsidy_config.cap_usd  # type: ignore[union-attr]
-                sub_p   = min(principal, cap)
-                exc_p   = max(Decimal("0"), principal - cap)
-                rev     = sub_p * daily_compounding_factor(_sub_apy)
-                if exc_p > 0:
-                    rev += exc_p * daily_compounding_factor(base_apy)
-                return rev
-            return principal * daily_compounding_factor(base_apy)
+            if _sub_apr is None:
+                return principal * base_f
+            cap   = subsidy_config.cap_usd  # type: ignore[union-attr]
+            sub_p = min(principal, cap)
+            exc_p = max(Decimal("0"), principal - cap)
+            return sub_p * sub_f + exc_p * base_f
 
-        daily_rev       = _daily_rev_for(utilized)
+        daily_rev = _day_interest(utilized)
+        total += daily_rev
         # Gross: BR on the full ilk debt before any utilized deductions.
         # Captures "what sky_revenue would be if no idle USDS / SDE / PSM /
         # Curve / lending deductions were applied."  Stored per-day so the
         # orchestrator can sum it and write sky_revenue_gross to provenance.
-        daily_rev_gross = _daily_rev_for(cum_debt)
-
-        total += daily_rev
+        daily_rev_gross = _day_interest(cum_debt)
         rows.append({
             "date":               current,
             "cum_debt":           cum_debt,
@@ -323,14 +349,14 @@ def compute_sky_revenue_daily(
             "lending_idle":       cum_lending_idle,
             "utilized":           utilized,
             "ssr_apy":            float(ssr_apy),
-            "base_apy":           float(base_apy),
+            "base_apr":           float(base_apr),
             # Subsidy ramp position + reference rate + effective subsidised
             # APY. Populated only when ``subsidy_config.enabled`` and
             # ``current >= subsidy.program_start`` — None otherwise so the
             # xlsx "Debt" tab can omit the columns cleanly for non-subsidy
             # primes / pre-program days.
-            "ref_rate_apy":       float(_ref_rate) if _ref_rate is not None else None,
-            "sub_apy":            float(_sub_apy)  if _sub_apy  is not None else None,
+            "ref_rate_apr":       float(_ref_rate) if _ref_rate is not None else None,
+            "sub_apr":            float(_sub_apr)  if _sub_apr  is not None else None,
             "t_months":           _t,
             "daily_sky_rev":      daily_rev,
             "daily_sky_rev_gross": daily_rev_gross,
@@ -347,7 +373,7 @@ def compute_sky_revenue_daily(
     # $0-subsidy smell check — driven by the SAME aggregation the report
     # consumes, so the warning and the spreadsheet's zero-benefit flag can
     # never disagree. When the subsidy is enabled but the reference rate sits
-    # at/above base_apy on every active day, the ramp clamps to base and the
+    # at/above base_apr on every active day, the ramp clamps to base and the
     # prime gets $0 benefit. Occasionally legitimate (a genuinely high
     # T-Bill — the June 2026 3.87% print is within 9bps of base), but also
     # the exact signature of a stale/placeholder reference rate: the May 2026
@@ -358,12 +384,12 @@ def compute_sky_revenue_daily(
     if subsidy_summary is not None and subsidy_summary["zero_benefit"]:
         _log.warning(
             "Subsidy enabled but produced $0 benefit for the whole period "
-            "(ref_rate ≥ base_apy every day; ref %.4f%% ≥ base %.4f%%). "
+            "(ref_rate ≥ base_apr every day; ref %.4f%% ≥ base %.4f%%). "
             "Verify the %s reference rate is current — a stale/placeholder "
             "value above the base rate silently nullifies the subsidy "
             "(May 2026 Spark root cause).",
-            (subsidy_summary["ref_apy_avg"] or 0) * 100,
-            subsidy_summary["base_apy_avg"] * 100,
+            (subsidy_summary["ref_apr_avg"] or 0) * 100,
+            subsidy_summary["base_apr_avg"] * 100,
             subsidy_config.ref_rate_kind,  # type: ignore[union-attr]
         )
 
@@ -380,8 +406,8 @@ def summarize_subsidy(
     the "Rates & subsidy" panel only formats this dict, so the report can
     never drift from the rate schedule actually charged in
     ``compute_sky_revenue_daily``. Every CoF figure here is recomputed with
-    the same ``daily_compounding_factor`` (and the same cap-tranche split as
-    ``_daily_rev_for``) that produced ``daily_sky_rev``, so
+    the same nominal ``apr_daily`` slice and the same cap-tranche split that
+    produced ``daily_sky_rev``, so
     ``sub_tranche_cof + exc_tranche_cof == actual_cof == Σ daily_sky_rev`` to
     the cent and ``subsidy_benefit == full_br_cof − actual_cof``.
 
@@ -398,39 +424,44 @@ def summarize_subsidy(
     n = len(daily)
     util_sum = sub_tr = exc_tr = Decimal("0")
     wbase_num = weff_num = Decimal("0")
-    actual_cof = full_br_cof = sub_cof = exc_cof = Decimal("0")
+    actual_cof = sub_cof = exc_cof = Decimal("0")
+    # No-subsidy counterfactual, on the same nominal basis as the actual
+    # charge so ``subsidy_benefit`` measures only the rate discount.
+    full_br_cof = Decimal("0")
     ref_sum = sub_sum = Decimal("0")
     active = 0
     any_benefit_day = False
 
     for _, r in daily.iterrows():
         u = max(Decimal("0"), Decimal(str(r["utilized"])))
-        base = Decimal(str(r["base_apy"]))
-        # On pre-program days sub_apy is absent. In a DataFrame that mixes
+        base = Decimal(str(r["base_apr"]))
+        # On pre-program days sub_apr is absent. In a DataFrame that mixes
         # absent and present days pandas coerces the column to float64 and
         # the absent entries become NaN (not None) — so guard with pd.isna,
         # not just ``is not None``; ``Decimal(str(nan)) < base`` would raise
         # InvalidOperation and abort the whole settlement.
-        sub_raw = r["sub_apy"]
+        sub_raw = r["sub_apr"]
         sub_present = sub_raw is not None and not pd.isna(sub_raw)
         sub = Decimal(str(sub_raw)) if sub_present else base
         st, ex = min(u, cap), max(Decimal("0"), u - cap)
-        base_f = daily_compounding_factor(base)
+        base_f = apr_daily(base)
 
         util_sum += u
         sub_tr += st
         exc_tr += ex
         wbase_num += u * base
         weff_num += st * sub + ex * base
-        sub_cof += st * daily_compounding_factor(sub)
-        exc_cof += ex * base_f
         # actual_cof reuses the per-day charge the daily loop already
-        # computed (``_daily_rev_for(utilized)``) so the reconciliation
+        # computed so the reconciliation
         # ``sub_tranche_cof + exc_tranche_cof == actual_cof == Σ daily_sky_rev``
         # holds by construction, not by a duplicated formula.
         actual_cof += Decimal(str(r["daily_sky_rev"]))
+        # With a nominal accrual the tranche split IS the charge — no
+        # allocation needed for the identity to hold.
+        sub_cof += st * apr_daily(sub)
+        exc_cof += ex * base_f
         full_br_cof += u * base_f
-        ref_raw = r["ref_rate_apy"]
+        ref_raw = r["ref_rate_apr"]
         if sub_present and ref_raw is not None and not pd.isna(ref_raw):
             ref_sum += Decimal(str(ref_raw))
             sub_sum += sub
@@ -448,10 +479,10 @@ def summarize_subsidy(
         "tw_utilized":          str(util_sum / n),
         "sub_tranche_balance":  str(sub_tr / n),
         "exc_tranche_balance":  str(exc_tr / n),
-        "base_apy_avg":         float(wbase),
-        "ref_apy_avg":          float(ref_sum / active) if active else None,
-        "sub_apy_avg":          float(sub_sum / active) if active else None,
-        "effective_apy":        float(eff),
+        "base_apr_avg":         float(wbase),
+        "ref_apr_avg":          float(ref_sum / active) if active else None,
+        "sub_apr_avg":          float(sub_sum / active) if active else None,
+        "effective_apr":        float(eff),
         "diff_bps":             float((eff - wbase) * Decimal("10000")),
         "actual_cof":           str(actual_cof),
         "full_br_cof":          str(full_br_cof),

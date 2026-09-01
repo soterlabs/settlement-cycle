@@ -9,43 +9,93 @@ import pandas as pd
 import pytest
 
 from settle.compute._helpers import (
-    combine_apys,
+    apr_daily,
+    apy_to_apr,
     cum_at_or_before,
     daily_compounding_factor,
     ssr_at_or_before,
 )
 
 
-# --- combine_apys ---------------------------------------------------------
+# --- apy_to_apr / apr_daily -----------------------------------------------
 
-def test_combine_apys_identity():
-    assert combine_apys(Decimal("0")) == Decimal("0")
-    assert combine_apys(Decimal("0.05")) == Decimal("0.05")
-
-
-def test_combine_apys_zero_drops_out():
-    assert combine_apys(Decimal("0.04"), Decimal("0")) == Decimal("0.04")
+def test_apy_to_apr_known_value():
+    """SSR 3.52% APY at n=12 -> 3.464456% APR, so BR_apr = 3.664456%."""
+    apr = apy_to_apr(Decimal("0.0352"))
+    assert Decimal("0.0346445") < apr < Decimal("0.0346446")
+    assert Decimal("0.0366445") < apr + Decimal("0.002") < Decimal("0.0366446")
 
 
-def test_combine_apys_two_rates_multiplicative():
-    """(1.04 × 1.003) − 1 = 0.04312 (NOT 0.043)."""
-    out = combine_apys(Decimal("0.04"), Decimal("0.003"))
-    assert out == Decimal("0.04312")
+def test_apy_to_apr_round_trips_at_the_same_n():
+    """The conversion is exact iff you compound back at the SAME n. n=12 is
+    chosen because the charge compounds monthly (MSC debt capitalisation)."""
+    apy = Decimal("0.0352")
+    for n in (1, 12, 365):
+        apr = apy_to_apr(apy, n)
+        back = (1 + apr / n) ** n - 1
+        assert abs(back - apy) < Decimal("1e-12"), n
 
 
-def test_combine_apys_order_independent():
-    a, b, c = Decimal("0.04"), Decimal("0.003"), Decimal("0.002")
-    assert combine_apys(a, b, c) == combine_apys(c, a, b)
+def test_apy_to_apr_converging_to_ln_as_n_grows():
+    """n -> infinity gives ln(1+APY); n=12 sits ~0.5 bps above it, which is
+    the whole reason n must match the settlement cadence."""
+    import math
+    apy = Decimal("0.0352")
+    ln = Decimal(str(math.log(1 + float(apy))))
+    assert abs(apy_to_apr(apy, 31_536_000) - ln) < Decimal("1e-9")
+    gap = apy_to_apr(apy, 12) - ln
+    assert Decimal("0.00004") < gap < Decimal("0.00006")      # ~0.50 bps
 
 
-def test_combine_apys_differs_from_naive_sum_by_cross_term():
-    """At SSR=4%, spread=30bps the cross-term ssr × spread = 0.04 × 0.003 =
-    1.2 bps — the difference between the proper compose and naive addition."""
-    proper = combine_apys(Decimal("0.04"), Decimal("0.003"))
-    naive  = Decimal("0.04") + Decimal("0.003")
-    delta  = proper - naive
-    # 1.2 bps == 0.00012
-    assert Decimal("0.00011") < delta < Decimal("0.00013")
+def test_apy_to_apr_rejects_bad_n():
+    with pytest.raises(ValueError, match="n must be"):
+        apy_to_apr(Decimal("0.0352"), 0)
+
+
+def test_idle_susds_legs_net_to_zero_over_a_year():
+    """Rule 5 in settled dollars: a prime holding sUSDS financed 1:1 by debt
+    should net ~zero across credit − BR + reimbursement over a year.
+
+    This must be simulated over the full cycle, not compared slice-by-slice:
+    the credit accrues on a balance compounding CONTINUOUSLY (the index)
+    while the charge accrues on a debt that is static within the month and
+    STEPS UP monthly as the MSC capitalises the net charge. n=12 is exactly
+    the conversion that makes those two paths reach the same annual total.
+
+    An earlier version of this test compared the daily slices on a static
+    balance, "found" a −0.48 bps/yr residual and asserted it. That residual
+    is an artefact of ignoring the capitalisation — see PRD §17.13.
+    """
+    from settle.compute._helpers import daily_compounding_factor
+    ssr, spread = Decimal("0.0352"), Decimal("0.002")
+    ssr_apr = apy_to_apr(ssr)
+    base = ssr_apr + spread
+    f = daily_compounding_factor(ssr)
+    days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+
+    v = debt = start = Decimal("1000000000")
+    credit = charge = refund = Decimal("0")
+    for n in days:
+        for _ in range(n):
+            v *= 1 + f                       # index compounds daily
+            credit += v * f                  # appreciation leg, on the MtM value
+        charge += debt * apr_daily(base, n)
+        refund += debt * apr_daily(spread, n)
+        debt += debt * apr_daily(ssr_apr, n)  # MSC capitalises the NET charge
+
+    net_bps = (credit - charge + refund) / start * 10000
+    assert abs(net_bps) < Decimal("0.1"), f"Rule 5 broke: {net_bps} bps/yr"
+    # both principals land on the SSR APY, by different routes
+    assert abs((v / start - 1) - ssr) < Decimal("1e-9")
+    assert abs((debt / start - 1) - ssr) < Decimal("1e-6")
+
+
+def test_apr_daily_is_plain_slicing():
+    apr = Decimal("0.0366")
+    assert apr_daily(apr) == apr / 365
+    assert apr_daily(apr, 31) == apr * 31 / 365
+    # nominal: 31 daily slices == one 31-day slice (no compounding)
+    assert abs(apr_daily(apr) * 31 - apr_daily(apr, 31)) < Decimal("1e-25")
 
 
 # --- daily_compounding_factor ---------------------------------------------
