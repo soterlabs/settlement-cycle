@@ -168,3 +168,49 @@ def test_get_debt_timeseries_agent_rate_only_prime_returns_zero_series(config_di
     # the period, so the BR base reads 0 on every day — a block_date outside
     # the period would silently desync the daily loop.
     assert result.iloc[0]["block_date"] == _period().start
+
+
+# --- _art_at_or_before -----------------------------------------------------
+
+def test_art_at_or_before_coerces_float_sources_to_decimal():
+    """A source frame carrying floats must not leak a float into the
+    rate-scaling multiply in the daily expansion.
+
+    Every production source (hypersync/envio/dune) emits ``Decimal``, so this
+    is defence in depth — but the daily loop does ``art_d * Decimal(rate)``,
+    which raises ``TypeError: float * Decimal`` the moment one doesn't.
+    """
+    from settle.normalize.debt import _art_at_or_before
+
+    df = pd.DataFrame({
+        "block_date": [date(2026, 3, 1), date(2026, 3, 15)],
+        "cum_debt":   [100_000_000.0, 120_000_000.0],   # floats, not Decimal
+    })
+    out = _art_at_or_before(df, date(2026, 3, 20))
+    assert isinstance(out, Decimal)
+    assert out == Decimal("120000000")
+
+
+def test_art_at_or_before_unsorted_input_uses_date_max():
+    """Lookup is by date-max, not row position — an unsorted source frame
+    still returns the correct carry-forward row."""
+    from settle.normalize.debt import _art_at_or_before
+
+    df = pd.DataFrame({
+        "block_date": [date(2026, 3, 30), date(2026, 3, 1), date(2026, 3, 15)],
+        "cum_debt":   [Decimal("300"),    Decimal("100"),   Decimal("200")],
+    })
+    assert _art_at_or_before(df, date(2026, 3, 20)) == Decimal("200")
+    assert _art_at_or_before(df, date(2026, 3, 31)) == Decimal("300")
+
+
+def test_art_at_or_before_zero_before_history_and_on_empty():
+    from settle.normalize.debt import _art_at_or_before
+
+    df = pd.DataFrame({
+        "block_date": [date(2026, 3, 15)],
+        "cum_debt":   [Decimal("200")],
+    })
+    assert _art_at_or_before(df, date(2026, 3, 1)) == Decimal("0")
+    empty = pd.DataFrame({"block_date": [], "cum_debt": []})
+    assert _art_at_or_before(empty, date(2026, 3, 1)) == Decimal("0")

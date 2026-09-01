@@ -23,11 +23,26 @@ _RAY = Decimal(10 ** 27)
 
 
 def _art_at_or_before(df: pd.DataFrame, d: date) -> Decimal:
-    """Carry-forward of the raw normalised Art at or before ``d``."""
-    mask = df["block_date"] <= d
-    if not mask.any():
+    """Carry-forward of the raw normalised Art at or before ``d``.
+
+    Mirrors ``compute._helpers.cum_at_or_before``, deliberately duplicated
+    rather than imported — normalize must not import from compute (see the
+    ``_VAT`` note above). Two behaviours here are load-bearing:
+
+    * Lookup by date-MAX rather than row position, so a source that didn't
+      pre-sort still yields the right row. Among rows tied on that date the
+      positionally last wins: it carries the end-of-day cumulative.
+    * Coerce to ``Decimal``. Every production source emits Decimal already,
+      but a frame carrying floats would otherwise propagate one into the
+      rate-scaling multiply below and raise ``float * Decimal``.
+    """
+    if df is None or df.empty:
         return Decimal("0")
-    return df.loc[mask, "cum_debt"].iloc[-1]
+    eligible = df[df["block_date"] <= d]
+    if eligible.empty:
+        return Decimal("0")
+    tied = eligible[eligible["block_date"] == eligible["block_date"].max()]
+    return Decimal(str(tied["cum_debt"].iloc[-1]))
 
 
 def get_debt_timeseries(
