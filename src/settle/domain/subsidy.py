@@ -2,7 +2,7 @@
 
 Per debt-rate-methodology Step 1 (subsidy):
 
-    subsidised_apy_d = ref_rate_d + (base_apy_d − ref_rate_d) × T / 24
+    subsidised_apr_d = ref_rate_d + (base_apr_d − ref_rate_d) × T / 24
 
 where:
     ref_rate_d  = the prime's reference rate on date d (carry-forward):
@@ -10,7 +10,7 @@ where:
                   (the same Stability Scope change that cut SSR to 3.52%
                   and the BR−SSR spread to 20bps switched the subsidy
                   reference series to SOFR)
-    base_apy_d  = SSR_d ⊕ spread_d (the un-subsidised borrow rate;
+    base_apr_d  = apy_to_apr(SSR_d, 12) + spread_d (the un-subsidised rate;
                   spread 30bps, 20bps from 2026-07-23)
     T           = months elapsed since the subsidy program start
                   (Sky governance: 2026-01-01)
@@ -37,6 +37,14 @@ import yaml
 
 _log = logging.getLogger(__name__)
 _VALID_REF_RATE_KINDS = ("tbill_3m", "sofr")
+
+# YAML column per series. The suffix encodes the rate's NATURE, not a naming
+# convention: SOFR is published by the NY Fed as an annualised SIMPLE rate
+# and the Atlas defines it as "expressed as an annual rate", so it is an APR
+# used as published. The 3M T-Bill column keeps its ``_apy`` suffix — it
+# stopped being the subsidy reference on 2026-07-23 and its months are
+# settled, so it is deliberately not re-typed (scope: going forward only).
+_REF_RATE_COLUMNS = {"tbill_3m": "tbill_3m_apy", "sofr": "sofr_apr"}
 
 # Subsidy program kicked in 2026-01-01; T=0 in Jan, T=1 in Feb, ... T=24+ → no subsidy.
 SUBSIDY_PROGRAM_START = date(2026, 1, 1)
@@ -124,7 +132,14 @@ class SubsidyConfig:
 class ReferenceRateHistory:
     """Daily reference-rate timeseries for the subsidy formula.
 
-    ``rates`` is a DataFrame[effective_date, ref_rate_apy] sorted by date.
+    ``rates`` is a DataFrame[effective_date, ref_rate_apr] sorted by date.
+
+    NOMINAL (APR) since 2026-09-01: SOFR is published by the NY Fed as an
+    annualised simple rate and the Atlas defines it as "expressed as an
+    annual rate", so it is used as published with no APY conversion. Rows
+    before 2026-07-23 carry 3M T-Bill values that were captured under the
+    old APY reading — left as-is, since those months are settled and not
+    restated (scope: going forward only).
     Lookups use carry-forward (most recent rate ≤ target date).
     """
 
@@ -166,7 +181,7 @@ class ReferenceRateHistory:
                 "(%d days stale). Update config/subsidy_reference_rates.yaml.",
                 self.kind, target, latest, stale_days,
             )
-        return Decimal(str(eligible.loc[idx, "ref_rate_apy"]))
+        return Decimal(str(eligible.loc[idx, "ref_rate_apr"]))
 
 
 @dataclass(frozen=True, slots=True)
@@ -206,9 +221,13 @@ def load_reference_rates(
 ) -> ReferenceRateHistory:
     """Load `config/subsidy_reference_rates.yaml` for the given rate kind.
 
-    The YAML carries one ``<kind>_apy`` column per series (``tbill_3m_apy``,
-    ``sofr_apy``). Rows that lack the requested column are skipped — the
-    series don't have to cover the same date ranges.
+    The YAML carries one column per series. The suffix encodes the rate's
+    NATURE, which differs by series: ``sofr_apr`` (NY Fed publishes SOFR as
+    an annualised simple rate; the Atlas defines it as "expressed as an
+    annual rate") and ``tbill_3m_apy`` (unchanged — the T-Bill stopped
+    being the subsidy reference on 2026-07-23, and its months are settled
+    and not restated). Rows that lack the requested column are skipped —
+    the series don't have to cover the same date ranges.
     """
     if kind not in _VALID_REF_RATE_KINDS:
         raise ValueError(f"Unknown ref_rate kind {kind!r} ({'|'.join(_VALID_REF_RATE_KINDS)})")
@@ -220,13 +239,13 @@ def load_reference_rates(
     with config_path.open() as f:
         cfg = yaml.safe_load(f)
 
-    col = f"{kind}_apy"
+    col = _REF_RATE_COLUMNS[kind]
     # A row missing the REQUESTED column is legitimate (the two series need
     # not cover the same dates), but a row carrying NO known rate column at
     # all is a typo (e.g. ``tbil_3m_apy``) — the old per-row ``r[col]`` read
     # failed loud on those; keep that property rather than silently dropping
     # the day into the carry-forward.
-    known_cols = {f"{k}_apy" for k in _VALID_REF_RATE_KINDS}
+    known_cols = set(_REF_RATE_COLUMNS.values())
     for r in cfg["rates"]:
         if not (known_cols & r.keys()):
             raise ValueError(
@@ -238,7 +257,7 @@ def load_reference_rates(
     rows = [
         {
             "effective_date": date.fromisoformat(r["effective_date"]),
-            "ref_rate_apy": Decimal(str(r[col])),
+            "ref_rate_apr": Decimal(str(r[col])),
         }
         for r in cfg["rates"]
         if col in r
@@ -283,12 +302,17 @@ def months_elapsed_since(d: date, anchor: date = SUBSIDY_PROGRAM_START) -> int:
 
 
 def subsidised_apy(
-    base_apy: Decimal,
-    ref_rate_apy: Decimal,
+    base_apy: Decimal,   # NOMINAL (APR) since 2026-09-01 — name kept for API stability
+    ref_rate_apr: Decimal,
     months_elapsed: int,
     ramp_months: int = SUBSIDY_RAMP_MONTHS,
 ) -> Decimal:
-    """``ref_rate + (base − ref_rate) × T / 24``, clamped at base_apy.
+    """``ref_rate + (base − ref_rate) × T / 24``, clamped at the base rate.
+
+    Since 2026-09-01 every argument is NOMINAL (APR): ``base`` is
+    ``apy_to_apr(SSR, 12) + spread`` and the reference rate is used as
+    published. The interpolation is plain arithmetic on rate numbers, so it
+    is unchanged by the units switch — only what the numbers mean changed.
 
     At T=0: subsidised_apy = ref_rate (full subsidy).
     At T=24: subsidised_apy = base_apy (no subsidy).
@@ -299,6 +323,6 @@ def subsidised_apy(
     rate. The subsidy intent is one-sided: the prime never pays more than BR.
     """
     t = max(0, min(months_elapsed, ramp_months))
-    spread = base_apy - ref_rate_apy
-    raw = ref_rate_apy + spread * Decimal(t) / Decimal(ramp_months)
+    spread = base_apy - ref_rate_apr
+    raw = ref_rate_apr + spread * Decimal(t) / Decimal(ramp_months)
     return min(base_apy, raw)

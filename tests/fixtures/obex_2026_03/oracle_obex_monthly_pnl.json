@@ -80,6 +80,6 @@
     "Oracle's agent_demand no longer subtracts cum_sub_usds \u2014 matches the pipeline's utilised formula (refreshed v3).",
     "Oracle reads SSR live from sUSDS file() traces (refreshed v4). Closes the stale-ladder gap that caused the 2026-05 outlier; oracle and pipeline now match to the penny on sky_revenue + agent_rate across Jan-May 2026.",
     "Both pipelines use APY with per-second compounding (POWER((1 + apy), 1/365) - 1).",
-    "STALE BY DESIGN from 2026-08-24: this capture predates the rate-methodology change (accruals now compound day over day; BR = SSR + spread by plain addition, not multiplicative composition). The oracle SQL was intentionally NOT regenerated so it stays an independent check; the e2e test now asserts the pipeline sits 0.01%-0.20% BELOW the oracle rather than matching it. Regenerate reference/obex_monthly_pnl.sql on the new methodology if exact parity is wanted again."
+    "STALE BY DESIGN from 2026-09-01: this capture predates the rate-methodology change. The pipeline is now NOMINAL (base_apr = apy_to_apr(SSR, n=12) + spread, accrued x days/365) while the oracle SQL still uses APY with per-second compounding. The oracle was intentionally NOT regenerated so it stays an independent check; the e2e test asserts the pipeline sits 0.05%-0.30% ABOVE the oracle (measured ~0.15% for March 2026) rather than matching it \u2014 a nominal charge necessarily exceeds a compounded one over a sub-annual period. Regenerate reference/obex_monthly_pnl.sql on the new methodology if exact parity is wanted again."
   ]
 }

@@ -1166,75 +1166,83 @@ canonical pricing).
 
 ### 17.13 Open questions (priority-ordered)
 
-#### Methodology — resolved 2026-08-24: BR/SSR rate application (operator-confirmed)
+#### Methodology — resolved 2026-09-01: BR/SSR rate units (operator-confirmed)
 
-**Two independent corrections to how the Base Rate and SSR-derived accruals
-are applied.** Raised while auditing whether the per-second SSR is honoured
-at daily granularity; both confirmed by the MSC operator on 2026-08-24 and
-applied **going forward only** (no restatement — July 2026 was already
-settled at MSC#11, and its `sky_total` figure stays frozen at 10,517,425.81
-via the `msc_preview` pins, which now emit drift warnings if July is
-regenerated).
+**The Base Rate is NOMINAL (APR); the SSR is an APY and is converted before
+the spread is added.** Raised while auditing whether the per-second SSR is
+honoured at daily granularity, and sharpened by Cloaky's observation that
+the Atlas defines the demand-side rate as an APR. Confirmed by the MSC
+operator 2026-09-01. Applied **going forward only** — no restatement; July
+2026 settled at MSC#11 and its `sky_total` stays frozen at 10,517,425.81
+via the `msc_preview` pins.
 
-1. **Accruals compound within the settlement period.** The per-day rate
-   conversion was always exact per-second (`ssr_history.sql` reads the
-   on-chain per-second ray and `POWER(ray/1e27, 31536000)-1`;
-   `daily_compounding_factor` applies `(1+APY)^(1/365)-1`, which is
-   algebraically `ray^86400 - 1`). What was wrong was the accrual *across*
-   days: the daily loops summed `principal_d × factor_d`, so day *d*'s
-   interest never earned. A 31-day month understated the charge by
-   ~0.15–0.17%. Now every rate-derived leg accrues via
-   `_helpers.CompoundingAccrual` — the BR charge (and its gross series),
-   the agent rate, the Cat B / PSM3 / Curve sUSDS spread reimbursements,
-   the PSM3 SSR appreciation and the Savings-V2 depositor SSR. Measured
-   July 2026 effect: **+$18,148/month** Sky-side.
+```
+SSR_apr  = 12 x [(1 + SSR_apy)^(1/12) - 1]    = 3.464456%   at SSR 3.52%
+BR_apr   = SSR_apr + spread                    = 3.664456%   (+20bps)
+charge_d = utilized_d x BR_apr / 365                         (nominal)
+```
 
-   *Cross-month compounding needs no code:* the month's charge is
-   capitalised into the prime's ilk debt at settlement via `vat.grab` with
-   positive `dart` (allocator ilks have a frozen `vat.rate` and no `jug`
-   duty — see the selector notes in `queries/debt_timeseries.sql`), and
-   `cum_debt` sums frob + grab. So the enlarged principal pays BR from the
-   settlement day automatically. A cross-month carry of accrued-but-unpaid
-   interest was considered and **rejected**: it would bill the same
-   interest twice (once as a carried balance, once as the debt minted to
-   capitalise it). The only uncompensated window is month-end → settlement
-   date (~20 days, ~$38K/month) — a settlement-lag question, not a
-   compounding one, and left open.
+**Why the units differ.** SSR compounds per-second into the sUSDS index
+on-chain, so it is an effective rate. The spread and the subsidy reference
+rate are governance/money-market numbers, i.e. nominal. Adding an APY to an
+APR produces a rate of no defined type — which is what the code did, first
+multiplicatively and then (2026-08-24) additively.
 
-   *Not migrated:* `compute_chronicle_points` deliberately still sums
-   simple daily interest, because it is reconciled against the external
-   `soterlabs/chronicle-points-dune-dash` query. Revisit only together
-   with that dashboard.
+**Why n = 12.** The conversion is exactly invertible only if the accrual
+compounds at the same frequency the conversion assumed. The charge
+compounds when the MSC capitalises it into the ilk debt — monthly — so
+n = 12 makes `(1 + BR_apr/12)^12` recover the APY to the digit. Converting
+at n → ∞ (`ln(1+APY)` = 3.459464%) and then compounding monthly leaves a
+0.52 bps/yr residual in the prime's favour; n = 12 zeroes it.
 
-2. **`BR = SSR + spread` is plain arithmetic addition.** It was composed
-   multiplicatively (`(1+SSR)(1+spread)−1`), charging **3.72704%** at SSR
-   3.52% + 20bps instead of 3.72000%. The Base Rate is a rate
-   *definition*, not two stacked yields — and additive composition is what
-   makes `BR − SSR − spread` net to **exactly 0** at the APY level, which
-   is the entire purpose of the idle-sUSDS spread reimbursement (Sky nets
-   nothing on sUSDS the prime already earns SSR on). Multiplicative left
-   `SSR × spread` = 0.7040 bps with Sky. Helper renamed
-   `combine_apys` → `add_spread` to make the convention greppable.
-   Measured July 2026 effect: **−$15,643/month** Sky-side.
+**Cross-month compounding needs no code.** Allocator ilks carry `duty = 0`
+and a frozen `vat.rate`, but Sky calls `vat.grab` with positive `dart` at
+each settlement to fold the accrued charge into `urns[ilk].art`, and
+`cum_debt` sums frob + grab. The enlarged principal pays BR from the
+settlement day onward. A cross-month carry of accrued-but-unpaid interest
+was considered and **rejected** — it would bill the same interest twice.
 
-   *Known residual (accepted).* Because each leg compounds separately,
-   the netting is exact only at the APY level, not in settled dollars:
-   the monthly residual on idle sUSDS moves from **+$499 per $1B**
-   (multiplicative, Sky's favour) to **−$5,283 per $1B** (additive,
-   prime's favour) — 0.06 → 0.63 bps/yr of the position. Deriving the
-   reimbursement as `BR charge − SSR received` would zero it by
-   construction, but was **rejected**: the 20 bps is an Atlas *input*, and
-   deriving it would invert the specification and hide the residual rather
-   than represent it.
+**Scope.** BR charge (and its gross series), agent rate, all 20 bps
+reimbursement legs (Cat B sUSDS, PSM3, Curve) and Chronicle Points are
+nominal and accrue simply. The **SSR-appreciation** legs (PSM3 appreciation,
+Curve Case-3b, Savings-V2 depositor SSR) stay APY and keep compounding —
+they model a physical receipt, and a nominal sum would under-credit what the
+prime demonstrably received. `CompoundingAccrual` survives for those.
 
-**Combined July 2026 effect: +$2,505/month Sky revenue (+$2,648 net to Sky
-after the smaller agent rate), ~+$32K/yr** — the two corrections very
-nearly cancel. Counterparty-facing surfaces updated with them: the
-settlement workbook's rate-composition cells, the Debt tab's per-day
-legend (the daily charge is no longer `utilized_d × factor` — a new
-"interest accrued to date" column lets any row be reconciled), and
-`scripts/compare_sky_revenue_ba_labs.py`.
+**Reference rates.** Re-typed as APRs and used as published: the NY Fed
+publishes SOFR as an annualised simple rate and the Atlas defines it as "the
+rate (expressed as an annual rate) ... as administered and published by the
+Federal Reserve Bank of New York", with a most-recent-prior carry-forward
+that `ReferenceRateHistory.at()` already implements. Config field renamed
+`sofr_apy` → `sofr_apr`; August 2026 back-filled from the API. The 3M T-Bill
+column is deliberately NOT re-typed — it stopped being the reference on
+2026-07-23 and its months are settled.
 
+**Measured effect (July 2026 rates, per $1B):** unsubsidised 31-day charge
+3,106,921 → 3,112,278 (+5,357/month, +0.13 bps); subsidised tranche
+3,064,438 → 3,101,776 (+37,338/month, ≈+4.3 bps) — nearly all of the latter
+from the reference rate being re-read as an APR without a compensating
+conversion, weighted 70.8% by the ramp at T=6.
+
+**Two residuals, both accepted and both in the prime's favour:**
+
+1. **~0.66 bps/yr — the settlement lag.** The charge accrues to month-end
+   but is capitalised ~20 days into the next month, earning nothing in
+   between, while Sky's SSR cost compounds continuously. Not fixable by any
+   choice of units; only a shorter settlement cadence (DSC) or a non-zero
+   nominal Sky spread addresses it. At a 0 bps nominal spread Sky is
+   structurally short ~0.66 bps ≈ $370K/yr on ~$5.6B of prime debt.
+2. **The SOFR day-count basis.** The Fed annualises SOFR on actual/360; we
+   accrue on n/365, so we under-accrue it by ~1.39% of its value (~5 bps on
+   the reference). Using it as published keeps the subsidy alive; converting
+   to a /365-equivalent (3.6977%) would push the reference above BR_apr and
+   clamp the subsidy to zero. The Atlas does not specify a basis — tracked
+   in `SNR_QUESTIONS.md` as a clarification request.
+
+**Note on thin headroom.** BR_apr (3.664456%) now sits only ~1.4 bps above
+SOFR, so the subsidy can clamp on and off day to day (SOFR printed 3.66% on
+2026-08-25, above BR_apr). Expect `zero_benefit` warnings to appear more
+often; that is the rate environment, not a defect.
 
 #### High priority (Grove Q1 — added 2026-05-02 after Grove team workbook reconciliation)
 **E1 aHorRwaRLUSD off-pool yield channel.** Aave Horizon's on-chain `liquidityIndex` only grows ~0.87% APY (matches our $67K Feb 2026 revenue exactly); the remaining $447K of Grove team's $514K is **off-chain rewards accrual** (Holdings sheet `Rewards` column grew +$431K with `claimed` flat). Most likely fed from Merkl (`MERKL_DISTRIBUTOR = 0x3Ef3D8bA38EBe18DB133cEc108f4D14CE00Dd9Ae` in Grove address registry) or Aave Horizon's own RWA-fund accrual API. Until Grove confirms the canonical feed we won't integrate (mis-attribution risk). **See QUESTIONS.md G3.**

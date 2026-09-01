@@ -9,37 +9,62 @@ import pandas as pd
 import pytest
 
 from settle.compute._helpers import (
-    add_spread,
+    apr_daily,
+    apy_to_apr,
     cum_at_or_before,
     daily_compounding_factor,
     ssr_at_or_before,
 )
 
 
-# --- add_spread -----------------------------------------------------------
+# --- apy_to_apr / apr_daily -----------------------------------------------
 
-def test_add_spread_zero_drops_out():
-    assert add_spread(Decimal("0.04"), Decimal("0")) == Decimal("0.04")
-
-
-def test_add_spread_is_plain_arithmetic():
-    """``BR = SSR + 20bps`` is a rate DEFINITION: at SSR 3.52% the Base Rate
-    is exactly 3.7200%, not the 3.72704% the former multiplicative compose
-    produced."""
-    assert add_spread(Decimal("0.0352"), Decimal("0.002")) == Decimal("0.0372")
-    assert add_spread(Decimal("0.04"), Decimal("0.003")) == Decimal("0.043")
+def test_apy_to_apr_known_value():
+    """SSR 3.52% APY at n=12 -> 3.464456% APR, so BR_apr = 3.664456%."""
+    apr = apy_to_apr(Decimal("0.0352"))
+    assert Decimal("0.0346445") < apr < Decimal("0.0346446")
+    assert Decimal("0.0366445") < apr + Decimal("0.002") < Decimal("0.0366446")
 
 
-def test_add_spread_nets_the_reimbursement_to_zero():
-    """The reason it must be additive: on idle sUSDS the prime receives SSR,
-    pays BR and is reimbursed the spread, so ``BR − SSR − spread`` has to be
-    0 — Sky nets nothing. The multiplicative form left SSR × spread
-    (0.7040 bps at 3.52% + 20bps) on the table."""
-    ssr, spread = Decimal("0.0352"), Decimal("0.002")
-    assert add_spread(ssr, spread) - ssr - spread == Decimal("0")
-    multiplicative = (1 + ssr) * (1 + spread) - 1
-    assert multiplicative - ssr - spread == ssr * spread
-    assert Decimal("0.00007") < ssr * spread < Decimal("0.00008")   # 0.70 bps
+def test_apy_to_apr_round_trips_at_the_same_n():
+    """The conversion is exact iff you compound back at the SAME n. n=12 is
+    chosen because the charge compounds monthly (MSC debt capitalisation)."""
+    apy = Decimal("0.0352")
+    for n in (1, 12, 365):
+        apr = apy_to_apr(apy, n)
+        back = (1 + apr / n) ** n - 1
+        assert abs(back - apy) < Decimal("1e-12"), n
+
+
+def test_apy_to_apr_converging_to_ln_as_n_grows():
+    """n -> infinity gives ln(1+APY); n=12 sits ~0.5 bps above it, which is
+    the whole reason n must match the settlement cadence."""
+    import math
+    apy = Decimal("0.0352")
+    ln = Decimal(str(math.log(1 + float(apy))))
+    assert abs(apy_to_apr(apy, 31_536_000) - ln) < Decimal("1e-9")
+    gap = apy_to_apr(apy, 12) - ln
+    assert Decimal("0.00004") < gap < Decimal("0.00006")      # ~0.50 bps
+
+
+def test_apy_to_apr_rejects_bad_n():
+    with pytest.raises(ValueError, match="n must be"):
+        apy_to_apr(Decimal("0.0352"), 0)
+
+
+def test_nominal_composition_nets_the_reimbursement_to_zero():
+    """Why nominal: on idle sUSDS the prime receives SSR, pays BR and is
+    reimbursed the spread, so ``BR_apr − SSR_apr − spread`` must be 0."""
+    ssr_apr, spread = apy_to_apr(Decimal("0.0352")), Decimal("0.002")
+    assert (ssr_apr + spread) - ssr_apr - spread == Decimal("0")
+
+
+def test_apr_daily_is_plain_slicing():
+    apr = Decimal("0.0366")
+    assert apr_daily(apr) == apr / 365
+    assert apr_daily(apr, 31) == apr * 31 / 365
+    # nominal: 31 daily slices == one 31-day slice (no compounding)
+    assert abs(apr_daily(apr) * 31 - apr_daily(apr, 31)) < Decimal("1e-25")
 
 
 # --- daily_compounding_factor ---------------------------------------------

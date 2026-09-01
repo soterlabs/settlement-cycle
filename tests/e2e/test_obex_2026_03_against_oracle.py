@@ -207,29 +207,29 @@ def test_against_oracle_replay(config_dir: Path):
     # --- Agent rate + sky_revenue vs the oracle.
     #
     # The oracle (reference/obex_monthly_pnl.sql, captured 2026-06-09) is an
-    # INDEPENDENT reimplementation, deliberately left on the PRE-2026-08-24
-    # rate methodology: it sums simple daily interest and composes
-    # BR = SSR ⊕ spread multiplicatively. The pipeline now compounds the
-    # accrual and composes BR = SSR + spread additively, so exact parity is
-    # no longer the right check — re-baselining the fixture to pipeline
-    # output would throw away its independence.
+    # INDEPENDENT reimplementation, deliberately left on the PRE-2026-09-01
+    # rate methodology: APY with per-second compounding,
+    # ``POWER((1+apy), 1/365) - 1`` summed over the days. The pipeline is now
+    # NOMINAL — ``apy_to_apr(SSR, 12) + spread``, sliced ``× days/365`` —
+    # so exact parity is no longer the right check, and re-baselining the
+    # fixture to pipeline output would throw away its independence.
     #
     # Instead we pin the DIRECTION and SIZE of the known methodology delta.
-    # The additive-BR change dominates the compounding change at March's
-    # rates, so the pipeline must land slightly BELOW the oracle, by a
-    # small documented band. A drift outside it — or the wrong sign —
-    # means a real bug, exactly as the old tight bound did.
+    # For any sub-annual period ``x·t > (1+x)^t − 1``, so a nominal charge
+    # necessarily lands ABOVE the oracle's compounded one — by ~0.15% at
+    # March's rates. Wrong sign, or a drift outside the band, means a real
+    # bug, exactly as the old tight bound did.
     _delta_assertions = (
         ("agent_rate", result.agent_rate, expected_agent),
         ("sky_revenue", result.sky_revenue, expected_sky),
     )
     for _name, _got, _oracle in _delta_assertions:
-        _rel = (_oracle - _got) / _oracle
-        assert Decimal("0.0001") < _rel < Decimal("0.0020"), (
-            f"{_name} {_got} vs oracle {_oracle}: relative gap {_rel} outside "
-            "the 0.01%–0.20% band expected from the 2026-08-24 methodology "
-            "change (compounding accrual + additive BR). Wrong sign or a "
-            "larger gap means a genuine regression, not the known delta."
+        _rel = (_got - _oracle) / _oracle
+        assert Decimal("0.0005") < _rel < Decimal("0.0030"), (
+            f"{_name} {_got} vs oracle {_oracle}: pipeline is {_rel:.6%} above "
+            "the oracle, outside the 0.05%–0.30% band expected from the "
+            "2026-09-01 nominal-APR methodology. Wrong sign or a larger gap "
+            "means a genuine regression, not the known delta."
         )
 
     # --- prime_revenue: documented methodology gap on the price source.
@@ -290,13 +290,13 @@ def test_against_oracle_live(config_dir: Path):
     expected_agent = Decimal(str(expected["agent_rate"]))
 
     # Same documented methodology band as the replay variant above — the
-    # oracle stays on the pre-2026-08-24 rate methodology on purpose.
+    # oracle stays on the pre-2026-09-01 rate methodology on purpose.
     for _name, _got, _oracle in (
         ("sky_revenue", result.sky_revenue, expected_sky),
         ("agent_rate", result.agent_rate, expected_agent),
     ):
-        _rel = (_oracle - _got) / _oracle
-        assert Decimal("0.0001") < _rel < Decimal("0.0020"), (
-            f"{_name} {_got} vs oracle {_oracle}: relative gap {_rel} outside "
-            "the expected 0.01%–0.20% methodology band"
+        _rel = (_got - _oracle) / _oracle
+        assert Decimal("0.0005") < _rel < Decimal("0.0030"), (
+            f"{_name} {_got} vs oracle {_oracle}: pipeline is {_rel:.6%} above "
+            "the oracle, outside the expected 0.05%–0.30% band"
         )

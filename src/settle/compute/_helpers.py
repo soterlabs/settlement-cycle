@@ -36,33 +36,58 @@ def apy_to_apr_per_second(apy: Decimal) -> Decimal:
     return Decimal(str(apr / SECONDS_PER_YEAR))
 
 
-def add_spread(rate: Decimal, spread: Decimal) -> Decimal:
-    """Rate plus a governance-defined spread — PLAIN ARITHMETIC addition.
+# Compounding frequency used to convert an APY into an APR. The MSC settles
+# monthly and the charge is capitalised into the prime's ilk debt at each
+# settlement (``vat.grab`` positive dart), so the accrual compounds ~12x a
+# year. Converting at the SAME frequency makes the round trip exact:
+# ``(1 + apy_to_apr(APY)/12)^12 - 1 == APY``. Converting at a different
+# frequency (e.g. per-second, which yields ln(1+APY)) leaves a residual —
+# 0.52 bps/yr at SSR 3.52% — because the conversion would assume continuous
+# compounding the settlement cycle doesn't provide.
+APR_COMPOUNDING_PERIODS = 12
 
-    ``BR = SSR + 20 bps`` (Atlas) is a rate *definition*: the Base Rate is
-    the number 20 bps above the SSR number. At SSR 3.52% the Base Rate is
-    3.7200%, full stop.
 
-    Until 2026-08-24 this composed multiplicatively
-    (``(1+SSR)(1+spread) − 1``), which yielded 3.72704% — treating the
-    20 bps as a second yield stacked on top of SSR. That is the right
-    treatment for compounding two independent return streams on the same
-    principal, but the wrong one for a defined rate, and it left Sky
-    charging a 0.7040 bps (= SSR × spread) sliver it never intended:
-    ``BR − SSR − 20bps`` should be exactly 0, since the whole point of the
-    sUSDS spread reimbursement is that Sky nets nothing on idle sUSDS.
-    Corrected per the MSC operator (2026-08-24) — worth ~−$123K/yr of Sky
-    revenue at July 2026 balances.
+def apy_to_apr(apy: Decimal, n: int = APR_COMPOUNDING_PERIODS) -> Decimal:
+    """Convert an APY-quoted rate to its APR (nominal) equivalent.
 
-    Used for:
-      * Base rate  = SSR + spread   (30 bps; 20 bps from 2026-07-23)
-      * Agent rate = SSR + 20 bps   (USDS in subproxy)
+    ``APR = n x [(1 + APY)^(1/n) - 1]``
 
-    NOTE: this is deliberately NOT a general rate-composition helper. Do
-    not use it to chain genuinely independent yields (e.g. a venue APY on
-    top of SSR appreciation) — those still compound multiplicatively.
+    Why this exists: the Base Rate is ``SSR + spread``, and the two are
+    quoted in different units. SSR is an APY (it compounds per-second into
+    the sUSDS index on-chain); the spread is a governance-set APR. Adding
+    them directly mixes an effective rate with a nominal one. Converting
+    SSR to an APR first puts both on the nominal basis, and then plain
+    addition is exact — ``BR_apr - SSR_apr - spread = 0``, which is what
+    makes Sky net zero on idle sUSDS.
+
+    At SSR 3.52% and n=12 this gives 3.464456%, so ``BR_apr`` = 3.664456%.
+
+    (Superseded ``add_spread``/``combine_apys``, which composed the rates
+    as APYs — additively from 2026-08-24, multiplicatively before that.
+    See PRD SS17.13.)
     """
-    return rate + spread
+    if n < 1:
+        raise ValueError(f"apy_to_apr: n must be >= 1, got {n}")
+    # ``expm1(log1p(x)/n)`` rather than ``(1+x)**(1/n) - 1``: the latter
+    # computes a number just above 1.0 and then subtracts 1, throwing away
+    # most of the mantissa. At n = 12 both are fine, but at per-second n the
+    # naive form loses ~9 significant digits (it disagreed with the exact
+    # series expansion at the 9th decimal instead of the 11th).
+    f = math.expm1(math.log1p(float(apy)) / n)
+    return Decimal(str(f)) * Decimal(n)
+
+
+def apr_daily(apr: Decimal, days: int = 1) -> Decimal:
+    """Interest factor for ``days`` at a nominal annual rate — ``apr x days/365``.
+
+    NOMINAL means no compounding inside the settlement period: an APR is
+    defined by its periodic rate, and the compounding that does occur
+    happens at the MSC when the charge is capitalised into the ilk debt.
+    Contrast ``daily_compounding_factor``, which is the APY equivalent and
+    is still used for the SSR-appreciation legs (the sUSDS index genuinely
+    compounds per-second, so those model a physical receipt).
+    """
+    return apr * Decimal(days) / Decimal(365)
 
 
 def daily_compounding_factor(apy: Decimal) -> Decimal:
@@ -90,8 +115,13 @@ class CompoundingAccrual:
     across primes in July 2026). Sky's own SSR cost compounds per-second
     on-chain, so the asymmetry favoured the primes.
 
-    Per the MSC operator (2026-08-24) the Base Rate and SSR-derived
-    accruals compound. Usage::
+    Scope narrowed 2026-09-01: the Base Rate, the agent rate and the 20 bps
+    reimbursement legs are now NOMINAL (APR) and accrue simply via
+    ``apr_daily`` — they do not use this class. It remains for the
+    SSR-APPRECIATION legs only (PSM3 sUSDS appreciation, the Curve Case-3b
+    integral, Savings-V2 depositor SSR), which model a physical receipt:
+    the sUSDS index really does compound per-second, so crediting a simple
+    sum would under-credit what the prime demonstrably received. Usage::
 
         acc = CompoundingAccrual()
         for day in period:
@@ -103,8 +133,8 @@ class CompoundingAccrual:
     factor is the *current* day's, so a mid-period rate change applies to
     the accrued balance from that day forward.
 
-    Scope: WITHIN one settlement period. The accrual starts fresh each
-    month, and that is not a gap — the month's charge is **capitalised into
+    Scope: WITHIN one settlement period. It starts fresh each month, and
+    that is not a gap — the month's charge is **capitalised into
     the prime's ilk debt** at the settlement, so it compounds across months
     through the debt base instead. Allocator ilks carry a frozen
     ``vat.rate`` and no ``jug`` duty, but Sky governance calls ``vat.grab``

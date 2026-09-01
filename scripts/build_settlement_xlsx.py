@@ -398,10 +398,10 @@ def _write_subsidy_panel(ws, summary: dict) -> None:
          float(_D(summary["sub_tranche_balance"])), _USD0)
     _row("  — excess (full base-rate tranche)",
          float(_D(summary["exc_tranche_balance"])), _USD0)
-    _row("Base rate (BR = SSR (+) spread; 30bps, 20bps from 2026-07-23), period avg", float(summary["base_apy_avg"]), _PCT)
-    _row(f"Reference rate ({kind}), period avg", *_pct("ref_apy_avg"))
-    _row("Subsidised rate (BR*), period avg", *_pct("sub_apy_avg"))
-    _row("Effective blended rate charged", float(summary["effective_apy"]), _PCT, bold=True)
+    _row("Base rate (BR_apr = apy_to_apr(SSR,12) + spread; 30bps, 20bps from 2026-07-23), period avg", float(summary["base_apr_avg"]), _PCT)
+    _row(f"Reference rate ({kind}), period avg", *_pct("ref_apr_avg"))
+    _row("Subsidised rate (BR*), period avg", *_pct("sub_apr_avg"))
+    _row("Effective blended rate charged", float(summary["effective_apr"]), _PCT, bold=True)
     _row("Diff vs base rate (bps)", float(summary["diff_bps"]), "0.0", bold=True)
     _row("Subsidy benefit to prime (USD)", float(_D(summary["subsidy_benefit"])), _USD, bold=True)
 
@@ -425,7 +425,7 @@ def _write_subsidy_panel(ws, summary: dict) -> None:
         ws.cell(ws.max_row, 3).number_format = _USD
 
     # ⚠️ zero-benefit flag — same condition as the compute-layer warning
-    # (no day had sub_apy < base_apy), so panel and log never disagree.
+    # (no day had sub_apr < base_apr), so panel and log never disagree.
     if summary.get("zero_benefit"):
         ws.append([
             "⚠️ Subsidy produced ≈$0 benefit this period — the reference "
@@ -544,13 +544,13 @@ def _write_sky_revenue(ws, prov: dict, sheet_rows: list[dict], prime_cfg: dict) 
         ws.append(["T this period",  f"{t_start} (SoM) → {t_end} (EoM)"])
         ws.append([
             "Formula",
-            "subsidised_apy = ref_rate + (base_apy − ref_rate) × min(T, 24) / 24, "
-            "applied to first cap_usd of utilized; excess at full base_apy",
+            "subsidised_apr = ref_rate + (base_apr − ref_rate) × min(T, 24) / 24, "
+            "applied to first cap_usd of utilized; excess at full base_apr",
         ])
         ws.cell(ws.max_row, 1).font = _MUTED
 
     ws.append([])
-    ws.append(["Base rate composition: base_apy = SSR + spread (plain addition; spread 30bps, 20bps from 2026-07-23). Charge compounds daily: day d = (utilized_d + interest accrued earlier in the month) x daily factor."])
+    ws.append(["Base rate composition: base_apr = apy_to_apr(SSR, n=12) + spread (nominal; spread 30bps, 20bps from 2026-07-23). Daily charge = utilized_d x base_apr / 365 — no intra-month compounding."])
     ws.cell(ws.max_row, 1).font = _MUTED
 
     _set_widths(ws, {1: 80, 2: 22})
@@ -774,31 +774,28 @@ def _write_debt(ws, prov: dict) -> None:
         CoF charge — the daily delta is the cumulative-grab dart through
         that date.
 
-      * **Rate composition**: ``base_apy`` = SSR + spread — PLAIN
-        ADDITION (spread 30bps, 20bps from 2026-07-23), so at SSR 3.52%
-        the base rate is exactly 3.7200%. (Before 2026-08-24 this was
-        composed multiplicatively, ``(1+SSR)(1+spread)−1`` = 3.72704%;
-        the Base Rate is a rate definition, and additive composition is
-        what makes ``BR − SSR − spread`` net to zero on idle sUSDS.)
-        ``sub_apy`` is the subsidised rate after the ramp: ``ref_rate +
-        (base − ref_rate) × T/24``, clamped at base_apy when ref_rate
-        exceeds base_apy.
+      * **Rate composition** (from 2026-09-01): ``base_apr`` =
+        ``apy_to_apr(SSR, n=12) + spread``. SSR is quoted as an APY — it
+        compounds per-second into the sUSDS index on-chain — while the
+        spread is a governance-set APR, so SSR is converted to its
+        nominal equivalent, ``12 × [(1+SSR)^(1/12) − 1]``, before the two
+        are added. At SSR 3.52% + 20bps that is 3.464456% + 0.20% =
+        **3.664456%**. n = 12 matches the settlement cadence, so
+        ``(1 + base_apr/12)^12`` recovers the APY exactly.
+        ``sub_apr`` is the subsidised rate after the ramp: ``ref_rate +
+        (base − ref_rate) × T/24``, clamped at base_apr when the
+        reference exceeds it.
 
-      * **The charge COMPOUNDS within the month** (from 2026-08-24). Day
-        d is charged ``(utilized_d + interest accrued on days < d) ×
-        daily_factor``, so the ``daily Sky charge`` column is NOT
-        ``utilized_d × daily_factor(base_apy_d)`` — spot-checking a single
-        row against that formula will not reconcile, and the gap grows
-        through the month. The ``interest accrued to date`` column shows
-        the balance the day's factor was applied to on top of utilized;
-        subtract it to recover the principal-only interest. The daily
-        charges still sum to the period's cost of funds.
-        ``daily_sky_rev`` applies sub_apy to the first $1B of utilized
-        principal and full base_apy to the excess AND to accrued interest
-        (accrued interest is not borrowed debt, so it is never
-        subsidised); ``daily_sky_rev_gross`` applies the same schedule on
-        the full cum_debt (no deductions), making the gap to actual a
-        measure of the deduction stack.
+      * **The charge is NOMINAL — no intra-month compounding.** Each day
+        is ``utilized_d × rate_d / 365`` and the days are summed, so any
+        row reconciles on its own. The compounding that does occur is the
+        MSC capitalising the month's charge into the ilk debt
+        (``vat.grab`` with positive ``dart``), which shows up as a step in
+        ``cum_debt`` rather than inside this column.
+        ``daily_sky_rev`` applies sub_apr to the first $1B of utilized and
+        full base_apr to the excess; ``daily_sky_rev_gross`` applies the
+        same schedule on the full cum_debt (no deductions), making the gap
+        to actual a measure of the deduction stack.
     """
     rows = prov.get("sky_revenue_daily") or []
     if not rows:
@@ -814,11 +811,11 @@ def _write_debt(ws, prov: dict) -> None:
         "cum_debt = Σ on-chain Vat dart from frob (0x76088703) + grab "
         "(0x7bab3f40), then scaled by Vat.ilks[ilk].rate_d / 1e27 read "
         "at each day's EoD block — actual outstanding USDS per day, not "
-        "raw normalised Art. utilized = cum_debt − Σ deductions. base_apy "
-        "= SSR + spread (plain addition; spread 30bps, 20bps from "
-        "2026-07-23). sub_apy applies on the "
+        "raw normalised Art. utilized = cum_debt − Σ deductions. base_apr "
+        "= apy_to_apr(SSR, n=12) + spread (nominal; spread 30bps, 20bps from "
+        "2026-07-23). sub_apr applies on the "
         "first cap_usd of utilized when the subsidy is active; excess "
-        "pays base_apy."
+        "pays base_apr."
     ])
     ws.cell(ws.max_row, 1).font = _MUTED
     ws.cell(ws.max_row, 1).alignment = Alignment(wrap_text=True, vertical="top")
@@ -826,8 +823,8 @@ def _write_debt(ws, prov: dict) -> None:
     ws.append([])
 
     # If no row has subsidy data populated, omit the three subsidy columns
-    # (T, ref_rate, sub_apy) — keeps the tab tight for non-subsidy primes.
-    has_subsidy = any(r.get("sub_apy") is not None for r in rows)
+    # (T, ref_rate, sub_apr) — keeps the tab tight for non-subsidy primes.
+    has_subsidy = any(r.get("sub_apr") is not None for r in rows)
 
     cols = [
         "Date",
@@ -842,9 +839,8 @@ def _write_debt(ws, prov: dict) -> None:
         "base APY",
     ]
     if has_subsidy:
-        cols += ["T (months)", "ref_rate APY", "sub APY"]
-    cols += ["daily Sky charge", "daily Sky charge (gross on cum_debt)",
-             "interest accrued to date (charged on top of utilized)"]
+        cols += ["T (months)", "ref_rate APR", "sub APR"]
+    cols += ["daily Sky charge", "daily Sky charge (gross on cum_debt)"]
     ws.append(cols)
     _header_row(ws, ws.max_row, len(cols))
 
@@ -865,11 +861,11 @@ def _write_debt(ws, prov: dict) -> None:
             float(_D(r["lending_idle"])),
             float(_D(r["utilized"])),
             r["ssr_apy"],
-            r["base_apy"],
+            r["base_apr"],
         ]
         if has_subsidy:
-            out += [r.get("t_months"), r.get("ref_rate_apy"), r.get("sub_apy")]
-        out += [float(rev), float(gross), float(_D(r.get("accrued_before") or 0))]
+            out += [r.get("t_months"), r.get("ref_rate_apr"), r.get("sub_apr")]
+        out += [float(rev), float(gross)]
         ws.append(out)
         row_n = ws.max_row
         # USD columns: cum_debt … utilized, daily charges
@@ -881,8 +877,7 @@ def _write_debt(ws, prov: dict) -> None:
         if has_subsidy:
             for c in (12, 13):  # ref_rate APY, sub APY (T stays integer)
                 ws.cell(row_n, c).number_format = _PCT
-        # The three trailing USD columns (charge, gross charge, accrued).
-        for c in (len(cols) - 2, len(cols) - 1, len(cols)):
+        for c in (len(cols) - 1, len(cols)):
             ws.cell(row_n, c).number_format = _USD
 
     # Totals footer — only the additive columns (daily charges) sum
@@ -890,14 +885,12 @@ def _write_debt(ws, prov: dict) -> None:
     ws.append([])
     total_row = [""] * len(cols)
     total_row[0] = "Σ daily charges"
-    total_row[-3] = float(sum_rev)
-    total_row[-2] = float(sum_gross)
+    total_row[-2] = float(sum_rev)
+    total_row[-1] = float(sum_gross)
     ws.append(total_row)
     row_n = ws.max_row
     ws.cell(row_n, 1).font = _BOLD
-    # Only the two charge columns total meaningfully; "accrued to date" is a
-    # point-in-time balance, so it is left blank on the footer.
-    for c in (len(cols) - 2, len(cols) - 1):
+    for c in (len(cols) - 1, len(cols)):
         ws.cell(row_n, c).number_format = _USD
         ws.cell(row_n, c).font = _BOLD
 

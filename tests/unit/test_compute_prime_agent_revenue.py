@@ -1462,14 +1462,12 @@ def test_monthly_pnl_susds_spread_reimbursement_aggregates_per_venue():
     )
 
 
-def _compound_series(values, factor):
-    """Compounded accrual over a per-day principal series: each day charges
-    ``(V_d + accrued) × factor`` (see ``CompoundingAccrual``). For a constant
-    V this reduces to ``V × ((1+factor)^n − 1)``."""
-    acc = Decimal("0")
-    for v in values:
-        acc += (v + acc) * factor
-    return acc
+def _nominal_series(values, daily_rate):
+    """Nominal accrual over a per-day principal series: each day charges
+    ``V_d × daily_rate`` and the days are summed — no compounding inside the
+    period (2026-09-01; the 20bps legs mirror the equally-nominal BR charge
+    they offset)."""
+    return sum((v * daily_rate for v in values), Decimal("0"))
 
 
 # --- _susds_cat_b_spread_reimb daily integration -------------------------
@@ -1480,22 +1478,19 @@ def _compound_series(values, factor):
 # These tests pin the helper's daily-integration semantics.
 
 def test_susds_cat_b_spread_reimb_stable_position_matches_flat_formula():
-    """With NO inflows the daily integration reduces to the closed form
-    ``V × ((1+f)^n − 1)``. Since 2026-08-24 the reimbursement COMPOUNDS
-    (like the BR charge it offsets), so it now exceeds the old flat
-    ``V × f × n`` figure by ~0.15%."""
+    """With NO inflows the daily integration reduces to ``V × rate × n/365``
+    — the reimbursement is NOMINAL (2026-09-01), matching the BR charge it
+    offsets, so it equals the flat formula exactly."""
     from settle.compute.monthly_pnl import _susds_cat_b_spread_reimb
-    from settle.compute._helpers import daily_compounding_factor
+    from settle.compute._helpers import apr_daily, daily_compounding_factor
     from settle.compute.sky_revenue import BASE_RATE_OVER_SSR
-    spread_daily = daily_compounding_factor(BASE_RATE_OVER_SSR)
+    spread_daily = apr_daily(BASE_RATE_OVER_SSR)
     value_som = Decimal("100_000_000")
     period = _period()  # 31 days
     expected_flat = value_som * spread_daily * Decimal(period.n_days)
     # Empty inflow_ts → V_d = value_som every day.
     result = _susds_cat_b_spread_reimb(value_som, _empty_inflow(), period)
-    expected = value_som * ((1 + spread_daily) ** period.n_days - 1)
-    assert abs(result - expected) < Decimal("1e-9")
-    assert result > expected_flat   # compounding
+    assert abs(result - expected_flat) < Decimal("1e-9")
 
 
 def test_susds_cat_b_spread_reimb_mid_period_deposit_integrates_correctly():
@@ -1513,9 +1508,9 @@ def test_susds_cat_b_spread_reimb_mid_period_deposit_integrates_correctly():
         Δ = $850M × spread_daily (= +$850M × 30bps / 365 ≈ +$699)
     """
     from settle.compute.monthly_pnl import _susds_cat_b_spread_reimb
-    from settle.compute._helpers import daily_compounding_factor
+    from settle.compute._helpers import apr_daily, daily_compounding_factor
     from settle.compute.sky_revenue import BASE_RATE_OVER_SSR
-    spread_daily = daily_compounding_factor(BASE_RATE_OVER_SSR)
+    spread_daily = apr_daily(BASE_RATE_OVER_SSR)
     value_som = Decimal("100_000_000")
     period = _period()
     # Mar 15 = day 15 of 31. Construct cum_inflow timeseries.
@@ -1527,8 +1522,8 @@ def test_susds_cat_b_spread_reimb_mid_period_deposit_integrates_correctly():
     })
     result = _susds_cat_b_spread_reimb(value_som, inflow_ts, period)
 
-    # V_d = 14×$100M then 17×$150M, compounded day over day.
-    expected = _compound_series(
+    # V_d = 14×$100M then 17×$150M, summed nominally.
+    expected = _nominal_series(
         [Decimal("100_000_000")] * 14 + [Decimal("150_000_000")] * 17, spread_daily,
     )
     assert abs(result - expected) < Decimal("1e-9")
@@ -1536,10 +1531,9 @@ def test_susds_cat_b_spread_reimb_mid_period_deposit_integrates_correctly():
     # Sanity: result strictly greater than flat formula (more days at $150M).
     flat = value_som * spread_daily * Decimal(period.n_days)
     assert result > flat
-    # Δ ≳ $850M × spread_daily (~$699 at 30bps) — strictly more, since the
-    # accrued interest also earns.
+    # Δ = $850M × spread_daily (~$699 at 30bps), exactly.
     delta = result - flat
-    assert delta > Decimal("850_000_000") * spread_daily
+    assert abs(delta - Decimal("850_000_000") * spread_daily) < Decimal("1e-9")
 
 
 def test_susds_cat_b_spread_reimb_mid_period_withdrawal_integrates_correctly():
@@ -1548,9 +1542,9 @@ def test_susds_cat_b_spread_reimb_mid_period_withdrawal_integrates_correctly():
     held less for the second half of the month), so sky_revenue gets a
     smaller reduction → sky earns more. Flat formula over-counted."""
     from settle.compute.monthly_pnl import _susds_cat_b_spread_reimb
-    from settle.compute._helpers import daily_compounding_factor
+    from settle.compute._helpers import apr_daily, daily_compounding_factor
     from settle.compute.sky_revenue import BASE_RATE_OVER_SSR
-    spread_daily = daily_compounding_factor(BASE_RATE_OVER_SSR)
+    spread_daily = apr_daily(BASE_RATE_OVER_SSR)
     value_som = Decimal("150_000_000")
     period = _period()
     withdrawal_day = date(2026, 3, 15)
@@ -1560,8 +1554,8 @@ def test_susds_cat_b_spread_reimb_mid_period_withdrawal_integrates_correctly():
         "cum_inflow":   [Decimal("-50_000_000")],
     })
     result = _susds_cat_b_spread_reimb(value_som, inflow_ts, period)
-    # V_d = 14×$150M then 17×$100M, compounded day over day.
-    expected = _compound_series(
+    # V_d = 14×$150M then 17×$100M, summed nominally.
+    expected = _nominal_series(
         [Decimal("150_000_000")] * 14 + [Decimal("100_000_000")] * 17, spread_daily,
     )
     assert abs(result - expected) < Decimal("1e-9")
@@ -1583,9 +1577,9 @@ def test_susds_cat_b_spread_reimb_clamps_negative_daily_position():
     capital_net, outbound deployment included), the spread integration
     clamps those days to zero so the reimbursement stays non-negative."""
     from settle.compute.monthly_pnl import _susds_cat_b_spread_reimb
-    from settle.compute._helpers import daily_compounding_factor
+    from settle.compute._helpers import apr_daily, daily_compounding_factor
     from settle.compute.sky_revenue import BASE_RATE_OVER_SSR
-    spread_daily = daily_compounding_factor(BASE_RATE_OVER_SSR)
+    spread_daily = apr_daily(BASE_RATE_OVER_SSR)
     value_som = Decimal("50_000_000")
     period = _period()
     # Withdrawal larger than value_som on day 5 → V_d would go negative.
@@ -1595,10 +1589,8 @@ def test_susds_cat_b_spread_reimb_clamps_negative_daily_position():
         "cum_inflow":   [Decimal("-80_000_000")],
     })
     result = _susds_cat_b_spread_reimb(value_som, inflow_ts, period)
-    # Days 1-4: V_d = $50M. Days 5-31: V_d = -$30M → clamped, no NEW
-    # principal interest; the already-accrued balance is untouched (the
-    # clamped days simply skip accrual entirely).
-    expected = _compound_series([Decimal("50_000_000")] * 4, spread_daily)
+    # Days 1-4: V_d = $50M. Days 5-31: V_d = -$30M → clamped, contribute 0.
+    expected = _nominal_series([Decimal("50_000_000")] * 4, spread_daily)
     assert abs(result - expected) < Decimal("1e-9")
     assert result > Decimal("0")    # always non-negative
 
@@ -1683,7 +1675,7 @@ def test_savings_v2_depositor_ssr_integrates_daily():
     """Flat $300M TA all month at 4.5% SSR, compounded (2026-08-24):
     ``300M × ((1+f)^31 − 1)``."""
     from settle.compute.monthly_pnl import _savings_v2_depositor_ssr
-    from settle.compute._helpers import daily_compounding_factor
+    from settle.compute._helpers import apr_daily, daily_compounding_factor
     ta = Decimal("300_000_000")
     src = _StubSv2Source({d: ta for d in range(1, 32)})
     total = _savings_v2_depositor_ssr(src, _StubDayResolver(), _ssr_df(), _period())
@@ -1705,7 +1697,7 @@ def test_savings_v2_depositor_ssr_carries_forward_on_transient_zero():
     """A 0 read after a non-zero day = suspected RPC failure → carry the
     previous day's TA forward (conservative: keeps the carve-out whole)."""
     from settle.compute.monthly_pnl import _savings_v2_depositor_ssr
-    from settle.compute._helpers import daily_compounding_factor
+    from settle.compute._helpers import apr_daily, daily_compounding_factor
     ta = Decimal("300_000_000")
     # Day 15 missing from the map → at_block returns 0 → carry-forward.
     src = _StubSv2Source({d: ta for d in range(1, 32) if d != 15})

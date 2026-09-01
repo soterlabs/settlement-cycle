@@ -925,33 +925,43 @@ def _accrue_daily(
     period: Period,
     value_at: Callable[[date], Decimal],
     rate_at: Callable[[date], Decimal],
+    *,
+    nominal: bool,
 ) -> Decimal:
-    """Compounded daily accrual over ``period``.
-
-    Each day charges ``(value_at(d) + accrued) × daily_factor(rate_at(d))``
-    — see ``_helpers.CompoundingAccrual`` for why accrued interest earns
-    (operator decision 2026-08-24). Days whose value is non-positive are
+    """Daily accrual over ``period``. Days with a non-positive value are
     skipped, so a transient negative position (external arrival excluded
     from the timeseries while the outbound leg is included) can never
     reduce the accrual.
 
-    Shared by every daily-integrated sUSDS/SSR leg — the Cat B spread
-    reimbursement, the PSM3 spread and SSR appreciation, and the
-    Savings-V2 depositor SSR — which differ only in where the day's value
-    comes from and which rate applies. Keeping one loop means the
-    right-Riemann EoD-d convention and the clamping rule can't drift
-    between them.
+    ``nominal=True`` — the rate is an APR: charge ``value × rate/365`` each
+    day and sum, with NO compounding inside the period (the compounding
+    happens at the MSC, when the amount is settled). Used by the 20 bps
+    reimbursement legs, which mirror the equally-nominal BR charge they
+    offset — if one compounded and the other didn't they would stop
+    cancelling.
+
+    ``nominal=False`` — the rate is an APY and the accrual compounds. Used
+    by the SSR-APPRECIATION legs, which model a physical receipt: the
+    sUSDS index really does compound per-second, so a simple sum would
+    under-credit what the prime demonstrably received.
+
+    One loop for both keeps the right-Riemann EoD-d convention and the
+    clamping rule from drifting between the legs.
     """
-    from ._helpers import CompoundingAccrual, daily_compounding_factor
+    from ._helpers import CompoundingAccrual, apr_daily, daily_compounding_factor
 
     acc = CompoundingAccrual()
+    total = Decimal("0")
     current = period.start
     while current <= period.end:
         value = value_at(current)
         if value > 0:
-            acc.add(value, daily_compounding_factor(rate_at(current)))
+            if nominal:
+                total += value * apr_daily(rate_at(current))
+            else:
+                acc.add(value, daily_compounding_factor(rate_at(current)))
         current = current + timedelta(days=1)
-    return acc.total
+    return total if nominal else acc.total
 
 
 def _susds_cat_b_spread_reimb(
@@ -999,7 +1009,7 @@ def _susds_cat_b_spread_reimb(
             cum_d = cum_at_or_before(inflow_ts, "cum_inflow", d)
             return value_som + (cum_d - cum_baseline)
 
-    return _accrue_daily(period, value_at, base_rate_spread_at)
+    return _accrue_daily(period, value_at, base_rate_spread_at, nominal=True)
 
 
 def _savings_v2_depositor_ssr(
@@ -1059,6 +1069,7 @@ def _savings_v2_depositor_ssr(
 
     return _accrue_daily(
         period, value_at, lambda d: ssr_at_or_before(ssr_history, d),
+        nominal=False,          # SSR appreciation: physical receipt, compounds
     )
 
 
@@ -1086,6 +1097,7 @@ def _psm3_susds_spread(psm_usds: pd.DataFrame | None, period: Period) -> Decimal
         period,
         lambda d: cum_at_or_before(psm_usds, "cum_susds", d),
         base_rate_spread_at,
+        nominal=True,
     )
 
 
@@ -1121,6 +1133,7 @@ def _psm3_susds_appreciation(
         period,
         lambda d: cum_at_or_before(psm_usds, "cum_susds", d),
         lambda d: ssr_at_or_before(ssr_history, d),
+        nominal=False,          # SSR appreciation: physical receipt, compounds
     )
 
 
@@ -1592,7 +1605,7 @@ def _aggregate_curve_idle_usds(
     from ..normalize.sources.curve_pool import CurvePoolSource
     from .sky_revenue import base_rate_spread_at
     from ._helpers import (
-        CompoundingAccrual, daily_compounding_factor, ssr_at_or_before,
+        CompoundingAccrual, apr_daily, daily_compounding_factor, ssr_at_or_before,
     )
 
     # Exclude uniswap_v4 venues — they reuse the curve_idle_usds schema but
@@ -1641,10 +1654,9 @@ def _aggregate_curve_idle_usds(
     # Separate accumulators for par-stable (utilized deduction) and
     # sky-savings-token (spread revenue + full-SSR appreciation).
     daily_util: dict = {}
-    # Per-venue compounding state, deliberately per venue rather than on the
-    # cross-venue aggregate: each venue's accrued spread/SSR belongs to that
-    # venue's position, and ``susds_ssr_by_venue`` needs the per-venue split
-    # anyway for the Case-3b re-attribution.
+    # Per-venue state. The Case-3b SSR leg compounds (physical receipt); the
+    # 20 bps spread leg is nominal and simply summed, mirroring the BR charge
+    # it offsets.
     #
     # The two agree exactly only while every venue holds a position on the
     # same days — then (ΣP_v + Σacc_v) × f == Σ (P_v + acc_v) × f, since the
@@ -1655,7 +1667,7 @@ def _aggregate_curve_idle_usds(
     # 20bps: $84,850.29 per-venue vs $84,853.89 aggregate — $3.60). Per
     # venue is the intended semantics; today only spark.yaml S24 uses a
     # sky_savings_token curve coin, so the difference is not yet live.
-    _venue_spread_acc: dict[str, CompoundingAccrual] = {}
+    _venue_spread: dict[str, Decimal] = {}
     susds_ssr_by_venue: dict[str, Decimal] = {}
     # Per-venue compounding state for the Case-3b SSR integral.
     _venue_ssr_acc: dict[str, CompoundingAccrual] = {}
@@ -1776,9 +1788,8 @@ def _aggregate_curve_idle_usds(
                 # NB: on an RPC-failure day the carried-forward value is
                 # accrued at the CURRENT day's rate, not the last
                 # successful day's — correct across the 30→20bps step.
-                _venue_spread_acc.setdefault(venue.id, CompoundingAccrual()).add(
-                    prime_susds_value,
-                    daily_compounding_factor(base_rate_spread_at(current)),
+                _venue_spread[venue.id] = _venue_spread.get(venue.id, Decimal(0)) + (
+                    prime_susds_value * apr_daily(base_rate_spread_at(current))
                 )
                 if ssr_history is not None:
                     _venue_ssr_acc.setdefault(venue.id, CompoundingAccrual()).add(
@@ -1803,9 +1814,7 @@ def _aggregate_curve_idle_usds(
     else:
         util_df = _empty_psm_df()
 
-    susds_spread = sum(
-        (a.total for a in _venue_spread_acc.values()), Decimal("0"),
-    )
+    susds_spread = sum(_venue_spread.values(), Decimal("0"))
     return util_df, susds_spread, susds_ssr_by_venue
 
 
@@ -1990,7 +1999,7 @@ def _log_sky_revenue_debug(
             f"{float(row['lending_idle'])/1e6:>8.2f}M  "
             f"{float(row['utilized'])/1e6:>9.2f}M  "
             f"{row['ssr_apy']*100:>5.2f}%  "
-            f"{row['base_apy']*100:>5.2f}%  "
+            f"{row['base_apr']*100:>5.2f}%  "
             f"${float(row['daily_sky_rev']):>11,.2f}"
         )
     lines.append("  " + "─" * len(hdr))
@@ -4085,10 +4094,12 @@ def compute_monthly_pnl(
             "curve_idle":          str(row["curve_idle"]),
             "lending_idle":        str(row["lending_idle"]),
             "utilized":            str(row["utilized"]),
+            # ssr_apy stays an APY (that is what the chain quotes); the
+            # derived rates below are NOMINAL (APR) since 2026-09-01.
             "ssr_apy":             row["ssr_apy"],
-            "base_apy":            row["base_apy"],
-            "ref_rate_apy":        row["ref_rate_apy"],
-            "sub_apy":             row["sub_apy"],
+            "base_apr":            row["base_apr"],
+            "ref_rate_apr":        row["ref_rate_apr"],
+            "sub_apr":             row["sub_apr"],
             "t_months":            row["t_months"],
             "daily_sky_rev":       str(row["daily_sky_rev"]),
             "daily_sky_rev_gross": str(row["daily_sky_rev_gross"]),

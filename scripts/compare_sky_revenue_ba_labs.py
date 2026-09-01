@@ -148,9 +148,9 @@ def ref_rate_at(d: date, rates: list[tuple[date, Decimal]]) -> Decimal:
 
 
 # Grove subsidy curve (from config/grove.yaml):
-#   subsidised_apy = ref_rate + (base_apy - ref_rate) × min(T, 24) / 24
+#   subsidised_apr = ref_rate + (base_apr - ref_rate) × min(T, 24) / 24
 # where T = full months since 2026-01-01, applied to first $1B of utilised.
-# base_apy = SSR + 30bps; we approximate SSR ≈ 6.0% (Sky SSR was 6% in early 2026,
+# base_apr = apy_to_apr(SSR,12) + 30bps; we approximate SSR ≈ 6.0% (Sky SSR was 6% in early 2026,
 # trending down). For the BA Labs comparison the absolute rate matters less
 # than the formula shape — we honour the SSR variation by reading it from
 # our own daily compute output when possible.
@@ -176,18 +176,18 @@ def _months_elapsed(d: date) -> int:
     return max(0, (d.year - _PROGRAM_START.year) * 12 + (d.month - _PROGRAM_START.month))
 
 
-def base_apy_for_date(d: date) -> Decimal:
+def base_apr_for_date(d: date) -> Decimal:
     """Approximate full BR APY at date d."""
     ssr = _SSR_BY_MONTH.get((d.year, d.month), Decimal("0.0450"))
-    # Plain addition, matching ``_helpers.add_spread``: BR = SSR + spread is
-    # a rate definition (3.7200% at SSR 3.52% + 20bps). Composed
-    # multiplicatively here until 2026-08-24, which overstated the base by
-    # SSR x spread (0.70 bps).
-    return ssr + _BR_SPREAD
+    # NOMINAL base rate, matching ``_helpers.apy_to_apr``: SSR is an APY and
+    # is converted at n=12 (the settlement cadence) before the APR spread is
+    # added. 3.464456% + 0.20% = 3.664456% at SSR 3.52% + 20bps.
+    from settle.compute._helpers import apy_to_apr
+    return apy_to_apr(ssr) + _BR_SPREAD
 
 
 def subsidised_apy_for_date(d: date, ref_rate: Decimal) -> Decimal:
-    base = base_apy_for_date(d)
+    base = base_apr_for_date(d)
     t = min(_months_elapsed(d), _SUBSIDY_RAMP_MONTHS)
     return ref_rate + (base - ref_rate) * Decimal(t) / Decimal(_SUBSIDY_RAMP_MONTHS)
 
@@ -277,7 +277,7 @@ def implied_for_month(
             continue
         util = max(Decimal(0), last_debt - last_idle)
         ref = ref_rate_at(d, rates)
-        base = base_apy_for_date(d)
+        base = base_apr_for_date(d)
         sub = subsidised_apy_for_date(d, ref)
         # Apply subsidy only to first $1B of utilised.
         sub_part = min(util, _SUBSIDY_CAP_USD)

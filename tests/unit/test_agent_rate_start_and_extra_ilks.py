@@ -37,17 +37,15 @@ def test_agent_rate_start_date_gates_accrual():
     gated = compute_agent_rate(
         _period_july(), usds, susds, _flat_ssr(), start_date=date(2026, 7, 20),
     )
-    # 12 accruing days (Jul 20–31) out of 31. The accrual COMPOUNDS
-    # (2026-08-24), so the gated figure is NOT the linear 12/31 of the full
-    # month — it is P × ((1+f)^12 − 1) against the full month's
-    # P × ((1+f)^31 − 1).
-    from settle.compute._helpers import add_spread, daily_compounding_factor
+    # 12 accruing days (Jul 20–31) out of 31. The accrual is NOMINAL
+    # (2026-09-01), so the gated figure IS the linear 12/31 of the month.
+    from settle.compute._helpers import apr_daily, apy_to_apr
     from settle.compute.agent_rate import AGENT_RATE_OVER_SSR
-    f = daily_compounding_factor(add_spread(Decimal("0.0352"), AGENT_RATE_OVER_SSR))
+    f = apr_daily(apy_to_apr(Decimal("0.0352")) + AGENT_RATE_OVER_SSR)
     P = Decimal("10000000")
-    assert abs(gated - P * ((1 + f) ** 12 - 1)) < Decimal("1e-9")
-    assert abs(full - P * ((1 + f) ** 31 - 1)) < Decimal("1e-9")
-    assert gated < full / 31 * 12   # compounding is back-loaded
+    assert abs(gated - P * f * 12) < Decimal("1e-9")
+    assert abs(full - P * f * 31) < Decimal("1e-9")
+    assert abs(gated - full / 31 * 12) < Decimal("1e-9")
     # No gate (default) == full month.
     assert compute_agent_rate(_period_july(), usds, susds, _flat_ssr(),
                               start_date=None) == full

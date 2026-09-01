@@ -27,10 +27,9 @@ import pandas as pd
 
 from ..domain.period import Period
 from ._helpers import (
-    CompoundingAccrual,
-    add_spread,
+    apr_daily,
+    apy_to_apr,
     cum_at_or_before,
-    daily_compounding_factor,
     ssr_at_or_before,
 )
 
@@ -42,7 +41,10 @@ AGENT_RATE_OVER_SSR = Decimal("0.002")
 AGENT_RATE_SUSDS_ONLY = AGENT_RATE_OVER_SSR  # alias for readability at the call site
 
 # Pre-compute the sUSDS daily factor — it doesn't depend on SSR.
-_SUSDS_DAILY_FACTOR = daily_compounding_factor(AGENT_RATE_SUSDS_ONLY)
+# sUSDS in the subproxy earns the 20bps alone (SSR already accrues via the
+# token index and is kept by the prime). The 20bps is a governance APR, so
+# it needs no conversion — just the nominal daily slice.
+_SUSDS_DAILY_RATE = apr_daily(AGENT_RATE_SUSDS_ONLY)
 
 
 def compute_agent_rate(
@@ -61,12 +63,10 @@ def compute_agent_rate(
     effective (Osero: 10M USDS since 2026-03-30, payable only from first
     allocation in July 2026). ``None`` = accrue from balance history alone.
     """
-    # Accrued agent rate compounds (operator decision 2026-08-24) — the
-    # two legs accrue independently since they carry different rates: USDS
-    # at SSR ⊕ 20bps, sUSDS at the 20bps spread alone (its SSR is already
-    # inside the daily principal via chi).
-    usds_acc = CompoundingAccrual()
-    susds_acc = CompoundingAccrual()
+    # NOMINAL (APR) accrual, no intra-period compounding — the agent rate
+    # is ``SSR_apr + 20bps`` and an APR's compounding happens at the MSC,
+    # when the amount is settled (2026-09-01; see ``apy_to_apr``).
+    total = Decimal("0")
     current = period.start
     while current <= period.end:
         if start_date is not None and current < start_date:
@@ -75,17 +75,17 @@ def compute_agent_rate(
         cum_usds = cum_at_or_before(subproxy_usds, "cum_balance", current)
         cum_susds = cum_at_or_before(subproxy_susds, "cum_balance", current)
 
-        # USDS earns the full agent rate = SSR + 20bps.
+        # USDS earns the full agent rate = SSR_apr + 20bps. SSR is an APY
+        # (it compounds per-second on-chain); the 20bps is a governance APR.
+        # Convert the first before adding, so both are nominal.
         if cum_usds > 0:
             ssr_apy = ssr_at_or_before(ssr, current)
-            # ``agent rate = SSR + 20bps`` — plain arithmetic addition (a
-            # rate definition, not two stacked yields). See ``add_spread``.
-            usds_apy = add_spread(ssr_apy, AGENT_RATE_OVER_SSR)
-            usds_acc.add(cum_usds, daily_compounding_factor(usds_apy))
+            usds_apr = apy_to_apr(ssr_apy) + AGENT_RATE_OVER_SSR
+            total += cum_usds * apr_daily(usds_apr)
 
         if cum_susds > 0:
-            susds_acc.add(cum_susds, _SUSDS_DAILY_FACTOR)
+            total += cum_susds * _SUSDS_DAILY_RATE
 
         current = current + timedelta(days=1)
 
-    return usds_acc.total + susds_acc.total
+    return total

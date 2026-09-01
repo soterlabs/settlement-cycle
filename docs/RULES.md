@@ -2,15 +2,46 @@
 
 Reference rules for computing prime agent revenues in the Sky ecosystem. These rules apply to all agents (OBEX, Skybase, Grove, Spark). Established after reconciling Dune queries against MSC settlement posts.
 
-## Rule 1: Use APY, not APR
+## Rule 1: The Base Rate is NOMINAL (APR); SSR is an APY and is converted
 
-All calculations use **APY with per-second compounding**, matching how the SSR accrues onchain:
+**Revised 2026-09-01** (see PRD §17.13). The two rates in `BR = SSR + spread`
+are quoted in different units, and mixing them was the root of a long-running
+discrepancy:
+
+* **SSR is an APY** — it compounds per-second into the sUSDS index on-chain.
+* **The spread (and the subsidy reference rate) are nominal APRs.**
+
+So SSR is converted to its nominal equivalent before the two are added:
 
 ```
-daily_interest = D × [(1 + APY)^(1/365) - 1]
+SSR_apr        = 12 × [(1 + SSR_apy)^(1/12) - 1]      # n=12: the settlement cadence
+base_apr       = SSR_apr + spread                      # 3.464456% + 0.20% = 3.664456%
+daily_interest = D × base_apr / 365                    # NOMINAL — no intra-period compounding
 ```
 
-The MSC settlement posts use a simpler APR approach (`D × rate / 365`), which overstates daily interest by ~1.8%. This is flagged as a discrepancy in `agents/obex/findings/` for each month.
+Three properties this buys:
+
+1. `BR − SSR − spread = 0` exactly, which is what makes Sky net zero on idle
+   sUSDS (the whole point of the spread reimbursement).
+2. `(1 + base_apr/12)^12` recovers the APY exactly, because the conversion
+   frequency matches the frequency at which the charge actually compounds.
+3. It matches the MSC settlement posts, which have always used `D × rate/365`.
+
+**The charge still compounds — just not inside the period.** Each month's
+charge is capitalised into the prime's ilk debt at the MSC (`vat.grab` with
+positive `dart`; allocator ilks have `duty = 0` and a frozen `vat.rate`, so
+this is the capitalisation mechanism), and `cum_debt` sums frob + grab. The
+enlarged principal then pays BR from the settlement day onward, with no code
+required.
+
+**Still an APY, deliberately:** the SSR-appreciation legs (PSM3 sUSDS
+appreciation, the Curve Case-3b integral, Savings-V2 depositor SSR). Those
+model a *physical receipt* — the index really does compound per-second — so
+a nominal sum would under-credit what the prime demonstrably received.
+
+*Superseded:* "All calculations use APY with per-second compounding", which
+applied `D × [(1+APY)^(1/365) − 1]` to every leg. It made `BR − SSR − spread`
+non-zero and billed `ln(1+APY)` over a year instead of the APY.
 
 ## Rule 2: Track SSR changes via SP-BEAM
 

@@ -27,7 +27,7 @@ def _hist(rows: list[tuple[str, float]], kind: str = "tbill_3m") -> ReferenceRat
     return ReferenceRateHistory(
         rates=pd.DataFrame({
             "effective_date": [date.fromisoformat(d) for d, _ in rows],
-            "ref_rate_apy":   [r for _, r in rows],
+            "ref_rate_apr":   [r for _, r in rows],
         }),
         kind=kind,
     )
@@ -84,7 +84,7 @@ def test_subsidised_apy_t_zero_full_subsidy():
     """T=0: subsidised = ref_rate (full subsidy)."""
     out = subsidised_apy(
         base_apy=Decimal("0.043"),
-        ref_rate_apy=Decimal("0.0367"),
+        ref_rate_apr=Decimal("0.0367"),
         months_elapsed=0,
     )
     assert out == Decimal("0.0367")
@@ -94,7 +94,7 @@ def test_subsidised_apy_t_full_ramp_returns_base():
     """T=24 (or above): subsidised = base_apy (no subsidy)."""
     out = subsidised_apy(
         base_apy=Decimal("0.043"),
-        ref_rate_apy=Decimal("0.0367"),
+        ref_rate_apr=Decimal("0.0367"),
         months_elapsed=24,
     )
     assert out == Decimal("0.043")
@@ -104,7 +104,7 @@ def test_subsidised_apy_midway():
     """T=12: halfway between ref_rate and base_apy."""
     out = subsidised_apy(
         base_apy=Decimal("0.043"),
-        ref_rate_apy=Decimal("0.0367"),
+        ref_rate_apr=Decimal("0.0367"),
         months_elapsed=12,
     )
     expected = Decimal("0.0367") + (Decimal("0.043") - Decimal("0.0367")) * Decimal("12") / Decimal("24")
@@ -116,7 +116,7 @@ def test_subsidised_apy_clamps_when_ref_rate_above_base():
     than the unsubsidised rate. This is the live Spark Jan-Feb 2026 case."""
     out = subsidised_apy(
         base_apy=Decimal("0.043"),
-        ref_rate_apy=Decimal("0.0433"),
+        ref_rate_apr=Decimal("0.0433"),
         months_elapsed=0,
     )
     # Without the clamp, T=0 would give 4.33% (above 4.30%).
@@ -127,7 +127,7 @@ def test_subsidised_apy_negative_months_treated_as_zero():
     """Period entirely before program_start (negative T) → full subsidy."""
     out = subsidised_apy(
         base_apy=Decimal("0.043"),
-        ref_rate_apy=Decimal("0.0367"),
+        ref_rate_apr=Decimal("0.0367"),
         months_elapsed=-3,
     )
     assert out == Decimal("0.0367")

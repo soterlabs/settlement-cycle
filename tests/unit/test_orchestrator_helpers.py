@@ -331,16 +331,16 @@ def test_compute_sky_revenue_subtracts_usds_leg_only_routes_usdc_to_sde():
     # utilized = 100M − 0 − 30M (USDS leg) − 30M (USDC via SDE) = $40M
     # sUSDS leg ($30M) stays in the BR base; the prime gets a separate
     # 30 bps credit through ``_psm3_susds_spread`` (tested below).
-    from settle.compute._helpers import add_spread
+    from settle.compute._helpers import apr_daily, apy_to_apr
     from settle.compute.sky_revenue import BASE_RATE_OVER_SSR as _BR_SPREAD
-    expected = Decimal("40000000") * daily_compounding_factor(
-        add_spread(Decimal("0.047"), _BR_SPREAD)
+    expected = Decimal("40000000") * apr_daily(
+        apy_to_apr(Decimal("0.047")) + _BR_SPREAD
     )
-    assert rev == expected
+    assert abs(rev - expected) < Decimal("1e-9")
 
 
 def test_psm3_susds_spread_30bps_daily():
-    """``_psm3_susds_spread`` returns Σ_d cum_susds × daily_factor(30bps).
+    """``_psm3_susds_spread`` returns Σ_d cum_susds × 30bps/365 (nominal).
     Verifies the neutralising credit's magnitude: $100M sUSDS leg over 10
     days at 30 bps ≈ $100M × 30bps × 10/365 ≈ $8,219."""
     from settle.compute._helpers import daily_compounding_factor
@@ -359,10 +359,9 @@ def test_psm3_susds_spread_30bps_daily():
                     pin_blocks={Chain.BASE: 1, Chain.ETHEREUM: 1})
 
     out = _psm3_susds_spread(df, period)
-    # Compounds (2026-08-24) like the BR charge it offsets: closed form
-    # P × ((1+f)^n − 1) for constant principal + rate.
-    _f = daily_compounding_factor(BASE_RATE_OVER_SSR)
-    expected = Decimal("100000000") * ((1 + _f) ** 10 - 1)
+    # NOMINAL (2026-09-01), like the BR charge it offsets: V × rate × n/365.
+    from settle.compute._helpers import apr_daily
+    expected = Decimal("100000000") * apr_daily(BASE_RATE_OVER_SSR, 10)
     assert abs(out - expected) < Decimal("1e-9")
     assert Decimal("8000") < out < Decimal("8500")
 

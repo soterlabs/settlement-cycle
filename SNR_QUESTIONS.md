@@ -125,6 +125,27 @@ figure** (it would omit ~15.2M). The June cycle's prime-side economics
 are in `settlements/<prime>/2026-06`; its paid Sky figures remain
 reconstructible from `settlement_blocks['2026-07']`.
 
+## Rate units — Atlas clarification requests (2026-09-01)
+
+1. **[Atlas/BA] SOFR day-count basis.** The Atlas defines SOFR as "the rate
+   (expressed as an annual rate) ... as administered and published by the
+   Federal Reserve Bank of New York" but does not state a day-count. The Fed
+   annualises SOFR on **actual/360**; we accrue on `n/365`, so we
+   under-accrue it by ~1.39% of its value (~5 bps on the reference). Using
+   it as published keeps the subsidy alive; converting to the /365-equivalent
+   (3.6977% at a 3.647% print) would push the reference above `BR_apr` and
+   clamp the subsidy to zero. One sentence in the Atlas would settle it.
+
+2. **[Atlas] The T-Bill article.** Same question — the 3M is quoted both as
+   a discount rate (/360) and a coupon-equivalent yield (/365), and which one
+   "the Treasury Bill Rate" means determines what we should pull. Dormant
+   while SOFR is the reference, but it governs any restatement of Jan–Jul.
+
+3. **[internal] Thin subsidy headroom.** `BR_apr` (3.664456%) now sits ~1.4
+   bps above SOFR, so the subsidy can clamp on and off day to day (SOFR
+   printed 3.66% on 2026-08-25, above `BR_apr`). Expect `zero_benefit`
+   warnings to appear more often — rate environment, not a defect.
+
 ## Cross-cutting (internal follow-ups)
 
 - **MSC#11 (August 2026):** back-fill `settlement_blocks['2026-08']`,
