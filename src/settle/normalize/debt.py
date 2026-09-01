@@ -36,13 +36,16 @@ def _art_at_or_before(df: pd.DataFrame, d: date) -> Decimal:
       but a frame carrying floats would otherwise propagate one into the
       rate-scaling multiply below and raise ``float * Decimal``.
 
-    Deliberately NOT tolerant of ``df is None`` — unlike ``cum_at_or_before``,
-    whose zero-default suits *flow* series where "no rows" means "no activity".
-    A missing DEBT frame must not resolve to zero debt: that is zero Base Rate
-    and a silently under-billed prime. Let it raise, as it did before.
+    KNOWN GAP (pre-dates this function's hardening, unchanged by it): an
+    empty-but-shaped frame returns 0 for every day, so a source whose query
+    was renamed or returned no rows expands to a full month of zero debt —
+    zero Base Rate, a silently under-billed prime. ``require_non_empty`` in
+    ``compute_sky_revenue`` does NOT catch it, because by then the frame has
+    been expanded to one row per day and is no longer empty. The guard can't
+    simply move here: Grove's ``extra_ilks`` ilk legitimately has no rows
+    before it was created (ALLOCATOR-GROVE-A, first activity 2026-07), so
+    "empty" is only suspicious for the PRIMARY ilk. Needs a per-ilk policy.
     """
-    if df.empty:
-        return Decimal("0")
     eligible = df[df["block_date"] <= d]
     if eligible.empty:
         return Decimal("0")

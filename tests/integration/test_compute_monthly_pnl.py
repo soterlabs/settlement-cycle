@@ -156,16 +156,19 @@ def test_monthly_pnl_obex_synthetic_one_venue(obex, fixed_pin_blocks):
     # Position balance source — return 100M shares (raw = 100M × 10^6) for the
     # venue token.
     #
-    # It must dispatch by token, though: `normalize.balances` re-reads the
-    # subproxy's USDS balance on-chain at the SoM block and re-seeds the Dune
-    # series to match. A single fixed raw_balance answers that 18-decimal query
-    # with the 6-decimal venue figure — 10^14 wei = 0.0001 USDS — so the anchor
-    # would zero out the 20M subproxy holding and agent_rate would come back 0.
+    # It must dispatch by (token, holder), though: `normalize.balances`
+    # re-reads the subproxy's own balances on-chain at the SoM/EoM blocks and
+    # re-seeds the Dune series to match. A single fixed raw_balance answers
+    # those 18-decimal queries with the 6-decimal venue figure — 10^14 wei =
+    # 0.0001 — which zeroes out the 20M USDS holding (agent_rate → 0) and
+    # seeds a spurious sUSDS balance. Keying on token alone would leave the
+    # sUSDS leg riding on `balances.py`'s `abs(seed) > 0.01` threshold, so
+    # answer for the subproxy explicitly and per token.
     class _BalanceByToken(MockPositionBalanceSource):
         def balance_at(self, chain, token, holder, block):
             self.calls.append((chain, token, holder, block))
-            if token == _USDS:
-                return 20_000_000 * 10**18
+            if holder == obex.subproxy[Chain.ETHEREUM].value:
+                return 20_000_000 * 10**18 if token == _USDS else 0
             return self.raw_balance
 
     position_balance_src = _BalanceByToken(raw_balance=100_000_000 * 10**6)
@@ -1080,9 +1083,14 @@ def test_monthly_pnl_invokes_block_resolver_for_both_som_and_eom(obex):
     som_anchor = datetime.combine(date(2026, 2, 28), time.max, tzinfo=timezone.utc)
     assert eom_anchor in anchors
     assert som_anchor in anchors
-    # SoM is resolved as its own anchor, not merely as a by-product of the
-    # daily expansion — that only covers 2026-03-01..03-31.
-    assert som_anchor < datetime.combine(date(2026, 3, 1), time.max, tzinfo=timezone.utc)
+    # Cardinality, derived from the actual calls rather than from literals:
+    # exactly one resolved anchor precedes March, and it is the SoM anchor.
+    # Catches a regression that stopped resolving SoM as its own anchor, and
+    # one that re-resolved it once per day. (The EoM anchor is deliberately
+    # not counted — March 31 EoD is also the daily expansion's last day, so
+    # it legitimately appears twice.)
+    march_1 = datetime.combine(date(2026, 3, 1), time.min, tzinfo=timezone.utc)
+    assert [a for a in anchors if a < march_1] == [som_anchor]
     # The pin blocks ended up on the result.
     assert result.period.pin_blocks[Chain.ETHEREUM] == 99
     assert result.pin_blocks_som[Chain.ETHEREUM] == 99
