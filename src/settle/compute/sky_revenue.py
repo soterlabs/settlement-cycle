@@ -105,7 +105,7 @@ _log = logging.getLogger(__name__)
 
 # Spread Sky charges over SSR for utilized debt. Per prime-settlement-
 # methodology §1 + debt-rate-methodology, the base rate = SSR + spread
-# (plain arithmetic addition — see ``_helpers.add_spread``).
+# NOMINAL: ``apy_to_apr(SSR, n=12) + spread`` — see ``_helpers.apy_to_apr``.
 #
 # The spread is DATED: the 2026-07-23 Stability Scope change that cut the
 # SSR 3.60% → 3.52% (on-chain sUSDS ``file("ssr")`` at 2026-07-23 14:43:23

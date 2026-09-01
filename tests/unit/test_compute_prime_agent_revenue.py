@@ -1672,16 +1672,16 @@ def _ssr_df(apy: str = "0.045") -> pd.DataFrame:
 
 
 def test_savings_v2_depositor_ssr_integrates_daily():
-    """Flat $300M TA all month at 4.5% SSR, compounded (2026-08-24):
-    ``300M × ((1+f)^31 − 1)``."""
+    """Flat $300M TA all month at 4.5% SSR: ``Σ_d 300M × f`` — a simple sum.
+    The principal is mark-to-market, so it already carries the compounding
+    and accumulating it again would double-count."""
     from settle.compute.monthly_pnl import _savings_v2_depositor_ssr
     from settle.compute._helpers import apr_daily, daily_compounding_factor
     ta = Decimal("300_000_000")
     src = _StubSv2Source({d: ta for d in range(1, 32)})
     total = _savings_v2_depositor_ssr(src, _StubDayResolver(), _ssr_df(), _period())
     _f = daily_compounding_factor(Decimal("0.045"))
-    expected = ta * ((1 + _f) ** 31 - 1)
-    assert abs(total - expected) < Decimal("1e-9")
+    assert abs(total - ta * _f * 31) < Decimal("1e-9")
     assert len(src.calls) == 31
 
 
@@ -1703,8 +1703,8 @@ def test_savings_v2_depositor_ssr_carries_forward_on_transient_zero():
     src = _StubSv2Source({d: ta for d in range(1, 32) if d != 15})
     total = _savings_v2_depositor_ssr(src, _StubDayResolver(), _ssr_df(), _period())
     _f = daily_compounding_factor(Decimal("0.045"))
-    expected = ta * ((1 + _f) ** 31 - 1)      # compounds (2026-08-24)
-    assert abs(total - expected) < Decimal("1e-9")  # day 15 carried forward
+    # all 31 days counted, day 15 carried forward
+    assert abs(total - ta * _f * 31) < Decimal("1e-9")
 
 
 def test_case3b_adjustment_plus_external_rebooks_susds_leg_to_prime():

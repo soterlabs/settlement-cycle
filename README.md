@@ -55,7 +55,7 @@ settlement-cycle/
 │   ├── grove/                 ← Phase-2 prime context (PRD, README, QUESTIONS)
 │   └── {keel,prysm,skybase,spark}/   ← Phase-3+ prime READMEs
 ├── reference/
-│   └── obex_monthly_pnl.sql   ← oracle target for Phase-1 e2e test
+│   └── obex_monthly_pnl.sql   ← historical reference implementation
 ├── settlements/<prime>/<month>/  ← generated artifacts (committed to git)
 ├── src/settle/
 │   ├── cli.py                 ← argparse entry point
@@ -156,4 +156,11 @@ after cloning.
 
 ## Status
 
-Phase 1 in progress (see PRD.md §13). OBEX 2026-03 settlement target: match the existing Dune query [`agents/obex/queries/obex_monthly_pnl.sql`](reference/obex_monthly_pnl.sql) within 0.01%.
+Phase 1 complete. The OBEX 2026-03 Dune query
+[`agents/obex/queries/obex_monthly_pnl.sql`](reference/obex_monthly_pnl.sql)
+was the original reconciliation oracle and matched to within 0.01%. Its e2e
+test was retired on 2026-09-01: the 2026-09-01 rate-methodology change (BR is
+nominal, see `docs/RULES.md` Rule 1) means the pipeline no longer matches a
+query written on the old convention, and past settlements are not restated —
+so the oracle could only ever assert a widening gap. Regenerate the SQL on the
+current methodology if an independent cross-check is wanted again.

@@ -17,7 +17,7 @@ The MSC framework currently exists as:
 - A POC ([`agents/shared/valuation_poc/`](docs/valuation_poc/)) that proved Dune and Python converge on the same numbers but that the per-asset valuation work is dramatically simpler in Python — `convertToAssets`, `balanceOf` of a rebasing aToken, Curve `pool.balances(i)` math, and RWA NAV feeds either don't exist on Dune or balloon to 50-line CTEs.
 - Architectural design ([`agents/shared/SETTLEMENT_ARCHITECTURE.md`](docs/SETTLEMENT_ARCHITECTURE.md)) that prescribes a hybrid Dune + RPC + off-chain pipeline.
 
-This PRD is the kickoff for the implementation. The deliverable is the Python package in this repo (`settlement-cycle`) that replaces the monolithic Dune query approach with a 4-stage Extract / Normalize / Compute / Load pipeline. The existing OBEX Dune query is preserved as a reconciliation oracle in [`reference/obex_monthly_pnl.sql`](reference/obex_monthly_pnl.sql) (used by the Phase-1 e2e test).
+This PRD is the kickoff for the implementation. The deliverable is the Python package in this repo (`settlement-cycle`) that replaces the monolithic Dune query approach with a 4-stage Extract / Normalize / Compute / Load pipeline. The existing OBEX Dune query is preserved in [`reference/obex_monthly_pnl.sql`](reference/obex_monthly_pnl.sql) as the historical reconciliation oracle. Its e2e test was retired 2026-09-01 — see §17.13: the rate methodology changed and past settlements are not restated, so a query on the old convention can no longer be a parity target.
 
 ### 1.1 Reference documents
 
@@ -395,7 +395,7 @@ settlement-cycle/                       ← this repo
 │   ├── integration/
 │   │   └── test_normalize_with_mock_sources.py
 │   └── e2e/
-│       └── test_obex_2026_03_against_dune_oracle.py
+│       └── (retired 2026-09-01 — see §17.13)
 ├── docs/                               ← design + per-prime context
 │   ├── RULES.md
 │   ├── SETTLEMENT_ARCHITECTURE.md, ASSET_CATALOG.md, VALUATION_METHODOLOGY.md
@@ -405,7 +405,7 @@ settlement-cycle/                       ← this repo
 │   ├── grove/                          ← Grove PRD/README/QUESTIONS (Phase 2)
 │   └── {keel,prysm,skybase,spark}/     ← Phase 3+ prime READMEs
 ├── reference/
-│   └── obex_monthly_pnl.sql            ← Phase-1 oracle target
+│   └── obex_monthly_pnl.sql            ← historical reference implementation
 ├── settlements/                        ← committed settlement artifacts
 │   └── <prime>/<month>/                ← {pnl.md, pnl.csv, venues.csv, provenance.json}
 ├── queries/                            ← Dune SQL files, parameterized
@@ -1191,9 +1191,12 @@ multiplicatively and then (2026-08-24) additively.
 **Why n = 12.** The conversion is exactly invertible only if the accrual
 compounds at the same frequency the conversion assumed. The charge
 compounds when the MSC capitalises it into the ilk debt — monthly — so
-n = 12 makes `(1 + BR_apr/12)^12` recover the APY to the digit. Converting
-at n → ∞ (`ln(1+APY)` = 3.459464%) and then compounding monthly leaves a
-0.52 bps/yr residual in the prime's favour; n = 12 zeroes it.
+n = 12 makes the conversion round-trip: `(1 + SSR_apr/12)^12 − 1` returns
+the SSR APY (3.52%) to the digit. NB this holds for the CONVERTED leg, not
+for `base_apr` — compounding that monthly gives 3.7266%, the APY equivalent
+of the Base Rate. Converting at n → ∞ (`ln(1+APY)` = 3.459464%) and then
+compounding monthly leaves a 0.52 bps/yr residual in the prime's favour;
+n = 12 zeroes it.
 
 **Cross-month compounding needs no code.** Allocator ilks carry `duty = 0`
 and a frozen `vat.rate`, but Sky calls `vat.grab` with positive `dart` at

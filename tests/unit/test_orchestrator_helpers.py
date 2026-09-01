@@ -406,10 +406,10 @@ def test_psm3_susds_appreciation_full_ssr_daily():
                     pin_blocks={Chain.BASE: 1, Chain.ETHEREUM: 1})
 
     out = _psm3_susds_appreciation(df, period, ssr)
-    # Compounds (2026-08-24) — on-chain the sUSDS index itself compounds.
+    # Simple sum: cum_susds is mark-to-market, so V_d already carries the
+    # compounding — accumulating it again would double-count (~+0.14%).
     _f = daily_compounding_factor(Decimal("0.045"))
-    expected = Decimal("100000000") * ((1 + _f) ** 10 - 1)
-    assert abs(out - expected) < Decimal("1e-9")
+    assert abs(out - Decimal("100000000") * _f * 10) < Decimal("1e-9")
     assert Decimal("115000") < out < Decimal("125000")
 
 
@@ -436,13 +436,10 @@ def test_psm3_susds_appreciation_tracks_ssr_changes():
 
     out = _psm3_susds_appreciation(df, period, ssr)
     v = Decimal("100000000")
-    # Compounds across the rate step: 5 days at 4.5%, then the accrued
-    # balance also earns the 4.0% factor for 5 more days.
+    # 5 days at 4.5%, 5 at 4.0% — simple sum (mark-to-market principal).
     f1 = daily_compounding_factor(Decimal("0.045"))
     f2 = daily_compounding_factor(Decimal("0.040"))
-    stage1 = v * ((1 + f1) ** 5 - 1)
-    expected = (v + stage1) * ((1 + f2) ** 5 - 1) + stage1
-    assert abs(out - expected) < Decimal("1e-9")
+    assert abs(out - v * (5 * f1 + 5 * f2)) < Decimal("1e-9")
 
 
 def test_psm3_susds_appreciation_empty_returns_zero():

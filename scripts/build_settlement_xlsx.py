@@ -796,8 +796,10 @@ def _write_debt(ws, prov: dict) -> None:
         spread is a governance-set APR, so SSR is converted to its
         nominal equivalent, ``12 × [(1+SSR)^(1/12) − 1]``, before the two
         are added. At SSR 3.52% + 20bps that is 3.464456% + 0.20% =
-        **3.664456%**. n = 12 matches the settlement cadence, so
-        ``(1 + base_apr/12)^12`` recovers the APY exactly.
+        **3.664456%**. n = 12 matches the settlement cadence, so the
+        conversion round-trips: ``(1 + SSR_apr/12)^12 - 1`` returns the
+        3.52% SSR APY exactly. (That identity is about the converted SSR
+        leg, not ``base_apr``.)
         ``sub_apr`` is the subsidised rate after the ramp: ``ref_rate +
         (base − ref_rate) × T/24``, clamped at base_apr when the
         reference exceeds it.

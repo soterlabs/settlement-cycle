@@ -13,18 +13,22 @@ from decimal import Decimal
 
 import pandas as pd
 
-# TWO rate conventions live here, and which one applies is a property of the
-# rate, not of the caller (2026-09-01; see PRD §17.13 and docs/RULES.md):
+# TWO daily factors live here, and which one applies is a property of the
+# RATE, not of the caller (2026-09-01; see PRD §17.13 and docs/RULES.md):
 #
-#   * NOMINAL (APR) — the Base Rate, the agent rate, the 20 bps
-#     reimbursement legs, Chronicle Points. Built with ``apy_to_apr`` and
-#     accrued with ``apr_daily``: no compounding inside the settlement
-#     period, because an APR's compounding happens when the MSC capitalises
-#     the charge into the ilk debt.
-#   * APY with per-second compounding — the SSR-appreciation legs only.
-#     Built with ``daily_compounding_factor`` and accumulated with
-#     ``CompoundingAccrual``, because the sUSDS index genuinely does
-#     compound per-second and those legs model a physical receipt.
+#   * ``apr_daily`` — for NOMINAL rates: the Base Rate, the agent rate, the
+#     20 bps reimbursement legs, Chronicle Points. An APR's compounding
+#     happens when the MSC capitalises the charge into the ilk debt, not
+#     inside the settlement period.
+#   * ``daily_compounding_factor`` — for APY-quoted rates, i.e. the
+#     SSR-appreciation legs, whose per-second growth the sUSDS index really
+#     does deliver.
+#
+# NEITHER is accumulated with interest-on-interest inside a period. For the
+# nominal legs that would contradict the APR definition; for the SSR legs
+# it would DOUBLE-COUNT, because their principal is already mark-to-market
+# (re-read via ``convertToAssets`` daily, so it carries the compounding
+# already). See ``monthly_pnl._accrue_daily``.
 SECONDS_PER_DAY = 86_400
 SECONDS_PER_YEAR = 365 * SECONDS_PER_DAY  # 31,536,000
 
@@ -65,9 +69,9 @@ def apy_to_apr(apy: Decimal, n: int = APR_COMPOUNDING_PERIODS) -> Decimal:
 
     At SSR 3.52% and n=12 this gives 3.464456%, so ``BR_apr`` = 3.664456%.
 
-    (Superseded ``add_spread``/``combine_apys``, which composed the rates
-    as APYs — additively from 2026-08-24, multiplicatively before that.
-    See PRD SS17.13.)
+    (Supersedes the former APY composition — multiplicative
+    ``(1+SSR)(1+spread)-1`` originally, briefly additive-on-APYs. Both
+    mixed an effective rate with a nominal one. See PRD SS17.13.)
     """
     if n < 1:
         raise ValueError(f"apy_to_apr: n must be >= 1, got {n}")
@@ -105,65 +109,6 @@ def daily_compounding_factor(apy: Decimal) -> Decimal:
     """
     f = (1.0 + float(apy)) ** (1.0 / 365) - 1.0
     return Decimal(str(f))
-
-
-class CompoundingAccrual:
-    """Daily interest accumulator where accrued interest itself earns.
-
-    The rate conversion in ``daily_compounding_factor`` is already exact
-    per-second (``(1+APY)^(1/365) ≡ ray^86400``), but *summing* those daily
-    amounts charges simple interest: day d's interest is computed on the
-    principal alone, never on interest accrued on days < d. Over a 31-day
-    month that understates the accrual by ~0.15% of the interest (~$18.1K
-    across primes in July 2026). Sky's own SSR cost compounds per-second
-    on-chain, so the asymmetry favoured the primes.
-
-    Scope narrowed 2026-09-01: the Base Rate, the agent rate and the 20 bps
-    reimbursement legs are now NOMINAL (APR) and accrue simply via
-    ``apr_daily`` — they do not use this class. It remains for the
-    SSR-APPRECIATION legs only (PSM3 sUSDS appreciation, the Curve Case-3b
-    integral, Savings-V2 depositor SSR), which model a physical receipt:
-    the sUSDS index really does compound per-second, so crediting a simple
-    sum would under-credit what the prime demonstrably received. Usage::
-
-        acc = CompoundingAccrual()
-        for day in period:
-            acc.add(principal_d, daily_compounding_factor(apy_d))
-        total = acc.total
-
-    ``add`` charges ``(principal + accrued) × factor`` and returns that
-    day's increment (so per-day report rows still sum to ``total``). The
-    factor is the *current* day's, so a mid-period rate change applies to
-    the accrued balance from that day forward.
-
-    Scope: WITHIN one settlement period. It starts fresh each month, and
-    that is not a gap — the month's charge is **capitalised into
-    the prime's ilk debt** at the settlement, so it compounds across months
-    through the debt base instead. Allocator ilks carry a frozen
-    ``vat.rate`` and no ``jug`` duty, but Sky governance calls ``vat.grab``
-    with positive ``dart`` to fold accrued interest into
-    ``urns[ilk][u].art`` (see the selector notes in
-    ``queries/debt_timeseries.sql``), and ``cum_debt`` sums frob + grab —
-    so from the settlement day the enlarged principal pays the Base Rate
-    automatically, with no code here.
-
-    Consequence: do NOT also carry an accrued-interest balance across the
-    month boundary. Charging BR on unpaid interest AND on the debt minted
-    to capitalise that same interest bills it twice. The only genuinely
-    uncompensated window is between month-end and the settlement date
-    (~20 days), which is a settlement-lag question, not a compounding one.
-    """
-
-    __slots__ = ("total",)
-
-    def __init__(self) -> None:
-        self.total = Decimal("0")
-
-    def add(self, principal: Decimal, factor: Decimal) -> Decimal:
-        """Accrue one day; returns the day's interest increment."""
-        interest = (principal + self.total) * factor
-        self.total += interest
-        return interest
 
 
 def cum_at_or_before(
