@@ -315,19 +315,30 @@ def _centrifuge_in_flight_shares(
     # uses a single request id of 0 per holder. ``pending`` and
     # ``claimable`` are disjoint states of the same request, so summing
     # them cannot double-count.
+    # NO degrade-to-zero here. The deployment probe above already succeeded,
+    # so a failure at this point is an RPC outage, not an absent contract —
+    # and silently returning 0 re-introduces exactly the phantom this
+    # function exists to remove (Grove E9: −$22,492,398.88 straight onto Sky
+    # at 100% SDE), leaving only a log line inside a published,
+    # counterparty-facing settlement. Same contract as ``rpc.balance_of``,
+    # which hard-fails for the same reason: a settlement that cannot read
+    # its inputs must stop, not guess.
     raw_total = 0
     for label, selector in (("pending", _SEL_PR), ("claimable", _SEL_CR)):
         data = selector + _pu(0) + _pa(holder)
         try:
             out = _eth_call(venue.chain, vault, data, block)
-            raw_total += int(out, 16) if out and out not in ("0x", "0x0") else 0
-        except Exception as exc:  # noqa: BLE001
-            _log.warning(
-                "_centrifuge_in_flight_shares: %s redeem read failed for %s "
-                "at block %d (%s) — no in-flight adjustment applied for that "
-                "leg; the venue may book a phantom loss.",
-                label, venue.id, block, exc,
-            )
+        except Exception as exc:
+            raise RuntimeError(
+                f"_centrifuge_in_flight_shares: {label} redeem read failed "
+                f"for venue {venue.id} on {venue.chain.value} at block "
+                f"{block} ({type(exc).__name__}: {exc}). The vault IS "
+                f"deployed at this block, so this is an RPC failure, not an "
+                f"absent contract. Refusing to continue: treating it as "
+                f"'no in-flight redemption' would book the escrowed shares "
+                f"as a phantom loss. Retry once the endpoint recovers."
+            ) from exc
+        raw_total += int(out, 16) if out and out not in ("0x", "0x0") else 0
 
     if raw_total == 0:
         return Decimal("0")

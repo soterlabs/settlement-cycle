@@ -412,9 +412,13 @@ def test_non_centrifuge_venue_gets_no_adjustment(monkeypatch, tmp_cache_dir):
     assert _centrifuge_in_flight_shares(_prime([venue]), venue, _EOM_BLOCK) == Decimal("0")
 
 
-def test_failed_read_degrades_instead_of_aborting(monkeypatch, tmp_cache_dir):
-    """An RPC failure must not abort the settlement — degrade to no adjustment."""
-    from decimal import Decimal
+def test_failed_read_raises_rather_than_booking_a_phantom(monkeypatch, tmp_cache_dir):
+    """A read failure on a DEPLOYED vault must stop the run, not return 0.
+
+    Degrading to 0 here is indistinguishable from "no in-flight redemption",
+    which silently re-books the phantom loss into a published settlement.
+    """
+    import pytest as _pytest
     from settle.normalize.positions import _centrifuge_in_flight_shares
     import settle.extract.rpc as _rpc
 
@@ -423,5 +427,17 @@ def test_failed_read_degrades_instead_of_aborting(monkeypatch, tmp_cache_dir):
 
     monkeypatch.setattr(_rpc, "is_contract_deployed", lambda *a: True)
     monkeypatch.setattr(_rpc, "eth_call", _boom)
+    venue = _centrifuge_venue()
+    with _pytest.raises(RuntimeError, match="in-flight"):
+        _centrifuge_in_flight_shares(_prime([venue]), venue, _EOM_BLOCK)
+
+
+def test_undeployed_vault_still_degrades_quietly(monkeypatch, tmp_cache_dir):
+    """Not-yet-deployed is a real state (venue onboarded mid-period), not an
+    outage — it must return 0 without raising."""
+    from decimal import Decimal
+    from settle.normalize.positions import _centrifuge_in_flight_shares
+
+    _patch_rpc(monkeypatch, deployed=False, eth_call_return=_NONZERO)
     venue = _centrifuge_venue()
     assert _centrifuge_in_flight_shares(_prime([venue]), venue, _EOM_BLOCK) == Decimal("0")

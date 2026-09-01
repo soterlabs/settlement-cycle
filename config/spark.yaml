@@ -235,16 +235,21 @@ venues:
   # ── Blue Chip USDT: TWO deployments, not one ──────────────────────────
   # The vault was redeployed in June 2026 and the ALM position moved across.
   # Both addresses report the same symbol()/name(), so they are told apart
-  # only by address. ALM totalAssets per EoM pin (verified on-chain
-  # 2026-09-01):
+  # only by address. Verified on-chain 2026-09-01. NOTE the two columns
+  # below are the VAULT-level totalAssets() (all depositors), which is what
+  # identifies which deployment is live — it is NOT the ALM's position. The
+  # ALM's position is its share balance × pps, and that is what the
+  # settlement prices; e.g. Aug S65 = 32,108,672.25 shares × 1.012473 =
+  # $32,509,163.72, matching the rendered summary.
   #
-  #        pre-2026-06 (S11)      2026-06 redeploy (S65)
-  #   Mar         $40,002                          $0
-  #   Apr     $51,710,590                          $0
-  #   May     $71,943,534                          $0
-  #   Jun           $2.76                 $48,207,256
-  #   Jul           $2.77                 $61,099,723
-  #   Aug           $2.78                 $32,785,844
+  #        vault totalAssets()          ALM position value (S65)
+  #        pre-2026-06 (S11)  2026-06 redeploy (S65)
+  #   Mar         $40,002                       $0                    $0
+  #   Apr     $51,710,590                       $0                    $0
+  #   May     $71,943,534                       $0                    $0
+  #   Jun           $2.76              $48,207,256           $45,918,530.86
+  #   Jul           $2.77              $61,099,723           $60,823,719.85
+  #   Aug           $2.78              $32,785,844           $32,509,163.72
   #
   # The config carried ONLY the pre-June address, so Jun/Jul/Aug priced this
   # venue at ~$2.76 of dust instead of $32–61M, losing ~$110K/month of Cat B
@@ -1285,7 +1290,7 @@ principal_return_overrides:
       # monthly sweep size) and 51,000,000 + 267,944 are round-principal
       # readings. Classified entirely capital along with the principal —
       # conservative for the prime, consistent with the 2026-07-16 entry
-      # above — pending Anchorage's split confirmation (S31 / QUESTIONS.md).
+      # above — pending Anchorage's split confirmation (S31 / S33, QUESTIONS.md).
       # Note a separate $36,438.00 arrived at the escrow on 2026-08-24 and a
       # further $3,698.00 on 2026-08-25, neither forwarded to the ALM within
       # August, so neither is in this month's S26 flow.

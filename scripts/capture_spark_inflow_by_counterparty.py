@@ -161,7 +161,11 @@ def main() -> int:
             # Derived, not hardcoded: the old literal said "→ 2026-07-31"
             # and silently went stale the moment the pin blocks advanced,
             # which is exactly the wrong thing for an audit artifact.
-            f"{all_rows[0]['block_date'][:10] if all_rows else '?'} → "
+            # min()/max() over ALL rows, not all_rows[0]: the list is sorted
+            # by (venue_id, block_date, ...), so [0] is the earliest date of
+            # the alphabetically-first venue, not the global start — and
+            # venues begin on different dates (S64 RLUSD only in 2026-08).
+            f"{min(r['block_date'][:10] for r in all_rows) if all_rows else '?'} → "
             f"{max(r['block_date'][:10] for r in all_rows) if all_rows else '?'}."
         ),
         "_dune_query_id": QUERY_ID,

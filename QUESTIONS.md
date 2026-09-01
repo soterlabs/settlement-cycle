@@ -525,7 +525,7 @@ blocking any current work.
 ### P0 — material numerical gaps
 
 
-#### S61. Anchorage tri-party loan — principal/interest split of the 2026-08-17 $51,267,944 rollover
+#### S33. Anchorage tri-party loan — principal/interest split of the 2026-08-17 $51,267,944 rollover
 
 **Concrete impact (Spark Aug 2026):** one atomic USDC transfer of
 **$51,267,944.00** arrived from the Anchorage Spark escrow
