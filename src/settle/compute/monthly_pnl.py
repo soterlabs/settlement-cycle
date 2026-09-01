@@ -773,15 +773,30 @@ def _sde_asset_value_timeseries(
         min_transfer_amount=Decimal(0),
     )
 
+    from ..normalize.positions import _centrifuge_in_flight_shares
+
     rows = []
     current = period.start
     while current <= period.end:
         bal = cum_at_or_before(bal_df, "cum_balance", current)
+        # ``bal`` is reconstructed from ERC-20 transfers, and an ERC-7540
+        # ``requestRedeem`` moves shares into the vault escrow as a plain
+        # Transfer — so a position mid-redemption reads as gone here while
+        # ``get_position_value`` (which tops the escrow back in) still counts
+        # it. Per the MSC async-settlement rule, a two-leg transaction only
+        # changes attributed value when the SECOND leg completes: a redeemed
+        # position stays attributed until the proceeds settle. Both places
+        # that answer "what is this position worth" must therefore agree, or
+        # the SDE deduction understates ``utilized`` and OVERSTATES
+        # sky_revenue (Grove E9, 2026-08-31: $25,000,012 for one day ≈ $2,548
+        # at BR 3.72%). Resolve the block first — a fully-escrowed position
+        # reads bal == 0 and would otherwise skip the lookup entirely.
+        eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
+        block = block_resolver.block_at_or_before(venue.chain.value, eod)
+        bal = bal + _centrifuge_in_flight_shares(prime, venue, block)
         if bal == 0:
             raw_value = Decimal("0")
         else:
-            eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
-            block = block_resolver.block_at_or_before(venue.chain.value, eod)
             raw_value = bal * nav_at_block(block)
         if (start_date is not None and current < start_date) or (
             end_date is not None and current > end_date

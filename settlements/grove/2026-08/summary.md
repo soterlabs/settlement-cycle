@@ -19,15 +19,15 @@ Period: 2026-08-01 → 2026-08-31 (31 days)
 
 | Field | USDS |
 |---|---:|
-| **supply-side revenue** | **4,715,579.37** |
+| **supply-side revenue** | **4,718,089.27** |
 
 ### Sky side
 
 | Field | USDS |
 |---|---:|
-| prime cost of funds | 3,723,114.75 |
+| prime cost of funds | 3,720,604.84 |
 | sky direct exposure | 4,619,206.04 |
-| **supply-side revenue** | **8,342,320.79** |
+| **supply-side revenue** | **8,339,810.89** |
 
 ## Per-venue
 
