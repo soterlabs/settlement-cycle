@@ -35,8 +35,13 @@ def _art_at_or_before(df: pd.DataFrame, d: date) -> Decimal:
     * Coerce to ``Decimal``. Every production source emits Decimal already,
       but a frame carrying floats would otherwise propagate one into the
       rate-scaling multiply below and raise ``float * Decimal``.
+
+    Deliberately NOT tolerant of ``df is None`` — unlike ``cum_at_or_before``,
+    whose zero-default suits *flow* series where "no rows" means "no activity".
+    A missing DEBT frame must not resolve to zero debt: that is zero Base Rate
+    and a silently under-billed prime. Let it raise, as it did before.
     """
-    if df is None or df.empty:
+    if df.empty:
         return Decimal("0")
     eligible = df[df["block_date"] <= d]
     if eligible.empty:
