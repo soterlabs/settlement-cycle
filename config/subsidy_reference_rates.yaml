@@ -402,6 +402,13 @@ rates:
   # (markets.newyorkfed.org/api/rates/secured/sofr), `percentRate` verbatim.
   # Business days only; weekends/holidays resolve via the Atlas carry-forward
   # rule ("the most recently published rate prior to that date").
+  #
+  # ENDS 2026-08-28. Monday 2026-08-31 is a business day whose rate publishes
+  # on 09-01 and was not yet available when this was fetched — re-checked the
+  # same day, still absent. It therefore carries forward from 08-28 (3 days,
+  # well inside the staleness guard), which is exactly the Atlas rule, but
+  # ADD THE 08-31 PRINT BEFORE RUNNING MSC#12 so the last day of the August
+  # settlement period uses its own rate.
   - effective_date: '2026-08-03'
     sofr_apr: 0.0365
   - effective_date: '2026-08-04'

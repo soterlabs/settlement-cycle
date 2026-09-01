@@ -13,15 +13,18 @@ from decimal import Decimal
 
 import pandas as pd
 
-# All rates compound at per-second APR — same granularity as the SSR's
-# on-chain accrual (`drip()` advances per `block.timestamp`). The one-day
-# factor integrates the per-second factor across `SECONDS_PER_DAY` —
-# mathematically identical to ``(1+APY)^(1/365)-1`` since
-# ``apr_per_sec = ln(1+APY) / SECONDS_PER_YEAR``.
+# TWO rate conventions live here, and which one applies is a property of the
+# rate, not of the caller (2026-09-01; see PRD §17.13 and docs/RULES.md):
 #
-# NOTE (2026-08-24): the per-day factor was always exact, but the daily
-# amounts used to be SUMMED, which charged simple interest across days.
-# Accruals now compound via ``CompoundingAccrual`` below.
+#   * NOMINAL (APR) — the Base Rate, the agent rate, the 20 bps
+#     reimbursement legs, Chronicle Points. Built with ``apy_to_apr`` and
+#     accrued with ``apr_daily``: no compounding inside the settlement
+#     period, because an APR's compounding happens when the MSC capitalises
+#     the charge into the ilk debt.
+#   * APY with per-second compounding — the SSR-appreciation legs only.
+#     Built with ``daily_compounding_factor`` and accumulated with
+#     ``CompoundingAccrual``, because the sUSDS index genuinely does
+#     compound per-second and those legs model a physical receipt.
 SECONDS_PER_DAY = 86_400
 SECONDS_PER_YEAR = 365 * SECONDS_PER_DAY  # 31,536,000
 

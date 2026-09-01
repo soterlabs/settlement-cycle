@@ -250,7 +250,6 @@ def compute_sky_revenue_daily(
     # The compounding that does happen is the MSC capitalising the charge
     # into the prime's ilk debt, which shows up in ``cum_debt`` on its own.
     total = Decimal("0")
-    total_gross = Decimal("0")
     current = period.start
     while current <= period.end:
         cum_debt = cum_at_or_before(debt, "cum_debt", current)
@@ -329,7 +328,6 @@ def compute_sky_revenue_daily(
         # Curve / lending deductions were applied."  Stored per-day so the
         # orchestrator can sum it and write sky_revenue_gross to provenance.
         daily_rev_gross = _day_interest(cum_debt)
-        total_gross += daily_rev_gross
         rows.append({
             "date":               current,
             "cum_debt":           cum_debt,
@@ -397,8 +395,8 @@ def summarize_subsidy(
     the "Rates & subsidy" panel only formats this dict, so the report can
     never drift from the rate schedule actually charged in
     ``compute_sky_revenue_daily``. Every CoF figure here is recomputed with
-    the same ``daily_compounding_factor`` (and the same cap-tranche split as
-    ``_daily_rev_for``) that produced ``daily_sky_rev``, so
+    the same nominal ``apr_daily`` slice and the same cap-tranche split that
+    produced ``daily_sky_rev``, so
     ``sub_tranche_cof + exc_tranche_cof == actual_cof == Σ daily_sky_rev`` to
     the cent and ``subsidy_benefit == full_br_cof − actual_cof``.
 

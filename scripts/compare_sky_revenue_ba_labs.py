@@ -186,17 +186,21 @@ def base_apr_for_date(d: date) -> Decimal:
     return apy_to_apr(ssr) + _BR_SPREAD
 
 
-def subsidised_apy_for_date(d: date, ref_rate: Decimal) -> Decimal:
+def subsidised_apr_for_date(d: date, ref_rate: Decimal) -> Decimal:
     base = base_apr_for_date(d)
     t = min(_months_elapsed(d), _SUBSIDY_RAMP_MONTHS)
     return ref_rate + (base - ref_rate) * Decimal(t) / Decimal(_SUBSIDY_RAMP_MONTHS)
 
 
-def daily_compound(apy: Decimal) -> Decimal:
-    """Convert APY to daily compound factor: (1+apy)^(1/365) - 1."""
-    from decimal import getcontext
-    getcontext().prec = 50
-    return (Decimal(1) + apy) ** (Decimal(1) / Decimal(365)) - Decimal(1)
+def apr_daily(apr: Decimal) -> Decimal:
+    """One day of a NOMINAL annual rate: apr / 365.
+
+    Mirrors ``settle.compute._helpers.apr_daily``. Replaced the former
+    ``daily_compound`` (an APY -> daily-factor converter) on 2026-09-01:
+    ``base_apr_for_date`` now returns a nominal rate, and feeding a nominal
+    rate through ``(1+x)^(1/365)-1`` under-accrues it by ~1.8%.
+    """
+    return apr / Decimal(365)
 
 
 # ----------------------------------------------------------------------------
@@ -278,12 +282,12 @@ def implied_for_month(
         util = max(Decimal(0), last_debt - last_idle)
         ref = ref_rate_at(d, rates)
         base = base_apr_for_date(d)
-        sub = subsidised_apy_for_date(d, ref)
+        sub = subsidised_apr_for_date(d, ref)
         # Apply subsidy only to first $1B of utilised.
         sub_part = min(util, _SUBSIDY_CAP_USD)
         excess_part = max(Decimal(0), util - _SUBSIDY_CAP_USD)
-        daily_int_full = util * daily_compound(base)
-        daily_int_sub = sub_part * daily_compound(sub) + excess_part * daily_compound(base)
+        daily_int_full = util * apr_daily(base)
+        daily_int_sub = sub_part * apr_daily(sub) + excess_part * apr_daily(base)
         debt_sum += last_debt
         idle_sum += last_idle
         util_sum += util

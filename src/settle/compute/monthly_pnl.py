@@ -975,7 +975,7 @@ def _susds_cat_b_spread_reimb(
     the prime's net cost is SSR × V (economic neutrality, Rule 5). The
     spread is date-resolved (30bps; 20bps from 2026-07-23).
 
-    Formula: ``Σ_d V_d × daily_compounding_factor(base_rate_spread_at(d))``
+    Formula: ``Σ_d V_d × base_rate_spread_at(d) / 365``  (nominal)
     where ``V_d = value_som + (cum_inflow_d − cum_inflow_{som-1})`` is the
     daily sUSDS position value across ``[period.start, period.end]``.
 
@@ -1086,7 +1086,7 @@ def _psm3_susds_spread(psm_usds: pd.DataFrame | None, period: Period) -> Decimal
     SSR-+-BR-charge-+-spread-credit composite nets to zero. See PRD §17.11.
     The spread is date-resolved (30bps; 20bps from 2026-07-23).
 
-    Formula: ``Σ_d cum_susds_d × daily_compounding_factor(base_rate_spread_at(d))``
+    Formula: ``Σ_d cum_susds_d × base_rate_spread_at(d) / 365``  (nominal)
     where d ranges over days in ``[period.start, period.end]``.
     """
     if psm_usds is None or psm_usds.empty or "cum_susds" not in psm_usds.columns:
@@ -1658,15 +1658,13 @@ def _aggregate_curve_idle_usds(
     # 20 bps spread leg is nominal and simply summed, mirroring the BR charge
     # it offsets.
     #
-    # The two agree exactly only while every venue holds a position on the
-    # same days — then (ΣP_v + Σacc_v) × f == Σ (P_v + acc_v) × f, since the
-    # factor is date-only. They diverge when active windows differ, because
-    # a venue with no position on day d skips accrual entirely, so its
-    # already-accrued balance stops earning while a pooled balance would
-    # keep going (two $500M venues on disjoint halves of a 31-day month at
-    # 20bps: $84,850.29 per-venue vs $84,853.89 aggregate — $3.60). Per
-    # venue is the intended semantics; today only spark.yaml S24 uses a
-    # sky_savings_token curve coin, so the difference is not yet live.
+    # Per-venue vs a pooled accumulator: identical for the NOMINAL spread leg
+    # (summation is associative), and identical for the COMPOUNDING SSR leg
+    # only while every venue holds a position on the same days. The SSR leg
+    # diverges when active windows differ — a venue with no position on day d
+    # skips accrual, so its accrued balance stops earning while a pooled one
+    # would keep going. Per venue is the intended semantics either way, and
+    # ``susds_ssr_by_venue`` needs the split for the Case-3b re-attribution.
     _venue_spread: dict[str, Decimal] = {}
     susds_ssr_by_venue: dict[str, Decimal] = {}
     # Per-venue compounding state for the Case-3b SSR integral.
@@ -1783,8 +1781,9 @@ def _aggregate_curve_idle_usds(
                 # BR−SSR spread the prime earns on its sUSDS slice, and
                 # (Case 3b) the full-SSR integral on the same daily values,
                 # which the orchestrator uses to re-book the sUSDS-leg
-                # appreciation out of the SDE pot. Both compound
-                # (2026-08-24), matching the BR charge they offset.
+                # appreciation out of the SDE pot. The spread leg is NOMINAL
+                # (it mirrors the equally-nominal BR charge it offsets); the
+                # SSR leg compounds (physical receipt). 2026-09-01.
                 # NB: on an RPC-failure day the carried-forward value is
                 # accrued at the CURRENT day's rate, not the last
                 # successful day's — correct across the 30→20bps step.

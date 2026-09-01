@@ -390,6 +390,11 @@ def _write_subsidy_panel(ws, summary: dict) -> None:
     def _pct(key):  # rate may be None (no subsidy-active days)
         return (float(summary[key]), _PCT) if summary.get(key) is not None else ("n/a", None)
 
+    def _pct_compat(apr_key, apy_key):
+        """Same, tolerating the pre-2026-09-01 ``*_apy`` key names."""
+        v = _rate(summary, apr_key, apy_key)
+        return (float(v), _PCT) if v is not None else ("n/a", None)
+
     ws.append(["Rates & subsidy — effective rate charged this period"])
     ws.cell(ws.max_row, 1).font = _BOLD
     ws.append(["Metric", "Value"]); _header_row(ws, ws.max_row, 2)
@@ -398,10 +403,10 @@ def _write_subsidy_panel(ws, summary: dict) -> None:
          float(_D(summary["sub_tranche_balance"])), _USD0)
     _row("  — excess (full base-rate tranche)",
          float(_D(summary["exc_tranche_balance"])), _USD0)
-    _row("Base rate (BR_apr = apy_to_apr(SSR,12) + spread; 30bps, 20bps from 2026-07-23), period avg", float(summary["base_apr_avg"]), _PCT)
-    _row(f"Reference rate ({kind}), period avg", *_pct("ref_apr_avg"))
-    _row("Subsidised rate (BR*), period avg", *_pct("sub_apr_avg"))
-    _row("Effective blended rate charged", float(summary["effective_apr"]), _PCT, bold=True)
+    _row("Base rate (BR_apr = apy_to_apr(SSR,12) + spread; 30bps, 20bps from 2026-07-23), period avg", float(_rate(summary, "base_apr_avg", "base_apy_avg")), _PCT)
+    _row(f"Reference rate ({kind}), period avg", *_pct_compat("ref_apr_avg", "ref_apy_avg"))
+    _row("Subsidised rate (BR*), period avg", *_pct_compat("sub_apr_avg", "sub_apy_avg"))
+    _row("Effective blended rate charged", float(_rate(summary, "effective_apr", "effective_apy")), _PCT, bold=True)
     _row("Diff vs base rate (bps)", float(summary["diff_bps"]), "0.0", bold=True)
     _row("Subsidy benefit to prime (USD)", float(_D(summary["subsidy_benefit"])), _USD, bold=True)
 
@@ -760,6 +765,17 @@ def _write_sde_daily(ws, prov: dict) -> None:
     _set_widths(ws, {1: 12, 2: 18, 3: 18, 4: 18, 5: 18})
 
 
+def _rate(d: dict, apr_key: str, apy_key: str):
+    """Read a rate that was renamed ``*_apy`` -> ``*_apr`` on 2026-09-01.
+
+    Months settled before that date keep the old keys in their (gitignored,
+    on-disk) provenance and are deliberately NOT restated, so re-rendering
+    their workbooks has to keep working. Falls back to the legacy name.
+    """
+    v = d.get(apr_key)
+    return d.get(apy_key) if v is None else v
+
+
 def _write_debt(ws, prov: dict) -> None:
     """Per-day ilk-debt + Sky-charge breakdown.
 
@@ -824,7 +840,7 @@ def _write_debt(ws, prov: dict) -> None:
 
     # If no row has subsidy data populated, omit the three subsidy columns
     # (T, ref_rate, sub_apr) — keeps the tab tight for non-subsidy primes.
-    has_subsidy = any(r.get("sub_apr") is not None for r in rows)
+    has_subsidy = any(_rate(r, "sub_apr", "sub_apy") is not None for r in rows)
 
     cols = [
         "Date",
@@ -836,7 +852,7 @@ def _write_debt(ws, prov: dict) -> None:
         "− Lending idle",
         "= utilized",
         "SSR APY",
-        "base APY",
+        "base APR",
     ]
     if has_subsidy:
         cols += ["T (months)", "ref_rate APR", "sub APR"]
@@ -861,10 +877,11 @@ def _write_debt(ws, prov: dict) -> None:
             float(_D(r["lending_idle"])),
             float(_D(r["utilized"])),
             r["ssr_apy"],
-            r["base_apr"],
+            _rate(r, "base_apr", "base_apy"),
         ]
         if has_subsidy:
-            out += [r.get("t_months"), r.get("ref_rate_apr"), r.get("sub_apr")]
+            out += [r.get("t_months"), _rate(r, "ref_rate_apr", "ref_rate_apy"),
+                    _rate(r, "sub_apr", "sub_apy")]
         out += [float(rev), float(gross)]
         ws.append(out)
         row_n = ws.max_row
@@ -875,7 +892,7 @@ def _write_debt(ws, prov: dict) -> None:
         for c in (9, 10):
             ws.cell(row_n, c).number_format = _PCT
         if has_subsidy:
-            for c in (12, 13):  # ref_rate APY, sub APY (T stays integer)
+            for c in (12, 13):  # ref_rate APR, sub APR (T stays integer)
                 ws.cell(row_n, c).number_format = _PCT
         for c in (len(cols) - 1, len(cols)):
             ws.cell(row_n, c).number_format = _USD

@@ -1240,9 +1240,13 @@ conversion, weighted 70.8% by the ramp at T=6.
    in `SNR_QUESTIONS.md` as a clarification request.
 
 **Note on thin headroom.** BR_apr (3.664456%) now sits only ~1.4 bps above
-SOFR, so the subsidy can clamp on and off day to day (SOFR printed 3.66% on
-2026-08-25, above BR_apr). Expect `zero_benefit` warnings to appear more
-often; that is the rate environment, not a defect.
+SOFR. August 2026's prints ranged 3.62%-3.66%, so the subsidy applied on
+every day of the month — but the highest print (3.66%, 2026-08-25) came
+within 0.45 bps of BR_apr. A further SSR cut or a SOFR uptick of half a
+basis point would clamp the subsidy to zero on individual days, so
+`zero_benefit` warnings become a live possibility rather than a signal of
+stale data. Judge them against the day's prints before treating one as a
+defect.
 
 #### High priority (Grove Q1 — added 2026-05-02 after Grove team workbook reconciliation)
 **E1 aHorRwaRLUSD off-pool yield channel.** Aave Horizon's on-chain `liquidityIndex` only grows ~0.87% APY (matches our $67K Feb 2026 revenue exactly); the remaining $447K of Grove team's $514K is **off-chain rewards accrual** (Holdings sheet `Rewards` column grew +$431K with `claimed` flat). Most likely fed from Merkl (`MERKL_DISTRIBUTOR = 0x3Ef3D8bA38EBe18DB133cEc108f4D14CE00Dd9Ae` in Grove address registry) or Aave Horizon's own RWA-fund accrual API. Until Grove confirms the canonical feed we won't integrate (mis-attribution risk). **See QUESTIONS.md G3.**

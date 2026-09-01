@@ -23,8 +23,11 @@ Three properties this buys:
 
 1. `BR − SSR − spread = 0` exactly, which is what makes Sky net zero on idle
    sUSDS (the whole point of the spread reimbursement).
-2. `(1 + base_apr/12)^12` recovers the APY exactly, because the conversion
-   frequency matches the frequency at which the charge actually compounds.
+2. The conversion round-trips: `(1 + SSR_apr/12)^12 − 1` returns the SSR APY
+   (3.52%) exactly, because the conversion frequency matches the frequency at
+   which the charge actually compounds. NB this holds for the *converted leg*,
+   not for `base_apr` — compounding `base_apr` monthly gives 3.7266%, which is
+   the APY equivalent of the Base Rate, not the SSR.
 3. It matches the MSC settlement posts, which have always used `D × rate/365`.
 
 **The charge still compounds — just not inside the period.** Each month's

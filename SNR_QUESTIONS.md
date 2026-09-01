@@ -142,9 +142,12 @@ reconstructible from `settlement_blocks['2026-07']`.
    while SOFR is the reference, but it governs any restatement of Jan–Jul.
 
 3. **[internal] Thin subsidy headroom.** `BR_apr` (3.664456%) now sits ~1.4
-   bps above SOFR, so the subsidy can clamp on and off day to day (SOFR
-   printed 3.66% on 2026-08-25, above `BR_apr`). Expect `zero_benefit`
-   warnings to appear more often — rate environment, not a defect.
+   bps above SOFR. August 2026 printed 3.62%-3.66%, so the subsidy applied
+   all month, but the 2026-08-25 print (3.66%) came within 0.45 bps of
+   `BR_apr`. Half a basis point of movement either way would clamp it to
+   zero on individual days, so a `zero_benefit` warning is now a plausible
+   rate outcome rather than proof of stale data — check the day's prints
+   before treating one as a defect.
 
 ## Cross-cutting (internal follow-ups)
 
