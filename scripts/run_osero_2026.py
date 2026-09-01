@@ -117,8 +117,9 @@ def main() -> int:
         # reports — no recompute (no RPC / Dune). Osero has no tagged DR yet, so
         # this is a fast no-op; the flag still prevents a full recompute.
         from settle.load import refresh_dr_only
+        from _months_arg import requested_months
         print("OSERO — DR-only refresh from settle-dr-dune (no recompute)")
-        refresh_dr_only("osero")
+        refresh_dr_only("osero", months=requested_months())
         return 0
 
     logging.basicConfig(

@@ -118,7 +118,20 @@ def _build_canonical_xlsx(prime_id: str, month_str: str, output_dir: Path) -> Pa
     return xlsx_path if xlsx_path.exists() else None
 
 
-def refresh_dr_only(prime_id: str) -> list[Path]:
+# Demand-side components that the summary renderer emits and that
+# ``write_provenance`` writes unconditionally. A provenance file MISSING one of
+# these predates that primitive, so re-rendering it would silently drop the
+# line from an already-published report — skybase 2026-01…06 lost
+# ``governance accessibility rewards`` (January demand-side 314,251.68 →
+# 222,064.54) exactly this way. Absent is not the same as zero, and only the
+# absent case is unsafe.
+_DEMAND_SIDE_FIELDS = ("gar", "chronicle_points")
+
+
+def refresh_dr_only(
+    prime_id: str,
+    months: "set[str] | None" = None,
+) -> list[Path]:
     """Refresh ONLY Distribution Rewards in already-written settlements.
 
     For each existing ``settlements/<prime_id>/<month>/provenance.json``, patch
@@ -127,16 +140,40 @@ def refresh_dr_only(prime_id: str) -> list[Path]:
     (the provenance.json must exist). The patch is idempotent: it applies the
     delta vs the current ``distribution_rewards`` so re-running is safe and
     submodule updates flow through.
+
+    ``months`` restricts the refresh to a set of ``YYYY-MM`` labels; the
+    default touches every month that has a provenance file. Without it a
+    single-month DR bump re-renders the whole history, which is how the
+    schema-drift regression above reached six published skybase reports.
+
+    Months whose provenance predates a demand-side primitive are SKIPPED with
+    a loud message rather than re-rendered — see ``_DEMAND_SIDE_FIELDS``.
     """
     base = _REPO_ROOT / "settlements" / prime_id
     if not base.exists():
         print(f"no settlements/{prime_id}/ — run a full settlement first")
         return []
     updated: list[Path] = []
+    matched = 0        # months the --months filter actually selected
     for prov_path in sorted(base.glob("*/provenance.json")):
         with prov_path.open() as f:
             prov = json.load(f)
         month = prov.get("month") or f"{prov['period']['start'][:7]}"
+        if months is not None and month not in months:
+            continue
+        matched += 1
+        stale_fields = [
+            f for f in _DEMAND_SIDE_FIELDS if f not in (prov.get("results") or {})
+        ]
+        if stale_fields:
+            print(
+                f"  {month}: SKIPPED — provenance predates "
+                f"{', '.join(stale_fields)} and re-rendering would drop "
+                f"{'that line' if len(stale_fields) == 1 else 'those lines'} "
+                f"from the published report. Re-run a full settlement for "
+                f"this month first."
+            )
+            continue
         dr = load_dr(prime_id, month)
         if dr is None:
             # No DR source for this prime/month (unmapped prime, missing
@@ -172,6 +209,18 @@ def refresh_dr_only(prime_id: str) -> list[Path]:
         _build_canonical_xlsx(prime_id, month, out_dir)
         print(f"  {month}: distribution_rewards={float(new):,.2f} ({len(dr['rows'])} ref codes)")
         updated.append(out_dir)
+    if months is not None and matched == 0:
+        # An explicit --months that selected NO month must not read as
+        # success: the plan-based runners fail loud on a zero-match filter and
+        # this path should behave the same way. Only reported when the filter
+        # itself matched nothing — a month that matched but carried no DR (a
+        # prime with no DR group, e.g. obex) already says so on its own line.
+        on_disk = sorted(d.parent.name for d in base.glob("*/provenance.json"))
+        print(
+            f"  --months {','.join(sorted(months))}: no such month on disk. "
+            f"Months with a provenance.json under settlements/{prime_id}/: "
+            f"{', '.join(on_disk) if on_disk else '(none)'}"
+        )
     return updated
 
 

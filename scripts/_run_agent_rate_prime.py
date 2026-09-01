@@ -100,8 +100,9 @@ def run(prime_id: str) -> int:
         # Refresh Distribution Rewards from settle-dr-dune into the existing
         # reports — no recompute (no RPC / Dune). Needs a prior full run.
         from settle.load import refresh_dr_only
+        from _months_arg import requested_months
         print(f"{prime_id.upper()} — DR-only refresh from settle-dr-dune (no recompute)")
-        refresh_dr_only(prime_id)
+        refresh_dr_only(prime_id, months=requested_months())
         return 0
 
     logging.basicConfig(

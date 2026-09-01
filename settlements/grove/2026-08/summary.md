@@ -11,9 +11,9 @@ Period: 2026-08-01 → 2026-08-31 (31 days)
 | Field | USDS |
 |---|---:|
 | agent rate | 78,320.96 |
-| distribution rewards | 0.00 |
+| distribution rewards | 16,620.77 |
 | chronicle points | 12,218.71 |
-| **demand-side revenue** | **90,539.67** |
+| **demand-side revenue** | **107,160.44** |
 
 #### Supply-Side revenue
 
@@ -65,6 +65,15 @@ Period: 2026-08-01 → 2026-08-31 (31 days)
 | E38 | Agora AUSD incentives (cash distribution to Grove Eth ALM) | $0.00 | $0.00 | $0.00 | $857,964.00 | $857,964.00 | $0.00 | 0% | $0.00 |
 | E40 | USDS raw (Diamond PAU ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E41 | JTRSY Basin escrow — USDS pending subscription (Diamond PAU) | $1,000,000.00 | $12,500,000.00 | $11,500,000.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
+
+## DR per ref code
+
+| ref_code | DR (USD) | notes |
+|---|---:|---|
+| 2001 | $2,640.22 |  |
+| 2008 | $10,886.82 |  |
+| 2012 | $3,093.73 |  |
+| **Total** | **$16,620.77** | |
 
 ## Off-protocol holdings
 

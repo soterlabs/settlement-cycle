@@ -114,8 +114,9 @@ def main() -> int:
         # reports — no recompute (no RPC / Dune). obex has no tagged DR, so
         # this is a fast no-op; the flag still prevents a full recompute.
         from settle.load import refresh_dr_only
+        from _months_arg import requested_months
         print("OBEX — DR-only refresh from settle-dr-dune (no recompute)")
-        refresh_dr_only("obex")
+        refresh_dr_only("obex", months=requested_months())
         return 0
 
     logging.basicConfig(

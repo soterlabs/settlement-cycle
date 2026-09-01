@@ -11,8 +11,8 @@ Period: 2026-08-01 → 2026-08-31 (31 days)
 | Field | USDS |
 |---|---:|
 | agent rate | 145,038.81 |
-| distribution rewards | 0.00 |
-| **demand-side revenue** | **145,038.81** |
+| distribution rewards | 694,641.15 |
+| **demand-side revenue** | **839,679.96** |
 
 #### Supply-Side revenue
 
@@ -109,4 +109,35 @@ Period: 2026-08-01 → 2026-08-31 (31 days)
 | S63 | Spark Savings V2 — spUSDG vault (Robinhood Chain) | $21,723,212.72 | $18,807,814.58 |
 
 > Position values above are **excluded from `prime_agent_revenue`** per the Savings V2 scope decision (the depositor-side VSR liability is outside the MSC/ALM accounting boundary — see `docs/spark/PRD_savings_vaults.md` §3 and `QUESTIONS.md` S30). Reconciliations against Spark / BA Labs dashboards, which net the VSR, will differ by ≈ the period's VSR accrual. Per-vault values remain in `provenance.json` under `venue_breakdown[]`.
+
+## DR per ref code
+
+| ref_code | DR (USD) | notes |
+|---|---:|---|
+| 127 | $369.92 | Synthetic code: untagged sUSDC |
+| 128 | $609,890.05 |  |
+| 129 | $31.60 |  |
+| 130 | $3,325.47 | Synthetic code: Untagged spUSDT — Spark's own product; Spark reports this code directly (payable to Spark). |
+| 131 | $4,014.11 | Synthetic code: Untagged spUSDC — folded into 128 by Spark on their side (payable to Spark). |
+| 182 | $0.01 |  |
+| 183 | $3,686.17 |  |
+| 186 | $1,997.35 |  |
+| 188 | $5,265.28 |  |
+| 190 | $367.72 |  |
+| 191 | $21,392.78 |  |
+| 192 | $21,979.17 |  |
+| 194 | $1.66 |  |
+| 195 | $221.90 |  |
+| 196 | $0.10 |  |
+| 197 | $11,231.95 | stUSDS |
+| 200 | $5,867.13 |  |
+| 202 | $33.37 |  |
+| 204 | $0.54 |  |
+| 205 | $0.21 |  |
+| 214 | $20.28 |  |
+| 216 | $222.08 |  |
+| 217 | $58.96 |  |
+| 224 | $2,669.74 |  |
+| 9001 | $1,993.60 | Synthetic code: USDS in Aave aEthUSDS; entire contract balance. Intraday TWA (clean methodology) — the deployed Dune query used EOD snapshots, which under-count ~20% on heavy-flow months. |
+| **Total** | **$694,641.15** | |
 

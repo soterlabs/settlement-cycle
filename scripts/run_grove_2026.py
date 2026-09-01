@@ -159,8 +159,9 @@ def main() -> int:
         # Refresh Distribution Rewards from settle-dr-dune into the existing
         # reports — no recompute (no RPC / Dune). Needs a prior full run.
         from settle.load import refresh_dr_only
+        from _months_arg import requested_months
         print("Grove — DR-only refresh from settle-dr-dune (no recompute)")
-        refresh_dr_only("grove")
+        refresh_dr_only("grove", months=requested_months())
         return 0
 
     print("Grove 2026 multi-month settlement (Jan → Aug)")
