@@ -54,12 +54,15 @@ SPARK_ALM = {
 # (July 31 EoM blocks: eth 25656292, base 49376526, arb 489802913,
 # op 154971811, uni 54794040, avax 91716609).
 PIN_BLOCK = {
-    "ethereum":    25670000,
-    "base":        49450000,
-    "arbitrum":   490400000,
-    "optimism":   155050000,
-    "unichain":    54950000,
-    "avalanche_c": 91870000,
+    # ~2026-09-01 heads — safely past the August 31 EoM blocks (eth EoM
+    # 25878704, base 50715726, arb 500455224, op 156311011, uni 57472440,
+    # avax 94159927), and verified at-or-below each chain's current head.
+    "ethereum":    25880000,
+    "base":        50730000,
+    "arbitrum":   500500000,
+    "optimism":   156330000,
+    "unichain":    57490000,
+    "avalanche_c": 94180000,
 }
 
 # Cat A "raw idle" venues only (par-stable tokens at the ALM).
@@ -83,6 +86,10 @@ CAT_A_VENUES = [
     ("S52", "unichain",    "0x7e10036acc4b56d4dfca3b77810356ce52313f9c"),  # USDS-uni
     ("S53", "unichain",    "0x078d782b760474a361dda0af3839290b0ef57ad6"),  # USDC-uni
     ("S55", "avalanche_c", "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e"),  # USDC-ava
+    # Added 2026-09-01 with the S64 venue — without a counterparty log a
+    # Cat A venue's balance transits book as ±yield (the E13/E14 Grove
+    # phantoms), and this one moved a quarter-billion in its first month.
+    ("S64", "ethereum",    "0x8292bb45bf1ee4d140127049757c2e0ff06317ed"),  # RLUSD
 ]
 
 
@@ -150,7 +157,16 @@ def main() -> int:
         "_about": (
             f"Spark Cat A inflow_by_counterparty — captured {time.strftime('%Y-%m-%d')} "
             f"via published inflow_by_counterparty.sql (Dune query {QUERY_ID}). "
-            "holder = chain-specific Spark ALM. Covers 2024-11-18 → 2026-07-31."
+            "holder = chain-specific Spark ALM. Covers "
+            # Derived, not hardcoded: the old literal said "→ 2026-07-31"
+            # and silently went stale the moment the pin blocks advanced,
+            # which is exactly the wrong thing for an audit artifact.
+            # min()/max() over ALL rows, not all_rows[0]: the list is sorted
+            # by (venue_id, block_date, ...), so [0] is the earliest date of
+            # the alphabetically-first venue, not the global start — and
+            # venues begin on different dates (S64 RLUSD only in 2026-08).
+            f"{min(r['block_date'][:10] for r in all_rows) if all_rows else '?'} → "
+            f"{max(r['block_date'][:10] for r in all_rows) if all_rows else '?'}."
         ),
         "_dune_query_id": QUERY_ID,
         "_columns": ["venue_id", "chain", "block_date", "counterparty", "signed_amount"],

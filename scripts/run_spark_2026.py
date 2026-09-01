@@ -154,6 +154,21 @@ PIN_BLOCKS_BY_MONTH = {
                 Chain.UNICHAIN: 54794040, Chain.AVALANCHE_C: 91716609,
                 Chain.ROBINHOOD: 24591562},
     },
+    # August added 2026-09-01: EoM = Aug 31 23:59:59 UTC EoD blocks resolved
+    # via HyperSync binary search on all seven chains. Re-deriving the
+    # July-31 pins the same way reproduced the published July values
+    # exactly, and the Ethereum pin matches the one obex resolved
+    # independently via Dune/RPC.
+    (2026, 8): {
+        "som": {Chain.ETHEREUM: 25656292, Chain.BASE: 49376526,
+                Chain.ARBITRUM: 489802913, Chain.OPTIMISM: 154971811,
+                Chain.UNICHAIN: 54794040, Chain.AVALANCHE_C: 91716609,
+                Chain.ROBINHOOD: 24591562},
+        "eom": {Chain.ETHEREUM: 25878704, Chain.BASE: 50715726,
+                Chain.ARBITRUM: 500455224, Chain.OPTIMISM: 156311011,
+                Chain.UNICHAIN: 57472440, Chain.AVALANCHE_C: 94159927,
+                Chain.ROBINHOOD: 51274667},
+    },
 }
 
 # (year, month, fixture_dir). The ``spark_2026_q1`` fixture set was
@@ -171,6 +186,7 @@ _MONTH_PLAN = [
     (2026, 5, "spark_2026_q1"),
     (2026, 6, "spark_2026_q1"),
     (2026, 7, "spark_2026_q1"),
+    (2026, 8, "spark_2026_q1"),
 ]
 
 
@@ -190,7 +206,7 @@ def main() -> int:
         refresh_dr_only("spark")
         return 0
 
-    print("Spark 2026 multi-month settlement (Jan → Jun)")
+    print("Spark 2026 multi-month settlement (Jan → Aug)")
     print("=" * 110)
     print(f"{'Month':<10} {'prime_agent_total':>20} {'sky_revenue':>16} "
           f"{'sky_direct_shortfall':>22} {'monthly_pnl':>16}")

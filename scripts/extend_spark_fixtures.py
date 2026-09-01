@@ -58,7 +58,7 @@ SUSDS_ETH = "0xa3931d71877c0e7a3148cb7eb4463524fec27fbd"
 SPARK_FIRST_FROB_DATE = "2024-11-18"
 
 # Capture window end — last day of the most recent complete month.
-FIXTURE_END_DATE = "2026-07-31"
+FIXTURE_END_DATE = "2026-08-31"
 
 # Pin blocks safely AFTER the June 30 EoM (= upper bound for the extended
 # fetch) — these should be at-or-after the actual June 30 23:59:59 UTC
@@ -72,15 +72,17 @@ FIXTURE_END_DATE = "2026-07-31"
 # ``get_subproxy_balance_timeseries`` reads, and what
 # ``run_spark_2026.PIN_BLOCKS_BY_MONTH`` should carry for June).
 SAFETY_PIN_BLOCK = {
-    # ~2026-08-02 heads — safely past the July 31 EoM blocks (eth EoM
-    # 25656292, base 49376526, arb 489802913, op 154971811, uni 54794040,
-    # avax 91716609 — resolved via HyperSync binary search 2026-08-03).
-    "ethereum":    25670000,
-    "base":        49450000,
-    "arbitrum":   490400000,
-    "optimism":   155050000,
-    "unichain":    54950000,
-    "avalanche_c": 91870000,
+    # ~2026-09-01 heads — safely past the August 31 EoM blocks (eth EoM
+    # 25878704, base 50715726, arb 500455224, op 156311011, uni 57472440,
+    # avax 94159927 — resolved via HyperSync binary search 2026-09-01;
+    # re-deriving the July-31 pins the same way reproduced the published
+    # July values on every chain).
+    "ethereum":    25880000,
+    "base":        50730000,
+    "arbitrum":   500500000,
+    "optimism":   156330000,
+    "unichain":    57490000,
+    "avalanche_c": 94180000,
 }
 
 # Spark prime needs blocks on these chains.

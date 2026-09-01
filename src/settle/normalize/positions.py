@@ -231,6 +231,12 @@ def get_position_value(
         source=balance_source,
         flow_source=flow_source,
     )
+    # Async (ERC-7540) Centrifuge redemptions park shares in the vault
+    # escrow before the Withdraw event fires. Add them back so the value is
+    # the prime's economic position, not just its wallet. Applied at every
+    # block, so SoM and EoM stay symmetric. MUST come before the
+    # ``balance == 0`` short-circuit: a fully-escrowed position reads 0.
+    balance += _centrifuge_in_flight_shares(prime, venue, block)
     if balance == 0:
         # Short-circuit: zero balance × any unit price = $0. Skipping the
         # unit_price call avoids an unnecessary failure on venues with
@@ -245,6 +251,104 @@ def get_position_value(
         nav_oracle_resolver=nav_oracle_resolver,
     )
     return balance * price
+
+
+def _centrifuge_in_flight_shares(
+    prime: Prime,
+    venue: Venue,
+    block: int,
+) -> Decimal:
+    """Shares sitting in a Centrifuge vault's escrow at ``block``, decimal-adjusted.
+
+    Centrifuge vaults are ERC-7540 *async*: ``requestRedeem`` moves the
+    holder's shares into the vault escrow immediately, but the ERC-4626
+    ``Withdraw`` event (and the USDC) only land when the request is
+    fulfilled and claimed. Between those two moments the shares are off the
+    ALM's ``balanceOf`` while the underlying claim is still economically the
+    prime's — so a naive ``balanceOf × NAV`` undervalues the position, and
+    the revenue identity ``eom − som − inflow`` books the gap as a phantom
+    loss.
+
+    Grove E9 (JTRSY), August 2026: 22,429,188.808014 shares were escrowed on
+    2026-08-31 17:00, one day before the EoM pin. Value read $833.07M
+    against $855.56M at SoM with a $0 event-sourced inflow, booking
+    −$22,492,398.88 of "negative yield" straight onto Sky through the
+    100%-SDE share. Topping the escrowed shares back into the balance
+    restores the identity, and self-corrects next month: once the
+    redemption settles, pending/claimable go to 0 and the USDC shows up in
+    the Cat A leg.
+
+    Returns Decimal("0") for non-Centrifuge venues, when the vault isn't
+    deployed yet, or when the reads fail (degrade to the unadjusted balance
+    with a warning rather than abort the settlement).
+    """
+    if venue.centrifuge_vault is None:
+        return Decimal("0")
+
+    import logging as _logging
+    from ..extract.rpc import (
+        eth_call as _eth_call,
+        is_contract_deployed as _is_deployed,
+        SEL_PENDING_REDEEM_REQUEST as _SEL_PR,
+        SEL_CLAIMABLE_REDEEM_REQUEST as _SEL_CR,
+    )
+    from ..extract._abi import pad_address as _pa, pad_uint as _pu
+
+    holder = venue.holder_override or prime.alm.get(venue.chain)
+    if holder is None:
+        return Decimal("0")
+    vault = venue.centrifuge_vault
+    _log = _logging.getLogger(__name__)
+
+    try:
+        if not _is_deployed(venue.chain, vault, block):
+            return Decimal("0")
+    except Exception as exc:  # noqa: BLE001
+        _log.warning(
+            "_centrifuge_in_flight_shares: deployment probe failed for %s "
+            "vault %s at block %d (%s) — no in-flight adjustment applied.",
+            venue.id, vault.hex, block, exc,
+        )
+        return Decimal("0")
+
+    # ERC-7540 keys every request by (requestId, controller); Centrifuge
+    # uses a single request id of 0 per holder. ``pending`` and
+    # ``claimable`` are disjoint states of the same request, so summing
+    # them cannot double-count.
+    # NO degrade-to-zero here. The deployment probe above already succeeded,
+    # so a failure at this point is an RPC outage, not an absent contract —
+    # and silently returning 0 re-introduces exactly the phantom this
+    # function exists to remove (Grove E9: −$22,492,398.88 straight onto Sky
+    # at 100% SDE), leaving only a log line inside a published,
+    # counterparty-facing settlement. Same contract as ``rpc.balance_of``,
+    # which hard-fails for the same reason: a settlement that cannot read
+    # its inputs must stop, not guess.
+    raw_total = 0
+    for label, selector in (("pending", _SEL_PR), ("claimable", _SEL_CR)):
+        data = selector + _pu(0) + _pa(holder)
+        try:
+            out = _eth_call(venue.chain, vault, data, block)
+        except Exception as exc:
+            raise RuntimeError(
+                f"_centrifuge_in_flight_shares: {label} redeem read failed "
+                f"for venue {venue.id} on {venue.chain.value} at block "
+                f"{block} ({type(exc).__name__}: {exc}). The vault IS "
+                f"deployed at this block, so this is an RPC failure, not an "
+                f"absent contract. Refusing to continue: treating it as "
+                f"'no in-flight redemption' would book the escrowed shares "
+                f"as a phantom loss. Retry once the endpoint recovers."
+            ) from exc
+        raw_total += int(out, 16) if out and out not in ("0x", "0x0") else 0
+
+    if raw_total == 0:
+        return Decimal("0")
+    shares = Decimal(raw_total) / Decimal(10 ** venue.token.decimals)
+    _log.info(
+        "  %s: in-flight Centrifuge redeem of %s shares at block %d — "
+        "added to the position balance (escrowed, claim still the prime's).",
+        venue.id, f"{shares:,.6f}", block,
+    )
+    return shares
 
 
 def _uniswap_v3_value(

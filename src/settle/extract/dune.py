@@ -508,6 +508,19 @@ def _execute_query_cached(
     """
     _log.info("Dune query %s (id=%d) submitting...", sql_path_str, query_id)
     full_params = {**params, "pin_block": pin_block}
+    # Only send the snapshot anchor to queries that actually declare it.
+    # ``block_at_or_before.sql`` is parameter-deterministic on (chain, ts) and
+    # has no {{pin_block}}; Dune rejects the WHOLE execution with HTTP 400
+    # "unknown parameters (pin_block)" when an undeclared parameter is sent.
+    # That 400 was swallowed by ``rpc._find_block_at_or_before_dune``'s
+    # try/except, so every pin-block resolution silently degraded to the
+    # ~25-call RPC binary search the Dune query exists to replace — ~5 of the
+    # 5.6 minutes per non_msc month. Resolved from the filename rather than
+    # threaded through the signature, because adding an argument here would
+    # change the @cached key and invalidate every cached Dune result.
+    _sql_file = Path(__file__).resolve().parents[1] / "queries" / sql_path_str
+    if "{{pin_block}}" not in _sql_file.read_text(encoding="utf8"):
+        full_params.pop("pin_block", None)
     dune_params = {k: _format_param(v) for k, v in full_params.items()}
     execution_id = _execute_query(query_id, dune_params, performance)
     rows = _fetch_all_rows(execution_id)

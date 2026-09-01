@@ -386,6 +386,14 @@ venues:
     notional_principal_usd:
       - start_date: '2026-02-01'
         amount: 25000000
+      # 2026-08-20: position fully exited (three LP burns, ALM balance
+      # 24,987,241 → 0; the pool itself is drained to 301 total supply).
+      # Without this step the schedule asserts $25M forever for a closed
+      # venue, and `max(tw_avg_value, tw_avg_notional)` keeps handing E11 a
+      # $25M CoF weight. Step to 0 the day after the exit so August's
+      # tw_avg_notional is $25M × 20/31 = $16.13M, matching reality.
+      - start_date: '2026-08-21'
+        amount: 0
 
   - id: E12
     chain: ethereum

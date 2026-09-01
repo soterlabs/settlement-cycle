@@ -356,3 +356,88 @@ def test_no_alm_for_chain_is_skipped(monkeypatch, tmp_cache_dir):
         venues=[_centrifuge_venue()],
     )
     _check_centrifuge_in_flight(prime_no_alm, _PIN_SOM, _PIN_EOM)
+
+
+# ── valuation: escrowed shares are added back to the position ─────────────────
+#
+# The checks above only WARN. These cover the fix that makes the number
+# right: `_centrifuge_in_flight_shares` tops the escrowed shares back into
+# `get_position_value`, so `eom − som − inflow` isolates yield instead of
+# booking the escrow transfer as a phantom loss (Grove E9, Aug 2026:
+# −$22,492,398.88 on a $0 event-sourced inflow).
+
+def test_in_flight_shares_added_to_balance(monkeypatch, tmp_cache_dir):
+    """Pending + claimable redeem shares both count toward the position."""
+    from decimal import Decimal
+    from settle.normalize.positions import _centrifuge_in_flight_shares
+    import settle.extract.rpc as _rpc
+    from settle.extract.rpc import (
+        SEL_PENDING_REDEEM_REQUEST, SEL_CLAIMABLE_REDEEM_REQUEST,
+    )
+
+    # 6-decimal token: 1,500,000 pending + 500,000 claimable = 2,000,000 shares
+    def _fake_call(chain, contract, data, block):
+        if data.startswith(SEL_PENDING_REDEEM_REQUEST):
+            return "0x" + format(1_500_000 * 10**6, "064x")
+        if data.startswith(SEL_CLAIMABLE_REDEEM_REQUEST):
+            return "0x" + format(500_000 * 10**6, "064x")
+        return _ZERO
+
+    monkeypatch.setattr(_rpc, "is_contract_deployed", lambda *a: True)
+    monkeypatch.setattr(_rpc, "eth_call", _fake_call)
+
+    venue = _centrifuge_venue()
+    prime = _prime([venue])
+    got = _centrifuge_in_flight_shares(prime, venue, _EOM_BLOCK)
+    assert got == Decimal("2000000"), got
+
+
+def test_no_in_flight_means_no_adjustment(monkeypatch, tmp_cache_dir):
+    """All-zero reads must leave the balance untouched (not raise, not guess)."""
+    from decimal import Decimal
+    from settle.normalize.positions import _centrifuge_in_flight_shares
+
+    _patch_rpc(monkeypatch, eth_call_return=_ZERO)
+    venue = _centrifuge_venue()
+    assert _centrifuge_in_flight_shares(_prime([venue]), venue, _EOM_BLOCK) == Decimal("0")
+
+
+def test_non_centrifuge_venue_gets_no_adjustment(monkeypatch, tmp_cache_dir):
+    """A venue without centrifuge_vault must never be topped up."""
+    from decimal import Decimal
+    from settle.normalize.positions import _centrifuge_in_flight_shares
+
+    _patch_rpc(monkeypatch, eth_call_return=_NONZERO)
+    venue = _plain_venue()
+    assert _centrifuge_in_flight_shares(_prime([venue]), venue, _EOM_BLOCK) == Decimal("0")
+
+
+def test_failed_read_raises_rather_than_booking_a_phantom(monkeypatch, tmp_cache_dir):
+    """A read failure on a DEPLOYED vault must stop the run, not return 0.
+
+    Degrading to 0 here is indistinguishable from "no in-flight redemption",
+    which silently re-books the phantom loss into a published settlement.
+    """
+    import pytest as _pytest
+    from settle.normalize.positions import _centrifuge_in_flight_shares
+    import settle.extract.rpc as _rpc
+
+    def _boom(*a, **kw):
+        raise RuntimeError("rpc down")
+
+    monkeypatch.setattr(_rpc, "is_contract_deployed", lambda *a: True)
+    monkeypatch.setattr(_rpc, "eth_call", _boom)
+    venue = _centrifuge_venue()
+    with _pytest.raises(RuntimeError, match="in-flight"):
+        _centrifuge_in_flight_shares(_prime([venue]), venue, _EOM_BLOCK)
+
+
+def test_undeployed_vault_still_degrades_quietly(monkeypatch, tmp_cache_dir):
+    """Not-yet-deployed is a real state (venue onboarded mid-period), not an
+    outage — it must return 0 without raising."""
+    from decimal import Decimal
+    from settle.normalize.positions import _centrifuge_in_flight_shares
+
+    _patch_rpc(monkeypatch, deployed=False, eth_call_return=_NONZERO)
+    venue = _centrifuge_venue()
+    assert _centrifuge_in_flight_shares(_prime([venue]), venue, _EOM_BLOCK) == Decimal("0")

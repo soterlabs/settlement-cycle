@@ -55,11 +55,16 @@ SPARK_VENUE_TABLES: list[tuple[str, str, str, str | None]] = [
     ("S14", "result_spark_maple_syrup_usdc_by_alm_proxy",           "amount",            None),
     ("S15", "result_spark_maple_syrup_usdt_by_alm_proxy",           "amount",            None),
     ("S18", "result_spark_arkis_spark_prime_usdc_1_by_alm_proxy",   "amount",            None),
-    # Morpho aggregates 4 markets (S10/S11/S12/S13) by token in one table.
+    # Morpho aggregates 4 markets (S10/S65/S12/S13) by token in one table.
     ("S10", "result_spark_idle_dai_usdc_in_morpho_by_alm_proxy",    "alm_supply_amount", "USDC"),
     ("S12", "result_spark_idle_dai_usdc_in_morpho_by_alm_proxy",    "alm_supply_amount", "DAI"),
     ("S13", "result_spark_idle_dai_usdc_in_morpho_by_alm_proxy",    "alm_supply_amount", "USDS"),
-    ("S11", "result_spark_idle_dai_usdc_in_morpho_by_alm_proxy",    "alm_supply_amount", "USDT"),
+    # USDT maps to S65, not S11: the Blue Chip USDT vault was redeployed in
+    # June 2026 and S11 (the pre-June address) is now $2.78 of dust, so
+    # pointing this row at S11 would compare Spark's ~$32.8M published
+    # supply against dust — a 100% miss, far outside PER_VENUE_TOLERANCE_PCT,
+    # in the one harness whose job is catching exactly this drift.
+    ("S65", "result_spark_idle_dai_usdc_in_morpho_by_alm_proxy",    "alm_supply_amount", "USDT"),
     # Curve LPs (S24/S25) live in result_spark_curve_pool_apr — see Q S15.
     ("S24", "result_spark_curve_pool_apr",                          "sll_total_assets_balance", "sUSDS/USDT"),
     ("S25", "result_spark_curve_pool_apr",                          "sll_total_assets_balance", "PYUSD/USDS"),
@@ -109,9 +114,17 @@ def _dune_patch(path: str, headers: dict, body: dict) -> None:
         pass   # archive failure is non-fatal
 
 
-def _execute_inline_sql(sql: str, api_key: str) -> list[dict]:
-    """Submit ad-hoc SQL to Dune as a temporary query; return rows."""
-    headers = {"X-Dune-Api-Key": api_key}
+def _execute_inline_sql(sql: str) -> list[dict]:
+    """Submit ad-hoc SQL to Dune as a temporary query; return rows.
+
+    Reads DUNE_API_KEY here rather than taking it as an argument: pytest
+    dumps every frame's locals on failure, so a key bound in the test
+    function (or passed as a parameter) gets printed verbatim into the
+    output — and this test currently fails on a missing upstream table, so
+    that dump happens on every run. In CI that writes the live key straight
+    into the build log.
+    """
+    headers = {"X-Dune-Api-Key": os.environ["DUNE_API_KEY"]}
     qid = _dune_post("/query", headers, {
         "name": "settle parity test (auto, archive after)",
         "query_sql": sql,
@@ -160,12 +173,11 @@ WHERE dt = (
 
 @pytest.mark.live
 def test_spark_dune_parity():
-    api_key = os.environ.get("DUNE_API_KEY")
-    if not api_key:
+    if not os.environ.get("DUNE_API_KEY"):
         pytest.skip("DUNE_API_KEY not set — required to query dune.sparkdotfi.result_* tables")
 
     sql = _build_parity_sql()
-    rows = _execute_inline_sql(sql, api_key)
+    rows = _execute_inline_sql(sql)
     if not rows:
         pytest.fail("Dune query returned 0 rows — table names may have changed")
 

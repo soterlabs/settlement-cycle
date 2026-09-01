@@ -53,7 +53,7 @@ from settle.domain.config import load_prime  # noqa: E402
 from settle.load import write_settlement  # noqa: E402
 
 _OSERO_YAML = _REPO / "config" / "osero.yaml"
-_MONTHS = [Month(2026, m) for m in (7,)]   # prime effective July 2026
+_MONTHS = [Month(2026, m) for m in (7, 8)]   # prime effective July 2026
 
 
 def _selected_months() -> list[Month]:

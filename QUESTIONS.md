@@ -525,6 +525,50 @@ blocking any current work.
 ### P0 — material numerical gaps
 
 
+#### S33. Anchorage tri-party loan — principal/interest split of the 2026-08-17 $51,267,944 rollover
+
+**Concrete impact (Spark Aug 2026):** one atomic USDC transfer of
+**$51,267,944.00** arrived from the Anchorage Spark escrow
+(`0x49506c3a…6872`) on 2026-08-17 — into the escrow from the downstream
+holding wallet `0x8149c53e…7bd3` at 16:48:35 (block 25776099), out to the
+SLL ALM at 20:31:11 (block 25777206), same amount to the cent. There is no
+separate interest leg, and August has **no** monthly interest sweep at all.
+
+Because the escrow is registered in `external_alm_sources` and S26 carries
+`external_yield_source: true`, an unclassified arrival books as realized
+external yield. Left alone it made August's `prime_agent_revenue`
+$57.78M and `monthly_pnl` $51.70M — i.e. $51.27M of "interest" on a
+~$260M loan, **235% APR**. Per the standing rule in
+`config/spark.yaml` (principal-sized inflow ⇒ register it before the
+month's run) the full amount is now a `principal_return_overrides` entry,
+classified capital.
+
+**Question:** what is the principal/interest split of that transfer? It
+cannot be derived on-chain — the transfer is atomic — and two readings are
+both round-principal:
+
+| reading | principal | interest |
+|---|---:|---:|
+| A | 50,000,000 | 1,267,944 |
+| B | 51,000,000 | 267,944 |
+
+Reading A's $1,267,944 sits right in the range of the observed monthly
+sweeps (Jan 891,780 / Feb 891,780 / Mar 805,479 / May 891,780 /
+Jun 1,435,965 / Jul 1,198,969), which makes it the more likely of the two,
+but we are not guessing at a counterparty-facing number.
+
+Booking the whole amount as principal is conservative for the prime: it
+understates August interest by whichever figure is correct, rather than
+overstating revenue by $51.27M. Same treatment and same open split as the
+2026-07-16 $10,036,438 rollover (S31) — so a single answer covering the
+method (how Anchorage splits principal vs final interest on a rolling
+1-month rollover) resolves both, and any future rollover.
+
+Related: does a $50M/$51M principal return mean the tri-party loan
+outstanding dropped from ~$260M to ~$209M in August, or was it
+re-disbursed? We see no matching August re-disbursement, unlike
+2026-06-17 and 2026-07-21 which both show −$10M redeployments.
+
 #### S6. spUSDC / spUSDT / spETH / spPYUSD — surplus formula (~ANSWERED via `dune.sparkdotfi.result_savings_v_2_deployment_metrics`)
 
 S56–S60 in `config/spark.yaml` (~$2.3B+ TVL combined) are still skipped
