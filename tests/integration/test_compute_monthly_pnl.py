@@ -88,7 +88,7 @@ def test_monthly_pnl_zero_book_zero_pnl(obex, fixed_pin_blocks):
     assert result.monthly_pnl == Decimal("0")
 
 
-def test_monthly_pnl_obex_synthetic_one_venue(obex, fixed_pin_blocks):
+def test_monthly_pnl_obex_synthetic_one_venue(obex, fixed_pin_blocks, monkeypatch):
     """OBEX-shaped scenario, all numbers chosen for closed-form math.
 
     Setup (constant throughout March 2026):
@@ -164,12 +164,21 @@ def test_monthly_pnl_obex_synthetic_one_venue(obex, fixed_pin_blocks):
     # seeds a spurious sUSDS balance. Keying on token alone would leave the
     # sUSDS leg riding on `balances.py`'s `abs(seed) > 0.01` threshold, so
     # answer for the subproxy explicitly and per token.
+    # Dispatch positively on the venue token rather than falling through to
+    # raw_balance for everything that isn't the subproxy: the 6-decimal
+    # raw_balance must never answer an 18-decimal query. Today nothing else
+    # asks (the ALM leg has no on-chain anchor and OBEX has no PSM3), but a
+    # fallback that returns 1e14 for any holder just relocates the trap.
+    venue_token = obex.venues[0].token.address.value
+
     class _BalanceByToken(MockPositionBalanceSource):
         def balance_at(self, chain, token, holder, block):
             self.calls.append((chain, token, holder, block))
             if holder == obex.subproxy[Chain.ETHEREUM].value:
                 return 20_000_000 * 10**18 if token == _USDS else 0
-            return self.raw_balance
+            if token == venue_token:
+                return self.raw_balance
+            return 0
 
     position_balance_src = _BalanceByToken(raw_balance=100_000_000 * 10**6)
 
@@ -181,12 +190,27 @@ def test_monthly_pnl_obex_synthetic_one_venue(obex, fixed_pin_blocks):
                 return int(Decimal("1.04") * 10**6)
             return int(Decimal("1.05") * 10**6)
 
+    # Keep the test hermetic. Without an injected resolver `compute_monthly_pnl`
+    # falls back to the RPC one, and `get_debt_timeseries`' daily expansion then
+    # makes 31 live mainnet `ilk_rate` eth_calls — invisible here only because a
+    # shared cache answers them. On a cold cache this test fails in ~34s with a
+    # ConnectionError, despite not being marked `live`.
+    #
+    # Pinning the rate to 1.0 (1e27 ray) also removes a hidden assumption: the
+    # closed-form expectations below take cum_debt as exactly 100M, which holds
+    # only while ALLOCATOR-OBEX-A's Vat rate is 1.0. Were governance to set a
+    # non-zero `duty` on that ilk, this synthetic test would start failing for
+    # reasons unrelated to the code under test.
+    from settle.extract import rpc as _rpc
+    monkeypatch.setattr(_rpc, "ilk_rate", lambda chain, vat, ilk, block: 10**27)
+
     sources = Sources(
         debt=MockDebtSource(debt_df),
         balance=_SmartBalances(),
         ssr=MockSSRSource(ssr_df),
         position_balance=position_balance_src,
         convert_to_assets=_PriceByBlock(),
+        block_resolver=MockBlockResolver(default=fixed_pin_blocks["eom"][Chain.ETHEREUM]),
     )
 
     # --- act ---
@@ -308,8 +332,14 @@ def test_v3_position_source_is_threaded_through_sources(fixed_pin_blocks):
         ssr=MockSSRSource(pd.DataFrame({
             "effective_date": [date(2025, 12, 16)], "ssr_apy": [0.04],
         })),
-        # No position_balance/convert_to_assets — V3 path bypasses both.
+        # convert_to_assets is genuinely unused — the V3 path bypasses it.
+        # position_balance is NOT: `normalize.balances` re-reads the subproxy
+        # balance on-chain for its SoM/EoM anchors, and with no source injected
+        # that falls through to the RPC one. Same for block_resolver and the
+        # daily debt expansion. Both made this unmarked test hit mainnet.
+        position_balance=MockPositionBalanceSource(raw_balance=0),
         v3_position=v3_src,
+        block_resolver=MockBlockResolver(default=fixed_pin_blocks["eom"][Chain.ETHEREUM]),
     )
 
     result = compute_monthly_pnl(
@@ -397,6 +427,10 @@ def test_v3_liquidity_events_net_out_inflows(fixed_pin_blocks):
         ssr=MockSSRSource(pd.DataFrame({
             "effective_date": [date(2025, 12, 16)], "ssr_apy": [0.04],
         })),
+        # See the sibling V3 test: without an injected position_balance the
+        # on-chain SoM/EoM anchors in `normalize.balances` fall through to the
+        # RPC source and this unmarked test hits mainnet.
+        position_balance=MockPositionBalanceSource(raw_balance=0),
         v3_position=v3_src,
         block_resolver=MockBlockResolver(default_date=date(2026, 3, 15)),
     )
@@ -1091,6 +1125,10 @@ def test_monthly_pnl_invokes_block_resolver_for_both_som_and_eom(obex):
     # it legitimately appears twice.)
     march_1 = datetime.combine(date(2026, 3, 1), time.min, tzinfo=timezone.utc)
     assert [a for a in anchors if a < march_1] == [som_anchor]
+    # EoM side: exactly twice — once as the pin anchor, once as the daily
+    # expansion's last day. Pins the RPC cost, so a regression that resolved
+    # the EoM pin per-venue or per-timeseries doesn't slip through.
+    assert anchors.count(eom_anchor) == 2
     # The pin blocks ended up on the result.
     assert result.period.pin_blocks[Chain.ETHEREUM] == 99
     assert result.pin_blocks_som[Chain.ETHEREUM] == 99
