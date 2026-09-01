@@ -1,5 +1,5 @@
 {
-  "_about": "Daily EoD blocks for base/arbitrum/optimism/unichain, 2025-12-31 \u2192 2026-07-31. Refreshed via extend_spark_fixtures.py.",
+  "_about": "Daily EoD blocks for base/arbitrum/optimism/unichain, 2025-12-31 \u2192 2026-08-31. Refreshed via extend_spark_fixtures.py.",
   "_dune_query_id": 7474490,
   "_chains": [
     "base",
@@ -1079,6 +1079,161 @@
       "block_number": 489802913
     },
     {
+      "chain": "arbitrum",
+      "block_date": "2026-08-01",
+      "block_number": 490148031
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-02",
+      "block_number": 490490941
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-03",
+      "block_number": 490835375
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-04",
+      "block_number": 491180383
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-05",
+      "block_number": 491525235
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-06",
+      "block_number": 491869871
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-07",
+      "block_number": 492214298
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-08",
+      "block_number": 492557225
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-09",
+      "block_number": 492899710
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-10",
+      "block_number": 493243759
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-11",
+      "block_number": 493587596
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-12",
+      "block_number": 493930787
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-13",
+      "block_number": 494274205
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-14",
+      "block_number": 494618477
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-15",
+      "block_number": 494961555
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-16",
+      "block_number": 495303647
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-17",
+      "block_number": 495647033
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-18",
+      "block_number": 495989773
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-19",
+      "block_number": 496334416
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-20",
+      "block_number": 496679278
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-21",
+      "block_number": 497024902
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-22",
+      "block_number": 497369020
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-23",
+      "block_number": 497711826
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-24",
+      "block_number": 498055773
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-25",
+      "block_number": 498399849
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-26",
+      "block_number": 498741243
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-27",
+      "block_number": 499082672
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-28",
+      "block_number": 499426795
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-29",
+      "block_number": 499768764
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-30",
+      "block_number": 500110924
+    },
+    {
+      "chain": "arbitrum",
+      "block_date": "2026-08-31",
+      "block_number": 500455224
+    },
+    {
       "chain": "base",
       "block_date": "2025-12-31",
       "block_number": 40218126
@@ -2142,6 +2297,161 @@
       "chain": "base",
       "block_date": "2026-07-31",
       "block_number": 49376526
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-01",
+      "block_number": 49419726
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-02",
+      "block_number": 49462926
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-03",
+      "block_number": 49506126
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-04",
+      "block_number": 49549326
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-05",
+      "block_number": 49592526
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-06",
+      "block_number": 49635726
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-07",
+      "block_number": 49678926
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-08",
+      "block_number": 49722126
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-09",
+      "block_number": 49765326
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-10",
+      "block_number": 49808526
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-11",
+      "block_number": 49851726
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-12",
+      "block_number": 49894926
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-13",
+      "block_number": 49938126
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-14",
+      "block_number": 49981326
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-15",
+      "block_number": 50024526
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-16",
+      "block_number": 50067726
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-17",
+      "block_number": 50110926
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-18",
+      "block_number": 50154126
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-19",
+      "block_number": 50197326
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-20",
+      "block_number": 50240526
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-21",
+      "block_number": 50283726
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-22",
+      "block_number": 50326926
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-23",
+      "block_number": 50370126
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-24",
+      "block_number": 50413326
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-25",
+      "block_number": 50456526
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-26",
+      "block_number": 50499726
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-27",
+      "block_number": 50542926
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-28",
+      "block_number": 50586126
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-29",
+      "block_number": 50629326
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-30",
+      "block_number": 50672526
+    },
+    {
+      "chain": "base",
+      "block_date": "2026-08-31",
+      "block_number": 50715726
     },
     {
       "chain": "optimism",
@@ -3209,6 +3519,161 @@
       "block_number": 154971811
     },
     {
+      "chain": "optimism",
+      "block_date": "2026-08-01",
+      "block_number": 155015011
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-02",
+      "block_number": 155058211
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-03",
+      "block_number": 155101411
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-04",
+      "block_number": 155144611
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-05",
+      "block_number": 155187811
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-06",
+      "block_number": 155231011
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-07",
+      "block_number": 155274211
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-08",
+      "block_number": 155317411
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-09",
+      "block_number": 155360611
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-10",
+      "block_number": 155403811
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-11",
+      "block_number": 155447011
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-12",
+      "block_number": 155490211
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-13",
+      "block_number": 155533411
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-14",
+      "block_number": 155576611
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-15",
+      "block_number": 155619811
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-16",
+      "block_number": 155663011
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-17",
+      "block_number": 155706211
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-18",
+      "block_number": 155749411
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-19",
+      "block_number": 155792611
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-20",
+      "block_number": 155835811
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-21",
+      "block_number": 155879011
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-22",
+      "block_number": 155922211
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-23",
+      "block_number": 155965411
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-24",
+      "block_number": 156008611
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-25",
+      "block_number": 156051811
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-26",
+      "block_number": 156095011
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-27",
+      "block_number": 156138211
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-28",
+      "block_number": 156181411
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-29",
+      "block_number": 156224611
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-30",
+      "block_number": 156267811
+    },
+    {
+      "chain": "optimism",
+      "block_date": "2026-08-31",
+      "block_number": 156311011
+    },
+    {
       "chain": "unichain",
       "block_date": "2025-12-31",
       "block_number": 36477240
@@ -4272,6 +4737,161 @@
       "chain": "unichain",
       "block_date": "2026-07-31",
       "block_number": 54794040
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-01",
+      "block_number": 54880440
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-02",
+      "block_number": 54966840
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-03",
+      "block_number": 55053240
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-04",
+      "block_number": 55139640
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-05",
+      "block_number": 55226040
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-06",
+      "block_number": 55312440
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-07",
+      "block_number": 55398840
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-08",
+      "block_number": 55485240
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-09",
+      "block_number": 55571640
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-10",
+      "block_number": 55658040
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-11",
+      "block_number": 55744440
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-12",
+      "block_number": 55830840
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-13",
+      "block_number": 55917240
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-14",
+      "block_number": 56003640
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-15",
+      "block_number": 56090040
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-16",
+      "block_number": 56176440
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-17",
+      "block_number": 56262840
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-18",
+      "block_number": 56349240
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-19",
+      "block_number": 56435640
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-20",
+      "block_number": 56522040
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-21",
+      "block_number": 56608440
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-22",
+      "block_number": 56694840
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-23",
+      "block_number": 56781240
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-24",
+      "block_number": 56867640
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-25",
+      "block_number": 56954040
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-26",
+      "block_number": 57040440
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-27",
+      "block_number": 57126840
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-28",
+      "block_number": 57213240
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-29",
+      "block_number": 57299640
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-30",
+      "block_number": 57386040
+    },
+    {
+      "chain": "unichain",
+      "block_date": "2026-08-31",
+      "block_number": 57472440
     }
   ]
 }

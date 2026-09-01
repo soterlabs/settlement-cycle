@@ -37,7 +37,7 @@ from settle.domain import Month  # noqa: E402
 from settle.domain.config import load_prime  # noqa: E402
 from settle.load import write_settlement  # noqa: E402
 
-_MONTHS = [Month(2026, m) for m in (1, 2, 3, 4, 5, 6, 7)]
+_MONTHS = [Month(2026, m) for m in (1, 2, 3, 4, 5, 6, 7, 8)]
 
 
 def _selected_months() -> list[Month]:

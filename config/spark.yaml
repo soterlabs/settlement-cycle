@@ -232,12 +232,52 @@ venues:
       symbol: 'USDC'
       decimals: 6
 
+  # ── Blue Chip USDT: TWO deployments, not one ──────────────────────────
+  # The vault was redeployed in June 2026 and the ALM position moved across.
+  # Both addresses report the same symbol()/name(), so they are told apart
+  # only by address. ALM totalAssets per EoM pin (verified on-chain
+  # 2026-09-01):
+  #
+  #        pre-2026-06 (S11)      2026-06 redeploy (S65)
+  #   Mar         $40,002                          $0
+  #   Apr     $51,710,590                          $0
+  #   May     $71,943,534                          $0
+  #   Jun           $2.76                 $48,207,256
+  #   Jul           $2.77                 $61,099,723
+  #   Aug           $2.78                 $32,785,844
+  #
+  # The config carried ONLY the pre-June address, so Jun/Jul/Aug priced this
+  # venue at ~$2.76 of dust instead of $32–61M, losing ~$110K/month of Cat B
+  # yield (share price drifted 1.010035 → 1.012473 over August). Found by the
+  # independent Etherscan ALM transfer audit (4,156 ALM mint/burns on the new
+  # address in August alone); same failure class as the Chronicle VAO Router
+  # migration (commit f5fa37e).
+  #
+  # Modelled as two venues rather than a repointed address: both held real
+  # balances during June, so a bare swap would drop the old vault's June
+  # wind-down (and would make any re-run of Mar–May read $0 for a position
+  # that was $71.9M at the May pin). No date gating is needed — each address
+  # reads its own on-chain balance at every pin, and the dust side prices to
+  # ~$0 on its own.
   - id: S11
     chain: ethereum
-    label: 'Spark Blue Chip USDT Vault (Morpho V2)'
+    label: 'Spark Blue Chip USDT Vault (Morpho — pre-2026-06 deployment)'
     pricing_category: B
     token:
       address: '0xc7cdcfdefc64631ed6799c95e3b110cd42f2bd22'
+      symbol: 'sparkUSDTbc'
+      decimals: 18
+    underlying:
+      address: '0xdac17f958d2ee523a2206206994597c13d831ec7'
+      symbol: 'USDT'
+      decimals: 6
+
+  - id: S65
+    chain: ethereum
+    label: 'Spark Blue Chip USDT Vault (Morpho — 2026-06 redeployment)'
+    pricing_category: B
+    token:
+      address: '0xb0c424116172b55cbb6dd3136f5989f7959e5b91'
       symbol: 'sparkUSDTbc'
       decimals: 18
     underlying:
@@ -653,6 +693,29 @@ venues:
       address: '0x6c3ea9036406852006290770bedfcaba0e23a0e8'
       symbol: 'PYUSD'
       decimals: 6
+
+  # RLUSD raw idle at the Ethereum ALM. The ALM held $0 at both the Jun 30
+  # and Jul 31 pins, then accumulated 251,703,857.67 RLUSD across August
+  # (2,667 Transfers, counterparty 0x0000…4444c5dc75cb358380d2e3de08a90 =
+  # the Uniswap V4 PoolManager — i.e. bought on-market, funded by
+  # redemptions elsewhere: spUSDS −$70.4M, sparkUSDTbc −$28.1M, spUSDT
+  # −$27.3M net). Discovered 2026-09-01 by the independent Etherscan ALM
+  # transfer audit; the position was invisible to the settlement because no
+  # venue priced the token. Modelled like S28 PYUSD: par-stable raw idle at
+  # the ALM, $0 prime revenue absent an external yield agreement, but
+  # visible in the report and included in the CoF allocation base.
+  # NOTE: no external_yield_source is set — if Spark has an off-chain yield
+  # arrangement on this position, add the payer to external_alm_sources and
+  # flip the flag, or the realized yield stays uncredited (the S28/S23
+  # failure mode).
+  - id: S64
+    chain: ethereum
+    label: 'RLUSD raw (ALM idle — $251.7M as of 2026-08)'
+    pricing_category: A
+    token:
+      address: '0x8292bb45bf1ee4d140127049757c2e0ff06317ed'
+      symbol: 'RLUSD'
+      decimals: 18
 
   - id: S29
     chain: ethereum
@@ -1207,6 +1270,29 @@ principal_return_overrides:
         amount: 10036438
         token: 'USDC'
         note: 'monthly-rollover principal return (+embedded ~$36.4K final interest, unsplittable), not standalone yield'
+      # 2026-08-17: +$51,267,944.00 USDC in ONE atomic transfer — arrived at
+      # the escrow from the downstream holding wallet 0x8149c53e… at 16:48:35
+      # (block 25776099) and left for the SLL ALM at 20:31:11 (block
+      # 25777206), same amount to the cent, no separate interest leg. Added
+      # per the STANDING RULE below: $51.27M is far outside the ~$0.9–1.5M
+      # monthly-interest range, and August has no separate sweep at all.
+      # Without this entry the whole amount books as S26 external yield and
+      # August prime_agent_revenue is overstated by $51.27M (monthly_pnl
+      # $51.70M vs ~$0.43M) — $51.27M of interest on a ~$260M loan is 235%
+      # APR, impossible.
+      # The embedded principal/interest split CANNOT be derived on-chain (one
+      # atomic transfer): both 50,000,000 + 1,267,944 (the $1.27M matching the
+      # monthly sweep size) and 51,000,000 + 267,944 are round-principal
+      # readings. Classified entirely capital along with the principal —
+      # conservative for the prime, consistent with the 2026-07-16 entry
+      # above — pending Anchorage's split confirmation (S31 / QUESTIONS.md).
+      # Note a separate $36,438.00 arrived at the escrow on 2026-08-24 and a
+      # further $3,698.00 on 2026-08-25, neither forwarded to the ALM within
+      # August, so neither is in this month's S26 flow.
+      - date: '2026-08-17'
+        amount: 51267944
+        token: 'USDC'
+        note: 'monthly-rollover principal return (embedded final interest unsplittable, split unconfirmed), not standalone yield'
       # STANDING RULE (no fixed maturity any more — the loan rolled over
       # at 2026-06-16 and renews monthly per Spark, 2026-07): whenever a
       # principal-sized inflow from this escrow appears (i.e. not in the

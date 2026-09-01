@@ -35,7 +35,7 @@ from settle.compute.sky_total import (  # noqa: E402
 from settle.domain import Month  # noqa: E402
 from settle.normalize.sources.hypersync_msc_buffer import HyperSyncMscBufferSource  # noqa: E402
 
-_MONTHS = [Month(2026, m) for m in range(1, 8)]
+_MONTHS = [Month(2026, m) for m in range(1, 9)]
 
 
 def _selected_months() -> list[Month]:

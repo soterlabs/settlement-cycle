@@ -22,7 +22,7 @@ from settle.compute.non_msc import compute_non_msc_monthly, write_non_msc  # noq
 from settle.domain import Month  # noqa: E402
 from settle.normalize.sources.hypersync_non_msc import HyperSyncNonMscSource  # noqa: E402
 
-_MONTHS = [Month(2026, m) for m in range(1, 8)]
+_MONTHS = [Month(2026, m) for m in range(1, 9)]
 
 
 def _selected_months() -> list[Month]:

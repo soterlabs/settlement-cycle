@@ -106,6 +106,18 @@ PIN_BLOCKS_BY_MONTH = {
                 Chain.AVALANCHE_C: 91716609, Chain.PLUME: 84574746,
                 Chain.MONAD: 92053501},
     },
+    # August added 2026-09-01: EoM = Aug 31 23:59:59 UTC EoD blocks resolved
+    # via HyperSync binary search. Re-deriving the July-31 pins the same way
+    # reproduced the published July values on all five chains, and the
+    # Ethereum pin matches the one obex resolved independently via Dune/RPC.
+    (2026, 8): {
+        "som": {Chain.ETHEREUM: 25656292, Chain.BASE: 49376526,
+                Chain.AVALANCHE_C: 91716609, Chain.PLUME: 84574746,
+                Chain.MONAD: 92053501},
+        "eom": {Chain.ETHEREUM: 25878704, Chain.BASE: 50715726,
+                Chain.AVALANCHE_C: 94159927, Chain.PLUME: 90704090,
+                Chain.MONAD: 100893400},
+    },
 }
 
 # (year, month, fixture_dir). Q1 months all share grove_2026_03.
@@ -117,6 +129,7 @@ _MONTH_PLAN = [
     (2026, 5, "grove_2026_05"),
     (2026, 6, "grove_2026_06"),
     (2026, 7, "grove_2026_07"),
+    (2026, 8, "grove_2026_08"),
 ]
 
 
@@ -150,7 +163,7 @@ def main() -> int:
         refresh_dr_only("grove")
         return 0
 
-    print("Grove 2026 multi-month settlement (Jan → Jun)")
+    print("Grove 2026 multi-month settlement (Jan → Aug)")
     print("=" * 110)
     print(f"{'Month':<10} {'prime_agent_total':>20} {'sky_revenue':>16} "
           f"{'sky_direct_shortfall':>22} {'monthly_pnl':>16}")
