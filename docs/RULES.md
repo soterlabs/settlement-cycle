@@ -21,12 +21,18 @@ daily_interest = D × base_apr / 365                    # NOMINAL — no intra-p
 
 Three properties this buys:
 
-1. `BR_apr − SSR_apr − spread = 0` exactly **at the rate level**, which is
-   what the additive composition is for. It does *not* make the idle-sUSDS
-   legs cancel in dollars: the SSR-appreciation legs credit the APY daily
-   factor `(1+SSR)^(1/365)−1` (tracking the index the prime actually holds),
-   which sits **0.48 bps/yr below** the `SSR_apr/365` the charge bills. That
-   residual is the price of `n = 12` — see the trade-off table in PRD §17.13.
+1. `BR_apr − SSR_apr − spread = 0` exactly, so Sky nets zero on idle sUSDS —
+   and it holds in **settled dollars**, not just at the rate level, once the
+   MSC's monthly capitalisation is counted. The two legs get there by
+   different compounding paths: the credit's principal (the sUSDS index)
+   compounds continuously to `(1+SSR)^1 − 1`, while the charge's principal
+   (the debt) steps up monthly to `(1 + SSR_apr/12)^12 − 1` — the same
+   3.5200%. **Comparing the daily slices alone is misleading** (they differ
+   by 0.14%): that ignores the credit accruing on a growing balance and the
+   charge on one static within the month. Simulated over 12 months on $1B:
+   +0.034 bps/yr, day-count noise. This is what `n = 12` buys — converting
+   at `n → ∞` would leave the debt at 3.5148% and break the netting by
+   +0.549 bps/yr.
 2. The conversion round-trips: `(1 + SSR_apr/12)^12 − 1` returns the SSR APY
    (3.52%) exactly, because the conversion frequency matches the frequency at
    which the charge actually compounds. NB this holds for the *converted leg*,

@@ -66,11 +66,18 @@ def apy_to_apr(apy: Decimal, n: int = APR_COMPOUNDING_PERIODS) -> Decimal:
     SSR to an APR first puts both on the nominal basis, and then plain
     addition is exact AT THE RATE LEVEL: ``BR_apr - SSR_apr - spread = 0``.
 
-    CAVEAT — that identity does not carry into settled dollars, because the idle-sUSDS netting is NOT exact: the
-    SSR the charge bills (``SSR_apr/365``) is 0.48 bps/yr above the SSR the
-    appreciation legs credit (``(1+SSR)^(1/365)-1``, which tracks the index).
-    That is the unavoidable cost of n=12 — see the trade-off table in PRD
-    §17.13.
+    And it carries into settled dollars: the idle-sUSDS legs DO net to zero over a
+    settlement year — but by two different compounding paths that n=12 is
+    precisely chosen to reconcile. The credit's principal (the sUSDS index)
+    compounds continuously and reaches ``(1+SSR)^1 - 1``; the charge's
+    principal (the debt) steps up monthly as the MSC capitalises the net
+    charge, reaching ``(1 + SSR_apr/12)^12 - 1`` — the same 3.5200%.
+    Comparing the two DAILY slices in isolation shows a 0.14% gap and is
+    misleading: it ignores that the credit accrues on a growing balance
+    while the charge accrues on one that is static within the month.
+    Simulated over 12 months on $1B: net +0.034 bps/yr (day-count noise).
+    Converting at n -> inf would BREAK this — the debt would then reach only
+    3.5148% and the netting would run +0.549 bps/yr. See PRD §17.13.
 
     At SSR 3.52% and n=12 this gives 3.464456%, so ``BR_apr`` = 3.664456%.
 

@@ -52,30 +52,42 @@ def test_apy_to_apr_rejects_bad_n():
         apy_to_apr(Decimal("0.0352"), 0)
 
 
-def test_idle_susds_netting_residual_is_the_known_048_bps():
-    """The idle-sUSDS legs do NOT cancel in dollars, and this pins by how
-    much — the number PRD §17.13 discloses.
+def test_idle_susds_legs_net_to_zero_over_a_year():
+    """Rule 5 in settled dollars: a prime holding sUSDS financed 1:1 by debt
+    should net ~zero across credit − BR + reimbursement over a year.
 
-    The charge bills the SSR at ``SSR_apr/365``; the appreciation legs
-    credit ``(1+SSR)^(1/365)-1`` (the index the prime actually holds). The
-    first is larger, so the composite runs ~0.48 bps/yr in Sky's favour.
-    An earlier version of this test asserted
-    ``(a + b) - a - b == 0`` — Decimal associativity, true of any two
-    numbers, which gave false coverage of exactly this property.
+    This must be simulated over the full cycle, not compared slice-by-slice:
+    the credit accrues on a balance compounding CONTINUOUSLY (the index)
+    while the charge accrues on a debt that is static within the month and
+    STEPS UP monthly as the MSC capitalises the net charge. n=12 is exactly
+    the conversion that makes those two paths reach the same annual total.
+
+    An earlier version of this test compared the daily slices on a static
+    balance, "found" a −0.48 bps/yr residual and asserted it. That residual
+    is an artefact of ignoring the capitalisation — see PRD §17.13.
     """
     from settle.compute._helpers import daily_compounding_factor
     ssr, spread = Decimal("0.0352"), Decimal("0.002")
-    base = apy_to_apr(ssr) + spread
-    composite = (
-        daily_compounding_factor(ssr)     # credited by the appreciation legs
-        - apr_daily(base)                 # charged as BR
-        + apr_daily(spread)               # refunded
-    )
-    assert composite < 0, "residual should run in Sky's favour"
-    bps_per_year = composite * 365 * 10000
-    assert Decimal("-0.50") < bps_per_year < Decimal("-0.46"), bps_per_year
-    # Rate-level identity still holds — that part was never in doubt.
-    assert base - apy_to_apr(ssr) - spread == Decimal("0")
+    ssr_apr = apy_to_apr(ssr)
+    base = ssr_apr + spread
+    f = daily_compounding_factor(ssr)
+    days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+
+    v = debt = start = Decimal("1000000000")
+    credit = charge = refund = Decimal("0")
+    for n in days:
+        for _ in range(n):
+            v *= 1 + f                       # index compounds daily
+            credit += v * f                  # appreciation leg, on the MtM value
+        charge += debt * apr_daily(base, n)
+        refund += debt * apr_daily(spread, n)
+        debt += debt * apr_daily(ssr_apr, n)  # MSC capitalises the NET charge
+
+    net_bps = (credit - charge + refund) / start * 10000
+    assert abs(net_bps) < Decimal("0.1"), f"Rule 5 broke: {net_bps} bps/yr"
+    # both principals land on the SSR APY, by different routes
+    assert abs((v / start - 1) - ssr) < Decimal("1e-9")
+    assert abs((debt / start - 1) - ssr) < Decimal("1e-6")
 
 
 def test_apr_daily_is_plain_slicing():

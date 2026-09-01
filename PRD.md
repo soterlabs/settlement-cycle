@@ -1215,21 +1215,29 @@ compounding; accumulating it again over-credits by ~0.14%. Nothing in the
 repo compounds inside a settlement period, and `CompoundingAccrual` was
 deleted.
 
-**Trade-off forced by the choice of n — both exactnesses are not available:**
+**Why n = 12, and what it buys.** The conversion is exactly invertible only
+if the accrual compounds at the frequency the conversion assumed. Two things
+compound at exactly that frequency, and n = 12 reconciles both:
 
-| conversion | debt round-trip | idle-sUSDS netting |
+| | compounds | reaches over a year |
 |---|---|---|
-| **n = 12 (chosen)** | `(1+SSR_apr/12)^12` = 3.5200% ✓ exact | **−0.483 bps/yr** |
-| n → ∞ (`ln(1+APY)`) | 3.5148% (−0.52 bps) | +0.016 bps/yr |
+| prime's debt | monthly, as the MSC capitalises the net charge | `(1 + SSR_apr/12)^12 − 1` = **3.5200%** |
+| prime's sUSDS | continuously, via the index | `(1 + SSR)^1 − 1` = **3.5200%** |
 
-The sUSDS index compounds continuously while the settlement capitalises
-monthly, so one conversion cannot match both. `n = 12` was chosen for the
-round trip; the consequence is that the idle-sUSDS legs no longer cancel to
-zero in dollars — the charge bills `SSR_apr/365`, the appreciation legs
-credit the (smaller) APY daily factor. **≈ $4,100/month per $1B of idle
-sUSDS, in Sky's favour** (~$48K/yr at Spark's July balance). Disclosed here
-rather than engineered away: crediting the nominal rate instead would make
-the legs cancel but would credit the prime revenue the index did not pay.
+So the idle-sUSDS legs net to zero in **settled dollars**, not merely at the
+rate level — simulated over 12 months on $1B financed 1:1, the Rule 5
+composite is **+0.034 bps/yr** (day-count noise). Converting at `n → ∞`
+(`ln(1+APY)` = 3.459464%) would leave the debt reaching only 3.5148% and
+break the netting by **+0.549 bps/yr**, as well as under-charging BR on all
+utilized debt by ~0.5 bps.
+
+**A caution for anyone re-deriving this.** Comparing the two DAILY slices in
+isolation — `SSR_apr/365` = 9.4917e-5 against the index's
+`(1+SSR)^(1/365)−1` = 9.4784e-5 — shows a 0.14% gap and suggests a
+−0.48 bps/yr residual. That comparison is wrong: it holds both principals
+static, when in fact the credit accrues on a balance growing continuously
+and the charge on one that is static within the month and steps up at
+settlement. The two effects cancel by construction of n = 12.
 
 **Reference rates.** Re-typed as APRs and used as published: the NY Fed
 publishes SOFR as an annualised simple rate and the Atlas defines it as "the

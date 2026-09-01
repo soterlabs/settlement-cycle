@@ -12,8 +12,9 @@ Per the prime-settlement-methodology and debt-rate-methodology docs:
     on-chain); the spread and the subsidy reference rate are nominal (APR).
     Converting SSR at n=12 — the settlement cadence — puts everything on one
     nominal basis and lets the round trip ``(1 + SSR_apr/12)^12`` recover
-    the SSR APY exactly. It leaves a 0.48 bps/yr residual on idle sUSDS
-    (the appreciation legs credit the APY daily factor) — see PRD §17.13.
+    the SSR APY exactly — which is also what makes the idle-sUSDS legs net
+    to zero over a year once the MSC's monthly capitalisation is counted.
+    See PRD §17.13.
     The compounding that happens in reality is the MSC capitalising each
     month's charge into the ilk debt (``vat.grab`` positive dart), which the
     ``cum_debt`` series picks up on its own. (2026-09-01; PRD §17.13.)
@@ -299,10 +300,11 @@ def compute_sky_revenue_daily(
         ssr_apy  = ssr_at_or_before(ssr, current)
         # ``BR_apr = SSR_apr + spread``. SSR is an APY (compounds
         # per-second on-chain); the spread is a governance APR. Convert the
-        # first so both are nominal, then plain addition is exact at the
-        # RATE level. NB the idle-sUSDS netting is not exact in dollars —
-        # the SSR legs credit the APY daily factor, 0.48 bps/yr below the
-        # SSR_apr/365 this bills. See PRD §17.13. Spread is
+        # first so both are nominal, then plain addition is exact. The
+        # idle-sUSDS netting holds over a settlement year: this bills
+        # SSR_apr/365 on a debt that capitalises monthly, the appreciation
+        # legs credit the index that compounds continuously, and n=12 is
+        # the conversion that makes both reach 3.52%/yr. Spread is
         # date-resolved (30bps → 20bps on 2026-07-23).
         base_apr = apy_to_apr(ssr_apy) + base_rate_spread_at(current)
 
