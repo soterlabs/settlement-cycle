@@ -301,8 +301,8 @@ def months_elapsed_since(d: date, anchor: date = SUBSIDY_PROGRAM_START) -> int:
     return (d.year - anchor.year) * 12 + (d.month - anchor.month)
 
 
-def subsidised_apy(
-    base_apy: Decimal,   # NOMINAL (APR) since 2026-09-01 — name kept for API stability
+def subsidised_apr(
+    base_apr: Decimal,
     ref_rate_apr: Decimal,
     months_elapsed: int,
     ramp_months: int = SUBSIDY_RAMP_MONTHS,
@@ -314,15 +314,15 @@ def subsidised_apy(
     published. The interpolation is plain arithmetic on rate numbers, so it
     is unchanged by the units switch — only what the numbers mean changed.
 
-    At T=0: subsidised_apy = ref_rate (full subsidy).
-    At T=24: subsidised_apy = base_apy (no subsidy).
+    At T=0: subsidised_apr = ref_rate (full subsidy).
+    At T=24: subsidised_apr = base_apr (no subsidy).
 
-    Clamp guards the case where ``ref_rate ≥ base_apy`` (e.g. T-Bill ≥ BR for
+    Clamp guards the case where ``ref_rate ≥ base_apr`` (e.g. T-Bill ≥ BR for
     Spark in some periods) — without it the linear interpolation would give
-    a result *above* base_apy, charging the prime more than the unsubsidised
+    a result *above* base_apr, charging the prime more than the unsubsidised
     rate. The subsidy intent is one-sided: the prime never pays more than BR.
     """
     t = max(0, min(months_elapsed, ramp_months))
-    spread = base_apy - ref_rate_apr
+    spread = base_apr - ref_rate_apr
     raw = ref_rate_apr + spread * Decimal(t) / Decimal(ramp_months)
-    return min(base_apy, raw)
+    return min(base_apr, raw)

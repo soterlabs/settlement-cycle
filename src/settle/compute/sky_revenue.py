@@ -91,7 +91,7 @@ from ..domain.subsidy import (
     ScheduledReferenceRateHistory,
     SubsidyConfig,
     months_elapsed_since,
-    subsidised_apy,
+    subsidised_apr,
 )
 from ._helpers import (
     apr_daily,
@@ -305,7 +305,7 @@ def compute_sky_revenue_daily(
         if use_subsidy and current >= subsidy_config.program_start:  # type: ignore[union-attr]
             _ref_rate = ref_rate_history.at(current)                  # type: ignore[union-attr]
             _t        = months_elapsed_since(current, subsidy_config.program_start)  # type: ignore[union-attr]
-            _sub_apr  = subsidised_apy(base_apr, _ref_rate, _t, subsidy_config.ramp_months)  # type: ignore[union-attr]
+            _sub_apr  = subsidised_apr(base_apr, _ref_rate, _t, subsidy_config.ramp_months)  # type: ignore[union-attr]
 
         base_f = apr_daily(base_apr)
         sub_f = apr_daily(_sub_apr) if _sub_apr is not None else base_f
