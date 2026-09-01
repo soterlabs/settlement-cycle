@@ -14,7 +14,7 @@ import pandas as pd
 import pytest
 
 from settle.compute import Sources, compute_monthly_pnl
-from settle.compute._helpers import daily_compounding_factor
+from settle.compute._helpers import apr_daily, apy_to_apr
 from settle.compute.agent_rate import AGENT_RATE_OVER_SSR
 from settle.compute.sky_revenue import BASE_RATE_OVER_SSR
 from settle.domain import Chain, Month
@@ -58,6 +58,10 @@ def _zero_debt_df() -> pd.DataFrame:
     })
 
 
+# USDS mainnet address — the subproxy holding the agent-rate-earning balance.
+_USDS = bytes.fromhex("dc035d45d973e3ec169d2276ddab16f1e407384f")
+
+
 def test_monthly_pnl_zero_book_zero_pnl(obex, fixed_pin_blocks):
     """Zero balances + zero-debt timeseries → zero PnL. Sanity gate."""
     sources = Sources(
@@ -84,7 +88,7 @@ def test_monthly_pnl_zero_book_zero_pnl(obex, fixed_pin_blocks):
     assert result.monthly_pnl == Decimal("0")
 
 
-def test_monthly_pnl_obex_synthetic_one_venue(obex, fixed_pin_blocks):
+def test_monthly_pnl_obex_synthetic_one_venue(obex, fixed_pin_blocks, monkeypatch):
     """OBEX-shaped scenario, all numbers chosen for closed-form math.
 
     Setup (constant throughout March 2026):
@@ -99,11 +103,14 @@ def test_monthly_pnl_obex_synthetic_one_venue(obex, fixed_pin_blocks):
       balance_eom  = 100M shares    pps_eom = 1.05   →  value_eom = 105M
       no inflows during the period
 
-    Expected (Decimal arithmetic):
+    Expected (Decimal arithmetic), on the NOMINAL convention adopted
+    2026-09-01 — rates are summed as APRs and sliced /365, with no
+    intra-period compounding (see ``apy_to_apr``, PRD §17.13):
       utilized           = 100M (subproxy USDS is treasury/risk capital — not deducted)
-      borrow_apy         = 4.00% + 0.30% = 4.30%
-      sky_revenue        = 31 × 100M × ((1.043)^(1/365) − 1)
-      agent_rate         = 31 × 20M × ((1.042)^(1/365) − 1)
+      ssr_apr            = 12 × ((1.04)^(1/12) − 1) = 3.928488%
+      borrow_apr         = ssr_apr + 0.30% = 4.228488%
+      sky_revenue        = 100M × 31/365 × borrow_apr
+      agent_rate         =  20M × 31/365 × (ssr_apr + 0.20%)
       prime_revenue      = (105M − 104M) − 0 = 1M
       monthly_pnl        = prime_revenue + agent_rate − sky_revenue
     """
@@ -134,9 +141,7 @@ def test_monthly_pnl_obex_synthetic_one_venue(obex, fixed_pin_blocks):
         ):
             # OBEX subproxy USDS holdings — non-empty for our subproxy address only.
             self.cumulative_calls.append((chain, token, holder, start, pin_block))
-            if holder == obex.subproxy[Chain.ETHEREUM].value and token == bytes.fromhex(
-                "dc035d45d973e3ec169d2276ddab16f1e407384f"
-            ):
+            if holder == obex.subproxy[Chain.ETHEREUM].value and token == _USDS:
                 return sub_usds_df
             return empty_balance_df
 
@@ -148,8 +153,34 @@ def test_monthly_pnl_obex_synthetic_one_venue(obex, fixed_pin_blocks):
                 "block_date": [], "daily_inflow": [], "cum_inflow": [],
             })
 
-    # Position balance source — return 100M shares (raw = 100M × 10^6).
-    position_balance_src = MockPositionBalanceSource(raw_balance=100_000_000 * 10**6)
+    # Position balance source — return 100M shares (raw = 100M × 10^6) for the
+    # venue token.
+    #
+    # It must dispatch by (token, holder), though: `normalize.balances`
+    # re-reads the subproxy's own balances on-chain at the SoM/EoM blocks and
+    # re-seeds the Dune series to match. A single fixed raw_balance answers
+    # those 18-decimal queries with the 6-decimal venue figure — 10^14 wei =
+    # 0.0001 — which zeroes out the 20M USDS holding (agent_rate → 0) and
+    # seeds a spurious sUSDS balance. Keying on token alone would leave the
+    # sUSDS leg riding on `balances.py`'s `abs(seed) > 0.01` threshold, so
+    # answer for the subproxy explicitly and per token.
+    # Dispatch positively on the venue token rather than falling through to
+    # raw_balance for everything that isn't the subproxy: the 6-decimal
+    # raw_balance must never answer an 18-decimal query. Today nothing else
+    # asks (the ALM leg has no on-chain anchor and OBEX has no PSM3), but a
+    # fallback that returns 1e14 for any holder just relocates the trap.
+    venue_token = obex.venues[0].token.address.value
+
+    class _BalanceByToken(MockPositionBalanceSource):
+        def balance_at(self, chain, token, holder, block):
+            self.calls.append((chain, token, holder, block))
+            if holder == obex.subproxy[Chain.ETHEREUM].value:
+                return 20_000_000 * 10**18 if token == _USDS else 0
+            if token == venue_token:
+                return self.raw_balance
+            return 0
+
+    position_balance_src = _BalanceByToken(raw_balance=100_000_000 * 10**6)
 
     # ConvertToAssets needs to differentiate SoM (pps = 1.04) vs EoM (pps = 1.05).
     class _PriceByBlock(MockConvertToAssetsSource):
@@ -159,12 +190,27 @@ def test_monthly_pnl_obex_synthetic_one_venue(obex, fixed_pin_blocks):
                 return int(Decimal("1.04") * 10**6)
             return int(Decimal("1.05") * 10**6)
 
+    # Keep the test hermetic. Without an injected resolver `compute_monthly_pnl`
+    # falls back to the RPC one, and `get_debt_timeseries`' daily expansion then
+    # makes 31 live mainnet `ilk_rate` eth_calls — invisible here only because a
+    # shared cache answers them. On a cold cache this test fails in ~34s with a
+    # ConnectionError, despite not being marked `live`.
+    #
+    # Pinning the rate to 1.0 (1e27 ray) also removes a hidden assumption: the
+    # closed-form expectations below take cum_debt as exactly 100M, which holds
+    # only while ALLOCATOR-OBEX-A's Vat rate is 1.0. Were governance to set a
+    # non-zero `duty` on that ilk, this synthetic test would start failing for
+    # reasons unrelated to the code under test.
+    from settle.extract import rpc as _rpc
+    monkeypatch.setattr(_rpc, "ilk_rate", lambda chain, vat, ilk, block: 10**27)
+
     sources = Sources(
         debt=MockDebtSource(debt_df),
         balance=_SmartBalances(),
         ssr=MockSSRSource(ssr_df),
         position_balance=position_balance_src,
         convert_to_assets=_PriceByBlock(),
+        block_resolver=MockBlockResolver(default=fixed_pin_blocks["eom"][Chain.ETHEREUM]),
     )
 
     # --- act ---
@@ -177,17 +223,27 @@ def test_monthly_pnl_obex_synthetic_one_venue(obex, fixed_pin_blocks):
 
     # --- assert ---
     days = 31
-    sky_factor = daily_compounding_factor(Decimal("0.04") + BASE_RATE_OVER_SSR)
-    agent_factor = daily_compounding_factor(Decimal("0.04") + AGENT_RATE_OVER_SSR)
+    # SSR is an APY; the spreads are governance APRs. Convert the first, then
+    # sum, then slice — nominal, no intra-period compounding.
+    ssr_apr = apy_to_apr(Decimal("0.04"))
+    sky_slice = apr_daily(ssr_apr + BASE_RATE_OVER_SSR, days)
+    agent_slice = apr_daily(ssr_apr + AGENT_RATE_OVER_SSR, days)
     # Utilized = full 100M debt; subproxy USDS is treasury/risk capital and is NOT
     # deducted from utilized — it earns agent_rate instead.
-    expected_sky = Decimal("100000000") * days * sky_factor
-    expected_agent = Decimal("20000000") * days * agent_factor
+    expected_sky = Decimal("100000000") * sky_slice
+    expected_agent = Decimal("20000000") * agent_slice
 
-    assert result.sky_revenue == expected_sky
-    assert result.agent_rate == expected_agent
+    # Tolerance, not equality: production sums 31 daily slices while the
+    # closed form takes one 31-day slice. Nominal accrual makes those equal in
+    # exact arithmetic, but each ``apr/365`` rounds to Decimal's 28 significant
+    # digits, so 31 accumulated roundings drift ~1e-22 — femtocents. Same
+    # property as ``test_apr_daily_is_plain_slicing``.
+    tol = Decimal("1e-15")
+    assert abs(result.sky_revenue - expected_sky) < tol
+    assert abs(result.agent_rate - expected_agent) < tol
     assert result.prime_agent_revenue == Decimal("1000000")
-    assert result.monthly_pnl == expected_agent + Decimal("1000000") - expected_sky
+    expected_pnl = expected_agent + Decimal("1000000") - expected_sky
+    assert abs(result.monthly_pnl - expected_pnl) < tol
 
     # Per-venue breakdown
     assert len(result.venue_breakdown) == 1
@@ -276,8 +332,14 @@ def test_v3_position_source_is_threaded_through_sources(fixed_pin_blocks):
         ssr=MockSSRSource(pd.DataFrame({
             "effective_date": [date(2025, 12, 16)], "ssr_apy": [0.04],
         })),
-        # No position_balance/convert_to_assets — V3 path bypasses both.
+        # convert_to_assets is genuinely unused — the V3 path bypasses it.
+        # position_balance is NOT: `normalize.balances` re-reads the subproxy
+        # balance on-chain for its SoM/EoM anchors, and with no source injected
+        # that falls through to the RPC one. Same for block_resolver and the
+        # daily debt expansion. Both made this unmarked test hit mainnet.
+        position_balance=MockPositionBalanceSource(raw_balance=0),
         v3_position=v3_src,
+        block_resolver=MockBlockResolver(default=fixed_pin_blocks["eom"][Chain.ETHEREUM]),
     )
 
     result = compute_monthly_pnl(
@@ -365,6 +427,10 @@ def test_v3_liquidity_events_net_out_inflows(fixed_pin_blocks):
         ssr=MockSSRSource(pd.DataFrame({
             "effective_date": [date(2025, 12, 16)], "ssr_apy": [0.04],
         })),
+        # See the sibling V3 test: without an injected position_balance the
+        # on-chain SoM/EoM anchors in `normalize.balances` fall through to the
+        # RPC source and this unmarked test hits mainnet.
+        position_balance=MockPositionBalanceSource(raw_balance=0),
         v3_position=v3_src,
         block_resolver=MockBlockResolver(default_date=date(2026, 3, 15)),
     )
@@ -1018,9 +1084,12 @@ def test_erc4626_closed_form_inflow_for_non_dune_chain(fixed_pin_blocks, monkeyp
 
 def test_monthly_pnl_invokes_block_resolver_for_both_som_and_eom(obex):
     """When pin_blocks_eom/som are not supplied, `compute_monthly_pnl` must
-    delegate to the configured `IBlockResolver` exactly twice per chain (one
-    SoM anchor, one EoM anchor) and the SoM anchor must precede the EoM anchor
-    by ~1 month."""
+    delegate to the configured `IBlockResolver` for both the SoM and the EoM
+    anchor, and the SoM anchor must precede the EoM anchor by ~1 month.
+
+    Not an exact call count: `get_debt_timeseries`'s daily expansion resolves
+    one EoD block per calendar day as well, so a March run makes 31 further
+    ethereum calls on top of the two pin anchors."""
     from datetime import datetime, time, timedelta, timezone
 
     from ..fixtures.mock_sources import MockBlockResolver
@@ -1040,14 +1109,26 @@ def test_monthly_pnl_invokes_block_resolver_for_both_som_and_eom(obex):
         # Both pin sets None → resolver must be invoked
     )
 
-    # Resolver called exactly twice for ethereum (OBEX has only one chain).
-    chains_seen = [c for c, _ in resolver.calls]
-    assert chains_seen == ["ethereum", "ethereum"]
+    # Every call is for ethereum — OBEX has only one chain.
+    chains_seen = {c for c, _ in resolver.calls}
+    assert chains_seen == {"ethereum"}
     anchors = [a for _, a in resolver.calls]
     eom_anchor = datetime.combine(date(2026, 3, 31), time.max, tzinfo=timezone.utc)
     som_anchor = datetime.combine(date(2026, 2, 28), time.max, tzinfo=timezone.utc)
     assert eom_anchor in anchors
     assert som_anchor in anchors
+    # Cardinality, derived from the actual calls rather than from literals:
+    # exactly one resolved anchor precedes March, and it is the SoM anchor.
+    # Catches a regression that stopped resolving SoM as its own anchor, and
+    # one that re-resolved it once per day. (The EoM anchor is deliberately
+    # not counted — March 31 EoD is also the daily expansion's last day, so
+    # it legitimately appears twice.)
+    march_1 = datetime.combine(date(2026, 3, 1), time.min, tzinfo=timezone.utc)
+    assert [a for a in anchors if a < march_1] == [som_anchor]
+    # EoM side: exactly twice — once as the pin anchor, once as the daily
+    # expansion's last day. Pins the RPC cost, so a regression that resolved
+    # the EoM pin per-venue or per-timeseries doesn't slip through.
+    assert anchors.count(eom_anchor) == 2
     # The pin blocks ended up on the result.
     assert result.period.pin_blocks[Chain.ETHEREUM] == 99
     assert result.pin_blocks_som[Chain.ETHEREUM] == 99
