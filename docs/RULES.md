@@ -21,8 +21,12 @@ daily_interest = D × base_apr / 365                    # NOMINAL — no intra-p
 
 Three properties this buys:
 
-1. `BR − SSR − spread = 0` exactly, which is what makes Sky net zero on idle
-   sUSDS (the whole point of the spread reimbursement).
+1. `BR_apr − SSR_apr − spread = 0` exactly **at the rate level**, which is
+   what the additive composition is for. It does *not* make the idle-sUSDS
+   legs cancel in dollars: the SSR-appreciation legs credit the APY daily
+   factor `(1+SSR)^(1/365)−1` (tracking the index the prime actually holds),
+   which sits **0.48 bps/yr below** the `SSR_apr/365` the charge bills. That
+   residual is the price of `n = 12` — see the trade-off table in PRD §17.13.
 2. The conversion round-trips: `(1 + SSR_apr/12)^12 − 1` returns the SSR APY
    (3.52%) exactly, because the conversion frequency matches the frequency at
    which the charge actually compounds. NB this holds for the *converted leg*,

@@ -1,7 +1,7 @@
 # Subsidy reference rate — daily values used in the subsidised borrowing
 # rate formula (debt-rate-methodology):
 #
-#   subsidised_apy_d = ref_rate_d + (base_apy − ref_rate_d) × T / 24
+#   subsidised_apr_d = ref_rate_d + (base_apr − ref_rate_d) × T / 24
 #
 # where T is the number of months elapsed since the subsidy program start
 # (2026-01-01 per Sky governance — i.e. T=1 for Feb 2026, T=2 for Mar, …).

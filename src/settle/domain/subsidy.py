@@ -42,8 +42,14 @@ _VALID_REF_RATE_KINDS = ("tbill_3m", "sofr")
 # convention: SOFR is published by the NY Fed as an annualised SIMPLE rate
 # and the Atlas defines it as "expressed as an annual rate", so it is an APR
 # used as published. The 3M T-Bill column keeps its ``_apy`` suffix — it
-# stopped being the subsidy reference on 2026-07-23 and its months are
-# settled, so it is deliberately not re-typed (scope: going forward only).
+# stopped being the subsidy reference on 2026-07-23.
+#
+# NB the COLUMN NAME is what is unchanged, not the semantics: whatever value
+# ``at()`` returns is now sliced ``rate/365`` by ``subsidised_apr`` instead of
+# ``(1+rate)^(1/365)-1``, so re-running a Jan–Jul 2026 month with current code
+# re-prices its T-Bill-referenced subsidy (~1.8% higher on the reference leg).
+# Those months are frozen by NOT being re-run, not by this column being
+# immune. Re-typing it is only worth doing if they are ever restated.
 _REF_RATE_COLUMNS = {"tbill_3m": "tbill_3m_apy", "sofr": "sofr_apr"}
 
 # Subsidy program kicked in 2026-01-01; T=0 in Jan, T=1 in Feb, ... T=24+ → no subsidy.
@@ -183,6 +189,30 @@ class ReferenceRateHistory:
             )
         return Decimal(str(eligible.loc[idx, "ref_rate_apr"]))
 
+    def warn_if_period_end_missing(self, period_end: date) -> None:
+        """Warn when the LAST day of a settlement period has no own-date row.
+
+        The staleness thresholds above are calendar-span based, so a
+        business-day print that publishes a day or two late (2026-08-31
+        publishes on 09-01) slips through silently: the final day of the
+        period accrues at the previous print with nothing in the log. That
+        day carries full weight in the month's charge, and with the subsidy
+        headroom now under 2 bps a single print can decide whether the ramp
+        clamps — so the period boundary gets its own check.
+        """
+        if self.rates.empty:
+            return
+        if not (self.rates["effective_date"] == period_end).any():
+            eligible = self.rates[self.rates["effective_date"] <= period_end]
+            latest = eligible["effective_date"].max() if not eligible.empty else None
+            _log.warning(
+                "Reference rate (%s): no own-date row for the period's LAST "
+                "day %s — it carries forward from %s. If that print has since "
+                "published, add it to config/subsidy_reference_rates.yaml "
+                "before settling this period.",
+                self.kind, period_end, latest,
+            )
+
 
 @dataclass(frozen=True, slots=True)
 class ScheduledReferenceRateHistory:
@@ -213,6 +243,12 @@ class ScheduledReferenceRateHistory:
 
     def at(self, target: date) -> Decimal:
         return self.histories[self.kind_at(target)].at(target)
+
+    def warn_if_period_end_missing(self, period_end: date) -> None:
+        """Delegate to whichever series is active on the period's last day."""
+        self.histories[self.kind_at(period_end)].warn_if_period_end_missing(
+            period_end,
+        )
 
 
 def load_reference_rates(

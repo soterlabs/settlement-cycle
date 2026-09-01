@@ -963,7 +963,7 @@ def _accrue_daily(
 def _susds_cat_b_spread_reimb(
     value_som: Decimal, inflow_ts: pd.DataFrame | None, period: Period,
 ) -> Decimal:
-    """BR−SSR spread daily-compounded Sky Revenue reduction for a Cat B
+    """BR−SSR spread, daily-integrated Sky Revenue reduction for a Cat B
     ``sky_savings_token`` venue (S32 / S37 / S43 / S47 / S51).
 
     Sky charges full BR on the underlying USDS (sUSDS is NOT subtracted from
@@ -1071,7 +1071,7 @@ def _savings_v2_depositor_ssr(
 
 
 def _psm3_susds_spread(psm_usds: pd.DataFrame | None, period: Period) -> Decimal:
-    """BR−SSR spread daily-compounded Prime Revenue credit on the sUSDS
+    """BR−SSR spread, daily-integrated Prime Revenue credit on the sUSDS
     slice of PSM3 holdings.
 
     The sUSDS leg of PSM3 is yield-bearing — the prime captures SSR
@@ -1652,9 +1652,10 @@ def _aggregate_curve_idle_usds(
     # is nominal, and the Case-3b SSR integral runs on a mark-to-market
     # ``prime_susds_value`` (a fresh ``convertToAssets`` every day), so its
     # daily values already carry the compounding — accumulating it again
-    # would over-carve the SDE pot. Splitting by venue rather than pooling
-    # is required by ``susds_ssr_by_venue``'s re-attribution and, being a
-    # plain sum, is exactly equal to the pooled figure.
+    # would over-carve the SDE pot. ``_venue_spread`` is keyed by venue only
+    # to mirror ``susds_ssr_by_venue`` (which genuinely is consumed per
+    # venue, for the Case-3b re-attribution); it is summed before use, and
+    # being a plain sum that is exactly the pooled figure.
     _venue_spread: dict[str, Decimal] = {}
     susds_ssr_by_venue: dict[str, Decimal] = {}
 

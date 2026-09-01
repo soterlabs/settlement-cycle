@@ -52,11 +52,30 @@ def test_apy_to_apr_rejects_bad_n():
         apy_to_apr(Decimal("0.0352"), 0)
 
 
-def test_nominal_composition_nets_the_reimbursement_to_zero():
-    """Why nominal: on idle sUSDS the prime receives SSR, pays BR and is
-    reimbursed the spread, so ``BR_apr − SSR_apr − spread`` must be 0."""
-    ssr_apr, spread = apy_to_apr(Decimal("0.0352")), Decimal("0.002")
-    assert (ssr_apr + spread) - ssr_apr - spread == Decimal("0")
+def test_idle_susds_netting_residual_is_the_known_048_bps():
+    """The idle-sUSDS legs do NOT cancel in dollars, and this pins by how
+    much — the number PRD §17.13 discloses.
+
+    The charge bills the SSR at ``SSR_apr/365``; the appreciation legs
+    credit ``(1+SSR)^(1/365)-1`` (the index the prime actually holds). The
+    first is larger, so the composite runs ~0.48 bps/yr in Sky's favour.
+    An earlier version of this test asserted
+    ``(a + b) - a - b == 0`` — Decimal associativity, true of any two
+    numbers, which gave false coverage of exactly this property.
+    """
+    from settle.compute._helpers import daily_compounding_factor
+    ssr, spread = Decimal("0.0352"), Decimal("0.002")
+    base = apy_to_apr(ssr) + spread
+    composite = (
+        daily_compounding_factor(ssr)     # credited by the appreciation legs
+        - apr_daily(base)                 # charged as BR
+        + apr_daily(spread)               # refunded
+    )
+    assert composite < 0, "residual should run in Sky's favour"
+    bps_per_year = composite * 365 * 10000
+    assert Decimal("-0.50") < bps_per_year < Decimal("-0.46"), bps_per_year
+    # Rate-level identity still holds — that part was never in doubt.
+    assert base - apy_to_apr(ssr) - spread == Decimal("0")
 
 
 def test_apr_daily_is_plain_slicing():

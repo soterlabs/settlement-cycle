@@ -64,8 +64,13 @@ def apy_to_apr(apy: Decimal, n: int = APR_COMPOUNDING_PERIODS) -> Decimal:
     the sUSDS index on-chain); the spread is a governance-set APR. Adding
     them directly mixes an effective rate with a nominal one. Converting
     SSR to an APR first puts both on the nominal basis, and then plain
-    addition is exact — ``BR_apr - SSR_apr - spread = 0``, which is what
-    makes Sky net zero on idle sUSDS.
+    addition is exact AT THE RATE LEVEL: ``BR_apr - SSR_apr - spread = 0``.
+
+    CAVEAT — that identity does not carry into settled dollars, because the idle-sUSDS netting is NOT exact: the
+    SSR the charge bills (``SSR_apr/365``) is 0.48 bps/yr above the SSR the
+    appreciation legs credit (``(1+SSR)^(1/365)-1``, which tracks the index).
+    That is the unavoidable cost of n=12 — see the trade-off table in PRD
+    §17.13.
 
     At SSR 3.52% and n=12 this gives 3.464456%, so ``BR_apr`` = 3.664456%.
 

@@ -177,7 +177,7 @@ def _months_elapsed(d: date) -> int:
 
 
 def base_apr_for_date(d: date) -> Decimal:
-    """Approximate full BR APY at date d."""
+    """Approximate full BR APR at date d (nominal)."""
     ssr = _SSR_BY_MONTH.get((d.year, d.month), Decimal("0.0450"))
     # NOMINAL base rate, matching ``_helpers.apy_to_apr``: SSR is an APY and
     # is converted at n=12 (the settlement cadence) before the APR spread is

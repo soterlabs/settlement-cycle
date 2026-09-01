@@ -386,7 +386,7 @@ settlement-cycle/                       ← this repo
 │       └── invariants.py               ← Compute-layer sanity checks
 ├── tests/
 │   ├── fixtures/                       ← frozen Extract outputs (Parquet)
-│   │   ├── obex_2026_03/
+│   │   ├── <prime>_<month>/          ← per-prime capture dirs
 │   │   └── grove_2026_03/
 │   ├── unit/
 │   │   ├── test_compute_sky_revenue.py
@@ -395,7 +395,7 @@ settlement-cycle/                       ← this repo
 │   ├── integration/
 │   │   └── test_normalize_with_mock_sources.py
 │   └── e2e/
-│       └── (retired 2026-09-01 — see §17.13)
+│       └── (e2e oracle test retired 2026-09-01 — see §17.13)
 ├── docs/                               ← design + per-prime context
 │   ├── RULES.md
 │   ├── SETTLEMENT_ARCHITECTURE.md, ASSET_CATALOG.md, VALUATION_METHODOLOGY.md
@@ -455,7 +455,7 @@ settlement-cycle/                       ← this repo
 
 - **Unit tests** at every Compute function with hand-built input DataFrames. Pure functions = trivial assertions.
 - **Integration tests** that call Normalize with `MockDebtSource`, `MockBalanceSource`, `MockPriceSource` injected; assert source-agnostic behavior.
-- **Fixture-based replay tests**: freeze Extract outputs to Parquet under `tests/fixtures/obex_2026_03/`; replay through Normalize → Compute → Load; assert the artifact matches a committed expected result.
+- **Fixture-based replay tests**: freeze Extract outputs under `tests/fixtures/<prime>_<month>/`; replay through Normalize → Compute → Load; assert the artifact matches a committed expected result. (The original `obex_2026_03` oracle capture was retired 2026-09-01 — see §17.13.)
 - **End-to-end oracle test**: run the live pipeline for OBEX 2026-03 against Dune; compare to the pre-existing `obex_monthly_pnl.sql` output. Must match within 0.01% modulo documented APR/APY discrepancy.
 
 ---
@@ -486,7 +486,7 @@ Concrete first-PR sequence:
 6. **Compute — sky_revenue + agent_rate** — pure-Python implementations of [`RULES.md`](docs/RULES.md) §3 and §4 formulae. Match Dune oracle.
 7. **Compute — prime_agent_revenue + monthly_pnl** — composes per-venue value deltas. Match Dune oracle.
 8. **Load** — Markdown + CSV + provenance writers. Commit `settlements/obex/2026-03/`.
-9. **E2E test** — `tests/e2e/test_obex_2026_03_against_dune_oracle.py`. CI gate.
+9. **E2E test** — `(retired — see §17.13)`. CI gate.
 
 Each step is one PR. Rough total: 9 PRs to ship Phase 1.
 
@@ -1208,9 +1208,28 @@ was considered and **rejected** — it would bill the same interest twice.
 **Scope.** BR charge (and its gross series), agent rate, all 20 bps
 reimbursement legs (Cat B sUSDS, PSM3, Curve) and Chronicle Points are
 nominal and accrue simply. The **SSR-appreciation** legs (PSM3 appreciation,
-Curve Case-3b, Savings-V2 depositor SSR) stay APY and keep compounding —
-they model a physical receipt, and a nominal sum would under-credit what the
-prime demonstrably received. `CompoundingAccrual` survives for those.
+Curve Case-3b, Savings-V2 depositor SSR) keep the APY daily factor and are
+UNCHANGED from before this PR — simple sums. Their principal is already
+mark-to-market (`convertToAssets` re-read daily), so it carries the
+compounding; accumulating it again over-credits by ~0.14%. Nothing in the
+repo compounds inside a settlement period, and `CompoundingAccrual` was
+deleted.
+
+**Trade-off forced by the choice of n — both exactnesses are not available:**
+
+| conversion | debt round-trip | idle-sUSDS netting |
+|---|---|---|
+| **n = 12 (chosen)** | `(1+SSR_apr/12)^12` = 3.5200% ✓ exact | **−0.483 bps/yr** |
+| n → ∞ (`ln(1+APY)`) | 3.5148% (−0.52 bps) | +0.016 bps/yr |
+
+The sUSDS index compounds continuously while the settlement capitalises
+monthly, so one conversion cannot match both. `n = 12` was chosen for the
+round trip; the consequence is that the idle-sUSDS legs no longer cancel to
+zero in dollars — the charge bills `SSR_apr/365`, the appreciation legs
+credit the (smaller) APY daily factor. **≈ $4,100/month per $1B of idle
+sUSDS, in Sky's favour** (~$48K/yr at Spark's July balance). Disclosed here
+rather than engineered away: crediting the nominal rate instead would make
+the legs cancel but would credit the prime revenue the index did not pay.
 
 **Reference rates.** Re-typed as APRs and used as published: the NY Fed
 publishes SOFR as an annualised simple rate and the Atlas defines it as "the
