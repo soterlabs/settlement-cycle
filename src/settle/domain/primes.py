@@ -174,6 +174,19 @@ class GarConfig:
     # settled months stay reproducible, and nothing from August on earns it.
     until_month: str | None = None
 
+    def __post_init__(self) -> None:
+        # A range that ends at or before it starts silently disables the
+        # primitive for EVERY month — a $0 revenue line with no error, which
+        # is the failure mode this repo consistently refuses (cf.
+        # ``compute._helpers.require_non_empty``). Validated here rather than
+        # in ``load_prime`` so directly-constructed configs are covered too.
+        if self.until_month is not None and self.until_month <= self.from_month:
+            raise ValueError(
+                f"GarConfig: until_month {self.until_month!r} must be after "
+                f"from_month {self.from_month!r} — as written the program "
+                "would never apply to any month."
+            )
+
 
 @dataclass(frozen=True, slots=True)
 class NotionalScheduleEntry:

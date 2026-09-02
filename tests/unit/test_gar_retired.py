@@ -21,7 +21,6 @@ basis (``sky_total.py``, which never reads ``gar``); July is pinned via
 
 from __future__ import annotations
 
-from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
@@ -59,15 +58,17 @@ def test_only_skybase_has_gar():
         assert p.gar is None, f"{cfg.name} unexpectedly declares GAR"
 
 
-@pytest.mark.parametrize("month,earns", [
-    (Month(2025, 12), False),   # before from_month
-    (Month(2026, 1), True),     # first month with GAR
-    (Month(2026, 7), True),     # last month with GAR (MSC#11)
-    (Month(2026, 8), False),    # RETIRED from here
-    (Month(2026, 9), False),
-    (Month(2027, 1), False),
+# ``basis`` distinguishes the three outcomes: "" = never in the program,
+# "retired from …" = past the bound, otherwise the share × SNR derivation.
+@pytest.mark.parametrize("month,earns,basis_exp", [
+    (Month(2025, 12), False, ""),                      # before from_month
+    (Month(2026, 1), True, None),                      # first month with GAR
+    (Month(2026, 7), True, None),                      # last month (MSC#11)
+    (Month(2026, 8), False, "retired from 2026-08"),   # RETIRED from here
+    (Month(2026, 9), False, "retired from 2026-08"),
+    (Month(2027, 1), False, "retired from 2026-08"),
 ])
-def test_month_gate(skybase, month, earns, tmp_path):
+def test_month_gate(skybase, month, earns, basis_exp, tmp_path):
     """Drives the real ``compute_gar`` gate, with a fake sky_total artifact."""
     from settle.compute.gar import compute_gar
 
@@ -82,7 +83,25 @@ def test_month_gate(skybase, month, earns, tmp_path):
         assert basis, "an earning month must record its derivation"
     else:
         assert gar == Decimal("0")
-        assert basis == "", "a non-earning month must render no row"
+        assert basis == basis_exp
+
+
+def test_retired_month_is_distinguishable_from_never_enrolled():
+    """A $0 GAR must say WHY. Otherwise skybase 2026-09 provenance is
+    indistinguishable from obex, which never had the program — and the basis
+    field exists to be an audit trail."""
+    import dataclasses
+
+    from settle.compute.gar import compute_gar
+
+    sb = load_prime(_REPO / "config" / "skybase.yaml")
+    retired = compute_gar(sb, Month(2026, 9), repo_root=Path("/nonexistent"))[1]
+    never = compute_gar(
+        dataclasses.replace(sb, gar=None), Month(2026, 9), repo_root=Path("/x"),
+    )[1]
+    assert retired == "retired from 2026-08"
+    assert never == ""
+    assert retired != never
 
 
 def test_retired_month_needs_no_sky_total_artifact(skybase):
@@ -92,8 +111,25 @@ def test_retired_month_needs_no_sky_total_artifact(skybase):
     sky_total provenance it has no reason to read.
     """
     from settle.compute.gar import compute_gar
-    gar, basis = compute_gar(skybase, Month(2026, 8), repo_root=Path("/nonexistent"))
-    assert (gar, basis) == (Decimal("0"), "")
+    gar, _ = compute_gar(skybase, Month(2026, 8), repo_root=Path("/nonexistent"))
+    assert gar == Decimal("0")
+
+
+# --- the bound must be well-formed ----------------------------------------
+
+@pytest.mark.parametrize("until", ["2026-01", "2025-06"])
+def test_range_ending_at_or_before_its_start_is_rejected(until):
+    """A mis-ordered range disables the primitive for EVERY month — a $0
+    revenue line with no error. Fail loud instead."""
+    from settle.domain.primes import GarConfig
+    with pytest.raises(ValueError, match="must be after"):
+        GarConfig(share=Decimal("0.01"), from_month="2026-01", until_month=until)
+
+
+def test_open_ended_range_is_still_allowed():
+    from settle.domain.primes import GarConfig
+    cfg = GarConfig(share=Decimal("0.01"), from_month="2026-01")
+    assert cfg.until_month is None
 
 
 # --- reporting ------------------------------------------------------------
