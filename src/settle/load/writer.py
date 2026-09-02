@@ -18,7 +18,7 @@ The xlsx is rendered by ``scripts.build_settlement_xlsx`` (subprocess —
 reads only ``provenance.json``). The summary is rendered in-process by
 ``settle.load.summary.write_summary``. The Grove-shaped per-venue
 re-attribution used by the xlsx is computed in-process by
-``settle.load.grove_sheet.compute_sheet_rows``.
+``settle.load.cof_attribution.compute_sheet_rows``.
 
 Historical artifacts (``pnl.md`` / ``pnl.csv`` / ``venues.csv`` /
 ``off_protocol.csv`` / ``grove_sheet.{md,csv,xlsx}``) have been retired.

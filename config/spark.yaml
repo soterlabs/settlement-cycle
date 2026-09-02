@@ -613,13 +613,21 @@ venues:
   # PoolManager is used for price (slot0) reads. See src/settle/extract/
   # uniswap_v4.py and docs comments in normalize/sources/uniswap_v4.py.
   #
-  # Pricing of the two legs mirrors the Curve venues S24/S25:
+  # Pricing of the two legs:
   #   * USDS leg  → idle USDS (``curve_idle_usds.coin``): par $1, deducted from
   #     ``utilized`` (prime-settlement-methodology Step 2 — idle AMM USDS).
-  #   * USDT / PYUSD leg → Sky Direct Exposure (``curve_idle_usds.sde_coin``):
-  #     par $1, registered in config/sky_direct_exposures.yaml (kind: fixed),
-  #     so its asset value is excluded from utilized and its revenue floors to
-  #     Sky — same treatment as the USDT leg of the S24 sUSDS/USDT Curve pool.
+  #     TRUE FOR ALL THREE V4 pools (S61, S62, S66) regardless of SDE status —
+  #     USDS parked in an AMM is not utilized whatever the counter-leg is.
+  #   * The paired leg is SDE only for S62 (USDT). Atlas scopes the Uniswap
+  #     SDE to USDT alone — "Uniswap Pools - Investments by Spark in USDT in
+  #     USDS/USDT Uniswap pools" — so:
+  #       S62 USDT  → SDE (``curve_idle_usds.sde_coin``): par $1, registered in
+  #         config/sky_direct_exposures.yaml (kind: fixed), asset value
+  #         excluded from utilized, revenue floors to Sky. Same treatment as
+  #         the USDT leg of the S24 sUSDS/USDT Curve pool.
+  #       S61 PYUSD → NOT SDE (corrected 2026-09). Stays in utilized, pays
+  #         Base Rate, revenue accrues to the prime.
+  #       S66 RLUSD → NOT SDE. Same as S61.
   #
   # Uncollected LP fees are not added to the position value (negligible for
   # these tight par-stable ranges; see normalize/sources/uniswap_v4.py).
@@ -642,7 +650,11 @@ venues:
     univ4_token_ids: [161205, 161283, 161284, 161285, 324004, 324005]
     curve_idle_usds:
       coin: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'      # USDS — idle, par $1
-      sde_coin: '0x6c3ea9036406852006290770bedfcaba0e23a0e8'  # PYUSD — SDE asset value, par $1
+      # No sde_coin (2026-09): Atlas scopes the Uniswap SDE to USDT only
+      # ("Investments by Spark in USDT in USDS/USDT Uniswap pools"), so the
+      # PYUSD leg is NOT a Sky Direct Exposure. It stays in ``utilized`` and
+      # pays Base Rate, and its revenue accrues to the prime. Removed from
+      # config/sky_direct_exposures.yaml in the same change.
 
   - id: S62
     chain: ethereum
@@ -664,6 +676,66 @@ venues:
     curve_idle_usds:
       coin: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'      # USDS — idle, par $1
       sde_coin: '0xdac17f958d2ee523a2206206994597c13d831ec7'  # USDT — SDE asset value, par $1
+
+  # ── RLUSD Reserve (added 2026-09) ──────────────────────────────────────
+  #
+  # Third Spark.fi Reserve V4 pool, same PoolKey shape as S61/S62 (fee 5,
+  # tick_spacing 1, no hooks). Verified on-chain: the Eth ALM received v4
+  # Position NFTs 385168 and 385169 on 2026-08-27 09:24, both in the
+  # RLUSD/USDS pool (poolId 9035721b…eb4f), and still owns them at the Aug 31
+  # pin. At that pin they hold:
+  #
+  #     385168  ticks [  0, 10]   RLUSD  8,450,059.53   USDS   1,549,644.55
+  #     385169  ticks [-10,  0]   RLUSD          0.00   USDS  10,000,000.00
+  #                               TOTAL  8,450,059.53   USDS  11,549,644.55
+  #
+  # ≈$20.0M that was in NO venue: S64 tracks RLUSD *raw at the ALM* via
+  # balanceOf, and LP'd RLUSD sits with the PoolManager, so S64 cannot see it.
+  # No double-count between the two — S64's $251.7M and this position are
+  # disjoint.
+  #
+  # NOT a Sky Direct Exposure (operator, 2026-09) — unlike S61 (PYUSD leg) and
+  # S62 (USDT leg), so there is deliberately NO ``sde_coin`` here and no entry
+  # in config/sky_direct_exposures.yaml. The RLUSD leg is ordinary Spark asset
+  # value: inside the perimeter, debt-funded, bearing BR, with any LP fees
+  # accruing to the prime rather than flooring to Sky.
+  #
+  # The USDS leg IS still deducted from ``utilized`` (Step 2, idle AMM USDS) —
+  # ``coin`` and ``sde_coin`` are independent (see Venue.curve_idle_usds), and
+  # USDS parked in an AMM is not utilized regardless of what the counter-leg
+  # is. Without this venue the $11,549,644.55 stayed in utilized and Sky
+  # charged Base Rate on it (~$5-6K for August's ~5 days at 3.66% APR; ~$35K
+  # per full month at this size, and the ramp is early — $251.7M of RLUSD was
+  # still sitting raw at the ALM on Aug 31).
+  #
+  # ``univ4_token_ids`` is hardcoded because the v4 PositionManager is NOT
+  # ERC-721-enumerable, so the dynamic discovery used for V3 (E12/E30, see
+  # extract.uniswap_v3.discover_pool_token_ids) cannot apply. The list is
+  # provably complete for this pool: every v4 NFT ever transferred to the Spark
+  # ALM in 2026 is accounted for — 161205/161283-285/324004-005 (S61),
+  # 161345-348/293902-906 (S62), and these two. New positions are detectable
+  # only by scanning ERC-721 Transfers from the PositionManager to the ALM;
+  # an ERC-20-only audit will never see them (which is how these were missed).
+  - id: S66
+    chain: ethereum
+    label: 'Spark.fi RLUSD Reserve Uniswap V4 (RLUSD/USDS)'
+    pricing_category: F
+    lp_kind: uniswap_v4
+    token:
+      address: '0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e'   # v4 PositionManager (NFT contract; not a pool)
+      symbol: 'UNIV4-RLUSD/USDS'
+      decimals: 18
+    nft_position_manager: '0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e'
+    univ4_pool_key:
+      currency0: '0x8292bb45bf1ee4d140127049757c2e0ff06317ed'  # RLUSD (18 decimals)
+      currency1: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'  # USDS  (18 decimals)
+      fee: 5                # 0.0005% (hundredths of a bip)
+      tick_spacing: 1
+      hooks: '0x0000000000000000000000000000000000000000'
+    univ4_token_ids: [385168, 385169]
+    curve_idle_usds:
+      coin: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'      # USDS — idle AMM USDS, deducted from utilized
+      # No sde_coin: this pool is not a Sky Direct Exposure (see above).
 
   # ─────────────────────────────────────────────────────────────
   # Ethereum — idle ALM stables (Cat A)
@@ -713,6 +785,9 @@ venues:
   # arrangement on this position, add the payer to external_alm_sources and
   # flip the flag, or the realized yield stays uncredited (the S28/S23
   # failure mode).
+  # NOTE: raw RLUSD at the ALM only. The LP'd portion lives in S66 (Uniswap
+  # V4 RLUSD/USDS) and is held by the PoolManager, so balanceOf here cannot
+  # see it — the two are disjoint, no double-count.
   - id: S64
     chain: ethereum
     label: 'RLUSD raw (ALM idle — $251.7M as of 2026-08)'

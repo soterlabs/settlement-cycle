@@ -96,6 +96,12 @@ class VenueRevenue:
     # CoF-eligible average, since the idle portion is already subtracted from
     # ``utilized`` and should not carry a CoF share.
     lending_idle_tw_avg_usd: Decimal = Decimal("0")
+    # Time-weighted average USDS leg held inside an AMM LP position (Uniswap
+    # V4 ``curve_idle_usds.coin``). Already deducted from ``utilized`` daily
+    # (Step 2, idle AMM USDS), so the CoF re-attribution must exclude it from
+    # the venue's allocation base — same role as
+    # ``lending_idle_tw_avg_usd`` above.
+    amm_idle_usds_tw_avg_usd: Decimal = Decimal("0")
     # Time-weighted average of the venue's off-chain notional principal,
     # for cash-distribution-only venues where the on-chain ``tw_avg_value``
     # is $0 but Sky is implicitly charging interest on the funded principal

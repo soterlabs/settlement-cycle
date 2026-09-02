@@ -481,12 +481,24 @@ def _aggregate_univ4_idle_usds(
     *,
     v4_source,
     block_resolver,
-) -> "pd.DataFrame":
+) -> "tuple[pd.DataFrame, dict[str, Decimal]]":
     """Daily USDS-leg value held inside Uniswap V4 LP positions, summed across
     all ``lp_kind=uniswap_v4`` venues — the v4 analog of
     ``_aggregate_curve_idle_usds`` (par-stable USDS leg only; no sUSDS spread
-    in scope). Returns ``[block_date, daily_net, cum_balance]`` where
-    ``cum_balance`` is the day's USDS snapshot (PSM convention)."""
+    in scope).
+
+    Returns ``(df, tw_avg_by_venue)``:
+
+    * ``df`` — ``[block_date, daily_net, cum_balance]`` where ``cum_balance``
+      is the day's USDS snapshot (PSM convention).
+    * ``tw_avg_by_venue`` — venue id → time-weighted average USDS leg over the
+      period. Surfaced per venue (as ``amm_idle_usds_tw_avg_usd``) so the CoF
+      re-attribution can deduct it from the allocation base, exactly as it
+      already does for ``lending_idle_tw_avg_usd``. Without it a non-SDE v4
+      venue is weighted on its WHOLE pool value while only the non-USDS leg is
+      in ``utilized`` — S61 drew $266,508 of cof_alloc against a true BR charge
+      of $191,208, ~$75K over-attributed and diluted away from every other
+      venue in the counterparty-facing sheet."""
     from datetime import time
 
     venues = [
@@ -494,9 +506,10 @@ def _aggregate_univ4_idle_usds(
         if v.lp_kind == "uniswap_v4" and v.curve_idle_usds is not None and not v.skip
     ]
     if not venues:
-        return _empty_psm_df()
+        return _empty_psm_df(), {}
 
     daily_by_date: dict = {}
+    venue_idle_sum: dict[str, Decimal] = {}
     for venue in venues:
         src = v4_source if v4_source is not None else _univ4_default_source(venue)
         pool_key = _univ4_pool_key_for(venue)
@@ -542,6 +555,7 @@ def _aggregate_univ4_idle_usds(
             else:
                 venue_last_idle = idle
             daily_by_date[current] = daily_by_date.get(current, Decimal("0")) + idle
+            venue_idle_sum[venue.id] = venue_idle_sum.get(venue.id, Decimal("0")) + idle
             current = current + timedelta(days=1)
         _log.info("univ4_idle_usds: %s done.", venue.id)
 
@@ -554,7 +568,9 @@ def _aggregate_univ4_idle_usds(
             "cum_usdc": Decimal("0"), "cum_usds_leg": snap, "cum_susds": Decimal("0"),
         })
         prev = snap
-    return pd.DataFrame(rows)
+    n_days = Decimal(period.n_days) if period.n_days else Decimal(1)
+    tw_avg_by_venue = {vid: tot / n_days for vid, tot in venue_idle_sum.items()}
+    return pd.DataFrame(rows), tw_avg_by_venue
 
 
 def _univ4_sde_asset_value_timeseries(
@@ -2415,7 +2431,7 @@ def compute_monthly_pnl(
     # same utilized-deduction role as the Curve idle path. Merged into
     # ``curve_idle_usds`` by summing the daily ``cum_balance`` snapshots so
     # ``compute_sky_revenue`` deducts the combined AMM idle USDS.
-    _univ4_idle = _aggregate_univ4_idle_usds(
+    _univ4_idle, _univ4_idle_tw_avg = _aggregate_univ4_idle_usds(
         prime, period,
         v4_source=sources.v4_position,
         block_resolver=resolver,
@@ -3994,6 +4010,7 @@ def compute_monthly_pnl(
         _dc.replace(
             vr,
             lending_idle_tw_avg_usd=_lending_idle_tw_avg.get(vr.venue_id, vr.lending_idle_tw_avg_usd),
+            amm_idle_usds_tw_avg_usd=_univ4_idle_tw_avg.get(vr.venue_id, vr.amm_idle_usds_tw_avg_usd),
             susds_spread_reimbursement=_susds_spread_reimbs.get(vr.venue_id, vr.susds_spread_reimbursement),
         )
         for vr in breakdown

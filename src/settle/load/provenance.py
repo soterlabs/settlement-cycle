@@ -154,6 +154,7 @@ def render_provenance(
                 # post-hoc CoF allocator subtracts this from avg_value
                 # before splitting cof_total across venues.
                 "lending_idle_tw_avg_usd": str(v.lending_idle_tw_avg_usd),
+                "amm_idle_usds_tw_avg_usd": str(v.amm_idle_usds_tw_avg_usd),
                 "br_charge": str(v.br_charge),
                 "sky_direct_shortfall": str(v.sky_direct_shortfall),
             }
