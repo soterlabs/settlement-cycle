@@ -26,6 +26,16 @@ from settle.load import dr_rewards
 
 REPO = Path(__file__).resolve().parents[2]
 
+# The DR workbook lives in the ``settle-dr-dune`` submodule, and CI checks the
+# repo out WITHOUT submodules — so ``load_dr`` returns None there for any month
+# it actually has to read. Tests that need real amounts are skipped rather than
+# asserted; the ones below that DON'T need it are the more interesting half,
+# because the retirement gate short-circuits before the workbook read.
+needs_workbook = pytest.mark.skipif(
+    dr_rewards._summary_rows() is None,
+    reason="settle-dr-dune workbook unavailable (submodule not checked out)",
+)
+
 
 # --- the bound ------------------------------------------------------------
 
@@ -41,21 +51,25 @@ def test_keel_codes_remain_attributed():
     assert owner.get("4011") == "keel"
 
 
-@pytest.mark.parametrize("month,zero", [
-    ("2026-06", False),
-    ("2026-07", False),   # last month Keel earns DR
-    ("2026-08", True),    # RETIRED from here
-    ("2026-09", True),
-    ("2027-01", True),
-])
-def test_keel_dr_by_month(month, zero):
+@pytest.mark.parametrize("month", ["2026-08", "2026-09", "2027-01"])
+def test_keel_earns_nothing_from_the_cutoff(month):
+    """No workbook needed: the gate returns before the workbook is read.
+
+    That short-circuit is the property being pinned — a retired month must
+    not depend on the DR source being present at all.
+    """
+    dr = dr_rewards.load_dr("keel", month)
+    assert dr is not None, "a retired prime returns a zero, not None"
+    assert dr["total"] == Decimal("0")
+    assert dr["rows"] == [], "a zero month must carry no ref-code rows"
+
+
+@needs_workbook
+@pytest.mark.parametrize("month", ["2026-06", "2026-07"])
+def test_keel_still_earns_before_the_cutoff(month):
     dr = dr_rewards.load_dr("keel", month)
     assert dr is not None, "keel is still a known DR prime"
-    if zero:
-        assert dr["total"] == Decimal("0")
-        assert dr["rows"] == [], "a zero month must carry no ref-code rows"
-    else:
-        assert dr["total"] > 0
+    assert dr["total"] > 0
 
 
 def test_retired_month_returns_zero_not_none():
@@ -66,12 +80,18 @@ def test_retired_month_returns_zero_not_none():
     assert dr["total"] == Decimal("0")
 
 
+@needs_workbook
 def test_other_primes_are_untouched():
+    """Guarded by ``needs_workbook``: without it every ``load_dr`` returns
+    None and the old ``continue`` made this pass while asserting nothing."""
+    checked = 0
     for prime in ("spark", "grove", "skybase", "osero"):
         dr = dr_rewards.load_dr(prime, "2026-08")
         if dr is None:
             continue                       # no DR group for this prime
         assert dr["total"] > 0, f"{prime} lost its August DR"
+        checked += 1
+    assert checked, "no prime was actually checked"
 
 
 # --- config hygiene -------------------------------------------------------
