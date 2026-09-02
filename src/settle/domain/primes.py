@@ -441,6 +441,28 @@ class Venue:
     # raises a capture-gap error rather than silently zeroing real yield.
     # A future external source on a currently-idle venue MUST flip this to True.
     external_yield_source: bool = False
+    # Cat E only. Price REDEMPTION flows (negative daily net) at the vault's
+    # ``convertToAssets(shares)`` instead of ``shares x nav_oracle``.
+    #
+    # The NAV oracle and the vault's own share price are both live and
+    # correct but disagree intra-period: the oracle accrues near-daily
+    # (Chronicle ACRDX: 3-day maximum flat run through Aug 2026) while the
+    # vault's ``convertToAssets`` steps irregularly (11-day flat run over the
+    # same window). Redemptions settle at the VAULT price, so valuing them at
+    # the oracle overstates the outflow and therefore revenue.
+    #
+    # Verified on Grove E22 (ACRDX), both 2026 exits, cash vs
+    # ``convertToAssets(shares)`` at the flow block:
+    #   2026-05-11  18,077,674.30 vs 18,077,674.283942  (diff $0.016)
+    #   2026-08-10  12,263,706.47 vs 12,263,706.449767  (diff $0.020)
+    # Booked at the oracle instead, those overstated revenue by $30,028.18
+    # and $19,522.75. Operator ruled cash/shares authoritative (2026-09-02).
+    #
+    # Opt-in per venue on purpose: the identity is verified for ACRDX only.
+    # Deposits are left on the oracle — not verified, and a deposit priced
+    # off the counterparty's own contract is the weaker direction to guess.
+    # Requires ``nav_oracle.fallback_address`` (the erc4626 vault).
+    redemptions_priced_at_vault: bool = False
     # Off-chain notional principal used by the CoF allocation when on-chain
     # ``tw_avg_value_usd`` doesn't reflect the principal Sky is implicitly
     # charging interest on. Primary use case: cash-distribution-only venues
@@ -484,6 +506,23 @@ class Venue:
                 f"semantics only makes sense for par-stable positions on "
                 f"chains without reliable transfer-event coverage."
             )
+        # ``redemptions_priced_at_vault`` reprices Cat E outflows off the
+        # vault's own ``convertToAssets``; it needs both a Cat E venue and a
+        # vault address to read, and a YAML typo must not silently no-op
+        # back to oracle pricing (that is the bug it exists to fix).
+        if self.redemptions_priced_at_vault:
+            if self.pricing_category != PricingCategory.RWA_TRANCHE:
+                raise ValueError(
+                    f"Venue {self.id}: redemptions_priced_at_vault is only "
+                    f"valid on PricingCategory.RWA_TRANCHE (Cat E) venues "
+                    f"(got {self.pricing_category.name})."
+                )
+            if self.nav_oracle is None or self.nav_oracle.fallback_address is None:
+                raise ValueError(
+                    f"Venue {self.id}: redemptions_priced_at_vault requires "
+                    f"nav_oracle.fallback_address — the ERC-4626 vault whose "
+                    f"convertToAssets redemptions settle at."
+                )
         # ``external_yield_source`` routes the venue into the Cat A
         # counterparty classifier (see ``compute.monthly_pnl``); it has no
         # meaning outside PAR_STABLE and a YAML typo must not silently no-op.
