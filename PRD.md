@@ -1166,6 +1166,39 @@ canonical pricing).
 
 ### 17.13 Open questions (priority-ordered)
 
+#### Methodology — resolved 2026-09: Keel earns no Distribution Rewards from 2026-08
+
+**Keel's DR is $0 from August 2026** (operator decision 2026-09). Keel is
+the only prime affected; every other prime's DR is untouched.
+
+Expressed as a date bound — `config/dr_ref_codes.yaml → retired_from.keel:
+'2026-08'` — read by `load_dr`, which returns an explicit zero total with
+an empty ref-code breakdown from that month on. Two deliberate choices:
+
+* **A bound, not a deletion.** 2026-01…07 are settled and must stay
+  reproducible; `settlements/**/provenance.json` is gitignored, so a value
+  lost to a re-run is unrecoverable. Same reasoning as Skybase's GAR bound.
+* **Keel's ref codes stay listed under `primes:`.** 4001 (synthetic USDS
+  in the Solana OFT bridge) and 4011 (1inch) still carry rows in the DR
+  workbook, so leaving them attributed keeps the unknown-code guard
+  covering them — that guard is what stops a newly-appearing code from
+  silently going unpaid. The effect is that this DR is now
+  **attributed-but-unpaid**; whether 4001/4011 should instead move to
+  `unattributed:` going forward is a separate call.
+* **An explicit zero, not `None`.** `None` means "no data, leave the
+  report alone", which would strand the last non-zero DR on an
+  already-written provenance when `refresh_dr_only` sweeps it.
+
+**Effect on Sky Net Revenue.** DR is part of the demand side, so it flows
+into `send` and *subtracts* from `msc_net`. Removing Keel's DR therefore
+RAISES SNR from 2026-08 by that amount — $1,530.91 for August. No settled
+SNR moves: `settlements/sky_total/` runs only through 2026-07, and Keel's
+August DR was never in an SNR artifact.
+
+August's Keel report is regenerated here (demand side 33,306.68 →
+31,775.77) since the decision applies to it. 2026-01…07 are untouched.
+
+
 #### Methodology — resolved 2026-09: GAR retired from the MSC (operator decision)
 
 **Governance Accessibility Rewards is no longer part of the MSC

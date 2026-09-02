@@ -52,6 +52,38 @@ def _dec(v) -> Decimal:
     return Decimal(str(v))
 
 
+def _dr_retired_from() -> dict[str, str]:
+    """``{prime_id: 'YYYY-MM'}`` — first month in which the prime earns NO DR.
+
+    From ``config/dr_ref_codes.yaml → retired_from``. Values are parsed and
+    re-rendered so a malformed month ('2026-8', a full date) can't silently
+    break the lexicographic comparison in ``load_dr`` — the same treatment
+    ``GarConfig`` gives its bounds.
+
+    Deliberately NOT cached, even though it re-reads the same small yaml as
+    ``_ref_code_map``: a second cache over one file means a test that swaps
+    the config has to remember to clear both, and the expensive read here
+    (``_summary_rows``, the workbook) is cached already.
+    """
+    import yaml
+
+    from ..domain.period import Month
+
+    path = _repo_root() / _REF_CODE_MAP_REL
+    with path.open() as f:
+        cfg = yaml.safe_load(f) or {}
+    out: dict[str, str] = {}
+    for prime, month in (cfg.get("retired_from") or {}).items():
+        try:
+            out[str(prime)] = str(Month.parse(str(month)))
+        except Exception as exc:                      # noqa: BLE001
+            raise ValueError(
+                f"{_REF_CODE_MAP_REL}: retired_from.{prime} = {month!r} is not "
+                f"a 'YYYY-MM' month ({exc})"
+            ) from exc
+    return out
+
+
 @functools.lru_cache(maxsize=1)
 def _ref_code_map() -> tuple[dict[str, str], frozenset]:
     """``({ref_code: prime_id}, {deliberately-unattributed ref codes})`` from
@@ -151,6 +183,19 @@ def load_dr(prime_id: str, month: str) -> dict | None:
     owner, unattributed = _ref_code_map()
     if prime_id not in set(owner.values()):
         return None
+
+    # Retired from this month on. Return an explicit ZERO rather than None:
+    # None means "no data, leave the report alone", which would strand the
+    # last non-zero DR on an already-written provenance when
+    # ``refresh_dr_only`` runs over it. A zero total also empties
+    # ``dr_breakdown``, so the per-ref-code table drops out of the summary.
+    retired = _dr_retired_from().get(prime_id)
+    if retired is not None and month >= retired:
+        log.info(
+            "DR retired for %s from %s — reporting $0 for %s",
+            prime_id, retired, month,
+        )
+        return {"total": Decimal("0"), "rows": [], "month": month}
 
     rows = _summary_rows()
     if not rows:
