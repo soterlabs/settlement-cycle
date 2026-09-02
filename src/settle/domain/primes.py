@@ -523,6 +523,13 @@ class Venue:
                     f"nav_oracle.fallback_address — the ERC-4626 vault whose "
                     f"convertToAssets redemptions settle at."
                 )
+            if self.nav_oracle.fallback_underlying_decimals is None:
+                raise ValueError(
+                    f"Venue {self.id}: redemptions_priced_at_vault requires "
+                    f"nav_oracle.fallback_underlying_decimals — the vault's "
+                    f"asset decimals. Defaulting it would misprice an "
+                    f"18-decimal vault by 1e12."
+                )
         # ``external_yield_source`` routes the venue into the Cat A
         # counterparty classifier (see ``compute.monthly_pnl``); it has no
         # meaning outside PAR_STABLE and a YAML typo must not silently no-op.

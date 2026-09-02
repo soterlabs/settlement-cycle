@@ -91,38 +91,78 @@ def _row(raw: int, block: int, idx: int = 1):
                   topic2=None, topic3=None, data=hex(raw), transaction_hash="0xab")
 
 
-def test_prices_each_transfer_at_its_own_block(monkeypatch):
-    """Two transfers on one day, priced at DIFFERENT blocks — the vault moved
-    between them, which is exactly the May 2026 case."""
-    seen = []
+def _patch_chain(monkeypatch, *, ts_by_block, eth_block_by_ts, rate_by_block):
+    """Wire the venue-chain -> vault-chain translation deterministically.
 
-    def fake_cta(chain, vault, shares, block):
-        seen.append((shares, block))
-        rate = 1_020_232 if block == 100 else 1_030_000   # 6dp per 1e18 shares
-        return shares * rate // 10**18
+    The seam that matters is ``block_timestamp`` + ``find_block_at_or_before``
+    inside ``_vault_settlement_usd``: those are what carry the transfer's
+    INSTANT across to the vault chain. Patching a block-resolver stub instead
+    tests nothing, which is how the day-end bug shipped.
+    """
+    monkeypatch.setattr("settle.extract.hypersync.block_timestamp",
+                        lambda chain, block: ts_by_block[block])
+    monkeypatch.setattr("settle.extract.hypersync.find_block_at_or_before",
+                        lambda chain, ts: eth_block_by_ts[ts])
+    monkeypatch.setattr("settle.extract.rpc.convert_to_assets",
+                        lambda chain, vault, shares, block:
+                        shares * rate_by_block[block] // 10**18)
 
-    monkeypatch.setattr("settle.extract.rpc.convert_to_assets", fake_cta)
+
+def test_each_transfer_is_priced_at_its_own_instant_not_the_day_end(monkeypatch):
+    """Two redemptions on ONE day, with the vault stepping between them.
+
+    This is Grove E22 on 2026-05-12: the exit executed at 19:45 and the vault
+    moved before midnight, so pricing both at the day-end block missed the
+    cash by $30,028 — no improvement over the oracle at all. Each transfer
+    must be priced at the block matching its own timestamp.
+    """
+    _patch_chain(
+        monkeypatch,
+        ts_by_block={700: 1000, 800: 2000},          # two plume blocks, one day
+        eth_block_by_ts={1000: 10, 2000: 20},        # -> two DIFFERENT eth blocks
+        rate_by_block={10: 1_000_000, 20: 2_000_000},  # 1.00 then 2.00 (6dp)
+    )
     monkeypatch.setattr(
         "settle.extract.hypersync.query_logs",
-        lambda *a, **k: QueryResult(rows=[_row(10**18, 100), _row(2 * 10**18, 200, 2)]),
+        lambda *a, **k: QueryResult(rows=[_row(10**18, 700), _row(10**18, 800, 2)]),
     )
-
-    class _R(_Resolver):
-        def block_at_or_before(self, chain, when):
-            # identity: the helper translates plume->ethereum per calendar day
-            return {"plume": 86_400_000, "ethereum": 100}[chain]
-
     out = P._vault_priced_redemptions_by_date(
-        _Prime(), _Venue(), _Period(), block_resolver=_R(),
+        _Prime(), _Venue(), _Period(), block_resolver=_Resolver(),
     )
-    # both transfers land on the same date but were priced separately
-    assert len(out) == 1
-    assert len(seen) == 2, "each transfer must be priced individually"
+    (usd, tokens), = out.values()
+    assert tokens == Decimal("2"), "both share amounts accumulate"
+    # 1 share @ $1.00 + 1 share @ $2.00. Day-end pricing would give 2.00 or
+    # 4.00 — never 3.00 — so this assertion is what pins per-transfer pricing.
+    assert usd == Decimal("3"), usd
+
+
+def test_gross_tokens_are_returned_so_a_deposit_on_the_same_day_survives(monkeypatch):
+    """A day carrying BOTH a deposit and a redemption must keep the deposit.
+
+    The caller needs the outbound share count to re-price only the inflow leg
+    at the oracle. Substituting the gross outflow wholesale would drop it.
+    """
+    _patch_chain(monkeypatch, ts_by_block={700: 1000},
+                 eth_block_by_ts={1000: 10}, rate_by_block={10: 1_020_232})
+    monkeypatch.setattr(
+        "settle.extract.hypersync.query_logs",
+        lambda *a, **k: QueryResult(rows=[_row(3 * 10**18, 700)]),
+    )
+    out = P._vault_priced_redemptions_by_date(
+        _Prime(), _Venue(), _Period(), block_resolver=_Resolver(),
+    )
+    (usd, tokens), = out.values()
+    assert tokens == Decimal("3"), "share count must come back, not just USD"
+    assert usd == Decimal("3.060696")
 
 
 def test_zero_from_the_vault_raises_rather_than_valuing_at_nothing(monkeypatch):
     """A multi-million redemption silently valued at $0 would be booked as a
     total loss."""
+    monkeypatch.setattr("settle.extract.hypersync.block_timestamp",
+                        lambda chain, block: 1)
+    monkeypatch.setattr("settle.extract.hypersync.find_block_at_or_before",
+                        lambda chain, ts: 10)
     monkeypatch.setattr("settle.extract.rpc.convert_to_assets",
                         lambda chain, vault, shares, block: 0)
     with pytest.raises(P.UnsupportedPricingError, match="convertToAssets=0"):
@@ -131,10 +171,14 @@ def test_zero_from_the_vault_raises_rather_than_valuing_at_nothing(monkeypatch):
         )
 
 
-def test_reads_the_vault_on_its_own_chain_not_the_venue_chain(monkeypatch):
+def test_reads_the_vault_on_its_own_chain_at_the_translated_block(monkeypatch):
     """ACRDX's token is on Plume; its vault is on Ethereum. Reading the vault
     at a Plume block number would hit an unrelated (or future) block."""
     calls = []
+    monkeypatch.setattr("settle.extract.hypersync.block_timestamp",
+                        lambda chain, block: 4242)
+    monkeypatch.setattr("settle.extract.hypersync.find_block_at_or_before",
+                        lambda chain, ts: 25_081_215 if ts == 4242 else -1)
     monkeypatch.setattr(
         "settle.extract.rpc.convert_to_assets",
         lambda chain, vault, shares, block: calls.append((chain, block)) or 10**6,
@@ -142,7 +186,7 @@ def test_reads_the_vault_on_its_own_chain_not_the_venue_chain(monkeypatch):
     P._vault_settlement_usd(
         _Venue(), Decimal("1"), 86_400_000, block_resolver=_Resolver(),
     )
-    assert calls == [(Chain.ETHEREUM, 25_700_000)], calls
+    assert calls == [(Chain.ETHEREUM, 25_081_215)], calls
 
 
 def test_share_and_asset_decimals_are_taken_from_config(monkeypatch):
@@ -152,6 +196,10 @@ def test_share_and_asset_decimals_are_taken_from_config(monkeypatch):
     def fake(chain, vault, shares, block):
         captured["shares"] = shares
         return 1_020_232          # 1.020232 in 6dp
+    monkeypatch.setattr("settle.extract.hypersync.block_timestamp",
+                        lambda chain, block: 1)
+    monkeypatch.setattr("settle.extract.hypersync.find_block_at_or_before",
+                        lambda chain, ts: 10)
     monkeypatch.setattr("settle.extract.rpc.convert_to_assets", fake)
     got = P._vault_settlement_usd(
         _Venue(), Decimal("1"), 100, block_resolver=_Resolver(),
@@ -208,3 +256,70 @@ def test_flag_defaults_off(tmp_path):
     del cfg["redemptions_priced_at_vault"]
     prime = _load(cfg, tmp_path)
     assert prime.venues[0].redemptions_priced_at_vault is False
+
+
+def test_asset_decimals_must_be_configured_not_defaulted(tmp_path):
+    """Defaulting them would misprice an 18-decimal vault by 1e12."""
+    cfg = _venue_cfg(nav_oracle={
+        "kind": "chronicle", "address": "0x" + "aa" * 20,
+        "fallback": "erc4626", "fallback_address": "0x" + "bb" * 20,
+    })
+    with pytest.raises(ValueError, match="fallback_underlying_decimals"):
+        _load(cfg, tmp_path)
+
+
+# ── fail-closed behaviour ────────────────────────────────────────────────
+
+def _bal_df(rows):
+    import pandas as pd
+    return pd.DataFrame({"block_date": [r[0] for r in rows],
+                         "daily_net": [r[1] for r in rows]})
+
+
+class _BalSrc:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def cumulative_balance_timeseries(self, **kw):
+        return _bal_df(self._rows)
+
+
+def _run_ts(monkeypatch, rows, *, log_raises):
+    """Drives the real E22 venue (flag on, Plume token, Ethereum vault) rather
+    than a stub, so the assertion holds against the actual config."""
+    from pathlib import Path
+
+    from settle.domain.config import load_prime
+    from settle.extract.hypersync import HyperSyncError
+
+    grove = load_prime(Path("config/grove.yaml"))
+    e22 = next(v for v in grove.venues if v.id == "E22")
+    assert e22.redemptions_priced_at_vault, "fixture assumes the flag is on"
+    if log_raises:
+        def boom(*a, **k):
+            raise HyperSyncError("no token")
+        monkeypatch.setattr("settle.extract.hypersync.query_logs", boom)
+    else:
+        monkeypatch.setattr("settle.extract.hypersync.query_logs",
+                            lambda *a, **k: QueryResult(rows=[]))
+    return P._rwa_inflow_timeseries(
+        grove, e22, _Period(),
+        balance_source=_BalSrc(rows),
+        block_resolver=_Resolver(),
+        nav_at_block=lambda b: Decimal("1.02"),
+    )
+
+
+def test_unreadable_log_raises_when_the_period_has_a_redemption(monkeypatch):
+    """Degrading to oracle pricing reproduces exactly the pre-fix number
+    ($30,028.18 too high on E22's May exit), which reads as an ordinary month
+    rather than an error."""
+    with pytest.raises(P.UnsupportedPricingError, match="transfer log"):
+        _run_ts(monkeypatch, [(date(2026, 8, 10), "-100")], log_raises=True)
+
+
+def test_unreadable_log_is_harmless_when_there_is_no_redemption(monkeypatch):
+    """A venue with no exits must not be blocked by an unreadable log."""
+    out = _run_ts(monkeypatch, [(date(2026, 8, 10), "100")], log_raises=True)
+    assert not out.empty
+    assert out["daily_inflow"].iloc[0] == Decimal("100") * Decimal("1.02")
