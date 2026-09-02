@@ -1860,6 +1860,13 @@ def _cat_a_all_capital_inflow_timeseries(
     keep their REAL dates — CoF time-weighting must see a late-month deposit
     on the day it landed, not re-timed to period start.
 
+    Source order: ``cumulative_balance_timeseries`` first; when that has no
+    capture for this ``(token, holder)``, fall back to
+    ``inflow_by_counterparty`` (every counterparty is capital for this
+    venue class, so the daily net is the signed sum per date). Both keep
+    real dates — CoF time-weighting must see a late-month deposit on the
+    day it landed.
+
     ``target_delta``: when given (the venue's period Δvalue), a residual row
     is appended at ``period.start`` so the in-period capital sum equals
     Δvalue EXACTLY and revenue collapses to $0 by construction — a
@@ -1889,15 +1896,69 @@ def _cat_a_all_capital_inflow_timeseries(
         start=prime.start_date,
         pin_block=pin_block,
     )
-    if cum_df.empty:
-        out = pd.DataFrame({"block_date": [], "daily_inflow": []})
-    else:
+    if not cum_df.empty:
         out = pd.DataFrame({
             "block_date": cum_df["block_date"],
             # Normalize to Decimal: downstream arithmetic (period_inflow,
             # revenue = Δvalue − capital) is Decimal end-to-end.
             "daily_inflow": [Decimal(str(v)) for v in cum_df["daily_net"]],
         })
+    else:
+        # No cumulative-balance capture for this (token, holder). Before
+        # giving up and letting the whole Δvalue land on a single
+        # period-start residual row, try the per-counterparty log: it
+        # carries the same flows with their REAL dates, and for an
+        # all-capital venue every counterparty is capital, so the daily
+        # net is just the signed sum per date.
+        #
+        # Grove E41 (JTRSY Basin escrow) is why this exists. It has no
+        # ``cum_balance`` capture but a complete ``inflow_by_counterparty``
+        # one, so $11,500,000 of late-August deposits — Aug 18 / 28 / 29
+        # and $3,522,489.99 on Aug 31 itself — were re-timed to Aug 1.
+        # Revenue was unaffected ($0 either way), but the time-weighted
+        # average read $12,500,000 instead of $3,369,516.77, drawing
+        # $38,359.60 of cost-of-funds attribution against a true $10,417.33
+        # and diluting it away from every other venue in the
+        # counterparty-facing sheet.
+        out = pd.DataFrame({"block_date": [], "daily_inflow": []})
+        # hasattr rather than catching AttributeError: a source that simply
+        # doesn't implement the method is expected, but an AttributeError
+        # raised INSIDE a real implementation is a bug and must not be
+        # silently downgraded to a period-start residual.
+        _detail = None
+        if hasattr(balance_source, "inflow_by_counterparty"):
+            _detail = balance_source.inflow_by_counterparty(
+                chain=venue.chain.value,
+                token=venue.token.address.value,
+                holder=holder.value,
+                start=prime.start_date,
+                pin_block=pin_block,
+            )
+        if _detail is not None and not _detail.empty:
+            # Normalize to ``datetime.date`` BEFORE grouping. Two reasons:
+            # the residual row below is keyed on ``period.start`` (a date)
+            # and a Dune-backed log can hand back ISO strings, so mixing
+            # them raises ``TypeError: '<' not supported between str and
+            # datetime.date`` inside ``sort_values`` — and grouping on the
+            # raw column would split one calendar day across a string key
+            # and a date key. The fixture loader pre-converts, so only a
+            # live source would have hit either.
+            out = (
+                _detail.assign(
+                    block_date=pd.to_datetime(_detail["block_date"]).dt.date,
+                    daily_inflow=[Decimal(str(v)) for v in _detail["signed_amount"]],
+                )
+                .groupby("block_date", as_index=False)["daily_inflow"]
+                .sum()
+            )[["block_date", "daily_inflow"]]
+            import logging as _logging
+            _logging.getLogger(__name__).info(
+                "  [%s] Cat A: no cumulative_balance capture — dated the "
+                "all-capital series from inflow_by_counterparty instead "
+                "(%d rows). Keeps CoF time-weighting honest on late-month "
+                "flows.",
+                venue.id, len(out),
+            )
     if target_delta is not None:
         if out.empty:
             period_sum = Decimal("0")
