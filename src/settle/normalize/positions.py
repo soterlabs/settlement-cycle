@@ -1860,6 +1860,13 @@ def _cat_a_all_capital_inflow_timeseries(
     keep their REAL dates — CoF time-weighting must see a late-month deposit
     on the day it landed, not re-timed to period start.
 
+    Source order: ``cumulative_balance_timeseries`` first; when that has no
+    capture for this ``(token, holder)``, fall back to
+    ``inflow_by_counterparty`` (every counterparty is capital for this
+    venue class, so the daily net is the signed sum per date). Both keep
+    real dates — CoF time-weighting must see a late-month deposit on the
+    day it landed.
+
     ``target_delta``: when given (the venue's period Δvalue), a residual row
     is appended at ``period.start`` so the in-period capital sum equals
     Δvalue EXACTLY and revenue collapses to $0 by construction — a
@@ -1909,11 +1916,17 @@ def _cat_a_all_capital_inflow_timeseries(
         # one, so $11,500,000 of late-August deposits — Aug 18 / 28 / 29
         # and $3,522,489.99 on Aug 31 itself — were re-timed to Aug 1.
         # Revenue was unaffected ($0 either way), but the time-weighted
-        # average read $12,500,000 instead of ~$3.4M, drawing $38,359.60
-        # of cost-of-funds attribution against a true ~$3,023 and diluting
-        # it away from every other venue in the counterparty-facing sheet.
+        # average read $12,500,000 instead of $3,369,516.77, drawing
+        # $38,359.60 of cost-of-funds attribution against a true $10,417.33
+        # and diluting it away from every other venue in the
+        # counterparty-facing sheet.
         out = pd.DataFrame({"block_date": [], "daily_inflow": []})
-        try:
+        # hasattr rather than catching AttributeError: a source that simply
+        # doesn't implement the method is expected, but an AttributeError
+        # raised INSIDE a real implementation is a bug and must not be
+        # silently downgraded to a period-start residual.
+        _detail = None
+        if hasattr(balance_source, "inflow_by_counterparty"):
             _detail = balance_source.inflow_by_counterparty(
                 chain=venue.chain.value,
                 token=venue.token.address.value,
@@ -1921,27 +1934,23 @@ def _cat_a_all_capital_inflow_timeseries(
                 start=prime.start_date,
                 pin_block=pin_block,
             )
-        except (AttributeError, NotImplementedError):
-            _detail = None
         if _detail is not None and not _detail.empty:
-            _agg = (
+            # Normalize to ``datetime.date`` BEFORE grouping. Two reasons:
+            # the residual row below is keyed on ``period.start`` (a date)
+            # and a Dune-backed log can hand back ISO strings, so mixing
+            # them raises ``TypeError: '<' not supported between str and
+            # datetime.date`` inside ``sort_values`` — and grouping on the
+            # raw column would split one calendar day across a string key
+            # and a date key. The fixture loader pre-converts, so only a
+            # live source would have hit either.
+            out = (
                 _detail.assign(
-                    daily_inflow=[Decimal(str(v)) for v in _detail["signed_amount"]]
+                    block_date=pd.to_datetime(_detail["block_date"]).dt.date,
+                    daily_inflow=[Decimal(str(v)) for v in _detail["signed_amount"]],
                 )
                 .groupby("block_date", as_index=False)["daily_inflow"]
                 .sum()
-            )
-            # Coerce to ``datetime.date``. The residual row below is keyed on
-            # ``period.start`` (a date), and a Dune-backed counterparty log
-            # can hand back ISO strings — concatenating the two then raises
-            # ``TypeError: '<' not supported between str and datetime.date``
-            # inside ``sort_values``, taking down the run. The fixture loader
-            # happens to pre-convert, so only a live source with an
-            # incomplete log would have hit it.
-            out = pd.DataFrame({
-                "block_date": pd.to_datetime(_agg["block_date"]).dt.date,
-                "daily_inflow": _agg["daily_inflow"],
-            })
+            )[["block_date", "daily_inflow"]]
             import logging as _logging
             _logging.getLogger(__name__).info(
                 "  [%s] Cat A: no cumulative_balance capture — dated the "

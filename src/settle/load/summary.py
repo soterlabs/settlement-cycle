@@ -24,8 +24,8 @@ Structure:
     ### Sky side                    (prime CoF + SDE → supply-side revenue)
 
     ## Per-venue
-    | Venue | Label | value_som | value_eom | tw_avg_value | period_inflow |
-    | actual_rev | revenue | sd_revenue | sd_share | spread_reimb |
+    | Venue | Label | value_som | value_eom | tw_avg_value | period_inflow
+      | actual_rev | revenue | sd_revenue | sd_share | spread_reimb |
     ...
 
     ## Position-only venues (PnL aggregated at prime level)
