@@ -613,13 +613,21 @@ venues:
   # PoolManager is used for price (slot0) reads. See src/settle/extract/
   # uniswap_v4.py and docs comments in normalize/sources/uniswap_v4.py.
   #
-  # Pricing of the two legs mirrors the Curve venues S24/S25:
+  # Pricing of the two legs:
   #   * USDS leg  → idle USDS (``curve_idle_usds.coin``): par $1, deducted from
   #     ``utilized`` (prime-settlement-methodology Step 2 — idle AMM USDS).
-  #   * USDT / PYUSD leg → Sky Direct Exposure (``curve_idle_usds.sde_coin``):
-  #     par $1, registered in config/sky_direct_exposures.yaml (kind: fixed),
-  #     so its asset value is excluded from utilized and its revenue floors to
-  #     Sky — same treatment as the USDT leg of the S24 sUSDS/USDT Curve pool.
+  #     TRUE FOR ALL THREE V4 pools (S61, S62, S66) regardless of SDE status —
+  #     USDS parked in an AMM is not utilized whatever the counter-leg is.
+  #   * The paired leg is SDE only for S62 (USDT). Atlas scopes the Uniswap
+  #     SDE to USDT alone — "Uniswap Pools - Investments by Spark in USDT in
+  #     USDS/USDT Uniswap pools" — so:
+  #       S62 USDT  → SDE (``curve_idle_usds.sde_coin``): par $1, registered in
+  #         config/sky_direct_exposures.yaml (kind: fixed), asset value
+  #         excluded from utilized, revenue floors to Sky. Same treatment as
+  #         the USDT leg of the S24 sUSDS/USDT Curve pool.
+  #       S61 PYUSD → NOT SDE (corrected 2026-09). Stays in utilized, pays
+  #         Base Rate, revenue accrues to the prime.
+  #       S66 RLUSD → NOT SDE. Same as S61.
   #
   # Uncollected LP fees are not added to the position value (negligible for
   # these tight par-stable ranges; see normalize/sources/uniswap_v4.py).
@@ -642,7 +650,11 @@ venues:
     univ4_token_ids: [161205, 161283, 161284, 161285, 324004, 324005]
     curve_idle_usds:
       coin: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'      # USDS — idle, par $1
-      sde_coin: '0x6c3ea9036406852006290770bedfcaba0e23a0e8'  # PYUSD — SDE asset value, par $1
+      # No sde_coin (2026-09): Atlas scopes the Uniswap SDE to USDT only
+      # ("Investments by Spark in USDT in USDS/USDT Uniswap pools"), so the
+      # PYUSD leg is NOT a Sky Direct Exposure. It stays in ``utilized`` and
+      # pays Base Rate, and its revenue accrues to the prime. Removed from
+      # config/sky_direct_exposures.yaml in the same change.
 
   - id: S62
     chain: ethereum
