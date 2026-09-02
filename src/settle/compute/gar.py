@@ -43,13 +43,18 @@ def compute_gar(
     """Return ``(gar, basis)`` for ``prime`` in ``month``.
 
     ``basis`` is an audit string stored in provenance:
-      * ``""`` — prime has no GAR program or the month predates it
-        (no summary row);
+      * ``""`` — prime has no GAR program, the month predates it, or the
+        month is at/after ``until_month`` (retired) — no summary row;
       * ``"<share> × SNR <month> = <snr> (sky_total generated <ts>)"`` —
         computed. A negative SNR is floored to $0 (a rewards primitive
         doesn't claw back) with the floor noted in the basis.
     """
     if prime.gar is None or str(month) < prime.gar.from_month:
+        return Decimal("0"), ""
+    if prime.gar.until_month is not None and str(month) >= prime.gar.until_month:
+        # Retired. Return $0 with an empty basis so no row renders and no
+        # provenance basis string is written — same shape as a prime with no
+        # GAR program at all.
         return Decimal("0"), ""
 
     label = str(month)

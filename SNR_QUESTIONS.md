@@ -155,6 +155,13 @@ reconstructible from `settlement_blocks['2026-07']`.
   `cc_step1_paid['2026-08']` (20% of July net from the MSC#11 post) and
   any genesis/repayment lines when the post lands. Our July restatements
   (MSC11_CARRYOVER.md) will appear inside BA's August per-prime items.
+- **GAR — RETIRED from the MSC from 2026-08 (operator decision 2026-09).**
+  Bounded via `config/skybase.yaml → gar.until: '2026-08'`, so 2026-01…07
+  still compute and reproduce it. SNR is unaffected for those months
+  (Jan–Jun are paid-basis and never read `gar`; July is pinned via
+  `gar_in_dv`) — from 2026-08 SNR is ~$105K/month HIGHER, since GAR
+  subtracted from it. The BA question below is now historical. Original
+  methodology, for the record:
 - **GAR (operator decisions 2026-08-06/07):** Skybase's GAR = 1% × the
   SAME month's SNR (July: 1% × the frozen 10,517,426 = **105,174.26**,
   paid at MSC#11 per the updated post — send 327,407). The freeze

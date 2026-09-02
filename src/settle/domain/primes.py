@@ -152,7 +152,9 @@ class GarConfig:
     artifact (whose SNR definition matches BA's "Net revenue" dashboard
     line). The month-N report carries month N's GAR; the cash is PAID at
     the MSC settling cycle N (executing in N+1 — July's GAR rides MSC#11
-    in August). Reports from ``from_month`` (inclusive) carry the row.
+    in August). Reports carry the row for months in
+    ``[from_month, until_month)`` — ``until_month`` is the first month
+    WITHOUT GAR (None = open-ended).
 
     **Circularity (accrual months).** From ``accrual_from`` the month's
     SNR is itself built from that month's prime reports, so SNR ↔ GAR is
@@ -166,6 +168,11 @@ class GarConfig:
 
     share: Decimal                    # e.g. Decimal("0.01")
     from_month: str                   # 'YYYY-MM' (validated/normalized at load)
+    # Exclusive upper bound: the FIRST month that does NOT carry GAR. None =
+    # open-ended. Set to '2026-08' when the MSC retired the primitive
+    # (operator decision 2026-09) — Jan…Jul 2026 keep computing it so those
+    # settled months stay reproducible, and nothing from August on earns it.
+    until_month: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
