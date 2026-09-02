@@ -646,6 +646,81 @@ def _uniswap_v3_inflow_timeseries(
             venue.id, venue.chain.value, from_block, to_block, _e,
         )
         return empty
+    # Guard, BOTH directions. A position that appears or disappears during
+    # the period must be explained by a liquidity event, or the settlement
+    # silently misprices it by the size of the capital movement:
+    #
+    #   opened in-period, no IncreaseLiquidity  -> the value path prices it at
+    #     EoM with no inflow to net against, so the DEPOSIT books as revenue.
+    #     Grove E12, 2026-08: $4,000,000.00 reported as yield.
+    #   closed in-period, no DecreaseLiquidity  -> value_som holds it,
+    #     value_eom does not, and no outflow offsets it, so the WITHDRAWAL
+    #     books as a loss. Same shape as Grove E9's -$22.5M phantom (#179),
+    #     which is why the mirror case is checked rather than assumed safe.
+    #
+    # Direction matters: an in-period mint must be evidenced by an *increase*
+    # specifically. Accepting any event would let a position that was minted
+    # and later partially withdrawn pass on the Decrease log alone, with the
+    # deposit still unaccounted.
+    #
+    # Raises rather than warns: a warning would sit unread in a published,
+    # counterparty-facing report while the number was wrong by the size of the
+    # movement.
+    # Only a position holding VALUE at the boundary where it appears (or
+    # disappears) can misprice anything. An empty NFT crossing the boundary
+    # moves $0, so flagging it would abort a settlement over nothing: E30's
+    # five NFTs have been drained since 2026-02 (value_som = value_eom =
+    # $0.00), and ordinary cleanup — burning one, or transferring a position
+    # between E12's and E30's holders, which are configured on the SAME pool
+    # and so produce no liquidity event in either direction — would otherwise
+    # raise and take down the whole Grove run with a message telling the
+    # operator to re-capture a fixture that isn't stale.
+    _snap_som = _snap_eom = None
+    try:
+        _snap_som = source.positions_in_pool(
+            chain=venue.chain.value, owner=holder.value,
+            pool=venue.token.address.value, block=from_block)
+        _snap_eom = source.positions_in_pool(
+            chain=venue.chain.value, owner=holder.value,
+            pool=venue.token.address.value, block=to_block)
+    except (_RPCError, _requests.HTTPError, _requests.ConnectionError,
+            _requests.Timeout) as _e:
+        # Must log here: when ``events`` is empty the function returns before
+        # the snapshot read below, so this would otherwise be silent.
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "_uniswap_v3_inflow_timeseries: boundary position probe failed "
+            "for %s on %s (%s) — capital-movement guard SKIPPED for this "
+            "period; an unaccounted position would not be caught.",
+            venue.id, venue.chain.value, _e,
+        )
+    if _snap_som is not None and _snap_eom is not None:
+        def _held(snap):
+            return {p.token_id: (p.amount0 + p.amount1) for p in snap}
+        _val_som, _val_eom = _held(_snap_som), _held(_snap_eom)
+        _ids_som, _ids_eom = set(_val_som), set(_val_eom)
+        _inc = {ev.token_id for ev in events if ev.is_increase}
+        _dec = {ev.token_id for ev in events if not ev.is_increase}
+        _problems = []
+        for _tid in sorted((_ids_eom - _ids_som) - _inc):
+            if _val_eom.get(_tid, 0) > 0:
+                _problems.append(f"{_tid} (opened in-period, no IncreaseLiquidity)")
+        for _tid in sorted((_ids_som - _ids_eom) - _dec):
+            if _val_som.get(_tid, 0) > 0:
+                _problems.append(f"{_tid} (closed in-period, no DecreaseLiquidity)")
+        if _problems:
+            raise UnsupportedPricingError(
+                f"Venue {venue.id}: position(s) changed between block "
+                f"{from_block} and {to_block} with no matching liquidity "
+                f"event — {'; '.join(_problems)}. The capital movement would "
+                f"be booked as revenue (opened) or loss (closed), since "
+                f"revenue = eom - som - inflow has nothing to net against. "
+                f"If this is a fixture run, re-capture the v3_liquidity_events "
+                f"fixture — its token-ID list is stale; use "
+                f"extract.uniswap_v3.discover_pool_token_ids so it cannot go "
+                f"stale again."
+            )
+
     if not events:
         return empty
 
@@ -655,14 +730,17 @@ def _uniswap_v3_inflow_timeseries(
     # math is well-defined either way — events carry signed amounts; we only
     # need a position snapshot to look up token0/token1 decimals.
     try:
-        snapshot = source.positions_in_pool(
+        # Reuse the boundary reads from the guard above rather than issuing a
+        # third ``positions_in_pool`` call — it recomputes amounts and pending
+        # fees per position, which is the expensive part.
+        snapshot = _snap_eom if _snap_eom is not None else source.positions_in_pool(
             chain=venue.chain.value,
             owner=holder.value,
             pool=venue.token.address.value,
             block=to_block,
         )
         if not snapshot:
-            snapshot = source.positions_in_pool(
+            snapshot = _snap_som if _snap_som else source.positions_in_pool(
                 chain=venue.chain.value,
                 owner=holder.value,
                 pool=venue.token.address.value,

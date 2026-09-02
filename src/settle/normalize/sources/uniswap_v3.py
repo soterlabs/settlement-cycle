@@ -74,20 +74,13 @@ class RPCUniswapV3PositionSource:
         pool_a = Address(pool)
         nfpm = self._nfpm(chain_e)
 
-        try:
-            pool_state = v3.read_pool_state(chain_e, pool_a, to_block)
-        except v3.PoolNotDeployedError:
-            return []
-        pool_target = (pool_state.token0.value, pool_state.token1.value, pool_state.fee)
-
-        token_ids: set[int] = set()
-        for boundary in (from_block, to_block):
-            n = v3.nfpm_balance_of(chain_e, nfpm, owner_a, boundary)
-            for i in range(n):
-                tid = v3.token_of_owner_by_index(chain_e, nfpm, owner_a, i, boundary)
-                pos = v3.read_position(chain_e, nfpm, tid, boundary)
-                if (pos.token0.value, pos.token1.value, pos.fee) == pool_target:
-                    token_ids.add(tid)
+        # Shared with DuneV3InflowSource and the fixture-capture scripts, so
+        # no path can hardcode or drift. This source serves every non-Ethereum
+        # V3 venue and Ethereum whenever DUNE_API_KEY is unset, so it must use
+        # the same discovery as the Dune path.
+        token_ids = v3.discover_pool_token_ids(
+            chain_e, nfpm, owner_a, pool_a, (from_block, to_block),
+        )
 
         out: list[v3.V3LiquidityEvent] = []
         for tid in sorted(token_ids):
