@@ -69,6 +69,26 @@
 #   - source:       Atlas section UUID for traceability
 
 active:
+  # ── The designated SDEs per Atlas, verbatim ──────────────────────────────
+  # https://sky-atlas.io/#5f368e33-7a82-4244-a9ba-f285193ec043
+  #
+  #   Sky Direct Exposure  | Description                                    | Designated
+  #   Treasury Bills       | Investments by Grove in BUIDL, JTRSY, and USTB | 2025-10-30
+  #                        | on Ethereum Mainnet                            |
+  #   Peg Stability Modules| Investments by Spark or Grove in USDC in Peg   | 2025-11-13
+  #                        | Stability Modules on blockchains other than    |
+  #                        | Ethereum Mainnet                               |
+  #   Uniswap Pools        | Investments by Spark in USDT in USDS/USDT      | 2026-05-26
+  #                        | Uniswap pools                                  |
+  #
+  # THREE entries below do not line up with that list and are open questions
+  # (QUESTIONS.md S35) rather than confirmed scope — flagged, not changed:
+  #   * S21 (USTB) is a SPARK venue, but Treasury Bills is scoped to GROVE.
+  #   * S24 (USDT in sUSDS/USDT Curve) cites an Atlas "Curve Pools" section
+  #     that does not appear in the list above.
+  #   * S62's start_date is 2026-02-01, but Uniswap Pools was designated
+  #     2026-05-26 — Feb 1 → May 25 may not have been SDE.
+  # The S61 removal below IS confirmed: Atlas scopes Uniswap to USDT only.
   # Treasury Bills on Ethereum — full Sky Direct on the whole position.
   - prime: grove
     venue_id: E10
@@ -151,6 +171,7 @@ active:
     start_date: '2026-02-01'
     end_date: null
     label: 'USDT in USDT/USDS Uniswap V4'
+    source: 'Atlas — Uniswap Pools (designated 2026-05-26): "Investments by Spark in USDT in USDS/USDT Uniswap pools" — https://sky-atlas.io/#5f368e33-7a82-4244-a9ba-f285193ec043'
 
 historical:
   # JAAA on Eth — capped at $325M. SDE during 2025-10-23 → 2026-03-12.

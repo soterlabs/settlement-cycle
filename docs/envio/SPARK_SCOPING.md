@@ -46,7 +46,7 @@ HyperSync serves **logs / blocks / txns only — never `eth_call`.** So:
 - NAV oracles S19–S22 (`const_one`, Centrifuge `price_per_share_feed`, Chronicle)
 - `convert_to_assets` (Cat B share→USD)
 - PSM3 `shares()`/`convertToAssets()`
-- Curve `slot0`/reserves and Uniswap V4 (Cat F: S24/S25/S61/S62)
+- Curve `slot0`/reserves and Uniswap V4 (Cat F: S24 / S25 / S61 / S62 / S66)
 - `lending_idle_usds` deductions on S1/S4
 
 **Stays on Dune:** SSR — no HyperSync backend exists (`registry.py:145` only

@@ -580,6 +580,87 @@ blocking any current work.
 ### P0 — material numerical gaps
 
 
+#### S34. SparkLend reserve-factor sweeps to the ALM — in MSC scope?
+
+**Found 2026-09** by a counterparty-level audit of every value flow at Spark's
+ALMs (the earlier token-level audits reported "fully covered" and could not see
+this).
+
+Two addresses sweep value into the Spark Ethereum ALM every month and appear in
+no config. Both are SparkLend's `RESERVE_TREASURY_ADDRESS`, confirmed by
+calling that method on each spToken:
+
+| treasury | reserve treasury for |
+|---|---|
+| `0xb137e7d16564c81ae2b0c8ee6b55de81dd46ece5` | spUSDS, spUSDT, spUSDC, spPYUSD |
+| `0x856900aa78e856a5df1a2665ee3a66b2487cd68f` | spDAI |
+
+Transfers are in **spTokens** (not the underlying stables), so they land in the
+Cat C venues S1–S5. Monthly since 2025-09; **$2,392,354.09 in 2026 YTD**:
+
+    Jan 187,229.81   Feb 776,974.44   Mar 192,240.54   Apr 107,239.57
+    May  58,633.74   Jun 281,611.85   Jul 317,345.19   Aug 471,078.95
+
+**They are currently booked as capital, not revenue** — and NOT double-counted.
+Cat C's closed form is `yield = scaledBalanceOf(SoM) × Δindex`, with
+`period_inflow = Δvalue − yield` derived as the residual, so a mid-period
+scaled-balance increase contributes exactly zero revenue. Verified empirically:
+S1/S3/S4 implied APR runs a smooth 1.5–4.4% across Jan–Aug with no
+sweep-shaped bumps, and February's S3 sweep alone ($293,434) would have been
+71% of that month's booked revenue had it been included.
+
+**Question:** is SparkLend reserve-factor income in MSC scope?
+
+Arguments that it is: it is swept into the MSC-tracked ALM, and it is *not*
+already captured — the reserve factor is the spread SparkLend keeps from
+borrowers, accruing to the market treasury, whereas S1–S5's revenue is the
+*supply* APY, which is already net of it. So it is additive, not overlapping.
+The same shape is captured elsewhere: Agora incentives (Grove E38) and the
+Anchorage interest sweeps (S26 via `external_alm_sources`).
+
+If in scope, it needs a capture mechanism: `external_alm_sources` is a Cat A
+par-stable path and these are Cat C spTokens, so Cat C would need an equivalent
+(or the venues would need a `cash_distributions`-style attribution).
+
+Related and probably out of scope, but worth confirming in the same answer:
+**$3,573,822.39 of SPK** (Spark's own governance token,
+`0xc20059e0317de91738d13af027dfc4a50781b066`) was sent to the Spark
+**subproxy** by a Gnosis Safe in August. We assume that is a token allocation
+rather than MSC revenue and do not book it.
+
+#### S35. SDE scope vs Atlas — three entries that do not line up
+
+Atlas designates exactly three Sky Direct Exposures
+(https://sky-atlas.io/#5f368e33-7a82-4244-a9ba-f285193ec043):
+
+    Treasury Bills        | Investments by Grove in BUIDL, JTRSY, and USTB   | 2025-10-30
+                          | on Ethereum Mainnet                             |
+    Peg Stability Modules | Investments by Spark or Grove in USDC in Peg     | 2025-11-13
+                          | Stability Modules on blockchains other than     |
+                          | Ethereum Mainnet                                |
+    Uniswap Pools         | Investments by Spark in USDT in USDS/USDT        | 2026-05-26
+                          | Uniswap pools                                   |
+
+That quote resolved S61 (PYUSD/USDS Uniswap V4 is **not** an SDE — corrected).
+Three of our remaining entries still do not match, and are flagged in
+`config/sky_direct_exposures.yaml` rather than changed:
+
+1. **S21 (USTB) is registered as a Spark SDE**, citing Atlas Treasury Bills —
+   but that line scopes Treasury Bills to **Grove** ("Investments by Grove in
+   BUIDL, JTRSY, and USTB"). Is Spark's USTB position an SDE, or should S21 be
+   removed the way S61 was?
+2. **S24 (USDT in the sUSDS/USDT Curve pool)** cites "Atlas A.2.2.9.1.1.1.1.3
+   — Curve Pools", a category that does not appear in the list above. Was
+   Curve Pools removed, renamed, or is the quoted list partial?
+3. **S62's `start_date` is 2026-02-01**, but Uniswap Pools was designated
+   **2026-05-26**. If designation is the effective date, Feb 1 → May 25 was not
+   SDE, and Feb–May would need restating (S62's USDT leg moving into
+   `utilized`, its revenue from Sky to the prime).
+
+Each carries roughly the same magnitude as the S61 correction (~$150–190K per
+month of Sky CoF for a ~$100M pool), so we would rather confirm than assume.
+
+
 #### S33. Anchorage tri-party loan — principal/interest split of the 2026-08-17 $51,267,944 rollover
 
 **Concrete impact (Spark Aug 2026):** one atomic USDC transfer of
