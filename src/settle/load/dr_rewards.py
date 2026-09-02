@@ -85,7 +85,7 @@ def _dr_retired_from() -> dict[str, str]:
             )
         try:
             out[str(prime)] = str(Month.parse(str(month)))
-        except Exception as exc:                      # noqa: BLE001
+        except Exception as exc:
             raise ValueError(
                 f"{_REF_CODE_MAP_REL}: retired_from.{prime} = {month!r} is not "
                 f"a 'YYYY-MM' month ({exc})"
