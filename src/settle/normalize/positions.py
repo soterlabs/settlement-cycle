@@ -646,6 +646,44 @@ def _uniswap_v3_inflow_timeseries(
             venue.id, venue.chain.value, from_block, to_block, _e,
         )
         return empty
+    # Guard: any position present at to_block but ABSENT at from_block was
+    # opened during the period, so it MUST carry an IncreaseLiquidity event in
+    # ``events``. If it doesn't, the event stream is incomplete — the value
+    # path enumerates positions live and will price the new position, while
+    # ``revenue = eom - som - inflow`` has no inflow to net against it, so the
+    # entire deposit books as yield. That is exactly how Grove E12 reported
+    # $4,000,095.77 of fresh capital as August revenue (NFT 1353600, minted
+    # in-period, missing from a hardcoded fixture token-ID list).
+    #
+    # Raises rather than warns: a settlement that cannot see a capital
+    # movement produces a counterparty-facing number that is wrong by the size
+    # of the deposit, and the log line would sit unread in a published report.
+    try:
+        _ids_som = {p.token_id for p in source.positions_in_pool(
+            chain=venue.chain.value, owner=holder.value,
+            pool=venue.token.address.value, block=from_block)}
+        _ids_eom = {p.token_id for p in source.positions_in_pool(
+            chain=venue.chain.value, owner=holder.value,
+            pool=venue.token.address.value, block=to_block)}
+    except (_RPCError, _requests.HTTPError, _requests.ConnectionError,
+            _requests.Timeout):
+        _ids_som = _ids_eom = None      # probe failed; the read below reports it
+    if _ids_som is not None:
+        _opened = _ids_eom - _ids_som
+        _with_events = {ev.token_id for ev in events}
+        _missing = _opened - _with_events
+        if _missing:
+            raise UnsupportedPricingError(
+                f"Venue {venue.id}: position(s) {sorted(_missing)} were opened "
+                f"between block {from_block} and {to_block} but carry NO "
+                f"liquidity event in the source. Their deposits would be "
+                f"booked as revenue (revenue = eom - som - inflow, with no "
+                f"inflow to net against). If this is a fixture run, re-capture "
+                f"the v3_liquidity_events fixture — its token-ID list is stale; "
+                f"use extract.uniswap_v3.discover_pool_token_ids so it cannot "
+                f"go stale again."
+            )
+
     if not events:
         return empty
 

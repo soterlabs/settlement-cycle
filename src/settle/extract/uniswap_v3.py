@@ -16,6 +16,7 @@ The NFPM contract is at the same canonical address on all V3 chains
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Sequence
 
 from ..domain.primes import Address, Chain
 from .cache import cached
@@ -355,6 +356,49 @@ def compute_pending_fees(
 # ----------------------------------------------------------------------------
 # Liquidity events — Increase/DecreaseLiquidity from NFPM
 # ----------------------------------------------------------------------------
+
+def discover_pool_token_ids(
+    chain: Chain,
+    nfpm: Address,
+    owner: Address,
+    pool: Address,
+    blocks: Sequence[int],
+) -> set[int]:
+    """NFPM tokenIds ``owner`` holds in ``pool`` at ANY of ``blocks``.
+
+    Enumerating at more than one block matters: a position opened during a
+    period is absent at the start block, and one closed during it is absent at
+    the end block — a single-block scan misses whichever side moved. Callers
+    normally pass ``(from_block, to_block)``.
+
+    Exists so the token-ID set is never written down by hand. A hardcoded list
+    goes stale the moment the counterparty opens a position, and it fails in
+    the worst direction: the value path enumerates positions live, so a new
+    position lands in ``value_eom`` while its liquidity-add is missing from the
+    event stream, and ``revenue = eom - som - inflow`` books the whole deposit
+    as yield. Grove E12, 2026-08: NFT 1353600 was minted in August, the capture
+    script's list held only 1192575, and $4,000,095.77 of fresh capital was
+    reported as revenue.
+    """
+    try:
+        pool_state = read_pool_state(chain, pool, max(blocks))
+    except PoolNotDeployedError:
+        return set()
+    target = (pool_state.token0.value, pool_state.token1.value, pool_state.fee)
+    out: set[int] = set()
+    for block in blocks:
+        try:
+            n = nfpm_balance_of(chain, nfpm, owner, block)
+        except PoolNotDeployedError:
+            continue
+        for i in range(n):
+            tid = token_of_owner_by_index(chain, nfpm, owner, i, block)
+            pos = read_position(chain, nfpm, tid, block)
+            if (pos.token0.value, pos.token1.value, pos.fee) == target:
+                out.add(tid)
+    return out
+
+
 
 @dataclass(frozen=True, slots=True)
 class V3LiquidityEvent:

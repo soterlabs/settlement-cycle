@@ -327,10 +327,25 @@ def main() -> int:
         }
 
     POOL = bytes.fromhex("bafead7c60ea473758ed6c6021505e8bbd7e8e5d")
-    E12_TOKENIDS = [0x12327f]
-    E30_TOKENIDS = [1154814, 1154819, 1155392, 1155442, 1156415]
-    for vid, holder, tids in [("e12", GROVE_ALM_ETH, E12_TOKENIDS),
-                               ("e30", bytes.fromhex("94b398acb2fce988871218221ea6a4a2b26cccbc"), E30_TOKENIDS)]:
+    # Token IDs are DISCOVERED, never hardcoded. The previous months listed
+    # them by hand, and the list went stale the moment Grove opened a new
+    # position: the value path enumerates NFPM positions live, so NFT 1353600
+    # (minted August 2026) was priced into value_eom while its
+    # IncreaseLiquidity event was absent from this fixture — and
+    # ``revenue = eom - som - inflow`` reported $4,000,095.77 of fresh capital
+    # as E12 revenue, 46.8% of Grove's August gross. Discovering at BOTH pins
+    # also catches positions closed during the month, which an EoM-only scan
+    # would miss. Shared with the live DuneV3InflowSource so both paths agree.
+    from settle.extract.uniswap_v3 import discover_pool_token_ids  # noqa: E402
+    from settle.domain.primes import Address as _Addr, Chain as _Chain  # noqa: E402
+    _NFPM = _Addr.from_str("0xC36442b4a4522E871399CD717aBDD847Ab11FE88")
+    for vid, holder in [("e12", GROVE_ALM_ETH),
+                        ("e30", bytes.fromhex("94b398acb2fce988871218221ea6a4a2b26cccbc"))]:
+        tids = sorted(discover_pool_token_ids(
+            _Chain.ETHEREUM, _NFPM, _Addr(holder), _Addr(POOL),
+            (PIN_BLOCKS_SOM["ethereum"], eth_eom),
+        ))
+        print(f"    {vid}: discovered token_ids={tids}")
         padded = ", ".join("0x" + format(t, "x").rjust(64, "0") for t in sorted(tids))
         print(f"  fetching v3_liquidity_events_{vid} …")
         df = execute_query(

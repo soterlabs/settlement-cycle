@@ -516,3 +516,157 @@ def test_dune_v3_inflow_source_decodes_dune_rows(monkeypatch):
     expected_padded = "0x" + format(42, "x").rjust(64, "0")
     assert expected_padded in captured["params"]["token_ids_padded"]
     assert captured["params"]["from_block"] == 24500000
+
+
+# ── Token-ID discovery + the stale-fixture guard ─────────────────────────────
+#
+# Grove E12, August 2026: NFT 1353600 was minted in-period. The value path
+# enumerates NFPM positions live so it priced the new position, but the
+# fixture's hardcoded token-ID list held only 1192575, so the matching
+# IncreaseLiquidity event was absent and `revenue = eom - som - inflow` booked
+# $4,000,000.00 of fresh capital as yield — 46.8% of Grove's August gross.
+
+import pytest
+
+from settle.domain.primes import Address, Chain
+from settle.extract import uniswap_v3 as _v3
+
+
+class _FakePos:
+    def __init__(self, t0, t1, fee):
+        self.token0, self.token1, self.fee = Address(t0), Address(t1), fee
+
+
+def _patch_chain(monkeypatch, per_block, pool_tokens):
+    """per_block: {block: [token_id, ...]} owned in the target pool."""
+    t0, t1, fee = pool_tokens
+
+    class _PS:
+        token0, token1 = Address(t0), Address(t1)
+    _PS.fee = fee
+    monkeypatch.setattr(_v3, "read_pool_state", lambda c, p, b: _PS)
+    monkeypatch.setattr(_v3, "nfpm_balance_of",
+                        lambda c, n, o, b: len(per_block.get(b, [])))
+    monkeypatch.setattr(_v3, "token_of_owner_by_index",
+                        lambda c, n, o, i, b: per_block[b][i])
+    monkeypatch.setattr(_v3, "read_position",
+                        lambda c, n, tid, b: _FakePos(t0, t1, fee))
+
+
+def test_discover_finds_positions_opened_mid_period(monkeypatch):
+    """A position absent at SoM but present at EoM must still be discovered."""
+    t0, t1, fee = b"\xaa" * 20, b"\xbb" * 20, 100
+    _patch_chain(monkeypatch, {100: [1192575], 200: [1192575, 1353600]}, (t0, t1, fee))
+    got = _v3.discover_pool_token_ids(
+        Chain.ETHEREUM, Address(b"\xcc" * 20), Address(b"\xdd" * 20),
+        Address(b"\xee" * 20), (100, 200),
+    )
+    assert got == {1192575, 1353600}
+
+
+def test_discover_finds_positions_closed_mid_period(monkeypatch):
+    """Present at SoM, gone by EoM — an EoM-only scan would miss it."""
+    t0, t1, fee = b"\xaa" * 20, b"\xbb" * 20, 100
+    _patch_chain(monkeypatch, {100: [1192575, 999], 200: [1192575]}, (t0, t1, fee))
+    got = _v3.discover_pool_token_ids(
+        Chain.ETHEREUM, Address(b"\xcc" * 20), Address(b"\xdd" * 20),
+        Address(b"\xee" * 20), (100, 200),
+    )
+    assert got == {1192575, 999}
+
+
+def test_discover_filters_out_other_pools(monkeypatch):
+    t0, t1, fee = b"\xaa" * 20, b"\xbb" * 20, 100
+
+    class _PS:
+        token0, token1 = Address(t0), Address(t1)
+    _PS.fee = fee
+    monkeypatch.setattr(_v3, "read_pool_state", lambda c, p, b: _PS)
+    monkeypatch.setattr(_v3, "nfpm_balance_of", lambda c, n, o, b: 2)
+    monkeypatch.setattr(_v3, "token_of_owner_by_index", lambda c, n, o, i, b: [1, 2][i])
+    # tokenId 2 belongs to a different pool (different fee tier).
+    monkeypatch.setattr(_v3, "read_position",
+                        lambda c, n, tid, b: _FakePos(t0, t1, fee if tid == 1 else 3000))
+    got = _v3.discover_pool_token_ids(
+        Chain.ETHEREUM, Address(b"\xcc" * 20), Address(b"\xdd" * 20),
+        Address(b"\xee" * 20), (100,),
+    )
+    assert got == {1}
+
+
+def test_discover_returns_empty_before_pool_deployment(monkeypatch):
+    def _boom(c, p, b):
+        raise _v3.PoolNotDeployedError("not yet")
+    monkeypatch.setattr(_v3, "read_pool_state", _boom)
+    assert _v3.discover_pool_token_ids(
+        Chain.ETHEREUM, Address(b"\xcc" * 20), Address(b"\xdd" * 20),
+        Address(b"\xee" * 20), (100, 200),
+    ) == set()
+
+
+# ── The guard: an in-period position with no event must stop the settlement ──
+
+class _FakeAmounts:
+    """Minimal stand-in for V3PositionAmounts."""
+    def __init__(self, token_id, t0, t1):
+        self.token_id = token_id
+        self.token0, self.token1 = Address(t0), Address(t1)
+        self.amount0 = self.amount1 = 0
+
+
+class _FakeSource:
+    def __init__(self, per_block, events):
+        self._per_block, self._events = per_block, events
+
+    def positions_in_pool(self, chain, owner, pool, block):
+        return self._per_block[block]
+
+    def liquidity_events_in_pool(self, chain, owner, pool, from_block, to_block):
+        return self._events
+
+
+def _venue_and_prime():
+    from datetime import date
+    from settle.domain import PricingCategory, Token, Venue
+    from settle.domain.primes import Prime
+    USDC = bytes.fromhex("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
+    v = Venue(
+        id="E12", chain=Chain.ETHEREUM,
+        token=Token(Chain.ETHEREUM, Address(b"\xee" * 20), "LP", 0),
+        pricing_category=PricingCategory.LP_POOL, label="v3", lp_kind="uniswap_v3",
+    )
+    p = Prime(id="grove", ilk_bytes32=b"\x00" * 32, start_date=date(2024, 1, 1),
+              alm={Chain.ETHEREUM: Address(b"\xdd" * 20)}, venues=[v])
+    return p, v, USDC
+
+
+def test_position_opened_in_period_without_an_event_raises():
+    """The E12 regression: new NFT priced by value, no inflow to net it."""
+    from settle.normalize.positions import (
+        UnsupportedPricingError, _uniswap_v3_inflow_timeseries,
+    )
+    prime, venue, USDC = _venue_and_prime()
+    DAI = bytes.fromhex("6b175474e89094c44da98b954eedeac495271d0f")
+    old = _FakeAmounts(1192575, USDC, DAI)
+    new = _FakeAmounts(1353600, USDC, DAI)
+    ev = _v3.V3LiquidityEvent(block_number=101, tx_hash="0x", log_index=0,
+                              token_id=1192575, amount0=1, amount1=1,
+                              is_increase=True)
+    src = _FakeSource({100: [old], 200: [old, new]}, [ev])
+    with pytest.raises(UnsupportedPricingError, match="1353600"):
+        _uniswap_v3_inflow_timeseries(
+            prime, venue, 100, 200, source=src, block_to_date=lambda b: None,
+        )
+
+
+def test_position_present_at_both_ends_needs_no_event():
+    """A position that merely survived the period must NOT trip the guard."""
+    from settle.normalize.positions import _uniswap_v3_inflow_timeseries
+    prime, venue, USDC = _venue_and_prime()
+    DAI = bytes.fromhex("6b175474e89094c44da98b954eedeac495271d0f")
+    old = _FakeAmounts(1192575, USDC, DAI)
+    src = _FakeSource({100: [old], 200: [old]}, [])
+    out = _uniswap_v3_inflow_timeseries(
+        prime, venue, 100, 200, source=src, block_to_date=lambda b: None,
+    )
+    assert out.empty
