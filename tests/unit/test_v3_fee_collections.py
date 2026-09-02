@@ -18,7 +18,7 @@ import pytest
 from settle.domain.primes import Address, Chain
 from settle.extract import hypersync as hs
 from settle.extract import uniswap_v3 as v3
-from settle.extract.hypersync import LogRow, QueryResult
+from settle.extract.hypersync import HyperSyncError, LogRow, QueryResult
 
 NFPM = Address.from_str("0xc36442b4a4522e871399cd717abdd847ab11fe88")
 TID = 1192575
@@ -162,3 +162,25 @@ def test_collect_of_boundary_owed_is_reported_in_full(monkeypatch):
            [_log(v3.TOPIC_COLLECT, "0x33", 800, 1, 7_777_777, 0)], [])
     out = v3.read_fee_collections(Chain.ETHEREUM, NFPM, TID, 0, 1000)
     assert len(out) == 1 and out[0].amount0 == 7_777_777
+
+
+def test_short_data_raises_instead_of_crediting_zero(monkeypatch):
+    """A DecreaseLiquidity with truncated data must not silently yield zeros.
+
+    Zeros are harmless on a Collect, but on a Decrease they leave `owed`
+    uncredited, so the paired Collect passes its full principal through as
+    fee — phantom revenue the size of the withdrawal. query_logs substitutes
+    "0x" when a response omits `data`, so this is reachable without any
+    other signal.
+    """
+    truncated = LogRow(
+        block_number=900, log_index=1, block_time=0, address=NFPM.hex,
+        topic0=v3.TOPIC_DECREASE_LIQUIDITY,
+        topic1="0x" + f"{TID:064x}",
+        topic2=None, topic3=None, data="0x", transaction_hash="0xff",
+    )
+    _patch(monkeypatch,
+           [_log(v3.TOPIC_COLLECT, "0xff", 900, 2, 25_000_000_000_000, 0)],
+           [truncated])
+    with pytest.raises(HyperSyncError, match="Refusing to treat"):
+        v3.read_fee_collections(Chain.ETHEREUM, NFPM, TID, 0, 1000)

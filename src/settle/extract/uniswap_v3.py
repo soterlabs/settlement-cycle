@@ -497,8 +497,10 @@ class V3FeeCollection:
     Grove's AUSD/USDC pool shows both shapes in 2026: $72,470,310.97 gross
     collected, of which just $67,941.11 is fees.
 
-    ``amount0``/``amount1`` are therefore ``Collect - DecreaseLiquidity``
-    over the same transaction, floored at zero.
+    ``amount0``/``amount1`` are therefore the part of a ``Collect`` that a
+    running ``tokensOwed`` accumulator does not attribute to principal — see
+    ``read_fee_collections`` for the algorithm and for why same-transaction
+    pairing is wrong.
     """
     block_number: int
     tx_hash: str
@@ -546,6 +548,7 @@ def read_fee_collections(
     """
     if from_block > to_block:
         return []
+    from .hypersync import HyperSyncError
     from .hypersync import query_logs as _query_logs
 
     token_id_topic = "0x" + _pad_uint(token_id)
@@ -571,7 +574,21 @@ def read_fee_collections(
         data = (row.data or "").removeprefix("0x")
         # word 0 is liquidity (Decrease) or recipient (Collect); 1/2 are amounts
         if len(data) < 192:
-            return 0, 0
+            # Refuse rather than return zeros. Zeros are harmless on a
+            # Collect (no fee booked) but silently catastrophic on a
+            # DecreaseLiquidity: `owed` is never credited, so the paired
+            # Collect passes its full principal through as fee — up to $25M
+            # per close in Grove's pool, signed as an outflow and therefore
+            # booked as phantom revenue. ``hypersync.query_logs`` substitutes
+            # "0x" whenever a response omits ``data``, so a field-selection
+            # change upstream would trigger this with no other signal.
+            raise HyperSyncError(
+                f"V3 log at block {row.block_number} index {row.log_index} "
+                f"(topic0={row.topic0}) has {len(data)} hex chars of data, "
+                f"expected >= 192 for (word0, amount0, amount1). Refusing to "
+                f"treat the missing amounts as zero — on a DecreaseLiquidity "
+                f"that would book the paired Collect's principal as fee."
+            )
         return int(data[64:128], 16), int(data[128:192], 16)
 
     owed0 = owed1 = 0

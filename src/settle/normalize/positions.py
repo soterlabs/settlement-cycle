@@ -582,6 +582,11 @@ def _uniswap_v4_inflow_timeseries(
         }
         for f in flows
     ]
+    # Every fee collection can filter out at the zero check above while
+    # ``events`` is empty, leaving nothing to group - pandas raises
+    # KeyError('block_date') on an empty frame rather than returning empty.
+    if not rows:
+        return empty
     daily = (
         pd.DataFrame(rows)
         .groupby("block_date", as_index=False)["daily_inflow"]
@@ -647,37 +652,6 @@ def _uniswap_v3_inflow_timeseries(
             venue.id, venue.chain.value, from_block, to_block, _e,
         )
         return empty
-    # Fee-only ``Collect`` amounts. A V3 harvest moves accrued fees out of
-    # the position: value drops, but nothing in the Increase/Decrease stream
-    # offsets it, so the residual (revenue = d_value - inflow) books the
-    # harvest as a LOSS. Grove E12 2026-08: a $61,846.89 fee collection
-    # turned +$12,138.79 of real revenue into a reported -$49,708.11.
-    #
-    # Treated as a capital OUTFLOW rather than as extra revenue: the fees
-    # were already recognised through accrual in ``value`` (the valuation
-    # includes tokensOwed + pending fees), so a collection is
-    # already-earned value leaving this venue for the ALM — where it lands
-    # in a Cat A venue as capital. Signing it as an outflow makes
-    # revenue = d_value - inflow come out at fees-earned + divergence,
-    # and keeps the fee attributed to the venue that earned it.
-    try:
-        fee_collections = source.fee_collections_in_pool(
-            chain=venue.chain.value,
-            owner=holder.value,
-            pool=venue.token.address.value,
-            from_block=from_block,
-            to_block=to_block,
-        )
-    except (_RPCError, _DuneError, _HyperSyncError, _requests.HTTPError,
-            _requests.ConnectionError, _requests.Timeout) as _e:
-        import logging as _logging
-        _logging.getLogger(__name__).warning(
-            "_uniswap_v3_inflow_timeseries: fee-collection read failed for "
-            "%s on %s [from %d to %d] (%s) — a fee harvest in this period "
-            "would be booked as a LOSS. Verify before publishing.",
-            venue.id, venue.chain.value, from_block, to_block, _e,
-        )
-        fee_collections = []
     # Guard, BOTH directions. A position that appears or disappears during
     # the period must be explained by a liquidity event, or the settlement
     # silently misprices it by the size of the capital movement:
@@ -752,6 +726,60 @@ def _uniswap_v3_inflow_timeseries(
                 f"extract.uniswap_v3.discover_pool_token_ids so it cannot go "
                 f"stale again."
             )
+
+    # Fee-only ``Collect`` amounts. A V3 harvest moves accrued fees out of
+    # the position: value drops, but nothing in the Increase/Decrease stream
+    # offsets it, so the residual (revenue = d_value - inflow) books the
+    # harvest as a LOSS. Grove E12 2026-08: a $61,846.89 fee collection
+    # turned +$12,138.79 of real revenue into a reported -$49,708.11.
+    #
+    # Treated as a capital OUTFLOW rather than as extra revenue: the fees
+    # were already recognised through accrual in ``value`` (the valuation
+    # includes tokensOwed + pending fees), so a collection is already-earned
+    # value leaving this venue for the ALM - where it lands in a Cat A venue
+    # as capital. Signing it as an outflow makes revenue = d_value - inflow
+    # come out at fees-earned + divergence, and keeps the fee attributed to
+    # the venue that earned it.
+    #
+    # Read AFTER the boundary snapshots so it can be skipped for a venue
+    # that held nothing at either boundary - there is no position to have
+    # harvested, and skipping avoids a needless scan on dormant venues
+    # (Grove E30 has been drained since 2026-02). Carries the same blind
+    # spot the guard above documents: a position opened AND closed inside
+    # the period is invisible to boundary snapshots.
+    _boundary_value = 0
+    if _snap_som is not None:
+        _boundary_value += sum(p.amount0 + p.amount1 for p in _snap_som)
+    if _snap_eom is not None:
+        _boundary_value += sum(p.amount0 + p.amount1 for p in _snap_eom)
+    fee_collections = []
+    if _boundary_value > 0:
+        try:
+            fee_collections = source.fee_collections_in_pool(
+                chain=venue.chain.value,
+                owner=holder.value,
+                pool=venue.token.address.value,
+                from_block=from_block,
+                to_block=to_block,
+            )
+        except (_RPCError, _DuneError, _HyperSyncError, _requests.HTTPError,
+                _requests.ConnectionError, _requests.Timeout) as _e:
+            # Raises rather than degrading to []. The degraded output is not
+            # visibly wrong - it is exactly the pre-fix number, and a fee
+            # harvest booked as a loss looks like an ordinary bad month. Same
+            # argument as the capital-movement guard above: a warning would
+            # sit unread in a published, counterparty-facing report while the
+            # number was wrong by the size of the harvest.
+            raise UnsupportedPricingError(
+                f"Venue {venue.id}: could not read V3 fee collections for "
+                f"blocks ({from_block}, {to_block}] "
+                f"({type(_e).__name__}: {_e}). Any fee harvest in this period "
+                f"would be booked as a LOSS - Grove E12 2026-08 reported "
+                f"-$49,708.11 against +$12,138.79 of real revenue - so this "
+                f"refuses to publish an unverified number instead of "
+                f"warning. The scan uses HyperSync: check ENVIO_API_TOKEN, "
+                f"then retry."
+            ) from _e
 
     if not events and not fee_collections:
         return empty
@@ -833,6 +861,11 @@ def _uniswap_v3_inflow_timeseries(
             "block_date": block_to_date(fc.block_number),
             "daily_inflow": -_fee_usd,
         })
+    # Every fee collection can filter out at the zero check above while
+    # ``events`` is empty, leaving nothing to group - pandas raises
+    # KeyError('block_date') on an empty frame rather than returning empty.
+    if not rows:
+        return empty
     daily = (
         pd.DataFrame(rows)
         .groupby("block_date", as_index=False)["daily_inflow"]
