@@ -21,6 +21,61 @@ below as compact pointers; the full narrative lives in `PRD.md §17`.
 
 ### P0 — material numerical gaps
 
+
+#### G28. Galaxy Warehouse — facility terms, maturity, and yield payer
+
+**Confirmed by Grove (2026-09):** the ~$304M wired off-chain in July 2026 is
+the **Galaxy Warehouse**, a second Galaxy facility distinct from the E21
+GACLO-1 CLO note. Now modelled as **E42** in `config/grove.yaml`.
+
+**What we verified on-chain.** The Grove Ethereum ALM sent USDC to the relay
+`0x3E23311f…04f0` in nine transfers (2026-07-09 → 2026-07-27, totalling
+**$304,000,001.00**), which forwarded 100% onward to `0x15abb66ba754…`, a
+long-lived high-volume custody/exchange wallet. It was funded by **fresh
+debt**: Grove's BLOOM `cum_debt` rose 2,455,799,610 (Jul 21) → 2,732,299,835
+(Jul 27), **+276,500,225** over the same window.
+
+Yield is paid by `0xba79473a…3e82c`, funded directly from that same
+`0x15abb66ba754…` leg, on the **10th** — the same day as the E21 GACLO sweep:
+
+| date | amount |
+|---|---:|
+| 2026-07-09 | $0.25 (test) |
+| 2026-08-10 | $20.00 (test) |
+| 2026-08-10 | **$474,468.89** |
+
+**Why it mattered.** Until E42 the facility was invisible: no venue held the
+asset, so Grove's balance sheet carried an unexplained hole that appeared
+exactly when the money left, while Sky charged Base Rate on the funding debt
+throughout (~$833K/month of CoF at ~3.66% APR with no offsetting venue), and
+the August yield went unrecognised.
+
+    cum_debt (EoM) − Σ venue value_eom
+      Apr −62,716,443   May −65,173,877   Jun −61,001,078
+      Jul +259,842,006  Aug +273,481,557        ← the swing
+
+Nothing flagged it — the pipeline has no debt-vs-venue-value reconciliation
+(PRD §734: revenue is trusted per-venue).
+
+**Questions:**
+
+1. **Facility size and terms.** Is $304,000,001 the full committed amount, or
+   a first drawdown on a larger line? What is the stated rate?
+2. **Yield convention.** We read the 2026-08-10 payment as **July's** yield,
+   one month in arrears, matching the E21 sweep convention. Against the
+   ramping July balance (2,517.5M dollar-days) that implies **~6.9% APR** — a
+   senior warehouse rate, below the ~9.5% the E21 CLO note pays. Correct? On
+   that basis August's own yield (~$1.7M for a full month at $304M) should
+   arrive ~2026-09-10.
+3. **Maturity / amortisation.** Is there a stated maturity, and is principal
+   expected to amortise or repay at once? (E21's stated 2026-06-16 maturity
+   passed without termination — see G27 — so we would rather not assume.)
+4. **Is `0xba79473a…3e82c` the sole yield payer?** If Galaxy rotates payers as
+   Agora did for E38, we need the full set or the yield silently stops being
+   recognised.
+5. **Was any of the $304M returned before Aug 31?** We see no return leg, and
+   E42 therefore carries the full notional for the whole of August.
+
 #### G3. E1/E2 aHorRwa* off-pool yield channel — Merkl, Aave Horizon, or Janus?
 Investigation 2026-05-02 / 2026-05-04: the Aave Horizon `liquidityIndex`
 itself only grows ~0.87% APY for aHorRwaRLUSD, capturing only ~$67K of the

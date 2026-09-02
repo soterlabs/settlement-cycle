@@ -147,8 +147,9 @@ def test_load_prime_obex(config_dir: Path):
 def test_load_prime_grove(config_dir: Path):
     """Grove config: 12 original venues (E1–E12) + 9 idle/multi-chain holdings
     (E13–E18, E26, E27, E25) + 6 alt-holder venues (E30–E35) + E36 EOA
-    + E37 Maple syrupUSDC + E38 Agora incentives = 36 total. (E25 is
-    display_only but still loads as a Cat B venue.)"""
+    + E37 Maple syrupUSDC + E38 Agora incentives + E40/E41 Diamond PAU
+    + E42 Galaxy Warehouse = 39 total. (E25 is display_only but still
+    loads as a Cat B venue.)"""
     grove = load_prime(config_dir / "grove.yaml")
     assert grove.id == "grove"
     assert grove.start_date == date(2025, 5, 14)
@@ -159,7 +160,7 @@ def test_load_prime_grove(config_dir: Path):
     # Category breakdown.
     by_cat = {c: [v for v in grove.venues if v.pricing_category.value == c]
               for c in ["A", "B", "C", "D", "E", "F", "EOA"]}
-    assert len(grove.venues) == 38
+    assert len(grove.venues) == 39
     assert len(by_cat["C"]) == 3, "E1+E2+E3 Aave aTokens"
     # E25 (grove-bbqAUSD on Monad) joins Cat B as of 2026-05-14.
     # E37 (Maple syrupUSDC) joins Cat B as of 2026-06-08.
@@ -168,7 +169,9 @@ def test_load_prime_grove(config_dir: Path):
     assert len(by_cat["F"]) == 4, "E11 Curve LP + E12 Uni V3 + E30 Uni V3 alt-holder (ETH) + E33 Uni V3 alt-holder (Monad)"
     # E38 (Agora AUSD incentives — cash distribution) joins Cat A as of 2026-06-08.
     # E40/E41 (Diamond PAU ALM idle + JTRSY Basin escrow) join Cat A as of 2026-08-03.
-    assert len(by_cat["A"]) == 14, "E13 RLUSD + E14 AUSD + E15 USDC + E16 DAI + E17 USDS + E26 PYUSD + E27 USDC-Base + E31/E32 alt-holder ETH + E34/E35 alt-holder Monad + E38 Agora incentives + E40/E41 Diamond PAU"
+    # E42 (Galaxy Warehouse — off-chain facility, cash distribution) joins
+    # Cat A as of 2026-09; skip: true, revenue via cash_distributions only.
+    assert len(by_cat["A"]) == 15, "E13 RLUSD + E14 AUSD + E15 USDC + E16 DAI + E17 USDS + E26 PYUSD + E27 USDC-Base + E31/E32 alt-holder ETH + E34/E35 alt-holder Monad + E38 Agora incentives + E40/E41 Diamond PAU + E42 Galaxy Warehouse"
     assert len(by_cat["EOA"]) == 1, "E36 OOB principal via 0xd94f → Monad ALM EOA"
 
     # Multi-chain: E19 is on Base; E20/E21 on Avalanche.

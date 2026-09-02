@@ -908,6 +908,99 @@ venues:
       symbol: 'USDS'
       decimals: 18
 
+  # ── Galaxy Warehouse (off-chain facility, funded 2026-07) ─────────────
+  #
+  # Confirmed as "Galaxy Warehouse" by the Grove team (2026-09). This is a
+  # SECOND, much larger Galaxy facility, distinct from the E21 GACLO-1 CLO
+  # note — different disbursement address, different yield payer, ~6x the
+  # size, and no on-chain token representing it.
+  #
+  # Funding (verified on-chain): the Grove Ethereum ALM wired USDC to the
+  # off-chain relay 0x3E23311f…04f0 in nine transfers, which forwarded 100%
+  # onward to 0x15abb66ba754… (a long-lived high-volume custody/exchange
+  # wallet):
+  #
+  #     2026-07-09          1.00   (test)
+  #     2026-07-21          1.00   (test) + 47,499,999.00
+  #     2026-07-22 47,500,000.00        2026-07-25 47,500,000.00
+  #     2026-07-23 47,500,000.00        2026-07-26 47,500,000.00
+  #     2026-07-24 47,500,000.00        2026-07-27 19,000,000.00
+  #                                     TOTAL     304,000,001.00
+  #
+  # It was funded by FRESH DEBT, not by recycling existing positions: Grove's
+  # BLOOM cum_debt rose from 2,455,799,610 (Jul 21) to 2,732,299,835 (Jul 27),
+  # +276,500,225 over the same window.
+  #
+  # WHY THIS ENTRY EXISTS. Without it the facility was invisible: no venue
+  # held the asset, so Grove's balance sheet carried an unexplained hole that
+  # appeared exactly when the money left —
+  #
+  #     cum_debt (EoM) − Σ venue value_eom
+  #       Apr −62,716,443   May −65,173,877   Jun −61,001,078
+  #       Jul +259,842,006  Aug +273,481,557        <— the swing
+  #
+  # — while Sky charged Base Rate on the funding debt the whole time (it is
+  # part of ``utilized``). At ~3.66% APR that is ~$833K/month of cost of funds
+  # with no offsetting venue, and the August yield was going unrecognised.
+  # Nothing flagged it: there is no debt-vs-venue-value reconciliation in the
+  # pipeline (see PRD §734 — revenue is trusted per-venue).
+  #
+  # MODELLING. Same shape as E38 (Agora incentives): ``skip: true`` because
+  # there is no on-chain principal to price — the USDC left the perimeter and
+  # the claim is off-chain. Revenue comes solely from ``cash_distributions``.
+  # ``notional_principal_usd`` carries the off-chain principal so the CoF
+  # allocator gives the facility its share; without it the ~$833K/month of CoF
+  # silently spreads across the other venues' rows (the same reasoning as
+  # E21's notional). The schedule mirrors the actual drawdown so a re-run of
+  # July time-weights the ramp correctly rather than assuming a full month.
+  #
+  # YIELD. Paid by 0xba79473a…3e82c, which is funded directly from the
+  # 0x15abb66ba754… circuit leg above. It pays on the 10th, the same day as
+  # the E21 GACLO sweep — Galaxy's standard payment date for both facilities:
+  #     2026-07-09      0.25   (test)
+  #     2026-08-10     20.00   (test)
+  #     2026-08-10 474,468.89
+  # The 2026-08-10 payment is JULY's yield (one month in arrears, matching the
+  # E21 sweep convention). Against the ramping July balance (2,517.5M
+  # dollar-days) that implies ~6.9% APR — a senior warehouse rate, below the
+  # ~9.5% the E21 CLO note pays. On that basis August's own yield (~$1.7M on a
+  # full month at $304M) should arrive ~2026-09-10; if it does not, this rate
+  # assumption needs revisiting with Grove.
+  #
+  # OPEN (QUESTIONS.md): confirm the facility size/terms, the maturity, and
+  # whether 0xba79473a is the sole yield payer.
+  - id: E42
+    chain: ethereum
+    label: 'Galaxy Warehouse (off-chain facility — cash distribution to Grove Eth ALM)'
+    pricing_category: A
+    token:
+      address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'      # USDC
+      symbol: 'USDC'
+      decimals: 6
+    # No on-chain principal at the ALM: the USDC was wired out and the claim
+    # is off-chain. Accumulating value_som/value_eom here would double-count
+    # the USDC that E15 already sees transit the ALM.
+    skip: true
+    notional_principal_usd:
+      - start_date: '2026-07-21'
+        amount: 47500001
+      - start_date: '2026-07-22'
+        amount: 95000001
+      - start_date: '2026-07-23'
+        amount: 142500001
+      - start_date: '2026-07-24'
+        amount: 190000001
+      - start_date: '2026-07-25'
+        amount: 237500001
+      - start_date: '2026-07-26'
+        amount: 285000001
+      - start_date: '2026-07-27'
+        amount: 304000001
+    cash_distributions:
+      - payer: '0xba79473abba448c1a2912d3cdc241b18ee83e82c'   # Galaxy Warehouse yield payer
+        token: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'   # USDC on Ethereum
+        chain: ethereum
+
   # Plume venues — held $0 throughout Q1 2026 (wound down Oct 2025) but
   # listed for completeness with Grove team's inventory. Bridged-token
   # addresses on Plume need on-chain verification before re-activation.

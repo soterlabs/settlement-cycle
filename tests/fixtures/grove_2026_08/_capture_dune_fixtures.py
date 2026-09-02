@@ -377,6 +377,16 @@ def main() -> int:
                         "from_block": 24136052, "pin_block": eth_eom},
             "rows": _rows(df)}
 
+    # E42 Galaxy Warehouse — the second, larger Galaxy facility (confirmed by
+    # the Grove team 2026-09). Single payer, funded from the same
+    # 0x15abb66ba754… circuit the July principal was wired through.
+    print("  fetching cash_dist_e42 (Galaxy Warehouse → ALM) …")
+    gw_payer = bytes.fromhex("ba79473abba448c1a2912d3cdc241b18ee83e82c")
+    fx["cash_dist_e42"] = {
+        "_chain": "ethereum", "_token": "0x" + USDC.hex(),
+        "_from": "0x" + gw_payer.hex(), "_to": "0x" + GROVE_ALM_ETH.hex(),
+        "rows": venue_inflow("ethereum", USDC, gw_payer, GROVE_ALM_ETH, eth_eom)}
+
     print("  fetching cash_dist_e21 (Galaxy → ALM) …")
     galaxy = bytes.fromhex("aC3D86f9840A8bE07dE5F67d6427983B7009DF1B".lower())
     fx["cash_dist_e21"] = {
