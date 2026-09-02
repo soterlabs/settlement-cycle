@@ -18,7 +18,7 @@ Period: 2026-08-01 → 2026-08-31 (31 days)
 
 | Field | USDS |
 |---|---:|
-| **supply-side revenue** | **281,216.69** |
+| **supply-side revenue** | **288,916.48** |
 
 ##### Non-venue sUSDS credits
 
@@ -34,9 +34,9 @@ Period: 2026-08-01 → 2026-08-31 (31 days)
 
 | Field | USDS |
 |---|---:|
-| prime cost of funds | 6,084,935.36 |
+| prime cost of funds | 6,076,774.20 |
 | sky direct exposure | -7,778.87 |
-| **supply-side revenue** | **6,077,156.50** |
+| **supply-side revenue** | **6,068,995.34** |
 
 ## Per-venue
 
@@ -97,6 +97,7 @@ Period: 2026-08-01 → 2026-08-31 (31 days)
 | S62 | Spark.fi USDT Reserve Uniswap V4 (USDT/USDS) | $50,000,939.20 | $50,000,607.69 | $7,494.43 | -$7,825.94 | $0.00 | -$7,825.94 | 100.00% | $0.00 |
 | S64 | RLUSD raw (ALM idle — $251.7M as of 2026-08) | $0.00 | $251,703,857.67 | $251,703,857.67 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S65 | Spark Blue Chip USDT Vault (Morpho — 2026-06 redeployment) | $60,823,719.85 | $32,509,163.72 | -$28,342,801.04 | $28,244.91 | $28,244.91 | $0.00 | 0% | $0.00 |
+| S66 | Spark.fi RLUSD Reserve Uniswap V4 (RLUSD/USDS) | $0.00 | $19,999,704.08 | $20,000,165.45 | -$461.37 | -$461.37 | $0.00 | 0% | $0.00 |
 
 ## Position-only venues (excluded from `prime_agent_revenue`)
 
