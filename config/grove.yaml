@@ -1000,6 +1000,16 @@ venues:
       - payer: '0xba79473abba448c1a2912d3cdc241b18ee83e82c'   # Galaxy Warehouse yield payer
         token: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'   # USDC on Ethereum
         chain: ethereum
+    # The relay the PRINCIPAL moved through (distinct from the yield payer
+    # above). scripts/scan_notional_changes.py derives its watch-list from
+    # cash_distributions payers, so without this a repayment would return via
+    # 0x3E23311f… unseen and the scan would print "No significant principal
+    # flows detected" and exit 0 — a false all-clear on an open-ended $304M
+    # notional, which is exactly the risk G28 Q5 asks about. There is no
+    # terminal `amount: 0` step here because the maturity is unknown (G28 Q3);
+    # this watch is what substitutes for one.
+    notional_counterparties:
+      - '0x3E23311f9FF660E3c3d87E4b7c207b3c3D7e04f0'
 
   # Plume venues — held $0 throughout Q1 2026 (wound down Oct 2025) but
   # listed for completeness with Grove team's inventory. Bridged-token
