@@ -166,9 +166,7 @@ def test_zero_from_the_vault_raises_rather_than_valuing_at_nothing(monkeypatch):
     monkeypatch.setattr("settle.extract.rpc.convert_to_assets",
                         lambda chain, vault, shares, block: 0)
     with pytest.raises(P.UnsupportedPricingError, match="convertToAssets=0"):
-        P._vault_settlement_usd(
-            _Venue(), Decimal("12020502.0395381"), 100, block_resolver=_Resolver(),
-        )
+        P._vault_settlement_usd(_Venue(), Decimal("12020502.0395381"), 100)
 
 
 def test_reads_the_vault_on_its_own_chain_at_the_translated_block(monkeypatch):
@@ -183,9 +181,7 @@ def test_reads_the_vault_on_its_own_chain_at_the_translated_block(monkeypatch):
         "settle.extract.rpc.convert_to_assets",
         lambda chain, vault, shares, block: calls.append((chain, block)) or 10**6,
     )
-    P._vault_settlement_usd(
-        _Venue(), Decimal("1"), 86_400_000, block_resolver=_Resolver(),
-    )
+    P._vault_settlement_usd(_Venue(), Decimal("1"), 86_400_000)
     assert calls == [(Chain.ETHEREUM, 25_081_215)], calls
 
 
@@ -201,9 +197,7 @@ def test_share_and_asset_decimals_are_taken_from_config(monkeypatch):
     monkeypatch.setattr("settle.extract.hypersync.find_block_at_or_before",
                         lambda chain, ts: 10)
     monkeypatch.setattr("settle.extract.rpc.convert_to_assets", fake)
-    got = P._vault_settlement_usd(
-        _Venue(), Decimal("1"), 100, block_resolver=_Resolver(),
-    )
+    got = P._vault_settlement_usd(_Venue(), Decimal("1"), 100)
     assert captured["shares"] == 10**18, "1 share at 18dp"
     assert got == Decimal("1.020232"), "raw/1e6"
 
@@ -323,3 +317,72 @@ def test_unreadable_log_is_harmless_when_there_is_no_redemption(monkeypatch):
     out = _run_ts(monkeypatch, [(date(2026, 8, 10), "100")], log_raises=True)
     assert not out.empty
     assert out["daily_inflow"].iloc[0] == Decimal("100") * Decimal("1.02")
+
+
+def test_a_date_key_mismatch_raises_instead_of_reverting_silently(monkeypatch):
+    """Map keys come from the transfer's block; daily rows from the balance
+    series. If those two date sources disagree, the lookup misses and the day
+    would fall back to NAV-oracle pricing with no signal — which is the bug
+    this whole path exists to remove.
+    """
+    from pathlib import Path
+
+    from settle.domain.config import load_prime
+
+    grove = load_prime(Path("config/grove.yaml"))
+    e22 = next(v for v in grove.venues if v.id == "E22")
+    monkeypatch.setattr("settle.extract.hypersync.block_timestamp",
+                        lambda chain, block: 1)
+    monkeypatch.setattr("settle.extract.hypersync.find_block_at_or_before",
+                        lambda chain, ts: 10)
+    monkeypatch.setattr("settle.extract.rpc.convert_to_assets",
+                        lambda chain, vault, shares, block: 10**6)
+    monkeypatch.setattr(
+        "settle.extract.hypersync.query_logs",
+        lambda *a, **k: QueryResult(rows=[_row(10**18, 700)]),
+    )
+
+    class _Off(_Resolver):
+        def block_to_date(self, chain, block):
+            return date(2026, 8, 25)          # balance row says the 10th
+
+    with pytest.raises(P.UnsupportedPricingError, match="found no matching row"):
+        P._rwa_inflow_timeseries(
+            grove, e22, _Period(),
+            balance_source=_BalSrc([(date(2026, 8, 10), "-1")]),
+            block_resolver=_Off(),
+            nav_at_block=lambda b: Decimal("1.02"),
+        )
+
+
+def test_a_pure_redemption_day_never_touches_the_nav_oracle(monkeypatch):
+    """This venue class is where the oracle is least reliable — ACRDX's
+    Chronicle feed froze for Jun+Jul 2026 on a rotated-out consumer. A day
+    with no deposit leg needs no NAV at all."""
+    from pathlib import Path
+
+    from settle.domain.config import load_prime
+
+    grove = load_prime(Path("config/grove.yaml"))
+    e22 = next(v for v in grove.venues if v.id == "E22")
+    monkeypatch.setattr("settle.extract.hypersync.block_timestamp",
+                        lambda chain, block: 1)
+    monkeypatch.setattr("settle.extract.hypersync.find_block_at_or_before",
+                        lambda chain, ts: 10)
+    monkeypatch.setattr("settle.extract.rpc.convert_to_assets",
+                        lambda chain, vault, shares, block: 5_000_000)
+    monkeypatch.setattr(
+        "settle.extract.hypersync.query_logs",
+        lambda *a, **k: QueryResult(rows=[_row(10**18, 700)]),
+    )
+
+    def _boom(_b):
+        raise AssertionError("the NAV oracle must not be read")
+
+    out = P._rwa_inflow_timeseries(
+        grove, e22, _Period(),
+        balance_source=_BalSrc([(date(2026, 8, 10), "-1")]),
+        block_resolver=_Resolver(),
+        nav_at_block=_boom,
+    )
+    assert out["daily_inflow"].iloc[0] == Decimal("-5")

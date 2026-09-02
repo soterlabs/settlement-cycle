@@ -2321,8 +2321,6 @@ def _vault_settlement_usd(
     venue: Venue,
     shares: Decimal,
     block: int,
-    *,
-    block_resolver,
 ) -> Decimal:
     """USD a redemption of ``shares`` settles for, per the vault itself.
 
@@ -2445,9 +2443,7 @@ def _vault_priced_redemptions_by_date(
         if raw == 0:
             continue
         shares = Decimal(raw) / Decimal(10**venue.token.decimals)
-        usd = _vault_settlement_usd(
-            venue, shares, row.block_number, block_resolver=block_resolver,
-        )
+        usd = _vault_settlement_usd(venue, shares, row.block_number)
         d = block_resolver.block_to_date(venue.chain.value, row.block_number)
         prev_usd, prev_tok = out.get(d, (Decimal("0"), Decimal("0")))
         out[d] = (prev_usd + usd, prev_tok + shares)
@@ -2539,6 +2535,11 @@ def _rwa_inflow_timeseries(
                 f"fall back to NAV-oracle pricing, which overstates the "
                 f"outflow and therefore revenue."
             ) from _e
+    # Map keys come from ``block_to_date`` on the transfer's block; the daily
+    # rows come from the balance series. Two independent date sources: if they
+    # disagree the lookup misses and the day quietly reverts to oracle
+    # pricing, which is the bug. Tracked and checked after the loop.
+    _consumed: set = set()
     rows = []
     for _, row in bal_df.iterrows():
         d = row["block_date"]
@@ -2555,14 +2556,23 @@ def _rwa_inflow_timeseries(
             # venue via ``redemptions_priced_at_vault``; see the flag's
             # docstring for the ACRDX verification and the amounts.
             if d in _vault_redemptions:
+                _consumed.add(d)
                 _out_usd, _out_tok = _vault_redemptions[d]
                 # net = in - out, so gross_in = net + out. Price the deposit
                 # leg at the oracle and the redemption leg at the vault.
                 _gross_in = net_d + _out_tok
-                nav = nav_at_block(block)
+                # Only read the oracle when there IS a deposit leg. A pure
+                # redemption day needs no NAV at all, and this venue class is
+                # exactly where the oracle is least reliable — ACRDX's
+                # Chronicle feed froze for Jun+Jul 2026 on a rotated-out
+                # consumer.
+                _in_usd = (
+                    _gross_in * nav_at_block(block)
+                    if _gross_in != 0 else Decimal("0")
+                )
                 rows.append({
                     "block_date": d,
-                    "daily_inflow": _gross_in * nav - _out_usd,
+                    "daily_inflow": _in_usd - _out_usd,
                 })
                 continue
             nav = nav_at_block(block)
@@ -2570,6 +2580,16 @@ def _rwa_inflow_timeseries(
             nav = _PRE_PERIOD_NAV
         rows.append({"block_date": d, "daily_inflow": net_d * nav})
 
+    _unmatched = set(_vault_redemptions) - _consumed
+    if _unmatched:
+        raise UnsupportedPricingError(
+            f"Venue {venue.id}: vault-priced redemption(s) on "
+            f"{sorted(_unmatched)} found no matching row in the balance "
+            f"series, so those days would fall back to NAV-oracle pricing "
+            f"without a signal. The transfer log and the balance series "
+            f"disagree on the date — check the block resolver against the "
+            f"balance source's day boundaries."
+        )
     out = pd.DataFrame(rows).sort_values("block_date").reset_index(drop=True)
     out["cum_inflow"] = out["daily_inflow"].cumsum()
     return out
