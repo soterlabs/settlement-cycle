@@ -336,6 +336,9 @@ def load_prime(config_path: Path) -> Prime:
                 display_only=bool(v.get("display_only", False)),
                 force_capital_inflow=bool(v.get("force_capital_inflow", False)),
                 external_yield_source=bool(v.get("external_yield_source", False)),
+                redemptions_priced_at_vault=bool(
+                    v.get("redemptions_priced_at_vault", False)
+                ),
                 notional_principal_usd=_parse_notional_principal(
                     v.get("notional_principal_usd")
                 ),

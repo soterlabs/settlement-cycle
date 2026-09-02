@@ -2317,6 +2317,139 @@ def _cat_a_capital_inflow_timeseries(
     return daily
 
 
+def _vault_settlement_usd(
+    venue: Venue,
+    shares: Decimal,
+    block: int,
+) -> Decimal:
+    """USD a redemption of ``shares`` settles for, per the vault itself.
+
+    Reads ``convertToAssets(shares)`` on ``venue.nav_oracle.fallback_address``
+    — the ERC-4626 vault — rather than multiplying by the NAV oracle. That is
+    what the counterparty actually pays: verified on Grove E22 (ACRDX) against
+    the cash received on both 2026 exits, to $0.016 on $18.08M and $0.020 on
+    $12.26M.
+
+    ``shares`` is a positive share count (the caller strips the sign) in
+    ``venue.token.decimals`` units. The vault is read on its own chain, which
+    for a cross-chain RWA (ACRDX: token on Plume, vault on Ethereum) is the
+    oracle chain — the venue-chain block is translated at the same calendar
+    day-end, exactly as ``_resolve_rwa_nav`` does.
+
+    Raises ``UnsupportedPricingError`` when the vault returns 0: that means
+    no share price at this block, and silently valuing a multi-million
+    redemption at $0 would book it as a total loss.
+    """
+    from ..extract.rpc import convert_to_assets
+
+    oracle = venue.nav_oracle
+    vault = oracle.fallback_address
+    dec_shares = venue.token.decimals
+    # Guaranteed present by Venue validation (redemptions_priced_at_vault
+    # requires it) — no silent default, which would misprice an 18-decimal
+    # vault by 1e12.
+    dec_assets = oracle.fallback_underlying_decimals
+    vault_chain = oracle.oracle_chain or venue.chain
+    if vault_chain != venue.chain:
+        # Translate by TIMESTAMP, not by calendar date. ``_resolve_rwa_nav``
+        # deliberately goes venue-block -> date -> vault-chain day-end, which
+        # is right for MARKING a position (NAV is global; day-end granularity
+        # is the convention everywhere else). It is wrong for pricing a
+        # settlement, because it discards the moment the trade happened and
+        # collapses every transfer on a day onto one price.
+        #
+        # Grove E22, 2026-05-12: the redemption executed at 19:45:36 and the
+        # vault stepped before midnight. Day-end gave $18,107,701.46 against
+        # the $18,077,674.28 the counterparty actually paid — a $30,028
+        # error, i.e. no improvement at all over the oracle. At the
+        # transfer's own instant it reproduces the cash to $0.016.
+        #
+        # ``find_block_at_or_before`` rather than the injected resolver: a
+        # fixture-backed resolver only carries end-of-day rows, so handing it
+        # an intra-day timestamp returns the PREVIOUS day's block — worse
+        # than the bug being fixed.
+        from ..extract.hypersync import block_timestamp, find_block_at_or_before
+        block = find_block_at_or_before(
+            vault_chain.value, block_timestamp(venue.chain.value, block),
+        )
+    raw_shares = int((shares * Decimal(10**dec_shares)).to_integral_value())
+    raw_assets = convert_to_assets(vault_chain, vault, raw_shares, block)
+    if raw_assets == 0:
+        raise UnsupportedPricingError(
+            f"Venue {venue.id}: vault {vault.hex} returned convertToAssets=0 "
+            f"for {shares} shares at block {block} on "
+            f"{vault_chain.value!r}. Refusing to value the redemption at $0 — "
+            f"that would book the whole outflow as a loss. Check the vault "
+            f"address or unset redemptions_priced_at_vault."
+        )
+    return Decimal(raw_assets) / Decimal(10**dec_assets)
+
+
+def _vault_priced_redemptions_by_date(
+    prime: Prime,
+    venue: Venue,
+    period,
+    *,
+    block_resolver,
+) -> dict:
+    """``{date: (usd, tokens)}`` for redemptions in ``period``, per transfer.
+
+    Each outbound token transfer is valued at ``convertToAssets(shares)`` on
+    the vault AT THAT TRANSFER'S OWN BLOCK, then summed by date. Day-end
+    pricing is not good enough: on 2026-05-12 Grove E22's vault stepped
+    0.088% between the 19:45 redemption and midnight, so an end-of-day read
+    misses the cash by $15,896 on $18.08M. At the transfer's own block the
+    same redemption reproduces the cash to $0.016.
+
+    Transfers are read straight from logs rather than from the daily
+    cumulative-balance series, because that series has no intra-day block
+    granularity to price against.
+
+    Both the USD and the share count are returned: a day can carry a deposit
+    AND a redemption, and the caller needs the token count to re-price only
+    the inflow leg at the oracle (``gross_in x nav - vault_priced_out``).
+    Substituting the gross outflow wholesale would silently drop the deposit.
+
+    Note the assumption: every outbound transfer is treated as a settlement.
+    A move from the ALM to another address the prime controls would be priced
+    as one. The oracle path shares this assumption (it prices the same
+    outflow), but vault pricing leans on it harder.
+    """
+    from datetime import datetime, time, timedelta, timezone
+
+    from ..extract.hypersync import query_logs
+
+    _TRANSFER = (
+        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+    )
+    holder = venue.holder_override or prime.alm[venue.chain]
+    som = block_resolver.block_at_or_before(
+        venue.chain.value,
+        datetime.combine(
+            period.start - timedelta(days=1), time.max, tzinfo=timezone.utc,
+        ),
+    )
+    eom = period.pin_blocks[venue.chain]
+    padded = "0x" + holder.hex[2:].rjust(64, "0")
+    rows = query_logs(
+        venue.chain.value,
+        [{"address": [venue.token.address.hex], "topics": [[_TRANSFER], [padded], []]}],
+        som + 1, eom,
+        log_fields=["block_number", "log_index", "data", "transaction_hash"],
+    ).rows
+    out: dict = {}
+    for row in rows:
+        raw = int(row.data or "0x0", 16)
+        if raw == 0:
+            continue
+        shares = Decimal(raw) / Decimal(10**venue.token.decimals)
+        usd = _vault_settlement_usd(venue, shares, row.block_number)
+        d = block_resolver.block_to_date(venue.chain.value, row.block_number)
+        prev_usd, prev_tok = out.get(d, (Decimal("0"), Decimal("0")))
+        out[d] = (prev_usd + usd, prev_tok + shares)
+    return out
+
+
 def _rwa_inflow_timeseries(
     prime: Prime,
     venue: Venue,
@@ -2373,6 +2506,40 @@ def _rwa_inflow_timeseries(
     # that diff. Saves ~9000 RPC calls (≈365 days × ~25 binary-search hops)
     # per Cat E venue on a cold cache for a year-old prime.
     _PRE_PERIOD_NAV = Decimal("1")
+    # Per-transfer redemption prices, built once (one log query) when the
+    # venue opts into vault settlement pricing. Empty dict => fall back to
+    # oracle pricing, which is the pre-fix behaviour.
+    _vault_redemptions: dict = {}
+    _has_redemption = any(
+        period.start <= r["block_date"] <= period.end
+        and Decimal(str(r["daily_net"])) < 0
+        for _, r in bal_df.iterrows()
+    )
+    if venue.redemptions_priced_at_vault and _has_redemption:
+        from ..extract.hypersync import HyperSyncError as _HSErr
+        from ..extract.rpc import RPCError as _RPCErr
+        try:
+            _vault_redemptions = _vault_priced_redemptions_by_date(
+                prime, venue, period, block_resolver=block_resolver,
+            )
+        except (_HSErr, _RPCErr) as _e:
+            # Fail closed. Degrading to oracle pricing reproduces exactly the
+            # pre-fix number ($30,028.18 too high on Grove E22's May 2026
+            # redemption), which reads as an ordinary month rather than an
+            # error. Only reached when the period HAS a redemption, so a
+            # venue with no exits is never blocked by an unreadable log.
+            raise UnsupportedPricingError(
+                f"Venue {venue.id}: redemptions_priced_at_vault is set and "
+                f"this period contains a redemption, but the transfer log "
+                f"could not be read ({type(_e).__name__}: {_e}). Refusing to "
+                f"fall back to NAV-oracle pricing, which overstates the "
+                f"outflow and therefore revenue."
+            ) from _e
+    # Map keys come from ``block_to_date`` on the transfer's block; the daily
+    # rows come from the balance series. Two independent date sources: if they
+    # disagree the lookup misses and the day quietly reverts to oracle
+    # pricing, which is the bug. Tracked and checked after the loop.
+    _consumed: set = set()
     rows = []
     for _, row in bal_df.iterrows():
         d = row["block_date"]
@@ -2381,11 +2548,48 @@ def _rwa_inflow_timeseries(
         if period.start <= d <= period.end:
             eod = datetime.combine(d, time.max, tzinfo=timezone.utc)
             block = block_resolver.block_at_or_before(venue.chain.value, eod)
+            # Redemptions settle at the vault's own share price, not at the
+            # NAV oracle. Both are live and correct but disagree intra-period
+            # (the oracle accrues near-daily, the vault steps irregularly), so
+            # pricing an outflow off the oracle overstates it — and therefore
+            # overstates revenue, since revenue is the residual. Opt-in per
+            # venue via ``redemptions_priced_at_vault``; see the flag's
+            # docstring for the ACRDX verification and the amounts.
+            if d in _vault_redemptions:
+                _consumed.add(d)
+                _out_usd, _out_tok = _vault_redemptions[d]
+                # net = in - out, so gross_in = net + out. Price the deposit
+                # leg at the oracle and the redemption leg at the vault.
+                _gross_in = net_d + _out_tok
+                # Only read the oracle when there IS a deposit leg. A pure
+                # redemption day needs no NAV at all, and this venue class is
+                # exactly where the oracle is least reliable — ACRDX's
+                # Chronicle feed froze for Jun+Jul 2026 on a rotated-out
+                # consumer.
+                _in_usd = (
+                    _gross_in * nav_at_block(block)
+                    if _gross_in != 0 else Decimal("0")
+                )
+                rows.append({
+                    "block_date": d,
+                    "daily_inflow": _in_usd - _out_usd,
+                })
+                continue
             nav = nav_at_block(block)
         else:
             nav = _PRE_PERIOD_NAV
         rows.append({"block_date": d, "daily_inflow": net_d * nav})
 
+    _unmatched = set(_vault_redemptions) - _consumed
+    if _unmatched:
+        raise UnsupportedPricingError(
+            f"Venue {venue.id}: vault-priced redemption(s) on "
+            f"{sorted(_unmatched)} found no matching row in the balance "
+            f"series, so those days would fall back to NAV-oracle pricing "
+            f"without a signal. The transfer log and the balance series "
+            f"disagree on the date — check the block resolver against the "
+            f"balance source's day boundaries."
+        )
     out = pd.DataFrame(rows).sort_values("block_date").reset_index(drop=True)
     out["cum_inflow"] = out["daily_inflow"].cumsum()
     return out

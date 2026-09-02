@@ -2559,13 +2559,59 @@ def compute_monthly_pnl(
                     "(%s); leaving value_som/eom at $0",
                     venue.id, type(_e).__name__,
                 )
+        # Dated capital flows, for TIME-WEIGHTING only. Revenue is already
+        # pinned by ``actual_revenue_override`` below, so this cannot move it
+        # — but ``tw_avg_value`` is derived from ``value_som`` plus this
+        # series (``prime_agent_revenue._time_weighted_avg_value``), and an
+        # empty frame makes the venue look flat at its START-of-month value
+        # for the whole period.
+        #
+        # Grove E21 (Galaxy GACLO-1) is why this exists. Its position stepped
+        # down $9,679,121.58 on 2026-08-19 (two redemptions 21 minutes
+        # apart), but with no series its tw_avg read $27,586,956.37 instead
+        # of $23,794,486.74 — drawing $85,288.92 of cost-of-funds
+        # attribution against a true ~$32,113 and diluting the excess away
+        # from every other Grove venue.
+        #
+        # Gated on ``not venue.skip``, the same condition the value reads
+        # above use: a skipped venue's balance is untrusted (E42 Galaxy
+        # Warehouse), so it keeps the empty frame.
+        _cash_dist_inflow = pd.DataFrame(
+            columns=["block_date", "daily_inflow", "cum_inflow"]
+        )
+        if not venue.skip and venue.pricing_category == PricingCategory.RWA_TRANCHE:
+            from ..normalize.positions import _rwa_inflow_timeseries
+            from ..normalize.prices import _resolve_rwa_nav as _rrn
+
+            def _cd_nav(block, _v=venue, _br=resolver, _nr=sources.nav_oracle_resolver):
+                return _rrn(_v, block, block_resolver=_br, resolver=_nr)
+
+            try:
+                _cash_dist_inflow = _rwa_inflow_timeseries(
+                    prime, venue, period,
+                    balance_source=_cash_dist_balance_src,
+                    block_resolver=resolver,
+                    nav_at_block=_cd_nav,
+                )
+                _log.info(
+                    "  [cash_dist] %s — dated capital series for CoF "
+                    "time-weighting (%d rows); revenue still overridden.",
+                    venue.id, len(_cash_dist_inflow),
+                )
+            except (_RPCError, _DuneError, _requests.HTTPError,
+                    _requests.ConnectionError, _requests.Timeout) as _e:
+                _log.warning(
+                    "  [cash_dist] %s — could not build the dated capital "
+                    "series (%s); tw_avg_value falls back to a flat "
+                    "value_som, which overstates CoF attribution on a venue "
+                    "that redeemed mid-period.",
+                    venue.id, type(_e).__name__,
+                )
         venue_inputs.append(VenueRevenueInputs(
             venue=venue,
             value_som=v_som,
             value_eom=v_eom,
-            inflow_timeseries=pd.DataFrame(
-                columns=["block_date", "daily_inflow", "cum_inflow"]
-            ),
+            inflow_timeseries=_cash_dist_inflow,
             sde_entry=None,
             actual_revenue_override=cash_rev,
         ))

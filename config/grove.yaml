@@ -701,6 +701,12 @@ venues:
     chain: plume
     label: 'Anemoy Tokenized Apollo Diversified Credit Fund (ACRDX)'
     pricing_category: E
+    # Redemptions settle at the vault's convertToAssets, not at the Chronicle
+    # NAV. Both feeds are live; they disagree intra-period because Chronicle
+    # accrues near-daily while the vault steps irregularly. Operator ruled
+    # cash/shares authoritative (2026-09-02). See the flag's docstring in
+    # domain/primes.py for the two verified exits and the amounts.
+    redemptions_priced_at_vault: true
     token:
       address: '0x9477724bb54ad5417de8baff29e59df3fb4da74f'
       symbol: 'ACRDX'
