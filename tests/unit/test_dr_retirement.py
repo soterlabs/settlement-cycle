@@ -111,3 +111,15 @@ def test_absent_section_means_nobody_is_retired(tmp_path, monkeypatch):
         assert dr_rewards._dr_retired_from() == {}
     finally:
         dr_rewards._ref_code_map.cache_clear()
+
+
+def test_retiring_an_undeclared_prime_is_rejected(tmp_path, monkeypatch):
+    """A typo'd name would otherwise be a silent no-op — the real prime keeps
+    earning DR and nothing in the output says the retirement didn't apply."""
+    _with_config(tmp_path, monkeypatch,
+                 "retired_from:\n  kel: '2026-08'\nprimes:\n  keel:\n    - '4001'\n")
+    try:
+        with pytest.raises(ValueError, match="not a prime declared under"):
+            dr_rewards._dr_retired_from()
+    finally:
+        dr_rewards._ref_code_map.cache_clear()

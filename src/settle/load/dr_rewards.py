@@ -72,8 +72,17 @@ def _dr_retired_from() -> dict[str, str]:
     path = _repo_root() / _REF_CODE_MAP_REL
     with path.open() as f:
         cfg = yaml.safe_load(f) or {}
+    declared = set((cfg.get("primes") or {}).keys())
     out: dict[str, str] = {}
     for prime, month in (cfg.get("retired_from") or {}).items():
+        if str(prime) not in declared:
+            # A typo here would otherwise be a silent no-op: the name matches
+            # no prime, the real prime keeps earning DR, and nothing says so.
+            raise ValueError(
+                f"{_REF_CODE_MAP_REL}: retired_from.{prime!r} is not a prime "
+                f"declared under `primes:` (have {sorted(declared)}) — as "
+                "written this retirement would never apply to anything."
+            )
         try:
             out[str(prime)] = str(Month.parse(str(month)))
         except Exception as exc:                      # noqa: BLE001
@@ -179,6 +188,11 @@ def load_dr(prime_id: str, month: str) -> dict | None:
 
     Returns ``{"total": Decimal, "rows": [{"ref_code": str, "amount":
     Decimal, "notes": str}], "month": month}`` or ``None`` when unavailable.
+
+    A prime retired from DR (``retired_from`` in the ref-code config) returns
+    a total of ``0`` with no rows from its cutoff month on — a real zero, NOT
+    ``None``, so a re-render overwrites any previously-written DR instead of
+    leaving it in place.
     """
     owner, unattributed = _ref_code_map()
     if prime_id not in set(owner.values()):
