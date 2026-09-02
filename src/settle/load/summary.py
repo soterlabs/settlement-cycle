@@ -24,7 +24,8 @@ Structure:
     ### Sky side                    (prime CoF + SDE → supply-side revenue)
 
     ## Per-venue
-    | Venue | Label | value_som | value_eom | actual_rev | revenue | sd_revenue |
+    | Venue | Label | value_som | value_eom | tw_avg_value | period_inflow |
+    | actual_rev | revenue | sd_revenue | sd_share | spread_reimb |
     ...
 
     ## Position-only venues (PnL aggregated at prime level)
@@ -51,6 +52,28 @@ def _D(x) -> Decimal:
     if isinstance(x, Decimal):
         return x
     return Decimal(str(x))
+
+
+def _tw_avg(v: dict) -> str:
+    """Time-weighted average venue value, as rendered in the per-venue table.
+
+    This is the figure cost of funds is allocated on
+    (``cof_attribution``: ``cof_alloc = avg_value x weight / Sigma(avg x
+    weight) x CoF_total``), so a reader reconciling a venue's CoF share
+    needs it visible rather than having to open the xlsx. SoM and EoM alone
+    can be badly misleading for it: Grove E41 went $1M -> $12.5M in August
+    but only crossed $8.98M on the 29th and $12.5M on the 31st itself, for
+    a true average near $3.4M.
+
+    Renders an em dash when ``tw_avg_value_usd`` is absent (legacy
+    provenance) rather than substituting the SoM/EoM midpoint — the
+    midpoint is a different quantity, and printing it in this column would
+    read as a computed average.
+    """
+    raw = v.get("tw_avg_value_usd")
+    if raw in (None, ""):
+        return "—"
+    return _usd(raw)
 
 
 def _usd(x) -> str:
@@ -288,10 +311,11 @@ def render_summary(prov: dict) -> str:
         lines.append("## Per-venue")
         lines.append("")
         lines.append(
-            "| Venue | Label | value_som | value_eom | period_inflow | "
-            "actual_rev | revenue | sd_revenue | sd_share | spread_reimb |"
+            "| Venue | Label | value_som | value_eom | tw_avg_value | "
+            "period_inflow | actual_rev | revenue | sd_revenue | sd_share | "
+            "spread_reimb |"
         )
-        lines.append("|---|---|---:|---:|---:|---:|---:|---:|---:|---:|")
+        lines.append("|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
         for v in venues:
             sd_share_d = _D(v.get("sd_share"))
             sd_share_str = f"{sd_share_d * 100:.2f}%" if sd_share_d != 0 else "0%"
@@ -301,6 +325,7 @@ def render_summary(prov: dict) -> str:
                 f"{v.get('label', '')} | "
                 f"{_usd(v.get('value_som'))} | "
                 f"{_usd(v.get('value_eom'))} | "
+                f"{_tw_avg(v)} | "
                 f"{_usd(v.get('period_inflow'))} | "
                 f"{_usd(v.get('actual_revenue'))} | "
                 f"{_usd(v.get('revenue'))} | "
