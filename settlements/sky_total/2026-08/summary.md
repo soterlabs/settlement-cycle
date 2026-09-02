@@ -10,10 +10,10 @@ Consolidated Sky Net Revenue, ACCRUAL basis (operator definition 2026-08-07): pr
 | grove | 9,574,714.00 | -1,342,064.00 |
 | obex | 1,631,729.00 | -458,340.00 |
 | osero | 7,006.00 | -30,156.00 |
-| keel | 0.00 | -33,307.00 |
+| keel | 0.00 | -31,776.00 |
 | skybase | 0.00 | -101,204.00 |
-| **total** | **17,571,361.00** | **-2,902,507.00** |
-| **MSC net (accrual)** | | **14,668,854.00** |
+| **total** | **17,571,361.00** | **-2,900,976.00** |
+| **MSC net (accrual)** | | **14,670,385.00** |
 
 ## Non-MSC leg
 
@@ -27,9 +27,9 @@ Consolidated Sky Net Revenue, ACCRUAL basis (operator definition 2026-08-07): pr
 
 | Field | USDS |
 |---|---:|
-| MSC net (accrual) | 14,668,854.00 |
+| MSC net (accrual) | 14,670,385.00 |
 | non-MSC net | 1,074,911.07 |
-| **Sky Net Revenue** | **15,743,765.07** |
+| **Sky Net Revenue** | **15,745,296.07** |
 
 *Below the line (not deducted above): the Core Council Buffer transfer — Step 1 Capital (20% of this SNR) plus any genesis / expense repayments — buybacks, the Aligned Delegates Buffer, GAR allocations, and prime capital seedings. On the accrual basis those figures are only known once the settlement executes; the paid-basis months itemise them.*
 

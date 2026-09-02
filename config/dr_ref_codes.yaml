@@ -26,6 +26,24 @@
 #   HyperSync workbook. Retained for provenance; they contribute $0.
 # * Amounts and notes come from the workbook, never from here. This file
 #   answers only "whose is it?".
+# * `retired_from:` stops a prime EARNING DR from a given month onward. Its
+#   codes stay listed under `primes:` so the unknown-code guard keeps
+#   covering them; only the payout stops.
+
+# ── DR retirement, per prime ────────────────────────────────────────────
+# First month in which the prime earns NO Distribution Rewards. Earlier
+# months are untouched and stay reproducible — a date bound rather than a
+# deletion, for the same reason as Skybase's GAR bound (see
+# config/skybase.yaml): the ref codes must keep resolving for the settled
+# months, whose `provenance.json` is gitignored and so unrecoverable.
+#
+# keel — DR removed from 2026-08 (operator decision 2026-09). Keel's codes
+# (4001 synthetic Solana OFT bridge balance, 4011 1inch) still appear in the
+# workbook, so this deliberately leaves that DR attributed-but-unpaid rather
+# than reassigning it; whether 4001/4011 should instead move to
+# `unattributed:` going forward is a separate call.
+retired_from:
+  keel: '2026-08'
 
 primes:
 
