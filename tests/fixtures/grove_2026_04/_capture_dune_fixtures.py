@@ -290,11 +290,33 @@ def main() -> int:
     # 8. V3 liquidity events — E12 (main ALM) and E30 (alt-holder)
     POOL = bytes.fromhex("bafead7c60ea473758ed6c6021505e8bbd7e8e5d")
     # E12 — main ALM tokenIds (from Q1 fixture _params)
-    E12_TOKENIDS = [0x12327f]
-    # E30 — alt-holder tokenIds (enumerated earlier in this session)
-    E30_TOKENIDS = [1154814, 1154819, 1155392, 1155442, 1156415]
-    for vid, holder, tids in [("e12", GROVE_ALM_ETH, E12_TOKENIDS),
-                               ("e30", bytes.fromhex("94b398acb2fce988871218221ea6a4a2b26cccbc"), E30_TOKENIDS)]:
+    # Token IDs are DISCOVERED, never hardcoded — the previous hardcoded list
+    # went stale the moment Grove opened a new position, and the value path
+    # (which enumerates NFPM positions live) then priced a position whose
+    # IncreaseLiquidity event was absent from this fixture. Grove E12 August
+    # 2026 reported $4,000,000.00 of fresh capital as revenue that way. Since
+    # then ``_uniswap_v3_inflow_timeseries`` raises on such a mismatch, so a
+    # stale list here would ABORT the settlement rather than quietly mislead —
+    # which is why this script had to be converted too.
+    from settle.extract.uniswap_v3 import discover_pool_token_ids  # noqa: E402
+    from settle.domain.primes import Address as _Addr, Chain as _Chain  # noqa: E402
+    _NFPM = _Addr.from_str("0xC36442b4a4522E871399CD717aBDD847Ab11FE88")
+    for vid, holder in [("e12", GROVE_ALM_ETH),
+                        ("e30", bytes.fromhex("94b398acb2fce988871218221ea6a4a2b26cccbc"))]:
+        tids = sorted(discover_pool_token_ids(
+            _Chain.ETHEREUM, _NFPM, _Addr(holder), _Addr(POOL),
+            (PIN_BLOCKS_SOM["ethereum"], eth_eom),
+        ))
+        print(f"    {vid}: discovered token_ids={tids}")
+        if not tids:
+            print(f"      !! no positions at either pin — writing empty {vid} section")
+            fx[f"v3_liquidity_events_{vid}"] = {
+                "_chain": "ethereum", "_holder": "0x" + holder.hex(),
+                "_pool": "0x" + POOL.hex(),
+                "_about": "no NFPM positions in this pool at either pin block",
+                "rows": [],
+            }
+            continue
         padded = ", ".join("0x" + format(t, "x").rjust(64, "0") for t in sorted(tids))
         print(f"  fetching v3_liquidity_events_{vid} …")
         df = execute_query(

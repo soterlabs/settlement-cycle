@@ -655,7 +655,7 @@ def _uniswap_v3_inflow_timeseries(
     #     Grove E12, 2026-08: $4,000,000.00 reported as yield.
     #   closed in-period, no DecreaseLiquidity  -> value_som holds it,
     #     value_eom does not, and no outflow offsets it, so the WITHDRAWAL
-    #     books as a loss. Same shape as Grove E9's −$22.5M phantom (#179),
+    #     books as a loss. Same shape as Grove E9's -$22.5M phantom (#179),
     #     which is why the mirror case is checked rather than assumed safe.
     #
     # Direction matters: an in-period mint must be evidenced by an *increase*
@@ -666,13 +666,23 @@ def _uniswap_v3_inflow_timeseries(
     # Raises rather than warns: a warning would sit unread in a published,
     # counterparty-facing report while the number was wrong by the size of the
     # movement.
+    # Only a position holding VALUE at the boundary where it appears (or
+    # disappears) can misprice anything. An empty NFT crossing the boundary
+    # moves $0, so flagging it would abort a settlement over nothing: E30's
+    # five NFTs have been drained since 2026-02 (value_som = value_eom =
+    # $0.00), and ordinary cleanup — burning one, or transferring a position
+    # between E12's and E30's holders, which are configured on the SAME pool
+    # and so produce no liquidity event in either direction — would otherwise
+    # raise and take down the whole Grove run with a message telling the
+    # operator to re-capture a fixture that isn't stale.
+    _snap_som = _snap_eom = None
     try:
-        _ids_som = {p.token_id for p in source.positions_in_pool(
+        _snap_som = source.positions_in_pool(
             chain=venue.chain.value, owner=holder.value,
-            pool=venue.token.address.value, block=from_block)}
-        _ids_eom = {p.token_id for p in source.positions_in_pool(
+            pool=venue.token.address.value, block=from_block)
+        _snap_eom = source.positions_in_pool(
             chain=venue.chain.value, owner=holder.value,
-            pool=venue.token.address.value, block=to_block)}
+            pool=venue.token.address.value, block=to_block)
     except (_RPCError, _requests.HTTPError, _requests.ConnectionError,
             _requests.Timeout) as _e:
         # Must log here: when ``events`` is empty the function returns before
@@ -684,15 +694,20 @@ def _uniswap_v3_inflow_timeseries(
             "period; an unaccounted position would not be caught.",
             venue.id, venue.chain.value, _e,
         )
-        _ids_som = _ids_eom = None
-    if _ids_som is not None:
+    if _snap_som is not None and _snap_eom is not None:
+        def _held(snap):
+            return {p.token_id: (p.amount0 + p.amount1) for p in snap}
+        _val_som, _val_eom = _held(_snap_som), _held(_snap_eom)
+        _ids_som, _ids_eom = set(_val_som), set(_val_eom)
         _inc = {ev.token_id for ev in events if ev.is_increase}
         _dec = {ev.token_id for ev in events if not ev.is_increase}
         _problems = []
         for _tid in sorted((_ids_eom - _ids_som) - _inc):
-            _problems.append(f"{_tid} (opened in-period, no IncreaseLiquidity)")
+            if _val_eom.get(_tid, 0) > 0:
+                _problems.append(f"{_tid} (opened in-period, no IncreaseLiquidity)")
         for _tid in sorted((_ids_som - _ids_eom) - _dec):
-            _problems.append(f"{_tid} (closed in-period, no DecreaseLiquidity)")
+            if _val_som.get(_tid, 0) > 0:
+                _problems.append(f"{_tid} (closed in-period, no DecreaseLiquidity)")
         if _problems:
             raise UnsupportedPricingError(
                 f"Venue {venue.id}: position(s) changed between block "
@@ -715,14 +730,17 @@ def _uniswap_v3_inflow_timeseries(
     # math is well-defined either way — events carry signed amounts; we only
     # need a position snapshot to look up token0/token1 decimals.
     try:
-        snapshot = source.positions_in_pool(
+        # Reuse the boundary reads from the guard above rather than issuing a
+        # third ``positions_in_pool`` call — it recomputes amounts and pending
+        # fees per position, which is the expensive part.
+        snapshot = _snap_eom if _snap_eom is not None else source.positions_in_pool(
             chain=venue.chain.value,
             owner=holder.value,
             pool=venue.token.address.value,
             block=to_block,
         )
         if not snapshot:
-            snapshot = source.positions_in_pool(
+            snapshot = _snap_som if _snap_som else source.positions_in_pool(
                 chain=venue.chain.value,
                 owner=holder.value,
                 pool=venue.token.address.value,

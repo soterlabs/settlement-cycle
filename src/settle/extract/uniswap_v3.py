@@ -15,8 +15,8 @@ The NFPM contract is at the same canonical address on all V3 chains
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
 
 from ..domain.primes import Address, Chain
 from .cache import cached

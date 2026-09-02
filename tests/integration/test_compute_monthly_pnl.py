@@ -349,10 +349,21 @@ def test_v3_position_source_is_threaded_through_sources(fixed_pin_blocks):
         pin_blocks_som=fixed_pin_blocks["som"],
     )
 
-    # The injection point works: mock invoked exactly twice (SoM + EoM).
-    assert len(v3_src.calls) == 2
-    blocks_called = sorted(c[-1] for c in v3_src.calls)
-    assert blocks_called == sorted([som_block, eom_block])
+    # The injection point works: the mock is asked for exactly the SoM and EoM
+    # boundaries, and nothing else. Two passes hit it — the value path
+    # (value_som / value_eom) and the capital-movement guard in
+    # ``_uniswap_v3_inflow_timeseries``, which needs the same two boundary
+    # snapshots to tell an unaccounted position from an ordinary one. The
+    # guard deliberately goes through ``source`` rather than calling
+    # ``extract.uniswap_v3.discover_pool_token_ids`` directly: bypassing the
+    # injected source would ignore this mock and issue real RPC reads. In
+    # production the underlying ``read_position`` / ``nfpm_balance_of`` calls
+    # are ``@cached``, so the second pass is nearly free.
+    #
+    # Asserted as a distinct-block set plus an upper bound, so an internal
+    # extra pass doesn't fail the test while an N+1 explosion still does.
+    assert sorted({c[-1] for c in v3_src.calls}) == sorted([som_block, eom_block])
+    assert len(v3_src.calls) <= 4
 
     # Round-trip math: SoM=$24.999M, EoM=$25.001234M → revenue = $1234.
     v = result.venue_breakdown[0]

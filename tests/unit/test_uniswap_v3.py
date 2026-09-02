@@ -7,6 +7,7 @@ from decimal import Decimal
 import pytest
 
 from settle.domain import Address, Chain, PricingCategory, Token, Venue
+from settle.extract import uniswap_v3 as _v3
 from settle.extract.uniswap_v3 import (
     MAX_TICK,
     MIN_TICK,
@@ -18,8 +19,8 @@ from settle.extract.uniswap_v3 import (
     get_sqrt_ratio_at_tick,
 )
 from settle.normalize.positions import _uniswap_v3_value
-from settle.normalize.sources.uniswap_v3 import V3PositionAmounts
 from settle.normalize.prices import UnsupportedPricingError
+from settle.normalize.sources.uniswap_v3 import V3PositionAmounts
 
 
 def _addr(seed: str) -> Address:
@@ -132,6 +133,7 @@ def _grove_v3_venue() -> Venue:
 def _grove_prime():
     """Tiny Prime instance just for V3 value testing."""
     from datetime import date
+
     from settle.domain.primes import Prime
     return Prime(
         id="grove",
@@ -526,12 +528,6 @@ def test_dune_v3_inflow_source_decodes_dune_rows(monkeypatch):
 # IncreaseLiquidity event was absent and `revenue = eom - som - inflow` booked
 # $4,000,000.00 of fresh capital as yield — 46.8% of Grove's August gross.
 
-import pytest
-
-from settle.domain.primes import Address, Chain
-from settle.extract import uniswap_v3 as _v3
-
-
 class _FakePos:
     def __init__(self, t0, t1, fee):
         self.token0, self.token1, self.fee = Address(t0), Address(t1), fee
@@ -607,11 +603,16 @@ def test_discover_returns_empty_before_pool_deployment(monkeypatch):
 # ── The guard: an in-period position with no event must stop the settlement ──
 
 class _FakeAmounts:
-    """Minimal stand-in for V3PositionAmounts."""
-    def __init__(self, token_id, t0, t1):
+    """Minimal stand-in for V3PositionAmounts.
+
+    ``amount`` defaults non-zero: the guard only flags positions that actually
+    hold value, so a test meaning to trip it must supply some.
+    """
+    def __init__(self, token_id, t0, t1, amount=1_000_000):
         self.token_id = token_id
         self.token0, self.token1 = Address(t0), Address(t1)
-        self.amount0 = self.amount1 = 0
+        self.amount0 = amount
+        self.amount1 = 0
 
 
 class _FakeSource:
@@ -627,6 +628,7 @@ class _FakeSource:
 
 def _venue_and_prime():
     from datetime import date
+
     from settle.domain import PricingCategory, Token, Venue
     from settle.domain.primes import Prime
     USDC = bytes.fromhex("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
@@ -643,7 +645,8 @@ def _venue_and_prime():
 def test_position_opened_in_period_without_an_event_raises():
     """The E12 regression: new NFT priced by value, no inflow to net it."""
     from settle.normalize.positions import (
-        UnsupportedPricingError, _uniswap_v3_inflow_timeseries,
+        UnsupportedPricingError,
+        _uniswap_v3_inflow_timeseries,
     )
     prime, venue, USDC = _venue_and_prime()
     DAI = bytes.fromhex("6b175474e89094c44da98b954eedeac495271d0f")
@@ -676,7 +679,8 @@ def test_position_closed_in_period_without_an_event_raises():
     """Mirror of the E12 case: a withdrawal with no Decrease event books as a
     loss (the Grove E9 −$22.5M phantom shape)."""
     from settle.normalize.positions import (
-        UnsupportedPricingError, _uniswap_v3_inflow_timeseries,
+        UnsupportedPricingError,
+        _uniswap_v3_inflow_timeseries,
     )
     prime, venue, USDC = _venue_and_prime()
     DAI = bytes.fromhex("6b175474e89094c44da98b954eedeac495271d0f")
@@ -696,7 +700,8 @@ def test_decrease_event_does_not_satisfy_an_in_period_mint():
     """An opened position needs an INCREASE specifically — a Decrease log for
     the same tokenId must not be accepted as proof the deposit was seen."""
     from settle.normalize.positions import (
-        UnsupportedPricingError, _uniswap_v3_inflow_timeseries,
+        UnsupportedPricingError,
+        _uniswap_v3_inflow_timeseries,
     )
     prime, venue, USDC = _venue_and_prime()
     DAI = bytes.fromhex("6b175474e89094c44da98b954eedeac495271d0f")
@@ -731,9 +736,10 @@ def test_closed_position_with_a_decrease_event_is_accepted():
 def test_probe_failure_warns_and_skips_the_guard(caplog):
     """A flaky boundary read must not silently disable the guard."""
     import logging
-    from settle.normalize.positions import _uniswap_v3_inflow_timeseries
+
     from settle.extract.rpc import RPCError
-    prime, venue, USDC = _venue_and_prime()
+    from settle.normalize.positions import _uniswap_v3_inflow_timeseries
+    prime, venue, _ = _venue_and_prime()
 
     class _Flaky(_FakeSource):
         def positions_in_pool(self, chain, owner, pool, block):
@@ -746,3 +752,43 @@ def test_probe_failure_warns_and_skips_the_guard(caplog):
         )
     assert out.empty
     assert any("guard SKIPPED" in r.getMessage() for r in caplog.records)
+
+
+def test_empty_position_crossing_the_boundary_does_not_raise():
+    """A drained NFT moving across the boundary shifts $0 — flagging it would
+    abort a settlement over nothing. E30's five NFTs have been empty since
+    2026-02, and burning one, or transferring a position between E12's and
+    E30's holders (same pool, so no liquidity event either way), must stay
+    silent."""
+    from settle.normalize.positions import _uniswap_v3_inflow_timeseries
+    prime, venue, USDC = _venue_and_prime()
+    DAI = bytes.fromhex("6b175474e89094c44da98b954eedeac495271d0f")
+    kept = _FakeAmounts(1192575, USDC, DAI)
+    drained_then_burned = _FakeAmounts(1156415, USDC, DAI, amount=0)
+    ev = _v3.V3LiquidityEvent(block_number=101, tx_hash="0x", log_index=0,
+                              token_id=1192575, amount0=1, amount1=0,
+                              is_increase=True)
+    src = _FakeSource({100: [kept, drained_then_burned], 200: [kept]}, [ev])
+    out = _uniswap_v3_inflow_timeseries(
+        prime, venue, 100, 200, source=src,
+        block_to_date=lambda b: __import__("datetime").date(2026, 8, 1),
+    )
+    assert not out.empty
+
+
+def test_empty_position_appearing_does_not_raise():
+    """Mirror: an empty NFT arriving mid-period also moves $0."""
+    from settle.normalize.positions import _uniswap_v3_inflow_timeseries
+    prime, venue, USDC = _venue_and_prime()
+    DAI = bytes.fromhex("6b175474e89094c44da98b954eedeac495271d0f")
+    kept = _FakeAmounts(1192575, USDC, DAI)
+    empty_new = _FakeAmounts(1353600, USDC, DAI, amount=0)
+    ev = _v3.V3LiquidityEvent(block_number=101, tx_hash="0x", log_index=0,
+                              token_id=1192575, amount0=1, amount1=0,
+                              is_increase=True)
+    src = _FakeSource({100: [kept], 200: [kept, empty_new]}, [ev])
+    out = _uniswap_v3_inflow_timeseries(
+        prime, venue, 100, 200, source=src,
+        block_to_date=lambda b: __import__("datetime").date(2026, 8, 1),
+    )
+    assert not out.empty

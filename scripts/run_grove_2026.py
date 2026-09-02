@@ -121,6 +121,14 @@ PIN_BLOCKS_BY_MONTH = {
 }
 
 # (year, month, fixture_dir). Q1 months all share grove_2026_03.
+#
+# NOTE for whoever writes a capture script for grove_2026_03 (there isn't one):
+# that fixture serves THREE months with three distinct (som, eom) pairs, so its
+# V3 token-ID discovery must enumerate all six boundary blocks —
+# ``discover_pool_token_ids`` takes a ``blocks`` sequence for exactly this. A
+# single-pair scan would miss a position opened or closed in Jan or Feb, and
+# ``_uniswap_v3_inflow_timeseries`` now raises on that rather than silently
+# mispricing it.
 _MONTH_PLAN = [
     (2026, 1, "grove_2026_03"),
     (2026, 2, "grove_2026_03"),
