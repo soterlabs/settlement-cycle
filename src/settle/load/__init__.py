@@ -9,7 +9,7 @@ Two outputs per monthly run:
 
 The Grove-PnL-workbook-shaped per-venue re-attribution
 (``profit_to_sky`` / ``profit_to_grove`` / ``cof_alloc``) is computed
-in-process by ``settle.load.grove_sheet.compute_sheet_rows`` — used by
+in-process by ``settle.load.cof_attribution.compute_sheet_rows`` — used by
 the xlsx renderer and exposed for ad-hoc analysis.
 
 Historical artifacts (``pnl.md`` / ``pnl.csv`` / ``venues.csv`` /
@@ -18,8 +18,8 @@ All data is in ``provenance.json``; the Grove-sheet math is derivable
 from it deterministically.
 """
 
+from .cof_attribution import compute_sheet_rows
 from .dr_rewards import enrich_with_dr
-from .grove_sheet import compute_sheet_rows
 from .provenance import write_provenance
 from .summary import render_summary, write_summary
 from .writer import default_output_dir, refresh_dr_only, write_settlement

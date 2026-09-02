@@ -225,13 +225,13 @@ def our_pnl_csv(month_label: str) -> dict[str, Decimal]:
 
 def our_grove_sheet_sky(month_label: str) -> dict[str, Decimal] | None:
     """Returns ``{cof_subsidised, sde_revenue, sky_revenue_grove}`` computed
-    in-process from ``provenance.json`` via ``settle.load.grove_sheet``.
+    in-process from ``provenance.json`` via ``settle.load.cof_attribution``.
     Replaces the prior xlsx Sky-Revenue-tab reader — same data, no file I/O.
     """
     import json
     import sys
     sys.path.insert(0, str(_REPO / "src"))
-    from settle.load.grove_sheet import compute_sheet_rows
+    from settle.load.cof_attribution import compute_sheet_rows
     path = _REPO / "settlements" / "grove" / month_label / "provenance.json"
     if not path.exists():
         return None

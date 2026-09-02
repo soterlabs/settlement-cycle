@@ -1,6 +1,13 @@
-"""Grove-PnL-workbook-shaped breakdown — compute the per-venue
-``cof_alloc / profit_to_sky / profit_to_grove`` re-attribution from a
-``provenance.json``-equivalent dict.
+"""Per-venue cost-of-funds re-attribution — ``cof_alloc / profit_to_sky /
+profit_to_grove`` computed from a ``provenance.json``-equivalent dict.
+
+Named ``grove_sheet`` until 2026-09, which read as "Grove's sheet" and
+invited the conclusion that Grove has exposure to the venues it lists. It
+does not: this module renders the Grove-STYLE workbook layout for EVERY
+prime (``prime_id`` is an argument), and the ``profit_to_grove`` column means
+"profit to the prime". The column names keep the Grove-style wording on
+purpose — the Summary tab labels the block 'Comparison (Grove-style "Profit
+to Grove")', and comparability with Grove's own PnL workbook is the point.
 
 This module is the canonical source for the per-venue split that the
 settlement xlsx (``build_settlement_xlsx.py``) renders in its Summary /
@@ -279,6 +286,18 @@ def compute_sheet_rows(
         if lending_idle_tw > 0:
             avg_value = max(Decimal("0"), avg_value - lending_idle_tw)
             note = (note + " " if note else "") + "(avg excl. lending_idle)"
+        # Same treatment for the USDS leg of an AMM LP position (Uniswap V4
+        # ``curve_idle_usds.coin``): it is deducted from ``utilized`` daily
+        # under Step 2, so it must not sit in the CoF allocation base either.
+        # Only bites for a NON-SDE v4 venue — an SDE one has weight 0 anyway.
+        # Before this, S61 was weighted on its whole $100.1M pool while only
+        # the PYUSD leg was in utilized, drawing $266,508 of cof_alloc against
+        # a true BR charge of $191,208: ~$75K over-attributed to S61 and
+        # diluted away from every other venue in the counterparty-facing sheet.
+        amm_idle_tw = _D(r.get("amm_idle_usds_tw_avg_usd") or 0)
+        if amm_idle_tw > 0:
+            avg_value = max(Decimal("0"), avg_value - amm_idle_tw)
+            note = (note + " " if note else "") + "(avg excl. idle AMM USDS)"
         # cof_excluded venues are kept out of the CoF pool (weight=0). Two
         # distinct exclusion reasons share the flag:
         #   - idle-ALM positions already deducted from utilized via

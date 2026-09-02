@@ -3,7 +3,7 @@
 Self-sufficient: reads ``provenance.json`` only (plus prime YAML and SDE
 config for the static reference tabs). The per-venue ``cof_alloc /
 profit_to_sky / profit_to_grove`` re-attribution is computed in-process
-via ``settle.load.grove_sheet.compute_sheet_rows``.
+via ``settle.load.cof_attribution.compute_sheet_rows``.
 
 Tabs:
 
@@ -45,7 +45,7 @@ _REPO = Path(__file__).resolve().parent.parent
 # Import the shared grove-sheet computation. The path manipulation lets the
 # script run as a CLI without installing the package.
 sys.path.insert(0, str(_REPO / "src"))
-from settle.load.grove_sheet import compute_sheet_rows  # noqa: E402
+from settle.load.cof_attribution import compute_sheet_rows  # noqa: E402
 from settle.load.summary import _venue_sort_key  # noqa: E402
 
 # Styling.

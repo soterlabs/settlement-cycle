@@ -1362,7 +1362,7 @@ def test_venue_revenue_susds_spread_reimbursement_preserved_via_dataclasses_repl
 def test_venue_revenue_susds_spread_serialised_to_provenance():
     """The compute layer plumbs ``susds_spread_reimbursement`` onto
     ``VenueRevenue``; the Load layer (``write_provenance``) must include
-    it in the JSON row so ``settle.load.grove_sheet.compute_sheet_rows``
+    it in the JSON row so ``settle.load.cof_attribution.compute_sheet_rows``
     can read it back as ``r.get('susds_spread_reimbursement')``.
     Regression guard against the JSON schema drifting out of sync."""
     import json
@@ -1400,7 +1400,7 @@ def test_venue_revenue_susds_spread_serialised_to_provenance():
     assert len(rows) == 1
     assert "susds_spread_reimbursement" in rows[0], (
         "provenance.json venue_breakdown rows must carry "
-        "susds_spread_reimbursement — settle.load.grove_sheet reads it "
+        "susds_spread_reimbursement — settle.load.cof_attribution reads it "
         "via r.get(...)"
     )
     assert Decimal(rows[0]["susds_spread_reimbursement"]) == Decimal("25479.45")

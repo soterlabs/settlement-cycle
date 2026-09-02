@@ -539,10 +539,14 @@ def test_univ4_idle_carries_forward_on_rpc_failure():
         [V4PositionAmounts(1, USDT, USDS, amount0=0, amount1=700_000 * 10**18)],
         ok_calls=1,
     )
-    df = _aggregate_univ4_idle_usds(
+    df, tw_avg = _aggregate_univ4_idle_usds(
         _idle_prime(), _period_3day(), v4_source=src, block_resolver=_StubResolver(),
     )
     assert list(df["cum_balance"]) == [Decimal("700000")] * 3
+    # The per-venue time-weighted average is surfaced so the CoF
+    # re-attribution can exclude the idle USDS leg from the allocation base
+    # (it is already deducted from utilized daily). Flat $700k over 3 days.
+    assert tw_avg == {"S61": Decimal("700000")}
 
 
 def test_univ4_idle_raises_when_first_day_fails():
