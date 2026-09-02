@@ -417,6 +417,11 @@ def load_prime(config_path: Path) -> Prime:
                 # ('2026-7', a full date, …) can't silently break the
                 # lexicographic month gate in compute/gar.py.
                 from_month=str(_Month.parse(str(cfg["gar"]["from"]))),
+                until_month=(
+                    str(_Month.parse(str(cfg["gar"]["until"])))
+                    if cfg["gar"].get("until") is not None
+                    else None
+                ),
             )
             if cfg.get("gar") is not None
             else None

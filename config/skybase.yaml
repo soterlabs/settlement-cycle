@@ -20,9 +20,16 @@ start_date: '2025-12-01'
 # month from 2026-01 (operator decision 2026-08-06). The month-N report
 # carries month N's GAR; the cash is paid at the MSC executing in N+1
 # (July's GAR rides MSC#11 in August). See src/settle/compute/gar.py.
+#
+# RETIRED from the MSC (operator decision 2026-09): ``until`` is the first
+# month that does NOT carry GAR, so the primitive applies to 2026-01…2026-07
+# only. Bounded rather than deleted so the settled months stay reproducible —
+# deleting it would mean a re-run of any of them silently dropped the line,
+# and their ``provenance.json`` is gitignored, so there would be no way back.
 gar:
   share: 0.01
   from: '2026-01'
+  until: '2026-08'
 
 addresses:
   ethereum:

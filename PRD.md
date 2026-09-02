@@ -1166,6 +1166,44 @@ canonical pricing).
 
 ### 17.13 Open questions (priority-ordered)
 
+#### Methodology — resolved 2026-09: GAR retired from the MSC (operator decision)
+
+**Governance Accessibility Rewards is no longer part of the MSC
+calculation from 2026-08.** It was a Skybase-only Demand-Side primitive
+equal to 1% of the same month's consolidated Sky Net Revenue, carried on
+reports 2026-01…2026-07 (introduced per operator decisions 2026-08-06/07).
+Skybase is the only prime affected — no other config ever declared a
+`gar:` block.
+
+Expressed as a BOUND, not a deletion: `GarConfig.until_month = '2026-08'`
+(the first month WITHOUT GAR), set in `config/skybase.yaml`. Deleting the
+primitive would mean a re-run of any settled month silently dropped the
+line, and `settlements/**/provenance.json` is gitignored — so the stored
+value would be unrecoverable. That regression has happened before:
+January's demand side went 314,251.68 → 222,064.54.
+
+**Effect on Sky Net Revenue.** `gar → dv → send`, and
+`msc_net = total_mint − total_send − dsb`, so GAR *subtracts* from SNR.
+Retiring it therefore RAISES SNR from 2026-08 by that month's GAR
+(≈ $105K at July's level, ≈ 1% of SNR). The settled months are unaffected,
+by two different mechanisms:
+
+* **2026-01…06 — PAID basis.** `compute/sky_total.py` contains no
+  reference to `gar` at all; SNR is anchored on the executed settlement
+  transaction, so the primitive is structurally invisible to it.
+* **2026-07 — ACCRUAL basis, pinned.** `msc_preview.2026-07.skybase`
+  pins `send: 374489` and `gar_in_dv: 152255.89`, and the pinned figures
+  win over the derived ones. Verified: July's SNR re-runs at exactly
+  10,517,425.807934152 — including from a *gar-less* skybase provenance,
+  which is the strongest form of the check.
+
+Verified end-to-end by regenerating skybase 2026-01…08: Jan…Jul still
+carry the row (January demand side back at 314,251.68, July's GAR
+identical at 105,174.26) and 2026-08 carries none (demand side
+101,204.19 = agent rate + DR). Locked down by
+`tests/unit/test_gar_retired.py`.
+
+
 #### Methodology — resolved 2026-09-01: BR/SSR rate units (operator-confirmed)
 
 **The Base Rate is NOMINAL (APR); the SSR is an APY and is converted before
