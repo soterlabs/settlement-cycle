@@ -19,7 +19,7 @@ Period: 2026-08-01 → 2026-08-31 (31 days)
 
 | Field | USDS |
 |---|---:|
-| **supply-side revenue** | **718,089.27** |
+| **supply-side revenue** | **1,192,578.16** |
 
 ### Sky side
 
@@ -65,6 +65,7 @@ Period: 2026-08-01 → 2026-08-31 (31 days)
 | E38 | Agora AUSD incentives (cash distribution to Grove Eth ALM) | $0.00 | $0.00 | $0.00 | $857,964.00 | $857,964.00 | $0.00 | 0% | $0.00 |
 | E40 | USDS raw (Diamond PAU ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E41 | JTRSY Basin escrow — USDS pending subscription (Diamond PAU) | $1,000,000.00 | $12,500,000.00 | $11,500,000.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
+| E42 | Galaxy Warehouse (off-chain facility — cash distribution to Grove Eth ALM) | $0.00 | $0.00 | $0.00 | $474,488.89 | $474,488.89 | $0.00 | 0% | $0.00 |
 
 ## DR per ref code
 

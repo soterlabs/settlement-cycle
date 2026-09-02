@@ -2475,6 +2475,26 @@ def compute_monthly_pnl(
             venue, prime, period, _cash_dist_balance_src
         )
         _log.info("  [cash_dist] %s — total cash revenue: %s", venue.id, cash_rev)
+        # A venue carrying off-chain notional bears cost of funds every day.
+        # If it books NO cash revenue, either the facility genuinely paid
+        # nothing this period or the yield payer rotated and we are no longer
+        # watching it — Agora did exactly that for E38, forcing a two-payer
+        # config. Silence there turns the venue into a pure CoF drag with no
+        # signal (Grove E42: ~$933K/month against $0), so say so.
+        if not venue.skip or venue.notional_principal_usd:
+            from .prime_agent_revenue import _time_weighted_notional
+            _notional = _time_weighted_notional(
+                venue.notional_principal_usd, period,
+            )
+            if _notional > 0 and cash_rev == 0:
+                _log.warning(
+                    "  [cash_dist] %s — tw_avg_notional $%s but ZERO cash "
+                    "revenue this period. The venue still bears cost of funds "
+                    "on that notional. Either the facility paid nothing, or a "
+                    "payer rotated and cash_distributions is out of date "
+                    "(cf. E38's second Agora payer). Verify before publishing.",
+                    venue.id, f"{float(_notional):,.2f}",
+                )
         # value_som / value_eom: try the standard ``get_position_value`` so
         # cash-distribution venues with a meaningful on-chain balance (e.g.
         # E21 GACLO-1 with ``nav_oracle: const_one``) report the principal

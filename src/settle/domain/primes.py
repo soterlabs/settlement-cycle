@@ -291,6 +291,14 @@ class Venue:
     # actual on-chain transfers and records the total as ``actual_revenue_override``
     # (prime-only; no sky-revenue or capital-inflow effect).
     cash_distributions: "list[CashDistributionSource]" = field(default_factory=list)
+    # Addresses through which the venue's off-chain PRINCIPAL moves, when that
+    # is not the same address that pays the yield. Consumed only by
+    # scripts/scan_notional_changes.py, which otherwise derives its watch-list
+    # from ``cash_distributions`` payers alone — and so is structurally blind
+    # to a repayment that returns via a relay. Grove E42: yield arrives from
+    # 0xba79473a…, principal moved through 0x3E23311f…, so a repayment would
+    # have printed "No significant principal flows detected" and exited 0.
+    notional_counterparties: "list[Address]" = field(default_factory=list)
     # Curve pool USDS-idle tracking. When set, the compute layer reads the
     # prime's proportional share of the named coin's reserve daily (via RPC
     # ``read_pool`` + ``balanceOf`` + optionally ``convertToAssets`` for 4626

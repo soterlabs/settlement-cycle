@@ -21593,5 +21593,23 @@
         "_note": "STAC deposit-time par; Chronicle had not yet started writing"
       }
     ]
+  },
+  "cash_dist_e42": {
+    "_chain": "ethereum",
+    "_token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+    "_from": "0xba79473abba448c1a2912d3cdc241b18ee83e82c",
+    "_to": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+    "rows": [
+      {
+        "block_date": "2026-07-09",
+        "cum_inflow": "0.25",
+        "daily_inflow": "0.25"
+      },
+      {
+        "block_date": "2026-08-10",
+        "cum_inflow": "474489.14",
+        "daily_inflow": "474488.89"
+      }
+    ]
   }
 }

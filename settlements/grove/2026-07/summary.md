@@ -10,24 +10,24 @@ Period: 2026-07-01 → 2026-07-31 (31 days)
 
 | Field | USDS |
 |---|---:|
-| agent rate | 72,023.77 |
+| agent rate | 72,123.83 |
 | distribution rewards | 28,898.24 |
-| chronicle points | 13,102.08 |
-| **demand-side revenue** | **114,024.09** |
+| chronicle points | 12,956.21 |
+| **demand-side revenue** | **113,978.28** |
 
 #### Supply-Side revenue
 
 | Field | USDS |
 |---|---:|
-| **supply-side revenue** | **1,563,758.89** |
+| **supply-side revenue** | **1,523,819.89** |
 
 ### Sky side
 
 | Field | USDS |
 |---|---:|
-| prime cost of funds | 3,299,017.14 |
+| prime cost of funds | 3,338,956.39 |
 | sky direct exposure | 4,704,533.20 |
-| **supply-side revenue** | **8,003,550.33** |
+| **supply-side revenue** | **8,043,489.59** |
 
 ## Per-venue
 
@@ -65,17 +65,15 @@ Period: 2026-07-01 → 2026-07-31 (31 days)
 | E38 | Agora AUSD incentives (cash distribution to Grove Eth ALM) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E40 | USDS raw (Diamond PAU ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E41 | JTRSY Basin escrow — USDS pending subscription (Diamond PAU) | $1.00 | $1,000,000.00 | $999,999.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
+| E42 | Galaxy Warehouse (off-chain facility — cash distribution to Grove Eth ALM) | $0.00 | $0.00 | $0.00 | $0.25 | $0.25 | $0.00 | 0% | $0.00 |
 
 ## DR per ref code
 
 | ref_code | DR (USD) | notes |
 |---|---:|---|
 | 2001 | $8,574.04 |  |
-| 2002 | $0.00 |  |
-| 2005 | $0.00 |  |
 | 2008 | $17,489.64 |  |
 | 2012 | $2,834.56 |  |
-| 2222 | $0.00 |  |
 | **Total** | **$28,898.24** | |
 
 ## Off-protocol holdings

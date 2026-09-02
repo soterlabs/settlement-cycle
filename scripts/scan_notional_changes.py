@@ -175,7 +175,15 @@ def _scan_venue(
         period_mask = df["block_date"].apply(
             lambda d: period_start <= d <= period_end
         )
-        payer_set = info["payers"]
+        # Watch the yield payers AND any declared principal relay. Keying off
+        # cash_distributions alone made this scan structurally blind to the
+        # very event it exists to catch: Grove E42's principal moved through
+        # 0x3E23311f…, not its yield payer, so a repayment would print "No
+        # significant principal flows detected" and exit 0 — a false all-clear
+        # on an open-ended $304M notional.
+        payer_set = set(info["payers"]) | {
+            a.value for a in venue.notional_counterparties
+        }
         for _, row in df.loc[period_mask].iterrows():
             cp = row["counterparty"]
             if cp not in payer_set:
