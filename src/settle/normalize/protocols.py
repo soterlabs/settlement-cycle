@@ -223,6 +223,47 @@ class IV3PositionSource(Protocol):
         ``IncreaseLiquidity``, ``-`` on ``DecreaseLiquidity``."""
         ...
 
+    def fee_collections_in_pool(
+        self,
+        chain: str,
+        owner: bytes,
+        pool: bytes,
+        from_block: int,
+        to_block: int,
+    ) -> list:
+        """Returns list[V3FeeCollection] for every position in the target
+        pool, across (from_block, to_block] — the FEE-ONLY portion of each
+        NFPM ``Collect``. Unsigned; the caller applies the outflow sign.
+
+        **Implementations must isolate fees with a running ``tokensOwed``
+        accumulator, NOT by same-transaction pairing.** Walking the merged
+        Collect/DecreaseLiquidity stream in (block, log_index) order:
+
+            owed += decrease.amount
+            fee   = max(0, collect.amount - owed)
+            owed -= min(collect.amount, owed)
+
+        A close can be split across transactions — ``DecreaseLiquidity``
+        credits ``tokensOwed`` in one, the ``Collect`` lands in a later one.
+        Same-transaction pairing finds no principal for that ``Collect`` and
+        passes the entire withdrawal through as fee. In Grove's AUSD/USDC
+        pool that is $72,470,310.97 of gross collections against $67,941.11
+        of real fees, so the error is the size of the principal.
+
+        The balance starts at zero, not at the position's ``tokensOwed`` at
+        ``from_block``: anything owed at the boundary is inside ``value_som``
+        with no offsetting event in this period, so collecting it must
+        register as an outflow. See ``extract.uniswap_v3.read_fee_collections``
+        for the reference implementation.
+
+        Kept separate from ``liquidity_events_in_pool`` on purpose: the
+        capital-movement guard in ``_uniswap_v3_inflow_timeseries`` keys off
+        ``is_increase``, and a position close always emits a ``Collect``
+        alongside its ``DecreaseLiquidity``. Folding fee events into the
+        liquidity stream would let a genuinely unaccounted close satisfy the
+        guard on the ``Collect`` alone."""
+        ...
+
 
 class IV4PositionSource(Protocol):
     """Read Uniswap V4 LP positions a holder owns in a target pool, plus the

@@ -90,6 +90,35 @@ class RPCUniswapV3PositionSource:
         out.sort(key=lambda e: (e.block_number, e.log_index))
         return out
 
+    def fee_collections_in_pool(
+        self,
+        chain: str,
+        owner: bytes,
+        pool: bytes,
+        from_block: int,
+        to_block: int,
+    ) -> list[v3.V3FeeCollection]:
+        """Fee-only ``Collect`` amounts for the owner's positions in this pool
+        over ``(from_block, to_block]``.
+
+        Same token-id discovery as ``liquidity_events_in_pool`` so the two
+        streams cover exactly the same positions.
+        """
+        chain_e = Chain(chain)
+        owner_a = Address(owner)
+        pool_a = Address(pool)
+        nfpm = self._nfpm(chain_e)
+        token_ids = v3.discover_pool_token_ids(
+            chain_e, nfpm, owner_a, pool_a, (from_block, to_block),
+        )
+        out: list[v3.V3FeeCollection] = []
+        for tid in sorted(token_ids):
+            out.extend(v3.read_fee_collections(
+                chain_e, nfpm, tid, from_block + 1, to_block,
+            ))
+        out.sort(key=lambda e: (e.block_number, e.log_index))
+        return out
+
     def positions_in_pool(
         self,
         chain: str,

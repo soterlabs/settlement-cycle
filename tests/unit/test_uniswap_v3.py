@@ -622,6 +622,9 @@ class _FakeSource:
     def positions_in_pool(self, chain, owner, pool, block):
         return self._per_block[block]
 
+    def fee_collections_in_pool(self, chain, owner, pool, from_block, to_block):
+        return list(getattr(self, "fee_collections", []))
+
     def liquidity_events_in_pool(self, chain, owner, pool, from_block, to_block):
         return self._events
 

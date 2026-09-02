@@ -40,6 +40,8 @@ SEL_TICKS = "0xf30dba93"                    # ticks(int24) → 8-tuple
 # NFPM event topics — keccak256 of the canonical signatures, per V3 reference.
 TOPIC_INCREASE_LIQUIDITY = "0x3067048beee31b25b2f1681f88dac838c8bba36af25bfb2b7cf7473a5847e35f"
 TOPIC_DECREASE_LIQUIDITY = "0x26f6a048ee9138f2c0ce266f322cb99228e8d619ae2bff30c67f8dcf9d2377b4"
+# Collect(uint256 indexed tokenId, address recipient, uint256 amount0, uint256 amount1)
+TOPIC_COLLECT = "0x40d0efd1a53d60ecbf40971b9daf7dc90178c3aadc7aab1765632738fa8b8f01"
 
 # V3 tick range bounds (per TickMath.MIN/MAX_TICK)
 MIN_TICK = -887272
@@ -477,4 +479,138 @@ def read_liquidity_events(
         )
         out.extend(_decode_liquidity_log(log) for log in logs)
     out.sort(key=lambda e: (e.block_number, e.log_index))
+    return out
+
+
+@dataclass(frozen=True, slots=True)
+class V3FeeCollection:
+    """The FEE-ONLY portion of an NFPM ``Collect``, in raw token units.
+
+    A V3 ``Collect`` withdraws whatever sits in ``tokensOwed``, which is the
+    sum of two economically different things: trading fees the position
+    accrued, and principal that a preceding ``DecreaseLiquidity`` moved out
+    of liquidity and into ``tokensOwed``. Only the fee part is revenue —
+    the principal part is already carried by the ``DecreaseLiquidity``
+    event in the inflow timeseries, so counting the gross ``Collect`` would
+    double it.
+
+    Grove's AUSD/USDC pool shows both shapes in 2026: $72,470,310.97 gross
+    collected, of which just $67,941.11 is fees.
+
+    ``amount0``/``amount1`` are therefore the part of a ``Collect`` that a
+    running ``tokensOwed`` accumulator does not attribute to principal — see
+    ``read_fee_collections`` for the algorithm and for why same-transaction
+    pairing is wrong.
+    """
+    block_number: int
+    tx_hash: str
+    log_index: int
+    token_id: int
+    amount0: int
+    amount1: int
+
+
+def read_fee_collections(
+    chain: Chain,
+    nfpm: Address,
+    token_id: int,
+    from_block: int,
+    to_block: int,
+) -> list[V3FeeCollection]:
+    """Fee-only ``Collect`` amounts for ``token_id`` in ``(from_block, to_block]``.
+
+    Mirrors the contract's own ``tokensOwed`` bookkeeping. Walking the merged
+    event stream in chronological order, each ``DecreaseLiquidity`` credits a
+    running per-leg principal-owed balance, and each ``Collect`` draws that
+    balance down first — only the excess is fee:
+
+        owed += decrease.amount                     (principal released)
+        fee   = max(0, collect.amount - owed)
+        owed -= min(collect.amount, owed)
+
+    Why an accumulator and not same-transaction pairing: a close can be split
+    across transactions (``DecreaseLiquidity`` credits ``tokensOwed``, and the
+    ``Collect`` may land in a later transaction). Same-transaction pairing
+    finds no principal for that ``Collect`` and passes the whole withdrawal
+    through as fee — inventing revenue equal to the principal.
+
+    The balance starts at **zero**, not at the position's ``tokensOwed`` at
+    ``from_block``, and that is deliberate. Anything already owed at the
+    period boundary — accrued fees or principal released before it — is
+    inside ``value_som``, and no event in this period's timeseries offsets
+    it. Collecting it must therefore register as an outflow, which a
+    zero-initialised balance produces. Fees owed at the boundary are not
+    double-counted: they were recognised on accrual, and here the value
+    decrease and the outflow cancel, leaving revenue unchanged.
+
+    Amounts are per-leg raw token units; the caller applies the outflow sign.
+    Log scan goes through HyperSync (see the note in the body).
+    """
+    if from_block > to_block:
+        return []
+    from .hypersync import HyperSyncError
+    from .hypersync import query_logs as _query_logs
+
+    token_id_topic = "0x" + _pad_uint(token_id)
+    # HyperSync rather than ``eth_get_logs``: a settlement month is ~200k
+    # blocks and Alchemy's free tier rejects that range outright (400) — the
+    # same reason ``liquidity_events_in_pool`` routes through Dune. HyperSync
+    # pages the whole window in one call and needs no Dune credits, so every
+    # IV3PositionSource variant inherits a working fee read without extra
+    # wiring or a new fixture shape.
+    rows = _query_logs(
+        chain.value,
+        [{"address": [nfpm.hex], "topics": [
+            [TOPIC_COLLECT, TOPIC_DECREASE_LIQUIDITY], [token_id_topic],
+        ]}],
+        from_block, to_block,
+        log_fields=["block_number", "log_index", "topic0", "topic1",
+                    "data", "transaction_hash"],
+    ).rows
+    if not rows:
+        return []
+
+    def _amounts(row) -> tuple[int, int]:
+        data = (row.data or "").removeprefix("0x")
+        # word 0 is liquidity (Decrease) or recipient (Collect); 1/2 are amounts
+        if len(data) < 192:
+            # Refuse rather than return zeros. Zeros are harmless on a
+            # Collect (no fee booked) but silently catastrophic on a
+            # DecreaseLiquidity: `owed` is never credited, so the paired
+            # Collect passes its full principal through as fee — up to $25M
+            # per close in Grove's pool, signed as an outflow and therefore
+            # booked as phantom revenue. ``hypersync.query_logs`` substitutes
+            # "0x" whenever a response omits ``data``, so a field-selection
+            # change upstream would trigger this with no other signal.
+            raise HyperSyncError(
+                f"V3 log at block {row.block_number} index {row.log_index} "
+                f"(topic0={row.topic0}) has {len(data)} hex chars of data, "
+                f"expected >= 192 for (word0, amount0, amount1). Refusing to "
+                f"treat the missing amounts as zero — on a DecreaseLiquidity "
+                f"that would book the paired Collect's principal as fee."
+            )
+        return int(data[64:128], 16), int(data[128:192], 16)
+
+    owed0 = owed1 = 0
+    out: list[V3FeeCollection] = []
+    for row in sorted(rows, key=lambda r: (r.block_number, r.log_index)):
+        a0, a1 = _amounts(row)
+        if (row.topic0 or "").lower() != TOPIC_COLLECT:
+            owed0 += a0
+            owed1 += a1
+            continue
+        fee0 = max(0, a0 - owed0)
+        fee1 = max(0, a1 - owed1)
+        owed0 -= min(a0, owed0)
+        owed1 -= min(a1, owed1)
+        if fee0 == 0 and fee1 == 0:
+            continue
+        out.append(V3FeeCollection(
+            block_number=row.block_number,
+            tx_hash=row.transaction_hash or "",
+            log_index=row.log_index,
+            token_id=token_id,
+            amount0=fee0,
+            amount1=fee1,
+        ))
     return out
