@@ -37,7 +37,7 @@ from decimal import Decimal
 import pandas as pd
 
 from ..domain.period import Period
-from ._helpers import apr_daily, apy_to_apr, cum_at_or_before, ssr_at_or_before
+from ._helpers import compose_rate, cum_at_or_before, daily_slice, ssr_at_or_before
 from .sky_revenue import base_rate_spread_at
 
 _RATE_SHARE = Decimal("0.20")
@@ -65,7 +65,13 @@ def compute_chronicle_points(
     while current <= period.end:
         balance = cum_at_or_before(farm_usds, "cum_balance", current)
         if balance > 0:
-            base_apr = apy_to_apr(ssr_at_or_before(ssr, current)) + base_rate_spread_at(current)
-            total += balance * apr_daily(_RATE_SHARE * base_apr)
+            base_rate = compose_rate(
+                ssr_at_or_before(ssr, current), base_rate_spread_at(current), current,
+                # Pre-2026-08 this leg summed SSR and the spread additively,
+                # per the dash it was ported from — NOT the Base Rate's
+                # multiplicative composition. See ``compose_rate``.
+                pre_cutover="additive",
+            )
+            total += balance * daily_slice(_RATE_SHARE * base_rate, current)
         current = current + timedelta(days=1)
     return total

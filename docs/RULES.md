@@ -56,6 +56,21 @@ a nominal sum would under-credit what the prime demonstrably received.
 applied `D × [(1+APY)^(1/365) − 1]` to every leg. It made `BR − SSR − spread`
 non-zero and billed `ln(1+APY)` over a year instead of the APY.
 
+**Effective 2026-08-01, and date-gated.** August 2026 was the first cycle
+settled this way; every cycle through 2026-07 was published on the
+superseded APY composition (`(1+SSR)(1+spread) − 1`, grown daily). New rate
+rules apply **going forward only**, and the code enforces that rather than
+trusting nobody to re-run a settled month: `_helpers.APR_CONVENTION_START`
+gates `compose_rate` / `daily_slice`, so re-running July reproduces exactly
+what July was paid on. The two conventions differ by **6.3 bps** on the base
+rate — re-pricing a past month silently is a real error, not rounding. A
+Grove July re-run before the gate existed moved **$39,939 from Grove to
+Sky** and said nothing about it.
+
+Never widen the gate to "fix" a past month. If a settled month genuinely
+needs restating, that is a decision with a forum post attached, not a
+side effect of a fixture refresh.
+
 ## Rule 2: Track SSR changes via SP-BEAM
 
 The SSR is adjusted through **SP-BEAM** governance parameter changes. It can change multiple times per month (e.g., Nov–Dec 2025 had 4 changes). Queries must apply the correct SSR for each day, not a single monthly rate.

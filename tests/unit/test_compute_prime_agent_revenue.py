@@ -26,6 +26,10 @@ from settle.domain import (
 )
 from settle.domain.sde import SDEEntry
 
+# This file asserts the NOMINAL (APR) rate mechanics; its periods predate
+# the 2026-08-01 convention cutover, so pin the regime explicitly.
+pytestmark = pytest.mark.usefixtures("nominal_rate_convention")
+
 
 def _venue(vid: str = "V1") -> Venue:
     return Venue(

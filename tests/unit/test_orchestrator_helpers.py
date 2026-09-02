@@ -33,6 +33,10 @@ from tests.fixtures.mock_sources import (
     MockPsm3Source,
 )
 
+# This file asserts the NOMINAL (APR) rate mechanics; its periods predate
+# the 2026-08-01 convention cutover, so pin the regime explicitly.
+pytestmark = pytest.mark.usefixtures("nominal_rate_convention")
+
 
 # ----------------------------------------------------------------------------
 # _susds_shares_to_principal

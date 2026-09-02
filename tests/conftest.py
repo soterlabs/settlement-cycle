@@ -36,3 +36,27 @@ def config_dir(repo_root: Path) -> Path:
 @pytest.fixture
 def queries_dir(repo_root: Path) -> Path:
     return repo_root / "src" / "settle" / "queries"
+
+
+@pytest.fixture
+def nominal_rate_convention(monkeypatch):
+    """Pin the rate convention to NOMINAL (APR) regardless of the test's dates.
+
+    ``_helpers.APR_CONVENTION_START`` gates ``compose_rate`` / ``daily_slice``
+    so that re-running a month settled before 2026-08 reproduces what was
+    published (see the cutover note in ``_helpers``). Tests that assert the
+    nominal mechanics themselves generally use an arbitrary period — March
+    2026 and friends — chosen long before the cutover existed. Rather than
+    restate their dates and hand-recomputed expectations, they declare the
+    regime they mean:
+
+        pytestmark = pytest.mark.usefixtures("nominal_rate_convention")
+
+    The pre-cutover branch is covered separately, by
+    ``test_rate_convention.py`` and by re-running the settled months.
+    """
+    from datetime import date as _date
+
+    from settle.compute import _helpers
+
+    monkeypatch.setattr(_helpers, "APR_CONVENTION_START", _date(1970, 1, 1))

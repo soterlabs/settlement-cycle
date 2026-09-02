@@ -27,9 +27,9 @@ import pandas as pd
 
 from ..domain.period import Period
 from ._helpers import (
-    apr_daily,
-    apy_to_apr,
+    compose_rate,
     cum_at_or_before,
+    daily_slice,
     ssr_at_or_before,
 )
 
@@ -44,7 +44,8 @@ AGENT_RATE_SUSDS_ONLY = AGENT_RATE_OVER_SSR  # alias for readability at the call
 # sUSDS in the subproxy earns the 20bps alone (SSR already accrues via the
 # token index and is kept by the prime). The 20bps is a governance APR, so
 # it needs no conversion — just the nominal daily slice.
-_SUSDS_DAILY_RATE = apr_daily(AGENT_RATE_SUSDS_ONLY)
+# NOT pre-computed: the daily factor depends on the rate convention in
+# force on the day being settled (see ``_helpers.APR_CONVENTION_START``).
 
 
 def compute_agent_rate(
@@ -80,11 +81,11 @@ def compute_agent_rate(
         # Convert the first before adding, so both are nominal.
         if cum_usds > 0:
             ssr_apy = ssr_at_or_before(ssr, current)
-            usds_apr = apy_to_apr(ssr_apy) + AGENT_RATE_OVER_SSR
-            total += cum_usds * apr_daily(usds_apr)
+            usds_rate = compose_rate(ssr_apy, AGENT_RATE_OVER_SSR, current)
+            total += cum_usds * daily_slice(usds_rate, current)
 
         if cum_susds > 0:
-            total += cum_susds * _SUSDS_DAILY_RATE
+            total += cum_susds * daily_slice(AGENT_RATE_SUSDS_ONLY, current)
 
         current = current + timedelta(days=1)
 

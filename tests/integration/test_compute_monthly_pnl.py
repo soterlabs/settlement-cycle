@@ -88,8 +88,14 @@ def test_monthly_pnl_zero_book_zero_pnl(obex, fixed_pin_blocks):
     assert result.monthly_pnl == Decimal("0")
 
 
-def test_monthly_pnl_obex_synthetic_one_venue(obex, fixed_pin_blocks, monkeypatch):
+def test_monthly_pnl_obex_synthetic_one_venue(
+    obex, fixed_pin_blocks, monkeypatch, nominal_rate_convention,
+):
     """OBEX-shaped scenario, all numbers chosen for closed-form math.
+
+    Uses ``nominal_rate_convention``: the period is March 2026, which predates
+    the 2026-08-01 convention cutover, but the closed-form expectations below
+    are written against the nominal (APR) mechanics.
 
     Setup (constant throughout March 2026):
       cum_debt           = 100_000_000   USDS

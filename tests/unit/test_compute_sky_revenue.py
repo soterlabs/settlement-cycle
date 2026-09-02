@@ -18,6 +18,10 @@ from settle.compute.sky_revenue import (
 from settle.domain import Chain, Period
 from settle.domain.subsidy import ReferenceRateHistory, SubsidyConfig
 
+# This file asserts the NOMINAL (APR) rate mechanics; its periods predate
+# the 2026-08-01 convention cutover, so pin the regime explicitly.
+pytestmark = pytest.mark.usefixtures("nominal_rate_convention")
+
 
 def _period(start: date, end: date) -> Period:
     return Period(start=start, end=end, pin_blocks={Chain.ETHEREUM: 1})

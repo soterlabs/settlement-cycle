@@ -1003,7 +1003,7 @@ def _susds_cat_b_spread_reimb(
     the timeseries while the subsequent on-chain outflow is included) are
     clamped to zero per day so the spread reimbursement stays non-negative.
     """
-    from ._helpers import apr_daily
+    from ._helpers import daily_slice
     from .sky_revenue import base_rate_spread_at
 
     if inflow_ts is None or inflow_ts.empty:
@@ -1021,7 +1021,7 @@ def _susds_cat_b_spread_reimb(
             cum_d = cum_at_or_before(inflow_ts, "cum_inflow", d)
             return value_som + (cum_d - cum_baseline)
 
-    return _accrue_daily(period, value_at, lambda d: apr_daily(base_rate_spread_at(d)))
+    return _accrue_daily(period, value_at, lambda d: daily_slice(base_rate_spread_at(d), d))
 
 
 def _savings_v2_depositor_ssr(
@@ -1104,12 +1104,12 @@ def _psm3_susds_spread(psm_usds: pd.DataFrame | None, period: Period) -> Decimal
     if psm_usds is None or psm_usds.empty or "cum_susds" not in psm_usds.columns:
         return Decimal("0")
     # Lazy import to avoid module-cycle (sky_revenue imports from _helpers).
-    from ._helpers import apr_daily
+    from ._helpers import daily_slice
     from .sky_revenue import base_rate_spread_at
     return _accrue_daily(
         period,
         lambda d: cum_at_or_before(psm_usds, "cum_susds", d),
-        lambda d: apr_daily(base_rate_spread_at(d)),
+        lambda d: daily_slice(base_rate_spread_at(d), d),
     )
 
 
@@ -1615,7 +1615,7 @@ def _aggregate_curve_idle_usds(
     from ..extract.rpc import balance_of as _balance_of
     from ..normalize.sources.curve_pool import CurvePoolSource
     from .sky_revenue import base_rate_spread_at
-    from ._helpers import apr_daily, daily_compounding_factor, ssr_at_or_before
+    from ._helpers import daily_compounding_factor, daily_slice, ssr_at_or_before
 
     # Exclude uniswap_v4 venues — they reuse the curve_idle_usds schema but
     # their daily idle/SDE values are computed by _aggregate_univ4_idle_usds
@@ -1792,7 +1792,7 @@ def _aggregate_curve_idle_usds(
                 # accrued at the CURRENT day's rate, not the last
                 # successful day's — correct across the 30→20bps step.
                 _venue_spread[venue.id] = _venue_spread.get(venue.id, Decimal(0)) + (
-                    prime_susds_value * apr_daily(base_rate_spread_at(current))
+                    prime_susds_value * daily_slice(base_rate_spread_at(current), current)
                 )
                 if ssr_history is not None:
                     susds_ssr_by_venue[venue.id] = (

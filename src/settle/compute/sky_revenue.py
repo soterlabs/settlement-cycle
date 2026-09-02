@@ -96,8 +96,8 @@ from ..domain.subsidy import (
     subsidised_apr,
 )
 from ._helpers import (
-    apr_daily,
-    apy_to_apr,
+    compose_rate,
+    daily_slice,
     cum_at_or_before,
     require_non_empty,
     ssr_at_or_before,
@@ -306,7 +306,7 @@ def compute_sky_revenue_daily(
         # legs credit the index that compounds continuously, and n=12 is
         # the conversion that makes both reach 3.52%/yr. Spread is
         # date-resolved (30bps → 20bps on 2026-07-23).
-        base_apr = apy_to_apr(ssr_apy) + base_rate_spread_at(current)
+        base_apr = compose_rate(ssr_apy, base_rate_spread_at(current), current)
 
         # Subsidy params — computed once and reused for both actual + gross.
         _sub_apr: Decimal | None = None
@@ -317,8 +317,8 @@ def compute_sky_revenue_daily(
             _t        = months_elapsed_since(current, subsidy_config.program_start)  # type: ignore[union-attr]
             _sub_apr  = subsidised_apr(base_apr, _ref_rate, _t, subsidy_config.ramp_months)  # type: ignore[union-attr]
 
-        base_f = apr_daily(base_apr)
-        sub_f = apr_daily(_sub_apr) if _sub_apr is not None else base_f
+        base_f = daily_slice(base_apr, current)
+        sub_f = daily_slice(_sub_apr, current) if _sub_apr is not None else base_f
 
         def _day_interest(principal: Decimal) -> Decimal:
             """One day's charge on ``principal`` — the subsidy caps the
@@ -406,7 +406,7 @@ def summarize_subsidy(
     the "Rates & subsidy" panel only formats this dict, so the report can
     never drift from the rate schedule actually charged in
     ``compute_sky_revenue_daily``. Every CoF figure here is recomputed with
-    the same nominal ``apr_daily`` slice and the same cap-tranche split that
+    the same ``daily_slice`` accrual and the same cap-tranche split that
     produced ``daily_sky_rev``, so
     ``sub_tranche_cof + exc_tranche_cof == actual_cof == Σ daily_sky_rev`` to
     the cent and ``subsidy_benefit == full_br_cof − actual_cof``.
@@ -444,7 +444,9 @@ def summarize_subsidy(
         sub_present = sub_raw is not None and not pd.isna(sub_raw)
         sub = Decimal(str(sub_raw)) if sub_present else base
         st, ex = min(u, cap), max(Decimal("0"), u - cap)
-        base_f = apr_daily(base)
+        # Same convention gate as the daily loop — the row carries its date.
+        _d = r["date"]
+        base_f = daily_slice(base, _d)
 
         util_sum += u
         sub_tr += st
@@ -458,7 +460,7 @@ def summarize_subsidy(
         actual_cof += Decimal(str(r["daily_sky_rev"]))
         # With a nominal accrual the tranche split IS the charge — no
         # allocation needed for the identity to hold.
-        sub_cof += st * apr_daily(sub)
+        sub_cof += st * daily_slice(sub, _d)
         exc_cof += ex * base_f
         full_br_cof += u * base_f
         ref_raw = r["ref_rate_apr"]
