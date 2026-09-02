@@ -346,6 +346,21 @@ def main() -> int:
             (PIN_BLOCKS_SOM["ethereum"], eth_eom),
         ))
         print(f"    {vid}: discovered token_ids={tids}")
+        if not tids:
+            # An empty list renders `topic1 IN ()` in v3_liquidity_events.sql
+            # and Dune fails with an opaque parse error. Say what actually
+            # happened instead — either the holder genuinely held nothing in
+            # this pool at both pins (write the empty section and move on), or
+            # the POOL/holder pair is wrong (note E30 deliberately reuses E12's
+            # POOL constant, so a typo there is easy to miss).
+            print(f"      !! no positions at either pin — writing empty {vid} section")
+            fx[f"v3_liquidity_events_{vid}"] = {
+                "_chain": "ethereum", "_holder": "0x" + holder.hex(),
+                "_pool": "0x" + POOL.hex(),
+                "_about": "no NFPM positions in this pool at either pin block",
+                "rows": [],
+            }
+            continue
         padded = ", ".join("0x" + format(t, "x").rjust(64, "0") for t in sorted(tids))
         print(f"  fetching v3_liquidity_events_{vid} …")
         df = execute_query(

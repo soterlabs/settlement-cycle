@@ -371,6 +371,10 @@ def discover_pool_token_ids(
     the end block — a single-block scan misses whichever side moved. Callers
     normally pass ``(from_block, to_block)``.
 
+    Known limitation, inherited from boundary sampling: a position both opened
+    AND closed strictly inside the period appears at neither boundary and is
+    invisible here. No current Grove or Spark venue exhibits that pattern.
+
     Exists so the token-ID set is never written down by hand. A hardcoded list
     goes stale the moment the counterparty opens a position, and it fails in
     the worst direction: the value path enumerates positions live, so a new
@@ -380,6 +384,8 @@ def discover_pool_token_ids(
     script's list held only 1192575, and $4,000,095.77 of fresh capital was
     reported as revenue.
     """
+    if not blocks:
+        return set()
     try:
         pool_state = read_pool_state(chain, pool, max(blocks))
     except PoolNotDeployedError:
@@ -387,10 +393,11 @@ def discover_pool_token_ids(
     target = (pool_state.token0.value, pool_state.token1.value, pool_state.fee)
     out: set[int] = set()
     for block in blocks:
-        try:
-            n = nfpm_balance_of(chain, nfpm, owner, block)
-        except PoolNotDeployedError:
-            continue
+        # No PoolNotDeployedError guard here: nfpm_balance_of decodes through
+        # _decode_uint, which maps a reverted/absent NFPM ("0x") to 0. A
+        # pre-deployment boundary reads as "owner holds 0 NFTs", it does not
+        # raise.
+        n = nfpm_balance_of(chain, nfpm, owner, block)
         for i in range(n):
             tid = token_of_owner_by_index(chain, nfpm, owner, i, block)
             pos = read_position(chain, nfpm, tid, block)

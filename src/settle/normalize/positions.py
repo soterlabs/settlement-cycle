@@ -646,18 +646,26 @@ def _uniswap_v3_inflow_timeseries(
             venue.id, venue.chain.value, from_block, to_block, _e,
         )
         return empty
-    # Guard: any position present at to_block but ABSENT at from_block was
-    # opened during the period, so it MUST carry an IncreaseLiquidity event in
-    # ``events``. If it doesn't, the event stream is incomplete — the value
-    # path enumerates positions live and will price the new position, while
-    # ``revenue = eom - som - inflow`` has no inflow to net against it, so the
-    # entire deposit books as yield. That is exactly how Grove E12 reported
-    # $4,000,095.77 of fresh capital as August revenue (NFT 1353600, minted
-    # in-period, missing from a hardcoded fixture token-ID list).
+    # Guard, BOTH directions. A position that appears or disappears during
+    # the period must be explained by a liquidity event, or the settlement
+    # silently misprices it by the size of the capital movement:
     #
-    # Raises rather than warns: a settlement that cannot see a capital
-    # movement produces a counterparty-facing number that is wrong by the size
-    # of the deposit, and the log line would sit unread in a published report.
+    #   opened in-period, no IncreaseLiquidity  -> the value path prices it at
+    #     EoM with no inflow to net against, so the DEPOSIT books as revenue.
+    #     Grove E12, 2026-08: $4,000,000.00 reported as yield.
+    #   closed in-period, no DecreaseLiquidity  -> value_som holds it,
+    #     value_eom does not, and no outflow offsets it, so the WITHDRAWAL
+    #     books as a loss. Same shape as Grove E9's −$22.5M phantom (#179),
+    #     which is why the mirror case is checked rather than assumed safe.
+    #
+    # Direction matters: an in-period mint must be evidenced by an *increase*
+    # specifically. Accepting any event would let a position that was minted
+    # and later partially withdrawn pass on the Decrease log alone, with the
+    # deposit still unaccounted.
+    #
+    # Raises rather than warns: a warning would sit unread in a published,
+    # counterparty-facing report while the number was wrong by the size of the
+    # movement.
     try:
         _ids_som = {p.token_id for p in source.positions_in_pool(
             chain=venue.chain.value, owner=holder.value,
@@ -666,22 +674,36 @@ def _uniswap_v3_inflow_timeseries(
             chain=venue.chain.value, owner=holder.value,
             pool=venue.token.address.value, block=to_block)}
     except (_RPCError, _requests.HTTPError, _requests.ConnectionError,
-            _requests.Timeout):
-        _ids_som = _ids_eom = None      # probe failed; the read below reports it
+            _requests.Timeout) as _e:
+        # Must log here: when ``events`` is empty the function returns before
+        # the snapshot read below, so this would otherwise be silent.
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "_uniswap_v3_inflow_timeseries: boundary position probe failed "
+            "for %s on %s (%s) — capital-movement guard SKIPPED for this "
+            "period; an unaccounted position would not be caught.",
+            venue.id, venue.chain.value, _e,
+        )
+        _ids_som = _ids_eom = None
     if _ids_som is not None:
-        _opened = _ids_eom - _ids_som
-        _with_events = {ev.token_id for ev in events}
-        _missing = _opened - _with_events
-        if _missing:
+        _inc = {ev.token_id for ev in events if ev.is_increase}
+        _dec = {ev.token_id for ev in events if not ev.is_increase}
+        _problems = []
+        for _tid in sorted((_ids_eom - _ids_som) - _inc):
+            _problems.append(f"{_tid} (opened in-period, no IncreaseLiquidity)")
+        for _tid in sorted((_ids_som - _ids_eom) - _dec):
+            _problems.append(f"{_tid} (closed in-period, no DecreaseLiquidity)")
+        if _problems:
             raise UnsupportedPricingError(
-                f"Venue {venue.id}: position(s) {sorted(_missing)} were opened "
-                f"between block {from_block} and {to_block} but carry NO "
-                f"liquidity event in the source. Their deposits would be "
-                f"booked as revenue (revenue = eom - som - inflow, with no "
-                f"inflow to net against). If this is a fixture run, re-capture "
-                f"the v3_liquidity_events fixture — its token-ID list is stale; "
-                f"use extract.uniswap_v3.discover_pool_token_ids so it cannot "
-                f"go stale again."
+                f"Venue {venue.id}: position(s) changed between block "
+                f"{from_block} and {to_block} with no matching liquidity "
+                f"event — {'; '.join(_problems)}. The capital movement would "
+                f"be booked as revenue (opened) or loss (closed), since "
+                f"revenue = eom - som - inflow has nothing to net against. "
+                f"If this is a fixture run, re-capture the v3_liquidity_events "
+                f"fixture — its token-ID list is stale; use "
+                f"extract.uniswap_v3.discover_pool_token_ids so it cannot go "
+                f"stale again."
             )
 
     if not events:

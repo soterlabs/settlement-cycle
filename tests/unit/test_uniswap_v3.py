@@ -670,3 +670,79 @@ def test_position_present_at_both_ends_needs_no_event():
         prime, venue, 100, 200, source=src, block_to_date=lambda b: None,
     )
     assert out.empty
+
+
+def test_position_closed_in_period_without_an_event_raises():
+    """Mirror of the E12 case: a withdrawal with no Decrease event books as a
+    loss (the Grove E9 −$22.5M phantom shape)."""
+    from settle.normalize.positions import (
+        UnsupportedPricingError, _uniswap_v3_inflow_timeseries,
+    )
+    prime, venue, USDC = _venue_and_prime()
+    DAI = bytes.fromhex("6b175474e89094c44da98b954eedeac495271d0f")
+    kept = _FakeAmounts(1192575, USDC, DAI)
+    gone = _FakeAmounts(999, USDC, DAI)
+    ev = _v3.V3LiquidityEvent(block_number=101, tx_hash="0x", log_index=0,
+                              token_id=1192575, amount0=1, amount1=1,
+                              is_increase=True)
+    src = _FakeSource({100: [kept, gone], 200: [kept]}, [ev])
+    with pytest.raises(UnsupportedPricingError, match="closed in-period"):
+        _uniswap_v3_inflow_timeseries(
+            prime, venue, 100, 200, source=src, block_to_date=lambda b: None,
+        )
+
+
+def test_decrease_event_does_not_satisfy_an_in_period_mint():
+    """An opened position needs an INCREASE specifically — a Decrease log for
+    the same tokenId must not be accepted as proof the deposit was seen."""
+    from settle.normalize.positions import (
+        UnsupportedPricingError, _uniswap_v3_inflow_timeseries,
+    )
+    prime, venue, USDC = _venue_and_prime()
+    DAI = bytes.fromhex("6b175474e89094c44da98b954eedeac495271d0f")
+    old = _FakeAmounts(1192575, USDC, DAI)
+    new = _FakeAmounts(1353600, USDC, DAI)
+    only_dec = _v3.V3LiquidityEvent(block_number=101, tx_hash="0x", log_index=0,
+                                    token_id=1353600, amount0=-1, amount1=-1,
+                                    is_increase=False)
+    src = _FakeSource({100: [old], 200: [old, new]}, [only_dec])
+    with pytest.raises(UnsupportedPricingError, match="opened in-period"):
+        _uniswap_v3_inflow_timeseries(
+            prime, venue, 100, 200, source=src, block_to_date=lambda b: None,
+        )
+
+
+def test_closed_position_with_a_decrease_event_is_accepted():
+    from settle.normalize.positions import _uniswap_v3_inflow_timeseries
+    prime, venue, USDC = _venue_and_prime()
+    DAI = bytes.fromhex("6b175474e89094c44da98b954eedeac495271d0f")
+    gone = _FakeAmounts(999, USDC, DAI)
+    kept = _FakeAmounts(1192575, USDC, DAI)
+    dec = _v3.V3LiquidityEvent(block_number=101, tx_hash="0x", log_index=0,
+                               token_id=999, amount0=-1_000_000, amount1=-1_000_000,
+                               is_increase=False)
+    src = _FakeSource({100: [kept, gone], 200: [kept]}, [dec])
+    out = _uniswap_v3_inflow_timeseries(
+        prime, venue, 100, 200, source=src, block_to_date=lambda b: __import__("datetime").date(2026, 8, 1),
+    )
+    assert not out.empty
+
+
+def test_probe_failure_warns_and_skips_the_guard(caplog):
+    """A flaky boundary read must not silently disable the guard."""
+    import logging
+    from settle.normalize.positions import _uniswap_v3_inflow_timeseries
+    from settle.extract.rpc import RPCError
+    prime, venue, USDC = _venue_and_prime()
+
+    class _Flaky(_FakeSource):
+        def positions_in_pool(self, chain, owner, pool, block):
+            raise RPCError("probe down")
+
+    with caplog.at_level(logging.WARNING):
+        out = _uniswap_v3_inflow_timeseries(
+            prime, venue, 100, 200, source=_Flaky({}, []),
+            block_to_date=lambda b: None,
+        )
+    assert out.empty
+    assert any("guard SKIPPED" in r.getMessage() for r in caplog.records)
