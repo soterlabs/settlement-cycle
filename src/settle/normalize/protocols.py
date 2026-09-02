@@ -223,6 +223,28 @@ class IV3PositionSource(Protocol):
         ``IncreaseLiquidity``, ``-`` on ``DecreaseLiquidity``."""
         ...
 
+    def fee_collections_in_pool(
+        self,
+        chain: str,
+        owner: bytes,
+        pool: bytes,
+        from_block: int,
+        to_block: int,
+    ) -> list:
+        """Returns list[V3FeeCollection] for every position in the target
+        pool, across (from_block, to_block] — the FEE-ONLY portion of each
+        NFPM ``Collect`` (gross ``Collect`` less the same-transaction
+        ``DecreaseLiquidity`` principal). Unsigned; the caller applies the
+        outflow sign.
+
+        Kept separate from ``liquidity_events_in_pool`` on purpose: the
+        capital-movement guard in ``_uniswap_v3_inflow_timeseries`` keys off
+        ``is_increase``, and a position close always emits a ``Collect``
+        alongside its ``DecreaseLiquidity``. Folding fee events into the
+        liquidity stream would let a genuinely unaccounted close satisfy the
+        guard on the ``Collect`` alone."""
+        ...
+
 
 class IV4PositionSource(Protocol):
     """Read Uniswap V4 LP positions a holder owns in a target pool, plus the

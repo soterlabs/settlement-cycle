@@ -203,12 +203,14 @@ class MockV3PositionSource:
 
     ``liquidity_events`` is a flat list of ``V3LiquidityEvent`` returned
     verbatim by ``liquidity_events_in_pool``. Tests that don't exercise the
-    inflow path can leave it empty.
+    inflow path can leave it empty. ``fee_collections`` is the equivalent for
+    ``fee_collections_in_pool`` (fee-only ``Collect`` amounts).
     """
 
     positions_by_block: dict[int, list] = field(default_factory=dict)
     default: list = field(default_factory=list)
     liquidity_events: list = field(default_factory=list)
+    fee_collections: list = field(default_factory=list)
     calls: list[tuple] = field(default_factory=list)
     inflow_calls: list[tuple] = field(default_factory=list)
 
@@ -224,3 +226,9 @@ class MockV3PositionSource:
     ) -> list:
         self.inflow_calls.append((chain, owner, pool, from_block, to_block))
         return list(self.liquidity_events)
+
+    def fee_collections_in_pool(
+        self, chain: str, owner: bytes, pool: bytes,
+        from_block: int, to_block: int,
+    ) -> list:
+        return list(self.fee_collections)
