@@ -73,6 +73,25 @@ methodology: |
   *Note: Potential inaccuracies will be corrected in future MSCs, per Atlas
   governance.*
 
+# Reproducibility note — a SECOND italic note under the methodology, stating
+# that every figure in the post can be reproduced from the published reports.
+#
+# The commit is per-CYCLE, not boilerplate: it pins the reports as they stood
+# when that post was published. It therefore lives in `report_commits` keyed
+# by month, so last month's hash can never silently ride along on this
+# month's post. A month with no entry emits NO note (and the generator says
+# so on stderr) — omitting the claim is safer than making it against the
+# wrong commit. `--reports-commit` overrides, for drafting.
+reports_repo: 'https://github.com/soterlabs/settlement-reports'
+
+report_commits:
+  '2026-08': 'f3a74bddf2614c8cf0c82183a19e2dd13c66ddc6'
+
+reproducibility_note: >-
+  *Note: every figure in this post is reproducible from the settlement reports
+  published at [soterlabs/settlement-reports]({repo}), commit
+  [`{short}`]({repo}/commit/{commit}).*
+
 # Closing section. ``{snr}`` is substituted with the consolidated Sky Net
 # Revenue from the sky_total report.
 treasury_note: |

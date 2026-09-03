@@ -380,3 +380,47 @@ def test_checksum_matches_every_configured_address():
     known = yaml.safe_load((_REPO / "config" / "sky_total.yaml").read_text())
     for prime_id, addr in known["subproxies"].items():
         assert bfp.checksum_address(addr.lower()) == addr, prime_id
+
+
+# --- reproducibility note -------------------------------------------------
+
+def test_reproducibility_note_is_a_second_italic_methodology_note(august):
+    post, _ = august
+    methodology = post.split("## Methodology", 1)[1].split("\n---", 1)[0]
+    notes = [ln for ln in methodology.splitlines() if ln.startswith("*Note:")]
+    assert len(notes) == 2, "expected the Atlas note and the reproducibility note"
+    assert "reproducible from the settlement reports" in notes[1]
+    assert "soterlabs/settlement-reports" in notes[1]
+    assert notes[1].endswith("*"), "must stay italic"
+
+
+def test_note_links_the_repo_and_the_pinned_commit(august):
+    post, _ = august
+    sha = "f3a74bddf2614c8cf0c82183a19e2dd13c66ddc6"
+    assert f"https://github.com/soterlabs/settlement-reports/commit/{sha}" in post
+    assert "[`f3a74bd`]" in post, "short sha shown, full sha linked"
+
+
+def test_note_is_omitted_when_no_commit_is_pinned():
+    """A reproducibility claim against the WRONG commit is worse than none, so
+    an unpinned month emits nothing rather than reusing a stale hash."""
+    import yaml
+    cfg = yaml.safe_load((_REPO / "config" / "forum_post.yaml").read_text())
+    assert bfp.reproducibility_note("2026-09", cfg) is None
+    assert bfp.reproducibility_note("2026-08", cfg) is not None
+
+
+def test_commit_can_be_overridden_for_drafting():
+    import yaml
+    cfg = yaml.safe_load((_REPO / "config" / "forum_post.yaml").read_text())
+    note = bfp.reproducibility_note("2026-09", cfg, "0123456789abcdef")
+    assert note is not None
+    assert "[`0123456`]" in note and "commit/0123456789abcdef" in note
+
+
+def test_commits_are_recorded_per_month():
+    """Keyed by month so last cycle's hash can't silently ride this cycle's
+    post — the failure this design exists to prevent."""
+    import yaml
+    cfg = yaml.safe_load((_REPO / "config" / "forum_post.yaml").read_text())
+    assert set(cfg["report_commits"]) == {"2026-08"}

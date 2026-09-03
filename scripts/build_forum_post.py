@@ -303,7 +303,25 @@ _ADJ_LABELS = {
 }
 
 
-def render(month: str, primes: list[PrimeFigures], total: SkyTotal, cfg: dict) -> str:
+def reproducibility_note(month: str, cfg: dict, override: str | None = None) -> str | None:
+    """The second methodology note, or None when no commit is pinned.
+
+    Returning None rather than a note with a stale hash is deliberate: the
+    note is a REPRODUCIBILITY CLAIM, and one pointing at the wrong commit is
+    worse than no claim at all.
+    """
+    commit = override or (cfg.get("report_commits") or {}).get(month)
+    if not commit:
+        return None
+    return cfg["reproducibility_note"].format(
+        repo=cfg["reports_repo"], commit=commit, short=commit[:7],
+    ).strip()
+
+
+def render(
+    month: str, primes: list[PrimeFigures], total: SkyTotal, cfg: dict,
+    reports_commit: str | None = None,
+) -> str:
     m = Month.parse(month)
     month_name = f"{_MONTH_NAMES[m.month - 1]} {m.year}"
 
@@ -314,7 +332,11 @@ def render(month: str, primes: list[PrimeFigures], total: SkyTotal, cfg: dict) -
 
     by_id = {p.prime_id: p for p in primes}
     L: list[str] = [f"# MSC #{number} - Settlement Summary ({month_name})", ""]
-    L += ["## Methodology", "", cfg["methodology"].strip(), "", "---", ""]
+    L += ["## Methodology", "", cfg["methodology"].strip(), ""]
+    note = reproducibility_note(month, cfg, reports_commit)
+    if note:
+        L += [note, ""]
+    L += ["---", ""]
 
     for group in cfg["executor_agents"]:
         L += [f"## {group['name']}", ""]
@@ -407,7 +429,7 @@ def require_all_reports(month: str, prime_ids: list[str]) -> None:
         )
 
 
-def build(month: str) -> tuple[str, SkyTotal]:
+def build(month: str, reports_commit: str | None = None) -> tuple[str, SkyTotal]:
     cfg = yaml.safe_load((_REPO / "config" / "forum_post.yaml").read_text())
     sky_cfg = yaml.safe_load((_REPO / "config" / "sky_total.yaml").read_text())
     prime_ids = list(sky_cfg["accrual_primes"])
@@ -442,12 +464,17 @@ def build(month: str) -> tuple[str, SkyTotal]:
         }
         primes.append(p)
 
-    return render(month, primes, total, cfg), total
+    return render(month, primes, total, cfg, reports_commit), total
 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--month", required=True, help="settlement month, YYYY-MM")
+    ap.add_argument(
+        "--reports-commit",
+        help="settlement-reports commit to cite in the reproducibility note; "
+             "defaults to config/forum_post.yaml report_commits[<month>]",
+    )
     ap.add_argument(
         "--out",
         help="output path (default: forum_posts/msc-<month>.md); '-' for stdout",
@@ -461,10 +488,22 @@ def main(argv: list[str] | None = None) -> int:
               file=sys.stderr)
         return 1
     try:
-        post, total = build(month)
+        post, total = build(month, args.reports_commit)
     except PostError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
+
+    if reproducibility_note(
+        month,
+        yaml.safe_load((_REPO / "config" / "forum_post.yaml").read_text()),
+        args.reports_commit,
+    ) is None:
+        print(
+            f"note: no settlement-reports commit pinned for {month} — the "
+            "reproducibility note is omitted. Add it under "
+            "config/forum_post.yaml report_commits, or pass --reports-commit.",
+            file=sys.stderr,
+        )
 
     if not total.pinned:
         # Expected while DRAFTING: msc_preview is filled in from the post once
