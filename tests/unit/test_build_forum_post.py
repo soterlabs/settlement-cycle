@@ -260,3 +260,58 @@ def test_july_reproduces_the_published_adjustments():
     assert "Demand-side correction: -41,908 USDS" in spark
     assert "Supply-side, Spark Share correction: 563,527 USDS" in spark
     assert "Supply-side, Sky Share correction: 304,476 USDS" in spark
+
+
+# --- cross-checks against the report's own totals -------------------------
+
+@pytest.fixture
+def repo_copy(tmp_path, monkeypatch):
+    """A writable copy of settlements/ + config/ so a report can be corrupted."""
+    import shutil
+    shutil.copytree(_REPO / "settlements", tmp_path / "settlements")
+    shutil.copytree(_REPO / "config", tmp_path / "config")
+    monkeypatch.setattr(bfp, "_REPO", tmp_path)
+    return tmp_path
+
+
+def test_a_dropped_prime_row_is_caught(repo_copy):
+    """The failure that would otherwise be invisible: one prime silently
+    missing from the MSC leg still renders a plausible-looking post."""
+    f = repo_copy / "settlements" / "sky_total" / "2026-08" / "summary.md"
+    f.write_text("\n".join(
+        ln for ln in f.read_text().splitlines() if not ln.startswith("| grove |")
+    ))
+    with pytest.raises(bfp.PostError, match="a prime row was missed"):
+        bfp.read_sky_total("2026-08")
+
+
+def test_swapped_mint_send_columns_are_caught(repo_copy):
+    f = repo_copy / "settlements" / "sky_total" / "2026-08" / "summary.md"
+    f.write_text(f.read_text().replace(
+        "| grove | 9,574,714.00 | -1,342,064.00 |",
+        "| grove | -1,342,064.00 | 9,574,714.00 |",
+    ))
+    with pytest.raises(bfp.PostError, match="parse is wrong"):
+        bfp.read_sky_total("2026-08")
+
+
+def test_snr_identity_is_checked(repo_copy):
+    f = repo_copy / "settlements" / "sky_total" / "2026-08" / "summary.md"
+    f.write_text(f.read_text().replace(
+        "| **Sky Net Revenue** | **15,745,296.07** |",
+        "| **Sky Net Revenue** | **99,999,999.00** |",
+    ))
+    with pytest.raises(bfp.PostError, match="!= SNR"):
+        bfp.read_sky_total("2026-08")
+
+
+def test_the_total_row_is_not_mistaken_for_a_prime():
+    """`total` and `MSC net (accrual)` live in the same table as the primes."""
+    total = bfp.read_sky_total("2026-08")
+    assert set(total.mint_by_prime) == {
+        "spark", "grove", "obex", "osero", "keel", "skybase",
+    }
+
+
+def test_bad_month_exits_cleanly():
+    assert bfp.main(["--month", "whenever"]) == 1

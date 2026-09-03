@@ -27,7 +27,6 @@ cycle was generated rather than a subset.
 from __future__ import annotations
 
 import argparse
-import re
 import sys
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
@@ -53,9 +52,6 @@ class PostError(RuntimeError):
 
 # ── report parsing ────────────────────────────────────────────────────────
 
-_ROW = re.compile(r"^\|\s*(?P<label>[^|]+?)\s*\|\s*(?P<value>[^|]*?)\s*\|")
-
-
 def _clean(text: str) -> str:
     """Strip markdown emphasis and backticks from a cell."""
     return text.replace("**", "").replace("`", "").strip()
@@ -69,7 +65,7 @@ def _money(text: str) -> Decimal:
         raise PostError(f"not a number: {text!r}") from exc
 
 
-def parse_rows(path: Path) -> list[tuple[tuple[str, ...], str, str]]:
+def parse_rows(path: Path) -> list[tuple[tuple[str, ...], str, list[str]]]:
     """``[(heading_path, row_label, raw_value)]`` for every table row.
 
     The heading PATH (not just the nearest heading) is what disambiguates the
@@ -77,7 +73,7 @@ def parse_rows(path: Path) -> list[tuple[tuple[str, ...], str, str]]:
     "Prime side" > "Supply-Side revenue", the other directly under "Sky side".
     Keying on the nearest heading alone silently picks the wrong one.
     """
-    rows: list[tuple[tuple[str, ...], str, str]] = []
+    rows: list[tuple[tuple[str, ...], str, list[str]]] = []
     stack: list[tuple[int, str]] = []
     for line in path.read_text().splitlines():
         if line.startswith("#"):
@@ -87,26 +83,26 @@ def parse_rows(path: Path) -> list[tuple[tuple[str, ...], str, str]]:
                 stack.pop()
             stack.append((level, title))
             continue
-        m = _ROW.match(line)
-        if not m:
+        if not line.lstrip().startswith("|"):
             continue
-        label = _clean(m.group("label"))
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        label = _clean(cells[0])
         if not label or set(label) <= set("-: "):
             continue                                    # separator row
-        rows.append((tuple(t for _, t in stack), label.lower(), m.group("value")))
+        rows.append((tuple(t for _, t in stack), label.lower(), cells[1:]))
     return rows
 
 
-def find(rows, label: str, *under: str) -> str | None:
+def find(rows, label: str, *under: str, col: int = 0) -> str | None:
     """Raw value of ``label`` in the first row whose path contains ``under``
     in order. ``under`` may be a partial path — matching is by subsequence, so
     an added intermediate heading doesn't break the lookup."""
-    for path, row_label, value in rows:
-        if row_label != label.lower():
+    for path, row_label, cells in rows:
+        if row_label != label.lower() or col >= len(cells):
             continue
         it = iter(path)
         if all(any(want.lower() == seen.lower() for seen in it) for want in under):
-            return value
+            return cells[col]
     return None
 
 
@@ -212,18 +208,25 @@ def read_sky_total(month: str) -> SkyTotal:
     path = _REPO / "settlements" / "sky_total" / month / "summary.md"
     text = path.read_text()
     rows = parse_rows(path)
-    if not any(p and p[-1].lower().startswith("msc leg") for p, _, _ in rows):
+
+    # Per-prime mint/send, scoped to the MSC-leg section. Scoping matters: a
+    # loose scan of the whole file would also pick up any future 3-column
+    # table, and an unbolded "total" row would arrive as a phantom prime.
+    leg = [r for r in rows if any(t.lower().startswith("msc leg") for t in r[0])]
+    if not leg:
         raise PostError(f"{path}: no 'MSC leg' section — report format changed?")
 
     mints: dict[str, Decimal] = {}
     sends: dict[str, Decimal] = {}
-    for line in text.splitlines():
-        m = re.match(r"^\|\s*([a-z_]+)\s*\|\s*([-\d,.]+)\s*\|\s*([-\d,.]+)\s*\|", line)
-        if m:
-            mints[m.group(1)] = _money(m.group(2))
-            sends[m.group(1)] = abs(_money(m.group(3)))
+    for _, label, cells in leg:
+        if label in ("prime", "total", "msc net (accrual)") or len(cells) < 2:
+            continue
+        mints[label] = _money(cells[0])
+        sends[label] = abs(_money(cells[1]))
+    if not mints:
+        raise PostError(f"{path}: 'MSC leg' section has no per-prime rows")
 
-    return SkyTotal(
+    total = SkyTotal(
         mint_by_prime=mints,
         send_by_prime=sends,
         msc_net=_require(rows, "msc net (accrual)", "Sky Net Revenue", path=path),
@@ -233,6 +236,23 @@ def read_sky_total(month: str) -> SkyTotal:
         # msc_preview entry, i.e. nothing is pinned to a published MSC post.
         pinned="msc_preview: no entry" not in text,
     )
+
+    # Cross-check the rows we parsed against the report's own totals. Catches
+    # a mis-parse — a dropped prime row, a swapped column — before it reaches
+    # a counterparty-facing post, where it would look authoritative.
+    derived = sum(mints.values()) - sum(sends.values())
+    if abs(derived - total.msc_net) > Decimal("1"):
+        raise PostError(
+            f"{path}: parsed per-prime rows sum to {derived} but the report "
+            f"states MSC net {total.msc_net} — parse is wrong, or a prime row "
+            "was missed."
+        )
+    if abs(total.msc_net + total.non_msc_net - total.snr) > Decimal("0.01"):
+        raise PostError(
+            f"{path}: MSC net {total.msc_net} + non-MSC {total.non_msc_net} "
+            f"!= SNR {total.snr}"
+        )
+    return total
 
 
 # ── rendering ─────────────────────────────────────────────────────────────
@@ -398,7 +418,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = ap.parse_args(argv)
 
-    month = str(Month.parse(args.month))
+    try:
+        month = str(Month.parse(args.month))
+    except Exception:
+        print(f"error: --month {args.month!r} is not a YYYY-MM month",
+              file=sys.stderr)
+        return 1
     try:
         post, total = build(month)
     except PostError as exc:
@@ -406,13 +431,17 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     if not total.pinned:
-        # Worth saying out loud: the settlement instructions in the post are
-        # DERIVED from the monthly reports and cross-check against nothing.
-        # MSC#11's were pinned to the published post via msc_preview.
+        # Expected while DRAFTING: msc_preview is filled in from the post once
+        # the cycle executes, so a month being unpinned is the normal state
+        # for the post you are about to publish. Said out loud only because
+        # two things follow from it — the figures are derived, and any
+        # prior-cycle corrections riding this settlement aren't in yet.
         print(
-            f"warning: config/sky_total.yaml has no msc_preview entry for "
-            f"{month} — every mint/send below is derived from the monthly "
-            "reports, not reconciled against a published MSC post.",
+            f"note: config/sky_total.yaml has no msc_preview entry for {month} "
+            "(expected while drafting). Every mint/send is DERIVED from the "
+            "monthly reports, and no Adjustments sections are emitted — add "
+            "any prior-cycle corrections riding this settlement, then pin the "
+            "published figures once the cycle executes.",
             file=sys.stderr,
         )
 
