@@ -129,6 +129,7 @@ class PrimeFigures:
     sky_share: Decimal
     sky_direct_exposure: Decimal
     subsidised: bool
+    subproxy: str                         # checksummed 0x… from the prime config
     mint: Decimal
     send: Decimal
     adjustments: dict[str, Decimal] = field(default_factory=dict)
@@ -162,7 +163,7 @@ def read_prime(prime_id: str, month: str, cfg: dict) -> PrimeFigures:
     if _gar is not None and _money(_gar) != 0:
         components.append(
             "Governance Accessibility Rewards - "
-            f"[{cfg['atlas']['governance_accessibility_rewards']}]"
+            + _atlas(cfg, "governance_accessibility_rewards")
         )
     if not components:
         raise PostError(
@@ -171,6 +172,13 @@ def read_prime(prime_id: str, month: str, cfg: dict) -> PrimeFigures:
         )
 
     prime = load_prime(_REPO / "config" / f"{prime_id}.yaml")
+    from settle.domain.primes import Chain
+    subproxy = prime.subproxy.get(Chain.ETHEREUM)
+    if subproxy is None:
+        raise PostError(
+            f"{prime_id}: no ethereum subproxy in config — the post has to "
+            "name the address the funds are sent to."
+        )
     ilk = (
         bytes(prime.ilk_bytes32).rstrip(b"\x00").decode()
         if prime.ilk_bytes32 else None
@@ -189,6 +197,7 @@ def read_prime(prime_id: str, month: str, cfg: dict) -> PrimeFigures:
             rows, "sky direct exposure", "Sky side", path=path,
         ),
         subsidised=bool(getattr(prime.subsidy, "enabled", False)),
+        subproxy=checksum_address(subproxy.hex),
         mint=Decimal(0),
         send=Decimal(0),
     )
@@ -257,6 +266,30 @@ def read_sky_total(month: str) -> SkyTotal:
 
 # ── rendering ─────────────────────────────────────────────────────────────
 
+def checksum_address(addr: str) -> str:
+    """EIP-55 mixed-case checksum of a hex address.
+
+    ``domain.primes.Address`` normalises to lowercase, but the published posts
+    quote the checksummed form — which is what operators eyeball against a
+    block explorer, and the only form that detects a mistyped character.
+    """
+    from settle.extract._keccak import keccak256
+
+    body = addr[2:] if addr.lower().startswith("0x") else addr
+    body = body.lower()
+    digest = keccak256(body.encode()).hex()
+    return "0x" + "".join(
+        c.upper() if c.isalpha() and int(digest[i], 16) >= 8 else c
+        for i, c in enumerate(body)
+    )
+
+
+def _atlas(cfg: dict, key: str) -> str:
+    """``[A.x.y](url)`` — the citation as a link, as the published posts do."""
+    entry = cfg["atlas"][key]
+    return f"[{entry['ref']}]({entry['url']})"
+
+
 def _usds(v: Decimal) -> str:
     whole = v.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
     return f"{whole:,}"
@@ -285,6 +318,8 @@ def render(month: str, primes: list[PrimeFigures], total: SkyTotal, cfg: dict) -
 
     for group in cfg["executor_agents"]:
         L += [f"## {group['name']}", ""]
+        if group.get("foreword"):
+            L += [group["foreword"].strip(), ""]
         for pid in group["primes"]:
             p = by_id[pid]
             L += [f"### {p.label} Settlement for {month_name}", ""]
@@ -299,12 +334,12 @@ def render(month: str, primes: list[PrimeFigures], total: SkyTotal, cfg: dict) -
                 if p.subsidised:
                     L.append(
                         "- Subsidized borrow rate as defined in "
-                        f"[{cfg['atlas']['subsidised_borrow_rate']}]"
+                        + _atlas(cfg, "subsidised_borrow_rate")
                     )
                 if p.sky_direct_exposure != 0:
                     L.append(
                         "- Sky Direct Exposure reimbursements as defined in "
-                        f"[{cfg['atlas']['sky_direct_exposure']}]"
+                        + _atlas(cfg, "sky_direct_exposure")
                     )
                 L += ["", "**Supply Side Total**", ""]
                 L += [
@@ -328,9 +363,10 @@ def render(month: str, primes: list[PrimeFigures], total: SkyTotal, cfg: dict) -
                     f"- Mint `{_usds(p.mint)} USDS` debt in `{p.ilk}` and "
                     "transfer to surplus buffer."
                 )
+            link = f"[{p.subproxy}]({cfg['etherscan_address_url']}{p.subproxy})"
             L.append(
-                f"- Send `{_usds(p.send)} USDS` from surplus buffer to "
-                f"{p.label} Subproxy."
+                f"- Send `{_usds(p.send)} USDS` from surplus buffer to the "
+                f"{p.label} Subproxy {link}."
             )
             L += ["", "---", ""]
 

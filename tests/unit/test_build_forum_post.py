@@ -229,7 +229,7 @@ def test_settlement_instructions_match_sky_total(august):
     assert total.mint_by_prime["grove"] == Decimal("9574714.00")
     assert total.send_by_prime["grove"] == Decimal("1342064.00")
     assert "Mint `9,574,714 USDS` debt in `ALLOCATOR-BLOOM-A`" in post
-    assert "Send `1,342,064 USDS` from surplus buffer to Grove Subproxy." in post
+    assert "Send `1,342,064 USDS` from surplus buffer to the Grove Subproxy" in post
 
 
 # --- config consistency ---------------------------------------------------
@@ -315,3 +315,68 @@ def test_the_total_row_is_not_mistaken_for_a_prime():
 
 def test_bad_month_exits_cleanly():
     assert bfp.main(["--month", "whenever"]) == 1
+
+
+# --- foreword, Atlas links, subproxy links --------------------------------
+
+def test_each_executor_agent_carries_its_foreword(august):
+    post, _ = august
+    amatsu = post.split("## Amatsu Operational Executor Agent", 1)[1].split("###", 1)[0]
+    assert "on behalf of the Amatsu OEA" in amatsu
+    assert "Spark, Grove and Keel" in amatsu
+    ozone = post.split("## Ozone Operational Executor Agent", 1)[1].split("###", 1)[0]
+    assert "on behalf of the Ozone OEA" in ozone
+    assert "Obex, Skybase and Osero" in ozone
+
+
+def test_atlas_citations_are_links(august):
+    post, _ = august
+    assert (
+        "[A.2.8.2.2.2.2.1](https://sky-atlas.io/"
+        "#552e7b01-c2d0-4658-ac49-2c74e230aeac)" in post
+    )
+    assert (
+        "[A.2.2.9.1.1.1.1.2.0.6.1](https://sky-atlas.io/"
+        "#5f368e33-7a82-4244-a9ba-f285193ec043)" in post
+    )
+    # every citation rendered must be a link, never a bare reference
+    import re
+    assert not re.search(r"\[A\.[\d.]+\](?!\()", post)
+
+
+def test_every_send_names_a_linked_subproxy(august):
+    post, _ = august
+    for prime in ("Spark", "Grove", "Keel", "Obex", "Skybase", "Osero"):
+        block = section(post, prime)
+        assert "https://etherscan.io/address/0x" in block, prime
+
+
+def test_subproxy_addresses_come_from_the_prime_configs(august):
+    """The post must cite the address the PIPELINE settles to, so it is read
+    from each prime's own config rather than restated in the post config."""
+    import yaml
+    post, _ = august
+    known = yaml.safe_load((_REPO / "config" / "sky_total.yaml").read_text())
+    for prime_id, addr in known["subproxies"].items():
+        block = section(post, prime_id.capitalize())
+        assert addr in block, f"{prime_id}: expected {addr}"
+        assert f"https://etherscan.io/address/{addr}" in block
+
+
+def test_addresses_are_eip55_checksummed(august):
+    """Lowercase would still resolve on Etherscan but loses the typo
+    detection that makes a checksummed address worth eyeballing."""
+    post, _ = august
+    assert bfp.checksum_address(
+        "0x3300f198988e4c9c63f75df86de36421f06af8c4"
+    ) == "0x3300f198988e4C9C63F75dF86De36421f06af8c4"
+    assert "0x3300f198988e4C9C63F75dF86De36421f06af8c4" in post
+
+
+def test_checksum_matches_every_configured_address():
+    """The configs are written checksummed; recomputing must agree, or the
+    post and the config would disagree about the same address."""
+    import yaml
+    known = yaml.safe_load((_REPO / "config" / "sky_total.yaml").read_text())
+    for prime_id, addr in known["subproxies"].items():
+        assert bfp.checksum_address(addr.lower()) == addr, prime_id

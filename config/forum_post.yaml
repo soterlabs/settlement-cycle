@@ -19,14 +19,44 @@ msc_anchor:
 executor_agents:
   - name: Amatsu Operational Executor Agent
     primes: [spark, grove, keel]
+    foreword: >-
+      In the capacity of Operational Executor Agent, and in accordance with
+      the Atlas's Monthly Settlement Cycle, Soter Labs on behalf of the Amatsu
+      OEA is publishing the initial calculations for Spark, Grove and Keel.
   - name: Ozone Operational Executor Agent
     primes: [obex, skybase, osero]
+    foreword: >-
+      In the capacity of the Operational Executor Agent, and in accordance
+      with the Atlas's Monthly Settlement Cycle (MSC), Soter Labs on behalf of
+      the Ozone OEA is publishing the initial calculations for Obex, Skybase
+      and Osero.
 
-# Atlas references quoted verbatim in the primitive bullet lists.
+# Atlas references quoted in the primitive bullet lists, rendered as links —
+# `ref` is the citation shown, `url` its Atlas anchor. Taken from the
+# published MSC#11 post (t/28151).
 atlas:
-  subsidised_borrow_rate: 'A.2.8.2.2.2.2.1'
-  sky_direct_exposure: 'A.2.2.9.1.1.1.1.2.0.6.1'
-  governance_accessibility_rewards: 'A.2.2.11.1'
+  subsidised_borrow_rate:
+    ref: 'A.2.8.2.2.2.2.1'
+    url: 'https://sky-atlas.io/#552e7b01-c2d0-4658-ac49-2c74e230aeac'
+  sky_direct_exposure:
+    ref: 'A.2.2.9.1.1.1.1.2.0.6.1'
+    url: 'https://sky-atlas.io/#5f368e33-7a82-4244-a9ba-f285193ec043'
+  governance_accessibility_rewards:
+    ref: 'A.2.2.11.1'
+    url: 'https://sky-atlas.io/#b22d1c08-042a-4466-94fe-9d28951e4d4a'
+
+# Base URL for the subproxy links in the settlement instructions. The
+# ADDRESSES come from each prime's own config — the same value the pipeline
+# settles against — never from here, so a post cannot cite an address the
+# pipeline doesn't use.
+etherscan_address_url: 'https://etherscan.io/address/'
+
+# Two further Atlas articles appear in the published posts' Step-1 Capital /
+# final-calculation sections, which this generator does not emit:
+#   A.2.3.1.2.2.1  Fortification Foundation Allocation
+#                  https://sky-atlas.io/#728ea3d3-606a-4080-bc56-4a9e2c7fecb3
+#   Final Calculation By Core GovOps
+#                  https://sky-atlas.io/#9de89bf3-9051-44f1-9ec0-d362ee4d4b38
 
 # Standing narrative. Reproduced at the top of every post; edit here rather
 # than in the script so wording changes don't need a code review.
