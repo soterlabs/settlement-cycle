@@ -1,0 +1,50 @@
+# Editorial facts for the MSC forum post generator
+# (``scripts/build_forum_post.py``). Everything NUMERIC comes from the
+# settlement reports under ``settlements/``; this file holds only the things
+# the reports don't know: which executor agent presents each prime, how MSC
+# cycles are numbered, and the Atlas citations quoted in the primitive lists.
+
+# MSC cycle numbering. The post title is derived by counting months from this
+# anchor, so a new cycle needs no edit here — only a correction would.
+# MSC #11 settled July 2026 (forum t/28151); #12 settles August 2026.
+msc_anchor:
+  month: '2026-07'
+  number: 11
+
+# Presentation grouping. The post is organised by Operational Executor Agent,
+# each introducing the primes it settles for. Order here is the order in the
+# post. Every prime in ``sky_total.yaml → accrual_primes`` must appear exactly
+# once — the generator fails loudly otherwise, so onboarding a prime can't
+# silently drop it from the post.
+executor_agents:
+  - name: Amatsu Operational Executor Agent
+    primes: [spark, grove, keel]
+  - name: Ozone Operational Executor Agent
+    primes: [obex, skybase, osero]
+
+# Atlas references quoted verbatim in the primitive bullet lists.
+atlas:
+  subsidised_borrow_rate: 'A.2.8.2.2.2.2.1'
+  sky_direct_exposure: 'A.2.2.9.1.1.1.1.2.0.6.1'
+  governance_accessibility_rewards: 'A.2.2.11.1'
+
+# Standing narrative. Reproduced at the top of every post; edit here rather
+# than in the script so wording changes don't need a code review.
+methodology: |
+  The Monthly Settlement Cycle (MSC) is a recurring process that synchronizes
+  core financial operations, governance functions, and risk management
+  activities across the ecosystem.
+
+  - **Demand Side Primitives** - Incentives to Prime Agents to drive USDS adoption.
+  - **Supply Side Primitives** - Borrowing USDS collateral at the Base Rate from
+    Sky to generate risk-adjusted returns, under the restrictions of the Asset
+    Liability Management framework.
+
+  *Note: Potential inaccuracies will be corrected in future MSCs, per Atlas
+  governance.*
+
+# Closing section. ``{snr}`` is substituted with the consolidated Sky Net
+# Revenue from the sky_total report.
+treasury_note: |
+  Soter Labs has calculated net revenue for treasury management purposes.
+  Sky's {month_name} net revenue was `{snr} USDS`.
