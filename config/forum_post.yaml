@@ -70,7 +70,7 @@ methodology: |
     Sky to generate risk-adjusted returns, under the restrictions of the Asset
     Liability Management framework.
 
-  *Note: Potential inaccuracies will be corrected in future MSCs, per Atlas
+  *Note 1: Potential inaccuracies will be corrected in future MSCs, per Atlas
   governance.*
 
 # Reproducibility note — a SECOND italic note under the methodology, stating
@@ -88,7 +88,7 @@ report_commits:
   '2026-08': 'f3a74bddf2614c8cf0c82183a19e2dd13c66ddc6'
 
 reproducibility_note: >-
-  *Note: every figure in this post is reproducible from the settlement reports
+  *Note 2: every figure in this post is reproducible from the settlement reports
   published at [soterlabs/settlement-reports]({repo}), commit
   [`{short}`]({repo}/commit/{commit}).*
 

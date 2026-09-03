@@ -116,6 +116,63 @@ def _require(rows, label: str, *under: str, path: Path) -> Decimal:
     return _money(value)
 
 
+# ── settlement-reports lookup ─────────────────────────────────────────────
+#
+# ``soterlabs/settlement-reports`` is not hand-maintained: this repo's
+# ``publish-settlements`` workflow rsyncs ``settlements/`` into its
+# ``reports/`` on every merge that touches them. So the commit to cite is
+# derivable — and, because it is a mirror, CHECKABLE. That matters: the note
+# claims every figure reproduces from that commit, and citing the latest
+# commit without checking can assert something false (a settlements-touching
+# PR merged since you generated, or a local tree ahead of / behind main).
+#
+# Network lives HERE and in ``main()`` only. ``build()`` stays offline and
+# deterministic, so the generator still works from a clone with no network
+# and the tests never reach for the wire.
+
+_GH_API = "https://api.github.com/repos/{slug}/commits/{branch}"
+_GH_RAW = "https://raw.githubusercontent.com/{slug}/{sha}/reports/{rel}"
+_HTTP_TIMEOUT = 20
+
+
+def _repo_slug(cfg: dict) -> str:
+    return cfg["reports_repo"].rstrip("/").split("github.com/", 1)[-1]
+
+
+def latest_published_commit(cfg: dict) -> str:
+    """HEAD of the settlement-reports default branch."""
+    import requests
+
+    url = _GH_API.format(slug=_repo_slug(cfg), branch=cfg.get("reports_branch", "main"))
+    r = requests.get(url, timeout=_HTTP_TIMEOUT)
+    r.raise_for_status()
+    return r.json()["sha"]
+
+
+def published_report_mismatches(
+    sha: str, month: str, prime_ids: list[str], cfg: dict,
+) -> list[str]:
+    """Report paths whose published copy at ``sha`` differs from the local one.
+
+    Empty list means the note's claim is TRUE for this month at this commit.
+    """
+    import requests
+
+    slug = _repo_slug(cfg)
+    bad: list[str] = []
+    for pid in [*prime_ids, "sky_total"]:
+        rel = f"{pid}/{month}/summary.md"
+        local = (_REPO / "settlements" / rel).read_bytes()
+        r = requests.get(_GH_RAW.format(slug=slug, sha=sha, rel=rel), timeout=_HTTP_TIMEOUT)
+        if r.status_code == 404:
+            bad.append(f"{rel} (absent from the published tree)")
+            continue
+        r.raise_for_status()
+        if r.content != local:
+            bad.append(rel)
+    return bad
+
+
 # ── model ─────────────────────────────────────────────────────────────────
 
 @dataclass
@@ -472,8 +529,15 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--month", required=True, help="settlement month, YYYY-MM")
     ap.add_argument(
         "--reports-commit",
-        help="settlement-reports commit to cite in the reproducibility note; "
-             "defaults to config/forum_post.yaml report_commits[<month>]",
+        help="settlement-reports commit to cite. Default: the month's pin in "
+             "config/forum_post.yaml report_commits, else the current HEAD of "
+             "the settlement-reports default branch.",
+    )
+    ap.add_argument(
+        "--skip-verify",
+        action="store_true",
+        help="cite the commit without checking the published reports match "
+             "(offline drafting only — the note becomes an unchecked claim)",
     )
     ap.add_argument(
         "--out",
@@ -487,23 +551,64 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: --month {args.month!r} is not a YYYY-MM month",
               file=sys.stderr)
         return 1
+    cfg = yaml.safe_load((_REPO / "config" / "forum_post.yaml").read_text())
+    sky_cfg = yaml.safe_load((_REPO / "config" / "sky_total.yaml").read_text())
+
+    # Resolve the commit to cite: explicit flag, then the month's pin (so a
+    # already-published post keeps citing ITS commit rather than silently
+    # re-pointing at a newer tree), then the published HEAD.
+    commit = args.reports_commit or (cfg.get("report_commits") or {}).get(month)
+    source = "--reports-commit" if args.reports_commit else (
+        "config report_commits" if commit else "")
+    if not commit:
+        try:
+            commit = latest_published_commit(cfg)
+            source = f"{cfg['reports_repo']} HEAD"
+        except Exception as exc:
+            print(
+                f"note: could not reach {cfg['reports_repo']} ({exc}) and no "
+                f"commit is pinned for {month} — the reproducibility note is "
+                "omitted. Pin one under config/forum_post.yaml "
+                "report_commits, or pass --reports-commit.",
+                file=sys.stderr,
+            )
+
+    # Verify the claim rather than assert it: the published reports at that
+    # commit must be byte-identical to the ones this post was built from.
+    if commit and not args.skip_verify:
+        try:
+            bad = published_report_mismatches(
+                commit, month, list(sky_cfg["accrual_primes"]), cfg,
+            )
+        except Exception as exc:
+            print(
+                f"warning: could not verify the published reports at "
+                f"{commit[:7]} ({exc}) — citing it unchecked. Re-run with "
+                "network, or pass --skip-verify to silence this.",
+                file=sys.stderr,
+            )
+        else:
+            if bad:
+                print(
+                    f"error: {commit[:7]} does not publish the reports this "
+                    f"post was built from — the reproducibility note would be "
+                    f"false. Differing:\n  " + "\n  ".join(bad)
+                    + "\n\nPublish the current settlements/ first (merge to "
+                    "main), or cite the right commit with --reports-commit.",
+                    file=sys.stderr,
+                )
+                return 1
+            print(
+                f"verified: {len(list(sky_cfg['accrual_primes'])) + 1} reports "
+                f"at {commit[:7]} ({source}) match settlements/ exactly",
+                file=sys.stderr,
+            )
+
     try:
-        post, total = build(month, args.reports_commit)
+        post, total = build(month, commit)
     except PostError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
-
-    if reproducibility_note(
-        month,
-        yaml.safe_load((_REPO / "config" / "forum_post.yaml").read_text()),
-        args.reports_commit,
-    ) is None:
-        print(
-            f"note: no settlement-reports commit pinned for {month} — the "
-            "reproducibility note is omitted. Add it under "
-            "config/forum_post.yaml report_commits, or pass --reports-commit.",
-            file=sys.stderr,
-        )
 
     if not total.pinned:
         # Expected while DRAFTING: msc_preview is filled in from the post once

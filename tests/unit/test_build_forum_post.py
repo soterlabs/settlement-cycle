@@ -384,12 +384,13 @@ def test_checksum_matches_every_configured_address():
 
 # --- reproducibility note -------------------------------------------------
 
-def test_reproducibility_note_is_a_second_italic_methodology_note(august):
+def test_methodology_carries_two_numbered_italic_notes(august):
     post, _ = august
     methodology = post.split("## Methodology", 1)[1].split("\n---", 1)[0]
-    notes = [ln for ln in methodology.splitlines() if ln.startswith("*Note:")]
-    assert len(notes) == 2, "expected the Atlas note and the reproducibility note"
-    assert "reproducible from the settlement reports" in notes[1]
+    notes = [ln for ln in methodology.splitlines() if ln.startswith("*Note ")]
+    assert len(notes) == 2, "expected Note 1 and Note 2"
+    assert notes[0].startswith("*Note 1: Potential inaccuracies")
+    assert notes[1].startswith("*Note 2: every figure")
     assert "soterlabs/settlement-reports" in notes[1]
     assert notes[1].endswith("*"), "must stay italic"
 
@@ -424,3 +425,85 @@ def test_commits_are_recorded_per_month():
     import yaml
     cfg = yaml.safe_load((_REPO / "config" / "forum_post.yaml").read_text())
     assert set(cfg["report_commits"]) == {"2026-08"}
+
+
+# --- resolving and VERIFYING the settlement-reports commit ----------------
+#
+# ``settlement-reports`` is an rsync mirror of this repo's ``settlements/``
+# (see .github/workflows/publish-settlements.yml), so the commit to cite is
+# both derivable and checkable. Network lives in ``main()`` and the two
+# helpers below, which these tests patch — the suite never hits the wire.
+
+def test_repo_slug_is_derived_from_the_configured_url():
+    import yaml
+    cfg = yaml.safe_load((_REPO / "config" / "forum_post.yaml").read_text())
+    assert bfp._repo_slug(cfg) == "soterlabs/settlement-reports"
+
+
+def _stub(monkeypatch, tmp_path, *, head="deadbeef" * 5, mismatches=None):
+    monkeypatch.setattr(bfp, "latest_published_commit", lambda cfg: head)
+    monkeypatch.setattr(
+        bfp, "published_report_mismatches",
+        lambda sha, month, prime_ids, cfg: list(mismatches or []),
+    )
+    return tmp_path / "out.md"
+
+
+def test_pinned_commit_wins_over_published_head(monkeypatch, tmp_path, capsys):
+    """An already-published post must keep citing ITS commit rather than
+    silently re-pointing at a newer tree."""
+    out = _stub(monkeypatch, tmp_path)
+    assert bfp.main(["--month", "2026-08", "--out", str(out)]) == 0
+    assert "f3a74bddf2614c8cf0c82183a19e2dd13c66ddc6" in out.read_text()
+    assert "deadbeef" not in out.read_text()
+
+
+def test_unpinned_month_falls_back_to_published_head(monkeypatch, tmp_path):
+    """2026-07 has no `report_commits` entry, so it must resolve the published
+    HEAD rather than emit no note."""
+    out = _stub(monkeypatch, tmp_path)
+    assert bfp.main(["--month", "2026-07", "--out", str(out)]) == 0
+    assert ("deadbeef" * 5) in out.read_text()
+
+
+def test_explicit_flag_wins_over_everything(monkeypatch, tmp_path):
+    out = _stub(monkeypatch, tmp_path)
+    rc = bfp.main([
+        "--month", "2026-08", "--out", str(out), "--reports-commit", "abc123def456",
+    ])
+    assert rc == 0
+    assert "abc123def456" in out.read_text()
+
+
+def test_a_commit_that_does_not_publish_these_reports_is_refused(
+    monkeypatch, tmp_path, capsys,
+):
+    """The whole point: the note is a CLAIM, so a commit whose published
+    reports differ must fail the run rather than be cited."""
+    out = _stub(monkeypatch, tmp_path, mismatches=["keel/2026-08/summary.md"])
+    assert bfp.main(["--month", "2026-08", "--out", str(out)]) == 1
+    err = capsys.readouterr().err
+    assert "would be false" in err
+    assert "keel/2026-08/summary.md" in err
+    assert not out.exists(), "no post should be written on a false claim"
+
+
+def test_skip_verify_bypasses_the_check(monkeypatch, tmp_path):
+    out = _stub(monkeypatch, tmp_path, mismatches=["keel/2026-08/summary.md"])
+    assert bfp.main([
+        "--month", "2026-08", "--out", str(out), "--skip-verify",
+    ]) == 0
+    assert out.exists()
+
+
+def test_unreachable_repo_still_produces_a_post(monkeypatch, tmp_path, capsys):
+    """Offline must degrade, not break: the pinned commit is cited unverified
+    with a warning, rather than failing the run."""
+    def boom(*a, **k):
+        raise RuntimeError("no network")
+    monkeypatch.setattr(bfp, "latest_published_commit", boom)
+    monkeypatch.setattr(bfp, "published_report_mismatches", boom)
+    out = tmp_path / "out.md"
+    assert bfp.main(["--month", "2026-08", "--out", str(out)]) == 0
+    assert "could not verify" in capsys.readouterr().err
+    assert "f3a74bd" in out.read_text()
