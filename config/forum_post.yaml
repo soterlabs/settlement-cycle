@@ -1,0 +1,99 @@
+# Editorial facts for the MSC forum post generator
+# (``scripts/build_forum_post.py``). Everything NUMERIC comes from the
+# settlement reports under ``settlements/``; this file holds only the things
+# the reports don't know: which executor agent presents each prime, how MSC
+# cycles are numbered, and the Atlas citations quoted in the primitive lists.
+
+# MSC cycle numbering. The post title is derived by counting months from this
+# anchor, so a new cycle needs no edit here — only a correction would.
+# MSC #11 settled July 2026 (forum t/28151); #12 settles August 2026.
+msc_anchor:
+  month: '2026-07'
+  number: 11
+
+# Presentation grouping. The post is organised by Operational Executor Agent,
+# each introducing the primes it settles for. Order here is the order in the
+# post. Every prime in ``sky_total.yaml → accrual_primes`` must appear exactly
+# once — the generator fails loudly otherwise, so onboarding a prime can't
+# silently drop it from the post.
+executor_agents:
+  - name: Amatsu Operational Executor Agent
+    primes: [spark, grove, keel]
+    foreword: >-
+      In the capacity of Operational Executor Agent, and in accordance with
+      the Atlas's Monthly Settlement Cycle, Soter Labs on behalf of the Amatsu
+      OEA is publishing the initial calculations for Spark, Grove and Keel.
+  - name: Ozone Operational Executor Agent
+    primes: [obex, skybase, osero]
+    foreword: >-
+      In the capacity of the Operational Executor Agent, and in accordance
+      with the Atlas's Monthly Settlement Cycle (MSC), Soter Labs on behalf of
+      the Ozone OEA is publishing the initial calculations for Obex, Skybase
+      and Osero.
+
+# Atlas references quoted in the primitive bullet lists, rendered as links —
+# `ref` is the citation shown, `url` its Atlas anchor. Taken from the
+# published MSC#11 post (t/28151).
+atlas:
+  subsidised_borrow_rate:
+    ref: 'A.2.8.2.2.2.2.1'
+    url: 'https://sky-atlas.io/#552e7b01-c2d0-4658-ac49-2c74e230aeac'
+  sky_direct_exposure:
+    ref: 'A.2.2.9.1.1.1.1.2.0.6.1'
+    url: 'https://sky-atlas.io/#5f368e33-7a82-4244-a9ba-f285193ec043'
+  governance_accessibility_rewards:
+    ref: 'A.2.2.11.1'
+    url: 'https://sky-atlas.io/#b22d1c08-042a-4466-94fe-9d28951e4d4a'
+
+# Base URL for the subproxy links in the settlement instructions. The
+# ADDRESSES come from each prime's own config — the same value the pipeline
+# settles against — never from here, so a post cannot cite an address the
+# pipeline doesn't use.
+etherscan_address_url: 'https://etherscan.io/address/'
+
+# Two further Atlas articles appear in the published posts' Step-1 Capital /
+# final-calculation sections, which this generator does not emit:
+#   A.2.3.1.2.2.1  Fortification Foundation Allocation
+#                  https://sky-atlas.io/#728ea3d3-606a-4080-bc56-4a9e2c7fecb3
+#   Final Calculation By Core GovOps
+#                  https://sky-atlas.io/#9de89bf3-9051-44f1-9ec0-d362ee4d4b38
+
+# Standing narrative. Reproduced at the top of every post; edit here rather
+# than in the script so wording changes don't need a code review.
+methodology: |
+  The Monthly Settlement Cycle (MSC) is a recurring process that synchronizes
+  core financial operations, governance functions, and risk management
+  activities across the ecosystem.
+
+  - **Demand Side Primitives** - Incentives to Prime Agents to drive USDS adoption.
+  - **Supply Side Primitives** - Borrowing USDS collateral at the Base Rate from
+    Sky to generate risk-adjusted returns, under the restrictions of the Asset
+    Liability Management framework.
+
+  *Note 1: Potential inaccuracies will be corrected in future MSCs, per Atlas
+  governance.*
+
+# Reproducibility note — a SECOND italic note under the methodology, stating
+# that every figure in the post can be reproduced from the published reports.
+#
+# The commit is per-CYCLE, not boilerplate: it pins the reports as they stood
+# when that post was published. It therefore lives in `report_commits` keyed
+# by month, so last month's hash can never silently ride along on this
+# month's post. A month with no entry emits NO note (and the generator says
+# so on stderr) — omitting the claim is safer than making it against the
+# wrong commit. `--reports-commit` overrides, for drafting.
+reports_repo: 'https://github.com/soterlabs/settlement-reports'
+
+report_commits:
+  '2026-08': 'f3a74bddf2614c8cf0c82183a19e2dd13c66ddc6'
+
+reproducibility_note: >-
+  *Note 2: every figure in this post is reproducible from the settlement reports
+  published at [soterlabs/settlement-reports]({repo}), commit
+  [`{short}`]({repo}/commit/{commit}).*
+
+# Closing section. ``{snr}`` is substituted with the consolidated Sky Net
+# Revenue from the sky_total report.
+treasury_note: |
+  Soter Labs has calculated net revenue for treasury management purposes.
+  Sky's {month_name} net revenue was `{snr} USDS`.
