@@ -73,6 +73,8 @@ def read_tmf_state(contracts: dict[str, str], block: int) -> dict[str, Any]:
         "splitter_hop": _uint(_call(c["MCD_SPLIT"], "hop()", block)),
         "splitter_burn": Decimal(_uint(_call(c["MCD_SPLIT"], "burn()", block))) / WAD,
         "splitter_zzz": _uint(_call(c["MCD_SPLIT"], "zzz()", block)),
+        "splitter_farm": decode_address(_call(c["MCD_SPLIT"], "farm()", block)).hex,
+        "splitter_flapper": decode_address(_call(c["MCD_SPLIT"], "flapper()", block)).hex,
         # Flapper
         "flapper_want": Decimal(_uint(_call(c["MCD_FLAP"], "want()", block))) / WAD,
         "flapper_receiver": decode_address(_call(c["MCD_FLAP"], "receiver()", block)).hex,

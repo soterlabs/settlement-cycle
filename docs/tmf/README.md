@@ -61,6 +61,29 @@ reproduces every figure in the TMF Configurations post for the 2026-09-10
 executive, including the 2,860,943.76 SKY burn (311 kicks, 1,026,300 USDS,
 15,735,190.69 SKY between 2026-08-17 14:02:23 UTC and month-end).
 
+## History dataset (dashboard)
+
+`settlements/tmf/data/` is the machine-readable companion — the full Smart
+Burn Engine history since the Splitter's deployment (2024-09-17), not one
+month. Built by `scripts/build_tmf_history.py`, mirrored into
+settlement-reports as `reports/tmf/data/`, read by msc-dashboard as JSON (the
+markdown reports are for people). Schema and field definitions:
+`settlements/tmf/data/README.md`.
+
+Three series per month / quarter / year, all straight from `Splitter.Kick`:
+`usds_buyback` (lot → Flapper), `usds_to_stakers` (pay → USDS farm), and their
+sum `usds_total` (= tot). Plus `sky_bought` (Flapper `Exec`) and the SKY burn
+stream (`SKY.Transfer` into `0x…dEaD` from anyone, or into the zero address
+from the Pause Proxy only — `burn()` is also how the MKR↔SKY converter retires
+SKY). Every kick records the `burn`/`hop`/`farm`/`flapper` in force, so the
+LSMKR-farm era (Oct 2024 – May 2025) and the LSSKY era are both "USDS to
+stakers" in the aggregates and separable in the CSV.
+
+Extraction uses the reorg-safe HyperSync log store (`DATABASE_URL`): only
+finalized blocks are persisted, so a re-run fetches the increment since the
+last one. The store now carries `transaction_hash` for streams that ask for it
+(the Exec→Kick join needs it).
+
 ## Adding a month
 
 1. Add `months['YYYY-MM']` to `config/tmf.yaml`: `snr` (MSC post), `sky_twap`

@@ -25,6 +25,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import weakref
 from collections.abc import Callable
 from typing import Any
 
@@ -39,8 +40,17 @@ def _reorg_margin() -> int:
     return int(os.environ.get("HYPERSYNC_REORG_MARGIN", str(_DEFAULT_REORG_MARGIN)))
 
 
-def _stream_key(chain: str, selections: list[dict[str, Any]]) -> str:
-    blob = json.dumps({"chain": chain, "sel": selections}, sort_keys=True).encode()
+def _stream_key(
+    chain: str, selections: list[dict[str, Any]], log_fields: list[str] | None = None
+) -> str:
+    """Stable id for one selection. The field set is part of the key ONLY when
+    the caller asks for non-default fields (e.g. ``transaction_hash``): rows
+    persisted under the default set have NULL there, and serving them to a
+    caller that needs the hash would silently break its joins."""
+    key: dict[str, Any] = {"chain": chain, "sel": selections}
+    if log_fields is not None and sorted(log_fields) != sorted(hypersync._DEFAULT_LOG_FIELDS):
+        key["fields"] = sorted(log_fields)
+    blob = json.dumps(key, sort_keys=True).encode()
     return hashlib.sha256(blob).hexdigest()
 
 
@@ -50,23 +60,28 @@ def fetch_logs(
     from_block: int,
     to_block: int,
     *,
+    log_fields: list[str] | None = None,
     post: Callable[..., Any] = requests.post,
 ) -> list[hypersync.LogRow]:
     """Return all logs matching ``selections`` in ``[from_block, to_block]``.
 
     Reads finalized rows from Postgres when covered; fetches only the missing
     (incremental or first-time) range from HyperSync; never persists rows inside
-    the reorg window.
+    the reorg window. ``log_fields`` is forwarded to the client (add
+    ``"transaction_hash"`` to get it back on every row, persisted included).
     """
+    def live(lo: int, hi: int) -> hypersync.QueryResult:
+        return hypersync.query_logs(chain, selections, lo, hi, log_fields=log_fields, post=post)
+
     if os.environ.get("HYPERSYNC_NO_STORE") == "1":
-        return hypersync.query_logs(chain, selections, from_block, to_block, post=post).rows
+        return live(from_block, to_block).rows
 
     conn = postgres_store._get_conn()
     if conn is None:  # no DB → live pass-through (same as before the store existed)
-        return hypersync.query_logs(chain, selections, from_block, to_block, post=post).rows
+        return live(from_block, to_block).rows
 
-    stream = _stream_key(chain, selections)
-    _ensure_schema(conn)
+    stream = _stream_key(chain, selections, log_fields)
+    _ensure_schema_once(conn)
     cov = _get_coverage(conn, stream)  # (covered_from, covered_to) | None
 
     # Fully covered already → serve from DB, zero network.
@@ -100,7 +115,7 @@ def fetch_logs(
     live_rows: list[hypersync.LogRow] = []
     archive = 0
     for f_lo, f_hi in fetch_ranges:
-        res = hypersync.query_logs(chain, selections, f_lo, f_hi, post=post)
+        res = live(f_lo, f_hi)
         live_rows.extend(res.rows)
         archive = max(archive, res.archive_height)
     safe_ceiling = archive - _reorg_margin() if archive else -1
@@ -135,6 +150,22 @@ def fetch_logs(
 # Postgres helpers (thin; reuse postgres_store's connection + graceful state).
 # --------------------------------------------------------------------------
 
+# Connections whose schema has been checked this process. ``_ensure_schema``
+# includes an ``ALTER TABLE … ADD COLUMN IF NOT EXISTS``, which takes an
+# ACCESS EXCLUSIVE lock on the shared log table even when the column already
+# exists — running it on every fetch (hundreds per run) blocks behind any
+# concurrent reader and can hit statement_timeout. Once per connection is
+# enough: the schema cannot change underneath a live connection.
+_SCHEMA_CHECKED: weakref.WeakSet[Any] = weakref.WeakSet()
+
+
+def _ensure_schema_once(conn: Any) -> None:
+    if conn in _SCHEMA_CHECKED:
+        return
+    _ensure_schema(conn)
+    _SCHEMA_CHECKED.add(conn)
+
+
 def _ensure_schema(conn: Any) -> None:
     with conn.cursor() as cur:
         cur.execute(
@@ -146,6 +177,7 @@ def _ensure_schema(conn: Any) -> None:
                 topic3 TEXT, data TEXT NOT NULL,
                 PRIMARY KEY (stream, block_number, log_index)
             );
+            ALTER TABLE hypersync_logs ADD COLUMN IF NOT EXISTS transaction_hash TEXT;
             CREATE INDEX IF NOT EXISTS idx_hypersync_logs_stream_block
                 ON hypersync_logs (stream, block_number);
             CREATE TABLE IF NOT EXISTS hypersync_coverage (
@@ -192,13 +224,13 @@ def _persist(conn: Any, stream: str, rows: list[hypersync.LogRow]) -> None:
             """
             INSERT INTO hypersync_logs
                 (stream, block_number, log_index, block_time, address,
-                 topic0, topic1, topic2, topic3, data)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                 topic0, topic1, topic2, topic3, data, transaction_hash)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (stream, block_number, log_index) DO NOTHING
             """,
             [
                 (stream, r.block_number, r.log_index, r.block_time, r.address,
-                 r.topic0, r.topic1, r.topic2, r.topic3, r.data)
+                 r.topic0, r.topic1, r.topic2, r.topic3, r.data, r.transaction_hash)
                 for r in rows
             ],
         )
@@ -209,7 +241,7 @@ def _read_rows(conn: Any, stream: str, from_block: int, to_block: int) -> list[h
         cur.execute(
             """
             SELECT block_number, log_index, block_time, address,
-                   topic0, topic1, topic2, topic3, data
+                   topic0, topic1, topic2, topic3, data, transaction_hash
             FROM hypersync_logs
             WHERE stream = %s AND block_number >= %s AND block_number <= %s
             ORDER BY block_number, log_index
@@ -220,6 +252,7 @@ def _read_rows(conn: Any, stream: str, from_block: int, to_block: int) -> list[h
             hypersync.LogRow(
                 block_number=int(r[0]), log_index=int(r[1]), block_time=int(r[2]),
                 address=r[3], topic0=r[4], topic1=r[5], topic2=r[6], topic3=r[7], data=r[8],
+                transaction_hash=r[9],
             )
             for r in cur.fetchall()
         ]

@@ -29,10 +29,11 @@ from typing import Any
 
 import requests
 
-from ...domain.tmf import SbeActivity, SbeDistribution, SbeKick, SbeParamChange
+from ...domain.tmf import SbeActivity, SbeDistribution, SbeKick, SbeParamChange, SkyBurn
 from ...extract import hypersync as hs
+from ...extract import hypersync_store
 from ...extract.hypersync import LogRow
-from ._hypersync_common import _evt, _word
+from ._hypersync_common import _addr_topic, _evt, _word
 
 __all__ = ["HyperSyncSbeSource", "MonthNotClosedError", "month_block_range"]
 
@@ -40,7 +41,8 @@ WAD = Decimal(10) ** 18
 RAD = Decimal(10) ** 45
 
 _KICK = _evt("Kick(uint256,uint256,uint256)")        # Splitter
-_EXEC = _evt("Exec(uint256,uint256)")                # FlapperUniV2SwapOnly
+_EXEC = _evt("Exec(uint256,uint256)")                # FlapperUniV2SwapOnly: (lot, bought)
+_EXEC_LP = _evt("Exec(uint256,uint256,uint256,uint256)")  # FlapperUniV2 (LP variant): (lot, sell, buy, liquidity)
 _FILE_U = _evt("File(bytes32,uint256)")              # Splitter hop/burn, Kicker kbump, dist vestId
 _FILE_I = _evt("File(bytes32,int256)")               # Kicker khump
 _FILE_A = _evt("File(bytes32,address)")              # Splitter flapper/farm, Flapper pip, dist
@@ -48,9 +50,10 @@ _DISTRIBUTE = _evt("Distribute(uint256)")            # REWARDS_DIST_LSSKY_SKY
 _VEST_INIT = _evt("Init(uint256,address)")           # DssVest
 _VEST_YANK = _evt("Yank(uint256,uint256)")
 _REWARDS_DURATION = _evt("RewardsDurationUpdated(uint256)")  # StakingRewards
+_TRANSFER = _evt("Transfer(address,address,uint256)")
 
 _TOPICS = [
-    _KICK, _EXEC, _FILE_U, _FILE_I, _FILE_A, _DISTRIBUTE,
+    _KICK, _EXEC, _EXEC_LP, _FILE_U, _FILE_I, _FILE_A, _DISTRIBUTE,
     _VEST_INIT, _VEST_YANK, _REWARDS_DURATION,
 ]
 
@@ -136,11 +139,18 @@ class HyperSyncSbeSource:
         self,
         contracts: dict[str, str],
         *,
+        flappers: list[str] | None = None,
         post: Callable[..., Any] = requests.post,
     ) -> None:
+        """``flappers``: every Flapper the Splitter has ever pointed at (the
+        history run spans a Flapper swap); each maps to the ``MCD_FLAP`` role.
+        Defaults to the current ``contracts["MCD_FLAP"]`` only."""
         self.c = {k: v.lower() for k, v in contracts.items()}
         self._post = post
         self._by_addr = {v: k for k, v in self.c.items()}
+        self._flappers = sorted({self.c["MCD_FLAP"], *(f.lower() for f in flappers or [])})
+        for f in self._flappers:
+            self._by_addr.setdefault(f, "MCD_FLAP")
 
     # ── public ──
 
@@ -154,17 +164,21 @@ class HyperSyncSbeSource:
         to_ts: int,
         burn_at_start: Decimal,
         hop_at_start: int,
+        farm_at_start: str | None = None,
+        flapper_at_start: str | None = None,
     ) -> SbeActivity:
         """Decode the month's kicks / parameter changes / distributions.
 
-        ``burn_at_start`` and ``hop_at_start`` are the Splitter's values at
-        ``from_block - 1`` (state read) — the walk below applies each ``File``
-        in log order so every kick records the parameters in force."""
+        The ``*_at_start`` values are the Splitter's levers at ``from_block - 1``
+        (``extract.tmf_state.read_tmf_state``) — the walk below applies each
+        ``File`` in log order so every kick records the parameters in force.
+        Without ``farm_at_start`` / ``flapper_at_start`` a month with no
+        pointer change would record None for every kick."""
         rows = hs.query_logs(
             "ethereum",
             [{
                 "address": [
-                    self.c["MCD_SPLIT"], self.c["MCD_FLAP"], self.c["MCD_KICK"],
+                    self.c["MCD_SPLIT"], self.c["MCD_KICK"], *self._flappers,
                     self.c["REWARDS_DIST_LSSKY_SKY"], self.c["MCD_VEST_SKY_TREASURY"],
                     self.c["REWARDS_LSSKY_USDS"],
                 ],
@@ -178,20 +192,111 @@ class HyperSyncSbeSource:
         ).rows
         rows.sort(key=lambda r: (r.block_number, r.log_index))
         return self._decode(month, rows, from_block, to_block, from_ts, to_ts,
-                            burn_at_start, hop_at_start)
+                            burn_at_start, hop_at_start,
+                            farm=farm_at_start, flapper=flapper_at_start)
+
+    def history(
+        self,
+        from_block: int,
+        to_block: int,
+        *,
+        deploy_block: int,
+        fetch: Callable[..., list[LogRow]] = hypersync_store.fetch_logs,
+    ) -> SbeActivity:
+        """Every Splitter kick and parameter change in ``[from_block, to_block]``
+        — the dashboard's full history. Goes through the reorg-safe log store
+        (incremental on re-runs when ``DATABASE_URL`` is set).
+
+        ``from_block`` MUST be the Splitter's deployment block: the walk seeds
+        burn / hop / farm / flapper as unset and relies on the deployment
+        ``File`` events to set them. Any later start would stamp every kick
+        with wrong levers, silently — so it is refused."""
+        if from_block != deploy_block:
+            raise ValueError(
+                f"history(): from_block {from_block} must be the Splitter deployment block "
+                f"{deploy_block} — the lever walk has no state before the deployment File "
+                "events (use activity() with *_at_start seeds for a partial range)"
+            )
+        rows = fetch(
+            "ethereum",
+            [{
+                "address": [self.c["MCD_SPLIT"], self.c["MCD_KICK"], *self._flappers],
+                "topics": [[_KICK, _EXEC, _EXEC_LP, _FILE_U, _FILE_I, _FILE_A]],
+            }],
+            from_block, to_block,
+            log_fields=_LOG_FIELDS,
+            post=self._post,
+        )
+        rows = sorted(rows, key=lambda r: (r.block_number, r.log_index))
+        from_ts = rows[0].block_time if rows else 0
+        to_ts = rows[-1].block_time if rows else 0
+        return self._decode("history", rows, from_block, to_block, from_ts, to_ts,
+                            Decimal(0), 0)
+
+    def sky_burns(
+        self,
+        from_block: int,
+        to_block: int,
+        *,
+        sinks: dict[str, str],
+        protocol_senders: list[str],
+        fetch: Callable[..., list[LogRow]] = hypersync_store.fetch_logs,
+    ) -> list[SkyBurn]:
+        """SKY ``Transfer``s into burn sinks. ``sinks['dead']`` counts from ANY
+        sender (``protocol`` flags the protocol ones); ``sinks['zero']`` only
+        from ``protocol_senders`` — ``SKY.burn()`` is also how the MKR↔SKY
+        converter retires SKY, which is a conversion, not a treasury burn."""
+        sky = self.c["SKY"]
+        senders = [s.lower() for s in protocol_senders]
+        if not senders:
+            raise ValueError(
+                "sky_burns(): protocol_senders is empty — the zero-address selection would "
+                "degenerate to every SKY.burn() (incl. the MKR↔SKY converter's)"
+            )
+        dead = sinks["dead"].lower()
+        zero = sinks["zero"].lower()
+        selections: list[dict[str, Any]] = [
+            {"address": [sky], "topics": [[_TRANSFER], [], [_addr_topic(dead)]]},
+            {"address": [sky], "topics": [[_TRANSFER], [_addr_topic(s) for s in senders],
+                                          [_addr_topic(zero)]]},
+        ]
+        rows = fetch("ethereum", selections, from_block, to_block,
+                     log_fields=_LOG_FIELDS, post=self._post)
+        out: list[SkyBurn] = []
+        for r in sorted(rows, key=lambda r: (r.block_number, r.log_index)):
+            if r.topic0 != _TRANSFER or not r.topic1 or not r.topic2:
+                continue
+            sender = "0x" + r.topic1[-40:]
+            sink = "0x" + r.topic2[-40:]
+            if sink not in (dead, zero):
+                continue
+            if sink == zero and sender not in senders:
+                continue
+            if r.transaction_hash is None:
+                raise ValueError(
+                    f"hypersync_sbe: SKY burn log at block {r.block_number} has no "
+                    "transaction_hash"
+                )
+            out.append(SkyBurn(
+                block=r.block_number, log_index=r.log_index, ts=r.block_time,
+                tx=r.transaction_hash, sender=sender, sink=sink,
+                amount=Decimal(_word(r.data, 0)) / WAD, protocol=sender in senders,
+            ))
+        return out
 
     # ── decoding ──
 
     def _decode(
         self, month: Any, rows: list[LogRow], from_block: int, to_block: int,
         from_ts: int, to_ts: int, burn: Decimal, hop: int,
+        *, farm: str | None = None, flapper: str | None = None,
     ) -> SbeActivity:
         act = SbeActivity(
             month=str(month), from_block=from_block, to_block=to_block,
             from_ts=from_ts, to_ts=to_ts,
         )
         execs: dict[str, list[tuple[int, Decimal]]] = {}   # tx → [(log_index, SKY bought)]
-        kicks_raw: list[tuple[LogRow, Decimal, Decimal, Decimal, Decimal, int]] = []
+        kicks_raw: list[tuple[LogRow, Decimal, Decimal, Decimal, Decimal, int, str | None, str | None]] = []
 
         for r in rows:
             key = self._by_addr.get(r.address, r.address)
@@ -208,9 +313,13 @@ class HyperSyncSbeSource:
                 tot = Decimal(_word(r.data, 0)) / RAD
                 lot = Decimal(_word(r.data, 1)) / WAD
                 pay = Decimal(_word(r.data, 2)) / WAD
-                kicks_raw.append((r, tot, lot, pay, burn, hop))
+                kicks_raw.append((r, tot, lot, pay, burn, hop, farm, flapper))
             elif r.topic0 == _EXEC and key == "MCD_FLAP":
                 execs.setdefault(tx, []).append((r.log_index, Decimal(_word(r.data, 1)) / WAD))
+            elif r.topic0 == _EXEC_LP and key == "MCD_FLAP":
+                # FlapperUniV2 (LP variant): Exec(lot, sell, buy, liquidity) — ``buy`` is
+                # the SKY bought in the swap before the LP deposit.
+                execs.setdefault(tx, []).append((r.log_index, Decimal(_word(r.data, 2)) / WAD))
             elif r.topic0 in (_FILE_U, _FILE_I):
                 what = _what(r.topic1)
                 raw = _signed(_word(r.data, 0)) if r.topic0 == _FILE_I else _word(r.data, 0)
@@ -225,28 +334,33 @@ class HyperSyncSbeSource:
                     hop = raw
                 act.param_changes.append(SbeParamChange(
                     block=r.block_number, log_index=r.log_index, ts=r.block_time, tx=tx,
-                    contract=key, what=label, value=value,
+                    address=r.address, contract=key, what=label, value=value,
                 ))
             elif r.topic0 == _FILE_A:
+                what = _what(r.topic1)
+                addr = "0x" + r.data[-40:]
+                if key == "MCD_SPLIT" and what == "farm":
+                    farm = addr
+                elif key == "MCD_SPLIT" and what == "flapper":
+                    flapper = addr
                 act.param_changes.append(SbeParamChange(
                     block=r.block_number, log_index=r.log_index, ts=r.block_time, tx=tx,
-                    contract=key, what=_what(r.topic1) or "?",
-                    value="0x" + r.data[-40:],
+                    address=r.address, contract=key, what=what or "?", value=addr,
                 ))
             elif r.topic0 == _REWARDS_DURATION and key == "REWARDS_LSSKY_USDS":
                 act.param_changes.append(SbeParamChange(
                     block=r.block_number, log_index=r.log_index, ts=r.block_time, tx=tx,
-                    contract=key, what="rewardsDuration", value=Decimal(_word(r.data, 0)),
+                    address=r.address, contract=key, what="rewardsDuration", value=Decimal(_word(r.data, 0)),
                 ))
             elif r.topic0 == _VEST_INIT and key == "MCD_VEST_SKY_TREASURY":
                 act.param_changes.append(SbeParamChange(
                     block=r.block_number, log_index=r.log_index, ts=r.block_time, tx=tx,
-                    contract=key, what="vest.init (id)", value=Decimal(int(r.topic1 or "0x0", 16)),
+                    address=r.address, contract=key, what="vest.init (id)", value=Decimal(int(r.topic1 or "0x0", 16)),
                 ))
             elif r.topic0 == _VEST_YANK and key == "MCD_VEST_SKY_TREASURY":
                 act.param_changes.append(SbeParamChange(
                     block=r.block_number, log_index=r.log_index, ts=r.block_time, tx=tx,
-                    contract=key, what="vest.yank (id)", value=Decimal(int(r.topic1 or "0x0", 16)),
+                    address=r.address, contract=key, what="vest.yank (id)", value=Decimal(int(r.topic1 or "0x0", 16)),
                 ))
             elif r.topic0 == _DISTRIBUTE and key == "REWARDS_DIST_LSSKY_SKY":
                 act.distributions.append(SbeDistribution(
@@ -259,7 +373,7 @@ class HyperSyncSbeSource:
         # a Kick's Exec is the nearest unconsumed Exec BEFORE its log index.
         # A tx with several kicks (hop = 0, or a multicall keeper) therefore
         # never double-counts one Exec.
-        for r, tot, lot, pay, b, h in kicks_raw:
+        for r, tot, lot, pay, b, h, fm, fl in kicks_raw:
             tx = r.transaction_hash or ""     # validated non-None above
             bought = Decimal(0)
             if lot > 0:
@@ -273,7 +387,7 @@ class HyperSyncSbeSource:
                 _, bought = pending.pop(before[-1])
             act.kicks.append(SbeKick(
                 block=r.block_number, log_index=r.log_index, ts=r.block_time, tx=tx,
-                tot=tot, lot=lot, pay=pay, bought=bought, burn=b, hop=h,
+                tot=tot, lot=lot, pay=pay, bought=bought, burn=b, hop=h, farm=fm, flapper=fl,
             ))
         leftover = {tx: v for tx, v in execs.items() if v}
         if leftover:

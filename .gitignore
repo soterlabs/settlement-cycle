@@ -39,8 +39,9 @@ out.json
 .env
 .env.local
 
-# Data
-data
+# Data (repo-root scratch folder only — nested `data/` dirs such as
+# settlements/tmf/data are real, published artifacts)
+/data/
 
 # Settlement artifacts:
 #   * track ``{prime}_settlement_{month}_{year}.xlsx`` — canonical

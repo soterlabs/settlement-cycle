@@ -48,6 +48,47 @@ policy:
   beam_min_hop: 550
   beam_max_rate_per_year: '350000000'
 
+# ── Full-history dataset (settlements/tmf/data, scripts/build_tmf_history.py)
+# Every Splitter kick since the Splitter was deployed (2024-09-17, block
+# 20,770,191 — the first kick came 2024-11-14), plus every SKY burn. Persisted
+# incrementally in the HyperSync log store (DATABASE_URL) and published as
+# JSON aggregates + per-event CSVs for the msc-dashboard.
+history:
+  splitter_deploy_block: 20770191   # history() must start here — its lever walk is seeded by the deployment File events
+  # Every Flapper the Splitter has ever pointed at (File(flapper) events).
+  # 0xc5a9… is the LP-depositing FlapperUniV2 (never kicked before it was
+  # replaced on 2024-09-30); 0x374D… is FlapperUniV2SwapOnly, live since.
+  flappers:
+    - '0xc5A9CaeBA70D6974cBDFb28120C3611Dd9910355'
+    - '0x374D9c3d5134052Bc558F432Afa1df6575f07407'
+  # SKY sinks that count as a burn. Transfers to 0x…dEaD from ANY sender are
+  # recorded (protocol vs other is flagged per row); transfers to the zero
+  # address are recorded only from protocol senders — SKY.burn() is also what
+  # the MKR↔SKY converter emits, which is not a treasury burn.
+  burn_sinks:
+    dead: '0x000000000000000000000000000000000000dEaD'
+    zero: '0x0000000000000000000000000000000000000000'
+  protocol_senders:
+    - '0xBE8E3e3618f7474F8cB1d074A26afFef007E98FB'   # MCD_PAUSE_PROXY
+  # Reader-facing caveats published verbatim in sbe_history.json → notes.
+  # Facts, not code: edit here when the regime history changes.
+  notes:
+    - >-
+      The Splitter was deployed 2024-09-17 (block 20,770,191); the first kick ran
+      2024-11-14. The USDS farm leg pointed at the LSMKR USDS farm (0x9228…7cb1)
+      from 2024-10-21 to 2025-05-19 and at the LSSKY USDS farm (0x38e4…8865) since;
+      'usds_to_stakers' covers both (the per-kick CSV carries the farm address).
+    - >-
+      Kicks under splitter.burn = 100% have usds_to_stakers = 0 by construction
+      (Feb–May 2025, Nov 2025 – Aug 17 2026).
+    - >-
+      SKY burns: the 2025-06-30 executive burned 426,292,860.23 SKY held by the Pause
+      Proxy (SKY.burn(), zero address). The first TMF-rule burn (10/55 of the previous
+      month's buys) is scheduled in the 2026-09-10 executive.
+    - >-
+      Aggregates are quantized to 2 dp (price to 6 dp) for charting; the CSVs are exact.
+      A period with burns but no kicks has null sky_avg_price / first_ts / last_ts.
+
 # Chainlog keys → addresses.
 contracts:
   MCD_VAT:                 '0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B'

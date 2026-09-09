@@ -21,7 +21,7 @@ def _no_db(monkeypatch):
 
 def test_passthrough_without_db(monkeypatch):
     captured = {}
-    def fake_query(chain, sel, frm, to, post=None):
+    def fake_query(chain, sel, frm, to, log_fields=None, post=None):
         captured.update(chain=chain, frm=frm, to=to)
         return QueryResult(rows=[_row(100), _row(101)], archive_height=200)
     monkeypatch.setattr(hypersync, "query_logs", fake_query)
@@ -68,7 +68,7 @@ class _FakeCursor:
             stream, lo, hi = params
             self._result = [
                 (r.block_number, r.log_index, r.block_time, r.address,
-                 r.topic0, r.topic1, r.topic2, r.topic3, r.data)
+                 r.topic0, r.topic1, r.topic2, r.topic3, r.data, r.transaction_hash)
                 for r in sorted(self._s["logs"].get(stream, []),
                                 key=lambda r: (r.block_number, r.log_index))
                 if lo <= r.block_number <= hi
@@ -83,7 +83,8 @@ class _FakeCursor:
     def executemany(self, sql, seq):
         for p in seq:
             stream = p[0]
-            r = LogRow(p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9])
+            r = LogRow(p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9],
+                       transaction_hash=p[10] if len(p) > 10 else None)
             self._s["logs"].setdefault(stream, []).append(r)
 
     def fetchone(self): return self._result
@@ -101,7 +102,7 @@ def test_persists_only_finalized_and_serves_incrementally(monkeypatch):
     monkeypatch.setenv("HYPERSYNC_REORG_MARGIN", "100")
 
     calls = {"n": 0}
-    def fake_query(chain, sel, frm, to, post=None):
+    def fake_query(chain, sel, frm, to, log_fields=None, post=None):
         calls["n"] += 1
         # head=1000; return one row per requested boundary block for visibility
         rows = [_row(frm), _row(min(to, 900))]
@@ -149,7 +150,7 @@ def test_near_head_unfinalized_tail_not_persisted(monkeypatch):
     # Re-fetch same range: finalized prefix now served from DB; only the
     # uncovered tail (901..980) needs the network.
     calls = {"n": 0}
-    def counting_query(chain, s, frm, to, post=None):
+    def counting_query(chain, s, frm, to, log_fields=None, post=None):
         calls["n"] += 1
         assert frm == 901                      # incremental: past the ceiling
         return QueryResult(rows=[_row(950)], archive_height=1000)
@@ -168,7 +169,7 @@ def test_disjoint_backfill_does_not_claim_the_gap(monkeypatch):
     monkeypatch.setenv("HYPERSYNC_REORG_MARGIN", "100")
 
     fetched: list[tuple[int, int]] = []
-    def fake_query(chain, sel, frm, to, post=None):
+    def fake_query(chain, sel, frm, to, log_fields=None, post=None):
         fetched.append((frm, to))
         return QueryResult(rows=[_row(frm), _row(to)], archive_height=10_000)
     monkeypatch.setattr(hypersync, "query_logs", fake_query)
@@ -201,7 +202,7 @@ def test_adjacent_backfill_extends_coverage_contiguously(monkeypatch):
     monkeypatch.setenv("HYPERSYNC_REORG_MARGIN", "100")
 
     fetched: list[tuple[int, int]] = []
-    def fake_query(chain, sel, frm, to, post=None):
+    def fake_query(chain, sel, frm, to, log_fields=None, post=None):
         fetched.append((frm, to))
         return QueryResult(rows=[_row(frm), _row(to)], archive_height=10_000)
     monkeypatch.setattr(hypersync, "query_logs", fake_query)
@@ -256,3 +257,70 @@ def test_query_logs_raises_on_missing_block_timestamp(monkeypatch):
     }
     with pytest.raises(hypersync.HyperSyncError, match="no matching block timestamp"):
         hypersync.query_logs("ethereum", [], 0, 100, post=_PagePost([page]))
+
+
+def test_transaction_hash_round_trips_and_keys_its_own_stream(monkeypatch):
+    """A caller asking for transaction_hash gets it back from the DB on a
+    re-read, and does NOT share a stream with default-field callers (whose
+    persisted rows have no hash)."""
+    conn = _FakeConn()
+    monkeypatch.setattr(hypersync_store.postgres_store, "_get_conn", lambda: conn)
+    monkeypatch.setenv("HYPERSYNC_REORG_MARGIN", "100")
+    seen_fields = []
+
+    def fake_query(chain, sel, frm, to, log_fields=None, post=None):
+        seen_fields.append(log_fields)
+        row = LogRow(frm, 0, 1_700_000_000, "0xtok", "0xt0", None, None, None, "0x01",
+                     transaction_hash="0xabc" if log_fields else None)
+        return QueryResult(rows=[row], archive_height=1000)
+    monkeypatch.setattr(hypersync, "query_logs", fake_query)
+
+    sel = [{"address": ["0xtok"]}]
+    fields = ["block_number", "log_index", "address", "topic0", "data", "transaction_hash"]
+    r1 = hypersync_store.fetch_logs("ethereum", sel, 0, 10, log_fields=fields)
+    assert r1[0].transaction_hash == "0xabc" and seen_fields == [fields]
+    r2 = hypersync_store.fetch_logs("ethereum", sel, 0, 10, log_fields=fields)   # from DB
+    assert r2[0].transaction_hash == "0xabc" and len(seen_fields) == 1
+    # default-field caller: separate stream → its own fetch, no hash
+    r3 = hypersync_store.fetch_logs("ethereum", sel, 0, 10)
+    assert r3[0].transaction_hash is None and len(seen_fields) == 2
+    assert hypersync_store._stream_key("ethereum", sel) != hypersync_store._stream_key("ethereum", sel, fields)
+
+
+def test_schema_is_ensured_once_per_connection(monkeypatch):
+    """The ADD COLUMN IF NOT EXISTS takes an ACCESS EXCLUSIVE lock — it must not
+    run on every fetch."""
+    conn = _FakeConn()
+    ddl = {"n": 0}
+    real_cursor = conn.cursor
+
+    class _CountingCursor:
+        def __init__(self, inner): self._c = inner
+        def __enter__(self):
+            self._c.__enter__()
+            return self
+        def __exit__(self, *a): return self._c.__exit__(*a)
+        def execute(self, sql, params=()):
+            if "CREATE TABLE IF NOT EXISTS hypersync_logs" in sql:
+                ddl["n"] += 1
+            return self._c.execute(sql, params)
+        def executemany(self, *a): return self._c.executemany(*a)
+        def fetchone(self): return self._c.fetchone()
+        def fetchall(self): return self._c.fetchall()
+    conn.cursor = lambda: _CountingCursor(real_cursor())
+    monkeypatch.setattr(hypersync_store.postgres_store, "_get_conn", lambda: conn)
+    monkeypatch.setenv("HYPERSYNC_REORG_MARGIN", "100")
+    monkeypatch.setattr(hypersync, "query_logs",
+                        lambda *a, **k: QueryResult(rows=[_row(5)], archive_height=1000))
+    hypersync_store._SCHEMA_CHECKED.clear()
+    for _ in range(3):
+        hypersync_store.fetch_logs("ethereum", [{"address": ["0xtok"]}], 0, 10)
+    assert ddl["n"] == 1
+
+
+def test_default_field_set_does_not_fork_the_stream():
+    sel = [{"address": ["0xtok"]}]
+    k_none = hypersync_store._stream_key("ethereum", sel)
+    k_default = hypersync_store._stream_key("ethereum", sel, list(hypersync._DEFAULT_LOG_FIELDS))
+    k_tx = hypersync_store._stream_key("ethereum", sel, [*hypersync._DEFAULT_LOG_FIELDS, "transaction_hash"])
+    assert k_none == k_default != k_tx
