@@ -1,0 +1,137 @@
+# Treasury Management Function (TMF) — configuration.
+#
+# Methodology: Sky Atlas A.2.3 waterfall (Steps 0–4) as parameterised by
+# BA Labs' "TMF Configurations" post (forum.skyeco.com/t/28153) and the
+# operator's TMF Calculator sheet (validated against the 2026-08-13 exec).
+#
+#   Step 0  Sky Net Revenue (SNR) of the cycle month — from the MSC post /
+#           settlements/sky_total/<month>.
+#   Step 1  20% security & maintenance (10% Core Council + 10% Fortification
+#           Foundation) → one Core Council Buffer transfer (interim).
+#   Step 2  Aggregate Backstop Capital retention: 50% of the remainder while
+#           Sky Reserves < Turbo-Fill Floor; 50% × (1 − ABC/TBC) between Floor
+#           and Target Backstop Capital (1.5% of USDS supply); 0% at target.
+#   Step 3  Smart Burn Engine budget = remainder after Step 2, split 45%
+#           (buy SKY → stakers) / 45% (USDS → stakers) / 10% (buy SKY → burn).
+#           On-chain: kicker.kbump fixed at 6,000 USDS; splitter.hop is SOLVED
+#           so that the engine spends the budget over a 365/12-day month;
+#           splitter.burn = the two buying legs combined (55%).
+#   Step 4  SKY staking rewards = 45% leg ÷ prior-month SKY TWAP, fronted by
+#           the treasury through a 90-day DssVest stream sized for 3 months
+#           (vestTot); the 10/55 share of the SKY actually bought under the
+#           55% regime is burned in the following month's MSC spell.
+#
+# All addresses are Ethereum mainnet (chainlog.skyeco.com, 2026-08-26).
+
+policy:
+  step1_share: '0.20'                 # 10% Core Council + 10% Fortification
+  step1_core_council_share: '0.10'
+  step1_fortification_share: '0.10'
+  step2_max_retention: '0.50'
+  turbo_fill_floor: '150000000'       # USDS
+  tbc_share_of_supply: '0.015'        # Target Backstop Capital = 1.5% × USDS supply
+  step3_sky_rewards_share: '0.45'
+  step3_usds_rewards_share: '0.45'
+  step3_burn_share: '0.10'
+  vest_runway_months: 3
+  vest_tau_days: 90
+  engine_month_days: '30.416666666666666667'   # 365/12
+  kbump: '6000'                       # USDS per batch — held fixed; hop is solved
+  sky_farm_rewards_duration: 604800   # 7 d — REWARDS_LSSKY_SKY, keeper schedule
+  # SBE BEAM bounds (2026-08-13 exec) — what the operator multisig may set
+  # without a vote. The solved hop must respect them.
+  beam_max_kbump: '12000'
+  beam_min_hop: 550
+  beam_max_rate_per_year: '350000000'
+
+# Chainlog keys → addresses.
+contracts:
+  MCD_VAT:                 '0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B'
+  MCD_VOW:                 '0xA950524441892A31ebddF91d3cEEFa04Bf454466'
+  MCD_KICK:                '0xD889477102e8C4A857b78Fcc2f134535176Ec1Fc'   # Kicker — pulls kbump from the surplus
+  MCD_SPLIT:               '0xBF7111F13386d23cb2Fba5A538107A73f6872bCF'   # Splitter — burn% → Flapper, rest → USDS farm
+  MCD_FLAP:                '0x374D9c3d5134052Bc558F432Afa1df6575f07407'   # FlapperUniV2SwapOnly — buys SKY on Uniswap v2
+  FLAP_SKY_ORACLE:         '0xc2ffbbDCCF1466Eb8968a846179191cb881eCdff'
+  MCD_SBEBEAM:             '0xc8b61d211D3D03A630Fb09199E17953a8c9749a9'
+  REWARDS_LSSKY_USDS:      '0x38E4254bD82ED5Ee97CD1C4278FAae748d998865'   # USDS farm (fed per batch)
+  REWARDS_LSSKY_SKY:       '0xB44C2Fb4181D7Cb06bdFf34A46FdFe4a259B40Fc'   # SKY farm (weekly pull)
+  REWARDS_DIST_LSSKY_SKY:  '0x675671A8756dDb69F7254AFB030865388Ef699Ee'   # distributor (vest → farm)
+  MCD_VEST_SKY_TREASURY:   '0x67eaDb3288cceDe034cE95b0511DCc65cf630bB6'
+  MCD_PAUSE_PROXY:         '0xBE8E3e3618f7474F8cB1d074A26afFef007E98FB'   # Flapper receiver — bought SKY lands here
+  UNIV2_USDS_SKY:          '0x2621cc0B3F3c079c1Db0E80794AA24976F0b9e3c'
+  USDS:                    '0xdC035D45d973E3EC169d2276DDab16f1e407384F'
+  DAI:                     '0x6B175474E89094C44Da98b954EedeAC495271d0F'
+  SKY:                     '0x56072C95FAA701256059aa122697B133aDEd9279'
+
+# Per-month INPUTS that are not derivable on-chain (or are pinned to the
+# published governance figure), plus the PUBLISHED parameter block the
+# report cross-checks itself against. Anything on-chain (SBE kicks, SKY
+# bought, USDS supply, vest / farm state) is extracted, never pinned.
+#
+#   snr          Step 0 — the MSC post's Sky Net Revenue (integer USDS). When
+#                omitted the report reads settlements/sky_total/<month>.
+#   sky_twap     prior-month SKY TWAP, USDS/SKY — BA Labs observatory figure
+#                quoted in forum t/28153 (the Dune minute-average of
+#                prices.usd, query 8544603, is a cross-check only).
+#   sky_reserves Aggregate Backstop Capital — financial.skyeco.com/risk/capital
+#                as quoted in t/28153. Not reproducible from Vat/Vow state
+#                (vat.dai(vow) − unqueued sin ≈ 164M on 2026-08-31 vs 75.7M).
+#   spell        the executive's published parameter block (cross-check).
+#   dune_8544603 Dune cross-check row for the month (captured 2026-09-09).
+months:
+  '2026-07':
+    msc: 'MSC#11'
+    snr: 10517426
+    sky_twap: '0.058608801023606662'
+    sky_reserves: '80482665.96'
+    spell:
+      title: '2026-08-13 Executive — Initialize SBE BEAM, MSC for July 2026, Increase Buybacks'
+      status: 'executed 2026-08-17 14:02:23 UTC (block 25775271)'
+      executed_at: '2026-08-17T14:02:23Z'
+      executed_block: 25775271
+      vest_id: 16
+      hop: 3748
+      rewards_duration_usds: 3748
+      burn: '0.55'
+      vest_tot: 96903706
+      vest_tau_days: 90
+      core_council_transfer: 2103484
+      step3_capital: '4206970.40'
+      usds_rewards: '1893136.68'
+      sky_rewards: '32301235.43'
+      sky_burn: '0'            # burn method starts with the September spell
+    dune_8544603:
+      sky_twap: '0.05859709845430105'
+      sbe_usds_spent: '1164000'
+      sbe_sky_bought: '19831814.352667566'
+  '2026-08':
+    msc: 'MSC#12'
+    snr: 15745296
+    sky_twap: '0.059371239604985234'
+    sky_reserves: '75728460.53'
+    spell:
+      title: '2026-09-10 Executive — MSC for August 2026 (per TMF Configurations, t/28153)'
+      status: 'published in t/28153; not yet executed as of 2026-09-09'
+      executed_at: null
+      executed_block: null
+      vest_id: null
+      hop: 2504
+      rewards_duration_usds: 2504
+      burn: '0.55'
+      vest_tot: 143208393
+      vest_tau_days: 90
+      core_council_transfer: null
+      step3_capital: '6298118.40'
+      usds_rewards: '2834153.28'
+      sky_rewards: '47736131.14'
+      sky_burn: '2860943.76'
+      burn_window:
+        start: '2026-08-17T14:02:23Z'
+        kicks: 311
+        usds_spent: '1026300'
+        sky_bought: '15735190.69'
+        sky_to_stakers: '12874246.93'
+    dune_8544603:
+      sky_twap: '0.05938676030465944'
+      sbe_usds_spent: '1644300'
+      sbe_sky_bought: '27100702.111690357'

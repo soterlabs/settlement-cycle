@@ -53,10 +53,12 @@ settlement-cycle/
 │   ├── valuation_poc/         ← Dune↔Python POC + open questions
 │   ├── obex/                  ← OBEX README + monthly findings (reconciliation notes)
 │   ├── grove/                 ← Phase-2 prime context (PRD, README, QUESTIONS)
+│   ├── tmf/                   ← Treasury Management Function report — method + open questions
 │   └── {keel,prysm,skybase,spark}/   ← Phase-3+ prime READMEs
 ├── reference/
 │   └── obex_monthly_pnl.sql   ← historical reference implementation
 ├── settlements/<prime>/<month>/  ← generated artifacts (committed to git)
+├── settlements/tmf/<month>/      ← TMF waterfall + Smart Burn Engine report (scripts/run_tmf_2026.py)
 ├── src/settle/
 │   ├── cli.py                 ← argparse entry point
 │   ├── domain/                ← Prime, Venue, Period dataclasses
