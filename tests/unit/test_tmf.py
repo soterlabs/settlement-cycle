@@ -179,9 +179,10 @@ def _seed_sky_total(root: Path, label: str, snr: str, *, provenance: bool) -> No
 
 def test_read_sky_total_snr_falls_back_to_committed_summary(tmp_path: Path):
     _seed_sky_total(tmp_path, "2026-08", "15745296.07", provenance=False)
-    assert read_sky_total_snr(tmp_path, "2026-08") == D("15745296.07")
+    a = read_sky_total_snr(tmp_path, "2026-08")
+    assert (a.snr, a.generated) == (D("15745296.07"), "summary.md")
     _seed_sky_total(tmp_path, "2026-07", "10517425.807934152", provenance=True)
-    assert read_sky_total_snr(tmp_path, "2026-07") == D("10517425.807934152")
+    assert read_sky_total_snr(tmp_path, "2026-07").snr == D("10517425.807934152")
     assert read_sky_total_snr(tmp_path, "2026-06") is None
 
 

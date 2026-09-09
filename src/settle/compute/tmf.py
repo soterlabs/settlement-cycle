@@ -30,13 +30,15 @@ lives in ``normalize/sources/hypersync_sbe.py`` and ``extract/tmf_state.py``.
 from __future__ import annotations
 
 import json
-import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 from typing import Any
+
+from ..domain.tmf import SbeActivity, SbeDistribution, SbeKick, SbeParamChange
+from .snr_artifact import read_sky_total_snr
 
 __all__ = [
     "SbeActivity",
@@ -314,57 +316,8 @@ def attribute_burn(kicks: list[SbeKick], policy: TmfPolicy) -> tuple[list[SbeKic
     return window, to_stakers, to_burn
 
 
-# ── on-chain activity (decoded by the source, aggregated here) ───────────────
-
-
-@dataclass(frozen=True)
-class SbeKick:
-    """One Kicker.flap → Splitter.kick → Flapper.exec batch."""
-
-    block: int
-    log_index: int
-    ts: int
-    tx: str
-    tot: Decimal      # USDS pulled from the surplus (Kick.tot, rad → USDS)
-    lot: Decimal      # USDS to the Flapper (Kick.lot)
-    pay: Decimal      # USDS to the USDS farm (Kick.pay)
-    bought: Decimal   # SKY received by the receiver (Exec.bought; 0 when lot == 0)
-    burn: Decimal     # splitter.burn in force at the kick (wad → fraction)
-    hop: int          # splitter.hop in force at the kick
-
-
-@dataclass(frozen=True)
-class SbeParamChange:
-    block: int
-    log_index: int
-    ts: int
-    tx: str
-    contract: str     # chainlog key
-    what: str             # 'hop' | 'burn' | 'kbump' | 'khump' | 'vestId' | 'rewardsDuration' |
-                          # 'vest.init (id)' | 'vest.yank (id)' | '<what> (raw)' for unknown levers
-    value: Decimal | str  # human units (seconds / fraction / USDS / id); an address for File(address)
-
-
-@dataclass(frozen=True)
-class SbeDistribution:
-    """A REWARDS_DIST_LSSKY_SKY.distribute() — vested SKY moved into the SKY farm."""
-
-    block: int
-    ts: int
-    tx: str
-    amount: Decimal   # SKY
-
-
-@dataclass
-class SbeActivity:
-    month: str
-    from_block: int
-    to_block: int
-    from_ts: int
-    to_ts: int
-    kicks: list[SbeKick] = field(default_factory=list)
-    param_changes: list[SbeParamChange] = field(default_factory=list)
-    distributions: list[SbeDistribution] = field(default_factory=list)
+# ── on-chain activity: the Sbe* records live in domain/tmf.py (shared with the
+#    HyperSync source, which must not import compute); aggregation is here. ──
 
 
 @dataclass(frozen=True)
@@ -439,22 +392,6 @@ class TmfMonthly:
     warnings: list[str] = field(default_factory=list)
 
 
-def read_sky_total_snr(repo_root: Path, label: str) -> Decimal | None:
-    """SNR from ``settlements/sky_total/<label>`` — provenance first, then the
-    committed summary.md (provenance.json is gitignored, so a fresh clone only
-    has the markdown). None when neither exists."""
-    d = repo_root / "settlements" / "sky_total" / label
-    prov = d / "provenance.json"
-    if prov.exists():
-        return Decimal(str(json.loads(prov.read_text())["results"]["sky_net_revenue"]))
-    summ = d / "summary.md"
-    if summ.exists():
-        m = re.search(r"\*\*Sky Net Revenue\*\*\s*\|\s*\*\*(-?[\d,]+\.?\d*)\*\*", summ.read_text())
-        if m:
-            return Decimal(m.group(1).replace(",", ""))
-    return None
-
-
 def _check(
     r: TmfMonthly, label: str, computed: Decimal | int | None,
     published: Any, *, tol: Decimal | None = None, unit: str = "",
@@ -494,7 +431,8 @@ def compute_tmf_monthly(
     src: dict[str, str] = dict(sources or {})
 
     # ── Step 0: SNR — pinned to the MSC post, cross-checked vs sky_total ──
-    artifact_snr = read_sky_total_snr(repo_root, month) if repo_root else None
+    artifact = read_sky_total_snr(repo_root, month) if repo_root else None
+    artifact_snr = artifact.snr if artifact else None
     if month_cfg.get("snr") is not None:
         snr = _d(month_cfg["snr"])
         src["snr"] = f"config/tmf.yaml months['{month}'].snr (MSC post figure)"

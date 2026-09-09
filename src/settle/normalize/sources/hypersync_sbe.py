@@ -29,7 +29,7 @@ from typing import Any
 
 import requests
 
-from ...compute.tmf import SbeActivity, SbeDistribution, SbeKick, SbeParamChange
+from ...domain.tmf import SbeActivity, SbeDistribution, SbeKick, SbeParamChange
 from ...extract import hypersync as hs
 from ...extract.hypersync import LogRow
 from ._hypersync_common import _evt, _word

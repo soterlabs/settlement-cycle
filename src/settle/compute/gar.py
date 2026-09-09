@@ -17,15 +17,15 @@ the GAR prime's month-N report — a missing artifact fails loud.
 
 from __future__ import annotations
 
-import json
 import logging
 from decimal import Decimal
 from pathlib import Path
 
 from ..domain.period import Month
 from ..domain.primes import Prime
+from .snr_artifact import read_sky_total_snr
 
-__all__ = ["compute_gar", "REPO_ROOT"]
+__all__ = ["REPO_ROOT", "compute_gar"]
 
 _log = logging.getLogger(__name__)
 
@@ -62,9 +62,9 @@ def compute_gar(
 
     label = str(month)
     root = repo_root if repo_root is not None else REPO_ROOT
-    prov_path = root / "settlements" / "sky_total" / label / "provenance.json"
+    artifact = read_sky_total_snr(root, label)
 
-    if not prov_path.exists():
+    if artifact is None:
         raise FileNotFoundError(
             f"gar: {prime.id} {label} needs settlements/sky_total/"
             f"{label}/provenance.json (GAR = share × the month's SNR) — "
@@ -78,9 +78,7 @@ def compute_gar(
             "becomes share × the now-frozen SNR."
         )
 
-    prov = json.loads(prov_path.read_text())
-    snr = Decimal(prov["results"]["sky_net_revenue"])
-    generated = prov.get("generated_at_utc") or prov.get("id", "sky_total")
+    snr, generated = artifact.snr, artifact.generated
     gar = prime.gar.share * snr
     if gar < 0:
         _log.warning(
