@@ -52,8 +52,13 @@ CREATE TABLE IF NOT EXISTS hypersync_logs (
     topic2        TEXT,
     topic3        TEXT,
     data          TEXT     NOT NULL,
+    -- Populated only for streams whose caller requested "transaction_hash"
+    -- (those streams carry the field set in their key, see
+    -- hypersync_store._stream_key); NULL for the default field set.
+    transaction_hash TEXT,
     PRIMARY KEY (stream, block_number, log_index)
 );
+ALTER TABLE hypersync_logs ADD COLUMN IF NOT EXISTS transaction_hash TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_hypersync_logs_stream_block
     ON hypersync_logs (stream, block_number);

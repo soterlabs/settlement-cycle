@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from decimal import Decimal
 
-__all__ = ["SbeActivity", "SbeDistribution", "SbeKick", "SbeParamChange"]
+__all__ = ["SbeActivity", "SbeDistribution", "SbeKick", "SbeParamChange", "SkyBurn"]
 
 
 @dataclass(frozen=True)
@@ -28,6 +28,8 @@ class SbeKick:
     bought: Decimal   # SKY received by the receiver (Exec.bought; 0 when lot == 0)
     burn: Decimal     # splitter.burn in force at the kick (wad → fraction)
     hop: int          # splitter.hop in force at the kick
+    farm: str | None = None      # splitter.farm in force (USDS staker farm address)
+    flapper: str | None = None   # splitter.flapper in force
 
 
 @dataclass(frozen=True)
@@ -62,3 +64,20 @@ class SbeActivity:
     kicks: list[SbeKick] = field(default_factory=list)
     param_changes: list[SbeParamChange] = field(default_factory=list)
     distributions: list[SbeDistribution] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class SkyBurn:
+    """A SKY ``Transfer`` into a burn sink (``0x…dEaD`` or the zero address via
+    ``burn()``). ``protocol`` marks a sender that is the protocol itself (the
+    Pause Proxy executing a spell) — the "true Sky burn" the dashboard shows;
+    anything else is a third party sending SKY to dead."""
+
+    block: int
+    log_index: int
+    ts: int
+    tx: str
+    sender: str
+    sink: str
+    amount: Decimal
+    protocol: bool

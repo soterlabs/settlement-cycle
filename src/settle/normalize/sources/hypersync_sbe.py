@@ -29,10 +29,11 @@ from typing import Any
 
 import requests
 
-from ...domain.tmf import SbeActivity, SbeDistribution, SbeKick, SbeParamChange
+from ...domain.tmf import SbeActivity, SbeDistribution, SbeKick, SbeParamChange, SkyBurn
 from ...extract import hypersync as hs
+from ...extract import hypersync_store
 from ...extract.hypersync import LogRow
-from ._hypersync_common import _evt, _word
+from ._hypersync_common import _addr_topic, _evt, _word
 
 __all__ = ["HyperSyncSbeSource", "MonthNotClosedError", "month_block_range"]
 
@@ -48,6 +49,7 @@ _DISTRIBUTE = _evt("Distribute(uint256)")            # REWARDS_DIST_LSSKY_SKY
 _VEST_INIT = _evt("Init(uint256,address)")           # DssVest
 _VEST_YANK = _evt("Yank(uint256,uint256)")
 _REWARDS_DURATION = _evt("RewardsDurationUpdated(uint256)")  # StakingRewards
+_TRANSFER = _evt("Transfer(address,address,uint256)")
 
 _TOPICS = [
     _KICK, _EXEC, _FILE_U, _FILE_I, _FILE_A, _DISTRIBUTE,
@@ -136,11 +138,18 @@ class HyperSyncSbeSource:
         self,
         contracts: dict[str, str],
         *,
+        flappers: list[str] | None = None,
         post: Callable[..., Any] = requests.post,
     ) -> None:
+        """``flappers``: every Flapper the Splitter has ever pointed at (the
+        history run spans a Flapper swap); each maps to the ``MCD_FLAP`` role.
+        Defaults to the current ``contracts["MCD_FLAP"]`` only."""
         self.c = {k: v.lower() for k, v in contracts.items()}
         self._post = post
         self._by_addr = {v: k for k, v in self.c.items()}
+        self._flappers = sorted({self.c["MCD_FLAP"], *(f.lower() for f in flappers or [])})
+        for f in self._flappers:
+            self._by_addr.setdefault(f, "MCD_FLAP")
 
     # ── public ──
 
@@ -180,6 +189,80 @@ class HyperSyncSbeSource:
         return self._decode(month, rows, from_block, to_block, from_ts, to_ts,
                             burn_at_start, hop_at_start)
 
+    def history(
+        self,
+        from_block: int,
+        to_block: int,
+        *,
+        fetch: Callable[..., list[LogRow]] = hypersync_store.fetch_logs,
+    ) -> SbeActivity:
+        """Every Splitter kick and parameter change in ``[from_block, to_block]``
+        — the dashboard's full history. Goes through the reorg-safe log store
+        (incremental on re-runs when ``DATABASE_URL`` is set). Start at the
+        Splitter's deployment block: its initial ``File`` events set burn / hop
+        / flapper / farm, so no state read is needed."""
+        rows = fetch(
+            "ethereum",
+            [{
+                "address": [self.c["MCD_SPLIT"], self.c["MCD_KICK"], *self._flappers],
+                "topics": [[_KICK, _EXEC, _FILE_U, _FILE_I, _FILE_A]],
+            }],
+            from_block, to_block,
+            log_fields=_LOG_FIELDS,
+            post=self._post,
+        )
+        rows = sorted(rows, key=lambda r: (r.block_number, r.log_index))
+        from_ts = rows[0].block_time if rows else 0
+        to_ts = rows[-1].block_time if rows else 0
+        return self._decode("history", rows, from_block, to_block, from_ts, to_ts,
+                            Decimal(0), 0)
+
+    def sky_burns(
+        self,
+        from_block: int,
+        to_block: int,
+        *,
+        sinks: dict[str, str],
+        protocol_senders: list[str],
+        fetch: Callable[..., list[LogRow]] = hypersync_store.fetch_logs,
+    ) -> list[SkyBurn]:
+        """SKY ``Transfer``s into burn sinks. ``sinks['dead']`` counts from ANY
+        sender (``protocol`` flags the protocol ones); ``sinks['zero']`` only
+        from ``protocol_senders`` — ``SKY.burn()`` is also how the MKR↔SKY
+        converter retires SKY, which is a conversion, not a treasury burn."""
+        sky = self.c["SKY"]
+        senders = [s.lower() for s in protocol_senders]
+        dead = sinks["dead"].lower()
+        zero = sinks["zero"].lower()
+        selections: list[dict[str, Any]] = [
+            {"address": [sky], "topics": [[_TRANSFER], [], [_addr_topic(dead)]]},
+            {"address": [sky], "topics": [[_TRANSFER], [_addr_topic(s) for s in senders],
+                                          [_addr_topic(zero)]]},
+        ]
+        rows = fetch("ethereum", selections, from_block, to_block,
+                     log_fields=_LOG_FIELDS, post=self._post)
+        out: list[SkyBurn] = []
+        for r in sorted(rows, key=lambda r: (r.block_number, r.log_index)):
+            if r.topic0 != _TRANSFER or not r.topic1 or not r.topic2:
+                continue
+            sender = "0x" + r.topic1[-40:]
+            sink = "0x" + r.topic2[-40:]
+            if sink not in (dead, zero):
+                continue
+            if sink == zero and sender not in senders:
+                continue
+            if r.transaction_hash is None:
+                raise ValueError(
+                    f"hypersync_sbe: SKY burn log at block {r.block_number} has no "
+                    "transaction_hash"
+                )
+            out.append(SkyBurn(
+                block=r.block_number, log_index=r.log_index, ts=r.block_time,
+                tx=r.transaction_hash, sender=sender, sink=sink,
+                amount=Decimal(_word(r.data, 0)) / WAD, protocol=sender in senders,
+            ))
+        return out
+
     # ── decoding ──
 
     def _decode(
@@ -191,7 +274,9 @@ class HyperSyncSbeSource:
             from_ts=from_ts, to_ts=to_ts,
         )
         execs: dict[str, list[tuple[int, Decimal]]] = {}   # tx → [(log_index, SKY bought)]
-        kicks_raw: list[tuple[LogRow, Decimal, Decimal, Decimal, Decimal, int]] = []
+        kicks_raw: list[tuple[LogRow, Decimal, Decimal, Decimal, Decimal, int, str | None, str | None]] = []
+        farm: str | None = None
+        flapper: str | None = None
 
         for r in rows:
             key = self._by_addr.get(r.address, r.address)
@@ -208,7 +293,7 @@ class HyperSyncSbeSource:
                 tot = Decimal(_word(r.data, 0)) / RAD
                 lot = Decimal(_word(r.data, 1)) / WAD
                 pay = Decimal(_word(r.data, 2)) / WAD
-                kicks_raw.append((r, tot, lot, pay, burn, hop))
+                kicks_raw.append((r, tot, lot, pay, burn, hop, farm, flapper))
             elif r.topic0 == _EXEC and key == "MCD_FLAP":
                 execs.setdefault(tx, []).append((r.log_index, Decimal(_word(r.data, 1)) / WAD))
             elif r.topic0 in (_FILE_U, _FILE_I):
@@ -228,10 +313,15 @@ class HyperSyncSbeSource:
                     contract=key, what=label, value=value,
                 ))
             elif r.topic0 == _FILE_A:
+                what = _what(r.topic1)
+                addr = "0x" + r.data[-40:]
+                if key == "MCD_SPLIT" and what == "farm":
+                    farm = addr
+                elif key == "MCD_SPLIT" and what == "flapper":
+                    flapper = addr
                 act.param_changes.append(SbeParamChange(
                     block=r.block_number, log_index=r.log_index, ts=r.block_time, tx=tx,
-                    contract=key, what=_what(r.topic1) or "?",
-                    value="0x" + r.data[-40:],
+                    contract=key, what=what or "?", value=addr,
                 ))
             elif r.topic0 == _REWARDS_DURATION and key == "REWARDS_LSSKY_USDS":
                 act.param_changes.append(SbeParamChange(
@@ -259,7 +349,7 @@ class HyperSyncSbeSource:
         # a Kick's Exec is the nearest unconsumed Exec BEFORE its log index.
         # A tx with several kicks (hop = 0, or a multicall keeper) therefore
         # never double-counts one Exec.
-        for r, tot, lot, pay, b, h in kicks_raw:
+        for r, tot, lot, pay, b, h, fm, fl in kicks_raw:
             tx = r.transaction_hash or ""     # validated non-None above
             bought = Decimal(0)
             if lot > 0:
@@ -273,7 +363,7 @@ class HyperSyncSbeSource:
                 _, bought = pending.pop(before[-1])
             act.kicks.append(SbeKick(
                 block=r.block_number, log_index=r.log_index, ts=r.block_time, tx=tx,
-                tot=tot, lot=lot, pay=pay, bought=bought, burn=b, hop=h,
+                tot=tot, lot=lot, pay=pay, bought=bought, burn=b, hop=h, farm=fm, flapper=fl,
             ))
         leftover = {tx: v for tx, v in execs.items() if v}
         if leftover:

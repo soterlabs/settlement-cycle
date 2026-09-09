@@ -48,6 +48,29 @@ policy:
   beam_min_hop: 550
   beam_max_rate_per_year: '350000000'
 
+# ── Full-history dataset (settlements/tmf/data, scripts/build_tmf_history.py)
+# Every Splitter kick since the Splitter was deployed (2024-09-17, block
+# 20,770,191 — the first kick came 2024-11-14), plus every SKY burn. Persisted
+# incrementally in the HyperSync log store (DATABASE_URL) and published as
+# JSON aggregates + per-event CSVs for the msc-dashboard.
+history:
+  from_block: 20770191
+  # Every Flapper the Splitter has ever pointed at (File(flapper) events).
+  # 0xc5a9… is the LP-depositing FlapperUniV2 (never kicked before it was
+  # replaced on 2024-09-30); 0x374D… is FlapperUniV2SwapOnly, live since.
+  flappers:
+    - '0xc5A9CaeBA70D6974cBDFb28120C3611Dd9910355'
+    - '0x374D9c3d5134052Bc558F432Afa1df6575f07407'
+  # SKY sinks that count as a burn. Transfers to 0x…dEaD from ANY sender are
+  # recorded (protocol vs other is flagged per row); transfers to the zero
+  # address are recorded only from protocol senders — SKY.burn() is also what
+  # the MKR↔SKY converter emits, which is not a treasury burn.
+  burn_sinks:
+    dead: '0x000000000000000000000000000000000000dEaD'
+    zero: '0x0000000000000000000000000000000000000000'
+  protocol_senders:
+    - '0xBE8E3e3618f7474F8cB1d074A26afFef007E98FB'   # MCD_PAUSE_PROXY
+
 # Chainlog keys → addresses.
 contracts:
   MCD_VAT:                 '0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B'

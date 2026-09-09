@@ -41,6 +41,8 @@ out.json
 
 # Data
 data
+# …except the published SBE history dataset (JSON + CSVs the dashboard reads)
+!settlements/tmf/data/
 
 # Settlement artifacts:
 #   * track ``{prime}_settlement_{month}_{year}.xlsx`` — canonical

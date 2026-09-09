@@ -59,6 +59,7 @@ settlement-cycle/
 │   └── obex_monthly_pnl.sql   ← historical reference implementation
 ├── settlements/<prime>/<month>/  ← generated artifacts (committed to git)
 ├── settlements/tmf/<month>/      ← TMF waterfall + Smart Burn Engine report (scripts/run_tmf_2026.py)
+├── settlements/tmf/data/         ← SBE full-history dataset for msc-dashboard (scripts/build_tmf_history.py)
 ├── src/settle/
 │   ├── cli.py                 ← argparse entry point
 │   ├── domain/                ← Prime, Venue, Period dataclasses
