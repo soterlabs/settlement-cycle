@@ -27,4 +27,11 @@ jobs:
         # default; they're not safe to run in CI without credentials.
         # ``-m "not live"`` is a belt-and-braces filter on top of the
         # default deselection.
+        #
+        # ENVIO_API_TOKEN: the HyperSync client resolves its bearer token
+        # before the (mocked) transport is called, so mock-transport unit
+        # tests still need the variable set. Secrets are not exposed to
+        # pull requests from forks — those runs fall back to a dummy value.
+        env:
+          ENVIO_API_TOKEN: ${{ secrets.ENVIO_API_TOKEN || 'ci-dummy-token' }}
         run: pytest tests/unit -m "not live" -q
