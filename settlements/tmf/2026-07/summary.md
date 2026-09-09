@@ -163,7 +163,7 @@ Blocks 25,433,939-25,656,292 (2026-07-01 00:00:00 UTC → 2026-07-31 23:59:59 UT
 | vestTau (days) | 90 | 90 | ✓ |
 | Core Council Buffer transfer (Step 1) | 2103485 | 2103484 | ✓ |
 | SKY to burn (10/55 of window buys) | 0.00 | 0 | ✓ |
-| SKY bought in month vs Dune 8544603 | 19831814.35 | 19831814.352667566 | ✓ |
+| SKY bought in month vs Dune 8544603 | 19831814.352667572896053003 | 19831814.352667566 | ✓ |
 | USDS spent in month vs Dune 8544603 | 1164000 | 1164000 | ✓ |
 | SKY TWAP: BA observatory vs Dune prices.usd minute-avg | 0.058608801023606662 | 0.05859709845430105 | info |
 | on-chain splitter.hop after cast | 3748 | 3748 | ✓ |

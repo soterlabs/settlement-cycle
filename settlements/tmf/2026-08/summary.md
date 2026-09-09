@@ -167,7 +167,7 @@ Blocks 25,656,293-25,878,704 (2026-08-01 00:00:00 UTC → 2026-08-31 23:59:59 UT
 | burn-window USDS spent | 1026300 | 1026300 | ✓ |
 | burn-window SKY bought | 15735190.69 | 15735190.69 | ✓ |
 | burn-window SKY to stakers (45/55) | 12874246.93 | 12874246.93 | ✓ |
-| SKY bought in month vs Dune 8544603 | 27100702.11 | 27100702.111690357 | ✓ |
+| SKY bought in month vs Dune 8544603 | 27100702.111690366847843234 | 27100702.111690357 | ✓ |
 | USDS spent in month vs Dune 8544603 | 1644300 | 1644300 | ✓ |
 | SKY TWAP: BA observatory vs Dune prices.usd minute-avg | 0.059371239604985234 | 0.05938676030465944 | info |
 

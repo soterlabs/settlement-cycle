@@ -86,6 +86,14 @@ numbers but would in other regimes.
    of *every* buy in the month (August: 4,927,400 vs 2,860,944 SKY) and flags
    "confirm vs flat 10% reading". The summary shows both; the since-cast
    reading is the one cross-checked.
+
+   *Policy is a single, undated 45/45/10.* Each kick's **denominator** is its
+   own regime's `splitter.burn` (read from the chain), but the **numerator**
+   (`step3_burn_share`, 10%) is one global constant. If governance ever moves
+   the Step 3 split, do **not** edit the share in place — historical months
+   would re-attribute on re-run. Add a dated policy table (effective-from →
+   shares) and attribute each kick with the shares in force; until then the
+   code refuses a regime whose `splitter.burn` is below the burn leg.
 2. **Step 2 between-tier formula.** "50% × (1 − ABC/TBC)" between the Floor
    and the target is the sheet's reading; the Atlas wording was not
    retrievable. With TBC (≈95M) currently *below* the Floor (150M) the band is

@@ -174,15 +174,54 @@ def test_month_block_range_uses_prior_eod_plus_one(monkeypatch):
         return {1_785_542_399: 25656292, 1_788_220_799: 25878704}[ts]
 
     monkeypatch.setattr(S.hs, "find_block_at_or_before", fake_find)
+    monkeypatch.setattr(S.hs, "block_timestamp", lambda chain, b: 1_788_220_799)
 
     class M:
         year, month = 2026, 8
 
-    # "now" is 2026-09-09: August is closed -> exact EoD, partial=False
+    # "now" is 2026-09-09 and the archive serves the EoD block: complete month
     assert S.month_block_range(M(), now=1_789_000_000) == (
         25656293, 25878704, 1_785_542_400, 1_788_220_799, False,
     )
     assert calls == [1_785_542_399, 1_788_220_799]
+
+
+def test_month_block_range_detects_a_lagging_archive_head(monkeypatch):
+    """Calendar month closed, but HyperSync's head is 20 min short of month-end:
+    the resolver head-clamps — that MUST surface as partial, not complete."""
+    monkeypatch.setattr(S.hs, "find_block_at_or_before",
+                        lambda chain, ts: {1_785_542_399: 25656292, 1_788_220_799: 25878600}[ts])
+    monkeypatch.setattr(S.hs, "block_timestamp", lambda chain, b: 1_788_219_599)   # 23:39:59
+
+    class M:
+        year, month = 2026, 8
+
+    with pytest.raises(S.MonthNotClosedError, match="archive head"):
+        S.month_block_range(M(), now=1_789_000_000)
+    got = S.month_block_range(M(), allow_partial=True, now=1_789_000_000)
+    assert got == (25656293, 25878600, 1_785_542_400, 1_788_219_599, True)
+
+
+def test_null_transaction_hash_is_loud():
+    logs = [_log(_C["MCD_FLAP"], S._EXEC, [3300 * WAD, 50_000 * WAD], 10, 1, None)]
+    blocks = [{"number": 10, "timestamp": hex(10_000)}]
+    src = S.HyperSyncSbeSource(_C, post=_transport(logs, blocks, to_block=20))
+    with pytest.raises(ValueError, match="no transaction_hash"):
+        src.activity("2026-08", 1, 20, from_ts=0, to_ts=1, burn_at_start=D("0.55"), hop_at_start=3748)
+
+
+def test_query_filters_on_topic0():
+    seen: list[dict] = []
+
+    def post(url, json, headers, timeout):
+        seen.append(json)
+        return _Resp({"archive_height": 30, "next_block": 21, "data": []})
+
+    S.HyperSyncSbeSource(_C, post=post).activity(
+        "2026-08", 1, 20, from_ts=0, to_ts=1, burn_at_start=D("0.55"), hop_at_start=3748,
+    )
+    topics = seen[0]["logs"][0]["topics"][0]
+    assert S._KICK in topics and S._EXEC in topics and S._DISTRIBUTE in topics
 
 
 def test_month_block_range_refuses_an_open_month_unless_allowed(monkeypatch):

@@ -30,8 +30,14 @@ class SnrArtifact:
     path: Path
 
 
-def read_sky_total_snr(repo_root: Path, label: str) -> SnrArtifact | None:
-    """SNR for month ``label`` (``YYYY-MM``), or None when no artifact exists."""
+def read_sky_total_snr(
+    repo_root: Path, label: str, *, require_provenance: bool = False
+) -> SnrArtifact | None:
+    """SNR for month ``label`` (``YYYY-MM``), or None when no artifact exists.
+
+    ``require_provenance=True`` disables the summary.md fallback: callers whose
+    output is itself a settlement figure (GAR) must not compute from a stale,
+    2-dp committed row while the full-precision artifact is missing."""
     d = repo_root / "settlements" / "sky_total" / label
     prov = d / "provenance.json"
     if prov.exists():
@@ -42,7 +48,7 @@ def read_sky_total_snr(repo_root: Path, label: str) -> SnrArtifact | None:
             path=prov,
         )
     summ = d / "summary.md"
-    if summ.exists():
+    if not require_provenance and summ.exists():
         m = _SUMMARY_ROW.search(summ.read_text())
         if m:
             return SnrArtifact(

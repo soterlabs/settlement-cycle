@@ -49,6 +49,11 @@ _VEST_INIT = _evt("Init(uint256,address)")           # DssVest
 _VEST_YANK = _evt("Yank(uint256,uint256)")
 _REWARDS_DURATION = _evt("RewardsDurationUpdated(uint256)")  # StakingRewards
 
+_TOPICS = [
+    _KICK, _EXEC, _FILE_U, _FILE_I, _FILE_A, _DISTRIBUTE,
+    _VEST_INIT, _VEST_YANK, _REWARDS_DURATION,
+]
+
 _LOG_FIELDS = [
     "block_number", "log_index", "address",
     "topic0", "topic1", "topic2", "topic3", "data", "transaction_hash",
@@ -103,16 +108,27 @@ def month_block_range(
     end = datetime(y + (m // 12), (m % 12) + 1, 1, tzinfo=UTC)
     start_ts = int(start.timestamp())
     end_ts = int(end.timestamp()) - 1
-    partial = end_ts >= (time.time() if now is None else now)
-    if partial and not allow_partial:
+    end_dt = f"{datetime.fromtimestamp(end_ts, UTC):%Y-%m-%d %H:%M:%S} UTC"
+    if end_ts >= (time.time() if now is None else now) and not allow_partial:
         raise MonthNotClosedError(
-            f"{month}: month-end {datetime.fromtimestamp(end_ts, UTC):%Y-%m-%d %H:%M:%S} UTC "
-            "is in the future — pass --allow-partial to report the month-to-date."
+            f"{month}: month-end {end_dt} is in the future — pass --allow-partial to "
+            "report the month-to-date."
         )
     prev_eod = hs.find_block_at_or_before("ethereum", start_ts - 1)
     to_block = hs.find_block_at_or_before("ethereum", end_ts)
-    to_ts = hs.block_timestamp("ethereum", to_block) if partial else end_ts
-    return prev_eod + 1, to_block, start_ts, to_ts, partial
+    # ``partial`` is decided from the RESOLVED block, not the wall clock: when
+    # the archive head lags month-end the resolver head-clamps (warning only),
+    # and a report built on that block would describe a truncated month as
+    # complete. Any month whose end block cannot yet be served is partial.
+    to_ts = hs.block_timestamp("ethereum", to_block)
+    partial = to_ts < end_ts - 60          # > one block-time short of month-end
+    if partial and not allow_partial:
+        raise MonthNotClosedError(
+            f"{month}: the HyperSync archive head (block {to_block}, "
+            f"{datetime.fromtimestamp(to_ts, UTC):%Y-%m-%d %H:%M:%S} UTC) has not reached "
+            f"month-end {end_dt} — retry once it catches up, or pass --allow-partial."
+        )
+    return prev_eod + 1, to_block, start_ts, (to_ts if partial else end_ts), partial
 
 
 class HyperSyncSbeSource:
@@ -146,11 +162,16 @@ class HyperSyncSbeSource:
         in log order so every kick records the parameters in force."""
         rows = hs.query_logs(
             "ethereum",
-            [{"address": [
-                self.c["MCD_SPLIT"], self.c["MCD_FLAP"], self.c["MCD_KICK"],
-                self.c["REWARDS_DIST_LSSKY_SKY"], self.c["MCD_VEST_SKY_TREASURY"],
-                self.c["REWARDS_LSSKY_USDS"],
-            ]}],
+            [{
+                "address": [
+                    self.c["MCD_SPLIT"], self.c["MCD_FLAP"], self.c["MCD_KICK"],
+                    self.c["REWARDS_DIST_LSSKY_SKY"], self.c["MCD_VEST_SKY_TREASURY"],
+                    self.c["REWARDS_LSSKY_USDS"],
+                ],
+                # topic0 filter — without it every Staked/Withdrawn/RewardPaid
+                # log of both farms (thousands a month) is fetched and dropped.
+                "topics": [_TOPICS],
+            }],
             from_block, to_block,
             log_fields=_LOG_FIELDS,
             post=self._post,
@@ -174,7 +195,15 @@ class HyperSyncSbeSource:
 
         for r in rows:
             key = self._by_addr.get(r.address, r.address)
-            tx = r.transaction_hash or ""
+            if r.transaction_hash is None:
+                # The Exec→Kick join is keyed on the tx hash; a missing one
+                # would collapse rows into a shared bucket and pair across
+                # unrelated transactions.
+                raise ValueError(
+                    f"hypersync_sbe: log at block {r.block_number} index {r.log_index} "
+                    f"({key}) has no transaction_hash — refusing to join events"
+                )
+            tx = r.transaction_hash
             if r.topic0 == _KICK and key == "MCD_SPLIT":
                 tot = Decimal(_word(r.data, 0)) / RAD
                 lot = Decimal(_word(r.data, 1)) / WAD
@@ -231,7 +260,7 @@ class HyperSyncSbeSource:
         # A tx with several kicks (hop = 0, or a multicall keeper) therefore
         # never double-counts one Exec.
         for r, tot, lot, pay, b, h in kicks_raw:
-            tx = r.transaction_hash or ""
+            tx = r.transaction_hash or ""     # validated non-None above
             bought = Decimal(0)
             if lot > 0:
                 pending = execs.get(tx, [])

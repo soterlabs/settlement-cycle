@@ -63,3 +63,13 @@ def test_negative_snr_floors_to_zero(tmp_path):
     gar, basis = compute_gar(_prime(_CFG), Month(2026, 3), repo_root=tmp_path)
     assert gar == Decimal("0")
     assert "NEGATIVE" in basis and "floored" in basis
+
+
+def test_summary_only_artifact_is_not_enough(tmp_path):
+    """GAR must not compute from the committed 2-dp summary.md (possibly
+    stale) — only provenance.json counts, so the rebuild is forced."""
+    d = tmp_path / "settlements" / "sky_total" / "2026-07"
+    d.mkdir(parents=True)
+    (d / "summary.md").write_text("| **Sky Net Revenue** | **10,517,425.81** |\n")
+    with pytest.raises(FileNotFoundError, match=r"provenance\.json"):
+        compute_gar(_prime(_CFG), Month(2026, 7), repo_root=tmp_path)

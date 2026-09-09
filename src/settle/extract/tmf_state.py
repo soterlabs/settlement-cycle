@@ -17,7 +17,7 @@ from decimal import Decimal
 from typing import Any
 
 from ..domain.primes import Address, Chain
-from ._abi import pad_address, pad_uint
+from ._abi import decode_address, pad_address, pad_uint
 from ._keccak import keccak256
 from .rpc import _decode_uint, balance_of, block_timestamp, eth_call, total_supply_of
 
@@ -75,7 +75,7 @@ def read_tmf_state(contracts: dict[str, str], block: int) -> dict[str, Any]:
         "splitter_zzz": _uint(_call(c["MCD_SPLIT"], "zzz()", block)),
         # Flapper
         "flapper_want": Decimal(_uint(_call(c["MCD_FLAP"], "want()", block))) / WAD,
-        "flapper_receiver": "0x" + _call(c["MCD_FLAP"], "receiver()", block)[-40:],
+        "flapper_receiver": decode_address(_call(c["MCD_FLAP"], "receiver()", block)).hex,
         # USDS farm
         "usds_farm_rewards_duration": _uint(_call(c["REWARDS_LSSKY_USDS"], "rewardsDuration()", block)),
         "usds_farm_reward_rate": Decimal(_uint(_call(c["REWARDS_LSSKY_USDS"], "rewardRate()", block))) / WAD,
@@ -89,7 +89,7 @@ def read_tmf_state(contracts: dict[str, str], block: int) -> dict[str, Any]:
         # Distributor + vest stream
         "dist_vest_id": vest_id,
         "dist_last_distributed_at": _uint(_call(c["REWARDS_DIST_LSSKY_SKY"], "lastDistributedAt()", block)),
-        "vest_usr": "0x" + _call(vest, "usr(uint256)", block, vid)[-40:],
+        "vest_usr": decode_address(_call(vest, "usr(uint256)", block, vid)).hex,
         "vest_bgn": vest_field("bgn"),
         "vest_clf": vest_field("clf"),
         "vest_fin": vest_field("fin"),
@@ -108,4 +108,19 @@ def read_tmf_state(contracts: dict[str, str], block: int) -> dict[str, Any]:
         "usds_total_supply": supply("USDS"),
         "dai_total_supply": supply("DAI"),
     }
+    # ``_decode_uint`` maps an empty / reverted ``0x`` return to 0. For these
+    # levers 0 is impossible on a live system, so a 0 is an RPC hiccup that
+    # would otherwise flow into the waterfall (TBC = 0, burn = 0) unnoticed —
+    # and be cached. Fail loud instead.
+    never_zero = (
+        "kicker_kbump", "splitter_hop", "splitter_burn", "usds_total_supply",
+        "vest_tot", "vest_cap", "dist_vest_id",
+    )
+    zeros = [k for k in never_zero if not state[k]]
+    if zeros:
+        raise RuntimeError(
+            f"read_tmf_state: {', '.join(zeros)} read as 0 at block {block} — an empty "
+            "eth_call return was decoded as zero; the RPC did not serve this block. "
+            "Clear the cached value (SETTLE_CACHE_DIR) and retry."
+        )
     return state

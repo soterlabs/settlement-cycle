@@ -276,8 +276,8 @@ def test_attribute_burn_is_per_regime_not_global_constant(policy: TmfPolicy):
     ]
     window, to_stakers, to_burn = attribute_burn(kicks, policy)
     assert [k.bought for k in window] == [D(550), D(600)]
-    assert to_burn == D(200)
-    assert to_stakers == D(950)
+    q = D("0.000001")
+    assert (to_burn.quantize(q), to_stakers.quantize(q)) == (D(200), D(950))
 
 
 def test_no_activity_emits_no_burn_window_checks(cfg: dict, policy: TmfPolicy, tmp_path: Path):
@@ -344,3 +344,62 @@ def test_partial_month_is_bannered(cfg: dict, policy: TmfPolicy, tmp_path: Path)
                             pins={"partial": True, "to_block": 25800000, "to_ts": 1787500000})
     assert any(w.startswith("PARTIAL MONTH") for w in r.warnings)
     assert "**PARTIAL MONTH** — data stops at block 25800000" in render_summary(r)
+
+
+# ── review round 2 ──────────────────────────────────────────────────────────
+
+def test_executed_at_accepts_yaml_date_only(cfg: dict, policy: TmfPolicy, tmp_path: Path):
+    """Unquoted ``executed_at: 2026-09-10`` → datetime.date; both render and
+    the JSON writer must cope."""
+    from datetime import date
+
+    from settle.compute.tmf import write_tmf
+    mcfg = json.loads(json.dumps(cfg["months"]["2026-08"]))
+    mcfg["spell"]["executed_at"] = date(2026, 9, 10)
+    r = compute_tmf_monthly("2026-08", mcfg, policy, activity=None,
+                            state={"usds_total_supply": D("6366968221"), "block": 1},
+                            repo_root=tmp_path)
+    assert "2026-09-10 00:00:00 UTC" in render_summary(r)
+    out = write_tmf(r, tmp_path / "out")
+    assert json.loads(out["provenance"].read_text())["published"]["executed_at"] == "2026-09-10"
+
+
+def test_kick_in_cast_block_before_the_file_is_legacy(policy: TmfPolicy):
+    """Same block as the spell, lower log index → still burn=1.0 → excluded;
+    after the File(burn) in that block → burn=0.55 → included."""
+    before = _kick(0, _CAST_TS, "1", 13787, "1000")
+    after = _kick(1, _CAST_TS, "0.55", 3748, "550")
+    window, to_stakers, to_burn = attribute_burn([before, after], policy)
+    assert window == [after]
+    q = D("0.000001")
+    assert (to_burn.quantize(q), to_stakers.quantize(q)) == (D(100), D(450))
+
+
+def test_burn_attribution_refuses_regime_below_the_burn_leg(policy: TmfPolicy):
+    with pytest.raises(ValueError, match="dated policy"):
+        burn_attribution(D(1000), policy, burn=D("0.05"))
+
+
+def test_chain_checks_report_model_as_computed_and_chain_as_reference(cfg: dict, policy: TmfPolicy, tmp_path: Path):
+    post_cast = {"block": 25775271, "ts": _CAST_TS, "splitter_hop": 3749,
+                 "usds_farm_rewards_duration": 3748, "splitter_burn": D("0.55"),
+                 "vest_tot": D("96903706"), "vest_bgn": _CAST_TS,
+                 "vest_fin": _CAST_TS + 90 * 86400, "dist_vest_id": 16, "kicker_kbump": D(6000)}
+    r = compute_tmf_monthly("2026-07", cfg["months"]["2026-07"], policy, activity=None,
+                            state={"usds_total_supply": D("6255703158"), "block": 1},
+                            spell_state=post_cast, repo_root=tmp_path)
+    chk = next(c for c in r.checks if c["label"] == "on-chain splitter.hop after cast")
+    assert (chk["computed"], chk["published"], chk["ok"]) == ("3748", "3749", False)
+    assert any("computed 3,748.00 vs on-chain 3,749.00" in w for w in r.warnings)
+
+
+def test_dune_check_compares_unrounded_values(cfg: dict, policy: TmfPolicy, tmp_path: Path):
+    """27,100,702.1049 is within 0.01 of Dune's 27,100,702.111690357; rounding
+    the computed side to cents first (…702.10) would spuriously fail it."""
+    act = SbeActivity(month="2026-08", from_block=1, to_block=2, from_ts=0, to_ts=1,
+                      kicks=[_kick(0, _CAST_TS - 100, "1", 13787, "27100702.1049")])
+    r = compute_tmf_monthly("2026-08", cfg["months"]["2026-08"], policy, activity=act,
+                            state={"usds_total_supply": D("6366968221"), "block": 1},
+                            repo_root=tmp_path)
+    chk = next(c for c in r.checks if c["label"].startswith("SKY bought in month vs Dune"))
+    assert chk["ok"] is True

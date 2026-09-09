@@ -62,7 +62,10 @@ def compute_gar(
 
     label = str(month)
     root = repo_root if repo_root is not None else REPO_ROOT
-    artifact = read_sky_total_snr(root, label)
+    # provenance.json only — the committed summary.md is a 2-dp display
+    # artifact and may be stale relative to the prime reports; GAR must fail
+    # loud and force the sky_total rebuild (see the error text below).
+    artifact = read_sky_total_snr(root, label, require_provenance=True)
 
     if artifact is None:
         raise FileNotFoundError(

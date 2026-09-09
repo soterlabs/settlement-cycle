@@ -32,7 +32,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 from typing import Any
@@ -90,6 +90,8 @@ def _parse_ts(v: Any) -> int | None:
     if isinstance(v, datetime):
         dt = v if v.tzinfo else v.replace(tzinfo=UTC)
         return int(dt.timestamp())
+    if isinstance(v, date):          # PyYAML: unquoted date-only ``2026-09-10``
+        return int(datetime(v.year, v.month, v.day, tzinfo=UTC).timestamp())
     dt = datetime.fromisoformat(str(v).replace("Z", "+00:00"))
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=UTC)
@@ -292,6 +294,13 @@ def burn_attribution(
     b = policy.splitter_burn if burn is None else burn
     if b <= 0:
         return sky_bought, ZERO
+    if policy.step3_burn_share > b:
+        raise ValueError(
+            f"burn_attribution: regime splitter.burn {b} is below the policy burn leg "
+            f"{policy.step3_burn_share} — the Step 3 split changed; add a dated policy "
+            "(see docs/tmf/README.md, open question 1) instead of re-attributing with "
+            "today's shares"
+        )
     to_burn = sky_bought * (policy.step3_burn_share / b)
     return sky_bought - to_burn, to_burn
 
@@ -306,7 +315,14 @@ def attribute_burn(kicks: list[SbeKick], policy: TmfPolicy) -> tuple[list[SbeKic
     regime correctly instead of keying off one global constant.
 
     Returns ``(window_kicks, to_stakers, to_burn)``."""
-    window = [k for k in kicks if k.ts >= policy.tmf_effective_from]
+    # A kick that lands in the cast block BEFORE the spell's File(burn) log
+    # still carries the legacy burn (1.0) at the effective timestamp — it is a
+    # legacy buy, not a TMF one, so it is excluded on (ts, burn), not ts alone.
+    window = [
+        k for k in kicks
+        if k.ts >= policy.tmf_effective_from
+        and not (k.ts == policy.tmf_effective_from and k.burn >= ONE)
+    ]
     to_stakers = ZERO
     to_burn = ZERO
     for k in window:
@@ -409,8 +425,9 @@ def _check(
         "tolerance": str(tol), "unit": unit, "ok": ok,
     })
     if not ok:
+        ref = "on-chain" if label.startswith("on-chain") else "published"
         r.warnings.append(
-            f"{label}: computed {comp:,.2f} vs published {pub:,.2f} {unit} "
+            f"{label}: computed {comp:,.2f} vs {ref} {pub:,.2f} {unit} "
             f"(Δ {comp - pub:+,.2f}, tolerance ±{tol})"
         )
 
@@ -525,7 +542,7 @@ def compute_tmf_monthly(
         _check(r, "burn-window SKY bought", _q2(sky_window), bw.get("sky_bought"), unit="SKY")
         _check(r, "burn-window SKY to stakers (45/55)", _q2(to_stakers),
                bw.get("sky_to_stakers"), unit="SKY")
-        _check(r, "SKY bought in month vs Dune 8544603", _q2(sky_month), dune.get("sbe_sky_bought"),
+        _check(r, "SKY bought in month vs Dune 8544603", sky_month, dune.get("sbe_sky_bought"),
                tol=D("0.01"), unit="SKY")
         _check(r, "USDS spent in month vs Dune 8544603", usds_month, dune.get("sbe_usds_spent"),
                unit="USDS")
@@ -548,22 +565,24 @@ def compute_tmf_monthly(
     # spell casts in M+1, so the report month's OWN month-end state still
     # shows the previous parameters — only the post-cast snapshot is a valid
     # check of what the spell filed. ──
+    # Argument order matters for the rendered columns: ``computed`` is OUR
+    # value (the waterfall / policy), ``published`` the reference — here the
+    # chain reading — so a ✗ reads the same way as every other row.
     ss = spell_state
     if ss is not None:
-        _check(r, "on-chain splitter.hop after cast", int(ss["splitter_hop"]), wf.hop,
+        _check(r, "on-chain splitter.hop after cast", wf.hop, int(ss["splitter_hop"]),
                tol=ZERO, unit="s")
-        _check(r, "on-chain REWARDS_LSSKY_USDS.rewardsDuration after cast",
-               int(ss["usds_farm_rewards_duration"]), wf.hop, tol=ZERO, unit="s")
-        _check(r, "on-chain splitter.burn after cast", _d(ss["splitter_burn"]),
-               wf.splitter_burn, tol=ZERO)
-        _check(r, "on-chain vest.tot(vestId) after cast", _d(ss["vest_tot"]), wf.vest_tot,
+        _check(r, "on-chain REWARDS_LSSKY_USDS.rewardsDuration after cast", wf.hop,
+               int(ss["usds_farm_rewards_duration"]), tol=ZERO, unit="s")
+        _check(r, "on-chain splitter.burn after cast", wf.splitter_burn,
+               _d(ss["splitter_burn"]), tol=ZERO)
+        _check(r, "on-chain vest.tot(vestId) after cast", wf.vest_tot, _d(ss["vest_tot"]),
                tol=ZERO, unit="SKY")
-        _check(r, "on-chain vest tau after cast (fin - bgn)",
-               int(ss["vest_fin"]) - int(ss["vest_bgn"]), policy.vest_tau_seconds,
-               tol=ZERO, unit="s")
+        _check(r, "on-chain vest tau after cast (fin - bgn)", policy.vest_tau_seconds,
+               int(ss["vest_fin"]) - int(ss["vest_bgn"]), tol=ZERO, unit="s")
         if pub.get("vest_id") is not None:
-            _check(r, "on-chain distributor vestId after cast", int(ss["dist_vest_id"]),
-                   pub["vest_id"], tol=ZERO)
+            _check(r, "on-chain distributor vestId after cast", pub["vest_id"],
+                   int(ss["dist_vest_id"]), tol=ZERO)
     if state is not None and state.get("vest_cap") is not None:
         if wf.stream_rate > _d(state["vest_cap"]):
             warnings.append(
@@ -930,7 +949,7 @@ def render_summary(r: TmfMonthly) -> str:
 def _jsonable(x: Any) -> Any:
     if isinstance(x, Decimal):
         return str(x)
-    if isinstance(x, datetime):
+    if isinstance(x, datetime | date):
         return x.isoformat()
     if isinstance(x, dict):
         return {k: _jsonable(v) for k, v in x.items()}
