@@ -18,7 +18,7 @@ July 2026 (MSC#11 → 2026-08-13 executive, cast 2026-08-17).
 | 2 | Retain 50% of the remainder while Sky Reserves (Aggregate Backstop Capital, ABC) < Turbo-Fill Floor (150M); 50% × (1 − ABC/TBC) between Floor and Target Backstop Capital (1.5% of USDS supply); 0% at target | ABC pinned from the TMF post (financial.skyeco.com/risk/capital); USDS supply read on-chain |
 | 3 | Remainder = SBE budget, split 45% buy-SKY-for-stakers / 45% USDS-to-stakers / 10% buy-and-burn. `kicker.kbump` fixed at 6,000 USDS; `splitter.hop` solved so the engine spends the budget over a 365/12-day month; `splitter.burn` = 55% (the two buying legs) | policy + Step 2 |
 | 4 | SKY rewards = 45% leg ÷ prior-month SKY TWAP; treasury fronts them via a 90-day DssVest stream sized for 3 months (`vestTot`), pulled weekly into REWARDS_LSSKY_SKY. USDS rewards flow per batch into REWARDS_LSSKY_USDS (its `rewardsDuration` must equal `hop`) | TWAP pinned from the TMF post (BA observatory) |
-| burn | 10/55 of the SKY bought **while `splitter.burn` was 55%** in M is burned in the M+1 spell | on-chain kicks |
+| burn | Buys from the TMF's first cast (`policy.tmf_effective_from`, 2026-08-17 14:02:23 UTC) are attributed **per the regime they ran under**: burn leg = 10% ÷ that regime's `splitter.burn` (10/55 today); earlier buys (legacy 100% engine) are not attributed. Burned in the M+1 spell | on-chain kicks |
 
 Rounding follows the executives: `hop` and `vestTot` to the nearest integer
 (2,503.60 s → 2,504 s), the Core Council transfer is floored by the spell
@@ -27,20 +27,25 @@ Rounding follows the executives: `hop` and `vestTot` to the nearest integer
 ## What is extracted on-chain (not pinned)
 
 * **SBE kicks** — Splitter `Kick(tot, lot, pay)` joined to Flapper
-  `Exec(lot, bought)` by transaction (HyperSync; free-tier RPCs cap
-  `eth_getLogs` at 10 blocks). Each kick carries the `burn`/`hop` in force,
-  reconstructed from the Splitter's `File` events, so the month is split into
-  parameter regimes and the burn window falls out of the data rather than a
-  pinned timestamp.
-* **Parameter changes** — `File` on Splitter / Kicker / distributor,
-  `RewardsDurationUpdated` on the USDS farm, `Init`/`Yank` on the vest.
+  `Exec(lot, bought)` positionally within a transaction (the Exec that
+  follows each Kick; a stray Exec or a Kick without one fails loudly).
+  HyperSync, because free-tier RPCs cap `eth_getLogs` at 10 blocks. Each kick
+  carries the `burn`/`hop` in force, reconstructed from the Splitter's `File`
+  events, so the month is split into parameter regimes.
+* **Parameter changes** — `File(uint|int)` on Splitter / Kicker / Flapper /
+  vest / distributor, scaled to human units by a `(contract, what)` table
+  (unknown levers are kept raw and labelled `(raw)`); `File(address)`
+  re-pointings; `RewardsDurationUpdated` on the USDS farm; `Init`/`Yank` on
+  the vest.
 * **Distributor pulls** — `Distribute(amount)` (vest → SKY farm).
 * **State** at the month-end block and at the spell's execution block —
   Kicker/Splitter levers, both farms, distributor + vest stream, Vow surplus
   components, USDS/DAI supply, Pause Proxy SKY balance (`eth_call`, cached).
 
 Month bounds are `[prior EoD block + 1, EoD block]` with EoD = 23:59:59 UTC,
-resolved via HyperSync (same resolver as the other sources).
+resolved via HyperSync (same resolver as the other sources). A month that has
+not closed fails loudly; `--allow-partial` runs it month-to-date with a
+PARTIAL banner on the summary and the real end block/timestamp in provenance.
 
 ## Cross-checks in the report
 
@@ -60,8 +65,11 @@ executive, including the 2,860,943.76 SKY burn (311 kicks, 1,026,300 USDS,
 
 1. Add `months['YYYY-MM']` to `config/tmf.yaml`: `snr` (MSC post), `sky_twap`
    and `sky_reserves` (TMF post), and the published `spell` block as far as it
-   is known (`executed_at` / `executed_block` / `vest_id` once cast). Optional:
-   the Dune 8544603 row for the month.
+   is known (`executed_at` / `executed_block` / `vest_id` once cast —
+   `executed_at` may be quoted or not; both YAML forms are accepted).
+   Optional: the Dune 8544603 row for the month. If governance moves the
+   Step 3 split, update `policy` — each historical kick is still attributed
+   with the `splitter.burn` it actually ran under.
 2. `PYTHONPATH=src python3 scripts/run_tmf_2026.py --months YYYY-MM`.
 3. Commit `settlements/tmf/YYYY-MM/summary.md` (provenance.json is gitignored
    like every other settlement artifact).
@@ -72,11 +80,12 @@ These are the places where the report follows a stated convention that has not
 been confirmed by the Atlas text or BA Labs. They do not move the July/August
 numbers but would in other regimes.
 
-1. **Burn base — window vs whole month.** The report burns 10/55 of SKY bought
-   *under the 55% regime* (BA Labs, t/28153: Aug 17 14:02:23 → month-end).
-   The operator's TMF sheet used 10/55 of *every* buy in the month (August:
-   4,927,400 vs 2,860,944 SKY) and flags "confirm vs flat 10% reading". The
-   summary shows both; the window reading is the one cross-checked.
+1. **Burn base — since the TMF cast vs whole month.** The report burns
+   10% ÷ `splitter.burn` of SKY bought *from the first TMF cast* (BA Labs,
+   t/28153: Aug 17 14:02:23 → month-end). The operator's TMF sheet used 10/55
+   of *every* buy in the month (August: 4,927,400 vs 2,860,944 SKY) and flags
+   "confirm vs flat 10% reading". The summary shows both; the since-cast
+   reading is the one cross-checked.
 2. **Step 2 between-tier formula.** "50% × (1 − ABC/TBC)" between the Floor
    and the target is the sheet's reading; the Atlas wording was not
    retrievable. With TBC (≈95M) currently *below* the Floor (150M) the band is

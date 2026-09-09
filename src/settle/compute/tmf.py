@@ -48,6 +48,7 @@ __all__ = [
     "TmfMonthly",
     "TmfPolicy",
     "TmfWaterfall",
+    "attribute_burn",
     "burn_attribution",
     "compute_tmf_monthly",
     "compute_waterfall",
@@ -76,6 +77,23 @@ def _q2(x: Decimal) -> Decimal:
     return x.quantize(D("0.01"), rounding=ROUND_HALF_UP)
 
 
+def _parse_ts(v: Any) -> int | None:
+    """Unix seconds from an ISO-8601 string (``Z`` or offset) or a datetime —
+    PyYAML hands back a ``datetime`` for an unquoted ``2026-08-17T14:02:23Z``
+    and a ``str`` for the quoted form; both must work."""
+    if v is None:
+        return None
+    if isinstance(v, int | float):
+        return int(v)
+    if isinstance(v, datetime):
+        dt = v if v.tzinfo else v.replace(tzinfo=UTC)
+        return int(dt.timestamp())
+    dt = datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    return int(dt.timestamp())
+
+
 # ── policy + inputs ──────────────────────────────────────────────────────────
 
 
@@ -100,6 +118,7 @@ class TmfPolicy:
     beam_max_kbump: Decimal
     beam_min_hop: int
     beam_max_rate_per_year: Decimal
+    tmf_effective_from: int   # unix ts of the first TMF cast — earlier buys are legacy
 
     def __post_init__(self) -> None:
         legs = self.step3_sky_rewards_share + self.step3_usds_rewards_share + self.step3_burn_share
@@ -143,6 +162,7 @@ class TmfPolicy:
             beam_max_kbump=_d(p["beam_max_kbump"]),
             beam_min_hop=int(p["beam_min_hop"]),
             beam_max_rate_per_year=_d(p["beam_max_rate_per_year"]),
+            tmf_effective_from=_parse_ts(p["tmf_effective_from"]) or 0,
         )
 
 
@@ -202,8 +222,9 @@ class TmfWaterfall:
     vest_tot: Decimal                # SKY, rounded to whole tokens
     stream_rate: Decimal             # SKY/s = vest_tot ÷ tau
     weekly_pull: Decimal             # SKY per 7 d
-    # BEAM bounds
+    # BEAM bounds — each independent, so a breach names the right lever
     hop_within_beam: bool
+    kbump_within_beam: bool
     run_rate_within_beam: bool
 
 
@@ -238,7 +259,7 @@ def compute_waterfall(inputs: TmfInputs, policy: TmfPolicy) -> TmfWaterfall:
     vest_exact = sky_rewards * policy.vest_runway_months
     vest_tot = _round0(vest_exact)
     stream_rate = vest_tot / D(policy.vest_tau_seconds)
-    weekly = stream_rate * 7 * SECONDS_PER_DAY
+    weekly = stream_rate * policy.sky_farm_rewards_duration
 
     return TmfWaterfall(
         step1_total=step1, step1_core_council=cc, step1_fortification=ff,
@@ -252,15 +273,45 @@ def compute_waterfall(inputs: TmfInputs, policy: TmfPolicy) -> TmfWaterfall:
         sky_bought_estimate=sky_bought_est,
         sky_rewards_monthly=sky_rewards, vest_tot_exact=vest_exact, vest_tot=vest_tot,
         stream_rate=stream_rate, weekly_pull=weekly,
-        hop_within_beam=(hop >= policy.beam_min_hop and policy.kbump <= policy.beam_max_kbump),
+        hop_within_beam=(hop >= policy.beam_min_hop),
+        kbump_within_beam=(policy.kbump <= policy.beam_max_kbump),
         run_rate_within_beam=(annual <= policy.beam_max_rate_per_year),
     )
 
 
-def burn_attribution(sky_bought: Decimal, policy: TmfPolicy) -> tuple[Decimal, Decimal]:
-    """Split SKY bought under the 55% regime into (to stakers 45/55, to burn 10/55)."""
-    to_burn = sky_bought * policy.burn_share_of_buys
+def burn_attribution(
+    sky_bought: Decimal, policy: TmfPolicy, *, burn: Decimal | None = None
+) -> tuple[Decimal, Decimal]:
+    """Split SKY bought under a TMF regime into (to stakers, to burn).
+
+    ``burn`` is the ``splitter.burn`` the buys executed under (default: the
+    policy's 55%); the burn leg is ``step3_burn_share / burn`` of every buy
+    (10/55 today), the rest is the stakers' leg."""
+    b = policy.splitter_burn if burn is None else burn
+    if b <= 0:
+        return sky_bought, ZERO
+    to_burn = sky_bought * (policy.step3_burn_share / b)
     return sky_bought - to_burn, to_burn
+
+
+def attribute_burn(kicks: list[SbeKick], policy: TmfPolicy) -> tuple[list[SbeKick], Decimal, Decimal]:
+    """Burn attribution over a month's kicks.
+
+    Buys executed before ``policy.tmf_effective_from`` (the legacy 100%-burn
+    engine, SKY parked in the treasury) are not attributed. Every later kick
+    is split with ITS OWN regime's ``burn`` — so a governance change of the
+    Step 3 split mid-month, or a re-run after a later change, attributes each
+    regime correctly instead of keying off one global constant.
+
+    Returns ``(window_kicks, to_stakers, to_burn)``."""
+    window = [k for k in kicks if k.ts >= policy.tmf_effective_from]
+    to_stakers = ZERO
+    to_burn = ZERO
+    for k in window:
+        s, b = burn_attribution(k.bought, policy, burn=k.burn)
+        to_stakers += s
+        to_burn += b
+    return window, to_stakers, to_burn
 
 
 # ── on-chain activity (decoded by the source, aggregated here) ───────────────
@@ -289,8 +340,9 @@ class SbeParamChange:
     ts: int
     tx: str
     contract: str     # chainlog key
-    what: str         # 'hop' | 'burn' | 'kbump' | 'khump' | 'vestId' | 'rewardsDuration' | 'vest.init' | 'vest.yank'
-    value: Decimal    # human units (seconds / fraction / USDS / id)
+    what: str             # 'hop' | 'burn' | 'kbump' | 'khump' | 'vestId' | 'rewardsDuration' |
+                          # 'vest.init (id)' | 'vest.yank (id)' | '<what> (raw)' for unknown levers
+    value: Decimal | str  # human units (seconds / fraction / USDS / id); an address for File(address)
 
 
 @dataclass(frozen=True)
@@ -484,10 +536,9 @@ def compute_tmf_monthly(
     regimes = regimes_from_kicks(activity.kicks) if activity else []
     sky_month = sum((k.bought for k in activity.kicks), ZERO) if activity else ZERO
     usds_month = sum((k.lot for k in activity.kicks), ZERO) if activity else ZERO
-    window = [k for k in (activity.kicks if activity else []) if k.burn == policy.splitter_burn]
+    window, to_stakers, to_burn = attribute_burn(activity.kicks if activity else [], policy)
     sky_window = sum((k.bought for k in window), ZERO)
     usds_window = sum((k.lot for k in window), ZERO)
-    to_stakers, to_burn = burn_attribution(sky_window, policy)
 
     pub = dict(month_cfg.get("spell") or {})
     r = TmfMonthly(
@@ -523,16 +574,19 @@ def compute_tmf_monthly(
         _check(r, "vestTau (days)", policy.vest_tau_days, pub["vest_tau_days"], tol=ZERO, unit="d")
     _check(r, "Core Council Buffer transfer (Step 1)", _round0(wf.step1_total),
            pub.get("core_council_transfer"), tol=D(1), unit="USDS")
-    _check(r, "SKY to burn (10/55 of window buys)", _q2(to_burn), pub.get("sky_burn"),
-           tol=D("0.01"), unit="SKY")
-    bw = pub.get("burn_window") or {}
-    _check(r, "burn-window kicks", len(window), bw.get("kicks"), tol=ZERO)
-    _check(r, "burn-window USDS spent", usds_window, bw.get("usds_spent"), unit="USDS")
-    _check(r, "burn-window SKY bought", _q2(sky_window), bw.get("sky_bought"), unit="SKY")
-    _check(r, "burn-window SKY to stakers (45/55)", _q2(to_stakers), bw.get("sky_to_stakers"),
-           unit="SKY")
     dune = month_cfg.get("dune_8544603") or {}
     if activity is not None:
+        # Everything below derives from extracted kicks — without activity
+        # the window is trivially empty and comparing 0 to the published burn
+        # would be noise, not a finding.
+        _check(r, "SKY to burn (10/55 of window buys)", _q2(to_burn), pub.get("sky_burn"),
+               tol=D("0.01"), unit="SKY")
+        bw = pub.get("burn_window") or {}
+        _check(r, "burn-window kicks", len(window), bw.get("kicks"), tol=ZERO)
+        _check(r, "burn-window USDS spent", usds_window, bw.get("usds_spent"), unit="USDS")
+        _check(r, "burn-window SKY bought", _q2(sky_window), bw.get("sky_bought"), unit="SKY")
+        _check(r, "burn-window SKY to stakers (45/55)", _q2(to_stakers),
+               bw.get("sky_to_stakers"), unit="SKY")
         _check(r, "SKY bought in month vs Dune 8544603", _q2(sky_month), dune.get("sbe_sky_bought"),
                tol=D("0.01"), unit="SKY")
         _check(r, "USDS spent in month vs Dune 8544603", usds_month, dune.get("sbe_usds_spent"),
@@ -572,19 +626,6 @@ def compute_tmf_monthly(
         if pub.get("vest_id") is not None:
             _check(r, "on-chain distributor vestId after cast", int(ss["dist_vest_id"]),
                    pub["vest_id"], tol=ZERO)
-        # Weekly pulls actually observed after the cast (excluding the cast
-        # block's own catch-up pull and its dust follow-up) vs the target.
-        if activity is not None and pub.get("executed_block"):
-            cast_blk = int(pub["executed_block"])
-            pulls = [d for d in activity.distributions
-                     if d.block > cast_blk and d.ts - int(ss["ts"]) > 6 * SECONDS_PER_DAY]
-            if pulls:
-                avg = sum((d.amount for d in pulls), ZERO) / len(pulls)
-                r.checks.append({
-                    "label": f"avg weekly distributor pull after cast ({len(pulls)} pulls) vs target",
-                    "computed": str(_q2(avg)), "published": str(_round0(wf.weekly_pull)),
-                    "tolerance": "info", "unit": "SKY", "ok": True,
-                })
     if state is not None and state.get("vest_cap") is not None:
         if wf.stream_rate > _d(state["vest_cap"]):
             warnings.append(
@@ -595,6 +636,11 @@ def compute_tmf_monthly(
         warnings.append(
             f"solved hop {wf.hop}s is below the SBE BEAM minHop {policy.beam_min_hop}s — "
             "needs an executive, not an operator change"
+        )
+    if not wf.kbump_within_beam:
+        warnings.append(
+            f"kicker.kbump {policy.kbump:,.0f} USDS exceeds the SBE BEAM maxKbump "
+            f"{policy.beam_max_kbump:,.0f} — needs an executive, not an operator change"
         )
     if not wf.run_rate_within_beam:
         warnings.append(
@@ -607,7 +653,14 @@ def compute_tmf_monthly(
             "the TBC supply basis (USDS only vs USDS+DAI) are unconfirmed; see docs/tmf/README.md"
         )
     if activity is not None and not window and pub.get("sky_burn") not in (None, "0", 0):
-        warnings.append("published SKY burn is non-zero but no kicks ran under the 55% regime")
+        warnings.append("published SKY burn is non-zero but no kicks ran after the TMF took effect")
+    if (pins or {}).get("partial"):
+        warnings.append(
+            f"PARTIAL MONTH: the archive/chain had not reached {month}'s month-end when this ran — "
+            f"activity and state stop at block {(pins or {}).get('to_block')} "
+            f"({_ts((pins or {}).get('to_ts'))}); kicks, SKY bought and the burn cover only part "
+            "of the month. Re-run after month-end."
+        )
     return r
 
 
@@ -661,6 +714,10 @@ def render_summary(r: TmfMonthly) -> str:
     if pub.get("title"):
         L.append(f"**Spell:** {pub['title']} — {pub.get('status', '')}")
         L.append("")
+    if r.pins.get("partial"):
+        L.append(f"> ⚠ **PARTIAL MONTH** — data stops at block {r.pins.get('to_block')} "
+                 f"({_ts(r.pins.get('to_ts'))}); the month was not closed when this ran.")
+        L.append("")
 
     # ── Inputs ──
     L.append("## ① Inputs (Step 0)")
@@ -712,8 +769,12 @@ def render_summary(r: TmfMonthly) -> str:
     L.append(f"| Implied batches / month ÷ / day | {wf.batches_per_month:,.2f} ÷ {wf.batches_per_day:,.2f} |")
     L.append(f"| Implied hop (solved, kbump fixed) | {wf.hop_solved:,.2f} s → **{wf.hop:,} s** |")
     L.append(f"| Annual run-rate through the engine | {_usds(wf.annual_run_rate, 0)} USDS/yr |")
-    L.append(f"| Within SBE BEAM bounds (kbump ≤ {_usds(p.beam_max_kbump, 0)}, hop ≥ {p.beam_min_hop} s, ≤ {_usds(p.beam_max_rate_per_year, 0)}/yr) "
-             f"| {'yes' if wf.hop_within_beam and wf.run_rate_within_beam else 'NO'} |")
+    beam = [
+        f"kbump ≤ {_usds(p.beam_max_kbump, 0)}: {'ok' if wf.kbump_within_beam else 'BREACH'}",
+        f"hop ≥ {p.beam_min_hop} s: {'ok' if wf.hop_within_beam else 'BREACH'}",
+        f"≤ {_usds(p.beam_max_rate_per_year, 0)}/yr: {'ok' if wf.run_rate_within_beam else 'BREACH'}",
+    ]
+    L.append(f"| SBE BEAM bounds | {' · '.join(beam)} |")
     L.append(f"| Bought SKY (model estimate, {_pct(wf.splitter_burn)} leg ÷ TWAP) | {_usds(wf.sky_bought_estimate, 0)} SKY |")
     L.append("")
 
@@ -726,7 +787,7 @@ def render_summary(r: TmfMonthly) -> str:
     L.append(f"| Monthly USDS rewards → REWARDS_LSSKY_USDS (via Splitter, per batch) | {_usds(wf.usds_rewards_usds)} USDS |")
     L.append(f"| vestTot ({p.vest_runway_months} months of SKY rewards, {p.vest_tau_days}-day stream) | {_usds(wf.vest_tot_exact)} → **{_usds(wf.vest_tot, 0)} SKY** |")
     L.append(f"| Stream rate (vestTot ÷ tau) | {wf.stream_rate:,.4f} SKY/s |")
-    L.append(f"| Weekly distributor pull ≈ | {_usds(wf.weekly_pull, 0)} SKY / 7 d |")
+    L.append(f"| Distributor pull per farm period ({p.sky_farm_rewards_duration // SECONDS_PER_DAY} d) ≈ | {_usds(wf.weekly_pull, 0)} SKY |")
     if r.state and r.state.get("vest_cap") is not None:
         cap = _d(r.state["vest_cap"])
         L.append(f"| vs MCD_VEST_SKY_TREASURY.cap {cap:,.2f} SKY/s | {'ok' if wf.stream_rate <= cap else 'EXCEEDS'} |")
@@ -744,29 +805,34 @@ def render_summary(r: TmfMonthly) -> str:
     L.append("|---|---:|---:|---:|:-:|")
 
     def row(label: str, comp: str, key: str, fmt: Callable[[Any], str] = str,
-            chain: str = "—") -> None:
+            chain: str = "—", checks: tuple[str, ...] = ()) -> None:
+        """One parameter row; the mark folds the EXPLICITLY named cross-checks
+        (published + on-chain) so a label mismatch can't render a stale ✓."""
         v = pub.get(key)
         shown = fmt(v) if v is not None else "—"
-        oks = [c["ok"] for c in r.checks
-               if c["label"] == label or c["label"].startswith(f"on-chain {label} after cast")]
+        oks = [c["ok"] for c in r.checks if c["label"] in (label, *checks)]
         mark = "" if not oks else ("✓" if all(oks) else "✗")
         L.append(f"| {label} | {comp} | {shown} | {chain} | {mark} |")
 
     row("splitter.hop", f"{wf.hop:,} s", "hop", lambda v: f"{int(v):,} s",
-        chain=f"{int(ss['splitter_hop']):,} s" if ss else "—")
+        chain=f"{int(ss['splitter_hop']):,} s" if ss else "—",
+        checks=("on-chain splitter.hop after cast",))
     row("REWARDS_LSSKY_USDS.rewardsDuration", f"{wf.hop:,} s", "rewards_duration_usds",
         lambda v: f"{int(v):,} s",
-        chain=f"{int(ss['usds_farm_rewards_duration']):,} s" if ss else "—")
+        chain=f"{int(ss['usds_farm_rewards_duration']):,} s" if ss else "—",
+        checks=("on-chain REWARDS_LSSKY_USDS.rewardsDuration after cast",))
     row("splitter.burn", _pct(wf.splitter_burn), "burn", lambda v: _pct(_d(v)),
-        chain=_pct(_d(ss["splitter_burn"])) if ss else "—")
+        chain=_pct(_d(ss["splitter_burn"])) if ss else "—",
+        checks=("on-chain splitter.burn after cast",))
     L.append(f"| kicker.kbump | {_usds(p.kbump, 0)} USDS | unchanged | "
              f"{_usds(_d(ss['kicker_kbump']), 0) + ' USDS' if ss else '—'} | |")
     row("vestTot", f"{_usds(wf.vest_tot, 0)} SKY", "vest_tot", lambda v: f"{_usds(_d(v), 0)} SKY",
-        chain=f"{_usds(_d(ss['vest_tot']), 0)} SKY" if ss else "—")
+        chain=f"{_usds(_d(ss['vest_tot']), 0)} SKY" if ss else "—",
+        checks=("on-chain vest.tot(vestId) after cast",))
     row("vestTau (days)", f"{p.vest_tau_days} d", "vest_tau_days", lambda v: f"{int(v)} d",
-        chain=f"{(int(ss['vest_fin']) - int(ss['vest_bgn'])) // SECONDS_PER_DAY} d" if ss else "—")
-    cast_ts = (_ts(int(datetime.fromisoformat(pub["executed_at"].replace("Z", "+00:00")).timestamp()))
-               if pub.get("executed_at") else "—")
+        chain=f"{(int(ss['vest_fin']) - int(ss['vest_bgn'])) // SECONDS_PER_DAY} d" if ss else "—",
+        checks=("on-chain vest tau after cast (fin - bgn)",))
+    cast_ts = _ts(_parse_ts(pub.get("executed_at")))
     L.append(f"| vestBgn | block.timestamp at cast | {cast_ts} | "
              f"{_ts(ss.get('vest_bgn')) if ss else '—'} | |")
     L.append(f"| dist (stream beneficiary) | REWARDS_DIST_LSSKY_SKY | "
@@ -804,14 +870,16 @@ def render_summary(r: TmfMonthly) -> str:
                  f"| **{_usds(tot_farm, 0)}** | **{_usds(r.sky_bought_month)}** "
                  f"| **{f'{vw_all:.6f}' if vw_all is not None else '—'}** |")
         L.append("")
-        L.append("**Burn attribution** — only buys executed while `splitter.burn` = "
-                 f"{_pct(p.splitter_burn)} (the 45/10 regime) are split {_pct(p.step3_sky_rewards_share)}/"
-                 f"{_pct(p.step3_burn_share)}; buys under the legacy 100% regime went to the treasury "
-                 "un-attributed (BA Labs convention, t/28153).")
+        L.append(f"**Burn attribution** — buys executed from the TMF's first cast "
+                 f"({_ts(p.tmf_effective_from)}) are split per the regime they ran under: "
+                 f"burn leg = {_pct(p.step3_burn_share)} ÷ that regime's `splitter.burn` "
+                 f"({_pct(p.step3_burn_share)}/{_pct(p.splitter_burn)} today), the rest to SKY "
+                 "stakers. Earlier buys (legacy 100% engine) went to the treasury un-attributed "
+                 "(BA Labs convention, t/28153).")
         L.append("")
         L.append("| Line | Value |")
         L.append("|---|---:|")
-        L.append(f"| Kicks in the {_pct(p.splitter_burn)} window | {r.kicks_burn_window} |")
+        L.append(f"| Kicks since the TMF took effect | {r.kicks_burn_window} |")
         L.append(f"| USDS spent in the window | {_usds(r.usds_spent_burn_window)} USDS |")
         L.append(f"| SKY bought in the window | {_usds(r.sky_bought_burn_window)} SKY |")
         L.append(f"| &nbsp;&nbsp;to SKY stakers ({_pct(p.step3_sky_rewards_share)}/{_pct(p.splitter_burn)}) "
@@ -924,6 +992,8 @@ def render_summary(r: TmfMonthly) -> str:
 def _jsonable(x: Any) -> Any:
     if isinstance(x, Decimal):
         return str(x)
+    if isinstance(x, datetime):
+        return x.isoformat()
     if isinstance(x, dict):
         return {k: _jsonable(v) for k, v in x.items()}
     if isinstance(x, (list, tuple)):

@@ -17,7 +17,10 @@ Artifacts land under ``settlements/tmf/<YYYY-MM>/{summary.md,provenance.json}``.
 
 Run with:
     set -a; source .env; set +a
-    PYTHONPATH=src python3 scripts/run_tmf_2026.py [--months 2026-07,2026-08]
+    PYTHONPATH=src python3 scripts/run_tmf_2026.py [--months 2026-07,2026-08] [--allow-partial]
+
+``--allow-partial`` lets an unfinished month run month-to-date (the summary
+is banner-marked PARTIAL); without it an open month fails loudly.
 """
 
 from __future__ import annotations
@@ -64,6 +67,7 @@ def main() -> int:
     months = [Month.parse(k) for k in sorted(cfg["months"])]
     selected = filter_by_months(months, lambda m: (m.year, m.month))
     source = HyperSyncSbeSource(contracts)
+    allow_partial = "--allow-partial" in sys.argv
 
     print("TMF 2026 — Treasury Management Function waterfall + Smart Burn Engine execution")
     print("=" * 108)
@@ -76,7 +80,9 @@ def main() -> int:
         label = str(month)
         mcfg = cfg["months"][label]
         try:
-            from_block, to_block, from_ts, to_ts = month_block_range(month)
+            from_block, to_block, from_ts, to_ts, partial = month_block_range(
+                month, allow_partial=allow_partial,
+            )
             state_start = read_tmf_state(contracts, from_block - 1)
             state_end = read_tmf_state(contracts, to_block)
             spell_blk = (mcfg.get("spell") or {}).get("executed_block")
@@ -94,6 +100,7 @@ def main() -> int:
                     "from_ts": from_ts, "to_ts": to_ts,
                     "state_start_block": from_block - 1,
                     "spell_state_block": spell_blk,
+                    "partial": partial,
                     "hypersync_endpoint": "eth.hypersync.xyz",
                 },
             )

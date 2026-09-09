@@ -16,10 +16,10 @@ import yaml
 
 from settle.compute.tmf import (
     SbeActivity,
-    SbeDistribution,
     SbeKick,
     TmfInputs,
     TmfPolicy,
+    attribute_burn,
     burn_attribution,
     compute_tmf_monthly,
     compute_waterfall,
@@ -108,7 +108,7 @@ def test_july_2026_waterfall_matches_the_executive(policy: TmfPolicy):
     assert wf.vest_tot == D("96903706")
     assert wf.stream_rate.quantize(D("0.0001")) == D("12.4619")
     assert wf.weekly_pull.quantize(D(1)) == D("7536955")
-    assert wf.hop_within_beam and wf.run_rate_within_beam
+    assert wf.hop_within_beam and wf.kbump_within_beam and wf.run_rate_within_beam
 
 
 # ── August 2026 anchor (MSC#12 → 2026-09-10 exec, t/28153) ──────────────────
@@ -230,12 +230,7 @@ def test_compute_tmf_monthly_uses_spell_block_state_not_month_end(cfg: dict, pol
                  "vest_fin": 1787061743 + 90 * 86400, "dist_vest_id": 16,
                  "kicker_kbump": D(6000)}
     act = SbeActivity(month="2026-07", from_block=1, to_block=2, from_ts=0, to_ts=1,
-                      kicks=[_kick(0, 100, "1", 13787, "19831814.35")],
-                      distributions=[
-                          SbeDistribution(block=25775271, ts=1787061743, tx="0xa", amount=D("467238.77")),
-                          SbeDistribution(block=25825256, ts=1787061743 + 7 * 86400, tx="0xb", amount=D("7497625.17")),
-                          SbeDistribution(block=25875202, ts=1787061743 + 14 * 86400, tx="0xc", amount=D("7495082.94")),
-                      ])
+                      kicks=[_kick(0, 100, "1", 13787, "19831814.35")])
     mcfg = {k: v for k, v in cfg["months"]["2026-07"].items() if k != "dune_8544603"}
     r = compute_tmf_monthly("2026-07", mcfg, policy, activity=act,
                             state=month_end, spell_state=post_cast, repo_root=tmp_path)
@@ -245,7 +240,7 @@ def test_compute_tmf_monthly_uses_spell_block_state_not_month_end(cfg: dict, pol
     assert r.sky_to_burn == 0                      # no 55%-regime kicks in July
     labels = [c["label"] for c in r.checks]
     assert "on-chain splitter.hop after cast" in labels
-    assert any(x.startswith("avg weekly distributor pull after cast (2 pulls)") for x in labels)
+    assert not any("weekly distributor pull" in x for x in labels)   # removed: never fires in prod
 
 
 def test_compute_tmf_monthly_requires_snr_or_artifact(cfg: dict, policy: TmfPolicy, tmp_path: Path):
@@ -261,3 +256,90 @@ def test_compute_tmf_monthly_requires_snr_or_artifact(cfg: dict, policy: TmfPoli
                             repo_root=tmp_path)
     assert r.inputs.snr == D("15745296")
     assert r.waterfall.hop == 2504
+
+
+# ── review follow-ups (PR #195) ─────────────────────────────────────────────
+
+_CAST_TS = 1786975343   # 2026-08-17 14:02:23 UTC — policy.tmf_effective_from
+
+
+def test_policy_parses_tmf_effective_from(policy: TmfPolicy):
+    assert policy.tmf_effective_from == _CAST_TS
+
+
+def test_attribute_burn_is_per_regime_not_global_constant(policy: TmfPolicy):
+    kicks = [
+        _kick(0, _CAST_TS - 10, "1", 13787, "1000"),        # legacy: not attributed
+        _kick(1, _CAST_TS + 10, "0.55", 3748, "550"),       # 10/55 -> 100 burn
+        _kick(2, _CAST_TS + 20, "0.60", 2504, "600"),       # split moved to 50/40/10 -> 10/60 -> 100 burn
+    ]
+    window, to_stakers, to_burn = attribute_burn(kicks, policy)
+    assert [k.bought for k in window] == [D(550), D(600)]
+    assert to_burn == D(200)
+    assert to_stakers == D(950)
+
+
+def test_no_activity_emits_no_burn_window_checks(cfg: dict, policy: TmfPolicy, tmp_path: Path):
+    """Credential-less run: the window is trivially empty — comparing 0 to the
+    published burn would be five spurious failures."""
+    r = compute_tmf_monthly("2026-08", cfg["months"]["2026-08"], policy, activity=None,
+                            state={"usds_total_supply": D("6366968221"), "block": 1},
+                            repo_root=tmp_path)
+    assert [c for c in r.checks if not c["ok"]] == []
+    assert not any(c["label"].startswith(("burn-window", "SKY to burn")) for c in r.checks)
+    assert all("burn" not in w for w in r.warnings)
+
+
+def test_executed_at_accepts_yaml_datetime(cfg: dict, policy: TmfPolicy, tmp_path: Path):
+    """PyYAML parses an unquoted ``executed_at: 2026-08-17T14:02:23Z`` into a
+    datetime — render + write must not assume a str."""
+    from datetime import UTC, datetime
+
+    from settle.compute.tmf import write_tmf
+    mcfg = json.loads(json.dumps(cfg["months"]["2026-07"]))
+    mcfg["spell"]["executed_at"] = datetime(2026, 8, 17, 14, 2, 23, tzinfo=UTC)
+    r = compute_tmf_monthly("2026-07", mcfg, policy, activity=None,
+                            state={"usds_total_supply": D("6255703158"), "block": 1},
+                            repo_root=tmp_path)
+    md = render_summary(r)
+    assert "| vestBgn | block.timestamp at cast | 2026-08-17 14:02:23 UTC |" in md
+    out = write_tmf(r, tmp_path / "out")
+    assert json.loads(out["provenance"].read_text())["published"]["executed_at"].startswith("2026-08-17T14:02:23")
+
+
+def test_parameter_block_marks_follow_the_vest_checks(cfg: dict, policy: TmfPolicy, tmp_path: Path):
+    """A mis-sized vest stream filed by the spell must show ✗ in the headline
+    table, not only in the Cross-checks table."""
+    post_cast = {"block": 25775271, "ts": _CAST_TS, "splitter_hop": 3748,
+                 "usds_farm_rewards_duration": 3748, "splitter_burn": D("0.55"),
+                 "vest_tot": D("97903706"), "vest_bgn": _CAST_TS,
+                 "vest_fin": _CAST_TS + 89 * 86400, "dist_vest_id": 16, "kicker_kbump": D(6000)}
+    r = compute_tmf_monthly("2026-07", cfg["months"]["2026-07"], policy, activity=None,
+                            state={"usds_total_supply": D("6255703158"), "block": 1},
+                            spell_state=post_cast, repo_root=tmp_path)
+    md = render_summary(r)
+    assert "| vestTot | 96,903,706 SKY | 96,903,706 SKY | 97,903,706 SKY | ✗ |" in md
+    assert "| vestTau (days) | 90 d | 90 d | 89 d | ✗ |" in md
+    assert "| splitter.hop | 3,748 s | 3,748 s | 3,748 s | ✓ |" in md
+
+
+def test_beam_breach_names_the_right_lever(cfg: dict, tmp_path: Path):
+    bad = json.loads(json.dumps(cfg))
+    bad["policy"]["kbump"] = "15000"
+    pol = TmfPolicy.from_config(bad)
+    r = compute_tmf_monthly("2026-08", cfg["months"]["2026-08"], pol, activity=None,
+                            state={"usds_total_supply": D("6366968221"), "block": 1},
+                            repo_root=tmp_path)
+    assert not r.waterfall.kbump_within_beam and r.waterfall.hop_within_beam
+    assert any("kbump 15,000 USDS exceeds the SBE BEAM maxKbump" in w for w in r.warnings)
+    assert not any("below the SBE BEAM minHop" in w for w in r.warnings)
+    assert "kbump ≤ 12,000: BREACH · hop ≥ 550 s: ok" in render_summary(r)
+
+
+def test_partial_month_is_bannered(cfg: dict, policy: TmfPolicy, tmp_path: Path):
+    r = compute_tmf_monthly("2026-08", cfg["months"]["2026-08"], policy, activity=None,
+                            state={"usds_total_supply": D("6366968221"), "block": 1},
+                            repo_root=tmp_path,
+                            pins={"partial": True, "to_block": 25800000, "to_ts": 1787500000})
+    assert any(w.startswith("PARTIAL MONTH") for w in r.warnings)
+    assert "**PARTIAL MONTH** — data stops at block 25800000" in render_summary(r)

@@ -38,6 +38,10 @@ policy:
   engine_month_days: '30.416666666666666667'   # 365/12
   kbump: '6000'                       # USDS per batch — held fixed; hop is solved
   sky_farm_rewards_duration: 604800   # 7 d — REWARDS_LSSKY_SKY, keeper schedule
+  # First TMF cast — buys before this ran on the legacy 100%-burn engine
+  # (SKY parked in the treasury) and are NOT burn-attributed; every later
+  # kick is attributed with its own regime's splitter.burn.
+  tmf_effective_from: '2026-08-17T14:02:23Z'
   # SBE BEAM bounds (2026-08-13 exec) — what the operator multisig may set
   # without a vote. The solved hop must respect them.
   beam_max_kbump: '12000'
@@ -125,8 +129,7 @@ months:
       usds_rewards: '2834153.28'
       sky_rewards: '47736131.14'
       sky_burn: '2860943.76'
-      burn_window:
-        start: '2026-08-17T14:02:23Z'
+      burn_window:            # BA Labs' figures for buys from the TMF cast to month-end
         kicks: 311
         usds_spent: '1026300'
         sky_bought: '15735190.69'

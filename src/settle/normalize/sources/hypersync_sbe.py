@@ -21,6 +21,7 @@ snapshot) are ``eth_call`` and live in ``extract/tmf_state.py``.
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -33,7 +34,7 @@ from ...extract import hypersync as hs
 from ...extract.hypersync import LogRow
 from ._hypersync_common import _evt, _word
 
-__all__ = ["HyperSyncSbeSource", "month_block_range"]
+__all__ = ["HyperSyncSbeSource", "MonthNotClosedError", "month_block_range"]
 
 WAD = Decimal(10) ** 18
 RAD = Decimal(10) ** 45
@@ -42,6 +43,7 @@ _KICK = _evt("Kick(uint256,uint256,uint256)")        # Splitter
 _EXEC = _evt("Exec(uint256,uint256)")                # FlapperUniV2SwapOnly
 _FILE_U = _evt("File(bytes32,uint256)")              # Splitter hop/burn, Kicker kbump, dist vestId
 _FILE_I = _evt("File(bytes32,int256)")               # Kicker khump
+_FILE_A = _evt("File(bytes32,address)")              # Splitter flapper/farm, Flapper pip, dist
 _DISTRIBUTE = _evt("Distribute(uint256)")            # REWARDS_DIST_LSSKY_SKY
 _VEST_INIT = _evt("Init(uint256,address)")           # DssVest
 _VEST_YANK = _evt("Yank(uint256,uint256)")
@@ -64,18 +66,53 @@ def _signed(v: int) -> int:
     return v - (1 << 256) if v >= (1 << 255) else v
 
 
-def month_block_range(month: Any) -> tuple[int, int, int, int]:
-    """``(from_block, to_block, from_ts, to_ts)`` for a calendar month —
+# (chainlog key, what) → divisor for File(bytes32,uint256|int256) values, so
+# every SbeParamChange.value is in human units. Anything not listed is kept
+# RAW and labelled "<what> (raw)" so a new lever can never render as a
+# plausible-looking scaled number.
+_FILE_SCALE: dict[tuple[str, str], Decimal] = {
+    ("MCD_SPLIT", "hop"): Decimal(1),
+    ("MCD_SPLIT", "burn"): WAD,
+    ("MCD_KICK", "kbump"): RAD,
+    ("MCD_KICK", "khump"): RAD,
+    ("MCD_FLAP", "want"): WAD,
+    ("MCD_VEST_SKY_TREASURY", "cap"): WAD,
+    ("REWARDS_DIST_LSSKY_SKY", "vestId"): Decimal(1),
+}
+
+
+class MonthNotClosedError(RuntimeError):
+    """The requested month has not ended yet — the report would silently
+    describe a partial month as if it were complete."""
+
+
+def month_block_range(
+    month: Any, *, allow_partial: bool = False, now: float | None = None
+) -> tuple[int, int, int, int, bool]:
+    """``(from_block, to_block, from_ts, to_ts, partial)`` for a calendar month —
     first block after the prior month's EoD pin through this month's EoD
-    (23:59:59 UTC) block, resolved via HyperSync's block-timestamp search."""
+    (23:59:59 UTC) block, resolved via HyperSync's block-timestamp search.
+
+    A month that has not closed yet raises ``MonthNotClosedError`` — the
+    resolver would otherwise head-clamp silently and the report would
+    describe a partial month as if it were complete. ``allow_partial=True``
+    instead returns the archive head as ``to_block`` with its real timestamp
+    as ``to_ts`` and ``partial=True`` so the report can say so."""
     y, m = int(month.year), int(month.month)
     start = datetime(y, m, 1, tzinfo=UTC)
     end = datetime(y + (m // 12), (m % 12) + 1, 1, tzinfo=UTC)
     start_ts = int(start.timestamp())
     end_ts = int(end.timestamp()) - 1
+    partial = end_ts >= (time.time() if now is None else now)
+    if partial and not allow_partial:
+        raise MonthNotClosedError(
+            f"{month}: month-end {datetime.fromtimestamp(end_ts, UTC):%Y-%m-%d %H:%M:%S} UTC "
+            "is in the future — pass --allow-partial to report the month-to-date."
+        )
     prev_eod = hs.find_block_at_or_before("ethereum", start_ts - 1)
     to_block = hs.find_block_at_or_before("ethereum", end_ts)
-    return prev_eod + 1, to_block, start_ts, end_ts
+    to_ts = hs.block_timestamp("ethereum", to_block) if partial else end_ts
+    return prev_eod + 1, to_block, start_ts, to_ts, partial
 
 
 class HyperSyncSbeSource:
@@ -132,7 +169,7 @@ class HyperSyncSbeSource:
             month=str(month), from_block=from_block, to_block=to_block,
             from_ts=from_ts, to_ts=to_ts,
         )
-        execs: dict[str, Decimal] = {}          # tx → SKY bought
+        execs: dict[str, list[tuple[int, Decimal]]] = {}   # tx → [(log_index, SKY bought)]
         kicks_raw: list[tuple[LogRow, Decimal, Decimal, Decimal, Decimal, int]] = []
 
         for r in rows:
@@ -144,28 +181,28 @@ class HyperSyncSbeSource:
                 pay = Decimal(_word(r.data, 2)) / WAD
                 kicks_raw.append((r, tot, lot, pay, burn, hop))
             elif r.topic0 == _EXEC and key == "MCD_FLAP":
-                execs[tx] = execs.get(tx, Decimal(0)) + Decimal(_word(r.data, 1)) / WAD
+                execs.setdefault(tx, []).append((r.log_index, Decimal(_word(r.data, 1)) / WAD))
             elif r.topic0 in (_FILE_U, _FILE_I):
                 what = _what(r.topic1)
-                raw = _word(r.data, 0)
-                value: Decimal
+                raw = _signed(_word(r.data, 0)) if r.topic0 == _FILE_I else _word(r.data, 0)
+                scale = _FILE_SCALE.get((key, what))
+                if scale is None:
+                    label, value = f"{what or '?'} (raw)", Decimal(raw)
+                else:
+                    label, value = what, Decimal(raw) / scale
                 if key == "MCD_SPLIT" and what == "burn":
-                    value = Decimal(raw) / WAD
                     burn = value
                 elif key == "MCD_SPLIT" and what == "hop":
-                    value = Decimal(raw)
                     hop = raw
-                elif key == "MCD_KICK" and what == "kbump":
-                    value = Decimal(raw) / RAD
-                elif key == "MCD_KICK" and what == "khump":
-                    value = Decimal(_signed(raw)) / RAD
-                elif key == "REWARDS_DIST_LSSKY_SKY" and what == "vestId":
-                    value = Decimal(raw)
-                else:
-                    value = Decimal(_signed(raw)) if r.topic0 == _FILE_I else Decimal(raw)
                 act.param_changes.append(SbeParamChange(
                     block=r.block_number, log_index=r.log_index, ts=r.block_time, tx=tx,
-                    contract=key, what=what or "?", value=value,
+                    contract=key, what=label, value=value,
+                ))
+            elif r.topic0 == _FILE_A:
+                act.param_changes.append(SbeParamChange(
+                    block=r.block_number, log_index=r.log_index, ts=r.block_time, tx=tx,
+                    contract=key, what=_what(r.topic1) or "?",
+                    value="0x" + r.data[-40:],
                 ))
             elif r.topic0 == _REWARDS_DURATION and key == "REWARDS_LSSKY_USDS":
                 act.param_changes.append(SbeParamChange(
@@ -188,16 +225,32 @@ class HyperSyncSbeSource:
                     amount=Decimal(_word(r.data, 0)) / WAD,
                 ))
 
+        # Join Exec → Kick POSITIONALLY within a transaction. Splitter.kick()
+        # calls flapper.exec() (which emits Exec) and then emits Kick last, so
+        # a Kick's Exec is the nearest unconsumed Exec BEFORE its log index.
+        # A tx with several kicks (hop = 0, or a multicall keeper) therefore
+        # never double-counts one Exec.
         for r, tot, lot, pay, b, h in kicks_raw:
             tx = r.transaction_hash or ""
-            bought = execs.get(tx, Decimal(0))
-            if lot > 0 and bought == 0:
-                raise ValueError(
-                    f"hypersync_sbe: Splitter Kick in tx {tx} at block {r.block_number} sent "
-                    f"{lot} USDS to the Flapper but no Exec event was found in the same tx"
-                )
+            bought = Decimal(0)
+            if lot > 0:
+                pending = execs.get(tx, [])
+                before = [i for i, (li, _) in enumerate(pending) if li < r.log_index]
+                if not before:
+                    raise ValueError(
+                        f"hypersync_sbe: Splitter Kick in tx {tx} at block {r.block_number} sent "
+                        f"{lot} USDS to the Flapper but no Exec event precedes it in the same tx"
+                    )
+                _, bought = pending.pop(before[-1])
             act.kicks.append(SbeKick(
                 block=r.block_number, log_index=r.log_index, ts=r.block_time, tx=tx,
                 tot=tot, lot=lot, pay=pay, bought=bought, burn=b, hop=h,
             ))
+        leftover = {tx: v for tx, v in execs.items() if v}
+        if leftover:
+            raise ValueError(
+                f"hypersync_sbe: {sum(len(v) for v in leftover.values())} Flapper Exec event(s) "
+                f"with no matching Splitter Kick in tx(s) {sorted(leftover)[:3]} — the Flapper "
+                "was called outside the Splitter; refusing to attribute the SKY"
+            )
         return act

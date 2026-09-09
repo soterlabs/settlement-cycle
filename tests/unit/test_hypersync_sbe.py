@@ -39,6 +39,13 @@ def _log(addr: str, topic0: str, data_words: list[int], block: int, idx: int, tx
     }
 
 
+@pytest.fixture(autouse=True)
+def _envio_token(monkeypatch):
+    """hs.query_logs resolves the bearer token before touching the (mocked)
+    transport — every HyperSync unit test needs the variable set."""
+    monkeypatch.setenv("ENVIO_API_TOKEN", "test-token")
+
+
 class _Resp:
     ok = True
     status_code = 200
@@ -71,8 +78,8 @@ def test_decodes_kicks_param_changes_and_distributions():
     burn_new = 55 * WAD // 100
     logs = [
         # legacy kick: 6,000 USDS all to the flapper, 100k SKY bought
-        _log(_C["MCD_SPLIT"], S._KICK, [6000 * RAD, 6000 * WAD, 0], 10, 1, "0xk1"),
-        _log(_C["MCD_FLAP"], S._EXEC, [6000 * WAD, 100_000 * WAD], 10, 2, "0xk1"),
+        _log(_C["MCD_FLAP"], S._EXEC, [6000 * WAD, 100_000 * WAD], 10, 1, "0xk1"),
+        _log(_C["MCD_SPLIT"], S._KICK, [6000 * RAD, 6000 * WAD, 0], 10, 2, "0xk1"),
         # the spell: burn → 55%, hop → 3748, vest yank 15 / init 16, dist vestId 16
         _log(_C["MCD_VEST_SKY_TREASURY"], S._VEST_YANK, [1_787_000_000], 20, 1, "0xspell", topic1=_w(15)),
         _log(_C["MCD_VEST_SKY_TREASURY"], S._VEST_INIT, [], 20, 2, "0xspell", topic1=_w(16)),
@@ -83,8 +90,8 @@ def test_decodes_kicks_param_changes_and_distributions():
         _log(_C["MCD_KICK"], S._FILE_I, [(1 << 256) - 200_000_000 * RAD], 20, 7, "0xspell", topic1=_what("khump")),
         _log(_C["REWARDS_DIST_LSSKY_SKY"], S._DISTRIBUTE, [467_238 * WAD], 20, 8, "0xspell"),
         # new-regime kick: 3,300 to the flapper, 2,700 to the farm, 50k SKY bought
-        _log(_C["MCD_SPLIT"], S._KICK, [6000 * RAD, 3300 * WAD, 2700 * WAD], 30, 1, "0xk2"),
-        _log(_C["MCD_FLAP"], S._EXEC, [3300 * WAD, 50_000 * WAD], 30, 2, "0xk2"),
+        _log(_C["MCD_FLAP"], S._EXEC, [3300 * WAD, 50_000 * WAD], 30, 1, "0xk2"),
+        _log(_C["MCD_SPLIT"], S._KICK, [6000 * RAD, 3300 * WAD, 2700 * WAD], 30, 2, "0xk2"),
     ]
     blocks = [{"number": b, "timestamp": hex(1_000 * b)} for b in (10, 20, 30)]
     src = S.HyperSyncSbeSource(_C, post=_transport(logs, blocks, to_block=40))
@@ -111,11 +118,51 @@ def test_decodes_kicks_param_changes_and_distributions():
     assert [d.amount for d in act.distributions] == [D(467_238)]
 
 
+def test_exec_kick_join_is_positional_within_a_tx():
+    """Two kicks in one tx (hop = 0 / multicall keeper): each Kick takes the
+    Exec that precedes it (Splitter.kick emits Kick last), never the tx-wide sum."""
+    logs = [
+        _log(_C["MCD_FLAP"], S._EXEC, [3300 * WAD, 50_000 * WAD], 10, 1, "0xmulti"),
+        _log(_C["MCD_SPLIT"], S._KICK, [6000 * RAD, 3300 * WAD, 2700 * WAD], 10, 2, "0xmulti"),
+        _log(_C["MCD_FLAP"], S._EXEC, [3300 * WAD, 40_000 * WAD], 10, 5, "0xmulti"),
+        _log(_C["MCD_SPLIT"], S._KICK, [6000 * RAD, 3300 * WAD, 2700 * WAD], 10, 6, "0xmulti"),
+    ]
+    blocks = [{"number": 10, "timestamp": hex(10_000)}]
+    src = S.HyperSyncSbeSource(_C, post=_transport(logs, blocks, to_block=20))
+    act = src.activity("2026-08", 1, 20, from_ts=0, to_ts=1, burn_at_start=D("0.55"), hop_at_start=0)
+    assert [k.bought for k in act.kicks] == [D(50_000), D(40_000)]
+
+
+def test_exec_without_kick_is_loud():
+    logs = [_log(_C["MCD_FLAP"], S._EXEC, [3300 * WAD, 50_000 * WAD], 10, 2, "0xstray")]
+    blocks = [{"number": 10, "timestamp": hex(10_000)}]
+    src = S.HyperSyncSbeSource(_C, post=_transport(logs, blocks, to_block=20))
+    with pytest.raises(ValueError, match="no matching Splitter Kick"):
+        src.activity("2026-08", 1, 20, from_ts=0, to_ts=1, burn_at_start=D("0.55"), hop_at_start=3748)
+
+
+def test_file_events_are_scaled_or_flagged_raw_and_addresses_decoded():
+    logs = [
+        _log(_C["MCD_FLAP"], S._FILE_U, [98 * WAD // 100], 10, 1, "0xf", topic1=_what("want")),
+        _log(_C["MCD_VEST_SKY_TREASURY"], S._FILE_U, [3 * WAD], 10, 2, "0xf", topic1=_what("cap")),
+        _log(_C["MCD_SPLIT"], S._FILE_U, [12345], 10, 3, "0xf", topic1=_what("mystery")),
+        _log(_C["MCD_SPLIT"], S._FILE_A, [int(_C["MCD_FLAP"], 16)], 10, 4, "0xf", topic1=_what("flapper")),
+    ]
+    blocks = [{"number": 10, "timestamp": hex(10_000)}]
+    src = S.HyperSyncSbeSource(_C, post=_transport(logs, blocks, to_block=20))
+    act = src.activity("2026-08", 1, 20, from_ts=0, to_ts=1, burn_at_start=D("0.55"), hop_at_start=3748)
+    got = {(c.contract, c.what): c.value for c in act.param_changes}
+    assert got[("MCD_FLAP", "want")] == D("0.98")
+    assert got[("MCD_VEST_SKY_TREASURY", "cap")] == D(3)
+    assert got[("MCD_SPLIT", "mystery (raw)")] == D(12345)
+    assert got[("MCD_SPLIT", "flapper")] == _C["MCD_FLAP"].lower()
+
+
 def test_kick_without_exec_is_loud():
     logs = [_log(_C["MCD_SPLIT"], S._KICK, [6000 * RAD, 3300 * WAD, 2700 * WAD], 10, 1, "0xk")]
     blocks = [{"number": 10, "timestamp": hex(10_000)}]
     src = S.HyperSyncSbeSource(_C, post=_transport(logs, blocks, to_block=20))
-    with pytest.raises(ValueError, match="no Exec event"):
+    with pytest.raises(ValueError, match="no Exec event precedes"):
         src.activity("2026-08", 1, 20, from_ts=0, to_ts=1, burn_at_start=D("0.55"), hop_at_start=3748)
 
 
@@ -131,5 +178,23 @@ def test_month_block_range_uses_prior_eod_plus_one(monkeypatch):
     class M:
         year, month = 2026, 8
 
-    assert S.month_block_range(M()) == (25656293, 25878704, 1_785_542_400, 1_788_220_799)
+    # "now" is 2026-09-09: August is closed -> exact EoD, partial=False
+    assert S.month_block_range(M(), now=1_789_000_000) == (
+        25656293, 25878704, 1_785_542_400, 1_788_220_799, False,
+    )
     assert calls == [1_785_542_399, 1_788_220_799]
+
+
+def test_month_block_range_refuses_an_open_month_unless_allowed(monkeypatch):
+    monkeypatch.setattr(S.hs, "find_block_at_or_before",
+                        lambda chain, ts: {1_788_220_799: 25878704, 1_790_812_799: 25_900_000}[ts])
+    monkeypatch.setattr(S.hs, "block_timestamp", lambda chain, b: 1_789_000_000)
+
+    class M:
+        year, month = 2026, 9
+
+    with pytest.raises(S.MonthNotClosedError, match="--allow-partial"):
+        S.month_block_range(M(), now=1_789_000_000)
+    got = S.month_block_range(M(), allow_partial=True, now=1_789_000_000)
+    # to_block is the head clamp, to_ts its REAL timestamp, partial flagged
+    assert got == (25878705, 25_900_000, 1_788_220_800, 1_789_000_000, True)

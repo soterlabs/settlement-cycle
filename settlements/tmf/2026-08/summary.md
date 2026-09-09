@@ -44,7 +44,7 @@ Treasury Management Function waterfall for the **August 2026** cycle (MSC#12): S
 | Implied batches / month ÷ / day | 1,049.69 ÷ 34.51 |
 | Implied hop (solved, kbump fixed) | 2,503.60 s → **2,504 s** |
 | Annual run-rate through the engine | 75,577,421 USDS/yr |
-| Within SBE BEAM bounds (kbump ≤ 12,000, hop ≥ 550 s, ≤ 350,000,000/yr) | yes |
+| SBE BEAM bounds | kbump ≤ 12,000: ok · hop ≥ 550 s: ok · ≤ 350,000,000/yr: ok |
 | Bought SKY (model estimate, 55% leg ÷ TWAP) | 58,344,160 SKY |
 
 ## Step 4 — Staking rewards
@@ -55,7 +55,7 @@ Treasury Management Function waterfall for the **August 2026** cycle (MSC#12): S
 | Monthly USDS rewards → REWARDS_LSSKY_USDS (via Splitter, per batch) | 2,834,153.28 USDS |
 | vestTot (3 months of SKY rewards, 90-day stream) | 143,208,393.43 → **143,208,393 SKY** |
 | Stream rate (vestTot ÷ tau) | 18.4167 SKY/s |
-| Weekly distributor pull ≈ | 11,138,431 SKY / 7 d |
+| Distributor pull per farm period (7 d) ≈ | 11,138,431 SKY |
 | vs MCD_VEST_SKY_TREASURY.cap 70.73 SKY/s | ok |
 
 ## ② Parameter block for the spell (computed vs published vs on-chain)
@@ -83,11 +83,11 @@ Blocks 25,656,293-25,878,704 (2026-08-01 00:00:00 UTC → 2026-08-31 23:59:59 UT
 | 55% / 3,748 s | 2026-08-17 15:06:35 UTC | 2026-08-31 23:30:23 UTC | 311 | 1,866,000 | 1,026,300 | 839,700 | 15,735,190.69 | 0.065223 |
 | **month** | | | **414** | **2,484,000** | **1,644,300** | **839,700** | **27,100,702.11** | **0.060674** |
 
-**Burn attribution** — only buys executed while `splitter.burn` = 55% (the 45/10 regime) are split 45%/10%; buys under the legacy 100% regime went to the treasury un-attributed (BA Labs convention, t/28153).
+**Burn attribution** — buys executed from the TMF's first cast (2026-08-17 14:02:23 UTC) are split per the regime they ran under: burn leg = 10% ÷ that regime's `splitter.burn` (10%/55% today), the rest to SKY stakers. Earlier buys (legacy 100% engine) went to the treasury un-attributed (BA Labs convention, t/28153).
 
 | Line | Value |
 |---|---:|
-| Kicks in the 55% window | 311 |
+| Kicks since the TMF took effect | 311 |
 | USDS spent in the window | 1,026,300.00 USDS |
 | SKY bought in the window | 15,735,190.69 SKY |
 | &nbsp;&nbsp;to SKY stakers (45%/55%) | 12,874,246.93 SKY |
