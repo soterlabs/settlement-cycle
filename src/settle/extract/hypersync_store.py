@@ -25,6 +25,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import weakref
 from collections.abc import Callable
 from typing import Any
 
@@ -47,7 +48,7 @@ def _stream_key(
     persisted under the default set have NULL there, and serving them to a
     caller that needs the hash would silently break its joins."""
     key: dict[str, Any] = {"chain": chain, "sel": selections}
-    if log_fields is not None:
+    if log_fields is not None and sorted(log_fields) != sorted(hypersync._DEFAULT_LOG_FIELDS):
         key["fields"] = sorted(log_fields)
     blob = json.dumps(key, sort_keys=True).encode()
     return hashlib.sha256(blob).hexdigest()
@@ -80,7 +81,7 @@ def fetch_logs(
         return live(from_block, to_block).rows
 
     stream = _stream_key(chain, selections, log_fields)
-    _ensure_schema(conn)
+    _ensure_schema_once(conn)
     cov = _get_coverage(conn, stream)  # (covered_from, covered_to) | None
 
     # Fully covered already → serve from DB, zero network.
@@ -148,6 +149,22 @@ def fetch_logs(
 # --------------------------------------------------------------------------
 # Postgres helpers (thin; reuse postgres_store's connection + graceful state).
 # --------------------------------------------------------------------------
+
+# Connections whose schema has been checked this process. ``_ensure_schema``
+# includes an ``ALTER TABLE … ADD COLUMN IF NOT EXISTS``, which takes an
+# ACCESS EXCLUSIVE lock on the shared log table even when the column already
+# exists — running it on every fetch (hundreds per run) blocks behind any
+# concurrent reader and can hit statement_timeout. Once per connection is
+# enough: the schema cannot change underneath a live connection.
+_SCHEMA_CHECKED: weakref.WeakSet[Any] = weakref.WeakSet()
+
+
+def _ensure_schema_once(conn: Any) -> None:
+    if conn in _SCHEMA_CHECKED:
+        return
+    _ensure_schema(conn)
+    _SCHEMA_CHECKED.add(conn)
+
 
 def _ensure_schema(conn: Any) -> None:
     with conn.cursor() as cur:
@@ -235,7 +252,7 @@ def _read_rows(conn: Any, stream: str, from_block: int, to_block: int) -> list[h
             hypersync.LogRow(
                 block_number=int(r[0]), log_index=int(r[1]), block_time=int(r[2]),
                 address=r[3], topic0=r[4], topic1=r[5], topic2=r[6], topic3=r[7], data=r[8],
-                transaction_hash=r[9] if len(r) > 9 else None,
+                transaction_hash=r[9],
             )
             for r in cur.fetchall()
         ]

@@ -1,11 +1,11 @@
 {
-  "schema_version": "1.0.0",
-  "generated_at": "2026-09-09T12:02:40Z",
+  "schema_version": "1.1.0",
+  "generated_at": "2026-09-09T13:47:47Z",
   "source": {
     "chain": "ethereum",
     "from_block": 20770191,
-    "to_block": 25939187,
-    "to_ts": "2026-09-09T10:21:59Z",
+    "to_block": 25939703,
+    "to_ts": "2026-09-09T12:05:35Z",
     "contracts": {
       "MCD_SPLIT": "0xBF7111F13386d23cb2Fba5A538107A73f6872bCF",
       "MCD_FLAP": "0x374D9c3d5134052Bc558F432Afa1df6575f07407",
@@ -29,33 +29,33 @@
     "sky_burn_other": "SKY sent to 0x\u2026dEaD by anyone else"
   },
   "notes": [
-    "The Splitter was deployed 2024-09-17 (block 20,770,191); the first kick ran 2024-11-14. Before Aug 2026 the farm leg pointed at the LSMKR USDS farm (Oct 2024 - May 2025) and then the LSSKY USDS farm; 'usds_to_stakers' covers both (the per-kick CSV carries the farm address).",
-    "Kicks under splitter.burn = 100% have usds_to_stakers = 0 by construction.",
-    "SKY burns: the 2025-06-30 executive burned 426,292,860.23 SKY held by the Pause Proxy (SKY.burn(), zero address). TMF-rule burns (10/55 of the previous month's buys) start with the September 2026 executive.",
-    "Aggregates are quantized to 2 dp (price to 6 dp) for charting; the CSVs are exact."
+    "The Splitter was deployed 2024-09-17 (block 20,770,191); the first kick ran 2024-11-14. The USDS farm leg pointed at the LSMKR USDS farm (0x9228\u20267cb1) from 2024-10-21 to 2025-05-19 and at the LSSKY USDS farm (0x38e4\u20268865) since; 'usds_to_stakers' covers both (the per-kick CSV carries the farm address).",
+    "Kicks under splitter.burn = 100% have usds_to_stakers = 0 by construction (Feb\u2013May 2025, Nov 2025 \u2013 Aug 17 2026).",
+    "SKY burns: the 2025-06-30 executive burned 426,292,860.23 SKY held by the Pause Proxy (SKY.burn(), zero address). The first TMF-rule burn (10/55 of the previous month's buys) is scheduled in the 2026-09-10 executive.",
+    "Aggregates are quantized to 2 dp (price to 6 dp) for charting; the CSVs are exact. A period with burns but no kicks has null sky_avg_price / first_ts / last_ts."
   ],
   "totals": {
     "period": "all",
-    "kicks": 17017,
-    "usds_buyback": 124615900.0,
-    "usds_to_stakers": 40001100.0,
-    "usds_total": 164617000.0,
-    "sky_bought": 1978131442.45,
+    "kicks": 17019,
+    "usds_buyback": 124622500.0,
+    "usds_to_stakers": 40006500.0,
+    "usds_total": 164629000.0,
+    "sky_bought": 1978233157.44,
     "sky_avg_price": 0.062997,
     "sky_burn_protocol": 426292860.23,
     "sky_burn_other": 4.82,
     "burn_events": 3,
     "first_ts": "2024-11-14T21:18:35Z",
-    "last_ts": "2026-09-09T09:40:35Z"
+    "last_ts": "2026-09-09T11:56:11Z"
   },
   "latest_kick": {
-    "ts": "2026-09-09T09:40:35Z",
-    "block": 25938980,
-    "tx": "0xddaed520e1a1a2e75d5b44a5fc89e3d88474eae40a295d82bef52f0de3cab631",
+    "ts": "2026-09-09T11:56:11Z",
+    "block": 25939656,
+    "tx": "0x16d92ef51334a63eb2b1e03c1f68acf224963864893d3308627e18aed443d0d1",
     "usds_buyback": 3300.0,
     "usds_to_stakers": 2700.0,
     "usds_total": 6000.0,
-    "sky_bought": 50322.98,
+    "sky_bought": 50676.81,
     "splitter_burn": 0.55,
     "splitter_hop": 3748
   },
@@ -343,17 +343,17 @@
       },
       {
         "period": "2026-09",
-        "kicks": 182,
-        "usds_buyback": 600600.0,
-        "usds_to_stakers": 491400.0,
-        "usds_total": 1092000.0,
-        "sky_bought": 8696008.98,
-        "sky_avg_price": 0.069066,
+        "kicks": 184,
+        "usds_buyback": 607200.0,
+        "usds_to_stakers": 496800.0,
+        "usds_total": 1104000.0,
+        "sky_bought": 8797723.97,
+        "sky_avg_price": 0.069018,
         "sky_burn_protocol": 0.0,
         "sky_burn_other": 0.0,
         "burn_events": 0,
         "first_ts": "2026-09-01T00:38:11Z",
-        "last_ts": "2026-09-09T09:40:35Z"
+        "last_ts": "2026-09-09T11:56:11Z"
       }
     ],
     "quarterly": [
@@ -457,17 +457,17 @@
       },
       {
         "period": "2026-Q3",
-        "kicks": 790,
-        "usds_buyback": 3408900.0,
-        "usds_to_stakers": 1331100.0,
-        "usds_total": 4740000.0,
-        "sky_bought": 55628525.44,
-        "sky_avg_price": 0.06128,
+        "kicks": 792,
+        "usds_buyback": 3415500.0,
+        "usds_to_stakers": 1336500.0,
+        "usds_total": 4752000.0,
+        "sky_bought": 55730240.44,
+        "sky_avg_price": 0.061286,
         "sky_burn_protocol": 0.0,
         "sky_burn_other": 0.0,
         "burn_events": 0,
         "first_ts": "2026-07-01T01:14:59Z",
-        "last_ts": "2026-09-09T09:40:35Z"
+        "last_ts": "2026-09-09T11:56:11Z"
       }
     ],
     "annual": [
@@ -501,17 +501,17 @@
       },
       {
         "period": "2026",
-        "kicks": 3468,
-        "usds_buyback": 27480900.0,
-        "usds_to_stakers": 1331100.0,
-        "usds_total": 28812000.0,
-        "sky_bought": 418977689.45,
+        "kicks": 3470,
+        "usds_buyback": 27487500.0,
+        "usds_to_stakers": 1336500.0,
+        "usds_total": 28824000.0,
+        "sky_bought": 419079404.44,
         "sky_avg_price": 0.06559,
         "sky_burn_protocol": 0.0,
         "sky_burn_other": 0.0,
         "burn_events": 0,
         "first_ts": "2026-01-01T00:40:47Z",
-        "last_ts": "2026-09-09T09:40:35Z"
+        "last_ts": "2026-09-09T11:56:11Z"
       }
     ]
   },
@@ -521,6 +521,7 @@
       "block": 20770191,
       "tx": "0x2221973333bd0c22f8b1b2593fa9817765bafcf65a2d3c25ebde8df06bbd197c",
       "contract": "MCD_SPLIT",
+      "address": "0xbf7111f13386d23cb2fba5a538107a73f6872bcf",
       "what": "hop",
       "value": "10249"
     },
@@ -529,6 +530,7 @@
       "block": 20770191,
       "tx": "0x2221973333bd0c22f8b1b2593fa9817765bafcf65a2d3c25ebde8df06bbd197c",
       "contract": "MCD_SPLIT",
+      "address": "0xbf7111f13386d23cb2fba5a538107a73f6872bcf",
       "what": "burn",
       "value": "1"
     },
@@ -537,6 +539,7 @@
       "block": 20770191,
       "tx": "0x2221973333bd0c22f8b1b2593fa9817765bafcf65a2d3c25ebde8df06bbd197c",
       "contract": "MCD_FLAP",
+      "address": "0xc5a9caeba70d6974cbdfb28120c3611dd9910355",
       "what": "want",
       "value": "0.98"
     },
@@ -545,6 +548,7 @@
       "block": 20770191,
       "tx": "0x2221973333bd0c22f8b1b2593fa9817765bafcf65a2d3c25ebde8df06bbd197c",
       "contract": "MCD_FLAP",
+      "address": "0xc5a9caeba70d6974cbdfb28120c3611dd9910355",
       "what": "pip",
       "value": "0x38e8c1d443f546dc014d7756ec63116161cb7b25"
     },
@@ -553,6 +557,7 @@
       "block": 20770191,
       "tx": "0x2221973333bd0c22f8b1b2593fa9817765bafcf65a2d3c25ebde8df06bbd197c",
       "contract": "MCD_SPLIT",
+      "address": "0xbf7111f13386d23cb2fba5a538107a73f6872bcf",
       "what": "flapper",
       "value": "0xc5a9caeba70d6974cbdfb28120c3611dd9910355"
     },
@@ -561,6 +566,7 @@
       "block": 20863927,
       "tx": "0xfc1d79ef313c8b5af720830fb9f7f029bf700cbdfc0a472e12df1c72cce6be43",
       "contract": "MCD_FLAP",
+      "address": "0x374d9c3d5134052bc558f432afa1df6575f07407",
       "what": "want",
       "value": "0.98"
     },
@@ -569,6 +575,7 @@
       "block": 20863927,
       "tx": "0xfc1d79ef313c8b5af720830fb9f7f029bf700cbdfc0a472e12df1c72cce6be43",
       "contract": "MCD_FLAP",
+      "address": "0x374d9c3d5134052bc558f432afa1df6575f07407",
       "what": "pip",
       "value": "0x61a12e5b1d5e9cc1302a32f0df1b5451de6ae437"
     },
@@ -577,6 +584,7 @@
       "block": 20863927,
       "tx": "0xfc1d79ef313c8b5af720830fb9f7f029bf700cbdfc0a472e12df1c72cce6be43",
       "contract": "MCD_SPLIT",
+      "address": "0xbf7111f13386d23cb2fba5a538107a73f6872bcf",
       "what": "flapper",
       "value": "0x374d9c3d5134052bc558f432afa1df6575f07407"
     },
@@ -585,6 +593,7 @@
       "block": 20863927,
       "tx": "0xfc1d79ef313c8b5af720830fb9f7f029bf700cbdfc0a472e12df1c72cce6be43",
       "contract": "MCD_SPLIT",
+      "address": "0xbf7111f13386d23cb2fba5a538107a73f6872bcf",
       "what": "hop",
       "value": "11635"
     },
@@ -593,6 +602,7 @@
       "block": 21014413,
       "tx": "0xda31ba8a27ff7166680d9b556abe508a713a5e2028a729f87334d1c1ef4ccad6",
       "contract": "MCD_SPLIT",
+      "address": "0xbf7111f13386d23cb2fba5a538107a73f6872bcf",
       "what": "burn",
       "value": "0.7"
     },
@@ -601,6 +611,7 @@
       "block": 21014413,
       "tx": "0xda31ba8a27ff7166680d9b556abe508a713a5e2028a729f87334d1c1ef4ccad6",
       "contract": "MCD_SPLIT",
+      "address": "0xbf7111f13386d23cb2fba5a538107a73f6872bcf",
       "what": "hop",
       "value": "15649"
     },
@@ -609,6 +620,7 @@
       "block": 21014413,
       "tx": "0xda31ba8a27ff7166680d9b556abe508a713a5e2028a729f87334d1c1ef4ccad6",
       "contract": "MCD_SPLIT",
+      "address": "0xbf7111f13386d23cb2fba5a538107a73f6872bcf",
       "what": "farm",
       "value": "0x92282235a39be957ff1f37619fd22a9ae5507cb1"
     },
@@ -617,6 +629,7 @@
       "block": 21916640,
       "tx": "0x395e70dfbb3b3a23fbfd0e7a4ad659c77302e2f5923606e006e981097cc27ef9",
       "contract": "MCD_SPLIT",
+      "address": "0xbf7111f13386d23cb2fba5a538107a73f6872bcf",
       "what": "burn",
       "value": "1"
     },
@@ -625,6 +638,7 @@
       "block": 21916640,
       "tx": "0x395e70dfbb3b3a23fbfd0e7a4ad659c77302e2f5923606e006e981097cc27ef9",
       "contract": "MCD_SPLIT",
+      "address": "0xbf7111f13386d23cb2fba5a538107a73f6872bcf",
       "what": "hop",
       "value": "876"
     },
@@ -633,6 +647,7 @@
       "block": 22016933,
       "tx": "0xb12149a559725f28a742a85219ea71b824652ebe5f4b125480b5dbca3395aa2a",
       "contract": "MCD_SPLIT",
+      "address": "0xbf7111f13386d23cb2fba5a538107a73f6872bcf",
       "what": "hop",
       "value": "2160"
     },
@@ -641,6 +656,7 @@
       "block": 22117224,
       "tx": "0xfa915f838ad5b31fe05d1f31669af9496e65c5cc0656695298bd14dc8b6793ab",
       "contract": "MCD_SPLIT",
+      "address": "0xbf7111f13386d23cb2fba5a538107a73f6872bcf",
       "what": "hop",
       "value": "1728"
     },
@@ -649,6 +665,7 @@
       "block": 22217481,
       "tx": "0x269d75d67578c23eac3691228042501baa803d3b5680cfef141b7203e9ff3058",
       "contract": "MCD_SPLIT",
+      "address": "0xbf7111f13386d23cb2fba5a538107a73f6872bcf",
       "what": "hop",
       "value": "1235"
     },
@@ -657,6 +674,7 @@
       "block": 22317839,
       "tx": "0xc147db030f1033e0fcc151f8c74236eee05604d16be7403f5becf193b2b1e45f",
       "contract": "MCD_SPLIT",
+      "address": "0xbf7111f13386d23cb2fba5a538107a73f6872bcf",
       "what": "hop",
       "value": "1728"
     },
@@ -665,6 +683,7 @@
       "block": 22517471,
       "tx": "0xb2dd9e6858eb3a46e2215426bcfe23231a97ea1be87bbeb9eeeb2798ce077d48",
       "contract": "MCD_FLAP",
+      "address": "0x374d9c3d5134052bc558f432afa1df6575f07407",
       "what": "pip",
       "value": "0xc2ffbbdccf1466eb8968a846179191cb881ecdff"
     },
@@ -673,6 +692,7 @@
       "block": 22517471,
       "tx": "0xb2dd9e6858eb3a46e2215426bcfe23231a97ea1be87bbeb9eeeb2798ce077d48",
       "contract": "MCD_SPLIT",
+      "address": "0xbf7111f13386d23cb2fba5a538107a73f6872bcf",
       "what": "farm",
       "value": "0x38e4254bd82ed5ee97cd1c4278faae748d998865"
     },
@@ -681,6 +701,7 @@
       "block": 22617678,
       "tx": "0x4ddc25f122e8092d40a008e2a1807ed81beb514f054345085ef863cdf266cf5e",
       "contract": "MCD_SPLIT",
+      "address": "0xbf7111f13386d23cb2fba5a538107a73f6872bcf",
       "what": "burn",
       "value": "0.5"
     },
@@ -689,6 +710,7 @@
       "block": 22817692,
       "tx": "0x666eb7807c1b4098f9b91658eb008e8931063c5050e4dbe28bd6fac3a2948d02",
       "contract": "MCD_SPLIT",
+      "address": "0xbf7111f13386d23cb2fba5a538107a73f6872bcf",
       "what": "hop",
       "value": "2160"
     },
@@ -697,6 +719,7 @@
       "block": 23218581,
       "tx": "0x9dff3cf283969f0d6b54347829463aabbcad43e79ebb7ad20c5154e951586e3f",
       "contract": "MCD_SPLIT",
+      "address": "0xbf7111f13386d23cb2fba5a538107a73f6872bcf",
       "what": "burn",
       "value": "0.25"
     },
@@ -705,22 +728,25 @@
       "block": 23719448,
       "tx": "0x2d6e84b14e37b05ec6b448226b3fd7724fc1f8dd8345a24edc1c3845a33abc89",
       "contract": "MCD_KICK",
+      "address": "0xd889477102e8c4a857b78fcc2f134535176ec1fc",
       "what": "khump",
-      "value": "-200000000.000000000000000000"
+      "value": "-200000000"
     },
     {
       "ts": "2025-11-03T14:38:11Z",
       "block": 23719448,
       "tx": "0x2d6e84b14e37b05ec6b448226b3fd7724fc1f8dd8345a24edc1c3845a33abc89",
       "contract": "MCD_KICK",
+      "address": "0xd889477102e8c4a857b78fcc2f134535176ec1fc",
       "what": "kbump",
-      "value": "10000.000000000000000000"
+      "value": "10000"
     },
     {
       "ts": "2025-11-03T14:38:11Z",
       "block": 23719448,
       "tx": "0x2d6e84b14e37b05ec6b448226b3fd7724fc1f8dd8345a24edc1c3845a33abc89",
       "contract": "MCD_SPLIT",
+      "address": "0xbf7111f13386d23cb2fba5a538107a73f6872bcf",
       "what": "burn",
       "value": "1"
     },
@@ -729,6 +755,7 @@
       "block": 23719448,
       "tx": "0x2d6e84b14e37b05ec6b448226b3fd7724fc1f8dd8345a24edc1c3845a33abc89",
       "contract": "MCD_SPLIT",
+      "address": "0xbf7111f13386d23cb2fba5a538107a73f6872bcf",
       "what": "hop",
       "value": "2880"
     },
@@ -737,14 +764,16 @@
       "block": 24656386,
       "tx": "0xd8986484a5b863e5f159889b25a6b434b5045405bf648db2223534dc49d01744",
       "contract": "MCD_KICK",
+      "address": "0xd889477102e8c4a857b78fcc2f134535176ec1fc",
       "what": "kbump",
-      "value": "6000.000000000000000000"
+      "value": "6000"
     },
     {
       "ts": "2026-03-14T14:41:23Z",
       "block": 24656386,
       "tx": "0xd8986484a5b863e5f159889b25a6b434b5045405bf648db2223534dc49d01744",
       "contract": "MCD_SPLIT",
+      "address": "0xbf7111f13386d23cb2fba5a538107a73f6872bcf",
       "what": "hop",
       "value": "13787"
     },
@@ -753,6 +782,7 @@
       "block": 25775271,
       "tx": "0x4d4f4d480a53ec6af365068283b90c59cf722aac6654920166c38e4f5c637bf4",
       "contract": "MCD_SPLIT",
+      "address": "0xbf7111f13386d23cb2fba5a538107a73f6872bcf",
       "what": "hop",
       "value": "3748"
     },
@@ -761,6 +791,7 @@
       "block": 25775271,
       "tx": "0x4d4f4d480a53ec6af365068283b90c59cf722aac6654920166c38e4f5c637bf4",
       "contract": "MCD_SPLIT",
+      "address": "0xbf7111f13386d23cb2fba5a538107a73f6872bcf",
       "what": "burn",
       "value": "0.55"
     }

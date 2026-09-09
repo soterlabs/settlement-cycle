@@ -39,7 +39,7 @@ __all__ = [
     "write_history_dataset",
 ]
 
-SCHEMA_VERSION = "1.0.0"
+SCHEMA_VERSION = "1.1.0"   # 1.1: parameter_changes rows carry `address`; values are `_dec`-formatted
 ZERO = Decimal(0)
 _Q2 = Decimal("0.01")
 _Q6 = Decimal("0.000001")
@@ -166,6 +166,12 @@ class HistoryDataset:
         return agg
 
 
+def _dec(x: Decimal) -> str:
+    """Exact Decimal as plain digits: trailing zeros stripped (``25000.000…`` →
+    ``25000``) and never exponent notation (``1E-18`` → ``0.000000000000000001``)."""
+    return format(x.normalize(), "f")
+
+
 def build_history_dataset(ds: HistoryDataset) -> dict[str, Any]:
     """The JSON document. Field names are the contract with msc-dashboard —
     bump ``SCHEMA_VERSION`` (semver) when they change."""
@@ -210,8 +216,8 @@ def build_history_dataset(ds: HistoryDataset) -> dict[str, Any]:
         "parameter_changes": [
             {
                 "ts": _ts(c.ts), "block": c.block, "tx": c.tx,
-                "contract": c.contract, "what": c.what,
-                "value": str(c.value) if isinstance(c.value, Decimal) else c.value,
+                "contract": c.contract, "address": c.address, "what": c.what,
+                "value": _dec(c.value) if isinstance(c.value, Decimal) else c.value,
             }
             for c in params
         ],
@@ -223,13 +229,6 @@ _KICK_COLUMNS = [
     "sky_bought", "splitter_burn", "splitter_hop", "farm", "flapper",
 ]
 _BURN_COLUMNS = ["ts", "block", "log_index", "tx", "sender", "sink", "sky_amount", "protocol"]
-
-
-def _dec(x: Decimal) -> str:
-    """Exact Decimal for the CSVs, trailing zeros stripped (``25000.000…`` →
-    ``25000``) — halves the file without losing a digit."""
-    n = x.normalize()
-    return format(n, "f") if n == n.to_integral_value() else str(n)
 
 
 def write_history_dataset(ds: HistoryDataset, out_dir: Path) -> dict[str, Path]:

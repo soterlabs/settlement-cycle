@@ -193,11 +193,98 @@ def test_history_tracks_farm_and_flapper_pointers_across_a_swap():
         _lrow(_C["MCD_SPLIT"], S._KICK, [6000 * RAD, 4200 * WAD, 1800 * WAD], 4, 2, "0xk"),
     ]
     src = S.HyperSyncSbeSource(_C, flappers=[LEGACY_FLAP, _C["MCD_FLAP"]])
-    act = src.history(1, 10, fetch=lambda *a, **k: rows)
+    act = src.history(1, 10, deploy_block=1, fetch=lambda *a, **k: rows)
     assert len(act.kicks) == 1
     k = act.kicks[0]
     assert (k.burn, k.hop, k.pay, k.bought) == (D("0.7"), 10249, D(1800), D(100_000))
     assert k.farm == "0x" + "fa" * 20 and k.flapper == _C["MCD_FLAP"].lower()
     whats = [c.what for c in act.param_changes]
     assert whats == ["hop", "burn", "flapper", "flapper", "farm", "burn"]
+    assert all(c.address == _C["MCD_SPLIT"].lower() for c in act.param_changes)
     assert LEGACY_FLAP.lower() in src._flappers and src._by_addr[LEGACY_FLAP.lower()] == "MCD_FLAP"
+
+
+# ── review round 3 ──────────────────────────────────────────────────────────
+
+def test_history_refuses_a_start_that_is_not_the_deployment_block():
+    src = S.HyperSyncSbeSource(_C)
+    with pytest.raises(ValueError, match="deployment block"):
+        src.history(21_000_000, 21_100_000, deploy_block=20_770_191, fetch=lambda *a, **k: [])
+
+
+def test_legacy_lp_flapper_exec_is_decoded():
+    """FlapperUniV2 (LP variant) emits Exec(lot, sell, buy, liquidity); ``buy`` is
+    the SKY bought. A kick routed to it must not fail the build."""
+    rows = [
+        _lrow(_C["MCD_SPLIT"], S._FILE_A, [int(LEGACY_FLAP, 16)], 1, 1, "0xd",
+              "0x" + b"flapper".ljust(32, b"\x00").hex()),
+        _lrow(LEGACY_FLAP, S._EXEC_LP, [6000 * WAD, 5000 * WAD, 90_000 * WAD, 123], 2, 1, "0xk"),
+        _lrow(_C["MCD_SPLIT"], S._KICK, [6000 * RAD, 6000 * WAD, 0], 2, 2, "0xk"),
+    ]
+    src = S.HyperSyncSbeSource(_C, flappers=[LEGACY_FLAP])
+    act = src.history(1, 10, deploy_block=1, fetch=lambda *a, **k: rows)
+    assert act.kicks[0].bought == D(90_000)
+    assert act.kicks[0].flapper == LEGACY_FLAP.lower()
+    assert act.param_changes[0].address == _C["MCD_SPLIT"].lower()
+
+
+def test_param_change_rows_carry_the_emitting_address_for_both_flappers():
+    rows = [
+        _lrow(LEGACY_FLAP, S._FILE_U, [98 * WAD // 100], 1, 1, "0xa", "0x" + b"want".ljust(32, b"\x00").hex()),
+        _lrow(_C["MCD_FLAP"], S._FILE_U, [98 * WAD // 100], 2, 1, "0xb", "0x" + b"want".ljust(32, b"\x00").hex()),
+    ]
+    src = S.HyperSyncSbeSource(_C, flappers=[LEGACY_FLAP])
+    act = src.history(1, 10, deploy_block=1, fetch=lambda *a, **k: rows)
+    assert [(c.contract, c.address) for c in act.param_changes] == [
+        ("MCD_FLAP", LEGACY_FLAP.lower()), ("MCD_FLAP", _C["MCD_FLAP"].lower())]
+    doc = build_history_dataset(HistoryDataset(from_block=1, to_block=10, to_ts=0, kicks=[], burns=[],
+                                               param_changes=act.param_changes))
+    assert doc["parameter_changes"][0]["address"] == LEGACY_FLAP.lower()
+    assert doc["parameter_changes"][0]["value"] == "0.98"
+
+
+def test_activity_seeds_farm_and_flapper(monkeypatch):
+    """A month with no Splitter File(farm)/File(flapper) must still stamp kicks
+    with the pointers in force at the start of the month."""
+    rows = [
+        _lrow(_C["MCD_FLAP"], S._EXEC, [3300 * WAD, 50_000 * WAD], 10, 1, "0xk"),
+        _lrow(_C["MCD_SPLIT"], S._KICK, [6000 * RAD, 3300 * WAD, 2700 * WAD], 10, 2, "0xk"),
+    ]
+
+    from types import SimpleNamespace
+    monkeypatch.setattr(S.hs, "query_logs", lambda *a, **k: SimpleNamespace(rows=rows))
+    act = S.HyperSyncSbeSource(_C).activity(
+        "2026-08", 1, 20, from_ts=0, to_ts=1, burn_at_start=D("0.55"), hop_at_start=3748,
+        farm_at_start=_C["REWARDS_LSSKY_USDS"].lower(), flapper_at_start=_C["MCD_FLAP"].lower(),
+    )
+    assert (act.kicks[0].farm, act.kicks[0].flapper) == (
+        _C["REWARDS_LSSKY_USDS"].lower(), _C["MCD_FLAP"].lower())
+
+
+def test_activity_and_history_query_the_same_flapper_set(monkeypatch):
+    from types import SimpleNamespace
+    seen: list[list[str]] = []
+
+    def q(chain, sel, lo, hi, **k):
+        seen.append(sorted(sel[0]["address"]))
+        return SimpleNamespace(rows=[])
+    monkeypatch.setattr(S.hs, "query_logs", q)
+    src = S.HyperSyncSbeSource(_C, flappers=[LEGACY_FLAP])
+    src.activity("2026-08", 1, 2, from_ts=0, to_ts=1, burn_at_start=D(1), hop_at_start=1)
+    src.history(1, 2, deploy_block=1, fetch=lambda chain, sel, lo, hi, **k: (seen.append(sorted(sel[0]["address"])), [])[1])
+    assert LEGACY_FLAP.lower() in seen[0] and LEGACY_FLAP.lower() in seen[1]
+
+
+def test_dec_never_uses_exponent_notation():
+    from settle.compute.tmf_history import _dec
+    assert _dec(D(1) / D(10**18)) == "0.000000000000000001"
+    assert _dec(D("25000.000000000000000000")) == "25000"
+    assert _dec(D("6000.000000000000000000")) == "6000"
+    assert _dec(D("-200000000.000000000000000000")) == "-200000000"
+    assert _dec(D("0.55")) == "0.55"
+
+
+def test_sky_burns_refuses_empty_protocol_senders():
+    with pytest.raises(ValueError, match="protocol_senders is empty"):
+        S.HyperSyncSbeSource(_C).sky_burns(1, 2, sinks={"dead": DEAD, "zero": ZERO},
+                                            protocol_senders=[], fetch=lambda *a, **k: [])

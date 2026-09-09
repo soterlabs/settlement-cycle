@@ -285,3 +285,42 @@ def test_transaction_hash_round_trips_and_keys_its_own_stream(monkeypatch):
     r3 = hypersync_store.fetch_logs("ethereum", sel, 0, 10)
     assert r3[0].transaction_hash is None and len(seen_fields) == 2
     assert hypersync_store._stream_key("ethereum", sel) != hypersync_store._stream_key("ethereum", sel, fields)
+
+
+def test_schema_is_ensured_once_per_connection(monkeypatch):
+    """The ADD COLUMN IF NOT EXISTS takes an ACCESS EXCLUSIVE lock — it must not
+    run on every fetch."""
+    conn = _FakeConn()
+    ddl = {"n": 0}
+    real_cursor = conn.cursor
+
+    class _CountingCursor:
+        def __init__(self, inner): self._c = inner
+        def __enter__(self):
+            self._c.__enter__()
+            return self
+        def __exit__(self, *a): return self._c.__exit__(*a)
+        def execute(self, sql, params=()):
+            if "CREATE TABLE IF NOT EXISTS hypersync_logs" in sql:
+                ddl["n"] += 1
+            return self._c.execute(sql, params)
+        def executemany(self, *a): return self._c.executemany(*a)
+        def fetchone(self): return self._c.fetchone()
+        def fetchall(self): return self._c.fetchall()
+    conn.cursor = lambda: _CountingCursor(real_cursor())
+    monkeypatch.setattr(hypersync_store.postgres_store, "_get_conn", lambda: conn)
+    monkeypatch.setenv("HYPERSYNC_REORG_MARGIN", "100")
+    monkeypatch.setattr(hypersync, "query_logs",
+                        lambda *a, **k: QueryResult(rows=[_row(5)], archive_height=1000))
+    hypersync_store._SCHEMA_CHECKED.clear()
+    for _ in range(3):
+        hypersync_store.fetch_logs("ethereum", [{"address": ["0xtok"]}], 0, 10)
+    assert ddl["n"] == 1
+
+
+def test_default_field_set_does_not_fork_the_stream():
+    sel = [{"address": ["0xtok"]}]
+    k_none = hypersync_store._stream_key("ethereum", sel)
+    k_default = hypersync_store._stream_key("ethereum", sel, list(hypersync._DEFAULT_LOG_FIELDS))
+    k_tx = hypersync_store._stream_key("ethereum", sel, [*hypersync._DEFAULT_LOG_FIELDS, "transaction_hash"])
+    assert k_none == k_default != k_tx

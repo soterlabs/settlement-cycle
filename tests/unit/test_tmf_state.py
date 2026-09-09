@@ -32,6 +32,8 @@ def _fake_chain(overrides: dict[str, str] | None = None):
         T._sel("hop()"): _word(3748), T._sel("burn()"): _word(55 * WAD // 100),
         T._sel("zzz()"): _word(1_788_219_023), T._sel("want()"): _word(98 * WAD // 100),
         T._sel("receiver()"): "0x" + "00" * 12 + RECEIVER[2:],
+        T._sel("farm()"): "0x" + "00" * 12 + _C["REWARDS_LSSKY_USDS"][2:],
+        T._sel("flapper()"): "0x" + "00" * 12 + _C["MCD_FLAP"][2:],
         T._sel("rewardsDuration()"): _word(3748), T._sel("rewardRate()"): _word(WAD),
         T._sel("periodFinish()"): _word(1), T._sel("vestId()"): _word(16),
         T._sel("lastDistributedAt()"): _word(1), T._sel("usr(uint256)"): "0x" + "00" * 12 + RECEIVER[2:],
@@ -66,6 +68,7 @@ def test_decodes_levers_in_human_units(chain):
     assert (s["splitter_hop"], s["splitter_burn"]) == (3748, Decimal("0.55"))
     assert s["vest_tot"] == Decimal(96_903_706) and s["dist_vest_id"] == 16
     assert s["flapper_receiver"] == RECEIVER and s["vest_usr"] == RECEIVER
+    assert (s["splitter_farm"], s["splitter_flapper"]) == (_C["REWARDS_LSSKY_USDS"], _C["MCD_FLAP"])
     assert s["usds_total_supply"] == Decimal(6_366_968_221)
     assert s["vat_dai_vow"] - s["vat_sin_vow"] == Decimal(-50_000_000)
 

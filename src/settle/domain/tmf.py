@@ -42,6 +42,8 @@ class SbeParamChange:
     what: str             # 'hop' | 'burn' | 'kbump' | 'khump' | 'vestId' | 'rewardsDuration' |
                           # 'vest.init (id)' | 'vest.yank (id)' | '<what> (raw)' for unknown levers
     value: Decimal | str  # human units (seconds / fraction / USDS / id); an address for File(address)
+    address: str = ""     # emitting contract — distinguishes e.g. the legacy and live Flapper,
+                          # which share the MCD_FLAP role
 
 
 @dataclass(frozen=True)

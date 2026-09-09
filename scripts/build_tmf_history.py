@@ -20,6 +20,7 @@ the reorg margin, i.e. the latest FINALIZED block, so the run is persistable).
 
 from __future__ import annotations
 
+import argparse
 import logging
 import os
 import sys
@@ -39,16 +40,14 @@ from settle.extract import hypersync, hypersync_store  # noqa: E402
 from settle.normalize.sources.hypersync_sbe import HyperSyncSbeSource  # noqa: E402
 
 
-def _arg(flag: str) -> str | None:
-    if flag in sys.argv:
-        i = sys.argv.index(flag)
-        if i + 1 >= len(sys.argv):
-            raise SystemExit(f"{flag} requires a value")
-        return sys.argv[i + 1]
-    return None
-
-
 def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument(
+        "--to-block", type=int, default=None,
+        help="upper bound (default: HyperSync archive head minus the reorg margin — the "
+             "latest finalized block, so the run is persistable)",
+    )
+    args = ap.parse_args()
     logging.basicConfig(
         level=os.environ.get("LOG_LEVEL", "INFO"),
         format="%(asctime)s %(name)s %(levelname)s %(message)s",
@@ -60,39 +59,28 @@ def main() -> int:
     cfg = yaml.safe_load((_REPO / "config" / "tmf.yaml").read_text())
     hist = cfg["history"]
     contracts: dict[str, str] = dict(cfg["contracts"])
-    from_block = int(hist["from_block"])
+    deploy_block = int(hist["splitter_deploy_block"])
 
-    to_arg = _arg("--to-block")
-    if to_arg is not None:
-        to_block = int(to_arg)
+    if args.to_block is not None:
+        to_block, bound = int(args.to_block), "pinned"
     else:
         head = hypersync.archive_height("ethereum")
-        to_block = head - hypersync_store._reorg_margin()
+        to_block, bound = head - hypersync_store._reorg_margin(), "finalized head"
     to_ts = hypersync.block_timestamp("ethereum", to_block)
 
     source = HyperSyncSbeSource(contracts, flappers=hist["flappers"])
-    print(f"SBE history — blocks {from_block:,} → {to_block:,} (finalized head)")
-    activity = source.history(from_block, to_block)
+    print(f"SBE history — blocks {deploy_block:,} → {to_block:,} ({bound})")
+    activity = source.history(deploy_block, to_block, deploy_block=deploy_block)
     burns = source.sky_burns(
-        from_block, to_block,
+        deploy_block, to_block,
         sinks=hist["burn_sinks"], protocol_senders=hist["protocol_senders"],
     )
     ds = HistoryDataset(
-        from_block=from_block, to_block=to_block, to_ts=to_ts,
+        from_block=deploy_block, to_block=to_block, to_ts=to_ts,
         kicks=activity.kicks, burns=burns, param_changes=activity.param_changes,
         contracts={k: contracts[k] for k in ("MCD_SPLIT", "MCD_FLAP", "MCD_KICK", "SKY",
                                               "MCD_PAUSE_PROXY", "REWARDS_LSSKY_USDS")},
-        notes=[
-            "The Splitter was deployed 2024-09-17 (block 20,770,191); the first kick ran "
-            "2024-11-14. Before Aug 2026 the farm leg pointed at the LSMKR USDS farm "
-            "(Oct 2024 - May 2025) and then the LSSKY USDS farm; 'usds_to_stakers' covers both "
-            "(the per-kick CSV carries the farm address).",
-            "Kicks under splitter.burn = 100% have usds_to_stakers = 0 by construction.",
-            "SKY burns: the 2025-06-30 executive burned 426,292,860.23 SKY held by the Pause "
-            "Proxy (SKY.burn(), zero address). TMF-rule burns (10/55 of the previous month's "
-            "buys) start with the September 2026 executive.",
-            "Aggregates are quantized to 2 dp (price to 6 dp) for charting; the CSVs are exact.",
-        ],
+        notes=list(hist.get("notes") or []),
     )
     paths = write_history_dataset(ds, _REPO / "settlements" / "tmf" / "data")
 

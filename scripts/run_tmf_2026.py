@@ -66,7 +66,7 @@ def main() -> int:
     contracts: dict[str, str] = cfg["contracts"]
     months = [Month.parse(k) for k in sorted(cfg["months"])]
     selected = filter_by_months(months, lambda m: (m.year, m.month))
-    source = HyperSyncSbeSource(contracts)
+    source = HyperSyncSbeSource(contracts, flappers=(cfg.get("history") or {}).get("flappers"))
     allow_partial = "--allow-partial" in sys.argv
 
     print("TMF 2026 — Treasury Management Function waterfall + Smart Burn Engine execution")
@@ -91,6 +91,8 @@ def main() -> int:
                 month, from_block, to_block, from_ts=from_ts, to_ts=to_ts,
                 burn_at_start=Decimal(state_start["splitter_burn"]),
                 hop_at_start=int(state_start["splitter_hop"]),
+                farm_at_start=state_start["splitter_farm"],
+                flapper_at_start=state_start["splitter_flapper"],
             )
             r = compute_tmf_monthly(
                 label, mcfg, policy, activity=activity, state=state_end,

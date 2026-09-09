@@ -42,7 +42,17 @@ A **period row**:
 | `first_ts` / `last_ts` | first / last kick in the period |
 
 Periods appear only when they contain at least one kick or burn. A period with
-kicks under `splitter.burn = 100%` has `usds_to_stakers = 0`.
+kicks under `splitter.burn = 100%` has `usds_to_stakers = 0`. A period with
+burns but no kicks has `kicks = 0` and **null** `sky_avg_price`, `first_ts`,
+`last_ts`.
+
+`parameter_changes` rows: `ts, block, tx, contract (chainlog role), address
+(emitting contract — the legacy and live Flapper both carry the MCD_FLAP role),
+what, value`. Numeric values are exact decimals as plain digits (no exponent,
+no trailing zeros); `File(address)` values are the address.
+
+Schema history: **1.1.0** added `address` on `parameter_changes` and normalised
+`value` formatting; 1.0.0 initial.
 
 ## Burn definition
 
