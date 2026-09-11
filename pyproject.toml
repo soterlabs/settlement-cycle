@@ -6,7 +6,9 @@ build-backend = "hatchling.build"
 name = "settle"
 version = "0.1.0"
 description = "MSC monthly settlement pipeline for Sky prime agents"
-readme = "README.md"
+# No `readme` field: Nixpacks installs the package from a context that has
+# only pyproject.toml, and hatchling fails metadata generation when the file
+# named here is absent (Railway build 2026-09-11).
 requires-python = ">=3.11"
 authors = [{ name = "lakonema2000" }]
 license = { text = "MIT" }
