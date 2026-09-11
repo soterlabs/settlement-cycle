@@ -1,17 +1,23 @@
 #!/usr/bin/env python
-"""settle-cron — the daily pipeline entry point (docs/PRD_daily_pipeline_api.md).
+"""settle-cron — the pipeline's scheduled entry point (docs/PRD_daily_pipeline_api.md).
 
 Phase 1: extend the Smart Burn Engine history to the latest finalized block
 and persist the decoded rows (``sbe_kicks``, ``sky_burns``,
-``sbe_param_changes``) under a new ``runs`` row. Idempotent: re-running the
-same day inserts nothing new and still records an ok run.
+``sbe_param_changes``) under a new ``runs`` row. Idempotent: a re-run inserts
+nothing new and still records an ok run — which is also how a gap left by any
+earlier failure heals, since every run re-offers the whole history.
 
-Exit codes: 0 ok · 1 the run failed (recorded as status='failed') ·
-2 missing configuration.
+Runs **hourly** (see the PRD's cadence note). The floor on freshness is not
+the schedule but the extractor's finalized-head bound: HyperSync's archive
+head minus the reorg margin is ~100 minutes behind wall clock, so hourly puts
+the data at most ~2.7 h old where daily left it up to ~25 h.
+
+Exit codes: 0 ok (including a deliberate skip) · 1 the run failed (recorded as
+status='failed') · 2 missing configuration.
 
 Run with:
     set -a; source .env; set +a
-    PYTHONPATH=src python3 scripts/daily_cron.py [--to-block N] [--tasks tmf]
+    PYTHONPATH=src python3 scripts/cron.py [--to-block N] [--tasks tmf]
 """
 
 from __future__ import annotations
@@ -22,6 +28,7 @@ import os
 import sys
 import traceback
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -37,12 +44,36 @@ from settle.store import runs as runs_store  # noqa: E402
 from settle.store import tmf as tmf_store  # noqa: E402
 from settle.store.db import apply_schema, connect  # noqa: E402
 
-_log = logging.getLogger("daily_cron")
+_log = logging.getLogger("settle.cron")
+
+# A run that is still ``running`` and younger than this blocks a new one. At an
+# hourly cadence an overlap should be impossible (a run takes ~12 s, and the
+# store's statement timeout bounds a stuck one at 5 min), but a scheduler that
+# fires while the previous execution is wedged would otherwise interleave two
+# writers over the same tables. A crashed run cannot block forever: past this
+# window it is treated as abandoned.
+_OVERLAP_WINDOW_MIN = 50
 
 
 def _settle_version() -> str:
     sha = os.environ.get("RAILWAY_GIT_COMMIT_SHA") or os.environ.get("GITHUB_SHA")
     return f"{__version__}+{sha[:12]}" if sha else __version__
+
+
+def _blocking_run(conn: Any, kind: str, window_min: int) -> tuple[int, Any] | None:
+    """A still-``running`` run of ``kind`` started within ``window_min``, if any."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT run_id, started_at FROM runs
+            WHERE kind = %s AND status = 'running'
+              AND started_at > NOW() - make_interval(mins => %s)
+            ORDER BY started_at DESC LIMIT 1
+            """,
+            (kind, window_min),
+        )
+        row = cur.fetchone()
+    return (int(row[0]), row[1]) if row else None
 
 
 def task_tmf(to_block: int | None) -> int:
@@ -72,6 +103,13 @@ def task_tmf(to_block: int | None) -> int:
     try:
         with connect() as conn:
             apply_schema(conn)
+            blocking = _blocking_run(conn, "tmf_history", _OVERLAP_WINDOW_MIN)
+            if blocking is not None:
+                _log.warning(
+                    "tmf_history run %d has been running since %s — skipping this tick "
+                    "rather than interleaving two writers", blocking[0], blocking[1],
+                )
+                return 0
             run_id = runs_store.start_run(
                 conn, "tmf_history", settle_version=_settle_version(),
                 config_hash=runs_store.config_hash(fingerprint),

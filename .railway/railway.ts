@@ -8,8 +8,8 @@ import { defineRailway, github, postgres, preserve, project, service, volume } f
  * this repo with the same image (`pip install -e ".[api]"`):
  *
  *   settle-api   read-only FastAPI (settle.api.app), /healthz health check
- *   settle-cron  scripts/daily_cron.py, daily 02:30 UTC — extends the SBE
- *                history to the finalized head and persists it under a run
+ *   settle-cron  scripts/cron.py, hourly at :17 — extends the SBE history to
+ *                the finalized head and persists it under a run
  *
  * Secrets are `preserve()`d: values live in Railway, never in source.
  * `railway config plan` previews, `railway config apply` applies.
@@ -45,8 +45,10 @@ export default defineRailway(() => {
     replicas: { "us-west2": 1 },
     build,
     deploy: {
-      startCommand: "python scripts/daily_cron.py --tasks tmf",
-      cronSchedule: "30 2 * * *",
+      startCommand: "python scripts/cron.py --tasks tmf",
+      // Hourly, off the top of the hour: the engine kicks roughly once an hour,
+      // and :00 is where every other Railway cron piles up.
+      cronSchedule: "17 * * * *",
       restartPolicyType: "NEVER",
     },
     env: { DATABASE_URL: preserve(), ENVIO_API_TOKEN: preserve(), ETH_RPC: preserve(), LOG_LEVEL: preserve() },
