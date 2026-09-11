@@ -22,14 +22,16 @@ export default defineRailway(() => {
   Postgres.networking = { privateNetworkEndpoint: "postgres", tcpProxies: { "5432": {} } };
   const postgresVolume = volume("postgres-volume", { alerts: { usage: { "100": {}, "80": {}, "95": {} } }, allowOnlineResize: true, region: "us-west2", sizeMB: 50000 });
 
-  const build = { builder: "NIXPACKS" as const, buildCommand: 'pip install -e ".[api]"' };
+  // One explicit image for both services (see Dockerfile) — Nixpacks put the
+  // `api` extra outside its runtime venv.
+  const build = { builder: "DOCKERFILE" as const, dockerfilePath: "Dockerfile" };
 
   const settleApi = service("settle-api", {
     source: settlementCycle,
     replicas: { "us-west2": 1 },
     build,
     deploy: {
-      startCommand: "uvicorn settle.api.app:app --host 0.0.0.0 --port $PORT",
+      startCommand: "python -m uvicorn settle.api.app:app --host 0.0.0.0 --port $PORT",
       healthcheckPath: "/healthz",
       healthcheckTimeout: 120,
       restartPolicyType: "ON_FAILURE",
