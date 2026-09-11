@@ -72,3 +72,13 @@ CREATE TABLE IF NOT EXISTS hypersync_coverage (
     covered_to    BIGINT       NOT NULL,   -- always ≤ chain_head − reorg_margin
     updated_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
+
+-- ---------------------------------------------------------------------------
+-- The daily pipeline's tables (runs, sbe_kicks, sky_burns, sbe_param_changes)
+-- live in ``db/schema_daily.sql``. They are deliberately NOT here: the store
+-- applies its own file on every cron run, and this file contains an
+-- ``ALTER TABLE hypersync_logs`` that takes an ACCESS EXCLUSIVE lock on a
+-- table shared with the monthly pipeline. Full bootstrap:
+--
+--     psql "$DATABASE_URL" -f db/schema.sql
+--     psql "$DATABASE_URL" -f db/schema_daily.sql

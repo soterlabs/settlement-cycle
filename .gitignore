@@ -62,3 +62,4 @@ settlements/**/provenance.json
 # preparation/scripts/dr_aggregate.py (--local uses these if present)
 preparation/dr_payouts.xlsx
 preparation/dr_results.xlsx
+node_modules/

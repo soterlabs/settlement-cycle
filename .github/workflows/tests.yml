@@ -21,7 +21,7 @@ jobs:
           python-version: '3.11'
           cache: pip
       - name: Install package + dev extras
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[api,dev]"
       - name: Run pytest (unit tests only)
         # Live-marked tests hit real RPC / Dune / API and are skipped by
         # default; they're not safe to run in CI without credentials.

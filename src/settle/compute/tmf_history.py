@@ -35,6 +35,8 @@ __all__ = [
     "PeriodRow",
     "aggregate",
     "build_history_dataset",
+    "dec_str",
+    "iso_ts",
     "period_key",
     "write_history_dataset",
 ]
@@ -45,8 +47,12 @@ _Q2 = Decimal("0.01")
 _Q6 = Decimal("0.000001")
 
 
-def _ts(ts: int) -> str:
+def iso_ts(ts: int) -> str:
+    """Unix seconds → the ISO-8601 ``Z`` form used everywhere in the payloads."""
     return datetime.fromtimestamp(int(ts), UTC).isoformat().replace("+00:00", "Z")
+
+
+_ts = iso_ts   # internal alias, kept so the module body reads unchanged
 
 
 def period_key(ts: int, granularity: str) -> str:
@@ -166,21 +172,34 @@ class HistoryDataset:
         return agg
 
 
-def _dec(x: Decimal) -> str:
+def dec_str(x: Decimal) -> str:
     """Exact Decimal as plain digits: trailing zeros stripped (``25000.000…`` →
-    ``25000``) and never exponent notation (``1E-18`` → ``0.000000000000000001``)."""
+    ``25000``) and never exponent notation (``1E-18`` → ``0.000000000000000001``).
+
+    Distinct from ``_num``, which rounds to a JSON float for charting.
+    """
     return format(x.normalize(), "f")
 
 
-def build_history_dataset(ds: HistoryDataset) -> dict[str, Any]:
+_dec = dec_str   # internal alias
+
+
+def build_history_dataset(
+    ds: HistoryDataset, *, generated_at: str | None = None
+) -> dict[str, Any]:
     """The JSON document. Field names are the contract with msc-dashboard —
-    bump ``SCHEMA_VERSION`` (semver) when they change."""
+    bump ``SCHEMA_VERSION`` (semver) when they change.
+
+    ``generated_at`` defaults to now, which is right for a file write. Callers
+    that serve the document (the API) MUST pass the producing run's timestamp
+    instead: a per-request ``now`` changes the bytes every second, so every
+    conditional GET misses its ETag and the whole document is rebuilt."""
     kicks = sorted(ds.kicks, key=lambda k: (k.block, k.log_index))
     last = kicks[-1] if kicks else None
     params = sorted(ds.param_changes, key=lambda c: (c.block, c.log_index))
     return {
         "schema_version": SCHEMA_VERSION,
-        "generated_at": _ts(int(datetime.now(UTC).timestamp())),
+        "generated_at": generated_at or iso_ts(int(datetime.now(UTC).timestamp())),
         "source": {
             "chain": "ethereum",
             "from_block": ds.from_block,
