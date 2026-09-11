@@ -310,7 +310,8 @@ def create_app(reader: Reader | None = None) -> FastAPI:
     def runs(
         request: Request,
         kind: str | None = None,
-        limit: int = Query(50, ge=1, le=500),
+        # The cron ticks hourly, so a 50-row page would be two days of history.
+        limit: int = Query(200, ge=1, le=1000),
         r: Reader = Depends(get_reader),  # noqa: B008
     ) -> Response:
         return _document_response(request, {"runs": r.runs(kind=kind, limit=limit)}, max_age=60)

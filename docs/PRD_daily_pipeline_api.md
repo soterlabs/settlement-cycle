@@ -26,8 +26,9 @@ Labs, a public endpoint) is expected.
 
 ## 2. Goals
 
-- One daily job, on Railway, that extends the SBE history and (later) runs
-  the MSC pipeline month-to-date, writing to the existing Postgres.
+- One scheduled job, on Railway (hourly — see §4.2.1), that extends the SBE
+  history and (later) runs the MSC pipeline month-to-date, writing to the
+  existing Postgres.
 - A read-only HTTP API serving the same JSON documents the repo already
   publishes, plus drill-downs, from Postgres.
 - Every persisted number is **reproducible and versioned**: which run, which
@@ -51,9 +52,9 @@ Labs, a public endpoint) is expected.
 Railway project: settlement-cycle-data
   ┌──────────────┐    writes     ┌──────────────┐    reads     ┌───────────────┐
   │ settle-cron  │ ───────────►  │  Postgres    │ ◄──────────  │  settle-api   │
-  │ daily 02:00  │               │ (existing)   │              │  FastAPI, RO  │
+  │ hourly :17   │               │ (existing)   │              │  FastAPI, RO  │
   └──────────────┘               └──────────────┘              └──────┬────────┘
-     scripts/daily_cron.py         raw_data, hypersync_logs            │ HTTPS
+     scripts/cron.py               raw_data, hypersync_logs            │ HTTPS
      (same image as the API,       + runs, sbe_kicks, sky_burns        ▼
       different start command)     + (phase 2) daily_revenue …   msc-dashboard
                                                                  live tabs: fetch + ISR
@@ -61,7 +62,7 @@ Railway project: settlement-cycle-data
 ```
 
 Both services deploy from this repo. `pip install -e .[api]` is the image;
-the cron's start command is `python scripts/daily_cron.py`, the API's is
+the cron's start command is `python scripts/cron.py`, the API's is
 `uvicorn settle.api.app:app`. Postgres is the one already used by the cache
 layer (`DATABASE_URL`); the new tables sit next to `raw_data` /
 `hypersync_logs` and self-bootstrap (`CREATE TABLE IF NOT EXISTS`) like they do.
@@ -88,9 +89,51 @@ nature, so the tables are keyed by `(block_number, log_index)` with
 | Tier | Source | Freshness | Examples |
 |---|---|---|---|
 | settled | committed JSON from settlement-reports, offline build | monthly, reviewed PR | SSR, DR, sky_total |
-| live | `settle-api`, server-side fetch with hourly revalidation, fallback to last committed snapshot | daily | Buybacks & Burn, (phase 2) daily revenue |
+| live | `settle-api`, server-side fetch with revalidation, fallback to last committed snapshot | hourly (§4.2.1) | Buybacks & Burn, (phase 2) daily revenue |
 
 The dashboard README must state this so neither tier is "fixed" into the other.
+
+### 4.2.1 Cadence — why hourly
+
+The schedule is **not** what bounds freshness. The extractor stops at the
+latest *finalized* block (HyperSync's archive head minus the reorg margin), so
+its data is always ~100 minutes behind wall clock no matter how often it runs.
+Measured 2026-09-11: archive head 12:45 UTC, finalized head 11:05 UTC.
+
+| Cadence | Worst-case staleness | Runs/day | New rows per run |
+|---|---|---|---|
+| daily | finality lag + 24 h ≈ **25.7 h** | 1 | ~16 kicks |
+| hourly | finality lag + 1 h ≈ **2.7 h** | 24 | ~0.7 kicks |
+
+Hourly is the right trade because the work per run is dominated by fixed costs
+that are already small: a run takes ~12 s, the HyperSync fetch is only the
+incremental block range (the rest is served from the log store), and the write
+is an `ON CONFLICT DO NOTHING` over the full history — deliberately, since
+re-offering every row is what heals a gap left by an earlier failure.
+
+What hourly costs: 24 container starts a day, 24 `runs` rows a day (~9k/year,
+noise in `/v1/runs` rather than a storage concern), and an ETag that turns over
+every hour because `source.to_block` genuinely moves — correct, but it caps how
+much conditional-GET traffic the API can shed.
+
+What it does **not** buy: anything under ~100 minutes. Getting below that means
+lowering `HYPERSYNC_REORG_MARGIN`, which is shared with the monthly pipeline's
+log store and is not worth the reorg risk for a dashboard tile.
+
+Overlap is prevented with a Postgres **session advisory lock**, not a timestamp
+window: it is atomic (two processes starting together cannot both decide they
+are alone) and it is released when the session ends, including on OOM or a
+redeploy, so a dead run can never block the schedule. A tick that cannot take
+the lock skips and exits 0.
+
+A `running` row left by a process that died is a separate concern — it would
+otherwise make the pipeline look busy forever in `/v1/runs`. The next tick to
+take the lock marks any run still `running` after 3 h as `failed`, so a stall
+shows up as a failed run rather than as `source.to_block` quietly not
+advancing.
+
+One consumer-visible consequence: `/v1/runs` now covers hours, not weeks, per
+page. Its default limit is 200 (~8 days) rather than 50.
 
 ### 4.3 API conventions
 
@@ -111,9 +154,9 @@ The dashboard README must state this so neither tier is "fixed" into the other.
 |---|---|
 | `db/schema.sql` | `runs`, `sbe_kicks`, `sky_burns` |
 | `settle.store.tmf` | idempotent writers (decoded kicks / burns / parameter changes) + readers |
-| `scripts/daily_cron.py` | `build_tmf_history` → persist to Postgres under a `runs` row. It does **not** touch `settlements/tmf/data/`: that snapshot is the settled fallback, refreshed at each MSC by `scripts/build_tmf_history.py` and committed like any other report. |
+| `scripts/cron.py` | `build_tmf_history` → persist to Postgres under a `runs` row. It does **not** touch `settlements/tmf/data/`: that snapshot is the settled fallback, refreshed at each MSC by `scripts/build_tmf_history.py` and committed like any other report. |
 | `settle.api` | FastAPI app: `/v1/tmf/history`, `/v1/tmf/kicks`, `/v1/tmf/burns`, `/v1/tmf/parameter-changes`, `/v1/runs`, `/healthz` |
-| Railway | `settle-cron` (cron schedule) + `settle-api` (web) services in `settlement-cycle-data`, `DATABASE_URL` / `ENVIO_API_TOKEN` / `ETH_RPC` shared |
+| Railway | `settle-cron` (hourly at :17) + `settle-api` (web) services in `settlement-cycle-data`, `DATABASE_URL` / `ENVIO_API_TOKEN` / `ETH_RPC` shared |
 | Dashboard | `loadTmf()` fetches `/v1/tmf/history` with revalidation; falls back to `data/generated/tmf.json` (separate PR in msc-dashboard) |
 
 `/v1/tmf/history` returns **exactly** the `sbe_history.json` document
@@ -122,9 +165,9 @@ The dashboard README must state this so neither tier is "fixed" into the other.
 thing that changes. The committed `settlements/tmf/data/` snapshot is kept as
 the settled fallback and refreshed at each MSC, not daily.
 
-Acceptance: cron runs green two days in a row; `curl /v1/tmf/history` equals
-the committed snapshot on the same `to_block`; dashboard dev shows yesterday's
-kicks.
+Acceptance: cron runs green on consecutive ticks; `curl /v1/tmf/history` equals
+the committed snapshot on the same `to_block`; the dashboard shows kicks from
+the current hour's finalized window.
 
 ## 6. Phase 2 — Daily month-to-date MSC run
 

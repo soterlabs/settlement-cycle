@@ -48,7 +48,7 @@ def build_dataset(
     ``to_block`` pins the upper bound; default is the latest FINALIZED block
     (archive head minus the reorg margin) so the log store can persist every
     fetched row. Returns the dataset and a label for the bound. Shared by the
-    CLI below and by ``scripts/daily_cron.py``.
+    CLI below and by ``scripts/cron.py``.
     """
     hist = cfg["history"]
     contracts: dict[str, str] = dict(cfg["contracts"])
