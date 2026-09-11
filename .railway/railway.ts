@@ -15,8 +15,7 @@ import { defineRailway, github, postgres, preserve, project, service, volume } f
  * `railway config plan` previews, `railway config apply` applies.
  */
 export default defineRailway(() => {
-  // Switch to "main" once the phase-1 PR is merged.
-  const settlementCycle = github("soterlabs/settlement-cycle", { branch: "feat/daily-api-phase1", checkSuites: false });
+  const settlementCycle = github("soterlabs/settlement-cycle", { branch: "main", checkSuites: false });
 
   const Postgres = postgres("Postgres", { region: "us-west2" });
   Postgres.networking = { privateNetworkEndpoint: "postgres", tcpProxies: { "5432": {} } };
