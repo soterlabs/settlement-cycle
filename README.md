@@ -60,6 +60,7 @@ settlement-cycle/
 ├── settlements/<prime>/<month>/  ← generated artifacts (committed to git)
 ├── settlements/tmf/<month>/      ← TMF waterfall + Smart Burn Engine report (scripts/run_tmf_2026.py)
 ├── settlements/tmf/data/         ← SBE full-history dataset for msc-dashboard (scripts/build_tmf_history.py)
+├── deploy/, .railway/            ← Railway IaC: settle-api + settle-cron (docs/PRD_daily_pipeline_api.md)
 ├── src/settle/
 │   ├── cli.py                 ← argparse entry point
 │   ├── domain/                ← Prime, Venue, Period dataclasses
@@ -67,6 +68,8 @@ settlement-cycle/
 │   ├── normalize/             ← canonical primitives, source-pluggable
 │   ├── compute/               ← pure-Python settlement math
 │   ├── load/                  ← Markdown / CSV / provenance writers
+│   ├── store/                 ← decoded Postgres facts + `runs` versioning (daily pipeline)
+│   ├── api/                   ← settle-api: read-only FastAPI over the store
 │   └── validation/            ← schemas + invariant checks
 ├── queries/                   ← Dune SQL files (parameterized)
 ├── config/<prime>.yaml        ← per-prime addresses + source choices
