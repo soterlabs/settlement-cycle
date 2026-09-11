@@ -30,6 +30,7 @@ def _kick(i: int, bought: str = "3000") -> SbeKick:
 class _MemReader:
     def __init__(self, kicks, burns, params, runs):
         self._k, self._b, self._p, self._r = kicks, burns, params, runs
+        self.closed = False
 
     def health(self):
         return {"db": "ok", "latest_run": self._r[0] if self._r else None}
@@ -40,7 +41,7 @@ class _MemReader:
         ds = HistoryDataset(from_block=1, to_block=200, to_ts=T0 + 99_999, kicks=self._k,
                             burns=self._b, param_changes=self._p, contracts={"MCD_SPLIT": "0xs"},
                             notes=["n"])
-        doc = build_history_dataset(ds)
+        doc = build_history_dataset(ds, generated_at="2026-09-11T00:03:28Z")
         doc["run"] = {"run_id": self._r[0]["run_id"]}
         return doc
 
@@ -48,11 +49,14 @@ class _MemReader:
         rows = [k for k in self._k if (from_ts is None or k.ts >= from_ts) and (to_ts is None or k.ts <= to_ts)]
         return sorted(rows, key=lambda k: k.block)[-limit:]
 
-    def burns(self, *, from_ts, to_ts):
-        return list(self._b)
+    def burns(self, *, from_ts, to_ts, limit):
+        return list(self._b)[-limit:]
 
-    def param_changes(self):
-        return list(self._p)
+    def param_changes(self, *, limit):
+        return list(self._p)[-limit:]
+
+    def close(self):
+        self.closed = True
 
     def runs(self, *, kind, limit):
         return [r for r in self._r if kind is None or r["kind"] == kind][:limit]
@@ -169,7 +173,9 @@ def test_upsert_kicks_maps_columns_and_is_on_conflict_do_nothing():
     sql, rows = conn.log[0]
     assert "ON CONFLICT (block_number, log_index) DO NOTHING" in sql
     assert rows[0][:4] == (100, 1, T0, "0x" + "0" * 64) and rows[0][7] == D("123.456") and rows[0][-1] == 9
-    assert n == 1 and conn.commits == 1
+    # The caller commits once for all three upserts + finish_run, so a run that
+    # dies midway leaves nothing durable.
+    assert n == 1 and conn.commits == 0
     assert S.upsert_kicks(conn, [], run_id=9) == 0
 
 
@@ -185,8 +191,10 @@ def test_load_kicks_round_trips_rows_oldest_first():
 
 
 def test_load_param_changes_restores_decimal_or_address():
-    rows = [(1, 0, T0, "0xt", "MCD_SPLIT", "0xs", "burn", "0.55"),
-            (2, 0, T0, "0xt", "MCD_SPLIT", "0xs", "farm", "0x" + "fa" * 20)]
+    # rows as Postgres returns them for this query: block DESC, reversed to
+    # oldest-first by the loader
+    rows = [(2, 0, T0, "0xt", "MCD_SPLIT", "0xs", "farm", "0x" + "fa" * 20),
+            (1, 0, T0, "0xt", "MCD_SPLIT", "0xs", "burn", "0.55")]
     a, b = S.load_param_changes(_Conn(rows))
     assert a.value == D("0.55") and isinstance(a.value, D)
     assert b.value == "0x" + "fa" * 20 and b.address == "0xs"
@@ -202,3 +210,130 @@ def test_run_lifecycle_sql():
     R.fail_run(conn, rid, "boom")
     assert "status = 'failed'" in conn.log[2][0]
     assert len(R.config_hash({"a": 1})) == 16 and R.config_hash({"a": 1}) == R.config_hash({"a": 1})
+
+
+# ── review round 4 ──────────────────────────────────────────────────────────
+
+def test_history_etag_is_stable_across_seconds(client):
+    """`generated_at` comes from the run, not from `now` — otherwise the ETag
+    rotates every second and no conditional GET ever hits."""
+    first = client.get("/v1/tmf/history")
+    second = client.get("/v1/tmf/history")
+    assert first.content == second.content
+    assert first.headers["ETag"] == second.headers["ETag"]
+    assert first.json()["generated_at"] == "2026-09-11T00:03:28Z"
+
+
+def test_incomplete_run_is_503_not_a_guessed_range():
+    class _Incomplete(_MemReader):
+        def history(self):
+            from settle.store.tmf import IncompleteRunError
+            raise IncompleteRunError("run 9 is marked ok but lacks pin_block")
+    c = TestClient(create_app(_Incomplete([], [], [], [{"run_id": 9}])))
+    r = c.get("/v1/tmf/history")
+    assert r.status_code == 503 and "pin_block" in r.json()["detail"]
+
+
+@pytest.mark.parametrize("bad", ["2026", "20260801", "0", "99999999999"])
+def test_bare_integers_outside_the_epoch_range_are_rejected(client, bad):
+    r = client.get("/v1/tmf/kicks", params={"from": bad})
+    assert r.status_code == 422
+    assert "plausible unix timestamp" in r.json()["detail"]
+
+
+def test_window_bounds_must_be_ordered(client):
+    r = client.get("/v1/tmf/kicks", params={"from": T0 + 10_000, "to": T0})
+    assert r.status_code == 422 and "is after" in r.json()["detail"]
+
+
+def test_burns_and_param_changes_are_bounded(client):
+    for path in ("/v1/tmf/burns", "/v1/tmf/parameter-changes"):
+        assert client.get(path).json()["limit"] == 1000
+        assert client.get(path, params={"limit": 10001}).status_code == 422
+    assert client.get("/v1/tmf/burns", params={"limit": 1}).json()["count"] == 1
+
+
+def test_healthz_degrades_when_the_reader_cannot_be_built(monkeypatch):
+    """FastAPI resolves dependencies before the endpoint body, so /healthz must
+    not take the reader as a dependency — a missing DATABASE_URL would
+    otherwise 500 and Railway would restart-loop the container."""
+    from settle.api import app as app_mod
+    monkeypatch.setattr(app_mod, "_postgres_reader",
+                        lambda: (_ for _ in ()).throw(RuntimeError("DATABASE_URL is not set")))
+    r = TestClient(create_app()).get("/healthz")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "degraded" and "DATABASE_URL is not set" in body["db"]
+
+
+def test_reader_is_built_once_under_concurrent_cold_requests(monkeypatch):
+    """Without the lock each concurrent cold request builds its own
+    ConnectionPool and all but one are orphaned."""
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+
+    from settle.api import app as app_mod
+    built = []
+
+    def slow_factory():
+        time.sleep(0.05)
+        r = _MemReader([], [], [], [{"run_id": 1, "kind": "tmf_history"}])
+        built.append(r)
+        return r
+
+    monkeypatch.setattr(app_mod, "_postgres_reader", slow_factory)
+    c = TestClient(create_app())
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        codes = [f.result().status_code for f in [ex.submit(c.get, "/healthz") for _ in range(4)]]
+    assert codes == [200] * 4
+    assert len(built) == 1
+
+
+def test_injected_reader_is_not_closed_by_the_lifespan():
+    """A caller-supplied reader (tests, embedding) is not ours to close."""
+    r = _MemReader([], [], [], [])
+    with TestClient(create_app(r)):
+        pass
+    assert r.closed is False
+
+
+# ── store: block-bounded reads and the strict document ──────────────────────
+
+def test_loaders_bound_rows_by_pin_block():
+    conn = _Conn([])
+    S.load_kicks(conn, to_block=200, limit=5)
+    sql, params = conn.log[0]
+    assert "block_number <= %s" in sql and params == [200]
+    conn = _Conn([])
+    S.load_burns(conn, to_block=200, limit=7)
+    sql, params = conn.log[0]
+    assert "block_number <= %s" in sql and params == [200] and "LIMIT 7" in sql
+    assert "ORDER BY block_number DESC" in sql       # last N, then reversed to oldest-first
+    conn = _Conn([])
+    S.load_param_changes(conn, to_block=200)
+    assert "block_number <= %s" in conn.log[0][0]
+
+
+def test_history_document_refuses_a_run_without_its_range(monkeypatch):
+    monkeypatch.setattr(S, "latest_run", lambda conn, kind: {
+        "run_id": 9, "pin_block": None, "summary": {}, "finished_at": "t", "settle_version": "v"})
+    with pytest.raises(S.IncompleteRunError, match="pin_block"):
+        S.history_document(_Conn([]), contracts={}, notes=[])
+    monkeypatch.setattr(S, "latest_run", lambda conn, kind: {
+        "run_id": 9, "pin_block": 200, "summary": {"from_block": 1}, "finished_at": "t",
+        "settle_version": "v"})
+    with pytest.raises(S.IncompleteRunError, match="to_ts"):
+        S.history_document(_Conn([]), contracts={}, notes=[])
+
+
+def test_history_document_stamps_the_run_and_bounds_by_its_pin(monkeypatch):
+    monkeypatch.setattr(S, "latest_run", lambda conn, kind: {
+        "run_id": 7, "pin_block": 200, "finished_at": "2026-09-11T00:03:28Z",
+        "settle_version": "0.1.0+abc",
+        "summary": {"from_block": 1, "to_ts": T0 + 99_999}})
+    conn = _Conn([])
+    doc = S.history_document(conn, contracts={"MCD_SPLIT": "0xs"}, notes=["n"])
+    assert doc["source"]["from_block"] == 1 and doc["source"]["to_block"] == 200
+    assert doc["generated_at"] == "2026-09-11T00:03:28Z"   # stable per run
+    assert doc["run"]["settle_version"] == "0.1.0+abc"
+    assert all("block_number <= %s" in sql for sql, _ in conn.log)

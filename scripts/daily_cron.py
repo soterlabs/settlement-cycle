@@ -46,44 +46,74 @@ def _settle_version() -> str:
 
 
 def task_tmf(to_block: int | None) -> int:
-    """SBE history → store. Returns 0/1."""
+    """SBE history -> store. Returns 0 (ok) / 1 (recorded failure).
+
+    Shape matters here:
+
+    * everything, including ``connect`` / ``apply_schema`` / ``start_run``, is
+      inside the try — a setup failure must still exit 1 rather than escape as
+      an unhandled traceback with no ``runs`` row;
+    * the extraction runs with **no** database connection open. It takes
+      minutes, and an idle session behind Railway's Postgres proxy is exactly
+      the half-open-socket case the store's keepalives exist for;
+    * the three upserts, the pin update and ``finish_run`` share one
+      transaction, so a run that dies midway leaves no durable rows for a later
+      document to over-report against;
+    * a failure is recorded on a **fresh** connection, because the one that
+      failed may itself be the reason.
+    """
     cfg = yaml.safe_load((_REPO / "config" / "tmf.yaml").read_text())
-    with connect() as conn:
-        apply_schema(conn)
-        run_id = runs_store.start_run(
-            conn, "tmf_history", settle_version=_settle_version(),
-            config_hash=runs_store.config_hash(cfg.get("history")),
-        )
+    # Fingerprint everything the run reads that can change what it extracts:
+    # `contracts` decides WHICH events are fetched, `history` the range and the
+    # classification. Hashing only one of them would let a Splitter migration
+    # produce a different dataset under an identical config_hash.
+    fingerprint = {"history": cfg.get("history"), "contracts": cfg.get("contracts")}
+    run_id: int | None = None
+    try:
+        with connect() as conn:
+            apply_schema(conn)
+            run_id = runs_store.start_run(
+                conn, "tmf_history", settle_version=_settle_version(),
+                config_hash=runs_store.config_hash(fingerprint),
+            )
         _log.info("tmf_history run %d started", run_id)
-        try:
-            ds, bound = build_dataset(cfg, to_block=to_block)
+
+        ds, bound = build_dataset(cfg, to_block=to_block)
+
+        with connect() as conn:
             n_k = tmf_store.upsert_kicks(conn, ds.kicks, run_id)
             n_b = tmf_store.upsert_burns(conn, ds.burns, run_id)
             n_p = tmf_store.upsert_param_changes(conn, ds.param_changes, run_id)
             months = aggregate(ds.kicks, ds.burns, "monthly")
-            latest = months[-1].as_json() if months else None
             with conn.cursor() as cur:
                 cur.execute(
                     "UPDATE runs SET pin_block = %s, pin_ts = to_timestamp(%s) WHERE run_id = %s",
                     (ds.to_block, ds.to_ts, run_id),
                 )
+            # Commits the whole unit of work.
             runs_store.finish_run(conn, run_id, {
                 "from_block": ds.from_block, "to_block": ds.to_block, "to_ts": ds.to_ts,
                 "bound": bound, "kicks_total": len(ds.kicks), "burns_total": len(ds.burns),
                 "param_changes_total": len(ds.param_changes),
                 "new_kicks": n_k, "new_burns": n_b, "new_param_changes": n_p,
-                "latest_month": latest,
+                "latest_month": months[-1].as_json() if months else None,
             })
-            _log.info(
-                "tmf_history run %d ok — to_block %d (%s); %d kicks (%d new), %d burns (%d new)",
-                run_id, ds.to_block, bound, len(ds.kicks), n_k, len(ds.burns), n_b,
-            )
-            return 0
-        except Exception as exc:
-            conn.rollback()
-            runs_store.fail_run(conn, run_id, f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}")
-            _log.exception("tmf_history run %d FAILED", run_id)
-            return 1
+        _log.info(
+            "tmf_history run %d ok - to_block %d (%s); %d kicks (%d new), %d burns (%d new)",
+            run_id, ds.to_block, bound, len(ds.kicks), n_k, len(ds.burns), n_b,
+        )
+        return 0
+    except Exception as exc:
+        _log.exception("tmf_history run %s FAILED", run_id if run_id is not None else "(not started)")
+        if run_id is not None:
+            try:
+                with connect() as conn:
+                    runs_store.fail_run(
+                        conn, run_id, f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}",
+                    )
+            except Exception:
+                _log.exception("could not record the failure on run %d", run_id)
+        return 1
 
 
 TASKS = {"tmf": task_tmf}

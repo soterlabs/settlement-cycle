@@ -111,7 +111,7 @@ The dashboard README must state this so neither tier is "fixed" into the other.
 |---|---|
 | `db/schema.sql` | `runs`, `sbe_kicks`, `sky_burns` |
 | `settle.store.tmf` | idempotent writers (decoded kicks / burns / parameter changes) + readers |
-| `scripts/daily_cron.py` | `build_tmf_history` → persist → also refresh `settlements/tmf/data/` in the working dir (no commit) |
+| `scripts/daily_cron.py` | `build_tmf_history` → persist to Postgres under a `runs` row. It does **not** touch `settlements/tmf/data/`: that snapshot is the settled fallback, refreshed at each MSC by `scripts/build_tmf_history.py` and committed like any other report. |
 | `settle.api` | FastAPI app: `/v1/tmf/history`, `/v1/tmf/kicks`, `/v1/tmf/burns`, `/v1/tmf/parameter-changes`, `/v1/runs`, `/healthz` |
 | Railway | `settle-cron` (cron schedule) + `settle-api` (web) services in `settlement-cycle-data`, `DATABASE_URL` / `ENVIO_API_TOKEN` / `ETH_RPC` shared |
 | Dashboard | `loadTmf()` fetches `/v1/tmf/history` with revalidation; falls back to `data/generated/tmf.json` (separate PR in msc-dashboard) |

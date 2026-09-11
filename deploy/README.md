@@ -24,9 +24,12 @@ at the finalized head anyway, so a slow archive only means a slightly earlier
 `to_block`, never a partial write. A failed run is recorded as
 `runs.status = 'failed'` with the traceback in `runs.error` and exits 1.
 
-The root `railway.json` is a build-only placeholder kept for the legacy
-sync-raw-data job (Config-as-Code, deprecated by Railway); the two services
-above are managed by the authoring file, not by it.
+There is deliberately **no `railway.json`** in the repo root any more. Railway's
+Config-as-Code file sits at the root of every service's source and is not
+scoped to one service, so the old placeholder (`NIXPACKS`, `numReplicas: 0`)
+could override the authoring file for both services — re-imposing the build
+that produced `uvicorn: command not found`, with zero replicas. The authoring
+file is the single source of truth.
 
 The GitHub source branch is set in the authoring file; switch it to `main`
 once the phase-1 PR is merged.

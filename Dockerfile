@@ -2,7 +2,8 @@
 # start commands (see .railway/railway.ts). Explicit on purpose: the Nixpacks
 # Python builder installed the `api` extra outside its runtime venv and the
 # container started with `uvicorn: command not found`.
-FROM python:3.12-slim
+# 3.11 to match requires-python / CI / the ruff+mypy target.
+FROM python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -12,7 +13,9 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 # Dependencies first (cache-friendly): metadata + the package itself.
-COPY pyproject.toml ./
+# README.md is COPYied because pyproject declares it as the package readme;
+# hatchling fails metadata generation without it.
+COPY pyproject.toml README.md ./
 COPY src ./src
 RUN pip install -e ".[api]"
 

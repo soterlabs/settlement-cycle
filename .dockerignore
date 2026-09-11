@@ -13,5 +13,6 @@ envio-indexer/
 tests/
 *.xlsx
 *.pdf
+!README.md
 .env
 .env.*

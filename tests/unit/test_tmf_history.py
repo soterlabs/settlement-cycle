@@ -276,7 +276,7 @@ def test_activity_and_history_query_the_same_flapper_set(monkeypatch):
 
 
 def test_dec_never_uses_exponent_notation():
-    from settle.compute.tmf_history import _dec
+    from settle.compute.tmf_history import dec_str as _dec
     assert _dec(D(1) / D(10**18)) == "0.000000000000000001"
     assert _dec(D("25000.000000000000000000")) == "25000"
     assert _dec(D("6000.000000000000000000")) == "6000"
