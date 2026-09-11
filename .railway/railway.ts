@@ -31,7 +31,8 @@ export default defineRailway(() => {
     replicas: { "us-west2": 1 },
     build,
     deploy: {
-      startCommand: "python -m uvicorn settle.api.app:app --host 0.0.0.0 --port $PORT",
+      // sh -c: with the Dockerfile builder the command is not shell-expanded, so $PORT needs a shell.
+      startCommand: 'sh -c "python -m uvicorn settle.api.app:app --host 0.0.0.0 --port ${PORT:-8000}"',
       healthcheckPath: "/healthz",
       healthcheckTimeout: 120,
       restartPolicyType: "ON_FAILURE",
