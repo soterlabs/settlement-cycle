@@ -8,6 +8,8 @@ from decimal import Decimal as D
 from typing import Any
 
 import pytest
+
+pytest.importorskip("fastapi", reason="settle-api tests need the `api` extra (pip install -e '.[api,dev]')")
 from fastapi.testclient import TestClient
 
 from settle.api.app import create_app
