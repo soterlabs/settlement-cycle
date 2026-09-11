@@ -26,8 +26,9 @@ Labs, a public endpoint) is expected.
 
 ## 2. Goals
 
-- One daily job, on Railway, that extends the SBE history and (later) runs
-  the MSC pipeline month-to-date, writing to the existing Postgres.
+- One scheduled job, on Railway (hourly — see §4.2.1), that extends the SBE
+  history and (later) runs the MSC pipeline month-to-date, writing to the
+  existing Postgres.
 - A read-only HTTP API serving the same JSON documents the repo already
   publishes, plus drill-downs, from Postgres.
 - Every persisted number is **reproducible and versioned**: which run, which
@@ -88,7 +89,7 @@ nature, so the tables are keyed by `(block_number, log_index)` with
 | Tier | Source | Freshness | Examples |
 |---|---|---|---|
 | settled | committed JSON from settlement-reports, offline build | monthly, reviewed PR | SSR, DR, sky_total |
-| live | `settle-api`, server-side fetch with hourly revalidation, fallback to last committed snapshot | daily | Buybacks & Burn, (phase 2) daily revenue |
+| live | `settle-api`, server-side fetch with revalidation, fallback to last committed snapshot | hourly (§4.2.1) | Buybacks & Burn, (phase 2) daily revenue |
 
 The dashboard README must state this so neither tier is "fixed" into the other.
 
@@ -119,10 +120,20 @@ What it does **not** buy: anything under ~100 minutes. Getting below that means
 lowering `HYPERSYNC_REORG_MARGIN`, which is shared with the monthly pipeline's
 log store and is not worth the reorg risk for a dashboard tile.
 
-Overlap: a tick that finds a `tmf_history` run still `running` and younger than
-50 minutes skips and exits 0, so two writers never interleave; past that window
-the earlier run is treated as abandoned and a crash cannot block the schedule
-forever.
+Overlap is prevented with a Postgres **session advisory lock**, not a timestamp
+window: it is atomic (two processes starting together cannot both decide they
+are alone) and it is released when the session ends, including on OOM or a
+redeploy, so a dead run can never block the schedule. A tick that cannot take
+the lock skips and exits 0.
+
+A `running` row left by a process that died is a separate concern — it would
+otherwise make the pipeline look busy forever in `/v1/runs`. The next tick to
+take the lock marks any run still `running` after 3 h as `failed`, so a stall
+shows up as a failed run rather than as `source.to_block` quietly not
+advancing.
+
+One consumer-visible consequence: `/v1/runs` now covers hours, not weeks, per
+page. Its default limit is 200 (~8 days) rather than 50.
 
 ### 4.3 API conventions
 

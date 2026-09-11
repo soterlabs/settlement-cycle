@@ -1,4 +1,5 @@
-"""Unit tests for the scheduled entry point's overlap guard."""
+"""Unit tests for the scheduled entry point's mutual exclusion."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -21,8 +22,8 @@ def _load():
 
 
 class _Cur:
-    def __init__(self, row, log):
-        self._row, self._log = row, log
+    def __init__(self, row, log, rowcount=0):
+        self._row, self._log, self.rowcount = row, log, rowcount
 
     def __enter__(self): return self
     def __exit__(self, *a): return False
@@ -34,26 +35,41 @@ class _Cur:
 
 
 class _Conn:
-    def __init__(self, row=None):
-        self.row, self.log = row, []
+    def __init__(self, row=None, rowcount=0):
+        self.row, self.log, self.rowcount = row, [], rowcount
 
-    def cursor(self): return _Cur(self.row, self.log)
+    def cursor(self): return _Cur(self.row, self.log, self.rowcount)
 
 
-def test_no_blocking_run_when_none_is_running():
-    conn = _Conn(None)
-    assert cron._blocking_run(conn, "tmf_history", 50) is None
+def test_lock_key_is_stable_and_per_kind_and_fits_bigint():
+    a = cron.lock_key("tmf_history")
+    assert a == cron.lock_key("tmf_history")          # stable across calls
+    assert a != cron.lock_key("msc_mtd")              # phase 2 gets its own lock
+    assert -(2**63) <= a < 2**63                      # pg_try_advisory_lock(bigint)
+
+
+def test_try_lock_uses_pg_try_advisory_lock_and_reports_the_answer():
+    taken = _Conn((True,))
+    assert cron.try_lock(taken, "tmf_history") is True
+    sql, params = taken.log[0]
+    assert sql == "SELECT pg_try_advisory_lock(%s)"
+    assert params == (cron.lock_key("tmf_history"),)
+    assert cron.try_lock(_Conn((False,)), "tmf_history") is False
+    assert cron.try_lock(_Conn(None), "tmf_history") is False
+
+
+def test_reclaim_marks_only_runs_older_than_the_window():
+    conn = _Conn(rowcount=2)
+    assert cron.reclaim_abandoned(conn, "tmf_history", 3) == 2
     sql, params = conn.log[0]
-    assert "status = 'running'" in sql and params == ("tmf_history", 50)
-    assert "make_interval(mins => %s)" in sql
+    assert "SET status = 'failed'" in sql
+    assert "status = 'running'" in sql
+    assert "started_at < NOW() - make_interval(hours => %s)" in sql
+    assert params == (3, "tmf_history", 3)
 
 
-def test_blocking_run_is_reported_with_its_start():
-    conn = _Conn((7, "2026-09-11T08:00:00Z"))
-    assert cron._blocking_run(conn, "tmf_history", 50) == (7, "2026-09-11T08:00:00Z")
-
-
-def test_overlap_window_is_under_the_hourly_period():
-    """The guard must expire before the next-but-one tick, so a crashed run
-    cannot block the schedule indefinitely."""
-    assert 0 < cron._OVERLAP_WINDOW_MIN < 60
+def test_abandon_window_is_generous_relative_to_the_hourly_tick():
+    """The lock — not this window — is what prevents overlap, so the window can
+    be well beyond one tick: it only decides when a DEAD run's row is tidied up,
+    and marking a live-but-slow run as failed would be a lie."""
+    assert cron._ABANDONED_AFTER_HOURS >= 2

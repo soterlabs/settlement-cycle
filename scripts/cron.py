@@ -23,6 +23,7 @@ Run with:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import logging
 import os
 import sys
@@ -46,13 +47,27 @@ from settle.store.db import apply_schema, connect  # noqa: E402
 
 _log = logging.getLogger("settle.cron")
 
-# A run that is still ``running`` and younger than this blocks a new one. At an
-# hourly cadence an overlap should be impossible (a run takes ~12 s, and the
-# store's statement timeout bounds a stuck one at 5 min), but a scheduler that
-# fires while the previous execution is wedged would otherwise interleave two
-# writers over the same tables. A crashed run cannot block forever: past this
-# window it is treated as abandoned.
-_OVERLAP_WINDOW_MIN = 50
+# Mutual exclusion between ticks is a Postgres **session** advisory lock, not a
+# timestamp window on the ``runs`` table:
+#
+#   * it is atomic, so two processes starting together (the :17 tick landing on
+#     a redeploy-triggered run, or an operator running the task by hand) cannot
+#     both decide they are alone;
+#   * it is released when the session ends — including on OOM, SIGKILL or a
+#     Railway redeploy — so a dead run can never block the schedule, which a
+#     status flag would.
+#
+# Nothing bounds how long a wedged run can hold it: the slow phase is
+# ``build_dataset``, which deliberately runs with no DB connection open, so the
+# store's ``statement_timeout`` does not apply there and HyperSync bounds only
+# each request (40 s), not their number. That is exactly why the lock is held
+# for the whole task rather than sized against a guessed runtime.
+#
+# A ``running`` row left behind by a process that died is a separate problem —
+# it makes the pipeline look busy forever in ``/v1/runs``. The next tick to
+# acquire the lock reclaims any such row (below), so a stall is visible as a
+# failed run rather than as ``source.to_block`` quietly not advancing.
+_ABANDONED_AFTER_HOURS = 3
 
 
 def _settle_version() -> str:
@@ -60,20 +75,44 @@ def _settle_version() -> str:
     return f"{__version__}+{sha[:12]}" if sha else __version__
 
 
-def _blocking_run(conn: Any, kind: str, window_min: int) -> tuple[int, Any] | None:
-    """A still-``running`` run of ``kind`` started within ``window_min``, if any."""
+def lock_key(kind: str) -> int:
+    """Stable signed 64-bit advisory-lock key for a task kind.
+
+    Derived from the name so phase 2's per-prime tasks get their own lock
+    without a registry of magic numbers.
+    """
+    return int.from_bytes(hashlib.sha256(kind.encode()).digest()[:8], "big", signed=True)
+
+
+def try_lock(conn: Any, kind: str) -> bool:
+    """``pg_try_advisory_lock`` — never blocks; False means another session
+    holds it. Held until this connection closes."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT pg_try_advisory_lock(%s)", (lock_key(kind),))
+        row = cur.fetchone()
+    return bool(row and row[0])
+
+
+def reclaim_abandoned(conn: Any, kind: str, after_hours: int) -> int:
+    """Mark runs stuck in ``running`` past ``after_hours`` as failed.
+
+    Only ever called by the holder of the lock, so it cannot race a live run:
+    a run older than the window whose process is still alive would still be
+    holding the lock, and we would not be here.
+    """
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT run_id, started_at FROM runs
-            WHERE kind = %s AND status = 'running'
-              AND started_at > NOW() - make_interval(mins => %s)
-            ORDER BY started_at DESC LIMIT 1
+            UPDATE runs
+               SET status = 'failed', finished_at = NOW(),
+                   error = 'abandoned: no completion recorded within '
+                           || %s || 'h (process died before fail_run)'
+             WHERE kind = %s AND status = 'running'
+               AND started_at < NOW() - make_interval(hours => %s)
             """,
-            (kind, window_min),
+            (after_hours, kind, after_hours),
         )
-        row = cur.fetchone()
-    return (int(row[0]), row[1]) if row else None
+        return int(cur.rowcount)
 
 
 def task_tmf(to_block: int | None) -> int:
@@ -84,9 +123,12 @@ def task_tmf(to_block: int | None) -> int:
     * everything, including ``connect`` / ``apply_schema`` / ``start_run``, is
       inside the try — a setup failure must still exit 1 rather than escape as
       an unhandled traceback with no ``runs`` row;
-    * the extraction runs with **no** database connection open. It takes
-      minutes, and an idle session behind Railway's Postgres proxy is exactly
-      the half-open-socket case the store's keepalives exist for;
+    * only the advisory-lock session stays open across the extraction, which
+      takes minutes. The work connections are opened and closed around it: an
+      idle session behind Railway's Postgres proxy is the half-open-socket case
+      the store's keepalives exist for, and if the lock session is the one that
+      dies, the lock is released — the correct failure mode, since the writes
+      are idempotent;
     * the three upserts, the pin update and ``finish_run`` share one
       transaction, so a run that dies midway leaves no durable rows for a later
       document to over-report against;
@@ -103,39 +145,52 @@ def task_tmf(to_block: int | None) -> int:
     try:
         with connect() as conn:
             apply_schema(conn)
-            blocking = _blocking_run(conn, "tmf_history", _OVERLAP_WINDOW_MIN)
-            if blocking is not None:
+
+        # Autocommit: the lock is session-scoped, and an open transaction held
+        # for the whole task would be an idle-in-transaction session.
+        with connect(autocommit=True) as lock_conn:
+            if not try_lock(lock_conn, "tmf_history"):
                 _log.warning(
-                    "tmf_history run %d has been running since %s — skipping this tick "
-                    "rather than interleaving two writers", blocking[0], blocking[1],
+                    "another tmf_history run holds the advisory lock — skipping this tick "
+                    "rather than interleaving two writers"
                 )
                 return 0
-            run_id = runs_store.start_run(
-                conn, "tmf_history", settle_version=_settle_version(),
-                config_hash=runs_store.config_hash(fingerprint),
-            )
-        _log.info("tmf_history run %d started", run_id)
-
-        ds, bound = build_dataset(cfg, to_block=to_block)
-
-        with connect() as conn:
-            n_k = tmf_store.upsert_kicks(conn, ds.kicks, run_id)
-            n_b = tmf_store.upsert_burns(conn, ds.burns, run_id)
-            n_p = tmf_store.upsert_param_changes(conn, ds.param_changes, run_id)
-            months = aggregate(ds.kicks, ds.burns, "monthly")
-            with conn.cursor() as cur:
-                cur.execute(
-                    "UPDATE runs SET pin_block = %s, pin_ts = to_timestamp(%s) WHERE run_id = %s",
-                    (ds.to_block, ds.to_ts, run_id),
+            reclaimed = reclaim_abandoned(lock_conn, "tmf_history", _ABANDONED_AFTER_HOURS)
+            if reclaimed:
+                _log.warning(
+                    "marked %d abandoned tmf_history run(s) as failed (no completion within "
+                    "%dh) — a previous process died before it could record the failure",
+                    reclaimed, _ABANDONED_AFTER_HOURS,
                 )
-            # Commits the whole unit of work.
-            runs_store.finish_run(conn, run_id, {
-                "from_block": ds.from_block, "to_block": ds.to_block, "to_ts": ds.to_ts,
-                "bound": bound, "kicks_total": len(ds.kicks), "burns_total": len(ds.burns),
-                "param_changes_total": len(ds.param_changes),
-                "new_kicks": n_k, "new_burns": n_b, "new_param_changes": n_p,
-                "latest_month": months[-1].as_json() if months else None,
-            })
+
+            with connect() as conn:
+                run_id = runs_store.start_run(
+                    conn, "tmf_history", settle_version=_settle_version(),
+                    config_hash=runs_store.config_hash(fingerprint),
+                )
+            _log.info("tmf_history run %d started", run_id)
+
+            ds, bound = build_dataset(cfg, to_block=to_block)
+
+            with connect() as conn:
+                n_k = tmf_store.upsert_kicks(conn, ds.kicks, run_id)
+                n_b = tmf_store.upsert_burns(conn, ds.burns, run_id)
+                n_p = tmf_store.upsert_param_changes(conn, ds.param_changes, run_id)
+                months = aggregate(ds.kicks, ds.burns, "monthly")
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "UPDATE runs SET pin_block = %s, pin_ts = to_timestamp(%s) "
+                        "WHERE run_id = %s",
+                        (ds.to_block, ds.to_ts, run_id),
+                    )
+                # Commits the whole unit of work.
+                runs_store.finish_run(conn, run_id, {
+                    "from_block": ds.from_block, "to_block": ds.to_block, "to_ts": ds.to_ts,
+                    "bound": bound, "kicks_total": len(ds.kicks), "burns_total": len(ds.burns),
+                    "param_changes_total": len(ds.param_changes),
+                    "new_kicks": n_k, "new_burns": n_b, "new_param_changes": n_p,
+                    "latest_month": months[-1].as_json() if months else None,
+                })
         _log.info(
             "tmf_history run %d ok - to_block %d (%s); %d kicks (%d new), %d burns (%d new)",
             run_id, ds.to_block, bound, len(ds.kicks), n_k, len(ds.burns), n_b,
