@@ -1,0 +1,12 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "pip install -e \".[api]\""
+  },
+  "deploy": {
+    "startCommand": "python scripts/daily_cron.py --tasks tmf",
+    "cronSchedule": "30 2 * * *",
+    "restartPolicyType": "NEVER"
+  }
+}

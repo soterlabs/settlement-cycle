@@ -40,6 +40,43 @@ from settle.extract import hypersync, hypersync_store  # noqa: E402
 from settle.normalize.sources.hypersync_sbe import HyperSyncSbeSource  # noqa: E402
 
 
+def build_dataset(
+    cfg: dict, *, to_block: int | None = None,
+) -> tuple[HistoryDataset, str]:
+    """Extract the full SBE history into a ``HistoryDataset``.
+
+    ``to_block`` pins the upper bound; default is the latest FINALIZED block
+    (archive head minus the reorg margin) so the log store can persist every
+    fetched row. Returns the dataset and a label for the bound. Shared by the
+    CLI below and by ``scripts/daily_cron.py``.
+    """
+    hist = cfg["history"]
+    contracts: dict[str, str] = dict(cfg["contracts"])
+    deploy_block = int(hist["splitter_deploy_block"])
+
+    if to_block is not None:
+        bound = "pinned"
+    else:
+        head = hypersync.archive_height("ethereum")
+        to_block, bound = head - hypersync_store._reorg_margin(), "finalized head"
+    to_ts = hypersync.block_timestamp("ethereum", to_block)
+
+    source = HyperSyncSbeSource(contracts, flappers=hist["flappers"])
+    activity = source.history(deploy_block, to_block, deploy_block=deploy_block)
+    burns = source.sky_burns(
+        deploy_block, to_block,
+        sinks=hist["burn_sinks"], protocol_senders=hist["protocol_senders"],
+    )
+    ds = HistoryDataset(
+        from_block=deploy_block, to_block=to_block, to_ts=to_ts,
+        kicks=activity.kicks, burns=burns, param_changes=activity.param_changes,
+        contracts={k: contracts[k] for k in ("MCD_SPLIT", "MCD_FLAP", "MCD_KICK", "SKY",
+                                              "MCD_PAUSE_PROXY", "REWARDS_LSSKY_USDS")},
+        notes=list(hist.get("notes") or []),
+    )
+    return ds, bound
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument(
@@ -57,31 +94,8 @@ def main() -> int:
         return 2
 
     cfg = yaml.safe_load((_REPO / "config" / "tmf.yaml").read_text())
-    hist = cfg["history"]
-    contracts: dict[str, str] = dict(cfg["contracts"])
-    deploy_block = int(hist["splitter_deploy_block"])
-
-    if args.to_block is not None:
-        to_block, bound = int(args.to_block), "pinned"
-    else:
-        head = hypersync.archive_height("ethereum")
-        to_block, bound = head - hypersync_store._reorg_margin(), "finalized head"
-    to_ts = hypersync.block_timestamp("ethereum", to_block)
-
-    source = HyperSyncSbeSource(contracts, flappers=hist["flappers"])
-    print(f"SBE history — blocks {deploy_block:,} → {to_block:,} ({bound})")
-    activity = source.history(deploy_block, to_block, deploy_block=deploy_block)
-    burns = source.sky_burns(
-        deploy_block, to_block,
-        sinks=hist["burn_sinks"], protocol_senders=hist["protocol_senders"],
-    )
-    ds = HistoryDataset(
-        from_block=deploy_block, to_block=to_block, to_ts=to_ts,
-        kicks=activity.kicks, burns=burns, param_changes=activity.param_changes,
-        contracts={k: contracts[k] for k in ("MCD_SPLIT", "MCD_FLAP", "MCD_KICK", "SKY",
-                                              "MCD_PAUSE_PROXY", "REWARDS_LSSKY_USDS")},
-        notes=list(hist.get("notes") or []),
-    )
+    ds, bound = build_dataset(cfg, to_block=args.to_block)
+    print(f"SBE history — blocks {ds.from_block:,} → {ds.to_block:,} ({bound})")
     paths = write_history_dataset(ds, _REPO / "settlements" / "tmf" / "data")
 
     print(f"{'month':<8} {'kicks':>6} {'USDS buyback':>14} {'USDS→stakers':>14} {'USDS total':>14} "
