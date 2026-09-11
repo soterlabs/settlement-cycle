@@ -31,5 +31,4 @@ could override the authoring file for both services — re-imposing the build
 that produced `uvicorn: command not found`, with zero replicas. The authoring
 file is the single source of truth.
 
-The GitHub source branch is set in the authoring file; switch it to `main`
-once the phase-1 PR is merged.
+Both services deploy from `main`; the branch is set in the authoring file.
