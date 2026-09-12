@@ -21,40 +21,25 @@ Copy `DATABASE_URL` into your local `.env` (see `.env.example`).
 
 ## 2. Apply the schema
 
+Two files, because they are owned by different pipelines:
+
 ```bash
-psql "$DATABASE_URL" -f db/schema.sql
+psql "$DATABASE_URL" -f db/schema.sql         # raw_data + the HyperSync log store
+psql "$DATABASE_URL" -f db/schema_daily.sql   # runs + the decoded SBE tables
 ```
 
 Idempotent — re-running is safe (`CREATE TABLE IF NOT EXISTS`).
 
-Or apply via the sync script's `--apply-schema` flag:
+`schema.sql` is kept separate on purpose: it carries an `ALTER TABLE` on
+`hypersync_logs`, which takes an ACCESS EXCLUSIVE lock on a table the monthly
+pipeline reads. `settle.store.db.apply_schema` therefore applies only
+`schema_daily.sql`, on every cron tick and at API startup, so the hourly job
+never locks the monthly pipeline out. See `docs/PRD_daily_pipeline_api.md`.
+
+`schema.sql` alone can also be applied via the sync script:
 
 ```bash
 PYTHONPATH=src python3 scripts/sync_raw_data.py --apply-schema
-```
-
-## 3. (One-time) Configure GitHub Action secrets
-
-The `Sync raw data to Postgres` workflow (`.github/workflows/sync-raw-data.yml`)
-needs these repo secrets:
-
-| Secret             | Value                                                   |
-|--------------------|---------------------------------------------------------|
-| `DATABASE_URL`     | from `railway variables`                                |
-| `DUNE_API_KEY`     | Dune API key                                            |
-| `ETH_RPC`          | per-chain RPC endpoints (Alchemy / drpc / etc.)         |
-| `BASE_RPC`         | "                                                       |
-| `ARBITRUM_RPC`     | "                                                       |
-| `OPTIMISM_RPC`     | "                                                       |
-| `UNICHAIN_RPC`     | "                                                       |
-| `AVALANCHE_C_RPC`  | "                                                       |
-| `PLUME_RPC`        | "                                                       |
-
-Set via the GitHub UI (Settings → Secrets and variables → Actions) or `gh`:
-
-```bash
-gh secret set DATABASE_URL --body "$DATABASE_URL"
-# repeat per secret
 ```
 
 ## One-time backfill from local cache
@@ -85,20 +70,23 @@ Future fetches via the read-through cache populate `args` properly.
 Read order on `@cached`-decorated extract calls: local pickle → Postgres →
 upstream. Fresh fetches write to both. Historical rows are never mutated.
 
-## When the GitHub Action runs
+## What keeps the store warm
 
-`.github/workflows/sync-raw-data.yml` triggers on `push` to `main` *only*
-when files that define what gets fetched change:
+Nothing on a schedule fills `raw_data` on its own — it is a read-through
+cache, so it gains rows as a side effect of the pipeline running:
 
-- `src/settle/extract/**`  (the fetcher code)
-- `src/settle/queries/**`  (Dune SQL templates)
-- `config/*.yaml`           (prime configs — venues, oracles)
-- `scripts/sync_raw_data.py`
-- `db/schema.sql`
+| Writer | When | What it writes |
+|---|---|---|
+| the monthly runners (`scripts/run_<prime>_2026.py`, `build_sky_total_2026.py`) | when a settlement is generated | whatever `(source, args_hash)` keys that run touches |
+| `settle-cron` on Railway (`scripts/cron.py`) | hourly | the HyperSync log store, plus the decoded SBE tables in `schema_daily.sql` |
+| `scripts/sync_raw_data.py` | manually | warms the cache for a config/venue change without waiting for a settlement run |
 
-Edits outside these paths (docs, tests, compute logic) don't change the
-set of raw-data keys, so the workflow skips. Manual runs via
-`workflow_dispatch` work too.
+A `Sync raw data to Postgres` GitHub Action used to do the third of these on
+pushes to `main`. It was disabled in 2026-05 pending the initial backfill and
+removed in 2026-09: the backfill was long done, and by then `settle-cron` and
+the runners covered the same ground — a push-triggered re-run of the extract
+pipeline would only have been a second, uncoordinated writer against the same
+Dune and RPC quota. It is in git history if it is ever wanted back.
 
-The action is idempotent: if no new `(source, args_hash)` keys appear,
-every cell hits the cache and the run is a fast no-op.
+Every writer is idempotent: if no new `(source, args_hash)` keys appear, every
+cell hits the cache and the run is a fast no-op.
