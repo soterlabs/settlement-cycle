@@ -120,6 +120,7 @@ venues:
       decimals: 6
 
   - id: S3
+    event_source: hypersync
     chain: ethereum
     label: 'Spark USDT (SparkLend spToken)'
     pricing_category: C
