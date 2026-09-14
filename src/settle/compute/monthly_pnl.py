@@ -1387,6 +1387,15 @@ def get_psm_usds_timeseries(
         # ``spark_protocol_multichain.psm3_evt_{deposit,withdraw}`` events.
         if psm3_source is not None:
             psm3 = psm3_source
+        elif cfg.event_source == "hypersync":
+            from ..normalize.sources.hypersync_psm3 import HyperSyncPsm3Source
+            psm3 = HyperSyncPsm3Source(
+                position_balance_source=position_balance_source,
+                convert_to_assets_source=convert_to_assets_source,
+                block_resolver=block_resolver,
+            )
+            psm3.preload(chain.value, prime.alm[chain].value,
+                         pin_block=period.pin_blocks[chain], psm3=cfg.address.value)
         else:
             import os as _os
             if _os.environ.get("DUNE_API_KEY"):

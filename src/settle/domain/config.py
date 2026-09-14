@@ -183,8 +183,11 @@ def load_prime(config_path: Path) -> Prime:
             alm[chain] = Address.from_str(addrs["alm"])
         if "psm" in addrs:
             p = addrs["psm"]
+            if p.get("event_source", "dune") not in {"dune", "hypersync"}:
+                raise ValueError(f"PSM {chain}: invalid event_source")
             psm[chain] = PsmConfig(
                 kind=PsmKind(p["kind"]),
+                event_source=p.get("event_source", "dune"),
                 address=Address.from_str(p["address"]),
                 token=Address.from_str(p["token"]) if p.get("token") else None,
             )

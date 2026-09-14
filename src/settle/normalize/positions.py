@@ -57,6 +57,8 @@ def get_position_balance(
 
     # Category EOA: balance comes from flow accounting, not on-chain balanceOf.
     if venue.pricing_category == PricingCategory.EOA:
+        if flow_source is None and venue.event_source == "hypersync":
+            flow_source = get_balance_source("hypersync")
         return _eoa_balance(prime, venue, block, source=flow_source)
 
     # Uniswap V3 positions aren't fungible ERC-20 — there's no scalar "balance"

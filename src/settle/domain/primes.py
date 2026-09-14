@@ -645,6 +645,7 @@ class PsmConfig:
     # an optional config slot in case a future PsmKind needs to name a
     # specific underlying token.
     token: Address | None = None
+    event_source: str = "dune"
 
 
 @dataclass(frozen=True, slots=True)
