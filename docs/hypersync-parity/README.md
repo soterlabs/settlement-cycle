@@ -11,9 +11,12 @@ Run from the repository root with the existing virtual environment and provider 
 .venv/bin/python scripts/compare_hypersync_shared.py --prime grove --month 2026-08 --output /tmp/grove-idle.json
 .venv/bin/python scripts/compare_hypersync_shared.py --chain ethereum --month 2026-08 --output /tmp/ethereum-blocks.json
 .venv/bin/python scripts/compare_hypersync_psm3.py --chain base --month 2026-08 --output /tmp/base-psm3.json
+.venv/bin/python scripts/compare_hypersync_settlement.py --prime osero --month 2026-08 --output /tmp/osero-settlement.json
 ```
 
 These commands write comparison JSON only; they do not regenerate settlements. Dune execution/read credits and a HyperSync token are required. The existing Postgres log store and extraction cache avoid refetching completed historical inputs.
+
+The first historical transfer scan can be slow under a limited provider allowance. `scripts/backfill_hypersync_balances.py --prime spark --chain base --month 2026-08` groups token filters by holder and materializes finalized per-token streams in the existing Postgres cache. It changes no source flags and runs no Dune queries; every venue still needs its own comparison.
 
 ## What is checked
 
@@ -23,6 +26,7 @@ These commands write comparison JSON only; they do not regenerate settlements. D
 - Normalized Dune `DOUBLE` amounts use an absolute tolerance of 0.000001 token units. A failed comparison can pass a separate precision check only if the legacy difference is at most 0.0001 token units **and every raw integer daily/cumulative amount matches exactly**. That evidence retains the failed legacy comparison, its maximum differences, the raw SQL oracle and hashes. Larger differences or any raw mismatch fail.
 - Block evidence verifies each Dune end-of-day block's HyperSync timestamp and its immediate successor, with independent HyperSync searches on days 1, 15 and the last day. An empty Dune block result is not a pass.
 - PSM3 compares the opening holder/pool share states and every subsequent share event exactly, every daily reserve closing value plus the month-opening anchor, and end-of-month RPC balances/shares. The daily reserve oracle preserves the original Dune transfer running sum while avoiding a multi-million-row API export. HyperSync uses five pinned opening RPC reads (holder shares, total shares and three reserves), then that month's Deposit/Withdraw/Transfer logs. Dune's lifetime running sums independently verify those opening anchors.
+- The full-calculation comparator checks every `MonthlyPnL` dataclass field, including venue components, with an absolute numeric tolerance of 0.000001. Its baseline injects the Dune balance and SSR sources and selects Dune venue events. Its candidate uses the configured sources and forbids all Dune query calls, including cached calls and attempted calls swallowed by fallback handlers. This comparator currently supports primes without PSM3; PSM3 has its separate exact-state comparator above.
 
 Hashes describe normalized comparison inputs. Equal numeric series can have different hashes when Decimal textual scales differ; use the explicit difference checks as the verdict.
 
@@ -31,5 +35,7 @@ Hashes describe normalized comparison inputs. Equal numeric series can have diff
 The migration changes event acquisition. Contract pricing, NAV, balances used for valuation, and `convertToAssets` calls still use the existing RPC paths. The legacy-named `DuneSavingsV2DeployedSource` already reads `assetsOutstanding()` over RPC and makes no Dune request. Savings V2 position-only venues and explicitly skipped venues do not require Dune event cutovers.
 
 Historical fixture runners and Dune SQL/source implementations remain available as comparison oracles. Explicit caller-supplied sources are preserved. Migrated live paths propagate HyperSync failures rather than interpreting provider outages as zero revenue.
+
+Cutovers are explicit: each venue has `event_source: hypersync`, each PSM3 contract has its own event-source flag, and prime-level `sources` select shared balance/debt/block-resolution families. Changing a venue flag does not replace a caller-injected fixture source.
 
 Uniswap V3 retains the existing boundary-based NFT discovery: an NFT opened and closed entirely between both boundaries can be missed by both old and new adapters. Matching event inputs does not resolve that pre-existing limitation.
