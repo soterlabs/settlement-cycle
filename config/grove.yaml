@@ -408,6 +408,7 @@ venues:
         amount: 0
 
   - id: E12
+    event_source: hypersync
     chain: ethereum
     label: 'Uniswap V3 AUSD/USDC pool (NFT positions)'
     pricing_category: F
