@@ -133,6 +133,7 @@ venues:
       decimals: 6
 
   - id: E3
+    event_source: hypersync
     chain: ethereum
     label: 'Aave Ethereum RLUSD (aToken)'
     pricing_category: C

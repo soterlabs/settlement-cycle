@@ -1,0 +1,71 @@
+{
+  "prime": "grove",
+  "venue": "E3",
+  "month": "2026-04",
+  "start": "2025-05-14",
+  "pins": {
+    "ethereum/2026-04-30": 24996367
+  },
+  "matched": true,
+  "checks": [
+    {
+      "input": "transfer_timeseries.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 34,
+      "hypersync_rows": 34,
+      "max_abs_difference": {
+        "daily_net": "3.099616886E-9",
+        "cum_balance": "5.2204351881E-8"
+      },
+      "dune_sha256": "c9da612b4455a43a8adbc9d2cc2a58896c0906d406940604afda0ccd08e63549",
+      "hypersync_sha256": "26f7035bf3dc0dcd45857eabec5eef2b985e4fff72be4218f6d2e7f29b47fd06",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "mint:venue_inflow.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 28,
+      "hypersync_rows": 28,
+      "max_abs_difference": {
+        "daily_inflow": "2.234822586E-9",
+        "cum_inflow": "8.9538176021E-8"
+      },
+      "dune_sha256": "9abca4cdd083151f4d9aa9a3d37cd82993b2e332a4361a8572a2ddc9df74ea5a",
+      "hypersync_sha256": "789f66de1c7c0eb637f38120a164b86acaf339ef7c90402f8dc01f229924c962",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "burn:venue_inflow.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 8,
+      "hypersync_rows": 8,
+      "max_abs_difference": {
+        "daily_inflow": "5.193084573E-9",
+        "cum_inflow": "2.2027207062E-8"
+      },
+      "dune_sha256": "690c1343588eff8f0b809fb6146814b2f4f2b3740ead0229f889ec4c023278de",
+      "hypersync_sha256": "f5969f62ad7bd71b151aef7f92ca9fa11e78856e1e6edbcbe2df89f3008ce3ef",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "merkl_claims_ethereum.sql",
+      "matched": true,
+      "tolerance": "0",
+      "dune_rows": 1,
+      "hypersync_rows": 1,
+      "max_abs_difference": {
+        "total_amount_raw": "0"
+      },
+      "dune_sha256": "9efb01ae13bc6359c60b79c43bc21b577acdbaf1f1a0b449086736a26065d81b",
+      "hypersync_sha256": "9efb01ae13bc6359c60b79c43bc21b577acdbaf1f1a0b449086736a26065d81b",
+      "mismatch_count": 0,
+      "mismatches": []
+    }
+  ]
+}
