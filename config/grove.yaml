@@ -581,6 +581,7 @@ venues:
   # and drains when the matching return lands at a paired anchor venue.
   # ─────────────────────────────────────────────────────────────
   - id: E36
+    event_source: hypersync
     chain: ethereum
     label: 'OOB principal via 0xd94f (relay to Monad ALM EOA → AUSD acquisition)'
     pricing_category: EOA
