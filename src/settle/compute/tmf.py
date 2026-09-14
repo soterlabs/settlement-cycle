@@ -54,6 +54,7 @@ __all__ = [
     "burn_attribution",
     "compute_tmf_monthly",
     "compute_waterfall",
+    "parse_ts",
     "read_sky_total_snr",
     "regimes_from_kicks",
     "render_summary",
@@ -79,7 +80,7 @@ def _q2(x: Decimal) -> Decimal:
     return x.quantize(D("0.01"), rounding=ROUND_HALF_UP)
 
 
-def _parse_ts(v: Any) -> int | None:
+def parse_ts(v: Any) -> int | None:
     """Unix seconds from an ISO-8601 string (``Z`` or offset) or a datetime —
     PyYAML hands back a ``datetime`` for an unquoted ``2026-08-17T14:02:23Z``
     and a ``str`` for the quoted form; both must work."""
@@ -96,6 +97,9 @@ def _parse_ts(v: Any) -> int | None:
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=UTC)
     return int(dt.timestamp())
+
+
+_parse_ts = parse_ts   # internal alias, kept so the module body reads unchanged
 
 
 # ── policy + inputs ──────────────────────────────────────────────────────────

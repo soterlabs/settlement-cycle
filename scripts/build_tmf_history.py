@@ -31,6 +31,7 @@ import yaml
 _REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_REPO / "src"))
 
+from settle.compute.tmf import parse_ts  # noqa: E402
 from settle.compute.tmf_history import (  # noqa: E402
     HistoryDataset,
     aggregate,
@@ -67,7 +68,17 @@ def build_dataset(
         deploy_block, to_block,
         sinks=hist["burn_sinks"], protocol_senders=hist["protocol_senders"],
     )
+    # policy.tmf_effective_from is the TMF's first cast; every burn is
+    # classified engine vs supply_correction against it. Absent, it must fail:
+    # a 0 would publish the 426M supply correction as an engine burn.
+    effective_from = parse_ts((cfg.get("policy") or {}).get("tmf_effective_from"))
+    if not effective_from:
+        raise SystemExit(
+            "config/tmf.yaml: policy.tmf_effective_from is missing or unparseable — "
+            "it is the boundary every SKY burn is classified against; refusing to guess."
+        )
     ds = HistoryDataset(
+        tmf_effective_from=effective_from,
         from_block=deploy_block, to_block=to_block, to_ts=to_ts,
         kicks=activity.kicks, burns=burns, param_changes=activity.param_changes,
         contracts={k: contracts[k] for k in ("MCD_SPLIT", "MCD_FLAP", "MCD_KICK", "SKY",
@@ -99,17 +110,18 @@ def main() -> int:
     paths = write_history_dataset(ds, _REPO / "settlements" / "tmf" / "data")
 
     print(f"{'month':<8} {'kicks':>6} {'USDS buyback':>14} {'USDS→stakers':>14} {'USDS total':>14} "
-          f"{'SKY bought':>16} {'SKY burn':>14}")
+          f"{'SKY bought':>16} {'SKY burn (engine)':>18}")
     print("-" * 92)
-    for r in aggregate(ds.kicks, ds.burns, "monthly"):
+    for r in aggregate(ds.kicks, ds.burns, "monthly",
+                       tmf_effective_from=ds.tmf_effective_from):
         print(f"{r.period:<8} {r.kicks:>6} {float(r.usds_buyback):>14,.0f} "
               f"{float(r.usds_to_stakers):>14,.0f} {float(r.usds_total):>14,.0f} "
-              f"{float(r.sky_bought):>16,.2f} {float(r.sky_burn_protocol):>14,.2f}")
+              f"{float(r.sky_bought):>16,.2f} {float(r.sky_burn_engine):>18,.2f}")
     t = ds.totals
     print("-" * 92)
     print(f"{'total':<8} {t.kicks:>6} {float(t.usds_buyback):>14,.0f} "
           f"{float(t.usds_to_stakers):>14,.0f} {float(t.usds_total):>14,.0f} "
-          f"{float(t.sky_bought):>16,.2f} {float(t.sky_burn_protocol):>14,.2f}")
+          f"{float(t.sky_bought):>16,.2f} {float(t.sky_burn_engine):>18,.2f}")
     print("\nArtifacts written:\n")
     for kind, p in paths.items():
         print(f"  {kind:<6} {p.relative_to(_REPO)}")

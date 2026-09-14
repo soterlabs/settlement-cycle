@@ -8,7 +8,7 @@ on-chain events (HyperSync), mirrored into `soterlabs/settlement-reports` under
 |---|---|---|
 | `sbe_history.json` | aggregates by month / quarter / year, totals, latest kick, parameter timeline | 2 dp (price 6 dp) |
 | `sbe_kicks.csv` | one row per Splitter kick since deployment | exact (trailing zeros stripped) |
-| `sky_burns.csv` | one row per SKY transfer into a burn sink | exact |
+| `sky_burns.csv` | one row per SKY transfer into a burn sink, with its `kind` | exact |
 
 ## `sbe_history.json`
 
@@ -36,8 +36,10 @@ A **period row**:
 | `usds_total` | the two above summed (= `Kick.tot`, USDS pulled from the surplus) |
 | `sky_bought` | SKY received by the Flapper's receiver (`Exec.bought`) |
 | `sky_avg_price` | `usds_buyback / sky_bought`, volume-weighted |
-| `sky_burn_protocol` | SKY sent to a burn sink by the Pause Proxy — "true Sky burn" |
-| `sky_burn_other` | SKY sent to `0x…dEaD` by anyone else |
+| `sky_burn_engine` | SKY burned by the Smart Burn Engine — the 10/55 share of a month's buys, retired by the following month's spell. **The buyback-policy number** |
+| `sky_burn_supply_correction` | SKY burned by the protocol *before* the TMF took effect (see below) |
+| `sky_burn_protocol` | `sky_burn_engine + sky_burn_supply_correction`. Predates the split and is dominated by the correction — prefer `sky_burn_engine` |
+| `sky_burn_other` | SKY sent to `0x…dEaD` by a third party |
 | `burn_events` | number of burn transfers |
 | `first_ts` / `last_ts` | first / last kick in the period |
 
@@ -51,19 +53,39 @@ burns but no kicks has `kicks = 0` and **null** `sky_avg_price`, `first_ts`,
 what, value`. Numeric values are exact decimals as plain digits (no exponent,
 no trailing zeros); `File(address)` values are the address.
 
-Schema history: **1.1.0** added `address` on `parameter_changes` and normalised
-`value` formatting; 1.0.0 initial.
+Schema history: **1.2.0** added `kind` on every burn row, `sky_burn_engine` /
+`sky_burn_supply_correction` on every period row, and `source.tmf_effective_from`
+(all additive — `sky_burn_protocol` keeps its old meaning); 1.1.0 added `address`
+on `parameter_changes` and normalised `value` formatting; 1.0.0 initial.
 
-## Burn definition
+## Burn definition and classification
+
+Which transfers count as a burn:
 
 * `0x…dEaD` — any sender; `protocol` flags the Pause Proxy.
 * zero address (`SKY.burn()`) — **protocol senders only**. The MKR↔SKY
   converter also burns SKY to the zero address; that is a conversion, not a
   treasury burn, and is excluded.
 
-History: the 2025-06-30 executive burned 426,292,860.23 SKY from the Pause Proxy
-(`SKY.burn()`). TMF-rule burns (10/55 of the previous month's buys) start with
-the September 2026 executive.
+Every burn row carries a **`kind`**, because the two protocol kinds are
+indistinguishable on-chain — both are Pause Proxy → zero address — while being
+economically unrelated:
+
+| `kind` | What |
+|---|---|
+| `engine` | the Smart Burn Engine's own burn: 10/55 of a month's buys, retired by the following month's spell. First one 2026-09-13, 2,860,943.76 SKY |
+| `supply_correction` | the 2025-06-30 spell retiring 426,292,860.23 SKY of supply created in the MKR→SKY conversion |
+| `third_party` | anyone who is not the protocol sending SKY to `0x…dEaD` |
+
+The rule is a single timestamp, `source.tmf_effective_from` (echoed from
+`config/tmf.yaml` `policy.tmf_effective_from`, currently 2026-08-17T14:02:23Z —
+the TMF's first cast): a protocol burn at or after it is `engine`, before it is
+`supply_correction`. **`supply_correction` is a closed category** — the boundary
+is a fixed past timestamp, so no later burn can join it.
+
+Why it matters: the correction is ~150× the first engine burn, so
+`sky_burn_protocol` is dominated by a one-off that has nothing to do with
+buyback policy. Use `sky_burn_engine`.
 
 ## Refresh
 

@@ -19,6 +19,7 @@ from settle.store import runs as R
 from settle.store import tmf as S
 
 T0 = 1_786_975_400
+CAST = 1_786_975_343   # policy.tmf_effective_from — the burn-kind boundary
 
 
 def _kick(i: int, bought: str = "3000") -> SbeKick:
@@ -38,9 +39,9 @@ class _MemReader:
     def history(self):
         if not self._r:
             return None
-        ds = HistoryDataset(from_block=1, to_block=200, to_ts=T0 + 99_999, kicks=self._k,
-                            burns=self._b, param_changes=self._p, contracts={"MCD_SPLIT": "0xs"},
-                            notes=["n"])
+        ds = HistoryDataset(tmf_effective_from=CAST, from_block=1, to_block=200,
+                            to_ts=T0 + 99_999, kicks=self._k, burns=self._b,
+                            param_changes=self._p, contracts={"MCD_SPLIT": "0xs"}, notes=["n"])
         doc = build_history_dataset(ds, generated_at="2026-09-11T00:03:28Z")
         doc["run"] = {"run_id": self._r[0]["run_id"]}
         return doc
@@ -51,6 +52,9 @@ class _MemReader:
 
     def burns(self, *, from_ts, to_ts, limit):
         return list(self._b)[-limit:]
+
+    def burn_boundary(self):
+        return CAST
 
     def param_changes(self, *, limit):
         return list(self._p)[-limit:]
@@ -87,6 +91,9 @@ def test_history_document_is_the_dataset_contract_with_etag(client):
     assert doc["schema_version"] == SCHEMA_VERSION
     assert doc["totals"]["kicks"] == 5 and doc["totals"]["usds_total"] == 30000.0
     assert doc["totals"]["sky_burn_protocol"] == 2860943.76
+    assert doc["totals"]["sky_burn_engine"] == 2860943.76          # after the cast
+    assert doc["totals"]["sky_burn_supply_correction"] == 0.0
+    assert doc["schema_version"] == "1.2.0"
     assert doc["run"]["run_id"] == 7
     assert r.headers["Cache-Control"] == "public, max-age=300"
     etag = r.headers["ETag"]
@@ -246,6 +253,17 @@ def test_window_bounds_must_be_ordered(client):
     assert r.status_code == 422 and "is after" in r.json()["detail"]
 
 
+def test_burns_carry_their_kind_and_the_boundary_rule(client):
+    """A consumer must be able to tell the engine's own burns from the one-off
+    supply correction without hardcoding a date — both are Pause Proxy -> zero
+    address on-chain."""
+    body = client.get("/v1/tmf/burns").json()
+    assert body["tmf_effective_from"] == "2026-08-17T14:02:23Z"
+    # the fixture burn is protocol and after the cast
+    assert body["burns"][0]["kind"] == "engine"
+    assert body["burns"][0]["protocol"] is True
+
+
 def test_burns_and_param_changes_are_bounded(client):
     for path in ("/v1/tmf/burns", "/v1/tmf/parameter-changes"):
         assert client.get(path).json()["limit"] == 1000
@@ -318,12 +336,12 @@ def test_history_document_refuses_a_run_without_its_range(monkeypatch):
     monkeypatch.setattr(S, "latest_run", lambda conn, kind: {
         "run_id": 9, "pin_block": None, "summary": {}, "finished_at": "t", "settle_version": "v"})
     with pytest.raises(S.IncompleteRunError, match="pin_block"):
-        S.history_document(_Conn([]), contracts={}, notes=[])
+        S.history_document(_Conn([]), contracts={}, notes=[], tmf_effective_from=CAST)
     monkeypatch.setattr(S, "latest_run", lambda conn, kind: {
         "run_id": 9, "pin_block": 200, "summary": {"from_block": 1}, "finished_at": "t",
         "settle_version": "v"})
     with pytest.raises(S.IncompleteRunError, match="to_ts"):
-        S.history_document(_Conn([]), contracts={}, notes=[])
+        S.history_document(_Conn([]), contracts={}, notes=[], tmf_effective_from=CAST)
 
 
 def test_history_document_stamps_the_run_and_bounds_by_its_pin(monkeypatch):
@@ -332,7 +350,8 @@ def test_history_document_stamps_the_run_and_bounds_by_its_pin(monkeypatch):
         "settle_version": "0.1.0+abc",
         "summary": {"from_block": 1, "to_ts": T0 + 99_999}})
     conn = _Conn([])
-    doc = S.history_document(conn, contracts={"MCD_SPLIT": "0xs"}, notes=["n"])
+    doc = S.history_document(conn, contracts={"MCD_SPLIT": "0xs"}, notes=["n"],
+                             tmf_effective_from=CAST)
     assert doc["source"]["from_block"] == 1 and doc["source"]["to_block"] == 200
     assert doc["generated_at"] == "2026-09-11T00:03:28Z"   # stable per run
     assert doc["run"]["settle_version"] == "0.1.0+abc"

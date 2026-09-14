@@ -6,7 +6,7 @@ Endpoints (phase 1):
     GET /healthz                       liveness + DB + latest run
     GET /v1/tmf/history                the sbe_history.json document (schema 1.1.0)
     GET /v1/tmf/kicks                  per-kick rows, newest first (from/to/limit)
-    GET /v1/tmf/burns                  per-burn rows (from/to/limit)
+    GET /v1/tmf/burns                  per-burn rows + `kind` (from/to/limit)
     GET /v1/tmf/parameter-changes      Splitter/Kicker/Flapper File timeline (limit)
     GET /v1/runs                       run ledger
 
@@ -35,7 +35,8 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from .. import __version__ as SETTLE_VERSION
-from ..compute.tmf_history import dec_str, iso_ts
+from ..compute.tmf import parse_ts
+from ..compute.tmf_history import burn_kind, dec_str, iso_ts
 from ..domain.tmf import SbeKick, SbeParamChange, SkyBurn
 
 __all__ = ["Reader", "app", "create_app"]
@@ -58,16 +59,19 @@ class Reader(Protocol):
     def history(self) -> dict[str, Any] | None: ...
     def kicks(self, *, from_ts: int | None, to_ts: int | None, limit: int) -> list[SbeKick]: ...
     def burns(self, *, from_ts: int | None, to_ts: int | None, limit: int) -> list[SkyBurn]: ...
+    def burn_boundary(self) -> int: ...
     def param_changes(self, *, limit: int) -> list[SbeParamChange]: ...
     def runs(self, *, kind: str | None, limit: int) -> list[dict[str, Any]]: ...
     def close(self) -> None: ...
 
 
 class PostgresReader:
-    def __init__(self, pool: Any, contracts: dict[str, str], notes: list[str]) -> None:
+    def __init__(self, pool: Any, contracts: dict[str, str], notes: list[str],
+                 tmf_effective_from: int) -> None:
         self._pool = pool
         self._contracts = contracts
         self._notes = notes
+        self._effective_from = tmf_effective_from
 
     def health(self) -> dict[str, Any]:
         from ..store.runs import latest_run
@@ -80,7 +84,8 @@ class PostgresReader:
     def history(self) -> dict[str, Any] | None:
         from ..store.tmf import history_document
         with self._pool.connection() as conn:
-            return history_document(conn, contracts=self._contracts, notes=self._notes)
+            return history_document(conn, contracts=self._contracts, notes=self._notes,
+                                    tmf_effective_from=self._effective_from)
 
     def kicks(self, *, from_ts: int | None, to_ts: int | None, limit: int) -> list[SbeKick]:
         from ..store.tmf import load_kicks
@@ -91,6 +96,9 @@ class PostgresReader:
         from ..store.tmf import load_burns
         with self._pool.connection() as conn:
             return load_burns(conn, from_ts=from_ts, to_ts=to_ts, limit=limit)
+
+    def burn_boundary(self) -> int:
+        return self._effective_from
 
     def param_changes(self, *, limit: int) -> list[SbeParamChange]:
         from ..store.tmf import load_param_changes
@@ -114,11 +122,20 @@ class PostgresReader:
             self._pool.close()
 
 
-def _tmf_config() -> tuple[dict[str, str], list[str]]:
+def _tmf_config() -> tuple[dict[str, str], list[str], int]:
+    """``(contracts, notes, tmf_effective_from)`` — the last is the boundary
+    every burn is classified against."""
     cfg = yaml.safe_load((_REPO / "config" / "tmf.yaml").read_text())
     contracts = {k: cfg["contracts"][k] for k in ("MCD_SPLIT", "MCD_FLAP", "MCD_KICK", "SKY",
                                                   "MCD_PAUSE_PROXY", "REWARDS_LSSKY_USDS")}
-    return contracts, list((cfg.get("history") or {}).get("notes") or [])
+    effective_from = parse_ts((cfg.get("policy") or {}).get("tmf_effective_from"))
+    if not effective_from:
+        raise RuntimeError(
+            "config/tmf.yaml: policy.tmf_effective_from is missing or unparseable — "
+            "it is the boundary every SKY burn is classified against; refusing to guess. "
+            "(/healthz reports this as degraded rather than serving misclassified burns.)"
+        )
+    return contracts, list((cfg.get("history") or {}).get("notes") or []), effective_from
 
 
 def _postgres_reader() -> PostgresReader:
@@ -129,8 +146,8 @@ def _postgres_reader() -> PostgresReader:
         database_url(), min_size=1, max_size=4, open=True,
         kwargs=connect_kwargs(), configure=configure_session,
     )
-    contracts, notes = _tmf_config()
-    return PostgresReader(pool, contracts, notes)
+    contracts, notes, effective_from = _tmf_config()
+    return PostgresReader(pool, contracts, notes, effective_from)
 
 
 def _parse_ts(v: str | None, *, field: str) -> int | None:
@@ -284,11 +301,17 @@ def create_app(reader: Reader | None = None) -> FastAPI:
     ) -> Response:
         lo, hi = _parse_window(from_, to)
         rows = r.burns(from_ts=lo, to_ts=hi, limit=limit)
-        payload = {"count": len(rows), "limit": limit, "order": "oldest first", "burns": [{
-            "ts": iso_ts(b.ts), "block": b.block, "log_index": b.log_index, "tx": b.tx,
-            "sender": b.sender, "sink": b.sink, "sky_amount": dec_str(b.amount),
-            "protocol": b.protocol,
-        } for b in rows]}
+        boundary = r.burn_boundary()
+        payload = {
+            "count": len(rows), "limit": limit, "order": "oldest first",
+            # The rule behind `kind`, so a consumer never has to hardcode a date.
+            "tmf_effective_from": iso_ts(boundary) if boundary else None,
+            "burns": [{
+                "ts": iso_ts(b.ts), "block": b.block, "log_index": b.log_index, "tx": b.tx,
+                "sender": b.sender, "sink": b.sink, "sky_amount": dec_str(b.amount),
+                "protocol": b.protocol, "kind": burn_kind(b, boundary),
+            } for b in rows],
+        }
         return _document_response(request, payload)
 
     @app.get("/v1/tmf/parameter-changes")
