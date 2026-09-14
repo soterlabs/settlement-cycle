@@ -606,6 +606,7 @@ venues:
   # Base — Phase 2.B (multi-chain rollout)
   # ─────────────────────────────────────────────────────────────
   - id: E19
+    event_source: hypersync
     chain: base
     label: 'Grove x Steakhouse USDC High Yield (Base, Morpho 4626)'
     pricing_category: B
