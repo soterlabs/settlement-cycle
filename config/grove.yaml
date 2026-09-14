@@ -470,6 +470,7 @@ venues:
   # convertToAssets via the existing Phase 1 pipeline.
 
   - id: E13
+    event_source: hypersync
     chain: ethereum
     label: 'RLUSD raw (ALM idle)'
     pricing_category: A
