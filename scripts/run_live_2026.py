@@ -56,7 +56,7 @@ _MONTHS = [Month(2026, m) for m in (1, 2, 3, 4)]
 _SOURCES_LIVE = {
     "debt":              "DuneDebtSource",
     "balance":           "DuneBalanceSource",
-    "ssr":               "DuneSSRSource",
+    "ssr":               "HyperSyncSSRSource",
     "position_balance":  "RPCPositionBalanceSource",
     "convert_to_assets": "RPCConvertToAssetsSource",
     # ``psm3`` is left None in ``_live_sources()`` so the orchestrator

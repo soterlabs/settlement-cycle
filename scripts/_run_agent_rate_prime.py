@@ -52,7 +52,7 @@ def _selected_months() -> list[Month]:
 _SOURCES_LIVE = {
     "debt":              "HyperSyncDebtSource (unused — agent-rate-only prime, no ilk)",
     "balance":           "HyperSyncBalanceSource",
-    "ssr":               "DuneSSRSource",
+    "ssr":               "HyperSyncSSRSource",
     "position_balance":  "HyperSyncPositionBalanceSource",
     "convert_to_assets": "RPCConvertToAssetsSource",
     "block_resolver":    "DuneBlockResolver (orchestrator-upgraded) + RPC fallback",

@@ -75,7 +75,7 @@ _SETTLEMENT_SOURCES = {
         "Cat A stubbed; Ethereum `directed_flow` PSM returns empty — mainnet "
         "LITE-PSM is non-custodial for USDS, see PRD §17.11)"
     ),
-    "ssr":              "DuneSSRSource (live Dune query of on-chain SSR events at the period pin block)",
+    "ssr":              "HyperSyncSSRSource (sUSDS File events at the period pin block)",
     "position_balance": "RPCPositionBalanceSource",
     "convert_to_assets": "RPCConvertToAssetsSource",
     "psm3":             "RPCPsm3Source (drpc — cached from sky_revenue run)",

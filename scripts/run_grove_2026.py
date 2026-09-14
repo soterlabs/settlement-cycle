@@ -152,7 +152,7 @@ def _sources_manifest(fixture_dir: str) -> dict[str, str]:
     return {
         "debt":                    f"DuneDebtSource (MCP fixture: {fixture_dir}/dune_outputs.json)",
         "balance":                 "DuneBalanceSource (MCP fixture)",
-        "ssr":                     "DuneSSRSource (live Dune query of on-chain SSR events at the period pin block)",
+        "ssr":                     "HyperSyncSSRSource (sUSDS File events at the period pin block)",
         "position_balance":        "RPCPositionBalanceSource",
         "convert_to_assets":       "RPCConvertToAssetsSource",
         "nav_oracle (chronicle)":  "ChronicleNavSource",
