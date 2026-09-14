@@ -334,6 +334,7 @@ venues:
     centrifuge_vault: '0xFE6920eB6C421f1179cA8c8d4170530CDBdfd77A'
 
   - id: E10
+    event_source: hypersync
     chain: ethereum
     label: 'BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I)'
     pricing_category: E
