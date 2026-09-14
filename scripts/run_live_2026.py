@@ -59,12 +59,8 @@ _SOURCES_LIVE = {
     "ssr":               "HyperSyncSSRSource",
     "position_balance":  "RPCPositionBalanceSource",
     "convert_to_assets": "RPCConvertToAssetsSource",
-    # ``psm3`` is left None in ``_live_sources()`` so the orchestrator
-    # upgrades it to ``DunePsm3Source`` when ``DUNE_API_KEY`` is set; that
-    # source bulk-loads share + reserve histories from Dune and falls back
-    # to ``RPCPsm3Source`` only on Dune failure. Recorded here so the
-    # settlement-artifact provenance matches what actually ran.
-    "psm3":              "DunePsm3Source (orchestrator-upgraded) + RPCPsm3Source fallback",
+    # Each configured PSM3 contract has independent Dune parity evidence.
+    "psm3":              "HyperSyncPsm3Source (monthly opening RPC anchors)",
     # Cat C / D off-pool rewards. Activated when
     # ``prime.external_alm_sources[venue.chain]`` is non-empty. Dispatched
     # per-sender inside ``_atoken_external_revenue_usd``:
@@ -82,7 +78,8 @@ _SOURCES_LIVE = {
     ),
     "block_resolver":    "DuneBlockResolver (orchestrator-upgraded) + RPC fallback",
     "curve_pool":        "CurvePoolSource (lazy)",
-    "v3_position":       "DuneV3InflowSource (orchestrator-upgraded) + RPC fallback",
+    "v4_position":       "HyperSyncV4PositionSource (per-venue routing)",
+    "v3_position":       "HyperSyncV3PositionSource (per-venue routing)",
 }
 
 
