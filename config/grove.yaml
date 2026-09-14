@@ -625,6 +625,7 @@ venues:
       decimals: 6
 
   - id: E23
+    event_source: hypersync
     chain: base
     label: 'Steakhouse Prime Instant (Base, Morpho V2)'
     pricing_category: B
