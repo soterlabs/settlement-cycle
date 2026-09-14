@@ -4,8 +4,7 @@
 #
 # NOTE ON NAMING: Osero runs on the allocator instance chainlogged as
 # PRYSM — ilk ALLOCATOR-PRYSM-A, subproxy chainlog key PRYSM_SUBPROXY.
-# "Osero" is the prime's current name; the repo's docs/prysm/ background
-# refers to the same prime.
+# "Osero" is the prime's current name; PRYSM remains its on-chain identifier.
 #
 # Diamond PAU stack (deployed 2026-06-23 via DefaultPAUAssembler, block
 # 25383064; spell executed 2026-07-16):

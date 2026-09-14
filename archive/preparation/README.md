@@ -1,4 +1,4 @@
-# preparation/ — MSC#9 preparation doc
+# archive/preparation/ — MSC#9 preparation doc
 
 `doc.md` is **generated** — don't edit it by hand. Edit the template /
 constants in `scripts/generate_doc.py` and re-run.
@@ -8,11 +8,11 @@ constants in `scripts/generate_doc.py` and re-run.
 ```bash
 # from the repo root
 set -a; source .env; set +a        # provides DUNE_API_KEY
-python3 preparation/scripts/generate_doc.py
+python3 archive/preparation/scripts/generate_doc.py
 ```
 
 That's it. The script fetches every data source, recomputes every table
-cell, and rewrites `preparation/doc.md` (~400 lines). Re-run it whenever
+cell, and rewrites `archive/preparation/doc.md` (~400 lines). Re-run it whenever
 any source changes.
 
 ## Data sources
@@ -56,8 +56,8 @@ the xlsx from the settle-dr-dune repo, the payouts via the CSV export.
 ## Standalone DR queries
 
 ```bash
-python3 preparation/scripts/dr_aggregate.py --prime spark   # or grove/skybase/keel
-python3 preparation/scripts/dr_aggregate.py --list-primes
+python3 archive/preparation/scripts/dr_aggregate.py --prime spark   # or grove/skybase/keel
+python3 archive/preparation/scripts/dr_aggregate.py --list-primes
 ```
 
 ## Rounding convention

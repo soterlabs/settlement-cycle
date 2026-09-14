@@ -3,8 +3,8 @@
 # Cross-chain (Base, Avalanche, Plume, Monad) deferred to Phase 2.B+.
 #
 # Sources:
-# - Token addresses + oracles: docs/pricing/allocation_pricing.csv
-# - ALM addresses: docs/pricing/holding_addresses.csv
+# - Token addresses + oracles: archive/docs/pricing/allocation_pricing.csv
+# - ALM addresses: archive/docs/pricing/holding_addresses.csv
 # - Ilk + subproxy + start dates: docs/grove/PRD.md §3
 # - Venue inventory: docs/grove/PRD.md §4.1 (E1–E18, with E5/E6/E18 notes below)
 
@@ -85,13 +85,13 @@ addresses:
     # within a single tx (verified on Dune: zero idle USDS / DAI / USDC
     # owned by Grove at any of these addresses). See PRD §17.11.
   base:
-    alm:      '0x9b746dbc5269e1df6e4193bcb441c0fbbf1cecee'    # Grove Base ALM (per docs/pricing/holding_addresses.csv)
+    alm:      '0x9b746dbc5269e1df6e4193bcb441c0fbbf1cecee'    # Grove Base ALM (per archive/docs/pricing/holding_addresses.csv)
   avalanche_c:
     alm:      '0x7107dd8f56642327945294a18a4280c78e153644'    # Grove Avalanche-C ALM (verified on-chain via JAAA holdings)
   plume:
-    alm:      '0x1db91ad50446a671e2231f77e00948e68876f812'    # Grove Plume ALM (per docs/pricing/holding_addresses.csv)
+    alm:      '0x1db91ad50446a671e2231f77e00948e68876f812'    # Grove Plume ALM (per archive/docs/pricing/holding_addresses.csv)
   monad:
-    alm:      '0x94b398acb2fce988871218221ea6a4a2b26cccbc'    # Grove Monad ALM EOA (per docs/pricing/holding_addresses.csv)
+    alm:      '0x94b398acb2fce988871218221ea6a4a2b26cccbc'    # Grove Monad ALM EOA (per archive/docs/pricing/holding_addresses.csv)
 
 # Phase 2.A — 12 yield-bearing venues.
 #
@@ -331,7 +331,7 @@ venues:
       address: '0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041'
       symbol: 'BUIDL-I'
       decimals: 6
-    # Per docs/pricing/allocation_pricing.csv row 33: BUIDL-I is hardcoded
+    # Per archive/docs/pricing/allocation_pricing.csv row 33: BUIDL-I is hardcoded
     # at $1.00. Issuer publishes NAV but for settlement we pin to $1 — yield
     # is captured via the actual rewards received by the ALM, not via MtM.
     nav_oracle:

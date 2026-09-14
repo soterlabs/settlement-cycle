@@ -1,7 +1,7 @@
 """Aggregate Distribution Rewards per prime agent from the DR workbooks.
 
 Inputs (fetched from their canonical public URLs, cached in /tmp;
-``--local`` falls back to the snapshot copies in ``preparation/``):
+``--local`` falls back to the snapshot copies in ``archive/preparation/``):
 
 * DR results — ``dr_comparison_2026.xlsx`` on GitHub (settle-dr-dune repo;
   identical to the local ``dr_results.xlsx`` snapshot). The ``Soter Data``
@@ -17,9 +17,9 @@ Inputs (fetched from their canonical public URLs, cached in /tmp;
   (``Spark``, ``Skybase``, ``Grove (Maple)`` → Grove, ``untagged``).
 
 Usage:
-    python3 preparation/scripts/dr_aggregate.py --prime spark
-    python3 preparation/scripts/dr_aggregate.py --prime skybase --sheet "Soter Data"
-    python3 preparation/scripts/dr_aggregate.py --list-primes
+    python3 archive/preparation/scripts/dr_aggregate.py --prime spark
+    python3 archive/preparation/scripts/dr_aggregate.py --prime skybase --sheet "Soter Data"
+    python3 archive/preparation/scripts/dr_aggregate.py --list-primes
 
 Prints per-month totals (2026-01..05), Jan–Apr / Jan–May sums, the
 matching past payouts from ``dr_payouts.xlsx`` (history ends 2026-03),
@@ -248,7 +248,7 @@ def main() -> int:
     ap.add_argument("--list-primes", action="store_true",
                     help="list primes found in the payout mapping and exit")
     ap.add_argument("--local", action="store_true",
-                    help="use the local snapshot files in preparation/ instead "
+                    help="use the local snapshot files in archive/preparation/ instead "
                          "of the canonical public URLs")
     args = ap.parse_args()
     global USE_LOCAL

@@ -14,10 +14,10 @@ A Python package that produces auditable monthly settlement artifacts (`prime_ag
 
 The MSC framework currently exists as:
 - A set of parameterized Dune queries (`queries/shared/*.sql`) and per-prime monolithic queries (`agents/obex/queries/obex_monthly_pnl.sql`) that fuse debt math, agent-rate math, and position valuation in one ~280-line SQL file.
-- A POC ([`agents/shared/valuation_poc/`](docs/valuation_poc/)) that proved Dune and Python converge on the same numbers but that the per-asset valuation work is dramatically simpler in Python — `convertToAssets`, `balanceOf` of a rebasing aToken, Curve `pool.balances(i)` math, and RWA NAV feeds either don't exist on Dune or balloon to 50-line CTEs.
+- A POC (`agents/shared/valuation_poc/` (historical; available in Git history)) that proved Dune and Python converge on the same numbers but that the per-asset valuation work is dramatically simpler in Python — `convertToAssets`, `balanceOf` of a rebasing aToken, Curve `pool.balances(i)` math, and RWA NAV feeds either don't exist on Dune or balloon to 50-line CTEs.
 - Architectural design ([`agents/shared/SETTLEMENT_ARCHITECTURE.md`](docs/SETTLEMENT_ARCHITECTURE.md)) that prescribes a hybrid Dune + RPC + off-chain pipeline.
 
-This PRD is the kickoff for the implementation. The deliverable is the Python package in this repo (`settlement-cycle`) that replaces the monolithic Dune query approach with a 4-stage Extract / Normalize / Compute / Load pipeline. The existing OBEX Dune query is preserved in [`reference/obex_monthly_pnl.sql`](reference/obex_monthly_pnl.sql) as the historical reconciliation oracle. Its e2e test was retired 2026-09-01 — see §17.13: the rate methodology changed and past settlements are not restated, so a query on the old convention can no longer be a parity target.
+This PRD is the kickoff for the implementation. The deliverable is the Python package in this repo (`settlement-cycle`) that replaces the monolithic Dune query approach with a 4-stage Extract / Normalize / Compute / Load pipeline. The existing OBEX Dune query is preserved in [`archive/reference/obex_monthly_pnl.sql`](archive/reference/obex_monthly_pnl.sql) as the historical reconciliation oracle. Its e2e test was retired 2026-09-01 — see §17.13: the rate methodology changed and past settlements are not restated, so a query on the old convention can no longer be a parity target.
 
 ### 1.1 Reference documents
 
@@ -26,10 +26,10 @@ All design docs live under [`docs/`](docs/) in this repo.
 - [`SETTLEMENT_ARCHITECTURE.md`](docs/SETTLEMENT_ARCHITECTURE.md) — detailed architectural rationale and design choices
 - [`ASSET_CATALOG.md`](docs/ASSET_CATALOG.md) — 56 real assets across 8 pricing categories
 - [`VALUATION_METHODOLOGY.md`](docs/VALUATION_METHODOLOGY.md) — Dune SQL patterns and per-category math
-- [`valuation_poc/COMPARISON.md`](docs/valuation_poc/COMPARISON.md) — Dune↔Python convergence evidence
-- [`valuation_poc/QUESTIONS.md`](docs/valuation_poc/QUESTIONS.md) — 13 open data-engineering questions
+- `valuation_poc/COMPARISON.md` (historical; available in Git history) — Dune↔Python convergence evidence
+- `valuation_poc/QUESTIONS.md` (historical; available in Git history) — 13 open data-engineering questions
 - [`RULES.md`](docs/RULES.md) — APY/SSR/borrow-rate rules
-- [`agents/obex/queries/obex_monthly_pnl.sql`](reference/obex_monthly_pnl.sql) — current OBEX implementation (reconciliation oracle)
+- [`agents/obex/queries/obex_monthly_pnl.sql`](archive/reference/obex_monthly_pnl.sql) — current OBEX implementation (reconciliation oracle)
 - [`agents/grove/PRD.md`](docs/grove/PRD.md) — Grove-specific scope, will become a consumer of `settle/`
 
 ---
@@ -87,7 +87,7 @@ Architectural rationale lives in `SETTLEMENT_ARCHITECTURE.md`. This PRD is conce
 | `get_unit_price` (Curve LP) | RPC reserves × underlying prices (POC Method B) | Reserves method beats `virtual_price` shortcut |
 | `get_unit_price` (RWA — Centrifuge) | Issuer API; CoinGecko fallback | Authority |
 | `get_unit_price` (RWA — BlackRock / Superstate) | Issuer API | Authority — no on-chain getter |
-| `get_unit_price` (governance, MORPHO) | One canonical source per token (Dune `prices.minute` OR CoinGecko — pick one per [QUESTIONS Q10](docs/valuation_poc/QUESTIONS.md)) | — |
+| `get_unit_price` (governance, MORPHO) | One canonical source per token (Dune `prices.minute` OR CoinGecko — pick one per QUESTIONS Q10 (historical; available in Git history)) | — |
 | `get_unit_price` (native gas, ETH) | CoinGecko | — |
 
 ---
@@ -404,7 +404,7 @@ settlement-cycle/                       ← this repo
 │   ├── obex/                           ← OBEX README + monthly findings/
 │   ├── grove/                          ← Grove PRD/README/QUESTIONS (Phase 2)
 │   └── {keel,prysm,skybase,spark}/     ← Phase 3+ prime READMEs
-├── reference/
+├── archive/reference/
 │   └── obex_monthly_pnl.sql            ← historical reference implementation
 ├── settlements/                        ← committed settlement artifacts
 │   └── <prime>/<month>/                ← {pnl.md, pnl.csv, venues.csv, provenance.json}
@@ -494,7 +494,7 @@ Each step is one PR. Rough total: 9 PRs to ship Phase 1.
 
 ## 15. Open questions specific to `settle/`
 
-Outside the data-engineering questions in [`valuation_poc/QUESTIONS.md`](docs/valuation_poc/QUESTIONS.md), these are package-specific.
+Outside the data-engineering questions in `valuation_poc/QUESTIONS.md` (historical; available in Git history), these are package-specific.
 
 | # | Question | Decision needed by |
 |---|---|---|
@@ -567,7 +567,7 @@ Resolutions land as ADRs in `adr/` at the root of this repo.
 #### Tier 2 — Operational layer
 - ❌ **CLI**. `src/settle/cli.py` is a placeholder. Production needs `python -m settle run <prime> <month>` with registry-default sources, `--output-dir`, multi-month batch.
 - ❌ **Hard validation gates** at the Compute boundary (cost-basis tolerance, monotonic invariants, source-pair drift). Today only `MonthlyPnL.__post_init__` enforces the round-trip identity.
-- ❌ **Live end-to-end test**. All current tests use fixtures or mocks; one real-Dune + real-RPC run would prove the production paths work. (`tests/e2e/` exists but only has the OBEX oracle test.)
+- ❌ **Live end-to-end test**. All current tests use fixtures or mocks; one real-Dune + real-RPC run would prove the production paths work. (The OBEX oracle test was retired; its empty directory has been removed.)
 - ❌ **Settlement orchestration** (multi-month batch, cache invalidation strategy, re-run idempotence).
 - ❌ **Distribution workflow** (sign-off, stakeholder notification, dispute resolution). Out of scope for the data pipeline but part of the broader MSC operation.
 
@@ -656,7 +656,7 @@ Reference docs: `prime-settlement-methodology.md` (5-step framework) and `debt-r
 - **Burn-day override (capped SDE).** When the SDE entry has a `burn_date` inside the period AND `value_eom < cap_usd`, the daily-Σ method short-circuits to `sd_share = 1.0` (Sky absorbs the full period's `actual_revenue`). Rationale: Grove's workbook treats the burn-month's net P&L as essentially Sky's (JAAA Mar 2026: Sky takes −$451,060 of −$458,298 = 98.4%). The override is needed because daily-Σ under-attributes when `cum_value` drops to 0 from `usdc_settlement_date` onward — Grove's view is that the cap-protected slice spanned the bulk of the value-weighted exposure and the residual on-chain position is a small Grove-only sliver. The `value_eom < cap_usd` guard prevents firing when the position is still above cap at EoM (defensive). Verified vs Grove Mar 2026: matches `JAAA_ETH_Sky = -$451,060` to within $26K (residual gap is upstream `actual_revenue` drift from Centrifuge `Deposit/Withdraw.assets` events vs `Transfer × NAV`, not the sd_share decision).
 - **Methodology evolution.** Pre-2026-06: per-day `sd_share_d = min(cap, v_d) / v_d` summed against daily revenue (was correct for stable months, fell back to SoM-locked summary). 2026-06-01 PR #101: switched to EoM-locked snapshot `min(cap, value_eom) / value_eom` applied to full `actual_revenue` — thought to match Grove based on Feb/Mar comparison (where the position was stable / fully out-of-cap and all three methods coincide). 2026-06-04: Jan investigation showed Grove uses daily-resolved; reverted to daily-resolved + added burn-day override to preserve Mar behaviour. Σ Jan–Apr 2026 JAAA sd_revenue: Grove $1,979,614 / daily+override $1,944,283 (gap −$35K = upstream actual_rev drift, sd_share matches on all four months).
 - **Net Subs base refactor** — SDE asset values are subtracted from utilized in `compute_sky_revenue` (so Grove pays BR only on non-SDE allocations); SDE actual revenue flows directly to Sky on top. The legacy "shortfall floor" concept is retired (always 0 under the new model).
-- **Centrifuge `pricePerShareFeed` NAV oracle** — new `INavOracleSource` kind backed by `convertToAssets(1e18)` on the per-tranche feed contracts (per `docs/pricing/allocation_pricing.csv` "Oracle2: centrifuge API" notes). E8 JAAA → `0x4880…0B`, E9 JTRSY → `0xFE69…77A`. Both reproduce Grove team's actual_revenue within $100/month (vs ~$535K/$146K diffs under the previous Chronicle path). Chronicle remains documented as a secondary feed but not auto-fallback.
+- **Centrifuge `pricePerShareFeed` NAV oracle** — new `INavOracleSource` kind backed by `convertToAssets(1e18)` on the per-tranche feed contracts (per `archive/docs/pricing/allocation_pricing.csv` "Oracle2: centrifuge API" notes). E8 JAAA → `0x4880…0B`, E9 JTRSY → `0xFE69…77A`. Both reproduce Grove team's actual_revenue within $100/month (vs ~$535K/$146K diffs under the previous Chronicle path). Chronicle remains documented as a secondary feed but not auto-fallback.
 - **Venue `skip: true` flag** — venues whose oracle/underlying is too volatile or too unreliable to include in MSC are skipped at compute time but kept in YAML for documentation. E21 (GACLO-1) remains skipped — no reliable NAV feed; Galaxy yield is to be recognized via monthly USDC sweep to ALM (Cat A via `external_alm_sources`). E20 (JAAA-avalanche) **un-skipped** in PR #67 (2026-05-11): Chronicle oracle at `0x02cf8c9fba24d79886dac40cb620f0930c6e8ec0` on Ethereum verified working Dec-2025 onward (NAV $1.020–$1.028); cross-chain block translation via `oracle_chain: ethereum` is handled automatically by the pipeline. **Empirical caveat (verified on Dune 2026-05-11):** the GACLO-1 issuer at `0x5ee36f573f0e543f905796c0e697caa7e984e0c8` has sent zero USDC to any address since the 2025-12-16 subscription event, and Grove ALM Avalanche has received zero USDC inbound ever — so the assumed Galaxy monthly USDC sweep mechanism is **not yet observable on-chain**. E21 currently contributes $0 to revenue (correct under `skip: true` + empty `external_alm_sources`). Q-G21 tracks confirmation of the payer / cadence / settlement asset with Grove.
 - **E2 aHorRwaUSDC dust fix** — Aave V3's full-exit dust (1 raw unit remains after burn) blew up the closed-form `bal_eom × scaled_som / scaled_eom`, producing a phantom −$232K loss in Feb 2026. Threshold widened to detect post-burn dust under 0.1% of entry-time scaled balance.
 - **Curve LP `sde_coin` field** — new optional field on `CurveIdleUsdsConfig` (`src/settle/domain/primes.py`) to handle Cat F venues where the SDE exposure is a *different* par-stable coin from the spread-revenue coin. Used by Spark **S24 sUSDS/USDT** Curve pool: `coin: sUSDS` drives the 30bps spread-revenue path (RULES §5); `sde_coin: USDT` drives the SDE asset-value path (`compute_sky_revenue` utilisation exclusion). The named SDE coin must be in `KNOWN_PAR_STABLES_ETHEREUM` (priced at $1/unit). Same mid-period-pro-rating limitation as the SDE table — see `config/sky_direct_exposures.yaml` KNOWN LIMITATION block + Q-S24.
@@ -838,7 +838,7 @@ Many novel paths vs Grove. Per-category:
 | Cat | # venues | Pricing path | Status |
 |---|---|---|---|
 | **A** (idle par-stables) | 15 | `_cat_a_capital_inflow_timeseries` — needs `cum_balance` per venue (Dune), source-tagged inflow if `external_alm_sources` non-empty | Spark's `external_alm_sources` lists the Anchorage Spark escrow (PR 1, 2026-05-05) → S26 USDC raw captures the monthly Anchorage interest sweeps as Cat A revenue (+$2.59M/Q1). Other Cat A venues (PYUSD, USDT, DAI, USDe, USDS raw) still revenue = $0 — no off-chain yield source registered. |
-| **B** (ERC-4626) | 17 | `_shares_to_usd_inflow_timeseries` — `cum_balance` (shares) per venue (Dune) + `convertToAssets` (RPC) at SoM/EoM | Most work as standard 4626. **sUSDe** (S16) needs verification it's a true 4626 (Ethena cooldown design); **sparkPrimeUSDC1** (S18) Arkis API ideal but `totalAssets()` is the runtime fallback per `docs/pricing/allocation_pricing.csv`. |
+| **B** (ERC-4626) | 17 | `_shares_to_usd_inflow_timeseries` — `cum_balance` (shares) per venue (Dune) + `convertToAssets` (RPC) at SoM/EoM | Most work as standard 4626. **sUSDe** (S16) needs verification it's a true 4626 (Ethena cooldown design); **sparkPrimeUSDC1** (S18) Arkis API ideal but `totalAssets()` is the runtime fallback per `archive/docs/pricing/allocation_pricing.csv`. |
 | **C** (Aave/Spark spTokens) | 12 | `_atoken_index_weighted_inflow` — `balance_at` + `scaled_balance_at` (RPC, scaledBalanceOf path). **No Dune fixture needed.** | All venues use the same scaledBalanceOf ABI; Aave V3 + SparkLend share the contract. RPC calls via Eth/Base/Arb/Op/Avalanche-C providers (need drpc-resilient retry, already in place). |
 | **E** (RWA) | 5 | `_rwa_inflow_timeseries` — `cum_balance` per venue (Dune, with `min_transfer_amount` filter for BUIDL-style yield mints) + NAV oracle | **S19 BUIDL-I** + **S20 JTRSY** share Grove's oracle paths (Chronicle for JTRSY, const_one for BUIDL). **S21 USTB / S22 USCC**: no holdings as of Q1 2026 → const_one is fine; real Superstate oracle deferred. **S23 Anchorage**: $150M off-chain BTC custody; the venue tracks USDC at the Anchorage escrow EOA (a near-instantaneous pass-through that nets to ≈ $0 over any settlement period), and realised interest is captured separately on **S26** via Cat A `external_alm_sources` (PR 1, 2026-05-05). |
 | **F** (Curve LP) | 2 | `_curve_lp_index_weighted_inflow` — `balance_of(LP)` (RPC) + Curve `pool.balances/get_virtual_price` (RPC). **No Dune fixture needed.** | **S24 sUSDSUSDT** (Sky Direct, BR_charge applies) — needs sUSDS underlying price (= `convertToAssets(1)`). **S25 PYUSDUSDS** — needs PYUSD added to the par-stable registry. |
@@ -1597,7 +1597,7 @@ Run with: `pytest tests/integration/test_ba_parity.py -m live -v -s`.
 9. **Monad RPC archival window** — both Alchemy and drpc Monad endpoints have ~3.8M-block archival caps. Grove's E25 candidate venue on Monad (~$6.5M EoM) is unblocked from this issue. **Need:** dedicated archival Monad node OR Dune-cum-balance × const-pps approximation in the value path.
 10. **CLI** — `src/settle/cli.py` is mostly placeholder. Production needs `python -m settle run <prime> <month>` with registry-default sources, multi-month batch, `--no-cache` flag.
 11. **Hard validation gates** at the Compute boundary (cost-basis tolerance, monotonic invariants, source-pair drift). Today only the `MonthlyPnL.__post_init__` round-trip identity is enforced.
-12. **Live end-to-end test** — all current tests use fixtures or mocks; one real-Dune + real-RPC run would prove the production paths work. `tests/e2e/` has only the OBEX oracle test today.
+12. **Live end-to-end test** — all current tests use fixtures or mocks; one real-Dune + real-RPC run would prove the production paths work. The OBEX oracle test was retired; its empty directory has been removed.
 
 #### Future work (longer-term)
 13. **Compute-formula audit** — fresh end-to-end methodology review of `compute/sky_revenue.py`, `compute/agent_rate.py`, `compute/prime_agent_revenue.py`, `compute/monthly_pnl.py` after the multiple refactors.

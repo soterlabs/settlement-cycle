@@ -4,7 +4,7 @@
 # Source of truth for Spark-specific addresses, ilk, venues. Venue list seeded
 # from BA Labs `stars-api.blockanalitica.com/allocations/?star=spark` snapshot
 # (2026-04-29) and cross-checked against `docs/ALM_COUNTERPARTIES.md` +
-# `docs/pricing/allocation_pricing.csv`.
+# `archive/docs/pricing/allocation_pricing.csv`.
 #
 # Status (2026-04-29): scaffolding pass. Many venues are wired with the
 # correct addresses + pricing category, but two pricing paths are NOT yet
@@ -417,7 +417,7 @@ venues:
       address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
       symbol: 'USDC'
       decimals: 6
-    # Per docs/pricing/allocation_pricing.csv: Arkis API needed for accurate
+    # Per archive/docs/pricing/allocation_pricing.csv: Arkis API needed for accurate
     # pricing; ERC-4626 totalAssets() is the runtime fallback.
 
   # ─────────────────────────────────────────────────────────────
