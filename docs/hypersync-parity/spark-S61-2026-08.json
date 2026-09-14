@@ -1,0 +1,527 @@
+{
+  "prime": "spark",
+  "venue": "S61",
+  "month": "2026-08",
+  "start": "2024-11-18",
+  "pins": {
+    "ethereum/2026-08-31": 25878704,
+    "ethereum/2026-07-31": 25656292
+  },
+  "matched": true,
+  "checks": [
+    {
+      "input": "uniswap_v4 liquidity events",
+      "matched": true,
+      "dune_rows": 28,
+      "hypersync_rows": 28,
+      "dune": [
+        {
+          "block_number": 25658173,
+          "tx_hash": "0xa0f9f2e063f5dbfd8c1ce38d31aef5b6d7c08fff20249988b8f9d01abab8367a",
+          "log_index": 952,
+          "token_id": 358273,
+          "tick_lower": 276323,
+          "tick_upper": 276325,
+          "liquidity_delta": 1003642377310850952
+        },
+        {
+          "block_number": 25658676,
+          "tx_hash": "0xcf5e8fc17ce3180cd8284262909c568ba78f22c10105f1e33b9f5660fdc5f6df",
+          "log_index": 342,
+          "token_id": 358273,
+          "tick_lower": 276323,
+          "tick_upper": 276325,
+          "liquidity_delta": -1003642377310850952
+        },
+        {
+          "block_number": 25686005,
+          "tx_hash": "0x2d6d2a675033838dbef3fb6d37cc8304c2a334936c2dd5e669915a13cbc2d73f",
+          "log_index": 425,
+          "token_id": 363512,
+          "tick_lower": 276322,
+          "tick_upper": 276323,
+          "liquidity_delta": 2000252647909624
+        },
+        {
+          "block_number": 25686009,
+          "tx_hash": "0xff3316c89d758ff125cd0a152b63874e847ee8e9a8d0c4504618230913c8088f",
+          "log_index": 696,
+          "token_id": 363513,
+          "tick_lower": 276322,
+          "tick_upper": 276323,
+          "liquidity_delta": 2000252647909624
+        },
+        {
+          "block_number": 25686024,
+          "tx_hash": "0x2aa87dd8e7a2532405cc17c8e474357e72742281ce024a824282a382785860d3",
+          "log_index": 225,
+          "token_id": 363519,
+          "tick_lower": 276314,
+          "tick_upper": 276334,
+          "liquidity_delta": 206236586098444
+        },
+        {
+          "block_number": 25686032,
+          "tx_hash": "0x97186c114ff536c1410df463675f8fcacd0538188c12c7f0a3958d6c8b8e5076",
+          "log_index": 233,
+          "token_id": 363519,
+          "tick_lower": 276314,
+          "tick_upper": 276334,
+          "liquidity_delta": 206236586098444
+        },
+        {
+          "block_number": 25686033,
+          "tx_hash": "0xcae5391a69cd0e1b352f87b285b732468850b89fc5560ad0f3e24e34838b0211",
+          "log_index": 371,
+          "token_id": 363519,
+          "tick_lower": 276314,
+          "tick_upper": 276334,
+          "liquidity_delta": 206236586098444
+        },
+        {
+          "block_number": 25686050,
+          "tx_hash": "0xed1d3de64d51f760233854a22d3f0ca6f0000ec2413f5fd55d4dc40405f455a7",
+          "log_index": 525,
+          "token_id": 363519,
+          "tick_lower": 276314,
+          "tick_upper": 276334,
+          "liquidity_delta": -154677439573833
+        },
+        {
+          "block_number": 25705619,
+          "tx_hash": "0x0714ab2491c568116be3dd1481809c4eaed7c90e02a953bd6c0d0a9faeeee7be",
+          "log_index": 391,
+          "token_id": 366322,
+          "tick_lower": 276323,
+          "tick_upper": 276325,
+          "liquidity_delta": 11493971710953638771
+        },
+        {
+          "block_number": 25705701,
+          "tx_hash": "0x19b4d67b7982e337897ea7946a2b095a475739cd03b435886872f78ff3815f8d",
+          "log_index": 600,
+          "token_id": 366334,
+          "tick_lower": 276323,
+          "tick_upper": 276324,
+          "liquidity_delta": 20002413938693909147
+        },
+        {
+          "block_number": 25723268,
+          "tx_hash": "0x3546f270bae8c4ce5b28ba09605d6f80c191c1a238de45348dada0e4a8b09fed",
+          "log_index": 25,
+          "token_id": 368371,
+          "tick_lower": 276324,
+          "tick_upper": 276325,
+          "liquidity_delta": 19244957813282648
+        },
+        {
+          "block_number": 25723279,
+          "tx_hash": "0x722a9dbaeec75bf3179729bb2f14c248fad065985fd4aab0eb2ea860e5551005",
+          "log_index": 192,
+          "token_id": 368374,
+          "tick_lower": 276322,
+          "tick_upper": 276325,
+          "liquidity_delta": 14267605223156509
+        },
+        {
+          "block_number": 25723831,
+          "tx_hash": "0xd5385e1f4547b56cce14386d33f2a18cb224213bdbb7b35d480db8e0b2b4bede",
+          "log_index": 184,
+          "token_id": 368449,
+          "tick_lower": -887272,
+          "tick_upper": 887272,
+          "liquidity_delta": 1899983247235
+        },
+        {
+          "block_number": 25723899,
+          "tx_hash": "0xe813d59d02be2d75df9af2e6a4fc2dab333cb36ebd21a80256e5eef8c8f94d97",
+          "log_index": 271,
+          "token_id": 368449,
+          "tick_lower": -887272,
+          "tick_upper": 887272,
+          "liquidity_delta": 4999966841
+        },
+        {
+          "block_number": 25723911,
+          "tx_hash": "0x31294a505346f16b08c6dcc3b1ce80481be7ccbc2a3611c71e86ebf20cd85e83",
+          "log_index": 56,
+          "token_id": 368449,
+          "tick_lower": -887272,
+          "tick_upper": 887272,
+          "liquidity_delta": -95249160703
+        },
+        {
+          "block_number": 25723959,
+          "tx_hash": "0x77cd165389846418672ffcb47e9a1446a4477a614edce32f48322d32602b12a2",
+          "log_index": 234,
+          "token_id": 368476,
+          "tick_lower": 276327,
+          "tick_upper": 276331,
+          "liquidity_delta": 250074676610320
+        },
+        {
+          "block_number": 25725991,
+          "tx_hash": "0x558dc319aeae600f8ff9bbeb35945bf7922eacd30731a99bc406963bc78c0123",
+          "log_index": 706,
+          "token_id": 366334,
+          "tick_lower": 276323,
+          "tick_upper": 276324,
+          "liquidity_delta": -20002413938693909147
+        },
+        {
+          "block_number": 25725994,
+          "tx_hash": "0xff93d14371ca3a4c5d34856903be55162896ad691c4ec6b8d3bf85704ae934ad",
+          "log_index": 798,
+          "token_id": 366322,
+          "tick_lower": 276323,
+          "tick_upper": 276325,
+          "liquidity_delta": -11493971710953638771
+        },
+        {
+          "block_number": 25765942,
+          "tx_hash": "0x90ca8916a5fa306bffe3e651baaac1ce7fec54a3b9964c650a759951dd0ef790",
+          "log_index": 142,
+          "token_id": 373446,
+          "tick_lower": 276321,
+          "tick_upper": 276327,
+          "liquidity_delta": 163703419220729287
+        },
+        {
+          "block_number": 25775928,
+          "tx_hash": "0xf519131f9ffff9173a49d4dc59fec052f8fe9cfe401afcdc9e199930977c62fe",
+          "log_index": 409,
+          "token_id": 373446,
+          "tick_lower": 276321,
+          "tick_upper": 276327,
+          "liquidity_delta": -163703419220729287
+        },
+        {
+          "block_number": 25787823,
+          "tx_hash": "0x1fe4449902d2c72de79c0f9a2b093cb6bd5603fc90b72df0c8a6adfcfc45e5f1",
+          "log_index": 33,
+          "token_id": 376152,
+          "tick_lower": 276314,
+          "tick_upper": 276334,
+          "liquidity_delta": 201492973459796
+        },
+        {
+          "block_number": 25787827,
+          "tx_hash": "0x737b85f784ac3908807d35ea185a276534a940ad86eb9f8198d533ee513cd101",
+          "log_index": 52,
+          "token_id": 363513,
+          "tick_lower": 276322,
+          "tick_upper": 276323,
+          "liquidity_delta": -1000126323954812
+        },
+        {
+          "block_number": 25796190,
+          "tx_hash": "0x18a9cbdbd1fcf140e5e21b72571c1455d13be6ca5256c8e9f122f43873824593",
+          "log_index": 401,
+          "token_id": 324005,
+          "tick_lower": 276323,
+          "tick_upper": 276333,
+          "liquidity_delta": -2432388830881040216
+        },
+        {
+          "block_number": 25800725,
+          "tx_hash": "0xa2b630d8e823f0431efa30399748880ac8fffe12d399ffbc3dae0c5ce380c00d",
+          "log_index": 230,
+          "token_id": 378589,
+          "tick_lower": 276325,
+          "tick_upper": 276326,
+          "liquidity_delta": 805671180981216210698
+        },
+        {
+          "block_number": 25800729,
+          "tx_hash": "0x80869871e5811ccad0a07b5762d88b3f6a056812410bcf8ce8e298f095b07359",
+          "log_index": 785,
+          "token_id": 378589,
+          "tick_lower": 276325,
+          "tick_upper": 276326,
+          "liquidity_delta": -805671180981216210698
+        },
+        {
+          "block_number": 25800771,
+          "tx_hash": "0x466ac8b003f55498bd7533c37c572f29be263b2a5d64d8e8e36b3c0347fc8411",
+          "log_index": 770,
+          "token_id": 378596,
+          "tick_lower": 276325,
+          "tick_upper": 276327,
+          "liquidity_delta": 396542791389061480958
+        },
+        {
+          "block_number": 25805114,
+          "tx_hash": "0xac3789f14f62f703d4c738bb97e9c701113d9117415081526d8cbac0503d8e66",
+          "log_index": 884,
+          "token_id": 378596,
+          "tick_lower": 276325,
+          "tick_upper": 276327,
+          "liquidity_delta": -396542791389061480958
+        },
+        {
+          "block_number": 25807001,
+          "tx_hash": "0xe5a55a6174daf0037c21ea1a4e9f956da4579d3b2c93c8748d542624e8302f6f",
+          "log_index": 588,
+          "token_id": 324005,
+          "tick_lower": 276323,
+          "tick_upper": 276333,
+          "liquidity_delta": 2264781098289544902
+        }
+      ],
+      "hypersync": [
+        {
+          "block_number": 25658173,
+          "tx_hash": "0xa0f9f2e063f5dbfd8c1ce38d31aef5b6d7c08fff20249988b8f9d01abab8367a",
+          "log_index": 952,
+          "token_id": 358273,
+          "tick_lower": 276323,
+          "tick_upper": 276325,
+          "liquidity_delta": 1003642377310850952
+        },
+        {
+          "block_number": 25658676,
+          "tx_hash": "0xcf5e8fc17ce3180cd8284262909c568ba78f22c10105f1e33b9f5660fdc5f6df",
+          "log_index": 342,
+          "token_id": 358273,
+          "tick_lower": 276323,
+          "tick_upper": 276325,
+          "liquidity_delta": -1003642377310850952
+        },
+        {
+          "block_number": 25686005,
+          "tx_hash": "0x2d6d2a675033838dbef3fb6d37cc8304c2a334936c2dd5e669915a13cbc2d73f",
+          "log_index": 425,
+          "token_id": 363512,
+          "tick_lower": 276322,
+          "tick_upper": 276323,
+          "liquidity_delta": 2000252647909624
+        },
+        {
+          "block_number": 25686009,
+          "tx_hash": "0xff3316c89d758ff125cd0a152b63874e847ee8e9a8d0c4504618230913c8088f",
+          "log_index": 696,
+          "token_id": 363513,
+          "tick_lower": 276322,
+          "tick_upper": 276323,
+          "liquidity_delta": 2000252647909624
+        },
+        {
+          "block_number": 25686024,
+          "tx_hash": "0x2aa87dd8e7a2532405cc17c8e474357e72742281ce024a824282a382785860d3",
+          "log_index": 225,
+          "token_id": 363519,
+          "tick_lower": 276314,
+          "tick_upper": 276334,
+          "liquidity_delta": 206236586098444
+        },
+        {
+          "block_number": 25686032,
+          "tx_hash": "0x97186c114ff536c1410df463675f8fcacd0538188c12c7f0a3958d6c8b8e5076",
+          "log_index": 233,
+          "token_id": 363519,
+          "tick_lower": 276314,
+          "tick_upper": 276334,
+          "liquidity_delta": 206236586098444
+        },
+        {
+          "block_number": 25686033,
+          "tx_hash": "0xcae5391a69cd0e1b352f87b285b732468850b89fc5560ad0f3e24e34838b0211",
+          "log_index": 371,
+          "token_id": 363519,
+          "tick_lower": 276314,
+          "tick_upper": 276334,
+          "liquidity_delta": 206236586098444
+        },
+        {
+          "block_number": 25686050,
+          "tx_hash": "0xed1d3de64d51f760233854a22d3f0ca6f0000ec2413f5fd55d4dc40405f455a7",
+          "log_index": 525,
+          "token_id": 363519,
+          "tick_lower": 276314,
+          "tick_upper": 276334,
+          "liquidity_delta": -154677439573833
+        },
+        {
+          "block_number": 25705619,
+          "tx_hash": "0x0714ab2491c568116be3dd1481809c4eaed7c90e02a953bd6c0d0a9faeeee7be",
+          "log_index": 391,
+          "token_id": 366322,
+          "tick_lower": 276323,
+          "tick_upper": 276325,
+          "liquidity_delta": 11493971710953638771
+        },
+        {
+          "block_number": 25705701,
+          "tx_hash": "0x19b4d67b7982e337897ea7946a2b095a475739cd03b435886872f78ff3815f8d",
+          "log_index": 600,
+          "token_id": 366334,
+          "tick_lower": 276323,
+          "tick_upper": 276324,
+          "liquidity_delta": 20002413938693909147
+        },
+        {
+          "block_number": 25723268,
+          "tx_hash": "0x3546f270bae8c4ce5b28ba09605d6f80c191c1a238de45348dada0e4a8b09fed",
+          "log_index": 25,
+          "token_id": 368371,
+          "tick_lower": 276324,
+          "tick_upper": 276325,
+          "liquidity_delta": 19244957813282648
+        },
+        {
+          "block_number": 25723279,
+          "tx_hash": "0x722a9dbaeec75bf3179729bb2f14c248fad065985fd4aab0eb2ea860e5551005",
+          "log_index": 192,
+          "token_id": 368374,
+          "tick_lower": 276322,
+          "tick_upper": 276325,
+          "liquidity_delta": 14267605223156509
+        },
+        {
+          "block_number": 25723831,
+          "tx_hash": "0xd5385e1f4547b56cce14386d33f2a18cb224213bdbb7b35d480db8e0b2b4bede",
+          "log_index": 184,
+          "token_id": 368449,
+          "tick_lower": -887272,
+          "tick_upper": 887272,
+          "liquidity_delta": 1899983247235
+        },
+        {
+          "block_number": 25723899,
+          "tx_hash": "0xe813d59d02be2d75df9af2e6a4fc2dab333cb36ebd21a80256e5eef8c8f94d97",
+          "log_index": 271,
+          "token_id": 368449,
+          "tick_lower": -887272,
+          "tick_upper": 887272,
+          "liquidity_delta": 4999966841
+        },
+        {
+          "block_number": 25723911,
+          "tx_hash": "0x31294a505346f16b08c6dcc3b1ce80481be7ccbc2a3611c71e86ebf20cd85e83",
+          "log_index": 56,
+          "token_id": 368449,
+          "tick_lower": -887272,
+          "tick_upper": 887272,
+          "liquidity_delta": -95249160703
+        },
+        {
+          "block_number": 25723959,
+          "tx_hash": "0x77cd165389846418672ffcb47e9a1446a4477a614edce32f48322d32602b12a2",
+          "log_index": 234,
+          "token_id": 368476,
+          "tick_lower": 276327,
+          "tick_upper": 276331,
+          "liquidity_delta": 250074676610320
+        },
+        {
+          "block_number": 25725991,
+          "tx_hash": "0x558dc319aeae600f8ff9bbeb35945bf7922eacd30731a99bc406963bc78c0123",
+          "log_index": 706,
+          "token_id": 366334,
+          "tick_lower": 276323,
+          "tick_upper": 276324,
+          "liquidity_delta": -20002413938693909147
+        },
+        {
+          "block_number": 25725994,
+          "tx_hash": "0xff93d14371ca3a4c5d34856903be55162896ad691c4ec6b8d3bf85704ae934ad",
+          "log_index": 798,
+          "token_id": 366322,
+          "tick_lower": 276323,
+          "tick_upper": 276325,
+          "liquidity_delta": -11493971710953638771
+        },
+        {
+          "block_number": 25765942,
+          "tx_hash": "0x90ca8916a5fa306bffe3e651baaac1ce7fec54a3b9964c650a759951dd0ef790",
+          "log_index": 142,
+          "token_id": 373446,
+          "tick_lower": 276321,
+          "tick_upper": 276327,
+          "liquidity_delta": 163703419220729287
+        },
+        {
+          "block_number": 25775928,
+          "tx_hash": "0xf519131f9ffff9173a49d4dc59fec052f8fe9cfe401afcdc9e199930977c62fe",
+          "log_index": 409,
+          "token_id": 373446,
+          "tick_lower": 276321,
+          "tick_upper": 276327,
+          "liquidity_delta": -163703419220729287
+        },
+        {
+          "block_number": 25787823,
+          "tx_hash": "0x1fe4449902d2c72de79c0f9a2b093cb6bd5603fc90b72df0c8a6adfcfc45e5f1",
+          "log_index": 33,
+          "token_id": 376152,
+          "tick_lower": 276314,
+          "tick_upper": 276334,
+          "liquidity_delta": 201492973459796
+        },
+        {
+          "block_number": 25787827,
+          "tx_hash": "0x737b85f784ac3908807d35ea185a276534a940ad86eb9f8198d533ee513cd101",
+          "log_index": 52,
+          "token_id": 363513,
+          "tick_lower": 276322,
+          "tick_upper": 276323,
+          "liquidity_delta": -1000126323954812
+        },
+        {
+          "block_number": 25796190,
+          "tx_hash": "0x18a9cbdbd1fcf140e5e21b72571c1455d13be6ca5256c8e9f122f43873824593",
+          "log_index": 401,
+          "token_id": 324005,
+          "tick_lower": 276323,
+          "tick_upper": 276333,
+          "liquidity_delta": -2432388830881040216
+        },
+        {
+          "block_number": 25800725,
+          "tx_hash": "0xa2b630d8e823f0431efa30399748880ac8fffe12d399ffbc3dae0c5ce380c00d",
+          "log_index": 230,
+          "token_id": 378589,
+          "tick_lower": 276325,
+          "tick_upper": 276326,
+          "liquidity_delta": 805671180981216210698
+        },
+        {
+          "block_number": 25800729,
+          "tx_hash": "0x80869871e5811ccad0a07b5762d88b3f6a056812410bcf8ce8e298f095b07359",
+          "log_index": 785,
+          "token_id": 378589,
+          "tick_lower": 276325,
+          "tick_upper": 276326,
+          "liquidity_delta": -805671180981216210698
+        },
+        {
+          "block_number": 25800771,
+          "tx_hash": "0x466ac8b003f55498bd7533c37c572f29be263b2a5d64d8e8e36b3c0347fc8411",
+          "log_index": 770,
+          "token_id": 378596,
+          "tick_lower": 276325,
+          "tick_upper": 276327,
+          "liquidity_delta": 396542791389061480958
+        },
+        {
+          "block_number": 25805114,
+          "tx_hash": "0xac3789f14f62f703d4c738bb97e9c701113d9117415081526d8cbac0503d8e66",
+          "log_index": 884,
+          "token_id": 378596,
+          "tick_lower": 276325,
+          "tick_upper": 276327,
+          "liquidity_delta": -396542791389061480958
+        },
+        {
+          "block_number": 25807001,
+          "tx_hash": "0xe5a55a6174daf0037c21ea1a4e9f956da4579d3b2c93c8748d542624e8302f6f",
+          "log_index": 588,
+          "token_id": 324005,
+          "tick_lower": 276323,
+          "tick_upper": 276333,
+          "liquidity_delta": 2264781098289544902
+        }
+      ]
+    }
+  ]
+}

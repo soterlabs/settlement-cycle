@@ -640,6 +640,7 @@ venues:
   # Uncollected LP fees are not added to the position value (negligible for
   # these tight par-stable ranges; see normalize/sources/uniswap_v4.py).
   - id: S61
+    event_source: hypersync
     chain: ethereum
     label: 'Spark.fi PYUSD Reserve Uniswap V4 (PYUSD/USDS)'
     pricing_category: F
