@@ -49,12 +49,18 @@ def main():
     d._load_pool_history(chain.value, pin_block=pin)
     print("HyperSync PSM3 preload", chain, pin, flush=True)
     h.preload(chain.value, holder.value, pin_block=pin, psm3=psm.value)
+    opening = h._opening_block(chain.value, pin)
     checks = []
     for label, dv, hv in [
         ("holder shares", d._load_holder_history(chain.value, holder.value, pin_block=pin), h._load_holder_history(chain.value, holder.value, pin_block=pin)),
         ("total shares", d._load_pool_history(chain.value, pin_block=pin), h._load_pool_history(chain.value, pin_block=pin)),
     ]:
-        checks.append(compare_histories(label, dv, hv))
+        opening_value = next((v for b, v in reversed(dv) if b <= opening), 0)
+        scoped_dune = [(opening, opening_value)] + [(b, v) for b, v in dv if b > opening]
+        check = compare_histories(label, scoped_dune, hv)
+        check.update(dune_lifetime_rows=len(dv), opening_block=opening,
+                     scope="Opening state and every event through the month-end pin")
+        checks.append(check)
     # Preserve the original SQL running sum, but export daily closing states
     # instead of millions of arbitrage event rows. Every valuation day plus
     # the opening anchor is compared, not just the month-end total.
@@ -90,7 +96,7 @@ def main():
         value = data[-1][1] if data else 0
         checks.append({"input": label, "matched": value == actual, "hypersync": value, "rpc": actual})
     report = {"prime": "spark", "venue": "PSM3-" + args.chain, "month": args.month,
-              "pin_block": pin, "contract": "0x" + psm.value.hex(), "holder": "0x" + holder.value.hex(),
+              "pin_block": pin, "opening_block": opening, "contract": "0x" + psm.value.hex(), "holder": "0x" + holder.value.hex(),
               "matched": all(c["matched"] for c in checks), "checks": checks}
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, default=str, indent=2) + "\n")

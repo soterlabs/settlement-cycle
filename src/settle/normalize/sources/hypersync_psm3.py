@@ -7,7 +7,7 @@ receiver (topic3); Withdraw debits indexed user (topic2), not its receiver.
 from datetime import UTC, datetime, time, timedelta
 from typing import Any
 
-from ...domain.primes import Chain
+from ...domain.primes import Address, Chain
 from ...domain.sky_tokens import PSM3_LEG_TOKENS
 from ...extract import hypersync, hypersync_store, rpc
 from ...extract._keccak import keccak256
@@ -24,7 +24,7 @@ class HyperSyncPsm3Source(DunePsm3Source):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._contracts: dict[str, bytes] = {}
-        self._events: dict[str, tuple[list[Any], int]] = {}
+        self._events: dict[str, tuple[list[Any], int, int]] = {}
 
     def _register(self, chain: str, psm3: bytes) -> None:
         if chain in self._contracts and self._contracts[chain] != psm3:
@@ -56,22 +56,32 @@ class HyperSyncPsm3Source(DunePsm3Source):
         return super().pool_reserve_at(chain, token, psm3, block, decimals=decimals)
 
     def _share_events(self, chain: str, pin: int) -> list[Any]:
+        opening = self._opening_block(chain, pin)
         cached = self._events.get(chain)
-        if cached is not None and cached[1] >= pin:
+        if cached is not None and cached[1] == opening and cached[2] >= pin:
             return [r for r in cached[0] if r.block_number <= pin]
         rows = hypersync_store.fetch_logs(chain, [{
             "address": ["0x" + self._contracts[chain].hex()], "topics": [[DEPOSIT, WITHDRAW]],
-        }], 0, pin)
+        }], opening + 1, pin)
         rows = sorted(rows, key=lambda r: (r.block_number, r.log_index))
-        self._events[chain] = (rows, pin)
+        self._events[chain] = (rows, opening, pin)
         return rows
+
+    def _opening_block(self, chain: str, pin: int) -> int:
+        day = datetime.fromtimestamp(hypersync.block_timestamp(chain, pin), UTC).date()
+        previous = day.replace(day=1) - timedelta(days=1)
+        return hypersync.find_block_at_or_before(
+            chain, int(datetime.combine(previous, time(23, 59, 59), UTC).timestamp()),
+        )
 
     def _load_holder_history(self, chain: str, holder: bytes, *, pin_block: int) -> list[tuple[int, int]]:
         key = (chain, "0x" + holder.hex())
         cached = self._holder_history.get(key)
-        if cached is not None and cached[1] >= pin_block:
+        if cached is not None and cached[0] and cached[0][0][0] <= pin_block <= cached[1]:
             return cached[0]
-        who, total, history = _addr_topic(holder), 0, []
+        opening = self._opening_block(chain, pin_block)
+        total = rpc.psm3_shares(Chain(chain), Address(self._contracts[chain]), Address(holder), opening)
+        who, history = _addr_topic(holder), [(opening, total)]
         for row in self._share_events(chain, pin_block):
             if (row.topic3 if row.topic0 == DEPOSIT else row.topic2) != who:
                 continue
@@ -83,9 +93,12 @@ class HyperSyncPsm3Source(DunePsm3Source):
 
     def _load_pool_history(self, chain: str, *, pin_block: int) -> list[tuple[int, int]]:
         cached = self._pool_history.get(chain)
-        if cached is not None and cached[1] >= pin_block:
+        if cached is not None and cached[0] and cached[0][0][0] <= pin_block <= cached[1]:
             return cached[0]
-        total, history = 0, []
+        opening = self._opening_block(chain, pin_block)
+        total = int(rpc.eth_call(Chain(chain), Address(self._contracts[chain]),
+                                "0x" + keccak256(b"totalShares()")[:4].hex(), opening), 16)
+        history = [(opening, total)]
         for row in self._share_events(chain, pin_block):
             shares = uint_words(row.data, 2)[1]
             total += shares if row.topic0 == DEPOSIT else -shares
@@ -103,12 +116,7 @@ class HyperSyncPsm3Source(DunePsm3Source):
         # immutable month-opening RPC balance, then extend only this month's
         # logs. Three cached eth_calls avoid materializing the entire lifetime
         # into memory; the event store still reuses covered ranges daily.
-        from ...domain.primes import Address
-        day = datetime.fromtimestamp(hypersync.block_timestamp(chain, pin_block), UTC).date()
-        previous = day.replace(day=1) - timedelta(days=1)
-        opening = hypersync.find_block_at_or_before(
-            chain, int(datetime.combine(previous, time(23, 59, 59), UTC).timestamp()),
-        )
+        opening = self._opening_block(chain, pin_block)
         tokens = ["0x" + t.address.value.hex() for t in PSM3_LEG_TOKENS[Chain(chain)].values()]
         who = _addr_topic(psm3)
         rows = hypersync_store.fetch_logs(chain, [
