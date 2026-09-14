@@ -75,6 +75,7 @@ addresses:
   optimism:
     alm:      '0x876664f0c9ff24d1aa355ce9f1680ae1a5bf36fb'    # Spark Optimism ALM
     psm:
+      event_source: hypersync
       kind: erc4626_shares                                    # PSM3: ALM holds shares; USDS-equiv via convertToAssets
       address: '0xe0f9978b907853f354d79188a3defbd41978af62'   # PSM3 Optimism
   unichain:
