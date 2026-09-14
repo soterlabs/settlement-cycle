@@ -655,6 +655,7 @@ venues:
   # counting because the cash distribution payments hit Eth USDC (E15),
   # not GACLO-1 itself, so they don't move E21's value_eom.
   - id: E20
+    event_source: hypersync
     chain: avalanche_c
     label: 'Janus Henderson Anemoy AAA CLO (JAAA-avalanche)'
     pricing_category: E
