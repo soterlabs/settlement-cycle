@@ -76,7 +76,19 @@ def main():
         states.setdefault(key, []).append((pd.Timestamp(row["block_date"]).date(), int(Decimal(str(row["cum_balance_raw"])))))
     days = [month.first_day - timedelta(days=1) + timedelta(days=i)
             for i in range((month.last_day - month.first_day).days + 2)]
-    day_blocks = {day: hypersync.find_block_at_or_before(chain.value, int(datetime.combine(day, time(23, 59, 59), UTC).timestamp())) for day in days}
+    boundaries = execute_query(QUERIES_DIR / "blocks_at_eod.sql", {
+        "chain": chain.value, "start_date": str(days[0]), "end_date": str(days[-1]),
+    }, pin)
+    day_blocks = {pd.Timestamp(row["block_date"]).date(): int(row["block_number"])
+                  for row in boundaries.to_dict("records")}
+    if set(day_blocks) != set(days) or len(boundaries) != len(days):
+        raise ValueError("Incomplete or duplicate daily block boundaries from Dune")
+    # Certify each oracle pin with HyperSync's timestamp and successor. This
+    # reuses shared block evidence, avoiding 32 redundant binary searches.
+    for day, block in day_blocks.items():
+        target = int(datetime.combine(day, time(23, 59, 59), UTC).timestamp())
+        if not hypersync.block_timestamp(chain.value, block) <= target < hypersync.block_timestamp(chain.value, block + 1):
+            raise ValueError(f"Dune/HyperSync daily boundary mismatch: {chain}/{day}")
     for token in tokens.values():
         key = "0x" + token.address.value.hex()
         history = sorted(states.get(key, []))
