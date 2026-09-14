@@ -178,6 +178,7 @@ venues:
       decimals: 6
 
   - id: E6
+    event_source: hypersync
     chain: ethereum
     label: 'Grove x Steakhouse AUSD (Morpho 4626)'
     pricing_category: B
