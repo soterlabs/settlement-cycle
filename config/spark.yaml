@@ -62,6 +62,7 @@ addresses:
   base:
     alm:      '0x2917956eff0b5eaf030abdb4ef4296df775009ca'    # Spark Base ALM
     psm:
+      event_source: hypersync
       kind: erc4626_shares                                    # PSM3: ALM holds shares; USDS-equiv via convertToAssets
       address: '0x1601843c5e9bc251a3272907010afa41fa18347e'   # PSM3 Base (CREATE2 — same address as Spark Eth-ALM)
   arbitrum:
