@@ -104,10 +104,12 @@ flat event log — no server-side date views needed.
 
 ## What to build on the Envio side
 
-> **Already drafted** in [`../../envio-indexer/`](../../envio-indexer/) —
-> `config.yaml`, `schema.graphql`, `abis/vat.json`, `src/EventHandlers.ts`,
-> ready to `pnpm install && pnpm codegen && pnpm dev`. The steps below explain
-> what those files do.
+> **Historical HyperIndex design.** The `envio-indexer/` scaffold was removed
+> because the configured settlement pipeline queries HyperSync directly through
+> `src/settle/extract/hypersync.py` and `hypersync_store.py`, then decodes events
+> in Python. The source registry records the HyperIndex limitation with Vat
+> anonymous events. The scaffold remains available in Git history; the steps
+> below describe the historical design, not the active ingestion path.
 
 ### 1. Install & scaffold
 
