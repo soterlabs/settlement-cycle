@@ -18,6 +18,7 @@ addresses:
 
 venues:
   - id: V1
+    event_source: hypersync
     chain: ethereum
     label: 'Maple syrupUSDC (Category B — ERC-4626 vault)'
     pricing_category: B
