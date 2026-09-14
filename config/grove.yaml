@@ -306,6 +306,7 @@ venues:
     centrifuge_vault: '0x4880799eE5200fC58DA299e965df644fBf46780B'
 
   - id: E9
+    event_source: hypersync
     chain: ethereum
     label: 'Janus Henderson Anemoy Treasury Fund (JTRSY)'
     pricing_category: E
