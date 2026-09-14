@@ -176,7 +176,8 @@ def task_tmf(to_block: int | None) -> int:
                 n_k = tmf_store.upsert_kicks(conn, ds.kicks, run_id)
                 n_b = tmf_store.upsert_burns(conn, ds.burns, run_id)
                 n_p = tmf_store.upsert_param_changes(conn, ds.param_changes, run_id)
-                months = aggregate(ds.kicks, ds.burns, "monthly")
+                months = aggregate(ds.kicks, ds.burns, "monthly",
+                                   tmf_effective_from=ds.tmf_effective_from)
                 with conn.cursor() as cur:
                     cur.execute(
                         "UPDATE runs SET pin_block = %s, pin_ts = to_timestamp(%s) "

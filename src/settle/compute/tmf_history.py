@@ -30,18 +30,21 @@ from typing import Any
 from ..domain.tmf import SbeKick, SbeParamChange, SkyBurn
 
 __all__ = [
+    "BURN_KINDS",
     "SCHEMA_VERSION",
     "HistoryDataset",
     "PeriodRow",
     "aggregate",
     "build_history_dataset",
+    "burn_kind",
     "dec_str",
     "iso_ts",
     "period_key",
     "write_history_dataset",
 ]
 
-SCHEMA_VERSION = "1.1.0"   # 1.1: parameter_changes rows carry `address`; values are `_dec`-formatted
+SCHEMA_VERSION = "1.2.0"   # 1.2: burns carry `kind`; period rows split engine vs supply correction
+                           # 1.1: parameter_changes rows carry `address`; values are `_dec`-formatted
 ZERO = Decimal(0)
 _Q2 = Decimal("0.01")
 _Q6 = Decimal("0.000001")
@@ -53,6 +56,36 @@ def iso_ts(ts: int) -> str:
 
 
 _ts = iso_ts   # internal alias, kept so the module body reads unchanged
+
+
+# Every SKY burn falls into exactly one of these.
+#
+#   engine             the Smart Burn Engine's own burn — the 10/55 share of a
+#                      month's buys, retired by the following month's spell.
+#   supply_correction  a protocol burn from BEFORE the TMF took effect. There
+#                      is exactly one, the 2025-06-30 spell retiring
+#                      426,292,860.23 SKY of supply created in the MKR -> SKY
+#                      conversion. The category is CLOSED by construction: the
+#                      boundary is a fixed past timestamp, so no later burn can
+#                      ever join it.
+#   third_party        anyone who is not the protocol sending SKY to 0x…dEaD.
+#
+# The distinction matters because the two protocol kinds are indistinguishable
+# on-chain — both are Pause Proxy -> zero address — while being economically
+# unrelated: one is buyback policy, the other a one-off supply rectification
+# ~150x its size. Consumers previously had to hardcode a date to tell them
+# apart, which is exactly the knowledge this module already holds.
+BURN_KIND_ENGINE = "engine"
+BURN_KIND_SUPPLY_CORRECTION = "supply_correction"
+BURN_KIND_THIRD_PARTY = "third_party"
+BURN_KINDS = (BURN_KIND_ENGINE, BURN_KIND_SUPPLY_CORRECTION, BURN_KIND_THIRD_PARTY)
+
+
+def burn_kind(burn: SkyBurn, tmf_effective_from: int) -> str:
+    """Classify one burn against the TMF's first cast (``policy.tmf_effective_from``)."""
+    if not burn.protocol:
+        return BURN_KIND_THIRD_PARTY
+    return BURN_KIND_ENGINE if burn.ts >= tmf_effective_from else BURN_KIND_SUPPLY_CORRECTION
 
 
 def period_key(ts: int, granularity: str) -> str:
@@ -75,9 +108,17 @@ class PeriodRow:
     usds_to_stakers: Decimal = ZERO
     usds_total: Decimal = ZERO
     sky_bought: Decimal = ZERO
-    sky_burn_protocol: Decimal = ZERO
+    sky_burn_engine: Decimal = ZERO
+    sky_burn_supply_correction: Decimal = ZERO
     sky_burn_other: Decimal = ZERO
     burn_events: int = 0
+
+    @property
+    def sky_burn_protocol(self) -> Decimal:
+        """Every protocol burn, engine and correction together. Kept because it
+        predates the split; it is dominated by the one-off correction, so it is
+        the wrong number for anything about buyback policy."""
+        return self.sky_burn_engine + self.sky_burn_supply_correction
     first_ts: int | None = None
     last_ts: int | None = None
 
@@ -94,6 +135,8 @@ class PeriodRow:
             "usds_total": _num(self.usds_total),
             "sky_bought": _num(self.sky_bought),
             "sky_avg_price": _num(self.sky_avg_price, _Q6),
+            "sky_burn_engine": _num(self.sky_burn_engine),
+            "sky_burn_supply_correction": _num(self.sky_burn_supply_correction),
             "sky_burn_protocol": _num(self.sky_burn_protocol),
             "sky_burn_other": _num(self.sky_burn_other),
             "burn_events": self.burn_events,
@@ -111,10 +154,14 @@ def _num(x: Decimal | None, q: Decimal = _Q2) -> float | None:
 
 
 def aggregate(
-    kicks: list[SbeKick], burns: list[SkyBurn], granularity: str
+    kicks: list[SbeKick], burns: list[SkyBurn], granularity: str,
+    *, tmf_effective_from: int,
 ) -> list[PeriodRow]:
     """Bucket kicks and burns into ``granularity`` periods, in chronological
-    order. A period with burns but no kicks (or vice versa) still appears."""
+    order. A period with burns but no kicks (or vice versa) still appears.
+
+    ``tmf_effective_from`` is required rather than defaulted: every default
+    would silently misclassify every protocol burn one way or the other."""
     rows: OrderedDict[str, PeriodRow] = OrderedDict()
 
     def row(ts: int) -> PeriodRow:
@@ -135,8 +182,11 @@ def aggregate(
     for b in sorted(burns, key=lambda b: (b.block, b.log_index)):
         r = row(b.ts)
         r.burn_events += 1
-        if b.protocol:
-            r.sky_burn_protocol += b.amount
+        kind = burn_kind(b, tmf_effective_from)
+        if kind == BURN_KIND_ENGINE:
+            r.sky_burn_engine += b.amount
+        elif kind == BURN_KIND_SUPPLY_CORRECTION:
+            r.sky_burn_supply_correction += b.amount
         else:
             r.sky_burn_other += b.amount
     return [rows[k] for k in sorted(rows)]
@@ -152,17 +202,23 @@ class HistoryDataset:
     param_changes: list[SbeParamChange] = field(default_factory=list)
     contracts: dict[str, str] = field(default_factory=dict)
     notes: list[str] = field(default_factory=list)
+    # policy.tmf_effective_from, unix seconds — the boundary every burn is
+    # classified against. Published in the document so a consumer can see the
+    # rule rather than re-deriving it from a hardcoded date.
+    tmf_effective_from: int = 0
 
     @property
     def totals(self) -> PeriodRow:
         agg = PeriodRow(period="all")
-        for r in aggregate(self.kicks, self.burns, "annual"):
+        for r in aggregate(self.kicks, self.burns, "annual",
+                           tmf_effective_from=self.tmf_effective_from):
             agg.kicks += r.kicks
             agg.usds_buyback += r.usds_buyback
             agg.usds_to_stakers += r.usds_to_stakers
             agg.usds_total += r.usds_total
             agg.sky_bought += r.sky_bought
-            agg.sky_burn_protocol += r.sky_burn_protocol
+            agg.sky_burn_engine += r.sky_burn_engine
+            agg.sky_burn_supply_correction += r.sky_burn_supply_correction
             agg.sky_burn_other += r.sky_burn_other
             agg.burn_events += r.burn_events
             if r.first_ts is not None:
@@ -205,10 +261,15 @@ def build_history_dataset(
             "from_block": ds.from_block,
             "to_block": ds.to_block,
             "to_ts": _ts(ds.to_ts),
+            # The boundary the `kind` on every burn is decided against. Echoed
+            # from config/tmf.yaml policy.tmf_effective_from.
+            "tmf_effective_from": _ts(ds.tmf_effective_from) if ds.tmf_effective_from else None,
             "contracts": ds.contracts,
             "events": {
                 "kick": "Splitter.Kick(tot, lot, pay) joined to Flapper.Exec(lot, bought) per tx",
-                "burn": "SKY.Transfer(from, to=sink, amount); protocol = sender is the Pause Proxy",
+                "burn": "SKY.Transfer(from, to=sink, amount); protocol = sender is the Pause Proxy. "
+                    "`kind` splits protocol burns into engine vs supply_correction at "
+                    "source.tmf_effective_from — both are Pause Proxy -> zero address on-chain",
             },
         },
         "definitions": {
@@ -217,8 +278,18 @@ def build_history_dataset(
             "usds_total": "usds_buyback + usds_to_stakers (= USDS pulled from the surplus, Kick.tot)",
             "sky_bought": "SKY the Flapper received for usds_buyback (Exec.bought)",
             "sky_avg_price": "usds_buyback / sky_bought (USDS per SKY, volume-weighted)",
-            "sky_burn_protocol": "SKY sent to a burn sink by the protocol (Pause Proxy)",
-            "sky_burn_other": "SKY sent to 0x…dEaD by anyone else",
+            "sky_burn_engine": "SKY burned by the Smart Burn Engine — the 10/55 share of a "
+                               "month's buys, retired by the following month's spell. This is "
+                               "the buyback-policy number",
+            "sky_burn_supply_correction": "SKY burned by the protocol before the TMF took "
+                                          "effect. Exactly one event: the 2025-06-30 spell "
+                                          "retiring 426,292,860.23 SKY of supply created in the "
+                                          "MKR -> SKY conversion. A closed category — the "
+                                          "boundary is a fixed past timestamp",
+            "sky_burn_protocol": "sky_burn_engine + sky_burn_supply_correction. Predates the "
+                                 "split and is dominated by the correction; prefer "
+                                 "sky_burn_engine for anything about buyback policy",
+            "sky_burn_other": "SKY sent to 0x…dEaD by a third party (kind = third_party)",
         },
         "notes": ds.notes,
         "totals": ds.totals.as_json(),
@@ -229,7 +300,8 @@ def build_history_dataset(
             "splitter_burn": _num(last.burn, Decimal("0.0001")), "splitter_hop": last.hop,
         },
         "periods": {
-            g: [r.as_json() for r in aggregate(ds.kicks, ds.burns, g)]
+            g: [r.as_json() for r in aggregate(ds.kicks, ds.burns, g,
+                                               tmf_effective_from=ds.tmf_effective_from)]
             for g in ("monthly", "quarterly", "annual")
         },
         "parameter_changes": [
@@ -247,7 +319,8 @@ _KICK_COLUMNS = [
     "ts", "block", "log_index", "tx", "usds_total", "usds_buyback", "usds_to_stakers",
     "sky_bought", "splitter_burn", "splitter_hop", "farm", "flapper",
 ]
-_BURN_COLUMNS = ["ts", "block", "log_index", "tx", "sender", "sink", "sky_amount", "protocol"]
+_BURN_COLUMNS = ["ts", "block", "log_index", "tx", "sender", "sink", "sky_amount", "protocol",
+                 "kind"]
 
 
 def write_history_dataset(ds: HistoryDataset, out_dir: Path) -> dict[str, Path]:
@@ -268,7 +341,8 @@ def write_history_dataset(ds: HistoryDataset, out_dir: Path) -> dict[str, Path]:
         w.writerow(_BURN_COLUMNS)
         for b in sorted(ds.burns, key=lambda b: (b.block, b.log_index)):
             w.writerow([_ts(b.ts), b.block, b.log_index, b.tx, b.sender, b.sink, _dec(b.amount),
-                        "true" if b.protocol else "false"])
+                        "true" if b.protocol else "false",
+                        burn_kind(b, ds.tmf_effective_from)])
     return {
         "json": out_dir / "sbe_history.json",
         "kicks": out_dir / "sbe_kicks.csv",

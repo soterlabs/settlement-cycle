@@ -176,7 +176,9 @@ def load_param_changes(conn: Any, *, to_block: int | None = None,
     return out
 
 
-def history_document(conn: Any, *, contracts: dict[str, str], notes: list[str]) -> dict[str, Any] | None:
+def history_document(
+    conn: Any, *, contracts: dict[str, str], notes: list[str], tmf_effective_from: int,
+) -> dict[str, Any] | None:
     """The ``sbe_history.json`` document (schema 1.1.0) rebuilt from the tables,
     stamped with the latest ok ``tmf_history`` run's pin. None when no run yet.
 
@@ -199,6 +201,7 @@ def history_document(conn: Any, *, contracts: dict[str, str], notes: list[str]) 
         )
     pin = int(pin)
     ds = HistoryDataset(
+        tmf_effective_from=tmf_effective_from,
         from_block=int(summary["from_block"]),
         to_block=pin,
         to_ts=int(summary["to_ts"]),
