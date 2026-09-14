@@ -195,6 +195,7 @@ venues:
   # bottom of this file (wound-down JTRSY-plume / USDC-raw). E37 is the
   # next free ID after the E30–E36 block.
   - id: E37
+    event_source: hypersync
     chain: ethereum
     label: 'Maple syrupUSDC (ERC-4626)'
     pricing_category: B
