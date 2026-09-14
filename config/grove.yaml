@@ -105,6 +105,7 @@ venues:
   # Category C — Aave v3 aTokens (rebasing; balanceOf is nominal)
   # ─────────────────────────────────────────────────────────────
   - id: E1
+    event_source: hypersync
     chain: ethereum
     label: 'Aave Horizon RWA RLUSD (aToken)'
     pricing_category: C
