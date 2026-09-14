@@ -152,15 +152,14 @@ def resolve_pin_block(month: Month) -> int:
     when M hasn't fully elapsed. The pin is part of the Dune cache key, so an
     in-month run re-executes automatically when re-run later with a later pin.
     """
-    from ..domain import Chain
-    from ..extract import rpc
+    from ..extract import hypersync
 
     _, end_excl = _month_bounds(month)
     target = datetime.combine(end_excl, time.min, tzinfo=timezone.utc)  # 00:00 of M+1
     now = datetime.now(tz=timezone.utc)
     if target > now:
         target = now - timedelta(minutes=10)   # small reorg margin
-    return rpc.find_block_at_or_before(Chain.ETHEREUM, target)
+    return hypersync.find_block_at_or_before("ethereum", int(target.timestamp()))
 
 
 def _dune_streams(month: Month, pin_block: int):
