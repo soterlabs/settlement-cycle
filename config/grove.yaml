@@ -853,6 +853,7 @@ venues:
     display_only: true
 
   - id: E34
+    event_source: hypersync
     chain: monad
     label: 'AUSD raw (Monad, alt holder idle)'
     pricing_category: A
