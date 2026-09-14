@@ -1,0 +1,65 @@
+{
+  "prime": "obex",
+  "month": "2026-08",
+  "start": "2025-11-17",
+  "pins": {
+    "ethereum": 25878704
+  },
+  "checks": [
+    {
+      "input": "ALM USDS",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 29,
+      "hypersync_rows": 29,
+      "max_abs_difference": {
+        "daily_net": "0",
+        "cum_balance": "0"
+      },
+      "dune_sha256": "c80a1579b74787678e725d277f87cc4f789e7fc2184bfb0ec69a218fffb37898",
+      "hypersync_sha256": "c80a1579b74787678e725d277f87cc4f789e7fc2184bfb0ec69a218fffb37898",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "chain": "ethereum",
+      "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+      "holder": "0xb6dd7ae22c9922afee0642f9ac13e58633f715a2"
+    },
+    {
+      "input": "SubProxy USDS",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 9,
+      "hypersync_rows": 9,
+      "max_abs_difference": {
+        "daily_net": "1E-10",
+        "cum_balance": "0"
+      },
+      "dune_sha256": "3c27a06addcc6047aff4354bf55e29c15d5d8f472d203f21616345d26e573aba",
+      "hypersync_sha256": "813f542f382a0d32fcea1cd7a992cfd98273ed123aa586824a350bb4cebe7ffd",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "chain": "ethereum",
+      "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+      "holder": "0x8be042581f581e3620e29f213ea8b94afa1c8071"
+    },
+    {
+      "input": "SubProxy sUSDS",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 0,
+      "hypersync_rows": 0,
+      "max_abs_difference": {
+        "daily_net": "0",
+        "cum_balance": "0"
+      },
+      "dune_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "hypersync_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "chain": "ethereum",
+      "token": "0xa3931d71877c0e7a3148cb7eb4463524fec27fbd",
+      "holder": "0x8be042581f581e3620e29f213ea8b94afa1c8071"
+    }
+  ],
+  "matched": true
+}

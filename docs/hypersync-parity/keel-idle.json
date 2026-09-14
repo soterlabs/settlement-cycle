@@ -1,0 +1,47 @@
+{
+  "prime": "keel",
+  "month": "2026-08",
+  "start": "2025-12-01",
+  "pins": {
+    "ethereum": 25878704
+  },
+  "checks": [
+    {
+      "input": "SubProxy USDS",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 6,
+      "hypersync_rows": 6,
+      "max_abs_difference": {
+        "daily_net": "4E-12",
+        "cum_balance": "0"
+      },
+      "dune_sha256": "4a12c36239698ff64f60b8fd0709f2926de92242f7593b737338270fe9091abe",
+      "hypersync_sha256": "9b0272be1cc56990ed391b42afb8815aac7db5ebee8abbac93ce5dd4ff5171ff",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "chain": "ethereum",
+      "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+      "holder": "0x355cd90ecb1b409fdf8b64c4473c3b858da2c310"
+    },
+    {
+      "input": "SubProxy sUSDS",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 0,
+      "hypersync_rows": 0,
+      "max_abs_difference": {
+        "daily_net": "0",
+        "cum_balance": "0"
+      },
+      "dune_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "hypersync_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "chain": "ethereum",
+      "token": "0xa3931d71877c0e7a3148cb7eb4463524fec27fbd",
+      "holder": "0x355cd90ecb1b409fdf8b64c4473c3b858da2c310"
+    }
+  ],
+  "matched": true
+}
