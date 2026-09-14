@@ -53,6 +53,12 @@ class HyperSyncBlockUnavailable(HyperSyncError):
     """A successful archive response did not yet contain the requested block."""
 
 
+class _ProvisionalHead(Exception):
+    def __init__(self, block: int, timestamp: int) -> None:
+        self.block = block
+        self.timestamp = timestamp
+
+
 @dataclass(frozen=True)
 class LogRow:
     block_number: int
@@ -290,24 +296,27 @@ def find_block_at_or_before(chain: str, target_ts: int) -> int:
     (``_find_block_at_or_before_cached``); head-clamps are served live with a
     warning and re-resolved on every call.
     """
-    high, head_ts = _returnable_head(chain)
-    if head_ts <= target_ts:
+    try:
+        return _find_block_at_or_before_cached(chain, target_ts)
+    except _ProvisionalHead as head:
         import logging
         logging.getLogger(__name__).warning(
             "find_block_at_or_before(%s, ts=%d): archive head (block %d, "
             "ts %d) is at/behind the target — returning the head WITHOUT "
             "caching; re-run after the archive catches up for a stable pin.",
-            chain, target_ts, high, head_ts,
+            chain, target_ts, head.block, head.timestamp,
         )
-        return high
-    return _find_block_at_or_before_cached(chain, target_ts)
+        return head.block
 
 
 @cached(source_id="hypersync.find_block_at_or_before")
 def _find_block_at_or_before_cached(chain: str, target_ts: int) -> int:
-    """Cache-backed binary search — only reached when the archive head is
-    strictly past ``target_ts``, so the result is final and safe to cache."""
-    high, _head_ts = _returnable_head(chain)
+    """Cache only fully covered resolutions; provisional heads raise before
+    the cache decorator writes anything. A valid historical cache hit needs
+    no new head probes — the completed result is already immutable."""
+    high, head_ts = _returnable_head(chain)
+    if head_ts <= target_ts:
+        raise _ProvisionalHead(high, head_ts)
     if block_timestamp(chain, 0) > target_ts:
         raise HyperSyncError(
             f"find_block_at_or_before({chain}, ts={target_ts}): target precedes "

@@ -129,3 +129,20 @@ def test_rate_limit_is_not_misinterpreted_as_missing_head(monkeypatch):
     with pytest.raises(HyperSyncError, match='429'):
         hypersync.find_block_at_or_before('base', 100)
     assert calls == [1000]
+
+
+def test_only_complete_resolutions_are_cached(tmp_cache_dir, monkeypatch):
+    monkeypatch.setenv("SETTLE_NO_CACHE", "0")
+    head = [10]
+    monkeypatch.setattr(hypersync, "archive_height", lambda chain: head[0])
+    monkeypatch.setattr(hypersync, "block_timestamp", lambda chain, block: block * 12)
+    # Both provisional head clamps must stay live as the archive advances.
+    assert hypersync.find_block_at_or_before("base", 200) == 10
+    head[0] = 12
+    assert hypersync.find_block_at_or_before("base", 200) == 12
+    head[0] = 30
+    assert hypersync.find_block_at_or_before("base", 200) == 16
+    def offline(chain):
+        raise AssertionError("A completed historical pin must require no network")
+    monkeypatch.setattr(hypersync, "archive_height", offline)
+    assert hypersync.find_block_at_or_before("base", 200) == 16
