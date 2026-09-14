@@ -1,9 +1,11 @@
 """Exact event-history parity for a configured PSM3, plus pinned RPC checks."""
 
 import argparse
+import hashlib
 import json
 from datetime import UTC, datetime, time, timedelta
 from decimal import Decimal
+from itertools import zip_longest
 from pathlib import Path
 
 import pandas as pd
@@ -18,6 +20,18 @@ from settle.extract.dune import execute_query
 from settle.normalize.sources._paths import QUERIES_DIR
 from settle.normalize.sources.dune_psm3 import DunePsm3Source
 from settle.normalize.sources.hypersync_psm3 import HyperSyncPsm3Source
+
+
+def compare_histories(label, dune, hypersync):
+    """Keep evidence compact while checking every raw integer in order."""
+    def digest(rows):
+        return hashlib.sha256(json.dumps(rows, separators=(",", ":")).encode()).hexdigest()
+    differences = [{"index": i, "dune": d, "hypersync": h}
+                   for i, (d, h) in enumerate(zip_longest(dune, hypersync)) if d != h]
+    return {"input": label, "matched": not differences,
+            "dune_rows": len(dune), "hypersync_rows": len(hypersync),
+            "dune_sha256": digest(dune), "hypersync_sha256": digest(hypersync),
+            "mismatch_count": len(differences), "mismatches": differences[:10]}
 
 
 def main():
@@ -40,8 +54,7 @@ def main():
         ("holder shares", d._load_holder_history(chain.value, holder.value, pin_block=pin), h._load_holder_history(chain.value, holder.value, pin_block=pin)),
         ("total shares", d._load_pool_history(chain.value, pin_block=pin), h._load_pool_history(chain.value, pin_block=pin)),
     ]:
-        checks.append({"input": label, "matched": dv == hv, "dune_rows": len(dv), "hypersync_rows": len(hv),
-                       "dune": dv, "hypersync": hv})
+        checks.append(compare_histories(label, dv, hv))
     # Preserve the original SQL running sum, but export daily closing states
     # instead of millions of arbitrage event rows. Every valuation day plus
     # the opening anchor is compared, not just the month-end total.
@@ -77,7 +90,7 @@ def main():
         value = data[-1][1] if data else 0
         checks.append({"input": label, "matched": value == actual, "hypersync": value, "rpc": actual})
     report = {"prime": "spark", "venue": "PSM3-" + args.chain, "month": args.month,
-              "pin_block": pin, "contract": "0x" + psm.value.hex(),
+              "pin_block": pin, "contract": "0x" + psm.value.hex(), "holder": "0x" + holder.value.hex(),
               "matched": all(c["matched"] for c in checks), "checks": checks}
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, default=str, indent=2) + "\n")

@@ -162,8 +162,6 @@ def compare(prime_id: str, venue_id: str, month_label: str, tolerance: Decimal) 
     if venue.lp_kind in {"uniswap_v3", "uniswap_v4"}:
         som = pin(chain, month.first_day - timedelta(days=1))
         if venue.lp_kind == "uniswap_v3":
-            if chain != "ethereum":
-                raise ValueError("The retained V3 Dune SQL is Ethereum-only; requires a chain-specific oracle")
             kwargs = {"nfpm_per_chain": {venue.chain: venue.nft_position_manager}} if venue.nft_position_manager else {}
             args = (chain, holder.value, venue.token.address.value, som, end)
             d = DuneV3InflowSource(**kwargs).liquidity_events_in_pool(*args)

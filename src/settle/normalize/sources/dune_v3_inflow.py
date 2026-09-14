@@ -53,8 +53,10 @@ class DuneV3InflowSource(RPCUniswapV3PositionSource):
         )
 
         df = execute_query(
-            QUERIES_DIR / "v3_liquidity_events.sql",
+            QUERIES_DIR / ("v3_liquidity_events.sql" if chain == "ethereum"
+                           else "v3_liquidity_events_multichain.sql"),
             params={
+                **({"chain": chain} if chain != "ethereum" else {}),
                 "nfpm": nfpm.value,            # bytes → 0x-prefixed text
                 "from_block": from_block,
                 "token_ids_padded": padded,

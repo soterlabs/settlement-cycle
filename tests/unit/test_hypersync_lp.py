@@ -45,3 +45,25 @@ def test_v4_filters_position_manager_and_excludes_zero_delta(monkeypatch):
     assert [(e.tick_lower, e.tick_upper, e.liquidity_delta, e.token_id) for e in events] == [(-100, 100, -50, 7), (-100, 100, 100, 7)]
     assert calls[0][2:] == (11, 20)
     assert calls[0][1][0]["topics"][2] == [mod._addr_topic(manager.value)]
+
+
+def test_non_ethereum_dune_oracle_is_chain_scoped(monkeypatch):
+    import pandas as pd
+
+    from settle.normalize.sources import dune_v3_inflow as oracle
+    manager = Address(bytes([1]) * 20)
+    source = oracle.DuneV3InflowSource(nfpm_per_chain={Chain.MONAD: manager})
+    monkeypatch.setattr(oracle.v3, "discover_pool_token_ids", lambda *a: {7})
+    calls = []
+    def execute(path, params, pin_block):
+        calls.append((path, params, pin_block))
+        return pd.DataFrame()
+    monkeypatch.setattr(oracle, "execute_query", execute)
+    assert source.liquidity_events_in_pool("monad", bytes([2]) * 20, bytes([3]) * 20, 10, 20) == []
+    path, params, pin = calls[0]
+    assert path.name == "v3_liquidity_events_multichain.sql"
+    assert "FROM evms.logs" in path.read_text()
+    assert "blockchain = '{{chain}}'" in path.read_text()
+    assert params["chain"] == "monad"
+    assert params["nfpm"] == manager.value
+    assert pin == 20
