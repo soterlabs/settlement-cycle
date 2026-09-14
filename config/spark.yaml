@@ -728,6 +728,7 @@ venues:
   # only by scanning ERC-721 Transfers from the PositionManager to the ALM;
   # an ERC-20-only audit will never see them (which is how these were missed).
   - id: S66
+    event_source: hypersync
     chain: ethereum
     label: 'Spark.fi RLUSD Reserve Uniswap V4 (RLUSD/USDS)'
     pricing_category: F
