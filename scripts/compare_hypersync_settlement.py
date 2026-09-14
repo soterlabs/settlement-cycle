@@ -34,7 +34,7 @@ def differences(left, right, path="result"):
     elif isinstance(left, (list, tuple)) and isinstance(right, (list, tuple)):
         if len(left) != len(right):
             yield {"path": path, "reason": "different lengths"}
-        for i, (a, b) in enumerate(zip(left, right)):
+        for i, (a, b) in enumerate(zip(left, right, strict=False)):
             yield from differences(a, b, f"{path}[{i}]")
     elif isinstance(left, (Decimal, float)) and isinstance(right, (Decimal, float)):
         delta = abs(Decimal(str(left)) - Decimal(str(right)))
