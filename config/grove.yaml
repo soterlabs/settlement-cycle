@@ -1117,3 +1117,7 @@ external_alm_sources:
     # permissionlessly by third-party keepers (tx sender ≠ any Grove
     # address), so rewards can land without any Grove-signed transaction.
     - '0x3ef3d8ba38ebe18db133cec108f4d14ce00dd9ae'
+
+# Debt source verified against all Dune daily frob/grab totals through Aug 2026.
+sources:
+  debt: hypersync
