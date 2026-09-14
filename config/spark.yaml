@@ -69,6 +69,7 @@ addresses:
   arbitrum:
     alm:      '0x92afd6f2385a90e44da3a8b60fe36f6cbe1d8709'    # Spark Arbitrum ALM
     psm:
+      event_source: hypersync
       kind: erc4626_shares                                    # PSM3: ALM holds shares; USDS-equiv via convertToAssets
       address: '0x2b05f8e1cacc6974fd79a673a341fe1f58d27266'   # PSM3 Arbitrum
   optimism:
