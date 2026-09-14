@@ -722,6 +722,7 @@ venues:
   # Plume — Phase 2.B (multi-chain rollout)
   # ─────────────────────────────────────────────────────────────
   - id: E22
+    event_source: hypersync
     chain: plume
     label: 'Anemoy Tokenized Apollo Diversified Credit Fund (ACRDX)'
     pricing_category: E

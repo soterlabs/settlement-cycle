@@ -1,0 +1,27 @@
+{
+  "prime": "grove",
+  "venue": "E22",
+  "month": "2026-08",
+  "start": "2025-05-14",
+  "pins": {
+    "plume/2026-08-31": 90704090
+  },
+  "matched": true,
+  "checks": [
+    {
+      "input": "transfer_timeseries.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 5,
+      "hypersync_rows": 5,
+      "max_abs_difference": {
+        "daily_net": "1.324619394E-9",
+        "cum_balance": "2.656956881E-9"
+      },
+      "dune_sha256": "e67ebe0248eb6918b932701b891f4573fcb10a974c3d9887dcd4344f3b328308",
+      "hypersync_sha256": "97a7e5858a6e8865ec5fd64dcd01ea19829d08b2d3847c8e590ae7709fe1b5be",
+      "mismatch_count": 0,
+      "mismatches": []
+    }
+  ]
+}
