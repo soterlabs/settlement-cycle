@@ -561,6 +561,7 @@ venues:
     cof_excluded: true   # already deducted from utilized via cum_alm_usds
 
   - id: E18
+    event_source: hypersync
     chain: ethereum
     label: 'sUSDS raw / POL (ALM idle — Cat B 4626)'
     pricing_category: B
