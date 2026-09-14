@@ -13,6 +13,7 @@ persistence layer is ``hypersync_store``; domain decoding lives in the
 from __future__ import annotations
 
 import os
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
@@ -323,10 +324,24 @@ def _lower(v: Any) -> str | None:
 
 
 def _execute(chain: str, body: dict[str, Any], headers: dict[str, str], post) -> dict[str, Any]:
-    try:
-        resp = post(endpoint(chain), json=body, headers=headers, timeout=_DEFAULT_TIMEOUT)
-    except requests.RequestException as exc:
-        raise HyperSyncError(f"HyperSync request failed: {exc}") from exc
+    for attempt in range(4):
+        try:
+            resp = post(endpoint(chain), json=body, headers=headers, timeout=_DEFAULT_TIMEOUT)
+        except requests.RequestException as exc:
+            raise HyperSyncError(f"HyperSync request failed: {exc}") from exc
+        if resp.status_code != 429 or attempt == 3:
+            break
+        response_headers = getattr(resp, "headers", {})
+        delay = response_headers.get("Retry-After", response_headers.get("x-ratelimit-reset"))
+        try:
+            seconds = max(1.0, float(delay)) if delay is not None else 15.0 * 2**attempt
+        except (TypeError, ValueError):
+            seconds = 15.0 * 2**attempt
+        # Do not retry before a long provider cooldown has elapsed. Let the
+        # caller fail and resume later instead of sleeping indefinitely.
+        if seconds > 60:
+            break
+        time.sleep(seconds)
     if not resp.ok:
         raise HyperSyncError(f"HyperSync {chain} -> HTTP {resp.status_code}: {resp.text[:400]}")
     data: dict[str, Any] = resp.json()
