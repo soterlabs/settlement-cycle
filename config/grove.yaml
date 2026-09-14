@@ -941,6 +941,7 @@ venues:
   # JTRSY venue at the PAU ALM (add a Cat E venue with the E9 Chronicle
   # oracle when that happens).
   - id: E41
+    event_source: hypersync
     chain: ethereum
     label: 'JTRSY Basin escrow — USDS pending subscription (Diamond PAU)'
     pricing_category: A
