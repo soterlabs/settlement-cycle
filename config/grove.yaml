@@ -803,6 +803,7 @@ venues:
       decimals: 6
 
   - id: E27
+    event_source: hypersync
     chain: base
     label: 'USDC raw on Base (ALM idle)'
     pricing_category: A
