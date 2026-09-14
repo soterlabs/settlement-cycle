@@ -9,7 +9,6 @@ __pycache__
 cache/
 .cache/
 settle-dr-dune/
-envio-indexer/
 tests/
 *.xlsx
 *.pdf

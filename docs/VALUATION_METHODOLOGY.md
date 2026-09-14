@@ -196,7 +196,7 @@ FROM balance;
 
 ### 1.a Why the par-stable shortcut, even though oracles exist
 
-`docs/pricing/allocation_pricing.csv` lists Chainlink + Chronicle (+ Pyth /
+`archive/docs/pricing/allocation_pricing.csv` lists Chainlink + Chronicle (+ Pyth /
 Redstone fallback) feeds for every token in `PAR_STABLE_SYMBOLS`
 (`USDC, USDS, DAI, USDT, PYUSD, RLUSD, AUSD, USDe`). The pipeline does not
 read those feeds; every par-stable is hardcoded to `$1.00`. Three reasons:

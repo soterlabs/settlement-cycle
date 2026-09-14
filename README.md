@@ -48,13 +48,11 @@ settlement-cycle/
 │   ├── ASSET_CATALOG.md
 │   ├── VALUATION_METHODOLOGY.md
 │   ├── ALM_COUNTERPARTIES.md
-│   ├── valuation_poc/         ← Dune↔Python POC + open questions
 │   ├── obex/                  ← OBEX README + monthly findings (reconciliation notes)
 │   ├── grove/                 ← Phase-2 prime context (PRD, README, QUESTIONS)
 │   ├── tmf/                   ← Treasury Management Function report — method + open questions
-│   └── {keel,prysm,skybase,spark}/   ← Phase-3+ prime READMEs
-├── reference/
-│   └── obex_monthly_pnl.sql   ← historical reference implementation
+│   └── {keel,skybase,spark}/   ← Phase-3+ prime READMEs
+├── archive/                   ← historical preparation, references, and pricing inputs
 ├── settlements/<prime>/<month>/  ← generated artifacts (committed to git)
 ├── settlements/tmf/<month>/      ← TMF waterfall + Smart Burn Engine report (scripts/run_tmf_2026.py)
 ├── settlements/tmf/data/         ← SBE full-history dataset for msc-dashboard (scripts/build_tmf_history.py)
@@ -122,7 +120,7 @@ now move like any other change in the repo — in a reviewed commit.
 ## Status
 
 Phase 1 complete. The OBEX 2026-03 Dune query
-[`agents/obex/queries/obex_monthly_pnl.sql`](reference/obex_monthly_pnl.sql)
+[`agents/obex/queries/obex_monthly_pnl.sql`](archive/reference/obex_monthly_pnl.sql)
 was the original reconciliation oracle and matched to within 0.01%. Its e2e
 test was retired on 2026-09-01: the 2026-09-01 rate-methodology change (BR is
 nominal, see `docs/RULES.md` Rule 1) means the pipeline no longer matches a

@@ -59,7 +59,7 @@ settlements/**/provenance.json
 .secrets/
 
 # DR workbook snapshots — canonical sources are the public URLs in
-# preparation/scripts/dr_aggregate.py (--local uses these if present)
-preparation/dr_payouts.xlsx
-preparation/dr_results.xlsx
+# archive/preparation/scripts/dr_aggregate.py (--local uses these if present)
+archive/preparation/dr_payouts.xlsx
+archive/preparation/dr_results.xlsx
 node_modules/

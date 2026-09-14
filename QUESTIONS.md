@@ -1350,7 +1350,7 @@ it to `debt + Σ savings_v2_liabilities` once spX vaults grow?
 #### B5. STAC (E7) NAV — which oracle is canonical?
 Our snapshot reads STAC at $1.0172 via Chronicle (`0x9d77…58b`,
 reflecting real CLO yield accrual). Your `/allocations/?star=grove`
-reports STAC at $1.00 flat. Per `docs/pricing/allocation_pricing.csv`
+reports STAC at $1.00 flat. Per `archive/docs/pricing/allocation_pricing.csv`
 STAC has Chronicle as Oracle1 and Redstone (`0xedc6…d7d`) as Oracle2.
 Are you using Redstone, const_one, or a different feed? If const_one is
 canonical, we should switch our NAV path to match (currently whitelisted

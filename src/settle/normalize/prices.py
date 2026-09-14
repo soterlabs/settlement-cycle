@@ -38,7 +38,7 @@ _log = logging.getLogger(__name__)
 # Tokens priced at exactly $1.00 — explicitly accepted simplification.
 #
 # Even though every entry below has a Chainlink / Chronicle / Pyth / Redstone
-# oracle (per docs/pricing/allocation_pricing.csv "CORE ASSETS" section), the
+# oracle (per archive/docs/pricing/allocation_pricing.csv "CORE ASSETS" section), the
 # pipeline does NOT read those oracles. Reasons:
 #
 # 1. Every token here trades within ±0.5% of $1.00 over the periods MSC settles.
