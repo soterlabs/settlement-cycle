@@ -134,6 +134,7 @@ venues:
       decimals: 6
 
   - id: S4
+    event_source: hypersync
     chain: ethereum
     label: 'Spark DAI (SparkLend spToken)'
     pricing_category: C
