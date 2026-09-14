@@ -832,6 +832,7 @@ venues:
   # ``rpc-mainnet.monadinfra.com`` works as of 2026-05-14. The drpc free
   # public endpoint blocks ``eth_call`` entirely and won't work here.
   - id: E25
+    event_source: hypersync
     chain: monad
     label: 'Grove x Steakhouse High Yield AUSD (Monad, Morpho 4626)'
     pricing_category: B
