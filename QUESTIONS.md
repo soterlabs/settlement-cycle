@@ -10,6 +10,10 @@ and ordered by priority within each group:
 - **P3** — future-proofing, operational, or dormant (venue holds $0)
 
 Question IDs (G1, S6, B4, …) are stable and cross-referenced from `PRD.md §17`.
+This file owns a question's **lifecycle** as well as its content: resolving one
+means moving its entry down to `## Resolved` with a compact pointer, in the same
+commit that records the takeaway in `PRD.md §17.13`. (Until 2026-09 lifecycle
+lived in a GitHub-issues mirror; that mirror is retired.)
 Last consolidated: 2026-05-06. Pre-Q-ID resolutions (subsidised rate,
 PSM3 daily sampling, hardcoded EoM blocks, Foundation USDS, GACLO-1
 valuation, ~$1.13M Sky-Share residual) are tracked under `## Resolved`

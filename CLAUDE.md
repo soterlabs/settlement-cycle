@@ -5,25 +5,21 @@ it short and load-bearing.
 
 ## Open-questions architecture
 
-Two artifacts, both in this repo:
-
-| Artifact | Owns | Edited by |
-|---|---|---|
-| `QUESTIONS.md` (repo root) | question CONTENT (title, body, counterparty, priority) | Claude / humans, in markdown |
-| GitHub issues in `soterlabs/settlement-cycle` | LIFECYCLE (open ↔ closed) and triage discussion (comments) | humans, in the GitHub UI |
-
-Reconciler: `scripts/sync_issues.sh`.
-
-- `--check` (default) — read-only, exits 1 on drift
-- `--apply` — reconciles both directions
+**One artifact: `QUESTIONS.md` at the repo root.** It owns both the content
+of a question and its lifecycle. There is no GitHub-issues mirror — it was
+retired in 2026-09 along with its reconciler (`scripts/sync_issues.sh`), so
+a question's state is whatever the markdown says, reviewed in a PR like any
+other change.
 
 ## Editing invariants
 
-1. **Question content goes in `QUESTIONS.md`, never in the issue UI.**
-2. **Lifecycle changes happen on GitHub, not in markdown.** The sync
-   script moves resolved entries to `## Resolved`; don't do it manually.
+1. **Everything about a question lives in `QUESTIONS.md`.** Content and
+   lifecycle both.
+2. **Resolving = moving the entry** from its priority subsection to
+   `## Resolved`, in the same commit that records the takeaway.
 3. **Never renumber Q-IDs.** Reorder by moving an entry between
-   priority subsections; the ID stays.
+   priority subsections; the ID stays. IDs are cross-referenced from
+   `PRD.md §17`, so a reused number silently re-points a citation.
 4. **Trivial code edits don't trigger any of this.** Only changes that
    move methodology, accounting numbers, or counterparty-facing claims.
 
@@ -34,22 +30,15 @@ Reconciler: `scripts/sync_issues.sh`.
 1. Edit `QUESTIONS.md`: pick the next free Q-ID for the counterparty
    (`G`/`S`/`B` + next free number); place under the right priority
    subsection.
-2. Run `./scripts/sync_issues.sh --apply` to create the GitHub issue.
-3. Stage + commit.
+2. Stage + commit.
 
-**Flow B — a question was resolved (human closed the GitHub issue):**
+**Flow B — a question was resolved:**
 
-1. Run `./scripts/sync_issues.sh --apply`. The script moves the entry
-   from its open section to `## Resolved` in `QUESTIONS.md`.
+1. Move its entry to `## Resolved` in `QUESTIONS.md`, leaving a compact
+   pointer (one or two lines saying what the answer was).
 2. Add the methodology takeaway to **`PRD.md §17.13`** (review-acks).
-3. Stage + commit.
-
-The sync-apply output prints a TODO line listing Q-IDs that just
-resolved — treat that as a prompt to update `PRD.md §17.13`.
-
-## Issue references in PRs
-
-Same-repo references: `closes #17`, `fixes #6`. Auto-close on merge.
+3. Stage + commit — both edits together, so the resolution and its
+   consequence are one reviewable change.
 
 ## Question priority scheme
 

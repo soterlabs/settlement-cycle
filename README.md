@@ -40,10 +40,8 @@ settlement-cycle/
 ├── PRD.md                     ← design doc — read this first
 ├── README.md                  ← this file
 ├── CLAUDE.md                  ← collaboration notes auto-loaded by Claude Code
-├── QUESTIONS.md               ← open questions (mirrored 1:1 to GitHub Issues)
+├── QUESTIONS.md               ← open questions (the single source of truth)
 ├── pyproject.toml
-├── scripts/
-│   └── sync_issues.sh         ← reconcile QUESTIONS.md ↔ GitHub Issues
 ├── docs/                      ← design + reference docs
 │   ├── RULES.md
 │   ├── SETTLEMENT_ARCHITECTURE.md
@@ -95,19 +93,14 @@ mypy src                        # types
 ### Open questions
 
 Open questions on the pipeline (one per Spark / Grove / BA Labs ask)
-are tracked in [`QUESTIONS.md`](QUESTIONS.md) at the repo root, mirrored
-1:1 into GitHub Issues on this repo. `QUESTIONS.md` owns content;
-issues own lifecycle (open ↔ closed) and triage discussion.
+are tracked in [`QUESTIONS.md`](QUESTIONS.md) at the repo root. That file
+owns both the content of a question and its lifecycle.
 
-#### Tooling
-
-- [`gh` CLI](https://cli.github.com/) authenticated to an account with
-  write access to `soterlabs/settlement-cycle`:
-
-  ```bash
-  gh auth login
-  gh auth status
-  ```
+Until 2026-09 it was mirrored 1:1 into GitHub Issues, reconciled by a
+`scripts/sync_issues.sh`. The mirror is retired: it made every question
+edit a two-system operation that could drift, and the issues carried no
+discussion the markdown and the PR history did not already hold. Questions
+now move like any other change in the repo — in a reviewed commit.
 
 #### The two flows
 
@@ -116,49 +109,15 @@ issues own lifecycle (open ↔ closed) and triage discussion.
 1. Edit `QUESTIONS.md`. Pick the next free Q-ID for the counterparty
    (`G`/`S`/`B` + next number); place under the correct priority
    subsection (P0–P3).
-2. Run `./scripts/sync_issues.sh --apply`. This creates the GitHub
-   issue with the right counterparty + priority labels.
-3. Stage and commit.
+2. Stage and commit.
 
 **Flow B — resolving an existing question:**
 
-1. Comment on the issue with a resolution summary and close it
-   (in the GitHub UI). Conversation history stays on the issue.
-2. Run `./scripts/sync_issues.sh --apply`. The entry moves from its
-   open section to `## Resolved` in `QUESTIONS.md`.
-3. Add the methodology takeaway to `PRD.md §17.13`.
-4. Stage and commit.
-
-#### Pre-commit hook (recommended)
-
-`scripts/sync_issues.sh --check` reports drift and exits non-zero if
-any. Wire it into a `pre-commit` hook so a commit that drifts from
-the live issues gets blocked:
-
-```sh
-mkdir -p .git/hooks
-cat > .git/hooks/pre-commit <<'EOF'
-#!/usr/bin/env sh
-# Skip when QUESTIONS.md isn't in the staged changes — saves a gh API
-# roundtrip on every unrelated commit.
-if ! git diff --cached --name-only | grep -q '^QUESTIONS\.md$'; then
-  exit 0
-fi
-exec "$(git rev-parse --show-toplevel)/scripts/sync_issues.sh" --check --quiet
-EOF
-chmod +x .git/hooks/pre-commit
-```
-
-Behaviour:
-
-- Staged change doesn't touch `QUESTIONS.md` → hook is a no-op.
-- Staged change touches `QUESTIONS.md` and state is consistent with
-  GitHub → commit proceeds.
-- Drift detected → commit aborts; the script prints the suggested
-  `--apply` invocation. Run it, stage the modified files, re-commit.
-
-The hook is per-clone (`.git/hooks/` is not tracked). Install once
-after cloning.
+1. Move the entry from its priority subsection to `## Resolved` in
+   `QUESTIONS.md`, leaving a compact pointer to what the answer was.
+2. Add the methodology takeaway to `PRD.md §17.13`.
+3. Stage and commit — both edits together, so the resolution and its
+   consequence land as one reviewable change.
 
 ## Status
 
