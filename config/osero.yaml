@@ -69,6 +69,7 @@ venues:
   # Raw USDS at the Diamond PAU ALMProxy — idle between draw and deploy
   # ($0 at 2026-07-31 EoD; the Jul-24 draw was deployed in the same tx).
   - id: O2
+    event_source: hypersync
     chain: ethereum
     label: 'USDS raw (Diamond PAU ALM idle)'
     pricing_category: A
