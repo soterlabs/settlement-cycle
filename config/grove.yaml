@@ -523,6 +523,7 @@ venues:
       decimals: 6
 
   - id: E32
+    event_source: hypersync
     chain: ethereum
     label: 'USDC raw (alt holder idle)'
     pricing_category: A
