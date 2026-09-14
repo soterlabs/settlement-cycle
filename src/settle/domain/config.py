@@ -266,12 +266,15 @@ def load_prime(config_path: Path) -> Prime:
             )
         univ4_token_ids = tuple(int(t) for t in v.get("univ4_token_ids", []))
 
+        if v.get("event_source", "dune") not in {"dune", "hypersync"}:
+            raise ValueError(f"venue {v['id']}: invalid event_source")
         venues.append(
             Venue(
                 id=v["id"],
                 chain=chain,
                 token=token,
                 pricing_category=PricingCategory(v["pricing_category"]),
+                event_source=v.get("event_source", "dune"),
                 underlying=underlying,
                 label=v.get("label", ""),
                 nav_oracle=nav_oracle,

@@ -966,7 +966,7 @@ def _atoken_external_revenue_usd(prime: Prime, venue: Venue, period) -> Decimal:
     senders = prime.external_alm_sources.get(venue.chain, [])
     if not senders:
         return _Decimal("0")
-    if not _os.environ.get("DUNE_API_KEY"):
+    if venue.event_source != "hypersync" and not _os.environ.get("DUNE_API_KEY"):
         _logging.getLogger(__name__).warning(
             "_atoken_external_revenue_usd: DUNE_API_KEY unset — skipping external "
             "rewards for venue %s (would have queried %d sender(s)).",
@@ -1038,6 +1038,13 @@ def _merkl_claims_revenue_usd(
     """
     from pathlib import Path as _Path
     from decimal import Decimal as _Decimal
+
+    if venue.event_source == "hypersync":
+        from .sources.hypersync_venue_events import merkl_raw
+        raw = merkl_raw(venue.chain.value, distributor.value, venue.token.address.value,
+                        (venue.holder_override or prime.alm[venue.chain]).value,
+                        period.start, period.end, period.pin_blocks[venue.chain])
+        return _Decimal(raw) / _Decimal(10 ** venue.token.decimals)
 
     _SQL_BY_CHAIN = {Chain.ETHEREUM: "merkl_claims_ethereum.sql"}
     sql_name = _SQL_BY_CHAIN.get(venue.chain)
@@ -1129,6 +1136,13 @@ def _atoken_transfer_revenue_usd(
     """
     from pathlib import Path as _Path
     from decimal import Decimal as _Decimal
+
+    if venue.event_source == "hypersync":
+        from .sources.hypersync_venue_events import transfer_raw
+        raw = transfer_raw(venue.chain.value, venue.token.address.value, sender.value,
+                           (venue.holder_override or prime.alm[venue.chain]).value,
+                           period.start, period.end, period.pin_blocks[venue.chain])
+        return _Decimal(raw) / _Decimal(10 ** venue.token.decimals)
 
     queries_dir = _Path(__file__).resolve().parent.parent / "queries"
     # Same Dune-degradation guard as ``_merkl_claims_revenue_usd``: a 402 or
@@ -2952,15 +2966,20 @@ def _erc4626_event_inflow_timeseries(
     queries_dir = _Path(__file__).resolve().parent.parent / "queries"
 
     try:
-        df = execute_query(
-            queries_dir / "erc4626_centrifuge_flow.sql",
-            params={
-                "vault":      venue.centrifuge_vault.value,
-                "holder":     holder.value,
-                "start_date": str(prime.start_date),
-            },
-            pin_block=pin_block,
-        )
+        if venue.event_source == "hypersync":
+            from .sources.hypersync_venue_events import centrifuge_flows
+            df = centrifuge_flows(venue.chain.value, venue.centrifuge_vault.value,
+                                  holder.value, prime.start_date, pin_block)
+        else:
+            df = execute_query(
+                queries_dir / "erc4626_centrifuge_flow.sql",
+                params={
+                    "vault":      venue.centrifuge_vault.value,
+                    "holder":     holder.value,
+                    "start_date": str(prime.start_date),
+                },
+                pin_block=pin_block,
+            )
     except DuneError as exc:
         _logging.getLogger(__name__).warning(
             "_erc4626_event_inflow_timeseries: Dune query failed for venue %s"

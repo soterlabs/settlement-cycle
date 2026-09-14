@@ -208,6 +208,7 @@ class Venue:
     chain: Chain
     token: Token                         # the venue token (aToken, vault share, LP, raw stable)
     pricing_category: PricingCategory
+    event_source: str = "dune"          # per-venue event migration; explicit fixtures still win
     underlying: Token | None = None      # for B/C/D/F where price chains via underlying
     label: str = ""                      # human-readable (e.g. 'Maple syrupUSDC')
     nav_oracle: NavOracle | None = None  # Category E only — see NavOracle

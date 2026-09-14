@@ -2477,10 +2477,14 @@ def compute_monthly_pnl(
     # bypassing the standard SoM/EoM formula and the sky-revenue path.
     # Must run before the main loop so skipped venues (e.g. E21 GACLO-1,
     # which has no reliable NAV oracle) are still included in the output.
+    from ..normalize.venue_sources import for_venue
+    _shared_sources = sources
     _cash_dist_balance_src = (
         sources.balance if sources.balance is not None else get_balance_source()
     )
     for venue in prime.venues:
+        sources = for_venue(_shared_sources, venue)
+        _cash_dist_balance_src = sources.balance or get_balance_source()
         if not venue.cash_distributions:
             continue
         _log.info(
@@ -2622,6 +2626,7 @@ def compute_monthly_pnl(
     # sky_rev (see step 4 below).
     _susds_spread_reimbs: dict[str, Decimal] = {}
     for venue in prime.venues:
+        sources = for_venue(_shared_sources, venue)
         if venue.cash_distributions:
             # Already handled by the cash-distribution pass above — skip here
             # to avoid double-counting. A venue with cash_distributions should
@@ -3965,6 +3970,7 @@ def compute_monthly_pnl(
     _venue_order = {v.id: i for i, v in enumerate(prime.venues)}
     venue_inputs.sort(key=lambda vi: _venue_order.get(vi.venue.id, 9999))
 
+    sources = _shared_sources
     _log.info("step 4: computing revenue components...")
     # 4. Compute revenue components.
     if sky_only:
