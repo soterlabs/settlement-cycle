@@ -1148,3 +1148,4 @@ external_alm_sources:
 # Debt source verified against all Dune daily frob/grab totals through Aug 2026.
 sources:
   debt: hypersync
+  balance: hypersync
