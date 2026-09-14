@@ -46,3 +46,13 @@ def test_material_difference_cannot_use_precision_exception(monkeypatch):
                 raw_sql="oracle.sql", raw_params={}, pin_block=100, decimals=6)
     assert not check["matched"]
     assert "legacy_float_comparison" not in check
+
+
+def test_full_settlement_comparison_detects_hidden_component_difference():
+    from scripts.compare_hypersync_settlement import differences
+
+    baseline = {"total": Decimal("100"), "venues": [{"revenue": Decimal("40")}, {"revenue": Decimal("60")}]}
+    changed = {"total": Decimal("100"), "venues": [{"revenue": Decimal("41")}, {"revenue": Decimal("59")}]}
+    assert [item["path"] for item in differences(baseline, changed)] == [
+        "result.venues[0].revenue", "result.venues[1].revenue",
+    ]
