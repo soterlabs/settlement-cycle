@@ -598,6 +598,7 @@ venues:
       sde_coin: '0xdac17f958d2ee523a2206206994597c13d831ec7'  # USDT — SDE asset value (par)
 
   - id: S25
+    event_source: hypersync
     chain: ethereum
     label: 'Spark.fi PYUSD Reserve Curve (PYUSD/USDS)'
     pricing_category: F
