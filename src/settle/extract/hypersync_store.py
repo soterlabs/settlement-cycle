@@ -146,6 +146,26 @@ def fetch_logs(
     return _read_rows(conn, stream, from_block, to_block)
 
 
+def read_covered_logs(chain: str, selections: list[dict[str, Any]],
+                      from_block: int, to_block: int) -> list[hypersync.LogRow] | None:
+    """Read a fully covered finalized selection, or None without a live fetch.
+
+    Enables a narrower consumer to reuse a known-complete superset. Coverage
+    is mandatory: stored rows alone cannot prove that a range has no gaps.
+    """
+    if os.environ.get("HYPERSYNC_NO_STORE") == "1":
+        return None
+    conn = postgres_store._get_conn()
+    if conn is None:
+        return None
+    _ensure_schema_once(conn)
+    stream = _stream_key(chain, selections)
+    coverage = _get_coverage(conn, stream)
+    if coverage is None or not coverage[0] <= from_block <= to_block <= coverage[1]:
+        return None
+    return _read_rows(conn, stream, from_block, to_block)
+
+
 # --------------------------------------------------------------------------
 # Postgres helpers (thin; reuse postgres_store's connection + graceful state).
 # --------------------------------------------------------------------------

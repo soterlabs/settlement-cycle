@@ -126,3 +126,25 @@ def test_inflow_by_counterparty_ignores_self_transfer():
     df = _src(rows).inflow_by_counterparty("ethereum", _TOKEN, _H, date(2025, 11, 1), 25_000_000)
     by_cp = {row.counterparty: row.signed_amount for row in df.itertuples()}
     assert by_cp == {_A: Decimal("100")}                    # holder not a counterparty
+
+
+def test_directed_flow_reuses_complete_holder_logs_without_live_query():
+    rows = [_xfer(10, 0, _ts(2025, 11, 18), _A, _H, 40 * 10**_DEC),
+            _xfer(11, 0, _ts(2025, 11, 18), _B, _H, 50 * 10**_DEC),
+            _xfer(12, 0, _ts(2025, 11, 18), _H, _A, 30 * 10**_DEC)]
+    def covered(chain, selections, start, end):
+        return rows if selections[0]["topics"][1] == [_topic(_H)] else None
+    def no_live(*args):
+        raise AssertionError("A fully covered superset should need no new scan")
+    source = HyperSyncBalanceSource(fetch_logs=no_live, covered_logs=covered,
+                resolve_start_block=lambda *a: 0, decimals_of=lambda *a: _DEC)
+    result = source.directed_inflow_timeseries("base", _TOKEN, _A, _H, date(2025, 11, 1), 100)
+    assert result["cum_inflow"].tolist() == [Decimal(40)]
+
+
+def test_empty_covered_range_is_not_a_cache_miss():
+    def no_live(*args):
+        raise AssertionError("An empty fully covered stream proves zero events")
+    source = HyperSyncBalanceSource(fetch_logs=no_live, covered_logs=lambda *a: [],
+                resolve_start_block=lambda *a: 0, decimals_of=lambda *a: _DEC)
+    assert source.directed_inflow_timeseries("base", _TOKEN, _A, _H, date(2025, 11, 1), 100).empty

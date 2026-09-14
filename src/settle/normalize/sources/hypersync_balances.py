@@ -75,10 +75,14 @@ class HyperSyncBalanceSource:
         fetch_logs: Callable[..., list[Any]] = hypersync_store.fetch_logs,
         resolve_start_block: Callable[[str, date], int] = _default_start_block,
         decimals_of: Callable[[str, bytes, int], int] = _default_decimals,
+        covered_logs: Callable[..., list[Any] | None] | None = None,
     ) -> None:
         self._fetch = fetch_logs
         self._resolve_start = resolve_start_block
         self._decimals_of = decimals_of
+        self._covered = covered_logs or (
+            hypersync_store.read_covered_logs if fetch_logs is hypersync_store.fetch_logs else None
+        )
 
     # -- IBalanceSource -----------------------------------------------------
 
@@ -111,7 +115,21 @@ class HyperSyncBalanceSource:
             "topics": [[_TRANSFER_T0], [_addr_topic(from_addr)], [_addr_topic(to_addr)]],
         }]
         daily: dict[date, int] = {}
-        for x in self._fetch_range(chain, sel, start, pin_block):
+        rows = None
+        if self._covered is not None:
+            from_block = self._resolve_start(chain, start)
+            for holder in dict.fromkeys((from_addr, to_addr)):
+                if holder == bytes(20):
+                    continue
+                cached = self._covered(chain, _touching_selections(token, holder), from_block, pin_block)
+                if cached is not None:
+                    rows = self._decode_rows(cached, start)
+                    break
+        if rows is None:
+            rows = self._fetch_range(chain, sel, start, pin_block)
+        for x in rows:
+            if x["from"] != _addr_topic(from_addr) or x["to"] != _addr_topic(to_addr):
+                continue
             daily[x["date"]] = daily.get(x["date"], 0) + x["value"]
         if not daily:
             return pd.DataFrame(columns=cols)
@@ -158,19 +176,17 @@ class HyperSyncBalanceSource:
         self, chain: str, token: bytes, holder: bytes, start: date, pin_block: int
     ) -> list[dict[str, Any]]:
         """All Transfer logs of ``token`` where ``holder`` is from OR to."""
-        ht = _addr_topic(holder)
-        tok = "0x" + bytes(token).hex()
-        sel = [
-            {"address": [tok], "topics": [[_TRANSFER_T0], [ht]]},        # from == holder
-            {"address": [tok], "topics": [[_TRANSFER_T0], [], [ht]]},    # to == holder
-        ]
-        return self._fetch_range(chain, sel, start, pin_block)
+        return self._fetch_range(chain, _touching_selections(token, holder), start, pin_block)
 
     def _fetch_range(
         self, chain: str, selections: list[dict[str, Any]], start: date, pin_block: int
     ) -> list[dict[str, Any]]:
         from_block = self._resolve_start(chain, start)
         rows = self._fetch(chain, selections, from_block, pin_block)
+        return self._decode_rows(rows, start)
+
+    @staticmethod
+    def _decode_rows(rows: list[Any], start: date) -> list[dict[str, Any]]:
         seen: set[tuple[int, int]] = set()
         out: list[dict[str, Any]] = []
         for r in rows:
@@ -186,6 +202,15 @@ class HyperSyncBalanceSource:
                 "value": int(r.data, 16),
             })
         return out
+
+
+def _touching_selections(token: bytes, holder: bytes) -> list[dict[str, Any]]:
+    ht = _addr_topic(holder)
+    tok = "0x" + bytes(token).hex()
+    return [
+        {"address": [tok], "topics": [[_TRANSFER_T0], [ht]]},
+        {"address": [tok], "topics": [[_TRANSFER_T0], [], [ht]]},
+    ]
 
 
 def _to_cumulative_frame(
