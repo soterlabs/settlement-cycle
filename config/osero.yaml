@@ -77,6 +77,7 @@ venues:
       decimals: 18
 
 sources:
+  block_resolver: hypersync
   debt: hypersync
   balance: hypersync
   position_balance: hypersync

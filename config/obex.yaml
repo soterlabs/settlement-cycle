@@ -36,6 +36,7 @@ venues:
 # balances come from Envio HyperSync (raw logs, reorg-safe store) instead of
 # Dune. Requires ENVIO_API_TOKEN. Prices/oracles still use RPC.
 sources:
+  block_resolver: hypersync
   debt: hypersync
   balance: hypersync
   position_balance: hypersync
