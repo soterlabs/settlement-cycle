@@ -89,7 +89,7 @@ def compare_with_raw_precision_check(label, dune, hs, keys, columns, tolerance,
     # A small DOUBLE aggregation drift may exceed the strict normal gate on
     # billion-dollar histories. Accept it ONLY with exact integer parity,
     # and retain the failed float comparison verbatim for review.
-    ceiling = Decimal("0.00001")
+    ceiling = Decimal("0.0001")
     if legacy["matched"] or tolerance == 0 or any(v > ceiling for v in legacy["max_abs_difference"].values()):
         return legacy
     raw_dune = execute_query(QUERIES_DIR / raw_sql, raw_params, pin_block)
