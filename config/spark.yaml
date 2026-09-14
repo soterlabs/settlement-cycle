@@ -169,6 +169,7 @@ venues:
   # Ethereum — Aave V3 aTokens (Cat C)
   # ─────────────────────────────────────────────────────────────
   - id: S6
+    event_source: hypersync
     chain: ethereum
     label: 'Aave Ethereum Lido USDS (aToken)'
     pricing_category: C
