@@ -284,10 +284,9 @@ def _returnable_head(chain: str) -> tuple[int, int]:
 def find_block_at_or_before(chain: str, target_ts: int) -> int:
     """Highest block on ``chain`` whose timestamp <= ``target_ts`` (unix, UTC).
 
-    Binary search over HyperSync block timestamps — mirrors
-    ``extract.rpc._find_block_at_or_before_rpc`` exactly, so the result is
-    identical to the RPC resolver, but every probe hits HyperSync (fast, cheap,
-    off the archive RPC — and works on chains whose RPC is lagging, e.g. monad).
+    Bounded search over HyperSync block timestamps, using timestamp-guided
+    probes with a periodic bisection fallback. It resolves the same exact
+    boundary as the RPC resolver without archive RPC timestamp requests.
 
     Caching: a resolution where the archive HEAD is at/behind the target is a
     provisional head-clamp — it changes as the archive catches up, and durably
@@ -317,18 +316,30 @@ def _find_block_at_or_before_cached(chain: str, target_ts: int) -> int:
     high, head_ts = _returnable_head(chain)
     if head_ts <= target_ts:
         raise _ProvisionalHead(high, head_ts)
-    if block_timestamp(chain, 0) > target_ts:
+    low_ts = block_timestamp(chain, 0)
+    if low_ts > target_ts:
         raise HyperSyncError(
             f"find_block_at_or_before({chain}, ts={target_ts}): target precedes "
             f"genesis (block 0 ts = {block_timestamp(chain, 0)})."
         )
-    low = 0
-    while low < high:
-        mid = (low + high + 1) // 2
-        if block_timestamp(chain, mid) <= target_ts:
-            low = mid
+    low, high_ts, iteration = 0, head_ts, 0
+    # Maintain timestamp(low) <= target < timestamp(high). Timestamp-guided
+    # probes converge quickly on regular chains; every fourth probe bisects
+    # the interval so long stalls or changing block times cannot make this
+    # an unbounded linear search. The estimate NEVER decides the answer:
+    # only observed timestamps move the bounds, until they are adjacent.
+    while low + 1 < high:
+        iteration += 1
+        if iteration % 4 == 0:
+            mid = (low + high) // 2
         else:
-            high = mid - 1
+            estimate = low + (target_ts - low_ts) * (high - low) // (high_ts - low_ts)
+            mid = max(low + 1, min(high - 1, estimate))
+        mid_ts = block_timestamp(chain, mid)
+        if mid_ts <= target_ts:
+            low, low_ts = mid, mid_ts
+        else:
+            high, high_ts = mid, mid_ts
     return low
 
 
