@@ -779,6 +779,7 @@ venues:
   # ─────────────────────────────────────────────────────────────
 
   - id: E24
+    event_source: hypersync
     chain: ethereum
     label: 'Steakhouse High Yield PYUSD (Morpho 4626)'
     pricing_category: B
