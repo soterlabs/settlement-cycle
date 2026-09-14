@@ -184,6 +184,7 @@ venues:
       decimals: 18
 
   - id: S7
+    event_source: hypersync
     chain: ethereum
     label: 'Aave Ethereum USDS (aToken)'
     pricing_category: C

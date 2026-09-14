@@ -1,0 +1,85 @@
+{
+  "prime": "spark",
+  "venue": "S7",
+  "month": "2026-08",
+  "start": "2024-11-18",
+  "pins": {
+    "ethereum/2026-08-31": 25878704
+  },
+  "matched": true,
+  "checks": [
+    {
+      "input": "transfer_timeseries.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 19,
+      "hypersync_rows": 19,
+      "max_abs_difference": {
+        "daily_net": "2.761766924E-9",
+        "cum_balance": "6.2912151086E-9"
+      },
+      "dune_sha256": "b053c3c082ddb29a53d59a307a5a3f37d695c33a34422b8e65b504d0f6652ffe",
+      "hypersync_sha256": "b486cafdeb960600b28db75a76cdb645ad152497e08ddc6162d4515271471e19",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "mint:venue_inflow.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 15,
+      "hypersync_rows": 15,
+      "max_abs_difference": {
+        "daily_inflow": "2.321259372E-9",
+        "cum_inflow": "1.8361907681E-8"
+      },
+      "dune_sha256": "9eab45b2c97b975258b71ab5326cc366fa3550cdd8790385de0f307c7237b7bb",
+      "hypersync_sha256": "f3d8b4a8b5ef4d3f902671fab95c6f39c1ceffa69c87f337113a6f5531b6649e",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "burn:venue_inflow.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 17,
+      "hypersync_rows": 17,
+      "max_abs_difference": {
+        "daily_inflow": "2.761766924E-9",
+        "cum_inflow": "1.4935394671E-8"
+      },
+      "dune_sha256": "c1af03fcfd22d88dfaa94e762b62909cf22f1e179e41b81f5105d8d897e0a27a",
+      "hypersync_sha256": "8998b43cd4323f824c24333aefdc1d63fa4afbc45a892a490f4bcec91a20209d",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "atoken_external_inflow.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 1,
+      "hypersync_rows": 1,
+      "max_abs_difference": {
+        "total_amount": "0"
+      },
+      "dune_sha256": "ab99b84c1e710a0900c737acbaa638b2619e44d2a0962abb7d5344e327a3d1fc",
+      "hypersync_sha256": "ab99b84c1e710a0900c737acbaa638b2619e44d2a0962abb7d5344e327a3d1fc",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "atoken_external_inflow.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 1,
+      "hypersync_rows": 1,
+      "max_abs_difference": {
+        "total_amount": "0"
+      },
+      "dune_sha256": "ab99b84c1e710a0900c737acbaa638b2619e44d2a0962abb7d5344e327a3d1fc",
+      "hypersync_sha256": "ab99b84c1e710a0900c737acbaa638b2619e44d2a0962abb7d5344e327a3d1fc",
+      "mismatch_count": 0,
+      "mismatches": []
+    }
+  ]
+}
