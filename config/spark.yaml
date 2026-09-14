@@ -87,6 +87,7 @@ venues:
   # Ethereum — SparkLend spTokens (Cat C, rebasing aToken-style)
   # ─────────────────────────────────────────────────────────────
   - id: S1
+    event_source: hypersync
     chain: ethereum
     label: 'Spark USDS (SparkLend spToken)'
     pricing_category: C
