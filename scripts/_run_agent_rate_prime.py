@@ -1,23 +1,10 @@
-"""Shared 2026 multi-month settlement runner for agent-rate-only primes.
+"""Live monthly settlement runner using configured HyperSync event sources.
 
-Keel and Skybase have no allocator ilk and no supply-side venues — their
-settlement reduces to the agent rate (SSR + 20bps) on subproxy treasury
-holdings. Everything else (debt, sky_revenue, venue revenue) is zero by
-construction (see ``Prime.ilk_bytes32 is None`` handling in
-``normalize/debt.py``).
-
-The monthly loop mirrors ``run_obex_2026.py``: live Dune + RPC sources,
-``compute_monthly_pnl`` per month, artifacts (provenance.json + summary.md
-+ xlsx) under ``settlements/<prime>/<YYYY-MM>/`` via ``write_settlement``.
-
-Required env vars (sourced from ``.env``):
-    DUNE_API_KEY        — Dune key for balance / SSR queries
-    ETH_RPC             — Ethereum RPC endpoint (archival, for past blocks)
-
-Run via the per-prime entry points:
-    set -a; source .env; set +a
-    PYTHONPATH=src python3 scripts/run_keel_2026.py
-    PYTHONPATH=src python3 scripts/run_skybase_2026.py
+Requires ENVIO_API_TOKEN and archival ETH_RPC. DATABASE_URL enables the
+reusable raw-data cache. Dune is retained as a separate comparison oracle;
+these migrated primes do not require a Dune API key to produce settlements.
+RPC still supplies contract state and valuation reads. Writes canonical
+settlement artifacts under settlements/<prime>/<month>/.
 """
 
 from __future__ import annotations
@@ -36,6 +23,7 @@ from settle.compute import Sources, compute_monthly_pnl  # noqa: E402
 from settle.domain import Month  # noqa: E402
 from settle.domain.config import load_prime  # noqa: E402
 from settle.load import write_settlement  # noqa: E402
+from settle.normalize.registry import resolved_source_labels  # noqa: E402
 
 _MONTHS = [Month(2026, m) for m in (1, 2, 3, 4, 5, 6, 7, 8)]
 
@@ -55,12 +43,12 @@ _SOURCES_LIVE = {
     "ssr":               "HyperSyncSSRSource",
     "position_balance":  "HyperSyncPositionBalanceSource",
     "convert_to_assets": "RPCConvertToAssetsSource",
-    "block_resolver":    "DuneBlockResolver (orchestrator-upgraded) + RPC fallback",
+    "block_resolver":    "HyperSyncBlockResolver",
 }
 
 
 def _check_env() -> None:
-    missing = [v for v in ("DUNE_API_KEY", "ETH_RPC") if not os.environ.get(v)]
+    missing = [v for v in ("ENVIO_API_TOKEN", "ETH_RPC") if not os.environ.get(v)]
     if missing:
         print("Missing required env vars:")
         for v in missing:
@@ -82,16 +70,7 @@ def _check_envio_token(*primes) -> None:
 
 
 def _live_sources() -> Sources:
-    """Live sources — every field left ``None`` on purpose.
-
-    ``compute_monthly_pnl`` merges each prime's YAML ``sources:`` overrides
-    into the ``None`` fields (``_sources_from_prime``) and defaults any
-    still-``None`` field to its registry default at each call site. Passing a
-    concrete source here would short-circuit the orchestrator's
-    ``block_resolver`` Dune upgrade and silently drop a prime's per-prime
-    backend pilot for that field (``_sources_from_prime`` fills only ``None``
-    fields, so a non-``None`` ``position_balance`` would make
-    ``position_balance: hypersync`` in a prime YAML a no-op)."""
+    """Resolve live sources from the prime config; preserve caller overrides."""
     return Sources()
 
 
@@ -132,7 +111,7 @@ def run(prime_id: str) -> int:
             from settle.load import enrich_with_dr
             result = enrich_with_dr(result)
             out_dir = _REPO / "settlements" / prime_id / label
-            paths = write_settlement(result, out_dir, sources=_SOURCES_LIVE)
+            paths = write_settlement(result, out_dir, sources=resolved_source_labels(prime, _SOURCES_LIVE))
             artifacts.append((label, paths))
             print(
                 f"{label:<10} "
