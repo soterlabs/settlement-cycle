@@ -47,6 +47,7 @@ subsidy:
 # fleet defaults — this pilot is scoped to debt and the interest charged on
 # it. Same family switch Obex runs (config/obex.yaml).
 sources:
+  block_resolver: hypersync
   debt: hypersync
 
 addresses:
