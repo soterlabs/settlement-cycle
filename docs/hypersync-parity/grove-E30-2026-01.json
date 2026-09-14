@@ -1,0 +1,128 @@
+{
+  "prime": "grove",
+  "venue": "E30",
+  "month": "2026-01",
+  "start": "2025-05-14",
+  "pins": {
+    "ethereum/2026-01-31": 24358292,
+    "ethereum/2025-12-31": 24136052
+  },
+  "matched": true,
+  "checks": [
+    {
+      "input": "transfer_timeseries.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 0,
+      "hypersync_rows": 0,
+      "max_abs_difference": {
+        "daily_net": "0",
+        "cum_balance": "0"
+      },
+      "dune_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "hypersync_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "uniswap_v3 liquidity events",
+      "matched": true,
+      "dune_rows": 5,
+      "hypersync_rows": 5,
+      "dune": [
+        {
+          "block_number": 24228945,
+          "tx_hash": "0xa1d6d69eb0c2a3ffd32722936d9849028dfe34c5f493e491246c97081776a719",
+          "log_index": 43,
+          "token_id": 1156415,
+          "amount0": -15054915512603,
+          "amount1": -9943096583657,
+          "is_increase": false
+        },
+        {
+          "block_number": 24229177,
+          "tx_hash": "0x3aaf7edb85653ed80ae3413999c9518b1f56ec60f725f9449037b0294b15f9bc",
+          "log_index": 72,
+          "token_id": 1156415,
+          "amount0": 9000000000000,
+          "amount1": 9002014811358,
+          "is_increase": true
+        },
+        {
+          "block_number": 24229229,
+          "tx_hash": "0x19bb38c1e4e75ceb74139b40cd3ca2b2f2df7ccb3e4587d61becc0e677ec0387",
+          "log_index": 324,
+          "token_id": 1156415,
+          "amount0": 2200000000000,
+          "amount1": 2200492509443,
+          "is_increase": true
+        },
+        {
+          "block_number": 24234554,
+          "tx_hash": "0xea847de23cc48f3f93647c3dcbbd6258598db8d35c559fba80e92293757b0a66",
+          "log_index": 139,
+          "token_id": 1156415,
+          "amount0": -12828707128922,
+          "amount1": -9573894745128,
+          "is_increase": false
+        },
+        {
+          "block_number": 24234716,
+          "tx_hash": "0x6189bc14bc9a7e35e6f68df1bf09771b8e8434c56f271fe40d34c8980058cf45",
+          "log_index": 100,
+          "token_id": 1156415,
+          "amount0": 12500000000000,
+          "amount1": 12501737584714,
+          "is_increase": true
+        }
+      ],
+      "hypersync": [
+        {
+          "block_number": 24228945,
+          "tx_hash": "0xa1d6d69eb0c2a3ffd32722936d9849028dfe34c5f493e491246c97081776a719",
+          "log_index": 43,
+          "token_id": 1156415,
+          "amount0": -15054915512603,
+          "amount1": -9943096583657,
+          "is_increase": false
+        },
+        {
+          "block_number": 24229177,
+          "tx_hash": "0x3aaf7edb85653ed80ae3413999c9518b1f56ec60f725f9449037b0294b15f9bc",
+          "log_index": 72,
+          "token_id": 1156415,
+          "amount0": 9000000000000,
+          "amount1": 9002014811358,
+          "is_increase": true
+        },
+        {
+          "block_number": 24229229,
+          "tx_hash": "0x19bb38c1e4e75ceb74139b40cd3ca2b2f2df7ccb3e4587d61becc0e677ec0387",
+          "log_index": 324,
+          "token_id": 1156415,
+          "amount0": 2200000000000,
+          "amount1": 2200492509443,
+          "is_increase": true
+        },
+        {
+          "block_number": 24234554,
+          "tx_hash": "0xea847de23cc48f3f93647c3dcbbd6258598db8d35c559fba80e92293757b0a66",
+          "log_index": 139,
+          "token_id": 1156415,
+          "amount0": -12828707128922,
+          "amount1": -9573894745128,
+          "is_increase": false
+        },
+        {
+          "block_number": 24234716,
+          "tx_hash": "0x6189bc14bc9a7e35e6f68df1bf09771b8e8434c56f271fe40d34c8980058cf45",
+          "log_index": 100,
+          "token_id": 1156415,
+          "amount0": 12500000000000,
+          "amount1": 12501737584714,
+          "is_increase": true
+        }
+      ]
+    }
+  ]
+}
