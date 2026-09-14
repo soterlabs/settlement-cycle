@@ -27,6 +27,7 @@ from .sources.hypersync_balances import HyperSyncBalanceSource
 from .sources.hypersync_debt import HyperSyncDebtSource
 from .sources.dune_savings_v2_deployed import DuneSavingsV2DeployedSource
 from .sources.dune_ssr import DuneSSRSource
+from .sources.hypersync_ssr import HyperSyncSSRSource
 from .sources.oracles import (
     ChronicleNavSource,
     ConstNavSource,
@@ -67,6 +68,7 @@ _BALANCE_SOURCES: dict[str, type[IBalanceSource]] = {
 }
 
 _SSR_SOURCES: dict[str, type[ISSRSource]] = {
+    "hypersync": HyperSyncSSRSource,
     "dune": DuneSSRSource,
 }
 
@@ -163,7 +165,7 @@ def get_savings_v2_deployed_source(name: str = "dune") -> ISavingsV2DeployedSour
     return _SAVINGS_V2_DEPLOYED_SOURCES[name]()
 
 
-def get_ssr_source(name: str = "dune") -> ISSRSource:
+def get_ssr_source(name: str = "hypersync") -> ISSRSource:
     if name not in _SSR_SOURCES:
         raise UnknownSourceError(
             f"Unknown SSR source {name!r}. Available: {sorted(_SSR_SOURCES)}"
