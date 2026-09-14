@@ -119,6 +119,7 @@ venues:
       decimals: 18
 
   - id: E2
+    event_source: hypersync
     chain: ethereum
     label: 'Aave Horizon RWA USDC (aToken)'
     pricing_category: C
