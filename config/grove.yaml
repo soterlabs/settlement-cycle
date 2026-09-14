@@ -266,6 +266,7 @@ venues:
       fallback_address: '0xedc6287d3d41b322af600317628d7e226dd3add4'
 
   - id: E8
+    event_source: hypersync
     chain: ethereum
     label: 'Janus Henderson Anemoy AAA CLO (JAAA)'
     pricing_category: E
