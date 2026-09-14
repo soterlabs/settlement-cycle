@@ -667,6 +667,7 @@ venues:
       # config/sky_direct_exposures.yaml in the same change.
 
   - id: S62
+    event_source: hypersync
     chain: ethereum
     label: 'Spark.fi USDT Reserve Uniswap V4 (USDT/USDS)'
     pricing_category: F
