@@ -152,6 +152,7 @@ venues:
     lending_idle_usds: true
 
   - id: S5
+    event_source: hypersync
     chain: ethereum
     label: 'Spark PYUSD (SparkLend spToken)'
     pricing_category: C
