@@ -377,6 +377,7 @@ venues:
   # Category F — LP positions
   # ─────────────────────────────────────────────────────────────
   - id: E11
+    event_source: hypersync
     chain: ethereum
     label: 'Curve AUSD/USDC stableswap LP'
     pricing_category: F
