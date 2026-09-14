@@ -7,7 +7,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import pandas as pd
-from compare_hypersync_venue import compare_frames
+from compare_hypersync_venue import compare_with_raw_precision_check
 
 from settle.domain.config import load_prime_by_id
 from settle.domain.period import Month
@@ -62,7 +62,11 @@ def idle(prime_id, month):
         args = (chain.value, token.address.value, holder.value, prime.start_date, pins[chain.value])
         dune = DuneBalanceSource().cumulative_balance_timeseries(*args)
         hs = HyperSyncBalanceSource(decimals_of=lambda *a, decimals=token.decimals: decimals).cumulative_balance_timeseries(*args)
-        check = compare_frames(label, dune, hs, ["block_date"], ["daily_net", "cum_balance"], Decimal("0.000001"))
+        check = compare_with_raw_precision_check(label, dune, hs, ["block_date"], ["daily_net", "cum_balance"], Decimal("0.000001"),
+                    raw_sql="transfer_timeseries_raw_parity.sql", raw_params={
+                        "chain": chain.value, "token": token.address.value, "holder": holder.value,
+                        "start_date": str(prime.start_date), "min_transfer_raw": 0},
+                    pin_block=pins[chain.value], decimals=token.decimals)
         check.update(chain=chain.value, token="0x" + token.address.value.hex(), holder="0x" + holder.value.hex())
         checks.append(check)
         print(prime_id, chain, label, check["matched"], check["max_abs_difference"], flush=True)

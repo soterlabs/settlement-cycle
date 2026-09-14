@@ -13,7 +13,7 @@ import hashlib
 import json
 from dataclasses import asdict
 from datetime import UTC, datetime, time, timedelta
-from decimal import Decimal
+from decimal import Decimal, localcontext
 from pathlib import Path
 from typing import Any
 
@@ -83,6 +83,31 @@ def compare_frames(label: str, dune: pd.DataFrame, hs: pd.DataFrame,
             "mismatch_count": len(mismatches), "mismatches": mismatches[:10]}
 
 
+def compare_with_raw_precision_check(label, dune, hs, keys, columns, tolerance,
+                                     *, raw_sql, raw_params, pin_block, decimals):
+    legacy = compare_frames(label, dune, hs, keys, columns, tolerance)
+    # A small DOUBLE aggregation drift may exceed the strict normal gate on
+    # billion-dollar histories. Accept it ONLY with exact integer parity,
+    # and retain the failed float comparison verbatim for review.
+    ceiling = Decimal("0.00001")
+    if legacy["matched"] or tolerance == 0 or any(v > ceiling for v in legacy["max_abs_difference"].values()):
+        return legacy
+    raw_dune = execute_query(QUERIES_DIR / raw_sql, raw_params, pin_block)
+    raw_hs = hs.copy()
+    with localcontext() as ctx:
+        ctx.prec = 80
+        for col in columns:
+            values = [Decimal(str(v)) * 10**decimals for v in raw_hs[col]]
+            if any(v != v.to_integral_value() for v in values):
+                raise ValueError("HyperSync amount cannot be represented in raw token units")
+            raw_hs[col] = pd.Series([int(v) for v in values], index=raw_hs.index, dtype=object)
+    exact = compare_frames(raw_sql, raw_dune, raw_hs, keys, columns, Decimal(0))
+    exact["legacy_float_comparison"] = legacy
+    exact["legacy_float_ceiling_token_units"] = str(ceiling)
+    exact["acceptance_basis"] = "Exact raw-integer series parity; legacy DOUBLE drift is below the recorded ceiling."
+    return exact
+
+
 def compare(prime_id: str, venue_id: str, month_label: str, tolerance: Decimal) -> dict:
     prime = load_prime_by_id(prime_id)
     venue = next(v for v in prime.venues if v.id == venue_id)
@@ -100,8 +125,9 @@ def compare(prime_id: str, venue_id: str, month_label: str, tolerance: Decimal) 
     checks = []
     dune = DuneBalanceSource()
     hs = HyperSyncBalanceSource(decimals_of=lambda c, t, b: venue.token.decimals)
-    def frames(label, d, h, keys, columns, tol=tolerance):
-        check = compare_frames(label, d, h, keys, columns, tol)
+    def frames(label, d, h, keys, columns, tol=tolerance, raw=None):
+        check = (compare_with_raw_precision_check(label, d, h, keys, columns, tol, **raw)
+                 if raw else compare_frames(label, d, h, keys, columns, tol))
         checks.append(check)
         print(f"{prime_id}/{venue_id}/{month_label} {label}: {'MATCH' if check['matched'] else 'MISMATCH'} "
               f"rows={check['dune_rows']}/{check['hypersync_rows']} max={check['max_abs_difference']}", flush=True)
@@ -109,17 +135,27 @@ def compare(prime_id: str, venue_id: str, month_label: str, tolerance: Decimal) 
         args = (c, token, frm, to, prime.start_date, pin(c, month.last_day))
         backend = hs if decimals is None else HyperSyncBalanceSource(decimals_of=lambda *a: decimals)
         frames(label, dune.directed_inflow_timeseries(*args), backend.directed_inflow_timeseries(*args),
-               ["block_date"], ["daily_inflow", "cum_inflow"])
+               ["block_date"], ["daily_inflow", "cum_inflow"], raw={
+                   "raw_sql": "venue_inflow_raw_parity.sql", "raw_params": {
+                       "chain": c, "token": token, "from_addr": frm, "to_addr": to,
+                       "start_date": str(prime.start_date)}, "pin_block": args[-1],
+                   "decimals": venue.token.decimals if decimals is None else decimals})
     category = venue.pricing_category.value
     if holder is not None and not venue.skip and category != "S2" and not venue.lp_kind == "uniswap_v4":
         args = (chain, venue.token.address.value, holder.value, prime.start_date, end)
         threshold = venue.min_transfer_amount_usd or Decimal(0)
+        raw_common = {"raw_params": {"chain": chain, "token": venue.token.address.value,
+                                    "holder": holder.value, "start_date": str(prime.start_date)},
+                      "pin_block": end, "decimals": venue.token.decimals}
         frames("transfer_timeseries.sql", dune.cumulative_balance_timeseries(*args, min_transfer_amount=threshold),
                hs.cumulative_balance_timeseries(*args, min_transfer_amount=threshold),
-               ["block_date"], ["daily_net", "cum_balance"])
+               ["block_date"], ["daily_net", "cum_balance"], raw={
+                   **raw_common, "raw_sql": "transfer_timeseries_raw_parity.sql",
+                   "raw_params": {**raw_common["raw_params"], "min_transfer_raw": threshold * 10**venue.token.decimals}})
         if category in {"A", "EOA"}:
             frames("inflow_by_counterparty.sql", dune.inflow_by_counterparty(*args), hs.inflow_by_counterparty(*args),
-                   ["block_date", "counterparty"], ["signed_amount"])
+                   ["block_date", "counterparty"], ["signed_amount"], raw={
+                       **raw_common, "raw_sql": "inflow_by_counterparty_raw_parity.sql"})
         if category in {"B", "C", "D"}:
             directed("mint:venue_inflow.sql", venue.token.address.value, bytes(20), holder.value)
             directed("burn:venue_inflow.sql", venue.token.address.value, holder.value, bytes(20))
