@@ -793,6 +793,7 @@ venues:
       decimals: 6
 
   - id: E26
+    event_source: hypersync
     chain: ethereum
     label: 'PYUSD raw (ALM idle)'
     pricing_category: A
