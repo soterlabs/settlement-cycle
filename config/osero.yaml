@@ -50,6 +50,7 @@ venues:
   # SparkLend USDS — the only funded venue so far (1M deposited 2026-07-24).
   # Same token/params as Spark's S1; rebasing Cat C spToken.
   - id: O1
+    event_source: hypersync
     chain: ethereum
     label: 'Spark USDS (SparkLend spToken)'
     pricing_category: C
