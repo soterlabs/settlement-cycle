@@ -137,7 +137,8 @@ def test_burns_and_parameter_changes(client):
 
 
 def test_runs_endpoint_filters_by_kind(client):
-    assert client.get("/v1/runs", params={"kind": "tmf_history"}).json()["runs"][0]["run_id"] == 7
+    body = client.get("/v1/runs", params={"kind": "tmf_history"}).json()
+    assert body["runs"][0]["run_id"] == 7 and body["count"] == 1
     assert client.get("/v1/runs", params={"kind": "other"}).json()["runs"] == []
 
 
@@ -264,7 +265,7 @@ def test_every_collection_endpoint_states_which_end_limit_keeps(client):
     """`order` describes how the returned rows are arranged, not which ones
     survived the cut. On /v1/tmf/burns those differ — oldest-first over the
     LATEST N — which reads as "the oldest N" unless truncation is explicit."""
-    for path in ("/v1/tmf/kicks", "/v1/tmf/burns", "/v1/tmf/parameter-changes"):
+    for path in ("/v1/tmf/kicks", "/v1/tmf/burns", "/v1/tmf/parameter-changes", "/v1/runs"):
         body = client.get(path, params={"limit": 2}).json()
         assert body["truncation"] == "the latest N in the window, by block", path
         assert body["order"] in ("newest first", "oldest first"), path

@@ -9,11 +9,11 @@ Endpoints (phase 1):
     GET /v1/tmf/burns                  per-burn rows + `kind`, oldest first (from/to/limit)
     GET /v1/tmf/parameter-changes      Splitter/Kicker/Flapper File timeline, oldest first (limit)
 
-On the three collection endpoints ``limit`` always keeps the LATEST N rows in
+On every endpoint that takes a ``limit`` it always keeps the LATEST N rows in
 the window — never the earliest — whichever way the response is ordered. Each
 says so in its ``truncation`` field, because ``order`` describes only how the
 returned rows are arranged. Narrow with ``from`` / ``to``; ``limit`` is a cap.
-    GET /v1/runs                       run ledger
+    GET /v1/runs                       run ledger, newest first (kind/limit)
 
 Conventions: JSON only, ``Cache-Control: public, max-age=300``, ETag on
 documents, CORS from ``API_CORS_ORIGINS`` (comma-separated; default '*').
@@ -54,7 +54,7 @@ _log = logging.getLogger("settle.api")
 # would otherwise silently become a 1970 timestamp and match every row.
 _MIN_EPOCH, _MAX_EPOCH = 1_000_000_000, 4_102_444_800
 
-# Every collection endpoint truncates the same end: `limit` keeps the LATEST N
+# Every endpoint that takes a `limit` truncates the same end: `limit` keeps the LATEST N
 # rows in the window, never the earliest. Stated on each response because
 # `order` alone describes how the returned rows are arranged, not which ones
 # survived the cut — and for /v1/tmf/burns those differ ("oldest first" over
@@ -354,7 +354,12 @@ def create_app(reader: Reader | None = None) -> FastAPI:
         limit: int = Query(200, ge=1, le=1000),
         r: Reader = Depends(get_reader),  # noqa: B008
     ) -> Response:
-        return _document_response(request, {"runs": r.runs(kind=kind, limit=limit)}, max_age=60)
+        runs_page = r.runs(kind=kind, limit=limit)
+        return _document_response(request, {
+            "count": len(runs_page), "limit": limit,
+            "order": "newest first", "truncation": _TRUNCATION,
+            "runs": runs_page,
+        }, max_age=60)
 
     return app
 
