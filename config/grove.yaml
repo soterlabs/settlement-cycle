@@ -480,6 +480,7 @@ venues:
       decimals: 18
 
   - id: E14
+    event_source: hypersync
     chain: ethereum
     label: 'AUSD raw (ALM idle)'
     pricing_category: A
