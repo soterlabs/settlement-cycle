@@ -512,6 +512,7 @@ venues:
     holder_override: '0x94b398acb2fce988871218221ea6a4a2b26cccbc'
 
   - id: E15
+    event_source: hypersync
     chain: ethereum
     label: 'USDC raw (ALM idle)'
     pricing_category: A
