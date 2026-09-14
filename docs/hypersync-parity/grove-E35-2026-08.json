@@ -1,0 +1,41 @@
+{
+  "prime": "grove",
+  "venue": "E35",
+  "month": "2026-08",
+  "start": "2025-05-14",
+  "pins": {
+    "monad/2026-08-31": 100893400
+  },
+  "matched": true,
+  "checks": [
+    {
+      "input": "transfer_timeseries.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 5,
+      "hypersync_rows": 5,
+      "max_abs_difference": {
+        "daily_net": "2E-11",
+        "cum_balance": "2E-11"
+      },
+      "dune_sha256": "93528422c8c183e34bd3a1ad63eacf76211fad84adc0e587b90ee015379f3eaf",
+      "hypersync_sha256": "f5ea1bfc50d0a5304de889c139e120d9c0e0d68ac1964a1036ebd49a5b6302fb",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "inflow_by_counterparty.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 5,
+      "hypersync_rows": 5,
+      "max_abs_difference": {
+        "signed_amount": "2E-11"
+      },
+      "dune_sha256": "aedac8324c8ca2e957a87fafabba295fa1b0539fe6a1ca485257e3bbda59ae67",
+      "hypersync_sha256": "fcef6aa3b3a9289f9495554dbe3f2a586d9c763ad6c8617dc5f2282f4f564cde",
+      "mismatch_count": 0,
+      "mismatches": []
+    }
+  ]
+}

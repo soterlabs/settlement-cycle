@@ -866,6 +866,7 @@ venues:
     display_only: true
 
   - id: E35
+    event_source: hypersync
     chain: monad
     label: 'USDC raw (Monad, alt holder idle)'
     pricing_category: A
