@@ -532,6 +532,7 @@ venues:
     holder_override: '0x94b398acb2fce988871218221ea6a4a2b26cccbc'
 
   - id: E16
+    event_source: hypersync
     chain: ethereum
     label: 'DAI raw (ALM idle)'
     pricing_category: A
