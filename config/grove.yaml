@@ -443,6 +443,7 @@ venues:
     holder_override: '0x94b398acb2fce988871218221ea6a4a2b26cccbc'
 
   - id: E33
+    event_source: hypersync
     chain: monad
     label: 'Uniswap V3 AUSD/USDC pool (Monad, NFT positions)'
     pricing_category: F
