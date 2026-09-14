@@ -69,8 +69,14 @@ def build_dataset(
         sinks=hist["burn_sinks"], protocol_senders=hist["protocol_senders"],
     )
     # policy.tmf_effective_from is the TMF's first cast; every burn is
-    # classified engine vs supply_correction against it.
-    effective_from = parse_ts((cfg.get("policy") or {}).get("tmf_effective_from")) or 0
+    # classified engine vs supply_correction against it. Absent, it must fail:
+    # a 0 would publish the 426M supply correction as an engine burn.
+    effective_from = parse_ts((cfg.get("policy") or {}).get("tmf_effective_from"))
+    if not effective_from:
+        raise SystemExit(
+            "config/tmf.yaml: policy.tmf_effective_from is missing or unparseable — "
+            "it is the boundary every SKY burn is classified against; refusing to guess."
+        )
     ds = HistoryDataset(
         tmf_effective_from=effective_from,
         from_block=deploy_block, to_block=to_block, to_ts=to_ts,

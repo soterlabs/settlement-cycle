@@ -1,11 +1,11 @@
 {
   "schema_version": "1.2.0",
-  "generated_at": "2026-09-14T08:23:52Z",
+  "generated_at": "2026-09-14T08:30:22Z",
   "source": {
     "chain": "ethereum",
     "from_block": 20770191,
-    "to_block": 25973974,
-    "to_ts": "2026-09-14T06:43:35Z",
+    "to_block": 25974006,
+    "to_ts": "2026-09-14T06:49:59Z",
     "tmf_effective_from": "2026-08-17T14:02:23Z",
     "contracts": {
       "MCD_SPLIT": "0xBF7111F13386d23cb2Fba5A538107A73f6872bCF",
@@ -39,11 +39,11 @@
   ],
   "totals": {
     "period": "all",
-    "kicks": 17130,
-    "usds_buyback": 124988800.0,
-    "usds_to_stakers": 40306200.0,
-    "usds_total": 165295000.0,
-    "sky_bought": 1984137171.7,
+    "kicks": 17131,
+    "usds_buyback": 124992100.0,
+    "usds_to_stakers": 40308900.0,
+    "usds_total": 165301000.0,
+    "sky_bought": 1984189555.45,
     "sky_avg_price": 0.062994,
     "sky_burn_engine": 2860943.76,
     "sky_burn_supply_correction": 426292860.23,
@@ -51,16 +51,16 @@
     "sky_burn_other": 4.82,
     "burn_events": 4,
     "first_ts": "2024-11-14T21:18:35Z",
-    "last_ts": "2026-09-14T05:59:47Z"
+    "last_ts": "2026-09-14T06:43:59Z"
   },
   "latest_kick": {
-    "ts": "2026-09-14T05:59:47Z",
-    "block": 25973755,
-    "tx": "0xea0f213bf7e338553c593d03a229f025b25ada608b8a1c321bb202617f21455f",
+    "ts": "2026-09-14T06:43:59Z",
+    "block": 25973976,
+    "tx": "0x9ef6450bca8afd998d1c4995487b17128fdfa63a463075ea973dcd2f4a9fc94d",
     "usds_buyback": 3300.0,
     "usds_to_stakers": 2700.0,
     "usds_total": 6000.0,
-    "sky_bought": 52451.48,
+    "sky_bought": 52383.75,
     "splitter_burn": 0.55,
     "splitter_hop": 2504
   },
@@ -388,19 +388,19 @@
       },
       {
         "period": "2026-09",
-        "kicks": 295,
-        "usds_buyback": 973500.0,
-        "usds_to_stakers": 796500.0,
-        "usds_total": 1770000.0,
-        "sky_bought": 14701738.24,
-        "sky_avg_price": 0.066217,
+        "kicks": 296,
+        "usds_buyback": 976800.0,
+        "usds_to_stakers": 799200.0,
+        "usds_total": 1776000.0,
+        "sky_bought": 14754121.98,
+        "sky_avg_price": 0.066205,
         "sky_burn_engine": 2860943.76,
         "sky_burn_supply_correction": 0.0,
         "sky_burn_protocol": 2860943.76,
         "sky_burn_other": 0.0,
         "burn_events": 1,
         "first_ts": "2026-09-01T00:38:11Z",
-        "last_ts": "2026-09-14T05:59:47Z"
+        "last_ts": "2026-09-14T06:43:59Z"
       }
     ],
     "quarterly": [
@@ -518,19 +518,19 @@
       },
       {
         "period": "2026-Q3",
-        "kicks": 903,
-        "usds_buyback": 3781800.0,
-        "usds_to_stakers": 1636200.0,
-        "usds_total": 5418000.0,
-        "sky_bought": 61634254.7,
-        "sky_avg_price": 0.061359,
+        "kicks": 904,
+        "usds_buyback": 3785100.0,
+        "usds_to_stakers": 1638900.0,
+        "usds_total": 5424000.0,
+        "sky_bought": 61686638.44,
+        "sky_avg_price": 0.06136,
         "sky_burn_engine": 2860943.76,
         "sky_burn_supply_correction": 0.0,
         "sky_burn_protocol": 2860943.76,
         "sky_burn_other": 0.0,
         "burn_events": 1,
         "first_ts": "2026-07-01T01:14:59Z",
-        "last_ts": "2026-09-14T05:59:47Z"
+        "last_ts": "2026-09-14T06:43:59Z"
       }
     ],
     "annual": [
@@ -568,11 +568,11 @@
       },
       {
         "period": "2026",
-        "kicks": 3581,
-        "usds_buyback": 27853800.0,
-        "usds_to_stakers": 1636200.0,
-        "usds_total": 29490000.0,
-        "sky_bought": 424983418.7,
+        "kicks": 3582,
+        "usds_buyback": 27857100.0,
+        "usds_to_stakers": 1638900.0,
+        "usds_total": 29496000.0,
+        "sky_bought": 425035802.45,
         "sky_avg_price": 0.065541,
         "sky_burn_engine": 2860943.76,
         "sky_burn_supply_correction": 0.0,
@@ -580,7 +580,7 @@
         "sky_burn_other": 0.0,
         "burn_events": 1,
         "first_ts": "2026-01-01T00:40:47Z",
-        "last_ts": "2026-09-14T05:59:47Z"
+        "last_ts": "2026-09-14T06:43:59Z"
       }
     ]
   },

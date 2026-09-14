@@ -54,6 +54,7 @@ __all__ = [
     "burn_attribution",
     "compute_tmf_monthly",
     "compute_waterfall",
+    "parse_ts",
     "read_sky_total_snr",
     "regimes_from_kicks",
     "render_summary",

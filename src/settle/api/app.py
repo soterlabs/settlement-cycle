@@ -67,7 +67,7 @@ class Reader(Protocol):
 
 class PostgresReader:
     def __init__(self, pool: Any, contracts: dict[str, str], notes: list[str],
-                 tmf_effective_from: int = 0) -> None:
+                 tmf_effective_from: int) -> None:
         self._pool = pool
         self._contracts = contracts
         self._notes = notes
@@ -128,7 +128,13 @@ def _tmf_config() -> tuple[dict[str, str], list[str], int]:
     cfg = yaml.safe_load((_REPO / "config" / "tmf.yaml").read_text())
     contracts = {k: cfg["contracts"][k] for k in ("MCD_SPLIT", "MCD_FLAP", "MCD_KICK", "SKY",
                                                   "MCD_PAUSE_PROXY", "REWARDS_LSSKY_USDS")}
-    effective_from = parse_ts((cfg.get("policy") or {}).get("tmf_effective_from")) or 0
+    effective_from = parse_ts((cfg.get("policy") or {}).get("tmf_effective_from"))
+    if not effective_from:
+        raise RuntimeError(
+            "config/tmf.yaml: policy.tmf_effective_from is missing or unparseable — "
+            "it is the boundary every SKY burn is classified against; refusing to guess. "
+            "(/healthz reports this as degraded rather than serving misclassified burns.)"
+        )
     return contracts, list((cfg.get("history") or {}).get("notes") or []), effective_from
 
 

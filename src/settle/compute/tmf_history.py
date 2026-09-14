@@ -82,7 +82,19 @@ BURN_KINDS = (BURN_KIND_ENGINE, BURN_KIND_SUPPLY_CORRECTION, BURN_KIND_THIRD_PAR
 
 
 def burn_kind(burn: SkyBurn, tmf_effective_from: int) -> str:
-    """Classify one burn against the TMF's first cast (``policy.tmf_effective_from``)."""
+    """Classify one burn against the TMF's first cast (``policy.tmf_effective_from``).
+
+    A non-positive boundary is refused rather than treated as 1970: it would
+    make EVERY protocol burn look like an engine burn, publishing the 426M
+    supply correction as buyback policy while ``source.tmf_effective_from``
+    read ``null`` — wrong by ~150x and self-consistent enough to go unnoticed.
+    """
+    if tmf_effective_from <= 0:
+        raise ValueError(
+            "burn_kind: tmf_effective_from must be a real timestamp; got "
+            f"{tmf_effective_from!r}. It comes from config/tmf.yaml "
+            "policy.tmf_effective_from — a missing key must fail, not default."
+        )
     if not burn.protocol:
         return BURN_KIND_THIRD_PARTY
     return BURN_KIND_ENGINE if burn.ts >= tmf_effective_from else BURN_KIND_SUPPLY_CORRECTION
@@ -112,6 +124,8 @@ class PeriodRow:
     sky_burn_supply_correction: Decimal = ZERO
     sky_burn_other: Decimal = ZERO
     burn_events: int = 0
+    first_ts: int | None = None
+    last_ts: int | None = None
 
     @property
     def sky_burn_protocol(self) -> Decimal:
@@ -119,8 +133,6 @@ class PeriodRow:
         predates the split; it is dominated by the one-off correction, so it is
         the wrong number for anything about buyback policy."""
         return self.sky_burn_engine + self.sky_burn_supply_correction
-    first_ts: int | None = None
-    last_ts: int | None = None
 
     @property
     def sky_avg_price(self) -> Decimal | None:
@@ -199,13 +211,12 @@ class HistoryDataset:
     to_ts: int
     kicks: list[SbeKick]
     burns: list[SkyBurn]
+    # policy.tmf_effective_from, unix seconds — the boundary every burn is
+    # classified against. Required: a default would silently misclassify.
+    tmf_effective_from: int
     param_changes: list[SbeParamChange] = field(default_factory=list)
     contracts: dict[str, str] = field(default_factory=dict)
     notes: list[str] = field(default_factory=list)
-    # policy.tmf_effective_from, unix seconds — the boundary every burn is
-    # classified against. Published in the document so a consumer can see the
-    # rule rather than re-deriving it from a hardcoded date.
-    tmf_effective_from: int = 0
 
     @property
     def totals(self) -> PeriodRow:
@@ -263,7 +274,7 @@ def build_history_dataset(
             "to_ts": _ts(ds.to_ts),
             # The boundary the `kind` on every burn is decided against. Echoed
             # from config/tmf.yaml policy.tmf_effective_from.
-            "tmf_effective_from": _ts(ds.tmf_effective_from) if ds.tmf_effective_from else None,
+            "tmf_effective_from": _ts(ds.tmf_effective_from),
             "contracts": ds.contracts,
             "events": {
                 "kick": "Splitter.Kick(tot, lot, pay) joined to Flapper.Exec(lot, bought) per tx",

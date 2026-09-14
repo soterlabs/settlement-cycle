@@ -367,3 +367,18 @@ def test_aggregate_requires_the_boundary():
     engine burn, the other would call none of them that."""
     with pytest.raises(TypeError):
         aggregate([], [], "monthly")   # type: ignore[call-arg]
+
+
+def test_a_missing_boundary_is_refused_not_defaulted():
+    """The bug this guards: with a 0 boundary every protocol burn reads as an
+    engine burn, so the 426M supply correction would publish as buyback policy
+    — 150x wrong, while source.tmf_effective_from read null and the document
+    looked self-consistent."""
+    corr = _b(BURN_CORRECTION_TS, "426292860.23", True)
+    with pytest.raises(ValueError, match=r"policy\.tmf_effective_from"):
+        burn_kind(corr, 0)
+    with pytest.raises(ValueError, match="must be a real timestamp"):
+        aggregate([], [corr], "monthly", tmf_effective_from=0)
+    # and the dataset cannot be built without one at all
+    with pytest.raises(TypeError):
+        HistoryDataset(from_block=1, to_block=2, to_ts=0, kicks=[], burns=[])  # type: ignore[call-arg]
