@@ -7,7 +7,7 @@ from datetime import date, datetime, timezone
 import pytest
 
 from settle.extract import hypersync
-from settle.extract.hypersync import HyperSyncError
+from settle.extract.hypersync import HyperSyncBlockUnavailable, HyperSyncError
 from settle.normalize.sources.hypersync_block_resolver import HyperSyncBlockResolver
 
 
@@ -82,7 +82,7 @@ def test_binary_search_backs_off_unreturnable_head(monkeypatch):
     monkeypatch.setattr(hypersync, "archive_height", lambda chain: 1000)
     def bts(chain, block):
         if block > RETURNABLE:
-            raise HyperSyncError(f"block {block} not returned")
+            raise HyperSyncBlockUnavailable(f"block {block} not returned")
         return block * 12
     monkeypatch.setattr(hypersync, "block_timestamp", bts)
     # historical target still resolves exactly despite the head back-off
@@ -100,7 +100,7 @@ def test_backoff_refines_to_exact_returnable_head(monkeypatch):
     monkeypatch.setattr(hypersync, "archive_height", lambda chain: 1000)
     def bts(chain, block):
         if block > RETURNABLE:
-            raise HyperSyncError(f"block {block} not returned")
+            raise HyperSyncBlockUnavailable(f"block {block} not returned")
         return block * 12
     monkeypatch.setattr(hypersync, "block_timestamp", bts)
     assert hypersync.find_block_at_or_before("ethereum", 10**9) == RETURNABLE
@@ -117,3 +117,15 @@ def test_binary_search_matches_reference_algorithm(monkeypatch):
         got = hypersync.find_block_at_or_before("ethereum", target)
         expected = max((b for b, t in ts_map.items() if t <= target), default=0)
         assert got == expected, (target, got, expected)
+
+
+def test_rate_limit_is_not_misinterpreted_as_missing_head(monkeypatch):
+    calls = []
+    monkeypatch.setattr(hypersync, 'archive_height', lambda chain: 1000)
+    def limited(chain, block):
+        calls.append(block)
+        raise HyperSyncError('HTTP 429')
+    monkeypatch.setattr(hypersync, 'block_timestamp', limited)
+    with pytest.raises(HyperSyncError, match='429'):
+        hypersync.find_block_at_or_before('base', 100)
+    assert calls == [1000]

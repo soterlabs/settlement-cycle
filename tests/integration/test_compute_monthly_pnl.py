@@ -31,6 +31,13 @@ from ..fixtures.mock_sources import (
 )
 
 
+@pytest.fixture(autouse=True)
+def offline_default_resolver(monkeypatch):
+    """Synthetic daily debt anchors must not reach a live provider."""
+    monkeypatch.delenv("DUNE_API_KEY", raising=False)
+    monkeypatch.setattr("settle.compute.monthly_pnl.get_block_resolver", lambda: MockBlockResolver())
+
+
 @pytest.fixture
 def obex(config_dir: Path):
     return load_prime(config_dir / "obex.yaml")

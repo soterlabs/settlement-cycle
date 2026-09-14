@@ -49,6 +49,10 @@ class HyperSyncError(RuntimeError):
     """Raised on HyperSync transport / auth / query errors."""
 
 
+class HyperSyncBlockUnavailable(HyperSyncError):
+    """A successful archive response did not yet contain the requested block."""
+
+
 @dataclass(frozen=True)
 class LogRow:
     block_number: int
@@ -224,7 +228,7 @@ def block_timestamp(chain: str, block: int) -> int:
         for b in group.get("blocks") or []:
             if to_int(b["number"]) == block:
                 return to_int(b["timestamp"])
-    raise HyperSyncError(f"HyperSync {chain}: block {block} not returned")
+    raise HyperSyncBlockUnavailable(f"HyperSync {chain}: block {block} not returned")
 
 
 def _returnable_head(chain: str) -> tuple[int, int]:
@@ -248,7 +252,7 @@ def _returnable_head(chain: str) -> tuple[int, int]:
         try:
             head_ts = block_timestamp(chain, high)
             break
-        except HyperSyncError:
+        except HyperSyncBlockUnavailable:
             above = high
             high -= _STEP
     if head_ts is None:
@@ -264,7 +268,7 @@ def _returnable_head(chain: str) -> tuple[int, int]:
             try:
                 block_timestamp(chain, mid)
                 lo = mid
-            except HyperSyncError:
+            except HyperSyncBlockUnavailable:
                 hi = mid
         high = lo
         head_ts = block_timestamp(chain, high)   # cached — free

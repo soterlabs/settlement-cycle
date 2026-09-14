@@ -78,7 +78,9 @@ def main(argv=None) -> int:
             h = hs.cumulative_balance_timeseries(chain, token, holder, prime.start_date, pin)
             result = compare_frames(label, d, h, ["block_date"], ["daily_net", "cum_balance"], tol)
         except Exception as e:
-            print(f"  {label:28s} ERROR {e}"); ok = False; continue
+            print(f"  {label:28s} ERROR {e}")
+            ok = False
+            continue
         status = "OK" if result["matched"] else "MISMATCH"
         if not result["matched"]:
             ok = False
