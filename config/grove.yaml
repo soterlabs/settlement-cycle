@@ -150,6 +150,7 @@ venues:
   # Category B — Morpho ERC-4626 (Steakhouse-curated)
   # ─────────────────────────────────────────────────────────────
   - id: E4
+    event_source: hypersync
     chain: ethereum
     label: 'Grove x Steakhouse USDC (Morpho 4626)'
     pricing_category: B
