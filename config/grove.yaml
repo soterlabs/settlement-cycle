@@ -164,6 +164,7 @@ venues:
       decimals: 6
 
   - id: E5
+    event_source: hypersync
     chain: ethereum
     label: 'Grove x Steakhouse USDC High Yield (Morpho 4626)'
     pricing_category: B
