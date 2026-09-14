@@ -237,6 +237,7 @@ venues:
   # Phase 2.A: Chronicle oracle primary, $1000 pre-deploy fallback.
   # ──────────────────────────────────────────────────────────────
   - id: E7
+    event_source: hypersync
     chain: ethereum
     label: 'Securitize Tokenized AAA CLO Fund (STAC)'
     pricing_category: E
