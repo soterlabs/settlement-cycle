@@ -2,8 +2,11 @@
 
 import argparse
 import json
-from datetime import UTC, datetime, time
+from datetime import UTC, datetime, time, timedelta
+from decimal import Decimal
 from pathlib import Path
+
+import pandas as pd
 
 from settle.domain.config import load_prime_by_id
 from settle.domain.period import Month
@@ -11,6 +14,8 @@ from settle.domain.primes import Chain
 from settle.domain.sky_tokens import PSM3_LEG_TOKENS
 from settle.extract import hypersync, rpc
 from settle.extract._keccak import keccak256
+from settle.extract.dune import execute_query
+from settle.normalize.sources._paths import QUERIES_DIR
 from settle.normalize.sources.dune_psm3 import DunePsm3Source
 from settle.normalize.sources.hypersync_psm3 import HyperSyncPsm3Source
 
@@ -26,7 +31,8 @@ def main():
     pin = hypersync.find_block_at_or_before(chain.value, int(datetime.combine(month.last_day, time(23, 59, 59), UTC).timestamp()))
     d, h = DunePsm3Source(), HyperSyncPsm3Source()
     print("Dune PSM3 preload", chain, pin, flush=True)
-    d.preload(chain.value, holder.value, pin_block=pin, psm3=psm.value)
+    d._load_holder_history(chain.value, holder.value, pin_block=pin)
+    d._load_pool_history(chain.value, pin_block=pin)
     print("HyperSync PSM3 preload", chain, pin, flush=True)
     h.preload(chain.value, holder.value, pin_block=pin, psm3=psm.value)
     checks = []
@@ -36,16 +42,33 @@ def main():
     ]:
         checks.append({"input": label, "matched": dv == hv, "dune_rows": len(dv), "hypersync_rows": len(hv),
                        "dune": dv, "hypersync": hv})
-    dr, hr = (s._load_reserves_history(chain.value, psm.value, pin_block=pin) for s in (d, h))
-    for token in PSM3_LEG_TOKENS[chain].values():
+    # Preserve the original SQL running sum, but export daily closing states
+    # instead of millions of arbitrage event rows. Every valuation day plus
+    # the opening anchor is compared, not just the month-end total.
+    tokens = PSM3_LEG_TOKENS[chain]
+    params = {"psm3": psm.value, "usdc": tokens["USDC"].address.value,
+              "usds": tokens["USDS"].address.value, "susds": tokens["sUSDS"].address.value,
+              "start_month": "2024-01-01"}
+    daily = execute_query(QUERIES_DIR / f"psm3_reserves_daily_{chain.value}.sql", params, pin)
+    states = {}
+    for row in daily.to_dict("records"):
+        token = row["token"]
+        key = "0x" + token.hex() if isinstance(token, bytes) else str(token).lower()
+        states.setdefault(key, []).append((pd.Timestamp(row["block_date"]).date(), int(Decimal(str(row["cum_balance_raw"])))))
+    days = [month.first_day - timedelta(days=1) + timedelta(days=i)
+            for i in range((month.last_day - month.first_day).days + 2)]
+    day_blocks = {day: hypersync.find_block_at_or_before(chain.value, int(datetime.combine(day, time(23, 59, 59), UTC).timestamp())) for day in days}
+    for token in tokens.values():
         key = "0x" + token.address.value.hex()
-        dv, hv = dr.get(key, ([], pin))[0], hr.get(key, ([], pin))[0]
-        onchain = rpc.balance_of(chain, token.address, psm, pin)
-        calculated = hv[-1][1] if hv else 0
-        checks.append({"input": token.symbol + " reserves", "matched": dv == hv and calculated == onchain,
-                       "dune_rows": len(dv), "hypersync_rows": len(hv),
-                       "hypersync_eom": calculated, "rpc_eom": onchain,
-                       "first_mismatch": next(((a, b) for a, b in zip(dv, hv, strict=False) if a != b), None)})
+        history = sorted(states.get(key, []))
+        pairs = []
+        for day in days:
+            dv = next((val for dt, val in reversed(history) if dt <= day), 0)
+            hv = h.pool_reserve_at(chain.value, token.address.value, psm.value, day_blocks[day], decimals=token.decimals)
+            pairs.append({"day": str(day), "block": day_blocks[day], "dune": dv, "hypersync": hv})
+        actual = rpc.balance_of(chain, token.address, psm, pin)
+        checks.append({"input": token.symbol + " daily reserves", "matched": all(x["dune"] == x["hypersync"] for x in pairs) and pairs[-1]["hypersync"] == actual,
+                       "oracle": f"psm3_reserves_daily_{chain.value}.sql", "rpc_eom": actual, "days": pairs})
     for label, data, actual in [
         ("RPC shares", h._load_holder_history(chain.value, holder.value, pin_block=pin), rpc.psm3_shares(chain, psm, holder, pin)),
         ("RPC totalShares", h._load_pool_history(chain.value, pin_block=pin),

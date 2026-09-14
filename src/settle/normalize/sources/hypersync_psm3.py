@@ -4,11 +4,12 @@ ABI: sparkdotfi/spark-psm src/interfaces/IPSM3.sol. Deposit credits indexed
 receiver (topic3); Withdraw debits indexed user (topic2), not its receiver.
 """
 
+from datetime import UTC, datetime, time, timedelta
 from typing import Any
 
 from ...domain.primes import Chain
 from ...domain.sky_tokens import PSM3_LEG_TOKENS
-from ...extract import hypersync_store
+from ...extract import hypersync, hypersync_store, rpc
 from ...extract._keccak import keccak256
 from ...extract.transfer_logs import TRANSFER_TOPIC0
 from .dune_psm3 import DunePsm3Source
@@ -44,6 +45,15 @@ class HyperSyncPsm3Source(DunePsm3Source):
     def convert_to_asset_value(self, chain: str, psm3: bytes, num_shares: int, block: int) -> int:
         self._register(chain, psm3)
         return super().convert_to_asset_value(chain, psm3, num_shares, block)
+
+    def pool_reserve_at(self, chain: str, token: bytes, psm3: bytes, block: int,
+                        *, decimals: int) -> int | None:
+        entry = self._reserves_history.get((chain, "0x" + psm3.hex()), {}).get("0x" + token.hex())
+        if entry is None or not entry[0] or not entry[0][0][0] <= block <= entry[1]:
+            # The parent assumes a lifetime history beginning at zero. Our
+            # month-opening seed cannot answer dates outside its coverage.
+            return None
+        return super().pool_reserve_at(chain, token, psm3, block, decimals=decimals)
 
     def _share_events(self, chain: str, pin: int) -> list[Any]:
         cached = self._events.get(chain)
@@ -86,16 +96,29 @@ class HyperSyncPsm3Source(DunePsm3Source):
     def _load_reserves_history(self, chain: str, psm3: bytes, *, pin_block: int) -> dict:
         key = (chain, "0x" + psm3.hex())
         cached = self._reserves_history.get(key)
-        if cached and all(end >= pin_block for _, end in cached.values()):
+        if cached and all(history and history[0][0] <= pin_block <= end
+                          for history, end in cached.values()):
             return cached
+        # Pool reserves have millions of arbitrage transfers. Start from an
+        # immutable month-opening RPC balance, then extend only this month's
+        # logs. Three cached eth_calls avoid materializing the entire lifetime
+        # into memory; the event store still reuses covered ranges daily.
+        from ...domain.primes import Address
+        day = datetime.fromtimestamp(hypersync.block_timestamp(chain, pin_block), UTC).date()
+        previous = day.replace(day=1) - timedelta(days=1)
+        opening = hypersync.find_block_at_or_before(
+            chain, int(datetime.combine(previous, time(23, 59, 59), UTC).timestamp()),
+        )
         tokens = ["0x" + t.address.value.hex() for t in PSM3_LEG_TOKENS[Chain(chain)].values()]
         who = _addr_topic(psm3)
         rows = hypersync_store.fetch_logs(chain, [
             {"address": tokens, "topics": [[TRANSFER_TOPIC0], [who]]},
             {"address": tokens, "topics": [[TRANSFER_TOPIC0], [], [who]]},
-        ], 0, pin_block)
-        histories: dict[str, tuple[list[tuple[int, int]], int]] = {t: ([], pin_block) for t in tokens}
-        totals = dict.fromkeys(tokens, 0)
+        ], opening + 1, pin_block)
+        totals = {t: rpc.balance_of(Chain(chain), Address.from_str(t), Address(psm3), opening) for t in tokens}
+        histories: dict[str, tuple[list[tuple[int, int]], int]] = {
+            t: ([(opening, totals[t])], pin_block) for t in tokens
+        }
         unique = {(r.block_number, r.log_index): r for r in rows}
         for _, row in sorted(unique.items()):
             amount = uint_words(row.data, 1)[0]
