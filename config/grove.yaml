@@ -502,6 +502,7 @@ venues:
     display_only: true
 
   - id: E31
+    event_source: hypersync
     chain: ethereum
     label: 'AUSD raw (alt holder idle)'
     pricing_category: A
