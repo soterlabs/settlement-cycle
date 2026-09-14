@@ -6,8 +6,13 @@ Endpoints (phase 1):
     GET /healthz                       liveness + DB + latest run
     GET /v1/tmf/history                the sbe_history.json document (schema 1.1.0)
     GET /v1/tmf/kicks                  per-kick rows, newest first (from/to/limit)
-    GET /v1/tmf/burns                  per-burn rows + `kind` (from/to/limit)
-    GET /v1/tmf/parameter-changes      Splitter/Kicker/Flapper File timeline (limit)
+    GET /v1/tmf/burns                  per-burn rows + `kind`, oldest first (from/to/limit)
+    GET /v1/tmf/parameter-changes      Splitter/Kicker/Flapper File timeline, oldest first (limit)
+
+On the three collection endpoints ``limit`` always keeps the LATEST N rows in
+the window — never the earliest — whichever way the response is ordered. Each
+says so in its ``truncation`` field, because ``order`` describes only how the
+returned rows are arranged. Narrow with ``from`` / ``to``; ``limit`` is a cap.
     GET /v1/runs                       run ledger
 
 Conventions: JSON only, ``Cache-Control: public, max-age=300``, ETag on
@@ -48,6 +53,15 @@ _log = logging.getLogger("settle.api")
 # Anything outside it that is still all digits is a year or a YYYYMMDD, which
 # would otherwise silently become a 1970 timestamp and match every row.
 _MIN_EPOCH, _MAX_EPOCH = 1_000_000_000, 4_102_444_800
+
+# Every collection endpoint truncates the same end: `limit` keeps the LATEST N
+# rows in the window, never the earliest. Stated on each response because
+# `order` alone describes how the returned rows are arranged, not which ones
+# survived the cut — and for /v1/tmf/burns those differ ("oldest first" over
+# the latest N), which reads as "the oldest N" if truncation is left implicit.
+# Use `from` / `to` to select an arbitrary window; `limit` is a cap, not a page
+# cursor.
+_TRUNCATION = "the latest N in the window, by block"
 _INT_RE = re.compile(r"[+-]?\d+")
 
 
@@ -280,7 +294,8 @@ def create_app(reader: Reader | None = None) -> FastAPI:
         lo, hi = _parse_window(from_, to)
         rows = r.kicks(from_ts=lo, to_ts=hi, limit=limit)
         payload = {
-            "count": len(rows), "limit": limit, "order": "newest first",
+            "count": len(rows), "limit": limit,
+            "order": "newest first", "truncation": _TRUNCATION,
             "kicks": [{
                 "ts": iso_ts(k.ts), "block": k.block, "log_index": k.log_index, "tx": k.tx,
                 "usds_total": dec_str(k.tot), "usds_buyback": dec_str(k.lot),
@@ -303,7 +318,8 @@ def create_app(reader: Reader | None = None) -> FastAPI:
         rows = r.burns(from_ts=lo, to_ts=hi, limit=limit)
         boundary = r.burn_boundary()
         payload = {
-            "count": len(rows), "limit": limit, "order": "oldest first",
+            "count": len(rows), "limit": limit,
+            "order": "oldest first", "truncation": _TRUNCATION,
             # The rule behind `kind`, so a consumer never has to hardcode a date.
             "tmf_effective_from": iso_ts(boundary) if boundary else None,
             "burns": [{
@@ -321,7 +337,8 @@ def create_app(reader: Reader | None = None) -> FastAPI:
         r: Reader = Depends(get_reader),  # noqa: B008
     ) -> Response:
         rows = r.param_changes(limit=limit)
-        payload = {"count": len(rows), "limit": limit, "order": "oldest first",
+        payload = {"count": len(rows), "limit": limit,
+                   "order": "oldest first", "truncation": _TRUNCATION,
                    "parameter_changes": [{
                        "ts": iso_ts(c.ts), "block": c.block, "tx": c.tx, "contract": c.contract,
                        "address": c.address, "what": c.what,

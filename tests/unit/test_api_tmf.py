@@ -51,7 +51,7 @@ class _MemReader:
         return sorted(rows, key=lambda k: k.block)[-limit:]
 
     def burns(self, *, from_ts, to_ts, limit):
-        return list(self._b)[-limit:]
+        return list(self._b)[-limit:]        # latest N, oldest-first — as the store does
 
     def burn_boundary(self):
         return CAST
@@ -69,8 +69,13 @@ class _MemReader:
 @pytest.fixture
 def client():
     kicks = [_kick(i) for i in range(5)]
-    burns = [SkyBurn(block=500, log_index=1, ts=T0 + 86400, tx="0xb", sender="0xpp", sink="0xdead",
-                     amount=D("2860943.76"), protocol=True)]
+    burns = [
+        # the 2025 supply correction (before the cast) and a 2026 engine burn
+        SkyBurn(block=400, log_index=1, ts=CAST - 86400, tx="0xc", sender="0xpp", sink="0xdead",
+                amount=D("426292860.23"), protocol=True),
+        SkyBurn(block=500, log_index=1, ts=T0 + 86400, tx="0xb", sender="0xpp", sink="0xdead",
+                amount=D("2860943.76"), protocol=True),
+    ]
     params = [SbeParamChange(block=50, log_index=0, ts=T0 - 10, tx="0xf", contract="MCD_SPLIT",
                              what="burn", value=D("0.55"), address="0xsplit")]
     runs = [{"run_id": 7, "kind": "tmf_history", "status": "ok", "pin_block": 200}]
@@ -90,9 +95,10 @@ def test_history_document_is_the_dataset_contract_with_etag(client):
     doc = r.json()
     assert doc["schema_version"] == SCHEMA_VERSION
     assert doc["totals"]["kicks"] == 5 and doc["totals"]["usds_total"] == 30000.0
-    assert doc["totals"]["sky_burn_protocol"] == 2860943.76
-    assert doc["totals"]["sky_burn_engine"] == 2860943.76          # after the cast
-    assert doc["totals"]["sky_burn_supply_correction"] == 0.0
+    # both protocol kinds are in the fixture; the legacy field sums them
+    assert doc["totals"]["sky_burn_engine"] == 2860943.76           # after the cast
+    assert doc["totals"]["sky_burn_supply_correction"] == 426292860.23   # before it
+    assert doc["totals"]["sky_burn_protocol"] == 429153803.99
     assert doc["schema_version"] == "1.2.0"
     assert doc["run"]["run_id"] == 7
     assert r.headers["Cache-Control"] == "public, max-age=300"
@@ -121,7 +127,8 @@ def test_kicks_window_limit_and_exact_decimals(client):
 
 def test_burns_and_parameter_changes(client):
     b = client.get("/v1/tmf/burns").json()
-    assert b["count"] == 1 and b["burns"][0]["protocol"] is True and b["burns"][0]["sky_amount"] == "2860943.76"
+    assert b["count"] == 2 and all(x["protocol"] for x in b["burns"])
+    assert [x["sky_amount"] for x in b["burns"]] == ["426292860.23", "2860943.76"]
     p = client.get("/v1/tmf/parameter-changes").json()
     assert p["parameter_changes"][0] == {
         "ts": "2026-08-17T14:03:10Z", "block": 50, "tx": "0xf", "contract": "MCD_SPLIT",
@@ -253,15 +260,31 @@ def test_window_bounds_must_be_ordered(client):
     assert r.status_code == 422 and "is after" in r.json()["detail"]
 
 
+def test_every_collection_endpoint_states_which_end_limit_keeps(client):
+    """`order` describes how the returned rows are arranged, not which ones
+    survived the cut. On /v1/tmf/burns those differ — oldest-first over the
+    LATEST N — which reads as "the oldest N" unless truncation is explicit."""
+    for path in ("/v1/tmf/kicks", "/v1/tmf/burns", "/v1/tmf/parameter-changes"):
+        body = client.get(path, params={"limit": 2}).json()
+        assert body["truncation"] == "the latest N in the window, by block", path
+        assert body["order"] in ("newest first", "oldest first"), path
+
+    # and the claim is true: limit=1 on burns keeps the NEWEST row
+    one = client.get("/v1/tmf/burns", params={"limit": 1}).json()
+    every = client.get("/v1/tmf/burns").json()
+    assert one["count"] == 1
+    assert one["burns"][0]["ts"] == every["burns"][-1]["ts"]   # the latest, not the earliest
+
+
 def test_burns_carry_their_kind_and_the_boundary_rule(client):
     """A consumer must be able to tell the engine's own burns from the one-off
     supply correction without hardcoding a date — both are Pause Proxy -> zero
     address on-chain."""
     body = client.get("/v1/tmf/burns").json()
     assert body["tmf_effective_from"] == "2026-08-17T14:02:23Z"
-    # the fixture burn is protocol and after the cast
-    assert body["burns"][0]["kind"] == "engine"
-    assert body["burns"][0]["protocol"] is True
+    # both are protocol burns to the same sink; only the cast tells them apart
+    assert [x["kind"] for x in body["burns"]] == ["supply_correction", "engine"]
+    assert all(x["protocol"] for x in body["burns"])
 
 
 def test_burns_and_param_changes_are_bounded(client):
