@@ -106,6 +106,7 @@ venues:
     lending_idle_usds: true
 
   - id: S2
+    event_source: hypersync
     chain: ethereum
     label: 'Spark USDC (SparkLend spToken)'
     pricing_category: C
