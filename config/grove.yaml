@@ -683,6 +683,7 @@ venues:
       fallback_address: '0x5d44916e0db13ecd661b20df4d645904e57589c8'  # ChronicleVAO_Centrifuge_JAAA_Router_1
 
   - id: E21
+    event_source: hypersync
     chain: avalanche_c
     label: 'Galaxy Arch CLO Token (GACLO-1)'
     pricing_category: E
