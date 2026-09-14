@@ -1,11 +1,11 @@
 {
   "schema_version": "1.2.0",
-  "generated_at": "2026-09-14T08:30:22Z",
+  "generated_at": "2026-09-14T08:59:40Z",
   "source": {
     "chain": "ethereum",
     "from_block": 20770191,
-    "to_block": 25974006,
-    "to_ts": "2026-09-14T06:49:59Z",
+    "to_block": 25974153,
+    "to_ts": "2026-09-14T07:19:23Z",
     "tmf_effective_from": "2026-08-17T14:02:23Z",
     "contracts": {
       "MCD_SPLIT": "0xBF7111F13386d23cb2Fba5A538107A73f6872bCF",
@@ -34,7 +34,7 @@
   "notes": [
     "The Splitter was deployed 2024-09-17 (block 20,770,191); the first kick ran 2024-11-14. The USDS farm leg pointed at the LSMKR USDS farm (0x9228\u20267cb1) from 2024-10-21 to 2025-05-19 and at the LSSKY USDS farm (0x38e4\u20268865) since; 'usds_to_stakers' covers both (the per-kick CSV carries the farm address).",
     "Kicks under splitter.burn = 100% have usds_to_stakers = 0 by construction (Feb\u2013May 2025, Nov 2025 \u2013 Aug 17 2026).",
-    "SKY burns: the 2025-06-30 executive burned 426,292,860.23 SKY held by the Pause Proxy (SKY.burn(), zero address). The first TMF-rule burn (10/55 of the previous month's buys) is scheduled in the 2026-09-10 executive.",
+    "SKY burns carry a `kind`, and every period row splits them, because the two protocol kinds are indistinguishable on-chain (both are Pause Proxy -> zero address). `engine`: the Smart Burn Engine's own burn \u2014 10/55 of the SKY bought under the 55% regime, i.e. from the kicks at or after source.tmf_effective_from, retired by the following month's spell; the first one cast 2026-09-13 and burned 2,860,943.76 SKY. `supply_correction`: the 2025-06-30 executive retiring 426,292,860.23 SKY of supply created in the MKR->SKY conversion \u2014 a closed category, since the boundary is a fixed past timestamp. `third_party`: anyone else sending SKY to 0x\u2026dEaD.",
     "Aggregates are quantized to 2 dp (price to 6 dp) for charting; the CSVs are exact. A period with burns but no kicks has null sky_avg_price / first_ts / last_ts."
   ],
   "totals": {
