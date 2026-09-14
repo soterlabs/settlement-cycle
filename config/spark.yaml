@@ -557,6 +557,7 @@ venues:
   # Ethereum — Curve LP (Cat F)
   # ─────────────────────────────────────────────────────────────
   - id: S24
+    event_source: hypersync
     chain: ethereum
     label: 'Spark.fi USDT Reserve Curve (sUSDS/USDT)'
     pricing_category: F
