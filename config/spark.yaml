@@ -821,6 +821,7 @@ venues:
   # V4 RLUSD/USDS) and is held by the PoolManager, so balanceOf here cannot
   # see it — the two are disjoint, no double-count.
   - id: S64
+    event_source: hypersync
     chain: ethereum
     label: 'RLUSD raw (ALM idle — $251.7M as of 2026-08)'
     pricing_category: A
