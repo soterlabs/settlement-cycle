@@ -280,6 +280,7 @@ venues:
   # reads its own on-chain balance at every pin, and the dust side prices to
   # ~$0 on its own.
   - id: S11
+    event_source: hypersync
     chain: ethereum
     label: 'Spark Blue Chip USDT Vault (Morpho — pre-2026-06 deployment)'
     pricing_category: B
