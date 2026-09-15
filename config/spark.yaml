@@ -203,6 +203,7 @@ venues:
       decimals: 18
 
   - id: S8
+    event_source: hypersync
     chain: ethereum
     label: 'Aave Ethereum USDC (aToken)'
     pricing_category: C
