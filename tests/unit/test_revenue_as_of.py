@@ -35,11 +35,13 @@ def test_leap_day_and_month_opening():
 
 @pytest.mark.parametrize("head,successor,accepted", [(1000, 1001, True),
                                                    (599, 1001, False),
+                                                   (600, 1001, False),
+                                                   (601, 1001, True),
                                                    (1000, 999, False)])
 def test_as_of_pins_require_exact_boundary_and_finality(monkeypatch, head, successor, accepted):
     monkeypatch.setenv("HYPERSYNC_REORG_MARGIN", "500")
     monkeypatch.setattr(hypersync, "archive_height", lambda chain: head)
-    resolver = HyperSyncBlockResolver(ts_fn=lambda chain, block: 999 if block == 100 else successor)
+    resolver = HyperSyncBlockResolver(validation_ts_fn=lambda chain, block: 999 if block == 100 else successor)
     anchor = datetime.fromtimestamp(1000, UTC)
     if accepted:
         resolver.validate_finalized_boundary("ethereum", 100, anchor)
@@ -48,16 +50,61 @@ def test_as_of_pins_require_exact_boundary_and_finality(monkeypatch, head, succe
             resolver.validate_finalized_boundary("ethereum", 100, anchor)
 
 
-def test_lagging_archive_cannot_certify_successor():
+def test_lagging_archive_cannot_certify_successor(monkeypatch):
+    monkeypatch.setenv("HYPERSYNC_REORG_MARGIN", "500")
+    monkeypatch.setattr(hypersync, "archive_height", lambda chain: 1000)
     def timestamp(chain, block):
         if block > 100:
             raise hypersync.HyperSyncBlockUnavailable("Archive has not indexed the successor")
         return 900
 
     with pytest.raises(hypersync.HyperSyncBlockUnavailable):
-        HyperSyncBlockResolver(ts_fn=timestamp).validate_finalized_boundary(
+        HyperSyncBlockResolver(validation_ts_fn=timestamp).validate_finalized_boundary(
             "ethereum", 100, datetime.fromtimestamp(1000, UTC),
         )
+
+
+@pytest.mark.parametrize("cache_layer", ["local", "postgres"])
+def test_finality_retry_rechecks_cached_boundary_after_reorg(tmp_path, monkeypatch, cache_layer):
+    from settle.extract import postgres_store
+
+    monkeypatch.setenv("SETTLE_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("SETTLE_NO_CACHE", "0")
+    monkeypatch.setenv("HYPERSYNC_REORG_MARGIN", "500")
+    monkeypatch.setattr(hypersync, "_token", lambda: "test")
+    stored = {}
+    monkeypatch.setattr(postgres_store, "get", lambda source, key: stored.get((source, key), postgres_store.MISS))
+    monkeypatch.setattr(postgres_store, "put", lambda source, key, **kw: stored.update({(source, key): kw["payload"]}))
+    state = {"head": 600, "timestamps": {100: 999, 101: 1001}, "reads": []}
+
+    def execute(chain, body, headers, post):
+        block = body["from_block"]
+        state["reads"].append(block)
+        return {"data": [{"blocks": [{"number": block, "timestamp": state["timestamps"][block]}]}]}
+
+    monkeypatch.setattr(hypersync, "_execute", execute)
+    monkeypatch.setattr(hypersync, "archive_height", lambda chain: state["head"])
+    # The normal resolution path can have cached these before certification.
+    assert hypersync.block_timestamp("ethereum", 100) == 999
+    assert hypersync.block_timestamp("ethereum", 101) == 1001
+    anchor = datetime.fromtimestamp(1000, UTC)
+    with pytest.raises(hypersync.HyperSyncError, match="not finalized"):
+        HyperSyncBlockResolver().validate_finalized_boundary("ethereum", 100, anchor)
+
+    # A retry after a reorg must reject the old boundary even though it is
+    # now deep enough. Simulate a worker restart reading either cache layer.
+    state.update(head=1000, timestamps={100: 999, 101: 1000, 102: 1002}, reads=[])
+    if cache_layer == "postgres":
+        for path in tmp_path.glob("*.pkl"):
+            path.unlink()
+    assert hypersync.block_timestamp("ethereum", 101) == 1001
+    assert state["reads"] == []  # stale cache is present in both scenarios
+    resolver = HyperSyncBlockResolver()
+    with pytest.raises(hypersync.HyperSyncError, match="not the requested UTC boundary"):
+        resolver.validate_finalized_boundary("ethereum", 100, anchor)
+    assert state["reads"] == [100, 101]
+    resolver.validate_finalized_boundary("ethereum", 101, anchor)
+    assert state["reads"] == [100, 101, 101, 102]
 
 
 def test_partial_active_gar_is_not_read_from_full_month_artifact():

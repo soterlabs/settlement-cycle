@@ -221,6 +221,15 @@ def block_timestamp(chain: str, block: int) -> int:
     (deterministic given chain+block) — the binary search reuses probes across
     dates/venues/primes. Verified byte-identical to ``extract.rpc.block_timestamp``.
     """
+    return block_timestamp_uncached(chain, block)
+
+
+def block_timestamp_uncached(chain: str, block: int) -> int:
+    """Read a timestamp directly, including when certifying cached boundaries.
+
+    A timestamp cached before finality may belong to a replaced block. This
+    path bypasses both local and Postgres caches and does not populate them.
+    """
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {_token()}"}
     body = {
         "from_block": block,

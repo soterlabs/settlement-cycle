@@ -20,7 +20,8 @@ class HyperSyncBlockResolver:
     """Implements ``IBlockResolver`` via HyperSync block timestamps.
 
     ``find_fn`` / ``ts_fn`` are injectable for tests; they default to the
-    cached ``extract.hypersync`` helpers.
+    cached ``extract.hypersync`` helpers. ``validation_ts_fn`` must read fresh
+    timestamps; certification never trusts timestamps cached before finality.
     """
 
     def __init__(
@@ -28,9 +29,11 @@ class HyperSyncBlockResolver:
         *,
         find_fn: Callable[[str, int], int] = hypersync.find_block_at_or_before,
         ts_fn: Callable[[str, int], int] = hypersync.block_timestamp,
+        validation_ts_fn: Callable[[str, int], int] = hypersync.block_timestamp_uncached,
     ) -> None:
         self._find = find_fn
         self._ts = ts_fn
+        self._validation_ts = validation_ts_fn
 
     def block_at_or_before(self, chain: str, anchor_utc: datetime) -> int:
         if anchor_utc.tzinfo is None:
@@ -44,11 +47,12 @@ class HyperSyncBlockResolver:
         """Reject a head clamp, wrong cutoff or pin inside the reorg window."""
         from ...extract.hypersync_store import _reorg_margin
 
-        target = int(anchor_utc.timestamp())
-        if not self._ts(chain, block) <= target < self._ts(chain, block + 1):
-            raise hypersync.HyperSyncError(f"{chain}: block {block} is not the requested UTC boundary")
         margin = _reorg_margin()
         if margin < 0:
             raise ValueError("HYPERSYNC_REORG_MARGIN must be nonnegative")
-        if block > hypersync.archive_height(chain) - margin:
+        # Both observations defining the boundary must be outside the window.
+        if block + 1 > hypersync.archive_height(chain) - margin:
             raise hypersync.HyperSyncError(f"{chain}: cutoff block {block} is not finalized; retry later")
+        target = int(anchor_utc.timestamp())
+        if not self._validation_ts(chain, block) <= target < self._validation_ts(chain, block + 1):
+            raise hypersync.HyperSyncError(f"{chain}: block {block} is not the requested UTC boundary")
