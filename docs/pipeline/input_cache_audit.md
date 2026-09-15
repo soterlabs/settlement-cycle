@@ -16,7 +16,7 @@ returning. Without required mode the existing optional/local-only behavior is
 retained for developer tools and ordinary monthly workflows.
 
 As-of runs enter a run-local finalized-input scope. Every decorated read with
-`chain` and `block` parameters uses the `finalized.v1.<revision>.<source>`
+`chain` and `block` parameters uses the `finalized.v2.<revision>.<source>`
 namespace and canonical bound arguments (including defaults). Positional and
 keyword forms therefore share a key. These reads cannot consume legacy cache
 entries that may have been populated before finality or by old zero-on-error
@@ -31,6 +31,11 @@ an outer helper catches it as zero/None, the outer result is not persisted.
 None capability results are not persisted in this scope. Real ABI zeros and
 confirmed predeployment zeros remain cacheable. This changes persistence
 semantics, not existing compute-layer warning/carry-forward policies.
+
+`Vat.ilks` additionally requires its complete five-word tuple before raw caching.
+The v2 namespace excludes snapshots written by the earlier word-alignment-only
+validation, including decoded fallback rates. Other ABI-specific decoding still
+belongs to the corresponding extractors.
 
 ## Audited extraction paths
 

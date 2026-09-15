@@ -105,3 +105,15 @@ def test_interrupted_write_does_not_claim_coverage(database, tmp_path):
     worker(database, tmp_path, 0, 10, 1, [[0, 10]], crash=True)
     worker(database, tmp_path, 0, 10, 0, [[0, 10]])
     worker(database, tmp_path, 0, 10, 0, [])
+
+
+def test_legacy_coverage_migrates_before_disjoint_backfill(database, tmp_path):
+    import psycopg
+    worker(database, tmp_path, 0, 10, 1, [[0, 10]])
+    # Recreate the pre-migration schema state: persisted rows and one legacy
+    # coverage claim, but no claims in the newly introduced interval table.
+    with psycopg.connect(database, autocommit=True) as conn:
+        conn.execute("DELETE FROM hypersync_ranges")
+    worker(database, tmp_path, 100, 200, 0, [[100, 200]])
+    worker(database, tmp_path, 0, 10, 0, [])
+    worker(database, tmp_path, 0, 200, 0, [[11, 99]])

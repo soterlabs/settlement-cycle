@@ -139,7 +139,7 @@ def cached(source_id: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
                 bound = signature.bind(*args, **kwargs)
                 bound.apply_defaults()
                 scope.check_block(bound.arguments["chain"], bound.arguments["block"])
-                source = f"finalized.v1.{scope.revision}.{source_id}"
+                source = f"finalized.v2.{scope.revision}.{source_id}"
                 # Equivalent positional/keyword calls share one persistent key.
                 key_args, key_kwargs = (), bound.arguments
             elif input_revision() != "0":

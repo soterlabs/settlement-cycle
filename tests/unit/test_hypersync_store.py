@@ -389,3 +389,21 @@ def test_correction_revision_has_independent_event_coverage(monkeypatch):
     original = hypersync_store._stream_key("base", [])
     monkeypatch.setenv("SETTLE_INPUT_REVISION", "corrected")
     assert hypersync_store._stream_key("base", []) != original
+
+
+def test_legacy_coverage_survives_larger_disjoint_backfill(monkeypatch):
+    conn = _FakeConn()
+    monkeypatch.setattr(hypersync_store.postgres_store, "_get_conn", lambda: conn)
+    stream = hypersync_store._stream_key("base", [])
+    conn.store["coverage"][stream] = (0, 100)  # pre-migration, no interval table claims
+    calls = []
+    def query(chain, sel, lo, hi, **kwargs):
+        calls.append((lo, hi))
+        return QueryResult(rows=[], archive_height=10000)
+    monkeypatch.setattr(hypersync, "query_logs", query)
+    hypersync_store.fetch_logs("base", [], 1000, 2000)
+    assert conn.store["coverage"][stream] == (1000, 2000)
+    assert hypersync_store._coverage_ranges(conn, stream) == [(0, 100), (1000, 2000)]
+    hypersync_store.fetch_logs("base", [], 0, 100)
+    hypersync_store.fetch_logs("base", [], 0, 2000)
+    assert calls == [(1000, 2000), (101, 999)]

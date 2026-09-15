@@ -213,6 +213,11 @@ def eth_call(chain: Chain, contract: Address, data: str, block: int) -> str:
         hx = result[2:]
         if hx and (len(hx) % 64 or any(c not in "0123456789abcdefABCDEF" for c in hx)):
             raise RPCError("eth_call returned malformed hex data")
+        # Vat.ilks returns five words. Word alignment alone would accept a
+        # truncated tuple and let ilk_rate permanently cache its RAY fallback.
+        # Validate here, before even the raw eth_call response is persisted.
+        if hx and data[:10].lower() == SEL_ILKS and len(hx) != 5 * 64:
+            raise RPCError("Vat.ilks returned malformed data: expected five ABI words")
         if not hx and is_contract_deployed(chain, contract, block):
             raise RPCError("eth_call returned empty data for a deployed contract")
     return result

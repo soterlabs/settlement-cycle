@@ -165,6 +165,11 @@ def _coverage_ranges(conn: Any, stream: str) -> list[tuple[int, int]]:
     with conn.cursor() as cur:
         cur.execute("SELECT covered_from, covered_to FROM hypersync_ranges WHERE stream = %s", (stream,))
         ranges = [(int(row[0]), int(row[1])) for row in cur.fetchall()]
+    # Preserve pre-migration coverage before any writer replaces the legacy
+    # single-range view with a larger, disjoint interval. Rows already exist
+    # for this claim; only the durable interval metadata needs migrating.
+    if legacy and _missing_ranges(*legacy, _merge_ranges(ranges)):
+        _add_range(conn, stream, *legacy)
     return _merge_ranges(ranges + ([legacy] if legacy else []))
 
 

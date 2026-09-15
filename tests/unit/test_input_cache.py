@@ -211,3 +211,42 @@ def test_none_capability_fallback_is_not_persisted_as_zero(storage):
     assert not rows
     assert run(lambda: outer("ethereum", 500)) == 42
     assert len(rows) == 2
+
+
+@pytest.mark.parametrize("word_count", [1, 2, 3, 4, 6])
+def test_invalid_ilks_tuple_is_not_cached_and_corrected_reply_is_retried(storage, monkeypatch, word_count):
+    rows, path = storage
+    monkeypatch.setenv("ETH_RPC", "http://test.invalid")
+    replies = iter([
+        "0x" + "0" * (64 * word_count),
+        "0x" + "".join(format(v, "064x") for v in [42, 2 * 10**27, 0, 0, 0]),
+    ])
+    calls = []
+    def post(*args):
+        calls.append(1)
+        return next(replies)
+    monkeypatch.setattr(rpc, "_post", post)
+    def rate():
+        return rpc.ilk_rate(Chain.ETHEREUM, Address(bytes(20)), b"A" * 32, 500)
+    with pytest.raises(rpc.RPCError, match="expected five ABI words"):
+        run(rate)
+    assert not rows
+    assert not list(path.glob("*.pkl"))
+    assert run(rate) == 2 * 10**27
+    for file in path.glob("*.pkl"):
+        file.unlink()
+    assert run(rate) == 2 * 10**27  # Postgres hit after clearing local files
+    assert len(calls) == 2
+
+
+def test_v1_decoded_rate_is_not_reused_after_shape_validation_upgrade(storage, monkeypatch):
+    from settle.extract.cache import _hash_args
+    from settle.extract.input_cache import revision_key
+    rows, _ = storage
+    args = dict(chain=Chain.ETHEREUM, vat=Address(bytes(20)), ilk=b"A" * 32, block=500)
+    source = f"finalized.v1.{revision_key()}.rpc.ilk_rate"
+    rows[(source, _hash_args(source, (), args))] = 10**27
+    monkeypatch.setenv("ETH_RPC", "http://test.invalid")
+    monkeypatch.setattr(rpc, "_post", lambda *a: "0x" + "".join(
+        format(v, "064x") for v in [42, 2 * 10**27, 0, 0, 0]))
+    assert run(lambda: rpc.ilk_rate(**args)) == 2 * 10**27
