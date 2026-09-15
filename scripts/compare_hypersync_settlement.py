@@ -7,19 +7,85 @@ on a cache hit. RPC contract valuation remains shared between both runs.
 
 import argparse
 import dataclasses
+import hashlib
 import json
 import sys
 from contextlib import ExitStack
+from datetime import UTC, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from unittest.mock import patch
 
+import pandas as pd
+
 from settle.compute import Sources, compute_monthly_pnl
 from settle.domain.config import load_prime_by_id
 from settle.domain.period import Month
+from settle.domain.sky_tokens import PSM3_LEG_TOKENS
 from settle.extract import dune
+from settle.normalize.sources._paths import QUERIES_DIR
 from settle.normalize.sources.dune_balances import DuneBalanceSource
+from settle.normalize.sources.dune_debt import DuneDebtSource
+from settle.normalize.sources.dune_psm3 import DunePsm3Source
 from settle.normalize.sources.dune_ssr import DuneSSRSource
+from settle.normalize.sources.hypersync_block_resolver import HyperSyncBlockResolver
+
+
+class DailyDunePsm3Oracle(DunePsm3Source):
+    """Dune share histories and exact EOD reserves for this month's calculation.
+
+    The daily SQL preserves the legacy reserve running sum, reducing only the
+    export size. Only certified EOD blocks are answerable; intraday requests
+    fail instead of carrying a daily closing balance into an earlier block.
+    Parent valuation arithmetic and RPC pricing are unchanged.
+    """
+
+    def __init__(self, prime, month, resolver):
+        super().__init__(block_resolver=resolver)
+        self.daily_reserves = {}
+        self.pins = {}
+        days = [month.first_day - timedelta(days=1) + timedelta(days=i)
+                for i in range((month.last_day - month.first_day).days + 2)]
+        for chain, cfg in prime.psm.items():
+            blocks = {day: resolver.block_at_or_before(
+                chain.value, datetime.combine(day, time(23, 59, 59), UTC),
+            ) for day in days}
+            pin = blocks[month.last_day]
+            self.pins[chain.value] = pin
+            self._load_holder_history(chain.value, prime.alm[chain].value, pin_block=pin)
+            self._load_pool_history(chain.value, pin_block=pin)
+            tokens = PSM3_LEG_TOKENS[chain]
+            params = {"psm3": cfg.address.value, "usdc": tokens["USDC"].address.value,
+                      "usds": tokens["USDS"].address.value,
+                      "susds": tokens["sUSDS"].address.value, "start_month": "2024-01-01"}
+            frame = dune.execute_query(
+                QUERIES_DIR / f"psm3_reserves_daily_{chain.value}.sql", params, pin,
+            )
+            histories = {}
+            for row in frame.to_dict("records"):
+                token = row["token"]
+                token = bytes(token) if isinstance(token, (bytes, bytearray)) else bytes.fromhex(str(token).removeprefix("0x"))
+                day = pd.Timestamp(row["block_date"]).date()
+                raw = Decimal(str(row["cum_balance_raw"]))
+                if raw != raw.to_integral_value() or raw < 0:
+                    raise ValueError("Invalid raw Dune PSM3 reserve")
+                history = histories.setdefault(token, {})
+                if day in history:
+                    raise ValueError("Duplicate Dune PSM3 token/day")
+                history[day] = int(raw)
+            for token in tokens.values():
+                history = histories.get(token.address.value)
+                if not history:
+                    raise ValueError(f"Missing Dune PSM3 reserve history: {chain}/{token.symbol}")
+                for day, block in blocks.items():
+                    value = next((v for d, v in sorted(history.items(), reverse=True) if d <= day), 0)
+                    self.daily_reserves[chain.value, cfg.address.value, token.address.value, block] = value
+
+    def pool_reserve_at(self, chain, token, psm3, block, *, decimals):
+        key = (chain, bytes(psm3), bytes(token), block)
+        if key not in self.daily_reserves:
+            raise AssertionError(f"PSM3 daily oracle requested outside certified EOD pins: {chain}/{block}")
+        return self.daily_reserves[key]
 
 
 def differences(left, right, path="result"):
@@ -57,11 +123,15 @@ def differences(left, right, path="result"):
 
 def compare(prime_id, month_label):
     prime, month = load_prime_by_id(prime_id), Month.parse(month_label)
-    if prime.psm:
-        raise ValueError("This full-calculation oracle currently covers primes without PSM; use the PSM comparator separately")
-    oracle = dataclasses.replace(prime, venues=[dataclasses.replace(v, event_source="dune") for v in prime.venues])
+    oracle = dataclasses.replace(
+        prime, venues=[dataclasses.replace(v, event_source="dune") for v in prime.venues],
+        psm={chain: dataclasses.replace(cfg, event_source="dune") for chain, cfg in prime.psm.items()},
+    )
     print("Dune baseline", prime_id, month_label, flush=True)
-    baseline = compute_monthly_pnl(oracle, month, sources=Sources(balance=DuneBalanceSource(), ssr=DuneSSRSource()))
+    psm3 = DailyDunePsm3Oracle(oracle, month, HyperSyncBlockResolver()) if oracle.psm else None
+    baseline = compute_monthly_pnl(oracle, month, sources=Sources(
+        debt=DuneDebtSource(), balance=DuneBalanceSource(), ssr=DuneSSRSource(), psm3=psm3,
+    ))
     print("HyperSync candidate (Dune forbidden)", prime_id, month_label, flush=True)
     original = dune.execute_query
     forbidden = []
@@ -79,9 +149,14 @@ def compare(prime_id, month_label):
         raise AssertionError(f"Migrated calculation attempted {calls} Dune queries (including swallowed fallback errors)")
     mismatches = list(differences(baseline, candidate))
     fields = ["sky_revenue", "agent_rate", "prime_agent_revenue", "monthly_pnl"]
+    def digest(result):
+        return hashlib.sha256(json.dumps(dataclasses.asdict(result), sort_keys=True, default=str).encode()).hexdigest()
     return {"prime": prime_id, "month": month_label, "matched": not mismatches,
             "comparison": "all MonthlyPnL dataclass fields; absolute numeric tolerance 0.000001",
             "candidate_dune_calls": 0, "mismatches": mismatches,
+            "psm_oracle": "Dune lifetime share histories and daily reserve running sums" if psm3 else None,
+            "psm_pins": psm3.pins if psm3 else {},
+            "output_sha256": {"dune": digest(baseline), "hypersync": digest(candidate)},
             "headlines": {f: {"dune": str(getattr(baseline, f)), "hypersync": str(getattr(candidate, f))} for f in fields}}
 
 
