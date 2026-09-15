@@ -793,6 +793,7 @@ venues:
       decimals: 6
 
   - id: S28
+    event_source: hypersync
     chain: ethereum
     label: 'PYUSD raw (ALM idle — $677M as of 2026-04)'
     pricing_category: A
