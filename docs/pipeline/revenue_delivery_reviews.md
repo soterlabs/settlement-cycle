@@ -30,3 +30,16 @@
   cache-counter scope and response-byte semantics. No additional P1/P2 findings.
   Metrics explicitly distinguish instrumented wall time from provider billing
   units and do not claim synthetic fixtures are live budget measurements.
+
+## Step 5
+
+- Round 1: checked immutable identity, concurrent inserts and publication order.
+  Fixed ambiguous correction ordering within one transaction (Postgres NOW is
+  transaction-stable); a database sequence now orders publications explicitly.
+- Round 2: checked provenance integrity. Local code-version capture now refuses
+  untracked source/config files as well as tracked edits, rather than assigning
+  a clean commit identity to uncommitted implementation changes.
+- Round 3: checked transaction ownership, identical-identity conflicts, revision
+  lookup isolation by prime, late-backfill ordering, Decimal serialization and
+  the 90-day publication boundary. No further P1/P2 findings. Five targeted
+  Postgres/provenance checks pass; failed transactions preserve prior results.
