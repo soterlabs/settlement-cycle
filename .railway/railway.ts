@@ -23,7 +23,7 @@ export default defineRailway(() => {
 
   // One explicit image for both services (see Dockerfile) — Nixpacks put the
   // `api` extra outside its runtime venv.
-  const build = { builder: "DOCKERFILE" as const, dockerfilePath: "Dockerfile" };
+  const build = { builder: "DOCKERFILE" as const, dockerfilePath: "Dockerfile", buildCommand: 'pip install -e ".[api]"' };
 
   const settleApi = service("settle-api", {
     source: settlementCycle,
@@ -34,7 +34,6 @@ export default defineRailway(() => {
       startCommand: 'sh -c "python -m uvicorn settle.api.app:app --host 0.0.0.0 --port ${PORT:-8000}"',
       healthcheckPath: "/healthz",
       healthcheckTimeout: 120,
-      restartPolicyType: "ON_FAILURE",
       restartPolicyMaxRetries: 5,
     },
     env: { API_CORS_ORIGINS: preserve(), DATABASE_URL: preserve(), LOG_LEVEL: preserve() },
@@ -54,7 +53,27 @@ export default defineRailway(() => {
     env: { DATABASE_URL: preserve(), ENVIO_API_TOKEN: preserve(), ETH_RPC: preserve(), LOG_LEVEL: preserve() },
   });
 
+  // Revenue is DAILY. The existing SBE history job has an independent cadence.
+  const revenueDaily = service("settle-revenue-daily", {
+    source: settlementCycle,
+    replicas: { "us-west2": 1 },
+    build,
+    deploy: {
+      startCommand: "python -m settle.revenue.worker",
+      cronSchedule: "17 3 * * *",
+      restartPolicyType: "NEVER", // bounded retries are recorded by the worker
+    },
+    env: {
+      DATABASE_URL: "${{Postgres.DATABASE_URL}}",
+      ENVIO_API_TOKEN: preserve(), ETH_RPC: preserve(), BASE_RPC: preserve(),
+      ARBITRUM_RPC: preserve(), OPTIMISM_RPC: preserve(), UNICHAIN_RPC: preserve(),
+      AVALANCHE_C_RPC: preserve(), PLUME_RPC: preserve(), MONAD_RPC: preserve(),
+      ROBINHOOD_RPC: preserve(), SETTLE_REQUIRE_POSTGRES: "1",
+      SETTLE_INPUT_REVISION: "0", REVENUE_START_DATE: preserve(),
+    },
+  });
+
   return project("settlement-cycle-data", {
-    resources: [settleApi, Postgres, settleCron, postgresVolume],
+    resources: [settleApi, Postgres, settleCron, revenueDaily, postgresVolume],
   });
 });
