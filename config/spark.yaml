@@ -830,6 +830,7 @@ venues:
       decimals: 18
 
   - id: S29
+    event_source: hypersync
     chain: ethereum
     label: 'DAI raw (ALM idle)'
     pricing_category: A
