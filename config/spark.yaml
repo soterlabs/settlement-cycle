@@ -1066,6 +1066,7 @@ venues:
       decimals: 18
 
   - id: S48
+    event_source: hypersync
     chain: optimism
     label: 'USDS raw (Optimism — POL)'
     pricing_category: A
