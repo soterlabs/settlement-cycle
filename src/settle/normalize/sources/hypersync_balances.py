@@ -53,7 +53,10 @@ def _default_start_block(chain: str, start: date) -> int:
     # the ``block_date >= start`` filter in Python), so exactness is not required.
     from ...extract import hypersync
     midnight = datetime.combine(start, time.min, tzinfo=timezone.utc)
-    return hypersync.find_block_at_or_before(chain, int(midnight.timestamp()))
+    # Several L2 blocks can share the midnight timestamp. Resolving midnight
+    # itself returns the LAST such block and would omit earlier midnight
+    # events. Start at the previous second; the date filter drops its rows.
+    return hypersync.find_block_at_or_before(chain, int(midnight.timestamp()) - 1)
 
 
 def _default_decimals(chain: str, token: bytes, block: int) -> int:

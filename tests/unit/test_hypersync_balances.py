@@ -79,6 +79,21 @@ def test_start_date_clip():
     assert df["cum_balance"].tolist() == [Decimal("100")]
 
 
+def test_start_includes_all_blocks_sharing_midnight_timestamp(monkeypatch):
+    from settle.extract import hypersync
+    midnight = int(datetime(2026, 8, 1, tzinfo=timezone.utc).timestamp())
+    monkeypatch.setattr(hypersync, "find_block_at_or_before",
+                        lambda chain, timestamp: 100 if timestamp < midnight else 104)
+    rows = [_xfer(100, 0, midnight - 1, _A, _H, 900 * 10**_DEC)]
+    rows += [_xfer(b, 0, midnight, _A, _H, 10**_DEC) for b in range(101, 105)]
+    source = HyperSyncBalanceSource(
+        fetch_logs=lambda chain, sel, start, end: [r for r in rows if start <= r.block_number <= end],
+        decimals_of=lambda *args: _DEC,
+    )
+    frame = source.cumulative_balance_timeseries("arbitrum", _TOKEN, _H, date(2026, 8, 1), 105)
+    assert frame["daily_net"].tolist() == [Decimal("4")]
+
+
 def test_directed_inflow():
     U = 10**_DEC
     rows = [
