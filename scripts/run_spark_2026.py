@@ -1,37 +1,13 @@
-"""Spark 2026 multi-month settlement runner.
+"""Historical Spark fixture replay with live auxiliary reads.
 
-Single entry point that runs every Spark month for which a fixture set
-currently exists. Today that's Q1 only:
+Uses the fixture sets and pinned blocks listed below to reproduce earlier
+settlements. Explicit fixture balance/debt sources remain authoritative;
+SSR, contract valuation and event inputs without fixtures are read live.
 
-  * Jan / Feb / Mar → ``tests/fixtures/spark_2026_q1/``.
+For fresh settlements using the configured HyperSync sources, run:
+    .venv/bin/python scripts/run_live_2026.py --primes spark --months 2026-08
 
-Apr+ are not yet runnable from this script — extending coverage means
-capturing a new Spark fixture set (debt timeseries, Cat B/E cum_balance,
-L2 block resolvers) for the relevant months and adding entries to
-``PIN_BLOCKS_BY_MONTH`` + ``_MONTH_PLAN`` below.
-
-For each month, the loop:
-  1. (Re)loads the right fixture set.
-  2. Rebuilds Sources so each ``MockBalanceSource`` gets a fresh
-     call-recording slate (avoids leaking state across months). Cat A
-     cum_balance is synthesised via RPC at the per-month SoM/EoM blocks.
-  3. Runs ``compute_monthly_pnl`` with the month's SoM / EoM pin blocks.
-  4. Persists ``provenance.json`` + ``summary.md`` + the canonical xlsx
-     under ``settlements/spark/<YYYY-MM>/`` via ``write_settlement``.
-
-This script sets ``SETTLE_SPARK_ALLOW_PRE_PERIOD_ANCHOR=1`` on import so
-the Cat B anchor-row check in the fixture loader is bypassed for Spark
-venues whose ``cat_b_cum_balance.json`` has no in-period rows. Confirmed
-safe (no Q1 flows for those venues, per Spark team) — see
-``tests/fixtures/spark_fixture_loader.py`` for the check itself.
-
-Known limitation: the PSM3 holder-history source pulls Dune query
-``7483773`` live, and that query returns HTTP 404 ("Query not found")
-today. Fix: capture a PSM3 holder-history fixture or restore the
-upstream query.
-
-Run with:
-    PYTHONPATH=src python3 scripts/run_spark_2026.py
+This replay runner writes canonical artifacts under settlements/spark/.
 """
 
 from __future__ import annotations
@@ -78,9 +54,10 @@ _SETTLEMENT_SOURCES = {
     "ssr":              "HyperSyncSSRSource (sUSDS File events at the period pin block)",
     "position_balance": "RPCPositionBalanceSource",
     "convert_to_assets": "RPCConvertToAssetsSource",
-    "psm3":             "RPCPsm3Source (drpc — cached from sky_revenue run)",
+    "psm3":             "HyperSyncPsm3Source (live monthly opening RPC anchors)",
     "block_resolver":   "FixtureMultiResolver (date->block from spark_2026_q1 fixtures, RPC fallback)",
     "curve_pool":       "CurvePoolSource",
+    "v4_position":      "HyperSyncV4PositionSource (live per-venue routing)",
 }
 
 # Pin blocks per (month, chain). Eth + Base from Grove's fixtures

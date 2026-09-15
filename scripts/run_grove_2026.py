@@ -1,22 +1,13 @@
-"""Grove 2026 multi-month settlement runner — Jan through May.
+"""Historical Grove fixture replay with live auxiliary reads.
 
-Single entry point that exercises every existing Grove fixture:
+Uses the fixture sets and pinned blocks listed below to reproduce earlier
+settlements. Explicit fixture balance/debt sources remain authoritative;
+SSR, contract valuation and event inputs without fixtures are read live.
 
-  * Jan / Feb / Mar → ``tests/fixtures/grove_2026_03/`` (each month uses
-    its own SoM / EoM pin blocks; the Dune/RPC inputs cover Q1 entirely).
-  * Apr            → ``tests/fixtures/grove_2026_04/``.
-  * May            → ``tests/fixtures/grove_2026_05/``.
+For fresh settlements using the configured HyperSync sources, run:
+    .venv/bin/python scripts/run_live_2026.py --primes grove --months 2026-08
 
-For each month, the loop:
-  1. (Re)loads the right fixture set.
-  2. Rebuilds Sources so each ``MockBalanceSource`` gets a fresh
-     call-recording slate (avoids leaking state across months).
-  3. Runs ``compute_monthly_pnl`` with the month's SoM / EoM pin blocks.
-  4. Persists ``provenance.json`` + ``summary.md`` + the canonical xlsx
-     under ``settlements/grove/<YYYY-MM>/`` via ``write_settlement``.
-
-Run with:
-    PYTHONPATH=src python3 scripts/run_grove_2026.py
+This replay runner writes canonical artifacts under settlements/grove/.
 """
 
 from __future__ import annotations
