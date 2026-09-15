@@ -2621,6 +2621,7 @@ def _shares_to_usd_inflow_timeseries(
     price_at_block,
     som_block: int | None = None,
     balance_at=None,
+    period_only: bool = False,
 ):
     """Generic Cat B / Cat E inflow tracking.
 
@@ -2628,6 +2629,10 @@ def _shares_to_usd_inflow_timeseries(
     adjusted (e.g. ``daily_inflow = 100`` means 100 shares, not 100 × 10^dec).
     For each day with activity we resolve the day-end block and call
     ``price_at_block(block)`` to get USD per 1.0 share, then multiply.
+
+    ``period_only`` rebases cumulative inflow to zero at period start. The
+    monthly caller only uses cumulative differences from that opening value,
+    so historical pricing cancels out. Other callers retain full histories.
 
     Why per-day, not per-event: for monthly settlement on slow-moving NAV /
     pps, intra-day variance is bps and aggregating a day's net flow to a
@@ -2800,6 +2805,9 @@ def _shares_to_usd_inflow_timeseries(
             by_date[period.end] = by_date.get(period.end, Decimal("0")) + discrepancy
     else:
         eom_is_pure_synthetic = False
+
+    if period_only:
+        by_date = {d: value for d, value in by_date.items() if period.start <= d <= period.end}
 
     if not by_date:
         return pd.DataFrame({
@@ -3041,5 +3049,4 @@ def _erc4626_event_inflow_timeseries(
     out["cum_inflow"]          = out["daily_inflow"].cumsum()
     out["cum_net_shares_raw"]  = out["daily_net_shares_raw"].cumsum()
     return out
-
 

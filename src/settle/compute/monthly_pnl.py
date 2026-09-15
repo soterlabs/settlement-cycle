@@ -3051,6 +3051,11 @@ def compute_monthly_pnl(
                             dates.add(row["block_date"])
                 boundaries: list[tuple[int, int, object]] = []
                 for d in dates:
+                    # Histories start at prime inception, but only activity
+                    # within this settlement can contribute a boundary. Avoid
+                    # resolving old dates merely to discard their blocks.
+                    if not (period.start <= d <= period.end):
+                        continue
                     pre_eod = _dt.combine(d - _td(days=1), _time.max, tzinfo=_tz.utc)
                     post_eod = _dt.combine(d, _time.max, tzinfo=_tz.utc)
                     pre_block = resolver.block_at_or_before(chain_value, pre_eod)
@@ -3230,10 +3235,16 @@ def compute_monthly_pnl(
                     # Keep this scale next to the divisor to make the
                     # dimensional reasoning obvious for future readers.
                     _USDS_RAW_SCALE = Decimal(10**18)
-                    psm3_src = (
-                        sources.psm3 if sources.psm3 is not None
-                        else get_psm3_source()
-                    )
+                    if sources.psm3 is not None:
+                        psm3_src = sources.psm3
+                    elif venue.event_source == "hypersync":
+                        from ..normalize.sources.hypersync_psm3 import HyperSyncPsm3Source
+                        psm3_src = HyperSyncPsm3Source(
+                            block_resolver=resolver,
+                            convert_to_assets_source=sources.convert_to_assets,
+                        )
+                    else:
+                        psm3_src = get_psm3_source()
 
                     def _l2_susds_value(block: int) -> _Dec:
                         bal = get_position_balance(
@@ -3418,6 +3429,7 @@ def compute_monthly_pnl(
                         balance_source=_susds_balance_src,
                         block_resolver=resolver,
                         price_at_block=_susds_price,
+                        period_only=True,
                     )
                 elif venue.chain in prime.psm:
                     # L2: plain ERC-20 sUSDS — price via PSM3 pps.
@@ -3443,6 +3455,7 @@ def compute_monthly_pnl(
                             balance_source=_susds_balance_src,
                             block_resolver=resolver,
                             price_at_block=_susds_price,
+                            period_only=True,
                         )
                     else:
                         inflow_ts = _erc4626_shares_weighted_inflow(
@@ -3537,6 +3550,7 @@ def compute_monthly_pnl(
                         price_at_block=_cat_b_price,
                         som_block=som_block,
                         balance_at=_balance_at,
+                        period_only=True,
                     )
         elif venue.pricing_category == PricingCategory.PAR_STABLE:
             # Cat A — raw par-stable holdings on the ALM. Source-tagged

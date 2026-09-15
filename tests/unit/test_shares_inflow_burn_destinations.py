@@ -115,6 +115,40 @@ def _flat_price_at_block(_block) -> Decimal:
     return Decimal("1.0")
 
 
+def test_period_only_pricing_preserves_monthly_flows_and_time_weighted_value():
+    from datetime import timedelta
+    from types import SimpleNamespace
+
+    from settle.compute._helpers import cum_at_or_before
+    from settle.compute.prime_agent_revenue import _time_weighted_avg_value
+    from settle.domain.period import Period
+
+    period = Period(_FakePeriod.start, _FakePeriod.end, pin_blocks=_FakePeriod.pin_blocks)
+    source = _MockBalanceSource({
+        (bytes(20), _ALM.value): _df([(date(2025, 12, 1), 1000000), (date(2026, 4, 4), 100)]),
+        (_ALM.value, _QUEUE.value): _df([(date(2026, 4, 8), 30)]),
+        (_QUEUE.value, _ALM.value): _df([(date(2026, 4, 12), 10)]),
+    })
+    priced = []
+
+    def price(block):
+        priced.append(block)
+        return Decimal(block) / 100
+
+    resolver = SimpleNamespace(block_at_or_before=lambda chain, anchor: anchor.month * 100 + anchor.day)
+    kwargs = dict(balance_source=source, block_resolver=resolver, price_at_block=price)
+    full = _shares_to_usd_inflow_timeseries(_prime(), _venue_with_queue(), period, **kwargs)
+    assert 1201 in priced
+    priced.clear()
+    scoped = _shares_to_usd_inflow_timeseries(_prime(), _venue_with_queue(), period, period_only=True, **kwargs)
+    assert priced == [404, 408, 412]
+    opening = period.start - timedelta(days=1)
+    def net(frame):
+        return cum_at_or_before(frame, "cum_inflow", period.end) - cum_at_or_before(frame, "cum_inflow", opening)
+    assert net(full) == net(scoped)
+    assert _time_weighted_avg_value(period, Decimal(1000000), full) == _time_weighted_avg_value(period, Decimal(1000000), scoped)
+
+
 # --------------------------------------------------------------------------
 # Tests
 # --------------------------------------------------------------------------
