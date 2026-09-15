@@ -1107,6 +1107,7 @@ venues:
       decimals: 18
 
   - id: S52
+    event_source: hypersync
     chain: unichain
     label: 'USDS raw (Unichain — POL)'
     pricing_category: A
