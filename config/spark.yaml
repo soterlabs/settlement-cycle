@@ -1014,6 +1014,7 @@ venues:
       decimals: 18
 
   - id: S43
+    event_source: hypersync
     chain: arbitrum
     label: 'Savings USDS / sUSDS proxy (Arbitrum — POL)'
     pricing_category: B
