@@ -1051,6 +1051,7 @@ venues:
   # S46 PSM3-Optimism: see comment above S34. Tracked via addresses.optimism.psm.
 
   - id: S47
+    event_source: hypersync
     chain: optimism
     label: 'Savings USDS / sUSDS proxy (Optimism — POL)'
     pricing_category: B
