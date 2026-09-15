@@ -18,6 +18,7 @@ from settle.compute.prime_agent_revenue import (
 from settle.domain import (
     Address,
     Chain,
+    Month,
     NotionalScheduleEntry,
     Period,
     PricingCategory,
@@ -1383,7 +1384,7 @@ def test_venue_revenue_susds_spread_serialised_to_provenance():
 
     pnl = MonthlyPnL(
         prime_id="spark",
-        month=_period().start.replace(day=1),
+        month=Month(2026, 3),
         period=_period(),
         sky_revenue=Decimal("0"),
         agent_rate=Decimal("0"),
@@ -1443,7 +1444,7 @@ def test_monthly_pnl_susds_spread_reimbursement_aggregates_per_venue():
 
     sky_rev = Decimal("100000") - total_reimb
     pnl = MonthlyPnL(
-        prime_id="spark", month=_period().start.replace(day=1), period=_period(),
+        prime_id="spark", month=Month(2026, 3), period=_period(),
         sky_revenue=sky_rev,
         agent_rate=Decimal("0"), prime_agent_revenue=Decimal("0"),
         # MonthlyPnL.__post_init__ enforces:

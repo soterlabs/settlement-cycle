@@ -286,6 +286,8 @@ def enrich_with_dr(pnl):
     unchanged when no DR data is available. ``prime_agent_total_revenue`` is a
     computed property, so it updates automatically.
     """
+    if pnl.is_provisional:
+        raise ValueError("Monthly distribution rewards cannot enrich a partial-month revenue estimate")
     month = f"{pnl.month.year}-{pnl.month.month:02d}"
     dr = load_dr(pnl.prime_id, month)
     if dr is None:

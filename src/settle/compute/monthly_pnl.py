@@ -2144,8 +2144,19 @@ def compute_monthly_pnl(
     pin_blocks_eom: dict[Chain, int] | None = None,
     pin_blocks_som: dict[Chain, int] | None = None,
     sky_only: bool = False,
+    as_of: date | None = None,
 ) -> MonthlyPnL:
-    """Compute the full monthly settlement for ``prime`` × ``month``.
+    """Compute settlement revenue for ``prime`` × ``month``.
+
+    ``as_of`` selects an inclusive, completed UTC day within the month.
+    The opening anchor stays at the previous month-end; closing valuations,
+    flows and accrual use the cutoff. Partial results are provisional and
+    exclude monthly distribution-reward enrichment. Active monthly-only GAR
+    is unsupported for partial periods. Omit the argument for the full month.
+
+    Live as-of runs require certified, finalized boundaries. Explicit pins
+    with a custom resolver are caller-certified fixtures/replay inputs; the
+    legacy ``pin_blocks_eom`` argument names the closing pin even mid-month.
 
     Block resolution: by default, EoM and SoM blocks are resolved live via RPC
     (one binary search per chain, ~25 RPC calls each). Tests can supply both
@@ -2178,6 +2189,13 @@ def compute_monthly_pnl(
     ``prime_agent_revenue`` is pinned to 0 — an expected display asymmetry
     of the debug mode, not an accounting hole.
     """
+    period_unpinned = Period.from_month(month, as_of=as_of)
+    if as_of is not None:
+        if as_of >= datetime.now(timezone.utc).date():
+            raise ValueError("as_of must be a completed UTC day (before today)")
+        if period_unpinned.end < month.last_day and not sky_only:
+            from .gar import validate_gar_cutoff
+            validate_gar_cutoff(prime, month, as_of)
     sources = _sources_from_prime(prime, sources)
 
     # sky_only debug-mode warning — see docstring above.
@@ -2203,7 +2221,13 @@ def compute_monthly_pnl(
         if sources.block_resolver is not None
         else get_block_resolver()
     )
-    period_unpinned = Period.from_month(month)
+    # Custom resolvers with explicit fixture pins are caller-certified.
+    # Automatically resolved as-of pins require a finality-aware resolver.
+    validate_boundary = getattr(resolver, "validate_finalized_boundary", None)
+    if as_of is not None and validate_boundary is None and (
+        pin_blocks_eom is None or pin_blocks_som is None
+    ):
+        raise ValueError("as_of requires a finality-aware block resolver or explicit certified fixture pins")
 
     # Resolve EoM and SoM pin blocks for all chains in parallel (two concurrent
     # ThreadPoolExecutors, one per anchor). Each pool already parallelises across
@@ -2231,6 +2255,12 @@ def compute_monthly_pnl(
             if _fut_som is not None:
                 pin_blocks_som = _fut_som.result()
         _log.info("pin blocks resolved: eom=%s  som=%s", pin_blocks_eom, pin_blocks_som)
+
+    if as_of is not None and validate_boundary is not None:
+        for chain in prime.chains:
+            validate_boundary(chain.value, pin_blocks_eom[chain], period_unpinned.end_eod_utc)
+            validate_boundary(chain.value, pin_blocks_som[chain],
+                              _previous_day_eod_utc(period_unpinned.start))
 
     # 1b. Upgrade to DuneBlockResolver for every chain that has Dune coverage.
     # One Dune query per chain replaces every per-day RPC binary-search (~25

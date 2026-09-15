@@ -18,6 +18,7 @@ the GAR prime's month-N report — a missing artifact fails loud.
 from __future__ import annotations
 
 import logging
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
@@ -32,6 +33,17 @@ _log = logging.getLogger(__name__)
 # Same resolution as settle.load.writer._REPO_ROOT (src/settle/<pkg>/x.py →
 # repo). Kept here so compute doesn't import the load layer.
 REPO_ROOT = Path(__file__).resolve().parents[3]
+
+
+def validate_gar_cutoff(prime: Prime, month: Month, as_of: date) -> None:
+    """Monthly SNR artifacts cannot supply a partial-month GAR estimate."""
+    cfg = prime.gar
+    if (as_of < month.last_day and cfg is not None and str(month) >= cfg.from_month
+            and (cfg.until_month is None or str(month) < cfg.until_month)):
+        raise ValueError(
+            f"{prime.id}: partial-month GAR requires Sky Net Revenue through {as_of}; "
+            "the monthly sky_total artifact cannot be used for an as_of estimate"
+        )
 
 
 def compute_gar(

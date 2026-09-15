@@ -161,7 +161,7 @@ class SDEDailyBreakdown:
 
 @dataclass(frozen=True, slots=True)
 class MonthlyPnL:
-    """Top-level result of a monthly settlement run.
+    """Top-level result of a monthly or provisional month-to-date run.
 
     The reported headline is **prime_agent_total_revenue** and **sky_revenue**,
     not the netted ``monthly_pnl``. ``monthly_pnl`` stays computed for audit
@@ -322,6 +322,15 @@ class MonthlyPnL:
             + self.chronicle_points
             + self.gar
         )
+
+    @property
+    def as_of(self) -> date:
+        """Inclusive UTC closing date; legacy EoM fields use this boundary."""
+        return self.period.end
+
+    @property
+    def is_provisional(self) -> bool:
+        return self.period.end < self.month.last_day
 
     def __post_init__(self) -> None:
         # Sanity invariant — sum holds at the Decimal level. Kept (per design

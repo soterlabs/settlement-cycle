@@ -176,7 +176,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
     from pathlib import Path
 
     from .compute import compute_monthly_pnl
-    from .load import default_output_dir, write_settlement
+    from .load import default_output_dir, write_revenue_preview, write_settlement
 
     prime = load_prime_by_id(args.prime)
     month = Month.parse(args.month)
@@ -187,11 +187,14 @@ def _cmd_run(args: argparse.Namespace) -> int:
                 "  [use --log-level INFO for step-by-step progress]"
     print(f"settle run {prime.id} {month}")
     print(f"  resolving pin blocks ({n_chains} chain(s), EoM + SoM in parallel)...{mode_note}")
-    result = compute_monthly_pnl(prime, month, sky_only=sky_only)
+    cutoff = getattr(args, "as_of", None)
+    result = compute_monthly_pnl(prime, month, sky_only=sky_only, as_of=cutoff)
 
     print()
     print("=" * 70)
     mode_tag = " [sky_only]" if sky_only else ""
+    if result.is_provisional:
+        mode_tag += f" [PROVISIONAL through {result.as_of}; excludes monthly distribution rewards]"
     print(f"MONTHLY PnL -- {prime.id} -- {month}{mode_tag}")
     print("=" * 70)
     print(f"  Period:                   {result.period.start} -> {result.period.end}")
@@ -212,7 +215,11 @@ def _cmd_run(args: argparse.Namespace) -> int:
                   f"revenue=${v.revenue:>15,.2f}")
 
     output_dir = Path(args.output_dir) if args.output_dir else default_output_dir(prime.id, str(month))
-    written = write_settlement(result, output_dir)
+    if result.is_provisional:
+        written = write_revenue_preview(result, output_dir)
+        output_dir = written["provenance"].parent
+    else:
+        written = write_settlement(result, output_dir)
     print()
     print(f"  Artifacts written to: {output_dir}")
     for name, path in written.items():
@@ -259,6 +266,9 @@ def _build_parser() -> argparse.ArgumentParser:
     p_run = sub.add_parser("run", help="Run a settlement end-to-end")
     p_run.add_argument("--prime", required=True, help="Prime id")
     p_run.add_argument("--month", required=True, help="Settlement month YYYY-MM")
+    from datetime import date
+    p_run.add_argument("--as-of", type=date.fromisoformat,
+                       help="Calculate through a completed UTC day, YYYY-MM-DD, within --month")
     p_run.add_argument(
         "--output-dir",
         help="Override output directory (default: <repo>/settlements/<prime>/<month>/)",

@@ -71,5 +71,10 @@ class Period:
         return datetime.combine(self.end, datetime.max.time(), tzinfo=timezone.utc)
 
     @classmethod
-    def from_month(cls, month: Month, pin_blocks: dict[Chain, int] | None = None) -> Self:
-        return cls(month.first_day, month.last_day, pin_blocks or {})
+    def from_month(cls, month: Month, pin_blocks: dict[Chain, int] | None = None,
+                   *, as_of: date | None = None) -> Self:
+        """Calendar month, optionally ending at an inclusive cutoff date."""
+        if as_of is not None:
+            if type(as_of) is not date or not month.first_day <= as_of <= month.last_day:
+                raise ValueError("as_of must be a date within the selected settlement month")
+        return cls(month.first_day, as_of or month.last_day, pin_blocks or {})

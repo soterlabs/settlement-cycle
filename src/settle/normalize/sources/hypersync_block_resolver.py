@@ -39,3 +39,16 @@ class HyperSyncBlockResolver:
 
     def block_to_date(self, chain: str, block: int) -> date:
         return datetime.fromtimestamp(self._ts(chain, block), tz=timezone.utc).date()
+
+    def validate_finalized_boundary(self, chain: str, block: int, anchor_utc: datetime) -> None:
+        """Reject a head clamp, wrong cutoff or pin inside the reorg window."""
+        from ...extract.hypersync_store import _reorg_margin
+
+        target = int(anchor_utc.timestamp())
+        if not self._ts(chain, block) <= target < self._ts(chain, block + 1):
+            raise hypersync.HyperSyncError(f"{chain}: block {block} is not the requested UTC boundary")
+        margin = _reorg_margin()
+        if margin < 0:
+            raise ValueError("HYPERSYNC_REORG_MARGIN must be nonnegative")
+        if block > hypersync.archive_height(chain) - margin:
+            raise hypersync.HyperSyncError(f"{chain}: cutoff block {block} is not finalized; retry later")

@@ -124,6 +124,9 @@ def render_summary(prov: dict) -> str:
     n_days   = period.get("n_days", "?")
 
     lines.append(f"# {prime_id.upper()} — {month}")
+    if prov.get("provisional"):
+        lines.extend(["", f"**Provisional revenue through {prov['as_of']} (UTC).**",
+                      prov["calculation_note"]])
     lines.append("")
     lines.append(
         f"Period: {period.get('start', '?')} → {period.get('end', '?')} "
