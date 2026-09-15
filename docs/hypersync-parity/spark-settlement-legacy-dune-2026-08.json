@@ -1,0 +1,609 @@
+{
+  "prime": "spark",
+  "month": "2026-08",
+  "matched": false,
+  "comparison": "all MonthlyPnL dataclass fields; absolute numeric tolerance 0.000001",
+  "candidate_dune_calls": 0,
+  "mismatches": [
+    {
+      "path": "result.sky_revenue_daily[0].utilized",
+      "dune": "1818561490.530135611623386352",
+      "hypersync": "1818561490.530232734425413705",
+      "difference": "0.000097122802027353"
+    },
+    {
+      "path": "result.sky_revenue_daily[0].cum_debt",
+      "dune": "2408455327.341081225099351369",
+      "hypersync": "2408455327.341175515199553861",
+      "difference": "0.000094290100202492"
+    },
+    {
+      "path": "result.sky_revenue_daily[0].alm_usds",
+      "dune": "90000000.27670460920344205849",
+      "hypersync": "90000000.276701776501617197",
+      "difference": "0.00000283270182486149"
+    },
+    {
+      "path": "result.sky_revenue_daily[1].utilized",
+      "dune": "1799902315.054010852645209439",
+      "hypersync": "1799902315.054106742247214301",
+      "difference": "0.000095889602004862"
+    },
+    {
+      "path": "result.sky_revenue_daily[1].cum_debt",
+      "dune": "2379161783.101480345046909416",
+      "hypersync": "2379161783.10157340734420917",
+      "difference": "0.000093062297299754"
+    },
+    {
+      "path": "result.sky_revenue_daily[1].alm_usds",
+      "dune": "90000000.00000282730470510849",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000282730470510849"
+    },
+    {
+      "path": "result.sky_revenue_daily[2].utilized",
+      "dune": "1823518581.353869890987435615",
+      "hypersync": "1823518581.353967149165351333",
+      "difference": "0.000097258177915718"
+    },
+    {
+      "path": "result.sky_revenue_daily[2].cum_debt",
+      "dune": "2403684032.150906379113157732",
+      "hypersync": "2403684032.151000809986368342",
+      "difference": "0.000094430873210610"
+    },
+    {
+      "path": "result.sky_revenue_daily[2].alm_usds",
+      "dune": "90000000.00000282730470510849",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000282730470510849"
+    },
+    {
+      "path": "result.sky_revenue_daily[3].utilized",
+      "dune": "1925821686.200941022100290161",
+      "hypersync": "1925821686.201037313020770972",
+      "difference": "0.000096290920480811"
+    },
+    {
+      "path": "result.sky_revenue_daily[3].cum_debt",
+      "dune": "2502836562.640938245578124629",
+      "hypersync": "2502836562.641031694292739138",
+      "difference": "0.000093448714614509"
+    },
+    {
+      "path": "result.sky_revenue_daily[3].alm_usds",
+      "dune": "90000000.00000284220586630234",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000284220586630234"
+    },
+    {
+      "path": "result.sky_revenue_daily[4].utilized",
+      "dune": "1913750101.958497274094416744",
+      "hypersync": "1913750101.958594411957913050",
+      "difference": "0.000097137863496306"
+    },
+    {
+      "path": "result.sky_revenue_daily[4].cum_debt",
+      "dune": "2489518257.036270846661711183",
+      "hypersync": "2489518257.036365142319341187",
+      "difference": "0.000094295657630004"
+    },
+    {
+      "path": "result.sky_revenue_daily[4].alm_usds",
+      "dune": "90000000.00000284220586630234",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000284220586630234"
+    },
+    {
+      "path": "result.sky_revenue_daily[5].utilized",
+      "dune": "1908224557.991680539008440543",
+      "hypersync": "1908224557.991778069672394761",
+      "difference": "0.000097530663954218"
+    },
+    {
+      "path": "result.sky_revenue_daily[5].cum_debt",
+      "dune": "2486090955.601421314823950016",
+      "hypersync": "2486090955.601515988380876738",
+      "difference": "0.000094673556926722"
+    },
+    {
+      "path": "result.sky_revenue_daily[5].alm_usds",
+      "dune": "90000000.00000285710702749619",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000285710702749619"
+    },
+    {
+      "path": "result.sky_revenue_daily[6].utilized",
+      "dune": "1910275974.638434834999327198",
+      "hypersync": "1910275974.638543594732487261",
+      "difference": "0.000108759733160063"
+    },
+    {
+      "path": "result.sky_revenue_daily[6].cum_debt",
+      "dune": "2489247842.235037801674014495",
+      "hypersync": "2489247842.235143704300147062",
+      "difference": "0.000105902626132567"
+    },
+    {
+      "path": "result.sky_revenue_daily[6].alm_usds",
+      "dune": "90000000.00000285710702749619",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000285710702749619"
+    },
+    {
+      "path": "result.sky_revenue_daily[7].utilized",
+      "dune": "1916943011.499387102601849523",
+      "hypersync": "1916943011.499501422103580952",
+      "difference": "0.000114319501731429"
+    },
+    {
+      "path": "result.sky_revenue_daily[7].cum_debt",
+      "dune": "2496370551.427803969578273053",
+      "hypersync": "2496370551.427915431972976986",
+      "difference": "0.000111462394703933"
+    },
+    {
+      "path": "result.sky_revenue_daily[7].alm_usds",
+      "dune": "90000000.00000285710702749619",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000285710702749619"
+    },
+    {
+      "path": "result.sky_revenue_daily[8].utilized",
+      "dune": "1911085821.278999945548353416",
+      "hypersync": "1911085821.279114090492913959",
+      "difference": "0.000114144944560543"
+    },
+    {
+      "path": "result.sky_revenue_daily[8].cum_debt",
+      "dune": "2487761556.068544458704928905",
+      "hypersync": "2487761556.068655742817171653",
+      "difference": "0.000111284112242748"
+    },
+    {
+      "path": "result.sky_revenue_daily[8].alm_usds",
+      "dune": "90000000.00000286083231779465",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000286083231779465"
+    },
+    {
+      "path": "result.sky_revenue_daily[9].utilized",
+      "dune": "1860010969.396216247286400072",
+      "hypersync": "1860010969.396340214514848583",
+      "difference": "0.000123967228448511"
+    },
+    {
+      "path": "result.sky_revenue_daily[9].cum_debt",
+      "dune": "2428727435.338083812566959575",
+      "hypersync": "2428727435.338204918963090291",
+      "difference": "0.000121106396130716"
+    },
+    {
+      "path": "result.sky_revenue_daily[9].alm_usds",
+      "dune": "90000000.00000286083231779465",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000286083231779465"
+    },
+    {
+      "path": "result.sky_revenue_daily[10].utilized",
+      "dune": "1881423309.902816596120889222",
+      "hypersync": "1881423309.902952966805097953",
+      "difference": "0.000136370684208731"
+    },
+    {
+      "path": "result.sky_revenue_daily[10].cum_debt",
+      "dune": "2454400200.120800628276764844",
+      "hypersync": "2454400200.120934132308152851",
+      "difference": "0.000133504031388007"
+    },
+    {
+      "path": "result.sky_revenue_daily[10].alm_usds",
+      "dune": "90100146.90032105129231779465",
+      "hypersync": "90100146.900318184639497071",
+      "difference": "0.00000286665282072365"
+    },
+    {
+      "path": "result.sky_revenue_daily[11].utilized",
+      "dune": "1934717996.583068531823934760",
+      "hypersync": "1934717996.583198347717656449",
+      "difference": "0.000129815893721689"
+    },
+    {
+      "path": "result.sky_revenue_daily[11].cum_debt",
+      "dune": "2500537986.17288425177103973",
+      "hypersync": "2500537986.173011221732443624",
+      "difference": "0.000126969961403894"
+    },
+    {
+      "path": "result.sky_revenue_daily[11].alm_usds",
+      "dune": "90000000.00000284593231779465",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000284593231779465"
+    },
+    {
+      "path": "result.sky_revenue_daily[12].utilized",
+      "dune": "1934072208.847662064109671730",
+      "hypersync": "1934072208.847785664531180451",
+      "difference": "0.000123600421508721"
+    },
+    {
+      "path": "result.sky_revenue_daily[12].cum_debt",
+      "dune": "2512040045.058945229536938317",
+      "hypersync": "2512040045.059065954223806856",
+      "difference": "0.000120724686868539"
+    },
+    {
+      "path": "result.sky_revenue_daily[12].alm_usds",
+      "dune": "90000000.00000287573464018235",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000287573464018235"
+    },
+    {
+      "path": "result.sky_revenue_daily[13].utilized",
+      "dune": "1970824200.104418314229590404",
+      "hypersync": "1970824200.104550840586071719",
+      "difference": "0.000132526356481315"
+    },
+    {
+      "path": "result.sky_revenue_daily[13].cum_debt",
+      "dune": "2568946938.795378722778937018",
+      "hypersync": "2568946938.795508343598455763",
+      "difference": "0.000129620819518745"
+    },
+    {
+      "path": "result.sky_revenue_daily[13].alm_usds",
+      "dune": "90000000.00000290553696257005",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000290553696257005"
+    },
+    {
+      "path": "result.sky_revenue_daily[14].utilized",
+      "dune": "1996117758.872614991482331573",
+      "hypersync": "1996117758.872745291690388536",
+      "difference": "0.000130300208056963"
+    },
+    {
+      "path": "result.sky_revenue_daily[14].cum_debt",
+      "dune": "2608183780.768072141192065532",
+      "hypersync": "2608183780.768199535863159925",
+      "difference": "0.000127394671094393"
+    },
+    {
+      "path": "result.sky_revenue_daily[14].alm_usds",
+      "dune": "90000000.00000290553696257005",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000290553696257005"
+    },
+    {
+      "path": "result.sky_revenue_daily[15].utilized",
+      "dune": "2021675239.979143906989663088",
+      "hypersync": "2021675239.979274470890944355",
+      "difference": "0.000130563901281267"
+    },
+    {
+      "path": "result.sky_revenue_daily[15].cum_debt",
+      "dune": "2643279809.868968750069821096",
+      "hypersync": "2643279809.869096408434139793",
+      "difference": "0.000127658364318697"
+    },
+    {
+      "path": "result.sky_revenue_daily[15].alm_usds",
+      "dune": "90000000.00000290553696257005",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000290553696257005"
+    },
+    {
+      "path": "result.sky_revenue_daily[16].utilized",
+      "dune": "1988349101.589243205375356773",
+      "hypersync": "1988349101.589371356383859550",
+      "difference": "0.000128151008502777"
+    },
+    {
+      "path": "result.sky_revenue_daily[16].cum_debt",
+      "dune": "2618652089.695448529113492898",
+      "hypersync": "2618652089.695573774585033105",
+      "difference": "0.000125245471540207"
+    },
+    {
+      "path": "result.sky_revenue_daily[16].alm_usds",
+      "dune": "90000000.00000290553696257005",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000290553696257005"
+    },
+    {
+      "path": "result.sky_revenue_daily[17].utilized",
+      "dune": "1997946000.508910599245368526",
+      "hypersync": "1997946000.509041689072638079",
+      "difference": "0.000131089827269553"
+    },
+    {
+      "path": "result.sky_revenue_daily[17].cum_debt",
+      "dune": "2629722298.990434983243128675",
+      "hypersync": "2629722298.990563167533435658",
+      "difference": "0.000128184290306983"
+    },
+    {
+      "path": "result.sky_revenue_daily[17].alm_usds",
+      "dune": "90000000.00000290553696257005",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000290553696257005"
+    },
+    {
+      "path": "result.sky_revenue_daily[18].utilized",
+      "dune": "2043246010.002627131260566674",
+      "hypersync": "2043246010.002761522488262006",
+      "difference": "0.000134391227695332"
+    },
+    {
+      "path": "result.sky_revenue_daily[18].cum_debt",
+      "dune": "2705459298.366883362839305237",
+      "hypersync": "2705459298.367014848530037999",
+      "difference": "0.000131485690732762"
+    },
+    {
+      "path": "result.sky_revenue_daily[18].alm_usds",
+      "dune": "90000000.00000290553696257005",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000290553696257005"
+    },
+    {
+      "path": "result.sky_revenue_daily[19].utilized",
+      "dune": "2047448974.949478768200835809",
+      "hypersync": "2047448974.949616124114955871",
+      "difference": "0.000137355914120062"
+    },
+    {
+      "path": "result.sky_revenue_daily[19].cum_debt",
+      "dune": "2717728991.390075158555134174",
+      "hypersync": "2717728991.390209608932291666",
+      "difference": "0.000134450377157492"
+    },
+    {
+      "path": "result.sky_revenue_daily[19].alm_usds",
+      "dune": "90000000.00000290553696257005",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000290553696257005"
+    },
+    {
+      "path": "result.sky_revenue_daily[20].utilized",
+      "dune": "2055000111.859995762035964240",
+      "hypersync": "2055000111.860145699974106058",
+      "difference": "0.000149937938141818"
+    },
+    {
+      "path": "result.sky_revenue_daily[20].cum_debt",
+      "dune": "2679705417.06107043586790962",
+      "hypersync": "2679705417.061217349059799317",
+      "difference": "0.000146913191889697"
+    },
+    {
+      "path": "result.sky_revenue_daily[20].alm_usds",
+      "dune": "90000000.00000302474625212083",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000302474625212083"
+    },
+    {
+      "path": "result.sky_revenue_daily[21].utilized",
+      "dune": "2124101915.692755699666904461",
+      "hypersync": "2124101915.692903377465541064",
+      "difference": "0.000147677798636603"
+    },
+    {
+      "path": "result.sky_revenue_daily[21].cum_debt",
+      "dune": "2738041762.302752380647750193",
+      "hypersync": "2738041762.302897033700134675",
+      "difference": "0.000144653052384482"
+    },
+    {
+      "path": "result.sky_revenue_daily[21].alm_usds",
+      "dune": "90000000.00000302474625212083",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000302474625212083"
+    },
+    {
+      "path": "result.sky_revenue_daily[22].utilized",
+      "dune": "2180709324.583804075037645379",
+      "hypersync": "2180709324.583953190170700257",
+      "difference": "0.000149115133054878"
+    },
+    {
+      "path": "result.sky_revenue_daily[22].cum_debt",
+      "dune": "2808313733.786955499009923923",
+      "hypersync": "2808313733.787101559594404292",
+      "difference": "0.000146060584480369"
+    },
+    {
+      "path": "result.sky_revenue_daily[22].alm_usds",
+      "dune": "90000000.00000305454857450853",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000305454857450853"
+    },
+    {
+      "path": "result.sky_revenue_daily[23].utilized",
+      "dune": "2122613783.977262764819546892",
+      "hypersync": "2122613783.977410984285134979",
+      "difference": "0.000148219465588087"
+    },
+    {
+      "path": "result.sky_revenue_daily[23].cum_debt",
+      "dune": "2724756452.154510779309751605",
+      "hypersync": "2724756452.154655944226765183",
+      "difference": "0.000145164917013578"
+    },
+    {
+      "path": "result.sky_revenue_daily[23].alm_usds",
+      "dune": "90000000.00000305454857450853",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000305454857450853"
+    },
+    {
+      "path": "result.sky_revenue_daily[24].utilized",
+      "dune": "2114621624.847210462742130286",
+      "hypersync": "2114621624.847359094863019767",
+      "difference": "0.000148632120889481"
+    },
+    {
+      "path": "result.sky_revenue_daily[24].cum_debt",
+      "dune": "2720678193.868539422998162326",
+      "hypersync": "2720678193.868685030372799686",
+      "difference": "0.000145607374637360"
+    },
+    {
+      "path": "result.sky_revenue_daily[24].alm_usds",
+      "dune": "90000000.00000302474625212083",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000302474625212083"
+    },
+    {
+      "path": "result.sky_revenue_daily[25].utilized",
+      "dune": "2122451237.129813257939714549",
+      "hypersync": "2122451237.129960130294877142",
+      "difference": "0.000146872355162593"
+    },
+    {
+      "path": "result.sky_revenue_daily[25].cum_debt",
+      "dune": "2737394986.248375313646210975",
+      "hypersync": "2737394986.248519161255121447",
+      "difference": "0.000143847608910472"
+    },
+    {
+      "path": "result.sky_revenue_daily[25].alm_usds",
+      "dune": "90000000.00000302474625212083",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000302474625212083"
+    },
+    {
+      "path": "result.sky_revenue_daily[26].utilized",
+      "dune": "2194797832.401328465448226794",
+      "hypersync": "2194797832.401547381746906570",
+      "difference": "0.000218916298679776"
+    },
+    {
+      "path": "result.sky_revenue_daily[26].cum_debt",
+      "dune": "2848423603.39950416557501754",
+      "hypersync": "2848423603.399719937918155644",
+      "difference": "0.000215772343138104"
+    },
+    {
+      "path": "result.sky_revenue_daily[26].alm_usds",
+      "dune": "90000000.00000314395554167161",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000314395554167161"
+    },
+    {
+      "path": "result.sky_revenue_daily[27].utilized",
+      "dune": "2262817008.649631987521493028",
+      "hypersync": "2262817008.649986015843069576",
+      "difference": "0.000354028321576548"
+    },
+    {
+      "path": "result.sky_revenue_daily[27].cum_debt",
+      "dune": "2867309968.563269613313559257",
+      "hypersync": "2867309968.563620616888883684",
+      "difference": "0.000351003575324427"
+    },
+    {
+      "path": "result.sky_revenue_daily[27].alm_usds",
+      "dune": "90000000.00000302474625212083",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000302474625212083"
+    },
+    {
+      "path": "result.sky_revenue_daily[28].utilized",
+      "dune": "2325481748.120438517692243499",
+      "hypersync": "2325481748.120955172155260434",
+      "difference": "0.000516654463016935"
+    },
+    {
+      "path": "result.sky_revenue_daily[28].cum_debt",
+      "dune": "2926728127.797303780877689494",
+      "hypersync": "2926728127.797817440396776696",
+      "difference": "0.000513659519087202"
+    },
+    {
+      "path": "result.sky_revenue_daily[28].alm_usds",
+      "dune": "90000000.00000299494392973313",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000299494392973313"
+    },
+    {
+      "path": "result.sky_revenue_daily[29].utilized",
+      "dune": "2345397309.677439775742177212",
+      "hypersync": "2345397309.677967830817139060",
+      "difference": "0.000528055074961848"
+    },
+    {
+      "path": "result.sky_revenue_daily[29].cum_debt",
+      "dune": "2933027144.50091645829028853",
+      "hypersync": "2933027144.501441518421320645",
+      "difference": "0.000525060131032115"
+    },
+    {
+      "path": "result.sky_revenue_daily[29].alm_usds",
+      "dune": "90000000.00000299494392973313",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000299494392973313"
+    },
+    {
+      "path": "result.sky_revenue_daily[30].utilized",
+      "dune": "2361171095.167341046844377682",
+      "hypersync": "2361171095.167867346307492967",
+      "difference": "0.000526299463115285"
+    },
+    {
+      "path": "result.sky_revenue_daily[30].cum_debt",
+      "dune": "2943862416.408787586418347398",
+      "hypersync": "2943862416.40931089093753295",
+      "difference": "0.000523304519185552"
+    },
+    {
+      "path": "result.sky_revenue_daily[30].alm_usds",
+      "dune": "90000000.00000299494392973313",
+      "hypersync": "90000000.000000000000000000",
+      "difference": "0.00000299494392973313"
+    },
+    {
+      "path": "result.subsidy_summary.exc_tranche_balance",
+      "dune": "1026228332.366102556297540053",
+      "hypersync": "1026228332.366276459372167475",
+      "difference": "0.000173903074627422"
+    },
+    {
+      "path": "result.subsidy_summary.tw_utilized",
+      "dune": "2026228332.366102556297540053",
+      "hypersync": "2026228332.366276459372167475",
+      "difference": "0.000173903074627422"
+    }
+  ],
+  "psm_oracle": "Dune lifetime share histories and daily reserve running sums",
+  "psm_pins": {
+    "base": 50715726,
+    "arbitrum": 500455224,
+    "optimism": 156311011,
+    "unichain": 57472440
+  },
+  "output_sha256": {
+    "dune": "5cd26a67d671c16d5657b506528795ed08607eae10bcc05629ad68f3d13ecaae",
+    "hypersync": "2df504a5ae4e8563c9bd231121026737610f7a30cdea48ece8c7822874c2f233"
+  },
+  "headlines": {
+    "sky_revenue": {
+      "dune": "6251365.855888169896553310518",
+      "hypersync": "6251365.855888711131177270687"
+    },
+    "agent_rate": {
+      "dune": "145038.8086323723715029053626",
+      "hypersync": "145038.8086323723689639923214"
+    },
+    "prime_agent_revenue": {
+      "dune": "-49050645.29922387888179875474",
+      "hypersync": "-49050645.29922398108533091823"
+    },
+    "monthly_pnl": {
+      "dune": "-55156972.34647967640684915990",
+      "hypersync": "-55156972.34648031984754419660"
+    }
+  },
+  "dune_numeric_mode": "legacy normalized queries"
+}

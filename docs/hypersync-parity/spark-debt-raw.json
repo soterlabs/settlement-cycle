@@ -1,0 +1,20 @@
+{
+  "input": "Dune raw trace debt",
+  "matched": true,
+  "tolerance": "0",
+  "dune_rows": 605,
+  "hypersync_rows": 605,
+  "max_abs_difference": {
+    "daily_dart": "0",
+    "cum_debt": "0"
+  },
+  "dune_sha256": "cabba82451f41480ce0aaf39be0ed99f2e82d4cd974e1fbd0b682c5027cf3a3f",
+  "hypersync_sha256": "cabba82451f41480ce0aaf39be0ed99f2e82d4cd974e1fbd0b682c5027cf3a3f",
+  "mismatch_count": 0,
+  "mismatches": [],
+  "prime": "spark",
+  "start": "2024-11-18",
+  "pin_block": 25878704,
+  "oracle": "debt_timeseries_raw_parity.sql",
+  "normalization": "Integer wad divided by 1e18 in Python"
+}

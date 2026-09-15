@@ -12,7 +12,7 @@ import json
 import sys
 from contextlib import ExitStack
 from datetime import UTC, datetime, time, timedelta
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, localcontext
 from pathlib import Path
 from unittest.mock import patch
 
@@ -21,7 +21,8 @@ import pandas as pd
 from settle.compute import Sources, compute_monthly_pnl
 from settle.domain.config import load_prime_by_id
 from settle.domain.period import Month
-from settle.domain.sky_tokens import PSM3_LEG_TOKENS
+from settle.domain.primes import Chain
+from settle.domain.sky_tokens import PSM3_LEG_TOKENS, USDS_BY_CHAIN, USDS_ETHEREUM, sUSDS_ETHEREUM
 from settle.extract import dune
 from settle.normalize.sources._paths import QUERIES_DIR
 from settle.normalize.sources.dune_balances import DuneBalanceSource
@@ -29,6 +30,58 @@ from settle.normalize.sources.dune_debt import DuneDebtSource
 from settle.normalize.sources.dune_psm3 import DunePsm3Source
 from settle.normalize.sources.dune_ssr import DuneSSRSource
 from settle.normalize.sources.hypersync_block_resolver import HyperSyncBlockResolver
+
+
+def normalize_raw(frame, columns, decimals):
+    """Normalize integer oracle results without float or Decimal-context loss."""
+    out = pd.DataFrame(columns=["block_date", *columns.values()])
+    if frame.empty:
+        return out
+    out["block_date"] = pd.to_datetime(frame["block_date"]).dt.date
+    with localcontext() as ctx:
+        ctx.prec = 80
+        for raw_column, normalized_column in columns.items():
+            values = [Decimal(str(value)) for value in frame[raw_column]]
+            if any(not value.is_finite() or value != value.to_integral_value() for value in values):
+                raise ValueError("Raw Dune oracle returned a non-integer amount")
+            out[normalized_column] = [value / 10**decimals for value in values]
+    return out.sort_values("block_date").reset_index(drop=True)
+
+
+class RawDuneDebtOracle(DuneDebtSource):
+    def debt_timeseries(self, ilk, start, pin_block):
+        frame = dune.execute_query(QUERIES_DIR / "debt_timeseries_raw_parity.sql",
+                                   {"ilk_bytes32": ilk, "start_date": str(start)}, pin_block)
+        return normalize_raw(frame, {"daily_dart_raw": "daily_dart", "cum_debt_raw": "cum_debt"}, 18)
+
+
+class RawDuneSharedBalanceOracle(DuneBalanceSource):
+    """Raw Dune cumulative balances for configured shared idle holdings only.
+
+    Directed flows, counterparty attribution and other venue tokens keep the
+    legacy Dune queries. This mode is explicit; it never masks a failed legacy
+    comparison or substitutes HyperSync inputs into the baseline.
+    """
+
+    def __init__(self, prime):
+        subjects = [(chain, USDS_BY_CHAIN[chain], holder)
+                    for chain, holder in prime.alm.items() if chain in USDS_BY_CHAIN]
+        if Chain.ETHEREUM in prime.subproxy:
+            subjects += [(Chain.ETHEREUM, token, prime.subproxy[Chain.ETHEREUM])
+                         for token in (USDS_ETHEREUM, sUSDS_ETHEREUM)]
+        self.decimals = {(chain.value, token.address.value, holder.value): token.decimals
+                         for chain, token, holder in subjects}
+
+    def cumulative_balance_timeseries(self, chain, token, holder, start, pin_block,
+                                     min_transfer_amount=Decimal(0)):
+        decimals = self.decimals.get((chain, token, holder))
+        if decimals is None:
+            return super().cumulative_balance_timeseries(chain, token, holder, start, pin_block, min_transfer_amount)
+        frame = dune.execute_query(QUERIES_DIR / "transfer_timeseries_raw_parity.sql", {
+            "chain": chain, "token": token, "holder": holder, "start_date": str(start),
+            "min_transfer_raw": min_transfer_amount * 10**decimals,
+        }, pin_block)
+        return normalize_raw(frame, {"daily_net": "daily_net", "cum_balance": "cum_balance"}, decimals)
 
 
 class DailyDunePsm3Oracle(DunePsm3Source):
@@ -121,7 +174,7 @@ def differences(left, right, path="result"):
             yield {"path": path, "dune": str(left), "hypersync": str(right)}
 
 
-def compare(prime_id, month_label):
+def compare(prime_id, month_label, *, raw_dune=False):
     prime, month = load_prime_by_id(prime_id), Month.parse(month_label)
     oracle = dataclasses.replace(
         prime, venues=[dataclasses.replace(v, event_source="dune") for v in prime.venues],
@@ -130,7 +183,9 @@ def compare(prime_id, month_label):
     print("Dune baseline", prime_id, month_label, flush=True)
     psm3 = DailyDunePsm3Oracle(oracle, month, HyperSyncBlockResolver()) if oracle.psm else None
     baseline = compute_monthly_pnl(oracle, month, sources=Sources(
-        debt=DuneDebtSource(), balance=DuneBalanceSource(), ssr=DuneSSRSource(), psm3=psm3,
+        debt=RawDuneDebtOracle() if raw_dune else DuneDebtSource(),
+        balance=RawDuneSharedBalanceOracle(prime) if raw_dune else DuneBalanceSource(),
+        ssr=DuneSSRSource(), psm3=psm3,
     ))
     print("HyperSync candidate (Dune forbidden)", prime_id, month_label, flush=True)
     original = dune.execute_query
@@ -152,6 +207,7 @@ def compare(prime_id, month_label):
     def digest(result):
         return hashlib.sha256(json.dumps(dataclasses.asdict(result), sort_keys=True, default=str).encode()).hexdigest()
     return {"prime": prime_id, "month": month_label, "matched": not mismatches,
+            "dune_numeric_mode": "raw integer debt and shared idle balances" if raw_dune else "legacy normalized queries",
             "comparison": "all MonthlyPnL dataclass fields; absolute numeric tolerance 0.000001",
             "candidate_dune_calls": 0, "mismatches": mismatches,
             "psm_oracle": "Dune lifetime share histories and daily reserve running sums" if psm3 else None,
@@ -165,8 +221,10 @@ def main():
     parser.add_argument("--prime", required=True)
     parser.add_argument("--month", required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--raw-dune", action="store_true",
+                        help="Use independent raw-integer Dune debt/idle queries; retain legacy evidence separately")
     args = parser.parse_args()
-    report = compare(args.prime, args.month)
+    report = compare(args.prime, args.month, raw_dune=args.raw_dune)
     args.output.write_text(json.dumps(report, indent=2) + "\n")
     print("matched", report["matched"], flush=True)
     return 0 if report["matched"] else 1

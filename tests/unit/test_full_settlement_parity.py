@@ -42,6 +42,39 @@ class Result:
     monthly_pnl: Decimal = Decimal(4)
 
 
+def test_raw_dune_oracle_preserves_low_wad_digits():
+    raw = "2943862416409310890937532951"
+    frame = pd.DataFrame([{"block_date": "2026-08-31", "raw": raw}])
+    out = mod.normalize_raw(frame, {"raw": "cum_debt"}, 18)
+    assert out.cum_debt.iloc[0] == Decimal("2943862416.409310890937532951")
+    frame.loc[0, "raw"] = "1.5"
+    with pytest.raises(ValueError, match="non-integer"):
+        mod.normalize_raw(frame, {"raw": "cum_debt"}, 18)
+
+
+def test_raw_shared_oracle_keeps_other_venue_queries(monkeypatch):
+    from settle.domain.config import load_prime_by_id
+
+    prime = load_prime_by_id("spark")
+    source = mod.RawDuneSharedBalanceOracle(prime)
+    calls = []
+
+    def query(path, params=None, pin_block=None):
+        calls.append(path.name)
+        if "raw_parity" in path.name:
+            return pd.DataFrame([{"block_date": "2026-08-31", "daily_net": "90000000000000000000000000", "cum_balance": "90000000000000000000000000"}])
+        return pd.DataFrame()
+
+    monkeypatch.setattr(mod.dune, "execute_query", query)
+    from settle.normalize.sources import dune_balances
+    monkeypatch.setattr(dune_balances, "execute_query", query)
+    holder = prime.alm[Chain.ETHEREUM].value
+    out = source.cumulative_balance_timeseries("ethereum", mod.USDS_ETHEREUM.address.value, holder, prime.start_date, 123)
+    assert out.cum_balance.iloc[0] == Decimal(90000000)
+    source.cumulative_balance_timeseries("ethereum", bytes(20), holder, prime.start_date, 123)
+    assert calls == ["transfer_timeseries_raw_parity.sql", "transfer_timeseries.sql"]
+
+
 @pytest.mark.parametrize("swallowed_dune_call", [False, True])
 def test_spark_baseline_injects_dune_psm_and_candidate_forbids_fallback(monkeypatch, swallowed_dune_call):
     oracle = SimpleNamespace(pins={"base": 123})
