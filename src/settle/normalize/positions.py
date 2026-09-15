@@ -2683,10 +2683,9 @@ def _shares_to_usd_inflow_timeseries(
     # the gross-mint side, the inflow classifier sees a phantom loss equal
     # to the gross redeem amount. See ``Venue.share_burn_destinations`` and
     # Q-S26 in QUESTIONS.md.
-    # Wrap each burn-destination query in a Dune-degradation guard: if the
-    # underlying source 402s / times out, fall back to an empty frame for
-    # that destination (i.e. don't net the redemption, accept the phantom
-    # loss for that month rather than crash the cell).
+    # Queue histories must be complete. Propagate source failures (including
+    # RPC metadata errors from HyperSync normalization): dropping a redemption
+    # or refund would publish incorrect capital flows and venue revenue.
     #
     # Net BOTH directions: ALM→queue is a burn (sign=−1) AND queue→ALM is
     # a refund (sign=+1, cancelled/partial-fulfillment redemptions). Without
@@ -2694,33 +2693,18 @@ def _shares_to_usd_inflow_timeseries(
     # where Maple returns shares to the ALM (verified for Spark S15 in
     # 2026-04: 21.5M syrupUSDT shares came back from the queue, which we
     # must add to the inflow side or revenue is over-credited by ~$23M).
-    from ..extract.dune import DuneError as _DuneError
-    import requests as _requests
     import logging as _logging
     queue_flow_dfs: list = []  # list of (df, sign)
     for q in venue.share_burn_destinations:
-        for (frm, to, sign, _label) in (
-            (holder.value, q.value,      -1, "ALM→queue (burn)"),
-            (q.value,      holder.value, +1, "queue→ALM (refund)"),
+        for frm, to, sign in (
+            (holder.value, q.value,      -1),
+            (q.value,      holder.value, +1),
         ):
-            try:
-                qdf = balance_source.directed_inflow_timeseries(
-                    chain=venue.chain.value, token=venue.token.address.value,
-                    from_addr=frm, to_addr=to,
-                    start=prime.start_date, pin_block=pin_block,
-                )
-            except (_DuneError, _requests.HTTPError, _requests.ConnectionError,
-                    _requests.Timeout) as _e:
-                _logging.getLogger(__name__).warning(
-                    "_shares_to_usd_inflow_timeseries: %s query failed for "
-                    "venue %s (queue=%s, %s) — accepting partial accounting "
-                    "for this period. Cause: Dune credits exhausted (402) / "
-                    "throttling / transient network.",
-                    _label, venue.id, q.hex, _e,
-                )
-                qdf = pd.DataFrame(
-                    {"block_date": [], "daily_inflow": [], "cum_inflow": []},
-                )
+            qdf = balance_source.directed_inflow_timeseries(
+                chain=venue.chain.value, token=venue.token.address.value,
+                from_addr=frm, to_addr=to,
+                start=prime.start_date, pin_block=pin_block,
+            )
             queue_flow_dfs.append((qdf, sign))
 
     # Per-day signed share net = mints − burns. Coerce both sides to Decimal
@@ -3049,4 +3033,3 @@ def _erc4626_event_inflow_timeseries(
     out["cum_inflow"]          = out["daily_inflow"].cumsum()
     out["cum_net_shares_raw"]  = out["daily_net_shares_raw"].cumsum()
     return out
-

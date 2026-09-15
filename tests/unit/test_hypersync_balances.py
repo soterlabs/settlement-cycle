@@ -185,6 +185,62 @@ def test_predeployment_history_needs_no_decimals(method):
     }[method]
 
 
+@pytest.mark.parametrize("prime_id,venue_id", [("spark", "S14"), ("spark", "S15"), ("grove", "E37")])
+@pytest.mark.parametrize("refund", [False, True])
+@pytest.mark.parametrize("failure", [None, "http", "timeout", "connection"])
+def test_monthly_maple_queue_flows_fail_on_metadata_outage(prime_id, venue_id, refund, failure):
+    from types import SimpleNamespace
+
+    import requests
+
+    from settle.domain.config import load_prime_by_id
+    from settle.domain.period import Period
+    from settle.normalize.positions import _shares_to_usd_inflow_timeseries
+
+    prime = load_prime_by_id(prime_id)
+    venue = next(v for v in prime.venues if v.id == venue_id)
+    holder = (venue.holder_override or prime.alm[venue.chain]).value
+    queue = venue.share_burn_destinations[0].value
+    sender, receiver = (queue, holder) if refund else (holder, queue)
+    row = LogRow(
+        110, 0, _ts(2026, 8, 10), "0x" + venue.token.address.value.hex(),
+        _TRANSFER, _topic(sender), _topic(receiver), None,
+        "0x" + format(100 * 10**venue.token.decimals, "064x"),
+    )
+
+    def fetch(chain, selections, start, end):
+        topics = selections[0]["topics"]
+        return [row] if topics[1] == [row.topic1] and topics[2] == [row.topic2] else []
+
+    errors = {"http": requests.HTTPError, "timeout": requests.Timeout,
+              "connection": requests.ConnectionError}
+
+    def decimals(*args):
+        if failure:
+            raise errors[failure]("Metadata provider unavailable")
+        return venue.token.decimals
+
+    source = HyperSyncBalanceSource(fetch_logs=fetch, resolve_start_block=lambda *args: 0,
+                                    decimals_of=decimals)
+    period = Period(date(2026, 8, 1), date(2026, 8, 31), {venue.chain: 200})
+
+    def calculate():
+        return _shares_to_usd_inflow_timeseries(
+            prime, venue, period, balance_source=source,
+            block_resolver=SimpleNamespace(block_at_or_before=lambda *args: 110),
+            price_at_block=lambda *args: Decimal(1), period_only=True,
+        )
+
+    if failure:
+        with pytest.raises(errors[failure], match="Metadata provider unavailable"):
+            calculate()
+    else:
+        frame = calculate()
+        expected = Decimal(100 if refund else -100)
+        assert frame["daily_inflow"].tolist() == [expected]
+        assert frame["cum_inflow"].tolist() == [expected]
+
+
 @pytest.mark.parametrize("method", [
     "cumulative_balance_timeseries", "directed_inflow_timeseries", "inflow_by_counterparty",
 ])
