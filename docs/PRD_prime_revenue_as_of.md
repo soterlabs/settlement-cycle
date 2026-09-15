@@ -55,6 +55,9 @@ Scheduling, result persistence and API publication follow those requirements.
   before the cutoff and is outside the configured reorganization margin. Archive
   lag fails the run instead of clamping to an earlier head. Explicit fixture
   pins with a custom resolver remain caller-certified test/replay inputs.
+  Automatic pins use a separate finalized-resolution cache: failed attempts
+  are not cached, and cold resolution bypasses legacy timestamps so retries
+  recover after a reorg. Cached pins still undergo fresh boundary validation.
 - Existing closing-position rules (including capped SDE allocation) use the
   cutoff position provisionally. NAV and configuration corrections can revise
   results; month-to-date estimates are not additive final daily earnings.

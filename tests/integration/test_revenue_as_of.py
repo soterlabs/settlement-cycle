@@ -27,9 +27,13 @@ def test_partial_calculation_bounds_rates_flows_and_valuation(monkeypatch):
     venue = prime.venues[0]
     cutoff = date(2026, 3, 15)
     opening = date(2026, 2, 28)
-    checks, price_days = [], []
+    checks, price_days, finalized_days = [], [], []
 
     class Resolver(MockBlockResolver):
+        def finalized_block_at_or_before(self, chain, anchor):
+            finalized_days.append(anchor.date())
+            return self.block_at_or_before(chain, anchor)
+
         def block_at_or_before(self, chain, anchor):
             self.calls.append((chain, anchor))
             return anchor.date().toordinal()
@@ -78,6 +82,7 @@ def test_partial_calculation_bounds_rates_flows_and_valuation(monkeypatch):
     assert result.period.start == date(2026, 3, 1)
     assert result.period.end == cutoff
     assert {day for _, _, day in checks} == {opening, cutoff}
+    assert set(finalized_days) == {opening, cutoff}
     assert all(block == day.toordinal() for _, block, day in checks)
     assert all(opening <= anchor.date() <= cutoff for _, anchor in resolver.calls)
     assert all(call[-1] == cutoff.toordinal() for call in balances.directed_calls)

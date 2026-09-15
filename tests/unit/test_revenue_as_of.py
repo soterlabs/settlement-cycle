@@ -107,6 +107,57 @@ def test_finality_retry_rechecks_cached_boundary_after_reorg(tmp_path, monkeypat
     assert state["reads"] == [100, 101, 101, 102]
 
 
+@pytest.mark.parametrize("cache_layer", ["local", "postgres"])
+def test_automatic_pin_retry_recovers_after_reorg(tmp_path, monkeypatch, cache_layer):
+    from settle.compute.monthly_pnl import _resolve_pin_blocks
+    from settle.domain.primes import Chain
+    from settle.extract import postgres_store
+
+    monkeypatch.setenv("SETTLE_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("SETTLE_NO_CACHE", "0")
+    monkeypatch.setenv("HYPERSYNC_REORG_MARGIN", "500")
+    monkeypatch.setattr(hypersync, "_token", lambda: "test")
+    stored = {}
+    monkeypatch.setattr(postgres_store, "get", lambda source, key: stored.get((source, key), postgres_store.MISS))
+    # Match Postgres's append-only semantics: a recovery cannot overwrite an
+    # old key and silently depend on an upsert unavailable in production.
+    monkeypatch.setattr(postgres_store, "put", lambda source, key, **kw: stored.setdefault((source, key), kw["payload"]))
+    state = {"head": 600, "reorg": False, "reads": []}
+
+    def execute(chain, body, headers, post):
+        block = body["from_block"]
+        state["reads"].append(block)
+        timestamp = 799 + 2 * block - int(state["reorg"] and block >= 100)
+        return {"data": [{"blocks": [{"number": block, "timestamp": timestamp}]}]}
+
+    monkeypatch.setattr(hypersync, "_execute", execute)
+    monkeypatch.setattr(hypersync, "archive_height", lambda chain: state["head"])
+    anchor = datetime.fromtimestamp(1000, UTC)
+    assert HyperSyncBlockResolver().block_at_or_before("ethereum", anchor) == 100
+    with pytest.raises(hypersync.HyperSyncError, match="not finalized"):
+        _resolve_pin_blocks(anchor, {Chain.ETHEREUM}, HyperSyncBlockResolver(), finalized=True)
+
+    state.update(head=1000, reorg=True, reads=[])
+    if cache_layer == "postgres":
+        for path in tmp_path.glob("*.pkl"):
+            path.unlink()
+    assert HyperSyncBlockResolver().block_at_or_before("ethereum", anchor) == 100
+    assert state["reads"] == []  # old resolution survives the worker restart
+    resolver = HyperSyncBlockResolver()
+    pins = _resolve_pin_blocks(anchor, {Chain.ETHEREUM}, resolver, finalized=True)
+    assert pins[Chain.ETHEREUM] == 101
+    resolver.validate_finalized_boundary("ethereum", pins[Chain.ETHEREUM], anchor)
+
+    # Successful finalized resolutions persist in either layer; subsequent
+    # workers reuse the repaired result without another binary search.
+    if cache_layer == "postgres":
+        for path in tmp_path.glob("*.pkl"):
+            path.unlink()
+    state["reads"] = []
+    assert _resolve_pin_blocks(anchor, {Chain.ETHEREUM}, HyperSyncBlockResolver(), finalized=True) == pins
+    assert state["reads"] == []
+
+
 def test_partial_active_gar_is_not_read_from_full_month_artifact():
     from settle.compute.gar import validate_gar_cutoff
 

@@ -309,6 +309,8 @@ def _resolve_pin_blocks(
     anchor_utc: datetime,
     chains: set[Chain],
     resolver: IBlockResolver,
+    *,
+    finalized: bool = False,
 ) -> dict[Chain, int]:
     """Resolve ``last block_number with timestamp ≤ anchor_utc`` per chain.
 
@@ -322,7 +324,10 @@ def _resolve_pin_blocks(
         return {}
 
     def _one(chain: Chain) -> tuple[Chain, int]:
-        block = resolver.block_at_or_before(chain.value, anchor_utc)
+        resolve = resolver.block_at_or_before
+        if finalized:
+            resolve = getattr(resolver, "finalized_block_at_or_before", resolve)
+        block = resolve(chain.value, anchor_utc)
         _log.info("  pin block resolved: %s → %d", chain.value, block)
         return chain, block
 
@@ -2243,11 +2248,13 @@ def compute_monthly_pnl(
         som_anchor = _previous_day_eod_utc(period_unpinned.start)
         with _TPE(max_workers=2) as _outer:
             _fut_eom = (
-                _outer.submit(_resolve_pin_blocks, eom_anchor, prime.chains, resolver)
+                _outer.submit(_resolve_pin_blocks, eom_anchor, prime.chains, resolver,
+                              finalized=as_of is not None)
                 if pin_blocks_eom is None else None
             )
             _fut_som = (
-                _outer.submit(_resolve_pin_blocks, som_anchor, prime.chains, resolver)
+                _outer.submit(_resolve_pin_blocks, som_anchor, prime.chains, resolver,
+                              finalized=as_of is not None)
                 if pin_blocks_som is None else None
             )
             if _fut_eom is not None:

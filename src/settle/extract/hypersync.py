@@ -352,6 +352,34 @@ def _find_block_at_or_before_cached(chain: str, target_ts: int) -> int:
     return low
 
 
+@cached(source_id="hypersync.finalized_block_at_or_before")
+def find_finalized_block_at_or_before(chain: str, target_ts: int, margin: int) -> int:
+    """Cache only boundaries resolved from fresh, finalized observations.
+
+    Use a separate namespace from legacy resolutions/timestamps, which may
+    have been cached before a reorg. Failed attempts write nothing, so a later
+    worker can retry after the archive advances. Margin is part of the key.
+    Callers still certify returned pins, including cache hits, before use.
+    """
+    if margin < 0:
+        raise ValueError("HYPERSYNC_REORG_MARGIN must be nonnegative")
+    high = archive_height(chain) - margin
+    if high <= 0 or block_timestamp_uncached(chain, high) <= target_ts:
+        raise HyperSyncError(f"{chain}: cutoff boundary is not finalized; retry later")
+    if block_timestamp_uncached(chain, 0) > target_ts:
+        raise HyperSyncError(f"{chain}: cutoff precedes genesis")
+    low = 0
+    # The upper bound is finalized and strictly after the cutoff. Thus the
+    # eventual successor is also finalized; never persist a head clamp.
+    while low + 1 < high:
+        mid = (low + high) // 2
+        if block_timestamp_uncached(chain, mid) <= target_ts:
+            low = mid
+        else:
+            high = mid
+    return low
+
+
 def _lower(v: Any) -> str | None:
     return v.lower() if isinstance(v, str) else v
 

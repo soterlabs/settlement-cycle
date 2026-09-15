@@ -43,6 +43,16 @@ class HyperSyncBlockResolver:
     def block_to_date(self, chain: str, block: int) -> date:
         return datetime.fromtimestamp(self._ts(chain, block), tz=timezone.utc).date()
 
+    def finalized_block_at_or_before(self, chain: str, anchor_utc: datetime) -> int:
+        """Resolve automatic as-of pins without trusting legacy cache entries."""
+        from ...extract.hypersync_store import _reorg_margin
+
+        if anchor_utc.tzinfo is None:
+            anchor_utc = anchor_utc.replace(tzinfo=timezone.utc)
+        return hypersync.find_finalized_block_at_or_before(
+            chain, int(anchor_utc.timestamp()), _reorg_margin(),
+        )
+
     def validate_finalized_boundary(self, chain: str, block: int, anchor_utc: datetime) -> None:
         """Reject a head clamp, wrong cutoff or pin inside the reorg window."""
         from ...extract.hypersync_store import _reorg_margin
