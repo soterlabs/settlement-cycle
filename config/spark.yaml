@@ -1119,6 +1119,7 @@ venues:
     cof_excluded: true   # already deducted from utilized via cum_alm_usds
 
   - id: S53
+    event_source: hypersync
     chain: unichain
     label: 'USDC raw (Unichain — ALM idle)'
     pricing_category: A
