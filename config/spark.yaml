@@ -322,6 +322,7 @@ venues:
       decimals: 18
 
   - id: S13
+    event_source: hypersync
     chain: ethereum
     label: 'Spark USDS Vault (Morpho)'
     pricing_category: B
