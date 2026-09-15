@@ -976,6 +976,7 @@ venues:
       decimals: 18
 
   - id: S37
+    event_source: hypersync
     chain: base
     label: 'Savings USDS / sUSDS proxy (Base — POL)'
     pricing_category: B
