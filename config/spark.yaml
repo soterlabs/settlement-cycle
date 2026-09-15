@@ -491,6 +491,7 @@ venues:
     # held; pin to const_one until activity resumes and a real oracle lands.
 
   - id: S22
+    event_source: hypersync
     chain: ethereum
     label: 'Superstate Crypto Carry Fund (USCC)'
     pricing_category: E
