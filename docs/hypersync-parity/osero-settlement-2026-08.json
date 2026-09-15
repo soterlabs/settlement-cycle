@@ -1,0 +1,26 @@
+{
+  "prime": "osero",
+  "month": "2026-08",
+  "matched": true,
+  "comparison": "all MonthlyPnL dataclass fields; absolute numeric tolerance 0.000001",
+  "candidate_dune_calls": 0,
+  "mismatches": [],
+  "headlines": {
+    "sky_revenue": {
+      "dune": "7005.670168877913776392784655",
+      "hypersync": "7005.670168877913613751186984"
+    },
+    "agent_rate": {
+      "dune": "31140.91090701745815837868486",
+      "hypersync": "31140.91090701745815837868486"
+    },
+    "prime_agent_revenue": {
+      "dune": "5557.81862043350430479200",
+      "hypersync": "5557.81862043350430479200"
+    },
+    "monthly_pnl": {
+      "dune": "29693.05935857304868677790020",
+      "hypersync": "29693.05935857304884941949788"
+    }
+  }
+}
