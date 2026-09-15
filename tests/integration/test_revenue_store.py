@@ -64,3 +64,14 @@ def test_late_backfill_cannot_replace_a_newer_cutoff(database):  # noqa: F811
         assert store.read(conn, 'obex')['revision_id'] == latest
         rows = store.history(conn, 'obex', start=example(3).as_of, end=example().as_of)
         assert len(rows) == 2
+
+
+def test_corrections_in_one_transaction_have_unambiguous_order(database):  # noqa: F811
+    with psycopg.connect(database, autocommit=True) as conn:
+        store.apply_schema(conn)
+        pnl = example()
+        with conn.transaction():
+            ids = [store.publish(conn, replace(pnl, revenue=Decimal(i)),
+                                 store.Versions('code', 'config', str(i))) for i in range(8)]
+        assert store.read(conn, 'obex')['revision_id'] == ids[-1]
+        assert [r['revision_id'] for r in store.revisions(conn, 'obex', pnl.as_of)] == ids[::-1]

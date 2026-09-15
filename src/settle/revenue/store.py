@@ -27,7 +27,11 @@ def capture_versions():
     code = (os.environ.get('REVENUE_CODE_VERSION') or os.environ.get('RAILWAY_GIT_COMMIT_SHA')
             or os.environ.get('GITHUB_SHA'))
     if not code:
-        subprocess.run(['git', 'diff', '--quiet', 'HEAD', '--', 'src', 'config'], cwd=_ROOT, check=True)
+        dirty = subprocess.check_output(
+            ['git', 'status', '--porcelain', '--untracked-files=all', '--', 'src', 'config'],
+            cwd=_ROOT, text=True)
+        if dirty:
+            raise ValueError('code/config tree is dirty; commit before publishing')
         code = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=_ROOT, text=True).strip()
     files = sorted((_ROOT / 'config').rglob('*.yaml'))
     configuration = digest({str(p.relative_to(_ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
@@ -81,7 +85,7 @@ def read(conn, prime: str, *, cutoff: date | None = None, revision: str | None =
         params.append(revision)
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute('SELECT * FROM revenue_results WHERE ' + ' AND '.join(clauses)
-                    + ' ORDER BY cutoff DESC, computed_at DESC, revision_id DESC LIMIT 1', params)
+                    + ' ORDER BY cutoff DESC, publication_order DESC LIMIT 1', params)
         row = cur.fetchone()
     return canonical(row) if row else None
 
@@ -91,7 +95,7 @@ def history(conn, prime: str, *, start: date, end: date, limit: int = 90):
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute('''SELECT DISTINCT ON (cutoff) * FROM revenue_results
             WHERE prime=%s AND cutoff BETWEEN %s AND %s
-            ORDER BY cutoff DESC, computed_at DESC, revision_id DESC LIMIT %s''',
+            ORDER BY cutoff DESC, publication_order DESC LIMIT %s''',
                     (prime, start, end, limit))
         return canonical(cur.fetchall())
 
@@ -100,5 +104,5 @@ def revisions(conn, prime: str, cutoff: date, *, limit: int = 100):
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute('''SELECT revision_id, computed_at, code_version, configuration_version,
             input_revision, result_hash FROM revenue_results WHERE prime=%s AND cutoff=%s
-            ORDER BY computed_at DESC, revision_id DESC LIMIT %s''', (prime, cutoff, limit))
+            ORDER BY publication_order DESC LIMIT %s''', (prime, cutoff, limit))
         return canonical(cur.fetchall())

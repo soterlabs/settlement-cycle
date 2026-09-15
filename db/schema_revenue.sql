@@ -2,6 +2,7 @@
 -- attempts belong to the worker ledger and cannot replace an existing result.
 CREATE TABLE IF NOT EXISTS revenue_results (
     revision_id TEXT PRIMARY KEY,
+    publication_order BIGSERIAL NOT NULL UNIQUE,
     prime TEXT NOT NULL,
     cutoff DATE NOT NULL,
     opening_pins JSONB NOT NULL,
@@ -16,4 +17,4 @@ CREATE TABLE IF NOT EXISTS revenue_results (
     excluded_inputs JSONB NOT NULL DEFAULT '["monthly_distribution_rewards"]'::jsonb
 );
 CREATE INDEX IF NOT EXISTS revenue_results_latest
-    ON revenue_results (prime, cutoff DESC, computed_at DESC, revision_id DESC);
+    ON revenue_results (prime, cutoff DESC, publication_order DESC);
