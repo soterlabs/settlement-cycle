@@ -780,6 +780,7 @@ venues:
       decimals: 6
 
   - id: S27
+    event_source: hypersync
     chain: ethereum
     label: 'USDT raw (ALM idle — $442M as of 2026-04)'
     pricing_category: A
