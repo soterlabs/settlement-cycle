@@ -1,3 +1,5 @@
+import pytest
+
 from settle.extract.hypersync import LogRow
 from settle.normalize.sources.hypersync_psm3 import DEPOSIT, WITHDRAW, HyperSyncPsm3Source
 
@@ -73,3 +75,43 @@ def test_share_history_reloads_an_earlier_month_instead_of_returning_zero(monkey
     assert source.shares_of("base", psm, owner, 150) == 30
     assert source.shares_of("base", psm, owner, 99) == 10
     assert calls == [(101, 200), (1, 99)]
+
+
+@pytest.mark.parametrize("with_deposit", [False, True])
+def test_pool_history_starts_at_zero_before_deployment(monkeypatch, with_deposit):
+    from settle.normalize.sources import hypersync_psm3 as mod
+    source = HyperSyncPsm3Source()
+    source._register("base", bytes([3]) * 20)
+    monkeypatch.setattr(source, "_opening_block", lambda *args: 100)
+    monkeypatch.setattr(mod.rpc, "eth_call", lambda *args: "0x")
+    monkeypatch.setattr(mod.rpc, "is_contract_deployed", lambda *args: False)
+    rows = [LogRow(110, 0, 100, "0x" + "03" * 20, DEPOSIT, None, None, None,
+                   "0x" + format(1000, "064x") + format(500, "064x"))] if with_deposit else []
+    monkeypatch.setattr(source, "_share_events", lambda *args: rows)
+    assert source._load_pool_history("base", pin_block=200) == (
+        [(100, 0), (110, 500)] if with_deposit else [(100, 0)]
+    )
+
+
+@pytest.mark.parametrize("failure", ["call", "code", "deployed_empty"])
+def test_pool_opening_failure_is_not_zero_or_cached(monkeypatch, failure):
+    from settle.normalize.sources import hypersync_psm3 as mod
+    source = HyperSyncPsm3Source()
+    source._register("base", bytes([3]) * 20)
+    monkeypatch.setattr(source, "_opening_block", lambda *args: 100)
+
+    def call(*args):
+        if failure == "call":
+            raise mod.rpc.RPCError("RPC unavailable")
+        return "0x"
+
+    def deployed(*args):
+        if failure == "code":
+            raise mod.rpc.RPCError("Code lookup unavailable")
+        return True
+
+    monkeypatch.setattr(mod.rpc, "eth_call", call)
+    monkeypatch.setattr(mod.rpc, "is_contract_deployed", deployed)
+    with pytest.raises(mod.rpc.RPCError):
+        source._load_pool_history("base", pin_block=200)
+    assert not source._pool_history

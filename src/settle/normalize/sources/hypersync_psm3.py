@@ -96,8 +96,15 @@ class HyperSyncPsm3Source(DunePsm3Source):
         if cached is not None and cached[0] and cached[0][0][0] <= pin_block <= cached[1]:
             return cached[0]
         opening = self._opening_block(chain, pin_block)
-        total = int(rpc.eth_call(Chain(chain), Address(self._contracts[chain]),
-                                "0x" + keccak256(b"totalShares()")[:4].hex(), opening), 16)
+        contract = Address(self._contracts[chain])
+        raw = rpc.eth_call(Chain(chain), contract,
+                           "0x" + keccak256(b"totalShares()")[:4].hex(), opening)
+        # A deployment-month history starts at zero. Only accept empty ABI
+        # data when the contract did not exist; a deployed contract returning
+        # no data must not silently reset the pool's opening share supply.
+        if raw == "0x" and rpc.is_contract_deployed(Chain(chain), contract, opening):
+            raise rpc.RPCError("PSM3 totalShares returned empty data for a deployed contract")
+        total = rpc._decode_uint(raw)
         history = [(opening, total)]
         for row in self._share_events(chain, pin_block):
             shares = uint_words(row.data, 2)[1]
