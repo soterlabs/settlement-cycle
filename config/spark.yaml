@@ -1001,6 +1001,7 @@ venues:
     cof_excluded: true   # already deducted from utilized via cum_alm_usds
 
   - id: S39
+    event_source: hypersync
     chain: base
     label: 'USDC raw (Base — ALM idle)'
     pricing_category: A

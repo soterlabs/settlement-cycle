@@ -1,0 +1,41 @@
+{
+  "prime": "spark",
+  "venue": "S39",
+  "month": "2026-08",
+  "start": "2024-11-18",
+  "pins": {
+    "base/2026-08-31": 50715726
+  },
+  "matched": true,
+  "checks": [
+    {
+      "input": "transfer_timeseries.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 603,
+      "hypersync_rows": 603,
+      "max_abs_difference": {
+        "daily_net": "3.022E-7",
+        "cum_balance": "9.115E-7"
+      },
+      "dune_sha256": "e1944bcd572715f3964346e966ee4b1392b6d044a46ed81852b0493d29e94910",
+      "hypersync_sha256": "952f52c2a08c263d35ba47a18659a7dc3528ff6e649951b78828cf14aa439a54",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "inflow_by_counterparty.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 2000,
+      "hypersync_rows": 2000,
+      "max_abs_difference": {
+        "signed_amount": "7E-8"
+      },
+      "dune_sha256": "e7e6ea13ef504102847d97dcc9bbecdf9435368ab3011e6b9608e75aadeeb19e",
+      "hypersync_sha256": "0a4617b139763e472580416e1d240abaa82631dbef14a1cdfa830adce30186e4",
+      "mismatch_count": 0,
+      "mismatches": []
+    }
+  ]
+}
