@@ -948,6 +948,7 @@ venues:
       decimals: 6
 
   - id: S35
+    event_source: hypersync
     chain: base
     label: 'Aave Base USDC (aBasUSDC)'
     pricing_category: C
