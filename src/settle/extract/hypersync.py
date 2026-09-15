@@ -221,6 +221,15 @@ def block_timestamp(chain: str, block: int) -> int:
     (deterministic given chain+block) — the binary search reuses probes across
     dates/venues/primes. Verified byte-identical to ``extract.rpc.block_timestamp``.
     """
+    return block_timestamp_uncached(chain, block)
+
+
+def block_timestamp_uncached(chain: str, block: int) -> int:
+    """Read a timestamp directly, including when certifying cached boundaries.
+
+    A timestamp cached before finality may belong to a replaced block. This
+    path bypasses both local and Postgres caches and does not populate them.
+    """
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {_token()}"}
     body = {
         "from_block": block,
@@ -341,6 +350,44 @@ def _find_block_at_or_before_cached(chain: str, target_ts: int) -> int:
         else:
             high, high_ts = mid, mid_ts
     return low
+
+
+@cached(source_id="hypersync.finalized_block_at_or_before")
+def find_finalized_block_at_or_before(chain: str, target_ts: int, margin: int) -> int:
+    """Cache only boundaries resolved from fresh, finalized observations.
+
+    Use a separate namespace from legacy resolutions/timestamps, which may
+    have been cached before a reorg. Failed attempts write nothing, so a later
+    worker can retry after the archive advances. Margin is part of the key.
+    Callers still certify returned pins, including cache hits, before use.
+    """
+    if margin < 0:
+        raise ValueError("HYPERSYNC_REORG_MARGIN must be nonnegative")
+    high = archive_height(chain) - margin
+    if high <= 0 or block_timestamp_uncached(chain, high) <= target_ts:
+        raise HyperSyncError(f"{chain}: cutoff boundary is not finalized; retry later")
+    if block_timestamp_uncached(chain, 0) > target_ts:
+        raise HyperSyncError(f"{chain}: cutoff precedes genesis")
+    low = 0
+    # The upper bound is finalized and strictly after the cutoff. Thus the
+    # eventual successor is also finalized; never persist a head clamp.
+    while low + 1 < high:
+        mid = (low + high) // 2
+        if block_timestamp_uncached(chain, mid) <= target_ts:
+            low = mid
+        else:
+            high = mid
+    return low
+
+
+@cached(source_id="hypersync.finalized_block_timestamp")
+def finalized_block_timestamp(chain: str, block: int, margin: int) -> int:
+    """Date event blocks without reusing timestamps cached before finality."""
+    if margin < 0:
+        raise ValueError("HYPERSYNC_REORG_MARGIN must be nonnegative")
+    if block > archive_height(chain) - margin:
+        raise HyperSyncError(f"{chain}: block {block} is not finalized; retry later")
+    return block_timestamp_uncached(chain, block)
 
 
 def _lower(v: Any) -> str | None:

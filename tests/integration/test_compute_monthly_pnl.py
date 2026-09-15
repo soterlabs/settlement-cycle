@@ -89,7 +89,8 @@ def test_monthly_pnl_zero_book_zero_pnl(obex, fixed_pin_blocks):
     assert result.monthly_pnl == Decimal("0")
 
 
-def test_monthly_pnl_obex_synthetic_one_venue(obex, fixed_pin_blocks, monkeypatch):
+@pytest.mark.parametrize("as_of", [None, date(2026, 3, 1), date(2026, 3, 15), date(2026, 3, 31)])
+def test_monthly_pnl_obex_synthetic_one_venue(obex, fixed_pin_blocks, monkeypatch, as_of):
     """OBEX-shaped scenario, all numbers chosen for closed-form math.
 
     Setup (constant throughout March 2026):
@@ -220,10 +221,11 @@ def test_monthly_pnl_obex_synthetic_one_venue(obex, fixed_pin_blocks, monkeypatc
         sources=sources,
         pin_blocks_eom=fixed_pin_blocks["eom"],
         pin_blocks_som=fixed_pin_blocks["som"],
+        as_of=as_of,
     )
 
     # --- assert ---
-    days = 31
+    days = as_of.day if as_of else 31
     # SSR is an APY; the spreads are governance APRs. Convert the first, then
     # sum, then slice — nominal, no intra-period compounding.
     ssr_apr = apy_to_apr(Decimal("0.04"))
@@ -258,6 +260,16 @@ def test_monthly_pnl_obex_synthetic_one_venue(obex, fixed_pin_blocks, monkeypatc
     # Provenance — both pin sets recorded.
     assert result.pin_blocks_som == fixed_pin_blocks["som"]
     assert result.period.pin_blocks == fixed_pin_blocks["eom"]
+    assert result.period.n_days == days
+    assert result.as_of == (as_of or date(2026, 3, 31))
+    assert result.is_provisional == (days < 31)
+    if as_of == date(2026, 3, 31):
+        from dataclasses import asdict
+        ordinary = compute_monthly_pnl(
+            obex, Month(2026, 3), sources=sources,
+            pin_blocks_eom=fixed_pin_blocks["eom"], pin_blocks_som=fixed_pin_blocks["som"],
+        )
+        assert asdict(result) == asdict(ordinary)
 
 
 def test_monthly_pnl_invariant_holds(obex, fixed_pin_blocks):

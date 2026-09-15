@@ -386,3 +386,22 @@ def test_a_pure_redemption_day_never_touches_the_nav_oracle(monkeypatch):
         nav_at_block=_boom,
     )
     assert out["daily_inflow"].iloc[0] == Decimal("-5")
+
+
+def test_as_of_cross_chain_redemption_uses_finalized_intraday_resolver(monkeypatch):
+    from settle.normalize.sources.hypersync_block_resolver import HyperSyncBlockResolver
+
+    def forbidden(*args):
+        raise AssertionError("As-of redemption must not use legacy timestamp/resolution caches")
+
+    monkeypatch.setattr("settle.extract.hypersync.block_timestamp", forbidden)
+    monkeypatch.setattr("settle.extract.hypersync.find_block_at_or_before", forbidden)
+    monkeypatch.setattr("settle.extract.hypersync.finalized_block_timestamp", lambda chain, block, margin: 4242)
+    monkeypatch.setattr("settle.extract.hypersync.find_finalized_block_at_or_before",
+                        lambda chain, ts, margin: 25_081_215 if ts == 4242 else -1)
+    calls = []
+    monkeypatch.setattr("settle.extract.rpc.convert_to_assets",
+                        lambda chain, vault, shares, block: calls.append((chain, block)) or 10**6)
+    P._vault_settlement_usd(_Venue(), Decimal("1"), 86_400_000,
+                            block_resolver=HyperSyncBlockResolver().for_finalized_reads())
+    assert calls == [(Chain.ETHEREUM, 25_081_215)]

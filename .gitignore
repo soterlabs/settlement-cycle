@@ -53,6 +53,7 @@ out.json
 #     changes on every run (timestamps, source manifest) even when the
 #     headline numbers don't move.
 settlements/**/provenance.json
+settlements/**/as-of/
 
 # Claude
 .claude

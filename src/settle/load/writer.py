@@ -74,6 +74,8 @@ def write_settlement(
     import graph. Falls back to a direct call when the script isn't
     importable (e.g., reduced-distribution installs).
     """
+    if pnl.is_provisional:
+        raise ValueError("Partial-month results must use write_revenue_preview, not canonical settlements")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Populate distribution rewards (+ per-ref-code breakdown) from the
@@ -97,6 +99,19 @@ def write_settlement(
         written["xlsx"] = xlsx_path
 
     return written
+
+
+def write_revenue_preview(
+    pnl: MonthlyPnL, output_dir: Path, *, sources: dict[str, str] | None = None,
+) -> dict[str, Path]:
+    """Write an isolated provisional report, without monthly DR or XLSX."""
+    if not pnl.is_provisional:
+        raise ValueError("Completed-month results must use write_settlement")
+    preview_dir = output_dir / "as-of" / pnl.as_of.isoformat()
+    preview_dir.mkdir(parents=True, exist_ok=True)
+    provenance = write_provenance(pnl, preview_dir / "provenance.json", sources=sources)
+    return {"provenance": provenance,
+            "summary": write_summary(provenance, preview_dir / "summary.md")}
 
 
 def _build_canonical_xlsx(prime_id: str, month_str: str, output_dir: Path) -> Path | None:

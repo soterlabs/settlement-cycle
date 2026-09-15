@@ -22,7 +22,7 @@ from .cof_attribution import compute_sheet_rows
 from .dr_rewards import enrich_with_dr
 from .provenance import write_provenance
 from .summary import render_summary, write_summary
-from .writer import default_output_dir, refresh_dr_only, write_settlement
+from .writer import default_output_dir, refresh_dr_only, write_revenue_preview, write_settlement
 
 __all__ = [
     "compute_sheet_rows",
@@ -31,6 +31,7 @@ __all__ = [
     "refresh_dr_only",
     "render_summary",
     "write_provenance",
+    "write_revenue_preview",
     "write_settlement",
     "write_summary",
 ]

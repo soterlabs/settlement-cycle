@@ -26,6 +26,11 @@ def render_provenance(
         "generated_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "prime_id": pnl.prime_id,
         "month": str(pnl.month),
+        **({"as_of": pnl.as_of.isoformat(), "provisional": True,
+            "excluded_components": ["distribution_rewards"],
+            "calculation_note": "Month-to-date estimate; closing-position rules use the cutoff position. "
+                                "Monthly distribution rewards are excluded; later inputs may revise estimates."}
+           if pnl.is_provisional else {}),
         "period": {
             "start": pnl.period.start.isoformat(),
             "end": pnl.period.end.isoformat(),
