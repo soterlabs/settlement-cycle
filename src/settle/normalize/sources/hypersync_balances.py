@@ -94,11 +94,16 @@ class HyperSyncBalanceSource:
         min_transfer_amount: Decimal = Decimal(0),
     ) -> pd.DataFrame:
         cols = ["block_date", "daily_net", "cum_balance"]
+        # No events need no normalization. In historical runs the token may
+        # not exist yet, so decimals() at the pin would return empty data.
+        rows = self._transfers_touching(chain, token, holder, start, pin_block)
+        if not rows:
+            return pd.DataFrame(columns=cols)
         scale = 10 ** self._decimals_of(chain, token, pin_block)
         min_raw = min_transfer_amount * Decimal(scale)
         h = _addr_topic(holder)
         daily: dict[date, int] = {}
-        for x in self._transfers_touching(chain, token, holder, start, pin_block):
+        for x in rows:
             if Decimal(x["value"]) < min_raw:          # Dune: amount >= min_transfer_amount
                 continue
             net = (x["value"] if x["to"] == h else 0) - (x["value"] if x["from"] == h else 0)
@@ -112,7 +117,6 @@ class HyperSyncBalanceSource:
         start: date, pin_block: int,
     ) -> pd.DataFrame:
         cols = ["block_date", "daily_inflow", "cum_inflow"]
-        scale = 10 ** self._decimals_of(chain, token, pin_block)
         sel = [{
             "address": ["0x" + bytes(token).hex()],
             "topics": [[_TRANSFER_T0], [_addr_topic(from_addr)], [_addr_topic(to_addr)]],
@@ -136,13 +140,13 @@ class HyperSyncBalanceSource:
             daily[x["date"]] = daily.get(x["date"], 0) + x["value"]
         if not daily:
             return pd.DataFrame(columns=cols)
+        scale = 10 ** self._decimals_of(chain, token, pin_block)
         return _to_cumulative_frame(daily, scale, "daily_inflow", "cum_inflow")
 
     def inflow_by_counterparty(
         self, chain: str, token: bytes, holder: bytes, start: date, pin_block: int,
     ) -> pd.DataFrame:
         cols = ["block_date", "counterparty", "signed_amount"]
-        scale = 10 ** self._decimals_of(chain, token, pin_block)
         h = _addr_topic(holder)
         agg: dict[tuple[date, str], int] = {}      # (block_date, counterparty_topic) → signed raw
         for x in self._transfers_touching(chain, token, holder, start, pin_block):
@@ -162,6 +166,7 @@ class HyperSyncBalanceSource:
                 agg[key] = agg.get(key, 0) - x["value"]
         if not agg:
             return pd.DataFrame(columns=cols)
+        scale = 10 ** self._decimals_of(chain, token, pin_block)
         with localcontext() as ctx:
             ctx.prec = 60
             recs = [

@@ -163,3 +163,70 @@ def test_empty_covered_range_is_not_a_cache_miss():
     source = HyperSyncBalanceSource(fetch_logs=no_live, covered_logs=lambda *a: [],
                 resolve_start_block=lambda *a: 0, decimals_of=lambda *a: _DEC)
     assert source.directed_inflow_timeseries("base", _TOKEN, _A, _H, date(2025, 11, 1), 100).empty
+
+
+@pytest.mark.parametrize("method", [
+    "cumulative_balance_timeseries", "directed_inflow_timeseries", "inflow_by_counterparty",
+])
+def test_predeployment_history_needs_no_decimals(method):
+    def unavailable_decimals(*args):
+        raise AssertionError("Predeployment decimals() must not be requested")
+    source = HyperSyncBalanceSource(
+        fetch_logs=lambda *args: [], resolve_start_block=lambda *args: 0,
+        decimals_of=unavailable_decimals,
+    )
+    holders = (_A, _H) if method == "directed_inflow_timeseries" else (_H,)
+    frame = getattr(source, method)("ethereum", _TOKEN, *holders, date(2026, 1, 1), 100)
+    assert frame.empty
+    assert list(frame.columns) == {
+        "cumulative_balance_timeseries": ["block_date", "daily_net", "cum_balance"],
+        "directed_inflow_timeseries": ["block_date", "daily_inflow", "cum_inflow"],
+        "inflow_by_counterparty": ["block_date", "counterparty", "signed_amount"],
+    }[method]
+
+
+@pytest.mark.parametrize("method", [
+    "cumulative_balance_timeseries", "directed_inflow_timeseries", "inflow_by_counterparty",
+])
+@pytest.mark.parametrize("failure", ["logs", "decimals"])
+def test_provider_failure_is_not_an_empty_history(method, failure):
+    from settle.extract.hypersync import HyperSyncError
+    from settle.extract.rpc import RPCError
+
+    def fetch(*args):
+        if failure == "logs":
+            raise HyperSyncError("unavailable logs")
+        return [_xfer(10, 0, _ts(2026, 1, 2), _A, _H, 10**_DEC)]
+
+    def decimals(*args):
+        raise RPCError("unavailable metadata")
+
+    source = HyperSyncBalanceSource(fetch_logs=fetch, resolve_start_block=lambda *args: 0,
+                                    decimals_of=decimals)
+    holders = (_A, _H) if method == "directed_inflow_timeseries" else (_H,)
+    with pytest.raises(HyperSyncError if failure == "logs" else RPCError):
+        getattr(source, method)("ethereum", _TOKEN, *holders, date(2026, 1, 1), 100)
+
+
+def test_spark_s65_january_share_flows_before_deployment():
+    from settle.domain.config import load_prime_by_id
+    from settle.domain.period import Period
+    from settle.domain.primes import Chain
+    from settle.normalize.positions import _shares_to_usd_inflow_timeseries
+
+    prime = load_prime_by_id("spark")
+    venue = next(v for v in prime.venues if v.id == "S65")
+    period = Period(date(2026, 1, 1), date(2026, 1, 31), {Chain.ETHEREUM: 24358292})
+
+    def no_metadata_or_price(*args):
+        raise AssertionError("No metadata or prices needed before deployment")
+
+    source = HyperSyncBalanceSource(
+        fetch_logs=lambda *args: [], resolve_start_block=lambda *args: 0,
+        decimals_of=no_metadata_or_price,
+    )
+    frame = _shares_to_usd_inflow_timeseries(
+        prime, venue, period, balance_source=source, block_resolver=None,
+        price_at_block=no_metadata_or_price, period_only=True,
+    )
+    assert frame.empty
