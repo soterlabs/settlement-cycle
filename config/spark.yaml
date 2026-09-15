@@ -294,6 +294,7 @@ venues:
       decimals: 6
 
   - id: S65
+    event_source: hypersync
     chain: ethereum
     label: 'Spark Blue Chip USDT Vault (Morpho — 2026-06 redeployment)'
     pricing_category: B
