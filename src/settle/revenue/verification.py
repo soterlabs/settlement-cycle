@@ -138,11 +138,13 @@ def worker(prime, cutoff, output, *, timeout=21600):
 
 def compare(first, second):
     historical = [c for c in second["calls"] if c["category"] not in {"head", "boundary"}]
+    same_identity = (first["prime"], first["cutoff"]) == (second["prime"], second["cutoff"])
     return {"prime": first["prime"], "cutoff": first["cutoff"],
+            "same_identity": same_identity,
             "matched": first["result"] == second["result"],
             "historical_requests": len(historical), "unexpected_requests": historical,
             "first_sha256": digest(first["result"]), "second_sha256": digest(second["result"]),
-            "passed": first["result"] == second["result"] and not historical
+            "passed": same_identity and first["result"] == second["result"] and not historical
                       and not first["dune_attempts"] and not second["dune_attempts"]}
 
 

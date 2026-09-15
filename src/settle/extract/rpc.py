@@ -42,6 +42,10 @@ class RPCError(RuntimeError):
     """Raised on JSON-RPC error responses."""
 
 
+class EVMRevert(RPCError):
+    """A structured execution-revert response, distinct from transport errors."""
+
+
 # Explicit chain → env-var mapping. Avoids the silent breakage that would happen
 # if someone added a new chain without realising `Chain.ETHEREUM` already had an
 # alias (`ETH_RPC`, not `ETHEREUM_RPC`).
@@ -142,6 +146,10 @@ def _post(url: str, method: str, params: list[Any]) -> Any:
                     return payload["result"]
                 err = payload["error"]
                 if not _is_transient_rpc_error(err):
+                    if (method == "eth_call" and isinstance(err, dict)
+                            and err.get("code") in (3, -32000)
+                            and str(err.get("message", "")).lower().startswith("execution reverted")):
+                        raise EVMRevert(f"{method} error: {err}")
                     raise RPCError(f"{method} error: {err}")
                 last_exc = RPCError(f"{method} transient error: {err}")
         except (requests.Timeout, requests.ConnectionError) as e:
@@ -218,9 +226,9 @@ def _eth_call_response(chain: Chain, contract: Address, data: str, block: int) -
                 hex(block),
             ],
         )
-    except RPCError as exc:
+    except EVMRevert:
         from .input_cache import current_scope
-        if current_scope() is not None and "execution reverted" in str(exc).lower():
+        if current_scope() is not None:
             return _ContractRevert()
         raise
     from .input_cache import current_scope

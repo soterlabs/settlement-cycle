@@ -257,9 +257,20 @@ def test_finalized_execution_revert_is_reused_without_becoming_zero(storage, mon
     monkeypatch.setenv("ETH_RPC", "http://test.invalid")
     def post(*args):
         calls.append(1)
-        raise rpc.RPCError("execution reverted")
+        raise rpc.EVMRevert("execution reverted")
     monkeypatch.setattr(rpc, "_post", post)
     for _ in range(2):
         with pytest.raises(rpc.RPCError, match="execution reverted"):
             run(lambda: rpc.eth_call(Chain.ETHEREUM, Address(bytes(20)), '0x12345678', 500))
     assert len(calls) == 1
+
+
+def test_unstructured_error_mentioning_revert_is_never_persisted(storage, monkeypatch):
+    rows, _ = storage
+    monkeypatch.setenv("ETH_RPC", "http://test.invalid")
+    def post(*args):
+        raise rpc.RPCError("provider unavailable while processing execution reverted")
+    monkeypatch.setattr(rpc, "_post", post)
+    with pytest.raises(rpc.RPCError):
+        run(lambda: rpc.eth_call(Chain.ETHEREUM, Address(bytes(20)), '0x12345678', 500))
+    assert not rows

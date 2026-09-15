@@ -57,3 +57,9 @@ def test_swallowed_dune_attempt_is_still_recorded():
         with pytest.raises(RuntimeError, match="Dune is forbidden"):
             dune.execute_query("unused")
     assert audit.dune_attempts == 1
+
+
+def test_comparison_rejects_mismatched_prime_or_cutoff():
+    first = report({})
+    assert not compare(first, dict(first, prime="grove"))["passed"]
+    assert not compare(first, dict(first, cutoff="2026-08-02"))["passed"]
