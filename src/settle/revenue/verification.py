@@ -18,7 +18,7 @@ import tempfile
 import threading
 import time
 from contextlib import ExitStack
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from unittest.mock import patch
@@ -183,6 +183,13 @@ def summarize(report):
             "calculation_seconds": report["calculation_seconds"], "cache": report["cache"]}
 
 
+def validate_window(cutoff, advance=False, today=None):
+    today = today or datetime.now(UTC).date()
+    last = cutoff + timedelta(days=1) if advance else cutoff
+    if cutoff < today - timedelta(days=90) or last >= today:
+        raise ValueError("cutoffs must be within the last 90 completed UTC days")
+
+
 def main():
     from dotenv import load_dotenv
     load_dotenv()
@@ -193,6 +200,10 @@ def main():
     parser.add_argument("--advance", action="store_true", help="Also measure the next completed UTC day")
     parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
+    try:
+        validate_window(args.as_of, args.advance)
+    except ValueError as exc:
+        parser.error(str(exc))
     if not os.environ.get("DATABASE_URL"):
         parser.error("DATABASE_URL is required")
     if args.worker:
@@ -207,7 +218,7 @@ def main():
         second = worker(prime, args.as_of, args.output / f"{prime}-second.json")
         report = compare(first, second)
         report["measurements"] = {"first": summarize(first), "same_date": summarize(second)}
-        if args.advance:
+        if args.advance and report["passed"]:
             advanced = worker(prime, args.as_of + timedelta(days=1), args.output / f"{prime}-next.json")
             report["measurements"]["next_day"] = summarize(advanced)
         reports.append(report)
