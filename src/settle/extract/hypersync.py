@@ -380,6 +380,16 @@ def find_finalized_block_at_or_before(chain: str, target_ts: int, margin: int) -
     return low
 
 
+@cached(source_id="hypersync.finalized_block_timestamp")
+def finalized_block_timestamp(chain: str, block: int, margin: int) -> int:
+    """Date event blocks without reusing timestamps cached before finality."""
+    if margin < 0:
+        raise ValueError("HYPERSYNC_REORG_MARGIN must be nonnegative")
+    if block > archive_height(chain) - margin:
+        raise HyperSyncError(f"{chain}: block {block} is not finalized; retry later")
+    return block_timestamp_uncached(chain, block)
+
+
 def _lower(v: Any) -> str | None:
     return v.lower() if isinstance(v, str) else v
 

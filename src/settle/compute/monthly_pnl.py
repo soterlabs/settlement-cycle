@@ -2226,6 +2226,10 @@ def compute_monthly_pnl(
         if sources.block_resolver is not None
         else get_block_resolver()
     )
+    if as_of is not None:
+        finalized_view = getattr(resolver, "for_finalized_reads", None)
+        if finalized_view is not None:
+            resolver = finalized_view()
     # Custom resolvers with explicit fixture pins are caller-certified.
     # Automatically resolved as-of pins require a finality-aware resolver.
     validate_boundary = getattr(resolver, "validate_finalized_boundary", None)
@@ -2281,7 +2285,7 @@ def compute_monthly_pnl(
         "ethereum", "base", "arbitrum", "optimism", "avalanche_c",
         # unichain, plume, monad: not yet in Dune spellbook — use RPC
     })
-    if sources.block_resolver is None and pin_blocks_eom:
+    if as_of is None and sources.block_resolver is None and pin_blocks_eom:
         import os as _os
         if _os.environ.get("DUNE_API_KEY"):
             try:

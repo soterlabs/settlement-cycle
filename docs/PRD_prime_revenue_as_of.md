@@ -58,6 +58,9 @@ Scheduling, result persistence and API publication follow those requirements.
   Automatic pins use a separate finalized-resolution cache: failed attempts
   are not cached, and cold resolution bypasses legacy timestamps so retries
   recover after a reorg. Cached pins still undergo fresh boundary validation.
+  The run-local resolver also uses finalized caches for daily debt, PSM/SDE
+  valuations, event dates and cross-chain redemption timestamps; downstream
+  lookups must not switch back to legacy resolution after pins are certified.
 - Existing closing-position rules (including capped SDE allocation) use the
   cutoff position provisionally. NAV and configuration corrections can revise
   results; month-to-date estimates are not additive final daily earnings.

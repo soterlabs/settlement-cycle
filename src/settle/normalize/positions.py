@@ -2337,6 +2337,8 @@ def _vault_settlement_usd(
     venue: Venue,
     shares: Decimal,
     block: int,
+    *,
+    block_resolver=None,
 ) -> Decimal:
     """USD a redemption of ``shares`` settles for, per the vault itself.
 
@@ -2385,9 +2387,20 @@ def _vault_settlement_usd(
         # an intra-day timestamp returns the PREVIOUS day's block — worse
         # than the bug being fixed.
         from ..extract.hypersync import block_timestamp, find_block_at_or_before
-        block = find_block_at_or_before(
-            vault_chain.value, block_timestamp(venue.chain.value, block),
-        )
+        timestamp_fn = getattr(block_resolver, "block_timestamp", None)
+        if timestamp_fn is not None:
+            from datetime import datetime, timezone
+
+            # The as-of resolver supplies finalized timestamps and supports
+            # intraday anchors. Keep this read in the same finalized context.
+            block = block_resolver.block_at_or_before(
+                vault_chain.value,
+                datetime.fromtimestamp(timestamp_fn(venue.chain.value, block), timezone.utc),
+            )
+        else:
+            block = find_block_at_or_before(
+                vault_chain.value, block_timestamp(venue.chain.value, block),
+            )
     raw_shares = int((shares * Decimal(10**dec_shares)).to_integral_value())
     raw_assets = convert_to_assets(vault_chain, vault, raw_shares, block)
     if raw_assets == 0:
@@ -2459,7 +2472,7 @@ def _vault_priced_redemptions_by_date(
         if raw == 0:
             continue
         shares = Decimal(raw) / Decimal(10**venue.token.decimals)
-        usd = _vault_settlement_usd(venue, shares, row.block_number)
+        usd = _vault_settlement_usd(venue, shares, row.block_number, block_resolver=block_resolver)
         d = block_resolver.block_to_date(venue.chain.value, row.block_number)
         prev_usd, prev_tok = out.get(d, (Decimal("0"), Decimal("0")))
         out[d] = (prev_usd + usd, prev_tok + shares)

@@ -43,6 +43,10 @@ class HyperSyncBlockResolver:
     def block_to_date(self, chain: str, block: int) -> date:
         return datetime.fromtimestamp(self._ts(chain, block), tz=timezone.utc).date()
 
+    def for_finalized_reads(self) -> HyperSyncBlockResolver:
+        """Return a run-local resolver; never mutate the shared registry instance."""
+        return FinalizedHyperSyncBlockResolver(validation_ts_fn=self._validation_ts)
+
     def finalized_block_at_or_before(self, chain: str, anchor_utc: datetime) -> int:
         """Resolve automatic as-of pins without trusting legacy cache entries."""
         from ...extract.hypersync_store import _reorg_margin
@@ -66,3 +70,19 @@ class HyperSyncBlockResolver:
         target = int(anchor_utc.timestamp())
         if not self._validation_ts(chain, block) <= target < self._validation_ts(chain, block + 1):
             raise hypersync.HyperSyncError(f"{chain}: block {block} is not the requested UTC boundary")
+
+
+class FinalizedHyperSyncBlockResolver(HyperSyncBlockResolver):
+    """Use finalized caches for every date/block lookup in an as-of run."""
+
+    def block_at_or_before(self, chain: str, anchor_utc: datetime) -> int:
+        return self.finalized_block_at_or_before(chain, anchor_utc)
+
+    def block_to_date(self, chain: str, block: int) -> date:
+        return datetime.fromtimestamp(self.block_timestamp(chain, block), tz=timezone.utc).date()
+
+    def block_timestamp(self, chain: str, block: int) -> int:
+        """Preserve intraday precision for cross-chain redemption pricing."""
+        from ...extract.hypersync_store import _reorg_margin
+
+        return hypersync.finalized_block_timestamp(chain, block, _reorg_margin())
