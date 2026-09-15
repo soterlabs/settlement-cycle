@@ -962,6 +962,7 @@ venues:
       decimals: 6
 
   - id: S36
+    event_source: hypersync
     chain: base
     label: 'Fluid Savings USDS (fsUSDS, Base)'
     pricing_category: B
