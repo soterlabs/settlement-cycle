@@ -1000,6 +1000,7 @@ venues:
       decimals: 6
 
   - id: S42
+    event_source: hypersync
     chain: arbitrum
     label: 'Fluid Savings USDS (fsUSDS, Arbitrum)'
     pricing_category: B

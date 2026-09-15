@@ -1,0 +1,57 @@
+{
+  "prime": "spark",
+  "venue": "S42",
+  "month": "2026-08",
+  "start": "2024-11-18",
+  "pins": {
+    "arbitrum/2026-08-31": 500455224
+  },
+  "matched": true,
+  "checks": [
+    {
+      "input": "transfer_timeseries.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 3,
+      "hypersync_rows": 3,
+      "max_abs_difference": {
+        "daily_net": "5.9016276E-11",
+        "cum_balance": "1.1641532182693481E-10"
+      },
+      "dune_sha256": "3299650770db5b30244b2b456bff4281d9703a1b04b6fcb4a0ed6d867dbc4141",
+      "hypersync_sha256": "1f8b9ce05815a92b187c6f52895eb6b20dd7061f15724171eab5ea967d3463e1",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "mint:venue_inflow.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 2,
+      "hypersync_rows": 2,
+      "max_abs_difference": {
+        "daily_inflow": "4.016276E-12",
+        "cum_inflow": "4.0983724E-11"
+      },
+      "dune_sha256": "fca528e7dc28d04c85088f4845786e519caa07bfeb4d3ee27336a4579498b695",
+      "hypersync_sha256": "12345b2a07d4c6398518097e7a78f09fecf41630e171550474c50936b95261a6",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "burn:venue_inflow.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 1,
+      "hypersync_rows": 1,
+      "max_abs_difference": {
+        "daily_inflow": "5.9016276E-11",
+        "cum_inflow": "5.9016276E-11"
+      },
+      "dune_sha256": "ac698b1f7941d42e6126c55584736115b86602f7ef4bcc2fc1075f2073b01457",
+      "hypersync_sha256": "8130486009cf95ca1d0c146c562c7670b3fdc333aebd68e12c4ca170c0c5b632",
+      "mismatch_count": 0,
+      "mismatches": []
+    }
+  ]
+}
