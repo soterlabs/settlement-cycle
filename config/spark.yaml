@@ -437,6 +437,7 @@ venues:
   # Ethereum — RWA / off-chain (Cat E)
   # ─────────────────────────────────────────────────────────────
   - id: S19
+    event_source: hypersync
     chain: ethereum
     label: 'BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I)'
     pricing_category: E
