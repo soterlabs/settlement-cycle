@@ -1133,6 +1133,7 @@ venues:
   # Avalanche-C
   # ─────────────────────────────────────────────────────────────
   - id: S54
+    event_source: hypersync
     chain: avalanche_c
     label: 'Aave Avalanche USDC (aAvaUSDC)'
     pricing_category: C
