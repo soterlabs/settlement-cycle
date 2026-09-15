@@ -43,3 +43,19 @@
   lookup isolation by prime, late-backfill ordering, Decimal serialization and
   the 90-day publication boundary. No further P1/P2 findings. Five targeted
   Postgres/provenance checks pass; failed transactions preserve prior results.
+
+## Step 6
+
+- Round 1: checked publication boundaries and lock/session behavior. Added guards
+  against a calculation returning another prime/cutoff and against transactional
+  lock sessions that would hide attempt records until completion.
+- Round 2: checked first-run outages and missed schedules. Added a fixed deployment
+  start cutoff so missed initial ticks can be recovered even when no attempt was
+  recorded (for example a DB outage); it is clamped to the rolling 90-day limit.
+  Reviewed the Railway plan and removed unrelated existing-service drift so the
+  deployment only adds the daily revenue service.
+- Round 3: checked long-running extraction and schedule starvation. Added a hard
+  six-hour process deadline (configurable) that cannot be swallowed by fallback
+  handlers. Expiry closes DB sessions, releases locks and leaves an auditable
+  abandoned attempt for the next tick. No unresolved P1/P2 findings after this
+  fix; deadline termination, recovery, locking and publication tests pass.

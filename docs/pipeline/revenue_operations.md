@@ -27,3 +27,15 @@ The revenue API status endpoint in step 7 will also report missing daily
 completion, including a scheduler that never fired. Do not interpret a healthy
 web process as proof of fresh daily results. Alert delivery destinations are
 managed in the deployment's monitoring configuration, not hard-coded here.
+
+Set `REVENUE_START_DATE` once at deployment to the first intended cutoff. This
+recovers missed initial ticks even if no attempt could reach Postgres. It stays
+fixed across redeployments; the rolling 90-day floor still bounds catch-up.
+Without it, an empty installation starts yesterday. Local publication refuses
+uncommitted code/config changes; Railway supplies the deployment commit.
+
+`REVENUE_TIMEOUT_SECONDS` defaults to 21600 (six hours). A hard watchdog exits 124
+on expiry, closing connections and releasing locks; the next tick recovers the
+abandoned attempt. Set this deployment environment variable before starting the
+process (the watchdog starts before dotenv loading). Failed/expired jobs emit
+an alert signal and never publish an uncommitted result.

@@ -10,8 +10,10 @@ import hashlib
 import json
 import logging
 import os
+import threading
 import time
 import uuid
+from contextlib import contextmanager
 from datetime import UTC, date, datetime, timedelta
 
 from psycopg.types.json import Jsonb
@@ -27,7 +29,7 @@ from .verification import PRIMES, ProviderAudit, validate_window
 _log = logging.getLogger('settle.revenue.worker')
 
 
-def planned_dates(published, attempted, today, start=None, end=None):
+def planned_dates(published, attempted, today, start=None, end=None, initial=None):
     """Fill known gaps within 90 days; a first installation starts yesterday."""
     floor, yesterday = today - timedelta(days=90), today - timedelta(days=1)
     if (start is None) != (end is None):
@@ -40,6 +42,10 @@ def planned_dates(published, attempted, today, start=None, end=None):
         first, last = start, end
     else:
         seen = [d for d in [*published, *attempted] if floor <= d <= yesterday]
+        if initial is not None:
+            if initial > yesterday:
+                raise ValueError('initial cutoff must be a completed UTC day')
+            seen.append(max(floor, initial))
         first, last = min(seen, default=yesterday), yesterday
     return [first + timedelta(days=i) for i in range((last - first).days + 1)
             if start is not None or first + timedelta(days=i) not in published
@@ -54,6 +60,8 @@ def lock_key(prime):
 def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_monthly_pnl,
               capture=store.capture_versions, attempts=3, pause=time.sleep):
     today = today or datetime.now(UTC).date()
+    if not conn.autocommit or attempts < 1:
+        raise ValueError('worker requires an autocommit lock session and positive retry count')
     if prime not in PRIMES:
         raise ValueError('unknown prime')
     if not conn.execute('SELECT pg_try_advisory_lock(%s)', (lock_key(prime),)).fetchone()[0]:
@@ -64,7 +72,9 @@ def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_
                      "error_type='WorkerInterrupted' WHERE prime=%s AND status='running'", (prime,))
         published = {r[0] for r in conn.execute('SELECT DISTINCT cutoff FROM revenue_results WHERE prime=%s', (prime,))}
         attempted = {r[0] for r in conn.execute('SELECT DISTINCT cutoff FROM revenue_attempts WHERE prime=%s', (prime,))}
-        dates = planned_dates(published, attempted, today, start, end)
+        initial = os.environ.get("REVENUE_START_DATE")
+        dates = planned_dates(published, attempted, today, start, end,
+                              date.fromisoformat(initial) if initial else None)
         for cutoff in dates:
             versions = capture()
             existing = conn.execute('''SELECT revision_id FROM revenue_results WHERE prime=%s AND cutoff=%s
@@ -81,6 +91,8 @@ def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_
                 try:
                     with ProviderAudit() as audit:
                         pnl = compute(load_prime_by_id(prime), Month(cutoff.year, cutoff.month), as_of=cutoff)
+                    if pnl.prime_id != prime or pnl.as_of != cutoff:
+                        raise ValueError('calculation returned a different prime or cutoff')
                     if audit.dune_attempts:
                         raise RuntimeError('Dune was used during revenue calculation')
                     if capture() != versions:
@@ -108,6 +120,27 @@ def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_
     finally:
         if not conn.closed:
             conn.execute('SELECT pg_advisory_unlock(%s)', (lock_key(prime),))
+
+
+@contextmanager
+def deadline(seconds):
+    """A hard process deadline cannot be swallowed by compute fallback handlers.
+
+    The OS closes DB sessions; uncommitted writes roll back and locks release.
+    The next tick reclaims any running attempt left by this interrupted worker.
+    """
+    if seconds <= 0:
+        raise ValueError('deadline must be positive')
+    def expired():
+        os.write(2, b'ALERT daily revenue worker deadline exceeded\n')
+        os._exit(124)
+    timer = threading.Timer(seconds, expired)
+    timer.daemon = True
+    timer.start()
+    try:
+        yield
+    finally:
+        timer.cancel()
 
 
 def main():
@@ -138,4 +171,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    with deadline(int(os.environ.get('REVENUE_TIMEOUT_SECONDS', '21600'))):
+        main()

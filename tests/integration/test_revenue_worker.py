@@ -61,3 +61,13 @@ def test_failed_historical_day_does_not_block_other_dates(database):  # noqa: F8
                                   compute=compute, capture=lambda: versions)
         assert report['status'] == 'failed'
         assert store.read(conn, 'obex')['cutoff'] == pnl.as_of.isoformat()
+
+
+def test_wrong_calculation_identity_cannot_be_published(database):  # noqa: F811
+    versions = store.Versions('code', 'config', '0')
+    with psycopg.connect(database, autocommit=True) as conn:
+        store.apply_schema(conn)
+        report = worker.run_prime(conn, 'obex', compute=lambda *a, **kw: example(2),
+                                  capture=lambda: versions)
+        assert report['status'] == 'failed'
+        assert store.read(conn, 'obex') is None

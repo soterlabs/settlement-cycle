@@ -23,7 +23,7 @@ export default defineRailway(() => {
 
   // One explicit image for both services (see Dockerfile) — Nixpacks put the
   // `api` extra outside its runtime venv.
-  const build = { builder: "DOCKERFILE" as const, dockerfilePath: "Dockerfile" };
+  const build = { builder: "DOCKERFILE" as const, dockerfilePath: "Dockerfile", buildCommand: 'pip install -e ".[api]"' };
 
   const settleApi = service("settle-api", {
     source: settlementCycle,
@@ -34,7 +34,6 @@ export default defineRailway(() => {
       startCommand: 'sh -c "python -m uvicorn settle.api.app:app --host 0.0.0.0 --port ${PORT:-8000}"',
       healthcheckPath: "/healthz",
       healthcheckTimeout: 120,
-      restartPolicyType: "ON_FAILURE",
       restartPolicyMaxRetries: 5,
     },
     env: { API_CORS_ORIGINS: preserve(), DATABASE_URL: preserve(), LOG_LEVEL: preserve() },
@@ -70,7 +69,7 @@ export default defineRailway(() => {
       ARBITRUM_RPC: preserve(), OPTIMISM_RPC: preserve(), UNICHAIN_RPC: preserve(),
       AVALANCHE_C_RPC: preserve(), PLUME_RPC: preserve(), MONAD_RPC: preserve(),
       ROBINHOOD_RPC: preserve(), SETTLE_REQUIRE_POSTGRES: "1",
-      SETTLE_INPUT_REVISION: "0",
+      SETTLE_INPUT_REVISION: "0", REVENUE_START_DATE: preserve(),
     },
   });
 
