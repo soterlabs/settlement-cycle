@@ -989,6 +989,7 @@ venues:
       decimals: 18
 
   - id: S38
+    event_source: hypersync
     chain: base
     label: 'USDS raw (Base — POL)'
     pricing_category: A
