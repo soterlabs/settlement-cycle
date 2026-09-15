@@ -40,6 +40,7 @@ addresses:
 # debt is a no-op (no ilk); balance drives the subproxy USDS/sUSDS agent-rate
 # base. Prices/SSR/DR unaffected. Requires ENVIO_API_TOKEN.
 sources:
+  block_resolver: hypersync
   debt: hypersync
   balance: hypersync
   position_balance: hypersync

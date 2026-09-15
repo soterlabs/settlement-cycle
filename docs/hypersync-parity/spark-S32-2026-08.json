@@ -1,0 +1,384 @@
+{
+  "prime": "spark",
+  "venue": "S32",
+  "month": "2026-08",
+  "start": "2024-11-18",
+  "pins": {
+    "ethereum/2026-08-31": 25878704
+  },
+  "matched": true,
+  "checks": [
+    {
+      "input": "transfer_timeseries_raw_parity.sql",
+      "matched": true,
+      "tolerance": "0",
+      "dune_rows": 359,
+      "hypersync_rows": 359,
+      "max_abs_difference": {
+        "daily_net": "0",
+        "cum_balance": "0"
+      },
+      "dune_sha256": "aa58f139f443e99d19fdda1d5b7a18fcee420d32c0451006a353d63a27eb0b4e",
+      "hypersync_sha256": "aa58f139f443e99d19fdda1d5b7a18fcee420d32c0451006a353d63a27eb0b4e",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "legacy_float_comparison": {
+        "input": "transfer_timeseries.sql",
+        "matched": false,
+        "tolerance": "0.000001",
+        "dune_rows": 359,
+        "hypersync_rows": 359,
+        "max_abs_difference": {
+          "daily_net": "2.46049135299E-7",
+          "cum_balance": "0.000001020758359734"
+        },
+        "dune_sha256": "0fac02295a56b7fa4c93cc8f7b96d06b1a6e81ad0db70a1b7388d4e423f19802",
+        "hypersync_sha256": "e17e51aef3c9999e8c9fe2253ae0fcbe5c5835304ca1ad4224164840fb05e855",
+        "mismatch_count": 1,
+        "mismatches": [
+          {
+            "key": [
+              "2026-08-23"
+            ],
+            "dune": {
+              "daily_net": "10214908.616611172",
+              "cum_balance": "601071586.4556994"
+            },
+            "hypersync": {
+              "daily_net": "10214908.616611170993676419",
+              "cum_balance": "601071586.455700420758359734"
+            }
+          }
+        ]
+      },
+      "legacy_float_ceiling_token_units": "0.0001",
+      "acceptance_basis": "Exact raw-integer series parity; legacy DOUBLE drift is below the recorded ceiling."
+    },
+    {
+      "input": "venue_inflow_raw_parity.sql",
+      "matched": true,
+      "tolerance": "0",
+      "dune_rows": 343,
+      "hypersync_rows": 343,
+      "max_abs_difference": {
+        "daily_inflow": "0",
+        "cum_inflow": "0"
+      },
+      "dune_sha256": "3947c26e4a916e2a66dbd3c3d44d9879d035566d6079275862f652f06ccb30ed",
+      "hypersync_sha256": "3947c26e4a916e2a66dbd3c3d44d9879d035566d6079275862f652f06ccb30ed",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "legacy_float_comparison": {
+        "input": "mint:venue_inflow.sql",
+        "matched": false,
+        "tolerance": "0.000001",
+        "dune_rows": 343,
+        "hypersync_rows": 343,
+        "max_abs_difference": {
+          "daily_inflow": "6.09041502574E-7",
+          "cum_inflow": "0.000012948719768109"
+        },
+        "dune_sha256": "48490014cfe17feda662000d3cfb756c407654dced03bb458a8e6f4e1218ef61",
+        "hypersync_sha256": "88bf00be56db002799bef67342b3b8713386f8badff2c97b82dbc3400125f098",
+        "mismatch_count": 98,
+        "mismatches": [
+          {
+            "key": [
+              "2026-04-19"
+            ],
+            "dune": {
+              "daily_inflow": "27620175.376956917",
+              "cum_inflow": "4971176306.954988"
+            },
+            "hypersync": {
+              "daily_inflow": "27620175.37695691427916795",
+              "cum_inflow": "4971176306.954986994705239901"
+            }
+          },
+          {
+            "key": [
+              "2026-04-24"
+            ],
+            "dune": {
+              "daily_inflow": "46296076.47255954",
+              "cum_inflow": "5630868180.531922"
+            },
+            "hypersync": {
+              "daily_inflow": "46296076.472559535684319299",
+              "cum_inflow": "5630868180.531920762293420322"
+            }
+          },
+          {
+            "key": [
+              "2026-04-25"
+            ],
+            "dune": {
+              "daily_inflow": "29460452.595915426",
+              "cum_inflow": "5660328633.127838"
+            },
+            "hypersync": {
+              "daily_inflow": "29460452.59591543014916464",
+              "cum_inflow": "5660328633.127836192442584962"
+            }
+          },
+          {
+            "key": [
+              "2026-04-26"
+            ],
+            "dune": {
+              "daily_inflow": "14796386.402256437",
+              "cum_inflow": "5675125019.530094"
+            },
+            "hypersync": {
+              "daily_inflow": "14796386.402256437320140076",
+              "cum_inflow": "5675125019.530092629762725038"
+            }
+          },
+          {
+            "key": [
+              "2026-04-27"
+            ],
+            "dune": {
+              "daily_inflow": "16708491.740477873",
+              "cum_inflow": "5691833511.270572"
+            },
+            "hypersync": {
+              "daily_inflow": "16708491.740477871775985775",
+              "cum_inflow": "5691833511.270570501538710813"
+            }
+          },
+          {
+            "key": [
+              "2026-04-28"
+            ],
+            "dune": {
+              "daily_inflow": "42839475.81532924",
+              "cum_inflow": "5734672987.085901"
+            },
+            "hypersync": {
+              "daily_inflow": "42839475.815329225712110417",
+              "cum_inflow": "5734672987.08589972725082123"
+            }
+          },
+          {
+            "key": [
+              "2026-04-29"
+            ],
+            "dune": {
+              "daily_inflow": "38999186.940804616",
+              "cum_inflow": "5773672174.026706"
+            },
+            "hypersync": {
+              "daily_inflow": "38999186.940804613434422364",
+              "cum_inflow": "5773672174.026704340685243594"
+            }
+          },
+          {
+            "key": [
+              "2026-04-30"
+            ],
+            "dune": {
+              "daily_inflow": "589102986.4986156",
+              "cum_inflow": "6362775160.525321"
+            },
+            "hypersync": {
+              "daily_inflow": "589102986.498615592259188933",
+              "cum_inflow": "6362775160.525319932944432527"
+            }
+          },
+          {
+            "key": [
+              "2026-05-01"
+            ],
+            "dune": {
+              "daily_inflow": "281651478.2465196",
+              "cum_inflow": "6644426638.771841"
+            },
+            "hypersync": {
+              "daily_inflow": "281651478.246519690107408531",
+              "cum_inflow": "6644426638.771839623051841058"
+            }
+          },
+          {
+            "key": [
+              "2026-05-03"
+            ],
+            "dune": {
+              "daily_inflow": "12169724.46909329",
+              "cum_inflow": "7608174948.8566"
+            },
+            "hypersync": {
+              "daily_inflow": "12169724.469093290027844871",
+              "cum_inflow": "7608174948.856598922121188503"
+            }
+          }
+        ]
+      },
+      "legacy_float_ceiling_token_units": "0.0001",
+      "acceptance_basis": "Exact raw-integer series parity; legacy DOUBLE drift is below the recorded ceiling."
+    },
+    {
+      "input": "venue_inflow_raw_parity.sql",
+      "matched": true,
+      "tolerance": "0",
+      "dune_rows": 323,
+      "hypersync_rows": 323,
+      "max_abs_difference": {
+        "daily_inflow": "0",
+        "cum_inflow": "0"
+      },
+      "dune_sha256": "ea05ace4be213fa583760815db87b5c34bd03da4ada907e1459a28f7eecd10b5",
+      "hypersync_sha256": "ea05ace4be213fa583760815db87b5c34bd03da4ada907e1459a28f7eecd10b5",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "legacy_float_comparison": {
+        "input": "burn:venue_inflow.sql",
+        "matched": false,
+        "tolerance": "0.000001",
+        "dune_rows": 323,
+        "hypersync_rows": 323,
+        "max_abs_difference": {
+          "daily_inflow": "1.89348080317E-7",
+          "cum_inflow": "0.000008386672135017"
+        },
+        "dune_sha256": "d18eba0f4140dc484ade5759f5cfc6e514eb62463872368043a27d9ba989da77",
+        "hypersync_sha256": "a34ccea47e24f933c075cd05dbb540e5a78a49d20bb514313bc96cb1a5149a9b",
+        "mismatch_count": 124,
+        "mismatches": [
+          {
+            "key": [
+              "2026-03-13"
+            ],
+            "dune": {
+              "daily_inflow": "6505782.7845961815",
+              "cum_inflow": "3271405234.2567773"
+            },
+            "hypersync": {
+              "daily_inflow": "6505782.784596182157911631",
+              "cum_inflow": "3271405234.256778418938159584"
+            }
+          },
+          {
+            "key": [
+              "2026-03-14"
+            ],
+            "dune": {
+              "daily_inflow": "7835278.486532211",
+              "cum_inflow": "3279240512.7433095"
+            },
+            "hypersync": {
+              "daily_inflow": "7835278.486532211809507411",
+              "cum_inflow": "3279240512.743310630747666995"
+            }
+          },
+          {
+            "key": [
+              "2026-03-15"
+            ],
+            "dune": {
+              "daily_inflow": "8981197.303938001",
+              "cum_inflow": "3288221710.0472474"
+            },
+            "hypersync": {
+              "daily_inflow": "8981197.30393800184975771",
+              "cum_inflow": "3288221710.047248632597424705"
+            }
+          },
+          {
+            "key": [
+              "2026-03-16"
+            ],
+            "dune": {
+              "daily_inflow": "25302405.034730077",
+              "cum_inflow": "3313524115.0819774"
+            },
+            "hypersync": {
+              "daily_inflow": "25302405.034730069433079558",
+              "cum_inflow": "3313524115.081978702030504263"
+            }
+          },
+          {
+            "key": [
+              "2026-03-17"
+            ],
+            "dune": {
+              "daily_inflow": "17092683.721167732",
+              "cum_inflow": "3330616798.803145"
+            },
+            "hypersync": {
+              "daily_inflow": "17092683.721167736482054834",
+              "cum_inflow": "3330616798.803146438512559097"
+            }
+          },
+          {
+            "key": [
+              "2026-03-18"
+            ],
+            "dune": {
+              "daily_inflow": "23772307.592102375",
+              "cum_inflow": "3354389106.3952475"
+            },
+            "hypersync": {
+              "daily_inflow": "23772307.592102376925975775",
+              "cum_inflow": "3354389106.395248815438534872"
+            }
+          },
+          {
+            "key": [
+              "2026-03-19"
+            ],
+            "dune": {
+              "daily_inflow": "66513656.74082123",
+              "cum_inflow": "3420902763.136069"
+            },
+            "hypersync": {
+              "daily_inflow": "66513656.740821227295011875",
+              "cum_inflow": "3420902763.136070042733546747"
+            }
+          },
+          {
+            "key": [
+              "2026-03-21"
+            ],
+            "dune": {
+              "daily_inflow": "4372144.904054634",
+              "cum_inflow": "3436413625.1963415"
+            },
+            "hypersync": {
+              "daily_inflow": "4372144.904054633581463285",
+              "cum_inflow": "3436413625.196342558873515536"
+            }
+          },
+          {
+            "key": [
+              "2026-03-22"
+            ],
+            "dune": {
+              "daily_inflow": "50565863.38759655",
+              "cum_inflow": "3486979488.583938"
+            },
+            "hypersync": {
+              "daily_inflow": "50565863.387596546569673695",
+              "cum_inflow": "3486979488.583939105443189231"
+            }
+          },
+          {
+            "key": [
+              "2026-03-24"
+            ],
+            "dune": {
+              "daily_inflow": "27398086.527498",
+              "cum_inflow": "3538043216.9484715"
+            },
+            "hypersync": {
+              "daily_inflow": "27398086.52749799703344794",
+              "cum_inflow": "3538043216.948472538874828366"
+            }
+          }
+        ]
+      },
+      "legacy_float_ceiling_token_units": "0.0001",
+      "acceptance_basis": "Exact raw-integer series parity; legacy DOUBLE drift is below the recorded ceiling."
+    }
+  ]
+}

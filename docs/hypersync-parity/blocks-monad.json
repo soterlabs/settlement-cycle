@@ -1,0 +1,229 @@
+{
+  "chain": "monad",
+  "month": "2026-08",
+  "pin_block": 100893400,
+  "oracle": "blocks_at_eod.sql",
+  "checks": [
+    {
+      "day": "2026-08-01",
+      "dune_block": 92339820,
+      "hypersync_timestamp": 1785628799,
+      "hypersync_successor_timestamp": 1785628800,
+      "matched": true,
+      "hypersync_search_block": 92339820
+    },
+    {
+      "day": "2026-08-02",
+      "dune_block": 92626143,
+      "hypersync_timestamp": 1785715199,
+      "hypersync_successor_timestamp": 1785715200,
+      "matched": true
+    },
+    {
+      "day": "2026-08-03",
+      "dune_block": 92912121,
+      "hypersync_timestamp": 1785801599,
+      "hypersync_successor_timestamp": 1785801600,
+      "matched": true
+    },
+    {
+      "day": "2026-08-04",
+      "dune_block": 93198148,
+      "hypersync_timestamp": 1785887999,
+      "hypersync_successor_timestamp": 1785888000,
+      "matched": true
+    },
+    {
+      "day": "2026-08-05",
+      "dune_block": 93484566,
+      "hypersync_timestamp": 1785974399,
+      "hypersync_successor_timestamp": 1785974400,
+      "matched": true
+    },
+    {
+      "day": "2026-08-06",
+      "dune_block": 93771011,
+      "hypersync_timestamp": 1786060799,
+      "hypersync_successor_timestamp": 1786060800,
+      "matched": true
+    },
+    {
+      "day": "2026-08-07",
+      "dune_block": 94057283,
+      "hypersync_timestamp": 1786147199,
+      "hypersync_successor_timestamp": 1786147200,
+      "matched": true
+    },
+    {
+      "day": "2026-08-08",
+      "dune_block": 94341847,
+      "hypersync_timestamp": 1786233599,
+      "hypersync_successor_timestamp": 1786233600,
+      "matched": true
+    },
+    {
+      "day": "2026-08-09",
+      "dune_block": 94626730,
+      "hypersync_timestamp": 1786319999,
+      "hypersync_successor_timestamp": 1786320000,
+      "matched": true
+    },
+    {
+      "day": "2026-08-10",
+      "dune_block": 94912721,
+      "hypersync_timestamp": 1786406399,
+      "hypersync_successor_timestamp": 1786406400,
+      "matched": true
+    },
+    {
+      "day": "2026-08-11",
+      "dune_block": 95198844,
+      "hypersync_timestamp": 1786492799,
+      "hypersync_successor_timestamp": 1786492800,
+      "matched": true
+    },
+    {
+      "day": "2026-08-12",
+      "dune_block": 95482434,
+      "hypersync_timestamp": 1786579199,
+      "hypersync_successor_timestamp": 1786579200,
+      "matched": true
+    },
+    {
+      "day": "2026-08-13",
+      "dune_block": 95768525,
+      "hypersync_timestamp": 1786665599,
+      "hypersync_successor_timestamp": 1786665600,
+      "matched": true
+    },
+    {
+      "day": "2026-08-14",
+      "dune_block": 96054716,
+      "hypersync_timestamp": 1786751999,
+      "hypersync_successor_timestamp": 1786752000,
+      "matched": true
+    },
+    {
+      "day": "2026-08-15",
+      "dune_block": 96341016,
+      "hypersync_timestamp": 1786838399,
+      "hypersync_successor_timestamp": 1786838400,
+      "matched": true,
+      "hypersync_search_block": 96341016
+    },
+    {
+      "day": "2026-08-16",
+      "dune_block": 96627264,
+      "hypersync_timestamp": 1786924799,
+      "hypersync_successor_timestamp": 1786924800,
+      "matched": true
+    },
+    {
+      "day": "2026-08-17",
+      "dune_block": 96913134,
+      "hypersync_timestamp": 1787011199,
+      "hypersync_successor_timestamp": 1787011200,
+      "matched": true
+    },
+    {
+      "day": "2026-08-18",
+      "dune_block": 97197245,
+      "hypersync_timestamp": 1787097599,
+      "hypersync_successor_timestamp": 1787097600,
+      "matched": true
+    },
+    {
+      "day": "2026-08-19",
+      "dune_block": 97477107,
+      "hypersync_timestamp": 1787183999,
+      "hypersync_successor_timestamp": 1787184000,
+      "matched": true
+    },
+    {
+      "day": "2026-08-20",
+      "dune_block": 97760787,
+      "hypersync_timestamp": 1787270399,
+      "hypersync_successor_timestamp": 1787270400,
+      "matched": true
+    },
+    {
+      "day": "2026-08-21",
+      "dune_block": 98044076,
+      "hypersync_timestamp": 1787356799,
+      "hypersync_successor_timestamp": 1787356800,
+      "matched": true
+    },
+    {
+      "day": "2026-08-22",
+      "dune_block": 98330140,
+      "hypersync_timestamp": 1787443199,
+      "hypersync_successor_timestamp": 1787443200,
+      "matched": true
+    },
+    {
+      "day": "2026-08-23",
+      "dune_block": 98612110,
+      "hypersync_timestamp": 1787529599,
+      "hypersync_successor_timestamp": 1787529600,
+      "matched": true
+    },
+    {
+      "day": "2026-08-24",
+      "dune_block": 98895325,
+      "hypersync_timestamp": 1787615999,
+      "hypersync_successor_timestamp": 1787616000,
+      "matched": true
+    },
+    {
+      "day": "2026-08-25",
+      "dune_block": 99180209,
+      "hypersync_timestamp": 1787702399,
+      "hypersync_successor_timestamp": 1787702400,
+      "matched": true
+    },
+    {
+      "day": "2026-08-26",
+      "dune_block": 99466292,
+      "hypersync_timestamp": 1787788799,
+      "hypersync_successor_timestamp": 1787788800,
+      "matched": true
+    },
+    {
+      "day": "2026-08-27",
+      "dune_block": 99750472,
+      "hypersync_timestamp": 1787875199,
+      "hypersync_successor_timestamp": 1787875200,
+      "matched": true
+    },
+    {
+      "day": "2026-08-28",
+      "dune_block": 100035680,
+      "hypersync_timestamp": 1787961599,
+      "hypersync_successor_timestamp": 1787961600,
+      "matched": true
+    },
+    {
+      "day": "2026-08-29",
+      "dune_block": 100321114,
+      "hypersync_timestamp": 1788047999,
+      "hypersync_successor_timestamp": 1788048000,
+      "matched": true
+    },
+    {
+      "day": "2026-08-30",
+      "dune_block": 100607216,
+      "hypersync_timestamp": 1788134399,
+      "hypersync_successor_timestamp": 1788134400,
+      "matched": true
+    },
+    {
+      "day": "2026-08-31",
+      "dune_block": 100893400,
+      "hypersync_timestamp": 1788220799,
+      "hypersync_successor_timestamp": 1788220800,
+      "matched": true,
+      "hypersync_search_block": 100893400
+    }
+  ],
+  "matched": true
+}

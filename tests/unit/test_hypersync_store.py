@@ -324,3 +324,21 @@ def test_default_field_set_does_not_fork_the_stream():
     k_default = hypersync_store._stream_key("ethereum", sel, list(hypersync._DEFAULT_LOG_FIELDS))
     k_tx = hypersync_store._stream_key("ethereum", sel, [*hypersync._DEFAULT_LOG_FIELDS, "transaction_hash"])
     assert k_none == k_default != k_tx
+
+
+def test_read_covered_logs_requires_the_entire_finalized_range(monkeypatch):
+    from settle.extract import hypersync_store as store
+    monkeypatch.delenv('HYPERSYNC_NO_STORE', raising=False)
+    monkeypatch.setattr(store.postgres_store, '_get_conn', lambda: object())
+    monkeypatch.setattr(store, '_ensure_schema_once', lambda c: None)
+    monkeypatch.setattr(store, '_get_coverage', lambda *a: (100, 200))
+    reads = []
+    def read(*args):
+        reads.append(args[-2:])
+        return []
+    monkeypatch.setattr(store, '_read_rows', read)
+    assert store.read_covered_logs('base', [], 90, 150) is None
+    assert store.read_covered_logs('base', [], 150, 201) is None
+    assert reads == []
+    assert store.read_covered_logs('base', [], 110, 180) == []
+    assert reads == [(110, 180)]

@@ -1,0 +1,8 @@
+{
+  "input": "non_msc month-end extraction pin",
+  "anchor": "2026-09-01T00:00:00+00:00",
+  "oracle": "block_at_or_before.sql",
+  "dune": 25878704,
+  "hypersync": 25878704,
+  "matched": true
+}

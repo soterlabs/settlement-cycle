@@ -1,38 +1,10 @@
-"""OSERO 2026 settlement runner — July 2026 onward.
+"""Live monthly settlement runner using configured HyperSync event sources.
 
-Single entry point for the Osero prime (Diamond PAU, ilk ALLOCATOR-PRYSM-A —
-see config/osero.yaml for the architecture notes). Osero is single-chain
-(Ethereum-only)
-with two venues (O1 SparkLend spUSDS, O2 raw USDS at the PAU ALM), so the run
-loop is much simpler than Spark/Grove and doesn't need pre-captured fixtures.
-Sources are LIVE and mostly HyperSync: config/osero.yaml routes debt /
-balance / position_balance to HyperSync (requires ENVIO_API_TOKEN); SSR is
-the Dune on-chain query; RPC covers ``ilk_rate`` + convertToAssets reads.
-
-For each month, the loop:
-  1. Builds live ``Sources`` (HyperSync for debt + balances + position
-     balances per the YAML ``sources:`` block, Dune for SSR, RPC for
-     ``ilk_rate`` + ERC-4626 convertToAssets). The orchestrator
-     upgrades the block resolver to ``DuneBlockResolver`` when
-     ``DUNE_API_KEY`` is set, replacing ~25 per-day binary-search RPC
-     calls with one Dune query.
-  2. Runs ``compute_monthly_pnl(osero, month, sources=...)`` — the
-     orchestrator resolves SoM/EoM pin blocks via the block resolver.
-  3. Persists ``provenance.json`` + ``summary.md`` + the canonical xlsx
-     under ``settlements/osero/<YYYY-MM>/`` via ``write_settlement``.
-
-Required env vars (sourced from ``.env`` via ``set -a; source .env;
-set +a``):
-    DUNE_API_KEY        — Dune key for the debt / balance / SSR queries
-    ETH_RPC             — Ethereum RPC endpoint (archival, for past blocks)
-
-Optional:
-    DATABASE_URL        — Postgres raw-data cache (read-through; speeds
-                          up re-runs but not required)
-
-Run with:
-    set -a; source .env; set +a
-    PYTHONPATH=src python3 scripts/run_osero_2026.py
+Requires ENVIO_API_TOKEN and archival ETH_RPC. DATABASE_URL enables the
+reusable raw-data cache. Dune is retained as a separate comparison oracle;
+these migrated primes do not require a Dune API key to produce settlements.
+RPC still supplies contract state and valuation reads. Writes canonical
+settlement artifacts under settlements/<prime>/<month>/.
 """
 
 from __future__ import annotations
@@ -51,6 +23,7 @@ from settle.compute import Sources, compute_monthly_pnl  # noqa: E402
 from settle.domain import Month  # noqa: E402
 from settle.domain.config import load_prime  # noqa: E402
 from settle.load import write_settlement  # noqa: E402
+from settle.normalize.registry import resolved_source_labels  # noqa: E402
 
 _OSERO_YAML = _REPO / "config" / "osero.yaml"
 _MONTHS = [Month(2026, m) for m in (7, 8)]   # prime effective July 2026
@@ -67,16 +40,16 @@ def _selected_months() -> list[Month]:
 _SOURCES_LIVE = {
     "debt":              "HyperSyncDebtSource",
     "balance":           "HyperSyncBalanceSource",
-    "ssr":               "DuneSSRSource",
+    "ssr":               "HyperSyncSSRSource",
     "position_balance":  "HyperSyncPositionBalanceSource",
     "convert_to_assets": "RPCConvertToAssetsSource",
-    "block_resolver":    "DuneBlockResolver (orchestrator-upgraded) + RPC fallback",
+    "block_resolver":    "HyperSyncBlockResolver",
 }
 
 
 def _check_env() -> None:
-    """Osero needs only DUNE_API_KEY + ETH_RPC (single-chain prime)."""
-    missing = [v for v in ("DUNE_API_KEY", "ETH_RPC") if not os.environ.get(v)]
+    """Osero needs ENVIO_API_TOKEN + ETH_RPC (single-chain prime)."""
+    missing = [v for v in ("ENVIO_API_TOKEN", "ETH_RPC") if not os.environ.get(v)]
     if missing:
         print("Missing required env vars:")
         for v in missing:
@@ -98,16 +71,7 @@ def _check_envio_token(*primes) -> None:
 
 
 def _live_sources() -> Sources:
-    """Live sources — every field left ``None`` on purpose.
-
-    ``block_resolver`` left ``None`` so the orchestrator upgrades it to
-    ``DuneBlockResolver`` per chain (one Dune query per chain replaces ~25
-    binary-search RPC calls/day). ``position_balance`` / ``convert_to_assets``
-    are likewise left ``None``: ``compute_monthly_pnl`` merges the prime's
-    YAML ``sources:`` overrides into ``None`` fields and defaults any
-    still-``None`` field to its registry default. Pinning them to RPC here
-    would silently drop a per-prime pilot (e.g. ``position_balance:
-    hypersync``) because ``_sources_from_prime`` fills only ``None`` fields."""
+    """Resolve live sources from the prime config; preserve caller overrides."""
     return Sources()
 
 
@@ -146,7 +110,7 @@ def main() -> int:
             sources = _live_sources()
             result = compute_monthly_pnl(prime, month, sources=sources)
             out_dir = _REPO / "settlements" / "osero" / label
-            paths = write_settlement(result, out_dir, sources=_SOURCES_LIVE)
+            paths = write_settlement(result, out_dir, sources=resolved_source_labels(prime, _SOURCES_LIVE))
             artifacts.append((label, paths))
             print(
                 f"{label:<10} "

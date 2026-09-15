@@ -1,0 +1,71 @@
+{
+  "prime": "grove",
+  "venue": "E2",
+  "month": "2026-08",
+  "start": "2025-05-14",
+  "pins": {
+    "ethereum/2026-08-31": 25878704
+  },
+  "matched": true,
+  "checks": [
+    {
+      "input": "transfer_timeseries.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 8,
+      "hypersync_rows": 8,
+      "max_abs_difference": {
+        "daily_net": "0",
+        "cum_balance": "4.504323005676E-10"
+      },
+      "dune_sha256": "2d13433a176352b10072910e58af7c933329271ea4d733f81bf64ae524044f5f",
+      "hypersync_sha256": "65254cfdd24a38896305031077aed9235caec2d9fd8ef81a0b29a93e41462aa6",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "mint:venue_inflow.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 6,
+      "hypersync_rows": 6,
+      "max_abs_difference": {
+        "daily_inflow": "0",
+        "cum_inflow": "0"
+      },
+      "dune_sha256": "3ad1b03fcab1500948044b45f265210fb62b6531b46caae2dc0df53f4962fc2f",
+      "hypersync_sha256": "03ba247694a1e98081c97053aaf43581f432cae999eaaeeb2fc7bba153bf4059",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "burn:venue_inflow.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 2,
+      "hypersync_rows": 2,
+      "max_abs_difference": {
+        "daily_inflow": "0",
+        "cum_inflow": "2E-9"
+      },
+      "dune_sha256": "a4a18c428f5750e580a0a78202532341942161a991d43adefe95eb82c9b122f3",
+      "hypersync_sha256": "2ee8c69dcc3f09b0a16fc0416fce492688b72290396d34e80c289a89ebcbb9fd",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "merkl_claims_ethereum.sql",
+      "matched": true,
+      "tolerance": "0",
+      "dune_rows": 1,
+      "hypersync_rows": 1,
+      "max_abs_difference": {
+        "total_amount_raw": "0"
+      },
+      "dune_sha256": "345f0a6c6648d44f4eb490862763e05a4a63fd5650c519d946ebb3d7014a7a2a",
+      "hypersync_sha256": "345f0a6c6648d44f4eb490862763e05a4a63fd5650c519d946ebb3d7014a7a2a",
+      "mismatch_count": 0,
+      "mismatches": []
+    }
+  ]
+}

@@ -1,0 +1,128 @@
+{
+  "prime": "grove",
+  "venue": "E33",
+  "month": "2025-12",
+  "start": "2025-05-14",
+  "pins": {
+    "monad/2025-12-31": 45742990,
+    "monad/2025-11-30": 39075830
+  },
+  "matched": true,
+  "checks": [
+    {
+      "input": "transfer_timeseries.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 0,
+      "hypersync_rows": 0,
+      "max_abs_difference": {
+        "daily_net": "0",
+        "cum_balance": "0"
+      },
+      "dune_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "hypersync_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "uniswap_v3 liquidity events",
+      "matched": true,
+      "dune_rows": 5,
+      "hypersync_rows": 5,
+      "dune": [
+        {
+          "block_number": 39672690,
+          "tx_hash": "0x94b9c86d7eb4262326ebafc2f1c51752cfda8175f0a2c18504c80f0a1195427f",
+          "log_index": 14,
+          "token_id": 1349,
+          "amount0": -48887810355,
+          "amount1": -1113194600,
+          "is_increase": false
+        },
+        {
+          "block_number": 39702642,
+          "tx_hash": "0xc88fcdf67c0d2b96f50c47d2ce3e892d52e18a347de136ebafc4cd3c1759eadf",
+          "log_index": 7,
+          "token_id": 1349,
+          "amount0": -4663387020731,
+          "amount1": -286715300106,
+          "is_increase": false
+        },
+        {
+          "block_number": 39705682,
+          "tx_hash": "0x6ae91f27620a118ae1961db5cfcb5fadb84401d743f91f3f52983dad7cd4a32d",
+          "log_index": 5,
+          "token_id": 8497,
+          "amount0": 4713065688446,
+          "amount1": 81385671330,
+          "is_increase": true
+        },
+        {
+          "block_number": 39910202,
+          "tx_hash": "0x7a31b1f02674c0df6c2ea1ae474f9411b43625536b6fdb008a195a05a95da6d5",
+          "log_index": 10,
+          "token_id": 8497,
+          "amount0": -4794447290702,
+          "amount1": 0,
+          "is_increase": false
+        },
+        {
+          "block_number": 39942960,
+          "tx_hash": "0xcf20bba07347b38e6b64f85d1caa19a3c52de4cb1353c3c840f2e6f2cc123d70",
+          "log_index": 19,
+          "token_id": 2391,
+          "amount0": -19999899999998,
+          "amount1": 0,
+          "is_increase": false
+        }
+      ],
+      "hypersync": [
+        {
+          "block_number": 39672690,
+          "tx_hash": "0x94b9c86d7eb4262326ebafc2f1c51752cfda8175f0a2c18504c80f0a1195427f",
+          "log_index": 14,
+          "token_id": 1349,
+          "amount0": -48887810355,
+          "amount1": -1113194600,
+          "is_increase": false
+        },
+        {
+          "block_number": 39702642,
+          "tx_hash": "0xc88fcdf67c0d2b96f50c47d2ce3e892d52e18a347de136ebafc4cd3c1759eadf",
+          "log_index": 7,
+          "token_id": 1349,
+          "amount0": -4663387020731,
+          "amount1": -286715300106,
+          "is_increase": false
+        },
+        {
+          "block_number": 39705682,
+          "tx_hash": "0x6ae91f27620a118ae1961db5cfcb5fadb84401d743f91f3f52983dad7cd4a32d",
+          "log_index": 5,
+          "token_id": 8497,
+          "amount0": 4713065688446,
+          "amount1": 81385671330,
+          "is_increase": true
+        },
+        {
+          "block_number": 39910202,
+          "tx_hash": "0x7a31b1f02674c0df6c2ea1ae474f9411b43625536b6fdb008a195a05a95da6d5",
+          "log_index": 10,
+          "token_id": 8497,
+          "amount0": -4794447290702,
+          "amount1": 0,
+          "is_increase": false
+        },
+        {
+          "block_number": 39942960,
+          "tx_hash": "0xcf20bba07347b38e6b64f85d1caa19a3c52de4cb1353c3c840f2e6f2cc123d70",
+          "log_index": 19,
+          "token_id": 2391,
+          "amount0": -19999899999998,
+          "amount1": 0,
+          "is_increase": false
+        }
+      ]
+    }
+  ]
+}

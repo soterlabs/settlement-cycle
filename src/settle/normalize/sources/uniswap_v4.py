@@ -254,6 +254,9 @@ def default_v4_source(venue) -> RPCUniswapV4PositionSource:
         if venue.nft_position_manager is not None
         else None
     )
+    if venue.event_source == "hypersync":
+        from .hypersync_lp import HyperSyncV4PositionSource
+        return HyperSyncV4PositionSource(position_manager_per_chain=overrides)
     cls = (
         DuneUniswapV4FlowsSource
         if os.environ.get("DUNE_API_KEY")

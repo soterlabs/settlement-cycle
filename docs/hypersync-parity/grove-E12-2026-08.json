@@ -1,0 +1,56 @@
+{
+  "prime": "grove",
+  "venue": "E12",
+  "month": "2026-08",
+  "start": "2025-05-14",
+  "pins": {
+    "ethereum/2026-08-31": 25878704,
+    "ethereum/2026-07-31": 25656292
+  },
+  "matched": true,
+  "checks": [
+    {
+      "input": "transfer_timeseries.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 0,
+      "hypersync_rows": 0,
+      "max_abs_difference": {
+        "daily_net": "0",
+        "cum_balance": "0"
+      },
+      "dune_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "hypersync_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "uniswap_v3 liquidity events",
+      "matched": true,
+      "dune_rows": 1,
+      "hypersync_rows": 1,
+      "dune": [
+        {
+          "block_number": 25797316,
+          "tx_hash": "0x72a712a0dff8a9b526f8816659f17471ec8529a720cd6efa6b590e5a08893303",
+          "log_index": 328,
+          "token_id": 1353600,
+          "amount0": 1994461238678,
+          "amount1": 2005538761321,
+          "is_increase": true
+        }
+      ],
+      "hypersync": [
+        {
+          "block_number": 25797316,
+          "tx_hash": "0x72a712a0dff8a9b526f8816659f17471ec8529a720cd6efa6b590e5a08893303",
+          "log_index": 328,
+          "token_id": 1353600,
+          "amount0": 1994461238678,
+          "amount1": 2005538761321,
+          "is_increase": true
+        }
+      ]
+    }
+  ]
+}

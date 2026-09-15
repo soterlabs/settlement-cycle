@@ -1,0 +1,41 @@
+{
+  "prime": "spark",
+  "venue": "S38",
+  "month": "2026-08",
+  "start": "2024-11-18",
+  "pins": {
+    "base/2026-08-31": 50715726
+  },
+  "matched": true,
+  "checks": [
+    {
+      "input": "transfer_timeseries.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 13,
+      "hypersync_rows": 13,
+      "max_abs_difference": {
+        "daily_net": "1.7475041461E-8",
+        "cum_balance": "1.7475041461E-8"
+      },
+      "dune_sha256": "0d09ccdc4e067c7c3eee1a7ca93a31fe3758a98383715f0c2f63061073c4859a",
+      "hypersync_sha256": "c423c3f32ccf47315545b43b7ae90e2fcdd8db7ab2260e36b92274c573d779f1",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "inflow_by_counterparty.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 15,
+      "hypersync_rows": 15,
+      "max_abs_difference": {
+        "signed_amount": "1.7475041461E-8"
+      },
+      "dune_sha256": "edd74beabfc2d72f307f84ab973d8a1999b27933607f2138e795cfa052a052a3",
+      "hypersync_sha256": "9a4a41748092182575cd3cdae25f9f29d2c5977d3f6eb49afc4e9de02e225967",
+      "mismatch_count": 0,
+      "mismatches": []
+    }
+  ]
+}

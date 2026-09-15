@@ -1,0 +1,25 @@
+{
+  "input": "transfer_timeseries_raw_parity.sql",
+  "matched": true,
+  "tolerance": "0",
+  "dune_rows": 604,
+  "hypersync_rows": 604,
+  "max_abs_difference": {
+    "daily_net": "0",
+    "cum_balance": "0"
+  },
+  "dune_sha256": "19aa14b5312f2e1f045b5329bfa55d7f8515f59cc5f4352b67bcab96f591e6e5",
+  "hypersync_sha256": "19aa14b5312f2e1f045b5329bfa55d7f8515f59cc5f4352b67bcab96f591e6e5",
+  "mismatch_count": 0,
+  "mismatches": [],
+  "prime": "spark",
+  "subject": "ALM USDS",
+  "pin_block": 25878704,
+  "params": {
+    "chain": "ethereum",
+    "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+    "holder": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+    "start_date": "2024-11-18",
+    "min_transfer_raw": 0
+  }
+}

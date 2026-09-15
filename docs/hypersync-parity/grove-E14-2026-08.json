@@ -1,0 +1,41 @@
+{
+  "prime": "grove",
+  "venue": "E14",
+  "month": "2026-08",
+  "start": "2025-05-14",
+  "pins": {
+    "ethereum/2026-08-31": 25878704
+  },
+  "matched": true,
+  "checks": [
+    {
+      "input": "transfer_timeseries.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 90,
+      "hypersync_rows": 90,
+      "max_abs_difference": {
+        "daily_net": "1E-9",
+        "cum_balance": "1.5E-9"
+      },
+      "dune_sha256": "4f78b115c0225d4f74e8b6dd221d1ac737adca7c93e84d945c4934a7ebb4f5c8",
+      "hypersync_sha256": "356d3e4f825f97803d4b2e42c09f62b2a4d3c3ce73d71756def1a38e097c5ccc",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "inflow_by_counterparty.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 150,
+      "hypersync_rows": 150,
+      "max_abs_difference": {
+        "signed_amount": "2E-9"
+      },
+      "dune_sha256": "80637785c8f94e9d46ed57171e3d921ee810aa9af97a99572c1f9cd7a47c0bd7",
+      "hypersync_sha256": "e0570f025e5e6bae854bf012b75fdc6a01eadb095bfc9e826209e3f6c2cdf785",
+      "mismatch_count": 0,
+      "mismatches": []
+    }
+  ]
+}

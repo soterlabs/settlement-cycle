@@ -1,0 +1,249 @@
+{
+  "purpose": "Verify the midnight lower-bound correction introduces no omitted holder events into previously checked windows",
+  "checks": [
+    {
+      "chain": "arbitrum",
+      "start": "2024-11-18",
+      "previous_floor": 275575040,
+      "safe_floor": 275575036,
+      "gap_logs": 9,
+      "relevant_gap_logs": 0,
+      "matched": true
+    },
+    {
+      "chain": "arbitrum",
+      "start": "2026-08-01",
+      "previous_floor": 489802917,
+      "safe_floor": 489802913,
+      "gap_logs": 8,
+      "relevant_gap_logs": 0,
+      "matched": true
+    },
+    {
+      "chain": "avalanche_c",
+      "start": "2024-11-18",
+      "previous_floor": 53211910,
+      "safe_floor": 53211910,
+      "gap_logs": 0,
+      "relevant_gap_logs": 0,
+      "matched": true
+    },
+    {
+      "chain": "avalanche_c",
+      "start": "2025-05-14",
+      "previous_floor": 61981719,
+      "safe_floor": 61981718,
+      "gap_logs": 0,
+      "relevant_gap_logs": 0,
+      "matched": true
+    },
+    {
+      "chain": "avalanche_c",
+      "start": "2026-08-01",
+      "previous_floor": 91716609,
+      "safe_floor": 91716609,
+      "gap_logs": 0,
+      "relevant_gap_logs": 0,
+      "matched": true
+    },
+    {
+      "chain": "base",
+      "start": "2024-11-18",
+      "previous_floor": 22549326,
+      "safe_floor": 22549326,
+      "gap_logs": 0,
+      "relevant_gap_logs": 0,
+      "matched": true
+    },
+    {
+      "chain": "base",
+      "start": "2025-05-14",
+      "previous_floor": 30195726,
+      "safe_floor": 30195726,
+      "gap_logs": 0,
+      "relevant_gap_logs": 0,
+      "matched": true
+    },
+    {
+      "chain": "base",
+      "start": "2026-08-01",
+      "previous_floor": 49376526,
+      "safe_floor": 49376526,
+      "gap_logs": 0,
+      "relevant_gap_logs": 0,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "start": "2024-11-18",
+      "previous_floor": 21210874,
+      "safe_floor": 21210874,
+      "gap_logs": 0,
+      "relevant_gap_logs": 0,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "start": "2025-05-14",
+      "previous_floor": 22477719,
+      "safe_floor": 22477719,
+      "gap_logs": 0,
+      "relevant_gap_logs": 0,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "start": "2025-11-17",
+      "previous_floor": 23815179,
+      "safe_floor": 23815179,
+      "gap_logs": 0,
+      "relevant_gap_logs": 0,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "start": "2025-12-01",
+      "previous_floor": 23914920,
+      "safe_floor": 23914920,
+      "gap_logs": 0,
+      "relevant_gap_logs": 0,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "start": "2026-01-01",
+      "previous_floor": 24136052,
+      "safe_floor": 24136052,
+      "gap_logs": 0,
+      "relevant_gap_logs": 0,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "start": "2026-03-01",
+      "previous_floor": 24558867,
+      "safe_floor": 24558867,
+      "gap_logs": 0,
+      "relevant_gap_logs": 0,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "start": "2026-03-30",
+      "previous_floor": 24766691,
+      "safe_floor": 24766691,
+      "gap_logs": 0,
+      "relevant_gap_logs": 0,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "start": "2026-04-01",
+      "previous_floor": 24781026,
+      "safe_floor": 24781026,
+      "gap_logs": 0,
+      "relevant_gap_logs": 0,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "start": "2026-07-01",
+      "previous_floor": 25433938,
+      "safe_floor": 25433938,
+      "gap_logs": 0,
+      "relevant_gap_logs": 0,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "start": "2026-08-01",
+      "previous_floor": 25656292,
+      "safe_floor": 25656292,
+      "gap_logs": 0,
+      "relevant_gap_logs": 0,
+      "matched": true
+    },
+    {
+      "chain": "monad",
+      "start": "2025-05-14",
+      "previous_floor": 0,
+      "safe_floor": 0,
+      "gap_logs": 0,
+      "relevant_gap_logs": 0,
+      "matched": true
+    },
+    {
+      "chain": "monad",
+      "start": "2025-12-01",
+      "previous_floor": 39075833,
+      "safe_floor": 39075830,
+      "gap_logs": 103,
+      "relevant_gap_logs": 0,
+      "matched": true
+    },
+    {
+      "chain": "monad",
+      "start": "2026-08-01",
+      "previous_floor": 92053505,
+      "safe_floor": 92053501,
+      "gap_logs": 1,
+      "relevant_gap_logs": 0,
+      "matched": true
+    },
+    {
+      "chain": "optimism",
+      "start": "2024-11-18",
+      "previous_floor": 128144611,
+      "safe_floor": 128144611,
+      "gap_logs": 0,
+      "relevant_gap_logs": 0,
+      "matched": true
+    },
+    {
+      "chain": "optimism",
+      "start": "2026-08-01",
+      "previous_floor": 154971811,
+      "safe_floor": 154971811,
+      "gap_logs": 0,
+      "relevant_gap_logs": 0,
+      "matched": true
+    },
+    {
+      "chain": "plume",
+      "start": "2025-05-14",
+      "previous_floor": 1985490,
+      "safe_floor": 1985489,
+      "gap_logs": 0,
+      "relevant_gap_logs": 0,
+      "matched": true
+    },
+    {
+      "chain": "plume",
+      "start": "2026-08-01",
+      "previous_floor": 84574749,
+      "safe_floor": 84574746,
+      "gap_logs": 0,
+      "relevant_gap_logs": 0,
+      "matched": true
+    },
+    {
+      "chain": "unichain",
+      "start": "2024-11-18",
+      "previous_floor": 1139641,
+      "safe_floor": 1139640,
+      "gap_logs": 0,
+      "relevant_gap_logs": 0,
+      "matched": true
+    },
+    {
+      "chain": "unichain",
+      "start": "2026-08-01",
+      "previous_floor": 54794041,
+      "safe_floor": 54794040,
+      "gap_logs": 0,
+      "relevant_gap_logs": 0,
+      "matched": true
+    }
+  ],
+  "matched": true
+}

@@ -57,6 +57,8 @@ def get_position_balance(
 
     # Category EOA: balance comes from flow accounting, not on-chain balanceOf.
     if venue.pricing_category == PricingCategory.EOA:
+        if flow_source is None and venue.event_source == "hypersync":
+            flow_source = get_balance_source("hypersync")
         return _eoa_balance(prime, venue, block, source=flow_source)
 
     # Uniswap V3 positions aren't fungible ERC-20 — there's no scalar "balance"
@@ -966,7 +968,7 @@ def _atoken_external_revenue_usd(prime: Prime, venue: Venue, period) -> Decimal:
     senders = prime.external_alm_sources.get(venue.chain, [])
     if not senders:
         return _Decimal("0")
-    if not _os.environ.get("DUNE_API_KEY"):
+    if venue.event_source != "hypersync" and not _os.environ.get("DUNE_API_KEY"):
         _logging.getLogger(__name__).warning(
             "_atoken_external_revenue_usd: DUNE_API_KEY unset — skipping external "
             "rewards for venue %s (would have queried %d sender(s)).",
@@ -1038,6 +1040,13 @@ def _merkl_claims_revenue_usd(
     """
     from pathlib import Path as _Path
     from decimal import Decimal as _Decimal
+
+    if venue.event_source == "hypersync":
+        from .sources.hypersync_venue_events import merkl_raw
+        raw = merkl_raw(venue.chain.value, distributor.value, venue.token.address.value,
+                        (venue.holder_override or prime.alm[venue.chain]).value,
+                        period.start, period.end, period.pin_blocks[venue.chain])
+        return _Decimal(raw) / _Decimal(10 ** venue.token.decimals)
 
     _SQL_BY_CHAIN = {Chain.ETHEREUM: "merkl_claims_ethereum.sql"}
     sql_name = _SQL_BY_CHAIN.get(venue.chain)
@@ -1129,6 +1138,13 @@ def _atoken_transfer_revenue_usd(
     """
     from pathlib import Path as _Path
     from decimal import Decimal as _Decimal
+
+    if venue.event_source == "hypersync":
+        from .sources.hypersync_venue_events import transfer_raw
+        raw = transfer_raw(venue.chain.value, venue.token.address.value, sender.value,
+                           (venue.holder_override or prime.alm[venue.chain]).value,
+                           period.start, period.end, period.pin_blocks[venue.chain])
+        return _Decimal(raw) / _Decimal(10 ** venue.token.decimals)
 
     queries_dir = _Path(__file__).resolve().parent.parent / "queries"
     # Same Dune-degradation guard as ``_merkl_claims_revenue_usd``: a 402 or
@@ -2605,6 +2621,7 @@ def _shares_to_usd_inflow_timeseries(
     price_at_block,
     som_block: int | None = None,
     balance_at=None,
+    period_only: bool = False,
 ):
     """Generic Cat B / Cat E inflow tracking.
 
@@ -2612,6 +2629,10 @@ def _shares_to_usd_inflow_timeseries(
     adjusted (e.g. ``daily_inflow = 100`` means 100 shares, not 100 × 10^dec).
     For each day with activity we resolve the day-end block and call
     ``price_at_block(block)`` to get USD per 1.0 share, then multiply.
+
+    ``period_only`` rebases cumulative inflow to zero at period start. The
+    monthly caller only uses cumulative differences from that opening value,
+    so historical pricing cancels out. Other callers retain full histories.
 
     Why per-day, not per-event: for monthly settlement on slow-moving NAV /
     pps, intra-day variance is bps and aggregating a day's net flow to a
@@ -2662,10 +2683,9 @@ def _shares_to_usd_inflow_timeseries(
     # the gross-mint side, the inflow classifier sees a phantom loss equal
     # to the gross redeem amount. See ``Venue.share_burn_destinations`` and
     # Q-S26 in QUESTIONS.md.
-    # Wrap each burn-destination query in a Dune-degradation guard: if the
-    # underlying source 402s / times out, fall back to an empty frame for
-    # that destination (i.e. don't net the redemption, accept the phantom
-    # loss for that month rather than crash the cell).
+    # Queue histories must be complete. Propagate source failures (including
+    # RPC metadata errors from HyperSync normalization): dropping a redemption
+    # or refund would publish incorrect capital flows and venue revenue.
     #
     # Net BOTH directions: ALM→queue is a burn (sign=−1) AND queue→ALM is
     # a refund (sign=+1, cancelled/partial-fulfillment redemptions). Without
@@ -2673,33 +2693,18 @@ def _shares_to_usd_inflow_timeseries(
     # where Maple returns shares to the ALM (verified for Spark S15 in
     # 2026-04: 21.5M syrupUSDT shares came back from the queue, which we
     # must add to the inflow side or revenue is over-credited by ~$23M).
-    from ..extract.dune import DuneError as _DuneError
-    import requests as _requests
     import logging as _logging
     queue_flow_dfs: list = []  # list of (df, sign)
     for q in venue.share_burn_destinations:
-        for (frm, to, sign, _label) in (
-            (holder.value, q.value,      -1, "ALM→queue (burn)"),
-            (q.value,      holder.value, +1, "queue→ALM (refund)"),
+        for frm, to, sign in (
+            (holder.value, q.value,      -1),
+            (q.value,      holder.value, +1),
         ):
-            try:
-                qdf = balance_source.directed_inflow_timeseries(
-                    chain=venue.chain.value, token=venue.token.address.value,
-                    from_addr=frm, to_addr=to,
-                    start=prime.start_date, pin_block=pin_block,
-                )
-            except (_DuneError, _requests.HTTPError, _requests.ConnectionError,
-                    _requests.Timeout) as _e:
-                _logging.getLogger(__name__).warning(
-                    "_shares_to_usd_inflow_timeseries: %s query failed for "
-                    "venue %s (queue=%s, %s) — accepting partial accounting "
-                    "for this period. Cause: Dune credits exhausted (402) / "
-                    "throttling / transient network.",
-                    _label, venue.id, q.hex, _e,
-                )
-                qdf = pd.DataFrame(
-                    {"block_date": [], "daily_inflow": [], "cum_inflow": []},
-                )
+            qdf = balance_source.directed_inflow_timeseries(
+                chain=venue.chain.value, token=venue.token.address.value,
+                from_addr=frm, to_addr=to,
+                start=prime.start_date, pin_block=pin_block,
+            )
             queue_flow_dfs.append((qdf, sign))
 
     # Per-day signed share net = mints − burns. Coerce both sides to Decimal
@@ -2784,6 +2789,9 @@ def _shares_to_usd_inflow_timeseries(
             by_date[period.end] = by_date.get(period.end, Decimal("0")) + discrepancy
     else:
         eom_is_pure_synthetic = False
+
+    if period_only:
+        by_date = {d: value for d, value in by_date.items() if period.start <= d <= period.end}
 
     if not by_date:
         return pd.DataFrame({
@@ -2952,15 +2960,20 @@ def _erc4626_event_inflow_timeseries(
     queries_dir = _Path(__file__).resolve().parent.parent / "queries"
 
     try:
-        df = execute_query(
-            queries_dir / "erc4626_centrifuge_flow.sql",
-            params={
-                "vault":      venue.centrifuge_vault.value,
-                "holder":     holder.value,
-                "start_date": str(prime.start_date),
-            },
-            pin_block=pin_block,
-        )
+        if venue.event_source == "hypersync":
+            from .sources.hypersync_venue_events import centrifuge_flows
+            df = centrifuge_flows(venue.chain.value, venue.centrifuge_vault.value,
+                                  holder.value, prime.start_date, pin_block)
+        else:
+            df = execute_query(
+                queries_dir / "erc4626_centrifuge_flow.sql",
+                params={
+                    "vault":      venue.centrifuge_vault.value,
+                    "holder":     holder.value,
+                    "start_date": str(prime.start_date),
+                },
+                pin_block=pin_block,
+            )
     except DuneError as exc:
         _logging.getLogger(__name__).warning(
             "_erc4626_event_inflow_timeseries: Dune query failed for venue %s"
@@ -3020,5 +3033,3 @@ def _erc4626_event_inflow_timeseries(
     out["cum_inflow"]          = out["daily_inflow"].cumsum()
     out["cum_net_shares_raw"]  = out["daily_net_shares_raw"].cumsum()
     return out
-
-

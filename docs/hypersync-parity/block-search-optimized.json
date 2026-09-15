@@ -1,0 +1,53 @@
+{
+  "checks": [
+    {
+      "chain": "ethereum",
+      "day": "2026-08-15",
+      "dune_block": 25763887,
+      "hypersync_search_block": 25763887,
+      "timestamp_probes": 12,
+      "matched": true
+    },
+    {
+      "chain": "base",
+      "day": "2026-08-15",
+      "dune_block": 50024526,
+      "hypersync_search_block": 50024526,
+      "timestamp_probes": 4,
+      "matched": true
+    },
+    {
+      "chain": "arbitrum",
+      "day": "2026-08-15",
+      "dune_block": 494961555,
+      "hypersync_search_block": 494961555,
+      "timestamp_probes": 11,
+      "matched": true
+    },
+    {
+      "chain": "optimism",
+      "day": "2026-08-15",
+      "dune_block": 155619811,
+      "hypersync_search_block": 155619811,
+      "timestamp_probes": 9,
+      "matched": true
+    },
+    {
+      "chain": "unichain",
+      "day": "2026-08-15",
+      "dune_block": 56090040,
+      "hypersync_search_block": 56090040,
+      "timestamp_probes": 4,
+      "matched": true
+    },
+    {
+      "chain": "avalanche_c",
+      "day": "2026-08-15",
+      "dune_block": 92905615,
+      "hypersync_search_block": 92905615,
+      "timestamp_probes": 17,
+      "matched": true
+    }
+  ],
+  "matched": true
+}

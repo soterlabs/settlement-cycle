@@ -65,6 +65,7 @@ _USDS = bytes.fromhex("dc035d45d973e3ec169d2276ddab16f1e407384f")
 def test_monthly_pnl_zero_book_zero_pnl(obex, fixed_pin_blocks):
     """Zero balances + zero-debt timeseries → zero PnL. Sanity gate."""
     sources = Sources(
+        block_resolver=MockBlockResolver(),
         debt=MockDebtSource(_zero_debt_df()),
         balance=MockBalanceSource(),
         ssr=MockSSRSource(pd.DataFrame({
@@ -262,6 +263,7 @@ def test_monthly_pnl_obex_synthetic_one_venue(obex, fixed_pin_blocks, monkeypatc
 def test_monthly_pnl_invariant_holds(obex, fixed_pin_blocks):
     """The MonthlyPnL ``__post_init__`` invariant gates round-trip math."""
     sources = Sources(
+        block_resolver=MockBlockResolver(),
         debt=MockDebtSource(_zero_debt_df()),
         balance=MockBalanceSource(),
         ssr=MockSSRSource(pd.DataFrame({"effective_date": [date(2025, 12, 16)], "ssr_apy": [0.04]})),
@@ -533,6 +535,7 @@ def test_atoken_index_weighted_inflow(fixed_pin_blocks, monkeypatch):
             return bal_som if block == som_block else bal_eom
 
     sources = Sources(
+        block_resolver=MockBlockResolver(),
         debt=MockDebtSource(_zero_debt_df()),
         balance=MockBalanceSource(),
         ssr=MockSSRSource(pd.DataFrame({
@@ -759,6 +762,7 @@ def test_atoken_clean_exit_binary_searches_withdrawal_block(fixed_pin_blocks, mo
             return fake_balance(chain, token, holder, block)
 
     sources = Sources(
+        block_resolver=MockBlockResolver(),
         debt=MockDebtSource(_zero_debt_df()),
         balance=MockBalanceSource(),
         ssr=MockSSRSource(pd.DataFrame({
@@ -858,6 +862,7 @@ def test_atoken_multi_withdrawal_falls_back_to_zero_yield(fixed_pin_blocks, monk
             return bal_som if block == som_block else bal_dust
 
     sources = Sources(
+        block_resolver=MockBlockResolver(),
         debt=MockDebtSource(_zero_debt_df()),
         balance=MockBalanceSource(),
         ssr=MockSSRSource(pd.DataFrame({
@@ -962,6 +967,7 @@ def test_erc4626_closed_form_inflow_for_non_dune_chain(fixed_pin_blocks, monkeyp
             return fake_convert(chain, vault, shares, block)
 
     sources = Sources(
+        block_resolver=MockBlockResolver(),
         debt=MockDebtSource(_zero_debt_df()),
         balance=MockBalanceSource(),
         ssr=MockSSRSource(pd.DataFrame({

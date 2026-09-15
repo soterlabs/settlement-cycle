@@ -1,0 +1,32 @@
+{
+  "prime": "grove",
+  "month": "2026-08",
+  "matched": true,
+  "comparison": "all MonthlyPnL dataclass fields; absolute numeric tolerance 0.000001",
+  "candidate_dune_calls": 0,
+  "mismatches": [],
+  "psm_oracle": null,
+  "psm_pins": {},
+  "output_sha256": {
+    "dune": "5c38ebf349e71ef5383ab7535e2d0852ace84435098c57d21097f2db88523488",
+    "hypersync": "8e9c75cdbd752a237ffe9e3864656372b7ef29c739e1a42d5180b981e5511ccc"
+  },
+  "headlines": {
+    "sky_revenue": {
+      "dune": "8339810.888358439873673301722",
+      "hypersync": "8339810.888358440264067153828"
+    },
+    "agent_rate": {
+      "dune": "78320.95861562720231905939791",
+      "hypersync": "78320.95861562720231905939791"
+    },
+    "prime_agent_revenue": {
+      "dune": "4955508.144838750559542487345",
+      "hypersync": "4955508.144838751049322485783"
+    },
+    "monthly_pnl": {
+      "dune": "-3293763.074061284073745387465",
+      "hypersync": "-3293763.074061283974359241133"
+    }
+  }
+}

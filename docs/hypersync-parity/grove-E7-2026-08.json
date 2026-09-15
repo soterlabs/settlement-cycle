@@ -1,0 +1,27 @@
+{
+  "prime": "grove",
+  "venue": "E7",
+  "month": "2026-08",
+  "start": "2025-05-14",
+  "pins": {
+    "ethereum/2026-08-31": 25878704
+  },
+  "matched": true,
+  "checks": [
+    {
+      "input": "transfer_timeseries.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 2,
+      "hypersync_rows": 2,
+      "max_abs_difference": {
+        "daily_net": "0",
+        "cum_balance": "0"
+      },
+      "dune_sha256": "c77a95f7ae7eb2eba2c46a152cc10f7699edc410b350e88e61aa7355a71db3e4",
+      "hypersync_sha256": "c77a95f7ae7eb2eba2c46a152cc10f7699edc410b350e88e61aa7355a71db3e4",
+      "mismatch_count": 0,
+      "mismatches": []
+    }
+  ]
+}

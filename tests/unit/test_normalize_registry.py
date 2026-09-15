@@ -18,9 +18,9 @@ def test_default_balance_source_is_dune():
     assert type(src).__name__ == "DuneBalanceSource"
 
 
-def test_default_ssr_source_is_dune():
+def test_default_ssr_source_is_hypersync():
     src = registry.get_ssr_source()
-    assert type(src).__name__ == "DuneSSRSource"
+    assert type(src).__name__ == "HyperSyncSSRSource"
 
 
 def test_get_debt_source_unknown_raises():

@@ -1,0 +1,18 @@
+{
+  "input": "debt_timeseries.sql",
+  "matched": true,
+  "tolerance": "0.000001",
+  "dune_rows": 222,
+  "hypersync_rows": 222,
+  "max_abs_difference": {
+    "daily_dart": "0",
+    "cum_debt": "0"
+  },
+  "dune_sha256": "50e549193ebd721baa33435c8b82a597f28713beffa3e22448464b8a8b566583",
+  "hypersync_sha256": "7550588306168d15563e0842f9b73c4e8d02b04208a0aa0984ccae14d3fd80ae",
+  "mismatch_count": 0,
+  "mismatches": [],
+  "prime": "grove",
+  "start": "2025-05-14",
+  "pin_block": 25878704
+}

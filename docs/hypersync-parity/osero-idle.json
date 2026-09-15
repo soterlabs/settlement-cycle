@@ -1,0 +1,65 @@
+{
+  "prime": "osero",
+  "month": "2026-08",
+  "start": "2026-03-30",
+  "pins": {
+    "ethereum": 25878704
+  },
+  "checks": [
+    {
+      "input": "ALM USDS",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 11,
+      "hypersync_rows": 11,
+      "max_abs_difference": {
+        "daily_net": "6E-11",
+        "cum_balance": "6E-11"
+      },
+      "dune_sha256": "f528c8af3ec023ad1a926c9de524bb6f4c8052d60cf3d1844039776a3de16e50",
+      "hypersync_sha256": "949fc92bc9ad518819d4980e66b2aaaef4920c8d80b3a0b163b47df32a941dc0",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "chain": "ethereum",
+      "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+      "holder": "0x6d370e359e9cbd0fd35bb38faf705d84238cb884"
+    },
+    {
+      "input": "SubProxy USDS",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 2,
+      "hypersync_rows": 2,
+      "max_abs_difference": {
+        "daily_net": "0",
+        "cum_balance": "0"
+      },
+      "dune_sha256": "67baf664f86a00c9a61295c215afc6d154cd42ace6a31a38c0be26f0fcd5fb07",
+      "hypersync_sha256": "67baf664f86a00c9a61295c215afc6d154cd42ace6a31a38c0be26f0fcd5fb07",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "chain": "ethereum",
+      "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+      "holder": "0x24fdcd3bfa5c2553e05b2f9ad0365ebc296278d3"
+    },
+    {
+      "input": "SubProxy sUSDS",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 0,
+      "hypersync_rows": 0,
+      "max_abs_difference": {
+        "daily_net": "0",
+        "cum_balance": "0"
+      },
+      "dune_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "hypersync_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "chain": "ethereum",
+      "token": "0xa3931d71877c0e7a3148cb7eb4463524fec27fbd",
+      "holder": "0x24fdcd3bfa5c2553e05b2f9ad0365ebc296278d3"
+    }
+  ],
+  "matched": true
+}

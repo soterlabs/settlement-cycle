@@ -53,7 +53,10 @@ def _default_start_block(chain: str, start: date) -> int:
     # the ``block_date >= start`` filter in Python), so exactness is not required.
     from ...extract import hypersync
     midnight = datetime.combine(start, time.min, tzinfo=timezone.utc)
-    return hypersync.find_block_at_or_before(chain, int(midnight.timestamp()))
+    # Several L2 blocks can share the midnight timestamp. Resolving midnight
+    # itself returns the LAST such block and would omit earlier midnight
+    # events. Start at the previous second; the date filter drops its rows.
+    return hypersync.find_block_at_or_before(chain, int(midnight.timestamp()) - 1)
 
 
 def _default_decimals(chain: str, token: bytes, block: int) -> int:
@@ -75,10 +78,14 @@ class HyperSyncBalanceSource:
         fetch_logs: Callable[..., list[Any]] = hypersync_store.fetch_logs,
         resolve_start_block: Callable[[str, date], int] = _default_start_block,
         decimals_of: Callable[[str, bytes, int], int] = _default_decimals,
+        covered_logs: Callable[..., list[Any] | None] | None = None,
     ) -> None:
         self._fetch = fetch_logs
         self._resolve_start = resolve_start_block
         self._decimals_of = decimals_of
+        self._covered = covered_logs or (
+            hypersync_store.read_covered_logs if fetch_logs is hypersync_store.fetch_logs else None
+        )
 
     # -- IBalanceSource -----------------------------------------------------
 
@@ -87,11 +94,16 @@ class HyperSyncBalanceSource:
         min_transfer_amount: Decimal = Decimal(0),
     ) -> pd.DataFrame:
         cols = ["block_date", "daily_net", "cum_balance"]
+        # No events need no normalization. In historical runs the token may
+        # not exist yet, so decimals() at the pin would return empty data.
+        rows = self._transfers_touching(chain, token, holder, start, pin_block)
+        if not rows:
+            return pd.DataFrame(columns=cols)
         scale = 10 ** self._decimals_of(chain, token, pin_block)
         min_raw = min_transfer_amount * Decimal(scale)
         h = _addr_topic(holder)
         daily: dict[date, int] = {}
-        for x in self._transfers_touching(chain, token, holder, start, pin_block):
+        for x in rows:
             if Decimal(x["value"]) < min_raw:          # Dune: amount >= min_transfer_amount
                 continue
             net = (x["value"] if x["to"] == h else 0) - (x["value"] if x["from"] == h else 0)
@@ -105,23 +117,36 @@ class HyperSyncBalanceSource:
         start: date, pin_block: int,
     ) -> pd.DataFrame:
         cols = ["block_date", "daily_inflow", "cum_inflow"]
-        scale = 10 ** self._decimals_of(chain, token, pin_block)
         sel = [{
             "address": ["0x" + bytes(token).hex()],
             "topics": [[_TRANSFER_T0], [_addr_topic(from_addr)], [_addr_topic(to_addr)]],
         }]
         daily: dict[date, int] = {}
-        for x in self._fetch_range(chain, sel, start, pin_block):
+        rows = None
+        if self._covered is not None:
+            from_block = self._resolve_start(chain, start)
+            for holder in dict.fromkeys((from_addr, to_addr)):
+                if holder == bytes(20):
+                    continue
+                cached = self._covered(chain, _touching_selections(token, holder), from_block, pin_block)
+                if cached is not None:
+                    rows = self._decode_rows(cached, start)
+                    break
+        if rows is None:
+            rows = self._fetch_range(chain, sel, start, pin_block)
+        for x in rows:
+            if x["from"] != _addr_topic(from_addr) or x["to"] != _addr_topic(to_addr):
+                continue
             daily[x["date"]] = daily.get(x["date"], 0) + x["value"]
         if not daily:
             return pd.DataFrame(columns=cols)
+        scale = 10 ** self._decimals_of(chain, token, pin_block)
         return _to_cumulative_frame(daily, scale, "daily_inflow", "cum_inflow")
 
     def inflow_by_counterparty(
         self, chain: str, token: bytes, holder: bytes, start: date, pin_block: int,
     ) -> pd.DataFrame:
         cols = ["block_date", "counterparty", "signed_amount"]
-        scale = 10 ** self._decimals_of(chain, token, pin_block)
         h = _addr_topic(holder)
         agg: dict[tuple[date, str], int] = {}      # (block_date, counterparty_topic) → signed raw
         for x in self._transfers_touching(chain, token, holder, start, pin_block):
@@ -141,6 +166,7 @@ class HyperSyncBalanceSource:
                 agg[key] = agg.get(key, 0) - x["value"]
         if not agg:
             return pd.DataFrame(columns=cols)
+        scale = 10 ** self._decimals_of(chain, token, pin_block)
         with localcontext() as ctx:
             ctx.prec = 60
             recs = [
@@ -158,19 +184,17 @@ class HyperSyncBalanceSource:
         self, chain: str, token: bytes, holder: bytes, start: date, pin_block: int
     ) -> list[dict[str, Any]]:
         """All Transfer logs of ``token`` where ``holder`` is from OR to."""
-        ht = _addr_topic(holder)
-        tok = "0x" + bytes(token).hex()
-        sel = [
-            {"address": [tok], "topics": [[_TRANSFER_T0], [ht]]},        # from == holder
-            {"address": [tok], "topics": [[_TRANSFER_T0], [], [ht]]},    # to == holder
-        ]
-        return self._fetch_range(chain, sel, start, pin_block)
+        return self._fetch_range(chain, _touching_selections(token, holder), start, pin_block)
 
     def _fetch_range(
         self, chain: str, selections: list[dict[str, Any]], start: date, pin_block: int
     ) -> list[dict[str, Any]]:
         from_block = self._resolve_start(chain, start)
         rows = self._fetch(chain, selections, from_block, pin_block)
+        return self._decode_rows(rows, start)
+
+    @staticmethod
+    def _decode_rows(rows: list[Any], start: date) -> list[dict[str, Any]]:
         seen: set[tuple[int, int]] = set()
         out: list[dict[str, Any]] = []
         for r in rows:
@@ -186,6 +210,15 @@ class HyperSyncBalanceSource:
                 "value": int(r.data, 16),
             })
         return out
+
+
+def _touching_selections(token: bytes, holder: bytes) -> list[dict[str, Any]]:
+    ht = _addr_topic(holder)
+    tok = "0x" + bytes(token).hex()
+    return [
+        {"address": [tok], "topics": [[_TRANSFER_T0], [ht]]},
+        {"address": [tok], "topics": [[_TRANSFER_T0], [], [ht]]},
+    ]
 
 
 def _to_cumulative_frame(

@@ -7,7 +7,7 @@ from datetime import date, datetime, timezone
 import pytest
 
 from settle.extract import hypersync
-from settle.extract.hypersync import HyperSyncError
+from settle.extract.hypersync import HyperSyncBlockUnavailable, HyperSyncError
 from settle.normalize.sources.hypersync_block_resolver import HyperSyncBlockResolver
 
 
@@ -82,7 +82,7 @@ def test_binary_search_backs_off_unreturnable_head(monkeypatch):
     monkeypatch.setattr(hypersync, "archive_height", lambda chain: 1000)
     def bts(chain, block):
         if block > RETURNABLE:
-            raise HyperSyncError(f"block {block} not returned")
+            raise HyperSyncBlockUnavailable(f"block {block} not returned")
         return block * 12
     monkeypatch.setattr(hypersync, "block_timestamp", bts)
     # historical target still resolves exactly despite the head back-off
@@ -100,7 +100,7 @@ def test_backoff_refines_to_exact_returnable_head(monkeypatch):
     monkeypatch.setattr(hypersync, "archive_height", lambda chain: 1000)
     def bts(chain, block):
         if block > RETURNABLE:
-            raise HyperSyncError(f"block {block} not returned")
+            raise HyperSyncBlockUnavailable(f"block {block} not returned")
         return block * 12
     monkeypatch.setattr(hypersync, "block_timestamp", bts)
     assert hypersync.find_block_at_or_before("ethereum", 10**9) == RETURNABLE
@@ -117,3 +117,62 @@ def test_binary_search_matches_reference_algorithm(monkeypatch):
         got = hypersync.find_block_at_or_before("ethereum", target)
         expected = max((b for b, t in ts_map.items() if t <= target), default=0)
         assert got == expected, (target, got, expected)
+
+
+def test_rate_limit_is_not_misinterpreted_as_missing_head(monkeypatch):
+    calls = []
+    monkeypatch.setattr(hypersync, 'archive_height', lambda chain: 1000)
+    def limited(chain, block):
+        calls.append(block)
+        raise HyperSyncError('HTTP 429')
+    monkeypatch.setattr(hypersync, 'block_timestamp', limited)
+    with pytest.raises(HyperSyncError, match='429'):
+        hypersync.find_block_at_or_before('base', 100)
+    assert calls == [1000]
+
+
+def test_only_complete_resolutions_are_cached(tmp_cache_dir, monkeypatch):
+    monkeypatch.setenv("SETTLE_NO_CACHE", "0")
+    head = [10]
+    monkeypatch.setattr(hypersync, "archive_height", lambda chain: head[0])
+    monkeypatch.setattr(hypersync, "block_timestamp", lambda chain, block: block * 12)
+    # Both provisional head clamps must stay live as the archive advances.
+    assert hypersync.find_block_at_or_before("base", 200) == 10
+    head[0] = 12
+    assert hypersync.find_block_at_or_before("base", 200) == 12
+    head[0] = 30
+    assert hypersync.find_block_at_or_before("base", 200) == 16
+    def offline(chain):
+        raise AssertionError("A completed historical pin must require no network")
+    monkeypatch.setattr(hypersync, "archive_height", offline)
+    assert hypersync.find_block_at_or_before("base", 200) == 16
+
+
+def test_regular_chain_resolution_uses_few_timestamp_probes(monkeypatch):
+    calls = []
+    monkeypatch.setattr(hypersync, "archive_height", lambda chain: 30_000_000)
+    def timestamp(chain, block):
+        calls.append(block)
+        return block * 12
+    monkeypatch.setattr(hypersync, "block_timestamp", timestamp)
+    assert hypersync.find_block_at_or_before("ethereum", 25_000_000 * 12 + 5) == 25_000_000
+    assert len(calls) <= 5
+
+
+@pytest.mark.parametrize("timestamps", [
+    [0] * 400 + list(range(1, 102)),
+    list(range(250)) + list(range(1_000_000, 1_000_251)),
+    [b * b for b in range(501)],
+])
+def test_timestamp_guided_search_handles_plateaus_and_long_stalls(monkeypatch, timestamps):
+    import bisect
+    calls = []
+    monkeypatch.setattr(hypersync, "archive_height", lambda chain: len(timestamps) - 1)
+    def timestamp(chain, block):
+        calls.append(block)
+        return timestamps[block]
+    monkeypatch.setattr(hypersync, "block_timestamp", timestamp)
+    for target in [0, 1, 100, timestamps[-1] - 1]:
+        calls.clear()
+        assert hypersync.find_block_at_or_before("ethereum", target) == bisect.bisect_right(timestamps, target) - 1
+        assert len(calls) <= 4 * len(timestamps).bit_length() + 2

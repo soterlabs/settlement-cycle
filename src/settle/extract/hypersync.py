@@ -13,6 +13,7 @@ persistence layer is ``hypersync_store``; domain decoding lives in the
 from __future__ import annotations
 
 import os
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
@@ -46,6 +47,16 @@ _DEFAULT_BLOCK_FIELDS = ["number", "timestamp"]
 
 class HyperSyncError(RuntimeError):
     """Raised on HyperSync transport / auth / query errors."""
+
+
+class HyperSyncBlockUnavailable(HyperSyncError):
+    """A successful archive response did not yet contain the requested block."""
+
+
+class _ProvisionalHead(Exception):
+    def __init__(self, block: int, timestamp: int) -> None:
+        self.block = block
+        self.timestamp = timestamp
 
 
 @dataclass(frozen=True)
@@ -223,7 +234,7 @@ def block_timestamp(chain: str, block: int) -> int:
         for b in group.get("blocks") or []:
             if to_int(b["number"]) == block:
                 return to_int(b["timestamp"])
-    raise HyperSyncError(f"HyperSync {chain}: block {block} not returned")
+    raise HyperSyncBlockUnavailable(f"HyperSync {chain}: block {block} not returned")
 
 
 def _returnable_head(chain: str) -> tuple[int, int]:
@@ -247,7 +258,7 @@ def _returnable_head(chain: str) -> tuple[int, int]:
         try:
             head_ts = block_timestamp(chain, high)
             break
-        except HyperSyncError:
+        except HyperSyncBlockUnavailable:
             above = high
             high -= _STEP
     if head_ts is None:
@@ -263,7 +274,7 @@ def _returnable_head(chain: str) -> tuple[int, int]:
             try:
                 block_timestamp(chain, mid)
                 lo = mid
-            except HyperSyncError:
+            except HyperSyncBlockUnavailable:
                 hi = mid
         high = lo
         head_ts = block_timestamp(chain, high)   # cached — free
@@ -273,10 +284,9 @@ def _returnable_head(chain: str) -> tuple[int, int]:
 def find_block_at_or_before(chain: str, target_ts: int) -> int:
     """Highest block on ``chain`` whose timestamp <= ``target_ts`` (unix, UTC).
 
-    Binary search over HyperSync block timestamps — mirrors
-    ``extract.rpc._find_block_at_or_before_rpc`` exactly, so the result is
-    identical to the RPC resolver, but every probe hits HyperSync (fast, cheap,
-    off the archive RPC — and works on chains whose RPC is lagging, e.g. monad).
+    Bounded search over HyperSync block timestamps, using timestamp-guided
+    probes with a periodic bisection fallback. It resolves the same exact
+    boundary as the RPC resolver without archive RPC timestamp requests.
 
     Caching: a resolution where the archive HEAD is at/behind the target is a
     provisional head-clamp — it changes as the archive catches up, and durably
@@ -285,36 +295,51 @@ def find_block_at_or_before(chain: str, target_ts: int) -> int:
     (``_find_block_at_or_before_cached``); head-clamps are served live with a
     warning and re-resolved on every call.
     """
-    high, head_ts = _returnable_head(chain)
-    if head_ts <= target_ts:
+    try:
+        return _find_block_at_or_before_cached(chain, target_ts)
+    except _ProvisionalHead as head:
         import logging
         logging.getLogger(__name__).warning(
             "find_block_at_or_before(%s, ts=%d): archive head (block %d, "
             "ts %d) is at/behind the target — returning the head WITHOUT "
             "caching; re-run after the archive catches up for a stable pin.",
-            chain, target_ts, high, head_ts,
+            chain, target_ts, head.block, head.timestamp,
         )
-        return high
-    return _find_block_at_or_before_cached(chain, target_ts)
+        return head.block
 
 
 @cached(source_id="hypersync.find_block_at_or_before")
 def _find_block_at_or_before_cached(chain: str, target_ts: int) -> int:
-    """Cache-backed binary search — only reached when the archive head is
-    strictly past ``target_ts``, so the result is final and safe to cache."""
-    high, _head_ts = _returnable_head(chain)
-    if block_timestamp(chain, 0) > target_ts:
+    """Cache only fully covered resolutions; provisional heads raise before
+    the cache decorator writes anything. A valid historical cache hit needs
+    no new head probes — the completed result is already immutable."""
+    high, head_ts = _returnable_head(chain)
+    if head_ts <= target_ts:
+        raise _ProvisionalHead(high, head_ts)
+    low_ts = block_timestamp(chain, 0)
+    if low_ts > target_ts:
         raise HyperSyncError(
             f"find_block_at_or_before({chain}, ts={target_ts}): target precedes "
             f"genesis (block 0 ts = {block_timestamp(chain, 0)})."
         )
-    low = 0
-    while low < high:
-        mid = (low + high + 1) // 2
-        if block_timestamp(chain, mid) <= target_ts:
-            low = mid
+    low, high_ts, iteration = 0, head_ts, 0
+    # Maintain timestamp(low) <= target < timestamp(high). Timestamp-guided
+    # probes converge quickly on regular chains; every fourth probe bisects
+    # the interval so long stalls or changing block times cannot make this
+    # an unbounded linear search. The estimate NEVER decides the answer:
+    # only observed timestamps move the bounds, until they are adjacent.
+    while low + 1 < high:
+        iteration += 1
+        if iteration % 4 == 0:
+            mid = (low + high) // 2
         else:
-            high = mid - 1
+            estimate = low + (target_ts - low_ts) * (high - low) // (high_ts - low_ts)
+            mid = max(low + 1, min(high - 1, estimate))
+        mid_ts = block_timestamp(chain, mid)
+        if mid_ts <= target_ts:
+            low, low_ts = mid, mid_ts
+        else:
+            high, high_ts = mid, mid_ts
     return low
 
 
@@ -323,10 +348,24 @@ def _lower(v: Any) -> str | None:
 
 
 def _execute(chain: str, body: dict[str, Any], headers: dict[str, str], post) -> dict[str, Any]:
-    try:
-        resp = post(endpoint(chain), json=body, headers=headers, timeout=_DEFAULT_TIMEOUT)
-    except requests.RequestException as exc:
-        raise HyperSyncError(f"HyperSync request failed: {exc}") from exc
+    for attempt in range(4):
+        try:
+            resp = post(endpoint(chain), json=body, headers=headers, timeout=_DEFAULT_TIMEOUT)
+        except requests.RequestException as exc:
+            raise HyperSyncError(f"HyperSync request failed: {exc}") from exc
+        if resp.status_code != 429 or attempt == 3:
+            break
+        response_headers = getattr(resp, "headers", {})
+        delay = response_headers.get("Retry-After", response_headers.get("x-ratelimit-reset"))
+        try:
+            seconds = max(1.0, float(delay)) if delay is not None else 15.0 * 2**attempt
+        except (TypeError, ValueError):
+            seconds = 15.0 * 2**attempt
+        # Do not retry before a long provider cooldown has elapsed. Let the
+        # caller fail and resume later instead of sleeping indefinitely.
+        if seconds > 60:
+            break
+        time.sleep(seconds)
     if not resp.ok:
         raise HyperSyncError(f"HyperSync {chain} -> HTTP {resp.status_code}: {resp.text[:400]}")
     data: dict[str, Any] = resp.json()

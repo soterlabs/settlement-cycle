@@ -491,6 +491,8 @@ class Venue:
     # effective avg = tw_avg_value_usd unchanged.
     notional_principal_usd: tuple[NotionalScheduleEntry, ...] | None = None
 
+    event_source: str = "dune"          # per-venue event migration; explicit fixtures still win
+
     def __post_init__(self) -> None:
         # ``force_capital_inflow`` short-circuits the Cat A capital-inflow
         # path (see ``compute.monthly_pnl``). It synthesises inflow = Δvalue
@@ -644,6 +646,7 @@ class PsmConfig:
     # an optional config slot in case a future PsmKind needs to name a
     # specific underlying token.
     token: Address | None = None
+    event_source: str = "dune"
 
 
 @dataclass(frozen=True, slots=True)

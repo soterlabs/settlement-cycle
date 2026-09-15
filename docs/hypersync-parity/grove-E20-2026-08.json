@@ -1,0 +1,27 @@
+{
+  "prime": "grove",
+  "venue": "E20",
+  "month": "2026-08",
+  "start": "2025-05-14",
+  "pins": {
+    "avalanche_c/2026-08-31": 94159927
+  },
+  "matched": true,
+  "checks": [
+    {
+      "input": "transfer_timeseries.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 5,
+      "hypersync_rows": 5,
+      "max_abs_difference": {
+        "daily_net": "0",
+        "cum_balance": "0"
+      },
+      "dune_sha256": "c10853d0772b177297bc44d5e6d2c6635b9dff3a8dd46c8f782379ac7242d26e",
+      "hypersync_sha256": "c10853d0772b177297bc44d5e6d2c6635b9dff3a8dd46c8f782379ac7242d26e",
+      "mismatch_count": 0,
+      "mismatches": []
+    }
+  ]
+}

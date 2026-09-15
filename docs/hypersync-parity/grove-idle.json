@@ -1,0 +1,84 @@
+{
+  "prime": "grove",
+  "month": "2026-08",
+  "start": "2025-05-14",
+  "pins": {
+    "ethereum": 25878704,
+    "base": 50715726
+  },
+  "checks": [
+    {
+      "input": "ALM USDS",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 220,
+      "hypersync_rows": 220,
+      "max_abs_difference": {
+        "daily_net": "1.4901161193847656E-8",
+        "cum_balance": "1.4901161193847656E-8"
+      },
+      "dune_sha256": "800bc7c156b856f1a835b40cf35153c925fc14ac913d43486f4c5f7c891ff848",
+      "hypersync_sha256": "ada62198fa97acc9d1ace58a14a9ef57e13c76585ad5e9eeb31f99527619df11",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "chain": "ethereum",
+      "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e"
+    },
+    {
+      "input": "ALM USDS",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 0,
+      "hypersync_rows": 0,
+      "max_abs_difference": {
+        "daily_net": "0",
+        "cum_balance": "0"
+      },
+      "dune_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "hypersync_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "chain": "base",
+      "token": "0x820c137fa70c8691f0e44dc420a5e53c168921dc",
+      "holder": "0x9b746dbc5269e1df6e4193bcb441c0fbbf1cecee"
+    },
+    {
+      "input": "SubProxy USDS",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 16,
+      "hypersync_rows": 16,
+      "max_abs_difference": {
+        "daily_net": "2E-10",
+        "cum_balance": "0"
+      },
+      "dune_sha256": "560371c5e926755b0bb292a9a476f709d869354d67618cd11069490abd16213d",
+      "hypersync_sha256": "065bda17b612c8ef4becffdaa20b7899c6464aafdc9d92c7e24e0266b4f30c48",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "chain": "ethereum",
+      "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+      "holder": "0x1369f7b2b38c76b6478c0f0e66d94923421891ba"
+    },
+    {
+      "input": "SubProxy sUSDS",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 1,
+      "hypersync_rows": 1,
+      "max_abs_difference": {
+        "daily_net": "0",
+        "cum_balance": "0"
+      },
+      "dune_sha256": "aea053c98b4da679a3699e7e9f578bd128b03576b52a50a9fbeb9ba2034af59b",
+      "hypersync_sha256": "aea053c98b4da679a3699e7e9f578bd128b03576b52a50a9fbeb9ba2034af59b",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "chain": "ethereum",
+      "token": "0xa3931d71877c0e7a3148cb7eb4463524fec27fbd",
+      "holder": "0x1369f7b2b38c76b6478c0f0e66d94923421891ba"
+    }
+  ],
+  "matched": true
+}

@@ -50,6 +50,7 @@ venues:
   # SparkLend USDS — the only funded venue so far (1M deposited 2026-07-24).
   # Same token/params as Spark's S1; rebasing Cat C spToken.
   - id: O1
+    event_source: hypersync
     chain: ethereum
     label: 'Spark USDS (SparkLend spToken)'
     pricing_category: C
@@ -68,6 +69,7 @@ venues:
   # Raw USDS at the Diamond PAU ALMProxy — idle between draw and deploy
   # ($0 at 2026-07-31 EoD; the Jul-24 draw was deployed in the same tx).
   - id: O2
+    event_source: hypersync
     chain: ethereum
     label: 'USDS raw (Diamond PAU ALM idle)'
     pricing_category: A
@@ -77,6 +79,7 @@ venues:
       decimals: 18
 
 sources:
+  block_resolver: hypersync
   debt: hypersync
   balance: hypersync
   position_balance: hypersync

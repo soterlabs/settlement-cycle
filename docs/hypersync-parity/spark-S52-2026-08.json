@@ -1,0 +1,41 @@
+{
+  "prime": "spark",
+  "venue": "S52",
+  "month": "2026-08",
+  "start": "2024-11-18",
+  "pins": {
+    "unichain/2026-08-31": 57472440
+  },
+  "matched": true,
+  "checks": [
+    {
+      "input": "transfer_timeseries.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 4,
+      "hypersync_rows": 4,
+      "max_abs_difference": {
+        "daily_net": "1.0298022377E-8",
+        "cum_balance": "1.4901161193847656E-8"
+      },
+      "dune_sha256": "bdf9cc0a55b83a15d077cf4d98f7ec74a7b7d6600326833532621006e20ea7dd",
+      "hypersync_sha256": "637de77c4095da96531cb47337aa6e5486fc1e7c4c4baa1fe428647958fb81e5",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "inflow_by_counterparty.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 5,
+      "hypersync_rows": 5,
+      "max_abs_difference": {
+        "signed_amount": "1.0298022377E-8"
+      },
+      "dune_sha256": "677eea54dcef4119eabfdf992f69624e83fc6fa75dd1715004f4613d41bb9d75",
+      "hypersync_sha256": "46a0dcdec1d0dbb30b7addef7d543ae24da1e25bcb94516d4a5cacf59197a4a5",
+      "mismatch_count": 0,
+      "mismatches": []
+    }
+  ]
+}

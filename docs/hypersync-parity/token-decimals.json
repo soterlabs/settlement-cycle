@@ -1,0 +1,806 @@
+{
+  "purpose": "Verify configured comparison scales match the live HyperSync adapter RPC decimals lookup",
+  "matched": true,
+  "checks": [
+    {
+      "chain": "ethereum",
+      "token": "0xe3190143eb552456f88464662f0c0c4ac67a77eb",
+      "venues": [
+        "grove/E1"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x68215b6533c47ff9f7125ac95adf00fe4a62f79e",
+      "venues": [
+        "grove/E2"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0xfa82580c16a31d0c1bc632a36f82e83efef3eec0",
+      "venues": [
+        "grove/E3"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0xbeeff08df54897e7544ab01d0e86f013da354111",
+      "venues": [
+        "grove/E4"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0xbeef2b5fd3d94469b7782aebe6364e6e6fb1b709",
+      "venues": [
+        "grove/E5"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0xbeeff0d672ab7f5018dfb614c93981045d4aa98a",
+      "venues": [
+        "grove/E6"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b",
+      "venues": [
+        "grove/E37",
+        "spark/S14",
+        "obex/V1"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x51c2d74017390cbbd30550179a16a1c28f7210fc",
+      "venues": [
+        "grove/E7"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x5a0f93d040de44e78f251b03c43be9cf317dcf64",
+      "venues": [
+        "grove/E8"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x8c213ee79581ff4984583c6a801e5263418c4b86",
+      "venues": [
+        "grove/E9",
+        "spark/S20"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041",
+      "venues": [
+        "grove/E10",
+        "spark/S19"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0xe79c1c7e24755574438a26d5e062ad2626c04662",
+      "venues": [
+        "grove/E11"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x8292bb45bf1ee4d140127049757c2e0ff06317ed",
+      "venues": [
+        "grove/E13",
+        "spark/S64"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x00000000efe302beaa2b3e6e1b18d08d69a9012a",
+      "venues": [
+        "grove/E14",
+        "grove/E31"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "venues": [
+        "grove/E15",
+        "grove/E32",
+        "grove/E36",
+        "spark/S23",
+        "spark/S26"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x6b175474e89094c44da98b954eedeac495271d0f",
+      "venues": [
+        "grove/E16",
+        "spark/S29"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+      "venues": [
+        "grove/E17",
+        "grove/E40",
+        "grove/E41",
+        "spark/S31",
+        "osero/O2"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0xa3931d71877c0e7a3148cb7eb4463524fec27fbd",
+      "venues": [
+        "grove/E18",
+        "spark/S32"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "base",
+      "token": "0xbeef2d50b428675a1921bc6bbf4bfb9d8cf1461a",
+      "venues": [
+        "grove/E19"
+      ],
+      "pin_block": 50715726,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "base",
+      "token": "0xbeef0e0834849acc03f0089f01f4f1eeb06873c9",
+      "venues": [
+        "grove/E23"
+      ],
+      "pin_block": 50715726,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "avalanche_c",
+      "token": "0x58f93d6b1ef2f44ec379cb975657c132cbed3b6b",
+      "venues": [
+        "grove/E20"
+      ],
+      "pin_block": 94159927,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "avalanche_c",
+      "token": "0x2c0adff8e114f3ca106051144353ac703d24b901",
+      "venues": [
+        "grove/E21"
+      ],
+      "pin_block": 94159927,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "plume",
+      "token": "0x9477724bb54ad5417de8baff29e59df3fb4da74f",
+      "venues": [
+        "grove/E22"
+      ],
+      "pin_block": 90704090,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0xd8a6511979d9c5d387c819e9f8ed9f3a5c6c5379",
+      "venues": [
+        "grove/E24"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x6c3ea9036406852006290770bedfcaba0e23a0e8",
+      "venues": [
+        "grove/E26",
+        "spark/S28"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "base",
+      "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "venues": [
+        "grove/E27",
+        "spark/S39"
+      ],
+      "pin_block": 50715726,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "monad",
+      "token": "0x32841a8511d5c2c5b253f45668780b99139e476d",
+      "venues": [
+        "grove/E25"
+      ],
+      "pin_block": 100893400,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "monad",
+      "token": "0x00000000efe302beaa2b3e6e1b18d08d69a9012a",
+      "venues": [
+        "grove/E34"
+      ],
+      "pin_block": 100893400,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "monad",
+      "token": "0x754704bc059f8c67012fed69bc8a327a5aafb603",
+      "venues": [
+        "grove/E35"
+      ],
+      "pin_block": 100893400,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0xc02ab1a5eaa8d1b114ef786d9bde108cd4364359",
+      "venues": [
+        "spark/S1",
+        "osero/O1"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x377c3bd93f2a2984e1e7be6a5c22c525ed4a4815",
+      "venues": [
+        "spark/S2"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0xe7df13b8e3d6740fe17cbe928c7334243d86c92f",
+      "venues": [
+        "spark/S3"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x4dedf26112b3ec8ec46e7e31ea5e123490b05b8b",
+      "venues": [
+        "spark/S4"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x779224df1c756b4edd899854f32a53e8c2b2ce5d",
+      "venues": [
+        "spark/S5"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x09aa30b182488f769a9824f15e6ce58591da4781",
+      "venues": [
+        "spark/S6"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x32a6268f9ba3642dda7892add74f1d34469a4259",
+      "venues": [
+        "spark/S7"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x98c23e9d8f34fefb1b7bd6a91b7ff122f4e16f5c",
+      "venues": [
+        "spark/S8"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x23878914efe38d27c4d67ab83ed1b93a74d4086a",
+      "venues": [
+        "spark/S9"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x56a76b428244a50513ec81e225a293d128fd581d",
+      "venues": [
+        "spark/S10"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0xc7cdcfdefc64631ed6799c95e3b110cd42f2bd22",
+      "venues": [
+        "spark/S11"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0xb0c424116172b55cbb6dd3136f5989f7959e5b91",
+      "venues": [
+        "spark/S65"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x73e65dbd630f90604062f6e02fab9138e713edd9",
+      "venues": [
+        "spark/S12"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0xe41a0583334f0dc4e023acd0bfef3667f6fe0597",
+      "venues": [
+        "spark/S13"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x356b8d89c1e1239cbbb9de4815c39a1474d5ba7d",
+      "venues": [
+        "spark/S15"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x9d39a5de30e57443bff2a8307a4256c8797a3497",
+      "venues": [
+        "spark/S16"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x2bbe31d63e6813e3ac858c04dae43fb2a72b0d11",
+      "venues": [
+        "spark/S17"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x38464507e02c983f20428a6e8566693fe9e422a9",
+      "venues": [
+        "spark/S18"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x43415eb6ff9db7e26a15b704e7a3edce97d31c4e",
+      "venues": [
+        "spark/S21"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x14d60e7fdc0d71d8611742720e4c50e7a974020c",
+      "venues": [
+        "spark/S22"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x00836fe54625be242bcfa286207795405ca4fd10",
+      "venues": [
+        "spark/S24"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0xa632d59b9b804a956bfaa9b48af3a1b74808fc1f",
+      "venues": [
+        "spark/S25"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      "venues": [
+        "spark/S27"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "ethereum",
+      "token": "0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
+      "venues": [
+        "spark/S30"
+      ],
+      "pin_block": 25878704,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "base",
+      "token": "0x7bfa7c4f149e7415b73bdedfe609237e29cbf34a",
+      "venues": [
+        "spark/S34"
+      ],
+      "pin_block": 50715726,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "base",
+      "token": "0x4e65fe4dba92790696d040ac24aa414708f5c0ab",
+      "venues": [
+        "spark/S35"
+      ],
+      "pin_block": 50715726,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "base",
+      "token": "0xf62e339f21d8018940f188f6987bcdf02a849619",
+      "venues": [
+        "spark/S36"
+      ],
+      "pin_block": 50715726,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "base",
+      "token": "0x5875eee11cf8398102fdad704c9e96607675467a",
+      "venues": [
+        "spark/S37"
+      ],
+      "pin_block": 50715726,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "base",
+      "token": "0x820c137fa70c8691f0e44dc420a5e53c168921dc",
+      "venues": [
+        "spark/S38"
+      ],
+      "pin_block": 50715726,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "arbitrum",
+      "token": "0x724dc807b04555b71ed48a6896b6f41593b8c637",
+      "venues": [
+        "spark/S41"
+      ],
+      "pin_block": 500455224,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "arbitrum",
+      "token": "0x3459fcc94390c3372c0f7b4cd3f8795f0e5afe96",
+      "venues": [
+        "spark/S42"
+      ],
+      "pin_block": 500455224,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "arbitrum",
+      "token": "0xddb46999f8891663a8f2828d25298f70416d7610",
+      "venues": [
+        "spark/S43"
+      ],
+      "pin_block": 500455224,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "arbitrum",
+      "token": "0x6491c05a82219b8d1479057361ff1654749b876b",
+      "venues": [
+        "spark/S44"
+      ],
+      "pin_block": 500455224,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "arbitrum",
+      "token": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+      "venues": [
+        "spark/S45"
+      ],
+      "pin_block": 500455224,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "optimism",
+      "token": "0xb5b2dc7fd34c249f4be7fb1fcea07950784229e0",
+      "venues": [
+        "spark/S47"
+      ],
+      "pin_block": 156311011,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "optimism",
+      "token": "0x4f13a96ec5c4cf34e442b46bbd98a0791f20edc3",
+      "venues": [
+        "spark/S48"
+      ],
+      "pin_block": 156311011,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "optimism",
+      "token": "0x0b2c639c533813f4aa9d7837caf62653d097ff85",
+      "venues": [
+        "spark/S49"
+      ],
+      "pin_block": 156311011,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "unichain",
+      "token": "0xa06b10db9f390990364a3984c04fadf1c13691b5",
+      "venues": [
+        "spark/S51"
+      ],
+      "pin_block": 57472440,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "unichain",
+      "token": "0x7e10036acc4b56d4dfca3b77810356ce52313f9c",
+      "venues": [
+        "spark/S52"
+      ],
+      "pin_block": 57472440,
+      "configured_decimals": 18,
+      "rpc_decimals": 18,
+      "matched": true
+    },
+    {
+      "chain": "unichain",
+      "token": "0x078d782b760474a361dda0af3839290b0ef57ad6",
+      "venues": [
+        "spark/S53"
+      ],
+      "pin_block": 57472440,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "avalanche_c",
+      "token": "0x625e7708f30ca75bfd92586e17077590c60eb4cd",
+      "venues": [
+        "spark/S54"
+      ],
+      "pin_block": 94159927,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    },
+    {
+      "chain": "avalanche_c",
+      "token": "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+      "venues": [
+        "spark/S55"
+      ],
+      "pin_block": 94159927,
+      "configured_decimals": 6,
+      "rpc_decimals": 6,
+      "matched": true
+    }
+  ]
+}

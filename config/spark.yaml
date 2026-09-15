@@ -6,16 +6,10 @@
 # (2026-04-29) and cross-checked against `docs/ALM_COUNTERPARTIES.md` +
 # `archive/docs/pricing/allocation_pricing.csv`.
 #
-# Status (2026-04-29): scaffolding pass. Many venues are wired with the
-# correct addresses + pricing category, but two pricing paths are NOT yet
-# implemented:
-#   * PSM3 (Spark's Peg Stability Module on non-Ethereum chains): the contract
-#     is a basket holder (USDC + USDS + sUSDS shares); needs a dedicated source
-#     and oracle kind. Marked `pricing_category: E` with `kind: psm3` for now;
-#     the runtime will reject these until the source is registered.
-#   * Anchorage (off-chain custodial ~$260M rolling position on Ethereum): API-only;
-#     requires Anchorage developer credentials. Marked `pricing_category: E`
-#     with `kind: anchorage`; same TODO.
+# Event inputs use HyperSync after pinned Dune comparisons. PSM3 reconstructs
+# monthly share/reserve histories from opening RPC anchors and HyperSync logs.
+# Contract valuation and off-chain position handling retain their existing
+# compute paths. Evidence: docs/hypersync-parity/README.md.
 
 id: spark
 ilk_bytes32: '0x414c4c4f4341544f522d535041524b2d41000000000000000000000000000000'  # ALLOCATOR-SPARK-A
@@ -41,13 +35,13 @@ subsidy:
     - { kind: tbill_3m, from: '2026-01-01' }
     - { kind: sofr,     from: '2026-07-23' }
 
-# Ilk debt from Envio HyperSync (raw Vat logs against the reorg-safe store)
-# rather than Dune, so the BR charge is priced off an independently sourced
-# debt timeseries. Requires ENVIO_API_TOKEN. Balances/positions stay on the
-# fleet defaults — this pilot is scoped to debt and the interest charged on
-# it. Same family switch Obex runs (config/obex.yaml).
+# Shared debt, idle balances and daily block boundaries use HyperSync.
+# Each venue and PSM3 contract also has its own verified event-source flag.
+# Requires ENVIO_API_TOKEN; valuation still uses RPC.
 sources:
+  block_resolver: hypersync
   debt: hypersync
+  balance: hypersync
 
 addresses:
   ethereum:
@@ -62,21 +56,25 @@ addresses:
   base:
     alm:      '0x2917956eff0b5eaf030abdb4ef4296df775009ca'    # Spark Base ALM
     psm:
+      event_source: hypersync
       kind: erc4626_shares                                    # PSM3: ALM holds shares; USDS-equiv via convertToAssets
       address: '0x1601843c5e9bc251a3272907010afa41fa18347e'   # PSM3 Base (CREATE2 — same address as Spark Eth-ALM)
   arbitrum:
     alm:      '0x92afd6f2385a90e44da3a8b60fe36f6cbe1d8709'    # Spark Arbitrum ALM
     psm:
+      event_source: hypersync
       kind: erc4626_shares                                    # PSM3: ALM holds shares; USDS-equiv via convertToAssets
       address: '0x2b05f8e1cacc6974fd79a673a341fe1f58d27266'   # PSM3 Arbitrum
   optimism:
     alm:      '0x876664f0c9ff24d1aa355ce9f1680ae1a5bf36fb'    # Spark Optimism ALM
     psm:
+      event_source: hypersync
       kind: erc4626_shares                                    # PSM3: ALM holds shares; USDS-equiv via convertToAssets
       address: '0xe0f9978b907853f354d79188a3defbd41978af62'   # PSM3 Optimism
   unichain:
     alm:      '0x345e368fccd62266b3f5f37c9a131fd1c39f5869'    # Spark Unichain ALM
     psm:
+      event_source: hypersync
       kind: erc4626_shares                                    # PSM3: ALM holds shares; USDS-equiv via convertToAssets
       address: '0x7b42ed932f26509465f7ce3faf76ffce1275312f'   # PSM3 Unichain
   avalanche_c:
@@ -87,6 +85,7 @@ venues:
   # Ethereum — SparkLend spTokens (Cat C, rebasing aToken-style)
   # ─────────────────────────────────────────────────────────────
   - id: S1
+    event_source: hypersync
     chain: ethereum
     label: 'Spark USDS (SparkLend spToken)'
     pricing_category: C
@@ -105,6 +104,7 @@ venues:
     lending_idle_usds: true
 
   - id: S2
+    event_source: hypersync
     chain: ethereum
     label: 'Spark USDC (SparkLend spToken)'
     pricing_category: C
@@ -118,6 +118,7 @@ venues:
       decimals: 6
 
   - id: S3
+    event_source: hypersync
     chain: ethereum
     label: 'Spark USDT (SparkLend spToken)'
     pricing_category: C
@@ -131,6 +132,7 @@ venues:
       decimals: 6
 
   - id: S4
+    event_source: hypersync
     chain: ethereum
     label: 'Spark DAI (SparkLend spToken)'
     pricing_category: C
@@ -149,6 +151,7 @@ venues:
     lending_idle_usds: true
 
   - id: S5
+    event_source: hypersync
     chain: ethereum
     label: 'Spark PYUSD (SparkLend spToken)'
     pricing_category: C
@@ -165,6 +168,7 @@ venues:
   # Ethereum — Aave V3 aTokens (Cat C)
   # ─────────────────────────────────────────────────────────────
   - id: S6
+    event_source: hypersync
     chain: ethereum
     label: 'Aave Ethereum Lido USDS (aToken)'
     pricing_category: C
@@ -178,6 +182,7 @@ venues:
       decimals: 18
 
   - id: S7
+    event_source: hypersync
     chain: ethereum
     label: 'Aave Ethereum USDS (aToken)'
     pricing_category: C
@@ -191,6 +196,7 @@ venues:
       decimals: 18
 
   - id: S8
+    event_source: hypersync
     chain: ethereum
     label: 'Aave Ethereum USDC (aToken)'
     pricing_category: C
@@ -204,6 +210,7 @@ venues:
       decimals: 6
 
   - id: S9
+    event_source: hypersync
     chain: ethereum
     label: 'Aave Ethereum USDT (aToken)'
     pricing_category: C
@@ -220,6 +227,7 @@ venues:
   # Ethereum — Morpho ERC-4626 vaults (Cat B)
   # ─────────────────────────────────────────────────────────────
   - id: S10
+    event_source: hypersync
     chain: ethereum
     label: 'Spark Blue Chip USDC Vault (Morpho)'
     pricing_category: B
@@ -265,6 +273,7 @@ venues:
   # reads its own on-chain balance at every pin, and the dust side prices to
   # ~$0 on its own.
   - id: S11
+    event_source: hypersync
     chain: ethereum
     label: 'Spark Blue Chip USDT Vault (Morpho — pre-2026-06 deployment)'
     pricing_category: B
@@ -278,6 +287,7 @@ venues:
       decimals: 6
 
   - id: S65
+    event_source: hypersync
     chain: ethereum
     label: 'Spark Blue Chip USDT Vault (Morpho — 2026-06 redeployment)'
     pricing_category: B
@@ -291,6 +301,7 @@ venues:
       decimals: 6
 
   - id: S12
+    event_source: hypersync
     chain: ethereum
     label: 'Spark DAI Vault (Morpho)'
     pricing_category: B
@@ -304,6 +315,7 @@ venues:
       decimals: 18
 
   - id: S13
+    event_source: hypersync
     chain: ethereum
     label: 'Spark USDS Vault (Morpho)'
     pricing_category: B
@@ -320,6 +332,7 @@ venues:
   # Ethereum — other 4626 vaults (Maple, Ethena, Fluid, Arkis)
   # ─────────────────────────────────────────────────────────────
   - id: S14
+    event_source: hypersync
     chain: ethereum
     label: 'Maple syrupUSDC (ERC-4626)'
     pricing_category: B
@@ -359,6 +372,7 @@ venues:
       - '0x491edfb0b8b608044e227225c715981a30f3a44e'   # Grove Eth ALM (inter-prime transfer 2026-07-20) (kept for safety)
 
   - id: S15
+    event_source: hypersync
     chain: ethereum
     label: 'Maple syrupUSDT (ERC-4626)'
     pricing_category: B
@@ -380,6 +394,7 @@ venues:
       - '0x86ebdf902d800f2a82038290b6dbb2a5ee29eb8c'   # public WithdrawalManagerQueue (kept for safety)
 
   - id: S16
+    event_source: hypersync
     chain: ethereum
     label: 'Ethena Staked USDe (sUSDe)'
     pricing_category: B
@@ -393,6 +408,7 @@ venues:
       decimals: 18
 
   - id: S17
+    event_source: hypersync
     chain: ethereum
     label: 'Fluid Savings USDS (fsUSDS)'
     pricing_category: B
@@ -406,6 +422,7 @@ venues:
       decimals: 18
 
   - id: S18
+    event_source: hypersync
     chain: ethereum
     label: 'Arkis Spark Prime USDC 1 (ERC-4626)'
     pricing_category: B
@@ -424,6 +441,7 @@ venues:
   # Ethereum — RWA / off-chain (Cat E)
   # ─────────────────────────────────────────────────────────────
   - id: S19
+    event_source: hypersync
     chain: ethereum
     label: 'BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I)'
     pricing_category: E
@@ -437,6 +455,7 @@ venues:
     min_transfer_amount_usd: 1000000
 
   - id: S20
+    event_source: hypersync
     chain: ethereum
     label: 'Janus Henderson Anemoy Treasury Fund (JTRSY)'
     pricing_category: E
@@ -459,6 +478,7 @@ venues:
       fallback_address: '0xe980a33efa3eddaa689ecbdce4b2278d4db94471'  # ChronicleVAO_Centrifuge_JTRSY_Router_1
 
   - id: S21
+    event_source: hypersync
     chain: ethereum
     label: 'Superstate Short Duration US Government Securities Fund (USTB)'
     pricing_category: E
@@ -472,6 +492,7 @@ venues:
     # held; pin to const_one until activity resumes and a real oracle lands.
 
   - id: S22
+    event_source: hypersync
     chain: ethereum
     label: 'Superstate Crypto Carry Fund (USCC)'
     pricing_category: E
@@ -484,6 +505,7 @@ venues:
     # Currently $0 held. Same NAV-source TODO as USTB.
 
   - id: S23
+    event_source: hypersync
     chain: ethereum
     label: 'Anchorage tri-party loan escrow (USDC pass-through, ~$0 balance)'
     pricing_category: E
@@ -557,6 +579,7 @@ venues:
   # Ethereum — Curve LP (Cat F)
   # ─────────────────────────────────────────────────────────────
   - id: S24
+    event_source: hypersync
     chain: ethereum
     label: 'Spark.fi USDT Reserve Curve (sUSDS/USDT)'
     pricing_category: F
@@ -588,6 +611,7 @@ venues:
       sde_coin: '0xdac17f958d2ee523a2206206994597c13d831ec7'  # USDT — SDE asset value (par)
 
   - id: S25
+    event_source: hypersync
     chain: ethereum
     label: 'Spark.fi PYUSD Reserve Curve (PYUSD/USDS)'
     pricing_category: F
@@ -632,6 +656,7 @@ venues:
   # Uncollected LP fees are not added to the position value (negligible for
   # these tight par-stable ranges; see normalize/sources/uniswap_v4.py).
   - id: S61
+    event_source: hypersync
     chain: ethereum
     label: 'Spark.fi PYUSD Reserve Uniswap V4 (PYUSD/USDS)'
     pricing_category: F
@@ -657,6 +682,7 @@ venues:
       # config/sky_direct_exposures.yaml in the same change.
 
   - id: S62
+    event_source: hypersync
     chain: ethereum
     label: 'Spark.fi USDT Reserve Uniswap V4 (USDT/USDS)'
     pricing_category: F
@@ -717,6 +743,7 @@ venues:
   # only by scanning ERC-721 Transfers from the PositionManager to the ALM;
   # an ERC-20-only audit will never see them (which is how these were missed).
   - id: S66
+    event_source: hypersync
     chain: ethereum
     label: 'Spark.fi RLUSD Reserve Uniswap V4 (RLUSD/USDS)'
     pricing_category: F
@@ -743,6 +770,7 @@ venues:
   # from utilized via the Cat A inflow accounting (external_alm_sources).
   # ─────────────────────────────────────────────────────────────
   - id: S26
+    event_source: hypersync
     chain: ethereum
     label: 'USDC raw (ALM idle)'
     pricing_category: A
@@ -753,6 +781,7 @@ venues:
       decimals: 6
 
   - id: S27
+    event_source: hypersync
     chain: ethereum
     label: 'USDT raw (ALM idle — $442M as of 2026-04)'
     pricing_category: A
@@ -762,6 +791,7 @@ venues:
       decimals: 6
 
   - id: S28
+    event_source: hypersync
     chain: ethereum
     label: 'PYUSD raw (ALM idle — $677M as of 2026-04)'
     pricing_category: A
@@ -789,6 +819,7 @@ venues:
   # V4 RLUSD/USDS) and is held by the PoolManager, so balanceOf here cannot
   # see it — the two are disjoint, no double-count.
   - id: S64
+    event_source: hypersync
     chain: ethereum
     label: 'RLUSD raw (ALM idle — $251.7M as of 2026-08)'
     pricing_category: A
@@ -798,6 +829,7 @@ venues:
       decimals: 18
 
   - id: S29
+    event_source: hypersync
     chain: ethereum
     label: 'DAI raw (ALM idle)'
     pricing_category: A
@@ -807,6 +839,7 @@ venues:
       decimals: 18
 
   - id: S30
+    event_source: hypersync
     chain: ethereum
     label: 'USDe raw (ALM idle)'
     pricing_category: A
@@ -816,6 +849,7 @@ venues:
       decimals: 18
 
   - id: S31
+    event_source: hypersync
     chain: ethereum
     label: 'USDS raw / POL (ALM idle — already netted out of utilized)'
     pricing_category: A
@@ -854,6 +888,7 @@ venues:
   #
   # See docs/METHODOLOGY.md §1 special-case and docs/RULES.md Rule 5.
   - id: S32
+    event_source: hypersync
     chain: ethereum
     label: 'sUSDS raw / POL (ALM — Cat B 4626, demand-side spread)'
     pricing_category: B
@@ -892,6 +927,7 @@ venues:
   # omission.
 
   - id: S34
+    event_source: hypersync
     chain: base
     label: 'Spark USDC Vault (Morpho, Base)'
     pricing_category: B
@@ -905,6 +941,7 @@ venues:
       decimals: 6
 
   - id: S35
+    event_source: hypersync
     chain: base
     label: 'Aave Base USDC (aBasUSDC)'
     pricing_category: C
@@ -918,6 +955,7 @@ venues:
       decimals: 6
 
   - id: S36
+    event_source: hypersync
     chain: base
     label: 'Fluid Savings USDS (fsUSDS, Base)'
     pricing_category: B
@@ -931,6 +969,7 @@ venues:
       decimals: 18
 
   - id: S37
+    event_source: hypersync
     chain: base
     label: 'Savings USDS / sUSDS proxy (Base — POL)'
     pricing_category: B
@@ -945,6 +984,7 @@ venues:
       decimals: 18
 
   - id: S38
+    event_source: hypersync
     chain: base
     label: 'USDS raw (Base — POL)'
     pricing_category: A
@@ -955,6 +995,7 @@ venues:
     cof_excluded: true   # already deducted from utilized via cum_alm_usds
 
   - id: S39
+    event_source: hypersync
     chain: base
     label: 'USDC raw (Base — ALM idle)'
     pricing_category: A
@@ -969,6 +1010,7 @@ venues:
   # S40 PSM3-Arbitrum: see comment above S34. Tracked via addresses.arbitrum.psm.
 
   - id: S41
+    event_source: hypersync
     chain: arbitrum
     label: 'Aave Arbitrum USDCn (aArbUSDCn)'
     pricing_category: C
@@ -982,6 +1024,7 @@ venues:
       decimals: 6
 
   - id: S42
+    event_source: hypersync
     chain: arbitrum
     label: 'Fluid Savings USDS (fsUSDS, Arbitrum)'
     pricing_category: B
@@ -995,6 +1038,7 @@ venues:
       decimals: 18
 
   - id: S43
+    event_source: hypersync
     chain: arbitrum
     label: 'Savings USDS / sUSDS proxy (Arbitrum — POL)'
     pricing_category: B
@@ -1009,6 +1053,7 @@ venues:
       decimals: 18
 
   - id: S44
+    event_source: hypersync
     chain: arbitrum
     label: 'USDS raw (Arbitrum — POL)'
     pricing_category: A
@@ -1019,6 +1064,7 @@ venues:
     cof_excluded: true   # already deducted from utilized via cum_alm_usds
 
   - id: S45
+    event_source: hypersync
     chain: arbitrum
     label: 'USDC raw (Arbitrum — ALM idle)'
     pricing_category: A
@@ -1033,6 +1079,7 @@ venues:
   # S46 PSM3-Optimism: see comment above S34. Tracked via addresses.optimism.psm.
 
   - id: S47
+    event_source: hypersync
     chain: optimism
     label: 'Savings USDS / sUSDS proxy (Optimism — POL)'
     pricing_category: B
@@ -1047,6 +1094,7 @@ venues:
       decimals: 18
 
   - id: S48
+    event_source: hypersync
     chain: optimism
     label: 'USDS raw (Optimism — POL)'
     pricing_category: A
@@ -1057,6 +1105,7 @@ venues:
     cof_excluded: true   # already deducted from utilized via cum_alm_usds
 
   - id: S49
+    event_source: hypersync
     chain: optimism
     label: 'USDC raw (Optimism — ALM idle)'
     pricing_category: A
@@ -1071,6 +1120,7 @@ venues:
   # S50 PSM3-Unichain: see comment above S34. Tracked via addresses.unichain.psm.
 
   - id: S51
+    event_source: hypersync
     chain: unichain
     label: 'Savings USDS / sUSDS proxy (Unichain — POL)'
     pricing_category: B
@@ -1085,6 +1135,7 @@ venues:
       decimals: 18
 
   - id: S52
+    event_source: hypersync
     chain: unichain
     label: 'USDS raw (Unichain — POL)'
     pricing_category: A
@@ -1095,6 +1146,7 @@ venues:
     cof_excluded: true   # already deducted from utilized via cum_alm_usds
 
   - id: S53
+    event_source: hypersync
     chain: unichain
     label: 'USDC raw (Unichain — ALM idle)'
     pricing_category: A
@@ -1107,6 +1159,7 @@ venues:
   # Avalanche-C
   # ─────────────────────────────────────────────────────────────
   - id: S54
+    event_source: hypersync
     chain: avalanche_c
     label: 'Aave Avalanche USDC (aAvaUSDC)'
     pricing_category: C
@@ -1120,6 +1173,7 @@ venues:
       decimals: 6
 
   - id: S55
+    event_source: hypersync
     chain: avalanche_c
     label: 'USDC raw (Avalanche-C — ALM idle)'
     pricing_category: A

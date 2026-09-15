@@ -17,10 +17,8 @@ from __future__ import annotations
 
 import argparse
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-
-import pandas as pd
 
 from settle.domain import Chain
 from settle.domain.config import load_prime_by_id
@@ -50,6 +48,10 @@ def _cum(df):
 
 
 def main(argv=None) -> int:
+    if __package__:
+        from .compare_hypersync_venue import compare_frames
+    else:
+        from compare_hypersync_venue import compare_frames
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--prime", required=True)
     ap.add_argument("--month", required=True, help="YYYY-MM")
@@ -59,25 +61,30 @@ def main(argv=None) -> int:
     prime = load_prime_by_id(args.prime)
     month = Month.parse(args.month)
     tol = Decimal(args.tol)
-    pin = get_block_resolver("rpc").block_at_or_before(
-        "ethereum", datetime(month.year, month.month, 1, tzinfo=timezone.utc)
-        .replace(day=month.last_day.day, hour=23, minute=59, second=59))
+    anchor = datetime(month.year, month.month, month.last_day.day, 23, 59, 59, tzinfo=UTC)
+    resolver = get_block_resolver("hypersync")
+    pins = {}
     dune = get_balance_source("dune")
     hs = get_balance_source("hypersync")
-    print(f"prime={prime.id} month={month} pin={pin}  comparing dune vs hypersync (cumulative_balance)")
+    print(f"prime={prime.id} month={month} comparing full daily histories at chain-specific pins")
 
     ok = True
     for label, chain, token, holder in _targets(prime):
         try:
-            d = _cum(dune.cumulative_balance_timeseries(chain, token, holder, prime.start_date, pin))
-            h = _cum(hs.cumulative_balance_timeseries(chain, token, holder, prime.start_date, pin))
-        except Exception as e:  # noqa: BLE001
-            print(f"  {label:28s} ERROR {e}"); ok = False; continue
-        diff = abs(h - d)
-        status = "OK" if diff <= tol else f"DIFF={h - d}"
-        if diff > tol:
+            if chain not in pins:
+                pins[chain] = resolver.block_at_or_before(chain, anchor)
+            pin = pins[chain]
+            d = dune.cumulative_balance_timeseries(chain, token, holder, prime.start_date, pin)
+            h = hs.cumulative_balance_timeseries(chain, token, holder, prime.start_date, pin)
+            result = compare_frames(label, d, h, ["block_date"], ["daily_net", "cum_balance"], tol)
+        except Exception as e:
+            print(f"  {label:28s} ERROR {e}")
             ok = False
-        print(f"  {label:28s} dune={d} hypersync={h} [{status}]")
+            continue
+        status = "OK" if result["matched"] else "MISMATCH"
+        if not result["matched"]:
+            ok = False
+        print(f"  {label:28s} chain={chain} pin={pin} max={result['max_abs_difference']} [{status}]")
     print("\n✅ MATCH" if ok else "\n❌ MISMATCH")
     return 0 if ok else 1
 

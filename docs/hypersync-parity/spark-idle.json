@@ -1,0 +1,289 @@
+{
+  "prime": "spark",
+  "month": "2026-08",
+  "start": "2024-11-18",
+  "pins": {
+    "ethereum": 25878704,
+    "base": 50715726,
+    "arbitrum": 500455224,
+    "optimism": 156311011,
+    "unichain": 57472440
+  },
+  "checks": [
+    {
+      "input": "transfer_timeseries_raw_parity.sql",
+      "matched": true,
+      "tolerance": "0",
+      "dune_rows": 604,
+      "hypersync_rows": 604,
+      "max_abs_difference": {
+        "daily_net": "0",
+        "cum_balance": "0"
+      },
+      "dune_sha256": "19aa14b5312f2e1f045b5329bfa55d7f8515f59cc5f4352b67bcab96f591e6e5",
+      "hypersync_sha256": "19aa14b5312f2e1f045b5329bfa55d7f8515f59cc5f4352b67bcab96f591e6e5",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "legacy_float_comparison": {
+        "input": "ALM USDS",
+        "matched": false,
+        "tolerance": "0.000001",
+        "dune_rows": 604,
+        "hypersync_rows": 604,
+        "max_abs_difference": {
+          "daily_net": "9.5367431640625E-7",
+          "cum_balance": "0.000003139954060316086"
+        },
+        "dune_sha256": "2a86c4d57bba39f2694a04a8a7ef6567f1e6402cba91f7671cd6d2a65958c43c",
+        "hypersync_sha256": "b1534bd2db66ccf50f715d1bd5f89344bdf9902a686f56f1715fc9ef386f1862",
+        "mismatch_count": 249,
+        "mismatches": [
+          {
+            "key": [
+              "2025-12-06"
+            ],
+            "dune": {
+              "daily_net": "1.1920928955078125E-7",
+              "cum_balance": "0.0000010649673640727997"
+            },
+            "hypersync": {
+              "daily_net": "0",
+              "cum_balance": "0"
+            }
+          },
+          {
+            "key": [
+              "2025-12-07"
+            ],
+            "dune": {
+              "daily_net": "4.470348358154297E-8",
+              "cum_balance": "0.0000011096708476543427"
+            },
+            "hypersync": {
+              "daily_net": "0",
+              "cum_balance": "0"
+            }
+          },
+          {
+            "key": [
+              "2025-12-08"
+            ],
+            "dune": {
+              "daily_net": "2.9802322387695312E-8",
+              "cum_balance": "0.000001139473170042038"
+            },
+            "hypersync": {
+              "daily_net": "0",
+              "cum_balance": "0"
+            }
+          },
+          {
+            "key": [
+              "2025-12-09"
+            ],
+            "dune": {
+              "daily_net": "2.9802322387695312E-8",
+              "cum_balance": "0.0000011692754924297333"
+            },
+            "hypersync": {
+              "daily_net": "0",
+              "cum_balance": "0"
+            }
+          },
+          {
+            "key": [
+              "2025-12-10"
+            ],
+            "dune": {
+              "daily_net": "-2.9802322387695312E-8",
+              "cum_balance": "0.000001139473170042038"
+            },
+            "hypersync": {
+              "daily_net": "0",
+              "cum_balance": "0"
+            }
+          },
+          {
+            "key": [
+              "2025-12-11"
+            ],
+            "dune": {
+              "daily_net": "-5.960464477539063E-8",
+              "cum_balance": "0.0000010798685252666473"
+            },
+            "hypersync": {
+              "daily_net": "0",
+              "cum_balance": "0"
+            }
+          },
+          {
+            "key": [
+              "2025-12-12"
+            ],
+            "dune": {
+              "daily_net": "5.960464477539063E-8",
+              "cum_balance": "0.000001139473170042038"
+            },
+            "hypersync": {
+              "daily_net": "0",
+              "cum_balance": "0"
+            }
+          },
+          {
+            "key": [
+              "2025-12-13"
+            ],
+            "dune": {
+              "daily_net": "-8.940696716308594E-8",
+              "cum_balance": "0.000001050066202878952"
+            },
+            "hypersync": {
+              "daily_net": "0",
+              "cum_balance": "0"
+            }
+          },
+          {
+            "key": [
+              "2025-12-14"
+            ],
+            "dune": {
+              "daily_net": "1.4901161193847656E-8",
+              "cum_balance": "0.0000010649673640727997"
+            },
+            "hypersync": {
+              "daily_net": "0",
+              "cum_balance": "0"
+            }
+          },
+          {
+            "key": [
+              "2025-12-15"
+            ],
+            "dune": {
+              "daily_net": "0.0",
+              "cum_balance": "0.0000010649673640727997"
+            },
+            "hypersync": {
+              "daily_net": "0",
+              "cum_balance": "0"
+            }
+          }
+        ]
+      },
+      "legacy_float_ceiling_token_units": "0.0001",
+      "acceptance_basis": "Exact raw-integer series parity; legacy DOUBLE drift is below the recorded ceiling.",
+      "chain": "ethereum",
+      "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+      "holder": "0x1601843c5e9bc251a3272907010afa41fa18347e"
+    },
+    {
+      "input": "ALM USDS",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 13,
+      "hypersync_rows": 13,
+      "max_abs_difference": {
+        "daily_net": "1.7475041461E-8",
+        "cum_balance": "1.7475041461E-8"
+      },
+      "dune_sha256": "0d09ccdc4e067c7c3eee1a7ca93a31fe3758a98383715f0c2f63061073c4859a",
+      "hypersync_sha256": "c423c3f32ccf47315545b43b7ae90e2fcdd8db7ab2260e36b92274c573d779f1",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "chain": "base",
+      "token": "0x820c137fa70c8691f0e44dc420a5e53c168921dc",
+      "holder": "0x2917956eff0b5eaf030abdb4ef4296df775009ca"
+    },
+    {
+      "input": "ALM USDS",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 2,
+      "hypersync_rows": 2,
+      "max_abs_difference": {
+        "daily_net": "0",
+        "cum_balance": "0"
+      },
+      "dune_sha256": "b79669068db983beabcd938d5b04fbfea922092ea073a0574f5d9ca41df6b5e0",
+      "hypersync_sha256": "b79669068db983beabcd938d5b04fbfea922092ea073a0574f5d9ca41df6b5e0",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "chain": "arbitrum",
+      "token": "0x6491c05a82219b8d1479057361ff1654749b876b",
+      "holder": "0x92afd6f2385a90e44da3a8b60fe36f6cbe1d8709"
+    },
+    {
+      "input": "ALM USDS",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 4,
+      "hypersync_rows": 4,
+      "max_abs_difference": {
+        "daily_net": "7.484488714E-9",
+        "cum_balance": "7.484488714E-9"
+      },
+      "dune_sha256": "7be863d816040cbc5c0db47b0c5d2e0d3eacd792c3ae096e2a81bb9caf80c418",
+      "hypersync_sha256": "c6e4e42b8f485c872ba004f660498f485429ad6095987eec502f81f1b1bb6234",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "chain": "optimism",
+      "token": "0x4f13a96ec5c4cf34e442b46bbd98a0791f20edc3",
+      "holder": "0x876664f0c9ff24d1aa355ce9f1680ae1a5bf36fb"
+    },
+    {
+      "input": "ALM USDS",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 4,
+      "hypersync_rows": 4,
+      "max_abs_difference": {
+        "daily_net": "1.0298022377E-8",
+        "cum_balance": "1.4901161193847656E-8"
+      },
+      "dune_sha256": "bdf9cc0a55b83a15d077cf4d98f7ec74a7b7d6600326833532621006e20ea7dd",
+      "hypersync_sha256": "637de77c4095da96531cb47337aa6e5486fc1e7c4c4baa1fe428647958fb81e5",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "chain": "unichain",
+      "token": "0x7e10036acc4b56d4dfca3b77810356ce52313f9c",
+      "holder": "0x345e368fccd62266b3f5f37c9a131fd1c39f5869"
+    },
+    {
+      "input": "SubProxy USDS",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 38,
+      "hypersync_rows": 38,
+      "max_abs_difference": {
+        "daily_net": "4.86584832E-10",
+        "cum_balance": "5.846236778E-9"
+      },
+      "dune_sha256": "dc3862e15ab24e6191e79adbfbb2e7f3e21ad83dc3740db7d29364fb57c2a68c",
+      "hypersync_sha256": "c5111f0f126979045039eda2393762586293b8e882b8ef44f58667a91b410a7c",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "chain": "ethereum",
+      "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+      "holder": "0x3300f198988e4c9c63f75df86de36421f06af8c4"
+    },
+    {
+      "input": "SubProxy sUSDS",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 5,
+      "hypersync_rows": 5,
+      "max_abs_difference": {
+        "daily_net": "0",
+        "cum_balance": "0"
+      },
+      "dune_sha256": "196a95e86c4167bd4ee80f3d5bffe31015b90989b239438e24678431900164f3",
+      "hypersync_sha256": "196a95e86c4167bd4ee80f3d5bffe31015b90989b239438e24678431900164f3",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "chain": "ethereum",
+      "token": "0xa3931d71877c0e7a3148cb7eb4463524fec27fbd",
+      "holder": "0x3300f198988e4c9c63f75df86de36421f06af8c4"
+    }
+  ],
+  "matched": true
+}

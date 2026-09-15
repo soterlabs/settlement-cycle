@@ -3,9 +3,9 @@
 
 Raw-log HyperSync backend (queries/non_msc_streams.sql via the Dune source is
 still available for the parity script, ``scripts/compare_non_msc_sources.py``);
-artifacts under ``settlements/non_msc/<YYYY-MM>/``. Requires ENVIO_API_TOKEN (+
-RPC for the pin block); ``DATABASE_URL`` optional (enables the reorg-safe log
-store — cached, incremental scans).
+artifacts under ``settlements/non_msc/<YYYY-MM>/``. Requires ENVIO_API_TOKEN;
+``DATABASE_URL`` is optional (enables the reorg-safe log store and incremental
+scans).
 """
 
 from __future__ import annotations

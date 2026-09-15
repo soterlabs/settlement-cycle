@@ -1,0 +1,27 @@
+{
+  "prime": "spark",
+  "venue": "S25",
+  "month": "2026-08",
+  "start": "2024-11-18",
+  "pins": {
+    "ethereum/2026-08-31": 25878704
+  },
+  "matched": true,
+  "checks": [
+    {
+      "input": "transfer_timeseries.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 74,
+      "hypersync_rows": 74,
+      "max_abs_difference": {
+        "daily_net": "3.86396106E-8",
+        "cum_balance": "9.0502476484E-8"
+      },
+      "dune_sha256": "5061c9149c260bf167aa3e45e111ce190cee9bdc9ef176781e21c11671bcae6d",
+      "hypersync_sha256": "997b6158af0d2bb23fa3439616a512091161b56eef04c7ea1cad40151339ce38",
+      "mismatch_count": 0,
+      "mismatches": []
+    }
+  ]
+}

@@ -1,30 +1,17 @@
-"""Live multi-month settlement for OBEX + Spark + Grove (Jan–Apr 2026).
+"""Fresh monthly settlements for Obex, Grove and Spark using HyperSync.
 
-Reads raw data from the Postgres ``raw_data`` table (set via ``DATABASE_URL``)
-when present, falls back to live Dune + RPC otherwise. The on-disk pickle cache
-in ``~/.cache/msc-settle`` is checked first.
+Configured HyperSync sources supply event histories, SSR and block boundaries.
+Archival RPC supplies contract-state and valuation reads. DATABASE_URL enables
+the incremental raw-data cache; the local extraction cache is checked first.
+Dune API credentials are needed only by the separate comparison tools.
 
-For each (prime, month):
-  1. Build live ``Sources``. ``block_resolver`` is left ``None`` so the
-     orchestrator can upgrade to ``DuneBlockResolver`` (one Dune query per
-     chain replaces ~25 RPC binary-search calls per day).
-  2. ``compute_monthly_pnl`` resolves pin blocks itself.
-  3. Write ``settlements/<prime>/<YYYY-MM>/`` artifacts.
-  4. Track headline numbers for a final summary table.
+Writes canonical reports under settlements/<prime>/<month>/.
 
-Required env vars:
-    DATABASE_URL        — Postgres connection (read-through cache)
-    DUNE_API_KEY        — fallback / fresh fetches
-    ETH_RPC, BASE_RPC, ARBITRUM_RPC, OPTIMISM_RPC, UNICHAIN_RPC,
-    AVALANCHE_C_RPC, PLUME_RPC
+Example:
+    .venv/bin/python scripts/run_live_2026.py --primes grove,spark --months 2026-08
 
-Run with:
-    set -a; source .env; set +a
-    PYTHONPATH=src python3 -u scripts/run_live_2026.py
-
-Optional subsets:
-    --primes grove,spark
-    --months 2026-03,2026-04
+Required: ENVIO_API_TOKEN and the RPC endpoints listed in _required_env().
+DATABASE_URL is optional, and avoids repeating historical raw-log scans.
 """
 
 from __future__ import annotations
@@ -54,41 +41,27 @@ _PRIMES = {
 _MONTHS = [Month(2026, m) for m in (1, 2, 3, 4)]
 
 _SOURCES_LIVE = {
-    "debt":              "DuneDebtSource",
-    "balance":           "DuneBalanceSource",
-    "ssr":               "DuneSSRSource",
+    "debt":              "HyperSyncDebtSource",
+    "balance":           "HyperSyncBalanceSource",
+    "ssr":               "HyperSyncSSRSource",
     "position_balance":  "RPCPositionBalanceSource",
     "convert_to_assets": "RPCConvertToAssetsSource",
-    # ``psm3`` is left None in ``_live_sources()`` so the orchestrator
-    # upgrades it to ``DunePsm3Source`` when ``DUNE_API_KEY`` is set; that
-    # source bulk-loads share + reserve histories from Dune and falls back
-    # to ``RPCPsm3Source`` only on Dune failure. Recorded here so the
-    # settlement-artifact provenance matches what actually ran.
-    "psm3":              "DunePsm3Source (orchestrator-upgraded) + RPCPsm3Source fallback",
-    # Cat C / D off-pool rewards. Activated when
-    # ``prime.external_alm_sources[venue.chain]`` is non-empty. Dispatched
-    # per-sender inside ``_atoken_external_revenue_usd``:
-    #   * Merkl distributors → ``merkl_claims_ethereum.sql`` (Claimed +
-    #     aToken-Mint JOIN on raw ``ethereum.logs``; venue attribution via
-    #     ``Mint.contract_address``)
-    #   * Other senders → ``atoken_external_inflow.sql`` (generic
-    #     ``Transfer(from=sender, to=ALM)`` sum on ``tokens.transfers``)
-    # Currently active only for Grove on Ethereum (Merkl → aHorRwaRLUSD +
-    # aEthRLUSD).
+    # Each configured PSM3 contract has independent Dune parity evidence.
+    "psm3":              "HyperSyncPsm3Source (monthly opening RPC anchors)",
     "atoken_external_rewards": (
-        "_atoken_external_revenue_usd dispatcher (Cat C/D); "
-        "Merkl: Claimed+Mint JOIN on ethereum.logs (merkl_claims_*.sql); "
-        "other senders: Transfer events on tokens.transfers (atoken_external_inflow.sql)"
+        "HyperSync venue events: Merkl Claimed/Mint joins and direct receipts; "
+        "ERC-20 Transfer receipts for other configured senders"
     ),
-    "block_resolver":    "DuneBlockResolver (orchestrator-upgraded) + RPC fallback",
+    "block_resolver":    "HyperSyncBlockResolver",
     "curve_pool":        "CurvePoolSource (lazy)",
-    "v3_position":       "DuneV3InflowSource (orchestrator-upgraded) + RPC fallback",
+    "v4_position":       "HyperSyncV4PositionSource (per-venue routing)",
+    "v3_position":       "HyperSyncV3PositionSource (per-venue routing)",
 }
 
 
 def _required_env() -> list[str]:
     return [
-        "DUNE_API_KEY",
+        "ENVIO_API_TOKEN",
         "ETH_RPC", "BASE_RPC", "ARBITRUM_RPC", "OPTIMISM_RPC",
         "UNICHAIN_RPC", "AVALANCHE_C_RPC", "PLUME_RPC",
     ]
@@ -107,8 +80,7 @@ def _check_env() -> None:
 
 def _check_envio_token(*primes) -> None:
     """Fail fast when a prime's YAML ``sources:`` block resolves any family to
-    hypersync but ENVIO_API_TOKEN is missing — otherwise the run burns minutes
-    of Dune/RPC work before dying on the first HyperSync fetch."""
+    hypersync but ENVIO_API_TOKEN is missing, before any extraction starts."""
     needs = [p.id for p in primes
              if "hypersync" in (getattr(p, "sources", None) or {}).values()]
     if needs and not os.environ.get("ENVIO_API_TOKEN"):
@@ -119,21 +91,7 @@ def _check_envio_token(*primes) -> None:
 
 
 def _live_sources() -> Sources:
-    """Live sources — every field left ``None`` on purpose.
-
-    ``compute_monthly_pnl`` merges each prime's YAML ``sources:`` overrides
-    into the ``None`` fields (``_sources_from_prime``) and then defaults any
-    still-``None`` field to its registry default at each call site
-    (``sources.X or get_X()``). Passing a concrete source here would:
-
-      * short-circuit the orchestrator's Dune upgrades for
-        ``block_resolver`` / ``psm3`` / ``v3_position`` (picked from
-        ``DUNE_API_KEY``), and
-      * silently drop a prime's per-prime backend pilot for that field —
-        ``_sources_from_prime`` only fills ``None`` fields, so a non-``None``
-        ``position_balance`` here would make ``position_balance: hypersync``
-        in a prime YAML a no-op (the exact bug this leaves ``None`` to avoid).
-    """
+    """Resolve configured sources; retain explicit caller/fixture overrides."""
     return Sources()
 
 

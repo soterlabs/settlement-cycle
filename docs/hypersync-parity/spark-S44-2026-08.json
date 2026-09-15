@@ -1,0 +1,41 @@
+{
+  "prime": "spark",
+  "venue": "S44",
+  "month": "2026-08",
+  "start": "2024-11-18",
+  "pins": {
+    "arbitrum/2026-08-31": 500455224
+  },
+  "matched": true,
+  "checks": [
+    {
+      "input": "transfer_timeseries.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 2,
+      "hypersync_rows": 2,
+      "max_abs_difference": {
+        "daily_net": "0",
+        "cum_balance": "0"
+      },
+      "dune_sha256": "b79669068db983beabcd938d5b04fbfea922092ea073a0574f5d9ca41df6b5e0",
+      "hypersync_sha256": "b79669068db983beabcd938d5b04fbfea922092ea073a0574f5d9ca41df6b5e0",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "inflow_by_counterparty.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 2,
+      "hypersync_rows": 2,
+      "max_abs_difference": {
+        "signed_amount": "0"
+      },
+      "dune_sha256": "9edbbe93b8798445f8525087d71ccbe16f7a9309dc5c8049b9995585a84f1e85",
+      "hypersync_sha256": "9edbbe93b8798445f8525087d71ccbe16f7a9309dc5c8049b9995585a84f1e85",
+      "mismatch_count": 0,
+      "mismatches": []
+    }
+  ]
+}

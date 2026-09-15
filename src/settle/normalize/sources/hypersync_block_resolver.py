@@ -1,17 +1,9 @@
 """HyperSync-backed ``IBlockResolver`` — block↔timestamp off HyperSync, not RPC.
 
-Block resolution (block-at-EoD-timestamp, per day per chain) is the single
-largest RPC bucket in a settlement run (~40% of calls — the binary-search
-``block_timestamp`` probes). This resolver serves those probes from HyperSync
-instead of the archive RPC:
-
-  * identical results — the binary search mirrors
-    ``extract.rpc._find_block_at_or_before_rpc`` and HyperSync block timestamps
-    are byte-identical to ``eth_getBlockByNumber`` (verified);
-  * off the archive RPC — frees it for the ``eth_call`` pricing that only it
-    can serve, and is faster/cheaper per probe;
-  * works where the RPC is lagging/pruned — e.g. monad, whose public RPC can't
-    serve historical blocks but whose HyperSync archive is well ahead of head.
+Resolves exact date boundaries from HyperSync timestamps. Timestamp-guided
+probes with a periodic bisection fallback reduce requests on regular chains;
+only observed timestamps determine the result. Archive RPC remains available
+for the contract-state reads needed by valuation.
 
 Drop-in behind the ``IBlockResolver`` protocol (registry name ``hypersync``).
 """

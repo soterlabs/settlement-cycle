@@ -1387,6 +1387,15 @@ def get_psm_usds_timeseries(
         # ``spark_protocol_multichain.psm3_evt_{deposit,withdraw}`` events.
         if psm3_source is not None:
             psm3 = psm3_source
+        elif cfg.event_source == "hypersync":
+            from ..normalize.sources.hypersync_psm3 import HyperSyncPsm3Source
+            psm3 = HyperSyncPsm3Source(
+                position_balance_source=position_balance_source,
+                convert_to_assets_source=convert_to_assets_source,
+                block_resolver=block_resolver,
+            )
+            psm3.preload(chain.value, prime.alm[chain].value,
+                         pin_block=period.pin_blocks[chain], psm3=cfg.address.value)
         else:
             import os as _os
             if _os.environ.get("DUNE_API_KEY"):
@@ -2325,7 +2334,7 @@ def compute_monthly_pnl(
 
     period = Period(period_unpinned.start, period_unpinned.end, pin_blocks=pin_blocks_eom)
 
-    _log.info("step 2: gathering Dune/normalize inputs (debt, balances, SSR)...")
+    _log.info("step 2: gathering normalized inputs (debt, balances, SSR)...")
     # 2. Gather Normalize inputs for sky_revenue + agent_rate (Ethereum-only).
     _log.info("  2a: debt timeseries...")
     debt = get_debt_timeseries(prime, period, source=sources.debt, block_resolver=resolver)
@@ -2477,10 +2486,14 @@ def compute_monthly_pnl(
     # bypassing the standard SoM/EoM formula and the sky-revenue path.
     # Must run before the main loop so skipped venues (e.g. E21 GACLO-1,
     # which has no reliable NAV oracle) are still included in the output.
+    from ..normalize.venue_sources import for_venue
+    _shared_sources = sources
     _cash_dist_balance_src = (
         sources.balance if sources.balance is not None else get_balance_source()
     )
     for venue in prime.venues:
+        sources = for_venue(_shared_sources, venue)
+        _cash_dist_balance_src = sources.balance or get_balance_source()
         if not venue.cash_distributions:
             continue
         _log.info(
@@ -2622,6 +2635,7 @@ def compute_monthly_pnl(
     # sky_rev (see step 4 below).
     _susds_spread_reimbs: dict[str, Decimal] = {}
     for venue in prime.venues:
+        sources = for_venue(_shared_sources, venue)
         if venue.cash_distributions:
             # Already handled by the cash-distribution pass above — skip here
             # to avoid double-counting. A venue with cash_distributions should
@@ -3037,6 +3051,11 @@ def compute_monthly_pnl(
                             dates.add(row["block_date"])
                 boundaries: list[tuple[int, int, object]] = []
                 for d in dates:
+                    # Histories start at prime inception, but only activity
+                    # within this settlement can contribute a boundary. Avoid
+                    # resolving old dates merely to discard their blocks.
+                    if not (period.start <= d <= period.end):
+                        continue
                     pre_eod = _dt.combine(d - _td(days=1), _time.max, tzinfo=_tz.utc)
                     post_eod = _dt.combine(d, _time.max, tzinfo=_tz.utc)
                     pre_block = resolver.block_at_or_before(chain_value, pre_eod)
@@ -3216,10 +3235,16 @@ def compute_monthly_pnl(
                     # Keep this scale next to the divisor to make the
                     # dimensional reasoning obvious for future readers.
                     _USDS_RAW_SCALE = Decimal(10**18)
-                    psm3_src = (
-                        sources.psm3 if sources.psm3 is not None
-                        else get_psm3_source()
-                    )
+                    if sources.psm3 is not None:
+                        psm3_src = sources.psm3
+                    elif venue.event_source == "hypersync":
+                        from ..normalize.sources.hypersync_psm3 import HyperSyncPsm3Source
+                        psm3_src = HyperSyncPsm3Source(
+                            block_resolver=resolver,
+                            convert_to_assets_source=sources.convert_to_assets,
+                        )
+                    else:
+                        psm3_src = get_psm3_source()
 
                     def _l2_susds_value(block: int) -> _Dec:
                         bal = get_position_balance(
@@ -3404,6 +3429,7 @@ def compute_monthly_pnl(
                         balance_source=_susds_balance_src,
                         block_resolver=resolver,
                         price_at_block=_susds_price,
+                        period_only=True,
                     )
                 elif venue.chain in prime.psm:
                     # L2: plain ERC-20 sUSDS — price via PSM3 pps.
@@ -3429,6 +3455,7 @@ def compute_monthly_pnl(
                             balance_source=_susds_balance_src,
                             block_resolver=resolver,
                             price_at_block=_susds_price,
+                            period_only=True,
                         )
                     else:
                         inflow_ts = _erc4626_shares_weighted_inflow(
@@ -3523,6 +3550,7 @@ def compute_monthly_pnl(
                         price_at_block=_cat_b_price,
                         som_block=som_block,
                         balance_at=_balance_at,
+                        period_only=True,
                     )
         elif venue.pricing_category == PricingCategory.PAR_STABLE:
             # Cat A — raw par-stable holdings on the ALM. Source-tagged
@@ -3965,6 +3993,7 @@ def compute_monthly_pnl(
     _venue_order = {v.id: i for i, v in enumerate(prime.venues)}
     venue_inputs.sort(key=lambda vi: _venue_order.get(vi.venue.id, 9999))
 
+    sources = _shared_sources
     _log.info("step 4: computing revenue components...")
     # 4. Compute revenue components.
     if sky_only:

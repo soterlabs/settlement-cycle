@@ -1,0 +1,26 @@
+{
+  "prime": "obex",
+  "month": "2026-08",
+  "matched": true,
+  "comparison": "all MonthlyPnL dataclass fields; absolute numeric tolerance 0.000001",
+  "candidate_dune_calls": 0,
+  "mismatches": [],
+  "headlines": {
+    "sky_revenue": {
+      "dune": "1248716.853281968734508417180",
+      "hypersync": "1248716.853281968734508417180"
+    },
+    "agent_rate": {
+      "dune": "75327.59711808792961647292057",
+      "hypersync": "75327.59711808792961647292057"
+    },
+    "prime_agent_revenue": {
+      "dune": "1631729.31221914408600",
+      "hypersync": "1631729.31221914408600"
+    },
+    "monthly_pnl": {
+      "dune": "458340.056055263281108055741",
+      "hypersync": "458340.056055263281108055741"
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "prime": "spark",
+  "venue": "S55",
+  "month": "2026-08",
+  "start": "2024-11-18",
+  "pins": {
+    "avalanche_c/2026-08-31": 94159927
+  },
+  "matched": true,
+  "checks": [
+    {
+      "input": "transfer_timeseries.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 247,
+      "hypersync_rows": 247,
+      "max_abs_difference": {
+        "daily_net": "1.4901161193847656E-8",
+        "cum_balance": "4.0789E-8"
+      },
+      "dune_sha256": "cd0b07fc29bff109b163ceba2756107f138bfe595a6d5216c204ce9566c45eef",
+      "hypersync_sha256": "f626ef2eabf91eb08232a3874cca4572b40b1bf63d8f8629010622e73beffc94",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "inflow_by_counterparty.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 744,
+      "hypersync_rows": 744,
+      "max_abs_difference": {
+        "signed_amount": "4E-8"
+      },
+      "dune_sha256": "528238980a24962b5c05996a5ad437ba42147cdf8f93a484c3885f888fed827f",
+      "hypersync_sha256": "070a34c465dadee66f159164c6a190a667607c810bd41ee298dbbe335fdbb9a8",
+      "mismatch_count": 0,
+      "mismatches": []
+    }
+  ]
+}

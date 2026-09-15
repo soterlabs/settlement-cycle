@@ -105,6 +105,7 @@ venues:
   # Category C — Aave v3 aTokens (rebasing; balanceOf is nominal)
   # ─────────────────────────────────────────────────────────────
   - id: E1
+    event_source: hypersync
     chain: ethereum
     label: 'Aave Horizon RWA RLUSD (aToken)'
     pricing_category: C
@@ -118,6 +119,7 @@ venues:
       decimals: 18
 
   - id: E2
+    event_source: hypersync
     chain: ethereum
     label: 'Aave Horizon RWA USDC (aToken)'
     pricing_category: C
@@ -131,6 +133,7 @@ venues:
       decimals: 6
 
   - id: E3
+    event_source: hypersync
     chain: ethereum
     label: 'Aave Ethereum RLUSD (aToken)'
     pricing_category: C
@@ -147,6 +150,7 @@ venues:
   # Category B — Morpho ERC-4626 (Steakhouse-curated)
   # ─────────────────────────────────────────────────────────────
   - id: E4
+    event_source: hypersync
     chain: ethereum
     label: 'Grove x Steakhouse USDC (Morpho 4626)'
     pricing_category: B
@@ -160,6 +164,7 @@ venues:
       decimals: 6
 
   - id: E5
+    event_source: hypersync
     chain: ethereum
     label: 'Grove x Steakhouse USDC High Yield (Morpho 4626)'
     pricing_category: B
@@ -173,6 +178,7 @@ venues:
       decimals: 6
 
   - id: E6
+    event_source: hypersync
     chain: ethereum
     label: 'Grove x Steakhouse AUSD (Morpho 4626)'
     pricing_category: B
@@ -192,6 +198,7 @@ venues:
   # bottom of this file (wound-down JTRSY-plume / USDC-raw). E37 is the
   # next free ID after the E30–E36 block.
   - id: E37
+    event_source: hypersync
     chain: ethereum
     label: 'Maple syrupUSDC (ERC-4626)'
     pricing_category: B
@@ -230,6 +237,7 @@ venues:
   # Phase 2.A: Chronicle oracle primary, $1000 pre-deploy fallback.
   # ──────────────────────────────────────────────────────────────
   - id: E7
+    event_source: hypersync
     chain: ethereum
     label: 'Securitize Tokenized AAA CLO Fund (STAC)'
     pricing_category: E
@@ -265,6 +273,7 @@ venues:
       fallback_address: '0xedc6287d3d41b322af600317628d7e226dd3add4'
 
   - id: E8
+    event_source: hypersync
     chain: ethereum
     label: 'Janus Henderson Anemoy AAA CLO (JAAA)'
     pricing_category: E
@@ -297,6 +306,7 @@ venues:
     centrifuge_vault: '0x4880799eE5200fC58DA299e965df644fBf46780B'
 
   - id: E9
+    event_source: hypersync
     chain: ethereum
     label: 'Janus Henderson Anemoy Treasury Fund (JTRSY)'
     pricing_category: E
@@ -324,6 +334,7 @@ venues:
     centrifuge_vault: '0xFE6920eB6C421f1179cA8c8d4170530CDBdfd77A'
 
   - id: E10
+    event_source: hypersync
     chain: ethereum
     label: 'BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I)'
     pricing_category: E
@@ -366,6 +377,7 @@ venues:
   # Category F — LP positions
   # ─────────────────────────────────────────────────────────────
   - id: E11
+    event_source: hypersync
     chain: ethereum
     label: 'Curve AUSD/USDC stableswap LP'
     pricing_category: F
@@ -396,6 +408,7 @@ venues:
         amount: 0
 
   - id: E12
+    event_source: hypersync
     chain: ethereum
     label: 'Uniswap V3 AUSD/USDC pool (NFT positions)'
     pricing_category: F
@@ -417,6 +430,7 @@ venues:
         amount: 25000000
 
   - id: E30
+    event_source: hypersync
     chain: ethereum
     label: 'Uniswap V3 AUSD/USDC pool (NFT positions — alt holder)'
     pricing_category: F
@@ -429,6 +443,7 @@ venues:
     holder_override: '0x94b398acb2fce988871218221ea6a4a2b26cccbc'
 
   - id: E33
+    event_source: hypersync
     chain: monad
     label: 'Uniswap V3 AUSD/USDC pool (Monad, NFT positions)'
     pricing_category: F
@@ -459,6 +474,7 @@ venues:
   # convertToAssets via the existing Phase 1 pipeline.
 
   - id: E13
+    event_source: hypersync
     chain: ethereum
     label: 'RLUSD raw (ALM idle)'
     pricing_category: A
@@ -468,6 +484,7 @@ venues:
       decimals: 18
 
   - id: E14
+    event_source: hypersync
     chain: ethereum
     label: 'AUSD raw (ALM idle)'
     pricing_category: A
@@ -489,6 +506,7 @@ venues:
     display_only: true
 
   - id: E31
+    event_source: hypersync
     chain: ethereum
     label: 'AUSD raw (alt holder idle)'
     pricing_category: A
@@ -499,6 +517,7 @@ venues:
     holder_override: '0x94b398acb2fce988871218221ea6a4a2b26cccbc'
 
   - id: E15
+    event_source: hypersync
     chain: ethereum
     label: 'USDC raw (ALM idle)'
     pricing_category: A
@@ -508,6 +527,7 @@ venues:
       decimals: 6
 
   - id: E32
+    event_source: hypersync
     chain: ethereum
     label: 'USDC raw (alt holder idle)'
     pricing_category: A
@@ -518,6 +538,7 @@ venues:
     holder_override: '0x94b398acb2fce988871218221ea6a4a2b26cccbc'
 
   - id: E16
+    event_source: hypersync
     chain: ethereum
     label: 'DAI raw (ALM idle)'
     pricing_category: A
@@ -527,6 +548,7 @@ venues:
       decimals: 18
 
   - id: E17
+    event_source: hypersync
     chain: ethereum
     label: 'USDS raw / POL (ALM idle — already netted out of utilized)'
     pricing_category: A
@@ -541,6 +563,7 @@ venues:
     cof_excluded: true   # already deducted from utilized via cum_alm_usds
 
   - id: E18
+    event_source: hypersync
     chain: ethereum
     label: 'sUSDS raw / POL (ALM idle — Cat B 4626)'
     pricing_category: B
@@ -563,6 +586,7 @@ venues:
   # and drains when the matching return lands at a paired anchor venue.
   # ─────────────────────────────────────────────────────────────
   - id: E36
+    event_source: hypersync
     chain: ethereum
     label: 'OOB principal via 0xd94f (relay to Monad ALM EOA → AUSD acquisition)'
     pricing_category: EOA
@@ -590,6 +614,7 @@ venues:
   # Base — Phase 2.B (multi-chain rollout)
   # ─────────────────────────────────────────────────────────────
   - id: E19
+    event_source: hypersync
     chain: base
     label: 'Grove x Steakhouse USDC High Yield (Base, Morpho 4626)'
     pricing_category: B
@@ -603,6 +628,7 @@ venues:
       decimals: 6
 
   - id: E23
+    event_source: hypersync
     chain: base
     label: 'Steakhouse Prime Instant (Base, Morpho V2)'
     pricing_category: B
@@ -633,6 +659,7 @@ venues:
   # counting because the cash distribution payments hit Eth USDC (E15),
   # not GACLO-1 itself, so they don't move E21's value_eom.
   - id: E20
+    event_source: hypersync
     chain: avalanche_c
     label: 'Janus Henderson Anemoy AAA CLO (JAAA-avalanche)'
     pricing_category: E
@@ -660,6 +687,7 @@ venues:
       fallback_address: '0x5d44916e0db13ecd661b20df4d645904e57589c8'  # ChronicleVAO_Centrifuge_JAAA_Router_1
 
   - id: E21
+    event_source: hypersync
     chain: avalanche_c
     label: 'Galaxy Arch CLO Token (GACLO-1)'
     pricing_category: E
@@ -698,6 +726,7 @@ venues:
   # Plume — Phase 2.B (multi-chain rollout)
   # ─────────────────────────────────────────────────────────────
   - id: E22
+    event_source: hypersync
     chain: plume
     label: 'Anemoy Tokenized Apollo Diversified Credit Fund (ACRDX)'
     pricing_category: E
@@ -752,6 +781,7 @@ venues:
   # ─────────────────────────────────────────────────────────────
 
   - id: E24
+    event_source: hypersync
     chain: ethereum
     label: 'Steakhouse High Yield PYUSD (Morpho 4626)'
     pricing_category: B
@@ -765,6 +795,7 @@ venues:
       decimals: 6
 
   - id: E26
+    event_source: hypersync
     chain: ethereum
     label: 'PYUSD raw (ALM idle)'
     pricing_category: A
@@ -774,6 +805,7 @@ venues:
       decimals: 6
 
   - id: E27
+    event_source: hypersync
     chain: base
     label: 'USDC raw on Base (ALM idle)'
     pricing_category: A
@@ -804,6 +836,7 @@ venues:
   # ``rpc-mainnet.monadinfra.com`` works as of 2026-05-14. The drpc free
   # public endpoint blocks ``eth_call`` entirely and won't work here.
   - id: E25
+    event_source: hypersync
     chain: monad
     label: 'Grove x Steakhouse High Yield AUSD (Monad, Morpho 4626)'
     pricing_category: B
@@ -821,6 +854,7 @@ venues:
     display_only: true
 
   - id: E34
+    event_source: hypersync
     chain: monad
     label: 'AUSD raw (Monad, alt holder idle)'
     pricing_category: A
@@ -833,6 +867,7 @@ venues:
     display_only: true
 
   - id: E35
+    event_source: hypersync
     chain: monad
     label: 'USDC raw (Monad, alt holder idle)'
     pricing_category: A
@@ -889,6 +924,7 @@ venues:
   # Raw USDS at the Diamond PAU ALMProxy — idle between draw and Basin
   # deploy ($0 at 2026-07-31 EoD; draws deploy in the same tx so far).
   - id: E40
+    event_source: hypersync
     chain: ethereum
     label: 'USDS raw (Diamond PAU ALM idle)'
     pricing_category: A
@@ -905,6 +941,7 @@ venues:
   # JTRSY venue at the PAU ALM (add a Cat E venue with the E9 Chronicle
   # oracle when that happens).
   - id: E41
+    event_source: hypersync
     chain: ethereum
     label: 'JTRSY Basin escrow — USDS pending subscription (Diamond PAU)'
     pricing_category: A
@@ -1107,3 +1144,9 @@ external_alm_sources:
     # permissionlessly by third-party keepers (tx sender ≠ any Grove
     # address), so rewards can land without any Grove-signed transaction.
     - '0x3ef3d8ba38ebe18db133cec108f4d14ce00dd9ae'
+
+# Debt source verified against all Dune daily frob/grab totals through Aug 2026.
+sources:
+  block_resolver: hypersync
+  debt: hypersync
+  balance: hypersync
