@@ -1029,6 +1029,7 @@ venues:
       decimals: 18
 
   - id: S44
+    event_source: hypersync
     chain: arbitrum
     label: 'USDS raw (Arbitrum — POL)'
     pricing_category: A
