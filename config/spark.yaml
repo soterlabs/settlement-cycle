@@ -308,6 +308,7 @@ venues:
       decimals: 6
 
   - id: S12
+    event_source: hypersync
     chain: ethereum
     label: 'Spark DAI Vault (Morpho)'
     pricing_category: B
