@@ -415,6 +415,7 @@ venues:
       decimals: 18
 
   - id: S17
+    event_source: hypersync
     chain: ethereum
     label: 'Fluid Savings USDS (fsUSDS)'
     pricing_category: B

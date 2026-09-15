@@ -1,0 +1,57 @@
+{
+  "prime": "spark",
+  "venue": "S17",
+  "month": "2026-08",
+  "start": "2024-11-18",
+  "pins": {
+    "ethereum/2026-08-31": 25878704
+  },
+  "matched": true,
+  "checks": [
+    {
+      "input": "transfer_timeseries.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 5,
+      "hypersync_rows": 5,
+      "max_abs_difference": {
+        "daily_net": "1.850422436E-9",
+        "cum_balance": "1.044020979E-9"
+      },
+      "dune_sha256": "0ce431c989a0b439ef43e5c72e731d3aa5830b839ee0babcc1f9c31cb80ddd9d",
+      "hypersync_sha256": "9133b4aaa1c0f46742c693cd973fb22f26c6b089b48d78ce73815223497a6fa5",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "mint:venue_inflow.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 2,
+      "hypersync_rows": 2,
+      "max_abs_difference": {
+        "daily_inflow": "1.850422436E-9",
+        "cum_inflow": "5.44020979E-10"
+      },
+      "dune_sha256": "9b33a2b407171ab792b2e14b241681888d20ae0a679e3d43dd38259e959df4c9",
+      "hypersync_sha256": "8522774c4eaaf89eb99a4525a81a209bb7e6a5d590cd5243108416af7a730569",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "burn:venue_inflow.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 3,
+      "hypersync_rows": 3,
+      "max_abs_difference": {
+        "daily_inflow": "4.2537891E-11",
+        "cum_inflow": "5.57462109E-10"
+      },
+      "dune_sha256": "90b9415d25c89550416fab2d3e6b9c73ead2d00f59ff87d83e0b6d81640b19cb",
+      "hypersync_sha256": "f1ac230858c1b2177c44b10b86fa10410bac1ceadffd4b9dc0e03653b5c558ee",
+      "mismatch_count": 0,
+      "mismatches": []
+    }
+  ]
+}
