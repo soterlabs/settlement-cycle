@@ -769,6 +769,7 @@ venues:
   # from utilized via the Cat A inflow accounting (external_alm_sources).
   # ─────────────────────────────────────────────────────────────
   - id: S26
+    event_source: hypersync
     chain: ethereum
     label: 'USDC raw (ALM idle)'
     pricing_category: A
