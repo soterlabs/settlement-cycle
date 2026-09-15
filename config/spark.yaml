@@ -840,6 +840,7 @@ venues:
       decimals: 18
 
   - id: S30
+    event_source: hypersync
     chain: ethereum
     label: 'USDe raw (ALM idle)'
     pricing_category: A
