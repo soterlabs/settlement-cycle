@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
@@ -39,6 +40,10 @@ DEFAULT_TIMEOUT = 30
 
 class RPCError(RuntimeError):
     """Raised on JSON-RPC error responses."""
+
+
+class EVMRevert(RPCError):
+    """A structured execution-revert response, distinct from transport errors."""
 
 
 # Explicit chain → env-var mapping. Avoids the silent breakage that would happen
@@ -141,6 +146,10 @@ def _post(url: str, method: str, params: list[Any]) -> Any:
                     return payload["result"]
                 err = payload["error"]
                 if not _is_transient_rpc_error(err):
+                    if (method == "eth_call" and isinstance(err, dict)
+                            and err.get("code") in (3, -32000)
+                            and str(err.get("message", "")).lower().startswith("execution reverted")):
+                        raise EVMRevert(f"{method} error: {err}")
                     raise RPCError(f"{method} error: {err}")
                 last_exc = RPCError(f"{method} transient error: {err}")
         except (requests.Timeout, requests.ConnectionError) as e:
@@ -193,17 +202,35 @@ from ._abi import pad_address as _pad_address, pad_uint as _pad_uint  # noqa: E4
 _ETH_CALL_GAS_CAP_HEX = "0x989680"  # 10,000,000
 
 
-@cached(source_id="rpc.eth_call")
+@dataclass(frozen=True)
+class _ContractRevert:
+    """A deterministic EVM revert at a finalized block, never a zero value."""
+
+
 def eth_call(chain: Chain, contract: Address, data: str, block: int) -> str:
+    result = _eth_call_response(chain, contract, data, block)
+    if isinstance(result, _ContractRevert):
+        raise RPCError("eth_call execution reverted (finalized cached response)")
+    return result
+
+
+@cached(source_id="rpc.eth_call")
+def _eth_call_response(chain: Chain, contract: Address, data: str, block: int) -> str | _ContractRevert:
     """Raw eth_call. `data` = 0x-prefixed hex selector + abi-encoded args."""
-    result = _post(
-        rpc_url(chain),
-        "eth_call",
-        [
-            {"to": contract.hex, "data": data, "gas": _ETH_CALL_GAS_CAP_HEX},
-            hex(block),
-        ],
-    )
+    try:
+        result = _post(
+            rpc_url(chain),
+            "eth_call",
+            [
+                {"to": contract.hex, "data": data, "gas": _ETH_CALL_GAS_CAP_HEX},
+                hex(block),
+            ],
+        )
+    except EVMRevert:
+        from .input_cache import current_scope
+        if current_scope() is not None:
+            return _ContractRevert()
+        raise
     from .input_cache import current_scope
 
     if current_scope() is not None:
