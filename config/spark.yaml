@@ -934,6 +934,7 @@ venues:
   # omission.
 
   - id: S34
+    event_source: hypersync
     chain: base
     label: 'Spark USDC Vault (Morpho, Base)'
     pricing_category: B
