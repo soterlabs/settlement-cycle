@@ -1077,6 +1077,7 @@ venues:
     cof_excluded: true   # already deducted from utilized via cum_alm_usds
 
   - id: S49
+    event_source: hypersync
     chain: optimism
     label: 'USDC raw (Optimism — ALM idle)'
     pricing_category: A
