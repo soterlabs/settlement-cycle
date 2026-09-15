@@ -1147,6 +1147,7 @@ venues:
       decimals: 6
 
   - id: S55
+    event_source: hypersync
     chain: avalanche_c
     label: 'USDC raw (Avalanche-C — ALM idle)'
     pricing_category: A
