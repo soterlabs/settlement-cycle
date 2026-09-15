@@ -15,9 +15,10 @@ import os
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from contextlib import ExitStack
-from datetime import date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from unittest.mock import patch
@@ -56,14 +57,23 @@ class ProviderAudit:
     def __init__(self):
         self.calls = []
         self.dune_attempts = 0
+        self.cache = {"postgres_hits": 0, "postgres_misses": 0}
+        self.lock = threading.Lock()
 
     def __enter__(self):
-        from settle.extract import dune
+        from settle.extract import dune, postgres_store
         from settle.normalize.sources.hypersync_block_resolver import HyperSyncBlockResolver
         self.stack = ExitStack()
+        original_get = postgres_store.get
         original_send = requests.Session.send
         original_validate = HyperSyncBlockResolver.validate_finalized_boundary
         audit = self
+
+        def get(*args, **kwargs):
+            result = original_get(*args, **kwargs)
+            with audit.lock:
+                audit.cache["postgres_misses" if result is postgres_store.MISS else "postgres_hits"] += 1
+            return result
 
         def certify(*args, **kwargs):
             token = _certifying.set(True)
@@ -91,12 +101,20 @@ class ProviderAudit:
                 category = "boundary"
             event = {"provider": "hypersync" if hs else "rpc" if "method" in body else "other",
                      "category": category, "request": digest(body), "bytes": 0,
-                     "method": body.get("method"), "status": None}
+                     "method": body.get("method"), "status": None,
+                     "chain": host.split(".")[0] if hs else None,
+                     "log_range": [body.get("from_block"), body.get("to_block")]
+                         if hs and body.get("logs") else None}
             audit.calls.append(event)
-            response = original_send(session, request, **kwargs)
-            event.update(bytes=len(response.content), status=response.status_code)
-            return response
+            started = time.monotonic()
+            try:
+                response = original_send(session, request, **kwargs)
+                event.update(bytes=len(response.content), status=response.status_code)
+                return response
+            finally:
+                event["seconds"] = time.monotonic() - started
 
+        self.stack.enter_context(patch.object(postgres_store, "get", get))
         self.stack.enter_context(patch.object(requests.Session, "send", send))
         self.stack.enter_context(patch.object(HyperSyncBlockResolver, "validate_finalized_boundary", certify))
         original = dune.execute_query
@@ -115,13 +133,18 @@ def calculate(prime, cutoff):
     from settle.compute import compute_monthly_pnl
     from settle.domain.config import load_prime_by_id
     from settle.domain.period import Month
+
+    from .metrics import ExtractionTimer
     started = time.monotonic()
-    with ProviderAudit() as audit:
+    with ExtractionTimer() as timer, ProviderAudit() as audit:
         result = compute_monthly_pnl(load_prime_by_id(prime), Month(cutoff.year, cutoff.month), as_of=cutoff)
     if audit.dune_attempts:
         raise RuntimeError(f"Calculation attempted {audit.dune_attempts} Dune calls")
+    elapsed = time.monotonic() - started
     return {"prime": prime, "cutoff": cutoff.isoformat(), "result": canonical(result),
-            "calls": audit.calls, "elapsed_seconds": time.monotonic() - started,
+            "cache": audit.cache, "extraction_seconds": timer.seconds,
+            "calculation_seconds": max(0, elapsed - timer.seconds),
+            "calls": audit.calls, "elapsed_seconds": elapsed,
             "dune_attempts": audit.dune_attempts}
 
 
@@ -148,6 +171,25 @@ def compare(first, second):
                       and not first["dune_attempts"] and not second["dune_attempts"]}
 
 
+def summarize(report):
+    calls = report["calls"]
+    return {"cutoff": report["cutoff"], "requests": len(calls),
+            "requests_by_provider": {p: sum(c["provider"] == p for c in calls)
+                                     for p in ("hypersync", "rpc", "other")},
+            "response_bytes": sum(c["bytes"] for c in calls),
+            "historical_requests": sum(c["category"] == "historical" for c in calls),
+            "elapsed_seconds": report["elapsed_seconds"],
+            "extraction_seconds": report["extraction_seconds"],
+            "calculation_seconds": report["calculation_seconds"], "cache": report["cache"]}
+
+
+def validate_window(cutoff, advance=False, today=None):
+    today = today or datetime.now(UTC).date()
+    last = cutoff + timedelta(days=1) if advance else cutoff
+    if cutoff < today - timedelta(days=90) or last >= today:
+        raise ValueError("cutoffs must be within the last 90 completed UTC days")
+
+
 def main():
     from dotenv import load_dotenv
     load_dotenv()
@@ -155,8 +197,13 @@ def main():
     parser.add_argument("--as-of", type=date.fromisoformat, required=True)
     parser.add_argument("--prime", choices=PRIMES, action="append")
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--advance", action="store_true", help="Also measure the next completed UTC day")
     parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
+    try:
+        validate_window(args.as_of, args.advance)
+    except ValueError as exc:
+        parser.error(str(exc))
     if not os.environ.get("DATABASE_URL"):
         parser.error("DATABASE_URL is required")
     if args.worker:
@@ -169,7 +216,12 @@ def main():
     for prime in args.prime or PRIMES:
         first = worker(prime, args.as_of, args.output / f"{prime}-first.json")
         second = worker(prime, args.as_of, args.output / f"{prime}-second.json")
-        reports.append(compare(first, second))
+        report = compare(first, second)
+        report["measurements"] = {"first": summarize(first), "same_date": summarize(second)}
+        if args.advance and report["passed"]:
+            advanced = worker(prime, args.as_of + timedelta(days=1), args.output / f"{prime}-next.json")
+            report["measurements"]["next_day"] = summarize(advanced)
+        reports.append(report)
         (args.output / "verification.json").write_text(json.dumps(reports, indent=2))
     if not all(r["passed"] for r in reports):
         raise SystemExit("Same-date reuse verification failed; inspect verification.json")

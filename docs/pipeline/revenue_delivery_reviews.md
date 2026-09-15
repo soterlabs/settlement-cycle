@@ -17,3 +17,16 @@
   reviewed implementation. Forty targeted checks pass, including the six-prime
   real-Postgres matrix. Live acceptance is recorded separately, not inferred
   from the deterministic zero-position transport.
+
+## Step 4
+
+- Round 1: reviewed cutoff and month-boundary behavior. Added preflight validation
+  so future/incomplete days and dates outside the last 90 completed UTC days
+  fail before any worker or provider request starts.
+- Round 2: reviewed measurement validity and failure paths. Fixed advancement
+  running despite a failed same-date gate; the command now records the failure
+  and does not present next-day measurements built on a failed reuse check.
+- Round 3: checked nested/parallel timing, profile restoration, retry counting,
+  cache-counter scope and response-byte semantics. No additional P1/P2 findings.
+  Metrics explicitly distinguish instrumented wall time from provider billing
+  units and do not claim synthetic fixtures are live budget measurements.

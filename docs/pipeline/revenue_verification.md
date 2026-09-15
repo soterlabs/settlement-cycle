@@ -28,3 +28,21 @@ or coverage of every nonzero venue branch. Live reports are separate evidence.
 Daily output backfills are limited to the last 90 completed UTC days. Extractors
 may need earlier raw events to reconstruct opening state; those are input seeds,
 not additional daily published results.
+
+## One-day advancement (step 4)
+
+Add `--advance` to measure the following completed UTC day after same-date reuse.
+The JSON summary reports HTTP attempts by provider, uncompressed response bytes,
+Postgres snapshot hits/misses, total wall time, extraction wall time and remaining
+calculation/orchestration time. Extraction means calls in `settle.extract` and
+`settle.normalize.sources`, including cache access and source decoding. Nested
+calls and parallel intervals count once. Profiling adds overhead; these are
+instrumented measurements, not an uninstrumented latency SLA. Postgres counters
+do not include local-file or event-range hits. Response bytes exclude HTTP/TLS
+framing and are not equivalent to provider billing units.
+
+Use the per-prime `next_day` request counts and the provider's current billing
+weights to size a plan. No thirtyfold assumption or unmeasured plan recommendation
+is built in. The deterministic six-prime Postgres matrix checks that advancing
+one day only requests event ranges beyond the previous cutoff. Real provider
+measurements remain separate evidence; generated reports stay outside Git.
