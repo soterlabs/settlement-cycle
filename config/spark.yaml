@@ -474,6 +474,7 @@ venues:
       fallback_address: '0xe980a33efa3eddaa689ecbdce4b2278d4db94471'  # ChronicleVAO_Centrifuge_JTRSY_Router_1
 
   - id: S21
+    event_source: hypersync
     chain: ethereum
     label: 'Superstate Short Duration US Government Securities Fund (USTB)'
     pricing_category: E
