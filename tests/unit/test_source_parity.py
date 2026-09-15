@@ -56,3 +56,13 @@ def test_full_settlement_comparison_detects_hidden_component_difference():
     assert [item["path"] for item in differences(baseline, changed)] == [
         "result.venues[0].revenue", "result.venues[1].revenue",
     ]
+
+
+def test_full_settlement_audit_strings_use_the_same_numeric_gate():
+    from scripts.compare_hypersync_settlement import differences
+
+    assert not list(differences({"amount": "0.0"}, {"amount": "0"}))
+    assert not list(differences("372189.372352037189", "372189.372352037129"))
+    assert list(differences("372189.372352", "372189.372354"))
+    assert list(differences("O1", "O2"))
+    assert list(differences("NaN", "NaN"))

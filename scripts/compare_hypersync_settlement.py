@@ -10,7 +10,7 @@ import dataclasses
 import json
 import sys
 from contextlib import ExitStack
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from unittest.mock import patch
 
@@ -36,12 +36,23 @@ def differences(left, right, path="result"):
             yield {"path": path, "reason": "different lengths"}
         for i, (a, b) in enumerate(zip(left, right, strict=False)):
             yield from differences(a, b, f"{path}[{i}]")
-    elif isinstance(left, (Decimal, float)) and isinstance(right, (Decimal, float)):
-        delta = abs(Decimal(str(left)) - Decimal(str(right)))
-        if delta > Decimal("0.000001"):
-            yield {"path": path, "dune": str(left), "hypersync": str(right), "difference": str(delta)}
-    elif left != right:
-        yield {"path": path, "dune": str(left), "hypersync": str(right)}
+    else:
+        # The daily audit breakdown serializes amounts as strings already,
+        # while headline fields remain Decimal. Apply the same numeric gate
+        # to both representations; nonnumeric labels still compare exactly.
+        if not isinstance(left, bool) and not isinstance(right, bool):
+            try:
+                a, b = Decimal(str(left)), Decimal(str(right))
+            except InvalidOperation:
+                pass
+            else:
+                if not a.is_finite() or not b.is_finite():
+                    yield {"path": path, "reason": "nonfinite numeric value"}
+                elif abs(a - b) > Decimal("0.000001"):
+                    yield {"path": path, "dune": str(left), "hypersync": str(right), "difference": str(abs(a - b))}
+                return
+        if left != right:
+            yield {"path": path, "dune": str(left), "hypersync": str(right)}
 
 
 def compare(prime_id, month_label):
