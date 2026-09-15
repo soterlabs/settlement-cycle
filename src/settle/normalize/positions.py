@@ -2446,7 +2446,7 @@ def _vault_priced_redemptions_by_date(
     """
     from datetime import datetime, time, timedelta, timezone
 
-    from ..extract.hypersync import query_logs
+    from ..extract.hypersync_store import fetch_logs
 
     _TRANSFER = (
         "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
@@ -2460,12 +2460,12 @@ def _vault_priced_redemptions_by_date(
     )
     eom = period.pin_blocks[venue.chain]
     padded = "0x" + holder.hex[2:].rjust(64, "0")
-    rows = query_logs(
+    rows = fetch_logs(
         venue.chain.value,
         [{"address": [venue.token.address.hex], "topics": [[_TRANSFER], [padded], []]}],
         som + 1, eom,
         log_fields=["block_number", "log_index", "data", "transaction_hash"],
-    ).rows
+    )
     out: dict = {}
     for row in rows:
         raw = int(row.data or "0x0", 16)

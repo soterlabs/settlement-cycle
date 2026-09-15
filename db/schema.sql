@@ -73,6 +73,17 @@ CREATE TABLE IF NOT EXISTS hypersync_coverage (
     updated_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
+-- Append-only interval claims: disjoint backfills are reusable without
+-- claiming the unfetched gaps. Readers merge overlaps/adjacency in memory;
+-- existing hypersync_coverage rows remain valid and are read as well.
+CREATE TABLE IF NOT EXISTS hypersync_ranges (
+    stream TEXT NOT NULL,
+    covered_from BIGINT NOT NULL,
+    covered_to BIGINT NOT NULL,
+    PRIMARY KEY (stream, covered_from, covered_to),
+    CHECK (covered_from <= covered_to)
+);
+
 -- ---------------------------------------------------------------------------
 -- The daily pipeline's tables (runs, sbe_kicks, sky_burns, sbe_param_changes)
 -- live in ``db/schema_daily.sql``. They are deliberately NOT here: the store

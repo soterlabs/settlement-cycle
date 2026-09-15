@@ -87,3 +87,12 @@ Scheduling, result persistence and API publication follow those requirements.
   reject active monthly-only GAR with a clear error.
 - Existing offline tests and targeted regressions pass. Record separately any
   live comparisons actually run; do not claim historical parity from mocks.
+
+## Step 2 implementation
+
+The [input-cache audit](pipeline/input_cache_audit.md) inventories the configured
+prime-revenue extraction paths, coverage/finality contracts, correction
+revisions, worker settings and validation. Daily workers require Postgres via
+`SETTLE_REQUIRE_POSTGRES=1`; finalized raw inputs and complete event intervals
+persist across fresh worker processes. Step 3's all-prime provider-call
+acceptance checks and step 4's operational measurements remain separate work.

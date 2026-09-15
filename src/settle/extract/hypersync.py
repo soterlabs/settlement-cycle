@@ -143,12 +143,16 @@ def query_logs(
     result = QueryResult()
     cursor = from_block
     end_exclusive = to_block + 1  # HyperSync to_block is exclusive
+    page_heights: list[int] = []
     for _ in range(_MAX_PAGES):
         if cursor >= end_exclusive:
             break
         body = {**base, "from_block": cursor, "to_block": end_exclusive}
         page = _execute(chain, body, headers, post)
-        result.archive_height = max(result.archive_height, to_int(page.get("archive_height", 0) or 0))
+        page_heights.append(to_int(page.get("archive_height", 0) or 0))
+        # Persistence must use the head observed when the oldest page was
+        # read, not a later page's advanced head. Missing metadata is unsafe.
+        result.archive_height = min(page_heights)
         for group in page.get("data") or []:
             ts_by_block = {
                 to_int(b["number"]): to_int(b["timestamp"])
@@ -189,10 +193,9 @@ def query_logs(
     # pin_block or FAIL". When the archive has not indexed the requested
     # range yet (archive lag, or a pin beyond the archive head), pagination
     # stops advancing at the archive height; returning the partial rows as
-    # if complete silently understates every downstream cum series. Only
-    # enforceable when the server reports archive_height (real HyperSync
-    # always does; minimal test doubles may not).
-    if cursor < end_exclusive and result.archive_height:
+    # if complete silently understates every downstream cum series. Require
+    # the completion cursor even when archive-height metadata is absent.
+    if cursor < end_exclusive:
         raise HyperSyncError(
             f"HyperSync {chain} returned an incomplete range: pagination "
             f"stopped at block {cursor} < requested to_block {to_block} "
