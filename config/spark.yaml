@@ -401,6 +401,7 @@ venues:
       - '0x86ebdf902d800f2a82038290b6dbb2a5ee29eb8c'   # public WithdrawalManagerQueue (kept for safety)
 
   - id: S16
+    event_source: hypersync
     chain: ethereum
     label: 'Ethena Staked USDe (sUSDe)'
     pricing_category: B
