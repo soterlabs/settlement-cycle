@@ -852,6 +852,7 @@ venues:
       decimals: 18
 
   - id: S31
+    event_source: hypersync
     chain: ethereum
     label: 'USDS raw / POL (ALM idle — already netted out of utilized)'
     pricing_category: A
