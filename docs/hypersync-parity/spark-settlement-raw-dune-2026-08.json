@@ -1,0 +1,38 @@
+{
+  "prime": "spark",
+  "month": "2026-08",
+  "matched": true,
+  "dune_numeric_mode": "raw integer debt and shared idle balances",
+  "comparison": "all MonthlyPnL dataclass fields; absolute numeric tolerance 0.000001",
+  "candidate_dune_calls": 0,
+  "mismatches": [],
+  "psm_oracle": "Dune lifetime share histories and daily reserve running sums",
+  "psm_pins": {
+    "base": 50715726,
+    "arbitrum": 500455224,
+    "optimism": 156311011,
+    "unichain": 57472440
+  },
+  "output_sha256": {
+    "dune": "eb0e7f092f0fb6e56c50567e503b0bd0d0bcc87383f27b404225fae11012a75b",
+    "hypersync": "2df504a5ae4e8563c9bd231121026737610f7a30cdea48ece8c7822874c2f233"
+  },
+  "headlines": {
+    "sky_revenue": {
+      "dune": "6251365.855888711131177270687",
+      "hypersync": "6251365.855888711131177270687"
+    },
+    "agent_rate": {
+      "dune": "145038.8086323723689639923214",
+      "hypersync": "145038.8086323723689639923214"
+    },
+    "prime_agent_revenue": {
+      "dune": "-49050645.29922387888179875474",
+      "hypersync": "-49050645.29922398108533091823"
+    },
+    "monthly_pnl": {
+      "dune": "-55156972.34648021764401203311",
+      "hypersync": "-55156972.34648031984754419660"
+    }
+  }
+}
