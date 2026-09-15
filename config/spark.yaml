@@ -217,6 +217,7 @@ venues:
       decimals: 6
 
   - id: S9
+    event_source: hypersync
     chain: ethereum
     label: 'Aave Ethereum USDT (aToken)'
     pricing_category: C
