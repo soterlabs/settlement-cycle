@@ -339,6 +339,7 @@ venues:
   # Ethereum — other 4626 vaults (Maple, Ethena, Fluid, Arkis)
   # ─────────────────────────────────────────────────────────────
   - id: S14
+    event_source: hypersync
     chain: ethereum
     label: 'Maple syrupUSDC (ERC-4626)'
     pricing_category: B
