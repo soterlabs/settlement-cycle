@@ -1,0 +1,117 @@
+{
+  "prime": "spark",
+  "venue": "S15",
+  "month": "2026-08",
+  "start": "2024-11-18",
+  "pins": {
+    "ethereum/2026-08-31": 25878704
+  },
+  "matched": true,
+  "checks": [
+    {
+      "input": "transfer_timeseries.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 78,
+      "hypersync_rows": 78,
+      "max_abs_difference": {
+        "daily_net": "5E-8",
+        "cum_balance": "8E-8"
+      },
+      "dune_sha256": "ac60f336f805431e6c58418e50cf7fa5d9e42041a3c87c66494b66ca010e839b",
+      "hypersync_sha256": "16b2b72e52abe1fcc58ed5e27c66201ac4f7e4350d8267948d20e42a006061ee",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "mint:venue_inflow.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 13,
+      "hypersync_rows": 13,
+      "max_abs_difference": {
+        "daily_inflow": "5E-8",
+        "cum_inflow": "1E-7"
+      },
+      "dune_sha256": "c4bbbf0ff10df4b4f1f01abbbd07b67124526ca9014a1baea5fe9d20d82ee70c",
+      "hypersync_sha256": "8fc4fd7dbe57bde4f8b5c9842090a518fb4bac095a53fa9d1151ccf73375df8d",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "burn:venue_inflow.sql",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 0,
+      "hypersync_rows": 0,
+      "max_abs_difference": {
+        "daily_inflow": "0",
+        "cum_inflow": "0"
+      },
+      "dune_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "hypersync_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "queue-out:0cda32e08b48bfddbc7ee96b44b09cf286f9e21a",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 75,
+      "hypersync_rows": 75,
+      "max_abs_difference": {
+        "daily_inflow": "4E-11",
+        "cum_inflow": "6E-8"
+      },
+      "dune_sha256": "50f50e051cd5d64906e0f6da848328752d3bd8e3a3573b8ce7a68f6bb562a49c",
+      "hypersync_sha256": "e02fb2b18e88f782fa89be20197317ab1769603c384fbd423d30572dd8cf3802",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "queue-refund:0cda32e08b48bfddbc7ee96b44b09cf286f9e21a",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 0,
+      "hypersync_rows": 0,
+      "max_abs_difference": {
+        "daily_inflow": "0",
+        "cum_inflow": "0"
+      },
+      "dune_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "hypersync_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "queue-out:86ebdf902d800f2a82038290b6dbb2a5ee29eb8c",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 0,
+      "hypersync_rows": 0,
+      "max_abs_difference": {
+        "daily_inflow": "0",
+        "cum_inflow": "0"
+      },
+      "dune_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "hypersync_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "input": "queue-refund:86ebdf902d800f2a82038290b6dbb2a5ee29eb8c",
+      "matched": true,
+      "tolerance": "0.000001",
+      "dune_rows": 6,
+      "hypersync_rows": 6,
+      "max_abs_difference": {
+        "daily_inflow": "2E-11",
+        "cum_inflow": "0"
+      },
+      "dune_sha256": "62383cb78bfd330cec3e8af7194554792d68842790f06e96cf00771e51017c5d",
+      "hypersync_sha256": "09b5ecab57da71cfe55a9f28defe436cdda0c07b53cb429053a1296a94b509d2",
+      "mismatch_count": 0,
+      "mismatches": []
+    }
+  ]
+}

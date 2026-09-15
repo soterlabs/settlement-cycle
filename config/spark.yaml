@@ -379,6 +379,7 @@ venues:
       - '0x491edfb0b8b608044e227225c715981a30f3a44e'   # Grove Eth ALM (inter-prime transfer 2026-07-20) (kept for safety)
 
   - id: S15
+    event_source: hypersync
     chain: ethereum
     label: 'Maple syrupUSDT (ERC-4626)'
     pricing_category: B
