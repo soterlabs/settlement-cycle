@@ -234,6 +234,7 @@ venues:
   # Ethereum — Morpho ERC-4626 vaults (Cat B)
   # ─────────────────────────────────────────────────────────────
   - id: S10
+    event_source: hypersync
     chain: ethereum
     label: 'Spark Blue Chip USDC Vault (Morpho)'
     pricing_category: B
