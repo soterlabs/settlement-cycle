@@ -892,6 +892,7 @@ venues:
   #
   # See docs/METHODOLOGY.md §1 special-case and docs/RULES.md Rule 5.
   - id: S32
+    event_source: hypersync
     chain: ethereum
     label: 'sUSDS raw / POL (ALM — Cat B 4626, demand-side spread)'
     pricing_category: B
