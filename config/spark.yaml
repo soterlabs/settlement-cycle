@@ -451,6 +451,7 @@ venues:
     min_transfer_amount_usd: 1000000
 
   - id: S20
+    event_source: hypersync
     chain: ethereum
     label: 'Janus Henderson Anemoy Treasury Fund (JTRSY)'
     pricing_category: E
