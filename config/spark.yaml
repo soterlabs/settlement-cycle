@@ -504,6 +504,7 @@ venues:
     # Currently $0 held. Same NAV-source TODO as USTB.
 
   - id: S23
+    event_source: hypersync
     chain: ethereum
     label: 'Anchorage tri-party loan escrow (USDC pass-through, ~$0 balance)'
     pricing_category: E
