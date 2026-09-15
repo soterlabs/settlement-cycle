@@ -986,6 +986,7 @@ venues:
   # S40 PSM3-Arbitrum: see comment above S34. Tracked via addresses.arbitrum.psm.
 
   - id: S41
+    event_source: hypersync
     chain: arbitrum
     label: 'Aave Arbitrum USDCn (aArbUSDCn)'
     pricing_category: C
