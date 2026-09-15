@@ -1092,6 +1092,7 @@ venues:
   # S50 PSM3-Unichain: see comment above S34. Tracked via addresses.unichain.psm.
 
   - id: S51
+    event_source: hypersync
     chain: unichain
     label: 'Savings USDS / sUSDS proxy (Unichain — POL)'
     pricing_category: B
