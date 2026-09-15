@@ -2334,7 +2334,7 @@ def compute_monthly_pnl(
 
     period = Period(period_unpinned.start, period_unpinned.end, pin_blocks=pin_blocks_eom)
 
-    _log.info("step 2: gathering Dune/normalize inputs (debt, balances, SSR)...")
+    _log.info("step 2: gathering normalized inputs (debt, balances, SSR)...")
     # 2. Gather Normalize inputs for sky_revenue + agent_rate (Ethereum-only).
     _log.info("  2a: debt timeseries...")
     debt = get_debt_timeseries(prime, period, source=sources.debt, block_resolver=resolver)

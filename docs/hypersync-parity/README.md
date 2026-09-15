@@ -2,6 +2,12 @@
 
 The JSON files record comparisons against Dune at explicit historical block pins. Venue cutovers are committed individually with their evidence. Shared SSR, debt, idle balances, block resolution and each PSM3 contract have separate evidence.
 
+All 96 active event venues have passed: Grove 37, Spark 56, Obex 1 and Osero 2. Spark's four PSM3 contracts also have independent passing reports. The six Savings V2 position-only venues and two explicitly skipped Grove venues retain their existing behavior.
+
+Fresh Grove, Spark and Obex settlements use `scripts/run_live_2026.py --primes grove,spark,obex --months 2026-08` with HyperSync and archival RPC credentials; Dune credentials are no longer required by that runner. Osero, Keel and Skybase retain their dedicated runners. The comparison commands below do not write settlement artifacts; the live runners do.
+
+Complete August Obex and Osero calculations also passed with zero Dune calls in the candidate. Grove and Spark evidence covers the component inputs described below, rather than a complete output-level comparison.
+
 ## Reproducing comparisons
 
 Run from the repository root with the existing virtual environment and provider credentials:
