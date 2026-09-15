@@ -39,11 +39,33 @@ revisions to earlier days; it is not automatically that day's earned revenue.
    version, and input revision. Corrections produce new result revisions;
    previously published estimates remain auditable. Persist daily results in
    the database rather than committing daily artifacts to Git.
+6. **Schedule the daily revenue pipeline.** Run once per day at a configured
+   UTC time, calculating each prime through the previous completed UTC day
+   (`as_of`), with the settlement month derived from that cutoff. This is a
+   daily pipeline, not an hourly or intraday refresh. Require finalized inputs
+   and Postgres persistence; retry archive lag or transient failures without
+   moving the cutoff or publishing incomplete results. Make retries idempotent,
+   prevent overlapping runs for the same prime/cutoff/revision, support missed-day
+   catch-up and explicit backfills, and record per-prime status, errors and
+   completion times. Alert on failures or missed daily completion. Verify retry,
+   overlap, restart, catch-up and month-boundary behavior before enabling cron.
+7. **Publish daily revenue through a read API.** Serve successfully persisted
+   results from step 5, with endpoints for each prime's latest available cutoff,
+   a requested cutoff, and historical revisions. Return the cutoff, computation
+   time, block pins, code/configuration/input revisions, provisional status and
+   unsupported or excluded inputs alongside the revenue fields. Expose freshness
+   so consumers can distinguish a current result from an older successful result
+   retained after a failed daily run. Publish each result atomically; failed or
+   partial writes must never become the latest result. API reads must not trigger
+   calculations or upstream provider calls. Verify revision selection, missing
+   dates, stale results and failed-run behavior. The API follows the daily
+   pipeline's publication cadence; it does not introduce hourly computation.
 
 Input reuse is an acceptance requirement for the eventual daily pipeline.
-Step 1 establishes the accounting API; steps 2–5 are subsequent changes, not
-claims that cache coverage or daily operating costs have already been verified.
-Scheduling, result persistence and API publication follow those requirements.
+Steps 1 and 2 establish the accounting API and persistent input infrastructure.
+Steps 3 and 4 verify reuse and operating costs; step 5 establishes auditable
+result persistence before daily scheduling and API publication in steps 6 and 7.
+The remaining steps are planned work, not claims of production readiness.
 
 ## Step 1 scope and semantics
 

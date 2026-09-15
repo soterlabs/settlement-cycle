@@ -250,3 +250,16 @@ def test_v1_decoded_rate_is_not_reused_after_shape_validation_upgrade(storage, m
     monkeypatch.setattr(rpc, "_post", lambda *a: "0x" + "".join(
         format(v, "064x") for v in [42, 2 * 10**27, 0, 0, 0]))
     assert run(lambda: rpc.ilk_rate(**args)) == 2 * 10**27
+
+
+def test_finalized_execution_revert_is_reused_without_becoming_zero(storage, monkeypatch):
+    calls = []
+    monkeypatch.setenv("ETH_RPC", "http://test.invalid")
+    def post(*args):
+        calls.append(1)
+        raise rpc.RPCError("execution reverted")
+    monkeypatch.setattr(rpc, "_post", post)
+    for _ in range(2):
+        with pytest.raises(rpc.RPCError, match="execution reverted"):
+            run(lambda: rpc.eth_call(Chain.ETHEREUM, Address(bytes(20)), '0x12345678', 500))
+    assert len(calls) == 1
