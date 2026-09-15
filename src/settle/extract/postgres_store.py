@@ -46,6 +46,24 @@ class _Miss:
 MISS = _Miss()
 
 
+class PersistenceError(RuntimeError):
+    """Required input persistence is unavailable; the worker must retry."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
+        from .input_cache import mark_fatal
+        mark_fatal(self)
+
+
+def required() -> bool:
+    return os.environ.get("SETTLE_REQUIRE_POSTGRES") == "1"
+
+
+def _unavailable() -> None:
+    if required():
+        raise PersistenceError("SETTLE_REQUIRE_POSTGRES=1 requires an available Postgres cache")
+
+
 # --------------------------------------------------------------------------
 # Connection management — lazy, single per-process, autocommit.
 #
@@ -133,6 +151,7 @@ def _get_conn() -> Any:
     blip — drops the dead connection and reconnects on the next call.
     """
     if _state["disabled"]:
+        _unavailable()
         return None
 
     # Fast path: cached, healthy. Avoid taking the lock for the common case.
@@ -142,6 +161,7 @@ def _get_conn() -> Any:
 
     with _lock:
         if _state["disabled"] is True:
+            _unavailable()
             return None
 
         # Double-check under the lock — another thread may have already
@@ -161,6 +181,7 @@ def _get_conn() -> Any:
         if not url:
             # Permanent: no DATABASE_URL means the user never opted in.
             _state["disabled"] = True
+            _unavailable()
             return None
         try:
             import psycopg  # type: ignore[import-untyped]
@@ -168,6 +189,7 @@ def _get_conn() -> Any:
             # Permanent: psycopg not installed in this env.
             _log.info("psycopg not installed — Postgres cache layer disabled")
             _state["disabled"] = True
+            _unavailable()
             return None
         try:
             conn = psycopg.connect(url, **_PG_CONNECT_KWARGS)
@@ -179,6 +201,7 @@ def _get_conn() -> Any:
         except Exception as e:
             # Transient: don't flip ``disabled``. Next call retries.
             _log.warning("Postgres connect failed (%s) — will retry on next call", e)
+            _unavailable()
             return None
         return _state["conn"]
 
@@ -309,6 +332,7 @@ def get(source: str, args_hash: str) -> Any:
     """
     conn = _get_conn()
     if conn is None:
+        _unavailable()
         return MISS
     try:
         with conn.cursor() as cur:
@@ -320,6 +344,8 @@ def get(source: str, args_hash: str) -> Any:
     except Exception as e:
         _log.warning("Postgres read failed for %s/%s: %s", source, args_hash[:12], e)
         _drop_conn(f"read failure: {type(e).__name__}")
+        if required():
+            raise PersistenceError(f"Required Postgres read failed for {source}") from e
         return MISS
     if row is None:
         return MISS
@@ -332,10 +358,12 @@ def put(source: str, args_hash: str, args: Any, payload: Any) -> None:
     losslessly before insert."""
     conn = _get_conn()
     if conn is None:
+        _unavailable()
         return
     try:
         from psycopg.types.json import Jsonb  # type: ignore[import-untyped]
     except ImportError:
+        _unavailable()
         return
     try:
         with conn.cursor() as cur:
@@ -348,6 +376,8 @@ def put(source: str, args_hash: str, args: Any, payload: Any) -> None:
     except Exception as e:
         _log.warning("Postgres write failed for %s/%s: %s", source, args_hash[:12], e)
         _drop_conn(f"write failure: {type(e).__name__}")
+        if required():
+            raise PersistenceError(f"Required Postgres write failed for {source}") from e
 
 
 def put_many(items: list[tuple[str, str, Any, Any]]) -> None:
@@ -360,11 +390,15 @@ def put_many(items: list[tuple[str, str, Any, Any]]) -> None:
     and graceful-degradation contract as ``put()``.
     """
     conn = _get_conn()
-    if conn is None or not items:
+    if conn is None:
+        _unavailable()
+        return
+    if not items:
         return
     try:
         from psycopg.types.json import Jsonb  # type: ignore[import-untyped]
     except ImportError:
+        _unavailable()
         return
     params = [
         (s, h, Jsonb(encode_payload(a)), Jsonb(encode_payload(p)))
@@ -381,6 +415,8 @@ def put_many(items: list[tuple[str, str, Any, Any]]) -> None:
     except Exception as e:
         _log.warning("Postgres put_many failed (%d rows): %s", len(items), e)
         _drop_conn(f"put_many failure: {type(e).__name__}")
+        if required():
+            raise PersistenceError("Required Postgres bulk write failed") from e
 
 
 # --------------------------------------------------------------------------

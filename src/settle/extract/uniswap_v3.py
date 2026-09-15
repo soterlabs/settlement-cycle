@@ -549,7 +549,7 @@ def read_fee_collections(
     if from_block > to_block:
         return []
     from .hypersync import HyperSyncError
-    from .hypersync import query_logs as _query_logs
+    from .hypersync_store import fetch_logs as _fetch_logs
 
     token_id_topic = "0x" + _pad_uint(token_id)
     # HyperSync rather than ``eth_get_logs``: a settlement month is ~200k
@@ -558,7 +558,7 @@ def read_fee_collections(
     # pages the whole window in one call and needs no Dune credits, so every
     # IV3PositionSource variant inherits a working fee read without extra
     # wiring or a new fixture shape.
-    rows = _query_logs(
+    rows = _fetch_logs(
         chain.value,
         [{"address": [nfpm.hex], "topics": [
             [TOPIC_COLLECT, TOPIC_DECREASE_LIQUIDITY], [token_id_topic],
@@ -566,7 +566,7 @@ def read_fee_collections(
         from_block, to_block,
         log_fields=["block_number", "log_index", "topic0", "topic1",
                     "data", "transaction_hash"],
-    ).rows
+    )
     if not rows:
         return []
 

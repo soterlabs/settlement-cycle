@@ -11,13 +11,14 @@ Layered storage (when ``DATABASE_URL`` is set):
                          miss → fetch upstream, write pickle + Postgres
 
 The Postgres layer is the durable source of truth; the local pickle is a
-fast LRU on top. With ``DATABASE_URL`` unset the pipeline behaves exactly
+fast local cache on top. With ``DATABASE_URL`` unset the pipeline behaves exactly
 as before (pickle-only). See ``postgres_store.py``.
 """
 
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 import os
 import pickle
@@ -110,12 +111,54 @@ def cached(source_id: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """
 
     def decorator(fn: Callable[P, R]) -> Callable[P, R]:
+        signature = inspect.signature(fn)
+        pinned = "chain" in signature.parameters and "block" in signature.parameters
         @wraps(fn)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            from .input_cache import current_scope, input_revision, revision_key
+
+            scope = current_scope()
+            if scope is not None and source_id in {
+                "hypersync.block_timestamp", "hypersync.find_block_at_or_before",
+            }:
+                # Some source internals resolve their own opening anchors.
+                # They must inherit the run's policy, not use legacy caches.
+                from . import hypersync
+                from .hypersync_store import _reorg_margin
+                bound = signature.bind(*args, **kwargs)
+                if source_id == "hypersync.block_timestamp":
+                    return hypersync.finalized_block_timestamp(
+                        bound.arguments["chain"], bound.arguments["block"], _reorg_margin(),
+                    )
+                return hypersync.find_finalized_block_at_or_before(
+                    bound.arguments["chain"], bound.arguments["target_ts"], _reorg_margin(),
+                )
+            source = source_id
+            key_args, key_kwargs = args, kwargs
+            if scope is not None and pinned and not source_id.startswith("hypersync."):
+                bound = signature.bind(*args, **kwargs)
+                bound.apply_defaults()
+                scope.check_block(bound.arguments["chain"], bound.arguments["block"])
+                source = f"finalized.v2.{scope.revision}.{source_id}"
+                # Equivalent positional/keyword calls share one persistent key.
+                key_args, key_kwargs = (), bound.arguments
+            elif input_revision() != "0":
+                source = f"revision.{revision_key()}.{source_id}"
             if os.environ.get("SETTLE_NO_CACHE") == "1":
+                if postgres_store.required():
+                    raise postgres_store.PersistenceError("SETTLE_NO_CACHE conflicts with SETTLE_REQUIRE_POSTGRES")
                 return fn(*args, **kwargs)
-            key = _hash_args(source_id, args, kwargs)
-            path = cache_dir() / f"{source_id}_{key}.pkl"
+            key = _hash_args(source, key_args, key_kwargs)
+            path = cache_dir() / f"{source}_{key}.pkl"
+            encoded_args = {"args": [_jsonify(a) for a in key_args],
+                            "kwargs": {k: _jsonify(v) for k, v in sorted(key_kwargs.items())}}
+            # Required mode verifies durability even on a warm local worker.
+            # A miss can promote a locally populated finalized cache entry.
+            if postgres_store.required():
+                pg_value = postgres_store.get(source, key)
+                if pg_value is not postgres_store.MISS:
+                    _write_pickle(path, pg_value)
+                    return pg_value
             # 1. Local pickle hit.
             if path.exists():
                 # Only deserialize a pickle file we know we wrote — guards
@@ -125,21 +168,37 @@ def cached(source_id: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
                         f"Refusing to load cache file not owned by current user: {path}"
                     )
                 with path.open("rb") as f:
-                    return pickle.load(f)
-            # 2. Postgres hit — populate the local LRU and return.
-            pg_value = postgres_store.get(source_id, key)
-            if pg_value is not postgres_store.MISS:
-                _write_pickle(path, pg_value)
-                return pg_value  # type: ignore[no-any-return]
+                    value = pickle.load(f)
+                if postgres_store.required():
+                    postgres_store.put(source, key, args=encoded_args, payload=value)
+                return value
+            # 2. Postgres hit — populate the local cache and return.
+            if not postgres_store.required():
+                pg_value = postgres_store.get(source, key)
+                if pg_value is not postgres_store.MISS:
+                    _write_pickle(path, pg_value)
+                    return pg_value  # type: ignore[no-any-return]
             # 3. Upstream fetch + dual-write.
-            result = fn(*args, **kwargs)
-            _write_pickle(path, result)
+            failures = scope.failures if scope is not None else 0
+            try:
+                result = fn(*args, **kwargs)
+            except Exception:
+                if scope is not None:
+                    scope.failures += 1
+                raise
+            # A nested failure may have been caught as a capability fallback
+            # or zero. Do not turn that fallback into a durable success.
+            if scope is not None:
+                if result is None:
+                    scope.failures += 1
+                if scope.failures != failures or scope.fatal_error is not None:
+                    return result
             postgres_store.put(
-                source_id, key,
-                args={"args": [_jsonify(a) for a in args],
-                      "kwargs": {k: _jsonify(v) for k, v in sorted(kwargs.items())}},
+                source, key,
+                args=encoded_args,
                 payload=result,
             )
+            _write_pickle(path, result)
             return result
 
         return wrapper

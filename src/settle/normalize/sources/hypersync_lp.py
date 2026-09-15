@@ -18,12 +18,16 @@ class HyperSyncV3PositionSource(RPCUniswapV3PositionSource):
                                         (from_block, to_block))
         if not ids:
             return []
-        logs = hypersync_store.fetch_logs(chain, [{
-            "address": ["0x" + nfpm.value.hex()],
-            "topics": [[v3.TOPIC_INCREASE_LIQUIDITY, v3.TOPIC_DECREASE_LIQUIDITY],
-                       ["0x" + format(tid, "064x") for tid in sorted(ids)]],
-        }], from_block + 1, to_block,
-            log_fields=[*hypersync._DEFAULT_LOG_FIELDS, "transaction_hash"])
+        # Stable per-NFT streams: acquiring one NFT tomorrow must not fork
+        # the cache key and re-download all of today's existing positions.
+        logs = []
+        for tid in sorted(ids):
+            logs.extend(hypersync_store.fetch_logs(chain, [{
+                "address": ["0x" + nfpm.value.hex()],
+                "topics": [[v3.TOPIC_INCREASE_LIQUIDITY, v3.TOPIC_DECREASE_LIQUIDITY],
+                           ["0x" + format(tid, "064x")]],
+            }], from_block + 1, to_block,
+                log_fields=[*hypersync._DEFAULT_LOG_FIELDS, "transaction_hash"]))
         return [v3._decode_liquidity_log({
             "blockNumber": hex(r.block_number), "transactionHash": r.transaction_hash,
             "logIndex": hex(r.log_index), "topics": [r.topic0, r.topic1], "data": r.data,

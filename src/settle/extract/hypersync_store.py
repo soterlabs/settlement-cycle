@@ -8,7 +8,7 @@ Design (see db/schema.sql):
   * A **stream** = one HyperSync log selection (chain + addresses + topics),
     hashed to a stable id. Rows are stored per ``(stream, block, log_index)``.
   * **Staleness guard:** rows are persisted only for blocks at or below
-    ``chain_head − HYPERSYNC_REORG_MARGIN`` (finalized, cannot reorg). If a
+    ``chain_head - HYPERSYNC_REORG_MARGIN`` (finalized, cannot reorg). If a
     query's upper bound is inside the reorg window, it's served **live and not
     written**. Because block-pinned facts are immutable, a stored row is never
     stale — so a re-run at the same/earlier pin reads straight from Postgres,
@@ -27,6 +27,7 @@ import json
 import os
 import weakref
 from collections.abc import Callable
+from functools import wraps
 from typing import Any
 
 import requests
@@ -36,8 +37,24 @@ from . import hypersync, postgres_store
 _DEFAULT_REORG_MARGIN = 500
 
 
+def _database_operation(fn):
+    """Make required DB failures fatal even when a source has a fallback."""
+    @wraps(fn)
+    def wrapped(*args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except Exception as exc:
+            if postgres_store.required():
+                raise postgres_store.PersistenceError(f"HyperSync cache {fn.__name__} failed") from exc
+            raise
+    return wrapped
+
+
 def _reorg_margin() -> int:
-    return int(os.environ.get("HYPERSYNC_REORG_MARGIN", str(_DEFAULT_REORG_MARGIN)))
+    margin = int(os.environ.get("HYPERSYNC_REORG_MARGIN", str(_DEFAULT_REORG_MARGIN)))
+    if margin < 0:
+        raise ValueError("HYPERSYNC_REORG_MARGIN must be nonnegative")
+    return margin
 
 
 def _stream_key(
@@ -48,6 +65,9 @@ def _stream_key(
     persisted under the default set have NULL there, and serving them to a
     caller that needs the hash would silently break its joins."""
     key: dict[str, Any] = {"chain": chain, "sel": selections}
+    from .input_cache import input_revision
+    if input_revision() != "0":
+        key["input_revision"] = input_revision()
     if log_fields is not None and sorted(log_fields) != sorted(hypersync._DEFAULT_LOG_FIELDS):
         key["fields"] = sorted(log_fields)
     blob = json.dumps(key, sort_keys=True).encode()
@@ -70,80 +90,96 @@ def fetch_logs(
     the reorg window. ``log_fields`` is forwarded to the client (add
     ``"transaction_hash"`` to get it back on every row, persisted included).
     """
+    if from_block > to_block:
+        return []
+
     def live(lo: int, hi: int) -> hypersync.QueryResult:
         return hypersync.query_logs(chain, selections, lo, hi, log_fields=log_fields, post=post)
 
     if os.environ.get("HYPERSYNC_NO_STORE") == "1":
+        if postgres_store.required():
+            raise postgres_store.PersistenceError("HYPERSYNC_NO_STORE conflicts with SETTLE_REQUIRE_POSTGRES")
         return live(from_block, to_block).rows
 
     conn = postgres_store._get_conn()
     if conn is None:  # no DB → live pass-through (same as before the store existed)
+        postgres_store._unavailable()
         return live(from_block, to_block).rows
 
     stream = _stream_key(chain, selections, log_fields)
     _ensure_schema_once(conn)
-    cov = _get_coverage(conn, stream)  # (covered_from, covered_to) | None
-
-    # Fully covered already → serve from DB, zero network.
-    if cov is not None and cov[0] <= from_block and to_block <= cov[1]:
+    ranges = _coverage_ranges(conn, stream)
+    missing = _missing_ranges(from_block, to_block, ranges)
+    if not missing:
         return _read_rows(conn, stream, from_block, to_block)
 
-    # Miss. Build the honest fetch plan — coverage must NEVER claim a block
-    # range we didn't fetch:
-    #  * request overlaps/touches existing coverage → fetch only the missing
-    #    edge range(s); the merged coverage stays contiguous.
-    #  * request DISJOINT from existing coverage → fetch the requested range
-    #    and persist the rows, but leave coverage untouched. A LEAST/GREATEST
-    #    widening here would claim the unfetched gap between the two islands
-    #    and permanently serve later reads with logs silently missing.
-    if cov is None:
-        fetch_ranges = [(from_block, to_block)]
-        new_cov: tuple[int, int] | None = (from_block, to_block)
-    else:
-        clo, chi = cov
-        if from_block <= chi + 1 and to_block >= clo - 1:   # overlap / adjacent
-            fetch_ranges = []
-            if from_block < clo:
-                fetch_ranges.append((from_block, clo - 1))
-            if to_block > chi:
-                fetch_ranges.append((chi + 1, to_block))
-            new_cov = (min(from_block, clo), max(to_block, chi))
-        else:                                               # disjoint island
-            fetch_ranges = [(from_block, to_block)]
-            new_cov = None
-
     live_rows: list[hypersync.LogRow] = []
-    archive = 0
-    for f_lo, f_hi in fetch_ranges:
-        res = live(f_lo, f_hi)
+    for lo, hi in missing:
+        res = live(lo, hi)
         live_rows.extend(res.rows)
-        archive = max(archive, res.archive_height)
-    safe_ceiling = archive - _reorg_margin() if archive else -1
-
-    if to_block > safe_ceiling:
-        # Upper bound is inside the reorg window — serve live. The rows AT OR
-        # BELOW the safe ceiling are finalized and safe to persist, so a
-        # live-pinned run (e.g. a mid-month preview of the from-genesis Vat
-        # debt scan) doesn't re-download the whole finalized history on every
-        # invocation; only the unfinalized tail stays fetch-always.
-        if safe_ceiling >= 0:
-            finalized = [r for r in live_rows if r.block_number <= safe_ceiling]
+        safe = res.archive_height - _reorg_margin() if res.archive_height else -1
+        end = min(hi, safe)
+        if lo <= end:
+            finalized = [r for r in res.rows if lo <= r.block_number <= end]
+            # Rows precede coverage. A crash can leave unclaimed rows, never
+            # a range claiming rows which failed to persist. Each missing
+            # interval is independent, so retries retain completed intervals.
             _persist(conn, stream, finalized)
-            if new_cov is not None and new_cov[0] <= safe_ceiling:
-                # Clamp the claim to the finalized prefix; never let it
-                # shrink below what's already honestly covered.
-                hi = min(new_cov[1], safe_ceiling)
-                if cov is not None:
-                    hi = max(hi, cov[1])
-                _set_coverage(conn, stream, new_cov[0], hi)
-        db_rows = _read_rows(conn, stream, from_block, to_block) if cov is not None else []
-        return _merge(db_rows, live_rows, from_block, to_block)
+            _add_range(conn, stream, lo, end)
+            ranges = _merge_ranges([*ranges, (lo, end)])
+            # Keep the legacy single-range view honest for older workers.
+            # All intervals remain in the new append-only coverage table.
+            largest = max(ranges, key=lambda r: r[1] - r[0])
+            _set_coverage(conn, stream, *largest)
+    return _merge(_read_rows(conn, stream, from_block, to_block), live_rows,
+                  from_block, to_block)
 
-    # Historical (to_block ≤ safe_ceiling): every fetched row is finalized.
-    _persist(conn, stream, live_rows)
-    if new_cov is not None:
-        _set_coverage(conn, stream, *new_cov)
-    return _read_rows(conn, stream, from_block, to_block)
+
+def _merge_ranges(ranges: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    merged: list[tuple[int, int]] = []
+    for lo, hi in sorted(ranges):
+        if merged and lo <= merged[-1][1] + 1:
+            merged[-1] = (merged[-1][0], max(hi, merged[-1][1]))
+        else:
+            merged.append((lo, hi))
+    return merged
+
+
+def _missing_ranges(lo: int, hi: int, ranges: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    missing = []
+    cursor = lo
+    for start, end in ranges:
+        if start > cursor:
+            missing.append((cursor, min(hi, start - 1)))
+        cursor = max(cursor, end + 1)
+        if cursor > hi:
+            break
+    if cursor <= hi:
+        missing.append((cursor, hi))
+    return [(start, end) for start, end in missing if start <= end]
+
+
+@_database_operation
+def _coverage_ranges(conn: Any, stream: str) -> list[tuple[int, int]]:
+    legacy = _get_coverage(conn, stream)
+    with conn.cursor() as cur:
+        cur.execute("SELECT covered_from, covered_to FROM hypersync_ranges WHERE stream = %s", (stream,))
+        ranges = [(int(row[0]), int(row[1])) for row in cur.fetchall()]
+    # Preserve pre-migration coverage before any writer replaces the legacy
+    # single-range view with a larger, disjoint interval. Rows already exist
+    # for this claim; only the durable interval metadata needs migrating.
+    if legacy and _missing_ranges(*legacy, _merge_ranges(ranges)):
+        _add_range(conn, stream, *legacy)
+    return _merge_ranges(ranges + ([legacy] if legacy else []))
+
+
+@_database_operation
+def _add_range(conn: Any, stream: str, lo: int, hi: int) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO hypersync_ranges (stream, covered_from, covered_to) VALUES (%s, %s, %s) "
+            "ON CONFLICT DO NOTHING", (stream, lo, hi),
+        )
 
 
 def read_covered_logs(chain: str, selections: list[dict[str, Any]],
@@ -160,8 +196,7 @@ def read_covered_logs(chain: str, selections: list[dict[str, Any]],
         return None
     _ensure_schema_once(conn)
     stream = _stream_key(chain, selections)
-    coverage = _get_coverage(conn, stream)
-    if coverage is None or not coverage[0] <= from_block <= to_block <= coverage[1]:
+    if _missing_ranges(from_block, to_block, _coverage_ranges(conn, stream)):
         return None
     return _read_rows(conn, stream, from_block, to_block)
 
@@ -186,6 +221,7 @@ def _ensure_schema_once(conn: Any) -> None:
     _SCHEMA_CHECKED.add(conn)
 
 
+@_database_operation
 def _ensure_schema(conn: Any) -> None:
     with conn.cursor() as cur:
         cur.execute(
@@ -200,6 +236,11 @@ def _ensure_schema(conn: Any) -> None:
             ALTER TABLE hypersync_logs ADD COLUMN IF NOT EXISTS transaction_hash TEXT;
             CREATE INDEX IF NOT EXISTS idx_hypersync_logs_stream_block
                 ON hypersync_logs (stream, block_number);
+            CREATE TABLE IF NOT EXISTS hypersync_ranges (
+                stream TEXT NOT NULL, covered_from BIGINT NOT NULL, covered_to BIGINT NOT NULL,
+                PRIMARY KEY (stream, covered_from, covered_to),
+                CHECK (covered_from <= covered_to)
+            );
             CREATE TABLE IF NOT EXISTS hypersync_coverage (
                 stream TEXT PRIMARY KEY, covered_from BIGINT NOT NULL,
                 covered_to BIGINT NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -208,6 +249,7 @@ def _ensure_schema(conn: Any) -> None:
         )
 
 
+@_database_operation
 def _get_coverage(conn: Any, stream: str) -> tuple[int, int] | None:
     with conn.cursor() as cur:
         cur.execute(
@@ -218,6 +260,7 @@ def _get_coverage(conn: Any, stream: str) -> tuple[int, int] | None:
     return (int(row[0]), int(row[1])) if row else None
 
 
+@_database_operation
 def _set_coverage(conn: Any, stream: str, cfrom: int, cto: int) -> None:
     with conn.cursor() as cur:
         cur.execute(
@@ -236,6 +279,7 @@ def _set_coverage(conn: Any, stream: str, cfrom: int, cto: int) -> None:
         )
 
 
+@_database_operation
 def _persist(conn: Any, stream: str, rows: list[hypersync.LogRow]) -> None:
     if not rows:
         return
@@ -256,6 +300,7 @@ def _persist(conn: Any, stream: str, rows: list[hypersync.LogRow]) -> None:
         )
 
 
+@_database_operation
 def _read_rows(conn: Any, stream: str, from_block: int, to_block: int) -> list[hypersync.LogRow]:
     with conn.cursor() as cur:
         cur.execute(

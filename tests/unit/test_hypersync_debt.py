@@ -89,7 +89,7 @@ def test_missing_token_raises(monkeypatch):
 # -- query shape ----------------------------------------------------------
 
 def test_query_filters_topic0_selectors_and_ilk():
-    post = _Post([{"data": [], "next_block": None}])
+    post = _Post([{"data": [], "next_block": 25_000_001}])
     HyperSyncDebtSource(post=post).debt_timeseries(_ILK, date(2024, 11, 1), 25_000_000)
 
     body = post.calls[0]["body"]
@@ -155,7 +155,7 @@ def test_pagination_follows_next_block_and_joins_timestamps():
 
 
 def test_empty_returns_typed_frame():
-    df = HyperSyncDebtSource(post=_Post([{"data": [], "next_block": None}])).debt_timeseries(
+    df = HyperSyncDebtSource(post=_Post([{"data": [], "next_block": 101}])).debt_timeseries(
         _ILK, date(2024, 1, 1), 100
     )
     assert df.empty

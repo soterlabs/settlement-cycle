@@ -196,7 +196,7 @@ _ETH_CALL_GAS_CAP_HEX = "0x989680"  # 10,000,000
 @cached(source_id="rpc.eth_call")
 def eth_call(chain: Chain, contract: Address, data: str, block: int) -> str:
     """Raw eth_call. `data` = 0x-prefixed hex selector + abi-encoded args."""
-    return _post(
+    result = _post(
         rpc_url(chain),
         "eth_call",
         [
@@ -204,6 +204,23 @@ def eth_call(chain: Chain, contract: Address, data: str, block: int) -> str:
             hex(block),
         ],
     )
+    from .input_cache import current_scope
+
+    if current_scope() is not None:
+        # A provider's empty/malformed reply is not a confirmed zero balance.
+        if not isinstance(result, str) or not result.startswith("0x"):
+            raise RPCError("eth_call returned malformed data")
+        hx = result[2:]
+        if hx and (len(hx) % 64 or any(c not in "0123456789abcdefABCDEF" for c in hx)):
+            raise RPCError("eth_call returned malformed hex data")
+        # Vat.ilks returns five words. Word alignment alone would accept a
+        # truncated tuple and let ilk_rate permanently cache its RAY fallback.
+        # Validate here, before even the raw eth_call response is persisted.
+        if hx and data[:10].lower() == SEL_ILKS and len(hx) != 5 * 64:
+            raise RPCError("Vat.ilks returned malformed data: expected five ABI words")
+        if not hx and is_contract_deployed(chain, contract, block):
+            raise RPCError("eth_call returned empty data for a deployed contract")
+    return result
 
 
 def _decode_uint(raw: str) -> int:
@@ -244,6 +261,9 @@ def is_contract_deployed(chain: Chain, contract: Address, block: int) -> bool:
     at the SoM block (e.g. a vault first deployed mid-period).
     """
     raw = _post(rpc_url(chain), "eth_getCode", [contract.hex, hex(block)])
+    if (not isinstance(raw, str) or not raw.startswith("0x") or len(raw[2:]) % 2
+            or any(c not in "0123456789abcdefABCDEF" for c in raw[2:])):
+        raise RPCError("eth_getCode returned malformed data")
     return bool(raw) and raw != "0x"
 
 

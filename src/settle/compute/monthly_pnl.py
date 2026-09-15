@@ -19,6 +19,7 @@ from ..domain.monthly_pnl import MonthlyPnL, VenueRevenue
 from ..domain.period import Month, Period
 from ..domain.pricing import PricingCategory
 from ..domain.primes import Chain, Prime, PsmKind
+from ..extract.input_cache import revenue_input_scope
 from ..domain.sde import load_sde_table
 from ..domain.sky_tokens import USDS_ETHEREUM, sUSDS_ETHEREUM
 from ..domain.subsidy import load_reference_rates_for
@@ -2141,6 +2142,7 @@ def _compute_cash_dist_revenue(
     return total
 
 
+@revenue_input_scope
 def compute_monthly_pnl(
     prime: Prime,
     month: Month,

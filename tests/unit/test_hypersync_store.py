@@ -62,7 +62,12 @@ class _FakeCursor:
 
     def execute(self, sql, params=()):
         s = " ".join(sql.split())
-        if s.startswith("SELECT covered_from"):
+        if s.startswith("SELECT covered_from") and "FROM hypersync_ranges" in s:
+            self._result = self._s.get("ranges", {}).get(params[0], [])
+        elif s.startswith("INSERT INTO hypersync_ranges"):
+            stream, lo, hi = params
+            self._s.setdefault("ranges", {}).setdefault(stream, []).append((lo, hi))
+        elif s.startswith("SELECT covered_from"):
             self._result = self._s["coverage"].get(params[0])
         elif s.startswith("SELECT block_number"):
             stream, lo, hi = params
@@ -331,7 +336,7 @@ def test_read_covered_logs_requires_the_entire_finalized_range(monkeypatch):
     monkeypatch.delenv('HYPERSYNC_NO_STORE', raising=False)
     monkeypatch.setattr(store.postgres_store, '_get_conn', lambda: object())
     monkeypatch.setattr(store, '_ensure_schema_once', lambda c: None)
-    monkeypatch.setattr(store, '_get_coverage', lambda *a: (100, 200))
+    monkeypatch.setattr(store, '_coverage_ranges', lambda *a: [(100, 200)])
     reads = []
     def read(*args):
         reads.append(args[-2:])
@@ -342,3 +347,63 @@ def test_read_covered_logs_requires_the_entire_finalized_range(monkeypatch):
     assert reads == []
     assert store.read_covered_logs('base', [], 110, 180) == []
     assert reads == [(110, 180)]
+
+
+def test_disjoint_ranges_are_reused_and_only_gap_is_fetched(monkeypatch):
+    conn = _FakeConn()
+    monkeypatch.setattr(hypersync_store.postgres_store, "_get_conn", lambda: conn)
+    calls = []
+    def query(chain, sel, lo, hi, **kwargs):
+        calls.append((lo, hi))
+        return QueryResult(rows=[], archive_height=10000)
+    monkeypatch.setattr(hypersync, "query_logs", query)
+    for lo, hi in [(100, 200), (400, 500), (400, 500), (100, 500)]:
+        assert hypersync_store.fetch_logs("base", [], lo, hi) == []
+    assert calls == [(100, 200), (400, 500), (201, 399)]
+
+
+def test_incomplete_page_without_head_metadata_is_rejected(monkeypatch):
+    monkeypatch.setenv("ENVIO_API_TOKEN", "test")
+    with pytest.raises(hypersync.HyperSyncError, match="incomplete range"):
+        hypersync.query_logs("base", [], 0, 100,
+                             post=_PagePost([{"data": [], "next_block": None}]))
+
+
+def test_pagination_uses_conservative_head_for_persistence(monkeypatch):
+    monkeypatch.setenv("ENVIO_API_TOKEN", "test")
+    result = hypersync.query_logs("base", [], 0, 100, post=_PagePost([
+        {"data": [], "next_block": 50, "archive_height": 550},
+        {"data": [], "next_block": 101, "archive_height": 1000},
+    ]))
+    assert result.archive_height == 550  # block 100 was not finalized on page 1
+
+
+def test_no_store_conflicts_with_required_persistence(monkeypatch):
+    monkeypatch.setenv("SETTLE_REQUIRE_POSTGRES", "1")
+    monkeypatch.setenv("HYPERSYNC_NO_STORE", "1")
+    with pytest.raises(hypersync_store.postgres_store.PersistenceError):
+        hypersync_store.fetch_logs("base", [], 0, 100)
+
+
+def test_correction_revision_has_independent_event_coverage(monkeypatch):
+    original = hypersync_store._stream_key("base", [])
+    monkeypatch.setenv("SETTLE_INPUT_REVISION", "corrected")
+    assert hypersync_store._stream_key("base", []) != original
+
+
+def test_legacy_coverage_survives_larger_disjoint_backfill(monkeypatch):
+    conn = _FakeConn()
+    monkeypatch.setattr(hypersync_store.postgres_store, "_get_conn", lambda: conn)
+    stream = hypersync_store._stream_key("base", [])
+    conn.store["coverage"][stream] = (0, 100)  # pre-migration, no interval table claims
+    calls = []
+    def query(chain, sel, lo, hi, **kwargs):
+        calls.append((lo, hi))
+        return QueryResult(rows=[], archive_height=10000)
+    monkeypatch.setattr(hypersync, "query_logs", query)
+    hypersync_store.fetch_logs("base", [], 1000, 2000)
+    assert conn.store["coverage"][stream] == (1000, 2000)
+    assert hypersync_store._coverage_ranges(conn, stream) == [(0, 100), (1000, 2000)]
+    hypersync_store.fetch_logs("base", [], 0, 100)
+    hypersync_store.fetch_logs("base", [], 0, 2000)
+    assert calls == [(1000, 2000), (101, 999)]

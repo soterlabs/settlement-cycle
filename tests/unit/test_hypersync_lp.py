@@ -67,3 +67,22 @@ def test_non_ethereum_dune_oracle_is_chain_scoped(monkeypatch):
     assert params["chain"] == "monad"
     assert params["nfpm"] == manager.value
     assert pin == 20
+
+
+def test_v3_acquiring_nft_preserves_existing_stream_identity(monkeypatch):
+    manager, owner, pool = (bytes([i]) * 20 for i in [1, 2, 3])
+    source = mod.HyperSyncV3PositionSource(nfpm_per_chain={Chain.ETHEREUM: Address(manager)})
+    ids = {7}
+    monkeypatch.setattr(mod.v3, "discover_pool_token_ids", lambda *args: ids)
+    streams = []
+    def fetch(chain, selections, *args, **kwargs):
+        streams.append(mod.hypersync_store._stream_key(chain, selections, kwargs["log_fields"]))
+        return []
+    monkeypatch.setattr(mod.hypersync_store, "fetch_logs", fetch)
+    source.liquidity_events_in_pool("ethereum", owner, pool, 10, 20)
+    previous = streams.pop()
+    ids.add(8)
+    source.liquidity_events_in_pool("ethereum", owner, pool, 10, 30)
+    assert len(streams) == 2
+    assert streams[0] == previous
+    assert streams[1] != previous
