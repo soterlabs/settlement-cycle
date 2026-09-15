@@ -1040,6 +1040,7 @@ venues:
     cof_excluded: true   # already deducted from utilized via cum_alm_usds
 
   - id: S45
+    event_source: hypersync
     chain: arbitrum
     label: 'USDC raw (Arbitrum — ALM idle)'
     pricing_category: A
