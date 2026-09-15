@@ -429,6 +429,7 @@ venues:
       decimals: 18
 
   - id: S18
+    event_source: hypersync
     chain: ethereum
     label: 'Arkis Spark Prime USDC 1 (ERC-4626)'
     pricing_category: B
