@@ -62,4 +62,4 @@ jobs:
         env:
           PYTHON_DOTENV_DISABLED: '1'
           SETTLE_TEST_POSTGRES_URL: postgresql://settle_test:settle_test@localhost:5432/settle_test
-        run: pytest tests/integration/test_input_cache_postgres.py tests/integration/test_revenue_reuse.py tests/integration/test_revenue_store.py tests/integration/test_revenue_worker.py tests/integration/test_revenue_api.py -q
+        run: pytest tests/integration/test_input_cache_postgres.py tests/integration/test_revenue_reuse.py tests/integration/test_revenue_store.py tests/integration/test_revenue_worker.py tests/integration/test_revenue_api.py tests/integration/test_revenue_reference_rates.py -q

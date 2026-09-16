@@ -4,7 +4,7 @@ code and data-loading paths first; preserve the existing settled-data behavior.
 Implement this in a dedicated PR with tests, review it, and report the PR URL.
 
 Backend: `soterlabs/settlement-cycle`, PRD `docs/PRD_prime_revenue_as_of.md`, steps
-3–7. The revenue pipeline runs once daily at 03:17 UTC, calculating month-to-date
+3–7. The revenue pipeline runs once daily at 20:17 UTC, calculating month-to-date
 through the previous completed UTC day. It is not an hourly or intraday feed.
 API base URL: https://settle-api-production.up.railway.app
 Make the base URL configurable using this dashboard's existing configuration
@@ -72,3 +72,12 @@ Validation:
 - Verify against actual API responses when available; first daily publication
   may still be pending. Use fixtures for absent-data scenarios, never fabricate
   live results or claim every prime's live calculation has been verified.
+
+Reference-rate provenance is in `data.input_provenance.reference_rates` for
+subsidized primes. It includes source URLs, exact APR observations, revision
+indicators, calendar version, snapshot ID, first observation time, coverage flag,
+and `carry_forward_dates` mapping calendar dates to observation effective dates.
+The daily worker waits for required official rates. On weekends/holidays, Grove
+and Spark may remain stale until Friday's or a preceding business day's rate is
+published on the next publication day; show the retained cutoff and attempt
+state honestly. The schedule is 20:17 UTC after the Fed's same-day revision window.

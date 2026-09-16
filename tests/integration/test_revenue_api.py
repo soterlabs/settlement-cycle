@@ -26,7 +26,9 @@ def test_committed_revisions_failed_refresh_and_prime_isolation(database, monkey
             store.publish(conn, replace(pnl, prime_id=prime), store.Versions('a', 'cfg', '0'))
         original = store.read(conn, 'obex')['revision_id']
         corrected = store.publish(conn, replace(pnl, revenue=Decimal('2.000000000000000001')),
-                                  store.Versions('a', 'cfg', '1'))
+                                  store.Versions('a', 'cfg', '1'),
+                                  input_provenance={'reference_rates': {'coverage_complete': True,
+                                                                      'snapshot_id': 'b'*64}})
         store.publish(conn, example(2), store.Versions('a', 'cfg', '0'))
     with ConnectionPool(database, min_size=1, max_size=2) as pool:
         reader = PostgresReader(pool, {}, [], 0)
@@ -35,6 +37,7 @@ def test_committed_revisions_failed_refresh_and_prime_isolation(database, monkey
             assert response.status_code == 200
             assert response.json()['data']['revision_id'] == corrected
             assert response.json()['data']['result']['revenue'] == '2.000000000000000001'
+            assert response.json()['data']['input_provenance']['reference_rates']['snapshot_id'] == 'b'*64
             assert not response.json()['freshness']['stale']
             assert client.get('/v1/revenue/status').status_code == 200
             old = client.get(f'/v1/revenue/obex/at/{cutoff}?revision={original}')

@@ -92,3 +92,34 @@
 Final offline + isolated-Postgres regression: 1145 passed, 1 skipped, 5 live
 tests deselected. Live same-date reuse passed for Grove and OBEX; Spark and the
 remaining live matrix are incomplete (provider throttling and stop-rule exit).
+
+## Step 7 resumed — official SOFR input gate
+
+The user supplied/authorized the NY Fed source and requested continuation. The
+prior P1 is addressed by fetching complete official business-day observations,
+persisting exact snapshots, passing them into the calculation, and checking
+coverage before either calculation or cached-result reuse. The schedule moves
+to 20:17 UTC after the same-day revision window. No YAML SOFR fallback is allowed
+in daily publication. The base-rate cap remains in effect.
+
+- Round 1: reviewed snapshot identity, correction/retry behavior and calendar
+  coverage. Found a correction reverting to an earlier rate could reuse an old
+  revision while the intervening revision stayed latest. Reuse now selects only
+  the current publication; changed inputs incorporate the superseded revision
+  into the new identity. Added an A→B→A correction regression. Configuration
+  changes during preparation are also checked before reuse, and verified
+  full-close calendar coverage is explicit through 2027 (unknown dates fail).
+- Round 2: reviewed complete-window coverage, effective-date semantics and
+  holiday boundaries. Found that an unexpected official print on a configured
+  closure could be ignored, especially at the cutoff. Fetches now extend through
+  the actual cutoff and reject any disagreement between official observations
+  and the calendar. Added that regression; missing middle days, malformed rows,
+  duplicate dates and unpublished terminal observations already fail closed.
+- Round 3: rechecked full-calculation injection, immutable persisted observations,
+  the base-rate cap, failed-refresh retention, revision provenance in the HTTP
+  response, month-opening carry-forward seeds and independence of finalized raw
+  chain caches. Eighteen targeted checks pass, including a complete configured
+  Grove calculation with deterministic transport that forbids YAML rate loading.
+  Live official-source validation accepted complete coverage through 2026-09-14
+  and rejected missing 2026-09-15 before publication. No unresolved P1/P2 findings
+  in this resumed review. Production remains paused until merge/deployment.

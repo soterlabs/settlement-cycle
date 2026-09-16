@@ -31,3 +31,10 @@ CREATE TABLE IF NOT EXISTS revenue_attempts (
     revision_id TEXT REFERENCES revenue_results(revision_id)
 );
 CREATE INDEX IF NOT EXISTS revenue_attempts_latest ON revenue_attempts (prime, started_at DESC);
+
+CREATE TABLE IF NOT EXISTS revenue_reference_snapshots (
+    snapshot_id TEXT PRIMARY KEY,
+    first_observed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    content JSONB NOT NULL
+);
+ALTER TABLE revenue_results ADD COLUMN IF NOT EXISTS input_provenance JSONB NOT NULL DEFAULT '{}'::jsonb;

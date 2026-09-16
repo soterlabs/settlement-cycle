@@ -23,3 +23,9 @@ contract. The daily scheduling cadence does not imply requests trigger refreshes
 
 See `msc_dashboard_daily_revenue_prompt.md` for the dashboard implementation
 handoff, including static monthly fallbacks and correct MTD semantics.
+
+`data.input_provenance.reference_rates`, when applicable, contains the validated
+SOFR/historical reference snapshot: exact observations, source, revision markers,
+calendar version and carried-forward dates. Daily publication requires complete
+reference-rate coverage; freshness by cutoff does not substitute for that gate.
+See [SOFR inputs](sofr_inputs.md) for publication delays and correction handling.
