@@ -83,5 +83,12 @@
   reference-rate updates. Configuration hashing records which inputs were
   used but does not establish their freshness. Stopped before merging step 7
   under the requested three-round rule. The new daily revenue deployment is
-  being paused pending a freshness gate and explicit carry-forward provenance.
+  paused pending a freshness gate and explicit carry-forward provenance.
+  Production overrides its start command with a no-op; the configured daily
+  schedule remains in place. Reapplying the main IaC worker command would
+  resume calculation and must wait for this issue to be resolved.
   Existing hourly SBE and read API services are unaffected.
+
+Final offline + isolated-Postgres regression: 1145 passed, 1 skipped, 5 live
+tests deselected. Live same-date reuse passed for Grove and OBEX; Spark and the
+remaining live matrix are incomplete (provider throttling and stop-rule exit).
