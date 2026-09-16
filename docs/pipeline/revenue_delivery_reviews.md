@@ -59,3 +59,21 @@
   handlers. Expiry closes DB sessions, releases locks and leaves an auditable
   abandoned attempt for the next tick. No unresolved P1/P2 findings after this
   fix; deadline termination, recovery, locking and publication tests pass.
+
+## Step 7
+
+- Round 1: reviewed dependency initialization and degraded database behavior.
+  Fixed reader construction failures escaping the endpoint's error handling;
+  connection setup now returns a generic 503 without exposing credentials.
+  Existing HTTP validation and missing-result responses remain intact.
+- Round 2: exercised the real Postgres reader through HTTP for revision selection,
+  exact decimals, prime isolation, late backfills and failed-refresh retention.
+  Fixed earliest-valid-date underflow in the default history window and disabled
+  caching of absent/unavailable results so an early miss does not hide a later
+  publication. Readiness now checks the exact configured prime set.
+- Round 3: rechecked SQL parameter binding, cutoff/revision isolation, coherent
+  result/attempt snapshots, bounded history, unavailable-result semantics and
+  read-only provider behavior. Added checks that ETags change on UTC freshness
+  rollover and corrections, while unchanged responses validate with 304. No
+  unresolved P1/P2 findings. The real-Postgres HTTP test is included in CI;
+  existing TMF endpoint tests also pass.

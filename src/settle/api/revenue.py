@@ -64,13 +64,14 @@ def register(app, get_reader, document_response):
         try:
             return fn(*args, **kwargs)
         except Exception:
-            raise HTTPException(503, 'Daily revenue store unavailable') from None
+            raise HTTPException(503, 'Daily revenue store unavailable', headers={'Cache-Control': 'no-store'}) from None
 
     def result_document(request, r, prime, cutoff=None, revision=None):
         validate(prime, cutoff)
         record, attempt = read_or_unavailable(r.revenue_bundle, prime, cutoff=cutoff, revision=revision)
         if record is None:
-            raise HTTPException(404, 'No published daily estimate for this selection; use monthly data')
+            raise HTTPException(404, 'No published daily estimate for this selection; use monthly data',
+                                headers={'Cache-Control': 'no-store'})
         return document_response(request, {
             'schema_version': '1.0', 'prime': prime, 'cadence': 'daily',
             'estimate_basis': 'month_to_date', 'data': record,
@@ -85,7 +86,7 @@ def register(app, get_reader, document_response):
         states = {}
         for prime, (record, attempt) in snapshots.items():
             states[prime] = {**freshness(record, expected), 'latest_attempt': attempt}
-        ready = (len(states) == len(PRIMES) and all(not s['stale'] and
+        ready = (set(states) == set(PRIMES) and all(not s['stale'] and
                  (not s['latest_attempt'] or s['latest_attempt']['status'] not in {'failed', 'abandoned'})
                  for s in states.values()))
         return JSONResponse({'cadence': 'daily', 'ready': ready, 'primes': states},
@@ -105,7 +106,7 @@ def register(app, get_reader, document_response):
     def history(prime: str, request: Request, start: date | None = None, end: date | None = None,
                 limit: int = Query(90, ge=1, le=90), r=Depends(get_reader)):  # noqa: B008
         end = end or today()-timedelta(days=1)
-        start = start or end-timedelta(days=89)
+        start = start or end-timedelta(days=min(89, end.toordinal()-1))
         validate(prime, end)
         if start > end or (end-start).days >= 90:
             raise HTTPException(422, 'history window must contain 1 to 90 days')

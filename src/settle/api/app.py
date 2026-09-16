@@ -260,7 +260,11 @@ def create_app(reader: Reader | None = None) -> FastAPI:
                        allow_headers=["*"])
 
     def get_reader() -> Iterator[Reader]:
-        yield _reader()
+        try:
+            reader = _reader()
+        except Exception:
+            raise HTTPException(503, "Store unavailable", headers={"Cache-Control": "no-store"}) from None
+        yield reader
 
     register_revenue(app, get_reader, _document_response)
 

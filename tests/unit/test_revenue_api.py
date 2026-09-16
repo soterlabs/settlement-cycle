@@ -78,3 +78,38 @@ def test_store_failure_is_503_without_secrets(monkeypatch):
     response = client(r, monkeypatch).get('/v1/revenue/obex/latest')
     assert response.status_code == 503
     assert 'private-secret' not in response.text
+
+
+def test_reader_initialization_failure_is_503_without_secrets(monkeypatch):
+    def failed():
+        raise RuntimeError('postgres://private-secret')
+    monkeypatch.setattr('settle.api.app._postgres_reader', failed)
+    response = TestClient(create_app()).get('/v1/revenue/obex/latest')
+    assert response.status_code == 503
+    assert 'private-secret' not in response.text
+
+
+def test_earliest_date_and_negative_cache_contract(monkeypatch):
+    r = Reader()
+    c = client(r, monkeypatch)
+    response = c.get('/v1/revenue/obex/history?end=0001-01-01')
+    assert response.status_code == 200
+    assert response.json()['start'] == '0001-01-01'
+    r.row = None
+    response = c.get('/v1/revenue/obex/latest')
+    assert response.status_code == 404
+    assert response.headers['cache-control'] == 'no-store'
+
+
+def test_etag_changes_with_corrections_and_freshness(monkeypatch):
+    r = Reader()
+    c = client(r, monkeypatch)
+    path = '/v1/revenue/obex/latest'
+    first = c.get(path)
+    headers = {'If-None-Match': first.headers['etag']}
+    assert c.get(path, headers=headers).status_code == 304
+    monkeypatch.setattr(revenue, 'today', lambda: date(2026, 9, 16))
+    stale = c.get(path, headers=headers)
+    assert stale.status_code == 200 and stale.json()['freshness']['stale']
+    r.row['revision_id'] = 'b'*64
+    assert c.get(path, headers={'If-None-Match': stale.headers['etag']}).status_code == 200
