@@ -260,7 +260,9 @@ def _check_centrifuge_in_flight(
         from ..extract._abi import pad_uint as _pu, pad_address as _pa
         data = selector + _pu(_REQUEST_ID) + _pa(holder)
         try:
-            raw = _eth_call(chain, vault, data, block)
+            from ..extract.publication import optional_revert
+            with optional_revert():
+                raw = _eth_call(chain, vault, data, block)
             return int(raw, 16) if raw and raw not in ("0x", "0x0") else 0
         except Exception:  # noqa: BLE001
             return 0

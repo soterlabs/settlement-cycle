@@ -123,3 +123,31 @@ in daily publication. The base-rate cap remains in effect.
   Live official-source validation accepted complete coverage through 2026-09-14
   and rejected missing 2026-09-15 before publication. No unresolved P1/P2 findings
   in this resumed review. Production remains paused until merge/deployment.
+
+## Required-input publication follow-up
+
+The user authorized fixing the post-merge P1 recorded on PR #211. Daily guarded
+source operations now abort past monthly fallback handlers on exhausted reads;
+the worker owns retry and failure recording. Optional typed contract probes and
+successful transport retries remain supported.
+
+- Round 1: reviewed optional probe classification and cache behavior. Found Curve
+  enumeration could still treat malformed/unknown exceptions as a valid coin
+  count. In daily publication, only typed reverts after at least two coins may
+  terminate enumeration; added regressions. Required cached execution reverts
+  are also checked at the public eth_call boundary. Raw finalized caches remain
+  reusable, and failed calculations do not write successful result revisions.
+
+- Round 2: reviewed transport retries and errors encoded in successful HTTP
+  responses. Added a guard for unregistered JSON-RPC error/malformed envelopes
+  and protected RPC result decoding for native balances/bytecode. Tests exercise
+  Grove's actual cash-distribution fallback through a complete calculation,
+  HTTP/timeout/JSON-RPC failures, recovered and exhausted HyperSync throttling,
+  and transport failures during optional selector probes. Each exhausted read
+  records failure without publishing; a successful internal retry is accepted.
+- Round 3: rechecked all changed call sites, guard/thread lifecycle, strict versus
+  optional cached reverts, source retry boundaries, durable attempt recording,
+  and immutable result publication. Added a regression proving a fresh worker
+  attempt can recover after a terminal failure without carrying the sticky flag
+  forward. No unresolved P1/P2 findings. The six-prime restart/reuse matrix passes;
+  this remains deterministic wiring/cache evidence, not live nonzero parity.

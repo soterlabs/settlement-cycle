@@ -21,6 +21,7 @@ from typing import Any
 import requests
 
 from .cache import cached
+from .publication import source_operation
 
 _DEFAULT_TIMEOUT = 40
 _MAX_PAGES = 100_000  # runaway backstop
@@ -117,6 +118,7 @@ def to_int(v: Any) -> int:
     return int(s, 16) if s.startswith("0x") else int(s)
 
 
+@source_operation
 def query_logs(
     chain: str,
     selections: list[dict[str, Any]],
@@ -209,6 +211,7 @@ def query_logs(
     return result
 
 
+@source_operation
 def archive_height(chain: str, *, post: Callable[..., Any] = requests.post) -> int:
     """Current HyperSync-indexed chain head — a cheap zero-row probe."""
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {_token()}"}
@@ -356,6 +359,7 @@ def _find_block_at_or_before_cached(chain: str, target_ts: int) -> int:
 
 
 @cached(source_id="hypersync.finalized_block_at_or_before")
+@source_operation
 def find_finalized_block_at_or_before(chain: str, target_ts: int, margin: int) -> int:
     """Cache only boundaries resolved from fresh, finalized observations.
 
@@ -384,6 +388,7 @@ def find_finalized_block_at_or_before(chain: str, target_ts: int, margin: int) -
 
 
 @cached(source_id="hypersync.finalized_block_timestamp")
+@source_operation
 def finalized_block_timestamp(chain: str, block: int, margin: int) -> int:
     """Date event blocks without reusing timestamps cached before finality."""
     if margin < 0:
@@ -397,6 +402,7 @@ def _lower(v: Any) -> str | None:
     return v.lower() if isinstance(v, str) else v
 
 
+@source_operation
 def _execute(chain: str, body: dict[str, Any], headers: dict[str, str], post) -> dict[str, Any]:
     for attempt in range(4):
         try:

@@ -44,3 +44,7 @@ The previous reference-rate blocker is addressed by the [official SOFR input
 gate](sofr_inputs.md). Schedule after the Fed's revision window; allow catch-up
 when weekend/holiday observations have not yet published. The calendar currently
 covers 2026–2027 and must be maintained from the official full-close schedule.
+
+Daily calculations also enforce the [required-input publication guard](required_input_publication.md).
+Exhausted provider reads fail the attempt instead of publishing monthly fallback
+zeros or flat balances. The worker retries; readers retain the prior success.

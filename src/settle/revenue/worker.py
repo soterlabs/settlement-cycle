@@ -22,6 +22,7 @@ from settle.compute import compute_monthly_pnl
 from settle.domain.config import load_prime_by_id
 from settle.domain.period import Month
 from settle.store.db import connect
+from settle.extract.publication import PublicationGuard, RequiredInputFailure
 
 from . import store
 from .reference_rates import prepare as prepare_reference_rates
@@ -111,7 +112,7 @@ def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_
                     conn.execute('UPDATE revenue_attempts SET versions=%s WHERE attempt_id=%s',
                                  (Jsonb(dataclasses.asdict(resolved)), attempt_id))
                     kwargs = {'reference_rate_history': prepared.history} if prepared else {}
-                    with ProviderAudit() as audit:
+                    with PublicationGuard(), ProviderAudit() as audit:
                         pnl = compute(config, Month(cutoff.year, cutoff.month), as_of=cutoff, **kwargs)
                     if pnl.prime_id != prime or pnl.as_of != cutoff:
                         raise ValueError('calculation returned a different prime or cutoff')
@@ -128,7 +129,7 @@ def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_
                                      "revision_id=%s WHERE attempt_id=%s", (revision, attempt_id))
                     results.append({'cutoff': str(cutoff), 'status': 'succeeded', 'revision_id': revision})
                     break
-                except Exception as exc:
+                except (Exception, RequiredInputFailure) as exc:
                     # Keep provider URLs/credentials out of the public run ledger.
                     conn.execute("UPDATE revenue_attempts SET status='failed', finished_at=NOW(), "
                                  "error_type=%s WHERE attempt_id=%s", (type(exc).__name__, attempt_id))
@@ -184,7 +185,7 @@ def main():
             with connect(autocommit=True) as conn:
                 store.apply_schema(conn)
                 report = run_prime(conn, prime, today=today, start=args.start, end=args.end)
-        except Exception as exc:
+        except (Exception, RequiredInputFailure) as exc:
             report = {'prime': prime, 'status': 'failed', 'error_type': type(exc).__name__}
             _log.error('ALERT daily revenue worker failed for %s: %s', prime, type(exc).__name__)
         reports.append(report)

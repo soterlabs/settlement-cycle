@@ -367,7 +367,9 @@ def _resolve_rwa_nav(
     for i, (kind, addr) in enumerate(candidates):
         try:
             src: INavOracleSource = _resolve(kind)
-            nav = src.nav_at(oracle_chain.value, addr, oracle_block)
+            from ..extract.publication import optional_revert
+            with optional_revert():
+                nav = src.nav_at(oracle_chain.value, addr, oracle_block)
             if i > 0:
                 _log.info(
                     "NAV oracle fallback %r returned %.6f for venue %s block %d",

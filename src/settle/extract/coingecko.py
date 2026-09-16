@@ -8,6 +8,7 @@ from decimal import Decimal
 import requests
 
 from .cache import cached
+from .publication import source_operation
 
 API_BASE = "https://api.coingecko.com/api/v3"
 DEFAULT_TIMEOUT = 30
@@ -18,6 +19,7 @@ class CoinGeckoError(RuntimeError):
 
 
 @cached(source_id="coingecko.simple_price")
+@source_operation
 def simple_price(coin_id: str, fetch_ts: datetime | None = None) -> Decimal:
     """Spot USD price by CoinGecko coin ID (e.g. ``ethereum``, ``morpho``).
 

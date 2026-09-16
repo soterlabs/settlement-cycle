@@ -62,6 +62,7 @@ class ProviderAudit:
 
     def __enter__(self):
         from settle.extract import dune, postgres_store
+        from settle.extract.publication import transport_failure, transport_rpc_response
         from settle.normalize.sources.hypersync_block_resolver import HyperSyncBlockResolver
         self.stack = ExitStack()
         original_get = postgres_store.get
@@ -110,7 +111,14 @@ class ProviderAudit:
             try:
                 response = original_send(session, request, **kwargs)
                 event.update(bytes=len(response.content), status=response.status_code)
+                if response.status_code >= 400:
+                    transport_failure(requests.HTTPError('Upstream HTTP failure'))
+                if event['provider'] == 'rpc':
+                    transport_rpc_response(response)
                 return response
+            except requests.RequestException as exc:
+                transport_failure(exc)
+                raise
             finally:
                 event["seconds"] = time.monotonic() - started
 
@@ -136,7 +144,8 @@ def calculate(prime, cutoff):
 
     from .metrics import ExtractionTimer
     started = time.monotonic()
-    with ExtractionTimer() as timer, ProviderAudit() as audit:
+    from settle.extract.publication import PublicationGuard
+    with PublicationGuard(), ExtractionTimer() as timer, ProviderAudit() as audit:
         result = compute_monthly_pnl(load_prime_by_id(prime), Month(cutoff.year, cutoff.month), as_of=cutoff)
     if audit.dune_attempts:
         raise RuntimeError(f"Calculation attempted {audit.dune_attempts} Dune calls")
