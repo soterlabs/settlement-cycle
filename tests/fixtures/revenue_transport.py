@@ -8,6 +8,20 @@ EPOCH = int(datetime(2000, 1, 1, tzinfo=UTC).timestamp())
 
 
 def send(session, request, **kwargs):
+    if request.url.startswith('https://markets.newyorkfed.org/api/rates/secured/sofr/search.json?'):
+        from urllib.parse import urlparse, parse_qs
+        from datetime import date, timedelta
+        query = parse_qs(urlparse(request.url).query)
+        current, end = date.fromisoformat(query['startDate'][0]), date.fromisoformat(query['endDate'][0])
+        rows = []
+        while current <= end:
+            if current.weekday() < 5:
+                rows.append({'type': 'SOFR', 'effectiveDate': str(current), 'percentRate': '3.62'})
+            current += timedelta(days=1)
+        response = requests.Response()
+        response.status_code = 200
+        response._content = json.dumps({'refRates': rows}).encode()
+        return response
     body = json.loads(request.body)
     if 'hypersync.xyz' in request.url:
         lo, hi = body['from_block'], body['to_block']

@@ -92,15 +92,17 @@ def test_true_zero_and_predeployment_are_cacheable(storage, monkeypatch):
     assert any("balance_of" in key[0] for key in rows)
 
 
-def test_required_postgres_promotes_local_hit_and_surfaces_write_failure(storage, monkeypatch):
+def test_required_postgres_refetches_local_only_hit_and_surfaces_write_failure(storage, monkeypatch):
     rows, _ = storage
+    values = iter([42, 84, 126])
     @cached("test")
     def snapshot():
-        return 42
+        return next(values)
     assert snapshot() == 42
-    rows.clear()  # local file exists, Postgres has not received it
+    rows.clear()  # A different DB has no entry, but the shared local file exists.
     monkeypatch.setenv("SETTLE_REQUIRE_POSTGRES", "1")
-    assert snapshot() == 42
+    assert snapshot() == 84  # Must fetch, never promote the unrelated local value.
+    assert snapshot() == 84  # This database's durable hit is still reusable.
     assert len(rows) == 1
     rows.clear()
     def failed(*args, **kwargs):
