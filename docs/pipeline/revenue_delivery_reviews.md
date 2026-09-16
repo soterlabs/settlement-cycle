@@ -73,7 +73,15 @@
   publication. Readiness now checks the exact configured prime set.
 - Round 3: rechecked SQL parameter binding, cutoff/revision isolation, coherent
   result/attempt snapshots, bounded history, unavailable-result semantics and
-  read-only provider behavior. Added checks that ETags change on UTC freshness
-  rollover and corrections, while unchanged responses validate with 304. No
-  unresolved P1/P2 findings. The real-Postgres HTTP test is included in CI;
-  existing TMF endpoint tests also pass.
+  read-only provider behavior. ETags change on UTC freshness rollover and
+  corrections; unchanged responses validate with 304. The final deployment
+  readiness check found an unresolved P1: input freshness is not a publication
+  gate. Grove and Spark use the SOFR configuration whose last row is 2026-08-31;
+  `rates.at(date(2026, 9, 15))` returns that rate (0.0368), while the legacy
+  fatal carry-forward threshold is 45 days. A newly calculated September
+  result can therefore be published and reported current despite missing
+  reference-rate updates. Configuration hashing records which inputs were
+  used but does not establish their freshness. Stopped before merging step 7
+  under the requested three-round rule. The new daily revenue deployment is
+  being paused pending a freshness gate and explicit carry-forward provenance.
+  Existing hourly SBE and read API services are unaffected.
