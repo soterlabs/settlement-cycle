@@ -24,7 +24,8 @@ from settle.domain.period import Month
 from settle.store.db import connect
 
 from . import store
-from .verification import PRIMES, ProviderAudit, validate_window
+from .reference_rates import prepare as prepare_reference_rates
+from .verification import PRIMES, ProviderAudit, digest, validate_window
 
 _log = logging.getLogger('settle.revenue.worker')
 
@@ -58,7 +59,7 @@ def lock_key(prime):
 
 
 def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_monthly_pnl,
-              capture=store.capture_versions, attempts=3, pause=time.sleep):
+              capture=store.capture_versions, attempts=3, pause=time.sleep, prepare=prepare_reference_rates):
     today = today or datetime.now(UTC).date()
     if not conn.autocommit or attempts < 1:
         raise ValueError('worker requires an autocommit lock session and positive retry count')
@@ -77,20 +78,41 @@ def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_
                               date.fromisoformat(initial) if initial else None)
         for cutoff in dates:
             versions = capture()
-            existing = conn.execute('''SELECT revision_id FROM revenue_results WHERE prime=%s AND cutoff=%s
-                AND code_version=%s AND configuration_version=%s AND input_revision=%s LIMIT 1''',
-                (prime, cutoff, versions.code, versions.configuration, versions.inputs)).fetchone()
-            if existing:
-                results.append({'cutoff': str(cutoff), 'status': 'reused', 'revision_id': existing[0]})
-                continue
             for attempt in range(attempts):
                 attempt_id = uuid.uuid4()
                 conn.execute('''INSERT INTO revenue_attempts (attempt_id,prime,cutoff,versions,status)
                     VALUES (%s,%s,%s,%s,'running')''',
                     (attempt_id, prime, cutoff, Jsonb(dataclasses.asdict(versions))))
                 try:
+                    config = load_prime_by_id(prime)
+                    prepared = prepare(conn, config, cutoff)
+                    if capture() != versions:
+                        raise RuntimeError("input/config/code revision changed during preparation")
+                    provenance = {'manual_input_revision': versions.inputs,
+                                  **(prepared.provenance if prepared else {})}
+                    latest = store.read(conn, prime, cutoff=cutoff)
+                    # Reuse only the currently published revision. If an official
+                    # correction returns to an older value, publish a new revision
+                    # rather than leaving the intervening value as "latest".
+                    if (latest and latest['code_version'] == versions.code
+                            and latest['configuration_version'] == versions.configuration
+                            and latest['input_provenance'] == provenance):
+                        resolved = dataclasses.replace(versions, inputs=latest['input_revision'])
+                        conn.execute("UPDATE revenue_attempts SET status='succeeded', finished_at=NOW(), "
+                                     "revision_id=%s, versions=%s WHERE attempt_id=%s",
+                                     (latest['revision_id'], Jsonb(dataclasses.asdict(resolved)), attempt_id))
+                        results.append({'cutoff': str(cutoff), 'status': 'reused',
+                                        'revision_id': latest['revision_id']})
+                        break
+                    resolved = dataclasses.replace(versions, inputs=digest({
+                        'manual_revision': versions.inputs,
+                        'reference_rates': prepared.snapshot_id if prepared else None,
+                        'supersedes': latest['revision_id'] if latest else None}))
+                    conn.execute('UPDATE revenue_attempts SET versions=%s WHERE attempt_id=%s',
+                                 (Jsonb(dataclasses.asdict(resolved)), attempt_id))
+                    kwargs = {'reference_rate_history': prepared.history} if prepared else {}
                     with ProviderAudit() as audit:
-                        pnl = compute(load_prime_by_id(prime), Month(cutoff.year, cutoff.month), as_of=cutoff)
+                        pnl = compute(config, Month(cutoff.year, cutoff.month), as_of=cutoff, **kwargs)
                     if pnl.prime_id != prime or pnl.as_of != cutoff:
                         raise ValueError('calculation returned a different prime or cutoff')
                     if audit.dune_attempts:
@@ -100,7 +122,8 @@ def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_
                     # Validate that the lock session still exists before publishing.
                     # A broken connection must fail; never reconnect behind a lost lock.
                     with conn.transaction():
-                        revision = store.publish(conn, pnl, versions)
+                        revision = store.publish(conn, pnl, resolved,
+                                                 input_provenance=provenance)
                         conn.execute("UPDATE revenue_attempts SET status='succeeded', finished_at=NOW(), "
                                      "revision_id=%s WHERE attempt_id=%s", (revision, attempt_id))
                     results.append({'cutoff': str(cutoff), 'status': 'succeeded', 'revision_id': revision})

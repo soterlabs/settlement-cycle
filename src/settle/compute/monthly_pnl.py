@@ -22,7 +22,7 @@ from ..domain.primes import Chain, Prime, PsmKind
 from ..extract.input_cache import revenue_input_scope
 from ..domain.sde import load_sde_table
 from ..domain.sky_tokens import USDS_ETHEREUM, sUSDS_ETHEREUM
-from ..domain.subsidy import load_reference_rates_for
+from ..domain.subsidy import ReferenceRateHistory, ScheduledReferenceRateHistory, load_reference_rates_for
 from ..normalize import (
     get_debt_timeseries,
     get_position_value,
@@ -2152,13 +2152,16 @@ def compute_monthly_pnl(
     pin_blocks_som: dict[Chain, int] | None = None,
     sky_only: bool = False,
     as_of: date | None = None,
+    reference_rate_history: ReferenceRateHistory | ScheduledReferenceRateHistory | None = None,
 ) -> MonthlyPnL:
     """Compute settlement revenue for ``prime`` × ``month``.
 
     ``as_of`` selects an inclusive, completed UTC day within the month.
     The opening anchor stays at the previous month-end; closing valuations,
     flows and accrual use the cutoff. Partial results are provisional and
-    exclude monthly distribution-reward enrichment. Active monthly-only GAR
+    exclude monthly distribution-reward enrichment. ``reference_rate_history``
+    lets the daily worker supply its validated, persisted official rate snapshot;
+    absent that argument the existing configured monthly inputs are used. Active monthly-only GAR
     is unsupported for partial periods. Omit the argument for the full month.
 
     Live as-of runs require certified, finalized boundaries. Explicit pins
@@ -4163,7 +4166,8 @@ def compute_monthly_pnl(
     # ``prime.subsidy.enabled`` is False this collapses to full-BR and
     # ``ref_rate_history`` is never read.
     ref_rate_history = (
-        load_reference_rates_for(prime.subsidy)
+        (reference_rate_history if reference_rate_history is not None
+         else load_reference_rates_for(prime.subsidy))
         if prime.subsidy.enabled else None
     )
     sky_rev_br, sky_rev_daily, subsidy_summary = compute_sky_revenue_daily(

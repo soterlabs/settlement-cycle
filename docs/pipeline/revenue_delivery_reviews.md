@@ -59,3 +59,67 @@
   handlers. Expiry closes DB sessions, releases locks and leaves an auditable
   abandoned attempt for the next tick. No unresolved P1/P2 findings after this
   fix; deadline termination, recovery, locking and publication tests pass.
+
+## Step 7
+
+- Round 1: reviewed dependency initialization and degraded database behavior.
+  Fixed reader construction failures escaping the endpoint's error handling;
+  connection setup now returns a generic 503 without exposing credentials.
+  Existing HTTP validation and missing-result responses remain intact.
+- Round 2: exercised the real Postgres reader through HTTP for revision selection,
+  exact decimals, prime isolation, late backfills and failed-refresh retention.
+  Fixed earliest-valid-date underflow in the default history window and disabled
+  caching of absent/unavailable results so an early miss does not hide a later
+  publication. Readiness now checks the exact configured prime set.
+- Round 3: rechecked SQL parameter binding, cutoff/revision isolation, coherent
+  result/attempt snapshots, bounded history, unavailable-result semantics and
+  read-only provider behavior. ETags change on UTC freshness rollover and
+  corrections; unchanged responses validate with 304. The final deployment
+  readiness check found an unresolved P1: input freshness is not a publication
+  gate. Grove and Spark use the SOFR configuration whose last row is 2026-08-31;
+  `rates.at(date(2026, 9, 15))` returns that rate (0.0368), while the legacy
+  fatal carry-forward threshold is 45 days. A newly calculated September
+  result can therefore be published and reported current despite missing
+  reference-rate updates. Configuration hashing records which inputs were
+  used but does not establish their freshness. Stopped before merging step 7
+  under the requested three-round rule. The new daily revenue deployment is
+  paused pending a freshness gate and explicit carry-forward provenance.
+  Production overrides its start command with a no-op; the configured daily
+  schedule remains in place. Reapplying the main IaC worker command would
+  resume calculation and must wait for this issue to be resolved.
+  Existing hourly SBE and read API services are unaffected.
+
+Final offline + isolated-Postgres regression: 1145 passed, 1 skipped, 5 live
+tests deselected. Live same-date reuse passed for Grove and OBEX; Spark and the
+remaining live matrix are incomplete (provider throttling and stop-rule exit).
+
+## Step 7 resumed — official SOFR input gate
+
+The user supplied/authorized the NY Fed source and requested continuation. The
+prior P1 is addressed by fetching complete official business-day observations,
+persisting exact snapshots, passing them into the calculation, and checking
+coverage before either calculation or cached-result reuse. The schedule moves
+to 20:17 UTC after the same-day revision window. No YAML SOFR fallback is allowed
+in daily publication. The base-rate cap remains in effect.
+
+- Round 1: reviewed snapshot identity, correction/retry behavior and calendar
+  coverage. Found a correction reverting to an earlier rate could reuse an old
+  revision while the intervening revision stayed latest. Reuse now selects only
+  the current publication; changed inputs incorporate the superseded revision
+  into the new identity. Added an A→B→A correction regression. Configuration
+  changes during preparation are also checked before reuse, and verified
+  full-close calendar coverage is explicit through 2027 (unknown dates fail).
+- Round 2: reviewed complete-window coverage, effective-date semantics and
+  holiday boundaries. Found that an unexpected official print on a configured
+  closure could be ignored, especially at the cutoff. Fetches now extend through
+  the actual cutoff and reject any disagreement between official observations
+  and the calendar. Added that regression; missing middle days, malformed rows,
+  duplicate dates and unpublished terminal observations already fail closed.
+- Round 3: rechecked full-calculation injection, immutable persisted observations,
+  the base-rate cap, failed-refresh retention, revision provenance in the HTTP
+  response, month-opening carry-forward seeds and independence of finalized raw
+  chain caches. Eighteen targeted checks pass, including a complete configured
+  Grove calculation with deterministic transport that forbids YAML rate loading.
+  Live official-source validation accepted complete coverage through 2026-09-14
+  and rejected missing 2026-09-15 before publication. No unresolved P1/P2 findings
+  in this resumed review. Production remains paused until merge/deployment.

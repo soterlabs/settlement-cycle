@@ -60,7 +60,7 @@ export default defineRailway(() => {
     build,
     deploy: {
       startCommand: "python -m settle.revenue.worker",
-      cronSchedule: "17 3 * * *",
+      cronSchedule: "17 20 * * *",
       restartPolicyType: "NEVER", // bounded retries are recorded by the worker
     },
     env: {

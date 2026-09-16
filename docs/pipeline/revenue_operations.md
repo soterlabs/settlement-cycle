@@ -1,7 +1,7 @@
 # Daily revenue operations
 
-`settle-revenue-daily` runs `python -m settle.revenue.worker` at **03:17 UTC once
-per day** (`17 3 * * *`). The existing SBE job remains independent. The cutoff is
+`settle-revenue-daily` runs `python -m settle.revenue.worker` at **20:17 UTC once
+per day** (`17 20 * * *`). The existing SBE job remains independent. The cutoff is
 the previous completed UTC day; on the first day of a month this is the previous
 month's last day. Set the provider credentials, `DATABASE_URL`, deployment code
 version and optional `SETTLE_INPUT_REVISION`. The worker requires Postgres and
@@ -39,3 +39,8 @@ on expiry, closing connections and releasing locks; the next tick recovers the
 abandoned attempt. Set this deployment environment variable before starting the
 process (the watchdog starts before dotenv loading). Failed/expired jobs emit
 an alert signal and never publish an uncommitted result.
+
+The previous reference-rate blocker is addressed by the [official SOFR input
+gate](sofr_inputs.md). Schedule after the Fed's revision window; allow catch-up
+when weekend/holiday observations have not yet published. The calendar currently
+covers 2026–2027 and must be maintained from the official full-close schedule.

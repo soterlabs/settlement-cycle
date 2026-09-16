@@ -43,7 +43,7 @@ def apply_schema(conn):
     conn.execute((_ROOT / 'db' / 'schema_revenue.sql').read_text())
 
 
-def publish(conn, pnl, versions: Versions):
+def publish(conn, pnl, versions: Versions, *, input_provenance=None):
     """Write within the caller's transaction. Identical retries are idempotent.
 
     Daily estimates remain provisional even at month-end: this publication path
@@ -64,11 +64,11 @@ def publish(conn, pnl, versions: Versions):
     with conn.cursor() as cur:
         cur.execute('''INSERT INTO revenue_results
             (revision_id, prime, cutoff, opening_pins, closing_pins, code_version,
-             configuration_version, input_revision, result, result_hash)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+             configuration_version, input_revision, result, result_hash, input_provenance)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             ON CONFLICT DO NOTHING''',
             (revision, pnl.prime_id, pnl.as_of, Jsonb(opening), Jsonb(closing), versions.code,
-             versions.configuration, versions.inputs, Jsonb(payload), result_hash))
+             versions.configuration, versions.inputs, Jsonb(payload), result_hash, Jsonb(input_provenance or {})))
         cur.execute('SELECT result_hash FROM revenue_results WHERE revision_id=%s', (revision,))
         if cur.fetchone()[0] != result_hash:
             raise ValueError('same revision produced different results; correct inputs with a new revision')

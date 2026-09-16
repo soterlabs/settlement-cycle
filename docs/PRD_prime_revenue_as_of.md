@@ -65,7 +65,8 @@ Input reuse is an acceptance requirement for the eventual daily pipeline.
 Steps 1 and 2 establish the accounting API and persistent input infrastructure.
 Steps 3 and 4 verify reuse and operating costs; step 5 establishes auditable
 result persistence before daily scheduling and API publication in steps 6 and 7.
-The remaining steps are planned work, not claims of production readiness.
+Implementation and operational acceptance are tracked separately below;
+implementation alone is not a claim that every live venue has been verified.
 
 ## Step 1 scope and semantics
 
@@ -118,3 +119,24 @@ revisions, worker settings and validation. Daily workers require Postgres via
 `SETTLE_REQUIRE_POSTGRES=1`; finalized raw inputs and complete event intervals
 persist across fresh worker processes. Step 3's all-prime provider-call
 acceptance checks and step 4's operational measurements remain separate work.
+
+
+## Steps 3–7 delivery
+
+- Steps 3–4: [same-date reuse and advancement measurements](pipeline/revenue_verification.md),
+  delivered in PRs #207 and #208. The six-prime Postgres matrix uses deterministic
+  transport; live same-date reuse passed for Grove and OBEX. Remaining live
+  measurements must not be inferred from that fixture matrix or extrapolated
+  into a provider budget.
+- Step 5: [immutable daily results](pipeline/revenue_results.md), PR #209.
+- Step 6: [daily worker and operations](pipeline/revenue_operations.md), PR #210.
+- Step 7: [read API](pipeline/revenue_api.md), PR #211, including the
+  [official SOFR publication gate](pipeline/sofr_inputs.md) required to safely
+  resume daily publication. The daily schedule is 20:17 UTC; unavailable official
+  observations retain prior results and are caught up after publication.
+- [Dashboard implementation handoff](pipeline/msc_dashboard_daily_revenue_prompt.md)
+  and [three-round review record](pipeline/revenue_delivery_reviews.md).
+
+Daily outputs/backfills are bounded to the last 90 completed UTC days; older
+monthly data remains canonical. Reference-calendar maintenance and external
+alert delivery configuration are documented operational responsibilities.
