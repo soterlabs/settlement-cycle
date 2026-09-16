@@ -28,6 +28,7 @@ import requests
 
 PRIMES = ("grove", "spark", "obex", "keel", "skybase", "osero")
 _certifying = contextvars.ContextVar("revenue_certification", default=False)
+_refreshing_rates = contextvars.ContextVar("revenue_reference_refresh", default=False)
 
 
 def canonical(value):
@@ -95,6 +96,9 @@ class ProviderAudit:
             host = urlparse(request.url).hostname or ""
             hs = host.endswith(".hypersync.xyz")
             category = "historical"
+            from .reference_rates import SOURCE
+            if _refreshing_rates.get() and request.url.split('?')[0] == SOURCE:
+                category = 'reference_refresh'
             if hs and body == {"from_block": 0, "to_block": 1, "logs": [],
                                "field_selection": {"block": ["number"]}}:
                 category = "head"
@@ -145,16 +149,32 @@ def calculate(prime, cutoff):
     from .metrics import ExtractionTimer
     started = time.monotonic()
     from settle.extract.publication import PublicationGuard
+    from settle.store.db import connect
+    from . import reference_rates, store
+    config = load_prime_by_id(prime)
+    reference_started = time.monotonic()
+    token = _refreshing_rates.set(True)
+    try:
+        with ProviderAudit() as reference_audit, connect(autocommit=True) as conn:
+            store.apply_schema(conn)
+            prepared = reference_rates.prepare(conn, config, cutoff)
+    finally:
+        _refreshing_rates.reset(token)
+    reference_seconds = time.monotonic() - reference_started
+    kwargs = {'reference_rate_history': prepared.history} if prepared else {}
     with PublicationGuard(), ExtractionTimer() as timer, ProviderAudit() as audit:
-        result = compute_monthly_pnl(load_prime_by_id(prime), Month(cutoff.year, cutoff.month), as_of=cutoff)
-    if audit.dune_attempts:
-        raise RuntimeError(f"Calculation attempted {audit.dune_attempts} Dune calls")
+        result = compute_monthly_pnl(config, Month(cutoff.year, cutoff.month), as_of=cutoff, **kwargs)
+    dune_attempts = audit.dune_attempts + reference_audit.dune_attempts
+    if dune_attempts:
+        raise RuntimeError(f"Calculation attempted {dune_attempts} Dune calls")
     elapsed = time.monotonic() - started
     return {"prime": prime, "cutoff": cutoff.isoformat(), "result": canonical(result),
-            "cache": audit.cache, "extraction_seconds": timer.seconds,
-            "calculation_seconds": max(0, elapsed - timer.seconds),
-            "calls": audit.calls, "elapsed_seconds": elapsed,
-            "dune_attempts": audit.dune_attempts}
+            "cache": audit.cache, "extraction_seconds": timer.seconds + reference_seconds,
+            "reference_refresh_seconds": reference_seconds,
+            "calculation_seconds": max(0, elapsed - timer.seconds - reference_seconds),
+            "calls": reference_audit.calls + audit.calls, "elapsed_seconds": elapsed,
+            "reference_snapshot": prepared.snapshot_id if prepared else None,
+            "dune_attempts": dune_attempts}
 
 
 def worker(prime, cutoff, output, *, timeout=21600):
@@ -169,14 +189,16 @@ def worker(prime, cutoff, output, *, timeout=21600):
 
 
 def compare(first, second):
-    historical = [c for c in second["calls"] if c["category"] not in {"head", "boundary"}]
+    historical = [c for c in second["calls"] if c["category"] not in {"head", "boundary", "reference_refresh"}]
     same_identity = (first["prime"], first["cutoff"]) == (second["prime"], second["cutoff"])
     return {"prime": first["prime"], "cutoff": first["cutoff"],
             "same_identity": same_identity,
             "matched": first["result"] == second["result"],
+            "same_reference_snapshot": first.get("reference_snapshot") == second.get("reference_snapshot"),
             "historical_requests": len(historical), "unexpected_requests": historical,
             "first_sha256": digest(first["result"]), "second_sha256": digest(second["result"]),
-            "passed": same_identity and first["result"] == second["result"] and not historical
+            "passed": same_identity and first["result"] == second["result"]
+                      and first.get("reference_snapshot") == second.get("reference_snapshot") and not historical
                       and not first["dune_attempts"] and not second["dune_attempts"]}
 
 
@@ -185,6 +207,9 @@ def summarize(report):
     return {"cutoff": report["cutoff"], "requests": len(calls),
             "requests_by_provider": {p: sum(c["provider"] == p for c in calls)
                                      for p in ("hypersync", "rpc", "other")},
+            "rpc_requests_by_method": {method: sum(c.get('method') == method for c in calls)
+                                       for method in sorted({c['method'] for c in calls if c.get('method')})},
+            "reference_refresh_requests": sum(c['category'] == 'reference_refresh' for c in calls),
             "response_bytes": sum(c["bytes"] for c in calls),
             "historical_requests": sum(c["category"] == "historical" for c in calls),
             "elapsed_seconds": report["elapsed_seconds"],
@@ -221,17 +246,23 @@ def main():
         args.output.write_text(json.dumps(calculate(args.prime[0], args.as_of), sort_keys=True))
         return
     args.output.mkdir(parents=True, exist_ok=True)
+    primes = args.prime or PRIMES
+    # Complete the baseline fleet before advancing any prime: a next-day run
+    # must not prewarm shared future inputs for another prime's baseline.
+    first = {prime: worker(prime, args.as_of, args.output / f"{prime}-first.json") for prime in primes}
     reports = []
-    for prime in args.prime or PRIMES:
-        first = worker(prime, args.as_of, args.output / f"{prime}-first.json")
+    for prime in primes:
         second = worker(prime, args.as_of, args.output / f"{prime}-second.json")
-        report = compare(first, second)
-        report["measurements"] = {"first": summarize(first), "same_date": summarize(second)}
-        if args.advance and report["passed"]:
-            advanced = worker(prime, args.as_of + timedelta(days=1), args.output / f"{prime}-next.json")
-            report["measurements"]["next_day"] = summarize(advanced)
+        report = compare(first[prime], second)
+        report["measurements"] = {"first": summarize(first[prime]), "same_date": summarize(second)}
         reports.append(report)
         (args.output / "verification.json").write_text(json.dumps(reports, indent=2))
+    if args.advance and all(r["passed"] for r in reports):
+        for report in reports:
+            prime = report['prime']
+            advanced = worker(prime, args.as_of + timedelta(days=1), args.output / f"{prime}-next.json")
+            report["measurements"]["next_day"] = summarize(advanced)
+            (args.output / "verification.json").write_text(json.dumps(reports, indent=2))
     if not all(r["passed"] for r in reports):
         raise SystemExit("Same-date reuse verification failed; inspect verification.json")
 

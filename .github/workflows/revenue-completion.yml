@@ -1,0 +1,28 @@
+name: Daily revenue completion
+
+on:
+  schedule:
+    # Independent of Railway. 20:17 UTC + six-hour deadline + 30m grace.
+    - cron: '0 3 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-revenue-completion
+  cancel-in-progress: false
+
+jobs:
+  completion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: pip install -e ".[api]"
+      - name: Verify all due daily results and attempt status
+        run: python -m settle.revenue.monitor
