@@ -11,8 +11,9 @@ Daily workers set `SETTLE_REQUIRE_POSTGRES=1` and `DATABASE_URL`. Apply
 `db/schema.sql` before starting them. Missing connections and failed raw-cache
 reads/writes raise `PersistenceError`; a warm local file cannot hide a failed
 required database write. Required persistence and input-finality failures also
-fail the calculation if an existing source fallback catches the exception. A local hit absent from Postgres is promoted before
-returning. Without required mode the existing optional/local-only behavior is
+fail the calculation if an existing source fallback catches the exception. An entry absent from the required Postgres database is fetched from its source;
+local-only files are not promoted because they may belong to another database
+or a fixture environment. Without required mode the existing optional/local-only behavior is
 retained for developer tools and ordinary monthly workflows.
 
 As-of runs enter a run-local finalized-input scope. Every decorated read with

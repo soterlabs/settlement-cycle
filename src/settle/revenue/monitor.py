@@ -39,6 +39,9 @@ def assess(payload, now):
                 failures[prime] = 'missing_attempt'
                 continue
             attempted = date.fromisoformat(attempt['cutoff'])
+            if attempted >= now.astimezone(UTC).date():
+                failures[prime] = 'invalid_attempt_cutoff'
+                continue
             state = attempt['status']
             if state not in {'succeeded', 'running', 'failed', 'abandoned'}:
                 failures[prime] = 'invalid_attempt_status'

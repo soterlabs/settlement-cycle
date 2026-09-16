@@ -58,3 +58,9 @@ def test_monitor_accepts_valid_503_payload_and_sanitizes_failures(monkeypatch, c
     with pytest.raises(SystemExit, match='1'):
         main()
     assert 'private-url-token' not in capsys.readouterr().out
+
+
+def test_future_attempt_metadata_is_invalid():
+    data = payload()
+    data['primes']['grove']['latest_attempt']['cutoff'] = '2026-09-18'
+    assert not assess(data, datetime(2026, 9, 17, 3, tzinfo=UTC))['ready']

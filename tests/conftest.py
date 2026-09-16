@@ -36,3 +36,9 @@ def config_dir(repo_root: Path) -> Path:
 @pytest.fixture
 def queries_dir(repo_root: Path) -> Path:
     return repo_root / "src" / "settle" / "queries"
+
+
+@pytest.fixture(autouse=True)
+def isolated_local_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Fixture computations must never share the developer/live pickle cache."""
+    monkeypatch.setenv('SETTLE_CACHE_DIR', str(tmp_path / 'extract-cache'))

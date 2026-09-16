@@ -151,3 +151,16 @@ successful transport retries remain supported.
   attempt can recover after a terminal failure without carrying the sticky flag
   forward. No unresolved P1/P2 findings. The six-prime restart/reuse matrix passes;
   this remains deterministic wiring/cache evidence, not live nonzero parity.
+
+## Operational acceptance follow-up — PR #213
+
+- Round 1: reviewed measurement inputs and deadline semantics. The verifier now
+  uses official reference snapshots and treats only the explicit official
+  refresh as an allowed freshness read; reference time is included in extraction.
+  The completion deadline is based on the last due scheduled run, not midnight.
+  Regression testing exposed a fixture subprocess reading a live local-cache
+  entry. Required-Postgres mode now fetches local-only misses from the source
+  instead of promoting them, and every test gets an isolated pickle directory.
+  Added refetch/reuse/write-failure and invalid future-attempt regressions.
+  Checked 121 production finalized date anchors: none matched the deterministic
+  fixture block-number signature. No production data was deleted or rewritten.

@@ -7,7 +7,8 @@ failure gate. This follow-up closes the remaining measurement and monitoring wor
 ## Live measurements
 
 Run the verifier against a separate, initially empty Postgres database, with
-provider credentials and `db/schema.sql` applied. Use a pinned checkout and an
+provider credentials and `db/schema.sql` applied. Required-Postgres mode never
+promotes local-only files into that database; tests have isolated local caches. Use a pinned checkout and an
 empty local cache for each subprocess. Baseline all six primes through one
 completed date, repeat that date, then advance the entire fleet by one day.
 Do not measure incremental demand against a production cache that already

@@ -10,6 +10,9 @@ Layered storage (when ``DATABASE_URL`` is set):
                          hit  → write pickle, return
                          miss → fetch upstream, write pickle + Postgres
 
+With SETTLE_REQUIRE_POSTGRES=1, read Postgres first and fetch on a miss; local-only
+files are never promoted into the required database.
+
 The Postgres layer is the durable source of truth; the local pickle is a
 fast local cache on top. With ``DATABASE_URL`` unset the pipeline behaves exactly
 as before (pickle-only). See ``postgres_store.py``.
@@ -152,15 +155,16 @@ def cached(source_id: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
             path = cache_dir() / f"{source}_{key}.pkl"
             encoded_args = {"args": [_jsonify(a) for a in key_args],
                             "kwargs": {k: _jsonify(v) for k, v in sorted(key_kwargs.items())}}
-            # Required mode verifies durability even on a warm local worker.
-            # A miss can promote a locally populated finalized cache entry.
+            # Required mode trusts only this database's durable entries.
+            # Local files may belong to another DB, fixture run or revision
+            # environment; never promote an unverified local-only value.
             if postgres_store.required():
                 pg_value = postgres_store.get(source, key)
                 if pg_value is not postgres_store.MISS:
                     _write_pickle(path, pg_value)
                     return pg_value
             # 1. Local pickle hit.
-            if path.exists():
+            if path.exists() and not postgres_store.required():
                 # Only deserialize a pickle file we know we wrote — guards
                 # against a tampered cache file dropped by another user.
                 if not _is_owned_by_current_user(path):
@@ -169,8 +173,6 @@ def cached(source_id: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
                     )
                 with path.open("rb") as f:
                     value = pickle.load(f)
-                if postgres_store.required():
-                    postgres_store.put(source, key, args=encoded_args, payload=value)
                 return value
             # 2. Postgres hit — populate the local cache and return.
             if not postgres_store.required():
