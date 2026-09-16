@@ -15,7 +15,8 @@ from dataclasses import dataclass
 
 from ..domain.primes import Address, Chain
 from .cache import cached
-from .rpc import RPCError, eth_call, eth_get_logs
+from .publication import active, fail, optional_revert, source_operation
+from .rpc import EVMRevert, RPCError, eth_call, eth_get_logs
 
 # Pool selectors
 SEL_GET_VIRTUAL_PRICE = "0xbb7b8b80"   # get_virtual_price()
@@ -59,7 +60,8 @@ def coin_at(chain: Chain, pool: Address, idx: int, block: int) -> Address:
     """Returns the address of the i-th coin in the pool. Tries uint256 then int128."""
     arg = _pad_uint(idx)
     try:
-        return _decode_address(eth_call(chain, pool, SEL_COINS_UINT256 + arg, block))
+        with optional_revert():
+            return _decode_address(eth_call(chain, pool, SEL_COINS_UINT256 + arg, block))
     except RPCError as e:
         if not _is_selector_revert(e):
             raise
@@ -71,7 +73,8 @@ def balance_at(chain: Chain, pool: Address, idx: int, block: int) -> int:
     """Returns the i-th coin's reserve in the pool, in raw units."""
     arg = _pad_uint(idx)
     try:
-        return int(eth_call(chain, pool, SEL_BALANCES_UINT256 + arg, block), 16)
+        with optional_revert():
+            return int(eth_call(chain, pool, SEL_BALANCES_UINT256 + arg, block), 16)
     except RPCError as e:
         if not _is_selector_revert(e):
             raise
@@ -79,6 +82,7 @@ def balance_at(chain: Chain, pool: Address, idx: int, block: int) -> int:
 
 
 @cached(source_id="curve.n_coins")
+@source_operation
 def n_coins(chain: Chain, pool: Address, block: int, *, max_probe: int = 4) -> int:
     """Probe how many coins the pool holds. Walks `coin_at(i)` until reverting.
 
@@ -89,8 +93,11 @@ def n_coins(chain: Chain, pool: Address, block: int, *, max_probe: int = 4) -> i
     """
     for i in range(max_probe):
         try:
-            coin_at(chain, pool, i, block)
-        except (RPCError, ValueError):
+            with optional_revert():
+                coin_at(chain, pool, i, block)
+        except (RPCError, ValueError) as exc:
+            if active() and (not isinstance(exc, EVMRevert) or i < 2):
+                fail(exc)
             return i
     raise ValueError(
         f"n_coins({pool.hex}, block={block}): pool has at least {max_probe} "

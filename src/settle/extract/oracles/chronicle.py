@@ -41,6 +41,7 @@ from decimal import Decimal
 from ...domain.primes import Address, Chain
 from .._abi import decode_uint_words
 from ..cache import cached
+from ..publication import optional_revert
 from ..rpc import RPCError, block_timestamp, eth_call
 
 _log = logging.getLogger(__name__)
@@ -74,7 +75,8 @@ def _read_with_age_raw(
     contract doesn't support the selector (revert / empty / short return).
     Only the RPC result is cached — interpretation happens in ``read``."""
     try:
-        result = eth_call(chain, oracle, SEL_READ_WITH_AGE, block)
+        with optional_revert():
+            result = eth_call(chain, oracle, SEL_READ_WITH_AGE, block)
     except RPCError:
         return None
     try:

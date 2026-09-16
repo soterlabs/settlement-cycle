@@ -23,9 +23,11 @@ from ...extract import aave_reconstruct, hypersync, hypersync_store
 def _default_metadata(chain: str, token: bytes, block: int) -> tuple[bytes, bytes]:
     from ...domain.primes import Address, Chain
     from ...extract import rpc
+    from ...extract.publication import optional_revert
     tok = Address.from_str("0x" + bytes(token).hex())
-    return (rpc.aave_pool(Chain(chain), tok, block),
-            rpc.aave_underlying_asset(Chain(chain), tok, block))
+    with optional_revert():
+        return (rpc.aave_pool(Chain(chain), tok, block),
+                rpc.aave_underlying_asset(Chain(chain), tok, block))
 
 
 class HyperSyncAaveSource:

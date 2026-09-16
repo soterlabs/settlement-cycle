@@ -16,6 +16,7 @@ import requests
 
 from ..domain.primes import Address, Chain
 from .cache import cached
+from .publication import optional_revert, source_operation
 
 # Function selectors (first 4 bytes of keccak256 of the signature)
 SEL_BALANCE_OF = "0x70a08231"           # balanceOf(address)
@@ -117,6 +118,7 @@ def _is_transient_rpc_error(err: Any) -> bool:
 _rpc_log = logging.getLogger(__name__)
 
 
+@source_operation(raw_rpc=True)
 def _post(url: str, method: str, params: list[Any]) -> Any:
     """JSON-RPC POST with bounded retry on transient transport errors.
 
@@ -207,10 +209,11 @@ class _ContractRevert:
     """A deterministic EVM revert at a finalized block, never a zero value."""
 
 
+@source_operation
 def eth_call(chain: Chain, contract: Address, data: str, block: int) -> str:
     result = _eth_call_response(chain, contract, data, block)
     if isinstance(result, _ContractRevert):
-        raise RPCError("eth_call execution reverted (finalized cached response)")
+        raise EVMRevert("eth_call execution reverted (finalized cached response)")
     return result
 
 
@@ -281,6 +284,7 @@ def _decode_uint(raw: str) -> int:
 
 
 @cached(source_id="rpc.is_contract_deployed")
+@source_operation
 def is_contract_deployed(chain: Chain, contract: Address, block: int) -> bool:
     """Return True if *contract* has non-empty bytecode at *block*.
 
@@ -384,7 +388,8 @@ def scaled_balance_of(chain: Chain, token: Address, holder: Address, block: int)
     """
     data = SEL_SCALED_BALANCE_OF + _pad_address(holder)
     try:
-        return _decode_uint(eth_call(chain, token, data, block))
+        with optional_revert():
+            return _decode_uint(eth_call(chain, token, data, block))
     except (RPCError, requests.HTTPError) as e:
         # Catch BOTH RPCError (JSON-RPC 200 with error payload) and HTTPError
         # (some providers — drpc under load, Infura on certain plans — surface
@@ -440,6 +445,7 @@ def ilk_rate(chain: Chain, vat: Address, ilk: bytes, block: int) -> int:
 
 
 @cached(source_id="rpc.native_balance")
+@source_operation
 def native_balance(chain: Chain, holder: Address, block: int) -> int:
     """Native gas balance (wei) at a specific block."""
     return int(_post(rpc_url(chain), "eth_getBalance", [holder.hex, hex(block)]), 16)
@@ -504,11 +510,13 @@ def psm3_convert_to_asset_value(chain: Chain, psm3: Address, num_shares: int, bl
 # Block-time helpers
 # ----------------------------------------------------------------------------
 
+@source_operation
 def latest_block(chain: Chain) -> int:
     return int(_post(rpc_url(chain), "eth_blockNumber", []), 16)
 
 
 @cached(source_id="rpc.block_timestamp")
+@source_operation
 def block_timestamp(chain: Chain, block: int) -> int:
     """UNIX timestamp of the given block.
 
@@ -571,6 +579,7 @@ _LOGS_CHUNK_BY_CHAIN: dict[Chain, int] = {
 }
 
 
+@source_operation
 def eth_get_logs(
     chain: Chain,
     address: Address,
