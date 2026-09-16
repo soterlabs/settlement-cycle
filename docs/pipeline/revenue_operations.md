@@ -23,8 +23,9 @@ readers keep the last committed success. An identical revision is reused.
 The worker emits structured per-prime reports and exits nonzero on failure, with
 `ALERT` log entries containing prime, cutoff and error type (no provider secrets).
 Use Railway's failed-job notification/monitoring integration for those signals.
-The revenue API status endpoint in step 7 will also report missing daily
-completion, including a scheduler that never fired. Do not interpret a healthy
+The revenue API status endpoint reports missing daily completion. The independent
+GitHub Actions `Daily revenue completion` workflow checks due cutoffs at 03:00 UTC,
+including a scheduler that never fired. See the [operational acceptance record](revenue_operational_acceptance.md). Do not interpret a healthy
 web process as proof of fresh daily results. Alert delivery destinations are
 managed in the deployment's monitoring configuration, not hard-coded here.
 

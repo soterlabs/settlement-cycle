@@ -6,13 +6,23 @@ failure gate. This follow-up closes the remaining measurement and monitoring wor
 
 ## Live measurements
 
-Run the verifier against a separate, initially empty Postgres database, with
-provider credentials and `db/schema.sql` applied. Required-Postgres mode never
-promotes local-only files into that database; tests have isolated local caches. Use a pinned checkout and an
-empty local cache for each subprocess. Baseline all six primes through one
-completed date, repeat that date, then advance the entire fleet by one day.
-Do not measure incremental demand against a production cache that already
-contains the next day's inputs. Keep generated reports outside Git.
+Run the verifier against a separate Postgres database, with provider credentials
+and `db/schema.sql` applied. Use a pinned checkout and an empty local cache for
+each subprocess. Baseline all six primes through one completed date, repeat
+that date, then advance the entire fleet by one day. Required-Postgres mode
+never promotes local-only files; tests have isolated local caches.
+
+A completely empty baseline is valid but expensive on a throttled provider.
+For the September 14→15 acceptance run, seed only immutable production snapshots
+whose pinned block is at or below that chain's September 14 closing pin. Date
+resolutions must also target no later than September 14 UTC close; cached block
+timestamps must be no later than that close. Exclude all legacy/unpinned entries,
+event rows and event-range coverage. The selection manifest records the cutoff,
+per-chain ceilings, row count and SHA-256 of the selected rows. This seeds past
+inputs without prewarming September 15. The first baseline still obtains event
+coverage from live HyperSync; next-day demand remains measurable. Never measure
+incremental demand against an unrestricted production cache that already
+contains future inputs. Keep generated reports and seeded databases outside Git.
 
 The verifier uses the same official reference-rate preparation as publication.
 Reference refreshes are counted separately from historical extraction; changed

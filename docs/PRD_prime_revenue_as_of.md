@@ -140,3 +140,12 @@ acceptance checks and step 4's operational measurements remain separate work.
 Daily outputs/backfills are bounded to the last 90 completed UTC days; older
 monthly data remains canonical. Reference-calendar maintenance and external
 alert delivery configuration are documented operational responsibilities.
+
+
+## Operational acceptance follow-up
+
+[Live measurements and independent completion monitoring](pipeline/revenue_operational_acceptance.md)
+are tracked separately from implementation. The verifier uses the publication
+reference-rate gate; a GitHub Actions check at 03:00 UTC detects missing due
+results after the 20:17 UTC job's deadline. Required-Postgres reads never import
+local-only fixture/cache entries. Notification receipt requires separate proof.

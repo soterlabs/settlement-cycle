@@ -164,3 +164,20 @@ successful transport retries remain supported.
   Added refetch/reuse/write-failure and invalid future-attempt regressions.
   Checked 121 production finalized date anchors: none matched the deterministic
   fixture block-number signature. No production data was deleted or rewritten.
+- Round 2: checked cache miss/read/write ordering, snapshot correction identity,
+  reference-refresh accounting, fleet phase order, API schema validation and
+  the independent workflow's permissions and deadline. Added a real-Postgres
+  restart regression showing a local-only value cannot refill a missing durable
+  row, while the replacement durable value remains reusable. The full fleet
+  baseline precedes advancement to avoid contaminating incremental measurements
+  with another prime's future reads. No unresolved P1/P2 findings in this round.
+
+- Round 3: reviewed the final diff and deadline boundary tests, SOFR preparation
+  and exact snapshot comparisons, required-cache isolation across restarts,
+  verifier phase order, generated-report privacy, and workflow deployment scope.
+  The full offline/Postgres suite passes (1,200 tests, one optional dependency
+  skip, five live tests deselected); the additional real-Postgres local-only
+  cache regression also passes. Unit and Postgres CI must pass on the final
+  commit before merge. No unresolved P1/P2 findings. Live cost measurements,
+  actual scheduled completion and notification receipt remain operational
+  evidence to collect after deployment, not claims inferred from fixture tests.

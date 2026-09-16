@@ -46,3 +46,11 @@ weights to size a plan. No thirtyfold assumption or unmeasured plan recommendati
 is built in. The deterministic six-prime Postgres matrix checks that advancing
 one day only requests event ranges beyond the previous cutoff. Real provider
 measurements remain separate evidence; generated reports stay outside Git.
+
+
+The verifier prepares the same official reference snapshots as the daily worker.
+Their refresh requests are counted and exempted from historical-cache checks only
+in that preparation stage; snapshot changes fail same-date equality. All primes
+complete their baseline before any next-day measurement. See the [isolated live
+measurement procedure](revenue_operational_acceptance.md) to avoid prewarming the
+next day and understating provider demand.

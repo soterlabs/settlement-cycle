@@ -117,3 +117,28 @@ def test_legacy_coverage_migrates_before_disjoint_backfill(database, tmp_path):
     worker(database, tmp_path, 100, 200, 0, [[100, 200]])
     worker(database, tmp_path, 0, 10, 0, [])
     worker(database, tmp_path, 0, 200, 0, [[11, 99]])
+
+
+def test_required_database_miss_never_imports_a_local_only_value(database, tmp_path):
+    """A shared local directory cannot repopulate a cleared/different input DB."""
+    import psycopg
+    program = '''
+import os
+from settle.extract.cache import cached
+@cached('acceptance.local_only')
+def read(): return int(os.environ['UPSTREAM_VALUE'])
+assert read() == int(os.environ['EXPECTED_VALUE'])
+'''
+    def run(upstream, expected):
+        env = dict(os.environ, PYTHON_DOTENV_DISABLED='1', DATABASE_URL=database,
+                   SETTLE_REQUIRE_POSTGRES='1', SETTLE_NO_CACHE='0',
+                   SETTLE_CACHE_DIR=str(tmp_path / 'shared'),
+                   UPSTREAM_VALUE=str(upstream), EXPECTED_VALUE=str(expected))
+        result = subprocess.run([sys.executable, '-c', program], env=env,
+                                capture_output=True, text=True, timeout=30)
+        assert result.returncode == 0, result.stderr
+    run(41, 41)
+    with psycopg.connect(database, autocommit=True) as conn:
+        conn.execute("DELETE FROM raw_data WHERE source='acceptance.local_only'")
+    run(42, 42)
+    run(99, 42)  # The new database-backed value survives another restart.
