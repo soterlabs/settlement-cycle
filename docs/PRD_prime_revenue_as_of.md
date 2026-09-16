@@ -125,9 +125,12 @@ acceptance checks and step 4's operational measurements remain separate work.
 
 - Steps 3–4: [same-date reuse and advancement measurements](pipeline/revenue_verification.md),
   delivered in PRs #207 and #208. The six-prime Postgres matrix uses deterministic
-  transport; live same-date reuse passed for Grove and OBEX. Remaining live
-  measurements must not be inferred from that fixture matrix or extrapolated
-  into a provider budget.
+  transport. [Live acceptance](pipeline/revenue_operational_acceptance.md) now
+  covers all six primes: exact same-date equality with zero historical/RPC reads,
+  plus the September 14→15 advance. The measured fleet used 352 RPC attempts and
+  617 HyperSync attempts; all event queries advanced beyond the baseline pins.
+  The documented initial budget is a planning scenario from this one date pair,
+  not a measured monthly bill or a worst-case capacity guarantee.
 - Step 5: [immutable daily results](pipeline/revenue_results.md), PR #209.
 - Step 6: [daily worker and operations](pipeline/revenue_operations.md), PR #210.
 - Step 7: [read API](pipeline/revenue_api.md), PR #211, including the
@@ -148,4 +151,10 @@ alert delivery configuration are documented operational responsibilities.
 are tracked separately from implementation. The verifier uses the publication
 reference-rate gate; a GitHub Actions check at 03:00 UTC detects missing due
 results after the 20:17 UTC job's deadline. Required-Postgres reads never import
-local-only fixture/cache entries. Notification receipt requires separate proof.
+local-only fixture/cache entries. The September 16 Railway run completed all six
+primes unattended, publishing through September 15 with exact result parity
+across the deployed code update. Live reuse and advancement measurements are
+complete. The independent monitor passed a manual dispatch; its own scheduled
+tick and actual notification receipt have not yet been observed. Alert delivery
+still requires a destination and an authorized test; do not mark that acceptance
+requirement complete from the workflow status alone.

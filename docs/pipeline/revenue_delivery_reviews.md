@@ -181,3 +181,27 @@ successful transport retries remain supported.
   commit before merge. No unresolved P1/P2 findings. Live cost measurements,
   actual scheduled completion and notification receipt remain operational
   evidence to collect after deployment, not claims inferred from fixture tests.
+
+## Live acceptance evidence — PR #214
+
+- Round 1: checked baseline seeding, cutoff isolation and restart behavior.
+  Restricted the final seed to immutable snapshots and specifically requested
+  event intervals bounded by each chain's September 14 pin, with complete source
+  coverage and atomic rows-before-coverage writes. The seed hook is disabled for
+  warm/advance processes and its source credential removed. Clarified that this
+  is a seeded-cache benchmark, not independent validation of the source cache
+  or a cold-start measurement. No production inputs were modified.
+- Round 2: checked all six warm reports and all six advanced reports against
+  every published calculation field. Verified zero warm historical/RPC reads,
+  zero Dune calls, stable warm reference snapshots, and that all 219 advanced
+  event-query attempts start beyond the prior closing pins. Reconciled request
+  counts against the independent transport logs. Clarified decoded response
+  bytes, timing scope, rate-limit units versus billed credits, shared-cache
+  ordering and the single-date-pair limitation of monthly planning scenarios.
+- Round 3: reviewed the final documentation diff, report/seed hashes, all table
+  totals, the 31-day/2× arithmetic, official RPC method weights, local links and
+  absence of generated data or credentials in the PR. Distinguished automatic
+  Railway execution from the manually dispatched monitor and unverified alert
+  receipt. Described credential removal as configuration, not network isolation.
+  No unresolved P1/P2 findings. This PR changes documentation only; unit and
+  Postgres CI must pass on its final commit before merge.
