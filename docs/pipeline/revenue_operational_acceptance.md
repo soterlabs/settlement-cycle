@@ -16,11 +16,20 @@ A completely empty baseline is valid but expensive on a throttled provider.
 For the September 14→15 acceptance run, seed only immutable production snapshots
 whose pinned block is at or below that chain's September 14 closing pin. Date
 resolutions must also target no later than September 14 UTC close; cached block
-timestamps must be no later than that close. Exclude all legacy/unpinned entries,
-event rows and event-range coverage. The selection manifest records the cutoff,
-per-chain ceilings, row count and SHA-256 of the selected rows. This seeds past
-inputs without prewarming September 15. The first baseline still obtains event
-coverage from live HyperSync; next-day demand remains measurable. Never measure
+timestamps must be no later than that close. Exclude all legacy/unpinned entries.
+The initial attempt started without event rows/ranges. To avoid repeating an
+expensive cold-history download, the final run also seeds previously absent
+event streams from production. Every seeded interval is clipped to block
+25,979,136, the **minimum** of the eight chains' September 14 closing pins;
+reject any selected stream with a post-cutoff timestamp below that ceiling.
+Copy all saved rows through the ceiling before claiming intervals, in one
+local transaction. Higher-block history is fetched normally. Preserve inputs
+already obtained in the interrupted baseline; none advances the cutoff.
+
+The selection manifest records cutoff, per-chain ceilings, counts and hashes.
+This seeds only past inputs without prewarming September 15. The first complete
+run is a seeded baseline, not a cold-start cost benchmark or an independent
+validation of the source cache. Warm reuse and next-day demand remain measurable. Never measure
 incremental demand against an unrestricted production cache that already
 contains future inputs. Keep generated reports and seeded databases outside Git.
 
@@ -58,6 +67,35 @@ notifications cover failures; the independent monitor also detects missed runs.
 
 ## Acceptance record
 
-Live fleet results, measured demand, unattended scheduling evidence and alert
-receipt will be recorded here after verification. Dashboard integration uses
-[the existing handoff prompt](msc_dashboard_daily_revenue_prompt.md).
+### Production publication and unattended scheduling — September 16, 2026
+
+PR #213 merged as `03fa6c64e61adbd835102297e6a174e93973b6e0` after three review
+rounds and passing unit/Postgres CI. All six primes have published results
+through September 15. Grove caught up after the required official SOFR
+observation became available.
+
+The unmodified Railway schedule (`17 20 * * *`) triggered without a manual
+restart. The first durable attempt started at 20:21:52 UTC; all six finished
+successfully by 20:24:05 UTC, approximately 132 seconds later. Scheduling was
+about five minutes later than the configured minute. The completed deployment
+was `52f02c95-76e3-4db2-836e-d51ef1279881`, running the merged commit above.
+The API returned HTTP 200 with all six primes current and successful.
+
+Every field of each newly published September 15 calculation exactly matched
+its previous `8071f5b` calculation. This verifies reuse across the deployed code
+change; it is not a measurement of a newly advanced cutoff.
+
+The independent completion checker passed in
+[GitHub Actions run 35143823615](https://github.com/soterlabs/settlement-cycle/actions/runs/35143823615).
+That monitor invocation was manually dispatched; its own 03:00 UTC schedule
+has not yet been observed. The Railway worker evidence above is automatic.
+
+### Notification delivery
+
+Receipt is still unverified. Railway returned no notification rules for this
+project/workspace, and the current credentials cannot read delivery history.
+No deliberate test notification has been sent. A destination and authorization
+to send a test there are pending; a workflow failure alone does not establish
+that someone receives it.
+
+Dashboard integration uses [the existing handoff prompt](msc_dashboard_daily_revenue_prompt.md).

@@ -10,6 +10,11 @@ API base URL: https://settle-api-production.up.railway.app
 Make the base URL configurable using this dashboard's existing configuration
 conventions. The API is public/read-only; no RPC, HyperSync or DB credentials
 belong in the dashboard. Fetching an endpoint never starts a calculation.
+The API's `freshness.expected_cutoff` is yesterday in UTC and rolls at midnight.
+The worker runs later in the day, so `stale=true` before the scheduled update
+does not by itself mean that a scheduled execution failed. Show the actual
+cutoff and last attempt; keep usable estimates visible. The separate completion
+monitor evaluates the scheduled deadline, including runtime and startup grace.
 
 API contract (schema_version 1.0):
 - GET /v1/revenue/{prime}/latest
@@ -69,9 +74,10 @@ Validation:
 - Month rollover, canonical monthly precedence, and history gaps.
 - A revised result for the same cutoff; failed refresh retaining prior data.
 - Backend down and 404 fallbacks without breaking the static dashboard/build.
-- Verify against actual API responses when available; first daily publication
-  may still be pending. Use fixtures for absent-data scenarios, never fabricate
-  live results or claim every prime's live calculation has been verified.
+- Verify against actual API responses: all six primes had published through
+  September 15, 2026 at operational acceptance. Use fixtures for absent-data
+  scenarios; never fabricate live results or infer validation beyond the
+  backend acceptance record.
 
 Reference-rate provenance is in `data.input_provenance.reference_rates` for
 subsidized primes. It includes source URLs, exact APR observations, revision
