@@ -32,6 +32,8 @@ class CapitalEvent:
     # Required for a transfer/repayment from a yield-bearing account. Cash
     # accounts can use their running balance. Values are at execution, not EoM.
     source_value: Decimal | None = None
+    # Moving the same beneficial holding into custody is not a realization.
+    preserve_basis: bool = False
 
 
 @dataclass
@@ -91,7 +93,7 @@ class CapitalLedger:
             basis = source.borrowed * e.amount / value
         source.value = value - e.amount
         source.borrowed -= basis
-        carried = min(basis, e.amount)
+        carried = basis if e.preserve_basis and e.kind == "transfer" else min(basis, e.amount)
         self.realised_principal_loss += basis - carried
         if e.kind == "transfer":
             target = self.account(e.destination)
@@ -177,11 +179,11 @@ def replay_history(history, start: date, end: date) -> CapitalReplay:
         clearing = f"clearing:{b.identity}"
         step = 0
 
-        def apply(kind, amount, source=None, destination=None, value=None):
+        def apply(kind, amount, source=None, destination=None, value=None, preserve_basis=False):
             nonlocal step
             step += 1
             ledger.apply(CapitalEvent(f"{b.identity}:{step}", b.day, (step,),
-                                     kind, amount, source, destination, value))
+                                     kind, amount, source, destination, value, preserve_basis))
 
         if b.minted > ZERO:
             apply("draw", b.minted, destination=clearing)
@@ -193,7 +195,7 @@ def replay_history(history, start: date, end: date) -> CapitalReplay:
         for m in b.movements:
             change = m.change - m.external_income
             if change < ZERO:
-                apply("transfer", -change, m.account, clearing)
+                apply("transfer", -change, m.account, clearing, preserve_basis=m.preserve_basis)
                 if m.account in uncertain:
                     uncertain.add(clearing)
         if b.minted < ZERO:
@@ -214,7 +216,7 @@ def replay_history(history, start: date, end: date) -> CapitalReplay:
             funded = left if i == len(incoming) - 1 else matched * amount / total_in
             left -= funded
             if funded:
-                apply("transfer", funded, clearing, account)
+                apply("transfer", funded, clearing, account, preserve_basis=True)
                 if clearing in uncertain:
                     uncertain.add(account)
             if amount > funded:
@@ -228,7 +230,7 @@ def replay_history(history, start: date, end: date) -> CapitalReplay:
         residue = ledger.account(clearing).value
         if residue:
             custody = f"unallocated:{b.identity}"
-            apply("transfer", residue, clearing, custody)
+            apply("transfer", residue, clearing, custody, preserve_basis=True)
             if residue > Decimal("0.01"):
                 unmatched_outflows[b.identity] = residue
         ledger.accounts.pop(clearing, None)

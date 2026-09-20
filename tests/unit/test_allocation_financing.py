@@ -39,3 +39,27 @@ def test_annualization_is_undefined_without_exposure_and_handles_losses():
     assert annualized_yield(D(-100), D(100), 31) is None
     assert annualized_yield(D(5), D(100), 365) == D("0.05")
     assert annualized_yield(D(-5), D(100), 365) == D("-0.05")
+
+
+def test_daily_idle_fraction_follows_reallocation_instead_of_period_average():
+    start, end = date(2026, 8, 1), date(2026, 8, 2)
+    history = CapitalHistory((
+        CapitalBatch('draw', start, 1, 'ethereum', 1,
+                     (AssetMovement('asset', D(0), D(100)),), D(100)),
+        CapitalBatch('withdraw', end, 2, 'ethereum', 2,
+                     (AssetMovement('asset', D(100), D(-50)),
+                      AssetMovement('cash', D(0), D(50)))),
+    ), {'V1': 'asset'}, {})
+    pnl = SimpleNamespace(
+        period=SimpleNamespace(start=start, end=end),
+        sky_revenue=D('0.015'), sde_revenue=D(0), susds_spread_reimbursement=D(0),
+        venue_breakdown=[VenueRevenue('V1', 'Venue', D(100), D(50), D(-50), D(0),
+                                     tw_avg_value=D(75), lending_idle_tw_avg_usd=D(25))],
+        sky_revenue_daily=[{'date': day.isoformat(), 'utilized': '100',
+                            'daily_sky_rev': '0.01', 'base_apr': '0.0365'}
+                           for day in (start, end)], sde_daily_breakdown=[],
+    )
+    result = allocation_financing(pnl, history, idle_fractions={'V1': {start: D(0), end: D(1)}})
+    assert result['allocations'][0]['cost_of_funds'] == D('0.01')
+    missing_daily = allocation_financing(pnl, history)
+    assert missing_daily['allocations'][0]['cost_of_funds'] is None

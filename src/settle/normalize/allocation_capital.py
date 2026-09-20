@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime
 from decimal import Decimal, localcontext
 
@@ -19,7 +19,7 @@ from ..domain.sky_tokens import PAR_STABLES_BY_CHAIN, USDS_BY_CHAIN
 from ..extract import aave_reconstruct, hypersync, hypersync_store, rpc
 from ..extract._keccak import keccak256
 from ..extract.transfer_logs import TRANSFER_TOPIC0
-from .allocation_async_vaults import AsyncVaultCapital
+from .allocation_async_vaults import CAPITAL_ASSETS, REDEEM_REQUEST, AsyncVaultCapital
 from .allocation_bridges import DEPOSIT_FOR_BURN, link_cctp
 from .prices import get_unit_price, is_par_stable
 from .sources.hypersync_balances import _addr_topic
@@ -29,6 +29,7 @@ ZERO = Decimal("0")
 _log = logging.getLogger(__name__)
 REBASING = {PricingCategory.AAVE_ATOKEN, PricingCategory.SPARKLEND_SPTOKEN}
 DEPOSIT = "0x" + keccak256(b"Deposit(address,address,uint256,uint256)").hex()
+WITHDRAW = "0x" + keccak256(b"Withdraw(address,address,address,uint256,uint256)").hex()
 QUEUE_CREATED = {"0x" + keccak256(f"RequestCreated({size},address,uint256)".encode()).hex()
                  for size in ("uint128", "uint256")}
 QUEUE_PROCESSED = {"0x" + keccak256(f"RequestProcessed({size},address,uint256,uint256)".encode()).hex()
@@ -42,6 +43,7 @@ class AssetMovement:
     change: Decimal
     # Explicit rewards are never funded by another outgoing leg of the tx.
     external_income: Decimal = ZERO
+    preserve_basis: bool = False
 
 
 @dataclass(frozen=True)
@@ -89,7 +91,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                 v.pricing_category in (PricingCategory.EOA, PricingCategory.SPARK_SAVINGS_V2)):
             unsupported[v.id] = "Requires non-fungible or beneficial-custody capital events"
             continue
-        if v.notional_principal_usd:
+        if v.notional_principal_usd and v.lp_kind != "curve_stableswap":
             unsupported[v.id] = "Requires off-chain principal payment matching"
             continue
         holder = v.holder_override or prime.alm[v.chain]
@@ -102,6 +104,9 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
     # Cash is needed even when it has no report venue (e.g. OBEX USDS/USDC).
     for chain, holder in prime.alm.items():
         stables = dict(PAR_STABLES_BY_CHAIN.get(chain, {}))
+        if chain in CAPITAL_ASSETS:
+            t = CAPITAL_ASSETS[chain]
+            stables[t.address.value] = (t.symbol, t.decimals)
         if chain in USDS_BY_CHAIN:
             t = USDS_BY_CHAIN[chain]
             stables[t.address.value] = (t.symbol, t.decimals)
@@ -162,6 +167,8 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
             block_logs = list({r.log_index: r for r in block_logs}.values())
             async_selected = async_vaults.prepare(block_logs)
             async_movements, async_deposits = async_vaults.movements(async_selected)
+            custody_sends = {_account(chain, Address.from_str(key[0]), Address.from_str(key[1]))
+                             for row, key in async_selected if row.topic0 == REDEEM_REQUEST}
             for row in block_logs:
                 if row.topic0 != DEPOSIT_FOR_BURN:
                     continue
@@ -185,6 +192,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
             minted = ZERO
             indices = {}
             deposits: dict[tuple[str, str], Decimal] = defaultdict(Decimal)
+            withdrawals = {}
             senders = {_addr_topic(a.value) for a in prime.external_alm_sources.get(chain, [])}
             seen = set()
             for row in sorted(block_logs, key=lambda r: r.log_index):
@@ -203,6 +211,15 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                     if token != row.address:
                         continue
                     who = _addr_topic(bytes.fromhex(holder[2:]))
+                    if row.topic0 == WITHDRAW and row.topic3 == who:
+                        words = aave_reconstruct._words(row.data)
+                        underlying = mapping[key].underlying
+                        if len(words) != 2 or underlying is None:
+                            raise ValueError("Invalid ERC4626 withdrawal event")
+                        cash, shares = withdrawals.get(key, (ZERO, 0))
+                        withdrawals[key] = (cash + Decimal(words[0]) / Decimal(10**underlying.decimals),
+                                            shares + words[1])
+                        continue
                     if row.topic0 == DEPOSIT and row.topic2 == who:
                         words = aave_reconstruct._words(row.data)
                         underlying = mapping[key].underlying
@@ -259,6 +276,13 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                 value_before = Decimal(units[key]) * price / scale
                 change = Decimal(raw_change) * price / scale
                 gift = Decimal(gifts[key]) * price / scale
+                if key in withdrawals and raw_change < 0 and key not in deposits:
+                    cash, shares = withdrawals[key]
+                    if shares == -raw_change:
+                        # Release the redeemed share fraction using actual
+                        # proceeds, not a rounded unit-price approximation.
+                        value_before = cash * Decimal(units[key]) / Decimal(shares)
+                        change = -cash
                 units[key] += raw_change
                 if units[key] < 0:
                     raise ValueError(f"Negative reconstructed capital holding: {v.id} {tx_hash}")
@@ -307,6 +331,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                     price = get_unit_price(mapping[key], block, block_resolver=block_resolver)
                     scale = Decimal(10**mapping[key].token.decimals)
                     before_value, change = Decimal(old) * price / scale, Decimal(delta) * price / scale
+                    custody_sends.add(_account(chain, mapping[key].token.address, Address.from_str(owner)))
                 else:
                     if queue_key not in queues:
                         continue
@@ -343,17 +368,20 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                 scale = Decimal(10**v.token.decimals)
                 account = f"queue:{chain.value}:{queue}:{owner}:{key[0]}"
                 movements.append(AssetMovement(account, Decimal(old) * price / scale,
-                                               -Decimal(returned) * price / scale))
+                                               -Decimal(returned) * price / scale, preserve_basis=True))
                 queues[(queue, owner)] = (key, old - returned)
             combined = {}
             for m in movements:
+                if m.account in custody_sends:
+                    m = replace(m, preserve_basis=True)
                 if m.account not in combined:
                     combined[m.account] = m
                 else:
                     before = combined[m.account]
                     combined[m.account] = AssetMovement(m.account, before.value_before,
                                                         before.change + m.change,
-                                                        before.external_income + m.external_income)
+                                                        before.external_income + m.external_income,
+                                                        before.preserve_basis or m.preserve_basis)
             first = block_logs[0]
             batches.append(CapitalBatch(
                 f"{chain.value}:{tx_hash}", datetime.fromtimestamp(first.block_time, UTC).date(),

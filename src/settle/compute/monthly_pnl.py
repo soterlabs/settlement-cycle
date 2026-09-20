@@ -1859,6 +1859,7 @@ def _aggregate_lending_idle_usds(
     period: Period,
     *,
     block_resolver,
+    capital_idle_fractions: dict | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Decimal]]:
     """Daily USDS-equivalent of unborrowed underlying inside lending pools,
     summed across all venues with ``lending_idle_usds=True``.
@@ -1927,6 +1928,7 @@ def _aggregate_lending_idle_usds(
         # the cache-of-zeros antipattern (RPC down on day 1 → 0 → "carry"
         # → 0 for the whole month).
         venue_last_idle: Decimal | None = None
+        last_capital_fraction = Decimal(0)
         venue_daily: list[Decimal] = []
 
         from ..extract.rpc import RPCError as _RPCError
@@ -1943,12 +1945,16 @@ def _aggregate_lending_idle_usds(
 
                 if total_supply_raw == 0:
                     prime_idle = Decimal(0)
+                    capital_fraction = Decimal(0)
                 else:
                     # Pool's idle underlying = underlying balance in the spToken contract
                     pool_idle_raw = _balance_of(chain, underlying_addr, sptoken_addr, block)
                     alm_share = Decimal(alm_sptoken_raw) / Decimal(total_supply_raw)
                     pool_idle_usds = Decimal(pool_idle_raw) / Decimal(10 ** underlying_decimals)
                     prime_idle = alm_share * pool_idle_usds
+                    capital_fraction = pool_idle_usds / (
+                        Decimal(total_supply_raw) / Decimal(10 ** venue.token.decimals)
+                    )
 
             except (_RPCError, _requests.HTTPError,
                     _requests.ConnectionError, _requests.Timeout) as exc:
@@ -1962,9 +1968,13 @@ def _aggregate_lending_idle_usds(
                     venue.id, current, venue_last_idle, type(exc).__name__,
                 )
                 prime_idle = venue_last_idle
+                capital_fraction = last_capital_fraction
             else:
                 venue_last_idle = prime_idle
+                last_capital_fraction = capital_fraction
 
+            if capital_idle_fractions is not None:
+                capital_idle_fractions.setdefault(venue.id, {})[current] = capital_fraction
             daily_by_date[current] = daily_by_date.get(current, Decimal(0)) + prime_idle
             venue_daily.append(prime_idle)
             current = current + timedelta(days=1)
@@ -2510,9 +2520,11 @@ def compute_monthly_pnl(
     # Prime's share of unborrowed underlying in configured lending pools — Step 2
     # idle lending pool USDS. Computed daily via ``balanceOf`` + ``totalSupply``.
     # Returns (empty frame, {}) if no venue has ``lending_idle_usds=True``.
+    _capital_idle_fractions = {} if include_allocation_financing else None
     lending_idle_usds, _lending_idle_tw_avg = _aggregate_lending_idle_usds(
         prime, period,
         block_resolver=resolver,
+        **({"capital_idle_fractions": _capital_idle_fractions} if include_allocation_financing else {}),
     )
     _check_centrifuge_in_flight(prime, pin_blocks_som, pin_blocks_eom)
 
@@ -4308,5 +4320,7 @@ def compute_monthly_pnl(
         history = capital_history if capital_history is not None else fetch_capital_history(
             prime, period.pin_blocks, block_resolver=resolver,
         )
-        result = replace(result, allocation_financing=allocation_financing(result, history))
+        result = replace(result, allocation_financing=allocation_financing(
+            result, history, idle_fractions=_capital_idle_fractions,
+        ))
     return result

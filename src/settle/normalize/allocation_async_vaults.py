@@ -8,7 +8,7 @@ from collections import defaultdict
 from decimal import Decimal
 
 from ..domain.pricing import PricingCategory
-from ..domain.primes import Address
+from ..domain.primes import Address, Chain, Token
 from ..extract import rpc
 from ..extract._keccak import keccak256
 from ..extract.publication import optional_revert
@@ -26,6 +26,14 @@ CANCEL_DEPOSIT = _topic("CancelDepositClaim(address,address,uint256,address,uint
 CANCEL_REDEEM = _topic("CancelRedeemClaim(address,address,uint256,address,uint256)")
 EVENTS = {DEPOSIT, WITHDRAW, DEPOSIT_REQUEST, REDEEM_REQUEST, CANCEL_DEPOSIT, CANCEL_REDEEM}
 
+# Circle's native Plume USDC deployment. This metadata is local to capital
+# tracing; it does not replace the settlement's configured NAV pricing.
+# https://www.circle.com/blog/now-available-native-usdc-cctp-v2-on-plume
+CAPITAL_ASSETS = {
+    Chain.PLUME: Token(Chain.PLUME, Address.from_str(
+        "0x222365ef19f7947e5484218551b56bb3965aa7af"), "USDC", 6),
+}
+
 
 class AsyncVaultCapital:
     def __init__(self, chain, mapping):
@@ -34,6 +42,7 @@ class AsyncVaultCapital:
         self.active_vaults = {}
         self.pending = defaultdict(int)
         self.custody_accounts = defaultdict(list)
+        self.assets = {}
 
     def _read_address(self, vault, sig, block):
         try:
@@ -68,8 +77,10 @@ class AsyncVaultCapital:
             key = (share, owner)
             venue = self.mapping[key]
             asset = self._read_address(row.address, "asset()", row.block_number)
-            if venue.underlying is None or asset != venue.underlying.address.hex:
+            underlying = venue.underlying or CAPITAL_ASSETS.get(self.chain)
+            if underlying is None or asset != underlying.address.hex:
                 raise ValueError(f"Async capital vault asset mismatch: {row.address}")
+            self.assets[key] = underlying
             self.metadata[row.address] = key
             self.active_vaults[key] = row.address
             selected.append((row, key))
@@ -86,7 +97,7 @@ class AsyncVaultCapital:
         assets = rpc.convert_to_assets(self.chain, Address.from_str(vault), shares, block)
         if assets <= 0:
             raise ValueError(f"No historical capital price at vault {vault}")
-        return Decimal(assets) / Decimal(10 ** (venue.underlying.decimals + 12))
+        return Decimal(assets) / Decimal(10 ** (self.assets[key].decimals + 12))
 
     def movements(self, selected):
         from .allocation_capital import AssetMovement
@@ -104,7 +115,7 @@ class AsyncVaultCapital:
             pending_key = (row.address, owner, side)
             old = self.pending[pending_key]
             account = f"async:{self.chain.value}:{row.address}:{owner}:{side}"
-            asset_scale = Decimal(10**venue.underlying.decimals)
+            asset_scale = Decimal(10**self.assets[key].decimals)
             share_scale = Decimal(10**venue.token.decimals)
             if row.topic0 == DEPOSIT_REQUEST:
                 delta = words[1]
@@ -123,8 +134,18 @@ class AsyncVaultCapital:
             else:
                 delta = -words[1]
                 if -delta > old:
-                    raise ValueError(f"Async redemption exceeds tracked shares: {row.transaction_hash}; "
-                                     f"venue={venue.id} expected={-delta} pending={dict(self.pending)}")
+                    # Request/claim share conversion can differ by a few raw
+                    # units (observed: 1-2 units for six-decimal tranches).
+                    # Bound the discrepancy in actual paid dollars, not as a
+                    # percentage of a large position. A full exit releases all
+                    # owned basis and never leaves a negative custody lot.
+                    rounding_usd = (Decimal(words[0]) / asset_scale * Decimal(-delta - old)
+                                    / Decimal(-delta)) if row.topic0 == WITHDRAW else Decimal("Infinity")
+                    if old > 0 and rounding_usd <= Decimal("0.00001"):
+                        delta = -old
+                    else:
+                        raise ValueError(f"Async redemption exceeds tracked shares: {row.transaction_hash}; "
+                                         f"venue={venue.id} expected={-delta} owned={old}")
                 if row.topic0 == WITHDRAW:
                     cash = Decimal(words[0]) / asset_scale
                     before, change = cash * Decimal(old) / Decimal(-delta), -cash
@@ -134,5 +155,6 @@ class AsyncVaultCapital:
             self.pending[pending_key] += delta
             if account not in self.custody_accounts[venue.id]:
                 self.custody_accounts[venue.id].append(account)
-            movements.append(AssetMovement(account, before, change))
+            movements.append(AssetMovement(account, before, change,
+                                           preserve_basis=row.topic0 == CANCEL_REDEEM))
         return movements, deposit_amounts

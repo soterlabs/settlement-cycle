@@ -149,3 +149,21 @@ def test_pending_custody_preserves_basis_and_does_not_fund_unrelated_receipt():
     assert replay.daily[DAY]["unallocated:2"] == D(100)
     assert replay.daily[DAY]["unrelated"] == 0
     assert replay.unmatched_outflows == {"2": D(100)}
+
+
+def test_underwater_position_keeps_basis_in_custody_until_cash_redemption():
+    history = CapitalHistory((
+        batch(1, [AssetMovement("shares", D(0), D(100))], "100"),
+        batch(2, [AssetMovement("shares", D(90), D(-90), preserve_basis=True),
+                  AssetMovement("queue", D(0), D(90))]),
+    ), {}, {})
+    pending = replay_history(history, DAY, DAY)
+    assert pending.ledger.account("queue").borrowed == D(100)
+    assert pending.ledger.realised_principal_loss == 0
+    history = CapitalHistory((*history.batches,
+        batch(3, [AssetMovement("queue", D(95), D(-95)),
+                  AssetMovement("cash", D(0), D(95))]),
+    ), {}, {})
+    redeemed = replay_history(history, DAY, DAY)
+    assert redeemed.ledger.account("cash").borrowed == D(95)
+    assert redeemed.ledger.realised_principal_loss == D(5)
