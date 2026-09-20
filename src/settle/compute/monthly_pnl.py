@@ -489,6 +489,7 @@ def _aggregate_univ4_idle_usds(
     *,
     v4_source,
     block_resolver,
+    capital_idle_fractions: dict | None = None,
 ) -> "tuple[pd.DataFrame, dict[str, Decimal]]":
     """Daily USDS-leg value held inside Uniswap V4 LP positions, summed across
     all ``lp_kind=uniswap_v4`` venues — the v4 analog of
@@ -537,6 +538,7 @@ def _aggregate_univ4_idle_usds(
         from ..extract.rpc import RPCError as _RPCError
         import requests as _requests
         venue_last_idle: Decimal | None = None
+        last_fraction = Decimal(0)
         current = period.start
         while current <= period.end:
             eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
@@ -548,6 +550,14 @@ def _aggregate_univ4_idle_usds(
                     pool_key=pool_key, block=block,
                 )
                 idle, _sde = _univ4_position_legs(venue, positions)
+                fraction = Decimal(0)
+                if capital_idle_fractions is not None:
+                    from ..domain.sky_tokens import PAR_STABLES_BY_CHAIN
+                    registry = PAR_STABLES_BY_CHAIN[venue.chain]
+                    total = sum((Decimal(amount) / Decimal(10 ** registry[coin.value][1])
+                                 for p in positions for coin, amount in (
+                                     (p.currency0, p.amount0), (p.currency1, p.amount1)) if amount), Decimal(0))
+                    fraction = idle / total if total else Decimal(0)
             except (_RPCError, _requests.HTTPError, _requests.ConnectionError,
                     _requests.Timeout) as exc:
                 if venue_last_idle is None:
@@ -560,8 +570,12 @@ def _aggregate_univ4_idle_usds(
                     venue.id, current, venue_last_idle, type(exc).__name__,
                 )
                 idle = venue_last_idle
+                fraction = last_fraction
             else:
                 venue_last_idle = idle
+                last_fraction = fraction
+            if capital_idle_fractions is not None:
+                capital_idle_fractions.setdefault(venue.id, {})[current] = fraction
             daily_by_date[current] = daily_by_date.get(current, Decimal("0")) + idle
             venue_idle_sum[venue.id] = venue_idle_sum.get(venue.id, Decimal("0")) + idle
             current = current + timedelta(days=1)
@@ -2500,10 +2514,12 @@ def compute_monthly_pnl(
     # same utilized-deduction role as the Curve idle path. Merged into
     # ``curve_idle_usds`` by summing the daily ``cum_balance`` snapshots so
     # ``compute_sky_revenue`` deducts the combined AMM idle USDS.
+    _capital_idle_fractions = {} if include_allocation_financing else None
     _univ4_idle, _univ4_idle_tw_avg = _aggregate_univ4_idle_usds(
         prime, period,
         v4_source=sources.v4_position,
         block_resolver=resolver,
+        **({"capital_idle_fractions": _capital_idle_fractions} if include_allocation_financing else {}),
     )
     if not _univ4_idle.empty:
         if curve_idle_usds is None or curve_idle_usds.empty:
@@ -2520,7 +2536,6 @@ def compute_monthly_pnl(
     # Prime's share of unborrowed underlying in configured lending pools — Step 2
     # idle lending pool USDS. Computed daily via ``balanceOf`` + ``totalSupply``.
     # Returns (empty frame, {}) if no venue has ``lending_idle_usds=True``.
-    _capital_idle_fractions = {} if include_allocation_financing else None
     lending_idle_usds, _lending_idle_tw_avg = _aggregate_lending_idle_usds(
         prime, period,
         block_resolver=resolver,
@@ -4315,12 +4330,31 @@ def compute_monthly_pnl(
     if include_allocation_financing:
         from dataclasses import replace
         from ..normalize.allocation_capital import fetch_capital_history
-        from .allocation_financing import allocation_financing
-
-        history = capital_history if capital_history is not None else fetch_capital_history(
-            prime, period.pin_blocks, block_resolver=resolver,
-        )
-        result = replace(result, allocation_financing=allocation_financing(
-            result, history, idle_fractions=_capital_idle_fractions,
-        ))
+        from .allocation_financing import allocation_financing, unavailable_financing
+        import requests
+        try:
+            history = capital_history if capital_history is not None else fetch_capital_history(
+                prime, period.pin_blocks, block_resolver=resolver,
+            )
+            analytics = allocation_financing(result, history, idle_fractions=_capital_idle_fractions)
+        except (ValueError, RuntimeError, ArithmeticError, OSError, requests.RequestException) as exc:
+            if capital_history is not None:
+                # Injected histories are validation inputs; failures must be
+                # visible to tests/development callers rather than hidden.
+                raise
+            analytics = unavailable_financing(result, exc)
+        analytics['period_start'] = period.start.isoformat()
+        analytics['period_end'] = period.end.isoformat()
+        analytics['period_kind'] = 'month_to_date' if result.is_provisional else 'month'
+        analytics['ilks'] = ['0x' + i.hex() for i in [prime.ilk_bytes32, *prime.extra_ilks] if i]
+        analytics['reconciliation']['scope'] = 'ilk' if len(analytics['ilks']) == 1 else 'prime_combined_ilks'
+        from ..normalize.prices import is_par_stable
+        pass_through = {v.id for v in prime.venues if v.holder_override
+                        and v.pricing_category == PricingCategory.RWA_TRANCHE and is_par_stable(v.token)}
+        for row in analytics['allocations']:
+            if row['venue_id'] in pass_through:
+                # An escrow's leftover cash is not the loan's average
+                # invested capital. Annualizing against it invents a yield.
+                row['gross_apy'] = row['net_apy'] = None
+        result = replace(result, allocation_financing=analytics)
     return result

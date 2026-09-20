@@ -1315,6 +1315,29 @@ like to reproduce the same number from on-chain primitives.
 
 ### P1 — methodology unknowns affecting accuracy
 
+#### B19. Allocation CoF — distribute financing costs on capitalized debt?
+
+Raised during PR #215 development (2026-09-20). Allocation funding must exclude
+reinvested gains, while total debt and the existing settlement charge remain
+unchanged. Those requirements do not imply that principal-times-rate costs
+sum to the existing charge: debt includes capitalized financing costs that
+were never deposited into an allocation.
+
+OBEX August 2026 replay traces $384,224,980.60 of venue principal. Its direct
+funding cost is $1,195,814.76 versus the existing ilk charge of $1,248,716.85,
+a $52,902.10 difference. Independently summing historical Vat events through
+August gives $384,224,981 of net `frob` draws and $18,306,759 of `grab` debt.
+
+**Operator decision requested:** distribute the additional financing cost
+across allocations in proportion to borrowed principal (excluding gains), or
+keep it as separate prime financing cost? The former permits an exhaustive
+allocation-cost total; it requires showing the direct and allocated financing
+components separately. A balanced allocation total alone would then validate
+distribution arithmetic, not the completeness of the principal tracing.
+
+Existing settlement charges remain unchanged under either treatment. No
+redistribution has been applied pending this decision. Related: G23 / S28.
+
 #### B18. Osero agent-rate effective date — 2026-07-19 or 2026-07-20?
 Osero (allocator instance ALLOCATOR-PRYSM-A, chainlog PRYSM_SUBPROXY)
 is to be paid the agent rate "from the date of their first allocation
@@ -1818,4 +1841,3 @@ full narrative in `PRD.md §17`.
   NAV); residual ~$45K excluding the E1 Horizon rewards channel
   (tracked under **G3**). See `PRD.md §17.13` (medium-priority list,
   item 5).
-

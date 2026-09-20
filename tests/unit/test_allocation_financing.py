@@ -63,3 +63,18 @@ def test_daily_idle_fraction_follows_reallocation_instead_of_period_average():
     assert result['allocations'][0]['cost_of_funds'] == D('0.01')
     missing_daily = allocation_financing(pnl, history)
     assert missing_daily['allocations'][0]['cost_of_funds'] is None
+
+
+def test_reconciliation_does_not_pass_by_inserting_a_financing_residual():
+    # The fixture deliberately omits every allocation: the residual could
+    # equal global cost, but that cannot make the allocation sum reconcile.
+    start = date(2026, 8, 1)
+    pnl = SimpleNamespace(period=SimpleNamespace(start=start, end=start),
+        sky_revenue=D(12), sde_revenue=D(0), susds_spread_reimbursement=D(0),
+        venue_breakdown=[], sky_revenue_daily=[{'date': start.isoformat(),
+            'utilized': '100', 'daily_sky_rev': '12', 'base_apr': '0.04'}],
+        sde_daily_breakdown=[])
+    result = allocation_financing(pnl, CapitalHistory((), {}, {}))
+    assert result['prime_financing_adjustment'] == D(12)
+    assert result['reconciliation']['difference'] == D(-12)
+    assert result['reconciliation']['within_one_cent'] is False

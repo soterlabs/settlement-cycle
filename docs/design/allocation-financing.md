@@ -60,8 +60,9 @@ the global borrowing charge.
 Unmatched receipts/outflows are retained as evidence. They do not create
 presumed loan proceeds. Funding uncertainty follows a holding on reinvestment.
 Unsupported or unresolved allocations have a null cost, not a fabricated zero.
-The feature is not ready for production activation until the required routes
-are traced and results reviewed.
+Production entrypoints request analytics on this branch; funding extraction
+failure does not block the existing settlement. The PR remains a draft while
+coverage and the B19 cost-attribution decision are outstanding.
 
 ## Analytics and development checks
 
@@ -77,7 +78,8 @@ warning, recurring check, or publication gate is added to production.
 Lending idle fractions are collected from the existing daily pool reads. A
 period-average idle deduction is insufficient when principal moves within the
 month. If a venue has an idle deduction but its daily fractions are missing,
-its allocation cost remains unresolved. AMM daily fractions remain outstanding.
+its allocation cost remains unresolved. V4 daily idle fractions are now included;
+Curve fractions remain outstanding.
 
 ## Validation so far
 
@@ -98,10 +100,13 @@ it has no unmatched receipts/outflows. Osero's SparkLend position also traces
 to its draws; its August gross APY is 1.8158%. A separate $1.078572 USDC receipt
 does not create borrowed principal.
 
-Outstanding validation: Spark/Grove history and custody migrations, NFT LP
-positions, off-chain principal, bridge versions beyond CCTP v1, and exact daily
-idle/SDE attribution. Daily/monthly entrypoint activation and report integration
-follow that validation. The current shared compute hook is opt-in.
+Outstanding validation: Spark/Grove custody migrations, V4 fee settlement,
+off-chain principal, bridge versions beyond CCTP v1, and complete daily idle/SDE
+attribution. Daily/monthly production callers now enable the shared compute
+hook; the library default remains opt-in for fixture callers. Monthly summary
+and workbook outputs include gross/net APY. See
+[the current validation report](allocation-financing-validation.md) for the
+actual reconciliation failures and temporary APY-range audit.
 
 Further development checks:
 

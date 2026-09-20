@@ -21,6 +21,7 @@ from ..extract._keccak import keccak256
 from ..extract.transfer_logs import TRANSFER_TOPIC0
 from .allocation_async_vaults import CAPITAL_ASSETS, REDEEM_REQUEST, AsyncVaultCapital
 from .allocation_bridges import DEPOSIT_FOR_BURN, link_cctp
+from .allocation_nfts import NFTCapital
 from .prices import get_unit_price, is_par_stable
 from .sources.hypersync_balances import _addr_topic
 from .sources.hypersync_debt import _FROB_T0, _VAT, _decode_dart
@@ -87,8 +88,13 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
     for v in prime.venues:
         if v.skip:
             continue
-        if (v.lp_kind in ("uniswap_v3", "uniswap_v4") or
-                v.pricing_category in (PricingCategory.EOA, PricingCategory.SPARK_SAVINGS_V2)):
+        if v.holder_override and v.pricing_category == PricingCategory.RWA_TRANCHE and is_par_stable(v.token):
+            unsupported[v.id] = 'Pass-through custody does not measure outstanding loan principal'
+            continue
+        if v.lp_kind in ("uniswap_v3", "uniswap_v4"):
+            venue_accounts[v.id] = f"nft:{v.chain.value}:{v.id}"
+            continue
+        if v.pricing_category in (PricingCategory.EOA, PricingCategory.SPARK_SAVINGS_V2):
             unsupported[v.id] = "Requires non-fungible or beneficial-custody capital events"
             continue
         if v.notional_principal_usd and v.lp_kind != "curve_stableswap":
@@ -133,6 +139,12 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
         # Index the custody addresses once. This avoids a large OR of
         # per-token filters and keeps the durable stream stable when venues
         # are added. Unknown token contracts are not assigned a USD value.
+        nft = NFTCapital(prime, chain)
+        # Cash returned to an NFT holder remains part of its funding route.
+        for holder in nft.holders.values():
+            for (token, _), cash_venue in list(mapping.items()):
+                if cash_venue.pricing_category == PricingCategory.PAR_STABLE:
+                    mapping.setdefault((token, holder.hex), cash_venue)
         holders = sorted({_addr_topic(bytes.fromhex(h[2:])) for _, h in mapping})
         selections = [
             {"topics": [[], holders]},
@@ -148,6 +160,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
             chain.value, selections, 0, pins[chain],
             log_fields=[*hypersync._DEFAULT_LOG_FIELDS, "transaction_hash"],
         )
+        logs = [*logs, *nft.discover(logs, pins[chain])]
         grouped = defaultdict(list)
         for row in logs:
             if not row.transaction_hash:
@@ -167,6 +180,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
             block_logs = list({r.log_index: r for r in block_logs}.values())
             async_selected = async_vaults.prepare(block_logs)
             async_movements, async_deposits = async_vaults.movements(async_selected)
+            nft_movements, nft_fees = nft.movements(block_logs)
             custody_sends = {_account(chain, Address.from_str(key[0]), Address.from_str(key[1]))
                              for row, key in async_selected if row.topic0 == REDEEM_REQUEST}
             for row in block_logs:
@@ -258,7 +272,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                             gifts[key] += amount
                     if row.topic1 == who:
                         changes[key] -= amount
-            movements = list(async_movements)
+            movements = [*async_movements, *nft_movements]
             deposits.update(async_deposits)
             for key, raw_change in changes.items():
                 v = mapping[key]
@@ -275,7 +289,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                         price = get_unit_price(v, block, block_resolver=block_resolver)
                 value_before = Decimal(units[key]) * price / scale
                 change = Decimal(raw_change) * price / scale
-                gift = Decimal(gifts[key]) * price / scale
+                gift = Decimal(gifts[key]) * price / scale + nft_fees.get(key, ZERO)
                 if key in withdrawals and raw_change < 0 and key not in deposits:
                     cash, shares = withdrawals[key]
                     if shares == -raw_change:
@@ -389,6 +403,8 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                 min(r.log_index for r in block_logs),
             ))
         for vid, accounts in async_vaults.custody_accounts.items():
+            custody_accounts[vid].extend(accounts)
+        for vid, accounts in nft.custody_accounts.items():
             custody_accounts[vid].extend(accounts)
     batches = link_cctp(prime, pins, batches, bridge_burns)
     idle_accounts = {_account(c, USDS_BY_CHAIN[c].address, holder)
