@@ -287,6 +287,10 @@ class MonthlyPnL:
     # for backward compat with old provenance.
     sky_revenue_gross: Decimal = Decimal("0")
 
+    # Analytics only. Borrowed-principal attribution and its explicit bridge
+    # to existing global cost. Never read by the settlement invariants.
+    allocation_financing: dict | None = None
+
     # Per-period subsidised-borrowing aggregates (``compute.sky_revenue.
     # summarize_subsidy``): time-weighted utilized, $1B tranche split,
     # base/ref/effective rates, the subsidy's $ benefit vs full base rate,

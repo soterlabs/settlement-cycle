@@ -2155,6 +2155,8 @@ def compute_monthly_pnl(
     sky_only: bool = False,
     as_of: date | None = None,
     reference_rate_history: ReferenceRateHistory | ScheduledReferenceRateHistory | None = None,
+    include_allocation_financing: bool = False,
+    capital_history=None,
 ) -> MonthlyPnL:
     """Compute settlement revenue for ``prime`` × ``month``.
 
@@ -4271,7 +4273,7 @@ def compute_monthly_pnl(
         for _, row in sky_rev_daily.iterrows()
     ]
 
-    return MonthlyPnL(
+    result = MonthlyPnL(
         prime_id=prime.id,
         month=month,
         period=period,
@@ -4298,3 +4300,13 @@ def compute_monthly_pnl(
         sky_revenue_gross=sky_rev_gross,
         subsidy_summary=subsidy_summary,
     )
+    if include_allocation_financing:
+        from dataclasses import replace
+        from ..normalize.allocation_capital import fetch_capital_history
+        from .allocation_financing import allocation_financing
+
+        history = capital_history if capital_history is not None else fetch_capital_history(
+            prime, period.pin_blocks, block_resolver=resolver,
+        )
+        result = replace(result, allocation_financing=allocation_financing(result, history))
+    return result

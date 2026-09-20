@@ -1,0 +1,369 @@
+"""Inception-to-pin ALM capital movements from raw on-chain events.
+
+Keep both sides of exchanges together. In particular, a withdrawal followed by
+a deposit is not an external capital injection, and an aToken's Transfer sum is
+not its principal: scaled balances and the execution-block index are used.
+"""
+
+from __future__ import annotations
+
+import logging
+from collections import defaultdict
+from dataclasses import dataclass, field
+from datetime import UTC, date, datetime
+from decimal import Decimal, localcontext
+
+from ..domain.pricing import PricingCategory
+from ..domain.primes import Address, Chain, Prime, Token, Venue
+from ..domain.sky_tokens import PAR_STABLES_BY_CHAIN, USDS_BY_CHAIN
+from ..extract import aave_reconstruct, hypersync, hypersync_store, rpc
+from ..extract._keccak import keccak256
+from ..extract.transfer_logs import TRANSFER_TOPIC0
+from .allocation_async_vaults import AsyncVaultCapital
+from .allocation_bridges import DEPOSIT_FOR_BURN, link_cctp
+from .prices import get_unit_price, is_par_stable
+from .sources.hypersync_balances import _addr_topic
+from .sources.hypersync_debt import _FROB_T0, _VAT, _decode_dart
+
+ZERO = Decimal("0")
+_log = logging.getLogger(__name__)
+REBASING = {PricingCategory.AAVE_ATOKEN, PricingCategory.SPARKLEND_SPTOKEN}
+DEPOSIT = "0x" + keccak256(b"Deposit(address,address,uint256,uint256)").hex()
+QUEUE_CREATED = {"0x" + keccak256(f"RequestCreated({size},address,uint256)".encode()).hex()
+                 for size in ("uint128", "uint256")}
+QUEUE_PROCESSED = {"0x" + keccak256(f"RequestProcessed({size},address,uint256,uint256)".encode()).hex()
+                   for size in ("uint128", "uint256")}
+
+
+@dataclass(frozen=True)
+class AssetMovement:
+    account: str
+    value_before: Decimal
+    change: Decimal
+    # Explicit rewards are never funded by another outgoing leg of the tx.
+    external_income: Decimal = ZERO
+
+
+@dataclass(frozen=True)
+class CapitalBatch:
+    identity: str
+    day: date
+    timestamp: int
+    chain: str
+    block: int
+    movements: tuple[AssetMovement, ...]
+    minted: Decimal = ZERO
+    log_index: int = 0
+
+
+@dataclass(frozen=True)
+class CapitalHistory:
+    batches: tuple[CapitalBatch, ...]
+    venue_accounts: dict[str, str]
+    unsupported: dict[str, str]
+    custody_accounts: dict[str, list[str]] = field(default_factory=dict)
+    idle_accounts: set[str] = field(default_factory=set)
+
+
+def _account(chain: Chain, token: Address, holder: Address) -> str:
+    return f"{chain.value}:{holder.hex}:{token.hex}"
+
+
+def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
+                          block_resolver=None) -> CapitalHistory:
+    """Read funded holdings and frob draws without changing the debt source.
+
+    Scan from block zero: a configured reporting start date is not evidence of
+    a zero opening balance. The shared log store makes subsequent runs
+    incremental. Unsupported custody remains explicit, never a fabricated
+    opening borrowed balance.
+    """
+    assets: dict[Chain, dict[tuple[str, str], Venue]] = defaultdict(dict)
+    venue_accounts: dict[str, str] = {}
+    unsupported: dict[str, str] = {}
+    custody_accounts: dict[str, list[str]] = defaultdict(list)
+    for v in prime.venues:
+        if v.skip:
+            continue
+        if (v.lp_kind in ("uniswap_v3", "uniswap_v4") or
+                v.pricing_category in (PricingCategory.EOA, PricingCategory.SPARK_SAVINGS_V2)):
+            unsupported[v.id] = "Requires non-fungible or beneficial-custody capital events"
+            continue
+        if v.notional_principal_usd:
+            unsupported[v.id] = "Requires off-chain principal payment matching"
+            continue
+        holder = v.holder_override or prime.alm[v.chain]
+        account = _account(v.chain, v.token.address, holder)
+        key = (v.token.address.hex, holder.hex)
+        if key in assets[v.chain]:
+            raise ValueError(f"Duplicate capital account for venue {v.id}")
+        assets[v.chain][key] = v
+        venue_accounts[v.id] = account
+    # Cash is needed even when it has no report venue (e.g. OBEX USDS/USDC).
+    for chain, holder in prime.alm.items():
+        stables = dict(PAR_STABLES_BY_CHAIN.get(chain, {}))
+        if chain in USDS_BY_CHAIN:
+            t = USDS_BY_CHAIN[chain]
+            stables[t.address.value] = (t.symbol, t.decimals)
+        for v in prime.venues:
+            if v.chain == chain and v.underlying is not None:
+                t = v.underlying
+                # Reuse the pricing module's strict stable classification.
+                if is_par_stable(t):
+                    stables[t.address.value] = (t.symbol, t.decimals)
+        for address, (symbol, decimals) in stables.items():
+            token = Token(chain, Address(address), symbol, decimals)
+            key = (token.address.hex, holder.hex)
+            assets[chain].setdefault(key, Venue(
+                id=f"cash:{symbol}", chain=chain, token=token,
+                pricing_category=PricingCategory.PAR_STABLE,
+            ))
+
+    batches: list[CapitalBatch] = []
+    bridge_burns = []
+    verified_burns = set()
+    for chain, mapping in assets.items():
+        if chain not in pins:
+            raise ValueError(f"Missing capital-history pin for {chain}")
+        # Index the custody addresses once. This avoids a large OR of
+        # per-token filters and keeps the durable stream stable when venues
+        # are added. Unknown token contracts are not assigned a USD value.
+        holders = sorted({_addr_topic(bytes.fromhex(h[2:])) for _, h in mapping})
+        selections = [
+            {"topics": [[], holders]},
+            {"topics": [[], [], holders]},
+            {"topics": [[], [], [], holders]},
+        ]
+        ilks = [i for i in [prime.ilk_bytes32, *prime.extra_ilks] if i]
+        if chain == Chain.ETHEREUM and ilks:
+            selections.append({"address": [_VAT], "topics": [
+                [_FROB_T0], ["0x" + i.hex() for i in ilks],
+            ]})
+        logs = hypersync_store.fetch_logs(
+            chain.value, selections, 0, pins[chain],
+            log_fields=[*hypersync._DEFAULT_LOG_FIELDS, "transaction_hash"],
+        )
+        grouped = defaultdict(list)
+        for row in logs:
+            if not row.transaction_hash:
+                raise ValueError("Missing transaction identity in capital history")
+            grouped[(row.block_number, row.transaction_hash)].append(row)
+        units: dict[tuple[str, str], int] = defaultdict(int)
+        queues: dict[tuple[str, str], tuple[tuple[str, str], int]] = {}
+        queue_managers: dict[tuple[str, str], str] = {}
+        async_vaults = AsyncVaultCapital(chain, mapping)
+        ordered_groups = sorted(grouped.items(), key=lambda item: (
+            item[0][0], min(r.log_index for r in item[1]),
+        ))
+        _log.info("Capital history %s/%s: %d transactions", prime.id, chain, len(ordered_groups))
+        for batch_index, ((block, tx_hash), block_logs) in enumerate(ordered_groups):
+            if batch_index and batch_index % 100 == 0:
+                _log.info("Capital history %s/%s: %d/%d", prime.id, chain, batch_index, len(ordered_groups))
+            block_logs = list({r.log_index: r for r in block_logs}.values())
+            async_selected = async_vaults.prepare(block_logs)
+            async_movements, async_deposits = async_vaults.movements(async_selected)
+            for row in block_logs:
+                if row.topic0 != DEPOSIT_FOR_BURN:
+                    continue
+                key = ("0x" + row.topic2[-40:], "0x" + row.topic3[-40:])
+                asset = mapping.get(key)
+                if asset is None or asset.token.symbol != "USDC" or asset.token.decimals != 6:
+                    continue
+                words = aave_reconstruct._words(row.data)
+                message_key = (chain, row.address, row.topic1)
+                paid = sum(int(r.data, 16) for r in block_logs
+                           if r.address == key[0] and r.topic0 == TRANSFER_TOPIC0
+                           and r.topic1 == row.topic3
+                           and r.topic2 == _addr_topic(bytes.fromhex(row.address[2:])))
+                if len(words) != 5:
+                    raise ValueError("Invalid CCTP burn event")
+                if paid == words[0] or message_key in verified_burns:
+                    verified_burns.add(message_key)
+                    bridge_burns.append((chain, row))
+            changes: dict[tuple[str, str], int] = defaultdict(int)
+            gifts: dict[tuple[str, str], int] = defaultdict(int)
+            minted = ZERO
+            indices = {}
+            deposits: dict[tuple[str, str], Decimal] = defaultdict(Decimal)
+            senders = {_addr_topic(a.value) for a in prime.external_alm_sources.get(chain, [])}
+            seen = set()
+            for row in sorted(block_logs, key=lambda r: r.log_index):
+                if row.log_index in seen:
+                    continue
+                seen.add(row.log_index)
+                if row.address == _VAT and row.topic0 == _FROB_T0:
+                    ilk = bytes.fromhex(row.topic1[2:])
+                    rate = rpc.ilk_rate(chain, Address.from_str(_VAT), ilk, block)
+                    with localcontext() as ctx:
+                        ctx.prec = 60
+                        minted += Decimal(_decode_dart(row.data)) * Decimal(rate) / Decimal(10**45)
+                    continue
+                for key in mapping:
+                    token, holder = key
+                    if token != row.address:
+                        continue
+                    who = _addr_topic(bytes.fromhex(holder[2:]))
+                    if row.topic0 == DEPOSIT and row.topic2 == who:
+                        words = aave_reconstruct._words(row.data)
+                        underlying = mapping[key].underlying
+                        if len(words) != 2 or underlying is None:
+                            raise ValueError("Invalid ERC4626 deposit event")
+                        deposits[key] += Decimal(words[0]) / Decimal(10**underlying.decimals)
+                        continue
+                    if mapping[key].pricing_category in REBASING:
+                        if row.topic0 not in {aave_reconstruct.MINT_T0, aave_reconstruct.BURN_T0, aave_reconstruct.BT_T0}:
+                            continue
+                        words = aave_reconstruct._words(row.data)
+                        expected_words = 2 if row.topic0 == aave_reconstruct.BT_T0 else 3
+                        if len(words) != expected_words:
+                            raise ValueError("Unexpected aToken capital event layout")
+                        indices[key] = words[-1]
+                        if row.topic0 == aave_reconstruct.MINT_T0 and row.topic2 == who:
+                            amount = words[0] - words[1]
+                            signed = aave_reconstruct.ray_div(abs(amount), words[2])
+                            changes[key] += signed if amount >= 0 else -signed
+                        elif row.topic0 == aave_reconstruct.BURN_T0 and row.topic1 == who:
+                            changes[key] -= aave_reconstruct.ray_div(words[0] + words[1], words[2])
+                        elif row.topic0 == aave_reconstruct.BT_T0:
+                            if row.topic1 == who:
+                                changes[key] -= words[0]
+                            if row.topic2 == who:
+                                changes[key] += words[0]
+                                if row.topic1 in senders:
+                                    gifts[key] += words[0]
+                        continue
+                    if row.topic0 != TRANSFER_TOPIC0 or len(row.data) != 66:
+                        continue
+                    amount = int(row.data, 16)
+                    if row.topic2 == who:
+                        changes[key] += amount
+                        if row.topic1 in senders:
+                            gifts[key] += amount
+                    if row.topic1 == who:
+                        changes[key] -= amount
+            movements = list(async_movements)
+            deposits.update(async_deposits)
+            for key, raw_change in changes.items():
+                v = mapping[key]
+                holder = Address.from_str(key[1])
+                scale = Decimal(10**v.token.decimals)
+                if v.pricing_category in REBASING:
+                    # Mint/Burn/BalanceTransfer carry the actual execution index.
+                    # This avoids both rebasing Transfer double-counting and
+                    # a full reserve-history download for each capital event.
+                    price = Decimal(indices[key]) / Decimal(10**27)
+                else:
+                    price = async_vaults.price(key, block)
+                    if price is None:
+                        price = get_unit_price(v, block, block_resolver=block_resolver)
+                value_before = Decimal(units[key]) * price / scale
+                change = Decimal(raw_change) * price / scale
+                gift = Decimal(gifts[key]) * price / scale
+                units[key] += raw_change
+                if units[key] < 0:
+                    raise ValueError(f"Negative reconstructed capital holding: {v.id} {tx_hash}")
+                if raw_change > 0 and key in deposits:
+                    # Actual cash paid, not a rounded one-share NAV quotation.
+                    # A simultaneous redeem is kept on the generic path.
+                    burns = any(r.address == key[0] and r.topic0 == TRANSFER_TOPIC0
+                                and r.topic1 == _addr_topic(holder.value) for r in block_logs)
+                    if not burns:
+                        change = deposits[key]
+                movements.append(AssetMovement(
+                    _account(chain, v.token.address, holder), value_before, change, gift,
+                ))
+            for row in sorted(block_logs, key=lambda r: r.log_index):
+                if row.topic0 not in QUEUE_CREATED | QUEUE_PROCESSED:
+                    continue
+                owner = "0x" + row.topic2[-40:]
+                queue_key = (row.address, owner)
+                words = aave_reconstruct._words(row.data)
+                if row.topic0 in QUEUE_CREATED:
+                    matches = []
+                    for key, venue in mapping.items():
+                        if key[1] != owner or venue.pricing_category != PricingCategory.ERC4626_VAULT:
+                            continue
+                        sent = [r for r in block_logs if r.address == key[0] and r.topic0 == TRANSFER_TOPIC0
+                                and r.topic1 == _addr_topic(bytes.fromhex(owner[2:]))
+                                and int(r.data, 16) == words[0]]
+                        if not sent:
+                            continue
+                        # Maple sends shares through PoolManager before the
+                        # queue. Authenticate both contracts at the event block.
+                        manager_raw = rpc.eth_call(chain, venue.token.address,
+                                                  "0x" + keccak256(b"manager()")[:4].hex(), block)
+                        manager = Address.from_str("0x" + manager_raw[-40:])
+                        queue_raw = rpc.eth_call(chain, manager,
+                                                "0x" + keccak256(b"withdrawalManager()")[:4].hex(), block)
+                        if ("0x" + queue_raw[-40:] == row.address and
+                                any(r.topic2 == _addr_topic(manager.value) for r in sent)):
+                            matches.append(key)
+                            queue_managers[queue_key] = manager.hex
+                    if len(matches) != 1:
+                        continue
+                    key = matches[0]
+                    old = queues.get(queue_key, (key, 0))[1]
+                    delta = words[0]
+                    price = get_unit_price(mapping[key], block, block_resolver=block_resolver)
+                    scale = Decimal(10**mapping[key].token.decimals)
+                    before_value, change = Decimal(old) * price / scale, Decimal(delta) * price / scale
+                else:
+                    if queue_key not in queues:
+                        continue
+                    key, old = queues[queue_key]
+                    if len(words) != 2 or words[0] <= 0 or words[0] > old:
+                        raise ValueError(f"Invalid queue redemption: {tx_hash}")
+                    delta = -words[0]
+                    underlying = mapping[key].underlying
+                    assets_out = Decimal(words[1]) / Decimal(10**underlying.decimals)
+                    # Share-proportional release, with the exact cash received.
+                    before_value = assets_out * Decimal(old) / Decimal(words[0])
+                    change = -assets_out
+                queues[queue_key] = (key, old + delta)
+                account = f"queue:{chain.value}:{row.address}:{owner}:{key[0]}"
+                if account not in custody_accounts[mapping[key].id]:
+                    custody_accounts[mapping[key].id].append(account)
+                movements.append(AssetMovement(account, before_value, change))
+            # Cancelled requests return shares via the PoolManager. These are
+            # transfers of the same beneficial position, not new funding.
+            for (queue, owner), (key, old) in list(queues.items()):
+                if changes.get(key, 0) <= 0:
+                    continue
+                manager = queue_managers[(queue, owner)]
+                returned = sum(int(r.data, 16) for r in block_logs
+                               if r.address == key[0] and r.topic0 == TRANSFER_TOPIC0
+                               and r.topic2 == _addr_topic(bytes.fromhex(owner[2:]))
+                               and r.topic1 in {_addr_topic(bytes.fromhex(a[2:])) for a in (queue, manager)})
+                if not returned:
+                    continue
+                if returned > old:
+                    raise ValueError(f"Queue refund exceeds owned shares: {tx_hash}")
+                v = mapping[key]
+                price = get_unit_price(v, block, block_resolver=block_resolver)
+                scale = Decimal(10**v.token.decimals)
+                account = f"queue:{chain.value}:{queue}:{owner}:{key[0]}"
+                movements.append(AssetMovement(account, Decimal(old) * price / scale,
+                                               -Decimal(returned) * price / scale))
+                queues[(queue, owner)] = (key, old - returned)
+            combined = {}
+            for m in movements:
+                if m.account not in combined:
+                    combined[m.account] = m
+                else:
+                    before = combined[m.account]
+                    combined[m.account] = AssetMovement(m.account, before.value_before,
+                                                        before.change + m.change,
+                                                        before.external_income + m.external_income)
+            first = block_logs[0]
+            batches.append(CapitalBatch(
+                f"{chain.value}:{tx_hash}", datetime.fromtimestamp(first.block_time, UTC).date(),
+                first.block_time, chain.value, block, tuple(combined.values()), minted,
+                min(r.log_index for r in block_logs),
+            ))
+        for vid, accounts in async_vaults.custody_accounts.items():
+            custody_accounts[vid].extend(accounts)
+    batches = link_cctp(prime, pins, batches, bridge_burns)
+    idle_accounts = {_account(c, USDS_BY_CHAIN[c].address, holder)
+                     for c, holder in prime.alm.items() if c in USDS_BY_CHAIN}
+    return CapitalHistory(tuple(sorted(batches, key=lambda b: (b.timestamp, b.chain, b.block, b.log_index))),
+                          venue_accounts, unsupported, dict(custody_accounts), idle_accounts)
