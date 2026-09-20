@@ -64,3 +64,32 @@ def test_future_attempt_metadata_is_invalid():
     data = payload()
     data['primes']['grove']['latest_attempt']['cutoff'] = '2026-09-18'
     assert not assess(data, datetime(2026, 9, 17, 3, tzinfo=UTC))['ready']
+
+
+def test_weekend_sofr_delay_is_not_a_missed_run_but_other_primes_remain_due():
+    data = payload('2026-09-18')
+    for prime in ['grove', 'spark']:
+        data['primes'][prime] = {'actual_cutoff': '2026-09-17',
+                                'latest_attempt': {'cutoff': '2026-09-18', 'status': 'failed'}}
+    report = assess(data, datetime(2026, 9, 20, 3, tzinfo=UTC))
+    assert report['ready']
+    assert report['expected_cutoff_by_prime']['spark'] == '2026-09-17'
+    data['primes']['obex']['actual_cutoff'] = '2026-09-17'
+    assert assess(data, datetime(2026, 9, 20, 3, tzinfo=UTC))['failures'] == {'obex': 'missing_due_cutoff'}
+
+
+def test_monday_evening_catchup_is_required_after_deadline():
+    data = payload('2026-09-20')
+    for prime in ['grove', 'spark']:
+        data['primes'][prime]['actual_cutoff'] = '2026-09-17'
+    report = assess(data, datetime(2026, 9, 22, 3, tzinfo=UTC))
+    assert report['expected_cutoff_by_prime']['spark'] == '2026-09-20'
+    assert set(report['failures']) == {'grove', 'spark'}
+
+
+def test_monday_morning_does_not_require_evening_sofr_catchup():
+    data = payload('2026-09-19')
+    for prime in ['grove', 'spark']:
+        data['primes'][prime] = {'actual_cutoff': '2026-09-17',
+                                'latest_attempt': {'cutoff': '2026-09-18', 'status': 'failed'}}
+    assert assess(data, datetime(2026, 9, 21, 15, tzinfo=UTC))['ready']

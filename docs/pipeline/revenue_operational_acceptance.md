@@ -222,3 +222,27 @@ to send a test there are pending; a workflow failure alone does not establish
 that someone receives it.
 
 Dashboard integration uses [the existing handoff prompt](msc_dashboard_daily_revenue_prompt.md).
+
+### SOFR publication lag (2026-09-20 incident)
+
+The September 19 daily worker failed Grove and Spark's September 18 cutoffs
+because Friday's SOFR is published on Monday, not Saturday. The worker now
+reports these cutoffs as `deferred` / `reference_rate_not_due`, without creating
+failed attempts or publishing substituted rates. It catches up all missing
+cutoffs once publication is due. Non-subsidised primes retain the daily cutoff.
+The independent monitor evaluates each prime against the rate availability at
+the last scheduled run whose deadline elapsed; it does not demand Monday's
+catch-up before the Monday evening run is due. API calendar freshness can still
+report stale while the schedule-aware completion monitor passes.
+
+Publication is due at 08:00 America/New_York on the next publication business
+day. A missing observation after that time still blocks publication. The
+versioned calendar includes the NY Fed's 2026 exceptions: no April 3 SOFR
+trading/publication; July 3 publishes July 2's rate despite being a trading
+closure. Sources: [publication methodology](https://www.newyorkfed.org/markets/reference-rates/additional-information-about-reference-rates),
+[April 3 notice](https://www.newyorkfed.org/markets/opolicy/operating_policy_260312a),
+[July 3 notice](https://www.newyorkfed.org/markets/opolicy/operating_policy_260618a).
+
+Separately, the September 19 and 20 GitHub completion workflows never started
+because GitHub reported an account billing/spending-limit block. This is an
+account issue, independent of the worker fix.

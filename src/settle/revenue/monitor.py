@@ -5,6 +5,9 @@ from datetime import UTC, date, datetime, timedelta
 
 import requests
 
+from settle.domain.config import load_prime_by_id
+
+from .reference_rates import available_cutoff
 from .verification import PRIMES
 
 
@@ -22,6 +25,7 @@ def expected_cutoff(now):
 def assess(payload, now):
     expected = expected_cutoff(now)
     failures = {}
+    expected_by_prime = {}
     if not isinstance(payload, dict) or payload.get('cadence') != 'daily':
         raise ValueError('Invalid revenue status response')
     primes = payload.get('primes')
@@ -29,9 +33,15 @@ def assess(payload, now):
         raise ValueError('Missing prime statuses')
     for prime in PRIMES:
         try:
+            config = load_prime_by_id(prime)
+            scheduled = datetime.combine(expected + timedelta(days=1), datetime.min.time(), UTC).replace(
+                hour=20, minute=17)
+            due = available_cutoff(config, expected, scheduled)
+            ready_through = available_cutoff(config, now.astimezone(UTC).date() - timedelta(days=1), scheduled)
+            expected_by_prime[prime] = str(due)
             status = primes[prime]
             cutoff = date.fromisoformat(status['actual_cutoff'])
-            if not expected <= cutoff < now.astimezone(UTC).date():
+            if not due <= cutoff < now.astimezone(UTC).date():
                 failures[prime] = 'missing_due_cutoff'
                 continue
             attempt = status.get('latest_attempt')
@@ -45,13 +55,14 @@ def assess(payload, now):
             state = attempt['status']
             if state not in {'succeeded', 'running', 'failed', 'abandoned'}:
                 failures[prime] = 'invalid_attempt_status'
-            elif attempted >= expected and state in {'failed', 'abandoned'}:
+            elif due <= attempted <= ready_through and state in {'failed', 'abandoned'}:
                 failures[prime] = 'failed_attempt'
-            elif attempted == expected and state == 'running':
+            elif attempted == due and state == 'running':
                 failures[prime] = 'deadline_exceeded'
         except (KeyError, TypeError, ValueError):
             failures[prime] = 'missing_or_invalid_status'
-    return {'expected_cutoff': str(expected), 'ready': not failures, 'failures': failures}
+    return {'expected_cutoff': str(expected), 'expected_cutoff_by_prime': expected_by_prime,
+            'ready': not failures, 'failures': failures}
 
 
 def main():

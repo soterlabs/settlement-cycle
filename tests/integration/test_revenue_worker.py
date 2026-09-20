@@ -71,3 +71,38 @@ def test_wrong_calculation_identity_cannot_be_published(database):  # noqa: F811
                                   capture=lambda: versions)
         assert report['status'] == 'failed'
         assert store.read(conn, 'obex') is None
+
+
+def test_weekend_sofr_defers_without_failed_attempt_and_monday_recovers(database):  # noqa: F811
+    from datetime import UTC, date, datetime
+
+    versions = store.Versions('code', 'config', '0')
+    calls = []
+
+    def prepare(*args):
+        calls.append('prepare')
+        return None
+
+    def compute(config, month, *, as_of):
+        from settle.domain.period import Period
+        calls.append(as_of)
+        return replace(example(), prime_id='spark', period=Period.from_month(month, {}, as_of=as_of))
+
+    with psycopg.connect(database, autocommit=True) as conn:
+        store.apply_schema(conn)
+        report = worker.run_prime(
+            conn, 'spark', now=datetime(2026, 9, 13, 16, tzinfo=UTC),
+            start=date(2026, 9, 11), end=date(2026, 9, 11),
+            capture=lambda: versions, prepare=prepare, compute=compute)
+        assert report['status'] == 'ok'
+        assert report['results'] == [{'cutoff': '2026-09-11', 'status': 'deferred',
+                                      'reason': 'reference_rate_not_due'}]
+        assert not calls
+        assert conn.execute('SELECT count(*) FROM revenue_attempts').fetchone()[0] == 0
+        report = worker.run_prime(
+            conn, 'spark', now=datetime(2026, 9, 14, 20, 17, tzinfo=UTC),
+            start=date(2026, 9, 11), end=date(2026, 9, 13),
+            capture=lambda: versions, prepare=prepare, compute=compute, attempts=1)
+        assert report['status'] == 'ok'
+        assert [r['status'] for r in report['results']] == ['succeeded'] * 3
+        assert conn.execute('SELECT count(*) FROM revenue_results').fetchone()[0] == 3

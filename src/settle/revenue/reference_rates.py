@@ -1,8 +1,9 @@
 """Official SOFR snapshots for daily publication; never infer a holiday from a missing row."""
 from dataclasses import dataclass, replace
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import requests
@@ -33,6 +34,36 @@ def effective_day(day, calendar):
             return day
         day -= timedelta(days=1)
     raise ReferenceRatesUnavailable('Reference-rate calendar does not cover required date')
+
+
+def publication_time(day, calendar):
+    """SOFR for a trading date is published at 08:00 New York next publication day."""
+    day += timedelta(days=1)
+    extra = set(calendar.get('extra_publication_days', []))
+    while True:
+        if str(day) in extra or effective_day(day, calendar) == day:
+            return datetime.combine(day, time(8), ZoneInfo('America/New_York'))
+        day += timedelta(days=1)
+
+
+def available_cutoff(prime, cutoff, now):
+    """Latest complete cutoff whose required rate is scheduled to be available.
+
+    This is calendar-based, never inferred from missing API observations. After
+    publication is due, a missing rate must still fail closed in fetch_sofr.
+    """
+    if now.tzinfo is None:
+        raise ValueError('publication time must be timezone-aware')
+    if not prime.subsidy.enabled:
+        return cutoff
+    configured = load_reference_rates_for(prime.subsidy)
+    calendar = yaml.safe_load(CALENDAR.read_text())
+    while True:
+        kind = (configured.kind_at(cutoff) if isinstance(configured, ScheduledReferenceRateHistory)
+                else configured.kind)
+        if kind != 'sofr' or publication_time(effective_day(cutoff, calendar), calendar) <= now:
+            return cutoff
+        cutoff -= timedelta(days=1)
 
 
 def fetch_sofr(required, *, end=None):

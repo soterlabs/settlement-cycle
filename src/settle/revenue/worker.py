@@ -21,10 +21,11 @@ from psycopg.types.json import Jsonb
 from settle.compute import compute_monthly_pnl
 from settle.domain.config import load_prime_by_id
 from settle.domain.period import Month
-from settle.store.db import connect
 from settle.extract.publication import PublicationGuard, RequiredInputFailure
+from settle.store.db import connect
 
 from . import store
+from .reference_rates import available_cutoff
 from .reference_rates import prepare as prepare_reference_rates
 from .verification import PRIMES, ProviderAudit, digest, validate_window
 
@@ -60,8 +61,11 @@ def lock_key(prime):
 
 
 def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_monthly_pnl,
-              capture=store.capture_versions, attempts=3, pause=time.sleep, prepare=prepare_reference_rates):
-    today = today or datetime.now(UTC).date()
+              capture=store.capture_versions, attempts=3, pause=time.sleep, prepare=prepare_reference_rates,
+              now=None):
+    now = now or (datetime.combine(today, datetime.min.time(), UTC).replace(hour=20, minute=17)
+                  if today else datetime.now(UTC))
+    today = today or now.astimezone(UTC).date()
     if not conn.autocommit or attempts < 1:
         raise ValueError('worker requires an autocommit lock session and positive retry count')
     if prime not in PRIMES:
@@ -77,7 +81,17 @@ def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_
         initial = os.environ.get("REVENUE_START_DATE")
         dates = planned_dates(published, attempted, today, start, end,
                               date.fromisoformat(initial) if initial else None)
+        config = load_prime_by_id(prime)
+        ready_through = available_cutoff(config, today - timedelta(days=1), now)
+        # Anchor a first weekend installation at the last publishable day so
+        # Monday's gap planner also recovers Friday and Saturday.
+        if start is None and dates and ready_through < dates[0] and ready_through not in published:
+            dates.insert(0, ready_through)
         for cutoff in dates:
+            if cutoff > ready_through:
+                results.append({'cutoff': str(cutoff), 'status': 'deferred',
+                                'reason': 'reference_rate_not_due'})
+                continue
             versions = capture()
             for attempt in range(attempts):
                 attempt_id = uuid.uuid4()

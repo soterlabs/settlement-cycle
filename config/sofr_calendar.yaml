@@ -7,6 +7,8 @@ full_closures:
   - '2026-01-01'
   - '2026-01-19'
   - '2026-02-16'
+  # NY Fed operating_policy_260312a: no April 3 repo trading/publication.
+  - '2026-04-03'
   - '2026-05-25'
   - '2026-06-19'
   - '2026-07-03'
@@ -27,3 +29,8 @@ full_closures:
   - '2027-11-11'
   - '2027-11-25'
   - '2027-12-24'
+
+# NY Fed operating_policy_260618a: publish July 2 SOFR on July 3 even though
+# July 3 is a trading closure. Publication and effective-date calendars differ.
+extra_publication_days:
+  - '2026-07-03'

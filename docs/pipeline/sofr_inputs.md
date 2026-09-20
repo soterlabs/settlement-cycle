@@ -18,8 +18,12 @@ still come from the configuration but require complete business-day coverage.
 
 The versioned calendar in `config/sofr_calendar.yaml` contains the verified
 2026–2027 U.S. full closures from [SIFMA](https://www.sifma.org/resources/general/holiday-schedule).
-Early closes require their own observation: notably Good Friday 2026 is an early
-close, whereas Good Friday 2027 is a full closure. Outside this calendar the
+Early closes normally require their own observation. The NY Fed's
+[April 3, 2026 notice](https://www.newyorkfed.org/markets/opolicy/operating_policy_260312a)
+overrides the original Good Friday calendar: April 3 has no repo observation or
+publication. Its [July 3 notice](https://www.newyorkfed.org/markets/opolicy/operating_policy_260618a)
+allows publication of July 2's observation on the July 3 trading closure;
+`extra_publication_days` records that distinction. Outside this calendar the
 worker fails closed. Extend it from the official schedule before 2028, and update
 it for any additional NY Fed closure announcements. Missing API rows never
 create new holidays automatically.
@@ -29,7 +33,9 @@ publication and 14:30 same-day revision window year-round. See the
 [NY Fed publication rules](https://www.newyorkfed.org/markets/reference-rates/additional-information-about-reference-rates).
 The previous UTC day remains the target. Friday observations normally publish
 on Monday; weekend/holiday attempts that require an unpublished observation
-retain the previous result and catch up after publication. A weekend carries
+are reported as deferred before a calculation attempt is created, retain the
+previous result, and catch up after publication. The completion monitor applies
+the same publication calendar at the last due scheduled run. A weekend carries
 Friday's observation only once that observation actually exists. No extrapolated
 business-day rate is published as confirmed input.
 

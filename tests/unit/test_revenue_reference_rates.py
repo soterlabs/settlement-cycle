@@ -12,7 +12,7 @@ def test_holiday_calendar_distinguishes_full_from_early_closes():
     calendar = yaml.safe_load(rates.CALENDAR.read_text())
     assert rates.effective_day(date(2026, 9, 7), calendar) == date(2026, 9, 4)
     assert rates.effective_day(date(2026, 9, 6), calendar) == date(2026, 9, 4)
-    assert rates.effective_day(date(2026, 4, 3), calendar) == date(2026, 4, 3)
+    assert rates.effective_day(date(2026, 4, 3), calendar) == date(2026, 4, 2)
     assert rates.effective_day(date(2026, 11, 27), calendar) == date(2026, 11, 27)
     assert rates.effective_day(date(2027, 3, 26), calendar) == date(2027, 3, 25)
     assert rates.effective_day(date(2027, 12, 31), calendar) == date(2027, 12, 31)
@@ -57,3 +57,29 @@ def test_an_official_print_on_a_configured_closure_blocks_instead_of_being_ignor
     response(monkeypatch, [row('2026-09-04'), row('2026-09-07')])
     with pytest.raises(rates.ReferenceRatesUnavailable, match='calendar'):
         rates.fetch_sofr({date(2026, 9, 4)}, end=date(2026, 9, 7))
+
+
+@pytest.mark.parametrize('now,expected', [
+    ('2026-09-19T20:17:00+00:00', '2026-09-17'),
+    ('2026-09-20T20:17:00+00:00', '2026-09-17'),
+    ('2026-09-21T11:59:59+00:00', '2026-09-17'),
+    ('2026-09-21T12:00:00+00:00', '2026-09-20'),
+    ('2026-09-08T11:59:59+00:00', '2026-09-03'),
+    ('2026-09-08T12:00:00+00:00', '2026-09-07'),
+])
+def test_sofr_publication_delay_defers_complete_days_without_inventing_rates(now, expected):
+    from datetime import datetime, timedelta
+
+    from settle.domain.config import load_prime_by_id
+    instant = datetime.fromisoformat(now)
+    cutoff = instant.date() - timedelta(days=1)
+    for prime in ['grove', 'spark']:
+        assert str(rates.available_cutoff(load_prime_by_id(prime), cutoff, instant)) == expected
+    assert rates.available_cutoff(load_prime_by_id('obex'), cutoff, instant) == cutoff
+
+
+def test_publication_calendar_special_days_and_winter_timezone():
+    calendar = yaml.safe_load(rates.CALENDAR.read_text())
+    assert rates.publication_time(date(2026, 7, 2), calendar).isoformat() == '2026-07-03T08:00:00-04:00'
+    assert rates.publication_time(date(2026, 4, 2), calendar).isoformat() == '2026-04-06T08:00:00-04:00'
+    assert rates.publication_time(date(2026, 12, 24), calendar).isoformat() == '2026-12-28T08:00:00-05:00'
