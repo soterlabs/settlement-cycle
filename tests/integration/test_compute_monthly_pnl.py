@@ -62,7 +62,7 @@ def _zero_debt_df() -> pd.DataFrame:
 _USDS = bytes.fromhex("dc035d45d973e3ec169d2276ddab16f1e407384f")
 
 
-def test_monthly_pnl_zero_book_zero_pnl(obex, fixed_pin_blocks):
+def test_monthly_pnl_zero_book_zero_pnl(obex, fixed_pin_blocks, monkeypatch):
     """Zero balances + zero-debt timeseries → zero PnL. Sanity gate."""
     sources = Sources(
         block_resolver=MockBlockResolver(),
@@ -87,6 +87,20 @@ def test_monthly_pnl_zero_book_zero_pnl(obex, fixed_pin_blocks):
     assert result.agent_rate == Decimal("0")
     assert result.prime_agent_revenue == Decimal("0")
     assert result.monthly_pnl == Decimal("0")
+
+    from dataclasses import replace
+    from settle.normalize import allocation_capital
+    def unavailable(*args, **kwargs):
+        raise RuntimeError('Funding provider unavailable')
+    monkeypatch.setattr(allocation_capital, 'fetch_capital_history', unavailable)
+    analytics_result = compute_monthly_pnl(
+        obex, Month(2026, 3), sources=sources,
+        pin_blocks_eom=fixed_pin_blocks['eom'], pin_blocks_som=fixed_pin_blocks['som'],
+        include_allocation_financing=True,
+    )
+    assert replace(analytics_result, allocation_financing=None) == result
+    assert analytics_result.allocation_financing['status'] == 'unavailable'
+    assert analytics_result.allocation_financing['allocations'][0]['net_apy'] is None
 
 
 @pytest.mark.parametrize("as_of", [None, date(2026, 3, 1), date(2026, 3, 15), date(2026, 3, 31)])

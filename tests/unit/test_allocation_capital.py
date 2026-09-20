@@ -167,3 +167,16 @@ def test_underwater_position_keeps_basis_in_custody_until_cash_redemption():
     redeemed = replay_history(history, DAY, DAY)
     assert redeemed.ledger.account("cash").borrowed == D(95)
     assert redeemed.ledger.realised_principal_loss == D(5)
+
+
+def test_funding_uncertainty_does_not_contaminate_a_later_new_position():
+    from dataclasses import replace
+    history = CapitalHistory((
+        batch(1, [AssetMovement('a', D(0), D(100))]),
+        batch(2, [AssetMovement('a', D(100), D(-100))]),
+        replace(batch(3, [AssetMovement('a', D(0), D(200))], '200'), day=date(2026, 8, 2)),
+    ), {}, {})
+    replay = replay_history(history, DAY, date(2026, 8, 2))
+    assert 'a' in replay.uncertain_daily[DAY]
+    assert 'a' not in replay.uncertain_daily[date(2026, 8, 2)]
+    assert replay.ledger.account('a').borrowed == D(200)

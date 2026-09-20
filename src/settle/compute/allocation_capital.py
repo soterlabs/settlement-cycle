@@ -153,6 +153,7 @@ class CapitalReplay:
     unmatched_receipts: dict[str, Decimal]
     unmatched_outflows: dict[str, Decimal]
     uncertain_accounts: set[str]
+    uncertain_daily: dict[date, set[str]] = field(default_factory=dict)
 
 
 def replay_history(history, start: date, end: date) -> CapitalReplay:
@@ -172,6 +173,7 @@ def replay_history(history, start: date, end: date) -> CapitalReplay:
     unmatched_receipts: dict[str, Decimal] = {}
     unmatched_outflows: dict[str, Decimal] = {}
     uncertain: set[str] = set()
+    uncertain_daily = {}
     batches = sorted(history.batches, key=lambda b: (b.timestamp, b.chain, b.block, b.log_index))
     cursor = 0
 
@@ -189,6 +191,10 @@ def replay_history(history, start: date, end: date) -> CapitalReplay:
             apply("draw", b.minted, destination=clearing)
         # Mark before processing gifts; both affect withdrawal fractions.
         for m in b.movements:
+            if m.value_before == ZERO and ledger.account(m.account).borrowed == ZERO:
+                # A fully exited holding has no old funding uncertainty to
+                # transfer to a later, independently funded position.
+                uncertain.discard(m.account)
             apply("mark", m.value_before, destination=m.account)
             if m.external_income:
                 apply("income", m.external_income, destination=m.account)
@@ -243,5 +249,6 @@ def replay_history(history, start: date, end: date) -> CapitalReplay:
                 apply_batch(batches[cursor])
                 cursor += 1
             daily[day] = {k: a.borrowed for k, a in ledger.accounts.items()}
+            uncertain_daily[day] = set(uncertain)
             day += timedelta(days=1)
-    return CapitalReplay(ledger, daily, unmatched_receipts, unmatched_outflows, uncertain)
+    return CapitalReplay(ledger, daily, unmatched_receipts, unmatched_outflows, uncertain, uncertain_daily)
