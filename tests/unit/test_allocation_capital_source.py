@@ -131,3 +131,22 @@ def test_async_subscription_and_partial_redemption_keep_funding_basis(monkeypatc
     assert replay.ledger.account(cash).value == D(55)
     assert not replay.unmatched_receipts
     assert not replay.unmatched_outflows
+
+
+def test_redemption_uses_paid_cash_and_preserves_share_fraction(monkeypatch):
+    logs = [draw(), log(1, 1, VAULT, TRANSFER_TOPIC0,
+                       [topic(Address(bytes(20))), topic(HOLDER)], [100 * 10**18]),
+            log(2, 2, VAULT, TRANSFER_TOPIC0,
+                [topic(HOLDER), topic(Address(bytes(20)))], [50 * 10**18]),
+            log(2, 3, VAULT, source.WITHDRAW, [topic(HOLDER)] * 3,
+                [55 * 10**18, 50 * 10**18]),
+            log(2, 4, USDS_ETHEREUM.address, TRANSFER_TOPIC0,
+                [topic(VAULT), topic(HOLDER)], [55 * 10**18])]
+    prime = setup(monkeypatch, logs)
+    history = source.fetch_capital_history(prime, {Chain.ETHEREUM: 2})
+    replay = replay_history(history, DAY, DAY)
+    cash = source._account(Chain.ETHEREUM, USDS_ETHEREUM.address, HOLDER)
+    assert replay.ledger.account(cash).borrowed == D(50)
+    assert replay.ledger.account(cash).value == D(55)
+    assert replay.ledger.account(history.venue_accounts['V1']).borrowed == D(50)
+    assert not replay.unmatched_receipts

@@ -34,6 +34,9 @@ proceeds carry the resulting principal into another holding. Appreciation
 changes value, not borrowed basis. Realized principal losses cannot fund a new
 deposit; their financing remains at prime level. Repayment with own funds
 reduces outstanding basis proportionally across the remaining holdings.
+Moving shares into a redemption queue or returning them after cancellation
+preserves their basis, even when NAV is below principal. Loss is realized when
+shares are redeemed for cash, not when their custody changes.
 
 Transactions retain both asset legs and are ordered within the day. Daily
 balances use the settlement engine's end-of-day convention. Funding costs use
@@ -46,6 +49,7 @@ the global borrowing charge.
 - aToken `Mint`, `Burn` and `BalanceTransfer` with their execution indices;
   ordinary `Transfer` sums include rebasing effects and are not used as basis.
 - ERC-4626 deposit cash amounts, avoiding rounded one-share price quotations.
+- ERC-4626 redemption proceeds and redeemed-share fractions, for the same reason.
 - Maple queue requests/processing/refunds, with historical PoolManager and
   WithdrawalManager authentication.
 - ERC-7540 subscription/redemption custody, including historical gateways
@@ -70,6 +74,11 @@ uses prime-side revenue after funding cost.
 The 0–8% gross-yield range is a development investigation aid only. No range
 warning, recurring check, or publication gate is added to production.
 
+Lending idle fractions are collected from the existing daily pool reads. A
+period-average idle deduction is insufficient when principal moves within the
+month. If a venue has an idle deduction but its daily fractions are missing,
+its allocation cost remains unresolved. AMM daily fractions remain outstanding.
+
 ## Validation so far
 
 August 2026 OBEX, using inception-to-August on-chain principal replay and the
@@ -93,3 +102,15 @@ Outstanding validation: Spark/Grove history and custody migrations, NFT LP
 positions, off-chain principal, bridge versions beyond CCTP v1, and exact daily
 idle/SDE attribution. Daily/monthly entrypoint activation and report integration
 follow that validation. The current shared compute hook is opt-in.
+
+Further development checks:
+
+- Full synthetic monthly/daily orchestration compares every settlement field
+  with analytics disabled and enabled; the results are identical (four cuts).
+- Grove extraction covers 2,259 transactions across five chains. Funding
+  replay remains unresolved: 572 unmatched receipts and 545 unmatched outflows
+  in the latest audit, including Centrifuge issuance/migration and bridge
+  routes. These counts do not establish accounting discrepancies in settlement;
+  they identify missing links in this new funding adapter.
+- Confirmed native Plume USDC metadata against Circle's deployment address and
+  gateway `asset()`; this is local capital metadata, not a settlement NAV change.

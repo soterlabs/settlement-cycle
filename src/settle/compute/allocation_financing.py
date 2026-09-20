@@ -26,7 +26,7 @@ def annualized_yield(revenue: Decimal, average_value: Decimal, days: int) -> Dec
         return period_factor ** (Decimal(365) / Decimal(days)) - Decimal(1)
 
 
-def allocation_financing(pnl, history) -> dict:
+def allocation_financing(pnl, history, *, idle_fractions=None) -> dict:
     start, end = pnl.period.start, pnl.period.end
     replay = replay_history(history, start - timedelta(days=1), end)
     n_days = (end - start).days + 1
@@ -58,11 +58,14 @@ def allocation_financing(pnl, history) -> dict:
         average_principal = sum(principal.values(), ZERO) / Decimal(n_days)
         average_value = max(venue.tw_avg_value, venue.tw_avg_notional)
         idle = venue.lending_idle_tw_avg_usd + venue.amm_idle_usds_tw_avg_usd
-        # Existing idle values are period means. Their fraction is applied to
-        # borrowed basis, never treated as an additional source of borrowing.
-        idle_fraction = min(Decimal(1), idle / average_value) if average_value > ZERO else ZERO
+        daily_idle = (idle_fractions or {}).get(venue.venue_id, {})
+        if idle > ZERO and set(days) - daily_idle.keys():
+            reason = reason or "Daily idle funding fractions are incomplete"
         cost = ZERO
         for day in days:
+            idle_fraction = daily_idle.get(day, ZERO)
+            if not idle_fraction.is_finite() or not ZERO <= idle_fraction <= Decimal(1):
+                raise ValueError(f"Invalid daily idle fraction for {venue.venue_id} on {day}")
             sde_fraction = venue.sd_share
             sde = sde_daily.get(venue.venue_id, {}).get(day)
             if sde and sde["uncapped_value"] > ZERO:

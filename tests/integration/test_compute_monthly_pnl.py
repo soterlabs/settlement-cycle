@@ -263,6 +263,27 @@ def test_monthly_pnl_obex_synthetic_one_venue(obex, fixed_pin_blocks, monkeypatc
     assert result.period.n_days == days
     assert result.as_of == (as_of or date(2026, 3, 31))
     assert result.is_provisional == (days < 31)
+
+    # Analytics must be downstream-only for both complete months and daily
+    # provisional cuts. Compare every settlement field, not just its total.
+    from dataclasses import replace
+    from settle.normalize.allocation_capital import AssetMovement, CapitalBatch, CapitalHistory
+
+    history = CapitalHistory((CapitalBatch(
+        "initial-draw", date(2026, 2, 1), 1, "ethereum", 1,
+        (AssetMovement("position", Decimal(0), Decimal("100000000")),),
+        Decimal("100000000"),
+    ),), {"V1": "position"}, {})
+    with_analytics = compute_monthly_pnl(
+        obex, Month(2026, 3), sources=sources,
+        pin_blocks_eom=fixed_pin_blocks["eom"],
+        pin_blocks_som=fixed_pin_blocks["som"], as_of=as_of,
+        include_allocation_financing=True, capital_history=history,
+    )
+    assert replace(with_analytics, allocation_financing=None) == result
+    financing = with_analytics.allocation_financing
+    assert financing["allocations"][0]["borrowed_principal_eom"] == Decimal("100000000")
+    assert abs(financing["allocation_cost_of_funds"] - expected_sky) < tol
     if as_of == date(2026, 3, 31):
         from dataclasses import asdict
         ordinary = compute_monthly_pnl(
