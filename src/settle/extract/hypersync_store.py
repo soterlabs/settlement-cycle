@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import weakref
 from collections.abc import Callable
@@ -113,8 +114,16 @@ def fetch_logs(
     if not missing:
         return _read_rows(conn, stream, from_block, to_block)
 
+    # Commit bounded finalized intervals so a late network or disk failure
+    # does not discard an entire inception-to-pin download.
+    chunk_size = int(os.environ.get("HYPERSYNC_CHECKPOINT_BLOCKS", "2000000"))
+    if chunk_size <= 0:
+        raise ValueError("HYPERSYNC_CHECKPOINT_BLOCKS must be positive")
+    chunks = ((start, min(hi, start + chunk_size - 1))
+              for lo, hi in missing for start in range(lo, hi + 1, chunk_size))
     live_rows: list[hypersync.LogRow] = []
-    for lo, hi in missing:
+    for lo, hi in chunks:
+        logging.getLogger(__name__).info("Fetching %s blocks %d-%d", chain, lo, hi)
         res = live(lo, hi)
         live_rows.extend(res.rows)
         safe = res.archive_height - _reorg_margin() if res.archive_height else -1
@@ -131,6 +140,8 @@ def fetch_logs(
             # All intervals remain in the new append-only coverage table.
             largest = max(ranges, key=lambda r: r[1] - r[0])
             _set_coverage(conn, stream, *largest)
+            logging.getLogger(__name__).info(
+                "Checkpoint saved %s blocks %d-%d (%d logs)", chain, lo, end, len(finalized))
     return _merge(_read_rows(conn, stream, from_block, to_block), live_rows,
                   from_block, to_block)
 
