@@ -9,6 +9,7 @@ from decimal import Decimal
 
 from ..domain.pricing import PricingCategory
 from ..domain.primes import Address, Chain, Token
+from ..domain.sky_tokens import PAR_STABLES_BY_CHAIN
 from ..extract import rpc
 from ..extract._keccak import keccak256
 from ..extract.publication import optional_revert
@@ -78,6 +79,12 @@ class AsyncVaultCapital:
             venue = self.mapping[key]
             asset = self._read_address(row.address, "asset()", row.block_number)
             underlying = venue.underlying or CAPITAL_ASSETS.get(self.chain)
+            if underlying is None and asset is not None:
+                address = Address.from_str(asset)
+                known = PAR_STABLES_BY_CHAIN.get(self.chain, {}).get(address.value)
+                if known is not None:
+                    symbol, decimals = known
+                    underlying = Token(self.chain, address, symbol, decimals)
             if underlying is None or asset != underlying.address.hex:
                 raise ValueError(f"Async capital vault asset mismatch: {row.address}")
             self.assets[key] = underlying
