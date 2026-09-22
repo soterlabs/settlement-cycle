@@ -186,3 +186,42 @@ def test_history_keeps_draws_separate_by_ilk(monkeypatch):
     history = source.fetch_capital_history(prime, {Chain.ETHEREUM: 1})
     assert history.batches[0].minted == D(200)
     assert history.batches[0].minted_by_ilk == {'0x' + ILK.hex(): D(100), '0x' + second.hex(): D(100)}
+
+
+def test_multiple_queue_redemptions_use_total_cash_and_share_fraction(monkeypatch):
+    # Exact raw amounts from Spark's failing Maple transaction. The second
+    # redemption's price is slightly higher due to six-decimal rounding.
+    from dataclasses import replace
+
+    for remaining in (0, 10**9):
+        shares1, shares2 = 3926898847, 2848712244
+        cash1, cash2 = 4592589243, 3331627760
+        shares = shares1 + shares2 + remaining
+        logs = [draw(),
+            log(1, 1, VAULT, TRANSFER_TOPIC0, [topic(Address(bytes(20))), topic(HOLDER)], [shares]),
+            log(2, 2, VAULT, TRANSFER_TOPIC0, [topic(HOLDER), topic(MANAGER)], [shares]),
+            log(2, 3, QUEUE, sorted(source.QUEUE_CREATED)[0], ['0x01', topic(HOLDER)], [shares]),
+            log(3, 4, QUEUE, sorted(source.QUEUE_PROCESSED)[0], ['0x01', topic(HOLDER)], [shares1, cash1]),
+            log(3, 5, QUEUE, sorted(source.QUEUE_PROCESSED)[0], ['0x02', topic(HOLDER)], [shares2, cash2]),
+            log(3, 6, USDS_ETHEREUM.address, TRANSFER_TOPIC0,
+                [topic(VAULT), topic(HOLDER)], [(cash1 + cash2) * 10**12])]
+        prime = setup(monkeypatch, logs)
+        prime = replace(prime, venues=[replace(prime.venues[0],
+                        token=replace(prime.venues[0].token, decimals=6))])
+        monkeypatch.setattr(source, '_decode_dart', lambda _, shares=shares: shares * 10**12)
+        # Underlying is 18 decimal in this fixture; queue paid amounts must
+        # use that scale, while the share rounding remains at six decimals.
+        logs[4] = log(3, 4, QUEUE, sorted(source.QUEUE_PROCESSED)[0],
+                      ['0x01', topic(HOLDER)], [shares1, cash1 * 10**12])
+        logs[5] = log(3, 5, QUEUE, sorted(source.QUEUE_PROCESSED)[0],
+                      ['0x02', topic(HOLDER)], [shares2, cash2 * 10**12])
+        monkeypatch.setattr(source.rpc, 'eth_call', lambda chain, addr, data, block:
+                            topic(MANAGER if addr == VAULT else QUEUE))
+        history = source.fetch_capital_history(prime, {Chain.ETHEREUM: 3})
+        replay = replay_history(history, DAY, DAY)
+        cash_account = source._account(Chain.ETHEREUM, USDS_ETHEREUM.address, HOLDER)
+        assert abs(replay.ledger.account(cash_account).borrowed - D(shares1 + shares2) / 10**6) < D('1e-18')
+        queue = history.custody_accounts['V1'][0]
+        assert abs(replay.ledger.account(queue).borrowed - D(remaining) / 10**6) < D('1e-18')
+        assert not replay.unmatched_receipts
+        assert not replay.unmatched_outflows

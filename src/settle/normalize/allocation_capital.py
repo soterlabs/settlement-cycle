@@ -331,6 +331,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                 movements.append(AssetMovement(
                     _account(chain, v.token.address, holder), value_before, change, gift,
                 ))
+            queue_redemptions = {}
             for row in sorted(block_logs, key=lambda r: r.log_index):
                 if row.topic0 not in QUEUE_CREATED | QUEUE_PROCESSED:
                     continue
@@ -376,14 +377,24 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                     delta = -words[0]
                     underlying = mapping[key].underlying
                     assets_out = Decimal(words[1]) / Decimal(10**underlying.decimals)
-                    # Share-proportional release, with the exact cash received.
-                    before_value = assets_out * Decimal(old) / Decimal(words[0])
-                    change = -assets_out
+                    # Multiple requests can settle in one transaction. Use
+                    # total paid cash / total redeemed shares, not the first
+                    # request's rounded conversion rate for the whole exit.
+                    entry = queue_redemptions.setdefault(queue_key, [key, old, 0, ZERO])
+                    entry[2] += words[0]
+                    entry[3] += assets_out
+                    queues[queue_key] = (key, old + delta)
+                    continue
                 queues[queue_key] = (key, old + delta)
                 account = f"queue:{chain.value}:{row.address}:{owner}:{key[0]}"
                 if account not in custody_accounts[mapping[key].id]:
                     custody_accounts[mapping[key].id].append(account)
                 movements.append(AssetMovement(account, before_value, change))
+            for (queue, owner), (key, opening, shares, cash) in queue_redemptions.items():
+                account = f"queue:{chain.value}:{queue}:{owner}:{key[0]}"
+                if account not in custody_accounts[mapping[key].id]:
+                    custody_accounts[mapping[key].id].append(account)
+                movements.append(AssetMovement(account, cash * Decimal(opening) / Decimal(shares), -cash))
             # Cancelled requests return shares via the PoolManager. These are
             # transfers of the same beneficial position, not new funding.
             for (queue, owner), (key, old) in list(queues.items()):

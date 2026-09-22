@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from settle.domain.primes import Chain
+from settle.normalize.allocation_capital import CapitalHistory
 
 
 def test_restart_reuses_pins_after_accounting_failure(monkeypatch, tmp_path):
@@ -40,7 +41,7 @@ def test_restart_reuses_pins_after_accounting_failure(monkeypatch, tmp_path):
 
     def history(prime, pins, **kwargs):
         assert pins == {Chain.ETHEREUM: 25878704}
-        return SimpleNamespace(batches=[1], unsupported={})
+        return CapitalHistory((), {}, {})
 
     monkeypatch.setattr(runner, 'fetch_capital_history', history)
     monkeypatch.setattr(runner, 'replay_history', lambda *args:
@@ -48,4 +49,16 @@ def test_restart_reuses_pins_after_accounting_failure(monkeypatch, tmp_path):
     runner.main()
     assert len(resolutions) == 1
     assert json.loads((tmp_path / 'status.json').read_text())['status'] == 'completed'
-    assert json.loads((tmp_path / 'result.json').read_text())['batches'] == 1
+    assert json.loads((tmp_path / 'result.json').read_text())['batches'] == 0
+
+    # Normalization succeeded but a replay fails: inputs survive and retry
+    # must not execute the fetcher again.
+    monkeypatch.setattr(runner, 'fetch_capital_history', fail)
+    monkeypatch.setattr(runner, 'replay_history', fail)
+    with pytest.raises(ValueError, match='accounting mismatch'):
+        runner.main()
+    assert (tmp_path / 'history.jsonl.gz').exists()
+    monkeypatch.setattr(runner, 'replay_history', lambda *args:
+                        SimpleNamespace(unmatched_receipts=[], unmatched_outflows=[]))
+    runner.main()
+    assert json.loads((tmp_path / 'status.json').read_text())['status'] == 'completed'

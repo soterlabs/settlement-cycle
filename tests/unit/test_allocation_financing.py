@@ -20,7 +20,7 @@ def test_venue_cost_and_adjustment_reconcile_without_changing_settlement():
                                      actual_revenue=D(1), tw_avg_value=D(100))],
         sky_revenue_daily=[{
             "date": (start + timedelta(days=i)).isoformat(), "utilized": "110",
-            "daily_sky_rev": "0.011", "base_apr": "0.0365",
+            "daily_sky_rev": "0.011", "base_apr": "0.0365", "cum_debt": "110",
         } for i in range(31)],
         sde_daily_breakdown=[],
     )
@@ -28,6 +28,10 @@ def test_venue_cost_and_adjustment_reconcile_without_changing_settlement():
     assert pnl.sky_revenue == D("0.341")
     assert result["allocation_cost_of_funds"] == D("0.31")
     assert result["prime_financing_adjustment"] == D("0.031")
+    assert result["reconciliation"]["source_complete"] is True
+    assert result["reconciliation"]["complete"] is False
+    assert sum((r['unattributed_debt_cost'] + r['deduction_difference_cost']
+                for r in result['reconciliation']['daily_basis_controls']), D(0)) == D('0.031')
     assert result["allocations"][0]["net_pnl"] == D("0.69")
     assert result["allocations"][0]["borrowed_principal_eom"] == D(100)
     assert (result["allocation_cost_of_funds"] + result["prime_financing_adjustment"]
