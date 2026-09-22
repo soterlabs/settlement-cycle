@@ -75,11 +75,11 @@ uses prime-side revenue after funding cost.
 The 0–8% gross-yield range is a development investigation aid only. No range
 warning, recurring check, or publication gate is added to production.
 
-Lending idle fractions are collected from the existing daily pool reads. A
-period-average idle deduction is insufficient when principal moves within the
-month. If a venue has an idle deduction but its daily fractions are missing,
-its allocation cost remains unresolved. V4 daily idle fractions are now included;
-Curve fractions remain outstanding.
+Daily idle dollar amounts are collected from the same lending, V4 and Curve
+reads used by settlement. The dollar deduction includes earned value: applying
+an idle percentage to borrowed principal produces a different chargeable base.
+If a venue has an idle deduction but its daily amounts are missing, its
+allocation cost remains unresolved.
 
 ## Validation so far
 
@@ -119,3 +119,24 @@ Further development checks:
   they identify missing links in this new funding adapter.
 - Confirmed native Plume USDC metadata against Circle's deployment address and
   gateway `asset()`; this is local capital metadata, not a settlement NAV change.
+
+
+## Review corrections (2026-09-22, incomplete)
+
+The historical JTRSY metadata and restart fixes from #216 are included here.
+V3 DecreaseLiquidity now preserves all borrowed basis until collection, including
+underwater positions. Bridged sUSDS uses the Ethereum vault at the transfer's
+timestamp rather than calling convertToAssets on an L2 bridge token.
+
+Per-ilk draws are retained on normalized capital batches. The canonical debt
+normalizer also retains the exact daily debt components in DataFrame metadata,
+without changing its aggregate series. Per-ilk allocation attribution remains
+to be implemented; preserving these inputs alone does not certify reconciliation.
+
+After replacing fractional idle exemptions with exact dollar deductions, the
+August snapshot checks still fail: OBEX allocation costs are $1,195,814.75679237
+versus $1,248,716.85328197 globally; Osero allocation costs are $7,004.94956774
+versus $7,005.67016888 globally. No settlement artifact was regenerated.
+The handling of debt without invested cash (capitalized charges and realized
+losses) remains the pending attribution decision in B19. A residual is not proof
+of traced allocation funding, and no passing reconciliation is claimed.

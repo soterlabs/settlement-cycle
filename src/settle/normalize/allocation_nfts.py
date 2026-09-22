@@ -196,7 +196,12 @@ class NFTCapital:
                     raise ValueError(f'NFT liquidity history is incomplete: {account}')
                 value = self._usd(coins, amounts)
                 before = value * Decimal(old_liquidity) / Decimal(abs(delta))
-                movements.append(AssetMovement(account, before, value if delta > 0 else -value))
+                movements.append(AssetMovement(
+                    account, before, value if delta > 0 else -value,
+                    # DecreaseLiquidity only changes custody. The proceeds
+                    # remain in the NFT until Collect actually realizes them.
+                    preserve_basis=venue.lp_kind == 'uniswap_v3' and delta < 0,
+                ))
                 self.liquidity[account] += delta
                 if delta < 0 and venue.lp_kind == 'uniswap_v3':
                     owed = self.owed[account]

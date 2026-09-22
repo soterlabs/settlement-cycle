@@ -2,6 +2,8 @@ from datetime import date
 from decimal import Decimal as D
 from types import SimpleNamespace as NS
 
+import pytest
+
 from settle.compute.allocation_capital import replay_history
 from settle.domain.pricing import PricingCategory
 from settle.domain.primes import Chain, Prime, Token, Venue
@@ -108,3 +110,33 @@ def test_nft_holder_transfer_moves_queued_principal_as_well_as_liquidity(monkeyp
     assert replay.ledger.account(new + ':collect').borrowed == D(10)
     assert replay.ledger.account(old).borrowed == 0
     assert not replay.unmatched_receipts
+
+
+@pytest.mark.parametrize("withdrawn", [40, 50, 60])
+def test_v3_pending_collection_preserves_underwater_basis(monkeypatch, withdrawn):
+    venue = Venue('N1', Chain.ETHEREUM, Token(Chain.ETHEREUM, VAULT, 'NFT', 0),
+                  PricingCategory.LP_POOL, lp_kind='uniswap_v3')
+    prime = Prime('test', b'TEST'.ljust(32, b'\0'), date(2026, 8, 1),
+                  alm={Chain.ETHEREUM: HOLDER}, venues=[venue])
+    adapter = NFTCapital(prime, Chain.ETHEREUM)
+    adapter.positions[(v3.NFPM_CANONICAL.hex, 1, 'N1')] = (
+        venue, NS(token0=USDS_ETHEREUM.address, token1=USDS_ETHEREUM.address))
+    from settle.extract import rpc
+    monkeypatch.setattr(rpc, 'eth_call', lambda *a: topic(HOLDER))
+    events = [
+        log(1, 1, v3.NFPM_CANONICAL, v3.TOPIC_INCREASE_LIQUIDITY,
+            ['0x' + f'{1:064x}'], [100, 100 * 10**18, 0]),
+        log(2, 2, v3.NFPM_CANONICAL, v3.TOPIC_DECREASE_LIQUIDITY,
+            ['0x' + f'{1:064x}'], [50, withdrawn * 10**18, 0]),
+    ]
+    batches = []
+    for i, event in enumerate(events):
+        moves, _ = adapter.movements([event])
+        batches.append(CapitalBatch(str(i), date(2026, 8, i + 1), i, 'ethereum', i,
+                                    tuple(moves), D(100) if i == 0 else D(0)))
+    history = CapitalHistory(tuple(batches), adapter.accounts, {}, dict(adapter.custody_accounts))
+    replay = replay_history(history, date(2026, 8, 1), date(2026, 8, 2))
+    queue = f'nft:ethereum:{v3.NFPM_CANONICAL.hex}:1:N1:collect'
+    assert replay.ledger.account(queue).borrowed == D(50)
+    assert sum(replay.daily[date(2026, 8, 2)].values()) == D(100)
+    assert replay.ledger.realised_principal_loss == 0

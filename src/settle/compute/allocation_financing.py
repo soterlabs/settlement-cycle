@@ -50,7 +50,7 @@ def unavailable_financing(pnl, error: Exception) -> dict:
                 'unresolved_allocations': [r['venue_id'] for r in rows]}}
 
 
-def allocation_financing(pnl, history, *, idle_fractions=None) -> dict:
+def allocation_financing(pnl, history, *, idle_amounts=None) -> dict:
     start, end = pnl.period.start, pnl.period.end
     replay = replay_history(history, start - timedelta(days=1), end)
     n_days = (end - start).days + 1
@@ -82,21 +82,23 @@ def allocation_financing(pnl, history, *, idle_fractions=None) -> dict:
         average_principal = sum(principal.values(), ZERO) / Decimal(n_days)
         average_value = max(venue.tw_avg_value, venue.tw_avg_notional)
         idle = venue.lending_idle_tw_avg_usd + venue.amm_idle_usds_tw_avg_usd
-        daily_idle = (idle_fractions or {}).get(venue.venue_id, {})
+        daily_idle = (idle_amounts or {}).get(venue.venue_id, {})
         if idle > ZERO and set(days) - daily_idle.keys():
-            reason = reason or "Daily idle funding fractions are incomplete"
+            reason = reason or "Daily idle dollar deductions are incomplete"
         cost = ZERO
         for day in days:
-            idle_fraction = daily_idle.get(day, ZERO)
-            if not idle_fraction.is_finite() or not ZERO <= idle_fraction <= Decimal(1):
-                raise ValueError(f"Invalid daily idle fraction for {venue.venue_id} on {day}")
+            idle_amount = daily_idle.get(day, ZERO)
+            if not idle_amount.is_finite() or idle_amount < ZERO:
+                raise ValueError(f"Invalid daily idle amount for {venue.venue_id} on {day}")
             sde_fraction = venue.sd_share
             sde = sde_daily.get(venue.venue_id, {}).get(day)
             if sde and sde["uncapped_value"] > ZERO:
                 sde_fraction = sde["cum_value"] / sde["uncapped_value"]
-            fraction = max(ZERO, Decimal(1) - sde_fraction - idle_fraction)
+            # Match the existing settlement's dollar deductions. Multiplying
+            # the idle ratio by borrowed basis drops the exemption on earnings.
+            sde_amount = sde["cum_value"] if sde else principal[day] * sde_fraction
             if not venue.cof_excluded and account not in history.idle_accounts:
-                cost += principal[day] * fraction * rates[day]
+                cost += (principal[day] - sde_amount - idle_amount) * rates[day]
         if reason:
             # Missing provenance is not a $0 funding charge. Retain null until
             # the custody/payment adapter can account for that venue.

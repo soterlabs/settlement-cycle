@@ -490,6 +490,7 @@ def _aggregate_univ4_idle_usds(
     v4_source,
     block_resolver,
     capital_idle_fractions: dict | None = None,
+    capital_idle_amounts: dict | None = None,
 ) -> "tuple[pd.DataFrame, dict[str, Decimal]]":
     """Daily USDS-leg value held inside Uniswap V4 LP positions, summed across
     all ``lp_kind=uniswap_v4`` venues — the v4 analog of
@@ -574,6 +575,8 @@ def _aggregate_univ4_idle_usds(
             else:
                 venue_last_idle = idle
                 last_fraction = fraction
+            if capital_idle_amounts is not None:
+                capital_idle_amounts.setdefault(venue.id, {})[current] = idle
             if capital_idle_fractions is not None:
                 capital_idle_fractions.setdefault(venue.id, {})[current] = fraction
             daily_by_date[current] = daily_by_date.get(current, Decimal("0")) + idle
@@ -1622,6 +1625,7 @@ def _aggregate_curve_idle_usds(
     block_resolver,
     convert_to_assets_source=None,
     ssr_history: pd.DataFrame | None = None,
+    capital_idle_amounts: dict | None = None,
 ) -> tuple[pd.DataFrame, Decimal, dict[str, Decimal]]:
     """Daily data for Curve pool coins configured via ``curve_idle_usds``.
 
@@ -1827,6 +1831,8 @@ def _aggregate_curve_idle_usds(
                 venue_last_usds = prime_usds
                 venue_last_susds_value = prime_susds_value
 
+            if capital_idle_amounts is not None:
+                capital_idle_amounts.setdefault(venue.id, {})[current] = prime_usds
             daily_util[current] = daily_util.get(current, Decimal(0)) + prime_usds
             if prime_susds_value > 0:
                 # BR−SSR spread the prime earns on its sUSDS slice, and
@@ -1874,6 +1880,7 @@ def _aggregate_lending_idle_usds(
     *,
     block_resolver,
     capital_idle_fractions: dict | None = None,
+    capital_idle_amounts: dict | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Decimal]]:
     """Daily USDS-equivalent of unborrowed underlying inside lending pools,
     summed across all venues with ``lending_idle_usds=True``.
@@ -1987,6 +1994,8 @@ def _aggregate_lending_idle_usds(
                 venue_last_idle = prime_idle
                 last_capital_fraction = capital_fraction
 
+            if capital_idle_amounts is not None:
+                capital_idle_amounts.setdefault(venue.id, {})[current] = prime_idle
             if capital_idle_fractions is not None:
                 capital_idle_fractions.setdefault(venue.id, {})[current] = capital_fraction
             daily_by_date[current] = daily_by_date.get(current, Decimal(0)) + prime_idle
@@ -2501,6 +2510,7 @@ def compute_monthly_pnl(
     # below (d255ed2); ``curve_susds_ssr_by_venue`` (full-SSR integral, Case 3b)
     # re-attributes the sUSDS-leg appreciation embedded in the LP MtM: removed
     # from the SDE-eligible actual_revenue and re-booked 100% to the prime.
+    _capital_idle_amounts = {} if include_allocation_financing else None
     curve_idle_usds, curve_susds_spread, curve_susds_ssr_by_venue = (
         _aggregate_curve_idle_usds(
             prime, period,
@@ -2508,18 +2518,18 @@ def compute_monthly_pnl(
             block_resolver=resolver,
             convert_to_assets_source=sources.convert_to_assets,
             ssr_history=ssr,
+            **({"capital_idle_amounts": _capital_idle_amounts} if include_allocation_financing else {}),
         )
     )
     # Uniswap V4 idle USDS (USDS leg of v4 LP positions) — Step 2 idle AMM USDS,
     # same utilized-deduction role as the Curve idle path. Merged into
     # ``curve_idle_usds`` by summing the daily ``cum_balance`` snapshots so
     # ``compute_sky_revenue`` deducts the combined AMM idle USDS.
-    _capital_idle_fractions = {} if include_allocation_financing else None
     _univ4_idle, _univ4_idle_tw_avg = _aggregate_univ4_idle_usds(
         prime, period,
         v4_source=sources.v4_position,
         block_resolver=resolver,
-        **({"capital_idle_fractions": _capital_idle_fractions} if include_allocation_financing else {}),
+        **({"capital_idle_amounts": _capital_idle_amounts} if include_allocation_financing else {}),
     )
     if not _univ4_idle.empty:
         if curve_idle_usds is None or curve_idle_usds.empty:
@@ -2539,7 +2549,7 @@ def compute_monthly_pnl(
     lending_idle_usds, _lending_idle_tw_avg = _aggregate_lending_idle_usds(
         prime, period,
         block_resolver=resolver,
-        **({"capital_idle_fractions": _capital_idle_fractions} if include_allocation_financing else {}),
+        **({"capital_idle_amounts": _capital_idle_amounts} if include_allocation_financing else {}),
     )
     _check_centrifuge_in_flight(prime, pin_blocks_som, pin_blocks_eom)
 
@@ -4336,7 +4346,7 @@ def compute_monthly_pnl(
             history = capital_history if capital_history is not None else fetch_capital_history(
                 prime, period.pin_blocks, block_resolver=resolver,
             )
-            analytics = allocation_financing(result, history, idle_fractions=_capital_idle_fractions)
+            analytics = allocation_financing(result, history, idle_amounts=_capital_idle_amounts)
         except (ValueError, RuntimeError, ArithmeticError, OSError, requests.RequestException) as exc:
             if capital_history is not None:
                 # Injected histories are validation inputs; failures must be

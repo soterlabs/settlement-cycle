@@ -41,7 +41,7 @@ def test_annualization_is_undefined_without_exposure_and_handles_losses():
     assert annualized_yield(D(-5), D(100), 365) == D("-0.05")
 
 
-def test_daily_idle_fraction_follows_reallocation_instead_of_period_average():
+def test_daily_idle_dollars_follow_reallocation_instead_of_period_average():
     start, end = date(2026, 8, 1), date(2026, 8, 2)
     history = CapitalHistory((
         CapitalBatch('draw', start, 1, 'ethereum', 1,
@@ -59,7 +59,7 @@ def test_daily_idle_fraction_follows_reallocation_instead_of_period_average():
                             'daily_sky_rev': '0.01', 'base_apr': '0.0365'}
                            for day in (start, end)], sde_daily_breakdown=[],
     )
-    result = allocation_financing(pnl, history, idle_fractions={'V1': {start: D(0), end: D(1)}})
+    result = allocation_financing(pnl, history, idle_amounts={'V1': {start: D(0), end: D(50)}})
     assert result['allocations'][0]['cost_of_funds'] == D('0.01')
     missing_daily = allocation_financing(pnl, history)
     assert missing_daily['allocations'][0]['cost_of_funds'] is None
@@ -78,3 +78,19 @@ def test_reconciliation_does_not_pass_by_inserting_a_financing_residual():
     assert result['prime_financing_adjustment'] == D(12)
     assert result['reconciliation']['difference'] == D(-12)
     assert result['reconciliation']['within_one_cent'] is False
+
+
+def test_idle_exemption_uses_asset_dollars_including_earned_value():
+    day = date(2026, 8, 1)
+    history = CapitalHistory((CapitalBatch('draw', day, 1, 'ethereum', 1,
+        (AssetMovement('asset', D(0), D(100)),), D(100)),), {'V1': 'asset'}, {})
+    pnl = SimpleNamespace(period=SimpleNamespace(start=day, end=day),
+        sky_revenue=D('0.0045'), sde_revenue=D(0), susds_spread_reimbursement=D(0),
+        venue_breakdown=[VenueRevenue('V1', 'Venue', D(100), D(110), D(0), D(10),
+            actual_revenue=D(10), tw_avg_value=D(110), lending_idle_tw_avg_usd=D(55))],
+        sky_revenue_daily=[{'date': str(day), 'utilized': '45', 'daily_sky_rev': '0.0045',
+                            'base_apr': '0.0365'}], sde_daily_breakdown=[])
+    result = allocation_financing(pnl, history, idle_amounts={'V1': {day: D(55)}})
+    assert result['allocations'][0]['borrowed_principal_eom'] == D(100)
+    assert result['allocations'][0]['cost_of_funds'] == D('0.0045')
+    assert result['reconciliation']['within_one_cent'] is True
