@@ -150,3 +150,39 @@ def test_redemption_uses_paid_cash_and_preserves_share_fraction(monkeypatch):
     assert replay.ledger.account(cash).value == D(55)
     assert replay.ledger.account(history.venue_accounts['V1']).borrowed == D(50)
     assert not replay.unmatched_receipts
+
+
+def test_bridged_susds_uses_origin_vault_at_event_time(monkeypatch):
+    from datetime import UTC, datetime
+    from types import SimpleNamespace
+
+    from settle.domain.config import load_prime_by_id
+    from settle.domain.sky_tokens import sUSDS_ETHEREUM
+
+    venue = next(v for v in load_prime_by_id('spark').venues if v.id == 'S37')
+    monkeypatch.setattr(source.hypersync, 'block_timestamp', lambda chain, block: STAMP)
+
+    def resolve(chain, stamp):
+        assert chain == 'ethereum'
+        assert stamp == datetime.fromtimestamp(STAMP, UTC)
+        return 999
+
+    def convert(chain, token, shares, block):
+        assert (chain, token, shares, block) == (Chain.ETHEREUM, sUSDS_ETHEREUM.address, 10**18, 999)
+        return 11 * 10**17
+
+    monkeypatch.setattr(source.rpc, 'convert_to_assets', convert)
+    assert source._capital_unit_price(venue, 100, block_resolver=SimpleNamespace(
+        block_at_or_before=resolve)) == D('1.1')
+
+
+def test_history_keeps_draws_separate_by_ilk(monkeypatch):
+    from dataclasses import replace
+
+    second = b'SECOND'.ljust(32, b'\0')
+    logs = [draw(), log(1, 1, Address.from_str(source._VAT), source._FROB_T0,
+                       ['0x' + second.hex()], [0])]
+    prime = replace(setup(monkeypatch, logs), extra_ilks=(second,))
+    history = source.fetch_capital_history(prime, {Chain.ETHEREUM: 1})
+    assert history.batches[0].minted == D(200)
+    assert history.batches[0].minted_by_ilk == {'0x' + ILK.hex(): D(100), '0x' + second.hex(): D(100)}

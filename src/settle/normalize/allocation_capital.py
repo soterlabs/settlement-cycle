@@ -57,6 +57,7 @@ class CapitalBatch:
     movements: tuple[AssetMovement, ...]
     minted: Decimal = ZERO
     log_index: int = 0
+    minted_by_ilk: dict[str, Decimal] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -70,6 +71,23 @@ class CapitalHistory:
 
 def _account(chain: Chain, token: Address, holder: Address) -> str:
     return f"{chain.value}:{holder.hex}:{token.hex}"
+
+
+def _capital_unit_price(venue, block, *, block_resolver=None):
+    """Bridge representations use the origin vault at the event timestamp."""
+    from ..domain.sky_tokens import PSM3_LEG_TOKENS, sUSDS_ETHEREUM
+
+    bridged = PSM3_LEG_TOKENS.get(venue.chain, {}).get("sUSDS")
+    if bridged is not None and venue.token.address == bridged.address:
+        if block_resolver is None:
+            raise ValueError("Bridged sUSDS capital pricing requires a block resolver")
+        stamp = hypersync.block_timestamp(venue.chain.value, block)
+        origin_block = block_resolver.block_at_or_before(
+            Chain.ETHEREUM.value, datetime.fromtimestamp(stamp, UTC))
+        raw = rpc.convert_to_assets(Chain.ETHEREUM, sUSDS_ETHEREUM.address,
+                                    10 ** sUSDS_ETHEREUM.decimals, origin_block)
+        return Decimal(raw) / Decimal(10**18)
+    return get_unit_price(venue, block, block_resolver=block_resolver)
 
 
 def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
@@ -204,6 +222,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
             changes: dict[tuple[str, str], int] = defaultdict(int)
             gifts: dict[tuple[str, str], int] = defaultdict(int)
             minted = ZERO
+            minted_by_ilk: dict[str, Decimal] = defaultdict(Decimal)
             indices = {}
             deposits: dict[tuple[str, str], Decimal] = defaultdict(Decimal)
             withdrawals = {}
@@ -218,7 +237,9 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                     rate = rpc.ilk_rate(chain, Address.from_str(_VAT), ilk, block)
                     with localcontext() as ctx:
                         ctx.prec = 60
-                        minted += Decimal(_decode_dart(row.data)) * Decimal(rate) / Decimal(10**45)
+                        drawn = Decimal(_decode_dart(row.data)) * Decimal(rate) / Decimal(10**45)
+                        minted += drawn
+                        minted_by_ilk["0x" + ilk.hex()] += drawn
                     continue
                 for key in mapping:
                     token, holder = key
@@ -286,7 +307,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                 else:
                     price = async_vaults.price(key, block)
                     if price is None:
-                        price = get_unit_price(v, block, block_resolver=block_resolver)
+                        price = _capital_unit_price(v, block, block_resolver=block_resolver)
                 value_before = Decimal(units[key]) * price / scale
                 change = Decimal(raw_change) * price / scale
                 gift = Decimal(gifts[key]) * price / scale + nft_fees.get(key, ZERO)
@@ -342,7 +363,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                     key = matches[0]
                     old = queues.get(queue_key, (key, 0))[1]
                     delta = words[0]
-                    price = get_unit_price(mapping[key], block, block_resolver=block_resolver)
+                    price = _capital_unit_price(mapping[key], block, block_resolver=block_resolver)
                     scale = Decimal(10**mapping[key].token.decimals)
                     before_value, change = Decimal(old) * price / scale, Decimal(delta) * price / scale
                     custody_sends.add(_account(chain, mapping[key].token.address, Address.from_str(owner)))
@@ -378,7 +399,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                 if returned > old:
                     raise ValueError(f"Queue refund exceeds owned shares: {tx_hash}")
                 v = mapping[key]
-                price = get_unit_price(v, block, block_resolver=block_resolver)
+                price = _capital_unit_price(v, block, block_resolver=block_resolver)
                 scale = Decimal(10**v.token.decimals)
                 account = f"queue:{chain.value}:{queue}:{owner}:{key[0]}"
                 movements.append(AssetMovement(account, Decimal(old) * price / scale,
@@ -400,7 +421,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
             batches.append(CapitalBatch(
                 f"{chain.value}:{tx_hash}", datetime.fromtimestamp(first.block_time, UTC).date(),
                 first.block_time, chain.value, block, tuple(combined.values()), minted,
-                min(r.log_index for r in block_logs),
+                min(r.log_index for r in block_logs), dict(minted_by_ilk),
             ))
         for vid, accounts in async_vaults.custody_accounts.items():
             custody_accounts[vid].extend(accounts)
