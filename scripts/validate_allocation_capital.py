@@ -17,6 +17,7 @@ from settle.compute.allocation_capital import replay_history
 from settle.domain.config import load_prime_by_id
 from settle.domain.primes import Chain
 from settle.normalize.allocation_capital import fetch_capital_history
+from settle.normalize.allocation_history_cache import fingerprint, load_history, save_history
 from settle.normalize.sources.hypersync_block_resolver import HyperSyncBlockResolver
 
 
@@ -63,7 +64,15 @@ def main():
                 logging.info("Resolving %s end-of-period block", chain.value)
                 pins[chain] = resolver.block_at_or_before(chain.value, cutoff)
             save(manifest_path, dict(identity, pins={c.value: v for c, v in pins.items()}))
-        history = fetch_capital_history(prime, pins, block_resolver=resolver)
+        history_path = args.output_dir / "history.jsonl.gz"
+        history_key = fingerprint(prime, pins)
+        history = load_history(history_path, history_key)
+        if history is None:
+            history = fetch_capital_history(prime, pins, block_resolver=resolver)
+            save_history(history_path, history, history_key)
+            logging.info("Saved normalized history before replay: %s", history_path)
+        else:
+            logging.info("Reusing normalized history: %s", history_path)
         replay = replay_history(history, args.start, args.end)
         result = dict(identity, batches=len(history.batches), unsupported=history.unsupported,
                       unmatched_receipts=len(replay.unmatched_receipts),

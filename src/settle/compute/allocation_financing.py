@@ -70,6 +70,8 @@ def allocation_financing(pnl, history, *, idle_amounts=None) -> dict:
                  for b in pnl.sde_daily_breakdown}
     rows = []
     total_cost = ZERO
+    used_principal = dict.fromkeys(days, ZERO)
+    used_deductions = dict.fromkeys(days, ZERO)
     for venue in pnl.venue_breakdown:
         account = history.venue_accounts.get(venue.venue_id)
         accounts = ([account] if account is not None else []) + history.custody_accounts.get(venue.venue_id, [])
@@ -99,6 +101,9 @@ def allocation_financing(pnl, history, *, idle_amounts=None) -> dict:
             sde_amount = sde["cum_value"] if sde else principal[day] * sde_fraction
             if not venue.cof_excluded and account not in history.idle_accounts:
                 cost += (principal[day] - sde_amount - idle_amount) * rates[day]
+                if reason is None:
+                    used_principal[day] += principal[day]
+                    used_deductions[day] += sde_amount + idle_amount
         if reason:
             # Missing provenance is not a $0 funding charge. Retain null until
             # the custody/payment adapter can account for that venue.
@@ -124,6 +129,24 @@ def allocation_financing(pnl, history, *, idle_amounts=None) -> dict:
     existing_cost = pnl.sky_revenue - pnl.sde_revenue + pnl.susds_spread_reimbursement
     unresolved = [r['venue_id'] for r in rows if r['cost_of_funds'] is None]
     difference = total_cost - existing_cost
+    source_complete = not unresolved and not replay.unmatched_receipts and not replay.unmatched_outflows
+    daily_controls = []
+    for source_row in pnl.sky_revenue_daily:
+        if "cum_debt" not in source_row:
+            continue  # Minimal synthetic fixtures have no debt control input.
+        day = date.fromisoformat(source_row["date"])
+        debt = Decimal(str(source_row["cum_debt"]))
+        utilized = Decimal(str(source_row["utilized"]))
+        global_deductions = debt - utilized
+        daily_controls.append({
+            "date": day.isoformat(), "global_debt": debt,
+            "charged_allocation_principal": used_principal[day],
+            "global_deductions": global_deductions,
+            "allocation_deductions": used_deductions[day],
+            "unattributed_debt_cost": (debt - used_principal[day]) * rates[day],
+            "deduction_difference_cost": (used_deductions[day] - global_deductions) * rates[day],
+            "global_floor_effect": Decimal(str(source_row["daily_sky_rev"])) - utilized * rates[day],
+        })
     return {
         "method": "transaction_weighted_average_borrowed_basis_v1",
         "status": "partial" if unresolved else "calculated",
@@ -138,7 +161,9 @@ def allocation_financing(pnl, history, *, idle_amounts=None) -> dict:
             "allocation_sum": total_cost,
             "existing_cost_of_funds": existing_cost,
             "difference": difference,
-            "complete": not unresolved and not replay.unmatched_receipts and not replay.unmatched_outflows,
+            "complete": source_complete and abs(difference) <= Decimal("0.01"),
+            "source_complete": source_complete,
+            "daily_basis_controls": daily_controls,
             "unresolved_allocations": unresolved,
             "within_one_cent": abs(difference) <= Decimal('0.01'),
         },

@@ -84,7 +84,8 @@ class CapitalLedger:
         source = self.account(e.source)
         value = e.source_value if e.source_value is not None else source.value
         if e.amount > value:
-            raise ValueError(f"Capital movement exceeds source value: {e.event_id}")
+            raise ValueError(f"Capital movement exceeds source value: {e.event_id}; "
+                             f"source={e.source}, amount={e.amount}, value={value}")
         if value == ZERO:
             basis = ZERO
         elif e.amount == value:
