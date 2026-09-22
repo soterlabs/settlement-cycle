@@ -1315,7 +1315,7 @@ like to reproduce the same number from on-chain primitives.
 
 ### P1 — methodology unknowns affecting accuracy
 
-#### B19. Allocation CoF — distribute financing costs on capitalized debt?
+#### B19. Allocation CoF — exclude MSC financing costs from the comparison
 
 Raised during PR #215 development (2026-09-20). Allocation funding must exclude
 reinvested gains, while total debt and the existing settlement charge remain
@@ -1328,15 +1328,20 @@ funding cost is $1,195,814.76 versus the existing ilk charge of $1,248,716.85,
 a $52,902.10 difference. Independently summing historical Vat events through
 August gives $384,224,981 of net `frob` draws and $18,306,759 of `grab` debt.
 
-**Operator decision requested:** distribute the additional financing cost
-across allocations in proportion to borrowed principal (excluding gains), or
-keep it as separate prime financing cost? The former permits an exhaustive
-allocation-cost total; it requires showing the direct and allocated financing
-components separately. A balanced allocation total alone would then validate
-distribution arithmetic, not the completeness of the principal tracing.
+**Operator decision, 2026-09-22:** estimate borrowing costs on debt created by
+MSC and exclude them from the allocation reconciliation target. Keep the
+actual global debt and settlement charge unchanged; do not redistribute the
+MSC component into allocation costs. Include costs on outstanding MSC debt
+from earlier months, as well as the current month's debt addition.
 
-Existing settlement charges remain unchanged under either treatment. No
-redistribution has been applied pending this decision. Related: G23 / S28.
+The adjusted August comparison passes within one cent for OBEX (remaining
+difference -$0.001246). Osero retains a +$0.027851 cash-treatment difference
+and an unmatched receipt. Grove still lacks complete funding provenance:
+excluding $259,878.117027 of MSC financing costs does not make its partial
+allocation subtotal reconcile. See
+`docs/allocation-msc-reconciliation-2026-08.md` for the event-based calculation.
+The diagnostic comparison has been run; production accounting is unchanged.
+Related: G23 / S28.
 
 #### B18. Osero agent-rate effective date — 2026-07-19 or 2026-07-20?
 Osero (allocator instance ALLOCATOR-PRYSM-A, chainlog PRYSM_SUBPROXY)
