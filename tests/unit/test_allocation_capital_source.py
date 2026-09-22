@@ -225,3 +225,48 @@ def test_multiple_queue_redemptions_use_total_cash_and_share_fraction(monkeypatc
         assert abs(replay.ledger.account(queue).borrowed - D(remaining) / 10**6) < D('1e-18')
         assert not replay.unmatched_receipts
         assert not replay.unmatched_outflows
+
+
+def test_secondary_custodian_swap_keeps_both_cash_legs(monkeypatch):
+    USDC_ETHEREUM = Token(Chain.ETHEREUM, Address.from_str(
+        '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'), 'USDC', 6)
+
+    venue = Venue('secondary', Chain.ETHEREUM, USDS_ETHEREUM,
+                  PricingCategory.PAR_STABLE, holder_override=MANAGER)
+    prime = Prime('test', ILK, DAY, alm={Chain.ETHEREUM: HOLDER}, venues=[venue])
+    logs = [draw(),
+            log(1, 1, USDS_ETHEREUM.address, TRANSFER_TOPIC0,
+                [topic(Address(bytes(20))), topic(MANAGER)], [100 * 10**18]),
+            log(2, 2, USDS_ETHEREUM.address, TRANSFER_TOPIC0,
+                [topic(MANAGER), topic(VAULT)], [100 * 10**18]),
+            log(2, 3, USDC_ETHEREUM.address, TRANSFER_TOPIC0,
+                [topic(VAULT), topic(MANAGER)], [100 * 10**6])]
+    monkeypatch.setattr(source.hypersync_store, 'fetch_logs', lambda *a, **k: logs)
+    monkeypatch.setattr(source.rpc, 'ilk_rate', lambda *a: 10**27)
+    monkeypatch.setattr(source, '_decode_dart', lambda data: 100 * 10**18)
+    monkeypatch.setattr(source, 'get_unit_price', lambda *a, **k: D(1))
+    result = replay_history(source.fetch_capital_history(prime, {Chain.ETHEREUM: 2}), DAY, DAY)
+    account = source._account(Chain.ETHEREUM, USDC_ETHEREUM.address, MANAGER)
+    assert result.ledger.account(account).borrowed == 100
+    assert not result.unmatched_receipts
+    assert not result.unmatched_outflows
+
+
+def test_configured_issuer_yield_mint_does_not_create_unknown_funding(monkeypatch):
+    from dataclasses import replace
+
+    logs = [draw(), log(1, 1, VAULT, TRANSFER_TOPIC0,
+                [topic(Address(bytes(20))), topic(HOLDER)], [100 * 10**18]),
+            log(2, 2, VAULT, TRANSFER_TOPIC0,
+                [topic(Address(bytes(20))), topic(HOLDER)], [3 * 10**18]),
+            log(2, 3, VAULT, TRANSFER_TOPIC0,
+                [topic(Address(bytes(20))), topic(HOLDER)], [3 * 10**18])]
+    prime = setup(monkeypatch, logs, PricingCategory.RWA_TRANCHE)
+    prime = replace(prime, venues=[replace(prime.venues[0], min_transfer_amount_usd=D(5))])
+    history = source.fetch_capital_history(prime, {Chain.ETHEREUM: 2})
+    replay = replay_history(history, DAY, DAY)
+    account = replay.ledger.account(history.venue_accounts['V1'])
+    assert account.borrowed == 100
+    assert account.value == 106
+    assert not replay.unmatched_receipts
+    assert not replay.uncertain_accounts

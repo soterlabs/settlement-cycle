@@ -22,6 +22,7 @@ from ..extract.transfer_logs import TRANSFER_TOPIC0
 from .allocation_async_vaults import CAPITAL_ASSETS, REDEEM_REQUEST, AsyncVaultCapital
 from .allocation_bridges import DEPOSIT_FOR_BURN, link_cctp
 from .allocation_nfts import NFTCapital
+from .allocation_psm import PsmCapital
 from .prices import get_unit_price, is_par_stable
 from .sources.hypersync_balances import _addr_topic
 from .sources.hypersync_debt import _FROB_T0, _VAT, _decode_dart
@@ -158,8 +159,12 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
         # per-token filters and keeps the durable stream stable when venues
         # are added. Unknown token contracts are not assigned a USD value.
         nft = NFTCapital(prime, chain)
-        # Cash returned to an NFT holder remains part of its funding route.
-        for holder in nft.holders.values():
+        psm = PsmCapital(prime, chain)
+        # Secondary ALMs and configured beneficial custodians can swap cash
+        # before investing or repaying. Track both cash legs at those holders,
+        # not only at the primary ALM and NFT holders.
+        cash_holders = {Address.from_str(h) for _, h in mapping} | set(nft.holders.values())
+        for holder in cash_holders:
             for (token, _), cash_venue in list(mapping.items()):
                 if cash_venue.pricing_category == PricingCategory.PAR_STABLE:
                     mapping.setdefault((token, holder.hex), cash_venue)
@@ -221,6 +226,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                     bridge_burns.append((chain, row))
             changes: dict[tuple[str, str], int] = defaultdict(int)
             gifts: dict[tuple[str, str], int] = defaultdict(int)
+            issuer_mints: dict[tuple[str, str], list[int]] = defaultdict(list)
             minted = ZERO
             minted_by_ilk: dict[str, Decimal] = defaultdict(Decimal)
             indices = {}
@@ -291,9 +297,14 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                         changes[key] += amount
                         if row.topic1 in senders:
                             gifts[key] += amount
+                        elif (row.topic1 == '0x' + '0' * 64
+                              and mapping[key].pricing_category == PricingCategory.RWA_TRANCHE
+                              and mapping[key].min_transfer_amount_usd):
+                            issuer_mints[key].append(amount)
                     if row.topic1 == who:
                         changes[key] -= amount
             movements = [*async_movements, *nft_movements]
+            transaction_prices = {}
             deposits.update(async_deposits)
             for key, raw_change in changes.items():
                 v = mapping[key]
@@ -309,8 +320,14 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                     if price is None:
                         price = _capital_unit_price(v, block, block_resolver=block_resolver)
                 value_before = Decimal(units[key]) * price / scale
+                transaction_prices[key[0]] = price
                 change = Decimal(raw_change) * price / scale
                 gift = Decimal(gifts[key]) * price / scale + nft_fees.get(key, ZERO)
+                # Honor the existing per-venue issuer-distribution policy
+                # (BUIDL), rather than treating its small yield mints as
+                # unexplained capital. Check each mint, not the batch sum.
+                gift += sum((Decimal(amount) * price / scale for amount in issuer_mints[key]
+                             if Decimal(amount) * price / scale < v.min_transfer_amount_usd), ZERO)
                 if key in withdrawals and raw_change < 0 and key not in deposits:
                     cash, shares = withdrawals[key]
                     if shares == -raw_change:
@@ -331,6 +348,24 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                 movements.append(AssetMovement(
                     _account(chain, v.token.address, holder), value_before, change, gift,
                 ))
+            def psm_asset_value(token, amount, *, chain=chain, block=block,
+                                transaction_prices=transaction_prices):
+                from ..domain.sky_tokens import PSM3_LEG_TOKENS
+
+                leg = next((t for t in PSM3_LEG_TOKENS.get(chain, {}).values()
+                            if t.address.hex == token), None)
+                if leg is None:
+                    raise ValueError(f"Unknown PSM3 capital asset: {token}")
+                price = transaction_prices.get(token)
+                if price is None:
+                    # A deposit can name the ALM as receiver while another
+                    # account pays. Such funding remains unmatched in replay.
+                    venue = Venue(id='psm-leg', chain=chain, token=leg,
+                                  pricing_category=PricingCategory.PAR_STABLE)
+                    price = _capital_unit_price(venue, block, block_resolver=block_resolver)
+                return Decimal(amount) * price / Decimal(10**leg.decimals)
+
+            movements.extend(psm.movements(block_logs, psm_asset_value))
             queue_redemptions = {}
             for row in sorted(block_logs, key=lambda r: r.log_index):
                 if row.topic0 not in QUEUE_CREATED | QUEUE_PROCESSED:
