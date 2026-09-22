@@ -180,3 +180,20 @@ def test_funding_uncertainty_does_not_contaminate_a_later_new_position():
     assert 'a' in replay.uncertain_daily[DAY]
     assert 'a' not in replay.uncertain_daily[date(2026, 8, 2)]
     assert replay.ledger.account('a').borrowed == D(200)
+
+
+def test_subcent_residual_pool_preserves_borrowing_and_refinancing():
+    history = CapitalHistory(tuple([
+        batch(1, [AssetMovement('cash', D(0), D(1000))], '1000'),
+        *[batch(i + 2, [AssetMovement('cash', D(1000) - D(i) / 1000, D('-0.001'))])
+          for i in range(200)],
+        # A gain changes the cash mark, never borrowed principal. Repaying
+        # from mixed cash also refinances the remaining tiny residuals.
+        batch(202, [AssetMovement('cash', D('1000.8'), D(-1))], '-1'),
+    ]), {}, {})
+    replay = replay_history(history, DAY, DAY)
+    assert abs(sum(replay.daily[DAY].values(), D(0)) - D(999)) < D('1e-18')
+    assert replay.ledger.account('rounding:ethereum').value == D('0.200')
+    assert len(replay.ledger.accounts) == 2
+    assert not replay.unmatched_outflows
+    assert not any(k.startswith('clearing:') for k in replay.uncertain_accounts)

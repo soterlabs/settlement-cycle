@@ -103,11 +103,13 @@ class CapitalLedger:
         else:
             self.repaid += e.amount
             self.equity_funded_repayment += e.amount - carried
+            if e.amount == carried:
+                return  # No own-money refinancing; no global account scan.
             # Own-money repayment refinances a proportional slice of the
             # remaining borrowed holdings. It must reduce their future costs.
             remaining = sum((a.borrowed for a in self.accounts.values()), ZERO)
             reduction = min(remaining, e.amount - carried)
-            if remaining:
+            if remaining and reduction:
                 keys = sorted(k for k, a in self.accounts.items() if a.borrowed)
                 left = reduction
                 for key in keys[:-1]:
@@ -236,11 +238,17 @@ def replay_history(history, start: date, end: date) -> CapitalReplay:
                     uncertain.add(account)
         residue = ledger.account(clearing).value
         if residue:
-            custody = f"unallocated:{b.identity}"
+            # Per-transaction evidence already excludes sub-cent dust. Pool
+            # that dust, preserving every dollar and its borrowed basis, so
+            # repayments do not repeatedly scan hundreds of thousands of
+            # economically empty transaction accounts.
+            custody = (f"rounding:{b.chain}" if residue <= Decimal("0.01")
+                       else f"unallocated:{b.identity}")
             apply("transfer", residue, clearing, custody, preserve_basis=True)
             if residue > Decimal("0.01"):
                 unmatched_outflows[b.identity] = residue
         ledger.accounts.pop(clearing, None)
+        uncertain.discard(clearing)  # Uncertainty has propagated to destinations.
 
     day = start
     with localcontext() as ctx:

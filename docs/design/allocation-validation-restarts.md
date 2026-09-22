@@ -93,3 +93,11 @@ them as follows (global minus allocation costs):
 
 The gap is explained, not resolved. Capitalized-debt attribution and multi-ilk
 allocation reconciliation remain incomplete. Published controls are unchanged.
+
+Replay also pools sub-cent residuals by chain while retaining their exact value
+and borrowed basis. Material unmatched outflows keep their transaction identity.
+Repayments funded wholly by borrowed principal skip the unnecessary global
+own-money refinancing scan, and expired clearing-account uncertainty is removed
+after propagation. These changes limit replay work without deleting principal
+or treating rounding residuals as revenue. A conservation regression verifies
+that repayments still reduce total borrowed basis by the repayment amount.
