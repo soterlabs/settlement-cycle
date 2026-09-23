@@ -1396,6 +1396,23 @@ defect.
 
 18. **3M T-Bill series rebuilt from treasury.gov; March 2026 was wrong and January unverifiable (2026-07-31, same PR).** Found while migrating Spark off EFFR. `config/subsidy_reference_rates.yaml` now carries one row per published business day (146 rows, `2025-12-31 … 2026-07-30`), every value reconciling 1:1 to the **daily yield curve `3 Mo`** column — *not* the separate "daily treasury bill rates" file, whose 13-week bank-discount / coupon-equivalent quotes differ by 8–15 bps and will not reconcile. Two defects fixed: (a) **March carried five hand-entered rows** describing a smooth 3.66%→3.58% decline when actual prints were flat at 3.71–3.74% — every March value understated the rate by 6–14 bps, overstating both primes' subsidy; (b) **January carried two rows**, both 3.67%, both on non-trading days (Jan 1 holiday, Jan 31 Saturday) — the whole month was an unverifiable carry-forward against real prints of 3.62–3.71%. Feb/Apr/May/Jun already matched the source and are unchanged to the cent (verified: Feb moves $0.00 for both primes). Max carry-forward is now 4 days. **Impact — this is a data correction to already-settled figures, independent of the EFFR→T-Bill switch:** Spark +$67,770 on top of the rate change; **Grove +$65,701 with no methodology change at all** (Grove was already `tbill_3m`), of which +$65,661 is March. Grove Jan–Jun regenerated in the same PR.
 
+#### Methodology — resolved 2026-09: SparkLend reserve factor is Spark revenue
+
+SparkLend reserve-factor income swept from its two reserve treasuries into the
+Spark Ethereum ALM is earned Spark revenue, not capital. The S1–S5 supply APY
+is already net of the reserve factor, so the treasury receipts are additive
+rather than double-counted. The existing Cat C external-revenue path consumes
+the spToken transfers once the senders are listed in
+`external_alm_sources.ethereum`; no new pricing formula is required.
+
+This applies from the September 2026 settlement onward. Published months are
+not regenerated. Raw ALM transfers measured but left unbooked total
+$786,263.50 for 2025-09-22 through 2025-12 and $2,392,354.07 for 2026-01
+through 2026-08. The separate 2025-09-08 SubProxy receipts are not included
+because their eventual disposition was not established. The accounting and
+blast-radius evidence is recorded in
+`settlements/spark/2026-09/reconciliation.md`.
+
 #### Medium priority (affect numerical accuracy)
 5. **Reconciliation gap with Sky's reported Sky Share for Grove** (~$1.13M for Mar 2026 under the pre-subsidy model). Largely closed by 2026-05-02 work (subsidy + SDE refactor + pricePerShareFeed NAV); Feb 2026 residual is now ~$45K excluding the E1 Horizon rewards channel. **Need:** Sky to confirm whether Asset Value definition for BR_charge differs from `subscription − SDE_value` time-weighted (the formula we now match per Grove team's workbook).
 6. **Subsidised rate ramp** — *resolved 2026-05-02*. Implemented per Sky governance: program_start 2026-01-01, T = months elapsed, formula `ref_rate + (BR − ref_rate) × T/24`, cap at first $1B utilized. Every prime uses the 3M T-Bill (Spark migrated off EFFR 2026-07-30, see item 14). Daily rates carried in `config/subsidy_reference_rates.yaml`.

@@ -584,54 +584,6 @@ blocking any current work.
 ### P0 — material numerical gaps
 
 
-#### S34. SparkLend reserve-factor sweeps to the ALM — in MSC scope?
-
-**Found 2026-09** by a counterparty-level audit of every value flow at Spark's
-ALMs (the earlier token-level audits reported "fully covered" and could not see
-this).
-
-Two addresses sweep value into the Spark Ethereum ALM every month and appear in
-no config. Both are SparkLend's `RESERVE_TREASURY_ADDRESS`, confirmed by
-calling that method on each spToken:
-
-| treasury | reserve treasury for |
-|---|---|
-| `0xb137e7d16564c81ae2b0c8ee6b55de81dd46ece5` | spUSDS, spUSDT, spUSDC, spPYUSD |
-| `0x856900aa78e856a5df1a2665ee3a66b2487cd68f` | spDAI |
-
-Transfers are in **spTokens** (not the underlying stables), so they land in the
-Cat C venues S1–S5. Monthly since 2025-09; **$2,392,354.09 in 2026 YTD**:
-
-    Jan 187,229.81   Feb 776,974.44   Mar 192,240.54   Apr 107,239.57
-    May  58,633.74   Jun 281,611.85   Jul 317,345.19   Aug 471,078.95
-
-**They are currently booked as capital, not revenue** — and NOT double-counted.
-Cat C's closed form is `yield = scaledBalanceOf(SoM) × Δindex`, with
-`period_inflow = Δvalue − yield` derived as the residual, so a mid-period
-scaled-balance increase contributes exactly zero revenue. Verified empirically:
-S1/S3/S4 implied APR runs a smooth 1.5–4.4% across Jan–Aug with no
-sweep-shaped bumps, and February's S3 sweep alone ($293,434) would have been
-71% of that month's booked revenue had it been included.
-
-**Question:** is SparkLend reserve-factor income in MSC scope?
-
-Arguments that it is: it is swept into the MSC-tracked ALM, and it is *not*
-already captured — the reserve factor is the spread SparkLend keeps from
-borrowers, accruing to the market treasury, whereas S1–S5's revenue is the
-*supply* APY, which is already net of it. So it is additive, not overlapping.
-The same shape is captured elsewhere: Agora incentives (Grove E38) and the
-Anchorage interest sweeps (S26 via `external_alm_sources`).
-
-If in scope, it needs a capture mechanism: `external_alm_sources` is a Cat A
-par-stable path and these are Cat C spTokens, so Cat C would need an equivalent
-(or the venues would need a `cash_distributions`-style attribution).
-
-Related and probably out of scope, but worth confirming in the same answer:
-**$3,573,822.39 of SPK** (Spark's own governance token,
-`0xc20059e0317de91738d13af027dfc4a50781b066`) was sent to the Spark
-**subproxy** by a Gnosis Safe in August. We assume that is a token allocation
-rather than MSC revenue and do not book it.
-
 #### S35. SDE scope vs Atlas — three entries that do not line up
 
 Atlas designates exactly three Sky Direct Exposures
@@ -1765,6 +1717,12 @@ issue is closed. The full resolution narrative lives in
 `PRD.md §17.13` (review-acks); this section keeps a compact pointer
 trail (Q-ID, title, close date, issue link).
 
+### S34. SparkLend reserve-factor sweeps to the ALM
+**Resolved 2026-09-23:** earned Spark revenue from the September 2026
+settlement onward; prior ALM receipts remain measured but unbooked. The
+existing Cat C external-revenue path handles the spToken sweeps. See
+`PRD.md §17.13` and `settlements/spark/2026-09/reconciliation.md`.
+
 ### G25. spUSDG — future yield split between Spark and Grove
 **Resolved 2026-08-04** via [#161](https://github.com/soterlabs/settlement-cycle/issues/161). See `PRD.md §17.13`.
 
@@ -1818,4 +1776,3 @@ full narrative in `PRD.md §17`.
   NAV); residual ~$45K excluding the E1 Horizon rewards channel
   (tracked under **G3**). See `PRD.md §17.13` (medium-priority list,
   item 5).
-
