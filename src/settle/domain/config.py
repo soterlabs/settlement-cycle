@@ -368,12 +368,16 @@ def load_prime(config_path: Path) -> Prime:
             out[chain] = {}
             for addr_str, entries in by_addr.items():
                 addr = Address.from_str(addr_str)
+                if key == "yield_reversal_overrides" and any("capital_amount" in e for e in entries):
+                    raise ValueError("capital_amount is only supported for principal returns")
                 out[chain][addr] = [
                     PrincipalReturnOverride(
                         date=date.fromisoformat(e["date"]),
                         amount=Decimal(str(e["amount"])),
                         token=e.get("token", ""),
                         note=e.get("note", ""),
+                        capital_amount=(Decimal(str(e["capital_amount"]))
+                                        if "capital_amount" in e else None),
                     )
                     for e in entries
                 ]

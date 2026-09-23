@@ -905,3 +905,72 @@ def test_all_capital_series_no_residual_when_scan_complete(config_dir: Path):
     )
     assert len(out) == 2
     assert out["cum_inflow"].iloc[-1] == Decimal("120")
+
+
+def test_partial_principal_return_preserves_separate_interest(config_dir):
+    prime, venue = _grove_e15(config_dir)
+    cp = _bytes20('0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
+    source = MockBalanceSource()
+    amount, principal = Decimal('10024418.639471'), Decimal('10000008.639471')
+    source.inflow_by_counterparty = lambda **kw: pd.DataFrame([
+        {'block_date': date(2026, 3, 11), 'counterparty': cp, 'signed_amount': amount}])
+    frame = _cat_a_capital_inflow_timeseries(prime, venue, _eth_period(),
+        balance_source=source, external_sources={cp},
+        principal_return_overrides={cp: [(date(2026, 3, 11), amount, principal)]})
+    assert frame.daily_inflow.sum() == principal
+    assert amount - frame.daily_inflow.sum() == Decimal('24410')
+
+
+def test_partial_override_mismatch_and_direction_do_not_match(config_dir):
+    prime, venue = _grove_e15(config_dir)
+    cp = _bytes20('0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
+    other = _bytes20('0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb')
+    source = MockBalanceSource()
+    for day, amount, counterparty, expected in [
+        (12, '110', cp, '0'), (11, '120', cp, '0'),
+        (11, '-110', cp, '-110'), (11, '110', other, '110'),
+    ]:
+        source.inflow_by_counterparty = lambda day=day, counterparty=counterparty, amount=amount, **kw: pd.DataFrame([
+            {'block_date': date(2026, 3, day), 'counterparty': counterparty,
+             'signed_amount': Decimal(amount)}])
+        frame = _cat_a_capital_inflow_timeseries(prime, venue, _eth_period(),
+            balance_source=source, external_sources={cp},
+            principal_return_overrides={cp: [(date(2026, 3, 11), Decimal('110'), Decimal('100'))]})
+        assert sum(frame.daily_inflow, Decimal(0)) == Decimal(expected)
+
+
+def test_partial_override_validates_actual_matched_amount(config_dir):
+    import pytest
+    prime, venue = _grove_e15(config_dir)
+    cp = _bytes20('0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
+    source = MockBalanceSource()
+    source.inflow_by_counterparty = lambda **kw: pd.DataFrame([
+        {'block_date': date(2026, 3, 11), 'counterparty': cp, 'signed_amount': Decimal('99.5')}])
+    with pytest.raises(ValueError, match='exceeds actual'):
+        _cat_a_capital_inflow_timeseries(prime, venue, _eth_period(),
+            balance_source=source, external_sources={cp},
+            principal_return_overrides={cp: [(date(2026, 3, 11), Decimal('100'), Decimal('100'))]})
+
+
+def test_partial_override_config_validation_and_september_entry(config_dir, tmp_path):
+    import pytest
+    import yaml
+
+    from settle.domain.primes import PrincipalReturnOverride
+    for bad in ['-1', '111', 'NaN', 'Infinity']:
+        with pytest.raises(ValueError, match='capital_amount'):
+            PrincipalReturnOverride(date(2026, 9, 11), Decimal('110'), capital_amount=Decimal(bad))
+    spark = load_prime(config_dir/'spark.yaml')
+    entries = spark.principal_return_overrides[Chain.ETHEREUM]
+    cp = next(a for a in entries if str(a) == '0x49506c3aa028693458d6ee816b2ec28522946872')
+    sept = next(e for e in entries[cp] if e.date == date(2026, 9, 11))
+    assert sept.amount - sept.capital_amount == Decimal('24410')
+    assert all(e.capital_amount is None for e in entries[cp] if e.date < sept.date)
+    cfg = yaml.safe_load((config_dir/'spark.yaml').read_text())
+    for bad in ['-1', '111', 'NaN', 'Infinity']:
+        cfg['principal_return_overrides']={'ethereum':{str(cp):[
+            {'date':'2026-09-11','amount':'110','capital_amount':bad}]}}
+        p = tmp_path/'spark.yaml'
+        p.write_text(yaml.safe_dump(cfg))
+        with pytest.raises(ValueError, match='capital_amount'):
+            load_prime(p)
