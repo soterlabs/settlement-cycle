@@ -152,6 +152,12 @@ def query_logs(
         if join_mode not in {'Default', 'JoinAll', 'JoinNothing'}:
             raise ValueError('Invalid HyperSync join mode')
         base['join_mode'] = join_mode
+        if join_mode == 'JoinAll':
+            # Joined transactions contain many sibling logs. The provider's
+            # ~1,000-row defaults exhaust request quotas while barely moving
+            # the cursor. Larger bounded pages preserve the same selection.
+            base.update(max_num_logs=100_000, max_num_blocks=100_000,
+                        max_num_transactions=100_000)
     result = QueryResult()
     cursor = from_block
     end_exclusive = to_block + 1  # HyperSync to_block is exclusive
