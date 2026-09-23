@@ -974,3 +974,18 @@ def test_partial_override_config_validation_and_september_entry(config_dir, tmp_
         p.write_text(yaml.safe_dump(cfg))
         with pytest.raises(ValueError, match='capital_amount'):
             load_prime(p)
+
+
+def test_partial_override_is_row_local_with_duplicate_source_indices(config_dir):
+    prime, venue = _grove_e15(config_dir)
+    cp = _bytes20('0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
+    source = MockBalanceSource()
+    source.inflow_by_counterparty = lambda **kw: pd.DataFrame([
+        {'block_date': date(2026, 3, 11), 'counterparty': cp, 'signed_amount': Decimal('110')},
+        {'block_date': date(2026, 3, 12), 'counterparty': cp, 'signed_amount': Decimal('50')},
+    ], index=[0, 0])
+    frame = _cat_a_capital_inflow_timeseries(prime, venue, _eth_period(),
+        balance_source=source, external_sources={cp},
+        principal_return_overrides={cp: [(date(2026, 3, 11), Decimal('110'), Decimal('100'))]})
+    assert frame.block_date.tolist() == [date(2026, 3, 11)]
+    assert frame.daily_inflow.sum() == Decimal('100')

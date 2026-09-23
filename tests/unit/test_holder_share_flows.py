@@ -63,3 +63,32 @@ def test_rebasing_tokens_cannot_use_holder_share_accounting():
                     pricing_category=PricingCategory.SPARKLEND_SPTOKEN)
     with pytest.raises(ValueError, match='non-rebasing'):
         run([], '10', '10', venue=venue)
+
+
+def test_spread_reimbursement_stops_on_actual_exit_day():
+    from settle.compute.monthly_pnl import _susds_cat_b_spread_reimb
+    frame, _ = run([(date(2026, 9, 6), D('-80894745'))],
+                   '80894745.637041', '0.637041', end=11)
+    value = D('89636603.76011395185942167486')
+    period = Period(date(2026, 9, 1), date(2026, 9, 11), {})
+    # September's configured BR-SSR spread is 20 bps, accrued on five days.
+    expected = value * D('0.002') / D(365) * D(5)
+    assert abs(_susds_cat_b_spread_reimb(value, frame, period) - expected) < D('1e-15')
+
+
+def test_holder_override_and_source_boundaries():
+    from settle.domain.primes import Address
+    prime = load_prime_by_id('spark')
+    venue = replace(next(v for v in prime.venues if v.id == 'S43'),
+                    holder_override=Address.from_str('0x'+'12'*20))
+    period = Period(date(2026, 9, 1), date(2026, 9, 6), {venue.chain: 502434999})
+    calls = []
+    def balances(**kwargs):
+        calls.append(kwargs)
+        return pd.DataFrame(columns=['block_date', 'daily_net'])
+    holder_share_inflows(prime, venue, period,
+        balance_source=SimpleNamespace(cumulative_balance_timeseries=balances),
+        block_resolver=None, price_at_block=None, opening_shares=D(0), closing_shares=D(0))
+    assert calls == [dict(chain=venue.chain.value, token=venue.token.address.value,
+                          holder=venue.holder_override.value, start=period.start,
+                          pin_block=502434999)]

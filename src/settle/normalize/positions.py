@@ -2210,6 +2210,9 @@ def _cat_a_capital_inflow_timeseries(
     # known quirk where bytes values containing leading null bytes (notably
     # the zero address ``b"\x00" * 20``) compare incorrectly. Use ``apply``
     # with Python ``in`` for correct bytes equality.
+    # Source adapters may concatenate frames with repeated index labels. Keep
+    # partial-return assignments row-local rather than broadcasting via .loc.
+    detail = detail.reset_index(drop=True)
     norm = detail["counterparty"].map(_to_bytes)
     is_external_cp = norm.apply(lambda b: b in external_sources)
 

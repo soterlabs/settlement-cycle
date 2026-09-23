@@ -679,7 +679,7 @@ class PrincipalReturnOverride:
 
     date: date
     amount: Decimal
-    token: str = ""    # token symbol — sanity check for human readers
+    token: str = ""    # optional token-symbol filter for principal-return matching
     note: str = ""
     # None preserves legacy full-principal treatment of the actual matched row,
     # including its ±$1 matching tolerance. An explicit value splits the receipt.
