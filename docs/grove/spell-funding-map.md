@@ -71,10 +71,10 @@ unknown-funding gap. Acquisition cash and the subsequent valuation must be
 kept separate. The spell gives the acquisition cost directly; that valuation
 gap should not manufacture either an extra loan or missing principal.
 
-An isolated replay substituting the documented JTRSY acquisition cost removes
-that initial unmatched receipt (298 to 297 total). It does not resolve the
-other historical funding gaps. No production override was applied by this
-investigation.
+The replay now applies this acquisition cost using the exact executed
+transaction and block, with explicit checks on the draw and asset legs. It
+removes the initial unmatched receipt without inventing borrowed principal.
+The original normalized history remains immutable.
 
 Sources:
 
@@ -109,11 +109,40 @@ Sources:
 - [Grove delivery payload](https://github.com/grove-labs/grove-spells/blob/97bbdf8d89e824e93a28ecaf9cf0628ebc640d12/archive/20260716/GroveEthereum_20260716.sol)
 - [Spark funding and payment payload](https://github.com/sparkdotfi/spark-spells/blob/dc2a653f4b2f5491641276e913cae06e221ce8ea/archive/20260716/SparkEthereum_20260716.sol)
 
-## Limits and next implementation work
+## Implementation and replay validation (2026-09-23)
 
-The spell evidence removes the need to infer these purposes from amounts or
-payer identity. Implement the acquisition-cost correction and authenticated
-cross-transaction purchase/sale links using the verified execution identities.
+`src/settle/compute/executed_spell_capital.py` applies the verified execution
+identities before both capital replay and allocation-financing analytics.
+Inline comments link the immutable Sky, Grove and Spark payload sources.
+The transformation is idempotent and preserves the sum of actual debt draws.
+It does not modify published global borrowing costs or settlement amounts.
+
+Spark's July 2026 payment executes first, at block **25574512**. Grove's
+asset delivery follows at **25574524**, **144 seconds later**. Spark's explicit
+purchase draw goes into a pending purchase account, isolated from unrelated
+reserve sweeps in the payment transaction, then into syrupUSDC on delivery.
+A history pinned before delivery retains the pending purchase. Grove's
+same-day advance proceeds are linked to the full asset exit, releasing its
+existing borrowed basis into cash. This requires no intervening seller
+cash/asset use; an unexpected execution shape raises an error. There is no
+new Grove draw and gains do not create borrowed principal.
+
+The fresh Grove August replay removes two unmatched receipts and one
+unmatched outflow: **298 → 296 receipts**, **530 → 529 outflows**. All **24**
+previously unresolved allocations remain unresolved. The traced allocation
+cost subtotal moves from **$6,222.614398** to **$6,304.101895**. Against the
+unchanged **$3,720,604.844326** global charge, excluding **$259,878.117027**
+of MSC borrowing cost gives a **$3,460,726.727300** comparison target. The
+remaining difference is **−$3,454,422.625405**. **Grove does not reconcile.**
+This difference is against an incomplete subtotal, not a measured error in
+all allocation charges.
+
+Regression tests cover purchase costs versus valuation, sale proceeds,
+borrowed-basis conservation, unrelated receipts in a purchase spell,
+incomplete pinned histories, repeat application, lookalike transactions,
+and invalid/intervening movements. The real Grove and Spark snapshots both
+pass shape validation, idempotence and unchanged total-draw checks.
+
 Continue tracing JAAA cross-chain movements, other asynchronous subscriptions,
-and issuer payment references. None of these findings makes the current
-Grove or Spark allocation-cost reconciliation pass by itself.
+and issuer payment references. Delayed BUIDL payment candidates remain an
+investigation dataset; no heuristic amount/date links are applied here.

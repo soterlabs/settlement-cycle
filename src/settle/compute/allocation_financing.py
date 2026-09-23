@@ -51,6 +51,9 @@ def unavailable_financing(pnl, error: Exception) -> dict:
 
 
 def allocation_financing(pnl, history, *, idle_amounts=None) -> dict:
+    from .executed_spell_capital import apply_executed_spells
+
+    history = apply_executed_spells(history)
     start, end = pnl.period.start, pnl.period.end
     replay = replay_history(history, start - timedelta(days=1), end)
     n_days = (end - start).days + 1
