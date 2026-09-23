@@ -139,3 +139,10 @@ def test_grove_pin_before_delivery_does_not_use_future_sale():
     r = replay_history(h, DAY, DAY)
     assert r.ledger.drawn == 0
     assert r.unmatched_receipts == {PAYMENT: SYRUP_COST}
+
+
+def test_duplicate_verified_transaction_cannot_be_hidden_by_renaming():
+    b = initial(GROVE)
+    h = H((b, b), {'E9': account(GROVE, JTRSY)}, {})
+    with pytest.raises(ValueError, match='Duplicate capital transaction'):
+        replay_history(h, DAY, DAY)
