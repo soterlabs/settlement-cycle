@@ -77,6 +77,44 @@ def test_deposit_uses_actual_cash_amount_not_one_share_quote(monkeypatch):
     assert not replay.unmatched_outflows
 
 
+def test_morpho_fee_mints_are_income_even_alongside_a_funded_deposit(monkeypatch):
+    from dataclasses import replace
+
+    import pytest
+
+    from settle.normalize import allocation_morpho_fees as fees
+
+    zero = topic(Address(bytes(20)))
+    logs = [draw(),
+            log(1, 1, VAULT, TRANSFER_TOPIC0, [zero, topic(HOLDER)], [2 * 10**18]),
+            log(1, 3, VAULT, TRANSFER_TOPIC0, [zero, topic(HOLDER)], [99 * 10**18]),
+            log(1, 4, VAULT, source.DEPOSIT, [topic(HOLDER), topic(HOLDER)],
+                [100 * 10**18, 99 * 10**18]),
+            log(2, 1, VAULT, TRANSFER_TOPIC0, [zero, topic(HOLDER)], [3 * 10**18])]
+    accruals = [log(1, 2, VAULT, fees.ACCRUE_INTEREST, [], [102 * 10**18, 2 * 10**18]),
+                log(2, 2, VAULT, fees.ACCRUE_INTEREST, [], [105 * 10**18, 3 * 10**18])]
+    prime = setup(monkeypatch, logs)
+    monkeypatch.setitem(fees.VAULTS, Chain.ETHEREUM, {VAULT.hex})
+    monkeypatch.setattr(source.hypersync_store, 'fetch_logs', lambda chain, selections, *a, **k:
+                        accruals if selections[0].get('address') == [VAULT.hex] else logs)
+    history = source.fetch_capital_history(prime, {Chain.ETHEREUM: 2})
+    replay = replay_history(history, DAY, DAY)
+    asset = history.venue_accounts['V1']
+    assert replay.ledger.account(asset).borrowed == D(100)
+    assert sum(m.external_income for b in history.batches for m in b.movements) == D(5)
+    assert not replay.unmatched_receipts and not replay.unmatched_outflows
+    assert asset not in replay.uncertain_accounts
+    # The adjacent ERC4626 deposit mint (99 shares) is not fee income.
+    assert fees.fee_mints(Chain.ETHEREUM, [r for r in logs + accruals if r.block_number == 1],
+                          {(VAULT.hex, HOLDER.hex)}) == {
+        (VAULT.hex, HOLDER.hex): 2 * 10**18}
+    with pytest.raises(ValueError, match='disagrees with accrual'):
+        fees.fee_mints(Chain.ETHEREUM,
+                      [logs[1], replace(accruals[0], data='0x' + f'{102:064x}{1:064x}')],
+                      {(VAULT.hex, HOLDER.hex)})
+    assert not fees.fee_mints(Chain.OPTIMISM, [logs[1], accruals[0]], {(VAULT.hex, HOLDER.hex)})
+
+
 def test_queue_links_later_cash_to_original_principal(monkeypatch):
     logs = [draw(), log(1, 1, VAULT, TRANSFER_TOPIC0,
                        [topic(Address(bytes(20))), topic(HOLDER)], [100 * 10**18]),

@@ -21,6 +21,7 @@ from ..extract._keccak import keccak256
 from ..extract.transfer_logs import TRANSFER_TOPIC0
 from .allocation_async_vaults import CAPITAL_ASSETS, REDEEM_REQUEST, AsyncVaultCapital
 from .allocation_bridges import funded_cctp_burns, link_cctp
+from .allocation_morpho_fees import ACCRUE_INTEREST, VAULTS, fee_mints
 from .allocation_nfts import NFTCapital
 from .allocation_psm import PsmCapital
 from .prices import get_unit_price, is_par_stable
@@ -189,6 +190,16 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
             if not row.transaction_hash:
                 raise ValueError("Missing transaction identity in capital history")
             grouped[(row.block_number, row.transaction_hash)].append(row)
+        fee_vaults = sorted({token for token, _ in mapping} & VAULTS.get(chain, set()))
+        if fee_vaults:
+            # Fee events have no indexed holder, so the ALM topic selections
+            # above cannot see them. Attach only to already tracked transactions.
+            for row in hypersync_store.fetch_logs(chain.value, [
+                {'address': fee_vaults, 'topics': [[ACCRUE_INTEREST]]},
+            ], 0, pins[chain], log_fields=[*hypersync._DEFAULT_LOG_FIELDS, 'transaction_hash']):
+                key = (row.block_number, row.transaction_hash)
+                if key in grouped:
+                    grouped[key].append(row)
         units: dict[tuple[str, str], int] = defaultdict(int)
         queues: dict[tuple[str, str], tuple[tuple[str, str], int]] = {}
         queue_managers: dict[tuple[str, str], str] = {}
@@ -201,6 +212,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
             if batch_index and batch_index % 100 == 0:
                 _log.info("Capital history %s/%s: %d/%d", prime.id, chain, batch_index, len(ordered_groups))
             block_logs = list({r.log_index: r for r in block_logs}.values())
+            fee_shares = fee_mints(chain, block_logs, mapping)
             async_selected = async_vaults.prepare(block_logs)
             async_movements, async_deposits = async_vaults.movements(async_selected)
             nft_movements, nft_fees = nft.movements(block_logs)
@@ -308,6 +320,8 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                 transaction_prices[key[0]] = price
                 change = Decimal(raw_change) * price / scale
                 gift = Decimal(gifts[key]) * price / scale + nft_fees.get(key, ZERO)
+                performance_fee = Decimal(fee_shares.get(key, 0)) * price / scale
+                gift += performance_fee
                 # Honor the existing per-venue issuer-distribution policy
                 # (BUIDL), rather than treating its small yield mints as
                 # unexplained capital. Check each mint, not the batch sum.
@@ -329,7 +343,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                     burns = any(r.address == key[0] and r.topic0 == TRANSFER_TOPIC0
                                 and r.topic1 == _addr_topic(holder.value) for r in block_logs)
                     if not burns:
-                        change = deposits[key]
+                        change = deposits[key] + performance_fee
                 movements.append(AssetMovement(
                     _account(chain, v.token.address, holder), value_before, change, gift,
                 ))
