@@ -69,6 +69,17 @@ def funded_cctp_burns(chain, rows, tracked_usdc, verified):
     return result
 
 
+def _received_logs(chain, pin, nonce_topics):
+    # Spark's inception history has tens of thousands of messages. One OR
+    # filter exceeds HyperSync's 2 MiB request limit; each bounded batch has
+    # independent persisted coverage and can be resumed after a failed run.
+    topics = sorted(nonce_topics)
+    for offset in range(0, len(topics), 2000):
+        yield from hypersync_store.fetch_logs(chain.value, [{
+            'topics': [[MESSAGE_RECEIVED], [], topics[offset:offset + 2000]],
+        }], 0, pin, log_fields=[*hypersync._DEFAULT_LOG_FIELDS, 'transaction_hash'])
+
+
 def link_cctp(prime, pins, batches, burns):
     from .allocation_capital import AssetMovement
 
@@ -76,7 +87,6 @@ def link_cctp(prime, pins, batches, burns):
         return batches
     by_id = {b.identity: b for b in batches}
     messages = {}
-    nonce_topics = set()
     for chain, row in burns:
         words = [int(row.data[i:i + 64], 16) for i in range(2, len(row.data), 64)]
         if len(words) != 5:
@@ -100,14 +110,13 @@ def link_cctp(prime, pins, batches, burns):
         messages[key] = {"account": account, "amount": amount, "raw_amount": words[0],
                          "token": row.topic2, "owner": row.topic3, "recipient": recipient,
                          "destination": words[2], "received": False, "sent_at": row.block_time}
-        nonce_topics.add(row.topic1)
         batch = by_id[identity]
         by_id[identity] = replace(batch, movements=(*batch.movements,
                                                    AssetMovement(account, Decimal(0), amount)))
     for chain in prime.alm:
-        received = hypersync_store.fetch_logs(chain.value, [{
-            "topics": [[MESSAGE_RECEIVED], [], sorted(nonce_topics)],
-        }], 0, pins[chain], log_fields=[*hypersync._DEFAULT_LOG_FIELDS, "transaction_hash"])
+        nonce_topics = {'0x' + f'{key[1]:064x}' for key, m in messages.items()
+                        if m['recipient'] == prime.alm[chain].hex}
+        received = _received_logs(chain, pins[chain], nonce_topics)
         seen = set()
         for row in received:
             if (row.block_number, row.log_index) in seen:
