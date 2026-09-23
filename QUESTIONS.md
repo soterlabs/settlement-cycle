@@ -227,12 +227,14 @@ flowing through ALM ingress or names a new source we need to plumb.
 
 #### G29. BUIDL redemption fee — Sky exit cost or Grove custody cost?
 
-BUIDL redemptions settle at approximately 99.95% of face. Through the August
-2026 boundary, $162,505.35 of fees settled without entering either venue's
-revenue, and another $12,499.85 attached to the August 31 redemption settled
-on September 1. The September reconciliation proposes a 5 bps exit-value mark
-on E10, which assigns the transition markdown and future cost to Sky because
-E10 is a fixed Sky Direct Exposure.
+BUIDL redemptions settle at approximately 99.95% of face. From January through
+August 2026, $162,505.35 of fees settled without entering either venue's
+revenue. The September reconciliation applies that amount as a negative
+Sky-side adjustment, reducing Grove's MSC debt mint. The fee attached to the
+August 31 redemption settled on September 1 and is outside this Jan-Aug scope.
+Separately, the reconciliation proposes a 5 bps exit-value mark on E10, which
+assigns the transition markdown and future cost to Sky because E10 is a fixed
+Sky Direct Exposure.
 
 **Question for Grove / the MSC operator:** do the SDE terms make the cost of
 realizing the asset Sky's, or is Grove required to pay Sky gross yield and bear
@@ -1735,8 +1737,10 @@ trail (Q-ID, title, close date, issue link).
 
 ### S34. SparkLend reserve-factor sweeps to the ALM
 **Resolved 2026-09-23:** earned Spark revenue from the September 2026
-settlement onward; prior ALM receipts remain measured but unbooked. The
-existing Cat C external-revenue path handles the spToken sweeps. See
+settlement onward. The 2026-01 through 2026-08 receipts are recognized as a
+$2,392,354.07 September Prime-side Supply-Side revenue true-up; published
+monthly reports remain unchanged. The existing Cat C external-revenue path
+handles the spToken sweeps. See
 `PRD.md §17.13` and `settlements/spark/2026-09/reconciliation.md`.
 
 ### G25. spUSDG — future yield split between Spark and Grove

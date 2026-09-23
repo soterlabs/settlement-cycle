@@ -1359,7 +1359,8 @@ external_alm_sources:
     # external-revenue path classifies those receipts as earned Spark revenue
     # instead of capital; the supply APY is already net of this reserve factor,
     # so the streams do not overlap. Effective for settlements from 2026-09;
-    # prior measured sweeps remain unbooked (see the September reconciliation).
+    # Jan-Aug 2026 is carried as an sv_adj true-up in that settlement without
+    # regenerating the published reports (see the September reconciliation).
     # spUSDS, spUSDT, spUSDC and spPYUSD reserve treasury:
     - '0xb137e7d16564c81ae2b0c8ee6b55de81dd46ece5'
     # spDAI reserve treasury:

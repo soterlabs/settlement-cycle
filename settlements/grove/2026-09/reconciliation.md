@@ -1,7 +1,8 @@
 # Grove reconciliation — September 2026
 
 This is a dedicated reconciliation record, not a regenerated settlement.
-Published 2026-01 through 2026-08 Grove reports are unchanged.
+The analysis is restricted to 2026-01 through 2026-08, inclusive. Those
+published Grove reports are unchanged.
 
 ## BUIDL redemption fee
 
@@ -19,14 +20,33 @@ net-of-exit-cost yield are attributed entirely to Sky under this proposal.
 Question G29 records the remaining policy confirmation: whether the custodian,
 rather than the SDE owner, is contractually meant to bear the fee.
 
-Measured reconciliation through the August closing boundary:
+Measured reconciliation for 2026-01 through the August closing boundary:
 
 | Item | Amount |
 |---|---:|
 | May redemptions, measured but unbooked | $137,504.98 |
 | August redemption settled before the boundary, measured but unbooked | $25,000.37 |
 | **Published-period total, no restatement** | **$162,505.35** |
-| August 31 redemption settled September 1, measured but unbooked | $12,499.85 |
+
+The August 31 redemption fee settled on September 1 and is therefore excluded
+from this Jan-Aug reconciliation.
+
+## September reconciliation treatment
+
+The $162,505.35 realized-fee credit is applied as a reduction to **Sky-side
+Direct Exposure revenue** and therefore to **Sky-side Supply-Side revenue**.
+E10 remains 100% Sky Direct Exposure, so E10 Prime-side revenue remains $0;
+Prime-side Demand-Side revenue is unchanged.
+
+The September settlement data carries `sky_adj: -162505.35` for Grove. This
+reduces Grove's **MSC debt (mint)** by $162,505.35 before whole-USDS rounding;
+it does not create a separate **Send to prime** payment. This is the settlement
+expression of the credit to Grove for the Jan-Aug fees already absorbed by its
+ALM.
+
+This realized-fee credit is separate from the prospective exit-value mark
+below: the former corrects fees incurred in Jan-Aug, while the latter recognizes
+the embedded exit cost of shares still held at the August boundary.
 
 Applying the 5 bps exit mark to the August E10 closing position of
 $643,254,421.77 produces a one-time September markdown of $321,627.21 and a

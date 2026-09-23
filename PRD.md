@@ -1405,12 +1405,13 @@ rather than double-counted. The existing Cat C external-revenue path consumes
 the spToken transfers once the senders are listed in
 `external_alm_sources.ethereum`; no new pricing formula is required.
 
-This applies from the September 2026 settlement onward. Published months are
-not regenerated. Raw ALM transfers measured but left unbooked total
-$786,263.50 for 2025-09-22 through 2025-12 and $2,392,354.07 for 2026-01
-through 2026-08. The separate 2025-09-08 SubProxy receipts are not included
-because their eventual disposition was not established. The accounting and
-blast-radius evidence is recorded in
+This applies from the September 2026 settlement onward. The reconciliation is
+restricted to 2026: published January-August reports are not regenerated, and
+their $2,392,354.07 of reserve-factor income is recognized as a September
+Prime-side Supply-Side revenue true-up. In settlement language it is
+`sv_adj: 2392354.07`, increasing both Spark's MSC debt mint and Send to prime
+by that amount before whole-USDS rounding. The accounting and blast-radius
+evidence is recorded in
 `settlements/spark/2026-09/reconciliation.md`.
 
 #### Methodology — September 2026 proposal: BUIDL at net redemption value
@@ -1427,8 +1428,10 @@ and capital-flow valuation. At August's $643,254,421.77 closing position, the
 September transition markdown is $321,627.21. Because E10 is a fixed SDE, it
 flows to Sky under the proposed owner-bears-exit-cost interpretation. G29
 retains the operator question of whether Grove is instead contractually meant
-to bear the fee. May and August reports are not regenerated; $162,505.35 of
-fees already settled in those published periods remains measured but unbooked.
+to bear the fee. May and August reports are not regenerated; the $162,505.35
+of fees settled in January-August 2026 is applied in September as
+`sky_adj: -162505.35`. This reduces Grove's MSC debt mint, rather than creating
+a separate Send to prime payment.
 
 The August 31 partial redemption is represented separately as a repeatable
 fixed-SDE `in_flight_redemptions` window. Its $24,986,500.50 settlement-basis
