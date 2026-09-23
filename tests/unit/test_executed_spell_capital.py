@@ -8,6 +8,7 @@ from settle.compute.allocation_capital import replay_history
 from settle.compute.executed_spell_capital import (
     BUIDL,
     BUIDL_COST,
+    BUIDL_INTEREST,
     DELIVERY,
     GROVE,
     INITIAL,
@@ -26,6 +27,23 @@ from settle.normalize.allocation_capital import CapitalBatch as B
 from settle.normalize.allocation_capital import CapitalHistory as H
 
 DAY = date(2026, 7, 20)
+
+
+def test_forwarded_buidl_interest_is_own_funds_and_never_a_new_loan():
+    asset = account(GROVE, BUIDL)
+    amount = D('900612.89')
+    b = B(BUIDL_INTEREST, DAY, 1, 'ethereum', 23319630, (M(asset, D(0), amount),))
+    h = H((b,), {'E10': asset}, {})
+    fixed = apply_executed_spells(h)
+    assert apply_executed_spells(fixed) == fixed
+    r = replay_history(h, DAY, DAY)
+    assert r.ledger.account(asset).value == amount
+    assert r.ledger.account(asset).borrowed == r.ledger.drawn == 0
+    assert not r.unmatched_receipts and asset not in r.uncertain_accounts
+    lookalike = replace(h, batches=(replace(b, identity='other'),))
+    assert apply_executed_spells(lookalike) == lookalike
+    with pytest.raises(ValueError, match='forwarded interest'):
+        apply_executed_spells(replace(h, batches=(replace(b, minted=D(1)),)))
 
 
 def initial(holder):

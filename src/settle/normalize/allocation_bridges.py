@@ -26,6 +26,49 @@ def _view(chain, address, signature, block):
     return raw
 
 
+def funded_cctp_burns(chain, rows, tracked_usdc, verified):
+    """Validate each new message against an unconsumed payment to TokenMinter.
+
+    Circle TokenMessenger transfers USDC to localMinter(), not to itself.
+    https://github.com/circlefin/evm-cctp-contracts/blob/a92a2b4e7e6ef99bf0b05dca71780f5ec190e729/src/TokenMessenger.sol
+    Real multi-message example: Ethereum transaction
+    0x5332b54a1b545921fb625dd526cd5be2a4ead0cffd8e635f925e18d90415ff63
+    funds three messages received and deposited into Base Morpho in
+    0xb109977fca86a06cd38ae9df0112ca273afde6f81a917f5c04112ef46eaf5d84.
+    Consume individual preceding Transfer logs so equal-sized burns cannot
+    reuse the same cash leg. Replacement messages may reuse original funding.
+    """
+    from ..extract.transfer_logs import TRANSFER_TOPIC0
+
+    paid = []
+    result = []
+    minters = {}
+    for row in sorted(rows, key=lambda r: r.log_index):
+        if row.topic0 == TRANSFER_TOPIC0 and len(row.data) == 66:
+            paid.append(row)
+        if row.topic0 != DEPOSIT_FOR_BURN:
+            continue
+        key = ("0x" + row.topic2[-40:], "0x" + row.topic3[-40:])
+        if key not in tracked_usdc:
+            continue
+        words = [int(row.data[i:i + 64], 16) for i in range(2, len(row.data), 64)]
+        if len(words) != 5:
+            raise ValueError("Invalid CCTP burn event")
+        message = (chain, row.address, row.topic1)
+        if message not in verified:
+            if row.address not in minters:
+                minters[row.address] = _view(chain, row.address, "localMinter()", row.block_number).lower()
+            payment = next((r for r in paid if r.address == key[0]
+                            and r.topic1 == row.topic3 and r.topic2 == minters[row.address]
+                            and int(r.data, 16) == words[0]), None)
+            if payment is None:
+                raise ValueError("CCTP burn lacks its TokenMinter payment")
+            paid.remove(payment)
+            verified.add(message)
+        result.append((chain, row))
+    return result
+
+
 def link_cctp(prime, pins, batches, burns):
     from .allocation_capital import AssetMovement
 
