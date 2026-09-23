@@ -1,0 +1,166 @@
+{
+  "verified_at": "2026-09-23T18:56:45.244141+00:00",
+  "api": "https://settle-api-production.up.railway.app/v1/revenue/spark",
+  "code_version": "71fa912fe07cee5a417a8e17fd8071c1b5e85656",
+  "corrected_cutoffs": 17,
+  "unchanged_early_cutoffs": 5,
+  "old_revisions_verified": 17,
+  "unexpected_deltas": [],
+  "september_11_anchorage_interest": "24410.000000",
+  "latest_attempt_status": "succeeded",
+  "results": [
+    {
+      "cutoff": "2026-09-06",
+      "old_revision": "769fe9742cb697ad054ecba2f94fc102134857b7fe525cec2943041d42f3efc4",
+      "new_revision": "958e942fef4ad6b8c4d74f65d09b9469d0fb493dcfa9f6ecbbd482ee6eae9884",
+      "mtd_prime_revenue": "1574040.193434414365810119528",
+      "daily_prime_revenue": "191005.704699961333789541084",
+      "mtd_revenue_correction": "89688228.43300865403687918000",
+      "sky_revenue_correction": "491.159472658158640325598"
+    },
+    {
+      "cutoff": "2026-09-07",
+      "old_revision": "fbdcba3193bddddd618ac3eb51e0c7d6e2f8539420fcafacebd34f43f3f72688",
+      "new_revision": "2159ac6fa441e6be2754d8f56ebb70338642f64112a15f8f3ba6f1a0fd50f345",
+      "mtd_prime_revenue": "1753117.738181741478668348998",
+      "daily_prime_revenue": "179077.544747327112858229470",
+      "mtd_revenue_correction": "89688228.43300865403687918000",
+      "sky_revenue_correction": "982.318945316317280651197"
+    },
+    {
+      "cutoff": "2026-09-08",
+      "old_revision": "97c884a94ac37696505a7a0863a1afda2b80b4e8823d06e15398426dc5942560",
+      "new_revision": "566d5a23af612d10ab2ce721579ddcfe0f96219d75e54f69b4c93f1b57cc4478",
+      "mtd_prime_revenue": "2287301.153205224774147084884",
+      "daily_prime_revenue": "534183.415023483295478735886",
+      "mtd_revenue_correction": "89688228.43300865403687918000",
+      "sky_revenue_correction": "1473.478417974475920976795"
+    },
+    {
+      "cutoff": "2026-09-09",
+      "old_revision": "9b1ff6d83de7da8bf20a7e4cf625cf64bec31224ca4d1f0da917113e65ff48af",
+      "new_revision": "8652134f92ca89969d14f689e79d5da2ecb2c2ccbb1a0bd7d4025f1ccff59277",
+      "mtd_prime_revenue": "2475968.347242549378316230836",
+      "daily_prime_revenue": "188667.194037324604169145952",
+      "mtd_revenue_correction": "89688228.43300865403687918000",
+      "sky_revenue_correction": "1964.637890632634561302393"
+    },
+    {
+      "cutoff": "2026-09-10",
+      "old_revision": "c1c34912286671a11a53c0ed9ed6d82cb54dba04f71faa072acfb9f37bb9de98",
+      "new_revision": "2efc58e5cda4b1d9e2d0850e333ecc694a9452f7689e0150451afb94e564bc99",
+      "mtd_prime_revenue": "2664011.323288689156705513629",
+      "daily_prime_revenue": "188042.976046139778389282793",
+      "mtd_revenue_correction": "89688228.43300865403687918000",
+      "sky_revenue_correction": "2455.797363290793201627991"
+    },
+    {
+      "cutoff": "2026-09-11",
+      "old_revision": "4233d9d1e9ec78ba6a2c890e0d0bd0ea3038b7c5d1578cb0cb6207d035c7fdc7",
+      "new_revision": "dc546889f85951287acd094b5f743c8682e6f592858158e16884a4fa60127f9b",
+      "mtd_prime_revenue": "2881299.681998788700393734865",
+      "daily_prime_revenue": "217288.358710099543688221236",
+      "mtd_revenue_correction": "79688219.79353765403687918000",
+      "sky_revenue_correction": "2946.956835948951841953589"
+    },
+    {
+      "cutoff": "2026-09-12",
+      "old_revision": "69229fe76293ba008c2c2ca14197445ccb41fb3615cf00602ceddfddc6e46456",
+      "new_revision": "285b97ca78a02e77408335ddd33206010ab0b10becebec7d1aed89d3f0895c38",
+      "mtd_prime_revenue": "3080576.063308064018352132431",
+      "daily_prime_revenue": "199276.381309275317958397566",
+      "mtd_revenue_correction": "79688219.79353765403687918000",
+      "sky_revenue_correction": "3438.116308607110482279188"
+    },
+    {
+      "cutoff": "2026-09-13",
+      "old_revision": "76bd97174a26d2c18b0f08a16060765e13a820d3f5a681736f79c76f169cf894",
+      "new_revision": "f624d19554a531c58c433626789058297b832587243a3d89a6e8a7beb3f8c6c5",
+      "mtd_prime_revenue": "3275991.756283372876935701663",
+      "daily_prime_revenue": "195415.692975308858583569232",
+      "mtd_revenue_correction": "79688219.79353765403687918000",
+      "sky_revenue_correction": "3929.275781265269122604785"
+    },
+    {
+      "cutoff": "2026-09-14",
+      "old_revision": "098172baa0b230bee7c5ba5aaaac62f9e3573442df7753e2472d98a4aca2a5dd",
+      "new_revision": "0f599f0a49a5fda30e8cd0a1f8b7bf04f534dc531051cf602865cd80605ab90d",
+      "mtd_prime_revenue": "3475180.853693536162945965960",
+      "daily_prime_revenue": "199189.097410163286010264297",
+      "mtd_revenue_correction": "79688219.79353765403687918000",
+      "sky_revenue_correction": "4420.435253923427762930384"
+    },
+    {
+      "cutoff": "2026-09-15",
+      "old_revision": "8d734a1750f673730db33635ebadc46b8a3c7cc497ba173a66c6756da59df86e",
+      "new_revision": "76c78e6290c69f5b5aa74a01dc3da18adf3df2986ebf27b3a67ba6d9cd55a455",
+      "mtd_prime_revenue": "4002703.883062073776720790509",
+      "daily_prime_revenue": "527523.029368537613774824549",
+      "mtd_revenue_correction": "79688219.79353765403687918000",
+      "sky_revenue_correction": "4911.594726581586403255983"
+    },
+    {
+      "cutoff": "2026-09-16",
+      "old_revision": "47e787fb275c91a2bd782ca1efed473cdec15e4b2926cddb42d5972ed559669c",
+      "new_revision": "e62b6219cccfe17a176e93ce3bdcd5e66e4cf33e758323d0e6067c047178dd92",
+      "mtd_prime_revenue": "4213574.509275595890847774609",
+      "daily_prime_revenue": "210870.626213522114126984100",
+      "mtd_revenue_correction": "79688219.79353765403687918000",
+      "sky_revenue_correction": "5402.754199239745043581580"
+    },
+    {
+      "cutoff": "2026-09-17",
+      "old_revision": "8d095ba6c1bb20931d2e0d391e1f5eb918305a115787c2b2e8030452fd574c27",
+      "new_revision": "cb15b401aa7a788f43717f0fbfa5aa8a06f293b25205f8e8ba8c3c092b9894e5",
+      "mtd_prime_revenue": "4425815.582574415658999203427",
+      "daily_prime_revenue": "212241.073298819768151428818",
+      "mtd_revenue_correction": "79688219.79353765403687917999",
+      "sky_revenue_correction": "5893.913671897903683907179"
+    },
+    {
+      "cutoff": "2026-09-18",
+      "old_revision": "d3e8cb326212b8aba3feb2242a191f77d39fa047a44f80179b227665e19ccc14",
+      "new_revision": "c4986e1d7c2dea520e467e6b9a4dd854a52d0b4c82e5d9b56038c79445833a77",
+      "mtd_prime_revenue": "4642447.468194077453772712392",
+      "daily_prime_revenue": "216631.885619661794773508965",
+      "mtd_revenue_correction": "79688219.79353765403687917999",
+      "sky_revenue_correction": "6385.073144556062324232777"
+    },
+    {
+      "cutoff": "2026-09-19",
+      "old_revision": "1a0733c3aaac6ace7968af5bfec2bce6e2bdc0e959c872c9dce229ef288ae285",
+      "new_revision": "b24abafd59d7acf72ace2e682d3cf4e9996a6dc87360b2938ab4f58acfc97e45",
+      "mtd_prime_revenue": "4858320.146313737865877362380",
+      "daily_prime_revenue": "215872.678119660412104649988",
+      "mtd_revenue_correction": "79688219.79353765403687918000",
+      "sky_revenue_correction": "6876.232617214220964558375"
+    },
+    {
+      "cutoff": "2026-09-20",
+      "old_revision": "20993669fc92b19659edaf604f84f5ce1f813e091d9ca954c1593f8b80596e8b",
+      "new_revision": "983010bf404e38349f01cc8509ba9e35bd7728066fcb0097054c6c287e678d71",
+      "mtd_prime_revenue": "5076248.976926750940228812622",
+      "daily_prime_revenue": "217928.830613013074351450242",
+      "mtd_revenue_correction": "79688219.79353765403687918000",
+      "sky_revenue_correction": "7367.392089872379604883973"
+    },
+    {
+      "cutoff": "2026-09-21",
+      "old_revision": "a3832d745dcdc69790f53137a82f50cd3dd2042503b6ce010988a7323ae5671a",
+      "new_revision": "42e3cd0b83c9c868552eab6f724d1816b61dba4d46ffbc4d7e81655166f86b30",
+      "mtd_prime_revenue": "5310461.116859133693884202901",
+      "daily_prime_revenue": "234212.139932382753655390279",
+      "mtd_revenue_correction": "79688219.79353765403687918000",
+      "sky_revenue_correction": "7858.551562530538245209571"
+    },
+    {
+      "cutoff": "2026-09-22",
+      "old_revision": "470d88cb962f659a31945ea2f322fc2c4bbb90c130c19043f5e6c3d1134b7e22",
+      "new_revision": "3812ed1a4b4fe8e43d633b0904f762229fe1c79cc56d204f87d7e72f41c672d2",
+      "mtd_prime_revenue": "5860559.334194487394476441010",
+      "daily_prime_revenue": "550098.217335353700592238109",
+      "mtd_revenue_correction": "79688219.79353765403687918000",
+      "sky_revenue_correction": "8349.711035188696885535169"
+    }
+  ]
+}
