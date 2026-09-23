@@ -130,18 +130,16 @@ def test_bridge_receipt_can_be_invested_without_net_cash_increase(monkeypatch):
     assert not replay.unmatched_receipts and not replay.unmatched_outflows
 
 
-def test_large_cctp_receipt_query_is_bounded_and_covers_every_nonce(monkeypatch):
-    from settle.domain.primes import Chain
-    from settle.normalize import allocation_bridges as bridges
-
+def test_cctp_receipts_join_recipient_mints_instead_of_a_giant_nonce_filter(monkeypatch):
     queried = []
     def fetch(chain, selections, lo, hi, **kwargs):
-        queried.append(selections[0]['topics'][2])
+        queried.append(selections)
         assert (chain, lo, hi) == ('base', 0, 123)
-        assert selections[0]['address'] == [TRANSMITTER.hex]
+        assert selections == [{'address': [MESSENGER.hex],
+                               'topics': [[bridges.MINT_AND_WITHDRAW], [atopic(RECIPIENT)]]}]
+        assert kwargs['join_mode'] == 'JoinAll'
+        assert kwargs['result_topic0'] == bridges.MESSAGE_RECEIVED
         return []
     monkeypatch.setattr(bridges.hypersync_store, 'fetch_logs', fetch)
-    topics = {'0x' + f'{n:064x}' for n in range(4501)}
-    assert list(bridges._received_logs(Chain.BASE, 123, topics, {TRANSMITTER.hex})) == []
-    assert [len(batch) for batch in queried] == [2000, 2000, 501]
-    assert set().union(*map(set, queried)) == topics
+    assert bridges._received_logs(Chain.BASE, 123, RECIPIENT.hex, {MESSENGER.hex}) == []
+    assert len(queried) == 1

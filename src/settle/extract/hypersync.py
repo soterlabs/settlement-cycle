@@ -127,6 +127,8 @@ def query_logs(
     *,
     log_fields: list[str] | None = None,
     block_fields: list[str] | None = None,
+    join_mode: str | None = None,
+    result_topic0: str | None = None,
     post: Callable[..., Any] = requests.post,
 ) -> QueryResult:
     """Fetch all logs matching ``selections`` in ``[from_block, to_block]`` (inclusive).
@@ -134,14 +136,22 @@ def query_logs(
     ``selections`` is HyperSync's ``logs`` array — each entry is
     ``{"address": [...], "topics": [[topic0...], [topic1...], ...]}``; multiple
     entries are OR'd. Pages are followed via ``next_block`` until ``to_block``.
+    ``JoinAll`` also returns sibling logs of matching transactions;
+    ``result_topic0`` retains only that event type from the joined response.
     """
     lf = log_fields or _DEFAULT_LOG_FIELDS
+    if result_topic0 is not None and 'topic0' not in lf:
+        raise ValueError('Joined event projection requires the topic0 field')
     bf = block_fields or _DEFAULT_BLOCK_FIELDS
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {_token()}"}
     base = {
         "logs": selections,
         "field_selection": {"log": lf, "block": bf},
     }
+    if join_mode is not None:
+        if join_mode not in {'Default', 'JoinAll', 'JoinNothing'}:
+            raise ValueError('Invalid HyperSync join mode')
+        base['join_mode'] = join_mode
     result = QueryResult()
     cursor = from_block
     end_exclusive = to_block + 1  # HyperSync to_block is exclusive
@@ -161,6 +171,8 @@ def query_logs(
                 for b in (group.get("blocks") or [])
             }
             for lg in group.get("logs") or []:
+                if result_topic0 is not None and _lower(lg.get('topic0')) != result_topic0.lower():
+                    continue
                 bn = to_int(lg["block_number"])
                 ts = ts_by_block.get(bn)
                 if ts is None:
