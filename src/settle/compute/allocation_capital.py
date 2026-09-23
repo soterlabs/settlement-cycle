@@ -167,6 +167,9 @@ def replay_history(history, start: date, end: date) -> CapitalReplay:
     These are reconciliation evidence for the normalizer's custody adapters,
     not proof that the money was earned. Uncertainty propagates on reinvestment.
     """
+    from .executed_spell_capital import apply_executed_spells
+
+    history = apply_executed_spells(history)
     if end < start:
         raise ValueError("Capital period ends before it starts")
     if len({b.identity for b in history.batches}) != len(history.batches):
