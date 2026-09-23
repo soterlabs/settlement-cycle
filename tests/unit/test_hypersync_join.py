@@ -12,6 +12,7 @@ def test_joined_log_projection_is_forwarded_and_only_retains_requested_events(mo
     def post(url, *, json, **kwargs):
         calls.append(json)
         assert json['join_mode'] == 'JoinAll' and json['logs'] == selected
+        assert json['max_num_logs'] == json['max_num_blocks'] == json['max_num_transactions'] == 100_000
         return SimpleNamespace(status_code=200, ok=True, json=lambda: {
             'archive_height': 1000, 'next_block': 11,
             'data': [{'blocks': [{'number': 10, 'timestamp': 123}], 'logs': [
