@@ -16,6 +16,7 @@ DEPOSIT_FOR_BURN = "0x" + keccak256(
     b"DepositForBurn(uint64,address,uint256,address,bytes32,uint32,bytes32,bytes32)"
 ).hex()
 MESSAGE_RECEIVED = "0x" + keccak256(b"MessageReceived(address,uint32,uint64,bytes32,bytes)").hex()
+MINT_AND_WITHDRAW = '0x' + keccak256(b'MintAndWithdraw(address,uint256,address)').hex()
 
 
 def _view(chain, address, signature, block):
@@ -69,16 +70,16 @@ def funded_cctp_burns(chain, rows, tracked_usdc, verified):
     return result
 
 
-def _received_logs(chain, pin, nonce_topics, transmitters):
-    # Spark's inception history has tens of thousands of messages. One OR
-    # filter exceeds HyperSync's 2 MiB request limit; each bounded batch has
-    # independent persisted coverage and can be resumed after a failed run.
-    topics = sorted(nonce_topics)
-    for offset in range(0, len(topics), 2000):
-        yield from hypersync_store.fetch_logs(chain.value, [{
-            'address': sorted(transmitters),
-            'topics': [[MESSAGE_RECEIVED], [], topics[offset:offset + 2000]],
-        }], 0, pin, log_fields=[*hypersync._DEFAULT_LOG_FIELDS, 'transaction_hash'])
+def _received_logs(chain, pin, recipient, messengers):
+    # Every CCTP v1 delivery emits MintAndWithdraw with an indexed recipient.
+    # Join its transaction's logs to obtain MessageReceived, whose body is
+    # unindexed. This avoids giant nonce OR-filters and repeated chain scans.
+    # Persist only message logs under a distinct join/projection cache key.
+    return hypersync_store.fetch_logs(chain.value, [{
+        'address': sorted(messengers),
+        'topics': [[MINT_AND_WITHDRAW], ['0x' + recipient[2:].rjust(64, '0')]],
+    }], 0, pin, log_fields=[*hypersync._DEFAULT_LOG_FIELDS, 'transaction_hash'],
+        join_mode='JoinAll', result_topic0=MESSAGE_RECEIVED)
 
 
 def link_cctp(prime, pins, batches, burns):
@@ -125,8 +126,7 @@ def link_cctp(prime, pins, batches, burns):
         transmitters = {messenger: '0x' + _view(
             chain, messenger, 'localMessageTransmitter()', pins[chain])[-40:]
             for messenger in {m['destination_messenger'] for m in selected.values()}}
-        nonce_topics = {'0x' + f'{key[1]:064x}' for key in selected}
-        received = _received_logs(chain, pins[chain], nonce_topics, set(transmitters.values()))
+        received = _received_logs(chain, pins[chain], prime.alm[chain].hex, set(transmitters))
         seen = set()
         for row in received:
             if (row.block_number, row.log_index) in seen:
