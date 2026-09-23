@@ -1,6 +1,6 @@
 """Once-daily prime revenue worker; UTC cutoffs, durable retries, no artifact writes.
 
-python -m settle.revenue.worker [--prime obex] [--from YYYY-MM-DD --to YYYY-MM-DD]
+python -m settle.revenue.worker [--prime obex] [--from YYYY-MM-DD --to YYYY-MM-DD [--missing-only]]
 """
 from __future__ import annotations
 
@@ -32,9 +32,11 @@ from .verification import PRIMES, ProviderAudit, digest, validate_window
 _log = logging.getLogger('settle.revenue.worker')
 
 
-def planned_dates(published, attempted, today, start=None, end=None, initial=None):
+def planned_dates(published, attempted, today, start=None, end=None, initial=None, *, missing_only=False):
     """Fill known gaps within 90 days; a first installation starts yesterday."""
     floor, yesterday = today - timedelta(days=90), today - timedelta(days=1)
+    if missing_only and (start is None or end is None):
+        raise ValueError('--missing-only requires an explicit --from and --to window')
     if (start is None) != (end is None):
         raise ValueError('--from and --to must be supplied together')
     if start is not None:
@@ -51,8 +53,9 @@ def planned_dates(published, attempted, today, start=None, end=None, initial=Non
             seen.append(max(floor, initial))
         first, last = min(seen, default=yesterday), yesterday
     return [first + timedelta(days=i) for i in range((last - first).days + 1)
-            if start is not None or first + timedelta(days=i) not in published
-            or first + timedelta(days=i) == yesterday]
+            if (not missing_only or first + timedelta(days=i) not in published)
+            and (start is not None or first + timedelta(days=i) not in published
+                 or first + timedelta(days=i) == yesterday)]
 
 
 def lock_key(prime):
@@ -62,7 +65,7 @@ def lock_key(prime):
 
 def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_monthly_pnl,
               capture=store.capture_versions, attempts=3, pause=time.sleep, prepare=prepare_reference_rates,
-              now=None):
+              now=None, missing_only=False):
     now = now or (datetime.combine(today, datetime.min.time(), UTC).replace(hour=20, minute=17)
                   if today else datetime.now(UTC))
     today = today or now.astimezone(UTC).date()
@@ -80,7 +83,7 @@ def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_
         attempted = {r[0] for r in conn.execute('SELECT DISTINCT cutoff FROM revenue_attempts WHERE prime=%s', (prime,))}
         initial = os.environ.get("REVENUE_START_DATE")
         dates = planned_dates(published, attempted, today, start, end,
-                              date.fromisoformat(initial) if initial else None)
+                              date.fromisoformat(initial) if initial else None, missing_only=missing_only)
         config = load_prime_by_id(prime)
         ready_through = available_cutoff(config, today - timedelta(days=1), now)
         # Anchor a first weekend installation at the last publishable day so
@@ -99,6 +102,8 @@ def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_
                     VALUES (%s,%s,%s,%s,'running')''',
                     (attempt_id, prime, cutoff, Jsonb(dataclasses.asdict(versions))))
                 try:
+                    _log.info('revenue attempt prime=%s cutoff=%s attempt=%s',
+                              prime, cutoff, attempt + 1)
                     config = load_prime_by_id(prime)
                     prepared = prepare(conn, config, cutoff)
                     if capture() != versions:
@@ -141,6 +146,7 @@ def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_
                                                  input_provenance=provenance)
                         conn.execute("UPDATE revenue_attempts SET status='succeeded', finished_at=NOW(), "
                                      "revision_id=%s WHERE attempt_id=%s", (revision, attempt_id))
+                    _log.info('revenue published prime=%s cutoff=%s revision=%s', prime, cutoff, revision)
                     results.append({'cutoff': str(cutoff), 'status': 'succeeded', 'revision_id': revision})
                     break
                 except (Exception, RequiredInputFailure) as exc:
@@ -188,9 +194,11 @@ def main():
     parser.add_argument('--prime', choices=PRIMES, action='append')
     parser.add_argument('--from', dest='start', type=date.fromisoformat)
     parser.add_argument('--to', dest='end', type=date.fromisoformat)
+    parser.add_argument('--missing-only', action='store_true',
+                        help='Fill only unpublished dates in an explicit window; preserve existing revisions')
     args = parser.parse_args()
     today = datetime.now(UTC).date()
-    planned_dates(set(), set(), today, args.start, args.end)  # validate before DB/provider work
+    planned_dates(set(), set(), today, args.start, args.end, missing_only=args.missing_only)  # validate before DB/provider work
     os.environ['SETTLE_REQUIRE_POSTGRES'] = '1'
     logging.basicConfig(level=logging.INFO)
     reports = []
@@ -198,7 +206,8 @@ def main():
         try:
             with connect(autocommit=True) as conn:
                 store.apply_schema(conn)
-                report = run_prime(conn, prime, today=today, start=args.start, end=args.end)
+                report = run_prime(conn, prime, today=today, start=args.start, end=args.end,
+                                   missing_only=args.missing_only)
         except (Exception, RequiredInputFailure) as exc:
             report = {'prime': prime, 'status': 'failed', 'error_type': type(exc).__name__}
             _log.error('ALERT daily revenue worker failed for %s: %s', prime, type(exc).__name__)

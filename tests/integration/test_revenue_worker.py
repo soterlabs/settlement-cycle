@@ -106,3 +106,32 @@ def test_weekend_sofr_defers_without_failed_attempt_and_monday_recovers(database
         assert report['status'] == 'ok'
         assert [r['status'] for r in report['results']] == ['succeeded'] * 3
         assert conn.execute('SELECT count(*) FROM revenue_results').fetchone()[0] == 3
+
+
+def test_missing_only_backfill_keeps_published_revision_across_code_changes(database):  # noqa: F811
+    pnl = example()
+    old = store.Versions('published-code', 'config', '0')
+    new = replace(old, code='backfill-code')
+    previous = pnl.as_of - timedelta(days=1)
+    calls = []
+
+    def compute(config, month, *, as_of):
+        from settle.domain.period import Period
+        calls.append(as_of)
+        return replace(pnl, period=Period.from_month(month, {}, as_of=as_of))
+
+    with psycopg.connect(database, autocommit=True) as conn:
+        store.apply_schema(conn)
+        with conn.transaction():
+            original_revision = store.publish(conn, pnl, old)
+        report = worker.run_prime(conn, 'obex', start=previous, end=pnl.as_of,
+                                  missing_only=True, compute=compute, capture=lambda: new)
+        assert report['status'] == 'ok'
+        assert calls == [previous]
+        assert store.read(conn, 'obex', cutoff=pnl.as_of)['revision_id'] == original_revision
+        assert len(store.revisions(conn, 'obex', pnl.as_of)) == 1
+        assert store.read(conn, 'obex', cutoff=previous)['code_version'] == new.code
+        report = worker.run_prime(conn, 'obex', start=previous, end=pnl.as_of,
+                                  missing_only=True, compute=compute, capture=lambda: new)
+        assert report['results'] == []
+        assert calls == [previous]
