@@ -2035,7 +2035,10 @@ def _cat_a_capital_inflow_timeseries(
       out of revenue, included here
 
     ``principal_return_overrides``: optional ``{address_bytes:
-    [(date, amount), …]}`` map. When set, an inflow whose ``(counterparty,
+    [(date, amount, capital_amount?), …]}`` map. An explicit capital_amount
+    includes only that portion of a positive matched receipt as capital; the
+    residual remains revenue. Legacy two-element entries retain full-capital
+    treatment. When set, an inflow whose ``(counterparty,
     block_date, signed_amount)`` matches an entry is reclassified as
     capital instead of yield — used for tri-party loan principal-correction
     or loan-termination events that arrive from an `external_alm_sources`
@@ -2207,6 +2210,9 @@ def _cat_a_capital_inflow_timeseries(
     # known quirk where bytes values containing leading null bytes (notably
     # the zero address ``b"\x00" * 20``) compare incorrectly. Use ``apply``
     # with Python ``in`` for correct bytes equality.
+    # Source adapters may concatenate frames with repeated index labels. Keep
+    # partial-return assignments row-local rather than broadcasting via .loc.
+    detail = detail.reset_index(drop=True)
     norm = detail["counterparty"].map(_to_bytes)
     is_external_cp = norm.apply(lambda b: b in external_sources)
 
@@ -2233,24 +2239,27 @@ def _cat_a_capital_inflow_timeseries(
     # reclassified as capital (e.g., a tri-party loan principal correction
     # or loan-termination return). Match tolerance: ±$1.
 
+    capital_mask = ~is_external
+    partial_capital = {}
     if principal_return_overrides:
-        def _is_override(row):
+        for idx, row in detail.iterrows():
             cp = row["_cp_bytes"]
-            if cp not in external_sources:
-                return False
-            entries = principal_return_overrides.get(cp, [])
-            sa = abs(_Decimal(str(row["signed_amount"])))
-            bd = row["block_date"]
-            for entry_date, entry_amount in entries:
-                if bd == entry_date and abs(sa - entry_amount) <= 1:
-                    return True
-            return False
-
-        is_principal_return = detail.apply(_is_override, axis=1)
-        # Capital = (not external INFLOW) OR (external AND override-matched)
-        capital_mask = ~is_external | is_principal_return
-    else:
-        capital_mask = ~is_external
+            amount = _Decimal(str(row["signed_amount"]))
+            if cp not in external_sources or amount <= 0:
+                continue
+            matches = [entry for entry in principal_return_overrides.get(cp, [])
+                       if row["block_date"] == entry[0] and abs(amount - entry[1]) <= 1]
+            if len(matches) > 1:
+                raise ValueError("Ambiguous principal-return overrides")
+            if matches:
+                entry = matches[0]
+                capital = entry[2] if len(entry) == 3 else None
+                if capital is not None:
+                    capital = _Decimal(str(capital))
+                    if not capital.is_finite() or not 0 <= capital <= amount:
+                        raise ValueError("Principal portion exceeds actual matched inflow")
+                    partial_capital[idx] = capital
+                capital_mask.loc[idx] = True
 
     # Apply yield-reversal overrides (the mirror of principal-return):
     # an OUTFLOW to an external source matching a registered (date,
@@ -2285,6 +2294,9 @@ def _cat_a_capital_inflow_timeseries(
         else _Decimal("0")
         for i in range(len(detail))
     ]
+
+    for idx, capital in partial_capital.items():
+        detail.loc[idx, "_capital_amount"] = capital
 
     # Paired-principal-cap override: inflows from each ``paired_source`` are
     # classified per-event using a running cap against the corresponding

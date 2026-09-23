@@ -1427,6 +1427,17 @@ principal_return_overrides:
         amount: 51267944
         token: 'USDC'
         note: 'monthly-rollover principal return (embedded final interest unsplittable, split unconfirmed), not standalone yield'
+      # September rollover: 10M returned plus 8.639471 retained escrow cash.
+      # Interest arrived separately (24,410 USDC); preserve it as revenue.
+      # Principal funding: ethereum tx
+      # 0xd2961f325f3b00ed0a3b78ca8120d35fe352dbbcf06931291ea0f0b883ba184b
+      # Interest leg: 0xbedf1256d84d57d80ddb4bc2d41122c9eb6bfa8e0ff496074c354b64cea45df3
+      # Combined receipt: 0x0a601288df4f132dec815aff107eed00a908a78e6e9753987bcd774fb96d393b
+      - date: '2026-09-11'
+        amount: '10024418.639471'
+        capital_amount: '10000008.639471'
+        token: 'USDC'
+        note: 'September Anchorage rollover: principal return; preserve 24,410 interest'
       # STANDING RULE (no fixed maturity any more — the loan rolled over
       # at 2026-06-16 and renews monthly per Spark, 2026-07): whenever a
       # principal-sized inflow from this escrow appears (i.e. not in the

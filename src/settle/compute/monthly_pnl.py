@@ -3482,9 +3482,7 @@ def compute_monthly_pnl(
                 elif venue.chain in prime.psm:
                     # L2: plain ERC-20 sUSDS — price via PSM3 pps.
                     # psm3_src is already set in the L2 revaluation block above.
-                    from ..normalize.positions import _erc4626_shares_weighted_inflow
-                    from ..extract.rpc import balance_of as _bal_of
-                    from ..domain.primes import Address as _Addr_b, Chain as _Chain_b
+                    from ..normalize.holder_share_flows import holder_share_inflows
 
                     def _susds_price(
                         block, _psm=psm3_src, _chain=venue.chain.value,
@@ -3492,28 +3490,19 @@ def compute_monthly_pnl(
                         pps_raw = _psm.susds_pps(_chain, block)
                         return _Dec(pps_raw) / _Dec(10**18)
 
-                    if venue.chain.value in _DUNE_BLOCK_CHAINS:
-                        _susds_balance_src = (
-                            sources.balance
-                            if sources.balance is not None
-                            else get_balance_source()
-                        )
-                        inflow_ts = _shares_to_usd_inflow_timeseries(
-                            prime, venue, period,
-                            balance_source=_susds_balance_src,
-                            block_resolver=resolver,
-                            price_at_block=_susds_price,
-                            period_only=True,
-                        )
-                    else:
-                        inflow_ts = _erc4626_shares_weighted_inflow(
-                            prime, venue, som_block, eom_block,
-                            period_end_date=period.end,
-                            balance_at=lambda c, t, h, b: _bal_of(
-                                _Chain_b(c), _Addr_b(t), _Addr_b(h), b,
-                            ),
-                            price_at_block=_susds_price,
-                        )
+                    # Plain L2 sUSDS moves into/out of PSM3 via ordinary
+                    # Transfers, not just mints/burns. Preserve the real day
+                    # for both MtM capital and daily spread reimbursement.
+                    inflow_ts = holder_share_inflows(
+                        prime, venue, period,
+                        balance_source=(sources.balance if sources.balance is not None
+                                        else get_balance_source(venue.event_source)),
+                        block_resolver=resolver, price_at_block=_susds_price,
+                        opening_shares=get_position_balance(
+                            prime, venue, som_block, source=sources.position_balance),
+                        closing_shares=get_position_balance(
+                            prime, venue, eom_block, source=sources.position_balance),
+                    )
                 else:
                     inflow_ts = pd.DataFrame({
                         "block_date": [], "daily_inflow": [], "cum_inflow": [],
@@ -3670,7 +3659,8 @@ def compute_monthly_pnl(
                 # ``_to_bytes`` normalisation inside the helper).
                 overrides_for_chain = prime.principal_return_overrides.get(venue.chain, {})
                 overrides_by_bytes = {
-                    addr.value: [(o.date, o.amount) for o in entries]
+                    addr.value: [(o.date, o.amount, o.capital_amount) for o in entries
+                                 if not o.token or o.token == venue.token.symbol]
                     for addr, entries in overrides_for_chain.items()
                 }
                 # Yield-reversal overrides — the outflow mirror (ALM →

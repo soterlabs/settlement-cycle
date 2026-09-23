@@ -679,8 +679,20 @@ class PrincipalReturnOverride:
 
     date: date
     amount: Decimal
-    token: str = ""    # token symbol — sanity check for human readers
+    token: str = ""    # optional token-symbol filter for principal-return matching
     note: str = ""
+    # None preserves legacy full-principal treatment of the actual matched row,
+    # including its ±$1 matching tolerance. An explicit value splits the receipt.
+    capital_amount: Decimal | None = None
+
+    def __post_init__(self) -> None:
+        if not self.amount.is_finite() or self.amount < 0:
+            raise ValueError("Override amount must be finite and nonnegative")
+        if self.capital_amount is not None and (
+            not self.capital_amount.is_finite()
+            or not Decimal(0) <= self.capital_amount <= self.amount
+        ):
+            raise ValueError("capital_amount must be finite and between zero and amount")
 
 
 @dataclass(frozen=True, slots=True)
