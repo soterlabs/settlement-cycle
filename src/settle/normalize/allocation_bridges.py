@@ -69,13 +69,14 @@ def funded_cctp_burns(chain, rows, tracked_usdc, verified):
     return result
 
 
-def _received_logs(chain, pin, nonce_topics):
+def _received_logs(chain, pin, nonce_topics, transmitters):
     # Spark's inception history has tens of thousands of messages. One OR
     # filter exceeds HyperSync's 2 MiB request limit; each bounded batch has
     # independent persisted coverage and can be resumed after a failed run.
     topics = sorted(nonce_topics)
     for offset in range(0, len(topics), 2000):
         yield from hypersync_store.fetch_logs(chain.value, [{
+            'address': sorted(transmitters),
             'topics': [[MESSAGE_RECEIVED], [], topics[offset:offset + 2000]],
         }], 0, pin, log_fields=[*hypersync._DEFAULT_LOG_FIELDS, 'transaction_hash'])
 
@@ -110,13 +111,22 @@ def link_cctp(prime, pins, batches, burns):
         messages[key] = {"account": account, "amount": amount, "raw_amount": words[0],
                          "token": row.topic2, "owner": row.topic3, "recipient": recipient,
                          "destination": words[2], "received": False, "sent_at": row.block_time}
+        messages[key]['destination_messenger'] = '0x' + f'{words[3]:064x}'[-40:]
         batch = by_id[identity]
         by_id[identity] = replace(batch, movements=(*batch.movements,
                                                    AssetMovement(account, Decimal(0), amount)))
     for chain in prime.alm:
-        nonce_topics = {'0x' + f'{key[1]:064x}' for key, m in messages.items()
-                        if m['recipient'] == prime.alm[chain].hex}
-        received = _received_logs(chain, pins[chain], nonce_topics)
+        selected = {k: m for k, m in messages.items() if m['recipient'] == prime.alm[chain].hex}
+        if not selected:
+            continue
+        # The source burn names its destination messenger. Read that
+        # messenger's immutable transmitter, both to authenticate receipts
+        # and avoid scanning unrelated emitters across the entire chain.
+        transmitters = {messenger: '0x' + _view(
+            chain, messenger, 'localMessageTransmitter()', pins[chain])[-40:]
+            for messenger in {m['destination_messenger'] for m in selected.values()}}
+        nonce_topics = {'0x' + f'{key[1]:064x}' for key in selected}
+        received = _received_logs(chain, pins[chain], nonce_topics, set(transmitters.values()))
         seen = set()
         for row in received:
             if (row.block_number, row.log_index) in seen:
@@ -131,6 +141,10 @@ def link_cctp(prime, pins, batches, burns):
             if key not in messages:
                 continue
             m = messages[key]
+            if m['recipient'] != prime.alm[chain].hex:
+                continue
+            if row.address != transmitters[m['destination_messenger']]:
+                raise ValueError('CCTP receipt emitter mismatch')
             offset = int.from_bytes(raw[64:96], "big")
             length = int.from_bytes(raw[offset:offset + 32], "big")
             body = raw[offset + 32:offset + 32 + length]

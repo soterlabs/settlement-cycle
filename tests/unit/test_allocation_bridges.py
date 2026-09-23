@@ -71,6 +71,17 @@ def test_cctp_rejects_a_different_message_amount(monkeypatch):
         bridges.link_cctp(prime, {Chain.ETHEREUM: 10, Chain.BASE: 10}, batches, burns)
 
 
+def test_cctp_rejects_receipt_from_an_unrelated_emitter(monkeypatch):
+    from dataclasses import replace
+
+    prime, batches, burns = fixture(monkeypatch)
+    fetch = bridges.hypersync_store.fetch_logs
+    monkeypatch.setattr(bridges.hypersync_store, 'fetch_logs', lambda *a, **k:
+                        [replace(r, address=USDC.hex) for r in fetch(*a, **k)])
+    with pytest.raises(ValueError, match='receipt emitter mismatch'):
+        bridges.link_cctp(prime, {Chain.ETHEREUM: 10, Chain.BASE: 10}, batches, burns)
+
+
 def test_equal_nonce_and_amount_from_other_domain_are_not_matched(monkeypatch):
     prime, batches, burns = fixture(monkeypatch, receive_domain=1)
     linked = bridges.link_cctp(prime, {Chain.ETHEREUM: 10, Chain.BASE: 10}, batches, burns)
@@ -117,6 +128,8 @@ def test_bridge_receipt_can_be_invested_without_net_cash_increase(monkeypatch):
     replay = replay_history(CapitalHistory(tuple(linked), {}, {}), DAY, DAY)
     assert replay.ledger.account('morpho').borrowed == D(100)
     assert not replay.unmatched_receipts and not replay.unmatched_outflows
+
+
 def test_large_cctp_receipt_query_is_bounded_and_covers_every_nonce(monkeypatch):
     from settle.domain.primes import Chain
     from settle.normalize import allocation_bridges as bridges
@@ -125,9 +138,10 @@ def test_large_cctp_receipt_query_is_bounded_and_covers_every_nonce(monkeypatch)
     def fetch(chain, selections, lo, hi, **kwargs):
         queried.append(selections[0]['topics'][2])
         assert (chain, lo, hi) == ('base', 0, 123)
+        assert selections[0]['address'] == [TRANSMITTER.hex]
         return []
     monkeypatch.setattr(bridges.hypersync_store, 'fetch_logs', fetch)
     topics = {'0x' + f'{n:064x}' for n in range(4501)}
-    assert list(bridges._received_logs(Chain.BASE, 123, topics)) == []
+    assert list(bridges._received_logs(Chain.BASE, 123, topics, {TRANSMITTER.hex})) == []
     assert [len(batch) for batch in queried] == [2000, 2000, 501]
     assert set().union(*map(set, queried)) == topics
