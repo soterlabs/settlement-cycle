@@ -17,6 +17,7 @@ SYRUP = '0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b'
 INITIAL = 'ethereum:0xdd5bf338720c06dd098216e53a276a8bac00fddd80e94757f4e12c9e09f853ab'
 PAYMENT = 'ethereum:0xafa23f703044c5296f42ff5202429b0dd16558ddbf677042d2cc9ea036b87667'
 DELIVERY = 'ethereum:0xfafb7edda92afb685a8ea0cfb8b26648220cc533219d3f4a7059e7171046f464'
+BUIDL_INTEREST = 'ethereum:0x0032e26b8e4b284e3c61ea8aeb0870e3f0dbb7d3173945faf0449ca6ec5138e8'
 JTRSY_COST = D('404016484')
 BUIDL_COST = D('608367166.98')
 SYRUP_COST = D('100928938.340794')
@@ -48,6 +49,24 @@ def apply_executed_spells(history):
     custody = {k: list(v) for k, v in history.custody_accounts.items()}
     holders = {a.split(':')[1] for a in history.venue_accounts.values()
                if a.startswith('ethereum:')}
+    # September 4 payload, executed September 8, 2025: issuer interest was
+    # mistakenly paid to Spark after the portfolio sale and forwarded to Grove.
+    # It carries no new borrowed principal. Limit this to the exact execution;
+    # a general Spark-sender allowlist would also misclassify capital purchases.
+    # https://forum.skyeco.com/t/september-4-2025-proposed-changes-to-spark-for-upcoming-spell/27102/1
+    # https://github.com/sparkdotfi/spark-spells/blob/dc2a653f4b2f5491641276e913cae06e221ce8ea/archive/20250904/SparkEthereum_20250904.sol
+    # The adjacent spell test asserts the exact 900,612.89 BUIDL balance.
+    if BUIDL_INTEREST in indexes and GROVE in holders:
+        _require(SPARK not in holders, 'mixed prime history')
+        i = indexes[BUIDL_INTEREST]
+        b = batches[i]
+        _require(b.block == 23319630 and b.chain == 'ethereum', 'BUIDL interest execution block')
+        m = _movement(b, account(GROVE, BUIDL))
+        _require(b.minted == 0 and m.change == D('900612.89') and m.external_income == 0,
+                 'BUIDL forwarded interest')
+        batches[i] = replace(b, identity=b.identity + SUFFIX,
+            movements=tuple(replace(x, external_income=x.change) if x.account == m.account else x
+                            for x in b.movements))
     # July 24 Sky spell executed July 28, 2025 at block 23018751:
     # https://github.com/sky-ecosystem/spells-mainnet/blob/50ea24e8605a31e283100b9f59f873404d939b87/archive/2025-07-24-DssSpell/DssSpell.sol
     # Grove _sendUSDSToSpark fixes JTRSY's cost at 404,016,484 USDS; BUIDL at par:

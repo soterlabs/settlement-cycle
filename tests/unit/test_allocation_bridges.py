@@ -78,3 +78,42 @@ def test_equal_nonce_and_amount_from_other_domain_are_not_matched(monkeypatch):
     assert replay.ledger.account("destination_cash").borrowed == 0
     assert "destination_cash" in replay.uncertain_accounts
     assert sum((a.borrowed for a in replay.ledger.accounts.values()), D(0)) == D(100)
+
+
+def test_multiple_burns_use_distinct_payments_to_minter(monkeypatch):
+    from dataclasses import replace
+
+    from settle.extract.transfer_logs import TRANSFER_TOPIC0
+
+    _, _, burns = fixture(monkeypatch)
+    burn = burns[0][1]
+    minter = Address(bytes.fromhex('66' * 20))
+    monkeypatch.setattr(bridges, '_view', lambda *args: atopic(minter))
+    payment = LogRow(2, 1, TS + 10, USDC.hex, TRANSFER_TOPIC0,
+                     atopic(HOLDER), atopic(minter), None, '0x' + word(100_000_000).hex(), '0xburn')
+    second = replace(burn, log_index=4, topic1='0x' + word(8).hex())
+    rows = [payment, burn, replace(payment, log_index=3), second]
+    verified = set()
+    result = bridges.funded_cctp_burns(Chain.ETHEREUM, rows, {(USDC.hex, HOLDER.hex)}, verified)
+    assert len(result) == 2 and len(verified) == 2
+    with pytest.raises(ValueError, match='TokenMinter payment'):
+        bridges.funded_cctp_burns(Chain.ETHEREUM, [payment, burn, second],
+                                  {(USDC.hex, HOLDER.hex)}, set())
+    with pytest.raises(ValueError, match='TokenMinter payment'):
+        bridges.funded_cctp_burns(Chain.ETHEREUM,
+                                  [replace(payment, topic2=atopic(MESSENGER)), burn],
+                                  {(USDC.hex, HOLDER.hex)}, set())
+
+
+def test_bridge_receipt_can_be_invested_without_net_cash_increase(monkeypatch):
+    from dataclasses import replace
+
+    prime, batches, burns = fixture(monkeypatch)
+    batches[-1] = replace(batches[-1], movements=(
+        AssetMovement('destination_cash', D(0), D(0)),
+        AssetMovement('morpho', D(0), D(100)),
+    ))
+    linked = bridges.link_cctp(prime, {Chain.ETHEREUM: 10, Chain.BASE: 10}, batches, burns)
+    replay = replay_history(CapitalHistory(tuple(linked), {}, {}), DAY, DAY)
+    assert replay.ledger.account('morpho').borrowed == D(100)
+    assert not replay.unmatched_receipts and not replay.unmatched_outflows

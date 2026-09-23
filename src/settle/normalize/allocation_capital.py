@@ -20,7 +20,7 @@ from ..extract import aave_reconstruct, hypersync, hypersync_store, rpc
 from ..extract._keccak import keccak256
 from ..extract.transfer_logs import TRANSFER_TOPIC0
 from .allocation_async_vaults import CAPITAL_ASSETS, REDEEM_REQUEST, AsyncVaultCapital
-from .allocation_bridges import DEPOSIT_FOR_BURN, link_cctp
+from .allocation_bridges import funded_cctp_burns, link_cctp
 from .allocation_nfts import NFTCapital
 from .allocation_psm import PsmCapital
 from .prices import get_unit_price, is_par_stable
@@ -206,24 +206,9 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
             nft_movements, nft_fees = nft.movements(block_logs)
             custody_sends = {_account(chain, Address.from_str(key[0]), Address.from_str(key[1]))
                              for row, key in async_selected if row.topic0 == REDEEM_REQUEST}
-            for row in block_logs:
-                if row.topic0 != DEPOSIT_FOR_BURN:
-                    continue
-                key = ("0x" + row.topic2[-40:], "0x" + row.topic3[-40:])
-                asset = mapping.get(key)
-                if asset is None or asset.token.symbol != "USDC" or asset.token.decimals != 6:
-                    continue
-                words = aave_reconstruct._words(row.data)
-                message_key = (chain, row.address, row.topic1)
-                paid = sum(int(r.data, 16) for r in block_logs
-                           if r.address == key[0] and r.topic0 == TRANSFER_TOPIC0
-                           and r.topic1 == row.topic3
-                           and r.topic2 == _addr_topic(bytes.fromhex(row.address[2:])))
-                if len(words) != 5:
-                    raise ValueError("Invalid CCTP burn event")
-                if paid == words[0] or message_key in verified_burns:
-                    verified_burns.add(message_key)
-                    bridge_burns.append((chain, row))
+            tracked_usdc = {key for key, v in mapping.items()
+                            if v.token.symbol == "USDC" and v.token.decimals == 6}
+            bridge_burns.extend(funded_cctp_burns(chain, block_logs, tracked_usdc, verified_burns))
             changes: dict[tuple[str, str], int] = defaultdict(int)
             gifts: dict[tuple[str, str], int] = defaultdict(int)
             issuer_mints: dict[tuple[str, str], list[int]] = defaultdict(list)
@@ -474,6 +459,9 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
         for vid, accounts in nft.custody_accounts.items():
             custody_accounts[vid].extend(accounts)
     batches = link_cctp(prime, pins, batches, bridge_burns)
+    from .allocation_ethena import link_ethena_cooldowns
+
+    batches, custody_accounts = link_ethena_cooldowns(prime, pins, batches, custody_accounts)
     idle_accounts = {_account(c, USDS_BY_CHAIN[c].address, holder)
                      for c, holder in prime.alm.items() if c in USDS_BY_CHAIN}
     return CapitalHistory(tuple(sorted(batches, key=lambda b: (b.timestamp, b.chain, b.block, b.log_index))),
