@@ -43,6 +43,8 @@ def apply_executed_spells(history):
 
     batches = list(history.batches)
     indexes = {b.identity: i for i, b in enumerate(batches)}
+    if len(indexes) != len(batches):
+        raise ValueError("Duplicate capital transaction")
     custody = {k: list(v) for k, v in history.custody_accounts.items()}
     holders = {a.split(':')[1] for a in history.venue_accounts.values()
                if a.startswith('ethereum:')}
