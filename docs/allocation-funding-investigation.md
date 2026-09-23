@@ -4,6 +4,11 @@
 unchanged. This investigation concerns funding provenance for allocation
 analytics, not the global debt calculation.
 
+**September 23 update:** The executed-spell purchase corrections are now
+implemented. Latest replay and MSC-adjusted comparison results are in
+[the spell replay report](spell-capital-replay-2026-08.md); the counts and
+pending statuses below describe the preceding September 22 baseline.
+
 ## Verified defects corrected
 
 1. **Spark PSM3 custody was absent.** PSM3 shares are internal accounting,
