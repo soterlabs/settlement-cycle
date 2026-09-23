@@ -117,3 +117,17 @@ def test_bridge_receipt_can_be_invested_without_net_cash_increase(monkeypatch):
     replay = replay_history(CapitalHistory(tuple(linked), {}, {}), DAY, DAY)
     assert replay.ledger.account('morpho').borrowed == D(100)
     assert not replay.unmatched_receipts and not replay.unmatched_outflows
+def test_large_cctp_receipt_query_is_bounded_and_covers_every_nonce(monkeypatch):
+    from settle.domain.primes import Chain
+    from settle.normalize import allocation_bridges as bridges
+
+    queried = []
+    def fetch(chain, selections, lo, hi, **kwargs):
+        queried.append(selections[0]['topics'][2])
+        assert (chain, lo, hi) == ('base', 0, 123)
+        return []
+    monkeypatch.setattr(bridges.hypersync_store, 'fetch_logs', fetch)
+    topics = {'0x' + f'{n:064x}' for n in range(4501)}
+    assert list(bridges._received_logs(Chain.BASE, 123, topics)) == []
+    assert [len(batch) for batch in queried] == [2000, 2000, 501]
+    assert set().union(*map(set, queried)) == topics
