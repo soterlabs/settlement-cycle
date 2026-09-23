@@ -19,10 +19,10 @@ from ..domain.monthly_pnl import MonthlyPnL, VenueRevenue
 from ..domain.period import Month, Period
 from ..domain.pricing import PricingCategory
 from ..domain.primes import Chain, Prime, PsmKind
-from ..extract.input_cache import revenue_input_scope
-from ..domain.sde import load_sde_table
+from ..domain.sde import InFlightRedemption, load_sde_table
 from ..domain.sky_tokens import USDS_ETHEREUM, sUSDS_ETHEREUM
 from ..domain.subsidy import ReferenceRateHistory, ScheduledReferenceRateHistory, load_reference_rates_for
+from ..extract.input_cache import revenue_input_scope
 from ..normalize import (
     get_debt_timeseries,
     get_position_value,
@@ -662,6 +662,7 @@ def _sde_asset_value_timeseries(
     burn_date: "date | None" = None,
     usdc_settlement_date: "date | None" = None,
     end_date: "date | None" = None,
+    in_flight_redemptions: tuple[InFlightRedemption, ...] = (),
 ) -> pd.DataFrame:
     """Daily SDE asset value (USD) per venue. Returns a level series with
     columns ``[block_date, cum_value, uncapped_value]``.
@@ -715,6 +716,12 @@ def _sde_asset_value_timeseries(
     strictly after ``in_flight_end`` (up to and including ``end_date``)
     return ``cum_value = 0`` — the redemption has settled, so the SDE-
     capped slice no longer ties up prime capital.
+
+    **Partial fixed-SDE redemptions.** Each ``in_flight_redemptions`` item is
+    added to ``cum_value`` for ``burn_date <= day < usdc_settlement_date``.
+    It does not alter ``uncapped_value``, which intentionally remains the raw
+    on-chain balance. The half-open interval matches EoD accounting: by the
+    settlement date's EoD, cash at the ALM replaces the pending receivable.
     """
     if burn_date is not None and end_date is None:
         raise ValueError(
@@ -853,6 +860,18 @@ def _sde_asset_value_timeseries(
             capped_value = cap_usd
         else:
             capped_value = raw_value
+        if not (
+            (start_date is not None and current < start_date)
+            or (end_date is not None and current > end_date)
+        ):
+            capped_value += sum(
+                (
+                    item.value_usd
+                    for item in in_flight_redemptions
+                    if item.burn_date <= current < item.usdc_settlement_date
+                ),
+                Decimal("0"),
+            )
         rows.append({
             "block_date": current,
             "cum_value": capped_value,
@@ -3926,6 +3945,7 @@ def compute_monthly_pnl(
                     burn_date=sde_entry.burn_date,
                     usdc_settlement_date=sde_entry.usdc_settlement_date,
                     end_date=sde_entry.end_date,
+                    in_flight_redemptions=sde_entry.in_flight_redemptions,
                 )
                 # Safeguard: the SDE timeseries reads
                 # ``cumulative_balance_timeseries`` (Dune transfers, filtered

@@ -278,6 +278,13 @@ class Venue:
     # ``min_transfer_amount_usd`` raises — the unfiltered daily yield mints
     # would corrupt the detection.
     fixed_fee_per_capital_event_usd: Decimal | None = None
+    # Cat E only. Persistent exit-cost markdown, in basis points, applied to
+    # every NAV read before the value and flow formulas consume it. This is a
+    # venue-level policy input rather than an oracle kind because the oracle
+    # may still be authoritative for the gross NAV; the haircut represents a
+    # separate contractual realization cost (BUIDL redemption fee: 5 bps).
+    # ``None`` means no haircut. Values must satisfy 0 <= bps < 10_000.
+    nav_haircut_bps: Decimal | None = None
     # DEPRECATED 2026-05-02 — superseded by ``config/sky_direct_exposures.yaml``
     # (loaded as ``SDETable`` in ``compute.monthly_pnl``). Retained as a YAML
     # sink for legacy configs but ignored by compute. Will be removed once
@@ -494,6 +501,18 @@ class Venue:
     event_source: str = "dune"          # per-venue event migration; explicit fixtures still win
 
     def __post_init__(self) -> None:
+        if self.nav_haircut_bps is not None:
+            if self.pricing_category != PricingCategory.RWA_TRANCHE:
+                raise ValueError(
+                    f"Venue {self.id}: nav_haircut_bps is only valid on "
+                    f"PricingCategory.RWA_TRANCHE (Cat E) venues (got "
+                    f"{self.pricing_category.name})."
+                )
+            if not Decimal("0") <= self.nav_haircut_bps < Decimal("10000"):
+                raise ValueError(
+                    f"Venue {self.id}: nav_haircut_bps must satisfy "
+                    f"0 <= bps < 10000 (got {self.nav_haircut_bps})."
+                )
         # ``force_capital_inflow`` short-circuits the Cat A capital-inflow
         # path (see ``compute.monthly_pnl``). It synthesises inflow = Δvalue
         # so revenue collapses to 0, which is ONLY a defensible default for

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -204,6 +205,8 @@ def test_load_prime_grove(config_dir: Path):
 def test_load_prime_grove_nav_oracles(config_dir: Path):
     grove = load_prime(config_dir / "grove.yaml")
     by_id = {v.id: v for v in grove.venues}
+
+    assert by_id["E10"].nav_haircut_bps == Decimal("5")
 
     # JTRSY → Centrifuge pricePerShareFeed primary + Chronicle fallback.
     jtrsy = by_id["E9"]

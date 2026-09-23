@@ -300,6 +300,11 @@ def load_prime(config_path: Path) -> Prime:
                     if v.get("fixed_fee_per_capital_event_usd") is not None
                     else None
                 ),
+                nav_haircut_bps=(
+                    Decimal(str(v["nav_haircut_bps"]))
+                    if v.get("nav_haircut_bps") is not None
+                    else None
+                ),
                 sky_direct=bool(v.get("sky_direct", False)),
                 holder_override=(
                     Address.from_str(v["holder_override"])

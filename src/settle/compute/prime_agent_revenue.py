@@ -477,11 +477,19 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
             ts = inputs.inflow_timeseries
             in_period = ts["block_date"].between(period.start, period.end)
             n_fee_events = 0
+            nav_factor = Decimal("1") - (
+                (inputs.venue.nav_haircut_bps or Decimal("0"))
+                / Decimal("10000")
+            )
             for _, r in ts[in_period].iterrows():
                 amount = r["daily_inflow"]
                 if amount == 0:
                     continue
-                if (abs(amount) + fee_per_event) % _ROUNDING == 0:
+                # Cat E inflows are already priced at the configured exit
+                # mark. Undo that venue-wide factor for this separate flat-fee
+                # signature, which is defined on gross shares at $1 face.
+                gross_amount = abs(amount) / nav_factor
+                if (gross_amount + fee_per_event) % _ROUNDING == 0:
                     n_fee_events += 1
             actual_revenue -= fee_per_event * Decimal(n_fee_events)
 

@@ -30,6 +30,22 @@ _VENUE_KINDS = ("fixed", "capped")
 
 
 @dataclass(frozen=True, slots=True)
+class InFlightRedemption:
+    """A partial fixed-SDE redemption absent from the token balance before
+    its cash proceeds reach the ALM.
+
+    ``value_usd`` is the position's configured settlement-basis value, not
+    necessarily token face value. The interval is EoD-based and half-open:
+    the value is present on ``burn_date`` and absent on
+    ``usdc_settlement_date``, when the cash is already in ALM balances.
+    """
+
+    burn_date: date
+    usdc_settlement_date: date
+    value_usd: Decimal
+
+
+@dataclass(frozen=True, slots=True)
 class SDEEntry:
     prime_id: str
     venue_id: str | None       # None for kind=pattern
@@ -44,7 +60,7 @@ class SDEEntry:
     # Consumed by ``_sde_asset_value_timeseries`` to keep
     # ``cum_value = cap_usd`` for days in ``[burn_date, usdc_settlement_date]``
     # so the in-flight window doesn't inflate ``utilized`` (which would route
-    # phantom BR to Sky — see Grove E8 Mar 9–11 for the canonical case).
+    # phantom BR to Sky - see Grove E8 Mar 9-11 for the canonical case).
     # NOT consumed by ``_capped_sd_revenue_eom_locked`` (the EoM snapshot
     # of value_eom naturally absorbs the burn for sd_share purposes).
     burn_date: date | None = None
@@ -57,6 +73,10 @@ class SDEEntry:
     # ``burn_date`` and ``cap_usd``; must satisfy
     # ``burn_date <= usdc_settlement_date <= end_date``.
     usdc_settlement_date: date | None = None
+    # Repeatable partial-redemption windows for an otherwise still-active
+    # fixed SDE. Unlike the scalar burn fields above, these do not retire the
+    # whole entry and therefore suit recurring BUIDL redemptions.
+    in_flight_redemptions: tuple[InFlightRedemption, ...] = ()
     label: str = ""
     source: str = ""
 
@@ -142,6 +162,14 @@ def load_sde_table(config_path: Path | None = None) -> SDETable:
         burn_raw = r.get("burn_date")
         settle_raw = r.get("usdc_settlement_date")
         cap_raw = r.get("cap_usd")
+        in_flight_redemptions = tuple(
+            InFlightRedemption(
+                burn_date=date.fromisoformat(item["burn_date"]),
+                usdc_settlement_date=date.fromisoformat(item["usdc_settlement_date"]),
+                value_usd=Decimal(str(item["value_usd"])),
+            )
+            for item in (r.get("in_flight_redemptions") or [])
+        )
         entries.append(SDEEntry(
             prime_id=r["prime"],
             venue_id=r.get("venue_id"),
@@ -153,6 +181,7 @@ def load_sde_table(config_path: Path | None = None) -> SDETable:
             end_date=date.fromisoformat(end_raw) if end_raw else None,
             burn_date=date.fromisoformat(burn_raw) if burn_raw else None,
             usdc_settlement_date=date.fromisoformat(settle_raw) if settle_raw else None,
+            in_flight_redemptions=in_flight_redemptions,
             label=r.get("label", ""),
             source=r.get("source", ""),
         ))
@@ -162,6 +191,22 @@ def load_sde_table(config_path: Path | None = None) -> SDETable:
             raise ValueError(f"SDE entry {e.label!r} has kind=capped but no cap_usd")
         if e.kind == "pattern" and e.pattern is None:
             raise ValueError(f"SDE entry {e.label!r} has kind=pattern but no pattern")
+        if e.in_flight_redemptions and e.kind != "fixed":
+            raise ValueError(
+                f"SDE entry {e.label!r} has in_flight_redemptions but "
+                f"kind={e.kind!r}; repeatable partial windows require kind=fixed"
+            )
+        for item in e.in_flight_redemptions:
+            if item.burn_date >= item.usdc_settlement_date:
+                raise ValueError(
+                    f"SDE entry {e.label!r} has an in-flight redemption with "
+                    "burn_date not before usdc_settlement_date"
+                )
+            if item.value_usd <= 0:
+                raise ValueError(
+                    f"SDE entry {e.label!r} has a non-positive in-flight "
+                    f"redemption value: {item.value_usd}"
+                )
 
     # Pattern entries currently have ONE consumed variant — the
     # ``psm3_usdc_non_ethereum`` pattern is applied via the PSM3 leg-split:

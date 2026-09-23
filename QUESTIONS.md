@@ -225,6 +225,22 @@ flowing through ALM ingress or names a new source we need to plumb.
 
 ### P1 — methodology unknowns affecting accuracy
 
+#### G29. BUIDL redemption fee — Sky exit cost or Grove custody cost?
+
+BUIDL redemptions settle at approximately 99.95% of face. Through the August
+2026 boundary, $162,505.35 of fees settled without entering either venue's
+revenue, and another $12,499.85 attached to the August 31 redemption settled
+on September 1. The September reconciliation proposes a 5 bps exit-value mark
+on E10, which assigns the transition markdown and future cost to Sky because
+E10 is a fixed Sky Direct Exposure.
+
+**Question for Grove / the MSC operator:** do the SDE terms make the cost of
+realizing the asset Sky's, or is Grove required to pay Sky gross yield and bear
+redemption charges as a custody/operating cost? Merging the proposed haircut
+confirms the former. If the latter is intended, keep the $1 position mark and
+replace the haircut with a cross-venue cash-versus-shares expense attributed to
+Grove. See `settlements/grove/2026-09/reconciliation.md`.
+
 
 #### G27. Apr–Jul 2026 E22 ACRDX restatement — frozen Chronicle feed; acknowledge reconciliation
 The Chronicle feed MSC used for E22 (ACRDX, Plume) was

@@ -66,6 +66,11 @@
 #                   ALM. In-flight window ends here. May precede end_date by
 #                   ≥ 1 day. If absent, in-flight window falls back to
 #                   end_date (legacy semantics).
+#   - in_flight_redemptions: (optional, fixed SDE only) repeatable partial
+#                   redemptions while the overall exposure stays active. Each
+#                   item has burn_date, usdc_settlement_date and value_usd.
+#                   The value is included from burn-date EoD until, but not
+#                   including, settlement-date EoD, when ALM cash replaces it.
 #   - source:       Atlas section UUID for traceability
 
 active:
@@ -96,6 +101,15 @@ active:
     kind: fixed
     start_date: '2025-10-30'
     end_date: null
+    # 24,999,000 shares burned on August 31 before the closing pin;
+    # $24,986,500.153219 USDC landed on 2026-09-01. At the configured 5 bps
+    # exit mark their settlement-basis value is $24,986,500.50. This is a
+    # partial recurring redemption, so it must not use the scalar burn/end
+    # fields that retire an entire capped SDE.
+    in_flight_redemptions:
+      - burn_date: '2026-08-31'
+        usdc_settlement_date: '2026-09-01'
+        value_usd: 24986500.50
     label: 'BUIDL on Eth'
     source: 'Atlas A.2.2.9.1.1.1.1.1 — Treasury Bills'
 

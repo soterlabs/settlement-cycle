@@ -1413,6 +1413,31 @@ because their eventual disposition was not established. The accounting and
 blast-radius evidence is recorded in
 `settlements/spark/2026-09/reconciliation.md`.
 
+#### Methodology — September 2026 proposal: BUIDL at net redemption value
+
+Grove E10 BUIDL redemptions return approximately 99.95% of share face value.
+At the prior $1 mark, a redemption cancelled between `d_value` and the E10
+capital-flow term, while its smaller USDC receipt landed in a separate Cat A
+venue. The fee was therefore invisible to per-venue residual revenue.
+
+This PR adopts the investigation's Option A: a generic Cat E venue field,
+`nav_haircut_bps`, with E10 configured at 5 bps. The gross NAV remains
+`const_one`; the contractual exit cost is applied afterward to every position
+and capital-flow valuation. At August's $643,254,421.77 closing position, the
+September transition markdown is $321,627.21. Because E10 is a fixed SDE, it
+flows to Sky under the proposed owner-bears-exit-cost interpretation. G29
+retains the operator question of whether Grove is instead contractually meant
+to bear the fee. May and August reports are not regenerated; $162,505.35 of
+fees already settled in those published periods remains measured but unbooked.
+
+The August 31 partial redemption is represented separately as a repeatable
+fixed-SDE `in_flight_redemptions` window. Its $24,986,500.50 settlement-basis
+value remains attributed on August 31 and falls away at September 1 EoD, when
+$24,986,500.153219 cash had landed. This generalizes the existing capped-SDE
+burn/settlement concept without abusing its scalar fields, which retire an
+entire exposure. Full evidence and the prospective/published split are in
+`settlements/grove/2026-09/reconciliation.md`.
+
 #### Medium priority (affect numerical accuracy)
 5. **Reconciliation gap with Sky's reported Sky Share for Grove** (~$1.13M for Mar 2026 under the pre-subsidy model). Largely closed by 2026-05-02 work (subsidy + SDE refactor + pricePerShareFeed NAV); Feb 2026 residual is now ~$45K excluding the E1 Horizon rewards channel. **Need:** Sky to confirm whether Asset Value definition for BR_charge differs from `subscription − SDE_value` time-weighted (the formula we now match per Grove team's workbook).
 6. **Subsidised rate ramp** — *resolved 2026-05-02*. Implemented per Sky governance: program_start 2026-01-01, T = months elapsed, formula `ref_rate + (BR − ref_rate) × T/24`, cap at first $1B utilized. Every prime uses the 3M T-Bill (Spark migrated off EFFR 2026-07-30, see item 14). Daily rates carried in `config/subsidy_reference_rates.yaml`.

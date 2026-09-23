@@ -375,7 +375,8 @@ def _resolve_rwa_nav(
                     "NAV oracle fallback %r returned %.6f for venue %s block %d",
                     kind, nav, venue.id, oracle_block,
                 )
-            return nav
+            haircut_bps = venue.nav_haircut_bps or Decimal("0")
+            return nav * (Decimal("1") - haircut_bps / Decimal("10000"))
         except _ORACLE_FAILURES as e:
             _log.warning("NAV oracle %r failed for venue %s: %s", kind, venue.id, e)
             last_err = e
