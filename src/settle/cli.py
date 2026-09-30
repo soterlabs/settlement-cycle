@@ -285,6 +285,15 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p_run.set_defaults(func=_cmd_run)
 
+    p_reuse = sub.add_parser(
+        "monthly-from-revenue", help="Finalize an explicit month-end daily revenue revision",
+    )
+    p_reuse.add_argument("--prime", required=True)
+    p_reuse.add_argument("--month", required=True, help="Completed settlement month YYYY-MM")
+    p_reuse.add_argument("--revision", required=True, help="Immutable API revenue revision ID")
+    p_reuse.add_argument("--output-dir", required=True, help="New, empty artifact directory")
+    p_reuse.set_defaults(func=_cmd_monthly_from_revenue)
+
     p_snap = sub.add_parser(
         "snapshot",
         help="Live point-in-time balance sheet (parity target: BA labs stars-api)",
@@ -295,6 +304,25 @@ def _build_parser() -> argparse.ArgumentParser:
     p_snap.set_defaults(func=_cmd_snapshot)
 
     return p
+
+
+def _cmd_monthly_from_revenue(args: argparse.Namespace) -> int:
+    from .load import write_settlement
+    from .revenue.monthly import from_database
+    from .store.db import connect
+
+    output = Path(args.output_dir)
+    if output.exists() and (not output.is_dir() or any(output.iterdir())):
+        raise ValueError("output directory must be empty; existing settlements are not overwritten")
+    prime, month = load_prime_by_id(args.prime), Month.parse(args.month)
+    with connect() as conn:
+        conn.execute("SET TRANSACTION READ ONLY")
+        result, sources = from_database(conn, prime, month, args.revision)
+    written = write_settlement(result, output, sources=sources)
+    print(f"Finalized {prime.id} {month} from daily revision {args.revision}")
+    for name, path in written.items():
+        print(f"  {name}: {path}")
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:

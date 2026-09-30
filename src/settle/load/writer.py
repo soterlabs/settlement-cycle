@@ -124,7 +124,8 @@ def _build_canonical_xlsx(prime_id: str, month_str: str, output_dir: Path) -> Pa
         return None
     try:
         subprocess.run(
-            [sys.executable, str(script), "--prime", prime_id, "--month", month_str],
+            [sys.executable, str(script), "--prime", prime_id, "--month", month_str,
+             "--output-dir", str(output_dir.resolve())],
             check=True, capture_output=True, text=True, timeout=60,
         )
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
