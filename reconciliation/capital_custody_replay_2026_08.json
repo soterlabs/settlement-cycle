@@ -1,0 +1,233 @@
+{
+  "period": "2026-08",
+  "validated": "2026-09-23",
+  "replay_code_commit": "97d3182",
+  "primes": {
+    "spark": {
+      "scope": "ilk",
+      "ilks": [
+        "0x414c4c4f4341544f522d535041524b2d41000000000000000000000000000000"
+      ],
+      "control_sha256": "b989d9e8ea02064ffb8519a23502f2b9c7210a4bb05c3d626c6386956fc9c781",
+      "previous_normalized_history_sha256": "8b28dcf44d40a387788b0cd5b6f08e8986a301a7f7b0ed388593dfc2fcb8d3af",
+      "normalized_history_sha256": "3b18e8917e1549592bf69f444ff29d8b2b277688bb15435150b9c31e3606c898",
+      "financing_sha256": "2b2cb760024bb7ae0d1a737fb269d58f9d6f1ababed6eae22d94d8119f35bf9c",
+      "previous_allocation_cost": "10063.49472178961995085909380",
+      "allocation_cost": "12080.10337533454161053721695",
+      "allocation_cost_change": "2016.60865354492165967812315",
+      "global_cost": "6108910.339050876117169929618",
+      "msc_cost_excluded": "397481.843093505371743493328006361594121166355443145709435962",
+      "adjusted_global_cost": "5711428.49595737074542643628999363840587883364455685429056404",
+      "allocation_minus_adjusted_global": "-5699348.39258203620381589907304363840587883364455685429056404",
+      "reported_cost_percent_of_adjusted_target": "0.211507565644654543691204500957273050883927659929907551136883",
+      "source_complete": false,
+      "within_one_cent": false,
+      "unresolved_allocations": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "S7",
+        "S8",
+        "S9",
+        "S10",
+        "S11",
+        "S65",
+        "S12",
+        "S13",
+        "S14",
+        "S15",
+        "S16",
+        "S22",
+        "S23",
+        "S24",
+        "S25",
+        "S61",
+        "S62",
+        "S26",
+        "S27",
+        "S28",
+        "S64",
+        "S30",
+        "S31",
+        "S32",
+        "S34",
+        "S35",
+        "S36",
+        "S37",
+        "S38",
+        "S39",
+        "S41",
+        "S42",
+        "S43",
+        "S44",
+        "S45",
+        "S47",
+        "S48",
+        "S49",
+        "S51",
+        "S52",
+        "S53",
+        "S54",
+        "S55",
+        "S56",
+        "S57",
+        "S59",
+        "S60",
+        "S63"
+      ],
+      "previous_unmatched_receipts": 259849,
+      "unmatched_receipts": 43020,
+      "previous_unmatched_outflows": 52182,
+      "unmatched_outflows": 25356,
+      "reported_allocations": [
+        {
+          "venue_id": "S17",
+          "cost_of_funds": "6.679033876224201605228869761E-8",
+          "basis_status": "traced"
+        },
+        {
+          "venue_id": "S18",
+          "cost_of_funds": "12080.10337526736676552662637",
+          "basis_status": "traced"
+        },
+        {
+          "venue_id": "S19",
+          "cost_of_funds": "0E-32",
+          "basis_status": "traced"
+        },
+        {
+          "venue_id": "S20",
+          "cost_of_funds": "3.845062483485606294801117661E-10",
+          "basis_status": "traced"
+        },
+        {
+          "venue_id": "S21",
+          "cost_of_funds": "0E-84",
+          "basis_status": "traced"
+        },
+        {
+          "venue_id": "S29",
+          "cost_of_funds": "0E-88",
+          "basis_status": "traced"
+        }
+      ],
+      "local_financing_output": "/tmp/allocation-spark-custody-final/financing.json"
+    },
+    "grove": {
+      "scope": "prime_combined_ilks",
+      "ilks": [
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000"
+      ],
+      "control_sha256": "d6fb40d3c43caf3bdc7d0983b7ff071433ad056d22825b9f0f19eeb9d3af3aa9",
+      "previous_normalized_history_sha256": "80bc227556f372ca7060eaa9a0bcfc9c7a069cb7457ece887b5755fee2b69ebb",
+      "normalized_history_sha256": "69d9c307527246805c065b7dd4c332260180aee64d764953f220214f926e55bd",
+      "financing_sha256": "e6a7cf4489a4980475d3959c3571c553d291eb06df9f519cbed88be0a6ac7832",
+      "previous_allocation_cost": "6304.101894945327202523752637",
+      "allocation_cost": "6304.101894945327202523752637",
+      "allocation_cost_change": "0E-24",
+      "global_cost": "3720604.844326282036275795422",
+      "msc_cost_excluded": "259878.117026557284054314788289205723615937529507529282764966",
+      "adjusted_global_cost": "3460726.72729972475222148063371079427638406247049247071723503",
+      "allocation_minus_adjusted_global": "-3454422.62540477942501895688107379427638406247049247071723503",
+      "reported_cost_percent_of_adjusted_target": "0.182161216175083013097420719120529521288944203116869597299074",
+      "source_complete": false,
+      "within_one_cent": false,
+      "unresolved_allocations": [
+        "E1",
+        "E2",
+        "E3",
+        "E6",
+        "E37",
+        "E7",
+        "E8",
+        "E9",
+        "E10",
+        "E11",
+        "E12",
+        "E30",
+        "E31",
+        "E15",
+        "E32",
+        "E19",
+        "E23",
+        "E20",
+        "E21",
+        "E22",
+        "E27",
+        "E38",
+        "E41",
+        "E42"
+      ],
+      "previous_unmatched_receipts": 296,
+      "unmatched_receipts": 295,
+      "previous_unmatched_outflows": 529,
+      "unmatched_outflows": 529,
+      "reported_allocations": [
+        {
+          "venue_id": "E4",
+          "cost_of_funds": "6304.101894945327202523752637",
+          "basis_status": "traced"
+        },
+        {
+          "venue_id": "E5",
+          "cost_of_funds": "0E-85",
+          "basis_status": "traced"
+        },
+        {
+          "venue_id": "E13",
+          "cost_of_funds": "0E-84",
+          "basis_status": "traced"
+        },
+        {
+          "venue_id": "E16",
+          "cost_of_funds": "0E-32",
+          "basis_status": "traced"
+        },
+        {
+          "venue_id": "E17",
+          "cost_of_funds": "0",
+          "basis_status": "traced"
+        },
+        {
+          "venue_id": "E18",
+          "cost_of_funds": "0E-32",
+          "basis_status": "traced"
+        },
+        {
+          "venue_id": "E24",
+          "cost_of_funds": "0E-32",
+          "basis_status": "traced"
+        },
+        {
+          "venue_id": "E26",
+          "cost_of_funds": "0E-32",
+          "basis_status": "traced"
+        },
+        {
+          "venue_id": "E40",
+          "cost_of_funds": "0E-32",
+          "basis_status": "traced"
+        }
+      ],
+      "local_financing_output": "/tmp/allocation-grove-bridge-fix/financing.json"
+    }
+  },
+  "limitations": [
+    "Partial diagnostic: source coverage is incomplete.",
+    "Spark capital tracing does not yet apply principal_return_overrides; returned principal can be misclassified as income.",
+    "Grove combines ALLOCATOR-BLOOM-A and ALLOCATOR-GROVE-A; no separate per-ilk reconciliation is established."
+  ],
+  "spark_corrections": {
+    "cctp_sends": 44874,
+    "cctp_receipts": 44874,
+    "ethena_cooldown_transactions": 15,
+    "morpho_fee_transactions": 246032,
+    "timestamp_changes": 0,
+    "daily_debt_events_sha256": "4b2ae4ef2edbb04135994550a25d2f691234c1dd6e006a822176d17ece4c51fa",
+    "normalized_batches": 451902
+  }
+}

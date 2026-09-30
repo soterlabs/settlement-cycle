@@ -216,6 +216,7 @@ def main() -> int:
         result = compute_monthly_pnl(
             spark, Month(y, m),
             sources=sources,
+            include_allocation_financing=True,
             pin_blocks_eom=pins["eom"],
             pin_blocks_som=pins["som"],
         )

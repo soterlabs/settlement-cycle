@@ -1315,6 +1315,34 @@ like to reproduce the same number from on-chain primitives.
 
 ### P1 — methodology unknowns affecting accuracy
 
+#### B19. Allocation CoF — exclude MSC financing costs from the comparison
+
+Raised during PR #215 development (2026-09-20). Allocation funding must exclude
+reinvested gains, while total debt and the existing settlement charge remain
+unchanged. Those requirements do not imply that principal-times-rate costs
+sum to the existing charge: debt includes capitalized financing costs that
+were never deposited into an allocation.
+
+OBEX August 2026 replay traces $384,224,980.60 of venue principal. Its direct
+funding cost is $1,195,814.76 versus the existing ilk charge of $1,248,716.85,
+a $52,902.10 difference. Independently summing historical Vat events through
+August gives $384,224,981 of net `frob` draws and $18,306,759 of `grab` debt.
+
+**Operator decision, 2026-09-22:** estimate borrowing costs on debt created by
+MSC and exclude them from the allocation reconciliation target. Keep the
+actual global debt and settlement charge unchanged; do not redistribute the
+MSC component into allocation costs. Include costs on outstanding MSC debt
+from earlier months, as well as the current month's debt addition.
+
+The adjusted August comparison passes within one cent for OBEX (remaining
+difference -$0.001246). Osero retains a +$0.027851 cash-treatment difference
+and an unmatched receipt. Grove still lacks complete funding provenance:
+excluding $259,878.117027 of MSC financing costs does not make its partial
+allocation subtotal reconcile. See
+`docs/allocation-msc-reconciliation-2026-08.md` for the event-based calculation.
+The diagnostic comparison has been run; production accounting is unchanged.
+Related: G23 / S28.
+
 #### B18. Osero agent-rate effective date — 2026-07-19 or 2026-07-20?
 Osero (allocator instance ALLOCATOR-PRYSM-A, chainlog PRYSM_SUBPROXY)
 is to be paid the agent rate "from the date of their first allocation
@@ -1818,4 +1846,3 @@ full narrative in `PRD.md §17`.
   NAV); residual ~$45K excluding the E1 Horizon rewards channel
   (tracked under **G3**). See `PRD.md §17.13` (medium-priority list,
   item 5).
-

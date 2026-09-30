@@ -489,6 +489,8 @@ def _aggregate_univ4_idle_usds(
     *,
     v4_source,
     block_resolver,
+    capital_idle_fractions: dict | None = None,
+    capital_idle_amounts: dict | None = None,
 ) -> "tuple[pd.DataFrame, dict[str, Decimal]]":
     """Daily USDS-leg value held inside Uniswap V4 LP positions, summed across
     all ``lp_kind=uniswap_v4`` venues — the v4 analog of
@@ -537,6 +539,7 @@ def _aggregate_univ4_idle_usds(
         from ..extract.rpc import RPCError as _RPCError
         import requests as _requests
         venue_last_idle: Decimal | None = None
+        last_fraction = Decimal(0)
         current = period.start
         while current <= period.end:
             eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
@@ -548,6 +551,14 @@ def _aggregate_univ4_idle_usds(
                     pool_key=pool_key, block=block,
                 )
                 idle, _sde = _univ4_position_legs(venue, positions)
+                fraction = Decimal(0)
+                if capital_idle_fractions is not None:
+                    from ..domain.sky_tokens import PAR_STABLES_BY_CHAIN
+                    registry = PAR_STABLES_BY_CHAIN[venue.chain]
+                    total = sum((Decimal(amount) / Decimal(10 ** registry[coin.value][1])
+                                 for p in positions for coin, amount in (
+                                     (p.currency0, p.amount0), (p.currency1, p.amount1)) if amount), Decimal(0))
+                    fraction = idle / total if total else Decimal(0)
             except (_RPCError, _requests.HTTPError, _requests.ConnectionError,
                     _requests.Timeout) as exc:
                 if venue_last_idle is None:
@@ -560,8 +571,14 @@ def _aggregate_univ4_idle_usds(
                     venue.id, current, venue_last_idle, type(exc).__name__,
                 )
                 idle = venue_last_idle
+                fraction = last_fraction
             else:
                 venue_last_idle = idle
+                last_fraction = fraction
+            if capital_idle_amounts is not None:
+                capital_idle_amounts.setdefault(venue.id, {})[current] = idle
+            if capital_idle_fractions is not None:
+                capital_idle_fractions.setdefault(venue.id, {})[current] = fraction
             daily_by_date[current] = daily_by_date.get(current, Decimal("0")) + idle
             venue_idle_sum[venue.id] = venue_idle_sum.get(venue.id, Decimal("0")) + idle
             current = current + timedelta(days=1)
@@ -1608,6 +1625,7 @@ def _aggregate_curve_idle_usds(
     block_resolver,
     convert_to_assets_source=None,
     ssr_history: pd.DataFrame | None = None,
+    capital_idle_amounts: dict | None = None,
 ) -> tuple[pd.DataFrame, Decimal, dict[str, Decimal]]:
     """Daily data for Curve pool coins configured via ``curve_idle_usds``.
 
@@ -1813,6 +1831,8 @@ def _aggregate_curve_idle_usds(
                 venue_last_usds = prime_usds
                 venue_last_susds_value = prime_susds_value
 
+            if capital_idle_amounts is not None:
+                capital_idle_amounts.setdefault(venue.id, {})[current] = prime_usds
             daily_util[current] = daily_util.get(current, Decimal(0)) + prime_usds
             if prime_susds_value > 0:
                 # BR−SSR spread the prime earns on its sUSDS slice, and
@@ -1859,6 +1879,8 @@ def _aggregate_lending_idle_usds(
     period: Period,
     *,
     block_resolver,
+    capital_idle_fractions: dict | None = None,
+    capital_idle_amounts: dict | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Decimal]]:
     """Daily USDS-equivalent of unborrowed underlying inside lending pools,
     summed across all venues with ``lending_idle_usds=True``.
@@ -1927,6 +1949,7 @@ def _aggregate_lending_idle_usds(
         # the cache-of-zeros antipattern (RPC down on day 1 → 0 → "carry"
         # → 0 for the whole month).
         venue_last_idle: Decimal | None = None
+        last_capital_fraction = Decimal(0)
         venue_daily: list[Decimal] = []
 
         from ..extract.rpc import RPCError as _RPCError
@@ -1943,12 +1966,16 @@ def _aggregate_lending_idle_usds(
 
                 if total_supply_raw == 0:
                     prime_idle = Decimal(0)
+                    capital_fraction = Decimal(0)
                 else:
                     # Pool's idle underlying = underlying balance in the spToken contract
                     pool_idle_raw = _balance_of(chain, underlying_addr, sptoken_addr, block)
                     alm_share = Decimal(alm_sptoken_raw) / Decimal(total_supply_raw)
                     pool_idle_usds = Decimal(pool_idle_raw) / Decimal(10 ** underlying_decimals)
                     prime_idle = alm_share * pool_idle_usds
+                    capital_fraction = pool_idle_usds / (
+                        Decimal(total_supply_raw) / Decimal(10 ** venue.token.decimals)
+                    )
 
             except (_RPCError, _requests.HTTPError,
                     _requests.ConnectionError, _requests.Timeout) as exc:
@@ -1962,9 +1989,15 @@ def _aggregate_lending_idle_usds(
                     venue.id, current, venue_last_idle, type(exc).__name__,
                 )
                 prime_idle = venue_last_idle
+                capital_fraction = last_capital_fraction
             else:
                 venue_last_idle = prime_idle
+                last_capital_fraction = capital_fraction
 
+            if capital_idle_amounts is not None:
+                capital_idle_amounts.setdefault(venue.id, {})[current] = prime_idle
+            if capital_idle_fractions is not None:
+                capital_idle_fractions.setdefault(venue.id, {})[current] = capital_fraction
             daily_by_date[current] = daily_by_date.get(current, Decimal(0)) + prime_idle
             venue_daily.append(prime_idle)
             current = current + timedelta(days=1)
@@ -2155,6 +2188,8 @@ def compute_monthly_pnl(
     sky_only: bool = False,
     as_of: date | None = None,
     reference_rate_history: ReferenceRateHistory | ScheduledReferenceRateHistory | None = None,
+    include_allocation_financing: bool = False,
+    capital_history=None,
 ) -> MonthlyPnL:
     """Compute settlement revenue for ``prime`` × ``month``.
 
@@ -2475,6 +2510,7 @@ def compute_monthly_pnl(
     # below (d255ed2); ``curve_susds_ssr_by_venue`` (full-SSR integral, Case 3b)
     # re-attributes the sUSDS-leg appreciation embedded in the LP MtM: removed
     # from the SDE-eligible actual_revenue and re-booked 100% to the prime.
+    _capital_idle_amounts = {} if include_allocation_financing else None
     curve_idle_usds, curve_susds_spread, curve_susds_ssr_by_venue = (
         _aggregate_curve_idle_usds(
             prime, period,
@@ -2482,6 +2518,7 @@ def compute_monthly_pnl(
             block_resolver=resolver,
             convert_to_assets_source=sources.convert_to_assets,
             ssr_history=ssr,
+            **({"capital_idle_amounts": _capital_idle_amounts} if include_allocation_financing else {}),
         )
     )
     # Uniswap V4 idle USDS (USDS leg of v4 LP positions) — Step 2 idle AMM USDS,
@@ -2492,6 +2529,7 @@ def compute_monthly_pnl(
         prime, period,
         v4_source=sources.v4_position,
         block_resolver=resolver,
+        **({"capital_idle_amounts": _capital_idle_amounts} if include_allocation_financing else {}),
     )
     if not _univ4_idle.empty:
         if curve_idle_usds is None or curve_idle_usds.empty:
@@ -2511,6 +2549,7 @@ def compute_monthly_pnl(
     lending_idle_usds, _lending_idle_tw_avg = _aggregate_lending_idle_usds(
         prime, period,
         block_resolver=resolver,
+        **({"capital_idle_amounts": _capital_idle_amounts} if include_allocation_financing else {}),
     )
     _check_centrifuge_in_flight(prime, pin_blocks_som, pin_blocks_eom)
 
@@ -4261,7 +4300,7 @@ def compute_monthly_pnl(
         for _, row in sky_rev_daily.iterrows()
     ]
 
-    return MonthlyPnL(
+    result = MonthlyPnL(
         prime_id=prime.id,
         month=month,
         period=period,
@@ -4288,3 +4327,34 @@ def compute_monthly_pnl(
         sky_revenue_gross=sky_rev_gross,
         subsidy_summary=subsidy_summary,
     )
+    if include_allocation_financing:
+        from dataclasses import replace
+        from ..normalize.allocation_capital import fetch_capital_history
+        from .allocation_financing import allocation_financing, unavailable_financing
+        import requests
+        try:
+            history = capital_history if capital_history is not None else fetch_capital_history(
+                prime, period.pin_blocks, block_resolver=resolver,
+            )
+            analytics = allocation_financing(result, history, idle_amounts=_capital_idle_amounts)
+        except (ValueError, RuntimeError, ArithmeticError, OSError, requests.RequestException) as exc:
+            if capital_history is not None:
+                # Injected histories are validation inputs; failures must be
+                # visible to tests/development callers rather than hidden.
+                raise
+            analytics = unavailable_financing(result, exc)
+        analytics['period_start'] = period.start.isoformat()
+        analytics['period_end'] = period.end.isoformat()
+        analytics['period_kind'] = 'month_to_date' if result.is_provisional else 'month'
+        analytics['ilks'] = ['0x' + i.hex() for i in [prime.ilk_bytes32, *prime.extra_ilks] if i]
+        analytics['reconciliation']['scope'] = 'ilk' if len(analytics['ilks']) == 1 else 'prime_combined_ilks'
+        from ..normalize.prices import is_par_stable
+        pass_through = {v.id for v in prime.venues if v.holder_override
+                        and v.pricing_category == PricingCategory.RWA_TRANCHE and is_par_stable(v.token)}
+        for row in analytics['allocations']:
+            if row['venue_id'] in pass_through:
+                # An escrow's leftover cash is not the loan's average
+                # invested capital. Annualizing against it invents a yield.
+                row['gross_apy'] = row['net_apy'] = None
+        result = replace(result, allocation_financing=analytics)
+    return result

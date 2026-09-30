@@ -193,6 +193,7 @@ def main() -> int:
         result = compute_monthly_pnl(
             grove, Month(y, m),
             sources=sources,
+            include_allocation_financing=True,
             pin_blocks_eom=pin["eom"],
             pin_blocks_som=pin["som"],
         )
