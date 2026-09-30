@@ -89,6 +89,22 @@ class HyperSyncBalanceSource:
 
     # -- IBalanceSource -----------------------------------------------------
 
+    def atoken_event_blocks(
+        self, chain: str, token: bytes, holder: bytes, som: int, eom: int,
+    ) -> list[int]:
+        """Exact holder Transfer boundaries in (SoM, EoM], not daily totals.
+
+        Ordinary position-token transfers matter just as much as mints/burns.
+        Read through the reorg-safe raw-log store before decoding loses block
+        identity. Never substitute a daily approximation on provider failure.
+        """
+        if som >= eom:
+            return []
+        rows = self._fetch(chain, _touching_selections(token, holder), som + 1, eom)
+        events = {(r.block_number, r.log_index) for r in rows
+                  if som < r.block_number <= eom}
+        return sorted({block for block, _ in events})
+
     def cumulative_balance_timeseries(
         self, chain: str, token: bytes, holder: bytes, start: date, pin_block: int,
         min_transfer_amount: Decimal = Decimal(0),
