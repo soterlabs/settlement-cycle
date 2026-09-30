@@ -76,3 +76,25 @@ def test_multiple_same_day_transfers_and_no_event_period():
         transfer_event_blocks=events,
     )
     assert frame.iloc[-1]['cum_inflow'] == 0
+
+
+def test_existing_position_keeps_interest_accrued_before_deposit():
+    prime = load_prime_by_id('osero')
+    venue = next(v for v in prime.venues if v.id == 'O1')
+    scale = 10 ** venue.token.decimals
+    # Index is 1 at opening, 1.099 just before deposit, 1.1 at deposit,
+    # and 1.2 at closing. Deposit buys 1,000 new shares for 1,100 assets.
+    balances = {0: 1000, 9: 1099, 10: 2200, 20: 2400}
+    shares = {0: 1000, 9: 1000, 10: 2000, 20: 2000}
+    source = HyperSyncBalanceSource(fetch_logs=lambda *args: [SimpleNamespace(block_number=10, log_index=0)])
+    routed = for_venue(Sources(balance=source), venue)
+    def events(*args):
+        return [(b-1, b, date(2026, 10, 2)) for b in routed.atoken_event_blocks(*args)]
+    frame = _atoken_index_weighted_inflow(
+        prime, venue, 0, 20, period_end_date=date(2026, 10, 31),
+        balance_at=lambda c,t,h,b: balances[b]*scale,
+        scaled_balance_at=lambda c,t,h,b: shares[b]*scale,
+        transfer_event_blocks=events,
+    )
+    assert frame.iloc[-1]['cum_inflow'] == Decimal(1100)
+    assert Decimal(balances[20]-balances[0])-frame.iloc[-1]['cum_inflow'] == Decimal(300)

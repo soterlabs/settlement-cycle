@@ -24,10 +24,10 @@ There are 16 configured venues, all using HyperSync. Dormant positions without m
 
 ## Forward-only rollout
 
-Apply the fix to future calculation runs after merge. Do not backfill/replay prior settlement months, calculate historical correction tables, restate published settlement artifacts, or launch an explicit daily replay window as part of this change. No historical monetary overrides or activation-date special cases are introduced.
+Apply the fix to future calculation runs after merge. Do not backfill/replay prior settlement months, restate published settlement artifacts, or launch an explicit daily replay window as part of this change. A later user request authorized the read-only historical estimate documented separately; it does not authorize publication or restatement. No historical monetary overrides or activation-date special cases are introduced.
 
 The ordinary daily worker continues its existing behavior: it calculates the latest eligible cutoff and fills unpublished gaps, rather than systematically republishing historical cutoffs when code changes. Its estimates are month-to-date, so a newly calculated cutoff uses corrected arithmetic for that period; older stored revisions remain unchanged. An explicitly requested historical rerun would use the corrected code and is outside this rollout.
 
 ## Validation
 
-Synthetic future-period tests exercise first/additional deposits, partial/full withdrawals, multiple same-day events, ordinary incoming/outgoing transfers, self-transfer deduplication, opening/closing block limits, no-event periods, provider failures, and fixture precedence. A deposit of 1,000,000 with 100 of subsequent interest remains 1,000,000 capital plus 100 revenue. No historical RPC audit or reconciliation was run.
+Synthetic future-period tests exercise first/additional deposits, partial/full withdrawals, multiple same-day events, ordinary incoming/outgoing transfers, self-transfer deduplication, opening/closing block limits, no-event periods, provider failures, and fixture precedence. A deposit of 1,000,000 with 100 of subsequent interest remains 1,000,000 capital plus 100 revenue. A subsequent user-authorized read-only historical event audit is documented in `atoken-event-review-and-estimate.md`; no historical settlement or API publication was changed.
