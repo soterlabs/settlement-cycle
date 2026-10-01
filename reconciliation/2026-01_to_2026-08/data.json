@@ -1,0 +1,42 @@
+{
+  "scope": {
+    "start": "2026-01-01",
+    "end": "2026-08-31",
+    "published_reports_regenerated": false
+  },
+  "spark": {
+    "monthly_reserve_factor_revenue_usd": {
+      "2026-01": "187229.81",
+      "2026-02": "776974.45",
+      "2026-03": "192240.53",
+      "2026-04": "107239.57",
+      "2026-05": "58633.73",
+      "2026-06": "281611.86",
+      "2026-07": "317345.18",
+      "2026-08": "471078.95"
+    },
+    "monthly_display_sum_usd": "2392354.08",
+    "reserve_factor_revenue_usd": "2392354.07",
+    "rounding_note": "The authoritative total uses unrounded provenance values; independently rounded monthly rows sum one cent higher.",
+    "settlement_field": "sv_adj",
+    "settlement_adjustment_usd": "2392354.07",
+    "effect": "increase_mint_and_send_to_prime"
+  },
+  "grove": {
+    "buidl_realized_fee_credit_by_month_usd": {
+      "2026-05": "137504.98",
+      "2026-08": "25000.37"
+    },
+    "buidl_realized_fee_credit_usd": "162505.35",
+    "august_31_in_flight_cof_credit_unrounded_usd": "2508.545902174673638269913",
+    "august_31_in_flight_cof_credit_usd": "2508.55",
+    "total_credit_usd": "165013.90",
+    "settlement_field": "sky_adj",
+    "settlement_adjustment_usd": "-165013.90",
+    "effect": "reduce_mint"
+  },
+  "excluded_from_jan_aug_amounts": {
+    "grove_september_transition_markdown_usd": "321627.21",
+    "grove_august_31_fee_settled_2026_09_01_usd": "12499.85"
+  }
+}

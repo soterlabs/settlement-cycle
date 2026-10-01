@@ -60,7 +60,11 @@ def _grove_atoken_venue(*, with_underlying: bool = True, par_underlying: bool = 
     )
 
 
-def _prime(external_sources: list[Address] | None) -> Prime:
+def _prime(
+    external_sources: list[Address] | None,
+    *,
+    source_start_dates: dict[Address, date] | None = None,
+) -> Prime:
     return Prime(
         id="grove",
         ilk_bytes32=b"\x00" * 32,
@@ -68,6 +72,9 @@ def _prime(external_sources: list[Address] | None) -> Prime:
         alm={Chain.ETHEREUM: _addr("c3")},
         external_alm_sources=(
             {Chain.ETHEREUM: external_sources} if external_sources else {}
+        ),
+        external_alm_source_start_dates=(
+            {Chain.ETHEREUM: source_start_dates} if source_start_dates else {}
         ),
     )
 
@@ -80,6 +87,21 @@ def test_returns_zero_when_no_external_sources_configured():
     venue = _grove_atoken_venue()
     result = _atoken_external_revenue_usd(prime, venue, _period())
     assert result == Decimal("0")
+
+
+def test_returns_zero_before_external_source_start_date(monkeypatch, caplog):
+    """The Sep activation must not reclassify Jan-Aug sweeps on replay."""
+    monkeypatch.delenv("DUNE_API_KEY", raising=False)
+    sender = _addr("d4")
+    prime = _prime(
+        external_sources=[sender],
+        source_start_dates={sender: date(2026, 9, 1)},
+    )
+    assert (
+        _atoken_external_revenue_usd(prime, _grove_atoken_venue(), _period())
+        == Decimal("0")
+    )
+    assert not any("DUNE_API_KEY unset" in r.getMessage() for r in caplog.records)
 
 
 def test_returns_zero_with_warning_when_dune_api_key_unset(monkeypatch, caplog):

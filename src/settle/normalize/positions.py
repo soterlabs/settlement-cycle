@@ -965,7 +965,7 @@ def _atoken_external_revenue_usd(prime: Prime, venue: Venue, period) -> Decimal:
             "Route through the Cat A `_cat_a_capital_inflow_timeseries` path "
             "or extend this module for the new category."
         )
-    senders = prime.external_alm_sources.get(venue.chain, [])
+    senders = prime.external_sources_for_period(venue.chain, period.start)
     if not senders:
         return _Decimal("0")
     if venue.event_source != "hypersync" and not _os.environ.get("DUNE_API_KEY"):

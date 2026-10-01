@@ -13,6 +13,7 @@ import pytest
 from settle.compute.monthly_pnl import _sde_asset_value_timeseries
 from settle.domain import Address, Chain, Period, PricingCategory, Token, Venue
 from settle.domain.primes import Prime
+from settle.domain.sde import InFlightRedemption, load_sde_table
 
 
 def _venue() -> Venue:
@@ -291,6 +292,55 @@ def test_cap_usd_none_returns_raw_uncapped_values():
     for _, row in df.iterrows():
         assert row["cum_value"] == raw
         assert row["uncapped_value"] == raw
+
+
+def test_fixed_sde_partial_redemption_is_kept_until_cash_settlement_date():
+    """A recurring BUIDL redemption supplements, rather than retires, the
+    remaining fixed SDE position. The pending value is absent once cash has
+    landed by the settlement day's EoD."""
+    period = _period(date(2026, 8, 30), date(2026, 9, 2))
+    raw = Decimal("643254421.77")
+    pending = Decimal("24986500.50")
+    window = InFlightRedemption(
+        burn_date=date(2026, 8, 31),
+        usdc_settlement_date=date(2026, 9, 1),
+        value_usd=pending,
+    )
+    df = _sde_asset_value_timeseries(
+        _prime(),
+        _venue(),
+        period,
+        balance_source=_ConstBalanceSource(raw),
+        block_resolver=_StaticBlockResolver(),
+        nav_at_block=_const_nav,
+        cap_usd=None,
+        start_date=date(2025, 10, 30),
+        in_flight_redemptions=(window,),
+    )
+    by_date = {r["block_date"]: r for _, r in df.iterrows()}
+
+    assert by_date[date(2026, 8, 30)]["cum_value"] == raw
+    assert by_date[date(2026, 8, 31)]["cum_value"] == raw + pending
+    assert by_date[date(2026, 9, 1)]["cum_value"] == raw
+    assert by_date[date(2026, 9, 2)]["cum_value"] == raw
+    assert by_date[date(2026, 8, 31)]["uncapped_value"] == raw
+
+
+def test_grove_buidl_in_flight_redemption_loads_from_config():
+    table = load_sde_table()
+    e10 = next(
+        entry
+        for entry in table.entries
+        if entry.prime_id == "grove" and entry.venue_id == "E10"
+    )
+    assert e10.kind == "fixed"
+    assert e10.in_flight_redemptions == (
+        InFlightRedemption(
+            burn_date=date(2026, 8, 31),
+            usdc_settlement_date=date(2026, 9, 1),
+            value_usd=Decimal("24986500.50"),
+        ),
+    )
 
 
 def test_post_end_date_cum_value_is_zero_even_when_on_chain_residual_exists():

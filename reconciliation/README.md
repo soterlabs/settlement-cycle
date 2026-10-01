@@ -9,6 +9,8 @@ figures published in the Sky forum MSC summaries, for **MSC#5–#9 (Jan–May 20
 
 - **[`reconciliation_post.md`](reconciliation_post.md)** — the generated forum post.
   This file is **regenerated, not hand-edited** — edit the generator, not the output.
+- **[`2026-01_to_2026-08/`](2026-01_to_2026-08/)** — dedicated Spark/Grove
+  bug-reconciliation calculation used by the September settlement adjustment.
 
 ## How it's built
 

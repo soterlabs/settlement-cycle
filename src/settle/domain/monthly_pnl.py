@@ -348,7 +348,11 @@ class MonthlyPnL:
             + self.gar
             - self.sky_revenue
         )
-        if self.monthly_pnl != expected:
+        # The producer and this checker can associate the Decimal additions
+        # differently (notably once long-tail external-revenue values are
+        # present). Decimal's 28-significant-digit context can therefore leave
+        # sub-nanodollar noise even though the accounting components agree.
+        if abs(self.monthly_pnl - expected) > Decimal("1e-9"):
             raise ValueError(
                 f"monthly_pnl invariant broken: stored {self.monthly_pnl} != "
                 f"expected {expected} (prime_rev + agent_rate + "

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 
 import pytest
@@ -120,13 +121,20 @@ def test_unit_price_aave_atoken_requires_underlying():
 
 # --- Category E (RWA NAV) — Phase 2.A.3 -------------------------------------
 
-def _rwa_venue(nav_oracle: NavOracle | None = None) -> Venue:
+def _rwa_venue(
+    nav_oracle: NavOracle | None = None,
+    *,
+    nav_haircut_bps: Decimal | None = None,
+    nav_haircut_effective_date: date | None = None,
+) -> Venue:
     return Venue(
         id="E9",
         chain=Chain.ETHEREUM,
         token=_token("JTRSY", 6),
         pricing_category=PricingCategory.RWA_TRANCHE,
         nav_oracle=nav_oracle,
+        nav_haircut_bps=nav_haircut_bps,
+        nav_haircut_effective_date=nav_haircut_effective_date,
     )
 
 
@@ -186,6 +194,78 @@ def test_cat_e_const_one_kind():
         nav_oracle_resolver=lambda _: ConstOneNavSource(),
     )
     assert price == Decimal("1.00")
+
+
+def test_cat_e_applies_configured_nav_haircut_after_oracle_resolution():
+    """BUIDL's 5 bps redemption cost marks a $1 gross NAV at $0.9995."""
+    from settle.normalize.sources.oracles import ConstOneNavSource
+
+    venue = _rwa_venue(
+        NavOracle(kind="const_one"),
+        nav_haircut_bps=Decimal("5"),
+    )
+    price = get_unit_price(
+        venue,
+        block=0,
+        nav_oracle_resolver=lambda _: ConstOneNavSource(),
+    )
+    assert price == Decimal("0.9995")
+
+
+def test_cat_e_haircut_effective_date_preserves_opening_nav():
+    """A Sep 1 activation leaves the Aug 31 opening pin at gross NAV and
+    discounts Sep valuations, creating the transition markdown exactly once."""
+    from settle.normalize.sources.oracles import ConstOneNavSource
+
+    class _Resolver:
+        def block_to_date(self, _chain: str, block: int) -> date:
+            return date(2026, 8, 31) if block == 1 else date(2026, 9, 1)
+
+    venue = _rwa_venue(
+        NavOracle(kind="const_one"),
+        nav_haircut_bps=Decimal("5"),
+        nav_haircut_effective_date=date(2026, 9, 1),
+    )
+    kwargs = {
+        "nav_oracle_resolver": lambda _: ConstOneNavSource(),
+        "block_resolver": _Resolver(),
+    }
+    assert get_unit_price(venue, block=1, **kwargs) == Decimal("1.00")
+    assert get_unit_price(venue, block=2, **kwargs) == Decimal("0.9995")
+
+
+@pytest.mark.parametrize("bps", [Decimal("-0.1"), Decimal("10000")])
+def test_cat_e_rejects_invalid_nav_haircut(bps):
+    with pytest.raises(ValueError, match="bps"):
+        _rwa_venue(NavOracle(kind="const_one"), nav_haircut_bps=bps)
+
+
+def test_non_cat_e_rejects_nav_haircut():
+    with pytest.raises(ValueError, match="only valid on PricingCategory.RWA_TRANCHE"):
+        Venue(
+            id="A1",
+            chain=Chain.ETHEREUM,
+            token=_token("USDC", 6),
+            pricing_category=PricingCategory.PAR_STABLE,
+            nav_haircut_bps=Decimal("5"),
+        )
+
+
+def test_haircut_effective_date_requires_haircut():
+    with pytest.raises(ValueError, match="requires nav_haircut_bps"):
+        _rwa_venue(
+            NavOracle(kind="const_one"),
+            nav_haircut_effective_date=date(2026, 9, 1),
+        )
+
+
+def test_haircut_effective_date_requires_month_boundary():
+    with pytest.raises(ValueError, match="month boundary"):
+        _rwa_venue(
+            NavOracle(kind="const_one"),
+            nav_haircut_bps=Decimal("5"),
+            nav_haircut_effective_date=date(2026, 9, 2),
+        )
 
 
 def test_get_nav_oracle_source_parses_const_integer_suffix():
