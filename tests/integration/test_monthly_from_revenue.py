@@ -18,7 +18,7 @@ def test_persisted_revision_to_monthly_artifacts(database, tmp_path, monkeypatch
     monkeypatch.setattr(store, 'capture_versions', lambda: VERSIONS)
     original_finalize = monthly.finalize
     monkeypatch.setattr(monthly, 'finalize',
-                        lambda *a: original_finalize(*a, today=TODAY))
+                        lambda *a, **kw: original_finalize(*a, today=TODAY, **kw))
     with psycopg.connect(database, autocommit=True) as conn:
         store.apply_schema(conn)
         first = store.publish(conn, pnl, replace(VERSIONS, inputs='resolved'),
