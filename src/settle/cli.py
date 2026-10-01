@@ -292,6 +292,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p_reuse.add_argument("--month", required=True, help="Completed settlement month YYYY-MM")
     p_reuse.add_argument("--revision", required=True, help="Immutable API revenue revision ID")
     p_reuse.add_argument("--output-dir", required=True, help="New, empty artifact directory")
+    p_reuse.add_argument("--allow-september-sofr-carry", action="store_true",
+                         help="Explicitly permit the approved September 2026 3.88%% SOFR carry-forward")
     p_reuse.set_defaults(func=_cmd_monthly_from_revenue)
 
     p_snap = sub.add_parser(
@@ -317,7 +319,8 @@ def _cmd_monthly_from_revenue(args: argparse.Namespace) -> int:
     prime, month = load_prime_by_id(args.prime), Month.parse(args.month)
     with connect() as conn:
         conn.execute("SET TRANSACTION READ ONLY")
-        result, sources = from_database(conn, prime, month, args.revision)
+        result, sources = from_database(conn, prime, month, args.revision,
+                                        allow_september_sofr_carry=args.allow_september_sofr_carry)
     written = write_settlement(result, output, sources=sources)
     missing = [name for name in ("provenance", "summary", "xlsx")
                if name not in written or not written[name].is_file()]

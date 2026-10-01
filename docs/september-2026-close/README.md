@@ -167,3 +167,7 @@ The full unit suite passes: 1,269 tests, with one optional Crypto-dependent
 test skipped locally. The 56 focused DR/consolidated tests cover the requested
 code ownership, precise September venue accrual, four independent true-ups,
 repeat-run idempotence, XLSX/Markdown output, and unchanged historical months.
+
+The review fixes and reproducible close commands are documented in
+[`reproduce.md`](reproduce.md). The SOFR exception is explicit and scoped;
+the Gelato cash-offset check now matches transaction/log identity.

@@ -176,7 +176,8 @@ class HyperSyncNonMscSource:
         rows += self._vest(start_ts, end_ts, fb, tb)
         rows += self._bad_debt_writeoffs(start_ts, end_ts, fb, tb)
         rows += self._savings(start_ts, end_ts)
-        return pd.DataFrame(rows, columns=["stream", "label", "event_date", "amount"])
+        return pd.DataFrame(rows, columns=["stream", "label", "event_date", "amount",
+                                           "transaction_hash", "log_index"])
 
     # -- income: PSM jar burns ----------------------------------------------
 
@@ -302,7 +303,8 @@ class HyperSyncNonMscSource:
                 rwa_void += amt                 # RWA jar → RWA void line
             else:
                 d = datetime.fromtimestamp(r.block_time, tz=timezone.utc).date()
-                out.append(_row("income:surplus_return", str(d), amt, event_date=d))
+                out.append({**_row("income:surplus_return", str(d), amt, event_date=d),
+                            "transaction_hash": tx, "log_index": r.log_index})
         out.append(_row("income:rwa_void", "RWA jars (void)", rwa_void))
         return out
 

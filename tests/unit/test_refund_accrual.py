@@ -82,7 +82,8 @@ def test_report_preserves_total_and_names_gelato(monkeypatch):
     monkeypatch.setattr(refunds, 'refund_adjustments', lambda *a: adjustment)
     def rows(month, pin):
         return pd.DataFrame([
-            {'stream': 'income:surplus_return', 'label': '2026-09-15', 'amount': D('42469.146527')},
+            {'stream': 'income:surplus_return', 'label': '2026-09-15', 'amount': D('42469.146527'),
+             'transaction_hash': settlement.transaction_hash, 'log_index': 169},
             {'stream': 'income:psm_jar', 'label': '2026-09-10', 'amount': D('100')},
         ])
     result = compute_non_msc_monthly(Month(2026, 9), 26093737, source=rows)
@@ -93,3 +94,24 @@ def test_report_preserves_total_and_names_gelato(monkeypatch):
     assert settlement.transaction_hash in text
     with pytest.raises(ValueError, match='absent from cash'):
         compute_non_msc_monthly(Month(2026, 9), 26093737, source=lambda *a: rows(*a).iloc[1:])
+
+
+@pytest.mark.parametrize('problem', ['unrelated_same_day', 'missing_hash', 'missing_index', 'duplicate_log'])
+def test_cash_offset_requires_actual_unique_transaction(problem, monkeypatch):
+    entry, receipt, settlement = fixture()
+    adjustment = refunds.refund_adjustments(Month(2026, 9), 26093737,
+                                           entries=[entry], fetch=fetcher(receipt, settlement))
+    monkeypatch.setattr(refunds, 'refund_adjustments', lambda *a: adjustment)
+    cash = {'stream': 'income:surplus_return', 'label': '2026-09-15',
+            'amount': D('50000'), 'transaction_hash': settlement.transaction_hash,
+            'log_index': 169}
+    if problem == 'unrelated_same_day':
+        cash['transaction_hash'] = '0xunrelated'
+    elif problem == 'missing_hash':
+        cash.pop('transaction_hash')
+    elif problem == 'missing_index':
+        cash.pop('log_index')
+    rows = [cash, cash] if problem == 'duplicate_log' else [cash]
+    with pytest.raises(ValueError, match='cash'):
+        compute_non_msc_monthly(Month(2026, 9), 26093737,
+                               source=lambda *a: pd.DataFrame(rows))

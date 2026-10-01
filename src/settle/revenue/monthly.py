@@ -84,7 +84,7 @@ def _close(actual, expected, label):
         raise ValueError(f'{label} does not reconcile: {actual} != {expected}')
 
 
-def _reference_history(prime, period, provenance):
+def _reference_history(prime, period, provenance, *, allow_september_sofr_carry=False):
     if not prime.subsidy.enabled:
         return None
     saved = provenance.get('reference_rates', {})
@@ -92,7 +92,11 @@ def _reference_history(prime, period, provenance):
         raise ValueError('missing reference-rate snapshot')
     content = {k: saved[k] for k in ('calendar_version', 'series', 'carry_forward_dates')}
     calendar = yaml.safe_load(CALENDAR.read_text())
-    if (saved.get('coverage_complete') is not True or digest(content) != saved.get('snapshot_id')
+    authorized = allow_september_sofr_carry and saved.get('coverage_complete') is False
+    if authorized:
+        from .september_close import validate_authorized_reference
+        validate_authorized_reference(prime, period, saved)
+    if ((saved.get('coverage_complete') is not True and not authorized) or digest(content) != saved.get('snapshot_id')
             or content['calendar_version'] != digest(calendar)):
         raise ValueError('invalid reference-rate snapshot')
     configured = load_reference_rates_for(prime.subsidy)
@@ -110,6 +114,8 @@ def _reference_history(prime, period, provenance):
         kind = (configured.kind_at(day) if isinstance(configured, ScheduledReferenceRateHistory)
                 else configured.kind)
         required = effective_day(day, calendar)
+        if authorized and day == date(2026, 9, 30):
+            required = date(2026, 9, 29)
         if kind not in histories or required not in set(histories[kind].rates['effective_date']):
             raise ValueError(f'missing reference observation for {day}')
         if required != day and content['carry_forward_dates'].get(str(day)) != str(required):
@@ -119,7 +125,7 @@ def _reference_history(prime, period, provenance):
             if isinstance(configured, ScheduledReferenceRateHistory) else histories[configured.kind])
 
 
-def validate_interest(pnl, prime, provenance):
+def validate_interest(pnl, prime, provenance, *, allow_september_sofr_carry=False):
     """Re-run the canonical interest formula, including subsidy and deductions.
 
     sde_av already includes the PSM USDC slice; do not count it a second time.
@@ -157,7 +163,8 @@ def validate_interest(pnl, prime, provenance):
         lending_idle_usds=series('lending_idle', 'cum_balance'),
         basin_idle_usds=pd.DataFrame(basin_rows),
         subsidy_config=prime.subsidy,
-        ref_rate_history=_reference_history(prime, pnl.period, provenance),
+        ref_rate_history=_reference_history(prime, pnl.period, provenance,
+                                            allow_september_sofr_carry=allow_september_sofr_carry),
     )
     for saved, computed in zip(rows, daily.to_dict('records'), strict=True):
         for key in ('utilized', 'daily_sky_rev', 'daily_sky_rev_gross'):
@@ -172,7 +179,7 @@ def validate_interest(pnl, prime, provenance):
     return total
 
 
-def finalize(record, prime, month, versions, *, today=None):
+def finalize(record, prime, month, versions, *, today=None, allow_september_sofr_carry=False):
     """Validate an explicitly selected revision; return result + audit sources.
 
     Code/config/manual-input versions must match exactly. This intentionally
@@ -210,7 +217,8 @@ def finalize(record, prime, month, versions, *, today=None):
            'supply revenue')
     if pnl.distribution_rewards != 0 or pnl.dr_breakdown:
         raise ValueError('daily snapshot already contains monthly distribution rewards')
-    interest = validate_interest(pnl, prime, provenance)
+    interest = validate_interest(pnl, prime, provenance,
+                                 allow_september_sofr_carry=allow_september_sofr_carry)
     # GAR depends on the monthly consolidated report, so refresh it at settlement.
     gar, basis = compute_gar(prime, month)
     pnl = replace(pnl, gar=gar, gar_basis=basis,
@@ -224,10 +232,14 @@ def finalize(record, prime, month, versions, *, today=None):
         'daily_revenue_input_revision': record['input_revision'],
         'reference_rate_snapshot': provenance.get('reference_rates', {}).get('snapshot_id', ''),
         'borrowing_costs_recalculated_usd': str(interest),
+        'reference_rate_status': ('operator-authorized September 29 SOFR (3.88%) carried to September 30'
+                                  if provenance.get('reference_rates', {}).get('coverage_complete') is False
+                                  else 'official coverage'),
         'borrowing_costs_validation': 'canonical formula, saved inputs; tolerance USD 0.000001',
     }
 
 
-def from_database(conn, prime, month, revision):
+def from_database(conn, prime, month, revision, *, allow_september_sofr_carry=False):
     record = store.read(conn, prime.id, cutoff=month.last_day, revision=revision)
-    return finalize(record, prime, month, store.capture_versions())
+    return finalize(record, prime, month, store.capture_versions(),
+                    allow_september_sofr_carry=allow_september_sofr_carry)

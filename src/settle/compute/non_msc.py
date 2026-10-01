@@ -236,7 +236,9 @@ def compute_non_msc_monthly(
         elif stream == "income:liq_due":
             liq_due = amount
         elif stream == "income:surplus_return":
-            surplus.append({"date": str(row["label"]), "amount": amount})
+            surplus.append({"date": str(row["label"]), "amount": amount,
+                            "transaction_hash": row.get("transaction_hash"),
+                            "log_index": row.get("log_index")})
         elif stream == "income:rwa_void":
             rwa_void = amount
         elif stream == "expense:susds_drip":
@@ -260,12 +262,19 @@ def compute_non_msc_monthly(
     # and remove their later cash recognition, including across month boundaries.
     from ..normalize.sources.refund_accrual import refund_adjustments
     refunds = refund_adjustments(month, pin_block)
-    for day in {r["date"] for r in refunds if r["kind"] == "settlement_offset"}:
-        offset = -sum((r["amount"] for r in refunds
-                       if r["kind"] == "settlement_offset" and r["date"] == day), Decimal(0))
-        cash = sum((r["amount"] for r in surplus if r["date"] == day), Decimal(0))
+    # A same-day unrelated deposit must not stand in for a missing refund.
+    # Match cash actually booked by this backend, not a separate on-chain read.
+    for tx in {r["transaction"] for r in refunds if r["kind"] == "settlement_offset"}:
+        offsets = [r for r in refunds if r["kind"] == "settlement_offset" and r["transaction"] == tx]
+        offset = -sum((r["amount"] for r in offsets), Decimal(0))
+        matching = [r for r in surplus if r["transaction_hash"] == tx
+                    and r["date"] in {o["date"] for o in offsets}]
+        indexes = [r["log_index"] for r in matching]
+        if any(i is None or i != i for i in indexes) or len(set(indexes)) != len(indexes):
+            raise ValueError("Missing or duplicate refund cash log identity")
+        cash = sum((r["amount"] for r in matching), Decimal(0))
         if cash + Decimal("1e-9") < offset:
-            raise ValueError("Accrued refund settlement absent from cash surplus returns")
+            raise ValueError(f"Accrued refund settlement absent from cash surplus returns: {tx}")
 
     # Attribution: cash / transfer-date basis — PSM income for month M is EVERY
     # jar burn that LANDS in calendar month M. Multiple burns in the month all
@@ -443,7 +452,11 @@ def write_non_msc(r: NonMscMonthly, out_dir: Path) -> dict[str, Path]:
             "liq_expense": str(r.liq_expense),
             "bad_debt_by_ilk": {k: str(v) for k, v in r.bad_debt_by_ilk.items()},
             "bad_debt_expense": str(r.bad_debt_expense),
-            "surplus_returns": [{"date": s["date"], "amount": str(s["amount"])} for s in r.surplus_returns],
+            "surplus_returns": [
+                {"date": s["date"], "amount": str(s["amount"]),
+                 "transaction_hash": s.get("transaction_hash") if isinstance(s.get("transaction_hash"), str) else None,
+                 "log_index": int(s["log_index"]) if s.get("log_index") is not None and s["log_index"] == s["log_index"] else None}
+                for s in r.surplus_returns],
             "surplus_return_income": str(r.surplus_return_income),
             "refund_accrual_adjustments": [{**r, "amount": str(r["amount"])}
                                            for r in r.refund_accrual_adjustments],

@@ -1,0 +1,25 @@
+{
+  "spark": {
+    "interest_validated": "8226734.609731825973963260988",
+    "rate": "0.0388",
+    "source_date": "2026-09-29",
+    "effective_date": "2026-09-30"
+  },
+  "grove": {
+    "interest_validated": "3754292.984290454805445993200",
+    "rate": "0.0388",
+    "source_date": "2026-09-29",
+    "effective_date": "2026-09-30"
+  },
+  "non_msc": {
+    "totals_unchanged": true,
+    "net_revenue": "708599.21131559140975324007",
+    "matched_cash_logs": [
+      {
+        "transaction_hash": "0x806e361391d6f7b0c0ca98f200644bff27e002490c04fe55c5b27f9566359e10",
+        "log_index": 167,
+        "amount": "42469.146527000000000000"
+      }
+    ]
+  }
+}

@@ -3,9 +3,9 @@
 Reviewed `60bad9d` against main. CI is green (unit and PostgreSQL integration).
 No on-chain action or historical report regeneration was performed.
 
-## Findings
+## Findings — addressed
 
-1. **P2 — The authorized SOFR close is not reproducible from the PR alone.**
+1. **Fixed: P2 — The authorized SOFR close is not reproducible from the PR alone.**
    The September Spark/Grove provenance correctly records 3.88%, sourced from
    September 29 for September 30, with `coverage_complete=False`. However, its
    rate preparer lives only in `/tmp/run_september30_sofr_estimate.py`, and the
@@ -16,7 +16,7 @@ No on-chain action or historical report regeneration was performed.
    reproducible close command rather than weakening the general completeness
    guard. The operator has reconfirmed use of September 29 for this close.
 
-2. **P2 — Refund cash coverage is checked by day, not transaction.**
+2. **Fixed: P2 — Refund cash coverage is checked by day, not transaction.**
    `src/settle/compute/non_msc.py:261-268` sums all cash surplus returns on the
    settlement date. If the backend omits the Gelato return but includes an
    unrelated return of at least 42,469.146527 on that date, the guard passes
@@ -44,3 +44,17 @@ No on-chain action or historical report regeneration was performed.
 
 Sources: https://www.newyorkfed.org/markets/reference-rates/sofr and
 https://markets.newyorkfed.org/api/rates/secured/sofr/last/5.json.
+
+## Fixes
+
+Both findings are addressed. `reproduce.md` documents the committed September
+close command and narrowly scoped opt-in for API-to-monthly reuse. The cash
+source now preserves transaction/log identities and the offset guard matches
+booked cash by transaction; unrelated same-day receipts cannot satisfy it.
+Regression tests cover opt-in/default behavior, altered/missing rate inputs,
+wrong scope, missing cash identity, and duplicate cash rows.
+
+Validation: 1,281 unit tests passed (one optional Crypto dependency skip).
+`review-fix-validation.json` records successful revalidation of Spark/Grove
+interest and a full September non-MSC rerun: totals unchanged, Gelato cash
+matched by transaction and log index.

@@ -218,7 +218,7 @@ def test_cli_reports_incomplete_finalization_on_renderer_failure(
 
     monkeypatch.setattr(cli, 'load_prime_by_id', lambda _: prime)
     monkeypatch.setattr(db, 'connect', connection)
-    monkeypatch.setattr(monthly, 'from_database', lambda *a: (pnl, {}))
+    monkeypatch.setattr(monthly, 'from_database', lambda *a, **kw: (pnl, {}))
     monkeypatch.setattr(writer, 'enrich_with_dr', lambda p: p)
     monkeypatch.setattr(writer.subprocess, 'run', render)
     code = cli.main(['monthly-from-revenue', '--prime', 'grove', '--month', '2026-09',

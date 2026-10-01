@@ -1,0 +1,135 @@
+{
+  "calendar_version": "61306dd446efcc66eda2166243d4e36511626ee4402c933e1a5e826b2588c3dc",
+  "series": {
+    "sofr": {
+      "source": "https://markets.newyorkfed.org/api/rates/secured/sofr/search.json",
+      "observations": [
+        {
+          "effective_date": "2026-09-01",
+          "apr": "0.0366",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-09-02",
+          "apr": "0.0365",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-09-03",
+          "apr": "0.0366",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-09-04",
+          "apr": "0.0365",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-09-08",
+          "apr": "0.0364",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-09-09",
+          "apr": "0.0364",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-09-10",
+          "apr": "0.0362",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-09-11",
+          "apr": "0.0362",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-09-14",
+          "apr": "0.0362",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-09-15",
+          "apr": "0.0364",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-09-16",
+          "apr": "0.0362",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-09-17",
+          "apr": "0.0385",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-09-18",
+          "apr": "0.0385",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-09-21",
+          "apr": "0.0385",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-09-22",
+          "apr": "0.0387",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-09-23",
+          "apr": "0.0387",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-09-24",
+          "apr": "0.0388",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-09-25",
+          "apr": "0.039",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-09-28",
+          "apr": "0.039",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-09-29",
+          "apr": "0.0388",
+          "revision_indicator": ""
+        }
+      ]
+    }
+  },
+  "carry_forward_dates": {
+    "2026-09-05": "2026-09-04",
+    "2026-09-06": "2026-09-04",
+    "2026-09-07": "2026-09-04",
+    "2026-09-12": "2026-09-11",
+    "2026-09-13": "2026-09-11",
+    "2026-09-19": "2026-09-18",
+    "2026-09-20": "2026-09-18",
+    "2026-09-26": "2026-09-25",
+    "2026-09-27": "2026-09-25",
+    "2026-09-30": "2026-09-29"
+  },
+  "snapshot_id": "c69a625e755960e664654d2dccfe31faa0638ef19ae862b701b94187ed6074b5",
+  "first_observed_at": "2026-10-01T00:35:15.005668+00:00",
+  "coverage_complete": false,
+  "operator_estimate": {
+    "kind": "operator_authorized_previous_day_sofr",
+    "effective_date": "2026-09-30",
+    "source_effective_date": "2026-09-29",
+    "reason": "User requested September 29 SOFR carried forward to September 30 before publication",
+    "authorized_at_date": "2026-10-01",
+    "runner_sha256": "752d6388c3db91cbcd20414b154da07d52bbd4827e87d90ebd6bb26314309cad",
+    "replace_with_official_observation": true,
+    "apr": "0.0388"
+  }
+}
