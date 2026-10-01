@@ -1,11 +1,11 @@
 {
   "month": "2026-09",
-  "methodology_commit": "1e9ecb2",
-  "source": "Finalized September workbook and its full-precision companion dr_monthly_combined.csv; September only. Historical Additions sheet is NOT imported.",
+  "methodology_commit": "ed08241beb57cebe60dcc2b278481cc2b68d795e",
+  "source": "Finalized settle-dr-dune main workbook and September-only rows of its companion dr_monthly_combined.csv. Historical Additions is not imported as September accrual.",
   "files": {
-    "finalized.xlsx": "17eee2ca39bd63e68e6d87097ede0007d8741e41cb9a7fceb017da713103b02e",
-    "accrual.csv": "b548886c528538aa176d89e3b9b738dec6a7175628cc037965ba88f9918e48e8"
+    "finalized.xlsx": "17e8ed88d00a53c3a95371ecb9d715569542e8ece2f51aa96994c7174de16ca3",
+    "accrual.csv": "a3f1a04959a241d8986bb8e2cde24ece4792f149e798c34fb439ee401d89520a"
   },
-  "finalized_artifact_source_commit": "d878b59",
-  "source_note": "Existing finalized outputs copied before the independent PR #27 replay; expected September venue values verified against operator instructions."
+  "finalized_artifact_source_commit": "ed08241beb57cebe60dcc2b278481cc2b68d795e",
+  "source_note": "Merged settle-dr-dune PR #28 applies Grove XR schedule to Skybase Pendle and Morpho. Only Skybase September report artifacts are regenerated in this update."
 }

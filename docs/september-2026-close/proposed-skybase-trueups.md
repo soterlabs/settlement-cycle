@@ -1,6 +1,8 @@
 # Approved Skybase historical payment true-ups
 
-Operator approved these exact adjustments on October 1, 2026. The four items
+Updated on October 1, 2026 to the latest upstream PR #28 calculation under
+the operator instruction to refresh Skybase. Amounts are rounded to six
+USDS decimals; these supersede the earlier 124,694.330541 USDS total. The four items
 are configured in `config/settlement_adjustments.yaml`, paid with September,
 and shown separately from normal September accrual in the summary and workbook.
 They do not enter September-earned DR or accrual-basis Sky Net Revenue / TMF.
@@ -8,15 +10,17 @@ Published January–August reports are not regenerated.
 
 | Item | Earned period | USDS |
 |---|---|---:|
-| Pendle / code 1997 | January–August 2026 | 27,740.235315 |
-| Flagship / code 1998 | January–August 2026 | 34,229.172646 |
-| Risk Capital / code 1999 | January–August 2026 | 758.752668 |
+| Pendle / code 1997 | January–August 2026 | 41,560.042993 |
+| Flagship / code 1998 | January–August 2026 | 71,804.679106 |
+| Risk Capital / code 1999 | January–August 2026 | 1,782.888077 |
 | Grove Farm / codes 0/1/1002 | July–August 2026 | 61,966.169912 |
-| **Total** | | **124,694.330541** |
+| **Total** | | **177,113.780088** |
 
-Evidence: `settle-dr-dune@1e9ecb2/docs/september-2026-settlement.md`, which audits
+Evidence: `settle-dr-dune@ed08241/docs/september-2026-settlement.md`, which audits
 published reports at `soterlabs/settlement-reports@cb3db5ce974f22361cff8f2a0aef1bde26aa05d7`.
-The exact amounts above are the operator's approved payment instructions.
+The amounts above implement the operator's latest instruction using upstream
+`hypersync-results/skybase_historical_additions.csv` for codes 1997-1999.
+The Grove Farm amount is unchanged.
 They are not recomputed from the historical sheet during report generation.
 The writer replaces the payment bridge on every run, preventing duplicate additions.
 

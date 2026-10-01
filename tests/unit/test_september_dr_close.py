@@ -28,7 +28,8 @@ def test_documented_codes_and_intentionally_unresolved(caplog):
 def test_september_venue_accrual_and_grove_emitted_split():
     rows = snapshot_rows(ROOT, '2026-09')[1:]
     owner, unpaid = dr_rewards._ref_code_map()
-    expected = {'1997': '15124.246928', '1998': '5262.771706', '1999': '20.649651'}
+    # settle-dr-dune PR #28: Grove XR schedule, not flat 0.2% / 12.
+    expected = {'1997': '14902.209045', '1998': '5185.509367', '1999': '20.346495'}
     for code, amount in expected.items():
         assert sum((r[1] for r in rows if r[0] == code), D(0)).quantize(D('.000001')) == D(amount)
     farms = {r[0]: r[1] for r in rows if r[2].endswith('/ USDS-GROVE')}
@@ -57,10 +58,10 @@ def test_four_exact_trueups_are_separate_idempotent_and_not_revenue():
     prov = _provenance()
     results = copy.deepcopy(prov['results'])
     apply_settlement_adjustments(prov)
-    expected = ['27740.235315', '34229.172646', '758.752668', '61966.169912']
+    expected = ['41560.042993', '71804.679106', '1782.888077', '61966.169912']
     assert [r['amount'] for r in prov['settlement_adjustments']] == expected
-    assert prov['settlement_payment']['prior_period_adjustments'] == '124694.330541'
-    assert D(prov['settlement_payment']['total']) == D('125074.330541')
+    assert prov['settlement_payment']['prior_period_adjustments'] == '177113.780088'
+    assert D(prov['settlement_payment']['total']) == D('177493.780088')
     first = copy.deepcopy(prov)
     apply_settlement_adjustments(prov)
     assert prov == first
@@ -118,7 +119,7 @@ def test_dr_only_rerun_preserves_history_and_never_duplicates_trueups(tmp_path, 
     assert prior.read_bytes() == before
     assert len(twice['settlement_adjustments']) == 4
     assert D(twice['results']['distribution_rewards']) == dr_rewards.load_dr('skybase', '2026-09')['total']
-    assert twice['settlement_payment']['prior_period_adjustments'] == '124694.330541'
+    assert twice['settlement_payment']['prior_period_adjustments'] == '177113.780088'
 
 
 def test_xlsx_keeps_four_distinct_payment_lines():
@@ -143,6 +144,6 @@ def test_historical_payment_does_not_reduce_current_sky_net_revenue():
 
     close = SkyTotalAccrualMonthly('2026-09', [], D('1000'), D('50'))
     snr = close.sky_net_revenue
-    close.prior_period_payments = {'skybase': D('124694.330541')}
+    close.prior_period_payments = {'skybase': D('177113.780088')}
     assert close.sky_net_revenue == snr
-    assert '124,694.330541' in render_summary(close)
+    assert '177,113.780088' in render_summary(close)
