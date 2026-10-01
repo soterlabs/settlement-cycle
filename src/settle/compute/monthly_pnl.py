@@ -4047,6 +4047,14 @@ def compute_monthly_pnl(
             value_som, value_eom,
             "  [SDE]" if sde_entry is not None else "",
         )
+        # Only explicitly configured venues read these two filtered event
+        # streams. Historical periods before recognition_start return early.
+        from ..normalize.redemption_settlements import (
+            redemption_settlements,
+            restore_redemption_capital,
+        )
+        redemption_ledger = redemption_settlements(prime, venue, period)
+        inflow_ts = restore_redemption_capital(inflow_ts, redemption_ledger)
         venue_inputs.append(VenueRevenueInputs(
             venue=venue, value_som=value_som, value_eom=value_eom,
             inflow_timeseries=inflow_ts,
@@ -4056,6 +4064,11 @@ def compute_monthly_pnl(
             erc4626_period_inflow=_erc4626_period_inflow,
             value_timeseries=_sde_ts,
             actual_revenue_adjustment=susds_mtm_adjustment,
+            redemption_revenue_adjustment=redemption_ledger.revenue_adjustment,
+            redemption_settlements=list(redemption_ledger.settlements),
+            outstanding_redemptions=list(redemption_ledger.outstanding),
+            unmatched_redemption_cash=list(redemption_ledger.unmatched_cash),
+            redemption_capital_outflows=list(redemption_ledger.capital_outflows),
         ))
 
     # Re-sort venue_inputs to match the declaration order in prime.venues so

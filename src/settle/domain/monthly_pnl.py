@@ -58,6 +58,13 @@ class VenueRevenue:
     # external-rewards path wired up yet. See `normalize.positions.
     # _atoken_external_revenue_usd` for the Cat C implementation.
     external_revenue: Decimal = Decimal("0")
+    # Cash realization is already included in actual_revenue/sd_revenue.
+    # These fields preserve both transaction legs and unsettled claims.
+    redemption_revenue_adjustment: Decimal = Decimal("0")
+    redemption_settlements: list[dict] = field(default_factory=list)
+    outstanding_redemptions: list[dict] = field(default_factory=list)
+    unmatched_redemption_cash: list[dict] = field(default_factory=list)
+    redemption_capital_outflows: list[dict] = field(default_factory=list)
     # Time-weighted average principal across the period:
     #   tw_avg = mean(value_som + cum_inflow_d for d in period.start..end)
     # Used by post-hoc reporting (build_monthly_report, build_settlement_xlsx)

@@ -1,9 +1,16 @@
 # September 2026 close validation
 
-Status: all six API/full-month comparisons pass exactly; all six primes have
-30 September API dates. September reports cover all six primes, non-MSC,
-consolidated Sky, and TMF. Spark/Grove and downstream totals now use the
-**official September 30 SOFR of 3.90%**, replacing the earlier 3.88% estimate.
+Status: all six primes have 30 September API dates. The original six
+API/full-month comparisons passed exactly at the baseline revisions recorded
+below. **The current settlement reports now include an isolated S1/E10 refresh
+and no longer match those older Spark/Grove API revisions.** Other venue
+revenue is unchanged. API publication is a follow-up task; see
+[`../PRD_selective_venue_revenue_refresh.md`](../PRD_selective_venue_revenue_refresh.md).
+
+September reports cover all six primes, non-MSC, consolidated Sky and TMF.
+Spark/Grove use the official September 30 SOFR of 3.90%. The current branch
+includes merged PR #218. The details below about original API comparisons
+are baseline evidence, not a claim about the newly refreshed artifacts.
 
 The DR submodule is pinned to merged PR #27 (`1e9ecb2`). Normal September
 accrual uses the finalized workbook plus its full-precision companion CSV,
@@ -175,3 +182,29 @@ repeat-run idempotence, XLSX/Markdown output, and unchanged historical months.
 The review fixes and reproducible close commands are documented in
 [`reproduce.md`](reproduce.md). Official SOFR is the default; the historical estimate exception remains explicit and scoped;
 the Gelato cash-offset check now matches transaction/log identity.
+
+## Isolated S1/E10 settlement refresh after PR #218
+
+Only Spark S1 and Grove E10 were recalculated. The offline reproduction and
+complete before/after audit are in `selective-refresh/README.md` and
+`selective-refresh/audit.json`. No full-prime replay or API publication ran.
+
+- S1: 2,113,055.557198851560815424 -> 2,332,672.407089739240730015 USDS
+  prime revenue. The additional 219,616.849890887679914591 USDS consists of
+  September 14 and 28 treasury receipts. Native yield and borrowing costs
+  are unchanged. S2-S5 remain at their saved results by explicit scope.
+- E10: 1,065,483.58 -> 733,817.500777 USDS, entirely Sky-direct revenue.
+  This includes the prospective 5 bps mark, 12,504.626548 USDS of cash
+  realization costs, and restoration of three small capital outflows totaling 2,998.50 USDS.
+  Its repriced daily SDE deduction increases borrowing costs by
+  516.079599819999221008623 USDS, calculated from saved debt/rate inputs.
+- All other venue revenues, four other prime reports, non-MSC and historical
+  January-August reports remain unchanged. The finalized DR import is reused.
+- Consolidated Sky/TMF are reaggregated from these reports and PR #218's
+  September adjustments (Spark +2,392,354.07; Grove -165,013.90).
+  Sky net revenue is 14,812,762.21131559140975324007 USDS. Proposed TMF hop
+  is 2,661 seconds; vestTot is 116,184,372 SKY. Existing September execution
+  data and the 7,372,287.576422652922647064731 SKY burn amount are unchanged.
+
+No October MSC mint/send figures are pinned. The consolidated output remains
+a calculated proposal, not an externally reconciled or executed settlement.

@@ -343,6 +343,23 @@ def render_summary(prov: dict) -> str:
             )
         lines.append("")
 
+    realized = [(v, r) for v in all_venues for r in v.get("redemption_settlements", [])]
+    outstanding = [(v, r) for v in all_venues for r in v.get("outstanding_redemptions", [])]
+    if realized or outstanding:
+        lines.extend(["## Redemption cash settlements", "",
+                      "Cash is capital. Only cash minus the claim's carrying value enters venue revenue; "
+                      "amounts below are already included above, not additional adjustments.", "",
+                      "| Venue | Cash date | Carrying value | Cash received | Revenue variance |",
+                      "|---|---|---:|---:|---:|"])
+        for v, r in realized:
+            lines.append(f"| {v['venue_id']} | {r['cash']['date']} | "
+                         f"{_usd(r['carrying_value_usd'])} | {_usd(r['cash_usd'])} | "
+                         f"{_usd(r['revenue_adjustment_usd'])} |")
+        if outstanding:
+            lines.extend(["", f"Outstanding redemption claims: {len(outstanding)}. "
+                          "No exact realization cost is booked until cash arrives."])
+        lines.extend(["", "Both transaction legs and outstanding claims are retained in provenance.json.", ""])
+
     # ── PnL-suppressed venues (positions only) ──────────────────────
     if pnl_hidden:
         lines.append("## Position-only venues (excluded from `prime_agent_revenue`)")

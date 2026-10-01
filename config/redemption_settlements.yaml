@@ -1,0 +1,26 @@
+# Cash realization of outstanding redemptions, separate from SDE/CoF timing.
+# An audited empty opening ledger is a fixed history anchor, not a rolling
+# T-1/T-2 lookback. Replay these filtered logs through each requested cutoff.
+venues:
+  - prime: grove
+    venue_id: E10
+    chain: ethereum
+    share_token: '0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041'
+    recognition_start: '2026-09-01'
+    # All earlier requests were settled before August 31; this includes BOTH
+    # Aug 31 requests (1,000 shares paid that day; 24,999,000 paid Sep 1).
+    history_start: '2026-08-31'
+    request_receiver: '0x8780dd016171b91e4df47075da0a947959c34200'
+    cash_payer: '0xcfc0f98f30742b6d880f90155d4ebb885e55ab33'
+    cash_token: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+    cash_decimals: 6
+    # Matching aid only. Actual cash, not this estimate, determines revenue.
+    expected_payout_factor: '0.9995'
+    # Automatic matching additionally caps tolerance at 0.1% of cash.
+    match_tolerance_usd: '5'
+    # Exact verified event identities take precedence over amount matching.
+    # Future ambiguous/grouped payouts can be linked explicitly in this list.
+    links:
+      - cash: '0x5add7249801ed90f803a6cdfec0c9a6d4fc5f5b3343ee50fa9f9ed4b833cb8cf:329'
+        requests:
+          - '0xf4b2dc1e714c807cb7f4a5fcaaf80ae2a12182db5c82a244879cc245ccd11c35:1268'

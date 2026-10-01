@@ -8,7 +8,26 @@ The earlier 3.88% carry-forward snapshot remains available only for explicit
 reproduction of the superseded estimate via `--allow-september-sofr-carry`.
 It is no longer the default input or the rate used in the current reports.
 
-With the normal RPC/indexer environment configured, run from this repository:
+## Current isolated S1/E10 artifacts
+
+Reproduce the current two-venue correction without network access:
+
+```sh
+PYTHONPATH=src python scripts/refresh_september_selected_venues.py \
+  --output /tmp/september-selected-refresh
+```
+
+Add `--write-reports` only to replace the two September settlement artifacts.
+The script uses hash-pinned pre-PR218 baselines, selected Ethereum events and
+saved daily interest inputs. See `selective-refresh/README.md`. It does not
+publish API data or refresh any other venue.
+
+## Full-close command (broader scope; not used for this correction)
+
+A new full run would apply current configuration to every venue, including
+Spark S2-S5, and therefore is not the reproduction command for the isolated
+artifacts. With the normal RPC/indexer environment configured, the broader
+command is:
 
 ```sh
 PYTHONPATH=src python scripts/run_september_close.py \

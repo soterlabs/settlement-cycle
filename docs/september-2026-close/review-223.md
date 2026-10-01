@@ -73,3 +73,46 @@ DR-only refresh, official-rate inputs, and downstream propagation.
 Final disclosure validation: 1,285 unit tests passed (one optional Crypto skip).
 Spark/Grove financial provenance and consolidated Sky/TMF financial values
 were unchanged by report regeneration.
+
+## Review after PR #218 rebase and isolated S1/E10 refresh
+
+Reviewed the rebased close changes and new BUIDL ledger, the selected-venue
+recalculation, borrowing-cost dependencies, DR/true-up separation, Gelato
+receipt/cash offset, reference-rate guards and generated report differences.
+No remaining blocking finding was identified in the supported settlement path.
+
+Findings addressed in this update:
+
+- Sub-$1M BUIDL redemption exits were being dropped by the incoming-yield
+  filter. Restore the three verified 1,000-share September exits as capital;
+  their combined $2,998.50 carrying value is not a revenue loss. The first
+  draft narrative mentioned only one; the recorded calculation included all
+  three. The exact bridge is now generated and regression-tested.
+- Booking the September boundary cost in E10 and also adding it to `sky_adj`
+  would double-count it. Keep historical `sky_adj` at -165,013.90; book the
+  September cash variance once in E10 before its 100% SDE split.
+- Adjustment-only `msc_preview` entries suppressed the old missing-preview
+  warning without supplying published mint/send pins. Partial or absent pins
+  now remain visibly unreconciled; this does not change amounts.
+- The isolated runner must fail if workbook generation fails, rather than
+  reporting a completed refresh with only Markdown/provenance.
+- Original exact API/monthly comparisons are baseline evidence. The refreshed
+  reports diverge from old Spark/Grove API revisions; README and PR wording
+  now state that explicitly. The API updater is only a follow-up PRD.
+
+The $331,666.079223 E10 reduction is entirely SDE. The separate marked-SDE
+balance change adds $516.07959982 to Grove borrowing costs and reduces its
+payment accordingly. Neither amount touches other venue native revenue.
+
+Validation: 1,320 unit tests passed, one optional Crypto-dependent test skipped.
+Focused offline replay tests also passed after adding the exact revenue bridge.
+The two-venue replay is repeatable, performs no network/API writes, reproduces
+the original E10 baseline, and preserves every unselected venue and unchanged
+borrowing input. No new Ruff diagnostics; diff whitespace checks pass.
+Postgres integration was not rerun without a configured disposable test DB.
+
+Limits: the BUIDL matcher consumes whole requests, including batches. Partial
+payments of a single request require allocation support; ambiguous matches
+fail rather than guessing. The audited September data needs neither exception:
+14 receipts match, with no outstanding or unmatched payments. Later request
+ages and month boundaries are supported without a rolling lookback cutoff.

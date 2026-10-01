@@ -220,3 +220,13 @@ def test_non_ilk_prime_with_sky_share_raises(tmp_path):
     p.write_text(json.dumps(d))
     with pytest.raises(ValueError, match="no allocator ilk"):
         compute_sky_total_accrual(Month(2026, 7), repo_root=root, config=_JULY_CFG)
+
+
+def test_adjustments_alone_do_not_claim_published_preview_is_reconciled(tmp_path):
+    import copy
+    root = _july_repo(tmp_path)
+    cfg = copy.deepcopy(_JULY_CFG)
+    cfg["msc_preview"]["2026-07"] = {"grove": {"sky_adj": -165013.90}}
+    result = compute_sky_total_accrual(Month(2026, 7), repo_root=root, config=cfg)
+    assert any("not a fully reconciled" in w for w in result.warnings)
+    assert "not a fully reconciled" in render_summary(result)

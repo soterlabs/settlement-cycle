@@ -211,6 +211,13 @@ def compute_sky_total_accrual(
             "figures (and any prior-cycle corrections riding the settlement) "
             "before treating this month as reconciled."
         )
+    elif any(not {"mint", "send"} <= set(preview.get(p) or {}) for p in primes):
+        warnings.append(
+            f"msc_preview: {label} contains adjustments or partial pins, but "
+            "not published mint/send figures for every prime. Unpinned amounts "
+            "are DERIVED from monthly reports; this is not a fully reconciled "
+            "MSC preview."
+        )
     rows: list[AccrualPrimeRow] = []
     for prime in primes:
         sky, dv, sv = _load_prime_components(repo_root, prime, label)

@@ -19,15 +19,15 @@ Period: 2026-09-01 → 2026-09-30 (30 days)
 
 | Field | USDS |
 |---|---:|
-| **supply-side revenue** | **1,041,914.64** |
+| **supply-side revenue** | **1,041,398.56** |
 
 ### Sky side
 
 | Field | USDS |
 |---|---:|
-| prime cost of funds | 3,754,292.98 |
-| sky direct exposure | 2,507,467.93 |
-| **supply-side revenue** | **6,261,760.92** |
+| prime cost of funds | 3,754,809.06 |
+| sky direct exposure | 2,175,801.86 |
+| **supply-side revenue** | **5,930,610.92** |
 
 ## Per-venue
 
@@ -42,7 +42,7 @@ Period: 2026-09-01 → 2026-09-30 (30 days)
 | E7 | Securitize Tokenized AAA CLO Fund (STAC) | $103,069,993.80 | $103,405,568.80 | $103,069,993.80 | $0.00 | $335,575.00 | $335,575.00 | $0.00 | 0% | $0.00 |
 | E8 | Janus Henderson Anemoy AAA CLO (JAAA) | $130,734,977.20 | $131,081,648.69 | $130,734,977.20 | $0.00 | $346,671.49 | $346,671.49 | $0.00 | 0% | $0.00 |
 | E9 | Janus Henderson Anemoy Treasury Fund (JTRSY) | $858,067,027.28 | $309,460,827.19 | $550,561,642.08 | -$550,048,184.45 | $1,441,984.35 | $0.00 | $1,441,984.35 | 100.00% | $0.00 |
-| E10 | BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I) | $643,254,421.77 | $119,322,905.35 | $335,756,055.10 | -$524,997,000.00 | $1,065,483.58 | $0.00 | $1,065,483.58 | 100.00% | $0.00 |
+| E10 | BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I) | $643,254,421.77 | $119,263,243.90 | $335,908,171.77 | -$524,737,500.00 | $733,817.50 | $0.00 | $733,817.50 | 100.00% | $0.00 |
 | E11 | Curve AUSD/USDC stableswap LP | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E12 | Uniswap V3 AUSD/USDC pool (NFT positions) | $29,007,524.51 | $10,002,041.44 | $17,786,194.41 | -$19,018,300.44 | $12,817.36 | $12,817.36 | $0.00 | 0% | $0.00 |
 | E13 | RLUSD raw (ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
@@ -66,6 +66,29 @@ Period: 2026-09-01 → 2026-09-30 (30 days)
 | E40 | USDS raw (Diamond PAU ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E41 | JTRSY Basin escrow — USDS pending subscription (Diamond PAU) | $12,500,000.00 | $100,000,000.00 | $38,802,841.07 | $87,500,000.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E42 | Galaxy Warehouse (off-chain facility — cash distribution to Grove Eth ALM) | $0.00 | $0.00 | $0.00 | $0.00 | $1,658,948.54 | $1,658,948.54 | $0.00 | 0% | $0.00 |
+
+## Redemption cash settlements
+
+Cash is capital. Only cash minus the claim's carrying value enters venue revenue; amounts below are already included above, not additional adjustments.
+
+| Venue | Cash date | Carrying value | Cash received | Revenue variance |
+|---|---|---:|---:|---:|
+| E10 | 2026-09-01 | $24,999,000.00 | $24,986,500.15 | -$12,499.85 |
+| E10 | 2026-09-01 | $24,987,500.00 | $24,987,499.67 | -$0.33 |
+| E10 | 2026-09-03 | $24,987,500.00 | $24,987,499.65 | -$0.35 |
+| E10 | 2026-09-08 | $24,987,500.00 | $24,987,499.58 | -$0.42 |
+| E10 | 2026-09-09 | $24,987,500.00 | $24,987,499.66 | -$0.34 |
+| E10 | 2026-09-10 | $24,987,500.00 | $24,987,499.67 | -$0.33 |
+| E10 | 2026-09-11 | $24,987,500.00 | $24,987,499.56 | -$0.44 |
+| E10 | 2026-09-14 | $24,987,500.00 | $24,987,499.64 | -$0.36 |
+| E10 | 2026-09-15 | $24,987,500.00 | $24,987,499.67 | -$0.33 |
+| E10 | 2026-09-16 | $49,975,000.00 | $49,974,999.67 | -$0.33 |
+| E10 | 2026-09-17 | $199,900,000.00 | $199,899,999.62 | -$0.38 |
+| E10 | 2026-09-17 | $49,975,000.00 | $49,974,999.67 | -$0.33 |
+| E10 | 2026-09-21 | $999.50 | $999.08 | -$0.42 |
+| E10 | 2026-09-22 | $24,986,500.50 | $24,986,500.08 | -$0.42 |
+
+Both transaction legs and outstanding claims are retained in provenance.json.
 
 ## DR per ref code
 
