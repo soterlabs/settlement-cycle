@@ -103,33 +103,36 @@
     "prior_period_payments": {
       "skybase": "177113.780088"
     },
+    "prior_period_expenses": {
+      "skybase": "177113.780088"
+    },
     "reference_rate_notes": []
   },
   "tmf_waterfall": {
-    "step1_total": "2962612.20",
-    "step1_core_council": "1481306.10",
-    "step1_fortification": "1481306.10",
-    "after_step1": "11850448.80",
+    "step1_total": "2927189.40",
+    "step1_core_council": "1463594.70",
+    "step1_fortification": "1463594.70",
+    "after_step1": "11708757.60",
     "target_backstop_capital": "100292422.2347980591787423688",
     "retention_rate": "0.50",
-    "step2_retained": "5925224.4000",
-    "step3_capital": "5925224.4000",
-    "sky_rewards_usds": "2666350.980000",
-    "usds_rewards_usds": "2666350.980000",
-    "burn_usds": "592522.440000",
-    "buy_usds": "3258873.420000",
+    "step2_retained": "5854378.8000",
+    "step3_capital": "5854378.8000",
+    "sky_rewards_usds": "2634470.460000",
+    "usds_rewards_usds": "2634470.460000",
+    "burn_usds": "585437.880000",
+    "buy_usds": "3219908.340000",
     "splitter_burn": "0.55",
-    "batches_per_month": "987.5374",
-    "batches_per_day": "32.46698301369863013663049882",
-    "hop_solved": "2661.165035369799665338041880",
-    "hop": 2661,
-    "annual_run_rate": "71102692.8000",
-    "sky_bought_estimate": "47335329.22857955013908632100",
-    "sky_rewards_monthly": "38728905.73247417738652517173",
-    "vest_tot_exact": "116186717.1974225321595755152",
-    "vest_tot": "116186717",
-    "stream_rate": "14.94170743312757201646090535",
-    "weekly_pull": "9036744.655555555555555555556",
+    "batches_per_month": "975.7298",
+    "batches_per_day": "32.07878794520547945170324616",
+    "hop_solved": "2693.368594461294510046531325",
+    "hop": 2693,
+    "annual_run_rate": "70252545.6000",
+    "sky_bought_estimate": "46769359.13630823373504706574",
+    "sky_rewards_monthly": "38265839.29334310032867487197",
+    "vest_tot_exact": "114797517.8800293009860246159",
+    "vest_tot": "114797518",
+    "stream_rate": "14.76305529835390946502057613",
+    "weekly_pull": "8928695.844444444444444444443",
     "hop_within_beam": true,
     "kbump_within_beam": true,
     "run_rate_within_beam": true
@@ -138,21 +141,22 @@
   "tmf_checks": [
     {
       "label": "Step 0 SNR vs settlements/sky_total",
-      "computed": "14813061",
-      "published": "14813061",
+      "computed": "14635947",
+      "published": "14635947",
       "tolerance": "1",
       "unit": "USDS",
       "ok": true
     }
   ],
   "validation": {
-    "previous_sky_net_revenue": "14812762.21131559140975324007",
-    "updated_sky_net_revenue": "14813061.21131559140975324007",
-    "delta_usds": "299",
-    "rounding": "Skybase send changes from 144111 to 143812 whole USDS; unrounded DR reduction is 299.6033779669353452353295",
-    "historical_trueups_in_current_accrual": false,
-    "unchanged_other_prime_rows": true,
-    "unchanged_non_target_report_files": true,
-    "no_network_reads": true
+    "skybase_historical_expense": "177113.780088",
+    "sky_net_revenue": "14635947.43122759140975324007",
+    "historical_trueups_expensed_once": true,
+    "normal_payments_rounded_to_whole_usds": true,
+    "historical_catchups_preserve_six_decimals": true,
+    "skybase_payment_unchanged": "320925.5356997754532130302626",
+    "tmf_uses_rounded_sky_net_revenue": "14635947",
+    "source_inputs_reused": true,
+    "network_reads": 0
   }
 }

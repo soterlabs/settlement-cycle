@@ -58,20 +58,31 @@ The frozen snapshot takes precedence over the submodule workbook, so both were u
 
 ## Consolidated Sky net revenue and TMF
 
-The lower September-earned Skybase DR raises Sky net revenue by **299 USDS**,
-from **14,812,762.21131559140975324007** to
-**14,813,061.21131559140975324007 USDS**. The consolidated report rounds each
-mint/send to whole USDS: Skybase's normal-accrual payment changes from 144,111
-to 143,812. This explains the difference from the 299.603378 unrounded DR delta.
+The full **177,113.780088 USDS** true-up is recognized as demand-side expense
+for Sky in September. These earnings were not booked in the published
+January-August reports, which remain unchanged. Keeping their earned-period
+label separate does not justify omitting the expense. Each item is explicitly
+marked `recognize_sky_expense: true`; payments already expensed previously
+would leave that flag false and must not create a second expense.
 
-The **177,113.780088 USDS** historical true-ups appear separately in the
-consolidated payment disclosure; they are not September-earned expense and do
-not reduce September accrual-basis Sky net revenue or the TMF input.
+| Sky net revenue bridge | USDS |
+|---|---:|
+| Before the Skybase DR refresh, with true-ups incorrectly omitted | 14,812,762.211316 |
+| Lower September-earned DR, after normal payment rounding | +299.000000 |
+| Recognize all previously unbooked historical true-ups | -177,113.780088 |
+| **Corrected September Sky net revenue** | **14,635,947.431228** |
+
+The normal-accrual Skybase payment is rounded from 143,811.755612 to 143,812
+in the consolidated preview, following the existing whole-USDS convention.
+The separately disclosed true-ups retain their exact six-decimal payment
+amounts and are subtracted once in the MSC leg. Thus the Sky report's combined
+rounded payment is 320,925.780088 versus the unrounded Skybase payment of
+320,925.535700; the 0.244388 difference is entirely normal-payment rounding.
 
 TMF reuses the original September activity, month-end state, TWAP, backstop
-capital and supply inputs. Proposed hop remains **2,661 seconds**; vestTot
-changes from **116,184,372** to **116,186,717 SKY**. The Core Council Buffer
-transfer rounds to **2,962,612 USDS**. Actual September execution and the
-**7,372,287.576422652922647064731 SKY** burn amount are unchanged.
+capital and supply inputs. It uses **14,635,947** whole USDS of Sky net revenue.
+Proposed hop is **2,693 seconds**, vestTot is **114,797,518 SKY**, and the
+Core Council Buffer transfer rounds to **2,927,189 USDS**. Actual September
+execution and the **7,372,287.576422652922647064731 SKY** burn amount are unchanged.
 
 Audit: `docs/september-2026-close/skybase-dr-refresh-downstream.json`.

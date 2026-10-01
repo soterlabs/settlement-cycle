@@ -5,7 +5,11 @@ the operator instruction to refresh Skybase. Amounts are rounded to six
 USDS decimals; these supersede the earlier 124,694.330541 USDS total. The four items
 are configured in `config/settlement_adjustments.yaml`, paid with September,
 and shown separately from normal September accrual in the summary and workbook.
-They do not enter September-earned DR or accrual-basis Sky Net Revenue / TMF.
+They stay separate from September-earned DR. Because the published earlier
+reports never booked them, all four items recognize Sky expense in September,
+reducing Sky Net Revenue and the TMF input once. The explicit
+`recognize_sky_expense: true` marker distinguishes them from already-accrued
+liabilities whose later payment should not create another expense.
 Published January–August reports are not regenerated.
 
 | Item | Earned period | USDS |

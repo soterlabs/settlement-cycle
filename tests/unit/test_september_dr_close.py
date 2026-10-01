@@ -139,11 +139,42 @@ def test_xlsx_keeps_four_distinct_payment_lines():
         assert D(str(matching[0][1])) == D(entry['amount'])
 
 
-def test_historical_payment_does_not_reduce_current_sky_net_revenue():
+def test_unbooked_trueups_reduce_sky_net_revenue_once():
     from settle.compute.sky_total_accrual import SkyTotalAccrualMonthly, render_summary
 
     close = SkyTotalAccrualMonthly('2026-09', [], D('1000'), D('50'))
     snr = close.sky_net_revenue
     close.prior_period_payments = {'skybase': D('177113.780088')}
-    assert close.sky_net_revenue == snr
+    assert close.sky_net_revenue == snr  # Already-expensed payments alone are neutral.
+    close.prior_period_expenses = dict(close.prior_period_payments)
+    assert close.sky_net_revenue == snr - D('177113.780088')
     assert '177,113.780088' in render_summary(close)
+
+
+def test_real_trueup_config_flows_from_skybase_to_sky_expense(tmp_path):
+    import json
+
+    from settle.compute.sky_total_accrual import compute_sky_total_accrual
+    from settle.domain import Month
+    prov = _provenance()
+    prov['results'].update(prime_agent_revenue='0', sky_revenue='0', sde_revenue='0')
+    apply_settlement_adjustments(prov)
+    assert all(e['recognize_sky_expense'] is True for e in prov['settlement_adjustments'])
+    dest = tmp_path / 'settlements/skybase/2026-09/provenance.json'
+    dest.parent.mkdir(parents=True)
+    dest.write_text(json.dumps(prov))
+    other = tmp_path / 'settlements/non_msc/2026-09/provenance.json'
+    other.parent.mkdir(parents=True)
+    other.write_text(json.dumps({'results': {'total_income': '1000', 'total_expense': '50'}}))
+    cfg = {'accrual_primes': ['skybase'], 'allocator_ilks': {}}
+    result = compute_sky_total_accrual(Month(2026, 9), repo_root=tmp_path, config=cfg)
+    assert result.prior_period_expenses == {'skybase': D('177113.780088')}
+    assert result.sky_net_revenue == D(950) - D(prov['settlement_payment']['total'])
+    assert result.rows[0].derived_send == D(320)  # Period-earned amount stays separate.
+    for entry in prov['settlement_adjustments']:
+        entry['recognize_sky_expense'] = False
+    dest.write_text(json.dumps(prov))
+    already_accrued = compute_sky_total_accrual(Month(2026, 9), repo_root=tmp_path, config=cfg)
+    assert already_accrued.prior_period_payments == result.prior_period_payments
+    assert already_accrued.prior_period_expenses == {}
+    assert already_accrued.sky_net_revenue == D(630)
