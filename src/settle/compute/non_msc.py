@@ -337,8 +337,8 @@ def render_summary(r: NonMscMonthly) -> str:
              "income at the jar burn's landing month (cash basis); liquidation "
              "revenue = Σ take.owe − Σ bark.due; surplus returns = join→vow "
              "moves not attributable to the PSM/RWA jar; savings interest on "
-             "the accrual basis (drips apportioned by chi-boundary "
-             "interpolation; sUSDS gross, prime split informational); "
+             "the accrual basis (including unpaid interest at the period "
+             "boundaries; sUSDS gross, prime split informational); "
              "liquidation keeper incentives and Vest suckable payouts on the "
              "expense side.")
     L.append("")
