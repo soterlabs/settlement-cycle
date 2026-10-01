@@ -58,3 +58,18 @@ Validation: 1,281 unit tests passed (one optional Crypto dependency skip).
 `review-fix-validation.json` records successful revalidation of Spark/Grove
 interest and a full September non-MSC rerun: totals unchanged, Gelato cash
 matched by transaction and log index.
+
+## Final reporting finding — addressed
+
+The close command previously attached the reference snapshot only after
+rendering, so a rerun lost the visible SOFR disclosure. The writer now saves
+that snapshot before either renderer runs. Markdown and the workbook Summary
+display the approved 3.88% carry-forward; DR-only refresh retains it. The
+consolidated Sky and TMF reports inherit the disclosure as well. Regenerated
+September artifacts were checked against the existing financial values: no
+amounts changed. Tests cover repeated writes, real workbook generation,
+DR-only refresh, official-rate inputs, and downstream propagation.
+
+Final disclosure validation: 1,285 unit tests passed (one optional Crypto skip).
+Spark/Grove financial provenance and consolidated Sky/TMF financial values
+were unchanged by report regeneration.

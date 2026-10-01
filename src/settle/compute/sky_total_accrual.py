@@ -104,6 +104,7 @@ class SkyTotalAccrualMonthly:
     dsb: Decimal = Decimal(0)
     warnings: list[str] = field(default_factory=list)
     prior_period_payments: dict[str, Decimal] = field(default_factory=dict)
+    reference_rate_notes: list[str] = field(default_factory=list)
 
     @property
     def total_mint(self) -> Decimal:
@@ -295,9 +296,15 @@ def compute_sky_total_accrual(
     for w in warnings:
         _log.warning("sky_total accrual %s: %s", label, w)
 
+    from ..load.reference_rate_note import reference_rate_note
+
     prior_payments = {}
+    rate_notes = []
     for prime in primes:
         provenance = json.loads((repo_root / "settlements" / prime / label / "provenance.json").read_text())
+        note = reference_rate_note(provenance)
+        if note:
+            rate_notes.append(f"{prime}: {note}")
         amount = sum((Decimal(e["amount"]) for e in provenance.get("settlement_adjustments", [])), Decimal(0))
         if amount:
             prior_payments[prime] = amount
@@ -305,7 +312,7 @@ def compute_sky_total_accrual(
     return SkyTotalAccrualMonthly(
         month=label, rows=rows,
         non_msc_income=inc, non_msc_expense=exp, dsb=dsb,
-        warnings=warnings, prior_period_payments=prior_payments,
+        warnings=warnings, prior_period_payments=prior_payments, reference_rate_notes=rate_notes,
     )
 
 
@@ -321,6 +328,8 @@ def _usds(x: Decimal) -> str:
 def render_summary(r: SkyTotalAccrualMonthly) -> str:
     L: list[str] = []
     L.append(f"# SKY_TOTAL — {r.month}")
+    for note in r.reference_rate_notes:
+        L.extend(["", f"> **Reference-rate assumption:** {note}"])
     L.append("")
     L.append(
         f"Consolidated Sky Net Revenue, ACCRUAL basis (operator definition "
@@ -420,6 +429,7 @@ def write_sky_total_accrual(
             "non_msc_net": str(r.non_msc_net),
             "sky_net_revenue": str(r.sky_net_revenue),
         },
+        "reference_rate_notes": r.reference_rate_notes,
         "prior_period_payments": {p: str(a) for p, a in r.prior_period_payments.items()},
         "warnings": r.warnings,
     }

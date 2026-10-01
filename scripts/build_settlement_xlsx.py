@@ -47,6 +47,7 @@ _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO / "src"))
 from settle.load.cof_attribution import compute_sheet_rows  # noqa: E402
 from settle.load.summary import _venue_sort_key  # noqa: E402
+from settle.load.reference_rate_note import reference_rate_note  # noqa: E402
 
 # Styling.
 _BOLD   = Font(bold=True)
@@ -153,6 +154,12 @@ def _write_summary(ws, prov: dict, sheet_rows: list[dict]) -> None:
 
     ws.append([f"{prime} — Monthly settlement {month}"])
     ws["A1"].font = _TITLE
+    rate_note = reference_rate_note(prov)
+    if rate_note:
+        ws.append(["Reference-rate assumption", rate_note])
+        ws.cell(ws.max_row, 2).alignment = Alignment(wrap_text=True, vertical="top")
+        ws.merge_cells(start_row=ws.max_row, start_column=2, end_row=ws.max_row, end_column=4)
+        ws.row_dimensions[ws.max_row].height = 75
     ws.append([])
 
     def _block(title: str, rows: list[tuple[str, Decimal]], total: Decimal) -> None:

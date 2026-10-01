@@ -454,6 +454,14 @@ def compute_tmf_monthly(
     # ── Step 0: SNR — pinned to the MSC post, cross-checked vs sky_total ──
     artifact = read_sky_total_snr(repo_root, month) if repo_root else None
     artifact_snr = artifact.snr if artifact else None
+    if artifact is not None and repo_root is not None:
+        from ..load.reference_rate_note import reference_rate_note
+
+        snr_provenance = repo_root / "settlements" / "sky_total" / month / "provenance.json"
+        if snr_provenance.exists():
+            note = reference_rate_note(json.loads(snr_provenance.read_text()))
+            if note:
+                src["reference_rate_status"] = "Operator-authorized underlying rate input: " + note
     if month_cfg.get("snr") is not None:
         snr = _d(month_cfg["snr"])
         src["snr"] = f"config/tmf.yaml months['{month}'].snr (MSC post figure)"
@@ -660,6 +668,11 @@ def render_summary(r: TmfMonthly) -> str:
     mn = _month_name(r.month)
     L: list[str] = []
     L.append(f"# TMF — {r.month}")
+    from ..load.reference_rate_note import reference_rate_note
+
+    rate_note = reference_rate_note({"sources": r.sources})
+    if rate_note:
+        L.extend(["", f"> **Reference-rate assumption:** {rate_note}"])
     L.append("")
     L.append(
         f"Treasury Management Function waterfall for the **{mn}** cycle "

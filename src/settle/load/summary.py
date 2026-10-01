@@ -45,6 +45,8 @@ import json
 from decimal import Decimal
 from pathlib import Path
 
+from .reference_rate_note import reference_rate_note
+
 
 def _D(x) -> Decimal:
     if x is None or x == "":
@@ -124,6 +126,9 @@ def render_summary(prov: dict) -> str:
     n_days   = period.get("n_days", "?")
 
     lines.append(f"# {prime_id.upper()} — {month}")
+    rate_note = reference_rate_note(prov)
+    if rate_note:
+        lines.extend(["", f"> **Reference-rate assumption:** {rate_note}"])
     if prov.get("provisional"):
         lines.extend(["", f"**Provisional revenue through {prov['as_of']} (UTC).**",
                       prov["calculation_note"]])

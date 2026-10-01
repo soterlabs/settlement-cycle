@@ -7,7 +7,6 @@ Use --include-protocol after all six prime reports to build non-MSC/Sky/TMF.
 from __future__ import annotations
 
 import argparse
-import json
 import subprocess
 import sys
 from pathlib import Path
@@ -43,12 +42,10 @@ def main():
         sources = {'calculation': 'scripts/run_september_close.py; independent full monthly calculation',
                    'reference_rate_status': 'operator-authorized Sep 29 SOFR 3.88% carried to Sep 30'
                    if history is not None else 'not applicable'}
-        paths = write_settlement(pnl, ROOT / 'settlements' / name / str(month), sources=sources)
+        paths = write_settlement(pnl, ROOT / 'settlements' / name / str(month), sources=sources,
+                                 reference_rates=provenance.get('reference_rates'))
         if 'xlsx' not in paths:
             raise RuntimeError(f'{name}: settlement workbook not generated')
-        payload = json.loads(paths['provenance'].read_text())
-        payload['close_reference_rate_provenance'] = provenance.get('reference_rates')
-        paths['provenance'].write_text(json.dumps(payload, indent=2))
         print(f'{name}: September report written', flush=True)
     if args.include_protocol:
         for script in ['run_non_msc_2026.py', 'build_sky_total_2026.py', 'run_tmf_2026.py']:

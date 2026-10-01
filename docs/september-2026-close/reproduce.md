@@ -5,7 +5,9 @@ The operator has authorized **September 29 SOFR, 3.88%, for September 30**.
 snapshot used by the September calculations, including its content hash,
 official observations through September 29, and explicit carry-forward.
 It remains labeled `coverage_complete: false`; it is not an official
-September 30 observation.
+September 30 observation. Markdown and Excel display the carry-forward,
+including after repeated writes and DR-only refresh. Consolidated Sky and TMF
+reports also retain the underlying rate assumption.
 
 With the normal RPC/indexer environment configured, run from this repository:
 

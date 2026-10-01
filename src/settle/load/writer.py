@@ -64,6 +64,7 @@ def write_settlement(
     output_dir: Path,
     *,
     sources: dict[str, str] | None = None,
+    reference_rates: dict | None = None,
 ) -> dict[str, Path]:
     """Write provenance.json + the canonical settlement xlsx.
 
@@ -88,6 +89,8 @@ def write_settlement(
         pnl, output_dir / "provenance.json", sources=sources,
     )
     payload = json.loads(prov_path.read_text())
+    if reference_rates is not None:
+        payload["close_reference_rate_provenance"] = reference_rates
     apply_settlement_adjustments(payload)
     prov_path.write_text(json.dumps(payload, indent=2))
     written: dict[str, Path] = {
