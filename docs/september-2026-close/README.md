@@ -1,7 +1,8 @@
 # September 2026 close validation
 
-Status: in progress. Spark and distribution rewards are still running; this is
-not a complete settlement package yet.
+Status: all six API/full-month comparisons pass exactly; all six primes have
+30 September API dates. Distribution rewards and new-code attribution are
+still pending, so this is not a complete settlement package yet.
 
 The September 30 API calculation is compared with a separate full-month
 `compute_monthly_pnl(prime, Month(2026, 9))` execution, with `as_of` omitted.
@@ -11,8 +12,8 @@ reference-rate observations, and calculation commit
 `c32f25a7ef410eaaf9212b8f546f652c715dc7ac` (merged PR #222).
 
 The comparison checks every result field. Each JSON records the API revision,
-input-version agreement, differences and complete-result hashes. Grove, Keel,
-Skybase, Osero and Obex currently have identical hashes. Distribution rewards
+input-version agreement, differences and complete-result hashes. Spark, Grove, Keel,
+Skybase, Osero and Obex all have identical hashes. Distribution rewards
 are added from the separate September DR workbook when assembling settlement
 reports; they are not part of this supply-revenue comparison.
 
