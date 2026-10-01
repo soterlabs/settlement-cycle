@@ -53,3 +53,14 @@ def test_override_rejects_other_missing_or_modified_inputs(problem):
     saved['snapshot_id'] = digest({k: saved[k] for k in ('calendar_version', 'series', 'carry_forward_dates')})
     with pytest.raises(ValueError, match=r'authorized|approved'):
         _reference_history(p, window, {'reference_rates': saved}, allow_september_sofr_carry=True)
+
+
+@pytest.mark.parametrize('name', ['spark', 'grove'])
+def test_official_september_snapshot_needs_no_exception(name):
+    import json
+    reference = json.loads((ROOT / 'config/september_2026_official_reference_rates.json').read_text())
+    history = _reference_history(prime(name), period(), {'reference_rates': reference})
+    assert history.at(date(2026, 9, 30)) == Decimal('0.039')
+    assert reference['coverage_complete'] is True
+    assert 'operator_estimate' not in reference
+    assert '2026-09-30' not in reference['carry_forward_dates']

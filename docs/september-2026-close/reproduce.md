@@ -1,19 +1,18 @@
 # Reproduce the September close
 
-The operator has authorized **September 29 SOFR, 3.88%, for September 30**.
-`config/september_2026_reference_rates.json` preserves the full reference
-snapshot used by the September calculations, including its content hash,
-official observations through September 29, and explicit carry-forward.
-It remains labeled `coverage_complete: false`; it is not an official
-September 30 observation. Markdown and Excel display the carry-forward,
-including after repeated writes and DR-only refresh. Consolidated Sky and TMF
-reports also retain the underlying rate assumption.
+The September close now uses the official **September 30 SOFR of 3.90%**,
+published October 1. `config/september_2026_official_reference_rates.json`
+preserves the complete official September snapshot and its content hash.
+
+The earlier 3.88% carry-forward snapshot remains available only for explicit
+reproduction of the superseded estimate via `--allow-september-sofr-carry`.
+It is no longer the default input or the rate used in the current reports.
 
 With the normal RPC/indexer environment configured, run from this repository:
 
 ```sh
 PYTHONPATH=src python scripts/run_september_close.py \
-  --allow-september-sofr-carry --include-protocol
+  --include-protocol
 ```
 
 This calculates all six primes through the full monthly pipeline, independently

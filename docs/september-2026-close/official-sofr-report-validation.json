@@ -1,0 +1,30 @@
+{
+  "spark": {
+    "borrowing_cost_revalidated": true,
+    "distribution_rewards_unchanged": true
+  },
+  "grove": {
+    "borrowing_cost_revalidated": true,
+    "distribution_rewards_unchanged": true,
+    "basin": {
+      "without_deduction": "3873580.395582812200319233744",
+      "with_deduction": "3754292.984290454805445993200",
+      "reduction": "119287.411292357394873240544"
+    }
+  },
+  "osero": {
+    "financial_results_unchanged": true
+  },
+  "obex": {
+    "financial_results_unchanged": true
+  },
+  "keel": {
+    "financial_results_unchanged": true
+  },
+  "skybase": {
+    "financial_results_unchanged": true
+  },
+  "non_msc": {
+    "financial_results_unchanged": true
+  }
+}

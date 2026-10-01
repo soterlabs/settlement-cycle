@@ -1,11 +1,9 @@
 # September 2026 close validation
 
 Status: all six API/full-month comparisons pass exactly; all six primes have
-30 September API dates. September reports have now been generated for all six
-primes, non-MSC, consolidated Sky, and TMF. Spark/Grove and downstream totals
-use the explicitly authorized September 29 SOFR carry-forward (3.88%) for
-September 30. This estimate remains labeled in provenance; publication of the
-official September 30 observation is not a prerequisite for the current review.
+30 September API dates. September reports cover all six primes, non-MSC,
+consolidated Sky, and TMF. Spark/Grove and downstream totals now use the
+**official September 30 SOFR of 3.90%**, replacing the earlier 3.88% estimate.
 
 The DR submodule is pinned to merged PR #27 (`1e9ecb2`). Normal September
 accrual uses the finalized workbook plus its full-precision companion CSV,
@@ -15,12 +13,16 @@ settlement-cycle validates its import and attribution without replaying DR. The 
 Skybase payment corrections total **124,694.330541 USDS** and appear separately
 from September-earned revenue. See `proposed-skybase-trueups.md` for details.
 
-The September 30 API calculation is compared with a separate full-month
-`compute_monthly_pnl(prime, Month(2026, 9))` execution, with `as_of` omitted.
-The full monthly run does not load the API result as its calculation result.
-Both executions use finalized source inputs, the same configuration and
-reference-rate observations, and calculation commit
+The original September 30 API calculations were compared with separate
+full-month `compute_monthly_pnl(prime, Month(2026, 9))` executions, with
+`as_of` omitted, using calculation commit
 `c32f25a7ef410eaaf9212b8f546f652c715dc7ac` (merged PR #222).
+For the official SOFR refresh, Grove completed fresh API and monthly runs.
+Spark's redundant venue replays were stopped: borrowing costs were instead
+recalculated from the saved daily inputs of those previously validated API
+and monthly results. No new chain reads are needed for this rate-only change.
+The canonical interest formula confirms zero monetary change, since both
+3.88% and 3.90% exceed the September 30 Base Rate of about 3.742%.
 
 The comparison checks every result field. Each JSON records the API revision,
 input-version agreement, differences and complete-result hashes. Spark, Grove, Keel,
@@ -30,11 +32,13 @@ reports; they are not part of this supply-revenue comparison.
 
 ## Reference rate
 
-September 30 SOFR was not yet published at calculation time. Spark and Grove
-use the previously authorized September 29 carry (3.88% APR). The API retains
-`coverage_complete: false` and the operator-estimate provenance. Any reports
-using this input must be marked preliminary until refreshed against the
-published observation. The other four primes do not use this reference series.
+The October 1 refresh replaces the authorized September 29 carry with the
+official September 30 observation. Spark and Grove now have
+`coverage_complete: true`, without operator-estimate provenance. September
+1–29, all other primes, and all supply-side/venue revenue remain unchanged.
+The affected API results are compared with the refreshed monthly results;
+borrowing costs are also independently revalidated from daily inputs.
+See `official-sofr-refresh.json` and `official-sofr-report-validation.json`.
 
 ## Grove Basin deduction
 
@@ -163,11 +167,11 @@ value, not an Osero program. The remaining unmapped codes await confirmation.
 
 ## September DR regression validation
 
-The full unit suite passes: 1,269 tests, with one optional Crypto-dependent
+The full unit suite passes: 1,287 tests, with one optional Crypto-dependent
 test skipped locally. The 56 focused DR/consolidated tests cover the requested
 code ownership, precise September venue accrual, four independent true-ups,
 repeat-run idempotence, XLSX/Markdown output, and unchanged historical months.
 
 The review fixes and reproducible close commands are documented in
-[`reproduce.md`](reproduce.md). The SOFR exception is explicit and scoped;
+[`reproduce.md`](reproduce.md). Official SOFR is the default; the historical estimate exception remains explicit and scoped;
 the Gelato cash-offset check now matches transaction/log identity.

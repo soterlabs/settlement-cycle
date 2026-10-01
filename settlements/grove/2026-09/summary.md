@@ -1,7 +1,5 @@
 # GROVE — 2026-09
 
-> **Reference-rate assumption:** Operator-authorized SOFR carry-forward: 2026-09-29 rate of 3.88% used for 2026-09-30; not an official observation for that date.
-
 Period: 2026-09-01 → 2026-09-30 (30 days)
 
 ## Headline

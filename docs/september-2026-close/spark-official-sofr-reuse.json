@@ -1,0 +1,11 @@
+{
+  "api_revision": "08ed233241c4ed1750dde86085a7bc5a0fff028fd08db4b1ca091956c283f645",
+  "method": {
+    "scope": "SOFR-only refresh; reuse previously validated chain balances and venue results",
+    "source_revision": "f59c3bc84fc4bf0515022888808ebf87585738396892230c14d8961aa2e9bf5a",
+    "runner_sha256": "02656de1b1e006248453aa628857d1e7ba5f1c6d671738904dcedb85220d67be",
+    "borrowing_cost_delta_usds": "0"
+  },
+  "financial_fields_unchanged": true,
+  "official_coverage_complete": true
+}

@@ -1,7 +1,5 @@
 # TMF — 2026-09
 
-> **Reference-rate assumption:** Operator-authorized underlying rate input: spark: Operator-authorized SOFR carry-forward: 2026-09-29 rate of 3.88% used for 2026-09-30; not an official observation for that date.; grove: Operator-authorized SOFR carry-forward: 2026-09-29 rate of 3.88% used for 2026-09-30; not an official observation for that date.
-
 Treasury Management Function waterfall for the **September 2026** cycle (MSC#13): Sky Net Revenue → Step 1 security & maintenance → Step 2 backstop retention → Step 3 Smart Burn Engine budget → Step 4 staking rewards, plus the Smart Burn Engine's actual execution in September 2026 (kicks, USDS spent, SKY bought) and the on-chain parameter state at month-end. Method: Sky Atlas A.2.3 + TMF Configurations (forum t/28153); engine month = 365/12 days. Pinned inputs are cross-checked against the executive's published parameter block below.
 
 **Spell:** September 2026 close — calculated TMF parameters for the next MSC — calculated proposal; no executed October parameter update is assumed

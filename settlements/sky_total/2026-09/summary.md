@@ -1,9 +1,5 @@
 # SKY_TOTAL — 2026-09
 
-> **Reference-rate assumption:** spark: Operator-authorized SOFR carry-forward: 2026-09-29 rate of 3.88% used for 2026-09-30; not an official observation for that date.
-
-> **Reference-rate assumption:** grove: Operator-authorized SOFR carry-forward: 2026-09-29 rate of 3.88% used for 2026-09-30; not an official observation for that date.
-
 Consolidated Sky Net Revenue, ACCRUAL basis (operator definition 2026-08-07): prime revenue EARNED in 2026-09 — paid the following month at the MSC settling this cycle — plus the month's non-MSC flows. The per-prime mint/send figures preview that settlement (incl. prior-cycle corrections riding it) and are pinned to the MSC post / settlement sheet where published; derived values from the monthly reports serve as a cross-check.
 
 ## MSC leg (accrual — next settlement preview)

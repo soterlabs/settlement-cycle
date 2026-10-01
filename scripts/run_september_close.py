@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Recompute September with the approved SOFR snapshot; only write September.
+"""Recompute September with the official SOFR snapshot; only write September.
 
 Normal RPC/indexer environment is required. No API writes or DR replay.
 Use --include-protocol after all six prime reports to build non-MSC/Sky/TMF.
@@ -7,6 +7,7 @@ Use --include-protocol after all six prime reports to build non-MSC/Sky/TMF.
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -26,7 +27,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--primes', nargs='+', default=['spark', 'grove', 'osero', 'obex', 'keel', 'skybase'],
                         choices=['spark', 'grove', 'osero', 'obex', 'keel', 'skybase'])
-    parser.add_argument('--allow-september-sofr-carry', action='store_true', required=True,
+    parser.add_argument('--allow-september-sofr-carry', action='store_true',
                         help='Explicitly use approved 3.88%% September 29 SOFR for September 30')
     parser.add_argument('--include-protocol', action='store_true')
     args = parser.parse_args()
@@ -35,12 +36,15 @@ def main():
     period = SimpleNamespace(start=month.first_day, end=month.last_day)
     for name in args.primes:
         prime = load_prime_by_id(name, config_dir=ROOT / 'config')
-        provenance = {'reference_rates': approved_reference()} if prime.subsidy.enabled else {}
-        history = _reference_history(prime, period, provenance, allow_september_sofr_carry=True)
+        reference = (approved_reference() if args.allow_september_sofr_carry else
+                     json.loads((ROOT / 'config/september_2026_official_reference_rates.json').read_text()))
+        provenance = {'reference_rates': reference} if prime.subsidy.enabled else {}
+        history = _reference_history(prime, period, provenance, allow_september_sofr_carry=args.allow_september_sofr_carry)
         pnl = compute_monthly_pnl(prime, month, reference_rate_history=history)
-        validate_interest(pnl, prime, provenance, allow_september_sofr_carry=True)
+        validate_interest(pnl, prime, provenance, allow_september_sofr_carry=args.allow_september_sofr_carry)
         sources = {'calculation': 'scripts/run_september_close.py; independent full monthly calculation',
-                   'reference_rate_status': 'operator-authorized Sep 29 SOFR 3.88% carried to Sep 30'
+                   'reference_rate_status': ('operator-authorized Sep 29 SOFR 3.88% carried to Sep 30'
+                                             if args.allow_september_sofr_carry else 'official coverage complete')
                    if history is not None else 'not applicable'}
         paths = write_settlement(pnl, ROOT / 'settlements' / name / str(month), sources=sources,
                                  reference_rates=provenance.get('reference_rates'))
