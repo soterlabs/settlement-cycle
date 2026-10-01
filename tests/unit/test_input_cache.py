@@ -276,3 +276,14 @@ def test_unstructured_error_mentioning_revert_is_never_persisted(storage, monkey
     with pytest.raises(rpc.RPCError):
         run(lambda: rpc.eth_call(Chain.ETHEREUM, Address(bytes(20)), '0x12345678', 500))
     assert not rows
+
+
+def test_basin_outer_cache_enforces_finality(storage, monkeypatch):
+    from settle.extract import basin
+    monkeypatch.setattr(basin, '_address', lambda *a: pytest.fail('RPC before finality check'))
+    monkeypatch.setattr(basin, 'eth_call', lambda *a: pytest.fail('RPC before finality check'))
+    with pytest.raises(InputCacheError, match='outside finalized'):
+        run(lambda: basin.idle_usds(Address(bytes(20)), Address(bytes(20)), 901))
+    with pytest.raises(InputCacheError, match='outside finalized'):
+        run(lambda: basin.ilk_debt(bytes(32), 901))
+    assert not storage[0]

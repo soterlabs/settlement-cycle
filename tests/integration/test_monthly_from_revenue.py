@@ -12,7 +12,7 @@ from tests.unit.test_monthly_from_revenue import MONTH, TODAY, VERSIONS, example
 
 
 def test_persisted_revision_to_monthly_artifacts(database, tmp_path, monkeypatch):  # noqa: F811
-    prime, pnl, record = example(subsidy=True)
+    prime, pnl, record = example(subsidy=True, basin=True)
     # Freeze the clock just after this fixture month closes; retain the real guard.
     monkeypatch.setattr(store, 'validate_window', lambda d: validate_window(d, today=TODAY))
     monkeypatch.setattr(store, 'capture_versions', lambda: VERSIONS)
@@ -47,3 +47,11 @@ def test_persisted_revision_to_monthly_artifacts(database, tmp_path, monkeypatch
     assert final['results']['sky_revenue'] == str(pnl.sky_revenue)
     with psycopg.connect(database) as conn:
         assert conn.execute('SELECT count(*) FROM revenue_results').fetchone()[0] == 2
+
+    from openpyxl import load_workbook
+    book = load_workbook(output / 'grove_settlement_september_2026.xlsx')
+    debt_rows = list(book['Debt'].values)
+    header = next(r for r in debt_rows if r[0] == 'Date')
+    basin_column = header.index('- Basin idle')
+    first_day = next(r for r in debt_rows if r[0] == '2026-09-01')
+    assert first_day[basin_column] == 10000000

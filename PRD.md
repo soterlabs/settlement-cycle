@@ -1605,3 +1605,44 @@ Run with: `pytest tests/integration/test_ba_parity.py -m live -v -s`.
 15. **On-chain flow-of-funds reconciliation automation** — `settle audit flow-of-funds --prime <id> --month <YYYY-MM>` subcommand that flags any unrecognized counterparty crossing a USD threshold.
 16. **Idle USDS/DAI in lending pools / AMMs** (doc Step 2 — beyond just subproxy/ALM/PSM). No prime currently holds USDS this way; scaffolding to add when first prime needs it.
 17. **Distribution rewards** — Phase 3+ placeholder for referral/liquidity-program payouts (skybase). Field exists; populated when source lands.
+
+#### Grove Basin idle USDS — effective 2026-09-01
+
+Operator decision 2026-10-01: deduct Grove's attributable idle USDS in the
+JTRSY and BUIDL Basins and their active pockets from the borrowing-rate base,
+starting September 1, 2026. July and August are not restated. Configuration
+lives in `config/grove.yaml` under `basin_idle_usds` and explicitly identifies
+`ALLOCATOR-GROVE-A`, the Diamond ALM holder, the two Basins, and the effective date.
+
+For each UTC day's closing Ethereum block:
+
+```
+owned_idle = sum((USDS.balanceOf(basin) + USDS.balanceOf(pocket))
+                 * basin.shares(DiamondALM) / basin.totalShares())
+basin_idle = min(owned_idle, Vat.ilks(ALLOCATOR-GROVE-A).Art * rate / 1e45)
+utilized   = existing_utilized - basin_idle
+```
+
+When a Basin is its own pocket, count that address once. Resolve `pocket()`
+historically on every day, including after `PocketSet` changes. Only actual
+USDS balances qualify; invested collateral, USDC, total asset value, and
+cash at the Diamond ALM itself are outside this deduction. A failed or malformed
+RPC response fails the calculation rather than carrying a potentially overstated
+exemption forward. Shared pocket addresses across configured Basins are rejected
+until an explicit attribution rule exists.
+
+The cap prevents an exemption exceeding Grove-A debt from spilling into legacy
+`ALLOCATOR-BLOOM-A`. Existing deductions do not currently cover this compartment;
+any future Grove-A exemptions must share a remaining-debt cap to prevent overlap.
+Apply the result before the existing prime-wide interest/subsidy calculation;
+do not grant a second $1bn subsidized tranche. Total debt and gross interest
+before deductions remain unchanged. Supply-side revenue also remains unchanged.
+
+The shared daily/monthly compute path records `basin_idle` and `basin_ilk_debt`
+in `sky_revenue_daily`. Monthly-from-daily finalization requires these fields
+for eligible dates and recalculates interest with the same deduction. The
+workbook's Debt sheet shows the deduction when nonzero. Raw API borrowing-cost
+and net-PnL fields change when a new revision is computed; supply-side revenue
+fields do not. Merging this change does not itself republish old daily revisions:
+September snapshots must be recomputed on the merged version before they can
+be reused for a monthly settlement under this policy.

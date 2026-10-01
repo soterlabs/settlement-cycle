@@ -858,6 +858,9 @@ def _write_debt(ws, prov: dict) -> None:
     ]
     if has_subsidy:
         cols += ["T (months)", "ref_rate APR", "sub APR"]
+    has_basin = any(_D(r.get("basin_idle", "0")) != 0 for r in rows)
+    if has_basin:
+        cols.insert(7, "- Basin idle")
     cols += ["daily Sky charge", "daily Sky charge (gross on cum_debt)"]
     ws.append(cols)
     _header_row(ws, ws.max_row, len(cols))
@@ -884,17 +887,19 @@ def _write_debt(ws, prov: dict) -> None:
         if has_subsidy:
             out += [r.get("t_months"), _rate(r, "ref_rate_apr", "ref_rate_apy"),
                     _rate(r, "sub_apr", "sub_apy")]
+        if has_basin:
+            out.insert(7, float(_D(r.get("basin_idle", "0"))))
         out += [float(rev), float(gross)]
         ws.append(out)
         row_n = ws.max_row
         # USD columns: cum_debt … utilized, daily charges
-        for c in (2, 3, 4, 5, 6, 7, 8):
+        for c in range(2, cols.index("= utilized") + 2):
             ws.cell(row_n, c).number_format = _USD0
         # APY columns
-        for c in (9, 10):
+        for c in (cols.index("SSR APY") + 1, cols.index("base APR") + 1):
             ws.cell(row_n, c).number_format = _PCT
         if has_subsidy:
-            for c in (12, 13):  # ref_rate APR, sub APR (T stays integer)
+            for c in (cols.index("ref_rate APR") + 1, cols.index("sub APR") + 1):
                 ws.cell(row_n, c).number_format = _PCT
         for c in (len(cols) - 1, len(cols)):
             ws.cell(row_n, c).number_format = _USD
@@ -919,6 +924,9 @@ def _write_debt(ws, prov: dict) -> None:
         widths.update({11: 11, 12: 12, 13: 11, 14: 18, 15: 22})
     else:
         widths.update({11: 18, 12: 22})
+    if has_basin:
+        widths = {(c + 1 if c >= 8 else c): width for c, width in widths.items()}
+        widths[8] = 14
     _set_widths(ws, widths)
 
 

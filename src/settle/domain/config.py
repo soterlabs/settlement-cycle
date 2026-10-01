@@ -12,6 +12,7 @@ from .period import Month as _Month
 from .pricing import PricingCategory
 from .primes import (
     Address,
+    BasinIdleUsdsConfig,
     CashDistributionSource,
     Chain,
     ChroniclePointsConfig,
@@ -409,6 +410,14 @@ def load_prime(config_path: Path) -> Prime:
         sources=sources,
         extra_ilks=tuple(
             _parse_ilk_bytes32(x) for x in (cfg.get("extra_ilks") or [])
+        ),
+        basin_idle_usds=(
+            BasinIdleUsdsConfig(
+                effective_from=date.fromisoformat(cfg["basin_idle_usds"]["effective_from"]),
+                ilk=_parse_ilk_bytes32(cfg["basin_idle_usds"]["ilk_bytes32"]),
+                holder=Address.from_str(cfg["basin_idle_usds"]["holder"]),
+                basins=tuple(Address.from_str(b) for b in cfg["basin_idle_usds"]["basins"]),
+            ) if cfg.get("basin_idle_usds") is not None else None
         ),
         agent_rate_start_date=(
             date.fromisoformat(cfg["agent_rate_start_date"])

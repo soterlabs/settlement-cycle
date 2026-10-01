@@ -134,6 +134,19 @@ def validate_interest(pnl, prime, provenance):
         return pd.DataFrame([{'block_date': date.fromisoformat(r['date']),
                               target: _decode(Decimal, r[source])} for r in rows])
 
+    basin_rows = []
+    for row in rows:
+        day = date.fromisoformat(row['date'])
+        active = prime.basin_idle_usds is not None and day >= prime.basin_idle_usds.effective_from
+        # Old snapshots are compatible only before activation / for other primes.
+        if active and not {'basin_idle', 'basin_ilk_debt'} <= row.keys():
+            raise ValueError('missing Basin idle inputs; recompute daily revenue')
+        idle = _decode(Decimal, row.get('basin_idle', '0'))
+        debt = _decode(Decimal, row.get('basin_ilk_debt', '0'))
+        if not active and (idle != 0 or debt != 0):
+            raise ValueError('Basin idle inputs outside configured effective scope')
+        basin_rows.append({'block_date': day, 'cum_balance': idle, 'ilk_debt': debt})
+
     ssr = pd.DataFrame([{'effective_date': date.fromisoformat(r['date']),
                          'ssr_apy': Decimal(str(r['ssr_apy']))} for r in rows])
     total, daily, _ = compute_sky_revenue_daily(
@@ -142,6 +155,7 @@ def validate_interest(pnl, prime, provenance):
         sde_asset_value=series('sde_av', 'cum_value'),
         curve_idle_usds=series('curve_idle', 'cum_balance'),
         lending_idle_usds=series('lending_idle', 'cum_balance'),
+        basin_idle_usds=pd.DataFrame(basin_rows),
         subsidy_config=prime.subsidy,
         ref_rate_history=_reference_history(prime, pnl.period, provenance),
     )
