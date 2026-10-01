@@ -200,6 +200,8 @@ def test_surplus_classification(monkeypatch):
     surplus = [r for r in rows if r["stream"] == "income:surplus_return"]
     assert len(surplus) == 1
     assert surplus[0]["amount"] == Decimal("157000")
+    assert surplus[0]["transaction_hash"] == "0xsurplus"
+    assert surplus[0]["log_index"] is not None
     assert by["income:rwa_void"]["amount"] == Decimal("5000")
     # the PSM-coincident move must NOT appear as a surplus return
     assert all(r["amount"] != Decimal("10000000") for r in surplus)

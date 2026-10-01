@@ -103,6 +103,8 @@ class SkyTotalAccrualMonthly:
     # figure comes from the executed settlement block.
     dsb: Decimal = Decimal(0)
     warnings: list[str] = field(default_factory=list)
+    prior_period_payments: dict[str, Decimal] = field(default_factory=dict)
+    reference_rate_notes: list[str] = field(default_factory=list)
 
     @property
     def total_mint(self) -> Decimal:
@@ -209,6 +211,13 @@ def compute_sky_total_accrual(
             "figures (and any prior-cycle corrections riding the settlement) "
             "before treating this month as reconciled."
         )
+    elif any(not {"mint", "send"} <= set(preview.get(p) or {}) for p in primes):
+        warnings.append(
+            f"msc_preview: {label} contains adjustments or partial pins, but "
+            "not published mint/send figures for every prime. Unpinned amounts "
+            "are DERIVED from monthly reports; this is not a fully reconciled "
+            "MSC preview."
+        )
     rows: list[AccrualPrimeRow] = []
     for prime in primes:
         sky, dv, sv = _load_prime_components(repo_root, prime, label)
@@ -294,10 +303,23 @@ def compute_sky_total_accrual(
     for w in warnings:
         _log.warning("sky_total accrual %s: %s", label, w)
 
+    from ..load.reference_rate_note import reference_rate_note
+
+    prior_payments = {}
+    rate_notes = []
+    for prime in primes:
+        provenance = json.loads((repo_root / "settlements" / prime / label / "provenance.json").read_text())
+        note = reference_rate_note(provenance)
+        if note:
+            rate_notes.append(f"{prime}: {note}")
+        amount = sum((Decimal(e["amount"]) for e in provenance.get("settlement_adjustments", [])), Decimal(0))
+        if amount:
+            prior_payments[prime] = amount
+
     return SkyTotalAccrualMonthly(
         month=label, rows=rows,
         non_msc_income=inc, non_msc_expense=exp, dsb=dsb,
-        warnings=warnings,
+        warnings=warnings, prior_period_payments=prior_payments, reference_rate_notes=rate_notes,
     )
 
 
@@ -313,6 +335,8 @@ def _usds(x: Decimal) -> str:
 def render_summary(r: SkyTotalAccrualMonthly) -> str:
     L: list[str] = []
     L.append(f"# SKY_TOTAL — {r.month}")
+    for note in r.reference_rate_notes:
+        L.extend(["", f"> **Reference-rate assumption:** {note}"])
     L.append("")
     L.append(
         f"Consolidated Sky Net Revenue, ACCRUAL basis (operator definition "
@@ -362,6 +386,17 @@ def render_summary(r: SkyTotalAccrualMonthly) -> str:
         "paid-basis months itemise them.*"
     )
     L.append("")
+    if r.prior_period_payments:
+        L.extend(["## Additional prior-period payments", "",
+                  "These payment corrections are additional to the accrual preview above.",
+                  "They do not change current-period Sky Net Revenue or its TMF calculation.", "",
+                  "| Prime | Additional USDS |", "|---|---:|"])
+        for prime, amount in r.prior_period_payments.items():
+            L.append(f"| {prime} | {amount:,.6f} |")
+        total = sum(r.prior_period_payments.values(), Decimal(0))
+        L.extend([f"| **Total historical payments** | **{total:,.6f}** |", "",
+                  "Add these exact corrections to each prime's unrounded period payment; "
+                  "the accrual preview above uses whole-USDS rounding.", ""])
     for w in r.warnings:
         L.append(f"> ⚠ {w}")
     if r.warnings:
@@ -401,6 +436,8 @@ def write_sky_total_accrual(
             "non_msc_net": str(r.non_msc_net),
             "sky_net_revenue": str(r.sky_net_revenue),
         },
+        "reference_rate_notes": r.reference_rate_notes,
+        "prior_period_payments": {p: str(a) for p, a in r.prior_period_payments.items()},
         "warnings": r.warnings,
     }
     (out_dir / "provenance.json").write_text(json.dumps(prov, indent=2) + "\n")

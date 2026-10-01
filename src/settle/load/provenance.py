@@ -106,6 +106,11 @@ def render_provenance(
                 # see the breakdown between closed-form yield and external
                 # rewards. See ``normalize.positions._atoken_external_revenue_usd``.
                 "external_revenue": str(v.external_revenue),
+                "redemption_revenue_adjustment": str(v.redemption_revenue_adjustment),
+                "redemption_settlements": list(v.redemption_settlements),
+                "outstanding_redemptions": list(v.outstanding_redemptions),
+                "unmatched_redemption_cash": list(v.unmatched_redemption_cash),
+                "redemption_capital_outflows": list(v.redemption_capital_outflows),
                 # Sky-direct slice of actual_revenue. For capped SDE venues
                 # this is ``actual_revenue × min(cap_usd, value_eom) / value_eom``
                 # (EoM-locked — see ``_capped_sd_revenue_eom_locked``). Falls

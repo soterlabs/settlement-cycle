@@ -1,8 +1,9 @@
 # Grove reconciliation — September 2026
 
 This is a dedicated reconciliation record, not a regenerated settlement.
-The analysis is restricted to 2026-01 through 2026-08, inclusive. Those
-published Grove reports are unchanged.
+The historical correction covers January-August. The separately identified
+September cash realization below is current-period revenue. Published
+January-August Grove reports are unchanged.
 
 ## BUIDL redemption fee
 
@@ -76,3 +77,45 @@ The $0.346781 difference between that configured 5 bps mark and cash received
 is retained as measured rounding/settlement residue. The August artifact is
 not regenerated; its $2,508.55 CoF effect rides the September `sky_adj`, while
 the window remains recorded for reproducibility and future partial redemptions.
+
+## September cash realization of the August 31 request
+
+The unresolved 24,999,000-share request has a $24,999,000 carrying value:
+the $0.9995 valuation policy was not active when those shares left E10.
+The September 1 USDC receipt of $24,986,500.153219 therefore realizes a
+$12,499.846781 cost ($12,499.85 to cents), wholly borne by Sky.
+
+| Component | Credit to Grove |
+|---|---:|
+| January-August fees and CoF correction (unchanged) | $165,013.90 |
+| September-settled August 31 redemption | $12,499.85 |
+| **Combined historical and boundary credit** | **$177,513.75** |
+
+The implementation recognizes the September cost in E10 revenue, before its
+100% SDE split. Consequently `sky_adj` retains only the $165,013.90 historical
+correction. Applying `sky_adj: -177513.75` as well would deduct the September
+cost twice. The combined reduction in MSC mint is $177,513.75 before the
+existing whole-USDS rounding; Send to prime is unchanged. This accounting
+placement corrects the duplicate-booking risk in the literal PRD instruction.
+
+Transaction identities and exact arithmetic are in
+`reconciliation/2026-09/buidl_cash_settlement.json`. The $24,986,500.50 in-flight
+SDE value and the $2,508.55 historical CoF credit remain unchanged.
+
+A separate September 1 redemption of 25,000,000 shares illustrates the
+prospective rule: its carrying value is already $24,987,500. Cash of
+$24,987,499.668811 recognizes only a further $0.331189 variance. It is not
+part of the $177,513.75 historical-plus-boundary figure above.
+
+Across all 14 September cash settlements, those additional post-haircut
+variances total $4.779767. Total September realization cost is $12,504.626548.
+Including that additional current-period residue, the historical credit plus
+all September cash realizations is $177,518.526548 ($177,518.53 to cents).
+This excludes the separate transition markdown and other venue revenue.
+
+The isolated September refresh also restores three verified 1,000-share
+redemptions on September 9, 14 and 21 excluded by the $1M transfer filter.
+Their combined $2,998.50 carrying value is capital, not a revenue loss. The
+related cash variances are included in the cash-cost total above. After all E10 changes, September E10 revenue is
+$733,817.500777, entirely Sky-direct. The smaller marked daily SDE value adds
+$516.07959982 to Grove's borrowing cost, separately from redemption fees.

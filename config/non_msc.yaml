@@ -113,3 +113,21 @@ expense:
       - '0xa4c22f0e25C6630B2017979AcF1f865e94695C4b'   # MCD_VEST_DAI
       - '0xc447a9745aDe9A44Bb9E37B7F6C92f9582544110'   # MCD_VEST_USDS
       - '0x2Cc583c0AaCDaC9e23CB601fDA8F1A0c56Cdcb71'   # MCD_VEST_DAI_LEGACY
+
+# Specific refunds recognized when irrevocably received by protocol custody.
+# These are accounting reclassifications, not amounts added on top of cash
+# surplus returns. A subsequent Blow event reverses the accrual adjustment.
+accrued_refunds:
+  - id: gelato-keepers-2026-09
+    label: Gelato keeper surplus refund
+    token: '0x6b175474e89094c44da98b954eedeac495271d0f'
+    holder: '0x81efc7dd25241acd8e5620f177e42f4857a02b79'  # MCD_BLOW2
+    sender: '0x1479e04464eb3f0cf09ee9ef76602c31558410e3'
+    block: 25926717
+    log_index: 464
+    transaction: '0x181d52604b1b4303637ceb67bf5de9e10b134a0ad38b694a69464f55eb8aad86'
+    expected_amount: '42469.146527'  # assertion only; booked amount comes from Transfer
+    # Receipt: 2026-09-07 16:37:35 UTC. Later blow: 2026-09-15 14:11:11 UTC,
+    # tx 0x806e361391d6f7b0c0ca98f200644bff27e002490c04fe55c5b27f9566359e10.
+    # Contract: sky-ecosystem/dss-blow2/src/DssBlow2.sol; blow() joins the
+    # FULL DAI balance to Vow and emits Blow(token, amount), clearing it.

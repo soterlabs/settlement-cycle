@@ -1695,3 +1695,57 @@ and net-PnL fields change when a new revision is computed; supply-side revenue
 fields do not. Merging this change does not itself republish old daily revisions:
 September snapshots must be recomputed on the merged version before they can
 be reused for a monthly settlement under this policy.
+
+#### Gelato keeper refund — September 2026
+
+Recognize the refund of previously expensed keeper funds when irrevocably
+received in protocol custody, even if `blow()` has not yet moved it into Vow.
+The Gelato Safe sent **42,469.146527 DAI** to `MCD_BLOW2` on
+**2026-09-07 16:37:35 UTC**, block 25926717, log 464, transaction
+`0x181d52604b1b4303637ceb67bf5de9e10b134a0ad38b694a69464f55eb8aad86`.
+The total includes 20,000 DAI mainnet float and 22,469.146527 DAI converted
+from Polygon USDC; the verified Transfer determines the booked total.
+
+The funds reached the surplus buffer on **2026-09-15 14:11:11 UTC** via
+`blow()`, block 25983375, transaction
+`0x806e361391d6f7b0c0ca98f200644bff27e002490c04fe55c5b27f9566359e10`.
+Thus both receipt and settlement belong to September: the existing cash
+surplus-return extractor already includes the latter. The receipt-basis
+adjustment is +42,469.146527 at receipt and -42,469.146527 at settlement,
+which clears the receivable and prevents counting the cash recognition again.
+September's aggregate income is unchanged by this reclassification. Across
+months, this mechanism recognizes income in the receipt month, with zero
+new income on the subsequent surplus-buffer settlement.
+
+`config/non_msc.yaml` allowlists the specific transaction/log and asserts its
+expected amount. The booked amount is decoded from its Transfer, not copied
+from the configuration. The first subsequent `Blow(token, amount)` settles
+the refund: DssBlow2 joins the full token balance to Vow (source:
+https://github.com/sky-ecosystem/dss-blow2/blob/master/src/DssBlow2.sol).
+The report preserves both transactions and the adjustments. This treatment
+is independent of the non-MSC cash-stream backend and does not alter unrelated
+surplus returns, prior settlements, or prime allocations.
+
+### September 2026 non-MSC savings close
+
+From September 2026, the HyperSync DSR expense is the month's `Vat.suck`
+interest minted by the Pot plus its closing unminted interest liability minus
+its opening unminted liability. Each boundary liability is calculated from
+historical `Pie`, `chi`, `dsr`, and `rho`, using Pot's integer `rpow`/`rmul`
+rounding and state strictly before the UTC boundary. This recognizes the
+month-end tail without waiting for an October drip and prevents that later
+drip from recognizing the same expense twice. Pot joins and rate changes
+require an updated `rho`; exits can release unminted interest, which the
+liability movement also captures. See
+[Pot implementation](https://github.com/sky-ecosystem/dss/blob/master/src/pot.sol).
+Earlier report calculations retain their existing convention.
+
+The sUSDS and stUSDS interpolation method is unchanged, but September-forward
+runs require drips bracketing both month boundaries. An incomplete closing
+interval fails the run for retry rather than silently understating expense.
+
+September distribution rewards require the October 1 exclusive cutoff in
+[settle-dr-dune PR #27](https://github.com/soterlabs/settle-dr-dune/pull/27).
+The submodule pin advances that shared window. Settlement-cycle imports the
+finalized September workbook and full-precision companion CSV; it validates
+checksums and attribution without independently replaying the DR pipeline.

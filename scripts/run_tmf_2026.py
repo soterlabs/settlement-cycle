@@ -97,6 +97,7 @@ def main() -> int:
             r = compute_tmf_monthly(
                 label, mcfg, policy, activity=activity, state=state_end,
                 spell_state=spell_state, repo_root=_REPO,
+                sources=mcfg.get("sources"),
                 pins={
                     "from_block": from_block, "to_block": to_block,
                     "from_ts": from_ts, "to_ts": to_ts,

@@ -1,0 +1,48 @@
+{
+  "spark": {
+    "september_1_29_unchanged": true,
+    "supply_and_all_venue_revenues_unchanged": true,
+    "additional_borrowing_cost_usds": "0E-21",
+    "changes": [
+      {
+        "path": ".sky_revenue_daily[29].ref_rate_apr",
+        "before": 0.0388,
+        "after": 0.039
+      },
+      {
+        "path": ".subsidy_summary.ref_apr_avg",
+        "before": 0.03748,
+        "after": 0.03748666666666667
+      }
+    ]
+  },
+  "grove": {
+    "september_1_29_unchanged": true,
+    "supply_and_all_venue_revenues_unchanged": true,
+    "additional_borrowing_cost_usds": "0E-21",
+    "changes": [
+      {
+        "path": ".sky_revenue_daily[29].ref_rate_apr",
+        "before": 0.0388,
+        "after": 0.039
+      },
+      {
+        "path": ".subsidy_summary.ref_apr_avg",
+        "before": 0.03748,
+        "after": 0.03748666666666667
+      }
+    ]
+  },
+  "osero": {
+    "all_30_days_unchanged": true
+  },
+  "obex": {
+    "all_30_days_unchanged": true
+  },
+  "keel": {
+    "all_30_days_unchanged": true
+  },
+  "skybase": {
+    "all_30_days_unchanged": true
+  }
+}

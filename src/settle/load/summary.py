@@ -45,6 +45,8 @@ import json
 from decimal import Decimal
 from pathlib import Path
 
+from .reference_rate_note import reference_rate_note
+
 
 def _D(x) -> Decimal:
     if x is None or x == "":
@@ -124,6 +126,9 @@ def render_summary(prov: dict) -> str:
     n_days   = period.get("n_days", "?")
 
     lines.append(f"# {prime_id.upper()} — {month}")
+    rate_note = reference_rate_note(prov)
+    if rate_note:
+        lines.extend(["", f"> **Reference-rate assumption:** {rate_note}"])
     if prov.get("provisional"):
         lines.extend(["", f"**Provisional revenue through {prov['as_of']} (UTC).**",
                       prov["calculation_note"]])
@@ -338,6 +343,23 @@ def render_summary(prov: dict) -> str:
             )
         lines.append("")
 
+    realized = [(v, r) for v in all_venues for r in v.get("redemption_settlements", [])]
+    outstanding = [(v, r) for v in all_venues for r in v.get("outstanding_redemptions", [])]
+    if realized or outstanding:
+        lines.extend(["## Redemption cash settlements", "",
+                      "Cash is capital. Only cash minus the claim's carrying value enters venue revenue; "
+                      "amounts below are already included above, not additional adjustments.", "",
+                      "| Venue | Cash date | Carrying value | Cash received | Revenue variance |",
+                      "|---|---|---:|---:|---:|"])
+        for v, r in realized:
+            lines.append(f"| {v['venue_id']} | {r['cash']['date']} | "
+                         f"{_usd(r['carrying_value_usd'])} | {_usd(r['cash_usd'])} | "
+                         f"{_usd(r['revenue_adjustment_usd'])} |")
+        if outstanding:
+            lines.extend(["", f"Outstanding redemption claims: {len(outstanding)}. "
+                          "No exact realization cost is booked until cash arrives."])
+        lines.extend(["", "Both transaction legs and outstanding claims are retained in provenance.json.", ""])
+
     # ── PnL-suppressed venues (positions only) ──────────────────────
     if pnl_hidden:
         lines.append("## Position-only venues (excluded from `prime_agent_revenue`)")
@@ -389,6 +411,19 @@ def render_summary(prov: dict) -> str:
         # may differ from the visible row sum by sub-cent workbook rounding.
         lines.append(f"| **Total** | **{_usd(dist_rewards)}** | |")
         lines.append("")
+
+    adjustments = prov.get("settlement_adjustments") or []
+    if adjustments:
+        lines.extend(["## Prior-period payment true-ups", "",
+                      "These amounts are added to the September payment, not September-earned revenue.",
+                      "Published prior-month reports are unchanged.", "",
+                      "| Item | Earned period | USDS |", "|---|---|---:|"])
+        for entry in adjustments:
+            lines.append(f"| {entry['label']} | {entry['earned_period']} | {_D(entry['amount']):,.6f} |")
+        bridge = prov["settlement_payment"]
+        lines.extend([f"| **Total historical true-ups** | | **{_D(bridge['prior_period_adjustments']):,.6f}** |",
+                      "", f"September net revenue: {_D(bridge['period_net_revenue']):,.6f} USDS.",
+                      f"**Settlement including true-ups: {_D(bridge['total']):,.6f} USDS.**", ""])
 
     # ── Off-protocol (display-only) ─────────────────────────────────
     display_only = sorted(

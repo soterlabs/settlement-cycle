@@ -58,6 +58,13 @@ class VenueRevenue:
     # external-rewards path wired up yet. See `normalize.positions.
     # _atoken_external_revenue_usd` for the Cat C implementation.
     external_revenue: Decimal = Decimal("0")
+    # Cash realization is already included in actual_revenue/sd_revenue.
+    # These fields preserve both transaction legs and unsettled claims.
+    redemption_revenue_adjustment: Decimal = Decimal("0")
+    redemption_settlements: list[dict] = field(default_factory=list)
+    outstanding_redemptions: list[dict] = field(default_factory=list)
+    unmatched_redemption_cash: list[dict] = field(default_factory=list)
+    redemption_capital_outflows: list[dict] = field(default_factory=list)
     # Time-weighted average principal across the period:
     #   tw_avg = mean(value_som + cum_inflow_d for d in period.start..end)
     # Used by post-hoc reporting (build_monthly_report, build_settlement_xlsx)
@@ -348,11 +355,12 @@ class MonthlyPnL:
             + self.gar
             - self.sky_revenue
         )
-        # The producer and this checker can associate the Decimal additions
-        # differently (notably once long-tail external-revenue values are
-        # present). Decimal's 28-significant-digit context can therefore leave
-        # sub-nanodollar noise even though the accounting components agree.
-        if abs(self.monthly_pnl - expected) > Decimal("1e-9"):
+        # Equivalent association orders can differ below Decimal's 28-digit
+        # context precision (observed during September Basin repricing).
+        # A billionth of a dollar absorbs that noise while preserving the
+        # accounting guard; reject non-finite amounts explicitly.
+        if (not self.monthly_pnl.is_finite() or not expected.is_finite()
+                or abs(self.monthly_pnl - expected) > Decimal("1e-9")):
             raise ValueError(
                 f"monthly_pnl invariant broken: stored {self.monthly_pnl} != "
                 f"expected {expected} (prime_rev + agent_rate + "

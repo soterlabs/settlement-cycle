@@ -103,6 +103,9 @@ msc_preview:
   # Mint/send remain derived until the September MSC post is published.
   '2026-09':
     spark: {sv_adj: 2392354.07}
+    # September's $12,499.85 boundary redemption cost is recognized in E10
+    # revenue by redemption_settlements.yaml. Keep ONLY the historical
+    # $165,013.90 here; their combined credit is $177,513.75, not two fees.
     grove: {sky_adj: -165013.90}
 
 # ── Step 1 Capital actually PAID to the Core Council Buffer, per execution

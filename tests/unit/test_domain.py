@@ -362,3 +362,20 @@ def test_prime_rejects_venues_without_ilk():
             id="bad", ilk_bytes32=None, start_date=date(2025, 1, 1),
             venues=[venue],
         )
+
+
+@pytest.mark.parametrize("noise", ["1e-22", "-1e-22", "1e-9"])
+def test_monthly_pnl_accepts_sub_accounting_precision_noise(noise):
+    from decimal import Decimal as D
+    from settle.domain.monthly_pnl import MonthlyPnL
+    MonthlyPnL("grove", Month(2026, 9), Period.from_month(Month(2026, 9)),
+               D("1000000"), D("5"), D("50"), D("-999945") + D(noise), [], {})
+
+
+@pytest.mark.parametrize("noise", ["1e-8", "-0.01", "NaN", "Infinity"])
+def test_monthly_pnl_rejects_real_mismatch_or_nonfinite(noise):
+    from decimal import Decimal as D
+    from settle.domain.monthly_pnl import MonthlyPnL
+    with pytest.raises(ValueError, match="invariant broken"):
+        MonthlyPnL("grove", Month(2026, 9), Period.from_month(Month(2026, 9)),
+                   D("1000000"), D("5"), D("50"), D("-999945") + D(noise), [], {})

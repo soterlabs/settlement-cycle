@@ -4,6 +4,10 @@ Sourced from the ``settle-dr-dune`` submodule's HyperSync reconciliation
 workbook (``hypersync-results/dr_comparison_hypersync.xlsx``, ``Soter by Ref
 Code`` tab). Each row is a ``ref_code`` with one DR-USD column per month.
 
+Finalized month snapshots under ``data/distribution_rewards/YYYY-MM`` take
+precedence over the submodule workbook. Their full-precision companion CSV is
+hash-checked and reconciled to the workbook; historical additions are excluded.
+
 Unlike the retired Dune workbook (``dune-results/dr_comparison_latest.xlsx``,
 ``Summary`` tab) this sheet is FLAT: it carries no ``group`` column and no
 per-group ``Total`` row, so it says nothing about which prime owns a code.
@@ -211,7 +215,11 @@ def load_dr(prime_id: str, month: str) -> dict | None:
         )
         return {"total": Decimal("0"), "rows": [], "month": month}
 
-    rows = _summary_rows()
+    from .dr_snapshot import snapshot_rows
+
+    rows = snapshot_rows(_repo_root(), month)
+    if rows is None:
+        rows = _summary_rows()
     if not rows:
         return None
 

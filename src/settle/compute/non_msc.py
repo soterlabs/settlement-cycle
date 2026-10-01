@@ -87,6 +87,7 @@ class NonMscMonthly:
     # 2026-07-20, 3,019,173.48 DAI; forum t/27706). Bark-tx grabs are
     # excluded upstream (already netted in liq_owe − liq_due).
     bad_debt_by_ilk: dict[str, Decimal] = field(default_factory=dict)
+    refund_accrual_adjustments: list[dict] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
     @property
@@ -108,6 +109,10 @@ class NonMscMonthly:
         return sum((s["amount"] for s in self.surplus_returns), Decimal(0))
 
     @property
+    def refund_accrual_adjustment(self) -> Decimal:
+        return sum((r["amount"] for r in self.refund_accrual_adjustments), Decimal(0))
+
+    @property
     def total_income(self) -> Decimal:
         return (
             self.psm_jar_income
@@ -115,6 +120,7 @@ class NonMscMonthly:
             + self.rwa_jar_void
             + self.liq_revenue
             + self.surplus_return_income
+            + self.refund_accrual_adjustment
         )
 
     @property
@@ -230,7 +236,9 @@ def compute_non_msc_monthly(
         elif stream == "income:liq_due":
             liq_due = amount
         elif stream == "income:surplus_return":
-            surplus.append({"date": str(row["label"]), "amount": amount})
+            surplus.append({"date": str(row["label"]), "amount": amount,
+                            "transaction_hash": row.get("transaction_hash"),
+                            "log_index": row.get("log_index")})
         elif stream == "income:rwa_void":
             rwa_void = amount
         elif stream == "expense:susds_drip":
@@ -249,6 +257,24 @@ def compute_non_msc_monthly(
             bad_debt[row["label"]] = bad_debt.get(row["label"], Decimal(0)) + amount
         else:
             raise ValueError(f"non_msc: unknown stream {stream!r} from query")
+
+    # Backend-independent adjustment: recognize allowlisted refunds on receipt
+    # and remove their later cash recognition, including across month boundaries.
+    from ..normalize.sources.refund_accrual import refund_adjustments
+    refunds = refund_adjustments(month, pin_block)
+    # A same-day unrelated deposit must not stand in for a missing refund.
+    # Match cash actually booked by this backend, not a separate on-chain read.
+    for tx in {r["transaction"] for r in refunds if r["kind"] == "settlement_offset"}:
+        offsets = [r for r in refunds if r["kind"] == "settlement_offset" and r["transaction"] == tx]
+        offset = -sum((r["amount"] for r in offsets), Decimal(0))
+        matching = [r for r in surplus if r["transaction_hash"] == tx
+                    and r["date"] in {o["date"] for o in offsets}]
+        indexes = [r["log_index"] for r in matching]
+        if any(i is None or i != i for i in indexes) or len(set(indexes)) != len(indexes):
+            raise ValueError("Missing or duplicate refund cash log identity")
+        cash = sum((r["amount"] for r in matching), Decimal(0))
+        if cash + Decimal("1e-9") < offset:
+            raise ValueError(f"Accrued refund settlement absent from cash surplus returns: {tx}")
 
     # Attribution: cash / transfer-date basis — PSM income for month M is EVERY
     # jar burn that LANDS in calendar month M. Multiple burns in the month all
@@ -290,6 +316,7 @@ def compute_non_msc_monthly(
         rwa_jar_void=rwa_void,
         vest_expense=vest,
         bad_debt_by_ilk=bad_debt,
+        refund_accrual_adjustments=refunds,
         warnings=warnings,
     )
 
@@ -319,8 +346,8 @@ def render_summary(r: NonMscMonthly) -> str:
              "income at the jar burn's landing month (cash basis); liquidation "
              "revenue = Σ take.owe − Σ bark.due; surplus returns = join→vow "
              "moves not attributable to the PSM/RWA jar; savings interest on "
-             "the accrual basis (drips apportioned by chi-boundary "
-             "interpolation; sUSDS gross, prime split informational); "
+             "the accrual basis (including unpaid interest at the period "
+             "boundaries; sUSDS gross, prime split informational); "
              "liquidation keeper incentives and Vest suckable payouts on the "
              "expense side.")
     L.append("")
@@ -356,7 +383,16 @@ def render_summary(r: NonMscMonthly) -> str:
         L.append(f"| Other | surplus return ({s['date']}) | {_usds(s['amount'])} |")
     if not r.surplus_returns:
         L.append("| Other | surplus returns | 0.00 |")
+    for refund in r.refund_accrual_adjustments:
+        action = "recognized at protocol custody" if refund["kind"] == "recognition" else "remove cash recognition already accrued"
+        L.append(f"| Other | {refund['label']} — {action} ({refund['date']}) | {_usds(refund['amount'])} |")
     L.append(f"| **Total** | | **{_usds(r.total_income)}** |")
+    if r.refund_accrual_adjustments:
+        L.append("")
+        L.append("Refunds are recognized upon receipt in protocol custody. Subsequent surplus-buffer "
+                 "settlement clears that receivable; the negative adjustment prevents recognition twice.")
+        for refund in r.refund_accrual_adjustments:
+            L.append(f"- {refund['label']} ({refund['kind']}): [transaction](https://etherscan.io/tx/{refund['transaction']})")
     L.append("")
 
     L.append("## Expense")
@@ -364,7 +400,10 @@ def render_summary(r: NonMscMonthly) -> str:
     L.append("| Section | Line | USDS |")
     L.append("|---|---|---:|")
     L.append(f"| Savings | sUSDS SSR (gross, all holders) | {_usds(r.susds_expense_gross)} |")
-    L.append(f"| Savings | — of which: non-prime users (informational) | {_usds(r.susds_expense_to_users)} |")
+    # HyperSync currently supplies gross SSR only. An empty split is missing
+    # attribution, not evidence that every holder is a non-prime user.
+    if r.susds_prime_carveout:
+        L.append(f"| Savings | — of which: non-prime users (informational) | {_usds(r.susds_expense_to_users)} |")
     for holder, v in sorted(r.susds_prime_carveout.items(), key=lambda kv: -kv[1]):
         if v.quantize(Decimal("0.01")) == 0:
             continue   # sub-cent dust holder
@@ -413,8 +452,15 @@ def write_non_msc(r: NonMscMonthly, out_dir: Path) -> dict[str, Path]:
             "liq_expense": str(r.liq_expense),
             "bad_debt_by_ilk": {k: str(v) for k, v in r.bad_debt_by_ilk.items()},
             "bad_debt_expense": str(r.bad_debt_expense),
-            "surplus_returns": [{"date": s["date"], "amount": str(s["amount"])} for s in r.surplus_returns],
+            "surplus_returns": [
+                {"date": s["date"], "amount": str(s["amount"]),
+                 "transaction_hash": s.get("transaction_hash") if isinstance(s.get("transaction_hash"), str) else None,
+                 "log_index": int(s["log_index"]) if s.get("log_index") is not None and s["log_index"] == s["log_index"] else None}
+                for s in r.surplus_returns],
             "surplus_return_income": str(r.surplus_return_income),
+            "refund_accrual_adjustments": [{**r, "amount": str(r["amount"])}
+                                           for r in r.refund_accrual_adjustments],
+            "refund_accrual_adjustment": str(r.refund_accrual_adjustment),
             "rwa_jar_void": str(r.rwa_jar_void),
             "vest_expense": str(r.vest_expense),
             "total_income": str(r.total_income),
