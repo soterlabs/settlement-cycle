@@ -76,3 +76,27 @@ savings narrative and omit a holder split unavailable from the source.
 `dsr-accrual-check.json` records the independent boundary-state calculation.
 The two DSR results differ only in the final Decimal-context digit (far below
 one cent).
+
+## Calculation-log review
+
+Agreement between the two executions is supplemented by checking their
+warnings:
+
+- Grove E9's opening position includes the pending-redemption escrow.
+  Opening value is 858,067,027.2826399485163006316, closing value is
+  309,460,827.1912790929082352869, and net capital inflow is
+  -550,048,184.446080 USDS. Their difference gives the booked
+  1,441,984.3547191443919346553 USDS revenue. The SDE diagnostic previously
+  compared the wallet-only opening balance against the escrow-inclusive
+  value; this PR corrects that diagnostic without changing the deduction.
+- Spark S26 has zero opening/closing idle USDC and 984,135 USDS of external
+  income subsequently deployed. Its negative capital-only time-weighted
+  balance is clamped to zero; it does not represent a revenue loss.
+- Spark S63 is a position-only retail vault on Robinhood, outside MSC revenue.
+  Its missing chain pins omit the position-only display, not a settlement
+  revenue component. This existing presentation limitation is unchanged.
+- Plain-token aToken probes can revert; the guarded RPC balance path remains
+  in use. No failed provider read was substituted for a zero balance.
+- The comparison runs intentionally stage reports without DR. Final report
+  assembly requires the completed September reward workbook and explicit
+  ownership of every nonzero referral code.
