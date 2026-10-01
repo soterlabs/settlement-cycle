@@ -185,3 +185,45 @@ def test_interest_matches_independent_nominal_apr_arithmetic():
                       monthly_pnl=pnl.prime_agent_total_revenue - sky,
                       sky_revenue_gross=sum(D(r['daily_sky_rev_gross']) for r in rows))
     assert monthly.validate_interest(changed, prime, record['input_provenance']) == expected
+
+
+@pytest.mark.parametrize('failure', ['error', 'timeout', 'no_file'])
+def test_cli_reports_incomplete_finalization_on_renderer_failure(
+        tmp_path, monkeypatch, capsys, failure):
+    import subprocess
+    from contextlib import contextmanager
+    from unittest.mock import MagicMock
+
+    from settle import cli
+    from settle.load import writer
+    from settle.store import db
+
+    prime, pnl, _ = example()
+
+    @contextmanager
+    def connection():
+        yield MagicMock()
+
+    def render(*args, **kwargs):
+        if failure == 'error':
+            raise subprocess.CalledProcessError(1, 'renderer')
+        if failure == 'timeout':
+            raise subprocess.TimeoutExpired('renderer', 60)
+        # A renderer that exits successfully without creating the workbook
+        # is also incomplete, and must not produce a successful CLI status.
+        return subprocess.CompletedProcess('renderer', 0)
+
+    monkeypatch.setattr(cli, 'load_prime_by_id', lambda _: prime)
+    monkeypatch.setattr(db, 'connect', connection)
+    monkeypatch.setattr(monthly, 'from_database', lambda *a: (pnl, {}))
+    monkeypatch.setattr(writer, 'enrich_with_dr', lambda p: p)
+    monkeypatch.setattr(writer.subprocess, 'run', render)
+    code = cli.main(['monthly-from-revenue', '--prime', 'grove', '--month', '2026-09',
+                     '--revision', 'explicit', '--output-dir', str(tmp_path)])
+    captured = capsys.readouterr()
+    assert code == 1
+    assert 'Finalized' not in captured.out
+    assert 'incomplete: missing xlsx' in captured.err
+    assert 'new empty output directory' in captured.err
+    assert (tmp_path / 'provenance.json').is_file()
+    assert (tmp_path / 'summary.md').is_file()

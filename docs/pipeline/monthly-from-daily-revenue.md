@@ -17,6 +17,10 @@ its final cutoff, including the required official reference-rate observations.
 `DATABASE_URL` must point to that worker's store. The output directory must be
 new or empty. Existing settlement artifacts are never intentionally overwritten.
 The Excel renderer now reads and writes this directory too.
+The command reports success only when provenance, summary and Excel files all
+exist. A renderer failure returns a nonzero exit status and identifies any
+partial output. After fixing the failure, retry with a new empty directory.
+The normal package installation includes the required `openpyxl` dependency.
 
 The command reads Postgres in a read-only transaction. It requires an explicit
 revision rather than silently choosing whichever revision is newest during

@@ -319,6 +319,16 @@ def _cmd_monthly_from_revenue(args: argparse.Namespace) -> int:
         conn.execute("SET TRANSACTION READ ONLY")
         result, sources = from_database(conn, prime, month, args.revision)
     written = write_settlement(result, output, sources=sources)
+    missing = [name for name in ("provenance", "summary", "xlsx")
+               if name not in written or not written[name].is_file()]
+    if missing:
+        print(
+            f"Monthly finalization incomplete: missing {', '.join(missing)}. "
+            f"Partial artifacts remain in {output}. Fix the renderer and retry "
+            "with a new empty output directory.",
+            file=sys.stderr,
+        )
+        return 1
     print(f"Finalized {prime.id} {month} from daily revision {args.revision}")
     for name, path in written.items():
         print(f"  {name}: {path}")
