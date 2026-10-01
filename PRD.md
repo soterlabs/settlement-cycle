@@ -1725,3 +1725,26 @@ https://github.com/sky-ecosystem/dss-blow2/blob/master/src/DssBlow2.sol).
 The report preserves both transactions and the adjustments. This treatment
 is independent of the non-MSC cash-stream backend and does not alter unrelated
 surplus returns, prior settlements, or prime allocations.
+
+### September 2026 non-MSC savings close
+
+From September 2026, the HyperSync DSR expense is the month's `Vat.suck`
+interest minted by the Pot plus its closing unminted interest liability minus
+its opening unminted liability. Each boundary liability is calculated from
+historical `Pie`, `chi`, `dsr`, and `rho`, using Pot's integer `rpow`/`rmul`
+rounding and state strictly before the UTC boundary. This recognizes the
+month-end tail without waiting for an October drip and prevents that later
+drip from recognizing the same expense twice. Pot joins and rate changes
+require an updated `rho`; exits can release unminted interest, which the
+liability movement also captures. See
+[Pot implementation](https://github.com/sky-ecosystem/dss/blob/master/src/pot.sol).
+Earlier report calculations retain their existing convention.
+
+The sUSDS and stUSDS interpolation method is unchanged, but September-forward
+runs require drips bracketing both month boundaries. An incomplete closing
+interval fails the run for retry rather than silently understating expense.
+
+September distribution rewards require the October 1 exclusive cutoff in
+[settle-dr-dune PR #27](https://github.com/soterlabs/settle-dr-dune/pull/27).
+The submodule pin advances that shared window; fresh, resumable September
+checkpoints must be generated before final report enrichment.

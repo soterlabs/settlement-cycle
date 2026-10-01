@@ -62,6 +62,7 @@ _RAY = 10 ** 27
 # two drip intervals straddling the month boundaries are captured. sUSDS/stUSDS
 # drip ~hourly-or-faster and the pot many times a day, so 3 days is ample.
 _SAVINGS_BUFFER = 3 * 86400
+_SAVINGS_CLOSE_FROM = 1788220800  # September 1, 2026 UTC.
 
 # ── addresses (lower-case) ──────────────────────────────────────────────────
 _VAT = "0x35d1b3f3d7966a1dfe207aa4514c12a259a0492b"
@@ -426,8 +427,12 @@ class HyperSyncNonMscSource:
             # (block_time, chi = data word[0], diff = data word[1])
             return [(r.block_time, _word(r.data, 0), _word(r.data, 1)) for r in rows]
 
-        susds = _accrue_savings(drip_events(_SUSDS), start_ts, end_ts) / _WAD
-        stusds = _accrue_savings(drip_events(_STUSDS), start_ts, end_ts) / _WAD
+        susds_events, stusds_events = drip_events(_SUSDS), drip_events(_STUSDS)
+        if start_ts >= _SAVINGS_CLOSE_FROM:
+            for name, events in (("sUSDS", susds_events), ("stUSDS", stusds_events)):
+                _require_savings_coverage(name, events, start_ts, end_ts)
+        susds = _accrue_savings(susds_events, start_ts, end_ts) / _WAD
+        stusds = _accrue_savings(stusds_events, start_ts, end_ts) / _WAD
 
         # DSR — Vat.suck(u=vow, v=pot, rad); v = arg2 = topic2, rad = topic3. The
         # pot suck carries no chi, so acc=None → time-fraction split.
@@ -438,13 +443,65 @@ class HyperSyncNonMscSource:
             ).rows,
             key=lambda r: (r.block_number, r.log_index),
         )
-        dsr = _accrue_savings([(r.block_time, None, int(r.topic3, 16)) for r in sk],
-                              start_ts, end_ts) / _RAD
+        if start_ts >= _SAVINGS_CLOSE_FROM:  # Earlier reports unchanged.
+            # A freshly closed month may have NO subsequent Pot.drip. Interpolating
+            # only observed drips then silently omits its accrued closing tail.
+            # Recognize minted interest + closing unminted liability - opening
+            # unminted liability instead. This needs no future transaction.
+            # Pot.drip: chi' = rmul(rpow(dsr, now-rho, RAY), chi),
+            # Vat.suck(vow, pot, Pie * (chi' - chi)). Pot.file requires rho == now;
+            # joins also require a drip, while exits can forfeit unminted interest.
+            # The liability difference correctly includes those releases as well.
+            # https://github.com/sky-ecosystem/dss/blob/master/src/pot.sol
+            minted = sum(int(r.topic3, 16) for r in sk
+                         if start_ts <= r.block_time < end_ts)
+            dsr = (Decimal(minted) + _pot_accrued_at(end_ts)
+                   - _pot_accrued_at(start_ts)) / _RAD
+        else:
+            dsr = _accrue_savings([(r.block_time, None, int(r.topic3, 16)) for r in sk],
+                                  start_ts, end_ts) / _RAD
         return [
             _row("expense:susds_drip", "sUSDS SSR (gross, all holders)", susds),
             _row("expense:stusds_drip", "stUSDS", stusds),
             _row("expense:dsr_drip", "DSR (pot)", dsr),
         ]
+
+
+def _require_savings_coverage(name, events, start_ts, end_ts) -> None:
+    if not events or events[0][0] > start_ts or events[-1][0] < end_ts:
+        raise ValueError(f"{name} savings drips do not bracket the month; retry after next drip")
+
+
+def _pot_pending_rad(*, pie: int, chi: int, dsr: int, rho: int, timestamp: int) -> int:
+    """Unminted DSR liability, using Pot's integer rounding (raw RAD)."""
+    if min(pie, chi, rho) < 0 or dsr < _RAY or timestamp < rho or chi == 0:
+        raise ValueError("invalid historical Pot state")
+    # Solidity rpow rounds each multiplication to the nearest RAY; rmul then
+    # floors. Decimal exponentiation at the default context is not equivalent.
+    x, n = dsr, timestamp - rho
+    z = _RAY if n % 2 == 0 else x
+    n //= 2
+    while n:
+        x = (x * x + _RAY // 2) // _RAY
+        if n % 2:
+            z = (z * x + _RAY // 2) // _RAY
+        n //= 2
+    return pie * (z * chi // _RAY - chi)
+
+
+def _pot_accrued_at(timestamp: int) -> Decimal:
+    """Read the state strictly before a UTC boundary, accrue to that boundary."""
+    from ...domain.primes import Address, Chain
+    from ...extract.rpc import eth_call
+
+    block = hypersync.find_block_at_or_before(_CHAIN, timestamp - 1)
+    pot = Address.from_str(_POT)
+    state = {
+        name: int(eth_call(Chain.ETHEREUM, pot, _sel(signature)[:10], block), 16)
+        for name, signature in (("pie", "Pie()"), ("chi", "chi()"),
+                                ("dsr", "dsr()"), ("rho", "rho()"))
+    }
+    return Decimal(_pot_pending_rad(**state, timestamp=timestamp))
 
 
 def _integrate_fee(
@@ -548,5 +605,3 @@ def _accrue_savings(
             frac = (oe - os) / (t - tp)
         part += d * frac
     return Decimal(whole) + Decimal(str(part))
-
-
