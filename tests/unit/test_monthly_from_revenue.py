@@ -22,7 +22,7 @@ MONTH = Month(2026, 9)
 TODAY = date(2026, 10, 1)
 
 
-def example(*, subsidy=False):
+def example(*, subsidy=False, basin=False):
     prime = replace(load_prime_by_id('grove'),
                     subsidy=SubsidyConfig(enabled=subsidy, ref_rate_kind='sofr'))
     period = Period.from_month(MONTH, {c: 200 for c in prime.chains})
@@ -49,9 +49,11 @@ def example(*, subsidy=False):
                                          'coverage_complete': True}
         history = ReferenceRateHistory(pd.DataFrame([
             {'effective_date': d, 'ref_rate_apr': D('.038')} for d in effective]), 'sofr')
+    basin_idle = pd.DataFrame({"block_date": dates, "cum_balance": [D("10000000")]*30,
+                               "ilk_debt": [D("20000000")]*30}) if basin else None
     interest, daily, summary = compute_sky_revenue_daily(
         period, debt, idle, ssr, subsidy_config=prime.subsidy,
-        ref_rate_history=history, sde_asset_value=sde)
+        ref_rate_history=history, sde_asset_value=sde, basin_idle_usds=basin_idle)
     rows = canonical(daily.to_dict('records'))
     vr = VenueRevenue('E1', 'Test allocation', D('100'), D('200'), D('50'), D('40'),
                       actual_revenue=D('50'), sd_revenue=D('10'),
@@ -172,9 +174,10 @@ def test_interest_matches_independent_nominal_apr_arithmetic():
     # balances each deduct a separate amount; negative utilized costs zero.
     expected = D('0')
     for row in rows:
-        row.update(ssr_apy=0.0, psm_usds='3000000', curve_idle='4000000', lending_idle='5000000')
+        row.update(ssr_apy=0.0, psm_usds='3000000', curve_idle='4000000',
+                   lending_idle='5000000', basin_idle='1000000', basin_ilk_debt='2000000')
         principal = (D(row['cum_debt']) - D(row['alm_usds']) - D(row['sde_av'])
-                     - D('12000000'))
+                     - D('13000000'))
         row['utilized'] = str(principal)
         charge = max(D('0'), principal) * (D('.002') / 365)
         row['daily_sky_rev'] = str(charge)
@@ -227,3 +230,21 @@ def test_cli_reports_incomplete_finalization_on_renderer_failure(
     assert 'new empty output directory' in captured.err
     assert (tmp_path / 'provenance.json').is_file()
     assert (tmp_path / 'summary.md').is_file()
+
+
+def test_monthly_requires_active_basin_inputs():
+    prime, pnl, record = example()
+    rows = deepcopy(pnl.sky_revenue_daily)
+    del rows[0]['basin_idle']
+    changed = replace(pnl, sky_revenue_daily=rows)
+    with pytest.raises(ValueError, match='missing Basin idle inputs'):
+        monthly.validate_interest(changed, prime, record['input_provenance'])
+
+
+def test_monthly_rejects_basin_deduction_for_unconfigured_prime():
+    prime, pnl, record = example()
+    rows = deepcopy(pnl.sky_revenue_daily)
+    rows[0].update(basin_idle='1', basin_ilk_debt='2')
+    with pytest.raises(ValueError, match='outside configured'):
+        monthly.validate_interest(replace(pnl, sky_revenue_daily=rows),
+                                  replace(prime, basin_idle_usds=None), record['input_provenance'])

@@ -2015,7 +2015,7 @@ def _log_sky_revenue_debug(
     hdr = (
         f"  {'date':10s}  {'cum_debt':>10s}  {'alm_usds':>9s}  "
         f"{'psm_usds':>9s}  {'sde_av':>9s}  {'curve':>9s}  "
-        f"{'lending':>9s}  {'utilized':>10s}  "
+        f"{'lending':>9s}  {'basin':>9s}  {'utilized':>10s}  "
         f"{'ssr%':>6s}  {'br%':>6s}  {'daily_rev':>12s}"
     )
     lines = [
@@ -2033,6 +2033,7 @@ def _log_sky_revenue_debug(
             f"{float(row['sde_av'])/1e6:>8.2f}M  "
             f"{float(row['curve_idle'])/1e6:>8.2f}M  "
             f"{float(row['lending_idle'])/1e6:>8.2f}M  "
+            f"{float(row['basin_idle'])/1e6:>8.2f}M  "
             f"{float(row['utilized'])/1e6:>9.2f}M  "
             f"{row['ssr_apy']*100:>5.2f}%  "
             f"{row['base_apr']*100:>5.2f}%  "
@@ -2505,9 +2506,11 @@ def compute_monthly_pnl(
                 .groupby("block_date", as_index=False)[["daily_net", "cum_balance"]].sum()
                 .sort_values("block_date").reset_index(drop=True)
             )
-    # Prime's share of unborrowed underlying in configured lending pools — Step 2
-    # idle lending pool USDS. Computed daily via ``balanceOf`` + ``totalSupply``.
-    # Returns (empty frame, {}) if no venue has ``lending_idle_usds=True``.
+    # Basin/pocket USDS is a separate, dated exemption capped at one ilk.
+    from ..normalize.basin import get_basin_idle_usds
+
+    basin_idle_usds = get_basin_idle_usds(prime, period, block_resolver=resolver)
+    # Prime's share of unborrowed underlying in configured lending pools.
     lending_idle_usds, _lending_idle_tw_avg = _aggregate_lending_idle_usds(
         prime, period,
         block_resolver=resolver,
@@ -4169,6 +4172,7 @@ def compute_monthly_pnl(
         sde_asset_value=sde_av_total,
         curve_idle_usds=curve_idle_usds,
         lending_idle_usds=lending_idle_usds,
+        basin_idle_usds=basin_idle_usds,
     )
     # Sky's full claim: BR on (utilized − SDE − idle deductions) + actual SDE
     # revenue, minus the Sky-to-Spark transfer on sUSDS positions:
@@ -4247,6 +4251,8 @@ def compute_monthly_pnl(
             "sde_av":              str(row["sde_av"]),
             "curve_idle":          str(row["curve_idle"]),
             "lending_idle":        str(row["lending_idle"]),
+            "basin_idle":          str(row["basin_idle"]),
+            "basin_ilk_debt":      str(row["basin_ilk_debt"]),
             "utilized":            str(row["utilized"]),
             # ssr_apy stays an APY (that is what the chain quotes); the
             # derived rates below are NOMINAL (APR) since 2026-09-01.

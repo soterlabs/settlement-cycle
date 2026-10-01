@@ -696,6 +696,24 @@ class PrincipalReturnOverride:
 
 
 @dataclass(frozen=True, slots=True)
+class BasinIdleUsdsConfig:
+    """Ethereum Basin cash exemption, capped at one allocator ilk's debt."""
+
+    effective_from: date
+    ilk: bytes
+    holder: Address
+    basins: tuple[Address, ...]
+
+    def __post_init__(self) -> None:
+        if len(self.ilk) != 32:
+            raise ValueError("Basin idle ilk must be 32 bytes")
+        if not self.basins or len(set(self.basins)) != len(self.basins):
+            raise ValueError("Basin idle addresses must be nonempty and unique")
+        if not any(self.holder.value) or any(not any(b.value) for b in self.basins):
+            raise ValueError("Basin idle addresses must be nonzero")
+
+
+@dataclass(frozen=True, slots=True)
 class Prime:
     """A Sky prime agent — ilk, addresses per chain, allocation venues."""
 
@@ -760,6 +778,7 @@ class Prime:
     # (July 2026), which runs alongside the legacy ALLOCATOR-BLOOM-A ilk
     # during the PAU migration. Only meaningful when ``ilk_bytes32`` is set.
     extra_ilks: tuple[bytes, ...] = ()
+    basin_idle_usds: BasinIdleUsdsConfig | None = None
     # When set, ``compute_agent_rate`` accrues NOTHING before this date even
     # if the subproxy already holds balances — for primes whose treasury was
     # seeded before their allocation agreement became effective (Osero: 10M
@@ -774,6 +793,9 @@ class Prime:
     chronicle_points: "ChroniclePointsConfig | None" = None
 
     def __post_init__(self) -> None:
+        if self.basin_idle_usds is not None:
+            if self.basin_idle_usds.ilk not in (self.ilk_bytes32, *self.extra_ilks):
+                raise ValueError("Basin idle ilk must belong to the prime")
         if self.ilk_bytes32 is not None and len(self.ilk_bytes32) != 32:
             raise ValueError(f"ilk_bytes32 must be 32 bytes; got {len(self.ilk_bytes32)}")
         if self.ilk_bytes32 is None and self.venues:
