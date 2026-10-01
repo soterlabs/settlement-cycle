@@ -23,12 +23,14 @@ Real (non-anonymous) events — Dog.Bark, Clipper.Take/Kick/Redo, DssVest.Vest,
 ERC20.Transfer, sUSDS/stUSDS.Drip — are matched by their signature topic0 and
 decoded positionally.
 
-Accounting basis is identical to the SQL (see that file's header): stability
+Accounting basis follows the SQL (see that file's header): stability
 fees on the accrual basis (Art × Δr_true from ``duty``); PSM at the jar burn's
 landing month; liquidation revenue = Σ take.owe − Σ bark.due; surplus returns =
 join→vow moves not attributable to the PSM/RWA jar; savings interest on the
 accrual basis (each drip apportioned to the month by chi-boundary
-interpolation); vest gross at call time.
+interpolation); vest gross at call time. From September 2026, DSR accrual
+uses minted interest plus the movement in unminted Pot liability instead of
+drip interpolation, so a just-closed month needs no subsequent Pot.drip.
 
 Config (env):
     ENVIO_API_TOKEN   required — free token from https://app.envio.dev/api-tokens
@@ -434,8 +436,8 @@ class HyperSyncNonMscSource:
         susds = _accrue_savings(susds_events, start_ts, end_ts) / _WAD
         stusds = _accrue_savings(stusds_events, start_ts, end_ts) / _WAD
 
-        # DSR — Vat.suck(u=vow, v=pot, rad); v = arg2 = topic2, rad = topic3. The
-        # pot suck carries no chi, so acc=None → time-fraction split.
+        # DSR — Vat.suck(u=vow, v=pot, rad); v = arg2 = topic2, rad = topic3.
+        # Legacy months split by time because the suck event carries no chi.
         sk = sorted(
             hypersync.query_logs(
                 _CHAIN, [{"address": [_VAT], "topics": [[_SUCK], [], [_addr_topic(_POT)]]}],
