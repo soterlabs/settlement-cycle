@@ -11,9 +11,9 @@ Consolidated Sky Net Revenue, ACCRUAL basis (operator definition 2026-08-07): pr
 | obex | 1,643,358.00 | -480,680.00 |
 | osero | 76,824.00 | -27,661.00 |
 | keel | 0.00 | -31,472.00 |
-| skybase | 0.00 | -144,111.00 |
-| **total** | **20,154,616.00** | **-6,050,453.00** |
-| **MSC net (accrual)** | | **14,104,163.00** |
+| skybase | 0.00 | -143,812.00 |
+| **total** | **20,154,616.00** | **-6,050,154.00** |
+| **MSC net (accrual)** | | **14,104,462.00** |
 
 ## Non-MSC leg
 
@@ -27,9 +27,9 @@ Consolidated Sky Net Revenue, ACCRUAL basis (operator definition 2026-08-07): pr
 
 | Field | USDS |
 |---|---:|
-| MSC net (accrual) | 14,104,163.00 |
+| MSC net (accrual) | 14,104,462.00 |
 | non-MSC net | 708,599.21 |
-| **Sky Net Revenue** | **14,812,762.21** |
+| **Sky Net Revenue** | **14,813,061.21** |
 
 *Below the line (not deducted above): the Core Council Buffer transfer — Step 1 Capital (20% of this SNR) plus any genesis / expense repayments — buybacks, the Aligned Delegates Buffer, GAR allocations, and prime capital seedings. On the accrual basis those figures are only known once the settlement executes; the paid-basis months itemise them.*
 
@@ -40,8 +40,8 @@ They do not change current-period Sky Net Revenue or its TMF calculation.
 
 | Prime | Additional USDS |
 |---|---:|
-| skybase | 124,694.330541 |
-| **Total historical payments** | **124,694.330541** |
+| skybase | 177,113.780088 |
+| **Total historical payments** | **177,113.780088** |
 
 Add these exact corrections to each prime's unrounded period payment; the accrual preview above uses whole-USDS rounding.
 

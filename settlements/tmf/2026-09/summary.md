@@ -8,7 +8,7 @@ Treasury Management Function waterfall for the **September 2026** cycle (MSC#13)
 
 | Input | Value | Source |
 |---|---:|---|
-| Sky Net Revenue | 14,812,762 USDS | settlements/sky_total/2026-09 (rounded to whole USDS) |
+| Sky Net Revenue | 14,813,061 USDS | settlements/sky_total/2026-09 (rounded to whole USDS) |
 | SKY monthly TWAP | 0.068846535412547569 USDS/SKY | BA monthly SKY TWAP, 30 days: https://observatory.data.blockanalitica.com/sky/twap/monthly/?year=2026&month=9 (retrieved 2026-10-01) |
 | Aggregate Backstop Capital (Sky Reserves) | 84,550,765.96 USDS | BA historical aggregate_backstop_capital, 2026-09-30: https://sky.data.blockanalitica.com/internal/risk/info/historic/?days_ago=30 (retrieved 2026-10-01) |
 | USDS total supply | 6,686,161,482 USDS | USDS.totalSupply() at block 26093737 |
@@ -18,10 +18,10 @@ Treasury Management Function waterfall for the **September 2026** cycle (MSC#13)
 
 | Line | USDS |
 |---|---:|
-| Total (20% of SNR) → Core Council Buffer, one transfer | 2,962,552.40 |
-| &nbsp;&nbsp;Core Council half (10%) | 1,481,276.20 |
-| &nbsp;&nbsp;Fortification Foundation half (10%) | 1,481,276.20 |
-| **Remaining after Step 1** | **11,850,209.60** |
+| Total (20% of SNR) → Core Council Buffer, one transfer | 2,962,612.20 |
+| &nbsp;&nbsp;Core Council half (10%) | 1,481,306.10 |
+| &nbsp;&nbsp;Fortification Foundation half (10%) | 1,481,306.10 |
+| **Remaining after Step 1** | **11,850,448.80** |
 
 ## Step 2 — Aggregate Backstop Capital
 
@@ -30,32 +30,32 @@ Treasury Management Function waterfall for the **September 2026** cycle (MSC#13)
 | Turbo-Fill Floor | 150,000,000 USDS |
 | Target Backstop Capital (1.50% x USDS supply) | 100,292,422 USDS |
 | Retention rate this month | 50% (below Floor → full retention) |
-| Retained (stays in the Surplus Buffer) | 5,925,104.80 USDS |
-| **Step 3 remainder (engine budget)** | **5,925,104.80 USDS/month** |
+| Retained (stays in the Surplus Buffer) | 5,925,224.40 USDS |
+| **Step 3 remainder (engine budget)** | **5,925,224.40 USDS/month** |
 
 ## Step 3 — Smart Burn Engine
 
 | Line | Value |
 |---|---:|
-| SKY-rewards leg (45%) — buys SKY for stakers | 2,666,297.16 USDS |
-| USDS-rewards leg (45%) — paid to stakers as USDS | 2,666,297.16 USDS |
-| Burn leg (10%) — buys SKY to burn | 592,510.48 USDS |
-| Total buyback (55%) → Flapper | 3,258,807.64 USDS |
-| Implied batches / month ÷ / day | 987.52 ÷ 32.47 |
-| Implied hop (solved, kbump fixed) | 2,661.22 s → **2,661 s** |
-| Annual run-rate through the engine | 71,101,258 USDS/yr |
+| SKY-rewards leg (45%) — buys SKY for stakers | 2,666,350.98 USDS |
+| USDS-rewards leg (45%) — paid to stakers as USDS | 2,666,350.98 USDS |
+| Burn leg (10%) — buys SKY to burn | 592,522.44 USDS |
+| Total buyback (55%) → Flapper | 3,258,873.42 USDS |
+| Implied batches / month ÷ / day | 987.54 ÷ 32.47 |
+| Implied hop (solved, kbump fixed) | 2,661.17 s → **2,661 s** |
+| Annual run-rate through the engine | 71,102,693 USDS/yr |
 | SBE BEAM bounds | kbump ≤ 12,000: ok · hop ≥ 550 s: ok · ≤ 350,000,000/yr: ok |
-| Bought SKY (model estimate, 55% leg ÷ TWAP) | 47,334,374 SKY |
+| Bought SKY (model estimate, 55% leg ÷ TWAP) | 47,335,329 SKY |
 
 ## Step 4 — Staking rewards
 
 | Line | Value |
 |---|---:|
-| Monthly SKY rewards (45% leg ÷ TWAP) → REWARDS_LSSKY_SKY | 38,728,123.99 SKY |
-| Monthly USDS rewards → REWARDS_LSSKY_USDS (via Splitter, per batch) | 2,666,297.16 USDS |
-| vestTot (3 months of SKY rewards, 90-day stream) | 116,184,371.98 → **116,184,372 SKY** |
-| Stream rate (vestTot ÷ tau) | 14.9414 SKY/s |
-| Distributor pull per farm period (7 d) ≈ | 9,036,562 SKY |
+| Monthly SKY rewards (45% leg ÷ TWAP) → REWARDS_LSSKY_SKY | 38,728,905.73 SKY |
+| Monthly USDS rewards → REWARDS_LSSKY_USDS (via Splitter, per batch) | 2,666,350.98 USDS |
+| vestTot (3 months of SKY rewards, 90-day stream) | 116,186,717.20 → **116,186,717 SKY** |
+| Stream rate (vestTot ÷ tau) | 14.9417 SKY/s |
+| Distributor pull per farm period (7 d) ≈ | 9,036,745 SKY |
 | vs MCD_VEST_SKY_TREASURY.cap 70.73 SKY/s | ok |
 
 ## ② Parameter block for the spell (computed vs published vs on-chain)
@@ -66,11 +66,11 @@ Treasury Management Function waterfall for the **September 2026** cycle (MSC#13)
 | REWARDS_LSSKY_USDS.rewardsDuration | 2,661 s | — | — |  |
 | splitter.burn | 55% | — | — |  |
 | kicker.kbump | 6,000 USDS | unchanged | — | |
-| vestTot | 116,184,372 SKY | — | — |  |
+| vestTot | 116,186,717 SKY | — | — |  |
 | vestTau (days) | 90 d | — | — |  |
 | vestBgn | block.timestamp at cast | — | — | |
 | dist (stream beneficiary) | REWARDS_DIST_LSSKY_SKY | — | — | |
-| Core Council Buffer transfer (Step 1) | 2,962,552 USDS | — | — |  |
+| Core Council Buffer transfer (Step 1) | 2,962,612 USDS | — | — |  |
 | SKY to burn (10/55 of window buys) | 7,372,287.58 SKY | — | — |  |
 
 ## ③ Smart Burn Engine execution in September 2026
@@ -143,13 +143,13 @@ Blocks 25,878,705-26,093,737 (2026-09-01 00:00:00 UTC → 2026-09-30 23:59:59 UT
 
 | Farm | Annual rewards | Staked | APY |
 |---|---:|---:|---:|
-| USDS farm | 31,995,566 USDS | 8,594,571,598 SKY (≈ 591,706,478 USDS) | 5.41% |
-| SKY farm | 464,737,488 SKY | 8,889,947,533 SKY | 5.23% |
+| USDS farm | 31,996,212 USDS | 8,594,571,598 SKY (≈ 591,706,478 USDS) | 5.41% |
+| SKY farm | 464,746,869 SKY | 8,889,947,533 SKY | 5.23% |
 
 ## Cross-checks
 
 | Check | Computed | Published / reference | |
 |---|---:|---:|:-:|
-| Step 0 SNR vs settlements/sky_total | 14812762 | 14812762 | ✓ |
+| Step 0 SNR vs settlements/sky_total | 14813061 | 14813061 | ✓ |
 
 *Sources: TMF Configurations (forum.skyeco.com/t/28153) · Sky Atlas A.2.3 · dss-flappers (Kicker / Splitter / FlapperUniV2SwapOnly) · on-chain via HyperSync (events) and ETH_RPC (state). Open methodology questions in docs/tmf/README.md.*

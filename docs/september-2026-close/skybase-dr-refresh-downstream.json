@@ -1,0 +1,158 @@
+{
+  "method": "Reaggregate after Skybase DR refresh to settle-dr-dune ed08241; other prime/non-MSC reports and TMF September activity/state/pins unchanged; no network reads",
+  "sky_total": {
+    "month": "2026-09",
+    "rows": [
+      {
+        "prime": "spark",
+        "has_ilk": true,
+        "sky": "8218667.931612274403963268725",
+        "dv": "809350.3461811809273694419367",
+        "sv": "1016416.179462385584639441603",
+        "sky_adj": "0",
+        "dv_adj": "0",
+        "sv_adj": "2392354.07",
+        "send_credit": "0",
+        "mint": "11627438",
+        "send": "4218121",
+        "derived_mint": "11627438.18107465998860271033",
+        "derived_send": "4218120.595643566512008883540"
+      },
+      {
+        "prime": "grove",
+        "has_ilk": true,
+        "sky": "5930610.919386419196601657123",
+        "dv": "107009.5342977154004579949436",
+        "sv": "1041398.558749348834438905183",
+        "sky_adj": "-165013.9",
+        "dv_adj": "0",
+        "sv_adj": "0",
+        "send_credit": "0",
+        "mint": "6806996",
+        "send": "1148408",
+        "derived_mint": "6806995.578135768031040562306",
+        "derived_send": "1148408.093047064234896900127"
+      },
+      {
+        "prime": "obex",
+        "has_ilk": true,
+        "sky": "1239312.886950368263560979509",
+        "dv": "76635.16523381080405626605599",
+        "sv": "404044.762434034866439020491",
+        "sky_adj": "0",
+        "dv_adj": "0",
+        "sv_adj": "0",
+        "send_credit": "0",
+        "mint": "1643358",
+        "send": "480680",
+        "derived_mint": "1643357.649384403130000000000",
+        "derived_send": "480679.9276678456704952865470"
+      },
+      {
+        "prime": "osero",
+        "has_ilk": true,
+        "sky": "76824.23346740458724782766586",
+        "dv": "31620.89932357346576519122835",
+        "sv": "-3959.60161832427566460466586",
+        "sky_adj": "0",
+        "dv_adj": "0",
+        "sv_adj": "0",
+        "send_credit": "0",
+        "mint": "76824",
+        "send": "27661",
+        "derived_mint": "76824.23346740458724782766586",
+        "derived_send": "27661.29770524919010058656249"
+      },
+      {
+        "prime": "keel",
+        "has_ilk": false,
+        "sky": "0",
+        "dv": "31472.19226911354373850987829",
+        "sv": "0",
+        "sky_adj": "0",
+        "dv_adj": "0",
+        "sv_adj": "0",
+        "send_credit": "0",
+        "mint": "0",
+        "send": "31472",
+        "derived_mint": "0",
+        "derived_send": "31472.19226911354373850987829"
+      },
+      {
+        "prime": "skybase",
+        "has_ilk": false,
+        "sky": "0",
+        "dv": "143811.7556117754532130302626",
+        "sv": "0",
+        "sky_adj": "0",
+        "dv_adj": "0",
+        "sv_adj": "0",
+        "send_credit": "0",
+        "mint": "0",
+        "send": "143812",
+        "derived_mint": "0",
+        "derived_send": "143811.7556117754532130302626"
+      }
+    ],
+    "non_msc_income": "14938630.494220308976600000",
+    "non_msc_expense": "14230031.28290471756684675993",
+    "dsb": "0",
+    "warnings": [
+      "msc_preview: 2026-09 contains adjustments or partial pins, but not published mint/send figures for every prime. Unpinned amounts are DERIVED from monthly reports; this is not a fully reconciled MSC preview."
+    ],
+    "prior_period_payments": {
+      "skybase": "177113.780088"
+    },
+    "reference_rate_notes": []
+  },
+  "tmf_waterfall": {
+    "step1_total": "2962612.20",
+    "step1_core_council": "1481306.10",
+    "step1_fortification": "1481306.10",
+    "after_step1": "11850448.80",
+    "target_backstop_capital": "100292422.2347980591787423688",
+    "retention_rate": "0.50",
+    "step2_retained": "5925224.4000",
+    "step3_capital": "5925224.4000",
+    "sky_rewards_usds": "2666350.980000",
+    "usds_rewards_usds": "2666350.980000",
+    "burn_usds": "592522.440000",
+    "buy_usds": "3258873.420000",
+    "splitter_burn": "0.55",
+    "batches_per_month": "987.5374",
+    "batches_per_day": "32.46698301369863013663049882",
+    "hop_solved": "2661.165035369799665338041880",
+    "hop": 2661,
+    "annual_run_rate": "71102692.8000",
+    "sky_bought_estimate": "47335329.22857955013908632100",
+    "sky_rewards_monthly": "38728905.73247417738652517173",
+    "vest_tot_exact": "116186717.1974225321595755152",
+    "vest_tot": "116186717",
+    "stream_rate": "14.94170743312757201646090535",
+    "weekly_pull": "9036744.655555555555555555556",
+    "hop_within_beam": true,
+    "kbump_within_beam": true,
+    "run_rate_within_beam": true
+  },
+  "sky_to_burn": "7372287.576422652922647064731",
+  "tmf_checks": [
+    {
+      "label": "Step 0 SNR vs settlements/sky_total",
+      "computed": "14813061",
+      "published": "14813061",
+      "tolerance": "1",
+      "unit": "USDS",
+      "ok": true
+    }
+  ],
+  "validation": {
+    "previous_sky_net_revenue": "14812762.21131559140975324007",
+    "updated_sky_net_revenue": "14813061.21131559140975324007",
+    "delta_usds": "299",
+    "rounding": "Skybase send changes from 144111 to 143812 whole USDS; unrounded DR reduction is 299.6033779669353452353295",
+    "historical_trueups_in_current_accrual": false,
+    "unchanged_other_prime_rows": true,
+    "unchanged_non_target_report_files": true,
+    "no_network_reads": true
+  }
+}

@@ -2,7 +2,7 @@
 
 Upstream: [`settle-dr-dune@ed08241`](https://github.com/soterlabs/settle-dr-dune/commit/ed08241beb57cebe60dcc2b278481cc2b68d795e), merged PR #28.
 
-This refresh imports the finalized September workbook and full-precision CSV. It does not replay RPC/indexer inputs or recalculate the agent rate. Published January-August reports and every other prime report are unchanged. Consolidated Sky/TMF and API data are not regenerated in this Skybase-only update.
+This refresh imports the finalized September workbook and full-precision CSV. It does not replay RPC/indexer inputs or recalculate the agent rate. Published January-August reports and every other prime report are unchanged. Consolidated September Sky/TMF reports are reaggregated from the saved reports and inputs. API data is unchanged.
 
 ## September-earned revenue
 
@@ -45,7 +45,7 @@ September-earned revenue. The Grove Farm true-up is unchanged.
 
 ## Validation and reproduction
 
-Only `settlements/skybase/2026-09/` report artifacts are regenerated. The refresh is idempotent; all non-DR calculation fields are unchanged, the four true-ups each appear once in the workbook, and all other existing settlement artifacts retain their exact file hashes.
+The prime-report refresh is limited to `settlements/skybase/2026-09/`; the dependent September Sky total and TMF reports are also updated. The refresh is idempotent; all non-DR calculation fields are unchanged, the four true-ups each appear once in the workbook, and all unrelated settlement artifacts retain their exact file hashes.
 
 ```sh
 PYTHONPATH=src python scripts/run_skybase_2026.py --dr-only --months 2026-09
@@ -55,3 +55,23 @@ The frozen snapshot takes precedence over the submodule workbook, so both were u
 
 - Workbook SHA-256: `17e8ed88d00a53c3a95371ecb9d715569542e8ece2f51aa96994c7174de16ca3`
 - September CSV SHA-256: `a3f1a04959a241d8986bb8e2cde24ece4792f149e798c34fb439ee401d89520a`
+
+## Consolidated Sky net revenue and TMF
+
+The lower September-earned Skybase DR raises Sky net revenue by **299 USDS**,
+from **14,812,762.21131559140975324007** to
+**14,813,061.21131559140975324007 USDS**. The consolidated report rounds each
+mint/send to whole USDS: Skybase's normal-accrual payment changes from 144,111
+to 143,812. This explains the difference from the 299.603378 unrounded DR delta.
+
+The **177,113.780088 USDS** historical true-ups appear separately in the
+consolidated payment disclosure; they are not September-earned expense and do
+not reduce September accrual-basis Sky net revenue or the TMF input.
+
+TMF reuses the original September activity, month-end state, TWAP, backstop
+capital and supply inputs. Proposed hop remains **2,661 seconds**; vestTot
+changes from **116,184,372** to **116,186,717 SKY**. The Core Council Buffer
+transfer rounds to **2,962,612 USDS**. Actual September execution and the
+**7,372,287.576422652922647064731 SKY** burn amount are unchanged.
+
+Audit: `docs/september-2026-close/skybase-dr-refresh-downstream.json`.
