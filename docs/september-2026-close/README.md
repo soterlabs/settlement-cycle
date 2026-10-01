@@ -113,3 +113,26 @@ An additional aggregator replay through September is checking the warning
 that the prior independent measurement covered only months through June.
 The historical DR rollup through August is unchanged to within 1e-12 USD;
 this close does not publish restated historical settlements.
+
+## Additional valuation sanity checks
+
+An internal 0–8% annualized-return screen is a diagnostic, not a publication
+rule or an assertion that every allocation must earn a positive return.
+Fresh historical RPC reads (Ethereum via MEV Blocker, Plume via its public
+RPC) independently reproduced the two notable NAV outliers:
+
+- Grove E22: unchanged 20,201,743.292497372656956881 ACRDX shares. The live
+  Chronicle router's NAV fell from 1.02485174998024 to 1.01968198436364,
+  reproducing the **104,438.27786893259390777267 USD loss** exactly. Both
+  observations were recently updated at their respective month boundaries.
+- Spark S12: unchanged 401.044942988323179297 vault shares. Direct historical
+  `convertToAssets(balanceOf(ALM))` returned 907.538799718984340323 DAI at
+  opening and 1,091.22453113566395393 DAI at closing, matching the pipeline
+  within sub-wei valuation rounding. The high annualized ratio is on this
+  small residual position; it is not used as a forecast.
+
+`valuation-outlier-check.json` records both boundary blocks and exact reads.
+Cash distributions on S26/S28 and E21/E38/E42 are not reliable annualized
+returns on the receiving wallet's current balance. S24's outlier is below
+one cent of revenue; S66 has a 90.0268 USD valuation decline on a roughly
+20 million USD position. No financial values were changed by this screen.
