@@ -133,7 +133,9 @@ to Grove. Codes 99/10000/10001/-999999 remain unpaid.
 
 All source accrual is accounted for as payable or explicitly unpaid. Historical
 true-ups are not part of this normal-accrual partition. They are separate payment
-adjustments and do not change accrual-basis Sky Net Revenue or the TMF waterfall.
+adjustments. Skybase's previously unbooked true-ups are recognized as September
+Sky expense and reduce Sky Net Revenue and the TMF waterfall. A historical
+earning date does not mean the expense was already booked.
 No prior-month settlement artifact is changed.
 
 ## Additional valuation sanity checks
@@ -208,3 +210,18 @@ complete before/after audit are in `selective-refresh/README.md` and
 
 No October MSC mint/send figures are pinned. The consolidated output remains
 a calculated proposal, not an externally reconciled or executed settlement.
+
+## Skybase DR refresh and unbooked historical expense correction (PR #224)
+
+The latest upstream DR snapshot is `ed08241`. September Skybase DR is
+105,735.7496915167660193413234 USDS; the four separate historical true-ups
+sum to 177,113.780088 USDS. They were omitted from published January-August
+reports, so the full amount is now recognized as Sky expense in September.
+The earlier treatment that only disclosed these as payments was incorrect.
+Earlier API/S1/E10 audit snapshots above are retained as baseline evidence.
+
+Current consolidated Sky net revenue is **14,635,947.43122759140975324007 USDS**.
+TMF uses 14,635,947 whole USDS; proposed hop is **2,693 seconds**, vestTot is
+**114,797,518 SKY**, and the Core Council Buffer transfer rounds to
+**2,927,189 USDS**. Skybase's total payment remains **320,925.535700 USDS**.
+See the current Skybase reconciliation and `skybase-dr-refresh-downstream.json`.

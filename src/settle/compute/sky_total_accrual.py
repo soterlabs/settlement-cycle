@@ -4,7 +4,7 @@ Definition (operator, 2026-08-07): for months ≥ ``accrual_from``,
 
     Sky Net Revenue(M) = MSC net (accrual)  +  non-MSC net (month M)
 
-    MSC net (accrual)  = Σ_p mint_p − Σ_p send_p        (the NEXT settlement)
+    MSC net (accrual)  = Σ_p mint_p − Σ_p send_p − previously unbooked true-ups
     non-MSC net        = non-MSC income(M) − non-MSC expense(M)
 
 i.e. **prime revenue earned in month M but paid in month M+1** (at the MSC
@@ -104,6 +104,9 @@ class SkyTotalAccrualMonthly:
     dsb: Decimal = Decimal(0)
     warnings: list[str] = field(default_factory=list)
     prior_period_payments: dict[str, Decimal] = field(default_factory=dict)
+    # Subset of the payment bridge not expensed in earlier published periods.
+    # Keep exact amounts, separate from the rounded normal mint/send preview.
+    prior_period_expenses: dict[str, Decimal] = field(default_factory=dict)
     reference_rate_notes: list[str] = field(default_factory=list)
 
     @property
@@ -116,7 +119,8 @@ class SkyTotalAccrualMonthly:
 
     @property
     def msc_net(self) -> Decimal:
-        return self.total_mint - self.total_send - self.dsb
+        return (self.total_mint - self.total_send - self.dsb
+                - sum(self.prior_period_expenses.values(), Decimal(0)))
 
     @property
     def non_msc_net(self) -> Decimal:
@@ -306,6 +310,7 @@ def compute_sky_total_accrual(
     from ..load.reference_rate_note import reference_rate_note
 
     prior_payments = {}
+    prior_expenses = {}
     rate_notes = []
     for prime in primes:
         provenance = json.loads((repo_root / "settlements" / prime / label / "provenance.json").read_text())
@@ -315,11 +320,24 @@ def compute_sky_total_accrual(
         amount = sum((Decimal(e["amount"]) for e in provenance.get("settlement_adjustments", [])), Decimal(0))
         if amount:
             prior_payments[prime] = amount
+        expense = Decimal(0)
+        for entry in provenance.get("settlement_adjustments", []):
+            recognize = entry.get("recognize_sky_expense", False)
+            if type(recognize) is not bool:
+                raise ValueError("recognize_sky_expense must be a boolean")
+            if recognize:
+                value = Decimal(entry["amount"])
+                if not value.is_finite():
+                    raise ValueError("Non-finite prior-period expense")
+                expense += value
+        if expense:
+            prior_expenses[prime] = expense
 
     return SkyTotalAccrualMonthly(
         month=label, rows=rows,
         non_msc_income=inc, non_msc_expense=exp, dsb=dsb,
-        warnings=warnings, prior_period_payments=prior_payments, reference_rate_notes=rate_notes,
+        warnings=warnings, prior_period_payments=prior_payments,
+        prior_period_expenses=prior_expenses, reference_rate_notes=rate_notes,
     )
 
 
@@ -356,9 +374,12 @@ def render_summary(r: SkyTotalAccrualMonthly) -> str:
         # _usds() already carries the sign — negate rather than prefixing a
         # literal '-', which would double-sign a negative net send.
         L.append(f"| {row.prime} | {_usds(row.mint)} | {_usds(-row.send)} |")
-    L.append(f"| **total** | **{_usds(r.total_mint)}** | **{_usds(-r.total_send)}** |")
+    subtotal_label = "subtotal before historical catch-ups" if r.prior_period_expenses else "total"
+    L.append(f"| **{subtotal_label}** | **{_usds(r.total_mint)}** | **{_usds(-r.total_send)}** |")
     if r.dsb != 0:
         L.append(f"| Demand-side Buffer (rides the settlement) | | {_usds(-r.dsb)} |")
+    for prime, expense in r.prior_period_expenses.items():
+        L.append(f"| {prime}: previously unbooked demand-side true-ups | | {_usds(-expense)} |")
     L.append(f"| **MSC net (accrual)** | | **{_usds(r.msc_net)}** |")
     L.append("")
     L.append("## Non-MSC leg")
@@ -388,8 +409,8 @@ def render_summary(r: SkyTotalAccrualMonthly) -> str:
     L.append("")
     if r.prior_period_payments:
         L.extend(["## Additional prior-period payments", "",
-                  "These payment corrections are additional to the accrual preview above.",
-                  "They do not change current-period Sky Net Revenue or its TMF calculation.", "",
+                  "These corrections are separate from current-period earned revenue.",
+                  "Previously unbooked amounts are deducted once in the MSC leg above and reduce Sky Net Revenue and TMF inputs. Payments already expensed in earlier periods are not expensed again.", "",
                   "| Prime | Additional USDS |", "|---|---:|"])
         for prime, amount in r.prior_period_payments.items():
             L.append(f"| {prime} | {amount:,.6f} |")
@@ -438,6 +459,7 @@ def write_sky_total_accrual(
         },
         "reference_rate_notes": r.reference_rate_notes,
         "prior_period_payments": {p: str(a) for p, a in r.prior_period_payments.items()},
+        "prior_period_expenses": {p: str(a) for p, a in r.prior_period_expenses.items()},
         "warnings": r.warnings,
     }
     (out_dir / "provenance.json").write_text(json.dumps(prov, indent=2) + "\n")

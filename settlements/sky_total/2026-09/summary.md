@@ -11,9 +11,10 @@ Consolidated Sky Net Revenue, ACCRUAL basis (operator definition 2026-08-07): pr
 | obex | 1,643,358.00 | -480,680.00 |
 | osero | 76,824.00 | -27,661.00 |
 | keel | 0.00 | -31,472.00 |
-| skybase | 0.00 | -144,111.00 |
-| **total** | **20,154,616.00** | **-6,050,453.00** |
-| **MSC net (accrual)** | | **14,104,163.00** |
+| skybase | 0.00 | -143,812.00 |
+| **subtotal before historical catch-ups** | **20,154,616.00** | **-6,050,154.00** |
+| skybase: previously unbooked demand-side true-ups | | -177,113.78 |
+| **MSC net (accrual)** | | **13,927,348.22** |
 
 ## Non-MSC leg
 
@@ -27,21 +28,21 @@ Consolidated Sky Net Revenue, ACCRUAL basis (operator definition 2026-08-07): pr
 
 | Field | USDS |
 |---|---:|
-| MSC net (accrual) | 14,104,163.00 |
+| MSC net (accrual) | 13,927,348.22 |
 | non-MSC net | 708,599.21 |
-| **Sky Net Revenue** | **14,812,762.21** |
+| **Sky Net Revenue** | **14,635,947.43** |
 
 *Below the line (not deducted above): the Core Council Buffer transfer — Step 1 Capital (20% of this SNR) plus any genesis / expense repayments — buybacks, the Aligned Delegates Buffer, GAR allocations, and prime capital seedings. On the accrual basis those figures are only known once the settlement executes; the paid-basis months itemise them.*
 
 ## Additional prior-period payments
 
-These payment corrections are additional to the accrual preview above.
-They do not change current-period Sky Net Revenue or its TMF calculation.
+These corrections are separate from current-period earned revenue.
+Previously unbooked amounts are deducted once in the MSC leg above and reduce Sky Net Revenue and TMF inputs. Payments already expensed in earlier periods are not expensed again.
 
 | Prime | Additional USDS |
 |---|---:|
-| skybase | 124,694.330541 |
-| **Total historical payments** | **124,694.330541** |
+| skybase | 177,113.780088 |
+| **Total historical payments** | **177,113.780088** |
 
 Add these exact corrections to each prime's unrounded period payment; the accrual preview above uses whole-USDS rounding.
 

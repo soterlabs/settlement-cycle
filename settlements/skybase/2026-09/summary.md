@@ -11,8 +11,8 @@ Period: 2026-09-01 → 2026-09-30 (30 days)
 | Field | USDS |
 |---|---:|
 | agent rate | 38,076.01 |
-| distribution rewards | 106,035.35 |
-| **demand-side revenue** | **144,111.36** |
+| distribution rewards | 105,735.75 |
+| **demand-side revenue** | **143,811.76** |
 
 #### Supply-Side revenue
 
@@ -42,8 +42,8 @@ Period: 2026-09-01 → 2026-09-30 (30 days)
 | 1 | $211.85 | psm3 / base / sUSDS |
 | 1015 | $0.00 | psm3 / base / sUSDS |
 | 1017 | $0.01 | psm3 / base / sUSDS |
-| 1998 | $5,262.77 | skybase_flagship / ethereum / USDS |
-| 1999 | $20.65 | skybase_risk_capital / ethereum / USDS |
+| 1998 | $5,185.51 | skybase_flagship / ethereum / USDS |
+| 1999 | $20.35 | skybase_risk_capital / ethereum / USDS |
 | 0 | $0.70 | farms / ethereum / USDS-CLE |
 | 1 | $2,006.07 | farms / ethereum / USDS-CLE |
 | 1001 | $12.09 | farms / ethereum / USDS-CLE |
@@ -69,7 +69,7 @@ Period: 2026-09-01 → 2026-09-30 (30 days)
 | 1004 | $178.30 | susds_susdc / ethereum / sUSDS |
 | 1015 | $0.00 | susds_susdc / ethereum / sUSDS |
 | 1020 | $65.39 | susds_susdc / ethereum / sUSDS |
-| 1997 | $15,124.25 | skybase_pendle / ethereum / sUSDS |
+| 1997 | $14,902.21 | skybase_pendle / ethereum / sUSDS |
 | 0 | $5.80 | sp / ethereum / spUSDC |
 | 1017 | $0.04 | sp / ethereum / spUSDC |
 | 0 | $0.00 | sp / ethereum / spUSDT |
@@ -81,7 +81,7 @@ Period: 2026-09-01 → 2026-09-30 (30 days)
 | 0 | $0.00 | susds_susdc / unichain / sUSDC |
 | 1017 | $0.00 | susds_susdc / unichain / sUSDC |
 | 1 | $0.22 | psm3 / unichain / sUSDS |
-| **Total** | **$106,035.35** | |
+| **Total** | **$105,735.75** | |
 
 ## Prior-period payment true-ups
 
@@ -90,11 +90,11 @@ Published prior-month reports are unchanged.
 
 | Item | Earned period | USDS |
 |---|---|---:|
-| Pendle / code 1997 | 2026-01 through 2026-08 | 27,740.235315 |
-| Flagship / code 1998 | 2026-01 through 2026-08 | 34,229.172646 |
-| Risk Capital / code 1999 | 2026-01 through 2026-08 | 758.752668 |
+| Pendle / code 1997 | 2026-01 through 2026-08 | 41,560.042993 |
+| Flagship / code 1998 | 2026-01 through 2026-08 | 71,804.679106 |
+| Risk Capital / code 1999 | 2026-01 through 2026-08 | 1,782.888077 |
 | Grove Farm / codes 0/1/1002 | 2026-07 through 2026-08 | 61,966.169912 |
-| **Total historical true-ups** | | **124,694.330541** |
+| **Total historical true-ups** | | **177,113.780088** |
 
-September net revenue: 144,111.358990 USDS.
-**Settlement including true-ups: 268,805.689531 USDS.**
+September net revenue: 143,811.755612 USDS.
+**Settlement including true-ups: 320,925.535700 USDS.**
