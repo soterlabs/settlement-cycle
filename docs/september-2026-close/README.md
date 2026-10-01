@@ -3,14 +3,15 @@
 Status: all six API/full-month comparisons pass exactly; all six primes have
 30 September API dates. September reports have now been generated for all six
 primes, non-MSC, consolidated Sky, and TMF. Spark/Grove and downstream totals
-remain explicitly preliminary because September 30 SOFR uses the authorized
-September 29 carry-forward; the official observation is not yet published.
+use the explicitly authorized September 29 SOFR carry-forward (3.88%) for
+September 30. This estimate remains labeled in provenance; publication of the
+official September 30 observation is not a prerequisite for the current review.
 
 The DR submodule is pinned to merged PR #27 (`1e9ecb2`). Normal September
 accrual uses the finalized workbook plus its full-precision companion CSV,
-with checksums and cent-rounded workbook reconciliation. An independent replay
-of the current DR methodology is still running; it is an additional check,
-not the source of the finalized snapshot. The four approved historical
+with checksums and cent-rounded workbook reconciliation. The redundant independent DR replay was stopped on October 1 at the
+operator's request. The finalized settle-dr-dune output is the source;
+settlement-cycle validates its import and attribution without replaying DR. The four approved historical
 Skybase payment corrections total **124,694.330541 USDS** and appear separately
 from September-earned revenue. See `proposed-skybase-trueups.md` for details.
 

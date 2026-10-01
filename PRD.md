@@ -1746,5 +1746,6 @@ interval fails the run for retry rather than silently understating expense.
 
 September distribution rewards require the October 1 exclusive cutoff in
 [settle-dr-dune PR #27](https://github.com/soterlabs/settle-dr-dune/pull/27).
-The submodule pin advances that shared window; fresh, resumable September
-checkpoints must be generated before final report enrichment.
+The submodule pin advances that shared window. Settlement-cycle imports the
+finalized September workbook and full-precision companion CSV; it validates
+checksums and attribution without independently replaying the DR pipeline.
