@@ -391,7 +391,10 @@ def render_summary(r: NonMscMonthly) -> str:
     L.append("| Section | Line | USDS |")
     L.append("|---|---|---:|")
     L.append(f"| Savings | sUSDS SSR (gross, all holders) | {_usds(r.susds_expense_gross)} |")
-    L.append(f"| Savings | — of which: non-prime users (informational) | {_usds(r.susds_expense_to_users)} |")
+    # HyperSync currently supplies gross SSR only. An empty split is missing
+    # attribution, not evidence that every holder is a non-prime user.
+    if r.susds_prime_carveout:
+        L.append(f"| Savings | — of which: non-prime users (informational) | {_usds(r.susds_expense_to_users)} |")
     for holder, v in sorted(r.susds_prime_carveout.items(), key=lambda kv: -kv[1]):
         if v.quantize(Decimal("0.01")) == 0:
             continue   # sub-cent dust holder

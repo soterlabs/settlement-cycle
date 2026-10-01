@@ -38,7 +38,6 @@ Refunds are recognized upon receipt in protocol custody. Subsequent surplus-buff
 | Section | Line | USDS |
 |---|---|---:|
 | Savings | sUSDS SSR (gross, all holders) | 13,183,785.29 |
-| Savings | — of which: non-prime users (informational) | 13,183,785.29 |
 | Savings | stUSDS | 839,073.49 |
 | Savings | DSR (legacy pot) | 207,172.50 |
 | Liquidations | keeper incentives (Σ coin, kicks + redos) | 0.00 |
