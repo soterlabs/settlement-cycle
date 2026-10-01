@@ -236,6 +236,18 @@ def _write_summary(ws, prov: dict, sheet_rows: list[dict]) -> None:
     )
     ws.append([])
 
+    adjustments = prov.get("settlement_adjustments") or []
+    if adjustments:
+        bridge = prov["settlement_payment"]
+        _block("Settlement payment (historical corrections separately identified)",
+               rows=[("Current-period net revenue", _D(bridge['period_net_revenue']))] + [
+                   (f"{e['label']} — {e['earned_period']}", _D(e['amount'])) for e in adjustments
+               ], total=_D(bridge['total']))
+        for row in range(ws.max_row - len(adjustments) - 1, ws.max_row + 1):
+            ws.cell(row, 2).number_format = '#,##0.000000'
+        ws.append(["Historical corrections are excluded from current-period revenue."])
+        ws.append([])
+
     # Period info
     ws.append(["Period",     f"{prov['period']['start']} → {prov['period']['end']} "
                               f"({prov['period']['n_days']} days)"])

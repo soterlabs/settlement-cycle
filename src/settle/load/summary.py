@@ -390,6 +390,19 @@ def render_summary(prov: dict) -> str:
         lines.append(f"| **Total** | **{_usd(dist_rewards)}** | |")
         lines.append("")
 
+    adjustments = prov.get("settlement_adjustments") or []
+    if adjustments:
+        lines.extend(["## Prior-period payment true-ups", "",
+                      "These amounts are added to the September payment, not September-earned revenue.",
+                      "Published prior-month reports are unchanged.", "",
+                      "| Item | Earned period | USDS |", "|---|---|---:|"])
+        for entry in adjustments:
+            lines.append(f"| {entry['label']} | {entry['earned_period']} | {_D(entry['amount']):,.6f} |")
+        bridge = prov["settlement_payment"]
+        lines.extend([f"| **Total historical true-ups** | | **{_D(bridge['prior_period_adjustments']):,.6f}** |",
+                      "", f"September net revenue: {_D(bridge['period_net_revenue']):,.6f} USDS.",
+                      f"**Settlement including true-ups: {_D(bridge['total']):,.6f} USDS.**", ""])
+
     # ── Off-protocol (display-only) ─────────────────────────────────
     display_only = sorted(
         prov.get("display_only_breakdown") or [],

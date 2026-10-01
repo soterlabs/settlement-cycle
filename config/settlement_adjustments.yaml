@@ -1,0 +1,22 @@
+# Operator-approved 2026-10-01. Payment corrections, NOT September earnings.
+# Published January–August reports stay unchanged. Do not derive these again
+# from the workbook's Historical Additions sheet or add them to normal DR.
+# Evidence: settle-dr-dune@1e9ecb2/docs/september-2026-settlement.md.
+2026-09:
+  skybase:
+    - id: skybase-pendle-jan-aug-2026
+      label: Pendle / code 1997
+      earned_period: 2026-01 through 2026-08
+      amount: '27740.235315'
+    - id: skybase-flagship-jan-aug-2026
+      label: Flagship / code 1998
+      earned_period: 2026-01 through 2026-08
+      amount: '34229.172646'
+    - id: skybase-risk-capital-jan-aug-2026
+      label: Risk Capital / code 1999
+      earned_period: 2026-01 through 2026-08
+      amount: '758.752668'
+    - id: skybase-grove-farm-jul-aug-2026
+      label: Grove Farm / codes 0/1/1002
+      earned_period: 2026-07 through 2026-08
+      amount: '61966.169912'

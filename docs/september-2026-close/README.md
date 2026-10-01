@@ -1,11 +1,18 @@
 # September 2026 close validation
 
 Status: all six API/full-month comparisons pass exactly; all six primes have
-30 September API dates. All 28 distribution-reward chunks completed on
-October 1 at 07:40 UTC. That baseline used the older DR source coverage. The upstream DR PR was
-subsequently rebased onto the additional venue coverage already merged in its
-main branch. A fresh replay at `649a428` is now running before final assembly.
-New-code ownership also remains partly unresolved.
+30 September API dates. September reports have now been generated for all six
+primes, non-MSC, consolidated Sky, and TMF. Spark/Grove and downstream totals
+remain explicitly preliminary because September 30 SOFR uses the authorized
+September 29 carry-forward; the official observation is not yet published.
+
+The DR submodule is pinned to merged PR #27 (`1e9ecb2`). Normal September
+accrual uses the finalized workbook plus its full-precision companion CSV,
+with checksums and cent-rounded workbook reconciliation. An independent replay
+of the current DR methodology is still running; it is an additional check,
+not the source of the finalized snapshot. The four approved historical
+Skybase payment corrections total **124,694.330541 USDS** and appear separately
+from September-earned revenue. See `proposed-skybase-trueups.md` for details.
 
 The September 30 API calculation is compared with a separate full-month
 `compute_monthly_pnl(prime, Month(2026, 9))` execution, with `as_of` omitted.
@@ -101,23 +108,21 @@ warnings:
 - Plain-token aToken probes can revert; the guarded RPC balance path remains
   in use. No failed provider read was substituted for a zero balance.
 - The comparison runs intentionally stage reports without DR. Final report
-  assembly requires the completed September reward workbook and explicit
-  ownership of every nonzero referral code.
+  assembly uses the finalized September reward workbook. Codes without confirmed
+  ownership are explicitly withheld and disclosed, never assigned by number range.
 
-## Reward attribution still pending
+## Reward attribution
 
-The superseded baseline workbook contained seven codes absent from the then-current
-ownership map. No recipient has been guessed and no amount has been discarded.
-`dr-attribution-pending.json` records those baseline amounts (not final current-code
-rewards): their total
-is **1,262.5816894320085068956747 USD**, predominantly code 232.
+`dr-attribution-pending.json` records the finalized full-precision partition
+between payable rewards, intentionally non-payable codes, retired Keel rewards,
+and unresolved ownership. Codes 123/232/234/3003/3123 remain withheld.
+Codes 1997–1999 and 1020 resolve to Skybase; Grove Farm code 2009 resolves
+to Grove. Codes 99/10000/10001/-999999 remain unpaid.
 
-The older-baseline aggregator replay passed through September: 1,343 wallets,
-773,870 transfers, and all nine July–September code/month comparisons within
-1.78e-15 USD. Its result is preserved locally with the old calculation branch;
-it must not be presented as validation of the newly added upstream programs.
-The historical DR rollup through August is unchanged to within 1e-12 USD;
-this close does not publish restated historical settlements.
+All source accrual is accounted for as payable or explicitly unpaid. Historical
+true-ups are not part of this normal-accrual partition. They are separate payment
+adjustments and do not change accrual-basis Sky Net Revenue or the TMF waterfall.
+No prior-month settlement artifact is changed.
 
 ## Additional valuation sanity checks
 
@@ -154,3 +159,10 @@ Explicit upstream documents establish ownership of 1020/1997/1998/1999 for
 Skybase and 3002/3006/3900 for Osero. Other numeric-range assignments must not
 be inferred: `osero-codes.md` explains that 3123 is an arbitrary PSM3 field
 value, not an Osero program. The remaining unmapped codes await confirmation.
+
+## September DR regression validation
+
+The full unit suite passes: 1,269 tests, with one optional Crypto-dependent
+test skipped locally. The 56 focused DR/consolidated tests cover the requested
+code ownership, precise September venue accrual, four independent true-ups,
+repeat-run idempotence, XLSX/Markdown output, and unchanged historical months.

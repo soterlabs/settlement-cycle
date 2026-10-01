@@ -92,6 +92,7 @@ primes:
     - '2001'
     - '2002'
     - '2005'
+    - '2009'     # Grove Farm emitted beneficiary code (September close instruction)
     - '2008'
     - '2012'     # was 'absent'; first HyperSync row is 2026-08 ($3,093.73)
     - '2222'
@@ -145,6 +146,14 @@ primes:
 
 # Codes deliberately not paid to any prime.
 unattributed:
+
+  # No confirmed beneficiary. Explicitly withheld, never inferred from a range.
+  pending_ownership:
+    - '123'
+    - '232'
+    - '234'
+    - '3003'
+    - '3123'
 
   # Untagged / synthetic buckets that belong to no single prime. These were
   # the legacy Summary's "Other" group.

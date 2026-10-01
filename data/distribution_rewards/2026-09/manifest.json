@@ -1,0 +1,11 @@
+{
+  "month": "2026-09",
+  "methodology_commit": "1e9ecb2",
+  "source": "Finalized September workbook and its full-precision companion dr_monthly_combined.csv; September only. Historical Additions sheet is NOT imported.",
+  "files": {
+    "finalized.xlsx": "17eee2ca39bd63e68e6d87097ede0007d8741e41cb9a7fceb017da713103b02e",
+    "accrual.csv": "b548886c528538aa176d89e3b9b738dec6a7175628cc037965ba88f9918e48e8"
+  },
+  "finalized_artifact_source_commit": "d878b59",
+  "source_note": "Existing finalized outputs copied before the independent PR #27 replay; expected September venue values verified against operator instructions."
+}

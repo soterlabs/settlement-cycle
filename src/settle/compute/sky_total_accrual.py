@@ -103,6 +103,7 @@ class SkyTotalAccrualMonthly:
     # figure comes from the executed settlement block.
     dsb: Decimal = Decimal(0)
     warnings: list[str] = field(default_factory=list)
+    prior_period_payments: dict[str, Decimal] = field(default_factory=dict)
 
     @property
     def total_mint(self) -> Decimal:
@@ -294,10 +295,17 @@ def compute_sky_total_accrual(
     for w in warnings:
         _log.warning("sky_total accrual %s: %s", label, w)
 
+    prior_payments = {}
+    for prime in primes:
+        provenance = json.loads((repo_root / "settlements" / prime / label / "provenance.json").read_text())
+        amount = sum((Decimal(e["amount"]) for e in provenance.get("settlement_adjustments", [])), Decimal(0))
+        if amount:
+            prior_payments[prime] = amount
+
     return SkyTotalAccrualMonthly(
         month=label, rows=rows,
         non_msc_income=inc, non_msc_expense=exp, dsb=dsb,
-        warnings=warnings,
+        warnings=warnings, prior_period_payments=prior_payments,
     )
 
 
@@ -362,6 +370,17 @@ def render_summary(r: SkyTotalAccrualMonthly) -> str:
         "paid-basis months itemise them.*"
     )
     L.append("")
+    if r.prior_period_payments:
+        L.extend(["## Additional prior-period payments", "",
+                  "These payment corrections are additional to the accrual preview above.",
+                  "They do not change current-period Sky Net Revenue or its TMF calculation.", "",
+                  "| Prime | Additional USDS |", "|---|---:|"])
+        for prime, amount in r.prior_period_payments.items():
+            L.append(f"| {prime} | {amount:,.6f} |")
+        total = sum(r.prior_period_payments.values(), Decimal(0))
+        L.extend([f"| **Total historical payments** | **{total:,.6f}** |", "",
+                  "Add these exact corrections to each prime's unrounded period payment; "
+                  "the accrual preview above uses whole-USDS rounding.", ""])
     for w in r.warnings:
         L.append(f"> ⚠ {w}")
     if r.warnings:
@@ -401,6 +420,7 @@ def write_sky_total_accrual(
             "non_msc_net": str(r.non_msc_net),
             "sky_net_revenue": str(r.sky_net_revenue),
         },
+        "prior_period_payments": {p: str(a) for p, a in r.prior_period_payments.items()},
         "warnings": r.warnings,
     }
     (out_dir / "provenance.json").write_text(json.dumps(prov, indent=2) + "\n")
