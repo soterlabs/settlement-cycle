@@ -49,6 +49,10 @@ receives the full 2026-01 through 2026-08 true-up while Sky's net revenue is
 unchanged. The final integer mint/send values remain derived until the
 September MSC post is published.
 
+Both reserve-treasury sources have a 2026-09-01 activation date. Historical
+replays therefore retain their published capital classification; the Jan-Aug
+amount is recognized once, through this true-up, and cannot be double-counted.
+
 Control: these treasury senders were also checked for underlying par-stable
 transfers to the ALM through the August closing pin; none were found. This
 prevents the shared Cat A allowlist from reclassifying an underlying principal

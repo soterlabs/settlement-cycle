@@ -225,25 +225,6 @@ flowing through ALM ingress or names a new source we need to plumb.
 
 ### P1 — methodology unknowns affecting accuracy
 
-#### G29. BUIDL redemption fee — Sky exit cost or Grove custody cost?
-
-BUIDL redemptions settle at approximately 99.95% of face. From January through
-August 2026, $162,505.35 of fees settled without entering either venue's
-revenue. The September reconciliation applies that amount as a negative
-Sky-side adjustment, reducing Grove's MSC debt mint. The fee attached to the
-August 31 redemption settled on September 1 and is outside this Jan-Aug scope.
-Separately, the reconciliation proposes a 5 bps exit-value mark on E10, which
-assigns the transition markdown and future cost to Sky because E10 is a fixed
-Sky Direct Exposure.
-
-**Question for Grove / the MSC operator:** do the SDE terms make the cost of
-realizing the asset Sky's, or is Grove required to pay Sky gross yield and bear
-redemption charges as a custody/operating cost? Merging the proposed haircut
-confirms the former. If the latter is intended, keep the $1 position mark and
-replace the haircut with a cross-venue cash-versus-shares expense attributed to
-Grove. See `settlements/grove/2026-09/reconciliation.md`.
-
-
 #### G27. Apr–Jul 2026 E22 ACRDX restatement — frozen Chronicle feed; acknowledge reconciliation
 The Chronicle feed MSC used for E22 (ACRDX, Plume) was
 `ChronicleVAO_Centrifuge_ACRDX_Consumer_2` (`0x51cc9463…`) — a consumer
@@ -1742,6 +1723,14 @@ $2,392,354.07 September Prime-side Supply-Side revenue true-up; published
 monthly reports remain unchanged. The existing Cat C external-revenue path
 handles the spToken sweeps. See
 `PRD.md §17.13` and `settlements/spark/2026-09/reconciliation.md`.
+
+### G29. BUIDL redemption fee — Sky exit cost or Grove custody cost?
+**Resolved 2026-10-01:** Sky bears the realization cost because E10 is a fixed
+Sky Direct Exposure. The Jan-Aug realized-fee and in-flight-CoF corrections
+reduce Grove's September MSC debt mint by $165,013.90; the dated 5 bps mark
+recognizes the remaining position's embedded exit cost once in September.
+See `settlements/grove/2026-09/reconciliation.md` and
+`reconciliation/2026-01_to_2026-08/`.
 
 ### G25. spUSDG — future yield split between Spark and Grove
 **Resolved 2026-08-04** via [#161](https://github.com/soterlabs/settlement-cycle/issues/161). See `PRD.md §17.13`.

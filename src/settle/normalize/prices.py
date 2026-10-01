@@ -28,6 +28,7 @@ from ..domain.sky_tokens import KNOWN_PAR_STABLES_ETHEREUM, KNOWN_YIELD_BEARING_
 from .protocols import IConvertToAssetsSource, INavOracleSource
 from .registry import (
     UnknownSourceError,
+    get_block_resolver,
     get_convert_to_assets_source,
     get_nav_oracle_source,
 )
@@ -376,6 +377,13 @@ def _resolve_rwa_nav(
                     kind, nav, venue.id, oracle_block,
                 )
             haircut_bps = venue.nav_haircut_bps or Decimal("0")
+            if venue.nav_haircut_effective_date is not None:
+                dating_resolver = block_resolver or get_block_resolver()
+                valuation_date = dating_resolver.block_to_date(
+                    venue.chain.value, block,
+                )
+                if valuation_date < venue.nav_haircut_effective_date:
+                    haircut_bps = Decimal("0")
             return nav * (Decimal("1") - haircut_bps / Decimal("10000"))
         except _ORACLE_FAILURES as e:
             _log.warning("NAV oracle %r failed for venue %s: %s", kind, venue.id, e)

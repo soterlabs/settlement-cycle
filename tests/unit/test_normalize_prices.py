@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 
 import pytest
@@ -124,6 +125,7 @@ def _rwa_venue(
     nav_oracle: NavOracle | None = None,
     *,
     nav_haircut_bps: Decimal | None = None,
+    nav_haircut_effective_date: date | None = None,
 ) -> Venue:
     return Venue(
         id="E9",
@@ -132,6 +134,7 @@ def _rwa_venue(
         pricing_category=PricingCategory.RWA_TRANCHE,
         nav_oracle=nav_oracle,
         nav_haircut_bps=nav_haircut_bps,
+        nav_haircut_effective_date=nav_haircut_effective_date,
     )
 
 
@@ -209,6 +212,28 @@ def test_cat_e_applies_configured_nav_haircut_after_oracle_resolution():
     assert price == Decimal("0.9995")
 
 
+def test_cat_e_haircut_effective_date_preserves_opening_nav():
+    """A Sep 1 activation leaves the Aug 31 opening pin at gross NAV and
+    discounts Sep valuations, creating the transition markdown exactly once."""
+    from settle.normalize.sources.oracles import ConstOneNavSource
+
+    class _Resolver:
+        def block_to_date(self, _chain: str, block: int) -> date:
+            return date(2026, 8, 31) if block == 1 else date(2026, 9, 1)
+
+    venue = _rwa_venue(
+        NavOracle(kind="const_one"),
+        nav_haircut_bps=Decimal("5"),
+        nav_haircut_effective_date=date(2026, 9, 1),
+    )
+    kwargs = {
+        "nav_oracle_resolver": lambda _: ConstOneNavSource(),
+        "block_resolver": _Resolver(),
+    }
+    assert get_unit_price(venue, block=1, **kwargs) == Decimal("1.00")
+    assert get_unit_price(venue, block=2, **kwargs) == Decimal("0.9995")
+
+
 @pytest.mark.parametrize("bps", [Decimal("-0.1"), Decimal("10000")])
 def test_cat_e_rejects_invalid_nav_haircut(bps):
     with pytest.raises(ValueError, match="bps"):
@@ -223,6 +248,23 @@ def test_non_cat_e_rejects_nav_haircut():
             token=_token("USDC", 6),
             pricing_category=PricingCategory.PAR_STABLE,
             nav_haircut_bps=Decimal("5"),
+        )
+
+
+def test_haircut_effective_date_requires_haircut():
+    with pytest.raises(ValueError, match="requires nav_haircut_bps"):
+        _rwa_venue(
+            NavOracle(kind="const_one"),
+            nav_haircut_effective_date=date(2026, 9, 1),
+        )
+
+
+def test_haircut_effective_date_requires_month_boundary():
+    with pytest.raises(ValueError, match="month boundary"):
+        _rwa_venue(
+            NavOracle(kind="const_one"),
+            nav_haircut_bps=Decimal("5"),
+            nav_haircut_effective_date=date(2026, 9, 2),
         )
 
 

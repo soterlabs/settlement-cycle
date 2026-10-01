@@ -1366,6 +1366,13 @@ external_alm_sources:
     # spDAI reserve treasury:
     - '0x856900aa78e856a5df1a2665ee3a66b2487cd68f'
 
+# Start dates preserve the published Jan-Aug reports. Those receipts ride the
+# September settlement once via sv_adj; direct recognition starts in September.
+external_alm_source_start_dates:
+  ethereum:
+    '0xb137e7d16564c81ae2b0c8ee6b55de81dd46ece5': '2026-09-01'
+    '0x856900aa78e856a5df1a2665ee3a66b2487cd68f': '2026-09-01'
+
 # Per-(chain, source) overrides for inflows that arrive from an
 # `external_alm_sources` address but should NOT be classified as yield
 # (e.g. tri-party loan principal corrections or loan-termination returns).

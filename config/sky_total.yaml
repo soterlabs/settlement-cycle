@@ -96,13 +96,14 @@ msc_preview:
   # regenerating any published monthly report:
   #   * Spark: reserve-factor sweeps are Prime-side Supply-Side revenue, so
   #     sv_adj raises both MSC debt (mint) and Send to prime by $2,392,354.07.
-  #   * Grove: realized BUIDL redemption fees reduce Sky-side Direct Exposure
-  #     revenue, so sky_adj lowers MSC debt (mint) by $162,505.35. It does not
-  #     create a separate Send to prime payment.
+  #   * Grove: realized BUIDL redemption fees ($162,505.35) plus the August 31
+  #     in-flight SDE CoF correction ($2,508.55) reduce Sky-side revenue, so
+  #     sky_adj lowers MSC debt (mint) by $165,013.90. It does not create a
+  #     separate Send to prime payment.
   # Mint/send remain derived until the September MSC post is published.
   '2026-09':
     spark: {sv_adj: 2392354.07}
-    grove: {sky_adj: -162505.35}
+    grove: {sky_adj: -165013.90}
 
 # ── Step 1 Capital actually PAID to the Core Council Buffer, per execution
 # month. Source: each MSC post's BA capital-allocations section (20% of the

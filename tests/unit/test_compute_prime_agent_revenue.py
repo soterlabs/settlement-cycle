@@ -1066,6 +1066,7 @@ def _venue_with_fee(
     fee: Decimal,
     min_transfer: Decimal | None = Decimal("1000000"),
     nav_haircut_bps: Decimal | None = None,
+    nav_haircut_effective_date: date | None = None,
 ) -> Venue:
     base = _venue("E10")
     return Venue(
@@ -1082,6 +1083,7 @@ def _venue_with_fee(
         min_transfer_amount_usd=min_transfer,
         fixed_fee_per_capital_event_usd=fee,
         nav_haircut_bps=nav_haircut_bps,
+        nav_haircut_effective_date=nav_haircut_effective_date,
     )
 
 
@@ -1262,6 +1264,26 @@ def test_flat_fee_signature_uses_gross_amount_before_nav_haircut():
         value_eom=marked_inflow,
         inflow_timeseries=_inflow_with_events(
             [(date(2026, 3, 10), marked_inflow)]
+        ),
+    )
+    vr = compute_venue_revenue(period, inputs)
+    assert vr.actual_revenue == Decimal("-15000")
+
+
+def test_flat_fee_signature_ignores_future_nav_haircut():
+    """Historical replays use gross $1 NAV until the dated haircut starts."""
+    period = _period()
+    gross_inflow = Decimal("49985000")
+    inputs = VenueRevenueInputs(
+        venue=_venue_with_fee(
+            Decimal("15000"),
+            nav_haircut_bps=Decimal("5"),
+            nav_haircut_effective_date=date(2026, 9, 1),
+        ),
+        value_som=Decimal("0"),
+        value_eom=gross_inflow,
+        inflow_timeseries=_inflow_with_events(
+            [(date(2026, 3, 10), gross_inflow)]
         ),
     )
     vr = compute_venue_revenue(period, inputs)

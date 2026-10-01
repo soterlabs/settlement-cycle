@@ -477,10 +477,16 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
             ts = inputs.inflow_timeseries
             in_period = ts["block_date"].between(period.start, period.end)
             n_fee_events = 0
-            nav_factor = Decimal("1") - (
-                (inputs.venue.nav_haircut_bps or Decimal("0"))
-                / Decimal("10000")
+            haircut_active = (
+                inputs.venue.nav_haircut_effective_date is None
+                or period.start >= inputs.venue.nav_haircut_effective_date
             )
+            active_haircut_bps = (
+                (inputs.venue.nav_haircut_bps or Decimal("0"))
+                if haircut_active
+                else Decimal("0")
+            )
+            nav_factor = Decimal("1") - active_haircut_bps / Decimal("10000")
             for _, r in ts[in_period].iterrows():
                 amount = r["daily_inflow"]
                 if amount == 0:

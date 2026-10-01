@@ -353,6 +353,7 @@ venues:
     # going forward from the September 2026 settlement; published reports are
     # not regenerated. See settlements/grove/2026-09/reconciliation.md.
     nav_haircut_bps: 5
+    nav_haircut_effective_date: '2026-09-01'
     # BlackRock's BUIDL contract mints both capital subscriptions AND yield
     # distributions to ALM (both arrive as ERC-20 mints from 0x0). A bimodal
     # histogram on observed amounts (Dune query 7387737) shows a clean gap

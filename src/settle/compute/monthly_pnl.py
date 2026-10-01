@@ -3636,7 +3636,9 @@ def compute_monthly_pnl(
             balance_src = sources.balance if sources.balance is not None else get_balance_source()
             external = {
                 addr.value
-                for addr in prime.external_alm_sources.get(venue.chain, [])
+                for addr in prime.external_sources_for_period(
+                    venue.chain, period.start,
+                )
             }
             # Map override list keyed by raw 20-byte address (matches the
             if venue.force_capital_inflow:

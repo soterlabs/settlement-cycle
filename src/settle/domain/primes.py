@@ -285,6 +285,11 @@ class Venue:
     # separate contractual realization cost (BUIDL redemption fee: 5 bps).
     # ``None`` means no haircut. Values must satisfy 0 <= bps < 10_000.
     nav_haircut_bps: Decimal | None = None
+    # Optional calendar activation for ``nav_haircut_bps``. Valuations before
+    # this date retain gross NAV; valuations on/after it use the haircut. This
+    # makes a methodology transition visible in the activation month's P&L
+    # and keeps frozen historical reports reproducible.
+    nav_haircut_effective_date: date | None = None
     # DEPRECATED 2026-05-02 — superseded by ``config/sky_direct_exposures.yaml``
     # (loaded as ``SDETable`` in ``compute.monthly_pnl``). Retained as a YAML
     # sink for legacy configs but ignored by compute. Will be removed once
@@ -513,6 +518,19 @@ class Venue:
                     f"Venue {self.id}: nav_haircut_bps must satisfy "
                     f"0 <= bps < 10000 (got {self.nav_haircut_bps})."
                 )
+        elif self.nav_haircut_effective_date is not None:
+            raise ValueError(
+                f"Venue {self.id}: nav_haircut_effective_date requires "
+                "nav_haircut_bps."
+            )
+        if (
+            self.nav_haircut_effective_date is not None
+            and self.nav_haircut_effective_date.day != 1
+        ):
+            raise ValueError(
+                f"Venue {self.id}: nav_haircut_effective_date must be a "
+                "month boundary."
+            )
         # ``force_capital_inflow`` short-circuits the Cat A capital-inflow
         # path (see ``compute.monthly_pnl``). It synthesises inflow = Δvalue
         # so revenue collapses to 0, which is ONLY a defensible default for
@@ -727,6 +745,12 @@ class Prime:
     # only after confirming it sends true off-chain yield, since misclassification
     # inflates revenue.
     external_alm_sources: dict[Chain, list[Address]] = field(default_factory=dict)
+    # Optional month-boundary activation per external source. A source is
+    # excluded from periods beginning before its activation date, preserving
+    # frozen historical reports while allowing a separate settlement true-up.
+    external_alm_source_start_dates: dict[
+        Chain, dict[Address, date]
+    ] = field(default_factory=dict)
     # Per-(chain, source) overrides for inflows that arrive from an external
     # ALM source but should NOT be counted as yield (e.g., a tri-party loan
     # principal correction or final principal return at maturity). The Cat A
@@ -803,6 +827,31 @@ class Prime:
                     f"the venue's yield. Register the external sender(s) or "
                     f"drop the flag."
                 )
+        for chain, starts in self.external_alm_source_start_dates.items():
+            configured = set(self.external_alm_sources.get(chain, []))
+            for address, start in starts.items():
+                if address not in configured:
+                    raise ValueError(
+                        f"prime {self.id!r}: external source start date is set "
+                        f"for {address.hex} on {chain.value}, but that address "
+                        "is not in external_alm_sources."
+                    )
+                if start.day != 1:
+                    raise ValueError(
+                        f"prime {self.id!r}: external source {address.hex} "
+                        f"start date {start} is not a month boundary."
+                    )
+
+    def external_sources_for_period(
+        self, chain: Chain, period_start: date,
+    ) -> list[Address]:
+        """External ALM sources active for a monthly settlement period."""
+        starts = self.external_alm_source_start_dates.get(chain, {})
+        return [
+            address
+            for address in self.external_alm_sources.get(chain, [])
+            if starts.get(address, period_start) <= period_start
+        ]
 
     @property
     def chains(self) -> set[Chain]:

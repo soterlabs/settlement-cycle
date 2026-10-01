@@ -305,6 +305,11 @@ def load_prime(config_path: Path) -> Prime:
                     if v.get("nav_haircut_bps") is not None
                     else None
                 ),
+                nav_haircut_effective_date=(
+                    date.fromisoformat(v["nav_haircut_effective_date"])
+                    if v.get("nav_haircut_effective_date") is not None
+                    else None
+                ),
                 sky_direct=bool(v.get("sky_direct", False)),
                 holder_override=(
                     Address.from_str(v["holder_override"])
@@ -361,6 +366,14 @@ def load_prime(config_path: Path) -> Prime:
         chain = Chain(chain_str)
         external_alm_sources[chain] = [Address.from_str(a) for a in addrs]
 
+    external_alm_source_start_dates: dict[Chain, dict[Address, date]] = {}
+    for chain_str, starts in cfg.get("external_alm_source_start_dates", {}).items():
+        chain = Chain(chain_str)
+        external_alm_source_start_dates[chain] = {
+            Address.from_str(address): date.fromisoformat(start)
+            for address, start in starts.items()
+        }
+
     def _parse_event_overrides(
         key: str,
     ) -> dict[Chain, dict[Address, list[PrincipalReturnOverride]]]:
@@ -404,6 +417,7 @@ def load_prime(config_path: Path) -> Prime:
         psm=psm,
         venues=venues,
         external_alm_sources=external_alm_sources,
+        external_alm_source_start_dates=external_alm_source_start_dates,
         principal_return_overrides=principal_return_overrides,
         yield_reversal_overrides=yield_reversal_overrides,
         subsidy=SubsidyConfig.from_dict(cfg.get("subsidy")),

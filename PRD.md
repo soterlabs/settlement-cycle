@@ -1426,12 +1426,13 @@ This PR adopts the investigation's Option A: a generic Cat E venue field,
 `const_one`; the contractual exit cost is applied afterward to every position
 and capital-flow valuation. At August's $643,254,421.77 closing position, the
 September transition markdown is $321,627.21. Because E10 is a fixed SDE, it
-flows to Sky under the proposed owner-bears-exit-cost interpretation. G29
-retains the operator question of whether Grove is instead contractually meant
-to bear the fee. May and August reports are not regenerated; the $162,505.35
-of fees settled in January-August 2026 is applied in September as
-`sky_adj: -162505.35`. This reduces Grove's MSC debt mint, rather than creating
-a separate Send to prime payment.
+flows to Sky under the owner-bears-exit-cost interpretation confirmed for this
+reconciliation. The haircut activates on 2026-09-01, leaving historical NAVs
+at $1 and making the transition markdown appear exactly once in September.
+May and August reports are not regenerated. The $162,505.35 of fees settled in
+January-August 2026 and the $2,508.55 August in-flight CoF correction are
+applied in September as `sky_adj: -165013.90`. This reduces Grove's MSC debt
+mint, rather than creating a separate Send to prime payment.
 
 The August 31 partial redemption is represented separately as a repeatable
 fixed-SDE `in_flight_redemptions` window. Its $24,986,500.50 settlement-basis
@@ -1440,6 +1441,9 @@ $24,986,500.153219 cash had landed. This generalizes the existing capped-SDE
 burn/settlement concept without abusing its scalar fields, which retire an
 entire exposure. Full evidence and the prospective/published split are in
 `settlements/grove/2026-09/reconciliation.md`.
+
+The combined Jan-Aug amounts owed and their machine-readable inputs are in
+`reconciliation/2026-01_to_2026-08/`.
 
 #### Medium priority (affect numerical accuracy)
 5. **Reconciliation gap with Sky's reported Sky Share for Grove** (~$1.13M for Mar 2026 under the pre-subsidy model). Largely closed by 2026-05-02 work (subsidy + SDE refactor + pricePerShareFeed NAV); Feb 2026 residual is now ~$45K excluding the E1 Horizon rewards channel. **Need:** Sky to confirm whether Asset Value definition for BR_charge differs from `subscription − SDE_value` time-weighted (the formula we now match per Grove team's workbook).
