@@ -1,8 +1,9 @@
 # September 2026 close validation
 
 Status: all six API/full-month comparisons pass exactly; all six primes have
-30 September API dates. Distribution rewards and new-code attribution are
-still pending, so this is not a complete settlement package yet.
+30 September API dates. All 28 distribution-reward chunks completed on
+October 1 at 07:40 UTC. New-code ownership is awaiting operator confirmation,
+so the settlement package is not finalized yet.
 
 The September 30 API calculation is compared with a separate full-month
 `compute_monthly_pnl(prime, Month(2026, 9))` execution, with `as_of` omitted.
@@ -100,3 +101,15 @@ warnings:
 - The comparison runs intentionally stage reports without DR. Final report
   assembly requires the completed September reward workbook and explicit
   ownership of every nonzero referral code.
+
+## Reward attribution still pending
+
+The complete workbook contains seven codes absent from the existing ownership
+map. No recipient has been guessed and no amount has been discarded.
+`dr-attribution-pending.json` records the full precision amounts: their total
+is **1,262.5816894320085068956747 USD**, predominantly code 232.
+
+An additional aggregator replay through September is checking the warning
+that the prior independent measurement covered only months through June.
+The historical DR rollup through August is unchanged to within 1e-12 USD;
+this close does not publish restated historical settlements.
