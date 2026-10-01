@@ -1,0 +1,30 @@
+{
+  "receipt": {
+    "block_number": 25926717,
+    "log_index": 464,
+    "block_time": 1788799055,
+    "address": "0x6b175474e89094c44da98b954eedeac495271d0f",
+    "topic0": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+    "topic1": "0x0000000000000000000000001479e04464eb3f0cf09ee9ef76602c31558410e3",
+    "topic2": "0x00000000000000000000000081efc7dd25241acd8e5620f177e42f4857a02b79",
+    "topic3": null,
+    "data": "0x0000000000000000000000000000000000000000000008fe41cdcb1fe974f000",
+    "transaction_hash": "0x181d52604b1b4303637ceb67bf5de9e10b134a0ad38b694a69464f55eb8aad86",
+    "utc": "2026-09-07T16:37:35+00:00",
+    "amount": "42469.146527"
+  },
+  "settlement": {
+    "block_number": 25983375,
+    "log_index": 170,
+    "block_time": 1789481471,
+    "address": "0x81efc7dd25241acd8e5620f177e42f4857a02b79",
+    "topic0": "0x9cc1de95303da544f6b00aefaaeeed9104f1614116efb7e81586b50d4672bdd2",
+    "topic1": "0x0000000000000000000000006b175474e89094c44da98b954eedeac495271d0f",
+    "topic2": null,
+    "topic3": null,
+    "data": "0x0000000000000000000000000000000000000000000008fe41cdcb1fe974f000",
+    "transaction_hash": "0x806e361391d6f7b0c0ca98f200644bff27e002490c04fe55c5b27f9566359e10",
+    "utc": "2026-09-15T14:11:11+00:00",
+    "amount": "42469.146527"
+  }
+}

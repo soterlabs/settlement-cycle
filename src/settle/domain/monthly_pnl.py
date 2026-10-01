@@ -348,11 +348,12 @@ class MonthlyPnL:
             + self.gar
             - self.sky_revenue
         )
-        # The producer and this checker can associate the Decimal additions
-        # differently (notably once long-tail external-revenue values are
-        # present). Decimal's 28-significant-digit context can therefore leave
-        # sub-nanodollar noise even though the accounting components agree.
-        if abs(self.monthly_pnl - expected) > Decimal("1e-9"):
+        # Equivalent association orders can differ below Decimal's 28-digit
+        # context precision (observed during September Basin repricing).
+        # A billionth of a dollar absorbs that noise while preserving the
+        # accounting guard; reject non-finite amounts explicitly.
+        if (not self.monthly_pnl.is_finite() or not expected.is_finite()
+                or abs(self.monthly_pnl - expected) > Decimal("1e-9")):
             raise ValueError(
                 f"monthly_pnl invariant broken: stored {self.monthly_pnl} != "
                 f"expected {expected} (prime_rev + agent_rate + "

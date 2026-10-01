@@ -87,6 +87,7 @@ class NonMscMonthly:
     # 2026-07-20, 3,019,173.48 DAI; forum t/27706). Bark-tx grabs are
     # excluded upstream (already netted in liq_owe − liq_due).
     bad_debt_by_ilk: dict[str, Decimal] = field(default_factory=dict)
+    refund_accrual_adjustments: list[dict] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
     @property
@@ -108,6 +109,10 @@ class NonMscMonthly:
         return sum((s["amount"] for s in self.surplus_returns), Decimal(0))
 
     @property
+    def refund_accrual_adjustment(self) -> Decimal:
+        return sum((r["amount"] for r in self.refund_accrual_adjustments), Decimal(0))
+
+    @property
     def total_income(self) -> Decimal:
         return (
             self.psm_jar_income
@@ -115,6 +120,7 @@ class NonMscMonthly:
             + self.rwa_jar_void
             + self.liq_revenue
             + self.surplus_return_income
+            + self.refund_accrual_adjustment
         )
 
     @property
@@ -250,6 +256,17 @@ def compute_non_msc_monthly(
         else:
             raise ValueError(f"non_msc: unknown stream {stream!r} from query")
 
+    # Backend-independent adjustment: recognize allowlisted refunds on receipt
+    # and remove their later cash recognition, including across month boundaries.
+    from ..normalize.sources.refund_accrual import refund_adjustments
+    refunds = refund_adjustments(month, pin_block)
+    for day in {r["date"] for r in refunds if r["kind"] == "settlement_offset"}:
+        offset = -sum((r["amount"] for r in refunds
+                       if r["kind"] == "settlement_offset" and r["date"] == day), Decimal(0))
+        cash = sum((r["amount"] for r in surplus if r["date"] == day), Decimal(0))
+        if cash < offset:
+            raise ValueError("Accrued refund settlement absent from cash surplus returns")
+
     # Attribution: cash / transfer-date basis — PSM income for month M is EVERY
     # jar burn that LANDS in calendar month M. Multiple burns in the month all
     # count (e.g. Jan 2026 has two: December's on-slot burn plus November's
@@ -290,6 +307,7 @@ def compute_non_msc_monthly(
         rwa_jar_void=rwa_void,
         vest_expense=vest,
         bad_debt_by_ilk=bad_debt,
+        refund_accrual_adjustments=refunds,
         warnings=warnings,
     )
 
@@ -356,7 +374,16 @@ def render_summary(r: NonMscMonthly) -> str:
         L.append(f"| Other | surplus return ({s['date']}) | {_usds(s['amount'])} |")
     if not r.surplus_returns:
         L.append("| Other | surplus returns | 0.00 |")
+    for refund in r.refund_accrual_adjustments:
+        action = "recognized at protocol custody" if refund["kind"] == "recognition" else "remove cash recognition already accrued"
+        L.append(f"| Other | {refund['label']} — {action} ({refund['date']}) | {_usds(refund['amount'])} |")
     L.append(f"| **Total** | | **{_usds(r.total_income)}** |")
+    if r.refund_accrual_adjustments:
+        L.append("")
+        L.append("Refunds are recognized upon receipt in protocol custody. Subsequent surplus-buffer "
+                 "settlement clears that receivable; the negative adjustment prevents recognition twice.")
+        for refund in r.refund_accrual_adjustments:
+            L.append(f"- {refund['label']} ({refund['kind']}): [transaction](https://etherscan.io/tx/{refund['transaction']})")
     L.append("")
 
     L.append("## Expense")
@@ -415,6 +442,9 @@ def write_non_msc(r: NonMscMonthly, out_dir: Path) -> dict[str, Path]:
             "bad_debt_expense": str(r.bad_debt_expense),
             "surplus_returns": [{"date": s["date"], "amount": str(s["amount"])} for s in r.surplus_returns],
             "surplus_return_income": str(r.surplus_return_income),
+            "refund_accrual_adjustments": [{**r, "amount": str(r["amount"])}
+                                           for r in r.refund_accrual_adjustments],
+            "refund_accrual_adjustment": str(r.refund_accrual_adjustment),
             "rwa_jar_void": str(r.rwa_jar_void),
             "vest_expense": str(r.vest_expense),
             "total_income": str(r.total_income),
