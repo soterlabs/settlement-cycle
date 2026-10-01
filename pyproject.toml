@@ -14,6 +14,7 @@ dependencies = [
     "requests>=2.31",
     "pyyaml>=6.0",
     "pandas>=2.1",
+    "openpyxl>=3.1",  # canonical monthly settlement workbook
     "pydantic>=2.5",
     "python-dotenv>=1.0",
     # Postgres driver for the optional raw-data store (src/settle/extract/postgres_store.py).

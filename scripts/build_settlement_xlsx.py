@@ -938,8 +938,8 @@ def _output_filename(prime_id: str, month: str) -> str:
     return f"{prime_id}_settlement_{_MONTH_NAMES[int(m) - 1]}_{year}.xlsx"
 
 
-def build_xlsx(prime_id: str, month: str) -> Path:
-    cell_dir = _REPO / "settlements" / prime_id / month
+def build_xlsx(prime_id: str, month: str, *, output_dir: Path | None = None) -> Path:
+    cell_dir = output_dir if output_dir is not None else _REPO / "settlements" / prime_id / month
     prov     = _read_provenance(cell_dir)
     sheet, _totals = compute_sheet_rows(prov, prime_id)
     cfg      = _read_prime_yaml(prime_id)
@@ -976,8 +976,9 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--prime", default="grove")
     parser.add_argument("--month", default="2026-04")
+    parser.add_argument("--output-dir", type=Path, help="Directory containing provenance.json")
     args = parser.parse_args()
-    out = build_xlsx(args.prime, args.month)
+    out = build_xlsx(args.prime, args.month, output_dir=args.output_dir)
     print(f"Wrote {out}")
     return 0
 
