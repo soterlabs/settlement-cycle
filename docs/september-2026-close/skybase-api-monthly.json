@@ -1,0 +1,11 @@
+{
+  "prime": "skybase",
+  "cutoff": "2026-09-30",
+  "daily_revision": "9824ec82a2122e4ab9d1b521c89e7c2b08cfce4fd36c574ff8ca27779f851fd3",
+  "same_reference_rates": true,
+  "same_code_and_configuration": true,
+  "matched": true,
+  "differences": [],
+  "daily_sha256": "634e859964fa60ea684f5a77f894ed8dc24990c72da7339922d096b6005aa94a",
+  "monthly_sha256": "634e859964fa60ea684f5a77f894ed8dc24990c72da7339922d096b6005aa94a"
+}

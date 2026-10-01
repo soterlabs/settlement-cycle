@@ -1,0 +1,11 @@
+{
+  "prime": "keel",
+  "cutoff": "2026-09-30",
+  "daily_revision": "7c19dbd3ed30a5076ca7668ff2aafb25bf4dd3afcad1c5149bbcb4a2c1da4c09",
+  "same_reference_rates": true,
+  "same_code_and_configuration": true,
+  "matched": true,
+  "differences": [],
+  "daily_sha256": "c718f9ca5190cefde499a9813640d297788602c87bb3d48c88edbb4173c91e92",
+  "monthly_sha256": "c718f9ca5190cefde499a9813640d297788602c87bb3d48c88edbb4173c91e92"
+}

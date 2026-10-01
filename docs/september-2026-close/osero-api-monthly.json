@@ -1,0 +1,11 @@
+{
+  "prime": "osero",
+  "cutoff": "2026-09-30",
+  "daily_revision": "b36393a735936aa2ffdcb47b5152804ad7ec1cd10ae8880b3f90b55c1cd2685f",
+  "same_reference_rates": true,
+  "same_code_and_configuration": true,
+  "matched": true,
+  "differences": [],
+  "daily_sha256": "cf4699e1842d13b721d2e339d4a58d152e33e7653c6f9efbbad5ea03140ec116",
+  "monthly_sha256": "cf4699e1842d13b721d2e339d4a58d152e33e7653c6f9efbbad5ea03140ec116"
+}
