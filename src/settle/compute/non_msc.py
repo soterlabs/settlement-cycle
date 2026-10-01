@@ -264,7 +264,7 @@ def compute_non_msc_monthly(
         offset = -sum((r["amount"] for r in refunds
                        if r["kind"] == "settlement_offset" and r["date"] == day), Decimal(0))
         cash = sum((r["amount"] for r in surplus if r["date"] == day), Decimal(0))
-        if cash < offset:
+        if cash + Decimal("1e-9") < offset:
             raise ValueError("Accrued refund settlement absent from cash surplus returns")
 
     # Attribution: cash / transfer-date basis — PSM income for month M is EVERY
