@@ -3985,6 +3985,14 @@ def compute_monthly_pnl(
                     )
                     _som_date = period.start - _td(days=1)
                     _som_bal = cum_at_or_before(_bal_df, "cum_balance", _som_date)
+                    # Match both valuation paths: the daily SDE series and
+                    # value_som already retain ERC-7540 redemption escrow.
+                    # Comparing wallet transfers alone raised a false $25M
+                    # discrepancy for Grove E9 at the September 2026 opening.
+                    from ..normalize.positions import _centrifuge_in_flight_shares
+                    _som_bal += _centrifuge_in_flight_shares(
+                        prime, venue, pin_blocks_som[venue.chain],
+                    )
                     if _som_bal > 0:
                         _som_block = resolver.block_at_or_before(
                             venue.chain.value,
