@@ -62,3 +62,16 @@ stored under the existing finalized input keys, with no overwrites. An
 alternate archive endpoint was cross-checked against 40 exact historical
 reads before use. Neither operation approximates balances or changes yield
 formulas; failed responses are never cached as zero.
+
+The first DR chunk began before the extraction-cache improvements. It was
+allowed to finish to preserve its work; later chunks use the updated extractor.
+The reward and attribution formulas are unchanged. The conversion cutoff
+change removes only later-day rows that the existing calculation already
+filtered out. The output workbook is assembled with the pinned DR revision.
+
+Non-MSC was calculated at commit `4506950`; later report changes clarify the
+savings narrative and omit a holder split unavailable from the source.
+`non-msc-validation.json` records the final totals and refund events, while
+`dsr-accrual-check.json` records the independent boundary-state calculation.
+The two DSR results differ only in the final Decimal-context digit (far below
+one cent).

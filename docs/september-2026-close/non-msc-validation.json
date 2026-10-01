@@ -1,0 +1,38 @@
+{
+  "month": "2026-09",
+  "calculation_commit": "4506950",
+  "pin_block": 26093737,
+  "income": "14938630.494220308976600000",
+  "expense": "14230031.28290471756684675993",
+  "net_revenue": "708599.21131559140975324007",
+  "dsr_expense": "207172.5044422882096827969263",
+  "refund_cash_income": "42469.146527000000000000",
+  "refund_accrual_adjustment": "0.000000",
+  "refund_events": [
+    {
+      "id": "gelato-keepers-2026-09",
+      "label": "Gelato keeper surplus refund",
+      "receipt_transaction": "0x181d52604b1b4303637ceb67bf5de9e10b134a0ad38b694a69464f55eb8aad86",
+      "receipt_log_index": 464,
+      "token": "0x6b175474e89094c44da98b954eedeac495271d0f",
+      "custody_holder": "0x81efc7dd25241acd8e5620f177e42f4857a02b79",
+      "date": "2026-09-07",
+      "kind": "recognition",
+      "transaction": "0x181d52604b1b4303637ceb67bf5de9e10b134a0ad38b694a69464f55eb8aad86",
+      "amount": "42469.146527"
+    },
+    {
+      "id": "gelato-keepers-2026-09",
+      "label": "Gelato keeper surplus refund",
+      "receipt_transaction": "0x181d52604b1b4303637ceb67bf5de9e10b134a0ad38b694a69464f55eb8aad86",
+      "receipt_log_index": 464,
+      "token": "0x6b175474e89094c44da98b954eedeac495271d0f",
+      "custody_holder": "0x81efc7dd25241acd8e5620f177e42f4857a02b79",
+      "date": "2026-09-15",
+      "kind": "settlement_offset",
+      "transaction": "0x806e361391d6f7b0c0ca98f200644bff27e002490c04fe55c5b27f9566359e10",
+      "amount": "-42469.146527"
+    }
+  ],
+  "warnings": []
+}
