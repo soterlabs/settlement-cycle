@@ -545,16 +545,26 @@ def _integrate_fee(
     neg, inf = (-1, -1), (1 << 62, 1 << 62)
     cps = [(neg, start_ts)] + [((a[0], a[1]), a[2]) for a in in_art] + [(inf, end_ts)]
 
-    def state(key, t):
-        art = art0 + sum(a[3] for a in in_art if (a[0], a[1]) <= key)
-        rate = rate0 + sum(f[3] for f in in_fold if (f[0], f[1]) <= key)
-        fr = [f for f in in_fold if (f[0], f[1]) <= key]
-        rho = fr[-1][2] if fr else rho0
-        du = [d for d in in_duty if (d[0], d[1]) <= key]
-        duty = du[-1][3] if du else duty0
-        return art, float(rate) * ((duty / 1e27) ** float(t - rho))
-
-    pts = [state(k, t) for (k, t) in cps]
+    # Checkpoints and event streams are ordered by (block, log_index).
+    # Advance each stream once instead of re-scanning all in-month events
+    # for every checkpoint (quadratic on active ilks). Integer state updates
+    # and the float valuation/summation order are identical to the previous
+    # implementation, including multiple events at one timestamp.
+    ai = fi = di = 0
+    art, rate, rho, duty = art0, rate0, rho0, duty0
+    pts = []
+    for key, t in cps:
+        while ai < len(in_art) and in_art[ai][:2] <= key:
+            art += in_art[ai][3]
+            ai += 1
+        while fi < len(in_fold) and in_fold[fi][:2] <= key:
+            rate += in_fold[fi][3]
+            rho = in_fold[fi][2]
+            fi += 1
+        while di < len(in_duty) and in_duty[di][:2] <= key:
+            duty = in_duty[di][3]
+            di += 1
+        pts.append((art, float(rate) * ((duty / 1e27) ** float(t - rho))))
     total = sum(
         (pts[i][0] / 1e18) * (pts[i + 1][1] - pts[i][1]) for i in range(len(pts) - 1)
     )
