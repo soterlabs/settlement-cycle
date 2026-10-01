@@ -2,8 +2,10 @@
 
 Status: all six API/full-month comparisons pass exactly; all six primes have
 30 September API dates. All 28 distribution-reward chunks completed on
-October 1 at 07:40 UTC. New-code ownership is awaiting operator confirmation,
-so the settlement package is not finalized yet.
+October 1 at 07:40 UTC. That baseline used the older DR source coverage. The upstream DR PR was
+subsequently rebased onto the additional venue coverage already merged in its
+main branch. A fresh replay at `649a428` is now running before final assembly.
+New-code ownership also remains partly unresolved.
 
 The September 30 API calculation is compared with a separate full-month
 `compute_monthly_pnl(prime, Month(2026, 9))` execution, with `as_of` omitted.
@@ -104,13 +106,16 @@ warnings:
 
 ## Reward attribution still pending
 
-The complete workbook contains seven codes absent from the existing ownership
-map. No recipient has been guessed and no amount has been discarded.
-`dr-attribution-pending.json` records the full precision amounts: their total
+The superseded baseline workbook contained seven codes absent from the then-current
+ownership map. No recipient has been guessed and no amount has been discarded.
+`dr-attribution-pending.json` records those baseline amounts (not final current-code
+rewards): their total
 is **1,262.5816894320085068956747 USD**, predominantly code 232.
 
-An additional aggregator replay through September is checking the warning
-that the prior independent measurement covered only months through June.
+The older-baseline aggregator replay passed through September: 1,343 wallets,
+773,870 transfers, and all nine July–September code/month comparisons within
+1.78e-15 USD. Its result is preserved locally with the old calculation branch;
+it must not be presented as validation of the newly added upstream programs.
 The historical DR rollup through August is unchanged to within 1e-12 USD;
 this close does not publish restated historical settlements.
 
@@ -128,7 +133,7 @@ RPC) independently reproduced the two notable NAV outliers:
 - Spark S12: unchanged 401.044942988323179297 vault shares. Direct historical
   `convertToAssets(balanceOf(ALM))` returned 907.538799718984340323 DAI at
   opening and 1,091.22453113566395393 DAI at closing, matching the pipeline
-  within sub-wei valuation rounding. The high annualized ratio is on this
+  within 0.000000000000001 DAI of valuation rounding. The high annualized ratio is on this
   small residual position; it is not used as a forecast.
 
 `valuation-outlier-check.json` records both boundary blocks and exact reads.
@@ -136,3 +141,16 @@ Cash distributions on S26/S28 and E21/E38/E42 are not reliable annualized
 returns on the receiving wallet's current balance. S24's outlier is below
 one cent of revenue; S66 has a 90.0268 USD valuation decline on a roughly
 20 million USD position. No financial values were changed by this screen.
+
+## Upstream DR coverage integration
+
+The final close must use the current DR source coverage: Grove's USDS farm,
+Skybase's Pendle/Morpho positions and 1inch program, and the additional Osero
+programs. The old 28-chunk output is a superseded baseline, not the final
+September reward workbook. No old output was force-pushed over the upstream
+branch or used to finalize settlements.
+
+Explicit upstream documents establish ownership of 1020/1997/1998/1999 for
+Skybase and 3002/3006/3900 for Osero. Other numeric-range assignments must not
+be inferred: `osero-codes.md` explains that 3123 is an arbitrary PSM3 field
+value, not an Osero program. The remaining unmapped codes await confirmation.

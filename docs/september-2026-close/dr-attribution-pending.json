@@ -11,5 +11,6 @@
     "3123": "0.001953994957297161"
   },
   "total_unmapped_so_far": "1262.5816894320085068956747",
-  "status": "ownership_confirmation_pending"
+  "status": "superseded_baseline_pending_current_replay",
+  "calculation_code": "1e61a92"
 }
