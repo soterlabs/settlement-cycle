@@ -211,6 +211,7 @@ def allocation_financing(pnl, history, *, idle_amounts=None) -> dict:
         },
         "unmatched_receipts": replay.unmatched_receipts,
         "unmatched_outflows": replay.unmatched_outflows,
+        "uncertain_repayments": replay.uncertain_repayments,
         "realised_principal_loss": replay.ledger.realised_principal_loss,
         'allocation_cost_by_ilk': dict(totals_by_ilk),
         'daily_allocation_by_ilk': {str(d): dict(values) for d, values in daily_by_ilk.items()},
