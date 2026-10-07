@@ -84,6 +84,25 @@ def allocation_financing(pnl, history, *, idle_amounts=None) -> dict:
     totals_by_ilk = defaultdict(Decimal)
     daily_by_ilk = {d: defaultdict(lambda: {'principal': ZERO, 'deduction': ZERO, 'cost': ZERO}) for d in days}
     for venue in venues:
+        boundary = history.covered_by_boundary.get(venue.venue_id)
+        if boundary:
+            if boundary not in history.venue_accounts:
+                raise ValueError('Covered allocation is missing its EOA boundary account')
+            if (any((idle_amounts or {}).get(venue.venue_id, {}).values())
+                    or any(r['cum_value'] for r in sde_daily.get(venue.venue_id, {}).values())):
+                raise ValueError('EOA interior deductions require explicit boundary attribution')
+            rows.append({
+                'venue_id': venue.venue_id, 'basis_status': 'covered_by_boundary',
+                'basis_detail': f'Funding accounted at allocation boundary {boundary}',
+                'cost_reported_under': boundary, 'borrowed_principal_som': None,
+                'borrowed_principal_eom': None, 'borrowed_principal_average': None,
+                'cost_of_funds': None, 'net_pnl': None, 'net_apy': None,
+                'gross_apy': annualized_yield(venue.actual_revenue + venue.external_revenue,
+                                             max(venue.tw_avg_value, venue.tw_avg_notional), n_days),
+                'borrowed_principal_average_by_ilk': {}, 'cost_of_funds_by_ilk': None,
+                'revenue_available': venue.venue_id not in extra,
+            })
+            continue
         account = history.venue_accounts.get(venue.venue_id)
         accounts = ([account] if account is not None else []) + history.custody_accounts.get(venue.venue_id, [])
         reason = history.unsupported.get(venue.venue_id)
@@ -160,6 +179,10 @@ def allocation_financing(pnl, history, *, idle_amounts=None) -> dict:
             "borrowed_principal_eom": principal[end],
             "borrowed_principal_average": average_principal,
             "cost_of_funds": cost_out,
+            # Diagnostic estimate only; unresolved rows still do not enter
+            # the validated subtotal, net PnL or net APY.
+            'modeled_cost_of_funds': cost,
+            'modeled_cost_of_funds_by_ilk': dict(costs_by_ilk),
             "net_pnl": net_pnl,
             "gross_apy": annualized_yield(venue.actual_revenue + venue.external_revenue,
                                            average_value, n_days),
@@ -169,7 +192,8 @@ def allocation_financing(pnl, history, *, idle_amounts=None) -> dict:
             'revenue_available': venue.venue_id not in extra,
         })
     existing_cost = pnl.sky_revenue - pnl.sde_revenue + pnl.susds_spread_reimbursement
-    unresolved = [r['venue_id'] for r in rows if r['cost_of_funds'] is None]
+    unresolved = [r['venue_id'] for r in rows if r['cost_of_funds'] is None
+                  and r['basis_status'] != 'covered_by_boundary']
     difference = total_cost - existing_cost
     source_complete = not unresolved and not replay.unmatched_receipts and not replay.unmatched_outflows
     daily_controls = []

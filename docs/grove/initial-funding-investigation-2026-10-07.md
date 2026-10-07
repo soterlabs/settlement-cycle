@@ -6,6 +6,8 @@ history. Published reports and API results are unchanged. The previous Grove
 cost subtotal of $7,586.93 is superseded by the more conservative result below.
 Spark was not rerun after the repayment-uncertainty fix.
 
+> Continued in [the EOA-boundary replay](eoa-boundaries-2026-10-07.md), which supersedes the unmatched-event counts below.
+
 ## Confirmed missing historical links
 
 ### July 2025: funded subscription delivered directly by the issuer

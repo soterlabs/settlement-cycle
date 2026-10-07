@@ -47,6 +47,7 @@ def save_history(path, history, key):
                 'venue_accounts': history.venue_accounts, 'unsupported': history.unsupported,
                 'custody_accounts': history.custody_accounts, 'idle_accounts': sorted(history.idle_accounts),
                 'analytics_only_venues': list(history.analytics_only_venues)}
+    metadata['covered_by_boundary'] = history.covered_by_boundary
     try:
         with gzip.open(temporary, 'wt') as output:
             output.write(json.dumps(metadata) + '\n')
@@ -77,4 +78,5 @@ def load_history(path, key):
             batches.append(CapitalBatch(**row))
     return CapitalHistory(tuple(batches), metadata['venue_accounts'], metadata['unsupported'],
                           metadata['custody_accounts'], set(metadata['idle_accounts']),
-                          tuple(metadata.get('analytics_only_venues', [])))
+                          tuple(metadata.get('analytics_only_venues', [])),
+                          metadata.get('covered_by_boundary', {}))

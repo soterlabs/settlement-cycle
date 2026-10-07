@@ -71,6 +71,7 @@ class CapitalHistory:
     custody_accounts: dict[str, list[str]] = field(default_factory=dict)
     idle_accounts: set[str] = field(default_factory=set)
     analytics_only_venues: tuple[str, ...] = ()
+    covered_by_boundary: dict[str, str] = field(default_factory=dict)
 
 
 def _account(chain: Chain, token: Address, holder: Address) -> str:
@@ -103,7 +104,10 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
     incremental. Unsupported custody remains explicit, never a fabricated
     opening borrowed balance.
     """
-    analytics_only = ()
+    from .allocation_eoa import boundary_scope, eoa_boundaries, link_eoa_boundaries
+
+    prime, covered_by_boundary = boundary_scope(prime)
+    analytics_only = tuple(v.id for v, _ in eoa_boundaries(prime))
     if prime.id == 'grove' and not any(v.id == 'E12_PAU' for v in prime.venues):
         # Separate PAU-held NFT1352494 in the same AUSD/USDC pool. This is
         # tracing-only: adding custody coverage must not regenerate revenues
@@ -113,7 +117,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
             pau = replace(legacy, id='E12_PAU', notional_principal_usd=None,
                           holder_override=Address.from_str('0x0dcd9298e163dfd3c0b5b00f0d9093c36e40a153'))
             prime = replace(prime, venues=[*prime.venues, pau])
-            analytics_only = ('E12_PAU',)
+            analytics_only = (*analytics_only, 'E12_PAU')
     assets: dict[Chain, dict[tuple[str, str], Venue]] = defaultdict(dict)
     venue_accounts: dict[str, str] = {}
     unsupported: dict[str, str] = {}
@@ -490,6 +494,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
 
         batches = link_facility(prime, chain, batches, logs, venue_accounts, unsupported, mapping)
         batches = link_buidl_claims(prime, chain, pins[chain], batches, logs, custody_accounts)
+        batches = link_eoa_boundaries(prime, chain, batches, logs, venue_accounts, unsupported)
     batches = link_cctp(prime, pins, batches, bridge_burns)
     from .allocation_ethena import link_ethena_cooldowns
 
@@ -498,4 +503,4 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                      for c, holder in prime.alm.items() if c in USDS_BY_CHAIN}
     return CapitalHistory(tuple(sorted(batches, key=lambda b: (b.timestamp, b.chain, b.block, b.log_index))),
                           venue_accounts, unsupported, dict(custody_accounts), idle_accounts,
-                          analytics_only)
+                          analytics_only, covered_by_boundary)

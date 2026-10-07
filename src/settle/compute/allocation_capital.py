@@ -326,6 +326,13 @@ def replay_history(history, start: date, end: date) -> CapitalReplay:
                 unmatched_outflows[b.identity] = residue
         ledger.accounts.pop(clearing, None)
         uncertain.discard(clearing)  # Uncertainty has propagated to destinations.
+        # An exhausted claim has no remaining exposure to qualify. Preserve
+        # the uncertainty already carried to its proceeds, but do not leave a
+        # closed EOA allocation unresolved forever after its final return.
+        for m in b.movements:
+            a = ledger.account(m.account)
+            if a.value == ZERO and a.borrowed == ZERO:
+                uncertain.discard(m.account)
 
     day = start
     with localcontext() as ctx:
