@@ -12,12 +12,14 @@ This module does not infer a loan from an unexplained receipt or an opening NAV.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from decimal import Decimal, localcontext
 from typing import Literal
 
 ZERO = Decimal("0")
+_log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -225,6 +227,7 @@ def replay_history(history, start: date, end: date) -> CapitalReplay:
     daily_by_ilk = {}
     batches = sorted(history.batches, key=lambda b: (b.timestamp, b.chain, b.block, b.log_index))
     cursor = 0
+    _log.info('Capital replay: %d transactions, reporting %s through %s', len(batches), start, end)
 
     def apply_batch(b):
         clearing = f"clearing:{b.identity}"
@@ -309,10 +312,15 @@ def replay_history(history, start: date, end: date) -> CapitalReplay:
             while cursor < len(batches) and batches[cursor].day <= day:
                 apply_batch(batches[cursor])
                 cursor += 1
+                if cursor % 10000 == 0:
+                    _log.info('Capital replay: %d/%d transactions through %s',
+                              cursor, len(batches), batches[cursor - 1].day)
             daily[day] = {k: a.borrowed for k, a in ledger.accounts.items()}
             daily_by_ilk[day] = {k: dict(a.borrowed_by_ilk) for k, a in ledger.accounts.items()
                                 if a.borrowed}
             uncertain_daily[day] = set(uncertain)
             day += timedelta(days=1)
+    _log.info('Capital replay complete: %d transactions; %d unmatched receipts, %d unmatched outflows',
+              cursor, len(unmatched_receipts), len(unmatched_outflows))
     return CapitalReplay(ledger, daily, unmatched_receipts, unmatched_outflows, uncertain,
                          uncertain_daily, daily_by_ilk)

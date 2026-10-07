@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import logging
 from dataclasses import fields
 from datetime import date
 from decimal import Decimal
@@ -50,6 +51,7 @@ def control_pnl(control):
 
 
 def main():
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--provenance', type=Path, required=True)
     parser.add_argument('--history-dir', type=Path, required=True)
