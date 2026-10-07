@@ -61,6 +61,8 @@ def main():
                         help='Pinned per-ilk daily debt and MSC balances (JSON list)')
     parser.add_argument('--deduction-owners', type=Path,
                         help='Verified deduction field to 0x-prefixed ilk mapping (JSON object)')
+    parser.add_argument('--quantify-uncertainty', action='store_true',
+                        help='Add diagnostic funding envelopes; never change settlement charges')
     args = parser.parse_args()
     if bool(args.debt_control) != bool(args.deduction_owners):
         parser.error('--debt-control and --deduction-owners must be supplied together')
@@ -105,7 +107,8 @@ def main():
     if args.capture_idle_only:
         print(json.dumps({'idle_venues': sorted(idle), 'control_sha256': control_hash}))
         return
-    result = allocation_financing(pnl, history, idle_amounts=idle)
+    result = allocation_financing(pnl, history, idle_amounts=idle,
+                                  quantify_uncertainty=args.quantify_uncertainty)
     result['idle_control_excluded_venues'] = idle_exclusions
     result['control_sha256'] = hashlib.sha256(original).hexdigest()
     result['scope'] = 'ilk' if not prime.extra_ilks else 'prime_combined_ilks'

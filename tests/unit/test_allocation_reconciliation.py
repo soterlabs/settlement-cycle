@@ -40,3 +40,27 @@ def test_daily_idle_dollars_must_reproduce_the_published_control():
     control['venue_breakdown'].append({'venue_id': 'NEW'})
     with pytest.raises(ValueError, match='Daily idle'):
         validate_idle_control(idle, control)
+
+
+def test_funding_envelopes_use_verified_deduction_owner_without_claiming_reconciliation():
+    control = {'sky_revenue_daily': [dict(date='2026-08-01', cum_debt='120', utilized='100',
+                daily_sky_rev='1', base_apr='.04', sde_av='20')]}
+    debt = [dict(day='2026-08-01', by_ilk={
+        'a': dict(debt='100', prior_msc_debt='10', current_month_msc_debt='0'),
+        'b': dict(debt='20', prior_msc_debt='0', current_month_msc_debt='0')})]
+    finance = {'reconciliation': {'source_complete': False, 'allocation_sum': '0',
+                                  'existing_cost_of_funds': '1'},
+               'funding_uncertainty': {
+                   'joint_cost_by_ilk': {'0xa': {'lower': '-.2', 'upper': '.9'},
+                                        '0xb': {'lower': '-.2', 'upper': '.2'}},
+                   'daily': {'2026-08-01': {
+                       'deduction_totals': {'sde_av': {'lower': 20, 'upper': 20},
+                                            'venue_idle': {'lower': 0, 'upper': 0}},
+                       'joint_by_ilk': {'0xa': {'principal': {'lower': 0, 'upper': 90}},
+                                        '0xb': {'principal': {'lower': 0, 'upper': 20}}}}}}}
+    r = reconcile_ilks(finance, control, debt, {'sde_av': '0xa'})['by_ilk']
+    assert r['0xa']['diagnostic_cost_bounds'] == {'lower': D('-.2'), 'upper': D('.7')}
+    assert r['0xb']['diagnostic_cost_bounds'] == {'lower': D(0), 'upper': D('.2')}
+    assert all(v['target_within_bounds_to_one_cent'] for v in r.values())
+    assert all(not v['complete'] for v in r.values())
+    assert all(v['bounds_use_verified_deduction_owners'] for v in r.values())
