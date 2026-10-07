@@ -202,9 +202,11 @@ class CapitalReplay:
     uncertain_daily: dict[date, set[str]] = field(default_factory=dict)
     daily_by_ilk: dict[date, dict[str, dict[str, Decimal]]] = field(default_factory=dict)
     uncertain_repayments: dict[str, list[dict]] = field(default_factory=dict)
+    funding_bounds_daily: dict = field(default_factory=dict)
+    observed_debt_daily: dict = field(default_factory=dict)
 
 
-def replay_history(history, start: date, end: date) -> CapitalReplay:
+def replay_history(history, start: date, end: date, *, quantify_uncertainty=False) -> CapitalReplay:
     """Pair the asset legs of each transaction, preserving average cost basis.
 
     An unpaired outflow keeps its basis in a distinct custody account. An
@@ -220,6 +222,15 @@ def replay_history(history, start: date, end: date) -> CapitalReplay:
     if len({b.identity for b in history.batches}) != len(history.batches):
         raise ValueError("Duplicate capital transaction")
     ledger = CapitalLedger()
+    envelope = None
+    cash_account_keys = set()
+    if quantify_uncertainty:
+        from .allocation_uncertainty import FundingEnvelope, cash_accounts
+
+        envelope = FundingEnvelope()
+        cash_account_keys = cash_accounts(history)
+    funding_bounds_daily = {}
+    observed_debt_daily = {}
     daily = {}
     unmatched_receipts: dict[str, Decimal] = {}
     unmatched_outflows: dict[str, Decimal] = {}
@@ -238,8 +249,11 @@ def replay_history(history, start: date, end: date) -> CapitalReplay:
         def apply(kind, amount, source=None, destination=None, value=None, preserve_basis=False, ilk=None):
             nonlocal step
             step += 1
-            ledger.apply(CapitalEvent(f"{b.identity}:{step}", b.day, (step,),
-                                     kind, amount, source, destination, value, preserve_basis, ilk))
+            event = CapitalEvent(f"{b.identity}:{step}", b.day, (step,),
+                                 kind, amount, source, destination, value, preserve_basis, ilk)
+            if envelope is not None:
+                envelope.apply(event, ledger)
+            ledger.apply(event)
 
         funding = b.minted_by_ilk or {'unattributed': b.minted}
         if sum(funding.values(), ZERO) != b.minted:
@@ -270,6 +284,8 @@ def replay_history(history, start: date, end: date) -> CapitalReplay:
             if repay > cash:
                 missing = repay - cash
                 apply("income", missing, destination=clearing)
+                if envelope is not None:
+                    envelope.unknown(clearing, missing, b.identity, cash=True)
                 unmatched_receipts[b.identity] = unmatched_receipts.get(b.identity, ZERO) + missing
                 if missing > Decimal("0.01"):
                     uncertain.add(clearing)
@@ -306,6 +322,8 @@ def replay_history(history, start: date, end: date) -> CapitalReplay:
             if amount > funded:
                 missing = amount - funded
                 apply("income", missing, destination=account)
+                if envelope is not None:
+                    envelope.unknown(account, missing, b.identity, cash=account in cash_account_keys)
                 # Pricing/wei dust is retained numerically but is not a
                 # missing financing route. This is NOT a yield bounds check.
                 if missing > Decimal("0.01"):
@@ -325,6 +343,9 @@ def replay_history(history, start: date, end: date) -> CapitalReplay:
             if residue > Decimal("0.01"):
                 unmatched_outflows[b.identity] = residue
         ledger.accounts.pop(clearing, None)
+        if envelope is not None:
+            envelope.accounts.pop(clearing, None)
+            envelope.constrain()
         uncertain.discard(clearing)  # Uncertainty has propagated to destinations.
         # An exhausted claim has no remaining exposure to qualify. Preserve
         # the uncertainty already carried to its proceeds, but do not leave a
@@ -348,8 +369,12 @@ def replay_history(history, start: date, end: date) -> CapitalReplay:
             daily_by_ilk[day] = {k: dict(a.borrowed_by_ilk) for k, a in ledger.accounts.items()
                                 if a.borrowed}
             uncertain_daily[day] = set(uncertain)
+            if envelope is not None:
+                funding_bounds_daily[day] = envelope.snapshot()
+                observed_debt_daily[day] = dict(envelope.outstanding)
             day += timedelta(days=1)
     _log.info('Capital replay complete: %d transactions; %d unmatched receipts, %d unmatched outflows',
               cursor, len(unmatched_receipts), len(unmatched_outflows))
     return CapitalReplay(ledger, daily, unmatched_receipts, unmatched_outflows, uncertain,
-                         uncertain_daily, daily_by_ilk, uncertain_repayments)
+                         uncertain_daily, daily_by_ilk, uncertain_repayments,
+                         funding_bounds_daily, observed_debt_daily)

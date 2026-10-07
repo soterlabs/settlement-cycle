@@ -1,0 +1,1431 @@
+{
+  "prime": "grove",
+  "period": "2026-08",
+  "base_commit": "edbd7f1",
+  "scope": "Read-only diagnostics; settlements and API outputs unchanged",
+  "input_hashes": {
+    "/tmp/pr215-grove-eoa/history.jsonl.gz": "c05b53815379f6f7a4d9f6195d819d09ddb542f8f279af5f4defe4b7b3295474",
+    "settlements/grove/2026-08/provenance.json": "d6fb40d3c43caf3bdc7d0983b7ff071433ad056d22825b9f0f19eeb9d3af3aa9",
+    "/tmp/pr215-resumed-grove/idle_deductions.json": "e6b13f9b30816b2f8e9325f222aa9c889ff68cdf182205f4c54576d929faf427",
+    "/tmp/pr215-resumed-grove/debt-control.json": "6214144465cad85e59e3cd7c075925fad2f5bdc2131428ea4e6f769b57d9280b",
+    "/tmp/pr215-resumed-grove/deduction-owners.json": "dad2cf619d5dc65a26721aaf1fe3938136bb512212bf427a2e5aa56531f58153"
+  },
+  "code_hashes": {
+    "src/settle/compute/allocation_uncertainty.py": "cecb14f780cc6aa665b4621b13c50de7ebf884ac1194eabd9ac29864984468df",
+    "src/settle/compute/allocation_capital.py": "200e9f6ec86f24b3a14342515c435607e525464849dfaa2357c8aed889809282",
+    "src/settle/compute/allocation_financing.py": "b376921e1605179df69848f3db47cc97dfb0804d2a46a492c1bf8840537d8276",
+    "src/settle/compute/allocation_reconciliation.py": "f55ad9c7e723c9c00f753b329b1a1df135bd4d8806cf8f7cd1f659247194a219",
+    "src/settle/compute/grove_plume_capital.py": "12b9d415ea9982bfdd7189b32d8daab65568626875982d55468ff6d5724429d1",
+    "src/settle/compute/executed_spell_capital.py": "7c34978e52909ce48abcee6a79752ba1e12f1210637f97de7e2b83a69182e988"
+  },
+  "before": {
+    "unmatched_receipt_count": 242,
+    "unmatched_outflow_count": 468,
+    "eligible_allocation_cost": "1233.513467956631497028953141"
+  },
+  "after": {
+    "unmatched_receipt_count": 239,
+    "unmatched_outflow_count": 465,
+    "eligible_allocation_cost": "1233.513467956631497028953141"
+  },
+  "removed_unmatched_entries": {
+    "unmatched_receipts": {
+      "plume:0x419fc99c6ec84f1c53138e01908b59fecf4a26a1a39d7aa47c56e18053730359": "20008042.283908",
+      "plume:0x8cd2d5d675c3d42e4e3872c80cdcad1946e863f5a1f82bd03c158c26ef093c98": "19981663.9667970000000000000000000000000000000000000000000000",
+      "plume:0x9856d21030eefdb5a564f9982e07d7c3ec1cc179dd47a245be2fa36f3efc453b": "10020691.2803070000000000000000000000000000000000000000000001"
+    },
+    "unmatched_outflows": {
+      "ethereum:0x8fd8753896fb1241c3c2bf772f8dafa24a37b5680150d30d5df765220b1fc012": "20000000.00000065018080530775",
+      "ethereum:0x62994a29311c71f6b668a3572ca1684124ee6e0ca408157e9c8d9030a2379362": "20000014.46798283494712776472",
+      "ethereum:0xb6536bca914b8403fbbe473fd1d7c4982041da0a2674f630a78f90dab12ae72a": "10000000.8947626812587924466"
+    }
+  },
+  "per_ilk_reconciliation": {
+    "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+      "global_cost": "3708820.107055825781021080592",
+      "msc_cost": "259878.1170265572840543147882",
+      "allocation_cost": "0",
+      "global_excluding_msc": "3448941.990029268496966765804",
+      "difference": "-3448941.990029268496966765804",
+      "within_one_cent": false,
+      "complete": false,
+      "source_complete": false,
+      "bounds_use_verified_deduction_owners": true,
+      "diagnostic_cost_bounds": {
+        "lower": "-4837640.76568450854797485692341920458724857192355521968389800",
+        "upper": "3448941.99002926849696676580416084319370638238644478031610200"
+      },
+      "target_distance_from_bounds": "0",
+      "target_within_bounds_to_one_cent": true,
+      "bounds_note": "Containment is not reconciliation; unresolved routes remain unverified"
+    },
+    "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+      "global_cost": "11784.73727045625525471486130",
+      "msc_cost": "0E-32",
+      "allocation_cost": "1233.513467956631497028953141",
+      "global_excluding_msc": "11784.73727045625525471486130",
+      "difference": "-10551.22380249962375768590816",
+      "within_one_cent": false,
+      "complete": false,
+      "source_complete": false,
+      "bounds_use_verified_deduction_owners": true,
+      "diagnostic_cost_bounds": {
+        "lower": "1501.50200279714782166665400694902278567712471252929803011784",
+        "upper": "11784.7372704562552547148612968949528875509721436267419"
+      },
+      "target_distance_from_bounds": "3.1050471124490278563732581E-24",
+      "target_within_bounds_to_one_cent": true,
+      "bounds_note": "Containment is not reconciliation; unresolved routes remain unverified"
+    }
+  },
+  "allocations": [
+    {
+      "venue_id": "E1",
+      "before": {
+        "borrowed_principal_average": "0.000004851163873769161915821112645",
+        "modeled_cost_of_funds": "1.504050362841187771470952768E-8",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "1.504050362841187771470952768E-8"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      },
+      "after": {
+        "borrowed_principal_average": "0.000004851274562502939172591456368",
+        "modeled_cost_of_funds": "1.504084680785021824619238358E-8",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "1.504084680785021824619238358E-8"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      }
+    },
+    {
+      "venue_id": "E2",
+      "before": {
+        "borrowed_principal_average": "7.178246168895074886661654419E-7",
+        "modeled_cost_of_funds": "2.225536806387370057711512098E-9",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "2.225536806387370057711512098E-9"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      },
+      "after": {
+        "borrowed_principal_average": "7.178508880002016767446292694E-7",
+        "modeled_cost_of_funds": "2.225618257260560162711445145E-9",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "2.225618257260560162711445145E-9"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      }
+    },
+    {
+      "venue_id": "E3",
+      "before": {
+        "borrowed_principal_average": "0.000002270542722747393358111284526",
+        "modeled_cost_of_funds": "7.039569667930651862699854263E-9",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "7.039569667930651862699854263E-9"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      },
+      "after": {
+        "borrowed_principal_average": "0.000002270600292840662508140136654",
+        "modeled_cost_of_funds": "7.039748158235799380045838106E-9",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "7.039748158235799380045838106E-9"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      }
+    },
+    {
+      "venue_id": "E4",
+      "before": {
+        "borrowed_principal_average": "2055272.530459765773249904185",
+        "modeled_cost_of_funds": "6375.541708462315237270550836",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "6375.541708462315237270550836"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      },
+      "after": {
+        "borrowed_principal_average": "2055274.953824110319677994659",
+        "modeled_cost_of_funds": "6375.549222728162105166098434",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "6375.549222728162105166098434"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      }
+    },
+    {
+      "venue_id": "E5",
+      "before": {
+        "borrowed_principal_average": "0E-53",
+        "modeled_cost_of_funds": "0E-85",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "traced",
+        "cost_of_funds": "0E-85"
+      },
+      "after": {
+        "borrowed_principal_average": "0E-53",
+        "modeled_cost_of_funds": "0E-85",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "traced",
+        "cost_of_funds": "0E-85"
+      }
+    },
+    {
+      "venue_id": "E6",
+      "before": {
+        "borrowed_principal_average": "5598078.191682300346203950252",
+        "modeled_cost_of_funds": "17356.72304411187781432776511",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "17356.72304411187781432776511"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      },
+      "after": {
+        "borrowed_principal_average": "5598217.699153834476584870013",
+        "modeled_cost_of_funds": "17357.15558348716175652719637",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "17357.15558348716175652719637"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      }
+    },
+    {
+      "venue_id": "E37",
+      "before": {
+        "borrowed_principal_average": "0E-52",
+        "modeled_cost_of_funds": "0E-84",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "traced",
+        "cost_of_funds": "0E-84"
+      },
+      "after": {
+        "borrowed_principal_average": "0E-52",
+        "modeled_cost_of_funds": "0E-84",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "traced",
+        "cost_of_funds": "0E-84"
+      }
+    },
+    {
+      "venue_id": "E7",
+      "before": {
+        "borrowed_principal_average": "0",
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      },
+      "after": {
+        "borrowed_principal_average": "0",
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      }
+    },
+    {
+      "venue_id": "E8",
+      "before": {
+        "borrowed_principal_average": "89027412.79953655197759491106",
+        "modeled_cost_of_funds": "276019.7676437568698027429647",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "276019.7676437568698027429647"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      },
+      "after": {
+        "borrowed_principal_average": "89037393.05109621250383021919",
+        "modeled_cost_of_funds": "276050.7103438292173906985559",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "276050.7103438292173906985559"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      }
+    },
+    {
+      "venue_id": "E9",
+      "before": {
+        "borrowed_principal_average": "623332412.8260194420669189203",
+        "modeled_cost_of_funds": "-723991.5988248589182790697434",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "-723991.5988248589182790697432"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      },
+      "after": {
+        "borrowed_principal_average": "623344766.3318061508201770565",
+        "modeled_cost_of_funds": "-723953.2979869153291749836676",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "-723953.2979869153291749836672"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      }
+    },
+    {
+      "venue_id": "E10",
+      "before": {
+        "borrowed_principal_average": "88704235.82713467987801866177",
+        "modeled_cost_of_funds": "-1906063.965119091958757252604",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "-1906063.965119091958757252604"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      },
+      "after": {
+        "borrowed_principal_average": "88706527.94243413417626816374",
+        "modeled_cost_of_funds": "-1906056.858817967644519416595",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "-1906056.858817967644519416595"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      }
+    },
+    {
+      "venue_id": "E11",
+      "before": {
+        "borrowed_principal_average": "10969788.22395726614096999761",
+        "modeled_cost_of_funds": "33984.61959893403737497010209",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "33984.61959893403737497010209"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      },
+      "after": {
+        "borrowed_principal_average": "10970018.48940116032314542075",
+        "modeled_cost_of_funds": "33985.33296458558176603485088",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "33985.33296458558176603485088"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      }
+    },
+    {
+      "venue_id": "E12",
+      "before": {
+        "borrowed_principal_average": "19092063.50733786459540380991",
+        "modeled_cost_of_funds": "59197.87942605050861675067133",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "59197.87942605050861675067133"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      },
+      "after": {
+        "borrowed_principal_average": "19092393.51646575527609174514",
+        "modeled_cost_of_funds": "59198.90263157509993930314812",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "59198.90263157509993930314812"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      }
+    },
+    {
+      "venue_id": "E30",
+      "before": {
+        "borrowed_principal_average": null,
+        "modeled_cost_of_funds": null,
+        "modeled_cost_of_funds_by_ilk": null,
+        "basis_status": "covered_by_boundary",
+        "cost_of_funds": null
+      },
+      "after": {
+        "borrowed_principal_average": null,
+        "modeled_cost_of_funds": null,
+        "modeled_cost_of_funds_by_ilk": null,
+        "basis_status": "covered_by_boundary",
+        "cost_of_funds": null
+      }
+    },
+    {
+      "venue_id": "E13",
+      "before": {
+        "borrowed_principal_average": "0E-52",
+        "modeled_cost_of_funds": "0E-84",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "traced",
+        "cost_of_funds": "0E-84"
+      },
+      "after": {
+        "borrowed_principal_average": "0E-52",
+        "modeled_cost_of_funds": "0E-84",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "traced",
+        "cost_of_funds": "0E-84"
+      }
+    },
+    {
+      "venue_id": "E31",
+      "before": {
+        "borrowed_principal_average": null,
+        "modeled_cost_of_funds": null,
+        "modeled_cost_of_funds_by_ilk": null,
+        "basis_status": "covered_by_boundary",
+        "cost_of_funds": null
+      },
+      "after": {
+        "borrowed_principal_average": null,
+        "modeled_cost_of_funds": null,
+        "modeled_cost_of_funds_by_ilk": null,
+        "basis_status": "covered_by_boundary",
+        "cost_of_funds": null
+      }
+    },
+    {
+      "venue_id": "E15",
+      "before": {
+        "borrowed_principal_average": "3.920571095747714453928937523",
+        "modeled_cost_of_funds": "0.01220190515470921481127183606",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0.01220190515470921481127183606"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      },
+      "after": {
+        "borrowed_principal_average": "3.920672984726868083180227706",
+        "modeled_cost_of_funds": "0.01220222226148513609402884440",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0.01220222226148513609402884440"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      }
+    },
+    {
+      "venue_id": "E32",
+      "before": {
+        "borrowed_principal_average": null,
+        "modeled_cost_of_funds": null,
+        "modeled_cost_of_funds_by_ilk": null,
+        "basis_status": "covered_by_boundary",
+        "cost_of_funds": null
+      },
+      "after": {
+        "borrowed_principal_average": null,
+        "modeled_cost_of_funds": null,
+        "modeled_cost_of_funds_by_ilk": null,
+        "basis_status": "covered_by_boundary",
+        "cost_of_funds": null
+      }
+    },
+    {
+      "venue_id": "E16",
+      "before": {
+        "borrowed_principal_average": "0",
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "traced",
+        "cost_of_funds": "0E-32"
+      },
+      "after": {
+        "borrowed_principal_average": "0",
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "traced",
+        "cost_of_funds": "0E-32"
+      }
+    },
+    {
+      "venue_id": "E17",
+      "before": {
+        "borrowed_principal_average": "0E-52",
+        "modeled_cost_of_funds": "0",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "traced",
+        "cost_of_funds": "0"
+      },
+      "after": {
+        "borrowed_principal_average": "0E-52",
+        "modeled_cost_of_funds": "0",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "traced",
+        "cost_of_funds": "0"
+      }
+    },
+    {
+      "venue_id": "E18",
+      "before": {
+        "borrowed_principal_average": "0",
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "traced",
+        "cost_of_funds": "0E-32"
+      },
+      "after": {
+        "borrowed_principal_average": "0",
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "traced",
+        "cost_of_funds": "0E-32"
+      }
+    },
+    {
+      "venue_id": "E19",
+      "before": {
+        "borrowed_principal_average": "0",
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      },
+      "after": {
+        "borrowed_principal_average": "0",
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      }
+    },
+    {
+      "venue_id": "E23",
+      "before": {
+        "borrowed_principal_average": "0",
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      },
+      "after": {
+        "borrowed_principal_average": "0",
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      }
+    },
+    {
+      "venue_id": "E20",
+      "before": {
+        "borrowed_principal_average": "177814609.8296868685833427239",
+        "modeled_cost_of_funds": "551294.7725367455837218664592",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "551294.7725367455837218664592"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      },
+      "after": {
+        "borrowed_principal_average": "177819204.9595899772444897648",
+        "modeled_cost_of_funds": "551309.0192757549606301375231",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "551309.0192757549606301375231"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      }
+    },
+    {
+      "venue_id": "E21",
+      "before": {
+        "borrowed_principal_average": "0",
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      },
+      "after": {
+        "borrowed_principal_average": "0",
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      }
+    },
+    {
+      "venue_id": "E22",
+      "before": {
+        "borrowed_principal_average": "0E-104",
+        "modeled_cost_of_funds": "0E-136",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      },
+      "after": {
+        "borrowed_principal_average": "16728886.48582869956862101018",
+        "modeled_cost_of_funds": "51868.60780399987883337335372",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "51868.60780399987883337335372"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      }
+    },
+    {
+      "venue_id": "E24",
+      "before": {
+        "borrowed_principal_average": "0",
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "traced",
+        "cost_of_funds": "0E-32"
+      },
+      "after": {
+        "borrowed_principal_average": "0",
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "traced",
+        "cost_of_funds": "0E-32"
+      }
+    },
+    {
+      "venue_id": "E26",
+      "before": {
+        "borrowed_principal_average": "0",
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "traced",
+        "cost_of_funds": "0E-32"
+      },
+      "after": {
+        "borrowed_principal_average": "0",
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "traced",
+        "cost_of_funds": "0E-32"
+      }
+    },
+    {
+      "venue_id": "E27",
+      "before": {
+        "borrowed_principal_average": "0",
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      },
+      "after": {
+        "borrowed_principal_average": "0",
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      }
+    },
+    {
+      "venue_id": "E38",
+      "before": {
+        "borrowed_principal_average": "0",
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      },
+      "after": {
+        "borrowed_principal_average": "0",
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      }
+    },
+    {
+      "venue_id": "E40",
+      "before": {
+        "borrowed_principal_average": "0",
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "traced",
+        "cost_of_funds": "0E-32"
+      },
+      "after": {
+        "borrowed_principal_average": "0",
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "traced",
+        "cost_of_funds": "0E-32"
+      }
+    },
+    {
+      "venue_id": "E41",
+      "before": {
+        "borrowed_principal_average": "3270769.881637548878483626658",
+        "modeled_cost_of_funds": "10150.24931665227886329050210",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "10150.24931665227886329050210"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      },
+      "after": {
+        "borrowed_principal_average": "3270769.881637548878483626658",
+        "modeled_cost_of_funds": "10150.24931665227886329050210",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "10150.24931665227886329050210"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      }
+    },
+    {
+      "venue_id": "E42",
+      "before": {
+        "borrowed_principal_average": "298489726.3178690837933574928",
+        "modeled_cost_of_funds": "925434.7881345564076668380051",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "925434.7881345564076668380051"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      },
+      "after": {
+        "borrowed_principal_average": "298489758.9986261156904702423",
+        "modeled_cost_of_funds": "925434.8895260546400190576023",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "925434.8895260546400190576023"
+        },
+        "basis_status": "unresolved",
+        "cost_of_funds": null
+      }
+    },
+    {
+      "venue_id": "E12_PAU",
+      "before": {
+        "borrowed_principal_average": "397368.9106883090330642743481",
+        "modeled_cost_of_funds": "1233.513467956631497028953141",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "1233.513467956631497028953141"
+        },
+        "basis_status": "traced",
+        "cost_of_funds": "1233.513467956631497028953141"
+      },
+      "after": {
+        "borrowed_principal_average": "397368.9106883090330642743481",
+        "modeled_cost_of_funds": "1233.513467956631497028953141",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "1233.513467956631497028953141"
+        },
+        "basis_status": "traced",
+        "cost_of_funds": "1233.513467956631497028953141"
+      }
+    },
+    {
+      "venue_id": "E36",
+      "before": {
+        "borrowed_principal_average": "0E-53",
+        "modeled_cost_of_funds": "0E-85",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "traced",
+        "cost_of_funds": "0E-85"
+      },
+      "after": {
+        "borrowed_principal_average": "0E-53",
+        "modeled_cost_of_funds": "0E-85",
+        "modeled_cost_of_funds_by_ilk": {},
+        "basis_status": "traced",
+        "cost_of_funds": "0E-85"
+      }
+    }
+  ],
+  "funding_uncertainty": {
+    "method": "conservative_marginal_funding_envelopes_v1",
+    "assumptions": [
+      "Observed debt draws and repayments are complete",
+      "Normalized movements, prices and custody matches are correct",
+      "Unknown receipts may reattribute existing debt but never create debt"
+    ],
+    "interpretation": "Outer bounds, not validated charges; venue upper bounds are not additive",
+    "skipped_allocations": {
+      "E21": "Requires off-chain principal payment matching",
+      "E38": "No capital account mapping"
+    },
+    "allocations": {
+      "E1": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-61",
+            "upper": "0.0000760501721219465889696766322627219089003960509053937458335367"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2114",
+            "upper": "0.00118677686305262753558474443170455166273278054138543807897133"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-95",
+            "upper": "2.35787461039512265177764634150230330107931837246353202761555E-7"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2085",
+            "upper": "0.00000368084282528454811547103845525762538253367749621578642482905"
+          }
+        }
+      },
+      "E10": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-182",
+            "upper": "2153445720.89742453110712309564373088996313526857997103930319"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2114",
+            "upper": "3276071.91660740675379094106952788326777643553189773007194033"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-2181075.11643238765173036333045313972424996569900000000000000",
+            "upper": "6676421.09917209227870979861520144722548322443962582394028998"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-2181075.11643238765173036333045313972424996569900000000000000",
+            "upper": "10166.2690141934932834133472148594974344420313842684851526869"
+          }
+        }
+      },
+      "E11": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-61",
+            "upper": "15864287.6048764990528196600948455996656779370392036146885657"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-1029",
+            "upper": "688172.755717258064516135161290322580645161290322580645161292"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-84",
+            "upper": "49147.4771513310435345501907998578687837663847291857413789475"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-999",
+            "upper": "2130.99346093402639987443780156454231751369787343951810000000"
+          }
+        }
+      },
+      "E12": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-114",
+            "upper": "27530147.0290871662883480966623521701913348406266229425019244"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2167",
+            "upper": "3582524.36582822580645162225806451612903225806451612903225808"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-85",
+            "upper": "85361.0638146013641603950695012004376432634498709862671743430"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2138",
+            "upper": "11117.9439184114932675352736846396398340359721436267419000000"
+          }
+        }
+      },
+      "E12_PAU": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "0E-61",
+            "upper": "0E-61"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "34585.0654278896782255646707891354438009234769917578495525354",
+            "upper": "397368.910688309033064274348208490282510600896346596559229969"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-85",
+            "upper": "0E-498"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "107.024492438854287941993929312065434604048975742061030117849",
+            "upper": "1233.51346795663149702895314118254177316850897574206103011789"
+          }
+        }
+      },
+      "E13": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "0E-61",
+            "upper": "0E-61"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "0E-61",
+            "upper": "0E-61"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-32",
+            "upper": "0E-32"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-32",
+            "upper": "0E-32"
+          }
+        }
+      },
+      "E15": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-315",
+            "upper": "27771.4284763440685475246316458138530457155485237792285814549"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-799",
+            "upper": "27673.6553586900204026169949882457644816289842313021861242248"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-285",
+            "upper": "86.0871912145205716644520192815812127703341454901717450499045"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-769",
+            "upper": "85.7828941416811379819347037572846708462850225710197473131493"
+          }
+        }
+      },
+      "E16": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "0E-61",
+            "upper": "0E-61"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "0E-61",
+            "upper": "0E-61"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-32",
+            "upper": "0E-32"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-32",
+            "upper": "0E-32"
+          }
+        }
+      },
+      "E17": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "0E-61",
+            "upper": "0E-61"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "0E-61",
+            "upper": "0E-61"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-32",
+            "upper": "0E-32"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-32",
+            "upper": "0E-32"
+          }
+        }
+      },
+      "E18": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "0E-61",
+            "upper": "0E-61"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "0E-61",
+            "upper": "0E-61"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-32",
+            "upper": "0E-32"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-32",
+            "upper": "0E-32"
+          }
+        }
+      },
+      "E19": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-123",
+            "upper": "2634825202.60856828229523667103801686670425745649254279401702"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2114",
+            "upper": "3283238.38109806451612904193548387096774193548387096774193553"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-93",
+            "upper": "8168721.41182913009938638981712887665687345955143422569621679"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2085",
+            "upper": "10188.5049495105584653793322045499799886906564068395049000001"
+          }
+        }
+      },
+      "E2": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-61",
+            "upper": "0.00134396071420277318734363161595701925631563787535886646446802"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2114",
+            "upper": "0.0220735544117468294779095654280185955622962839767496845983372"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-94",
+            "upper": "0.00000416684243699789711408834023565329250141302405658487697209882"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2085",
+            "upper": "0.0000684609010325664838185893553283938662992473596803619700780081"
+          }
+        }
+      },
+      "E20": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-61",
+            "upper": "250875400.064930946864042023751639520603124011054198258250550"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2114",
+            "upper": "3276072.39932870967741936451612903225806451612903225806451617"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-83",
+            "upper": "777819.062969766549253676587850975328275949788280116813482616"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2085",
+            "upper": "10166.2705165561365269563552744473064227156564068395049000001"
+          }
+        }
+      },
+      "E22": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-61",
+            "upper": "24185039.4224388503613624455291779294246534994486681391425346"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2114",
+            "upper": "3276072.39932870967741936451612903225806451612903225806451617"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-84",
+            "upper": "74987.2280998501984188556598720057355877322723034538055556975"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2085",
+            "upper": "10166.2705165561365269563552744473064227156564068395049000001"
+          }
+        }
+      },
+      "E23": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-61",
+            "upper": "2326211974.37930850701708357944789146399648142198222966122092"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2114",
+            "upper": "3276072.39932870967741936451612903225806451612903225806451617"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-82",
+            "upper": "7212233.71327944936153585361131975473885154166019118720514715"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2085",
+            "upper": "10166.2705165561365269563552744473064227156564068395049000001"
+          }
+        }
+      },
+      "E24": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "0E-61",
+            "upper": "0E-61"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "0E-61",
+            "upper": "0E-61"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-32",
+            "upper": "0E-32"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-32",
+            "upper": "0E-32"
+          }
+        }
+      },
+      "E26": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "0E-61",
+            "upper": "0E-61"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "0E-61",
+            "upper": "0E-61"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-32",
+            "upper": "0E-32"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-32",
+            "upper": "0E-32"
+          }
+        }
+      },
+      "E27": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-61",
+            "upper": "87953905.3198201290322580645161290322580645161290322580645164"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "0E-79",
+            "upper": "32257.7109198387096774196774193548387096774193548387096774195"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-50",
+            "upper": "271830.66684014572616564648255990459162421888"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-50",
+            "upper": "99.69580131992642040475407354830721953827671646737120"
+          }
+        }
+      },
+      "E3": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-61",
+            "upper": "940.684158746417650844669938795464007249192642305914042117967"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2114",
+            "upper": "14676.5768069997177337845108196513116351613184381107525231736"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-88",
+            "upper": "2.91651581110491331731355201757586969211057697623777525411565"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2085",
+            "upper": "45.5200788731483356559289679086120761796301339336440280401194"
+          }
+        }
+      },
+      "E36": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "0E-61",
+            "upper": "0E-61"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "0E-61",
+            "upper": "0E-61"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-32",
+            "upper": "0E-32"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-32",
+            "upper": "0E-32"
+          }
+        }
+      },
+      "E37": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "0E-61",
+            "upper": "0E-61"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "0E-61",
+            "upper": "0E-61"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-32",
+            "upper": "0E-32"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-32",
+            "upper": "0E-32"
+          }
+        }
+      },
+      "E4": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-61",
+            "upper": "2308142.29326865293267090183760861157218647402892086760847744"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2114",
+            "upper": "3114720.24274583397111676096135582828565192830722854622981736"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-85",
+            "upper": "7159.66255754873267911484996399620559278020907525937211531260"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2085",
+            "upper": "9664.97748493752841243392744622529749799605010297841048367417"
+          }
+        }
+      },
+      "E40": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "0E-61",
+            "upper": "0E-61"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "0E-61",
+            "upper": "0E-61"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-32",
+            "upper": "0E-32"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-32",
+            "upper": "0E-32"
+          }
+        }
+      },
+      "E41": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-61",
+            "upper": "888927.696721129779855510240110048886295593310094249796937173"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "449090.350914709677419354516129032258064516129032258064516128",
+            "upper": "3715093.40096755135969629327415799615389919352246849429379005"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-145",
+            "upper": "2756.04905037540193852458055031327212950379834344858271460846"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "1394.47751035829353372466007763695735107307573678723700000000",
+            "upper": "11529.4670639462945527990483927502786713633104738801051447730"
+          }
+        }
+      },
+      "E42": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-61",
+            "upper": "304957430.083967351264957023010594958570346977082530872350440"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2114",
+            "upper": "3276072.39932870967741936451612903225806451612903225806451617"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-83",
+            "upper": "945496.060802245363862778509380772439343042003324963673879841"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2085",
+            "upper": "10166.2705165561365269563552744473064227156564068395049000001"
+          }
+        }
+      },
+      "E5": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "0E-61",
+            "upper": "0E-61"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "0E-61",
+            "upper": "0E-61"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-32",
+            "upper": "0E-32"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-32",
+            "upper": "0E-32"
+          }
+        }
+      },
+      "E6": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-241",
+            "upper": "8540144.50645700403662401217704774840032957273262066895915470"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2114",
+            "upper": "524039.830018592190454985678488119548749787191322252300170298"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-211",
+            "upper": "26478.3175735044138301226595447379825783854087330031856461333"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2085",
+            "upper": "1623.29305201547490221024457400501672690196698812267770614297"
+          }
+        }
+      },
+      "E7": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-61",
+            "upper": "1897623709.81371119959907623423501075756508575017146318396077"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2114",
+            "upper": "3276072.39932870967741936451612903225806451612903225806451617"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-82",
+            "upper": "5883430.16276006473963798453028508996585803358128276201865595"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2085",
+            "upper": "10166.2705165561365269563552744473064227156564068395049000001"
+          }
+        }
+      },
+      "E8": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-61",
+            "upper": "126117274.225464151869244101933765071019762363347854078997160"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2114",
+            "upper": "3276072.39994088867876288370568280090564276680316776910137617"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-83",
+            "upper": "391016.496782715824560346020984505707237220560958299570197669"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2085",
+            "upper": "10166.2705184557882676352923798214442422615188861836343357187"
+          }
+        }
+      },
+      "E9": {
+        "principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-0E-122",
+            "upper": "1625026781.23686157569636897760253219119019564020785256041776"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-0E-2114",
+            "upper": "3389701.10890182829770899621240717617462028434241139254624104"
+          }
+        },
+        "cost_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+            "lower": "-2656565.64925212089624449359296606486299860622455521968389800",
+            "upper": "5038265.24224890982529757157263539013664554981667280974232244"
+          },
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+            "lower": "-2656565.64925212089624449359296606486299860622455521968389800",
+            "upper": "10519.9145911551430516806579953944423844097833702915584699719"
+          }
+        }
+      }
+    },
+    "joint_cost_by_ilk": {
+      "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+        "lower": "-4837640.76568450854797485692341920458724857192355521968389800",
+        "upper": "8286582.75571377704494162272758004778095495431000000000000000"
+      },
+      "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+        "lower": "-4836139.26368171140015319026941225556446289479884269038586790",
+        "upper": "11784.7372704562552547148612968949528875509721436267419000000"
+      }
+    }
+  },
+  "validation": {
+    "broad_suite": "1446 passed, 2 skipped, 7 pre-existing warnings; subsequent owner/precision checks covered by focused suite",
+    "focused_suite": "13 passed on final implementation",
+    "ruff": "passed",
+    "control_files": "Spark and Grove August provenance bytes unchanged"
+  }
+}

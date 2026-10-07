@@ -51,12 +51,13 @@ def unavailable_financing(pnl, error: Exception) -> dict:
                 'unresolved_allocations': [r['venue_id'] for r in rows]}}
 
 
-def allocation_financing(pnl, history, *, idle_amounts=None) -> dict:
+def allocation_financing(pnl, history, *, idle_amounts=None, quantify_uncertainty=False) -> dict:
     from .executed_spell_capital import apply_executed_spells
 
     history = apply_executed_spells(history)
     start, end = pnl.period.start, pnl.period.end
-    replay = replay_history(history, start - timedelta(days=1), end)
+    replay = replay_history(history, start - timedelta(days=1), end,
+                            quantify_uncertainty=quantify_uncertainty)
     n_days = (end - start).days + 1
     days = [start + timedelta(days=i) for i in range(n_days)]
     rates = {}
@@ -213,7 +214,13 @@ def allocation_financing(pnl, history, *, idle_amounts=None) -> dict:
             "deduction_difference_cost": (used_deductions[day] - global_deductions) * rates[day],
             "global_floor_effect": Decimal(str(source_row["daily_sky_rev"])) - utilized * rates[day],
         })
+    bounds = {}
+    if quantify_uncertainty:
+        from .allocation_uncertainty import financing_bounds
+
+        bounds["funding_uncertainty"] = financing_bounds(pnl, history, replay, rates, idle_amounts or {})
     return {
+        **bounds,
         "method": "transaction_weighted_average_borrowed_basis_v1",
         "status": "partial" if unresolved else "calculated",
         "allocations": rows,
