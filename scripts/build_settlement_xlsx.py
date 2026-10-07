@@ -47,6 +47,7 @@ _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO / "src"))
 from settle.load.cof_attribution import compute_sheet_rows  # noqa: E402
 from settle.load.summary import _venue_sort_key  # noqa: E402
+from settle.load.reference_rate_note import reference_rate_note  # noqa: E402
 
 # Styling.
 _BOLD   = Font(bold=True)
@@ -153,6 +154,12 @@ def _write_summary(ws, prov: dict, sheet_rows: list[dict]) -> None:
 
     ws.append([f"{prime} — Monthly settlement {month}"])
     ws["A1"].font = _TITLE
+    rate_note = reference_rate_note(prov)
+    if rate_note:
+        ws.append(["Reference-rate assumption", rate_note])
+        ws.cell(ws.max_row, 2).alignment = Alignment(wrap_text=True, vertical="top")
+        ws.merge_cells(start_row=ws.max_row, start_column=2, end_row=ws.max_row, end_column=4)
+        ws.row_dimensions[ws.max_row].height = 75
     ws.append([])
 
     def _block(title: str, rows: list[tuple[str, Decimal]], total: Decimal) -> None:
@@ -235,6 +242,18 @@ def _write_summary(ws, prov: dict, sheet_rows: list[dict]) -> None:
         total=sum_p2g,
     )
     ws.append([])
+
+    adjustments = prov.get("settlement_adjustments") or []
+    if adjustments:
+        bridge = prov["settlement_payment"]
+        _block("Settlement payment (historical corrections separately identified)",
+               rows=[("Current-period net revenue", _D(bridge['period_net_revenue']))] + [
+                   (f"{e['label']} — {e['earned_period']}", _D(e['amount'])) for e in adjustments
+               ], total=_D(bridge['total']))
+        for row in range(ws.max_row - len(adjustments) - 1, ws.max_row + 1):
+            ws.cell(row, 2).number_format = '#,##0.000000'
+        ws.append(["Historical corrections are excluded from current-period revenue."])
+        ws.append([])
 
     # Period info
     ws.append(["Period",     f"{prov['period']['start']} → {prov['period']['end']} "
@@ -858,6 +877,9 @@ def _write_debt(ws, prov: dict) -> None:
     ]
     if has_subsidy:
         cols += ["T (months)", "ref_rate APR", "sub APR"]
+    has_basin = any(_D(r.get("basin_idle", "0")) != 0 for r in rows)
+    if has_basin:
+        cols.insert(7, "- Basin idle")
     cols += ["daily Sky charge", "daily Sky charge (gross on cum_debt)"]
     ws.append(cols)
     _header_row(ws, ws.max_row, len(cols))
@@ -884,17 +906,19 @@ def _write_debt(ws, prov: dict) -> None:
         if has_subsidy:
             out += [r.get("t_months"), _rate(r, "ref_rate_apr", "ref_rate_apy"),
                     _rate(r, "sub_apr", "sub_apy")]
+        if has_basin:
+            out.insert(7, float(_D(r.get("basin_idle", "0"))))
         out += [float(rev), float(gross)]
         ws.append(out)
         row_n = ws.max_row
         # USD columns: cum_debt … utilized, daily charges
-        for c in (2, 3, 4, 5, 6, 7, 8):
+        for c in range(2, cols.index("= utilized") + 2):
             ws.cell(row_n, c).number_format = _USD0
         # APY columns
-        for c in (9, 10):
+        for c in (cols.index("SSR APY") + 1, cols.index("base APR") + 1):
             ws.cell(row_n, c).number_format = _PCT
         if has_subsidy:
-            for c in (12, 13):  # ref_rate APR, sub APR (T stays integer)
+            for c in (cols.index("ref_rate APR") + 1, cols.index("sub APR") + 1):
                 ws.cell(row_n, c).number_format = _PCT
         for c in (len(cols) - 1, len(cols)):
             ws.cell(row_n, c).number_format = _USD
@@ -919,6 +943,9 @@ def _write_debt(ws, prov: dict) -> None:
         widths.update({11: 11, 12: 12, 13: 11, 14: 18, 15: 22})
     else:
         widths.update({11: 18, 12: 22})
+    if has_basin:
+        widths = {(c + 1 if c >= 8 else c): width for c, width in widths.items()}
+        widths[8] = 14
     _set_widths(ws, widths)
 
 
@@ -957,8 +984,8 @@ def _write_allocation_yields(ws, analytics: dict) -> None:
         ws.column_dimensions[col].width = 25
 
 
-def build_xlsx(prime_id: str, month: str) -> Path:
-    cell_dir = _REPO / "settlements" / prime_id / month
+def build_xlsx(prime_id: str, month: str, *, output_dir: Path | None = None) -> Path:
+    cell_dir = output_dir if output_dir is not None else _REPO / "settlements" / prime_id / month
     prov     = _read_provenance(cell_dir)
     sheet, _totals = compute_sheet_rows(prov, prime_id)
     cfg      = _read_prime_yaml(prime_id)
@@ -997,8 +1024,9 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--prime", default="grove")
     parser.add_argument("--month", default="2026-04")
+    parser.add_argument("--output-dir", type=Path, help="Directory containing provenance.json")
     args = parser.parse_args()
-    out = build_xlsx(args.prime, args.month)
+    out = build_xlsx(args.prime, args.month, output_dir=args.output_dir)
     print(f"Wrote {out}")
     return 0
 

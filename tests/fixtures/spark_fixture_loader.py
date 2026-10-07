@@ -199,11 +199,11 @@ def build_spark_sources(
     # external_alm_sources is empty AND inflow_by_counterparty returns empty)
     # consumes this to set capital_net = Δvalue, producing revenue = 0 — the
     # correct behavior for par-stables held at the ALM with no off-chain
-    # yield source. Spark's `external_alm_sources` lists only the Anchorage
-    # escrow EOA (PR 1, 2026-05-05) — that affects S26 USDC raw via the
-    # main classifier path; the other Cat A venues (USDT/PYUSD/DAI/USDe/USDS
-    # raw) have no registered external sender, so this fallback still
-    # produces revenue = 0 for them.
+    # yield source. Spark's `external_alm_sources` also contains PayPal/Paxos
+    # and SparkLend reserve-treasury senders. Only venues explicitly marked
+    # `external_yield_source` enter the Cat A classifier; the SparkLend entries
+    # are consumed by the separate Cat C spToken path. Other Cat A venues
+    # still use this fallback and produce revenue = 0.
     # Coverage assertion: for any Cat B venue with a non-zero EoM cum_balance
     # in the fixture, demand at least one row dated >= period_filter_start.
     # Otherwise the synthesized mint/burn frames are empty for that venue,

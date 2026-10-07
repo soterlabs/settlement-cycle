@@ -1,0 +1,12 @@
+{
+  "prime": "grove",
+  "cutoff": "2026-09-30",
+  "daily_revision": "11c4df339ebe710cccc6890a674ec4bdb35df3248ec76944050fe24fef4363cd",
+  "same_reference_rates": true,
+  "same_code_and_configuration": true,
+  "matched": true,
+  "differences": [],
+  "daily_sha256": "b65cbc633943ce542f7817074640dc81c3a138e0ad9301767dd12f7bc618afc6",
+  "monthly_sha256": "b65cbc633943ce542f7817074640dc81c3a138e0ad9301767dd12f7bc618afc6",
+  "official_rate_refresh_method": "Full API and independent monthly reruns completed before switching to scoped rate-only processing."
+}

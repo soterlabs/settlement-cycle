@@ -42,3 +42,19 @@ def test_hard_deadline_terminates_instead_of_being_swallowed():
         ' except Exception: pass\n'], capture_output=True, timeout=10)
     assert result.returncode == 124
     assert b'deadline exceeded' in result.stderr
+
+
+def test_missing_only_backfill_preserves_existing_dates_including_yesterday():
+    today = date(2026, 9, 23)
+    first, last = date(2026, 9, 1), today - timedelta(days=1)
+    published = {first + timedelta(days=i) for i in range(13, 22)}
+    assert planned_dates(published, set(), today, first, last, missing_only=True) == [
+        first + timedelta(days=i) for i in range(13)]
+    assert planned_dates(published, set(), today, first, last) == [
+        first + timedelta(days=i) for i in range(22)]
+    assert planned_dates({first}, set(), today, first, first, missing_only=True) == []
+
+
+def test_missing_only_requires_explicit_window():
+    with pytest.raises(ValueError, match='requires an explicit'):
+        planned_dates(set(), set(), date(2026, 9, 23), missing_only=True)

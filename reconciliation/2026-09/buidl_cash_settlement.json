@@ -1,0 +1,45 @@
+{
+  "scope": "September 2026 BUIDL boundary redemption; historical January-August reports remain unchanged",
+  "historical_jan_aug_credit_usds": "165013.90",
+  "september_boundary_cost_unrounded_usds": "12499.846781",
+  "september_boundary_cost_usds": "12499.85",
+  "combined_historical_and_boundary_credit_usds": "177513.75",
+  "booking": "September boundary cost enters E10 actual revenue and 100% Sky Direct Exposure revenue once; historical sky_adj remains -165013.90",
+  "historical_sky_adj_usds": "-165013.90",
+  "in_flight_sde_value_usds": "24986500.50",
+  "historical_august_cof_credit_usds": "2508.55",
+  "matched_events": {
+    "cash": {
+      "kind": "cash",
+      "date": "2026-09-01",
+      "amount": "24986500.153219",
+      "tx": "0x5add7249801ed90f803a6cdfec0c9a6d4fc5f5b3343ee50fa9f9ed4b833cb8cf",
+      "block": 25883247,
+      "log_index": 329,
+      "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "sender": "0xcfc0f98f30742b6d880f90155d4ebb885e55ab33",
+      "recipient": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "event_id": "0x5add7249801ed90f803a6cdfec0c9a6d4fc5f5b3343ee50fa9f9ed4b833cb8cf:329"
+    },
+    "requests": [
+      {
+        "kind": "request",
+        "date": "2026-08-31",
+        "amount": "24999000",
+        "tx": "0xf4b2dc1e714c807cb7f4a5fcaaf80ae2a12182db5c82a244879cc245ccd11c35",
+        "block": 25877252,
+        "log_index": 1268,
+        "token": "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041",
+        "sender": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+        "recipient": "0x8780dd016171b91e4df47075da0a947959c34200",
+        "event_id": "0xf4b2dc1e714c807cb7f4a5fcaaf80ae2a12182db5c82a244879cc245ccd11c35:1268",
+        "shares": "24999000",
+        "carrying_value_usd": "24999000"
+      }
+    ],
+    "carrying_value_usd": "24999000",
+    "cash_usd": "24986500.153219",
+    "revenue_adjustment_usd": "-12499.846781",
+    "matching": "explicit_event_link"
+  }
+}

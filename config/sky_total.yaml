@@ -92,6 +92,21 @@ msc_preview:
     osero:   {mint: 497, send: 12043}
     keel:    {mint: 0, send: 35328, dv_adj: -903}
     skybase: {mint: 0, send: 374489, dv_adj: 89300, gar_in_dv: 152255.89}
+  # September carries the dedicated Jan-Aug 2026 reconciliations without
+  # regenerating any published monthly report:
+  #   * Spark: reserve-factor sweeps are Prime-side Supply-Side revenue, so
+  #     sv_adj raises both MSC debt (mint) and Send to prime by $2,392,354.07.
+  #   * Grove: realized BUIDL redemption fees ($162,505.35) plus the August 31
+  #     in-flight SDE CoF correction ($2,508.55) reduce Sky-side revenue, so
+  #     sky_adj lowers MSC debt (mint) by $165,013.90. It does not create a
+  #     separate Send to prime payment.
+  # Mint/send remain derived until the September MSC post is published.
+  '2026-09':
+    spark: {sv_adj: 2392354.07}
+    # September's $12,499.85 boundary redemption cost is recognized in E10
+    # revenue by redemption_settlements.yaml. Keep ONLY the historical
+    # $165,013.90 here; their combined credit is $177,513.75, not two fees.
+    grove: {sky_adj: -165013.90}
 
 # ── Step 1 Capital actually PAID to the Core Council Buffer, per execution
 # month. Source: each MSC post's BA capital-allocations section (20% of the

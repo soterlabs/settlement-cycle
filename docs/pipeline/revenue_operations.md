@@ -10,7 +10,12 @@ bootstraps the revenue tables; deploy the input schema (`db/schema.sql`) once.
 A first installation calculates yesterday only. Later ticks fill missing dates
 since the first known run, capped to the last 90 completed UTC days. Explicit
 backfills use `--from YYYY-MM-DD --to YYYY-MM-DD` (both required, at most 90 days
-back), optionally `--prime obex`. Older monthly figures stay canonical. A code or
+back), optionally `--prime obex`. Add `--missing-only` to an explicit window to publish only dates without an
+existing result, even when the backfill runs a newer code/config revision.
+The planner checks published dates while holding the same per-prime lock as the
+scheduled worker. Completed dates are retained on restart; failed dates remain
+eligible. Omit the flag only when intentionally recomputing published dates.
+Older monthly figures stay canonical. A code or
 input revision change recomputes yesterday; restating earlier dates is explicit.
 
 A session advisory lock per prime prevents overlap, including different revisions

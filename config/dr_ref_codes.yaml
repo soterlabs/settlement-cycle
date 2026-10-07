@@ -92,6 +92,7 @@ primes:
     - '2001'
     - '2002'
     - '2005'
+    - '2009'     # Grove Farm emitted beneficiary code (September close instruction)
     - '2008'
     - '2012'     # was 'absent'; first HyperSync row is 2026-08 ($3,093.73)
     - '2222'
@@ -100,6 +101,12 @@ primes:
     - '2003'
 
   skybase:
+    # Explicit upstream program ownership (settle-dr-dune docs):
+    # oneinch-1020-skybase.md and skybase-pendle-morpho.md.
+    - '1020'     # Skybase via 1inch
+    - '1997'     # Pendle SY-sUSDS / PT-sUSDS backing
+    - '1998'     # Morpho USDS Flagship
+    - '1999'     # Morpho USDS Risk Capital
     - '0'        # explicit on-chain referral, Ethereum. L2 sUSDS splits to 10000/10001
     - '1'
     - '1001'     # from Feb 2026 payments may have been applied to 1016
@@ -121,6 +128,11 @@ primes:
   # Osero settles from this repo since the 2026-07 cycle (config/osero.yaml
   # + scripts/run_osero_2026.py), so these codes now feed a real report.
   osero:
+    # Osero team code list / ops assignment: settle-dr-dune/docs/
+    # osero-codes.md and lifi-oserofrontend.md. No blanket 3xxx ownership.
+    - '3002'
+    - '3006'     # Jumper Earn, forwarding-aware referral attribution
+    - '3900'     # Osero frontend through Li.Fi
     - '3000'
     - '3009'     # gtSkyLooping Morpho strategy — new in settle-dr-dune 2f9cfd3
                  # ("Custody perimeters"); first row is 2026-08 ($21.19).
@@ -134,6 +146,14 @@ primes:
 
 # Codes deliberately not paid to any prime.
 unattributed:
+
+  # No confirmed beneficiary. Explicitly withheld, never inferred from a range.
+  pending_ownership:
+    - '123'
+    - '232'
+    - '234'
+    - '3003'
+    - '3123'
 
   # Untagged / synthetic buckets that belong to no single prime. These were
   # the legacy Summary's "Other" group.

@@ -1,0 +1,49 @@
+{
+  "source": "Ethereum Transfer logs; August 31 requests and August 31 / September 1 issuer cash receipts",
+  "events": [
+    {
+      "kind": "request",
+      "date": "2026-08-31",
+      "amount": "1000",
+      "tx": "0xdda24bdee3ca92374c0332d983149042b00a3a197b670997699ec45fd20ba373",
+      "block": 25877063,
+      "log_index": 375,
+      "sender": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "recipient": "0x8780dd016171b91e4df47075da0a947959c34200",
+      "token": "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041"
+    },
+    {
+      "kind": "request",
+      "date": "2026-08-31",
+      "amount": "24999000",
+      "tx": "0xf4b2dc1e714c807cb7f4a5fcaaf80ae2a12182db5c82a244879cc245ccd11c35",
+      "block": 25877252,
+      "log_index": 1268,
+      "sender": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "recipient": "0x8780dd016171b91e4df47075da0a947959c34200",
+      "token": "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041"
+    },
+    {
+      "kind": "cash",
+      "date": "2026-08-31",
+      "amount": "999.178498",
+      "tx": "0xe149e31a975facc1e65a0582cc0e6a2d50b7fd056fc0618667bf3de5f7629908",
+      "block": 25878260,
+      "log_index": 85,
+      "sender": "0xcfc0f98f30742b6d880f90155d4ebb885e55ab33",
+      "recipient": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    },
+    {
+      "kind": "cash",
+      "date": "2026-09-01",
+      "amount": "24986500.153219",
+      "tx": "0x5add7249801ed90f803a6cdfec0c9a6d4fc5f5b3343ee50fa9f9ed4b833cb8cf",
+      "block": 25883247,
+      "log_index": 329,
+      "sender": "0xcfc0f98f30742b6d880f90155d4ebb885e55ab33",
+      "recipient": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    }
+  ]
+}

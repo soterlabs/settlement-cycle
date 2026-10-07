@@ -499,7 +499,7 @@ vest AS (
 --   tx has an RWA jar transfer → income:rwa_void
 --   otherwise                  → income:surplus_return
 vow_moves AS (
-  SELECT tx_hash, block_date AS d,
+  SELECT tx_hash, "index" AS log_index, block_date AS d,
          CAST(bytearray_to_uint256(topic3) AS DOUBLE) / 1e45 AS amount
   FROM ethereum.logs
   WHERE contract_address = 0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B   -- Vat
@@ -523,7 +523,7 @@ rwa_void_txs AS (   -- txs in which a known RWA jar moved stablecoins (void())
     AND evt_block_number <= {{pin_block}}
 ),
 surplus AS (
-  SELECT d, amount FROM vow_moves
+  SELECT d, amount, tx_hash, log_index FROM vow_moves
   WHERE tx_hash NOT IN (SELECT tx FROM jar_burns)      -- PSM jar → PSM line
     AND tx_hash NOT IN (SELECT tx FROM rwa_void_txs)   -- RWA jar → RWA line
 ),
@@ -532,30 +532,31 @@ rwa_void AS (
   WHERE tx_hash IN (SELECT tx FROM rwa_void_txs)
 )
 
-SELECT 'income:psm_jar' AS stream, CAST(d AS VARCHAR) AS label, d AS event_date, amount
+SELECT 'income:psm_jar' AS stream, CAST(d AS VARCHAR) AS label, d AS event_date, amount,
+       CAST(NULL AS VARCHAR) AS transaction_hash, CAST(NULL AS BIGINT) AS log_index
 FROM jar_burns
 UNION ALL
-SELECT 'income:stability_fee', label, CAST(NULL AS DATE), amount FROM fees
+SELECT 'income:stability_fee', label, CAST(NULL AS DATE), amount, CAST(NULL AS VARCHAR), CAST(NULL AS BIGINT) FROM fees
 UNION ALL
-SELECT 'income:liq_owe', 'liquidation owe (takes)', CAST(NULL AS DATE), COALESCE(amount, 0) FROM liq_owe
+SELECT 'income:liq_owe', 'liquidation owe (takes)', CAST(NULL AS DATE), COALESCE(amount, 0), CAST(NULL AS VARCHAR), CAST(NULL AS BIGINT) FROM liq_owe
 UNION ALL
-SELECT 'income:liq_due', 'liquidation due (barks)', CAST(NULL AS DATE), COALESCE(amount, 0) FROM liq_due
+SELECT 'income:liq_due', 'liquidation due (barks)', CAST(NULL AS DATE), COALESCE(amount, 0), CAST(NULL AS VARCHAR), CAST(NULL AS BIGINT) FROM liq_due
 UNION ALL
-SELECT 'income:surplus_return', CAST(d AS VARCHAR), d, amount FROM surplus
+SELECT 'income:surplus_return', CAST(d AS VARCHAR), d, amount, concat('0x', lower(to_hex(tx_hash))), log_index FROM surplus
 UNION ALL
-SELECT 'income:rwa_void', 'RWA jars (void)', CAST(NULL AS DATE), COALESCE(amount, 0) FROM rwa_void
+SELECT 'income:rwa_void', 'RWA jars (void)', CAST(NULL AS DATE), COALESCE(amount, 0), CAST(NULL AS VARCHAR), CAST(NULL AS BIGINT) FROM rwa_void
 UNION ALL
 SELECT 'expense:susds_drip', 'sUSDS SSR (gross, all holders)', CAST(NULL AS DATE),
-       COALESCE(amount, 0) FROM susds
+       COALESCE(amount, 0), CAST(NULL AS VARCHAR), CAST(NULL AS BIGINT) FROM susds
 UNION ALL
-SELECT 'expense:susds_prime', label, CAST(NULL AS DATE), amount FROM prime_carve
+SELECT 'expense:susds_prime', label, CAST(NULL AS DATE), amount, CAST(NULL AS VARCHAR), CAST(NULL AS BIGINT) FROM prime_carve
 UNION ALL
-SELECT 'expense:dsr_drip', 'DSR (pot)', CAST(NULL AS DATE), COALESCE(amount, 0) FROM dsr
+SELECT 'expense:dsr_drip', 'DSR (pot)', CAST(NULL AS DATE), COALESCE(amount, 0), CAST(NULL AS VARCHAR), CAST(NULL AS BIGINT) FROM dsr
 UNION ALL
-SELECT 'expense:stusds_drip', 'stUSDS', CAST(NULL AS DATE), COALESCE(amount, 0) FROM stusds
+SELECT 'expense:stusds_drip', 'stUSDS', CAST(NULL AS DATE), COALESCE(amount, 0), CAST(NULL AS VARCHAR), CAST(NULL AS BIGINT) FROM stusds
 UNION ALL
 SELECT 'expense:liq_coin', 'keeper incentives (kicks + redos)', CAST(NULL AS DATE),
-       COALESCE(amount, 0) FROM liq_coin
+       COALESCE(amount, 0), CAST(NULL AS VARCHAR), CAST(NULL AS BIGINT) FROM liq_coin
 UNION ALL
-SELECT 'expense:vest', 'vest (gross suckable)', CAST(NULL AS DATE), COALESCE(amount, 0) FROM vest
+SELECT 'expense:vest', 'vest (gross suckable)', CAST(NULL AS DATE), COALESCE(amount, 0), CAST(NULL AS VARCHAR), CAST(NULL AS BIGINT) FROM vest
 ORDER BY 1, 2

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -205,6 +206,9 @@ def test_load_prime_grove_nav_oracles(config_dir: Path):
     grove = load_prime(config_dir / "grove.yaml")
     by_id = {v.id: v for v in grove.venues}
 
+    assert by_id["E10"].nav_haircut_bps == Decimal("5")
+    assert by_id["E10"].nav_haircut_effective_date == date(2026, 9, 1)
+
     # JTRSY → Centrifuge pricePerShareFeed primary + Chronicle fallback.
     jtrsy = by_id["E9"]
     assert jtrsy.nav_oracle is not None
@@ -250,6 +254,21 @@ def test_load_prime_grove_nav_oracles(config_dir: Path):
     buidl = by_id["E10"]
     assert buidl.nav_oracle.kind == "const_one"
     assert buidl.nav_oracle.address is None
+
+
+def test_load_prime_spark_external_source_start_dates(config_dir: Path):
+    spark = load_prime(config_dir / "spark.yaml")
+    starts = spark.external_alm_source_start_dates[Chain.ETHEREUM]
+    treasury = Address.from_str(
+        "0xb137e7d16564c81ae2b0c8ee6b55de81dd46ece5"
+    )
+    assert starts[treasury] == date(2026, 9, 1)
+    assert treasury not in spark.external_sources_for_period(
+        Chain.ETHEREUM, date(2026, 8, 1),
+    )
+    assert treasury in spark.external_sources_for_period(
+        Chain.ETHEREUM, date(2026, 9, 1),
+    )
 
 
 def test_load_prime_grove_lp_fields(config_dir: Path):
@@ -343,3 +362,20 @@ def test_prime_rejects_venues_without_ilk():
             id="bad", ilk_bytes32=None, start_date=date(2025, 1, 1),
             venues=[venue],
         )
+
+
+@pytest.mark.parametrize("noise", ["1e-22", "-1e-22", "1e-9"])
+def test_monthly_pnl_accepts_sub_accounting_precision_noise(noise):
+    from decimal import Decimal as D
+    from settle.domain.monthly_pnl import MonthlyPnL
+    MonthlyPnL("grove", Month(2026, 9), Period.from_month(Month(2026, 9)),
+               D("1000000"), D("5"), D("50"), D("-999945") + D(noise), [], {})
+
+
+@pytest.mark.parametrize("noise", ["1e-8", "-0.01", "NaN", "Infinity"])
+def test_monthly_pnl_rejects_real_mismatch_or_nonfinite(noise):
+    from decimal import Decimal as D
+    from settle.domain.monthly_pnl import MonthlyPnL
+    with pytest.raises(ValueError, match="invariant broken"):
+        MonthlyPnL("grove", Month(2026, 9), Period.from_month(Month(2026, 9)),
+                   D("1000000"), D("5"), D("50"), D("-999945") + D(noise), [], {})

@@ -1,0 +1,50 @@
+{
+  "S12": {
+    "boundaries": [
+      {
+        "boundary": "som",
+        "shares_raw": "401044942988323179297",
+        "position_block": 25878704,
+        "ethereum_block": 25878704,
+        "direct_value": "907.538799718984340323",
+        "pipeline_value": "907.5387997189843402744472276"
+      },
+      {
+        "boundary": "eom",
+        "shares_raw": "401044942988323179297",
+        "position_block": 26093737,
+        "ethereum_block": 26093737,
+        "direct_value": "1091.22453113566395393",
+        "pipeline_value": "1091.224531135663953738864923"
+      }
+    ],
+    "revenue": "183.6857314166796134644176954",
+    "result": "direct historical contract valuations match; unchanged shares at both boundaries"
+  },
+  "E22": {
+    "boundaries": [
+      {
+        "boundary": "som",
+        "shares_raw": "20201743292497372656956881",
+        "position_block": 90704090,
+        "ethereum_block": 25878704,
+        "nav": "1.02485174998024",
+        "nav_timestamp": 1788217799,
+        "direct_value": "20703791.96596750779042466108",
+        "pipeline_value": "20703791.96596750779042466108"
+      },
+      {
+        "boundary": "eom",
+        "shares_raw": "20201743292497372656956881",
+        "position_block": 96561570,
+        "ethereum_block": 26093737,
+        "nav": "1.01968198436364",
+        "nav_timestamp": 1790795207,
+        "direct_value": "20599353.68809857519651688841",
+        "pipeline_value": "20599353.68809857519651688841"
+      }
+    ],
+    "revenue": "-104438.27786893259390777267",
+    "result": "direct historical contract valuations match; unchanged shares at both boundaries"
+  }
+}

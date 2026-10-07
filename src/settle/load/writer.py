@@ -36,6 +36,7 @@ from pathlib import Path
 from ..domain.monthly_pnl import MonthlyPnL
 from .dr_rewards import enrich_with_dr, load_dr
 from .provenance import write_provenance
+from .settlement_adjustments import apply_settlement_adjustments
 from .summary import write_summary
 
 # settlement-cycle/src/settle/load/writer.py → parents[3] = settlement-cycle/
@@ -63,6 +64,7 @@ def write_settlement(
     output_dir: Path,
     *,
     sources: dict[str, str] | None = None,
+    reference_rates: dict | None = None,
 ) -> dict[str, Path]:
     """Write provenance.json + the canonical settlement xlsx.
 
@@ -86,6 +88,11 @@ def write_settlement(
     prov_path = write_provenance(
         pnl, output_dir / "provenance.json", sources=sources,
     )
+    payload = json.loads(prov_path.read_text())
+    if reference_rates is not None:
+        payload["close_reference_rate_provenance"] = reference_rates
+    apply_settlement_adjustments(payload)
+    prov_path.write_text(json.dumps(payload, indent=2))
     written: dict[str, Path] = {
         "provenance": prov_path,
         "summary":    write_summary(prov_path, output_dir / "summary.md"),
@@ -124,7 +131,8 @@ def _build_canonical_xlsx(prime_id: str, month_str: str, output_dir: Path) -> Pa
         return None
     try:
         subprocess.run(
-            [sys.executable, str(script), "--prime", prime_id, "--month", month_str],
+            [sys.executable, str(script), "--prime", prime_id, "--month", month_str,
+             "--output-dir", str(output_dir.resolve())],
             check=True, capture_output=True, text=True, timeout=60,
         )
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
@@ -217,6 +225,7 @@ def refresh_dr_only(
             {"ref_code": r["ref_code"], "amount": str(r["amount"]), "notes": r["notes"]}
             for r in dr["rows"]
         ]
+        apply_settlement_adjustments(prov)
         with prov_path.open("w") as f:
             json.dump(prov, f, indent=2)
         out_dir = prov_path.parent

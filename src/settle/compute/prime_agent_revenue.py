@@ -15,7 +15,7 @@ A negative venue revenue means the prime spent more on inflows than the MtM grew
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import timedelta
 from decimal import Decimal
 
@@ -174,6 +174,13 @@ class VenueRevenueInputs:
     # with ``actual_revenue_override`` (the override bypasses the formula
     # entirely, so an adjustment would be silently dropped).
     actual_revenue_adjustment: Decimal = Decimal("0")
+    # Realized cash minus the carrying value of settled redemption claims.
+    # Applied before the SDE split; never credit the cash principal as yield.
+    redemption_revenue_adjustment: Decimal = Decimal("0")
+    redemption_settlements: list[dict] = field(default_factory=list)
+    outstanding_redemptions: list[dict] = field(default_factory=list)
+    unmatched_redemption_cash: list[dict] = field(default_factory=list)
+    redemption_capital_outflows: list[dict] = field(default_factory=list)
 
 
 def _sd_share_at_som(
@@ -428,6 +435,11 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
         )
         actual_revenue += inputs.actual_revenue_adjustment
 
+    if inputs.redemption_revenue_adjustment:
+        if inputs.actual_revenue_override is not None:
+            raise ValueError("Cash redemption realization cannot be combined with a revenue override")
+        actual_revenue += inputs.redemption_revenue_adjustment
+
     # Off-chain administrative fee (e.g. BlackRock BUIDL-I $15K per capital
     # operation). The fee is taken at the source by the issuer: a $50M
     # subscription mints $49,985K to the ALM. Detect fee-charged events by
@@ -477,11 +489,25 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
             ts = inputs.inflow_timeseries
             in_period = ts["block_date"].between(period.start, period.end)
             n_fee_events = 0
+            haircut_active = (
+                inputs.venue.nav_haircut_effective_date is None
+                or period.start >= inputs.venue.nav_haircut_effective_date
+            )
+            active_haircut_bps = (
+                (inputs.venue.nav_haircut_bps or Decimal("0"))
+                if haircut_active
+                else Decimal("0")
+            )
+            nav_factor = Decimal("1") - active_haircut_bps / Decimal("10000")
             for _, r in ts[in_period].iterrows():
                 amount = r["daily_inflow"]
                 if amount == 0:
                     continue
-                if (abs(amount) + fee_per_event) % _ROUNDING == 0:
+                # Cat E inflows are already priced at the configured exit
+                # mark. Undo that venue-wide factor for this separate flat-fee
+                # signature, which is defined on gross shares at $1 face.
+                gross_amount = abs(amount) / nav_factor
+                if (gross_amount + fee_per_event) % _ROUNDING == 0:
                     n_fee_events += 1
             actual_revenue -= fee_per_event * Decimal(n_fee_events)
 
@@ -535,6 +561,11 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
         pricing_category=inputs.venue.pricing_category.value,
         hide_per_venue_pnl=inputs.venue.hide_per_venue_pnl,
         tw_avg_notional=tw_avg_notional,
+        redemption_revenue_adjustment=inputs.redemption_revenue_adjustment,
+        redemption_settlements=inputs.redemption_settlements,
+        outstanding_redemptions=inputs.outstanding_redemptions,
+        unmatched_redemption_cash=inputs.unmatched_redemption_cash,
+        redemption_capital_outflows=inputs.redemption_capital_outflows,
     )
 
 

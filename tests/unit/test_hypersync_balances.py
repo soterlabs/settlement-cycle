@@ -286,3 +286,40 @@ def test_spark_s65_january_share_flows_before_deployment():
         price_at_block=no_metadata_or_price, period_only=True,
     )
     assert frame.empty
+
+
+def test_atoken_event_blocks_include_all_transfer_kinds_and_deduplicate():
+    zero = bytes(20)
+    ts = _ts(2026, 10, 1)
+    rows = [
+        _xfer(10, 0, ts, zero, _H, 100),  # excluded opening boundary
+        _xfer(11, 0, ts, zero, _H, 100),  # mint
+        _xfer(12, 0, ts, _H, zero, 10),   # burn
+        _xfer(13, 0, ts, _A, _H, 20),    # ordinary incoming transfer
+        _xfer(14, 0, ts, _H, _B, 20),    # ordinary outgoing transfer
+        _xfer(14, 1, ts, _H, _H, 1),     # self-transfer / second event in block
+        _xfer(15, 0, ts, _A, _H, 1),     # included closing boundary
+        _xfer(16, 0, ts, _A, _H, 1),     # excluded after closing
+    ]
+    calls = []
+    def fetch(*args):
+        calls.append(args)
+        return [*reversed(rows), rows[5]]
+    source = HyperSyncBalanceSource(fetch_logs=fetch)
+    assert source.atoken_event_blocks('ethereum', _TOKEN, _H, 10, 15) == [11, 12, 13, 14, 15]
+    chain, selections, lo, hi = calls[0]
+    assert (chain, lo, hi) == ('ethereum', 11, 15)
+    assert selections == [
+        {'address': ['0x' + _TOKEN.hex()], 'topics': [[_TRANSFER], [_topic(_H)]]},
+        {'address': ['0x' + _TOKEN.hex()], 'topics': [[_TRANSFER], [], [_topic(_H)]]},
+    ]
+
+
+def test_atoken_empty_range_and_provider_failure():
+    def fail(*args):
+        raise RuntimeError('provider unavailable')
+    source = HyperSyncBalanceSource(fetch_logs=fail)
+    assert source.atoken_event_blocks('ethereum', _TOKEN, _H, 10, 10) == []
+    with pytest.raises(RuntimeError, match='provider unavailable'):
+        source.atoken_event_blocks('ethereum', _TOKEN, _H, 10, 11)
+    assert _src([]).atoken_event_blocks('ethereum', _TOKEN, _H, 10, 11) == []

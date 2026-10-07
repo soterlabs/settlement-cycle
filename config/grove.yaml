@@ -10,6 +10,18 @@
 
 id: grove
 ilk_bytes32: '0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000'  # ALLOCATOR-BLOOM-A
+# Operator decision 2026-10-01: exempt attributable idle USDS in these
+# Basins/pockets from BR from September 1, capped at GROVE-A debt only.
+# Historical pocket() and shares() reads handle pocket/ownership changes.
+# Direct Diamond ALM cash and invested collateral are not this deduction.
+basin_idle_usds:
+  effective_from: '2026-09-01'
+  ilk_bytes32: '0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000'
+  holder: '0x0dcd9298e163dfd3c0b5b00f0d9093c36e40a153'
+  basins:
+    - '0xf08943f817e1f902debc884c7b19ea5764594ac9'  # JTRSY
+    - '0xcba428fb052b365557daf52b744dfff20d5fbedd'  # BUIDL
+
 start_date: '2025-05-14'  # First frob (test mint, unwound 2025-06-25)
 
 # Subsidised borrowing rate (debt-rate-methodology Step 1.b).
@@ -347,6 +359,13 @@ venues:
     # is captured via the actual rewards received by the ALM, not via MtM.
     nav_oracle:
       kind: const_one
+    # BUIDL redemptions settle at 99.95% of face. Mark the position and its
+    # capital flows at realizable exit value so the 5 bps issuer fee cannot
+    # disappear between this Cat E venue and the USDC receipt venue. Applied
+    # going forward from the September 2026 settlement; published reports are
+    # not regenerated. See settlements/grove/2026-09/reconciliation.md.
+    nav_haircut_bps: 5
+    nav_haircut_effective_date: '2026-09-01'
     # BlackRock's BUIDL contract mints both capital subscriptions AND yield
     # distributions to ALM (both arrive as ERC-20 mints from 0x0). A bimodal
     # histogram on observed amounts (Dune query 7387737) shows a clean gap
@@ -354,8 +373,8 @@ venues:
     # large round-number mints). Filter at $1M to isolate capital flow for
     # cost-basis tracking — sub-threshold mints contribute to revenue.
     min_transfer_amount_usd: 1000000
-    # BlackRock charges a flat $15,000 administrative fee on some capital
-    # operations — the fee is baked into the on-chain mint/burn amount at
+    # Separately, BlackRock charges a flat $15,000 administrative fee on some
+    # capital operations — the fee is baked into the on-chain mint/burn amount at
     # source (e.g. a $50M subscription mints $49,985K to the ALM). The
     # empirical Jan-Apr 2026 pattern shows fee-charged events on
     # subscriptions; whether redemptions are also fee-charged is unknown

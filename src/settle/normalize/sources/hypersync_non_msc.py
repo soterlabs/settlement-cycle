@@ -23,12 +23,14 @@ Real (non-anonymous) events — Dog.Bark, Clipper.Take/Kick/Redo, DssVest.Vest,
 ERC20.Transfer, sUSDS/stUSDS.Drip — are matched by their signature topic0 and
 decoded positionally.
 
-Accounting basis is identical to the SQL (see that file's header): stability
+Accounting basis follows the SQL (see that file's header): stability
 fees on the accrual basis (Art × Δr_true from ``duty``); PSM at the jar burn's
 landing month; liquidation revenue = Σ take.owe − Σ bark.due; surplus returns =
 join→vow moves not attributable to the PSM/RWA jar; savings interest on the
 accrual basis (each drip apportioned to the month by chi-boundary
-interpolation); vest gross at call time.
+interpolation); vest gross at call time. From September 2026, DSR accrual
+uses minted interest plus the movement in unminted Pot liability instead of
+drip interpolation, so a just-closed month needs no subsequent Pot.drip.
 
 Config (env):
     ENVIO_API_TOKEN   required — free token from https://app.envio.dev/api-tokens
@@ -62,6 +64,7 @@ _RAY = 10 ** 27
 # two drip intervals straddling the month boundaries are captured. sUSDS/stUSDS
 # drip ~hourly-or-faster and the pot many times a day, so 3 days is ample.
 _SAVINGS_BUFFER = 3 * 86400
+_SAVINGS_CLOSE_FROM = 1788220800  # September 1, 2026 UTC.
 
 # ── addresses (lower-case) ──────────────────────────────────────────────────
 _VAT = "0x35d1b3f3d7966a1dfe207aa4514c12a259a0492b"
@@ -173,7 +176,8 @@ class HyperSyncNonMscSource:
         rows += self._vest(start_ts, end_ts, fb, tb)
         rows += self._bad_debt_writeoffs(start_ts, end_ts, fb, tb)
         rows += self._savings(start_ts, end_ts)
-        return pd.DataFrame(rows, columns=["stream", "label", "event_date", "amount"])
+        return pd.DataFrame(rows, columns=["stream", "label", "event_date", "amount",
+                                           "transaction_hash", "log_index"])
 
     # -- income: PSM jar burns ----------------------------------------------
 
@@ -299,7 +303,8 @@ class HyperSyncNonMscSource:
                 rwa_void += amt                 # RWA jar → RWA void line
             else:
                 d = datetime.fromtimestamp(r.block_time, tz=timezone.utc).date()
-                out.append(_row("income:surplus_return", str(d), amt, event_date=d))
+                out.append({**_row("income:surplus_return", str(d), amt, event_date=d),
+                            "transaction_hash": tx, "log_index": r.log_index})
         out.append(_row("income:rwa_void", "RWA jars (void)", rwa_void))
         return out
 
@@ -426,11 +431,15 @@ class HyperSyncNonMscSource:
             # (block_time, chi = data word[0], diff = data word[1])
             return [(r.block_time, _word(r.data, 0), _word(r.data, 1)) for r in rows]
 
-        susds = _accrue_savings(drip_events(_SUSDS), start_ts, end_ts) / _WAD
-        stusds = _accrue_savings(drip_events(_STUSDS), start_ts, end_ts) / _WAD
+        susds_events, stusds_events = drip_events(_SUSDS), drip_events(_STUSDS)
+        if start_ts >= _SAVINGS_CLOSE_FROM:
+            for name, events in (("sUSDS", susds_events), ("stUSDS", stusds_events)):
+                _require_savings_coverage(name, events, start_ts, end_ts)
+        susds = _accrue_savings(susds_events, start_ts, end_ts) / _WAD
+        stusds = _accrue_savings(stusds_events, start_ts, end_ts) / _WAD
 
-        # DSR — Vat.suck(u=vow, v=pot, rad); v = arg2 = topic2, rad = topic3. The
-        # pot suck carries no chi, so acc=None → time-fraction split.
+        # DSR — Vat.suck(u=vow, v=pot, rad); v = arg2 = topic2, rad = topic3.
+        # Legacy months split by time because the suck event carries no chi.
         sk = sorted(
             hypersync.query_logs(
                 _CHAIN, [{"address": [_VAT], "topics": [[_SUCK], [], [_addr_topic(_POT)]]}],
@@ -438,13 +447,65 @@ class HyperSyncNonMscSource:
             ).rows,
             key=lambda r: (r.block_number, r.log_index),
         )
-        dsr = _accrue_savings([(r.block_time, None, int(r.topic3, 16)) for r in sk],
-                              start_ts, end_ts) / _RAD
+        if start_ts >= _SAVINGS_CLOSE_FROM:  # Earlier reports unchanged.
+            # A freshly closed month may have NO subsequent Pot.drip. Interpolating
+            # only observed drips then silently omits its accrued closing tail.
+            # Recognize minted interest + closing unminted liability - opening
+            # unminted liability instead. This needs no future transaction.
+            # Pot.drip: chi' = rmul(rpow(dsr, now-rho, RAY), chi),
+            # Vat.suck(vow, pot, Pie * (chi' - chi)). Pot.file requires rho == now;
+            # joins also require a drip, while exits can forfeit unminted interest.
+            # The liability difference correctly includes those releases as well.
+            # https://github.com/sky-ecosystem/dss/blob/master/src/pot.sol
+            minted = sum(int(r.topic3, 16) for r in sk
+                         if start_ts <= r.block_time < end_ts)
+            dsr = (Decimal(minted) + _pot_accrued_at(end_ts)
+                   - _pot_accrued_at(start_ts)) / _RAD
+        else:
+            dsr = _accrue_savings([(r.block_time, None, int(r.topic3, 16)) for r in sk],
+                                  start_ts, end_ts) / _RAD
         return [
             _row("expense:susds_drip", "sUSDS SSR (gross, all holders)", susds),
             _row("expense:stusds_drip", "stUSDS", stusds),
             _row("expense:dsr_drip", "DSR (pot)", dsr),
         ]
+
+
+def _require_savings_coverage(name, events, start_ts, end_ts) -> None:
+    if not events or events[0][0] > start_ts or events[-1][0] < end_ts:
+        raise ValueError(f"{name} savings drips do not bracket the month; retry after next drip")
+
+
+def _pot_pending_rad(*, pie: int, chi: int, dsr: int, rho: int, timestamp: int) -> int:
+    """Unminted DSR liability, using Pot's integer rounding (raw RAD)."""
+    if min(pie, chi, rho) < 0 or dsr < _RAY or timestamp < rho or chi == 0:
+        raise ValueError("invalid historical Pot state")
+    # Solidity rpow rounds each multiplication to the nearest RAY; rmul then
+    # floors. Decimal exponentiation at the default context is not equivalent.
+    x, n = dsr, timestamp - rho
+    z = _RAY if n % 2 == 0 else x
+    n //= 2
+    while n:
+        x = (x * x + _RAY // 2) // _RAY
+        if n % 2:
+            z = (z * x + _RAY // 2) // _RAY
+        n //= 2
+    return pie * (z * chi // _RAY - chi)
+
+
+def _pot_accrued_at(timestamp: int) -> Decimal:
+    """Read the state strictly before a UTC boundary, accrue to that boundary."""
+    from ...domain.primes import Address, Chain
+    from ...extract.rpc import eth_call
+
+    block = hypersync.find_block_at_or_before(_CHAIN, timestamp - 1)
+    pot = Address.from_str(_POT)
+    state = {
+        name: int(eth_call(Chain.ETHEREUM, pot, _sel(signature)[:10], block), 16)
+        for name, signature in (("pie", "Pie()"), ("chi", "chi()"),
+                                ("dsr", "dsr()"), ("rho", "rho()"))
+    }
+    return Decimal(_pot_pending_rad(**state, timestamp=timestamp))
 
 
 def _integrate_fee(
@@ -488,16 +549,26 @@ def _integrate_fee(
     neg, inf = (-1, -1), (1 << 62, 1 << 62)
     cps = [(neg, start_ts)] + [((a[0], a[1]), a[2]) for a in in_art] + [(inf, end_ts)]
 
-    def state(key, t):
-        art = art0 + sum(a[3] for a in in_art if (a[0], a[1]) <= key)
-        rate = rate0 + sum(f[3] for f in in_fold if (f[0], f[1]) <= key)
-        fr = [f for f in in_fold if (f[0], f[1]) <= key]
-        rho = fr[-1][2] if fr else rho0
-        du = [d for d in in_duty if (d[0], d[1]) <= key]
-        duty = du[-1][3] if du else duty0
-        return art, float(rate) * ((duty / 1e27) ** float(t - rho))
-
-    pts = [state(k, t) for (k, t) in cps]
+    # Checkpoints and event streams are ordered by (block, log_index).
+    # Advance each stream once instead of re-scanning all in-month events
+    # for every checkpoint (quadratic on active ilks). Integer state updates
+    # and the float valuation/summation order are identical to the previous
+    # implementation, including multiple events at one timestamp.
+    ai = fi = di = 0
+    art, rate, rho, duty = art0, rate0, rho0, duty0
+    pts = []
+    for key, t in cps:
+        while ai < len(in_art) and in_art[ai][:2] <= key:
+            art += in_art[ai][3]
+            ai += 1
+        while fi < len(in_fold) and in_fold[fi][:2] <= key:
+            rate += in_fold[fi][3]
+            rho = in_fold[fi][2]
+            fi += 1
+        while di < len(in_duty) and in_duty[di][:2] <= key:
+            duty = in_duty[di][3]
+            di += 1
+        pts.append((art, float(rate) * ((duty / 1e27) ** float(t - rho))))
     total = sum(
         (pts[i][0] / 1e18) * (pts[i + 1][1] - pts[i][1]) for i in range(len(pts) - 1)
     )
@@ -548,5 +619,3 @@ def _accrue_savings(
             frac = (oe - os) / (t - tp)
         part += d * frac
     return Decimal(whole) + Decimal(str(part))
-
-

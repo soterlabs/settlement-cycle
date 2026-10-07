@@ -19,10 +19,10 @@ from ..domain.monthly_pnl import MonthlyPnL, VenueRevenue
 from ..domain.period import Month, Period
 from ..domain.pricing import PricingCategory
 from ..domain.primes import Chain, Prime, PsmKind
-from ..extract.input_cache import revenue_input_scope
-from ..domain.sde import load_sde_table
+from ..domain.sde import InFlightRedemption, load_sde_table
 from ..domain.sky_tokens import USDS_ETHEREUM, sUSDS_ETHEREUM
 from ..domain.subsidy import ReferenceRateHistory, ScheduledReferenceRateHistory, load_reference_rates_for
+from ..extract.input_cache import revenue_input_scope
 from ..normalize import (
     get_debt_timeseries,
     get_position_value,
@@ -679,6 +679,7 @@ def _sde_asset_value_timeseries(
     burn_date: "date | None" = None,
     usdc_settlement_date: "date | None" = None,
     end_date: "date | None" = None,
+    in_flight_redemptions: tuple[InFlightRedemption, ...] = (),
 ) -> pd.DataFrame:
     """Daily SDE asset value (USD) per venue. Returns a level series with
     columns ``[block_date, cum_value, uncapped_value]``.
@@ -732,6 +733,12 @@ def _sde_asset_value_timeseries(
     strictly after ``in_flight_end`` (up to and including ``end_date``)
     return ``cum_value = 0`` — the redemption has settled, so the SDE-
     capped slice no longer ties up prime capital.
+
+    **Partial fixed-SDE redemptions.** Each ``in_flight_redemptions`` item is
+    added to ``cum_value`` for ``burn_date <= day < usdc_settlement_date``.
+    It does not alter ``uncapped_value``, which intentionally remains the raw
+    on-chain balance. The half-open interval matches EoD accounting: by the
+    settlement date's EoD, cash at the ALM replaces the pending receivable.
     """
     if burn_date is not None and end_date is None:
         raise ValueError(
@@ -870,6 +877,18 @@ def _sde_asset_value_timeseries(
             capped_value = cap_usd
         else:
             capped_value = raw_value
+        if not (
+            (start_date is not None and current < start_date)
+            or (end_date is not None and current > end_date)
+        ):
+            capped_value += sum(
+                (
+                    item.value_usd
+                    for item in in_flight_redemptions
+                    if item.burn_date <= current < item.usdc_settlement_date
+                ),
+                Decimal("0"),
+            )
         rows.append({
             "block_date": current,
             "cum_value": capped_value,
@@ -2048,7 +2067,7 @@ def _log_sky_revenue_debug(
     hdr = (
         f"  {'date':10s}  {'cum_debt':>10s}  {'alm_usds':>9s}  "
         f"{'psm_usds':>9s}  {'sde_av':>9s}  {'curve':>9s}  "
-        f"{'lending':>9s}  {'utilized':>10s}  "
+        f"{'lending':>9s}  {'basin':>9s}  {'utilized':>10s}  "
         f"{'ssr%':>6s}  {'br%':>6s}  {'daily_rev':>12s}"
     )
     lines = [
@@ -2066,6 +2085,7 @@ def _log_sky_revenue_debug(
             f"{float(row['sde_av'])/1e6:>8.2f}M  "
             f"{float(row['curve_idle'])/1e6:>8.2f}M  "
             f"{float(row['lending_idle'])/1e6:>8.2f}M  "
+            f"{float(row['basin_idle'])/1e6:>8.2f}M  "
             f"{float(row['utilized'])/1e6:>9.2f}M  "
             f"{row['ssr_apy']*100:>5.2f}%  "
             f"{row['base_apr']*100:>5.2f}%  "
@@ -2543,9 +2563,11 @@ def compute_monthly_pnl(
                 .groupby("block_date", as_index=False)[["daily_net", "cum_balance"]].sum()
                 .sort_values("block_date").reset_index(drop=True)
             )
-    # Prime's share of unborrowed underlying in configured lending pools — Step 2
-    # idle lending pool USDS. Computed daily via ``balanceOf`` + ``totalSupply``.
-    # Returns (empty frame, {}) if no venue has ``lending_idle_usds=True``.
+    # Basin/pocket USDS is a separate, dated exemption capped at one ilk.
+    from ..normalize.basin import get_basin_idle_usds
+
+    basin_idle_usds = get_basin_idle_usds(prime, period, block_resolver=resolver)
+    # Prime's share of unborrowed underlying in configured lending pools.
     lending_idle_usds, _lending_idle_tw_avg = _aggregate_lending_idle_usds(
         prime, period,
         block_resolver=resolver,
@@ -3521,9 +3543,7 @@ def compute_monthly_pnl(
                 elif venue.chain in prime.psm:
                     # L2: plain ERC-20 sUSDS — price via PSM3 pps.
                     # psm3_src is already set in the L2 revaluation block above.
-                    from ..normalize.positions import _erc4626_shares_weighted_inflow
-                    from ..extract.rpc import balance_of as _bal_of
-                    from ..domain.primes import Address as _Addr_b, Chain as _Chain_b
+                    from ..normalize.holder_share_flows import holder_share_inflows
 
                     def _susds_price(
                         block, _psm=psm3_src, _chain=venue.chain.value,
@@ -3531,28 +3551,19 @@ def compute_monthly_pnl(
                         pps_raw = _psm.susds_pps(_chain, block)
                         return _Dec(pps_raw) / _Dec(10**18)
 
-                    if venue.chain.value in _DUNE_BLOCK_CHAINS:
-                        _susds_balance_src = (
-                            sources.balance
-                            if sources.balance is not None
-                            else get_balance_source()
-                        )
-                        inflow_ts = _shares_to_usd_inflow_timeseries(
-                            prime, venue, period,
-                            balance_source=_susds_balance_src,
-                            block_resolver=resolver,
-                            price_at_block=_susds_price,
-                            period_only=True,
-                        )
-                    else:
-                        inflow_ts = _erc4626_shares_weighted_inflow(
-                            prime, venue, som_block, eom_block,
-                            period_end_date=period.end,
-                            balance_at=lambda c, t, h, b: _bal_of(
-                                _Chain_b(c), _Addr_b(t), _Addr_b(h), b,
-                            ),
-                            price_at_block=_susds_price,
-                        )
+                    # Plain L2 sUSDS moves into/out of PSM3 via ordinary
+                    # Transfers, not just mints/burns. Preserve the real day
+                    # for both MtM capital and daily spread reimbursement.
+                    inflow_ts = holder_share_inflows(
+                        prime, venue, period,
+                        balance_source=(sources.balance if sources.balance is not None
+                                        else get_balance_source(venue.event_source)),
+                        block_resolver=resolver, price_at_block=_susds_price,
+                        opening_shares=get_position_balance(
+                            prime, venue, som_block, source=sources.position_balance),
+                        closing_shares=get_position_balance(
+                            prime, venue, eom_block, source=sources.position_balance),
+                    )
                 else:
                     inflow_ts = pd.DataFrame({
                         "block_date": [], "daily_inflow": [], "cum_inflow": [],
@@ -3656,7 +3667,9 @@ def compute_monthly_pnl(
             balance_src = sources.balance if sources.balance is not None else get_balance_source()
             external = {
                 addr.value
-                for addr in prime.external_alm_sources.get(venue.chain, [])
+                for addr in prime.external_sources_for_period(
+                    venue.chain, period.start,
+                )
             }
             # Map override list keyed by raw 20-byte address (matches the
             if venue.force_capital_inflow:
@@ -3709,7 +3722,8 @@ def compute_monthly_pnl(
                 # ``_to_bytes`` normalisation inside the helper).
                 overrides_for_chain = prime.principal_return_overrides.get(venue.chain, {})
                 overrides_by_bytes = {
-                    addr.value: [(o.date, o.amount) for o in entries]
+                    addr.value: [(o.date, o.amount, o.capital_amount) for o in entries
+                                 if not o.token or o.token == venue.token.symbol]
                     for addr, entries in overrides_for_chain.items()
                 }
                 # Yield-reversal overrides — the outflow mirror (ALM →
@@ -3965,6 +3979,7 @@ def compute_monthly_pnl(
                     burn_date=sde_entry.burn_date,
                     usdc_settlement_date=sde_entry.usdc_settlement_date,
                     end_date=sde_entry.end_date,
+                    in_flight_redemptions=sde_entry.in_flight_redemptions,
                 )
                 # Safeguard: the SDE timeseries reads
                 # ``cumulative_balance_timeseries`` (Dune transfers, filtered
@@ -4009,6 +4024,14 @@ def compute_monthly_pnl(
                     )
                     _som_date = period.start - _td(days=1)
                     _som_bal = cum_at_or_before(_bal_df, "cum_balance", _som_date)
+                    # Match both valuation paths: the daily SDE series and
+                    # value_som already retain ERC-7540 redemption escrow.
+                    # Comparing wallet transfers alone raised a false $25M
+                    # discrepancy for Grove E9 at the September 2026 opening.
+                    from ..normalize.positions import _centrifuge_in_flight_shares
+                    _som_bal += _centrifuge_in_flight_shares(
+                        prime, venue, pin_blocks_som[venue.chain],
+                    )
                     if _som_bal > 0:
                         _som_block = resolver.block_at_or_before(
                             venue.chain.value,
@@ -4063,6 +4086,14 @@ def compute_monthly_pnl(
             value_som, value_eom,
             "  [SDE]" if sde_entry is not None else "",
         )
+        # Only explicitly configured venues read these two filtered event
+        # streams. Historical periods before recognition_start return early.
+        from ..normalize.redemption_settlements import (
+            redemption_settlements,
+            restore_redemption_capital,
+        )
+        redemption_ledger = redemption_settlements(prime, venue, period)
+        inflow_ts = restore_redemption_capital(inflow_ts, redemption_ledger)
         venue_inputs.append(VenueRevenueInputs(
             venue=venue, value_som=value_som, value_eom=value_eom,
             inflow_timeseries=inflow_ts,
@@ -4072,6 +4103,11 @@ def compute_monthly_pnl(
             erc4626_period_inflow=_erc4626_period_inflow,
             value_timeseries=_sde_ts,
             actual_revenue_adjustment=susds_mtm_adjustment,
+            redemption_revenue_adjustment=redemption_ledger.revenue_adjustment,
+            redemption_settlements=list(redemption_ledger.settlements),
+            outstanding_redemptions=list(redemption_ledger.outstanding),
+            unmatched_redemption_cash=list(redemption_ledger.unmatched_cash),
+            redemption_capital_outflows=list(redemption_ledger.capital_outflows),
         ))
 
     # Re-sort venue_inputs to match the declaration order in prime.venues so
@@ -4218,6 +4254,7 @@ def compute_monthly_pnl(
         sde_asset_value=sde_av_total,
         curve_idle_usds=curve_idle_usds,
         lending_idle_usds=lending_idle_usds,
+        basin_idle_usds=basin_idle_usds,
     )
     # Sky's full claim: BR on (utilized − SDE − idle deductions) + actual SDE
     # revenue, minus the Sky-to-Spark transfer on sUSDS positions:
@@ -4296,6 +4333,8 @@ def compute_monthly_pnl(
             "sde_av":              str(row["sde_av"]),
             "curve_idle":          str(row["curve_idle"]),
             "lending_idle":        str(row["lending_idle"]),
+            "basin_idle":          str(row["basin_idle"]),
+            "basin_ilk_debt":      str(row["basin_ilk_debt"]),
             "utilized":            str(row["utilized"]),
             # ssr_apy stays an APY (that is what the chain quotes); the
             # derived rates below are NOMINAL (APR) since 2026-09-01.

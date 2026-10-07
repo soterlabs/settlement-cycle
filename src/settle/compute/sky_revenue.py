@@ -23,6 +23,7 @@ Per the prime-settlement-methodology and debt-rate-methodology docs:
                       − psm_usds                       ←  Step 2 (idle USDS in PSM3)
                       − curve_idle_usds                ←  Step 2 (prime's USDS share in Curve pools)
                       − lending_idle_usds              ←  Step 2 (prime's share of unborrowed underlying in lending pools)
+                      - basin_idle_usds                ←  Grove-A Basin/pocket idle USDS from 2026-09-01
 
 Subproxy USDS and sUSDS are NOT subtracted from utilized. The subproxy holds
 a mix of genesis capital, treasury holdings, risk capital, and realized
@@ -148,6 +149,7 @@ def compute_sky_revenue(
     sde_asset_value: pd.DataFrame | None = None,
     curve_idle_usds: pd.DataFrame | None = None,
     lending_idle_usds: pd.DataFrame | None = None,
+    basin_idle_usds: pd.DataFrame | None = None,
 ) -> Decimal:
     """Sum of daily Sky revenue over ``period``.  See ``compute_sky_revenue_daily``
     for the full docstring and per-day breakdown."""
@@ -158,6 +160,7 @@ def compute_sky_revenue(
         sde_asset_value=sde_asset_value,
         curve_idle_usds=curve_idle_usds,
         lending_idle_usds=lending_idle_usds,
+        basin_idle_usds=basin_idle_usds,
     )
     return total
 
@@ -174,6 +177,7 @@ def compute_sky_revenue_daily(
     sde_asset_value: pd.DataFrame | None = None,
     curve_idle_usds: pd.DataFrame | None = None,
     lending_idle_usds: pd.DataFrame | None = None,
+    basin_idle_usds: pd.DataFrame | None = None,
 ) -> tuple[Decimal, pd.DataFrame, dict | None]:
     """Sum of daily Sky revenue over ``period`` plus a full day-by-day breakdown.
 
@@ -286,6 +290,12 @@ def compute_sky_revenue_daily(
         # Prime's share of unborrowed underlying in lending pools — Step 2 idle lending.
         cum_lending_idle = cum_at_or_before(lending_idle_usds, "cum_balance", current)
 
+        # Already ownership-weighted and capped at the configured ilk debt.
+        cum_basin_idle = cum_at_or_before(basin_idle_usds, "cum_balance", current)
+        basin_ilk_debt = cum_at_or_before(basin_idle_usds, "ilk_debt", current)
+        if not (Decimal(0) <= cum_basin_idle <= basin_ilk_debt):
+            raise ValueError("Basin idle deduction exceeds its allocator ilk debt")
+
         utilized = (
             cum_debt
             - cum_alm_usds
@@ -293,6 +303,7 @@ def compute_sky_revenue_daily(
             - cum_sde
             - cum_curve_usds
             - cum_lending_idle
+            - cum_basin_idle
         )
 
         # Always compute the rate — needed for both actual (utilized) and
@@ -347,6 +358,8 @@ def compute_sky_revenue_daily(
             "sde_av":             cum_sde,
             "curve_idle":         cum_curve_usds,
             "lending_idle":       cum_lending_idle,
+            "basin_idle":         cum_basin_idle,
+            "basin_ilk_debt":     basin_ilk_debt,
             "utilized":           utilized,
             "ssr_apy":            float(ssr_apy),
             "base_apr":           float(base_apr),

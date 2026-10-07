@@ -1,0 +1,560 @@
+{
+  "scope": "Only BUIDL share-exit / USDC payer Transfer logs, August 31 through September 30; no revenue pipeline or API writes",
+  "pin_block": 26093737,
+  "ledger": {
+    "revenue_adjustment": "-12504.626548",
+    "settlements": [
+      {
+        "cash": {
+          "kind": "cash",
+          "date": "2026-09-01",
+          "amount": "24986500.153219",
+          "tx": "0x5add7249801ed90f803a6cdfec0c9a6d4fc5f5b3343ee50fa9f9ed4b833cb8cf",
+          "block": 25883247,
+          "log_index": 329,
+          "sender": "0xcfc0f98f30742b6d880f90155d4ebb885e55ab33",
+          "recipient": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "event_id": "0x5add7249801ed90f803a6cdfec0c9a6d4fc5f5b3343ee50fa9f9ed4b833cb8cf:329"
+        },
+        "requests": [
+          {
+            "kind": "request",
+            "date": "2026-08-31",
+            "amount": "24999000",
+            "tx": "0xf4b2dc1e714c807cb7f4a5fcaaf80ae2a12182db5c82a244879cc245ccd11c35",
+            "block": 25877252,
+            "log_index": 1268,
+            "sender": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+            "recipient": "0x8780dd016171b91e4df47075da0a947959c34200",
+            "token": "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041",
+            "event_id": "0xf4b2dc1e714c807cb7f4a5fcaaf80ae2a12182db5c82a244879cc245ccd11c35:1268",
+            "shares": "24999000",
+            "carrying_value_usd": "24999000"
+          }
+        ],
+        "carrying_value_usd": "24999000",
+        "cash_usd": "24986500.153219",
+        "revenue_adjustment_usd": "-12499.846781",
+        "matching": "explicit_event_link"
+      },
+      {
+        "cash": {
+          "kind": "cash",
+          "date": "2026-09-01",
+          "amount": "24987499.668811",
+          "tx": "0x38cfb65fdd7dca1438214dc857591e8cef1cf90b45fcd5cd42e8fde4b4deab1e",
+          "block": 25884114,
+          "log_index": 626,
+          "sender": "0xcfc0f98f30742b6d880f90155d4ebb885e55ab33",
+          "recipient": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "event_id": "0x38cfb65fdd7dca1438214dc857591e8cef1cf90b45fcd5cd42e8fde4b4deab1e:626"
+        },
+        "requests": [
+          {
+            "kind": "request",
+            "date": "2026-09-01",
+            "amount": "25000000",
+            "tx": "0x92584c2d07b1d5720232670d8e82a2bde49782b1207778d6393df58ead053f9f",
+            "block": 25883718,
+            "log_index": 671,
+            "sender": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+            "recipient": "0x8780dd016171b91e4df47075da0a947959c34200",
+            "token": "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041",
+            "event_id": "0x92584c2d07b1d5720232670d8e82a2bde49782b1207778d6393df58ead053f9f:671",
+            "shares": "25000000",
+            "carrying_value_usd": "24987500.0000"
+          }
+        ],
+        "carrying_value_usd": "24987500.0000",
+        "cash_usd": "24987499.668811",
+        "revenue_adjustment_usd": "-0.331189",
+        "matching": "unique_expected_payout"
+      },
+      {
+        "cash": {
+          "kind": "cash",
+          "date": "2026-09-03",
+          "amount": "24987499.646108",
+          "tx": "0x56566ca46d976b88950362a0214316a60b748f09c4d3ae11967add798f6bfc50",
+          "block": 25898905,
+          "log_index": 299,
+          "sender": "0xcfc0f98f30742b6d880f90155d4ebb885e55ab33",
+          "recipient": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "event_id": "0x56566ca46d976b88950362a0214316a60b748f09c4d3ae11967add798f6bfc50:299"
+        },
+        "requests": [
+          {
+            "kind": "request",
+            "date": "2026-09-03",
+            "amount": "25000000",
+            "tx": "0xe34729b2f49f2dd67641349f6d880baf6cf675f12c7e713d5240fefc80b1bcaf",
+            "block": 25898310,
+            "log_index": 665,
+            "sender": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+            "recipient": "0x8780dd016171b91e4df47075da0a947959c34200",
+            "token": "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041",
+            "event_id": "0xe34729b2f49f2dd67641349f6d880baf6cf675f12c7e713d5240fefc80b1bcaf:665",
+            "shares": "25000000",
+            "carrying_value_usd": "24987500.0000"
+          }
+        ],
+        "carrying_value_usd": "24987500.0000",
+        "cash_usd": "24987499.646108",
+        "revenue_adjustment_usd": "-0.353892",
+        "matching": "unique_expected_payout"
+      },
+      {
+        "cash": {
+          "kind": "cash",
+          "date": "2026-09-08",
+          "amount": "24987499.580073",
+          "tx": "0xa959d4c2b5eb662d94be4da55b1e4a6dcd37dca5df0c800e3f0c5985749ca123",
+          "block": 25933683,
+          "log_index": 282,
+          "sender": "0xcfc0f98f30742b6d880f90155d4ebb885e55ab33",
+          "recipient": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "event_id": "0xa959d4c2b5eb662d94be4da55b1e4a6dcd37dca5df0c800e3f0c5985749ca123:282"
+        },
+        "requests": [
+          {
+            "kind": "request",
+            "date": "2026-09-04",
+            "amount": "25000000",
+            "tx": "0x32399482b990bf1c13bcb32f102773960b795d6284b61f07674d2b413f055b11",
+            "block": 25905958,
+            "log_index": 499,
+            "sender": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+            "recipient": "0x8780dd016171b91e4df47075da0a947959c34200",
+            "token": "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041",
+            "event_id": "0x32399482b990bf1c13bcb32f102773960b795d6284b61f07674d2b413f055b11:499",
+            "shares": "25000000",
+            "carrying_value_usd": "24987500.0000"
+          }
+        ],
+        "carrying_value_usd": "24987500.0000",
+        "cash_usd": "24987499.580073",
+        "revenue_adjustment_usd": "-0.419927",
+        "matching": "unique_expected_payout"
+      },
+      {
+        "cash": {
+          "kind": "cash",
+          "date": "2026-09-09",
+          "amount": "24987499.663382",
+          "tx": "0xf002963ad91fc55cad40f5f78565f7c77864e035f7d203b0d3bc9a20a742d62e",
+          "block": 25941013,
+          "log_index": 475,
+          "sender": "0xcfc0f98f30742b6d880f90155d4ebb885e55ab33",
+          "recipient": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "event_id": "0xf002963ad91fc55cad40f5f78565f7c77864e035f7d203b0d3bc9a20a742d62e:475"
+        },
+        "requests": [
+          {
+            "kind": "request",
+            "date": "2026-09-09",
+            "amount": "24999000",
+            "tx": "0x8ce8c74514440088babfc730f377b067fbb9337713ddc3c88f79026f683d08c6",
+            "block": 25940343,
+            "log_index": 192,
+            "sender": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+            "recipient": "0x8780dd016171b91e4df47075da0a947959c34200",
+            "token": "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041",
+            "event_id": "0x8ce8c74514440088babfc730f377b067fbb9337713ddc3c88f79026f683d08c6:192",
+            "shares": "24999000",
+            "carrying_value_usd": "24986500.5000"
+          },
+          {
+            "kind": "request",
+            "date": "2026-09-09",
+            "amount": "1000",
+            "tx": "0x1ba4fbd743a59e2cb5fa05f1cb4654b278ef12d27a8c2106c4896e98cf027718",
+            "block": 25940006,
+            "log_index": 375,
+            "sender": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+            "recipient": "0x8780dd016171b91e4df47075da0a947959c34200",
+            "token": "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041",
+            "event_id": "0x1ba4fbd743a59e2cb5fa05f1cb4654b278ef12d27a8c2106c4896e98cf027718:375",
+            "shares": "1000",
+            "carrying_value_usd": "999.5000"
+          }
+        ],
+        "carrying_value_usd": "24987500.0000",
+        "cash_usd": "24987499.663382",
+        "revenue_adjustment_usd": "-0.336618",
+        "matching": "unique_expected_payout"
+      },
+      {
+        "cash": {
+          "kind": "cash",
+          "date": "2026-09-10",
+          "amount": "24987499.667113",
+          "tx": "0xfdc153f3a1d2b1b13d0c59f404f4ba4b60345578580160b6197c443d0e552e1f",
+          "block": 25948333,
+          "log_index": 1706,
+          "sender": "0xcfc0f98f30742b6d880f90155d4ebb885e55ab33",
+          "recipient": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "event_id": "0xfdc153f3a1d2b1b13d0c59f404f4ba4b60345578580160b6197c443d0e552e1f:1706"
+        },
+        "requests": [
+          {
+            "kind": "request",
+            "date": "2026-09-10",
+            "amount": "25000000",
+            "tx": "0x1abd3ac1d1fde766f2ada5fa4b1df7e80b9ef8cae6511e2b95f83f4dffe88505",
+            "block": 25947767,
+            "log_index": 1791,
+            "sender": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+            "recipient": "0x8780dd016171b91e4df47075da0a947959c34200",
+            "token": "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041",
+            "event_id": "0x1abd3ac1d1fde766f2ada5fa4b1df7e80b9ef8cae6511e2b95f83f4dffe88505:1791",
+            "shares": "25000000",
+            "carrying_value_usd": "24987500.0000"
+          }
+        ],
+        "carrying_value_usd": "24987500.0000",
+        "cash_usd": "24987499.667113",
+        "revenue_adjustment_usd": "-0.332887",
+        "matching": "unique_expected_payout"
+      },
+      {
+        "cash": {
+          "kind": "cash",
+          "date": "2026-09-11",
+          "amount": "24987499.556498",
+          "tx": "0xbfb0cb637cf694a9334cbcb0a9554838efa79d7e7528b68372c409bb4c22086a",
+          "block": 25955141,
+          "log_index": 138,
+          "sender": "0xcfc0f98f30742b6d880f90155d4ebb885e55ab33",
+          "recipient": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "event_id": "0xbfb0cb637cf694a9334cbcb0a9554838efa79d7e7528b68372c409bb4c22086a:138"
+        },
+        "requests": [
+          {
+            "kind": "request",
+            "date": "2026-09-11",
+            "amount": "25000000",
+            "tx": "0x4f95ecb724de20028ac22f98c82dd74b3ddc65905adc67ba1bce6762299a3730",
+            "block": 25954835,
+            "log_index": 148,
+            "sender": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+            "recipient": "0x8780dd016171b91e4df47075da0a947959c34200",
+            "token": "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041",
+            "event_id": "0x4f95ecb724de20028ac22f98c82dd74b3ddc65905adc67ba1bce6762299a3730:148",
+            "shares": "25000000",
+            "carrying_value_usd": "24987500.0000"
+          }
+        ],
+        "carrying_value_usd": "24987500.0000",
+        "cash_usd": "24987499.556498",
+        "revenue_adjustment_usd": "-0.443502",
+        "matching": "unique_expected_payout"
+      },
+      {
+        "cash": {
+          "kind": "cash",
+          "date": "2026-09-14",
+          "amount": "24987499.641503",
+          "tx": "0x700dd9651a52d33022805abb7f01ce65708fcce872ff3fd2c5c14009b88995a4",
+          "block": 25978088,
+          "log_index": 82,
+          "sender": "0xcfc0f98f30742b6d880f90155d4ebb885e55ab33",
+          "recipient": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "event_id": "0x700dd9651a52d33022805abb7f01ce65708fcce872ff3fd2c5c14009b88995a4:82"
+        },
+        "requests": [
+          {
+            "kind": "request",
+            "date": "2026-09-14",
+            "amount": "24999000",
+            "tx": "0x1e7487a69a35dce5edc1a5c59a22d3f4e9e74b85ab1f46a1114bd54b6139b4c6",
+            "block": 25977190,
+            "log_index": 1606,
+            "sender": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+            "recipient": "0x8780dd016171b91e4df47075da0a947959c34200",
+            "token": "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041",
+            "event_id": "0x1e7487a69a35dce5edc1a5c59a22d3f4e9e74b85ab1f46a1114bd54b6139b4c6:1606",
+            "shares": "24999000",
+            "carrying_value_usd": "24986500.5000"
+          },
+          {
+            "kind": "request",
+            "date": "2026-09-14",
+            "amount": "1000",
+            "tx": "0x418194d7d9dadd12e911555e5b84566216a1782ff4804a30070d2c15c8ffbef6",
+            "block": 25977105,
+            "log_index": 301,
+            "sender": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+            "recipient": "0x8780dd016171b91e4df47075da0a947959c34200",
+            "token": "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041",
+            "event_id": "0x418194d7d9dadd12e911555e5b84566216a1782ff4804a30070d2c15c8ffbef6:301",
+            "shares": "1000",
+            "carrying_value_usd": "999.5000"
+          }
+        ],
+        "carrying_value_usd": "24987500.0000",
+        "cash_usd": "24987499.641503",
+        "revenue_adjustment_usd": "-0.358497",
+        "matching": "unique_expected_payout"
+      },
+      {
+        "cash": {
+          "kind": "cash",
+          "date": "2026-09-15",
+          "amount": "24987499.674807",
+          "tx": "0x414661711b28862fce49cc5ad07babf0468fa67f6f91de93ac16af47a03c3e0c",
+          "block": 25985255,
+          "log_index": 214,
+          "sender": "0xcfc0f98f30742b6d880f90155d4ebb885e55ab33",
+          "recipient": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "event_id": "0x414661711b28862fce49cc5ad07babf0468fa67f6f91de93ac16af47a03c3e0c:214"
+        },
+        "requests": [
+          {
+            "kind": "request",
+            "date": "2026-09-15",
+            "amount": "25000000",
+            "tx": "0x462eaddacc13b8dea746724a90b5ec4459757e096fd97a49b54b9ce4c46cb029",
+            "block": 25984468,
+            "log_index": 1363,
+            "sender": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+            "recipient": "0x8780dd016171b91e4df47075da0a947959c34200",
+            "token": "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041",
+            "event_id": "0x462eaddacc13b8dea746724a90b5ec4459757e096fd97a49b54b9ce4c46cb029:1363",
+            "shares": "25000000",
+            "carrying_value_usd": "24987500.0000"
+          }
+        ],
+        "carrying_value_usd": "24987500.0000",
+        "cash_usd": "24987499.674807",
+        "revenue_adjustment_usd": "-0.325193",
+        "matching": "unique_expected_payout"
+      },
+      {
+        "cash": {
+          "kind": "cash",
+          "date": "2026-09-16",
+          "amount": "49974999.668152",
+          "tx": "0xba8ed6a2e2afecc830d8416b49df30a923c5085ab96c224b0b96b81a8d98d719",
+          "block": 25991065,
+          "log_index": 1562,
+          "sender": "0xcfc0f98f30742b6d880f90155d4ebb885e55ab33",
+          "recipient": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "event_id": "0xba8ed6a2e2afecc830d8416b49df30a923c5085ab96c224b0b96b81a8d98d719:1562"
+        },
+        "requests": [
+          {
+            "kind": "request",
+            "date": "2026-09-16",
+            "amount": "50000000",
+            "tx": "0x84ea9c269c33a02db9f82ac7ab0ac26fd2e72d3c1349806207638cdfdb2ec7fb",
+            "block": 25990741,
+            "log_index": 422,
+            "sender": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+            "recipient": "0x8780dd016171b91e4df47075da0a947959c34200",
+            "token": "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041",
+            "event_id": "0x84ea9c269c33a02db9f82ac7ab0ac26fd2e72d3c1349806207638cdfdb2ec7fb:422",
+            "shares": "50000000",
+            "carrying_value_usd": "49975000.0000"
+          }
+        ],
+        "carrying_value_usd": "49975000.0000",
+        "cash_usd": "49974999.668152",
+        "revenue_adjustment_usd": "-0.331848",
+        "matching": "unique_expected_payout"
+      },
+      {
+        "cash": {
+          "kind": "cash",
+          "date": "2026-09-17",
+          "amount": "199899999.624414",
+          "tx": "0x01dddb06a70d24e46e3b851fbca4e60b19afff94f4bfa983f8c5e82bb0bee020",
+          "block": 25998628,
+          "log_index": 943,
+          "sender": "0xcfc0f98f30742b6d880f90155d4ebb885e55ab33",
+          "recipient": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "event_id": "0x01dddb06a70d24e46e3b851fbca4e60b19afff94f4bfa983f8c5e82bb0bee020:943"
+        },
+        "requests": [
+          {
+            "kind": "request",
+            "date": "2026-09-16",
+            "amount": "200000000",
+            "tx": "0x2e543f3986beee66032b8dbd5089a0347cfc97999152a504be8d756a9bcf895e",
+            "block": 25992409,
+            "log_index": 1374,
+            "sender": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+            "recipient": "0x8780dd016171b91e4df47075da0a947959c34200",
+            "token": "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041",
+            "event_id": "0x2e543f3986beee66032b8dbd5089a0347cfc97999152a504be8d756a9bcf895e:1374",
+            "shares": "200000000",
+            "carrying_value_usd": "199900000.0000"
+          }
+        ],
+        "carrying_value_usd": "199900000.0000",
+        "cash_usd": "199899999.624414",
+        "revenue_adjustment_usd": "-0.375586",
+        "matching": "unique_expected_payout"
+      },
+      {
+        "cash": {
+          "kind": "cash",
+          "date": "2026-09-17",
+          "amount": "49974999.665113",
+          "tx": "0x0fb6e13c77679a95ad6735d172fc8d56499bb917759050835f9dd358628ddf79",
+          "block": 25998771,
+          "log_index": 888,
+          "sender": "0xcfc0f98f30742b6d880f90155d4ebb885e55ab33",
+          "recipient": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "event_id": "0x0fb6e13c77679a95ad6735d172fc8d56499bb917759050835f9dd358628ddf79:888"
+        },
+        "requests": [
+          {
+            "kind": "request",
+            "date": "2026-09-17",
+            "amount": "50000000",
+            "tx": "0x20b53783f9a9efd821326aaae4e5dd54e43b1d3c5e9ed31fa4af8e377013b9ff",
+            "block": 25997981,
+            "log_index": 375,
+            "sender": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+            "recipient": "0x8780dd016171b91e4df47075da0a947959c34200",
+            "token": "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041",
+            "event_id": "0x20b53783f9a9efd821326aaae4e5dd54e43b1d3c5e9ed31fa4af8e377013b9ff:375",
+            "shares": "50000000",
+            "carrying_value_usd": "49975000.0000"
+          }
+        ],
+        "carrying_value_usd": "49975000.0000",
+        "cash_usd": "49974999.665113",
+        "revenue_adjustment_usd": "-0.334887",
+        "matching": "unique_expected_payout"
+      },
+      {
+        "cash": {
+          "kind": "cash",
+          "date": "2026-09-21",
+          "amount": "999.084555",
+          "tx": "0x29c92f59218faae20503e1b58fd0d729b93df6650d614283371b322ebd10400d",
+          "block": 26028359,
+          "log_index": 787,
+          "sender": "0xcfc0f98f30742b6d880f90155d4ebb885e55ab33",
+          "recipient": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "event_id": "0x29c92f59218faae20503e1b58fd0d729b93df6650d614283371b322ebd10400d:787"
+        },
+        "requests": [
+          {
+            "kind": "request",
+            "date": "2026-09-21",
+            "amount": "1000",
+            "tx": "0x613e39c7d09e8d8b17263c4a22130ee0381b26a8504c637a641a5b5b3bfc701f",
+            "block": 26027485,
+            "log_index": 458,
+            "sender": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+            "recipient": "0x8780dd016171b91e4df47075da0a947959c34200",
+            "token": "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041",
+            "event_id": "0x613e39c7d09e8d8b17263c4a22130ee0381b26a8504c637a641a5b5b3bfc701f:458",
+            "shares": "1000",
+            "carrying_value_usd": "999.5000"
+          }
+        ],
+        "carrying_value_usd": "999.5000",
+        "cash_usd": "999.084555",
+        "revenue_adjustment_usd": "-0.415445",
+        "matching": "unique_expected_payout"
+      },
+      {
+        "cash": {
+          "kind": "cash",
+          "date": "2026-09-22",
+          "amount": "24986500.079704",
+          "tx": "0x042f716dfe62e0873bb8fd7afda3b89d7d38b010ad9cd7e7a0e3623eef53f47a",
+          "block": 26034073,
+          "log_index": 106,
+          "sender": "0xcfc0f98f30742b6d880f90155d4ebb885e55ab33",
+          "recipient": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "event_id": "0x042f716dfe62e0873bb8fd7afda3b89d7d38b010ad9cd7e7a0e3623eef53f47a:106"
+        },
+        "requests": [
+          {
+            "kind": "request",
+            "date": "2026-09-21",
+            "amount": "24999000",
+            "tx": "0x5f0ff79d3999c747df6ae32be5c1678ad2a074565b428d84b9d9d1956a3bcd27",
+            "block": 26028297,
+            "log_index": 356,
+            "sender": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+            "recipient": "0x8780dd016171b91e4df47075da0a947959c34200",
+            "token": "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041",
+            "event_id": "0x5f0ff79d3999c747df6ae32be5c1678ad2a074565b428d84b9d9d1956a3bcd27:356",
+            "shares": "24999000",
+            "carrying_value_usd": "24986500.5000"
+          }
+        ],
+        "carrying_value_usd": "24986500.5000",
+        "cash_usd": "24986500.079704",
+        "revenue_adjustment_usd": "-0.420296",
+        "matching": "unique_expected_payout"
+      }
+    ],
+    "outstanding": [],
+    "unmatched_cash": [],
+    "capital_outflows": [
+      {
+        "kind": "request",
+        "date": "2026-09-09",
+        "amount": "1000",
+        "tx": "0x1ba4fbd743a59e2cb5fa05f1cb4654b278ef12d27a8c2106c4896e98cf027718",
+        "block": 25940006,
+        "log_index": 375,
+        "sender": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+        "recipient": "0x8780dd016171b91e4df47075da0a947959c34200",
+        "token": "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041",
+        "event_id": "0x1ba4fbd743a59e2cb5fa05f1cb4654b278ef12d27a8c2106c4896e98cf027718:375",
+        "shares": "1000",
+        "carrying_value_usd": "999.5000"
+      },
+      {
+        "kind": "request",
+        "date": "2026-09-14",
+        "amount": "1000",
+        "tx": "0x418194d7d9dadd12e911555e5b84566216a1782ff4804a30070d2c15c8ffbef6",
+        "block": 25977105,
+        "log_index": 301,
+        "sender": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+        "recipient": "0x8780dd016171b91e4df47075da0a947959c34200",
+        "token": "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041",
+        "event_id": "0x418194d7d9dadd12e911555e5b84566216a1782ff4804a30070d2c15c8ffbef6:301",
+        "shares": "1000",
+        "carrying_value_usd": "999.5000"
+      },
+      {
+        "kind": "request",
+        "date": "2026-09-21",
+        "amount": "1000",
+        "tx": "0x613e39c7d09e8d8b17263c4a22130ee0381b26a8504c637a641a5b5b3bfc701f",
+        "block": 26027485,
+        "log_index": 458,
+        "sender": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+        "recipient": "0x8780dd016171b91e4df47075da0a947959c34200",
+        "token": "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041",
+        "event_id": "0x613e39c7d09e8d8b17263c4a22130ee0381b26a8504c637a641a5b5b3bfc701f:458",
+        "shares": "1000",
+        "carrying_value_usd": "999.5000"
+      }
+    ]
+  },
+  "validation": "Recomputed from the captured authoritative Transfer events, without another chain scan."
+}

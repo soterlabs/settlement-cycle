@@ -185,3 +185,16 @@ months:
       sky_twap: '0.05938676030465944'
       sbe_usds_spent: '1644300'
       sbe_sky_bought: '27100702.111690357'
+
+  '2026-09':
+    msc: 'MSC#13'
+    # September close inputs captured 2026-10-01 from BA's published APIs.
+    # Leave SNR unpinned: use the newly computed consolidated Sky report.
+    sky_twap: '0.068846535412547569'
+    sky_reserves: '84550765.962597296089608936'
+    sources:
+      sky_twap: 'BA monthly SKY TWAP, 30 days: https://observatory.data.blockanalitica.com/sky/twap/monthly/?year=2026&month=9 (retrieved 2026-10-01)'
+      sky_reserves: 'BA historical aggregate_backstop_capital, 2026-09-30: https://sky.data.blockanalitica.com/internal/risk/info/historic/?days_ago=30 (retrieved 2026-10-01)'
+    spell:
+      title: 'September 2026 close — calculated TMF parameters for the next MSC'
+      status: 'calculated proposal; no executed October parameter update is assumed'

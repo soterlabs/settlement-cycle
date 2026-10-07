@@ -1,0 +1,12 @@
+{
+  "prime": "spark",
+  "cutoff": "2026-09-30",
+  "daily_revision": "08ed233241c4ed1750dde86085a7bc5a0fff028fd08db4b1ca091956c283f645",
+  "same_reference_rates": true,
+  "same_code_and_configuration": true,
+  "matched": true,
+  "differences": [],
+  "daily_sha256": "72d23df466c98cf2f45f1c0b72aefd1fc7c9c0579d306de41b4350994c4a95ee",
+  "monthly_sha256": "72d23df466c98cf2f45f1c0b72aefd1fc7c9c0579d306de41b4350994c4a95ee",
+  "official_rate_refresh_method": "Recalculate borrowing costs from saved inputs of the previously validated API and full monthly results; reuse venue revenues. Redundant fresh venue replays stopped."
+}

@@ -1,0 +1,28 @@
+# Operator-approved 2026-10-01. Historical DR catch-ups, not September-earned DR.
+# Not booked in published January-August reports: recognize Sky expense now.
+# Published January–August reports stay unchanged. Do not derive these again
+# from the workbook's Historical Additions sheet or add them to normal DR.
+# Updated from latest upstream PR #28 per operator instruction; six-decimal USDS.
+# Evidence: settle-dr-dune@ed08241/docs/september-2026-settlement.md.
+2026-09:
+  skybase:
+    - id: skybase-pendle-jan-aug-2026
+      label: Pendle / code 1997
+      recognize_sky_expense: true
+      earned_period: 2026-01 through 2026-08
+      amount: '41560.042993'
+    - id: skybase-flagship-jan-aug-2026
+      label: Flagship / code 1998
+      recognize_sky_expense: true
+      earned_period: 2026-01 through 2026-08
+      amount: '71804.679106'
+    - id: skybase-risk-capital-jan-aug-2026
+      label: Risk Capital / code 1999
+      recognize_sky_expense: true
+      earned_period: 2026-01 through 2026-08
+      amount: '1782.888077'
+    - id: skybase-grove-farm-jul-aug-2026
+      label: Grove Farm / codes 0/1/1002
+      recognize_sky_expense: true
+      earned_period: 2026-07 through 2026-08
+      amount: '61966.169912'

@@ -1062,17 +1062,28 @@ def test_notional_principal_usd_does_not_change_headline_fields():
 
 # --- fixed_fee_per_capital_event_usd (off-chain redemption fee) ------------
 
-def _venue_with_fee(fee: Decimal, min_transfer: Decimal | None = Decimal("1000000")) -> Venue:
+def _venue_with_fee(
+    fee: Decimal,
+    min_transfer: Decimal | None = Decimal("1000000"),
+    nav_haircut_bps: Decimal | None = None,
+    nav_haircut_effective_date: date | None = None,
+) -> Venue:
     base = _venue("E10")
     return Venue(
         id=base.id,
         chain=base.chain,
         token=base.token,
-        pricing_category=base.pricing_category,
+        pricing_category=(
+            PricingCategory.RWA_TRANCHE
+            if nav_haircut_bps is not None
+            else base.pricing_category
+        ),
         underlying=base.underlying,
         label=base.label,
         min_transfer_amount_usd=min_transfer,
         fixed_fee_per_capital_event_usd=fee,
+        nav_haircut_bps=nav_haircut_bps,
+        nav_haircut_effective_date=nav_haircut_effective_date,
     )
 
 
@@ -1236,6 +1247,47 @@ def test_fee_detects_shaved_redemption_event():
     # fee = 1 × $15K → actual_revenue = −$30,000
     assert vr.period_inflow == Decimal("-49985000")
     assert vr.actual_revenue == Decimal("-30000")
+
+
+def test_flat_fee_signature_uses_gross_amount_before_nav_haircut():
+    """The 5 bps exit mark must not hide the independent $15K flat-fee
+    signature on a BUIDL capital event."""
+    period = _period()
+    haircut_factor = Decimal("0.9995")
+    marked_inflow = Decimal("49985000") * haircut_factor
+    inputs = VenueRevenueInputs(
+        venue=_venue_with_fee(
+            Decimal("15000"),
+            nav_haircut_bps=Decimal("5"),
+        ),
+        value_som=Decimal("0"),
+        value_eom=marked_inflow,
+        inflow_timeseries=_inflow_with_events(
+            [(date(2026, 3, 10), marked_inflow)]
+        ),
+    )
+    vr = compute_venue_revenue(period, inputs)
+    assert vr.actual_revenue == Decimal("-15000")
+
+
+def test_flat_fee_signature_ignores_future_nav_haircut():
+    """Historical replays use gross $1 NAV until the dated haircut starts."""
+    period = _period()
+    gross_inflow = Decimal("49985000")
+    inputs = VenueRevenueInputs(
+        venue=_venue_with_fee(
+            Decimal("15000"),
+            nav_haircut_bps=Decimal("5"),
+            nav_haircut_effective_date=date(2026, 9, 1),
+        ),
+        value_som=Decimal("0"),
+        value_eom=gross_inflow,
+        inflow_timeseries=_inflow_with_events(
+            [(date(2026, 3, 10), gross_inflow)]
+        ),
+    )
+    vr = compute_venue_revenue(period, inputs)
+    assert vr.actual_revenue == Decimal("-15000")
 
 
 def test_fee_skips_clean_round_redemption():

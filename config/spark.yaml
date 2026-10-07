@@ -1354,6 +1354,24 @@ external_alm_sources:
     # ``amount × (DFEDTARL − 62.5bps + 1.8% APY) / 365``; the on-chain
     # leg captured here is the realized settlement of that accrual.
     - '0xfc0539d019482d311c161ae3b756cdccdec45e87'
+    # SparkLend reserve treasuries. Governance payloads periodically sweep
+    # accrued reserve-factor income to the ALM in spTokens. The Cat C
+    # external-revenue path classifies those receipts as earned Spark revenue
+    # instead of capital; the supply APY is already net of this reserve factor,
+    # so the streams do not overlap. Effective for settlements from 2026-09;
+    # Jan-Aug 2026 is carried as an sv_adj true-up in that settlement without
+    # regenerating the published reports (see the September reconciliation).
+    # spUSDS, spUSDT, spUSDC and spPYUSD reserve treasury:
+    - '0xb137e7d16564c81ae2b0c8ee6b55de81dd46ece5'
+    # spDAI reserve treasury:
+    - '0x856900aa78e856a5df1a2665ee3a66b2487cd68f'
+
+# Start dates preserve the published Jan-Aug reports. Those receipts ride the
+# September settlement once via sv_adj; direct recognition starts in September.
+external_alm_source_start_dates:
+  ethereum:
+    '0xb137e7d16564c81ae2b0c8ee6b55de81dd46ece5': '2026-09-01'
+    '0x856900aa78e856a5df1a2665ee3a66b2487cd68f': '2026-09-01'
 
 # Per-(chain, source) overrides for inflows that arrive from an
 # `external_alm_sources` address but should NOT be classified as yield
@@ -1427,6 +1445,17 @@ principal_return_overrides:
         amount: 51267944
         token: 'USDC'
         note: 'monthly-rollover principal return (embedded final interest unsplittable, split unconfirmed), not standalone yield'
+      # September rollover: 10M returned plus 8.639471 retained escrow cash.
+      # Interest arrived separately (24,410 USDC); preserve it as revenue.
+      # Principal funding: ethereum tx
+      # 0xd2961f325f3b00ed0a3b78ca8120d35fe352dbbcf06931291ea0f0b883ba184b
+      # Interest leg: 0xbedf1256d84d57d80ddb4bc2d41122c9eb6bfa8e0ff496074c354b64cea45df3
+      # Combined receipt: 0x0a601288df4f132dec815aff107eed00a908a78e6e9753987bcd774fb96d393b
+      - date: '2026-09-11'
+        amount: '10024418.639471'
+        capital_amount: '10000008.639471'
+        token: 'USDC'
+        note: 'September Anchorage rollover: principal return; preserve 24,410 interest'
       # STANDING RULE (no fixed maturity any more — the loan rolled over
       # at 2026-06-16 and renews monthly per Spark, 2026-07): whenever a
       # principal-sized inflow from this escrow appears (i.e. not in the

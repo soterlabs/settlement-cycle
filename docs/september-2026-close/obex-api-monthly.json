@@ -1,0 +1,11 @@
+{
+  "prime": "obex",
+  "cutoff": "2026-09-30",
+  "daily_revision": "f8b13792cab52ae4aef1e2d5225145c6aeeb2a93b6d2ed3c811dff36787893e2",
+  "same_reference_rates": true,
+  "same_code_and_configuration": true,
+  "matched": true,
+  "differences": [],
+  "daily_sha256": "74c044f85bc2919b77b99da89d91471b7edf5737cecccfd875ecce1c1769c5e9",
+  "monthly_sha256": "74c044f85bc2919b77b99da89d91471b7edf5737cecccfd875ecce1c1769c5e9"
+}

@@ -12,6 +12,7 @@ from .period import Month as _Month
 from .pricing import PricingCategory
 from .primes import (
     Address,
+    BasinIdleUsdsConfig,
     CashDistributionSource,
     Chain,
     ChroniclePointsConfig,
@@ -300,6 +301,16 @@ def load_prime(config_path: Path) -> Prime:
                     if v.get("fixed_fee_per_capital_event_usd") is not None
                     else None
                 ),
+                nav_haircut_bps=(
+                    Decimal(str(v["nav_haircut_bps"]))
+                    if v.get("nav_haircut_bps") is not None
+                    else None
+                ),
+                nav_haircut_effective_date=(
+                    date.fromisoformat(v["nav_haircut_effective_date"])
+                    if v.get("nav_haircut_effective_date") is not None
+                    else None
+                ),
                 sky_direct=bool(v.get("sky_direct", False)),
                 holder_override=(
                     Address.from_str(v["holder_override"])
@@ -356,6 +367,14 @@ def load_prime(config_path: Path) -> Prime:
         chain = Chain(chain_str)
         external_alm_sources[chain] = [Address.from_str(a) for a in addrs]
 
+    external_alm_source_start_dates: dict[Chain, dict[Address, date]] = {}
+    for chain_str, starts in cfg.get("external_alm_source_start_dates", {}).items():
+        chain = Chain(chain_str)
+        external_alm_source_start_dates[chain] = {
+            Address.from_str(address): date.fromisoformat(start)
+            for address, start in starts.items()
+        }
+
     def _parse_event_overrides(
         key: str,
     ) -> dict[Chain, dict[Address, list[PrincipalReturnOverride]]]:
@@ -368,12 +387,16 @@ def load_prime(config_path: Path) -> Prime:
             out[chain] = {}
             for addr_str, entries in by_addr.items():
                 addr = Address.from_str(addr_str)
+                if key == "yield_reversal_overrides" and any("capital_amount" in e for e in entries):
+                    raise ValueError("capital_amount is only supported for principal returns")
                 out[chain][addr] = [
                     PrincipalReturnOverride(
                         date=date.fromisoformat(e["date"]),
                         amount=Decimal(str(e["amount"])),
                         token=e.get("token", ""),
                         note=e.get("note", ""),
+                        capital_amount=(Decimal(str(e["capital_amount"]))
+                                        if "capital_amount" in e else None),
                     )
                     for e in entries
                 ]
@@ -399,12 +422,21 @@ def load_prime(config_path: Path) -> Prime:
         psm=psm,
         venues=venues,
         external_alm_sources=external_alm_sources,
+        external_alm_source_start_dates=external_alm_source_start_dates,
         principal_return_overrides=principal_return_overrides,
         yield_reversal_overrides=yield_reversal_overrides,
         subsidy=SubsidyConfig.from_dict(cfg.get("subsidy")),
         sources=sources,
         extra_ilks=tuple(
             _parse_ilk_bytes32(x) for x in (cfg.get("extra_ilks") or [])
+        ),
+        basin_idle_usds=(
+            BasinIdleUsdsConfig(
+                effective_from=date.fromisoformat(cfg["basin_idle_usds"]["effective_from"]),
+                ilk=_parse_ilk_bytes32(cfg["basin_idle_usds"]["ilk_bytes32"]),
+                holder=Address.from_str(cfg["basin_idle_usds"]["holder"]),
+                basins=tuple(Address.from_str(b) for b in cfg["basin_idle_usds"]["basins"]),
+            ) if cfg.get("basin_idle_usds") is not None else None
         ),
         agent_rate_start_date=(
             date.fromisoformat(cfg["agent_rate_start_date"])

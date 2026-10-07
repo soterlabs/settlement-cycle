@@ -286,6 +286,17 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p_run.set_defaults(func=_cmd_run)
 
+    p_reuse = sub.add_parser(
+        "monthly-from-revenue", help="Finalize an explicit month-end daily revenue revision",
+    )
+    p_reuse.add_argument("--prime", required=True)
+    p_reuse.add_argument("--month", required=True, help="Completed settlement month YYYY-MM")
+    p_reuse.add_argument("--revision", required=True, help="Immutable API revenue revision ID")
+    p_reuse.add_argument("--output-dir", required=True, help="New, empty artifact directory")
+    p_reuse.add_argument("--allow-september-sofr-carry", action="store_true",
+                         help="Explicitly permit the approved September 2026 3.88%% SOFR carry-forward")
+    p_reuse.set_defaults(func=_cmd_monthly_from_revenue)
+
     p_snap = sub.add_parser(
         "snapshot",
         help="Live point-in-time balance sheet (parity target: BA labs stars-api)",
@@ -296,6 +307,36 @@ def _build_parser() -> argparse.ArgumentParser:
     p_snap.set_defaults(func=_cmd_snapshot)
 
     return p
+
+
+def _cmd_monthly_from_revenue(args: argparse.Namespace) -> int:
+    from .load import write_settlement
+    from .revenue.monthly import from_database
+    from .store.db import connect
+
+    output = Path(args.output_dir)
+    if output.exists() and (not output.is_dir() or any(output.iterdir())):
+        raise ValueError("output directory must be empty; existing settlements are not overwritten")
+    prime, month = load_prime_by_id(args.prime), Month.parse(args.month)
+    with connect() as conn:
+        conn.execute("SET TRANSACTION READ ONLY")
+        result, sources = from_database(conn, prime, month, args.revision,
+                                        allow_september_sofr_carry=args.allow_september_sofr_carry)
+    written = write_settlement(result, output, sources=sources)
+    missing = [name for name in ("provenance", "summary", "xlsx")
+               if name not in written or not written[name].is_file()]
+    if missing:
+        print(
+            f"Monthly finalization incomplete: missing {', '.join(missing)}. "
+            f"Partial artifacts remain in {output}. Fix the renderer and retry "
+            "with a new empty output directory.",
+            file=sys.stderr,
+        )
+        return 1
+    print(f"Finalized {prime.id} {month} from daily revision {args.revision}")
+    for name, path in written.items():
+        print(f"  {name}: {path}")
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:

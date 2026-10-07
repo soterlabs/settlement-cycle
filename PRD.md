@@ -1396,6 +1396,55 @@ defect.
 
 18. **3M T-Bill series rebuilt from treasury.gov; March 2026 was wrong and January unverifiable (2026-07-31, same PR).** Found while migrating Spark off EFFR. `config/subsidy_reference_rates.yaml` now carries one row per published business day (146 rows, `2025-12-31 … 2026-07-30`), every value reconciling 1:1 to the **daily yield curve `3 Mo`** column — *not* the separate "daily treasury bill rates" file, whose 13-week bank-discount / coupon-equivalent quotes differ by 8–15 bps and will not reconcile. Two defects fixed: (a) **March carried five hand-entered rows** describing a smooth 3.66%→3.58% decline when actual prints were flat at 3.71–3.74% — every March value understated the rate by 6–14 bps, overstating both primes' subsidy; (b) **January carried two rows**, both 3.67%, both on non-trading days (Jan 1 holiday, Jan 31 Saturday) — the whole month was an unverifiable carry-forward against real prints of 3.62–3.71%. Feb/Apr/May/Jun already matched the source and are unchanged to the cent (verified: Feb moves $0.00 for both primes). Max carry-forward is now 4 days. **Impact — this is a data correction to already-settled figures, independent of the EFFR→T-Bill switch:** Spark +$67,770 on top of the rate change; **Grove +$65,701 with no methodology change at all** (Grove was already `tbill_3m`), of which +$65,661 is March. Grove Jan–Jun regenerated in the same PR.
 
+#### Methodology — resolved 2026-09: SparkLend reserve factor is Spark revenue
+
+SparkLend reserve-factor income swept from its two reserve treasuries into the
+Spark Ethereum ALM is earned Spark revenue, not capital. The S1–S5 supply APY
+is already net of the reserve factor, so the treasury receipts are additive
+rather than double-counted. The existing Cat C external-revenue path consumes
+the spToken transfers once the senders are listed in
+`external_alm_sources.ethereum`; no new pricing formula is required.
+
+This applies from the September 2026 settlement onward. The reconciliation is
+restricted to 2026: published January-August reports are not regenerated, and
+their $2,392,354.07 of reserve-factor income is recognized as a September
+Prime-side Supply-Side revenue true-up. In settlement language it is
+`sv_adj: 2392354.07`, increasing both Spark's MSC debt mint and Send to prime
+by that amount before whole-USDS rounding. The accounting and blast-radius
+evidence is recorded in
+`settlements/spark/2026-09/reconciliation.md`.
+
+#### Methodology — September 2026 proposal: BUIDL at net redemption value
+
+Grove E10 BUIDL redemptions return approximately 99.95% of share face value.
+At the prior $1 mark, a redemption cancelled between `d_value` and the E10
+capital-flow term, while its smaller USDC receipt landed in a separate Cat A
+venue. The fee was therefore invisible to per-venue residual revenue.
+
+This PR adopts the investigation's Option A: a generic Cat E venue field,
+`nav_haircut_bps`, with E10 configured at 5 bps. The gross NAV remains
+`const_one`; the contractual exit cost is applied afterward to every position
+and capital-flow valuation. At August's $643,254,421.77 closing position, the
+September transition markdown is $321,627.21. Because E10 is a fixed SDE, it
+flows to Sky under the owner-bears-exit-cost interpretation confirmed for this
+reconciliation. The haircut activates on 2026-09-01, leaving historical NAVs
+at $1 and making the transition markdown appear exactly once in September.
+May and August reports are not regenerated. The $162,505.35 of fees settled in
+January-August 2026 and the $2,508.55 August in-flight CoF correction are
+applied in September as `sky_adj: -165013.90`. This reduces Grove's MSC debt
+mint, rather than creating a separate Send to prime payment.
+
+The August 31 partial redemption is represented separately as a repeatable
+fixed-SDE `in_flight_redemptions` window. Its $24,986,500.50 settlement-basis
+value remains attributed on August 31 and falls away at September 1 EoD, when
+$24,986,500.153219 cash had landed. This generalizes the existing capped-SDE
+burn/settlement concept without abusing its scalar fields, which retire an
+entire exposure. Full evidence and the prospective/published split are in
+`settlements/grove/2026-09/reconciliation.md`.
+
+The combined Jan-Aug amounts owed and their machine-readable inputs are in
+`reconciliation/2026-01_to_2026-08/`.
+
 #### Medium priority (affect numerical accuracy)
 5. **Reconciliation gap with Sky's reported Sky Share for Grove** (~$1.13M for Mar 2026 under the pre-subsidy model). Largely closed by 2026-05-02 work (subsidy + SDE refactor + pricePerShareFeed NAV); Feb 2026 residual is now ~$45K excluding the E1 Horizon rewards channel. **Need:** Sky to confirm whether Asset Value definition for BR_charge differs from `subscription − SDE_value` time-weighted (the formula we now match per Grove team's workbook).
 6. **Subsidised rate ramp** — *resolved 2026-05-02*. Implemented per Sky governance: program_start 2026-01-01, T = months elapsed, formula `ref_rate + (BR − ref_rate) × T/24`, cap at first $1B utilized. Every prime uses the 3M T-Bill (Spark migrated off EFFR 2026-07-30, see item 14). Daily rates carried in `config/subsidy_reference_rates.yaml`.
@@ -1605,3 +1654,98 @@ Run with: `pytest tests/integration/test_ba_parity.py -m live -v -s`.
 15. **On-chain flow-of-funds reconciliation automation** — `settle audit flow-of-funds --prime <id> --month <YYYY-MM>` subcommand that flags any unrecognized counterparty crossing a USD threshold.
 16. **Idle USDS/DAI in lending pools / AMMs** (doc Step 2 — beyond just subproxy/ALM/PSM). No prime currently holds USDS this way; scaffolding to add when first prime needs it.
 17. **Distribution rewards** — Phase 3+ placeholder for referral/liquidity-program payouts (skybase). Field exists; populated when source lands.
+
+#### Grove Basin idle USDS — effective 2026-09-01
+
+Operator decision 2026-10-01: deduct Grove's attributable idle USDS in the
+JTRSY and BUIDL Basins and their active pockets from the borrowing-rate base,
+starting September 1, 2026. July and August are not restated. Configuration
+lives in `config/grove.yaml` under `basin_idle_usds` and explicitly identifies
+`ALLOCATOR-GROVE-A`, the Diamond ALM holder, the two Basins, and the effective date.
+
+For each UTC day's closing Ethereum block:
+
+```
+owned_idle = sum((USDS.balanceOf(basin) + USDS.balanceOf(pocket))
+                 * basin.shares(DiamondALM) / basin.totalShares())
+basin_idle = min(owned_idle, Vat.ilks(ALLOCATOR-GROVE-A).Art * rate / 1e45)
+utilized   = existing_utilized - basin_idle
+```
+
+When a Basin is its own pocket, count that address once. Resolve `pocket()`
+historically on every day, including after `PocketSet` changes. Only actual
+USDS balances qualify; invested collateral, USDC, total asset value, and
+cash at the Diamond ALM itself are outside this deduction. A failed or malformed
+RPC response fails the calculation rather than carrying a potentially overstated
+exemption forward. Shared pocket addresses across configured Basins are rejected
+until an explicit attribution rule exists.
+
+The cap prevents an exemption exceeding Grove-A debt from spilling into legacy
+`ALLOCATOR-BLOOM-A`. Existing deductions do not currently cover this compartment;
+any future Grove-A exemptions must share a remaining-debt cap to prevent overlap.
+Apply the result before the existing prime-wide interest/subsidy calculation;
+do not grant a second $1bn subsidized tranche. Total debt and gross interest
+before deductions remain unchanged. Supply-side revenue also remains unchanged.
+
+The shared daily/monthly compute path records `basin_idle` and `basin_ilk_debt`
+in `sky_revenue_daily`. Monthly-from-daily finalization requires these fields
+for eligible dates and recalculates interest with the same deduction. The
+workbook's Debt sheet shows the deduction when nonzero. Raw API borrowing-cost
+and net-PnL fields change when a new revision is computed; supply-side revenue
+fields do not. Merging this change does not itself republish old daily revisions:
+September snapshots must be recomputed on the merged version before they can
+be reused for a monthly settlement under this policy.
+
+#### Gelato keeper refund — September 2026
+
+Recognize the refund of previously expensed keeper funds when irrevocably
+received in protocol custody, even if `blow()` has not yet moved it into Vow.
+The Gelato Safe sent **42,469.146527 DAI** to `MCD_BLOW2` on
+**2026-09-07 16:37:35 UTC**, block 25926717, log 464, transaction
+`0x181d52604b1b4303637ceb67bf5de9e10b134a0ad38b694a69464f55eb8aad86`.
+The total includes 20,000 DAI mainnet float and 22,469.146527 DAI converted
+from Polygon USDC; the verified Transfer determines the booked total.
+
+The funds reached the surplus buffer on **2026-09-15 14:11:11 UTC** via
+`blow()`, block 25983375, transaction
+`0x806e361391d6f7b0c0ca98f200644bff27e002490c04fe55c5b27f9566359e10`.
+Thus both receipt and settlement belong to September: the existing cash
+surplus-return extractor already includes the latter. The receipt-basis
+adjustment is +42,469.146527 at receipt and -42,469.146527 at settlement,
+which clears the receivable and prevents counting the cash recognition again.
+September's aggregate income is unchanged by this reclassification. Across
+months, this mechanism recognizes income in the receipt month, with zero
+new income on the subsequent surplus-buffer settlement.
+
+`config/non_msc.yaml` allowlists the specific transaction/log and asserts its
+expected amount. The booked amount is decoded from its Transfer, not copied
+from the configuration. The first subsequent `Blow(token, amount)` settles
+the refund: DssBlow2 joins the full token balance to Vow (source:
+https://github.com/sky-ecosystem/dss-blow2/blob/master/src/DssBlow2.sol).
+The report preserves both transactions and the adjustments. This treatment
+is independent of the non-MSC cash-stream backend and does not alter unrelated
+surplus returns, prior settlements, or prime allocations.
+
+### September 2026 non-MSC savings close
+
+From September 2026, the HyperSync DSR expense is the month's `Vat.suck`
+interest minted by the Pot plus its closing unminted interest liability minus
+its opening unminted liability. Each boundary liability is calculated from
+historical `Pie`, `chi`, `dsr`, and `rho`, using Pot's integer `rpow`/`rmul`
+rounding and state strictly before the UTC boundary. This recognizes the
+month-end tail without waiting for an October drip and prevents that later
+drip from recognizing the same expense twice. Pot joins and rate changes
+require an updated `rho`; exits can release unminted interest, which the
+liability movement also captures. See
+[Pot implementation](https://github.com/sky-ecosystem/dss/blob/master/src/pot.sol).
+Earlier report calculations retain their existing convention.
+
+The sUSDS and stUSDS interpolation method is unchanged, but September-forward
+runs require drips bracketing both month boundaries. An incomplete closing
+interval fails the run for retry rather than silently understating expense.
+
+September distribution rewards require the October 1 exclusive cutoff in
+[settle-dr-dune PR #27](https://github.com/soterlabs/settle-dr-dune/pull/27).
+The submodule pin advances that shared window. Settlement-cycle imports the
+finalized September workbook and full-precision companion CSV; it validates
+checksums and attribution without independently replaying the DR pipeline.
