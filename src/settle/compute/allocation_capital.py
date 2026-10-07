@@ -201,6 +201,7 @@ class CapitalReplay:
     uncertain_accounts: set[str]
     uncertain_daily: dict[date, set[str]] = field(default_factory=dict)
     daily_by_ilk: dict[date, dict[str, dict[str, Decimal]]] = field(default_factory=dict)
+    uncertain_repayments: dict[str, list[dict]] = field(default_factory=dict)
 
 
 def replay_history(history, start: date, end: date) -> CapitalReplay:
@@ -225,6 +226,7 @@ def replay_history(history, start: date, end: date) -> CapitalReplay:
     uncertain: set[str] = set()
     uncertain_daily = {}
     daily_by_ilk = {}
+    uncertain_repayments = {}
     batches = sorted(history.batches, key=lambda b: (b.timestamp, b.chain, b.block, b.log_index))
     cursor = 0
     _log.info('Capital replay: %d transactions, reporting %s through %s', len(batches), start, end)
@@ -268,8 +270,26 @@ def replay_history(history, start: date, end: date) -> CapitalReplay:
             if repay > cash:
                 missing = repay - cash
                 apply("income", missing, destination=clearing)
-                unmatched_receipts[b.identity] = missing
+                unmatched_receipts[b.identity] = unmatched_receipts.get(b.identity, ZERO) + missing
+                if missing > Decimal("0.01"):
+                    uncertain.add(clearing)
+            # Unknown receipts are zero-basis placeholders, not proven earned
+            # cash. A repayment from them can retire basis in other holdings.
+            # Preserve that uncertainty wherever the repayment changes origin
+            # attribution, including refinancing between two ilks.
+            before = {k: dict(a.borrowed_by_ilk) for k, a in ledger.accounts.items()
+                      if k != clearing and a.borrowed} if clearing in uncertain else {}
             apply("repay", repay, clearing, ilk=None if ilk == 'unattributed' else ilk)
+            if clearing in uncertain:
+                affected = [k for k, origins in before.items()
+                            if origins != ledger.account(k).borrowed_by_ilk]
+                uncertain.update(affected)
+                uncertain_repayments.setdefault(b.identity, []).append({
+                    'ilk': ilk, 'amount': repay, 'affected_account_count': len(affected),
+                    # Bound diagnostic output for long histories (Spark has
+                    # hundreds of thousands of transaction custody accounts).
+                    'affected_accounts_sample': sorted(affected)[:10],
+                })
         incoming = [(m.account, m.change - m.external_income) for m in b.movements
                     if m.change > m.external_income]
         total_in = sum((value for _, value in incoming), ZERO)
@@ -300,6 +320,8 @@ def replay_history(history, start: date, end: date) -> CapitalReplay:
             custody = (f"rounding:{b.chain}" if residue <= Decimal("0.01")
                        else f"unallocated:{b.identity}")
             apply("transfer", residue, clearing, custody, preserve_basis=True)
+            if clearing in uncertain:
+                uncertain.add(custody)
             if residue > Decimal("0.01"):
                 unmatched_outflows[b.identity] = residue
         ledger.accounts.pop(clearing, None)
@@ -323,4 +345,4 @@ def replay_history(history, start: date, end: date) -> CapitalReplay:
     _log.info('Capital replay complete: %d transactions; %d unmatched receipts, %d unmatched outflows',
               cursor, len(unmatched_receipts), len(unmatched_outflows))
     return CapitalReplay(ledger, daily, unmatched_receipts, unmatched_outflows, uncertain,
-                         uncertain_daily, daily_by_ilk)
+                         uncertain_daily, daily_by_ilk, uncertain_repayments)

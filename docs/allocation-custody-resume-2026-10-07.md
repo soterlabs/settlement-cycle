@@ -2,6 +2,8 @@
 
 This continues [the principal-return investigation](allocation-resume-2026-10-07.md). Latest main was integrated at `4860a40`; merge commit `4c87d9d` preserves both allocation-yield XLSX output and main's isolated report output directory. The hash-pinned September refresh script explicitly migrates its older snapshots' absent `allocation_financing` field; normal production decoding remains strict.
 
+> Grove results below are superseded by the [initial-funding and repayment follow-up](grove/initial-funding-investigation-2026-10-07.md). Spark has not been rerun after that follow-up’s uncertainty fix.
+
 ## Implemented
 
 - **Anchorage S23:** actual USDC funding creates a facility claim. Verified principal returns release its borrowed basis, including the December19 2025 $5m zero-net round trip. Configured partial returns retain interest as income. No notional schedule seeds principal. The July16 and August17 2026 returns still have unconfirmed principal/interest splits; the facility remains unresolved rather than treating all returned cash as borrowing.
