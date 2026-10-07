@@ -8,6 +8,7 @@ and spread reimbursements remain separate in the bridge to Sky's full claim.
 
 from __future__ import annotations
 
+from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal, localcontext
 
@@ -75,7 +76,14 @@ def allocation_financing(pnl, history, *, idle_amounts=None) -> dict:
     total_cost = ZERO
     used_principal = dict.fromkeys(days, ZERO)
     used_deductions = dict.fromkeys(days, ZERO)
-    for venue in pnl.venue_breakdown:
+    from ..domain.monthly_pnl import VenueRevenue
+
+    venues = list(pnl.venue_breakdown)
+    extra = set(history.analytics_only_venues) - {v.venue_id for v in venues}
+    venues.extend(VenueRevenue(v, 'Tracing-only allocation', ZERO, ZERO, ZERO, ZERO) for v in sorted(extra))
+    totals_by_ilk = defaultdict(Decimal)
+    daily_by_ilk = {d: defaultdict(lambda: {'principal': ZERO, 'deduction': ZERO, 'cost': ZERO}) for d in days}
+    for venue in venues:
         account = history.venue_accounts.get(venue.venue_id)
         accounts = ([account] if account is not None else []) + history.custody_accounts.get(venue.venue_id, [])
         reason = history.unsupported.get(venue.venue_id)
@@ -90,8 +98,21 @@ def allocation_financing(pnl, history, *, idle_amounts=None) -> dict:
         daily_idle = (idle_amounts or {}).get(venue.venue_id, {})
         if idle > ZERO and set(days) - daily_idle.keys():
             reason = reason or "Daily idle dollar deductions are incomplete"
+        if not venue.cof_excluded and account not in history.idle_accounts:
+            for day in days:
+                sde = sde_daily.get(venue.venue_id, {}).get(day)
+                deduction = daily_idle.get(day, ZERO) + (sde['cum_value'] if sde else ZERO)
+                if principal[day] == ZERO and deduction > ZERO:
+                    reason = reason or 'Dollar deduction has no traced funding ilk'
         cost = ZERO
+        costs_by_ilk = defaultdict(Decimal)
+        principals_by_ilk = defaultdict(Decimal)
         for day in days:
+            origins = defaultdict(Decimal)
+            for a in accounts:
+                for ilk, value in replay.daily_by_ilk[day].get(a, {}).items():
+                    origins[ilk] += value
+                    principals_by_ilk[ilk] += value / Decimal(n_days)
             idle_amount = daily_idle.get(day, ZERO)
             if not idle_amount.is_finite() or idle_amount < ZERO:
                 raise ValueError(f"Invalid daily idle amount for {venue.venue_id} on {day}")
@@ -104,6 +125,17 @@ def allocation_financing(pnl, history, *, idle_amounts=None) -> dict:
             sde_amount = sde["cum_value"] if sde else principal[day] * sde_fraction
             if not venue.cof_excluded and account not in history.idle_accounts:
                 cost += (principal[day] - sde_amount - idle_amount) * rates[day]
+                for ilk, amount in origins.items():
+                    # Dollar exemptions remain exact in aggregate. For a
+                    # mixed-funded holding, distribute by funding origin.
+                    deduction = ((sde_amount + idle_amount) * amount / principal[day]
+                                 if principal[day] else ZERO)
+                    portion = (amount - deduction) * rates[day]
+                    costs_by_ilk[ilk] += portion
+                    if reason is None:
+                        daily_by_ilk[day][ilk]['principal'] += amount
+                        daily_by_ilk[day][ilk]['deduction'] += deduction
+                        daily_by_ilk[day][ilk]['cost'] += portion
                 if reason is None:
                     used_principal[day] += principal[day]
                     used_deductions[day] += sde_amount + idle_amount
@@ -115,7 +147,11 @@ def allocation_financing(pnl, history, *, idle_amounts=None) -> dict:
         else:
             cost_out = cost
             net_pnl = venue.revenue - cost
+            if venue.venue_id in extra:
+                net_pnl = None  # No revenue snapshot for this holder yet.
             total_cost += cost
+            for ilk, amount in costs_by_ilk.items():
+                totals_by_ilk[ilk] += amount
         rows.append({
             "venue_id": venue.venue_id,
             "basis_status": "unresolved" if reason else "traced",
@@ -128,6 +164,9 @@ def allocation_financing(pnl, history, *, idle_amounts=None) -> dict:
             "gross_apy": annualized_yield(venue.actual_revenue + venue.external_revenue,
                                            average_value, n_days),
             "net_apy": annualized_yield(net_pnl, average_value, n_days) if net_pnl is not None else None,
+            'borrowed_principal_average_by_ilk': dict(principals_by_ilk),
+            'cost_of_funds_by_ilk': dict(costs_by_ilk) if reason is None else None,
+            'revenue_available': venue.venue_id not in extra,
         })
     existing_cost = pnl.sky_revenue - pnl.sde_revenue + pnl.susds_spread_reimbursement
     unresolved = [r['venue_id'] for r in rows if r['cost_of_funds'] is None]
@@ -173,4 +212,8 @@ def allocation_financing(pnl, history, *, idle_amounts=None) -> dict:
         "unmatched_receipts": replay.unmatched_receipts,
         "unmatched_outflows": replay.unmatched_outflows,
         "realised_principal_loss": replay.ledger.realised_principal_loss,
+        'allocation_cost_by_ilk': dict(totals_by_ilk),
+        'daily_allocation_by_ilk': {str(d): dict(values) for d, values in daily_by_ilk.items()},
+        'drawn_by_ilk': replay.ledger.drawn_by_ilk,
+        'repaid_by_ilk': replay.ledger.repaid_by_ilk,
     }

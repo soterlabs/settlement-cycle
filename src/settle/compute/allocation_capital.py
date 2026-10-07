@@ -34,12 +34,14 @@ class CapitalEvent:
     source_value: Decimal | None = None
     # Moving the same beneficial holding into custody is not a realization.
     preserve_basis: bool = False
+    ilk: str | None = None
 
 
 @dataclass
 class CapitalAccount:
     value: Decimal = ZERO
     borrowed: Decimal = ZERO
+    borrowed_by_ilk: dict[str, Decimal] = field(default_factory=dict)
 
 
 @dataclass
@@ -50,6 +52,8 @@ class CapitalLedger:
     realised_principal_loss: Decimal = ZERO
     # Repaying with own funds extinguishes debt without creating negative basis.
     equity_funded_repayment: Decimal = ZERO
+    drawn_by_ilk: dict[str, Decimal] = field(default_factory=dict)
+    repaid_by_ilk: dict[str, Decimal] = field(default_factory=dict)
 
     def account(self, key: str | None) -> CapitalAccount:
         if key is None:
@@ -76,6 +80,9 @@ class CapitalLedger:
             if e.kind == "draw":
                 target.borrowed += e.amount
                 self.drawn += e.amount
+                ilk = e.ilk or 'unattributed'
+                target.borrowed_by_ilk[ilk] = target.borrowed_by_ilk.get(ilk, ZERO) + e.amount
+                self.drawn_by_ilk[ilk] = self.drawn_by_ilk.get(ilk, ZERO) + e.amount
             return
         if e.kind not in ("transfer", "repay"):
             raise ValueError(f"Unknown capital event kind: {e.kind}")
@@ -92,32 +99,66 @@ class CapitalLedger:
             basis = source.borrowed  # exact full exit; leave no rounding dust
         else:
             basis = source.borrowed * e.amount / value
+        # Carry original funding labels through swaps, bridges and custody.
+        # Never allocate origins from the destination's current value or ilk.
+        parts = {ilk: amount * basis / source.borrowed
+                 for ilk, amount in source.borrowed_by_ilk.items()} if source.borrowed else {}
+        if parts:
+            last = next(reversed(parts))
+            parts[last] += basis - sum(parts.values(), ZERO)
         source.value = value - e.amount
         source.borrowed -= basis
         carried = basis if e.preserve_basis and e.kind == "transfer" else min(basis, e.amount)
         self.realised_principal_loss += basis - carried
+        carried_parts = {ilk: amount * carried / basis for ilk, amount in parts.items()} if basis else {}
+        if carried_parts:
+            last = next(reversed(carried_parts))
+            carried_parts[last] += carried - sum(carried_parts.values(), ZERO)
+        for ilk, amount in parts.items():
+            source.borrowed_by_ilk[ilk] -= amount
         if e.kind == "transfer":
             target = self.account(e.destination)
             target.value += e.amount
             target.borrowed += carried
+            for ilk, amount in carried_parts.items():
+                target.borrowed_by_ilk[ilk] = target.borrowed_by_ilk.get(ilk, ZERO) + amount
         else:
             self.repaid += e.amount
+            ilk = e.ilk or 'unattributed'
+            self.repaid_by_ilk[ilk] = self.repaid_by_ilk.get(ilk, ZERO) + e.amount
             self.equity_funded_repayment += e.amount - carried
-            if e.amount == carried:
-                return  # No own-money refinancing; no global account scan.
-            # Own-money repayment refinances a proportional slice of the
-            # remaining borrowed holdings. It must reduce their future costs.
-            remaining = sum((a.borrowed for a in self.accounts.values()), ZERO)
-            reduction = min(remaining, e.amount - carried)
+            replacement = {origin: amount for origin, amount in carried_parts.items()
+                           if e.ilk and origin != e.ilk}
+            refinancing = e.amount - carried + sum(replacement.values(), ZERO)
+            if refinancing == ZERO:
+                return  # No refinancing; no global account scan.
+            # Apply refinancing proportionally to the repaid ilk's remaining
+            # holdings. Earned cash reduces their future borrowed basis;
+            # another ilk's cash replaces its origin below. The legacy
+            # unlabelled synthetic API retains its aggregate behavior.
+            eligible = {k: (a.borrowed_by_ilk.get(e.ilk, ZERO) if e.ilk else a.borrowed)
+                        for k, a in self.accounts.items()}
+            remaining = sum(eligible.values(), ZERO)
+            reduction = min(remaining, refinancing)
             if remaining and reduction:
-                keys = sorted(k for k, a in self.accounts.items() if a.borrowed)
+                keys = sorted(k for k, amount in eligible.items() if amount)
                 left = reduction
-                for key in keys[:-1]:
+                for key in keys:
                     a = self.accounts[key]
-                    part = reduction * a.borrowed / remaining
+                    part = left if key == keys[-1] else reduction * eligible[key] / remaining
+                    if e.ilk:
+                        a.borrowed_by_ilk[e.ilk] -= part
+                    else:
+                        for origin in a.borrowed_by_ilk:
+                            a.borrowed_by_ilk[origin] *= (a.borrowed - part) / a.borrowed
                     a.borrowed -= part
+                    # Paying ilk A with cash borrowed from B refinances the
+                    # existing A-funded holdings with B; it is not new yield.
+                    for origin, amount in replacement.items():
+                        new_basis = part * amount / refinancing
+                        a.borrowed_by_ilk[origin] = a.borrowed_by_ilk.get(origin, ZERO) + new_basis
+                        a.borrowed += new_basis
                     left -= part
-                self.accounts[keys[-1]].borrowed -= left
 
 
 def replay_capital(
@@ -157,6 +198,7 @@ class CapitalReplay:
     unmatched_outflows: dict[str, Decimal]
     uncertain_accounts: set[str]
     uncertain_daily: dict[date, set[str]] = field(default_factory=dict)
+    daily_by_ilk: dict[date, dict[str, dict[str, Decimal]]] = field(default_factory=dict)
 
 
 def replay_history(history, start: date, end: date) -> CapitalReplay:
@@ -180,6 +222,7 @@ def replay_history(history, start: date, end: date) -> CapitalReplay:
     unmatched_outflows: dict[str, Decimal] = {}
     uncertain: set[str] = set()
     uncertain_daily = {}
+    daily_by_ilk = {}
     batches = sorted(history.batches, key=lambda b: (b.timestamp, b.chain, b.block, b.log_index))
     cursor = 0
 
@@ -187,14 +230,18 @@ def replay_history(history, start: date, end: date) -> CapitalReplay:
         clearing = f"clearing:{b.identity}"
         step = 0
 
-        def apply(kind, amount, source=None, destination=None, value=None, preserve_basis=False):
+        def apply(kind, amount, source=None, destination=None, value=None, preserve_basis=False, ilk=None):
             nonlocal step
             step += 1
             ledger.apply(CapitalEvent(f"{b.identity}:{step}", b.day, (step,),
-                                     kind, amount, source, destination, value, preserve_basis))
+                                     kind, amount, source, destination, value, preserve_basis, ilk))
 
-        if b.minted > ZERO:
-            apply("draw", b.minted, destination=clearing)
+        funding = b.minted_by_ilk or {'unattributed': b.minted}
+        if sum(funding.values(), ZERO) != b.minted:
+            raise ValueError('Per-ilk funding does not sum to transaction debt change')
+        for ilk, amount in funding.items():
+            if amount > ZERO:
+                apply("draw", amount, destination=clearing, ilk=ilk)
         # Mark before processing gifts; both affect withdrawal fractions.
         for m in b.movements:
             if m.value_before == ZERO and ledger.account(m.account).borrowed == ZERO:
@@ -210,14 +257,16 @@ def replay_history(history, start: date, end: date) -> CapitalReplay:
                 apply("transfer", -change, m.account, clearing, preserve_basis=m.preserve_basis)
                 if m.account in uncertain:
                     uncertain.add(clearing)
-        if b.minted < ZERO:
-            repay = -b.minted
+        for ilk, amount in funding.items():
+            if amount >= ZERO:
+                continue
+            repay = -amount
             cash = ledger.account(clearing).value
             if repay > cash:
                 missing = repay - cash
                 apply("income", missing, destination=clearing)
                 unmatched_receipts[b.identity] = missing
-            apply("repay", repay, clearing)
+            apply("repay", repay, clearing, ilk=None if ilk == 'unattributed' else ilk)
         incoming = [(m.account, m.change - m.external_income) for m in b.movements
                     if m.change > m.external_income]
         total_in = sum((value for _, value in incoming), ZERO)
@@ -261,6 +310,9 @@ def replay_history(history, start: date, end: date) -> CapitalReplay:
                 apply_batch(batches[cursor])
                 cursor += 1
             daily[day] = {k: a.borrowed for k, a in ledger.accounts.items()}
+            daily_by_ilk[day] = {k: dict(a.borrowed_by_ilk) for k, a in ledger.accounts.items()
+                                if a.borrowed}
             uncertain_daily[day] = set(uncertain)
             day += timedelta(days=1)
-    return CapitalReplay(ledger, daily, unmatched_receipts, unmatched_outflows, uncertain, uncertain_daily)
+    return CapitalReplay(ledger, daily, unmatched_receipts, unmatched_outflows, uncertain,
+                         uncertain_daily, daily_by_ilk)

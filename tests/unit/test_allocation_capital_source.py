@@ -80,6 +80,17 @@ def test_unmatched_principal_exception_keeps_actual_income(monkeypatch):
         assert sum(m.external_income for b in history.batches for m in b.movements) == D(10)
 
 
+def test_partial_principal_return_preserves_interest(monkeypatch):
+    logs = [log(1, 1, USDS_ETHEREUM.address, TRANSFER_TOPIC0,
+                [topic(MANAGER), topic(HOLDER)], [110 * 10**18])]
+    prime = replace(setup(monkeypatch, logs),
+                    external_alm_sources={Chain.ETHEREUM: [MANAGER]},
+                    principal_return_overrides={Chain.ETHEREUM: {MANAGER: [
+                        PrincipalReturnOverride(DAY, D(110), 'USDS', capital_amount=D(100))]}})
+    history = source.fetch_capital_history(prime, {Chain.ETHEREUM: 1})
+    assert sum(m.external_income for b in history.batches for m in b.movements) == D(10)
+
+
 def test_lending_mint_uses_scaled_principal_not_interest_in_transfer(monkeypatch):
     ray = 10**27
     logs = [draw(), log(1, 1, VAULT, aave.MINT_T0, [topic(HOLDER), topic(HOLDER)],
