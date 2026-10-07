@@ -1,5 +1,7 @@
 # PR215 resumed: principal-return classification
 
+Follow-up: [custody links and completed per-ilk replays](allocation-custody-resume-2026-10-07.md) supersede the validation status and next-work list below.
+
 The September23 custody replay remains the last full Spark/Grove reconciliation baseline. Neither prime reconciles, and this PR stays draft. The small reported cost subtotals exclude allocations with unresolved funding; they are not estimates of their economic borrowing costs.
 
 ## First correction
