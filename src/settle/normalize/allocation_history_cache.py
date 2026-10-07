@@ -32,6 +32,11 @@ def fingerprint(prime, pins):
     digest.update(repr(prime).encode())
     digest.update(json.dumps({str(k): v for k, v in pins.items()}, sort_keys=True).encode())
     digest.update(str(input_revision()).encode())
+    # Tracing reuses the reviewed redemption-link policy independently of
+    # revenue recognition dates; changing a link must invalidate this cache.
+    policy = root.parents[1] / 'config/redemption_settlements.yaml'
+    if policy.exists():
+        digest.update(policy.read_bytes())
     return digest.hexdigest()
 
 
@@ -40,7 +45,8 @@ def save_history(path, history, key):
     temporary = path.with_suffix(path.suffix + '.tmp')
     metadata = {'schema': SCHEMA, 'fingerprint': key,
                 'venue_accounts': history.venue_accounts, 'unsupported': history.unsupported,
-                'custody_accounts': history.custody_accounts, 'idle_accounts': sorted(history.idle_accounts)}
+                'custody_accounts': history.custody_accounts, 'idle_accounts': sorted(history.idle_accounts),
+                'analytics_only_venues': list(history.analytics_only_venues)}
     try:
         with gzip.open(temporary, 'wt') as output:
             output.write(json.dumps(metadata) + '\n')
@@ -70,4 +76,5 @@ def load_history(path, key):
                 Decimal(m['external_income']), m['preserve_basis']) for m in row['movements'])
             batches.append(CapitalBatch(**row))
     return CapitalHistory(tuple(batches), metadata['venue_accounts'], metadata['unsupported'],
-                          metadata['custody_accounts'], set(metadata['idle_accounts']))
+                          metadata['custody_accounts'], set(metadata['idle_accounts']),
+                          tuple(metadata.get('analytics_only_venues', [])))

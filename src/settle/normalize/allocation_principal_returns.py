@@ -16,13 +16,13 @@ def principal_return_logs(prime, chain, mapping, logs):
     overrides = prime.principal_return_overrides.get(chain, {})
     external = set(prime.external_alm_sources.get(chain, []))
     if not overrides or chain not in prime.alm:
-        return set()
+        return {}
     holder = prime.alm[chain]
     who = _addr_topic(holder.value)
     sources = {_addr_topic(a.value): entries for a, entries in overrides.items()
                if a in external}
     totals = defaultdict(Decimal)
-    receipts = defaultdict(set)
+    receipts = defaultdict(dict)
     seen = set()
     for row in logs:
         identity = (row.block_number, row.log_index)
@@ -43,12 +43,27 @@ def principal_return_logs(prime, chain, mapping, logs):
         amount = Decimal(int(row.data, 16)) / Decimal(10**venue.token.decimals)
         totals[key] += amount if incoming else -amount
         if incoming:
-            receipts[key].add(identity)
-    matched = set()
+            receipts[key][identity] = int(row.data, 16)
+    matched = {}
     for (sender, token, symbol, day), amount in totals.items():
-        if amount > 0 and any(
-            entry.date == day and (not entry.token or entry.token == symbol)
-            and abs(amount - entry.amount) <= 1 for entry in sources[sender]
-        ):
-            matched.update(receipts[(sender, token, symbol, day)])
+        entries = [entry for entry in sources[sender]
+                   if entry.date == day and (not entry.token or entry.token == symbol)
+                   and abs(amount - entry.amount) <= 1]
+        if amount > 0 and entries:
+            if len(entries) != 1:
+                raise ValueError('Ambiguous principal-return exceptions')
+            entry = entries[0]
+            transfers = receipts[(sender, token, symbol, day)]
+            total = sum(transfers.values())
+            # Newer settlement configs split the September Anchorage receipt
+            # into principal and interest. Preserve the earned component;
+            # whole-return exceptions continue to remove all income labels.
+            capital = getattr(entry, 'capital_amount', None)
+            revenue = max(Decimal(0), amount - capital) if capital is not None else Decimal(0)
+            scale = 10**mapping[(token, holder.hex)].token.decimals
+            remaining = revenue * scale
+            for i, (identity, raw) in enumerate(transfers.items()):
+                part = remaining if i == len(transfers) - 1 else revenue * scale * raw / total
+                matched[identity] = part
+                remaining -= part
     return matched

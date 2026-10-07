@@ -70,6 +70,7 @@ class CapitalHistory:
     unsupported: dict[str, str]
     custody_accounts: dict[str, list[str]] = field(default_factory=dict)
     idle_accounts: set[str] = field(default_factory=set)
+    analytics_only_venues: tuple[str, ...] = ()
 
 
 def _account(chain: Chain, token: Address, holder: Address) -> str:
@@ -102,6 +103,17 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
     incremental. Unsupported custody remains explicit, never a fabricated
     opening borrowed balance.
     """
+    analytics_only = ()
+    if prime.id == 'grove' and not any(v.id == 'E12_PAU' for v in prime.venues):
+        # Separate PAU-held NFT1352494 in the same AUSD/USDC pool. This is
+        # tracing-only: adding custody coverage must not regenerate revenues
+        # or silently introduce a zero-revenue row into settlement accounting.
+        legacy = next((v for v in prime.venues if v.id == 'E12'), None)
+        if legacy:
+            pau = replace(legacy, id='E12_PAU', notional_principal_usd=None,
+                          holder_override=Address.from_str('0x0dcd9298e163dfd3c0b5b00f0d9093c36e40a153'))
+            prime = replace(prime, venues=[*prime.venues, pau])
+            analytics_only = ('E12_PAU',)
     assets: dict[Chain, dict[tuple[str, str], Venue]] = defaultdict(dict)
     venue_accounts: dict[str, str] = {}
     unsupported: dict[str, str] = {}
@@ -294,9 +306,8 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                     amount = int(row.data, 16)
                     if row.topic2 == who:
                         changes[key] += amount
-                        if (row.topic1 in senders
-                                and (row.block_number, row.log_index) not in principal_returns):
-                            gifts[key] += amount
+                        if row.topic1 in senders:
+                            gifts[key] += principal_returns.get((row.block_number, row.log_index), amount)
                         elif (row.topic1 == '0x' + '0' * 64
                               and mapping[key].pricing_category == PricingCategory.RWA_TRANCHE
                               and mapping[key].min_transfer_amount_usd):
@@ -475,6 +486,10 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
             custody_accounts[vid].extend(accounts)
         for vid, accounts in nft.custody_accounts.items():
             custody_accounts[vid].extend(accounts)
+        from .allocation_custody import link_buidl_claims, link_facility
+
+        batches = link_facility(prime, chain, batches, logs, venue_accounts, unsupported, mapping)
+        batches = link_buidl_claims(prime, chain, pins[chain], batches, logs, custody_accounts)
     batches = link_cctp(prime, pins, batches, bridge_burns)
     from .allocation_ethena import link_ethena_cooldowns
 
@@ -482,4 +497,5 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
     idle_accounts = {_account(c, USDS_BY_CHAIN[c].address, holder)
                      for c, holder in prime.alm.items() if c in USDS_BY_CHAIN}
     return CapitalHistory(tuple(sorted(batches, key=lambda b: (b.timestamp, b.chain, b.block, b.log_index))),
-                          venue_accounts, unsupported, dict(custody_accounts), idle_accounts)
+                          venue_accounts, unsupported, dict(custody_accounts), idle_accounts,
+                          analytics_only)

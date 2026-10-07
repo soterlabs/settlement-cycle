@@ -98,3 +98,23 @@ def test_idle_exemption_uses_asset_dollars_including_earned_value():
     assert result['allocations'][0]['borrowed_principal_eom'] == D(100)
     assert result['allocations'][0]['cost_of_funds'] == D('0.0045')
     assert result['reconciliation']['within_one_cent'] is True
+
+
+def test_mixed_ilk_deductions_and_tracing_only_allocation_do_not_invent_revenue():
+    day = date(2026, 8, 1)
+    history = CapitalHistory((CapitalBatch('draw', day, 1, 'ethereum', 1,
+        (AssetMovement('asset', D(0), D(100)),), D(100),
+        minted_by_ilk={'A': D(60), 'B': D(40)}),), {'PAU': 'asset'}, {},
+        analytics_only_venues=('PAU',))
+    pnl = SimpleNamespace(period=SimpleNamespace(start=day, end=day),
+        sky_revenue=D('.008'), sde_revenue=D(0), susds_spread_reimbursement=D(0),
+        venue_breakdown=[], sde_daily_breakdown=[],
+        sky_revenue_daily=[{'date': str(day), 'utilized': '80', 'daily_sky_rev': '.008',
+                           'base_apr': '.0365'}])
+    result = allocation_financing(pnl, history, idle_amounts={'PAU': {day: D(20)}})
+    row = result['allocations'][0]
+    assert row['cost_of_funds_by_ilk'] == {'A': D('.0048'), 'B': D('.0032')}
+    assert sum(row['cost_of_funds_by_ilk'].values()) == row['cost_of_funds']
+    assert row['net_pnl'] is None and row['net_apy'] is None and row['gross_apy'] is None
+    assert row['revenue_available'] is False
+    assert pnl.venue_breakdown == []
