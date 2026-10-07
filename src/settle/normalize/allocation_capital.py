@@ -23,6 +23,7 @@ from .allocation_async_vaults import CAPITAL_ASSETS, REDEEM_REQUEST, AsyncVaultC
 from .allocation_bridges import funded_cctp_burns, link_cctp
 from .allocation_morpho_fees import ACCRUE_INTEREST, VAULTS, fee_mints
 from .allocation_nfts import NFTCapital
+from .allocation_principal_returns import principal_return_logs
 from .allocation_psm import PsmCapital
 from .prices import get_unit_price, is_par_stable
 from .sources.hypersync_balances import _addr_topic
@@ -185,6 +186,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
             log_fields=[*hypersync._DEFAULT_LOG_FIELDS, "transaction_hash"],
         )
         logs = [*logs, *nft.discover(logs, pins[chain])]
+        principal_returns = principal_return_logs(prime, chain, mapping, logs)
         grouped = defaultdict(list)
         for row in logs:
             if not row.transaction_hash:
@@ -292,7 +294,8 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                     amount = int(row.data, 16)
                     if row.topic2 == who:
                         changes[key] += amount
-                        if row.topic1 in senders:
+                        if (row.topic1 in senders
+                                and (row.block_number, row.log_index) not in principal_returns):
                             gifts[key] += amount
                         elif (row.topic1 == '0x' + '0' * 64
                               and mapping[key].pricing_category == PricingCategory.RWA_TRANCHE

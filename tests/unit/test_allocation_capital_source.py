@@ -1,9 +1,10 @@
+from dataclasses import replace
 from datetime import date
 from decimal import Decimal as D
 
 from settle.compute.allocation_capital import replay_history
 from settle.domain.pricing import PricingCategory
-from settle.domain.primes import Address, Chain, Prime, Token, Venue
+from settle.domain.primes import Address, Chain, Prime, PrincipalReturnOverride, Token, Venue
 from settle.domain.sky_tokens import USDS_ETHEREUM
 from settle.extract import aave_reconstruct as aave
 from settle.extract.hypersync import LogRow
@@ -45,6 +46,38 @@ def setup(monkeypatch, logs, category=PricingCategory.ERC4626_VAULT):
 def draw(block=1, index=0):
     return log(block, index, Address.from_str(source._VAT), source._FROB_T0,
                ["0x" + ILK.hex()], [0])
+
+
+def test_principal_return_override_uses_day_net_without_creating_income(monkeypatch):
+    sender = MANAGER
+    logs = [log(1, 1, USDS_ETHEREUM.address, TRANSFER_TOPIC0,
+                [topic(sender), topic(HOLDER)], [60 * 10**18]),
+            log(2, 2, USDS_ETHEREUM.address, TRANSFER_TOPIC0,
+                [topic(sender), topic(HOLDER)], [50 * 10**18]),
+            log(3, 3, USDS_ETHEREUM.address, TRANSFER_TOPIC0,
+                [topic(HOLDER), topic(sender)], [10 * 10**18])]
+    prime = replace(setup(monkeypatch, logs),
+                    external_alm_sources={Chain.ETHEREUM: [sender]},
+                    principal_return_overrides={Chain.ETHEREUM: {
+                        sender: [PrincipalReturnOverride(DAY, D(100), 'USDS')]}})
+    history = source.fetch_capital_history(prime, {Chain.ETHEREUM: 3})
+    assert sum(m.external_income for b in history.batches for m in b.movements) == 0
+    replay = replay_history(history, DAY, DAY)
+    assert replay.unmatched_receipts  # No invented loan/custody funding link.
+    assert all(a.borrowed == 0 for a in replay.ledger.accounts.values())
+
+
+def test_unmatched_principal_exception_keeps_actual_income(monkeypatch):
+    logs = [log(1, 1, USDS_ETHEREUM.address, TRANSFER_TOPIC0,
+                [topic(MANAGER), topic(HOLDER)], [10 * 10**18])]
+    base = replace(setup(monkeypatch, logs),
+                   external_alm_sources={Chain.ETHEREUM: [MANAGER]})
+    for entry in [PrincipalReturnOverride(DAY, D(100), 'USDS'),
+                  PrincipalReturnOverride(DAY, D(10), 'USDC'),
+                  PrincipalReturnOverride(date(2026, 8, 2), D(10), 'USDS')]:
+        prime = replace(base, principal_return_overrides={Chain.ETHEREUM: {MANAGER: [entry]}})
+        history = source.fetch_capital_history(prime, {Chain.ETHEREUM: 1})
+        assert sum(m.external_income for b in history.batches for m in b.movements) == D(10)
 
 
 def test_lending_mint_uses_scaled_principal_not_interest_in_transfer(monkeypatch):
