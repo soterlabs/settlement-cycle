@@ -194,3 +194,131 @@ def link_grove_agora_redemptions(history):
 
     return link_reviewed_issuer_conversions(history, source=SOURCE, cash=CASH,
         groups=GROUPS, route='agora', label='Grove Agora')
+
+# Opposite direction: cash paid to the authorized mint wallet, then AUSD
+# delivered at par. Most delivery comes from 0xbe009e…; the March 31 $999k
+# delivery comes from 0x080f64…. Exact reviewed boundary records are in
+# grove_agora_subscription_events.json; no assumption about their other funds.
+SUBSCRIPTIONS = (
+    ((
+        ('0xbd03131915af7e3f11bcd7610500cdc95ff161854a72cc935d5eab22276d8be3', 24441570, D('1000')),
+    ), (
+        ('0x4aee75529037f0f33685dc4e90c28ad501ddc093066dd0160e8a434d9f4dd36d', 24442104, D('1000')),
+    ), False),
+    ((
+        ('0x7aa7f06b057915b475aac0f1e09916a17f6069e43e369d18c0106ecd8866bd5c', 24442172, D('6999000')),
+    ), (
+        ('0x554e942ed88b36769f66608f74842c0ebcd0684e7c9cdae39ed9c781afa5050d', 24442243, D('6999000')),
+    ), False),
+    ((
+        ('0x4d283107297c95be110e5da49bb3e7104e12c8f4e7cc86686dbcc6bb793c86b5', 24634903, D('1000')),
+        ('0xb043dbd9916ad959f4bccb066ac041a79f9773b823931eda6d12a9689ae2f80b', 24634926, D('4999000')),
+    ), (
+        ('0x8c0304548d0384b4931029ebb761b196f89e3075b6bf0f14feb96d46c7a438ff', 24635247, D('1000')),
+        ('0x893bb7460905b1a2b2c73c8919a27a1a255a2a824fa831ab47afe64dee6c3064', 24635308, D('4999000')),
+    ), False),
+    ((
+        ('0x6a9ebfe3f0504a3f88bee9e8277997dcf11342063dbb052037c9a4b3753d1c2d', 24777815, D('1000')),
+    ), (
+        ('0x61084d9dd74d98e949c6705bc77d57a55376bcd706603398eb67169c2ef1d01a', 24777975, D('1000')),
+    ), False),
+    ((
+        ('0x343d8d9de9c242581ceff5f6be2abfac5f458452a5ed39e98736c9370aca84ce', 24778406, D('10000000')),
+    ), (
+        ('0xd1c9059f2fd31b3d47e306fc346d75cda1c74714e06625a6273fe4c7f3a307a4', 24778540, D('10000000')),
+    ), False),
+    ((
+        ('0x5e126ce12124617b3b96ba325f99bb105b6938b6823ba59544ca373a7665e409', 24783524, D('999000')),
+    ), (
+        ('0x4c676cb5f6a2bce3d039713a8dab53264683f5f6f43fbc60bcbc6ad778e54782', 24783559, D('999000')),
+    ), False),
+    ((
+        ('0x233cb555a7b7b21458709a812932c8a140de814bb229e534afd89b04fc8179c9', 24921635, D('1000')),
+        ('0x7594148cb134327684106849879a4d9c6b65be9d0f15d80be894c71716729d17', 24921677, D('5999000')),
+    ), (
+        ('0x0fd750b1cb2e8f9db6d5ef938991193bbdeae3c4e900dcbf0378e385003940a2', 24921885, D('6000000')),
+    ), False),
+    ((
+        ('0xd217d260a8c559192159acf88e1cc32f5d5d27bc567ebd56a5476d9db0f0fc7e', 24949683, D('1000')),
+        ('0x654f9edc08b28dabdc3ea1162710b71280dd82a7bf8eb04add3338353fe4dbb9', 24949727, D('3999000')),
+    ), (
+        ('0xa684232154cfa1171ae6ae9ced6b34b18a1d59802a2b713133c07f401e41ba71', 24949802, D('4000000')),
+    ), False),
+    ((
+        ('0x9d835c35f843e284627be9c9dc246ea927e98a0f8bdba500f14608aad5c05674', 25323645, D('10')),
+        ('0x85b8a3d87354ac33895fa4c2d512f5efffc0ff673975a3f36b8f727bf0e15e65', 25323732, D('4999990')),
+    ), (
+        ('0x3cf55e7f9aca47e855cecc6d9f0783e7ca2d30765f399b769eb43abdde19f2e6', 25323923, D('5000000')),
+    ), False),
+    ((
+        ('0xd24db68d800079f9334b3f936e57915e9725a98a98444fb9ef1170da48d4d44e', 25367315, D('10')),
+        ('0xf2d94f3a1618bc8dccb222b2c02fe244f5b9fe16b7f17780115209900834d553', 25367408, D('9999990')),
+    ), (
+        ('0x4bb2ff6dcabd80570d027892c6a607fc5858089ab1b2354ad3a6fa147e9da32a', 25367456, D('10000000')),
+    ), False),
+    ((
+        ('0x553243c2d6dc1e2ec131a5c014d51f7e4a1cfec4296e86d57a774db424f43471', 25373767, D('5000000')),
+    ), (
+        ('0x51bddfa61a8b937b96f71827aa18aa678b0e0833ead446d2694d186c1e339e52', 25374020, D('5000000')),
+    ), False),
+    ((
+        ('0x818750598ea085a83f8105dabfc93f0f129a320d8130f0a550ea568a367dc417', 25374718, D('5000000')),
+    ), (
+        ('0x1c2a64a7914eba41b0192072b4f46a42bc76032784414e747cf140cc29e37e65', 25374769, D('5000000')),
+    ), False),
+    ((
+        ('0xff3f5af0da9f3a3f079e564a0ba77424a9de33c9a3f7e940711fe9bb77042dc0', 25388142, D('3500000')),
+    ), (
+        ('0xf23dec5c6cabb4838e50d06760396c7acb941a408e1b22980c814dd125825c68', 25388206, D('3500000')),
+    ), False),
+    ((
+        ('0xdc04b2a6a09df67ad3f96e7a42e09a58a20d9560b917537749a75bb6675e6389', 25395037, D('2600000')),
+    ), (
+        ('0xfc47d06b5bf8bc348f33b5625f062bdfb7d276bee6f9e19fcb3429bf8a797edb', 25395205, D('2600000')),
+    ), False),
+    ((
+        ('0x1cf8c1d21d2bbe62f298b1d5713b6b0b625dcfda4039ec9176a3fad53d221fe1', 25552771, D('10')),
+        ('0x08f2d9d7ec92bb3486829b131201209bd6ed2a9a2658bc235501e8722d3249a0', 25552896, D('4249990')),
+    ), (
+        ('0x30ef2ead3d0a9d80e0fdd49aa89c10130450bcaab9acaed0e59360bd6a85896d', 25552922, D('4250000')),
+    ), False),
+    ((
+        ('0xd4631388d73e6f227d1d727847c68a54d7a09a4f20d30bc7ba55bc8042e6f6cf', 25574218, D('3000000')),
+    ), (
+        ('0xbcf1d33bae8bd9932e6d927905408734ffb3fdb9ed712fa7ab2e569c6a34ea0d', 25574324, D('3000000')),
+    ), False),
+    ((
+        ('0x26769eeaa47945284cda0d72c0ff630901934aeb9a0689091daecd820d8453c3', 25597142, D('10')),
+        ('0xdd0fd21a8dc02a5982a1776ebe47577bfa92cc64ef0da33c98285f7020900909', 25597245, D('2499990')),
+    ), (
+        ('0xdeecccb10a53d18f7ed955893ed0c3e33b5f9d18fecf30422f1354e43feba7eb', 25597376, D('2500000')),
+    ), False),
+    ((
+        ('0x40b67bb7fb33b330a0146e360e5bd69ffa7ebb978ff9aeaf060986815734b6b2', 25789641, D('10')),
+        ('0x886f4357fa61c9b82c6220b6b8a2ee1e9ecaf6d02b093c7261ece54c1c03ba88', 25790595, D('2999990')),
+    ), (
+        ('0x28bee92d56cfe197e453f1777a60651f14c0afaac09210ba676cba43dad2d5a7', 25790783, D('3000000')),
+    ), False),
+    ((
+        ('0xa12cb59758f032ced5785f941f6edc8eff52e025d63dc4be2c7b04671ddffa47', 25850507, D('10')),
+        ('0x738d9be024f68d71f7a9d5df40b1a688dee5dae5c64e9bc9ee367967d74e07c3', 25850601, D('9999990')),
+    ), (
+        ('0xb39b913d6a128b4e95c2df12341215268853bc404cfb2d2fd2b9e6f6d6a7d8d9', 25850651, D('10000000')),
+    ), False),
+    ((
+        ('0xff9475b4238dedeb59124201f1772a396fae59ea4ed342c907c69f0af0c4ef7e', 25875916, D('10')),
+        ('0x9e308c96010f63099d3d1c201e67d38a9506df017dba3133ee91d3f4b758b69c', 25876005, D('9999990')),
+    ), (
+        ('0x8cc24b1f1c790f1e66299c3fb271061b8530125cf74db1d33c92733674ca2f9c', 25876074, D('10000000')),
+    ), False),
+)
+
+
+def link_grove_agora_subscriptions(history):
+    from .reviewed_issuer_conversions import link_reviewed_issuer_conversions
+
+    if SOURCE not in history.venue_accounts.values():
+        return history
+    return link_reviewed_issuer_conversions(history, source=CASH, cash=SOURCE,
+        groups=SUBSCRIPTIONS, route='agora-subscription', label='Grove Agora subscription',
+        custody_account=SOURCE)
