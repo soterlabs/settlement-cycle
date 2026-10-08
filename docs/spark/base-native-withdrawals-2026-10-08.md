@@ -48,3 +48,29 @@ The Base source is now split into one replay batch per authenticated token leg.
 An unequal-funding regression verifies Sky-funded USDS stays distinct from
 wholly earned sUSDS, including uncertainty propagation. See
 `docs/spark/op-unichain-withdrawals-2026-10-08.md`.
+
+## June 22 withdrawal: one delivered leg and one pending leg
+
+The smaller withdrawal before the July spell is now also covered, without combining
+its independently funded USDS and sUSDS legs:
+
+- Base source: [0x133b60…0e64](https://basescan.org/tx/0x133b60b42bdf84271efc2d743808e66c0b4796eadd19ab2e34de9da9da910e64),
+  June 22, block 47,673,994. Burns exactly 10,000 USDS and 10,000 sUSDS from
+  Spark's ALM, with two canonical MessagePassed payloads naming Ethereum ALM
+  `0x1601843c5e9bc251a3272907010afa41fa18347e` as recipient.
+- sUSDS arrival: [0x67a82b…db1c](https://etherscan.io/tx/0x67a82b0fafa4e6ccd659b10c90feba4060a1611cd5c6f5a20e2d5edf9a2bdb1c),
+  June 29, block 25,424,363. The relayed message and finalized withdrawal hashes
+  authenticate delivery of those same 10,000 sUSDS. Its value changes from
+  $11,006.22276111643838 to $11,013.77116017150251 while in flight; this gain
+  creates no borrowed basis.
+- The separate 10,000 USDS message has no successful relay through the August
+  pin. Its authenticated burn becomes a pending claim, not a loss, income, or
+  fabricated Ethereum payment. The portal's pinned `finalizedWithdrawals`
+  mapping is checked independently for both message hashes in the fixture.
+
+This removes the source's $21,006.22276111643838 unexplained outflow and the
+$11,013.77116017150251 unexplained receipt. It leaves the 10,000 USDS claim
+outstanding and excluded from ALM idle cash. Actual borrowed funding remains
+whatever the preceding capital history proves. The evidence is in
+`tests/fixtures/spark_base_june_withdrawals.json`; regression tests recompute
+both message hashes and test the partial-cutoff and separate-funding behavior.
