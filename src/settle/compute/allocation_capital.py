@@ -204,6 +204,7 @@ class CapitalReplay:
     uncertain_repayments: dict[str, list[dict]] = field(default_factory=dict)
     funding_bounds_daily: dict = field(default_factory=dict)
     observed_debt_daily: dict = field(default_factory=dict)
+    rounding_receipts: dict[str, Decimal] = field(default_factory=dict)
 
 
 def replay_history(history, start: date, end: date, *, quantify_uncertainty=False) -> CapitalReplay:
@@ -238,6 +239,7 @@ def replay_history(history, start: date, end: date, *, quantify_uncertainty=Fals
     uncertain_daily = {}
     daily_by_ilk = {}
     uncertain_repayments = {}
+    rounding_receipts = {}
     batches = sorted(history.batches, key=lambda b: (b.timestamp, b.chain, b.block, b.log_index))
     cursor = 0
     _log.info('Capital replay: %d transactions, reporting %s through %s', len(batches), start, end)
@@ -286,9 +288,15 @@ def replay_history(history, start: date, end: date, *, quantify_uncertainty=Fals
                 apply("income", missing, destination=clearing)
                 if envelope is not None:
                     envelope.unknown(clearing, missing, b.identity, cash=True)
-                unmatched_receipts[b.identity] = unmatched_receipts.get(b.identity, ZERO) + missing
+                # Use the same sub-cent policy as ordinary incoming legs.
+                # An aToken's scaled debit can differ from exact underlying
+                # cash by one raw token unit. Preserve the number as evidence,
+                # but do not call it a missing financing route.
                 if missing > Decimal("0.01"):
+                    unmatched_receipts[b.identity] = unmatched_receipts.get(b.identity, ZERO) + missing
                     uncertain.add(clearing)
+                else:
+                    rounding_receipts[b.identity] = rounding_receipts.get(b.identity, ZERO) + missing
             # Unknown receipts are zero-basis placeholders, not proven earned
             # cash. A repayment from them can retire basis in other holdings.
             # Preserve that uncertainty wherever the repayment changes origin
@@ -377,4 +385,4 @@ def replay_history(history, start: date, end: date, *, quantify_uncertainty=Fals
               cursor, len(unmatched_receipts), len(unmatched_outflows))
     return CapitalReplay(ledger, daily, unmatched_receipts, unmatched_outflows, uncertain,
                          uncertain_daily, daily_by_ilk, uncertain_repayments,
-                         funding_bounds_daily, observed_debt_daily)
+                         funding_bounds_daily, observed_debt_daily, rounding_receipts)
