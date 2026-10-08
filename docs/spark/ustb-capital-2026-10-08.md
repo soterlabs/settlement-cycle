@@ -47,7 +47,8 @@ NAV when rounded to cents. The two burns exhaust exactly all issued shares.
 These are **reviewed closed cash associations, not cryptographic request-ID
 links**. There is no automatic nearest-date matcher or payer-wide income rule.
 The full direct-payer inventory contains two additional December payments;
-they remain outside this adapter as unresolved USCC candidates. It does not
+they remain outside this USTB adapter and are handled separately by the reviewed
+USCC settlement groups in `uscc-capital-2026-10-08.md`. It does not
 trace the payer's commingled wallet interior.
 
 Each burn carries existing basis into a separate S21 receivable, and only the

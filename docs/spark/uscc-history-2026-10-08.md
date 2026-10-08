@@ -1,4 +1,8 @@
-# Spark USCC: identified subscription gap and unresolved cash attribution
+# Spark USCC: initial evidence inventory
+
+**Updated:** the later settlement-day NAV evidence and capital adapter in
+`uscc-capital-2026-10-08.md` resolve the cash associations below. This document
+records the earlier inventory checkpoint; its no-attribution status is historical.
 
 The [October 16, 2025 spell](https://github.com/sparkdotfi/spark-spells/blob/d67876686f82656710ca1baa352ddab65d49907d/archive/20251016/SparkEthereum_20251016.sol)
 authorizes the exact USDC entrypoint `0xdb48ac0802f9a79145821a5430349caff6d676f7`
