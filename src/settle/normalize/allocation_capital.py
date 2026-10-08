@@ -525,4 +525,6 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
     if basin_rows:
         from .allocation_basin import basin_events, link_basin_shares
         history = link_basin_shares(history, basin_events(basin_rows))
+        from .allocation_paxos import link_paxos_boundary, paxos_events
+        history = link_paxos_boundary(history, paxos_events(basin_rows))
     return history
