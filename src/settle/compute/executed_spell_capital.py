@@ -41,10 +41,13 @@ def _movement(batch, key):
 
 def apply_executed_spells(history):
     from ..normalize.allocation_capital import AssetMovement
+    from .grove_buidl_subscriptions import link_grove_buidl_subscriptions
     from .grove_historical_capital import link_grove_initial_jaaa, link_grove_jaaa_avalanche
     from .grove_plume_capital import link_grove_plume_jtrsy
+    from .grove_stac_capital import link_grove_stac_subscriptions
 
     history = link_grove_plume_jtrsy(link_grove_jaaa_avalanche(link_grove_initial_jaaa(history)))
+    history = link_grove_buidl_subscriptions(link_grove_stac_subscriptions(history))
     batches = list(history.batches)
     indexes = {b.identity: i for i, b in enumerate(batches)}
     if len(indexes) != len(batches):

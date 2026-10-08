@@ -1,0 +1,1147 @@
+{
+  "prime": "grove",
+  "period": "2026-08",
+  "base_commit": "f150e02",
+  "scope": "Read-only allocation financing; settlement and API outputs unchanged",
+  "input_hashes": {
+    "/tmp/pr215-grove-eoa/history.jsonl.gz": "c05b53815379f6f7a4d9f6195d819d09ddb542f8f279af5f4defe4b7b3295474",
+    "settlements/grove/2026-08/provenance.json": "d6fb40d3c43caf3bdc7d0983b7ff071433ad056d22825b9f0f19eeb9d3af3aa9",
+    "/tmp/pr215-resumed-grove/idle_deductions.json": "e6b13f9b30816b2f8e9325f222aa9c889ff68cdf182205f4c54576d929faf427",
+    "/tmp/pr215-resumed-grove/debt-control.json": "6214144465cad85e59e3cd7c075925fad2f5bdc2131428ea4e6f769b57d9280b",
+    "/tmp/pr215-resumed-grove/deduction-owners.json": "dad2cf619d5dc65a26721aaf1fe3938136bb512212bf427a2e5aa56531f58153"
+  },
+  "source_hashes": {
+    "src/settle/compute/grove_stac_capital.py": "d6569b252cd699d0a02e7c25ada5b4b223fb602d32dd1b5784ee7d0857026f9f",
+    "src/settle/compute/grove_buidl_subscriptions.py": "26b1b37abb4d95cfe039ad45d0f45aa1a8865a1a5dd7d9a3318a965070aba9e4",
+    "src/settle/compute/executed_spell_capital.py": "4cb8e4d72452a652ae39ca9cf075142404868f44164df6a0c61b2a5aa5bd5490",
+    "tests/fixtures/grove_stac_subscription_events.json": "24b4c6d9504da59012342550d793ad2c0cc7d5255d5e1a4884013e0c9453d10f",
+    "tests/fixtures/grove_buidl_subscription_events.json": "5203ce508ebd92bfe65361a4a833df81900674c183e4c49f486d3d14f90fc935",
+    "/tmp/pr215-grove-stac-full-events.json": "85aed329f115fe78b89ab5395ca74add484f94cd19253438dd6c04f611d7e943",
+    "/tmp/pr215-grove-buidl-subscription-events.json": "e0ebf4b840aa15e53d3ca5150f87e4e99ae0a82ecb7611f736000d917ac4d23d"
+  },
+  "method": "Exact historical subscription links at governance-configured issuer entrypoints; no downstream EOA tracing",
+  "stac": {
+    "payments": 3,
+    "issuances": 2,
+    "cash_paid": "100000000",
+    "delivered_value": "100000000",
+    "raw_full_history_rows": 5
+  },
+  "buidl": {
+    "payments": 26,
+    "issuances": 20,
+    "cash_paid": "800000000",
+    "delivered_face": "799910000",
+    "known_issuer_fees": "90000",
+    "fee_treatment": "Full borrowed subscription basis survives share issuance. Fee does not retire debt. Revenue fee treatment unchanged."
+  },
+  "before": {
+    "unmatched_receipts": 239,
+    "unmatched_outflows": 465,
+    "eligible_allocation_cost": "1233.513467956631497028953141",
+    "realised_principal_loss": "50001.5619260000000000000000000000000000000000000000000000000"
+  },
+  "after": {
+    "unmatched_receipts": 217,
+    "unmatched_outflows": 438,
+    "eligible_allocation_cost": "1233.513467956631497028953141",
+    "realised_principal_loss": "50001.5619260000000000000000000000000000000000000000000000000"
+  },
+  "removed_unmatched_entries": {
+    "unmatched_receipts": {
+      "ethereum:0x2f544c36733dfc9c71c76a371e21a3c5d04b3af475635a85d7000996c74c0ae4": "50000000",
+      "ethereum:0x8f8e781c2fbfdefdee08a225e702b319e9fabd65c3c0a1167df5e13f0303dc8e": "50000000",
+      "ethereum:0x8bec4131ad2540ee7759c6f3a5f98fe1df9ab5520f4ca82171cf57a48f6cfbcf": "49985000.00",
+      "ethereum:0x791a722719049eeaa0bc60a31551e7a27d2a8333a984bde3a272809a165de0cf": "49985000.00",
+      "ethereum:0xa418c583e8b4a92e139c31212a32fcf73437bc8b95f1a13266150d003f779985": "49985000.00",
+      "ethereum:0x9d9f5c9f00a0d070c39a84a894be542ab21be28ca11814533bfec99645dd270b": "49985000.00",
+      "ethereum:0x5213c04071a57297f8d847db52733c34461a46d2a2db3ae2ee1db55e93c8fd2b": "49985000.00",
+      "ethereum:0xfe67f42564925bd41e37be3a7851c7902d425fe6ef45f12593a0c1e8065655fb": "49985000.00",
+      "ethereum:0x278e1eb474b38a83f7b64a460d80a51798c173e921b7a370f0209849a3b3d849": "50000000.00",
+      "ethereum:0x9ee7d7cb4a3f2baf685f5ed206b394e9a6f141d95a6b279e71fd0a70b05e5405": "25000000.00",
+      "ethereum:0x1b8de5c5e85e286d9e9a4f28efa7738fe0e2877d82a8c7df728e87408fd79d0b": "25000000.00",
+      "ethereum:0x2ce44dc910cff16b6dc9ba4b5d9ba51dc699824be18e0f14160747ea6921d965": "25000000.00",
+      "ethereum:0xc72adc8b9777d636ad900fe39967c32e5b57993652e5ff9526eb9eee36ce5b34": "25000000.00",
+      "ethereum:0x80dd652e2eb52baea619b1f8903accd8d9409dba3b091333e09d0e1c867af812": "50000000.00",
+      "ethereum:0x0a1d484a1b3999bf243352528a33de80ad741f121f7358fc485be72a8efb183a": "25000000.00",
+      "ethereum:0xfbcea8eff9439b96595e7cdfa0d1793eaa2473e92e4ed52b37ecd12a2d42a1ad": "25000000.00",
+      "ethereum:0x6a1e632728a3b509e103d49a56e093dc8c5b63d46c063142a0551e2e101e3460": "25000000.00",
+      "ethereum:0xb95c2603c4a1e28c2be46288c49ac73b79de12e6aac06b2612e82c4513cf6327": "50000000.00",
+      "ethereum:0x1a135ca8765c0171dbe777395c0cae99bd1f4960c1c1f867625708994e2c9082": "50000000.00",
+      "ethereum:0x6ff228e9ffd1a255e68d2933b9484372afeb1a1afdbe664768f760108dd75ce9": "25000000.00",
+      "ethereum:0xb81e7239f9a27ea6cf344b526966a6328d0da78687e56f6256ddf4d8dc027738": "50000000.00",
+      "ethereum:0x543a72632ef5acf8909fd4ba464b3bea6b6a5335905d385514444c7958f038f6": "50000000.00"
+    },
+    "unmatched_outflows": {
+      "ethereum:0xc3aa67c5974286c05ba8fb0013f456897efc5036056d6afb3f8581d8fda81c2b": "2000",
+      "ethereum:0x45f8a63c48adb2bcbc867130753f801bc19c63b033a9a6d75e33cbcdf2a311fa": "49999500.592776441629966853",
+      "ethereum:0x2559a0b92c5897aa8a7f18298999e1d7ab0ae8e736e0be4106ad64435965a82b": "50000000",
+      "ethereum:0xc85a2e406f6dec20c1439e555b5873cea5016546f7a437f3e4cd9b47d7617aad": "1000",
+      "ethereum:0x8c994654e4844fd01fa92c48935294ced2c89dfa4d0dd110145a8904d08fce80": "49999000",
+      "ethereum:0xe1f4fd4e2fa05beac131031313e25c03a0ee4907b8d83ad5319a05121677c6c4": "50000000",
+      "ethereum:0x86df855c2acf17cb1b401f459047a0d7fc62f7462318f9b8ac436e4b518c7680": "1000",
+      "ethereum:0xf54888c2cc65ed46f3e1080dd2551063ac75c7c4c254d507d95133f092e8f926": "49999000",
+      "ethereum:0xce02f6f4a2534bf7ef72953724fec50d2c5497ec92b657e9e7ef0d5cf86a478e": "1000",
+      "ethereum:0xb9173cdd63b0e9e19d880867ffbee58eda3da9057c4b5d4476dba4cc3198faa0": "49999000",
+      "ethereum:0xad4b2b6dd6f07a4790415b96be0487cc098c7d0045bafdd66f2ca591b8632fcd": "50000000",
+      "ethereum:0x2cfbfabc9c0aeb6a9c75c82bbfaa0cf8ab4a2f11d3b78f0894dce071e68b3bad": "50000000",
+      "ethereum:0x24913ee2fa9f4b50e3412b1ccde8d757c49f3d6d368219f7ecab3e863672822a": "1000",
+      "ethereum:0x28c403166a4fe856517555f4b60782b3106e589331b1107a04e2e09e9143df89": "49999000",
+      "ethereum:0xd28f083efd14049f2d5aa2ffa7358687b620a93f229b58517cfb4c8e52dfff55": "25000000",
+      "ethereum:0x637b985cf3581e8c9956c5fe1880566be372e06ce248ab9c49f2913a1451510a": "25000000",
+      "ethereum:0x3f5c004a04385b3e74e86d34aff89c380b65f2201fa241ab4e512a8fb3b9809b": "25000000",
+      "ethereum:0x03b2dc503f9b79d8d856c5da1abacb2f40fbe533e5ab306616f9de44eb4d4ede": "25000000",
+      "ethereum:0x26ddddfa518db772925b12ac143dd715f1efed2baa941633ec2965cee84d1c18": "50000000",
+      "ethereum:0x8e0ebfcfbc38f1e70046e297ce2c9123af812ac9fc173d1a3c6321a27a391e1b": "25000000",
+      "ethereum:0x262e9ae350fccf5d55d1b0e3e2e9a7ee06d2301ec96958a9a65d080e37c7f4a5": "25000000",
+      "ethereum:0xbf02195f6052c9f037a9127a9a252f1cbc89b7fe5bfcbe36e5be91d9eb6b881e": "25000000",
+      "ethereum:0xde82b4f4217685eb699893518ee1556f010b9534b3407e35c1650f7a18b583b7": "1000",
+      "ethereum:0x3b80d58e3c4faf886342d43567cc57e0ed9cc4331a7b1521df9ff71e917acf49": "49999000",
+      "ethereum:0x392c73635e97c824c45044c083f49ce944866dab36097c281539e09b409f06fa": "50000000",
+      "ethereum:0xe3e6aea5d677286b4452969911af59ba693944c1b1bfdece884d50d2504713b0": "25000000",
+      "ethereum:0xf4749450ecda36010edf3fe0717c73a77782d65c3a223836688467061be13339": "50000000",
+      "ethereum:0xd092eaf18c7f69366aea985b8a374df95d78979b7fd98d51de433a9fd6d2c0d4": "1000",
+      "ethereum:0xe3795ac069feb717d9d430751cd628a969f49d09d5f043443f0a241fd75a88a3": "49999000"
+    }
+  },
+  "changed_outflows": {
+    "ethereum:0xc3aa67c5974286c05ba8fb0013f456897efc5036056d6afb3f8581d8fda81c2b": {
+      "before": "2000",
+      "after": "0"
+    },
+    "ethereum:0x45f8a63c48adb2bcbc867130753f801bc19c63b033a9a6d75e33cbcdf2a311fa": {
+      "before": "49999500.592776441629966853",
+      "after": "0"
+    },
+    "ethereum:0x2559a0b92c5897aa8a7f18298999e1d7ab0ae8e736e0be4106ad64435965a82b": {
+      "before": "50000000",
+      "after": "0"
+    },
+    "ethereum:0xc85a2e406f6dec20c1439e555b5873cea5016546f7a437f3e4cd9b47d7617aad": {
+      "before": "1000",
+      "after": "0"
+    },
+    "ethereum:0x8c994654e4844fd01fa92c48935294ced2c89dfa4d0dd110145a8904d08fce80": {
+      "before": "49999000",
+      "after": "0"
+    },
+    "ethereum:0xe1f4fd4e2fa05beac131031313e25c03a0ee4907b8d83ad5319a05121677c6c4": {
+      "before": "50000000",
+      "after": "0"
+    },
+    "ethereum:0x86df855c2acf17cb1b401f459047a0d7fc62f7462318f9b8ac436e4b518c7680": {
+      "before": "1000",
+      "after": "0"
+    },
+    "ethereum:0xf54888c2cc65ed46f3e1080dd2551063ac75c7c4c254d507d95133f092e8f926": {
+      "before": "49999000",
+      "after": "0"
+    },
+    "ethereum:0xce02f6f4a2534bf7ef72953724fec50d2c5497ec92b657e9e7ef0d5cf86a478e": {
+      "before": "1000",
+      "after": "0"
+    },
+    "ethereum:0xb9173cdd63b0e9e19d880867ffbee58eda3da9057c4b5d4476dba4cc3198faa0": {
+      "before": "49999000",
+      "after": "0"
+    },
+    "ethereum:0xad4b2b6dd6f07a4790415b96be0487cc098c7d0045bafdd66f2ca591b8632fcd": {
+      "before": "50000000",
+      "after": "0"
+    },
+    "ethereum:0x2cfbfabc9c0aeb6a9c75c82bbfaa0cf8ab4a2f11d3b78f0894dce071e68b3bad": {
+      "before": "50000000",
+      "after": "0"
+    },
+    "ethereum:0x24913ee2fa9f4b50e3412b1ccde8d757c49f3d6d368219f7ecab3e863672822a": {
+      "before": "1000",
+      "after": "0"
+    },
+    "ethereum:0x28c403166a4fe856517555f4b60782b3106e589331b1107a04e2e09e9143df89": {
+      "before": "49999000",
+      "after": "0"
+    },
+    "ethereum:0xd28f083efd14049f2d5aa2ffa7358687b620a93f229b58517cfb4c8e52dfff55": {
+      "before": "25000000",
+      "after": "0"
+    },
+    "ethereum:0x637b985cf3581e8c9956c5fe1880566be372e06ce248ab9c49f2913a1451510a": {
+      "before": "25000000",
+      "after": "0"
+    },
+    "ethereum:0x3f5c004a04385b3e74e86d34aff89c380b65f2201fa241ab4e512a8fb3b9809b": {
+      "before": "25000000",
+      "after": "0"
+    },
+    "ethereum:0x03b2dc503f9b79d8d856c5da1abacb2f40fbe533e5ab306616f9de44eb4d4ede": {
+      "before": "25000000",
+      "after": "0"
+    },
+    "ethereum:0x26ddddfa518db772925b12ac143dd715f1efed2baa941633ec2965cee84d1c18": {
+      "before": "50000000",
+      "after": "0"
+    },
+    "ethereum:0x8e0ebfcfbc38f1e70046e297ce2c9123af812ac9fc173d1a3c6321a27a391e1b": {
+      "before": "25000000",
+      "after": "0"
+    },
+    "ethereum:0x262e9ae350fccf5d55d1b0e3e2e9a7ee06d2301ec96958a9a65d080e37c7f4a5": {
+      "before": "25000000",
+      "after": "0"
+    },
+    "ethereum:0xbf02195f6052c9f037a9127a9a252f1cbc89b7fe5bfcbe36e5be91d9eb6b881e": {
+      "before": "25000000",
+      "after": "0"
+    },
+    "ethereum:0xde82b4f4217685eb699893518ee1556f010b9534b3407e35c1650f7a18b583b7": {
+      "before": "1000",
+      "after": "0"
+    },
+    "ethereum:0x3b80d58e3c4faf886342d43567cc57e0ed9cc4331a7b1521df9ff71e917acf49": {
+      "before": "49999000",
+      "after": "0"
+    },
+    "ethereum:0x392c73635e97c824c45044c083f49ce944866dab36097c281539e09b409f06fa": {
+      "before": "50000000",
+      "after": "0"
+    },
+    "ethereum:0xe3e6aea5d677286b4452969911af59ba693944c1b1bfdece884d50d2504713b0": {
+      "before": "25000000",
+      "after": "0"
+    },
+    "ethereum:0xf4749450ecda36010edf3fe0717c73a77782d65c3a223836688467061be13339": {
+      "before": "50000000",
+      "after": "0"
+    },
+    "ethereum:0xd092eaf18c7f69366aea985b8a374df95d78979b7fd98d51de433a9fd6d2c0d4": {
+      "before": "1000",
+      "after": "0"
+    },
+    "ethereum:0xe3795ac069feb717d9d430751cd628a969f49d09d5f043443f0a241fd75a88a3": {
+      "before": "49999000",
+      "after": "0"
+    }
+  },
+  "removed_receipt_value": "899910000.00",
+  "per_ilk_reconciliation": {
+    "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+      "global_cost": "3708820.107055825781021080592",
+      "msc_cost": "259878.1170265572840543147882",
+      "allocation_cost": "0",
+      "global_excluding_msc": "3448941.990029268496966765804",
+      "difference": "-3448941.990029268496966765804",
+      "within_one_cent": false,
+      "complete": false,
+      "source_complete": false,
+      "bounds_use_verified_deduction_owners": true,
+      "diagnostic_cost_bounds": {
+        "lower": "-4837640.76568450854797485692341920458724857192355521968389800",
+        "upper": "3448941.99002926849696676580416084319370638238644478031610200"
+      },
+      "target_distance_from_bounds": "0",
+      "target_within_bounds_to_one_cent": true,
+      "bounds_note": "Containment is not reconciliation; unresolved routes remain unverified"
+    },
+    "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+      "global_cost": "11784.73727045625525471486130",
+      "msc_cost": "0E-32",
+      "allocation_cost": "1233.513467956631497028953141",
+      "global_excluding_msc": "11784.73727045625525471486130",
+      "difference": "-10551.22380249962375768590816",
+      "within_one_cent": false,
+      "complete": false,
+      "source_complete": false,
+      "bounds_use_verified_deduction_owners": true,
+      "diagnostic_cost_bounds": {
+        "lower": "1501.50200279714782166665400694902278567712471252929803011784",
+        "upper": "11784.7372704562552547148612968949528875509721436267419"
+      },
+      "target_distance_from_bounds": "3.1050471124490278563732581E-24",
+      "target_within_bounds_to_one_cent": true,
+      "bounds_note": "Containment is not reconciliation; unresolved routes remain unverified"
+    }
+  },
+  "allocations": [
+    {
+      "venue_id": "E1",
+      "before": {
+        "borrowed_principal_average": "0.000004851274562502939172591456368",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0.000004851274562502939172591456365"
+        },
+        "modeled_cost_of_funds": "1.504084680785021824619238358E-8",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "1.504084680785021824619238358E-8"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      },
+      "after": {
+        "borrowed_principal_average": "0.000005275081785753717277896966477",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0.000005275081785753717277896966472"
+        },
+        "modeled_cost_of_funds": "1.635488876810761075618520219E-8",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "1.635488876810761075618520219E-8"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      }
+    },
+    {
+      "venue_id": "E2",
+      "before": {
+        "borrowed_principal_average": "7.178508880002016767446292694E-7",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "7.178508880002016767446292695E-7"
+        },
+        "modeled_cost_of_funds": "2.225618257260560162711445145E-9",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "2.225618257260560162711445145E-9"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      },
+      "after": {
+        "borrowed_principal_average": "7.805623234450155594908139219E-7",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "7.805623234450155594908139212E-7"
+        },
+        "modeled_cost_of_funds": "2.420059156427813477330711060E-9",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "2.420059156427813477330711060E-9"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      }
+    },
+    {
+      "venue_id": "E3",
+      "before": {
+        "borrowed_principal_average": "0.000002270600292840662508140136654",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0.000002270600292840662508140136654"
+        },
+        "modeled_cost_of_funds": "7.039748158235799380045838106E-9",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "7.039748158235799380045838106E-9"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      },
+      "after": {
+        "borrowed_principal_average": "0.000002468959877074279420715484592",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0.000002468959877074279420715484595"
+        },
+        "modeled_cost_of_funds": "7.654774997332281866225713172E-9",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "7.654774997332281866225713172E-9"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      }
+    },
+    {
+      "venue_id": "E4",
+      "before": {
+        "borrowed_principal_average": "2055274.953824110319677994659",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "2055274.953824110319677994661"
+        },
+        "modeled_cost_of_funds": "6375.549222728162105166098434",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "6375.549222728162105166098434"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      },
+      "after": {
+        "borrowed_principal_average": "2108047.972113626122353758491",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "2108047.972113626122353758493"
+        },
+        "modeled_cost_of_funds": "6539.220451938975774260269287",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "6539.220451938975774260269287"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      }
+    },
+    {
+      "venue_id": "E5",
+      "before": {
+        "borrowed_principal_average": "0E-53",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-85",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": "0E-85",
+        "basis_status": "traced",
+        "basis_detail": null
+      },
+      "after": {
+        "borrowed_principal_average": "0E-53",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-85",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": "0E-85",
+        "basis_status": "traced",
+        "basis_detail": null
+      }
+    },
+    {
+      "venue_id": "E6",
+      "before": {
+        "borrowed_principal_average": "5598217.699153834476584870013",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "5598217.699153834476584870020"
+        },
+        "modeled_cost_of_funds": "17357.15558348716175652719637",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "17357.15558348716175652719637"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      },
+      "after": {
+        "borrowed_principal_average": "6068486.620162324356614042742",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "6068486.620162324356614042739"
+        },
+        "modeled_cost_of_funds": "18815.21227203990818636808588",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "18815.21227203990818636808588"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      }
+    },
+    {
+      "venue_id": "E37",
+      "before": {
+        "borrowed_principal_average": "0E-52",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-84",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": "0E-84",
+        "basis_status": "traced",
+        "basis_detail": null
+      },
+      "after": {
+        "borrowed_principal_average": "0E-52",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-84",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": "0E-84",
+        "basis_status": "traced",
+        "basis_detail": null
+      }
+    },
+    {
+      "venue_id": "E7",
+      "before": {
+        "borrowed_principal_average": "0",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      },
+      "after": {
+        "borrowed_principal_average": "76695461.63473894653381116235",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "76695461.63473894653381116243"
+        },
+        "modeled_cost_of_funds": "237786.9756337049890699428680",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "237786.9756337049890699428680"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      }
+    },
+    {
+      "venue_id": "E8",
+      "before": {
+        "borrowed_principal_average": "89037393.05109621250383021919",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "89037393.05109621250383021910"
+        },
+        "modeled_cost_of_funds": "276050.7103438292173906985559",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "276050.7103438292173906985559"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      },
+      "after": {
+        "borrowed_principal_average": "96815697.45920717888425300052",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "96815697.45920717888425300047"
+        },
+        "modeled_cost_of_funds": "300167.8509001259670594081171",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "300167.8509001259670594081171"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      }
+    },
+    {
+      "venue_id": "E9",
+      "before": {
+        "borrowed_principal_average": "623344766.3318061508201770565",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "623344766.3318061508201770574"
+        },
+        "modeled_cost_of_funds": "-723953.2979869153291749836676",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "-723953.2979869153291749836672"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      },
+      "after": {
+        "borrowed_principal_average": "677800149.3746264214234280287",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "677800149.3746264214234280284"
+        },
+        "modeled_cost_of_funds": "-555110.8282166143039582916631",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "-555110.8282166143039582916631"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      }
+    },
+    {
+      "venue_id": "E10",
+      "before": {
+        "borrowed_principal_average": "88706527.94243413417626816374",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "88706527.94243413417626816373"
+        },
+        "modeled_cost_of_funds": "-1906056.858817967644519416595",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "-1906056.858817967644519416595"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      },
+      "after": {
+        "borrowed_principal_average": "560158956.8581636908047327845",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "560158956.8581636908047327844"
+        },
+        "modeled_cost_of_funds": "-444397.8623734429465601929387",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "-444397.8623734429465601929387"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      }
+    },
+    {
+      "venue_id": "E11",
+      "before": {
+        "borrowed_principal_average": "10970018.48940116032314542075",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "10970018.48940116032314542076"
+        },
+        "modeled_cost_of_funds": "33985.33296458558176603485088",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "33985.33296458558176603485088"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      },
+      "after": {
+        "borrowed_principal_average": "11892424.05624476844302565273",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "11892424.05624476844302565272"
+        },
+        "modeled_cost_of_funds": "36842.95908429506858252482272",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "36842.95908429506858252482272"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      }
+    },
+    {
+      "venue_id": "E12",
+      "before": {
+        "borrowed_principal_average": "19092393.51646575527609174514",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "19092393.51646575527609174515"
+        },
+        "modeled_cost_of_funds": "59198.90263157509993930314812",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "59198.90263157509993930314812"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      },
+      "after": {
+        "borrowed_principal_average": "20701996.27866618012712431489",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "20701996.27866618012712431488"
+        },
+        "modeled_cost_of_funds": "64189.79502183576522531177271",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "64189.79502183576522531177271"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      }
+    },
+    {
+      "venue_id": "E30",
+      "before": {
+        "borrowed_principal_average": null,
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": null,
+        "modeled_cost_of_funds_by_ilk": null,
+        "cost_of_funds": null,
+        "basis_status": "covered_by_boundary",
+        "basis_detail": "Funding accounted at allocation boundary E36"
+      },
+      "after": {
+        "borrowed_principal_average": null,
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": null,
+        "modeled_cost_of_funds_by_ilk": null,
+        "cost_of_funds": null,
+        "basis_status": "covered_by_boundary",
+        "basis_detail": "Funding accounted at allocation boundary E36"
+      }
+    },
+    {
+      "venue_id": "E13",
+      "before": {
+        "borrowed_principal_average": "0E-52",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-84",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": "0E-84",
+        "basis_status": "traced",
+        "basis_detail": null
+      },
+      "after": {
+        "borrowed_principal_average": "0E-52",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-84",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": "0E-84",
+        "basis_status": "traced",
+        "basis_detail": null
+      }
+    },
+    {
+      "venue_id": "E31",
+      "before": {
+        "borrowed_principal_average": null,
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": null,
+        "modeled_cost_of_funds_by_ilk": null,
+        "cost_of_funds": null,
+        "basis_status": "covered_by_boundary",
+        "basis_detail": "Funding accounted at allocation boundary E36"
+      },
+      "after": {
+        "borrowed_principal_average": null,
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": null,
+        "modeled_cost_of_funds_by_ilk": null,
+        "cost_of_funds": null,
+        "basis_status": "covered_by_boundary",
+        "basis_detail": "Funding accounted at allocation boundary E36"
+      }
+    },
+    {
+      "venue_id": "E15",
+      "before": {
+        "borrowed_principal_average": "3.920672984726868083180227706",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "3.920672984726868083180227705"
+        },
+        "modeled_cost_of_funds": "0.01220222226148513609402884440",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0.01220222226148513609402884440"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      },
+      "after": {
+        "borrowed_principal_average": "25.01504018171322811229399232",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "25.01504018171322811229399232"
+        },
+        "modeled_cost_of_funds": "0.07785374637627694905931784432",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0.07785374637627694905931784432"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      }
+    },
+    {
+      "venue_id": "E32",
+      "before": {
+        "borrowed_principal_average": null,
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": null,
+        "modeled_cost_of_funds_by_ilk": null,
+        "cost_of_funds": null,
+        "basis_status": "covered_by_boundary",
+        "basis_detail": "Funding accounted at allocation boundary E36"
+      },
+      "after": {
+        "borrowed_principal_average": null,
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": null,
+        "modeled_cost_of_funds_by_ilk": null,
+        "cost_of_funds": null,
+        "basis_status": "covered_by_boundary",
+        "basis_detail": "Funding accounted at allocation boundary E36"
+      }
+    },
+    {
+      "venue_id": "E16",
+      "before": {
+        "borrowed_principal_average": "0",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": "0E-32",
+        "basis_status": "traced",
+        "basis_detail": null
+      },
+      "after": {
+        "borrowed_principal_average": "0",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": "0E-32",
+        "basis_status": "traced",
+        "basis_detail": null
+      }
+    },
+    {
+      "venue_id": "E17",
+      "before": {
+        "borrowed_principal_average": "0E-52",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": "0",
+        "basis_status": "traced",
+        "basis_detail": null
+      },
+      "after": {
+        "borrowed_principal_average": "0E-52",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": "0",
+        "basis_status": "traced",
+        "basis_detail": null
+      }
+    },
+    {
+      "venue_id": "E18",
+      "before": {
+        "borrowed_principal_average": "0",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": "0E-32",
+        "basis_status": "traced",
+        "basis_detail": null
+      },
+      "after": {
+        "borrowed_principal_average": "0",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": "0E-32",
+        "basis_status": "traced",
+        "basis_detail": null
+      }
+    },
+    {
+      "venue_id": "E19",
+      "before": {
+        "borrowed_principal_average": "0",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      },
+      "after": {
+        "borrowed_principal_average": "0",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      }
+    },
+    {
+      "venue_id": "E23",
+      "before": {
+        "borrowed_principal_average": "0",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      },
+      "after": {
+        "borrowed_principal_average": "0",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      }
+    },
+    {
+      "venue_id": "E20",
+      "before": {
+        "borrowed_principal_average": "177819204.9595899772444897648",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "177819204.9595899772444897649"
+        },
+        "modeled_cost_of_funds": "551309.0192757549606301375231",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "551309.0192757549606301375231"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      },
+      "after": {
+        "borrowed_principal_average": "193353486.2136494171852545342",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "193353486.2136494171852545342"
+        },
+        "modeled_cost_of_funds": "599474.0723244029571596875693",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "599474.0723244029571596875693"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      }
+    },
+    {
+      "venue_id": "E21",
+      "before": {
+        "borrowed_principal_average": "0",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Requires off-chain principal payment matching"
+      },
+      "after": {
+        "borrowed_principal_average": "0",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Requires off-chain principal payment matching"
+      }
+    },
+    {
+      "venue_id": "E22",
+      "before": {
+        "borrowed_principal_average": "16728886.48582869956862101018",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "16728886.48582869956862101020"
+        },
+        "modeled_cost_of_funds": "51868.60780399987883337335372",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "51868.60780399987883337335372"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      },
+      "after": {
+        "borrowed_principal_average": "18181841.33265214859668054945",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "18181841.33265214859668054943"
+        },
+        "modeled_cost_of_funds": "56373.76401822214741641039374",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "56373.76401822214741641039374"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      }
+    },
+    {
+      "venue_id": "E24",
+      "before": {
+        "borrowed_principal_average": "0",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": "0E-32",
+        "basis_status": "traced",
+        "basis_detail": null
+      },
+      "after": {
+        "borrowed_principal_average": "0",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": "0E-32",
+        "basis_status": "traced",
+        "basis_detail": null
+      }
+    },
+    {
+      "venue_id": "E26",
+      "before": {
+        "borrowed_principal_average": "0",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": "0E-32",
+        "basis_status": "traced",
+        "basis_detail": null
+      },
+      "after": {
+        "borrowed_principal_average": "0",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": "0E-32",
+        "basis_status": "traced",
+        "basis_detail": null
+      }
+    },
+    {
+      "venue_id": "E27",
+      "before": {
+        "borrowed_principal_average": "0",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      },
+      "after": {
+        "borrowed_principal_average": "0",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      }
+    },
+    {
+      "venue_id": "E38",
+      "before": {
+        "borrowed_principal_average": "0",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "No capital account mapping"
+      },
+      "after": {
+        "borrowed_principal_average": "0",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "No capital account mapping"
+      }
+    },
+    {
+      "venue_id": "E40",
+      "before": {
+        "borrowed_principal_average": "0",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": "0E-32",
+        "basis_status": "traced",
+        "basis_detail": null
+      },
+      "after": {
+        "borrowed_principal_average": "0",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-32",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": "0E-32",
+        "basis_status": "traced",
+        "basis_detail": null
+      }
+    },
+    {
+      "venue_id": "E41",
+      "before": {
+        "borrowed_principal_average": "3270769.881637548878483626658",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "3270769.881637548878483626664"
+        },
+        "modeled_cost_of_funds": "10150.24931665227886329050210",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "10150.24931665227886329050210"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      },
+      "after": {
+        "borrowed_principal_average": "3270769.881637548878483626658",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "3270769.881637548878483626664"
+        },
+        "modeled_cost_of_funds": "10150.24931665227886329050210",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "10150.24931665227886329050210"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      }
+    },
+    {
+      "venue_id": "E42",
+      "before": {
+        "borrowed_principal_average": "298489758.9986261156904702423",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "298489758.9986261156904702422"
+        },
+        "modeled_cost_of_funds": "925434.8895260546400190576023",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "925434.8895260546400190576023"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      },
+      "after": {
+        "borrowed_principal_average": "299427462.8960790922804193730",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "299427462.8960790922804193729"
+        },
+        "modeled_cost_of_funds": "928346.3363558697203588023958",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "928346.3363558697203588023958"
+        },
+        "cost_of_funds": null,
+        "basis_status": "unresolved",
+        "basis_detail": "Unmatched funding receipts in account history"
+      }
+    },
+    {
+      "venue_id": "E12_PAU",
+      "before": {
+        "borrowed_principal_average": "397368.9106883090330642743481",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "397368.9106883090330642743488"
+        },
+        "modeled_cost_of_funds": "1233.513467956631497028953141",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "1233.513467956631497028953141"
+        },
+        "cost_of_funds": "1233.513467956631497028953141",
+        "basis_status": "traced",
+        "basis_detail": null
+      },
+      "after": {
+        "borrowed_principal_average": "397368.9106883090330642743481",
+        "borrowed_principal_average_by_ilk": {
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "397368.9106883090330642743488"
+        },
+        "modeled_cost_of_funds": "1233.513467956631497028953141",
+        "modeled_cost_of_funds_by_ilk": {
+          "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "1233.513467956631497028953141"
+        },
+        "cost_of_funds": "1233.513467956631497028953141",
+        "basis_status": "traced",
+        "basis_detail": null
+      }
+    },
+    {
+      "venue_id": "E36",
+      "before": {
+        "borrowed_principal_average": "0E-53",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-85",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": "0E-85",
+        "basis_status": "traced",
+        "basis_detail": null
+      },
+      "after": {
+        "borrowed_principal_average": "0E-53",
+        "borrowed_principal_average_by_ilk": {},
+        "modeled_cost_of_funds": "0E-85",
+        "modeled_cost_of_funds_by_ilk": {},
+        "cost_of_funds": "0E-85",
+        "basis_status": "traced",
+        "basis_detail": null
+      }
+    }
+  ],
+  "uncertainty_interpretation": "Bounds remain broad and unchanged; containment is not reconciliation; eligible subtotal unchanged",
+  "next_largest_receipts": {
+    "ethereum:0xb9b6705f2e2857eb8aa5d4ff03145d5343f0711383e11c69e6ebde9a38865906": "20000000.00",
+    "ethereum:0x12d74d52ddc4d192d07eccf7b80aa5608dd71e571ca32fe70b540a7b252a3618": "20000000.00",
+    "ethereum:0xe55f31a910cb9fb9a7527110bf7d7c6e4f5004be00ef1267a62dcaf05b759cfb": "20000000.00",
+    "ethereum:0xddeb3df04d76d3b2cd3ca3bc9f4381de96d45db04a0920e6ccb3688e545f5ccb": "20000000.00",
+    "ethereum:0x972f7a7f20b1adf97c97237d08918965a8d65fbafc689538945b5c32f117d438": "19996000.80"
+  },
+  "validation": {
+    "broad_suite": "1464 passed, 2 skipped, 7 pre-existing warnings; final fee-basis change and extra mixed-funding case covered by focused suite",
+    "focused_suite": "18 passed on final code",
+    "ruff": "passed",
+    "control_files": "Published Spark/Grove August provenance bytes unchanged"
+  }
+}
