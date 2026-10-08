@@ -85,3 +85,35 @@ borrowing to the investments it now finances. The proper split also needs VSR
 liability accrual; treating every vault return as principal by fiat would conceal
 the interest expense. Full transaction logs are retained in
 `tests/fixtures/spark_savings_refinancing_may18.json`.
+
+## Separate funding legs can coexist inside one transaction
+
+The May 2 [execution](https://etherscan.io/tx/0xe087909f67a0f7ba0f093e0eac21b2a7bc573ff4cc4bdc8cee780e0a0667b7f7)
+at block 25,007,787 has two distinct cash sources:
+
+1. The Savings USDT vault transfers **180,000,802.451341 USDT** to the ALM,
+   authenticated by its `Take` event. That money is saver funding.
+2. Separately, a Sky draw sends **180,000,066.289061952380736771 USDS** from the
+   allocator buffer to the ALM. The ALM starts and ends with zero USDS, and
+   sends exactly that newly received amount to sUSDS in an ERC4626 deposit.
+   This is a directly observed Sky-funded investment.
+
+The complete receipt and original normalized batch are retained in
+`tests/fixtures/spark_distinct_saver_and_sky_funding.json`. The regression proof
+checks the zero USDS opening/closing balance, sole buffer→ALM funding leg,
+sole ALM→sUSDS payment, actual Deposit amount, corresponding share mint, and
+independent USDT `Take`/transfer. The tiny excess precision in normalized Vat
+debt versus minted token units is below 1e-18 USDS.
+
+A single transaction-wide proportional clearing account cannot recover this
+proven separation while the Savings receipt is unresolved. It can assign part
+of the new Sky borrowing to the USDT receipt, although the actual loan cash
+went entirely to sUSDS. A Savings fix therefore needs **both** funding-source
+accounting and preservation of independently proven token routes inside a
+transaction; marking every `take` as income is not a substitute.
+
+This observation does not implement a new source-splitting policy or claim a
+reconciliation improvement. It narrows the required model and adds a concrete
+acceptance case. More complicated executions can deposit the new USDS into
+sUSDS and immediately spend some sUSDS in a Curve swap; those require following
+the actual swap too, rather than treating the net sUSDS change as the draw.
