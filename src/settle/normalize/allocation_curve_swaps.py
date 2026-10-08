@@ -20,7 +20,7 @@ COINS = (('0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', 6),
 EXCHANGE = '0x' + keccak256(b'TokenExchange(address,int128,uint256,int128,uint256)').hex()
 
 
-def curve_swap_income(rows):
+def curve_swap_income(rows, *, pool=POOL, holder=HOLDER, coins=COINS):
     expected, actual, net = defaultdict(int), defaultdict(int), defaultdict(int)
     gains = defaultdict(D)
     meta = {}
@@ -32,17 +32,17 @@ def curve_swap_income(rows):
                 raise ValueError('Conflicting Curve swap event identity')
             continue
         seen[key] = r
-        if r.topic0 == TRANSFER_TOPIC0 and r.address in {t for t, _ in COINS}:
+        if r.topic0 == TRANSFER_TOPIC0 and r.address in {t for t, _ in coins}:
             if len(r.data) != 66:
                 raise ValueError('Invalid Curve swap token transfer')
             sender, recipient = '0x' + r.topic1[-40:], '0x' + r.topic2[-40:]
             amount = int(r.data, 16)
             actual[(r.transaction_hash, r.address, sender, recipient)] += amount
-            if recipient == HOLDER:
+            if recipient == holder:
                 net[(r.transaction_hash, r.address)] += amount
-            if sender == HOLDER:
+            if sender == holder:
                 net[(r.transaction_hash, r.address)] -= amount
-        if r.address != POOL or r.topic0 != EXCHANGE or not r.topic1.endswith(HOLDER[2:]):
+        if r.address != pool or r.topic0 != EXCHANGE or not r.topic1.endswith(holder[2:]):
             continue
         words = _words(r.data)
         if len(words) != 4 or words[0] not in (0, 1) or words[2] != 1 - words[0]:
@@ -50,10 +50,10 @@ def curve_swap_income(rows):
         i, sold, j, bought = words
         if min(sold, bought) <= 0:
             raise ValueError('Invalid Curve swap amount')
-        source, sd = COINS[i]
-        target, td = COINS[j]
-        expected[(r.transaction_hash, source, HOLDER, POOL)] += sold
-        expected[(r.transaction_hash, target, POOL, HOLDER)] += bought
+        source, sd = coins[i]
+        target, td = coins[j]
+        expected[(r.transaction_hash, source, holder, pool)] += sold
+        expected[(r.transaction_hash, target, pool, holder)] += bought
         gain = D(bought)/10**td - D(sold)/10**sd
         if gain > 0:
             key = (r.transaction_hash, target)
@@ -61,7 +61,7 @@ def curve_swap_income(rows):
             meta[key] = (r.block_number, r.block_time)
     if any(actual[k] != amount for k, amount in expected.items()):
         raise ValueError('Curve swap event does not match actual ALM token transfers')
-    decimals = dict(COINS)
-    return [(tx, *meta[(tx, token)], f'ethereum:{HOLDER}:{token}',
+    decimals = dict(coins)
+    return [(tx, *meta[(tx, token)], f'ethereum:{holder}:{token}',
              D(net[(tx, token)]) / 10**decimals[token], gain)
             for (tx, token), gain in gains.items()]
