@@ -198,3 +198,23 @@ def test_subcent_residual_pool_preserves_borrowing_and_refinancing():
     assert len(replay.ledger.accounts) == 2
     assert not replay.unmatched_outflows
     assert not any(k.startswith('clearing:') for k in replay.uncertain_accounts)
+
+
+def test_subcent_repayment_rounding_is_retained_separately_from_missing_funding():
+    from settle.normalize.allocation_capital import AssetMovement, CapitalBatch, CapitalHistory
+
+    day = date(2026, 8, 1)
+    for shortfall, unmatched in [(D('0.000000505865133474328'), False), (D('.02'), True)]:
+        cash = D(100) - shortfall
+        h = CapitalHistory((
+            CapitalBatch('draw', day, 1, 'ethereum', 1,
+                         (AssetMovement('position', D(0), D(100)),), D(100)),
+            CapitalBatch('repay', day, 2, 'ethereum', 2,
+                         (AssetMovement('position', cash, -cash),), D(-100)),
+        ), {'V': 'position'}, {})
+        r = replay_history(h, day, day)
+        assert r.ledger.drawn == r.ledger.repaid == D(100)
+        assert bool(r.unmatched_receipts) is unmatched
+        assert r.rounding_receipts == ({} if unmatched else {'repay': shortfall})
+        assert r.ledger.account('position').borrowed == 0
+        assert r.ledger.realised_principal_loss == shortfall

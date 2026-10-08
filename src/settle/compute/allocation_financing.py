@@ -241,6 +241,7 @@ def allocation_financing(pnl, history, *, idle_amounts=None, quantify_uncertaint
             "within_one_cent": abs(difference) <= Decimal('0.01'),
         },
         "unmatched_receipts": replay.unmatched_receipts,
+        "rounding_receipts": replay.rounding_receipts,
         "unmatched_outflows": replay.unmatched_outflows,
         "uncertain_repayments": replay.uncertain_repayments,
         "realised_principal_loss": replay.ledger.realised_principal_loss,
