@@ -391,3 +391,30 @@ def test_distribution_payer_does_not_classify_cash_at_a_different_holder(monkeyp
     history = source.fetch_capital_history(replace(base, venues=[paying_venue, other_cash]),
                                           {Chain.ETHEREUM: 1})
     assert sum(m.external_income for b in history.batches for m in b.movements) == 0
+
+
+def test_actual_curve_gain_reinvested_same_tx_never_becomes_borrowed_basis(monkeypatch):
+    from settle.normalize.allocation_curve_swaps import COINS, EXCHANGE, POOL
+    from settle.normalize.allocation_curve_swaps import HOLDER as GROVE
+
+    alm, pool = Address.from_str(GROVE), Address.from_str(POOL)
+    usdc = Token(Chain.ETHEREUM, Address.from_str(COINS[0][0]), 'USDC', 6)
+    rlusd = Token(Chain.ETHEREUM, Address.from_str(COINS[1][0]), 'RLUSD', 18)
+    logs = [draw(), log(1, 1, usdc.address, TRANSFER_TOPIC0,
+                       [topic(Address(bytes(20))), topic(alm)], [100 * 10**6]),
+            log(2, 1, usdc.address, TRANSFER_TOPIC0, [topic(alm), topic(pool)], [100 * 10**6]),
+            log(2, 2, rlusd.address, TRANSFER_TOPIC0, [topic(pool), topic(alm)], [110 * 10**18]),
+            log(2, 3, pool, EXCHANGE, [topic(alm)], [0, 100 * 10**6, 1, 110 * 10**18]),
+            log(2, 4, rlusd.address, TRANSFER_TOPIC0, [topic(alm), topic(MANAGER)], [110 * 10**18]),
+            log(2, 5, VAULT, aave.MINT_T0, [topic(alm), topic(alm)], [110 * 10**18, 0, 10**27])]
+    base = setup(monkeypatch, logs, PricingCategory.AAVE_ATOKEN)
+    prime = replace(base, id='grove', alm={Chain.ETHEREUM: alm}, venues=[
+        Venue('E13', Chain.ETHEREUM, rlusd, PricingCategory.PAR_STABLE),
+        Venue('E15', Chain.ETHEREUM, usdc, PricingCategory.PAR_STABLE),
+        replace(base.venues[0], underlying=rlusd)])
+    h = source.fetch_capital_history(prime, {Chain.ETHEREUM: 2})
+    r = replay_history(h, DAY, DAY)
+    a = r.ledger.account(h.venue_accounts['V1'])
+    assert a.value == D(110) and a.borrowed == D(100)
+    assert r.ledger.drawn == D(100)
+    assert not r.unmatched_receipts and not r.unmatched_outflows

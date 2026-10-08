@@ -497,6 +497,13 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                                                         before.change + m.change,
                                                         before.external_income + m.external_income,
                                                         before.preserve_basis or m.preserve_basis)
+            if prime.id == 'grove' and chain == Chain.ETHEREUM:
+                from .allocation_curve_swaps import curve_swap_income
+                for _, _, _, account, change, gain in curve_swap_income(block_logs):
+                    if account not in combined or combined[account].change != change:
+                        raise ValueError('Curve swap gain lacks normalized raw cash movement')
+                    m = combined[account]
+                    combined[account] = replace(m, external_income=m.external_income + gain)
             first = block_logs[0]
             batches.append(CapitalBatch(
                 f"{chain.value}:{tx_hash}", datetime.fromtimestamp(first.block_time, UTC).date(),
