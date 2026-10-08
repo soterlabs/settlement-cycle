@@ -67,8 +67,9 @@ def apply_executed_spells(history):
     from .spark_buidl_subscriptions import link_spark_buidl_subscriptions
     from .spark_early_base_seed import link_spark_early_base_seed
     from .spark_native_seed import link_spark_native_seed
+    from .spark_op_uni_withdrawals import link_spark_op_uni_withdrawals
 
-    history = link_spark_b2c2_boundary(history)
+    history = link_spark_op_uni_withdrawals(link_spark_b2c2_boundary(history))
     history = link_spark_early_base_seed(link_spark_buidl_subscriptions(history))
     history = link_spark_native_seed(link_spark_base_withdrawals(history))
     history = link_grove_plume_jtrsy(link_grove_jaaa_avalanche(link_grove_initial_jaaa(history)))

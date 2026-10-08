@@ -117,3 +117,22 @@ def test_canonical_payload_hashes_and_actual_burns_authenticate_l1_receipts():
                    and x['topic1'].endswith('7f311a4d48377030bd810395f4ccfc03bdbe9ef3')
                    and x['topic2'].endswith(ETH_ALM[2:]) and int(x['data'],16)==raw_amount
                    and x['transaction_hash']==tx for x in f['ethereum'])
+
+
+def test_identifiable_token_legs_do_not_mix_sky_funding_with_earned_savings():
+    h = history()
+    funding = h.batches[0]
+    usds_value = LEGS[0][4]
+    funding = replace(funding, minted=usds_value, minted_by_ilk={ILK: usds_value},
+        movements=tuple(replace(m, external_income=D(0) if n == 0 else m.change)
+                        for n, m in enumerate(funding.movements)))
+    h = replace(h, batches=(funding, *h.batches[1:]))
+    r = replay_history(h, DAY, date(2026, 7, 13))
+    assert r.ledger.account(f'ethereum:{ETH_ALM}:{LEGS[0][1]}').borrowed == usds_value
+    assert r.ledger.account(f'ethereum:{ETH_ALM}:{LEGS[1][1]}').borrowed == 0
+    assert not r.unmatched_receipts and not r.unmatched_outflows
+    # Unknown USDS funding must also not contaminate independently earned sUSDS.
+    unknown = replace(funding, minted=D(0), minted_by_ilk={})
+    r = replay_history(replace(h, batches=(unknown, *h.batches[1:])), DAY, date(2026, 7, 13))
+    assert f'ethereum:{ETH_ALM}:{LEGS[0][1]}' in r.uncertain_accounts
+    assert f'ethereum:{ETH_ALM}:{LEGS[1][1]}' not in r.uncertain_accounts

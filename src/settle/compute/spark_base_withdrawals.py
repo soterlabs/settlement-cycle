@@ -31,17 +31,24 @@ def link_spark_base_withdrawals(history):
     from ..normalize.allocation_capital import AssetMovement
 
     by_id = {b.identity: b for b in history.batches}
-    if SOURCE+SUFFIX in by_id:
+    raw_ids = [SOURCE, *('ethereum:' + leg[3] for leg in LEGS)]
+    transformed = [SOURCE + SUFFIX + f':{n+1}' for n in range(len(LEGS))]
+    transformed.extend('ethereum:' + leg[3] + SUFFIX for leg in LEGS)
+    if any(identity in by_id for identity in transformed):
+        if any(identity in by_id for identity in raw_ids):
+            raise ValueError('Cannot append raw events to linked Spark Base withdrawal')
         return history
     if SOURCE not in by_id:
         return history  # No opening funded custody may be fabricated.
     source = by_id[SOURCE]
-    if source.block != 48285903 or source.timestamp != 1783361153 or source.minted:
+    if (source.chain != 'base' or source.block != 48285903 or source.timestamp != 1783361153
+            or source.minted or len(source.movements) != 2):
         raise ValueError('Spark Base withdrawal source metadata differs')
-    movements = list(source.movements)
+    movements = source.movements
     mapping = dict(history.venue_accounts)
     extras = set(history.analytics_only_venues)
     replacements = {}
+    source_legs = []
     for n, (local, remote, _, tx, source_value, arrival_value, block, stamp) in enumerate(LEGS):
         account = f'base:{BASE_ALM}:{local}'
         legs = [m for m in movements if m.account == account]
@@ -53,8 +60,11 @@ def link_spark_base_withdrawals(history):
             raise ValueError('Conflicting Spark bridge ownership')
         mapping[venue] = claim
         extras.add(venue)
-        movements = [replace(m, preserve_basis=True) if m.account == account else m for m in movements]
-        movements.append(AssetMovement(claim, D(0), source_value))
+        # Preserve each physical token's funding, rather than pooling USDS
+        # and sUSDS in one transaction clearing account before the bridge.
+        source_legs.append(replace(source, identity=SOURCE + SUFFIX + f':{n+1}',
+            log_index=source.log_index + n, movements=(replace(legs[0], preserve_basis=True),
+                AssetMovement(claim, D(0), source_value))))
         destination = by_id.get('ethereum:'+tx)
         if destination is None:
             continue  # Source-only cutoff retains funded custody.
@@ -67,6 +77,6 @@ def link_spark_base_withdrawals(history):
         # value, never borrowed basis; the complete funded claim then releases.
         replacements[destination.identity] = replace(destination, identity=destination.identity+SUFFIX,
             movements=(*destination.movements, AssetMovement(claim, arrival_value, -arrival_value, preserve_basis=True)))
-    replacements[SOURCE] = replace(source, identity=SOURCE+SUFFIX, movements=tuple(movements))
-    return replace(history, batches=tuple(replacements.get(b.identity,b) for b in history.batches),
+    batches = tuple(replacements.get(b.identity, b) for b in history.batches if b.identity != SOURCE)
+    return replace(history, batches=(*batches, *source_legs),
                    venue_accounts=mapping, analytics_only_venues=tuple(sorted(extras)))
