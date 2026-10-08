@@ -69,5 +69,61 @@
   ],
   "candidate_cash_total": "151013951.26",
   "scope": "No pricing, revenue, global debt, capital basis, or settlement changes",
-  "fixture_sha256": "6d5d43fdafd66f8a6fa205669b2678326e3556161e0c40ad5f14afc20e3a96ee"
+  "fixture_sha256": "6d5d43fdafd66f8a6fa205669b2678326e3556161e0c40ad5f14afc20e3a96ee",
+  "nav_evidence": {
+    "feed": "0xaffd8f5578e8590665de561bde9e7badb99300d9",
+    "quotes": [
+      {
+        "block": 23626140,
+        "price": "11.296558",
+        "round_id": "18446744073709551996",
+        "updated_at": 1760970107,
+        "age_seconds": 82056
+      },
+      {
+        "block": 23633261,
+        "price": "11.293034",
+        "round_id": "18446744073709551997",
+        "updated_at": 1761052223,
+        "age_seconds": 86244
+      },
+      {
+        "block": 23733591,
+        "price": "11.342953",
+        "round_id": "18446744073709552011",
+        "updated_at": 1762265423,
+        "age_seconds": 86244
+      },
+      {
+        "block": 23919053,
+        "price": "11.369271",
+        "round_id": "18446744073709552037",
+        "updated_at": 1764529883,
+        "age_seconds": 67320
+      },
+      {
+        "block": 23919081,
+        "price": "11.369271",
+        "round_id": "18446744073709552037",
+        "updated_at": 1764529883,
+        "age_seconds": 67668
+      },
+      {
+        "block": 23933973,
+        "price": "11.380015",
+        "round_id": "18446744073709552040",
+        "updated_at": 1764771035,
+        "age_seconds": 6660
+      },
+      {
+        "block": 25878704,
+        "price": "11.715712",
+        "round_id": "18446744073709552318",
+        "updated_at": 1788181955,
+        "age_seconds": 38844
+      }
+    ],
+    "scope": "Standalone historical NAV evidence, not cash-return attribution or borrowed subscription principal."
+  },
+  "nav_fixture_sha256": "66dc2106f0b5ea44641b49a2b8ac8acc765f7b68796bc60fc1135502db204a3d"
 }

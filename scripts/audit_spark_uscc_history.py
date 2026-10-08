@@ -24,6 +24,48 @@ PAIRS = (
 )
 
 
+def nav_inventory(fixture):
+    """Validate standalone NAV evidence without assigning subscription basis.
+
+    The token's internal oracle can be unset while this independent feed is
+    live. Quote age is retained; no stale or invalid round becomes a $1 mark.
+    https://data.chain.link/feeds/ethereum/mainnet/uscc-nav-per-share
+    """
+    proxy = '0xaffd8f5578e8590665de561bde9e7badb99300d9'
+    directory = fixture['directory']
+    if (fixture['feed'].lower() != proxy or directory['proxyAddress'].lower() != proxy
+            or directory['path'] != 'uscc-nav-per-share' or directory['decimals'] != 6):
+        raise ValueError('USCC NAV feed identity differs')
+    quotes = []
+    seen = set()
+    for row in fixture['reads']:
+        if row['block'] in seen:
+            raise ValueError('Duplicate USCC NAV block')
+        seen.add(row['block'])
+        if int(row['decimals()'], 16) != 6:
+            raise ValueError('USCC NAV decimals differ')
+        description = bytes.fromhex(row['description()'][2:])
+        offset = int.from_bytes(description[:32])
+        length = int.from_bytes(description[offset:offset+32])
+        if description[offset+32:offset+32+length] != b'USCC NAV':
+            raise ValueError('USCC NAV description differs')
+        data = row['latestRoundData()'][2:]
+        if len(data) != 320:
+            raise ValueError('Invalid USCC NAV round shape')
+        round_id, answer, started, updated, answered = [int(data[i:i+64], 16) for i in range(0, 320, 64)]
+        if (not 0 < answer < 2**255 or not round_id or answered < round_id
+                or not 0 < started <= updated <= row['timestamp']):
+            raise ValueError('Invalid USCC NAV round')
+        age = row['timestamp'] - updated
+        if age > directory['heartbeat']:
+            raise ValueError('Stale USCC NAV round')
+        quotes.append({'block': row['block'], 'price': str(D(answer)/10**6),
+                       'round_id': str(round_id), 'updated_at': updated,
+                       'age_seconds': age})
+    return {'feed': proxy, 'quotes': quotes,
+            'scope': 'Standalone historical NAV evidence, not cash-return attribution or borrowed subscription principal.'}
+
+
 def inventory(fixture):
     rows = fixture['issuer_transactions']
     identities = [(r['transaction_hash'], r['log_index']) for r in rows]
@@ -74,10 +116,15 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--fixture', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--nav-fixture', type=Path)
     args = parser.parse_args()
     raw = args.fixture.read_bytes()
     result = inventory(json.loads(raw))
     result['fixture_sha256'] = hashlib.sha256(raw).hexdigest()
+    if args.nav_fixture:
+        nav = args.nav_fixture.read_bytes()
+        result['nav_evidence'] = nav_inventory(json.loads(nav))
+        result['nav_fixture_sha256'] = hashlib.sha256(nav).hexdigest()
     args.output.write_text(json.dumps(result, default=str, indent=2) + '\n')
 
 

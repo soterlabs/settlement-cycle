@@ -44,3 +44,34 @@ def test_incomplete_evidence_is_not_reported_as_closed_subscription_history(faul
                 r['block_number'] = 1
     with pytest.raises(ValueError):
         audit.inventory(f)
+
+
+NAV = json.loads((ROOT / 'tests/fixtures/spark_uscc_nav.json').read_text())
+
+
+def test_independent_nav_feed_has_historical_prices_without_proving_cash_returns():
+    quotes = audit.nav_inventory(NAV)['quotes']
+    assert {r['block'] for r in quotes} == {23626140, 23633261, 23733591, 23919053, 23919081, 23933973, 25878704}
+    assert [q['price'] for q in quotes[:3]] == ['11.296558', '11.293034', '11.342953']
+    assert all(0 <= q['age_seconds'] <= 95400 for q in quotes)
+    inventory = audit.inventory(FIXTURE)
+    first = inventory['subscriptions'][0]
+    assert first['shares_received'] * D(quotes[0]['price']) != first['cash_paid']
+    assert all(not r['attributed_to_uscc'] for r in inventory['unassigned_cash_candidates'])
+
+
+@pytest.mark.parametrize('fault', ['stale', 'negative', 'zero', 'wrong_decimals', 'wrong_feed'])
+def test_invalid_nav_does_not_become_a_par_fallback(fault):
+    f = deepcopy(NAV)
+    r = f['reads'][0]
+    if fault == 'stale':
+        r['timestamp'] += 100000
+    elif fault in ('negative', 'zero'):
+        answer = 2**256-1 if fault == 'negative' else 0
+        r['latestRoundData()'] = r['latestRoundData()'][:66] + f'{answer:064x}' + r['latestRoundData()'][130:]
+    elif fault == 'wrong_decimals':
+        r['decimals()'] = '0x12'
+    else:
+        f['feed'] = '0x' + '0'*40
+    with pytest.raises(ValueError):
+        audit.nav_inventory(f)
