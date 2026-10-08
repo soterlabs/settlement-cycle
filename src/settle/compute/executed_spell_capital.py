@@ -41,6 +41,7 @@ def _movement(batch, key):
 
 def apply_executed_spells(history):
     from ..normalize.allocation_capital import AssetMovement
+    from .grove_apollo_cash_settlements import link_grove_apollo_cash_settlements
     from .grove_cash_distributions import recognize_grove_cash_distributions
     from .grove_galaxy_arch_capital import link_grove_galaxy_arch
     from .grove_cctp_v2_capital import link_grove_cctp_v2
@@ -59,6 +60,7 @@ def apply_executed_spells(history):
     history = link_grove_cctp_v2(history)
     history = link_grove_galaxy_arch(history)
     history = recognize_grove_cash_distributions(history)
+    history = link_grove_apollo_cash_settlements(history)
     batches = list(history.batches)
     indexes = {b.identity: i for i, b in enumerate(batches)}
     if len(indexes) != len(batches):
