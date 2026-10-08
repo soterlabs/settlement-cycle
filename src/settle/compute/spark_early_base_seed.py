@@ -39,6 +39,10 @@ def link_spark_early_base_seed(history):
     index = {b.identity: b for b in history.batches}
     if len(index) != len(history.batches):
         raise ValueError('Duplicate capital transaction')
+    route_ids = {'ethereum:' + tx for tx, *_ in ROUTES}
+    route_ids.update('base:' + leg[0] for *_, legs in ROUTES for leg in legs)
+    if not any(key in index or key + SUFFIX in index for key in route_ids):
+        return history
     mapping = dict(history.venue_accounts)
     extras = set(history.analytics_only_venues)
     for source_tx, block, stamp, draw, legs in ROUTES:
