@@ -1,0 +1,34 @@
+{
+  "prime": "grove",
+  "period": "2026-08",
+  "scope": "LP cash versus Method B NAV only; no capital or cost attribution change",
+  "input_hashes": {
+    "tests/fixtures/grove_curve_lp_residual_events.json": "aa2f9ab36c921047ab95cda0dbec85bfb20375ce2cd2a813ea550f8b0ef9679f",
+    "reconciliation/grove_swap_execution_shortfalls_2026_08.json": "010cdf275150fd7b0d0f5c88afc1582fd6cf262c0949f953b0d5ab0a57a590f7"
+  },
+  "identified_lp_valuation_differences": [
+    {
+      "capital_batch": "ethereum:0x1530367e2696dfb97ba380e63ab899d25b9ed3e79217666906cbbbdab024f20b",
+      "block": 24380799,
+      "direction": "deposit",
+      "cash": "24998000",
+      "lp_raw_units": "24985242153122285800591264",
+      "lp_value_at_pool_nav": "24997998.29798544275150727090",
+      "valuation_difference": "1.70201455724849272910",
+      "raw_financing_residual": "1.702014557248492729100000000",
+      "normalization_rounding_difference": "0E-27"
+    },
+    {
+      "capital_batch": "ethereum:0xddf938b6315808e72d826a6361b2e5ddb1fb498ecc3862df10f288dfb8d35346",
+      "block": 25797582,
+      "direction": "withdrawal",
+      "cash": "5002074.106834",
+      "lp_raw_units": "4999106527357795043810180",
+      "lp_value_at_pool_nav": "5002074.122153437502490759668",
+      "valuation_difference": "0.015319437502490759668",
+      "raw_financing_residual": "0.015319437502490759669000000",
+      "normalization_rounding_difference": "1.000000E-21"
+    }
+  ],
+  "remaining_unexplained_outflows": {}
+}
