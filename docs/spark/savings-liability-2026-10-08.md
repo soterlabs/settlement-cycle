@@ -68,3 +68,42 @@ Regression tests reject missing deposits and inconsistent pinned supply, chi
 or outstanding liability. This checkpoint adds a validated prerequisite for
 the Savings funding model; it does not claim certified cost reconciliation or
 change the running Spark replay, published reports, API output or Sky costs.
+
+## August-only cross-check
+
+The same reconstruction also matches the independently fetched July 31 closing
+state, using the published August start pins (Ethereum 25,656,292 and Avalanche
+91,716,609). Subtracting cumulative accrual at the two boundaries, including
+both un-dripped tails, gives:
+
+| Vault | August VSR accrual |
+|---|---:|
+| S56 | 811,742.827083 |
+| S57 | 916,159.088213 |
+| S59 | 267.696763 |
+| S60 | 34,372.398914 |
+| **Total** | **1,762,542.010973** |
+
+This is an independent saver-liability measurement. It is **not Sky borrowing
+cost**, a proposed additional MSC expense or a settlement correction. No
+production revenue/expense treatment is changed here.
+
+S59 has zero ALM cash taken/returned in August, while its outstanding liability
+increases by 267.696756 after share rounding. This is a concrete monthly case
+where cash movement alone cannot describe the funding obligation. The four
+vaults' additional cash residuals are unchanged during August, so no new
+unclassified vault-cash component is used to make this monthly identity match.
+
+```sh
+PYTHONPATH=src .venv/bin/python scripts/audit_spark_savings_period.py \
+  --events tests/fixtures/spark_savings_v2_liability.json.gz \
+  --cash-events tests/fixtures/spark_savings_v2_funding.json.gz \
+  --opening-state tests/fixtures/spark_savings_v2_august_opening.json \
+  --output /tmp/spark-savings-august-accrual.json
+```
+
+`reconciliation/spark_savings_august_accrual_2026_08.json` records the complete
+opening/closing checks and hashes. Tests reject mismatched cash pins and vault
+boundaries. Neither this audit nor the cumulative audit decides how to allocate
+principal/interest within individual cash returns or how to replace saver
+funding with Sky funding across assets; those remain ledger work.
