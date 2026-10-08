@@ -52,8 +52,9 @@ without evidence. User clarification has been requested for the RLUSD payments.
 BLOOM-A's eligible subtotal therefore remains zero, despite the conditional
 numerical bridge balancing. GROVE-A independently retains 11,784.593973 in
 eligible allocation costs; its 0.143297 expense-financing difference is already
-supported by its two exact PAU swaps. Keep PR #215 draft. Spark has not been
-rerun after the uncertainty changes and must not inherit these conclusions.
+supported by its two exact PAU swaps. Keep PR #215 draft. Spark has now been replayed separately after the uncertainty changes; its
+remaining limitations and measured progress are in
+`../spark/financing-replay-2026-10-08.md`. It does not inherit these Grove conclusions.
 
 ## Reproduce
 
