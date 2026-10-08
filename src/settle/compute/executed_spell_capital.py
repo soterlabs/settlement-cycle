@@ -52,6 +52,7 @@ def apply_executed_spells(history):
     from .grove_buidl_subscriptions import link_grove_buidl_subscriptions
     from .grove_cash_distributions import recognize_grove_cash_distributions
     from .grove_cctp_v2_capital import link_grove_cctp_v2
+    from .grove_curve_swap_gains import recognize_grove_curve_swap_gains
     from .grove_falconx_test_refund import link_falconx_test_refund
     from .grove_galaxy_arch_capital import link_grove_galaxy_arch
     from .grove_historical_capital import link_grove_initial_jaaa, link_grove_jaaa_avalanche
@@ -78,6 +79,7 @@ def apply_executed_spells(history):
     history = link_grove_paxos_boundary(history)
     history = link_grove_buidl_partial_payments(history)
     history = link_falconx_test_refund(history)
+    history = recognize_grove_curve_swap_gains(history)
     batches = list(history.batches)
     indexes = {b.identity: i for i, b in enumerate(batches)}
     if len(indexes) != len(batches):
