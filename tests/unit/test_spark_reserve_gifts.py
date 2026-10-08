@@ -74,8 +74,11 @@ def test_january_gifts_do_not_absorb_the_unrelated_350m_governance_draw():
     r = replay_history(h, b.day, b.day)
     assert all(r.ledger.account(m.account).borrowed == 0 for m in b.movements)
     assert r.ledger.drawn == b.minted
-    assert abs(r.unmatched_outflows[b.identity] - b.minted) < D('1e-8')
-    assert not r.unmatched_receipts
+    # The separately authenticated Arbitrum/Optimism bridge adapter now parks
+    # this draw in claims when the history stops before the L2 receipts.
+    assert not r.unmatched_outflows and not r.unmatched_receipts
+    claims = [a for k, a in r.ledger.accounts.items() if k.startswith('native-bridge:spark:arbitrum-spells:')]
+    assert abs(sum(a.borrowed for a in claims) - b.minted) < D('1e-8')
 
 
 def test_shared_spell_in_another_primes_history_is_an_exact_noop():
