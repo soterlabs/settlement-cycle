@@ -352,3 +352,42 @@ def test_configured_issuer_yield_mint_does_not_create_unknown_funding(monkeypatc
     assert account.value == 106
     assert not replay.unmatched_receipts
     assert not replay.uncertain_accounts
+
+
+def test_cross_chain_cash_distributions_are_income_only_for_exact_configured_route(monkeypatch):
+    from settle.domain.primes import CashDistributionSource
+
+    logs = [log(1, 1, USDS_ETHEREUM.address, TRANSFER_TOPIC0,
+                [topic(MANAGER), topic(HOLDER)], [10 * 10**18])]
+    base = setup(monkeypatch, logs)
+    route = CashDistributionSource(MANAGER, USDS_ETHEREUM.address, Chain.ETHEREUM)
+    for distribution, expected in [
+        (route, D(10)),
+        (replace(route, payer=VAULT), D(0)),
+        (replace(route, token=VAULT), D(0)),
+        (replace(route, chain=Chain.BASE), D(0)),
+        (replace(route, chain=None), D(0)),  # Defaults to investment chain.
+    ]:
+        offchain = replace(base.venues[0], chain=Chain.AVALANCHE_C,
+            notional_principal_usd=D(100), cash_distributions=[distribution])
+        prime = replace(base, venues=[offchain])
+        history = source.fetch_capital_history(prime, {Chain.ETHEREUM: 1})
+        assert sum(m.external_income for b in history.batches for m in b.movements) == expected
+        replay = replay_history(history, DAY, DAY)
+        assert bool(replay.unmatched_receipts) is (expected == 0)
+        assert all(a.borrowed == 0 for a in replay.ledger.accounts.values())
+
+
+def test_distribution_payer_does_not_classify_cash_at_a_different_holder(monkeypatch):
+    from settle.domain.primes import CashDistributionSource
+
+    logs = [log(1, 1, USDS_ETHEREUM.address, TRANSFER_TOPIC0,
+                [topic(MANAGER), topic(QUEUE)], [10 * 10**18])]
+    base = setup(monkeypatch, logs)
+    paying_venue = replace(base.venues[0], cash_distributions=[
+        CashDistributionSource(MANAGER, USDS_ETHEREUM.address, Chain.ETHEREUM)])
+    other_cash = Venue('Other cash', Chain.ETHEREUM, USDS_ETHEREUM,
+                      PricingCategory.PAR_STABLE, holder_override=QUEUE)
+    history = source.fetch_capital_history(replace(base, venues=[paying_venue, other_cash]),
+                                          {Chain.ETHEREUM: 1})
+    assert sum(m.external_income for b in history.batches for m in b.movements) == 0

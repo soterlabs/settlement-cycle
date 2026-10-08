@@ -1,0 +1,77 @@
+{
+  "prime": "grove",
+  "period": "2026-08",
+  "base_commit": "fdf6bf2",
+  "input_hashes": {
+    "/tmp/pr215-grove-eoa/history.jsonl.gz": "c05b53815379f6f7a4d9f6195d819d09ddb542f8f279af5f4defe4b7b3295474",
+    "settlements/grove/2026-08/provenance.json": "d6fb40d3c43caf3bdc7d0983b7ff071433ad056d22825b9f0f19eeb9d3af3aa9",
+    "/tmp/pr215-resumed-grove/idle_deductions.json": "e6b13f9b30816b2f8e9325f222aa9c889ff68cdf182205f4c54576d929faf427",
+    "/tmp/pr215-resumed-grove/debt-control.json": "6214144465cad85e59e3cd7c075925fad2f5bdc2131428ea4e6f769b57d9280b",
+    "/tmp/pr215-resumed-grove/deduction-owners.json": "dad2cf619d5dc65a26721aaf1fe3938136bb512212bf427a2e5aa56531f58153"
+  },
+  "known_yield_usdc": "3104495.81",
+  "before": {
+    "unmatched_receipts": 53,
+    "unmatched_outflows": 260,
+    "eligible_allocation_cost": "1233.513467956631497028953141"
+  },
+  "after": {
+    "unmatched_receipts": 40,
+    "unmatched_outflows": 260,
+    "eligible_allocation_cost": "1233.513467956631497028953141"
+  },
+  "per_ilk_reconciliation": {
+    "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+      "global_cost": "3708820.107055825781021080592",
+      "msc_cost": "259878.1170265572840543147882",
+      "allocation_cost": "0",
+      "global_excluding_msc": "3448941.990029268496966765804",
+      "difference": "-3448941.990029268496966765804",
+      "within_one_cent": false,
+      "complete": false,
+      "source_complete": false,
+      "bounds_use_verified_deduction_owners": true,
+      "diagnostic_cost_bounds": {
+        "lower": "-3863203.39868990659003461828780082067245097129787209974184536",
+        "upper": "3448941.99002926849696676580416084319370638238644478031610200"
+      },
+      "target_distance_from_bounds": "0",
+      "target_within_bounds_to_one_cent": true,
+      "bounds_note": "Containment is not reconciliation; unresolved routes remain unverified"
+    },
+    "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+      "global_cost": "11784.73727045625525471486130",
+      "msc_cost": "0E-32",
+      "allocation_cost": "1233.513467956631497028953141",
+      "global_excluding_msc": "11784.73727045625525471486130",
+      "difference": "-10551.22380249962375768590816",
+      "within_one_cent": false,
+      "complete": false,
+      "source_complete": false,
+      "bounds_use_verified_deduction_owners": true,
+      "diagnostic_cost_bounds": {
+        "lower": "8228.95004232382178209164317337042010690526879254391009537913",
+        "upper": "11784.7372704562552547148612968949528875509721436267419"
+      },
+      "target_distance_from_bounds": "3.1050471124490278563732581E-24",
+      "target_within_bounds_to_one_cent": true,
+      "bounds_note": "Containment is not reconciliation; unresolved routes remain unverified"
+    }
+  },
+  "removed_receipts": {
+    "ethereum:0xde27d338c5eed540a3f93c41509341e4650c9dd0932e0ad5bd7dbb98faa324a0": "3.00",
+    "ethereum:0xd755b61a6afc821194cdaa6a36290a495551c0983f90c5c1a174d2f68f3f1391": "209133.25",
+    "ethereum:0x0e95fb1c153c3919bb8b37af83d30fd3b03d9186ad2e927ca843cb7f632cff6a": "3.00",
+    "ethereum:0x0f982d4cf1aac26cdb5f0800653c40adfba3ae489156560071b33b0dffd6862e": "402936.81",
+    "ethereum:0x148e3bc75a43f704b1051eda2ecca483c8d124d7d796acf79e4e1cf1a87473bb": "363584.08",
+    "ethereum:0xae05ecbbd2e290514be7aadda0ce4f4d6a9e267a1e02c8816f88571789d9db08": "402742.96",
+    "ethereum:0x042b2964ef638d74533b3f4364d1b0bc671405e35eb09ca8af3abde8bc0a5681": "389109.90",
+    "ethereum:0x5647bf504ec6bea27556729f154372a68c9f7ad1f5cc5d604f5d07b53e7e8ae4": "371738.69",
+    "ethereum:0x666f0a26e42d64f6a0416532203b7bde06252cd52f512d73d42d3b6d2b07438b": "0.25",
+    "ethereum:0xe138a148ccb08585fb879aa9ae0c07a266298b81f69162a23bd0331a71962ce4": "267818.71",
+    "ethereum:0x3e2e256b5f1a165f3764dfd1905749156dc7601000fe44f4904f648066a49989": "222936.27",
+    "ethereum:0x2d5b514fb59d52479712a54d7f2bfd999f9ce92fe7fc54310a5e7d9eb96dcf1c": "20.00",
+    "ethereum:0x67b4556fab01bdb15ed20534a693f8e6cd7264094436c60fa368e1206a184f17": "474468.89"
+  },
+  "scope": "Capital funding classification now follows existing configured cash-distribution policy; reported revenue and global costs unchanged."
+}
