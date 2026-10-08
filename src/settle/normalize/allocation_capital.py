@@ -21,7 +21,13 @@ from ..extract._keccak import keccak256
 from ..extract.transfer_logs import TRANSFER_TOPIC0
 from .allocation_async_vaults import CAPITAL_ASSETS, REDEEM_REQUEST, AsyncVaultCapital
 from .allocation_bridges import funded_cctp_burns, link_cctp
-from .allocation_morpho_fees import ACCRUE_INTEREST, VAULTS, fee_mints
+from .allocation_morpho_fees import (
+    ACCRUE_INTEREST,
+    ACCRUE_INTEREST_V2,
+    V2_VAULTS,
+    VAULTS,
+    fee_mints,
+)
 from .allocation_nfts import NFTCapital
 from .allocation_principal_returns import principal_return_logs
 from .allocation_psm import PsmCapital
@@ -222,12 +228,13 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
             if not row.transaction_hash:
                 raise ValueError("Missing transaction identity in capital history")
             grouped[(row.block_number, row.transaction_hash)].append(row)
-        fee_vaults = sorted({token for token, _ in mapping} & VAULTS.get(chain, set()))
+        fee_vaults = sorted({token for token, _ in mapping}
+                           & (VAULTS.get(chain, set()) | V2_VAULTS.get(chain, set())))
         if fee_vaults:
             # Fee events have no indexed holder, so the ALM topic selections
             # above cannot see them. Attach only to already tracked transactions.
             for row in hypersync_store.fetch_logs(chain.value, [
-                {'address': fee_vaults, 'topics': [[ACCRUE_INTEREST]]},
+                {'address': fee_vaults, 'topics': [[ACCRUE_INTEREST, ACCRUE_INTEREST_V2]]},
             ], 0, pins[chain], log_fields=[*hypersync._DEFAULT_LOG_FIELDS, 'transaction_hash']):
                 key = (row.block_number, row.transaction_hash)
                 if key in grouped:
@@ -362,13 +369,21 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                 # unexplained capital. Check each mint, not the batch sum.
                 gift += sum((Decimal(amount) * price / scale for amount in issuer_mints[key]
                              if Decimal(amount) * price / scale < v.min_transfer_amount_usd), ZERO)
-                if key in withdrawals and raw_change < 0 and key not in deposits:
+                if key in withdrawals and key not in deposits:
                     cash, shares = withdrawals[key]
-                    if shares == -raw_change:
+                    fee_units = fee_shares.get(key, 0)
+                    if shares and shares == fee_units - raw_change:
                         # Release the redeemed share fraction using actual
                         # proceeds, not a rounded unit-price approximation.
                         value_before = cash * Decimal(units[key]) / Decimal(shares)
-                        change = -cash
+                        # Fee shares can be minted immediately before the
+                        # withdrawal, even leaving a positive net share change.
+                        # Price that known gift at the same execution ratio so
+                        # the outgoing leg is exactly the observed cash.
+                        actual_fee = cash * Decimal(fee_units) / Decimal(shares)
+                        gift += actual_fee - performance_fee
+                        performance_fee = actual_fee
+                        change = actual_fee - cash
                 units[key] += raw_change
                 if units[key] < 0:
                     raise ValueError(f"Negative reconstructed capital holding: {v.id} {tx_hash}")

@@ -418,3 +418,56 @@ def test_actual_curve_gain_reinvested_same_tx_never_becomes_borrowed_basis(monke
     assert a.value == D(110) and a.borrowed == D(100)
     assert r.ledger.drawn == D(100)
     assert not r.unmatched_receipts and not r.unmatched_outflows
+
+
+def test_v2_fees_and_withdrawal_use_the_same_execution_price(monkeypatch):
+    from settle.normalize import allocation_morpho_fees as fees
+
+    zero = topic(Address(bytes(20)))
+    # Run both a net burn and a net mint: either still contains a cash exit.
+    for fee_units in (2, 20):
+        logs = [draw(),
+                log(1, 1, VAULT, TRANSFER_TOPIC0, [zero, topic(HOLDER)], [100 * 10**18]),
+                log(2, 2, VAULT, TRANSFER_TOPIC0, [zero, topic(HOLDER)], [fee_units * 10**18]),
+                log(2, 3, VAULT, TRANSFER_TOPIC0, [topic(HOLDER), zero], [10 * 10**18]),
+                log(2, 4, VAULT, source.WITHDRAW, [topic(HOLDER), topic(HOLDER), topic(HOLDER)],
+                    [11 * 10**18, 10 * 10**18]),
+                log(2, 5, USDS_ETHEREUM.address, TRANSFER_TOPIC0, [topic(VAULT), topic(HOLDER)], [11 * 10**18])]
+        accrual = log(2, 1, VAULT, fees.ACCRUE_INTEREST_V2, [],
+                      [100 * 10**18, 110 * 10**18, fee_units * 10**18, 0])
+        prime = setup(monkeypatch, logs)
+        monkeypatch.setitem(fees.V2_VAULTS, Chain.ETHEREUM, {VAULT.hex})
+        monkeypatch.setattr(source.hypersync_store, 'fetch_logs', lambda chain, selections, *a, **k:
+                            [accrual] if selections[0].get('address') == [VAULT.hex] else logs)
+        h = source.fetch_capital_history(prime, {Chain.ETHEREUM: 2})
+        asset = h.venue_accounts['V1']
+        m = next(m for m in h.batches[-1].movements if m.account == asset)
+        assert m.external_income == D(fee_units) * D('1.1')
+        assert m.change - m.external_income == -11
+        assert m.value_before == 110
+        r = replay_history(h, DAY, DAY)
+        cash = source._account(Chain.ETHEREUM, USDS_ETHEREUM.address, HOLDER)
+        assert r.ledger.account(cash).value == 11
+        assert abs(r.ledger.account(cash).borrowed - D(1000)/D(100+fee_units)) < D('1e-20')
+        assert abs(sum(a.borrowed for a in r.ledger.accounts.values()) - 100) < D('1e-20')
+        assert not r.unmatched_receipts and not r.unmatched_outflows
+
+
+def test_v2_fee_event_order_does_not_capture_deposit_or_other_holder_mints(monkeypatch):
+    import pytest
+
+    from settle.normalize import allocation_morpho_fees as fees
+
+    zero = topic(Address(bytes(20)))
+    monkeypatch.setitem(fees.V2_VAULTS, Chain.ETHEREUM, {VAULT.hex})
+    accrual = log(1, 0, VAULT, fees.ACCRUE_INTEREST_V2, [], [100, 110, 2, 3])
+    perf_other = log(1, 1, VAULT, TRANSFER_TOPIC0, [zero, topic(MANAGER)], [2])
+    mgmt = log(1, 2, VAULT, TRANSFER_TOPIC0, [zero, topic(HOLDER)], [3])
+    deposit = log(1, 3, VAULT, TRANSFER_TOPIC0, [zero, topic(HOLDER)], [99])
+    tracked = {(VAULT.hex, HOLDER.hex)}
+    assert fees.fee_mints(Chain.ETHEREUM, [accrual, perf_other, mgmt, deposit], tracked) == {(VAULT.hex, HOLDER.hex): 3}
+    assert fees.fee_mints(Chain.ETHEREUM, [accrual, mgmt, deposit], tracked) == {(VAULT.hex, HOLDER.hex): 3}
+    with pytest.raises(ValueError, match='disagrees with accrual'):
+        fees.fee_mints(Chain.ETHEREUM, [accrual, replace(mgmt, data='0x' + f'{42:064x}')], tracked)
+    with pytest.raises(ValueError, match='Duplicate'):
+        fees.fee_mints(Chain.ETHEREUM, [accrual, accrual], tracked)

@@ -1,0 +1,8 @@
+{
+  "ethereum:0xc155582af0a905491673aa674842eec369eccc93a2a402680993670ec57d1320|ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xb0c424116172b55cbb6dd3136f5989f7959e5b91": {
+    "block": 25274077,
+    "price_usd": "1.00568300",
+    "venue": "S65",
+    "method": "same capital normalizer unit-price call at exact event block"
+  }
+}
