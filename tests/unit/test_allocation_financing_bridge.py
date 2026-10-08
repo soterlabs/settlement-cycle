@@ -59,3 +59,23 @@ def test_missing_observed_borrowing_cannot_be_presented_as_realized_loss():
     debt[0]['by_ilk'][ILK]['debt'] = '101'
     with pytest.raises(ValueError, match='Observed draws'):
         audit.numerical_bridge(h, replay, finance, control, debt)
+
+
+def test_verified_vat_accrual_stays_outside_allocation_principal():
+    h, replay, finance, control, debt = inputs()
+    debt[0]['by_ilk'][ILK]['debt'] = '150'
+    control['sky_revenue_daily'][0].update(utilized='130', daily_sky_rev='13')
+    finance['per_ilk_reconciliation']['by_ilk'][ILK]['global_excluding_msc'] = '13'
+    proof = {'daily': [{'day': str(DAY), 'ilk': ILK,
+                       'cash_draws_less_repayments': '100', 'non_cash_rate_accrual': '50'}]}
+    r = audit.numerical_bridge(h, replay, finance, control, debt, vat_accrual=proof)['by_ilk'][ILK]
+    assert r['vat_rate_accrual_financing'] == D(5)
+    assert r['debt_without_remaining_asset_basis_financing'] == D(1)
+    assert r['modeled_allocation_cost'] == D(6)
+    assert r['unexplained_numerical_difference'] == 0
+    assert r['eligible_allocation_cost'] == '0'
+    proof['daily'][0]['cash_draws_less_repayments'] = '99'
+    with pytest.raises(ValueError, match='cash proof'):
+        audit.numerical_bridge(h, replay, finance, control, debt, vat_accrual=proof)
+    with pytest.raises(ValueError, match='Missing independently'):
+        audit.numerical_bridge(h, replay, finance, control, debt, vat_accrual={'daily': []})

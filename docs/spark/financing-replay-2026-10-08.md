@@ -3,7 +3,8 @@
 The full inception-to-August replay completed using code commit `063186a` and
 the explicitly repaired Ethereum Morpho V2 input. This checkpoint precedes the
 Base Morpho exact-cash, nested fsUSDS and June Base withdrawal fixes; a second
-replay with those corrections is running. The comparison is against the earlier
+replay with those corrections, USTB and USCC has now completed at `26013f9`
+(see the combined result below). The comparison is against the earlier
 replay that already propagated funding uncertainty, not the obsolete $12,080.98
 eligible-cost figure from before that protection.
 
@@ -64,3 +65,24 @@ PYTHONPATH=src PYTHON_DOTENV_DISABLED=1 .venv/bin/python \
 `reconciliation/spark_native_and_morpho_financing_2026_08.json` records exact
 figures, replay/input hashes and remaining examples. The comparison fails if
 published controls, per-ilk draws/repayments, global costs or MSC amounts differ.
+
+## Combined replay at `26013f9`
+
+The follow-up completed all 451,907 transactions. Modeled August costs increase
+from 2,320,839.345281 to **2,333,198.918893 USDS**. Eligible costs remain zero;
+funding attribution is still unresolved. Published debt, costs and MSC controls
+are identical.
+
+Incoming residuals fall from 35,578 / $17,811,074,442.19 to
+**19,573 / $17,343,087,257.05**. Outgoing residuals fall from
+24,464 / $17,150,844,409.65 to **24,441 / $16,687,095,203.84**. These are gross
+historical turnover discrepancies, not revenue or August charges.
+
+The automatic numerical bridge initially failed because it omitted historical
+non-cash Vat rate accrual. The independent event proof and diagnostic fix are
+documented in `vat-rate-accrual-2026-10-08.md`. The ledger replay itself succeeded
+and did not need to be repeated.
+
+Exact baseline-to-final and intermediate-to-final comparisons are preserved in
+`reconciliation/spark_combined_financing_2026_08.json` and
+`reconciliation/spark_followup_financing_2026_08.json`.

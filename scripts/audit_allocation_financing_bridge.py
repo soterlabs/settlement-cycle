@@ -20,7 +20,7 @@ from settle.normalize.allocation_history_cache import load_history
 ZERO = D(0)
 
 
-def numerical_bridge(history, replay, finance, control, debt_days, idle=None):
+def numerical_bridge(history, replay, finance, control, debt_days, idle=None, *, vat_accrual=None):
     debt = {r['day']: r['by_ilk'] for r in debt_days}
     ownership = {(r['day'], r['ilk']): r for r in finance['per_ilk_reconciliation']['daily']}
     modeled_rows = [r for r in finance['allocations'] if 'modeled_cost_of_funds' in r]
@@ -38,6 +38,7 @@ def numerical_bridge(history, replay, finance, control, debt_days, idle=None):
     batches = iter(sorted(history.batches, key=lambda b: (b.day, b.timestamp)))
     pending = next(batches, None)
     observed_debt = defaultdict(D)
+    accrual_days = {(r['day'], r['ilk']): r for r in vat_accrual['daily']} if vat_accrual else {}
     for row in control['sky_revenue_daily']:
         day = date.fromisoformat(row['date'])
         while pending is not None and pending.day <= day:
@@ -69,8 +70,18 @@ def numerical_bridge(history, replay, finance, control, debt_days, idle=None):
         for raw_ilk, v in debt[str(day)].items():
             ilk = '0x'+raw_ilk.removeprefix('0x')
             nonmsc = D(v['debt'])-D(v['prior_msc_debt'])-D(v['current_month_msc_debt'])
-            if abs(observed_debt[ilk]-nonmsc) > D('.01'):
-                raise ValueError('Observed draws/repayments do not reproduce non-MSC debt')
+            accrued = ZERO
+            if vat_accrual is not None:
+                proof = accrual_days.get((str(day), ilk))
+                if proof is None:
+                    raise ValueError('Missing independently reconstructed Vat accrual day/ilk')
+                if abs(D(proof['cash_draws_less_repayments'])-observed_debt[ilk]) > D('.01'):
+                    raise ValueError('Vat cash proof differs from capital history')
+                accrued = D(proof['non_cash_rate_accrual'])
+            if abs(observed_debt[ilk]+accrued-nonmsc) > D('.01'):
+                raise ValueError(f'Observed draws/repayments and verified Vat accrual do not reproduce '
+                                 f'non-MSC debt: {day} {ilk}; '
+                                 f'difference={observed_debt[ilk]+accrued-nonmsc}')
             basis = known = ZERO
             for account, origins in replay.daily_by_ilk[day].items():
                 amount = origins.get(ilk, ZERO)
@@ -82,17 +93,24 @@ def numerical_bridge(history, replay, finance, control, debt_days, idle=None):
                     outside[ilk][category] += amount*rate
             totals[ilk]['represented_gross_cost'] += known*rate
             totals[ilk]['modeled_deduction_cost'] += modeled_deductions[ilk]
-            totals[ilk]['debt_without_remaining_asset_basis_financing'] += (nonmsc-basis)*rate
+            # Fold-created debt funded the surplus buffer, not an allocation.
+            # Its independent event proof must pass above; never infer it as
+            # the residual needed to make a comparison balance.
+            totals[ilk]['vat_rate_accrual_financing'] += accrued*rate
+            totals[ilk]['debt_without_remaining_asset_basis_financing'] += (observed_debt[ilk]-basis)*rate
             totals[ilk]['global_deduction_cost'] += D(str(ownership[(str(day),ilk)]['deductions']))*rate
     result = {}
     for ilk, t in totals.items():
         modeled = sum((D(str(r['modeled_cost_of_funds_by_ilk'].get(ilk, ZERO))) for r in modeled_rows), ZERO)
         target = D(str(finance['per_ilk_reconciliation']['by_ilk'][ilk]['global_excluding_msc']))
         deduction_difference = t['modeled_deduction_cost']-t['global_deduction_cost']
-        explained = modeled+sum(outside[ilk].values(), ZERO)+t['debt_without_remaining_asset_basis_financing']+deduction_difference
+        explained = (modeled+sum(outside[ilk].values(), ZERO)
+                     +t['debt_without_remaining_asset_basis_financing']
+                     +t['vat_rate_accrual_financing']+deduction_difference)
         result[ilk] = {'global_excluding_msc': target, 'modeled_allocation_cost': modeled,
             'outside_allocation_financing_by_account_type': dict(outside[ilk]),
             'debt_without_remaining_asset_basis_financing': t['debt_without_remaining_asset_basis_financing'],
+            'vat_rate_accrual_financing': t['vat_rate_accrual_financing'],
             'deduction_difference_financing': deduction_difference,
             'modeled_cost_inconsistency': t['represented_gross_cost']-t['modeled_deduction_cost']-modeled,
             'unexplained_numerical_difference': target-explained,
@@ -106,6 +124,8 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     for name in ('history', 'financing', 'control', 'debt-control', 'idle-deductions', 'output'):
         p.add_argument('--'+name, type=Path, required=True)
+    p.add_argument('--vat-evidence', type=Path,
+                   help='Optional raw Spark Vat events/state/cash evidence; reconstruct, never infer accrual')
     args = p.parse_args()
     finance = json.loads(args.financing.read_text())
     for path in (args.history, args.control, args.debt_control, args.idle_deductions):
@@ -122,11 +142,20 @@ def main():
     replay = replay_history(h, min(days)-timedelta(days=1), max(days))
     if {k: D(str(v)) for k,v in finance['unmatched_receipts'].items()} != replay.unmatched_receipts:
         raise ValueError('Financing result is stale relative to the current replay')
-    result = numerical_bridge(h, replay, finance, control, json.loads(args.debt_control.read_text()),
-                              json.loads(args.idle_deductions.read_text())['daily'])
+    debt_days = json.loads(args.debt_control.read_text())
+    vat_accrual = None
+    if args.vat_evidence:
+        from audit_spark_vat_accrual import reconstruct
+
+        with gzip.open(args.vat_evidence, 'rt') as f:
+            vat_accrual = reconstruct(json.load(f), debt_days)
+    result = numerical_bridge(h, replay, finance, control, debt_days,
+                              json.loads(args.idle_deductions.read_text())['daily'], vat_accrual=vat_accrual)
     result['input_hashes'] = {str(p): hashlib.sha256(p.read_bytes()).hexdigest()
         for p in (args.history, args.financing, args.control, args.debt_control, args.idle_deductions)}
     result['realised_principal_loss_at_end'] = replay.ledger.realised_principal_loss
+    if args.vat_evidence:
+        result['input_hashes'][str(args.vat_evidence)] = hashlib.sha256(args.vat_evidence.read_bytes()).hexdigest()
     args.output.write_text(json.dumps(result, indent=2, default=str)+'\n')
 
 
