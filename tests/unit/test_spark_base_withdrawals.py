@@ -10,6 +10,7 @@ from settle.compute.allocation_capital import replay_history
 from settle.compute.spark_base_withdrawals import (
     BASE_ALM,
     ETH_ALM,
+    JUNE_LEGS,
     LEGS,
     SOURCE,
     link_spark_base_withdrawals,
@@ -78,11 +79,13 @@ def dynamic(data, head_index):
     return data[offset+32:offset+32+size]
 
 
-def test_canonical_payload_hashes_and_actual_burns_authenticate_l1_receipts():
-    f = json.loads((Path(__file__).parents[1]/'fixtures/spark_base_july_withdrawals.json').read_text())
+@pytest.mark.parametrize('fixture,legs', [('spark_base_july_withdrawals.json', LEGS),
+                                        ('spark_base_june_withdrawals.json', JUNE_LEGS)])
+def test_canonical_payload_hashes_and_actual_burns_authenticate_l1_receipts(fixture, legs):
+    f = json.loads((Path(__file__).parents[1]/'fixtures'/fixture).read_text())
     messages = [r for r in f['base'] if r['address']=='0x4200000000000000000000000000000000000016']
-    assert len(messages) == len(LEGS) == 2
-    for r,leg in zip(messages,LEGS,strict=True):
+    assert len(messages) == len(legs) == 2
+    for r,leg in zip(messages,legs,strict=True):
         local,remote,raw_amount,tx,*_ = leg
         body = bytes.fromhex(r['data'][2:])
         payload = dynamic(body,2)
@@ -102,6 +105,13 @@ def test_canonical_payload_hashes_and_actual_burns_authenticate_l1_receipts():
         encoded += b'\0'*((-len(payload))%32)
         withdrawal_hash = '0x'+keccak256(encoded).hex()
         assert withdrawal_hash == '0x'+body[96:128].hex()
+        assert any(x['topic0']==TRANSFER_TOPIC0 and x['address']==local
+                   and x['topic1'].endswith(BASE_ALM[2:]) and int(x['topic2'],16)==0
+                   and int(x['data'],16)==raw_amount for x in f['base'])
+        if tx is None:
+            assert not any(x['topic0'] == topic('RelayedMessage(bytes32)')
+                           and x['topic1'] == '0x'+keccak256(payload).hex() for x in f['ethereum'])
+            continue  # Authenticated burn remains a claim, never invented cash.
         assert any(x['topic0']==topic('RelayedMessage(bytes32)')
                    and x['address']=='0x866e82a600a1414e583f7f13623f1ac5d58b0afa'
                    and x['topic1']=='0x'+keccak256(payload).hex() and x['transaction_hash']==tx
@@ -136,3 +146,46 @@ def test_identifiable_token_legs_do_not_mix_sky_funding_with_earned_savings():
     r = replay_history(replace(h, batches=(unknown, *h.batches[1:])), DAY, date(2026, 7, 13))
     assert f'ethereum:{ETH_ALM}:{LEGS[0][1]}' in r.uncertain_accounts
     assert f'ethereum:{ETH_ALM}:{LEGS[1][1]}' not in r.uncertain_accounts
+
+
+def test_june_test_withdrawal_retains_usds_claim_and_releases_only_delivered_susds():
+    f = json.loads((Path(__file__).parents[1]/'fixtures/spark_base_june_withdrawals.json').read_text())
+    def batch(raw):
+        return CapitalBatch(raw['identity'], date.fromisoformat(raw['day']), raw['timestamp'],
+            raw['chain'], raw['block'], tuple(AssetMovement(m['account'], D(m['value_before']),
+            D(m['change']), D(m['external_income']), m['preserve_basis']) for m in raw['movements']),
+            D(raw['minted']), raw['log_index'], raw['minted_by_ilk'])
+    source, arrival = batch(f['source_batch']), batch(f['arrival_batch'])
+    # Use a controlled opening: one funded USDS leg and independently earned
+    # sUSDS. The production history must supply its own traced opening basis.
+    funding = replace(source, identity='funding', timestamp=source.timestamp-1,
+        minted=D(10000), minted_by_ilk={ILK: D(10000)},
+        movements=tuple(AssetMovement(m.account, D(0), -m.change,
+                                     -m.change if n else D(0)) for n,m in enumerate(source.movements)))
+    source = replace(source, movements=tuple(replace(m, value_before=-m.change) for m in source.movements))
+    arrival = replace(arrival, movements=tuple(replace(m, value_before=D(0)) for m in arrival.movements))
+    h = CapitalHistory((funding,source,arrival), {}, {})
+    linked = link_spark_base_withdrawals(h)
+    assert link_spark_base_withdrawals(linked) == linked
+    r = replay_history(linked, source.day, date(2026,8,31))
+    claim = linked.venue_accounts['S_BASE_JUNE_NATIVE_PENDING_1']
+    assert r.daily[date(2026,8,31)][claim] == D(10000)
+    assert claim not in linked.idle_accounts
+    assert r.ledger.account(arrival.movements[0].account).borrowed == 0
+    assert not r.unmatched_receipts and not r.unmatched_outflows
+    cutoff = link_spark_base_withdrawals(replace(h, batches=(funding,source)))
+    assert replay_history(cutoff, source.day, source.day).ledger.account(
+        cutoff.venue_accounts['S_BASE_JUNE_NATIVE_PENDING_2']).value == D('11006.22276111643838')
+
+
+def test_june_portal_state_independently_confirms_only_susds_finalized_at_august_pin():
+    f = json.loads((Path(__file__).parents[1]/'fixtures/spark_base_june_withdrawals.json').read_text())
+    check = f['finalization_check']
+    assert check['chain'] == 'ethereum' and check['block'] == 25878704
+    assert check['portal'] == '0x49048044d57e1c92a77f79988d21fa8faf74e97e'
+    messages = [r for r in f['base'] if r['address'] == '0x4200000000000000000000000000000000000016']
+    for n, (message, call) in enumerate(zip(messages, check['calls'], strict=True)):
+        body = bytes.fromhex(message['data'][2:])
+        assert call['withdrawal_hash'] == '0x' + body[96:128].hex()
+        assert call['data'] == '0x' + keccak256(b'finalizedWithdrawals(bytes32)')[:4].hex() + call['withdrawal_hash'][2:]
+        assert int(call['result'], 16) == n  # USDS pending; sUSDS finalized.
