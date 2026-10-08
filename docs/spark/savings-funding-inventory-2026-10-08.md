@@ -117,3 +117,49 @@ reconciliation improvement. It narrows the required model and adds a concrete
 acceptance case. More complicated executions can deposit the new USDS into
 sUSDS and immediately spend some sUSDS in a Curve swap; those require following
 the actual swap too, rather than treating the net sUSDS change as the draw.
+
+## Implemented checkpoint: preserve the May 2 independent routes
+
+`compute/spark_separate_savings_routes.py` now separates this exact execution
+into two disjoint clearing groups before replay. The Sky group contains the
+zero-net USDS cash account and the sUSDS deposit, with the original draw and
+ilk. The other group retains USDT and the Morpho withdrawal/fee movements, with
+no Sky draw. All original movements, values, fees and debt fields are preserved.
+The adapter rejects altered debt, a different USDS/deposit shape, or a partial
+already-split snapshot; it is idempotent and scoped to Spark.
+
+An isolated replay of the saved transaction demonstrates the original bug:
+
+| Sky borrowed basis attributable to this transaction | Before | After |
+|---|---:|---:|
+| sUSDS | 89,995,087.893178 | 180,000,066.289062 |
+| USDT | 90,004,978.395884 | 0 |
+
+The saver-side receipt remains unresolved and its uncertainty remains on that
+branch. No saver funding is labeled revenue. No new loan is seeded from the
+opening balances. This is a witnessed routing correction, not a general
+principal/interest policy or a claim that the full Spark portfolio is traced.
+The May 2 receipt and direct token-route proof already existed; this checkpoint
+implements the corresponding split. It supersedes the earlier statement above
+that this route is not yet handled.
+
+The isolated before/after results and hashes are in
+`reconciliation/spark_separate_savings_routes_2026_05.json`. The full August
+borrowing-cost effect has not been measured for this additional fix. Published
+reports, API revenues and global debt/costs are unchanged.
+
+## May 18 prerequisite still awaiting a policy decision
+
+A cash return to a Savings vault does not label principal versus interest.
+The operator has been asked whether to use proportional attribution against
+outstanding principal and accrued interest, with funding replacement weighted
+across affected allocations, versus interest-first or principal-first.
+Interest financing must remain outside allocation principal whichever policy
+is chosen. No repayment policy has been selected by silence or implemented.
+
+Independent inception-to-May-18 checks show S56 net cash taken before the
+execution of **938,679,610.080881 USDC** and cumulative emitted VSR accrual of
+**6,565,509.002915 USDC** before that block. These are cash/accrual totals, not
+an asserted unpaid-principal/unpaid-interest split: earlier returns and the
+transaction's own Drip must be accounted for. The actual vault return in the
+May 18 execution is **399,989,732.847945 USDC**.
