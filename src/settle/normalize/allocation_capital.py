@@ -203,6 +203,15 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
         )
         logs = [*logs, *nft.discover(logs, pins[chain])]
         principal_returns = principal_return_logs(prime, chain, mapping, logs)
+        # Yield can arrive on a different chain from the investment (Grove's
+        # Avalanche GACLO pays USDC on Ethereum). Match the configured token,
+        # payer AND receipt ALM; do not mark every asset from that EOA as income.
+        distribution_routes = {
+            (src.token.hex, _addr_topic(src.payer.value), _addr_topic(prime.alm[chain].value))
+            for venue in prime.venues if not venue.skip
+            for src in venue.cash_distributions
+            if (src.chain or venue.chain) == chain and chain in prime.alm
+        }
         grouped = defaultdict(list)
         for row in logs:
             if not row.transaction_hash:
@@ -310,7 +319,8 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                     amount = int(row.data, 16)
                     if row.topic2 == who:
                         changes[key] += amount
-                        if row.topic1 in senders:
+                        if (row.topic1 in senders
+                                or (row.address, row.topic1, row.topic2) in distribution_routes):
                             gifts[key] += principal_returns.get((row.block_number, row.log_index), amount)
                         elif (row.topic1 == '0x' + '0' * 64
                               and mapping[key].pricing_category == PricingCategory.RWA_TRANCHE
