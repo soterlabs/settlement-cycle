@@ -437,7 +437,7 @@ def test_v2_fees_and_withdrawal_use_the_same_execution_price(monkeypatch):
                       [100 * 10**18, 110 * 10**18, fee_units * 10**18, 0])
         prime = setup(monkeypatch, logs)
         monkeypatch.setitem(fees.V2_VAULTS, Chain.ETHEREUM, {VAULT.hex})
-        monkeypatch.setattr(source.hypersync_store, 'fetch_logs', lambda chain, selections, *a, **k:
+        monkeypatch.setattr(source.hypersync_store, 'fetch_logs', lambda chain, selections, *a, accrual=accrual, logs=logs, **k:
                             [accrual] if selections[0].get('address') == [VAULT.hex] else logs)
         h = source.fetch_capital_history(prime, {Chain.ETHEREUM: 2})
         asset = h.venue_accounts['V1']
@@ -471,3 +471,54 @@ def test_v2_fee_event_order_does_not_capture_deposit_or_other_holder_mints(monke
         fees.fee_mints(Chain.ETHEREUM, [accrual, replace(mgmt, data='0x' + f'{42:064x}')], tracked)
     with pytest.raises(ValueError, match='Duplicate'):
         fees.fee_mints(Chain.ETHEREUM, [accrual, accrual], tracked)
+
+
+def test_nested_susds_deposit_and_withdrawal_are_usd_on_both_legs(monkeypatch):
+    from settle.domain.sky_tokens import sUSDS_ETHEREUM
+
+    zero = topic(Address(bytes(20)))
+    logs = [
+        log(1, 1, sUSDS_ETHEREUM.address, TRANSFER_TOPIC0,
+            [topic(MANAGER), topic(HOLDER)], [100 * 10**18]),
+        log(2, 1, sUSDS_ETHEREUM.address, TRANSFER_TOPIC0,
+            [topic(HOLDER), topic(VAULT)], [100 * 10**18]),
+        log(2, 2, VAULT, TRANSFER_TOPIC0, [zero, topic(HOLDER)], [100 * 10**18]),
+        log(2, 3, VAULT, source.DEPOSIT, [topic(HOLDER), topic(HOLDER)], [100 * 10**18, 100 * 10**18]),
+        log(3, 1, VAULT, TRANSFER_TOPIC0, [topic(HOLDER), zero], [50 * 10**18]),
+        log(3, 2, sUSDS_ETHEREUM.address, TRANSFER_TOPIC0,
+            [topic(VAULT), topic(HOLDER)], [55 * 10**18]),
+        log(3, 3, VAULT, source.WITHDRAW, [topic(HOLDER), topic(HOLDER), topic(HOLDER)],
+            [55 * 10**18, 50 * 10**18]),
+    ]
+    prime = setup(monkeypatch, logs)
+    prime = replace(prime, venues=[replace(prime.venues[0], underlying=sUSDS_ETHEREUM)])
+    monkeypatch.setattr(source.rpc, 'convert_to_assets', lambda *a: 11 * 10**17)
+    h = source.fetch_capital_history(prime, {Chain.ETHEREUM: 3})
+    deposit, withdrawal = h.batches[1:]
+    assert sorted(m.change for m in deposit.movements) == [D(-110), D(110)]
+    assert sorted(m.change for m in withdrawal.movements) == [D('-60.5'), D('60.5')]
+    share = next(m for m in withdrawal.movements if m.account.endswith(VAULT.hex))
+    assert share.value_before == D(121)  # redeemed half of the share balance
+    replay = replay_history(h, DAY, DAY)
+    assert not replay.unmatched_outflows
+    assert list(replay.unmatched_receipts.values()) == [D(110)]  # only the initial unknown funding
+
+
+def test_nested_bridged_susds_uses_origin_price_without_changing_report_pricer(monkeypatch):
+    from types import SimpleNamespace
+
+    from settle.domain.config import load_prime_by_id
+    for venue_id in ('S36', 'S42'):
+        venue = next(v for v in load_prime_by_id('spark').venues if v.id == venue_id)
+        monkeypatch.setattr(source, 'get_unit_price', lambda *a, **kw: D('1.02'))
+        monkeypatch.setattr(source.hypersync, 'block_timestamp', lambda *a: STAMP)
+        monkeypatch.setattr(source.rpc, 'convert_to_assets', lambda *a: 11 * 10**17)
+        resolver = SimpleNamespace(block_at_or_before=lambda *a: 123)
+        assert source._capital_unit_price(venue, 456, block_resolver=resolver) == D('1.122')
+        assert source.get_unit_price(venue, 456) == D('1.02')
+
+
+def test_susds_symbol_alone_does_not_authenticate_the_origin_vault(monkeypatch):
+    fake = Token(Chain.ETHEREUM, VAULT, 'sUSDS', 18)
+    monkeypatch.setattr(source.rpc, 'convert_to_assets', lambda *a: (_ for _ in ()).throw(AssertionError()))
+    assert source._susds_capital_price(fake, 1) is None

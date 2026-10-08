@@ -84,21 +84,47 @@ def _account(chain: Chain, token: Address, holder: Address) -> str:
     return f"{chain.value}:{holder.hex}:{token.hex}"
 
 
-def _capital_unit_price(venue, block, *, block_resolver=None):
-    """Bridge representations use the origin vault at the event timestamp."""
+def _susds_capital_price(token, block, *, block_resolver=None):
+    """Identify canonical sUSDS by address, including its bridge representations."""
     from ..domain.sky_tokens import PSM3_LEG_TOKENS, sUSDS_ETHEREUM
 
-    bridged = PSM3_LEG_TOKENS.get(venue.chain, {}).get("sUSDS")
-    if bridged is not None and venue.token.address == bridged.address:
+    bridged = PSM3_LEG_TOKENS.get(token.chain, {}).get("sUSDS")
+    if token.chain == Chain.ETHEREUM and token.address == sUSDS_ETHEREUM.address:
+        origin_block = block
+    elif bridged is not None and token.address == bridged.address:
         if block_resolver is None:
             raise ValueError("Bridged sUSDS capital pricing requires a block resolver")
-        stamp = hypersync.block_timestamp(venue.chain.value, block)
+        stamp = hypersync.block_timestamp(token.chain.value, block)
         origin_block = block_resolver.block_at_or_before(
             Chain.ETHEREUM.value, datetime.fromtimestamp(stamp, UTC))
-        raw = rpc.convert_to_assets(Chain.ETHEREUM, sUSDS_ETHEREUM.address,
-                                    10 ** sUSDS_ETHEREUM.decimals, origin_block)
-        return Decimal(raw) / Decimal(10**18)
-    return get_unit_price(venue, block, block_resolver=block_resolver)
+    else:
+        return None
+    raw = rpc.convert_to_assets(Chain.ETHEREUM, sUSDS_ETHEREUM.address,
+                                10 ** sUSDS_ETHEREUM.decimals, origin_block)
+    if raw <= 0:
+        raise ValueError("Invalid sUSDS capital price")
+    return Decimal(raw) / Decimal(10**18)
+
+
+def _capital_asset_price(token, block, *, block_resolver=None):
+    price = _susds_capital_price(token, block, block_resolver=block_resolver)
+    if price is not None:
+        return price
+    from .prices import par_stable_price
+    return par_stable_price(token)
+
+
+def _capital_unit_price(venue, block, *, block_resolver=None):
+    """Price both layers of nested sUSDS vaults for capital tracing only."""
+    price = _susds_capital_price(venue.token, block, block_resolver=block_resolver)
+    if price is not None:
+        return price
+    price = get_unit_price(venue, block, block_resolver=block_resolver)
+    if venue.pricing_category == PricingCategory.ERC4626_VAULT and venue.underlying:
+        # Legacy report pricing treats sUSDS assets as par. Capital transfers
+        # must use the same USD price on the cash and wrapped-share legs.
+        price *= _capital_asset_price(venue.underlying, block, block_resolver=block_resolver)
+    return price
 
 
 def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
@@ -344,6 +370,15 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                         changes[key] -= amount
             movements = [*async_movements, *nft_movements]
             transaction_prices = {}
+            for key in deposits.keys() | withdrawals.keys():
+                asset_price = _capital_asset_price(mapping[key].underlying, block,
+                                                   block_resolver=block_resolver)
+                if key in deposits:
+                    deposits[key] *= asset_price
+                if key in withdrawals:
+                    cash, shares = withdrawals[key]
+                    withdrawals[key] = (cash * asset_price, shares)
+            # Async adapters already return USD; do not convert those twice.
             deposits.update(async_deposits)
             for key, raw_change in changes.items():
                 v = mapping[key]
