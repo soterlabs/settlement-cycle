@@ -65,6 +65,7 @@ def apply_executed_spells(history):
     from .spark_arbitrum_spells import link_spark_arbitrum_spells
     from .spark_b2c2_capital import link_spark_b2c2_boundary
     from .spark_base_withdrawals import link_spark_base_withdrawals
+    from .spark_buidl_redemptions import link_spark_buidl_redemptions
     from .spark_buidl_subscriptions import link_spark_buidl_subscriptions
     from .spark_early_base_seed import link_spark_early_base_seed
     from .spark_native_seed import link_spark_native_seed
@@ -73,6 +74,7 @@ def apply_executed_spells(history):
 
     history = recognize_spark_reserve_gifts(history)
     history = link_spark_arbitrum_spells(history)
+    history = link_spark_buidl_redemptions(history)
     history = link_spark_op_uni_withdrawals(link_spark_b2c2_boundary(history))
     history = link_spark_early_base_seed(link_spark_buidl_subscriptions(history))
     history = link_spark_native_seed(link_spark_base_withdrawals(history))
