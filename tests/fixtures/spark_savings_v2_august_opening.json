@@ -1,0 +1,66 @@
+[
+  {
+    "venue": "S56",
+    "chain": "ethereum",
+    "vault": "0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d",
+    "pin": 25656292,
+    "state": {
+      "totalSupply()": 260722066685775,
+      "totalAssets()": 268629480765079,
+      "assetsOutstanding()": 258629480765079,
+      "chi()": 1030319909961744187946574311,
+      "rho()": 1785534443,
+      "vsr()": 1000000001096988989836188433,
+      "underlying_balance": 10000000000000,
+      "block_timestamp": 1785542399
+    }
+  },
+  {
+    "venue": "S57",
+    "chain": "ethereum",
+    "vault": "0xe2e7a17dff93280dec073c995595155283e3c372",
+    "pin": 25656292,
+    "state": {
+      "totalSupply()": 394112050804274,
+      "totalAssets()": 404579096135245,
+      "assetsOutstanding()": 392503556799760,
+      "chi()": 1026547912409065240128053733,
+      "rho()": 1785530351,
+      "vsr()": 1000000000860244400048238898,
+      "underlying_balance": 12075539335485,
+      "block_timestamp": 1785542399
+    }
+  },
+  {
+    "venue": "S59",
+    "chain": "ethereum",
+    "vault": "0x80128dbb9f07b93dde62a6daeadb69ed14a7d354",
+    "pin": 25656292,
+    "state": {
+      "totalSupply()": 29868595851,
+      "totalAssets()": 30570486500,
+      "assetsOutstanding()": 102999821,
+      "chi()": 1023458704595673185621666882,
+      "rho()": 1785506255,
+      "vsr()": 1000000001096988989836188433,
+      "underlying_balance": 30467486679,
+      "block_timestamp": 1785542399
+    }
+  },
+  {
+    "venue": "S60",
+    "chain": "avalanche_c",
+    "vault": "0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d",
+    "pin": 91716609,
+    "state": {
+      "totalSupply()": 12166282879852,
+      "totalAssets()": 12460370146586,
+      "assetsOutstanding()": 11216068621869,
+      "chi()": 1024153283283388181087063419,
+      "rho()": 1785525453,
+      "vsr()": 1000000001096988989836188433,
+      "underlying_balance": 1244301524717,
+      "block_timestamp": 1785542396
+    }
+  }
+]
