@@ -41,3 +41,10 @@ custody, appreciation without new basis, partial cutoffs, invalid receipts,
 and idempotence. The integration hook is exercised with existing spell/financing
 tests. Full Spark replay is running; no improvement in eligible monthly costs
 is claimed before its result is available. Published reports/API are unchanged.
+
+Follow-up: the Optimism/Unichain withdrawal tests exposed funding-ratio mixing
+when two identifiable bridge legs shared one transaction clearing account.
+The Base source is now split into one replay batch per authenticated token leg.
+An unequal-funding regression verifies Sky-funded USDS stays distinct from
+wholly earned sUSDS, including uncertainty propagation. See
+`docs/spark/op-unichain-withdrawals-2026-10-08.md`.
