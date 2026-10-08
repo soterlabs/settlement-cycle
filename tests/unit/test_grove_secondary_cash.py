@@ -81,3 +81,30 @@ def test_conflicting_venue_identifier_fails():
     h = replace(h, venue_accounts={**h.venue_accounts, 'E15_PAU_CASH': 'different'})
     with pytest.raises(ValueError, match='another account'):
         include_grove_secondary_cash(h)
+
+
+def test_display_only_primary_ausd_keeps_borrowing_cost_but_no_revenue():
+    ausd = PRIMARY_CASH.rsplit(':', 1)[0] + ':' + TOKENS['E14_PAU_CASH']
+    h = history()
+    h = replace(h, batches=tuple(replace(b, movements=tuple(
+        replace(m, account=ausd) if m.account == CASH else m for m in b.movements))
+        for b in h.batches), venue_accounts={**h.venue_accounts, 'E14': ausd})
+    pnl = SimpleNamespace(period=SimpleNamespace(start=START, end=END),
+        sky_revenue=D(200), sde_revenue=D(0), susds_spread_reimbursement=D(0),
+        venue_breakdown=[VenueRevenue('V', 'Investment', D(0), D('400000'), D('400000'), D(0))],
+        sky_revenue_daily=[{'date': d.isoformat(), 'utilized': '1000000',
+                            'daily_sky_rev': '100', 'base_apr': '.0365'} for d in (START, END)],
+        sde_daily_breakdown=[])
+    r = allocation_financing(pnl, h)
+    row = next(a for a in r['allocations'] if a['venue_id'] == 'E14')
+    assert row['cost_of_funds'] > 0
+    assert abs(r['allocation_cost_of_funds']-D(200)) < D('1e-20')
+    assert row['revenue_available'] is False
+    assert row['gross_apy'] is None and row['net_pnl'] is None
+    assert row['borrowed_principal_eom'] < D('650000')  # Earnings stay unborrowed.
+    assert pnl.sky_revenue == D(200) and len(pnl.venue_breakdown) == 1
+    # If a caller does include E14 in its revenue scope, still emit only one row.
+    pnl.venue_breakdown.append(VenueRevenue('E14', 'AUSD', D(0), D(0), D(0), D(0)))
+    again = allocation_financing(pnl, h)
+    assert sum(a['venue_id'] == 'E14' for a in again['allocations']) == 1
+    assert again['allocation_cost_of_funds'] == r['allocation_cost_of_funds']
