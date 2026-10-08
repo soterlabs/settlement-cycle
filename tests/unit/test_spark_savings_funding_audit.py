@@ -40,3 +40,23 @@ def test_mixed_transaction_is_not_claimed_as_wholly_explained():
     assert audit.summarize(records,finance)['whole_transaction_matches']['unmatched_receipts']['count']==0
     finance['unmatched_receipts']['ethereum:0xabc']='100'
     assert audit.summarize(records,finance)['whole_transaction_matches']['unmatched_receipts']['count']==1
+
+
+def test_sky_draw_replenishes_saver_vault_instead_of_buying_a_new_alm_asset():
+    rows=json.loads((ROOT/'tests/fixtures/spark_savings_refinancing_may18.json').read_text())
+    transfers=[r for r in rows if r['topic0']==audit.TRANSFER_TOPIC0]
+    alm='1601843c5e9bc251a3272907010afa41fa18347e'
+    usds='0xdc035d45d973e3ec169d2276ddab16f1e407384f'
+    usdc='0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+    vault='28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d'
+    assert any(r['address']==usds and r['topic1'].endswith('c395d150e71378b47a1b8e9de0c1a83b75a08324')
+               and r['topic2'].endswith(alm) and int(r['data'],16)==399989732847945526048219637 for r in transfers)
+    assert any(r['address']==usdc and r['topic1'].endswith(alm)
+               and r['topic2'].endswith(vault) and int(r['data'],16)==399989732847945 for r in transfers)
+    assert any(r['address']==usdc and r['topic1'].endswith(vault)
+               and r['topic2'].endswith('d00e0079b8cab524f3fa20ea879a7736e512a5fc')
+               and int(r['data'],16)==399960824213788 for r in transfers)
+    assert not any(r['address']=='0x'+vault and r['topic0']==audit.TAKE for r in rows)
+    # The audit identifies the actual return; it must not fabricate an ERC4626
+    # investment/share receipt for the ALM from this funding transaction.
+    assert not any(r['address']=='0x'+vault and r['topic2'].endswith(alm) for r in transfers)
