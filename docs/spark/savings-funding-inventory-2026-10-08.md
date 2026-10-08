@@ -64,3 +64,24 @@ PYTHONPATH=src .venv/bin/python scripts/audit_spark_savings_funding.py \
 
 Omit `--summary-only` to retain every flow and matched residual. The output
 contains hashes of both inputs. Published settlement/API numbers are untouched.
+
+## Concrete refinancing case: May 18, 2026
+
+Transaction:
+https://etherscan.io/tx/0x3267f7a7508ad892778e1afafb965ecb12660d5d0c8e9fcc278210a19d07ccf6
+
+The Spark ilk draws 399,989,732.847945526048219637 USDS. The ALM converts
+399,989,732.847945 USDS through DAI/PSM into USDC and sends that USDC to the
+spUSDC Savings vault. In the same transaction a saver redeems shares and receives
+399,960,824.213788 USDC; the rest is vault liquidity. The sub-micro-USDS difference
+remains at the ALM. The normalized replay sees a new Sky draw with no new
+investment deposit and consequently retains a 399,989,732.847945 outflow gap.
+
+This is concrete evidence of **Sky financing replacing saver financing**, not
+an unidentified new asset purchase or an execution loss. The allocation ledger
+must retain the earlier saver-funded investments and replace their funding
+origin when saver capital is returned. Otherwise it cannot assign this Sky
+borrowing to the investments it now finances. The proper split also needs VSR
+liability accrual; treating every vault return as principal by fiat would conceal
+the interest expense. Full transaction logs are retained in
+`tests/fixtures/spark_savings_refinancing_may18.json`.
