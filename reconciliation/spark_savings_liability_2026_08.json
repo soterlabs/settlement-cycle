@@ -1,0 +1,73 @@
+{
+  "scope": "Inception-to-August-pin liability audit, not monthly revenue or certified Sky funding attribution.",
+  "vaults": [
+    {
+      "venue": "S56",
+      "chain": "ethereum",
+      "pin": 25878704,
+      "events": 31158,
+      "total_assets": "309261582.801972",
+      "idle_cash": "9996352.596426",
+      "assets_outstanding": "299265230.205546",
+      "net_cash_taken": "289583904.960568",
+      "accrued_vsr": "9681325.511299",
+      "share_rounding": "-0.007206",
+      "other_cash_residual": "0.259115",
+      "pending_accrual_after_last_drip": "415.24974",
+      "non_alm_takes": {},
+      "liability_less_net_cash": "9681325.244978"
+    },
+    {
+      "venue": "S57",
+      "chain": "ethereum",
+      "pin": 25878704,
+      "events": 34536,
+      "total_assets": "367530003.125796",
+      "idle_cash": "17460978.283142",
+      "assets_outstanding": "350069024.842654",
+      "net_cash_taken": "337806578.071981",
+      "accrued_vsr": "12262447.192651",
+      "share_rounding": "-0.007218",
+      "other_cash_residual": "0.41476",
+      "pending_accrual_after_last_drip": "3157.839795",
+      "non_alm_takes": {},
+      "liability_less_net_cash": "12262446.770673"
+    },
+    {
+      "venue": "S59",
+      "chain": "ethereum",
+      "pin": 25878704,
+      "events": 516,
+      "total_assets": "230753.271254",
+      "idle_cash": "230382.574677",
+      "assets_outstanding": "370.696577",
+      "net_cash_taken": "-11705.263347",
+      "accrued_vsr": "12075.960056",
+      "share_rounding": "-0.000132",
+      "other_cash_residual": "0",
+      "pending_accrual_after_last_drip": "85.116232",
+      "non_alm_takes": {},
+      "liability_less_net_cash": "12075.959924"
+    },
+    {
+      "venue": "S60",
+      "chain": "avalanche_c",
+      "pin": 94159927,
+      "events": 17196,
+      "total_assets": "9475726.147763",
+      "idle_cash": "1000000",
+      "assets_outstanding": "8475726.147763",
+      "net_cash_taken": "6158616.682969",
+      "accrued_vsr": "2317109.468574",
+      "share_rounding": "-0.00378",
+      "other_cash_residual": "0",
+      "pending_accrual_after_last_drip": "254.845082",
+      "non_alm_takes": {},
+      "liability_less_net_cash": "2317109.464794"
+    }
+  ],
+  "input_hashes": {
+    "tests/fixtures/spark_savings_v2_liability.json.gz": "1dde63f3a82011e51c3dd2c854b52a8dc1321fa8a3d39bb47620a26da2a99cad",
+    "reconciliation/spark_savings_funding_inventory_2026_08.json": "1e4ba81c44eab72d4eabf7bbbbe22c00bc8629b1f8459ce3b0382e201e1ea481"
+  }
+}
