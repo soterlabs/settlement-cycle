@@ -208,7 +208,9 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
         # payer AND receipt ALM; do not mark every asset from that EOA as income.
         distribution_routes = {
             (src.token.hex, _addr_topic(src.payer.value), _addr_topic(prime.alm[chain].value))
-            for venue in prime.venues if not venue.skip
+            # skip suppresses position pricing, not explicitly configured yield
+            # (e.g. Grove E38 incentives and E42 warehouse distributions).
+            for venue in prime.venues
             for src in venue.cash_distributions
             if (src.chain or venue.chain) == chain and chain in prime.alm
         }
