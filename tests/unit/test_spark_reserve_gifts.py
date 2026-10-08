@@ -78,6 +78,14 @@ def test_january_gifts_do_not_absorb_the_unrelated_350m_governance_draw():
     assert not r.unmatched_receipts
 
 
+def test_shared_spell_in_another_primes_history_is_an_exact_noop():
+    b = history().batches[0]
+    grove = 'ethereum:0x491edfb0b8b608044e227225c715981a30f3a44e:cash'
+    b = replace(b, movements=(AssetMovement(grove, D(0), D(100)),))
+    h = CapitalHistory((b,), {'E1': grove}, {})
+    assert recognize_spark_reserve_gifts(h) is h
+
+
 @pytest.mark.parametrize('fault', ['changed_stamp', 'conflicting_income', 'missing_position', 'insufficient_receipt'])
 def test_conflicting_snapshot_is_rejected(fault):
     h = history()
