@@ -9,7 +9,6 @@ observed payment closes the claim and realizes the demonstrated shortfall.
 No future payout is fetched or used to close an incomplete pinned history.
 An issuer wallet's other funds are outside this allocation boundary.
 """
-from dataclasses import replace
 from decimal import Decimal as D
 
 HOLDER = '0x491edfb0b8b608044e227225c715981a30f3a44e'
@@ -117,65 +116,7 @@ GROUPS = (
 
 
 def link_grove_rlusd_conversions(history):
-    from ..normalize.allocation_capital import AssetMovement
+    from .reviewed_issuer_conversions import link_reviewed_issuer_conversions
 
-    if SOURCE not in history.venue_accounts.values():
-        return history
-    index = {b.identity: b for b in history.batches}
-    if len(index) != len(history.batches):
-        raise ValueError('Duplicate capital transaction')
-    custody = {v: list(accounts) for v, accounts in history.custody_accounts.items()}
-    venue = next(v for v, a in history.venue_accounts.items() if a == SOURCE)
-    for payments, receipts, same_token in GROUPS:
-        identities = ['ethereum:' + tx for tx, _, _ in (*payments, *receipts)]
-        if any(identity + SUFFIX in index for identity in identities):
-            if any(identity in index for identity in identities):
-                raise ValueError('Cannot append raw events to linked Grove Ripple conversion')
-            continue
-        claim = 'conversion:ethereum:grove:rlusd:' + payments[0][0]
-        pending, last_order = D(0), (-1, -1, -1)
-        for tx, block, amount in payments:
-            identity = 'ethereum:' + tx
-            b = index.get(identity)
-            if b is None:
-                continue
-            source = [m for m in b.movements if m.account == SOURCE]
-            available = b.minted - sum((m.change - m.external_income for m in b.movements), D(0))
-            if (b.chain != 'ethereum' or b.block != block or (b.timestamp, b.block, b.log_index) <= last_order
-                    or len(source) != 1 or source[0].external_income or source[0].change > 0
-                    or available < amount - D('.01')):
-                raise ValueError('Grove Ripple conversion lacks its normalized source funding')
-            index[identity + SUFFIX] = replace(b, identity=identity + SUFFIX,
-                movements=(*b.movements, AssetMovement(claim, pending, amount, preserve_basis=True)))
-            del index[identity]
-            pending += amount
-            last_order = (b.timestamp, b.block, b.log_index)
-            if claim not in custody.setdefault(venue, []):
-                custody[venue].append(claim)
-        remaining = sum(amount for _, _, amount in payments)
-        for n, (tx, block, amount) in enumerate(receipts):
-            identity = 'ethereum:' + tx
-            b = index.get(identity)
-            if b is None:
-                # A later receipt in the input cannot silently skip a missing
-                # earlier payout; remaining then differs from actual pending.
-                remaining -= amount
-                continue
-            destination = SOURCE if same_token else CASH
-            if (b.chain != 'ethereum' or b.block != block or (b.timestamp, b.block, b.log_index) <= last_order
-                    or b.minted or pending != remaining or pending < amount
-                    or len(b.movements) != 1 or b.movements[0].account != destination
-                    or b.movements[0].external_income or b.movements[0].change != amount):
-                raise ValueError('Grove Ripple payout lacks its exact outstanding conversion')
-            final = n == len(receipts) - 1
-            # Keep the unreleased principal pending through partial payments.
-            # Only the final observed settlement can realize the known fee.
-            value = amount if final else pending
-            index[identity + SUFFIX] = replace(b, identity=identity + SUFFIX,
-                movements=(*b.movements, AssetMovement(claim, value, -amount,
-                                                       preserve_basis=same_token)))
-            del index[identity]
-            pending = D(0) if final else pending - amount
-            remaining -= amount
-            last_order = (b.timestamp, b.block, b.log_index)
-    return replace(history, batches=tuple(index.values()), custody_accounts=custody)
+    return link_reviewed_issuer_conversions(history, source=SOURCE, cash=CASH,
+        groups=GROUPS, route='rlusd', label='Grove Ripple')
