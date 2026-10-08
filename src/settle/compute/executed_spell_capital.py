@@ -47,6 +47,7 @@ def apply_executed_spells(history):
         link_grove_agora_subscriptions,
     )
     from .grove_apollo_cash_settlements import link_grove_apollo_cash_settlements
+    from .grove_basin_capital import link_grove_basin_shares
     from .grove_buidl_subscriptions import link_grove_buidl_subscriptions
     from .grove_cash_distributions import recognize_grove_cash_distributions
     from .grove_cctp_v2_capital import link_grove_cctp_v2
@@ -70,6 +71,7 @@ def apply_executed_spells(history):
     history = recognize_grove_merkl_rewards(history)
     history = link_grove_apollo_cash_settlements(history)
     history = include_grove_secondary_cash(history)
+    history = link_grove_basin_shares(history)
     batches = list(history.batches)
     indexes = {b.identity: i for i, b in enumerate(batches)}
     if len(indexes) != len(batches):
