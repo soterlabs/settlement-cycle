@@ -369,7 +369,7 @@ def test_cross_chain_cash_distributions_are_income_only_for_exact_configured_rou
         (replace(route, chain=None), D(0)),  # Defaults to investment chain.
     ]:
         offchain = replace(base.venues[0], chain=Chain.AVALANCHE_C,
-            notional_principal_usd=D(100), cash_distributions=[distribution])
+            notional_principal_usd=D(100), skip=True, cash_distributions=[distribution])
         prime = replace(base, venues=[offchain])
         history = source.fetch_capital_history(prime, {Chain.ETHEREUM: 1})
         assert sum(m.external_income for b in history.batches for m in b.movements) == expected

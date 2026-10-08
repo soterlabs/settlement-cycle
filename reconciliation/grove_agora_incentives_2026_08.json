@@ -1,0 +1,66 @@
+{
+  "prime": "grove",
+  "period": "2026-08",
+  "base_commit": "1e7e914",
+  "input_hashes": {
+    "/tmp/pr215-grove-eoa/history.jsonl.gz": "c05b53815379f6f7a4d9f6195d819d09ddb542f8f279af5f4defe4b7b3295474",
+    "settlements/grove/2026-08/provenance.json": "d6fb40d3c43caf3bdc7d0983b7ff071433ad056d22825b9f0f19eeb9d3af3aa9",
+    "/tmp/pr215-resumed-grove/idle_deductions.json": "e6b13f9b30816b2f8e9325f222aa9c889ff68cdf182205f4c54576d929faf427",
+    "/tmp/pr215-resumed-grove/debt-control.json": "6214144465cad85e59e3cd7c075925fad2f5bdc2131428ea4e6f769b57d9280b",
+    "/tmp/pr215-resumed-grove/deduction-owners.json": "dad2cf619d5dc65a26721aaf1fe3938136bb512212bf427a2e5aa56531f58153"
+  },
+  "known_agora_income": "2675160.44",
+  "unmatched_receipts_before": 36,
+  "unmatched_receipts_after": 28,
+  "unmatched_outflows": 256,
+  "eligible_allocation_cost": "1328.221816987128045631659712",
+  "per_ilk_reconciliation": {
+    "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+      "global_cost": "3708820.107055825781021080592",
+      "msc_cost": "259878.1170265572840543147882",
+      "allocation_cost": "0",
+      "global_excluding_msc": "3448941.990029268496966765804",
+      "difference": "-3448941.990029268496966765804",
+      "within_one_cent": false,
+      "complete": false,
+      "source_complete": false,
+      "bounds_use_verified_deduction_owners": true,
+      "diagnostic_cost_bounds": {
+        "lower": "-3801708.50484704564375917569832059651537098426243912800245075",
+        "upper": "3448941.99002926849696676580416084319370638238644478031610200"
+      },
+      "target_distance_from_bounds": "0",
+      "target_within_bounds_to_one_cent": true,
+      "bounds_note": "Containment is not reconciliation; unresolved routes remain unverified"
+    },
+    "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+      "global_cost": "11784.73727045625525471486130",
+      "msc_cost": "0E-32",
+      "allocation_cost": "1328.221816987128045631659713",
+      "global_excluding_msc": "11784.73727045625525471486130",
+      "difference": "-10456.51545346912720908320159",
+      "within_one_cent": false,
+      "complete": false,
+      "source_complete": false,
+      "bounds_use_verified_deduction_owners": true,
+      "diagnostic_cost_bounds": {
+        "lower": "11095.8069289265065548828449763344114731645246076069281940076",
+        "upper": "11784.7372704562552547148612968949528875509721436267419"
+      },
+      "target_distance_from_bounds": "3.1050471124490278563732581E-24",
+      "target_within_bounds_to_one_cent": true,
+      "bounds_note": "Containment is not reconciliation; unresolved routes remain unverified"
+    }
+  },
+  "removed_receipts": {
+    "ethereum:0xf0d1a3598fe3debd7f5d63aa1112a90fdd1a2a0887b178b45852c0b702d3d79c": "25.00",
+    "ethereum:0x5c01e26000297f95c45339984b5de96fe4faa46bc2cd6e7069c37867595ba0a6": "32851.71",
+    "ethereum:0x89091f3d8c0094d2806fc04996ebc02f3507fac58237fd581f27cb7687a1d1cf": "226376.97",
+    "ethereum:0x9eb68c24f27f340c30ab3701f0b88c8faa699ed9f1375ae5a9b1f241ba8566c9": "302033.84",
+    "ethereum:0x4237e16786e6397e3bc5c86d09a0b91066a7dfec6d40b3ee045dcd15aaded0f0": "455323.00",
+    "ethereum:0xba3939c357bdf33879a19cfd496553b29cb1699f64d25e197107d16f6d353c37": "402261.00",
+    "ethereum:0x9808ac9ca925603649a444f66c9aa28b1513ab1091324c38ad8a0aed09134a26": "398324.92",
+    "ethereum:0xbe8c60e79230555cb3b959c5934b00eaf90d479729d5017054cc7d43bb4d0065": "857964.00"
+  },
+  "scope": "Existing configured yield classification, including skipped position rows. No settlement/API or global cost changes."
+}

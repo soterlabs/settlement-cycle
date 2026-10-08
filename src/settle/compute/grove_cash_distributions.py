@@ -28,18 +28,22 @@ RECEIPTS = (
 
 
 def recognize_grove_cash_distributions(history):
-    if CASH not in history.venue_accounts.values():
+    return recognize_reviewed_distributions(history, CASH, RECEIPTS)
+
+
+def recognize_reviewed_distributions(history, account, receipts):
+    if account not in history.venue_accounts.values():
         return history
     index = {b.identity: b for b in history.batches}
     if len(index) != len(history.batches):
         raise ValueError('Duplicate capital transaction')
-    for tx, block, amount in RECEIPTS:
+    for tx, block, amount in receipts:
         identity = 'ethereum:' + tx
         b = index.get(identity)
         if b is None:
             continue
         if (b.chain != 'ethereum' or b.block != block or b.minted
-                or len(b.movements) != 1 or b.movements[0].account != CASH
+                or len(b.movements) != 1 or b.movements[0].account != account
                 or b.movements[0].change != amount or b.movements[0].external_income not in (D(0), amount)):
             raise ValueError('Grove cash distribution differs from its reviewed receipt')
         index[identity] = replace(b, movements=(replace(b.movements[0], external_income=amount),))

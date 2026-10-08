@@ -41,6 +41,7 @@ def _movement(batch, key):
 
 def apply_executed_spells(history):
     from ..normalize.allocation_capital import AssetMovement
+    from .grove_agora_incentives import recognize_grove_agora_incentives
     from .grove_agora_redemptions import (
         link_grove_agora_redemptions,
         link_grove_agora_subscriptions,
@@ -64,6 +65,7 @@ def apply_executed_spells(history):
     history = link_grove_cctp_v2(history)
     history = link_grove_galaxy_arch(history)
     history = recognize_grove_cash_distributions(history)
+    history = recognize_grove_agora_incentives(history)
     history = link_grove_apollo_cash_settlements(history)
     history = include_grove_secondary_cash(history)
     batches = list(history.batches)
