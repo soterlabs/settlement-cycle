@@ -115,10 +115,13 @@ def _capital_asset_price(token, block, *, block_resolver=None):
 
 
 def _capital_unit_price(venue, block, *, block_resolver=None):
-    """Price both layers of nested sUSDS vaults for capital tracing only."""
-    from .allocation_superstate import ustb_capital_price
+    """Capital-only prices, including nested sUSDS and Superstate shares."""
+    from .allocation_superstate import uscc_capital_price, ustb_capital_price
 
     price = ustb_capital_price(venue.token, block)
+    if price is not None:
+        return price
+    price = uscc_capital_price(venue.token, block)
     if price is not None:
         return price
     price = _susds_capital_price(venue.token, block, block_resolver=block_resolver)
