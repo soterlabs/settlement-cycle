@@ -259,6 +259,8 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
             deposits: dict[tuple[str, str], Decimal] = defaultdict(Decimal)
             withdrawals = {}
             senders = {_addr_topic(a.value) for a in prime.external_alm_sources.get(chain, [])}
+            from .allocation_merkl import wrapper_gift_transfers
+            wrapper_gifts = wrapper_gift_transfers(block_logs, senders)
             seen = set()
             for row in sorted(block_logs, key=lambda r: r.log_index):
                 if row.log_index in seen:
@@ -313,7 +315,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                                 changes[key] -= words[0]
                             if row.topic2 == who:
                                 changes[key] += words[0]
-                                if row.topic1 in senders:
+                                if row.topic1 in senders or (row.transaction_hash, row.log_index) in wrapper_gifts:
                                     gifts[key] += words[0]
                         continue
                     if row.topic0 != TRANSFER_TOPIC0 or len(row.data) != 66:
