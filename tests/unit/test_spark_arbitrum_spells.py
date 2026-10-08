@@ -72,18 +72,18 @@ def test_arbitrum_submission_hash_redeem_schedule_and_mint_prove_all_three_deliv
         creation, final = item['ticket_receipt'], item['delivery_receipt']
         assert ticket == creation['transactionHash'] == item['ticket']
         assert creation['status'] == final['status'] == '0x1'
-        event = next(l for l in creation['logs'] if l['topics'][0] == topic('RedeemScheduled(bytes32,bytes32,uint64,uint64,address,uint256,uint256)'))
+        event = next(row for row in creation['logs'] if row['topics'][0] == topic('RedeemScheduled(bytes32,bytes32,uint64,uint64,address,uint256,uint256)'))
         assert event['address'] == '0x000000000000000000000000000000000000006e'
         assert event['topics'][1] == ticket and event['topics'][2] == final['transactionHash']
         args = call[4:]
         origin, sender, holder = [args[i*32:(i+1)*32][-20:].hex() for i in range(3)]
         units = int.from_bytes(args[96:128])
         assert sender == SUBPROXY and holder == '92afd6f2385a90e44da3a8b60fe36f6cbe1d8709'
-        assert any(l['address'] == '0x' + origin and l['topics'][0] == TRANSFER_TOPIC0
-                   and l['topics'][1].endswith(sender) and l['topics'][2].endswith('a10c7ce4b876998858b1a9e12b10092229539400')
-                   and int(l['data'], 16) == units for l in source['logs'])
+        assert any(row['address'] == '0x' + origin and row['topics'][0] == TRANSFER_TOPIC0
+                   and row['topics'][1].endswith(sender) and row['topics'][2].endswith('a10c7ce4b876998858b1a9e12b10092229539400')
+                   and int(row['data'], 16) == units for row in source['logs'])
         route = next(leg for _, _, _, _, legs in ROUTES for leg in legs if leg[1] == final['transactionHash'])
-        mint = next(l for l in final['logs'] if l['topics'][0] == TRANSFER_TOPIC0)
+        mint = next(row for row in final['logs'] if row['topics'][0] == TRANSFER_TOPIC0)
         assert mint['address'] == route[4].split(':')[2] and int(mint['topics'][1], 16) == 0
         assert mint['topics'][2].endswith(holder) and int(mint['data'], 16) == units
         assert int(final['blockNumber'], 16) == route[2]
@@ -95,20 +95,21 @@ def test_companion_op_stack_relays_and_actual_source_draws():
     seen = set()
     for source, (_, block, _, draw, legs) in zip(F['sources'], ROUTES, strict=True):
         assert source['status'] == '0x1' and int(source['blockNumber'], 16) == block
-        transfers = [l for l in source['logs'] if l['topics'][0] == TRANSFER_TOPIC0]
-        assert any(l['address'] == '0xdc035d45d973e3ec169d2276ddab16f1e407384f'
-                   and l['topics'][1].endswith('c395d150e71378b47a1b8e9de0c1a83b75a08324')
-                   and l['topics'][2].endswith(SUBPROXY) and int(l['data'], 16) == int(draw * 10**18) for l in transfers)
+        transfers = [row for row in source['logs'] if row['topics'][0] == TRANSFER_TOPIC0]
+        assert any(row['address'] == '0xdc035d45d973e3ec169d2276ddab16f1e407384f'
+                   and row['topics'][1].endswith('c395d150e71378b47a1b8e9de0c1a83b75a08324')
+                   and row['topics'][2].endswith(SUBPROXY) and int(row['data'], 16) == int(draw * 10**18) for row in transfers)
         wrapped = draw - (D('100000000') if draw == D('300000000') else D(0))
-        assert any(l['address'] == '0xdc035d45d973e3ec169d2276ddab16f1e407384f'
-                   and l['topics'][1].endswith(SUBPROXY) and l['topics'][2].endswith('a3931d71877c0e7a3148cb7eb4463524fec27fbd')
-                   and int(l['data'], 16) == int(wrapped * 10**18) for l in transfers)
+        assert any(row['address'] == '0xdc035d45d973e3ec169d2276ddab16f1e407384f'
+                   and row['topics'][1].endswith(SUBPROXY) and row['topics'][2].endswith('a3931d71877c0e7a3148cb7eb4463524fec27fbd')
+                   and int(row['data'], 16) == int(wrapped * 10**18) for row in transfers)
         leg = next(leg for leg in legs if leg[0] != 'arbitrum')
         dest = next(x['receipt'] for x in F['op_stack'] if x['chain'] == leg[0])
         for log in source['logs']:
             if log['topics'][0] != topic('SentMessage(address,address,bytes,uint256,uint256)'):
                 continue
-            raw = bytes.fromhex(log['data'][2:]); off = int.from_bytes(raw[32:64])
+            raw = bytes.fromhex(log['data'][2:])
+            off = int.from_bytes(raw[32:64])
             call = raw[off+32:off+32+int.from_bytes(raw[off:off+32])]
             if call[:4] != keccak256(b'finalizeBridgeERC20(address,address,address,address,uint256,bytes)')[:4]:
                 continue
@@ -123,16 +124,17 @@ def test_companion_op_stack_relays_and_actual_source_draws():
             encoded += raw[64:96] + raw[:32] + bytes.fromhex(log['topics'][1][2:]) + bytes(32) + raw[96:128] + (192).to_bytes(32)
             encoded += len(call).to_bytes(32) + call + bytes((-len(call)) % 32)
             hash_ = '0x' + keccak256(encoded).hex()
-            assert any(l['address'] == '0x4200000000000000000000000000000000000007'
-                       and l['topics'] == [topic('RelayedMessage(bytes32)'), hash_] for l in dest['logs'])
-            args = call[4:]; token, origin, frm, to = [args[i*32:(i+1)*32][-20:].hex() for i in range(4)]
+            assert any(row['address'] == '0x4200000000000000000000000000000000000007'
+                       and row['topics'] == [topic('RelayedMessage(bytes32)'), hash_] for row in dest['logs'])
+            args = call[4:]
+            token, origin, frm, to = [args[i*32:(i+1)*32][-20:].hex() for i in range(4)]
             units = int.from_bytes(args[128:160])
             assert frm == SUBPROXY and leg[4] == f'{leg[0]}:0x{to}:0x{token}'
-            assert any(l['address'] == '0x' + origin and l['topics'][1].endswith(frm)
-                       and l['topics'][2].endswith(escrow) and int(l['data'], 16) == units for l in transfers)
-            assert any(l['address'] == '0x' + token and l['topics'][0] == TRANSFER_TOPIC0
-                       and int(l['topics'][1], 16) == 0 and l['topics'][2].endswith(to)
-                       and int(l['data'], 16) == units for l in dest['logs'])
+            assert any(row['address'] == '0x' + origin and row['topics'][1].endswith(frm)
+                       and row['topics'][2].endswith(escrow) and int(row['data'], 16) == units for row in transfers)
+            assert any(row['address'] == '0x' + token and row['topics'][0] == TRANSFER_TOPIC0
+                       and int(row['topics'][1], 16) == 0 and row['topics'][2].endswith(to)
+                       and int(row['data'], 16) == units for row in dest['logs'])
             assert dest['transactionHash'] == leg[1] and dest['status'] == '0x1'
             assert int(dest['blockNumber'], 16) == leg[2]
             seen.add(leg[1])
@@ -142,7 +144,9 @@ def test_companion_op_stack_relays_and_actual_source_draws():
 def history():
     batches = []
     for row in F['normalized_batches']:
-        b = dict(row); b['day'] = date.fromisoformat(b['day']); b['minted'] = D(b['minted'])
+        b = dict(row)
+        b['day'] = date.fromisoformat(b['day'])
+        b['minted'] = D(b['minted'])
         b['minted_by_ilk'] = {k: D(v) for k, v in b['minted_by_ilk'].items()}
         b['movements'] = tuple(AssetMovement(m['account'], D(m['value_before']), D(m['change']), D(m['external_income']), m['preserve_basis']) for m in b['movements'])
         batches.append(CapitalBatch(**b))
@@ -151,7 +155,8 @@ def history():
 
 def test_paid_principal_survives_both_routes_without_financing_gifts_or_savings_growth():
     for _, _, _, draw, legs in ROUTES:
-        h = history(); day = next(b.day for b in h.batches if abs(b.minted - draw) < D('1e-8'))
+        h = history()
+        day = next(b.day for b in h.batches if abs(b.minted - draw) < D('1e-8'))
         h = replace(h, batches=tuple(b for b in h.batches if b.day == day))
         linked = link_spark_arbitrum_spells(h)
         assert link_spark_arbitrum_spells(linked) is linked
@@ -167,7 +172,8 @@ def test_paid_principal_survives_both_routes_without_financing_gifts_or_savings_
 
 
 def test_cutoff_missing_funding_unrelated_primes_and_conflicting_events():
-    h = history(); first = h.batches[0]
+    h = history()
+    first = h.batches[0]
     cutoff = replace(h, batches=(first,))
     r = replay_history(link_spark_arbitrum_spells(cutoff), first.day, first.day)
     assert not r.unmatched_outflows
