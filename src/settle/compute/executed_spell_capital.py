@@ -52,6 +52,7 @@ def apply_executed_spells(history):
     from .grove_cctp_v2_capital import link_grove_cctp_v2
     from .grove_galaxy_arch_capital import link_grove_galaxy_arch
     from .grove_historical_capital import link_grove_initial_jaaa, link_grove_jaaa_avalanche
+    from .grove_merkl_rewards import recognize_grove_merkl_rewards
     from .grove_plume_capital import link_grove_plume_jtrsy
     from .grove_rlusd_conversions import link_grove_rlusd_conversions
     from .grove_secondary_cash import include_grove_secondary_cash
@@ -66,6 +67,7 @@ def apply_executed_spells(history):
     history = link_grove_galaxy_arch(history)
     history = recognize_grove_cash_distributions(history)
     history = recognize_grove_agora_incentives(history)
+    history = recognize_grove_merkl_rewards(history)
     history = link_grove_apollo_cash_settlements(history)
     history = include_grove_secondary_cash(history)
     batches = list(history.batches)
