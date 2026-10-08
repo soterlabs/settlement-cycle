@@ -41,6 +41,7 @@ def _movement(batch, key):
 
 def apply_executed_spells(history):
     from ..normalize.allocation_capital import AssetMovement
+    from .grove_cctp_v2_capital import link_grove_cctp_v2
     from .grove_buidl_subscriptions import link_grove_buidl_subscriptions
     from .grove_historical_capital import link_grove_initial_jaaa, link_grove_jaaa_avalanche
     from .grove_plume_capital import link_grove_plume_jtrsy
@@ -53,6 +54,7 @@ def apply_executed_spells(history):
     history = link_grove_rlusd_conversions(history)
     history = link_grove_agora_redemptions(history)
     history = link_grove_agora_subscriptions(history)
+    history = link_grove_cctp_v2(history)
     batches = list(history.batches)
     indexes = {b.identity: i for i, b in enumerate(batches)}
     if len(indexes) != len(batches):
