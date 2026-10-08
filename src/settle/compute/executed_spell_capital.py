@@ -62,6 +62,7 @@ def apply_executed_spells(history):
     from .grove_rlusd_conversions import link_grove_rlusd_conversions
     from .grove_secondary_cash import include_grove_secondary_cash
     from .grove_stac_capital import link_grove_stac_subscriptions
+    from .spark_arbitrum_spells import link_spark_arbitrum_spells
     from .spark_b2c2_capital import link_spark_b2c2_boundary
     from .spark_base_withdrawals import link_spark_base_withdrawals
     from .spark_buidl_subscriptions import link_spark_buidl_subscriptions
@@ -71,6 +72,7 @@ def apply_executed_spells(history):
     from .spark_reserve_gifts import recognize_spark_reserve_gifts
 
     history = recognize_spark_reserve_gifts(history)
+    history = link_spark_arbitrum_spells(history)
     history = link_spark_op_uni_withdrawals(link_spark_b2c2_boundary(history))
     history = link_spark_early_base_seed(link_spark_buidl_subscriptions(history))
     history = link_spark_native_seed(link_spark_base_withdrawals(history))
