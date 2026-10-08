@@ -167,6 +167,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                 pricing_category=PricingCategory.PAR_STABLE,
             ))
 
+    basin_rows = []
     batches: list[CapitalBatch] = []
     bridge_burns = []
     verified_burns = set()
@@ -202,6 +203,8 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
             log_fields=[*hypersync._DEFAULT_LOG_FIELDS, "transaction_hash"],
         )
         logs = [*logs, *nft.discover(logs, pins[chain])]
+        if prime.id == "grove" and chain == Chain.ETHEREUM:
+            basin_rows.extend(logs)
         principal_returns = principal_return_logs(prime, chain, mapping, logs)
         # Yield can arrive on a different chain from the investment (Grove's
         # Avalanche GACLO pays USDC on Ethereum). Match the configured token,
@@ -515,6 +518,11 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
     batches, custody_accounts = link_ethena_cooldowns(prime, pins, batches, custody_accounts)
     idle_accounts = {_account(c, USDS_BY_CHAIN[c].address, holder)
                      for c, holder in prime.alm.items() if c in USDS_BY_CHAIN}
-    return CapitalHistory(tuple(sorted(batches, key=lambda b: (b.timestamp, b.chain, b.block, b.log_index))),
+    history = CapitalHistory(tuple(sorted(batches, key=lambda b: (b.timestamp, b.chain, b.block, b.log_index))),
                           venue_accounts, unsupported, dict(custody_accounts), idle_accounts,
                           analytics_only, covered_by_boundary)
+
+    if basin_rows:
+        from .allocation_basin import basin_events, link_basin_shares
+        history = link_basin_shares(history, basin_events(basin_rows))
+    return history
