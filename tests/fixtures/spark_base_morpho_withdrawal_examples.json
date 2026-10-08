@@ -1,0 +1,126 @@
+[
+  {
+    "original": {
+      "identity": "base:0x7166f2deac51f1eb5765e729ccc83b6b998afaac0f18c027b012127bda26708f",
+      "day": "2025-08-26",
+      "timestamp": 1756215395,
+      "chain": "base",
+      "block": 34713024,
+      "movements": [
+        {
+          "account": "base:0x2917956eff0b5eaf030abdb4ef4296df775009ca:0x7bfa7c4f149e7415b73bdedfe609237e29cbf34a",
+          "value_before": "497076423.1859179515194526604",
+          "change": "-25052152.13974036523843346789",
+          "external_income": "1.709643393860274408207114",
+          "preserve_basis": false
+        },
+        {
+          "account": "base:0x2917956eff0b5eaf030abdb4ef4296df775009ca:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "value_before": "25905677.703768",
+          "change": "25052177.384853",
+          "external_income": "0.00",
+          "preserve_basis": false
+        }
+      ],
+      "minted": "0",
+      "log_index": 1538,
+      "minted_by_ilk": {}
+    },
+    "repaired": {
+      "identity": "base:0x7166f2deac51f1eb5765e729ccc83b6b998afaac0f18c027b012127bda26708f",
+      "day": "2025-08-26",
+      "timestamp": 1756215395,
+      "chain": "base",
+      "block": 34713024,
+      "movements": [
+        {
+          "account": "base:0x2917956eff0b5eaf030abdb4ef4296df775009ca:0x7bfa7c4f149e7415b73bdedfe609237e29cbf34a",
+          "value_before": "497076890.1687944979677638532",
+          "change": "-25052175.67520800000000000096",
+          "external_income": "1.709644999999999999040906120",
+          "preserve_basis": false
+        },
+        {
+          "account": "base:0x2917956eff0b5eaf030abdb4ef4296df775009ca:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "value_before": "25905677.703768",
+          "change": "25052177.384853",
+          "external_income": "0.00",
+          "preserve_basis": false
+        }
+      ],
+      "minted": "0",
+      "log_index": 1538,
+      "minted_by_ilk": {}
+    },
+    "audit": {
+      "batch": "base:0x7166f2deac51f1eb5765e729ccc83b6b998afaac0f18c027b012127bda26708f",
+      "cash": "25052177.384853",
+      "old_debit": "25052153.84938375909870787610",
+      "cash_less_old_debit": "23.53546924090129212390",
+      "old_fee_income": "1.709643393860274408207114",
+      "new_fee_income": "1.709644999999999999040906120"
+    }
+  },
+  {
+    "original": {
+      "identity": "base:0x611c7a97e2bda319678edddf6ef375248f838d10df110a0214d6c5fe9d168ee7",
+      "day": "2025-08-27",
+      "timestamp": 1756306451,
+      "chain": "base",
+      "block": 34758552,
+      "movements": [
+        {
+          "account": "base:0x2917956eff0b5eaf030abdb4ef4296df775009ca:0x7bfa7c4f149e7415b73bdedfe609237e29cbf34a",
+          "value_before": "449862469.9553162890305766627",
+          "change": "-25174043.1107158753352058853",
+          "external_income": "14.244938571213285136221375",
+          "preserve_basis": false
+        },
+        {
+          "account": "base:0x2917956eff0b5eaf030abdb4ef4296df775009ca:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "value_before": "48325677.208306",
+          "change": "25174079.320157",
+          "external_income": "0.00",
+          "preserve_basis": false
+        }
+      ],
+      "minted": "0",
+      "log_index": 678,
+      "minted_by_ilk": {}
+    },
+    "repaired": {
+      "identity": "base:0x611c7a97e2bda319678edddf6ef375248f838d10df110a0214d6c5fe9d168ee7",
+      "day": "2025-08-27",
+      "timestamp": 1756306451,
+      "chain": "base",
+      "block": 34758552,
+      "movements": [
+        {
+          "account": "base:0x2917956eff0b5eaf030abdb4ef4296df775009ca:0x7bfa7c4f149e7415b73bdedfe609237e29cbf34a",
+          "value_before": "449862862.4627786515144257267",
+          "change": "-25174065.07520600000000000011",
+          "external_income": "14.24495099999999999989356740",
+          "preserve_basis": false
+        },
+        {
+          "account": "base:0x2917956eff0b5eaf030abdb4ef4296df775009ca:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "value_before": "48325677.208306",
+          "change": "25174079.320157",
+          "external_income": "0.00",
+          "preserve_basis": false
+        }
+      ],
+      "minted": "0",
+      "log_index": 678,
+      "minted_by_ilk": {}
+    },
+    "audit": {
+      "batch": "base:0x611c7a97e2bda319678edddf6ef375248f838d10df110a0214d6c5fe9d168ee7",
+      "cash": "25174079.320157",
+      "old_debit": "25174057.35565444654849102152",
+      "cash_less_old_debit": "21.96450255345150897848",
+      "old_fee_income": "14.244938571213285136221375",
+      "new_fee_income": "14.24495099999999999989356740"
+    }
+  }
+]

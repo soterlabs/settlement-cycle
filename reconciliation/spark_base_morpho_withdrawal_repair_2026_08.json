@@ -1,0 +1,44 @@
+{
+  "scope": "Diagnostic exact-cash repair only; no debt or other positions changed.",
+  "input_hashes": {
+    "/tmp/pr215-spark-morpho-fees-history.jsonl.gz": "efbeb3b46e58b03ccc0a85b7d025c06cff6fab2e89702dc7857af2e371a9bb84",
+    "tests/fixtures/spark_base_morpho_fee_withdrawals.json.gz": "e250782235bdca8edc2ed1a304c8d5add950f6386c61db5a50fc09437d0025a3",
+    "/home/agent/code/lakonema2000/settlement-cycle/scripts/repair_spark_base_morpho_withdrawals.py": "8df619b66089c7a0f96a8311e330beece3428bfffa0fb325ffe7163c2a6873fd",
+    "/home/agent/code/lakonema2000/settlement-cycle/src/settle/normalize/allocation_morpho_fees.py": "1e55340124771ff575a33643a712ade9badeaba51fa02c5aa62e6f66d00baf98"
+  },
+  "output_sha256": "6ff188790d6ab8f86f89989815a044526a2b66b376d536cb156ed602f3c3a45a",
+  "batches": 451902,
+  "repaired_withdrawals": 37809,
+  "cash_less_old_debit_total": "3216.620289341564551337182173",
+  "independent_full_history_comparison": {
+    "batches": 451902,
+    "changed_base_positions": 37809,
+    "all_debt_fields_unchanged": true,
+    "all_other_positions_unchanged": true
+  },
+  "old_baseline_receipts_matching_exact_cash_error": {
+    "count": 15979,
+    "raw_residual_total": "3159.908627566413308680208326",
+    "baseline_sha256": "70100dee3dfa3d76ab2eddf36b07e05d76cdc36a35018832aea8bb532e8a1513",
+    "scope": "Whole-transaction amount agreement within one cent, not a certified cost result; a new replay must measure the change."
+  },
+  "fee_income_valuation_delta": "0.1633830365782405310947932224",
+  "largest_examples": [
+    {
+      "batch": "base:0x7166f2deac51f1eb5765e729ccc83b6b998afaac0f18c027b012127bda26708f",
+      "cash": "25052177.384853",
+      "old_debit": "25052153.84938375909870787610",
+      "cash_less_old_debit": "23.53546924090129212390",
+      "old_fee_income": "1.709643393860274408207114",
+      "new_fee_income": "1.709644999999999999040906120"
+    },
+    {
+      "batch": "base:0x611c7a97e2bda319678edddf6ef375248f838d10df110a0214d6c5fe9d168ee7",
+      "cash": "25174079.320157",
+      "old_debit": "25174057.35565444654849102152",
+      "cash_less_old_debit": "21.96450255345150897848",
+      "old_fee_income": "14.244938571213285136221375",
+      "new_fee_income": "14.24495099999999999989356740"
+    }
+  ]
+}
