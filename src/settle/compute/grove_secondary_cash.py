@@ -1,4 +1,4 @@
-"""Expose observed Grove PAU cash in allocation-only financing diagnostics.
+"""Expose observed Grove cash omitted from the revenue venue list in allocation-only financing diagnostics.
 
 The July 2, 2026 spell deploys the additional compartment, without migrating
 or replacing the legacy ALM:
@@ -27,6 +27,14 @@ def include_grove_secondary_cash(history):
     observed = {m.account for b in history.batches for m in b.movements if m.value_before or m.change}
     mapping = dict(history.venue_accounts)
     extra = set(history.analytics_only_venues)
+    # E14 is display-only in config/grove.yaml: the AUSD routing balance
+    # earns no standalone venue revenue. That does not exempt its borrowed
+    # capital from financing. Its Agora pending-conversion custody is already
+    # attached to E14 and must be included exactly once alongside the cash.
+    # Keep the existing revenue report untouched; the extra row has no APY.
+    primary_ausd = PRIMARY_CASH.rsplit(':', 1)[0] + ':' + TOKENS['E14_PAU_CASH']
+    if mapping.get('E14') == primary_ausd and primary_ausd in observed:
+        extra.add('E14')
     custody = {a for accounts in history.custody_accounts.values() for a in accounts}
     for venue, token in TOKENS.items():
         account = f'ethereum:{HOLDER}:{token}'
