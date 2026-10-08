@@ -24,12 +24,14 @@ def curve_swap_income(rows):
     expected, actual, net = defaultdict(int), defaultdict(int), defaultdict(int)
     gains = defaultdict(D)
     meta = {}
-    seen = set()
+    seen = {}
     for r in rows:
         key = (r.transaction_hash, r.log_index)
         if key in seen:
+            if seen[key] != r:
+                raise ValueError('Conflicting Curve swap event identity')
             continue
-        seen.add(key)
+        seen[key] = r
         if r.topic0 == TRANSFER_TOPIC0 and r.address in {t for t, _ in COINS}:
             if len(r.data) != 66:
                 raise ValueError('Invalid Curve swap token transfer')
