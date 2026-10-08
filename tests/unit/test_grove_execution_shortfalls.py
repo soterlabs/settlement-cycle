@@ -47,3 +47,23 @@ def test_identification_is_transaction_exact_and_does_not_change_financing():
         audit.classify(finance, [record, record], '2026-08')
     finance['unmatched_outflows'][key] = '0'
     assert audit.classify(finance, [record], '2026-08')['identified_execution_shortfalls'] == 0
+
+
+def test_second_curve_pool_and_combined_swaps_match_whole_transaction():
+    rows = json.loads((ROOT/'tests/fixtures/grove_ausd_curve_execution_events.json').read_text())
+    records = audit.curve_shortfalls(rows,
+        pool='0xe79c1c7e24755574438a26d5e062ad2626c04662',
+        coins=(('0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', 6),
+               ('0x00000000efe302beaa2b3e6e1b18d08d69a9012a', 6)))
+    assert len(records) == 5
+    uniswap = audit.uniswap_shortfalls(UNISWAP)
+    curve = next(r for r in records if r['execution_shortfall'] == '363.977269')
+    other = next(r for r in uniswap if r['transaction_hash'] == curve['transaction_hash'])
+    finance = {'unmatched_outflows': {'ethereum:'+curve['transaction_hash']: '485.313107'},
+               'input_hashes': {}}
+    assert audit.classify(finance, [curve], '2026-08')['identified_execution_shortfalls'] == 0
+    result = audit.classify(finance, [curve, other], '2026-08')
+    assert result['identified_execution_shortfalls'] == 1
+    assert len(result['matched'][0]['swaps']) == 2
+    assert result['matched_shortfalls_total'] == '485.313107'
+    assert not result['remaining_residuals']

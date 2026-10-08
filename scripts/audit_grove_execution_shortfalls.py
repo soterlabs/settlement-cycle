@@ -18,22 +18,22 @@ from settle.extract.transfer_logs import TRANSFER_TOPIC0
 from settle.normalize.allocation_curve_swaps import COINS, EXCHANGE, HOLDER, POOL, curve_swap_income
 
 
-def curve_shortfalls(rows):
+def curve_shortfalls(rows, *, pool=POOL, coins=COINS):
     rows = [LogRow(**r) for r in rows]
-    curve_swap_income(rows)  # Authenticates all swap amounts, including losses.
+    curve_swap_income(rows, pool=pool, coins=coins)  # Authenticates losses too.
     seen, result = set(), []
     for r in rows:
-        if (r.address != POOL or r.topic0 != EXCHANGE
+        if (r.address != pool or r.topic0 != EXCHANGE
                 or not r.topic1.endswith(HOLDER[2:]) or (r.transaction_hash, r.log_index) in seen):
             continue
         seen.add((r.transaction_hash, r.log_index))
         i, sold, j, bought = _words(r.data)
-        paid, received = D(sold)/10**COINS[i][1], D(bought)/10**COINS[j][1]
+        paid, received = D(sold)/10**coins[i][1], D(bought)/10**coins[j][1]
         if paid > received:
             result.append({'transaction_hash': r.transaction_hash, 'block': r.block_number,
-                'log_index': r.log_index, 'pool': POOL, 'holder': HOLDER,
-                'paid_token': COINS[i][0], 'paid': str(paid),
-                'received_token': COINS[j][0], 'received': str(received),
+                'log_index': r.log_index, 'pool': pool, 'holder': HOLDER,
+                'paid_token': coins[i][0], 'paid': str(paid),
+                'received_token': coins[j][0], 'received': str(received),
                 'execution_shortfall': str(paid - received)})
     return result
 
@@ -94,7 +94,15 @@ def classify(financing, shortfalls, period):
     date.fromisoformat(period + '-01')
     residuals = financing['unmatched_outflows']
     matched, other, used = [], [], set()
+    grouped = defaultdict(list)
     for record in shortfalls:
+        grouped[record['transaction_hash']].append(record)
+    for tx, trades in grouped.items():
+        if len({(r['pool'],r['log_index']) for r in trades}) != len(trades):
+            raise ValueError('Ambiguous duplicate swap proof')
+        record = (trades[0] if len(trades) == 1 else {
+            'transaction_hash': tx, 'swaps': trades,
+            'execution_shortfall': str(sum(D(r['execution_shortfall']) for r in trades))})
         # Reviewed adapters suffix some identities (e.g. STAC subscriptions).
         # Match the exact underlying transaction, never a date/amount search.
         candidates = [k for k in residuals if k.split(':')[1] == record['transaction_hash']
@@ -123,12 +131,18 @@ def main():
     p.add_argument('--curve-events', type=Path, required=True)
     p.add_argument('--uniswap-events', type=Path)
     p.add_argument('--period', required=True)
+    p.add_argument('--ausd-curve-events', type=Path)
     p.add_argument('--output', type=Path, required=True)
     args = p.parse_args()
     financing = json.loads(args.financing.read_text())
     records = curve_shortfalls(json.loads(args.curve_events.read_text()))
     if args.uniswap_events:
         records.extend(uniswap_shortfalls(json.loads(args.uniswap_events.read_text())))
+    if args.ausd_curve_events:
+        records.extend(curve_shortfalls(json.loads(args.ausd_curve_events.read_text()),
+            pool='0xe79c1c7e24755574438a26d5e062ad2626c04662',
+            coins=(('0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', 6),
+                   ('0x00000000efe302beaa2b3e6e1b18d08d69a9012a', 6))))
     args.output.write_text(json.dumps(classify(financing, records, args.period), indent=2)+'\n')
 
 

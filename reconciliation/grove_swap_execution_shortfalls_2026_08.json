@@ -10,9 +10,9 @@
   },
   "scope": "Observed execution shortfalls only. No cost attribution or allocation sum change; funding may include gains.",
   "raw_unmatched_outflows": 239,
-  "identified_execution_shortfalls": 232,
-  "matched_shortfalls_total": "211707.075412401139395562",
-  "remaining_after_these_identifications": 7,
+  "identified_execution_shortfalls": 237,
+  "matched_shortfalls_total": "213307.785713401139395562",
+  "remaining_after_these_identifications": 2,
   "matched": [
     {
       "transaction_hash": "0x0c42e3453ede3320eef51463315ce5bb597281d5c8d86a58513dc36e5e87ae68",
@@ -1365,6 +1365,39 @@
       "normalization_rounding_difference": "0.00000"
     },
     {
+      "transaction_hash": "0x8e06198b118c9b9d2fbcbdb848d2d42bfaaee4bd3261cc777e42febffdce406c",
+      "swaps": [
+        {
+          "transaction_hash": "0x8e06198b118c9b9d2fbcbdb848d2d42bfaaee4bd3261cc777e42febffdce406c",
+          "block": 24387115,
+          "log_index": 3,
+          "pool": "0xbafead7c60ea473758ed6c6021505e8bbd7e8e5d",
+          "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+          "paid_token": "0x00000000efe302beaa2b3e6e1b18d08d69a9012a",
+          "paid": "1248000",
+          "received_token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "received": "1247878.664162",
+          "execution_shortfall": "121.335838"
+        },
+        {
+          "transaction_hash": "0x8e06198b118c9b9d2fbcbdb848d2d42bfaaee4bd3261cc777e42febffdce406c",
+          "block": 24387115,
+          "log_index": 10,
+          "pool": "0xe79c1c7e24755574438a26d5e062ad2626c04662",
+          "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+          "paid_token": "0x00000000efe302beaa2b3e6e1b18d08d69a9012a",
+          "paid": "1248000",
+          "received_token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "received": "1247636.022731",
+          "execution_shortfall": "363.977269"
+        }
+      ],
+      "execution_shortfall": "485.313107",
+      "capital_batch": "ethereum:0x8e06198b118c9b9d2fbcbdb848d2d42bfaaee4bd3261cc777e42febffdce406c",
+      "raw_financing_residual": "485.313107",
+      "normalization_rounding_difference": "0.000000"
+    },
+    {
       "transaction_hash": "0x64b46224527f32edbaf6c1f9c5279b03fa067e079ee6992cb5f7f4596303f52b",
       "block": 24442142,
       "log_index": 1123,
@@ -2292,6 +2325,39 @@
       "execution_shortfall": "79.271549",
       "capital_batch": "ethereum:0x0a456e6da50a73a25d3ccf20052f6ad93cb23f5a087bef6506416fb06a493ed7",
       "raw_financing_residual": "79.271549",
+      "normalization_rounding_difference": "0.000000"
+    },
+    {
+      "transaction_hash": "0x700f308058d04e43c1e3386cfb3f73e85b7e33b4c2d7c387b7ee0b9a5f70263c",
+      "swaps": [
+        {
+          "transaction_hash": "0x700f308058d04e43c1e3386cfb3f73e85b7e33b4c2d7c387b7ee0b9a5f70263c",
+          "block": 24951932,
+          "log_index": 561,
+          "pool": "0xbafead7c60ea473758ed6c6021505e8bbd7e8e5d",
+          "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+          "paid_token": "0x00000000efe302beaa2b3e6e1b18d08d69a9012a",
+          "paid": "1000000",
+          "received_token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "received": "999914.351089",
+          "execution_shortfall": "85.648911"
+        },
+        {
+          "transaction_hash": "0x700f308058d04e43c1e3386cfb3f73e85b7e33b4c2d7c387b7ee0b9a5f70263c",
+          "block": 24951932,
+          "log_index": 557,
+          "pool": "0xe79c1c7e24755574438a26d5e062ad2626c04662",
+          "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+          "paid_token": "0x00000000efe302beaa2b3e6e1b18d08d69a9012a",
+          "paid": "50258.11055",
+          "received_token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "received": "50253.48797",
+          "execution_shortfall": "4.62258"
+        }
+      ],
+      "execution_shortfall": "90.271491",
+      "capital_batch": "ethereum:0x700f308058d04e43c1e3386cfb3f73e85b7e33b4c2d7c387b7ee0b9a5f70263c",
+      "raw_financing_residual": "90.271491",
       "normalization_rounding_difference": "0.000000"
     },
     {
@@ -3493,6 +3559,51 @@
       "capital_batch": "ethereum:0x5cc588e81f064a3d6178c6c9ceeffe240b8379db137a5185c84d825431e39023",
       "raw_financing_residual": "59.598657",
       "normalization_rounding_difference": "0.000000"
+    },
+    {
+      "transaction_hash": "0x384edf66b124f0d76ef40c53d2cbdbaf23caf1e7aec42d1235e7212b3c3cf8f1",
+      "block": 24470266,
+      "log_index": 96,
+      "pool": "0xe79c1c7e24755574438a26d5e062ad2626c04662",
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "paid_token": "0x00000000efe302beaa2b3e6e1b18d08d69a9012a",
+      "paid": "1000000",
+      "received_token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "received": "999711.512548",
+      "execution_shortfall": "288.487452",
+      "capital_batch": "ethereum:0x384edf66b124f0d76ef40c53d2cbdbaf23caf1e7aec42d1235e7212b3c3cf8f1",
+      "raw_financing_residual": "288.487452",
+      "normalization_rounding_difference": "0.000000"
+    },
+    {
+      "transaction_hash": "0x19a7d93025e172e6c9e7e0077e0d60f500bde260144a1f93774a28d0c5208e4e",
+      "block": 24471677,
+      "log_index": 671,
+      "pool": "0xe79c1c7e24755574438a26d5e062ad2626c04662",
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "paid_token": "0x00000000efe302beaa2b3e6e1b18d08d69a9012a",
+      "paid": "999929.335969",
+      "received_token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "received": "999437.332023",
+      "execution_shortfall": "492.003946",
+      "capital_batch": "ethereum:0x19a7d93025e172e6c9e7e0077e0d60f500bde260144a1f93774a28d0c5208e4e",
+      "raw_financing_residual": "492.003946",
+      "normalization_rounding_difference": "0.000000"
+    },
+    {
+      "transaction_hash": "0x5989e73cbb36460366dc3cff73005223595a1a6d57a622e844485d5e561c5daa",
+      "block": 24678522,
+      "log_index": 90,
+      "pool": "0xe79c1c7e24755574438a26d5e062ad2626c04662",
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "paid_token": "0x00000000efe302beaa2b3e6e1b18d08d69a9012a",
+      "paid": "1000000",
+      "received_token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "received": "999755.365695",
+      "execution_shortfall": "244.634305",
+      "capital_batch": "ethereum:0x5989e73cbb36460366dc3cff73005223595a1a6d57a622e844485d5e561c5daa",
+      "raw_financing_residual": "244.63430500",
+      "normalization_rounding_difference": "0E-8"
     }
   ],
   "other_observed_shortfalls": [
@@ -3507,39 +3618,10 @@
       "received_token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
       "received": "10138.462399",
       "execution_shortfall": "0.009398631448073465"
-    },
-    {
-      "transaction_hash": "0x8e06198b118c9b9d2fbcbdb848d2d42bfaaee4bd3261cc777e42febffdce406c",
-      "block": 24387115,
-      "log_index": 3,
-      "pool": "0xbafead7c60ea473758ed6c6021505e8bbd7e8e5d",
-      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
-      "paid_token": "0x00000000efe302beaa2b3e6e1b18d08d69a9012a",
-      "paid": "1248000",
-      "received_token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "received": "1247878.664162",
-      "execution_shortfall": "121.335838"
-    },
-    {
-      "transaction_hash": "0x700f308058d04e43c1e3386cfb3f73e85b7e33b4c2d7c387b7ee0b9a5f70263c",
-      "block": 24951932,
-      "log_index": 561,
-      "pool": "0xbafead7c60ea473758ed6c6021505e8bbd7e8e5d",
-      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
-      "paid_token": "0x00000000efe302beaa2b3e6e1b18d08d69a9012a",
-      "paid": "1000000",
-      "received_token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "received": "999914.351089",
-      "execution_shortfall": "85.648911"
     }
   ],
   "remaining_residuals": {
     "ethereum:0x1530367e2696dfb97ba380e63ab899d25b9ed3e79217666906cbbbdab024f20b": "1.702014557248492729100000000",
-    "ethereum:0x8e06198b118c9b9d2fbcbdb848d2d42bfaaee4bd3261cc777e42febffdce406c": "485.313107",
-    "ethereum:0x384edf66b124f0d76ef40c53d2cbdbaf23caf1e7aec42d1235e7212b3c3cf8f1": "288.487452",
-    "ethereum:0x19a7d93025e172e6c9e7e0077e0d60f500bde260144a1f93774a28d0c5208e4e": "492.003946",
-    "ethereum:0x5989e73cbb36460366dc3cff73005223595a1a6d57a622e844485d5e561c5daa": "244.63430500",
-    "ethereum:0x700f308058d04e43c1e3386cfb3f73e85b7e33b4c2d7c387b7ee0b9a5f70263c": "90.271491",
     "ethereum:0xddf938b6315808e72d826a6361b2e5ddb1fb498ecc3862df10f288dfb8d35346": "0.015319437502490759669000000"
   }
 }
