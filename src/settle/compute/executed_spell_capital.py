@@ -41,15 +41,19 @@ def _movement(batch, key):
 
 def apply_executed_spells(history):
     from ..normalize.allocation_capital import AssetMovement
+    from .grove_agora_redemptions import (
+        link_grove_agora_redemptions,
+        link_grove_agora_subscriptions,
+    )
     from .grove_apollo_cash_settlements import link_grove_apollo_cash_settlements
-    from .grove_cash_distributions import recognize_grove_cash_distributions
-    from .grove_galaxy_arch_capital import link_grove_galaxy_arch
-    from .grove_cctp_v2_capital import link_grove_cctp_v2
     from .grove_buidl_subscriptions import link_grove_buidl_subscriptions
+    from .grove_cash_distributions import recognize_grove_cash_distributions
+    from .grove_cctp_v2_capital import link_grove_cctp_v2
+    from .grove_galaxy_arch_capital import link_grove_galaxy_arch
     from .grove_historical_capital import link_grove_initial_jaaa, link_grove_jaaa_avalanche
     from .grove_plume_capital import link_grove_plume_jtrsy
-    from .grove_agora_redemptions import link_grove_agora_redemptions, link_grove_agora_subscriptions
     from .grove_rlusd_conversions import link_grove_rlusd_conversions
+    from .grove_secondary_cash import include_grove_secondary_cash
     from .grove_stac_capital import link_grove_stac_subscriptions
 
     history = link_grove_plume_jtrsy(link_grove_jaaa_avalanche(link_grove_initial_jaaa(history)))
@@ -61,6 +65,7 @@ def apply_executed_spells(history):
     history = link_grove_galaxy_arch(history)
     history = recognize_grove_cash_distributions(history)
     history = link_grove_apollo_cash_settlements(history)
+    history = include_grove_secondary_cash(history)
     batches = list(history.batches)
     indexes = {b.identity: i for i, b in enumerate(batches)}
     if len(indexes) != len(batches):
