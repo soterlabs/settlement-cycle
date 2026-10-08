@@ -124,3 +124,9 @@ def test_cutoff_unknown_funding_and_conflicting_input():
     wrong = replace(h.batches[1], block=1)
     with pytest.raises(ValueError, match='receipt differs'):
         link_spark_early_base_seed(replace(h, batches=(source, wrong, *h.batches[2:])))
+
+
+def test_unrelated_prime_is_an_exact_noop_including_venue_order():
+    h = CapitalHistory((), {'E2': 'grove-second', 'E1': 'grove-first'}, {},
+                       analytics_only_venues=('E2', 'E1'))
+    assert link_spark_early_base_seed(h) is h
