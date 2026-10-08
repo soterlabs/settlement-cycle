@@ -7,7 +7,7 @@ from dataclasses import replace
 from decimal import Decimal as D
 
 
-def link_reviewed_issuer_conversions(history, *, source, cash, groups, route, label):
+def link_reviewed_issuer_conversions(history, *, source, cash, groups, route, label, custody_account=None):
     suffix = f':{route}-conversion'
     from ..normalize.allocation_capital import AssetMovement
 
@@ -17,7 +17,7 @@ def link_reviewed_issuer_conversions(history, *, source, cash, groups, route, la
     if len(index) != len(history.batches):
         raise ValueError('Duplicate capital transaction')
     custody = {v: list(accounts) for v, accounts in history.custody_accounts.items()}
-    venue = next(v for v, a in history.venue_accounts.items() if a == source)
+    venue = next(v for v, a in history.venue_accounts.items() if a == (custody_account or source))
     for payments, receipts, same_token in groups:
         identities = ['ethereum:' + tx for tx, _, _ in (*payments, *receipts)]
         if any(identity + suffix in index for identity in identities):

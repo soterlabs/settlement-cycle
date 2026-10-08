@@ -44,7 +44,7 @@ def apply_executed_spells(history):
     from .grove_buidl_subscriptions import link_grove_buidl_subscriptions
     from .grove_historical_capital import link_grove_initial_jaaa, link_grove_jaaa_avalanche
     from .grove_plume_capital import link_grove_plume_jtrsy
-    from .grove_agora_redemptions import link_grove_agora_redemptions
+    from .grove_agora_redemptions import link_grove_agora_redemptions, link_grove_agora_subscriptions
     from .grove_rlusd_conversions import link_grove_rlusd_conversions
     from .grove_stac_capital import link_grove_stac_subscriptions
 
@@ -52,6 +52,7 @@ def apply_executed_spells(history):
     history = link_grove_buidl_subscriptions(link_grove_stac_subscriptions(history))
     history = link_grove_rlusd_conversions(history)
     history = link_grove_agora_redemptions(history)
+    history = link_grove_agora_subscriptions(history)
     batches = list(history.batches)
     indexes = {b.identity: i for i, b in enumerate(batches)}
     if len(indexes) != len(batches):
