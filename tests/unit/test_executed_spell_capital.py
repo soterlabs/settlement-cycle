@@ -22,11 +22,14 @@ from settle.compute.executed_spell_capital import (
     account,
     apply_executed_spells,
 )
+from settle.compute.spark_reserve_gifts import GIFTS
 from settle.normalize.allocation_capital import AssetMovement as M
 from settle.normalize.allocation_capital import CapitalBatch as B
 from settle.normalize.allocation_capital import CapitalHistory as H
 
 DAY = date(2026, 7, 20)
+PAYMENT_GIFTS = [g for g in GIFTS if 'ethereum:' + g[0] == PAYMENT]
+PAYMENT_STAMP = PAYMENT_GIFTS[0][2]
 
 
 def test_forwarded_buidl_interest_is_own_funds_and_never_a_new_loan():
@@ -79,10 +82,13 @@ def test_initial_spark_sale_uses_actual_proceeds():
 
 def exchange(holder, include_delivery=True):
     cash, asset = account(holder, USDS), account(holder, SYRUP)
-    p = B(PAYMENT, DAY, 100, 'ethereum', 25574512,
-          (M(cash, D(0), D(0) if holder == SPARK else SYRUP_COST),),
+    # This shared spell also delivered Spark reserve gifts. Preserve the real
+    # execution metadata and those receipts when testing the combined adapter.
+    gifts = tuple(M(account(SPARK, g[3]), D(0), g[4]) for g in PAYMENT_GIFTS) if holder == SPARK else ()
+    p = B(PAYMENT, DAY, PAYMENT_STAMP, 'ethereum', 25574512,
+          (M(cash, D(0), D(0) if holder == SPARK else SYRUP_COST), *gifts),
           SYRUP_COST if holder == SPARK else D(0))
-    d = B(DELIVERY, DAY, 244, 'ethereum', 25574524,
+    d = B(DELIVERY, DAY, PAYMENT_STAMP + 144, 'ethereum', 25574524,
           (M(asset, D(0), SYRUP_COST - 39) if holder == SPARK else
            M(asset, SYRUP_COST - 39, -SYRUP_COST + 39),))
     return H((p, d) if include_delivery else (p,), {'venue': asset}, {})
@@ -135,7 +141,7 @@ def test_changed_draw_and_intervening_seller_cash_use_are_rejected():
     with pytest.raises(ValueError, match='acquisition draw'):
         apply_executed_spells(h)
     h = exchange(GROVE)
-    between = B('intervening', DAY, 110, 'ethereum', 25574515,
+    between = B('intervening', DAY, PAYMENT_STAMP + 10, 'ethereum', 25574515,
                 (M(account(GROVE, USDS), SYRUP_COST, D(-1)),))
     with pytest.raises(ValueError, match='intervening'):
         apply_executed_spells(replace(h, batches=(*h.batches, between)))
@@ -143,7 +149,7 @@ def test_changed_draw_and_intervening_seller_cash_use_are_rejected():
 
 def test_spark_other_cash_use_does_not_consume_its_separate_prepayment():
     h = exchange(SPARK)
-    between = B('intervening', DAY, 110, 'ethereum', 25574515,
+    between = B('intervening', DAY, PAYMENT_STAMP + 10, 'ethereum', 25574515,
                 (M(account(SPARK, USDS), D(10), D(-10)),
                  M('other-venue', D(0), D(10))))
     r = replay_history(replace(h, batches=(*h.batches, between)), DAY, DAY)

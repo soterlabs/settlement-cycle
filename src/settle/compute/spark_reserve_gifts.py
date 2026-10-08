@@ -192,6 +192,13 @@ def recognize_spark_reserve_gifts(history):
     index = {b.identity: b for b in history.batches}
     if len(index) != len(history.batches):
         raise ValueError('Duplicate capital transaction')
+    # Sky spells can touch several primes in one transaction. A matching hash
+    # in Grove's history does not imply that Spark's reserve receipts belong to
+    # that history. Inspect ownership before validating Spark-only positions.
+    prefix = f'ethereum:{HOLDER}:'
+    if not (any(a.startswith(prefix) for a in history.venue_accounts.values())
+            or any(m.account.startswith(prefix) for b in history.batches for m in b.movements)):
+        return history
     grouped = defaultdict(list)
     for event in GIFTS:
         grouped['ethereum:' + event[0]].append(event)
