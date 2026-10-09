@@ -1,5 +1,27 @@
 # Remaining large receipt classifications
 
+## Operator decisions, 2026-10-09
+
+The operator confirmed the USDe Safe, Maple treasury, and additional PYUSD
+payer receipts below as **yield**, totaling **10,193,206.19** at par. These
+groups are no longer open classification questions. `config/spark.yaml` now
+includes their senders; S30 enables the existing external-yield path. Historical
+capital normalization recognizes their earned cash with no new borrowed basis.
+The completed frozen replays predate this change and have not been rerun.
+
+Settlement recognition activates in October 2026 to preserve the completed
+reports through September. No historical true-up, report, or API update has
+been generated. The regression test uses all 20 observed transfer logs and
+checks earned cash, absence of new lender funding, and the activation boundary.
+
+The three Spark Operations transfers below are **inflows to ALM proxies**.
+The operator's conditional instruction to treat outflows as expenses therefore
+does not classify these receipts. Their economic purpose remains open.
+
+The findings below retain the investigation's original evidence and hypotheses;
+the operator decisions above supersede their unconfirmed status for these
+three approved payer groups.
+
 This inventory isolates direct transfers at Spark's Ethereum ALM boundary.
 It does not trace the subsequent or prior use of commingled counterparty funds.
 The query covers genesis through the August 2026 pin, block 25,878,704, in both

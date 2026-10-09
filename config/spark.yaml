@@ -843,6 +843,7 @@ venues:
     chain: ethereum
     label: 'USDe raw (ALM idle)'
     pricing_category: A
+    external_yield_source: true   # Ethena negotiated/rebate payments (operator, 2026-10-09)
     token:
       address: '0x4c9edd5852cd905f086c759e8383e09bff1e68b3'
       symbol: 'USDe'
@@ -1354,6 +1355,14 @@ external_alm_sources:
     # ``amount × (DFEDTARL − 62.5bps + 1.8% APY) / 365``; the on-chain
     # leg captured here is the realized settlement of that accrual.
     - '0xfc0539d019482d311c161ae3b756cdccdec45e87'
+    # Operator-confirmed yield (2026-10-09): Ethena USDe distributions,
+    # Maple treasury payments, and the additional PYUSD payer. Historical
+    # capital tracing treats these as earned cash, never new borrowed basis.
+    # Settlement recognition starts with October; no published report or
+    # historical true-up is regenerated/created by this configuration change.
+    - '0xd0ec8cc7414f27ce85f8dece6b4a58225f273311'
+    - '0x6a01c16eb312b80535f4799e4bf7522b715aacff'
+    - '0x1e30f9c2c688f85c82111d1d262bfd127e687282'
     # SparkLend reserve treasuries. Governance payloads periodically sweep
     # accrued reserve-factor income to the ALM in spTokens. The Cat C
     # external-revenue path classifies those receipts as earned Spark revenue
@@ -1366,10 +1375,15 @@ external_alm_sources:
     # spDAI reserve treasury:
     - '0x856900aa78e856a5df1a2665ee3a66b2487cd68f'
 
-# Start dates preserve the published Jan-Aug reports. Those receipts ride the
-# September settlement once via sv_adj; direct recognition starts in September.
+# Start dates preserve completed reports. Reserve treasury receipts ride the
+# September settlement once via sv_adj; their direct recognition starts then.
+# The three yield payers approved October 9 activate in October, with no new
+# historical true-up implied by this configuration.
 external_alm_source_start_dates:
   ethereum:
+    '0xd0ec8cc7414f27ce85f8dece6b4a58225f273311': '2026-10-01'
+    '0x6a01c16eb312b80535f4799e4bf7522b715aacff': '2026-10-01'
+    '0x1e30f9c2c688f85c82111d1d262bfd127e687282': '2026-10-01'
     '0xb137e7d16564c81ae2b0c8ee6b55de81dd46ece5': '2026-09-01'
     '0x856900aa78e856a5df1a2665ee3a66b2487cd68f': '2026-09-01'
 
