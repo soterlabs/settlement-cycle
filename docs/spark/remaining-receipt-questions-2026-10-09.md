@@ -71,3 +71,38 @@ This read-only proof explains its purpose without altering those checkpoints,
 their uncertainty propagation, or published revenue. A later recognition update
 can consume the authenticated claim. Four tests cover actual receipt evidence,
 wrong recipients, missing delivery despite interest mints, and altered funding.
+
+## Operations receipts and smaller unidentified payers
+
+Three more receipts come from the same Spark Operations address,
+`0x2e1b01adabb8d4981863394bea23a1263cbaedfc`, identified in the
+[Spark Q2 report's address appendix](https://paragraph.com/@spark-11/spark-q2-2026-financial-report):
+
+| Chain / date | USDC received | Transaction |
+|---|---:|---|
+| Base, 2025-12-03 | 779,893.018620 | [d24946…](https://basescan.org/tx/0xd24946f38a7bb9c627225c7c3de5e53ca44342bac264a9bf3a9a9eef01e63260) |
+| Base, 2025-12-12 | 346,540.645157 | [d2f0a0…](https://basescan.org/tx/0xd2f0a0c9e7a016dc26609a48b54a95b6fc92c85d287069d15efadafb93a9e7e0) |
+| Avalanche, 2026-03-17 | 76,629.483846 | [a452f9…](https://snowtrace.io/tx/0xa452f9c99ccc93d7dc6a7f48c059a65420dcb2dde331f8463edfe81bada8fcd5) |
+
+Total: **1,203,063.147623 USDC**. The receipt proves payer and destination,
+not the economic purpose. Possible explanations include proceeds from selling
+reward tokens, an operational reimbursement, or returned capital. The operations
+wallet's general liquidation role does not establish which applies here.
+
+Three smaller Ethereum receipts also remain unclassified:
+
+| Date | Amount | Payer | Transaction |
+|---|---:|---|---|
+| 2026-01-19 | 383,178.08 USDC | `0xc8a3e1e0776b912047c89dc16470fd9c7ea1141d` | [e8e9fa…](https://etherscan.io/tx/0xe8e9fa97ba936198cb147decccb93e24852503d25240f82f4bfc3612800eebed) |
+| 2025-08-07 | 14,452.68561739 USDS | `0xaa2461f0f0a3de5feaf3273eae16def861cf594e` | [f6c5b0…](https://etherscan.io/tx/0xf6c5b04ec676db0b45a530552b97c7b4b09aab1777087b3b9d6fd8d8701c295e) |
+| 2025-08-05 | 10,539.96 USDC | `0xcd531ae9efcce479654c4926dec5f6209531ca7b` | [cfd1fe…](https://etherscan.io/tx/0xcfd1fea5b70e95420e18f0f18c8528882db5bf235b93299f8f067499b2934a98) |
+
+The six raw receipts and normalized batches are retained in
+`tests/fixtures/spark_remaining_simple_receipts.json.gz`; the checked transfer
+amounts and coordinates are in
+`reconciliation/spark_remaining_simple_receipts_2026_08.json`. Each batch has
+one incoming cash movement and no new Sky or Savings draw. This excludes a
+missing draw in that same transaction; it does not exclude repayment of a
+previously funded claim. These are targeted receipt checks, not complete
+counterparty histories. No commingled wallet's other business is traced, and
+no automatic income classification is introduced.
