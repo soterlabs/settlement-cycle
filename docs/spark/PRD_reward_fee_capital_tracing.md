@@ -118,7 +118,9 @@ The operator has now confirmed Maple's 1,661,609.59 USDC, the USDe Safe's
 7,281,596.60 USDe and the other PYUSD payer's 1,250,000 PYUSD as yield.
 The existing sender configuration handles these, independently of the two
 event-based integrations proposed here. Operations' 1,203,063.147623 USDC
-consists of inflows; its purpose and the smaller receipts listed in the
-remaining-receipts note remain open. Their historical
+inflows have also been explicitly confirmed as yield and configured on Base
+and Avalanche-C. The smaller receipts in the remaining-receipts note remain
+open; the operator identifies `0xc8a3e1e0776b912047c89dc16470fd9c7ea1141d`
+as Maple-related, without yet classifying that payment. Their historical
 cash amounts are neither proposed revenue adjustments nor August borrowing
 costs. Do not block the two independently proved integrations on these questions.
