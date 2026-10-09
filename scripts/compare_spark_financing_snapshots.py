@@ -79,7 +79,10 @@ def main():
     inputs = [args.before, args.after, args.control, args.savings_events]
     if args.output.resolve() in {x.resolve() for x in inputs}:
         raise ValueError("Comparison output must not overwrite evidence")
-    before, after = (json.loads(x.read_text()) for x in (args.before, args.after))
+    before, after = (
+        json.loads(gzip.decompress(x.read_bytes()) if x.suffix == ".gz" else x.read_bytes())
+        for x in (args.before, args.after)
+    )
     hashes = {str(x): hashlib.sha256(x.read_bytes()).hexdigest() for x in inputs}
     validate_unchanged_controls(before, after, hashes[str(args.control)])
     if json.loads(args.control.read_text())["prime_id"] != "spark":

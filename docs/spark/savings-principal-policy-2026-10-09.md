@@ -4,6 +4,13 @@ The operator authorized proportional attribution as a working assumption during
 the October 8–9 investigation. This is a diagnostic model for PR #215, not a
 change to published debt, borrowing charges, settlements or API revenues.
 
+Spark's [Q2 2026 financial report](https://paragraph.com/@spark-11/spark-q2-2026-financial-report)
+also describes Savings funding costs within the SLL and a separate accrued
+depositor-yield liability. That corroborates treating Savings cash as funding
+with its own financing expense. It does not establish the transaction-level
+proportional attribution assumed below, and its aggregate figures are not
+inputs to this replay.
+
 ## Verified cash and contract arithmetic
 
 All 841 historical `VsrSet` events across S56/S57/S59/S60 are saved in

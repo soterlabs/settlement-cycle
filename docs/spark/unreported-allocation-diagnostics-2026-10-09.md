@@ -32,6 +32,14 @@ old baseline above, the resulting modeled net cost is **2,356.718141 USD**,
 not the 10,507.810313 gross figure. The new funded replay can change the
 principal attribution; it reuses these same daily dollar deductions.
 
+The completed overnight replay produces average Sky principal of
+3,438,052.650675 USDS, gross financing of 10,687.733211 USD and modeled net
+financing of 2,536.641039 USD. The published August control omits S66's
+exemption as well as its venue row. Its extra modeled credit is therefore
+offset in the numerical bridge's deduction adjustment: adding this diagnostic
+row does not alter the historical payable charge. See
+`overnight-financing-results-2026-10-09.md` for the complete reconciliation.
+
 Completed funded replays can be projected through this reporting change without
 replaying transactions. The projection must retain every existing allocation row,
 debt control and funding movement unchanged; only previously missing provisional
