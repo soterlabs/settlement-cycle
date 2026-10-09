@@ -6,13 +6,13 @@ same amount of capital went to unknown recipients, or that its monthly cost
 of funds is unknown.
 
 Reconstructing the previously reviewed Ethena, par-stable and sUSDS/USDT
-executions, including the two legacy Curve pools described below, explains **3,063,633.958041 USD** of those entries. The audit checks
+executions, including the legacy and RLUSD Curve pools described below, explains **3,066,785.936537 USD** of those entries. The audit checks
 raw execution events against actual ALM cash and independently reconstructs
 the sUSDS exchange rate. It handles transactions containing multiple execution
 types and avoids counting already-recognized par-swap income twice.
 
-The remaining signed difference is **909,374.036798 USD**; the sum of absolute
-differences is **909,380.101490 USD**. Both are retained so positive and negative
+The remaining signed difference is **906,222.058302 USD**; the sum of absolute
+differences is **906,319.479068 USD**. Both are retained so positive and negative
 valuation differences cannot silently cancel. A whole 700-dollar swap cost
 should not remain unexplained just because its independently computed amount
 differs from the snapshot by a fraction of a micro-dollar. Equally, the audit
@@ -26,7 +26,7 @@ explain the recipient and purpose. Its monthly Sky-funded cost must be measured
 from the ledger; it must not be estimated by charging the whole gift interest.
 
 After separating that known forwarding, the unexplained absolute transaction
-value is **8,767.211490 USD**, spread across smaller entries. This is the next
+value is **5,706.589068 USD**, spread across smaller entries. This is the next
 investigation set, not a measured loss or borrowing-cost discrepancy. Some
 entries contain additional swaps not covered by the reviewed event sets.
 
@@ -46,6 +46,7 @@ PYTHONPATH=src .venv/bin/python scripts/audit_spark_execution_residuals.py \
   --ethena-events tests/fixtures/spark_ethena_execution_events.json.gz \
   --income-rules config/capital-tracing/spark-par-swap-gains.json \
   --legacy-curve-events tests/fixtures/spark_legacy_curve_swaps.json.gz \
+  --rlusd-curve-events tests/fixtures/spark_rlusd_curve_swaps.json.gz \
   --output /tmp/pr215-spark-v1-execution-residuals.json
 ```
 
@@ -107,5 +108,24 @@ visible. No part of this audit changes eligible costs, principal, or settlement
 charges. Three tests check independent daily rates and ilks, own-fund transfers,
 stale evidence, and missing snapshots.
 
-The complete read-only audit test group passes 19 tests. The full funded
+The complete read-only audit test group passes 21 tests. The full funded
 checkpoint remains necessary for actual August cost figures.
+
+## August USDC/RLUSD Curve swaps
+
+Eleven swaps at `0xd001ae433f254283fece51d4acce8c53263aa186` account
+for another **3,151.978496 USD** of signed execution differences. The complete
+110-log fixture authenticates both actual token transfers and pool events;
+coin mappings agree at the first swap (block 25,845,641) and the August pin.
+USDC uses six decimals and RLUSD eighteen, explicitly checked in the audit.
+
+The [August 28 transaction](https://etherscan.io/tx/0x03770e0fedd5742fa2ea02bf4d085296beca56ecb77fa75ba4626d354dfdb8db)
+borrows 500,000 USDS, converts at par into USDC, and receives
+499,715.937008169363 RLUSD. Its 284.062991830637 execution difference matches
+the recorded outflow, apart from sub-atto-dollar debt arithmetic.
+Several other transactions contain additional operations, so their remaining
+signed differences are retained. For example, the initial S66 transaction
+still has a 16.353301 difference after isolating its 313.509618 Curve cost.
+The reduction in absolute unexplained value is consequently 3,060.622422 USD,
+which differs from the sum of the signed swap costs. This is explanation of
+existing capital movements, not a new settlement charge or revenue rule.
