@@ -29,6 +29,12 @@ def change(account, origin, amount):
 def apply_external(ledger, e):
     if e.kind in ("external_draw", "external_repay") and not e.external_source:
         raise ValueError("External funding needs an identified funding source")
+    if e.kind == "external_repay":
+        outstanding = ledger.external_drawn.get(
+            e.external_source, ZERO
+        ) - ledger.external_repaid.get(e.external_source, ZERO)
+        if e.amount - outstanding > Decimal("1e-30"):
+            raise ValueError("External repayment exceeds observed source borrowing")
     if e.kind == "mark":
         ledger.account(e.destination).value = e.amount
         return
