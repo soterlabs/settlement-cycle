@@ -48,3 +48,26 @@ allocation claim; if confirmed as earnings, it creates no borrowed basis.
 The next useful evidence is a counterparty remittance/settlement explanation,
 particularly the principal/interest split for Anchorage. Transaction amounts
 alone cannot settle those questions.
+
+## Separately confirmed: October 2025 Aave rewards
+
+One additional receipt has a definite explanation: **243,167.543642328132
+aUSDS**, received on October 8, 2025 in
+[this transaction](https://etherscan.io/tx/0x0af39af528cd328028432e17f451aff046b19536824007f2e1665f1b7ed5b2e3).
+The [October 2 Spark payload](https://github.com/sparkdotfi/spark-spells/blob/dc2a653f4b2f5491641276e913cae06e221ce8ea/archive/20251002/SparkEthereum_20251002.sol#L180)
+explicitly calls `claimAllRewardsToSelf` on the Aave incentives controller.
+The receipt has a matching `RewardsClaimed` event naming the ALM as user,
+recipient and claimer, plus an actual aUSDS transfer from the ACI distribution
+wallet. The unrelated aToken interest mints are excluded.
+
+`scripts/audit_spark_aave_reward_claim.py` verifies those two events and the
+normalized receipt amount. This transaction has no new Sky draw, external
+borrowing, or unexplained outgoing capital; its other positive movements are
+already-recognized SparkLend reserve gifts. It is earned rewards, not a missing
+capital deposit.
+
+The running replay inputs are frozen and still list this receipt as unmatched.
+This read-only proof explains its purpose without altering those checkpoints,
+their uncertainty propagation, or published revenue. A later recognition update
+can consume the authenticated claim. Four tests cover actual receipt evidence,
+wrong recipients, missing delivery despite interest mints, and altered funding.
