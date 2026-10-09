@@ -80,7 +80,17 @@ def allocation_financing(pnl, history, *, idle_amounts=None, quantify_uncertaint
     from ..domain.monthly_pnl import VenueRevenue
 
     venues = list(pnl.venue_breakdown)
-    extra = set(history.analytics_only_venues) - {v.venue_id for v in venues}
+    reported = {v.venue_id for v in venues}
+    # A historical revenue snapshot may predate a configured allocation (for
+    # example Spark S66's NFT pool). The replay already carries its funding;
+    # do not hide that funding outside the named-allocation diagnostic merely
+    # because the old report omitted the revenue row. No old report is edited.
+    candidates = (set(history.venue_accounts) | set(history.custody_accounts)) - reported
+    unreported = {v for v in candidates - set(history.analytics_only_venues)
+                  if any(replay.daily[d].get(a, ZERO)
+                         for a in ([history.venue_accounts[v]] if v in history.venue_accounts else [])
+                         + history.custody_accounts.get(v, []) for d in days)}
+    extra = (set(history.analytics_only_venues) | unreported) - reported
     venues.extend(VenueRevenue(v, 'Tracing-only allocation', ZERO, ZERO, ZERO, ZERO) for v in sorted(extra))
     totals_by_ilk = defaultdict(Decimal)
     daily_by_ilk = {d: defaultdict(lambda: {'principal': ZERO, 'deduction': ZERO, 'cost': ZERO}) for d in days}
@@ -107,6 +117,10 @@ def allocation_financing(pnl, history, *, idle_amounts=None, quantify_uncertaint
         account = history.venue_accounts.get(venue.venue_id)
         accounts = ([account] if account is not None else []) + history.custody_accounts.get(venue.venue_id, [])
         reason = history.unsupported.get(venue.venue_id)
+        if venue.venue_id in unreported:
+            # Without the historical venue metadata, neither its revenue nor
+            # its full exemption policy is certified. Keep only modeled cost.
+            reason = reason or "Allocation missing from revenue snapshot; settlement deductions unverified"
         if account is None and reason is None:
             reason = "No capital account mapping"
         if any(a in replay.uncertain_daily[d] for a in accounts for d in days):
@@ -221,6 +235,7 @@ def allocation_financing(pnl, history, *, idle_amounts=None, quantify_uncertaint
         bounds["funding_uncertainty"] = financing_bounds(pnl, history, replay, rates, idle_amounts or {})
     return {
         **bounds,
+        "unreported_allocation_ids": sorted(unreported),
         "funding_assumptions": sorted({b.funding_assumption for b in history.batches if b.funding_assumption}),
         "external_drawn": replay.ledger.external_drawn,
         "external_repaid": replay.ledger.external_repaid,

@@ -118,3 +118,51 @@ def test_mixed_ilk_deductions_and_tracing_only_allocation_do_not_invent_revenue(
     assert row['net_pnl'] is None and row['net_apy'] is None and row['gross_apy'] is None
     assert row['revenue_available'] is False
     assert pnl.venue_breakdown == []
+
+
+def test_funded_nft_omitted_from_old_revenue_snapshot_remains_visible_but_uncertified():
+    day = date(2026, 8, 1)
+    history = CapitalHistory((CapitalBatch('draw', day, 1, 'ethereum', 1,
+        (AssetMovement('nft:position', D(0), D(100)),), D(100),
+        minted_by_ilk={'A': D(100)}),),
+        {'NFT': 'nft:aggregate', 'EMPTY': 'unused'}, {},
+        custody_accounts={'NFT': ['nft:position']})
+    pnl = SimpleNamespace(period=SimpleNamespace(start=day, end=day),
+        sky_revenue=D('.01'), sde_revenue=D(0), susds_spread_reimbursement=D(0),
+        venue_breakdown=[], sde_daily_breakdown=[],
+        sky_revenue_daily=[{'date': str(day), 'utilized': '100', 'daily_sky_rev': '.01',
+                           'base_apr': '.0365'}])
+    result = allocation_financing(pnl, history)
+    assert result['unreported_allocation_ids'] == ['NFT']
+    row, = result['allocations']
+    assert row['venue_id'] == 'NFT'
+    assert row['borrowed_principal_average'] == 100
+    assert row['modeled_cost_of_funds_by_ilk'] == {'A': D('.01')}
+    assert row['cost_of_funds'] is None
+    assert row['net_pnl'] is None and row['net_apy'] is None and row['gross_apy'] is None
+    assert row['revenue_available'] is False
+    assert result['allocation_cost_of_funds'] == 0
+    assert result['existing_cost_of_funds'] == D('.01')
+    assert pnl.venue_breakdown == [] and pnl.sky_revenue == D('.01')
+
+
+def test_reported_nft_uses_its_actual_deductions_and_revenue_without_a_duplicate_row():
+    day = date(2026, 8, 1)
+    history = CapitalHistory((CapitalBatch('draw', day, 1, 'ethereum', 1,
+        (AssetMovement('nft:position', D(0), D(100)),), D(100),
+        minted_by_ilk={'A': D(100)}),), {'NFT': 'nft:aggregate'}, {},
+        custody_accounts={'NFT': ['nft:position']})
+    pnl = SimpleNamespace(period=SimpleNamespace(start=day, end=day),
+        sky_revenue=D('.006'), sde_revenue=D(0), susds_spread_reimbursement=D(0),
+        venue_breakdown=[VenueRevenue('NFT', 'Pool', D(100), D(101), D(0), D(1),
+            actual_revenue=D(1), tw_avg_value=D(100), amm_idle_usds_tw_avg_usd=D(40))],
+        sde_daily_breakdown=[],
+        sky_revenue_daily=[{'date': str(day), 'utilized': '60', 'daily_sky_rev': '.006',
+                           'base_apr': '.0365'}])
+    result = allocation_financing(pnl, history, idle_amounts={'NFT': {day: D(40)}})
+    assert result['unreported_allocation_ids'] == []
+    row, = result['allocations']
+    assert row['cost_of_funds'] == D('.006')
+    assert row['net_pnl'] == D('.994')
+    assert row['gross_apy'] is not None and row['net_apy'] is not None
+    assert row['revenue_available'] is True
