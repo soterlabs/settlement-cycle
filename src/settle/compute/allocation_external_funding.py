@@ -104,8 +104,18 @@ def apply_external(ledger, e):
     refinancing = e.amount - carried_parts.get(retiring, ZERO)
     if not refinancing:
         return
-    eligible = [(key, origins(a).get(retiring, ZERO)) for key, a in ledger.accounts.items()]
-    eligible = [(key, amount) for key, amount in eligible if amount]
+    # Only the repaid lender can be refinanced. Avoid constructing every
+    # account's complete funding map for each historical repayment.
+    eligible = []
+    for key, account in ledger.accounts.items():
+        if retiring[0] == "external":
+            amount = account.external_by_source.get(retiring[1], ZERO)
+        elif not account.borrowed_by_ilk and retiring[1] == "unattributed":
+            amount = account.borrowed
+        else:
+            amount = account.borrowed_by_ilk.get(retiring[1], ZERO)
+        if amount:
+            eligible.append((key, amount))
     remaining = sum((amount for _, amount in eligible), ZERO)
     reduction = min(remaining, refinancing)
     left = reduction
