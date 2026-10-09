@@ -33,6 +33,7 @@ DRIP = topic("Drip(uint256,uint256)")
 FILE = topic("File(bytes32,uint256)")
 SWAP = topic("TokenExchange(address,int128,uint256,int128,uint256)")
 TRANSFER = topic("Transfer(address,address,uint256)")
+REMOVE_LIQUIDITY = topic("RemoveLiquidity(address,uint256[],uint256[],uint256)")
 
 
 def require(condition, message):
@@ -103,6 +104,40 @@ def rate_prices(proof, blocks):
     return prices, {"drips_verified": drips, "rate_changes_verified": files}
 
 
+def proportional_withdrawal_cash(rows):
+    """Authenticate the two-coin cash leg of a proportional LP withdrawal.
+
+    CurveStableSwapNG emits an LP burn followed by RemoveLiquidity; the event
+    contains returned coin quantities, an empty fees array, and token supply.
+    This separates returned LP capital from swaps sharing the transaction.
+    https://github.com/curvefi/stableswap-ng/blob/3332cd44656ec64b3c048885e1dd71955254b262/contracts/main/CurveStableSwapNG.vy
+    Other liquidity operations remain outside this narrowly checked shape.
+    """
+    indexed = {r["log_index"]: r for r in rows}
+    cash = defaultdict(int)
+    indexes = []
+    for row in rows:
+        if (row["address"] != POOL or row["topic0"] != REMOVE_LIQUIDITY
+                or "0x" + row["topic1"][-40:] != HOLDER):
+            continue
+        value = words(row["data"])
+        require(len(value) == 7 and value[0:2] == [96, 192]
+                and value[3] == 2 and value[6] == 0,
+                "Unsupported Curve proportional withdrawal layout")
+        burn = indexed.get(row["log_index"] - 1)
+        require(burn is not None and burn["address"] == POOL
+                and burn["topic0"] == TRANSFER
+                and "0x" + burn["topic1"][-40:] == HOLDER
+                and int(burn["topic2"], 16) == 0
+                and burn["transaction_hash"] == row["transaction_hash"]
+                and len(burn["data"]) == 66 and int(burn["data"], 16) > 0,
+                "Curve proportional withdrawal lacks matching LP burn")
+        cash[SUSDS] += value[4]
+        cash[USDT] += value[5]
+        indexes.append(row["log_index"])
+    return cash, indexes
+
+
 def audit(proof, residuals=None):
     groups, unique, blocks = defaultdict(list), {}, {}
     for row in proof["swap_rows"]:
@@ -141,7 +176,9 @@ def audit(proof, residuals=None):
                     actual[row["address"]] -= n
                 if b == HOLDER and a == POOL:
                     actual[row["address"]] += n
-        if not logs or dict(actual) != dict(expected):
+        withdrawal_cash, withdrawal_logs = proportional_withdrawal_cash(rows)
+        combined = {token: expected[token] + withdrawal_cash[token] for token in (SUSDS, USDT)}
+        if not logs or {k: v for k, v in actual.items() if v} != {k: v for k, v in combined.items() if v}:
             excluded.append({"identity": "ethereum:" + tx, "reason": "absent swap or cash mismatch"})
             continue
         block = rows[0]["block_number"]
@@ -149,6 +186,9 @@ def audit(proof, residuals=None):
         identity = "ethereum:" + tx
         row = {"identity": identity, "block": block, "timestamp": rows[0]["block_time"],
                "gain": str(gain), "quote": str(prices[block]), "swap_logs": sorted(logs)}
+        if withdrawal_logs:
+            row["proportional_withdrawal_logs"] = withdrawal_logs
+            row["lp_cash_excluded_from_swap_gain"] = {k: str(v) for k, v in withdrawal_cash.items()}
         if residuals is not None:
             row["matches_outflow"] = identity in outflows and abs(outflows[identity] + gain) < D("1e-8")
             row["matches_receipt"] = identity in receipts and abs(receipts[identity] - gain) < D("1e-8")
