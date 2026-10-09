@@ -330,7 +330,10 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
             deposits: dict[tuple[str, str], Decimal] = defaultdict(Decimal)
             deposited_shares: dict[tuple[str, str], int] = defaultdict(int)
             withdrawals = {}
-            senders = {_addr_topic(a.value) for a in prime.external_alm_sources.get(chain, [])}
+            senders = {_addr_topic(a.value) for a in (
+                *prime.external_alm_sources.get(chain, []),
+                *prime.capital_income_sources.get(chain, []),
+            )}
             from .allocation_merkl import wrapper_gift_transfers
             wrapper_gifts = wrapper_gift_transfers(block_logs, senders)
             seen = set()

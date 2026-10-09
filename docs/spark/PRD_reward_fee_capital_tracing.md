@@ -10,6 +10,10 @@ evidence in the capital normalizer. Explain earned receipts without creating
 borrowed principal, counting withdrawals twice, or recognizing revenue twice.
 The completed August diagnostic replays still leave these receipts unmatched.
 
+The accounting scope is **2026 MSC per-allocation borrowing costs**. Earlier
+transactions may establish opening principal and earned balances, but do not
+create 2025 MSC accounting or retroactive revenue bookings.
+
 This is a capital-tracing change. It does not authorize changing published
 January–August reports, API revenues, global Sky debt, rates, or deductions.
 Existing MSC classifications are authoritative for this work; do not require
@@ -116,11 +120,11 @@ does not authorize classifying every V4 receipt as fees.
 
 The operator has now confirmed Maple's 1,661,609.59 USDC, the USDe Safe's
 7,281,596.60 USDe and the other PYUSD payer's 1,250,000 PYUSD as yield.
-The existing sender configuration handles these, independently of the two
+The tracing-only `capital_income_sources` configuration handles these, independently of the two
 event-based integrations proposed here. Operations' 1,203,063.147623 USDC
 inflows have also been explicitly confirmed as yield and configured on Base
-and Avalanche-C. The smaller receipts in the remaining-receipts note remain
-open; the operator identifies `0xc8a3e1e0776b912047c89dc16470fd9c7ea1141d`
-as Maple-related, without yet classifying that payment. Their historical
+and Avalanche-C. The operator also confirms the Maple-related receipt from
+`0xc8a3e1e0776b912047c89dc16470fd9c7ea1141d` (383,178.08 USDC) as yield.
+Other smaller receipts in the remaining-receipts note remain open. Their historical
 cash amounts are neither proposed revenue adjustments nor August borrowing
 costs. Do not block the two independently proved integrations on these questions.

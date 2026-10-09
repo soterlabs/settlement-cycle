@@ -775,6 +775,9 @@ class Prime:
     # only after confirming it sends true off-chain yield, since misclassification
     # inflates revenue.
     external_alm_sources: dict[Chain, list[Address]] = field(default_factory=dict)
+    # Capital-tracing-only earned receipts. Historical receipts can establish
+    # opening funding without changing MSC revenue recognition in any period.
+    capital_income_sources: dict[Chain, list[Address]] = field(default_factory=dict)
     # Optional month-boundary activation per external source. A source is
     # excluded from periods beginning before its activation date, preserving
     # frozen historical reports while allowing a separate settlement true-up.
