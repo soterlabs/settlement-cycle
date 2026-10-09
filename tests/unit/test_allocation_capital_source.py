@@ -522,3 +522,21 @@ def test_susds_symbol_alone_does_not_authenticate_the_origin_vault(monkeypatch):
     fake = Token(Chain.ETHEREUM, VAULT, 'sUSDS', 18)
     monkeypatch.setattr(source.rpc, 'convert_to_assets', lambda *a: (_ for _ in ()).throw(AssertionError()))
     assert source._susds_capital_price(fake, 1) is None
+
+
+def test_deposit_and_otc_share_purchase_in_same_transaction_are_both_retained(monkeypatch):
+    # Receipt shape of Spark's April 29 sUSDS transaction: the deposit's
+    # minted shares and a separate peer transfer both belong to the ALM.
+    zero=topic(Address(bytes(20)))
+    logs=[draw(),
+          log(1,1,VAULT,TRANSFER_TOPIC0,[zero,topic(HOLDER)],[80*10**18]),
+          log(1,2,VAULT,source.DEPOSIT,[topic(HOLDER),topic(HOLDER)],
+              [80*10**18,80*10**18]),
+          log(1,3,VAULT,TRANSFER_TOPIC0,[topic(MANAGER),topic(HOLDER)],[20*10**18])]
+    prime=setup(monkeypatch,logs)
+    history=source.fetch_capital_history(prime,{Chain.ETHEREUM:1})
+    movement=next(m for m in history.batches[0].movements if m.account==history.venue_accounts['V1'])
+    assert movement.change==100 and movement.external_income==0
+    replay=replay_history(history,DAY,DAY)
+    assert not replay.unmatched_outflows and not replay.unmatched_receipts
+    assert replay.ledger.account(history.venue_accounts['V1']).borrowed==100

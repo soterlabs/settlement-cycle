@@ -310,6 +310,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
             minted_by_ilk: dict[str, Decimal] = defaultdict(Decimal)
             indices = {}
             deposits: dict[tuple[str, str], Decimal] = defaultdict(Decimal)
+            deposited_shares: dict[tuple[str, str], int] = defaultdict(int)
             withdrawals = {}
             senders = {_addr_topic(a.value) for a in prime.external_alm_sources.get(chain, [])}
             from .allocation_merkl import wrapper_gift_transfers
@@ -348,6 +349,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                         if len(words) != 2 or underlying is None:
                             raise ValueError("Invalid ERC4626 deposit event")
                         deposits[key] += Decimal(words[0]) / Decimal(10**underlying.decimals)
+                        deposited_shares[key] += words[1]
                         continue
                     if mapping[key].pricing_category in REBASING:
                         if row.topic0 not in {aave_reconstruct.MINT_T0, aave_reconstruct.BURN_T0, aave_reconstruct.BT_T0}:
@@ -445,7 +447,16 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                     burns = any(r.address == key[0] and r.topic0 == TRANSFER_TOPIC0
                                 and r.topic1 == _addr_topic(holder.value) for r in block_logs)
                     if not burns:
-                        change = deposits[key] + performance_fee
+                        if key in deposited_shares:
+                            from .allocation_vault_deposits import deposit_transaction_value
+
+                            change = deposit_transaction_value(
+                                cash=deposits[key], deposited_shares=deposited_shares[key],
+                                fee_shares=fee_shares.get(key, 0), net_shares=raw_change,
+                                price=price, scale=scale)
+                        else:
+                            # Async deposits are valued by their own adapter.
+                            change = deposits[key] + performance_fee
                 movements.append(AssetMovement(
                     _account(chain, v.token.address, holder), value_before, change, gift,
                 ))
