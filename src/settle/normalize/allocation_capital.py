@@ -57,6 +57,13 @@ class AssetMovement:
 
 
 @dataclass(frozen=True)
+class ExternalFundingOperation:
+    kind: str
+    source: str
+    amount: Decimal
+
+
+@dataclass(frozen=True)
 class CapitalBatch:
     identity: str
     day: date
@@ -67,6 +74,8 @@ class CapitalBatch:
     minted: Decimal = ZERO
     log_index: int = 0
     minted_by_ilk: dict[str, Decimal] = field(default_factory=dict)
+    external_funding: tuple[ExternalFundingOperation, ...] = ()
+    funding_assumption: str | None = None
 
 
 @dataclass(frozen=True)

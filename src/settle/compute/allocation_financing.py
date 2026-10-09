@@ -221,6 +221,10 @@ def allocation_financing(pnl, history, *, idle_amounts=None, quantify_uncertaint
         bounds["funding_uncertainty"] = financing_bounds(pnl, history, replay, rates, idle_amounts or {})
     return {
         **bounds,
+        "funding_assumptions": sorted({b.funding_assumption for b in history.batches if b.funding_assumption}),
+        "external_drawn": replay.ledger.external_drawn,
+        "external_repaid": replay.ledger.external_repaid,
+        "external_realised_loss": replay.ledger.external_realised_loss,
         "method": "transaction_weighted_average_borrowed_basis_v1",
         "status": "partial" if unresolved else "calculated",
         "allocations": rows,

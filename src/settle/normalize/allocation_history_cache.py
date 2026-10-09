@@ -13,7 +13,7 @@ from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
-from .allocation_capital import AssetMovement, CapitalBatch, CapitalHistory
+from .allocation_capital import AssetMovement, CapitalBatch, CapitalHistory, ExternalFundingOperation
 
 SCHEMA = 1
 
@@ -72,6 +72,8 @@ def load_history(path, key):
             row['day'] = date.fromisoformat(row['day'])
             row['minted'] = Decimal(row['minted'])
             row['minted_by_ilk'] = {k: Decimal(v) for k, v in row['minted_by_ilk'].items()}
+            row['external_funding'] = tuple(ExternalFundingOperation(
+                op['kind'], op['source'], Decimal(op['amount'])) for op in row.get('external_funding', []))
             row['movements'] = tuple(AssetMovement(
                 m['account'], Decimal(m['value_before']), Decimal(m['change']),
                 Decimal(m['external_income']), m['preserve_basis']) for m in row['movements'])
