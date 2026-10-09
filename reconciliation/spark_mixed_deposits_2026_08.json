@@ -1,0 +1,1420 @@
+{
+  "input_hashes": {
+    "/tmp/pr215-spark-savings-history.jsonl.gz": "21e5bc28d67c3a23d8724788959b765fda85d3b8aab528f1c767b80bce290c07",
+    "tests/fixtures/spark_susds_mixed_deposits.json.gz": "42b8d402223f8a2c731d6fb6d9ba4b497de0ed31f47dcf435a0d94e5a9f70a68",
+    "/home/agent/code/lakonema2000/settlement-cycle/scripts/repair_spark_mixed_deposits.py": "1c9f8d2db3d91bd89f03e3848543b66deda2b69f7507cc17a9e82e4825e983a0"
+  },
+  "repaired": 176,
+  "restored_share_value": "49595481.19145150587061373936",
+  "output_sha256": "c5eb93cc2322236fc620f25c980658d70fcc9db8e9bbbd0677f1ba940c5b290d",
+  "changes": [
+    {
+      "identity": "ethereum:0xa07d5cf57de3bc402e0f6fa99bd1de101b467e168eda8a0253137d5c7d098323",
+      "day": "2025-08-20",
+      "block": 23179301,
+      "old_change": "216664.982562604016359902",
+      "new_change": "416670.4925440317046690948354",
+      "restored_share_value": "200005.5099814276883091928354"
+    },
+    {
+      "identity": "ethereum:0x14be9db44492a801f941efaa3319803d65b3380a0546305e4a7ce86a1dc24b7b",
+      "day": "2025-08-29",
+      "block": 23247793,
+      "old_change": "202777.483644123361581751",
+      "new_change": "402784.3643032913219766453757",
+      "restored_share_value": "200006.8806591679603948943757"
+    },
+    {
+      "identity": "ethereum:0xc2c84a60d9d6b75ac890a76e5e02007d36e259fdceea91dfcccdc7ef167ca6b8",
+      "day": "2025-10-21",
+      "block": 23626553,
+      "old_change": "9000001.738370923004536604",
+      "new_change": "9305669.579630862958128647722",
+      "restored_share_value": "305667.841259939953592043722"
+    },
+    {
+      "identity": "ethereum:0x4c7dadd2f4b6a4bd65101fedfde7ba4e4e514f38e69911b79b9055a107afbdf5",
+      "day": "2025-10-21",
+      "block": 23626743,
+      "old_change": "275449.956971744881521371",
+      "new_change": "595038.6053412669018968159511",
+      "restored_share_value": "319588.6483695220203754449511"
+    },
+    {
+      "identity": "ethereum:0x4ff2d1ed253740e28be65a7b0c8e033e4e17fe8e645b382a82cd5d17d54aafb6",
+      "day": "2025-10-21",
+      "block": 23627072,
+      "old_change": "212400.204850098208966262",
+      "new_change": "504185.8960018371187127546416",
+      "restored_share_value": "291785.6911517389097464926416"
+    },
+    {
+      "identity": "ethereum:0xc9a62af674eb66ad4375190476512a87d9d436aa5baba90efd5ede415e7771cb",
+      "day": "2025-10-22",
+      "block": 23633095,
+      "old_change": "1241.475976683165165776",
+      "new_change": "2463.216833831396668911640043",
+      "restored_share_value": "1221.740857148231503135640043"
+    },
+    {
+      "identity": "ethereum:0xa9a95fe6505324a5bbbf51fe2d7610d889735cb53bddff10ecdb480f6845d0eb",
+      "day": "2025-10-25",
+      "block": 23654346,
+      "old_change": "84613.275266711219978622",
+      "new_change": "85876.33321839066713621148015",
+      "restored_share_value": "1263.05795167944715758948015"
+    },
+    {
+      "identity": "ethereum:0x2154d84f0b5045098566c3738152c27384fe74e93d200e18466c6e3d06825b1c",
+      "day": "2025-10-26",
+      "block": 23663308,
+      "old_change": "89322.30353439817747223",
+      "new_change": "90844.62214689942759287990793",
+      "restored_share_value": "1522.31861250125012064990793"
+    },
+    {
+      "identity": "ethereum:0xf0a6119c3951f1e5570198ed4d67042a9b526a3221d869c51a00b1a9d236bf98",
+      "day": "2025-11-01",
+      "block": 23704488,
+      "old_change": "19363.151123693970249382",
+      "new_change": "19499.15404409969365906576070",
+      "restored_share_value": "136.00292040572340968376070"
+    },
+    {
+      "identity": "ethereum:0x0831512c8686ab340993763f7a2d76f7f4454ba16f2dba54a433a5c6ff66bc07",
+      "day": "2025-11-05",
+      "block": 23734586,
+      "old_change": "3320143.092478231869607483",
+      "new_change": "3611798.228042400504029123279",
+      "restored_share_value": "291655.135564168634421640279"
+    },
+    {
+      "identity": "ethereum:0x261162ff24811c2b555ff69180d16295b534bd3ec5a8a105edfa950a8fdf8ecb",
+      "day": "2025-11-05",
+      "block": 23736202,
+      "old_change": "450000.033031913558935844",
+      "new_change": "741669.1953556895427070067005",
+      "restored_share_value": "291669.1623237759837711627005"
+    },
+    {
+      "identity": "ethereum:0x035077b350f1a4845093f9f70ecbba42bfa7b8c3cc8424a7476dcb62e2456704",
+      "day": "2025-11-06",
+      "block": 23738394,
+      "old_change": "285709.237821239481867183",
+      "new_change": "494032.2962173146303851094695",
+      "restored_share_value": "208323.0583960751485179264695"
+    },
+    {
+      "identity": "ethereum:0xda659be2511ec0acb0fa4bc012719fbb5f36fc0460a70bb50d7738f5e9fcf42e",
+      "day": "2025-11-06",
+      "block": 23738437,
+      "old_change": "1800000.11035844723075871",
+      "new_change": "2091654.483974516940194524354",
+      "restored_share_value": "291654.373616069709435814354"
+    },
+    {
+      "identity": "ethereum:0x3212e920bec986e9cc085735e22e6b25ef0d02069c79972d1a28f7f488e07334",
+      "day": "2025-11-06",
+      "block": 23741386,
+      "old_change": "39980.983262784089768334",
+      "new_change": "40151.58009591353140288905630",
+      "restored_share_value": "170.59683312944163455505630"
+    },
+    {
+      "identity": "ethereum:0x9b41d04348136f44acfee8c96706a14b1b4e3ca3f523d85c1b5d477c101fcb08",
+      "day": "2025-11-09",
+      "block": 23760110,
+      "old_change": "43394.813678696868477373",
+      "new_change": "1016289.511526368687122021525",
+      "restored_share_value": "972894.697847671818644648525"
+    },
+    {
+      "identity": "ethereum:0xc0e90d3c8e98e28d28d97dc5841e1df024d0a5d94ec35490739279ccb6031bf1",
+      "day": "2025-11-10",
+      "block": 23765675,
+      "old_change": "734399.792252826554208837",
+      "new_change": "1053817.439466383190166347649",
+      "restored_share_value": "319417.647213556635957510649"
+    },
+    {
+      "identity": "ethereum:0x7f4c6257a94cca265245d190231b158cba246bdb3eec9c554e046706ae536ea8",
+      "day": "2025-11-10",
+      "block": 23766648,
+      "old_change": "630000.085180038758647528",
+      "new_change": "921638.13251276826451348666",
+      "restored_share_value": "291638.04733272950586595866"
+    },
+    {
+      "identity": "ethereum:0xb9115019189f0220b69dfe4413eb78e24fd0e43b163cb98020fbb9910e6b105a",
+      "day": "2025-11-10",
+      "block": 23767352,
+      "old_change": "461065.045542451510783475",
+      "new_change": "738797.1481770138794785290632",
+      "restored_share_value": "277732.1026345623686950540632"
+    },
+    {
+      "identity": "ethereum:0x1379f3de745b05f6290bdf6b05c9ab973edf890a19624e859dc2facfeac1f813",
+      "day": "2025-11-12",
+      "block": 23779804,
+      "old_change": "62999.130113629618993407",
+      "new_change": "63213.18346752906105505576529",
+      "restored_share_value": "214.05335389944206164876529"
+    },
+    {
+      "identity": "ethereum:0x3a8136e9d6ab9018af9fe514901dba0caa39941f6396ea4152063232b59a1396",
+      "day": "2025-11-13",
+      "block": 23786973,
+      "old_change": "29764.309618286252079976",
+      "new_change": "30399.34388334275762999158295",
+      "restored_share_value": "635.03426505650555001558295"
+    },
+    {
+      "identity": "ethereum:0x14acbc544c86212a3b0a13f9c5e3f4ac09143827aceabae81e6cceb60dda0888",
+      "day": "2025-11-13",
+      "block": 23792833,
+      "old_change": "61891.600871584104615299",
+      "new_change": "62293.01136183332497140105098",
+      "restored_share_value": "401.41049024922035610205098"
+    },
+    {
+      "identity": "ethereum:0x6ebfabd195fa73951af33d0829736396cba9e11f79b0e8b10d35b4d2c7a3566b",
+      "day": "2025-11-16",
+      "block": 23810776,
+      "old_change": "64701.70701109649522105",
+      "new_change": "64823.13287813800006353379547",
+      "restored_share_value": "121.42586704150484248379547"
+    },
+    {
+      "identity": "ethereum:0x8d7941b4b64e765288a7f890d3f6a541d999555511236602d13d1016f2873996",
+      "day": "2025-11-20",
+      "block": 23839293,
+      "old_change": "9000.412989693769990532",
+      "new_change": "9118.737932908277889380261476",
+      "restored_share_value": "118.324943214507898848261476"
+    },
+    {
+      "identity": "ethereum:0x3beb87e1bfa199844d087efe767a07a8a97171e94a0f8ba5987a01071040fc14",
+      "day": "2025-11-23",
+      "block": 23862467,
+      "old_change": "1799999.154947468075082764",
+      "new_change": "2105442.261046238052136837143",
+      "restored_share_value": "305443.106098769977054073143"
+    },
+    {
+      "identity": "ethereum:0x9ea36ca41f41523cbbb8738f14a74cd7cd9e3a40bd684e8eab1562b8ecc0b91d",
+      "day": "2025-11-23",
+      "block": 23864102,
+      "old_change": "5233374.82650090044165136",
+      "new_change": "5469427.855829259290028370290",
+      "restored_share_value": "236053.029328358848377010290"
+    },
+    {
+      "identity": "ethereum:0xc286d5e6b6df64fd0a3de6a2cdff733606f104d5ef30e4462b4dce194dd385c5",
+      "day": "2025-11-24",
+      "block": 23865865,
+      "old_change": "145073.148683207140001611",
+      "new_change": "145306.2073814999894790523388",
+      "restored_share_value": "233.0586982928494774413388"
+    },
+    {
+      "identity": "ethereum:0x8dc2f59883e25453da9b695eef4b80d1e9710bcd5ee1e2d805f149dca484193b",
+      "day": "2025-11-25",
+      "block": 23875880,
+      "old_change": "331210.48560142491374773",
+      "new_change": "622827.1350118858009863527895",
+      "restored_share_value": "291616.6494104608872386227895"
+    },
+    {
+      "identity": "ethereum:0xb0d02add72f40885ee91fb38a97fc2c01c47ace99faaf2c7afbfb1a2772dffd0",
+      "day": "2025-11-26",
+      "block": 23883181,
+      "old_change": "697564.029113520503739862",
+      "new_change": "989159.5306558678469784538026",
+      "restored_share_value": "291595.5015423473432385918026"
+    },
+    {
+      "identity": "ethereum:0xc373d2cf38c1f731c2c6b8e24bce13daeb436bb2ab927bc90e22617478f38a5e",
+      "day": "2025-11-26",
+      "block": 23883612,
+      "old_change": "461515.219471011571921606",
+      "new_change": "794804.7188305737206596755652",
+      "restored_share_value": "333289.4993595621487380695652"
+    },
+    {
+      "identity": "ethereum:0x86973bb22ed5d561577b5df0d0f2cbd4f303ae67f24c63d5464044918c8cfccd",
+      "day": "2025-11-26",
+      "block": 23885389,
+      "old_change": "5408.850009903528877747",
+      "new_change": "7322.685358413787505281301845",
+      "restored_share_value": "1913.835348510258627534301845"
+    },
+    {
+      "identity": "ethereum:0x6183064adbcb598092a0fec5c820611e37abd285053066cf3c652bd4e1e67dc2",
+      "day": "2025-11-27",
+      "block": 23892672,
+      "old_change": "191862.056992750016959925",
+      "new_change": "194049.6438373526932365326990",
+      "restored_share_value": "2187.5868446026762766076990"
+    },
+    {
+      "identity": "ethereum:0x9608e61a912140efabedf1b80d3d19428fed0f714fbc8ead53e33d410d7dcb14",
+      "day": "2025-11-28",
+      "block": 23894451,
+      "old_change": "73144.431867410289993154",
+      "new_change": "73919.97965369974968715819446",
+      "restored_share_value": "775.54778628945969400419446"
+    },
+    {
+      "identity": "ethereum:0xd4a9f612395500f75d90c52f10b028b43fba268702422a0d8826026a145331c9",
+      "day": "2025-11-28",
+      "block": 23896239,
+      "old_change": "45117.538280472269045756",
+      "new_change": "46120.15553159908878027023260",
+      "restored_share_value": "1002.61725112681973451423260"
+    },
+    {
+      "identity": "ethereum:0xacaf9af5ccae256553403b45e3b0cda44d4c097e3fd3ccdc8a68df9ff81e3d86",
+      "day": "2025-11-29",
+      "block": 23901146,
+      "old_change": "87104.212373478326551089",
+      "new_change": "88851.50215781100782185560788",
+      "restored_share_value": "1747.28978433268127076660788"
+    },
+    {
+      "identity": "ethereum:0x19a262aa4d1a2d4e9560d4bba81dbcaefecedcdbd1efc62f080aa11d4b98d521",
+      "day": "2025-11-29",
+      "block": 23902939,
+      "old_change": "89605.666787159244289338",
+      "new_change": "90479.05407060974322639615078",
+      "restored_share_value": "873.38728345049893705815078"
+    },
+    {
+      "identity": "ethereum:0x8779706d2d069896082f8e698b51b396ffc324d6c3e265037923b5800348994f",
+      "day": "2025-11-30",
+      "block": 23910678,
+      "old_change": "127371.562285736577967298",
+      "new_change": "129396.9400693915658193460227",
+      "restored_share_value": "2025.3777836549878520480227"
+    },
+    {
+      "identity": "ethereum:0xca5e6a9b2061014a085ea9b2463f71e9644aa028fcb17abab51610f61895ab05",
+      "day": "2025-11-30",
+      "block": 23914263,
+      "old_change": "23761.35464908617515248",
+      "new_change": "25264.26762132424651967141687",
+      "restored_share_value": "1502.91297223807136719141687"
+    },
+    {
+      "identity": "ethereum:0xb0f33ea434c5efb20a5e4d377f1f8c2176acd1d61c08c36398ff443708d5c0d5",
+      "day": "2025-12-01",
+      "block": 23916053,
+      "old_change": "188695.872255313023204601",
+      "new_change": "189937.5098094745364537928855",
+      "restored_share_value": "1241.6375541615132491918855"
+    },
+    {
+      "identity": "ethereum:0x7a0a03a6000008af0a7ed7ebcab0a739ccf7add2f6e14b2920d689b89370c59e",
+      "day": "2025-12-01",
+      "block": 23921421,
+      "old_change": "179957.026235043699170034",
+      "new_change": "182211.7813295359950732772300",
+      "restored_share_value": "2254.7550944922959032432300"
+    },
+    {
+      "identity": "ethereum:0xae474df400d77e9a43e9729dc3fd32d50a120c705824fe588816d66ad33831dd",
+      "day": "2025-12-02",
+      "block": 23923206,
+      "old_change": "13132.498830358123421953",
+      "new_change": "14483.64447166379602229222281",
+      "restored_share_value": "1351.14564130567260033922281"
+    },
+    {
+      "identity": "ethereum:0xd2e78ad88f494dc67ca952b89ee3f6aa1169f0f813d7d699cc7d9fad372e685a",
+      "day": "2025-12-02",
+      "block": 23926793,
+      "old_change": "83329.553273907311695104",
+      "new_change": "84372.36492766292648824550895",
+      "restored_share_value": "1042.81165375561479314150895"
+    },
+    {
+      "identity": "ethereum:0xd026943a8dcb94989bfd85c7c674c0103379b0e489c9a901b486068ae51d3d72",
+      "day": "2025-12-05",
+      "block": 23945452,
+      "old_change": "63033.520585528043594987",
+      "new_change": "64115.37194386407576451844436",
+      "restored_share_value": "1081.85135833603216953144436"
+    },
+    {
+      "identity": "ethereum:0xc50ad727dd12f8207cba681b4fc185b93706306662e9432ef55de63bc151d41e",
+      "day": "2025-12-06",
+      "block": 23950471,
+      "old_change": "1500.277935100768779349",
+      "new_change": "2602.031921739107834453659004",
+      "restored_share_value": "1101.753986638339055104659004"
+    },
+    {
+      "identity": "ethereum:0x34b36197bd78af1c08757130ecfae668973b59481c8ed654e3a487812a1fe067",
+      "day": "2025-12-07",
+      "block": 23957597,
+      "old_change": "10550.137120649261520596",
+      "new_change": "13512.49085753964930532289142",
+      "restored_share_value": "2962.35373689038778472689142"
+    },
+    {
+      "identity": "ethereum:0x62b5f70fbb9b6181497bb0b5f710869a9382d0a282c0a1960f0801a48748fd7c",
+      "day": "2025-12-07",
+      "block": 23962964,
+      "old_change": "70191.992422825707039038",
+      "new_change": "72104.75345669490675529145704",
+      "restored_share_value": "1912.76103386919971625345704"
+    },
+    {
+      "identity": "ethereum:0x8db691af7ff8ff6bada44562a01e95285e9d01427468d99a9173e7a4c14def24",
+      "day": "2025-12-09",
+      "block": 23971875,
+      "old_change": "19777.590300330843387808",
+      "new_change": "21810.26726412707770825485177",
+      "restored_share_value": "2032.67696379623432044685177"
+    },
+    {
+      "identity": "ethereum:0xdf743a825a820b936b4c920a7fac697d71e7828e50b8d67fe0a3c456daff2697",
+      "day": "2025-12-09",
+      "block": 23977232,
+      "old_change": "12423.620598062590211497",
+      "new_change": "13848.25817936311092909106010",
+      "restored_share_value": "1424.63758130052071759406010"
+    },
+    {
+      "identity": "ethereum:0x04cd327d9842634317e9f343b6fb7f2b914804e858d318fafd45ebb81ae95b92",
+      "day": "2025-12-10",
+      "block": 23979484,
+      "old_change": "13509.505663562391791573",
+      "new_change": "14830.86288810806060096921956",
+      "restored_share_value": "1321.35722454566880939621956"
+    },
+    {
+      "identity": "ethereum:0x1adcd0a7d92eee54fc0eab9bdb042c4f4fef0f1a3cfb45ebd81f717add7028f5",
+      "day": "2025-12-10",
+      "block": 23985412,
+      "old_change": "54421.453219850331622282",
+      "new_change": "56277.05125410041090581920807",
+      "restored_share_value": "1855.59803425007928353720807"
+    },
+    {
+      "identity": "ethereum:0x55e7b873d66cb91c565ab524aa8d4ffc6057b13315d016263406a54f5ab1ef0f",
+      "day": "2025-12-11",
+      "block": 23988994,
+      "old_change": "346995.39395785336618401",
+      "new_change": "348918.7732777279492195383540",
+      "restored_share_value": "1923.3793198745830355283540"
+    },
+    {
+      "identity": "ethereum:0x62b2577bd448dda445a32daf920f202d14e3d8b3a4727a2d763061bfb3940f8f",
+      "day": "2025-12-13",
+      "block": 24001153,
+      "old_change": "90019.471588759359471212",
+      "new_change": "91025.96562466069459297794764",
+      "restored_share_value": "1006.49403590133512176594764"
+    },
+    {
+      "identity": "ethereum:0xa0a3da19539f85b26fcc572c22451139ab86c33d5a5b6150072b9336b042c5a3",
+      "day": "2025-12-13",
+      "block": 24002946,
+      "old_change": "638114.012817321360539977",
+      "new_change": "639150.8406028821138562906314",
+      "restored_share_value": "1036.8277855607533163136314"
+    },
+    {
+      "identity": "ethereum:0x5a76fccdb7a47e400cbbbc89125d38cf177b58a3044bdc1cd4e0c8754ae9635d",
+      "day": "2026-01-06",
+      "block": 24172119,
+      "old_change": "361562.620539671491823827",
+      "new_change": "444903.9417286173973647716792",
+      "restored_share_value": "83341.3211889459055409446792"
+    },
+    {
+      "identity": "ethereum:0xdb0c743c621eb5d200325502224af6fd62d0eebb946a1b91d6ac9bddadaaad29",
+      "day": "2026-01-06",
+      "block": 24172158,
+      "old_change": "288923.769504193644577035",
+      "new_change": "386154.5935806768868355166956",
+      "restored_share_value": "97230.8240764832422584816956"
+    },
+    {
+      "identity": "ethereum:0xb5aee254a252205a66fb60f73d97834a41c3061cebe3ba52de0e839ddaa6aec7",
+      "day": "2026-01-06",
+      "block": 24172515,
+      "old_change": "87493.829016778962887681",
+      "new_change": "240283.3973814733125771552621",
+      "restored_share_value": "152789.5683646943496894742621"
+    },
+    {
+      "identity": "ethereum:0xc779473873596332a3ba6b04efac7a65dbec79c4a663ad4f5a32e806ab7be7bf",
+      "day": "2026-01-06",
+      "block": 24173166,
+      "old_change": "161005.531221650724900589",
+      "new_change": "286011.3370254576380650693357",
+      "restored_share_value": "125005.8058038069131644803357"
+    },
+    {
+      "identity": "ethereum:0x70612f7bb839e890c18448d8daf77dd99cd32d0ea73c321c871d0dd0a2873454",
+      "day": "2026-01-06",
+      "block": 24173639,
+      "old_change": "98944.869508459641991902",
+      "new_change": "196166.9398282456476159731916",
+      "restored_share_value": "97222.0703197860056240711916"
+    },
+    {
+      "identity": "ethereum:0xd87115cff0b29c89a287a0ce5b54113c30b501d23aa5801249833e5a22cfb5e8",
+      "day": "2026-01-06",
+      "block": 24173830,
+      "old_change": "1177569.745451471892137805",
+      "new_change": "1247012.207791256183405496392",
+      "restored_share_value": "69442.462339784291267691392"
+    },
+    {
+      "identity": "ethereum:0x3ad85cfca16a6df30ad6709c1cb2f0e31494b86eee4971c0c916d875b0078eb0",
+      "day": "2026-01-06",
+      "block": 24173861,
+      "old_change": "1869328.610980047310595521",
+      "new_change": "1980436.079198636189547953951",
+      "restored_share_value": "111107.468218588878952432951"
+    },
+    {
+      "identity": "ethereum:0xaa3e3e927e4ed4bf32b7702890183c02886feb4ef7d3eb279cec3bac35d0b44a",
+      "day": "2026-01-07",
+      "block": 24182649,
+      "old_change": "8023.099496571456627825",
+      "new_change": "8147.797393519343690220214233",
+      "restored_share_value": "124.697896947887062395214233"
+    },
+    {
+      "identity": "ethereum:0x1c8a78ca7c12b81ef23fc426162bd5da23a616b47ed449e2aaba440a3c09e409",
+      "day": "2026-01-14",
+      "block": 24234002,
+      "old_change": "202140.029763408551145701",
+      "new_change": "285473.3225079786205731993008",
+      "restored_share_value": "83333.2927445700694274983008"
+    },
+    {
+      "identity": "ethereum:0x0898091654a28dd11c8fb3c6ab46a914a95af3a205efb445ea8084437f712314",
+      "day": "2026-01-15",
+      "block": 24240472,
+      "old_change": "40487.317574801319404761",
+      "new_change": "41257.96494068735758739636634",
+      "restored_share_value": "770.64736588603818263536634"
+    },
+    {
+      "identity": "ethereum:0x91f5f03a0ac3e991f7c3de7546ea9b9ca3387124719bfee3adc236b728aa9018",
+      "day": "2026-01-24",
+      "block": 24306606,
+      "old_change": "26409.636384542992645316",
+      "new_change": "26484.72427154230425212772797",
+      "restored_share_value": "75.08788699931160681172797"
+    },
+    {
+      "identity": "ethereum:0xd6618647fb2b4c5602cb1606d6a1cf482c809ab67f2c13c306271b53d1aa47b6",
+      "day": "2026-02-17",
+      "block": 24479103,
+      "old_change": "24114.902893901136824947",
+      "new_change": "1023920.780641328566203962286",
+      "restored_share_value": "999805.877747427429379015286"
+    },
+    {
+      "identity": "ethereum:0xa50cda946465ccde23f5995076418f9ff78b8efe3aa644c12ab7f75501dedbe8",
+      "day": "2026-02-17",
+      "block": 24479217,
+      "old_change": "69964.627478124882967298",
+      "new_change": "1069766.723738781452889194783",
+      "restored_share_value": "999802.096260656569921896783"
+    },
+    {
+      "identity": "ethereum:0x353063ac31277d3ac63cdbc09c1b3b87e7fabb44f6fc639600e0c402fc52a83c",
+      "day": "2026-02-19",
+      "block": 24490813,
+      "old_change": "31879.50380575106602069",
+      "new_change": "1031711.987064456680018224644",
+      "restored_share_value": "999832.483258705613997534644"
+    },
+    {
+      "identity": "ethereum:0x9ec965cbe793f12e3a73b5103b26ef53fdac0ed06d81e05debc652d77008af4d",
+      "day": "2026-02-24",
+      "block": 24525481,
+      "old_change": "6685.868533941837896996",
+      "new_change": "7053.019649324448381393698772",
+      "restored_share_value": "367.151115382610484397698772"
+    },
+    {
+      "identity": "ethereum:0x1ebec347543dfdf227dede4bd3cee28c569d88a93c9779086170079aaab9520d",
+      "day": "2026-02-28",
+      "block": 24556444,
+      "old_change": "20369.379327711571300183",
+      "new_change": "20955.16543344033972942361745",
+      "restored_share_value": "585.78610572876842924061745"
+    },
+    {
+      "identity": "ethereum:0xda50e73f9d4722402ae4ec6e506c3726a78fc5f6146b4957bfadc2c1fffc8f8c",
+      "day": "2026-03-04",
+      "block": 24584100,
+      "old_change": "5542.226029523637463671",
+      "new_change": "6345.777396498170856388758911",
+      "restored_share_value": "803.551366974533392717758911"
+    },
+    {
+      "identity": "ethereum:0xa79f95765468af8e5eb681e3ecf4c5dceb167dcf9ac96563bf14a335ccc36ad3",
+      "day": "2026-03-14",
+      "block": 24658296,
+      "old_change": "1685.206379989774965644",
+      "new_change": "2591.056069777883461249692501",
+      "restored_share_value": "905.849689788108495605692501"
+    },
+    {
+      "identity": "ethereum:0x3b38866879ba6f19d5e22d65c214a9611db792f9e142ea68a59a9c9d31ef732a",
+      "day": "2026-03-17",
+      "block": 24679693,
+      "old_change": "22723.242009812911500061",
+      "new_change": "23783.13174139448973858127659",
+      "restored_share_value": "1059.88973158157823852027659"
+    },
+    {
+      "identity": "ethereum:0x9a96f004764275d3f81c7955b0549f3c7f0eae60a092995e72400445e767ac04",
+      "day": "2026-03-18",
+      "block": 24684404,
+      "old_change": "2738.287052020996059193",
+      "new_change": "4189.197690002647962456338316",
+      "restored_share_value": "1450.910637981651903263338316"
+    },
+    {
+      "identity": "ethereum:0x941cd902bb92a0e93979849d491a9ef7bb239b5b728323d6c9765490e32ee0bf",
+      "day": "2026-03-19",
+      "block": 24687990,
+      "old_change": "2719.766377967300466781",
+      "new_change": "3843.960178529584774547467765",
+      "restored_share_value": "1124.193800562284307766467765"
+    },
+    {
+      "identity": "ethereum:0x910de665e8b39e5c225fe8c619ad47d53ae9c9078151a363904f923e74de6666",
+      "day": "2026-03-22",
+      "block": 24709807,
+      "old_change": "4520.963672870284786641",
+      "new_change": "4820.074250511964403396055932",
+      "restored_share_value": "299.110577641679616755055932"
+    },
+    {
+      "identity": "ethereum:0xf211d56d44521d0d00fafc937e778c9832f33ab8fac2657eea9197c100d57107",
+      "day": "2026-03-23",
+      "block": 24718798,
+      "old_change": "17950.582173284801436157",
+      "new_change": "18161.86122516744180787387997",
+      "restored_share_value": "211.27905188264037171687997"
+    },
+    {
+      "identity": "ethereum:0x87ca504d4853d76510a869fb13c9c0040639a587556d4b7a33d8c02c5f2daa85",
+      "day": "2026-03-24",
+      "block": 24727779,
+      "old_change": "2336.585903803302640927",
+      "new_change": "2522.820556232695667425795423",
+      "restored_share_value": "186.234652429393026498795423"
+    },
+    {
+      "identity": "ethereum:0x0eb80064d0f885132ca620c5ba781e73ddef60895383d7121d798d62daf303bd",
+      "day": "2026-03-26",
+      "block": 24740936,
+      "old_change": "199978.469347915712534935",
+      "new_change": "200165.0637446968639453638656",
+      "restored_share_value": "186.5943967811514104288656"
+    },
+    {
+      "identity": "ethereum:0xfa20f31ee2412ef5373e564eb444fbdb9c9022e1c5cb69996b8d1f3c649f2cdf",
+      "day": "2026-03-27",
+      "block": 24746767,
+      "old_change": "99977.313391270995704324",
+      "new_change": "100100.3910254484524576077111",
+      "restored_share_value": "123.0776341774567532837111"
+    },
+    {
+      "identity": "ethereum:0x0a30e876423ec644a1f204e702593b4141302ab65e92df616a7d9a724e712f18",
+      "day": "2026-04-06",
+      "block": 24822452,
+      "old_change": "294934.128542553485510117",
+      "new_change": "396975.2857024644460380703494",
+      "restored_share_value": "102041.1571599109605279533494"
+    },
+    {
+      "identity": "ethereum:0xba8c43d3bf9a42ed7a1accffb42991e026899ba84f90e17789fdc8788a6c9f43",
+      "day": "2026-04-09",
+      "block": 24841798,
+      "old_change": "17853.356826110294067194",
+      "new_change": "18663.57245180389160764936090",
+      "restored_share_value": "810.21562569359754045536090"
+    },
+    {
+      "identity": "ethereum:0x3206158c5d84ee486a0d2d1a0a44a01f10efd11ab68a19823436acdba5ee0738",
+      "day": "2026-04-11",
+      "block": 24858133,
+      "old_change": "1754.450374061496767029",
+      "new_change": "4668.696480961501705180325364",
+      "restored_share_value": "2914.246106900004938151325364"
+    },
+    {
+      "identity": "ethereum:0x3ba62c9cfd370cd21aa53c2c84d815b387f072ed8533027fecea592cebef4162",
+      "day": "2026-04-15",
+      "block": 24885961,
+      "old_change": "88703.706781591701298294",
+      "new_change": "90815.60430822240946383129192",
+      "restored_share_value": "2111.89752663070816553729192"
+    },
+    {
+      "identity": "ethereum:0x96c42276391e80f333a3c2275ec621bdf9885617fd9ca9ece4664cdcaf46d8bf",
+      "day": "2026-04-16",
+      "block": 24891350,
+      "old_change": "4115.204671317460136224",
+      "new_change": "5810.389425086217484266045049",
+      "restored_share_value": "1695.184753768757348042045049"
+    },
+    {
+      "identity": "ethereum:0xdb3d4e4e64f6edcc772dd80de961cc0614288bfabe0fbdaff44154b1b8d2a3d2",
+      "day": "2026-04-17",
+      "block": 24900353,
+      "old_change": "135425.962238215367243746",
+      "new_change": "136952.3905950054592667430922",
+      "restored_share_value": "1526.4283567900920229970922"
+    },
+    {
+      "identity": "ethereum:0x8d6f6f781e42ab727891b1a714dedcd1b111327e8f2395439184d5d4ec714081",
+      "day": "2026-04-18",
+      "block": 24904385,
+      "old_change": "21487.48696412776114524",
+      "new_change": "22510.47003419853439032898125",
+      "restored_share_value": "1022.98307007077324508898125"
+    },
+    {
+      "identity": "ethereum:0x1016507886c6898c9fb2376353165cc50163198480e6001a0967c6512c839f0c",
+      "day": "2026-04-18",
+      "block": 24909236,
+      "old_change": "249238.07789391958830979",
+      "new_change": "250344.7362332221360585485451",
+      "restored_share_value": "1106.6583393025477487585451"
+    },
+    {
+      "identity": "ethereum:0x55e5f214b9abf9334b402d847713cb8173efec8ac04e958f46bd373470db7a36",
+      "day": "2026-04-23",
+      "block": 24944688,
+      "old_change": "1944.113152476537909925",
+      "new_change": "5167.663051619551817435251629",
+      "restored_share_value": "3223.549899143013907510251629"
+    },
+    {
+      "identity": "ethereum:0xbf6382cb7c44bb47b75366e1d7ed5bc1959af028521a83a444cd6c4aae268683",
+      "day": "2026-04-29",
+      "block": 24985942,
+      "old_change": "9924803.542007663477553834",
+      "new_change": "10785899.94029848633036536649",
+      "restored_share_value": "861096.39829082285281153249"
+    },
+    {
+      "identity": "ethereum:0x4e1de9dca91ffcebbc7e72306aa43cad0da6ad227ab324124db1a2776844855d",
+      "day": "2026-04-30",
+      "block": 24993523,
+      "old_change": "1249999.999999999999999992",
+      "new_change": "2249926.712234192821394199682",
+      "restored_share_value": "999926.712234192821394207682"
+    },
+    {
+      "identity": "ethereum:0x8e27ec289e03fdd7aea9d5f2f95465940ca7e73398e626ec4cfd8e0eba0e5a34",
+      "day": "2026-04-30",
+      "block": 24993541,
+      "old_change": "1180555.555555555555555548",
+      "new_change": "2180473.945629819570818012462",
+      "restored_share_value": "999918.390074264015262464462"
+    },
+    {
+      "identity": "ethereum:0x101144f9cb21f9a005bee0caffef52f6767eddda320b5c4862350432a69c6588",
+      "day": "2026-04-30",
+      "block": 24993610,
+      "old_change": "763888.888888888888888884",
+      "new_change": "1763797.333324584910696955726",
+      "restored_share_value": "999908.444435696021808071726"
+    },
+    {
+      "identity": "ethereum:0xa4b6c418f08545b67c1fcfcb84c784b5534148f6341ada89952fff36daad9561",
+      "day": "2026-04-30",
+      "block": 24993641,
+      "old_change": "555555.555555555555555552",
+      "new_change": "1555472.312540076377837328663",
+      "restored_share_value": "999916.756984520822281776663"
+    },
+    {
+      "identity": "ethereum:0x51a720bd6eeace67a93e9a49f36dd841ec385a17bd83def02fa541943996a1d1",
+      "day": "2026-04-30",
+      "block": 24993810,
+      "old_change": "486111.111111111111111108",
+      "new_change": "1486019.781697819673052006810",
+      "restored_share_value": "999908.670586708561940898810"
+    },
+    {
+      "identity": "ethereum:0x3121ab58de890d5c276e997af5c3f081d08e8ad70d74ee27782f04dc478a7caf",
+      "day": "2026-04-30",
+      "block": 24993953,
+      "old_change": "416666.666666666666666664",
+      "new_change": "1416583.721831688394215832102",
+      "restored_share_value": "999917.055165021727549168102"
+    },
+    {
+      "identity": "ethereum:0x94fb4cd6cd2cc1625bb0d977ec2f3f321c0cba15982d817a45c04d7ced93287b",
+      "day": "2026-04-30",
+      "block": 24993969,
+      "old_change": "416666.666666666666666664",
+      "new_change": "1416585.020923639254575931935",
+      "restored_share_value": "999918.354256972587909267935"
+    },
+    {
+      "identity": "ethereum:0x7597daa55ac00fd40c60b0954d62483abb03244934bafc43a49d7d050f6b6ecc",
+      "day": "2026-04-30",
+      "block": 24993991,
+      "old_change": "416666.666666666666666664",
+      "new_change": "1416583.182330980875293643575",
+      "restored_share_value": "999916.515664314208626979575"
+    },
+    {
+      "identity": "ethereum:0x7e8166e11f7c26dedff350f32d72625669622f206d71e265ca1e01e5f65a37e4",
+      "day": "2026-04-30",
+      "block": 24994023,
+      "old_change": "347222.22222222222222222",
+      "new_change": "1347134.167519408663398735993",
+      "restored_share_value": "999911.945297186441176515993"
+    },
+    {
+      "identity": "ethereum:0xa8774c7b7e1758ca3d5dd81ca6cc8ac6a5998c44a77874c46b453fed5b983e73",
+      "day": "2026-04-30",
+      "block": 24994054,
+      "old_change": "347222.22222222222222222",
+      "new_change": "1347138.662275760324508055226",
+      "restored_share_value": "999916.440053538102285835226"
+    },
+    {
+      "identity": "ethereum:0xf09044405e51b35bad0756dcfe4688872e3dec883d486e1086da9809082f784d",
+      "day": "2026-04-30",
+      "block": 24994118,
+      "old_change": "416666.666666666666666664",
+      "new_change": "1416578.279825095710769401842",
+      "restored_share_value": "999911.613158429044102737842"
+    },
+    {
+      "identity": "ethereum:0xd8b6abb808c768118e4467094189a6cb27cd3c93634f051545139b0b5760804e",
+      "day": "2026-04-30",
+      "block": 24994146,
+      "old_change": "486111.111111111111111108",
+      "new_change": "1486028.797322703328211799101",
+      "restored_share_value": "999917.686211592217100691101"
+    },
+    {
+      "identity": "ethereum:0x4ab24f7c79a0848035245f4bdbfad14d13b6e24a458ee4a25a3b4b71b188b450",
+      "day": "2026-04-30",
+      "block": 24994159,
+      "old_change": "486111.111111111111111108",
+      "new_change": "1486041.798501393777021907233",
+      "restored_share_value": "999930.687390282665910799233"
+    },
+    {
+      "identity": "ethereum:0x52971f5836d9b7b8ed6b64f9538e5aaf90ed283682025a1a808b6b9e9f709dd3",
+      "day": "2026-04-30",
+      "block": 24994184,
+      "old_change": "416666.666666666666666664",
+      "new_change": "1416589.799088926114208110185",
+      "restored_share_value": "999923.132422259447541446185"
+    },
+    {
+      "identity": "ethereum:0x420b11be28b00440b5e4ef63eb4c97905fa4cf8a721bde84ed9aef032cc3dae6",
+      "day": "2026-04-30",
+      "block": 24994195,
+      "old_change": "416666.666666666666666664",
+      "new_change": "1416578.016147446693838220112",
+      "restored_share_value": "999911.349480780027171556112"
+    },
+    {
+      "identity": "ethereum:0x2f0695f355e3a7a310e0cd6f8034397f4463f13b1968cbe208e122f1b2b32607",
+      "day": "2026-04-30",
+      "block": 24994200,
+      "old_change": "347222.22222222222222222",
+      "new_change": "1347141.813785929082011349317",
+      "restored_share_value": "999919.591563706859789129317"
+    },
+    {
+      "identity": "ethereum:0x89137f5022eb2a2a3685d8038660119e071b16e0771ee466c838619da2e5f9ef",
+      "day": "2026-04-30",
+      "block": 24994218,
+      "old_change": "416666.666666666666666664",
+      "new_change": "1416581.134283731562176207650",
+      "restored_share_value": "999914.467617064895509543650"
+    },
+    {
+      "identity": "ethereum:0x22caad7dc188772f799f9e7ed1a246b61e2221e61a29167ae7245550a532dcf6",
+      "day": "2026-04-30",
+      "block": 24994242,
+      "old_change": "347222.22222222222222222",
+      "new_change": "1347131.493860078273637133516",
+      "restored_share_value": "999909.271637856051414913516"
+    },
+    {
+      "identity": "ethereum:0xa613ad99d3b69e0f954a4ff97a27040bb76b58fc1720a299fa9eb08c425b3de5",
+      "day": "2026-04-30",
+      "block": 24994250,
+      "old_change": "347222.22222222222222222",
+      "new_change": "1347161.298128779713426613025",
+      "restored_share_value": "999939.075906557491204393025"
+    },
+    {
+      "identity": "ethereum:0x761c3de9e38271cb68a491886694d10b44058e17a414ed9edc6df4a845e8af81",
+      "day": "2026-04-30",
+      "block": 24994265,
+      "old_change": "347222.22222222222222222",
+      "new_change": "1347135.819885796902035579918",
+      "restored_share_value": "999913.597663574679813359918"
+    },
+    {
+      "identity": "ethereum:0xee43f629a1b7b44de1e836fb19ebec1e7f792375fd6250c78bf0b04a62b00eb4",
+      "day": "2026-04-30",
+      "block": 24994333,
+      "old_change": "763888.888888888888888884",
+      "new_change": "1763810.093499290918450053876",
+      "restored_share_value": "999921.204610402029561169876"
+    },
+    {
+      "identity": "ethereum:0x0a480ab890140d998ea9846ce53c8d24e90bd2ed2b4ab8edb38cfbf3978cbd36",
+      "day": "2026-04-30",
+      "block": 24994399,
+      "old_change": "1041666.66666666666666666",
+      "new_change": "2041581.405484837884734086304",
+      "restored_share_value": "999914.738818171218067426304"
+    },
+    {
+      "identity": "ethereum:0xad845bba4476c953a794cd4a5385ca0e8e47a441cefa0a6f519b312768efe7d4",
+      "day": "2026-04-30",
+      "block": 24994624,
+      "old_change": "763888.888888888888888884",
+      "new_change": "1763808.021336735110093724318",
+      "restored_share_value": "999919.132447846221204840318"
+    },
+    {
+      "identity": "ethereum:0x13fa18fa17cba4bcf02020abe15af06fae5c9e23c08115aa5d747f85aba382a3",
+      "day": "2026-04-30",
+      "block": 24994634,
+      "old_change": "763888.888888888888888884",
+      "new_change": "1763811.843463811311129283919",
+      "restored_share_value": "999922.954574922422240399919"
+    },
+    {
+      "identity": "ethereum:0xdd639543c4d4b2cc84bf09c2823773a71d8097525bddbfb7d197fd36bf3761d6",
+      "day": "2026-04-30",
+      "block": 24994644,
+      "old_change": "694444.44444444444444444",
+      "new_change": "1694353.629268294084786443938",
+      "restored_share_value": "999909.184823849640342003938"
+    },
+    {
+      "identity": "ethereum:0x76fb88771750bf92c235015d8b227981c9427c9bf64e5d71483eaf698b3adcb8",
+      "day": "2026-04-30",
+      "block": 24994701,
+      "old_change": "347222.22222222222222222",
+      "new_change": "1347133.918702396765945421938",
+      "restored_share_value": "999911.696480174543723201938"
+    },
+    {
+      "identity": "ethereum:0x54ed0fee8a653076ae0e654be19bace8a72e548699ba18b00d5b03d88ee56ef8",
+      "day": "2026-04-30",
+      "block": 24994706,
+      "old_change": "347222.22222222222222222",
+      "new_change": "1347130.681828431840867137404",
+      "restored_share_value": "999908.459606209618644917404"
+    },
+    {
+      "identity": "ethereum:0xf49ae43255bfcdc04c813e7c8fcc17ee82ea40e58993aeffa1697ba207c99f1d",
+      "day": "2026-04-30",
+      "block": 24994807,
+      "old_change": "416666.666666666666666664",
+      "new_change": "1416575.762156232488693739115",
+      "restored_share_value": "999909.095489565822027075115"
+    },
+    {
+      "identity": "ethereum:0xf9011f7bdb02be9b264ef6647321671e01ce931dd8071d1b4116004de3289b6a",
+      "day": "2026-05-01",
+      "block": 24996827,
+      "old_change": "57130.029704961268563835",
+      "new_change": "1057053.295850498094737374136",
+      "restored_share_value": "999923.266145536826173539136"
+    },
+    {
+      "identity": "ethereum:0x45591ab115ca1bcd6e99744a262a10e8760c4d8dab6b3fccc35cc3de32c6137f",
+      "day": "2026-05-01",
+      "block": 24997425,
+      "old_change": "250247.254283331001278179",
+      "new_change": "1250198.342800558743117153922",
+      "restored_share_value": "999951.088517227741838974922"
+    },
+    {
+      "identity": "ethereum:0xcef82b72599e9596b464f7dadd7f3362944d40ce78b5965037c1bbc6bf27daf3",
+      "day": "2026-05-01",
+      "block": 24998109,
+      "old_change": "361117.669608457980329087",
+      "new_change": "527751.6221506274182799008256",
+      "restored_share_value": "166633.9525421694379508138256"
+    },
+    {
+      "identity": "ethereum:0x7dbf37c77b564180fc87b7cf0ad53145fa1d0552b2d6efdce52b69a0a025a545",
+      "day": "2026-05-01",
+      "block": 24998447,
+      "old_change": "833349.196763653909024148",
+      "new_change": "972213.1975952507169033779329",
+      "restored_share_value": "138864.0008315968078792299329"
+    },
+    {
+      "identity": "ethereum:0x10d8cc898cb1ac4ba479702301325359c5bcd1dbb5680263c3471b5b955770bd",
+      "day": "2026-05-01",
+      "block": 25002461,
+      "old_change": "316476.604867519918899545",
+      "new_change": "510910.8093285853058847872081",
+      "restored_share_value": "194434.2044610653869852422081"
+    },
+    {
+      "identity": "ethereum:0x11827964e2ecfdd127ec0d588aa2e7f1f565df906fb018e593e94ee8ea6a05e9",
+      "day": "2026-05-02",
+      "block": 25004236,
+      "old_change": "833551.721838498411903527",
+      "new_change": "1055750.318206609141910730234",
+      "restored_share_value": "222198.596368110730007203234"
+    },
+    {
+      "identity": "ethereum:0xf1846f3e0bebe9ce1978dbd3d7377de93f8f0599bf33d3ccc29098ea7b5b168e",
+      "day": "2026-05-02",
+      "block": 25004410,
+      "old_change": "690214.90352170087307726",
+      "new_change": "856864.5452888968413872077269",
+      "restored_share_value": "166649.6417671959683099477269"
+    },
+    {
+      "identity": "ethereum:0xf577d0a5b10c28300539d337f0085eefd44f5c7519fbb9017f107281643126bd",
+      "day": "2026-05-09",
+      "block": 25058709,
+      "old_change": "416666.666666666666666664",
+      "new_change": "827804.1050791523195308205506",
+      "restored_share_value": "411137.4384124856528641565506"
+    },
+    {
+      "identity": "ethereum:0xd797e42e75f0ad591de6d702d147a5a128e0c2a4caf8f150ee031ebdbe966d9f",
+      "day": "2026-05-09",
+      "block": 25058733,
+      "old_change": "416666.666666666666666664",
+      "new_change": "750597.3699474682410614040027",
+      "restored_share_value": "333930.7032808015743947400027"
+    },
+    {
+      "identity": "ethereum:0x2fff5234068623a3ea1934fca6936d95ebd30c39151ed8b29db77b5b21a2a63d",
+      "day": "2026-05-09",
+      "block": 25058771,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486475.8655442513132696027318",
+      "restored_share_value": "139253.6433220290910473827318"
+    },
+    {
+      "identity": "ethereum:0x8c2766e7a97e20c881b4a5fb4c60dfb52e68fd1e5a83f1764cde06e6a6fbcde6",
+      "day": "2026-05-09",
+      "block": 25058781,
+      "old_change": "347222.22222222222222222",
+      "new_change": "541696.8374474858067366241715",
+      "restored_share_value": "194474.6152252635845144041715"
+    },
+    {
+      "identity": "ethereum:0x68034a41123492c382a14e4ef7e1e5bbee34e9dc68e1075ce007ff7adab5f10e",
+      "day": "2026-05-09",
+      "block": 25058786,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486113.4449045725655510238545",
+      "restored_share_value": "138891.2226823503433288038545"
+    },
+    {
+      "identity": "ethereum:0x7f036afe851259109856c526d20a2dbe14d56b4150bdab25dce8f601714516f0",
+      "day": "2026-05-09",
+      "block": 25058799,
+      "old_change": "416666.666666666666666664",
+      "new_change": "583752.6969406715546292071824",
+      "restored_share_value": "167086.0302740048879625431824"
+    },
+    {
+      "identity": "ethereum:0x708ec939202344ccdcc6429ca3b27f15669be8bdeb67f6512198f76fafbadd9f",
+      "day": "2026-05-09",
+      "block": 25058811,
+      "old_change": "416666.666666666666666664",
+      "new_change": "583696.9530639889316319979261",
+      "restored_share_value": "167030.2863973222649653339261"
+    },
+    {
+      "identity": "ethereum:0xaed11d1fb6a4f2637a527aca683bf62401c9c57c90dfdb292841a51f586cf0b2",
+      "day": "2026-05-09",
+      "block": 25058821,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486446.2252714315559472935703",
+      "restored_share_value": "139224.0030492093337250735703"
+    },
+    {
+      "identity": "ethereum:0xf1fa2d7a88055a3fae4895f1dad8568dd40894ddd0d6efdc5c54ebb98f17cc85",
+      "day": "2026-05-09",
+      "block": 25058833,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486390.3824609012808575993475",
+      "restored_share_value": "139168.1602386790586353793475"
+    },
+    {
+      "identity": "ethereum:0xa3dbdc770f33fc0b22b696b08ff0b7a0ce8fe91009e3d49c35adb16be5a1c865",
+      "day": "2026-05-09",
+      "block": 25058843,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486445.8671125192854749069953",
+      "restored_share_value": "139223.6448902970632526869953"
+    },
+    {
+      "identity": "ethereum:0x443eaf917ff5530a4b7413e9e84da312f8056a271140d0114140c047bb8e3a1a",
+      "day": "2026-05-09",
+      "block": 25058853,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486390.3965319314400116483447",
+      "restored_share_value": "139168.1743097092177894283447"
+    },
+    {
+      "identity": "ethereum:0xb8ee952c4fb2476ec7369ef9dca9c5dd918f926c6153d7328142b6b741c9e4f1",
+      "day": "2026-05-09",
+      "block": 25058863,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486390.0236839661995957904393",
+      "restored_share_value": "139167.8014617439773735704393"
+    },
+    {
+      "identity": "ethereum:0x1d0de263688c1742ed150c55ce357338777ec6b016b5a2977e208f93e26b8e94",
+      "day": "2026-05-09",
+      "block": 25058875,
+      "old_change": "416666.666666666666666664",
+      "new_change": "583612.1230626971077458135794",
+      "restored_share_value": "166945.4563960304410791495794"
+    },
+    {
+      "identity": "ethereum:0xb4c8e79ac09e6eb265ee7cbb5b2b26655c4c2b5a80807af2fa2a44d3876dba72",
+      "day": "2026-05-09",
+      "block": 25058887,
+      "old_change": "416666.666666666666666664",
+      "new_change": "583667.3244548215552164621376",
+      "restored_share_value": "167000.6577881548885497981376"
+    },
+    {
+      "identity": "ethereum:0x63bfa484389949145507d276609d398b779f522f7701f5eb5041a883c154ba92",
+      "day": "2026-05-09",
+      "block": 25058899,
+      "old_change": "416666.666666666666666664",
+      "new_change": "583667.2465768030198657148039",
+      "restored_share_value": "167000.5799101363531990508039"
+    },
+    {
+      "identity": "ethereum:0x874b4fba06ee5fbc83b7845a6aab1be738d57211a2f114b29cfed3dad4401583",
+      "day": "2026-05-09",
+      "block": 25058917,
+      "old_change": "416666.666666666666666664",
+      "new_change": "583526.9740909580250431300332",
+      "restored_share_value": "166860.3074242913583764660332"
+    },
+    {
+      "identity": "ethereum:0xfb24e3cd7aecd5b089a23950563e730b3a303393151cd1d6ebdc63329543dbd0",
+      "day": "2026-05-09",
+      "block": 25058944,
+      "old_change": "347222.22222222222222222",
+      "new_change": "569472.6166927226010257739865",
+      "restored_share_value": "222250.3944705003788035539865"
+    },
+    {
+      "identity": "ethereum:0x1b4a3e9ba82e539167e5cf6ff914c19489239027da5622af408d2fd162e1d965",
+      "day": "2026-05-09",
+      "block": 25058955,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486417.6354456658214058669969",
+      "restored_share_value": "139195.4132234435991836469969"
+    },
+    {
+      "identity": "ethereum:0x404dd5c7cd81dd7bee2a6dfb24e3846d01f492026660c6a128f30457009791f2",
+      "day": "2026-05-09",
+      "block": 25059005,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486249.791359741751579229944",
+      "restored_share_value": "139027.569137519529357009944"
+    },
+    {
+      "identity": "ethereum:0x964eff3aa21bfc49f6b54a851294c3210efffaff3ba35fe945b830c385868565",
+      "day": "2026-05-09",
+      "block": 25059016,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486416.1772134007522801676388",
+      "restored_share_value": "139193.9549911785300579476388"
+    },
+    {
+      "identity": "ethereum:0x99430e2814f4d9f9b37a933173233c91c4e16072387a3c80ffd5cd30e52e25bc",
+      "day": "2026-05-09",
+      "block": 25059040,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486304.7752091736737473277345",
+      "restored_share_value": "139082.5529869514515251077345"
+    },
+    {
+      "identity": "ethereum:0x1dd70c5dfa8df6666e6bc95b2d3e725c394703235c671a79d1c88da5096f2bd4",
+      "day": "2026-05-09",
+      "block": 25059076,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486276.2928910133420472394555",
+      "restored_share_value": "139054.0706687911198250194555"
+    },
+    {
+      "identity": "ethereum:0x69e1320f27b5a125e75fa5626ec534a610075b5645a4474e49baf83141b20949",
+      "day": "2026-05-09",
+      "block": 25059086,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486414.9077157980442261055082",
+      "restored_share_value": "139192.6854935758220038855082"
+    },
+    {
+      "identity": "ethereum:0xeb704cb0e53161596cd78589fafb4e4664cf9141eebef500019af46456b8cfe5",
+      "day": "2026-05-09",
+      "block": 25059115,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486303.2289916064023207023084",
+      "restored_share_value": "139081.0067693841800984823084"
+    },
+    {
+      "identity": "ethereum:0x6721370b82a72caf4bc96685ae5de033746975b3ae56982aafb9ead2d74fb081",
+      "day": "2026-05-09",
+      "block": 25059126,
+      "old_change": "416666.666666666666666664",
+      "new_change": "583638.0081539913904537679309",
+      "restored_share_value": "166971.3414873247237871039309"
+    },
+    {
+      "identity": "ethereum:0x4a3996035f371793ff4a8bbe74207b810d72c750c8cf2b4948c35f6507558b94",
+      "day": "2026-05-09",
+      "block": 25059137,
+      "old_change": "416666.666666666666666664",
+      "new_change": "583637.3801273325936868480789",
+      "restored_share_value": "166970.7134606659270201840789"
+    },
+    {
+      "identity": "ethereum:0xdf25e4717e63f23ce7242e4705a7527b1bc41b89f4ef2518081161d0456ac7f9",
+      "day": "2026-05-09",
+      "block": 25059147,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486414.9079856365686032131877",
+      "restored_share_value": "139192.6857634143463809931877"
+    },
+    {
+      "identity": "ethereum:0x2c0906ef086423cae7b55381ca9c61a22a5742a5e1a624c00fd218232a73fcdf",
+      "day": "2026-05-09",
+      "block": 25059207,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486275.4148512183414868046565",
+      "restored_share_value": "139053.1926289961192645846565"
+    },
+    {
+      "identity": "ethereum:0x9abf7cc6a3112c65d090cbdd9728fd932d4eec7541d10100a9b4eb5bb3e4d665",
+      "day": "2026-05-09",
+      "block": 25059217,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486413.7497225141794610652657",
+      "restored_share_value": "139191.5275002919572388452657"
+    },
+    {
+      "identity": "ethereum:0x7860ff0876d04b2b3bc3f7b43ac0865589561e30a3556704136d1cecb09f72e5",
+      "day": "2026-05-09",
+      "block": 25059229,
+      "old_change": "486111.111111111111111108",
+      "new_change": "680828.4442616458785956919954",
+      "restored_share_value": "194717.3331505347674845839954"
+    },
+    {
+      "identity": "ethereum:0xec0e74ee3c9414a4ba3b4b906be7a5a49d889dbf03600c00f4e94dc4c56d3c4a",
+      "day": "2026-05-09",
+      "block": 25059240,
+      "old_change": "416666.666666666666666664",
+      "new_change": "583689.5282905298643256401635",
+      "restored_share_value": "167022.8616238631976589761635"
+    },
+    {
+      "identity": "ethereum:0x24c48d27d6a9482c24d26f46d004a478846420aaaab272195f272cd1b4df53f7",
+      "day": "2026-05-09",
+      "block": 25059254,
+      "old_change": "416666.666666666666666664",
+      "new_change": "583320.4917441287621668773343",
+      "restored_share_value": "166653.8250774620955002133343"
+    },
+    {
+      "identity": "ethereum:0xededc2477ef08fcb72e3f87b193baa4fca773d6177b1c7b094ea440e4e5c4fc7",
+      "day": "2026-05-09",
+      "block": 25059272,
+      "old_change": "416666.666666666666666664",
+      "new_change": "583522.5784288091721091524179",
+      "restored_share_value": "166855.9117621425054424884179"
+    },
+    {
+      "identity": "ethereum:0xce1f0170ec6ecbe2e03068be6a8b55e69bde5bc7c2b05c54f3fff0e9fc5b05b3",
+      "day": "2026-05-09",
+      "block": 25059299,
+      "old_change": "416666.666666666666666664",
+      "new_change": "666663.4452916259141895813168",
+      "restored_share_value": "249996.7786249592475229173168"
+    },
+    {
+      "identity": "ethereum:0xf73b5b3944b0887c5676a593f5b2ac823852cdb8c0c20cb87eaa826ff47711b3",
+      "day": "2026-05-09",
+      "block": 25059319,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486356.3751199603796999076288",
+      "restored_share_value": "139134.1528977381574776876288"
+    },
+    {
+      "identity": "ethereum:0xa128071a407de61bfc6cc52c10107041083d8a5f08c2051b2d32d7a090b34c91",
+      "day": "2026-05-09",
+      "block": 25059337,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486300.224426729704301879615",
+      "restored_share_value": "139078.002204507482079659615"
+    },
+    {
+      "identity": "ethereum:0xdf8b2aa4aacafd88502377d5425b325b94d2065cf9d68cc3a70cb52ef5840254",
+      "day": "2026-05-09",
+      "block": 25059390,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486245.5656752388651888055847",
+      "restored_share_value": "139023.3434530166429665855847"
+    },
+    {
+      "identity": "ethereum:0xbf000725b5f170a8a4f7ca06fb835d309d5afac6ab11a6ade115745d072eaaec",
+      "day": "2026-05-09",
+      "block": 25059437,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486243.6229951767083844643384",
+      "restored_share_value": "139021.4007729544861622443384"
+    },
+    {
+      "identity": "ethereum:0xcecb3fa8071dd8b6f8579d6054e89a468fe99dbbe35c3a1691ff265859ea580b",
+      "day": "2026-05-09",
+      "block": 25059461,
+      "old_change": "416666.666666666666666664",
+      "new_change": "583494.1029257077442256972838",
+      "restored_share_value": "166827.4362590410775590332838"
+    },
+    {
+      "identity": "ethereum:0x6795e3ba2fdd169ca251c341096845997cd4d0d693ef1e9a0b110b3159d9a5d7",
+      "day": "2026-05-09",
+      "block": 25059471,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486411.0551947170191486815094",
+      "restored_share_value": "139188.8329724947969264615094"
+    },
+    {
+      "identity": "ethereum:0x2ac26496fee17d3912b3ab21318b5e3a6caec24b464559415e6d8ab8c61118f1",
+      "day": "2026-05-09",
+      "block": 25059483,
+      "old_change": "416666.666666666666666664",
+      "new_change": "583603.4675017697429556744682",
+      "restored_share_value": "166936.8008351030762890104682"
+    },
+    {
+      "identity": "ethereum:0x308406e46b77bd4ba603a25418e20f0694c0704c5620480588344126da0ccecb",
+      "day": "2026-05-09",
+      "block": 25059494,
+      "old_change": "416666.666666666666666664",
+      "new_change": "581660.2358294943550879034331",
+      "restored_share_value": "164993.5691628276884212394331"
+    },
+    {
+      "identity": "ethereum:0xd2515321e172465328f4e8c14451cd18c360768d4b7fe8a253bd23ce6a83ce69",
+      "day": "2026-05-09",
+      "block": 25059569,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486246.5656526591425471388256",
+      "restored_share_value": "139024.3434304369203249188256"
+    },
+    {
+      "identity": "ethereum:0x139e937f77ac0c2a3e6cb661784c08c96655bb48ad9b2791fd1cc1e84211c9aa",
+      "day": "2026-05-09",
+      "block": 25059580,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486385.2108558305273902695909",
+      "restored_share_value": "139162.9886336083051680495909"
+    },
+    {
+      "identity": "ethereum:0x43f4c3b92fc25f33aedeece0693f0ce662b39ab78c1a26750f4faf4d926bf201",
+      "day": "2026-05-09",
+      "block": 25059591,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486413.3022341989319306849782",
+      "restored_share_value": "139191.0800119767097084649782"
+    },
+    {
+      "identity": "ethereum:0x64373619651f801eb025967b7aeb917da2ea94199deb39f8e78266ac6df865cf",
+      "day": "2026-05-09",
+      "block": 25059621,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486303.6334998507534894742502",
+      "restored_share_value": "139081.4112776285312672542502"
+    },
+    {
+      "identity": "ethereum:0xd51ce4cabe850d4036bf6c79b59ebcf54d7a500f3c25dae43aecc63e1aa9aa36",
+      "day": "2026-05-09",
+      "block": 25060412,
+      "old_change": "347222.22222222222222222",
+      "new_change": "486383.019607521164775613937",
+      "restored_share_value": "139160.797385298942553393937"
+    },
+    {
+      "identity": "ethereum:0x075e155dc8e89797ab778248dfd2be7e1474c52b69de36baa4d677bc15abbbd4",
+      "day": "2026-05-11",
+      "block": 25075018,
+      "old_change": "357397.729819978111070061",
+      "new_change": "524034.449328657665240875072",
+      "restored_share_value": "166636.719508679554170814072"
+    },
+    {
+      "identity": "ethereum:0xea22958c8bac4045a37b9a2b803564cfe276e372e0e02522856a9f72e8f33190",
+      "day": "2026-05-12",
+      "block": 25075833,
+      "old_change": "461110.124569341339119284",
+      "new_change": "599975.3705609784048661914991",
+      "restored_share_value": "138865.2459916370657469074991"
+    },
+    {
+      "identity": "ethereum:0x24df6061997b92825c66ee6dd876755312810136dafc7a3ced312688f3e233fe",
+      "day": "2026-05-12",
+      "block": 25076555,
+      "old_change": "8429719.378991907236109738",
+      "new_change": "8568582.321784119701563882038",
+      "restored_share_value": "138862.942792212465454144038"
+    },
+    {
+      "identity": "ethereum:0xa707379ff6486f9326b198f320349ca7fa8f4f02b6d789c70b0efd1bf296f91d",
+      "day": "2026-05-27",
+      "block": 25185748,
+      "old_change": "6918.945426561688153051",
+      "new_change": "6994.466523155840810987533022",
+      "restored_share_value": "75.521096594152657936533022"
+    },
+    {
+      "identity": "ethereum:0x658903f1b263b27f3ebe6d8e868c94b02dfff53e544a4b0744bed6878ac1f568",
+      "day": "2026-06-17",
+      "block": 25334152,
+      "old_change": "15426.819323202424259903",
+      "new_change": "15578.85962374567290383668697",
+      "restored_share_value": "152.04030054324864393368697"
+    },
+    {
+      "identity": "ethereum:0x98a5dd8489807929a9c721612966a723ff08124439dd3990f64b1b6eff8c17a6",
+      "day": "2026-06-21",
+      "block": 25368135,
+      "old_change": "12215.04353293789119451",
+      "new_change": "12303.83252143774348352620871",
+      "restored_share_value": "88.78898849985228901620871"
+    }
+  ]
+}
