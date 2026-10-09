@@ -72,6 +72,7 @@ def apply_executed_spells(history):
     from .spark_op_uni_withdrawals import link_spark_june_op_uni_withdrawals, link_spark_op_uni_withdrawals
     from .spark_reserve_gifts import recognize_spark_reserve_gifts
     from .spark_anchorage_correction import correct_spark_anchorage_round_trip
+    from .spark_par_swap_gains import recognize_spark_par_swap_gains
     from .spark_paxos_capital import link_spark_paxos
     from .spark_subproxy_reserve_gifts import recognize_spark_subproxy_reserves
     from .spark_separate_savings_routes import separate_spark_savings_routes
@@ -91,6 +92,7 @@ def apply_executed_spells(history):
     history = link_spark_june_op_uni_withdrawals(history)
     history = link_spark_early_base_seed(link_spark_buidl_subscriptions(history))
     history = link_spark_native_seed(link_spark_base_withdrawals(history))
+    history = recognize_spark_par_swap_gains(history)
     history = link_grove_plume_jtrsy(link_grove_jaaa_avalanche(link_grove_initial_jaaa(history)))
     history = link_grove_buidl_subscriptions(link_grove_stac_subscriptions(history))
     history = link_grove_rlusd_conversions(history)
