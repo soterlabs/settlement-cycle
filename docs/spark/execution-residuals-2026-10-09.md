@@ -6,13 +6,13 @@ same amount of capital went to unknown recipients, or that its monthly cost
 of funds is unknown.
 
 Reconstructing the previously reviewed Ethena, par-stable and sUSDS/USDT
-executions, including the two legacy Curve pools described below, explains **3,061,046.951472 USD** of those entries. The audit checks
+executions, including the two legacy Curve pools described below, explains **3,063,633.958041 USD** of those entries. The audit checks
 raw execution events against actual ALM cash and independently reconstructs
 the sUSDS exchange rate. It handles transactions containing multiple execution
 types and avoids counting already-recognized par-swap income twice.
 
-The remaining signed difference is **911,961.043367 USD**; the sum of absolute
-differences is **911,987.902816 USD**. Both are retained so positive and negative
+The remaining signed difference is **909,374.036798 USD**; the sum of absolute
+differences is **909,380.101490 USD**. Both are retained so positive and negative
 valuation differences cannot silently cancel. A whole 700-dollar swap cost
 should not remain unexplained just because its independently computed amount
 differs from the snapshot by a fraction of a micro-dollar. Equally, the audit
@@ -26,7 +26,7 @@ explain the recipient and purpose. Its monthly Sky-funded cost must be measured
 from the ledger; it must not be estimated by charging the whole gift interest.
 
 After separating that known forwarding, the unexplained absolute transaction
-value is **11,375.012816 USD**, spread across smaller entries. This is the next
+value is **8,767.211490 USD**, spread across smaller entries. This is the next
 investigation set, not a measured loss or borrowing-cost discrepancy. Some
 entries contain additional swaps not covered by the reviewed event sets.
 
@@ -77,3 +77,35 @@ these totals differ because the outflow list does not contain every swap.
 No additional income rule or funded-principal change is applied. Four more
 regression tests cover real transactions, coin controls, cash mismatches, and
 duplicate/conflicting logs.
+
+## Separate LP withdrawals from swaps in the same transaction
+
+Another 88 sUSDS/USDT swap transactions also withdraw proportional LP
+liquidity. Their cash deltas cannot be compared to the swap event alone.
+The audit authenticates the immediately preceding LP burn, the two returned
+coin quantities in `RemoveLiquidity`, and the actual combined pool/ALM cash.
+It then excludes the LP cash from the swap gain. Other liquidity shapes remain
+unsupported instead of being silently attributed to swaps.
+
+For the [April 23 example](https://etherscan.io/tx/0xe83ecd774a7cfc75f93e925fb5bc80dd55e3754c6431e7b256b9319f43a75381),
+560.644513 of the 560.651010 outflow is witnessed swap execution cost;
+**0.006497** remains. A [May 15 example](https://etherscan.io/tx/0xf7d8be11418cc203cd759cdcdbc450daab6a7d8f3341ecb8bbdc1e11ae05574a)
+retains **0.010022**, rather than calling the whole 408.057792 unexplained.
+This extension explains another **2,587.006569 USD** across the current outflow
+list. Two tests require both the LP burn and actual returned coin transfers.
+
+## Measure the cost of the remaining funding, not the gross transfers
+
+`scripts/audit_unallocated_borrowing_costs.py::summarize` takes a verified
+replay's per-day, per-ilk principal snapshots. It applies each day's effective
+Sky rate to only the Sky-funded basis left in transaction outflow accounts.
+A large historical forwarding with zero Sky principal receives zero Sky cost.
+It separately reports each account's average and closing principal, monthly
+cost, and whether execution evidence matches the observed transaction value.
+Stale evidence does not acquire a matching label; partial differences remain
+visible. No part of this audit changes eligible costs, principal, or settlement
+charges. Three tests check independent daily rates and ilks, own-fund transfers,
+stale evidence, and missing snapshots.
+
+The complete read-only audit test group passes 19 tests. The full funded
+checkpoint remains necessary for actual August cost figures.

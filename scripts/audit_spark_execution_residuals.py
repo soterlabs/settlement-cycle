@@ -72,7 +72,8 @@ def main():
     if (registry['rows'] != rules
             or registry['evidence_sha256'] != hashlib.sha256(args.par_events.read_bytes()).hexdigest()):
         raise ValueError('Recognized income rules differ from witnessed par swaps')
-    susds = audit_susds(read(args.susds_events))['rows']
+    susds_audit = audit_susds(read(args.susds_events))
+    susds = susds_audit['rows']
     ethena = audit_ethena(read(args.ethena_events))
     witnesses = defaultdict(dict)
     for kind, records, field, sign in (('par-swap', par, 'gain', 1),
@@ -101,6 +102,8 @@ def main():
         if len(outflows) != len(residuals['outflows']):
             raise ValueError('Duplicate observed residual identity')
     result = decompose(outflows, witnesses, {r['identity']: r['earned'] for r in rules})
+    result['susds_summary'] = {'verified': len(susds), 'excluded': len(susds_audit['excluded']),
+                               'with_proportional_lp_withdrawal': sum(bool(r.get('proportional_withdrawal_logs')) for r in susds)}
     dependencies = [Path(__file__), *(Path(__file__).with_name(name) for name in (
         'audit_spark_ethena_execution.py', 'audit_spark_par_swaps.py', 'audit_spark_susds_swaps.py'))]
     if args.legacy_curve_events:

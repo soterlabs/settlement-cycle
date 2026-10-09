@@ -78,3 +78,38 @@ def test_rate_change_requires_current_accrual_and_right_parameter():
     p['rate_rows'] = [[11, 0, 101, audit.FILE, '0x' + b'ssr'.ljust(32, b'\0').hex(), data(audit.RAY)]]
     with pytest.raises(ValueError, match='Invalid sUSDS rate change'):
         audit.audit(p)
+
+
+def with_lp_withdrawal():
+    p = evidence()
+    base = {'block_number': 12, 'block_time': 101, 'transaction_hash': '0x1234'}
+    p['swap_rows'].extend([
+        dict(base, log_index=5, address=audit.SUSDS, topic0=audit.TRANSFER,
+             topic1=addr(audit.POOL), topic2=addr(audit.HOLDER), data=data(3*10**18)),
+        dict(base, log_index=6, address=audit.USDT, topic0=audit.TRANSFER,
+             topic1=addr(audit.POOL), topic2=addr(audit.HOLDER), data=data(4_000_000)),
+        dict(base, log_index=7, address=audit.POOL, topic0=audit.TRANSFER,
+             topic1=addr(audit.HOLDER), topic2='0x'+'0'*64, data=data(10**18)),
+        dict(base, log_index=8, address=audit.POOL, topic0=audit.REMOVE_LIQUIDITY,
+             topic1=addr(audit.HOLDER), data=data(96, 192, 10**20, 2, 3*10**18, 4_000_000, 0))])
+    return p
+
+
+def test_proportional_lp_withdrawal_does_not_pollute_same_transaction_swap_value():
+    result = audit.audit(with_lp_withdrawal())
+    assert result['swap_transactions'] == 1
+    row = result['rows'][0]
+    assert row['gain'] == '-0.1'
+    assert row['proportional_withdrawal_logs'] == [8]
+    assert row['lp_cash_excluded_from_swap_gain'] == {
+        audit.SUSDS: str(3*10**18), audit.USDT: '4000000'}
+
+
+def test_lp_cash_requires_both_burn_and_returned_coins():
+    p = with_lp_withdrawal()
+    p['swap_rows'] = [r for r in p['swap_rows'] if r['log_index'] != 7]
+    with pytest.raises(ValueError, match='matching LP burn'):
+        audit.audit(p)
+    p = with_lp_withdrawal()
+    p['swap_rows'] = [r for r in p['swap_rows'] if r['log_index'] != 5]
+    assert audit.audit(p)['swap_transactions'] == 0
