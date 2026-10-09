@@ -422,6 +422,10 @@ def load_prime(config_path: Path) -> Prime:
         psm=psm,
         venues=venues,
         external_alm_sources=external_alm_sources,
+        capital_income_sources={
+            Chain(chain): [Address.from_str(address) for address in addresses]
+            for chain, addresses in cfg.get("capital_income_sources", {}).items()
+        },
         external_alm_source_start_dates=external_alm_source_start_dates,
         principal_return_overrides=principal_return_overrides,
         yield_reversal_overrides=yield_reversal_overrides,

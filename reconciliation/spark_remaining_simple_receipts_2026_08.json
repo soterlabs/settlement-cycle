@@ -1,0 +1,87 @@
+{
+  "scope": "Six direct receipt witnesses only, not complete counterparty histories. Zero new debt in each normalized batch does not prove income or exclude principal returned from another transaction.",
+  "input_hashes": {
+    "tests/fixtures/spark_remaining_simple_receipts.json.gz": "00c4d0cf53eee04b82557193ed503e67e224330a0aebdb516be91d9ce3fe21ff",
+    "/tmp/pr215-spark-v1-history.jsonl.gz": "b25577063d8e5e361bf0efe5874c9c2c40f9783af183e78e59476e1826105d7c"
+  },
+  "rows": [
+    {
+      "identity": "base:0xd24946f38a7bb9c627225c7c3de5e53ca44342bac264a9bf3a9a9eef01e63260",
+      "day": "2025-12-03",
+      "chain": "base",
+      "holder": "0x2917956eff0b5eaf030abdb4ef4296df775009ca",
+      "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "decimals": 6,
+      "sender": "0x2e1b01adabb8d4981863394bea23a1263cbaedfc",
+      "amount": "779893.01862",
+      "block": 38998402,
+      "log_index": 75,
+      "classification": "unconfirmed; no funding or revenue rule changed"
+    },
+    {
+      "identity": "ethereum:0xe8e9fa97ba936198cb147decccb93e24852503d25240f82f4bfc3612800eebed",
+      "day": "2026-01-19",
+      "chain": "ethereum",
+      "holder": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+      "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "decimals": 6,
+      "sender": "0xc8a3e1e0776b912047c89dc16470fd9c7ea1141d",
+      "amount": "383178.08",
+      "block": 24270980,
+      "log_index": 724,
+      "classification": "unconfirmed; no funding or revenue rule changed"
+    },
+    {
+      "identity": "base:0xd2f0a0c9e7a016dc26609a48b54a95b6fc92c85d287069d15efadafb93a9e7e0",
+      "day": "2025-12-12",
+      "chain": "base",
+      "holder": "0x2917956eff0b5eaf030abdb4ef4296df775009ca",
+      "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "decimals": 6,
+      "sender": "0x2e1b01adabb8d4981863394bea23a1263cbaedfc",
+      "amount": "346540.645157",
+      "block": 39387400,
+      "log_index": 283,
+      "classification": "unconfirmed; no funding or revenue rule changed"
+    },
+    {
+      "identity": "avalanche_c:0xa452f9c99ccc93d7dc6a7f48c059a65420dcb2dde331f8463edfe81bada8fcd5",
+      "day": "2026-03-17",
+      "chain": "avalanche_c",
+      "holder": "0xece6b0e8a54c2f44e066fbb9234e7157b15b7fec",
+      "token": "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+      "decimals": 6,
+      "sender": "0x2e1b01adabb8d4981863394bea23a1263cbaedfc",
+      "amount": "76629.483846",
+      "block": 80591489,
+      "log_index": 15,
+      "classification": "unconfirmed; no funding or revenue rule changed"
+    },
+    {
+      "identity": "ethereum:0xf6c5b04ec676db0b45a530552b97c7b4b09aab1777087b3b9d6fd8d8701c295e",
+      "day": "2025-08-07",
+      "chain": "ethereum",
+      "holder": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+      "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+      "decimals": 18,
+      "sender": "0xaa2461f0f0a3de5feaf3273eae16def861cf594e",
+      "amount": "14452.68561739",
+      "block": 23091144,
+      "log_index": 1018,
+      "classification": "unconfirmed; no funding or revenue rule changed"
+    },
+    {
+      "identity": "ethereum:0xcfd1fea5b70e95420e18f0f18c8528882db5bf235b93299f8f067499b2934a98",
+      "day": "2025-08-05",
+      "chain": "ethereum",
+      "holder": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+      "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "decimals": 6,
+      "sender": "0xcd531ae9efcce479654c4926dec5f6209531ca7b",
+      "amount": "10539.96",
+      "block": 23076092,
+      "log_index": 296,
+      "classification": "unconfirmed; no funding or revenue rule changed"
+    }
+  ]
+}

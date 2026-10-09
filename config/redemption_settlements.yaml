@@ -21,6 +21,14 @@ venues:
     # Exact verified event identities take precedence over amount matching.
     # Future ambiguous/grouped payouts can be linked explicitly in this list.
     links:
+      # August24's $1 test plus 49,999,999 shares settled together Aug25.
+      # Both share exits target the configured redemption receiver; the
+      # 49,974,999.629718 cash receipt realizes the fee on the full $50m.
+      # Used by inception capital tracing; outside September revenue history.
+      - cash: '0xe002ca1d23acd56c8ae369786fe452e696821f0ed45b555893a02d18481e659c:863'
+        requests:
+          - '0x67cd3365f382cb2af15cf4ec1cb9678ac4f198a8b5020f0bb8f6ea42ba821044:455'
+          - '0x2efe04eb28c6d81786458cf37cede3faee4c2d08d5f342f52d45febe343dff2e:402'
       - cash: '0x5add7249801ed90f803a6cdfec0c9a6d4fc5f5b3343ee50fa9f9ed4b833cb8cf:329'
         requests:
           - '0xf4b2dc1e714c807cb7f4a5fcaaf80ae2a12182db5c82a244879cc245ccd11c35:1268'

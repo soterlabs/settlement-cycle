@@ -1,0 +1,220 @@
+from datetime import date
+from decimal import Decimal as D
+
+import pytest
+
+from settle.compute.allocation_capital import (
+    CapitalEvent,
+    CapitalLedger,
+    replay_capital,
+    replay_history,
+)
+from settle.normalize.allocation_capital import AssetMovement, CapitalBatch, CapitalHistory
+
+DAY = date(2026, 8, 1)
+
+
+def event(kind, amount, source=None, destination=None, value=None, n=0, day=DAY):
+    return CapitalEvent(str(n), day, (n,), kind, D(amount), source, destination,
+                        D(value) if value is not None else None)
+
+
+def test_gain_is_not_borrowed_when_withdrawn_and_reallocated():
+    ledger = CapitalLedger()
+    for e in [event("draw", "100", destination="cash"),
+              event("transfer", "100", "cash", "a"),
+              event("transfer", "110", "a", "cash", "110"),
+              event("transfer", "110", "cash", "b")]:
+        ledger.apply(e)
+    assert ledger.accounts["b"].value == D(110)
+    assert ledger.accounts["b"].borrowed == D(100)
+    assert ledger.accounts["a"].borrowed == ledger.accounts["cash"].borrowed == 0
+
+
+def test_partial_withdrawal_carries_proportional_principal_and_gain():
+    ledger = CapitalLedger()
+    for e in [event("draw", "100", destination="a"),
+              event("transfer", "55", "a", "b", "110")]:
+        ledger.apply(e)
+    assert ledger.accounts["a"].borrowed == D(50)
+    assert ledger.accounts["b"].borrowed == D(50)
+    assert ledger.accounts["b"].value == D(55)
+
+
+def test_external_income_and_marks_never_create_principal():
+    ledger = CapitalLedger()
+    ledger.apply(event("income", "10", destination="cash"))
+    ledger.apply(event("transfer", "10", "cash", "a"))
+    ledger.apply(event("mark", "15", destination="a"))
+    assert ledger.accounts["a"].borrowed == 0
+    assert ledger.drawn == 0
+
+
+def test_mixed_cash_uses_average_funding_fraction():
+    ledger = CapitalLedger()
+    ledger.apply(event("draw", "80", destination="cash"))
+    ledger.apply(event("income", "20", destination="cash"))
+    ledger.apply(event("transfer", "50", "cash", "a"))
+    assert ledger.accounts["a"].borrowed == D(40)
+    assert ledger.accounts["cash"].borrowed == D(40)
+
+
+def test_realised_loss_cannot_fund_the_next_venue():
+    ledger = CapitalLedger()
+    ledger.apply(event("draw", "100", destination="a"))
+    ledger.apply(event("transfer", "90", "a", "b", "90"))
+    assert ledger.accounts["b"].borrowed == D(90)
+    assert ledger.realised_principal_loss == D(10)
+    assert ledger.drawn == D(100)
+
+
+def test_equity_repayment_reduces_outstanding_position_basis():
+    ledger = CapitalLedger()
+    ledger.apply(event("draw", "100", destination="a"))
+    ledger.apply(event("income", "20", destination="cash"))
+    ledger.apply(event("repay", "20", "cash"))
+    assert ledger.accounts["a"].borrowed == D(80)
+    assert ledger.repaid == D(20)
+
+
+def test_replay_seeds_from_history_and_preserves_intraday_reallocation():
+    events = [
+        event("draw", "100", destination="a", n=1, day=date(2026, 7, 1)),
+        event("transfer", "110", "a", "cash", "110", n=2),
+        event("transfer", "110", "cash", "b", n=3),
+    ]
+    ledger, daily = replay_capital(list(reversed(events)), DAY, date(2026, 8, 2))
+    assert daily[DAY]["b"] == daily[date(2026, 8, 2)]["b"] == D(100)
+    assert ledger.accounts["a"].borrowed == 0
+
+
+def test_duplicate_event_and_overdraw_are_rejected():
+    e = event("draw", "100", destination="cash")
+    with pytest.raises(ValueError, match="Duplicate"):
+        replay_capital([e, e], DAY, DAY)
+    ledger = CapitalLedger()
+    with pytest.raises(ValueError, match="exceeds"):
+        ledger.apply(event("transfer", "100", "cash", "a"))
+
+
+@pytest.mark.parametrize("amount", ["-1", "NaN", "Infinity"])
+def test_invalid_amounts_are_rejected(amount):
+    with pytest.raises(ValueError, match="Invalid capital"):
+        CapitalLedger().apply(event("draw", amount, destination="cash"))
+
+
+def batch(n, movements, minted="0"):
+    return CapitalBatch(str(n), DAY, n, "ethereum", n, tuple(movements), D(minted))
+
+
+def test_atomic_swap_then_redemption_then_reinvestment():
+    history = CapitalHistory((
+        batch(1, [AssetMovement("a", D(0), D(100))], "100"),
+        batch(2, [AssetMovement("a", D(110), D(-110)),
+                  AssetMovement("cash", D(0), D(110))]),
+        batch(3, [AssetMovement("cash", D(110), D(-110)),
+                  AssetMovement("b", D(0), D(110))]),
+    ), {"A": "a", "B": "b"}, {})
+    replay = replay_history(history, DAY, DAY)
+    assert replay.daily[DAY]["b"] == D(100)
+    assert not replay.unmatched_receipts
+    assert not replay.unmatched_outflows
+
+
+def test_gift_in_same_transaction_as_deposit_does_not_acquire_basis():
+    history = CapitalHistory((batch(1, [
+        AssetMovement("a", D(0), D(100)),
+        AssetMovement("gift", D(0), D(10), D(10)),
+    ], "100"),), {}, {})
+    replay = replay_history(history, DAY, DAY)
+    assert replay.daily[DAY]["a"] == D(100)
+    assert replay.daily[DAY]["gift"] == D(0)
+
+
+def test_unmatched_receipt_is_not_inferred_to_be_a_loan():
+    history = CapitalHistory((batch(1, [AssetMovement("a", D(0), D(100))]),), {}, {})
+    replay = replay_history(history, DAY, DAY)
+    assert replay.daily[DAY]["a"] == 0
+    assert replay.unmatched_receipts == {"1": D(100)}
+    assert "a" in replay.uncertain_accounts
+
+
+def test_pending_custody_preserves_basis_and_does_not_fund_unrelated_receipt():
+    history = CapitalHistory((
+        batch(1, [AssetMovement("a", D(0), D(100))], "100"),
+        batch(2, [AssetMovement("a", D(100), D(-100))]),
+        batch(3, [AssetMovement("unrelated", D(0), D(100))]),
+    ), {}, {})
+    replay = replay_history(history, DAY, DAY)
+    assert replay.daily[DAY]["unallocated:2"] == D(100)
+    assert replay.daily[DAY]["unrelated"] == 0
+    assert replay.unmatched_outflows == {"2": D(100)}
+
+
+def test_underwater_position_keeps_basis_in_custody_until_cash_redemption():
+    history = CapitalHistory((
+        batch(1, [AssetMovement("shares", D(0), D(100))], "100"),
+        batch(2, [AssetMovement("shares", D(90), D(-90), preserve_basis=True),
+                  AssetMovement("queue", D(0), D(90))]),
+    ), {}, {})
+    pending = replay_history(history, DAY, DAY)
+    assert pending.ledger.account("queue").borrowed == D(100)
+    assert pending.ledger.realised_principal_loss == 0
+    history = CapitalHistory((*history.batches,
+        batch(3, [AssetMovement("queue", D(95), D(-95)),
+                  AssetMovement("cash", D(0), D(95))]),
+    ), {}, {})
+    redeemed = replay_history(history, DAY, DAY)
+    assert redeemed.ledger.account("cash").borrowed == D(95)
+    assert redeemed.ledger.realised_principal_loss == D(5)
+
+
+def test_funding_uncertainty_does_not_contaminate_a_later_new_position():
+    from dataclasses import replace
+    history = CapitalHistory((
+        batch(1, [AssetMovement('a', D(0), D(100))]),
+        batch(2, [AssetMovement('a', D(100), D(-100))]),
+        replace(batch(3, [AssetMovement('a', D(0), D(200))], '200'), day=date(2026, 8, 2)),
+    ), {}, {})
+    replay = replay_history(history, DAY, date(2026, 8, 2))
+    assert 'a' not in replay.uncertain_daily[DAY]  # Fully exited, zero exposure.
+    assert 'unallocated:2' in replay.uncertain_daily[DAY]
+    assert 'a' not in replay.uncertain_daily[date(2026, 8, 2)]
+    assert replay.ledger.account('a').borrowed == D(200)
+
+
+def test_subcent_residual_pool_preserves_borrowing_and_refinancing():
+    history = CapitalHistory(tuple([
+        batch(1, [AssetMovement('cash', D(0), D(1000))], '1000'),
+        *[batch(i + 2, [AssetMovement('cash', D(1000) - D(i) / 1000, D('-0.001'))])
+          for i in range(200)],
+        # A gain changes the cash mark, never borrowed principal. Repaying
+        # from mixed cash also refinances the remaining tiny residuals.
+        batch(202, [AssetMovement('cash', D('1000.8'), D(-1))], '-1'),
+    ]), {}, {})
+    replay = replay_history(history, DAY, DAY)
+    assert abs(sum(replay.daily[DAY].values(), D(0)) - D(999)) < D('1e-18')
+    assert replay.ledger.account('rounding:ethereum').value == D('0.200')
+    assert len(replay.ledger.accounts) == 2
+    assert not replay.unmatched_outflows
+    assert not any(k.startswith('clearing:') for k in replay.uncertain_accounts)
+
+
+def test_subcent_repayment_rounding_is_retained_separately_from_missing_funding():
+    from settle.normalize.allocation_capital import AssetMovement, CapitalBatch, CapitalHistory
+
+    day = date(2026, 8, 1)
+    for shortfall, unmatched in [(D('0.000000505865133474328'), False), (D('.02'), True)]:
+        cash = D(100) - shortfall
+        h = CapitalHistory((
+            CapitalBatch('draw', day, 1, 'ethereum', 1,
+                         (AssetMovement('position', D(0), D(100)),), D(100)),
+            CapitalBatch('repay', day, 2, 'ethereum', 2,
+                         (AssetMovement('position', cash, -cash),), D(-100)),
+        ), {'V': 'position'}, {})
+        r = replay_history(h, day, day)
+        assert r.ledger.drawn == r.ledger.repaid == D(100)
+        assert bool(r.unmatched_receipts) is unmatched
+        assert r.rounding_receipts == ({} if unmatched else {'repay': shortfall})
+        assert r.ledger.account('position').borrowed == 0
+        assert r.ledger.realised_principal_loss == shortfall

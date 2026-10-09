@@ -1,0 +1,16 @@
+{
+  "transaction": "0x18a9cbdbd1fcf140e5e21b72571c1455d13be6ca5256c8e9f122f43873824593",
+  "block": 25796190,
+  "venue": "S61",
+  "position_id": 324005,
+  "fee_raw_by_token": {
+    "0x6c3ea9036406852006290770bedfcaba0e23a0e8": 6311595421,
+    "0xdc035d45d973e3ec169d2276ddab16f1e407384f": 6355428945075564808842
+  },
+  "fees_at_par": "12667.024366075564808842",
+  "returned_principal_at_par": "1215.925898327927459078",
+  "historical_unmatched_receipt": "12667.03341867445710890704868",
+  "remaining_signed_receipt": "0.00905259889230006504868",
+  "scope": "Independent fee witness only; replay classification and published revenue unchanged.",
+  "evidence_sha256": "2636e6c163c851b706c73cd4fac4817ad474c8511cf5fc3c679addd7b1a0088c"
+}

@@ -1,0 +1,74 @@
+{
+  "prime": "grove",
+  "period": "2026-08",
+  "base_commit": "ad38b6f",
+  "input_hashes": {
+    "/tmp/pr215-grove-eoa/history.jsonl.gz": "c05b53815379f6f7a4d9f6195d819d09ddb542f8f279af5f4defe4b7b3295474",
+    "settlements/grove/2026-08/provenance.json": "d6fb40d3c43caf3bdc7d0983b7ff071433ad056d22825b9f0f19eeb9d3af3aa9",
+    "/tmp/pr215-resumed-grove/idle_deductions.json": "e6b13f9b30816b2f8e9325f222aa9c889ff68cdf182205f4c54576d929faf427",
+    "/tmp/pr215-resumed-grove/debt-control.json": "6214144465cad85e59e3cd7c075925fad2f5bdc2131428ea4e6f769b57d9280b",
+    "/tmp/pr215-resumed-grove/deduction-owners.json": "dad2cf619d5dc65a26721aaf1fe3938136bb512212bf427a2e5aa56531f58153"
+  },
+  "cash_returns": "30341382.77",
+  "before": {
+    "unmatched_receipts": 40,
+    "unmatched_outflows": 260,
+    "eligible_allocation_cost": "1233.513467956631497028953141"
+  },
+  "after": {
+    "unmatched_receipts": 36,
+    "unmatched_outflows": 256,
+    "eligible_allocation_cost": "1233.513467956631497028953141"
+  },
+  "per_ilk_reconciliation": {
+    "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+      "global_cost": "3708820.107055825781021080592",
+      "msc_cost": "259878.1170265572840543147882",
+      "allocation_cost": "0",
+      "global_excluding_msc": "3448941.990029268496966765804",
+      "difference": "-3448941.990029268496966765804",
+      "within_one_cent": false,
+      "complete": false,
+      "source_complete": false,
+      "bounds_use_verified_deduction_owners": true,
+      "diagnostic_cost_bounds": {
+        "lower": "-3803791.16958691331584417153230530088552073734539210459303406",
+        "upper": "3448941.99002926849696676580416084319370638238644478031610200"
+      },
+      "target_distance_from_bounds": "0",
+      "target_within_bounds_to_one_cent": true,
+      "bounds_note": "Containment is not reconciliation; unresolved routes remain unverified"
+    },
+    "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+      "global_cost": "11784.73727045625525471486130",
+      "msc_cost": "0E-32",
+      "allocation_cost": "1233.513467956631497028953141",
+      "global_excluding_msc": "11784.73727045625525471486130",
+      "difference": "-10551.22380249962375768590816",
+      "within_one_cent": false,
+      "complete": false,
+      "source_complete": false,
+      "bounds_use_verified_deduction_owners": true,
+      "diagnostic_cost_bounds": {
+        "lower": "9940.18840296520681825119024703350973310727064475705788223131",
+        "upper": "11693.8192791923786977042384348950292934181905971350139942588"
+      },
+      "target_distance_from_bounds": "90.91799126387655701062286510",
+      "target_within_bounds_to_one_cent": false,
+      "bounds_note": "Containment is not reconciliation; unresolved routes remain unverified"
+    }
+  },
+  "removed_receipts": {
+    "ethereum:0x6eeed62f2c984e34c910d1451cbfc3058e3d50c83870f22e03f042a3ce471830": "1.00",
+    "ethereum:0xfdf91604ea1ac277c428044eeb53ebb44e554122da1ae5a65a07402bb54a4b49": "18077674.30",
+    "ethereum:0x8cd2c1cef6561be8bd519a773b896598e3b571270767825a4743cd441d7b0a4f": "1.00",
+    "ethereum:0x66cb3d9d68010cfeb6e1949215dbea5cc18a21c0e3e6be94321272230c70f899": "12263706.47"
+  },
+  "removed_outflows": {
+    "plume:0xe1756e363f76028c3cd44c251a069678ca794b864894a300257713d968701abd": "1.016057327509322085",
+    "plume:0xc3348f1272ca85d10128b04066a13b049579a2708a604d780a94628e96f87078": "18077674.28394267249067791478",
+    "plume:0x091e754c0062656749b5eb14a78122e37b62f42027d2a11c2f6ca1ef58dd4fdb": "1.020232466949343944",
+    "plume:0x9436d124e15bea9def739ab01daf192f8c70b87d16787bbdddba2868ced5008e": "12263706.44976757607902974379"
+  },
+  "limits": "Known complete historical groups only. Cash receipt dates govern basis release. GROVE-A upper bound now reveals $90.92 outside mapped allocations on August 19; secondary ALM cash mapping is the next investigation."
+}

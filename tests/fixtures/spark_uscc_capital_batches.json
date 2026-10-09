@@ -1,0 +1,294 @@
+[
+  {
+    "identity": "ethereum:0xfc298a3643627678a14071b5b5e7a9ddd2c8853a1030bd364a200fd59bcf1981",
+    "day": "2025-10-20",
+    "timestamp": 1760980343,
+    "chain": "ethereum",
+    "block": 23620219,
+    "movements": [
+      {
+        "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+        "value_before": "0.00",
+        "change": "0.00",
+        "external_income": "0.00",
+        "preserve_basis": false
+      },
+      {
+        "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x6b175474e89094c44da98b954eedeac495271d0f",
+        "value_before": "0.00",
+        "change": "0.00",
+        "external_income": "0.00",
+        "preserve_basis": false
+      },
+      {
+        "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "value_before": "0.00",
+        "change": "0.00",
+        "external_income": "0.00",
+        "preserve_basis": false
+      }
+    ],
+    "minted": "10000.00000000000000000058128615256367562279222565",
+    "log_index": 28,
+    "minted_by_ilk": {
+      "0x414c4c4f4341544f522d535041524b2d41000000000000000000000000000000": "10000.00000000000000000058128615256367562279222565"
+    }
+  },
+  {
+    "identity": "ethereum:0x5ac3e1a191b96b810beb7e5b5ddf52e6c4eeab1e0bd2c7b20526be4be970660e",
+    "day": "2025-10-20",
+    "timestamp": 1760981699,
+    "chain": "ethereum",
+    "block": 23620331,
+    "movements": [
+      {
+        "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+        "value_before": "0.00",
+        "change": "0.00",
+        "external_income": "0.00",
+        "preserve_basis": false
+      },
+      {
+        "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x6b175474e89094c44da98b954eedeac495271d0f",
+        "value_before": "0.00",
+        "change": "0.00",
+        "external_income": "0.00",
+        "preserve_basis": false
+      },
+      {
+        "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "value_before": "0.00",
+        "change": "0.00",
+        "external_income": "0.00",
+        "preserve_basis": false
+      }
+    ],
+    "minted": "50000000.0000000000000000004676556530552761186033191",
+    "log_index": 18,
+    "minted_by_ilk": {
+      "0x414c4c4f4341544f522d535041524b2d41000000000000000000000000000000": "50000000.0000000000000000004676556530552761186033191"
+    }
+  },
+  {
+    "identity": "ethereum:0x9701dd940f4b4b211d9328cf6161c24078487f193ec56d9d8f055cb4bc325200",
+    "day": "2025-10-21",
+    "timestamp": 1761052163,
+    "chain": "ethereum",
+    "block": 23626140,
+    "movements": [
+      {
+        "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x14d60e7fdc0d71d8611742720e4c50e7a974020c",
+        "value_before": "0.00",
+        "change": "4428393.645144",
+        "external_income": "0.00",
+        "preserve_basis": false
+      }
+    ],
+    "minted": "0",
+    "log_index": 1037,
+    "minted_by_ilk": {}
+  },
+  {
+    "identity": "ethereum:0xd9218cf442a60d710849f35fb9403fd66da840faaf41f0d1f0703d55156a0397",
+    "day": "2025-10-21",
+    "timestamp": 1761070283,
+    "chain": "ethereum",
+    "block": 23627633,
+    "movements": [
+      {
+        "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+        "value_before": "0.00",
+        "change": "0.00",
+        "external_income": "0.00",
+        "preserve_basis": false
+      },
+      {
+        "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x6b175474e89094c44da98b954eedeac495271d0f",
+        "value_before": "0.00",
+        "change": "0.00",
+        "external_income": "0.00",
+        "preserve_basis": false
+      },
+      {
+        "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "value_before": "0.00",
+        "change": "0.00",
+        "external_income": "0.00",
+        "preserve_basis": false
+      }
+    ],
+    "minted": "50000000.0000000000000000004676556530552761186033191",
+    "log_index": 396,
+    "minted_by_ilk": {
+      "0x414c4c4f4341544f522d535041524b2d41000000000000000000000000000000": "50000000.0000000000000000004676556530552761186033191"
+    }
+  },
+  {
+    "identity": "ethereum:0x0a286c4057964fa5b275451fad781e584ac76ed3ad6dbd7e7aae73ff041725b5",
+    "day": "2025-10-22",
+    "timestamp": 1761138467,
+    "chain": "ethereum",
+    "block": 23633261,
+    "movements": [
+      {
+        "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x14d60e7fdc0d71d8611742720e4c50e7a974020c",
+        "value_before": "4428393.645144",
+        "change": "4424373.911272",
+        "external_income": "0.00",
+        "preserve_basis": false
+      }
+    ],
+    "minted": "0",
+    "log_index": 314,
+    "minted_by_ilk": {}
+  },
+  {
+    "identity": "ethereum:0x76a6c50cc9909525a67fc286f4c84477f50976fe9bac7be78b37c6c51143ffa6",
+    "day": "2025-11-04",
+    "timestamp": 1762270751,
+    "chain": "ethereum",
+    "block": 23726901,
+    "movements": [
+      {
+        "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+        "value_before": "0.00",
+        "change": "0.00",
+        "external_income": "0.00",
+        "preserve_basis": false
+      },
+      {
+        "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x6b175474e89094c44da98b954eedeac495271d0f",
+        "value_before": "0.00",
+        "change": "0.00",
+        "external_income": "0.00",
+        "preserve_basis": false
+      },
+      {
+        "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "value_before": "0.00",
+        "change": "0.00",
+        "external_income": "0.00",
+        "preserve_basis": false
+      }
+    ],
+    "minted": "50000000.0000000000000000004676556530552761186033191",
+    "log_index": 178,
+    "minted_by_ilk": {
+      "0x414c4c4f4341544f522d535041524b2d41000000000000000000000000000000": "50000000.0000000000000000004676556530552761186033191"
+    }
+  },
+  {
+    "identity": "ethereum:0x4f5c87581ef8b9a636aa07dde269910e3cb4389a9f1dd9ec04de3bdf6cfb53a6",
+    "day": "2025-11-05",
+    "timestamp": 1762351667,
+    "chain": "ethereum",
+    "block": 23733591,
+    "movements": [
+      {
+        "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x14d60e7fdc0d71d8611742720e4c50e7a974020c",
+        "value_before": "8852767.556416",
+        "change": "4412716.424986",
+        "external_income": "0.00",
+        "preserve_basis": false
+      }
+    ],
+    "minted": "0",
+    "log_index": 466,
+    "minted_by_ilk": {}
+  },
+  {
+    "identity": "ethereum:0xcae6ffe1b84fd4702788fa6117b1b3017e6598855408407c10854872c70a856d",
+    "day": "2025-12-01",
+    "timestamp": 1764597203,
+    "chain": "ethereum",
+    "block": 23919053,
+    "movements": [
+      {
+        "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x14d60e7fdc0d71d8611742720e4c50e7a974020c",
+        "value_before": "13265483.981402",
+        "change": "-4421827.9938",
+        "external_income": "0.00",
+        "preserve_basis": false
+      }
+    ],
+    "minted": "0",
+    "log_index": 87,
+    "minted_by_ilk": {}
+  },
+  {
+    "identity": "ethereum:0xca43c99cdc901368b271e7200ca949c2e50f6405b53b9a16207b567c294d0dd2",
+    "day": "2025-12-01",
+    "timestamp": 1764597551,
+    "chain": "ethereum",
+    "block": 23919081,
+    "movements": [
+      {
+        "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x14d60e7fdc0d71d8611742720e4c50e7a974020c",
+        "value_before": "8843655.987602",
+        "change": "-4421827.9938",
+        "external_income": "0.00",
+        "preserve_basis": false
+      }
+    ],
+    "minted": "0",
+    "log_index": 571,
+    "minted_by_ilk": {}
+  },
+  {
+    "identity": "ethereum:0x6641633601e1b4c7364e7b5b497ebed27d76b31f6988edab1bb73b35b95c032c",
+    "day": "2025-12-02",
+    "timestamp": 1764689915,
+    "chain": "ethereum",
+    "block": 23926724,
+    "movements": [
+      {
+        "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "value_before": "0.00",
+        "change": "100682211.13",
+        "external_income": "0.00",
+        "preserve_basis": false
+      }
+    ],
+    "minted": "0",
+    "log_index": 670,
+    "minted_by_ilk": {}
+  },
+  {
+    "identity": "ethereum:0x9c38168eaf28096721d2daa374cc8105e1408b364863f57faa05185c1ab37fb8",
+    "day": "2025-12-03",
+    "timestamp": 1764777695,
+    "chain": "ethereum",
+    "block": 23933973,
+    "movements": [
+      {
+        "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x14d60e7fdc0d71d8611742720e4c50e7a974020c",
+        "value_before": "4421827.993802",
+        "change": "-4421827.993802",
+        "external_income": "0.00",
+        "preserve_basis": false
+      }
+    ],
+    "minted": "0",
+    "log_index": 221,
+    "minted_by_ilk": {}
+  },
+  {
+    "identity": "ethereum:0xb230b52789a38848821b049b93f2bfed9c4d84dc2eb32e0d4cbb1ae69d3623fc",
+    "day": "2025-12-04",
+    "timestamp": 1764861227,
+    "chain": "ethereum",
+    "block": 23940496,
+    "movements": [
+      {
+        "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "value_before": "0.00",
+        "change": "50331740.13",
+        "external_income": "0.00",
+        "preserve_basis": false
+      }
+    ],
+    "minted": "0",
+    "log_index": 1096,
+    "minted_by_ilk": {}
+  }
+]

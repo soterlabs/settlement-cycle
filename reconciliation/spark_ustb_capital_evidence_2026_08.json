@@ -1,0 +1,110 @@
+{
+  "scope": "USTB capital-tracing evidence and isolated-cycle regression; full combined replay pending. No settlement or API change.",
+  "subscriptions": [
+    {
+      "tx": "ethereum:0xda8e56b6c58868fa0383eb972d7a9ab9ba2cf54dd9dd96093f06c63f7e65330e",
+      "day": "2025-04-07",
+      "block": 22217607,
+      "shares": "9406.100684",
+      "execution_nav": "10.631398",
+      "execution_value": "99999.999999676232",
+      "paid_usdc": "100000"
+    },
+    {
+      "tx": "ethereum:0x8ff72c81166602bf0a80d82600ffe6d63632bf77904170d99c858bd9acb307f0",
+      "day": "2025-04-07",
+      "block": 22217661,
+      "shares": "4693640.709422",
+      "execution_nav": "10.631406",
+      "execution_value": "49899999.999993307332",
+      "paid_usdc": "49900000"
+    },
+    {
+      "tx": "ethereum:0x6d4820ff6bd5ded1d5e4c1a31fd6c8b83460f98a733ec1fa3b78a314f59c2922",
+      "day": "2025-04-08",
+      "block": 22223732,
+      "shares": "4702610.663715",
+      "execution_nav": "10.632392",
+      "execution_value": "49999999.999998056280",
+      "paid_usdc": "50000000"
+    },
+    {
+      "tx": "ethereum:0x58dbad258c5e1197a6e8912a91a1fbd1d0c779d0bc51182a3e8004fe9163a530",
+      "day": "2025-04-14",
+      "block": 22267115,
+      "shares": "4699339.103745",
+      "execution_nav": "10.639794",
+      "execution_value": "49999999.999991428530",
+      "paid_usdc": "50000000"
+    },
+    {
+      "tx": "ethereum:0xf832fe94123aab15b2ba130f6789dfa3b0fd2aee74778f2ed28604130fd73ece",
+      "day": "2025-04-21",
+      "block": 22318172,
+      "shares": "4695546.405709",
+      "execution_nav": "10.648388",
+      "execution_value": "49999999.999994847092",
+      "paid_usdc": "50000000"
+    },
+    {
+      "tx": "ethereum:0x376f56bdbd5b0c2bfcc522ca59a4d11d3b66db1126ddfffc79256b19dfa48791",
+      "day": "2025-04-22",
+      "block": 22324620,
+      "shares": "9390150.126903",
+      "execution_nav": "10.649457",
+      "execution_value": "99999999.999998041671",
+      "paid_usdc": "100000000"
+    }
+  ],
+  "redemptions": [
+    {
+      "tx": "ethereum:0xc235bec8032617180c9e38d7b914592910ff9330a2fc9327820b189d5f1f3e9d",
+      "day": "2025-05-14",
+      "block": 22483471,
+      "shares": "10.00",
+      "execution_nav": "10.675986",
+      "execution_value": "106.75986000",
+      "cash_tx": "0x4967b2260d6f934a5c4b5c8374dde7c1102a33d955e598113be30ea051c16151",
+      "cash_usdc": "106.76",
+      "association": "Reviewed closed same-day redemption/cash group matching execution NAV to the cent; no common on-chain request ID."
+    },
+    {
+      "tx": "ethereum:0x49eefbb55bcae635426ff7994dbcbe4c853cb0f230f6856a27be64b0e1ead466",
+      "day": "2025-07-17",
+      "block": 22939134,
+      "shares": "28190683.110178",
+      "execution_nav": "10.752185",
+      "execution_value": "303111440.077009238930",
+      "cash_tx": "0x056f664613a69e7785c321a3bea1bc0c047967f79aefcee808d533f240103480",
+      "cash_usdc": "303111440.08",
+      "association": "Reviewed closed same-day redemption/cash group matching execution NAV to the cent; no common on-chain request ID."
+    }
+  ],
+  "previous_checkpoint_outflows": {
+    "ethereum:0xda8e56b6c58868fa0383eb972d7a9ab9ba2cf54dd9dd96093f06c63f7e65330e": "90593.899316000000000000110586090174098618608177835",
+    "ethereum:0x8ff72c81166602bf0a80d82600ffe6d63632bf77904170d99c858bd9acb307f0": "45206359.29057800000000000100189903784705085176971856",
+    "ethereum:0x6d4820ff6bd5ded1d5e4c1a31fd6c8b83460f98a733ec1fa3b78a314f59c2922": "45297389.336285000000000000919885469013641260557609268",
+    "ethereum:0x58dbad258c5e1197a6e8912a91a1fbd1d0c779d0bc51182a3e8004fe9163a530": "45300660.89625500000000000084168153342278085634329998",
+    "ethereum:0xf832fe94123aab15b2ba130f6789dfa3b0fd2aee74778f2ed28604130fd73ece": "45304453.59429100000000000011683721694621541357029376",
+    "ethereum:0x376f56bdbd5b0c2bfcc522ca59a4d11d3b66db1126ddfffc79256b19dfa48791": "90609849.873097000000000001011379841411959323672736734",
+    "ethereum:0xc235bec8032617180c9e38d7b914592910ff9330a2fc9327820b189d5f1f3e9d": "10.00",
+    "ethereum:0x49eefbb55bcae635426ff7994dbcbe4c853cb0f230f6856a27be64b0e1ead466": "28190683.110178"
+  },
+  "previous_checkpoint_receipts": {
+    "ethereum:0x4967b2260d6f934a5c4b5c8374dde7c1102a33d955e598113be30ea051c16151": "106.76",
+    "ethereum:0x056f664613a69e7785c321a3bea1bc0c047967f79aefcee808d533f240103480": "303111440.08"
+  },
+  "input_hashes": {
+    "tests/fixtures/spark_ustb_capital.json": "785119b5f1d4ab9ab94e56e5e7780af088338adb362bf116b27b6f3a3a5d1648",
+    "/tmp/pr215-spark-current-fixes-financing.json": "8f9845fd0059ee9cfd9614228c618502940235e463771b03c4490f51656adadc"
+  },
+  "paid_total": "300000000",
+  "cash_returned_total": "303111546.84",
+  "economic_return_over_full_cycle": "3111546.84",
+  "old_unmatched_outflow_total": "300000000.0000000000000000040",
+  "old_unmatched_receipt_total": "303111546.84",
+  "development_cash_return_sanity_check": {
+    "annualized_return_on_time_weighted_paid_capital": "0.041609830503072156583146973387095241187",
+    "scope": "Isolated full-cycle cash return / average end-of-day allocated borrowed principal, compounded to one year. Internal plausibility check only; not a production allocation APY or a publication gate."
+  }
+}

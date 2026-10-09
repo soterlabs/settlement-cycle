@@ -108,7 +108,7 @@ def main() -> int:
         label = f"{month.year}-{month.month:02d}"
         try:
             sources = _live_sources()
-            result = compute_monthly_pnl(prime, month, sources=sources)
+            result = compute_monthly_pnl(prime, month, sources=sources, include_allocation_financing=True)
             out_dir = _REPO / "settlements" / "obex" / label
             paths = write_settlement(result, out_dir, sources=resolved_source_labels(prime, _SOURCES_LIVE))
             artifacts.append((label, paths))

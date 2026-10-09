@@ -1,0 +1,123 @@
+{
+  "prime": "grove",
+  "period": "2026-08",
+  "base_commit": "d1547ef",
+  "input_hashes": {
+    "/tmp/pr215-grove-eoa/history.jsonl.gz": "c05b53815379f6f7a4d9f6195d819d09ddb542f8f279af5f4defe4b7b3295474",
+    "settlements/grove/2026-08/provenance.json": "d6fb40d3c43caf3bdc7d0983b7ff071433ad056d22825b9f0f19eeb9d3af3aa9",
+    "/tmp/pr215-resumed-grove/idle_deductions.json": "e6b13f9b30816b2f8e9325f222aa9c889ff68cdf182205f4c54576d929faf427",
+    "/tmp/pr215-resumed-grove/debt-control.json": "6214144465cad85e59e3cd7c075925fad2f5bdc2131428ea4e6f769b57d9280b",
+    "/tmp/pr215-resumed-grove/deduction-owners.json": "dad2cf619d5dc65a26721aaf1fe3938136bb512212bf427a2e5aa56531f58153"
+  },
+  "canonical_totals": {
+    "usdc_sent": "96850000",
+    "ausd_received": "96850000",
+    "outgoing_transfers": 30,
+    "incoming_transfers": 21,
+    "groups": 20
+  },
+  "before": {
+    "unmatched_receipts": 155,
+    "unmatched_outflows": 368,
+    "eligible_allocation_cost": "1233.513467956631497028953141"
+  },
+  "after": {
+    "unmatched_receipts": 134,
+    "unmatched_outflows": 338,
+    "eligible_allocation_cost": "1233.513467956631497028953141"
+  },
+  "per_ilk_reconciliation": {
+    "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+      "global_cost": "3708820.107055825781021080592",
+      "msc_cost": "259878.1170265572840543147882",
+      "allocation_cost": "0",
+      "global_excluding_msc": "3448941.990029268496966765804",
+      "difference": "-3448941.990029268496966765804",
+      "within_one_cent": false,
+      "complete": false,
+      "source_complete": false,
+      "bounds_use_verified_deduction_owners": true,
+      "diagnostic_cost_bounds": {
+        "lower": "-4837341.73191790438093281361452259458724857192355521968389800",
+        "upper": "3448941.99002926849696676580416084319370638238644478031610200"
+      },
+      "target_distance_from_bounds": "0",
+      "target_within_bounds_to_one_cent": true,
+      "bounds_note": "Containment is not reconciliation; unresolved routes remain unverified"
+    },
+    "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+      "global_cost": "11784.73727045625525471486130",
+      "msc_cost": "0E-32",
+      "allocation_cost": "1233.513467956631497028953141",
+      "global_excluding_msc": "11784.73727045625525471486130",
+      "difference": "-10551.22380249962375768590816",
+      "within_one_cent": false,
+      "complete": false,
+      "source_complete": false,
+      "bounds_use_verified_deduction_owners": true,
+      "diagnostic_cost_bounds": {
+        "lower": "5465.90759539457925469675386006909306594039984816155355348026",
+        "upper": "11784.7372704562552547148612968949528875509721436267419"
+      },
+      "target_distance_from_bounds": "3.1050471124490278563732581E-24",
+      "target_within_bounds_to_one_cent": true,
+      "bounds_note": "Containment is not reconciliation; unresolved routes remain unverified"
+    }
+  },
+  "removed_receipts": {
+    "ethereum:0x4aee75529037f0f33685dc4e90c28ad501ddc093066dd0160e8a434d9f4dd36d": "1000.00",
+    "ethereum:0x554e942ed88b36769f66608f74842c0ebcd0684e7c9cdae39ed9c781afa5050d": "6999000.00",
+    "ethereum:0x8c0304548d0384b4931029ebb761b196f89e3075b6bf0f14feb96d46c7a438ff": "1000.00",
+    "ethereum:0x893bb7460905b1a2b2c73c8919a27a1a255a2a824fa831ab47afe64dee6c3064": "4999000.00",
+    "ethereum:0x61084d9dd74d98e949c6705bc77d57a55376bcd706603398eb67169c2ef1d01a": "1000.00",
+    "ethereum:0xd1c9059f2fd31b3d47e306fc346d75cda1c74714e06625a6273fe4c7f3a307a4": "10000000.00",
+    "ethereum:0x4c676cb5f6a2bce3d039713a8dab53264683f5f6f43fbc60bcbc6ad778e54782": "999000.00",
+    "ethereum:0x0fd750b1cb2e8f9db6d5ef938991193bbdeae3c4e900dcbf0378e385003940a2": "6000000.00",
+    "ethereum:0xa684232154cfa1171ae6ae9ced6b34b18a1d59802a2b713133c07f401e41ba71": "4000000.00",
+    "ethereum:0x3cf55e7f9aca47e855cecc6d9f0783e7ca2d30765f399b769eb43abdde19f2e6": "5000000.00",
+    "ethereum:0x4bb2ff6dcabd80570d027892c6a607fc5858089ab1b2354ad3a6fa147e9da32a": "10000000.00",
+    "ethereum:0x51bddfa61a8b937b96f71827aa18aa678b0e0833ead446d2694d186c1e339e52": "5000000.00",
+    "ethereum:0x1c2a64a7914eba41b0192072b4f46a42bc76032784414e747cf140cc29e37e65": "5000000.00",
+    "ethereum:0xf23dec5c6cabb4838e50d06760396c7acb941a408e1b22980c814dd125825c68": "3500000.00",
+    "ethereum:0xfc47d06b5bf8bc348f33b5625f062bdfb7d276bee6f9e19fcb3429bf8a797edb": "2600000.00",
+    "ethereum:0x30ef2ead3d0a9d80e0fdd49aa89c10130450bcaab9acaed0e59360bd6a85896d": "4250000.00",
+    "ethereum:0xbcf1d33bae8bd9932e6d927905408734ffb3fdb9ed712fa7ab2e569c6a34ea0d": "3000000.00",
+    "ethereum:0xdeecccb10a53d18f7ed955893ed0c3e33b5f9d18fecf30422f1354e43feba7eb": "2500000.00",
+    "ethereum:0x28bee92d56cfe197e453f1777a60651f14c0afaac09210ba676cba43dad2d5a7": "3000000.00",
+    "ethereum:0xb39b913d6a128b4e95c2df12341215268853bc404cfb2d2fd2b9e6f6d6a7d8d9": "10000000.00",
+    "ethereum:0x8cc24b1f1c790f1e66299c3fb271061b8530125cf74db1d33c92733674ca2f9c": "10000000.00"
+  },
+  "removed_outflows": {
+    "ethereum:0xbd03131915af7e3f11bcd7610500cdc95ff161854a72cc935d5eab22276d8be3": "1000.00",
+    "ethereum:0x7aa7f06b057915b475aac0f1e09916a17f6069e43e369d18c0106ecd8866bd5c": "6999000.000000",
+    "ethereum:0x4d283107297c95be110e5da49bb3e7104e12c8f4e7cc86686dbcc6bb793c86b5": "1000",
+    "ethereum:0xb043dbd9916ad959f4bccb066ac041a79f9773b823931eda6d12a9689ae2f80b": "4999000",
+    "ethereum:0x6a9ebfe3f0504a3f88bee9e8277997dcf11342063dbb052037c9a4b3753d1c2d": "1000.00",
+    "ethereum:0x343d8d9de9c242581ceff5f6be2abfac5f458452a5ed39e98736c9370aca84ce": "10000000",
+    "ethereum:0x5e126ce12124617b3b96ba325f99bb105b6938b6823ba59544ca373a7665e409": "999000",
+    "ethereum:0x233cb555a7b7b21458709a812932c8a140de814bb229e534afd89b04fc8179c9": "1000",
+    "ethereum:0x7594148cb134327684106849879a4d9c6b65be9d0f15d80be894c71716729d17": "5999000",
+    "ethereum:0xd217d260a8c559192159acf88e1cc32f5d5d27bc567ebd56a5476d9db0f0fc7e": "1000",
+    "ethereum:0x654f9edc08b28dabdc3ea1162710b71280dd82a7bf8eb04add3338353fe4dbb9": "3999000",
+    "ethereum:0x9d835c35f843e284627be9c9dc246ea927e98a0f8bdba500f14608aad5c05674": "10",
+    "ethereum:0x85b8a3d87354ac33895fa4c2d512f5efffc0ff673975a3f36b8f727bf0e15e65": "4999990",
+    "ethereum:0xd24db68d800079f9334b3f936e57915e9725a98a98444fb9ef1170da48d4d44e": "10",
+    "ethereum:0xf2d94f3a1618bc8dccb222b2c02fe244f5b9fe16b7f17780115209900834d553": "9999990",
+    "ethereum:0x553243c2d6dc1e2ec131a5c014d51f7e4a1cfec4296e86d57a774db424f43471": "5000000.00",
+    "ethereum:0x818750598ea085a83f8105dabfc93f0f129a320d8130f0a550ea568a367dc417": "5000000.00",
+    "ethereum:0xff3f5af0da9f3a3f079e564a0ba77424a9de33c9a3f7e940711fe9bb77042dc0": "3500000",
+    "ethereum:0xdc04b2a6a09df67ad3f96e7a42e09a58a20d9560b917537749a75bb6675e6389": "2600000",
+    "ethereum:0x1cf8c1d21d2bbe62f298b1d5713b6b0b625dcfda4039ec9176a3fad53d221fe1": "10",
+    "ethereum:0x08f2d9d7ec92bb3486829b131201209bd6ed2a9a2658bc235501e8722d3249a0": "4249990",
+    "ethereum:0xd4631388d73e6f227d1d727847c68a54d7a09a4f20d30bc7ba55bc8042e6f6cf": "3000000",
+    "ethereum:0x26769eeaa47945284cda0d72c0ff630901934aeb9a0689091daecd820d8453c3": "10",
+    "ethereum:0xdd0fd21a8dc02a5982a1776ebe47577bfa92cc64ef0da33c98285f7020900909": "2499990",
+    "ethereum:0x40b67bb7fb33b330a0146e360e5bd69ffa7ebb978ff9aeaf060986815734b6b2": "10",
+    "ethereum:0x886f4357fa61c9b82c6220b6b8a2ee1e9ecaf6d02b093c7261ece54c1c03ba88": "2999990",
+    "ethereum:0xa12cb59758f032ced5785f941f6edc8eff52e025d63dc4be2c7b04671ddffa47": "10",
+    "ethereum:0x738d9be024f68d71f7a9d5df40b1a688dee5dae5c64e9bc9ee367967d74e07c3": "9999990",
+    "ethereum:0xff9475b4238dedeb59124201f1772a396fae59ea4ed342c907c69f0af0c4ef7e": "10",
+    "ethereum:0x9e308c96010f63099d3d1c201e67d38a9506df017dba3133ee91d3f4b758b69c": "9999990"
+  },
+  "limits": "Historical subscriptions linked at the issuer boundary. No change to settlement/API. Funding uncertainty persists; signed modeled costs are not validated charges."
+}

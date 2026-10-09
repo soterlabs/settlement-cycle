@@ -1,0 +1,129 @@
+{
+  "status": "evidence inventory; no cash attribution or ledger mutation",
+  "subscriptions": [
+    {
+      "payments": [
+        "0xfc298a3643627678a14071b5b5e7a9ddd2c8853a1030bd364a200fd59bcf1981",
+        "0x5ac3e1a191b96b810beb7e5b5ddf52e6c4eeab1e0bd2c7b20526be4be970660e"
+      ],
+      "issuance": "0x9701dd940f4b4b211d9328cf6161c24078487f193ec56d9d8f055cb4bc325200",
+      "cash_paid": "50010000",
+      "shares_received": "4428393.645144",
+      "implied_cash_per_share": "11.29303400000110042249865110"
+    },
+    {
+      "payments": [
+        "0xd9218cf442a60d710849f35fb9403fd66da840faaf41f0d1f0703d55156a0397"
+      ],
+      "issuance": "0x0a286c4057964fa5b275451fad781e584ac76ed3ad6dbd7e7aae73ff041725b5",
+      "cash_paid": "50000000",
+      "shares_received": "4424373.911272",
+      "implied_cash_per_share": "11.30103400000048475830547138"
+    },
+    {
+      "payments": [
+        "0x76a6c50cc9909525a67fc286f4c84477f50976fe9bac7be78b37c6c51143ffa6"
+      ],
+      "issuance": "0x4f5c87581ef8b9a636aa07dde269910e3cb4389a9f1dd9ec04de3bdf6cfb53a6",
+      "cash_paid": "50000000",
+      "shares_received": "4412716.424986",
+      "implied_cash_per_share": "11.33088900000154268829999009"
+    }
+  ],
+  "total_paid": "150010000",
+  "total_shares_received": "13265483.981402",
+  "total_shares_burned": "13265483.981402",
+  "ending_token_units": "0.000000",
+  "burns": [
+    {
+      "tx": "0xcae6ffe1b84fd4702788fa6117b1b3017e6598855408407c10854872c70a856d",
+      "block": 23919053,
+      "shares": "4421827.9938"
+    },
+    {
+      "tx": "0xca43c99cdc901368b271e7200ca949c2e50f6405b53b9a16207b567c294d0dd2",
+      "block": 23919081,
+      "shares": "4421827.9938"
+    },
+    {
+      "tx": "0x9c38168eaf28096721d2daa374cc8105e1408b364863f57faa05185c1ab37fb8",
+      "block": 23933973,
+      "shares": "4421827.993802"
+    }
+  ],
+  "unassigned_cash_candidates": [
+    {
+      "tx": "0x6641633601e1b4c7364e7b5b497ebed27d76b31f6988edab1bb73b35b95c032c",
+      "block": 23926724,
+      "payer": "0x55fe002aeff02f77364de339a1292923a15844b8",
+      "amount": "100682211.13",
+      "attributed_to_uscc": false
+    },
+    {
+      "tx": "0xb230b52789a38848821b049b93f2bfed9c4d84dc2eb32e0d4cbb1ae69d3623fc",
+      "block": 23940496,
+      "payer": "0x55fe002aeff02f77364de339a1292923a15844b8",
+      "amount": "50331740.13",
+      "attributed_to_uscc": false
+    }
+  ],
+  "candidate_cash_total": "151013951.26",
+  "scope": "No pricing, revenue, global debt, capital basis, or settlement changes",
+  "fixture_sha256": "6d5d43fdafd66f8a6fa205669b2678326e3556161e0c40ad5f14afc20e3a96ee",
+  "nav_evidence": {
+    "feed": "0xaffd8f5578e8590665de561bde9e7badb99300d9",
+    "quotes": [
+      {
+        "block": 23626140,
+        "price": "11.296558",
+        "round_id": "18446744073709551996",
+        "updated_at": 1760970107,
+        "age_seconds": 82056
+      },
+      {
+        "block": 23633261,
+        "price": "11.293034",
+        "round_id": "18446744073709551997",
+        "updated_at": 1761052223,
+        "age_seconds": 86244
+      },
+      {
+        "block": 23733591,
+        "price": "11.342953",
+        "round_id": "18446744073709552011",
+        "updated_at": 1762265423,
+        "age_seconds": 86244
+      },
+      {
+        "block": 23919053,
+        "price": "11.369271",
+        "round_id": "18446744073709552037",
+        "updated_at": 1764529883,
+        "age_seconds": 67320
+      },
+      {
+        "block": 23919081,
+        "price": "11.369271",
+        "round_id": "18446744073709552037",
+        "updated_at": 1764529883,
+        "age_seconds": 67668
+      },
+      {
+        "block": 23933973,
+        "price": "11.380015",
+        "round_id": "18446744073709552040",
+        "updated_at": 1764771035,
+        "age_seconds": 6660
+      },
+      {
+        "block": 25878704,
+        "price": "11.715712",
+        "round_id": "18446744073709552318",
+        "updated_at": 1788181955,
+        "age_seconds": 38844
+      }
+    ],
+    "scope": "Standalone historical NAV evidence, not cash-return attribution or borrowed subscription principal."
+  },
+  "nav_fixture_sha256": "66dc2106f0b5ea44641b49a2b8ac8acc765f7b68796bc60fc1135502db204a3d"
+}

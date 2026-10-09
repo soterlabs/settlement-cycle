@@ -965,6 +965,25 @@ def _output_filename(prime_id: str, month: str) -> str:
     return f"{prime_id}_settlement_{_MONTH_NAMES[int(m) - 1]}_{year}.xlsx"
 
 
+def _write_allocation_yields(ws, analytics: dict) -> None:
+    ws.title = 'Allocation yields'
+    ws.append(['Venue', 'Average borrowed principal', 'Cost of funds', 'Net PnL', 'Gross APY', 'Net APY'])
+    keys = ('borrowed_principal_average', 'cost_of_funds', 'net_pnl', 'gross_apy', 'net_apy')
+    for row in analytics['allocations']:
+        ws.append([row['venue_id'], *[None if row.get(k) is None else float(row[k]) for k in keys]])
+    for row in ws.iter_rows(min_row=2):
+        for cell in row[1:4]:
+            cell.number_format = '#,##0.00;[Red](#,##0.00)'
+        for cell in row[4:]:
+            cell.number_format = '0.0000%'
+    ws.freeze_panes = 'B2'
+    ws.auto_filter.ref = ws.dimensions
+    ws.append([])
+    ws.append(['Costs apply to borrowed principal; separate prime financing costs are excluded.'])
+    for col in ('B', 'C', 'D', 'E', 'F'):
+        ws.column_dimensions[col].width = 25
+
+
 def build_xlsx(prime_id: str, month: str, *, output_dir: Path | None = None) -> Path:
     cell_dir = output_dir if output_dir is not None else _REPO / "settlements" / prime_id / month
     prov     = _read_provenance(cell_dir)
@@ -977,6 +996,8 @@ def build_xlsx(prime_id: str, month: str, *, output_dir: Path | None = None) -> 
     _write_venues(wb.create_sheet(), sheet, cfg)
     _write_sky_revenue(wb.create_sheet(), prov, sheet, cfg)
     _write_sde(wb.create_sheet(), sde, sheet)
+    if prov.get('allocation_financing'):
+        _write_allocation_yields(wb.create_sheet(), prov['allocation_financing'])
     if prov.get("sky_revenue_daily"):
         # "Debt" debug tab — emitted whenever the daily series is captured
         # (every run from the version that introduced ``sky_revenue_daily``
