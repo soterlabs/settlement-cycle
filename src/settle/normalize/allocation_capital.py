@@ -123,6 +123,22 @@ def _capital_asset_price(token, block, *, block_resolver=None):
     return par_stable_price(token)
 
 
+def _capital_venue(venue):
+    """Use the verified S17 asset only for tracing, preserving report config.
+
+    Ethereum fsUSDS.asset() is sUSDS, not USDS. Historical asset() reads and
+    every ALM exchange are saved in spark_ethereum_fsusds.json.gz. In particular:
+    etherscan.io/tx/0x61b4b24b102e0b19f9aa791fd4ac0c41dfcf66d2829de2226c708b78bc57d6f0
+    """
+    if (venue.chain == Chain.ETHEREUM
+            and venue.pricing_category == PricingCategory.ERC4626_VAULT
+            and venue.token.address.hex == '0x2bbe31d63e6813e3ac858c04dae43fb2a72b0d11'):
+        from ..domain.sky_tokens import sUSDS_ETHEREUM
+
+        return replace(venue, underlying=sUSDS_ETHEREUM)
+    return venue
+
+
 def _capital_unit_price(venue, block, *, block_resolver=None):
     """Capital-only prices, including nested sUSDS and Superstate shares."""
     from .allocation_superstate import uscc_capital_price, ustb_capital_price
@@ -136,6 +152,7 @@ def _capital_unit_price(venue, block, *, block_resolver=None):
     price = _susds_capital_price(venue.token, block, block_resolver=block_resolver)
     if price is not None:
         return price
+    venue = _capital_venue(venue)
     price = get_unit_price(venue, block, block_resolver=block_resolver)
     if venue.pricing_category == PricingCategory.ERC4626_VAULT and venue.underlying:
         # Legacy report pricing treats sUSDS assets as par. Capital transfers
@@ -172,6 +189,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
     unsupported: dict[str, str] = {}
     custody_accounts: dict[str, list[str]] = defaultdict(list)
     for v in prime.venues:
+        v = _capital_venue(v)
         if v.skip:
             continue
         if v.holder_override and v.pricing_category == PricingCategory.RWA_TRANCHE and is_par_stable(v.token):

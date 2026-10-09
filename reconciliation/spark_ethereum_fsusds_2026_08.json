@@ -1,0 +1,84 @@
+{
+  "input_hashes": {
+    "/tmp/pr215-spark-savings-mixed-paxos-history.jsonl.gz": "06b882109d32e5c8aa1f0545828da0ae004c03a2d4def03417b58ecdd01dfc34",
+    "tests/fixtures/spark_ethereum_fsusds.json.gz": "48b9cfe26cba72bc117c290266f8382fabc0141eb1415dbabb14e05b725d4429",
+    "/home/agent/code/lakonema2000/settlement-cycle/scripts/repair_spark_ethereum_fsusds.py": "73f943dafcb1f42779990995f13cc60e8be484b661a7f7eafe4df51b417bef10"
+  },
+  "repaired": 7,
+  "restored_share_value": "-133157.2790713903667622548610",
+  "output_sha256": "e6a2e530cd6be6af4d4c9caefd5d3089f3343333a5bf19c64c1be09afd8e2ca5",
+  "changes": [
+    {
+      "identity": "ethereum:0x61b4b24b102e0b19f9aa791fd4ac0c41dfcf66d2829de2226c708b78bc57d6f0",
+      "day": "2025-04-11",
+      "block": 22248337,
+      "old_change": "9545103.972962715306401457",
+      "new_change": "9995812.966944086843246226529",
+      "old_signed_residual": "450708.9939813715434695292071",
+      "new_signed_residual": "6.624759678084865839737003550E-12",
+      "restored_share_value": "450708.993981371536844769529"
+    },
+    {
+      "identity": "ethereum:0x021e4139f8a77ab2d069b4a33e185b51c156087739ee581e6ab4b3ccd70d6264",
+      "day": "2025-04-16",
+      "block": 22281887,
+      "old_change": "953709.263764058843176107",
+      "new_change": "999305.9638708687104023365900",
+      "old_signed_residual": "45596.70010680986725105243515",
+      "new_signed_residual": "2.482284514869607897629982326E-14",
+      "restored_share_value": "45596.7001068098672262295900"
+    },
+    {
+      "identity": "ethereum:0xa4eb490203084e11e2931bc8c24c18735365c55ed16b1390faeca4f2b80f7073",
+      "day": "2025-04-16",
+      "block": 22281902,
+      "old_change": "8535103.972962715306401457",
+      "new_change": "8943168.289705871556725703363",
+      "old_signed_residual": "408064.3167431562533049667035",
+      "new_signed_residual": "2.980720340514274832743714606E-12",
+      "restored_share_value": "408064.316743156250324246363"
+    },
+    {
+      "identity": "ethereum:0x654639674457076349279a65bbe5fd3493f337a80bdc06d0e6adabf0ae253504",
+      "day": "2025-06-06",
+      "block": 22645741,
+      "old_change": "-6000000",
+      "new_change": "-6325629.745975470534000000",
+      "old_signed_residual": "-325629.74597547053400000000",
+      "new_signed_residual": "0E-20",
+      "restored_share_value": "-325629.745975470534000000"
+    },
+    {
+      "identity": "ethereum:0xd856b0f884142fb27a3639bf51aeefa29372276e33c37b0b62871e235a0aa027",
+      "day": "2025-06-06",
+      "block": 22647320,
+      "old_change": "-4000000",
+      "new_change": "-4217198.946242715500000000",
+      "old_signed_residual": "-217198.94624271550000000000",
+      "new_signed_residual": "0E-20",
+      "restored_share_value": "-217198.946242715500000000"
+    },
+    {
+      "identity": "ethereum:0xd2b1ee5bd11affb56f04c7285658ca43643ee85452fe91f2a0eb3aad511f5425",
+      "day": "2025-06-09",
+      "block": 22667356,
+      "old_change": "-8000000",
+      "new_change": "-8437244.950862524360000000",
+      "old_signed_residual": "-437244.95086252436000000000",
+      "new_signed_residual": "0E-20",
+      "restored_share_value": "-437244.950862524360000000"
+    },
+    {
+      "identity": "ethereum:0x160acf454bfac62a4d5459cb8217c5dc9c9ed123e884dbd6fa5c87cacd687460",
+      "day": "2025-06-16",
+      "block": 22718685,
+      "old_change": "-1033917.209689489455979021",
+      "new_change": "-1091370.856511507083136521343",
+      "old_signed_residual": "-57453.646822017627157500343",
+      "new_signed_residual": "0E-21",
+      "restored_share_value": "-57453.646822017627157500343"
+    }
+  ],
+  "false_outflows_removed": "904370.0108313376640255483457",
+  "false_receipts_removed": "1037527.289902728021157500343"
+}
