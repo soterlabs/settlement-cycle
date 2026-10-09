@@ -110,3 +110,74 @@ def test_opening_deposit_fee_requires_an_explicit_exact_block_price():
     assert D(fixed['movements'][0]['change']) == D('102.10')
     with pytest.raises(ValueError, match='Cannot recover'):
         repair.repair_batch(batch, contexts, {key: {'block': 1, 'price_usd': '1.05'}})
+
+
+@pytest.mark.parametrize('vault,decimals', repair.V1_ASSET_DECIMALS.items())
+def test_v1_fee_repair_uses_underlying_decimals_and_preserves_boundary_identity(vault, decimals):
+    from settle.normalize.allocation_morpho_fees import ACCRUE_INTEREST
+
+    rows = [row(1, 0, repair.TRANSFER_TOPIC0, [ZERO, WHO], [100*10**18]),
+            row(2, 0, repair.TRANSFER_TOPIC0, [ZERO, WHO], [2*10**18]),
+            row(2, 1, ACCRUE_INTEREST, [], [110*10**decimals, 2*10**18]),
+            row(2, 2, repair.TRANSFER_TOPIC0, [WHO, ZERO], [10*10**18]),
+            row(2, 3, repair.WITHDRAW, [WHO, WHO, WHO], [11*10**decimals, 10*10**18])]
+    rows = [{**r, 'address': vault} for r in rows]
+    _, batch = examples()
+    batch['movements'][0]['account'] = f'ethereum:{repair.HOLDER}:{vault}'
+    batch['minted_by_ilk'] = {'ALLOCATOR_SPARK_A': '17.123'}
+    witness = batch['identity']
+    batch['identity'] += ':paxos-pyusd-usdc'
+    contexts = repair.fee_contexts(rows, vaults={vault})
+    assert repair.repair_batch(batch, contexts)[0] == batch
+    fixed, audit = repair.repair_batch(batch, contexts, allow_boundary_alias=True)
+    assert fixed['identity'] == batch['identity']
+    assert fixed['minted_by_ilk'] == batch['minted_by_ilk']
+    assert D(fixed['movements'][0]['external_income']) == D('2.2')
+    assert D(fixed['movements'][0]['change']) == D('-8.8')
+    assert D(fixed['movements'][0]['value_before']) == 110
+    assert audit[0]['witness_identity'] == witness
+
+
+def test_real_three_ethereum_v1_vaults_authenticate_fees_and_reject_tampered_mints():
+    import json
+
+    from settle.domain.primes import Chain
+    from settle.extract.hypersync import LogRow
+    from settle.normalize.allocation_morpho_fees import ACCRUE_INTEREST, fee_mints
+
+    examples = json.loads((ROOT / 'tests/fixtures/spark_ethereum_morpho_v1_fee_examples.json').read_text())
+    assert set(examples) == set(repair.V1_ASSET_DECIMALS)
+    for vault, example in examples.items():
+        rows = [LogRow(**r) for r in example['rows']]
+        tracked = {(vault, repair.HOLDER)}
+        assert fee_mints(Chain.ETHEREUM, rows, tracked) == {
+            (vault, repair.HOLDER): int(example['expected_fee_units'])}
+        assert fee_mints(Chain.BASE, rows, tracked) == {}
+        accrual = next(r for r in rows if r.address == vault and r.topic0 == ACCRUE_INTEREST
+                       and int(r.data[66:], 16) > 0)
+        mint_index = accrual.log_index - 1
+        for override in ({'data': '0x'+f'{1:064x}'}, {'transaction_hash': '0x'+'f'*64}):
+            altered = [LogRow(**{**r, **override}) if r['log_index'] == mint_index else LogRow(**r)
+                       for r in example['rows']]
+            with pytest.raises(ValueError, match='disagrees'):
+                fee_mints(Chain.ETHEREUM, altered, tracked)
+        # Ordinary deposit mints alone do not establish earned income.
+        assert fee_mints(Chain.ETHEREUM, [r for r in rows if r.topic0 != ACCRUE_INTEREST], tracked) == {}
+
+
+def test_v1_pinned_share_controls_reject_incomplete_history_or_wrong_decimals():
+    evidence = {'holder': repair.HOLDER, 'pin': 1, 'rows': [], 'vaults': {}}
+    for vault, decimals in repair.V1_ASSET_DECIMALS.items():
+        evidence['rows'].append({**row(1, len(evidence['rows']), repair.TRANSFER_TOPIC0,
+                                      [ZERO, WHO], [100]), 'address': vault})
+        evidence['vaults'][vault] = {'asset_decimals': decimals,
+                                    'pinned_state': {'feeRecipient()': WHO, 'holder_balance': '100'}}
+    repair.validate_v1_evidence(evidence)
+    wrong = deepcopy(evidence)
+    wrong['rows'].pop()
+    with pytest.raises(ValueError, match='pinned controls'):
+        repair.validate_v1_evidence(wrong)
+    wrong = deepcopy(evidence)
+    wrong['vaults'][next(iter(wrong['vaults']))]['asset_decimals'] = 18
+    with pytest.raises(ValueError, match='pinned controls'):
+        repair.validate_v1_evidence(wrong)

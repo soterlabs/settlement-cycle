@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Repair only proven Morpho V2 fee legs in an immutable tracing snapshot.
+"""Repair only proven Ethereum Morpho fee legs in an immutable tracing snapshot.
 
 The output is a separately fingerprinted diagnostic input, not a fresh full
 extraction and not a published settlement. All other batches and debt amounts
@@ -17,14 +17,47 @@ from settle.domain.primes import Chain
 from settle.extract._keccak import keccak256
 from settle.extract.hypersync import LogRow
 from settle.extract.transfer_logs import TRANSFER_TOPIC0
-from settle.normalize.allocation_morpho_fees import V2_VAULTS, fee_mints
+from settle.normalize.allocation_morpho_fees import V2_VAULTS, VAULTS, fee_mints
 
 HOLDER = '0x1601843c5e9bc251a3272907010afa41fa18347e'
 DEPOSIT = '0x' + keccak256(b'Deposit(address,address,uint256,uint256)').hex()
 WITHDRAW = '0x' + keccak256(b'Withdraw(address,address,address,uint256,uint256)').hex()
+V1_ASSET_DECIMALS = {
+    '0x56a76b428244a50513ec81e225a293d128fd581d': 6,
+    '0x73e65dbd630f90604062f6e02fab9138e713edd9': 18,
+    '0xe41a0583334f0dc4e023acd0bfef3667f6fe0597': 18,
+}
 
 
-def fee_contexts(rows):
+def validate_v1_evidence(evidence):
+    """Require complete observed share balances and independent pinned control."""
+    if (not isinstance(evidence, dict) or evidence.get('holder') != HOLDER
+            or set(evidence.get('vaults', {})) != set(V1_ASSET_DECIMALS)):
+        raise ValueError('Ethereum V1 evidence needs all reviewed vault controls')
+    balances = defaultdict(int)
+    unique = {}
+    for raw in evidence['rows']:
+        key = raw['block_number'], raw['log_index']
+        if key in unique and unique[key] != raw:
+            raise ValueError('Conflicting Ethereum V1 event')
+        if raw['block_number'] > evidence['pin']:
+            raise ValueError('Ethereum V1 event exceeds pinned history')
+        unique[key] = raw
+    for raw in unique.values():
+        if raw['address'] in V1_ASSET_DECIMALS and raw['topic0'] == TRANSFER_TOPIC0:
+            amount = int(raw['data'], 16)
+            balances[raw['address']] += amount * (
+                (raw['topic2'][-40:] == HOLDER[2:]) - (raw['topic1'][-40:] == HOLDER[2:]))
+    for vault, decimals in V1_ASSET_DECIMALS.items():
+        control = evidence['vaults'][vault]
+        state = control['pinned_state']
+        if (control['asset_decimals'] != decimals
+                or '0x' + state['feeRecipient()'][-40:] != HOLDER
+                or balances[vault] != int(state['holder_balance'])):
+            raise ValueError('Ethereum V1 share history does not reproduce pinned controls')
+
+
+def fee_contexts(rows, *, vaults=None, asset_decimals=None):
     groups, unique = defaultdict(list), {}
     for raw in rows:
         r = LogRow(**raw)
@@ -36,7 +69,11 @@ def fee_contexts(rows):
         groups[(r.block_number, r.transaction_hash)].append(r)
     holdings = defaultdict(int)
     contexts = {}
-    tracked = {(v, HOLDER) for v in V2_VAULTS[Chain.ETHEREUM]}
+    selected = V2_VAULTS[Chain.ETHEREUM] if vaults is None else set(vaults)
+    reviewed = V2_VAULTS[Chain.ETHEREUM] | VAULTS.get(Chain.ETHEREUM, set())
+    if not selected or not selected <= reviewed:
+        raise ValueError('Fee repair requires explicitly reviewed Ethereum vaults')
+    tracked = {(v, HOLDER) for v in selected}
     for (block, tx), logs in groups.items():
         fees = fee_mints(Chain.ETHEREUM, logs, tracked)
         before = dict(holdings)
@@ -55,7 +92,8 @@ def fee_contexts(rows):
                   or (r.topic0 == WITHDRAW and r.topic3.endswith(HOLDER[2:]))):
                 if len(r.data) != 130:
                     raise ValueError('Invalid canonical ERC4626 event')
-                values = (D(int(r.data[2:66], 16))/10**6, int(r.data[66:], 16))
+                decimals = (asset_decimals or V1_ASSET_DECIMALS).get(r.address, 6)
+                values = (D(int(r.data[2:66], 16))/10**decimals, int(r.data[66:], 16))
                 (deposits if r.topic0 == DEPOSIT else withdrawals)[r.address].append(values)
         for (vault, _), amount in fees.items():
             if not amount:
@@ -68,12 +106,14 @@ def fee_contexts(rows):
     return contexts
 
 
-def repair_batch(batch, contexts, prices=None):
+def repair_batch(batch, contexts, prices=None, *, allow_boundary_alias=False):
     result = dict(batch)
     movements = []
     applied = []
+    witness = (batch['identity'].removesuffix(':paxos-pyusd-usdc')
+               if allow_boundary_alias else batch['identity'])
     for m in batch['movements']:
-        ctx = contexts.get((batch['identity'], m['account']))
+        ctx = contexts.get((witness, m['account']))
         if ctx is None:
             movements.append(m)
             continue
@@ -87,7 +127,7 @@ def repair_batch(batch, contexts, prices=None):
         elif net and not ctx['deposits']:
             unit_price = old_change / D(net)
         else:
-            quote = (prices or {}).get(batch['identity'] + '|' + m['account'])
+            quote = (prices or {}).get(witness + '|' + m['account'])
             if quote is None or quote['block'] != batch['block']:
                 raise ValueError('Cannot recover historical fee share price from this snapshot')
             unit_price = D(quote['price_usd']) / 10**18
@@ -112,6 +152,8 @@ def repair_batch(batch, contexts, prices=None):
         movements.append(fixed)
         applied.append({'batch': batch['identity'], 'account': m['account'], 'block': batch['block'],
                         'fee_income': str(fee_value), 'old_change': m['change'], 'new_change': str(change)})
+        if witness != batch['identity']:
+            applied[-1]['witness_identity'] = witness
     result['movements'] = movements
     return result, applied
 
@@ -123,12 +165,19 @@ def main():
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--audit', type=Path, required=True)
     p.add_argument('--unit-prices', type=Path, help='Exact-block normalizer quotes for otherwise unprovable opening prices')
+    p.add_argument('--reviewed-ethereum-v1', action='store_true',
+                   help='Repair the separately reviewed Ethereum MetaMorpho V1 fees')
     args = p.parse_args()
     if args.history.resolve() == args.output.resolve():
         raise ValueError('Original history must remain immutable')
     raw = args.events.read_bytes()
-    rows = json.loads(gzip.decompress(raw) if args.events.suffix == '.gz' else raw)
-    contexts = fee_contexts(rows)
+    evidence = json.loads(gzip.decompress(raw) if args.events.suffix == '.gz' else raw)
+    if args.reviewed_ethereum_v1:
+        validate_v1_evidence(evidence)
+    rows = evidence['rows'] if isinstance(evidence, dict) else evidence
+    selected = VAULTS[Chain.ETHEREUM] if args.reviewed_ethereum_v1 else None
+    contexts = fee_contexts(rows, vaults=selected,
+                            asset_decimals=V1_ASSET_DECIMALS if args.reviewed_ethereum_v1 else None)
     prices = json.loads(args.unit_prices.read_text()) if args.unit_prices else {}
     import settle.normalize.allocation_morpho_fees as fee_module
 
@@ -141,18 +190,23 @@ def main():
     try:
         with gzip.open(args.history, 'rt') as src, gzip.open(temporary, 'wt') as out:
             meta = json.loads(next(src))
-            if 'diagnostic_fee_patch' in meta:
+            patch_key = ('diagnostic_ethereum_v1_fee_patch' if args.reviewed_ethereum_v1
+                         else 'diagnostic_fee_patch')
+            if patch_key in meta:
                 raise ValueError('Fee snapshot already repaired')
-            meta['diagnostic_fee_patch'] = {'original_fingerprint': meta['fingerprint'], 'input_hashes': hashes}
-            meta['fingerprint'] = hashlib.sha256(json.dumps(meta['diagnostic_fee_patch'], sort_keys=True).encode()).hexdigest()
+            meta[patch_key] = {'original_fingerprint': meta['fingerprint'], 'input_hashes': hashes}
+            if selected is not None:
+                meta[patch_key]['vaults'] = sorted(selected)
+            meta['fingerprint'] = hashlib.sha256(json.dumps(meta[patch_key], sort_keys=True).encode()).hexdigest()
             out.write(json.dumps(meta) + '\n')
             for line in src:
                 batch = json.loads(line)
-                updated, applied = repair_batch(batch, contexts, prices)
+                updated, applied = repair_batch(batch, contexts, prices,
+                                                 allow_boundary_alias=args.reviewed_ethereum_v1)
                 out.write(json.dumps(updated) + '\n' if applied else line)
                 changes.extend(applied)
-        used = {(r['batch'], r['account']) for r in changes}
-        if used != set(contexts):
+        used = {(r.get('witness_identity', r['batch']), r['account']) for r in changes}
+        if used != set(contexts) or len(used) != len(changes):
             raise ValueError('Canonical fee event lacks an original normalized position')
         temporary.replace(args.output)
     finally:

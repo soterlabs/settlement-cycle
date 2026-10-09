@@ -7,7 +7,17 @@ from ..extract.transfer_logs import TRANSFER_TOPIC0
 
 # Limit this adapter to the reviewed MetaMorpho deployment. Do not infer fees
 # from arbitrary ERC4626 mints or the size of a receipt.
-VAULTS = {Chain.BASE: {'0x7bfa7c4f149e7415b73bdedfe609237e29cbf34a'}}
+VAULTS = {
+    Chain.BASE: {'0x7bfa7c4f149e7415b73bdedfe609237e29cbf34a'},
+    # Spark Blue Chip USDC and the DAI/USDS vaults use MetaMorpho V1. Fee mints to
+    # the ALM and the immediately following AccrueInterest authenticate
+    # this income; feeRecipient() independently agrees at the August pin.
+    Chain.ETHEREUM: {
+        '0x56a76b428244a50513ec81e225a293d128fd581d',
+        '0x73e65dbd630f90604062f6e02fab9138e713edd9',
+        '0xe41a0583334f0dc4e023acd0bfef3667f6fe0597',
+    },
+}
 ACCRUE_INTEREST = '0x' + keccak256(b'AccrueInterest(uint256,uint256)').hex()
 ACCRUE_INTEREST_V2 = '0x' + keccak256(b'AccrueInterest(uint256,uint256,uint256,uint256)').hex()
 # Both Spark USDT vaults have the ALM as performance-fee recipient; the
@@ -73,7 +83,8 @@ def fee_mints(chain, rows, tracked):
         if (mint.address == row.address and mint.topic0 == TRANSFER_TOPIC0
                 and mint.topic1 == ZERO_TOPIC and mint.topic2
                 and (row.address, '0x' + mint.topic2[-40:]) in tracked):
-            if len(mint.data) != 66 or int(mint.data, 16) != amount:
+            if (mint.transaction_hash != row.transaction_hash or len(mint.data) != 66
+                    or int(mint.data, 16) != amount):
                 raise ValueError('MetaMorpho fee mint disagrees with accrual')
             fees[(row.address, '0x' + mint.topic2[-40:])] += amount
     return fees
