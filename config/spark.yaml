@@ -1000,6 +1000,7 @@ venues:
     chain: base
     label: 'USDC raw (Base — ALM idle)'
     pricing_category: A
+    external_yield_source: true   # Spark Operations USDC yield (operator, 2026-10-09)
     token:
       address: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
       symbol: 'USDC'
@@ -1178,6 +1179,7 @@ venues:
     chain: avalanche_c
     label: 'USDC raw (Avalanche-C — ALM idle)'
     pricing_category: A
+    external_yield_source: true   # Spark Operations USDC yield (operator, 2026-10-09)
     token:
       address: '0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e'
       symbol: 'USDC'
@@ -1374,10 +1376,15 @@ external_alm_sources:
     - '0xb137e7d16564c81ae2b0c8ee6b55de81dd46ece5'
     # spDAI reserve treasury:
     - '0x856900aa78e856a5df1a2665ee3a66b2487cd68f'
+  base:
+    # Spark Operations: operator confirmed the ALM inflows as yield, 2026-10-09.
+    - '0x2e1b01adabb8d4981863394bea23a1263cbaedfc'
+  avalanche_c:
+    - '0x2e1b01adabb8d4981863394bea23a1263cbaedfc'
 
 # Start dates preserve completed reports. Reserve treasury receipts ride the
 # September settlement once via sv_adj; their direct recognition starts then.
-# The three yield payers approved October 9 activate in October, with no new
+# The yield payers approved October 9 activate in October, with no new
 # historical true-up implied by this configuration.
 external_alm_source_start_dates:
   ethereum:
@@ -1386,6 +1393,10 @@ external_alm_source_start_dates:
     '0x1e30f9c2c688f85c82111d1d262bfd127e687282': '2026-10-01'
     '0xb137e7d16564c81ae2b0c8ee6b55de81dd46ece5': '2026-09-01'
     '0x856900aa78e856a5df1a2665ee3a66b2487cd68f': '2026-09-01'
+  base:
+    '0x2e1b01adabb8d4981863394bea23a1263cbaedfc': '2026-10-01'
+  avalanche_c:
+    '0x2e1b01adabb8d4981863394bea23a1263cbaedfc': '2026-10-01'
 
 # Per-(chain, source) overrides for inflows that arrive from an
 # `external_alm_sources` address but should NOT be classified as yield

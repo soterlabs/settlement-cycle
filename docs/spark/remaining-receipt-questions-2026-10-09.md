@@ -15,8 +15,17 @@ been generated. The regression test uses all 20 observed transfer logs and
 checks earned cash, absence of new lender funding, and the activation boundary.
 
 The three Spark Operations transfers below are **inflows to ALM proxies**.
-The operator's conditional instruction to treat outflows as expenses therefore
-does not classify these receipts. Their economic purpose remains open.
+After confirming their direction, the operator explicitly classified all three
+as **yield**: **1,203,063.147623 USDC**, comprising 1,126,433.663777 on Base
+and 76,629.483846 on Avalanche-C. Their sender is enabled only on those two
+chains, with S39/S55 external yield enabled and October settlement activation.
+These transfers are not expenses. Actual-receipt regression tests cover both
+chains and confirm no new Sky or Savings principal.
+
+The operator also identified `0xc8a3e1e0776b912047c89dc16470fd9c7ea1141d`
+as **related to Maple**. This identifies an affiliation, not the purpose of its
+383,178.08-USDC receipt. That receipt remains unclassified pending an explicit
+income-versus-capital decision; the address has not been added to the allowlist.
 
 The findings below retain the investigation's original evidence and hypotheses;
 the operator decisions above supersede their unconfirmed status for these
@@ -106,8 +115,9 @@ Three more receipts come from the same Spark Operations address,
 | Base, 2025-12-12 | 346,540.645157 | [d2f0a0…](https://basescan.org/tx/0xd2f0a0c9e7a016dc26609a48b54a95b6fc92c85d287069d15efadafb93a9e7e0) |
 | Avalanche, 2026-03-17 | 76,629.483846 | [a452f9…](https://snowtrace.io/tx/0xa452f9c99ccc93d7dc6a7f48c059a65420dcb2dde331f8463edfe81bada8fcd5) |
 
-Total: **1,203,063.147623 USDC**. The receipt proves payer and destination,
-not the economic purpose. Possible explanations include proceeds from selling
+Total: **1,203,063.147623 USDC**, now operator-confirmed yield (see above).
+Before that confirmation, the receipts established payer and destination,
+not economic purpose. The original possible explanations included proceeds from selling
 reward tokens, an operational reimbursement, or returned capital. The operations
 wallet's general liquidation role does not establish which applies here.
 
@@ -115,7 +125,7 @@ Three smaller Ethereum receipts also remain unclassified:
 
 | Date | Amount | Payer | Transaction |
 |---|---:|---|---|
-| 2026-01-19 | 383,178.08 USDC | `0xc8a3e1e0776b912047c89dc16470fd9c7ea1141d` | [e8e9fa…](https://etherscan.io/tx/0xe8e9fa97ba936198cb147decccb93e24852503d25240f82f4bfc3612800eebed) |
+| 2026-01-19 | 383,178.08 USDC | `0xc8a3e1e0776b912047c89dc16470fd9c7ea1141d` — Maple-related (operator); purpose unconfirmed | [e8e9fa…](https://etherscan.io/tx/0xe8e9fa97ba936198cb147decccb93e24852503d25240f82f4bfc3612800eebed) |
 | 2025-08-07 | 14,452.68561739 USDS | `0xaa2461f0f0a3de5feaf3273eae16def861cf594e` | [f6c5b0…](https://etherscan.io/tx/0xf6c5b04ec676db0b45a530552b97c7b4b09aab1777087b3b9d6fd8d8701c295e) |
 | 2025-08-05 | 10,539.96 USDC | `0xcd531ae9efcce479654c4926dec5f6209531ca7b` | [cfd1fe…](https://etherscan.io/tx/0xcfd1fea5b70e95420e18f0f18c8528882db5bf235b93299f8f067499b2934a98) |
 
