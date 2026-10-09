@@ -2,34 +2,30 @@
 
 ## Operator decisions, 2026-10-09
 
-The operator confirmed the USDe Safe, Maple treasury, and additional PYUSD
-payer receipts below as **yield**, totaling **10,193,206.19** at par. These
-groups are no longer open classification questions. `config/spark.yaml` now
-includes their senders; S30 enables the existing external-yield path. Historical
-capital normalization recognizes their earned cash with no new borrowed basis.
-The completed frozen replays predate this change and have not been rerun.
+The operator confirmed these receipts as **yield for capital tracing only**:
 
-Settlement recognition activates in October 2026 to preserve the completed
-reports through September. No historical true-up, report, or API update has
-been generated. The regression test uses all 20 observed transfer logs and
-checks earned cash, absence of new lender funding, and the activation boundary.
+- USDe Safe, Maple treasury and additional PYUSD payer: **10,193,206.19** at par.
+- Spark Operations inflows: **1,203,063.147623 USDC**, comprising
+  1,126,433.663777 on Base and 76,629.483846 on Avalanche-C; these are not expenses.
+- Maple-related `0xc8a3e1e0776b912047c89dc16470fd9c7ea1141d`:
+  **383,178.08 USDC** on January 19, 2026, also explicitly confirmed as yield.
 
-The three Spark Operations transfers below are **inflows to ALM proxies**.
-After confirming their direction, the operator explicitly classified all three
-as **yield**: **1,203,063.147623 USDC**, comprising 1,126,433.663777 on Base
-and 76,629.483846 on Avalanche-C. Their sender is enabled only on those two
-chains, with S39/S55 external yield enabled and October settlement activation.
-These transfers are not expenses. Actual-receipt regression tests cover both
-chains and confirm no new Sky or Savings principal.
+These classifications live in `capital_income_sources` in `config/spark.yaml`.
+Only capital normalization consumes them. They distinguish earned cash from
+borrowed principal when calculating **2026** per-allocation borrowing costs.
+Earlier receipts remain relevant to opening funding balances; they do not
+create a 2025 MSC accounting exercise. Do not charge Sky CoF on earnings.
 
-The operator also identified `0xc8a3e1e0776b912047c89dc16470fd9c7ea1141d`
-as **related to Maple**. This identifies an affiliation, not the purpose of its
-383,178.08-USDC receipt. That receipt remains unclassified pending an explicit
-income-versus-capital decision; the address has not been added to the allowlist.
+The earlier October revenue activation changes have been removed. Existing
+settlement revenue configuration is restored; no historical or future MSC
+revenue change, true-up, report regeneration, or API update follows from these
+classifications. The completed frozen replays predate this change and have not
+been rerun. Regression tests use actual historical transfer logs, check no new
+lender funding, and verify the senders remain excluded from settlement revenue
+recognition in both historical and future periods.
 
 The findings below retain the investigation's original evidence and hypotheses;
-the operator decisions above supersede their unconfirmed status for these
-three approved payer groups.
+the operator decisions above supersede the unconfirmed status of these groups.
 
 This inventory isolates direct transfers at Spark's Ethereum ALM boundary.
 It does not trace the subsequent or prior use of commingled counterparty funds.
@@ -125,7 +121,7 @@ Three smaller Ethereum receipts also remain unclassified:
 
 | Date | Amount | Payer | Transaction |
 |---|---:|---|---|
-| 2026-01-19 | 383,178.08 USDC | `0xc8a3e1e0776b912047c89dc16470fd9c7ea1141d` — Maple-related (operator); purpose unconfirmed | [e8e9fa…](https://etherscan.io/tx/0xe8e9fa97ba936198cb147decccb93e24852503d25240f82f4bfc3612800eebed) |
+| 2026-01-19 | 383,178.08 USDC | `0xc8a3e1e0776b912047c89dc16470fd9c7ea1141d` — Maple-related; yield confirmed by operator | [e8e9fa…](https://etherscan.io/tx/0xe8e9fa97ba936198cb147decccb93e24852503d25240f82f4bfc3612800eebed) |
 | 2025-08-07 | 14,452.68561739 USDS | `0xaa2461f0f0a3de5feaf3273eae16def861cf594e` | [f6c5b0…](https://etherscan.io/tx/0xf6c5b04ec676db0b45a530552b97c7b4b09aab1777087b3b9d6fd8d8701c295e) |
 | 2025-08-05 | 10,539.96 USDC | `0xcd531ae9efcce479654c4926dec5f6209531ca7b` | [cfd1fe…](https://etherscan.io/tx/0xcfd1fea5b70e95420e18f0f18c8528882db5bf235b93299f8f067499b2934a98) |
 
