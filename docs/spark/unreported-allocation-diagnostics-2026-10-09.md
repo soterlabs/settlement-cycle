@@ -12,7 +12,7 @@ The diagnostic now also includes configured, unreported allocations with funded
 balances during the requested period. These rows expose modeled principal and
 financing costs, but remain uncertified: revenue, certified cost, net PnL and APY
 are unavailable. In particular, the missing historical revenue metadata cannot
-establish the venue's idle-USDS exemption. The change neither invents a zero
+establish the venue's complete exemption policy. The change neither invents a zero
 revenue nor treats a modeled gross financing cost as the correct net charge.
 Dormant unfunded allocations are not added. Existing reported allocations retain
 their actual revenue and deductions.
@@ -23,6 +23,14 @@ assigned S66 an August average Sky-funded basis of 3,380,179.336569 USDS and
 checkpoint diagnostic, not the updated replay result or a settlement adjustment.
 The corresponding NFT IDs are 385168 and 385169, at position manager
 `0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e`.
+
+The separate saved daily deduction inputs **do** contain S66's idle-USDS
+balances for August 27–31. These are used by the new diagnostic row, even
+though the venue is absent from the revenue snapshot. At the unchanged daily
+Sky rates, they represent **8,151.092172 USD** of deductions. Applied to the
+old baseline above, the resulting modeled net cost is **2,356.718141 USD**,
+not the 10,507.810313 gross figure. The new funded replay can change the
+principal attribution; it reuses these same daily dollar deductions.
 
 Completed funded replays can be projected through this reporting change without
 replaying transactions. The projection must retain every existing allocation row,

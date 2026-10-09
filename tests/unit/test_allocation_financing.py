@@ -2,6 +2,8 @@ from datetime import date, timedelta
 from decimal import Decimal as D
 from types import SimpleNamespace
 
+import pytest
+
 from settle.compute.allocation_financing import allocation_financing, annualized_yield
 from settle.domain.monthly_pnl import VenueRevenue
 from settle.normalize.allocation_capital import AssetMovement, CapitalBatch, CapitalHistory
@@ -120,7 +122,8 @@ def test_mixed_ilk_deductions_and_tracing_only_allocation_do_not_invent_revenue(
     assert pnl.venue_breakdown == []
 
 
-def test_funded_nft_omitted_from_old_revenue_snapshot_remains_visible_but_uncertified():
+@pytest.mark.parametrize('idle, expected', [(D(0), D('.01')), (D(40), D('.006'))])
+def test_funded_nft_omitted_from_old_revenue_snapshot_remains_visible_but_uncertified(idle, expected):
     day = date(2026, 8, 1)
     history = CapitalHistory((CapitalBatch('draw', day, 1, 'ethereum', 1,
         (AssetMovement('nft:position', D(0), D(100)),), D(100),
@@ -132,12 +135,12 @@ def test_funded_nft_omitted_from_old_revenue_snapshot_remains_visible_but_uncert
         venue_breakdown=[], sde_daily_breakdown=[],
         sky_revenue_daily=[{'date': str(day), 'utilized': '100', 'daily_sky_rev': '.01',
                            'base_apr': '.0365'}])
-    result = allocation_financing(pnl, history)
+    result = allocation_financing(pnl, history, idle_amounts={'NFT': {day: idle}})
     assert result['unreported_allocation_ids'] == ['NFT']
     row, = result['allocations']
     assert row['venue_id'] == 'NFT'
     assert row['borrowed_principal_average'] == 100
-    assert row['modeled_cost_of_funds_by_ilk'] == {'A': D('.01')}
+    assert row['modeled_cost_of_funds_by_ilk'] == {'A': expected}
     assert row['cost_of_funds'] is None
     assert row['net_pnl'] is None and row['net_apy'] is None and row['gross_apy'] is None
     assert row['revenue_available'] is False
