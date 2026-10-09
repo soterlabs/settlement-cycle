@@ -71,12 +71,14 @@ def apply_executed_spells(history):
     from .spark_native_seed import link_spark_native_seed
     from .spark_op_uni_withdrawals import link_spark_op_uni_withdrawals
     from .spark_reserve_gifts import recognize_spark_reserve_gifts
+    from .spark_anchorage_correction import correct_spark_anchorage_round_trip
     from .spark_paxos_capital import link_spark_paxos
     from .spark_subproxy_reserve_gifts import recognize_spark_subproxy_reserves
     from .spark_separate_savings_routes import separate_spark_savings_routes
     from .spark_uscc_capital import link_spark_uscc
     from .spark_ustb_capital import link_spark_ustb
 
+    history = correct_spark_anchorage_round_trip(history)
     history = link_spark_paxos(history)
     history = separate_spark_savings_routes(history)
     history = recognize_spark_reserve_gifts(history)
