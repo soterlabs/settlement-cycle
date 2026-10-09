@@ -37,6 +37,17 @@ ROUTES = (
 
 
 def link_spark_op_uni_withdrawals(history):
+    return _link_withdrawals(history, ROUTES, SUFFIX)
+
+
+def link_spark_june_op_uni_withdrawals(history):
+    from .spark_june_op_uni_routes import JUNE_ROUTES
+
+    return _link_withdrawals(history, JUNE_ROUTES, ':spark-june-op-uni-withdrawal',
+                             full_exit=False, venue_suffix='_JUNE')
+
+
+def _link_withdrawals(history, routes, suffix, *, full_exit=True, venue_suffix=''):
     from ..normalize.allocation_capital import AssetMovement
 
     index = {b.identity: b for b in history.batches}
@@ -44,11 +55,11 @@ def link_spark_op_uni_withdrawals(history):
         raise ValueError('Duplicate capital transaction')
     mapping, extras = dict(history.venue_accounts), set(history.analytics_only_venues)
     changed = False
-    for chain, holder, source_tx, source_block, source_stamp, legs in ROUTES:
+    for chain, holder, source_tx, source_block, source_stamp, legs in routes:
         source_id = chain + ':' + source_tx
-        identities = [source_id, *('ethereum:' + leg[3] for leg in legs)]
-        transformed = [source_id + SUFFIX + f':{n+1}' for n in range(len(legs))]
-        transformed.extend('ethereum:' + leg[3] + SUFFIX for leg in legs)
+        identities = [source_id, *('ethereum:' + leg[3] for leg in legs if leg[3])]
+        transformed = [source_id + suffix + f':{n+1}' for n in range(len(legs))]
+        transformed.extend('ethereum:' + leg[3] + suffix for leg in legs if leg[3])
         if any(i in index for i in transformed):
             if any(i in index for i in identities):
                 raise ValueError('Cannot append raw events to linked Spark OP/Uni withdrawal')
@@ -65,19 +76,23 @@ def link_spark_op_uni_withdrawals(history):
             found = [m for m in movements if m.account == account]
             if (len(found) != 1 or found[0].external_income
                     or abs(found[0].change + source_value) > D('1e-8')
-                    or abs(found[0].value_before - source_value) > D('1e-8')):
+                    or (full_exit and abs(found[0].value_before - source_value) > D('1e-8'))
+                    or found[0].value_before + D('1e-8') < source_value):
                 raise ValueError('Spark OP/Uni withdrawal burn differs')
-            claim = f'native-bridge:spark:{chain}:{tx}'
-            venue = f'S_{chain.upper()}_NATIVE_PENDING_{n+1}'
+            claim_id = tx or source_tx + ':' + local
+            claim = f'native-bridge:spark:{chain}:{claim_id}'
+            venue = f'S_{chain.upper()}_NATIVE_PENDING{venue_suffix}_{n+1}'
             if venue in mapping and mapping[venue] != claim:
                 raise ValueError('Conflicting Spark OP/Uni bridge ownership')
             mapping[venue] = claim
             extras.add(venue)
             # Separate authenticated token legs must not share a clearing
             # account: that would mix their borrowed/earned funding ratios.
-            leg_id = source_id + SUFFIX + f':{n+1}'
+            leg_id = source_id + suffix + f':{n+1}'
             index[leg_id] = replace(source, identity=leg_id, log_index=source.log_index + n,
                 movements=(replace(found[0], preserve_basis=True), AssetMovement(claim, D(0), source_value)))
+            if tx is None:
+                continue  # Pinned portal state proves the withdrawal remains pending.
             destination_id = 'ethereum:' + tx
             destination = index.get(destination_id)
             if destination is None:
@@ -89,7 +104,7 @@ def link_spark_op_uni_withdrawals(history):
                     or destination.movements[0].external_income
                     or abs(destination.movements[0].change - arrival_value) > D('1e-8')):
                 raise ValueError('Spark OP/Uni withdrawal receipt differs')
-            index[destination_id + SUFFIX] = replace(destination, identity=destination_id + SUFFIX,
+            index[destination_id + suffix] = replace(destination, identity=destination_id + suffix,
                 movements=(*destination.movements,
                     AssetMovement(claim, arrival_value, -arrival_value, preserve_basis=True)))
             del index[destination_id]
