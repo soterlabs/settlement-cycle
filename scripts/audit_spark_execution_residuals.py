@@ -61,10 +61,14 @@ def main():
         parser.add_argument('--' + name, type=Path, required=True)
     parser.add_argument('--legacy-curve-events', type=Path,
                         help='Optional independent old USDC/USDT and PYUSD/USDC swap evidence')
+    parser.add_argument('--rlusd-curve-events', type=Path,
+                        help='Optional independent USDC/RLUSD swap evidence')
     args = parser.parse_args()
     inputs = [args.residuals, args.par_events, args.susds_events, args.ethena_events, args.income_rules]
     if args.legacy_curve_events:
         inputs.append(args.legacy_curve_events)
+    if args.rlusd_curve_events:
+        inputs.append(args.rlusd_curve_events)
     if args.output.resolve() in {p.resolve() for p in inputs}:
         raise ValueError('Audit output cannot overwrite evidence')
     par, _, rules = audited_rules(read(args.par_events))
@@ -83,17 +87,21 @@ def main():
             if kind in witnesses[row['identity']]:
                 raise ValueError('Duplicate transaction execution witness')
             witnesses[row['identity']][kind] = sign * D(row[field])
-    legacy_summary = None
-    if args.legacy_curve_events:
+    curve_summaries = {}
+    for label, path, rlusd in (('legacy-curve', args.legacy_curve_events, False),
+                               ('rlusd-curve', args.rlusd_curve_events, True)):
+        if path is None:
+            continue
         from audit_spark_legacy_curve_swaps import audit as audit_legacy
 
-        legacy, excluded = audit_legacy(read(args.legacy_curve_events))
+        legacy, excluded = audit_legacy(read(path), rlusd=rlusd)
         for row in legacy:
-            if 'legacy-curve' in witnesses[row['identity']]:
+            if label in witnesses[row['identity']]:
                 raise ValueError('Duplicate legacy Curve transaction')
-            witnesses[row['identity']]['legacy-curve'] = D(row['gain'])
-        legacy_summary = {'verified': len(legacy), 'excluded': excluded,
-                          'signed_gain': str(sum((D(r['gain']) for r in legacy), ZERO))}
+            witnesses[row['identity']][label] = D(row['gain'])
+        curve_summaries[label.replace('-', '_') + '_summary'] = {
+            'verified': len(legacy), 'excluded': excluded,
+            'signed_gain': str(sum((D(r['gain']) for r in legacy), ZERO))}
     residuals = read(args.residuals)
     if 'unmatched_outflows' in residuals:
         outflows = residuals['unmatched_outflows']
@@ -106,9 +114,9 @@ def main():
                                'with_proportional_lp_withdrawal': sum(bool(r.get('proportional_withdrawal_logs')) for r in susds)}
     dependencies = [Path(__file__), *(Path(__file__).with_name(name) for name in (
         'audit_spark_ethena_execution.py', 'audit_spark_par_swaps.py', 'audit_spark_susds_swaps.py'))]
-    if args.legacy_curve_events:
+    if args.legacy_curve_events or args.rlusd_curve_events:
         dependencies.append(Path(__file__).with_name('audit_spark_legacy_curve_swaps.py'))
-        result['legacy_curve_summary'] = legacy_summary
+        result.update(curve_summaries)
     result['input_hashes'] = {str(p): hashlib.sha256(p.read_bytes()).hexdigest()
                               for p in [*inputs, *dependencies]}
     args.output.write_text(json.dumps(result, indent=2) + '\n')
