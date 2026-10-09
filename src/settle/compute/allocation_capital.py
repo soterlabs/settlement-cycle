@@ -27,7 +27,7 @@ class CapitalEvent:
     event_id: str
     day: date
     order: tuple[int, ...]
-    kind: Literal["draw", "repay", "transfer", "income", "mark"]
+    kind: Literal["draw", "repay", "transfer", "income", "mark", "external_draw", "external_repay"]
     amount: Decimal
     source: str | None = None
     destination: str | None = None
@@ -37,6 +37,7 @@ class CapitalEvent:
     # Moving the same beneficial holding into custody is not a realization.
     preserve_basis: bool = False
     ilk: str | None = None
+    external_source: str | None = None
 
 
 @dataclass
@@ -44,6 +45,7 @@ class CapitalAccount:
     value: Decimal = ZERO
     borrowed: Decimal = ZERO
     borrowed_by_ilk: dict[str, Decimal] = field(default_factory=dict)
+    external_by_source: dict[str, Decimal] = field(default_factory=dict)
 
 
 @dataclass
@@ -56,6 +58,10 @@ class CapitalLedger:
     equity_funded_repayment: Decimal = ZERO
     drawn_by_ilk: dict[str, Decimal] = field(default_factory=dict)
     repaid_by_ilk: dict[str, Decimal] = field(default_factory=dict)
+
+    external_drawn: dict[str, Decimal] = field(default_factory=dict)
+    external_repaid: dict[str, Decimal] = field(default_factory=dict)
+    external_realised_loss: dict[str, Decimal] = field(default_factory=dict)
 
     def account(self, key: str | None) -> CapitalAccount:
         if key is None:
@@ -73,6 +79,11 @@ class CapitalLedger:
             self._apply(event)
 
     def _apply(self, e: CapitalEvent) -> None:
+        if self.external_drawn or e.kind in ("external_draw", "external_repay"):
+            from .allocation_external_funding import apply_external
+
+            apply_external(self, e)
+            return
         if e.kind == "mark":
             self.account(e.destination).value = e.amount
             return
@@ -225,6 +236,8 @@ def replay_history(history, start: date, end: date, *, quantify_uncertainty=Fals
     ledger = CapitalLedger()
     envelope = None
     cash_account_keys = set()
+    if quantify_uncertainty and any(b.external_funding for b in history.batches):
+        raise ValueError("Funding bounds do not yet support non-Sky refinancing")
     if quantify_uncertainty:
         from .allocation_uncertainty import FundingEnvelope, cash_accounts
 
@@ -248,11 +261,11 @@ def replay_history(history, start: date, end: date, *, quantify_uncertainty=Fals
         clearing = f"clearing:{b.identity}"
         step = 0
 
-        def apply(kind, amount, source=None, destination=None, value=None, preserve_basis=False, ilk=None):
+        def apply(kind, amount, source=None, destination=None, value=None, preserve_basis=False, ilk=None, external_source=None):
             nonlocal step
             step += 1
             event = CapitalEvent(f"{b.identity}:{step}", b.day, (step,),
-                                 kind, amount, source, destination, value, preserve_basis, ilk)
+                                 kind, amount, source, destination, value, preserve_basis, ilk, external_source)
             if envelope is not None:
                 envelope.apply(event, ledger)
             ledger.apply(event)
@@ -263,9 +276,20 @@ def replay_history(history, start: date, end: date, *, quantify_uncertainty=Fals
         for ilk, amount in funding.items():
             if amount > ZERO:
                 apply("draw", amount, destination=clearing, ilk=ilk)
+        for op in b.external_funding:
+            if op.kind not in ('draw', 'repay', 'interest'):
+                raise ValueError('Unsupported external funding operation: '+op.kind)
+            if not op.amount.is_finite() or op.amount < ZERO or not op.source:
+                raise ValueError('Invalid external funding operation')
+            if op.kind == 'draw':
+                apply('external_draw', op.amount, destination=clearing, external_source=op.source)
+        if b.funding_assumption:
+            # A balanced transaction does not prove how its independent token
+            # routes should be paired. Retain the model but qualify its results.
+            uncertain.add(clearing)
         # Mark before processing gifts; both affect withdrawal fractions.
         for m in b.movements:
-            if m.value_before == ZERO and ledger.account(m.account).borrowed == ZERO:
+            if m.value_before == ZERO and ledger.account(m.account).borrowed == ZERO and not any(ledger.account(m.account).external_by_source.values()):
                 # A fully exited holding has no old funding uncertainty to
                 # transfer to a later, independently funded position.
                 uncertain.discard(m.account)
@@ -314,6 +338,36 @@ def replay_history(history, start: date, end: date, *, quantify_uncertainty=Fals
                     # hundreds of thousands of transaction custody accounts).
                     'affected_accounts_sample': sorted(affected)[:10],
                 })
+        for op in b.external_funding:
+            if op.kind == 'draw':
+                continue
+            cash = ledger.account(clearing).value
+            if op.amount > cash:
+                missing = op.amount - cash
+                apply('income', missing, destination=clearing)
+                if missing > Decimal('0.01'):
+                    unmatched_receipts[b.identity] = unmatched_receipts.get(b.identity, ZERO) + missing
+                    uncertain.add(clearing)
+                else:
+                    rounding_receipts[b.identity] = rounding_receipts.get(b.identity, ZERO) + missing
+            if op.kind == 'interest':
+                expense = 'financing:saver-interest:'+op.source
+                apply('transfer',op.amount,clearing,expense)
+                apply('mark',ZERO,destination=expense)
+                if clearing in uncertain:
+                    uncertain.add(expense)
+            else:
+                from .allocation_external_funding import origins
+
+                before = {k: origins(a) for k,a in ledger.accounts.items() if k != clearing} if clearing in uncertain else {}
+                apply('external_repay',op.amount,clearing,external_source=op.source)
+                if clearing in uncertain:
+                    affected = [k for k, old in before.items() if old != origins(ledger.account(k))]
+                    uncertain.update(affected)
+                    uncertain_repayments.setdefault(b.identity, []).append({
+                        'external_source':op.source,'amount':op.amount,
+                        'affected_account_count':len(affected),
+                        'affected_accounts_sample':sorted(affected)[:10]})
         incoming = [(m.account, m.change - m.external_income) for m in b.movements
                     if m.change > m.external_income]
         total_in = sum((value for _, value in incoming), ZERO)
@@ -360,7 +414,7 @@ def replay_history(history, start: date, end: date, *, quantify_uncertainty=Fals
         # closed EOA allocation unresolved forever after its final return.
         for m in b.movements:
             a = ledger.account(m.account)
-            if a.value == ZERO and a.borrowed == ZERO:
+            if a.value == ZERO and a.borrowed == ZERO and not any(a.external_by_source.values()):
                 uncertain.discard(m.account)
 
     day = start

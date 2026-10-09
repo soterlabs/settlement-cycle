@@ -47,7 +47,7 @@ def separate_spark_savings_routes(history):
         raise ValueError('Spark USDS route differs from witnessed sole ingress/deposit')
     # Retain every original field, including corrected Morpho fee income. Only
     # the clearing boundary changes. These branches have disjoint accounts.
-    sky = replace(b,identity=SKY,movements=(cash,deposit))
+    sky = replace(b,identity=SKY,movements=(cash,deposit),external_funding=(),funding_assumption=None)
     saver = replace(b,identity=SAVER,minted=D(0),minted_by_ilk={},log_index=b.log_index+1,
                     movements=tuple(m for m in b.movements if m.account not in {USDS,SUSDS}))
     return replace(history,batches=tuple(x for old in history.batches
