@@ -29,6 +29,10 @@ def attach(history, audit):
         raise ValueError("Savings principal audit does not declare its policy")
     history = apply_executed_spells(history)
     grouped = defaultdict(list)
+    actual_ids = {b.identity for b in history.batches}
+    by_original = defaultdict(list)
+    for b in history.batches:
+        by_original[":".join(b.identity.split(":")[:2])].append(b.identity)
     for vault in audit["vaults"]:
         for op in vault["operations"]:
             if op["kind"] not in ("draw", "repay", "interest"):
@@ -37,6 +41,13 @@ def attach(history, audit):
             identity = chain + ":" + op["transaction_hash"]
             if identity == TX:
                 identity = SAVER
+            if identity not in actual_ids:
+                matches = by_original.get(identity, [])
+                if len(matches) != 1:
+                    raise ValueError(
+                        "Savings funding needs an unambiguous normalized route: " + identity
+                    )
+                identity = matches[0]
             grouped[identity].append(op)
     missing = set(grouped) - {b.identity for b in history.batches}
     if missing:
@@ -58,7 +69,16 @@ def attach(history, audit):
             for r in sorted(rows, key=lambda r: (r["log_index"], r["kind"]))
         )
         result.append(
-            replace(batch, external_funding=ops, funding_assumption=POLICY + " " + ROUTES)
+            replace(
+                batch,
+                external_funding=ops,
+                funding_assumption=(
+                    batch.funding_assumption + " " if batch.funding_assumption else ""
+                )
+                + POLICY
+                + " "
+                + ROUTES,
+            )
         )
     return replace(history, batches=tuple(result))
 

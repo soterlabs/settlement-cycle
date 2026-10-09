@@ -1,0 +1,17 @@
+{
+  "scope": "Reviewed closed-history conversion boundary, not an on-chain request-ID match or payer-wide classification.",
+  "spell": "https://github.com/sparkdotfi/spark-spells/blob/dc2a653f4b2f5491641276e913cae06e221ce8ea/archive/20260226/SparkEthereum_20260226.sol",
+  "deposit_count": 287,
+  "receipt_count": 287,
+  "paid_pyusd": "417761317.838699",
+  "received_usdc": "417761305.46",
+  "remaining_claim": "12.378699",
+  "maximum_pending_claim": "9722223.049230",
+  "first_event": "2026-03-02T19:33:47+00:00",
+  "last_event": "2026-05-29T16:14:23+00:00",
+  "policy": "Keep the 12.378699 shortfall as a funded claim. No fee write-off, income or global-debt change.",
+  "input_hashes": {
+    "tests/fixtures/spark_paxos_pyusd_usdc_events.json": "a7e7ad9426d6718b1e35e5ff6c0c0ac2a6dade54138581653f7b05948c3f41ba",
+    "src/settle/compute/spark_paxos_capital.py": "7773ba485872ec9216defc66d91b941362d081a5afe022803e3718bfce3bed15"
+  }
+}
