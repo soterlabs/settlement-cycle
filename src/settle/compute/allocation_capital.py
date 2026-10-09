@@ -359,7 +359,8 @@ def replay_history(history, start: date, end: date, *, quantify_uncertainty=Fals
             else:
                 from .allocation_external_funding import origins
 
-                before = {k: origins(a) for k,a in ledger.accounts.items() if k != clearing} if clearing in uncertain else {}
+                before = {k: origins(a) for k,a in ledger.accounts.items()
+                          if k != clearing and a.external_by_source.get(op.source, ZERO)} if clearing in uncertain else {}
                 apply('external_repay',op.amount,clearing,external_source=op.source)
                 if clearing in uncertain:
                     affected = [k for k, old in before.items() if old != origins(ledger.account(k))]
