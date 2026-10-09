@@ -210,3 +210,27 @@ def test_repeated_mixed_refinancing_conserves_each_lender_separately():
                 + ledger.external_repaid.get("same-name", D(0))
             ) < D("1e-45")
             assert all(a.borrowed >= -D("1e-45") for a in ledger.accounts.values())
+
+
+def test_repayment_cannot_invent_an_external_loan_and_does_not_consume_cash():
+    ledger = CapitalLedger()
+    apply(ledger, "draw", 100, destination="cash", ilk="spark")
+    with pytest.raises(ValueError, match="exceeds observed source borrowing"):
+        apply(ledger, "external_repay", 50, "cash", external="unseen-lender")
+    assert ledger.account("cash").value == 100
+    assert ledger.account("cash").borrowed == 100
+    assert not ledger.external_repaid
+
+
+def test_refinancing_one_of_two_sky_ilks_preserves_the_other_loan():
+    ledger = CapitalLedger()
+    apply(ledger, "draw", 100, destination="venue", ilk="ilk-a")
+    apply(ledger, "draw", 50, destination="venue", ilk="ilk-b")
+    apply(ledger, "external_draw", 80, destination="cash", external="saver")
+    apply(ledger, "income", 20, destination="cash")
+    apply(ledger, "repay", 100, "cash", ilk="ilk-a")
+    assert ledger.account("venue").borrowed_by_ilk == {"ilk-a": D(0), "ilk-b": D(50)}
+    assert ledger.account("venue").borrowed == 50
+    assert ledger.account("venue").external_by_source == {"saver": D(80)}
+    assert ledger.drawn_by_ilk == {"ilk-a": D(100), "ilk-b": D(50)}
+    assert ledger.repaid_by_ilk == {"ilk-a": D(100)}
