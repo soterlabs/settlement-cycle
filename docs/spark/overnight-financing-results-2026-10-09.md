@@ -44,6 +44,26 @@ exemptions. It includes credits outside the named allocations and differences
 between their modeled deductions and the original report's scope; no historical
 exemption is silently added to the payable charge.
 
+The adjustment is independently decomposed in
+`reconciliation/spark_overnight_deduction_bridge_2026_08.json`:
+
+| Difference in cost credits | Modeled minus published |
+|---|---:|
+| Traced excluded-account basis versus published ALM idle balance | -94,610.708202 |
+| Published PSM USDS credit outside named allocation rows | -32,445.886807 |
+| Published aggregate SDE credit beyond its per-venue rows | -37,362.727898 |
+| Additional S66 idle credit absent from the historical report | +8,151.092172 |
+| **Total** | **-156,268.230735** |
+
+The third line is a scope distinction: `compute_sky_revenue_daily` adds PSM
+USDC to aggregate SDE, whereas `sde_daily_breakdown` contains named venue rows.
+The frozen report's aggregate-minus-venue basis averages 12,033,457.97 USDS.
+This audit measures that difference directly from the report; it does not
+independently reconstruct the historical PSM balances. Likewise, the first line
+compares traced borrowed principal with a published balance-based exemption;
+it is not evidence that 94,610.71 of capital is missing. These are borrowing-cost
+credits, not principal balances or proposed settlement changes.
+
 ## Execution discrepancies now have a measured financing impact
 
 The monthly Sky cost carried by historical transaction outflow accounts falls
