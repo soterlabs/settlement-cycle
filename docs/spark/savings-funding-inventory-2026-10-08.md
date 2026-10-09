@@ -148,14 +148,16 @@ The isolated before/after results and hashes are in
 borrowing-cost effect has not been measured for this additional fix. Published
 reports, API revenues and global debt/costs are unchanged.
 
-## May 18 prerequisite still awaiting a policy decision
+## May 18 policy: provisional model authorized October 8–9
 
 A cash return to a Savings vault does not label principal versus interest.
-The operator has been asked whether to use proportional attribution against
-outstanding principal and accrued interest, with funding replacement weighted
-across affected allocations, versus interest-first or principal-first.
-Interest financing must remain outside allocation principal whichever policy
-is chosen. No repayment policy has been selected by silence or implemented.
+The operator subsequently authorized a provisional model while investigating.
+The diagnostic now uses proportional attribution against outstanding principal
+and exact payment-time VSR accrual, with refinancing weighted across existing
+source-funded holdings. Interest financing stays outside allocation principal.
+This is an explicit working assumption, not a contract-defined split or a
+production accounting-policy change. See
+[savings-principal-policy-2026-10-09.md](savings-principal-policy-2026-10-09.md).
 
 Independent inception-to-May-18 checks show S56 net cash taken before the
 execution of **938,679,610.080881 USDC** and cumulative emitted VSR accrual of
