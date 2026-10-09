@@ -540,3 +540,26 @@ def test_deposit_and_otc_share_purchase_in_same_transaction_are_both_retained(mo
     replay=replay_history(history,DAY,DAY)
     assert not replay.unmatched_outflows and not replay.unmatched_receipts
     assert replay.ledger.account(history.venue_accounts['V1']).borrowed==100
+
+
+def test_ethereum_fsusds_uses_its_actual_susds_asset_without_changing_report_config(monkeypatch):
+    from settle.domain.sky_tokens import sUSDS_ETHEREUM
+
+    wrapper=Address.from_str('0x2bbe31d63e6813e3ac858c04dae43fb2a72b0d11')
+    zero=topic(Address(bytes(20)))
+    logs=[draw(),
+          log(1,1,wrapper,TRANSFER_TOPIC0,[zero,topic(HOLDER)],[100*10**18]),
+          log(1,2,wrapper,source.DEPOSIT,[topic(HOLDER),topic(HOLDER)],[100*10**18,100*10**18])]
+    base=setup(monkeypatch,logs)
+    original=replace(base.venues[0],token=Token(Chain.ETHEREUM,wrapper,'fsUSDS',18))
+    prime=replace(base,venues=[original])
+    monkeypatch.setattr(source,'_decode_dart',lambda data:110*10**18)
+    monkeypatch.setattr(source.rpc,'convert_to_assets',lambda chain,token,shares,block:11*10**17)
+    history=source.fetch_capital_history(prime,{Chain.ETHEREUM:1})
+    movement=next(m for m in history.batches[0].movements if m.account==history.venue_accounts['V1'])
+    assert movement.change==110
+    assert original.underlying==USDS_ETHEREUM
+    assert source._capital_venue(original).underlying==sUSDS_ETHEREUM
+    result=replay_history(history,DAY,DAY)
+    assert not result.unmatched_outflows and not result.unmatched_receipts
+    assert result.ledger.account(history.venue_accounts['V1']).borrowed==110
