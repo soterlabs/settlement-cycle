@@ -1,0 +1,1855 @@
+{
+  "venue_id": "E42",
+  "account": "facility:ethereum:0x491edfb0b8b608044e227225c715981a30f3a44e:0x3e23311f9ff660e3c3d87e4b7c207b3c3d7e04f0",
+  "start": "2026-01-01",
+  "end": "2026-08-31",
+  "scope": "Conditional on complete, correctly classified normalized history. Outstanding debt floors deduct every same-ilk repayment against this facility first, and every principal return against direct funding first. Not an exact debt allocation or certified borrowing cost.",
+  "deposits_through_end": "304000001",
+  "principal_returns_through_end": "0",
+  "closing_facility_principal": "304000001",
+  "direct_origin_remaining_before_refinancing": "303957394.57882",
+  "closing_origin_not_proved_by_this_audit": "42606.42118",
+  "outstanding_direct_debt_floor_by_ilk": {
+    "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "141686399.554805",
+    "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+  },
+  "gross_same_transaction_draws": "303957394.57882",
+  "daily": {
+    "2026-01-01": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-02": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-03": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-04": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-05": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-06": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-07": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-08": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-09": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-10": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-11": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-12": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-13": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-14": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-15": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-16": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-17": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-18": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-19": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-20": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-21": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-22": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-23": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-24": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-25": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-26": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-27": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-28": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-29": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-30": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-01-31": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-01": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-02": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-03": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-04": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-05": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-06": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-07": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-08": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-09": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-10": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-11": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-12": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-13": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-14": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-15": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-16": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-17": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-18": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-19": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-20": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-21": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-22": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-23": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-24": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-25": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-26": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-27": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-02-28": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-01": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-02": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-03": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-04": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-05": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-06": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-07": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-08": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-09": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-10": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-11": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-12": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-13": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-14": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-15": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-16": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-17": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-18": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-19": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-20": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-21": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-22": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-23": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-24": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-25": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-26": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-27": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-28": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-29": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-30": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-03-31": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-01": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-02": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-03": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-04": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-05": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-06": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-07": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-08": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-09": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-10": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-11": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-12": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-13": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-14": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-15": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-16": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-17": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-18": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-19": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-20": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-21": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-22": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-23": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-24": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-25": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-26": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-27": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-28": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-29": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-04-30": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-01": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-02": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-03": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-04": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-05": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-06": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-07": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-08": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-09": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-10": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-11": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-12": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-13": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-14": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-15": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-16": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-17": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-18": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-19": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-20": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-21": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-22": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-23": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-24": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-25": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-26": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-27": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-28": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-29": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-30": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-05-31": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-01": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-02": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-03": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-04": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-05": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-06": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-07": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-08": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-09": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-10": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-11": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-12": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-13": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-14": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-15": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-16": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-17": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-18": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-19": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-20": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-21": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-22": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-23": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-24": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-25": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-26": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-27": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-28": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-29": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-06-30": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-01": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-02": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-03": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-04": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-05": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-06": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-07": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-08": {
+      "facility_principal": "0",
+      "direct_origin_remaining_before_refinancing": "0",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-09": {
+      "facility_principal": "1",
+      "direct_origin_remaining_before_refinancing": "1",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-10": {
+      "facility_principal": "1",
+      "direct_origin_remaining_before_refinancing": "1",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-11": {
+      "facility_principal": "1",
+      "direct_origin_remaining_before_refinancing": "1",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-12": {
+      "facility_principal": "1",
+      "direct_origin_remaining_before_refinancing": "1",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-13": {
+      "facility_principal": "1",
+      "direct_origin_remaining_before_refinancing": "1",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-14": {
+      "facility_principal": "1",
+      "direct_origin_remaining_before_refinancing": "1",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-15": {
+      "facility_principal": "1",
+      "direct_origin_remaining_before_refinancing": "1",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-16": {
+      "facility_principal": "1",
+      "direct_origin_remaining_before_refinancing": "1",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-17": {
+      "facility_principal": "1",
+      "direct_origin_remaining_before_refinancing": "1",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-18": {
+      "facility_principal": "1",
+      "direct_origin_remaining_before_refinancing": "1",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-19": {
+      "facility_principal": "1",
+      "direct_origin_remaining_before_refinancing": "1",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-20": {
+      "facility_principal": "1",
+      "direct_origin_remaining_before_refinancing": "1",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "0",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-21": {
+      "facility_principal": "47500001",
+      "direct_origin_remaining_before_refinancing": "47457394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "47457393.57882",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-22": {
+      "facility_principal": "95000001",
+      "direct_origin_remaining_before_refinancing": "94957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "94957393.57882",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-23": {
+      "facility_principal": "142500001",
+      "direct_origin_remaining_before_refinancing": "142457394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "139957618.910847",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-24": {
+      "facility_principal": "190000001",
+      "direct_origin_remaining_before_refinancing": "189957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "187457618.910847",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-25": {
+      "facility_principal": "237500001",
+      "direct_origin_remaining_before_refinancing": "237457394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "234957618.910847",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-26": {
+      "facility_principal": "285000001",
+      "direct_origin_remaining_before_refinancing": "284957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "282457618.910847",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-27": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "301457618.910847",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-28": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "301457618.910847",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-29": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "301457618.910847",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-30": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "301457618.910847",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-07-31": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "301457618.910847",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-01": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "301457618.910847",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-02": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "301457618.910847",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-03": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "301457618.910847",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-04": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "301457618.910847",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-05": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "301457618.910847",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-06": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "301457618.910847",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-07": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "296957618.910847",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-08": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "289457823.334247",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-09": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "289457823.334247",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-10": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "267267168.738168",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-11": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "264517426.751596",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-12": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "263517426.751596",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-13": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "259248982.249211",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-14": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "253224733.156737",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-15": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "253224733.156737",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-16": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "253224733.156737",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-17": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "249244983.781243",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-18": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "248524191.442976",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-19": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "245524451.921888",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-20": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "224842569.886632",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-21": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "222517603.229844",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-22": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "222517603.229844",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-23": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "222517603.229844",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-24": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "222517603.229844",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-25": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "172542603.600126",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-26": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "172542603.600126",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-27": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "171684735.248367",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-28": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "151685573.120592",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-29": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "151685573.120592",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-30": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "151685573.120592",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    },
+    "2026-08-31": {
+      "facility_principal": "304000001",
+      "direct_origin_remaining_before_refinancing": "303957394.57882",
+      "outstanding_direct_debt_floor_by_ilk": {
+        "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "141686399.554805",
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0"
+      }
+    }
+  },
+  "transactions": [
+    {
+      "transaction": "ethereum:0x4b6cd7f7aad8e44b28088dea87616d20b4fd530e273e81edaada6c3eed5dc498",
+      "day": "2026-07-09",
+      "principal_change": "1",
+      "direct_draw_link": "1",
+      "ilk": "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000",
+      "classification": "same_transaction_draw"
+    },
+    {
+      "transaction": "ethereum:0x24cbee2ffd440138b7e7f2cb41670ac208d3f2d026e510a632d65a5ad284557c",
+      "day": "2026-07-21",
+      "principal_change": "1",
+      "direct_draw_link": "0",
+      "ilk": null,
+      "classification": "requires_source_attribution"
+    },
+    {
+      "transaction": "ethereum:0x8181996e100fba29940b9b9f4d14d213b50a107a78ccde05c3fd0be2d87f0f9d",
+      "day": "2026-07-21",
+      "principal_change": "47499999",
+      "direct_draw_link": "47457393.57882",
+      "ilk": "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000",
+      "classification": "same_transaction_draw"
+    },
+    {
+      "transaction": "ethereum:0x80cd51c4d960a1cee1f0bec1b7d90c121ce72c8f55c6aa13f76d0fc185bf56d2",
+      "day": "2026-07-22",
+      "principal_change": "47500000",
+      "direct_draw_link": "47500000",
+      "ilk": "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000",
+      "classification": "same_transaction_draw"
+    },
+    {
+      "transaction": "ethereum:0x1059dff16073b3c808cef8b28432882781c5af65106e0c4edb9540b3f325b029",
+      "day": "2026-07-23",
+      "principal_change": "47500000",
+      "direct_draw_link": "47500000",
+      "ilk": "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000",
+      "classification": "same_transaction_draw"
+    },
+    {
+      "transaction": "ethereum:0x1c2734873e5f2a732b657d89d4a22b45a37128f91f9c33f8f7b23627265ce647",
+      "day": "2026-07-24",
+      "principal_change": "47500000",
+      "direct_draw_link": "47500000",
+      "ilk": "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000",
+      "classification": "same_transaction_draw"
+    },
+    {
+      "transaction": "ethereum:0x395ddd5c5dd9c9db6f8c3c5210eb30fab2c3efadcbe4ecef11671d6a8e6beac5",
+      "day": "2026-07-25",
+      "principal_change": "47500000",
+      "direct_draw_link": "47500000",
+      "ilk": "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000",
+      "classification": "same_transaction_draw"
+    },
+    {
+      "transaction": "ethereum:0x2d5faf9c1573d6b21136781666bb4d6c5238077967c890528ba782c4376d0543",
+      "day": "2026-07-26",
+      "principal_change": "47500000",
+      "direct_draw_link": "47500000",
+      "ilk": "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000",
+      "classification": "same_transaction_draw"
+    },
+    {
+      "transaction": "ethereum:0x96ce5367d953516c7ee29356e6dd48fe1452b36e1c65aa405c40063b635c2b16",
+      "day": "2026-07-27",
+      "principal_change": "19000000",
+      "direct_draw_link": "19000000",
+      "ilk": "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000",
+      "classification": "same_transaction_draw"
+    }
+  ],
+  "principal_policy": "Normalized snapshot classifications",
+  "input_hashes": {
+    "/tmp/pr215-grove-eoa/history.jsonl.gz": "c05b53815379f6f7a4d9f6195d819d09ddb542f8f279af5f4defe4b7b3295474",
+    "/home/agent/code/lakonema2000/settlement-cycle/scripts/audit_facility_funding.py": "a21faef53943ef57c09229693fcad49ca988eb51a1ac73d1d57cef7b839f3bac",
+    "src/settle/compute/spark_anchorage_correction.py": "f0d21417faaf3702dbbfacf6b6f7f3ab834b6cb035d604d1e7edacbdd1843f65",
+    "src/settle/compute/spark_anchorage_scenarios.py": "97862e6f36b3c2c74cc0c31394f4ec234027a9ba40eaa44c6513fea6e274ad50"
+  }
+}
