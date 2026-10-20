@@ -9,9 +9,9 @@ revenue remain unchanged.
 
 | Origin | USD | Share of allocation capital |
 |---|---:|---:|
-| Confirmed original Sky borrowing | **193,695,912.39** | **95.5601%** |
+| Traced original Sky borrowing | **196,610,228.04** | **96.9979%** |
 | Identified gains reinvested into the vault | **37,629.35** | **0.0186%** |
-| Existing source capital requiring further origin attribution | **8,961,777.01** | **4.4213%** |
+| Existing source capital requiring further origin attribution | **6,047,461.36** | **2.9835%** |
 | Total closing allocation capital | **202,695,318.75** | **100%** |
 
 This answers funding origin, not which investments should bear outstanding
@@ -76,7 +76,7 @@ measurable net gains have now been separated.
 | May 17 | 2,000,000.00 | Cash contains a 24,987,498.885391 BUIDL redemption and 999,738.097233 from an AUSD conversion. |
 | May 19 | 2,000,000.00 | Cash includes BUIDL/JTRSY redemption proceeds and earlier cash, followed by a partial ilk repayment. |
 | June 13 | 997,919.746262 | Cash was funded by a Galaxy CLO boundary return and AUSD conversion, then partly used to repay the ilk. The bridge also contains a separately proven 2,002,080.253738 draw. |
-| July 9 | 2,963,856.263325 | After cash reached zero, a single Aave Horizon RLUSD disposal/conversion produced 4,999,128.526698 USDC; 3m was bridged. The bridge's 36,143.736675 gain component is now excluded from unresolved principal. |
+| July 9 | 49,540.615296 | The 3m Horizon reallocation now has 2,914,315.648029 traced borrowed origin and 36,143.736675 identified gains. The remaining source uncertainty is retained. |
 
 Bridge transactions, in table order:
 
@@ -123,9 +123,46 @@ Using token mark instead of actual cash would overstate the realized gain.
 The source ledger excludes 1,800,219.702380 of classified Horizon reward receipts
 through July 9 from acquisition cost.
 
-Next trace the Horizon principal's acquisition funding, including its 2026
-opening position, then resolve the BUIDL/JTRSY/AUSD cash windows. No tracing
-beyond commingled FalconX deposit/return EOAs is required.
+## Horizon acquisition funding: scoped RLUSD origin ledger
+
+The April 22–25 Horizon deposits (50m, 22.5m, 33m and 9.243m) came through
+idle RLUSD after withdrawals from Grove's Aave Ethereum RLUSD position.
+The opening Horizon position also includes an Ethereum-Aave-to-Horizon
+transfer. Treating those inflows as unrelated capital would lose their origins.
+
+`audit_scoped_borrowing_origins.py` therefore tracks just E1 (Horizon),
+E3 (Aave Ethereum RLUSD), E13 (idle RLUSD) and their configured custody:
+
+- Internal transfers carry the weighted-average borrowed-origin fraction.
+- Explicit rewards and passive growth never add borrowed basis.
+- For fresh contributions, competing destinations and unexplained execution
+  shortfalls consume draws first. Only the remaining draw is attributed.
+- Known swap income is removed from the capital-flow arithmetic; it neither
+  inflates borrowed principal nor prevents attribution of the genuine draw.
+- Repayments outside this group do not rewrite its original funding labels.
+- Pre-2026 movements establish opening sources only; no 2025 settlement is
+  recalculated.
+
+This is a conservative attribution under the stated weighted-average transfer
+policy, conditional on normalized inputs. It is not proof of unique physical
+token provenance through fungible pools. Under it, the July 9 3m transfer splits:
+
+| Origin | USD |
+|---|---:|
+| Traced original borrowing | **2,914,315.648029** |
+| Net gains | **36,143.736675** |
+| Unresolved original principal | **49,540.615296** |
+
+The artifact contains every scoped transaction's draw contribution, withdrawn
+borrowed basis and resulting account balances. The largest unresolved additions
+upstream include the December 16, 2025 STAC-related mixed transaction and
+January 24, 2026's combined Horizon contribution/JTRSY delivery. The previously
+deferred May 7 RLUSD receipt remains unclassified; no new business judgment is
+silently introduced to close the gap.
+
+Next resolve the larger BUIDL/JTRSY/AUSD cash windows, which account for most
+of the remaining 6.047m. No tracing beyond commingled FalconX deposit/return
+EOAs is required.
 
 ## Reproduction and validation
 
@@ -133,6 +170,7 @@ beyond commingled FalconX deposit/return EOAs is required.
 PYTHONPATH=src .venv/bin/python scripts/audit_bridged_vault_funding.py \
   --history /tmp/pr215-grove-eoa/history.jsonl.gz --venue E23 --cash-venue E27 \
   --reallocation-venues E1 \
+  --origin-group E1 E3 E13 \
   --start 2026-01-01 --end 2026-08-31 \
   --output reconciliation/grove_steakhouse_funding_origins_2026_08.json
 ```
@@ -146,6 +184,7 @@ ledger after every event.
 of already-normalized, already-adapted source evidence. The regression test
 loads it directly, without applying adapters again or performing RPC queries.
 It reproduces the closing split and all six unresolved source windows.
-The fixture now also includes Horizon's normalized movements. It reproduces
+The fixture now also includes the RLUSD group's normalized movements. It reproduces
 the complete full-history result, including source windows and the upstream
-reallocation. All 115 relevant tests pass, as does Ruff for the changed files.
+reallocation and scoped origin ledger. All 121 relevant tests pass, as does
+Ruff for the changed files.
