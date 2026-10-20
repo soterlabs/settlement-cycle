@@ -118,6 +118,12 @@ def test_reviewed_grove_routes_reconcile_closing_principal(module):
              if p['upstream_reallocation']]
     assert len(links) == 1
     assert links[0]['source_venue'] == 'E1'
+    upstream = module.attribute(history, 'E23', 'E27', DAY, date(2026, 8, 31),
+                                reallocation_venues=('E1',), origin_group=('E1', 'E3', 'E13'))
+    origin = upstream['closing_origin']
+    assert D(origin['borrowed']).quantize(D('.01')) == D('196610228.04')
+    assert D(origin['reinvested_gains']).quantize(D('.01')) == D('37629.35')
+    assert D(origin['unresolved']).quantize(D('.01')) == D('6047461.36')
 
 
 def test_cash_window_does_not_attribute_spending_fifo(module):
