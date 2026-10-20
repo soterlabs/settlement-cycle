@@ -19,6 +19,7 @@ from pathlib import Path
 
 from audit_allocation_cash_sources import audit_cash_sources
 from audit_allocation_positions import audit
+from audit_cash_origin_windows import cash_origin
 from audit_scoped_borrowing_origins import trace
 
 from settle.compute.executed_spell_capital import apply_executed_spells
@@ -136,16 +137,19 @@ cost/gain mix. Original borrowing needs the optional scoped origin ledger.
     }
 
 
-def attribute(history, venue, cash_venue, start, end, *, reallocation_venues=(), origin_group=()):
+def attribute(history, venue, cash_venue, start, end, *, reallocation_venues=(), origin_group=(),
+              cash_origin_group=()):
     with localcontext() as ctx:
         ctx.prec = 60
-        return _attribute(history, venue, cash_venue, start, end, reallocation_venues, origin_group)
+        return _attribute(history, venue, cash_venue, start, end, reallocation_venues, origin_group,
+                          cash_origin_group)
 
 
-def _attribute(history, venue, cash_venue, start, end, reallocation_venues, origin_group):
-    if venue in origin_group:
+def _attribute(history, venue, cash_venue, start, end, reallocation_venues, origin_group, cash_origin_group):
+    if venue in origin_group or venue in cash_origin_group:
         raise ValueError('Origin group must not include destination allocation')
     origin_trace = trace(history, origin_group, end) if origin_group else None
+    cash_trace = trace(history, cash_origin_group, end) if cash_origin_group else None
     local = audit(history, venue, start, end)
     if D(local['opening_capital']) != 0:
         raise ValueError('Requires zero opening capital or a separately verified origin checkpoint')
@@ -207,12 +211,22 @@ def _attribute(history, venue, cash_venue, start, end, reallocation_venues, orig
                     raise ValueError('Funding source must precede deposit')
                 origin = bridge_origin(b, claim, amount)
                 reallocation = None
+                cash_proof = None
                 if origin['borrowed'] == 0 and reallocation_venues:
                     reallocation = reallocation_origin(
                         history, b, claim, amount, reallocation_venues, source_ledgers, start, end,
                         origin_trace)
                     if reallocation:
                         origin = reallocation['origin']
+                if reallocation is None and cash_trace is not None and origin['unresolved']:
+                    cash_legs = [m for m in b.movements if m.account != claim and m.change < 0]
+                    if len(cash_legs) == 1:
+                        cash_proof = cash_origin(
+                            history, b, claim, amount, origin, cash_trace,
+                            prior_cash_window(history, b, cash_legs[0].account),
+                            source_ledgers, start, end)
+                        if cash_proof:
+                            origin = cash_proof['origin']
                 used_claims[claim] = used_claims.get(claim, ZERO) + amount * fraction
                 if used_claims[claim] > amount + EPS:
                     raise ValueError('Bridge principal allocated twice')
@@ -230,6 +244,7 @@ def _attribute(history, venue, cash_venue, start, end, reallocation_venues, orig
                         m.account: prior_cash_window(history, b, m.account)
                         for m in b.movements if m.change < 0},
                     'upstream_reallocation': reallocation['evidence'] if reallocation else None,
+                    'mixed_cash_origin': cash_proof['evidence'] if cash_proof else None,
                 }
             if abs(sum(incoming.values(), ZERO) - added) > EPS:
                 raise ValueError('Contribution origin does not conserve value')
@@ -248,6 +263,7 @@ def _attribute(history, venue, cash_venue, start, end, reallocation_venues, orig
         'scope': __doc__.strip(), 'venue': venue, 'start': str(start), 'end': str(end),
         'reallocation_venues': list(reallocation_venues),
         'upstream_origin_group': origin_trace,
+        'cash_origin_group': cash_trace,
         'closing_capital': str(closing),
         'closing_origin': {k: str(v) for k, v in components.items()},
         'closing_percent': {k: str(v / closing * 100 if closing else ZERO) for k, v in components.items()},
@@ -265,6 +281,8 @@ def main():
                    help='Explicit source venues whose acquisition cost may be carried through isolated cash.')
     p.add_argument('--origin-group', nargs='*', default=[],
                    help='Related source holdings and custody in which to trace original borrowing.')
+    p.add_argument('--cash-origin-group', nargs='*', default=[],
+                   help='Cash and related source allocations for weighted-average mixed-cash attribution.')
     p.add_argument('--start', type=date.fromisoformat, required=True)
     p.add_argument('--end', type=date.fromisoformat, required=True)
     p.add_argument('--output', type=Path, required=True)
@@ -277,11 +295,13 @@ def main():
     if h is None:
         raise ValueError('Invalid history')
     result = attribute(apply_executed_spells(h), args.venue, args.cash_venue, args.start, args.end,
-                       reallocation_venues=args.reallocation_venues, origin_group=args.origin_group)
+                       reallocation_venues=args.reallocation_venues, origin_group=args.origin_group,
+                       cash_origin_group=args.cash_origin_group)
     result['input_sha256'] = hashlib.sha256(args.history.read_bytes()).hexdigest()
     paths = [Path(__file__), Path('scripts/audit_allocation_positions.py'),
              Path('scripts/audit_allocation_cash_sources.py'),
              Path('scripts/audit_scoped_borrowing_origins.py'),
+             Path('scripts/audit_cash_origin_windows.py'),
              *sorted(Path('src/settle/compute').glob('*.py'))]
     result['source_sha256'] = {str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}
     args.output.write_text(json.dumps(result, indent=2) + '\n')
