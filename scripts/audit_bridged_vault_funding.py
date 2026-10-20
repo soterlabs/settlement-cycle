@@ -76,13 +76,64 @@ def prior_cash_window(history, source, account):
     raise ValueError('Cash source transaction missing from history')
 
 
-def attribute(history, venue, cash_venue, start, end):
+def reallocation_origin(history, batch, claim, amount, allowed_venues, ledgers, start, end):
+    """Carry source cost and net gains through a single-receipt cash balance.
+
+No FIFO: accept only an empty cash account receiving one allocation disposal,
+then spending some/all of that receipt. Partial spends carry its proportional
+cost/gain mix. Original borrowing of the source allocation is still unresolved.
+    """
+    cash_legs = [m for m in batch.movements if m.account != claim and m.change]
+    if (batch.minted or batch.external_funding or batch.funding_assumption
+            or len(cash_legs) != 1 or cash_legs[0].change != -amount
+            or cash_legs[0].external_income):
+        return None
+    cash = cash_legs[0]
+    window = prior_cash_window(history, batch, cash.account)
+    if not window['starts_from_empty_cash'] or len(window['transactions']) != 1:
+        return None
+    receipt_id = window['transactions'][0]['transaction']
+    receipt = next(b for b in history.batches if b.identity == receipt_id)
+    received = [m for m in receipt.movements if m.account == cash.account]
+    outgoing = [m for m in receipt.movements if m.account != cash.account and m.change]
+    if (receipt.minted or receipt.external_funding or receipt.funding_assumption
+            or len(received) != 1 or len(outgoing) != 1
+            or received[0].value_before != 0 or received[0].change != cash.value_before
+            or cash.value_before < amount or received[0].external_income
+            or outgoing[0].change >= 0 or outgoing[0].external_income):
+        return None
+    venues = [v for v in allowed_venues if history.venue_accounts[v] == outgoing[0].account]
+    if len(venues) != 1:
+        return None
+    venue = venues[0]
+    if venue not in ledgers:
+        ledgers[venue] = audit(history, venue, start, end)
+    events = [t for t in ledgers[venue]['transactions'] if t['transaction'] == receipt_id]
+    if len(events) != 1 or D(events[0]['capital_added']) != 0:
+        raise ValueError('Source reallocation has no isolated cost release')
+    cost = D(events[0]['cost_basis_released'])
+    proceeds = received[0].change
+    principal = min(cost, proceeds) * amount / proceeds
+    return {
+        'origin': {'borrowed': ZERO, 'unresolved': principal, 'reinvested_gains': amount - principal},
+        'evidence': {
+            'source_venue': venue, 'source_transaction': receipt_id,
+            'cash_received': str(proceeds), 'source_cost_released': str(cost),
+            'net_gain_after_conversion': str(proceeds - cost),
+            'amount_reallocated': str(amount),
+            'policy': 'Weighted-average acquisition cost; proportional cost/gain split of a single receipt. '
+                      'Original borrowing of source principal remains unresolved.',
+        },
+    }
+
+
+def attribute(history, venue, cash_venue, start, end, *, reallocation_venues=()):
     with localcontext() as ctx:
         ctx.prec = 60
-        return _attribute(history, venue, cash_venue, start, end)
+        return _attribute(history, venue, cash_venue, start, end, reallocation_venues)
 
 
-def _attribute(history, venue, cash_venue, start, end):
+def _attribute(history, venue, cash_venue, start, end, reallocation_venues):
     local = audit(history, venue, start, end)
     if D(local['opening_capital']) != 0:
         raise ValueError('Requires zero opening capital or a separately verified origin checkpoint')
@@ -96,6 +147,7 @@ def _attribute(history, venue, cash_venue, start, end):
     used_returns = set()
     used_claims = {}
     source_proofs = {}
+    source_ledgers = {}
     transactions = []
     for row in local['transactions']:
         if row['day'] < str(start):
@@ -142,6 +194,12 @@ def _attribute(history, venue, cash_venue, start, end):
                 if b.timestamp >= batches[tx].timestamp:
                     raise ValueError('Funding source must precede deposit')
                 origin = bridge_origin(b, claim, amount)
+                reallocation = None
+                if origin['borrowed'] == 0 and reallocation_venues:
+                    reallocation = reallocation_origin(
+                        history, b, claim, amount, reallocation_venues, source_ledgers, start, end)
+                    if reallocation:
+                        origin = reallocation['origin']
                 used_claims[claim] = used_claims.get(claim, ZERO) + amount * fraction
                 if used_claims[claim] > amount + EPS:
                     raise ValueError('Bridge principal allocated twice')
@@ -158,6 +216,7 @@ def _attribute(history, venue, cash_venue, start, end):
                     'prior_source_windows': {
                         m.account: prior_cash_window(history, b, m.account)
                         for m in b.movements if m.change < 0},
+                    'upstream_reallocation': reallocation['evidence'] if reallocation else None,
                 }
             if abs(sum(incoming.values(), ZERO) - added) > EPS:
                 raise ValueError('Contribution origin does not conserve value')
@@ -174,6 +233,7 @@ def _attribute(history, venue, cash_venue, start, end):
     closing = D(local['closing_capital'])
     return {
         'scope': __doc__.strip(), 'venue': venue, 'start': str(start), 'end': str(end),
+        'reallocation_venues': list(reallocation_venues),
         'closing_capital': str(closing),
         'closing_origin': {k: str(v) for k, v in components.items()},
         'closing_percent': {k: str(v / closing * 100 if closing else ZERO) for k, v in components.items()},
@@ -187,6 +247,8 @@ def main():
     p.add_argument('--history', type=Path, required=True)
     p.add_argument('--venue', required=True)
     p.add_argument('--cash-venue', required=True)
+    p.add_argument('--reallocation-venues', nargs='*', default=[],
+                   help='Explicit source venues whose acquisition cost may be carried through isolated cash.')
     p.add_argument('--start', type=date.fromisoformat, required=True)
     p.add_argument('--end', type=date.fromisoformat, required=True)
     p.add_argument('--output', type=Path, required=True)
@@ -198,7 +260,8 @@ def main():
     h = load_history(args.history, key)
     if h is None:
         raise ValueError('Invalid history')
-    result = attribute(apply_executed_spells(h), args.venue, args.cash_venue, args.start, args.end)
+    result = attribute(apply_executed_spells(h), args.venue, args.cash_venue, args.start, args.end,
+                       reallocation_venues=args.reallocation_venues)
     result['input_sha256'] = hashlib.sha256(args.history.read_bytes()).hexdigest()
     paths = [Path(__file__), Path('scripts/audit_allocation_positions.py'),
              Path('scripts/audit_allocation_cash_sources.py'),
