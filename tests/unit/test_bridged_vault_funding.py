@@ -124,6 +124,15 @@ def test_reviewed_grove_routes_reconcile_closing_principal(module):
     assert D(origin['borrowed']).quantize(D('.01')) == D('196610228.04')
     assert D(origin['reinvested_gains']).quantize(D('.01')) == D('37629.35')
     assert D(origin['unresolved']).quantize(D('.01')) == D('6047461.36')
+    mixed = module.attribute(
+        history, 'E23', 'E27', DAY, date(2026, 8, 31),
+        reallocation_venues=('E1',), origin_group=('E1', 'E3', 'E13'),
+        cash_origin_group=('E4', 'E9', 'E10', 'E14', 'E15', 'E21', 'E36'))
+    origin = mixed['closing_origin']
+    assert D(origin['borrowed']).quantize(D('.01')) == D('202316398.04')
+    assert D(origin['reinvested_gains']).quantize(D('.01')) == D('201059.46')
+    assert D(origin['unresolved']).quantize(D('.01')) == D('177861.25')
+    assert any(p['mixed_cash_origin'] for p in mixed['source_proofs'].values())
 
 
 def test_cash_window_does_not_attribute_spending_fifo(module):

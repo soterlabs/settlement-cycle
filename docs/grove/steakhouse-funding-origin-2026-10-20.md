@@ -9,9 +9,9 @@ revenue remain unchanged.
 
 | Origin | USD | Share of allocation capital |
 |---|---:|---:|
-| Traced original Sky borrowing | **196,610,228.04** | **96.9979%** |
-| Identified gains reinvested into the vault | **37,629.35** | **0.0186%** |
-| Existing source capital requiring further origin attribution | **6,047,461.36** | **2.9835%** |
+| Traced original Sky borrowing | **202,316,398.04** | **99.8131%** |
+| Identified gains reinvested into the vault | **201,059.46** | **0.0992%** |
+| Existing source capital requiring further origin attribution | **177,861.25** | **0.0877%** |
 | Total closing allocation capital | **202,695,318.75** | **100%** |
 
 This answers funding origin, not which investments should bear outstanding
@@ -33,7 +33,7 @@ only when:
 - Net asset movements equal the draw, allowing only sub-cent numeric noise.
 - There is no external-funding assumption, external lender or income component.
 
-Existing cash in the same transaction is separately unresolved. A competing
+Existing cash in the same transaction requires separate upstream attribution. A competing
 destination prevents an exact attribution; mere coexistence with a draw does
 not establish the source. All confirmed draws here are from ALLOCATOR-BLOOM-A.
 
@@ -66,16 +66,16 @@ The exact transaction references and source components are retained in
 
 All six amounts enter after the vault's final withdrawal, so they remain in
 the August closing position. These are known immediate sources but unresolved
-original borrowed-principal-versus-gain splits, except that the Horizon path's
-measurable net gains have now been separated.
+original borrowed-principal-versus-gain splits. The amounts below are residuals
+after scoped borrowing and identifiable-gain attribution.
 
 | Ethereum bridge date | Unresolved amount | Source evidence |
 |---|---:|---|
-| April 10 | 1,000,000.00 | Cash contains 402,742.96 explicitly classified income and 2,948,528.515755 withdrawn from E4, Grove x Steakhouse USDC on Ethereum. |
+| April 10 | 59,271.894810 | Cash contains 402,742.96 explicitly classified income and 2,948,528.515755 withdrawn from E4, Grove x Steakhouse USDC on Ethereum. |
 | May 11 | 1.00 | Apollo/Plume cash-settlement test return. The other 999,999 of this bridge is a direct draw. |
-| May 17 | 2,000,000.00 | Cash contains a 24,987,498.885391 BUIDL redemption and 999,738.097233 from an AUSD conversion. |
-| May 19 | 2,000,000.00 | Cash includes BUIDL/JTRSY redemption proceeds and earlier cash, followed by a partial ilk repayment. |
-| June 13 | 997,919.746262 | Cash was funded by a Galaxy CLO boundary return and AUSD conversion, then partly used to repay the ilk. The bridge also contains a separately proven 2,002,080.253738 draw. |
+| May 17 | 1,376.307847 | Cash contains a 24,987,498.885391 BUIDL redemption and 999,738.097233 from an AUSD conversion. |
+| May 19 | 67,667.633147 | Cash includes BUIDL/JTRSY redemption proceeds and earlier cash, followed by a partial ilk repayment. |
+| June 13 | 3.799349 | Cash was funded by a Galaxy CLO boundary return and AUSD conversion, then partly used to repay the ilk. The bridge also contains a separately proven 2,002,080.253738 draw. |
 | July 9 | 49,540.615296 | The 3m Horizon reallocation now has 2,914,315.648029 traced borrowed origin and 36,143.736675 identified gains. The remaining source uncertainty is retained. |
 
 Bridge transactions, in table order:
@@ -160,9 +160,34 @@ January 24, 2026's combined Horizon contribution/JTRSY delivery. The previously
 deferred May 7 RLUSD receipt remains unclassified; no new business judgment is
 silently introduced to close the gap.
 
-Next resolve the larger BUIDL/JTRSY/AUSD cash windows, which account for most
-of the remaining 6.047m. No tracing beyond commingled FalconX deposit/return
-EOAs is required.
+## Mixed BUIDL/JTRSY/AUSD cash attribution
+
+A separate scoped origin ledger covers E4, E9, E10, E14, E15, E21 and E36:
+Ethereum Steakhouse USDC, JTRSY, BUIDL, AUSD/conversion custody, Ethereum
+USDC cash, Galaxy CLO and FalconX. Galaxy and FalconX stop at their configured
+EOA allocation entrypoints; their commingled wallets are not traced internally.
+The Horizon/RLUSD trace remains separate.
+
+This adds **5,706,170.00** of traced original borrowing and **163,430.12** of
+identified gains relative to the prior 97% result. These percentages describe
+E23 closing capital, not Grove's total debt.
+
+Cash windows start at zero and must be continuous through receipts, repayments
+and bridge spends. Each withdrawal removes the weighted-average mix. A repayment
+matching one receipt's amount does not select that receipt: this matters for
+May 19 and June 13. Explicit income and isolated disposal proceeds above released
+acquisition cost identify gains; internal custody deliveries do not. Unknown
+receipts remain unresolved. Borrowed basis and identified gains cannot overlap
+or exceed the cash spent.
+
+This is an accounting convention supported by normalized transaction evidence,
+not unique provenance of fungible token units. Identified gains remain a minimum
+where source acquisition costs themselves contain reinvested gains. The artifact
+retains the full cash windows and scoped ledger.
+
+Next investigate April 10's E4 source ($59,272), May 19's BUIDL/JTRSY source
+($67,668), and July 9's Horizon source ($49,541). These dominate the remaining
+$177,861; May 11's $1 test remains explicitly unresolved.
 
 ## Reproduction and validation
 
@@ -171,6 +196,7 @@ PYTHONPATH=src .venv/bin/python scripts/audit_bridged_vault_funding.py \
   --history /tmp/pr215-grove-eoa/history.jsonl.gz --venue E23 --cash-venue E27 \
   --reallocation-venues E1 \
   --origin-group E1 E3 E13 \
+  --cash-origin-group E4 E9 E10 E14 E15 E21 E36 \
   --start 2026-01-01 --end 2026-08-31 \
   --output reconciliation/grove_steakhouse_funding_origins_2026_08.json
 ```
@@ -184,7 +210,7 @@ ledger after every event.
 of already-normalized, already-adapted source evidence. The regression test
 loads it directly, without applying adapters again or performing RPC queries.
 It reproduces the closing split and all six unresolved source windows.
-The fixture now also includes the RLUSD group's normalized movements. It reproduces
+The fixture includes the RLUSD and mixed-cash groups (1,453 normalized batches). It reproduces
 the complete full-history result, including source windows and the upstream
-reallocation and scoped origin ledger. All 121 relevant tests pass, as does
+reallocation and scoped origin ledger. All 127 relevant tests pass, as does
 Ruff for the changed files.

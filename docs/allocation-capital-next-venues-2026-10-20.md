@@ -136,6 +136,6 @@ the distinction between tracing a path and proving which funding source
 financed it.
 
 Grove follow-up: [Steakhouse funding-origin audit](grove/steakhouse-funding-origin-2026-10-20.md)
-now traces original Sky borrowing for approximately 97.00% of E23's closing capital,
-separates reinvested gains, and narrows the unresolved portion to six source
+now traces original Sky borrowing for approximately 99.81% of E23's closing capital,
+separates reinvested gains, and narrows the unresolved portion to $177,861 across six source
 transactions. This does not change the aggregate coverage ratios above.
