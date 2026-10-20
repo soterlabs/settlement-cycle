@@ -106,3 +106,33 @@ def test_checkpoint_reproduces_year_without_old_history(audit):
     with pytest.raises(ValueError, match='opening history'):
         audit(H((old, new), {'V': 'shares'}, {}, {'V': ['pending']}), 'V', START, END,
               opening_checkpoint=original['opening_checkpoint'])
+
+
+def test_cross_chain_shares_carry_acquisition_cost_not_receipt_nav(audit):
+    rows = (
+        batch(1, movement('shares', '0', '100'), day=date(2025, 12, 1)),
+        batch(2, movement('shares', '110', '-55'), movement('pending', '0', '55'),
+              day=date(2025, 12, 2)),
+        batch(3, movement('pending', '56', '-56'), movement('remote', '0', '56'),
+              day=date(2025, 12, 3)),
+        batch(4, movement('remote', '60', '-30')),
+    )
+    h = H(rows, {'V': 'shares', 'W': 'remote'}, {}, {'V': ['pending']})
+    r = audit(h, 'V', START, END, related_venues=('W',))
+    assert D(r['opening_capital']) == 100
+    assert D(r['capital_added']) == 0
+    assert D(r['cost_basis_released']) == 25
+    assert {v: D(x) for v, x in r['closing_capital_by_venue'].items()} == {'V': 50, 'W': 25}
+    assert D(r['closing_holding_capital']) == 75
+    assert D(r['closing_custody_capital']) == 0
+    resumed = audit(H(rows[-1:], h.venue_accounts, {}, h.custody_accounts),
+                    'V', START, END, related_venues=('W',),
+                    opening_checkpoint=r['opening_checkpoint'])
+    assert resumed['daily'] == r['daily']
+    assert resumed['closing_capital_by_venue'] == r['closing_capital_by_venue']
+
+
+def test_grouped_venues_cannot_double_count_shared_custody(audit):
+    h = H((), {'V': 'shares', 'W': 'remote'}, {}, {'V': ['pending'], 'W': ['pending']})
+    with pytest.raises(ValueError, match='share an account'):
+        audit(h, 'V', START, END, related_venues=('W',))

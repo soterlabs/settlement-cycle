@@ -21,11 +21,18 @@ from settle.compute.executed_spell_capital import apply_executed_spells
 from settle.normalize.allocation_history_cache import load_history
 
 
-def audit(history, venue, start, end, *, opening_checkpoint=None):
+def audit(history, venue, start, end, *, opening_checkpoint=None, related_venues=()):
     if end < start:
         raise ValueError('Invalid period')
-    holding = history.venue_accounts[venue]
-    accounts = {holding, *history.custody_accounts.get(venue, [])}
+    venues = (venue, *related_venues)
+    if len(set(venues)) != len(venues):
+        raise ValueError('Duplicate grouped venue')
+    holdings = {history.venue_accounts[v] for v in venues}
+    owned = {v: {history.venue_accounts[v], *history.custody_accounts.get(v, [])}
+             for v in venues}
+    accounts = set().union(*owned.values())
+    if len(accounts) != sum(map(len, owned.values())):
+        raise ValueError('Grouped venues share an account')
     basis = dict.fromkeys(accounts, D(0))
     last_value = dict.fromkeys(accounts, D(0))
     events = []
@@ -123,16 +130,19 @@ def audit(history, venue, start, end, *, opening_checkpoint=None):
         error = opening + additions - releases - closing
         if abs(error) > D('1e-8'):
             raise ValueError('Allocation capital identity failed')
-        return {'venue': venue, 'start': str(start), 'end': str(end),
+        return {'venue': venue, 'related_venues': list(related_venues),
+                'start': str(start), 'end': str(end),
                 'opening_checkpoint': {'date': str(start), 'venue': venue,
                     'basis_by_account': {k: str(v) for k, v in sorted(opening_costs.items())}},
                 'opening_capital': str(opening), 'capital_added': str(additions),
                 'cost_basis_released': str(releases), 'closing_capital': str(closing),
                 'explicit_rewards_excluded': str(rewards), 'identity_error': str(error),
-                'closing_holding_capital': str(basis[holding]),
-                'closing_custody_capital': str(closing - basis[holding]),
+                'closing_holding_capital': str(sum((basis[a] for a in holdings), D(0))),
+                'closing_custody_capital': str(sum((basis[a] for a in accounts - holdings), D(0))),
+                'closing_capital_by_venue': {
+                    v: str(sum((basis[a] for a in owned[v]), D(0))) for v in venues},
                 'custody': {a: {'capital': str(basis[a]), 'last_observed_value': str(last_value[a])}
-                            for a in sorted(accounts - {holding}) if basis[a] or last_value[a]},
+                            for a in sorted(accounts - holdings) if basis[a] or last_value[a]},
                 'daily': daily, 'transactions': events}
 
 
@@ -140,6 +150,8 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--history', type=Path, required=True)
     p.add_argument('--venues', nargs='+', required=True)
+    p.add_argument('--group', action='store_true',
+                   help='Treat selected venues as one allocation across chains; carry basis between them.')
     p.add_argument('--start', type=date.fromisoformat, required=True)
     p.add_argument('--end', type=date.fromisoformat, required=True)
     p.add_argument('--output', type=Path, required=True)
@@ -152,13 +164,15 @@ def main():
     if h is None:
         raise ValueError('Invalid history')
     h = apply_executed_spells(h)
-    allocations = {v: audit(h, v, args.start, args.end) for v in args.venues}
+    related = tuple(args.venues[1:]) if args.group else ()
+    selected = args.venues[:1] if args.group else args.venues
+    allocations = {v: audit(h, v, args.start, args.end, related_venues=related) for v in selected}
     # Subsequent audits need the opening checkpoint and current-year movements,
     # not the old debt/refinancing replay. Verify that property on real inputs.
     current_year = replace(h, batches=tuple(b for b in h.batches if b.day >= args.start))
     for venue, original in allocations.items():
         resumed = audit(current_year, venue, args.start, args.end,
-                        opening_checkpoint=original['opening_checkpoint'])
+                        opening_checkpoint=original['opening_checkpoint'], related_venues=related)
         if resumed['daily'] != original['daily']:
             raise ValueError('Opening checkpoint fails to reproduce the capital timeline')
     result = {'scope': __doc__.strip(), 'opening_checkpoint_reproduction_verified': True,
