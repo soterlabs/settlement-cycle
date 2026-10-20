@@ -117,6 +117,8 @@ They include transaction evidence, daily balances, opening checkpoints, exact
 capital identities, source candidates and source-code/input hashes. No RPC
 extraction or full funding replay was needed for this step.
 
-Next: Grove JAAA (Avalanche) and Steakhouse Prime (Base), and Spark Morpho USDC
-(Base). Their bridge/issuer links must be included so moving the same allocation
-across chains cannot create a second contribution.
+Follow-up: Grove JAAA (Ethereum + Avalanche), Steakhouse Prime (Base), and Spark
+Morpho USDC (Base) are now covered in
+[the next-venues audit](allocation-capital-next-venues-2026-10-20.md).
+JAAA's grouped ledger carries acquisition cost across chains rather than
+treating bridge receipt NAV as a second contribution.
