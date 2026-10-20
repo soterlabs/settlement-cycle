@@ -139,3 +139,8 @@ Grove follow-up: [Steakhouse funding-origin audit](grove/steakhouse-funding-orig
 now traces original Sky borrowing for approximately 99.81% of E23's closing capital,
 separates reinvested gains, and narrows the unresolved portion to $177,861 across six source
 transactions. This does not change the aggregate coverage ratios above.
+
+The [funding-origin priority audit](allocation-funding-origin-priorities-2026-10-20.md)
+ranks the remaining gaps among these large positions. Six receipt-backed Spark
+sUSDS routes add $23.532m of traced borrowing still held at August-end; ranking
+individual unresolved contributions now accounts for subsequent withdrawals.
