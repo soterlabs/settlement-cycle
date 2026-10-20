@@ -10,8 +10,8 @@ revenue remain unchanged.
 | Origin | USD | Share of allocation capital |
 |---|---:|---:|
 | Confirmed original Sky borrowing | **193,695,912.39** | **95.5601%** |
-| Identified gains reinvested into the vault | **1,485.61** | **0.0007%** |
-| Existing source capital requiring further origin attribution | **8,997,920.75** | **4.4391%** |
+| Identified gains reinvested into the vault | **37,629.35** | **0.0186%** |
+| Existing source capital requiring further origin attribution | **8,961,777.01** | **4.4213%** |
 | Total closing allocation capital | **202,695,318.75** | **100%** |
 
 This answers funding origin, not which investments should bear outstanding
@@ -66,7 +66,8 @@ The exact transaction references and source components are retained in
 
 All six amounts enter after the vault's final withdrawal, so they remain in
 the August closing position. These are known immediate sources but unresolved
-original borrowed-principal-versus-gain splits.
+original borrowed-principal-versus-gain splits, except that the Horizon path's
+measurable net gains have now been separated.
 
 | Ethereum bridge date | Unresolved amount | Source evidence |
 |---|---:|---|
@@ -75,7 +76,7 @@ original borrowed-principal-versus-gain splits.
 | May 17 | 2,000,000.00 | Cash contains a 24,987,498.885391 BUIDL redemption and 999,738.097233 from an AUSD conversion. |
 | May 19 | 2,000,000.00 | Cash includes BUIDL/JTRSY redemption proceeds and earlier cash, followed by a partial ilk repayment. |
 | June 13 | 997,919.746262 | Cash was funded by a Galaxy CLO boundary return and AUSD conversion, then partly used to repay the ilk. The bridge also contains a separately proven 2,002,080.253738 draw. |
-| July 9 | 3,000,000.00 | After cash reached zero, a single Aave Horizon RLUSD disposal/conversion produced 4,999,128.526698 USDC; 3m was bridged. |
+| July 9 | 2,963,856.263325 | After cash reached zero, a single Aave Horizon RLUSD disposal/conversion produced 4,999,128.526698 USDC; 3m was bridged. The bridge's 36,143.736675 gain component is now excluded from unresolved principal. |
 
 Bridge transactions, in table order:
 
@@ -92,15 +93,46 @@ funded the repayment. No FIFO or newest-receipt-first assumption is introduced.
 For the same reason, knowing a redemption's venue is not sufficient to call
 all its proceeds borrowed principal.
 
-Next investigate the July 9 Aave Horizon source first: it is the largest
-remaining single-source path. Then resolve the BUIDL/JTRSY/AUSD cash windows.
-No tracing beyond commingled FalconX deposit/return EOAs is required.
+## Reusable upstream reallocation tracking
+
+The diagnostic supports explicit `--reallocation-venues E1`. This is executable
+source tracking, not a manually inserted number. It computes the source venue's
+acquisition-cost ledger, then accepts a link only when:
+
+- Cash starts empty and receives exactly one identifiable allocation disposal.
+- The bridge spends that isolated receipt, with no intervening cash movement
+  or other source/destination that would make the attribution ambiguous.
+- The source disposal has an isolated cost release in its allocation ledger.
+
+For a partial cash spend, the code carries the receipt's proportional
+acquisition-cost/net-gain split, consistent with weighted-average accounting.
+This is an explicit accounting convention, not proof that particular token
+units represent principal or yield. The code preserves the original-principal
+uncertainty; source acquisition cost alone is not proof of Sky borrowing.
+
+For the [July 9 Horizon disposal](https://etherscan.io/tx/0x83a020f139c7cdafebb5f9746b7e9cf71874625dcf1747e3f9084638322e74ea):
+
+| Component | Full cash receipt | 3m bridged portion |
+|---|---:|---:|
+| Acquisition cost recovered | 4,938,899.465006 | 2,963,856.263325 |
+| Net gain after conversion | 60,229.061692 | 36,143.736675 |
+| Cash | 4,999,128.526698 | 3,000,000.000000 |
+
+The source aToken value removed was 5m, but actual USDC proceeds were lower.
+Using token mark instead of actual cash would overstate the realized gain.
+The source ledger excludes 1,800,219.702380 of classified Horizon reward receipts
+through July 9 from acquisition cost.
+
+Next trace the Horizon principal's acquisition funding, including its 2026
+opening position, then resolve the BUIDL/JTRSY/AUSD cash windows. No tracing
+beyond commingled FalconX deposit/return EOAs is required.
 
 ## Reproduction and validation
 
 ```sh
 PYTHONPATH=src .venv/bin/python scripts/audit_bridged_vault_funding.py \
   --history /tmp/pr215-grove-eoa/history.jsonl.gz --venue E23 --cash-venue E27 \
+  --reallocation-venues E1 \
   --start 2026-01-01 --end 2026-08-31 \
   --output reconciliation/grove_steakhouse_funding_origins_2026_08.json
 ```
@@ -114,5 +146,6 @@ ledger after every event.
 of already-normalized, already-adapted source evidence. The regression test
 loads it directly, without applying adapters again or performing RPC queries.
 It reproduces the closing split and all six unresolved source windows.
-The compact fixture reproduces the complete full-history result, including
-source windows. All 113 relevant tests pass, as does Ruff for the new files.
+The fixture now also includes Horizon's normalized movements. It reproduces
+the complete full-history result, including source windows and the upstream
+reallocation. All 115 relevant tests pass, as does Ruff for the changed files.

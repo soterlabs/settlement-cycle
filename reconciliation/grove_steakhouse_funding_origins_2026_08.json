@@ -3,16 +3,19 @@
   "venue": "E23",
   "start": "2026-01-01",
   "end": "2026-08-31",
+  "reallocation_venues": [
+    "E1"
+  ],
   "closing_capital": "202695318.751552857821145522569455193002409990926011193223786",
   "closing_origin": {
     "borrowed": "193695912.393048442107347900955469167600155277820239805155649",
-    "reinvested_gains": "1485.612242415713797621613986025402254713105771388068137900",
-    "unresolved": "8997920.74626200000000000000000000000000000000000000000000000"
+    "reinvested_gains": "37629.3489176691363096119722599495652682907834143524477011700",
+    "unresolved": "8961777.00958674657748800964172607583698642232235703562043673"
   },
   "closing_percent": {
     "borrowed": "95.5601311298485669330245103453818019016300338430248803258639",
-    "reinvested_gains": "0.000732928738347753507940724305833147753392688557376097944995469",
-    "unresolved": "4.43913594141308531346754893031236495061657346841774357619151"
+    "reinvested_gains": "0.0185644883904753997678028873940445610248641982470672238459090",
+    "unresolved": "4.42130438176095766720768676722415353734510195872805245029059"
   },
   "source_proofs": {
     "cctpv2:ethereum:0x015a23064ebf245dea53aaa1fe2fb8723464d04d03774d1fabca252d16df39d0": {
@@ -28,7 +31,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "10000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0xfc930359fd4e3268149445b7800002e702426e9277c53a04d54559da132af16d": {
       "transaction": "ethereum:0x72f448f7bb51686d0299b00675e580a125b85b23007dbdd6b1b4b221be2d7203:grove-cctpv2",
@@ -43,7 +47,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "10000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x4670d34bdae1b1c38d12d6c54eed42d73d32fa91a506c79342d4938420ae0cfe": {
       "transaction": "ethereum:0xff653f334a5e824b00c7d397d4fcd1ade43baa44fb71348c608a74c3a1a98ecc:grove-cctpv2",
@@ -58,7 +63,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "10000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x4e12805dc3be175350292222f5e434dbecafb30831fc0ca8eb8d636a4847d5d8": {
       "transaction": "ethereum:0x9ad228f51207af67c8432e82969db785cc1d27d205f7d098365deec4464b7f1a:grove-cctpv2",
@@ -73,7 +79,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "5000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0xb6a2db33f93de5703584ac1b1a3f979473c9ef324ee55cb784cb70140dcfeac0": {
       "transaction": "ethereum:0x6621a3b6e64a77ea13d3eb0553216d70f2c3324371a139895d8eda587e6f3f80:grove-cctpv2",
@@ -88,7 +95,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "3994379.874274"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x04aef421364264a4ddba6951db6fe5ad07bf4db2e3c3ef8110b5e6ae8a8e6bf3": {
       "transaction": "ethereum:0x470bf23cf0415a8be134dd5586e6807756f558a8468c1a57e25a9b8533375508:grove-cctpv2",
@@ -139,7 +147,8 @@
             }
           ]
         }
-      }
+      },
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x9d8dae7e37021383d16aa40ce0cb3ed451c02377180dced4c0ff30075096d92d": {
       "transaction": "ethereum:0x9d91ee1756f72951d4ba9681ad3ad9c6528e7b78fe3fc6d90c7dbc0ab3513072:grove-cctpv2",
@@ -154,7 +163,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "5000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0xab35b761445031aa36f135eb5cd050c0155c8697d04b5e1538f19aec9ce143c4": {
       "transaction": "ethereum:0x5b1dac1818a094073a418fe3f6ccd49116b4b20f03d4c0d4f3d9a210d887072e:grove-cctpv2",
@@ -169,7 +179,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "5000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x057c133bb204510ec7749419a5efa5cd2694bb9c732b866cadb45fa65a715027": {
       "transaction": "ethereum:0x3bca8a01d0fde9eb272827726f34be9294abfc27b8a30553580fadc0dfb67425:grove-cctpv2",
@@ -184,7 +195,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "8700000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x74521899b61770393eb253242f5f461f49a3eaa5f08be0bfa0ab2c3f74264243": {
       "transaction": "ethereum:0x13cd1d9333e9dbd7eddb69909e02dd8cb6323872a15c474a62a2798e7cc5e048:grove-cctpv2",
@@ -199,7 +211,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "8000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x1a297608596065781dd019184dbb58461c2401cb5d58276f3003f4338fbc0eaf": {
       "transaction": "ethereum:0xbcf04406f38adb5bfbc8118e5725f68ab5ce55208944c684ae1cb6a92be1bf9a:grove-cctpv2",
@@ -214,7 +227,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "10000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x51e155f5fe1760ba95781d78fbfad719a93559aae490ff80be5752b70caf3c40": {
       "transaction": "ethereum:0x4ea44e025d222b6e843aef6d29b541848f4447a8d5f12979c294de560180b43f:grove-cctpv2",
@@ -229,7 +243,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "5000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x55596280c4402d66c36781c7de67be52e83d7c0cd838c62e53152fce59237120": {
       "transaction": "ethereum:0x4fa9c39d819623300a88766283a2cfc0ca63822d52dd0ffb4c21b1ee3d29a9a6:grove-cctpv2",
@@ -244,7 +259,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "5000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x7bb3fa300fc2dced942e054ff9cd176351ba15d329a16b2847ccb95433221803": {
       "transaction": "ethereum:0xb860d4e6f0bf0b4ddc074f29c67901ae8688fc2b35ab475617b6cd64bb64504b:grove-cctpv2",
@@ -288,7 +304,8 @@
             }
           ]
         }
-      }
+      },
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x72f9a87d7c5ac8cda0f562a81907bfa0d36fae96533be3640b3756b67db1231e": {
       "transaction": "ethereum:0x2e6bdc8d83f18aa9ea5a770af0b310415793223000ebd9537e6f900a8a413af5:grove-cctpv2",
@@ -303,7 +320,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "1000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x6371af5bbaa79f9508cee48dfe18da40b7155bea34372d6e68183b4f3b163eab": {
       "transaction": "ethereum:0x0e460b7d50a339e0d3be12d7435898c3315710c4cfd14b5bdb48ad99c2defb20:grove-cctpv2",
@@ -361,7 +379,8 @@
             }
           ]
         }
-      }
+      },
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x6676a163bb9071e6c4b78c8b9cc6bb55eb4d0a24d6ebe18cc590fa8b3e469150": {
       "transaction": "ethereum:0x53bb1be5d47512201ab92070a85ae911238daf6312a561e7eed35731bae216b0:grove-cctpv2",
@@ -484,7 +503,8 @@
             }
           ]
         }
-      }
+      },
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x2103edd38e14e63f39f8bd3f5b88856801e341cffd6be75eb0e5dfbeb738aae9": {
       "transaction": "ethereum:0xb4b0ebdcab021378eb12ebdb8519cf9aee2fbdb477736d520c01747fb6773404:grove-cctpv2",
@@ -499,7 +519,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "4000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x0cc2d7320caf7b238b682f7873efdbc11bd7ee24685f8e5f1d5b4fd8eecffa69": {
       "transaction": "ethereum:0x64a6370998ed73f6e6b30b1c76a88b913ca7f2839e2fb6c670e66fb52c1d8f42:grove-cctpv2",
@@ -514,7 +535,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "2000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x7234723109a349977bd6a250518fdc205517f9a11985f8b0115bfbd465a9d274": {
       "transaction": "ethereum:0xffd8cd7b01fa51b872f106b79470e9e6e9d1345e2f868263fc06b7745fe164cf:grove-cctpv2",
@@ -529,7 +551,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "2000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x5c219da67d6fc58db12a472dda477d012edb4919795794a370ddd164e9f5ac72": {
       "transaction": "ethereum:0xe5da90db2ad2a317ebdda831868c64312a2e56616e15d018fdc3914e35ebba32:grove-cctpv2",
@@ -544,7 +567,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "2000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0xd8d007c929feb9faae77a799045e3b79853d112d111625e8935de7b7cc7ae69e": {
       "transaction": "ethereum:0x1268578a03b396f4f3c5fb7fa6a80fb00740b133162e90b58d86a634111a9164:grove-cctpv2",
@@ -559,7 +583,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "4000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0xab60efa0f6b6dfc0e3017bc78b756adca83479e6b463eb5b59439b4635a34dd2": {
       "transaction": "ethereum:0x378ef44a789d561d0cce4503271afa424ad00dbdcc7df56b8f002ee1f78f7842:grove-cctpv2",
@@ -574,7 +599,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "3000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x878d8a74b325b74325ddae8fcd7b8f951b2a89155c9b8280c3f4cad09ed9ecb1": {
       "transaction": "ethereum:0x59832496b4331d3bab577af9f43b6041ae446e1d4a57992daf686cf78b602ab9:grove-cctpv2",
@@ -589,7 +615,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "3000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x8648ee8b4bcd8cef9480687d7560cfefd42ad1541bb629790ece92188120adbc": {
       "transaction": "ethereum:0xed049cf65f322d81bf090fa6bc61f30dc3ff1274d0010441d10bedac474200ab:grove-cctpv2",
@@ -604,7 +631,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "3000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x71bf69e64f74b96b1e8f8a6aef80a3656f9ad483c78f2f99672de711fd362dcb": {
       "transaction": "ethereum:0x535d7e8e1f0a87ebc8073a1bb918090a9277df0a9fc5d84c9215d6fb0e794057:grove-cctpv2",
@@ -619,7 +647,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "3000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0xd0002620757bbd81c39cddbd5fe143e474b647bde368369216260ff21ecefa07": {
       "transaction": "ethereum:0xc3eb445eb9a84945a73639f148214810e702168babb7fe4a563f784d4ac09224:grove-cctpv2",
@@ -634,7 +663,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "3000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0xa8f0c4cff12f35c0e39edecf8aa78ad53d1bc082a23df4ee81a7dc85a361f080": {
       "transaction": "ethereum:0xa1a85a84aa47afc5f26175e371a158d51c831518fe819d18349d2abf318162b7:grove-cctpv2",
@@ -649,7 +679,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "3000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x1b07a15c12c117e3e0f53efedcfe0592338deb9b2bc1315899ca7e7cc2608481": {
       "transaction": "ethereum:0xa7f029128c8493ba0f6691797fe222c39a3ee612ef10da15ee877e60424f004e:grove-cctpv2",
@@ -720,7 +751,8 @@
             }
           ]
         }
-      }
+      },
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0xaaedfdc9423317600e7908c593a52a7f8d9319475b11c70a7f05de5a3195b47c": {
       "transaction": "ethereum:0x45477b85aa25d26ce7c38402c91db0c1e6be95ff4ffe2813a59bd2c1352707fc:grove-cctpv2",
@@ -735,7 +767,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "5000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x2b0e94375cef04a70023783f6f49cac0b44023d00149b54dc04306425de51e33": {
       "transaction": "ethereum:0xd61420d6729a6f2074f0bc8ee6b53b6aced3844e1171e14644a929f2e740ca49:grove-cctpv2",
@@ -750,7 +783,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "7000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x4ad8979a820f79d2e999d1ed55992f01bdd75afebb32eb4b14632214cc6d3a8a": {
       "transaction": "ethereum:0xc8b3bb768733c31cbaeff2a0914d9addb14cf59987bf26d1a2434983b2e3281f:grove-cctpv2",
@@ -765,7 +799,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "3000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x762a600dac9c5577aab6c3db2ffcaf825ff5d6abbbe7f03b433a61856ab27ae0": {
       "transaction": "ethereum:0xe6b52ef46e43f536c66507dc74567435f21f811b555d6103c8834d2e9cf0a8d8:grove-cctpv2",
@@ -780,7 +815,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "5000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0xde0d8153ab889863698021dba4ecbe739b879cc59fcc248acf2975c43464a13e": {
       "transaction": "ethereum:0x289afecc875478bad955201de24e6ba5a06f57fdbc955dc33a120de1c9f580b5:grove-cctpv2",
@@ -795,7 +831,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "8000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x97a65078f1b25735833072182a6634da39b324023a8f701c1ff57c673e245e40": {
       "transaction": "ethereum:0x6c58ddfc6d6fb6e855b179ded438c5331920bbbee124fcbb9de27380f5835afe:grove-cctpv2",
@@ -810,7 +847,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "10000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0xd8008a1f0035ea4410dd3003d872bde59435c244cd97b2ed1d56c9a77683b8ce": {
       "transaction": "ethereum:0x1be1f3ab52a3c7b06e1c5663df0dba1b0ba7fac1f3dab40d0f141c1606eb492d:grove-cctpv2",
@@ -825,7 +863,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "10000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0xb79956c87d49b46bc09399b0df2119a4895dd15b11214efd8c607d77daf4e5d5": {
       "transaction": "ethereum:0x22aef9110d0ce49f505e8ea1e10f0d628bb56c3251f6ef9723e9b9e5708666a1:grove-cctpv2",
@@ -840,7 +879,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "3000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0xf569aba654ac1eaaf7dfdd3c25b6e242c2beaeef79ecec6f11409e6ac10d192d": {
       "transaction": "ethereum:0x27f34ee0092286f5c87d4e7bd188f7028274ef6bf38e4cd6e9886da542645eae:grove-cctpv2",
@@ -855,7 +895,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "5000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0xb3bdae3b91e0b6432a3f7d7e9f7eef65d690d594f3ca71a5451a501ba039c26a": {
       "transaction": "ethereum:0x0d4e10b8f0d567ff6d13327a26a858b59b13a82fdf3415bb89c81927be4e9c99:grove-cctpv2",
@@ -870,7 +911,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "8000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0xb713b84044d7fe09cc6fcd120ca6be4e7784b6554f7c338f83ec6f540b5ee5ab": {
       "transaction": "ethereum:0x4d3c436023bbf3be00947e1608785e12b2606364b9a5a6b361da55713c7fb099:grove-cctpv2",
@@ -878,8 +920,8 @@
       "bridge_amount": "3000000",
       "origin": {
         "borrowed": "0",
-        "reinvested_gains": "0",
-        "unresolved": "3000000"
+        "unresolved": "2963856.26332474657748800964172607583698642232235703562043673",
+        "reinvested_gains": "36143.73667525342251199035827392416301357767764296437956327"
       },
       "draw_by_ilk": {},
       "other_movements": [
@@ -912,6 +954,15 @@
             }
           ]
         }
+      },
+      "upstream_reallocation": {
+        "source_venue": "E1",
+        "source_transaction": "ethereum:0x83a020f139c7cdafebb5f9746b7e9cf71874625dcf1747e3f9084638322e74ea",
+        "cash_received": "4999128.526698",
+        "source_cost_released": "4938899.46500642662968061717800083210821431688019824903597619",
+        "net_gain_after_conversion": "60229.06169157337031938282199916789178568311980175096402381",
+        "amount_reallocated": "3000000",
+        "policy": "Weighted-average acquisition cost; proportional cost/gain split of a single receipt. Original borrowing of source principal remains unresolved."
       }
     },
     "cctpv2:ethereum:0x232e39d53d2f7267b756461ee567a45172f37d11e8098b15e31be5c9d8f95e74": {
@@ -927,7 +978,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "3000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x38021fca6642cdd40620f4a9347bbb207fc99eace97ffb1f4cfeacd8b39893cd": {
       "transaction": "ethereum:0x97dec4bcd09ea4c8e16dc59471e0ac4000ab3a1c5dcfc9f1a0651f88d5a75f20:grove-cctpv2",
@@ -942,7 +994,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "3500000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x1a5afd52b44a1d5dd4bd09eacf26da27844f78611cc80ec9d747116b7071d65e": {
       "transaction": "ethereum:0x04325196f277a72703973698116b46453e8b0ed940013442385723545352df18:grove-cctpv2",
@@ -957,7 +1010,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "7000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x8017d0d6ffda2171a5b4f07f37b13053bbc1836fa5a4cd989bf85cac8ff403c8": {
       "transaction": "ethereum:0x54240fd54df8295444a492ed59200f277d936f95936969716bbb89955ab64f19:grove-cctpv2",
@@ -972,7 +1026,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "6000000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     },
     "cctpv2:ethereum:0x37fbc5f0a8484de21a79bc61c535fdd3c76abe9d10a9e5e350b3e5274c0603dc": {
       "transaction": "ethereum:0xc638e76bc8ffd91f1d8afc426185783b0c88ebd42b169b48e6529fc88b6cd467:grove-cctpv2",
@@ -987,7 +1042,8 @@
         "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "7500000"
       },
       "other_movements": [],
-      "prior_source_windows": {}
+      "prior_source_windows": {},
+      "upstream_reallocation": null
     }
   },
   "transactions": [
@@ -1702,13 +1758,13 @@
       "cost_basis_released": "0",
       "incoming_origin": {
         "borrowed": "0.000000",
-        "reinvested_gains": "0.000000",
-        "unresolved": "3000000.000000"
+        "reinvested_gains": "36143.7366752534225119903582739241630135776776429643795632700",
+        "unresolved": "2963856.26332474657748800964172607583698642232235703562043673"
       },
       "closing_origin": {
         "borrowed": "166695912.393048442107347900955469167600155277820239805155649",
-        "reinvested_gains": "1485.612242415713797621613986025402254713105771388068137900",
-        "unresolved": "8997920.74626200000000000000000000000000000000000000000000000"
+        "reinvested_gains": "37629.3489176691363096119722599495652682907834143524477011700",
+        "unresolved": "8961777.00958674657748800964172607583698642232235703562043673"
       }
     },
     {
@@ -1723,8 +1779,8 @@
       },
       "closing_origin": {
         "borrowed": "169695912.393048442107347900955469167600155277820239805155649",
-        "reinvested_gains": "1485.612242415713797621613986025402254713105771388068137900",
-        "unresolved": "8997920.74626200000000000000000000000000000000000000000000000"
+        "reinvested_gains": "37629.3489176691363096119722599495652682907834143524477011700",
+        "unresolved": "8961777.00958674657748800964172607583698642232235703562043673"
       }
     },
     {
@@ -1739,8 +1795,8 @@
       },
       "closing_origin": {
         "borrowed": "173195912.393048442107347900955469167600155277820239805155649",
-        "reinvested_gains": "1485.612242415713797621613986025402254713105771388068137900",
-        "unresolved": "8997920.74626200000000000000000000000000000000000000000000000"
+        "reinvested_gains": "37629.3489176691363096119722599495652682907834143524477011700",
+        "unresolved": "8961777.00958674657748800964172607583698642232235703562043673"
       }
     },
     {
@@ -1755,8 +1811,8 @@
       },
       "closing_origin": {
         "borrowed": "180195912.393048442107347900955469167600155277820239805155649",
-        "reinvested_gains": "1485.612242415713797621613986025402254713105771388068137900",
-        "unresolved": "8997920.74626200000000000000000000000000000000000000000000000"
+        "reinvested_gains": "37629.3489176691363096119722599495652682907834143524477011700",
+        "unresolved": "8961777.00958674657748800964172607583698642232235703562043673"
       }
     },
     {
@@ -1771,8 +1827,8 @@
       },
       "closing_origin": {
         "borrowed": "186195912.393048442107347900955469167600155277820239805155649",
-        "reinvested_gains": "1485.612242415713797621613986025402254713105771388068137900",
-        "unresolved": "8997920.74626200000000000000000000000000000000000000000000000"
+        "reinvested_gains": "37629.3489176691363096119722599495652682907834143524477011700",
+        "unresolved": "8961777.00958674657748800964172607583698642232235703562043673"
       }
     },
     {
@@ -1787,8 +1843,8 @@
       },
       "closing_origin": {
         "borrowed": "193695912.393048442107347900955469167600155277820239805155649",
-        "reinvested_gains": "1485.612242415713797621613986025402254713105771388068137900",
-        "unresolved": "8997920.74626200000000000000000000000000000000000000000000000"
+        "reinvested_gains": "37629.3489176691363096119722599495652682907834143524477011700",
+        "unresolved": "8961777.00958674657748800964172607583698642232235703562043673"
       }
     }
   ],
@@ -1811,7 +1867,7 @@
   },
   "input_sha256": "c05b53815379f6f7a4d9f6195d819d09ddb542f8f279af5f4defe4b7b3295474",
   "source_sha256": {
-    "/home/agent/code/lakonema2000/settlement-cycle/scripts/audit_bridged_vault_funding.py": "6d57b01b52b2c41fc57db4e07c48dbb5ed55dfc42cf87738f6a6acf9902a874a",
+    "/home/agent/code/lakonema2000/settlement-cycle/scripts/audit_bridged_vault_funding.py": "317c7a11793687a2f0eaba3c409c39f3f92ce24ce50ea565b795f47c2ae28e78",
     "scripts/audit_allocation_positions.py": "5e56c221369c4a09f8752d99af538d2fdfd15b7b29098948e579c662f42f6c3f",
     "scripts/audit_allocation_cash_sources.py": "fda1480ec4f1cf2c5048b3c36813e49386705b2fde022be3061091cd872be774",
     "src/settle/compute/__init__.py": "4a98b5acb293a5e4b70baa11b49dc04498a6d5e04070e61c80d5a8ac66eca69a",

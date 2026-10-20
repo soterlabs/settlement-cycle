@@ -108,6 +108,16 @@ def test_reviewed_grove_routes_reconcile_closing_principal(module):
     unresolved = [p for p in result['source_proofs'].values() if D(p['origin']['unresolved'])]
     assert len(unresolved) == 6
     assert all(p['prior_source_windows'] for p in unresolved)
+    extended = module.attribute(history, 'E23', 'E27', DAY, date(2026, 8, 31),
+                                reallocation_venues=('E1',))
+    origin = extended['closing_origin']
+    assert D(origin['borrowed']).quantize(D('.01')) == D('193695912.39')
+    assert D(origin['reinvested_gains']).quantize(D('.01')) == D('37629.35')
+    assert D(origin['unresolved']).quantize(D('.01')) == D('8961777.01')
+    links = [p['upstream_reallocation'] for p in extended['source_proofs'].values()
+             if p['upstream_reallocation']]
+    assert len(links) == 1
+    assert links[0]['source_venue'] == 'E1'
 
 
 def test_cash_window_does_not_attribute_spending_fifo(module):
@@ -120,3 +130,33 @@ def test_cash_window_does_not_attribute_spending_fifo(module):
     assert window['starts_from_empty_cash']
     assert [r['transaction'] for r in window['transactions']] == ['1', '2', '3']
     assert window['transactions'][0]['explicit_cash_income'] == '30'
+
+
+def test_upstream_gain_survives_partial_cash_bridge(module):
+    rows = [
+        b(1, m('source-vault', '0', '100')),
+        b(2, m('source-vault', '120', '-120'), m('eth-cash', '0', '110')),
+        b(3, m('eth-cash', '110', '-55'), m('cctpv2:ethereum:a', '0', '55')),
+        b(4, m('cctpv2:ethereum:a', '55', '-55'), m('cash', '0', '55')),
+        b(5, m('cash', '55', '-55'), m('vault', '0', '55')),
+    ]
+    h = H(tuple(rows), {'V': 'vault', 'C': 'cash', 'S': 'source-vault'}, {}, {})
+    r = module.attribute(h, 'V', 'C', DAY, DAY, reallocation_venues=('S',))
+    assert {k: D(v) for k, v in r['closing_origin'].items()} == {
+        'borrowed': 0, 'reinvested_gains': 5, 'unresolved': 50}
+    proof = r['source_proofs']['cctpv2:ethereum:a']['upstream_reallocation']
+    assert proof['source_venue'] == 'S'
+    assert D(proof['net_gain_after_conversion']) == 10  # Not the 20 token-mark gain.
+    assert module.attribute(h, 'V', 'C', DAY, DAY)['closing_origin']['unresolved'] == '55'
+
+
+def test_mixed_cash_does_not_inherit_one_sources_gain_mix(module):
+    rows = [
+        b(1, m('source-vault', '0', '100')),
+        b(2, m('eth-cash', '0', '10', income='10')),
+        b(3, m('source-vault', '110', '-110'), m('eth-cash', '10', '110')),
+        b(4, m('eth-cash', '120', '-60'), m('cctpv2:ethereum:a', '0', '60')),
+    ]
+    h = H(tuple(rows), {'S': 'source-vault'}, {}, {})
+    assert module.reallocation_origin(h, rows[-1], 'cctpv2:ethereum:a', D(60),
+                                      ('S',), {}, DAY, DAY) is None
