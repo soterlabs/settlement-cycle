@@ -1477,3 +1477,21 @@ principal_return_overrides:
 # No entries today (the May 2026 Anchorage case turned out to be a
 # round-trip handled via principal_return_overrides above).
 yield_reversal_overrides: {}
+
+# Operator decisions, 2026-10-09: earned receipts used ONLY to distinguish
+# capital from gains for 2026 per-allocation Sky borrowing costs. Earlier
+# receipts can establish opening capital; no 2025 MSC accounting or change
+# to settlement revenue recognition is implied. Never charge Sky CoF on gains.
+capital_income_sources:
+  ethereum:
+    # Ethena additional distributions, Maple treasury, additional PYUSD payer:
+    - '0xd0ec8cc7414f27ce85f8dece6b4a58225f273311'
+    - '0x6a01c16eb312b80535f4799e4bf7522b715aacff'
+    - '0x1e30f9c2c688f85c82111d1d262bfd127e687282'
+    # Maple-related payer: January 19, 2026, 383,178.08 USDC, confirmed yield.
+    - '0xc8a3e1e0776b912047c89dc16470fd9c7ea1141d'
+  base:
+    # Spark Operations inflows confirmed as yield, not expenses.
+    - '0x2e1b01adabb8d4981863394bea23a1263cbaedfc'
+  avalanche_c:
+    - '0x2e1b01adabb8d4981863394bea23a1263cbaedfc'

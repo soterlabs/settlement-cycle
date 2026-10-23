@@ -51,6 +51,9 @@ def baseline(prime):
         raise ValueError('Expected the immutable, pre-PR218 September baseline')
     saved = json.loads(path.read_text())
     result = copy.deepcopy(saved['result'])
+    # These pinned pre-analytics snapshots have no allocation tracing payload.
+    # Preserve strict decoding elsewhere; do not trigger a capital replay here.
+    result['allocation_financing'] = None
     # Explicit migration for these two hash-pinned snapshots only. Do not relax
     # the production strict decoder or accept a previously refreshed result.
     for row in result['venue_breakdown'] + result['display_only_breakdown']:

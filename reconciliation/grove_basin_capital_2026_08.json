@@ -1,0 +1,124 @@
+{
+  "prime": "grove",
+  "period": "2026-08",
+  "base_commit": "fbf81fa",
+  "input_hashes": {
+    "/tmp/pr215-grove-eoa/history.jsonl.gz": "c05b53815379f6f7a4d9f6195d819d09ddb542f8f279af5f4defe4b7b3295474",
+    "settlements/grove/2026-08/provenance.json": "d6fb40d3c43caf3bdc7d0983b7ff071433ad056d22825b9f0f19eeb9d3af3aa9",
+    "/tmp/pr215-resumed-grove/idle_deductions.json": "e6b13f9b30816b2f8e9325f222aa9c889ff68cdf182205f4c54576d929faf427",
+    "/tmp/pr215-resumed-grove/debt-control.json": "6214144465cad85e59e3cd7c075925fad2f5bdc2131428ea4e6f769b57d9280b",
+    "/tmp/pr215-resumed-grove/deduction-owners.json": "dad2cf619d5dc65a26721aaf1fe3938136bb512212bf427a2e5aa56531f58153"
+  },
+  "unmatched_receipts_before": 26,
+  "unmatched_receipts_after": 22,
+  "unmatched_outflows_before": 256,
+  "unmatched_outflows_after": 244,
+  "eligible_allocation_cost": "11784.59397330482338634775780",
+  "per_ilk_reconciliation": {
+    "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+      "global_cost": "3708820.107055825781021080592",
+      "msc_cost": "259878.1170265572840543147882",
+      "allocation_cost": "0",
+      "global_excluding_msc": "3448941.990029268496966765804",
+      "difference": "-3448941.990029268496966765804",
+      "within_one_cent": false,
+      "complete": false,
+      "source_complete": false,
+      "bounds_use_verified_deduction_owners": true,
+      "diagnostic_cost_bounds": {
+        "lower": "-3800592.87518234243050416117490997149274611866479933706461986",
+        "upper": "3448941.99002926849696676580416084319370638238644478031610200"
+      },
+      "target_distance_from_bounds": "0",
+      "target_within_bounds_to_one_cent": true,
+      "bounds_note": "Containment is not reconciliation; unresolved routes remain unverified"
+    },
+    "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+      "global_cost": "11784.73727045625525471486130",
+      "msc_cost": "0E-32",
+      "allocation_cost": "11784.59397330482338634775780",
+      "global_excluding_msc": "11784.73727045625525471486130",
+      "difference": "-0.14329715143186836710350",
+      "within_one_cent": false,
+      "complete": false,
+      "source_complete": false,
+      "bounds_use_verified_deduction_owners": true,
+      "diagnostic_cost_bounds": {
+        "lower": "11784.5908731950423778275661358784932034746155998009359999996",
+        "upper": "11784.6108905418558170315885224595616147846655776873152449248"
+      },
+      "target_distance_from_bounds": "0.1263799143994376832727775404",
+      "target_within_bounds_to_one_cent": false,
+      "bounds_note": "Containment is not reconciliation; unresolved routes remain unverified"
+    }
+  },
+  "removed_receipts": {
+    "ethereum:0x53886473cf2cc0fa4c4dc92a277ff97ad426d176f8e3ebefd463f04936fa2595": "1.00",
+    "ethereum:0xd060c299ef4a0547fb2373fa12657584c669d4cb988119ed6bc55218485923ac": "0.0001",
+    "ethereum:0xc51a17d47f31520a28e63b0adf90a1f06d3951af0d02a8124abfaab8913be664": "0.01",
+    "ethereum:0x079475f4b28e2f14e2a031a91e49b7f55a8956a178411edef9ff8cb337808d11": "111084.66881"
+  },
+  "removed_outflows": {
+    "ethereum:0x1d836645c0de8835c764f0cdea84c1ea5718ac0b6e07597c2e7dbb6a97cdb654": "1",
+    "ethereum:0x0f74e143a356658031efab33b0141a69680141dab1a7688fedb8368e7b87e649": "0.126514",
+    "ethereum:0x7bf92b1049988c0188f27b5bdffdc7546c133858020903cf49923155380e04bf": "4.443339",
+    "ethereum:0xa8b29b69ccf3cfb6e13f59688a70c7a1497968b48cdffd58ede6afa7ef70737b": "105.52106",
+    "ethereum:0xf1b54b35a4e54bd197f9ec6815f2909cfbf98f473b153c790e2bd996b4523746": "111.0748",
+    "ethereum:0xfceef25c6ed446b6df86652ee46733eb3757023802ed74af1fc766093bcc2c38": "111.0748",
+    "ethereum:0x10653b7b251a158bbff7be25397c3ff5187e0f13bff7ee0ef7d9a82be082e506": "111.0748",
+    "ethereum:0xc3e2d1a6ee48ce17c0b238cd7619f6f78caa7642206e7903c632fb52014fdb40": "111.0748",
+    "ethereum:0xee01f30f22b5e8925d0d2d70007f72df316f5b36732752f7867e2b2aec8040b5": "111.0748",
+    "ethereum:0xec6820df0f9cdeeea1a6bd32518d45204f8f8fc5dcb1190d7f32b029deecd82e": "222.1496",
+    "ethereum:0xc9fe7c33f2bff75b5186e7889e3fc59c3d9e15aec86c215224f189393c7418e9": "222.1496",
+    "ethereum:0xabdbd9d28a47722d2570baedc1736df72b68dbdda59512e9e3e7995d40892b14": "109963.953312"
+  },
+  "basin_allocations": [
+    {
+      "venue_id": "E_BUIDL_BASIN",
+      "basis_status": "traced",
+      "basis_detail": null,
+      "borrowed_principal_som": "0.9998986303504395386360424529",
+      "borrowed_principal_eom": "0.9998986303504395386360424529",
+      "borrowed_principal_average": "0.9998986303504395386360424510",
+      "cost_of_funds": "0.003100105534519872358654393698",
+      "modeled_cost_of_funds": "0.003100105534519872358654393698",
+      "modeled_cost_of_funds_by_ilk": {
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0.003100105534519872358654393698"
+      },
+      "net_pnl": null,
+      "gross_apy": null,
+      "net_apy": null,
+      "borrowed_principal_average_by_ilk": {
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0.9998986303504395386360424523"
+      },
+      "cost_of_funds_by_ilk": {
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "0.003100105534519872358654393698"
+      },
+      "revenue_available": false
+    },
+    {
+      "venue_id": "E_JTRSY_BASIN",
+      "basis_status": "traced",
+      "basis_detail": null,
+      "borrowed_principal_som": "999988.0386163696495604703736",
+      "borrowed_principal_eom": "12499988.03861636964956047037",
+      "borrowed_principal_average": "3369504.813368369649560469726",
+      "cost_of_funds": "10456.36905621216082084373943",
+      "modeled_cost_of_funds": "10456.36905621216082084373943",
+      "modeled_cost_of_funds_by_ilk": {
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "10456.36905621216082084373943"
+      },
+      "net_pnl": null,
+      "gross_apy": null,
+      "net_apy": null,
+      "borrowed_principal_average_by_ilk": {
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "3369504.813368369649560469732"
+      },
+      "cost_of_funds_by_ilk": {
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "10456.36905621216082084373943"
+      },
+      "revenue_available": false
+    }
+  ],
+  "scope": "Replace pool escrow observations with owned internal Basin shares in capital diagnostics only; debt, revenue, published reports and API unchanged."
+}

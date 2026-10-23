@@ -444,6 +444,20 @@ def render_summary(prov: dict) -> str:
             )
         lines.append("")
 
+    analytics = prov.get('allocation_financing')
+    if analytics:
+        lines.extend(['## Allocation yield', '',
+                      'APYs annualize the reporting period. A dash means the value is unavailable.', '',
+                      'Funding costs below apply to borrowed principal; separate prime financing costs are excluded.', '',
+                      '| Venue | Borrowed principal (average) | Cost of funds | Net PnL | Gross APY | Net APY |',
+                      '|---|---:|---:|---:|---:|---:|'])
+        for row in sorted(analytics['allocations'], key=lambda r: _venue_sort_key(r['venue_id'])):
+            amounts = ['—' if row.get(k) is None else _usd(row[k])
+                       for k in ('borrowed_principal_average', 'cost_of_funds', 'net_pnl')]
+            yields = ['—' if row.get(k) is None else f'{_D(row[k]) * 100:,.4f}%'
+                      for k in ('gross_apy', 'net_apy')]
+            lines.append('| ' + ' | '.join([row['venue_id'], *amounts, *yields]) + ' |')
+        lines.append('')
     return "\n".join(lines) + "\n"
 
 

@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import weakref
 from collections.abc import Callable
@@ -58,13 +59,18 @@ def _reorg_margin() -> int:
 
 
 def _stream_key(
-    chain: str, selections: list[dict[str, Any]], log_fields: list[str] | None = None
+    chain: str, selections: list[dict[str, Any]], log_fields: list[str] | None = None,
+    *, join_mode: str | None = None, result_topic0: str | None = None,
 ) -> str:
     """Stable id for one selection. The field set is part of the key ONLY when
     the caller asks for non-default fields (e.g. ``transaction_hash``): rows
     persisted under the default set have NULL there, and serving them to a
     caller that needs the hash would silently break its joins."""
     key: dict[str, Any] = {"chain": chain, "sel": selections}
+    if join_mode is not None:
+        key['join_mode'] = join_mode
+    if result_topic0 is not None:
+        key['result_topic0'] = result_topic0.lower()
     from .input_cache import input_revision
     if input_revision() != "0":
         key["input_revision"] = input_revision()
@@ -81,9 +87,15 @@ def fetch_logs(
     to_block: int,
     *,
     log_fields: list[str] | None = None,
+    join_mode: str | None = None,
+    result_topic0: str | None = None,
     post: Callable[..., Any] = requests.post,
 ) -> list[hypersync.LogRow]:
     """Return all logs matching ``selections`` in ``[from_block, to_block]``.
+
+    Optional join mode and event projection are part of the stream identity.
+    A projected joined query persists only its retained event rows, without
+    claiming that they are the original selection's directly matching logs.
 
     Reads finalized rows from Postgres when covered; fetches only the missing
     (incremental or first-time) range from HyperSync; never persists rows inside
@@ -94,7 +106,12 @@ def fetch_logs(
         return []
 
     def live(lo: int, hi: int) -> hypersync.QueryResult:
-        return hypersync.query_logs(chain, selections, lo, hi, log_fields=log_fields, post=post)
+        options = {}
+        if join_mode is not None:
+            options['join_mode'] = join_mode
+        if result_topic0 is not None:
+            options['result_topic0'] = result_topic0
+        return hypersync.query_logs(chain, selections, lo, hi, log_fields=log_fields, post=post, **options)
 
     if os.environ.get("HYPERSYNC_NO_STORE") == "1":
         if postgres_store.required():
@@ -106,15 +123,23 @@ def fetch_logs(
         postgres_store._unavailable()
         return live(from_block, to_block).rows
 
-    stream = _stream_key(chain, selections, log_fields)
+    stream = _stream_key(chain, selections, log_fields, join_mode=join_mode, result_topic0=result_topic0)
     _ensure_schema_once(conn)
     ranges = _coverage_ranges(conn, stream)
     missing = _missing_ranges(from_block, to_block, ranges)
     if not missing:
         return _read_rows(conn, stream, from_block, to_block)
 
+    # Commit bounded finalized intervals so a late network or disk failure
+    # does not discard an entire inception-to-pin download.
+    chunk_size = int(os.environ.get("HYPERSYNC_CHECKPOINT_BLOCKS", "2000000"))
+    if chunk_size <= 0:
+        raise ValueError("HYPERSYNC_CHECKPOINT_BLOCKS must be positive")
+    chunks = ((start, min(hi, start + chunk_size - 1))
+              for lo, hi in missing for start in range(lo, hi + 1, chunk_size))
     live_rows: list[hypersync.LogRow] = []
-    for lo, hi in missing:
+    for lo, hi in chunks:
+        logging.getLogger(__name__).info("Fetching %s blocks %d-%d", chain, lo, hi)
         res = live(lo, hi)
         live_rows.extend(res.rows)
         safe = res.archive_height - _reorg_margin() if res.archive_height else -1
@@ -131,6 +156,8 @@ def fetch_logs(
             # All intervals remain in the new append-only coverage table.
             largest = max(ranges, key=lambda r: r[1] - r[0])
             _set_coverage(conn, stream, *largest)
+            logging.getLogger(__name__).info(
+                "Checkpoint saved %s blocks %d-%d (%d logs)", chain, lo, end, len(finalized))
     return _merge(_read_rows(conn, stream, from_block, to_block), live_rows,
                   from_block, to_block)
 

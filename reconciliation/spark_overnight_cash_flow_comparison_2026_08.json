@@ -1,0 +1,383 @@
+{
+  "scope": "Compare frozen Spark financing diagnostics against unchanged settlement controls.\n\nResidual totals are gross inception-to-pin transaction differences, not monthly\nrevenue or debt. Savings matches identify cash routes without certifying funding.",
+  "replay_commit": "927f849088d8c1d80727a18659bf928f0e8ae590",
+  "before": {
+    "eligible_allocation_cost": "0E-89",
+    "modeled_allocation_cost": "2333198.918892948181851941986",
+    "allocation_status_counts": {
+      "unresolved": 49,
+      "traced": 33
+    },
+    "per_ilk": {
+      "0x414c4c4f4341544f522d535041524b2d41000000000000000000000000000000": {
+        "global_cost": "6108910.339051407190175208658",
+        "msc_cost": "397481.8430935053717434933281",
+        "allocation_cost": "0",
+        "global_excluding_msc": "5711428.495957901818431715330",
+        "difference": "-5711428.495957901818431715330",
+        "within_one_cent": false,
+        "complete": false,
+        "source_complete": false
+      }
+    },
+    "unmatched_receipts": {
+      "count": 19573,
+      "total": "17343087257.05152837640395842",
+      "above_one_cent": 19573,
+      "total_above_one_cent": "17343087257.05152837640395842"
+    },
+    "unmatched_outflows": {
+      "count": 24441,
+      "total": "16687095203.84335411448720167",
+      "above_one_cent": 24441,
+      "total_above_one_cent": "16687095203.84335411448720167"
+    },
+    "rounding_receipts": {
+      "count": 665,
+      "total": "0.7799973879051878406951208042",
+      "above_one_cent": 0,
+      "total_above_one_cent": "0"
+    },
+    "identified_savings_cash_not_yet_modeled": {
+      "unmatched_receipts": {
+        "count": 7861,
+        "amount": "13649638162.71888478792672557"
+      },
+      "unmatched_outflows": {
+        "count": 8910,
+        "amount": "13388283665.49499708947880756"
+      }
+    },
+    "largest_residuals_not_wholly_matched_to_savings": {
+      "unmatched_receipts": {
+        "ethereum:0x11264ba7a19e1f8d3e568bbc080698511ca7f8f0416a68a395126d88f82ece62": "813365978.714816795513367663738837350260652969135909620000000",
+        "ethereum:0x99da9962bb5baa6315f36ce952c76ef5e3854df0c956969433e4d05ccbc53b80": "507749202.835327521692186126608934431460891216893486915000000",
+        "ethereum:0x8169a8a6f61747f73bf5194d945271592830019e5f1f8c80b321314e9006c873": "170000116.214547905632747732468253462404727904213768765000000",
+        "ethereum:0x78fe0c5b4388e902be674dfc96a7c5cc964956aeef0d4e39b498471ef597635c": "99999221.3812137732277688953238702207324138903461830650000000",
+        "ethereum:0x666e13fd8f75fc3947740a6e2be838a429cc42041e3849333d2532237c8173dd": "59799621.1664885972550863927087494630221559087153458200000000",
+        "ethereum:0x32bf39aec91c9bc6058d1b654c5c22a1066a545309f6c6669dac03bf8d35c7f2": "56974456.0641357811246126484611269937634462766168589001627906",
+        "ethereum:0x7bb7ad0094a9e608c817c2254ae982f46c0b792090e4ffa4a6ac1b9913d86116": "52304950.7567063093771491096785596246451041639972312814626222",
+        "ethereum:0x7517bbaf2496a6ae2fcd6d5e647d06b799edfe0127c46d89a2904144ab006dc1": "52180790.577443414193611239515291560196652460254451855",
+        "ethereum:0x5b719b6e1f8d7ae0035edbe4d4832efa544a3d79474f86c2fbea5899fc4a67fe": "51267944.00",
+        "ethereum:0xd00ffbc3891267306f88d461493aa5ca74b198f8741cbc281b1a4c4202fd43dc": "49895153.1508237192284553046837993076398329015546538050000000"
+      },
+      "unmatched_outflows": {
+        "ethereum:0x538ed342bfa3c37d67f2a62af90d870b518fc006bc21ac4bfc3f4d9707b964cb": "256976825.75127998091753054372378620294825564297379834",
+        "ethereum:0xbf6382cb7c44bb47b75366e1d7ed5bc1959af028521a83a444cd6c4aae268683": "180596086.766553000000000000357902858277284452456000060",
+        "ethereum:0x822b67b7a6fc317c97a24c8153873f57d02d516e67647db70bad6debfc0db5e2": "78150685.741041194785324722166153857619988533960880725",
+        "ethereum:0x98f599b16569e67d5d67f12038399d960fb9861e2f6246f76eadec321a75621e": "77502577.000857723117963728767469469136226057204006325",
+        "ethereum:0x453ae1194dd63781367796a6913ee85ed539ff5424cbd98440869aad020a56cd": "77302327.68678287748723081852059777680191641548442502",
+        "ethereum:0x683e83151667bd428dff814f1da3eb60482551cb45016bbd23221fedc8dbf311": "77223519.338472954359201717352890941448294565506064235",
+        "ethereum:0x4ec7e14923ed77780034a8257e7200b37f2ec4eb86e0f44e2417994205fb31e3": "76538226.402221959400451422665216613448294565506064235",
+        "ethereum:0x93740c21ffec1c916934958ff908922195726318d57a3a146f2baaf47882ce0a": "71786552.816444198693513486346309174619988533960880725",
+        "ethereum:0x3c5a70c7a20063a428c6084730608c357f46c630455b63ea40c245fbcc1039c7": "70036929.018415918889417204869436536187572733766716695",
+        "ethereum:0x008674c08443f3c2bd25ce0f0f2f7d761641a126a89649652b21ec67fb08f910": "66089052.984034886541482319606309174619988533960880725"
+      }
+    }
+  },
+  "after": {
+    "eligible_allocation_cost": "0E-89",
+    "modeled_allocation_cost": "5404074.784636837694661523511",
+    "allocation_status_counts": {
+      "unresolved": 54,
+      "traced": 35
+    },
+    "per_ilk": {
+      "0x414c4c4f4341544f522d535041524b2d41000000000000000000000000000000": {
+        "global_cost": "6108910.339051407190175208658",
+        "msc_cost": "397481.8430935053717434933281",
+        "allocation_cost": "0",
+        "global_excluding_msc": "5711428.495957901818431715330",
+        "difference": "-5711428.495957901818431715330",
+        "within_one_cent": false,
+        "complete": false,
+        "source_complete": false
+      }
+    },
+    "unmatched_receipts": {
+      "count": 3512,
+      "total": "74069475.23974039248883605491",
+      "above_one_cent": 3512,
+      "total_above_one_cent": "74069475.23974039248883605491"
+    },
+    "unmatched_outflows": {
+      "count": 14546,
+      "total": "3973007.994839024715608018982",
+      "above_one_cent": 14546,
+      "total_above_one_cent": "3973007.994839024715608018982"
+    },
+    "rounding_receipts": {
+      "count": 1986,
+      "total": "0.4247019435125329475051994111",
+      "above_one_cent": 0,
+      "total_above_one_cent": "0"
+    },
+    "identified_savings_cash_not_yet_modeled": {
+      "unmatched_receipts": {
+        "count": 0,
+        "amount": "0"
+      },
+      "unmatched_outflows": {
+        "count": 0,
+        "amount": "0"
+      }
+    },
+    "largest_residuals_not_wholly_matched_to_savings": {
+      "unmatched_receipts": {
+        "ethereum:0x5b719b6e1f8d7ae0035edbe4d4832efa544a3d79474f86c2fbea5899fc4a67fe": "51267944.00",
+        "ethereum:0xe74aeeb85c45d4ee617fb2c422f5ed36c4887202e2074194f0926af53cb1a1d6": "10036438.00",
+        "ethereum:0xf47b94797d48eb81ceca66f8710eaa03bc5e89e40117a1b1fc5cda19094d6fe0": "1661509.59",
+        "ethereum:0x109c22ebdbdb3a975221ae7ea2b931bbae6fc40d0bcf6e37c0f4553b0c06dc05": "1250000.00",
+        "ethereum:0xa407dc48cca0eb9753b828825ab3c666b4cbe9360fc5bd14fde7e8b2757640e7": "904142.00",
+        "ethereum:0x13287e176eabc272e732650ccfe9b5a3e828a2bd59dc66c82364a3ecddf0cf0e": "829765.00",
+        "base:0xd24946f38a7bb9c627225c7c3de5e53ca44342bac264a9bf3a9a9eef01e63260": "779893.01862",
+        "ethereum:0x71cf392ce7027c1c0d2869499299bfa9da11ae268d21510d1f56cb93b18f7dde": "610629.00",
+        "ethereum:0xdf9dc6013a8879cce16e437c8c5fbf1e9e12d2fbba2fd671c2045d08d710bf2c": "607929.00",
+        "ethereum:0x57edd46d3bc28d2185d03662173df5aead87d8dbbaad8d16b4f6db12ab636be5": "526148.00"
+      },
+      "unmatched_outflows": {
+        "ethereum:0x0032e26b8e4b284e3c61ea8aeb0870e3f0dbb7d3173945faf0449ca6ec5138e8": "900612.89",
+        "ethereum:0x94ce2896098f7e11f245fb9d1185cdaf0d30bc68928524fab5b1a4878c4fb983": "18021.40",
+        "ethereum:0x3bee9945d6173d2b237bfbdbf34587823d3bf91b8fe35baddeb17a054ca6208f": "18021.30",
+        "ethereum:0x4b4905300ddd6843f06be7a934c8074801c9cb83b9ae469c04a1e974a796425b": "18018.80",
+        "ethereum:0x8627981a43781442f7365ec4d97e156bf4cb381552bce8aa6666ae31deb26737": "18016.60",
+        "ethereum:0x8bdedd3a449b42f7712fbc3aaa1a2cc5e75018b661e7aacda215a64fe558139c": "18015.50",
+        "ethereum:0x13d0ab32ae9927dec12f69247555013954ce25398e60a251f1d3a3d9183741e4": "18015.40",
+        "ethereum:0xd80f9a5d9603c36e707da95adbc2bf915229cf534f5a1f768fc0e9243c1b6c65": "18015.30",
+        "ethereum:0x53e242bcf012ba50e01f169e2ab1de5b76248695098f69bcb3b282125ac4f4a1": "18014.30",
+        "ethereum:0x910dae4470954fe3ceb735d52510ccfc968ae5e7ca78dc8b38aa9989194ffaaa": "18013.90"
+      }
+    }
+  },
+  "history_patch": {
+    "policy": "Provisional Savings policy: repay principal and accrued VSR proportionally; refinance remaining source-funded holdings proportionally.",
+    "routing": "Provisional Savings routing: transaction clearing pools token legs except independently proven separated routes.",
+    "batches_with_savings": 19949,
+    "input_hashes": {
+      "/tmp/pr215-spark-fsusds-history.jsonl.gz": "0daa44475b0da31fb9376c529648ebc8f4412cc0a552280503dc63e21f80a327",
+      "/tmp/pr215-spark-savings-principal.json": "b2e7f16f87feeb87133948304a16d40b4c0776b0fd0bf510684804fcde452df3"
+    },
+    "output_sha256": "21e5bc28d67c3a23d8724788959b765fda85d3b8aab528f1c767b80bce290c07",
+    "original_metadata": {
+      "schema": 1,
+      "fingerprint": "85bae37d1165e58db6316274733572ae59fd52245cd56b723c07450549145865",
+      "venue_accounts": {
+        "S1": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xc02ab1a5eaa8d1b114ef786d9bde108cd4364359",
+        "S2": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x377c3bd93f2a2984e1e7be6a5c22c525ed4a4815",
+        "S3": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xe7df13b8e3d6740fe17cbe928c7334243d86c92f",
+        "S4": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x4dedf26112b3ec8ec46e7e31ea5e123490b05b8b",
+        "S5": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x779224df1c756b4edd899854f32a53e8c2b2ce5d",
+        "S6": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x09aa30b182488f769a9824f15e6ce58591da4781",
+        "S7": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x32a6268f9ba3642dda7892add74f1d34469a4259",
+        "S8": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x98c23e9d8f34fefb1b7bd6a91b7ff122f4e16f5c",
+        "S9": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x23878914efe38d27c4d67ab83ed1b93a74d4086a",
+        "S10": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x56a76b428244a50513ec81e225a293d128fd581d",
+        "S11": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xc7cdcfdefc64631ed6799c95e3b110cd42f2bd22",
+        "S65": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xb0c424116172b55cbb6dd3136f5989f7959e5b91",
+        "S12": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x73e65dbd630f90604062f6e02fab9138e713edd9",
+        "S13": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xe41a0583334f0dc4e023acd0bfef3667f6fe0597",
+        "S14": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b",
+        "S15": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x356b8d89c1e1239cbbb9de4815c39a1474d5ba7d",
+        "S16": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x9d39a5de30e57443bff2a8307a4256c8797a3497",
+        "S17": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x2bbe31d63e6813e3ac858c04dae43fb2a72b0d11",
+        "S18": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x38464507e02c983f20428a6e8566693fe9e422a9",
+        "S19": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041",
+        "S20": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x8c213ee79581ff4984583c6a801e5263418c4b86",
+        "S21": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x43415eb6ff9db7e26a15b704e7a3edce97d31c4e",
+        "S22": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x14d60e7fdc0d71d8611742720e4c50e7a974020c",
+        "S24": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x00836fe54625be242bcfa286207795405ca4fd10",
+        "S25": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xa632d59b9b804a956bfaa9b48af3a1b74808fc1f",
+        "S61": "nft:ethereum:S61",
+        "S62": "nft:ethereum:S62",
+        "S66": "nft:ethereum:S66",
+        "S26": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "S27": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xdac17f958d2ee523a2206206994597c13d831ec7",
+        "S28": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x6c3ea9036406852006290770bedfcaba0e23a0e8",
+        "S64": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x8292bb45bf1ee4d140127049757c2e0ff06317ed",
+        "S29": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x6b175474e89094c44da98b954eedeac495271d0f",
+        "S30": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
+        "S31": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+        "S32": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xa3931d71877c0e7a3148cb7eb4463524fec27fbd",
+        "S34": "base:0x2917956eff0b5eaf030abdb4ef4296df775009ca:0x7bfa7c4f149e7415b73bdedfe609237e29cbf34a",
+        "S35": "base:0x2917956eff0b5eaf030abdb4ef4296df775009ca:0x4e65fe4dba92790696d040ac24aa414708f5c0ab",
+        "S36": "base:0x2917956eff0b5eaf030abdb4ef4296df775009ca:0xf62e339f21d8018940f188f6987bcdf02a849619",
+        "S37": "base:0x2917956eff0b5eaf030abdb4ef4296df775009ca:0x5875eee11cf8398102fdad704c9e96607675467a",
+        "S38": "base:0x2917956eff0b5eaf030abdb4ef4296df775009ca:0x820c137fa70c8691f0e44dc420a5e53c168921dc",
+        "S39": "base:0x2917956eff0b5eaf030abdb4ef4296df775009ca:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "S41": "arbitrum:0x92afd6f2385a90e44da3a8b60fe36f6cbe1d8709:0x724dc807b04555b71ed48a6896b6f41593b8c637",
+        "S42": "arbitrum:0x92afd6f2385a90e44da3a8b60fe36f6cbe1d8709:0x3459fcc94390c3372c0f7b4cd3f8795f0e5afe96",
+        "S43": "arbitrum:0x92afd6f2385a90e44da3a8b60fe36f6cbe1d8709:0xddb46999f8891663a8f2828d25298f70416d7610",
+        "S44": "arbitrum:0x92afd6f2385a90e44da3a8b60fe36f6cbe1d8709:0x6491c05a82219b8d1479057361ff1654749b876b",
+        "S45": "arbitrum:0x92afd6f2385a90e44da3a8b60fe36f6cbe1d8709:0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+        "S47": "optimism:0x876664f0c9ff24d1aa355ce9f1680ae1a5bf36fb:0xb5b2dc7fd34c249f4be7fb1fcea07950784229e0",
+        "S48": "optimism:0x876664f0c9ff24d1aa355ce9f1680ae1a5bf36fb:0x4f13a96ec5c4cf34e442b46bbd98a0791f20edc3",
+        "S49": "optimism:0x876664f0c9ff24d1aa355ce9f1680ae1a5bf36fb:0x0b2c639c533813f4aa9d7837caf62653d097ff85",
+        "S51": "unichain:0x345e368fccd62266b3f5f37c9a131fd1c39f5869:0xa06b10db9f390990364a3984c04fadf1c13691b5",
+        "S52": "unichain:0x345e368fccd62266b3f5f37c9a131fd1c39f5869:0x7e10036acc4b56d4dfca3b77810356ce52313f9c",
+        "S53": "unichain:0x345e368fccd62266b3f5f37c9a131fd1c39f5869:0x078d782b760474a361dda0af3839290b0ef57ad6",
+        "S54": "avalanche_c:0xece6b0e8a54c2f44e066fbb9234e7157b15b7fec:0x625e7708f30ca75bfd92586e17077590c60eb4cd",
+        "S55": "avalanche_c:0xece6b0e8a54c2f44e066fbb9234e7157b15b7fec:0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+        "S23": "facility:ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x49506c3aa028693458d6ee816b2ec28522946872"
+      },
+      "unsupported": {
+        "S56": "Requires non-fungible or beneficial-custody capital events",
+        "S57": "Requires non-fungible or beneficial-custody capital events",
+        "S58": "Requires non-fungible or beneficial-custody capital events",
+        "S59": "Requires non-fungible or beneficial-custody capital events",
+        "S60": "Requires non-fungible or beneficial-custody capital events",
+        "S63": "Requires non-fungible or beneficial-custody capital events",
+        "S23": "Facility return principal/interest split is unconfirmed"
+      },
+      "custody_accounts": {
+        "S14": [
+          "queue:ethereum:0x1bc47a0dd0fdab96e9ef982fdf1f34dc6207cfe3:0x1601843c5e9bc251a3272907010afa41fa18347e:0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b"
+        ],
+        "S15": [
+          "queue:ethereum:0x86ebdf902d800f2a82038290b6dbb2a5ee29eb8c:0x1601843c5e9bc251a3272907010afa41fa18347e:0x356b8d89c1e1239cbbb9de4815c39a1474d5ba7d"
+        ],
+        "S20": [
+          "async:ethereum:0x36036ffd9b1c6966ab23209e073c68eb9a992f50:0x1601843c5e9bc251a3272907010afa41fa18347e:subscribe",
+          "async:ethereum:0x36036ffd9b1c6966ab23209e073c68eb9a992f50:0x1601843c5e9bc251a3272907010afa41fa18347e:redeem"
+        ],
+        "S61": [
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:161205:S61",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:161205:S61:collect",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:161283:S61",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:161283:S61:collect",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:161284:S61",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:161284:S61:collect",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:161285:S61",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:161285:S61:collect",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:324004:S61",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:324004:S61:collect",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:324005:S61",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:324005:S61:collect"
+        ],
+        "S62": [
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:161345:S62",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:161345:S62:collect",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:161346:S62",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:161346:S62:collect",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:161347:S62",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:161347:S62:collect",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:161348:S62",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:161348:S62:collect",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:293902:S62",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:293902:S62:collect",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:293903:S62",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:293903:S62:collect",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:293904:S62",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:293904:S62:collect",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:293905:S62",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:293905:S62:collect",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:293906:S62",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:293906:S62:collect"
+        ],
+        "S66": [
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:385168:S66",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:385168:S66:collect",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:385169:S66",
+          "nft:ethereum:0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e:385169:S66:collect"
+        ],
+        "S16": [
+          "ethena-cooldown:0x1601843c5e9bc251a3272907010afa41fa18347e:0x7fc7c91d556b400afa565013e3f32055a0713425"
+        ]
+      },
+      "idle_accounts": [
+        "arbitrum:0x92afd6f2385a90e44da3a8b60fe36f6cbe1d8709:0x6491c05a82219b8d1479057361ff1654749b876b",
+        "base:0x2917956eff0b5eaf030abdb4ef4296df775009ca:0x820c137fa70c8691f0e44dc420a5e53c168921dc",
+        "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+        "optimism:0x876664f0c9ff24d1aa355ce9f1680ae1a5bf36fb:0x4f13a96ec5c4cf34e442b46bbd98a0791f20edc3",
+        "unichain:0x345e368fccd62266b3f5f37c9a131fd1c39f5869:0x7e10036acc4b56d4dfca3b77810356ce52313f9c"
+      ],
+      "analytics_only_venues": [],
+      "diagnostic_fee_patch": {
+        "original_fingerprint": "2eb7409aacaac19f0ca5500973d118f3bbe48b16cb9e826c84670eac880a8d94",
+        "input_hashes": {
+          "/tmp/pr215-resumed-spark/history.jsonl.gz": "bb133eac37b06002bb938bc12297f048f949511a02fdf67ad338da4e62bac358",
+          "tests/fixtures/spark_morpho_v2_fee_history.json.gz": "15f5b32535c1c4e155d48b4852899bc8ddcaeef57afb2dd51d4a0b98a6313eb0",
+          "/home/agent/code/lakonema2000/settlement-cycle/scripts/repair_spark_morpho_fee_history.py": "fde45ccf51c3d2d66f7ce4da0b5088abb4a81ea7f8a413c00039d34a3318a53f",
+          "/home/agent/code/lakonema2000/settlement-cycle/src/settle/normalize/allocation_morpho_fees.py": "1e55340124771ff575a33643a712ade9badeaba51fa02c5aa62e6f66d00baf98",
+          "tests/fixtures/spark_morpho_v2_fee_unit_prices.json": "dd6d3ab05ee65146f6ba9f4e8980d235ec40f65f11ce3d8533a316a39ec96c4e"
+        }
+      },
+      "diagnostic_base_withdrawal_patch": {
+        "input_hashes": {
+          "/tmp/pr215-spark-morpho-fees-history.jsonl.gz": "efbeb3b46e58b03ccc0a85b7d025c06cff6fab2e89702dc7857af2e371a9bb84",
+          "tests/fixtures/spark_base_morpho_fee_withdrawals.json.gz": "e250782235bdca8edc2ed1a304c8d5add950f6386c61db5a50fc09437d0025a3",
+          "/home/agent/code/lakonema2000/settlement-cycle/scripts/repair_spark_base_morpho_withdrawals.py": "8df619b66089c7a0f96a8311e330beece3428bfffa0fb325ffe7163c2a6873fd",
+          "/home/agent/code/lakonema2000/settlement-cycle/src/settle/normalize/allocation_morpho_fees.py": "1e55340124771ff575a33643a712ade9badeaba51fa02c5aa62e6f66d00baf98"
+        }
+      },
+      "diagnostic_fsusds_patch": {
+        "input_hashes": {
+          "/tmp/pr215-spark-exact-withdrawals-history.jsonl.gz": "6ff188790d6ab8f86f89989815a044526a2b66b376d536cb156ed602f3c3a45a",
+          "tests/fixtures/spark_fsusds_capital.json": "81aab04ee6bd0bc2377140385e1f2daeb977891a42c5de4ede8d49b81b0fdb0c",
+          "/home/agent/code/lakonema2000/settlement-cycle/scripts/repair_spark_fsusds_capital.py": "67f7e6fd183cf5bfb9ee62a82469abee52cc59d5599ac37513b13f08e64b71a8",
+          "config/spark.yaml": "14ba046bebd091ec2ebbee90a92b5b0bed251ba46e3e1fcd3fac8e3a9d5c8686"
+        }
+      }
+    }
+  },
+  "input_hashes": {
+    "/tmp/pr215-spark-superstate-financing.json.gz": "e95fd4b6f09e08c3518898a1d504117371618282229975c485498e41bf50f2bc",
+    "/tmp/pr215-spark-v1-projected-financing.json.gz": "49ba4f0e5ddff72861626b3fc0dea26006da05778bbf7437eda13441016dfe0a",
+    "settlements/spark/2026-08/provenance.json": "b989d9e8ea02064ffb8519a23502f2b9c7210a4bb05c3d626c6386956fc9c781",
+    "tests/fixtures/spark_savings_v2_funding.json.gz": "2588cae8880410dc82888173dfd2edca4bf311f092d09972330ba823cbe165a2"
+  },
+  "replay_input_hashes": {
+    "/tmp/pr215-spark-v1-history.jsonl.gz": "b25577063d8e5e361bf0efe5874c9c2c40f9783af183e78e59476e1826105d7c",
+    "/tmp/pr215-spark-morpho-fee-repair.json": "f8962675fdcc45b258cbda8e4eb01cb2cd245101fbf7c77a5806defb2e779f9b",
+    "/tmp/pr215-spark-base-withdrawal-repair.json": "0ea966f758b474a31fa2fb5244d8735d187ec86e40136970b62d5f69616c447f",
+    "/tmp/pr215-spark-fsusds-repair.json": "4393ad4f06c2c0a6ff9920e021d9ac0fe9925c97ad207e97ab23dfc401f481bf",
+    "/tmp/pr215-resumed-spark/history.jsonl.gz": "bb133eac37b06002bb938bc12297f048f949511a02fdf67ad338da4e62bac358",
+    "tests/fixtures/spark_ustb_capital.json": "785119b5f1d4ab9ab94e56e5e7780af088338adb362bf116b27b6f3a3a5d1648",
+    "tests/fixtures/spark_uscc_history.json": "6d5d43fdafd66f8a6fa205669b2678326e3556161e0c40ad5f14afc20e3a96ee",
+    "tests/fixtures/spark_uscc_nav.json": "66dc2106f0b5ea44641b49a2b8ac8acc765f7b68796bc60fc1135502db204a3d",
+    "tests/fixtures/spark_uscc_settlement_nav.json": "e8b4379f40534d1a0c5b2b412bfde9d54d905318e3ecfe98870627feedf364a5",
+    "tests/fixtures/spark_uscc_capital_batches.json": "ded45c8f504375da652f0b4cdd7f971e9ca2ede1defe20cbd8fe631be68cadb5",
+    "src/settle/compute/spark_uscc_capital.py": "8c0e1da0b6344e9ace5a9a468c87d428550b6c5989d4cef646bd74fa7e0564cb",
+    "src/settle/compute/spark_ustb_capital.py": "1f493e6fee7f2cec7c764736db21259deb20401155b4cf1627ab7da1fd4e0287",
+    "src/settle/normalize/allocation_superstate.py": "44e96d5711fdb97c1add0856bd01771ce7c5976267c65630faa05d5fbf916eba",
+    "settlements/spark/2026-08/provenance.json": "b989d9e8ea02064ffb8519a23502f2b9c7210a4bb05c3d626c6386956fc9c781",
+    "/tmp/pr215-resumed-spark/idle_deductions.json": "1bb41a9cffe47dd62970861f41e3d6e51a1f5fc81da7ccdb6feca346b842b3a4",
+    "/tmp/pr215-resumed-spark/debt-control.json": "c117055472e6c2d871529271807a6e2361ee14ad0f10fbc299acd3cd21bd8825",
+    "/tmp/pr215-resumed-spark/deduction-owners.json": "99c4bbda3c0b5e46465b73371280b1630220587b3c76cc98f2589ac65c6aee2a",
+    "tests/fixtures/spark_binance_otc_history.json.gz": "b2a91e34afcdc90e566ec81fa4b8df415dc9b60ebf691dcdabf9344795e81e7d",
+    "src/settle/compute/spark_binance_capital.py": "c07dcd8b3e8834b49a7a10e86ec6bcc598bf4788d55bfb1a57c639422fc23898",
+    "config/capital-tracing/spark-par-swap-gains.json": "0c970d147ac7256eef9e86bf38244ac6d664b2923ee25bc5a00c6b5ea239d880",
+    "tests/fixtures/spark_par_swap_events.json.gz": "c986cc9e8b805d58057c681941cbbd5ba4d5c9cbdfa3a91052b0b70b2778d2d8",
+    "src/settle/normalize/spark_par_swap_evidence.py": "2f29c187db33666d43f4fb1a614b885ef24c3e6a6dff1df37516b5afbdc45d96",
+    "src/settle/compute/spark_par_swap_gains.py": "0208c01480967deaee52c286db76e5d99f4a3380be7312fbf07fe81ad22e7e7e",
+    "tests/fixtures/spark_june_op_uni_withdrawals.json": "9483aebd1208b11401441640fb450ec92ba44b7d16562651bf9cdaef15fd1f8d",
+    "src/settle/compute/spark_june_op_uni_routes.py": "dc7eb1caad86b4eaf3ac87bc5b1cfa82012ae64d853f8c83786a2669576e1426",
+    "src/settle/compute/spark_op_uni_withdrawals.py": "45d8621ace1608665542bf1fa618b51f73c19daec99f7eda4b38d7548a14be99",
+    "tests/fixtures/spark_anchorage_july_correction.json.gz": "776ecb0a2e84216aa50694861cc54d8970b9699727b5f6aa972d45d00553c0fe",
+    "src/settle/compute/spark_anchorage_correction.py": "f0d21417faaf3702dbbfacf6b6f7f3ab834b6cb035d604d1e7edacbdd1843f65",
+    "/tmp/pr215-spark-mixed-deposit-repair.json": "1216f380be31a233fad49a0a2bd4e6b0256c6594c14a387c0ac338dead61e9b8",
+    "/tmp/pr215-spark-paxos-history-audit.json": "6c8101770801d853ec0705384cf970afd31e7f64da0b995b7eaf6f43ba8363b3",
+    "/tmp/pr215-spark-ethereum-fsusds-repair.json": "686fca26118e722b5c311352da78103c92246febcb20f04dd2926e539e53f58c",
+    "reconciliation/spark_subproxy_reserves_2026_03.json": "b916baeb64293dc34fe534a72c88f681dca2ead3dff89bbb5af02585c25002d3",
+    "tests/fixtures/spark_susds_mixed_deposits.json.gz": "42b8d402223f8a2c731d6fb6d9ba4b497de0ed31f47dcf435a0d94e5a9f70a68",
+    "tests/fixtures/spark_paxos_pyusd_usdc_events.json": "a7e7ad9426d6718b1e35e5ff6c0c0ac2a6dade54138581653f7b05948c3f41ba",
+    "tests/fixtures/spark_ethereum_fsusds.json.gz": "48b9cfe26cba72bc117c290266f8382fabc0141eb1415dbabb14e05b725d4429",
+    "tests/fixtures/spark_subproxy_reserve_history.json": "8f78fa227507ab50b569da830942bacdf84af9e5da1a9648e75de0cfe0fc684d",
+    "/tmp/pr215-spark-v1-fee-repair.json": "3bd31a51b5a6c534771c0013147f970ad4296a8d96856175352c262caea07307",
+    "tests/fixtures/spark_ethereum_morpho_v1_fee_history.json.gz": "3ab7cef7881eeba39e7d68b69e03f0cdd0bc85a0f8ea9e9e32ea7c40e65d9130",
+    "tests/fixtures/spark_ethereum_morpho_v1_fee_unit_prices.json": "5d7ae85f9359b049fcfeb91044fa7f9b849cae1f580faa3f290f1370f57ce3a1"
+  },
+  "residual_changes": {
+    "unmatched_receipts": {
+      "new_count": 265,
+      "new_total": "16271.31644049920901167055574",
+      "removed_count": 16326,
+      "removed_total": "16339947498.75458424680123837"
+    },
+    "unmatched_outflows": {
+      "new_count": 851,
+      "new_total": "72198.74597763379071147497005",
+      "removed_count": 10746,
+      "removed_total": "15688228995.26810847094546982"
+    }
+  }
+}

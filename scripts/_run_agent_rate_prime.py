@@ -105,7 +105,7 @@ def run(prime_id: str) -> int:
     for month in _selected_months():
         label = f"{month.year}-{month.month:02d}"
         try:
-            result = compute_monthly_pnl(prime, month, sources=_live_sources())
+            result = compute_monthly_pnl(prime, month, sources=_live_sources(), include_allocation_financing=True)
             # Fold in DR so the console headline matches the written report
             # (write_settlement enriches a copy; this enriches the printed one).
             from settle.load import enrich_with_dr

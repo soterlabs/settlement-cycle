@@ -16,25 +16,33 @@ Per ``docs/spark/PRD_savings_vaults.md`` §3, every S2 vault has:
   appreciates each day; the corresponding interest is what Spark owes
   the depositor.
 
-The on-chain ``ERC-4626 totalAssets()`` already equals ``totalSupply() ×
+The on-chain ``ERC-4626 totalAssets()`` already equals ``totalSupply() *
 pps``. The VSR accrual on day *d* is the change in ``totalAssets`` that
 is **attributable to pps growth** rather than to net deposit flows.
 
-Working formula (daily, exact):
+Current approximation (opening supply held for the whole day):
 
 .. code-block::
 
-    vsr_liability_d = totalSupply(d-1) × (pps(d) − pps(d-1))
+    vsr_liability_d = totalSupply(d-1) * (pps(d) - pps(d-1))
 
-Equivalent, but written in terms of ``totalAssets``:
+With exact PPS and ignoring integer rounding, that expression is equivalent
+to the following, when closing supply is nonzero:
 
 .. code-block::
 
-    vsr_liability_d = totalAssets(d) − totalAssets(d-1) × (totalSupply(d) / totalSupply(d-1))
+    vsr_liability_d = totalAssets(d) * (totalSupply(d-1) / totalSupply(d)) - totalAssets(d-1)
+
+This is NOT exact accrual when shares enter or leave during the day. It must
+not be reused for the capital ledger's saver principal/interest split. Exact
+historical accrual is independently reconstructed from each emitted ``Drip``
+and the final un-dripped tail by ``scripts/audit_spark_savings_liability.py``;
+see ``docs/spark/savings-liability-2026-10-08.md``. That read-only audit does
+not enable liability expenses in settlement or change this legacy helper.
 
 We use the first form because reading ``convertToAssets(10**dec)`` (= pps)
-+ ``totalSupply()`` at each EoD block gives a direct, decimal-stable
-expression of the depositor accrual; ``totalAssets()`` is only needed for
++ ``totalSupply()`` at each EoD block gives an opening-supply estimate
+of depositor accrual; ``totalAssets()`` is only needed for
 the per-day display value (returned alongside the liability so the
 caller can populate ``value_eom``).
 
@@ -105,7 +113,7 @@ def compute_vsr_liability_period(
 
     Daily accrual: at each EoD block between ``period_start - 1`` and
     ``period_end``, read ``convertToAssets(10^decimals)`` (pps) and
-    ``totalSupply()``. Liability_d = totalSupply(d-1) × (pps(d) - pps(d-1)).
+    ``totalSupply()``. Liability_d = totalSupply(d-1) * (pps(d) - pps(d-1)).
 
     The 24-hour anchor and the use of EoD blocks matches the rest of the
     pipeline. Reads are cached at the RPC primitive layer, so re-runs
@@ -151,7 +159,7 @@ def compute_vsr_liability_period(
 
     # Sanity check on the baseline pps: a zero baseline combined with a
     # non-zero day-1 pps would produce a phantom day-1 accrual of
-    # ``supply_d0 × pps_d1`` — pinning the liability at a billion-dollar
+    # ``supply_d0 * pps_d1`` — pinning the liability at a billion-dollar
     # level on the first day. The only legitimate reason for pps==0 at
     # ``period_start - 1`` is that the vault hadn't been deployed yet;
     # in that case ``supply_d0`` is also 0 and the math degenerates to 0.
@@ -165,7 +173,7 @@ def compute_vsr_liability_period(
             "compute a corrupted liability."
         )
 
-    # Daily accrual: liability_d = totalSupply(d-1) × (pps(d) - pps(d-1)).
+    # Daily accrual: liability_d = totalSupply(d-1) * (pps(d) - pps(d-1)).
     # Index 0 in days/pps/supply is period_start - 1 (the baseline);
     # the first accrual is between index 0 and 1.
     #
@@ -192,7 +200,7 @@ def compute_vsr_liability_period(
         liability += supply_series[i - 1] * dpps
 
     # Display values at period boundaries (= totalAssets read directly —
-    # equal to ``totalSupply × pps`` by ERC-4626 definition). Scaled by
+    # equal to ``totalSupply * pps`` by ERC-4626 definition). Scaled by
     # underlying decimals because ``totalAssets()`` returns underlying
     # units, not share units.
     ta_som_raw = _rpc.total_assets_of(chain, vault, blocks[0])
