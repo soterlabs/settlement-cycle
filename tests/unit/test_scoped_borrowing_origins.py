@@ -70,3 +70,47 @@ def test_pending_custody_preserves_origin(trace):
             b(3, m('pending', '120', '-120'), m('b', '0', '120'))]
     h = H(tuple(rows), {'A': 'a', 'B': 'b'}, {}, {'A': ['pending']})
     assert D(trace(h, ('A', 'B'), DAY)['closing_borrowed_by_account']['b']) == 100
+
+
+@pytest.mark.parametrize('external_draw,other_use,expected', [('0', '20', '80'), ('100', '0', '0')])
+def test_external_cash_payments_consume_sky_first(trace, external_draw, other_use, expected):
+    from dataclasses import replace
+
+    from settle.normalize.allocation_capital import ExternalFundingOperation as F
+
+    # 100 new Sky debt, optional external cash, 100 assets retained. Existing
+    # assets fund a payment in the first case; incoming external cash masks a
+    # payment in the second. No repayment principal/interest split is needed.
+    row = b(1, m('a', '0', '100'), m('old-other', other_use, '-' + other_use), draw='100')
+    row = replace(row, external_funding=(F('draw', 'saver', D(external_draw)),
+                                        F('repay', 'saver', D('1'))),
+                  funding_assumption='Provisional repayment split')
+    h = H((row,), {'A': 'a'}, {})
+    assert D(trace(h, ('A',), DAY)['closing_borrowed_by_account']['a']) == 0
+    result = trace(h, ('A',), DAY, bound_external_funding=True)
+    assert D(result['closing_borrowed_by_account']['a']) == D(expected)
+    # Deliberately alter the provisional principal/interest accounting split.
+    changed = replace(row, external_funding=(F('draw', 'saver', D(external_draw)),
+                                            F('repay', 'saver', D('0.5')),
+                                            F('interest', 'saver', D('0.5'))))
+    assert trace(replace(h, batches=(changed,)), ('A',), DAY, bound_external_funding=True) == result
+
+
+def test_external_draw_never_becomes_sky_origin(trace):
+    from dataclasses import replace
+
+    from settle.normalize.allocation_capital import ExternalFundingOperation as F
+
+    row = replace(b(1, m('a', '0', '100')), external_funding=(F('draw', 'saver', D(100)),))
+    h = H((row,), {'A': 'a'}, {})
+    assert D(trace(h, ('A',), DAY, bound_external_funding=True)['closing_borrowed_by_account']['a']) == 0
+
+
+def test_external_bound_rejects_unknown_cash_operations(trace):
+    from dataclasses import replace
+
+    from settle.normalize.allocation_capital import ExternalFundingOperation as F
+
+    row = replace(b(1, m('a', '0', '100'), draw='100'), external_funding=(F('unknown', 'saver', D(1)),))
+    with pytest.raises(ValueError, match='Invalid external'):
+        trace(H((row,), {'A': 'a'}, {}), ('A',), DAY, bound_external_funding=True)
