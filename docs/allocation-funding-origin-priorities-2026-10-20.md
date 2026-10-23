@@ -114,3 +114,12 @@ survival rankings where supported. S32's deterministic regression fixture is
 already normalized/adapted and is loaded without reapplying adapters. Tests
 verify receipt tampering rejection, custody overlap rejection, conservation of
 debt/movements, capital balances unchanged, and gross-versus-surviving ranking.
+
+## October 23 follow-up: Base Morpho
+
+The [Base Morpho origin audit](spark/base-morpho-funding-origin-2026-10-23.md)
+supersedes S34's zero-attribution row above: **264.632m (93.47%)** of its
+August-end acquisition capital is now traced to Sky borrowing, leaving
+**18.485m** to classify. It follows authenticated bridge claims and applies a
+conservative cash-flow bound to mixed external-funding transactions. The other
+rows are unchanged; sUSDS/POL is now the largest residual among these positions.
