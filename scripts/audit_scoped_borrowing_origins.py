@@ -13,13 +13,13 @@ ZERO = D(0)
 EPS = D('1e-8')
 
 
-def trace(history, venues, end, *, snapshot_accounts=None, bound_external_funding=False):
+def trace(history, venues, end, *, snapshot_accounts=None, bound_external_funding=False, verified_draws=None):
     with localcontext() as ctx:
         ctx.prec = 60
-        return _trace(history, venues, end, snapshot_accounts, bound_external_funding)
+        return _trace(history, venues, end, snapshot_accounts, bound_external_funding, verified_draws)
 
 
-def _trace(history, venues, end, snapshot_accounts, bound_external_funding):
+def _trace(history, venues, end, snapshot_accounts, bound_external_funding, verified_draws):
     owned = [{history.venue_accounts[v], *history.custody_accounts.get(v, [])} for v in venues]
     accounts = set().union(*owned)
     if len(accounts) != sum(map(len, owned)):
@@ -27,6 +27,9 @@ def _trace(history, venues, end, snapshot_accounts, bound_external_funding):
     snapshots = accounts if snapshot_accounts is None else set(snapshot_accounts)
     if not snapshots <= accounts:
         raise ValueError('Snapshot account outside origin group')
+    verified = {} if verified_draws is None else verified_draws
+    if verified and (len(accounts) != 1 or any(not v.is_finite() or v < 0 for v in verified.values())):
+        raise ValueError('Verified draw contributions require one account and nonnegative finite amounts')
     borrowed = dict.fromkeys(accounts, ZERO)
     withdrawals = {}
     witnesses = []
@@ -93,6 +96,13 @@ def _trace(history, venues, end, snapshot_accounts, bound_external_funding):
                 bound_evidence = {'external_draws': str(external_draws),
                                   'other_destinations': str(other_destinations),
                                   'cash_payments_and_shortfall': str(missing_draw)}
+        if b.identity in verified:
+            # Receipt validation is performed by the caller. A proven gross
+            # draw may fund this position even if a later repayment makes the
+            # transaction's net debt negative. Do not alter that net debt.
+            if new_capital <= 0 or verified[b.identity] > new_capital + EPS:
+                raise ValueError('Verified draw exceeds positive position contribution')
+            direct = min(new_capital, verified[b.identity])
         for account, amount in incoming:
             borrowed[account] += (retained + direct) * amount / received
         if released:
@@ -106,6 +116,10 @@ def _trace(history, venues, end, snapshot_accounts, bound_external_funding):
         })
         if bound_evidence is not None:
             witnesses[-1]['external_cash_bound'] = bound_evidence
+        if b.identity in verified:
+            witnesses[-1]['receipt_verified_contribution'] = str(direct)
+    if set(verified) - seen:
+        raise ValueError('Verified draw transaction missing from scoped period')
     result = {'venues': list(venues), 'scope': __doc__.strip(),
             'withdrawals': withdrawals, 'transactions': witnesses,
             'closing_borrowed_by_account': {a: str(v) for a, v in sorted(borrowed.items())}}

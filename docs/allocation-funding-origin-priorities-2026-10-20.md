@@ -123,3 +123,11 @@ August-end acquisition capital is now traced to Sky borrowing, leaving
 **18.485m** to classify. It follows authenticated bridge claims and applies a
 conservative cash-flow bound to mixed external-funding transactions. The other
 rows are unchanged; sUSDS/POL is now the largest residual among these positions.
+
+## October 26 follow-up: Savings-linked sUSDS draws
+
+The [ordered sUSDS funding-origin audit](spark/savings-linked-susds-origin-2026-10-26.md)
+supersedes S32's earlier result: **617.588m (87.83%)** of August-end acquisition
+capital is traced to Sky borrowing, leaving **85.546m** to classify. It separates
+Savings asset receipts from authenticated USDS draws, including draws followed
+by repayments in the same transaction. Other allocation rows are unchanged.
