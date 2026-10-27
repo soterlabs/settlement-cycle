@@ -13,6 +13,7 @@ from settle.compute import Sources, compute_monthly_pnl
 from settle.domain.config import _settlement_enabled, load_prime_by_id
 from settle.domain.period import Month
 from settle.domain.primes import Chain
+from settle.domain.venue_views import VenueView
 from settle.load.provenance import render_provenance
 from settle.load.summary import render_summary
 from tests.fixtures.mock_sources import (
@@ -114,3 +115,32 @@ def test_workbook_reports_income_and_prepaid_balance():
     assert workbook.active.title == 'Reporting-only holdings'
     assert data[6] == -55
     assert data[9:11] == (45, 100)
+
+
+@pytest.mark.parametrize('prime_id,venue_id', [('spark', 'S67'), ('spark', 'S58'), ('grove', 'E21')])
+def test_disabled_reporting_only_venues_do_not_read_providers(monkeypatch, prime_id, venue_id):
+    venue = next(v for v in load_prime_by_id(prime_id).venues if v.id == venue_id)
+    venue = replace(venue, settlement_enabled=False, reporting_view=VenueView(enabled=False))
+    prime = replace(load_prime_by_id('obex'), venues=[venue])
+    def forbidden(*args, **kwargs):
+        pytest.fail('A venue disabled in both views must not read its inputs')
+    monkeypatch.setattr('settle.normalize.incentives.compute_incentive', forbidden)
+    monkeypatch.setattr('settle.extract.rpc.total_assets_of', forbidden)
+    monkeypatch.setattr('settle.compute.monthly_pnl._compute_cash_dist_revenue', forbidden)
+    sources = Sources(
+        block_resolver=MockBlockResolver(default=200), balance=MockBalanceSource(),
+        debt=MockDebtSource(pd.DataFrame({'block_date': [date(2026, 3, 1)], 'daily_dart': [0], 'cum_debt': [0]})),
+        ssr=MockSSRSource(pd.DataFrame({'effective_date': [date(2026, 3, 1)], 'ssr_apy': [0]})),
+        position_balance=MockPositionBalanceSource(raw_balance=0),
+    )
+    result = compute_monthly_pnl(prime, Month(2026, 3), sources=sources,
+                                 pin_blocks_som={Chain.ETHEREUM: 100},
+                                 pin_blocks_eom={Chain.ETHEREUM: 200})
+    assert result.venue_breakdown == result.reporting_only_breakdown == []
+    assert all(result.venue_views[k][0]['status'] == 'disabled' for k in ('settlement', 'reporting'))
+
+
+def test_disabled_reporting_only_venue_does_not_require_an_extra_chain():
+    venue = next(v for v in load_prime_by_id('spark').venues if v.id == 'S63')
+    prime = replace(load_prime_by_id('obex'), venues=[replace(venue, reporting_view=VenueView(enabled=False))])
+    assert prime.chains_at(date(2026, 10, 1)) == {Chain.ETHEREUM}

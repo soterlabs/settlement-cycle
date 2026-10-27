@@ -504,6 +504,10 @@ class Venue:
     def settles(self) -> bool:
         return self.settlement_enabled and self.settlement_view.enabled and not self.display_only
 
+    @property
+    def requires_calculation(self) -> bool:
+        return self.settles or self.reporting_view.enabled
+
     def __post_init__(self) -> None:
         self.settlement_view.validate("settlement")
         self.reporting_view.validate("reporting")
@@ -911,5 +915,5 @@ class Prime:
         return ({chain for chain in self.alm
                  if self.alm_start_dates.get(chain, date.min) <= cutoff}
                 | set(self.subproxy.keys())
-                | {v.chain for v in self.venues if not v.skip
+                | {v.chain for v in self.venues if not v.skip and v.requires_calculation
                    and (v.start_date is None or v.start_date <= cutoff)})

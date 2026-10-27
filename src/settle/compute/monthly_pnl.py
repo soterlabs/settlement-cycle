@@ -270,7 +270,7 @@ def _check_centrifuge_in_flight(
             return 0
 
     for venue in prime.venues:
-        if venue.centrifuge_vault is None or venue.skip:
+        if venue.centrifuge_vault is None or venue.skip or not venue.requires_calculation:
             continue
         chain = venue.chain
         if chain not in pin_blocks_som or chain not in pin_blocks_eom:
@@ -2551,7 +2551,7 @@ def compute_monthly_pnl(
     sde_asset_value_per_venue: list[tuple[str, pd.DataFrame]] = []
 
     import time as _time
-    n_venues = sum(1 for v in prime.venues if not v.skip)
+    n_venues = sum(1 for v in prime.venues if not v.skip and v.requires_calculation)
     _log.info("step 3: per-venue pricing for %d venue(s)...", n_venues)
     # 3. Per-venue: value at SoM + EoM, inflow timeseries.
     venue_inputs: list[VenueRevenueInputs] = []
@@ -2569,6 +2569,8 @@ def compute_monthly_pnl(
         sources.balance if sources.balance is not None else get_balance_source()
     )
     for venue in prime.venues:
+        if not venue.requires_calculation:
+            continue
         if venue.start_date is not None and venue.start_date > period.end:
             continue
         sources = for_venue(_shared_sources, venue)
@@ -2714,6 +2716,8 @@ def compute_monthly_pnl(
     # sky_rev (see step 4 below).
     _susds_spread_reimbs: dict[str, Decimal] = {}
     for venue in prime.venues:
+        if not venue.requires_calculation:
+            continue
         if venue.start_date is not None and venue.start_date > period.end:
             continue
         sources = for_venue(_shared_sources, venue)
