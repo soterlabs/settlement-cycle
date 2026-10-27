@@ -1,5 +1,9 @@
 # Daily revenue read API (step 7)
 
+For new dashboards, use the separate v2 settlement and reporting views described
+in the [dashboard API guide](settlement-reporting-api.md). The v1 endpoints below
+remain compatible and retain the complete original stored result and hash.
+
 The existing `settle-api` serves `/v1/revenue/{prime}/latest`,
 `/v1/revenue/{prime}/at/{cutoff}?revision=...`, `/history?start=...&end=...&limit=90`,
 and `/revisions/{cutoff}?limit=100`. The latter two suffixes are also under

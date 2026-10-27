@@ -85,6 +85,8 @@ class Sources:
     # (one boundary per event block) instead of falling back to
     # end-of-day boundaries derived from daily mint/burn aggregates.
     atoken_event_blocks: object = None
+    # Pinned issuer-incentive input provider for deterministic replay/tests.
+    incentives: object = None
 
 
 def _sources_from_prime(prime: "Prime", base: "Sources | None" = None) -> Sources:
@@ -161,7 +163,7 @@ def _build_paired_principal_caps(prime, venue, period, balance_src) -> dict:
     """
     paired_principal_caps: dict = {}
     for eoa_v in prime.venues:
-        if not eoa_v.display_only:
+        if getattr(eoa_v, "settles", not eoa_v.display_only):
             continue
         if eoa_v.skip:
             # ``skip`` takes precedence over ``display_only`` for
@@ -268,7 +270,7 @@ def _check_centrifuge_in_flight(
             return 0
 
     for venue in prime.venues:
-        if venue.centrifuge_vault is None or venue.skip:
+        if venue.centrifuge_vault is None or venue.skip or not venue.requires_calculation:
             continue
         chain = venue.chain
         if chain not in pin_blocks_som or chain not in pin_blocks_eom:
@@ -2222,6 +2224,7 @@ def compute_monthly_pnl(
     of the debug mode, not an accounting hole.
     """
     period_unpinned = Period.from_month(month, as_of=as_of)
+    active_chains = prime.chains_at(period_unpinned.end)
     if as_of is not None:
         if as_of >= datetime.now(timezone.utc).date():
             raise ValueError("as_of must be a completed UTC day (before today)")
@@ -2273,18 +2276,18 @@ def compute_monthly_pnl(
         from concurrent.futures import ThreadPoolExecutor as _TPE, as_completed as _ac
         _log.info(
             "resolving pin blocks for %d chain(s) (EoM + SoM in parallel)...",
-            len(prime.chains),
+            len(active_chains),
         )
         eom_anchor = period_unpinned.end_eod_utc
         som_anchor = _previous_day_eod_utc(period_unpinned.start)
         with _TPE(max_workers=2) as _outer:
             _fut_eom = (
-                _outer.submit(_resolve_pin_blocks, eom_anchor, prime.chains, resolver,
+                _outer.submit(_resolve_pin_blocks, eom_anchor, active_chains, resolver,
                               finalized=as_of is not None)
                 if pin_blocks_eom is None else None
             )
             _fut_som = (
-                _outer.submit(_resolve_pin_blocks, som_anchor, prime.chains, resolver,
+                _outer.submit(_resolve_pin_blocks, som_anchor, active_chains, resolver,
                               finalized=as_of is not None)
                 if pin_blocks_som is None else None
             )
@@ -2295,7 +2298,7 @@ def compute_monthly_pnl(
         _log.info("pin blocks resolved: eom=%s  som=%s", pin_blocks_eom, pin_blocks_som)
 
     if as_of is not None and validate_boundary is not None:
-        for chain in prime.chains:
+        for chain in active_chains:
             validate_boundary(chain.value, pin_blocks_eom[chain], period_unpinned.end_eod_utc)
             validate_boundary(chain.value, pin_blocks_som[chain],
                               _previous_day_eod_utc(period_unpinned.start))
@@ -2322,8 +2325,8 @@ def compute_monthly_pnl(
                     MultiChainBlockResolver as _MCR,
                 )
                 from ..normalize.sources.rpc_block_resolver import RPCBlockResolver as _RBR
-                dune_chains = {c for c in prime.chains if c.value in _DUNE_BLOCK_CHAINS}
-                rpc_chains  = prime.chains - dune_chains
+                dune_chains = {c for c in active_chains if c.value in _DUNE_BLOCK_CHAINS}
+                rpc_chains  = active_chains - dune_chains
                 _log.info(
                     "upgrading block resolver: DuneBlockResolver for %s, "
                     "RPCBlockResolver for %s",
@@ -2374,7 +2377,7 @@ def compute_monthly_pnl(
     # prime has Cat A / Cat E venues that need event-based inflow tracking.
     _RPC_BALANCE_CHAINS: frozenset[str] = frozenset()  # none viable today
     _rpc_balance_chains = {
-        c for c in prime.chains
+        c for c in active_chains
         if c.value in _RPC_BALANCE_CHAINS and c.value not in _DUNE_BLOCK_CHAINS
     }
     if sources.balance is not None and _rpc_balance_chains:
@@ -2384,14 +2387,14 @@ def compute_monthly_pnl(
             from ..normalize.sources.rpc_balances import RPCBalanceSource as _RBS
             _rpc_balance = _RBS(block_resolver=resolver)
             _per_chain_balance: dict[str, object] = {
-                c.value: sources.balance for c in prime.chains if c.value in _DUNE_BLOCK_CHAINS
+                c.value: sources.balance for c in active_chains if c.value in _DUNE_BLOCK_CHAINS
             }
             for c in _rpc_balance_chains:
                 _per_chain_balance[c.value] = _rpc_balance
             sources = _dc.replace(sources, balance=_MCBS(_per_chain_balance))
             _log.info(
                 "upgraded balance source: Dune for %s, RPC for %s",
-                sorted(c.value for c in prime.chains if c.value in _DUNE_BLOCK_CHAINS),
+                sorted(c.value for c in active_chains if c.value in _DUNE_BLOCK_CHAINS),
                 sorted(c.value for c in _rpc_balance_chains),
             )
         except Exception as _e:  # noqa: BLE001 — best-effort; keep going on the original source
@@ -2401,6 +2404,10 @@ def compute_monthly_pnl(
             )
 
     period = Period(period_unpinned.start, period_unpinned.end, pin_blocks=pin_blocks_eom)
+
+    from dataclasses import replace
+    settlement_prime = replace(prime, venues=[v for v in prime.venues if v.settles
+                                             and (v.start_date is None or v.start_date <= period.end)])
 
     _log.info("step 2: gathering normalized inputs (debt, balances, SSR)...")
     # 2. Gather Normalize inputs for sky_revenue + agent_rate (Ethereum-only).
@@ -2497,7 +2504,7 @@ def compute_monthly_pnl(
     # from the SDE-eligible actual_revenue and re-booked 100% to the prime.
     curve_idle_usds, curve_susds_spread, curve_susds_ssr_by_venue = (
         _aggregate_curve_idle_usds(
-            prime, period,
+            settlement_prime, period,
             curve_pool_source=sources.curve_pool,
             block_resolver=resolver,
             convert_to_assets_source=sources.convert_to_assets,
@@ -2509,7 +2516,7 @@ def compute_monthly_pnl(
     # ``curve_idle_usds`` by summing the daily ``cum_balance`` snapshots so
     # ``compute_sky_revenue`` deducts the combined AMM idle USDS.
     _univ4_idle, _univ4_idle_tw_avg = _aggregate_univ4_idle_usds(
-        prime, period,
+        settlement_prime, period,
         v4_source=sources.v4_position,
         block_resolver=resolver,
     )
@@ -2531,7 +2538,7 @@ def compute_monthly_pnl(
     basin_idle_usds = get_basin_idle_usds(prime, period, block_resolver=resolver)
     # Prime's share of unborrowed underlying in configured lending pools.
     lending_idle_usds, _lending_idle_tw_avg = _aggregate_lending_idle_usds(
-        prime, period,
+        settlement_prime, period,
         block_resolver=resolver,
     )
     _check_centrifuge_in_flight(prime, pin_blocks_som, pin_blocks_eom)
@@ -2544,13 +2551,13 @@ def compute_monthly_pnl(
     sde_asset_value_per_venue: list[tuple[str, pd.DataFrame]] = []
 
     import time as _time
-    n_venues = sum(1 for v in prime.venues if not v.skip)
+    n_venues = sum(1 for v in prime.venues if not v.skip and v.requires_calculation)
     _log.info("step 3: per-venue pricing for %d venue(s)...", n_venues)
     # 3. Per-venue: value at SoM + EoM, inflow timeseries.
     venue_inputs: list[VenueRevenueInputs] = []
-    # Display-only venues: tracked for monthly reports but excluded from
-    # prime_agent_revenue / sky_revenue / NAV invariant. See ``Venue.display_only``.
-    display_only_breakdown: list[VenueRevenue] = []
+    # Reporting-only income is computed independently and excluded from MSC.
+    reporting_only_breakdown: list[VenueRevenue] = []
+    alm_income_ledger: list[dict] = []
 
     # 3a. Cash-distribution venues — attributed directly as prime revenue,
     # bypassing the standard SoM/EoM formula and the sky-revenue path.
@@ -2562,6 +2569,10 @@ def compute_monthly_pnl(
         sources.balance if sources.balance is not None else get_balance_source()
     )
     for venue in prime.venues:
+        if not venue.requires_calculation:
+            continue
+        if venue.start_date is not None and venue.start_date > period.end:
+            continue
         sources = for_venue(_shared_sources, venue)
         _cash_dist_balance_src = sources.balance or get_balance_source()
         if not venue.cash_distributions:
@@ -2705,11 +2716,22 @@ def compute_monthly_pnl(
     # sky_rev (see step 4 below).
     _susds_spread_reimbs: dict[str, Decimal] = {}
     for venue in prime.venues:
+        if not venue.requires_calculation:
+            continue
+        if venue.start_date is not None and venue.start_date > period.end:
+            continue
         sources = for_venue(_shared_sources, venue)
         if venue.cash_distributions:
             # Already handled by the cash-distribution pass above — skip here
             # to avoid double-counting. A venue with cash_distributions should
             # not also run through the standard SoM/EoM compute path.
+            continue
+        if venue.pricing_category == PricingCategory.INCENTIVE:
+            if not sky_only and not venue.skip:
+                from ..normalize.incentives import compute_incentive
+                row = compute_incentive(prime, venue, period, sources, provider=sources.incentives)
+                if row is not None:
+                    reporting_only_breakdown.append(row)
             continue
         if venue.skip:
             # Excluded from MSC — typically venues whose NAV oracle is
@@ -2743,11 +2765,10 @@ def compute_monthly_pnl(
             # (surfaced in the "Position-only venues" section of summary.md
             # and in venue_breakdown[].hide_per_venue_pnl).
             #
-            # spETH (S58) is also skipped: its underlying is WETH (not a
-            # par-stable), so totalAssets() is denominated in WETH and cannot
-            # be summed with the USD venue table. See PRD §9.
+            # Non-stable underlyings require a configured USD oracle. S58
+            # spETH uses Chainlink ETH/USD to value its WETH totalAssets.
             from ..normalize.prices import is_par_stable
-            if venue.underlying is None or not is_par_stable(venue.underlying):
+            if venue.underlying is None or (not is_par_stable(venue.underlying) and venue.nav_oracle is None):
                 _log.info(
                     "  [savings_v2] %s — underlying %s is not a par-stable; "
                     "skipping (out of scope — see PRD §9).",
@@ -2837,6 +2858,18 @@ def compute_monthly_pnl(
                     "Recording as-is.",
                     venue.id, float(total_som), float(total_eom),
                 )
+            if not is_par_stable(venue.underlying):
+                # totalAssets is denominated in the underlying (e.g. WETH),
+                # while every result value is USD. Price each boundary at its
+                # own pinned block; USD movements remain reporting-only.
+                if total_som:
+                    total_som *= _resolve_rwa_nav(
+                        venue, som_block, resolver=sources.nav_oracle_resolver,
+                        block_resolver=resolver)
+                if total_eom:
+                    total_eom *= _resolve_rwa_nav(
+                        venue, eom_block, resolver=sources.nav_oracle_resolver,
+                        block_resolver=resolver)
             _log.info(
                 "  [savings_v2] %s (%s on %s): position-only "
                 "total_assets_som=$%.2f  total_assets_eom=$%.2f "
@@ -2857,7 +2890,8 @@ def compute_monthly_pnl(
             continue
         # In sky_only mode, check the SDE table up-front so we can skip all
         # non-SDE venues before doing any RPC / pricing work.
-        _early_sde = sde_table.overlaps_venue(prime.id, venue.id, period.start, period.end)
+        _early_sde = (sde_table.overlaps_venue(prime.id, venue.id, period.start, period.end)
+                      if venue.settles else None)
         if sky_only and _early_sde is None:
             _log.info("  [sky_only] skipping %s (no active SDE entry)", venue.id)
             continue
@@ -2921,28 +2955,6 @@ def compute_monthly_pnl(
                 block_resolver=resolver,
                 nav_oracle_resolver=sources.nav_oracle_resolver,
             )
-
-        if venue.display_only:
-            # Tracked for monthly reports but excluded from prime_agent_revenue /
-            # sky_revenue / NAV invariant. Any realized spread on the round-trip
-            # is recognized at the anchor venue (see ``paired_with`` /
-            # ``paired_source``) via the Cat A paired-principal-cap classifier.
-            _log.info(
-                "  [%d/%d] %s  [display-only]  som=$%.0f  eom=$%.0f",
-                _venue_idx, n_venues, venue.id, value_som, value_eom,
-            )
-            display_only_breakdown.append(VenueRevenue(
-                venue_id=venue.id,
-                label=venue.label,
-                value_som=value_som,
-                value_eom=value_eom,
-                period_inflow=Decimal("0"),
-                revenue=Decimal("0"),
-                cof_excluded=venue.cof_excluded,
-                pricing_category=venue.pricing_category.value,
-                hide_per_venue_pnl=venue.hide_per_venue_pnl,
-            ))
-            continue
 
         # Inflow timeseries — three branches:
         #
@@ -3651,7 +3663,9 @@ def compute_monthly_pnl(
                     "daily_inflow": [_delta],
                     "cum_inflow": [_delta],
                 })
-            elif not venue.external_yield_source:
+            elif not venue.external_yield_source and not (
+                not venue.settles and any(v.paired_with == venue.id and not v.skip for v in prime.venues)
+            ):
                 # Revenue = $0 by construction (the default) — a par-stable
                 # idle holding with NO declared off-chain yield source earns
                 # nothing by itself, so its entire Δvalue is capital. This is
@@ -3707,6 +3721,7 @@ def compute_monthly_pnl(
                     principal_return_overrides=overrides_by_bytes,
                     yield_reversal_overrides=reversals_by_bytes or None,
                     paired_principal_caps=paired_principal_caps or None,
+                    income_ledger=alm_income_ledger,
                 )
         elif venue.pricing_category == PricingCategory.EOA:
             # Cat EOA — Off-protocol relay/staging address. The venue tracks
@@ -4077,6 +4092,14 @@ def compute_monthly_pnl(
     _venue_order = {v.id: i for i, v in enumerate(prime.venues)}
     venue_inputs.sort(key=lambda vi: _venue_order.get(vi.venue.id, 9999))
 
+    _susds_spread_reimbs = {k: v for k, v in _susds_spread_reimbs.items()
+                             if k in {v.id for v in settlement_prime.venues}}
+    reporting_inputs = [vi for vi in venue_inputs if not vi.venue.settles]
+    venue_inputs = [vi for vi in venue_inputs if vi.venue.settles]
+    _, reporting_rows = compute_prime_agent_revenue(period, reporting_inputs)
+    reporting_only_breakdown.extend(reporting_rows)
+    reporting_only_breakdown.sort(key=lambda vr: _venue_order[vr.venue_id])
+
     sources = _shared_sources
     _log.info("step 4: computing revenue components...")
     # 4. Compute revenue components.
@@ -4310,7 +4333,7 @@ def compute_monthly_pnl(
         for _, row in sky_rev_daily.iterrows()
     ]
 
-    return MonthlyPnL(
+    result = MonthlyPnL(
         prime_id=prime.id,
         month=month,
         period=period,
@@ -4330,10 +4353,14 @@ def compute_monthly_pnl(
         psm3_susds_appreciation=(
             psm3_susds_appreciation if not sky_only else Decimal("0")
         ),
-        display_only_breakdown=display_only_breakdown,
+        reporting_only_breakdown=reporting_only_breakdown,
         sde_daily_breakdown=sde_daily_breakdown_out,
         sky_revenue_daily=sky_revenue_daily_out,
         susds_spread_reimbursement=total_susds_spread_reimb,
         sky_revenue_gross=sky_rev_gross,
         subsidy_summary=subsidy_summary,
     )
+    if not sky_only:
+        from .venue_views import build_venue_views
+        result = replace(result, venue_views=build_venue_views(prime, result, alm_income_ledger))
+    return result

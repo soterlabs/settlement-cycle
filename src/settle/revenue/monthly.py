@@ -18,7 +18,7 @@ import yaml
 
 from settle.compute.gar import compute_gar
 from settle.compute.sky_revenue import compute_sky_revenue_daily
-from settle.domain.monthly_pnl import MonthlyPnL, SDEDailyBreakdown
+from settle.domain.monthly_pnl import MonthlyPnL, SDEDailyBreakdown, VenueRevenue
 from settle.domain.subsidy import (
     ReferenceRateHistory,
     ScheduledReferenceRateHistory,
@@ -42,6 +42,21 @@ def _decode(kind, value):
             return None
         return _decode(next(t for t in args if t is not type(None)), value)
     if is_dataclass(kind):
+        # Exact, known schema migration for immutable historical snapshots.
+        # Validate hashes against their ORIGINAL payload before decoding.
+        if kind is MonthlyPnL and isinstance(value, dict) and 'display_only_breakdown' in value:
+            legacy_fields = {f.name for f in fields(VenueRevenue)} - {'settlement_enabled', 'incentive_accrual'}
+            if any(not isinstance(row, dict) or set(row) != legacy_fields
+                   for group in ('venue_breakdown', 'display_only_breakdown') for row in value[group]):
+                raise ValueError('incompatible legacy venue snapshot schema')
+            value = dict(value)
+            value['reporting_only_breakdown'] = value.pop('display_only_breakdown')
+            for group, settles in (('venue_breakdown', True), ('reporting_only_breakdown', False)):
+                value[group] = [{**row, 'settlement_enabled': settles, 'incentive_accrual': {}}
+                                for row in value[group]]
+        if (kind is MonthlyPnL and isinstance(value, dict)
+                and set(value) == {f.name for f in fields(kind)} - {'venue_views'}):
+            value = {**value, 'venue_views': {}}
         if not isinstance(value, dict) or set(value) != {f.name for f in fields(kind)}:
             raise ValueError(f'incompatible snapshot schema: {kind.__name__}')
         hints = get_type_hints(kind)
@@ -206,12 +221,18 @@ def finalize(record, prime, month, versions, *, today=None, allow_september_sofr
         raise ValueError('snapshot period/prime mismatch')
     if (canonical(pnl.pin_blocks_som) != record['opening_pins']
             or canonical(pnl.period.pin_blocks) != record['closing_pins']
-            or set(pnl.pin_blocks_som) != prime.chains or set(pnl.period.pin_blocks) != prime.chains
+            or set(pnl.pin_blocks_som) != prime.chains_at(month.last_day) or set(pnl.period.pin_blocks) != prime.chains_at(month.last_day)
             or any(not 0 < b < pnl.period.pin_blocks[c] for c, b in pnl.pin_blocks_som.items())):
         raise ValueError('snapshot block pins mismatch')
-    ids = [v.venue_id for v in pnl.venue_breakdown + pnl.display_only_breakdown]
+    ids = [v.venue_id for v in pnl.venue_breakdown + pnl.reporting_only_breakdown]
     if len(ids) != len(set(ids)) or set(ids) - {v.id for v in prime.venues}:
         raise ValueError('invalid venue inventory')
+    inventory = {v.id: v for v in prime.venues}
+    if (any(not row.settlement_enabled or not inventory[row.venue_id].settles
+            for row in pnl.venue_breakdown)
+            or any(row.settlement_enabled or inventory[row.venue_id].settles
+                   for row in pnl.reporting_only_breakdown)):
+        raise ValueError('snapshot venue settlement classification mismatch')
     _close(pnl.prime_agent_revenue,
            sum(v.revenue for v in pnl.venue_breakdown) + pnl.psm3_susds_appreciation,
            'supply revenue')

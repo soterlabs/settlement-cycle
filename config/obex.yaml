@@ -18,6 +18,12 @@ addresses:
 
 venues:
   - id: V1
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Maple syrupUSDC (Category B — ERC-4626 vault)'

@@ -14,6 +14,7 @@ from typing import Self
 
 from .pricing import PricingCategory
 from .subsidy import SubsidyConfig
+from .venue_views import VenueView
 
 
 class Chain(StrEnum):
@@ -210,7 +211,7 @@ class Venue:
     pricing_category: PricingCategory
     underlying: Token | None = None      # for B/C/D/F where price chains via underlying
     label: str = ""                      # human-readable (e.g. 'Maple syrupUSDC')
-    nav_oracle: NavOracle | None = None  # Category E only — see NavOracle
+    nav_oracle: NavOracle | None = None  # Category E NAV / non-stable S2 underlying USD price
     lp_kind: str | None = None           # Category F only: 'curve_stableswap' | 'uniswap_v3' | 'uniswap_v4'
     nft_position_manager: Address | None = None  # Category F (uniswap_v3 / uniswap_v4) — NFT PositionManager
     # Uniswap V4 only. V4 is a singleton (no per-pool contract): the pool is
@@ -419,21 +420,15 @@ class Venue:
     # Both fields are required for category EOA and ignored elsewhere.
     paired_with: str | None = None
     paired_source: Address | None = None
-    # Off-protocol / "tracked-but-not-counted" flag. When True, the venue's
-    # value is computed and surfaced in reports (so off-protocol holdings
-    # remain visible in the monthly file) but the venue is EXCLUDED from:
-    #   - ``prime_agent_revenue`` (no actual_revenue contribution)
-    #   - ``sky_revenue`` (not added to or subtracted from any sky-side stream)
-    #   - the cost-basis NAV invariant (Σ value over operating venues only)
-    # Realized gains/losses on returns are recognized at the *anchor* venue
-    # (see ``paired_with`` / ``paired_source``) via the Cat A paired-principal-
-    # cap classifier in ``_cat_a_capital_inflow_timeseries``: inflows from
-    # ``paired_source`` up to the cumulative ALM→holder principal-out are
-    # classified as capital (principal-return); excess is yield (revenue).
-    # Typical use: principal sent to an off-protocol counterparty (e.g.
-    # FalconX) for an OOB acquisition; the cash settlement at the ALM is the
-    # realization event for any spread captured during the trip.
-    display_only: bool = False
+    # Legacy constructor flag, combined with settlement_view.enabled. False
+    # excludes income, SDE value, CoF attribution and NAV from MSC. Reporting
+    # API exposure is controlled independently by reporting_view.enabled.
+    settlement_enabled: bool = True
+    settlement_view: VenueView = field(default_factory=VenueView)
+    reporting_view: VenueView = field(default_factory=VenueView)
+    start_date: date | None = None  # do not resolve a reporting chain before launch
+    display_only: bool = False  # legacy Python constructor alias (inverse)
+    incentive: dict | None = None  # reporting-only issuer incentive program
     # Force all balance changes to be treated as capital inflow (revenue = 0).
     # Use for Cat A par-stable venues on chains without reliable transfer-event
     # data (e.g. Monad): the pipeline cannot distinguish capital movements from
@@ -505,7 +500,28 @@ class Venue:
 
     event_source: str = "dune"          # per-venue event migration; explicit fixtures still win
 
+    @property
+    def settles(self) -> bool:
+        return self.settlement_enabled and self.settlement_view.enabled and not self.display_only
+
+    @property
+    def requires_calculation(self) -> bool:
+        return self.settles or self.reporting_view.enabled
+
     def __post_init__(self) -> None:
+        self.settlement_view.validate("settlement")
+        self.reporting_view.validate("reporting")
+        if self.reporting_view.method == "loan_accrual" and (
+            self.settlement_view.method != "alm_receipts" or not self.settles
+        ):
+            raise ValueError("loan_accrual requires attributed alm_receipts")
+        if type(self.settlement_enabled) is not bool:
+            raise ValueError(f"Venue {self.id}: settlement_enabled must be boolean")
+        if self.pricing_category == PricingCategory.INCENTIVE:
+            if self.settles or not self.incentive:
+                raise ValueError(f"Venue {self.id}: incentives must be reporting-only with a program")
+        elif self.incentive is not None:
+            raise ValueError(f"Venue {self.id}: incentive requires pricing_category I")
         if self.nav_haircut_bps is not None:
             if self.pricing_category != PricingCategory.RWA_TRANCHE:
                 raise ValueError(
@@ -834,8 +850,12 @@ class Prime:
     # Chronicle Points program (Grove only today) — see ChroniclePointsConfig.
     # ``None`` = prime doesn't participate; no row rendered, $0 contribution.
     chronicle_points: "ChroniclePointsConfig | None" = None
+    # First reporting date for newly introduced ALM chains.
+    alm_start_dates: dict[Chain, date] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
+        if set(self.alm_start_dates) - set(self.alm):
+            raise ValueError("ALM start date requires a configured ALM address")
         if self.basin_idle_usds is not None:
             if self.basin_idle_usds.ilk not in (self.ilk_bytes32, *self.extra_ilks):
                 raise ValueError("Basin idle ilk must belong to the prime")
@@ -889,4 +909,11 @@ class Prime:
 
     @property
     def chains(self) -> set[Chain]:
-        return set(self.alm.keys()) | set(self.subproxy.keys())
+        return self.chains_at(date.max)
+
+    def chains_at(self, cutoff: date) -> set[Chain]:
+        return ({chain for chain in self.alm
+                 if self.alm_start_dates.get(chain, date.min) <= cutoff}
+                | set(self.subproxy.keys())
+                | {v.chain for v in self.venues if not v.skip and v.requires_calculation
+                   and (v.start_date is None or v.start_date <= cutoff)})

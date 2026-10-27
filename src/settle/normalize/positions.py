@@ -2023,6 +2023,7 @@ def _cat_a_capital_inflow_timeseries(
     principal_return_overrides: dict | None = None,
     yield_reversal_overrides: dict | None = None,
     paired_principal_caps: dict | None = None,
+    income_ledger: list | None = None,
 ):
     """Cat A par-stable capital-flow accounting with external-source allowlist.
 
@@ -2328,6 +2329,17 @@ def _cat_a_capital_inflow_timeseries(
                 capital_portion = _Decimal("0")
             consumed[cp] += capital_portion
             detail.at[idx, "_capital_amount"] = capital_portion
+
+    # Optional audit output reuses the exact settlement classification. It never
+    # changes capital flows or MSC, and includes partial principal and refunds.
+    if income_ledger is not None:
+        for _, row in detail.iterrows():
+            earned = _Decimal(str(row["signed_amount"])) - row["_capital_amount"]
+            if earned != 0 and row["_cp_bytes"] in external_sources:
+                income_ledger.append({
+                    "source_venue": venue.id, "date": str(row["block_date"]),
+                    "payer": "0x" + row["_cp_bytes"].hex(), "amount_usd": str(earned),
+                })
 
     nonzero = detail[detail["_capital_amount"] != _Decimal("0")]
     if nonzero.empty:

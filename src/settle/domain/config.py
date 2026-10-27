@@ -29,6 +29,7 @@ from .primes import (
     Venue,
 )
 from .subsidy import SubsidyConfig
+from .venue_views import VenueView
 
 
 def _parse_ilk_bytes32(s: str) -> bytes:
@@ -168,6 +169,106 @@ def _parse_total_assets_source(v: dict) -> str:
     return str(raw)
 
 
+def _settlement_enabled(v: dict) -> bool:
+    for key in ("settlement_enabled", "display_only"):
+        if key in v and type(v[key]) is not bool:
+            raise ValueError(f"venue {v.get('id')}: {key} must be a boolean")
+    nested = v.get("settlement", {})
+    if not isinstance(nested, dict):
+        raise ValueError("settlement must be a mapping")
+    enabled = nested.get("enabled", v.get("settlement_enabled", not v.get("display_only", False)))
+    if type(enabled) is not bool:
+        raise ValueError("settlement.enabled must be boolean")
+    if "settlement_enabled" in v and enabled != v["settlement_enabled"]:
+        raise ValueError("conflicting settlement flags")
+    if "display_only" in v and enabled == v["display_only"]:
+        raise ValueError(f"venue {v.get('id')}: conflicting settlement flags")
+    return enabled
+
+
+def _parse_view(v: dict, kind: str) -> VenueView:
+    raw = v.get(kind, {})
+    allowed = {"enabled", "method", "source_venue", "payer", "loan_terms", "pending_reason"}
+    if not isinstance(raw, dict) or set(raw) - allowed:
+        raise ValueError(f"venue {v['id']}: invalid {kind} configuration")
+    cfg = dict(raw)
+    if kind == "settlement":
+        cfg["enabled"] = _settlement_enabled(v)
+    result = VenueView(**cfg)
+    result.validate(kind)
+    return result
+
+
+def _parse_incentive(v: dict, inventory: list[dict]) -> dict | None:
+    cfg = v.get("incentive")
+    if cfg is None:
+        return None
+    if not isinstance(cfg, dict) or cfg.get("program") not in {"rlusd", "pyusd", "usdg"}:
+        raise ValueError(f"venue {v['id']}: invalid incentive program")
+    date.fromisoformat(cfg["accrual_start"])
+    opening = Decimal(str(cfg["opening_balance"]))
+    if not opening.is_finite():
+        raise ValueError(f"venue {v['id']}: opening balance must be finite")
+    if cfg["program"] != "usdg" and v["chain"] != "ethereum":
+        raise ValueError("RLUSD/PYUSD incentive components require Ethereum")
+    receipts = cfg["receipt_sources"]
+    if not isinstance(receipts, list) or (not receipts and not v.get("skip", False)):
+        raise ValueError(f"venue {v['id']}: active incentive requires receipt sources")
+    identities = []
+    for entry in receipts:
+        Chain(entry.get("chain", v["chain"]))
+        for key in ("payer", "recipient", "token"):
+            Address.from_str(entry[key])
+        identities.append(tuple(entry.get(k, v["chain"] if k == "chain" else "").lower()
+                                for k in ("chain", "token", "payer", "recipient")))
+    if len(set(identities)) != len(identities):
+        raise ValueError(f"venue {v['id']}: duplicate incentive receipt source")
+    components = cfg["components"]
+    if not isinstance(components, list) or (not components and cfg["program"] != "usdg"):
+        raise ValueError(f"venue {v['id']}: incentive requires eligible components")
+    by_id = {item['id']: item for item in inventory}
+    seen = set()
+    for component in components:
+        kind = component["kind"]
+        if kind not in {"raw", "lending_idle", "uniswap_v4", "curve", "morpho_top_up"}:
+            raise ValueError(f"Unknown incentive component {kind}")
+        if component.get('through'):
+            date.fromisoformat(component['through'])
+        if kind in {"raw", "uniswap_v4", "curve"}:
+            source = by_id.get(component.get('venue'))
+            if source is None or source['chain'] != v['chain']:
+                raise ValueError("Missing or cross-chain incentive component venue")
+            if kind == "raw" and source['token']['address'].lower() != v['token']['address'].lower():
+                raise ValueError("Incentive raw component token mismatch")
+            if kind in {"uniswap_v4", "curve"}:
+                expected = "uniswap_v4" if kind == "uniswap_v4" else "curve_stableswap"
+                if source.get('lp_kind') != expected:
+                    raise ValueError("Incentive component LP kind mismatch")
+        if kind == "lending_idle":
+            Address.from_str(component['pool'])
+        if kind == "morpho_top_up":
+            Address.from_str(component['vault'])
+            if cfg['program'] != 'rlusd' or component['net_apr_source'] != 'daily_share_return':
+                raise ValueError("Invalid Morpho top-up program or net APR source")
+        # Identify the economic balance actually read by IncentiveInputs, not
+        # its configurable venue alias. Two aliases must not earn twice.
+        if kind == "raw":
+            identity = (kind,)
+        elif kind == "lending_idle":
+            identity = (kind, component['pool'].lower())
+        elif kind == "morpho_top_up":
+            identity = (kind, component['vault'].lower())
+        elif kind == "curve":
+            identity = (kind, source['token']['address'].lower())
+        else:
+            identity = (kind, (source.get('nft_position_manager') or '').lower(),
+                        component['pool_id'].lower())
+        if identity in seen:
+            raise ValueError("Duplicate incentive component")
+        seen.add(identity)
+    return cfg
+
+
 def load_prime(config_path: Path) -> Prime:
     """Load a `Prime` value object from a YAML file."""
     with config_path.open() as f:
@@ -175,6 +276,7 @@ def load_prime(config_path: Path) -> Prime:
 
     subproxy = {}
     alm = {}
+    alm_start_dates = {}
     psm: dict[Chain, PsmConfig] = {}
     for chain_str, addrs in cfg.get("addresses", {}).items():
         chain = Chain(chain_str)
@@ -182,6 +284,8 @@ def load_prime(config_path: Path) -> Prime:
             subproxy[chain] = Address.from_str(addrs["subproxy"])
         if "alm" in addrs:
             alm[chain] = Address.from_str(addrs["alm"])
+            if addrs.get("start_date"):
+                alm_start_dates[chain] = date.fromisoformat(addrs["start_date"])
         if "psm" in addrs:
             p = addrs["psm"]
             if p.get("event_source", "dune") not in {"dune", "hypersync"}:
@@ -350,7 +454,11 @@ def load_prime(config_path: Path) -> Prime:
                     if v.get("paired_source")
                     else None
                 ),
-                display_only=bool(v.get("display_only", False)),
+                settlement_enabled=_settlement_enabled(v),
+                settlement_view=_parse_view(v, "settlement"),
+                reporting_view=_parse_view(v, "reporting"),
+                start_date=date.fromisoformat(v["start_date"]) if v.get("start_date") else None,
+                incentive=_parse_incentive(v, cfg.get("venues", [])),
                 force_capital_inflow=bool(v.get("force_capital_inflow", False)),
                 external_yield_source=bool(v.get("external_yield_source", False)),
                 redemptions_priced_at_vault=bool(
@@ -361,6 +469,29 @@ def load_prime(config_path: Path) -> Prime:
                 ),
             )
         )
+
+    by_id = {venue.id: venue for venue in venues}
+    if len(by_id) != len(venues):
+        raise ValueError("duplicate venue ids")
+    attributed = set()
+    for venue in venues:
+        view = venue.settlement_view
+        if view.method != "alm_receipts":
+            continue
+        anchor = by_id.get(view.source_venue)
+        payer = Address.from_str(view.payer)
+        if (anchor is None or anchor.id == venue.id or anchor.chain != venue.chain
+                or anchor.token != venue.token or not anchor.settles or anchor.skip
+                or not anchor.external_yield_source or anchor.force_capital_inflow
+                or anchor.holder_override not in (None, alm.get(anchor.chain))
+                or anchor.pricing_category != PricingCategory.PAR_STABLE
+                or not venue.settles or venue.skip
+                or payer not in [Address.from_str(a) for a in cfg.get("external_alm_sources", {}).get(venue.chain.value, [])]):
+            raise ValueError(f"venue {venue.id}: invalid ALM receipt attribution")
+        key = (anchor.id, payer)
+        if key in attributed:
+            raise ValueError("ALM receipt source assigned to multiple venues")
+        attributed.add(key)
 
     external_alm_sources: dict[Chain, list[Address]] = {}
     for chain_str, addrs in cfg.get("external_alm_sources", {}).items():
@@ -419,6 +550,7 @@ def load_prime(config_path: Path) -> Prime:
         start_date=date.fromisoformat(cfg["start_date"]),
         subproxy=subproxy,
         alm=alm,
+        alm_start_dates=alm_start_dates,
         psm=psm,
         venues=venues,
         external_alm_sources=external_alm_sources,

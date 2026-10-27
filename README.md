@@ -76,6 +76,15 @@ Settlement artifacts (the per-month Markdown / CSV / provenance produced by `set
 land under `settlements/<prime>/<month>/` in this repo and are git-committed. Path is
 configurable via `--output-dir` or the `SETTLE_OUTPUT_DIR` env var.
 
+## Venue reporting
+
+Every venue declares independent `settlement` and `reporting` settings.
+Reporting-only holdings and issuer incentive accruals remain excluded from MSC.
+See the [settlement and reporting dashboard API guide](docs/pipeline/settlement-reporting-api.md)
+for endpoints, fields, revision selection, reconciliation, and examples.
+See [the venue reporting contract](docs/reporting-only-venues.md) for configuration,
+Spark reward rules, API fields, and verified USDG receipt sources.
+
 ## Development
 
 ### Code
