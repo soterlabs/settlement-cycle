@@ -110,6 +110,10 @@ def test_manual_cli_uses_actual_utc_time_for_the_reference_gate(monkeypatch):
         assert 'today' not in kwargs
         return {'status': 'ok'}
     monkeypatch.setattr(worker, 'datetime', Clock)
+    monkeypatch.setattr('dotenv.load_dotenv', lambda: None)
+    # main() enables durable storage for its process. Restore this global
+    # setting after the test so subsequent offline tests stay isolated.
+    monkeypatch.setenv('SETTLE_REQUIRE_POSTGRES', '0')
     monkeypatch.setattr(worker, 'connect', lambda **_: nullcontext(object()))
     monkeypatch.setattr(worker.store, 'apply_schema', lambda *_: None)
     monkeypatch.setattr(worker, 'run_prime', run)
