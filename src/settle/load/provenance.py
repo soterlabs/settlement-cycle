@@ -22,6 +22,7 @@ def render_provenance(
 ) -> dict[str, Any]:
     """Build the provenance dict. Pure — easy to test/snapshot."""
     return {
+        "schema_version": "1.1",
         "settle_version": __version__,
         "generated_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "prime_id": pnl.prime_id,
@@ -43,6 +44,7 @@ def render_provenance(
             "sky_direct_shortfall": str(pnl.sky_direct_shortfall),
             "agent_rate": str(pnl.agent_rate),
             "prime_agent_revenue": str(pnl.prime_agent_revenue),
+            "reporting_only_revenue": str(sum((v.revenue for v in pnl.reporting_only_breakdown), 0)),
             "distribution_rewards": str(pnl.distribution_rewards),
             # Chronicle Points (Grove only today) — Demand-Side component,
             # summed into prime_agent_total_revenue. Written for every
@@ -90,6 +92,7 @@ def render_provenance(
         "venue_breakdown": [
             {
                 "venue_id": v.venue_id,
+                "settlement_enabled": v.settlement_enabled,
                 "label": v.label,
                 "value_som": str(v.value_som),
                 "value_eom": str(v.value_eom),
@@ -170,17 +173,15 @@ def render_provenance(
             }
             for v in pnl.venue_breakdown
         ],
-        # Display-only venues — tracked for reports, excluded from MSC
-        # totals. Empty list for primes with no off-protocol positions.
-        # See ``Venue.display_only``.
-        "display_only_breakdown": [
-            {
-                "venue_id": v.venue_id,
-                "label": v.label,
-                "value_som": str(v.value_som),
-                "value_eom": str(v.value_eom),
-            }
-            for v in pnl.display_only_breakdown
+        # Reporting-only positions and issuer receivables, excluded from MSC.
+        "reporting_only_breakdown": [
+            {"venue_id": v.venue_id, "label": v.label,
+             "settlement_enabled": False, "pricing_category": v.pricing_category,
+             "value_som": str(v.value_som), "value_eom": str(v.value_eom),
+             "period_inflow": str(v.period_inflow), "revenue": str(v.revenue),
+             "actual_revenue": str(v.actual_revenue), "external_revenue": str(v.external_revenue),
+             "incentive_accrual": v.incentive_accrual}
+            for v in pnl.reporting_only_breakdown
         ],
         # Distribution Rewards per ref code for the period (settle-dr-dune
         # Summary tab). Sums to ``results.distribution_rewards``. Empty for

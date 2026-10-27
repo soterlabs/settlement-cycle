@@ -419,21 +419,12 @@ class Venue:
     # Both fields are required for category EOA and ignored elsewhere.
     paired_with: str | None = None
     paired_source: Address | None = None
-    # Off-protocol / "tracked-but-not-counted" flag. When True, the venue's
-    # value is computed and surfaced in reports (so off-protocol holdings
-    # remain visible in the monthly file) but the venue is EXCLUDED from:
-    #   - ``prime_agent_revenue`` (no actual_revenue contribution)
-    #   - ``sky_revenue`` (not added to or subtracted from any sky-side stream)
-    #   - the cost-basis NAV invariant (Σ value over operating venues only)
-    # Realized gains/losses on returns are recognized at the *anchor* venue
-    # (see ``paired_with`` / ``paired_source``) via the Cat A paired-principal-
-    # cap classifier in ``_cat_a_capital_inflow_timeseries``: inflows from
-    # ``paired_source`` up to the cumulative ALM→holder principal-out are
-    # classified as capital (principal-return); excess is yield (revenue).
-    # Typical use: principal sent to an off-protocol counterparty (e.g.
-    # FalconX) for an OOB acquisition; the cash settlement at the ALM is the
-    # realization event for any spread captured during the trip.
-    display_only: bool = False
+    # Every venue is reported. False excludes this venue's income, SDE value,
+    # CoF attribution and NAV from MSC while retaining its measured revenue.
+    settlement_enabled: bool = True
+    start_date: date | None = None  # do not resolve a reporting chain before launch
+    display_only: bool = False  # legacy Python constructor alias (inverse)
+    incentive: dict | None = None  # reporting-only issuer incentive program
     # Force all balance changes to be treated as capital inflow (revenue = 0).
     # Use for Cat A par-stable venues on chains without reliable transfer-event
     # data (e.g. Monad): the pipeline cannot distinguish capital movements from
@@ -505,7 +496,18 @@ class Venue:
 
     event_source: str = "dune"          # per-venue event migration; explicit fixtures still win
 
+    @property
+    def settles(self) -> bool:
+        return self.settlement_enabled and not self.display_only
+
     def __post_init__(self) -> None:
+        if type(self.settlement_enabled) is not bool:
+            raise ValueError(f"Venue {self.id}: settlement_enabled must be boolean")
+        if self.pricing_category == PricingCategory.INCENTIVE:
+            if self.settles or not self.incentive:
+                raise ValueError(f"Venue {self.id}: incentives must be reporting-only with a program")
+        elif self.incentive is not None:
+            raise ValueError(f"Venue {self.id}: incentive requires pricing_category I")
         if self.nav_haircut_bps is not None:
             if self.pricing_category != PricingCategory.RWA_TRANCHE:
                 raise ValueError(
@@ -889,4 +891,9 @@ class Prime:
 
     @property
     def chains(self) -> set[Chain]:
-        return set(self.alm.keys()) | set(self.subproxy.keys())
+        return self.chains_at(date.max)
+
+    def chains_at(self, cutoff: date) -> set[Chain]:
+        return (set(self.alm.keys()) | set(self.subproxy.keys())
+                | {v.chain for v in self.venues if not v.skip
+                   and (v.start_date is None or v.start_date <= cutoff)})

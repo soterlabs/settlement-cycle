@@ -511,7 +511,7 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
                     n_fee_events += 1
             actual_revenue -= fee_per_event * Decimal(n_fee_events)
 
-    entry = inputs.sde_entry
+    entry = inputs.sde_entry if inputs.venue.settles else None
     if entry is not None and entry.kind == "capped":
         # Prefer daily-resolved (Σ cum_value / Σ uncapped_value) when the
         # daily timeseries was plumbed in by the orchestrator — matches
@@ -547,6 +547,7 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
 
     return VenueRevenue(
         venue_id=inputs.venue.id,
+        settlement_enabled=inputs.venue.settles,
         label=inputs.venue.label,
         value_som=inputs.value_som,
         value_eom=inputs.value_eom,
@@ -580,5 +581,5 @@ def compute_prime_agent_revenue(
     by the orchestrator.
     """
     breakdown = [compute_venue_revenue(period, inp) for inp in venue_inputs]
-    total = sum((vr.revenue for vr in breakdown), Decimal("0"))
+    total = sum((vr.revenue for vr in breakdown if vr.settlement_enabled), Decimal("0"))
     return total, breakdown

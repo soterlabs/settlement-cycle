@@ -58,6 +58,9 @@ class VenueRevenue:
     # external-rewards path wired up yet. See `normalize.positions.
     # _atoken_external_revenue_usd` for the Cat C implementation.
     external_revenue: Decimal = Decimal("0")
+    settlement_enabled: bool = True
+    # Daily issuer accruals and receipts, independently audited from MSC.
+    incentive_accrual: dict = field(default_factory=dict)
     # Cash realization is already included in actual_revenue/sd_revenue.
     # These fields preserve both transaction legs and unsettled claims.
     redemption_revenue_adjustment: Decimal = Decimal("0")
@@ -240,13 +243,13 @@ class MonthlyPnL:
     # against Sky's BR − 30bps = SSR collection on the same slice. Zero
     # for primes with no PSM3 leg.
     psm3_susds_appreciation: Decimal = Decimal("0")
-    # Off-protocol / "tracked-but-not-counted" venues (``Venue.display_only``).
+    # Venues with settlement_enabled=False: reported, excluded from MSC.
     # Surfaced for visibility in monthly reports (e.g. the dedicated xlsx tab
     # rendered by ``build_settlement_xlsx``) but NOT folded into
     # ``prime_agent_revenue``, ``sky_revenue``, or the cost-basis invariant.
-    # Each entry has revenue=0 by construction; ``value_som`` / ``value_eom``
-    # carry the principal currently outstanding off-protocol.
-    display_only_breakdown: list[VenueRevenue] = field(default_factory=list)
+    # Revenue is computed but excluded from settlement; ``value_som`` / ``value_eom``
+    # carry position values or an incentive receivable/prepayment.
+    reporting_only_breakdown: list[VenueRevenue] = field(default_factory=list)
     # Per-venue daily SDE asset-value series (see ``SDEDailyBreakdown``).
     # Empty list for primes / months without active SDE entries; populated
     # for every SDE venue exercised in the run. Consumed by post-hoc
@@ -366,3 +369,8 @@ class MonthlyPnL:
                 f"expected {expected} (prime_rev + agent_rate + "
                 "distribution_rewards + chronicle_points + gar − sky_rev)"
             )
+
+    @property
+    def display_only_breakdown(self) -> list[VenueRevenue]:
+        """Compatibility accessor for callers using the old name."""
+        return self.reporting_only_breakdown

@@ -168,6 +168,74 @@ def _parse_total_assets_source(v: dict) -> str:
     return str(raw)
 
 
+def _settlement_enabled(v: dict) -> bool:
+    for key in ("settlement_enabled", "display_only"):
+        if key in v and type(v[key]) is not bool:
+            raise ValueError(f"venue {v.get('id')}: {key} must be a boolean")
+    enabled = v.get("settlement_enabled", not v.get("display_only", False))
+    if "display_only" in v and enabled == v["display_only"]:
+        raise ValueError(f"venue {v.get('id')}: conflicting settlement flags")
+    return enabled
+
+
+def _parse_incentive(v: dict, inventory: list[dict]) -> dict | None:
+    cfg = v.get("incentive")
+    if cfg is None:
+        return None
+    if not isinstance(cfg, dict) or cfg.get("program") not in {"rlusd", "pyusd", "usdg"}:
+        raise ValueError(f"venue {v['id']}: invalid incentive program")
+    date.fromisoformat(cfg["accrual_start"])
+    opening = Decimal(str(cfg["opening_balance"]))
+    if not opening.is_finite():
+        raise ValueError(f"venue {v['id']}: opening balance must be finite")
+    if cfg["program"] != "usdg" and v["chain"] != "ethereum":
+        raise ValueError("RLUSD/PYUSD incentive components require Ethereum")
+    receipts = cfg["receipt_sources"]
+    if not isinstance(receipts, list) or (not receipts and not v.get("skip", False)):
+        raise ValueError(f"venue {v['id']}: active incentive requires receipt sources")
+    identities = []
+    for entry in receipts:
+        Chain(entry.get("chain", v["chain"]))
+        for key in ("payer", "recipient", "token"):
+            Address.from_str(entry[key])
+        identities.append(tuple(entry.get(k, v["chain"] if k == "chain" else "").lower()
+                                for k in ("chain", "token", "payer", "recipient")))
+    if len(set(identities)) != len(identities):
+        raise ValueError(f"venue {v['id']}: duplicate incentive receipt source")
+    components = cfg["components"]
+    if not isinstance(components, list) or (not components and cfg["program"] != "usdg"):
+        raise ValueError(f"venue {v['id']}: incentive requires eligible components")
+    by_id = {item['id']: item for item in inventory}
+    seen = set()
+    for component in components:
+        kind = component["kind"]
+        if kind not in {"raw", "lending_idle", "uniswap_v4", "curve", "morpho_top_up"}:
+            raise ValueError(f"Unknown incentive component {kind}")
+        identity = (kind, component.get('venue'), component.get('pool'), component.get('vault'))
+        if identity in seen:
+            raise ValueError("Duplicate incentive component")
+        seen.add(identity)
+        if component.get('through'):
+            date.fromisoformat(component['through'])
+        if kind in {"raw", "uniswap_v4", "curve"}:
+            source = by_id.get(component.get('venue'))
+            if source is None or source['chain'] != v['chain']:
+                raise ValueError("Missing or cross-chain incentive component venue")
+            if kind == "raw" and source['token']['address'].lower() != v['token']['address'].lower():
+                raise ValueError("Incentive raw component token mismatch")
+            if kind in {"uniswap_v4", "curve"}:
+                expected = "uniswap_v4" if kind == "uniswap_v4" else "curve_stableswap"
+                if source.get('lp_kind') != expected:
+                    raise ValueError("Incentive component LP kind mismatch")
+        if kind == "lending_idle":
+            Address.from_str(component['pool'])
+        if kind == "morpho_top_up":
+            Address.from_str(component['vault'])
+            if cfg['program'] != 'rlusd' or component['net_apr_source'] != 'daily_share_return':
+                raise ValueError("Invalid Morpho top-up program or net APR source")
+    return cfg
+
+
 def load_prime(config_path: Path) -> Prime:
     """Load a `Prime` value object from a YAML file."""
     with config_path.open() as f:
@@ -350,7 +418,9 @@ def load_prime(config_path: Path) -> Prime:
                     if v.get("paired_source")
                     else None
                 ),
-                display_only=bool(v.get("display_only", False)),
+                settlement_enabled=_settlement_enabled(v),
+                start_date=date.fromisoformat(v["start_date"]) if v.get("start_date") else None,
+                incentive=_parse_incentive(v, cfg.get("venues", [])),
                 force_capital_inflow=bool(v.get("force_capital_inflow", False)),
                 external_yield_source=bool(v.get("external_yield_source", False)),
                 redemptions_priced_at_vault=bool(

@@ -73,10 +73,24 @@ def register(app, get_reader, document_response):
             raise HTTPException(404, 'No published daily estimate for this selection; use monthly data',
                                 headers={'Cache-Control': 'no-store'})
         return document_response(request, {
-            'schema_version': '1.0', 'prime': prime, 'cadence': 'daily',
+            'schema_version': '1.1', 'prime': prime, 'cadence': 'daily',
             'estimate_basis': 'month_to_date', 'data': record,
             'freshness': freshness(record, cutoff or today()-timedelta(days=1)),
             'latest_attempt': attempt,
+        })
+
+    @app.get('/v1/venues/{prime}')
+    def venues(prime: str, request: Request):
+        from ..domain.config import load_prime_by_id
+        validate(prime)
+        config = load_prime_by_id(prime)
+        return document_response(request, {
+            'schema_version': '1.1', 'prime': prime, 'configuration': 'current',
+            'venues': [{'venue_id': v.id, 'label': v.label, 'chain': v.chain.value,
+                        'pricing_category': v.pricing_category.value,
+                        'settlement_enabled': v.settles, 'skip': v.skip,
+                        'start_date': str(v.start_date) if v.start_date else None}
+                       for v in config.venues],
         })
 
     @app.get('/v1/revenue/status')
