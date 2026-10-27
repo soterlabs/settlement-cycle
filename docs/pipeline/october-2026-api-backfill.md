@@ -17,14 +17,17 @@ store and provider-variable references as `settle-revenue-daily`:
 ```sh
 python -m settle.revenue.worker \
   --from 2026-10-01 --to 2026-10-26 \
-  --missing-views-only --newest-first \
+  --missing-views-only --newest-first --wait-for-lock \
   --prime keel --prime obex --prime skybase --prime osero --prime spark --prime grove
 ```
 
 The lightweight primes run first. Recent dates precede older dates, making the
 latest API view available while older history is still processing. The job
 shares the existing per-prime advisory lock, required-input guard, retries and
-atomic publication with the daily worker. An interrupted process releases its
+atomic publication with the daily worker. If a daily calculation is already
+running, the backfill waits for its lock rather than silently skipping that
+prime. Manual runs use the actual UTC time for reference-rate eligibility,
+including before the evening publication gate. An interrupted process releases its
 lock; restart the same command to resume. Extraction inputs already persisted
 in Postgres are reused.
 

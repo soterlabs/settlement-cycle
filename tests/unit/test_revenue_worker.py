@@ -70,7 +70,7 @@ def test_view_backfill_resumes_only_missing_formats_newest_first():
     assert dates == [date(2026, 10, 26), date(2026, 10, 25), date(2026, 10, 23)]
 
 
-@pytest.mark.parametrize('kwargs', [dict(missing_views_only=True), dict(newest_first=True)])
+@pytest.mark.parametrize('kwargs', [dict(missing_views_only=True), dict(newest_first=True), dict(wait_for_lock=True)])
 def test_view_backfill_modes_require_explicit_window(kwargs):
     with pytest.raises(ValueError, match='requires an explicit'):
         planned_dates(set(), set(), date(2026, 10, 27), **kwargs)
@@ -91,3 +91,28 @@ def test_backfill_modes_are_mutually_exclusive():
 ])
 def test_both_views_are_required_for_format_compatibility(result, expected):
     assert has_venue_views(result) is expected
+
+
+def test_manual_cli_uses_actual_utc_time_for_the_reference_gate(monkeypatch):
+    import sys
+    from contextlib import nullcontext
+    from datetime import UTC, datetime
+
+    from settle.revenue import worker
+    clock = datetime.now(UTC).replace(hour=8, minute=0)
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return clock
+    seen = []
+    def run(*args, **kwargs):
+        seen.append(kwargs['now'])
+        assert 'today' not in kwargs
+        return {'status': 'ok'}
+    monkeypatch.setattr(worker, 'datetime', Clock)
+    monkeypatch.setattr(worker, 'connect', lambda **_: nullcontext(object()))
+    monkeypatch.setattr(worker.store, 'apply_schema', lambda *_: None)
+    monkeypatch.setattr(worker, 'run_prime', run)
+    monkeypatch.setattr(sys, 'argv', ['worker', '--prime', 'obex'])
+    worker.main()
+    assert seen == [clock]  # Do not pretend that a morning job ran at 20:17.

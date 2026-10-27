@@ -37,12 +37,12 @@ _log = logging.getLogger('settle.revenue.worker')
 
 
 def planned_dates(published, attempted, today, start=None, end=None, initial=None, *,
-                  missing_only=False, missing_views_only=False, newest_first=False):
+                  missing_only=False, missing_views_only=False, newest_first=False, wait_for_lock=False):
     """Fill known gaps within 90 days; a first installation starts yesterday."""
     floor, yesterday = today - timedelta(days=90), today - timedelta(days=1)
     if missing_only and missing_views_only:
         raise ValueError('--missing-only and --missing-views-only are mutually exclusive')
-    if (missing_only or missing_views_only or newest_first) and (start is None or end is None):
+    if (missing_only or missing_views_only or newest_first or wait_for_lock) and (start is None or end is None):
         raise ValueError('this backfill mode requires an explicit --from and --to window')
     if (start is None) != (end is None):
         raise ValueError('--from and --to must be supplied together')
@@ -74,7 +74,7 @@ def lock_key(prime):
 def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_monthly_pnl,
               capture=store.capture_versions, attempts=3, pause=time.sleep, prepare=prepare_reference_rates,
               now=None, missing_only=False, missing_views_only=False, newest_first=False,
-              require_views=False):
+              require_views=False, wait_for_lock=False):
     now = now or (datetime.combine(today, datetime.min.time(), UTC).replace(hour=20, minute=17)
                   if today else datetime.now(UTC))
     today = today or now.astimezone(UTC).date()
@@ -83,9 +83,11 @@ def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_
     if prime not in PRIMES:
         raise ValueError('unknown prime')
     planned_dates(set(), set(), today, start, end, missing_only=missing_only,
-                  missing_views_only=missing_views_only, newest_first=newest_first)
+                  missing_views_only=missing_views_only, newest_first=newest_first, wait_for_lock=wait_for_lock)
     require_views = require_views or missing_views_only
-    if not conn.execute('SELECT pg_try_advisory_lock(%s)', (lock_key(prime),)).fetchone()[0]:
+    if wait_for_lock:
+        conn.execute('SELECT pg_advisory_lock(%s)', (lock_key(prime),))
+    elif not conn.execute('SELECT pg_try_advisory_lock(%s)', (lock_key(prime),)).fetchone()[0]:
         return {'prime': prime, 'status': 'already_running', 'results': []}
     results = []
     try:
@@ -220,10 +222,13 @@ def main():
     parser.add_argument('--newest-first', action='store_true', help='Backfill latest cutoffs first')
     parser.add_argument('--require-views', action='store_true',
                         help='Refuse to reuse or publish results without both API views')
+    parser.add_argument('--wait-for-lock', action='store_true',
+                        help='Explicit backfill waits for a running daily worker instead of skipping its prime')
     args = parser.parse_args()
     today = datetime.now(UTC).date()
     planned_dates(set(), set(), today, args.start, args.end, missing_only=args.missing_only,
-                  missing_views_only=args.missing_views_only, newest_first=args.newest_first)
+                  missing_views_only=args.missing_views_only, newest_first=args.newest_first,
+                  wait_for_lock=args.wait_for_lock)
     os.environ['SETTLE_REQUIRE_POSTGRES'] = '1'
     logging.basicConfig(level=logging.INFO)
     reports = []
@@ -231,9 +236,12 @@ def main():
         try:
             with connect(autocommit=True) as conn:
                 store.apply_schema(conn)
-                report = run_prime(conn, prime, today=today, start=args.start, end=args.end,
+                # Manual jobs may start before the evening reference-rate
+                # gate. Use wall-clock UTC, not the test helper's simulated tick.
+                report = run_prime(conn, prime, now=datetime.now(UTC), start=args.start, end=args.end,
                                    missing_only=args.missing_only, missing_views_only=args.missing_views_only,
-                                   newest_first=args.newest_first, require_views=args.require_views)
+                                   newest_first=args.newest_first, require_views=args.require_views,
+                                   wait_for_lock=args.wait_for_lock)
         except (Exception, RequiredInputFailure) as exc:
             report = {'prime': prime, 'status': 'failed', 'error_type': type(exc).__name__}
             _log.error('ALERT daily revenue worker failed for %s: %s', prime, type(exc).__name__)

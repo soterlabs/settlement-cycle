@@ -2,6 +2,7 @@ from dataclasses import dataclass, field, replace
 from datetime import timedelta
 
 import psycopg
+import pytest
 
 from settle.revenue import store, worker
 from tests.integration.test_input_cache_postgres import database  # noqa: F401
@@ -74,6 +75,25 @@ def test_newest_first_publishes_latest_before_older_history(database):  # noqa: 
                                   prepare=lambda *_: None)
         assert report['status'] == 'ok' and calls == [current.as_of, older.as_of]
         assert store.read(conn, 'obex')['cutoff'] == str(current.as_of)
+
+
+def test_backfill_waits_for_the_shared_prime_lock_instead_of_skipping(database):  # noqa: F811
+    pnl = with_views(example())
+    with psycopg.connect(database, autocommit=True) as holder, psycopg.connect(database, autocommit=True) as conn:
+        store.apply_schema(conn)
+        holder.execute('SELECT pg_advisory_lock(%s)', (worker.lock_key('obex'),))
+        conn.execute("SET lock_timeout = '50ms'")
+        with pytest.raises(psycopg.errors.LockNotAvailable):
+            worker.run_prime(conn, 'obex', start=pnl.as_of, end=pnl.as_of, wait_for_lock=True)
+        assert conn.execute('SELECT COUNT(*) FROM revenue_attempts').fetchone()[0] == 0
+        holder.execute('SELECT pg_advisory_unlock(%s)', (worker.lock_key('obex'),))
+        conn.execute('SET lock_timeout = 0')
+        report = worker.run_prime(conn, 'obex', start=pnl.as_of, end=pnl.as_of,
+                                  wait_for_lock=True, require_views=True,
+                                  compute=lambda *_args, **_kw: pnl,
+                                  capture=lambda: store.Versions('code', 'cfg', '0'),
+                                  prepare=lambda *_: None)
+        assert report['status'] == 'ok'
 
 
 def test_retry_atomic_publication_and_idempotent_restart(database):  # noqa: F811
