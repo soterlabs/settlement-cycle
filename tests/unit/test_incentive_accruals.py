@@ -1,8 +1,10 @@
+from copy import deepcopy
 from datetime import date, timedelta
 from decimal import Decimal as D
 from types import SimpleNamespace
 
 import pytest
+import yaml
 
 from settle.compute.incentives import (
     EligibleBalance,
@@ -11,9 +13,24 @@ from settle.compute.incentives import (
     issuer_apr,
     reconcile,
 )
+from settle.domain.config import _parse_incentive
 from settle.domain.period import Period
 from settle.domain.primes import Address, Chain
 from settle.normalize.incentives import IncentiveInputs, compute_incentive
+
+
+@pytest.mark.parametrize('kind', ['raw', 'uniswap_v4', 'curve'])
+def test_duplicate_economic_incentive_components_cannot_hide_behind_venue_aliases(config_dir, kind):
+    raw = yaml.safe_load((config_dir / 'spark.yaml').read_text())
+    venue = next(v for v in raw['venues'] if v['id'] == 'S68')
+    component = deepcopy(next(c for c in venue['incentive']['components'] if c['kind'] == kind))
+    source = deepcopy(next(v for v in raw['venues'] if v['id'] == component['venue']))
+    source['id'] = 'same-position-another-id'
+    raw['venues'].append(source)
+    component['venue'] = source['id']
+    venue['incentive']['components'].append(component)
+    with pytest.raises(ValueError, match='Duplicate incentive component'):
+        _parse_incentive(venue, raw['venues'])
 
 
 def test_pyusd_spread_switch_and_daily_compounding():

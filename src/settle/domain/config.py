@@ -232,10 +232,6 @@ def _parse_incentive(v: dict, inventory: list[dict]) -> dict | None:
         kind = component["kind"]
         if kind not in {"raw", "lending_idle", "uniswap_v4", "curve", "morpho_top_up"}:
             raise ValueError(f"Unknown incentive component {kind}")
-        identity = (kind, component.get('venue'), component.get('pool'), component.get('vault'))
-        if identity in seen:
-            raise ValueError("Duplicate incentive component")
-        seen.add(identity)
         if component.get('through'):
             date.fromisoformat(component['through'])
         if kind in {"raw", "uniswap_v4", "curve"}:
@@ -254,6 +250,22 @@ def _parse_incentive(v: dict, inventory: list[dict]) -> dict | None:
             Address.from_str(component['vault'])
             if cfg['program'] != 'rlusd' or component['net_apr_source'] != 'daily_share_return':
                 raise ValueError("Invalid Morpho top-up program or net APR source")
+        # Identify the economic balance actually read by IncentiveInputs, not
+        # its configurable venue alias. Two aliases must not earn twice.
+        if kind == "raw":
+            identity = (kind,)
+        elif kind == "lending_idle":
+            identity = (kind, component['pool'].lower())
+        elif kind == "morpho_top_up":
+            identity = (kind, component['vault'].lower())
+        elif kind == "curve":
+            identity = (kind, source['token']['address'].lower())
+        else:
+            identity = (kind, (source.get('nft_position_manager') or '').lower(),
+                        component['pool_id'].lower())
+        if identity in seen:
+            raise ValueError("Duplicate incentive component")
+        seen.add(identity)
     return cfg
 
 
