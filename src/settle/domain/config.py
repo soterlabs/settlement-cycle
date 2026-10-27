@@ -243,6 +243,7 @@ def load_prime(config_path: Path) -> Prime:
 
     subproxy = {}
     alm = {}
+    alm_start_dates = {}
     psm: dict[Chain, PsmConfig] = {}
     for chain_str, addrs in cfg.get("addresses", {}).items():
         chain = Chain(chain_str)
@@ -250,6 +251,8 @@ def load_prime(config_path: Path) -> Prime:
             subproxy[chain] = Address.from_str(addrs["subproxy"])
         if "alm" in addrs:
             alm[chain] = Address.from_str(addrs["alm"])
+            if addrs.get("start_date"):
+                alm_start_dates[chain] = date.fromisoformat(addrs["start_date"])
         if "psm" in addrs:
             p = addrs["psm"]
             if p.get("event_source", "dune") not in {"dune", "hypersync"}:
@@ -489,6 +492,7 @@ def load_prime(config_path: Path) -> Prime:
         start_date=date.fromisoformat(cfg["start_date"]),
         subproxy=subproxy,
         alm=alm,
+        alm_start_dates=alm_start_dates,
         psm=psm,
         venues=venues,
         external_alm_sources=external_alm_sources,

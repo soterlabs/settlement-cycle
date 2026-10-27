@@ -89,9 +89,8 @@ def test_api_inventory_has_explicit_flags_without_provider_calls(monkeypatch):
 @pytest.mark.parametrize('activate_usdg', [False, True])
 def test_robinhood_reporting_chain_is_pinned_only_after_launch(activate_usdg):
     prime = load_prime_by_id('spark')
-    if activate_usdg:
-        prime = replace(prime, venues=[replace(v, skip=False) if v.id == 'S69' else v
-                                       for v in prime.venues])
+    prime = replace(prime, venues=[replace(v, skip=not activate_usdg) if v.id == 'S69' else v
+                                   for v in prime.venues])
     assert Chain.ROBINHOOD not in prime.chains_at(date(2026, 1, 31))
     assert Chain.ROBINHOOD not in prime.chains_at(date(2026, 6, 18))
     assert Chain.ROBINHOOD in prime.chains_at(date(2026, 6, 19))

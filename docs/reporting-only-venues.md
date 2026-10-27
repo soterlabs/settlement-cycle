@@ -13,7 +13,11 @@ relay claims remain principal claims: yield is measured once at the paired
 anchor, rather than also treating a principal return as EOA income.
 Spark Savings V2 products retain their existing position-only treatment:
 retail deposits and depositor VSR liabilities are outside the ALM settlement
-boundary. They now explicitly have `settlement_enabled: false`. Robinhood
+boundary. They now explicitly have `settlement_enabled: false`. S58 spETH is included:
+its WETH `totalAssets()` is converted to USD at each boundary using the
+configured Chainlink ETH/USD feed. The reader rejects malformed, non-positive,
+future-dated or more than 24-hour-old quotes relative to the pinned block.
+No ETH price movement or depositor yield is added to MSC revenue. Robinhood
 is included in Spark's block pins so the configured spUSDG position (S63)
 is actually valued. Both S63 and the USDG incentive venue S69 declare
 `start_date: 2026-06-19`, preventing historical runs from resolving a
@@ -103,14 +107,31 @@ not arbitrary incoming transfers. RLUSD payer:
 `0xb70e0fad7d0cf4c187365a84e728802ab24ca78b`; PYUSD payer:
 `0xfc0539d019482d311c161ae3b756cdccdec45e87`.
 
-USDG's engine uses receipts as accrual, per the 8-hour payment agreement;
-its accrued balance is therefore zero with a zero opening balance. **S69 is
-explicitly skipped pending a verified reward payer, recipient and receipt
-chain/token.** The spUSDG vault receives retail deposits, so counting all
-vault inflows as issuer income would materially overstate revenue. Set the
-verified `receipt_sources` and remove `skip: true` to activate it. S63 position
-tracking is active independently. This PR is a draft while these identities
-and the Morpho/start-date conventions are being confirmed.
+USDG's engine uses receipts as accrual, per the supplied receipt-basis rule;
+its accrued balance is zero with a zero opening balance. **S69 is enabled for
+reporting only**, using Robinhood USDG transfers from rewards claim source
+`0x5b01773138f17b38d1987558e576fa193db71a00` to Spark's ALM proxy
+`0xfd2fd4b046136b540a56c11c75ac679ae7d1db24`. This proxy is now recorded under
+`addresses.robinhood.alm`, with `start_date: 2026-06-19`. The date gates chain
+pins as well as S63/S69; adding the address does not introduce Robinhood into
+January runs. The spUSDG vault remains a separate position (S63).
+
+The recipient is confirmed by Spark's
+[official Robinhood registry](https://github.com/sparkdotfi/spark-address-registry/blob/master/src/Robinhood.sol).
+Reward identity was verified in transaction
+`0xa5f7886810b604cbfd1865713f387dc655c78f5ba2865ebad315a79cb2f31bed`:
+USDG `claimAll(uint32)` for payout group 6 emitted `ClaimAllExecuted` and a
+matching 1,591.972312 USDG transfer to the ALM on 2026-09-01. A second verified
+receipt paid 2,250.286201 USDG on September 2. All 112 `ClaimAllExecuted`
+payments to this ALM through 2026-10-25 matched transfers from the same source,
+with no unmatched claims, totaling 181,409.770760 USDG. Paxos's
+[claim implementation](https://github.com/paxosglobal/paxos-token-contracts/blob/master/contracts/ClaimableRewardsBase.sol)
+debits its configured `claimSource` and emits that Transfer. Retail deposits,
+bridge funding and transfers from other senders are excluded. The engine
+counts actual receipts through the cutoff; it does not synthesize payments
+from an assumed interval. Update the receipt-source allowlist if Paxos rotates
+its funding wallet. This PR remains draft for the Morpho APR/start-date
+conventions already noted above.
 
 ## Validation
 

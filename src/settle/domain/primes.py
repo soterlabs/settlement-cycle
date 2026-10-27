@@ -210,7 +210,7 @@ class Venue:
     pricing_category: PricingCategory
     underlying: Token | None = None      # for B/C/D/F where price chains via underlying
     label: str = ""                      # human-readable (e.g. 'Maple syrupUSDC')
-    nav_oracle: NavOracle | None = None  # Category E only — see NavOracle
+    nav_oracle: NavOracle | None = None  # Category E NAV / non-stable S2 underlying USD price
     lp_kind: str | None = None           # Category F only: 'curve_stableswap' | 'uniswap_v3' | 'uniswap_v4'
     nft_position_manager: Address | None = None  # Category F (uniswap_v3 / uniswap_v4) — NFT PositionManager
     # Uniswap V4 only. V4 is a singleton (no per-pool contract): the pool is
@@ -836,8 +836,12 @@ class Prime:
     # Chronicle Points program (Grove only today) — see ChroniclePointsConfig.
     # ``None`` = prime doesn't participate; no row rendered, $0 contribution.
     chronicle_points: "ChroniclePointsConfig | None" = None
+    # First reporting date for newly introduced ALM chains.
+    alm_start_dates: dict[Chain, date] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
+        if set(self.alm_start_dates) - set(self.alm):
+            raise ValueError("ALM start date requires a configured ALM address")
         if self.basin_idle_usds is not None:
             if self.basin_idle_usds.ilk not in (self.ilk_bytes32, *self.extra_ilks):
                 raise ValueError("Basin idle ilk must belong to the prime")
@@ -894,6 +898,8 @@ class Prime:
         return self.chains_at(date.max)
 
     def chains_at(self, cutoff: date) -> set[Chain]:
-        return (set(self.alm.keys()) | set(self.subproxy.keys())
+        return ({chain for chain in self.alm
+                 if self.alm_start_dates.get(chain, date.min) <= cutoff}
+                | set(self.subproxy.keys())
                 | {v.chain for v in self.venues if not v.skip
                    and (v.start_date is None or v.start_date <= cutoff)})

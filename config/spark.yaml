@@ -79,6 +79,11 @@ addresses:
       address: '0x7b42ed932f26509465f7ce3faf76ffce1275312f'   # PSM3 Unichain
   avalanche_c:
     alm:      '0xece6b0e8a54c2f44e066fbb9234e7157b15b7fec'    # Spark Avalanche-C ALM
+  robinhood:
+    # sparkdotfi/spark-address-registry src/Robinhood.sol ALM_PROXY.
+    # Reporting starts with the USDG product; avoid pre-genesis chain pins.
+    start_date: '2026-06-19'
+    alm: '0xfd2fd4b046136b540a56c11c75ac679ae7d1db24'
 
 venues:
   # ─────────────────────────────────────────────────────────────
@@ -1248,11 +1253,10 @@ venues:
   # the rate paid to depositors via share-pps growth.
   #
   # NOT held at the prime's ALMProxy → ``holder_override`` points to the
-  # vault contract directly. ``pricing_category: S2`` is currently SKIPPED
-  # in compute_monthly_pnl with a warning; a proper compute path needs:
-  #   - Asset side:   sum of vault's underlying balance across days
-  #   - Liability side: share_supply × convertToAssets(1 share)
-  #   - Revenue:      Δ(asset − liability) over the period (the spread)
+  # vault contract directly. S2 reports totalAssets at each pinned boundary,
+  # at par for stablecoins and via a USD oracle for spETH. These are
+  # reporting-only positions; depositor VSR / net spread attribution is
+  # outside the MSC boundary.
   # Verified on-chain 2026-05-01: all five contracts implement standard
   # ERC-4626 (decimals + asset + convertToAssets). Q1 2026 EoM sizes:
   #   - spUSDC (eth):  ~$575M underlying  | 782 holders
@@ -1260,8 +1264,8 @@ venues:
   #   - spETH  (eth):  ~81.6K WETH ≈ $185M | 243 holders
   #   - spPYUSD(eth):  ~$1.07M underlying | 13 holders
   #   - spUSDC (ava):  ~$37M underlying   | 87 holders
-  # S56/S57/S59/S60 (and S58 spETH which is out of scope per
-  # docs/spark/PRD_savings_vaults.md §9) are Spark Savings V2 vaults.
+  # S56/S57/S58/S59/S60 are Spark Savings V2 vaults. spETH is
+  # position-only, valued with the configured ETH/USD oracle.
   # ``cof_excluded: true`` keeps their ``tw_avg_value`` out of the
   # post-hoc CoF allocation denominator: these vaults hold depositor
   # capital (USDC/USDT/PYUSD via the Savings product), NOT Sky-funded
@@ -1271,14 +1275,9 @@ venues:
   # ``cof_excluded`` flags on S31/S32 (sUSDS POL — already deducted
   # from utilized via cum_alm_usds).
   #
-  # ``hide_per_venue_pnl: true`` further hides their per-venue PnL row
-  # in the summary.md / xlsx Venues table. Their per-venue
-  # ``actual_revenue`` is the negative VSR-liability accrual on
-  # depositor capital — a real prime-level liability (still folded into
-  # ``prime_agent_revenue``) but reads as a misleading "−$2M revenue"
-  # line when shown per-vault. Positions surface in a position-only
-  # sub-section so the BA Labs balance-sheet reconciliation remains
-  # visible. NOT set on S58 (out of scope per PRD §9).
+  # ``hide_per_venue_pnl: true`` marks these as positions only. Their
+  # reported values remain visible, while revenue is not attributed from
+  # changes in depositor balances or ETH price movements.
   - id: S56
     settlement_enabled: false
     chain: ethereum
@@ -1318,6 +1317,12 @@ venues:
     chain: ethereum
     label: 'Spark Savings V2 — spETH vault'
     pricing_category: S2
+    cof_excluded: true
+    hide_per_venue_pnl: true
+    # totalAssets() is WETH; report its USD value at each pinned boundary.
+    nav_oracle:
+      kind: chainlink
+      address: '0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419'
     holder_override: '0xfe6eb3b609a7c8352a241f7f3a21cea4e9209b8f'
     token:
       address: '0xfe6eb3b609a7c8352a241f7f3a21cea4e9209b8f'
@@ -1464,11 +1469,10 @@ venues:
     label: 'USDG issuer incentives — receipts (8-hour payments)'
     pricing_category: I
     cof_excluded: true
-    # Payer/recipient were not supplied. Keep this visibly disabled in the
-    # API inventory until verified; never classify retail vault deposits as
-    # issuer income. The spUSDG position itself is tracked by S63.
-    skip: true
-    holder_override: '0xde770c84fe66e063336b31737cfe9790f18c4087'
+    # Verified claimAll(uint32) receipts at the Spark Robinhood ALM;
+    # source is the USDG rewards claimSource wallet, not retail depositors.
+    # Example: 2026-09-01 tx 0xa5f78868…b2f31bed, ClaimAllExecuted group 6.
+    holder_override: '0xfd2fd4b046136b540a56c11c75ac679ae7d1db24'
     token:
       address: '0x5fc5360d0400a0fd4f2af552add042d716f1d168'
       symbol: 'USDG'
@@ -1477,7 +1481,11 @@ venues:
       program: usdg
       accrual_start: '2026-06-19'
       opening_balance: '0'
-      receipt_sources: []
+      receipt_sources:
+        - chain: robinhood
+          payer: '0x5b01773138f17b38d1987558e576fa193db71a00'
+          recipient: '0xfd2fd4b046136b540a56c11c75ac679ae7d1db24'
+          token: '0x5fc5360d0400a0fd4f2af552add042d716f1d168'
       components: []
 
 # Cat A revenue allowlist — counterparties that send REALIZED YIELD directly

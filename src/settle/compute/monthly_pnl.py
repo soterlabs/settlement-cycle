@@ -2760,11 +2760,10 @@ def compute_monthly_pnl(
             # (surfaced in the "Position-only venues" section of summary.md
             # and in venue_breakdown[].hide_per_venue_pnl).
             #
-            # spETH (S58) is also skipped: its underlying is WETH (not a
-            # par-stable), so totalAssets() is denominated in WETH and cannot
-            # be summed with the USD venue table. See PRD §9.
+            # Non-stable underlyings require a configured USD oracle. S58
+            # spETH uses Chainlink ETH/USD to value its WETH totalAssets.
             from ..normalize.prices import is_par_stable
-            if venue.underlying is None or not is_par_stable(venue.underlying):
+            if venue.underlying is None or (not is_par_stable(venue.underlying) and venue.nav_oracle is None):
                 _log.info(
                     "  [savings_v2] %s — underlying %s is not a par-stable; "
                     "skipping (out of scope — see PRD §9).",
@@ -2854,6 +2853,18 @@ def compute_monthly_pnl(
                     "Recording as-is.",
                     venue.id, float(total_som), float(total_eom),
                 )
+            if not is_par_stable(venue.underlying):
+                # totalAssets is denominated in the underlying (e.g. WETH),
+                # while every result value is USD. Price each boundary at its
+                # own pinned block; USD movements remain reporting-only.
+                if total_som:
+                    total_som *= _resolve_rwa_nav(
+                        venue, som_block, resolver=sources.nav_oracle_resolver,
+                        block_resolver=resolver)
+                if total_eom:
+                    total_eom *= _resolve_rwa_nav(
+                        venue, eom_block, resolver=sources.nav_oracle_resolver,
+                        block_resolver=resolver)
             _log.info(
                 "  [savings_v2] %s (%s on %s): position-only "
                 "total_assets_som=$%.2f  total_assets_eom=$%.2f "

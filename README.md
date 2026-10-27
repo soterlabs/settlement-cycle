@@ -81,7 +81,7 @@ configurable via `--output-dir` or the `SETTLE_OUTPUT_DIR` env var.
 Every venue declares `settlement_enabled`. Reporting-only holdings and issuer
 incentive accruals are exposed separately from MSC totals in reports and the API.
 See [the venue reporting contract](docs/reporting-only-venues.md) for configuration,
-Spark reward rules, API fields, and pending USDG receipt configuration.
+Spark reward rules, API fields, and verified USDG receipt sources.
 
 ## Development
 

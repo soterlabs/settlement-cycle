@@ -5,7 +5,16 @@ from __future__ import annotations
 from decimal import Decimal
 
 from ...domain.primes import Address, Chain
-from ...extract.oracles import chronicle, erc4626, price_per_share, redstone
+from ...extract.oracles import chainlink, chronicle, erc4626, price_per_share, redstone
+
+
+class ChainlinkNavSource:
+    """Pinned USD price from a Chainlink AggregatorV3 feed."""
+
+    def nav_at(self, chain: str, oracle_address: bytes | None, block: int) -> Decimal:
+        if oracle_address is None:
+            raise ValueError("ChainlinkNavSource requires an oracle address")
+        return chainlink.read(Chain(chain), Address(oracle_address), block)
 
 
 class ChronicleNavSource:
