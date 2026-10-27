@@ -181,3 +181,14 @@ def test_fred_requires_each_calendar_day_and_converts_percent(monkeypatch, tmp_c
     response.text = 'observation_date,DFEDTARL\n2026-03-08,3.50\n'
     with pytest.raises(ValueError, match='Incomplete DFEDTARL'):
         mod.fed_lower(start, start + timedelta(days=2))
+
+
+def test_fred_dates_survive_postgres_payload_round_trip(monkeypatch, tmp_cache_dir):
+    import settle.extract.fred as mod
+    from settle.extract.postgres_store import decode_payload, encode_payload
+    start = date(2026, 3, 8)
+    response = SimpleNamespace(raise_for_status=lambda: None,
+                               text='observation_date,DFEDTARL\n2026-03-08,3.50\n')
+    monkeypatch.setattr(mod.requests, 'get', lambda *a, **kw: response)
+    persisted = decode_payload(encode_payload(mod._observations(start, start)))
+    assert dict(persisted) == {start: D('0.035')}

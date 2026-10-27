@@ -12,9 +12,9 @@ from .publication import source_operation
 SOURCE = 'https://fred.stlouisfed.org/graph/' + 'fredgraph.csv'
 
 
-@cached(source_id='fred.dfedtar_lower.v1')
+@cached(source_id='fred.dfedtar_lower.v2')
 @source_operation
-def fed_lower(start: date, end: date) -> dict[date, Decimal]:
+def _observations(start: date, end: date) -> list[tuple[date, Decimal]]:
     response = requests.get(SOURCE, params={'id': 'DFEDTARL', 'cosd': str(start),
                                            'coed': str(end)}, timeout=(10, 30))
     response.raise_for_status()
@@ -32,4 +32,10 @@ def fed_lower(start: date, end: date) -> dict[date, Decimal]:
         values[day] = value
     if len(values) != (end - start).days + 1:
         raise ValueError('Incomplete DFEDTARL daily coverage')
-    return values
+    # Date values survive the JSONB codec; dictionary keys become strings.
+    return sorted(values.items())
+
+
+def fed_lower(start: date, end: date) -> dict[date, Decimal]:
+    """Reconstruct date keys after either a fresh read or a persisted-cache hit."""
+    return dict(_observations(start, end))
