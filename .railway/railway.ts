@@ -59,7 +59,7 @@ export default defineRailway(() => {
     replicas: { "us-west2": 1 },
     build,
     deploy: {
-      startCommand: "python -m settle.revenue.worker",
+      startCommand: "python -m settle.revenue.worker --require-views",
       cronSchedule: "17 20 * * *",
       restartPolicyType: "NEVER", // bounded retries are recorded by the worker
     },
