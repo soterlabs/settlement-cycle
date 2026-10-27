@@ -33,10 +33,14 @@ def index(log):
     return int(log['logIndex'], 16)
 
 
-def savings_receipts(b, logs):
-    specs = {v.token.address.hex: v for v in load_prime_by_id('spark').venues
+def load_savings_specs():
+    return {v.token.address.hex: v for v in load_prime_by_id('spark').venues
              if v.chain.value == 'ethereum' and v.pricing_category == PricingCategory.SPARK_SAVINGS_V2
              and v.underlying is not None}
+
+
+def savings_receipts(b, logs, specs=None):
+    specs = load_savings_specs() if specs is None else specs
     expected = defaultdict(D)
     for op in b.external_funding:
         if op.kind == 'draw':
@@ -59,13 +63,38 @@ def savings_receipts(b, logs):
     return {k: str(v) for k, v in actual.items()}
 
 
-def validate(batch, receipt, *, allow_mixed_prefix=False):
+def prefix_borrowed_cash(prefix, ingress, payment, opening):
+    """Lower bound: other payments consume borrowing first; deposit uses unknown cash first."""
+    balance, borrowed, paid_elsewhere = opening, D(0), D(0)
+    for log in prefix:
+        sender, recipient = address(log['topics'][1]), address(log['topics'][2])
+        amount = D(int(log['data'], 16)) / WAD
+        if sender == recipient == ALM:
+            raise ValueError('Self-transfer requires separate cash normalization')
+        if log == payment:
+            if amount > balance:
+                raise ValueError('Deposit exceeds ordered available cash')
+            return max(D(0), amount - (balance - borrowed)), paid_elsewhere
+        if recipient == ALM:
+            balance += amount
+            if log == ingress:
+                borrowed += amount
+        else:
+            balance -= amount
+            borrowed = max(D(0), borrowed - amount)
+            paid_elsewhere += amount
+        if balance < 0:
+            raise ValueError('Ordered cash prefix becomes negative')
+    raise ValueError('Missing ordered deposit payment')
+
+
+def validate(batch, receipt, *, allow_mixed_prefix=False, allow_prefix_payments=False, savings_specs=None):
     with localcontext() as ctx:
         ctx.prec = 60
-        return _validate(batch, receipt, allow_mixed_prefix)
+        return _validate(batch, receipt, allow_mixed_prefix, allow_prefix_payments, savings_specs)
 
 
-def _validate(b, receipt, allow_mixed_prefix):
+def _validate(b, receipt, allow_mixed_prefix, allow_prefix_payments, savings_specs):
     tx = receipt['transactionHash'].lower()
     if (b.identity != 'ethereum:' + tx or b.chain != 'ethereum'
             or int(receipt['status'], 16) != 1 or int(receipt['blockNumber'], 16) != b.block
@@ -120,14 +149,15 @@ def _validate(b, receipt, allow_mixed_prefix):
     cash_events = [log for log in transfers if ALM in (address(log['topics'][1]), address(log['topics'][2]))]
     prefix = [log for log in cash_events if index(log) <= index(payments[0])]
     extra = [log for log in prefix if log not in (ingress[0], payments[0])]
-    if prefix != [ingress[0], payments[0]] and not (
+    if not allow_prefix_payments and prefix != [ingress[0], payments[0]] and not (
             allow_mixed_prefix and prefix[-1] == payments[0]
             and all(address(log['topics'][2]) == ALM
                     and address(log['topics'][1]) != ALM for log in extra)):
         raise ValueError('Other USDS cash contaminates deposit prefix')
     # All additional cash is unclassified, even if it comes from a familiar
     # venue. Charge it against the deposit before attributing any Sky funding.
-    other_cash = sum((D(int(log['data'], 16)) / WAD for log in extra), D(0))
+    other_cash = sum((D(int(log['data'], 16)) / WAD for log in extra
+                      if address(log['topics'][2]) == ALM), D(0))
     ms = {m.account: m for m in b.movements}
     if len(ms) != len(b.movements) or not {USDS, SUSDS} <= ms.keys():
         raise ValueError('Missing or duplicate position/cash movement')
@@ -138,6 +168,8 @@ def _validate(b, receipt, allow_mixed_prefix):
     if balance < 0:
         raise ValueError('Negative opening cash')
     for log in cash_events:
+        if address(log['topics'][1]) == address(log['topics'][2]) == ALM:
+            raise ValueError('Self-transfer requires separate cash normalization')
         amount = D(int(log['data'], 16)) / WAD
         balance += amount if address(log['topics'][2]) == ALM else -amount
         if balance < 0:
@@ -162,13 +194,18 @@ def _validate(b, receipt, allow_mixed_prefix):
     # Spend all unclassified opening cash first and remove all forwarded value
     # from new Sky funding first. Neither can inflate the proven contribution.
     known = max(D(0), min(drawn, paid - cash.value_before - other_cash) - paid * forwarded / shares)
+    if allow_prefix_payments:
+        deposited_borrowing, paid_elsewhere = prefix_borrowed_cash(prefix, ingress[0], payments[0], cash.value_before)
+        known = max(D(0), deposited_borrowing - paid * forwarded / shares)
     known = min(known, position.change)
     proof = {'transaction': b.identity, 'block': b.block, 'gross_draw_usds': str(drawn),
             'gross_wipe_usds': str(wiped), 'normalized_net_debt': str(b.minted),
-            'savings_cash_received': savings_receipts(b, logs),
+            'savings_cash_received': savings_receipts(b, logs, savings_specs),
             'usds_deposited': str(paid), 'opening_unclassified_usds': str(cash.value_before),
             'forwarded_susds_shares_raw': str(forwarded),
             'verified_borrowed_contribution': str(known)}
     if allow_mixed_prefix:
         proof['additional_unclassified_usds'] = str(other_cash)
+    if allow_prefix_payments:
+        proof['predeposit_other_payments_usds'] = str(paid_elsewhere)
     return proof

@@ -157,3 +157,15 @@ below one dollar at January-July month ends; percentages on dust are suppressed
 in the Markdown while exact values remain in the machine-readable artifact.
 Neither this inventory nor the selected groups constitute full Prime-wide
 capital or borrowing-cost reconciliation.
+
+## October 27 follow-up: sUSDS evidence across all month ends
+
+The [all-month receipt investigation](spark/susds-all-month-origins-2026-10-27.md)
+raises January/February/March sUSDS coverage to **82.23% / 81.72% / 89.20%**.
+August is now **92.18%**, with **54.961m** unclassified. This supersedes the
+low earlier-month percentages in the preceding follow-up; the monthly report
+has been refreshed. The cache contains 1,362 receipts, with 1,108 authenticated
+draw routes and one isolated spUSDS-to-sUSDS reallocation. Remaining gaps still
+include other source reallocations, additional share receipts, and smaller
+contributions not covered by the current evidence. Other allocation results
+are unchanged.

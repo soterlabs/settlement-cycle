@@ -16,24 +16,28 @@ from pathlib import Path
 from audit_allocation_positions import audit
 from audit_bridged_allocation_origins import surviving_sources
 from audit_scoped_borrowing_origins import trace
-from audit_spark_ordered_draws import SUSDS, validate
+from audit_spark_ordered_draws import SUSDS, load_savings_specs, validate
 
 from settle.compute.executed_spell_capital import apply_executed_spells
 from settle.normalize.allocation_history_cache import load_history
 
 
-def attribute(history, receipts, start, end, *, allow_mixed_prefix=False, include_native_returns=False):
+def attribute(history, receipts, start, end, *, allow_mixed_prefix=False, include_native_returns=False,
+              allow_prefix_payments=False, include_spusds_returns=False):
     from decimal import localcontext
     with localcontext() as ctx:
         ctx.prec = 60
-        return _attribute(history, receipts, start, end, allow_mixed_prefix, include_native_returns)
+        return _attribute(history, receipts, start, end, allow_mixed_prefix, include_native_returns,
+                          allow_prefix_payments, include_spusds_returns)
 
 
-def _attribute(history, receipts, start, end, allow_mixed_prefix, include_native_returns):
+def _attribute(history, receipts, start, end, allow_mixed_prefix, include_native_returns,
+               allow_prefix_payments, include_spusds_returns):
     if history.venue_accounts['S32'] != SUSDS or history.custody_accounts.get('S32'):
         raise ValueError('Unexpected sUSDS allocation identity')
     by_id = {b.identity: b for b in history.batches}
     proofs, rejected, verified = [], [], {}
+    savings_specs = load_savings_specs()
     for tx, receipt in sorted(receipts.items()):
         identity = 'ethereum:' + tx
         if identity not in by_id:
@@ -41,7 +45,8 @@ def _attribute(history, receipts, start, end, allow_mixed_prefix, include_native
         if by_id[identity].day > end:
             raise ValueError('Receipt exceeds audit period')
         try:
-            proof = validate(by_id[identity], receipt, allow_mixed_prefix=allow_mixed_prefix)
+            proof = validate(by_id[identity], receipt, allow_mixed_prefix=allow_mixed_prefix,
+                             allow_prefix_payments=allow_prefix_payments, savings_specs=savings_specs)
         except ValueError as exc:
             rejected.append({'transaction': identity, 'reason': str(exc)})
             continue
@@ -55,6 +60,16 @@ def _attribute(history, receipts, start, end, allow_mixed_prefix, include_native
             if proof['transaction'] in verified:
                 raise ValueError('Receipt cannot be both a new draw and a native return')
             verified[proof['transaction']] = D(proof['verified_borrowed_contribution'])
+    spusds_proofs, spusds_origin = [], None
+    if include_spusds_returns:
+        from audit_spark_spusds_returns import contributions as spusds_contributions
+        spusds_proofs, spusds_origin = spusds_contributions(history, receipts, end)
+        for proof in spusds_proofs:
+            if proof['transaction'] in verified:
+                raise ValueError('Reallocation overlaps an already attributed contribution')
+            verified[proof['transaction']] = D(proof['verified_borrowed_contribution'])
+        handled = {proof['transaction'] for proof in spusds_proofs}
+        rejected = [row for row in rejected if row['transaction'] not in handled]
     origin = trace(history, ('S32',), end, verified_draws=verified)
     local = audit(history, 'S32', start, end)
     capital = D(local['closing_capital'])
@@ -72,6 +87,8 @@ def _attribute(history, receipts, start, end, allow_mixed_prefix, include_native
             'surviving_unclassified_sources': surviving, 'origin_trace': origin}
     if include_native_returns:
         result.update(native_return_proofs=native_proofs, native_origin_trace=native_origin)
+    if include_spusds_returns:
+        result.update(spusds_return_proofs=spusds_proofs, spusds_origin_trace=spusds_origin)
     return result
 
 
@@ -86,6 +103,10 @@ def main():
                    help='Subtract all other pre-deposit USDS receipts before proving borrowed origin.')
     p.add_argument('--include-native-returns', action='store_true',
                    help='Carry surviving borrowed basis through authenticated July Base/Optimism returns.')
+    p.add_argument('--allow-prefix-payments', action='store_true',
+                   help='Charge intervening USDS payments against borrowing before attributing the deposit.')
+    p.add_argument('--include-spusds-returns', action='store_true',
+                   help='Carry source borrowed principal through isolated spUSDS withdrawals into sUSDS.')
     args = p.parse_args()
     if args.output.resolve() in {args.history.resolve(), args.receipts.resolve()}:
         p.error('Output must not overwrite an input')
@@ -98,11 +119,13 @@ def main():
     with opener(args.receipts, 'rt') as f:
         receipts = json.load(f)
     r = attribute(apply_executed_spells(h), receipts, args.start, args.end,
-                  allow_mixed_prefix=args.allow_mixed_prefix, include_native_returns=args.include_native_returns)
+                  allow_mixed_prefix=args.allow_mixed_prefix, include_native_returns=args.include_native_returns,
+                  allow_prefix_payments=args.allow_prefix_payments, include_spusds_returns=args.include_spusds_returns)
     r['input_sha256'] = hashlib.sha256(args.history.read_bytes()).hexdigest()
     r['receipt_sha256'] = hashlib.sha256(args.receipts.read_bytes()).hexdigest()
     paths = [Path(__file__), Path('scripts/audit_spark_ordered_draws.py'),
              Path('scripts/audit_spark_native_return_origins.py'),
+             Path('scripts/audit_spark_spusds_returns.py'),
              Path('scripts/audit_scoped_borrowing_origins.py'), Path('scripts/audit_bridged_allocation_origins.py'),
              Path('scripts/audit_allocation_positions.py'), Path('config/spark.yaml'),
              Path('src/settle/normalize/sources/hypersync_debt.py'),

@@ -152,3 +152,23 @@ def test_mixed_prefix_still_rejects_intervening_cash_payment(data):
     extra['topics'][1], extra['topics'][2] = extra['topics'][2], extra['topics'][1]
     with pytest.raises(ValueError, match='contaminates'):
         module.validate(batch_for(h, tx), receipt, allow_mixed_prefix=True)
+
+
+def test_prefix_payments_consume_borrowing_before_unknown_cash(data):
+    module, _h, _receipts = data
+    def transfer(sender, recipient, amount):
+        return {'topics':[module.TRANSFER_TOPIC0,'0x'+sender[2:].zfill(64),
+                          '0x'+recipient[2:].zfill(64)],'data':hex(amount*10**18)}
+    other='0x'+'1'*40
+    ingress=transfer(module.BUFFER,module.ALM,100)
+    outgoing=transfer(module.ALM,other,60)
+    deposit=transfer(module.ALM,module.SUSDS.split(':')[-1],80)
+    # Opening 40 unclassified + draw 100 - other payment 60 = deposit 80.
+    # Charge the entire other payment to borrowing: only 40 is proven.
+    known, paid=module.prefix_borrowed_cash([ingress,outgoing,deposit],ingress,deposit,D(40))
+    assert known==40 and paid==60
+    self_transfer=transfer(module.ALM,module.ALM,1)
+    with pytest.raises(ValueError,match='Self-transfer'):
+        module.prefix_borrowed_cash([ingress,self_transfer,deposit],ingress,deposit,D(40))
+    with pytest.raises(ValueError,match='negative'):
+        module.prefix_borrowed_cash([outgoing,ingress,deposit],ingress,deposit,D(40))

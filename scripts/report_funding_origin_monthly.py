@@ -24,7 +24,7 @@ from settle.normalize.allocation_history_cache import load_history
 START, END = date(2026, 1, 1), date(2026, 8, 31)
 SOURCES = {
     'spark:S1': 'reconciliation/spark_spusds_funding_origins_2026_08.json.gz',
-    'spark:S32': 'reconciliation/spark_susds_upstream_origins_2026_08.json.gz',
+    'spark:S32': 'reconciliation/spark_susds_all_month_origins_2026_08.json.gz',
     'spark:S34': 'reconciliation/spark_base_morpho_funding_origins_2026_08.json.gz',
     'spark:S23': 'reconciliation/spark_anchorage_funding_origins_2026_08.json',
     'grove:E9': 'reconciliation/grove_jtrsy_funding_origins_2026_08.json.gz',
@@ -122,7 +122,7 @@ def markdown(result):
     lines += ['', 'E23 separately identifies reinvested gains; these are excluded from its unresolved column.',
               'Zero capital is shown as —; balances below $1 are shown as dust. Exact amounts remain in the JSON.',
               'S34 holds only dust at January-July month ends; percentages on those amounts are not meaningful.',
-              'S32 evidence was prioritized for August survivors: earlier-month low coverage remains an open research gap.', '',
+              'S32 now includes receipt research across all eight month ends; remaining unclassified capital still needs investigation.', '',
               '## Configured venue inventory', '',
               '“Not audited” means no reviewed allocation-specific origin result in this report, not zero borrowed funding.',
               'A missing normalized account requires extraction/support assessment before attribution.', '',
