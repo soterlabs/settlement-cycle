@@ -1,0 +1,1637 @@
+{
+  "scope": "Month-end funding-origin snapshots and complete configured-venue audit inventory.\n\nThis reports reviewed allocation-specific methods, not a consolidated debt or\nborrowing-cost reconciliation. Earlier months use evidence available in these\nsnapshots; unproven capital is not assumed borrowed. No production data changes.",
+  "start": "2026-01-01",
+  "end": "2026-08-31",
+  "allocations": [
+    {
+      "prime": "spark",
+      "venues": [
+        "S1"
+      ],
+      "method": "scoped origin with upstream/custody attribution",
+      "source": "reconciliation/spark_spusds_funding_origins_2026_08.json.gz",
+      "monthly": [
+        {
+          "month_end": "2026-01-31",
+          "capital": "555775866.993466932837514000194929781430002110737050623543503",
+          "borrowed": "550525027.849194488685106776928529830363361386134691100468972",
+          "unclassified": "5250839.144272444152407223266399951066640724602359523074531",
+          "borrowed_percent": "99.0552236151099077808343556194118277258391211201946366621693"
+        },
+        {
+          "month_end": "2026-02-28",
+          "capital": "274721728.707699521556971205263774979291053784023396829863254",
+          "borrowed": "272598928.224554853520218636609124717280955507901602458866946",
+          "unclassified": "2122800.483144668036752568654650262010098276121794370996308",
+          "borrowed_percent": "99.2272906503863401490723318538034376226116633003234018336500"
+        },
+        {
+          "month_end": "2026-03-31",
+          "capital": "149897734.536317032974226053813107454429827633309868687235069",
+          "borrowed": "149272523.656476087374928093012233534057053387668836574247670",
+          "unclassified": "625210.879840945599297960800873920372774245641032112987399",
+          "borrowed_percent": "99.5829083863242307371719482973589339859480782930470782554228"
+        },
+        {
+          "month_end": "2026-04-30",
+          "capital": "147665230.467403363922318313324545389841638230256361607806300",
+          "borrowed": "140676934.935087381230614189147331957074886355865522452391574",
+          "unclassified": "6988295.532315982691704124177213432766751874390839155414726",
+          "borrowed_percent": "95.2674739272095424027844992537959733690924700618738926027428"
+        },
+        {
+          "month_end": "2026-05-31",
+          "capital": "549901911.948594110954021778303568151762093286593777568830883",
+          "borrowed": "512592416.175691299107841217444386385100800415715865876523159",
+          "unclassified": "37309495.772902811846180560859181766661292870877911692307724",
+          "borrowed_percent": "93.2152453078958242801589977472231623702430632277039632592529"
+        },
+        {
+          "month_end": "2026-06-30",
+          "capital": "488266823.113141158573239930927085289540472717461500398027076",
+          "borrowed": "458828693.421178777756620133084381791101418850747899186517401",
+          "unclassified": "29438129.691962380816619797842703498439053866713601211509675",
+          "borrowed_percent": "93.9708929014943578925596867145699586134970980502547229962063"
+        },
+        {
+          "month_end": "2026-07-31",
+          "capital": "752289702.514264866897909053639593730794278908331058357530268",
+          "borrowed": "724618711.930196753941564537586597298981460668453707510325882",
+          "unclassified": "27670990.584068112956344516052996431812818239877350847204386",
+          "borrowed_percent": "96.3217640103822346965815933183983093094044060142922462868925"
+        },
+        {
+          "month_end": "2026-08-31",
+          "capital": "681732615.541465583750895939580467797153634947997230760671256",
+          "borrowed": "662616464.853140875855783425330343892937664385235546536972967",
+          "unclassified": "19116150.688324707895112514250123904215970562761684223698289",
+          "borrowed_percent": "97.1959459981034176390324488335722740171751535721876459078374"
+        }
+      ]
+    },
+    {
+      "prime": "spark",
+      "venues": [
+        "S32"
+      ],
+      "method": "reviewed origin ledger; month-end acquisition capital",
+      "source": "reconciliation/spark_susds_upstream_origins_2026_08.json.gz",
+      "monthly": [
+        {
+          "month_end": "2026-01-31",
+          "capital": "392597448.329889284538272939471577515042685279461164757519067",
+          "borrowed": "82166881.1837746886050068126322198719730595471184900076000788",
+          "unclassified": "310430567.146114595933266126839357643069625732342674749918988",
+          "borrowed_percent": "20.9290410656800868386473668270452085869213112811112040544557"
+        },
+        {
+          "month_end": "2026-02-28",
+          "capital": "796884530.674222045861863989073453666176464229537330119684783",
+          "borrowed": "127526012.444218081104442025404668930693793959424902438035783",
+          "unclassified": "669358518.230003964757421963668784735482670270112427681649000",
+          "borrowed_percent": "16.0030729089849235166753911989160521360293641401640237197342"
+        },
+        {
+          "month_end": "2026-03-31",
+          "capital": "1368655399.38583879929536318419732543853207815109477233969237",
+          "borrowed": "64227169.9442826120468113398312532466362531639406377034803900",
+          "unclassified": "1304428229.44155618724855184436607219189582498715413463621198",
+          "borrowed_percent": "4.69272031317039186546803611385037240257990167210385121670392"
+        },
+        {
+          "month_end": "2026-04-30",
+          "capital": "1720359308.34035867828145749851574262555554550626777711797185",
+          "borrowed": "640917043.793809745496228573756659787218941819648886846316032",
+          "unclassified": "1079442264.54654893278522892475908283833660368661889027165582",
+          "borrowed_percent": "37.2548362825499751432751630389457802131015017159457726994728"
+        },
+        {
+          "month_end": "2026-05-31",
+          "capital": "1574891808.43199094814984090882091015373183511125093079164795",
+          "borrowed": "904109509.407570712060628062768136076182573278920560980741130",
+          "unclassified": "670782299.024420236089212846052774077549261832330369810906820",
+          "borrowed_percent": "57.4077218871135654525712301707484409703615466811302498315539"
+        },
+        {
+          "month_end": "2026-06-30",
+          "capital": "1173333648.57847290858448842606221072955443091749956527043644",
+          "borrowed": "566487450.167214586706445466184828795008287790244632064310298",
+          "unclassified": "606846198.411258321878042959877381934546143127254933206126142",
+          "borrowed_percent": "48.2801674403125016188923428036210811551399911147135133019959"
+        },
+        {
+          "month_end": "2026-07-31",
+          "capital": "573938576.767191908114345321444256638301560501637202442240308",
+          "borrowed": "503854899.619971606296408809838411850242771897140031972546380",
+          "unclassified": "70083677.147220301817936511605844788058788604497170469693928",
+          "borrowed_percent": "87.7889934595477604313752438291720198842957909769388352063810"
+        },
+        {
+          "month_end": "2026-08-31",
+          "capital": "703133724.152203616212098587934386599855457704438308677700950",
+          "borrowed": "636767362.148782357274906832751026558025978374231580219136158",
+          "unclassified": "66366362.003421258937191755183360041829479330206728458564792",
+          "borrowed_percent": "90.5613456269016495559847898966842891209028608632751261053491"
+        }
+      ]
+    },
+    {
+      "prime": "spark",
+      "venues": [
+        "S34"
+      ],
+      "method": "reviewed origin ledger; month-end acquisition capital",
+      "source": "reconciliation/spark_base_morpho_funding_origins_2026_08.json.gz",
+      "monthly": [
+        {
+          "month_end": "2026-01-31",
+          "capital": "1.25757919836049891640835979139005302959888902124022637957E-45",
+          "borrowed": "9.57413470278051360836417757906069053942843222470458310054E-46",
+          "unclassified": "3.00165728082447555571942033483983975656045798769768069516E-46",
+          "borrowed_percent": "76.1314652410144473140970001393869210032513014569991189185973"
+        },
+        {
+          "month_end": "2026-02-28",
+          "capital": "3.7815504142566900244137856566080056609527192829581128078E-14",
+          "borrowed": "1.4686244355251581122872941021818697146228425459766995173E-14",
+          "unclassified": "2.3129259787315319121264915544261359463298767369814132905E-14",
+          "borrowed_percent": "38.8365689900192485934510400887477978521266567188401674603934"
+        },
+        {
+          "month_end": "2026-03-31",
+          "capital": "0.394567370789512774724306430708340057855722835887609679",
+          "borrowed": "0.0855270575414869876994358673502006723656988460383749753",
+          "unclassified": "0.3090403132480257870248705633581393854900239898492347037",
+          "borrowed_percent": "21.6761607454643118472314812791128391300105739732176064070840"
+        },
+        {
+          "month_end": "2026-04-30",
+          "capital": "0.102477054339888269686239873602368526219913910074930906",
+          "borrowed": "0.051848058076103048809552282720349111971938123976913570",
+          "unclassified": "0.050628996263785220876687590882019414247975786098017336",
+          "borrowed_percent": "50.5947974501074818223444928890137713261382111792798621242228"
+        },
+        {
+          "month_end": "2026-05-31",
+          "capital": "0.4207294646444764012226346959914640243338063697057509515",
+          "borrowed": "0.2592760295721285832996738691391724483231565195117996120",
+          "unclassified": "0.1614534350723478179229608268522915760106498501939513395",
+          "borrowed_percent": "61.6253558070199019752864458241274190363622425009153236449804"
+        },
+        {
+          "month_end": "2026-06-30",
+          "capital": "0.000097813609789982526732903443182361924880029809120997178079",
+          "borrowed": "0.000084260093391489197314546551053522766747212353346741824581",
+          "unclassified": "0.000013553516398493329418356892128839158132817455774255353498",
+          "borrowed_percent": "86.1435270331047552305159027032962466416284427207273404936581"
+        },
+        {
+          "month_end": "2026-07-31",
+          "capital": "0.05395692151144124614374120597908413548874349710221840",
+          "borrowed": "0.05197657263965795589158432534984224669721882563008775",
+          "unclassified": "0.00198034887178329025215688062924188879152467147213065",
+          "borrowed_percent": "96.3297593407671173673865425616669520040376037233676050483779"
+        },
+        {
+          "month_end": "2026-08-31",
+          "capital": "283116139.249274376706966830133034106492575607234493990883206",
+          "borrowed": "264631606.581720254049988749049838579221557843817800900890634",
+          "unclassified": "18484532.667554122656978081083195527271017763416693089992572",
+          "borrowed_percent": "93.4710424080489793928067153704590291965753108350773777016598"
+        }
+      ]
+    },
+    {
+      "prime": "spark",
+      "venues": [
+        "S23"
+      ],
+      "method": "facility principal-return policy; direct origin before refinancing",
+      "source": "reconciliation/spark_anchorage_funding_origins_2026_08.json",
+      "monthly": [
+        {
+          "month_end": "2026-01-31",
+          "capital": "150000100.000000",
+          "borrowed": "138652217.525836757704899125815572137406706377961701570",
+          "identified_gains": "0",
+          "unclassified": "11347882.474163242295100874184427862593293622038298430",
+          "borrowed_percent": "92.4347500607244646536229814617271171197261721570196086535942"
+        },
+        {
+          "month_end": "2026-02-28",
+          "capital": "150000100.000000",
+          "borrowed": "138652217.525836757704899125815572137406706377961701570",
+          "identified_gains": "0",
+          "unclassified": "11347882.474163242295100874184427862593293622038298430",
+          "borrowed_percent": "92.4347500607244646536229814617271171197261721570196086535942"
+        },
+        {
+          "month_end": "2026-03-31",
+          "capital": "150133600.000000",
+          "borrowed": "138785717.525836757704899125815572137406706377961701570",
+          "identified_gains": "0",
+          "unclassified": "11347882.474163242295100874184427862593293622038298430",
+          "borrowed_percent": "92.4414771415837345570206308351842208584263469081548500801952"
+        },
+        {
+          "month_end": "2026-04-30",
+          "capital": "150133600.000000",
+          "borrowed": "138785717.525836757704899125815572137406706377961701570",
+          "identified_gains": "0",
+          "unclassified": "11347882.474163242295100874184427862593293622038298430",
+          "borrowed_percent": "92.4414771415837345570206308351842208584263469081548500801952"
+        },
+        {
+          "month_end": "2026-05-31",
+          "capital": "250133608.694857",
+          "borrowed": "189578964.036346502773422513104359035984114251869048155",
+          "identified_gains": "0",
+          "unclassified": "60554644.658510497226577486895640964015885748130951845",
+          "borrowed_percent": "75.7910802252957853038041086489684827754738665544990300045585"
+        },
+        {
+          "month_end": "2026-06-30",
+          "capital": "260133608.694857",
+          "borrowed": "199578964.036346502773422513104359035984114251869048155",
+          "identified_gains": "0",
+          "unclassified": "60554644.658510497226577486895640964015885748130951845",
+          "borrowed_percent": "76.7217142904658057509126345711316281678552485731617617136135"
+        },
+        {
+          "month_end": "2026-07-31",
+          "capital": "260097170.694857",
+          "borrowed": "199542526.036346502773422513104359035984114251869048155",
+          "identified_gains": "0",
+          "unclassified": "60554644.658510497226577486895640964015885748130951845",
+          "borrowed_percent": "76.7184531470538340687823144361933308856126188059665856200684"
+        },
+        {
+          "month_end": "2026-08-31",
+          "capital": "208829226.694857",
+          "borrowed": "148274582.036346502773422513104359035984114251869048155",
+          "identified_gains": "0",
+          "unclassified": "60554644.658510497226577486895640964015885748130951845",
+          "borrowed_percent": "71.0027922734237546166447097245766286243922713712757571192140"
+        }
+      ]
+    },
+    {
+      "prime": "grove",
+      "venues": [
+        "E9"
+      ],
+      "method": "scoped origin with upstream/custody attribution",
+      "source": "reconciliation/grove_jtrsy_funding_origins_2026_08.json.gz",
+      "monthly": [
+        {
+          "month_end": "2026-01-31",
+          "capital": "554662801.533581584724788804332958620466714559588194924474003",
+          "borrowed": "553385510.702147618511312230250320723649603609075614388370238",
+          "unclassified": "1277290.831433966213476574082637896817110950512580536103765",
+          "borrowed_percent": "99.7697175963662250869379749043887142590765091177679423389866"
+        },
+        {
+          "month_end": "2026-02-28",
+          "capital": "554662801.533581584724788804332958620466714559588194924474003",
+          "borrowed": "553385510.702147618511312230250320723649603609075614388370238",
+          "unclassified": "1277290.831433966213476574082637896817110950512580536103765",
+          "borrowed_percent": "99.7697175963662250869379749043887142590765091177679423389866"
+        },
+        {
+          "month_end": "2026-03-31",
+          "capital": "1175232801.53358158472478880433295862046671455958819492447400",
+          "borrowed": "1172863367.56243112229505146917889752008821608520405331193032",
+          "unclassified": "2369433.97115046242973733515406110037849847438414161254368",
+          "borrowed_percent": "99.7983859905834361405587377928992276190651332756296885183985"
+        },
+        {
+          "month_end": "2026-04-30",
+          "capital": "1212506520.66730456713816129902001406881319596030357585348997",
+          "borrowed": "1210585111.41426790179731795868329217144703845502008236344008",
+          "unclassified": "1921409.25303666534084334033672189736615750528349349004989",
+          "borrowed_percent": "99.8415341096904604506826376525463441909513819740013557454049"
+        },
+        {
+          "month_end": "2026-05-31",
+          "capital": "841108582.399522412374727409863391460953232045274174312089594",
+          "borrowed": "839775712.195953064539931291552915636702216493603074931209725",
+          "unclassified": "1332870.203569347834796118310475824251015551671099380879869",
+          "borrowed_percent": "99.8415341096904607392247059888558478410099260622787295456972"
+        },
+        {
+          "month_end": "2026-06-30",
+          "capital": "841108582.399522412374727409863391460953232045274174312089594",
+          "borrowed": "839775712.195953064539931291552915636702216493603074931209725",
+          "unclassified": "1332870.203569347834796118310475824251015551671099380879869",
+          "borrowed_percent": "99.8415341096904607392247059888558478410099260622787295456972"
+        },
+        {
+          "month_end": "2026-07-31",
+          "capital": "841108582.399522412374727409863391460953232045274174312089594",
+          "borrowed": "839775712.195953064539931291552915636702216493603074931209725",
+          "unclassified": "1332870.203569347834796118310475824251015551671099380879869",
+          "borrowed_percent": "99.8415341096904607392247059888558478410099260622787295456972"
+        },
+        {
+          "month_end": "2026-08-31",
+          "capital": "841108582.399522412374727409863391460953232045274174312089594",
+          "borrowed": "839775712.195953064539931291552915636702216493603074931209725",
+          "unclassified": "1332870.203569347834796118310475824251015551671099380879869",
+          "borrowed_percent": "99.8415341096904607392247059888558478410099260622787295456972"
+        }
+      ]
+    },
+    {
+      "prime": "grove",
+      "venues": [
+        "E10"
+      ],
+      "method": "reviewed origin ledger; month-end acquisition capital",
+      "source": "reconciliation/grove_large_allocation_origin_coverage_2026_08.json.gz",
+      "monthly": [
+        {
+          "month_end": "2026-01-31",
+          "capital": "175806720.548660772139483452089306395738279523106175476593600",
+          "borrowed": "175806720.548660772139483452089306395738279523106175476593600",
+          "unclassified": "0",
+          "borrowed_percent": "100"
+        },
+        {
+          "month_end": "2026-02-28",
+          "capital": "425806720.548660772139483452089306395738279523106175476593600",
+          "borrowed": "425731720.548660772139483452089306395738279523106175476593600",
+          "unclassified": "75000.000000000000000000000000000000000000000000000000000",
+          "borrowed_percent": "99.9823863747609805341348673734335077763789303715266134810701"
+        },
+        {
+          "month_end": "2026-03-31",
+          "capital": "700806720.548660772139483452089306395738279523106175476593600",
+          "borrowed": "700716720.548660772139483452089306395738279523106175476593600",
+          "unclassified": "90000.000000000000000000000000000000000000000000000000000",
+          "borrowed_percent": "99.9871576574023806301481949589516983790256419234696186231188"
+        },
+        {
+          "month_end": "2026-04-30",
+          "capital": "975806720.548660772139483452089306395738279523106175476593600",
+          "borrowed": "975716720.548660772139483452089306395738279523106175476593600",
+          "unclassified": "90000.000000000000000000000000000000000000000000000000000",
+          "borrowed_percent": "99.9907768620460621279502528210092288216922659326587498469822"
+        },
+        {
+          "month_end": "2026-05-31",
+          "capital": "703688041.054399675749709295062100132189677147702637207923756",
+          "borrowed": "703623138.935607865498384452018173159984414595764046174555946",
+          "unclassified": "64902.118791810251324843043926972205262551938591033367810",
+          "borrowed_percent": "99.9907768620460621279502528210092288216922659326587498469823"
+        },
+        {
+          "month_end": "2026-06-30",
+          "capital": "703688041.054399675749709295062100132189677147702637207923756",
+          "borrowed": "703623138.935607865498384452018173159984414595764046174555946",
+          "unclassified": "64902.118791810251324843043926972205262551938591033367810",
+          "borrowed_percent": "99.9907768620460621279502528210092288216922659326587498469823"
+        },
+        {
+          "month_end": "2026-07-31",
+          "capital": "703688041.054399675749709295062100132189677147702637207923756",
+          "borrowed": "703623138.935607865498384452018173159984414595764046174555946",
+          "unclassified": "64902.118791810251324843043926972205262551938591033367810",
+          "borrowed_percent": "99.9907768620460621279502528210092288216922659326587498469823"
+        },
+        {
+          "month_end": "2026-08-31",
+          "capital": "654669931.422699029340607921374728373230904121653935819510996",
+          "borrowed": "654609550.311780963347270932641467069900524192862129788187292",
+          "unclassified": "60381.110918065993336988733261303330379928791806031323704",
+          "borrowed_percent": "99.9907768620460621279502528210092288216922659326587498469825"
+        }
+      ]
+    },
+    {
+      "prime": "grove",
+      "venues": [
+        "E8",
+        "E20"
+      ],
+      "method": "reviewed origin ledger; month-end acquisition capital",
+      "source": "reconciliation/grove_large_allocation_origin_coverage_2026_08.json.gz",
+      "monthly": [
+        {
+          "month_end": "2026-01-31",
+          "capital": "695268704.767677775461139384881845291295071155162446714979076",
+          "borrowed": "695268704.767677775461139384881845291295071155162446714979076",
+          "unclassified": "0",
+          "borrowed_percent": "100"
+        },
+        {
+          "month_end": "2026-02-28",
+          "capital": "695268704.767677775461139384881845291295071155162446714979076",
+          "borrowed": "695268704.767677775461139384881845291295071155162446714979076",
+          "unclassified": "0",
+          "borrowed_percent": "100"
+        },
+        {
+          "month_end": "2026-03-31",
+          "capital": "375549658.090052052505412611749388701136666558878764521056130",
+          "borrowed": "375549658.090052052505412611749388701136666558878764521056130",
+          "unclassified": "0",
+          "borrowed_percent": "100"
+        },
+        {
+          "month_end": "2026-04-30",
+          "capital": "375549658.090052052505412611749388701136666558878764521056130",
+          "borrowed": "375549658.090052052505412611749388701136666558878764521056130",
+          "unclassified": "0",
+          "borrowed_percent": "100"
+        },
+        {
+          "month_end": "2026-05-31",
+          "capital": "375549658.090052052505412611749388701136666558878764521056130",
+          "borrowed": "375549658.090052052505412611749388701136666558878764521056130",
+          "unclassified": "0",
+          "borrowed_percent": "100"
+        },
+        {
+          "month_end": "2026-06-30",
+          "capital": "375549658.090052052505412611749388701136666558878764521056130",
+          "borrowed": "375549658.090052052505412611749388701136666558878764521056130",
+          "unclassified": "0",
+          "borrowed_percent": "100"
+        },
+        {
+          "month_end": "2026-07-31",
+          "capital": "375549658.090052052505412611749388701136666558878764521056130",
+          "borrowed": "375549658.090052052505412611749388701136666558878764521056130",
+          "unclassified": "0",
+          "borrowed_percent": "100"
+        },
+        {
+          "month_end": "2026-08-31",
+          "capital": "375549658.090052052505412611749388701136666558878764521056130",
+          "borrowed": "375549658.090052052505412611749388701136666558878764521056130",
+          "unclassified": "0",
+          "borrowed_percent": "100"
+        }
+      ]
+    },
+    {
+      "prime": "grove",
+      "venues": [
+        "E42"
+      ],
+      "method": "facility principal-return policy; direct origin before refinancing",
+      "source": "reconciliation/grove_warehouse_funding_origins_2026_08.json",
+      "monthly": [
+        {
+          "month_end": "2026-01-31",
+          "capital": "0",
+          "borrowed": "0",
+          "identified_gains": "0",
+          "unclassified": "0",
+          "borrowed_percent": null
+        },
+        {
+          "month_end": "2026-02-28",
+          "capital": "0",
+          "borrowed": "0",
+          "identified_gains": "0",
+          "unclassified": "0",
+          "borrowed_percent": null
+        },
+        {
+          "month_end": "2026-03-31",
+          "capital": "0",
+          "borrowed": "0",
+          "identified_gains": "0",
+          "unclassified": "0",
+          "borrowed_percent": null
+        },
+        {
+          "month_end": "2026-04-30",
+          "capital": "0",
+          "borrowed": "0",
+          "identified_gains": "0",
+          "unclassified": "0",
+          "borrowed_percent": null
+        },
+        {
+          "month_end": "2026-05-31",
+          "capital": "0",
+          "borrowed": "0",
+          "identified_gains": "0",
+          "unclassified": "0",
+          "borrowed_percent": null
+        },
+        {
+          "month_end": "2026-06-30",
+          "capital": "0",
+          "borrowed": "0",
+          "identified_gains": "0",
+          "unclassified": "0",
+          "borrowed_percent": null
+        },
+        {
+          "month_end": "2026-07-31",
+          "capital": "304000001",
+          "borrowed": "303957394.57882",
+          "identified_gains": "0",
+          "unclassified": "42606.42118",
+          "borrowed_percent": "99.9859847299211028621016353220340943354141633703481468080653"
+        },
+        {
+          "month_end": "2026-08-31",
+          "capital": "304000001",
+          "borrowed": "303957394.57882",
+          "identified_gains": "0",
+          "unclassified": "42606.42118",
+          "borrowed_percent": "99.9859847299211028621016353220340943354141633703481468080653"
+        }
+      ]
+    },
+    {
+      "prime": "grove",
+      "venues": [
+        "E23"
+      ],
+      "method": "bridge/cash origin; separately identified reinvested gains",
+      "source": "reconciliation/grove_steakhouse_funding_origins_2026_08.json",
+      "monthly": [
+        {
+          "month_end": "2026-01-31",
+          "capital": "0",
+          "borrowed": "0",
+          "identified_gains": "0",
+          "unclassified": "0",
+          "borrowed_percent": null
+        },
+        {
+          "month_end": "2026-02-28",
+          "capital": "0",
+          "borrowed": "0",
+          "identified_gains": "0",
+          "unclassified": "0",
+          "borrowed_percent": null
+        },
+        {
+          "month_end": "2026-03-31",
+          "capital": "15999453.2650364421073479009554691676001552778202398051556486",
+          "borrowed": "15999453.2650364421073479009554691676001552778202398051556486",
+          "identified_gains": "0E-53",
+          "unclassified": "0",
+          "borrowed_percent": "100"
+        },
+        {
+          "month_end": "2026-04-30",
+          "capital": "67695318.7515528578211455225694551930024099909260111932237866",
+          "borrowed": "67512139.5932656843199312710836879478371326546904147551744385",
+          "identified_gains": "123907.263477407219413014327370951156424160067918682702787653",
+          "unclassified": "59271.894809766281801237158396294008853176167677755346560447",
+          "borrowed_percent": "99.7294064616794915847989458442056767525102047765143650966112"
+        },
+        {
+          "month_end": "2026-05-31",
+          "capital": "99695318.7515528578211455225694551930024099909260111932237865",
+          "borrowed": "99405039.5448297222673028158706613608119290829109927479612373",
+          "identified_gains": "161962.370918777251909012203228463579612987881877853187716872",
+          "unclassified": "128316.835804358301933694495565368610867920133140592074832328",
+          "borrowed_percent": "99.7088336640494324568049435487942843877537260681931844895814"
+        },
+        {
+          "month_end": "2026-06-30",
+          "capital": "172695318.751552857821145522569455193002409990926011193223786",
+          "borrowed": "172402082.388253033154724036321171211315997102586826239738493",
+          "identified_gains": "164915.728146428808735064197315721951345565512871707633755298",
+          "unclassified": "128320.635153395857686422050968259735067322826313245851537702",
+          "borrowed_percent": "99.8302001667331310238944681200245888355430511932012606235283"
+        },
+        {
+          "month_end": "2026-07-31",
+          "capital": "202695318.751552857821145522569455193002409990926011193223786",
+          "borrowed": "202316398.036281641757807706333669277091683619332547388704770",
+          "identified_gains": "201059.464821682231247054555589646114359143190514672013318568",
+          "unclassified": "177861.250449533832090761680196269796367228402949132505697432",
+          "borrowed_percent": "99.8130589706732863879013553101956241972213696709721108403762"
+        },
+        {
+          "month_end": "2026-08-31",
+          "capital": "202695318.751552857821145522569455193002409990926011193223786",
+          "borrowed": "202316398.036281641757807706333669277091683619332547388704770",
+          "identified_gains": "201059.464821682231247054555589646114359143190514672013318568",
+          "unclassified": "177861.250449533832090761680196269796367228402949132505697432",
+          "borrowed_percent": "99.8130589706732863879013553101956241972213696709721108403762"
+        }
+      ]
+    }
+  ],
+  "inventory": [
+    {
+      "prime": "spark",
+      "venue": "S1",
+      "label": "Spark USDS (SparkLend spToken)",
+      "status": "audited",
+      "report_group": [
+        "S1"
+      ],
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xc02ab1a5eaa8d1b114ef786d9bde108cd4364359"
+    },
+    {
+      "prime": "spark",
+      "venue": "S2",
+      "label": "Spark USDC (SparkLend spToken)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x377c3bd93f2a2984e1e7be6a5c22c525ed4a4815"
+    },
+    {
+      "prime": "spark",
+      "venue": "S3",
+      "label": "Spark USDT (SparkLend spToken)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xe7df13b8e3d6740fe17cbe928c7334243d86c92f"
+    },
+    {
+      "prime": "spark",
+      "venue": "S4",
+      "label": "Spark DAI (SparkLend spToken)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x4dedf26112b3ec8ec46e7e31ea5e123490b05b8b"
+    },
+    {
+      "prime": "spark",
+      "venue": "S5",
+      "label": "Spark PYUSD (SparkLend spToken)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x779224df1c756b4edd899854f32a53e8c2b2ce5d"
+    },
+    {
+      "prime": "spark",
+      "venue": "S6",
+      "label": "Aave Ethereum Lido USDS (aToken)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x09aa30b182488f769a9824f15e6ce58591da4781"
+    },
+    {
+      "prime": "spark",
+      "venue": "S7",
+      "label": "Aave Ethereum USDS (aToken)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x32a6268f9ba3642dda7892add74f1d34469a4259"
+    },
+    {
+      "prime": "spark",
+      "venue": "S8",
+      "label": "Aave Ethereum USDC (aToken)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x98c23e9d8f34fefb1b7bd6a91b7ff122f4e16f5c"
+    },
+    {
+      "prime": "spark",
+      "venue": "S9",
+      "label": "Aave Ethereum USDT (aToken)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x23878914efe38d27c4d67ab83ed1b93a74d4086a"
+    },
+    {
+      "prime": "spark",
+      "venue": "S10",
+      "label": "Spark Blue Chip USDC Vault (Morpho)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x56a76b428244a50513ec81e225a293d128fd581d"
+    },
+    {
+      "prime": "spark",
+      "venue": "S11",
+      "label": "Spark Blue Chip USDT Vault (Morpho \u2014 pre-2026-06 deployment)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xc7cdcfdefc64631ed6799c95e3b110cd42f2bd22"
+    },
+    {
+      "prime": "spark",
+      "venue": "S65",
+      "label": "Spark Blue Chip USDT Vault (Morpho \u2014 2026-06 redeployment)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xb0c424116172b55cbb6dd3136f5989f7959e5b91"
+    },
+    {
+      "prime": "spark",
+      "venue": "S12",
+      "label": "Spark DAI Vault (Morpho)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x73e65dbd630f90604062f6e02fab9138e713edd9"
+    },
+    {
+      "prime": "spark",
+      "venue": "S13",
+      "label": "Spark USDS Vault (Morpho)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xe41a0583334f0dc4e023acd0bfef3667f6fe0597"
+    },
+    {
+      "prime": "spark",
+      "venue": "S14",
+      "label": "Maple syrupUSDC (ERC-4626)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b"
+    },
+    {
+      "prime": "spark",
+      "venue": "S15",
+      "label": "Maple syrupUSDT (ERC-4626)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x356b8d89c1e1239cbbb9de4815c39a1474d5ba7d"
+    },
+    {
+      "prime": "spark",
+      "venue": "S16",
+      "label": "Ethena Staked USDe (sUSDe)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x9d39a5de30e57443bff2a8307a4256c8797a3497"
+    },
+    {
+      "prime": "spark",
+      "venue": "S17",
+      "label": "Fluid Savings USDS (fsUSDS)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x2bbe31d63e6813e3ac858c04dae43fb2a72b0d11"
+    },
+    {
+      "prime": "spark",
+      "venue": "S18",
+      "label": "Arkis Spark Prime USDC 1 (ERC-4626)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x38464507e02c983f20428a6e8566693fe9e422a9"
+    },
+    {
+      "prime": "spark",
+      "venue": "S19",
+      "label": "BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041"
+    },
+    {
+      "prime": "spark",
+      "venue": "S20",
+      "label": "Janus Henderson Anemoy Treasury Fund (JTRSY)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x8c213ee79581ff4984583c6a801e5263418c4b86"
+    },
+    {
+      "prime": "spark",
+      "venue": "S21",
+      "label": "Superstate Short Duration US Government Securities Fund (USTB)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x43415eb6ff9db7e26a15b704e7a3edce97d31c4e"
+    },
+    {
+      "prime": "spark",
+      "venue": "S22",
+      "label": "Superstate Crypto Carry Fund (USCC)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x14d60e7fdc0d71d8611742720e4c50e7a974020c"
+    },
+    {
+      "prime": "spark",
+      "venue": "S23",
+      "label": "Anchorage tri-party loan escrow (USDC pass-through, ~$0 balance)",
+      "status": "audited",
+      "report_group": [
+        "S23"
+      ],
+      "normalization_note": "Facility return principal/interest split is unconfirmed",
+      "account": "facility:ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x49506c3aa028693458d6ee816b2ec28522946872"
+    },
+    {
+      "prime": "spark",
+      "venue": "S24",
+      "label": "Spark.fi USDT Reserve Curve (sUSDS/USDT)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x00836fe54625be242bcfa286207795405ca4fd10"
+    },
+    {
+      "prime": "spark",
+      "venue": "S25",
+      "label": "Spark.fi PYUSD Reserve Curve (PYUSD/USDS)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xa632d59b9b804a956bfaa9b48af3a1b74808fc1f"
+    },
+    {
+      "prime": "spark",
+      "venue": "S61",
+      "label": "Spark.fi PYUSD Reserve Uniswap V4 (PYUSD/USDS)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "nft:ethereum:S61"
+    },
+    {
+      "prime": "spark",
+      "venue": "S62",
+      "label": "Spark.fi USDT Reserve Uniswap V4 (USDT/USDS)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "nft:ethereum:S62"
+    },
+    {
+      "prime": "spark",
+      "venue": "S66",
+      "label": "Spark.fi RLUSD Reserve Uniswap V4 (RLUSD/USDS)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "nft:ethereum:S66"
+    },
+    {
+      "prime": "spark",
+      "venue": "S26",
+      "label": "USDC raw (ALM idle)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    },
+    {
+      "prime": "spark",
+      "venue": "S27",
+      "label": "USDT raw (ALM idle \u2014 $442M as of 2026-04)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xdac17f958d2ee523a2206206994597c13d831ec7"
+    },
+    {
+      "prime": "spark",
+      "venue": "S28",
+      "label": "PYUSD raw (ALM idle \u2014 $677M as of 2026-04)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x6c3ea9036406852006290770bedfcaba0e23a0e8"
+    },
+    {
+      "prime": "spark",
+      "venue": "S64",
+      "label": "RLUSD raw (ALM idle \u2014 $251.7M as of 2026-08)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x8292bb45bf1ee4d140127049757c2e0ff06317ed"
+    },
+    {
+      "prime": "spark",
+      "venue": "S29",
+      "label": "DAI raw (ALM idle)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x6b175474e89094c44da98b954eedeac495271d0f"
+    },
+    {
+      "prime": "spark",
+      "venue": "S30",
+      "label": "USDe raw (ALM idle)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0x4c9edd5852cd905f086c759e8383e09bff1e68b3"
+    },
+    {
+      "prime": "spark",
+      "venue": "S31",
+      "label": "USDS raw / POL (ALM idle \u2014 already netted out of utilized)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xdc035d45d973e3ec169d2276ddab16f1e407384f"
+    },
+    {
+      "prime": "spark",
+      "venue": "S32",
+      "label": "sUSDS raw / POL (ALM \u2014 Cat B 4626, demand-side spread)",
+      "status": "audited",
+      "report_group": [
+        "S32"
+      ],
+      "normalization_note": null,
+      "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xa3931d71877c0e7a3148cb7eb4463524fec27fbd"
+    },
+    {
+      "prime": "spark",
+      "venue": "S34",
+      "label": "Spark USDC Vault (Morpho, Base)",
+      "status": "audited",
+      "report_group": [
+        "S34"
+      ],
+      "normalization_note": null,
+      "account": "base:0x2917956eff0b5eaf030abdb4ef4296df775009ca:0x7bfa7c4f149e7415b73bdedfe609237e29cbf34a"
+    },
+    {
+      "prime": "spark",
+      "venue": "S35",
+      "label": "Aave Base USDC (aBasUSDC)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "base:0x2917956eff0b5eaf030abdb4ef4296df775009ca:0x4e65fe4dba92790696d040ac24aa414708f5c0ab"
+    },
+    {
+      "prime": "spark",
+      "venue": "S36",
+      "label": "Fluid Savings USDS (fsUSDS, Base)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "base:0x2917956eff0b5eaf030abdb4ef4296df775009ca:0xf62e339f21d8018940f188f6987bcdf02a849619"
+    },
+    {
+      "prime": "spark",
+      "venue": "S37",
+      "label": "Savings USDS / sUSDS proxy (Base \u2014 POL)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "base:0x2917956eff0b5eaf030abdb4ef4296df775009ca:0x5875eee11cf8398102fdad704c9e96607675467a"
+    },
+    {
+      "prime": "spark",
+      "venue": "S38",
+      "label": "USDS raw (Base \u2014 POL)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "base:0x2917956eff0b5eaf030abdb4ef4296df775009ca:0x820c137fa70c8691f0e44dc420a5e53c168921dc"
+    },
+    {
+      "prime": "spark",
+      "venue": "S39",
+      "label": "USDC raw (Base \u2014 ALM idle)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "base:0x2917956eff0b5eaf030abdb4ef4296df775009ca:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+    },
+    {
+      "prime": "spark",
+      "venue": "S41",
+      "label": "Aave Arbitrum USDCn (aArbUSDCn)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "arbitrum:0x92afd6f2385a90e44da3a8b60fe36f6cbe1d8709:0x724dc807b04555b71ed48a6896b6f41593b8c637"
+    },
+    {
+      "prime": "spark",
+      "venue": "S42",
+      "label": "Fluid Savings USDS (fsUSDS, Arbitrum)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "arbitrum:0x92afd6f2385a90e44da3a8b60fe36f6cbe1d8709:0x3459fcc94390c3372c0f7b4cd3f8795f0e5afe96"
+    },
+    {
+      "prime": "spark",
+      "venue": "S43",
+      "label": "Savings USDS / sUSDS proxy (Arbitrum \u2014 POL)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "arbitrum:0x92afd6f2385a90e44da3a8b60fe36f6cbe1d8709:0xddb46999f8891663a8f2828d25298f70416d7610"
+    },
+    {
+      "prime": "spark",
+      "venue": "S44",
+      "label": "USDS raw (Arbitrum \u2014 POL)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "arbitrum:0x92afd6f2385a90e44da3a8b60fe36f6cbe1d8709:0x6491c05a82219b8d1479057361ff1654749b876b"
+    },
+    {
+      "prime": "spark",
+      "venue": "S45",
+      "label": "USDC raw (Arbitrum \u2014 ALM idle)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "arbitrum:0x92afd6f2385a90e44da3a8b60fe36f6cbe1d8709:0xaf88d065e77c8cc2239327c5edb3a432268e5831"
+    },
+    {
+      "prime": "spark",
+      "venue": "S47",
+      "label": "Savings USDS / sUSDS proxy (Optimism \u2014 POL)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "optimism:0x876664f0c9ff24d1aa355ce9f1680ae1a5bf36fb:0xb5b2dc7fd34c249f4be7fb1fcea07950784229e0"
+    },
+    {
+      "prime": "spark",
+      "venue": "S48",
+      "label": "USDS raw (Optimism \u2014 POL)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "optimism:0x876664f0c9ff24d1aa355ce9f1680ae1a5bf36fb:0x4f13a96ec5c4cf34e442b46bbd98a0791f20edc3"
+    },
+    {
+      "prime": "spark",
+      "venue": "S49",
+      "label": "USDC raw (Optimism \u2014 ALM idle)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "optimism:0x876664f0c9ff24d1aa355ce9f1680ae1a5bf36fb:0x0b2c639c533813f4aa9d7837caf62653d097ff85"
+    },
+    {
+      "prime": "spark",
+      "venue": "S51",
+      "label": "Savings USDS / sUSDS proxy (Unichain \u2014 POL)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "unichain:0x345e368fccd62266b3f5f37c9a131fd1c39f5869:0xa06b10db9f390990364a3984c04fadf1c13691b5"
+    },
+    {
+      "prime": "spark",
+      "venue": "S52",
+      "label": "USDS raw (Unichain \u2014 POL)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "unichain:0x345e368fccd62266b3f5f37c9a131fd1c39f5869:0x7e10036acc4b56d4dfca3b77810356ce52313f9c"
+    },
+    {
+      "prime": "spark",
+      "venue": "S53",
+      "label": "USDC raw (Unichain \u2014 ALM idle)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "unichain:0x345e368fccd62266b3f5f37c9a131fd1c39f5869:0x078d782b760474a361dda0af3839290b0ef57ad6"
+    },
+    {
+      "prime": "spark",
+      "venue": "S54",
+      "label": "Aave Avalanche USDC (aAvaUSDC)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "avalanche_c:0xece6b0e8a54c2f44e066fbb9234e7157b15b7fec:0x625e7708f30ca75bfd92586e17077590c60eb4cd"
+    },
+    {
+      "prime": "spark",
+      "venue": "S55",
+      "label": "USDC raw (Avalanche-C \u2014 ALM idle)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "avalanche_c:0xece6b0e8a54c2f44e066fbb9234e7157b15b7fec:0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e"
+    },
+    {
+      "prime": "spark",
+      "venue": "S56",
+      "label": "Spark Savings V2 \u2014 spUSDC vault",
+      "status": "not_in_normalized_snapshot",
+      "report_group": null,
+      "normalization_note": "Requires non-fungible or beneficial-custody capital events",
+      "account": null
+    },
+    {
+      "prime": "spark",
+      "venue": "S57",
+      "label": "Spark Savings V2 \u2014 spUSDT vault",
+      "status": "not_in_normalized_snapshot",
+      "report_group": null,
+      "normalization_note": "Requires non-fungible or beneficial-custody capital events",
+      "account": null
+    },
+    {
+      "prime": "spark",
+      "venue": "S58",
+      "label": "Spark Savings V2 \u2014 spETH vault",
+      "status": "not_in_normalized_snapshot",
+      "report_group": null,
+      "normalization_note": "Requires non-fungible or beneficial-custody capital events",
+      "account": null
+    },
+    {
+      "prime": "spark",
+      "venue": "S59",
+      "label": "Spark Savings V2 \u2014 spPYUSD vault",
+      "status": "not_in_normalized_snapshot",
+      "report_group": null,
+      "normalization_note": "Requires non-fungible or beneficial-custody capital events",
+      "account": null
+    },
+    {
+      "prime": "spark",
+      "venue": "S60",
+      "label": "Spark Savings V2 \u2014 spUSDC vault (Avalanche-C, CREATE2 same address)",
+      "status": "not_in_normalized_snapshot",
+      "report_group": null,
+      "normalization_note": "Requires non-fungible or beneficial-custody capital events",
+      "account": null
+    },
+    {
+      "prime": "spark",
+      "venue": "S63",
+      "label": "Spark Savings V2 \u2014 spUSDG vault (Robinhood Chain)",
+      "status": "not_in_normalized_snapshot",
+      "report_group": null,
+      "normalization_note": "Requires non-fungible or beneficial-custody capital events",
+      "account": null
+    },
+    {
+      "prime": "grove",
+      "venue": "E1",
+      "label": "Aave Horizon RWA RLUSD (aToken)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x491edfb0b8b608044e227225c715981a30f3a44e:0xe3190143eb552456f88464662f0c0c4ac67a77eb"
+    },
+    {
+      "prime": "grove",
+      "venue": "E2",
+      "label": "Aave Horizon RWA USDC (aToken)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x491edfb0b8b608044e227225c715981a30f3a44e:0x68215b6533c47ff9f7125ac95adf00fe4a62f79e"
+    },
+    {
+      "prime": "grove",
+      "venue": "E3",
+      "label": "Aave Ethereum RLUSD (aToken)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x491edfb0b8b608044e227225c715981a30f3a44e:0xfa82580c16a31d0c1bc632a36f82e83efef3eec0"
+    },
+    {
+      "prime": "grove",
+      "venue": "E4",
+      "label": "Grove x Steakhouse USDC (Morpho 4626)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x491edfb0b8b608044e227225c715981a30f3a44e:0xbeeff08df54897e7544ab01d0e86f013da354111"
+    },
+    {
+      "prime": "grove",
+      "venue": "E5",
+      "label": "Grove x Steakhouse USDC High Yield (Morpho 4626)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x491edfb0b8b608044e227225c715981a30f3a44e:0xbeef2b5fd3d94469b7782aebe6364e6e6fb1b709"
+    },
+    {
+      "prime": "grove",
+      "venue": "E6",
+      "label": "Grove x Steakhouse AUSD (Morpho 4626)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x491edfb0b8b608044e227225c715981a30f3a44e:0xbeeff0d672ab7f5018dfb614c93981045d4aa98a"
+    },
+    {
+      "prime": "grove",
+      "venue": "E37",
+      "label": "Maple syrupUSDC (ERC-4626)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x491edfb0b8b608044e227225c715981a30f3a44e:0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b"
+    },
+    {
+      "prime": "grove",
+      "venue": "E7",
+      "label": "Securitize Tokenized AAA CLO Fund (STAC)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x491edfb0b8b608044e227225c715981a30f3a44e:0x51c2d74017390cbbd30550179a16a1c28f7210fc"
+    },
+    {
+      "prime": "grove",
+      "venue": "E8",
+      "label": "Janus Henderson Anemoy AAA CLO (JAAA)",
+      "status": "audited",
+      "report_group": [
+        "E8",
+        "E20"
+      ],
+      "normalization_note": null,
+      "account": "ethereum:0x491edfb0b8b608044e227225c715981a30f3a44e:0x5a0f93d040de44e78f251b03c43be9cf317dcf64"
+    },
+    {
+      "prime": "grove",
+      "venue": "E9",
+      "label": "Janus Henderson Anemoy Treasury Fund (JTRSY)",
+      "status": "audited",
+      "report_group": [
+        "E9"
+      ],
+      "normalization_note": null,
+      "account": "ethereum:0x491edfb0b8b608044e227225c715981a30f3a44e:0x8c213ee79581ff4984583c6a801e5263418c4b86"
+    },
+    {
+      "prime": "grove",
+      "venue": "E10",
+      "label": "BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I)",
+      "status": "audited",
+      "report_group": [
+        "E10"
+      ],
+      "normalization_note": null,
+      "account": "ethereum:0x491edfb0b8b608044e227225c715981a30f3a44e:0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041"
+    },
+    {
+      "prime": "grove",
+      "venue": "E11",
+      "label": "Curve AUSD/USDC stableswap LP",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x491edfb0b8b608044e227225c715981a30f3a44e:0xe79c1c7e24755574438a26d5e062ad2626c04662"
+    },
+    {
+      "prime": "grove",
+      "venue": "E12",
+      "label": "Uniswap V3 AUSD/USDC pool (NFT positions)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "nft:ethereum:E12"
+    },
+    {
+      "prime": "grove",
+      "venue": "E30",
+      "label": "Uniswap V3 AUSD/USDC pool (NFT positions \u2014 alt holder)",
+      "status": "not_in_normalized_snapshot",
+      "report_group": null,
+      "normalization_note": null,
+      "account": null
+    },
+    {
+      "prime": "grove",
+      "venue": "E33",
+      "label": "Uniswap V3 AUSD/USDC pool (Monad, NFT positions)",
+      "status": "not_in_normalized_snapshot",
+      "report_group": null,
+      "normalization_note": null,
+      "account": null
+    },
+    {
+      "prime": "grove",
+      "venue": "E13",
+      "label": "RLUSD raw (ALM idle)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x491edfb0b8b608044e227225c715981a30f3a44e:0x8292bb45bf1ee4d140127049757c2e0ff06317ed"
+    },
+    {
+      "prime": "grove",
+      "venue": "E14",
+      "label": "AUSD raw (ALM idle)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x491edfb0b8b608044e227225c715981a30f3a44e:0x00000000efe302beaa2b3e6e1b18d08d69a9012a"
+    },
+    {
+      "prime": "grove",
+      "venue": "E31",
+      "label": "AUSD raw (alt holder idle)",
+      "status": "not_in_normalized_snapshot",
+      "report_group": null,
+      "normalization_note": null,
+      "account": null
+    },
+    {
+      "prime": "grove",
+      "venue": "E15",
+      "label": "USDC raw (ALM idle)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x491edfb0b8b608044e227225c715981a30f3a44e:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    },
+    {
+      "prime": "grove",
+      "venue": "E32",
+      "label": "USDC raw (alt holder idle)",
+      "status": "not_in_normalized_snapshot",
+      "report_group": null,
+      "normalization_note": null,
+      "account": null
+    },
+    {
+      "prime": "grove",
+      "venue": "E16",
+      "label": "DAI raw (ALM idle)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x491edfb0b8b608044e227225c715981a30f3a44e:0x6b175474e89094c44da98b954eedeac495271d0f"
+    },
+    {
+      "prime": "grove",
+      "venue": "E17",
+      "label": "USDS raw / POL (ALM idle \u2014 already netted out of utilized)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x491edfb0b8b608044e227225c715981a30f3a44e:0xdc035d45d973e3ec169d2276ddab16f1e407384f"
+    },
+    {
+      "prime": "grove",
+      "venue": "E18",
+      "label": "sUSDS raw / POL (ALM idle \u2014 Cat B 4626)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x491edfb0b8b608044e227225c715981a30f3a44e:0xa3931d71877c0e7a3148cb7eb4463524fec27fbd"
+    },
+    {
+      "prime": "grove",
+      "venue": "E36",
+      "label": "OOB principal via 0xd94f (relay to Monad ALM EOA \u2192 AUSD acquisition)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "eoa-allocation:ethereum:E36"
+    },
+    {
+      "prime": "grove",
+      "venue": "E19",
+      "label": "Grove x Steakhouse USDC High Yield (Base, Morpho 4626)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "base:0x9b746dbc5269e1df6e4193bcb441c0fbbf1cecee:0xbeef2d50b428675a1921bc6bbf4bfb9d8cf1461a"
+    },
+    {
+      "prime": "grove",
+      "venue": "E23",
+      "label": "Steakhouse Prime Instant (Base, Morpho V2)",
+      "status": "audited",
+      "report_group": [
+        "E23"
+      ],
+      "normalization_note": null,
+      "account": "base:0x9b746dbc5269e1df6e4193bcb441c0fbbf1cecee:0xbeef0e0834849acc03f0089f01f4f1eeb06873c9"
+    },
+    {
+      "prime": "grove",
+      "venue": "E20",
+      "label": "Janus Henderson Anemoy AAA CLO (JAAA-avalanche)",
+      "status": "audited",
+      "report_group": [
+        "E8",
+        "E20"
+      ],
+      "normalization_note": null,
+      "account": "avalanche_c:0x7107dd8f56642327945294a18a4280c78e153644:0x58f93d6b1ef2f44ec379cb975657c132cbed3b6b"
+    },
+    {
+      "prime": "grove",
+      "venue": "E21",
+      "label": "Galaxy Arch CLO Token (GACLO-1)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "eoa-allocation:ethereum:E21"
+    },
+    {
+      "prime": "grove",
+      "venue": "E22",
+      "label": "Anemoy Tokenized Apollo Diversified Credit Fund (ACRDX)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "plume:0x1db91ad50446a671e2231f77e00948e68876f812:0x9477724bb54ad5417de8baff29e59df3fb4da74f"
+    },
+    {
+      "prime": "grove",
+      "venue": "E24",
+      "label": "Steakhouse High Yield PYUSD (Morpho 4626)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x491edfb0b8b608044e227225c715981a30f3a44e:0xd8a6511979d9c5d387c819e9f8ed9f3a5c6c5379"
+    },
+    {
+      "prime": "grove",
+      "venue": "E26",
+      "label": "PYUSD raw (ALM idle)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x491edfb0b8b608044e227225c715981a30f3a44e:0x6c3ea9036406852006290770bedfcaba0e23a0e8"
+    },
+    {
+      "prime": "grove",
+      "venue": "E27",
+      "label": "USDC raw on Base (ALM idle)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "base:0x9b746dbc5269e1df6e4193bcb441c0fbbf1cecee:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+    },
+    {
+      "prime": "grove",
+      "venue": "E25",
+      "label": "Grove x Steakhouse High Yield AUSD (Monad, Morpho 4626)",
+      "status": "not_in_normalized_snapshot",
+      "report_group": null,
+      "normalization_note": null,
+      "account": null
+    },
+    {
+      "prime": "grove",
+      "venue": "E34",
+      "label": "AUSD raw (Monad, alt holder idle)",
+      "status": "not_in_normalized_snapshot",
+      "report_group": null,
+      "normalization_note": null,
+      "account": null
+    },
+    {
+      "prime": "grove",
+      "venue": "E35",
+      "label": "USDC raw (Monad, alt holder idle)",
+      "status": "not_in_normalized_snapshot",
+      "report_group": null,
+      "normalization_note": null,
+      "account": null
+    },
+    {
+      "prime": "grove",
+      "venue": "E38",
+      "label": "Agora AUSD incentives (cash distribution to Grove Eth ALM)",
+      "status": "not_in_normalized_snapshot",
+      "report_group": null,
+      "normalization_note": null,
+      "account": null
+    },
+    {
+      "prime": "grove",
+      "venue": "E40",
+      "label": "USDS raw (Diamond PAU ALM idle)",
+      "status": "not_audited",
+      "report_group": null,
+      "normalization_note": null,
+      "account": "ethereum:0x0dcd9298e163dfd3c0b5b00f0d9093c36e40a153:0xdc035d45d973e3ec169d2276ddab16f1e407384f"
+    },
+    {
+      "prime": "grove",
+      "venue": "E41",
+      "label": "JTRSY Basin escrow \u2014 USDS pending subscription (Diamond PAU)",
+      "status": "not_in_normalized_snapshot",
+      "report_group": null,
+      "normalization_note": null,
+      "account": null
+    },
+    {
+      "prime": "grove",
+      "venue": "E42",
+      "label": "Galaxy Warehouse (off-chain facility \u2014 cash distribution to Grove Eth ALM)",
+      "status": "audited",
+      "report_group": [
+        "E42"
+      ],
+      "normalization_note": null,
+      "account": "facility:ethereum:0x491edfb0b8b608044e227225c715981a30f3a44e:0x3e23311f9ff660e3c3d87e4b7c207b3c3d7e04f0"
+    }
+  ],
+  "input_sha256": {
+    "/tmp/spark-adapted-origin-history.jsonl.gz": "7246f3958e6532475490ee966d49db6e5b21efb068ccdceb556aff1d062b25f1",
+    "/tmp/grove-adapted-origin-history.jsonl.gz": "1eb1b90addf528c0957df4cc36d2782f36c2e90b640237c764bcd22fddad9d8d",
+    "reconciliation/spark_spusds_funding_origins_2026_08.json.gz": "3215f1dd4c87e7fe070e8ed87aa8165b46c57ce97949ebf85bd4649f0434c42d",
+    "reconciliation/spark_susds_upstream_origins_2026_08.json.gz": "d5d0ca04c17106a9680fa15206edd0c7d00adf7d783f0a46bdd8bb1aca49023b",
+    "reconciliation/spark_base_morpho_funding_origins_2026_08.json.gz": "dd5526881d804be29413c29214028a0c5cf5470a0f2e591f2c38979d39e28339",
+    "reconciliation/spark_anchorage_funding_origins_2026_08.json": "2f081491a70f486a71fe1a0850126360a3d2669840553538c05000d2a369e252",
+    "reconciliation/grove_jtrsy_funding_origins_2026_08.json.gz": "aa9e12f82b6e67c3104c5f69070ccbf9c941c177bb7b4b5d2ebfbfe09d3d0fbe",
+    "reconciliation/grove_large_allocation_origin_coverage_2026_08.json.gz": "33fc1b210d6be8b14e6c412ac1837cda8554e98da0b1bdeb8012b38e7cc0fe12",
+    "reconciliation/grove_warehouse_funding_origins_2026_08.json": "6e549c229f5caa06d2c03f3fc8878dab079d6950e75dfcdd5734ca5d395bd1fb",
+    "reconciliation/grove_steakhouse_funding_origins_2026_08.json": "27759102d220cfa550a0cba49ce789aed034fc9a80af570eef7cf14a4b73ee4c"
+  },
+  "source_sha256": {
+    "/home/agent/code/lakonema2000/settlement-cycle/scripts/report_funding_origin_monthly.py": "50aab347a93dda85ab91c27a77ea781d5907a8f781214992e0057de5bd711709",
+    "scripts/audit_scoped_allocation_origin.py": "e3af9973b70c3185f5216a3b81b57cf7be1bfefebad87711d81d79c857736b1d",
+    "scripts/audit_allocation_positions.py": "5e56c221369c4a09f8752d99af538d2fdfd15b7b29098948e579c662f42f6c3f",
+    "config/spark.yaml": "e837962e7dff6f535598af2cd3b5904d8b43640cfb3b378d054ac6b9668c6722",
+    "config/grove.yaml": "42293d2f3b7892ed503c5b2ee85f562208acb63188c897cc8fb84274b169b4df",
+    "src/settle/compute/__init__.py": "4a98b5acb293a5e4b70baa11b49dc04498a6d5e04070e61c80d5a8ac66eca69a",
+    "src/settle/compute/_helpers.py": "d168e38847d948fd7ee36a12d18969de10175c45d7fbd098203d88ec82561e67",
+    "src/settle/compute/agent_rate.py": "4f0aeced02dbb85cc05843e4b1db0a9c273936905885c4d1661121995ddad80e",
+    "src/settle/compute/allocation_capital.py": "385b6eeb57e2839f3ed27c9e322ac86f1c41482843fde477ba1b5ffa20900889",
+    "src/settle/compute/allocation_external_funding.py": "cb0fa57cbf834810b8fa07f1b14700e060692559810259f46a2787fb0acf8f58",
+    "src/settle/compute/allocation_financing.py": "9046670c3856e506c2a647290474a108b60bbf8b189e5e644a0af6e5e211a80a",
+    "src/settle/compute/allocation_reconciliation.py": "f55ad9c7e723c9c00f753b329b1a1df135bd4d8806cf8f7cd1f659247194a219",
+    "src/settle/compute/allocation_uncertainty.py": "cecb14f780cc6aa665b4621b13c50de7ebf884ac1194eabd9ac29864984468df",
+    "src/settle/compute/chronicle_points.py": "3fc7b1144d6dd74ae52a3bb9a31694d9c114d66fd21ae858166d585031dd2554",
+    "src/settle/compute/executed_spell_capital.py": "5ec36e4a66ea1865ccd6932d17ce94acaeff42f83de095a3bd2faa96e4186b8b",
+    "src/settle/compute/gar.py": "4c461268a6ce5621b3c2f6bef18e24145c1116c2038bbdb14eb7d0d659f5f442",
+    "src/settle/compute/grove_agora_incentives.py": "c3bd667cd4e9a791508c01e71ef0450aa651b80ad3ac9bc25f7a61af76d707ea",
+    "src/settle/compute/grove_agora_redemptions.py": "8fa69926e5cca8c696f0d7492152f7db57e2611c956b8da861e50649ad9fc531",
+    "src/settle/compute/grove_apollo_cash_settlements.py": "4b8a4356ba4144930d0b06dbb148888f0c2a3b0f754286df327cd5d495ceb7a3",
+    "src/settle/compute/grove_basin_capital.py": "944a29e74c54698059d8d5f8a3cee3af6d93ab81fcc9a0a74c54bb1b46c9f65f",
+    "src/settle/compute/grove_buidl_partial_payments.py": "65c4d32701b87cb447e5c3e3de3cef4ac97f7f7d84dfb79eadd0b34f06cb3c4f",
+    "src/settle/compute/grove_buidl_subscriptions.py": "26b1b37abb4d95cfe039ad45d0f45aa1a8865a1a5dd7d9a3318a965070aba9e4",
+    "src/settle/compute/grove_cash_distributions.py": "f53a180f053e6f22bc091be1f0bff8232a29466b71120431c53063349010e123",
+    "src/settle/compute/grove_cctp_v2_capital.py": "c32e0a997247f8c1c4678fa5b41a565bd0bf5f7c90a4298747809b7639af18d0",
+    "src/settle/compute/grove_curve_swap_gains.py": "67fe00a550320cb2f779e5fa58d3a39d355a41c6ac8bb4c607fcf1a827cfb56e",
+    "src/settle/compute/grove_falconx_test_refund.py": "f29df5ea9ec90691566f9d914e42990d20c45a03416cab28536882f0061e2c23",
+    "src/settle/compute/grove_galaxy_arch_capital.py": "322907dea826d765fc3f76f3f8c896ce65add43278b556cee0e8f4306cb21003",
+    "src/settle/compute/grove_historical_capital.py": "0e42cb76136a3c2b136d1699cfaba780b54e10d9f4c7ef8639fcac001b80115f",
+    "src/settle/compute/grove_merkl_rewards.py": "d30c3bedf5d17299eddb0de1106565d42c81ae4210e2938b9cd3ceee22bd05bb",
+    "src/settle/compute/grove_paxos_capital.py": "89a8a84dbe2f7b8f25c179d1024ab9acc5f937f5f3e4156acc1e0c1bc1bbffad",
+    "src/settle/compute/grove_plume_capital.py": "12b9d415ea9982bfdd7189b32d8daab65568626875982d55468ff6d5724429d1",
+    "src/settle/compute/grove_rlusd_conversions.py": "be716f99069f34fa6cdeaf3bb474ee275b08922c0ced9784c4bfadc65cfc2aff",
+    "src/settle/compute/grove_secondary_cash.py": "ba386f63fbc247acb225a9a94349ea5b3d043dc0923cd0359826a18c24b938fd",
+    "src/settle/compute/grove_stac_capital.py": "d6569b252cd699d0a02e7c25ada5b4b223fb602d32dd1b5784ee7d0857026f9f",
+    "src/settle/compute/monthly_pnl.py": "f83b2d510a0cd12f8f78a23cc4576cac36a6a6659cc510f5180e44e4cc3dc05e",
+    "src/settle/compute/non_msc.py": "f2147d227d2b043fc488a77e87e0f9848069ee930512880ee07532a3d5748f5a",
+    "src/settle/compute/prime_agent_revenue.py": "5a4f28fa668937c521beba3813b3b512a239af9af86b401f03ca9f24aca04b6f",
+    "src/settle/compute/reviewed_issuer_conversions.py": "40bb1a8a5ea20f3cbf1a67a3d39efdc0c05e3a206dc8eb19719a96c252ad70fd",
+    "src/settle/compute/savings_v2_liability.py": "0acada2f352b940f5ab4ffd047273bcd4867783753a0ee9fd0793e5bd5197ba7",
+    "src/settle/compute/sky_revenue.py": "59d83ec731df53a6f13c7289bc91eaa32871635935ee16df6a1e7671442cf025",
+    "src/settle/compute/sky_total.py": "16b72b88d03443959c1e3b32d59d5f29b7c69102b1f1b5b556cb0ff6891e55d7",
+    "src/settle/compute/sky_total_accrual.py": "5cb7c4bc0571d5221f2f49c6cfa64110712bd1861e20cc2ad084d23a9b12766a",
+    "src/settle/compute/snr_artifact.py": "28867cc5968b423340433280342c1146dcb2801c0838ad7aee3504edcfc94a60",
+    "src/settle/compute/spark_anchorage_correction.py": "f0d21417faaf3702dbbfacf6b6f7f3ab834b6cb035d604d1e7edacbdd1843f65",
+    "src/settle/compute/spark_anchorage_scenarios.py": "97862e6f36b3c2c74cc0c31394f4ec234027a9ba40eaa44c6513fea6e274ad50",
+    "src/settle/compute/spark_arbitrum_spells.py": "212089e57bf1ba6fb1db327ad00729b17c21e546235fbf6f13d9aa7f2a55b7cd",
+    "src/settle/compute/spark_b2c2_capital.py": "4c5619019648df7c7a43fb0e62ee737c4e1522dedde26ce1f2667191cadcef5d",
+    "src/settle/compute/spark_base_withdrawals.py": "26fa97715d2ff1d92fd48fe8bbd238dd59594a69952652018082e2367dbf1f4e",
+    "src/settle/compute/spark_binance_capital.py": "c07dcd8b3e8834b49a7a10e86ec6bcc598bf4788d55bfb1a57c639422fc23898",
+    "src/settle/compute/spark_buidl_redemptions.py": "a6c41e7fb2f4bd76025beeea194f175458f686578189e0b207cc13a2c361bf64",
+    "src/settle/compute/spark_buidl_subscriptions.py": "8da91b2d876a5f0c7c33849218f91b5002084a14e31dfa9765bc9952b0025942",
+    "src/settle/compute/spark_early_base_seed.py": "dd7751631fc8d30d84ce3745733098449165d524f6e0677105fc1f721b143fd1",
+    "src/settle/compute/spark_june_op_uni_routes.py": "dc7eb1caad86b4eaf3ac87bc5b1cfa82012ae64d853f8c83786a2669576e1426",
+    "src/settle/compute/spark_native_seed.py": "b4d864cfdc4fb4037873e36f833a99005fbd380fa0e8468ef44302cb9ba60e3b",
+    "src/settle/compute/spark_op_uni_withdrawals.py": "45d8621ace1608665542bf1fa618b51f73c19daec99f7eda4b38d7548a14be99",
+    "src/settle/compute/spark_par_swap_gains.py": "0208c01480967deaee52c286db76e5d99f4a3380be7312fbf07fe81ad22e7e7e",
+    "src/settle/compute/spark_paxos_capital.py": "7773ba485872ec9216defc66d91b941362d081a5afe022803e3718bfce3bed15",
+    "src/settle/compute/spark_reserve_gifts.py": "02c7e7e95209ca6b9806654754eac86b720b407eb565177710b1f8e1d9911134",
+    "src/settle/compute/spark_separate_savings_routes.py": "b25d18262d1bec6be017d21594c9b7b0088c119b28a46ada778ab4a13c53c029",
+    "src/settle/compute/spark_subproxy_reserve_gifts.py": "a18611a481c5bdb19c1baf23636287ce84195eb2565b191ad44d82b68b438a5f",
+    "src/settle/compute/spark_uscc_capital.py": "8c0e1da0b6344e9ace5a9a468c87d428550b6c5989d4cef646bd74fa7e0564cb",
+    "src/settle/compute/spark_ustb_capital.py": "1f493e6fee7f2cec7c764736db21259deb20401155b4cf1627ab7da1fd4e0287",
+    "src/settle/compute/tmf.py": "f68b4fc12c664cf935f3099b78a713049fe9b60c2e40d4b4707648c26580fb9a",
+    "src/settle/compute/tmf_history.py": "97e743ddf967cc5c69e472fc4d709f104db9d0e28321e3082cc58bca109823a7"
+  }
+}

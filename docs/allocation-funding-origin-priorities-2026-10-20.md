@@ -140,3 +140,20 @@ It proves the borrowed portion of July 15's mixed deposit and carries surviving
 L2 borrowed basis through the July 13 Base and Optimism sUSDS returns. The
 earlier “operations/Uniswap” label referred to Optimism and has been corrected.
 Other allocations are unchanged.
+
+## October 27 follow-up: spUSDS, JTRSY and all month ends
+
+The [scoped funding audit](scoped-funding-origin-progress-2026-10-27.md)
+supersedes S1 and E9 above: Spark spUSDS is **97.20%** traced with **19.116m**
+remaining; Grove JTRSY is **99.84%** traced with **1.333m** remaining. This adds
+**161.058m** of original-funding attribution across these two August positions.
+Registered, independent custody transfers are separated before origin pooling.
+
+The [January-August report and venue inventory](funding-origin-monthly-2026-01-08.md)
+now covers nine audited allocation groups and lists all 101 configured venues.
+It makes clear that earlier Spark sUSDS snapshots remain much less covered
+than August: the prior receipt research prioritized August survivors. S34 is
+below one dollar at January-July month ends; percentages on dust are suppressed
+in the Markdown while exact values remain in the machine-readable artifact.
+Neither this inventory nor the selected groups constitute full Prime-wide
+capital or borrowing-cost reconciliation.
