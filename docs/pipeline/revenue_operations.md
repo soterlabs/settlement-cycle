@@ -1,6 +1,6 @@
 # Daily revenue operations
 
-`settle-revenue-daily` runs `python -m settle.revenue.worker` at **20:17 UTC once
+`settle-revenue-daily` runs `python -m settle.revenue.worker --require-views` at **20:17 UTC once
 per day** (`17 20 * * *`). The existing SBE job remains independent. The cutoff is
 the previous completed UTC day; on the first day of a month this is the previous
 month's last day. Set the provider credentials, `DATABASE_URL`, deployment code
@@ -17,6 +17,13 @@ scheduled worker. Completed dates are retained on restart; failed dates remain
 eligible. Omit the flag only when intentionally recomputing published dates.
 Older monthly figures stay canonical. A code or
 input revision change recomputes yesterday; restating earlier dates is explicit.
+
+Use `--missing-views-only` instead of `--missing-only` when upgrading legacy daily
+publications to the independent settlement/reporting format. Add `--newest-first`
+to prioritize recent cutoffs. Both require an explicit window; the missing-only
+modes are mutually exclusive. `--require-views` refuses reuse/publication without
+both views and is implied by `--missing-views-only`. Per-venue unavailability is
+retained explicitly. See the [October 2026 runbook](october-2026-api-backfill.md).
 
 A session advisory lock per prime prevents overlap, including different revisions
 and manual backfills. A killed process releases its lock; the next lock holder

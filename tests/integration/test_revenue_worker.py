@@ -1,11 +1,79 @@
-from dataclasses import replace
+from dataclasses import dataclass, field, replace
 from datetime import timedelta
 
 import psycopg
 
 from settle.revenue import store, worker
 from tests.integration.test_input_cache_postgres import database  # noqa: F401
-from tests.integration.test_revenue_store import example
+from tests.integration.test_revenue_store import Pnl, example
+
+
+@dataclass
+class ViewedPnl(Pnl):
+    venue_views: dict = field(default_factory=lambda: {
+        'schema_version': '2.0', 'settlement': [], 'reporting': [],
+    })
+
+
+def with_views(pnl):
+    return ViewedPnl(pnl.prime_id, pnl.period, pnl.pin_blocks_som, pnl.revenue)
+
+
+def test_view_backfill_upgrades_legacy_and_preserves_compatible_revisions(database):  # noqa: F811
+    older, current = example(2), with_views(example())
+    versions = store.Versions('new', 'cfg', '0')
+    calls = []
+    def compute(*args, **kwargs):
+        calls.append(kwargs['as_of'])
+        return with_views(older)
+    with psycopg.connect(database, autocommit=True) as conn:
+        store.apply_schema(conn)
+        # Even a same-code legacy result must be recomputed, not reused.
+        old_id = store.publish(conn, older, versions, input_provenance={'manual_input_revision': '0'})
+        kept = store.publish(conn, current, replace(versions, code='previous'))
+        report = worker.run_prime(conn, 'obex', start=older.as_of, end=current.as_of,
+                                  missing_views_only=True, newest_first=True,
+                                  compute=compute, capture=lambda: versions, prepare=lambda *_: None)
+        assert report['status'] == 'ok'
+        assert calls == [older.as_of]
+        assert store.read(conn, 'obex', cutoff=current.as_of)['revision_id'] == kept
+        assert store.read(conn, 'obex', cutoff=older.as_of)['revision_id'] != old_id
+        assert store.read(conn, 'obex', revision=old_id)['result'].get('venue_views') is None
+        report = worker.run_prime(conn, 'obex', start=older.as_of, end=current.as_of,
+                                  missing_views_only=True, compute=compute,
+                                  capture=lambda: replace(versions, code='even-newer'))
+        assert report['results'] == []
+        # A later incompatible correction must not hide behind an older v2 row.
+        store.publish(conn, older, replace(versions, inputs='legacy-correction'))
+        assert store.venue_view_dates(conn, 'obex') == {current.as_of}
+
+
+def test_require_views_refuses_incomplete_computation(database):  # noqa: F811
+    pnl = example()
+    with psycopg.connect(database, autocommit=True) as conn:
+        store.apply_schema(conn)
+        report = worker.run_prime(conn, 'obex', start=pnl.as_of, end=pnl.as_of,
+                                  compute=lambda *_args, **_kw: pnl, require_views=True,
+                                  capture=lambda: store.Versions('code', 'cfg', '0'),
+                                  prepare=lambda *_: None, attempts=1)
+        assert report['status'] == 'failed'
+        assert store.read(conn, 'obex') is None
+
+
+def test_newest_first_publishes_latest_before_older_history(database):  # noqa: F811
+    older, current = with_views(example(2)), with_views(example())
+    calls = []
+    def compute(*_args, **kwargs):
+        calls.append(kwargs['as_of'])
+        return current if kwargs['as_of'] == current.as_of else older
+    with psycopg.connect(database, autocommit=True) as conn:
+        store.apply_schema(conn)
+        report = worker.run_prime(conn, 'obex', start=older.as_of, end=current.as_of,
+                                  newest_first=True, require_views=True, compute=compute,
+                                  capture=lambda: store.Versions('code', 'cfg', '0'),
+                                  prepare=lambda *_: None)
+        assert report['status'] == 'ok' and calls == [current.as_of, older.as_of]
+        assert store.read(conn, 'obex')['cutoff'] == str(current.as_of)
 
 
 def test_retry_atomic_publication_and_idempotent_restart(database):  # noqa: F811
