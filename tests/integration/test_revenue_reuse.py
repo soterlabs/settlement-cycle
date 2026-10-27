@@ -38,8 +38,12 @@ def test_complete_same_date_calculation_reuses_postgres_after_restart(database, 
                    SETTLE_CACHE_DIR=str(tmp_path / f"cache-{attempt}"),
                    TEST_PRIME=prime, TEST_REPORT=str(output),
                    TEST_CUTOFF="2026-08-02" if attempt == 2 else "2026-08-01")
+        # Spark's first issuer-reward calculation now backfills daily inputs
+        # from 2024 inception. This checks persistence, not a 90s cold-start
+        # performance target; keep the same strict reuse assertions below.
+        timeout = 240 if prime == 'spark' else 90
         process = subprocess.run([sys.executable, '-c', _PROGRAM], env=env,
-                                 capture_output=True, text=True, timeout=90)
+                                 capture_output=True, text=True, timeout=timeout)
         assert process.returncode == 0, process.stderr
         reports.append(json.loads(output.read_text()))
     verdict = compare(*reports[:2])
