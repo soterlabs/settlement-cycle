@@ -1458,6 +1458,7 @@ venues:
 
   - id: S69
     settlement_enabled: false
+    start_date: '2026-06-19'
     event_source: hypersync
     chain: robinhood
     label: 'USDG issuer incentives — receipts (8-hour payments)'

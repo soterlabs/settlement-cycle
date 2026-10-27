@@ -15,8 +15,9 @@ Spark Savings V2 products retain their existing position-only treatment:
 retail deposits and depositor VSR liabilities are outside the ALM settlement
 boundary. They now explicitly have `settlement_enabled: false`. Robinhood
 is included in Spark's block pins so the configured spUSDG position (S63)
-is actually valued. Its `start_date: 2026-06-19` prevents historical runs
-from resolving a reporting-chain pin before the product existed.
+is actually valued. Both S63 and the USDG incentive venue S69 declare
+`start_date: 2026-06-19`, preventing historical runs from resolving a
+reporting-chain pin before launch, including after USDG activation.
 
 ## API and artifact contract
 
@@ -24,6 +25,13 @@ from resolving a reporting-chain pin before the product existed.
 `settlement_enabled`, `skip`, chain and pricing category. This endpoint reads
 configuration only; it performs no provider requests. It does not reinterpret
 historical snapshots using today's flags.
+
+Single-result responses (`latest` / `at`) advertise the stored result's schema:
+1.0 for legacy snapshots and 1.1 for the reporting-only format. Each returned
+record also exposes `result_schema_version`, including rows in mixed-version
+history responses. The history page envelope remains schema 1.0; read each
+row's result version when interpreting its payload. Stored results and their
+hashes are unchanged by this response metadata.
 
 Fresh daily result snapshots and provenance (schema 1.1) contain:
 

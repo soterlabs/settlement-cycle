@@ -53,6 +53,12 @@ def freshness(record, expected):
             'stale': actual is None or actual < expected}
 
 
+def with_result_schema(record):
+    """Label the stored result shape without changing its immutable payload/hash."""
+    version = '1.1' if 'reporting_only_breakdown' in record['result'] else '1.0'
+    return {**record, 'result_schema_version': version}
+
+
 def register(app, get_reader, document_response):
     def validate(prime, cutoff=None):
         if prime not in PRIMES:
@@ -72,8 +78,9 @@ def register(app, get_reader, document_response):
         if record is None:
             raise HTTPException(404, 'No published daily estimate for this selection; use monthly data',
                                 headers={'Cache-Control': 'no-store'})
+        record = with_result_schema(record)
         return document_response(request, {
-            'schema_version': '1.1', 'prime': prime, 'cadence': 'daily',
+            'schema_version': record['result_schema_version'], 'prime': prime, 'cadence': 'daily',
             'estimate_basis': 'month_to_date', 'data': record,
             'freshness': freshness(record, cutoff or today()-timedelta(days=1)),
             'latest_attempt': attempt,
@@ -126,7 +133,8 @@ def register(app, get_reader, document_response):
             raise HTTPException(422, 'history window must contain 1 to 90 days')
         rows = read_or_unavailable(r.revenue_history, prime, start=start, end=end, limit=limit)
         return document_response(request, {'schema_version': '1.0', 'prime': prime,
-            'cadence': 'daily', 'estimate_basis': 'month_to_date', 'results': rows,
+            'cadence': 'daily', 'estimate_basis': 'month_to_date',
+            'results': [with_result_schema(row) for row in rows],
             'order': 'cutoff descending', 'limit': limit, 'start': str(start), 'end': str(end),
             'missing_dates': 'unavailable; use canonical monthly data'})
 
