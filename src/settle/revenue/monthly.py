@@ -50,7 +50,8 @@ def _decode(kind, value):
             decoded['daily'] = [
                 {'block_date': date.fromisoformat(r['block_date']),
                  'cum_value': _decode(Decimal, r['cum_value']),
-                 'uncapped_value': _decode(Decimal, r['uncapped_value'])}
+                 'uncapped_value': _decode(Decimal, r['uncapped_value']),
+                 **{key: _decode(Decimal, r[key]) for key in ('wallet_value', 'pending_value') if key in r}}
                 for r in value['daily']
             ]
         return kind(**decoded)

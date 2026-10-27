@@ -280,9 +280,9 @@ def _centrifuge_in_flight_shares(
     redemption settles, pending/claimable go to 0 and the USDC shows up in
     the Cat A leg.
 
-    Returns Decimal("0") for non-Centrifuge venues, when the vault isn't
-    deployed yet, or when the reads fail (degrade to the unadjusted balance
-    with a warning rather than abort the settlement).
+    Returns Decimal("0") for non-Centrifuge venues or before deployment.
+    A failed deployment probe or balance read stops the calculation: an
+    unavailable input is not evidence of zero pending exposure.
     """
     if venue.centrifuge_vault is None:
         return Decimal("0")
@@ -306,12 +306,10 @@ def _centrifuge_in_flight_shares(
         if not _is_deployed(venue.chain, vault, block):
             return Decimal("0")
     except Exception as exc:  # noqa: BLE001
-        _log.warning(
-            "_centrifuge_in_flight_shares: deployment probe failed for %s "
-            "vault %s at block %d (%s) — no in-flight adjustment applied.",
-            venue.id, vault.hex, block, exc,
-        )
-        return Decimal("0")
+        raise RuntimeError(
+            f"_centrifuge_in_flight_shares: deployment probe failed for {venue.id} "
+            f"at block {block}; refusing to assume zero pending exposure"
+        ) from exc
 
     # ERC-7540 keys every request by (requestId, controller); Centrifuge
     # uses a single request id of 0 per holder. ``pending`` and

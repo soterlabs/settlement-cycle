@@ -1,0 +1,836 @@
+{
+  "source": {
+    "chain": "ethereum",
+    "retrieved": "2026-10-27",
+    "logs": "Blockscout getLogs, blocks 20,000,000 through 26,300,000; configured E8/E9 vault RedeemRequest/Withdraw events for Grove ALM",
+    "state": "Archive eth_call at certified EoD fixture blocks; pendingRedeemRequest(0,ALM), claimableRedeemRequest(0,ALM), balanceOf(ALM), pricePerShare()",
+    "precise_nav": "convertToAssets(1e18) / 1e18 on the configured Centrifuge vault, matching repo NAV resolver",
+    "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+    "share_decimals": 6,
+    "price_per_share_decimals": 6,
+    "baseline_commit": "4860a406e60a6b88ca7e2c91b620bb3b5e7ee40a"
+  },
+  "windows": {
+    "jaaa": [
+      {
+        "request_at": "2026-01-06T16:45:35+00:00",
+        "cash_at": "2026-01-07T14:16:35+00:00",
+        "days": 1,
+        "shares": "48976441.35218",
+        "cash_usdc": "50004666.16023",
+        "request_tx": "0x523529ee140f3a5da419a744a614e304fc64c1e00850647ed6b776a11de84ebc",
+        "cash_tx": "0xea77e031ea7b1fea9922907d717d5dd6fa361287e35b908fd321926f992a1041",
+        "request_block": 24176915,
+        "cash_block": 24183340
+      },
+      {
+        "request_at": "2026-01-07T14:16:35+00:00",
+        "cash_at": "2026-01-09T16:57:23+00:00",
+        "days": 2,
+        "shares": "48971884.261807",
+        "cash_usdc": "50035685.128144",
+        "request_tx": "0xea77e031ea7b1fea9922907d717d5dd6fa361287e35b908fd321926f992a1041",
+        "cash_tx": "0x17e5a084e65015df3e9415b6ec3356a2dddaa7785972967ff8bced9fb328d9a1",
+        "request_block": 24183340,
+        "cash_block": 24198464
+      },
+      {
+        "request_at": "2026-01-08T17:49:35+00:00",
+        "cash_at": "2026-01-09T21:55:11+00:00",
+        "days": 1,
+        "shares": "48952562.030238",
+        "cash_usdc": "50016395.395388",
+        "request_tx": "0xfe5a129ce7c84184228883a7532361622d521858b088dd0bd97a76e71379e829",
+        "cash_tx": "0x1e67e90a3bc9000ee271ecf2013b9bdc0515a51da1568feaa44b04690653bae2",
+        "request_block": 24191552,
+        "cash_block": 24199947
+      },
+      {
+        "request_at": "2026-01-09T21:55:11+00:00",
+        "cash_at": "2026-01-13T16:23:11+00:00",
+        "days": 4,
+        "shares": "48936559.622836",
+        "cash_usdc": "50025128.355665",
+        "request_tx": "0x1e67e90a3bc9000ee271ecf2013b9bdc0515a51da1568feaa44b04690653bae2",
+        "cash_tx": "0x717986d709db93f4f368d7818b2dec2aca4bbad87974553a12721a747dab62e1",
+        "request_block": 24199947,
+        "cash_block": 24226950
+      },
+      {
+        "request_at": "2026-01-13T17:52:59+00:00",
+        "cash_at": "2026-01-15T13:46:11+00:00",
+        "days": 2,
+        "shares": "48912001.439969",
+        "cash_usdc": "50011837.41396",
+        "request_tx": "0xd64d424af4203e20693b7c5b1d545c9ee2dfd4ec517a278894dfa0457770f05a",
+        "cash_tx": "0x2e7f6b434d249709f2a5c01ad0ed195b5b90a0c0a37e941c66e3c10dcffb7710",
+        "request_block": 24227392,
+        "cash_block": 24240498
+      },
+      {
+        "request_at": "2026-01-15T14:13:35+00:00",
+        "cash_at": "2026-01-20T14:16:11+00:00",
+        "days": 5,
+        "shares": "48900425.042494",
+        "cash_usdc": "50016589.482658",
+        "request_tx": "0x68ddf78924e00ba5f1d8c20df0e1309df2ae77ba88df31b402b834a6bcb1bd80",
+        "cash_tx": "0x1a0bbb886055790d2a2dd94e78182ebf4d194fd3d5b09864bae893b02842fd3f",
+        "request_block": 24240633,
+        "cash_block": 24276525
+      },
+      {
+        "request_at": "2026-03-09T13:58:35+00:00",
+        "cash_at": "2026-03-11T14:03:23+00:00",
+        "days": 2,
+        "shares": "318545940.695567",
+        "cash_usdc": "326858573.655125",
+        "request_tx": "0x65759e0c480201d4f3907834af0c472a5ff9c6141580454783ea32af1f517dc7",
+        "cash_tx": "0x604f2079af65f48a962e36e8d4bc30f2e7116b70ad685f84c5bcfde574f1c503",
+        "request_block": 24620366,
+        "cash_block": 24634700
+      }
+    ],
+    "jtrsy": [
+      {
+        "request_at": "2025-09-02T15:18:59+00:00",
+        "cash_at": "2025-09-03T01:55:59+00:00",
+        "days": 1,
+        "shares": "46441511.060488",
+        "cash_usdc": "50021852.617207",
+        "request_tx": "0xb91127cd37947c01b60e8f0d8162d6ca56f11dda198f2d1a372dc84ad8f96390",
+        "cash_tx": "0x90d23b7da69418193fd42040022ab9f766884a768f923bc3ccac54ec447bfe3e",
+        "request_block": 23276269,
+        "cash_block": 23279435
+      },
+      {
+        "request_at": "2026-04-23T13:51:23+00:00",
+        "cash_at": "2026-04-24T19:24:11+00:00",
+        "days": 1,
+        "shares": "45411652.084985",
+        "cash_usdc": "50009531.07724",
+        "request_tx": "0x9003b69d6a43d204c52b36e364e8951c97fceb063fd78970ce0d4afc0c8e0b1b",
+        "cash_tx": "0x5e9cf4566bcd20e6d8c827f17275f130859c82323e84f1eeab24f56dc6028d52",
+        "request_block": 24943060,
+        "cash_block": 24951899
+      },
+      {
+        "request_at": "2026-04-24T11:27:35+00:00",
+        "cash_at": "2026-04-24T20:15:47+00:00",
+        "days": 0,
+        "shares": "45407280.432896",
+        "cash_usdc": "50004716.800265",
+        "request_tx": "0x36e4395901a67caebf8afb0db31a0d70f3ab1266f44b183cc577d5dd7cd2a1a3",
+        "cash_tx": "0x4ec094018cb6292433e163151d754057cc9c789469051cdd2f7ee191d50114c3",
+        "request_block": 24949523,
+        "cash_block": 24952157
+      },
+      {
+        "request_at": "2026-04-27T12:02:11+00:00",
+        "cash_at": "2026-04-27T20:46:47+00:00",
+        "days": 0,
+        "shares": "45402997.295501",
+        "cash_usdc": "50013551.903169",
+        "request_tx": "0xa9fc2d6627d98340f0c7ccc5e0b2f3414c4e5e410284da2d3800300780fd8900",
+        "cash_tx": "0xa83a5ffb17b3b2e585847675c9ac46c203e679c5081adf4a053cf4e586c1a39e",
+        "request_block": 24971249,
+        "cash_block": 24973865
+      },
+      {
+        "request_at": "2026-04-28T11:14:23+00:00",
+        "cash_at": "2026-04-28T18:58:47+00:00",
+        "days": 0,
+        "shares": "45390694.689517",
+        "cash_usdc": "50004542.46854",
+        "request_tx": "0xc8807d20f303c6bc7530d66b4674f36e21cf8ff7a33f2d3f6c2ca5ce3620b8b1",
+        "cash_tx": "0xd0cccb5331adf203f5c464a52a20eb3a9f2171d70b8ae33b5bf4706ebc809db5",
+        "request_block": 24978194,
+        "cash_block": 24980506
+      },
+      {
+        "request_at": "2026-04-29T09:47:35+00:00",
+        "cash_at": "2026-04-29T19:29:35+00:00",
+        "days": 0,
+        "shares": "45386571.348067",
+        "cash_usdc": "50004601.548608",
+        "request_tx": "0x8e3226acb8bb915da13d075eecc5039b956d8ee48edddda21d318219e344b5f5",
+        "cash_tx": "0x315886e0a0a0f7550b571943167a29224027331ec8cfa2373119a6aa1db60b1c",
+        "request_block": 24984942,
+        "cash_block": 24987843
+      },
+      {
+        "request_at": "2026-04-30T09:51:47+00:00",
+        "cash_at": "2026-04-30T18:23:23+00:00",
+        "days": 0,
+        "shares": "31767676.333511",
+        "cash_usdc": "35002936.952073",
+        "request_tx": "0x254cfe9a09bc11f47e9f55f4019c6338164d88a7a656359e3c65b27e85755698",
+        "cash_tx": "0xb2f58382205370972f5a4a18eaef4ade9b0341ac9c550fb3c9cc23a04567f2aa",
+        "request_block": 24992144,
+        "cash_block": 24994691
+      },
+      {
+        "request_at": "2026-05-01T10:52:35+00:00",
+        "cash_at": "2026-05-04T16:48:47+00:00",
+        "days": 3,
+        "shares": "45378586.91259",
+        "cash_usdc": "50019898.038685",
+        "request_tx": "0x3a0077bc3063dad7bf26819db99ed0996a94a1046331c84db9425406dc9f9952",
+        "cash_tx": "0x0b9b77cfdd24ee1600cb93b29d4491aeedb205f2af0fc9b1e8f5026775796638",
+        "request_block": 24999617,
+        "cash_block": 25022929
+      },
+      {
+        "request_at": "2026-05-04T15:58:35+00:00",
+        "cash_at": "2026-05-05T17:47:35+00:00",
+        "days": 1,
+        "shares": "45360535.198906",
+        "cash_usdc": "50003843.903366",
+        "request_tx": "0x0403a83eb72cb4a8308c07eaf85e1d18d945f8dda503b5837e1e2b0fc7aa6fac",
+        "cash_tx": "0x60109165458705ee3bbca75a44bf89f22a7ea2c999d360273b86025a41a3830d",
+        "request_block": 25022678,
+        "cash_block": 25030394
+      },
+      {
+        "request_at": "2026-05-11T16:10:59+00:00",
+        "cash_at": "2026-05-12T17:26:47+00:00",
+        "days": 1,
+        "shares": "22665000",
+        "cash_usdc": "25001279.688457",
+        "request_tx": "0x4b17e9d2ec564d119d0d223b11b78569ab71419546a351ae20640253d6b27d01",
+        "cash_tx": "0x7b57dba8c2801cc90ea220e4055ceaebd08fa2cb4e9c3e69f6b220b6523ea541",
+        "request_block": 25072969,
+        "cash_block": 25080523
+      },
+      {
+        "request_at": "2026-05-13T17:56:35+00:00",
+        "cash_at": "2026-05-14T14:46:23+00:00",
+        "days": 1,
+        "shares": "22665000",
+        "cash_usdc": "25005879.883164",
+        "request_tx": "0xf61e3a8690d6854b7d78c4c79080f381c2325b117d6c4910a60fcdd2838f7b35",
+        "cash_tx": "0xe2e0dbbe89e717bb59c116e52b5f43625d7337f9d74d33fd82c58caac4787d73",
+        "request_block": 25087845,
+        "cash_block": 25094063
+      },
+      {
+        "request_at": "2026-05-14T14:20:35+00:00",
+        "cash_at": "2026-05-15T14:42:59+00:00",
+        "days": 1,
+        "shares": "22665000",
+        "cash_usdc": "25008470.91942",
+        "request_tx": "0x66d7e4770f91baf06ac95c6330bf50e1ae8be00837b08777e616ecad9cefb750",
+        "cash_tx": "0xf2de5bf4e2116fe1655c6c0a7fda2e3448eb987aa42a7db14b659a258043ea5a",
+        "request_block": 25093936,
+        "cash_block": 25101219
+      },
+      {
+        "request_at": "2026-05-15T18:18:47+00:00",
+        "cash_at": "2026-05-18T16:15:47+00:00",
+        "days": 3,
+        "shares": "22665000",
+        "cash_usdc": "25015391.753467",
+        "request_tx": "0x9f3eb868d887d40cc6414f2c8e2917e5c827f116376cf622c44e522b58d6b02c",
+        "cash_tx": "0xeb792164d4f7ba193c046755ab865dfe536ad440621eb41197f6b72804c93c6d",
+        "request_block": 25102297,
+        "cash_block": 25123224
+      },
+      {
+        "request_at": "2026-05-18T18:51:47+00:00",
+        "cash_at": "2026-05-19T19:18:47+00:00",
+        "days": 1,
+        "shares": "22660000",
+        "cash_usdc": "25012917.758801",
+        "request_tx": "0x53f84874d60aa870f494c2f7c6f58239686f59b4638e748dd94706a77ac168f4",
+        "cash_tx": "0xa35f27d62be1a7622c3f65aa508fd4dad2fcccede36f921a236a6a6e32d84487",
+        "request_block": 25124003,
+        "cash_block": 25131314
+      },
+      {
+        "request_at": "2026-05-19T17:58:35+00:00",
+        "cash_at": "2026-05-20T17:00:11+00:00",
+        "days": 1,
+        "shares": "22660000",
+        "cash_usdc": "25015572.493544",
+        "request_tx": "0xa80a83e27606ed2b029bbd82789ca059b54898867367cb60cffa06bf2a5bac75",
+        "cash_tx": "0xc2ef7b8f50b0a4396c290b983c8541abb3079c9efb58b5220f09e77e6dbe4c6f",
+        "request_block": 25130913,
+        "cash_block": 25137802
+      },
+      {
+        "request_at": "2026-05-20T19:01:35+00:00",
+        "cash_at": "2026-05-21T16:51:59+00:00",
+        "days": 1,
+        "shares": "22650000",
+        "cash_usdc": "25007343.246721",
+        "request_tx": "0xfab8d73615a46829084cfaaa2e7ed97dafa603d970c28228d3ec47d5f6cfe6ff",
+        "cash_tx": "0xfb96af57bcfb1ac6bcf11fe24c3b2b77add75344be5d2d6ca443d44f8321fe51",
+        "request_block": 25138408,
+        "cash_block": 25144938
+      },
+      {
+        "request_at": "2026-05-21T15:53:23+00:00",
+        "cash_at": "2026-05-22T15:19:23+00:00",
+        "days": 1,
+        "shares": "22645000",
+        "cash_usdc": "25003198.546929",
+        "request_tx": "0x5fc8da00577c1265bd9faf09a0ba48234d74e5b755eff5cea91d929c0c6d332d",
+        "cash_tx": "0x143d90e8fd3a8f5eb0e50890cf0c4f293c73accff0c53a1ac201bbb7e910ed1f",
+        "request_block": 25144645,
+        "cash_block": 25151651
+      },
+      {
+        "request_at": "2026-05-22T15:28:11+00:00",
+        "cash_at": "2026-05-26T15:12:23+00:00",
+        "days": 4,
+        "shares": "22640000",
+        "cash_usdc": "25006456.555496",
+        "request_tx": "0x2e135d0bb5ace9cc8767639fe44191482176f9f33d3cb7348e0cd55d721aafc2",
+        "cash_tx": "0xe85600ac864f7e100a0badd1865e51f6af79af2071aaac590a490fe737767d22",
+        "request_block": 25151695,
+        "cash_block": 25180310
+      },
+      {
+        "request_at": "2026-05-26T15:17:47+00:00",
+        "cash_at": "2026-05-27T15:48:11+00:00",
+        "days": 1,
+        "shares": "22635000",
+        "cash_usdc": "25002926.885616",
+        "request_tx": "0xf298b22f9c1a98bd9ab2ccc360cd4084e43c9322518599cd49b2300f49cee8d2",
+        "cash_tx": "0x8d12580c5051b72a302799322447de205c9e704b4dddae3c68308a669266eeff",
+        "request_block": 25180337,
+        "cash_block": 25187662
+      },
+      {
+        "request_at": "2026-05-27T15:50:47+00:00",
+        "cash_at": "2026-05-28T14:59:23+00:00",
+        "days": 1,
+        "shares": "22635000",
+        "cash_usdc": "25005047.276647",
+        "request_tx": "0x8bce003674f1d663ea9e4d669f7dae82ff1fee89dcaf4bc4cdaf151658de70d2",
+        "cash_tx": "0x60fb05644675015bacba9379e4d98da94f5e8f7d47073da1398d9e9c9ea69314",
+        "request_block": 25187675,
+        "cash_block": 25194600
+      },
+      {
+        "request_at": "2026-08-31T17:00:47+00:00",
+        "cash_at": "2026-09-01T16:01:23+00:00",
+        "days": 1,
+        "shares": "22429188.808014",
+        "cash_usdc": "25001970.695766",
+        "request_tx": "0xb0b7b9916743c4adbcdb9fc400b4f82e243d6a755f6b80f523a87d951bb67729",
+        "cash_tx": "0x2d477290787e84fd26631d45fd434ded5ae4d54fa0c063b4063b0c3bab5d0bb6",
+        "request_block": 25876620,
+        "cash_block": 25883493
+      },
+      {
+        "request_at": "2026-09-01T15:52:11+00:00",
+        "cash_at": "2026-09-02T15:31:11+00:00",
+        "days": 1,
+        "shares": "22427438.266233",
+        "cash_usdc": "25002061.175359",
+        "request_tx": "0xb0394fec4fbeb4b35126589a35ec89bf8a4162c8d824273a2802d02eb8a0600b",
+        "cash_tx": "0xe7cc5f65bbb352ad5be5801367f5822ff6e7adf577824eb77bb221ba998d2860",
+        "request_block": 25883447,
+        "cash_block": 25890518
+      },
+      {
+        "request_at": "2026-09-03T20:39:47+00:00",
+        "cash_at": "2026-09-04T15:59:47+00:00",
+        "days": 1,
+        "shares": "22425607.532133",
+        "cash_usdc": "25005935.572342",
+        "request_tx": "0x4739d622b59dd68216f53d51b8f5b53cf910440e1560f2522fb5dead05b57177",
+        "cash_tx": "0x0ce6843c42b48bb0589ad6a26afa8d9eee4772b76b7e6b6dbb5146867abd4be4",
+        "request_block": 25899229,
+        "cash_block": 25905008
+      },
+      {
+        "request_at": "2026-09-04T19:30:23+00:00",
+        "cash_at": "2026-09-08T15:27:35+00:00",
+        "days": 4,
+        "shares": "22420298.082347",
+        "cash_usdc": "25009255.632468",
+        "request_tx": "0x206725acd8342798407886ec4e59b239fe20ac53520deba71daae6c41027663f",
+        "cash_tx": "0xe83018588d59e2119e93a6ed78e9af3e3703a0e9e97d3334a2eac385c6b506d5",
+        "request_block": 25906055,
+        "cash_block": 25933536
+      },
+      {
+        "request_at": "2026-09-09T12:50:35+00:00",
+        "cash_at": "2026-09-09T17:33:59+00:00",
+        "days": 0,
+        "shares": "22412000.592731",
+        "cash_usdc": "25001844.702416",
+        "request_tx": "0xc4806070b25605f73de80fdc2591eb5114614b2fd3602d2b2961b08375a74bb4",
+        "cash_tx": "0xa9b2249423135f7df8e3ba033d30622ecf32db38ae2111b13e9ac8bcf2c83409",
+        "request_block": 25939925,
+        "cash_block": 25941335
+      },
+      {
+        "request_at": "2026-09-10T14:23:23+00:00",
+        "cash_at": "2026-09-11T14:00:35+00:00",
+        "days": 1,
+        "shares": "22410346.975882",
+        "cash_usdc": "25002509.575947",
+        "request_tx": "0x1cbc7ae26233f4e5f482aeed7b2df8f05f6c8999f4a52037a71676cb3ba7122b",
+        "cash_tx": "0xf6d5a403efb3a519affcad410b28d542afa7ec2d28e2384ac9f85120fa2446bf",
+        "request_block": 25947562,
+        "cash_block": 25954622
+      },
+      {
+        "request_at": "2026-09-11T14:05:35+00:00",
+        "cash_at": "2026-09-14T15:59:11+00:00",
+        "days": 3,
+        "shares": "22408717.919675",
+        "cash_usdc": "25005549.613086",
+        "request_tx": "0xc1b53c3e5cc13f20a4a9ee6b9711789147c54c60f770cf4aafd188950ec9f139",
+        "cash_tx": "0xa7b859a3d35cf4cf669bc655b0eac1f0e4a6b4d6d54c4e0161c1fe40606bcf20",
+        "request_block": 25954647,
+        "cash_block": 25976746
+      },
+      {
+        "request_at": "2026-09-14T16:19:47+00:00",
+        "cash_at": "2026-09-15T14:29:35+00:00",
+        "days": 1,
+        "shares": "22403744.635098",
+        "cash_usdc": "25002014.051465",
+        "request_tx": "0xc98b5bb6acf021f8f1a99c98196acc0215cc6c0b001874b4715738980bc28fd8",
+        "cash_tx": "0x5a11cd0a418b3a756016ac9887c2412ea2357d0e49fe5ef2763dc613a07a7fc0",
+        "request_block": 25976849,
+        "cash_block": 25983467
+      },
+      {
+        "request_at": "2026-09-15T16:02:35+00:00",
+        "cash_at": "2026-09-16T13:36:35+00:00",
+        "days": 1,
+        "shares": "22401939.888703",
+        "cash_usdc": "25002448.360018",
+        "request_tx": "0x80cb659a2ffc0a263dc88a9bb1cb870719af034ce01da84b8da984d08f8d0779",
+        "cash_tx": "0xa6c4fad5f0e50247d6b387f80a254aee0b7b25e8ba0cf8592440510061a9acef",
+        "request_block": 25983930,
+        "cash_block": 25990376
+      },
+      {
+        "request_at": "2026-09-16T14:41:11+00:00",
+        "cash_at": "2026-09-17T13:26:47+00:00",
+        "days": 1,
+        "shares": "44799492.365967",
+        "cash_usdc": "50002460.474623",
+        "request_tx": "0xbb37317e724d35242c29b5db07ffb520c38df299b1e3ae65a09cde50126af9e8",
+        "cash_tx": "0xafb7ff457cac29d92d2acc14ded227663614ac553e0499192b4d14a84a7ac2f9",
+        "request_block": 25990699,
+        "cash_block": 25997500
+      },
+      {
+        "request_at": "2026-09-16T20:24:59+00:00",
+        "cash_at": "2026-09-17T14:29:35+00:00",
+        "days": 1,
+        "shares": "179197969.463871",
+        "cash_usdc": "200009841.898496",
+        "request_tx": "0x2e543f3986beee66032b8dbd5089a0347cfc97999152a504be8d756a9bcf895e",
+        "cash_tx": "0xa6ecac26e346553baab3523eaa80f884643a9827e770ef1396f5db51c13d6f9f",
+        "request_block": 25992409,
+        "cash_block": 25997813
+      },
+      {
+        "request_at": "2026-09-17T15:03:23+00:00",
+        "cash_at": "2026-09-17T16:28:59+00:00",
+        "days": 0,
+        "shares": "44797287.914165",
+        "cash_usdc": "49999999.999999",
+        "request_tx": "0x20b53783f9a9efd821326aaae4e5dd54e43b1d3c5e9ed31fa4af8e377013b9ff",
+        "cash_tx": "0xff5b0f79f3037d1f288ee44572ac65c6d4f5a530519196c0e1bf8dad52b4eaff",
+        "request_block": 25997981,
+        "cash_block": 25998407
+      },
+      {
+        "request_at": "2026-09-21T20:34:59+00:00",
+        "cash_at": "2026-09-22T13:48:11+00:00",
+        "days": 1,
+        "shares": "22389598.927263",
+        "cash_usdc": "25002292.694095",
+        "request_tx": "0x5f0ff79d3999c747df6ae32be5c1678ad2a074565b428d84b9d9d1956a3bcd27",
+        "cash_tx": "0xd22f19ad849373940d8221daf5e530c1404e06a70d3b446a74edefe11d887c5d",
+        "request_block": 26028297,
+        "cash_block": 26033427
+      }
+    ]
+  },
+  "snapshots": [
+    {
+      "asset": "jaaa",
+      "date": "2026-01-06",
+      "block": 24179079,
+      "pending_raw": "0",
+      "claimable_raw": "48976441352180",
+      "balance_raw": "688026386578522",
+      "nav_raw": "1020994"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2026-01-07",
+      "block": 24186241,
+      "pending_raw": "48971884261807",
+      "claimable_raw": "0",
+      "balance_raw": "639054502316715",
+      "nav_raw": "1021397"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2026-01-08",
+      "block": 24193397,
+      "pending_raw": "48952562030238",
+      "claimable_raw": "48971884261807",
+      "balance_raw": "590101940286477",
+      "nav_raw": "1021722"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2026-01-09",
+      "block": 24200571,
+      "pending_raw": "48936559622836",
+      "claimable_raw": "0",
+      "balance_raw": "541165380663641",
+      "nav_raw": "1021731"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2026-01-10",
+      "block": 24207742,
+      "pending_raw": "48936559622836",
+      "claimable_raw": "0",
+      "balance_raw": "541165380663641",
+      "nav_raw": "1021731"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2026-01-11",
+      "block": 24214912,
+      "pending_raw": "48936559622836",
+      "claimable_raw": "0",
+      "balance_raw": "541165380663641",
+      "nav_raw": "1021731"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2026-01-12",
+      "block": 24222074,
+      "pending_raw": "48936559622836",
+      "claimable_raw": "0",
+      "balance_raw": "541165380663641",
+      "nav_raw": "1022244"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2026-01-13",
+      "block": 24229220,
+      "pending_raw": "48912001439969",
+      "claimable_raw": "0",
+      "balance_raw": "492253379223672",
+      "nav_raw": "1022353"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2026-01-14",
+      "block": 24236386,
+      "pending_raw": "0",
+      "claimable_raw": "48912001439969",
+      "balance_raw": "492253379223672",
+      "nav_raw": "1022486"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2026-01-15",
+      "block": 24243557,
+      "pending_raw": "48900425042494",
+      "claimable_raw": "0",
+      "balance_raw": "443352954181178",
+      "nav_raw": "1022587"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2026-01-16",
+      "block": 24250737,
+      "pending_raw": "0",
+      "claimable_raw": "48900425042494",
+      "balance_raw": "443352954181178",
+      "nav_raw": "1022825"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2026-01-17",
+      "block": 24257909,
+      "pending_raw": "0",
+      "claimable_raw": "48900425042494",
+      "balance_raw": "443352954181178",
+      "nav_raw": "1022825"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2026-01-18",
+      "block": 24265091,
+      "pending_raw": "0",
+      "claimable_raw": "48900425042494",
+      "balance_raw": "443352954181178",
+      "nav_raw": "1022825"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2026-01-19",
+      "block": 24272265,
+      "pending_raw": "0",
+      "claimable_raw": "48900425042494",
+      "balance_raw": "443352954181178",
+      "nav_raw": "1022825"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-04-23",
+      "block": 24946093,
+      "pending_raw": "45411652084985",
+      "claimable_raw": "0",
+      "balance_raw": "1323108862014230",
+      "nav_raw": "1101145",
+      "nav_precise_raw": "1101145004134092583"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-05-01",
+      "block": 25003545,
+      "pending_raw": "45378586912590",
+      "claimable_raw": "0",
+      "balance_raw": "1064375055002148",
+      "nav_raw": "1101966",
+      "nav_precise_raw": "1101966399008461962"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-05-02",
+      "block": 25010735,
+      "pending_raw": "45378586912590",
+      "claimable_raw": "0",
+      "balance_raw": "1064375055002148",
+      "nav_raw": "1101966",
+      "nav_precise_raw": "1101966399008461962"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-05-03",
+      "block": 25017913,
+      "pending_raw": "45378586912590",
+      "claimable_raw": "0",
+      "balance_raw": "1064375055002148",
+      "nav_raw": "1101966",
+      "nav_precise_raw": "1101966399008461962"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-05-04",
+      "block": 25025077,
+      "pending_raw": "45360535198906",
+      "claimable_raw": "0",
+      "balance_raw": "1019014519803242",
+      "nav_raw": "1102279",
+      "nav_precise_raw": "1102279763251228779"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-05-11",
+      "block": 25075305,
+      "pending_raw": "22665000000000",
+      "claimable_raw": "0",
+      "balance_raw": "996349519803242",
+      "nav_raw": "1102998",
+      "nav_precise_raw": "1102998257585503045"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-05-13",
+      "block": 25089644,
+      "pending_raw": "22665000000000",
+      "claimable_raw": "0",
+      "balance_raw": "973684519803242",
+      "nav_raw": "1103175",
+      "nav_precise_raw": "1103175645843583123"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-05-14",
+      "block": 25096819,
+      "pending_raw": "22665000000000",
+      "claimable_raw": "0",
+      "balance_raw": "951019519803242",
+      "nav_raw": "1103281",
+      "nav_precise_raw": "1103281706735696708"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-05-15",
+      "block": 25103999,
+      "pending_raw": "22665000000000",
+      "claimable_raw": "0",
+      "balance_raw": "928354519803242",
+      "nav_raw": "1103396",
+      "nav_precise_raw": "1103396025564549195"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-05-16",
+      "block": 25111182,
+      "pending_raw": "22665000000000",
+      "claimable_raw": "0",
+      "balance_raw": "928354519803242",
+      "nav_raw": "1103396",
+      "nav_precise_raw": "1103396025564549195"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-05-17",
+      "block": 25118358,
+      "pending_raw": "22665000000000",
+      "claimable_raw": "0",
+      "balance_raw": "928354519803242",
+      "nav_raw": "1103396",
+      "nav_precise_raw": "1103396025564549195"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-05-18",
+      "block": 25125536,
+      "pending_raw": "22660000000000",
+      "claimable_raw": "0",
+      "balance_raw": "905694519803242",
+      "nav_raw": "1103701",
+      "nav_precise_raw": "1103701378930849669"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-05-19",
+      "block": 25132717,
+      "pending_raw": "22660000000000",
+      "claimable_raw": "0",
+      "balance_raw": "883034519803242",
+      "nav_raw": "1103835",
+      "nav_precise_raw": "1103835735163370179"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-05-20",
+      "block": 25139893,
+      "pending_raw": "22650000000000",
+      "claimable_raw": "0",
+      "balance_raw": "860384519803242",
+      "nav_raw": "1103952",
+      "nav_precise_raw": "1103952890271170874"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-05-21",
+      "block": 25147071,
+      "pending_raw": "22645000000000",
+      "claimable_raw": "0",
+      "balance_raw": "837739519803242",
+      "nav_raw": "1104076",
+      "nav_precise_raw": "1104076964535175097"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-05-22",
+      "block": 25154243,
+      "pending_raw": "22640000000000",
+      "claimable_raw": "0",
+      "balance_raw": "815099519803242",
+      "nav_raw": "1104137",
+      "nav_precise_raw": "1104137714591736545"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-05-23",
+      "block": 25161418,
+      "pending_raw": "22640000000000",
+      "claimable_raw": "0",
+      "balance_raw": "815099519803242",
+      "nav_raw": "1104137",
+      "nav_precise_raw": "1104137714591736545"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-05-24",
+      "block": 25168596,
+      "pending_raw": "22640000000000",
+      "claimable_raw": "0",
+      "balance_raw": "815099519803242",
+      "nav_raw": "1104137",
+      "nav_precise_raw": "1104137714591736545"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-05-25",
+      "block": 25175762,
+      "pending_raw": "22640000000000",
+      "claimable_raw": "0",
+      "balance_raw": "815099519803242",
+      "nav_raw": "1104525",
+      "nav_precise_raw": "1104525466232199023"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-05-26",
+      "block": 25182942,
+      "pending_raw": "22635000000000",
+      "claimable_raw": "0",
+      "balance_raw": "792464519803242",
+      "nav_raw": "1104525",
+      "nav_precise_raw": "1104525466232199023"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-05-27",
+      "block": 25190113,
+      "pending_raw": "22635000000000",
+      "claimable_raw": "0",
+      "balance_raw": "769829519803242",
+      "nav_raw": "1104613",
+      "nav_precise_raw": "1104613513833309817"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-08-31",
+      "block": 25878704,
+      "pending_raw": "22429188808014",
+      "claimable_raw": "0",
+      "balance_raw": "747400330995228",
+      "nav_raw": "1114619"
+    }
+  ],
+  "baselines": {
+    "2026-03": {
+      "path": "settlements/grove/2026-03/grove_settlement_march_2026.xlsx",
+      "sha256": "a12c9ed10f97522742559a9f78b15174d60563dab61d80c2e039c87c4401eca9",
+      "pin": 24781026
+    },
+    "2026-04": {
+      "path": "settlements/grove/2026-04/grove_settlement_april_2026.xlsx",
+      "sha256": "2147bb6d9e900261abe33643c70fe32c7c294cdeb1a5c034304aa704fa94f16f",
+      "pin": 24996367
+    },
+    "2026-05": {
+      "path": "settlements/grove/2026-05/grove_settlement_may_2026.xlsx",
+      "sha256": "fc8a0167cf94ef1020f48790a256a0c0ff6a375bacac55ab6778eea789a1c6d4",
+      "pin": 25218797
+    },
+    "2026-08": {
+      "path": "settlements/grove/2026-08/grove_settlement_august_2026.xlsx",
+      "sha256": "4c5491ada70611602462e936b05701ba8e2e29c1c993aa3908a51ecd5a0255fd",
+      "pin": 25878704
+    },
+    "2026-09": {
+      "path": "settlements/grove/2026-09/grove_settlement_september_2026.xlsx",
+      "sha256": "726b28299529264199cd60fdba02f9d83c27a77cf0252cabd9c46d3876912610",
+      "pin": 26093737
+    }
+  },
+  "already_recorded_cof_credit": {
+    "2026-08": "2508.55"
+  }
+}

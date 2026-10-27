@@ -228,6 +228,7 @@ def render_provenance(
                         "block_date": r["block_date"].isoformat(),
                         "cum_value": str(r["cum_value"]),
                         "uncapped_value": str(r["uncapped_value"]),
+                        **{key: str(r[key]) for key in ("wallet_value", "pending_value") if key in r},
                     }
                     for r in b.daily
                 ],
