@@ -29,7 +29,8 @@ def test_all_configured_venues_have_explicit_boolean():
     for prime in ('spark', 'grove', 'obex', 'osero', 'keel', 'skybase'):
         raw = yaml.safe_load((Path(__file__).resolve().parents[2] / 'config' / f'{prime}.yaml').read_text())
         for venue in raw.get('venues', []):
-            assert type(venue['settlement_enabled']) is bool, (prime, venue['id'])
+            assert type(venue['settlement']['enabled']) is bool, (prime, venue['id'])
+            assert type(venue['reporting']['enabled']) is bool, (prime, venue['id'])
         load_prime_by_id(prime)
 
 
@@ -68,6 +69,9 @@ def test_reporting_revenue_is_computed_but_does_not_change_msc(monkeypatch):
     assert reported.venue_breakdown == []
     assert reported.reporting_only_breakdown[0].revenue == 5
     assert not reported.reporting_only_breakdown[0].settlement_enabled
+    assert D(settled.venue_views['settlement'][0]['income_usd']) == 5
+    assert D(reported.venue_views['reporting'][0]['income_usd']) == 5
+    assert reported.venue_views['settlement'][0]['status'] == 'disabled'
     prov = render_provenance(reported)
     assert D(prov['results']['reporting_only_revenue']) == 5
     assert D(prov['reporting_only_breakdown'][0]['revenue']) == 5

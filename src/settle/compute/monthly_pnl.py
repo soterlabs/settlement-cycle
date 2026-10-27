@@ -2557,6 +2557,7 @@ def compute_monthly_pnl(
     venue_inputs: list[VenueRevenueInputs] = []
     # Reporting-only income is computed independently and excluded from MSC.
     reporting_only_breakdown: list[VenueRevenue] = []
+    alm_income_ledger: list[dict] = []
 
     # 3a. Cash-distribution venues — attributed directly as prime revenue,
     # bypassing the standard SoM/EoM formula and the sky-revenue path.
@@ -3716,6 +3717,7 @@ def compute_monthly_pnl(
                     principal_return_overrides=overrides_by_bytes,
                     yield_reversal_overrides=reversals_by_bytes or None,
                     paired_principal_caps=paired_principal_caps or None,
+                    income_ledger=alm_income_ledger,
                 )
         elif venue.pricing_category == PricingCategory.EOA:
             # Cat EOA — Off-protocol relay/staging address. The venue tracks
@@ -4327,7 +4329,7 @@ def compute_monthly_pnl(
         for _, row in sky_rev_daily.iterrows()
     ]
 
-    return MonthlyPnL(
+    result = MonthlyPnL(
         prime_id=prime.id,
         month=month,
         period=period,
@@ -4354,3 +4356,7 @@ def compute_monthly_pnl(
         sky_revenue_gross=sky_rev_gross,
         subsidy_summary=subsidy_summary,
     )
+    if not sky_only:
+        from .venue_views import build_venue_views
+        result = replace(result, venue_views=build_venue_views(prime, result, alm_income_ledger))
+    return result

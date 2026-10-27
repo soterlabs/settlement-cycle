@@ -250,6 +250,8 @@ class MonthlyPnL:
     # Revenue is computed but excluded from settlement; ``value_som`` / ``value_eom``
     # carry position values or an incentive receivable/prepayment.
     reporting_only_breakdown: list[VenueRevenue] = field(default_factory=list)
+    # Both API views frozen at calculation time, independent of current config.
+    venue_views: dict = field(default_factory=dict)
     # Per-venue daily SDE asset-value series (see ``SDEDailyBreakdown``).
     # Empty list for primes / months without active SDE entries; populated
     # for every SDE venue exercised in the run. Consumed by post-hoc

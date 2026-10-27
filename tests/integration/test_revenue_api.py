@@ -61,3 +61,46 @@ def test_committed_revisions_failed_refresh_and_prime_isolation(database, monkey
             assert status.status_code == 503
             assert status.headers['cache-control'] == 'no-store'
             assert status.json()['primes']['obex']['latest_attempt']['error_type'] == 'RPCError'
+
+
+def test_independent_views_share_persisted_revisions_and_reporting_corrections(database, monkeypatch):  # noqa: F811
+    from datetime import timedelta
+
+    from settle.api import revenue
+    from settle.compute.venue_views import build_venue_views
+    from settle.domain.venue_views import VenueView
+    from settle.revenue.verification import digest, validate_window
+    from tests.unit.test_venue_views import example as view_example, terms
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError('API must not call providers')
+    monkeypatch.setattr('requests.Session.send', forbidden)
+    prime, pnl, receipts = view_example()
+    fixture_today = pnl.as_of + timedelta(days=1)
+    monkeypatch.setattr(store, 'validate_window', lambda cutoff: validate_window(cutoff, today=fixture_today))
+    monkeypatch.setattr(revenue, 'today', lambda: fixture_today)
+    pnl = replace(pnl, venue_views=build_venue_views(prime, pnl, receipts))
+    changed = terms()
+    changed['tranches'][0]['apr_schedule'][0]['apr'] = '0.2'
+    prime = replace(prime, venues=[replace(prime.venues[0], reporting_view=VenueView(
+        method='loan_accrual', loan_terms=changed)), prime.venues[1]])
+    corrected = replace(pnl, venue_views=build_venue_views(prime, pnl, receipts))
+    assert corrected.venue_views['settlement'] == pnl.venue_views['settlement']
+    with psycopg.connect(database, autocommit=True) as conn:
+        store.apply_schema(conn)
+        first = store.publish(conn, pnl, store.Versions('views', 'cfg-a', '0'))
+        second = store.publish(conn, corrected, store.Versions('views', 'cfg-b', '0'))
+        saved = store.read(conn, 'spark', revision=first)
+        assert saved['result_hash'] == digest(saved['result'])
+    with ConnectionPool(database, min_size=1, max_size=2) as pool:
+        with TestClient(create_app(reader=PostgresReader(pool, {}, [], 0))) as client:
+            cutoff = str(pnl.as_of)
+            for revision, income in ((first, Decimal(30)), (second, Decimal(60))):
+                settle = client.get(f'/v2/settlement/spark/at/{cutoff}?revision={revision}').json()
+                report = client.get(f'/v2/reporting/spark/at/{cutoff}?revision={revision}').json()
+                assert settle['data']['revision_id'] == report['data']['revision_id'] == revision
+                assert settle['data']['result']['totals']['prime_agent_revenue'] == '100'
+                assert Decimal(report['data']['result']['venues'][0]['income_usd']) == income
+                assert settle['data']['source_result_hash'] == report['data']['source_result_hash']
+                raw = client.get(f'/v1/revenue/spark/at/{cutoff}?revision={revision}').json()
+                assert raw['data']['result_hash'] == digest(raw['data']['result'])

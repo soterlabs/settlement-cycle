@@ -22,7 +22,8 @@ def render_provenance(
 ) -> dict[str, Any]:
     """Build the provenance dict. Pure — easy to test/snapshot."""
     return {
-        "schema_version": "1.1",
+        "schema_version": "1.2",
+        "venue_views": pnl.venue_views,
         "settle_version": __version__,
         "generated_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "prime_id": pnl.prime_id,

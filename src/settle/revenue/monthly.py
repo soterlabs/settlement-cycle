@@ -54,6 +54,9 @@ def _decode(kind, value):
             for group, settles in (('venue_breakdown', True), ('reporting_only_breakdown', False)):
                 value[group] = [{**row, 'settlement_enabled': settles, 'incentive_accrual': {}}
                                 for row in value[group]]
+        if (kind is MonthlyPnL and isinstance(value, dict)
+                and set(value) == {f.name for f in fields(kind)} - {'venue_views'}):
+            value = {**value, 'venue_views': {}}
         if not isinstance(value, dict) or set(value) != {f.name for f in fields(kind)}:
             raise ValueError(f'incompatible snapshot schema: {kind.__name__}')
         hints = get_type_hints(kind)

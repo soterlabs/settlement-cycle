@@ -90,7 +90,12 @@ venues:
   # Ethereum — SparkLend spTokens (Cat C, rebasing aToken-style)
   # ─────────────────────────────────────────────────────────────
   - id: S1
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Spark USDS (SparkLend spToken)'
@@ -110,7 +115,12 @@ venues:
     lending_idle_usds: true
 
   - id: S2
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Spark USDC (SparkLend spToken)'
@@ -125,7 +135,12 @@ venues:
       decimals: 6
 
   - id: S3
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Spark USDT (SparkLend spToken)'
@@ -140,7 +155,12 @@ venues:
       decimals: 6
 
   - id: S4
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Spark DAI (SparkLend spToken)'
@@ -160,7 +180,12 @@ venues:
     lending_idle_usds: true
 
   - id: S5
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Spark PYUSD (SparkLend spToken)'
@@ -178,7 +203,12 @@ venues:
   # Ethereum — Aave V3 aTokens (Cat C)
   # ─────────────────────────────────────────────────────────────
   - id: S6
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Aave Ethereum Lido USDS (aToken)'
@@ -193,7 +223,12 @@ venues:
       decimals: 18
 
   - id: S7
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Aave Ethereum USDS (aToken)'
@@ -208,7 +243,12 @@ venues:
       decimals: 18
 
   - id: S8
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Aave Ethereum USDC (aToken)'
@@ -223,7 +263,12 @@ venues:
       decimals: 6
 
   - id: S9
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Aave Ethereum USDT (aToken)'
@@ -241,7 +286,12 @@ venues:
   # Ethereum — Morpho ERC-4626 vaults (Cat B)
   # ─────────────────────────────────────────────────────────────
   - id: S10
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Spark Blue Chip USDC Vault (Morpho)'
@@ -288,7 +338,12 @@ venues:
   # reads its own on-chain balance at every pin, and the dust side prices to
   # ~$0 on its own.
   - id: S11
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Spark Blue Chip USDT Vault (Morpho — pre-2026-06 deployment)'
@@ -303,7 +358,12 @@ venues:
       decimals: 6
 
   - id: S65
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Spark Blue Chip USDT Vault (Morpho — 2026-06 redeployment)'
@@ -318,7 +378,12 @@ venues:
       decimals: 6
 
   - id: S12
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Spark DAI Vault (Morpho)'
@@ -333,7 +398,12 @@ venues:
       decimals: 18
 
   - id: S13
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Spark USDS Vault (Morpho)'
@@ -351,7 +421,12 @@ venues:
   # Ethereum — other 4626 vaults (Maple, Ethena, Fluid, Arkis)
   # ─────────────────────────────────────────────────────────────
   - id: S14
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Maple syrupUSDC (ERC-4626)'
@@ -392,7 +467,12 @@ venues:
       - '0x491edfb0b8b608044e227225c715981a30f3a44e'   # Grove Eth ALM (inter-prime transfer 2026-07-20) (kept for safety)
 
   - id: S15
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Maple syrupUSDT (ERC-4626)'
@@ -415,7 +495,12 @@ venues:
       - '0x86ebdf902d800f2a82038290b6dbb2a5ee29eb8c'   # public WithdrawalManagerQueue (kept for safety)
 
   - id: S16
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Ethena Staked USDe (sUSDe)'
@@ -430,7 +515,12 @@ venues:
       decimals: 18
 
   - id: S17
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Fluid Savings USDS (fsUSDS)'
@@ -445,7 +535,12 @@ venues:
       decimals: 18
 
   - id: S18
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Arkis Spark Prime USDC 1 (ERC-4626)'
@@ -465,7 +560,12 @@ venues:
   # Ethereum — RWA / off-chain (Cat E)
   # ─────────────────────────────────────────────────────────────
   - id: S19
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I)'
@@ -480,7 +580,12 @@ venues:
     min_transfer_amount_usd: 1000000
 
   - id: S20
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Janus Henderson Anemoy Treasury Fund (JTRSY)'
@@ -504,7 +609,12 @@ venues:
       fallback_address: '0xe980a33efa3eddaa689ecbdce4b2278d4db94471'  # ChronicleVAO_Centrifuge_JTRSY_Router_1
 
   - id: S21
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Superstate Short Duration US Government Securities Fund (USTB)'
@@ -519,7 +629,12 @@ venues:
     # held; pin to const_one until activity resumes and a real oracle lands.
 
   - id: S22
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Superstate Crypto Carry Fund (USCC)'
@@ -533,10 +648,18 @@ venues:
     # Currently $0 held. Same NAV-source TODO as USTB.
 
   - id: S23
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: alm_receipts
+      source_venue: S26
+      payer: '0x49506c3aa028693458d6ee816b2ec28522946872'
+    reporting:
+      enabled: true
+      method: loan_accrual
+      pending_reason: 'Awaiting confirmed loan terms, principal history, fee treatment and opening unpaid interest; see QUESTIONS.md S3, S22, S31, S33.'
     event_source: hypersync
     chain: ethereum
-    label: 'Anchorage tri-party loan escrow (USDC pass-through, ~$0 balance)'
+    label: 'Anchorage tri-party loan'
     pricing_category: E
     token:
       address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'   # USDC (real ERC20)
@@ -608,7 +731,12 @@ venues:
   # Ethereum — Curve LP (Cat F)
   # ─────────────────────────────────────────────────────────────
   - id: S24
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Spark.fi USDT Reserve Curve (sUSDS/USDT)'
@@ -641,7 +769,12 @@ venues:
       sde_coin: '0xdac17f958d2ee523a2206206994597c13d831ec7'  # USDT — SDE asset value (par)
 
   - id: S25
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Spark.fi PYUSD Reserve Curve (PYUSD/USDS)'
@@ -687,7 +820,12 @@ venues:
   # Uncollected LP fees are not added to the position value (negligible for
   # these tight par-stable ranges; see normalize/sources/uniswap_v4.py).
   - id: S61
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Spark.fi PYUSD Reserve Uniswap V4 (PYUSD/USDS)'
@@ -714,7 +852,12 @@ venues:
       # config/sky_direct_exposures.yaml in the same change.
 
   - id: S62
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Spark.fi USDT Reserve Uniswap V4 (USDT/USDS)'
@@ -776,7 +919,12 @@ venues:
   # only by scanning ERC-721 Transfers from the PositionManager to the ALM;
   # an ERC-20-only audit will never see them (which is how these were missed).
   - id: S66
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Spark.fi RLUSD Reserve Uniswap V4 (RLUSD/USDS)'
@@ -804,7 +952,12 @@ venues:
   # from utilized via the Cat A inflow accounting (external_alm_sources).
   # ─────────────────────────────────────────────────────────────
   - id: S26
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'USDC raw (ALM idle)'
@@ -816,7 +969,12 @@ venues:
       decimals: 6
 
   - id: S27
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'USDT raw (ALM idle — $442M as of 2026-04)'
@@ -827,7 +985,12 @@ venues:
       decimals: 6
 
   - id: S28
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'PYUSD raw (ALM idle — $677M as of 2026-04)'
@@ -856,7 +1019,12 @@ venues:
   # V4 RLUSD/USDS) and is held by the PoolManager, so balanceOf here cannot
   # see it — the two are disjoint, no double-count.
   - id: S64
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'RLUSD raw (ALM idle — $251.7M as of 2026-08)'
@@ -867,7 +1035,12 @@ venues:
       decimals: 18
 
   - id: S29
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'DAI raw (ALM idle)'
@@ -878,7 +1051,12 @@ venues:
       decimals: 18
 
   - id: S30
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'USDe raw (ALM idle)'
@@ -889,7 +1067,12 @@ venues:
       decimals: 18
 
   - id: S31
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'USDS raw / POL (ALM idle — already netted out of utilized)'
@@ -929,7 +1112,12 @@ venues:
   #
   # See docs/METHODOLOGY.md §1 special-case and docs/RULES.md Rule 5.
   - id: S32
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'sUSDS raw / POL (ALM — Cat B 4626, demand-side spread)'
@@ -969,7 +1157,12 @@ venues:
   # omission.
 
   - id: S34
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: base
     label: 'Spark USDC Vault (Morpho, Base)'
@@ -984,7 +1177,12 @@ venues:
       decimals: 6
 
   - id: S35
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: base
     label: 'Aave Base USDC (aBasUSDC)'
@@ -999,7 +1197,12 @@ venues:
       decimals: 6
 
   - id: S36
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: base
     label: 'Fluid Savings USDS (fsUSDS, Base)'
@@ -1014,7 +1217,12 @@ venues:
       decimals: 18
 
   - id: S37
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: base
     label: 'Savings USDS / sUSDS proxy (Base — POL)'
@@ -1030,7 +1238,12 @@ venues:
       decimals: 18
 
   - id: S38
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: base
     label: 'USDS raw (Base — POL)'
@@ -1042,7 +1255,12 @@ venues:
     cof_excluded: true   # already deducted from utilized via cum_alm_usds
 
   - id: S39
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: base
     label: 'USDC raw (Base — ALM idle)'
@@ -1058,7 +1276,12 @@ venues:
   # S40 PSM3-Arbitrum: see comment above S34. Tracked via addresses.arbitrum.psm.
 
   - id: S41
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: arbitrum
     label: 'Aave Arbitrum USDCn (aArbUSDCn)'
@@ -1073,7 +1296,12 @@ venues:
       decimals: 6
 
   - id: S42
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: arbitrum
     label: 'Fluid Savings USDS (fsUSDS, Arbitrum)'
@@ -1088,7 +1316,12 @@ venues:
       decimals: 18
 
   - id: S43
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: arbitrum
     label: 'Savings USDS / sUSDS proxy (Arbitrum — POL)'
@@ -1104,7 +1337,12 @@ venues:
       decimals: 18
 
   - id: S44
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: arbitrum
     label: 'USDS raw (Arbitrum — POL)'
@@ -1116,7 +1354,12 @@ venues:
     cof_excluded: true   # already deducted from utilized via cum_alm_usds
 
   - id: S45
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: arbitrum
     label: 'USDC raw (Arbitrum — ALM idle)'
@@ -1132,7 +1375,12 @@ venues:
   # S46 PSM3-Optimism: see comment above S34. Tracked via addresses.optimism.psm.
 
   - id: S47
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: optimism
     label: 'Savings USDS / sUSDS proxy (Optimism — POL)'
@@ -1148,7 +1396,12 @@ venues:
       decimals: 18
 
   - id: S48
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: optimism
     label: 'USDS raw (Optimism — POL)'
@@ -1160,7 +1413,12 @@ venues:
     cof_excluded: true   # already deducted from utilized via cum_alm_usds
 
   - id: S49
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: optimism
     label: 'USDC raw (Optimism — ALM idle)'
@@ -1176,7 +1434,12 @@ venues:
   # S50 PSM3-Unichain: see comment above S34. Tracked via addresses.unichain.psm.
 
   - id: S51
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: unichain
     label: 'Savings USDS / sUSDS proxy (Unichain — POL)'
@@ -1192,7 +1455,12 @@ venues:
       decimals: 18
 
   - id: S52
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: unichain
     label: 'USDS raw (Unichain — POL)'
@@ -1204,7 +1472,12 @@ venues:
     cof_excluded: true   # already deducted from utilized via cum_alm_usds
 
   - id: S53
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: unichain
     label: 'USDC raw (Unichain — ALM idle)'
@@ -1218,7 +1491,12 @@ venues:
   # Avalanche-C
   # ─────────────────────────────────────────────────────────────
   - id: S54
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: avalanche_c
     label: 'Aave Avalanche USDC (aAvaUSDC)'
@@ -1233,7 +1511,12 @@ venues:
       decimals: 6
 
   - id: S55
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: avalanche_c
     label: 'USDC raw (Avalanche-C — ALM idle)'
@@ -1279,7 +1562,12 @@ venues:
   # reported values remain visible, while revenue is not attributed from
   # changes in depositor balances or ETH price movements.
   - id: S56
-    settlement_enabled: false
+    settlement:
+      enabled: false
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     chain: ethereum
     label: 'Spark Savings V2 — spUSDC vault'
     pricing_category: S2
@@ -1296,7 +1584,12 @@ venues:
       decimals: 6
 
   - id: S57
-    settlement_enabled: false
+    settlement:
+      enabled: false
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     chain: ethereum
     label: 'Spark Savings V2 — spUSDT vault'
     pricing_category: S2
@@ -1313,7 +1606,12 @@ venues:
       decimals: 6
 
   - id: S58
-    settlement_enabled: false
+    settlement:
+      enabled: false
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     chain: ethereum
     label: 'Spark Savings V2 — spETH vault'
     pricing_category: S2
@@ -1334,7 +1632,12 @@ venues:
       decimals: 18
 
   - id: S59
-    settlement_enabled: false
+    settlement:
+      enabled: false
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     chain: ethereum
     label: 'Spark Savings V2 — spPYUSD vault'
     pricing_category: S2
@@ -1351,7 +1654,12 @@ venues:
       decimals: 6
 
   - id: S60
-    settlement_enabled: false
+    settlement:
+      enabled: false
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     chain: avalanche_c
     label: 'Spark Savings V2 — spUSDC vault (Avalanche-C, CREATE2 same address)'
     pricing_category: S2
@@ -1383,7 +1691,12 @@ venues:
   # understates totalAssets only by the deployed assetsOutstanding slice
   # (July 2026: $542 at SoM, $12.9K on $21.7M at EoM, 0.06%).
   - id: S63
-    settlement_enabled: false
+    settlement:
+      enabled: false
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     start_date: '2026-06-19'
     chain: robinhood
     label: 'Spark Savings V2 — spUSDG vault (Robinhood Chain)'
@@ -1405,7 +1718,12 @@ venues:
   # Reconstruct from prime inception (zero opening claim) rather than assume
   # an unverified January opening accrued/prepaid balance.
   - id: S67
-    settlement_enabled: false
+    settlement:
+      enabled: false
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'RLUSD issuer incentives — accrued / prepaid'
@@ -1435,7 +1753,12 @@ venues:
           net_apr_source: daily_share_return
 
   - id: S68
-    settlement_enabled: false
+    settlement:
+      enabled: false
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'PYUSD issuer incentives — accrued / prepaid'
@@ -1462,7 +1785,12 @@ venues:
         - {kind: curve, venue: S25, through: '2026-06-30'}
 
   - id: S69
-    settlement_enabled: false
+    settlement:
+      enabled: false
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     start_date: '2026-06-19'
     event_source: hypersync
     chain: robinhood

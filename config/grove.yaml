@@ -117,7 +117,12 @@ venues:
   # Category C — Aave v3 aTokens (rebasing; balanceOf is nominal)
   # ─────────────────────────────────────────────────────────────
   - id: E1
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Aave Horizon RWA RLUSD (aToken)'
@@ -132,7 +137,12 @@ venues:
       decimals: 18
 
   - id: E2
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Aave Horizon RWA USDC (aToken)'
@@ -147,7 +157,12 @@ venues:
       decimals: 6
 
   - id: E3
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Aave Ethereum RLUSD (aToken)'
@@ -165,7 +180,12 @@ venues:
   # Category B — Morpho ERC-4626 (Steakhouse-curated)
   # ─────────────────────────────────────────────────────────────
   - id: E4
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Grove x Steakhouse USDC (Morpho 4626)'
@@ -180,7 +200,12 @@ venues:
       decimals: 6
 
   - id: E5
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Grove x Steakhouse USDC High Yield (Morpho 4626)'
@@ -195,7 +220,12 @@ venues:
       decimals: 6
 
   - id: E6
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Grove x Steakhouse AUSD (Morpho 4626)'
@@ -216,7 +246,12 @@ venues:
   # bottom of this file (wound-down JTRSY-plume / USDC-raw). E37 is the
   # next free ID after the E30–E36 block.
   - id: E37
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Maple syrupUSDC (ERC-4626)'
@@ -256,7 +291,12 @@ venues:
   # Phase 2.A: Chronicle oracle primary, $1000 pre-deploy fallback.
   # ──────────────────────────────────────────────────────────────
   - id: E7
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Securitize Tokenized AAA CLO Fund (STAC)'
@@ -293,7 +333,12 @@ venues:
       fallback_address: '0xedc6287d3d41b322af600317628d7e226dd3add4'
 
   - id: E8
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Janus Henderson Anemoy AAA CLO (JAAA)'
@@ -327,7 +372,12 @@ venues:
     centrifuge_vault: '0x4880799eE5200fC58DA299e965df644fBf46780B'
 
   - id: E9
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Janus Henderson Anemoy Treasury Fund (JTRSY)'
@@ -356,7 +406,12 @@ venues:
     centrifuge_vault: '0xFE6920eB6C421f1179cA8c8d4170530CDBdfd77A'
 
   - id: E10
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I)'
@@ -407,7 +462,12 @@ venues:
   # Category F — LP positions
   # ─────────────────────────────────────────────────────────────
   - id: E11
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Curve AUSD/USDC stableswap LP'
@@ -439,7 +499,12 @@ venues:
         amount: 0
 
   - id: E12
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Uniswap V3 AUSD/USDC pool (NFT positions)'
@@ -462,7 +527,12 @@ venues:
         amount: 25000000
 
   - id: E30
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Uniswap V3 AUSD/USDC pool (NFT positions — alt holder)'
@@ -476,7 +546,12 @@ venues:
     holder_override: '0x94b398acb2fce988871218221ea6a4a2b26cccbc'
 
   - id: E33
-    settlement_enabled: false
+    settlement:
+      enabled: false
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: monad
     label: 'Uniswap V3 AUSD/USDC pool (Monad, NFT positions)'
@@ -507,7 +582,12 @@ venues:
   # convertToAssets via the existing Phase 1 pipeline.
 
   - id: E13
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'RLUSD raw (ALM idle)'
@@ -518,7 +598,12 @@ venues:
       decimals: 18
 
   - id: E14
-    settlement_enabled: false
+    settlement:
+      enabled: false
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'AUSD raw (ALM idle)'
@@ -540,7 +625,12 @@ venues:
     # appears in reporting_only_breakdown for reconciliation.
 
   - id: E31
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'AUSD raw (alt holder idle)'
@@ -552,7 +642,12 @@ venues:
     holder_override: '0x94b398acb2fce988871218221ea6a4a2b26cccbc'
 
   - id: E15
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'USDC raw (ALM idle)'
@@ -563,7 +658,12 @@ venues:
       decimals: 6
 
   - id: E32
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'USDC raw (alt holder idle)'
@@ -575,7 +675,12 @@ venues:
     holder_override: '0x94b398acb2fce988871218221ea6a4a2b26cccbc'
 
   - id: E16
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'DAI raw (ALM idle)'
@@ -586,7 +691,12 @@ venues:
       decimals: 18
 
   - id: E17
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'USDS raw / POL (ALM idle — already netted out of utilized)'
@@ -602,7 +712,12 @@ venues:
     cof_excluded: true   # already deducted from utilized via cum_alm_usds
 
   - id: E18
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'sUSDS raw / POL (ALM idle — Cat B 4626)'
@@ -626,7 +741,12 @@ venues:
   # and drains when the matching return lands at a paired anchor venue.
   # ─────────────────────────────────────────────────────────────
   - id: E36
-    settlement_enabled: false
+    settlement:
+      enabled: false
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'OOB principal via 0xd94f (relay to Monad ALM EOA → AUSD acquisition)'
@@ -654,7 +774,12 @@ venues:
   # Base — Phase 2.B (multi-chain rollout)
   # ─────────────────────────────────────────────────────────────
   - id: E19
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: base
     label: 'Grove x Steakhouse USDC High Yield (Base, Morpho 4626)'
@@ -669,7 +794,12 @@ venues:
       decimals: 6
 
   - id: E23
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: base
     label: 'Steakhouse Prime Instant (Base, Morpho V2)'
@@ -701,7 +831,12 @@ venues:
   # counting because the cash distribution payments hit Eth USDC (E15),
   # not GACLO-1 itself, so they don't move E21's value_eom.
   - id: E20
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: avalanche_c
     label: 'Janus Henderson Anemoy AAA CLO (JAAA-avalanche)'
@@ -730,7 +865,12 @@ venues:
       fallback_address: '0x5d44916e0db13ecd661b20df4d645904e57589c8'  # ChronicleVAO_Centrifuge_JAAA_Router_1
 
   - id: E21
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: avalanche_c
     label: 'Galaxy Arch CLO Token (GACLO-1)'
@@ -770,7 +910,12 @@ venues:
   # Plume — Phase 2.B (multi-chain rollout)
   # ─────────────────────────────────────────────────────────────
   - id: E22
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: plume
     label: 'Anemoy Tokenized Apollo Diversified Credit Fund (ACRDX)'
@@ -826,7 +971,12 @@ venues:
   # ─────────────────────────────────────────────────────────────
 
   - id: E24
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'Steakhouse High Yield PYUSD (Morpho 4626)'
@@ -841,7 +991,12 @@ venues:
       decimals: 6
 
   - id: E26
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'PYUSD raw (ALM idle)'
@@ -852,7 +1007,12 @@ venues:
       decimals: 6
 
   - id: E27
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: base
     label: 'USDC raw on Base (ALM idle)'
@@ -884,7 +1044,12 @@ venues:
   # ``rpc-mainnet.monadinfra.com`` works as of 2026-05-14. The drpc free
   # public endpoint blocks ``eth_call`` entirely and won't work here.
   - id: E25
-    settlement_enabled: false
+    settlement:
+      enabled: false
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: monad
     label: 'Grove x Steakhouse High Yield AUSD (Monad, Morpho 4626)'
@@ -902,7 +1067,12 @@ venues:
     # prime_agent_revenue / sky_revenue / NAV invariant.
 
   - id: E34
-    settlement_enabled: false
+    settlement:
+      enabled: false
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: monad
     label: 'AUSD raw (Monad, alt holder idle)'
@@ -915,7 +1085,12 @@ venues:
     # FalconX-relay Monad venue — display-only (see E33 note).
 
   - id: E35
-    settlement_enabled: false
+    settlement:
+      enabled: false
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: monad
     label: 'USDC raw (Monad, alt holder idle)'
@@ -935,7 +1110,12 @@ venues:
   # Off-pool incentives — Agora rewards for AUSD activity
   # ─────────────────────────────────────────────────────────────
   - id: E38
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     chain: ethereum
     label: 'Agora AUSD incentives (cash distribution to Grove Eth ALM)'
     pricing_category: A
@@ -973,7 +1153,12 @@ venues:
   # Raw USDS at the Diamond PAU ALMProxy — idle between draw and Basin
   # deploy ($0 at 2026-07-31 EoD; draws deploy in the same tx so far).
   - id: E40
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'USDS raw (Diamond PAU ALM idle)'
@@ -991,7 +1176,12 @@ venues:
   # JTRSY venue at the PAU ALM (add a Cat E venue with the E9 Chronicle
   # oracle when that happens).
   - id: E41
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     event_source: hypersync
     chain: ethereum
     label: 'JTRSY Basin escrow — USDS pending subscription (Diamond PAU)'
@@ -1064,7 +1254,12 @@ venues:
   # OPEN (QUESTIONS.md): confirm the facility size/terms, the maturity, and
   # whether 0xba79473a is the sole yield payer.
   - id: E42
-    settlement_enabled: true
+    settlement:
+      enabled: true
+      method: existing
+    reporting:
+      enabled: true
+      method: existing
     chain: ethereum
     label: 'Galaxy Warehouse (off-chain facility — cash distribution to Grove Eth ALM)'
     pricing_category: A

@@ -14,6 +14,7 @@ from typing import Self
 
 from .pricing import PricingCategory
 from .subsidy import SubsidyConfig
+from .venue_views import VenueView
 
 
 class Chain(StrEnum):
@@ -419,9 +420,12 @@ class Venue:
     # Both fields are required for category EOA and ignored elsewhere.
     paired_with: str | None = None
     paired_source: Address | None = None
-    # Every venue is reported. False excludes this venue's income, SDE value,
-    # CoF attribution and NAV from MSC while retaining its measured revenue.
+    # Legacy constructor flag, combined with settlement_view.enabled. False
+    # excludes income, SDE value, CoF attribution and NAV from MSC. Reporting
+    # API exposure is controlled independently by reporting_view.enabled.
     settlement_enabled: bool = True
+    settlement_view: VenueView = field(default_factory=VenueView)
+    reporting_view: VenueView = field(default_factory=VenueView)
     start_date: date | None = None  # do not resolve a reporting chain before launch
     display_only: bool = False  # legacy Python constructor alias (inverse)
     incentive: dict | None = None  # reporting-only issuer incentive program
@@ -498,9 +502,15 @@ class Venue:
 
     @property
     def settles(self) -> bool:
-        return self.settlement_enabled and not self.display_only
+        return self.settlement_enabled and self.settlement_view.enabled and not self.display_only
 
     def __post_init__(self) -> None:
+        self.settlement_view.validate("settlement")
+        self.reporting_view.validate("reporting")
+        if self.reporting_view.method == "loan_accrual" and (
+            self.settlement_view.method != "alm_receipts" or not self.settles
+        ):
+            raise ValueError("loan_accrual requires attributed alm_receipts")
         if type(self.settlement_enabled) is not bool:
             raise ValueError(f"Venue {self.id}: settlement_enabled must be boolean")
         if self.pricing_category == PricingCategory.INCENTIVE:

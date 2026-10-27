@@ -29,6 +29,7 @@ from .primes import (
     Venue,
 )
 from .subsidy import SubsidyConfig
+from .venue_views import VenueView
 
 
 def _parse_ilk_bytes32(s: str) -> bytes:
@@ -172,10 +173,30 @@ def _settlement_enabled(v: dict) -> bool:
     for key in ("settlement_enabled", "display_only"):
         if key in v and type(v[key]) is not bool:
             raise ValueError(f"venue {v.get('id')}: {key} must be a boolean")
-    enabled = v.get("settlement_enabled", not v.get("display_only", False))
+    nested = v.get("settlement", {})
+    if not isinstance(nested, dict):
+        raise ValueError("settlement must be a mapping")
+    enabled = nested.get("enabled", v.get("settlement_enabled", not v.get("display_only", False)))
+    if type(enabled) is not bool:
+        raise ValueError("settlement.enabled must be boolean")
+    if "settlement_enabled" in v and enabled != v["settlement_enabled"]:
+        raise ValueError("conflicting settlement flags")
     if "display_only" in v and enabled == v["display_only"]:
         raise ValueError(f"venue {v.get('id')}: conflicting settlement flags")
     return enabled
+
+
+def _parse_view(v: dict, kind: str) -> VenueView:
+    raw = v.get(kind, {})
+    allowed = {"enabled", "method", "source_venue", "payer", "loan_terms", "pending_reason"}
+    if not isinstance(raw, dict) or set(raw) - allowed:
+        raise ValueError(f"venue {v['id']}: invalid {kind} configuration")
+    cfg = dict(raw)
+    if kind == "settlement":
+        cfg["enabled"] = _settlement_enabled(v)
+    result = VenueView(**cfg)
+    result.validate(kind)
+    return result
 
 
 def _parse_incentive(v: dict, inventory: list[dict]) -> dict | None:
@@ -422,6 +443,8 @@ def load_prime(config_path: Path) -> Prime:
                     else None
                 ),
                 settlement_enabled=_settlement_enabled(v),
+                settlement_view=_parse_view(v, "settlement"),
+                reporting_view=_parse_view(v, "reporting"),
                 start_date=date.fromisoformat(v["start_date"]) if v.get("start_date") else None,
                 incentive=_parse_incentive(v, cfg.get("venues", [])),
                 force_capital_inflow=bool(v.get("force_capital_inflow", False)),
@@ -434,6 +457,29 @@ def load_prime(config_path: Path) -> Prime:
                 ),
             )
         )
+
+    by_id = {venue.id: venue for venue in venues}
+    if len(by_id) != len(venues):
+        raise ValueError("duplicate venue ids")
+    attributed = set()
+    for venue in venues:
+        view = venue.settlement_view
+        if view.method != "alm_receipts":
+            continue
+        anchor = by_id.get(view.source_venue)
+        payer = Address.from_str(view.payer)
+        if (anchor is None or anchor.id == venue.id or anchor.chain != venue.chain
+                or anchor.token != venue.token or not anchor.settles or anchor.skip
+                or not anchor.external_yield_source or anchor.force_capital_inflow
+                or anchor.holder_override not in (None, alm.get(anchor.chain))
+                or anchor.pricing_category != PricingCategory.PAR_STABLE
+                or not venue.settles or venue.skip
+                or payer not in [Address.from_str(a) for a in cfg.get("external_alm_sources", {}).get(venue.chain.value, [])]):
+            raise ValueError(f"venue {venue.id}: invalid ALM receipt attribution")
+        key = (anchor.id, payer)
+        if key in attributed:
+            raise ValueError("ALM receipt source assigned to multiple venues")
+        attributed.add(key)
 
     external_alm_sources: dict[Chain, list[Address]] = {}
     for chain_str, addrs in cfg.get("external_alm_sources", {}).items():

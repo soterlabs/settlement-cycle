@@ -1,7 +1,10 @@
 # Venue reporting and MSC settlement
 
-Every venue in a prime's YAML declares `settlement_enabled: true|false`.
-All active venues are reported. Only venues with this flag enabled contribute
+Every venue in a prime's YAML declares `settlement.enabled` and
+`reporting.enabled`, with an independent `method` for each view.
+See the [dashboard API guide](pipeline/settlement-reporting-api.md) for the v2
+contract, loan reporting, and configuration examples. Legacy flat
+`settlement_enabled` remains accepted. Only venues enabled for settlement contribute
 income or SDE value to MSC, receive cost-of-funds attribution, or enter the
 settlement venue NAV. `skip: true` still means do not calculate a venue.
 The former `display_only: true` YAML spelling is accepted as the inverse for
@@ -13,7 +16,7 @@ relay claims remain principal claims: yield is measured once at the paired
 anchor, rather than also treating a principal return as EOA income.
 Spark Savings V2 products retain their existing position-only treatment:
 retail deposits and depositor VSR liabilities are outside the ALM settlement
-boundary. They now explicitly have `settlement_enabled: false`. S58 spETH is included:
+boundary. They explicitly have `settlement.enabled: false`. S58 spETH is included:
 its WETH `totalAssets()` is converted to USD at each boundary using the
 configured Chainlink ETH/USD feed. The reader rejects malformed, non-positive,
 future-dated or more than 24-hour-old quotes relative to the pinned block.
@@ -31,13 +34,14 @@ configuration only; it performs no provider requests. It does not reinterpret
 historical snapshots using today's flags.
 
 Single-result responses (`latest` / `at`) advertise the stored result's schema:
-1.0 for legacy snapshots and 1.1 for the reporting-only format. Each returned
+1.0 for legacy snapshots, 1.1 for the reporting-only format, and 1.2 when frozen
+independent `venue_views` are included. Each returned
 record also exposes `result_schema_version`, including rows in mixed-version
 history responses. The history page envelope remains schema 1.0; read each
 row's result version when interpreting its payload. Stored results and their
 hashes are unchanged by this response metadata.
 
-Fresh daily result snapshots and provenance (schema 1.1) contain:
+Fresh daily result snapshots and provenance (schema 1.2) contain:
 
 - `venue_breakdown`: settlement venues, each with `settlement_enabled: true`.
 - `reporting_only_breakdown`: reporting venues, each with
@@ -45,6 +49,8 @@ Fresh daily result snapshots and provenance (schema 1.1) contain:
 - Incentive rows additionally expose `incentive_accrual`, including daily
   eligible balances, applied rates, receipts, period income, cumulative
   accrual/receipts and the accrued or prepaid balance at cutoff.
+- `venue_views`: the independently configured settlement and reporting API
+  views frozen at computation time. These do not change the legacy MSC fields.
 
 The Markdown report and workbook call the separate section **Reporting-only
 holdings** and show revenue and reward receipts. Its amounts are excluded

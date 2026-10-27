@@ -55,11 +55,14 @@ def freshness(record, expected):
 
 def with_result_schema(record):
     """Label the stored result shape without changing its immutable payload/hash."""
-    version = '1.1' if 'reporting_only_breakdown' in record['result'] else '1.0'
+    version = ('1.2' if 'venue_views' in record['result'] else
+               '1.1' if 'reporting_only_breakdown' in record['result'] else '1.0')
     return {**record, 'result_schema_version': version}
 
 
 def register(app, get_reader, document_response):
+    from .venue_views import register_views
+    register_views(app, get_reader, document_response)
     def validate(prime, cutoff=None):
         if prime not in PRIMES:
             raise HTTPException(404, 'Unknown prime')
@@ -92,10 +95,13 @@ def register(app, get_reader, document_response):
         validate(prime)
         config = load_prime_by_id(prime)
         return document_response(request, {
-            'schema_version': '1.1', 'prime': prime, 'configuration': 'current',
+            'schema_version': '1.2', 'prime': prime, 'configuration': 'current',
             'venues': [{'venue_id': v.id, 'label': v.label, 'chain': v.chain.value,
                         'pricing_category': v.pricing_category.value,
                         'settlement_enabled': v.settles, 'skip': v.skip,
+                        'settlement_method': v.settlement_view.method,
+                        'reporting_enabled': v.reporting_view.enabled,
+                        'reporting_method': v.reporting_view.method,
                         'start_date': str(v.start_date) if v.start_date else None}
                        for v in config.venues],
         })
