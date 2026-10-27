@@ -6,7 +6,6 @@ from pathlib import Path
 
 import yaml
 
-
 _ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -63,8 +62,18 @@ def test_september_boundary_fee_reduces_mint_once_not_send(tmp_path):
     assert (before.derived_mint - after.derived_mint).quantize(Decimal('.01')) == Decimal('177513.75')
     assert after.sky_adj == Decimal('-165013.90')
     assert Decimal(data['historical_jan_aug_credit_usds']) == Decimal('165013.90')
-    sde = yaml.safe_load((_ROOT / 'config/sky_direct_exposures.yaml').read_text())
-    # Keep PR #218's separate CoF timing correction intact.
-    entries = [*sde['active'], *sde['historical']]
-    e10 = next(e for e in entries if e.get('prime') == 'grove' and e.get('venue_id') == 'E10')
-    assert Decimal(str(e10['in_flight_redemptions'][0]['value_usd'])) == Decimal('24986500.50')
+    # The original receivable basis now comes from the automatic ledger,
+    # while the already-recorded historical credit stays unchanged above.
+    from datetime import date
+
+    from settle.domain.config import load_prime_by_id
+    from settle.domain.period import Period
+    from settle.normalize.redemption_settlements import match_redemptions, policy_for
+    prime = load_prime_by_id('grove', config_dir=_ROOT / 'config')
+    venue = next(v for v in prime.venues if v.id == 'E10')
+    policy = policy_for('grove', 'E10')
+    policy['history_start'] = policy['cof_history_start']
+    events = json.loads((_ROOT / 'tests/fixtures/sde_inflight/buidl_events.json').read_text())['events']
+    ledger = match_redemptions(venue, Period(date(2026,8,31), date(2026,8,31),
+        {venue.chain: 25878463}), policy, events, track_pending=True)
+    assert ledger.pending_daily[0]['pending_value_usd'] == Decimal('24986500.50')

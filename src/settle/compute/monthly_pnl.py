@@ -664,64 +664,22 @@ def _sde_asset_value_timeseries(
     end_date: "date | None" = None,
     in_flight_redemptions: tuple[InFlightRedemption, ...] = (),
 ) -> pd.DataFrame:
-    """Daily SDE asset value (USD) per venue. Returns a level series with
-    columns ``[block_date, cum_value, uncapped_value]``.
+    """Daily economic SDE value: held assets + unsettled redemption claims.
 
-    ``cum_value`` is the capped value (≤ ``cap_usd`` for ``kind=capped`` SDE)
-    consumed by ``compute_sky_revenue`` for utilized exclusion.
+    Centrifuge pending/claimable shares come from historical vault state;
+    constant-$1 RWA cash claims come from the matched request/payment ledger.
+    Both enter the same daily value BEFORE the ownership cap and active-date
+    rules. Cash settlement removes a claim at that day's closing balance.
 
-    ``uncapped_value`` is the raw on-chain position value (before cap), kept
-    on the frame for diagnostics — not consumed by the EoM-locked compute
-    path. Always reflects the actual balance × NAV.
+    ``burn_date`` identifies the retirement of a capped Sky tranche (ownership
+    metadata, not a generic redemption detector). Its cap survives until, but
+    excludes, ``usdc_settlement_date``; remaining Grove holdings are then
+    excluded from SDE. Without an actual settlement date, the legacy formal
+    end date remains inclusive. Manual fixed-SDE windows remain a fallback
+    for venues without a ledger and cannot coexist with automatic cash claims.
 
-    Daily branching — first matching rule wins:
-
-    * ``cap_usd = None``: ``cum_value = raw_value`` every day (no cap, no
-      in-flight handling).
-    * ``cap_usd`` set, ``burn_date = None``, ``end_date = None``: standard
-      daily capping ``cum_value = min(raw_value, cap_usd)`` — entry treated
-      as open-ended.
-    * ``cap_usd`` set, ``end_date`` set, ``burn_date = None`` (clean expiry):
-      capped through ``end_date``; days strictly after ``end_date`` return
-      ``cum_value = 0`` (entry inactive).
-    * ``cap_usd`` set, ``burn_date`` and ``end_date`` both set: in-flight
-      window (see below). ``burn_date <= end_date`` is required. The in-
-      flight upper bound is ``usdc_settlement_date`` if set, else
-      ``end_date`` (legacy fallback).
-    * ``burn_date`` set without ``end_date``, or without ``cap_usd``, or
-      with ``burn_date > end_date`` → ``ValueError``.
-    * ``usdc_settlement_date`` set without ``burn_date``, or with
-      ``burn_date > usdc_settlement_date`` or
-      ``usdc_settlement_date > end_date`` → ``ValueError``.
-    * ``start_date`` / ``end_date`` (when set): days strictly before
-      ``start_date`` or strictly after ``end_date`` are SDE-inactive and
-      return ``cum_value = 0`` regardless of on-chain balance. The orchestrator
-      attaches an SDE entry to a venue if it's active for ANY day of the
-      period; this per-day gate ensures cum_value is zero on days the entry
-      isn't actually live. ``uncapped_value`` keeps tracking on-chain
-      balance × NAV throughout for diagnostics.
-    * ``start_date > end_date`` (both set) → ``ValueError``.
-
-    **In-flight redemption window (capped SDE with ``burn_date`` set).** When
-    a capped tranche is destroyed on-chain on ``burn_date`` but the USDC
-    redemption is still settling, the raw on-chain value drops sharply (e.g.
-    Grove E8 Mar 9: $325M cap → $128M residual) even though Sky's economic
-    exposure persists until the USDC actually lands at the prime's ALM
-    (``usdc_settlement_date``, Mar 11 for Grove E8). Letting ``cum_value``
-    follow that drop would inflate ``utilized`` for the in-flight days and
-    route phantom BR to Sky (~$22K/day on Grove E8 Mar 9-11). For days in
-    ``[burn_date, in_flight_end]`` we keep ``cum_value = cap_usd`` so the
-    cap-coverage persists through the in-flight window, where
-    ``in_flight_end = usdc_settlement_date if set else end_date``. Days
-    strictly after ``in_flight_end`` (up to and including ``end_date``)
-    return ``cum_value = 0`` — the redemption has settled, so the SDE-
-    capped slice no longer ties up prime capital.
-
-    **Partial fixed-SDE redemptions.** Each ``in_flight_redemptions`` item is
-    added to ``cum_value`` for ``burn_date <= day < usdc_settlement_date``.
-    It does not alter ``uncapped_value``, which intentionally remains the raw
-    on-chain balance. The half-open interval matches EoD accounting: by the
-    settlement date's EoD, cash at the ALM replaces the pending receivable.
+    The daily diagnostics distinguish wallet value and pending value. The
+    economic uncapped value feeds capped revenue allocation as before.
     """
     if burn_date is not None and end_date is None:
         raise ValueError(
@@ -782,7 +740,6 @@ def _sde_asset_value_timeseries(
     # In-flight upper bound: real USDC-settlement date when known, else fall
     # back to end_date (legacy behaviour for entries that don't distinguish
     # the two — pre-Option-C the in-flight window ran through end_date).
-    in_flight_end = usdc_settlement_date if usdc_settlement_date is not None else end_date
     holder = venue.holder_override or prime.alm[venue.chain]
     pin_block = period.pin_blocks[venue.chain]
     # SDE asset-value deduction needs the RAW on-chain balance (i.e. what
@@ -805,30 +762,32 @@ def _sde_asset_value_timeseries(
     )
 
     from ..normalize.positions import _centrifuge_in_flight_shares
+    from ..normalize.redemption_settlements import pending_redemption_values
 
+    pending_cash = pending_redemption_values(prime, venue, period)
+    if not pending_cash.empty and in_flight_redemptions:
+        raise ValueError("Automatic and manual redemption windows would double-count pending SDE")
+    settlement_boundary = (
+        usdc_settlement_date if usdc_settlement_date is not None
+        else end_date + timedelta(days=1) if end_date is not None else None
+    )
     rows = []
     current = period.start
     while current <= period.end:
         bal = cum_at_or_before(bal_df, "cum_balance", current)
-        # ``bal`` is reconstructed from ERC-20 transfers, and an ERC-7540
-        # ``requestRedeem`` moves shares into the vault escrow as a plain
-        # Transfer — so a position mid-redemption reads as gone here while
-        # ``get_position_value`` (which tops the escrow back in) still counts
-        # it. Per the MSC async-settlement rule, a two-leg transaction only
-        # changes attributed value when the SECOND leg completes: a redeemed
-        # position stays attributed until the proceeds settle. Both places
-        # that answer "what is this position worth" must therefore agree, or
-        # the SDE deduction understates ``utilized`` and OVERSTATES
-        # sky_revenue (Grove E9, 2026-08-31: $25,000,012 for one day ≈ $2,548
-        # at BR 3.72%). Resolve the block first — a fully-escrowed position
-        # reads bal == 0 and would otherwise skip the lookup entirely.
         eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
         block = block_resolver.block_at_or_before(venue.chain.value, eod)
-        bal = bal + _centrifuge_in_flight_shares(prime, venue, block)
-        if bal == 0:
-            raw_value = Decimal("0")
-        else:
-            raw_value = bal * nav_at_block(block)
+        pending_shares = _centrifuge_in_flight_shares(prime, venue, block)
+        nav = nav_at_block(block) if bal != 0 or pending_shares != 0 else Decimal("0")
+        wallet_value = bal * nav
+        pending_value = pending_shares * nav + cum_at_or_before(
+            pending_cash, "pending_value_usd", current,
+        )
+        pending_value += sum((
+            item.value_usd for item in in_flight_redemptions
+            if item.burn_date <= current < item.usdc_settlement_date
+        ), Decimal("0"))
+        raw_value = wallet_value + pending_value
         if (start_date is not None and current < start_date) or (
             end_date is not None and current > end_date
         ):
@@ -839,43 +798,30 @@ def _sde_asset_value_timeseries(
         elif (
             cap_usd is not None
             and burn_date is not None
-            and burn_date <= current <= in_flight_end
+            and burn_date <= current < settlement_boundary
         ):
             # In-flight redemption window — see docstring. Cap-coverage
-            # persists until ``in_flight_end`` (= usdc_settlement_date when
-            # set, else end_date), regardless of the on-chain drop.
+            # persists before settlement EoD, regardless of the on-chain drop.
             capped_value = cap_usd
         elif (
             burn_date is not None
-            and in_flight_end is not None
-            and current > in_flight_end
+            and settlement_boundary is not None
+            and current >= settlement_boundary
         ):
             # Post-settlement, pre-end-date: USDC has landed at the ALM, so
             # the SDE-capped slice no longer ties up prime capital. Note this
-            # branch only fires when usdc_settlement_date < end_date — when
-            # the two coincide (legacy entries) the post-end gate above fires
-            # first and this branch is unreachable.
+            # branch also covers settlement on the formal SDE end date.
             capped_value = Decimal("0")
         elif cap_usd is not None and raw_value > cap_usd:
             capped_value = cap_usd
         else:
             capped_value = raw_value
-        if not (
-            (start_date is not None and current < start_date)
-            or (end_date is not None and current > end_date)
-        ):
-            capped_value += sum(
-                (
-                    item.value_usd
-                    for item in in_flight_redemptions
-                    if item.burn_date <= current < item.usdc_settlement_date
-                ),
-                Decimal("0"),
-            )
         rows.append({
             "block_date": current,
             "cum_value": capped_value,
             "uncapped_value": raw_value,
+            "wallet_value": wallet_value,
+            "pending_value": pending_value,
         })
         current = current + timedelta(days=1)
     return pd.DataFrame(rows)
@@ -4268,6 +4214,7 @@ def compute_monthly_pnl(
                 "block_date": _row["block_date"],
                 "cum_value": _row["cum_value"],
                 "uncapped_value": _row["uncapped_value"],
+                **{key: _row[key] for key in ("wallet_value", "pending_value") if key in _row},
             }
             for _, _row in _df.iterrows()
         ]

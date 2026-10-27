@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
@@ -35,6 +35,13 @@ class RedemptionLedger:
     capital_outflows: tuple[dict, ...] = ()
 
 
+@dataclass(frozen=True)
+class PendingRedemptionLedger(RedemptionLedger):
+    """CoF diagnostics without changing the frozen cash-ledger wire format."""
+
+    pending_daily: tuple[dict, ...] = ()
+
+
 def policy_for(prime_id, venue_id):
     rows = yaml.safe_load(CONFIG.read_text())['venues']
     matches = [r for r in rows if r['prime'] == prime_id and r['venue_id'] == venue_id]
@@ -45,6 +52,9 @@ def policy_for(prime_id, venue_id):
     p = dict(matches[0])
     for key in ['recognition_start', 'history_start']:
         p[key] = date.fromisoformat(p[key])
+    p['cof_history_start'] = date.fromisoformat(p.get('cof_history_start', str(p['history_start'])))
+    if p['cof_history_start'] > p['history_start']:
+        raise ValueError('CoF history must include the cash-recognition opening ledger')
     if p['history_start'] > p['recognition_start']:
         raise ValueError('Redemption history must include the opening outstanding requests')
     for key in ['expected_payout_factor', 'match_tolerance_usd']:
@@ -111,14 +121,14 @@ def _unique_group(pending, amount, policy):
     return candidates[0] if candidates else ()
 
 
-def match_redemptions(venue, period, policy, events):
+def match_redemptions(venue, period, policy, events, *, track_pending=False):
     """Pure, deterministic ledger from canonical filtered Transfer events.
 
     Earlier payments consume earlier requests but only cash in the recognition
     period affects revenue. No future cash is visible to a historical cutoff.
     The $1 / $0.9995 carrying price is dated at SHARE EXIT, not cash receipt.
     """
-    if period.end < policy['recognition_start']:
+    if period.end < policy['recognition_start'] and not track_pending:
         return RedemptionLedger()
     if (venue.chain.value != policy['chain'] or venue.token.address.hex != policy['share_token']
             or venue.pricing_category != PricingCategory.RWA_TRANCHE
@@ -148,10 +158,12 @@ def match_redemptions(venue, period, policy, events):
     pending, settlements, unmatched = {}, [], []
     revenue = D(0)
     capital_outflows = []
+    pending_deltas = {}
     reserved = {r: cash for cash, requests in policy['links'].items() for r in requests}
     for identity, e in sorted(unique.items(), key=lambda item: (item[1]['block'], item[1]['log_index'])):
         day, amount = date.fromisoformat(e['date']), D(e['amount'])
         if e['kind'] == 'request':
+            pending_deltas[day] = pending_deltas.get(day, D(0)) + amount * policy['expected_payout_factor']
             haircut = venue.nav_haircut_bps or D(0)
             if venue.nav_haircut_effective_date and day < venue.nav_haircut_effective_date:
                 haircut = D(0)
@@ -175,10 +187,13 @@ def match_redemptions(venue, period, policy, events):
             unmatched.append({**e, 'event_id': identity})
             # Tiny unlinked issuer payments are recorded, not guessed to be
             # redemptions. A material receipt needs attribution before close.
-            if day >= policy['recognition_start'] and amount > policy['match_tolerance_usd']:
+            if (track_pending or day >= policy['recognition_start']) and amount > policy['match_tolerance_usd']:
                 raise ValueError(f'Unmatched redemption cash {identity}; add an exact event link')
             continue
         requests = [pending.pop(k) for k in group]
+        pending_deltas[day] = pending_deltas.get(day, D(0)) - sum(
+            (D(r['shares']) * policy['expected_payout_factor'] for r in requests), D(0),
+        )
         carrying = sum((D(r['carrying_value_usd']) for r in requests), D(0))
         variance = amount - carrying
         if max(period.start, policy['recognition_start']) <= day <= period.end:
@@ -187,7 +202,18 @@ def match_redemptions(venue, period, policy, events):
                                 'carrying_value_usd': str(carrying), 'cash_usd': str(amount),
                                 'revenue_adjustment_usd': str(variance),
                                 'matching': 'explicit_event_link' if explicit else 'unique_expected_payout'})
-    return RedemptionLedger(revenue, tuple(settlements), tuple(pending.values()), tuple(unmatched), tuple(capital_outflows))
+    daily = []
+    if track_pending:
+        value = sum((v for day, v in pending_deltas.items() if day < period.start), D(0))
+        current = period.start
+        while current <= period.end:
+            value += pending_deltas.get(current, D(0))
+            if value < 0:
+                raise ValueError('Negative pending redemption value')
+            daily.append({'block_date': current, 'pending_value_usd': value})
+            current += timedelta(days=1)
+    fields = (revenue, tuple(settlements), tuple(pending.values()), tuple(unmatched), tuple(capital_outflows))
+    return PendingRedemptionLedger(*fields, tuple(daily)) if track_pending else RedemptionLedger(*fields)
 
 
 def restore_redemption_capital(inflows, ledger):
@@ -209,10 +235,12 @@ def restore_redemption_capital(inflows, ledger):
     return out
 
 
-def redemption_settlements(prime, venue, period):
+def redemption_settlements(prime, venue, period, *, track_pending=False):
     policy = policy_for(prime.id, venue.id)
-    if policy is None or period.end < policy['recognition_start']:
+    if policy is None or (period.end < policy['recognition_start'] and not track_pending):
         return RedemptionLedger()
+    if track_pending:
+        policy = {**policy, 'history_start': policy['cof_history_start']}
     holder = venue.holder_override or prime.alm[venue.chain]
     who = _addr_topic(holder.value)
     request_to = _addr_topic(bytes.fromhex(policy['request_receiver'][2:]))
@@ -234,4 +262,17 @@ def redemption_settlements(prime, venue, period):
                        'tx': row.transaction_hash, 'block': row.block_number, 'log_index': row.log_index,
                        'token': row.address, 'sender': '0x' + row.topic1[-40:],
                        'recipient': '0x' + row.topic2[-40:]})
-    return match_redemptions(venue, period, policy, events)
+    return match_redemptions(venue, period, policy, events, track_pending=track_pending)
+
+
+def pending_redemption_values(prime, venue, period):
+    """EoD receivables from the SAME matched request/cash ledger as realization.
+
+    CoF history starts at a fixed audited empty ledger, independently of the
+    revenue-recognition date. Never use future cash or a rolling T+N lookback.
+    Pending BUIDL is valued at the contractual expected exit mark (99.95%),
+    preserving the basis of the already-recorded August 31 CoF correction.
+    Transport errors, ambiguous matches and unexplained material cash propagate.
+    """
+    ledger = redemption_settlements(prime, venue, period, track_pending=True)
+    return pd.DataFrame(getattr(ledger, 'pending_daily', ()), columns=['block_date', 'pending_value_usd'])

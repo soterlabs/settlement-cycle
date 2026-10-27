@@ -694,38 +694,42 @@ def _write_off_protocol_holdings(ws, prov: dict, prime_cfg: dict) -> None:
 
 
 def _write_sde_daily(ws, prov: dict) -> None:
-    """Per-day Sky / Grove / In-flight NAV / Total breakdown for capped
-    SDE venues with an on-chain burn event (``burn_date`` set).
+    """Daily held/pending economic value and the actual CoF deduction.
 
-    Phase rule per day:
-      * day < burn_date            → Sky = cum_value (cap), Grove = uncapped − cum_value, in-flight = 0
-      * burn_date ≤ day ≤ in_flight_end → Sky = 0, Grove = uncapped (residual), in-flight = cum_value
-      * day > in_flight_end        → Sky = 0, Grove = uncapped, in-flight = 0
-
-    where ``in_flight_end = usdc_settlement_date or end_date``. The total
-    column = sum of the three (= the prime+Sky combined NAV attributable
-    to this venue on that day).
+    Retain the legacy phase-based rendering for older provenance that lacks
+    explicit pending-value diagnostics; never regenerate its missing inputs.
     """
     breakdown = prov.get("sde_daily_breakdown") or []
-    venues_with_burn = [b for b in breakdown if b.get("burn_date")]
+    venues_with_burn = [b for b in breakdown if b.get("burn_date") or
+                        any(_D(r.get("pending_value", "0")) != 0 for r in b.get("daily", []))]
     if not venues_with_burn:
         # No burn events this period — skip the tab entirely.
         return
     ws.title = "SDE daily"
-    ws.append(["SDE per-day breakdown (capped venues with on-chain burn)"])
+    ws.append(["SDE per-day holdings and pending redemptions"])
     ws["A1"].font = _TITLE
     ws.append([])
     ws.append([
-        "For each capped SDE venue with an on-chain burn, the daily on-"
-        "chain position is decomposed into Sky's slice (cap-protected, "
-        "pre-burn), Grove's residual (above the cap, surviving the burn), "
-        "and the in-flight USDC settling back to the ALM (post-burn / "
-        "pre-settlement). The three columns sum to the total NAV "
-        "attributable to this venue on that day."
+        "Pending redemptions remain part of economic exposure until cash settles. "
+        "Held NAV plus pending NAV equals economic NAV; ownership caps and deal "
+        "dates determine the amount deducted from the borrowing-cost base."
     ])
     ws.append([])
 
     for b in venues_with_burn:
+        if any("wallet_value" in r for r in b.get("daily", [])):
+            ws.append([f"{b['venue_id']} — {b.get('label', '')}"])
+            ws.cell(ws.max_row, 1).font = _BOLD
+            ws.append(["Date", "Held NAV", "Pending NAV", "Economic NAV", "SDE deduction"])
+            _header_row(ws, ws.max_row, 5)
+            for row in b["daily"]:
+                ws.append([row["block_date"], float(_D(row["wallet_value"])),
+                           float(_D(row["pending_value"])), float(_D(row["uncapped_value"])),
+                           float(_D(row["cum_value"]))])
+                for col in range(2, 6):
+                    ws.cell(ws.max_row, col).number_format = _USD0
+            ws.append([])
+            continue
         cap_str = b.get("cap_usd") or ""
         burn = date.fromisoformat(b["burn_date"])
         in_flight_end_raw = b.get("usdc_settlement_date") or b.get("end_date")
@@ -988,7 +992,9 @@ def build_xlsx(prime_id: str, month: str, *, output_dir: Path | None = None) -> 
         # only venues this period. Avoids an empty tab cluttering monthly
         # reports for primes with no off-protocol positions.
         _write_off_protocol_holdings(wb.create_sheet(), prov, cfg)
-    if any(b.get("burn_date") for b in (prov.get("sde_daily_breakdown") or [])):
+    if any(b.get("burn_date") or any(_D(r.get("pending_value", "0")) != 0
+                                   for r in b.get("daily", []))
+           for b in (prov.get("sde_daily_breakdown") or [])):
         # Only emit the "SDE daily" tab when at least one SDE venue had a
         # burn this period — otherwise the three-column decomposition is
         # uninteresting (Sky = full position, Grove = 0 throughout).

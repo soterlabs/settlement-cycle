@@ -26,6 +26,20 @@ below as compact pointers; the full narrative lives in `PRD.md §17`.
 ### P0 — material numerical gaps
 
 
+#### G30. Confirm outstanding SDE redemption CoF corrections before settlement
+
+The in-flight audit identifies JTRSY April/May and BUIDL May/August/September
+CoF gaps, plus an offsetting JAAA March settlement-day debit. The signed,
+frozen-rate replay proposes **78,530.06 USDS additional relief** to Grove after
+subtracting the **2,508.55 USDS** already recorded August 31 credit.
+
+Confirm with Grove that (1) the JAAA cash-day closing-balance treatment matches
+the agreed Atlas interpretation, and (2) no executed MSC or off-report credit
+already covers these specific windows. This is a proposal, not a booked payment.
+See [method and evidence](docs/grove/sde_inflight.md) and
+[per-day replay](reconciliation/2026-10/sde_inflight_cof.json).
+
+
 #### G28. Galaxy Warehouse — facility terms, maturity, and yield payer
 
 **Confirmed by Grove (2026-09):** the ~$304M wired off-chain in July 2026 is

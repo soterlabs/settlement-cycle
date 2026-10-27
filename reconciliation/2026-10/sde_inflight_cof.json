@@ -1,0 +1,419 @@
+{
+  "status": "proposal_for_review_not_booked",
+  "baseline_commit": "4860a406e60a6b88ca7e2c91b620bb3b5e7ee40a",
+  "scope": "Grove Ethereum E8/E9/E10, identified March-September 2026 CoF timing corrections only",
+  "note": "Positive credit reduces Sky share/debt mint. Negative credit increases it. Published reports remain unchanged. Confirm executed/off-report credits before booking.",
+  "months": {
+    "2026-03": {
+      "gross_credit": "-33417.95249353024291212819467",
+      "already_recorded_credit": "0",
+      "additional_credit": "-33417.95249353024291212819467",
+      "baseline_max_daily_error": "8.41278429992E-11",
+      "path": "settlements/grove/2026-03/grove_settlement_march_2026.xlsx",
+      "sha256": "a12c9ed10f97522742559a9f78b15174d60563dab61d80c2e039c87c4401eca9",
+      "pin": 24781026
+    },
+    "2026-04": {
+      "gross_credit": "5147.68757582659444327535849",
+      "already_recorded_credit": "0",
+      "additional_credit": "5147.68757582659444327535849",
+      "baseline_max_daily_error": "7.07393926892E-11",
+      "path": "settlements/grove/2026-04/grove_settlement_april_2026.xlsx",
+      "sha256": "2147bb6d9e900261abe33643c70fe32c7c294cdeb1a5c034304aa704fa94f16f",
+      "pin": 24996367
+    },
+    "2026-05": {
+      "gross_credit": "68481.22519764597013188528199",
+      "already_recorded_credit": "0",
+      "additional_credit": "68481.22519764597013188528199",
+      "baseline_max_daily_error": "7.90695001144E-11",
+      "path": "settlements/grove/2026-05/grove_settlement_may_2026.xlsx",
+      "sha256": "fc8a0167cf94ef1020f48790a256a0c0ff6a375bacac55ab6778eea789a1c6d4",
+      "pin": 25218797
+    },
+    "2026-08": {
+      "gross_credit": "7525.8383982238637038753973",
+      "already_recorded_credit": "2508.55",
+      "additional_credit": "5017.2883982238637038753973",
+      "baseline_max_daily_error": "9.53096583247E-11",
+      "path": "settlements/grove/2026-08/grove_settlement_august_2026.xlsx",
+      "sha256": "4c5491ada70611602462e936b05701ba8e2e29c1c993aa3908a51ecd5a0255fd",
+      "pin": 25878704
+    },
+    "2026-09": {
+      "gross_credit": "33301.8084581387945569083695",
+      "already_recorded_credit": "0",
+      "additional_credit": "33301.8084581387945569083695",
+      "baseline_max_daily_error": "8.42885577827E-11",
+      "path": "settlements/grove/2026-09/grove_settlement_september_2026.xlsx",
+      "sha256": "726b28299529264199cd60fdba02f9d83c27a77cf0252cabd9c46d3876912610",
+      "pin": 26093737
+    }
+  },
+  "daily": [
+    {
+      "date": "2026-03-11",
+      "rate_convention": "apy",
+      "deduction_changes_by_venue": {
+        "E8": "-325000000"
+      },
+      "frozen_utilized": "760834300.9065213",
+      "corrected_utilized": "1085834300.9065213",
+      "frozen_charge": "76526.17433897370620428471063",
+      "corrected_charge": "109944.1268325039491164129053",
+      "credit_to_grove": "-33417.95249353024291212819467"
+    },
+    {
+      "date": "2026-04-23",
+      "rate_convention": "apy",
+      "deduction_changes_by_venue": {
+        "E9": "50004813.82285678189131297417"
+      },
+      "frozen_utilized": "1022132048.589145",
+      "corrected_utilized": "972127234.7662882181086870258",
+      "frozen_charge": "102530.6145370527302541643661",
+      "corrected_charge": "97382.92696122613581088900761",
+      "credit_to_grove": "5147.68757582659444327535849"
+    },
+    {
+      "date": "2026-05-01",
+      "rate_convention": "apy",
+      "deduction_changes_by_venue": {
+        "E9": "50005678.01215932194147803390"
+      },
+      "frozen_utilized": "1023829637.566135",
+      "corrected_utilized": "973823959.5539756780585219661",
+      "frozen_charge": "102789.3825737966747889465145",
+      "corrected_charge": "97628.94469399806718335434619",
+      "credit_to_grove": "5160.43787979860760559216831"
+    },
+    {
+      "date": "2026-05-02",
+      "rate_convention": "apy",
+      "deduction_changes_by_venue": {
+        "E9": "50005678.01215932194147803390"
+      },
+      "frozen_utilized": "1023829637.566135",
+      "corrected_utilized": "973823959.5539756780585219661",
+      "frozen_charge": "102789.3825737966747889465145",
+      "corrected_charge": "97628.94469399806718335434619",
+      "credit_to_grove": "5160.43787979860760559216831"
+    },
+    {
+      "date": "2026-05-03",
+      "rate_convention": "apy",
+      "deduction_changes_by_venue": {
+        "E9": "50005678.01215932194147803390"
+      },
+      "frozen_utilized": "1023829637.566135",
+      "corrected_utilized": "973823959.5539756780585219661",
+      "frozen_charge": "102789.3825737966747889465145",
+      "corrected_charge": "97628.94469399806718335434619",
+      "credit_to_grove": "5160.43787979860760559216831"
+    },
+    {
+      "date": "2026-05-04",
+      "rate_convention": "apy",
+      "deduction_changes_by_venue": {
+        "E9": "49999999.99999913541208567652"
+      },
+      "frozen_utilized": "1023192367.134319",
+      "corrected_utilized": "973192367.1343198645879143235",
+      "frozen_charge": "103161.7812172810963076338357",
+      "corrected_charge": "97994.04801606519163743885304",
+      "credit_to_grove": "5167.73320121590467019498266"
+    },
+    {
+      "date": "2026-05-11",
+      "rate_convention": "apy",
+      "deduction_changes_by_venue": {
+        "E9": "24999455.508175426514925000"
+      },
+      "frozen_utilized": "1088730690.191077",
+      "corrected_utilized": "1063731234.682901573485075000",
+      "frozen_charge": "110137.0754545516939880191575",
+      "corrected_charge": "107476.3641362278775452249392",
+      "credit_to_grove": "2660.7113183238164427942183"
+    },
+    {
+      "date": "2026-05-13",
+      "rate_convention": "apy",
+      "deduction_changes_by_venue": {
+        "E9": "25003476.013044811482795000"
+      },
+      "frozen_utilized": "1088386089.855397",
+      "corrected_utilized": "1063382613.842352188517205000",
+      "frozen_charge": "109880.2962788054913699458578",
+      "corrected_charge": "107219.1570550495806044620756",
+      "credit_to_grove": "2661.1392237559107654837822"
+    },
+    {
+      "date": "2026-05-14",
+      "rate_convention": "apy",
+      "deduction_changes_by_venue": {
+        "E9": "25005879.883164565886820000"
+      },
+      "frozen_utilized": "1089206573.638465",
+      "corrected_utilized": "1064200693.755300434113180000",
+      "frozen_charge": "109967.6210002337742243725952",
+      "corrected_charge": "107306.2259307282102585334959",
+      "credit_to_grove": "2661.3950695055639658390993"
+    },
+    {
+      "date": "2026-05-15",
+      "rate_convention": "apy",
+      "deduction_changes_by_venue": {
+        "E9": "25008470.919420507504675000"
+      },
+      "frozen_utilized": "1114011911.960746",
+      "corrected_utilized": "1089003441.041325492495325000",
+      "frozen_charge": "112607.6722768450195967614844",
+      "corrected_charge": "109946.0014413536677915446253",
+      "credit_to_grove": "2661.6708354913518052168591"
+    },
+    {
+      "date": "2026-05-16",
+      "rate_convention": "apy",
+      "deduction_changes_by_venue": {
+        "E9": "25008470.919420507504675000"
+      },
+      "frozen_utilized": "1114011911.960746",
+      "corrected_utilized": "1089003441.041325492495325000",
+      "frozen_charge": "112607.6722768450195967614844",
+      "corrected_charge": "109946.0014413536677915446253",
+      "credit_to_grove": "2661.6708354913518052168591"
+    },
+    {
+      "date": "2026-05-17",
+      "rate_convention": "apy",
+      "deduction_changes_by_venue": {
+        "E9": "25008470.919420507504675000"
+      },
+      "frozen_utilized": "1114011911.960746",
+      "corrected_utilized": "1089003441.041325492495325000",
+      "frozen_charge": "112607.6722768450195967614844",
+      "corrected_charge": "109946.0014413536677915446253",
+      "credit_to_grove": "2661.6708354913518052168591"
+    },
+    {
+      "date": "2026-05-18",
+      "rate_convention": "apy",
+      "deduction_changes_by_venue": {
+        "E9": "25009873.246573053499540000",
+        "E10": "24987500.0000"
+      },
+      "frozen_utilized": "1163464518.169577",
+      "corrected_utilized": "1113467144.923003946500460000",
+      "frozen_charge": "117650.8305414483779917878720",
+      "corrected_charge": "112329.5715708234482595152580",
+      "credit_to_grove": "5321.2589706249297322726140"
+    },
+    {
+      "date": "2026-05-19",
+      "rate_convention": "apy",
+      "deduction_changes_by_venue": {
+        "E9": "25012917.758801968256140000",
+        "E10": "24987500.0000"
+      },
+      "frozen_utilized": "1116269332.612014",
+      "corrected_utilized": "1066268914.853212031743860000",
+      "frozen_charge": "112407.6721995111705600422304",
+      "corrected_charge": "107086.0891991031281643285122",
+      "credit_to_grove": "5321.5830004080423957137182"
+    },
+    {
+      "date": "2026-05-20",
+      "rate_convention": "apy",
+      "deduction_changes_by_venue": {
+        "E9": "25004532.964642020296100000"
+      },
+      "frozen_utilized": "1096098867.242043",
+      "corrected_utilized": "1071094334.277400979703900000",
+      "frozen_charge": "109820.5843690741585414301783",
+      "corrected_charge": "107159.3326531451004746549217",
+      "credit_to_grove": "2661.2517159290580667752566"
+    },
+    {
+      "date": "2026-05-21",
+      "rate_convention": "apy",
+      "deduction_changes_by_venue": {
+        "E9": "25001822.861899040071565000"
+      },
+      "frozen_utilized": "1099922921.472309",
+      "corrected_utilized": "1074921098.610409959928435000",
+      "frozen_charge": "110888.0494296157790347870696",
+      "corrected_charge": "108227.0861520104960517523443",
+      "credit_to_grove": "2660.9632776052829830347253"
+    },
+    {
+      "date": "2026-05-22",
+      "rate_convention": "apy",
+      "deduction_changes_by_venue": {
+        "E9": "24997677.858356915378800000"
+      },
+      "frozen_utilized": "1095805092.822811",
+      "corrected_utilized": "1070807414.964454084621200000",
+      "frozen_charge": "110449.7857525907169586149969",
+      "corrected_charge": "107789.2636309072266259157658",
+      "credit_to_grove": "2660.5221216834903326992311"
+    },
+    {
+      "date": "2026-05-23",
+      "rate_convention": "apy",
+      "deduction_changes_by_venue": {
+        "E9": "24997677.858356915378800000"
+      },
+      "frozen_utilized": "1096805092.822811",
+      "corrected_utilized": "1071807414.964454084621200000",
+      "frozen_charge": "110556.2165233510520986149969",
+      "corrected_charge": "107895.6944016675617659157658",
+      "credit_to_grove": "2660.5221216834903326992311"
+    },
+    {
+      "date": "2026-05-24",
+      "rate_convention": "apy",
+      "deduction_changes_by_venue": {
+        "E9": "24997677.858356915378800000"
+      },
+      "frozen_utilized": "1098805092.822811",
+      "corrected_utilized": "1073807414.964454084621200000",
+      "frozen_charge": "110769.0780648717223786149969",
+      "corrected_charge": "108108.5559431882320459157658",
+      "credit_to_grove": "2660.5221216834903326992311"
+    },
+    {
+      "date": "2026-05-25",
+      "rate_convention": "apy",
+      "deduction_changes_by_venue": {
+        "E9": "25006456.555496985880720000"
+      },
+      "frozen_utilized": "1101489036.646868",
+      "corrected_utilized": "1076482580.091371014119280000",
+      "frozen_charge": "111054.7322747435502157215113",
+      "corrected_charge": "108393.2758295571706297296351",
+      "credit_to_grove": "2661.4564451863795859918762"
+    },
+    {
+      "date": "2026-05-26",
+      "rate_convention": "apy",
+      "deduction_changes_by_venue": {
+        "E9": "25000933.928165824885605000"
+      },
+      "frozen_utilized": "1100210235.65696",
+      "corrected_utilized": "1075209301.728794175114395000",
+      "frozen_charge": "110565.3447970185092488819748",
+      "corrected_charge": "107937.5293035097711676386508",
+      "credit_to_grove": "2627.8154935087380812433240"
+    },
+    {
+      "date": "2026-05-27",
+      "rate_convention": "apy",
+      "deduction_changes_by_venue": {
+        "E9": "25002926.885616967707795000"
+      },
+      "frozen_utilized": "1102082742.838048",
+      "corrected_utilized": "1077079815.952431032292205000",
+      "frozen_charge": "110762.1615797958082868411724",
+      "corrected_charge": "108134.1366091338140748242627",
+      "credit_to_grove": "2628.0249706619942120169097"
+    },
+    {
+      "date": "2026-08-24",
+      "rate_convention": "apr",
+      "deduction_changes_by_venue": {
+        "E10": "49975000.0000"
+      },
+      "frozen_utilized": "1229620660.020537",
+      "corrected_utilized": "1179645660.020537",
+      "frozen_charge": "123168.5207765199259784713204",
+      "corrected_charge": "118151.2282804707361866904985",
+      "credit_to_grove": "5017.2924960491897917808219"
+    },
+    {
+      "date": "2026-08-31",
+      "rate_convention": "apr",
+      "deduction_changes_by_venue": {
+        "E10": "24986500.5000"
+      },
+      "frozen_utilized": "1200320633.258407",
+      "corrected_utilized": "1175334132.758407",
+      "frozen_charge": "120507.4478459313054934282611",
+      "corrected_charge": "117998.9019437566315813336857",
+      "credit_to_grove": "2508.5459021746739120945754"
+    },
+    {
+      "date": "2026-09-04",
+      "rate_convention": "apr",
+      "deduction_changes_by_venue": {
+        "E10": "24987500.0000"
+      },
+      "frozen_utilized": "1204630499.56961",
+      "corrected_utilized": "1179642999.56961",
+      "frozen_charge": "121818.0073970474369240879249",
+      "corrected_charge": "119256.3219412353579210057332",
+      "credit_to_grove": "2561.6854558120790030821917"
+    },
+    {
+      "date": "2026-09-05",
+      "rate_convention": "apr",
+      "deduction_changes_by_venue": {
+        "E10": "24987500.0000"
+      },
+      "frozen_utilized": "1204630499.56961",
+      "corrected_utilized": "1179642999.56961",
+      "frozen_charge": "121818.0073970474369240879249",
+      "corrected_charge": "119256.3219412353579210057332",
+      "credit_to_grove": "2561.6854558120790030821917"
+    },
+    {
+      "date": "2026-09-06",
+      "rate_convention": "apr",
+      "deduction_changes_by_venue": {
+        "E10": "24987500.0000"
+      },
+      "frozen_utilized": "1204630499.56961",
+      "corrected_utilized": "1179642999.56961",
+      "frozen_charge": "121818.0073970474369240879249",
+      "corrected_charge": "119256.3219412353579210057332",
+      "credit_to_grove": "2561.6854558120790030821917"
+    },
+    {
+      "date": "2026-09-07",
+      "rate_convention": "apr",
+      "deduction_changes_by_venue": {
+        "E10": "24987500.0000"
+      },
+      "frozen_utilized": "1204630499.56961",
+      "corrected_utilized": "1179642999.56961",
+      "frozen_charge": "121818.0073970474369240879249",
+      "corrected_charge": "119256.3219412353579210057332",
+      "credit_to_grove": "2561.6854558120790030821917"
+    },
+    {
+      "date": "2026-09-16",
+      "rate_convention": "apr",
+      "deduction_changes_by_venue": {
+        "E10": "199900000.0000"
+      },
+      "frozen_utilized": "1425937272.629966",
+      "corrected_utilized": "1226037272.629966",
+      "frozen_charge": "143958.1399032805766037274516",
+      "corrected_charge": "123464.6562567839445790699174",
+      "credit_to_grove": "20493.4836464966320246575342"
+    },
+    {
+      "date": "2026-09-21",
+      "rate_convention": "apr",
+      "deduction_changes_by_venue": {
+        "E10": "24986500.5000"
+      },
+      "frozen_utilized": "1263388983.545219",
+      "corrected_utilized": "1238402483.045219",
+      "frozen_charge": "129520.9678511653231956806420",
+      "corrected_charge": "126959.3848627714766757585735",
+      "credit_to_grove": "2561.5829883938465199220685"
+    }
+  ],
+  "additional_credit_unrounded": "78530.05713630497992381621261",
+  "proposed_sky_adj": "-78530.06"
+}
