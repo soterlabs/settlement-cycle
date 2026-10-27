@@ -99,7 +99,9 @@ def _trace(history, venues, end, snapshot_accounts, bound_external_funding, veri
         if b.identity in verified:
             # Receipt validation is performed by the caller. A proven gross
             # draw may fund this position even if a later repayment makes the
-            # transaction's net debt negative. Do not alter that net debt.
+            # transaction's net debt negative. A separately replayed custody
+            # return can also carry original borrowing without a new draw.
+            # Neither proof alters net debt or adds to the baseline twice.
             if new_capital <= 0 or verified[b.identity] > new_capital + EPS:
                 raise ValueError('Verified draw exceeds positive position contribution')
             direct = min(new_capital, verified[b.identity])

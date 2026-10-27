@@ -131,3 +131,12 @@ supersedes S32's earlier result: **617.588m (87.83%)** of August-end acquisition
 capital is traced to Sky borrowing, leaving **85.546m** to classify. It separates
 Savings asset receipts from authenticated USDS draws, including draws followed
 by repayments in the same transaction. Other allocation rows are unchanged.
+
+## October 27 follow-up: three upstream sUSDS contributions
+
+The [upstream origin audit](spark/susds-upstream-origins-2026-10-27.md) raises
+S32's traced August-end capital to **636.767m (90.56%)**, leaving **66.366m**.
+It proves the borrowed portion of July 15's mixed deposit and carries surviving
+L2 borrowed basis through the July 13 Base and Optimism sUSDS returns. The
+earlier “operations/Uniswap” label referred to Optimism and has been corrected.
+Other allocations are unchanged.

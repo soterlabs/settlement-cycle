@@ -54,7 +54,7 @@ the required debt metadata. Rejection means this narrow proof is insufficient,
 not that the entire transaction is excluded from the baseline audit.
 
 The largest remaining surviving contributions are July 15 mixed cash
-(11.094m), July 13 operations/Uniswap withdrawal (10.628m), and July 13 Base
+(11.094m), July 13 Optimism withdrawal (10.628m), and July 13 Base
 bridge return (8.281m). Their upstream origins require separate evidence.
 This change does not assume all sUSDS/POL is borrowed and does not classify
 the underlying Savings-funded allocations automatically.

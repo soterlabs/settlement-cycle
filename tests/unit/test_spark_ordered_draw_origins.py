@@ -130,3 +130,25 @@ def test_complete_receipt_audit_preserves_history_and_reconciles_closing_capital
                - D(result['remaining_origin_to_classify'])) < D('1e-8')
     # An already-proven draw is replaced, never added again on replay.
     assert attribute(h, receipts, date(2026,1,1), date(2026,8,31))['closing_borrowed'] == result['closing_borrowed']
+
+
+def test_mixed_prefix_attributes_only_draw_not_other_cash(data):
+    module, h, receipts = data
+    tx = '0x90dce95b9d809344872e6a830feb6c7aa4e4fcd471c36f4e264979e7fd90bb7d'
+    b = batch_for(h, tx)
+    with pytest.raises(ValueError, match='contaminates'):
+        module.validate(b, receipts[tx])
+    proof = module.validate(b, receipts[tx], allow_mixed_prefix=True)
+    assert D(proof['verified_borrowed_contribution']) == D('53983649.231941332839436392')
+    assert D(proof['additional_unclassified_usds']) == D('156434.075182905649945882')
+    assert D(proof['usds_deposited']) > D(proof['verified_borrowed_contribution'])
+
+
+def test_mixed_prefix_still_rejects_intervening_cash_payment(data):
+    module, h, receipts = data
+    tx = '0x90dce95b9d809344872e6a830feb6c7aa4e4fcd471c36f4e264979e7fd90bb7d'
+    receipt = deepcopy(receipts[tx])
+    extra = next(log for log in receipt['logs'] if module.index(log) == 165)
+    extra['topics'][1], extra['topics'][2] = extra['topics'][2], extra['topics'][1]
+    with pytest.raises(ValueError, match='contaminates'):
+        module.validate(batch_for(h, tx), receipt, allow_mixed_prefix=True)
