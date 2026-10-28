@@ -151,3 +151,14 @@ def test_unreconciled_or_wrongly_attributed_issuer_ledgers_are_not_published_as_
         assert build(saved)['metrics']['rewards.issuer.pyusd']['value'] is None
     assert build(issuer_source('usdg', closing='0', paid='50', accrued='50'))['metrics']['rewards.issuer.usdg']['recognition'] == 'receipt'
     assert build(issuer_source('usdg', closing='0', paid='50', accrued='60'))['metrics']['rewards.issuer.usdg']['value'] is None
+
+
+def test_malformed_optional_issuer_data_does_not_hide_known_investment_siblings():
+    for ledger in (None, 'unavailable', {'receipt_sources': [None], 'program': 'pyusd',
+                    'cutoff': '2026-10-26', 'period_start': '2026-10-01'}):
+        saved = issuer_source()
+        saved['result']['venue_breakdown'][-1]['incentive_accrual'] = ledger
+        saved['result_hash'] = digest(saved['result'])
+        doc = build(saved)
+        assert doc['metrics']['rewards.issuer.pyusd']['value'] is None
+        assert doc['metrics']['investment.reviewed_income']['value'] == '250'

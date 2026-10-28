@@ -129,3 +129,44 @@ Spark reserves/vaults, a complete reporting-only incentive history, approved
 funding-cost allocation and net investment yield remain separate follow-ups.
 Tax, statutory/entity scope and consolidation are not inferred. This delivery
 expands useful independently supported figures without claiming those gaps closed.
+
+## Initial production verification — 2026-10-28
+
+The new policy was deployed to the dashboard, published from saved inputs, then
+selected by the API. Backfill created **336** financial documents with zero
+failures; a second run reused all 336 with zero new publications/failures.
+
+| Prime | Retained source dates | Latest cutoff |
+| --- | ---: | --- |
+| Grove | 57 | 2026-10-27 |
+| Spark | 55 | 2026-10-25 |
+| Obex | 56 | 2026-10-26 |
+| Keel | 56 | 2026-10-26 |
+| Skybase | 56 | 2026-10-26 |
+| Osero | 56 | 2026-10-26 |
+
+All coverage begins September 1. Older source gaps keep YTD unavailable. Hourly
+reconciliation remains at :35 UTC and picks up later source publications.
+
+Verified on the live dashboard and pinned CSV exports:
+
+| Prime | Reviewed native income MTD | Lending rewards received MTD | Approved financial members |
+| --- | ---: | ---: | ---: |
+| Spark | $5,074,953.57 | $239,704.66 | 25 |
+| Grove | $312,476.93 | $0.00 | 11 |
+| Osero | $5,205.25 | $0.00 | 2, including idle cash |
+
+Spark/Grove disclose reviewed closing values as partial known amounts
+($2,465,648,473.76 / $10,421,631.76), not full prime asset totals. Osero's complete
+declared investment/cash perimeter closes at $0.68. These are reported valuations
+with the cutoffs above; they exclude entity assets outside the declared perimeter.
+
+All six pre-upgrade annual selection tokens were replayed after switching the
+policy: their original lines, selections and report hashes were unchanged. The
+retained first-slice Obex portfolio hash also matched. The old Spark source's
+missing v2 view did not prevent its 25 approved v3 members from rendering and
+exporting with the matching financial source references.
+
+Backend PR #230 is stacked on the still-open first-slice PR #229. Companion
+dashboard PR #2 and the API commits were deployed for live verification; these
+PRs remain open for review.

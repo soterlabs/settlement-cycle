@@ -1,4 +1,4 @@
-"""First-slice management reporting from immutable saved revenue inputs. No I/O."""
+"""Versioned management reporting from immutable saved revenue inputs. No I/O."""
 from __future__ import annotations
 
 import base64

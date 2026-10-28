@@ -37,12 +37,14 @@ def extend(document, source):
             row = matches[0]
             ledger = row.get('incentive_accrual', {})
             try:
+                if not isinstance(ledger, dict):
+                    raise ValueError('Missing issuer ledger')
                 if row.get('pricing_category') != 'I' or row.get('settlement_enabled') is not False:
                     raise ValueError('Issuer claims must be separately tracked')
                 if ledger.get('program') != program or ledger.get('cutoff') != source['cutoff'] or ledger.get('period_start') != raw['period']['start']:
                     raise ValueError('Issuer ledger does not cover this reporting period')
                 sources = ledger.get('receipt_sources', [])
-                if len(sources) != 1 or any(str(sources[0].get(k, '')).lower() != v for k, v in
+                if not isinstance(sources, list) or len(sources) != 1 or not isinstance(sources[0], dict) or any(str(sources[0].get(k, '')).lower() != v for k, v in
                                            (('payer', payer), ('recipient', recipient), ('token', token))):
                     raise ValueError('Unreviewed issuer receipt attribution')
                 if sources[0].get('chain', 'ethereum') != ('robinhood' if program == 'usdg' else 'ethereum'):
