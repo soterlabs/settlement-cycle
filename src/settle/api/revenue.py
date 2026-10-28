@@ -25,6 +25,22 @@ def latest_attempt(conn, prime):
 
 
 class RevenueReaderMixin:
+    def financial_bundle(self, prime, *, cutoff=None, source_revision=None, revision=None):
+        from ..revenue import financial_store
+        with self._pool.connection() as conn:
+            with conn.transaction():
+                conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
+                row = financial_store.read(conn, prime, cutoff=cutoff, source_revision=source_revision, revision=revision)
+                source = store.read(conn, prime, cutoff=row['cutoff']) if row else None
+                return row, ({'cutoff': source['cutoff'], 'revision_id': source['revision_id']} if source else None)
+
+    def financial_year(self, prime, year, *, revisions=None):
+        from ..revenue import financial_store
+        with self._pool.connection() as conn:
+            with conn.transaction():
+                conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
+                return financial_store.year_rows(conn, prime, year, revisions=revisions)
+
     def revenue_bundle(self, prime, *, cutoff=None, revision=None):
         with self._pool.connection() as conn:
             with conn.transaction():
@@ -62,6 +78,8 @@ def with_result_schema(record):
 
 def register(app, get_reader, document_response):
     from .venue_views import register_views
+    from .financial import register_financial
+    register_financial(app, get_reader, document_response)
     register_views(app, get_reader, document_response)
     def validate(prime, cutoff=None):
         if prime not in PRIMES:

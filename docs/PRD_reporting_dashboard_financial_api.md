@@ -1,6 +1,8 @@
 # Financial reporting API for the prime-agent dashboard
 
-Status: proposal; documentation only. Date: 2026-10-28.
+Status: first slice implemented in PR #229; later slices remain proposed. Date: 2026-10-28.
+
+The implemented contract and backfill instructions are in [the financial API guide](pipeline/financial-reporting-api.md).
 
 ## 1. Outcome and first delivery
 

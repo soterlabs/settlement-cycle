@@ -141,6 +141,7 @@ def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_
                                      (latest['revision_id'], Jsonb(dataclasses.asdict(resolved)), attempt_id))
                         results.append({'cutoff': str(cutoff), 'status': 'reused',
                                         'revision_id': latest['revision_id']})
+                        results[-1]['financial_status'] = _financial_publish(conn, prime, latest['revision_id'])
                         break
                     resolved = dataclasses.replace(versions, inputs=digest({
                         'manual_revision': versions.inputs,
@@ -168,6 +169,7 @@ def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_
                                      "revision_id=%s WHERE attempt_id=%s", (revision, attempt_id))
                     _log.info('revenue published prime=%s cutoff=%s revision=%s', prime, cutoff, revision)
                     results.append({'cutoff': str(cutoff), 'status': 'succeeded', 'revision_id': revision})
+                    results[-1]['financial_status'] = _financial_publish(conn, prime, revision)
                     break
                 except (Exception, RequiredInputFailure) as exc:
                     # Keep provider URLs/credentials out of the public run ledger.
@@ -179,11 +181,24 @@ def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_
                         results.append({'cutoff': str(cutoff), 'status': 'failed', 'error_type': type(exc).__name__})
                         break
                     pause(min(60, 10 * (attempt + 1)))
-        return {'prime': prime, 'status': 'failed' if any(r['status'] == 'failed' for r in results) else 'ok',
+        return {'prime': prime, 'status': 'failed' if any(r['status'] == 'failed' or r.get('financial_status') == 'failed' for r in results) else 'ok',
                 'results': results}
     finally:
         if not conn.closed:
             conn.execute('SELECT pg_advisory_unlock(%s)', (lock_key(prime),))
+
+
+def _financial_publish(conn, prime, revision):
+    from .financial_store import publish_revision
+    try:
+        status = publish_revision(conn, prime, revision)
+    except Exception:
+        # A committed source calculation must not be relabelled failed because
+        # a derived-report store is unavailable. Signal the independent failure.
+        status = 'failed'
+    if status == 'failed':
+        _log.error('ALERT financial publication failed prime=%s source_revision=%s', prime, revision)
+    return status
 
 
 @contextmanager

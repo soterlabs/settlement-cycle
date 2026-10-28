@@ -38,3 +38,28 @@ CREATE TABLE IF NOT EXISTS revenue_reference_snapshots (
     content JSONB NOT NULL
 );
 ALTER TABLE revenue_results ADD COLUMN IF NOT EXISTS input_provenance JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+-- Derived management-reporting metrics. Source settlement/revenue rows stay immutable.
+CREATE TABLE IF NOT EXISTS reporting_financial_results (
+    revision_id TEXT PRIMARY KEY,
+    publication_order BIGSERIAL NOT NULL UNIQUE,
+    source_revision TEXT NOT NULL REFERENCES revenue_results(revision_id),
+    source_order BIGINT NOT NULL,
+    prime TEXT NOT NULL,
+    cutoff DATE NOT NULL,
+    policy_version TEXT NOT NULL,
+    computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    document JSONB NOT NULL,
+    document_hash TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS reporting_financial_latest ON reporting_financial_results
+    (prime, policy_version, cutoff DESC, source_order DESC, publication_order DESC);
+CREATE TABLE IF NOT EXISTS reporting_financial_attempts (
+    source_revision TEXT NOT NULL REFERENCES revenue_results(revision_id),
+    policy_version TEXT NOT NULL,
+    prime TEXT NOT NULL,
+    attempted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    status TEXT NOT NULL CHECK (status IN ('succeeded','failed')),
+    error_type TEXT,
+    PRIMARY KEY (source_revision, policy_version)
+);
