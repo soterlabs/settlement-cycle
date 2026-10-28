@@ -94,7 +94,8 @@ def validate(batch, receipt, *, allow_mixed_prefix=False, allow_prefix_payments=
         return _validate(batch, receipt, allow_mixed_prefix, allow_prefix_payments, savings_specs)
 
 
-def _validate(b, receipt, allow_mixed_prefix, allow_prefix_payments, savings_specs):
+def authenticate_draw(b, receipt):
+    """Validate receipt identity, gross draw/wipe and rate-normalized ilk debt."""
     tx = receipt['transactionHash'].lower()
     if (b.identity != 'ethereum:' + tx or b.chain != 'ethereum'
             or int(receipt['status'], 16) != 1 or int(receipt['blockNumber'], 16) != b.block
@@ -126,6 +127,11 @@ def _validate(b, receipt, allow_mixed_prefix, allow_prefix_payments, savings_spe
             or index(positive[0]) >= index(draws[0])
             or any(index(frob) >= index(wipe) for frob, wipe in zip(negative, wipes, strict=True))):
         raise ValueError('Vault events lack corresponding signed Vat frobs')
+    return logs, drawn, wiped, positive, negative, draws, wipes
+
+
+def _validate(b, receipt, allow_mixed_prefix, allow_prefix_payments, savings_specs):
+    logs, drawn, wiped, positive, negative, draws, wipes = authenticate_draw(b, receipt)
     transfers = [log for log in logs if log['address'] == USDS.split(':')[-1]
                  and log['topics'][0] == TRANSFER_TOPIC0]
     mints = [log for log in transfers if int(log['topics'][1], 16) == 0

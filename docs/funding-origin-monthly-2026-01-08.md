@@ -7,7 +7,7 @@ Methods are allocation-specific; no Prime-wide reconciliation percentage is asse
 
 | Prime / allocation | Jan | Feb | Mar | Apr | May | Jun | Jul | Aug |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| spark S1 | 99.06% | 99.23% | 99.58% | 95.27% | 93.22% | 93.97% | 96.32% | 97.20% |
+| spark S1 | 99.06% | 99.23% | 99.58% | 95.27% | 98.22% | 98.40% | 99.54% | 99.85% |
 | spark S32 | 82.23% | 81.72% | 89.20% | 87.70% | 89.90% | 88.51% | 89.26% | 92.18% |
 | spark S34 | dust | dust | dust | dust | dust | dust | dust | 93.47% |
 | spark S23 | 92.43% | 92.43% | 92.44% | 92.44% | 75.79% | 76.72% | 76.72% | 71.00% |
@@ -21,7 +21,7 @@ Methods are allocation-specific; no Prime-wide reconciliation percentage is asse
 
 | Prime / allocation | Jan | Feb | Mar | Apr | May | Jun | Jul | Aug |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| spark S1 | 5.251 | 2.123 | 0.625 | 6.988 | 37.309 | 29.438 | 27.671 | 19.116 |
+| spark S1 | 5.251 | 2.123 | 0.625 | 6.988 | 9.761 | 7.796 | 3.498 | 1.050 |
 | spark S32 | 69.758 | 145.650 | 147.843 | 211.561 | 159.028 | 134.806 | 61.639 | 54.961 |
 | spark S34 | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 | 18.485 |
 | spark S23 | 11.348 | 11.348 | 11.348 | 11.348 | 60.555 | 60.555 | 60.555 | 60.555 |
