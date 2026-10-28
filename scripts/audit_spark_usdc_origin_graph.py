@@ -68,11 +68,10 @@ def claim_links(history, claims, end=END):
     return links
 
 
-def attribute(history, receipts, start=START, end=END):
+def verified_routes(history, receipts, accounts, end):
+    """Authenticate complete receipt bounds for this exact scoped account set."""
     with localcontext() as ctx:
         ctx.prec = 60
-        scoped, aliases, accounts, claims = scope(history, end)
-        links = claim_links(history, claims, end)
         specs, proofs, rejected, verified = load_savings_specs(), [], [], {}
         for batch in history.batches:
             if batch.day > end:
@@ -95,6 +94,15 @@ def attribute(history, receipts, start=START, end=END):
                 'borrowed': sum((D(r['borrowed']) for r in proof['claims']), D(0)),
                 'by_account': {r['claim']: D(r['borrowed']) for r in proof['claims']}}
             proofs.append(proof)
+        return proofs, rejected, verified
+
+
+def attribute(history, receipts, start=START, end=END):
+    with localcontext() as ctx:
+        ctx.prec = 60
+        scoped, aliases, accounts, claims = scope(history, end)
+        links = claim_links(history, claims, end)
+        proofs, rejected, verified = verified_routes(history, receipts, accounts, end)
         target = history.venue_accounts['S34']
         origin = trace(scoped, (*VENUES, *aliases), end, snapshot_accounts={target},
                        bound_external_funding=True, verified_group_inflows=verified)

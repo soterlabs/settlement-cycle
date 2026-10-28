@@ -26,7 +26,7 @@ SOURCES = {
     'spark:S1': 'reconciliation/spark_spusds_receipt_funding_origins_2026_08.json.gz',
     'spark:S32': 'reconciliation/spark_susds_all_month_origins_2026_08.json.gz',
     'spark:S34': 'reconciliation/spark_base_morpho_graph_origins_2026_08.json.gz',
-    'spark:S23': 'reconciliation/spark_anchorage_receipt_funding_origins_2026_08.json.gz',
+    'spark:S23': 'reconciliation/spark_anchorage_upstream_origins_2026_08.json.gz',
     'grove:E9': 'reconciliation/grove_jtrsy_funding_origins_2026_08.json.gz',
     'grove:E10': 'reconciliation/grove_large_allocation_origin_coverage_2026_08.json.gz',
     'grove:E8,E20': 'reconciliation/grove_large_allocation_origin_coverage_2026_08.json.gz',
@@ -58,7 +58,9 @@ def report(histories):
             source = read(path)
             if 'monthly' in source:
                 monthly = source['monthly']
-                method = 'scoped origin with upstream/custody attribution'
+                method = ('facility principal-return policy; separately identified borrowed and Savings funding'
+                          if any('identified_savings' in row for row in monthly)
+                          else 'scoped origin with upstream/custody attribution')
             elif 'closing_facility_principal' in source:
                 monthly = [row(day, D(source['daily'][str(day)]['facility_principal']),
                                D(source['daily'][str(day)]['direct_origin_remaining_before_refinancing']))
@@ -113,6 +115,16 @@ def markdown(result):
         cells = ['—' if D(r['capital']) == 0 else 'dust' if D(r['capital']) < 1
                  else f"{D(r['borrowed_percent']):.2f}%" for r in a['monthly']]
         lines.append('| ' + a['prime'] + ' ' + '/'.join(a['venues']) + ' | ' + ' | '.join(cells) + ' |')
+    savings = [(a, a['monthly'][-1]) for a in result['allocations']
+               if D(a['monthly'][-1].get('identified_savings', '0')) > 0]
+    if savings:
+        lines += ['', '## Separately identified Savings funding at August-end', '',
+                  'Savings funding is explained origin, but is not labelled Sky borrowing.', '',
+                  '| Prime / allocation | Sky borrowing | Savings funding | Total origin explained |',
+                  '|---|---:|---:|---:|']
+        for a, row in savings:
+            lines.append(f"| {a['prime']} {'/'.join(a['venues'])} | ${D(row['borrowed']):,.2f} | "
+                         f"${D(row['identified_savings']):,.2f} | {D(row['explained_percent']):.3f}% |")
     lines += ['', '## Capital whose origin remains unclassified (USD millions)', '',
               '| Prime / allocation | Jan | Feb | Mar | Apr | May | Jun | Jul | Aug |',
               '|---|' + '---:|' * 8]

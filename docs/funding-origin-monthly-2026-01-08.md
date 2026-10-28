@@ -10,12 +10,20 @@ Methods are allocation-specific; no Prime-wide reconciliation percentage is asse
 | spark S1 | 99.06% | 99.23% | 99.58% | 95.27% | 98.22% | 98.40% | 99.54% | 99.85% |
 | spark S32 | 82.23% | 81.72% | 89.20% | 87.70% | 89.90% | 88.51% | 89.26% | 92.18% |
 | spark S34 | dust | dust | dust | dust | dust | dust | dust | 99.06% |
-| spark S23 | 98.14% | 98.14% | 98.15% | 98.15% | 97.12% | 97.23% | 97.23% | 96.55% |
+| spark S23 | 99.85% | 99.85% | 99.85% | 99.85% | 98.91% | 98.95% | 98.95% | 98.69% |
 | grove E9 | 99.77% | 99.77% | 99.80% | 99.84% | 99.84% | 99.84% | 99.84% | 99.84% |
 | grove E10 | 100.00% | 99.98% | 99.99% | 99.99% | 99.99% | 99.99% | 99.99% | 99.99% |
 | grove E8/E20 | 100.00% | 100.00% | 100.00% | 100.00% | 100.00% | 100.00% | 100.00% | 100.00% |
 | grove E42 | — | — | — | — | — | — | 99.99% | 99.99% |
 | grove E23 | — | — | 100.00% | 99.73% | 99.71% | 99.83% | 99.81% | 99.81% |
+
+## Separately identified Savings funding at August-end
+
+Savings funding is explained origin, but is not labelled Sky borrowing.
+
+| Prime / allocation | Sky borrowing | Savings funding | Total origin explained |
+|---|---:|---:|---:|
+| spark S23 | $206,103,343.22 | $743,811.07 | 99.051% |
 
 ## Capital whose origin remains unclassified (USD millions)
 
@@ -24,7 +32,7 @@ Methods are allocation-specific; no Prime-wide reconciliation percentage is asse
 | spark S1 | 5.251 | 2.123 | 0.625 | 6.988 | 9.761 | 7.796 | 3.498 | 1.050 |
 | spark S32 | 69.758 | 145.650 | 147.843 | 211.561 | 159.028 | 134.806 | 61.639 | 54.961 |
 | spark S34 | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 | 2.660 |
-| spark S23 | 2.783 | 2.783 | 2.783 | 2.783 | 7.199 | 7.199 | 7.199 | 7.199 |
+| spark S23 | 0.226 | 0.226 | 0.226 | 0.226 | 1.982 | 1.982 | 1.982 | 1.982 |
 | grove E9 | 1.277 | 1.277 | 2.369 | 1.921 | 1.333 | 1.333 | 1.333 | 1.333 |
 | grove E10 | 0.000 | 0.075 | 0.090 | 0.090 | 0.065 | 0.065 | 0.065 | 0.060 |
 | grove E8/E20 | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 |
