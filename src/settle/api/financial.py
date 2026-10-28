@@ -46,7 +46,8 @@ def register_financial(app, get_reader, document_response):
             raise HTTPException(422, 'cutoff must belong to the selected year')
         as_of = cutoff or min(revenue.today() - timedelta(days=1), date(year, 12, 31))
         rows = read(r.financial_year, prime, year,
-                    revisions=[x for x in selection['revisions'] if x] if selection else None)
+                    revisions=[x for x in selection['revisions'] if x] if selection else None,
+                    **({'policy_version': selection['policy_version']} if selection else {}))
         try:
             result = statements(prime, year, as_of, rows,
                                 exact=selection['exact'] if selection else cutoff is not None,
@@ -92,5 +93,6 @@ def register_financial(app, get_reader, document_response):
             'financial_document': data,
             'policy_version': data['policy_version'], 'portfolio': data['portfolio'],
             'limitations': data['limitations'], 'source_lag': source_lag,
+            **({'claims': data['claims']} if 'claims' in data else {}),
             'freshness': revenue.freshness(row, cutoff or min(end, revenue.today() - timedelta(days=1))),
         })

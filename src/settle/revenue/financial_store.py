@@ -4,7 +4,7 @@ from __future__ import annotations
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
-from .financial import POLICY_VERSION, build
+from .financial import POLICY_VERSION, SUPPORTED_POLICIES, build
 from .verification import canonical, digest
 
 
@@ -34,7 +34,7 @@ def attempt(conn, source, status, error_type=None):
 
 
 def read(conn, prime, *, cutoff=None, source_revision=None, revision=None):
-    clauses, params = ['prime=%s', 'policy_version=%s'], [prime, POLICY_VERSION]
+    clauses, params = ['prime=%s', 'policy_version = ANY(%s)'], [prime, list(SUPPORTED_POLICIES) if revision else [POLICY_VERSION]]
     for field, value in (('cutoff', cutoff), ('source_revision', source_revision), ('revision_id', revision)):
         if value is not None:
             clauses.append(field + '=%s')
@@ -46,20 +46,22 @@ def read(conn, prime, *, cutoff=None, source_revision=None, revision=None):
     return canonical(row) if row else None
 
 
-def year_rows(conn, prime, year, *, revisions=None):
+def year_rows(conn, prime, year, *, revisions=None, policy_version=POLICY_VERSION):
+    if policy_version not in SUPPORTED_POLICIES:
+        raise ValueError("Unknown financial policy")
     with conn.cursor(row_factory=dict_row) as cur:
         if revisions is not None:
             cur.execute('''SELECT f.*, EXISTS(SELECT 1 FROM revenue_results r
                 WHERE r.prime=f.prime AND r.cutoff=f.cutoff AND r.publication_order>f.source_order) AS source_lag
                 FROM reporting_financial_results f WHERE prime=%s AND policy_version=%s
-                AND revision_id = ANY(%s)''', (prime, POLICY_VERSION, revisions))
+                AND revision_id = ANY(%s)''', (prime, policy_version, revisions))
         else:
             cur.execute('''SELECT DISTINCT ON (f.cutoff) f.*, EXISTS(SELECT 1 FROM revenue_results r
                 WHERE r.prime=f.prime AND r.cutoff=f.cutoff AND r.publication_order>f.source_order) AS source_lag
                 FROM reporting_financial_results f
                 WHERE f.prime=%s AND f.policy_version=%s AND f.cutoff >= %s AND f.cutoff <= %s
                 ORDER BY f.cutoff,f.source_order DESC,f.publication_order DESC''',
-                (prime, POLICY_VERSION, f'{year}-01-01', f'{year}-12-31'))
+                (prime, policy_version, f'{year}-01-01', f'{year}-12-31'))
         return canonical(cur.fetchall())
 
 

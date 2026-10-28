@@ -9,7 +9,9 @@ from decimal import Decimal, InvalidOperation, localcontext
 
 from .verification import PRIMES, digest
 
-POLICY_VERSION = 'prime-management.first-slice.v1'
+FIRST_SLICE_POLICY = 'prime-management.first-slice.v1'
+POLICY_VERSION = 'prime-management.allocations.v2'
+SUPPORTED_POLICIES = (FIRST_SLICE_POLICY, POLICY_VERSION)
 LINES = (
     ('demand.agent_rate', 'Agent rate (AR)'),
     ('funding.sky.gross', 'Sky borrowing interest, before reimbursement'),
@@ -39,7 +41,7 @@ def number(value):
     return parsed
 
 
-def build(source):
+def _build_first_slice(source):
     """Explicit policy: AR/Sky funding for all primes; Obex V1 net vault yield.
 
     No full interest/expense/revenue/tax totals are certified by this policy.
@@ -127,13 +129,36 @@ def build(source):
                                   'status': 'partial', 'reason': 'unreviewed_positions'}
     else:
         values['investment.maple_syrup_usdc'] = metric(reason='not_applicable_to_pilot_prime')
-    return {'schema_version': '3.0', 'policy_version': POLICY_VERSION, 'prime': source['prime'],
+    return {'schema_version': '3.0', 'policy_version': FIRST_SLICE_POLICY, 'prime': source['prime'],
             'scope': 'individual', 'perimeter': 'operational_prime_management_reporting',
             'cutoff': str(cutoff), 'period': {'start': raw['period']['start'], 'end': str(cutoff)},
             'source': {k: source.get(k) for k in ('revision_id', 'result_hash', 'code_version',
                 'configuration_version', 'input_revision', 'computed_at', 'provisional', 'excluded_inputs')},
             'metrics': values, 'portfolio': portfolio,
             'limitations': ['Not a complete entity income statement', 'Expenses, tax, DR and consolidation are not certified']}
+
+
+def build(source, *, policy_version=POLICY_VERSION):
+    if policy_version not in SUPPORTED_POLICIES:
+        raise ValueError('Unknown financial policy')
+    document = _build_first_slice(source)
+    if policy_version == FIRST_SLICE_POLICY:
+        return document
+    from .financial_allocations import extend
+    document['policy_version'] = policy_version
+    from .financial_issuers import extend as issuer_extend
+    return issuer_extend(extend(document, source), source)
+
+
+def taxonomy(prime, policy_version):
+    lines = {key: {'id': key, 'label': label} for key, label in LINES}
+    if policy_version == POLICY_VERSION:
+        from .financial_allocations import taxonomy as allocation_taxonomy
+        from .financial_issuers import taxonomy as issuer_taxonomy
+        lines.update({line['id']: line for line in allocation_taxonomy(prime) + issuer_taxonomy(prime)})
+    elif policy_version != FIRST_SLICE_POLICY:
+        raise ValueError('Unknown financial policy')
+    return list(lines.values())
 
 
 def selection_token(selection):
@@ -147,7 +172,7 @@ def decode_selection(token, prime, year):
         selection = json.loads(base64.b64decode(token + '=' * (-len(token) % 4), altchars=b'-_', validate=True))
         if (set(selection) != {'prime', 'year', 'as_of', 'exact', 'revisions', 'policy_version'}
                 or selection['prime'] != prime or selection['year'] != year
-                or selection['policy_version'] != POLICY_VERSION
+                or selection['policy_version'] not in SUPPORTED_POLICIES
                 or type(selection['exact']) is not bool or not isinstance(selection['revisions'], list)
                 or len(selection['revisions']) != 12):
             raise ValueError('Report selection mismatch')
@@ -162,6 +187,7 @@ def decode_selection(token, prime, year):
 
 def statements(prime, year, as_of, publications, *, exact=False, selection=None):
     """Read projection of saved financial metrics, with immutable export selection."""
+    policy_version = selection['policy_version'] if selection else POLICY_VERSION
     chosen, periods = [], []
     for month in range(1, 13):
         start = date(year, month, 1)
@@ -190,9 +216,10 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None)
                         'financial_revision': item['revision_id'] if item else None,
                         'stale': bool(item and item['cutoff'] < str(requested))})
     manifest = {'prime': prime, 'year': year, 'as_of': str(as_of), 'exact': exact,
-                'policy_version': POLICY_VERSION, 'revisions': [p['revision_id'] if p else None for p in chosen]}
+                'policy_version': policy_version, 'revisions': [p['revision_id'] if p else None for p in chosen]}
     lines = []
-    for key, label in LINES:
+    for definition in taxonomy(prime, policy_version):
+        key = definition['id']
         cells = [p['document']['metrics'][key] if p else metric(reason='future_period' if periods[i]['state'] == 'future'
                   else 'source_not_published') for i, p in enumerate(chosen)]
         for index, period in enumerate(periods):
@@ -207,10 +234,16 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None)
                 amount = sum(known, Decimal(0))
             if len(known) == len(required):
                 total = metric(amount, basis='sum_of_selected_monthly_flows')
+                if policy_version != FIRST_SLICE_POLICY:
+                    kinds = {cells[i]['recognition'] for i in required}
+                    if len(kinds) != 1:
+                        total = metric(reason='mixed_recognition_bases')
+                    else:
+                        total['recognition'] = kinds.pop()
             else:
                 total.update(status='partial', known_value=str(amount))
-        lines.append({'id': key, 'label': label, 'values': {p['key']: cells[i] for i, p in enumerate(periods)}, 'total': total})
-    result = {'schema_version': '3.0', 'policy_version': POLICY_VERSION, 'scope': 'individual', 'prime': prime,
+        lines.append({**definition, 'values': {p['key']: cells[i] for i, p in enumerate(periods)}, 'total': total})
+    result = {'schema_version': '3.0', 'policy_version': policy_version, 'scope': 'individual', 'prime': prime,
               'year': year, 'as_of': str(as_of), 'periods': periods, 'lines': lines,
               'total_label': 'FY' if as_of >= date(year, 12, 31) else 'YTD',
               'source_manifest': {p['revision_id']: {'cutoff': p['cutoff'], **p['document']['source']} for p in chosen if p},
