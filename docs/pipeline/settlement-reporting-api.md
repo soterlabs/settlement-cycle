@@ -312,3 +312,10 @@ same-token, same-chain Cat A settlement anchor. It preserves the established
 MSC recognition path; it is not a new way to include or exclude that payer's
 income from MSC. Additional accounting models should be separate methods with
 their own input validation and reconciliation.
+
+
+## Financial dashboard aggregates (v3)
+
+For typed management-reporting statement components, tracked portfolio aggregates,
+coverage and retained CSV selections, see the [financial reporting API guide](financial-reporting-api.md).
+V2 venue `totals` remain null; v3 does not change settlement amounts or recognition.

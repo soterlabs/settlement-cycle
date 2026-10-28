@@ -99,3 +99,36 @@ financial reconciliation job can run the same command with `--to` omitted
 failures without rerunning upstream calculations. Deploy the same reviewed
 policy code to the API, daily worker and financial reconciliation service when
 changing the financial policy.
+
+## Initial production backfill — 2026-10-28
+
+The January 1–October 27 request published **335** financial documents with no
+failures, using every retained source date in that window:
+
+| Prime | Source dates | First cutoff | Latest cutoff |
+| --- | ---: | --- | --- |
+| Grove | 56 | 2026-09-01 | 2026-10-26 |
+| Spark | 55 | 2026-09-01 | 2026-10-25 |
+| Obex | 56 | 2026-09-01 | 2026-10-26 |
+| Keel | 56 | 2026-09-01 | 2026-10-26 |
+| Skybase | 56 | 2026-09-01 | 2026-10-26 |
+| Osero | 56 | 2026-09-01 | 2026-10-26 |
+
+All six annual responses have the September 30 publication and October MTD.
+January–August have no retained source results, so YTD remains unavailable.
+Later October cutoffs will follow source publication; this financial backfill
+does not assert that missing raw dates were computed.
+
+The Railway `settle-reporting-financial` service runs hourly at :35 UTC with
+`--from 2026-01-01` and a rolling yesterday endpoint. Its initial deployment is
+an explicit artifact from this PR so backfill can run before merge; the IaC
+service definition uses main for subsequent managed deployments. API and
+companion dashboard PR commits were deployed without merging the PRs.
+
+Initial job deployment: `4f4e5013-4a79-4324-b4ae-16ad889b75c4`.
+Initial successful run: `56d3cf71-db4a-4cfd-ac3a-f67990b1554c`.
+
+Live verification matched Obex's statement cells, portfolio aggregate and pinned
+CSV to the saved source: AR $70,438.28; net Sky funding $1,122,790.65;
+Maple net investment income $1,460,382.34; tracked closing allocation value
+$406,996,930.93. These values are October 1–26 MTD, not a complete month or YTD.

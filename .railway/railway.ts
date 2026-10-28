@@ -73,7 +73,21 @@ export default defineRailway(() => {
     },
   });
 
+  // Reads retained revenue results only; catches older backfills/corrections
+  // independently of the slower source worker. No provider credentials needed.
+  const financialReporting = service("settle-reporting-financial", {
+    source: settlementCycle,
+    replicas: { "us-west2": 1 },
+    build,
+    deploy: {
+      startCommand: "python -m settle.revenue.financial_backfill --from 2026-01-01",
+      cronSchedule: "35 * * * *",
+      restartPolicyType: "NEVER", // failed runs are retried by the next hourly tick
+    },
+    env: { DATABASE_URL: "${{Postgres.DATABASE_URL}}" },
+  });
+
   return project("settlement-cycle-data", {
-    resources: [settleApi, Postgres, settleCron, revenueDaily, postgresVolume],
+    resources: [settleApi, Postgres, settleCron, revenueDaily, financialReporting, postgresVolume],
   });
 });
