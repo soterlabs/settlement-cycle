@@ -78,7 +78,7 @@ def register_financial(app, get_reader, document_response):
             raise HTTPException(422, 'cutoff must belong to the selected month')
         if revision and source_revision:
             raise HTTPException(422, 'Select either a financial revision or a source revision')
-        selected = cutoff or (end if end < revenue.today() else None)
+        selected = cutoff or (end if end < revenue.today() and not (revision or source_revision) else None)
         row, latest_source = read(r.financial_bundle, prime, cutoff=selected,
                                   source_revision=source_revision, revision=revision)
         if not row or row['cutoff'][:7] != month:

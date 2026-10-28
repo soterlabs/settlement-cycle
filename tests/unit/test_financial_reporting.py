@@ -127,3 +127,18 @@ def test_maple_income_and_valuations_have_independent_availability():
     assert doc['metrics']['investment.maple_syrup_usdc']['value'] == '100'
     assert doc['portfolio']['opening_value']['value'] == '1000'
     assert doc['portfolio']['closing_value']['value'] is None
+
+
+def test_portfolio_retained_revision_survives_month_rollover(monkeypatch):
+    from settle.api import revenue
+    monkeypatch.setattr(revenue, 'today', lambda: date(2026, 11, 2))
+    p = publication()
+    class Reader:
+        def financial_bundle(self, prime, cutoff=None, source_revision=None, revision=None):
+            assert cutoff is None  # a pinned October MTD report is not silently changed to month end
+            return {**p, 'source_revision': p['document']['source']['revision_id'],
+                    'document_hash': digest(p['document']), 'computed_at': '2026-10-27T00:00:00Z'}, None
+    client = TestClient(create_app(reader=Reader()))
+    response = client.get('/v3/reporting/portfolio', params={'prime': 'obex', 'month': '2026-10', 'revision': p['revision_id']})
+    assert response.status_code == 200, response.text
+    assert response.json()['cutoff'] == '2026-10-26'
