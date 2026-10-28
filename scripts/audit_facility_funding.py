@@ -22,10 +22,14 @@ from settle.compute.spark_anchorage_scenarios import apply_anchorage_scenario
 from settle.normalize.allocation_history_cache import load_history
 
 
-def audit(history, venue, start, end):
+def audit(history, venue, start, end, *, verified_draws=None):
     account = history.venue_accounts[venue]
     if not account.startswith('facility:') or end < start:
         raise ValueError('Requires a cash-principal facility and a valid period')
+    verified = {} if verified_draws is None else verified_draws
+    if any(not amount.is_finite() or amount < 0 for amount in verified.values()):
+        raise ValueError('Invalid verified facility draw')
+    applied = set()
     balance = D(0)
     direct = D(0)
     debt_floor = {}
@@ -94,18 +98,31 @@ def audit(history, venue, start, end):
                 )
                 other_destinations = sum((max(D(0), x.change) for x in others), D(0))
                 linked = min(m.change, max(D(0), b.minted - other_destinations)) if eligible else D(0)
+                if b.identity in verified:
+                    # Caller authenticates an isolated cash route from fresh
+                    # borrowing to this facility. Replace, never add twice.
+                    linked = verified[b.identity]
+                    if len(funding) != 1 or linked > m.change:
+                        raise ValueError('Verified facility contribution exceeds deposit')
+                    eligible = True
+                    applied.add(b.identity)
                 direct += linked
                 if linked:
                     ilk = next(iter(funding))
-                    debt_floor[ilk] = debt_floor.get(ilk, D(0)) + linked
+                    # A proven gross draw can exceed net borrowing if a wipe
+                    # follows the deposit. Origin survives, but do not assert
+                    # that the repaid amount is still outstanding debt.
+                    debt_floor[ilk] = debt_floor.get(ilk, D(0)) + min(linked, max(D(0), b.minted))
                 witnesses.append({'transaction': b.identity, 'day': str(b.day),
                                   'principal_change': str(m.change), 'direct_draw_link': str(linked),
                                   'ilk': next(iter(funding)) if eligible else None,
-                                  'classification': 'same_transaction_draw' if linked
+                                  'classification': 'receipt_verified_draw' if b.identity in verified else 'same_transaction_draw' if linked
                                   else 'requires_source_attribution'})
             daily[str(day)] = {'facility_principal': str(balance),
                               'direct_origin_remaining_before_refinancing': str(direct),
                               'outstanding_direct_debt_floor_by_ilk': {k: str(v) for k, v in debt_floor.items()}}
+        if set(verified) != applied:
+            raise ValueError('Verified facility deposit missing from period')
         return {
             'venue_id': venue, 'account': account, 'start': str(start), 'end': str(end),
             'scope': 'Conditional on complete, correctly classified normalized history. '

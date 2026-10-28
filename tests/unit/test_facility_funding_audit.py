@@ -83,6 +83,23 @@ def test_vat_rounding_is_tolerated_but_missing_cash_is_not(audit):
     assert D(r['gross_same_transaction_draws']) == 0
 
 
+def test_receipt_proof_replaces_bound_and_preserves_principal_return_policy(audit):
+    deposit = batch('1', '0', '100', '100', (M('other', D(0), D(20)),))
+    returned = batch('2', '100', '-30', '0', (M('cash', D(0), D(30)),))
+    history = CapitalHistory((deposit, returned), {'E42': ACCOUNT}, {})
+    result = audit(history, 'E42', DAY, DAY, verified_draws={'1': D(100)})
+    assert D(result['gross_same_transaction_draws']) == 100
+    assert D(result['direct_origin_remaining_before_refinancing']) == 70
+    assert result['transactions'][0]['classification'] == 'receipt_verified_draw'
+
+
+@pytest.mark.parametrize('proofs', [{'1': D(101)}, {'missing': D(1)}, {'1': D('NaN')}])
+def test_invalid_verified_facility_contribution_rejected(audit, proofs):
+    history = CapitalHistory((batch('1', '0', '100', '100'),), {'E42': ACCOUNT}, {})
+    with pytest.raises(ValueError):
+        audit(history, 'E42', DAY, DAY, verified_draws=proofs)
+
+
 @pytest.mark.parametrize('fault', ['duplicate', 'opening', 'income', 'mark'])
 def test_invalid_facility_history_fails_closed(audit, fault):
     b = batch('1', '0', '100', '100')

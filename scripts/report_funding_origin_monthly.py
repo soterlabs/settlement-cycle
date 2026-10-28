@@ -26,7 +26,7 @@ SOURCES = {
     'spark:S1': 'reconciliation/spark_spusds_receipt_funding_origins_2026_08.json.gz',
     'spark:S32': 'reconciliation/spark_susds_all_month_origins_2026_08.json.gz',
     'spark:S34': 'reconciliation/spark_base_morpho_funding_origins_2026_08.json.gz',
-    'spark:S23': 'reconciliation/spark_anchorage_funding_origins_2026_08.json',
+    'spark:S23': 'reconciliation/spark_anchorage_receipt_funding_origins_2026_08.json.gz',
     'grove:E9': 'reconciliation/grove_jtrsy_funding_origins_2026_08.json.gz',
     'grove:E10': 'reconciliation/grove_large_allocation_origin_coverage_2026_08.json.gz',
     'grove:E8,E20': 'reconciliation/grove_large_allocation_origin_coverage_2026_08.json.gz',

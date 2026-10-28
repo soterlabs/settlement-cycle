@@ -207,71 +207,71 @@
         "S23"
       ],
       "method": "facility principal-return policy; direct origin before refinancing",
-      "source": "reconciliation/spark_anchorage_funding_origins_2026_08.json",
+      "source": "reconciliation/spark_anchorage_receipt_funding_origins_2026_08.json.gz",
       "monthly": [
         {
           "month_end": "2026-01-31",
           "capital": "150000100.000000",
-          "borrowed": "138652217.525836757704899125815572137406706377961701570",
+          "borrowed": "147217020.973705000000000000",
           "identified_gains": "0",
-          "unclassified": "11347882.474163242295100874184427862593293622038298430",
-          "borrowed_percent": "92.4347500607244646536229814617271171197261721570196086535942"
+          "unclassified": "2783079.026295000000000000",
+          "borrowed_percent": "98.1446152193931870712086191942538704974196683868877420748386"
         },
         {
           "month_end": "2026-02-28",
           "capital": "150000100.000000",
-          "borrowed": "138652217.525836757704899125815572137406706377961701570",
+          "borrowed": "147217020.973705000000000000",
           "identified_gains": "0",
-          "unclassified": "11347882.474163242295100874184427862593293622038298430",
-          "borrowed_percent": "92.4347500607244646536229814617271171197261721570196086535942"
+          "unclassified": "2783079.026295000000000000",
+          "borrowed_percent": "98.1446152193931870712086191942538704974196683868877420748386"
         },
         {
           "month_end": "2026-03-31",
           "capital": "150133600.000000",
-          "borrowed": "138785717.525836757704899125815572137406706377961701570",
+          "borrowed": "147350520.973705000000000000",
           "identified_gains": "0",
-          "unclassified": "11347882.474163242295100874184427862593293622038298430",
-          "borrowed_percent": "92.4414771415837345570206308351842208584263469081548500801952"
+          "unclassified": "2783079.026295000000000000",
+          "borrowed_percent": "98.1462650424055641108985596828424816296951515183809620231580"
         },
         {
           "month_end": "2026-04-30",
           "capital": "150133600.000000",
-          "borrowed": "138785717.525836757704899125815572137406706377961701570",
+          "borrowed": "147350520.973705000000000000",
           "identified_gains": "0",
-          "unclassified": "11347882.474163242295100874184427862593293622038298430",
-          "borrowed_percent": "92.4414771415837345570206308351842208584263469081548500801952"
+          "unclassified": "2783079.026295000000000000",
+          "borrowed_percent": "98.1462650424055641108985596828424816296951515183809620231580"
         },
         {
           "month_end": "2026-05-31",
           "capital": "250133608.694857",
-          "borrowed": "189578964.036346502773422513104359035984114251869048155",
+          "borrowed": "242934394.238073600641115000",
           "identified_gains": "0",
-          "unclassified": "60554644.658510497226577486895640964015885748130951845",
-          "borrowed_percent": "75.7910802252957853038041086489684827754738665544990300045585"
+          "unclassified": "7199214.456783399358885000",
+          "borrowed_percent": "97.1218523994646935703924337098988500963085884829570888071062"
         },
         {
           "month_end": "2026-06-30",
           "capital": "260133608.694857",
-          "borrowed": "199578964.036346502773422513104359035984114251869048155",
+          "borrowed": "252934394.238073600641115000",
           "identified_gains": "0",
-          "unclassified": "60554644.658510497226577486895640964015885748130951845",
-          "borrowed_percent": "76.7217142904658057509126345711316281678552485731617617136135"
+          "unclassified": "7199214.456783399358885000",
+          "borrowed_percent": "97.2324935278823384820302109114326117243361715686615196307682"
         },
         {
           "month_end": "2026-07-31",
           "capital": "260097170.694857",
-          "borrowed": "199542526.036346502773422513104359035984114251869048155",
+          "borrowed": "252897956.238073600641115000",
           "identified_gains": "0",
-          "unclassified": "60554644.658510497226577486895640964015885748130951845",
-          "borrowed_percent": "76.7184531470538340687823144361933308856126188059665856200684"
+          "unclassified": "7199214.456783399358885000",
+          "borrowed_percent": "97.2321058173949017290496885039453547119103320537709902807203"
         },
         {
           "month_end": "2026-08-31",
           "capital": "208829226.694857",
-          "borrowed": "148274582.036346502773422513104359035984114251869048155",
+          "borrowed": "201630012.238073600641115000",
           "identified_gains": "0",
-          "unclassified": "60554644.658510497226577486895640964015885748130951845",
-          "borrowed_percent": "71.0027922734237546166447097245766286243922713712757571192140"
+          "unclassified": "7199214.456783399358885000",
+          "borrowed_percent": "96.5525829067485121229005997073305150743768034028137302866365"
         }
       ]
     },
@@ -1562,14 +1562,14 @@
     "reconciliation/spark_spusds_receipt_funding_origins_2026_08.json.gz": "71f386a6528d9f78d674255e44fa3339eab9bb5e8ecfa8cfff499b1204e78240",
     "reconciliation/spark_susds_all_month_origins_2026_08.json.gz": "2ff6d4ec0fae310534eb176fa04aaf7f9112d47c27934540ddcf6b81790319ad",
     "reconciliation/spark_base_morpho_funding_origins_2026_08.json.gz": "dd5526881d804be29413c29214028a0c5cf5470a0f2e591f2c38979d39e28339",
-    "reconciliation/spark_anchorage_funding_origins_2026_08.json": "2f081491a70f486a71fe1a0850126360a3d2669840553538c05000d2a369e252",
+    "reconciliation/spark_anchorage_receipt_funding_origins_2026_08.json.gz": "7e2a69b497dcdea110bb931dd6345cb76a9236aa2ddb2693208f13b263d44313",
     "reconciliation/grove_jtrsy_funding_origins_2026_08.json.gz": "aa9e12f82b6e67c3104c5f69070ccbf9c941c177bb7b4b5d2ebfbfe09d3d0fbe",
     "reconciliation/grove_large_allocation_origin_coverage_2026_08.json.gz": "33fc1b210d6be8b14e6c412ac1837cda8554e98da0b1bdeb8012b38e7cc0fe12",
     "reconciliation/grove_warehouse_funding_origins_2026_08.json": "6e549c229f5caa06d2c03f3fc8878dab079d6950e75dfcdd5734ca5d395bd1fb",
     "reconciliation/grove_steakhouse_funding_origins_2026_08.json": "27759102d220cfa550a0cba49ce789aed034fc9a80af570eef7cf14a4b73ee4c"
   },
   "source_sha256": {
-    "/home/agent/code/lakonema2000/settlement-cycle/scripts/report_funding_origin_monthly.py": "be6709e2f8ea700e6e37f50f53dfb9b85ce8cb98841ad0f7b72797815ccea965",
+    "/home/agent/code/lakonema2000/settlement-cycle/scripts/report_funding_origin_monthly.py": "e321eb64237ef8c4a543ba57780f8fc8a30cabe44c5b267ef22db41f482902e0",
     "scripts/audit_scoped_allocation_origin.py": "e3af9973b70c3185f5216a3b81b57cf7be1bfefebad87711d81d79c857736b1d",
     "scripts/audit_allocation_positions.py": "5e56c221369c4a09f8752d99af538d2fdfd15b7b29098948e579c662f42f6c3f",
     "config/spark.yaml": "e837962e7dff6f535598af2cd3b5904d8b43640cfb3b378d054ac6b9668c6722",
