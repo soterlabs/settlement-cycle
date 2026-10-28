@@ -54,6 +54,39 @@ def test_competing_destination_gets_first_claim_on_draw(trace):
     assert D(r['closing_borrowed_by_account']['a']) == 0
 
 
+def test_group_receipt_is_alternative_bound_not_additional_capital(trace):
+    history = H((b(1, m('a', '0', '60'), m('b', '0', '40'), draw='80'),),
+                {'A': 'a', 'B': 'b'}, {}, {})
+    result = trace(history, ('A', 'B'), DAY, verified_group_inflows={
+        '1': {'accounts': ['a', 'b'], 'borrowed': D(90)}})
+    assert D(result['closing_borrowed_by_account']['a']) == 54
+    assert D(result['closing_borrowed_by_account']['b']) == 36
+    smaller = trace(history, ('A', 'B'), DAY, verified_group_inflows={
+        '1': {'accounts': ['a', 'b'], 'borrowed': D(10)}})
+    assert sum(map(D, smaller['closing_borrowed_by_account'].values())) == 80
+
+
+def test_individually_witnessed_group_routes_are_not_spread_between_messages(trace):
+    history = H((b(1, m('a', '0', '60'), m('b', '0', '40'), draw='80'),),
+                {'A': 'a', 'B': 'b'}, {}, {})
+    proof = {'accounts': ['a', 'b'], 'borrowed': D(90), 'by_account': {'a': D(60), 'b': D(30)}}
+    result = trace(history, ('A', 'B'), DAY, verified_group_inflows={'1': proof})
+    assert result['closing_borrowed_by_account'] == {'a': '60', 'b': '30'}
+    proof['by_account'] = {'a': D(40), 'b': D(50)}
+    with pytest.raises(ValueError):
+        trace(history, ('A', 'B'), DAY, verified_group_inflows={'1': proof})
+
+
+@pytest.mark.parametrize('accounts,amount', [(['a'], '90'), (['a', 'b'], '101'),
+                                           (['a', 'b'], 'NaN'), (['a', 'a'], '1')])
+def test_group_proof_must_cover_all_incoming_accounts(trace, accounts, amount):
+    history = H((b(1, m('a', '0', '60'), m('b', '0', '40'), draw='80'),),
+                {'A': 'a', 'B': 'b'}, {}, {})
+    with pytest.raises(ValueError):
+        trace(history, ('A', 'B'), DAY, verified_group_inflows={
+            '1': {'accounts': accounts, 'borrowed': D(amount)}})
+
+
 def test_execution_loss_is_not_fictitious_borrowed_assets(trace):
     r = run(trace, [b(1, m('a', '0', '99'), draw='100')])
     assert D(r['closing_borrowed_by_account']['a']) == 99
