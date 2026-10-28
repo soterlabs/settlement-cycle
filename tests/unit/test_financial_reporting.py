@@ -116,3 +116,14 @@ def test_read_api_guards_and_etag(monkeypatch):
     assert client.get(path + '&cutoff=2025-12-31').status_code == 422
     assert client.get(path + '&revision=invalid').status_code == 422
     assert client.get('/v3/reporting/statements?prime=unknown&year=2026').status_code == 404
+
+
+def test_maple_income_and_valuations_have_independent_availability():
+    row = source()['result']['venue_breakdown'][0]
+    doc = build(source(venue_breakdown=[{**row, 'external_revenue': None}]))
+    assert doc['metrics']['investment.maple_syrup_usdc']['value'] is None
+    assert doc['portfolio']['closing_value']['value'] == '1100'
+    doc = build(source(venue_breakdown=[{**row, 'value_eom': None}]))
+    assert doc['metrics']['investment.maple_syrup_usdc']['value'] == '100'
+    assert doc['portfolio']['opening_value']['value'] == '1000'
+    assert doc['portfolio']['closing_value']['value'] is None

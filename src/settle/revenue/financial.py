@@ -91,16 +91,25 @@ def build(source):
             try:
                 if row.get('pricing_category') != 'B' or number(row['sd_share']) != 0:
                     raise ValueError('Unsupported ownership/measurement')
-                with localcontext() as ctx:
-                    ctx.prec = 60
-                    income = number(row['revenue']) - number(row['external_revenue'])
-                values['investment.maple_syrup_usdc'] = metric(income,
+                def saved_row(key):
+                    try:
+                        return number(row[key])
+                    except (KeyError, ValueError):
+                        return None
+                revenue, external = saved_row('revenue'), saved_row('external_revenue')
+                income = None
+                if revenue is not None and external is not None:
+                    with localcontext() as ctx:
+                        ctx.prec = 60
+                        income = revenue - external
+                values['investment.maple_syrup_usdc'] = metric(income, reason='missing_source_input',
                     basis='prime_owned_net_vault_yield_after_embedded_fees',
                     source_paths=['result.venue_breakdown.V1.revenue', 'result.venue_breakdown.V1.external_revenue'])
-                opening = metric(number(row['value_som']), basis='reported_usd_vault_valuation')
-                closing = metric(number(row['value_eom']), basis='reported_usd_vault_valuation')
+                opening = metric(saved_row('value_som'), reason='missing_source_input', basis='reported_usd_vault_valuation')
+                closing = metric(saved_row('value_eom'), reason='missing_source_input', basis='reported_usd_vault_valuation')
                 for item in (opening, closing):
-                    item['recognition'] = 'valuation'
+                    if item['value'] is not None:
+                        item['recognition'] = 'valuation'
                 portfolio.update(opening_value=opening, closing_value=closing)
                 portfolio['positions'] = [{'position_id': 'obex.maple_syrup_usdc', 'source_venue_id': 'V1',
                     'label': 'Maple syrupUSDC', 'opening_value': opening, 'closing_value': closing,
