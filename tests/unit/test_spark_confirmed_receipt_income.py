@@ -20,7 +20,7 @@ def test_historical_confirmed_receipts_are_income_without_new_debt(monkeypatch):
     logs = [LogRow(**r) for r in evidence["rows"]]
     prime = load_prime_by_id("spark")
     prime = replace(prime, alm={Chain.ETHEREUM: prime.alm[Chain.ETHEREUM]},
-                    subproxy={}, venues=[v for v in prime.venues if v.id in {"S26", "S28", "S30"}])
+                    subproxy={}, alm_start_dates={}, venues=[v for v in prime.venues if v.id in {"S26", "S28", "S30"}])
     monkeypatch.setattr(source.hypersync_store, "fetch_logs", lambda *a, **k: logs)
     monkeypatch.setattr(source, "get_unit_price", lambda *a, **k: Decimal(1))
     history = source.fetch_capital_history(prime, {Chain.ETHEREUM: evidence["pin"]})
@@ -58,6 +58,7 @@ def test_confirmed_income_from_actual_receipts(monkeypatch, chain, venue, total)
                                r["data"], r["transactionHash"]))
     prime = load_prime_by_id("spark")
     prime = replace(prime, alm={chain: prime.alm[chain]}, subproxy={},
+                    alm_start_dates={k: v for k, v in prime.alm_start_dates.items() if k == chain},
                     venues=[v for v in prime.venues if v.id == venue])
     monkeypatch.setattr(source.hypersync_store, "fetch_logs", lambda *a, **k: logs)
     monkeypatch.setattr(source, "get_unit_price", lambda *a, **k: Decimal(1))
