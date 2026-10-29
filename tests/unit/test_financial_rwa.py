@@ -49,6 +49,10 @@ def test_month_specific_sky_split_and_real_zero_are_preserved():
     assert january['allocation_split']['gross_income_usd'] == '2363169.37'
     assert january['allocation_split']['sky_income_usd'] == '1429870.18'
     assert january['allocation_split']['sky_share'] == '0.6051'
+    assert january['allocation_split']['sky_share_basis'] == 'published_rounded_percentage'
+    assert Decimal(january['value']) != (Decimal(january['allocation_split']['gross_income_usd']) *
+                                       (1 - Decimal(january['allocation_split']['sky_share'])))
+    assert daily(publication())['investment.rwa.jaaa']['allocation_split']['sky_share_basis'] == 'saved_source_share'
     march = monthly(retained[active[('grove', '2026-03')]])['investment.rwa.jaaa']
     assert march['status'] == 'available' and march['value'] == '0.00'
     assert march['allocation_split']['gross_income_usd'] == '-477414.38'

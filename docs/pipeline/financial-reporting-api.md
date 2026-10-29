@@ -271,7 +271,12 @@ other primes and old selections avoid this query. Source-hash, identity,
 category, external-reward and reporting-enabled guards fail closed.
 
 Metrics expose `recognition: investment_return` and `allocation_split` with
-reported gross/prime/Sky income, share and rounding delta. They include NAV
+reported gross/prime/Sky income, share and rounding delta.
+`allocation_split.sky_share_basis` distinguishes `published_rounded_percentage`
+from `saved_source_share`; never recompute retained income from a rounded share.
+Malformed reviewed fund rows remain unavailable individually; valid peer funds,
+other months and headline metrics continue to be returned. Unrelated malformed
+venue rows do not suppress the reviewed RWA metrics. They include NAV
 movements, not solely cash or contractual interest. On this policy, Grove's
 statement uses **Investment income from allocations** and **Net investment
 income after funding**. The reviewed subtotal includes the two disjoint new

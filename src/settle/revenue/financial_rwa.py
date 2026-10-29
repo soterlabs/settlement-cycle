@@ -20,7 +20,7 @@ def taxonomy(prime):
             for _, key, symbol, _ in SPECS] if prime == 'grove' else []
 
 
-def _income(gross, retained, sky, share, *, source_ref, path, tolerance):
+def _income(gross, retained, sky, share, *, source_ref, path, tolerance, share_basis='saved_source_share'):
     with localcontext() as ctx:
         ctx.prec = 60
         delta = gross - retained - sky
@@ -29,7 +29,8 @@ def _income(gross, retained, sky, share, *, source_ref, path, tolerance):
     result = metric(retained, basis='prime_retained_rwa_investment_return_after_sde', source_paths=[path])
     result.update(recognition='investment_return', source_ref=source_ref,
                   allocation_split={'gross_income_usd': str(gross), 'sky_income_usd': str(sky),
-                    'prime_income_usd': str(retained), 'sky_share': str(share), 'rounding_delta_usd': str(delta)})
+                    'prime_income_usd': str(retained), 'sky_share': str(share),
+                    'sky_share_basis': share_basis, 'rounding_delta_usd': str(delta)})
     return result
 
 
@@ -99,7 +100,8 @@ def monthly(publication):
             # Use the retained amount; do not reapply a rounded ownership share.
             result[key] = _income(*(_amount(row[field]) for field in ('actual_rev', 'revenue', 'sd_revenue')),
                 number(row['sd_share'][:-1]) / 100, source_ref=publication['revision_id'],
-                path=publication['source']['url'] + '#per-venue', tolerance=Decimal('0.015'))
+                path=publication['source']['url'] + '#per-venue', tolerance=Decimal('0.015'),
+                share_basis='published_rounded_percentage')
         except (KeyError, TypeError, ValueError):
             result[key] = invalid[key]
     return result
