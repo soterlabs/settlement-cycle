@@ -117,6 +117,15 @@ def test_anchorage_uses_outstanding_loan_instead_of_escrow_cash(monkeypatch):
     result = module.summarize(*args, anchorage=loan)['allocations'][0]
     assert D(result['gross_apy']) == module.annualized_yield(D(1), D(100), 2)
     assert result['conditional_net_apy'] == module.annualized_yield(D('.5'), D(100), 2)
+    # Missing revenue must not hide known capital or fabricate a zero yield.
+    control['venue_breakdown'] = []
+    funding_only = module.summarize(*args, anchorage=loan)['allocations'][0]
+    assert funding_only['status'] == 'funding_only_missing_revenue'
+    assert funding_only['average_sky_principal'] == 25
+    assert funding_only['average_savings_principal'] == 75
+    assert funding_only['gross_apy'] is None
+    assert funding_only['conditional_net_apy'] is None
+    assert funding_only['conditional_sky_borrowing_cost'] is None
     replay.daily_funding[date(2026, 8, 1)]['venue']['savings_by_source'] = {'a': D(101), 'b': D(-1)}
     with pytest.raises(ValueError, match='Invalid individual funding component'):
         module.summarize(*args, anchorage=loan)

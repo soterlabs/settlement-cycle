@@ -49,8 +49,8 @@ def summarize(replay, history, readiness, control, idle, venues, anchorage=None)
         if venue in history.covered_by_boundary:
             raise ValueError('Custody covered by another venue cannot be charged again')
         accounts = ([history.venue_accounts[venue]] if venue in history.venue_accounts else []) + history.custody_accounts.get(venue, [])
-        if not accounts or venue not in capitals or venue not in revenues:
-            raise ValueError('Missing selected venue capital or revenue')
+        if not accounts or venue not in capitals:
+            raise ValueError('Missing selected venue capital')
         daily = {}
         for d in days:
             observed = replay.daily_funding[date.fromisoformat(d)]
@@ -70,17 +70,18 @@ def summarize(replay, history, readiness, control, idle, venues, anchorage=None)
                         'original_capital_control': original,
                         'capital_basis_difference': original-sky-savings,
                         'uncertain': any(p['uncertain'] for p in parts)}
-        revenue = revenues[venue]
+        revenue = revenues.get(venue, {})
         idle_days, sde_days = idle['daily'].get(venue, {}), sde.get(venue, {})
         missing_deduction = (D(revenue.get('lending_idle_tw_avg_usd', '0')) + D(revenue.get('amm_idle_usds_tw_avg_usd', '0')) > 0 and set(days)-idle_days.keys()) or (D(revenue.get('sd_share', '0')) > 0 and set(days)-sde_days.keys())
         excluded = revenue.get('cof_excluded', False) or all(a in history.idle_accounts for a in accounts)
-        conditional_cost = None if missing_deduction else price_daily(
+        conditional_cost = None if not revenue or missing_deduction else price_daily(
             {d: r['sky_principal'] for d, r in daily.items()}, rates, idle_days, sde_days, excluded=excluded)
         measured = measured_yields[venue]
         exposure = D(measured['average_exposure']) if measured['average_exposure'] is not None else None
         net = None if conditional_cost is None else D(revenue['revenue'])-conditional_cost
         output.append({'venue': venue, 'daily': daily,
-            'status': 'conditional_research_only',
+            'status': 'conditional_research_only' if revenue else 'funding_only_missing_revenue',
+            'missing_revenue': not bool(revenue),
             'uncertain_days': [d for d, r in daily.items() if r['uncertain']],
             'capital_gap_days': [d for d, r in daily.items() if abs(r['capital_basis_difference']) > D('.01')],
             'average_sky_principal': sum((r['sky_principal'] for r in daily.values()), ZERO)/len(days),
@@ -178,7 +179,8 @@ def main():
     input_hashes = hashes(inputs)
     replay_sources = [*sorted(Path('src/settle/compute').glob('*.py')),
         Path('src/settle/normalize/allocation_capital.py'),
-        Path('src/settle/normalize/allocation_history_cache.py')]
+        Path('src/settle/normalize/allocation_history_cache.py'),
+        Path('config/capital-tracing/spark-par-swap-gains.json')]
     source_hashes = hashes([Path(__file__), *replay_sources,
         Path('scripts/report_allocation_capital_readiness.py'), Path('scripts/report_allocation_yields.py')])
     if ready['input_sha256'].get(str(args.history)) != hashlib.sha256(args.history.read_bytes()).hexdigest():

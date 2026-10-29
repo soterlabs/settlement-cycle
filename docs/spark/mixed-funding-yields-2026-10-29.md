@@ -67,3 +67,17 @@ checkpoint. Preserve its result as research evidence and review its daily gaps;
 do not label it as executing the revised code or publish its conditional APYs.
 Its launch-code manifest is retained locally at
 `/tmp/spark-mixed-funding-running-code-before-review.json`.
+
+### Remaining-venue preflight
+
+The August settlement snapshot has revenue rows for 27 of the 28 configured
+Savings-pending allocations. S66 has capital history but no revenue row in that
+snapshot. Report its daily funding with `funding_only_missing_revenue`; leave
+cost/yields unavailable until the period's deduction/exemption metadata and
+revenue are supplied. This is separate from proving its funding mix. Never
+substitute zero revenue. All six intermediate custody rows likewise remain
+funding diagnostics, not additional chargeable revenue allocations.
+
+Replay snapshot identity also includes the Spark par-swap-gain registry used
+by the historical adapters. Changing that registry must invalidate the cache,
+just as changing replay code or normalized history does.
