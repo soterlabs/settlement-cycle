@@ -1,18 +1,29 @@
 """Independent Osero/Obex publication uses principal, not appreciated NAV."""
 import gzip
 import hashlib
+import importlib.util
 import json
 import sys
 from datetime import date, timedelta
 from decimal import Decimal as D
+from pathlib import Path
 
 import pytest
-import report_allocation_capital_readiness as capital
-import report_allocation_yields as yields
-from publish_monthly_allocations import prepare
 
 from settle.normalize.allocation_capital import AssetMovement, CapitalBatch, CapitalHistory
 from settle.normalize.allocation_history_cache import save_history
+
+
+def script(name):
+    spec = importlib.util.spec_from_file_location(name, Path(__file__).parents[2] / 'scripts' / f'{name}.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+capital = script('report_allocation_capital_readiness')
+yields = script('report_allocation_yields')
+prepare = script('publish_monthly_allocations').prepare
 
 
 @pytest.mark.parametrize('prime,venue,idle', [('osero', 'O1', '20'), ('obex', 'V1', '0')])
