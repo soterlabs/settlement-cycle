@@ -107,6 +107,10 @@ def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_
         # Monday's gap planner also recovers Friday and Saturday.
         if start is None and dates and ready_through < dates[0] and ready_through not in published:
             dates.insert(0, ready_through)
+        # Scheduled publication must not wait behind an older slow/failed day.
+        # Keep explicit backfills chronological unless --newest-first is set.
+        if start is None:
+            dates.sort(reverse=True)
         for cutoff in dates:
             if cutoff > ready_through:
                 results.append({'cutoff': str(cutoff), 'status': 'deferred',

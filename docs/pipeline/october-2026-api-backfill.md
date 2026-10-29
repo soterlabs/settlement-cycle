@@ -51,10 +51,12 @@ deadline and start command do not alter the daily worker.
 
 ## Ongoing daily publication
 
-The permanent service remains scheduled at **20:17 UTC every day**:
+The permanent per-prime services remain scheduled at **20:17 UTC every day**.
+Each has an independent runtime budget; the existing `settle-revenue-daily`
+service runs Grove and five additional services run the other primes:
 
 ```sh
-python -m settle.revenue.worker --require-views
+python -m settle.revenue.worker --prime PRIME --require-views
 ```
 
 `--require-views` refuses both reuse and publication of a result without the
@@ -63,7 +65,9 @@ inputs: Anchorage accrual remains explicitly unavailable until confirmed terms
 are configured. A view-format check is separate from per-venue data completeness.
 
 Keep the existing fixed `REVENUE_START_DATE` and provider configuration. The
-worker recovers unpublished gaps within the rolling 90-day window. The scheduled
+worker attempts the latest eligible cutoff first, then recovers unpublished gaps
+within the rolling 90-day window. Explicit historical windows retain their order
+unless `--newest-first` is supplied. The scheduled
 completion monitor remains independent of API process health.
 
 ## Verify progress

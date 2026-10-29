@@ -1,14 +1,24 @@
 # Daily revenue operations
 
-`settle-revenue-daily` runs `python -m settle.revenue.worker --require-views` at **20:17 UTC once
-per day** (`17 20 * * *`). The existing SBE job remains independent. The cutoff is
+Each prime has an independent job at **20:17 UTC once per day** (`17 20 * * *`):
+`settle-revenue-daily` runs Grove; `settle-revenue-{spark,obex,keel,skybase,osero}`
+run their named prime. Each runs `python -m settle.revenue.worker --prime PRIME --require-views`
+with its own six-hour watchdog. The original service owns the provider secrets;
+the five new services reference those variables. Apply the reviewed Railway IaC
+plan after merging: merging Python code alone does not create these jobs.
+See the [publication recovery runbook](daily-publication-recovery.md).
+
+The existing SBE job remains independent. The cutoff is
 the previous completed UTC day; on the first day of a month this is the previous
 month's last day. Set the provider credentials, `DATABASE_URL`, deployment code
 version and optional `SETTLE_INPUT_REVISION`. The worker requires Postgres and
 bootstraps the revenue tables; deploy the input schema (`db/schema.sql`) once.
 
 A first installation calculates yesterday only. Later ticks fill missing dates
-since the first known run, capped to the last 90 completed UTC days. Explicit
+since the first known run, capped to the last 90 completed UTC days. Scheduled
+runs process the latest eligible date first, then older gaps in descending order.
+Deferred reference-rate dates are not calculated. A slow historical calculation
+therefore cannot prevent the current date from being attempted first. Explicit
 backfills use `--from YYYY-MM-DD --to YYYY-MM-DD` (both required, at most 90 days
 back), optionally `--prime obex`. Add `--missing-only` to an explicit window to publish only dates without an
 existing result, even when the backfill runs a newer code/config revision.
@@ -29,7 +39,8 @@ A session advisory lock per prime prevents overlap, including different revision
 and manual backfills. A killed process releases its lock; the next lock holder
 marks leftover running attempts abandoned. The ledger records each bounded retry
 (up to three), and successful publication plus attempt completion commits in one
-transaction. Failed days do not prevent other dates/primes being attempted. API
+transaction. Failed days do not prevent other dates being attempted. Independent
+daily services prevent a slow or terminated prime from blocking the other primes. API
 readers keep the last committed success. An identical revision is reused.
 
 The worker emits structured per-prime reports and exits nonzero on failure, with
@@ -47,7 +58,7 @@ fixed across redeployments; the rolling 90-day floor still bounds catch-up.
 Without it, an empty installation starts yesterday. Local publication refuses
 uncommitted code/config changes; Railway supplies the deployment commit.
 
-`REVENUE_TIMEOUT_SECONDS` defaults to 21600 (six hours). A hard watchdog exits 124
+`REVENUE_TIMEOUT_SECONDS` defaults to 21600 (six hours) **per service**. A hard watchdog exits 124
 on expiry, closing connections and releasing locks; the next tick recovers the
 abandoned attempt. Set this deployment environment variable before starting the
 process (the watchdog starts before dotenv loading). Failed/expired jobs emit
