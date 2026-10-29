@@ -1,0 +1,36 @@
+{
+  "scope": "Fee-only diagnostic history repair, not a full latest-code extraction",
+  "input_hashes": {
+    "/tmp/pr215-spark-final-history.jsonl.gz": "e6a2e530cd6be6af4d4c9caefd5d3089f3343333a5bf19c64c1be09afd8e2ca5",
+    "tests/fixtures/spark_ethereum_morpho_v1_fee_history.json.gz": "3ab7cef7881eeba39e7d68b69e03f0cdd0bc85a0f8ea9e9e32ea7c40e65d9130",
+    "/home/agent/code/lakonema2000/settlement-cycle/scripts/repair_spark_morpho_fee_history.py": "2cee4b9c30a96ef52e953e53afa955a8c1e9ff18f99b547a22d304bada6f7363",
+    "/home/agent/code/lakonema2000/settlement-cycle/src/settle/normalize/allocation_morpho_fees.py": "1f561e694e90169097ab92f1ddebc7ee6dd0e00f7e2c8ba39ce98052e472ca6e",
+    "tests/fixtures/spark_ethereum_morpho_v1_fee_unit_prices.json": "5d7ae85f9359b049fcfeb91044fa7f9b849cae1f580faa3f290f1370f57ce3a1"
+  },
+  "output_sha256": "b25577063d8e5e361bf0efe5874c9c2c40f9783af183e78e59476e1826105d7c",
+  "changed_positions": 13787,
+  "changed_batches": 13762,
+  "fee_income_total": "575925.6451919113705260928812",
+  "by_vault": {
+    "0x73e65dbd630f90604062f6e02fab9138e713edd9": {
+      "positions": 1848,
+      "fee_income_usd": "506772.0908314718027591573091"
+    },
+    "0xe41a0583334f0dc4e023acd0bfef3667f6fe0597": {
+      "positions": 510,
+      "fee_income_usd": "67169.43561803500955768232677"
+    },
+    "0x56a76b428244a50513ec81e225a293d128fd581d": {
+      "positions": 11429,
+      "fee_income_usd": "1984.118742404558209253241592"
+    }
+  },
+  "full_audit_sha256": "3bd31a51b5a6c534771c0013147f970ad4296a8d96856175352c262caea07307",
+  "full_audit_path": "/tmp/pr215-spark-v1-fee-repair.json",
+  "validation": {
+    "unit_tests_passed": 1909,
+    "unit_tests_skipped": 1,
+    "pinned_holder_balances_reproduced": true,
+    "published_reports_changed": false
+  }
+}

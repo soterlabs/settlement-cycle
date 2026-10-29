@@ -54,9 +54,13 @@ def _decode(kind, value):
             for group, settles in (('venue_breakdown', True), ('reporting_only_breakdown', False)):
                 value[group] = [{**row, 'settlement_enabled': settles, 'incentive_accrual': {}}
                                 for row in value[group]]
-        if (kind is MonthlyPnL and isinstance(value, dict)
-                and set(value) == {f.name for f in fields(kind)} - {'venue_views'}):
-            value = {**value, 'venue_views': {}}
+        if kind is MonthlyPnL and isinstance(value, dict):
+            # These analytics fields were added independently. Migrate only
+            # their absence; never fill missing financial inputs/defaults.
+            additions = {'venue_views': {}, 'allocation_financing': None}
+            missing = {f.name for f in fields(kind)} - set(value)
+            if missing <= additions.keys():
+                value = {**value, **{name: additions[name] for name in missing}}
         if not isinstance(value, dict) or set(value) != {f.name for f in fields(kind)}:
             raise ValueError(f'incompatible snapshot schema: {kind.__name__}')
         hints = get_type_hints(kind)

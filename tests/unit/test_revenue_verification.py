@@ -106,3 +106,36 @@ def test_fleet_baseline_precedes_any_next_day_measurement(monkeypatch, tmp_path)
     v.main()
     assert calls == [('grove', cutoff), ('spark', cutoff), ('grove', cutoff), ('spark', cutoff),
                      ('grove', cutoff + timedelta(days=1)), ('spark', cutoff + timedelta(days=1))]
+
+
+def test_daily_calculation_does_not_run_deferred_funding_replay(monkeypatch):
+    from contextlib import nullcontext
+    from types import SimpleNamespace
+
+    from settle import compute
+    from settle.domain import config
+    from settle.revenue import reference_rates, store, verification
+    from settle.store import db
+
+    prime_config = object()
+    history = object()
+    monkeypatch.setattr(config, "load_prime_by_id", lambda prime: prime_config)
+    monkeypatch.setattr(db, "connect", lambda **kwargs: nullcontext(object()))
+    monkeypatch.setattr(store, "apply_schema", lambda conn: None)
+    monkeypatch.setattr(reference_rates, "prepare", lambda *args: SimpleNamespace(
+        history=history, snapshot_id="reviewed-rates"))
+    calls = []
+
+    def calculate(config, month, *, as_of, reference_rate_history,
+                  include_allocation_financing=False):
+        assert config is prime_config
+        assert reference_rate_history is history
+        assert not include_allocation_financing
+        calls.append(as_of)
+        return {"revenue": Decimal("123.45")}
+
+    monkeypatch.setattr(compute, "compute_monthly_pnl", calculate)
+    result = verification.calculate("spark", date(2026, 8, 31))
+    assert calls == [date(2026, 8, 31)]
+    assert result["result"] == {"revenue": "123.45"}
+    assert result["reference_snapshot"] == "reviewed-rates"

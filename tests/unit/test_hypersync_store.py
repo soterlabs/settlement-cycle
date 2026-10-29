@@ -407,3 +407,51 @@ def test_legacy_coverage_survives_larger_disjoint_backfill(monkeypatch):
     hypersync_store.fetch_logs("base", [], 0, 100)
     hypersync_store.fetch_logs("base", [], 0, 2000)
     assert calls == [(1000, 2000), (101, 999)]
+
+
+def test_checkpoint_restart_retains_completed_chunks(monkeypatch):
+    conn = _FakeConn()
+    monkeypatch.setattr(hypersync_store.postgres_store, "_get_conn", lambda: conn)
+    monkeypatch.setenv("HYPERSYNC_CHECKPOINT_BLOCKS", "10")
+    monkeypatch.setenv("HYPERSYNC_REORG_MARGIN", "0")
+    calls = []
+    fail = True
+
+    def query(chain, sel, lo, hi, **kwargs):
+        calls.append((lo, hi))
+        if lo == 10 and fail:
+            raise ConnectionError("interrupted download")
+        return QueryResult(rows=[_row(lo)], archive_height=100)
+
+    monkeypatch.setattr(hypersync, "query_logs", query)
+    with pytest.raises(ConnectionError):
+        hypersync_store.fetch_logs("ethereum", [], 0, 24)
+    assert calls == [(0, 9), (10, 19)]
+    calls.clear()
+    fail = False
+    rows = hypersync_store.fetch_logs("ethereum", [], 0, 24)
+    assert calls == [(10, 19), (20, 24)]
+    assert [r.block_number for r in rows] == [0, 10, 20]
+    calls.clear()
+    hypersync_store.fetch_logs("ethereum", [], 0, 24)
+    assert calls == []
+
+
+def test_checkpoint_restart_refetches_unfinalized_tail(monkeypatch):
+    conn = _FakeConn()
+    monkeypatch.setattr(hypersync_store.postgres_store, "_get_conn", lambda: conn)
+    monkeypatch.setenv("HYPERSYNC_CHECKPOINT_BLOCKS", "10")
+    monkeypatch.setenv("HYPERSYNC_REORG_MARGIN", "5")
+    calls = []
+
+    def query(chain, sel, lo, hi, **kwargs):
+        calls.append((lo, hi))
+        return QueryResult(rows=[_row(b) for b in range(lo, hi + 1)], archive_height=20)
+
+    monkeypatch.setattr(hypersync, "query_logs", query)
+    rows = hypersync_store.fetch_logs("ethereum", [], 0, 20)
+    assert len(rows) == 21
+    calls.clear()
+    rows = hypersync_store.fetch_logs("ethereum", [], 0, 20)
+    assert calls == [(16, 20)]
+    assert [r.block_number for r in rows] == list(range(21))

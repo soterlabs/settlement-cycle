@@ -1,0 +1,36 @@
+{
+  "scope": "Reserve-factor earnings only; seed mints remain unclassified, no published revenue restatement.",
+  "legs": [
+    {
+      "token": "0x4dedf26112b3ec8ec46e7e31ea5e123490b05b8b",
+      "transaction_hash": "0xd157dbc535da15f78cfb94eacbfbfe20c0b728f9f561350484919dfe499d239d",
+      "block": 24656425,
+      "timestamp": 1773499751,
+      "log_index": 128,
+      "earned_scaled": "500346582867915697413872",
+      "seed_scaled": "958804435280766202",
+      "liquidity_index": "1168200105056755703237173225",
+      "earned_value": "584504.9306710878410230186230845329022957881819772",
+      "unclassified_seed_value": "1.12007544202387440164813183823299310659934145",
+      "total_transfer_value": "584506.05074652986489742027121637113528889478131865"
+    },
+    {
+      "token": "0xc02ab1a5eaa8d1b114ef786d9bde108cd4364359",
+      "transaction_hash": "0xd157dbc535da15f78cfb94eacbfbfe20c0b728f9f561350484919dfe499d239d",
+      "block": 24656425,
+      "timestamp": 1773499751,
+      "log_index": 134,
+      "earned_scaled": "615128146354115996985358",
+      "seed_scaled": "1000000000000000000",
+      "liquidity_index": "1029215289302721386700270027",
+      "earned_value": "633099.293108098237639493007806498156236256565264666",
+      "unclassified_seed_value": "1.029215289302721386700270027",
+      "total_transfer_value": "633100.322323387540360879708076525156236256565264666"
+    }
+  ],
+  "earned_value": "1217604.223779186078662511631",
+  "unclassified_seed_value": "2.149290731326595788348401865",
+  "input_hashes": {
+    "tests/fixtures/spark_subproxy_reserve_history.json": "8f78fa227507ab50b569da830942bacdf84af9e5da1a9648e75de0cfe0fc684d"
+  }
+}

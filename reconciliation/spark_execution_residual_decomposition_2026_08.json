@@ -1,0 +1,268 @@
+{
+  "scope": "Separate witnessed execution costs from remaining transaction discrepancies.\n\nA partial match retains its signed difference. Nothing is reclassified in the\ncapital ledger, and historical transaction values are not monthly borrowing costs.\n",
+  "transactions": 14546,
+  "observed_outflows": "3973007.994839024715608018988",
+  "witnessed_net_outflows": "3066785.936537091178981441672",
+  "remaining_signed_difference": "906222.0583019335366265767264",
+  "remaining_absolute_difference": "906319.4790679758882836902176",
+  "susds_summary": {
+    "verified": 7329,
+    "excluded": 508,
+    "with_proportional_lp_withdrawal": 88
+  },
+  "legacy_curve_summary": {
+    "verified": 416,
+    "excluded": [],
+    "signed_gain": "-42622.261922"
+  },
+  "rlusd_curve_summary": {
+    "verified": 11,
+    "excluded": [],
+    "signed_gain": "-3151.978495629204625221"
+  },
+  "input_hashes": {
+    "/tmp/pr215-spark-v1-static-residuals.json": "952a6c58a6798f04a25e19de798650d8036c5dc16f80411e5563847696a123f2",
+    "tests/fixtures/spark_par_swap_events.json.gz": "c986cc9e8b805d58057c681941cbbd5ba4d5c9cbdfa3a91052b0b70b2778d2d8",
+    "tests/fixtures/spark_susds_curve_swaps.json.gz": "1c21a88aa1f0ac838d22b13b85dbc19c2ac66b7be2a84b6e5e51d3dfd9671fef",
+    "tests/fixtures/spark_ethena_execution_events.json.gz": "9f923b60b7342001e075cdd124f99f7bbbe4b66333fa9473363ae6d455d734c1",
+    "config/capital-tracing/spark-par-swap-gains.json": "0c970d147ac7256eef9e86bf38244ac6d664b2923ee25bc5a00c6b5ea239d880",
+    "tests/fixtures/spark_legacy_curve_swaps.json.gz": "9d34a4b72e6692c0b7d7359453946ac30453eb6768b97ebfe486ccd4cfdba41c",
+    "tests/fixtures/spark_rlusd_curve_swaps.json.gz": "07c4bac10b9cc56de1bc2ce5ee78a32346360155a8863af5999a7086f99cc2e4",
+    "/home/agent/code/lakonema2000/settlement-cycle/scripts/audit_spark_execution_residuals.py": "f1fd15ebec893dc838ca70696e83af746627ac869d39401428bfbdfe7cfe3304",
+    "/home/agent/code/lakonema2000/settlement-cycle/scripts/audit_spark_ethena_execution.py": "4e66bc19034a1c49e468749fc2227a55c322c07f61954835553081d4d728c5fc",
+    "/home/agent/code/lakonema2000/settlement-cycle/scripts/audit_spark_par_swaps.py": "095ed84d02d208511a9e9eed6ac6792068625875ecbd77d061125b489eae7ce3",
+    "/home/agent/code/lakonema2000/settlement-cycle/scripts/audit_spark_susds_swaps.py": "fd99cd80847b0207b8ff810e99cec362c7d8f372498cffb4fcb0d33e4705d173",
+    "/home/agent/code/lakonema2000/settlement-cycle/scripts/audit_spark_legacy_curve_swaps.py": "fec911fdb20959b68dc3f620047abaf530ad0f21f79ec881b656d7112e06f712"
+  },
+  "largest_remaining_differences": [
+    {
+      "identity": "ethereum:0x0032e26b8e4b284e3c61ea8aeb0870e3f0dbb7d3173945faf0449ca6ec5138e8",
+      "observed_outflow": "900612.89",
+      "witnessed_components_signed_gain": {},
+      "already_recognized_income": "0",
+      "witnessed_net_outflow": "0",
+      "remaining_signed_difference": "900612.89",
+      "ambiguous_split_transaction": false
+    },
+    {
+      "identity": "ethereum:0xa8cc888864635230f64cd672b19b3c3e1668d64dca0a66d5e5ee5a95443c146a",
+      "observed_outflow": "186.3368797981692074440857611",
+      "witnessed_components_signed_gain": {},
+      "already_recognized_income": "0",
+      "witnessed_net_outflow": "0",
+      "remaining_signed_difference": "186.3368797981692074440857611",
+      "ambiguous_split_transaction": false
+    },
+    {
+      "identity": "ethereum:0xf674726a14d878794a2da4e51db5fce405352509ad89608ada142017ca21cb62",
+      "observed_outflow": "181.2995026569093707069873814",
+      "witnessed_components_signed_gain": {},
+      "already_recognized_income": "0",
+      "witnessed_net_outflow": "0",
+      "remaining_signed_difference": "181.2995026569093707069873814",
+      "ambiguous_split_transaction": false
+    },
+    {
+      "identity": "ethereum:0xfd4a18ba1aaf84f20617ecbe99036f52254c18ee0a2e2ab20c6d25c789822ec3",
+      "observed_outflow": "152.0654337448228440289492728",
+      "witnessed_components_signed_gain": {},
+      "already_recognized_income": "0",
+      "witnessed_net_outflow": "0",
+      "remaining_signed_difference": "152.0654337448228440289492728",
+      "ambiguous_split_transaction": false
+    },
+    {
+      "identity": "ethereum:0xc38d022cd0dff16e18078d3585162354727cac01c808170cc618b92f2a4a41a1",
+      "observed_outflow": "136.8920803979669295050732168",
+      "witnessed_components_signed_gain": {},
+      "already_recognized_income": "0",
+      "witnessed_net_outflow": "0",
+      "remaining_signed_difference": "136.8920803979669295050732168",
+      "ambiguous_split_transaction": false
+    },
+    {
+      "identity": "ethereum:0xce1b9710ce65b41a6a63e0afa6fc9ea22a91437d941dd02d92897a99d0ac4b07",
+      "observed_outflow": "133.1283551861987832904281185",
+      "witnessed_components_signed_gain": {},
+      "already_recognized_income": "0",
+      "witnessed_net_outflow": "0",
+      "remaining_signed_difference": "133.1283551861987832904281185",
+      "ambiguous_split_transaction": false
+    },
+    {
+      "identity": "ethereum:0x2c5cd4ff2214ea3d6d841e33362302f377a8782aec50adf4642b03be65579e5e",
+      "observed_outflow": "113.9117862276240640823530111",
+      "witnessed_components_signed_gain": {},
+      "already_recognized_income": "0",
+      "witnessed_net_outflow": "0",
+      "remaining_signed_difference": "113.9117862276240640823530111",
+      "ambiguous_split_transaction": false
+    },
+    {
+      "identity": "ethereum:0xc4f1ebe02aa206d0598264f2efa068d931bb0392bb1506ea93647f25952203f8",
+      "observed_outflow": "80.42147682960487591606161284",
+      "witnessed_components_signed_gain": {},
+      "already_recognized_income": "0",
+      "witnessed_net_outflow": "0",
+      "remaining_signed_difference": "80.42147682960487591606161284",
+      "ambiguous_split_transaction": false
+    },
+    {
+      "identity": "ethereum:0x7b79693943b630158695e23f488cf1d5fa47a14babbeb2c7428241f8a7d3aa47",
+      "observed_outflow": "61.95348736729178429560713012",
+      "witnessed_components_signed_gain": {},
+      "already_recognized_income": "0",
+      "witnessed_net_outflow": "0",
+      "remaining_signed_difference": "61.95348736729178429560713012",
+      "ambiguous_split_transaction": false
+    },
+    {
+      "identity": "ethereum:0xcc44321f5437c8ee2bcc19a4b4c3b38e6ab41dae86719cc2a203d6cae05584e3",
+      "observed_outflow": "61.04425531642071341085363041",
+      "witnessed_components_signed_gain": {},
+      "already_recognized_income": "0",
+      "witnessed_net_outflow": "0",
+      "remaining_signed_difference": "61.04425531642071341085363041",
+      "ambiguous_split_transaction": false
+    },
+    {
+      "identity": "ethereum:0xa286677cad84f3517dba5d3f4372340f660f66620c5a72b23f15f4858954091c",
+      "observed_outflow": "60.98636348620397265515314921",
+      "witnessed_components_signed_gain": {},
+      "already_recognized_income": "0",
+      "witnessed_net_outflow": "0",
+      "remaining_signed_difference": "60.98636348620397265515314921",
+      "ambiguous_split_transaction": false
+    },
+    {
+      "identity": "ethereum:0x5984ca36b0d94570204779601501d2cf1221f31520b2d06156b71d1da2ed3982",
+      "observed_outflow": "54.85492899491998728308089043",
+      "witnessed_components_signed_gain": {},
+      "already_recognized_income": "0",
+      "witnessed_net_outflow": "0",
+      "remaining_signed_difference": "54.85492899491998728308089043",
+      "ambiguous_split_transaction": false
+    },
+    {
+      "identity": "ethereum:0xdbbcdcd4f9f773e0c1ea67018a279cf4a8ca665761aa2e32b042052789f88016",
+      "observed_outflow": "51.76365545576056558706577145",
+      "witnessed_components_signed_gain": {},
+      "already_recognized_income": "0",
+      "witnessed_net_outflow": "0",
+      "remaining_signed_difference": "51.76365545576056558706577145",
+      "ambiguous_split_transaction": false
+    },
+    {
+      "identity": "ethereum:0x07b7212d9aa82fa41be51b27434ade10502673f2edcb33bb17ee40f218138e13",
+      "observed_outflow": "42.36824484100703844430033664",
+      "witnessed_components_signed_gain": {},
+      "already_recognized_income": "0",
+      "witnessed_net_outflow": "0",
+      "remaining_signed_difference": "42.36824484100703844430033664",
+      "ambiguous_split_transaction": false
+    },
+    {
+      "identity": "ethereum:0xf25963ae7b3b503f2890fd4625e9b08af176b6f080ff9e245638eafe757514b0",
+      "observed_outflow": "191.2757843526939358989200554",
+      "witnessed_components_signed_gain": {
+        "rlusd-curve": "-231.494695628523264186"
+      },
+      "already_recognized_income": "0",
+      "witnessed_net_outflow": "231.494695628523264186",
+      "remaining_signed_difference": "-40.2189112758293282870799446",
+      "ambiguous_split_transaction": false
+    },
+    {
+      "identity": "ethereum:0xaca042bfedf9edc9f405a3db3bc584bc6af41d8372bda127837d1faf4ee6d3df",
+      "observed_outflow": "37.40142832842054512547579487",
+      "witnessed_components_signed_gain": {},
+      "already_recognized_income": "0",
+      "witnessed_net_outflow": "0",
+      "remaining_signed_difference": "37.40142832842054512547579487",
+      "ambiguous_split_transaction": false
+    },
+    {
+      "identity": "base:0x818d68f1ec509de07f305e8f6d03194ed80233c24683fc7beb3111c7bf242326",
+      "observed_outflow": "37.280043736619004922206184",
+      "witnessed_components_signed_gain": {},
+      "already_recognized_income": "0",
+      "witnessed_net_outflow": "0",
+      "remaining_signed_difference": "37.280043736619004922206184",
+      "ambiguous_split_transaction": false
+    },
+    {
+      "identity": "ethereum:0x1d5527e004f40dcdba5bf94f70b5f3d543c816b13b65d6efd069e918094e7611",
+      "observed_outflow": "36.40025198999577231130998314",
+      "witnessed_components_signed_gain": {},
+      "already_recognized_income": "0",
+      "witnessed_net_outflow": "0",
+      "remaining_signed_difference": "36.40025198999577231130998314",
+      "ambiguous_split_transaction": false
+    },
+    {
+      "identity": "ethereum:0x54e36f207cb29d2238c4ba4244ca64eecfa54e8c9047bce79b58b9aeee63ea07",
+      "observed_outflow": "34.22475386736581673608444974",
+      "witnessed_components_signed_gain": {},
+      "already_recognized_income": "0",
+      "witnessed_net_outflow": "0",
+      "remaining_signed_difference": "34.22475386736581673608444974",
+      "ambiguous_split_transaction": false
+    },
+    {
+      "identity": "ethereum:0x045b1f0193810ff5b8a17307e68116d76793bc3ce3e733e3942d93912c2c27ff",
+      "observed_outflow": "32.08657981245642780257950036",
+      "witnessed_components_signed_gain": {},
+      "already_recognized_income": "0",
+      "witnessed_net_outflow": "0",
+      "remaining_signed_difference": "32.08657981245642780257950036",
+      "ambiguous_split_transaction": false
+    },
+    {
+      "identity": "ethereum:0xa7b74fc1e5cab45ced8f6d0a62e5f88e68c3e58ab517de9b8b8d57e803711a43",
+      "observed_outflow": "31.76962933441497330692448682",
+      "witnessed_components_signed_gain": {},
+      "already_recognized_income": "0",
+      "witnessed_net_outflow": "0",
+      "remaining_signed_difference": "31.76962933441497330692448682",
+      "ambiguous_split_transaction": false
+    },
+    {
+      "identity": "ethereum:0xe2e4f6f5faf9ac7259aa028edd4b5e539a79af50d8e5bc96ade6f343fc49d1ee",
+      "observed_outflow": "31.33268716432631815415236807",
+      "witnessed_components_signed_gain": {},
+      "already_recognized_income": "0",
+      "witnessed_net_outflow": "0",
+      "remaining_signed_difference": "31.33268716432631815415236807",
+      "ambiguous_split_transaction": false
+    },
+    {
+      "identity": "ethereum:0xad1bdb8371af1a09a480c4ee6e130917866abee0e6d29098a07d4ca9de9d1892",
+      "observed_outflow": "31.08525635999630438952412619",
+      "witnessed_components_signed_gain": {},
+      "already_recognized_income": "0",
+      "witnessed_net_outflow": "0",
+      "remaining_signed_difference": "31.08525635999630438952412619",
+      "ambiguous_split_transaction": false
+    },
+    {
+      "identity": "ethereum:0x275b3dc28b12da20672d5fd942fa9ac4046098f51d0aef88217f127820ef1711",
+      "observed_outflow": "29.53956240016083735306189579",
+      "witnessed_components_signed_gain": {},
+      "already_recognized_income": "0",
+      "witnessed_net_outflow": "0",
+      "remaining_signed_difference": "29.53956240016083735306189579",
+      "ambiguous_split_transaction": false
+    },
+    {
+      "identity": "ethereum:0xcd95391d2af7fd9f29764996574ecb005e931da902232459b1151299cdc362a5",
+      "observed_outflow": "29.07348717400577124389864517",
+      "witnessed_components_signed_gain": {},
+      "already_recognized_income": "0",
+      "witnessed_net_outflow": "0",
+      "remaining_signed_difference": "29.07348717400577124389864517",
+      "ambiguous_split_transaction": false
+    }
+  ],
+  "full_audit_sha256": "e36afcecbdea701dfcd805f0ce1b013cc5a516f3f91802729461b88d3183c647",
+  "input_scope": "Static residuals after 927f849; read-only explanation includes legacy Curve, proportional LP withdrawals and USDC/RLUSD Curve swaps"
+}

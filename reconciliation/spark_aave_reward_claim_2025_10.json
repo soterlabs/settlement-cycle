@@ -1,0 +1,12 @@
+{
+  "transaction": "0x0af39af528cd328028432e17f451aff046b19536824007f2e1665f1b7ed5b2e3",
+  "block": 23534264,
+  "day": "2025-10-08",
+  "token": "0x32a6268f9ba3642dda7892add74f1d34469a4259",
+  "amount": "243167.543642328131607315",
+  "purpose": "Aave Core aUSDS rewards",
+  "claim_log_index": "0x1f0",
+  "transfer_log_index": "0x1ee",
+  "scope": "Confirmed economic explanation only; running replay classification unchanged.",
+  "evidence_sha256": "ea717711d58c9c857f267dfe283c6c3cd78efcd88202d4d3033d0b07fe64cb3a"
+}

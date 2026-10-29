@@ -1,0 +1,213 @@
+{
+  "batches": 451902,
+  "repaired": 22,
+  "input_hashes": {
+    "/tmp/pr215-spark-exact-withdrawals-history.jsonl.gz": "6ff188790d6ab8f86f89989815a044526a2b66b376d536cb156ed602f3c3a45a",
+    "tests/fixtures/spark_fsusds_capital.json": "81aab04ee6bd0bc2377140385e1f2daeb977891a42c5de4ede8d49b81b0fdb0c",
+    "/home/agent/code/lakonema2000/settlement-cycle/scripts/repair_spark_fsusds_capital.py": "67f7e6fd183cf5bfb9ee62a82469abee52cc59d5599ac37513b13f08e64b71a8",
+    "config/spark.yaml": "14ba046bebd091ec2ebbee90a92b5b0bed251ba46e3e1fcd3fac8e3a9d5c8686"
+  },
+  "output_sha256": "0daa44475b0da31fb9376c529648ebc8f4412cc0a552280503dc63e21f80a327",
+  "false_receipts_usd": "582028.9703298601953205956324",
+  "false_outflows_usd": "452715.6007426029638220670776",
+  "changes": [
+    {
+      "identity": "base:0x56c77af8d3db93a005101e05b47cdfc7a591d25265bc433200f845f5e499e902",
+      "venue": "S36",
+      "day": "2025-02-10",
+      "underlying_usd_price": "1.036583419896458575",
+      "old_change": "1",
+      "new_change": "1.036583419896458575",
+      "old_false_gap": "-0.036583419896458575"
+    },
+    {
+      "identity": "base:0x73351e401627c17122c754cea0417d6bc6df6f7595ce911ab8880948c9f5e05c",
+      "venue": "S36",
+      "day": "2025-02-10",
+      "underlying_usd_price": "1.036584081617792546",
+      "old_change": "10000",
+      "new_change": "10365.84081617792546",
+      "old_false_gap": "-365.84081617792546"
+    },
+    {
+      "identity": "base:0x2153c121744d5db61c629248546b64ac5879433784fcb9301fa1c5b8b96da26e",
+      "venue": "S36",
+      "day": "2025-02-10",
+      "underlying_usd_price": "1.036584544822977667",
+      "old_change": "100000",
+      "new_change": "103658.4544822977667",
+      "old_false_gap": "-3658.4544822977667"
+    },
+    {
+      "identity": "base:0x945487f9eb0e9e2065a393a6f70d4d936f0b9ca97ed08696520f1d0baaebfd67",
+      "venue": "S36",
+      "day": "2025-02-11",
+      "underlying_usd_price": "1.036773814546722126",
+      "old_change": "854000",
+      "new_change": "885404.837622900695604",
+      "old_false_gap": "-31404.837622900695604"
+    },
+    {
+      "identity": "base:0x24d20baac2d95fbce780bc56cd4a1730f863ac8d7898ad1137b196cc18ad368f",
+      "venue": "S36",
+      "day": "2025-02-12",
+      "underlying_usd_price": "1.037071719629494585",
+      "old_change": "10000000",
+      "new_change": "10370717.19629494585",
+      "old_false_gap": "-370717.19629494585"
+    },
+    {
+      "identity": "base:0x2bdcc8a2e4b82bd049efe5e2a0839c3138bf7e73cbeb45ee6d704d7f31d16238",
+      "venue": "S36",
+      "day": "2025-04-11",
+      "underlying_usd_price": "1.047198169811159376",
+      "old_change": "-2000000",
+      "new_change": "-2094396.339622318752",
+      "old_false_gap": "94396.339622318752"
+    },
+    {
+      "identity": "base:0x1d4dd1ab1e5be36d5b95cb5fa0a516f914e418135c2301969aa455137e44d53f",
+      "venue": "S36",
+      "day": "2025-04-11",
+      "underlying_usd_price": "1.047211517628268091",
+      "old_change": "-1200000",
+      "new_change": "-1256653.8211539217092",
+      "old_false_gap": "56653.8211539217092"
+    },
+    {
+      "identity": "base:0x3c7f309b034833bad6b1beef2dd4ca9fc2d81562c98eefea4476703b84a0d0d8",
+      "venue": "S36",
+      "day": "2025-04-12",
+      "underlying_usd_price": "1.047300361244975015",
+      "old_change": "-1900000",
+      "new_change": "-1989870.6863654525285",
+      "old_false_gap": "89870.6863654525285"
+    },
+    {
+      "identity": "base:0x684b121963ccd098ba5d6aa72eb4c7259d099fbf4ae0b3f025dd5bad00566226",
+      "venue": "S36",
+      "day": "2025-04-12",
+      "underlying_usd_price": "1.047300694532356799",
+      "old_change": "-5000000",
+      "new_change": "-5236503.472661783995",
+      "old_false_gap": "236503.472661783995"
+    },
+    {
+      "identity": "arbitrum:0x88d0cc034e1d690e3683f34683ff6d79d98185ffc82403210de4b39c375643bd",
+      "venue": "S42",
+      "day": "2025-04-22",
+      "underlying_usd_price": "1.048615443406572134000000000",
+      "old_change": "53638.731694550359016276",
+      "new_change": "56246.40241964707901576807759",
+      "old_false_gap": "-2607.67072509671999949207759"
+    },
+    {
+      "identity": "arbitrum:0x0eb32e7fc0ab19d4e4ac2a8f235e15ad37445812d4a936e2b05abb3f27584e4c",
+      "venue": "S42",
+      "day": "2025-04-24",
+      "underlying_usd_price": "1.048846182464182344",
+      "old_change": "900000",
+      "new_change": "943961.5642177641096",
+      "old_false_gap": "-43961.5642177641096"
+    },
+    {
+      "identity": "arbitrum:0x2c437ffe42018c6a3532111fa18d8a1b6f3abe3033b022860b64401152d79aaf",
+      "venue": "S42",
+      "day": "2025-06-16",
+      "underlying_usd_price": "1.055569488069263331000000000",
+      "old_change": "-953638.731694550359016276",
+      "new_change": "-1006631.947817838089984806473",
+      "old_false_gap": "52993.216123287730968530473"
+    },
+    {
+      "identity": "base:0x80a49d8558e8e905498c59f1d0e831653b00c1216cef2382ff223be12fe4386c",
+      "venue": "S36",
+      "day": "2025-06-25",
+      "underlying_usd_price": "1.056713256823906512000000000",
+      "old_change": "-208646.338199715085008107",
+      "new_change": "-220479.3515634031824989331494",
+      "old_false_gap": "11833.0133636880974908261494"
+    },
+    {
+      "identity": "base:0x70e06683bdf39b89ed3acfccd0a379eaf754b76e8d9bd4b338c6ee900bbf5ffe",
+      "venue": "S36",
+      "day": "2025-07-09",
+      "underlying_usd_price": "1.058459971403329472",
+      "old_change": "-65000",
+      "new_change": "-68799.89814121641568",
+      "old_false_gap": "3799.89814121641568"
+    },
+    {
+      "identity": "base:0x4342c1ecb75013609415fa04eb57bf5a7f183248d87b1ecad4ebddd34f38e9b5",
+      "venue": "S36",
+      "day": "2025-07-14",
+      "underlying_usd_price": "1.059120044155106846",
+      "old_change": "-43000",
+      "new_change": "-45542.161898669594378",
+      "old_false_gap": "2542.161898669594378"
+    },
+    {
+      "identity": "base:0x2f40bb567f9e618fb97c5278e79bffcc9700ab97f8b1a629f3bfe894e650c3e7",
+      "venue": "S36",
+      "day": "2025-07-18",
+      "underlying_usd_price": "1.059631719037642442",
+      "old_change": "-93000",
+      "new_change": "-98545.749870500747106",
+      "old_false_gap": "5545.749870500747106"
+    },
+    {
+      "identity": "base:0x4f01da41a42810a7f8b7e77eeded60dfb16657d445de901fd9571779f313bb78",
+      "venue": "S36",
+      "day": "2025-07-24",
+      "underlying_usd_price": "1.060416097157061152000000000",
+      "old_change": "-28549.53481553034057623",
+      "new_change": "-30274.38628473432156611785036",
+      "old_false_gap": "1724.85146920398098988785036"
+    },
+    {
+      "identity": "base:0x9e2c02c7845bf9568805e37389d04da044f4a2adc4808fcd09906ea5ac6227b8",
+      "venue": "S36",
+      "day": "2025-07-28",
+      "underlying_usd_price": "1.060910344321373484000000000",
+      "old_change": "-32549.53481553034057623",
+      "new_change": "-34532.13818864482756941161038",
+      "old_false_gap": "1982.60337311448699318161038"
+    },
+    {
+      "identity": "base:0xb2664dc0111e6c60a34b63b48f6b379fba7e3c0a074a18373289de5ebbe30e44",
+      "venue": "S36",
+      "day": "2025-07-29",
+      "underlying_usd_price": "1.061052455687377316000000000",
+      "old_change": "-109549.53481553034057623",
+      "new_change": "-116237.8029354283052059427568",
+      "old_false_gap": "6688.2681198979646297127568"
+    },
+    {
+      "identity": "base:0x0dc77dbfa22f3ed7b329b38459ffa3692d738aa3c2acca88c7d96eb9c2343058",
+      "venue": "S36",
+      "day": "2025-07-30",
+      "underlying_usd_price": "1.061164228266263768000000000",
+      "old_change": "-160549.53481553034057623",
+      "new_change": "-170369.4232110299003587824765",
+      "old_false_gap": "9819.8883954995597825524765"
+    },
+    {
+      "identity": "base:0x3d5a071dd3dda0f0f06f3221e3438ecb4cecb501eae88c1eddc26c7b0e4549e0",
+      "venue": "S36",
+      "day": "2025-07-31",
+      "underlying_usd_price": "1.061295388112281924000000000",
+      "old_change": "-55549.53481553034057623",
+      "new_change": "-58954.46511150498987401489315",
+      "old_false_gap": "3404.93029597464929778489315"
+    },
+    {
+      "identity": "base:0x2f8d8f28d75622faf92e22f544d5c7c50bed8aa97ee07e61aa5f5fa33839a244",
+      "venue": "S36",
+      "day": "2025-08-04",
+      "underlying_usd_price": "1.061820428706014967000000000",
+      "old_change": "-69072.14273191406459735",
+      "new_change": "-73342.21220724404790146942283",
+      "old_false_gap": "4270.06947532998330411942283"
+    }
+  ]
+}

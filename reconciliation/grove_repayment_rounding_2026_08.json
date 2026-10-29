@@ -1,0 +1,58 @@
+{
+  "prime": "grove",
+  "period": "2026-08",
+  "base_commit": "0b6e0d3",
+  "input_hashes": {
+    "/tmp/pr215-grove-eoa/history.jsonl.gz": "c05b53815379f6f7a4d9f6195d819d09ddb542f8f279af5f4defe4b7b3295474",
+    "settlements/grove/2026-08/provenance.json": "d6fb40d3c43caf3bdc7d0983b7ff071433ad056d22825b9f0f19eeb9d3af3aa9",
+    "/tmp/pr215-resumed-grove/idle_deductions.json": "e6b13f9b30816b2f8e9325f222aa9c889ff68cdf182205f4c54576d929faf427",
+    "/tmp/pr215-resumed-grove/debt-control.json": "6214144465cad85e59e3cd7c075925fad2f5bdc2131428ea4e6f769b57d9280b",
+    "/tmp/pr215-resumed-grove/deduction-owners.json": "dad2cf619d5dc65a26721aaf1fe3938136bb512212bf427a2e5aa56531f58153"
+  },
+  "unmatched_receipts_before": 4,
+  "unmatched_receipts_after": 3,
+  "rounding_receipts": {
+    "ethereum:0x7ec2f8fe5cda509e87c014d7fab9910145ce69f5dfea099eef4cf7301ba9c346": "5.0586513347432800000E-7"
+  },
+  "unmatched_outflows": 239,
+  "eligible_allocation_cost": "11784.59397330482338634775780",
+  "per_ilk_reconciliation": {
+    "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+      "global_cost": "3708820.107055825781021080592",
+      "msc_cost": "259878.1170265572840543147882",
+      "allocation_cost": "0",
+      "global_excluding_msc": "3448941.990029268496966765804",
+      "difference": "-3448941.990029268496966765804",
+      "within_one_cent": false,
+      "complete": false,
+      "source_complete": false,
+      "bounds_use_verified_deduction_owners": true,
+      "diagnostic_cost_bounds": {
+        "lower": "-3760196.87411204394584067164654328030022663382936575292073714",
+        "upper": "3448941.99002926849696676580416084319370638238644478031610200"
+      },
+      "target_distance_from_bounds": "0",
+      "target_within_bounds_to_one_cent": true,
+      "bounds_note": "Containment is not reconciliation; unresolved routes remain unverified"
+    },
+    "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+      "global_cost": "11784.73727045625525471486130",
+      "msc_cost": "0E-32",
+      "allocation_cost": "11784.59397330482338634775780",
+      "global_excluding_msc": "11784.73727045625525471486130",
+      "difference": "-0.14329715143186836710350",
+      "within_one_cent": false,
+      "complete": false,
+      "source_complete": false,
+      "bounds_use_verified_deduction_owners": true,
+      "diagnostic_cost_bounds": {
+        "lower": "11784.5908731950423778275661358784932034746155998009359999996",
+        "upper": "11784.6121917385700422184113922454767036805977824933246372307"
+      },
+      "target_distance_from_bounds": "0.1250787176852124964499077545",
+      "target_within_bounds_to_one_cent": false,
+      "bounds_note": "Containment is not reconciliation; unresolved routes remain unverified"
+    }
+  },
+  "scope": "Same existing sub-cent policy for repayments as incoming asset legs; numerical residual retained and no debt/rate/cost changes."
+}
