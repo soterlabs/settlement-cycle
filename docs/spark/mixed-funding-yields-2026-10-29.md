@@ -33,3 +33,37 @@ The source snapshot is intentionally unchanged. The replay traverses its histori
 Tests cover daily refinancing, immutable snapshots, exclusion of gains and VSR financing expenses, identical legacy replay outputs when snapshots are requested, and explicit capital gaps. They also assert that conditional results are not publishable.
 
 The next review must inspect the actual daily differences and uncertain routes, resolve them against retained receipt evidence, and only then propose a measured split for normal monthly API use. A balanced transaction or a high month-end origin percentage alone is insufficient. Unsupported Savings scope and untraced receipts remain unknown.
+
+## Review fixes and coverage (October 29)
+
+The first replay is still running on commit `4288cdc`; it has not validated a
+new venue yet. Its ten selected allocations account for approximately 98.1% of
+August average capital in the Savings-pending rows. This is workload coverage,
+not an explained-funding percentage. There are 28 configured allocations and
+six intermediate custody rows in that pending population.
+
+After the first ten, prioritize S64 (idle RLUSD), S65 (BlueChip USDT Morpho),
+S10 (BlueChip USDC Morpho), S2 (spUSDC) and S66 (RLUSD/USDS V4). Together these
+account for about $54 million of average original capital. Then assess the
+remaining 13 small or legacy allocations: S39, S45, S49, S53, S55, S27, S9,
+S25, S11, S24, S54, S13 and S6. The six intermediate custody rows must carry
+funding to its destination without becoming duplicate chargeable allocations.
+
+Review found and fixed missing Anchorage exposure input: S23 must use audited
+daily outstanding loan principal, not the escrow balance. The August evidence
+is selected automatically only for August; other periods require their own
+`--anchorage-exposure`. Missing evidence leaves the yield unavailable.
+
+New runs persist compact funding snapshots before report generation. These
+cover all measured allocation/custody accounts, allowing further venue reports
+without repeating the historical replay. `--replay-snapshot` selects the cache;
+its history, dates, accounts and replay-code hashes must match. Individual
+negative/non-finite funding components are rejected even if their sum looks
+valid. Evidence and code hashes are captured before execution and checked again
+before writing results. Output writes are atomic.
+
+The already-running replay predates these fixes and will not produce this
+checkpoint. Preserve its result as research evidence and review its daily gaps;
+do not label it as executing the revised code or publish its conditional APYs.
+Its launch-code manifest is retained locally at
+`/tmp/spark-mixed-funding-running-code-before-review.json`.
