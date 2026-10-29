@@ -15,6 +15,8 @@ POLICY_VERSION = 'prime-management.allocations.v2.1'
 ALLOCATION_POLICIES = (ALLOCATION_V2_POLICY, POLICY_VERSION)
 SUPPORTED_POLICIES = (FIRST_SLICE_POLICY, *ALLOCATION_POLICIES)
 STATEMENT_POLICY = 'prime-management.monthly-statements.v3'
+ROLLUP_POLICY = 'prime-management.statement-rollups.v3.1'
+MONTHLY_STATEMENT_POLICIES = (STATEMENT_POLICY, ROLLUP_POLICY)
 # Frozen dependency of this composition policy; do not follow future daily upgrades.
 STATEMENT_SOURCE_POLICY = 'prime-management.allocations.v2.1'
 LINES = (
@@ -183,13 +185,13 @@ def decode_selection(token, prime, year):
         selection = json.loads(base64.b64decode(token + '=' * (-len(token) % 4), altchars=b'-_', validate=True))
         if not isinstance(selection, dict):
             raise ValueError('Invalid report selection')
-        monthly = selection.get('policy_version') == STATEMENT_POLICY
+        monthly = selection.get('policy_version') in MONTHLY_STATEMENT_POLICIES
         keys = {'prime', 'year', 'as_of', 'exact', 'revisions', 'policy_version'}
         if monthly:
             keys.add('monthly_revisions')
         if (set(selection) != keys
                 or selection['prime'] != prime or selection['year'] != year
-                or selection['policy_version'] not in (*SUPPORTED_POLICIES, STATEMENT_POLICY)
+                or selection['policy_version'] not in (*SUPPORTED_POLICIES, *MONTHLY_STATEMENT_POLICIES)
                 or type(selection['exact']) is not bool or not isinstance(selection['revisions'], list)
                 or len(selection['revisions']) != 12):
             raise ValueError('Report selection mismatch')
@@ -205,10 +207,10 @@ def decode_selection(token, prime, year):
         raise ValueError('Invalid report revision selection') from exc
 
 
-def statements(prime, year, as_of, publications, *, exact=False, selection=None, monthly=False):
+def statements(prime, year, as_of, publications, *, exact=False, selection=None, monthly=False, rollups=False):
     """Read projection of saved financial metrics, with immutable export selection."""
-    policy_version = selection['policy_version'] if selection else STATEMENT_POLICY if monthly else POLICY_VERSION
-    monthly = policy_version == STATEMENT_POLICY
+    policy_version = selection['policy_version'] if selection else ROLLUP_POLICY if rollups else STATEMENT_POLICY if monthly else POLICY_VERSION
+    monthly = policy_version in MONTHLY_STATEMENT_POLICIES
     if monthly:
         from .monthly_reports import select
         monthly_chosen = select(prime, year, as_of, selection)
@@ -249,7 +251,7 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None,
     if monthly:
         manifest['monthly_revisions'] = [p['revision_id'] if p else None for p in monthly_chosen]
     lines = []
-    for definition in taxonomy(prime, policy_version):
+    for definition in taxonomy(prime, STATEMENT_POLICY if policy_version == ROLLUP_POLICY else policy_version):
         key = definition['id']
         cells = [p['document']['metrics'].get(key, metric(reason='monthly_summary_not_published')) if p else metric(reason='future_period' if periods[i]['state'] == 'future'
                   else 'source_not_published') for i, p in enumerate(chosen)]
@@ -287,4 +289,7 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None,
               'selection': selection_token(manifest), 'perimeter': 'operational_prime_management_reporting'}
     if monthly:
         result['source_manifest'].update({p['revision_id']: p['source'] for p in monthly_chosen if p})
+    if policy_version == ROLLUP_POLICY:
+        from .statement_rollups import extend
+        result = extend(result)
     return {**result, 'report_hash': digest(result)}

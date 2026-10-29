@@ -80,7 +80,8 @@ returns 503. Responses support conditional GET with ETags.
 ## Publication and backfill
 
 Current daily/portfolio policy: `prime-management.allocations.v2.1`;
-current annual statement composition policy: `prime-management.monthly-statements.v3`; retained allocation policy: `prime-management.allocations.v2`; retained first-slice policy: `prime-management.first-slice.v1`. A changed measurement policy requires
+current annual statement composition policy: `prime-management.statement-rollups.v3.1`;
+retained monthly composition policy: `prime-management.monthly-statements.v3`; retained allocation policy: `prime-management.allocations.v2`; retained first-slice policy: `prime-management.first-slice.v1`. A changed measurement policy requires
 a new version. Financial revisions key the source revision/hash plus policy;
 corrections append new documents and retain previous ones.
 
@@ -206,3 +207,46 @@ demand components, precision and both demand-side/Sky-side rounding bridges are 
 `tests/unit/test_monthly_reports.py`, review changed values and deploy the API
 through the normal reviewed release. No database import job is needed. Merely
 opening this PR does not publish these figures to the live API.
+
+## Explicit dashboard rollups (statement-rollups.v3.1)
+
+Annual statements now default to `prime-management.statement-rollups.v3.1`.
+This composes the same pinned monthly summaries and v2.1 financial documents;
+no new daily calculations, source backfill or database migration is required.
+Retained v1/v2/v2.1/monthly-v3 selections preserve their exact original reports.
+The dashboard consumer must support this policy before the API default deploys.
+
+New `statement.*` lines declare signed `components` and expose per-cell
+`source_refs`, `missing_components`, `component_ids`, `status`, `value` and
+`known_value`. `value` is available only when every required component is known.
+Partial amounts have null `value`, `status: partial` and a separately labelled
+`known_value`; that amount is the signed sum of known components, not a full
+total, a lower bound or confirmed profit. Known zeroes and negative values remain
+valid amounts. Annual known portions include partially known months once each;
+future months contribute nothing.
+
+| Line | Explicit composition |
+| --- | --- |
+| `statement.demand` | Published demand-side headline when available; otherwise known AR/DR and applicable Skybase GAR or Grove Chronicle Points |
+| `statement.family.*` | Reviewed native-income leaves in that named family |
+| `statement.interest` | Reviewed native-income leaves plus an unknown remainder for unclassified allocation income |
+| `statement.rewards` | Reviewed lending distributions and issuer compensation, plus an unknown remainder |
+| `statement.noninterest_income` | Demand-side revenue + rewards + unclassified protocol fees, curator fees and non-stable gains |
+| `statement.funding` | Net Sky funding + an unknown remainder for other funding |
+| `statement.net_interest` | Allocation income minus funding expense |
+| `statement.net_revenue` | Noninterest income + net interest income |
+| `statement.noninterest_expense` | Operating/other expenses, incentive costs, distribution costs and credit impairment; currently unclassified |
+| `statement.net_income` | Net revenue minus noninterest expenses and income tax |
+
+Family and reviewed subtotals are alternate presentations; they never enter the
+same rollup as their own leaves. Multiple deployments already combined into one
+business-income leaf are counted once. Published demand totals retain their
+independently rounded headline amount rather than recomputing it from rounded
+children. Aggregates spanning accrual and receipt components disclose
+`recognition: mixed_management_components`; they do not certify pure accrued
+income. Broad entity totals remain partial until the unclassified perimeter is
+resolved by a future reviewed policy.
+
+The dashboard hides the gross-funding and spread-reimbursement rows but the API
+retains those reconciliation metrics. It also hides pre-tax, tax and impairment
+rows; this does not assume the corresponding costs are zero in net income.
