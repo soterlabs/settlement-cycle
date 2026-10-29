@@ -34,12 +34,12 @@ class RevenueReaderMixin:
                 source = store.read(conn, prime, cutoff=row['cutoff']) if row else None
                 return row, ({'cutoff': source['cutoff'], 'revision_id': source['revision_id']} if source else None)
 
-    def financial_year(self, prime, year, *, revisions=None):
+    def financial_year(self, prime, year, *, revisions=None, policy_version=None):
         from ..revenue import financial_store
         with self._pool.connection() as conn:
             with conn.transaction():
                 conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
-                return financial_store.year_rows(conn, prime, year, revisions=revisions)
+                return financial_store.year_rows(conn, prime, year, revisions=revisions, **({"policy_version": policy_version} if policy_version else {}))
 
     def revenue_bundle(self, prime, *, cutoff=None, revision=None):
         with self._pool.connection() as conn:
@@ -77,8 +77,8 @@ def with_result_schema(record):
 
 
 def register(app, get_reader, document_response):
-    from .venue_views import register_views
     from .financial import register_financial
+    from .venue_views import register_views
     register_financial(app, get_reader, document_response)
     register_views(app, get_reader, document_response)
     def validate(prime, cutoff=None):

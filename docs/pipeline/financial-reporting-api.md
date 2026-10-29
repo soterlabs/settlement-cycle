@@ -1,4 +1,4 @@
-# Financial reporting API — first slice
+# Financial reporting API — contract and policies
 
 The read-only v3 API derives individual operational-prime management metrics from
 immutable saved revenue results. It makes no provider calls. V1 settlement and
@@ -73,7 +73,7 @@ returns 503. Responses support conditional GET with ETags.
 
 ## Publication and backfill
 
-Policy: `prime-management.first-slice.v1`. A changed measurement policy requires
+Current policy: `prime-management.allocations.v2.1`; retained allocation policy: `prime-management.allocations.v2`; retained first-slice policy: `prime-management.first-slice.v1`. A changed measurement policy requires
 a new version. Financial revisions key the source revision/hash plus policy;
 corrections append new documents and retain previous ones.
 
@@ -132,3 +132,10 @@ Live verification matched Obex's statement cells, portfolio aggregate and pinned
 CSV to the saved source: AR $70,438.28; net Sky funding $1,122,790.65;
 Maple net investment income $1,460,382.34; tracked closing allocation value
 $406,996,930.93. These values are October 1–26 MTD, not a complete month or YTD.
+
+
+## Allocation coverage extension
+
+The [allocation policy guide](financial-allocation-reporting.md) documents the broader
+Spark/Grove/Osero mappings, separate reward recognition, issuer claims, exact
+portfolio membership and backwards-compatible policy upgrade.
