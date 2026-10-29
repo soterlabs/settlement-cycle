@@ -30,7 +30,8 @@ DEMAND_FIELDS = {
 def table(section):
     result = {}
     rows = [line.split('|')[1:-1] for line in section.splitlines() if line.startswith('|')]
-    if not rows or [c.strip() for c in rows[0]] != ['Field', 'USDS']:
+    if (len(rows) < 3 or [c.strip() for c in rows[0]] != ['Field', 'USDS']
+            or len(rows[1]) != 2 or any(not re.fullmatch(r':?-{3,}:?', cell.strip()) for cell in rows[1])):
         raise ValueError('Expected a USDS headline table')
     for row in rows[2:]:
         if len(row) != 2:
@@ -74,12 +75,15 @@ def parse(snapshot, report):
     sky = table(text.split('### Sky side\n')[1].split('\n## ')[0])
     if set(sky) != {'prime cost of funds', 'sky direct exposure', 'supply-side revenue'}:
         raise ValueError('Unsupported Sky headline')
+    sky_delta = sky['supply-side revenue'] - sky['prime cost of funds'] - sky['sky direct exposure']
+    if abs(sky_delta) > Decimal('0.015'):
+        raise ValueError('Sky-side headline does not reconcile within display rounding')
     source = {'kind': 'published_monthly_summary', 'repository': snapshot['repository'],
               'commit': snapshot['commit'], 'path': report['path'], 'git_blob_sha': blob,
               'result_hash': report['sha256'], 'currency': 'USDS', 'display_precision': '0.01',
               'conversion': 'USDS at USD par', 'cutoff': str(end),
               'url': f"https://github.com/{snapshot['repository']}/blob/{snapshot['commit']}/{report['path']}",
-              'demand_rounding_delta': str(delta)}
+              'demand_rounding_delta': str(delta), 'sky_rounding_delta': str(sky_delta)}
     revision = digest(source)
     source['revision_id'] = revision
     values = {DEMAND_FIELDS[k]: v for k, v in demand.items()}
@@ -98,7 +102,7 @@ def parse(snapshot, report):
 def publications():
     retained, active = {}, {}
     for commit in SNAPSHOTS:
-        snapshot = json.loads(files('settle.revenue').joinpath('published_monthly', commit + '.json').read_text())
+        snapshot = json.loads(files('settle.revenue').joinpath('published_monthly', commit + '.json').read_text(encoding='utf-8'))
         if (snapshot['repository'] != 'soterlabs/settlement-reports' or snapshot['commit'] != commit
                 or snapshot['schema_version'] != 'published-settlement-summaries.v1'):
             raise ValueError('Invalid monthly snapshot')

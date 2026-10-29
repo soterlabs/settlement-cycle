@@ -48,7 +48,7 @@ def main():
         reports = sorted(executor.map(fetch, entries), key=lambda report: report['path'])
     snapshot = {'schema_version': 'published-settlement-summaries.v1', 'repository': repo,
                 'commit': args.commit, 'reports': reports}
-    with args.output.open('x') as destination:
+    with args.output.open('x', encoding='utf-8') as destination:
         json.dump(snapshot, destination, ensure_ascii=False, indent=2)
         destination.write('\n')
     print(f'Saved {len(reports)} monthly summaries to {args.output}')

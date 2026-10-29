@@ -115,6 +115,8 @@ def test_malformed_monthly_selectors_rejected(change):
     ('| agent rate | 106,392.55 |', '| agent rate | NaN |'),
     ('| agent rate | 106,392.55 |', '| agent rate | 106,392.55 |\n| agent rate | 106,392.55 |'),
     ('| Field | USDS |', '| Field | USD |'),
+    ('|---|---:|', '| ignored field | 100.00 |'),
+    ('| prime cost of funds | 7,842,258.86 |', '| prime cost of funds | 99.00 |'),
     ('2026-01-31 (31 days)', '2026-01-30 (30 days)'),
 ])
 def test_invalid_summaries_fail_closed(before, after):

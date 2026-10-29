@@ -26,7 +26,7 @@ known value as a complete total.
 | `demand.distribution_rewards` | Published monthly distribution rewards |
 | `demand.total` | Published demand-side headline, including applicable GAR/Chronicle Points |
 | `demand.gar` | Published governance accessibility rewards; Skybase only |
-| `funding.sky.net` | `sky_revenue - sde_revenue` |
+| `funding.sky.net` | Published monthly prime cost of funds; otherwise `sky_revenue - sde_revenue` |
 | `funding.sky.gross` | Net funding plus saved sUSDS spread reimbursement |
 | `funding.sky.reimbursement` | Saved reimbursement, a deduction from gross |
 | `investment.maple_syrup_usdc` | Obex V1 revenue minus external rewards, after embedded vault fees; unsupported for other primes |
@@ -202,7 +202,7 @@ python scripts/snapshot_monthly_reports.py --commit FULL_40_HEX_SHA \
 Append its SHA to `monthly_reports.SNAPSHOTS` (oldest to newest), retaining every
 previous snapshot so pinned exports remain replayable. The newest snapshot
 selects the active prime/month heads. All source bytes, period identities,
-demand components, precision and rounding bridges are validated on load. Test
+demand components, precision and both demand-side/Sky-side rounding bridges are validated on load. Test
 `tests/unit/test_monthly_reports.py`, review changed values and deploy the API
 through the normal reviewed release. No database import job is needed. Merely
 opening this PR does not publish these figures to the live API.
