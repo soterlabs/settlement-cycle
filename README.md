@@ -85,6 +85,10 @@ for endpoints, fields, revision selection, reconciliation, and examples.
 See [the venue reporting contract](docs/reporting-only-venues.md) for configuration,
 Spark reward rules, API fields, and verified USDG receipt sources.
 
+The [financial reporting API PRD](docs/PRD_reporting_dashboard_financial_api.md)
+proposes statement classification, portfolio aggregates, and a staged path to
+populate reporting-dashboard values before full consolidation data is available.
+
 ## Development
 
 ### Code
