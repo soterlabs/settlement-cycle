@@ -44,8 +44,10 @@ and the resulting readiness artifact. Both require explicit output/Markdown path
 Principal carried through normalized transfers excludes gains and rewards. This
 uses the agreed Sky-funded-except-Savings assumption, without replaying proof of
 funding origin. Costs reuse the settled daily effective rates and available exact
-deductions. Anchorage's APY uses the outstanding facility claim, never escrow cash
-or a prior month's balance. No known loan exposure means no loan APY estimate.
+deductions. Loan APYs use outstanding facility claims, never escrow cash or a
+stale configured notional. Measured position values take precedence over fixed
+notionals for on-chain allocations. No known Anchorage loan exposure means no
+loan APY estimate.
 
 Review source hashes, coverage/null reasons, revenue agreement with the close,
 and material yields before invoking `scripts/publish_monthly_allocations.py`.
@@ -53,3 +55,20 @@ Publication writes only monthly allocation API artifacts; it does not change
 settlement amounts, global borrowing costs, or daily revenue. Verify both prime
 endpoints and the dashboard after publication. A dashboard page being available
 does not itself mean September inputs have finished or been published.
+
+## Grove validation
+
+September capture contains 2,020 normalized batches before the reviewed routing
+adapters. The prepared result contains 45 rows: 34 have a cost (including zero
+principal/exempt rows), eight are covered by another allocation, one is income
+only, and two Basin rows await deduction attribution. Known allocation costs
+sum to $3,673,476.74; this is a partial subtotal, not a global CoF reconciliation.
+
+The September review corrected two denominator choices: E12 uses its measured
+$17,786,194.41 average position value, rather than a fixed $25m notional; E42 uses
+its reconstructed $349,916,701 average outstanding facility claim, rather than
+the older $304,000,001 configured notional. E12 gross/net APYs are approximately
+0.88% / -2.78%; E42 gross/net APYs are 5.92% / 2.08%. Idle USDC E15 has a negative
+net APY (-3.63%), as expected. Gross outliers E21 (cash distributions) and E22
+(negative booked September revenue) reproduce the existing settlement revenue;
+the calculation does not replace them with assumed contractual accruals.

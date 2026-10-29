@@ -50,17 +50,21 @@ def build(readiness, controls, anchorage=None):
             elif revenue is None:
                 row["yield_status"] = "revenue_not_in_snapshot"
             else:
-                average = max(
-                    D(revenue["tw_avg_value_usd"]), D(revenue.get("tw_avg_notional_usd", "0"))
-                )
-                row["denominator"] = "published time-weighted position value/notional"
-                if prime["prime"] == "spark" and vid == "S23":
+                average = D(revenue["tw_avg_value_usd"])
+                row["denominator"] = "published time-weighted position value"
+                if average <= 0:
+                    average = D(revenue.get("tw_avg_notional_usd", "0"))
+                    row["denominator"] = "published notional (position value unavailable)"
+                if finance.get("average_facility_exposure") is not None:
+                    # Facility claims track September deposits/redemptions;
+                    # a fixed configured notional can predate those movements.
+                    average = D(finance["average_facility_exposure"])
+                    row["denominator"] = "daily outstanding facility principal; not escrow cash"
+                elif prime["prime"] == "spark" and vid == "S23":
                     # The escrow balance is NOT the outstanding loan. Reuse
                     # the accepted full-principal return policy and daily loan
                     # amounts already established in the funding-origin work.
-                    if finance.get("average_facility_exposure") is not None:
-                        average = D(finance["average_facility_exposure"])
-                    elif anchorage is not None:
+                    if anchorage is not None:
                         average = (
                             sum(
                                 (

@@ -111,3 +111,20 @@ def test_september_anchorage_never_reuses_the_escrow_or_august_denominator():
     row = module.build(readiness, controls)["results"][0]["allocations"][0]
     assert row["average_exposure"] == "100000000"
     assert row["gross_apy"] is not None
+
+
+def test_nft_uses_measured_average_not_larger_fixed_notional():
+    readiness, controls = inputs(vid="NFT")
+    controls["spark"]["venue_breakdown"][0]["tw_avg_notional_usd"] = "250"
+    row = module.build(readiness, controls)["results"][0]["allocations"][0]
+    assert D(row["average_exposure"]) == 100
+
+
+def test_facility_uses_updated_outstanding_claim_not_stale_configured_notional():
+    readiness, controls = inputs(vid="E42")
+    finance = readiness["results"][0]["allocations"][0]
+    finance["average_facility_exposure"] = "349916701"
+    revenue = controls["spark"]["venue_breakdown"][0]
+    revenue.update(tw_avg_value_usd="0", tw_avg_notional_usd="304000001")
+    row = module.build(readiness, controls)["results"][0]["allocations"][0]
+    assert D(row["average_exposure"]) == 349916701
