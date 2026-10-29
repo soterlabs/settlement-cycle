@@ -170,3 +170,20 @@ exporting with the matching financial source references.
 Backend PR #230 is stacked on the still-open first-slice PR #229. Companion
 dashboard PR #2 and the API commits were deployed for live verification; these
 PRs remain open for review.
+
+
+## Review corrections — policy v2.1
+
+Current publication policy is `prime-management.allocations.v2.1`. It preserves
+v2's measurements and taxonomy while correcting issuer source paths for accepted
+legacy `display_only_breakdown` records. Published v2 documents and selections
+retain their original provenance/hash; default backfill publishes separate v2.1
+revisions. V1 and v2 remain supported for retained revision requests.
+
+The dashboard accepts all three policies before the API switches defaults.
+Positions CSV rows use the member's actual cutoff even without a v2 venue
+publication, and append `Source venue ID` / `Position ID` columns. Identical
+business labels across the S11/S65 vault deployments remain distinguishable.
+Summary records leave member identity fields empty. Financial members' IDs are
+also visible on the positions screen. Legacy venue rows retain source venue IDs
+without inventing unapproved economic-position IDs.

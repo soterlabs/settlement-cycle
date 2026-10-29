@@ -73,7 +73,7 @@ returns 503. Responses support conditional GET with ETags.
 
 ## Publication and backfill
 
-Current policy: `prime-management.allocations.v2`; retained first-slice policy: `prime-management.first-slice.v1`. A changed measurement policy requires
+Current policy: `prime-management.allocations.v2.1`; retained allocation policy: `prime-management.allocations.v2`; retained first-slice policy: `prime-management.first-slice.v1`. A changed measurement policy requires
 a new version. Financial revisions key the source revision/hash plus policy;
 corrections append new documents and retain previous ones.
 

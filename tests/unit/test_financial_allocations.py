@@ -162,3 +162,39 @@ def test_malformed_optional_issuer_data_does_not_hide_known_investment_siblings(
         doc = build(saved)
         assert doc['metrics']['rewards.issuer.pyusd']['value'] is None
         assert doc['metrics']['investment.reviewed_income']['value'] == '250'
+
+
+def test_issuer_provenance_preserves_the_selected_source_collection():
+    for collection in ('venue_breakdown', 'reporting_only_breakdown', 'display_only_breakdown'):
+        saved = issuer_source()
+        row = saved['result']['venue_breakdown'].pop()
+        saved['result'].setdefault(collection, []).append(row)
+        saved['result_hash'] = digest(saved['result'])
+        doc = build(saved)
+        income = doc['metrics']['rewards.issuer.pyusd']
+        assert income['value'] == '20'
+        assert income['source_paths'] == [f'result.{collection}.S68.incentive_accrual.period_accrual']
+        claim = next(c for c in doc['claims'] if c['source_venue_id'] == 'S68')
+        assert claim['cash_received']['source_paths'] == [f'result.{collection}.S68.incentive_accrual.period_receipts']
+        assert claim['received_in_advance']['source_paths'] == [f'result.{collection}.S68.incentive_accrual.accrued_balance']
+
+
+def test_v2_provenance_and_selection_remain_frozen_after_v21_fix():
+    from settle.revenue.financial import ALLOCATION_V2_POLICY, taxonomy
+    saved = issuer_source()
+    row = saved['result']['venue_breakdown'].pop()
+    saved['result']['display_only_breakdown'] = [row]
+    saved['result_hash'] = digest(saved['result'])
+    previous = build(saved, policy_version=ALLOCATION_V2_POLICY)
+    corrected = build(saved)
+    key = 'rewards.issuer.pyusd'
+    assert previous['metrics'][key]['source_paths'] == ['result.venue_breakdown.S68.incentive_accrual.period_accrual']
+    assert corrected['metrics'][key]['source_paths'] == ['result.display_only_breakdown.S68.incentive_accrual.period_accrual']
+    assert previous['metrics'][key]['value'] == corrected['metrics'][key]['value'] == '20'
+    assert taxonomy('spark', ALLOCATION_V2_POLICY) == taxonomy('spark', POLICY_VERSION)
+    pub = dict(cutoff=saved['cutoff'], revision_id='e' * 64, document=previous)
+    selection = {'prime': 'spark', 'year': 2026, 'as_of': '2026-10-27', 'exact': False,
+                 'policy_version': ALLOCATION_V2_POLICY, 'revisions': [None] * 9 + [pub['revision_id']] + [None] * 2}
+    annual = statements('spark', 2026, date(2026, 10, 27), [pub], selection=selection)
+    assert annual['policy_version'] == ALLOCATION_V2_POLICY
+    assert annual['lines'] == statements('spark', 2026, date(2026, 10, 27), [pub], selection=decode_selection(annual['selection'], 'spark', 2026))['lines']

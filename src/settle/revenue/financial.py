@@ -10,8 +10,10 @@ from decimal import Decimal, InvalidOperation, localcontext
 from .verification import PRIMES, digest
 
 FIRST_SLICE_POLICY = 'prime-management.first-slice.v1'
-POLICY_VERSION = 'prime-management.allocations.v2'
-SUPPORTED_POLICIES = (FIRST_SLICE_POLICY, POLICY_VERSION)
+ALLOCATION_V2_POLICY = 'prime-management.allocations.v2'
+POLICY_VERSION = 'prime-management.allocations.v2.1'
+ALLOCATION_POLICIES = (ALLOCATION_V2_POLICY, POLICY_VERSION)
+SUPPORTED_POLICIES = (FIRST_SLICE_POLICY, *ALLOCATION_POLICIES)
 LINES = (
     ('demand.agent_rate', 'Agent rate (AR)'),
     ('funding.sky.gross', 'Sky borrowing interest, before reimbursement'),
@@ -147,12 +149,12 @@ def build(source, *, policy_version=POLICY_VERSION):
     from .financial_allocations import extend
     document['policy_version'] = policy_version
     from .financial_issuers import extend as issuer_extend
-    return issuer_extend(extend(document, source), source)
+    return issuer_extend(extend(document, source), source, legacy_paths=policy_version == ALLOCATION_V2_POLICY)
 
 
 def taxonomy(prime, policy_version):
     lines = {key: {'id': key, 'label': label} for key, label in LINES}
-    if policy_version == POLICY_VERSION:
+    if policy_version in ALLOCATION_POLICIES:
         from .financial_allocations import taxonomy as allocation_taxonomy
         from .financial_issuers import taxonomy as issuer_taxonomy
         lines.update({line['id']: line for line in allocation_taxonomy(prime) + issuer_taxonomy(prime)})

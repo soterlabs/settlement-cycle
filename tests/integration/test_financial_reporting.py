@@ -2,9 +2,15 @@ from dataclasses import dataclass, field, replace
 from decimal import Decimal
 
 import psycopg
+import pytest
 
 from settle.revenue import financial_backfill, financial_store, store, worker
-from settle.revenue.financial import decode_selection, statements
+from settle.revenue.financial import (
+    ALLOCATION_V2_POLICY,
+    FIRST_SLICE_POLICY,
+    decode_selection,
+    statements,
+)
 from tests.integration.test_input_cache_postgres import database  # noqa: F401
 from tests.integration.test_revenue_store import Pnl, example
 
@@ -97,31 +103,32 @@ def test_http_financial_reads_use_saved_rows_and_keep_raw_outputs(database, monk
             assert client.get('/v1/revenue/obex/latest').json()['data']['revision_id'] == ref
 
 
-def test_policy_upgrade_keeps_v1_annual_and_portfolio_selections_readable(database):  # noqa: F811
+@pytest.mark.parametrize("saved_policy", [FIRST_SLICE_POLICY, ALLOCATION_V2_POLICY])
+def test_policy_upgrade_keeps_retained_annual_and_portfolio_selections_readable(database, saved_policy):  # noqa: F811
     from unittest.mock import patch
 
     from fastapi.testclient import TestClient
     from psycopg_pool import ConnectionPool
 
     from settle.api.app import PostgresReader, create_app
-    from settle.revenue.financial import FIRST_SLICE_POLICY, build
+    from settle.revenue.financial import build
     base = example()
     pnl = FinancialPnl(base.prime_id, base.period, base.pin_blocks_som)
     with psycopg.connect(database, autocommit=True) as conn:
         store.apply_schema(conn)
         source_ref = store.publish(conn, pnl, store.Versions('code', 'cfg', '0'))
-        with patch.object(financial_store, 'POLICY_VERSION', FIRST_SLICE_POLICY), patch.object(
-                financial_store, 'build', lambda source: build(source, policy_version=FIRST_SLICE_POLICY)):
+        with patch.object(financial_store, 'POLICY_VERSION', saved_policy), patch.object(
+                financial_store, 'build', lambda source: build(source, policy_version=saved_policy)):
             assert financial_store.publish_revision(conn, 'obex', source_ref) == 'succeeded'
         old = conn.execute('SELECT revision_id FROM reporting_financial_results').fetchone()[0]
-        rows = financial_store.year_rows(conn, 'obex', pnl.as_of.year, policy_version=FIRST_SLICE_POLICY)
+        rows = financial_store.year_rows(conn, 'obex', pnl.as_of.year, policy_version=saved_policy)
         manifest = {'prime': 'obex', 'year': pnl.as_of.year, 'as_of': str(pnl.as_of), 'exact': False,
-                    'policy_version': FIRST_SLICE_POLICY, 'revisions': [None] * 12}
+                    'policy_version': saved_policy, 'revisions': [None] * 12}
         manifest['revisions'][pnl.as_of.month - 1] = old
         original = statements('obex', pnl.as_of.year, pnl.as_of, rows, selection=manifest)
         assert financial_store.publish_revision(conn, 'obex', source_ref) == 'succeeded'
         assert financial_store.read(conn, 'obex')['revision_id'] != old
-        assert financial_store.read(conn, 'obex', revision=old)['document']['policy_version'] == FIRST_SLICE_POLICY
+        assert financial_store.read(conn, 'obex', revision=old)['document']['policy_version'] == saved_policy
         assert financial_backfill.run(conn, 'obex', pnl.as_of, pnl.as_of)['reused'] == 1
     with ConnectionPool(database, min_size=1, max_size=2) as pool:
         with TestClient(create_app(reader=PostgresReader(pool, {}, [], 0))) as client:
@@ -131,4 +138,4 @@ def test_policy_upgrade_keeps_v1_annual_and_portfolio_selections_readable(databa
             assert selected.json()['lines'] == original['lines']
             portfolio = client.get('/v3/reporting/portfolio', params={'prime': 'obex', 'month': pnl.as_of.strftime('%Y-%m'), 'revision': old})
             assert portfolio.status_code == 200, portfolio.text
-            assert portfolio.json()['policy_version'] == FIRST_SLICE_POLICY
+            assert portfolio.json()['policy_version'] == saved_policy

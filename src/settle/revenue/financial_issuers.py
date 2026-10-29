@@ -18,12 +18,13 @@ def taxonomy(prime):
             for _, program, label, *_ in ISSUERS] if prime == 'spark' else []
 
 
-def extend(document, source):
+def extend(document, source, *, legacy_paths=False):
     from .financial import metric, number
     if source['prime'] != 'spark':
         return document
     raw = source['result']
-    rows = raw.get('venue_breakdown', []) + raw.get('reporting_only_breakdown', raw.get('display_only_breakdown', []))
+    reporting_collection = 'reporting_only_breakdown' if 'reporting_only_breakdown' in raw else 'display_only_breakdown'
+    rows = [(r, name) for name in ('venue_breakdown', reporting_collection) for r in raw.get(name, [])]
     views = raw.get('venue_views', {}).get('reporting', [])
     claims = []
     for venue, program, label, payer, recipient, token in ISSUERS:
@@ -31,10 +32,10 @@ def extend(document, source):
         receipts = metric(reason='reconciled_issuer_ledger_unavailable')
         receivable = metric(reason='reconciled_issuer_ledger_unavailable')
         prepaid = metric(reason='reconciled_issuer_ledger_unavailable')
-        matches = [r for r in rows if r.get('venue_id') == venue]
+        matches = [(r, name) for r, name in rows if r.get('venue_id') == venue]
         visible = not any(r.get('venue_id') == venue and (not r.get('enabled') or r.get('status') != 'available') for r in views)
         if len(matches) == 1 and visible and source['cutoff'] >= '2026-09-01':
-            row = matches[0]
+            row, collection = matches[0]
             ledger = row.get('incentive_accrual', {})
             try:
                 if not isinstance(ledger, dict):
@@ -61,7 +62,9 @@ def extend(document, source):
                     raise ValueError('Issuer ledger and saved venue disagree')
                 if program == 'usdg' and (accrued != paid or closing != 0 or opening != 0):
                     raise ValueError('USDG uses verified receipts as its proxy')
-                path = 'result.' + ('reporting_only_breakdown' if row in raw.get('reporting_only_breakdown', []) else 'venue_breakdown') + '.' + venue + '.incentive_accrual'
+                # Retained v2 documents keep their original legacy path spelling.
+                origin = 'venue_breakdown' if legacy_paths and collection == 'display_only_breakdown' else collection
+                path = f'result.{origin}.{venue}.incentive_accrual'
                 income = metric(accrued, basis='issuer_receipt_proxy' if program == 'usdg' else 'issuer_compensation_daily_accrual',
                                 source_paths=[path + '.period_accrual'])
                 if program == 'usdg':
