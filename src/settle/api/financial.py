@@ -4,7 +4,7 @@ from typing import Literal
 
 from fastapi import Depends, HTTPException, Query, Request
 
-from ..revenue.financial import decode_selection, statements
+from ..revenue.financial import STATEMENT_POLICY, STATEMENT_SOURCE_POLICY, decode_selection, statements
 from ..revenue.verification import PRIMES
 from . import revenue
 
@@ -47,11 +47,12 @@ def register_financial(app, get_reader, document_response):
         as_of = cutoff or min(revenue.today() - timedelta(days=1), date(year, 12, 31))
         rows = read(r.financial_year, prime, year,
                     revisions=[x for x in selection['revisions'] if x] if selection else None,
-                    **({'policy_version': selection['policy_version']} if selection else {}))
+                    policy_version=(selection['policy_version'] if selection and selection['policy_version'] != STATEMENT_POLICY
+                                    else STATEMENT_SOURCE_POLICY))
         try:
             result = statements(prime, year, as_of, rows,
                                 exact=selection['exact'] if selection else cutoff is not None,
-                                selection=selection)
+                                selection=selection, monthly=True)
         except ValueError as exc:
             raise HTTPException(404, str(exc), headers={'Cache-Control': 'no-store'}) from None
         selected_ids = {p['financial_revision'] for p in result['periods'] if p['financial_revision']}

@@ -14,6 +14,9 @@ ALLOCATION_V2_POLICY = 'prime-management.allocations.v2'
 POLICY_VERSION = 'prime-management.allocations.v2.1'
 ALLOCATION_POLICIES = (ALLOCATION_V2_POLICY, POLICY_VERSION)
 SUPPORTED_POLICIES = (FIRST_SLICE_POLICY, *ALLOCATION_POLICIES)
+STATEMENT_POLICY = 'prime-management.monthly-statements.v3'
+# Frozen dependency of this composition policy; do not follow future daily upgrades.
+STATEMENT_SOURCE_POLICY = 'prime-management.allocations.v2.1'
 LINES = (
     ('demand.agent_rate', 'Agent rate (AR)'),
     ('funding.sky.gross', 'Sky borrowing interest, before reimbursement'),
@@ -153,6 +156,12 @@ def build(source, *, policy_version=POLICY_VERSION):
 
 
 def taxonomy(prime, policy_version):
+    if policy_version == STATEMENT_POLICY:
+        additions = [('demand.distribution_rewards', 'Distribution rewards (DR)'),
+                     ('demand.total', 'Demand-side revenue')]
+        if prime == 'skybase':
+            additions.append(('demand.gar', 'Governance accessibility rewards (GAR)'))
+        return taxonomy(prime, STATEMENT_SOURCE_POLICY) + [{'id': key, 'label': label} for key, label in additions]
     lines = {key: {'id': key, 'label': label} for key, label in LINES}
     if policy_version in ALLOCATION_POLICIES:
         from .financial_allocations import taxonomy as allocation_taxonomy
@@ -172,14 +181,23 @@ def decode_selection(token, prime, year):
         if len(token) > 4096:
             raise ValueError('Oversized report selection')
         selection = json.loads(base64.b64decode(token + '=' * (-len(token) % 4), altchars=b'-_', validate=True))
-        if (set(selection) != {'prime', 'year', 'as_of', 'exact', 'revisions', 'policy_version'}
+        if not isinstance(selection, dict):
+            raise ValueError('Invalid report selection')
+        monthly = selection.get('policy_version') == STATEMENT_POLICY
+        keys = {'prime', 'year', 'as_of', 'exact', 'revisions', 'policy_version'}
+        if monthly:
+            keys.add('monthly_revisions')
+        if (set(selection) != keys
                 or selection['prime'] != prime or selection['year'] != year
-                or selection['policy_version'] not in SUPPORTED_POLICIES
+                or selection['policy_version'] not in (*SUPPORTED_POLICIES, STATEMENT_POLICY)
                 or type(selection['exact']) is not bool or not isinstance(selection['revisions'], list)
                 or len(selection['revisions']) != 12):
             raise ValueError('Report selection mismatch')
         date.fromisoformat(selection['as_of'])
-        for ref in selection['revisions']:
+        monthly_refs = selection.get('monthly_revisions', [])
+        if monthly and (not isinstance(monthly_refs, list) or len(monthly_refs) != 12):
+            raise ValueError('Invalid monthly revision selection')
+        for ref in selection['revisions'] + monthly_refs:
             if ref is not None and (not isinstance(ref, str) or len(ref) != 64 or any(c not in '0123456789abcdef' for c in ref)):
                 raise ValueError('Invalid financial revision')
         return selection
@@ -187,9 +205,13 @@ def decode_selection(token, prime, year):
         raise ValueError('Invalid report revision selection') from exc
 
 
-def statements(prime, year, as_of, publications, *, exact=False, selection=None):
+def statements(prime, year, as_of, publications, *, exact=False, selection=None, monthly=False):
     """Read projection of saved financial metrics, with immutable export selection."""
-    policy_version = selection['policy_version'] if selection else POLICY_VERSION
+    policy_version = selection['policy_version'] if selection else STATEMENT_POLICY if monthly else POLICY_VERSION
+    monthly = policy_version == STATEMENT_POLICY
+    if monthly:
+        from .monthly_reports import select
+        monthly_chosen = select(prime, year, as_of, selection)
     chosen, periods = [], []
     for month in range(1, 13):
         start = date(year, month, 1)
@@ -217,13 +239,26 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None)
                         'actual_cutoff': item['cutoff'] if item else None,
                         'financial_revision': item['revision_id'] if item else None,
                         'stale': bool(item and item['cutoff'] < str(requested))})
+        if monthly:
+            report = monthly_chosen[month - 1]
+            periods[-1]['monthly_revision'] = report['revision_id'] if report else None
+            if report:
+                periods[-1].update(actual_cutoff=report['cutoff'], stale=False)
     manifest = {'prime': prime, 'year': year, 'as_of': str(as_of), 'exact': exact,
                 'policy_version': policy_version, 'revisions': [p['revision_id'] if p else None for p in chosen]}
+    if monthly:
+        manifest['monthly_revisions'] = [p['revision_id'] if p else None for p in monthly_chosen]
     lines = []
     for definition in taxonomy(prime, policy_version):
         key = definition['id']
-        cells = [p['document']['metrics'][key] if p else metric(reason='future_period' if periods[i]['state'] == 'future'
+        cells = [p['document']['metrics'].get(key, metric(reason='monthly_summary_not_published')) if p else metric(reason='future_period' if periods[i]['state'] == 'future'
                   else 'source_not_published') for i, p in enumerate(chosen)]
+        if monthly:
+            for i, report in enumerate(monthly_chosen):
+                if chosen[i]:
+                    cells[i] = {**cells[i], 'source_ref': chosen[i]['revision_id']}
+                if report and key in report['metrics']:
+                    cells[i] = report['metrics'][key]
         for index, period in enumerate(periods):
             if period['state'] == 'future':
                 cells[index] = {**cells[index], 'status': 'future'}
@@ -250,4 +285,6 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None)
               'total_label': 'FY' if as_of >= date(year, 12, 31) else 'YTD',
               'source_manifest': {p['revision_id']: {'cutoff': p['cutoff'], **p['document']['source']} for p in chosen if p},
               'selection': selection_token(manifest), 'perimeter': 'operational_prime_management_reporting'}
+    if monthly:
+        result['source_manifest'].update({p['revision_id']: p['source'] for p in monthly_chosen if p})
     return {**result, 'report_hash': digest(result)}
