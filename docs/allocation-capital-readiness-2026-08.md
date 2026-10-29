@@ -45,12 +45,12 @@ Reinvested gains are excluded. Published revenue, settlement amounts and API out
 | grove | E40 | USDS raw (Diamond PAU ALM idle) | $0.00 | $0.00 | no principal in period |
 | grove | E41 | JTRSY Basin escrow — USDS pending subscription (Diamond PAU) | — | — | covered by boundary: E_JTRSY_BASIN |
 | grove | E42 | Galaxy Warehouse (off-chain facility — cash distribution to Grove Eth ALM) | $303,957,414.96 | $942,395.59 | calculable under assumption |
-| grove | E12_PAU | Additional tracked custody account | $395,764.19 | — | deduction or revenue metadata pending |
-| grove | E14_PAU_CASH | Additional tracked custody account | $16,126.10 | — | deduction or revenue metadata pending |
-| grove | E15_PAU_CASH | Additional tracked custody account | $16,128.41 | — | deduction or revenue metadata pending |
-| grove | E_BUIDL_BASIN | Additional tracked custody account | $1.00 | — | deduction or revenue metadata pending |
-| grove | E_JTRSY_BASIN | Additional tracked custody account | $3,369,506.03 | — | deduction or revenue metadata pending |
-| grove | E_PAXOS_BRIDGE | Additional tracked custody account | $15,000,100.00 | — | deduction or revenue metadata pending |
+| grove | E12_PAU | Diamond PAU Uniswap V3 AUSD/USDC | $395,764.19 | $1,228.55 | calculable under assumption |
+| grove | E14_PAU_CASH | Diamond PAU idle AUSD | $16,126.10 | $49.83 | calculable under assumption |
+| grove | E15_PAU_CASH | Diamond PAU idle USDC | $16,128.41 | $49.84 | calculable under assumption |
+| grove | E_BUIDL_BASIN | Diamond PAU BUIDL Basin | $1.00 | $0.00 | calculable under assumption |
+| grove | E_JTRSY_BASIN | Diamond PAU JTRSY Basin | $3,369,506.03 | $10,456.37 | calculable under assumption |
+| grove | E_PAXOS_BRIDGE | Paxos USDC bridge entrypoint | $15,000,100.00 | $46,506.61 | calculable under assumption |
 | spark | S1 | Spark USDS (SparkLend spToken) | $764,320,006.90 | — | savings split pending |
 | spark | S2 | Spark USDC (SparkLend spToken) | $4,141,253.59 | — | savings split pending |
 | spark | S3 | Spark USDT (SparkLend spToken) | $329,358,955.84 | — | savings split pending |
@@ -147,7 +147,7 @@ Reinvested gains are excluded. Published revenue, settlement amounts and API out
 - Calculable means conditional on the operator-confirmed funding assumption and normalized movements, not independently proven funding origin.
 - Principal is carried through reallocation; classified rewards and realized gains do not become borrowing. Passive NAV growth adds no principal.
 - Savings dependency is tested throughout August, propagates through transfers, and clears on a full exit. Mixed transactions are conservative; this does not claim a Savings percentage.
-- EOA interiors are covered by their boundary, not charged again as independent allocations. Additional custody rows are retained separately; some still need deduction metadata.
+- EOA interiors are covered by their boundary, not charged again as independent allocations. Known Grove PAU/Basin/Paxos custody rows use their existing financing rules even without a revenue row. Missing revenue still leaves their net PnL unavailable.
 - The existing accepted full-principal Anchorage return policy is reused. Its remaining blocker here is the Savings split.
 - Exact available daily idle-USDS and SDE deductions are applied. The charge cannot be negative; excess deduction credit is recorded separately in JSON for the global reconciliation adjustment.
 - Zero principal and exempt USDS have zero borrowing cost. Income-only rows and Savings liabilities are not independent investment allocations.

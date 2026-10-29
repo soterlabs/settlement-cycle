@@ -24,6 +24,31 @@ from settle.normalize.allocation_history_cache import load_history
 ZERO = D(0)
 EPS = D("1e-8")
 
+# These accounts were introduced by the existing custody adapters, not by
+# the revenue report. Missing a revenue row does not exempt their principal
+# or prevent computing its charge. Their tokens/policies are documented in
+# normalize/allocation_capital.py, normalize/allocation_basin.py,
+# normalize/allocation_paxos.py and compute/grove_secondary_cash.py.
+GROVE_EXTRA_LABELS = {
+    "E12_PAU": "Diamond PAU Uniswap V3 AUSD/USDC",
+    "E14_PAU_CASH": "Diamond PAU idle AUSD",
+    "E15_PAU_CASH": "Diamond PAU idle USDC",
+    "E_BUIDL_BASIN": "Diamond PAU BUIDL Basin",
+    "E_JTRSY_BASIN": "Diamond PAU JTRSY Basin",
+    "E_PAXOS_BRIDGE": "Paxos USDC bridge entrypoint",
+}
+
+
+def known_extra_policy(prime_id, venue, end):
+    if prime_id != "grove" or venue not in GROVE_EXTRA_LABELS:
+        return False
+    # AUSD/USDC cash and the AUSD/USDC NFT pool have no idle-USDS
+    # exemption. Paxos follows the already agreed deposit-EOA boundary.
+    # Basin's capped, GROVE-A-only idle-USDS exemption begins September 1
+    # (config/grove.yaml). Do not apply it to August or silently omit it
+    # for later reports that have not supplied the attributable deduction.
+    return venue not in {"E_BUIDL_BASIN", "E_JTRSY_BASIN"} or end < date(2026, 9, 1)
+
 
 def coalesce(movements):
     """Net continuous same-tx custody legs (e.g. NFT collect then forwarding)."""
@@ -186,7 +211,9 @@ def report(prime_id, history, control, idle_control, start, end):
         ) + history.custody_accounts.get(vid, [])
         r = {
             "venue": vid,
-            "label": cfg.label if cfg else "Additional tracked custody account",
+            "label": cfg.label
+            if cfg
+            else GROVE_EXTRA_LABELS.get(vid, "Additional tracked custody account"),
             "status": None,
             "cost_of_funds": None,
             "revenue": revenues.get(vid, {}).get("revenue"),
@@ -249,6 +276,7 @@ def report(prime_id, history, control, idle_control, start, end):
             elif deduction_missing or (
                 revenue is None
                 and (cfg is None or cfg.sky_direct or cfg.curve_idle_usds or cfg.lending_idle_usds)
+                and not known_extra_policy(prime_id, vid, end)
             ):
                 r["status"] = "deduction_or_revenue_metadata_pending"
             else:
@@ -315,7 +343,7 @@ def markdown(results):
         "- Calculable means conditional on the operator-confirmed funding assumption and normalized movements, not independently proven funding origin.",
         "- Principal is carried through reallocation; classified rewards and realized gains do not become borrowing. Passive NAV growth adds no principal.",
         "- Savings dependency is tested throughout August, propagates through transfers, and clears on a full exit. Mixed transactions are conservative; this does not claim a Savings percentage.",
-        "- EOA interiors are covered by their boundary, not charged again as independent allocations. Additional custody rows are retained separately; some still need deduction metadata.",
+        "- EOA interiors are covered by their boundary, not charged again as independent allocations. Known Grove PAU/Basin/Paxos custody rows use their existing financing rules even without a revenue row. Missing revenue still leaves their net PnL unavailable.",
         "- The existing accepted full-principal Anchorage return policy is reused. Its remaining blocker here is the Savings split.",
         "- Exact available daily idle-USDS and SDE deductions are applied. The charge cannot be negative; excess deduction credit is recorded separately in JSON for the global reconciliation adjustment.",
         "- Zero principal and exempt USDS have zero borrowing cost. Income-only rows and Savings liabilities are not independent investment allocations.",

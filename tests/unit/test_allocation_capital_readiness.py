@@ -180,3 +180,31 @@ def test_report_reuses_revenue_but_withholds_savings_cost(monkeypatch, savings):
     else:
         assert D(row["cost_of_funds"]) == 1
         assert D(row["net_pnl"]) == 6
+
+
+@pytest.mark.parametrize("venue", list(module.GROVE_EXTRA_LABELS))
+def test_grove_tracking_account_needs_no_revenue_row_to_compute_cost(monkeypatch, venue):
+    monkeypatch.setattr(module, "load_prime_by_id", lambda _: SimpleNamespace(venues=[]))
+    history = CapitalHistory(
+        (batch(1, [("a", 0, 100, 0)]),), {venue: "a"}, {}, analytics_only_venues=(venue,)
+    )
+    control = {
+        "prime_id": "grove",
+        "period": {"start": "2026-08-01", "end": "2026-08-01"},
+        "sky_revenue_daily": [{"date": "2026-08-01", "daily_sky_rev": "1", "utilized": "100"}],
+        "venue_breakdown": [],
+    }
+    row = module.report(
+        "grove", history, control, {"daily": {}}, date(2026, 8, 1), date(2026, 8, 1)
+    )["allocations"][0]
+    assert row["status"] == "calculable_under_assumption"
+    assert D(row["cost_of_funds"]) == 1
+    assert row["revenue"] is None
+    assert row["net_pnl"] is None
+
+
+def test_basin_exemption_is_not_backdated_or_silently_omitted_after_september():
+    assert module.known_extra_policy("grove", "E_JTRSY_BASIN", date(2026, 8, 31))
+    assert not module.known_extra_policy("grove", "E_JTRSY_BASIN", date(2026, 9, 1))
+    assert not module.known_extra_policy("grove", "unknown", date(2026, 8, 31))
+    assert not module.known_extra_policy("spark", "E_PAXOS_BRIDGE", date(2026, 8, 31))
