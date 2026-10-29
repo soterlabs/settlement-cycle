@@ -104,7 +104,7 @@ def test_read_api_guards_and_etag(monkeypatch):
     from settle.api import revenue
     monkeypatch.setattr(revenue, 'today', lambda: date(2026, 10, 28))
     class Reader:
-        def financial_year(self, prime, year, revisions=None):
+        def financial_year(self, prime, year, revisions=None, policy_version=None):
             return [publication()]
     client = TestClient(create_app(reader=Reader()))
     path = '/v3/reporting/statements?prime=obex&year=2026'

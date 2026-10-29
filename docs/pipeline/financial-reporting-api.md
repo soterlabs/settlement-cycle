@@ -1,7 +1,8 @@
 # Financial reporting API — contract and policies
 
 The read-only v3 API derives individual operational-prime management metrics from
-immutable saved revenue results. It makes no provider calls. V1 settlement and
+immutable saved revenue results and pinned published monthly settlement summaries.
+It makes no provider calls. V1 settlement and
 v2 venue reporting contracts remain unchanged. This is an incomplete management
 report, not an entity income statement, entity assets or NAV.
 
@@ -21,15 +22,19 @@ known value as a complete total.
 
 | Line ID | Measurement |
 | --- | --- |
-| `demand.agent_rate` | Saved accrued agent-rate protocol entitlement |
-| `funding.sky.net` | `sky_revenue - sde_revenue` |
+| `demand.agent_rate` | Published monthly agent rate; otherwise saved MTD accrued entitlement |
+| `demand.distribution_rewards` | Published monthly distribution rewards |
+| `demand.total` | Published demand-side headline, including applicable GAR/Chronicle Points |
+| `demand.gar` | Published governance accessibility rewards; Skybase only |
+| `funding.sky.net` | Published monthly prime cost of funds; otherwise `sky_revenue - sde_revenue` |
 | `funding.sky.gross` | Net funding plus saved sUSDS spread reimbursement |
 | `funding.sky.reimbursement` | Saved reimbursement, a deduction from gross |
 | `investment.maple_syrup_usdc` | Obex V1 revenue minus external rewards, after embedded vault fees; unsupported for other primes |
 
 These are components. Gross and net funding are alternative presentations, not
-additive expenses. Parent interest expense, revenue, DR, tax and net income
-remain unavailable. Obex's approved income is explicitly *net investment income*,
+additive expenses. Parent interest expense, total revenue, tax and net income
+remain unavailable. DR and demand-side revenue require a published monthly summary;
+missing or unfinalized months remain unavailable. Obex's approved income is explicitly *net investment income*,
 not gross interest. DR excluded by the saved pipeline is never a certified zero.
 
 Closed months require an exact month-end publication. The current month uses the
@@ -44,7 +49,8 @@ identifies selected dates where a newer raw source awaits financial publication.
 
 Use the returned opaque `selection` as `revision` to retain the exact annual
 report: `GET /v3/reporting/statements?prime=obex&year=2026&revision=TOKEN`.
-It freezes all 12 selected financial revisions, including missing slots. It is
+It freezes all 12 selected financial revisions and, under the monthly statement
+policy, all 12 monthly summary revisions, including missing slots in both sources. It is
 an encoded selection, not an authentication token. Do not construct it in clients.
 `revision` and `cutoff` are mutually exclusive. The `report_hash` covers the
 stable statement document, excluding itself and dynamic `source_lag_periods`.
@@ -73,7 +79,9 @@ returns 503. Responses support conditional GET with ETags.
 
 ## Publication and backfill
 
-Current policy: `prime-management.allocations.v2.1`; retained allocation policy: `prime-management.allocations.v2`; retained first-slice policy: `prime-management.first-slice.v1`. A changed measurement policy requires
+Current daily/portfolio policy: `prime-management.allocations.v2.1`;
+current annual statement composition policy: `prime-management.statement-rollups.v3.1`;
+retained monthly composition policy: `prime-management.monthly-statements.v3`; retained allocation policy: `prime-management.allocations.v2`; retained first-slice policy: `prime-management.first-slice.v1`. A changed measurement policy requires
 a new version. Financial revisions key the source revision/hash plus policy;
 corrections append new documents and retain previous ones.
 
@@ -139,3 +147,106 @@ $406,996,930.93. These values are October 1–26 MTD, not a complete month or YT
 The [allocation policy guide](financial-allocation-reporting.md) documents the broader
 Spark/Grove/Osero mappings, separate reward recognition, issuer claims, exact
 portfolio membership and backwards-compatible policy upgrade.
+
+
+## Published monthly history (monthly-statements.v3)
+
+The API package includes 48 immutable `summary.md` sources from
+[soterlabs/settlement-reports at 66854e8](https://github.com/soterlabs/settlement-reports/tree/66854e865be5d6972a975a5069de56a3c83c2704/reports).
+This initial slice covers January–September 2026 for Spark, Grove, Obex, Keel
+and Skybase, and July–September for Osero. There are no Osero January–June
+summaries in this snapshot; those cells remain unavailable. Skybase GAR is
+available only where an explicit GAR row exists (January–July in this snapshot);
+its absence in August/September is not treated as a published zero.
+
+For each closed month, its published headline supplies DR, demand-side revenue,
+AR and net Sky funding (`prime cost of funds`, excluding Sky direct exposure).
+Grove's explicitly published Chronicle Points and Skybase's explicitly published
+GAR are included where present. Source amounts are rounded to cents, denominated
+in USDS and displayed as USD at par; this conversion and precision are disclosed
+in the manifest. The published total is retained exactly, allowing only the
+rounding difference between independently rounded components. Supply-side
+settlement profit and per-venue settlement revenue are **not** reclassified as
+accrued investment income. Gross funding and reimbursement are not inferred from
+missing headline fields.
+
+Monthly headline fields override corresponding month-end daily fields; other
+approved daily allocation metrics remain intact. Open-month MTD metrics continue
+using existing publications. DR and demand-side MTD remain unavailable until a
+closed monthly summary is included. Historical detailed allocation figures remain
+unavailable when there is no approved daily financial publication. No daily
+source backfill, rate request, database migration or recomputation is needed for
+the included monthly headline history. This adds no new daily processing; it
+does not remove the existing current-month daily pipeline.
+
+Periods add `monthly_revision` alongside `financial_revision`. A January period
+can therefore have a monthly revision and an actual month-end cutoff with no
+daily financial revision. Each available monthly metric has a `source_ref` into
+`source_manifest`, identifying whether that particular cell uses an immutable
+monthly summary or a daily financial publication. Monthly manifest entries have
+`kind: published_monthly_summary`, repository, full commit, path, Git blob SHA,
+SHA-256 `result_hash`, cutoff, currency, precision and source URL. Saved report
+selections pin both source sets; old policies/selections remain unchanged.
+Portfolio and settlement endpoints are unaffected.
+
+### Adding or correcting monthly sources
+
+This slice intentionally uses a reviewed bundled snapshot; it does not poll GitHub
+at request time or automatically follow mutable main. To capture a new source
+commit, use an authenticated GitHub CLI session and run:
+
+```sh
+python scripts/snapshot_monthly_reports.py --commit FULL_40_HEX_SHA \
+  --output src/settle/revenue/published_monthly/FULL_40_HEX_SHA.json
+```
+
+Append its SHA to `monthly_reports.SNAPSHOTS` (oldest to newest), retaining every
+previous snapshot so pinned exports remain replayable. The newest snapshot
+selects the active prime/month heads. All source bytes, period identities,
+demand components, precision and both demand-side/Sky-side rounding bridges are validated on load. Test
+`tests/unit/test_monthly_reports.py`, review changed values and deploy the API
+through the normal reviewed release. No database import job is needed. Merely
+opening this PR does not publish these figures to the live API.
+
+## Explicit dashboard rollups (statement-rollups.v3.1)
+
+Annual statements now default to `prime-management.statement-rollups.v3.1`.
+This composes the same pinned monthly summaries and v2.1 financial documents;
+no new daily calculations, source backfill or database migration is required.
+Retained v1/v2/v2.1/monthly-v3 selections preserve their exact original reports.
+The dashboard consumer must support this policy before the API default deploys.
+
+New `statement.*` lines declare signed `components` and expose per-cell
+`source_refs`, `missing_components`, `component_ids`, `status`, `value` and
+`known_value`. `value` is available only when every required component is known.
+Partial amounts have null `value`, `status: partial` and a separately labelled
+`known_value`; that amount is the signed sum of known components, not a full
+total, a lower bound or confirmed profit. Known zeroes and negative values remain
+valid amounts. Annual known portions include partially known months once each;
+future months contribute nothing.
+
+| Line | Explicit composition |
+| --- | --- |
+| `statement.demand` | Published demand-side headline when available; otherwise known AR/DR and applicable Skybase GAR or Grove Chronicle Points |
+| `statement.family.*` | Reviewed native-income leaves in that named family |
+| `statement.interest` | Reviewed native-income leaves plus an unknown remainder for unclassified allocation income |
+| `statement.rewards` | Reviewed lending distributions and issuer compensation, plus an unknown remainder |
+| `statement.noninterest_income` | Demand-side revenue + rewards + unclassified protocol fees, curator fees and non-stable gains |
+| `statement.funding` | Net Sky funding + an unknown remainder for other funding |
+| `statement.net_interest` | Allocation income minus funding expense |
+| `statement.net_revenue` | Noninterest income + net interest income |
+| `statement.noninterest_expense` | Operating/other expenses, incentive costs, distribution costs and credit impairment; currently unclassified |
+| `statement.net_income` | Net revenue minus noninterest expenses and income tax |
+
+Family and reviewed subtotals are alternate presentations; they never enter the
+same rollup as their own leaves. Multiple deployments already combined into one
+business-income leaf are counted once. Published demand totals retain their
+independently rounded headline amount rather than recomputing it from rounded
+children. Aggregates spanning accrual and receipt components disclose
+`recognition: mixed_management_components`; they do not certify pure accrued
+income. Broad entity totals remain partial until the unclassified perimeter is
+resolved by a future reviewed policy.
+
+The dashboard hides the gross-funding and spread-reimbursement rows but the API
+retains those reconciliation metrics. It also hides pre-tax, tax and impairment
+rows; this does not assume the corresponding costs are zero in net income.
