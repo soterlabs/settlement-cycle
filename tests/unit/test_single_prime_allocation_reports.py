@@ -73,3 +73,27 @@ def test_single_prime_reports_and_publication(tmp_path, monkeypatch, prime, venu
         '--output', str(ready), '--markdown', str(tmp_path / 'capital.md')])
     with pytest.raises(ValueError, match='settlement pins'):
         capital.main()
+
+
+@pytest.mark.parametrize('prime', ['osero', 'obex'])
+def test_september_frozen_inputs_reproduce_published_candidate(prime):
+    from settle.normalize.allocation_history_cache import load_history
+    root = Path('reconciliation/monthly-allocation-inputs') / prime / '2026-09'
+    history_path = root / 'history.jsonl.gz'
+    with gzip.open(history_path, 'rt') as f:
+        key = json.loads(next(f))['fingerprint']
+    history = load_history(history_path, key)
+    control_path = Path('reconciliation/monthly-allocation-controls') / prime / '2026-09/provenance.json'
+    control = json.loads(control_path.read_text())
+    idle = json.loads((root / 'idle_deductions.json').read_text())
+    assert idle['control_sha256'] == hashlib.sha256(control_path.read_bytes()).hexdigest()
+    capital.validate_history_manifest(json.loads((root / 'pins.json').read_text()), prime=prime,
+        end=date(2026, 9, 30), control=control, history_sha256=hashlib.sha256(history_path.read_bytes()).hexdigest())
+    computed = capital.report(prime, history, control, idle, date(2026, 9, 1), date(2026, 9, 30))
+    saved = json.loads(gzip.decompress(Path(f'reconciliation/allocation_capital_readiness_{prime}_2026_09.json.gz').read_bytes()))
+    assert computed == saved['results'][0]
+    candidate = json.loads(Path(f'reconciliation/allocation_yields_{prime}_2026_09.json').read_text())
+    assert yields.build(saved, {prime: control})['results'] == candidate['results']
+    # Global financing and original-capital costs intentionally remain distinct.
+    total = sum((D(r['cost_of_funds']) for r in computed['allocations']), D(0))
+    assert D(control['results']['sky_revenue']) > total
