@@ -34,3 +34,23 @@ def test_join_and_projection_cannot_reuse_normal_log_cache():
     projected = hypersync_store._stream_key(*args, join_mode='JoinAll', result_topic0='0xaaa')
     other = hypersync_store._stream_key(*args, join_mode='JoinAll', result_topic0='0xbbb')
     assert len({normal, joined, projected, other}) == 4
+
+
+def test_larger_log_pages_keep_selection_and_page_boundaries(monkeypatch):
+    monkeypatch.setenv('ENVIO_API_TOKEN', 'test')
+    monkeypatch.setattr(postgres_store, '_get_conn', lambda: None)
+    calls = []
+    def post(url, *, json, **kwargs):
+        calls.append(json)
+        assert json['max_num_logs'] == 100_000
+        block = json['from_block']
+        return SimpleNamespace(status_code=200, ok=True, json=lambda: {
+            'archive_height': 1000, 'next_block': block + 1,
+            'data': [{'blocks': [{'number': block, 'timestamp': 123 + block}],
+                      'logs': [{'block_number': block, 'log_index': 1,
+                                'address': '0xabc', 'topic0': '0xmint'}]}],
+        })
+    rows = hypersync_store.fetch_logs('base', [{'address': ['0xabc']}], 10, 11,
+                                     max_num_logs=100_000, post=post)
+    assert [row.block_number for row in rows] == [10, 11]
+    assert [call['from_block'] for call in calls] == [10, 11]

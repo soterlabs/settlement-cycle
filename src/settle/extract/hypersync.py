@@ -129,6 +129,7 @@ def query_logs(
     block_fields: list[str] | None = None,
     join_mode: str | None = None,
     result_topic0: str | None = None,
+    max_num_logs: int | None = None,
     post: Callable[..., Any] = requests.post,
 ) -> QueryResult:
     """Fetch all logs matching ``selections`` in ``[from_block, to_block]`` (inclusive).
@@ -158,6 +159,10 @@ def query_logs(
             # the cursor. Larger bounded pages preserve the same selection.
             base.update(max_num_logs=100_000, max_num_blocks=100_000,
                         max_num_transactions=100_000)
+    if max_num_logs is not None:
+        if not 1 <= max_num_logs <= 100_000:
+            raise ValueError("max_num_logs must be between 1 and 100000")
+        base["max_num_logs"] = max_num_logs
     result = QueryResult()
     cursor = from_block
     end_exclusive = to_block + 1  # HyperSync to_block is exclusive

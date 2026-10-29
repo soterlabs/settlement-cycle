@@ -62,3 +62,45 @@ def test_restart_reuses_pins_after_accounting_failure(monkeypatch, tmp_path):
                         SimpleNamespace(unmatched_receipts=[], unmatched_outflows=[]))
     runner.main()
     assert json.loads((tmp_path / 'status.json').read_text())['status'] == 'completed'
+
+
+def test_capture_uses_settlement_pins_without_origin_replay(monkeypatch, tmp_path):
+    from settle.domain.config import load_prime_by_id
+
+    path = Path(__file__).parents[2] / 'scripts/validate_allocation_capital.py'
+    spec = importlib.util.spec_from_file_location('allocation_validation_capture', path)
+    runner = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(runner)
+    control = tmp_path / 'provenance.json'
+    control.write_text(json.dumps({'prime_id': 'spark', 'period': {
+        'start': '2026-09-01', 'end': '2026-09-30'}, 'pin_blocks_eom': {'ethereum': 123}}))
+    output = tmp_path / 'history'
+    monkeypatch.setenv('DATABASE_URL', 'postgresql://unused')
+    monkeypatch.setenv('SETTLE_REQUIRE_POSTGRES', '0')
+    monkeypatch.delenv('HYPERSYNC_NO_STORE', raising=False)
+    monkeypatch.setattr('sys.argv', [str(path), 'spark', '--start', '2026-09-01',
+        '--end', '2026-09-30', '--output-dir', str(output), '--provenance', str(control),
+        '--capture-only'])
+    monkeypatch.setattr(runner, 'fingerprint', lambda *args: 'test-fingerprint')
+
+    def fetch(prime, pins, **kwargs):
+        assert all(v.chain == Chain.ETHEREUM for v in prime.venues)
+        assert pins == {Chain.ETHEREUM: 123}
+        return CapitalHistory((), {}, {})
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Capture must not resolve fresh pins or replay funding origins')
+
+    monkeypatch.setattr(runner, 'fetch_capital_history', fetch)
+    monkeypatch.setattr(runner, 'replay_history', forbidden)
+    monkeypatch.setattr(runner, 'HyperSyncBlockResolver', lambda: SimpleNamespace(block_at_or_before=forbidden))
+    runner.main()
+    manifest = json.loads((output / 'pins.json').read_text())
+    assert manifest['pins'] == {'ethereum': 123}
+    result = json.loads((output / 'result.json').read_text())
+    assert result['normalized_only'] is True
+    omitted = {v.id for v in load_prime_by_id('spark').venues if v.chain != Chain.ETHEREUM}
+    assert set(result['unsupported']) == omitted
+    control.write_text(control.read_text().replace('123', '124'))
+    with pytest.raises(SystemExit):
+        runner.main()

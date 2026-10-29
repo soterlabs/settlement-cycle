@@ -161,6 +161,22 @@ def _capital_unit_price(venue, block, *, block_resolver=None):
     return price
 
 
+class EventBlockResolver:
+    """Reuse the block time already returned with this transaction's logs."""
+
+    def __init__(self, delegate, chain, block, timestamp):
+        self.delegate, self.chain, self.block = delegate, chain, block
+        self.timestamp = timestamp
+
+    def block_to_date(self, chain, block):
+        if getattr(chain, "value", chain) == self.chain.value and block == self.block:
+            return datetime.fromtimestamp(self.timestamp, UTC).date()
+        return self.delegate.block_to_date(chain, block)
+
+    def __getattr__(self, name):
+        return getattr(self.delegate, name)
+
+
 def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                           block_resolver=None) -> CapitalHistory:
     """Read funded holdings and frob draws without changing the debt source.
@@ -190,7 +206,10 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
     custody_accounts: dict[str, list[str]] = defaultdict(list)
     for v in prime.venues:
         v = _capital_venue(v)
-        if v.skip:
+        if v.skip or v.incentive is not None:
+            # Issuer-incentive rows are receivables on existing positions,
+            # not a second holding of the same token at the ALM. In
+            # particular Spark S67/S68 reuse S64/S28's custody accounts.
             continue
         if v.holder_override and v.pricing_category == PricingCategory.RWA_TRANCHE and is_par_stable(v.token):
             unsupported[v.id] = 'Pass-through custody does not measure outstanding loan principal'
@@ -268,6 +287,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
         logs = hypersync_store.fetch_logs(
             chain.value, selections, 0, pins[chain],
             log_fields=[*hypersync._DEFAULT_LOG_FIELDS, "transaction_hash"],
+            max_num_logs=100_000,
         )
         logs = [*logs, *nft.discover(logs, pins[chain])]
         if prime.id == "grove" and chain == Chain.ETHEREUM:
@@ -312,6 +332,10 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
             if batch_index and batch_index % 100 == 0:
                 _log.info("Capital history %s/%s: %d/%d", prime.id, chain, batch_index, len(ordered_groups))
             block_logs = list({r.log_index: r for r in block_logs}.values())
+            timestamps = {r.block_time for r in block_logs}
+            if len(timestamps) != 1:
+                raise ValueError("Inconsistent block timestamps in capital transaction")
+            event_resolver = EventBlockResolver(block_resolver, chain, block, next(iter(timestamps)))
             fee_shares = fee_mints(chain, block_logs, mapping)
             async_selected = async_vaults.prepare(block_logs)
             async_movements, async_deposits = async_vaults.movements(async_selected)
@@ -432,7 +456,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                 else:
                     price = async_vaults.price(key, block)
                     if price is None:
-                        price = _capital_unit_price(v, block, block_resolver=block_resolver)
+                        price = _capital_unit_price(v, block, block_resolver=event_resolver)
                 value_before = Decimal(units[key]) * price / scale
                 transaction_prices[key[0]] = price
                 change = Decimal(raw_change) * price / scale
@@ -482,7 +506,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                     _account(chain, v.token.address, holder), value_before, change, gift,
                 ))
             def psm_asset_value(token, amount, *, chain=chain, block=block,
-                                transaction_prices=transaction_prices):
+                                transaction_prices=transaction_prices, event_resolver=event_resolver):
                 from ..domain.sky_tokens import PSM3_LEG_TOKENS
 
                 leg = next((t for t in PSM3_LEG_TOKENS.get(chain, {}).values()
@@ -495,7 +519,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                     # account pays. Such funding remains unmatched in replay.
                     venue = Venue(id='psm-leg', chain=chain, token=leg,
                                   pricing_category=PricingCategory.PAR_STABLE)
-                    price = _capital_unit_price(venue, block, block_resolver=block_resolver)
+                    price = _capital_unit_price(venue, block, block_resolver=event_resolver)
                 return Decimal(amount) * price / Decimal(10**leg.decimals)
 
             movements.extend(psm.movements(block_logs, psm_asset_value))
@@ -578,7 +602,7 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                 if returned > old:
                     raise ValueError(f"Queue refund exceeds owned shares: {tx_hash}")
                 v = mapping[key]
-                price = _capital_unit_price(v, block, block_resolver=block_resolver)
+                price = _capital_unit_price(v, block, block_resolver=event_resolver)
                 scale = Decimal(10**v.token.decimals)
                 account = f"queue:{chain.value}:{queue}:{owner}:{key[0]}"
                 movements.append(AssetMovement(account, Decimal(old) * price / scale,

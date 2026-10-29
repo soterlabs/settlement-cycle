@@ -87,6 +87,7 @@ def capital_timeline(history, start, end):
         a for values in history.custody_accounts.values() for a in values
     }
     basis, seen_accounts, savings, issues = defaultdict(D), set(), set(), defaultdict(set)
+    observed_values = defaultdict(D)
     rows, seen = {}, set()
     batches = iter(
         sorted(history.batches, key=lambda b: (b.timestamp, b.chain, b.block, b.log_index))
@@ -120,6 +121,7 @@ def capital_timeline(history, start, end):
                     ):
                         raise ValueError("Invalid movement value")
                     a = m.account
+                    observed_values[a] = m.value_before + m.change
                     if a not in seen_accounts and m.value_before > EPS:
                         issues[a].add("missing_opening_capital")
                     seen_accounts.add(a)
@@ -159,6 +161,7 @@ def capital_timeline(history, start, end):
             rows[str(day)] = {
                 a: {
                     "principal": str(basis[a]),
+                    "observed_value": str(observed_values[a]),
                     "savings_dependency": a in savings,
                     "issues": sorted(issues[a]),
                 }
@@ -197,8 +200,11 @@ def report(prime_id, history, control, idle_control, start, end):
         vid: {date.fromisoformat(day): D(value) for day, value in values.items()}
         for vid, values in idle_control["daily"].items()
     }
-    if any(not value.is_finite() or value < 0
-           for values in idle_values.values() for value in values.values()):
+    if any(
+        not value.is_finite() or value < 0
+        for values in idle_values.values()
+        for value in values.values()
+    ):
         raise ValueError("Invalid daily idle deduction")
     # A source hash authenticates the control, not the extracted deduction
     # values. Reconcile those values before using them to price allocations.
@@ -246,7 +252,8 @@ def report(prime_id, history, control, idle_control, start, end):
                 "savings_liability"
                 if prime_id == "spark" and vid in {"S56", "S57", "S58", "S59", "S60", "S63"}
                 else "income_only"
-                if prime_id == "grove" and vid == "E38"
+                if (prime_id == "grove" and vid == "E38")
+                or (cfg and getattr(cfg, "incentive", None) is not None)
                 else "missing_capital_history"
             )
         else:
@@ -260,6 +267,13 @@ def report(prime_id, history, control, idle_control, start, end):
                 savings_dependency_days=deps,
                 measurement_issues=errors,
             )
+            if accounts and all(a.startswith("facility:") for a in accounts) and not errors:
+                # A cash-recognized loan's facility claim is outstanding
+                # principal, unlike the temporary balance in its payment EOA.
+                r["average_facility_exposure"] = str(
+                    sum((D(daily[d][a]["observed_value"]) for d in days for a in accounts), ZERO)
+                    / len(days)
+                )
             revenue = revenues.get(vid)
             exclusion = (
                 bool(revenue and revenue.get("cof_excluded"))
@@ -325,7 +339,7 @@ def report(prime_id, history, control, idle_control, start, end):
             "Assumption-based diagnostic; not a new production charge or a certified global debt reconciliation.",
             "Potential Savings dependencies propagate conservatively across mixed transactions, not quantified Savings balances.",
             "Refinancing Savings and debt repayments need separate attribution; original capital is not outstanding ilk debt.",
-            "Uses frozen normalized history and published August revenue/rates; no RPC or revenue regeneration.",
+            f"Uses normalized history through {end} and published {start:%Y-%m} revenue/rates; no revenue regeneration.",
             "Costs reuse the existing daily effective blended rate and exact available dollar deductions.",
             "Deductions are capped at allocation principal for its charge; excess deduction credit remains explicitly separate for the global bridge.",
         ],
@@ -334,14 +348,15 @@ def report(prime_id, history, control, idle_control, start, end):
 
 
 def markdown(results):
+    month_label = date.fromisoformat(results[0]["start"]).strftime("%B %Y")
     lines = [
-        "# Allocation capital and borrowing-cost readiness — August 2026",
+        f"# Allocation capital and borrowing-cost readiness — {month_label}",
         "",
-        "Daily principal history: January 1-August 31. Costs: August only, under the operator-confirmed funding assumption.",
+        f"Daily principal history: January 1-{results[0]['end']}. Costs: {month_label}, under the operator-confirmed funding assumption.",
         "Savings dependency means a possible mixture, not proof that the entire position is Savings-funded.",
         "Reinvested gains are excluded. Published revenue, settlement amounts and API outputs are unchanged.",
         "",
-        "| Prime | Venue | Allocation | August average principal | August borrowing cost | Status |",
+        "| Prime | Venue | Allocation | Monthly average principal | Monthly borrowing cost | Status |",
         "|---|---|---|---:|---:|---|",
     ]
     for result in results:
@@ -360,7 +375,7 @@ def markdown(results):
         "",
         "- Calculable means conditional on the operator-confirmed funding assumption and normalized movements, not independently proven funding origin.",
         "- Principal is carried through reallocation; classified rewards and realized gains do not become borrowing. Passive NAV growth adds no principal.",
-        "- Savings dependency is tested throughout August, propagates through transfers, and clears on a full exit. Mixed transactions are conservative; this does not claim a Savings percentage.",
+        "- Savings dependency is tested throughout the selected month, propagates through transfers, and clears on a full exit. Mixed transactions are conservative; this does not claim a Savings percentage.",
         "- EOA interiors are covered by their boundary, not charged again as independent allocations. Known Grove PAU/Basin/Paxos custody rows use their existing financing rules even without a revenue row. Missing revenue still leaves their net PnL unavailable.",
         "- The existing accepted full-principal Anchorage return policy is reused. Its remaining blocker here is the Savings split.",
         "- Exact available daily idle-USDS and SDE deductions are applied. The charge cannot be negative; excess deduction credit is recorded separately in JSON for the global reconciliation adjustment.",
@@ -369,23 +384,32 @@ def markdown(results):
         "",
         "## Reproduce from existing snapshots",
         "",
-        "```sh",
-        "PYTHONPATH=src:scripts .venv/bin/python scripts/report_allocation_capital_readiness.py \\",
-        "  --spark-history /tmp/spark-adapted-origin-history.jsonl.gz \\",
-        "  --grove-history /tmp/grove-adapted-origin-history.jsonl.gz \\",
-        "  --spark-idle-deductions /tmp/pr215-resumed-spark/idle_deductions.json \\",
-        "  --grove-idle-deductions /tmp/pr215-resumed-grove/idle_deductions.json \\",
-        "  --output reconciliation/allocation_capital_readiness_2026_08.json.gz \\",
-        "  --markdown docs/allocation-capital-readiness-2026-08.md",
-        "```",
-        "",
-        "The compressed artifact contains daily January-August principal, August dependency days, costs, excess deduction credits, reused revenue and input/source hashes.",
+        "Use report_allocation_capital_readiness.py with --month, --settlements-root, both normalized histories and their matching idle-deduction files.",
+        "A non-August history must carry a pins.json manifest matching the requested month and settlement block pins. Use --apply-capital-adapters for freshly normalized inputs.",
+        "The compressed artifact contains daily principal, dependency days, costs, excess deduction credits, reused revenue and input/source hashes.",
     ]
     return "\n".join(lines) + "\n"
 
 
+def validate_history_manifest(manifest, *, prime, end, control):
+    """Reject a stale month's normalized positions before pricing its costs."""
+    if (
+        manifest.get("prime") != prime
+        or manifest.get("end") != str(end)
+        or manifest.get("pins") != control["pin_blocks_eom"]
+    ):
+        raise ValueError("Capital history must cover the requested month at the settlement pins")
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--month", default="2026-08", help="Complete calendar month, YYYY-MM")
+    p.add_argument("--settlements-root", type=Path, default=Path("settlements"))
+    p.add_argument(
+        "--apply-capital-adapters",
+        action="store_true",
+        help="Apply reviewed movement adapters to a fresh normalized history",
+    )
     p.add_argument("--spark-history", type=Path, required=True)
     p.add_argument("--grove-history", type=Path, required=True)
     p.add_argument("--spark-idle-deductions", type=Path, required=True)
@@ -393,13 +417,20 @@ def main():
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--markdown", type=Path, required=True)
     args = p.parse_args()
+    from settle.revenue.allocations import month_bounds
+
+    start, end = month_bounds(args.month)
     inputs = [args.spark_history, args.grove_history]
     for prime in ("spark", "grove"):
         inputs.extend(
             [
-                Path(f"settlements/{prime}/2026-08/provenance.json"),
+                args.settlements_root / prime / args.month / "provenance.json",
                 getattr(args, prime + "_idle_deductions"),
             ]
+        )
+    if args.month != "2026-08":
+        inputs.extend(
+            path.parent / "pins.json" for path in (args.spark_history, args.grove_history)
         )
     if args.output.resolve() == args.markdown.resolve() or any(
         o.resolve() == i.resolve() for o in (args.output, args.markdown) for i in inputs
@@ -413,6 +444,18 @@ def main():
         history = load_history(path, key)
         if history is None:
             raise ValueError("Invalid normalized snapshot")
+        if args.month != "2026-08":
+            # Never silently carry an August closing position into September.
+            manifest_path = path.parent / "pins.json"
+            manifest = json.loads(manifest_path.read_text())
+            control = json.loads(
+                (args.settlements_root / prime / args.month / "provenance.json").read_text()
+            )
+            validate_history_manifest(manifest, prime=prime, end=end, control=control)
+        if args.apply_capital_adapters:
+            from settle.compute.executed_spell_capital import apply_executed_spells
+
+            history = apply_executed_spells(history)
         if prime == "spark":
             # Reuse the accepted published full-principal policy, as in
             # audit_facility_funding --anchorage-published-principal. The
@@ -426,7 +469,7 @@ def main():
             history = replace(
                 history, unsupported={k: v for k, v in history.unsupported.items() if k != "S23"}
             )
-        cp = Path(f"settlements/{prime}/2026-08/provenance.json")
+        cp = args.settlements_root / prime / args.month / "provenance.json"
         idle = json.loads(getattr(args, prime + "_idle_deductions").read_text())
         if idle["control_sha256"] != hashlib.sha256(cp.read_bytes()).hexdigest():
             raise ValueError("Idle deductions belong to a different settlement control")
@@ -436,8 +479,8 @@ def main():
                 history,
                 json.loads(cp.read_text()),
                 idle,
-                date(2026, 8, 1),
-                date(2026, 8, 31),
+                start,
+                end,
             )
         )
         print(prime, dict(Counter(r["status"] for r in results[-1]["allocations"])), flush=True)

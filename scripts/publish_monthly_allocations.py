@@ -26,7 +26,7 @@ def prepare(readiness_path, yields_path):
     ):
         raise ValueError("Yield artifact does not reference this capital snapshot")
     for path, expected in readiness["input_sha256"].items():
-        if path.startswith("settlements/") and yields["input_sha256"].get(path) != expected:
+        if Path(path).name == "provenance.json" and yields["input_sha256"].get(path) != expected:
             raise ValueError("Revenue control hashes differ")
     return build_documents(
         readiness,

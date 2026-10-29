@@ -89,6 +89,7 @@ def fetch_logs(
     log_fields: list[str] | None = None,
     join_mode: str | None = None,
     result_topic0: str | None = None,
+    max_num_logs: int | None = None,
     post: Callable[..., Any] = requests.post,
 ) -> list[hypersync.LogRow]:
     """Return all logs matching ``selections`` in ``[from_block, to_block]``.
@@ -107,6 +108,8 @@ def fetch_logs(
 
     def live(lo: int, hi: int) -> hypersync.QueryResult:
         options = {}
+        if max_num_logs is not None:
+            options["max_num_logs"] = max_num_logs
         if join_mode is not None:
             options['join_mode'] = join_mode
         if result_topic0 is not None:
