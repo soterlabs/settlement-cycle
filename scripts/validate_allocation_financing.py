@@ -25,7 +25,11 @@ from settle.domain.config import load_prime_by_id
 from settle.domain.monthly_pnl import VenueRevenue
 from settle.domain.period import Period
 from settle.domain.primes import Chain
-from settle.normalize.allocation_history_cache import fingerprint, load_history
+from settle.normalize.allocation_history_cache import (
+    fingerprint,
+    load_history,
+    project_prime_to_pins,
+)
 from settle.normalize.sources.hypersync_block_resolver import HyperSyncBlockResolver
 from settle.normalize.sources.rpc_block_resolver import RPCBlockResolver
 
@@ -78,8 +82,9 @@ def main():
             or manifest['end'] != str(pnl.period.end)):
         parser.error('history and control must cover the same prime and period')
     pins = {Chain(c): b for c, b in manifest['pins'].items()}
-    if any(pnl.period.pin_blocks.get(c) != b for c, b in pins.items()):
+    if pins != pnl.period.pin_blocks:
         parser.error('history and control have different block pins')
+    prime = project_prime_to_pins(prime, pins)
     history = None
     if not args.capture_idle_only:
         history = load_history(args.history_dir / 'history.jsonl.gz', fingerprint(prime, pins))

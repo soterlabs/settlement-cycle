@@ -4,6 +4,8 @@ from datetime import date
 from decimal import Decimal as D
 from pathlib import Path
 
+import pytest
+
 from settle.compute._helpers import ssr_at_or_before
 from settle.normalize.allocation_capital import AssetMovement, CapitalBatch, CapitalHistory
 
@@ -48,3 +50,36 @@ def test_financing_runner_preserves_control_and_passes_ssr_schema(monkeypatch, t
     assert result['reconciliation']['complete'] is True
     assert D(result['reconciliation']['difference']) == 0
     assert result['allocations'][0]['gross_apy'] is not None
+
+
+@pytest.mark.parametrize("complete", [False, True])
+def test_financing_uses_exact_historical_chain_scope(monkeypatch, tmp_path, complete):
+    path = Path(__file__).parents[2] / 'scripts/validate_allocation_financing.py'
+    spec = importlib.util.spec_from_file_location('financing_missing_pins', path)
+    runner = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(runner)
+    control = {'prime_id': 'spark', 'period': {'start': '2026-09-01', 'end': '2026-09-30'},
+               'pin_blocks_eom': {'ethereum': 100, 'base': 200}, 'venue_breakdown': [],
+               'sky_revenue_daily': [], 'results': {}}
+    source = tmp_path / 'provenance.json'
+    source.write_text(json.dumps(control))
+    (tmp_path / 'pins.json').write_text(json.dumps({'prime': 'spark', 'start': '2026-09-01',
+        'end': '2026-09-30', 'pins': control['pin_blocks_eom'] if complete else {'ethereum': 100}}))
+    monkeypatch.setattr('sys.argv', [str(path), '--provenance', str(source),
+        '--history-dir', str(tmp_path), '--capture-idle-only'])
+    if not complete:
+        with pytest.raises(SystemExit):
+            runner.main()
+        return
+    seen = []
+    def fingerprint(prime, pins):
+        assert {c.value for c in prime.chains} == {'ethereum', 'base'}
+        assert all(v.chain in pins for v in prime.venues)
+        seen.append(True)
+        return 'historical-scope'
+    monkeypatch.setattr(runner, 'fingerprint', fingerprint)
+    for name in ('_aggregate_curve_idle_usds', '_aggregate_univ4_idle_usds',
+                 '_aggregate_lending_idle_usds'):
+        monkeypatch.setattr(runner, name, lambda *a, **kw: None)
+    runner.main()
+    assert seen == [True]

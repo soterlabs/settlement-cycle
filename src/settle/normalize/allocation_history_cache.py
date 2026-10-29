@@ -8,14 +8,27 @@ from __future__ import annotations
 import gzip
 import hashlib
 import json
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
-from .allocation_capital import AssetMovement, CapitalBatch, CapitalHistory, ExternalFundingOperation
+from .allocation_capital import (
+    AssetMovement,
+    CapitalBatch,
+    CapitalHistory,
+    ExternalFundingOperation,
+)
 
 SCHEMA = 1
+
+
+def project_prime_to_pins(prime, pins):
+    """Use the same historical chain scope for capture and financing validation."""
+    return replace(prime, venues=[v for v in prime.venues if v.chain in pins],
+                   alm={c: a for c, a in prime.alm.items() if c in pins},
+                   alm_start_dates={c: d for c, d in prime.alm_start_dates.items() if c in pins},
+                   subproxy={c: a for c, a in prime.subproxy.items() if c in pins})
 
 
 def fingerprint(prime, pins):

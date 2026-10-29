@@ -19,7 +19,12 @@ from settle.compute.allocation_capital import replay_history
 from settle.domain.config import load_prime_by_id
 from settle.domain.primes import Chain
 from settle.normalize.allocation_capital import fetch_capital_history
-from settle.normalize.allocation_history_cache import fingerprint, load_history, save_history
+from settle.normalize.allocation_history_cache import (
+    fingerprint,
+    load_history,
+    project_prime_to_pins,
+    save_history,
+)
 from settle.normalize.sources.hypersync_block_resolver import HyperSyncBlockResolver
 from settle.normalize.sources.rpc_block_resolver import RPCBlockResolver
 
@@ -71,10 +76,7 @@ def main():
         # Never invent historical pins for those positions.
         omitted = {v.id: "Chain absent from the reviewed settlement pins"
                    for v in prime.venues if v.chain not in pins}
-        prime = replace(prime, venues=[v for v in prime.venues if v.chain in pins],
-                        alm={c: a for c, a in prime.alm.items() if c in pins},
-                        alm_start_dates={c: d for c, d in prime.alm_start_dates.items() if c in pins},
-                        subproxy={c: a for c, a in prime.subproxy.items() if c in pins})
+        prime = project_prime_to_pins(prime, pins)
     if manifest_path.exists():
         manifest = json.loads(manifest_path.read_text())
         if any(manifest.get(k) != v for k, v in identity.items()):
