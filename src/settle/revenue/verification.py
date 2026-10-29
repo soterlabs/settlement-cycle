@@ -163,8 +163,9 @@ def calculate(prime, cutoff):
     reference_seconds = time.monotonic() - reference_started
     kwargs = {'reference_rate_history': prepared.history} if prepared else {}
     with PublicationGuard(), ExtractionTimer() as timer, ProviderAudit() as audit:
-        result = compute_monthly_pnl(config, Month(cutoff.year, cutoff.month), as_of=cutoff,
-                                     include_allocation_financing=True, **kwargs)
+        # Monthly allocation analytics are published separately. The deferred
+        # full funding-origin replay must not run on routine daily revenue jobs.
+        result = compute_monthly_pnl(config, Month(cutoff.year, cutoff.month), as_of=cutoff, **kwargs)
     dune_attempts = audit.dune_attempts + reference_audit.dune_attempts
     if dune_attempts:
         raise RuntimeError(f"Calculation attempted {dune_attempts} Dune calls")

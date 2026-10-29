@@ -1,5 +1,12 @@
 # Allocation financing validation — PR #215
 
+> Historical design and validation record. The active PR scope is now
+> [monthly borrowing costs for Sky-funded allocations](../PR215_scope.md).
+> Full funding-origin replay is opt-in research, not a routine daily/monthly
+> pipeline requirement. Earlier production-wiring statements below describe
+> the previous branch state. Retained code is indexed in the
+> [funding follow-up PRD](../PRD_allocation_funding_next_steps.md).
+
 Development results as of 2026-09-20. Existing published settlement artifacts
 were read, not regenerated. These results do not establish complete production
 coverage or a successful reconciliation for every ilk.

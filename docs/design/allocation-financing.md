@@ -1,5 +1,12 @@
 # Allocation funding, PnL and yield
 
+> Historical design and validation record. The active PR scope is now
+> [monthly borrowing costs for Sky-funded allocations](../PR215_scope.md).
+> Full funding-origin replay is opt-in research, not a routine daily/monthly
+> pipeline requirement. Earlier production-wiring statements below describe
+> the previous branch state. Retained code is indexed in the
+> [funding follow-up PRD](../PRD_allocation_funding_next_steps.md).
+
 Implementation in progress on `feat/allocation-capital-cost-pnl`.
 
 ## Agreed accounting contract (2026-09-20)

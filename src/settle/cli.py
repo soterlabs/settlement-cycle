@@ -188,8 +188,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
     print(f"settle run {prime.id} {month}")
     print(f"  resolving pin blocks ({n_chains} chain(s), EoM + SoM in parallel)...{mode_note}")
     cutoff = getattr(args, "as_of", None)
-    result = compute_monthly_pnl(prime, month, sky_only=sky_only, as_of=cutoff,
-                                include_allocation_financing=not sky_only)
+    result = compute_monthly_pnl(prime, month, sky_only=sky_only, as_of=cutoff)
 
     print()
     print("=" * 70)

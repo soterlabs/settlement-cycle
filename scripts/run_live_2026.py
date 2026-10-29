@@ -155,7 +155,7 @@ def main() -> int:
             print(f"\n==== {tag} ({idx}/{total_cells}) ====", flush=True)
             try:
                 sources = _live_sources()
-                result = compute_monthly_pnl(prime, month, sources=sources, include_allocation_financing=True)
+                result = compute_monthly_pnl(prime, month, sources=sources)
                 headline[(prime_id, label)] = {
                     "prime_agent_revenue":  float(result.prime_agent_revenue),
                     "agent_rate":           float(result.agent_rate),
