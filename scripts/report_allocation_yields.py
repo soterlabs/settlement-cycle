@@ -116,7 +116,14 @@ def build(readiness, controls, anchorage):
 
 
 def percent(value):
-    return "—" if value is None else f"{D(value) * 100:.2f}%"
+    if value is None:
+        return "—"
+    percentage = D(value) * 100
+    if 0 < abs(percentage) < D("0.005"):
+        if abs(percentage) < D("0.0001"):
+            return ("-" if percentage < 0 else "") + "<0.0001%"
+        return f"{percentage:.4f}%"
+    return f"{percentage:.2f}%"
 
 
 def markdown(result):

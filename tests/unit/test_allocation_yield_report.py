@@ -90,3 +90,9 @@ def test_covered_custody_does_not_get_a_second_yield():
     row = module.build(readiness, control, {})["results"][0]["allocations"][0]
     assert row["gross_apy"] is None
     assert row["net_apy"] is None
+
+
+def test_small_negative_yield_is_not_displayed_as_zero():
+    assert module.percent("-0.000042") == "-0.0042%"
+    assert module.percent("0") == "0.00%"
+    assert module.percent(None) == "—"

@@ -43,8 +43,10 @@ from .. import __version__ as SETTLE_VERSION
 from ..compute.tmf import parse_ts
 from ..compute.tmf_history import burn_kind, dec_str, iso_ts
 from ..domain.tmf import SbeKick, SbeParamChange, SkyBurn
-
-from .revenue import RevenueReaderMixin, register as register_revenue
+from .allocations import AllocationReaderMixin
+from .allocations import register as register_allocations
+from .revenue import RevenueReaderMixin
+from .revenue import register as register_revenue
 
 __all__ = ["Reader", "app", "create_app"]
 
@@ -81,7 +83,7 @@ class Reader(Protocol):
     def close(self) -> None: ...
 
 
-class PostgresReader(RevenueReaderMixin):
+class PostgresReader(RevenueReaderMixin, AllocationReaderMixin):
     def __init__(self, pool: Any, contracts: dict[str, str], notes: list[str],
                  tmf_effective_from: int) -> None:
         self._pool = pool
@@ -134,6 +136,8 @@ class PostgresReader(RevenueReaderMixin):
             apply_schema(conn)
             from ..revenue.store import apply_schema as apply_revenue_schema
             apply_revenue_schema(conn)
+            from ..revenue.allocations import apply_schema as apply_allocation_schema
+            apply_allocation_schema(conn)
 
     def close(self) -> None:
         with suppress(Exception):
@@ -267,6 +271,7 @@ def create_app(reader: Reader | None = None) -> FastAPI:
         yield reader
 
     register_revenue(app, get_reader, _document_response)
+    register_allocations(app, get_reader, _document_response)
 
     @app.get("/healthz")
     def healthz() -> dict[str, Any]:

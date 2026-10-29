@@ -23,7 +23,7 @@ Anchorage uses average outstanding loan principal, not its pass-through escrow b
 | grove | E9 | Janus Henderson Anemoy Treasury Fund (JTRSY) | $854,752,961.98 | 3.51% | 0.00% |
 | grove | E42 | Galaxy Warehouse (off-chain facility — cash distribution to Grove Eth ALM) | $304,000,001.00 | 1.85% | -1.80% |
 | grove | E11 | Curve AUSD/USDC stableswap LP | $24,195,414.75 | 0.01% | -2.27% |
-| grove | E15 | USDC raw (ALM idle) | $27,705.40 | -0.00% | -0.00% |
+| grove | E15 | USDC raw (ALM idle) | $27,705.40 | -<0.0001% | -0.0042% |
 | grove | E12 | Uniswap V3 AUSD/USDC pool (NFT positions) | $26,605,619.71 | -2.18% | -5.68% |
 | spark | S28 | PYUSD raw (ALM idle — $677M as of 2026-04) | $235,281,162.15 | 6.40% | — |
 | spark | S18 | Arkis Spark Prime USDC 1 (ERC-4626) | $20,219,164.29 | 6.16% | 2.40% |
@@ -38,7 +38,7 @@ Anchorage uses average outstanding loan principal, not its pass-through escrow b
 | spark | S1 | Spark USDS (SparkLend spToken) | $750,757,710.22 | 2.06% | — |
 | spark | S5 | Spark PYUSD (SparkLend spToken) | $99,998,898.52 | 0.49% | — |
 | spark | S23 | Anchorage tri-party loan escrow (USDC pass-through, ~$0 balance) | $235,290,101.02 | 0.20% | — |
-| spark | S61 | Spark.fi PYUSD Reserve Uniswap V4 (PYUSD/USDS) | $100,118,885.44 | 0.00% | — |
+| spark | S61 | Spark.fi PYUSD Reserve Uniswap V4 (PYUSD/USDS) | $100,118,885.44 | 0.0006% | — |
 | spark | S27 | USDT raw (ALM idle — $442M as of 2026-04) | $6,513.16 | 0.00% | — |
 | spark | S64 | RLUSD raw (ALM idle — $251.7M as of 2026-08) | $8,119,479.28 | 0.00% | — |
 | spark | S39 | USDC raw (Base — ALM idle) | $1,284.17 | 0.00% | — |
@@ -65,7 +65,7 @@ Anchorage uses average outstanding loan principal, not its pass-through escrow b
 | grove | E1 | Aave Horizon RWA RLUSD (aToken) | 1.38% | 1.37% | available; calculable_under_assumption |
 | grove | E11 | Curve AUSD/USDC stableswap LP | 0.01% | -2.27% | available; calculable_under_assumption |
 | grove | E2 | Aave Horizon RWA USDC (aToken) | 0.00% | -3.62% | available; calculable_under_assumption |
-| grove | E15 | USDC raw (ALM idle) | -0.00% | -0.00% | available; calculable_under_assumption |
+| grove | E15 | USDC raw (ALM idle) | -<0.0001% | -0.0042% | available; calculable_under_assumption |
 | grove | E12 | Uniswap V3 AUSD/USDC pool (NFT positions) | -2.18% | -5.68% | available; calculable_under_assumption |
 | grove | E5 | Grove x Steakhouse USDC High Yield (Morpho 4626) | — | — | no_positive_exposure; no_principal_in_period |
 | grove | E37 | Maple syrupUSDC (ERC-4626) | — | — | no_positive_exposure; no_principal_in_period |
@@ -121,7 +121,7 @@ Anchorage uses average outstanding loan principal, not its pass-through escrow b
 | spark | S23 | Anchorage tri-party loan escrow (USDC pass-through, ~$0 balance) | 0.20% | — | gross_only; savings_split_pending |
 | spark | S7 | Aave Ethereum USDS (aToken) | 0.12% | -3.45% | available; calculable_under_assumption |
 | spark | S25 | Spark.fi PYUSD Reserve Curve (PYUSD/USDS) | 0.09% | — | gross_only; savings_split_pending |
-| spark | S61 | Spark.fi PYUSD Reserve Uniswap V4 (PYUSD/USDS) | 0.00% | — | gross_only; savings_split_pending |
+| spark | S61 | Spark.fi PYUSD Reserve Uniswap V4 (PYUSD/USDS) | 0.0006% | — | gross_only; savings_split_pending |
 | spark | S17 | Fluid Savings USDS (fsUSDS) | 0.00% | -3.76% | available; calculable_under_assumption |
 | spark | S27 | USDT raw (ALM idle — $442M as of 2026-04) | 0.00% | — | gross_only; savings_split_pending |
 | spark | S64 | RLUSD raw (ALM idle — $251.7M as of 2026-08) | 0.00% | — | gross_only; savings_split_pending |
