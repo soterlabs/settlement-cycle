@@ -98,7 +98,8 @@ def main():
     control_hash = hashlib.sha256(original).hexdigest()
     idle_key = fingerprint(prime, pins)
     saved = json.loads(idle_path.read_text()) if idle_path.exists() else {}
-    if saved.get('control_sha256') == control_hash and saved.get('fingerprint') == idle_key:
+    if (saved.get('control_sha256') == control_hash and saved.get('fingerprint') == idle_key
+            and saved.get('block_resolver') == args.block_resolver):
         idle = {vid: {date.fromisoformat(d): Decimal(v) for d, v in values.items()}
                 for vid, values in saved['daily'].items()}
     else:
@@ -109,6 +110,7 @@ def main():
         _aggregate_lending_idle_usds(prime, pnl.period, block_resolver=resolver, capital_idle_amounts=idle)
         temporary = idle_path.with_suffix('.tmp')
         temporary.write_text(json.dumps({'control_sha256': control_hash, 'fingerprint': idle_key,
+            'block_resolver': args.block_resolver,
             'daily': {vid: {str(d): str(v) for d, v in values.items()} for vid, values in idle.items()}}, indent=2))
         temporary.replace(idle_path)
     idle_exclusions = validate_idle_control(idle, control)

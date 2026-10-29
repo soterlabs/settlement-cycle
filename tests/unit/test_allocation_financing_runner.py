@@ -38,7 +38,9 @@ def test_financing_runner_preserves_control_and_passes_ssr_schema(monkeypatch, t
     monkeypatch.setattr(runner, 'load_history', lambda *args: history)
     monkeypatch.setattr(runner, 'fingerprint', lambda *args: 'key')
 
+    captures = []
     def curve(*args, **kwargs):
+        captures.append(True)
         assert ssr_at_or_before(kwargs['ssr_history'], day) == D('0.03')
 
     monkeypatch.setattr(runner, '_aggregate_curve_idle_usds', curve)
@@ -50,6 +52,13 @@ def test_financing_runner_preserves_control_and_passes_ssr_schema(monkeypatch, t
     assert result['reconciliation']['complete'] is True
     assert D(result['reconciliation']['difference']) == 0
     assert result['allocations'][0]['gross_apy'] is not None
+    runner.main()
+    assert len(captures) == 1  # Exact resolver/control reuse needs no new RPC reads.
+    monkeypatch.setattr('sys.argv', [str(path), '--provenance', str(provenance),
+        '--history-dir', str(tmp_path), '--block-resolver', 'rpc'])
+    runner.main()
+    assert len(captures) == 2  # Switching resolvers must not reuse stale daily pins.
+    assert json.loads((tmp_path / 'idle_deductions.json').read_text())['block_resolver'] == 'rpc'
 
 
 @pytest.mark.parametrize("complete", [False, True])

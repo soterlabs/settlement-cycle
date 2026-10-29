@@ -193,14 +193,23 @@ def main():
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--markdown", type=Path, required=True)
     args = p.parse_args()
-    paths = [
-        args.readiness,
-        args.settlements_root / "spark" / args.month / "provenance.json",
-        args.settlements_root / "grove" / args.month / "provenance.json",
-    ]
+    readiness = json.load(gzip.open(args.readiness, "rt"))
+    primes = [r["prime"] for r in readiness["results"]]
+    if not primes or len(set(primes)) != len(primes):
+        p.error("Readiness must contain distinct primes")
+    from settle.revenue.verification import PRIMES
+
+    if any(prime not in PRIMES for prime in primes):
+        p.error("Unknown prime in readiness")
+    if any(r["start"][:7] != args.month or r["end"][:7] != args.month
+           for r in readiness["results"]):
+        p.error("Readiness does not match requested month")
+    controls = {prime: args.settlements_root / prime / args.month / "provenance.json"
+                for prime in primes}
+    paths = [args.readiness, *controls.values()]
     anchorage_path = args.anchorage_exposure or (
         Path("reconciliation/spark_anchorage_receipt_funding_origins_2026_08.json.gz")
-        if args.month == "2026-08"
+        if "spark" in primes and args.month == "2026-08"
         else None
     )
     if anchorage_path:
@@ -211,15 +220,14 @@ def main():
         for source in paths
     ):
         p.error("Output must not overwrite an input or another output")
-    readiness = json.load(gzip.open(args.readiness, "rt"))
-    for path in paths[1:3]:
+    for path in controls.values():
         if readiness["input_sha256"][str(path)] != hashlib.sha256(path.read_bytes()).hexdigest():
             raise ValueError("Cost and revenue provenance differ")
     result = build(
         readiness,
         {
             prime: json.loads(path.read_text())
-            for prime, path in zip(["spark", "grove"], paths[1:3], strict=True)
+            for prime, path in controls.items()
         },
         json.load(gzip.open(anchorage_path, "rt")) if anchorage_path else None,
     )

@@ -407,6 +407,8 @@ def source_files(with_adapters=False):
         Path(__file__),
         Path("config/spark.yaml"),
         Path("config/grove.yaml"),
+        Path("config/osero.yaml"),
+        Path("config/obex.yaml"),
         Path("src/settle/compute/spark_anchorage_correction.py"),
         Path("src/settle/compute/spark_anchorage_scenarios.py"),
     ]
@@ -426,41 +428,55 @@ def main():
         action="store_true",
         help="Apply reviewed movement adapters to a fresh normalized history",
     )
-    p.add_argument("--spark-history", type=Path, required=True)
-    p.add_argument("--grove-history", type=Path, required=True)
-    p.add_argument("--spark-idle-deductions", type=Path, required=True)
-    p.add_argument("--grove-idle-deductions", type=Path, required=True)
+    p.add_argument("--prime", choices=("spark", "grove", "osero", "obex"),
+                   help="Calculate one prime independently of all other histories")
+    p.add_argument("--history", type=Path)
+    p.add_argument("--idle-deductions", type=Path)
+    p.add_argument("--spark-history", type=Path)
+    p.add_argument("--grove-history", type=Path)
+    p.add_argument("--spark-idle-deductions", type=Path)
+    p.add_argument("--grove-idle-deductions", type=Path)
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--markdown", type=Path, required=True)
     args = p.parse_args()
     from settle.revenue.allocations import month_bounds
 
     start, end = month_bounds(args.month)
-    inputs = [args.spark_history, args.grove_history]
-    for prime in ("spark", "grove"):
+    legacy = (args.spark_history, args.grove_history,
+              args.spark_idle_deductions, args.grove_idle_deductions)
+    if args.prime:
+        if not args.history or not args.idle_deductions or any(legacy):
+            p.error("--prime requires --history and --idle-deductions without legacy inputs")
+        selected = {args.prime: (args.history, args.idle_deductions)}
+    else:
+        if args.history or args.idle_deductions or not all(legacy):
+            p.error("Supply --prime/--history/--idle-deductions or both legacy prime inputs")
+        selected = {"grove": (args.grove_history, args.grove_idle_deductions),
+                    "spark": (args.spark_history, args.spark_idle_deductions)}
+    inputs = [history for history, _ in selected.values()]
+    for prime, (_, idle_path) in selected.items():
         inputs.extend(
             [
                 args.settlements_root / prime / args.month / "provenance.json",
-                getattr(args, prime + "_idle_deductions"),
+                idle_path,
             ]
         )
-    if args.month != "2026-08":
+    if args.prime or args.month != "2026-08":
         inputs.extend(
-            path.parent / "pins.json" for path in (args.spark_history, args.grove_history)
+            path.parent / "pins.json" for path, _ in selected.values()
         )
     if args.output.resolve() == args.markdown.resolve() or any(
         o.resolve() == i.resolve() for o in (args.output, args.markdown) for i in inputs
     ):
         p.error("Outputs must be distinct from each other and inputs")
     results = []
-    for prime in ("grove", "spark"):
-        path = getattr(args, prime + "_history")
+    for prime, (path, idle_path) in selected.items():
         with gzip.open(path, "rt") as f:
             key = json.loads(next(f))["fingerprint"]
         history = load_history(path, key)
         if history is None:
             raise ValueError("Invalid normalized snapshot")
-        if args.month != "2026-08":
+        if args.prime or args.month != "2026-08":
             # Never silently carry an August closing position into September.
             manifest_path = path.parent / "pins.json"
             manifest = json.loads(manifest_path.read_text())
@@ -492,7 +508,7 @@ def main():
                 history, unsupported={k: v for k, v in history.unsupported.items() if k != "S23"}
             )
         cp = args.settlements_root / prime / args.month / "provenance.json"
-        idle = json.loads(getattr(args, prime + "_idle_deductions").read_text())
+        idle = json.loads(idle_path.read_text())
         if idle["control_sha256"] != hashlib.sha256(cp.read_bytes()).hexdigest():
             raise ValueError("Idle deductions belong to a different settlement control")
         results.append(
