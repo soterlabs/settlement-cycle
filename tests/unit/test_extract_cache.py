@@ -77,3 +77,22 @@ def test_cached_handles_complex_args(tmp_cache_dir: Path):
     assert fn(blob, p, d, params) == 3
     assert fn(blob, p, d, params) == 3
     assert n_calls["value"] == 1
+
+
+@pytest.mark.parametrize("database_hit", [True, False])
+def test_required_postgres_does_not_need_local_disk(tmp_cache_dir, monkeypatch, database_hit):
+    from settle.extract import cache, postgres_store
+    monkeypatch.setenv("SETTLE_REQUIRE_POSTGRES", "1")
+    monkeypatch.setattr(postgres_store, "get", lambda *a: 42 if database_hit else postgres_store.MISS)
+    writes = []
+    monkeypatch.setattr(postgres_store, "put", lambda *a, **kw: writes.append(kw["payload"]))
+    def disk_full(*a):
+        raise OSError(28, "No space left on device")
+    monkeypatch.setattr(cache, "_write_pickle", disk_full)
+    monkeypatch.setattr(cache, "cache_dir", disk_full)
+    @cached(source_id="test")
+    def fetch():
+        assert not database_hit
+        return 42
+    assert fetch() == 42
+    assert writes == ([] if database_hit else [42])
