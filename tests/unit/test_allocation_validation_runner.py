@@ -104,3 +104,18 @@ def test_capture_uses_settlement_pins_without_origin_replay(monkeypatch, tmp_pat
     control.write_text(control.read_text().replace('123', '124'))
     with pytest.raises(SystemExit):
         runner.main()
+
+
+@pytest.mark.parametrize("filename", ["pins.json", "status.json", "result.json", "history.jsonl.gz"])
+def test_capture_never_overwrites_its_provenance_input(monkeypatch, tmp_path, filename):
+    path = Path(__file__).parents[2] / 'scripts/validate_allocation_capital.py'
+    spec = importlib.util.spec_from_file_location('capture_collision', path)
+    runner = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(runner)
+    source = tmp_path / filename
+    source.write_text('original control')
+    monkeypatch.setattr('sys.argv', [str(path), 'spark', '--start', '2026-09-01',
+        '--end', '2026-09-30', '--output-dir', str(tmp_path), '--provenance', str(source)])
+    with pytest.raises(SystemExit):
+        runner.main()
+    assert source.read_text() == 'original control'

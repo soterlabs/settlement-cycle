@@ -2,6 +2,8 @@ import importlib.util
 from decimal import Decimal as D
 from pathlib import Path
 
+import pytest
+
 from settle.compute.allocation_financing import annualized_yield
 
 spec = importlib.util.spec_from_file_location(
@@ -128,3 +130,12 @@ def test_facility_uses_updated_outstanding_claim_not_stale_configured_notional()
     revenue.update(tw_avg_value_usd="0", tw_avg_notional_usd="304000001")
     row = module.build(readiness, controls)["results"][0]["allocations"][0]
     assert D(row["average_exposure"]) == 349916701
+
+
+@pytest.mark.parametrize("value", ["-1", "NaN", "Infinity"])
+def test_invalid_measured_value_cannot_be_hidden_by_positive_notional(value):
+    readiness, controls = inputs()
+    controls["spark"]["venue_breakdown"][0].update(
+        tw_avg_value_usd=value, tw_avg_notional_usd="100")
+    with pytest.raises(ValueError, match="Invalid measured yield exposure"):
+        module.build(readiness, controls)

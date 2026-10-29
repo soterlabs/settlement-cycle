@@ -52,7 +52,9 @@ def build(readiness, controls, anchorage=None):
             else:
                 average = D(revenue["tw_avg_value_usd"])
                 row["denominator"] = "published time-weighted position value"
-                if average <= 0:
+                if not average.is_finite() or average < 0:
+                    raise ValueError("Invalid measured yield exposure")
+                if average == 0:
                     average = D(revenue.get("tw_avg_notional_usd", "0"))
                     row["denominator"] = "published notional (position value unavailable)"
                 if finance.get("average_facility_exposure") is not None:
@@ -84,6 +86,8 @@ def build(readiness, controls, anchorage=None):
                     row["denominator"] = (
                         "daily outstanding Anchorage loan principal; not escrow cash"
                     )
+                if average is not None and (not average.is_finite() or average < 0):
+                    raise ValueError("Invalid yield exposure")
                 row["average_exposure"] = str(average) if average is not None else None
                 gross_revenue = D(revenue["actual_revenue"]) + D(revenue["external_revenue"])
                 row["gross_revenue"] = str(gross_revenue)

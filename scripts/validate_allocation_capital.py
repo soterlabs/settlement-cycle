@@ -43,6 +43,11 @@ def main():
     parser.add_argument("--provenance", type=Path,
                         help="Use the existing settlement's exact closing block pins")
     args = parser.parse_args()
+    if args.provenance and args.provenance.resolve() in {
+        (args.output_dir / name).resolve()
+        for name in ("pins.json", "status.json", "result.json", "history.jsonl.gz")
+    }:
+        parser.error("provenance must not be overwritten by capture outputs")
     if args.start > args.end:
         parser.error("start must not be after end")
     if not os.environ.get("DATABASE_URL") or os.environ.get("HYPERSYNC_NO_STORE") == "1":
