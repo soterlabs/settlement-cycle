@@ -80,7 +80,8 @@ returns 503. Responses support conditional GET with ETags.
 ## Publication and backfill
 
 Current daily/portfolio policy: `prime-management.allocations.v2.1`;
-current annual statement composition policy: `prime-management.statement-rollups.v3.1`;
+current annual statement composition policy: `prime-management.rwa-income.v3.2`;
+retained rollup policy: `prime-management.statement-rollups.v3.1`;
 retained monthly composition policy: `prime-management.monthly-statements.v3`; retained allocation policy: `prime-management.allocations.v2`; retained first-slice policy: `prime-management.first-slice.v1`. A changed measurement policy requires
 a new version. Financial revisions key the source revision/hash plus policy;
 corrections append new documents and retain previous ones.
@@ -210,7 +211,8 @@ opening this PR does not publish these figures to the live API.
 
 ## Explicit dashboard rollups (statement-rollups.v3.1)
 
-Annual statements now default to `prime-management.statement-rollups.v3.1`.
+Policy `prime-management.statement-rollups.v3.1` introduced the rollups below;
+`prime-management.rwa-income.v3.2` extends them with the reviewed Grove funds.
 This composes the same pinned monthly summaries and v2.1 financial documents;
 no new daily calculations, source backfill or database migration is required.
 Retained v1/v2/v2.1/monthly-v3 selections preserve their exact original reports.
