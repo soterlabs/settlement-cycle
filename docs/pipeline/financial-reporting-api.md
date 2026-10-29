@@ -80,7 +80,8 @@ returns 503. Responses support conditional GET with ETags.
 ## Publication and backfill
 
 Current daily/portfolio policy: `prime-management.allocations.v2.1`;
-current annual statement composition policy: `prime-management.statement-rollups.v3.1`;
+current annual statement composition policy: `prime-management.rwa-income.v3.2`;
+retained rollup policy: `prime-management.statement-rollups.v3.1`;
 retained monthly composition policy: `prime-management.monthly-statements.v3`; retained allocation policy: `prime-management.allocations.v2`; retained first-slice policy: `prime-management.first-slice.v1`. A changed measurement policy requires
 a new version. Financial revisions key the source revision/hash plus policy;
 corrections append new documents and retain previous ones.
@@ -210,7 +211,8 @@ opening this PR does not publish these figures to the live API.
 
 ## Explicit dashboard rollups (statement-rollups.v3.1)
 
-Annual statements now default to `prime-management.statement-rollups.v3.1`.
+Policy `prime-management.statement-rollups.v3.1` introduced the rollups below;
+`prime-management.rwa-income.v3.2` extends them with the reviewed Grove funds.
 This composes the same pinned monthly summaries and v2.1 financial documents;
 no new daily calculations, source backfill or database migration is required.
 Retained v1/v2/v2.1/monthly-v3 selections preserve their exact original reports.
@@ -250,3 +252,40 @@ resolved by a future reviewed policy.
 The dashboard hides the gross-funding and spread-reimbursement rows but the API
 retains those reconciliation metrics. It also hides pre-tax, tax and impairment
 rows; this does not assume the corresponding costs are zero in net income.
+
+## Grove STAC/JAAA history (rwa-income.v3.2)
+
+`prime-management.rwa-income.v3.2` adds `investment.rwa.stac` and
+`investment.rwa.jaaa`, grouped by `statement.family.rwa_funds`. The
+[coverage audit](grove-rwa-income-coverage-2026.md) verifies January through the
+latest October source in the same change: 20 of 20 elapsed venue-month cells
+have amounts. Other unsupported historical investments remain unavailable.
+
+For closed months, the API parses the reviewed per-venue rows from the existing
+pinned summary bytes, by column name. It retains the reported prime amount and
+reconciles gross = prime + Sky within display rounding; it never reapplies a
+rounded historical share. For current/otherwise-unpublished months, it reads
+only E7/E8 from the exact raw revision underlying the selected financial document,
+in the same read-only transaction. One batch query enriches Grove publications;
+other primes and old selections avoid this query. Source-hash, identity,
+category, external-reward and reporting-enabled guards fail closed.
+
+Metrics expose `recognition: investment_return` and `allocation_split` with
+reported gross/prime/Sky income, share and rounding delta.
+`allocation_split.sky_share_basis` distinguishes `published_rounded_percentage`
+from `saved_source_share`; never recompute retained income from a rounded share.
+Malformed reviewed fund rows remain unavailable individually; valid peer funds,
+other months and headline metrics continue to be returned. Unrelated malformed
+venue rows do not suppress the reviewed RWA metrics. They include NAV
+movements, not solely cash or contractual interest. On this policy, Grove's
+statement uses **Investment income from allocations** and **Net investment
+income after funding**. The reviewed subtotal includes the two disjoint new
+leaves once; broader entity totals still retain their unknown perimeter.
+
+Monthly data keeps published cent precision/USDS-at-par provenance; current data
+keeps its saved precision. Both source types remain pinned by the existing dual
+selection. Retained v1/v2/v2.1/v3/v3.1 reports are unchanged. Portfolio and MSC
+settlement endpoints are unchanged. No database migration, new daily calculation,
+raw-source backfill or scheduled job is needed. Deploy the compatible dashboard
+consumer before switching the API default. A PR alone does not publish these
+figures to production.

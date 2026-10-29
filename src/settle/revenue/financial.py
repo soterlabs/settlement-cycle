@@ -16,7 +16,9 @@ ALLOCATION_POLICIES = (ALLOCATION_V2_POLICY, POLICY_VERSION)
 SUPPORTED_POLICIES = (FIRST_SLICE_POLICY, *ALLOCATION_POLICIES)
 STATEMENT_POLICY = 'prime-management.monthly-statements.v3'
 ROLLUP_POLICY = 'prime-management.statement-rollups.v3.1'
-MONTHLY_STATEMENT_POLICIES = (STATEMENT_POLICY, ROLLUP_POLICY)
+RWA_POLICY = 'prime-management.rwa-income.v3.2'
+ROLLUP_POLICIES = (ROLLUP_POLICY, RWA_POLICY)
+MONTHLY_STATEMENT_POLICIES = (STATEMENT_POLICY, *ROLLUP_POLICIES)
 # Frozen dependency of this composition policy; do not follow future daily upgrades.
 STATEMENT_SOURCE_POLICY = 'prime-management.allocations.v2.1'
 LINES = (
@@ -158,6 +160,9 @@ def build(source, *, policy_version=POLICY_VERSION):
 
 
 def taxonomy(prime, policy_version):
+    if policy_version == RWA_POLICY:
+        from .financial_rwa import taxonomy as rwa_taxonomy
+        return taxonomy(prime, STATEMENT_POLICY) + rwa_taxonomy(prime)
     if policy_version == STATEMENT_POLICY:
         additions = [('demand.distribution_rewards', 'Distribution rewards (DR)'),
                      ('demand.total', 'Demand-side revenue')]
@@ -207,9 +212,9 @@ def decode_selection(token, prime, year):
         raise ValueError('Invalid report revision selection') from exc
 
 
-def statements(prime, year, as_of, publications, *, exact=False, selection=None, monthly=False, rollups=False):
+def statements(prime, year, as_of, publications, *, exact=False, selection=None, monthly=False, rollups=False, rwa=False):
     """Read projection of saved financial metrics, with immutable export selection."""
-    policy_version = selection['policy_version'] if selection else ROLLUP_POLICY if rollups else STATEMENT_POLICY if monthly else POLICY_VERSION
+    policy_version = selection['policy_version'] if selection else RWA_POLICY if rwa else ROLLUP_POLICY if rollups else STATEMENT_POLICY if monthly else POLICY_VERSION
     monthly = policy_version in MONTHLY_STATEMENT_POLICIES
     if monthly:
         from .monthly_reports import select
@@ -250,6 +255,14 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None,
                 'policy_version': policy_version, 'revisions': [p['revision_id'] if p else None for p in chosen]}
     if monthly:
         manifest['monthly_revisions'] = [p['revision_id'] if p else None for p in monthly_chosen]
+    rwa_cells = []
+    if policy_version == RWA_POLICY and prime == 'grove':
+        from .financial_rwa import daily as rwa_daily, monthly as rwa_monthly
+        for daily_source, monthly_source in zip(chosen, monthly_chosen, strict=True):
+            values = rwa_daily(daily_source)
+            if monthly_source:
+                values.update(rwa_monthly(monthly_source))
+            rwa_cells.append(values)
     lines = []
     for definition in taxonomy(prime, STATEMENT_POLICY if policy_version == ROLLUP_POLICY else policy_version):
         key = definition['id']
@@ -261,6 +274,8 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None,
                     cells[i] = {**cells[i], 'source_ref': chosen[i]['revision_id']}
                 if report and key in report['metrics']:
                     cells[i] = report['metrics'][key]
+        if rwa_cells and key.startswith('investment.rwa.'):
+            cells = [values[key] for values in rwa_cells]
         for index, period in enumerate(periods):
             if period['state'] == 'future':
                 cells[index] = {**cells[index], 'status': 'future'}
@@ -289,7 +304,10 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None,
               'selection': selection_token(manifest), 'perimeter': 'operational_prime_management_reporting'}
     if monthly:
         result['source_manifest'].update({p['revision_id']: p['source'] for p in monthly_chosen if p})
-    if policy_version == ROLLUP_POLICY:
+    if policy_version == RWA_POLICY:
+        from .financial_rwa import refresh_reviewed_subtotal
+        refresh_reviewed_subtotal(result)
+    if policy_version in ROLLUP_POLICIES:
         from .statement_rollups import extend
         result = extend(result)
     return {**result, 'report_hash': digest(result)}

@@ -79,6 +79,13 @@ def combine(terms):
 def extend(statement):
     source_definitions = statement['lines'][:]
     rows = definitions(statement['prime'], source_definitions)
+    from .financial import RWA_POLICY
+    if statement['policy_version'] == RWA_POLICY and statement['prime'] == 'grove':
+        for row in rows:
+            if row['id'] == 'statement.interest':
+                row['label'] = 'Investment income from allocations'
+            elif row['id'] == 'statement.net_interest':
+                row['label'] = 'Net investment income after funding'
     lookup = {row['id']: row for row in source_definitions}
     for row in rows:
         cells = {}

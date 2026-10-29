@@ -95,7 +95,7 @@ def parse(snapshot, report):
         item.update(source_ref=revision)
         metrics[key] = item
     return {'prime': prime, 'month': month, 'cutoff': str(end), 'revision_id': revision,
-            'source': source, 'metrics': metrics}
+            'source': source, 'metrics': metrics, 'raw_summary': text}
 
 
 @lru_cache(maxsize=1)
