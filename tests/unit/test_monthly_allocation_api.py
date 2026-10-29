@@ -182,3 +182,24 @@ def test_publication_rejects_costs_that_contradict_funding_status(status, cost):
     r.update(cost_status=status, cost_of_funds=cost)
     with pytest.raises(ValueError, match=r"contradicts its status|must have zero cost"):
         build_documents(readiness, yields, source_hashes={"artifact": "a" * 64})
+
+
+@pytest.mark.parametrize("missing", [
+    {"allocation_financing"}, {"venue_views"}, {"allocation_financing", "venue_views"},
+])
+def test_legacy_monthly_snapshots_migrate_only_optional_analytics(missing):
+    from dataclasses import asdict
+
+    from scripts.refresh_september_selected_venues import baseline
+    from settle.domain.monthly_pnl import MonthlyPnL
+    from settle.revenue.monthly import _decode
+    from settle.revenue.verification import canonical
+
+    _, pnl = baseline("grove")
+    saved = canonical(pnl)
+    for name in missing:
+        saved.pop(name)
+    assert asdict(_decode(MonthlyPnL, saved)) == asdict(pnl)
+    saved.pop("sky_revenue")
+    with pytest.raises(ValueError, match="incompatible snapshot schema"):
+        _decode(MonthlyPnL, saved)
