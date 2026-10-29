@@ -162,7 +162,10 @@ def query_logs(
     if max_num_logs is not None:
         if not 1 <= max_num_logs <= 100_000:
             raise ValueError("max_num_logs must be between 1 and 100000")
-        base["max_num_logs"] = max_num_logs
+        # The provider also caps joined blocks/transactions. Raising only
+        # the log cap can still produce 1,000-row pages and exhaust quotas.
+        base.update(max_num_logs=max_num_logs, max_num_blocks=max_num_logs,
+                    max_num_transactions=max_num_logs)
     result = QueryResult()
     cursor = from_block
     end_exclusive = to_block + 1  # HyperSync to_block is exclusive

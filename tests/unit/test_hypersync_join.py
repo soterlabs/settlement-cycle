@@ -42,7 +42,7 @@ def test_larger_log_pages_keep_selection_and_page_boundaries(monkeypatch):
     calls = []
     def post(url, *, json, **kwargs):
         calls.append(json)
-        assert json['max_num_logs'] == 100_000
+        assert json['max_num_logs'] == json['max_num_blocks'] == json['max_num_transactions'] == 100_000
         block = json['from_block']
         return SimpleNamespace(status_code=200, ok=True, json=lambda: {
             'archive_height': 1000, 'next_block': block + 1,
