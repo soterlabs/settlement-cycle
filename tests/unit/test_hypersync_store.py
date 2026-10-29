@@ -70,14 +70,14 @@ class _FakeCursor:
         elif s.startswith("SELECT covered_from"):
             self._result = self._s["coverage"].get(params[0])
         elif s.startswith("SELECT block_number"):
-            stream, lo, hi = params
+            stream, lo, hi, after_block, after_log, limit = params
             self._result = [
                 (r.block_number, r.log_index, r.block_time, r.address,
                  r.topic0, r.topic1, r.topic2, r.topic3, r.data, r.transaction_hash)
                 for r in sorted(self._s["logs"].get(stream, []),
                                 key=lambda r: (r.block_number, r.log_index))
-                if lo <= r.block_number <= hi
-            ]
+                if lo <= r.block_number <= hi and (r.block_number, r.log_index) > (after_block, after_log)
+            ][:limit]
         elif s.startswith("INSERT INTO hypersync_coverage"):
             # Mirrors the real SQL: plain overwrite (the caller passes the
             # already-merged honest range; see _set_coverage).
@@ -134,7 +134,7 @@ def test_persists_only_finalized_and_serves_incrementally(monkeypatch):
 
 def test_near_head_unfinalized_tail_not_persisted(monkeypatch):
     """A reorg-window fetch persists ONLY the finalized prefix (blocks at or
-    below head − margin); the unfinalized tail is served live and never
+    below head - margin); the unfinalized tail is served live and never
     written, and coverage never claims past the safe ceiling."""
     conn = _FakeConn()
     monkeypatch.setattr(hypersync_store.postgres_store, "_get_conn", lambda: conn)
@@ -144,7 +144,7 @@ def test_near_head_unfinalized_tail_not_persisted(monkeypatch):
                                                     archive_height=1000))
 
     sel = [{"address": ["0xtok"], "topics": [["0xt0"]]}]
-    # to_block=980 is inside the reorg window (head 1000 − margin 100 = 900):
+    # to_block=980 is inside the reorg window (head 1000 - margin 100 = 900):
     # row 850 is finalized → persisted; row 950 is not → live-only.
     rows = hypersync_store.fetch_logs("ethereum", sel, 800, 980)
     assert [r.block_number for r in rows] == [850, 950]
@@ -455,3 +455,13 @@ def test_checkpoint_restart_refetches_unfinalized_tail(monkeypatch):
     rows = hypersync_store.fetch_logs("ethereum", [], 0, 20)
     assert calls == [(16, 20)]
     assert [r.block_number for r in rows] == list(range(21))
+
+
+def test_database_pages_preserve_every_log_even_when_page_splits_a_block(monkeypatch):
+    monkeypatch.setattr(hypersync_store, "_READ_PAGE_SIZE", 2)
+    conn = _FakeConn()
+    conn.store["logs"]["stream"] = [
+        _row(9), _row(10, 0), _row(10, 1), _row(10, 2), _row(11, 0), _row(12, 0)]
+    rows = hypersync_store._read_rows(conn, "stream", 10, 11)
+    assert [(r.block_number, r.log_index) for r in rows] == [(10, 0), (10, 1), (10, 2), (11, 0)]
+    assert hypersync_store._read_rows(conn, "other", 10, 11) == []
