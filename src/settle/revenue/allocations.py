@@ -90,6 +90,13 @@ def build_documents(readiness, yields, *, source_hashes):
                 or f["status"] != r["cost_status"]
             ):
                 raise ValueError("Yield uses a different borrowing-cost snapshot")
+            known_cost_statuses = {
+                "calculable_under_assumption", "excluded_from_cost", "no_principal_in_period"
+            }
+            if (f["status"] in known_cost_statuses) != (cost is not None):
+                raise ValueError("Borrowing cost availability contradicts its status")
+            if f["status"] in {"excluded_from_cost", "no_principal_in_period"} and Decimal(cost) != 0:
+                raise ValueError("Excluded or zero-principal allocation must have zero cost")
             gross, net = number(r.get("gross_revenue")), number(r.get("net_pnl"))
             average = number(r["average_exposure"], nonnegative=True)
             gross_apy, net_apy = number(r["gross_apy"]), number(r["net_apy"])

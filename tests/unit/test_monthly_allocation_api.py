@@ -165,3 +165,20 @@ def test_inconsistent_yield_rejected_even_if_cost_snapshot_matches():
     row["gross_apy"] = "0.9"
     with pytest.raises(ValueError, match="revenue and exposure"):
         build_documents(readiness, yields, source_hashes={"artifact": "a" * 64})
+
+
+@pytest.mark.parametrize("status,cost", [
+    ("savings_split_pending", "0"),
+    ("capital_measurement_gap", "12"),
+    ("calculable_under_assumption", None),
+    ("excluded_from_cost", "12"),
+    ("no_principal_in_period", "12"),
+])
+def test_publication_rejects_costs_that_contradict_funding_status(status, cost):
+    readiness, yields = inputs()
+    f = next(r for p in readiness["results"] for r in p["allocations"] if r["venue"] == "S1")
+    r = next(r for p in yields["results"] for r in p["allocations"] if r["venue"] == "S1")
+    f.update(status=status, cost_of_funds=cost)
+    r.update(cost_status=status, cost_of_funds=cost)
+    with pytest.raises(ValueError, match=r"contradicts its status|must have zero cost"):
+        build_documents(readiness, yields, source_hashes={"artifact": "a" * 64})
