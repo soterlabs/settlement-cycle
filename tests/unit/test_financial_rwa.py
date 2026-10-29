@@ -89,13 +89,59 @@ def test_raw_source_guards_never_invent_income(change):
     ('| $616,387.90 | $616,387.90 | $0.00 |', '| $616,388.90 | $616,387.90 | $0.00 |'),
     ('60.51%', '160.51%'),
 ])
-def test_invalid_monthly_sources_fail_closed(before, after):
+def test_invalid_monthly_sources_fail_closed_without_hiding_the_other_fund(before, after):
     retained, active = publications()
     doc = deepcopy(retained[active[('grove', '2026-01')]])
     assert before in doc['raw_summary']
     doc['raw_summary'] = doc['raw_summary'].replace(before, after)
-    with pytest.raises(ValueError):
-        monthly(doc)
+    actual = monthly(doc)
+    invalid = 'investment.rwa.jaaa' if before == '60.51%' else 'investment.rwa.stac'
+    sibling = 'investment.rwa.stac' if invalid.endswith('jaaa') else 'investment.rwa.jaaa'
+    assert actual[invalid]['value'] is None
+    assert actual[invalid]['reason'] == 'invalid_or_incomplete_rwa_source'
+    assert actual[sibling]['value'] == monthly(retained[active[('grove', '2026-01')]])[sibling]['value']
+
+
+def test_unrelated_bad_rows_do_not_hide_the_reviewed_funds():
+    retained, active = publications()
+    doc = deepcopy(retained[active[('grove', '2026-01')]])
+    expected = monthly(doc)
+    # A malformed, unrelated row is outside the two explicitly reviewed funds.
+    doc['raw_summary'] = doc['raw_summary'].replace('| E1 |', '| E1 | extra cell |', 1)
+    assert monthly(doc) == expected
+
+
+def test_bad_published_fund_row_does_not_turn_the_annual_api_into_a_404(monkeypatch):
+    import hashlib
+    from importlib.resources import files
+
+    from fastapi.testclient import TestClient
+
+    from settle.api import revenue
+    from settle.api.app import create_app
+    from settle.revenue import monthly_reports
+    snapshot = json.loads(files('settle.revenue').joinpath('published_monthly', monthly_reports.SNAPSHOTS[0] + '.json').read_text())
+    raw = deepcopy(next(row for row in snapshot['reports'] if row['path'] == 'reports/grove/2026-01/summary.md'))
+    raw['text'] = raw['text'].replace('| $616,387.90 | $616,387.90 | $0.00 |',
+                                    '| $616,388.90 | $616,387.90 | $0.00 |')
+    payload = raw['text'].encode()
+    raw['sha256'] = hashlib.sha256(payload).hexdigest()
+    raw['git_blob_sha'] = hashlib.sha1(b'blob ' + str(len(payload)).encode() + b'\0' + payload).hexdigest()
+    changed = monthly_reports.parse({**snapshot, 'commit': 'a' * 40}, raw)
+    retained, active = monthly_reports.publications()
+    monkeypatch.setattr(monthly_reports, 'publications', lambda: (
+        {**retained, changed['revision_id']: changed}, {**active, ('grove', '2026-01'): changed['revision_id']}))
+    monkeypatch.setattr(revenue, 'today', lambda: date(2026, 10, 29))
+    class Reader:
+        def financial_year(self, *args, **kwargs):
+            return []
+    response = TestClient(create_app(reader=Reader())).get('/v3/reporting/statements?prime=grove&year=2026')
+    assert response.status_code == 200, response.text
+    report = response.json()
+    assert line(report, 'investment.rwa.stac')['values']['2026-01']['value'] is None
+    assert line(report, 'investment.rwa.jaaa')['values']['2026-01']['value'] == '933299.18'
+    assert line(report, 'demand.agent_rate')['values']['2026-01']['status'] == 'available'
+    assert line(report, 'statement.family.rwa_funds')['total']['status'] == 'partial'
 
 
 def test_old_selections_remain_exact_and_new_sources_stay_pinned():

@@ -75,29 +75,33 @@ def monthly(publication):
     result = {key: metric(reason='rwa_source_not_published') for _, key, *_ in SPECS}
     if not publication or publication['prime'] != 'grove' or publication['cutoff'] < '2026-01-01':
         return result
-    text = publication['raw_summary']
-    if text.count('\n## Per-venue\n') != 1:
-        raise ValueError('Missing or ambiguous published RWA table')
+    invalid = {key: metric(reason='invalid_or_incomplete_rwa_source') for _, key, *_ in SPECS}
+    text = publication.get('raw_summary')
+    if not isinstance(text, str) or text.count('\n## Per-venue\n') != 1:
+        return invalid
     section = text.split('\n## Per-venue\n')[1].split('\n## ')[0]
     cells = [[cell.strip() for cell in row.split('|')[1:-1]] for row in section.splitlines() if row.startswith('|')]
     required = {'Venue', 'Label', 'actual_rev', 'revenue', 'sd_revenue', 'sd_share'}
     if (len(cells) < 3 or not required <= set(cells[0]) or len(set(cells[0])) != len(cells[0])
-            or len(cells[1]) != len(cells[0]) or any(not re.fullmatch(r':?-{3,}:?', cell) for cell in cells[1])
-            or any(len(row) != len(cells[0]) for row in cells[2:])):
-        raise ValueError('Invalid published RWA table schema')
-    rows = [dict(zip(cells[0], row, strict=True)) for row in cells[2:]]
+            or len(cells[1]) != len(cells[0]) or any(not re.fullmatch(r':?-{3,}:?', cell) for cell in cells[1])):
+        return invalid
+    venue_index = cells[0].index('Venue')
     for venue, key, _, label in SPECS:
-        matches = [row for row in rows if row['Venue'] == venue]
-        if len(matches) != 1 or matches[0]['Label'] != label:
-            raise ValueError('Missing, duplicate or changed published RWA identity')
-        row = matches[0]
-        if not re.fullmatch(r'\d+(?:\.\d+)?%', row['sd_share']):
-            raise ValueError('Invalid published RWA share')
-        # The published share is rounded: use the reported retained amount,
-        # rather than allocating gross income a second time with that share.
-        result[key] = _income(*(_amount(row[field]) for field in ('actual_rev', 'revenue', 'sd_revenue')),
-            number(row['sd_share'][:-1]) / 100, source_ref=publication['revision_id'],
-            path=publication['source']['url'] + '#per-venue', tolerance=Decimal('0.015'))
+        try:
+            # Validate only the reviewed fund. An unrelated malformed row must
+            # not hide valid RWA figures, and one bad fund must not hide its peer.
+            matches = [row for row in cells[2:] if len(row) > venue_index and row[venue_index] == venue]
+            if len(matches) != 1 or len(matches[0]) != len(cells[0]):
+                raise ValueError('Missing, duplicate or malformed published RWA row')
+            row = dict(zip(cells[0], matches[0], strict=True))
+            if row['Label'] != label or not re.fullmatch(r'\d+(?:\.\d+)?%', row['sd_share']):
+                raise ValueError('Invalid published RWA identity/share')
+            # Use the retained amount; do not reapply a rounded ownership share.
+            result[key] = _income(*(_amount(row[field]) for field in ('actual_rev', 'revenue', 'sd_revenue')),
+                number(row['sd_share'][:-1]) / 100, source_ref=publication['revision_id'],
+                path=publication['source']['url'] + '#per-venue', tolerance=Decimal('0.015'))
+        except (KeyError, TypeError, ValueError):
+            result[key] = invalid[key]
     return result
 
 
