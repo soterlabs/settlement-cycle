@@ -18,6 +18,7 @@ from decimal import Decimal as D
 from decimal import localcontext
 from pathlib import Path
 
+from settle.compute.allocation_reconciliation import validate_idle_control
 from settle.domain.config import load_prime_by_id
 from settle.normalize.allocation_history_cache import load_history
 
@@ -173,7 +174,10 @@ def price_daily(principal, rates, idle, sde, *, excluded=False, cap_deductions=T
         raise ValueError("Missing daily financing rate")
     total = ZERO
     for day, value in principal.items():
-        exposure = D(value) - D(idle.get(day, "0")) - D(sde.get(day, "0"))
+        amounts = [D(value), D(rates[day]), D(idle.get(day, "0")), D(sde.get(day, "0"))]
+        if any(not amount.is_finite() or amount < 0 for amount in amounts):
+            raise ValueError("Invalid daily principal, rate or deduction")
+        exposure = amounts[0] - amounts[2] - amounts[3]
         if cap_deductions:
             exposure = max(ZERO, exposure)
         total += (ZERO if excluded else exposure) * rates[day]
@@ -185,6 +189,20 @@ def report(prime_id, history, control, idle_control, start, end):
         control["period"][key] != str(value) for key, value in [("start", start), ("end", end)]
     ):
         raise ValueError("Control period or prime mismatch")
+    expected_days = {str(start + timedelta(days=i)) for i in range((end - start).days + 1)}
+    control_days = [r["date"] for r in control["sky_revenue_daily"]]
+    if len(control_days) != len(set(control_days)) or set(control_days) != expected_days:
+        raise ValueError("Settlement rates must contain exactly one row per period day")
+    idle_values = {
+        vid: {date.fromisoformat(day): D(value) for day, value in values.items()}
+        for vid, values in idle_control["daily"].items()
+    }
+    if any(not value.is_finite() or value < 0
+           for values in idle_values.values() for value in values.values()):
+        raise ValueError("Invalid daily idle deduction")
+    # A source hash authenticates the control, not the extracted deduction
+    # values. Reconcile those values before using them to price allocations.
+    validate_idle_control(idle_values, control)
     daily = capital_timeline(history, date(2026, 1, 1), end)
     rates = {
         r["date"]: D(str(r["daily_sky_rev"])) / D(str(r["utilized"]))

@@ -208,3 +208,31 @@ def test_basin_exemption_is_not_backdated_or_silently_omitted_after_september():
     assert not module.known_extra_policy("grove", "E_JTRSY_BASIN", date(2026, 9, 1))
     assert not module.known_extra_policy("grove", "unknown", date(2026, 8, 31))
     assert not module.known_extra_policy("spark", "E_PAXOS_BRIDGE", date(2026, 8, 31))
+
+
+@pytest.mark.parametrize("bad", ["-1", "NaN", "Infinity"])
+@pytest.mark.parametrize("field", ["principal", "rate", "idle", "sde"])
+def test_invalid_daily_cost_inputs_are_rejected(field, bad):
+    args = {"principal": {"d": D(100)}, "rate": {"d": D(".01")},
+            "idle": {"d": D(0)}, "sde": {"d": D(0)}}
+    args[field]["d"] = D(bad)
+    with pytest.raises(ValueError, match="Invalid daily"):
+        module.price_daily(args["principal"], args["rate"], args["idle"], args["sde"])
+
+
+def test_report_rejects_idle_values_that_do_not_reconcile():
+    control = {
+        "prime_id": "grove",
+        "period": {"start": "2026-08-01", "end": "2026-08-01"},
+        "sky_revenue_daily": [{"date": "2026-08-01", "daily_sky_rev": "1",
+                               "utilized": "100", "curve_idle": "20"}],
+        "venue_breakdown": [{"venue_id": "A", "revenue": "7"}],
+    }
+    with pytest.raises(ValueError, match="idle deductions do not reproduce"):
+        module.report("grove", CapitalHistory((), {}, {}), control,
+                      {"daily": {"A": {"2026-08-01": "19"}}},
+                      date(2026, 8, 1), date(2026, 8, 1))
+    control["sky_revenue_daily"] *= 2
+    with pytest.raises(ValueError, match="exactly one row"):
+        module.report("grove", CapitalHistory((), {}, {}), control, {"daily": {}},
+                      date(2026, 8, 1), date(2026, 8, 1))
