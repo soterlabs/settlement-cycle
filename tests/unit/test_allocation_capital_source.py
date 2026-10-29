@@ -563,3 +563,29 @@ def test_ethereum_fsusds_uses_its_actual_susds_asset_without_changing_report_con
     result=replay_history(history,DAY,DAY)
     assert not result.unmatched_outflows and not result.unmatched_receipts
     assert result.ledger.account(history.venue_accounts['V1']).borrowed==110
+
+
+def test_issuer_receivable_does_not_duplicate_the_funded_cash_account(monkeypatch):
+    from settle.domain.config import load_prime_by_id
+
+    prime = load_prime_by_id("spark")
+    prime = replace(prime, venues=[v for v in prime.venues if v.id in {"S64", "S67"}],
+                    alm={Chain.ETHEREUM: prime.alm[Chain.ETHEREUM]}, alm_start_dates={}, subproxy={})
+    monkeypatch.setattr(source.hypersync_store, "fetch_logs", lambda *a, **kw: [])
+    history = source.fetch_capital_history(prime, {Chain.ETHEREUM: 1})
+    assert "S64" in history.venue_accounts
+    assert "S67" not in history.venue_accounts
+
+
+def test_event_timestamp_resolver_reuses_only_its_exact_chain_and_block():
+    from types import SimpleNamespace
+    calls = []
+    def fallback(chain, block):
+        calls.append((chain, block))
+        return date(2026, 9, 2)
+    resolver = source.EventBlockResolver(SimpleNamespace(block_to_date=fallback),
+                                        Chain.ETHEREUM, 100, STAMP)
+    assert resolver.block_to_date(Chain.ETHEREUM.value, 100) == DAY
+    assert not calls
+    assert resolver.block_to_date(Chain.BASE.value, 100) == date(2026, 9, 2)
+    assert calls == [(Chain.BASE.value, 100)]

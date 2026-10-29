@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rank August reported allocation returns using existing revenue and modeled costs.
+"""Rank monthly reported allocation returns using existing revenue and modeled costs.
 
 No new revenue extraction. Gross APY uses actual plus external revenue; net
 uses Prime-retained venue revenue less borrowing cost, matching the existing
@@ -17,7 +17,7 @@ from pathlib import Path
 from settle.compute.allocation_financing import annualized_yield
 
 
-def build(readiness, controls, anchorage):
+def build(readiness, controls, anchorage=None):
     output = []
     for prime in readiness["results"]:
         start, end = date.fromisoformat(prime["start"]), date.fromisoformat(prime["end"])
@@ -50,44 +50,65 @@ def build(readiness, controls, anchorage):
             elif revenue is None:
                 row["yield_status"] = "revenue_not_in_snapshot"
             else:
-                average = max(
-                    D(revenue["tw_avg_value_usd"]), D(revenue.get("tw_avg_notional_usd", "0"))
-                )
-                row["denominator"] = "published time-weighted position value/notional"
-                if prime["prime"] == "spark" and vid == "S23":
+                average = D(revenue["tw_avg_value_usd"])
+                row["denominator"] = "published time-weighted position value"
+                if not average.is_finite() or average < 0:
+                    raise ValueError("Invalid measured yield exposure")
+                if average == 0:
+                    average = D(revenue.get("tw_avg_notional_usd", "0"))
+                    row["denominator"] = "published notional (position value unavailable)"
+                if finance.get("average_facility_exposure") is not None:
+                    # Facility claims track September deposits/redemptions;
+                    # a fixed configured notional can predate those movements.
+                    average = D(finance["average_facility_exposure"])
+                    row["denominator"] = "daily outstanding facility principal; not escrow cash"
+                elif prime["prime"] == "spark" and vid == "S23":
                     # The escrow balance is NOT the outstanding loan. Reuse
                     # the accepted full-principal return policy and daily loan
                     # amounts already established in the funding-origin work.
-                    average = (
-                        sum(
-                            (
-                                D(
-                                    anchorage["daily"][str(start + timedelta(days=i))][
-                                        "facility_principal"
-                                    ]
-                                )
-                                for i in range(n)
-                            ),
-                            D(0),
+                    if anchorage is not None:
+                        average = (
+                            sum(
+                                (
+                                    D(
+                                        anchorage["daily"][str(start + timedelta(days=i))][
+                                            "facility_principal"
+                                        ]
+                                    )
+                                    for i in range(n)
+                                ),
+                                D(0),
+                            )
+                            / n
                         )
-                        / n
-                    )
+                    else:
+                        average = None
                     row["denominator"] = (
                         "daily outstanding Anchorage loan principal; not escrow cash"
                     )
-                row["average_exposure"] = str(average)
+                if average is not None and (not average.is_finite() or average < 0):
+                    raise ValueError("Invalid yield exposure")
+                row["average_exposure"] = str(average) if average is not None else None
                 gross_revenue = D(revenue["actual_revenue"]) + D(revenue["external_revenue"])
                 row["gross_revenue"] = str(gross_revenue)
                 row["prime_retained_revenue"] = revenue["revenue"]
                 row["spread_reimbursement_not_in_venue_net"] = revenue.get(
                     "susds_spread_reimbursement", "0"
                 )
-                row["gross_apy"] = annualized_yield(gross_revenue, average, n)
+                row["gross_apy"] = (
+                    annualized_yield(gross_revenue, average, n) if average is not None else None
+                )
                 if finance["cost_of_funds"] is not None:
                     row["net_pnl"] = str(D(revenue["revenue"]) - D(finance["cost_of_funds"]))
-                    row["net_apy"] = annualized_yield(D(row["net_pnl"]), average, n)
+                    row["net_apy"] = (
+                        annualized_yield(D(row["net_pnl"]), average, n)
+                        if average is not None
+                        else None
+                    )
                 row["yield_status"] = (
-                    "no_positive_exposure"
+                    "loan_exposure_unavailable"
+                    if average is None
+                    else "no_positive_exposure"
                     if average <= 0
                     else "available"
                     if row["net_apy"] is not None
@@ -127,10 +148,11 @@ def percent(value):
 
 
 def markdown(result):
+    month_label = date.fromisoformat(result["results"][0]["start"]).strftime("%B %Y")
     lines = [
-        "# August 2026 allocation yields",
+        f"# {month_label} allocation yields",
         "",
-        "Annualized August returns (APY), sorted descending by gross APY within each Prime.",
+        f"Annualized {month_label} returns (APY), sorted descending by gross APY within each Prime.",
         "Gross uses booked investment revenue. Net uses Prime-retained venue revenue after SDE, less modeled borrowing costs.",
         "These are not forward loan/reward rates. Cash-recognized distributions can be lumpy.",
         "Prime-level adjustments and spread reimbursements are not allocated into net APY; no published report changes.",
@@ -164,16 +186,25 @@ def markdown(result):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--month", default="2026-08")
+    p.add_argument("--settlements-root", type=Path, default=Path("settlements"))
+    p.add_argument("--anchorage-exposure", type=Path)
     p.add_argument("--readiness", type=Path, required=True)
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--markdown", type=Path, required=True)
     args = p.parse_args()
     paths = [
         args.readiness,
-        Path("settlements/spark/2026-08/provenance.json"),
-        Path("settlements/grove/2026-08/provenance.json"),
-        Path("reconciliation/spark_anchorage_receipt_funding_origins_2026_08.json.gz"),
+        args.settlements_root / "spark" / args.month / "provenance.json",
+        args.settlements_root / "grove" / args.month / "provenance.json",
     ]
+    anchorage_path = args.anchorage_exposure or (
+        Path("reconciliation/spark_anchorage_receipt_funding_origins_2026_08.json.gz")
+        if args.month == "2026-08"
+        else None
+    )
+    if anchorage_path:
+        paths.append(anchorage_path)
     if args.output.resolve() == args.markdown.resolve() or any(
         out.resolve() == source.resolve()
         for out in [args.output, args.markdown]
@@ -190,7 +221,7 @@ def main():
             prime: json.loads(path.read_text())
             for prime, path in zip(["spark", "grove"], paths[1:3], strict=True)
         },
-        json.load(gzip.open(paths[3], "rt")),
+        json.load(gzip.open(anchorage_path, "rt")) if anchorage_path else None,
     )
     result["input_sha256"] = {
         str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths

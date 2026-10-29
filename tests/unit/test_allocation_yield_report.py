@@ -2,6 +2,8 @@ import importlib.util
 from decimal import Decimal as D
 from pathlib import Path
 
+import pytest
+
 from settle.compute.allocation_financing import annualized_yield
 
 spec = importlib.util.spec_from_file_location(
@@ -96,3 +98,44 @@ def test_small_negative_yield_is_not_displayed_as_zero():
     assert module.percent("-0.000042") == "-0.0042%"
     assert module.percent("0") == "0.00%"
     assert module.percent(None) == "—"
+
+
+def test_september_anchorage_never_reuses_the_escrow_or_august_denominator():
+    readiness, controls = inputs()
+    readiness["results"][0]["start"] = controls["spark"]["period"]["start"] = "2026-09-01"
+    readiness["results"][0]["end"] = controls["spark"]["period"]["end"] = "2026-09-30"
+    finance = readiness["results"][0]["allocations"][0]
+    finance["venue"] = controls["spark"]["venue_breakdown"][0]["venue_id"] = "S23"
+    row = module.build(readiness, controls)["results"][0]["allocations"][0]
+    assert row["gross_apy"] is None and row["average_exposure"] is None
+    assert row["yield_status"] == "loan_exposure_unavailable"
+    finance["average_facility_exposure"] = "100000000"
+    row = module.build(readiness, controls)["results"][0]["allocations"][0]
+    assert row["average_exposure"] == "100000000"
+    assert row["gross_apy"] is not None
+
+
+def test_nft_uses_measured_average_not_larger_fixed_notional():
+    readiness, controls = inputs(vid="NFT")
+    controls["spark"]["venue_breakdown"][0]["tw_avg_notional_usd"] = "250"
+    row = module.build(readiness, controls)["results"][0]["allocations"][0]
+    assert D(row["average_exposure"]) == 100
+
+
+def test_facility_uses_updated_outstanding_claim_not_stale_configured_notional():
+    readiness, controls = inputs(vid="E42")
+    finance = readiness["results"][0]["allocations"][0]
+    finance["average_facility_exposure"] = "349916701"
+    revenue = controls["spark"]["venue_breakdown"][0]
+    revenue.update(tw_avg_value_usd="0", tw_avg_notional_usd="304000001")
+    row = module.build(readiness, controls)["results"][0]["allocations"][0]
+    assert D(row["average_exposure"]) == 349916701
+
+
+@pytest.mark.parametrize("value", ["-1", "NaN", "Infinity"])
+def test_invalid_measured_value_cannot_be_hidden_by_positive_notional(value):
+    readiness, controls = inputs()
+    controls["spark"]["venue_breakdown"][0].update(
+        tw_avg_value_usd=value, tw_avg_notional_usd="100")
+    with pytest.raises(ValueError, match="Invalid measured yield exposure"):
+        module.build(readiness, controls)

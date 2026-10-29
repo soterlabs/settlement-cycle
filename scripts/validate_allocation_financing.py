@@ -25,8 +25,13 @@ from settle.domain.config import load_prime_by_id
 from settle.domain.monthly_pnl import VenueRevenue
 from settle.domain.period import Period
 from settle.domain.primes import Chain
-from settle.normalize.allocation_history_cache import fingerprint, load_history
+from settle.normalize.allocation_history_cache import (
+    fingerprint,
+    load_history,
+    project_prime_to_pins,
+)
 from settle.normalize.sources.hypersync_block_resolver import HyperSyncBlockResolver
+from settle.normalize.sources.rpc_block_resolver import RPCBlockResolver
 
 
 def control_pnl(control):
@@ -55,6 +60,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--provenance', type=Path, required=True)
     parser.add_argument('--history-dir', type=Path, required=True)
+    parser.add_argument('--block-resolver', choices=('hypersync', 'rpc'), default='hypersync',
+                        help='Timestamp provider; RPC avoids indexer rate limits')
     parser.add_argument('--capture-idle-only', action='store_true',
                         help='Persist exact daily deductions without replaying capital')
     parser.add_argument('--debt-control', type=Path,
@@ -75,14 +82,15 @@ def main():
             or manifest['end'] != str(pnl.period.end)):
         parser.error('history and control must cover the same prime and period')
     pins = {Chain(c): b for c, b in manifest['pins'].items()}
-    if any(pnl.period.pin_blocks.get(c) != b for c, b in pins.items()):
+    if pins != pnl.period.pin_blocks:
         parser.error('history and control have different block pins')
+    prime = project_prime_to_pins(prime, pins)
     history = None
     if not args.capture_idle_only:
         history = load_history(args.history_dir / 'history.jsonl.gz', fingerprint(prime, pins))
         if history is None:
             parser.error('normalized history is absent or stale; run validate_allocation_capital first')
-    resolver = HyperSyncBlockResolver()
+    resolver = RPCBlockResolver() if args.block_resolver == 'rpc' else HyperSyncBlockResolver()
     idle = {}
     ssr = pd.DataFrame([{'effective_date': date.fromisoformat(r['date']),
                          'ssr_apy': Decimal(str(r['ssr_apy']))} for r in pnl.sky_revenue_daily])

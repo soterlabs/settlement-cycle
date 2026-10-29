@@ -113,9 +113,13 @@ MSC debt and financing outside allocations need a separate reconciliation.
 - Reuse the existing period revenue. Gross yield uses booked actual plus
   external revenue. Net uses Prime-retained venue revenue after SDE, less
   borrowing cost; it excludes prime-level adjustments/spread reimbursements.
-- The return denominator is the published time-weighted position value or
-  notional. Anchorage instead uses the independently reconstructed average
-  outstanding loan principal, because its pass-through escrow is not the loan.
+- The return denominator is the positive published time-weighted position
+  value, with notional only as a fallback when that value is unavailable.
+  Do not take the larger of measured value and a fixed notional after a
+  partial exit. Reconstructed facility claims (including Anchorage and Galaxy
+  Warehouse) use average outstanding loan principal, not escrow cash or a
+  stale configured notional. This denominator refinement applies to newly
+  published analytics; existing August API revisions are not regenerated.
 - Monthly return is period profit divided by average exposure. APY is
   `(1 + monthly_return) ** (365 / days_in_month) - 1`. Cash-recognized income
   gives a realized-period yield, not necessarily a contractual accrual rate.

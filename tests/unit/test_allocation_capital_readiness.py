@@ -213,8 +213,12 @@ def test_basin_exemption_is_not_backdated_or_silently_omitted_after_september():
 @pytest.mark.parametrize("bad", ["-1", "NaN", "Infinity"])
 @pytest.mark.parametrize("field", ["principal", "rate", "idle", "sde"])
 def test_invalid_daily_cost_inputs_are_rejected(field, bad):
-    args = {"principal": {"d": D(100)}, "rate": {"d": D(".01")},
-            "idle": {"d": D(0)}, "sde": {"d": D(0)}}
+    args = {
+        "principal": {"d": D(100)},
+        "rate": {"d": D(".01")},
+        "idle": {"d": D(0)},
+        "sde": {"d": D(0)},
+    }
     args[field]["d"] = D(bad)
     with pytest.raises(ValueError, match="Invalid daily"):
         module.price_daily(args["principal"], args["rate"], args["idle"], args["sde"])
@@ -224,15 +228,64 @@ def test_report_rejects_idle_values_that_do_not_reconcile():
     control = {
         "prime_id": "grove",
         "period": {"start": "2026-08-01", "end": "2026-08-01"},
-        "sky_revenue_daily": [{"date": "2026-08-01", "daily_sky_rev": "1",
-                               "utilized": "100", "curve_idle": "20"}],
+        "sky_revenue_daily": [
+            {"date": "2026-08-01", "daily_sky_rev": "1", "utilized": "100", "curve_idle": "20"}
+        ],
         "venue_breakdown": [{"venue_id": "A", "revenue": "7"}],
     }
     with pytest.raises(ValueError, match="idle deductions do not reproduce"):
-        module.report("grove", CapitalHistory((), {}, {}), control,
-                      {"daily": {"A": {"2026-08-01": "19"}}},
-                      date(2026, 8, 1), date(2026, 8, 1))
+        module.report(
+            "grove",
+            CapitalHistory((), {}, {}),
+            control,
+            {"daily": {"A": {"2026-08-01": "19"}}},
+            date(2026, 8, 1),
+            date(2026, 8, 1),
+        )
     control["sky_revenue_daily"] *= 2
     with pytest.raises(ValueError, match="exactly one row"):
-        module.report("grove", CapitalHistory((), {}, {}), control, {"daily": {}},
-                      date(2026, 8, 1), date(2026, 8, 1))
+        module.report(
+            "grove",
+            CapitalHistory((), {}, {}),
+            control,
+            {"daily": {}},
+            date(2026, 8, 1),
+            date(2026, 8, 1),
+        )
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"prime": "grove"},
+        {"end": "2026-08-31"},
+        {"pins": {"ethereum": 99}},
+        {"history_sha256": "stale"},
+    ],
+)
+def test_rejects_history_for_wrong_prime_month_or_blocks(change):
+    manifest = {
+        "prime": "spark",
+        "end": "2026-09-30",
+        "pins": {"ethereum": 100},
+        "history_sha256": "valid",
+    }
+    control = {"pin_blocks_eom": {"ethereum": 100}}
+    module.validate_history_manifest(
+        manifest, prime="spark", end=date(2026, 9, 30), control=control, history_sha256="valid"
+    )
+    with pytest.raises(ValueError, match="settlement pins"):
+        module.validate_history_manifest(
+            {**manifest, **change},
+            prime="spark",
+            end=date(2026, 9, 30),
+            control=control,
+            history_sha256="valid",
+        )
+
+
+def test_fresh_capture_lineage_includes_transitive_movement_adapters():
+    paths = {str(p) for p in module.source_files(with_adapters=True)}
+    assert "src/settle/compute/executed_spell_capital.py" in paths
+    assert "src/settle/compute/grove_cash_distributions.py" in paths
+    assert "src/settle/compute/spark_separate_savings_routes.py" in paths

@@ -36,6 +36,7 @@ import requests
 from . import hypersync, postgres_store
 
 _DEFAULT_REORG_MARGIN = 500
+_READ_PAGE_SIZE = 10_000
 
 
 def _database_operation(fn):
@@ -89,6 +90,7 @@ def fetch_logs(
     log_fields: list[str] | None = None,
     join_mode: str | None = None,
     result_topic0: str | None = None,
+    max_num_logs: int | None = None,
     post: Callable[..., Any] = requests.post,
 ) -> list[hypersync.LogRow]:
     """Return all logs matching ``selections`` in ``[from_block, to_block]``.
@@ -107,6 +109,8 @@ def fetch_logs(
 
     def live(lo: int, hi: int) -> hypersync.QueryResult:
         options = {}
+        if max_num_logs is not None:
+            options["max_num_logs"] = max_num_logs
         if join_mode is not None:
             options['join_mode'] = join_mode
         if result_topic0 is not None:
@@ -329,25 +333,34 @@ def _persist(conn: Any, stream: str, rows: list[hypersync.LogRow]) -> None:
 
 @_database_operation
 def _read_rows(conn: Any, stream: str, from_block: int, to_block: int) -> list[hypersync.LogRow]:
+    # Inception histories can contain millions of rows. Keyset pagination
+    # bounds each SQL statement without dropping logs at a block boundary.
+    rows = []
+    after_block, after_log = from_block, -1
     with conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT block_number, log_index, block_time, address,
-                   topic0, topic1, topic2, topic3, data, transaction_hash
-            FROM hypersync_logs
-            WHERE stream = %s AND block_number >= %s AND block_number <= %s
-            ORDER BY block_number, log_index
-            """,
-            (stream, from_block, to_block),
-        )
-        return [
-            hypersync.LogRow(
-                block_number=int(r[0]), log_index=int(r[1]), block_time=int(r[2]),
-                address=r[3], topic0=r[4], topic1=r[5], topic2=r[6], topic3=r[7], data=r[8],
-                transaction_hash=r[9],
+        while True:
+            cur.execute(
+                """
+                SELECT block_number, log_index, block_time, address,
+                       topic0, topic1, topic2, topic3, data, transaction_hash
+                FROM hypersync_logs
+                WHERE stream = %s AND block_number >= %s AND block_number <= %s
+                  AND (block_number, log_index) > (%s, %s)
+                ORDER BY block_number, log_index LIMIT %s
+                """,
+                (stream, from_block, to_block, after_block, after_log, _READ_PAGE_SIZE),
             )
-            for r in cur.fetchall()
-        ]
+            page = cur.fetchall()
+            rows.extend(
+                hypersync.LogRow(
+                    block_number=int(r[0]), log_index=int(r[1]), block_time=int(r[2]),
+                    address=r[3], topic0=r[4], topic1=r[5], topic2=r[6], topic3=r[7], data=r[8],
+                    transaction_hash=r[9],
+                ) for r in page
+            )
+            if len(page) < _READ_PAGE_SIZE:
+                return rows
+            after_block, after_log = int(page[-1][0]), int(page[-1][1])
 
 
 def _merge(
