@@ -250,3 +250,35 @@ resolved by a future reviewed policy.
 The dashboard hides the gross-funding and spread-reimbursement rows but the API
 retains those reconciliation metrics. It also hides pre-tax, tax and impairment
 rows; this does not assume the corresponding costs are zero in net income.
+
+## Grove STAC/JAAA history (rwa-income.v3.2)
+
+`prime-management.rwa-income.v3.2` adds `investment.rwa.stac` and
+`investment.rwa.jaaa`, grouped by `statement.family.rwa_funds`. The
+[coverage audit](grove-rwa-income-coverage-2026.md) verifies January through the
+latest October source in the same change: 20 of 20 elapsed venue-month cells
+have amounts. Other unsupported historical investments remain unavailable.
+
+For closed months, the API parses the reviewed per-venue rows from the existing
+pinned summary bytes, by column name. It retains the reported prime amount and
+reconciles gross = prime + Sky within display rounding; it never reapplies a
+rounded historical share. For current/otherwise-unpublished months, it reads
+only E7/E8 from the exact raw revision underlying the selected financial document,
+in the same read-only transaction. One batch query enriches Grove publications;
+other primes and old selections avoid this query. Source-hash, identity,
+category, external-reward and reporting-enabled guards fail closed.
+
+Metrics expose `recognition: investment_return` and `allocation_split` with
+reported gross/prime/Sky income, share and rounding delta. They include NAV
+movements, not solely cash or contractual interest. On this policy, Grove's
+statement uses **Investment income from allocations** and **Net investment
+income after funding**. The reviewed subtotal includes the two disjoint new
+leaves once; broader entity totals still retain their unknown perimeter.
+
+Monthly data keeps published cent precision/USDS-at-par provenance; current data
+keeps its saved precision. Both source types remain pinned by the existing dual
+selection. Retained v1/v2/v2.1/v3/v3.1 reports are unchanged. Portfolio and MSC
+settlement endpoints are unchanged. No database migration, new daily calculation,
+raw-source backfill or scheduled job is needed. Deploy the compatible dashboard
+consumer before switching the API default. A PR alone does not publish these
+figures to production.

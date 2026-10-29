@@ -34,12 +34,13 @@ class RevenueReaderMixin:
                 source = store.read(conn, prime, cutoff=row['cutoff']) if row else None
                 return row, ({'cutoff': source['cutoff'], 'revision_id': source['revision_id']} if source else None)
 
-    def financial_year(self, prime, year, *, revisions=None, policy_version=None):
+    def financial_year(self, prime, year, *, revisions=None, policy_version=None, include_rwa=False):
         from ..revenue import financial_store
         with self._pool.connection() as conn:
             with conn.transaction():
                 conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
-                return financial_store.year_rows(conn, prime, year, revisions=revisions, **({"policy_version": policy_version} if policy_version else {}))
+                return financial_store.year_rows(conn, prime, year, revisions=revisions, include_rwa=include_rwa,
+                    **({"policy_version": policy_version} if policy_version else {}))
 
     def revenue_bundle(self, prime, *, cutoff=None, revision=None):
         with self._pool.connection() as conn:

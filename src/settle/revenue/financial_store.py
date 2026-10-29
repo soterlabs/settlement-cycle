@@ -46,7 +46,7 @@ def read(conn, prime, *, cutoff=None, source_revision=None, revision=None):
     return canonical(row) if row else None
 
 
-def year_rows(conn, prime, year, *, revisions=None, policy_version=POLICY_VERSION):
+def year_rows(conn, prime, year, *, revisions=None, policy_version=POLICY_VERSION, include_rwa=False):
     if policy_version not in SUPPORTED_POLICIES:
         raise ValueError("Unknown financial policy")
     with conn.cursor(row_factory=dict_row) as cur:
@@ -62,7 +62,22 @@ def year_rows(conn, prime, year, *, revisions=None, policy_version=POLICY_VERSIO
                 WHERE f.prime=%s AND f.policy_version=%s AND f.cutoff >= %s AND f.cutoff <= %s
                 ORDER BY f.cutoff,f.source_order DESC,f.publication_order DESC''',
                 (prime, policy_version, f'{year}-01-01', f'{year}-12-31'))
-        return canonical(cur.fetchall())
+        rows = cur.fetchall()
+        if include_rwa and prime == 'grove' and rows:
+            # One extra query in the same repeatable-read transaction. Extract
+            # only the two reviewed rows, not entire daily result documents.
+            cur.execute('''SELECT revision_id,result_hash,
+                jsonb_path_query_array(result, '$.venue_breakdown[*] ? (@.venue_id == "E7" || @.venue_id == "E8")') AS rows,
+                jsonb_path_query_array(result, '$.venue_views.reporting[*] ? (@.venue_id == "E7" || @.venue_id == "E8")') AS views
+                FROM revenue_results WHERE prime=%s AND revision_id = ANY(%s)''',
+                (prime, [row['source_revision'] for row in rows]))
+            sources = {source['revision_id']: source for source in cur.fetchall()}
+            for row in rows:
+                source = sources.get(row['source_revision'])
+                if source:
+                    row.update(rwa_source_hash=source['result_hash'], rwa_source_rows=source['rows'],
+                               rwa_source_views=source['views'])
+        return canonical(rows)
 
 
 def publish_revision(conn, prime, revision):
