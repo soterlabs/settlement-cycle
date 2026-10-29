@@ -81,7 +81,7 @@ class NFTCapital:
         if not selections:
             return []
         return hypersync_store.fetch_logs(self.chain.value, selections, 0, pin,
-            log_fields=[*hypersync._DEFAULT_LOG_FIELDS, 'transaction_hash'])
+            log_fields=[*hypersync._DEFAULT_LOG_FIELDS, 'transaction_hash'], max_num_logs=100_000)
 
     def movements(self, logs):
         from .allocation_capital import AssetMovement

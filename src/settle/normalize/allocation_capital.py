@@ -316,7 +316,8 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
             # above cannot see them. Attach only to already tracked transactions.
             for row in hypersync_store.fetch_logs(chain.value, [
                 {'address': fee_vaults, 'topics': [[ACCRUE_INTEREST, ACCRUE_INTEREST_V2]]},
-            ], 0, pins[chain], log_fields=[*hypersync._DEFAULT_LOG_FIELDS, 'transaction_hash']):
+            ], 0, pins[chain], log_fields=[*hypersync._DEFAULT_LOG_FIELDS, 'transaction_hash'],
+                    max_num_logs=100_000):
                 key = (row.block_number, row.transaction_hash)
                 if key in grouped:
                     grouped[key].append(row)
