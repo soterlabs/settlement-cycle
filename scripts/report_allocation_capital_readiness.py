@@ -391,12 +391,13 @@ def markdown(results):
     return "\n".join(lines) + "\n"
 
 
-def validate_history_manifest(manifest, *, prime, end, control):
+def validate_history_manifest(manifest, *, prime, end, control, history_sha256):
     """Reject a stale month's normalized positions before pricing its costs."""
     if (
         manifest.get("prime") != prime
         or manifest.get("end") != str(end)
         or manifest.get("pins") != control["pin_blocks_eom"]
+        or manifest.get("history_sha256") != history_sha256
     ):
         raise ValueError("Capital history must cover the requested month at the settlement pins")
 
@@ -451,7 +452,13 @@ def main():
             control = json.loads(
                 (args.settlements_root / prime / args.month / "provenance.json").read_text()
             )
-            validate_history_manifest(manifest, prime=prime, end=end, control=control)
+            validate_history_manifest(
+                manifest,
+                prime=prime,
+                end=end,
+                control=control,
+                history_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
+            )
         if args.apply_capital_adapters:
             from settle.compute.executed_spell_capital import apply_executed_spells
 

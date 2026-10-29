@@ -19,7 +19,7 @@ Use the production PostgreSQL cache and RPC/indexer configuration. For each of
 
 ```sh
 PYTHONPATH=src:scripts .venv/bin/python scripts/validate_allocation_capital.py spark \
-  --start 2026-09-01 --end 2026-09-30 --capture-only \
+  --start 2026-09-01 --end 2026-09-30 --capture-only --block-resolver rpc \
   --provenance reconciliation/monthly-allocation-controls/spark/2026-09/provenance.json \
   --output-dir /tmp/september-allocation-inputs/spark
 PYTHONPATH=src:scripts .venv/bin/python scripts/validate_allocation_financing.py \
@@ -27,7 +27,8 @@ PYTHONPATH=src:scripts .venv/bin/python scripts/validate_allocation_financing.py
   --history-dir /tmp/september-allocation-inputs/spark --capture-idle-only --block-resolver rpc
 ```
 
-Repeat for Grove. Captures reuse persisted logs/RPC reads after a retry. Chains
+Repeat for Grove. Completed histories are hash-linked to their period manifest.
+Captures reuse persisted logs/RPC reads after a retry. Chains
 absent from the settled period are explicitly unsupported. Issuer-incentive
 receivables sharing another venue's token are income rows, not duplicate capital.
 RPC timestamp lookup is available when the indexer is rate-limited.

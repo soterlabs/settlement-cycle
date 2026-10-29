@@ -255,15 +255,30 @@ def test_report_rejects_idle_values_that_do_not_reconcile():
 
 
 @pytest.mark.parametrize(
-    "change", [{"prime": "grove"}, {"end": "2026-08-31"}, {"pins": {"ethereum": 99}}]
+    "change",
+    [
+        {"prime": "grove"},
+        {"end": "2026-08-31"},
+        {"pins": {"ethereum": 99}},
+        {"history_sha256": "stale"},
+    ],
 )
 def test_rejects_history_for_wrong_prime_month_or_blocks(change):
-    manifest = {"prime": "spark", "end": "2026-09-30", "pins": {"ethereum": 100}}
+    manifest = {
+        "prime": "spark",
+        "end": "2026-09-30",
+        "pins": {"ethereum": 100},
+        "history_sha256": "valid",
+    }
     control = {"pin_blocks_eom": {"ethereum": 100}}
     module.validate_history_manifest(
-        manifest, prime="spark", end=date(2026, 9, 30), control=control
+        manifest, prime="spark", end=date(2026, 9, 30), control=control, history_sha256="valid"
     )
     with pytest.raises(ValueError, match="settlement pins"):
         module.validate_history_manifest(
-            {**manifest, **change}, prime="spark", end=date(2026, 9, 30), control=control
+            {**manifest, **change},
+            prime="spark",
+            end=date(2026, 9, 30),
+            control=control,
+            history_sha256="valid",
         )

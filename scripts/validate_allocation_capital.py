@@ -7,6 +7,7 @@ reads are reused from Postgres. Deterministic accounting errors remain fatal.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import os
@@ -20,6 +21,7 @@ from settle.domain.primes import Chain
 from settle.normalize.allocation_capital import fetch_capital_history
 from settle.normalize.allocation_history_cache import fingerprint, load_history, save_history
 from settle.normalize.sources.hypersync_block_resolver import HyperSyncBlockResolver
+from settle.normalize.sources.rpc_block_resolver import RPCBlockResolver
 
 
 def save(path, value):
@@ -35,6 +37,7 @@ def main():
     parser.add_argument("--end", type=date.fromisoformat, required=True)
     parser.add_argument("--output-dir", type=Path, required=True,
                         help="Dedicated directory; do not run concurrent jobs in it")
+    parser.add_argument("--block-resolver", choices=("hypersync", "rpc"), default="hypersync")
     parser.add_argument("--capture-only", action="store_true",
                         help="Save normalized principal inputs without funding-origin replay")
     parser.add_argument("--provenance", type=Path,
@@ -47,7 +50,7 @@ def main():
     os.environ["SETTLE_REQUIRE_POSTGRES"] = "1"
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
     prime = load_prime_by_id(args.prime)
-    resolver = HyperSyncBlockResolver()
+    resolver = RPCBlockResolver() if args.block_resolver == "rpc" else HyperSyncBlockResolver()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = args.output_dir / "pins.json"
     identity = dict(prime=args.prime, start=str(args.start), end=str(args.end))
@@ -97,6 +100,10 @@ def main():
             logging.info("Saved normalized history before replay: %s", history_path)
         else:
             logging.info("Reusing normalized history: %s", history_path)
+        # Bind the completed snapshot to its period manifest. An in-progress
+        # capture must not make an older history look valid for a newer close.
+        save(manifest_path, dict(identity, pins={c.value: v for c, v in pins.items()},
+                                 history_sha256=hashlib.sha256(history_path.read_bytes()).hexdigest()))
         if args.capture_only:
             result = dict(identity, batches=len(history.batches), unsupported=history.unsupported,
                           normalized_only=True)
