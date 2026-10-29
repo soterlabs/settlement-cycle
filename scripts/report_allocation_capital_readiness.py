@@ -402,6 +402,21 @@ def validate_history_manifest(manifest, *, prime, end, control, history_sha256):
         raise ValueError("Capital history must cover the requested month at the settlement pins")
 
 
+def source_files(with_adapters=False):
+    paths = [
+        Path(__file__),
+        Path("config/spark.yaml"),
+        Path("config/grove.yaml"),
+        Path("src/settle/compute/spark_anchorage_correction.py"),
+        Path("src/settle/compute/spark_anchorage_scenarios.py"),
+    ]
+    if with_adapters:
+        # The dispatcher imports multiple routing/income corrections. Hashing
+        # only the dispatcher would miss changes to a transitive adapter.
+        paths.extend(sorted(Path("src/settle/compute").glob("*.py")))
+    return paths
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--month", default="2026-08", help="Complete calendar month, YYYY-MM")
@@ -497,13 +512,7 @@ def main():
         "input_sha256": {str(i): hashlib.sha256(i.read_bytes()).hexdigest() for i in inputs},
         "source_sha256": {
             str(i): hashlib.sha256(i.read_bytes()).hexdigest()
-            for i in [
-                Path(__file__),
-                Path("config/spark.yaml"),
-                Path("config/grove.yaml"),
-                Path("src/settle/compute/spark_anchorage_correction.py"),
-                Path("src/settle/compute/spark_anchorage_scenarios.py"),
-            ]
+            for i in source_files(args.apply_capital_adapters)
         },
     }
     args.output.write_bytes(gzip.compress((json.dumps(result, indent=2) + "\n").encode(), mtime=0))

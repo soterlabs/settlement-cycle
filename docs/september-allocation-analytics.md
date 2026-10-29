@@ -72,3 +72,29 @@ the older $304,000,001 configured notional. E12 gross/net APYs are approximately
 net APY (-3.63%), as expected. Gross outliers E21 (cash distributions) and E22
 (negative booked September revenue) reproduce the existing settlement revenue;
 the calculation does not replace them with assumed contractual accruals.
+
+## Code review and deferred backfill
+
+At the operator's request, the Spark capture was stopped after saving its log
+checkpoints. Further API backfill is deferred; it is not a condition for merging
+this code. Grove's previously published September revision remains available;
+Spark September has not been published.
+
+Two sequential code-review/fix rounds were completed:
+
+1. Protect provenance inputs from capture-output filename collisions; reject
+   invalid measured yield exposure instead of hiding it behind a notional.
+2. Record transitive capital-adapter code hashes for fresh captures; reject
+   publication when revenue-control hashes are absent.
+
+Validation after both rounds: 464 targeted allocation, API, cache and HyperSync
+tests passed. The earlier isolated full unit suite passed 2,278 tests with one
+optional-dependency skip. No further revenue calculation or API publication was
+performed during these review rounds.
+
+Before resuming Spark publication, investigate the idle-deduction mismatch.
+For September 1, the captured venue deductions total $441,886,778.26 versus
+$387,809,077.69 in the settled control: a $54,077,700.57 difference in **deductible
+capital**, not borrowing cost. The validator rejected this input. Do not scale
+it to fit or override the check; establish whether historical configuration,
+measurement, or exemption attribution explains the difference first.

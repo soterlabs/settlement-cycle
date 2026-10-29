@@ -282,3 +282,10 @@ def test_rejects_history_for_wrong_prime_month_or_blocks(change):
             control=control,
             history_sha256="valid",
         )
+
+
+def test_fresh_capture_lineage_includes_transitive_movement_adapters():
+    paths = {str(p) for p in module.source_files(with_adapters=True)}
+    assert "src/settle/compute/executed_spell_capital.py" in paths
+    assert "src/settle/compute/grove_cash_distributions.py" in paths
+    assert "src/settle/compute/spark_separate_savings_routes.py" in paths
