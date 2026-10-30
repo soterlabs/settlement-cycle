@@ -129,3 +129,67 @@ def test_anchorage_uses_outstanding_loan_instead_of_escrow_cash(monkeypatch):
     replay.daily_funding[date(2026, 8, 1)]['venue']['savings_by_source'] = {'a': D(101), 'b': D(-1)}
     with pytest.raises(ValueError, match='Invalid individual funding component'):
         module.summarize(*args, anchorage=loan)
+
+
+def test_replay_and_capital_control_use_same_anchorage_return_policy(monkeypatch):
+    monkeypatch.syspath_prepend(str(Path('scripts').resolve()))
+    # A funded loan returns principal twice and reinvests it. Without the
+    # preparation, the loan remains overstated and the receiving venue gets
+    # zero-basis "unknown" cash, despite unchanged total debt.
+    from datetime import UTC, datetime
+
+    import audit_spark_mixed_funding_yields as module
+
+    from settle.compute.spark_anchorage_scenarios import ACCOUNT, CASH, RETURNS
+
+    def batch(identity, timestamp, movements, block=1, minted=D(0)):
+        return CapitalBatch(identity, datetime.fromtimestamp(timestamp, UTC).date(),
+                            timestamp, 'ethereum', block, tuple(movements), minted,
+                            minted_by_ilk={'spark': minted})
+
+    rows = [batch('loan', RETURNS[0][2]-1,
+                  [AssetMovement(ACCOUNT, D(0), D('100000000'), preserve_basis=True)],
+                  minted=D('100000000'))]
+    balance = D(0)
+    for identity, block, timestamp, amount in RETURNS:
+        rows.append(batch(identity, timestamp, [AssetMovement(CASH, D(0), amount)], block))
+        rows.append(batch(identity+'reinvest', timestamp+1,
+                          [AssetMovement(CASH, amount, -amount),
+                           AssetMovement('investment', balance, amount)]))
+        balance += amount
+    original = CapitalHistory(tuple(rows), {'S23': ACCOUNT, 'S1': 'investment'}, {})
+    prepared = module.prepare_history(original)
+    replay = replay_history(prepared, date(2026, 8, 31), date(2026, 8, 31),
+                            funding_accounts={ACCOUNT, 'investment'})
+    total_returns = sum((r[3] for r in RETURNS), D(0))
+    assert total_returns == D('61304382')
+    snapshot = replay.daily_funding[date(2026, 8, 31)]
+    assert snapshot['investment']['sky_principal'] == total_returns
+    assert snapshot[ACCOUNT]['sky_principal'] == D('100000000')-total_returns
+    assert replay.ledger.drawn == D('100000000')
+    assert [b.minted for b in prepared.batches] == [b.minted for b in original.batches]
+    assert not replay.unmatched_receipts
+
+
+def test_earned_cash_repayment_is_not_missing_allocation_capital(monkeypatch):
+    monkeypatch.syspath_prepend(str(Path('scripts').resolve()))
+    from report_allocation_capital_readiness import capital_timeline
+
+    day = date(2026, 8, 1)
+    h = CapitalHistory((
+        CapitalBatch('draw', day, 1, 'ethereum', 1,
+                     (AssetMovement('investment', D(0), D(100)),), D(100),
+                     minted_by_ilk={'spark': D(100)}),
+        CapitalBatch('earned', day, 2, 'ethereum', 2,
+                     (AssetMovement('cash', D(0), D(10), external_income=D(10)),)),
+        CapitalBatch('repay', day, 3, 'ethereum', 3,
+                     (AssetMovement('cash', D(10), D(-10)),), D(-10),
+                     minted_by_ilk={'spark': D(-10)}),
+    ), {'S1': 'investment'}, {})
+    capital = capital_timeline(h, day, day)
+    replay = replay_history(h, day, day, funding_accounts={'investment'})
+    assert D(capital[str(day)]['investment']['principal']) == 100
+    assert replay.daily_funding[day]['investment']['sky_principal'] == 90
+    assert replay.ledger.drawn-replay.ledger.repaid == 90
+    assert not replay.unmatched_receipts
+    assert not replay.unmatched_outflows

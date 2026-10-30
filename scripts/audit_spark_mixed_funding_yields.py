@@ -95,9 +95,26 @@ def summarize(replay, history, readiness, control, idle, venues, anchorage=None)
         'policy': 'Retained proportional Savings principal/interest repayment and refinancing policy; independently separated routes remain separated.',
         'net_scope': 'Prime-retained revenue less conditional Sky borrowing cost only; excludes Savings VSR financing expense and prime-level adjustments.',
         'limitations': ['Unmatched receipts are unknown, not earnings or assumed Sky draws.',
-                       'Daily original-capital differences remain explicit; no residual is assigned to force reconciliation.',
+                       'Original capital and outstanding lender-funded principal differ after repayments from earnings; differences are diagnostic, not automatically missing cash. No residual is assigned to force reconciliation.',
                        'Gross APY reuses settled revenue/exposure. Conditional net APY is not eligible for publication.'],
         'allocations': output}
+
+
+def prepare_history(history):
+    """Match the accepted Anchorage return policy used by the capital control.
+
+    The shared source file still names this an opt-in scenario. Here it is the
+    operator-accepted full-principal policy already applied by
+    report_allocation_capital_readiness.py, not a new interest assumption.
+    Apply it before replay so returned principal follows its reinvestment.
+    Loading only Anchorage's yield denominator does not fix funding attribution.
+    """
+    from settle.compute.executed_spell_capital import apply_executed_spells
+    from settle.compute.spark_anchorage_correction import correct_spark_anchorage_round_trip
+    from settle.compute.spark_anchorage_scenarios import apply_anchorage_scenario
+
+    history = apply_executed_spells(history)
+    return apply_anchorage_scenario(correct_spark_anchorage_round_trip(history), 'all-principal')
 
 
 def hashes(paths):
@@ -193,15 +210,16 @@ def main():
     history = load_history(args.history, key)
     if history is None or not any(b.external_funding for b in history.batches):
         p.error('History must contain audited Savings funding operations')
+    history = prepare_history(history)
     if len(set(args.venues)) != len(args.venues):
         p.error('Duplicate venue')
     # Capture all measured accounts once so adding another venue to the report
     # does not require another inception-to-August replay.
     accounts = set(history.venue_accounts.values()) | {
         a for values in history.custody_accounts.values() for a in values}
-    identity = {'schema': 1, 'history_sha256': input_hashes[str(args.history)],
+    identity = {'schema': 2, 'anchorage_return_policy': 'all-principal', 'history_sha256': input_hashes[str(args.history)],
                 'start': capital['start'], 'end': capital['end'],
-                'accounts': sorted(accounts), 'replay_source_sha256': hashes(replay_sources)}
+                'accounts': sorted(accounts), 'replay_source_sha256': hashes([Path(__file__), *replay_sources])}
     logging.basicConfig(level=logging.INFO)
     replay = load_snapshot(snapshot_path, identity)
     if replay is None:
@@ -212,6 +230,7 @@ def main():
     result = summarize(replay, history, capital, control, idle, args.venues, anchorage)
     if hashes(inputs) != input_hashes or hashes(map(Path, source_hashes)) != source_hashes:
         raise ValueError('Evidence or code changed during report generation')
+    result['anchorage_return_policy'] = 'all-principal'
     result['input_sha256'] = input_hashes
     result['source_sha256'] = source_hashes
     write_json(args.output, result)
