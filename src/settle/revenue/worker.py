@@ -85,10 +85,17 @@ def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_
     planned_dates(set(), set(), today, start, end, missing_only=missing_only,
                   missing_views_only=missing_views_only, newest_first=newest_first, wait_for_lock=wait_for_lock)
     require_views = require_views or missing_views_only
-    if wait_for_lock:
-        conn.execute('SELECT pg_advisory_lock(%s)', (lock_key(prime),))
-    elif not conn.execute('SELECT pg_try_advisory_lock(%s)', (lock_key(prime),)).fetchone()[0]:
-        return {'prime': prime, 'status': 'already_running', 'results': []}
+    waiting = False
+    while not conn.execute('SELECT pg_try_advisory_lock(%s)', (lock_key(prime),)).fetchone()[0]:
+        if not wait_for_lock:
+            return {'prime': prime, 'status': 'already_running', 'results': []}
+        if not waiting:
+            _log.info('revenue waiting for prime lock prime=%s', prime)
+            waiting = True
+        # A blocking pg_advisory_lock is cancelled by the store's five-minute
+        # statement timeout. Poll outside a query/transaction instead; the hard
+        # process deadline still bounds the entire recovery, including waiting.
+        pause(5)
     results = []
     try:
         conn.execute("UPDATE revenue_attempts SET status='abandoned', finished_at=NOW(), "
@@ -107,6 +114,10 @@ def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_
         # Monday's gap planner also recovers Friday and Saturday.
         if start is None and dates and ready_through < dates[0] and ready_through not in published:
             dates.insert(0, ready_through)
+        # Scheduled publication must not wait behind an older slow/failed day.
+        # Keep explicit backfills chronological unless --newest-first is set.
+        if start is None:
+            dates.sort(reverse=True)
         for cutoff in dates:
             if cutoff > ready_through:
                 results.append({'cutoff': str(cutoff), 'status': 'deferred',

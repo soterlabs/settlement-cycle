@@ -2,7 +2,6 @@ from dataclasses import dataclass, field, replace
 from datetime import timedelta
 
 import psycopg
-import pytest
 
 from settle.revenue import store, worker
 from tests.integration.test_input_cache_postgres import database  # noqa: F401
@@ -77,23 +76,86 @@ def test_newest_first_publishes_latest_before_older_history(database):  # noqa: 
         assert store.read(conn, 'obex')['cutoff'] == str(current.as_of)
 
 
+def test_daily_run_publishes_current_cutoff_before_retrying_failed_history(database, monkeypatch):  # noqa: F811
+    from datetime import UTC, datetime
+
+    from settle.domain.period import Period
+
+    current = with_views(example())
+    oldest = current.as_of - timedelta(days=2)
+    today = current.as_of + timedelta(days=1)
+    versions = store.Versions('code', 'cfg', '0')
+    monkeypatch.setenv('REVENUE_START_DATE', str(oldest))
+    calls = []
+
+    def compute(config, month, *, as_of):
+        calls.append(as_of)
+        if as_of == oldest:
+            raise ValueError('unsupported historical input')
+        return replace(current, period=Period.from_month(month, {}, as_of=as_of))
+
+    with psycopg.connect(database, autocommit=True) as conn:
+        store.apply_schema(conn)
+        report = worker.run_prime(
+            conn, 'obex', now=datetime.combine(today, datetime.min.time(), UTC).replace(hour=21),
+            require_views=True, compute=compute, capture=lambda: versions, prepare=lambda *_: None)
+        assert calls == [current.as_of, current.as_of - timedelta(days=1), oldest]
+        assert [r['status'] for r in report['results']] == ['succeeded', 'succeeded', 'failed']
+        assert store.read(conn, 'obex')['cutoff'] == str(current.as_of)
+        # A failing historical day remains visible; it never invalidates the
+        # successful current publication or suppresses recovery on the next tick.
+        assert report['status'] == 'failed'
+        report = worker.run_prime(
+            conn, 'obex', now=datetime.combine(today, datetime.min.time(), UTC).replace(hour=22),
+            require_views=True, compute=compute, capture=lambda: versions, prepare=lambda *_: None)
+        assert [r['status'] for r in report['results']] == ['reused', 'failed']
+        assert calls == [current.as_of, current.as_of - timedelta(days=1), oldest, oldest]
+
+
+def test_daily_weekend_prioritizes_last_eligible_cutoff_before_older_gaps(database, monkeypatch):  # noqa: F811
+    from datetime import UTC, date, datetime
+
+    from settle.domain.period import Period
+
+    monkeypatch.setenv('REVENUE_START_DATE', '2026-09-10')
+    calls = []
+
+    def compute(config, month, *, as_of):
+        calls.append(as_of)
+        return replace(with_views(example()), prime_id='spark',
+                       period=Period.from_month(month, {}, as_of=as_of))
+
+    with psycopg.connect(database, autocommit=True) as conn:
+        store.apply_schema(conn)
+        report = worker.run_prime(
+            conn, 'spark', now=datetime(2026, 9, 13, 20, 17, tzinfo=UTC),
+            compute=compute, capture=lambda: store.Versions('code', 'cfg', '0'),
+            prepare=lambda *_: None, require_views=True)
+        assert calls == [date(2026, 9, 10)]
+        assert [r['status'] for r in report['results']] == ['deferred', 'deferred', 'succeeded']
+        assert store.read(conn, 'spark')['cutoff'] == '2026-09-10'
+
+
 def test_backfill_waits_for_the_shared_prime_lock_instead_of_skipping(database):  # noqa: F811
     pnl = with_views(example())
     with psycopg.connect(database, autocommit=True) as holder, psycopg.connect(database, autocommit=True) as conn:
         store.apply_schema(conn)
         holder.execute('SELECT pg_advisory_lock(%s)', (worker.lock_key('obex'),))
         conn.execute("SET lock_timeout = '50ms'")
-        with pytest.raises(psycopg.errors.LockNotAvailable):
-            worker.run_prime(conn, 'obex', start=pnl.as_of, end=pnl.as_of, wait_for_lock=True)
-        assert conn.execute('SELECT COUNT(*) FROM revenue_attempts').fetchone()[0] == 0
-        holder.execute('SELECT pg_advisory_unlock(%s)', (worker.lock_key('obex'),))
-        conn.execute('SET lock_timeout = 0')
+        conn.execute("SET statement_timeout = '50ms'")
+        pauses = []
+        def release_after_poll(seconds):
+            pauses.append(seconds)
+            # Waiting is not an attempted calculation or a transaction that
+            # can be cancelled by the store's five-minute query timeout.
+            assert conn.execute('SELECT COUNT(*) FROM revenue_attempts').fetchone()[0] == 0
+            holder.execute('SELECT pg_advisory_unlock(%s)', (worker.lock_key('obex'),))
         report = worker.run_prime(conn, 'obex', start=pnl.as_of, end=pnl.as_of,
                                   wait_for_lock=True, require_views=True,
                                   compute=lambda *_args, **_kw: pnl,
                                   capture=lambda: store.Versions('code', 'cfg', '0'),
-                                  prepare=lambda *_: None)
-        assert report['status'] == 'ok'
+                                  prepare=lambda *_: None, pause=release_after_poll)
+        assert report['status'] == 'ok' and pauses == [5]
 
 
 def test_retry_atomic_publication_and_idempotent_restart(database):  # noqa: F811
