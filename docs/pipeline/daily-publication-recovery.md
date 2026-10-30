@@ -61,6 +61,9 @@ or rerunning their historical commands.
    per-prime advisory locks prevent old/new workers from publishing concurrently;
    an overlapping job reports `already_running` and must be retried after the
    previous holder exits. A skipped launch is not proof of completion.
+   Recovery jobs using `--wait-for-lock` poll without a blocking database query,
+   so the normal five-minute query timeout cannot cancel a legitimate wait.
+   Their hard process deadline includes time spent waiting.
 4. Inspect the current status and each prime's history before launching recovery.
    Normal jobs recover unpublished dates inside their rolling 90-day window.
    For missing October settlement/reporting views, launch **one job per prime**

@@ -2,7 +2,6 @@ from dataclasses import dataclass, field, replace
 from datetime import timedelta
 
 import psycopg
-import pytest
 
 from settle.revenue import store, worker
 from tests.integration.test_input_cache_postgres import database  # noqa: F401
@@ -143,17 +142,20 @@ def test_backfill_waits_for_the_shared_prime_lock_instead_of_skipping(database):
         store.apply_schema(conn)
         holder.execute('SELECT pg_advisory_lock(%s)', (worker.lock_key('obex'),))
         conn.execute("SET lock_timeout = '50ms'")
-        with pytest.raises(psycopg.errors.LockNotAvailable):
-            worker.run_prime(conn, 'obex', start=pnl.as_of, end=pnl.as_of, wait_for_lock=True)
-        assert conn.execute('SELECT COUNT(*) FROM revenue_attempts').fetchone()[0] == 0
-        holder.execute('SELECT pg_advisory_unlock(%s)', (worker.lock_key('obex'),))
-        conn.execute('SET lock_timeout = 0')
+        conn.execute("SET statement_timeout = '50ms'")
+        pauses = []
+        def release_after_poll(seconds):
+            pauses.append(seconds)
+            # Waiting is not an attempted calculation or a transaction that
+            # can be cancelled by the store's five-minute query timeout.
+            assert conn.execute('SELECT COUNT(*) FROM revenue_attempts').fetchone()[0] == 0
+            holder.execute('SELECT pg_advisory_unlock(%s)', (worker.lock_key('obex'),))
         report = worker.run_prime(conn, 'obex', start=pnl.as_of, end=pnl.as_of,
                                   wait_for_lock=True, require_views=True,
                                   compute=lambda *_args, **_kw: pnl,
                                   capture=lambda: store.Versions('code', 'cfg', '0'),
-                                  prepare=lambda *_: None)
-        assert report['status'] == 'ok'
+                                  prepare=lambda *_: None, pause=release_after_poll)
+        assert report['status'] == 'ok' and pauses == [5]
 
 
 def test_retry_atomic_publication_and_idempotent_restart(database):  # noqa: F811
