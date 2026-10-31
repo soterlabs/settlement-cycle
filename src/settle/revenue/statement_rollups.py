@@ -8,12 +8,17 @@ from decimal import Decimal, localcontext
 from .financial import metric, number
 
 
-def definitions(prime, source_definitions):
+def definitions(prime, source_definitions, *, allocation_rewards=False):
     native = [item['id'] for item in source_definitions if item['id'].startswith('investment.')
               and item.get('aggregation') != 'subtotal'
               and (item.get('aggregation') == 'leaf' or prime == 'obex')]
     rewards = [item['id'] for item in source_definitions if item['id'].startswith('rewards.')
                and item.get('aggregation') == 'leaf']
+    # Only reviewed, explicitly allocation-linked streams move into allocation
+    # income. New/unclassified reward types stay outside this perimeter.
+    linked = [key for key in rewards if allocation_rewards and
+              key.startswith(('rewards.lending.', 'rewards.issuer.'))]
+    other_rewards = [key for key in rewards if key not in linked]
     rows = []
 
     def add(key, label, ids):
@@ -36,8 +41,12 @@ def definitions(prime, source_definitions):
         slug = family.lower().replace(' ', '_')
         add('family.' + slug, 'Reviewed ' + family + ' income', ids)
         rows[-1]['family'] = family
-    add('interest', 'Interest income from allocations', [*native, 'unclassified.allocation_income'])
-    add('rewards', 'Incentives and rewards received', [*rewards, 'unclassified.other_rewards'])
+    if linked:
+        add('family.allocation_rewards', 'Allocation-linked incentives and rewards', linked)
+    add('interest', 'Income from allocations' if allocation_rewards else 'Interest income from allocations',
+        [*native, *linked, 'unclassified.allocation_income'])
+    add('rewards', 'Other incentives and rewards received' if allocation_rewards else 'Incentives and rewards received',
+        [*other_rewards, 'unclassified.other_rewards'])
     add('noninterest_income', 'Noninterest income', ['statement.demand', 'statement.rewards',
         'unclassified.protocol_fees', 'unclassified.curator_fees', 'unclassified.nonstable_gains'])
     add('funding', 'Interest expense (cost of funding)', ['funding.sky.net', 'unclassified.other_funding'])
@@ -78,9 +87,10 @@ def combine(terms):
 
 def extend(statement):
     source_definitions = statement['lines'][:]
-    rows = definitions(statement['prime'], source_definitions)
-    from .financial import RWA_POLICY
-    if statement['policy_version'] == RWA_POLICY and statement['prime'] == 'grove':
+    from .financial import ALLOCATION_REWARDS_POLICY, RWA_POLICIES
+    rows = definitions(statement['prime'], source_definitions,
+                       allocation_rewards=statement['policy_version'] == ALLOCATION_REWARDS_POLICY)
+    if statement['policy_version'] in RWA_POLICIES and statement['prime'] == 'grove':
         for row in rows:
             if row['id'] == 'statement.interest':
                 row['label'] = 'Investment income from allocations'

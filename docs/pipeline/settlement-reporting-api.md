@@ -319,3 +319,27 @@ their own input validation and reconciliation.
 For typed management-reporting statement components, tracked portfolio aggregates,
 coverage and retained CSV selections, see the [financial reporting API guide](financial-reporting-api.md).
 V2 venue `totals` remain null; v3 does not change settlement amounts or recognition.
+
+### Allocation-linked reward classification (statement policy v3.3)
+
+`prime-management.allocation-rewards.v3.3` is the default annual statement
+composition. Reviewed lending distributions (`rewards.lending.*`) and issuer
+compensation (`rewards.issuer.*`) enter allocation income and net interest income.
+`statement.family.allocation_rewards` exposes their disjoint subtotal. The
+`statement.rewards` line is reserved for other incentives and rewards, including
+an explicitly unavailable unclassified component. Unknown reward types do not
+enter allocation income by default.
+
+This reclassifies existing saved income; it does not change recognition timing,
+leaf amounts, MSC settlement, funding, total net revenue, or net income. Grove's
+STAC/JAAA history remains included. Previous policy selections replay with their
+original classification and hashes. No raw-data replay or database migration is
+required. Clients must accept v3.3 before deploying this default.
+
+The dashboard and primary statement CSV amount columns show `value`, or
+`known_value` for a partial metric; with neither, they show TBD. Totals therefore
+sum available amounts, including negative amounts and actual zeroes. Partial
+coverage stays explicit in API fields and CSV audit metadata; displaying a sum
+is not a declaration that all income/expenses are present. Future months have
+no forecast amounts. Closed-month headers share one end-of-month note, and the
+MTD header retains the actual publication cutoff.

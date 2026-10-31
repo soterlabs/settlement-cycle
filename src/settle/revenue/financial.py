@@ -17,7 +17,9 @@ SUPPORTED_POLICIES = (FIRST_SLICE_POLICY, *ALLOCATION_POLICIES)
 STATEMENT_POLICY = 'prime-management.monthly-statements.v3'
 ROLLUP_POLICY = 'prime-management.statement-rollups.v3.1'
 RWA_POLICY = 'prime-management.rwa-income.v3.2'
-ROLLUP_POLICIES = (ROLLUP_POLICY, RWA_POLICY)
+ALLOCATION_REWARDS_POLICY = 'prime-management.allocation-rewards.v3.3'
+RWA_POLICIES = (RWA_POLICY, ALLOCATION_REWARDS_POLICY)
+ROLLUP_POLICIES = (ROLLUP_POLICY, *RWA_POLICIES)
 MONTHLY_STATEMENT_POLICIES = (STATEMENT_POLICY, *ROLLUP_POLICIES)
 # Frozen dependency of this composition policy; do not follow future daily upgrades.
 STATEMENT_SOURCE_POLICY = 'prime-management.allocations.v2.1'
@@ -160,7 +162,7 @@ def build(source, *, policy_version=POLICY_VERSION):
 
 
 def taxonomy(prime, policy_version):
-    if policy_version == RWA_POLICY:
+    if policy_version in RWA_POLICIES:
         from .financial_rwa import taxonomy as rwa_taxonomy
         return taxonomy(prime, STATEMENT_POLICY) + rwa_taxonomy(prime)
     if policy_version == STATEMENT_POLICY:
@@ -212,9 +214,9 @@ def decode_selection(token, prime, year):
         raise ValueError('Invalid report revision selection') from exc
 
 
-def statements(prime, year, as_of, publications, *, exact=False, selection=None, monthly=False, rollups=False, rwa=False):
+def statements(prime, year, as_of, publications, *, exact=False, selection=None, monthly=False, rollups=False, rwa=False, allocation_rewards=False):
     """Read projection of saved financial metrics, with immutable export selection."""
-    policy_version = selection['policy_version'] if selection else RWA_POLICY if rwa else ROLLUP_POLICY if rollups else STATEMENT_POLICY if monthly else POLICY_VERSION
+    policy_version = selection['policy_version'] if selection else ALLOCATION_REWARDS_POLICY if allocation_rewards else RWA_POLICY if rwa else ROLLUP_POLICY if rollups else STATEMENT_POLICY if monthly else POLICY_VERSION
     monthly = policy_version in MONTHLY_STATEMENT_POLICIES
     if monthly:
         from .monthly_reports import select
@@ -256,8 +258,9 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None,
     if monthly:
         manifest['monthly_revisions'] = [p['revision_id'] if p else None for p in monthly_chosen]
     rwa_cells = []
-    if policy_version == RWA_POLICY and prime == 'grove':
-        from .financial_rwa import daily as rwa_daily, monthly as rwa_monthly
+    if policy_version in RWA_POLICIES and prime == 'grove':
+        from .financial_rwa import daily as rwa_daily
+        from .financial_rwa import monthly as rwa_monthly
         for daily_source, monthly_source in zip(chosen, monthly_chosen, strict=True):
             values = rwa_daily(daily_source)
             if monthly_source:
@@ -304,7 +307,7 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None,
               'selection': selection_token(manifest), 'perimeter': 'operational_prime_management_reporting'}
     if monthly:
         result['source_manifest'].update({p['revision_id']: p['source'] for p in monthly_chosen if p})
-    if policy_version == RWA_POLICY:
+    if policy_version in RWA_POLICIES:
         from .financial_rwa import refresh_reviewed_subtotal
         refresh_reviewed_subtotal(result)
     if policy_version in ROLLUP_POLICIES:
