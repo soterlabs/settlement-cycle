@@ -322,7 +322,7 @@ V2 venue `totals` remain null; v3 does not change settlement amounts or recognit
 
 ### Allocation-linked reward classification (statement policy v3.3)
 
-`prime-management.allocation-rewards.v3.3` is the default annual statement
+`prime-management.allocation-rewards.v3.3` introduced the annual statement
 composition. Reviewed lending distributions (`rewards.lending.*`) and issuer
 compensation (`rewards.issuer.*`) enter allocation income and net interest income.
 `statement.family.allocation_rewards` exposes their disjoint subtotal. The
@@ -343,3 +343,16 @@ coverage stays explicit in API fields and CSV audit metadata; displaying a sum
 is not a declaration that all income/expenses are present. Future months have
 no forecast amounts. Closed-month headers share one end-of-month note, and the
 MTD header retains the actual publication cutoff.
+
+### Grove monthly offchain accruals (statement policy v3.4)
+
+The default is now `prime-management.offchain-accruals.v3.4`. GACLO and Galaxy
+Warehouse monthly accruals feed allocation income; cash and unpaid balances are
+available separately in `offchain_positions`. Estimates retain their own earning
+cutoff and propagate to total estimate markers. Warehouse October stops at
+October25 and remains partial. No MSC or daily revenue calculation changes.
+
+See [monthly accrual fields, coverage, immutable selections and updates](../api-grove-monthly-accruals.md).
+Deploy clients accepting v3.4 before this API default. Old v3.3 and earlier
+selections continue to replay unchanged. The historical backfill is bundled; no
+daily replay or database migration is required.
