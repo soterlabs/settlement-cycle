@@ -4,7 +4,13 @@ from typing import Literal
 
 from fastapi import Depends, HTTPException, Query, Request
 
-from ..revenue.financial import MONTHLY_STATEMENT_POLICIES, RWA_POLICY, STATEMENT_SOURCE_POLICY, decode_selection, statements
+from ..revenue.financial import (
+    MONTHLY_STATEMENT_POLICIES,
+    RWA_POLICIES,
+    STATEMENT_SOURCE_POLICY,
+    decode_selection,
+    statements,
+)
 from ..revenue.verification import PRIMES
 from . import revenue
 
@@ -49,11 +55,11 @@ def register_financial(app, get_reader, document_response):
                     revisions=[x for x in selection['revisions'] if x] if selection else None,
                     policy_version=(selection['policy_version'] if selection and selection['policy_version'] not in MONTHLY_STATEMENT_POLICIES
                                     else STATEMENT_SOURCE_POLICY),
-                    **({'include_rwa': True} if prime == 'grove' and (not selection or selection['policy_version'] == RWA_POLICY) else {}))
+                    **({'include_rwa': True} if prime == 'grove' and (not selection or selection['policy_version'] in RWA_POLICIES) else {}))
         try:
             result = statements(prime, year, as_of, rows,
                                 exact=selection['exact'] if selection else cutoff is not None,
-                                selection=selection, monthly=True, rollups=True, rwa=True)
+                                selection=selection, monthly=True, rollups=True, rwa=True, allocation_rewards=True)
         except ValueError as exc:
             raise HTTPException(404, str(exc), headers={'Cache-Control': 'no-store'}) from None
         selected_ids = {p['financial_revision'] for p in result['periods'] if p['financial_revision']}

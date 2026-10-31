@@ -6,7 +6,7 @@ from psycopg_pool import ConnectionPool
 
 from settle.api.app import PostgresReader, create_app
 from settle.revenue import financial_store, store
-from settle.revenue.financial import RWA_POLICY
+from settle.revenue.financial import ALLOCATION_REWARDS_POLICY
 from settle.revenue.financial_rwa import SPECS
 from tests.integration.test_financial_reporting import FinancialPnl
 from tests.integration.test_input_cache_postgres import database  # noqa: F401
@@ -45,7 +45,7 @@ def test_api_reads_only_reviewed_rows_from_the_pinned_raw_revision(database, mon
             response = client.get('/v3/reporting/statements', params=query)
             assert response.status_code == 200, response.text
             annual = response.json()
-            assert annual['policy_version'] == RWA_POLICY
+            assert annual['policy_version'] == ALLOCATION_REWARDS_POLICY
             def amount(document, key):
                 return next(row for row in document['lines'] if row['id'] == key)['values'][f'{pnl.as_of:%Y-%m}']['value']
             assert amount(annual, 'investment.rwa.stac') == '7'
