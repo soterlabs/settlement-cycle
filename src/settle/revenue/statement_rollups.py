@@ -63,6 +63,7 @@ def definitions(prime, source_definitions, *, allocation_rewards=False):
 def combine(terms):
     """terms are (id, sign, metric); include each known portion exactly once."""
     amount, count, missing, sources, kinds = Decimal(0), 0, [], set(), set()
+    estimates = False
     with localcontext() as ctx:
         ctx.prec = 60
         for key, sign, item in terms:
@@ -71,6 +72,7 @@ def combine(terms):
                 amount += sign * number(known)
                 count += 1
                 kinds.add(item['recognition'])
+                estimates = estimates or item.get('quality') == 'estimate'
             if item['status'] != 'available':
                 missing.extend(item.get('missing_components') or [key])
             sources.update(item.get('source_refs', []))
@@ -82,14 +84,16 @@ def combine(terms):
         result.update(status='partial', known_value=str(amount))
     result.update(missing_components=sorted(set(missing)), source_refs=sorted(sources),
                   recognition=next(iter(kinds)) if len(kinds) == 1 else 'mixed_management_components' if kinds else 'unknown')
+    if estimates:
+        result['quality'] = 'estimate'
     return result
 
 
 def extend(statement):
     source_definitions = statement['lines'][:]
-    from .financial import ALLOCATION_REWARDS_POLICY, RWA_POLICIES
+    from .financial import ALLOCATION_REWARDS_POLICIES, RWA_POLICIES
     rows = definitions(statement['prime'], source_definitions,
-                       allocation_rewards=statement['policy_version'] == ALLOCATION_REWARDS_POLICY)
+                       allocation_rewards=statement['policy_version'] in ALLOCATION_REWARDS_POLICIES)
     if statement['policy_version'] in RWA_POLICIES and statement['prime'] == 'grove':
         for row in rows:
             if row['id'] == 'statement.interest':
