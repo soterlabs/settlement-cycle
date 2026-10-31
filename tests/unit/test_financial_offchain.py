@@ -140,3 +140,12 @@ def test_source_hashes_and_report_hash_are_verified():
     snapshot['sources'][0]['text'] += '\n'
     with pytest.raises(ValueError, match='hash'):
         parse(snapshot)
+
+
+def test_snapshot_cutoffs_are_explicit_and_cannot_cross_months():
+    snapshot = json.loads((ROOT / 'src/settle/revenue/published_offchain' / (SNAPSHOTS[0] + '.json')).read_text())
+    warehouse = snapshot['sources'][1]
+    assert warehouse['period_ends'] == {'2026-10': '2026-10-25'}
+    warehouse['period_ends']['2026-10'] = '2026-11-01'
+    with pytest.raises(ValueError, match='reporting month'):
+        parse(snapshot)

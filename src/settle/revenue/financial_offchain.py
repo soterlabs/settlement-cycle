@@ -18,7 +18,7 @@ from importlib.resources import files
 from .financial import metric, number
 from .verification import digest
 
-SNAPSHOTS = ('a3d115d440858134d2c63b608a135c1a6528e230611a4266054f8ef5bdc9aa0f',)
+SNAPSHOTS = ('7673b7b274b5fbacddacf56864b1a093a9cb5ec25e1d7e020ac907c3fda3c0ed',)
 SPECS = {
     'gaclo': ('E21', 'GACLO1', 'GACLO', 'data/gaclo-monthly.csv'),
     'warehouse': ('E42', 'GLXYWH', 'Galaxy Warehouse', 'data/warehouse-monthly.csv'),
@@ -52,9 +52,11 @@ def parse(snapshot):
             month = raw['month']
             start = date.fromisoformat(month + '-01')
             end = start.replace(day=calendar.monthrange(start.year, start.month)[1])
-            # The supplied October Warehouse schedule explicitly ends on Oct 25.
-            if component == 'warehouse' and month == '2026-10':
-                end = date(2026, 10, 25)
+            # Reviewed cutoffs live with the snapshot; a later full-month
+            # schedule can supersede a partial one without changing this policy.
+            end = date.fromisoformat(source['period_ends'].get(month, str(end)))
+            if not start <= end <= start.replace(day=calendar.monthrange(start.year, start.month)[1]):
+                raise ValueError('Offchain period exceeds its reporting month')
             if (source['path'] != path or raw['currency'] != 'USD' or raw['position'] != position
                     or raw['coverage'] not in ('supported', 'estimate') or (component, month) in seen):
                 raise ValueError('Invalid offchain position/period identity')
