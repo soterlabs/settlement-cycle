@@ -73,3 +73,38 @@ snapshots; subsequent reporting on the corrected snapshots can reuse them.
 S66 still lacks an August revenue row and remains funding-only. No API
 publication, settlement restatement or merger is authorized by successful
 execution alone.
+
+## November 2: transaction-level gap diagnostics
+
+The corrected replay completed. It reduced average August gaps for S4 from
+$37.7m to $34.2m, S28 from $34.1m to $31.4m, S32 from $25.8m to $18.5m, S1
+from $24.3m to $18.0m and S5 from $16.0m to $14.8m. Anchorage now has a $25.1m
+positive gap; its previous excess modeled principal had masked that difference.
+These are principal diagnostics, not settlement adjustments.
+
+`scripts/audit_spark_funding_gap_events.py` compares original capital and total
+Sky/Savings funding after each transaction on the same prepared history. It
+measures repayment-induced changes in selected allocation funding separately
+from other changes, and retains the largest transaction witnesses both across
+history and during August. Other changes can include routing of an existing
+difference; they must not automatically be labeled missing cash.
+
+The observer is opt-in, reads copied scalar balances and does not alter either
+calculation. The final diagnostic must reproduce every selected venue's daily
+gap from the completed corrected report. Contributions must bridge the closing
+gap. Incomplete evidence is saved every 10,000 transactions in a separate
+`.progress.json` file; it is not a resumable ledger checkpoint or a certified
+result. The control stream is temporary and compressed to limit disk use.
+
+```sh
+PYTHON_DOTENV_DISABLED=1 PYTHONPATH=src:scripts .venv/bin/python \
+  scripts/audit_spark_funding_gap_events.py \
+  --history /tmp/spark-adapted-origin-history.jsonl.gz \
+  --reference /tmp/spark-mixed-funding-corrected-2026-08.json \
+  --venues S4 S28 S23 S32 S1 S5 S61 S62 \
+  --output /tmp/spark-funding-gap-events-2026-08.json
+```
+
+The next step is to inspect the largest witnesses, confirm the economics of
+specific transactions, and fix supported classification/routing bugs. This
+instrumentation itself does not clear funding uncertainty or publish yields.

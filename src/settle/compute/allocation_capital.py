@@ -220,7 +220,7 @@ class CapitalReplay:
     daily_funding: dict = field(default_factory=dict)
 
 
-def replay_history(history, start: date, end: date, *, quantify_uncertainty=False, funding_accounts=None) -> CapitalReplay:
+def replay_history(history, start: date, end: date, *, quantify_uncertainty=False, funding_accounts=None, funding_observer=None) -> CapitalReplay:
     """Pair the asset legs of each transaction, preserving average cost basis.
 
     An unpaired outflow keeps its basis in a distinct custody account. An
@@ -261,6 +261,13 @@ def replay_history(history, start: date, end: date, *, quantify_uncertainty=Fals
     cursor = 0
     _log.info('Capital replay: %d transactions, reporting %s through %s', len(batches), start, end)
 
+    def observed_funding():
+        # Copies of selected scalar balances only; diagnostics cannot mutate
+        # ledger accounts. No account creation or diagnostic snapshots when disabled.
+        return {key: (ledger.accounts[key].borrowed +
+                      sum(ledger.accounts[key].external_by_source.values(), ZERO))
+                if key in ledger.accounts else ZERO for key in funding_accounts}
+
     def apply_batch(b):
         clearing = f"clearing:{b.identity}"
         step = 0
@@ -272,7 +279,12 @@ def replay_history(history, start: date, end: date, *, quantify_uncertainty=Fals
                                  kind, amount, source, destination, value, preserve_basis, ilk, external_source)
             if envelope is not None:
                 envelope.apply(event, ledger)
+            before = (observed_funding() if funding_observer is not None
+                      and kind in ('repay', 'external_repay') else None)
             ledger.apply(event)
+            if before is not None:
+                after = observed_funding()
+                funding_observer(b, kind, {key: after[key]-value for key, value in before.items()})
 
         funding = b.minted_by_ilk or {'unattributed': b.minted}
         if sum(funding.values(), ZERO) != b.minted:
@@ -428,6 +440,8 @@ def replay_history(history, start: date, end: date, *, quantify_uncertainty=Fals
         while day <= end:
             while cursor < len(batches) and batches[cursor].day <= day:
                 apply_batch(batches[cursor])
+                if funding_observer is not None:
+                    funding_observer(batches[cursor], 'batch_end', observed_funding())
                 cursor += 1
                 if cursor % 10000 == 0:
                     _log.info('Capital replay: %d/%d transactions through %s',
