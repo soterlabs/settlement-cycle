@@ -235,3 +235,17 @@ def test_explicit_cost_policy_is_period_scoped(tmp_path, monkeypatch):
     path.write_text(json.dumps(document))
     with pytest.raises(ValueError, match='specify idle coverage'):
         module.load_cost_policies(path, '2026-08-01', '2026-08-31')
+
+
+def test_selected_venues_cannot_charge_same_account_twice(monkeypatch):
+    monkeypatch.syspath_prepend(str(Path('scripts').resolve()))
+    import audit_spark_mixed_funding_yields as module
+
+    h = history()
+    h.venue_accounts['S2'] = 'other'
+    h.custody_accounts['S2'] = ['venue']
+    with pytest.raises(ValueError, match='Overlapping allocation account'):
+        module.selected_accounts(h, ['S1', 'S2'])
+    with pytest.raises(ValueError, match='Duplicate selected venue'):
+        module.selected_accounts(h, ['S1', 'S1'])
+    assert module.selected_accounts(h, ['S2']) == {'S2': ['other', 'venue']}

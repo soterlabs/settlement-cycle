@@ -26,6 +26,25 @@ from settle.normalize.allocation_history_cache import load_history
 ZERO = D(0)
 
 
+def selected_accounts(history, venues):
+    """A funding account may appear only once in a selected allocation set."""
+    result, owners = {}, {}
+    for venue in venues:
+        if venue in result:
+            raise ValueError('Duplicate selected venue')
+        if venue in history.covered_by_boundary:
+            raise ValueError('Custody covered by another venue cannot be charged again')
+        accounts = ([history.venue_accounts[venue]] if venue in history.venue_accounts else []) + history.custody_accounts.get(venue, [])
+        if not accounts:
+            raise ValueError('Missing selected venue account')
+        for account in accounts:
+            if account in owners:
+                raise ValueError(f'Overlapping allocation account: {owners[account]} and {venue}')
+            owners[account] = venue
+        result[venue] = accounts
+    return result
+
+
 def summarize(replay, history, readiness, control, idle, venues, anchorage=None, cost_policies=None):
     start, end = date.fromisoformat(readiness['start']), date.fromisoformat(readiness['end'])
     if (readiness['prime'] != 'spark' or control['prime_id'] != 'spark'
@@ -45,17 +64,14 @@ def summarize(replay, history, readiness, control, idle, venues, anchorage=None,
     capitals = {r['venue']: r for r in readiness['allocations']}
     measured_yields = {r['venue']: r for r in build_yields({'results': [readiness]}, {'spark': control}, anchorage)['results'][0]['allocations']}
     output = []
+    accounts_by_venue = selected_accounts(history, venues)
     for venue in venues:
-        if venue in history.covered_by_boundary:
-            raise ValueError('Custody covered by another venue cannot be charged again')
-        accounts = ([history.venue_accounts[venue]] if venue in history.venue_accounts else []) + history.custody_accounts.get(venue, [])
-        if not accounts or venue not in capitals:
+        accounts = accounts_by_venue[venue]
+        if venue not in capitals:
             raise ValueError('Missing selected venue capital')
         daily = {}
         for d in days:
             observed = replay.daily_funding[date.fromisoformat(d)]
-            if len(set(accounts)) != len(accounts):
-                raise ValueError('Duplicate allocation custody account')
             parts = [observed[a] for a in accounts]
             components = [x for part in parts for x in
                           (part['sky_principal'], *part['savings_by_source'].values())]

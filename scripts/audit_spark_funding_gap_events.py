@@ -17,7 +17,7 @@ from datetime import date
 from decimal import Decimal as D
 from pathlib import Path
 
-from audit_spark_mixed_funding_yields import prepare_history, write_json
+from audit_spark_mixed_funding_yields import prepare_history, selected_accounts, write_json
 from report_allocation_capital_readiness import capital_timeline
 
 from settle.compute.allocation_capital import replay_history
@@ -131,10 +131,7 @@ def main():
     logging.basicConfig(level=logging.INFO)
     logging.info('Loading and preparing normalized history')
     history = prepare_history(load_history(args.history, key))
-    accounts = {v: ([history.venue_accounts[v]] if v in history.venue_accounts else [])+
-                   history.custody_accounts.get(v, []) for v in args.venues}
-    if any(not keys or len(set(keys)) != len(keys) for keys in accounts.values()):
-        parser.error('Missing or duplicate allocation accounts')
+    accounts = selected_accounts(history, args.venues)
     # The stream avoids retaining 450k transaction snapshots in memory.
     with tempfile.TemporaryDirectory(prefix='spark-gap-events-') as tmp:
         spool = Path(tmp)/'control.jsonl.gz'
