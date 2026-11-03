@@ -1,0 +1,27 @@
+{
+  "prime": "spark",
+  "month": "2026-08",
+  "venue": "S66",
+  "evidence": {
+    "workbook": {
+      "path": "settlements/spark/2026-08/spark_settlement_august_2026.xlsx",
+      "sha256": "a74688825a8b858e6c0faa71ec000ce3b34e4d5ed6d8adff4ad718de9b94b34f"
+    },
+    "summary": {
+      "path": "settlements/spark/2026-08/summary.md",
+      "sha256": "b8a9aeb5b4290e9387bb980a4a1f6d06a96cf9896c0f21eb532544c16aad3e2c"
+    },
+    "funding": {
+      "path": "reconciliation/spark_all_configured_funding_costs_2026_08.json.gz",
+      "sha256": "671f52192f1f8cb1b1d973fb375221aeb99122151ff817fa86eac7d4d42ac317"
+    },
+    "rates": {
+      "path": "reconciliation/spark_august_2026_revenue_control.json.gz",
+      "sha256": "dc09ae571a99f5526d22dad3ff7093edc03f7c44adb6b1db2a22ef9eca912f73"
+    },
+    "idle": {
+      "path": "reconciliation/spark_s66_august_idle_usds.json",
+      "sha256": "c36484e91bccea4126c58d8ac40b2d07d2741861c50cf499456fb11d3c9a889e"
+    }
+  }
+}
