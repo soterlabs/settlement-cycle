@@ -71,6 +71,10 @@ def parse(snapshot):
             raise ValueError('Duplicate/out-of-scope archive month')
         seen.add((identity, month))
         amount = number(value)
+        # A confirmed zero receipt needs no FX estimate; missing entitlement
+        # is still unknown, but a nominal price cannot change zero received.
+        if amount == 0 and recognition == 'receipt':
+            quality = 'supported'
         cell = metric(amount, basis=basis, source_paths=['data/' + filename + '#' + month + '.' + identity])
         cell.update(recognition=recognition, quality=quality, period_start=str(start), period_end=str(end),
                     source_currency=currency, conversion='supplied_USD_amount' if currency == 'USD' else 'supplied_unit_price_1_USD')

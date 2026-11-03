@@ -40,6 +40,8 @@ def test_all_supplied_income_and_reference_rows_are_exposed_once():
     assert len({(row['month'], row['id']) for row in r['archive_income']}) == 34
     assert line(r, 'rewards.issuer.agora')['values']['2026-03']['value'] == '561262.52'
     assert line(r, 'rewards.issuer.agora')['values']['2026-01']['value'] == '0'
+    assert line(r, 'rewards.issuer.agora')['values']['2026-01']['quality'] == 'supported'
+    assert line(r, 'rewards.issuer.agora')['values']['2026-03']['quality'] == 'estimate'
     assert line(r, 'rewards.issuer.agora')['values']['2026-10']['value'] is None
     assert line(r, 'rewards.issuer.usdg')['values']['2026-08']['value'] == '30355.272510'
     assert line(r, 'rewards.issuer.usdg')['values']['2026-09']['value'] == '38112.201038'
