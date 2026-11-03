@@ -75,3 +75,15 @@ Artifacts:
 - `reconciliation/spark_saved_global_cost_bridge_2026_08.json`
 - `reconciliation/spark_all_configured_funding_costs_2026_08.json.gz`
 - `reconciliation/spark_saved_funding_validation_2026_08.json.gz`
+
+## Final PR reviews
+
+Two sequential review/fix rounds added cross-venue account uniqueness checks
+and strengthened the transaction diagnostic's reference check. The latter now
+compares Sky principal, Savings principal, original capital and uncertainty
+separately, so offsetting source-allocation errors cannot pass merely because
+the combined gap is unchanged. Regression tests cover both failures.
+
+The final targeted suite passes 82 tests. Saved August numbers were revalidated
+without replay. These checks preserve the research-only scope and do not turn
+the unclassified financing or Savings remainder into certified allocations.

@@ -86,3 +86,27 @@ def test_savings_repayment_is_measured_separately(monkeypatch):
     observed = replay_history(history, day, day, funding_accounts={'venue'}, funding_observer=audit.observe)
     assert observed == replay_history(history, day, day, funding_accounts={'venue'})
     assert audit.result()['inception_contributions']['S1'] == {'repayment_effect': D(10), 'other_effect': D(0)}
+
+
+def test_offsetting_sky_savings_errors_cannot_pass_daily_reference(monkeypatch):
+    from types import SimpleNamespace
+
+    monkeypatch.syspath_prepend(str(Path('scripts').resolve()))
+    from audit_spark_funding_gap_events import verify_daily_reference
+
+    day = date(2026, 8, 1)
+    replay = SimpleNamespace(daily_funding={day: {'venue': {
+        'sky_principal': D(50), 'savings_by_source': {'saver': D(50)}, 'uncertain': False}}})
+    control = {str(day): {'venue': {'principal': '100'}}}
+    refs = {'S1': {'daily': {str(day): {'sky_principal': '50', 'savings_principal': '50',
+            'original_capital_control': '100', 'capital_basis_difference': '0', 'uncertain': False}}}}
+    verify_daily_reference(replay, control, {'S1': ['venue']}, refs)
+    replay.daily_funding[day]['venue']['sky_principal'] = D(60)
+    replay.daily_funding[day]['venue']['savings_by_source']['saver'] = D(40)
+    with pytest.raises(ValueError, match='sky_principal'):
+        verify_daily_reference(replay, control, {'S1': ['venue']}, refs)
+    replay.daily_funding[day]['venue']['sky_principal'] = D(50)
+    replay.daily_funding[day]['venue']['savings_by_source']['saver'] = D(50)
+    replay.daily_funding[day]['venue']['uncertain'] = True
+    with pytest.raises(ValueError, match='uncertainty'):
+        verify_daily_reference(replay, control, {'S1': ['venue']}, refs)

@@ -97,6 +97,24 @@ class GapEvents:
                 'limitation': 'Other effects include routing, original-capital assumptions and carried differences; they are not automatically missing cash.'}
 
 
+def verify_daily_reference(replay, control, accounts, refs):
+    """Equal total funding does not prove the same Sky/Savings allocation."""
+    for day, funding in replay.daily_funding.items():
+        for venue, keys in accounts.items():
+            capital = sum((D(control[str(day)][a]['principal']) for a in keys), ZERO)
+            sky = sum((funding[a]['sky_principal'] for a in keys), ZERO)
+            savings = sum((sum(funding[a]['savings_by_source'].values(), ZERO) for a in keys), ZERO)
+            measured = {'original_capital_control': capital, 'sky_principal': sky,
+                        'savings_principal': savings, 'capital_basis_difference': capital-sky-savings}
+            reference = refs[venue]['daily'][str(day)]
+            for field, value in measured.items():
+                expected = D(reference[field])
+                if not value.is_finite() or not expected.is_finite() or abs(value-expected) > D('1e-8'):
+                    raise ValueError(f'Instrumented replay differs from daily reference: {venue} {day} {field}')
+            if any(funding[a]['uncertain'] for a in keys) != reference['uncertain']:
+                raise ValueError('Instrumented replay changed daily funding uncertainty')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--history', type=Path, required=True)
@@ -148,13 +166,7 @@ def main():
                                     funding_accounts={a for keys in accounts.values() for a in keys},
                                     funding_observer=audit.observe)
             result = audit.result()
-        # Prove instrumentation did not change the previously calculated gaps.
-        for day, funding in replay.daily_funding.items():
-            for venue, keys in accounts.items():
-                capital = sum((D(control[str(day)][a]['principal']) for a in keys), ZERO)
-                funded = sum((funding[a]['sky_principal']+sum(funding[a]['savings_by_source'].values(), ZERO) for a in keys), ZERO)
-                if abs(capital-funded-D(refs[venue]['daily'][str(day)]['capital_basis_difference'])) > D('1e-8'):
-                    raise ValueError('Instrumented replay differs from corrected daily reference')
+        verify_daily_reference(replay, control, accounts, refs)
         if hashlib.sha256(args.history.read_bytes()).hexdigest() != digest or hashlib.sha256(args.reference.read_bytes()).hexdigest() != reference_hash:
             raise ValueError('Evidence changed during diagnostic replay')
         if source_hashes != {str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in source_paths}:
