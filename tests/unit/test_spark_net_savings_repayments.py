@@ -244,3 +244,21 @@ def test_saved_bridge_rejects_incomplete_or_inconsistent_controls(tmp_path, monk
     path.write_bytes(gzip.compress(json.dumps(saved).encode()))
     with pytest.raises(ValueError):
         module.load_snapshot(path, identity)
+
+
+def test_selected_financing_account_stays_separate_on_snapshot_reload(tmp_path, monkeypatch):
+    monkeypatch.syspath_prepend(str(Path("scripts").resolve()))
+    import audit_spark_mixed_funding_yields as module
+    from tests.unit.test_spark_mixed_funding_yields import history
+
+    day = date(2026, 8, 2)
+    accounts = {"venue", "financing:saver-interest:saver"}
+    replay = replay_history(history(), day, day, funding_accounts=accounts)
+    identity = {"schema": 3, "start": str(day), "end": str(day), "accounts": sorted(accounts)}
+    path = tmp_path / "snapshot.json.gz"
+    module.save_snapshot(path, identity, replay)
+    loaded = module.load_snapshot(path, identity)
+    sky = next(r for r in loaded.daily_funding_bridge[day]["sources"] if r["kind"] == "sky")
+    assert D(sky["financing_principal"]) == 5
+    assert D(sky["selected_principal"]) == 50
+    assert loaded.daily_funding == replay.daily_funding

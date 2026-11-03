@@ -98,7 +98,11 @@ def validate_funding_bridge(bridge, selected):
     expected = {("sky", "all_ilks"): ZERO}
     with localcontext() as ctx:
         ctx.prec = 60
-        for account in selected.values():
+        for account_key, account in selected.items():
+            # Expense accounts stay in their dedicated bucket even if a
+            # diagnostic explicitly requests their individual snapshots.
+            if account_key.startswith("financing:"):
+                continue
             expected["sky", "all_ilks"] += Decimal(account["sky_principal"])
             for lender, amount in account["savings_by_source"].items():
                 key = ("savings", lender)
