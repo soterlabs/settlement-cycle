@@ -171,9 +171,16 @@ def parse(snapshot):
             basis='verified_in_kind_distributions_at_supplied_unit_price_not_earned_accrual')
     # A single, coherent provided scenario. Never add it to recorded changes,
     # received claims or the existing June catch-up as another income stream.
-    for raw in rows('merkl-monthly-weighted-illustrations.csv'):
-        if raw['period'] not in ('2026-04', '2026-05', '2026-06'):
-            continue
+    scenario_rows = rows('merkl-monthly-weighted-illustrations.csv')
+    scenarios = [row for row in scenario_rows if row['period'] in ('2026-04', '2026-05', '2026-06')]
+    joint = [row for row in scenario_rows if row['period'] == '2026-04_to_2026-06']
+    field = 'balance_reward_over_tvl_eodIllustrationNative'
+    with localcontext() as ctx:
+        ctx.prec = 100
+        if (len(scenarios) != 3 or len(joint) != 1
+                or abs(sum((number(row[field]) for row in scenarios), Decimal(0)) - number(joint[0][field])) > Decimal('1e-45')):
+            raise ValueError('Incoherent Merkl joint accrual scenario')
+    for raw in scenarios:
         add('merkl_horizon', raw['period'], raw['balance_reward_over_tvl_eodIllustrationNative'],
             'merkl-monthly-weighted-illustrations.csv', raw, currency='aHorRwaRLUSD',
             quality='estimate', recognition='estimated_accrual', included=False, suffix='_scenario',

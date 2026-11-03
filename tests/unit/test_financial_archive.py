@@ -160,6 +160,7 @@ def mutate(snapshot, filename, field, value):
     ('merkl-claims-coverage.csv', 'historyEndpointMatched', 'False'),
     ('merkl-current-cumulative-tie.csv', 'unexplainedClaimedNativeExact', '1'),
     ('merkl-valuation-policy-evidence.csv', 'observedPriceUsd', '2'),
+    ('merkl-monthly-weighted-illustrations.csv', 'balance_reward_over_tvl_eodIllustrationNative', '1'),
 ])
 def test_invalid_amounts_identity_proofs_and_conversion_fail_closed(filename, field, value):
     snapshot = json.loads((ROOT / 'src/settle/revenue/published_archive' / (SNAPSHOTS[0] + '.json')).read_text())
