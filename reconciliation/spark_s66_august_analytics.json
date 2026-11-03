@@ -1,0 +1,286 @@
+{
+  "prime": "spark",
+  "month": "2026-08",
+  "venue": "S66",
+  "gross_revenue_usd": "-461.370572920806",
+  "prime_retained_revenue_usd": "-461.370572920806",
+  "average_yield_exposure_usd": "3798547.027551647915645714548",
+  "average_idle_usds": "2622246.761723101915645714548",
+  "workbook_cost_allocation_usd": "3186.901270819541",
+  "borrowing_cost_usd": "2545.238240225381282622421558",
+  "funding_status": "conditional_estimate",
+  "funding_validated": false,
+  "average_sky_principal_usd": "3440817.665938777320166339148",
+  "average_savings_principal_usd": "351407.4783637492407092255926",
+  "uncertain_days": [
+    "2026-08-27",
+    "2026-08-28",
+    "2026-08-29",
+    "2026-08-30",
+    "2026-08-31"
+  ],
+  "net_pnl_usd": "-3006.608813146187282622421558",
+  "gross_monthly_return": "-0.0001214597501556225914250874284",
+  "net_monthly_return": "-0.0007915154903542410223179287283",
+  "gross_apy": "-0.0014291552465153291828359312762787658539",
+  "net_apy": "-0.0092798209903286594790725539081422150922",
+  "yield_denominator": "finalized workbook average plus daily idle-USDS deduction (full position)",
+  "daily": {
+    "2026-08-01": {
+      "sky_principal_usd": "0",
+      "savings_principal_usd": "0",
+      "idle_usds": "0",
+      "chargeable_sky_principal_usd": "0",
+      "daily_rate": "0.0001003468015841429334340407484",
+      "borrowing_cost_usd": "0E-31"
+    },
+    "2026-08-02": {
+      "sky_principal_usd": "0",
+      "savings_principal_usd": "0",
+      "idle_usds": "0",
+      "chargeable_sky_principal_usd": "0",
+      "daily_rate": "0.0001003462616618904029779823507",
+      "borrowing_cost_usd": "0E-31"
+    },
+    "2026-08-03": {
+      "sky_principal_usd": "0",
+      "savings_principal_usd": "0",
+      "idle_usds": "0",
+      "chargeable_sky_principal_usd": "0",
+      "daily_rate": "0.0001002367095378496511979677472",
+      "borrowing_cost_usd": "0E-31"
+    },
+    "2026-08-04": {
+      "sky_principal_usd": "0",
+      "savings_principal_usd": "0",
+      "idle_usds": "0",
+      "chargeable_sky_principal_usd": "0",
+      "daily_rate": "0.0001003496366698535351457151062",
+      "borrowing_cost_usd": "0E-31"
+    },
+    "2026-08-05": {
+      "sky_principal_usd": "0",
+      "savings_principal_usd": "0",
+      "idle_usds": "0",
+      "chargeable_sky_principal_usd": "0",
+      "daily_rate": "0.0001001395125229600113836560970",
+      "borrowing_cost_usd": "0E-31"
+    },
+    "2026-08-06": {
+      "sky_principal_usd": "0",
+      "savings_principal_usd": "0",
+      "idle_usds": "0",
+      "chargeable_sky_principal_usd": "0",
+      "daily_rate": "0.0001002440287672364106800307068",
+      "borrowing_cost_usd": "0E-31"
+    },
+    "2026-08-07": {
+      "sky_principal_usd": "0",
+      "savings_principal_usd": "0",
+      "idle_usds": "0",
+      "chargeable_sky_principal_usd": "0",
+      "daily_rate": "0.00009992913279509883099814596030",
+      "borrowing_cost_usd": "0E-32"
+    },
+    "2026-08-08": {
+      "sky_principal_usd": "0",
+      "savings_principal_usd": "0",
+      "idle_usds": "0",
+      "chargeable_sky_principal_usd": "0",
+      "daily_rate": "0.00009993078954983242428512809036",
+      "borrowing_cost_usd": "0E-32"
+    },
+    "2026-08-09": {
+      "sky_principal_usd": "0",
+      "savings_principal_usd": "0",
+      "idle_usds": "0",
+      "chargeable_sky_principal_usd": "0",
+      "daily_rate": "0.00009992936410713559808035979697",
+      "borrowing_cost_usd": "0E-32"
+    },
+    "2026-08-10": {
+      "sky_principal_usd": "0",
+      "savings_principal_usd": "0",
+      "idle_usds": "0",
+      "chargeable_sky_principal_usd": "0",
+      "daily_rate": "0.0001000240535193792467721794009",
+      "borrowing_cost_usd": "0E-31"
+    },
+    "2026-08-11": {
+      "sky_principal_usd": "0",
+      "savings_principal_usd": "0",
+      "idle_usds": "0",
+      "chargeable_sky_principal_usd": "0",
+      "daily_rate": "0.0001001350899014207177904209323",
+      "borrowing_cost_usd": "0E-31"
+    },
+    "2026-08-12": {
+      "sky_principal_usd": "0",
+      "savings_principal_usd": "0",
+      "idle_usds": "0",
+      "chargeable_sky_principal_usd": "0",
+      "daily_rate": "0.00009993507827802584212660596028",
+      "borrowing_cost_usd": "0E-32"
+    },
+    "2026-08-13": {
+      "sky_principal_usd": "0",
+      "savings_principal_usd": "0",
+      "idle_usds": "0",
+      "chargeable_sky_principal_usd": "0",
+      "daily_rate": "0.00009993501040390272423400739989",
+      "borrowing_cost_usd": "0E-32"
+    },
+    "2026-08-14": {
+      "sky_principal_usd": "0",
+      "savings_principal_usd": "0",
+      "idle_usds": "0",
+      "chargeable_sky_principal_usd": "0",
+      "daily_rate": "0.00009994394766894741859490915109",
+      "borrowing_cost_usd": "0E-32"
+    },
+    "2026-08-15": {
+      "sky_principal_usd": "0",
+      "savings_principal_usd": "0",
+      "idle_usds": "0",
+      "chargeable_sky_principal_usd": "0",
+      "daily_rate": "0.00009994993253612492213284766601",
+      "borrowing_cost_usd": "0E-32"
+    },
+    "2026-08-16": {
+      "sky_principal_usd": "0",
+      "savings_principal_usd": "0",
+      "idle_usds": "0",
+      "chargeable_sky_principal_usd": "0",
+      "daily_rate": "0.00009995566797713118854035906143",
+      "borrowing_cost_usd": "0E-32"
+    },
+    "2026-08-17": {
+      "sky_principal_usd": "0",
+      "savings_principal_usd": "0",
+      "idle_usds": "0",
+      "chargeable_sky_principal_usd": "0",
+      "daily_rate": "0.0001003512656935795937140119841",
+      "borrowing_cost_usd": "0E-31"
+    },
+    "2026-08-18": {
+      "sky_principal_usd": "0",
+      "savings_principal_usd": "0",
+      "idle_usds": "0",
+      "chargeable_sky_principal_usd": "0",
+      "daily_rate": "0.0001002512835732576961291664114",
+      "borrowing_cost_usd": "0E-31"
+    },
+    "2026-08-19": {
+      "sky_principal_usd": "0",
+      "savings_principal_usd": "0",
+      "idle_usds": "0",
+      "chargeable_sky_principal_usd": "0",
+      "daily_rate": "0.00009996168665082940420105209962",
+      "borrowing_cost_usd": "0E-32"
+    },
+    "2026-08-20": {
+      "sky_principal_usd": "0",
+      "savings_principal_usd": "0",
+      "idle_usds": "0",
+      "chargeable_sky_principal_usd": "0",
+      "daily_rate": "0.0001000608575076504713100645343",
+      "borrowing_cost_usd": "0E-31"
+    },
+    "2026-08-21": {
+      "sky_principal_usd": "0",
+      "savings_principal_usd": "0",
+      "idle_usds": "0",
+      "chargeable_sky_principal_usd": "0",
+      "daily_rate": "0.0001002550326506667590781018875",
+      "borrowing_cost_usd": "0E-31"
+    },
+    "2026-08-22": {
+      "sky_principal_usd": "0",
+      "savings_principal_usd": "0",
+      "idle_usds": "0",
+      "chargeable_sky_principal_usd": "0",
+      "daily_rate": "0.0001002599295594267449579151351",
+      "borrowing_cost_usd": "0E-31"
+    },
+    "2026-08-23": {
+      "sky_principal_usd": "0",
+      "savings_principal_usd": "0",
+      "idle_usds": "0",
+      "chargeable_sky_principal_usd": "0",
+      "daily_rate": "0.0001002635393616264432270941717",
+      "borrowing_cost_usd": "0E-31"
+    },
+    "2026-08-24": {
+      "sky_principal_usd": "0",
+      "savings_principal_usd": "0",
+      "idle_usds": "0",
+      "chargeable_sky_principal_usd": "0",
+      "daily_rate": "0.0001002599865806208236438691331",
+      "borrowing_cost_usd": "0E-31"
+    },
+    "2026-08-25": {
+      "sky_principal_usd": "0",
+      "savings_principal_usd": "0",
+      "idle_usds": "0",
+      "chargeable_sky_principal_usd": "0",
+      "daily_rate": "0.0001003540005078463427597112126",
+      "borrowing_cost_usd": "0E-31"
+    },
+    "2026-08-26": {
+      "sky_principal_usd": "0",
+      "savings_principal_usd": "0",
+      "idle_usds": "0",
+      "chargeable_sky_principal_usd": "0",
+      "daily_rate": "0.0001001660647479241789140497754",
+      "borrowing_cost_usd": "0E-31"
+    },
+    "2026-08-27": {
+      "sky_principal_usd": "15509394.48133962021128372837",
+      "savings_principal_usd": "2239948.372254713108899021372",
+      "idle_usds": "14903246.003254607428160328",
+      "chargeable_sky_principal_usd": "606148.47808501278312340037",
+      "daily_rate": "0.0001001756289485408484409821640",
+      "borrowing_cost_usd": "60.72130502836698462138254253"
+    },
+    "2026-08-28": {
+      "sky_principal_usd": "27289299.10109532364987505750",
+      "savings_principal_usd": "2665608.815274643814228784155",
+      "idle_usds": "17093289.911554783662914062",
+      "chargeable_sky_principal_usd": "10196009.18954053998696099550",
+      "daily_rate": "0.0001002696034651413281678513629",
+      "borrowing_cost_usd": "1022.349798362166953332708713"
+    },
+    "2026-08-29": {
+      "sky_principal_usd": "27260575.62796461364162427681",
+      "savings_principal_usd": "2680573.607337451119211254960",
+      "idle_usds": "24831933.059474711241790378",
+      "chargeable_sky_principal_usd": "2428642.56848990239983389881",
+      "daily_rate": "0.0001002734995571292023590073442",
+      "borrowing_cost_usd": "243.5284895158973567977522401"
+    },
+    "2026-08-30": {
+      "sky_principal_usd": "18320871.57107465807384513461",
+      "savings_principal_usd": "1639938.504161910968154311373",
+      "idle_usds": "12911536.090777429749611546",
+      "chargeable_sky_principal_usd": "5409335.48029722832423358861",
+      "daily_rate": "0.0001002738344209939048309307100",
+      "borrowing_cost_usd": "542.4148102789318100351252454"
+    },
+    "2026-08-31": {
+      "sky_principal_usd": "18285206.86262788134852831633",
+      "savings_principal_usd": "1667562.530247507451492621511",
+      "idle_usds": "11549644.548354627302540837",
+      "chargeable_sky_principal_usd": "6735562.31427325404598747933",
+      "daily_rate": "0.0001003960479449562630136986301",
+      "borrowing_cost_usd": "676.2238370400181778354528170"
+    }
+  },
+  "source_hashes": {
+    "s66_repair_manifest": "198050f9d9c963dcdf4540d2ee13f9c91cce259c063408b54afa750b7228d120",
+    "s66_repair_workbook": "a74688825a8b858e6c0faa71ec000ce3b34e4d5ed6d8adff4ad718de9b94b34f",
+    "s66_repair_summary": "b8a9aeb5b4290e9387bb980a4a1f6d06a96cf9896c0f21eb532544c16aad3e2c",
+    "s66_repair_funding": "671f52192f1f8cb1b1d973fb375221aeb99122151ff817fa86eac7d4d42ac317",
+    "s66_repair_rates": "dc09ae571a99f5526d22dad3ff7093edc03f7c44adb6b1db2a22ef9eca912f73",
+    "s66_repair_idle": "c36484e91bccea4126c58d8ac40b2d07d2741861c50cf499456fb11d3c9a889e"
+  }
+}
