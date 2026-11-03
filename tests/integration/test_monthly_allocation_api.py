@@ -69,3 +69,36 @@ def test_failed_publication_transaction_keeps_previous_snapshot(database):  # no
         except RuntimeError:
             pass
         assert allocations.read(conn, doc["prime"], "2026-08")["revision_id"] == original
+
+
+def test_conditional_publication_preserves_baseline_and_rejects_stale_retry(database):  # noqa: F811
+    from tests.unit.test_conditional_allocations import MANIFEST, publisher
+
+    module = publisher()
+    spark = next(d for d in documents() if d['prime'] == 'spark')
+    with psycopg.connect(database, autocommit=True) as conn:
+        allocations.apply_schema(conn)
+        initial = allocations.publish(conn, spark)
+        base = allocations.read(conn, 'spark', '2026-08', revision=initial)
+        reviewed = module.prepare(base, MANIFEST)
+        with conn.transaction():
+            revision = module.publish_reviewed(conn, base, MANIFEST, reviewed)
+        with conn.transaction():
+            assert module.publish_reviewed(conn, base, MANIFEST, reviewed) == revision
+        assert conn.execute('SELECT COUNT(*) FROM allocation_monthly_results').fetchone()[0] == 2
+        old = allocations.read(conn, 'spark', '2026-08', revision=initial)
+        assert 'conditional_funding' not in old
+        new = allocations.read(conn, 'spark', '2026-08')
+        assert new['conditional_funding']['allocation_count'] == 56
+        modified = copy.deepcopy(reviewed)
+        modified['allocations'][0]['gross_revenue_usd'] = '999'
+        import pytest
+
+        with pytest.raises(ValueError, match='stored baseline'), conn.transaction():
+            module.publish_reviewed(conn, base, MANIFEST, modified)
+        newer = copy.deepcopy(spark)
+        newer['funding_policy'] += '; later independent revision'
+        newest = allocations.publish(conn, newer)
+        with pytest.raises(ValueError, match='newer baseline'), conn.transaction():
+            module.publish_reviewed(conn, base, MANIFEST, reviewed)
+        assert allocations.read(conn, 'spark', '2026-08')['revision_id'] == newest
