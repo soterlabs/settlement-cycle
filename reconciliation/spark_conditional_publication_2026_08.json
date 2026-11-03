@@ -1,0 +1,27 @@
+{
+  "mode": "conditional_estimates_only",
+  "prime": "spark",
+  "month": "2026-08",
+  "evidence": {
+    "estimates": {
+      "path": "reconciliation/spark_all_configured_funding_costs_2026_08.json.gz",
+      "sha256": "671f52192f1f8cb1b1d973fb375221aeb99122151ff817fa86eac7d4d42ac317"
+    },
+    "bridge": {
+      "path": "reconciliation/spark_saved_global_cost_bridge_2026_08.json",
+      "sha256": "54c7f9fa51c6e54549c2e2ea4b833b9be2a862304bcc52d45564e6f4f4fd9d37"
+    },
+    "savings": {
+      "path": "reconciliation/spark_saved_funding_validation_2026_08.json.gz",
+      "sha256": "541da5522653774c130e7170a74021255ee151395b54388873d56635be9b8d39"
+    },
+    "control": {
+      "path": "reconciliation/spark_august_2026_revenue_control.json.gz",
+      "sha256": "dc09ae571a99f5526d22dad3ff7093edc03f7c44adb6b1db2a22ef9eca912f73"
+    },
+    "anchorage": {
+      "path": "reconciliation/spark_anchorage_receipt_funding_origins_2026_08.json.gz",
+      "sha256": "db33fd5c52674bd0dfd9575bf2cbb0731d53ccf8729656c3e4a747ac74cc02a2"
+    }
+  }
+}
