@@ -49,3 +49,10 @@ Verify the latest and exact-revision API responses. Removing the new optional
 fields must reproduce every original allocation row. Old revision URLs must
 still return the original document. Dashboard presentation of these additional
 estimate fields is separate; existing clients retain their canonical values.
+
+The `conditional_funding.scope` is `whole_prime_month`, including on a
+venue-filtered response. Its `financing_bridge` exposes other captured-account
+financing, unclassified financing, Vat-rate financing and deduction differences.
+The allocation-cost total plus these components equals global cost excluding
+MSC within rounding tolerance. That arithmetic does not classify the unresolved
+component or validate funding provenance.

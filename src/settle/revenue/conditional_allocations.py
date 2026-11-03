@@ -149,6 +149,20 @@ def build_conditional_document(
         bridge["global_cost"],
         decimal(bridge["global_excluding_msc"]) + decimal(bridge["msc_financing_cost"]),
     )
+    components = bridge["components"]
+    adjustments = {
+        "other_captured_account_financing_usd": decimal(components["outside_snapshot_selected"]),
+        "unclassified_sky_financing_cost_usd": decimal(components["debt_without_captured_basis"]),
+        "vat_rate_accrual_financing_usd": decimal(components["vat"]),
+        "deduction_difference_financing_usd": decimal(components["deduction_difference"]),
+    }
+    residual = decimal(bridge["global_excluding_msc"]) - total - sum(adjustments.values(), ZERO)
+    same(residual, ZERO)
+    same(residual, bridge["arithmetic_residual"])
+    same(
+        decimal(bridge["global_cost"]),
+        sum((decimal(d["daily_sky_rev"]) for d in control["sky_revenue_daily"]), ZERO),
+    )
     unassigned_savings = sum(
         (
             decimal(s["outside_captured_accounts_or_financing_adjustments"], nonnegative=True)
@@ -163,6 +177,11 @@ def build_conditional_document(
     result["source_hashes"] = {**result["source_hashes"], **source_hashes}
     result["conditional_funding"] = {
         "status": "conditional_estimates_only",
+        "scope": "whole_prime_month",
+        "financing_bridge": {
+            **{k: str(v) for k, v in adjustments.items()},
+            "arithmetic_residual_usd": str(residual),
+        },
         "base_revision_id": base_revision,
         "funding_reconciliation_status": "unresolved",
         "allocation_count": len(estimates),

@@ -76,6 +76,8 @@ def test_http_filters_preserve_qualified_estimate_and_canonical_nulls():
     assert response.status_code == 200
     data = response.json()
     assert data["count"] == 1
+    assert data["conditional_funding"]["scope"] == "whole_prime_month"
+    assert data["conditional_funding"]["allocation_count"] == 56
     assert data["allocations"][0]["borrowing_cost_usd"] is None
     assert (
         data["allocations"][0]["conditional_funding_estimate"]["status"] == "conditional_estimate"
@@ -83,7 +85,7 @@ def test_http_filters_preserve_qualified_estimate_and_canonical_nulls():
 
 
 @pytest.mark.parametrize(
-    "change", ["cost", "net_apy", "principal", "period", "coverage", "revenue"]
+    "change", ["cost", "net_apy", "principal", "period", "coverage", "revenue", "bridge"]
 )
 def test_changed_numeric_inputs_are_rejected(change):
     inputs = evidence()
@@ -99,6 +101,8 @@ def test_changed_numeric_inputs_are_rejected(change):
         inputs["estimates"]["period"] = "2026-09"
     if change == "coverage":
         inputs["estimates"]["allocations"].pop()
+    if change == "bridge":
+        inputs["bridge"]["components"]["vat"] = "0"
     if change == "revenue":
         next(r for r in base["allocations"] if r["venue_id"] == row["venue"])[
             "prime_retained_revenue_usd"
