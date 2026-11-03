@@ -249,6 +249,7 @@ def test_saved_bridge_rejects_incomplete_or_inconsistent_controls(tmp_path, monk
 def test_selected_financing_account_stays_separate_on_snapshot_reload(tmp_path, monkeypatch):
     monkeypatch.syspath_prepend(str(Path("scripts").resolve()))
     import audit_spark_mixed_funding_yields as module
+
     from tests.unit.test_spark_mixed_funding_yields import history
 
     day = date(2026, 8, 2)
