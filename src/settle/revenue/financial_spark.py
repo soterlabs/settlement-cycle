@@ -183,12 +183,14 @@ def extend(statement, chosen, supplemental):
             if reserves_applied:
                 if all(value['status'] == 'available' for value in original.values()) and publication['cutoff'] == reserves.get('period_end', reference['cutoff']):
                     difference = sum((number(value['value']) for value in original.values()), number('0')) - sum((amounts[key] for key in RESERVE_RECEIPTS), number('0'))
-                    residual = metric(difference if difference >= 0 else None, reason='treasury_receipts_exceed_retained_distributions',
+                    # A mismatch can be a settlement true-up spanning earlier
+                    # months. It is not evidence of additional current income.
+                    residual = metric('0' if difference == 0 else None,
+                                      reason='retained_distributions_do_not_reconcile_to_receipt_month',
                                       basis='retained_distributions_less_tracked_treasury_receipts')
-                    if difference >= 0:
+                    if difference == 0:
                         residual.update(recognition='receipt_in_kind', source_ref=publication['revision_id'],
-                                        source_refs=[publication['revision_id'], reference['revision_id']],
-                                        quality='estimate' if difference else 'supported')
+                                        source_refs=[publication['revision_id'], reference['revision_id']])
                 elif not any(value['status'] == 'available' for value in original.values()):
                     residual = saved_component({'status': 'available', 'value': '0', 'basis': 'no_retained_distributions_to_reconcile'},
                                                'value', reference, recognition='receipt_in_kind', expected=period['expected_cutoff'])

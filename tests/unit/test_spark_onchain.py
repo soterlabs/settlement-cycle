@@ -156,3 +156,14 @@ def test_boundary_uses_fast_candidate_only_after_fresh_exact_finality_validation
     monkeypatch.setattr(spark_onchain.hypersync,'block_timestamp_uncached',lambda chain,b:target+(b-100)*2)
     monkeypatch.setattr(spark_onchain.hypersync,'find_finalized_block_at_or_before',lambda *a:101)
     assert spark_onchain.certified_boundary.__wrapped__('ethereum',day,10)==expected
+
+
+def test_settlement_trueup_difference_is_not_added_to_monthly_receipt_income():
+    record=supplement()
+    source=saved()
+    for key,value in source['document']['metrics'].items():
+        if key.startswith('rewards.lending.sparklend.'):
+            value.update(value='100',status='available')
+    report=statements('spark',2026,date(2026,10,26),[source],spark_income=True,spark_publications=[record])
+    residual=next(row for row in report['lines'] if row['id']=='rewards.unattributed_sparklend_receipts')['values']['2026-10']
+    assert residual['value'] is None and residual['known_value'] is None

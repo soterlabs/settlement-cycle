@@ -40,7 +40,10 @@ Treasuries: `0xb137e7d16564c81ae2b0c8ee6b55de81dd46ece5` and
 `0x856900aa78e856a5df1a2665ee3a66b2487cd68f`. Recipient:
 `0x1601843c5e9bc251a3272907010afa41fa18347e`.
 The five legacy `rewards.lending.sparklend.*` metric IDs remain for continuity,
-but are counted only under fees in v3.6. spRLUSD and spUSDG complete the seven
+but are counted only under fees in v3.6. A difference between a retained
+settlement distribution and independently observed receipt-month cash is not
+booked as additional revenue: it remains unreconciled, avoiding duplicate
+recognition of historical settlement true-ups. spRLUSD and spUSDG complete the seven
 stable receipt tokens. Unknown transferred tokens make the fee total partial.
 
 Morpho fee scope:
