@@ -8,7 +8,7 @@ from decimal import Decimal, localcontext
 from .financial import metric, number
 
 
-def definitions(prime, source_definitions, *, allocation_rewards=False):
+def definitions(prime, source_definitions, *, allocation_rewards=False, archive=False):
     native = [item['id'] for item in source_definitions if item['id'].startswith('investment.')
               and item.get('aggregation') != 'subtotal'
               and (item.get('aggregation') == 'leaf' or prime == 'obex')]
@@ -47,8 +47,12 @@ def definitions(prime, source_definitions, *, allocation_rewards=False):
         [*native, *linked, 'unclassified.allocation_income'])
     add('rewards', 'Other incentives and rewards received' if allocation_rewards else 'Incentives and rewards received',
         [*other_rewards, 'unclassified.other_rewards'])
+    if archive:
+        add('gains', 'Gains (losses) on non-stable assets, net',
+            [item['id'] for item in source_definitions if item['id'].startswith('gains.')] + ['unclassified.nonstable_gains'])
     add('noninterest_income', 'Noninterest income', ['statement.demand', 'statement.rewards',
-        'unclassified.protocol_fees', 'unclassified.curator_fees', 'unclassified.nonstable_gains'])
+        'unclassified.protocol_fees', 'unclassified.curator_fees',
+        'statement.gains' if archive else 'unclassified.nonstable_gains'])
     add('funding', 'Interest expense (cost of funding)', ['funding.sky.net', 'unclassified.other_funding'])
     add('net_interest', 'Net interest income', ['statement.interest', ('statement.funding', -1)])
     add('net_revenue', 'Total net revenue', ['statement.noninterest_income', 'statement.net_interest'])
@@ -91,9 +95,10 @@ def combine(terms):
 
 def extend(statement):
     source_definitions = statement['lines'][:]
-    from .financial import ALLOCATION_REWARDS_POLICIES, RWA_POLICIES
+    from .financial import ALLOCATION_REWARDS_POLICIES, ARCHIVE_POLICY, RWA_POLICIES
     rows = definitions(statement['prime'], source_definitions,
-                       allocation_rewards=statement['policy_version'] in ALLOCATION_REWARDS_POLICIES)
+                       allocation_rewards=statement['policy_version'] in ALLOCATION_REWARDS_POLICIES,
+                       archive=statement['policy_version'] == ARCHIVE_POLICY)
     if statement['policy_version'] in RWA_POLICIES and statement['prime'] == 'grove':
         for row in rows:
             if row['id'] == 'statement.interest':

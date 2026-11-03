@@ -356,3 +356,13 @@ See [monthly accrual fields, coverage, immutable selections and updates](../api-
 Deploy clients accepting v3.4 before this API default. Old v3.3 and earlier
 selections continue to replay unchanged. The historical backfill is bundled; no
 daily replay or database migration is required.
+
+### Grove archive income (statement policy v3.5)
+
+The default `prime-management.archive-income.v3.5` adds Monad returns, Agora/USDG
+receipts, Plume partnership/disposal income and scoped Merkl in-kind distributions.
+Merkl accrual scenarios and recorded changes are separate reference rows excluded
+from totals. Existing leaf overrides prevent duplication; nominal USD conversions
+remain estimated. [Fields and source limits](../api-grove-archive-income.md).
+Deploy a client accepting v3.5 before switching the API; old selections remain valid.
+The supplied monthly history ships with the bundle and needs no daily backfill.

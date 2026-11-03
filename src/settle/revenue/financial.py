@@ -19,7 +19,9 @@ ROLLUP_POLICY = 'prime-management.statement-rollups.v3.1'
 RWA_POLICY = 'prime-management.rwa-income.v3.2'
 ALLOCATION_REWARDS_POLICY = 'prime-management.allocation-rewards.v3.3'
 OFFCHAIN_POLICY = 'prime-management.offchain-accruals.v3.4'
-ALLOCATION_REWARDS_POLICIES = (ALLOCATION_REWARDS_POLICY, OFFCHAIN_POLICY)
+ARCHIVE_POLICY = 'prime-management.archive-income.v3.5'
+OFFCHAIN_POLICIES = (OFFCHAIN_POLICY, ARCHIVE_POLICY)
+ALLOCATION_REWARDS_POLICIES = (ALLOCATION_REWARDS_POLICY, *OFFCHAIN_POLICIES)
 RWA_POLICIES = (RWA_POLICY, *ALLOCATION_REWARDS_POLICIES)
 ROLLUP_POLICIES = (ROLLUP_POLICY, *RWA_POLICIES)
 MONTHLY_STATEMENT_POLICIES = (STATEMENT_POLICY, *ROLLUP_POLICIES)
@@ -167,8 +169,10 @@ def taxonomy(prime, policy_version):
     if policy_version in RWA_POLICIES:
         from .financial_rwa import taxonomy as rwa_taxonomy
         from .financial_offchain import taxonomy as offchain_taxonomy
+        from .financial_archive import taxonomy as archive_taxonomy
         return (taxonomy(prime, STATEMENT_POLICY) + rwa_taxonomy(prime)
-                + (offchain_taxonomy(prime) if policy_version == OFFCHAIN_POLICY else []))
+                + (offchain_taxonomy(prime) if policy_version in OFFCHAIN_POLICIES else [])
+                + (archive_taxonomy(prime) if policy_version == ARCHIVE_POLICY else []))
     if policy_version == STATEMENT_POLICY:
         additions = [('demand.distribution_rewards', 'Distribution rewards (DR)'),
                      ('demand.total', 'Demand-side revenue')]
@@ -200,7 +204,7 @@ def decode_selection(token, prime, year):
         keys = {'prime', 'year', 'as_of', 'exact', 'revisions', 'policy_version'}
         if monthly:
             keys.add('monthly_revisions')
-        if selection.get('policy_version') == OFFCHAIN_POLICY:
+        if selection.get('policy_version') in OFFCHAIN_POLICIES:
             keys.add('offchain_revisions')
         if (set(selection) != keys
                 or selection['prime'] != prime or selection['year'] != year
@@ -213,7 +217,7 @@ def decode_selection(token, prime, year):
         if monthly and (not isinstance(monthly_refs, list) or len(monthly_refs) != 12):
             raise ValueError('Invalid monthly revision selection')
         offchain_refs = selection.get('offchain_revisions', [])
-        if selection['policy_version'] == OFFCHAIN_POLICY and (not isinstance(offchain_refs, list) or len(offchain_refs) != 12):
+        if selection['policy_version'] in OFFCHAIN_POLICIES and (not isinstance(offchain_refs, list) or len(offchain_refs) != 12):
             raise ValueError('Invalid offchain revision selection')
         for ref in selection['revisions'] + monthly_refs + offchain_refs:
             if ref is not None and (not isinstance(ref, str) or len(ref) != 64 or any(c not in '0123456789abcdef' for c in ref)):
@@ -223,16 +227,19 @@ def decode_selection(token, prime, year):
         raise ValueError('Invalid report revision selection') from exc
 
 
-def statements(prime, year, as_of, publications, *, exact=False, selection=None, monthly=False, rollups=False, rwa=False, allocation_rewards=False, offchain=False):
+def statements(prime, year, as_of, publications, *, exact=False, selection=None, monthly=False, rollups=False, rwa=False, allocation_rewards=False, offchain=False, archive=False):
     """Read projection of saved financial metrics, with immutable export selection."""
-    policy_version = selection['policy_version'] if selection else OFFCHAIN_POLICY if offchain else ALLOCATION_REWARDS_POLICY if allocation_rewards else RWA_POLICY if rwa else ROLLUP_POLICY if rollups else STATEMENT_POLICY if monthly else POLICY_VERSION
+    policy_version = selection['policy_version'] if selection else ARCHIVE_POLICY if archive else OFFCHAIN_POLICY if offchain else ALLOCATION_REWARDS_POLICY if allocation_rewards else RWA_POLICY if rwa else ROLLUP_POLICY if rollups else STATEMENT_POLICY if monthly else POLICY_VERSION
     monthly = policy_version in MONTHLY_STATEMENT_POLICIES
     if monthly:
         from .monthly_reports import select
         monthly_chosen = select(prime, year, as_of, selection)
     offchain_chosen = []
-    if policy_version == OFFCHAIN_POLICY:
-        from .financial_offchain import select as select_offchain
+    if policy_version in OFFCHAIN_POLICIES:
+        if policy_version == ARCHIVE_POLICY:
+            from .financial_archive import select as select_offchain
+        else:
+            from .financial_offchain import select as select_offchain
         offchain_chosen = select_offchain(prime, year, as_of, selection)
     chosen, periods = [], []
     for month in range(1, 13):
@@ -270,7 +277,7 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None,
                 'policy_version': policy_version, 'revisions': [p['revision_id'] if p else None for p in chosen]}
     if monthly:
         manifest['monthly_revisions'] = [p['revision_id'] if p else None for p in monthly_chosen]
-    if policy_version == OFFCHAIN_POLICY:
+    if policy_version in OFFCHAIN_POLICIES:
         manifest['offchain_revisions'] = [p['revision_id'] if p else None for p in offchain_chosen]
         for period, report in zip(periods, offchain_chosen, strict=True):
             period['offchain_revision'] = report['revision_id'] if report else None
@@ -301,6 +308,10 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None,
         if key.startswith('investment.offchain.'):
             cells = [report['metrics'].get(key, metric(reason='offchain_schedule_not_supplied'))
                      if report else metric(reason='offchain_schedule_not_supplied') for report in offchain_chosen]
+        if policy_version == ARCHIVE_POLICY:
+            for i, report in enumerate(offchain_chosen):
+                if report and key in report['metrics']:
+                    cells[i] = report['metrics'][key]
         for index, period in enumerate(periods):
             if period['state'] == 'future':
                 cells[index] = {**cells[index], 'status': 'future'}
@@ -329,8 +340,11 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None,
               'selection': selection_token(manifest), 'perimeter': 'operational_prime_management_reporting'}
     if monthly:
         result['source_manifest'].update({p['revision_id']: p['source'] for p in monthly_chosen if p})
-    if policy_version == OFFCHAIN_POLICY:
-        from .financial_offchain import extend as extend_offchain
+    if policy_version in OFFCHAIN_POLICIES:
+        if policy_version == ARCHIVE_POLICY:
+            from .financial_archive import extend as extend_offchain
+        else:
+            from .financial_offchain import extend as extend_offchain
         extend_offchain(result, offchain_chosen)
     if policy_version in RWA_POLICIES:
         from .financial_rwa import refresh_reviewed_subtotal
