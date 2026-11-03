@@ -23,7 +23,9 @@ Earlier months remain unavailable: January–August treasury income was handled
 as a September settlement true-up, and must not be booked again by assuming it
 was received in September. Current partial months follow the selected daily
 source cutoff. An unreviewed source configuration leaves fee attribution
-unavailable; update the reviewed configuration fingerprints only after checking
+unavailable, with known receipts retained as unclassified distributions under
+`rewards.unattributed_sparklend_receipts` so income is not lost. Update the
+reviewed configuration fingerprints only after checking
 the external-source allowlist and its effective dates.
 
 ## Morpho recipient checks

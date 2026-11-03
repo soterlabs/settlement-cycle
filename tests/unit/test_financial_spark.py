@@ -54,6 +54,9 @@ def test_missing_receipt_component_is_partial_and_unknown_config_is_not_certifie
     new = statement(saved(configuration='unreviewed'), spark_income=True)
     fee = cell(new, 'fees.sparklend')
     assert fee['value'] is None and fee['known_value'] is None
+    assert cell(new, 'rewards.unattributed_sparklend_receipts')['value'] == '10'
+    old = statement(saved(configuration='unreviewed'), archive=True)
+    assert amount(cell(old, 'statement.net_revenue')) == amount(cell(new, 'statement.net_revenue'))
 
 
 def test_retained_old_policy_is_unchanged_and_new_selection_replays():

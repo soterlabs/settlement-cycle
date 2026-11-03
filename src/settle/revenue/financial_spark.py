@@ -21,7 +21,9 @@ REVIEWED_CONFIGURATIONS = {
 
 def taxonomy(prime):
     return [{'id': 'fees.sparklend', 'label': 'SparkLend fees', 'aggregation': 'subtotal'},
-            {'id': 'fees.curator', 'label': 'Morpho curator fees', 'aggregation': 'leaf'}] if prime == 'spark' else []
+            {'id': 'fees.curator', 'label': 'Morpho curator fees', 'aggregation': 'leaf'},
+            {'id': 'rewards.unattributed_sparklend_receipts', 'label': 'Unclassified SparkLend receipts',
+             'family': 'Unclassified receipts', 'aggregation': 'leaf'}] if prime == 'spark' else []
 
 
 def extend(statement):
@@ -51,6 +53,16 @@ def extend(statement):
                       else metric(reason='reserve_treasury_attribution_not_reviewed'))
                      for key in RESERVE_RECEIPTS]
             fees['values'][month] = {**combine(terms), 'component_ids': list(RESERVE_RECEIPTS)}
+            if reviewed:
+                residual = metric('0', basis='all_sparklend_receipts_attributed_to_reserve_fees')
+                residual.update(recognition='receipt_in_kind', source_ref=period['financial_revision'])
+            else:
+                # Losing an attribution review must not erase known income.
+                # Preserve it outside fees until the source is reviewed again.
+                residual = combine([(key, 1, lookup[key]['values'][month]) for key in RESERVE_RECEIPTS])
+                residual.update(basis='received_sparklend_distributions_pending_fee_attribution',
+                                source_ref=period['financial_revision'], quality='estimate')
+            lookup['rewards.unattributed_sparklend_receipts']['values'][month] = residual
         # The fee recipient is Spark, but neither the configured percentage
         # nor the complete vault return proves how much fee income was earned.
         if period['state'] != 'future':
