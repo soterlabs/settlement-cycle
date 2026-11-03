@@ -68,5 +68,7 @@ def test_retained_old_policy_is_unchanged_and_new_selection_replays():
     new = statement(source, spark_income=True)
     line = next(row for row in new['lines'] if row['id'] == 'fees.sparklend')
     assert line['values']['2026-01']['value'] is None
+    residual = next(row for row in new['lines'] if row['id'] == 'rewards.unattributed_sparklend_receipts')
+    assert 'source_ref' not in residual['values']['2026-01']
     assert line['values']['2026-11']['status'] == 'future'
     assert line['total']['status'] == 'partial'

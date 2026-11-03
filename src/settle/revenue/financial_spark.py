@@ -61,7 +61,9 @@ def extend(statement):
                 # Preserve it outside fees until the source is reviewed again.
                 residual = combine([(key, 1, lookup[key]['values'][month]) for key in RESERVE_RECEIPTS])
                 residual.update(basis='received_sparklend_distributions_pending_fee_attribution',
-                                source_ref=period['financial_revision'], quality='estimate')
+                                quality='estimate')
+                if period['financial_revision']:
+                    residual['source_ref'] = period['financial_revision']
             lookup['rewards.unattributed_sparklend_receipts']['values'][month] = residual
         # The fee recipient is Spark, but neither the configured percentage
         # nor the complete vault return proves how much fee income was earned.
