@@ -133,3 +133,33 @@ def test_s66_repair_publication_is_scoped_idempotent_and_rejects_stale_baseline(
         with pytest.raises(ValueError, match="Newer baseline"), conn.transaction():
             module.publish_reviewed(conn, base, repaired)
         assert allocations.read(conn, "spark", "2026-08")["revision_id"] == newest
+
+def test_idle_usdc_repair_publication_is_scoped_idempotent_and_rejects_stale_baseline(database):  # noqa: F811
+    import pytest
+
+    from settle.revenue.spark_idle_usdc_repair import repair_document
+    from tests.unit.test_spark_idle_usdc_repair import base_document, repair_publisher
+
+    module = repair_publisher()
+    with psycopg.connect(database, autocommit=True) as conn:
+        allocations.apply_schema(conn)
+        document = base_document()
+        document.pop("revision_id")
+        initial = allocations.publish(conn, document)
+        base = allocations.read(conn, "spark", "2026-08")
+        repaired = repair_document(base)
+        with conn.transaction():
+            revision = module.publish_reviewed(conn, base, repaired)
+        with conn.transaction():
+            assert module.publish_reviewed(conn, base, repaired) == revision
+        assert conn.execute("SELECT COUNT(*) FROM allocation_monthly_results").fetchone()[0] == 2
+        assert allocations.read(conn, "spark", "2026-08", revision=initial) == base
+        tampered = copy.deepcopy(repaired)
+        tampered["allocations"][0]["gross_revenue_usd"] = "999"
+        with pytest.raises(ValueError, match="stored baseline"), conn.transaction():
+            module.publish_reviewed(conn, base, tampered)
+        newer = dict(repaired, funding_policy="later independent change")
+        newest = allocations.publish(conn, newer)
+        with pytest.raises(ValueError, match="Newer baseline"), conn.transaction():
+            module.publish_reviewed(conn, base, repaired)
+        assert allocations.read(conn, "spark", "2026-08")["revision_id"] == newest
