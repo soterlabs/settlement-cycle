@@ -10,6 +10,7 @@ from .statement_rollups import combine
 
 RESERVE_RECEIPTS = tuple('rewards.lending.sparklend.' + symbol
                          for symbol in ('usds', 'usdc', 'usdt', 'dai', 'pyusd'))
+UNMAPPED_RECEIPTS = ('fees.sparklend.rlusd', 'fees.sparklend.usdg')
 # These retained configurations route external SparkLend spToken income only
 # from the two reviewed reserve treasuries. Unknown configurations require
 # renewed attribution review; an aggregate external reward is not proof.
@@ -23,7 +24,9 @@ def taxonomy(prime):
     return [{'id': 'fees.sparklend', 'label': 'SparkLend fees', 'aggregation': 'subtotal'},
             {'id': 'fees.curator', 'label': 'Morpho curator fees', 'aggregation': 'leaf'},
             {'id': 'rewards.unattributed_sparklend_receipts', 'label': 'Unclassified SparkLend receipts',
-             'family': 'Unclassified receipts', 'aggregation': 'leaf'}] if prime == 'spark' else []
+             'family': 'Unclassified receipts', 'aggregation': 'leaf'},
+            *({'id': key, 'label': symbol + ' reserve treasury receipts', 'aggregation': 'leaf'}
+              for key, symbol in zip(UNMAPPED_RECEIPTS, ('spRLUSD', 'spUSDG'), strict=True))] if prime == 'spark' else []
 
 
 def extend(statement):
@@ -41,7 +44,8 @@ def extend(statement):
                 cell.update(recognition='receipt_in_kind',
                             basis='sparklend_reserve_treasury_spToken_receipts')
     fees = lookup['fees.sparklend']
-    fees['components'] = [{'id': key, 'sign': 1} for key in RESERVE_RECEIPTS]
+    components = (*RESERVE_RECEIPTS, *UNMAPPED_RECEIPTS)
+    fees['components'] = [{'id': key, 'sign': 1} for key in components]
     for period in statement['periods']:
         month = period['key']
         if period['state'] == 'future':
@@ -52,7 +56,10 @@ def extend(statement):
             terms = [(key, 1, lookup[key]['values'][month] if reviewed
                       else metric(reason='reserve_treasury_attribution_not_reviewed'))
                      for key in RESERVE_RECEIPTS]
-            fees['values'][month] = {**combine(terms), 'component_ids': list(RESERVE_RECEIPTS)}
+            for key in UNMAPPED_RECEIPTS:
+                lookup[key]['values'][month] = metric(reason='reserve_token_not_in_retained_financial_perimeter')
+                terms.append((key, 1, lookup[key]['values'][month]))
+            fees['values'][month] = {**combine(terms), 'component_ids': list(components)}
             if reviewed:
                 residual = metric('0', basis='all_sparklend_receipts_attributed_to_reserve_fees')
                 residual.update(recognition='receipt_in_kind', source_ref=period['financial_revision'])

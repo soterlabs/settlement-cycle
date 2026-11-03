@@ -3,7 +3,11 @@ from datetime import date
 from decimal import Decimal
 
 from settle.revenue.financial import build, decode_selection, statements
-from settle.revenue.financial_spark import RESERVE_RECEIPTS, REVIEWED_CONFIGURATIONS
+from settle.revenue.financial_spark import (
+    RESERVE_RECEIPTS,
+    REVIEWED_CONFIGURATIONS,
+    UNMAPPED_RECEIPTS,
+)
 from settle.revenue.verification import digest
 from tests.unit.test_financial_allocations import allocation_source
 
@@ -33,9 +37,10 @@ def test_reserve_receipts_reclassified_exactly_once_with_unchanged_net_revenue()
     old = statement(source, archive=True)
     new = statement(source, spark_income=True)
     fees = cell(new, 'fees.sparklend')
-    assert fees['value'] == '10'
+    assert fees['status'] == 'partial' and fees['known_value'] == '10'
     assert fees['recognition'] == 'receipt_in_kind'
-    assert fees['component_ids'] == list(RESERVE_RECEIPTS)
+    assert fees['component_ids'] == list((*RESERVE_RECEIPTS, *UNMAPPED_RECEIPTS))
+    assert fees['missing_components'] == list(UNMAPPED_RECEIPTS)
     assert fees['source_refs'] == [source['revision_id']]
     assert amount(cell(old, 'statement.interest')) - amount(cell(new, 'statement.interest')) == 10
     assert amount(cell(new, 'statement.noninterest_income')) - amount(cell(old, 'statement.noninterest_income')) == 10
@@ -50,7 +55,7 @@ def test_missing_receipt_component_is_partial_and_unknown_config_is_not_certifie
     new = statement(saved(missing=('S2',)), spark_income=True)
     fee = cell(new, 'fees.sparklend')
     assert fee['status'] == 'partial' and fee['known_value'] == '8'
-    assert fee['missing_components'] == ['rewards.lending.sparklend.usdc']
+    assert set(fee['missing_components']) == {'rewards.lending.sparklend.usdc', *UNMAPPED_RECEIPTS}
     new = statement(saved(configuration='unreviewed'), spark_income=True)
     fee = cell(new, 'fees.sparklend')
     assert fee['value'] is None and fee['known_value'] is None
