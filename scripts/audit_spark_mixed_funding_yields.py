@@ -161,7 +161,8 @@ def write_json(path, value, *, compressed=False):
 
 def save_snapshot(path, identity, replay):
     write_json(path, {'identity': identity, 'daily_funding': {
-        str(day): accounts for day, accounts in replay.daily_funding.items()}}, compressed=True)
+        str(day): accounts for day, accounts in replay.daily_funding.items()},
+        'daily_funding_bridge': {str(day): bridge for day, bridge in replay.daily_funding_bridge.items()}}, compressed=True)
 
 
 def load_snapshot(path, identity):
@@ -189,7 +190,15 @@ def load_snapshot(path, identity):
             daily[date.fromisoformat(day)][account] = dict(row,
                 sky_principal=values[0], observed_value=values[1],
                 savings_by_source={k: D(v) for k, v in row['savings_by_source'].items()})
-    return SimpleNamespace(daily_funding=daily)
+    bridges = saved.get('daily_funding_bridge')
+    if identity.get('schema', 2) >= 3 and (bridges is None or set(bridges) != expected):
+        raise ValueError('Incomplete funding bridge; old snapshots cannot certify closure')
+    from settle.compute.allocation_funding_bridge import validate_funding_bridge
+
+    for day, bridge in (bridges or {}).items():
+        validate_funding_bridge(bridge, daily[date.fromisoformat(day)])
+    return SimpleNamespace(daily_funding=daily, daily_funding_bridge={
+        date.fromisoformat(day): bridge for day, bridge in (bridges or {}).items()})
 
 
 def main():
@@ -249,7 +258,7 @@ def main():
     # does not require another inception-to-August replay.
     accounts = set(history.venue_accounts.values()) | {
         a for values in history.custody_accounts.values() for a in values}
-    identity = {'schema': 2, 'anchorage_return_policy': 'all-principal', 'history_sha256': input_hashes[str(args.history)],
+    identity = {'schema': 3, 'anchorage_return_policy': 'all-principal', 'history_sha256': input_hashes[str(args.history)],
                 'start': capital['start'], 'end': capital['end'],
                 'accounts': sorted(accounts), 'replay_source_sha256': hashes([Path(__file__), *replay_sources])}
     logging.basicConfig(level=logging.INFO)
@@ -262,6 +271,7 @@ def main():
     result = summarize(replay, history, capital, control, idle, args.venues, anchorage, cost_policies)
     if hashes(inputs) != input_hashes or hashes(map(Path, source_hashes)) != source_hashes:
         raise ValueError('Evidence or code changed during report generation')
+    result['daily_funding_bridge'] = {str(day): bridge for day, bridge in replay.daily_funding_bridge.items()}
     result['anchorage_return_policy'] = 'all-principal'
     result['input_sha256'] = input_hashes
     result['source_sha256'] = source_hashes

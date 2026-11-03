@@ -218,6 +218,7 @@ class CapitalReplay:
     rounding_receipts: dict[str, Decimal] = field(default_factory=dict)
     # Optional sparse snapshots for the separate Savings-funding research path.
     daily_funding: dict = field(default_factory=dict)
+    daily_funding_bridge: dict = field(default_factory=dict)
 
 
 def replay_history(history, start: date, end: date, *, quantify_uncertainty=False, funding_accounts=None, funding_observer=None) -> CapitalReplay:
@@ -254,6 +255,7 @@ def replay_history(history, start: date, end: date, *, quantify_uncertainty=Fals
     uncertain_daily = {}
     daily_by_ilk = {}
     daily_funding = {}
+    daily_funding_bridge = {}
     funding_accounts = frozenset(funding_accounts or ())
     uncertain_repayments = {}
     rounding_receipts = {}
@@ -459,6 +461,10 @@ def replay_history(history, start: date, end: date, *, quantify_uncertainty=Fals
                         'observed_value': account.value,
                         'uncertain': key in uncertain,
                     }
+            if funding_accounts:
+                from .allocation_funding_bridge import funding_bridge
+
+                daily_funding_bridge[day] = funding_bridge(ledger, funding_accounts)
             uncertain_daily[day] = set(uncertain)
             if envelope is not None:
                 funding_bounds_daily[day] = envelope.snapshot()
@@ -468,4 +474,4 @@ def replay_history(history, start: date, end: date, *, quantify_uncertainty=Fals
               cursor, len(unmatched_receipts), len(unmatched_outflows))
     return CapitalReplay(ledger, daily, unmatched_receipts, unmatched_outflows, uncertain,
                          uncertain_daily, daily_by_ilk, uncertain_repayments,
-                         funding_bounds_daily, observed_debt_daily, rounding_receipts, daily_funding)
+                         funding_bounds_daily, observed_debt_daily, rounding_receipts, daily_funding, daily_funding_bridge)
