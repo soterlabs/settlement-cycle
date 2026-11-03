@@ -26,7 +26,7 @@ from settle.normalize.allocation_history_cache import load_history
 ZERO = D(0)
 
 
-def summarize(replay, history, readiness, control, idle, venues, anchorage=None):
+def summarize(replay, history, readiness, control, idle, venues, anchorage=None, cost_policies=None):
     start, end = date.fromisoformat(readiness['start']), date.fromisoformat(readiness['end'])
     if (readiness['prime'] != 'spark' or control['prime_id'] != 'spark'
             or control['period']['start'] != str(start) or control['period']['end'] != str(end)):
@@ -71,14 +71,16 @@ def summarize(replay, history, readiness, control, idle, venues, anchorage=None)
                         'capital_basis_difference': original-sky-savings,
                         'uncertain': any(p['uncertain'] for p in parts)}
         revenue = revenues.get(venue, {})
+        explicit_policy = (cost_policies or {}).get(venue)
+        policy = revenue or explicit_policy or {}
         idle_days, sde_days = idle['daily'].get(venue, {}), sde.get(venue, {})
-        missing_deduction = (D(revenue.get('lending_idle_tw_avg_usd', '0')) + D(revenue.get('amm_idle_usds_tw_avg_usd', '0')) > 0 and set(days)-idle_days.keys()) or (D(revenue.get('sd_share', '0')) > 0 and set(days)-sde_days.keys())
-        excluded = revenue.get('cof_excluded', False) or all(a in history.idle_accounts for a in accounts)
-        conditional_cost = None if not revenue or missing_deduction else price_daily(
+        missing_deduction = (bool(policy.get('requires_daily_idle')) and bool(set(days)-idle_days.keys())) or (D(revenue.get('lending_idle_tw_avg_usd', '0')) + D(revenue.get('amm_idle_usds_tw_avg_usd', '0')) > 0 and set(days)-idle_days.keys()) or (D(revenue.get('sd_share', '0')) > 0 and set(days)-sde_days.keys())
+        excluded = policy.get('cof_excluded', False) or all(a in history.idle_accounts for a in accounts)
+        conditional_cost = None if not policy or missing_deduction else price_daily(
             {d: r['sky_principal'] for d, r in daily.items()}, rates, idle_days, sde_days, excluded=excluded)
         measured = measured_yields[venue]
         exposure = D(measured['average_exposure']) if measured['average_exposure'] is not None else None
-        net = None if conditional_cost is None else D(revenue['revenue'])-conditional_cost
+        net = None if not revenue or conditional_cost is None else D(revenue['revenue'])-conditional_cost
         output.append({'venue': venue, 'daily': daily,
             'status': 'conditional_research_only' if revenue else 'funding_only_missing_revenue',
             'missing_revenue': not bool(revenue),
@@ -98,6 +100,16 @@ def summarize(replay, history, readiness, control, idle, venues, anchorage=None)
                        'Original capital and outstanding lender-funded principal differ after repayments from earnings; differences are diagnostic, not automatically missing cash. No residual is assigned to force reconciliation.',
                        'Gross APY reuses settled revenue/exposure. Conditional net APY is not eligible for publication.'],
         'allocations': output}
+
+
+def load_cost_policies(path, start, end):
+    document = json.loads(path.read_text())
+    if (document['prime'], document['start'], document['end']) != ('spark', start, end):
+        raise ValueError('Financing policy must match the Spark reporting period')
+    for row in document['policies'].values():
+        if set(row) != {'requires_daily_idle', 'cof_excluded'} or any(type(v) is not bool for v in row.values()):
+            raise ValueError('Explicit financing policy must specify idle coverage and exemption')
+    return document['policies']
 
 
 def prepare_history(history):
@@ -169,12 +181,15 @@ def main():
     for name in ('history', 'readiness', 'control', 'idle', 'output'):
         p.add_argument('--'+name, type=Path, required=True)
     p.add_argument('--venues', nargs='+', required=True)
+    p.add_argument('--cost-policy-file', type=Path, help='Explicit period-specific financing rules for rows lacking revenue')
     p.add_argument('--anchorage-exposure', type=Path,
                    help='Audited daily outstanding loan principal, never escrow cash')
     p.add_argument('--replay-snapshot', type=Path,
                    help='Reusable compact daily funding snapshots; default beside output')
     args = p.parse_args()
     inputs = [args.history, args.readiness, args.control, args.idle]
+    if args.cost_policy_file:
+        inputs.append(args.cost_policy_file)
     snapshot_path = args.replay_snapshot or args.output.with_suffix('.replay.json.gz')
     if snapshot_path.resolve() in {x.resolve() for x in [*inputs, args.output]}:
         p.error('Replay snapshot cannot overwrite evidence or the report')
@@ -183,6 +198,7 @@ def main():
     ready = json.loads(gzip.decompress(args.readiness.read_bytes()))
     capital = next(r for r in ready['results'] if r['prime'] == 'spark')
     control, idle = json.loads(args.control.read_text()), json.loads(args.idle.read_text())
+    cost_policies = load_cost_policies(args.cost_policy_file, capital['start'], capital['end']) if args.cost_policy_file else None
     anchorage_path = args.anchorage_exposure or (
         Path('reconciliation/spark_anchorage_receipt_funding_origins_2026_08.json.gz')
         if capital['start'] == '2026-08-01' and capital['end'] == '2026-08-31' else None)
@@ -227,7 +243,7 @@ def main():
         if hashes(inputs) != input_hashes or hashes(map(Path, source_hashes)) != source_hashes:
             raise ValueError('Evidence or code changed during replay')
         save_snapshot(snapshot_path, identity, replay)
-    result = summarize(replay, history, capital, control, idle, args.venues, anchorage)
+    result = summarize(replay, history, capital, control, idle, args.venues, anchorage, cost_policies)
     if hashes(inputs) != input_hashes or hashes(map(Path, source_hashes)) != source_hashes:
         raise ValueError('Evidence or code changed during report generation')
     result['anchorage_return_policy'] = 'all-principal'

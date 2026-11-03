@@ -193,3 +193,45 @@ def test_earned_cash_repayment_is_not_missing_allocation_capital(monkeypatch):
     assert replay.ledger.drawn-replay.ledger.repaid == 90
     assert not replay.unmatched_receipts
     assert not replay.unmatched_outflows
+
+
+def test_missing_revenue_does_not_block_explicit_financing_policy(monkeypatch):
+    monkeypatch.syspath_prepend(str(Path('scripts').resolve()))
+    import audit_spark_mixed_funding_yields as module
+
+    days = ['2026-08-01', '2026-08-02']
+    ready = {'prime': 'spark', 'start': days[0], 'end': days[1], 'allocations': [
+        {'venue': 'S1', 'label': 'pool', 'status': 'savings_split_pending', 'cost_of_funds': None,
+         'daily_principal': {d: '100' for d in days}}]}
+    control = {'prime_id': 'spark', 'period': {'start': days[0], 'end': days[1]},
+               'sky_revenue_daily': [{'date': d, 'utilized': '100', 'daily_sky_rev': '1'} for d in days],
+               'venue_breakdown': []}
+    replay = replay_history(history(), date(2026, 8, 1), date(2026, 8, 2), funding_accounts={'venue'})
+    policy = {'S1': {'requires_daily_idle': True, 'cof_excluded': False}}
+    row = module.summarize(replay, history(), ready, control,
+                           {'daily': {'S1': {d: '0' for d in days}}}, ['S1'], cost_policies=policy)['allocations'][0]
+    assert row['conditional_sky_borrowing_cost'] == D('.5')
+    assert row['gross_apy'] is None and row['conditional_net_apy'] is None
+    row = module.summarize(replay, history(), ready, control,
+                           {'daily': {}}, ['S1'], cost_policies=policy)['allocations'][0]
+    assert row['conditional_sky_borrowing_cost'] is None
+    assert row['missing_revenue']
+
+
+def test_explicit_cost_policy_is_period_scoped(tmp_path, monkeypatch):
+    import json
+
+    monkeypatch.syspath_prepend(str(Path('scripts').resolve()))
+    import audit_spark_mixed_funding_yields as module
+
+    path = tmp_path/'policy.json'
+    document = {'prime': 'spark', 'start': '2026-08-01', 'end': '2026-08-31',
+                'policies': {'S66': {'requires_daily_idle': True, 'cof_excluded': False}}}
+    path.write_text(json.dumps(document))
+    assert module.load_cost_policies(path, '2026-08-01', '2026-08-31') == document['policies']
+    with pytest.raises(ValueError, match='reporting period'):
+        module.load_cost_policies(path, '2026-09-01', '2026-09-30')
+    document['policies']['S66']['cof_excluded'] = 'false'
+    path.write_text(json.dumps(document))
+    with pytest.raises(ValueError, match='specify idle coverage'):
+        module.load_cost_policies(path, '2026-08-01', '2026-08-31')

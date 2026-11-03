@@ -1,0 +1,9 @@
+{
+  "prime": "spark",
+  "start": "2026-08-01",
+  "end": "2026-08-31",
+  "rationale": "S66 RLUSD/USDS Uniswap V4 is not SDE and is not exempt from cost. Deduct its measured idle USDS each day, capped at modeled Sky principal. Config/spark.yaml S66 explicitly sets curve_idle_usds and no sde_coin. No revenue is assumed.",
+  "policies": {
+    "S66": {"requires_daily_idle": true, "cof_excluded": false}
+  }
+}

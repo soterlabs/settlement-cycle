@@ -1,0 +1,28 @@
+{
+  "period": "2026-08",
+  "publishable": false,
+  "ready_for_funding_certification": false,
+  "scope": "Conditional numerical bridge from saved daily balances. The debt-without-captured-basis term is an unclassified residual, not independently attributed financing.",
+  "allocation_count": 56,
+  "allocation_cost": "5530034.099012958923949881222",
+  "global_cost": "6108910.339050876117169929618",
+  "msc_financing_cost": "397481.8430935053717434933281",
+  "global_excluding_msc": "5711428.495957370745426436290",
+  "components": {
+    "selected_gross": "7295345.030285924836231805709",
+    "outside_snapshot_selected": "68.46703971232196324878126152",
+    "debt_without_captured_basis": "231391.9176129201056986128829",
+    "vat": "234768.8814017739369867684563",
+    "global_deductions": "2050145.800382960455453999538",
+    "deduction_difference": "-284834.869109994543172075051"
+  },
+  "arithmetic_residual": "-1E-21",
+  "s66_cost": "2545.238240225381282622421558",
+  "input_sha256": {
+    "/tmp/spark-mixed-funding-corrected-2026-08.replay.json.gz": "e09b476f2ae5bcf22152f02d487eaeb0071f42758abb48c0d11c4974a40a65b3",
+    "/tmp/pr215-resumed-spark/debt-control.json": "c117055472e6c2d871529271807a6e2361ee14ad0f10fbc299acd3cd21bd8825",
+    "settlements/spark/2026-08/provenance.json": "b989d9e8ea02064ffb8519a23502f2b9c7210a4bb05c3d626c6386956fc9c781",
+    "reconciliation/spark_vat_rate_accrual_2026_08.json": "f0ea302da9317d5c1700e10545bd4ae4579115b27e2914f648d6115e6829673b",
+    "reconciliation/spark_missing_revenue_cost_policy_2026_08.json": "b0439d422bb23c93b5ddc334b7383e0d4f1e7686301f431d677b0a92540e1c7c"
+  }
+}
