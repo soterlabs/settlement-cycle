@@ -113,6 +113,26 @@ export default defineRailway(() => {
     env: { DATABASE_URL: "${{Postgres.DATABASE_URL}}" },
   });
 
+  // Reporting-only monthly components: independent of MSC and raw daily jobs.
+  const sparkReporting = service("settle-reporting-spark", {
+    source: settlementCycle,
+    replicas: { "us-west2": 1 },
+    build,
+    deploy: {
+      startCommand: "python -m settle.revenue.spark_reporting_job --from 2026-01-01",
+      cronSchedule: "45 20 * * *",
+      restartPolicyType: "NEVER",
+    },
+    env: {
+      DATABASE_URL: "${{Postgres.DATABASE_URL}}",
+      ...Object.fromEntries([
+        "ENVIO_API_TOKEN", "ETH_RPC", "BASE_RPC", "ARBITRUM_RPC",
+        "OPTIMISM_RPC", "UNICHAIN_RPC", "AVALANCHE_C_RPC",
+      ].map((name) => [name, `\${{settle-revenue-spark.${name}}}`])),
+      SETTLE_REQUIRE_POSTGRES: "1",
+    },
+  });
+
   // Retain the existing uploaded, unscheduled historical jobs. Omitting them
   // from the project would make an otherwise additive rollout delete them.
   const historicalJobs = [
@@ -134,6 +154,6 @@ export default defineRailway(() => {
   }));
 
   return project("settlement-cycle-data", {
-    resources: [settleApi, Postgres, settleCron, revenueDaily, ...revenuePrimes, financialReporting, ...historicalJobs, postgresVolume],
+    resources: [settleApi, Postgres, settleCron, revenueDaily, ...revenuePrimes, financialReporting, sparkReporting, ...historicalJobs, postgresVolume],
   });
 });

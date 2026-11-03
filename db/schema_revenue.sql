@@ -63,3 +63,16 @@ CREATE TABLE IF NOT EXISTS reporting_financial_attempts (
     error_type TEXT,
     PRIMARY KEY (source_revision, policy_version)
 );
+
+CREATE TABLE IF NOT EXISTS reporting_spark_components (
+    revision_id TEXT PRIMARY KEY,
+    publication_order BIGSERIAL UNIQUE NOT NULL,
+    cutoff DATE NOT NULL,
+    document JSONB NOT NULL,
+    document_hash TEXT NOT NULL,
+    code_version TEXT NOT NULL,
+    configuration_version TEXT NOT NULL,
+    computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS reporting_spark_components_latest
+    ON reporting_spark_components(cutoff, publication_order DESC);

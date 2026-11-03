@@ -46,7 +46,7 @@ def read(conn, prime, *, cutoff=None, source_revision=None, revision=None):
     return canonical(row) if row else None
 
 
-def year_rows(conn, prime, year, *, revisions=None, policy_version=POLICY_VERSION, include_rwa=False):
+def year_rows(conn, prime, year, *, revisions=None, policy_version=POLICY_VERSION, include_rwa=False, include_spark_fees=False):
     if policy_version not in SUPPORTED_POLICIES:
         raise ValueError("Unknown financial policy")
     with conn.cursor(row_factory=dict_row) as cur:
@@ -63,6 +63,24 @@ def year_rows(conn, prime, year, *, revisions=None, policy_version=POLICY_VERSIO
                 ORDER BY f.cutoff,f.source_order DESC,f.publication_order DESC''',
                 (prime, policy_version, f'{year}-01-01', f'{year}-12-31'))
         rows = cur.fetchall()
+        if include_spark_fees and prime == 'spark' and rows:
+            cur.execute('''SELECT revision_id,result_hash,
+                (SELECT jsonb_agg(jsonb_build_object('venue_id',item->'venue_id','tw_avg_value',item->'tw_avg_value'))
+                 FROM jsonb_array_elements(COALESCE(result->'venue_breakdown','[]'::jsonb) ||
+                      COALESCE(result->'reporting_only_breakdown',result->'display_only_breakdown','[]'::jsonb)) AS item) AS allocations,
+                jsonb_path_query_array(result, '$.venue_breakdown[*] ? (@.venue_id == "S70" || @.venue_id == "S71")') ||
+                CASE WHEN result ? 'reporting_only_breakdown' THEN
+                    jsonb_path_query_array(result, '$.reporting_only_breakdown[*] ? (@.venue_id == "S70" || @.venue_id == "S71")')
+                ELSE jsonb_path_query_array(result, '$.display_only_breakdown[*] ? (@.venue_id == "S70" || @.venue_id == "S71")') END AS rows,
+                jsonb_path_query_array(result, '$.venue_views.reporting[*] ? (@.venue_id == "S70" || @.venue_id == "S71")') AS views
+                FROM revenue_results WHERE prime=%s AND revision_id = ANY(%s)''',
+                (prime, [row['source_revision'] for row in rows]))
+            sources = {source['revision_id']: source for source in cur.fetchall()}
+            for row in rows:
+                source = sources.get(row['source_revision'])
+                if source:
+                    row.update(spark_fee_source_hash=source['result_hash'], spark_fee_source_rows=source['rows'],
+                               spark_fee_source_views=source['views'], spark_allocation_rows=source['allocations'])
         if include_rwa and prime == 'grove' and rows:
             # One extra query in the same repeatable-read transaction. Extract
             # only the two reviewed rows, not entire daily result documents.
