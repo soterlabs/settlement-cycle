@@ -4,8 +4,9 @@ The five SparkLend external streams are reserve-treasury spToken receipts.
 They were previously included as allocation-linked rewards. Reclassify them,
 without changing their amounts or treating vault performance fees as supply
 yield. Morpho curator income needs an independently valued fee-share ledger.
+The two additional markets come from the exact retained raw source revision.
 """
-from .financial import metric
+from .financial import metric, number
 from .statement_rollups import combine
 
 RESERVE_RECEIPTS = tuple('rewards.lending.sparklend.' + symbol
@@ -17,6 +18,7 @@ UNMAPPED_RECEIPTS = ('fees.sparklend.rlusd', 'fees.sparklend.usdg')
 REVIEWED_CONFIGURATIONS = {
     '244e91c22e06b4cbf1a573239571363f057c4c8ce9d40dc2e2735fd07f594f43',
     '1396a71440f5476ce8a9b9d87eb3bdfc587861cd139ad0481d76d4ed26314529',
+    'da77310707751cae619941f4a35e937d8f880167b5af57a58ae5db20376c7067',
 }
 
 
@@ -29,7 +31,34 @@ def taxonomy(prime):
               for key, symbol in zip(UNMAPPED_RECEIPTS, ('spRLUSD', 'spUSDG'), strict=True))] if prime == 'spark' else []
 
 
-def extend(statement):
+def extra_receipts(publication):
+    result = {key: metric(reason='reserve_token_not_in_retained_financial_perimeter') for key in UNMAPPED_RECEIPTS}
+    if (not publication or publication['cutoff'] < '2026-09-01'
+            or publication['document']['prime'] != 'spark'
+            or publication['document']['cutoff'] != publication['cutoff']
+            or publication.get('spark_fee_source_hash') != publication['document']['source']['result_hash']):
+        return result
+    if publication['document']['source']['configuration_version'] not in REVIEWED_CONFIGURATIONS:
+        return result
+    for venue, key in zip(('S70', 'S71'), UNMAPPED_RECEIPTS, strict=True):
+        rows = [r for r in publication.get('spark_fee_source_rows', []) if r.get('venue_id') == venue]
+        views = [r for r in publication.get('spark_fee_source_views', []) if r.get('venue_id') == venue]
+        if (len(rows) != 1 or rows[0].get('pricing_category') != 'C'
+                or len(views) != 1 or not views[0].get('enabled') or views[0].get('status') != 'available'):
+            continue
+        try:
+            if number(rows[0]['sd_share']) != 0:
+                continue
+            value = number(rows[0]['external_revenue'])
+        except (KeyError, ValueError):
+            continue
+        result[key] = metric(value, basis='sparklend_reserve_treasury_spToken_receipts',
+                             source_paths=[f'result.reporting_only_breakdown.{venue}.external_revenue'])
+        result[key].update(recognition='receipt_in_kind', source_ref=publication['revision_id'])
+    return result
+
+
+def extend(statement, chosen):
     if statement['prime'] != 'spark':
         return
     lookup = {row['id']: row for row in statement['lines']}
@@ -46,7 +75,7 @@ def extend(statement):
     fees = lookup['fees.sparklend']
     components = (*RESERVE_RECEIPTS, *UNMAPPED_RECEIPTS)
     fees['components'] = [{'id': key, 'sign': 1} for key in components]
-    for period in statement['periods']:
+    for period, publication in zip(statement['periods'], chosen, strict=True):
         month = period['key']
         if period['state'] == 'future':
             fees['values'][month] = {**metric(reason='future_period'), 'status': 'future'}
@@ -56,8 +85,9 @@ def extend(statement):
             terms = [(key, 1, lookup[key]['values'][month] if reviewed
                       else metric(reason='reserve_treasury_attribution_not_reviewed'))
                      for key in RESERVE_RECEIPTS]
+            extra = extra_receipts(publication)
             for key in UNMAPPED_RECEIPTS:
-                lookup[key]['values'][month] = metric(reason='reserve_token_not_in_retained_financial_perimeter')
+                lookup[key]['values'][month] = extra[key]
                 terms.append((key, 1, lookup[key]['values'][month]))
             fees['values'][month] = {**combine(terms), 'component_ids': list(components)}
             if reviewed:

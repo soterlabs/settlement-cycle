@@ -7,6 +7,7 @@ from fastapi import Depends, HTTPException, Query, Request
 from ..revenue.financial import (
     MONTHLY_STATEMENT_POLICIES,
     RWA_POLICIES,
+    SPARK_INCOME_POLICY,
     STATEMENT_SOURCE_POLICY,
     decode_selection,
     statements,
@@ -55,7 +56,8 @@ def register_financial(app, get_reader, document_response):
                     revisions=[x for x in selection['revisions'] if x] if selection else None,
                     policy_version=(selection['policy_version'] if selection and selection['policy_version'] not in MONTHLY_STATEMENT_POLICIES
                                     else STATEMENT_SOURCE_POLICY),
-                    **({'include_rwa': True} if prime == 'grove' and (not selection or selection['policy_version'] in RWA_POLICIES) else {}))
+                    **({'include_rwa': True} if prime == 'grove' and (not selection or selection['policy_version'] in RWA_POLICIES) else {}),
+                    **({'include_spark_fees': True} if prime == 'spark' and (not selection or selection['policy_version'] == SPARK_INCOME_POLICY) else {}))
         try:
             result = statements(prime, year, as_of, rows,
                                 exact=selection['exact'] if selection else cutoff is not None,

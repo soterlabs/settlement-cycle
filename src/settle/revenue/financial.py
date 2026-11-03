@@ -352,7 +352,7 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None,
         extend_offchain(result, offchain_chosen)
     if policy_version == SPARK_INCOME_POLICY:
         from .financial_spark import extend as extend_spark
-        extend_spark(result)
+        extend_spark(result, chosen)
     if policy_version in RWA_POLICIES:
         from .financial_rwa import refresh_reviewed_subtotal
         refresh_reviewed_subtotal(result)

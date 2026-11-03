@@ -2,12 +2,13 @@
 
 The Spark annual statement defaults to `prime-management.spark-income.v3.6`.
 Other primes retain v3.5. Existing selections continue to replay their original
-policy and amounts. No MSC calculation or daily publication is changed.
+policy and amounts. MSC settlement membership and calculations are unchanged.
+Daily reporting gains the reporting-only S70 (RLUSD) and S71 (USDG) positions.
 
 | API line | Meaning | Accounting basis |
 | --- | --- | --- |
-| `fees.sparklend` | Known spUSDS, spUSDC, spUSDT, spDAI and spPYUSD transfers from the reviewed SparkLend reserve treasuries into Spark's Ethereum ALM; partial until the other two streams are integrated | Received in kind, valued by the retained source |
-| `fees.sparklend.rlusd`, `fees.sparklend.usdg` | spRLUSD and spUSDG reserve receipts found in the final transfer audit; not present in the retained daily financial perimeter | Unavailable pending integration |
+| `fees.sparklend` | spUSDS, spUSDC, spUSDT, spDAI, spPYUSD, spRLUSD and spUSDG transfers from the reviewed SparkLend reserve treasuries into Spark's Ethereum ALM | Received in kind, valued by the retained source |
+| `fees.sparklend.rlusd`, `fees.sparklend.usdg` | External receipts from reporting-only S70 and S71; the native venue return is excluded | Available after the selected raw source includes the new positions |
 | `fees.curator` | Morpho fee income attributable to Spark | Unavailable until independently valued fee-share history is integrated |
 
 The reserve treasuries are `0xb137e7d16564c81ae2b0c8ee6b55de81dd46ece5`
@@ -21,10 +22,15 @@ Total net revenue is unchanged by this reclassification.
 
 A complete treasury-to-ALM Transfer scan through Ethereum block 26334741 found
 spRLUSD and spUSDG payments in addition to the five supported tokens. Accordingly,
-the fee subtotal is partial and displays its supported `known_value`, rather
+old sources remain partial and display their supported `known_value`, rather
 than certifying the five-token sum as the complete fee total. September's known
-component is $399,369.65 and October's is $538,074.78. Integrating the missing
-receipt ledgers is still required before this draft is ready for release.
+component is $399,369.65 and October's is $538,074.78. The new reporting-only
+positions use the existing daily pipeline; the read API joins only their two
+rows from the exact raw revision underlying the selected financial publication.
+It verifies the source hash, category, ownership and reporting availability,
+and includes only `external_revenue`. A September–October source replay is
+needed after deployment to fill these historical components. Old pinned
+selections continue to show their original partial coverage.
 
 Coverage starts September 2026, matching the reviewed daily financial policy.
 Earlier months remain unavailable: January–August treasury income was handled

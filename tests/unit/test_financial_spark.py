@@ -1,7 +1,9 @@
 from copy import deepcopy
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
+from settle.domain.config import load_prime_by_id
 from settle.revenue.financial import build, decode_selection, statements
 from settle.revenue.financial_spark import (
     RESERVE_RECEIPTS,
@@ -77,3 +79,33 @@ def test_retained_old_policy_is_unchanged_and_new_selection_replays():
     assert 'source_ref' not in residual['values']['2026-01']
     assert line['values']['2026-11']['status'] == 'future'
     assert line['total']['status'] == 'partial'
+
+
+def test_additional_reporting_only_receipts_complete_fees_without_adding_native_yield():
+    source = saved()
+    source.update(spark_fee_source_hash=source['document']['source']['result_hash'],
+                  spark_fee_source_rows=[dict(venue_id=v, pricing_category='C', sd_share='0',
+                                             external_revenue='3', revenue='99999') for v in ('S70', 'S71')],
+                  spark_fee_source_views=[dict(venue_id=v, enabled=True, status='available') for v in ('S70', 'S71')])
+    new = statement(source, spark_income=True)
+    assert cell(new, 'fees.sparklend')['value'] == '16'
+    assert cell(new, 'fees.sparklend.rlusd')['value'] == '3'
+    assert cell(new, 'fees.sparklend.usdg')['value'] == '3'
+    old = statement(source, archive=True)
+    assert amount(cell(new, 'statement.net_revenue')) - amount(cell(old, 'statement.net_revenue')) == 6
+    # Only the external receipt is fee income; the raw venue's other return
+    # must not be mistaken for curator or protocol fees.
+    source['spark_fee_source_views'][0]['enabled'] = False
+    partial = statement(source, spark_income=True)
+    assert cell(partial, 'fees.sparklend')['known_value'] == '13'
+    source['spark_fee_source_hash'] = 'mismatched'
+    invalid = statement(source, spark_income=True)
+    assert cell(invalid, 'fees.sparklend')['known_value'] == '10'
+
+
+def test_new_reserve_markets_are_reporting_only_and_excluded_from_msc():
+    prime = load_prime_by_id('spark', Path(__file__).parents[2] / 'config')
+    markets = [venue for venue in prime.venues if venue.id in ('S70', 'S71')]
+    assert len(markets) == 2
+    assert all(not venue.settles and venue.reporting_view.enabled and venue.cof_excluded for venue in markets)
+    assert {venue.token.decimals for venue in markets} == {6, 18}

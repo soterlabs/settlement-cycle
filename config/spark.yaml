@@ -1816,6 +1816,45 @@ venues:
           token: '0x5fc5360d0400a0fd4f2af552add042d716f1d168'
       components: []
 
+  # Additional reserve-fee streams. Reporting only: these markets do not alter
+  # the reviewed MSC allocation perimeter. Their external receipts complete
+  # the SparkLend fee subtotal; native supply yield remains separately tracked.
+  - id: S70
+    settlement: {enabled: false, method: existing}
+    reporting: {enabled: true, method: existing}
+    start_date: '2026-09-01'
+    event_source: hypersync
+    chain: ethereum
+    label: 'Spark RLUSD (SparkLend spToken — reporting only)'
+    pricing_category: C
+    cof_excluded: true
+    token:
+      address: '0x59275fb72c8004f44ba44432e25082932fd677f1'
+      symbol: 'spRLUSD'
+      decimals: 18
+    underlying:
+      address: '0x8292bb45bf1ee4d140127049757c2e0ff06317ed'
+      symbol: 'RLUSD'
+      decimals: 18
+
+  - id: S71
+    settlement: {enabled: false, method: existing}
+    reporting: {enabled: true, method: existing}
+    start_date: '2026-09-01'
+    event_source: hypersync
+    chain: ethereum
+    label: 'Spark USDG (SparkLend spToken — reporting only)'
+    pricing_category: C
+    cof_excluded: true
+    token:
+      address: '0x6f335538257ef440f3c51e925a5c820f722a1f9f'
+      symbol: 'spUSDG'
+      decimals: 6
+    underlying:
+      address: '0xe343167631d89b6ffc58b88d6b7fb0228795491d'
+      symbol: 'USDG'
+      decimals: 6
+
 # Cat A revenue allowlist — counterparties that send REALIZED YIELD directly
 # to the ALM proxy.
 external_alm_sources:
