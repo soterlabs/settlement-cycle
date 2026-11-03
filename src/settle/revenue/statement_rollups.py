@@ -8,12 +8,14 @@ from decimal import Decimal, localcontext
 from .financial import metric, number
 
 
-def definitions(prime, source_definitions, *, allocation_rewards=False, archive=False):
+def definitions(prime, source_definitions, *, allocation_rewards=False, archive=False, spark_income=False):
+    from .financial_spark import RESERVE_RECEIPTS
+    reserve_receipts = RESERVE_RECEIPTS if spark_income and prime == 'spark' else ()
     native = [item['id'] for item in source_definitions if item['id'].startswith('investment.')
               and item.get('aggregation') != 'subtotal'
               and (item.get('aggregation') == 'leaf' or prime == 'obex')]
     rewards = [item['id'] for item in source_definitions if item['id'].startswith('rewards.')
-               and item.get('aggregation') == 'leaf']
+               and item.get('aggregation') == 'leaf' and item['id'] not in reserve_receipts]
     # Only reviewed, explicitly allocation-linked streams move into allocation
     # income. New/unclassified reward types stay outside this perimeter.
     linked = [key for key in rewards if allocation_rewards and
@@ -51,7 +53,8 @@ def definitions(prime, source_definitions, *, allocation_rewards=False, archive=
         add('gains', 'Gains (losses) on non-stable assets, net',
             [item['id'] for item in source_definitions if item['id'].startswith('gains.')] + ['unclassified.nonstable_gains'])
     add('noninterest_income', 'Noninterest income', ['statement.demand', 'statement.rewards',
-        'unclassified.protocol_fees', 'unclassified.curator_fees',
+        'fees.sparklend' if reserve_receipts else 'unclassified.protocol_fees',
+        'fees.curator' if reserve_receipts else 'unclassified.curator_fees',
         'statement.gains' if archive else 'unclassified.nonstable_gains'])
     add('funding', 'Interest expense (cost of funding)', ['funding.sky.net', 'unclassified.other_funding'])
     add('net_interest', 'Net interest income', ['statement.interest', ('statement.funding', -1)])
@@ -95,10 +98,16 @@ def combine(terms):
 
 def extend(statement):
     source_definitions = statement['lines'][:]
-    from .financial import ALLOCATION_REWARDS_POLICIES, ARCHIVE_POLICY, RWA_POLICIES
+    from .financial import (
+        ALLOCATION_REWARDS_POLICIES,
+        ARCHIVE_POLICIES,
+        RWA_POLICIES,
+        SPARK_INCOME_POLICY,
+    )
     rows = definitions(statement['prime'], source_definitions,
                        allocation_rewards=statement['policy_version'] in ALLOCATION_REWARDS_POLICIES,
-                       archive=statement['policy_version'] == ARCHIVE_POLICY)
+                       archive=statement['policy_version'] in ARCHIVE_POLICIES,
+                       spark_income=statement['policy_version'] == SPARK_INCOME_POLICY)
     if statement['policy_version'] in RWA_POLICIES and statement['prime'] == 'grove':
         for row in rows:
             if row['id'] == 'statement.interest':
