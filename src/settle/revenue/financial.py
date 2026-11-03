@@ -231,7 +231,7 @@ def decode_selection(token, prime, year):
         raise ValueError('Invalid report revision selection') from exc
 
 
-def statements(prime, year, as_of, publications, *, exact=False, selection=None, monthly=False, rollups=False, rwa=False, allocation_rewards=False, offchain=False, archive=False, spark_income=False):
+def statements(prime, year, as_of, publications, *, exact=False, selection=None, monthly=False, rollups=False, rwa=False, allocation_rewards=False, offchain=False, archive=False, spark_income=False, spark_publications=()):
     """Read projection of saved financial metrics, with immutable export selection."""
     policy_version = selection['policy_version'] if selection else SPARK_INCOME_POLICY if spark_income else ARCHIVE_POLICY if archive else OFFCHAIN_POLICY if offchain else ALLOCATION_REWARDS_POLICY if allocation_rewards else RWA_POLICY if rwa else ROLLUP_POLICY if rollups else STATEMENT_POLICY if monthly else POLICY_VERSION
     monthly = policy_version in MONTHLY_STATEMENT_POLICIES
@@ -239,8 +239,12 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None,
         from .monthly_reports import select
         monthly_chosen = select(prime, year, as_of, selection)
     offchain_chosen = []
-    if policy_version in OFFCHAIN_POLICIES:
-        if policy_version in ARCHIVE_POLICIES:
+    spark = policy_version == SPARK_INCOME_POLICY and prime == 'spark'
+    if spark:
+        from .spark_reporting_store import select as select_spark
+        offchain_chosen = select_spark(spark_publications, year, as_of, selection)
+    elif policy_version in OFFCHAIN_POLICIES:
+        if policy_version in ARCHIVE_POLICIES and not spark:
             from .financial_archive import select as select_offchain
         else:
             from .financial_offchain import select as select_offchain
@@ -312,7 +316,7 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None,
         if key.startswith('investment.offchain.'):
             cells = [report['metrics'].get(key, metric(reason='offchain_schedule_not_supplied'))
                      if report else metric(reason='offchain_schedule_not_supplied') for report in offchain_chosen]
-        if policy_version in ARCHIVE_POLICIES:
+        if policy_version in ARCHIVE_POLICIES and not spark:
             for i, report in enumerate(offchain_chosen):
                 if report and key in report['metrics']:
                     cells[i] = report['metrics'][key]
@@ -344,7 +348,10 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None,
               'selection': selection_token(manifest), 'perimeter': 'operational_prime_management_reporting'}
     if monthly:
         result['source_manifest'].update({p['revision_id']: p['source'] for p in monthly_chosen if p})
-    if policy_version in OFFCHAIN_POLICIES:
+    if spark:
+        result.update(offchain_positions=[], archive_income=[])
+        result['source_manifest'].update({p['revision_id']: p['source'] for p in offchain_chosen if p})
+    elif policy_version in OFFCHAIN_POLICIES:
         if policy_version in ARCHIVE_POLICIES:
             from .financial_archive import extend as extend_offchain
         else:
@@ -352,7 +359,7 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None,
         extend_offchain(result, offchain_chosen)
     if policy_version == SPARK_INCOME_POLICY:
         from .financial_spark import extend as extend_spark
-        extend_spark(result, chosen)
+        extend_spark(result, chosen, offchain_chosen)
     if policy_version in RWA_POLICIES:
         from .financial_rwa import refresh_reviewed_subtotal
         refresh_reviewed_subtotal(result)

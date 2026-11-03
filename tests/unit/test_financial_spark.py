@@ -92,7 +92,8 @@ def test_additional_reporting_only_receipts_complete_fees_without_adding_native_
     assert cell(new, 'fees.sparklend.rlusd')['value'] == '3'
     assert cell(new, 'fees.sparklend.usdg')['value'] == '3'
     old = statement(source, archive=True)
-    assert amount(cell(new, 'statement.net_revenue')) - amount(cell(old, 'statement.net_revenue')) == 6
+    assert amount(cell(new, 'statement.net_revenue')) - amount(cell(old, 'statement.net_revenue')) == 199998
+    assert amount(cell(new, 'investment.venue.S70')) == 99996
     # Only the external receipt is fee income; the raw venue's other return
     # must not be mistaken for curator or protocol fees.
     source['spark_fee_source_views'][0]['enabled'] = False

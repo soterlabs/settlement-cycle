@@ -43,10 +43,14 @@ def definitions(prime, source_definitions, *, allocation_rewards=False, archive=
         slug = family.lower().replace(' ', '_')
         add('family.' + slug, 'Reviewed ' + family + ' income', ids)
         rows[-1]['family'] = family
+        if spark_income and prime == 'spark':
+            rows[-1]['label'] = 'Other reviewed income' if family == 'Other reviewed vaults' else family + ' revenue'
     if linked:
         add('family.allocation_rewards', 'Allocation-linked incentives and rewards', linked)
     add('interest', 'Income from allocations' if allocation_rewards else 'Interest income from allocations',
         [*native, *linked, 'unclassified.allocation_income'])
+    if spark_income and prime == 'spark':
+        rows[-1]['label'] = 'Revenue from allocations'
     add('rewards', 'Other incentives and rewards received' if allocation_rewards else 'Incentives and rewards received',
         [*other_rewards, 'unclassified.other_rewards'])
     if archive:

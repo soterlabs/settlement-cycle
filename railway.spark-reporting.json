@@ -1,0 +1,9 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {"builder": "DOCKERFILE", "dockerfilePath": "Dockerfile"},
+  "deploy": {
+    "startCommand": "python -m settle.revenue.spark_reporting_job --from 2026-01-01",
+    "cronSchedule": "45 20 * * *",
+    "restartPolicyType": "NEVER"
+  }
+}

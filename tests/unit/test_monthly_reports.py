@@ -138,7 +138,7 @@ def test_http_monthly_history_works_without_saved_daily_rows_and_pins_policy(mon
         raise AssertionError('No network/provider calls')
     monkeypatch.setattr('requests.Session.send', forbidden)
     class Reader:
-        def financial_year(self, prime, year, revisions=None, policy_version=POLICY_VERSION):
+        def financial_year(self, prime, year, revisions=None, policy_version=POLICY_VERSION, include_spark_fees=False):
             assert policy_version == POLICY_VERSION
             return []
     client = TestClient(create_app(reader=Reader()))

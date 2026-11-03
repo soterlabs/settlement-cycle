@@ -43,6 +43,13 @@ class RevenueReaderMixin:
                     include_spark_fees=include_spark_fees,
                     **({"policy_version": policy_version} if policy_version else {}))
 
+    def spark_component_year(self, year, *, revisions=None):
+        from ..revenue.spark_reporting_store import year_rows
+        with self._pool.connection() as conn:
+            with conn.transaction():
+                conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
+                return year_rows(conn, year, revisions=revisions)
+
     def revenue_bundle(self, prime, *, cutoff=None, revision=None):
         with self._pool.connection() as conn:
             with conn.transaction():
