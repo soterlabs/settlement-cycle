@@ -14,9 +14,11 @@ from time import sleep
 import requests
 
 from ..domain.primes import Address, Chain
+from ..extract import hypersync
 from ..extract._keccak import keccak256
 from ..extract.cache import cached
 from ..extract.hypersync import _DEFAULT_LOG_FIELDS, query_logs
+from ..extract.hypersync_store import _reorg_margin
 from ..extract.rpc import balance_of, eth_call, native_balance
 from ..extract.transfer_logs import TRANSFER_TOPIC0
 from ..normalize.allocation_morpho_fees import (
@@ -25,7 +27,6 @@ from ..normalize.allocation_morpho_fees import (
     ZERO_TOPIC,
     fee_mints,
 )
-from ..normalize.sources.hypersync_block_resolver import HyperSyncBlockResolver
 from .allocation_revenue import SPARK_EXTRA
 from .financial_allocations import ALLOCATIONS
 from .verification import digest
@@ -92,12 +93,25 @@ def market_price(coin, timestamp):
     return {'price': str(price), 'timestamp': int(raw['timestamp'])}
 
 
+@cached(source_id='spark-reporting.certified-boundary.v1')
+def certified_boundary(chain, day, margin):
+    """Validate the fast legacy candidate before admitting it to a new cache."""
+    if margin < 0:
+        raise ValueError('Finality margin must be nonnegative')
+    target = int(datetime.combine(day, time.max, UTC).timestamp())
+    candidate = hypersync.find_block_at_or_before(chain, target)
+    if (candidate + 1 <= hypersync.archive_height(chain) - margin
+            and hypersync.block_timestamp_uncached(chain, candidate) <= target
+            < hypersync.block_timestamp_uncached(chain, candidate + 1)):
+        return candidate
+    return hypersync.find_finalized_block_at_or_before(chain, target, margin)
+
+
 class Source:
     def __init__(self, prime, period, opening_pins):
         self.prime, self.period = prime, period
         self.opening_pins = {str(k): v for k, v in opening_pins.items()}
         self.closing_pins = {str(k): v for k, v in period.pin_blocks.items()}
-        self.resolver = HyperSyncBlockResolver().for_finalized_reads()
         self.block = cache(self._block)
 
     def _block(self, chain, day):
@@ -105,7 +119,7 @@ class Source:
             return self.opening_pins[chain]
         if day == self.period.end:
             return self.closing_pins[chain]
-        return self.resolver.block_at_or_before(chain, datetime.combine(day, time.max, UTC))
+        return certified_boundary(chain, day, _reorg_margin())
 
     def call(self, chain, token, signature, block, *args):
         data = '0x' + keccak256(signature.encode()).hex()[:8] + ''.join(f'{arg:064x}' for arg in args)

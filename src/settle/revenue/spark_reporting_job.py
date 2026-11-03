@@ -3,15 +3,15 @@ import argparse
 import calendar
 import json
 from concurrent.futures import ThreadPoolExecutor
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from ..domain.config import load_prime_by_id
 from ..domain.period import Month, Period
 from ..domain.primes import Chain
-from ..normalize.sources.hypersync_block_resolver import HyperSyncBlockResolver
+from ..extract.hypersync_store import _reorg_margin
 from ..store.db import connect
 from . import spark_reporting_store, store
-from .spark_onchain import WETH, collect
+from .spark_onchain import WETH, certified_boundary, collect
 
 
 def month_dates(start, end):
@@ -28,12 +28,11 @@ def month_dates(start, end):
 
 def calculate(cutoff):
     prime = load_prime_by_id('spark')
-    resolver = HyperSyncBlockResolver().for_finalized_reads()
     first = cutoff.replace(day=1)
     chains = [*WETH, 'avalanche_c']
     def pins(day):
         def block(chain):
-            return Chain(chain), resolver.block_at_or_before(chain, datetime.combine(day, time.max, UTC))
+            return Chain(chain), certified_boundary(chain, day, _reorg_margin())
         with ThreadPoolExecutor(max_workers=6) as pool:
             return dict(pool.map(block, chains))
     opening, closing = pins(first - timedelta(days=1)), pins(cutoff)
