@@ -126,3 +126,27 @@ def test_unreviewed_file_hash_and_wrong_prime_are_rejected(tmp_path):
     base["prime"] = "grove"
     with pytest.raises(ValueError, match="scope"):
         publisher().prepare(base, MANIFEST)
+
+
+def test_dry_run_cannot_overwrite_manifest_evidence(tmp_path, monkeypatch):
+    import sys
+
+    module = publisher()
+    monkeypatch.setattr(module, "ROOT", tmp_path)
+    source = tmp_path / "evidence.json"
+    source.write_text('{"preserve": true}')
+    base = tmp_path / "base.json"
+    base.write_text("{}")
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({"evidence": {"estimates": {"path": source.name}}}))
+    alias = tmp_path / "output.json"
+    alias.symlink_to(source)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["publisher", "--base", str(base), "--manifest", str(manifest), "--output", str(alias)],
+    )
+    with pytest.raises(SystemExit) as error:
+        module.main()
+    assert error.value.code == 2
+    assert source.read_text() == '{"preserve": true}'

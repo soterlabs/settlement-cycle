@@ -74,7 +74,11 @@ def main():
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--publish", action="store_true")
     args = p.parse_args()
-    if args.output.resolve() in {args.base.resolve(), args.manifest.resolve()}:
+    manifest = json.loads(args.manifest.read_text())
+    protected = {args.base.resolve(), args.manifest.resolve()} | {
+        (ROOT / entry["path"]).resolve() for entry in manifest["evidence"].values()
+    }
+    if args.output.resolve() in protected:
         p.error("Output cannot overwrite an input")
     base = json.loads(args.base.read_text())
     document = prepare(base, args.manifest)
