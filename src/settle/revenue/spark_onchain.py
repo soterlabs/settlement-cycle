@@ -17,8 +17,8 @@ from ..domain.primes import Address, Chain
 from ..extract import hypersync
 from ..extract._keccak import keccak256
 from ..extract.cache import cached
-from ..extract.hypersync import _DEFAULT_LOG_FIELDS, query_logs
-from ..extract.hypersync_store import _reorg_margin
+from ..extract.hypersync import _DEFAULT_LOG_FIELDS
+from ..extract.hypersync_store import _reorg_margin, fetch_logs
 from ..extract.rpc import balance_of, eth_call, native_balance
 from ..extract.transfer_logs import TRANSFER_TOPIC0
 from ..normalize.allocation_morpho_fees import (
@@ -139,11 +139,8 @@ class Source:
 
     def logs(self, chain, selections):
         start, end = self.block(chain, self.period.start - timedelta(days=1)), self.block(chain, self.period.end)
-        result = query_logs(chain, selections, start + 1, end,
-                            log_fields=[*_DEFAULT_LOG_FIELDS, 'transaction_hash'])
-        if result.archive_height < end:
-            raise ValueError('Transfer history does not cover the pinned cutoff')
-        return result.rows
+        return fetch_logs(chain, selections, start + 1, end,
+                          log_fields=[*_DEFAULT_LOG_FIELDS, 'transaction_hash'])
 
     def price(self, coin, day):
         timestamp = int(datetime.combine(day, time.max, UTC).timestamp())

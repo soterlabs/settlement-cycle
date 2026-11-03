@@ -61,7 +61,7 @@ def main():
         store.apply_schema(conn)
         if args.schema_only:
             return
-        for cutoff in month_dates(start, args.end):
+        for cutoff in reversed(month_dates(start, args.end)):
             try:
                 document = calculate(cutoff)
                 revision = spark_reporting_store.publish(conn, document, code_version=versions.code,
