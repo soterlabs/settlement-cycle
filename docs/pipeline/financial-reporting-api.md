@@ -80,7 +80,7 @@ returns 503. Responses support conditional GET with ETags.
 ## Publication and backfill
 
 Current daily/portfolio policy: `prime-management.allocations.v2.1`;
-current annual statement composition policy: `prime-management.offchain-accruals.v3.4`;
+current annual statement composition policy: `prime-management.archive-income.v3.5`;
 retained rollup policy: `prime-management.statement-rollups.v3.1`;
 retained monthly composition policy: `prime-management.monthly-statements.v3`; retained allocation policy: `prime-management.allocations.v2`; retained first-slice policy: `prime-management.first-slice.v1`. A changed measurement policy requires
 a new version. Financial revisions key the source revision/hash plus policy;
@@ -296,3 +296,10 @@ The default annual policy now adds GACLO and Galaxy Warehouse earned income,
 separate cash/receivable schedules, explicit estimate quality and immutable
 offchain revisions. [Field guide and historical coverage](../api-grove-monthly-accruals.md).
 Daily financial documents and MSC settlement values are unchanged.
+
+## Further Grove archive history (archive-income.v3.5)
+
+See [Grove archive income](../api-grove-archive-income.md) for monthly historical
+returns, receipt recognition, nominal USD valuations and non-additive Merkl scenarios.
+The default switches to v3.5 after the compatible client deploys; older report
+selections, MSC settlement calculations and saved daily documents remain unchanged.
