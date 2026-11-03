@@ -206,7 +206,7 @@ def test_bridge_separates_expenses_unselected_custody_and_retired_losses():
     assert row["outstanding_principal"] == row["principal_not_in_accounts"] == 0
 
 
-@pytest.mark.parametrize("mutation", ["missing", "amount", "duplicate", "nonfinite"])
+@pytest.mark.parametrize("mutation", ["missing", "amount", "duplicate", "nonfinite", "negative"])
 def test_saved_bridge_rejects_incomplete_or_inconsistent_controls(tmp_path, monkeypatch, mutation):
     monkeypatch.syspath_prepend(str(Path("scripts").resolve()))
     import audit_spark_mixed_funding_yields as module
@@ -232,6 +232,13 @@ def test_saved_bridge_rejects_incomplete_or_inconsistent_controls(tmp_path, monk
         rows[0]["selected_principal"] = "999999"
     if mutation == "duplicate":
         rows.append(rows[0])
+    if mutation == "negative":
+        # Preserve the arithmetic identity; negative custody is still invalid.
+        old = D(rows[0]["financing_principal"])
+        rows[0]["financing_principal"] = "-1"
+        rows[0]["principal_not_in_accounts"] = str(
+            D(rows[0]["principal_not_in_accounts"]) + old + 1
+        )
     if mutation == "nonfinite":
         rows[0]["financing_principal"] = "NaN"
     path.write_bytes(gzip.compress(json.dumps(saved).encode()))

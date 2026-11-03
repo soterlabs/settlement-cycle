@@ -113,7 +113,11 @@ def validate_funding_bridge(bridge, selected):
                 raise ValueError("Invalid funding bridge source")
             seen.add(key)
             values = {field: Decimal(row[field]) for field in fields}
-            if any(not v.is_finite() for v in values.values()):
+            if any(not v.is_finite() for v in values.values()) or any(
+                value < -Decimal("1e-8")
+                for field, value in values.items()
+                if field != "principal_not_in_accounts"
+            ):
                 raise ValueError("Invalid funding bridge amount")
             gap = values["outstanding_principal"] - sum(
                 (
