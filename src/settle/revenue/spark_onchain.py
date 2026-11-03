@@ -97,7 +97,7 @@ class Source:
         self.prime, self.period = prime, period
         self.opening_pins = {str(k): v for k, v in opening_pins.items()}
         self.closing_pins = {str(k): v for k, v in period.pin_blocks.items()}
-        self.resolver = HyperSyncBlockResolver()
+        self.resolver = HyperSyncBlockResolver().for_finalized_reads()
         self.block = cache(self._block)
 
     def _block(self, chain, day):
