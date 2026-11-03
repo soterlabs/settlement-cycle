@@ -16,8 +16,8 @@
       "sha256": "541da5522653774c130e7170a74021255ee151395b54388873d56635be9b8d39"
     },
     "control": {
-      "path": "settlements/spark/2026-08/provenance.json",
-      "sha256": "b989d9e8ea02064ffb8519a23502f2b9c7210a4bb05c3d626c6386956fc9c781"
+      "path": "reconciliation/spark_august_2026_revenue_control.json.gz",
+      "sha256": "dc09ae571a99f5526d22dad3ff7093edc03f7c44adb6b1db2a22ef9eca912f73"
     },
     "anchorage": {
       "path": "reconciliation/spark_anchorage_receipt_funding_origins_2026_08.json.gz",

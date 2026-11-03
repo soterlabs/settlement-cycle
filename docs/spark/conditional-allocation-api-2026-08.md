@@ -56,3 +56,8 @@ financing, unclassified financing, Vat-rate financing and deduction differences.
 The allocation-cost total plus these components equals global cost excluding
 MSC within rounding tolerance. That arithmetic does not classify the unresolved
 component or validate funding provenance.
+
+The pinned revenue control is a compressed, unchanged copy of the locally
+archived August Spark provenance (`spark_august_2026_revenue_control.json.gz`).
+It is committed alongside the manifest so clean checkouts can reproduce the
+validation without access to ignored settlement outputs.
