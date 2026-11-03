@@ -72,7 +72,7 @@ def coalesce(movements):
     return tuple(by_account.values())
 
 
-def capital_timeline(history, start, end):
+def capital_timeline(history, start, end, *, on_batch=None, on_batch_accounts=None):
     """Carry original principal across exchanges; exclude gains and rewards.
 
     Transactions already separated by the reviewed routing adapters remain
@@ -158,6 +158,9 @@ def capital_timeline(history, start, end):
                         issues[m.account].clear()
                 if any(basis[m.account] < -EPS for m in b.movements):
                     raise ValueError("Negative principal")
+                if on_batch is not None:
+                    on_batch(b, {a: basis.get(a, ZERO) for a in
+                                 (accounts if on_batch_accounts is None else on_batch_accounts)})
             rows[str(day)] = {
                 a: {
                     "principal": str(basis[a]),

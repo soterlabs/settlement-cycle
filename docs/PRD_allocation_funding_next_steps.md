@@ -1,6 +1,8 @@
 # PRD — Resolve remaining allocation funding splits
 
-Status: deferred next workstream. Snapshot: August 2026. No new funding-source investigation is part of the monthly API change.
+Status: active separate workstream from 2026-10-29. Snapshot: August 2026. The already shipped monthly API remains separate from this research.
+
+The [daily mixed-funding yield audit](spark/mixed-funding-yields-2026-10-29.md) reuses the retained Savings/refinancing ledger and reports conditional costs with explicit daily capital gaps. It does not yet certify a Sky/Savings split or publish new Spark net yields.
 
 ## Current PR boundary
 
