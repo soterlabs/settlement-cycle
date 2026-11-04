@@ -101,12 +101,28 @@ def market_price(coin, timestamp):
     raise ValueError("Historical price is stale or forward-looking")
 
 
+@cached(source_id="spark-reporting.chain-origin.v1")
+def chain_origin(chain):
+    from ..extract.rpc import _post, rpc_url
+    def stamp(block):
+        header = _post(rpc_url(Chain(chain)), "eth_getBlockByNumber", [hex(block), False])
+        if not header or int(header["number"], 16) != block:
+            raise ValueError("Missing chain origin header")
+        return int(header["timestamp"], 16)
+    return stamp(0), stamp(1)
+
+
 @cached(source_id='spark-reporting.certified-boundary.v1')
 def certified_boundary(chain, day, margin):
     """Validate the fast legacy candidate before admitting it to a new cache."""
     if margin < 0:
         raise ValueError('Finality margin must be nonnegative')
     target = int(datetime.combine(day, time.max, UTC).timestamp())
+    origin, first = chain_origin(chain)
+    if origin <= target < first:
+        if _reporting_head(chain) < 1 + margin:
+            raise ValueError('Chain origin lacks a finalized successor')
+        return 0
     candidate = hypersync.find_block_at_or_before(chain, target)
     if (candidate + 1 <= hypersync.archive_height(chain) - margin
             and hypersync.block_timestamp_uncached(chain, candidate) <= target
@@ -144,6 +160,16 @@ def certified_saved_boundary(chain, day, candidate):
 
 
 
+
+@cached(source_id="spark-reporting.contract-code.v1")
+def contract_code(chain, token, block):
+    from ..extract.rpc import _post, rpc_url
+    result = _post(rpc_url(Chain(chain)), "eth_getCode", [token, hex(block)])
+    if not isinstance(result, str) or not result.startswith("0x"):
+        raise ValueError("Invalid historical contract code")
+    return result
+
+
 class Source:
     def __init__(self, prime, period, opening_pins, *, daily_pins=None):
         self.prime, self.period = prime, period
@@ -165,6 +191,9 @@ class Source:
     def call(self, chain, token, signature, block, *args):
         data = '0x' + keccak256(signature.encode()).hex()[:8] + ''.join(f'{arg:064x}' for arg in args)
         return eth_call(Chain(chain), Address.from_str(token), data, block)
+
+    def code(self, chain, token, block):
+        return contract_code(chain, token, block)
 
     def number(self, chain, token, signature, block, *args):
         raw = self.call(chain, token, signature, block, *args)
@@ -432,7 +461,7 @@ def native_supply(source, spec):
                      else 'average_daily_vault_shares_times_net_NAV_change'}
 
 
-def collect(prime, period, opening_pins, *, source=None, progress=None):
+def collect(prime, period, opening_pins, *, source=None, progress=None, native_venues=None):
     source = source or Source(prime, period, opening_pins)
     result = {'schema_version': 'spark-onchain.v1', 'period_start': str(period.start), 'cutoff': str(period.end),
               'curator_fees': {}, 'gains': {}, 'native_supplies': {}, 'errors': {}}
@@ -452,6 +481,8 @@ def collect(prime, period, opening_pins, *, source=None, progress=None):
     for kind in ('morpho', 'avax', 'eth_weth', 'sparklend_nonstable'):
         result['gains'][kind] = attempt('gains.' + kind, lambda kind=kind: gains(source, kind))
     for spec in (*ALLOCATIONS['spark'], *SPARK_EXTRA):
+        if native_venues is not None and spec.venue not in native_venues:
+            continue
         result['native_supplies'][spec.venue] = attempt('supply.' + spec.venue, lambda spec=spec: native_supply(source, spec))
     from .spark_completion import collect as complete
     completion = attempt('statement_completion', lambda: complete(source, progress=progress))
@@ -462,4 +493,11 @@ def collect(prime, period, opening_pins, *, source=None, progress=None):
             ctx.prec = 60
             result['gains']['sparklend_nonstable'] = net_sparklend_gain(source, result['gains']['sparklend_nonstable'],
                 result.get('statement_allocations', {}).get('sparklend.weth', {}), result.get('savings_interest', {}).get('S58', {}))
+    from .spark_monthly_income import collect as monthly_income
+    income = attempt('monthly_income', lambda: monthly_income(source, result.get('amm_fees', {}), progress=progress))
+    if 'status' not in income:
+        result['issuer_income'] = income['issuer_income']
+        result['monthly_income_errors'] = income['monthly_income_errors']
+        if 'anchorage.receipts' in income:
+            result.setdefault('statement_allocations', {})['anchorage.receipts'] = income['anchorage.receipts']
     return result

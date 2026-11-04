@@ -23,7 +23,9 @@ ARCHIVE_POLICY = 'prime-management.archive-income.v3.5'
 SPARK_INCOME_POLICY = 'prime-management.spark-income.v3.6'
 SPARK_AMM_POLICY = 'prime-management.spark-amms.v3.7'
 SPARK_STATEMENT_POLICY = 'prime-management.spark-statement.v3.8'
-SPARK_AMM_POLICIES = (SPARK_AMM_POLICY, SPARK_STATEMENT_POLICY)
+SPARK_HISTORY_POLICY = 'prime-management.spark-history.v3.9'
+SPARK_STATEMENT_POLICIES = (SPARK_STATEMENT_POLICY, SPARK_HISTORY_POLICY)
+SPARK_AMM_POLICIES = (SPARK_AMM_POLICY, *SPARK_STATEMENT_POLICIES)
 SPARK_INCOME_POLICIES = (SPARK_INCOME_POLICY, *SPARK_AMM_POLICIES)
 ARCHIVE_POLICIES = (ARCHIVE_POLICY, *SPARK_INCOME_POLICIES)
 OFFCHAIN_POLICIES = (OFFCHAIN_POLICY, *ARCHIVE_POLICIES)
@@ -184,7 +186,7 @@ def taxonomy(prime, policy_version):
                 + (archive_taxonomy(prime) if policy_version in ARCHIVE_POLICIES else [])
                 + (spark_taxonomy(prime) if policy_version in SPARK_INCOME_POLICIES else [])
                 + (amm_taxonomy(prime) if policy_version in SPARK_AMM_POLICIES else [])
-                + (statement_taxonomy(prime) if policy_version == SPARK_STATEMENT_POLICY else []))
+                + (statement_taxonomy(prime) if policy_version in SPARK_STATEMENT_POLICIES else []))
     if policy_version == STATEMENT_POLICY:
         additions = [('demand.distribution_rewards', 'Distribution rewards (DR)'),
                      ('demand.total', 'Demand-side revenue')]
@@ -241,7 +243,7 @@ def decode_selection(token, prime, year):
 
 def statements(prime, year, as_of, publications, *, exact=False, selection=None, monthly=False, rollups=False, rwa=False, allocation_rewards=False, offchain=False, archive=False, spark_income=False, spark_publications=(), spark_amms=False, spark_statement=False):
     """Read projection of saved financial metrics, with immutable export selection."""
-    policy_version = selection['policy_version'] if selection else SPARK_STATEMENT_POLICY if spark_statement else SPARK_AMM_POLICY if spark_amms else SPARK_INCOME_POLICY if spark_income else ARCHIVE_POLICY if archive else OFFCHAIN_POLICY if offchain else ALLOCATION_REWARDS_POLICY if allocation_rewards else RWA_POLICY if rwa else ROLLUP_POLICY if rollups else STATEMENT_POLICY if monthly else POLICY_VERSION
+    policy_version = selection['policy_version'] if selection else SPARK_HISTORY_POLICY if spark_statement else SPARK_AMM_POLICY if spark_amms else SPARK_INCOME_POLICY if spark_income else ARCHIVE_POLICY if archive else OFFCHAIN_POLICY if offchain else ALLOCATION_REWARDS_POLICY if allocation_rewards else RWA_POLICY if rwa else ROLLUP_POLICY if rollups else STATEMENT_POLICY if monthly else POLICY_VERSION
     monthly = policy_version in MONTHLY_STATEMENT_POLICIES
     if monthly:
         from .monthly_reports import select
@@ -371,16 +373,19 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None,
     if policy_version in SPARK_AMM_POLICIES and prime == "spark":
         from .financial_amms import extend as extend_amms
         extend_amms(result, chosen, monthly_chosen)
-    if policy_version == SPARK_STATEMENT_POLICY and prime == 'spark':
+    if policy_version in SPARK_STATEMENT_POLICIES and prime == 'spark':
         from .financial_spark_statement import extend as complete_spark
         complete_spark(result, chosen, offchain_chosen)
+    if policy_version == SPARK_HISTORY_POLICY and prime == "spark":
+        from .financial_spark_history import extend as complete_history
+        complete_history(result, monthly_chosen, offchain_chosen)
     if policy_version in RWA_POLICIES:
         from .financial_rwa import refresh_reviewed_subtotal
         refresh_reviewed_subtotal(result)
     if policy_version in ROLLUP_POLICIES:
         from .statement_rollups import extend
         result = extend(result)
-    if policy_version == SPARK_STATEMENT_POLICY and prime == 'spark':
+    if policy_version in SPARK_STATEMENT_POLICIES and prime == 'spark':
         from .financial_spark_statement import attach_rows
         attach_rows(result)
     return {**result, 'report_hash': digest(result)}

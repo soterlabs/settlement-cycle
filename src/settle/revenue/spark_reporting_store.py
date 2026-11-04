@@ -1,7 +1,7 @@
 """Append-only reporting components, isolated from MSC and native revenue."""
 
 from copy import deepcopy
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal, localcontext
 
 from psycopg.rows import dict_row
@@ -20,6 +20,35 @@ def validate_document(document):
     date.fromisoformat(document["cutoff"])
     with localcontext() as ctx:
         ctx.prec = 60
+        for family in ("savings_interest", "statement_allocations", "native_supplies"):
+            for row in document.get(family, {}).values():
+                proof = row.get("absence_proof")
+                if proof and (
+                    proof.get("opening_code") != "0x"
+                    or proof.get("closing_code") != "0x"
+                    or proof.get("event_count") != 0
+                    or number(row["value"]) != 0
+                ):
+                    raise ValueError("Invalid undeployed-contract zero proof")
+        for program, row in document.get("issuer_income", {}).items():
+            if program not in ("rlusd", "pyusd", "usdg"):
+                raise ValueError("Unknown monthly issuer program")
+            if row.get("status") == "available":
+                value = number(row["value"])
+                if row.get("program") != program:
+                    raise ValueError("Monthly issuer program identity differs")
+                if program == "usdg" and value != number(row.get("period_receipts_usd", "0")):
+                    raise ValueError("USDG income differs from verified receipts")
+                if program != "usdg" and row.get("basis") != "issuer_program_not_started":
+                    days = row.get("daily", [])
+                    first, last = date.fromisoformat(document["period_start"]), date.fromisoformat(document["cutoff"])
+                    expected = [str(first + timedelta(days=i)) for i in range((last - first).days + 1)]
+                    if [d["date"] for d in days] != expected:
+                        raise ValueError("Monthly issuer daily coverage is incomplete")
+                    if sum((number(d["accrual"]) for d in days), Decimal(0)) != value:
+                        raise ValueError("Monthly issuer accrual does not reconcile")
+                    if any(sum((number(c["accrual"]) for c in d["components"]), Decimal(0)) != number(d["accrual"]) for d in days):
+                        raise ValueError("Monthly issuer eligible components do not reconcile")
         for row in document.get("curator_fees", {}).values():
             if row.get("status") in ("available", "partial"):
                 opening, earned, paid, closing = (
@@ -63,8 +92,7 @@ def validate_document(document):
                 number(row["value"])
                 if row["asset"] != "WETH" and number(row["value"]) != interest:
                     raise ValueError("Stablecoin interest must be valued at par")
-                if row["asset"] == "WETH":
-                    from datetime import timedelta
+                if row["asset"] == "WETH" and not row.get("absence_proof"):
 
                     prices = row["daily_translation"]
                     start = date.fromisoformat(document["period_start"])
@@ -99,7 +127,6 @@ def validate_document(document):
                     if min(opening, closing) < 0 or closing - opening - capital != interest:
                         raise ValueError("Unreconciled supply capital/interest bridge")
                     if row.get("translation_policy"):
-                        from datetime import timedelta
 
                         start = date.fromisoformat(document["period_start"])
                         end = date.fromisoformat(document["cutoff"])
@@ -139,7 +166,6 @@ def validate_document(document):
             if row.get("status") in ("available", "partial"):
                 net = number(row["value"])
                 if row.get("daily_revaluation"):
-                    from datetime import timedelta
 
                     start = date.fromisoformat(document["period_start"])
                     end = date.fromisoformat(document["cutoff"])
@@ -161,10 +187,8 @@ def validate_document(document):
                             number(entry["opening_usd_price"]),
                             number(entry["closing_usd_price"]),
                         )
-                        if (
-                            min(opening_price, closing_price) <= 0
-                            or (previous_price is not None
-                            and opening_price != previous_price)
+                        if min(opening_price, closing_price) <= 0 or (
+                            previous_price is not None and opening_price != previous_price
                         ):
                             raise ValueError("Net revaluation closing quotes do not reconcile")
                         if number(entry["asset_price_gain_usd"]) != number(
@@ -189,10 +213,8 @@ def validate_document(document):
                                     "interest_units",
                                 )
                             )
-                            if (
-                                closing - opening - capital != earned
-                                or (family in previous
-                                and previous[family] != opening)
+                            if closing - opening - capital != earned or (
+                                family in previous and previous[family] != opening
                             ):
                                 raise ValueError(
                                     "Net revaluation daily claim bridges do not reconcile"
@@ -280,6 +302,7 @@ def carry_forward(document, previous):
         "savings_interest",
         "statement_allocations",
         "amm_fees",
+        "issuer_income",
     ):
         for key, value in result.get(family, {}).items():
             result[family][key] = retained(value, previous["document"].get(family, {}).get(key, {}))

@@ -5,8 +5,7 @@ from decimal import localcontext
 from functools import cache
 
 from ..domain.primes import Address
-from .financial_allocations import Allocation
-from .spark_onchain import SPWETH, native_supply
+from .spark_onchain import SPWETH
 from .spark_reconciliation import aave_supply, bridged_susds, vault_supply
 from .spark_savings import VAULTS, collect_vault
 from .spark_v4_fees import collect as collect_fees
@@ -42,6 +41,8 @@ def sentora(source):
     )
     venue = replace(base, id="reporting.sentora", token=token, underlying=underlying)
     block = source.block("ethereum", source.period.end)
+    if hasattr(source, "code") and source.code("ethereum", SENTORA, block) == "0x":
+        return vault_supply(source, venue)
     if source.number("ethereum", SENTORA, "asset()", block) != int(RLUSD, 16):
         raise ValueError("Unexpected Sentora underlying")
     return vault_supply(source, venue)
@@ -80,13 +81,7 @@ def collect(source, *, progress=None):
         if v.id in SUSDS:
             result["statement_allocations"][v.id] = attempt(
                 "susds." + v.id,
-                lambda v=v: (
-                    arbitrum_susds(source, v)
-                    if v.id == "S43"
-                    else vault_supply(source, v)
-                    if v.id == "S32"
-                    else native_supply(source, Allocation(v.id, "susds", "sUSDS", "B", "sUSDS"))
-                ),
+                lambda v=v: arbitrum_susds(source, v) if v.id != "S32" else vault_supply(source, v),
             )
         if v.id in ("S61", "S62", "S66"):
             result["amm_fees"][v.id] = attempt(

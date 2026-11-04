@@ -35,17 +35,25 @@ def unique(rows):
 
 def owner_logs(source, chain, token, *, joined=False):
     holder = topic(source.prime.alm[Chain(chain)].hex)
+    selections = [
+        {"address": [token], "topics": [[TRANSFER_TOPIC0], [holder]]},
+        {"address": [token], "topics": [[TRANSFER_TOPIC0], [], [holder]]},
+    ]
+    if joined:
+        # These are the only companion logs needed for an ERC4626 share
+        # bridge. Query them directly rather than downloading every sibling
+        # log from thousands of transactions in a historical month.
+        selections += [
+            {"address": [token], "topics": [[DEPOSIT], [], [holder]]},
+            {"address": [token], "topics": [[WITHDRAW], [], [], [holder]]},
+        ]
     return unique(
         fetch_logs(
             chain,
-            [
-                {"address": [token], "topics": [[TRANSFER_TOPIC0], [holder]]},
-                {"address": [token], "topics": [[TRANSFER_TOPIC0], [], [holder]]},
-            ],
+            selections,
             source.opening_pins[chain] + 1,
             source.closing_pins[chain],
             log_fields=[*_DEFAULT_LOG_FIELDS, "transaction_hash"],
-            join_mode="JoinAll" if joined else None,
             max_num_logs=100000,
         )
     )
@@ -86,6 +94,36 @@ def claim_bridge(opening, closing, capital, *, scale, rows, basis):
         }
 
 
+def absent_contract(source, chain, token, rows):
+    """Zero only after both code boundaries and the whole event range prove absence."""
+    if not hasattr(source, "code"):
+        return None
+    start, end = source.opening_pins[chain], source.closing_pins[chain]
+    if source.code(chain, token, start) == "0x" and source.code(chain, token, end) == "0x":
+        if rows:
+            raise ValueError("Undeployed contract has historical activity")
+        result = claim_bridge(
+            0, 0, 0, scale=1, rows=[], basis="verified_undeployed_contract_zero_income"
+        )
+        result["absence_proof"] = {
+            "chain": chain,
+            "contract": token,
+            "opening_pin": start,
+            "closing_pin": end,
+            "opening_code": "0x",
+            "closing_code": "0x",
+            "event_count": 0,
+        }
+        return result
+    return None
+
+
+def balance_at(source, chain, token, holder, block):
+    if hasattr(source, "code") and source.code(chain, token, block) == "0x":
+        return 0
+    return source.number(chain, token, "balanceOf(address)", block, int(holder, 16))
+
+
 def vault_supply(source, venue):
     """ERC4626 deposits/withdrawals at actual assets; ordinary sUSDS transfers at chi.
 
@@ -98,14 +136,20 @@ def vault_supply(source, venue):
     start, end = source.opening_pins[chain], source.closing_pins[chain]
     rows = owner_logs(source, chain, token, joined=True)
     own = [r for r in rows if r.address.lower() == token.lower()]
-    balances = [
-        source.number(chain, token, "balanceOf(address)", b, int(holder, 16)) for b in (start, end)
-    ]
+    empty = absent_contract(source, chain, token, own)
+    if empty is not None:
+        return empty
+    balances = [balance_at(source, chain, token, holder, b) for b in (start, end)]
     claims = [
-        source.number(chain, token, "convertToAssets(uint256)", b, q)
+        (0 if q == 0 else source.number(chain, token, "convertToAssets(uint256)", b, q))
         for b, q in zip((start, end), balances, strict=True)
     ]
     expected, actual = defaultdict(int), defaultdict(int)
+    rates = (
+        canonical_susds_rates(source, token, own, balances, claims)
+        if venue.id == "S32" and hasattr(source, "code")
+        else None
+    )
     capital = quantity = 0
     zero = topic("0x" + "0" * 40)
     for r in own:
@@ -126,27 +170,17 @@ def vault_supply(source, venue):
             elif delta:
                 if venue.id != "S32":
                     raise ValueError("Unclassified vault share transfer")
-                # All transactions within a block share a timestamp; canonical
-                # chi is unaffected by deposits. A rate reset within the same
-                # block could change transfer NAV, so reject that ambiguity.
-                from ..extract._keccak import keccak256
-
-                file_topic = "0x" + keccak256(b"File(bytes32,uint256)").hex()
-                changes = query_logs(
-                    chain,
-                    [{"address": [token], "topics": [[file_topic]]}],
-                    r.block_number,
-                    r.block_number,
-                    max_num_logs=100000,
-                ).rows
-                if changes:
-                    raise ValueError("sUSDS transfer shares a block with a rate reset")
                 q_before = balances[0] + quantity - delta
-                capital += source.number(
-                    chain, token, "convertToAssets(uint256)", r.block_number, q_before + delta
-                ) - source.number(
-                    chain, token, "convertToAssets(uint256)", r.block_number, q_before
-                )
+                if rates is not None:
+                    rate = rates[r.block_number, r.log_index]
+                    capital += (q_before + delta) * rate // 10**27 - q_before * rate // 10**27
+                else:
+                    # Injectable test sources can provide direct pinned NAV.
+                    capital += source.number(
+                        chain, token, "convertToAssets(uint256)", r.block_number, q_before + delta
+                    ) - source.number(
+                        chain, token, "convertToAssets(uint256)", r.block_number, q_before
+                    )
     if dict(actual) != dict(expected) or balances[0] + quantity != balances[1]:
         raise ValueError("Vault capital/share events do not reproduce closing balance")
     result = claim_bridge(
@@ -196,12 +230,17 @@ def aave_supply(source, venue):
             max_num_logs=100000,
         )
     )
+    empty = absent_contract(source, chain, token, rows)
+    if empty is not None:
+        return empty
     start = source.period.start - timedelta(days=1)
     days = [start + timedelta(days=i) for i in range(source.period.n_days + 1)]
     pool = f"0x{source.number(chain, token, 'POOL()', source.closing_pins[chain]):040x}"
 
     def state(day):
         b = source.block(chain, day)
+        if hasattr(source, "code") and source.code(chain, token, b) == "0x":
+            return 0, 0, 0
         q = source.number(chain, token, "scaledBalanceOf(address)", b, int(holder, 16))
         index = source.number(
             chain,
@@ -271,7 +310,12 @@ def bridged_susds(source, venue):
     """PSM3's local conversion rate, with every bridged share flow reconciled."""
     chain, token = str(venue.chain), venue.token.address.hex
     holder = topic(source.prime.alm[venue.chain].hex)
-    psm = "0x2b05f8e1cacc6974fd79a673a341fe1f58d27266"
+    psm = {
+        "arbitrum": "0x2b05f8e1cacc6974fd79a673a341fe1f58d27266",
+        "base": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+        "optimism": "0xe0f9978b907853f354d79188a3defbd41978af62",
+        "unichain": "0x7b42ed932f26509465f7ce3faf76ffce1275312f",
+    }[chain]
     start, end = source.opening_pins[chain], source.closing_pins[chain]
 
     def rate(block):
@@ -284,9 +328,7 @@ def bridged_susds(source, venue):
             raise ValueError("Missing PSM3 rate provider")
         return provider, source.number(chain, f"0x{provider:040x}", "getConversionRate()", block)
 
-    balances = [
-        source.number(chain, token, "balanceOf(address)", b, int(holder, 16)) for b in (start, end)
-    ]
+    balances = [balance_at(source, chain, token, holder, b) for b in (start, end)]
     rates = [rate(b) for b in (start, end)]
     rows = owner_logs(source, chain, token)
     q, capital = balances[0], 0
@@ -294,7 +336,7 @@ def bridged_susds(source, venue):
         # Unchanged adjacent-block conversion rates prove that a same-block
         # oracle update cannot introduce unknown transfer pricing here.
         previous, current = rate(r.block_number - 1), rate(r.block_number)
-        if previous != current or current[0] != rates[0][0] or current[1] <= 0:
+        if previous[0] != current[0] or current[0] != rates[0][0] or current[1] <= 0:
             raise ValueError("Bridged share transfer needs intrablock oracle state")
         oracle_rows = query_logs(
             chain,
@@ -369,6 +411,9 @@ def fluid_base(source, venue):
     )
     holder = source.prime.alm[venue.chain].hex
     rows = owner_logs(source, chain, token)
+    empty = absent_contract(source, chain, token, rows)
+    if empty is not None:
+        return empty
     if any(int(r.data, 16) for r in rows):
         raise ValueError("Fluid share flows need event-level wrapper valuation")
     claims, quantities = [], []
@@ -418,13 +463,14 @@ def net_sparklend_gain(source, old, supply, savings):
     liability_days = savings.get("daily_liability", [])
     if len(asset_days) != source.period.n_days or len(liability_days) != len(asset_days):
         return old
-    if [p["date"] for p in savings.get("daily_translation", [])] != [
-        p["date"] for p in asset_days
-    ] or any(
-        p["usd_price"] != q["usd_price"]
-        for p, q in zip(savings["daily_translation"], asset_days, strict=True)
-    ):
-        raise ValueError("Asset and depositor USD translation conventions differ")
+    if not savings.get("absence_proof"):
+        if [p["date"] for p in savings.get("daily_translation", [])] != [
+            p["date"] for p in asset_days
+        ] or any(
+            p["usd_price"] != q["usd_price"]
+            for p, q in zip(savings["daily_translation"], asset_days, strict=True)
+        ):
+            raise ValueError("Asset and depositor USD translation conventions differ")
     previous_price = source.price("coingecko:ethereum", source.period.start - timedelta(days=1))
     asset_gain = liability_gain = Decimal(0)
     ledger = []
@@ -545,3 +591,85 @@ def empty_avax_gain(source, old):
     }
     result.pop("confidence_reason", None)
     return result
+
+
+def ray_power(x, exponent):
+    """SUsds integer exponentiation with half-up RAY multiplication."""
+    ray, limit = 10**27, 1 << 256
+    if x == 0:
+        return ray if exponent == 0 else 0
+    value = x if exponent % 2 else ray
+    exponent //= 2
+    while exponent:
+        squared = x * x + ray // 2
+        if squared >= limit:
+            raise ValueError("sUSDS rate overflow")
+        x = squared // ray
+        if exponent % 2:
+            product = value * x + ray // 2
+            if product >= limit:
+                raise ValueError("sUSDS rate overflow")
+            value = product // ray
+        exponent //= 2
+    return value
+
+
+@cached(source_id="spark-reporting.block-stamp.v1")
+def block_stamp(chain, block):
+    from ..extract.rpc import _post, rpc_url
+
+    result = _post(rpc_url(Chain(chain)), "eth_getBlockByNumber", [hex(block), False])
+    if not result or int(result["number"], 16) != block:
+        raise ValueError("Missing block timestamp")
+    return int(result["timestamp"], 16)
+
+
+def canonical_susds_rates(source, token, own_rows, balances, claims):
+    """Replay the reviewed SUsds chi/rho/ssr accumulator once per month.
+
+    Source: sky-ecosystem/sdai, susds branch, SUsds.sol convertToAssets/drip.
+    Authenticate each Drip and the complete closing stored state; reject an
+    implementation upgrade rather than assuming its pricing behavior.
+    """
+    from ..extract._keccak import keccak256
+
+    chain, ray = "ethereum", 10**27
+    start, end = source.opening_pins[chain], source.closing_pins[chain]
+    file_topic = "0x" + keccak256(b"File(bytes32,uint256)").hex()
+    upgrade_topic = "0x" + keccak256(b"Upgraded(address)").hex()
+    drip_topic = next(k for k, v in EVENTS.items() if v == "drip")
+    state = [source.number(chain, token, getter, start) for getter in ("chi()", "rho()", "ssr()")]
+
+    def rate(timestamp):
+        chi, rho, ssr = state
+        if timestamp < rho:
+            raise ValueError("sUSDS accumulator timestamp is forward")
+        return ray_power(ssr, timestamp - rho) * chi // ray
+
+    if balances[0] * rate(block_stamp(chain, start)) // ray != claims[0]:
+        raise ValueError("sUSDS opening claim does not match the accumulator")
+    controls = unique(
+        source.logs(
+            chain, [{"address": [token], "topics": [[file_topic, drip_topic, upgrade_topic]]}]
+        )
+    )
+    transfers = [r for r in own_rows if r.topic0 == TRANSFER_TOPIC0]
+    rates = {}
+    for row in unique([*controls, *transfers]):
+        if row.topic0 == upgrade_topic:
+            raise ValueError("sUSDS implementation changed inside the reporting month")
+        if row.topic0 == drip_topic:
+            chi, _diff = _words(row.data)
+            if rate(row.block_time) != chi:
+                raise ValueError("sUSDS Drip differs from the reconstructed rate")
+            state[0], state[1] = chi, row.block_time
+        elif row.topic0 == file_topic:
+            if row.topic1 != "0x" + b"ssr".ljust(32, b"\0").hex() or state[1] != row.block_time:
+                raise ValueError("Unreviewed sUSDS rate reset")
+            (state[2],) = _words(row.data)
+        else:
+            rates[row.block_number, row.log_index] = rate(row.block_time)
+    closing = [source.number(chain, token, getter, end) for getter in ("chi()", "rho()", "ssr()")]
+    if state != closing or balances[1] * rate(block_stamp(chain, end)) // ray != claims[1]:
+        raise ValueError("sUSDS closing state or claim does not reconcile")
+    return rates

@@ -262,7 +262,7 @@ def test_owner_evidence_reuses_durable_join_coverage(monkeypatch):
     monkeypatch.setattr(rec, "fetch_logs", fetch)
     assert rec.owner_logs(source, "ethereum", "0x" + "2" * 40, joined=True) == []
     assert calls[0][0:3] == ("ethereum", 11, 20)
-    assert calls[0][3]["join_mode"] == "JoinAll"
+    assert "join_mode" not in calls[0][3]
     assert "transaction_hash" in calls[0][3]["log_fields"]
 
 
@@ -277,3 +277,13 @@ def test_native_zero_requires_index_coverage_not_just_an_empty_response(monkeypa
     monkeypatch.setattr("requests.get", lambda *args, **kwargs: Response())
     with pytest.raises(ValueError, match="not finalized"):
         rec.avalanche_native_history.__wrapped__("0x" + "1" * 40, 10, 20)
+
+
+def test_susds_integer_exponentiation_matches_ray_rounding_and_fails_on_overflow():
+    assert rec.ray_power(RAY, 0) == RAY
+    assert rec.ray_power(0, 0) == RAY
+    assert rec.ray_power(0, 10) == 0
+    assert rec.ray_power(2 * RAY, 3) == 8 * RAY
+    assert rec.ray_power(RAY + 1, 2) == RAY + 2
+    with pytest.raises(ValueError, match="overflow"):
+        rec.ray_power(1 << 255, 2)
