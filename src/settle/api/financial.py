@@ -7,7 +7,8 @@ from fastapi import Depends, HTTPException, Query, Request
 from ..revenue.financial import (
     MONTHLY_STATEMENT_POLICIES,
     RWA_POLICIES,
-    SPARK_INCOME_POLICY,
+    SPARK_AMM_POLICY,
+    SPARK_INCOME_POLICIES,
     STATEMENT_SOURCE_POLICY,
     decode_selection,
     statements,
@@ -53,15 +54,15 @@ def register_financial(app, get_reader, document_response):
                     policy_version=(selection['policy_version'] if selection and selection['policy_version'] not in MONTHLY_STATEMENT_POLICIES
                                     else STATEMENT_SOURCE_POLICY),
                     **({'include_rwa': True} if prime == 'grove' and (not selection or selection['policy_version'] in RWA_POLICIES) else {}),
-                    **({'include_spark_fees': True} if prime == 'spark' and (not selection or selection['policy_version'] == SPARK_INCOME_POLICY) else {}))
+                    **({'include_spark_fees': True} if prime == 'spark' and (not selection or selection['policy_version'] in SPARK_INCOME_POLICIES) else {}))
         spark_rows = []
-        if prime == 'spark' and (not selection or selection['policy_version'] == SPARK_INCOME_POLICY) and hasattr(r, 'spark_component_year'):
+        if prime == 'spark' and (not selection or selection['policy_version'] in SPARK_INCOME_POLICIES) and hasattr(r, 'spark_component_year'):
             spark_rows = read(r.spark_component_year, year,
                              revisions=[ref for ref in selection['offchain_revisions'] if ref] if selection else None)
         try:
             result = statements(prime, year, as_of, rows,
                                 exact=selection['exact'] if selection else cutoff is not None,
-                                selection=selection, monthly=True, rollups=True, rwa=True, allocation_rewards=True, offchain=True, archive=True, spark_income=prime == 'spark', spark_publications=spark_rows)
+                                selection=selection, monthly=True, rollups=True, rwa=True, allocation_rewards=True, offchain=True, archive=True, spark_income=prime == 'spark', spark_publications=spark_rows, spark_amms=prime == 'spark')
         except ValueError as exc:
             raise HTTPException(404, str(exc), headers={'Cache-Control': 'no-store'}) from None
         selected_ids = {p['financial_revision'] for p in result['periods'] if p['financial_revision']}
@@ -87,7 +88,7 @@ def register_financial(app, get_reader, document_response):
             validate(prime, 'individual')
             raise HTTPException(422, 'This reporting component is currently supported for Spark')
         doc = annual(prime, year, 'individual', end if end < revenue.today() and not revision else None, revision, r)
-        if doc['policy_version'] != SPARK_INCOME_POLICY:
+        if doc['policy_version'] not in SPARK_INCOME_POLICIES:
             raise HTTPException(422, 'Monthly Spark components require the Spark income reporting policy')
         return doc
 
@@ -126,6 +127,24 @@ def register_financial(app, get_reader, document_response):
         if venue and not result['allocations']:
             raise HTTPException(404, 'Unknown supply-revenue venue')
         return document_response(request, result)
+
+    @app.get('/v3/reporting/amms')
+    def amms(request: Request, prime: str, month: str = Query(pattern=r'^\d{4}-(0[1-9]|1[0-2])$'),
+             venue: str | None = None, revision: str | None = Query(None, max_length=4096),
+             r=Depends(get_reader)):  # noqa: B008
+        doc = component_month(prime, month, revision, r)
+        if doc['policy_version'] != SPARK_AMM_POLICY:
+            raise HTTPException(422, 'AMM rows require the Spark AMM reporting policy')
+        from ..revenue.financial_amms import SPECS
+        if venue and venue not in {spec[0] for spec in SPECS}:
+            raise HTTPException(404, 'Unknown Spark AMM venue')
+        keys = {spec[1] for spec in SPECS if not venue or spec[0] == venue}
+        return document_response(request, {'prime': prime, 'month': month, 'selection': doc['selection'],
+            'report_hash': doc['report_hash'], 'source_manifest': doc['source_manifest'],
+            'metrics': {row['id']: row['values'][month] for row in doc['lines'] if row['id'] in keys},
+            'pools': [row for row in doc.get('spark_amm_ledger', []) if row['month'] == month and (not venue or row['venue_id'] == venue)],
+            'issuer_incentives_included': False, 'funding_cost_deducted': False,
+            'limitations': ['V4 retained price returns omit unreconciled trading fees; partial values are not complete accrued revenue']})
 
     @app.get('/v3/reporting/portfolio')
     def portfolio(request: Request, prime: str, month: str = Query(pattern=r'^\d{4}-(0[1-9]|1[0-2])$'),

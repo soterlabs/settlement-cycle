@@ -68,18 +68,20 @@ def year_rows(conn, prime, year, *, revisions=None, policy_version=POLICY_VERSIO
                 (SELECT jsonb_agg(jsonb_build_object('venue_id',item->'venue_id','tw_avg_value',item->'tw_avg_value'))
                  FROM jsonb_array_elements(COALESCE(result->'venue_breakdown','[]'::jsonb) ||
                       COALESCE(result->'reporting_only_breakdown',result->'display_only_breakdown','[]'::jsonb)) AS item) AS allocations,
-                jsonb_path_query_array(result, '$.venue_breakdown[*] ? (@.venue_id == "S70" || @.venue_id == "S71")') ||
+                jsonb_path_query_array(result, '$.venue_breakdown[*] ? (@.venue_id == "S70" || @.venue_id == "S71" || @.venue_id == "S24" || @.venue_id == "S25" || @.venue_id == "S61" || @.venue_id == "S62" || @.venue_id == "S66")') ||
                 CASE WHEN result ? 'reporting_only_breakdown' THEN
-                    jsonb_path_query_array(result, '$.reporting_only_breakdown[*] ? (@.venue_id == "S70" || @.venue_id == "S71")')
-                ELSE jsonb_path_query_array(result, '$.display_only_breakdown[*] ? (@.venue_id == "S70" || @.venue_id == "S71")') END AS rows,
-                jsonb_path_query_array(result, '$.venue_views.reporting[*] ? (@.venue_id == "S70" || @.venue_id == "S71")') AS views
+                    jsonb_path_query_array(result, '$.reporting_only_breakdown[*] ? (@.venue_id == "S70" || @.venue_id == "S71" || @.venue_id == "S24" || @.venue_id == "S25" || @.venue_id == "S61" || @.venue_id == "S62" || @.venue_id == "S66")')
+                ELSE jsonb_path_query_array(result, '$.display_only_breakdown[*] ? (@.venue_id == "S70" || @.venue_id == "S71" || @.venue_id == "S24" || @.venue_id == "S25" || @.venue_id == "S61" || @.venue_id == "S62" || @.venue_id == "S66")') END AS rows,
+                jsonb_path_query_array(result, '$.venue_views.reporting[*] ? (@.venue_id == "S70" || @.venue_id == "S71" || @.venue_id == "S24" || @.venue_id == "S25" || @.venue_id == "S61" || @.venue_id == "S62" || @.venue_id == "S66")') AS views
                 FROM revenue_results WHERE prime=%s AND revision_id = ANY(%s)''',
                 (prime, [row['source_revision'] for row in rows]))
             sources = {source['revision_id']: source for source in cur.fetchall()}
             for row in rows:
                 source = sources.get(row['source_revision'])
                 if source:
-                    row.update(spark_fee_source_hash=source['result_hash'], spark_fee_source_rows=source['rows'],
+                    row.update(spark_fee_source_hash=source['result_hash'], spark_fee_source_rows=[r for r in source['rows'] if r.get('venue_id') in ('S70','S71')],
+                               spark_amm_source_hash=source['result_hash'],
+                               spark_amm_source_rows=[r for r in source['rows'] if r.get('venue_id') in ('S24','S25','S61','S62','S66')],
                                spark_fee_source_views=source['views'], spark_allocation_rows=source['allocations'])
         if include_rwa and prime == 'grove' and rows:
             # One extra query in the same repeatable-read transaction. Extract

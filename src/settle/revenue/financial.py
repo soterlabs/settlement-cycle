@@ -21,7 +21,9 @@ ALLOCATION_REWARDS_POLICY = 'prime-management.allocation-rewards.v3.3'
 OFFCHAIN_POLICY = 'prime-management.offchain-accruals.v3.4'
 ARCHIVE_POLICY = 'prime-management.archive-income.v3.5'
 SPARK_INCOME_POLICY = 'prime-management.spark-income.v3.6'
-ARCHIVE_POLICIES = (ARCHIVE_POLICY, SPARK_INCOME_POLICY)
+SPARK_AMM_POLICY = 'prime-management.spark-amms.v3.7'
+SPARK_INCOME_POLICIES = (SPARK_INCOME_POLICY, SPARK_AMM_POLICY)
+ARCHIVE_POLICIES = (ARCHIVE_POLICY, *SPARK_INCOME_POLICIES)
 OFFCHAIN_POLICIES = (OFFCHAIN_POLICY, *ARCHIVE_POLICIES)
 ALLOCATION_REWARDS_POLICIES = (ALLOCATION_REWARDS_POLICY, *OFFCHAIN_POLICIES)
 RWA_POLICIES = (RWA_POLICY, *ALLOCATION_REWARDS_POLICIES)
@@ -169,6 +171,7 @@ def build(source, *, policy_version=POLICY_VERSION):
 
 def taxonomy(prime, policy_version):
     if policy_version in RWA_POLICIES:
+        from .financial_amms import taxonomy as amm_taxonomy
         from .financial_archive import taxonomy as archive_taxonomy
         from .financial_offchain import taxonomy as offchain_taxonomy
         from .financial_rwa import taxonomy as rwa_taxonomy
@@ -176,7 +179,8 @@ def taxonomy(prime, policy_version):
         return (taxonomy(prime, STATEMENT_POLICY) + rwa_taxonomy(prime)
                 + (offchain_taxonomy(prime) if policy_version in OFFCHAIN_POLICIES else [])
                 + (archive_taxonomy(prime) if policy_version in ARCHIVE_POLICIES else [])
-                + (spark_taxonomy(prime) if policy_version == SPARK_INCOME_POLICY else []))
+                + (spark_taxonomy(prime) if policy_version in SPARK_INCOME_POLICIES else [])
+                + (amm_taxonomy(prime) if policy_version == SPARK_AMM_POLICY else []))
     if policy_version == STATEMENT_POLICY:
         additions = [('demand.distribution_rewards', 'Distribution rewards (DR)'),
                      ('demand.total', 'Demand-side revenue')]
@@ -231,15 +235,15 @@ def decode_selection(token, prime, year):
         raise ValueError('Invalid report revision selection') from exc
 
 
-def statements(prime, year, as_of, publications, *, exact=False, selection=None, monthly=False, rollups=False, rwa=False, allocation_rewards=False, offchain=False, archive=False, spark_income=False, spark_publications=()):
+def statements(prime, year, as_of, publications, *, exact=False, selection=None, monthly=False, rollups=False, rwa=False, allocation_rewards=False, offchain=False, archive=False, spark_income=False, spark_publications=(), spark_amms=False):
     """Read projection of saved financial metrics, with immutable export selection."""
-    policy_version = selection['policy_version'] if selection else SPARK_INCOME_POLICY if spark_income else ARCHIVE_POLICY if archive else OFFCHAIN_POLICY if offchain else ALLOCATION_REWARDS_POLICY if allocation_rewards else RWA_POLICY if rwa else ROLLUP_POLICY if rollups else STATEMENT_POLICY if monthly else POLICY_VERSION
+    policy_version = selection['policy_version'] if selection else SPARK_AMM_POLICY if spark_amms else SPARK_INCOME_POLICY if spark_income else ARCHIVE_POLICY if archive else OFFCHAIN_POLICY if offchain else ALLOCATION_REWARDS_POLICY if allocation_rewards else RWA_POLICY if rwa else ROLLUP_POLICY if rollups else STATEMENT_POLICY if monthly else POLICY_VERSION
     monthly = policy_version in MONTHLY_STATEMENT_POLICIES
     if monthly:
         from .monthly_reports import select
         monthly_chosen = select(prime, year, as_of, selection)
     offchain_chosen = []
-    spark = policy_version == SPARK_INCOME_POLICY and prime == 'spark'
+    spark = policy_version in SPARK_INCOME_POLICIES and prime == 'spark'
     if spark:
         from .spark_reporting_store import select as select_spark
         offchain_chosen = select_spark(spark_publications, year, as_of, selection)
@@ -357,9 +361,12 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None,
         else:
             from .financial_offchain import extend as extend_offchain
         extend_offchain(result, offchain_chosen)
-    if policy_version == SPARK_INCOME_POLICY:
+    if policy_version in SPARK_INCOME_POLICIES:
         from .financial_spark import extend as extend_spark
         extend_spark(result, chosen, offchain_chosen)
+    if policy_version == SPARK_AMM_POLICY and prime == "spark":
+        from .financial_amms import extend as extend_amms
+        extend_amms(result, chosen, monthly_chosen)
     if policy_version in RWA_POLICIES:
         from .financial_rwa import refresh_reviewed_subtotal
         refresh_reviewed_subtotal(result)
