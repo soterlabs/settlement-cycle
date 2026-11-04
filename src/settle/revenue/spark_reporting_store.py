@@ -93,7 +93,6 @@ def validate_document(document):
                 if row["asset"] != "WETH" and number(row["value"]) != interest:
                     raise ValueError("Stablecoin interest must be valued at par")
                 if row["asset"] == "WETH" and not row.get("absence_proof"):
-                    from datetime import timedelta
 
                     prices = row["daily_translation"]
                     start = date.fromisoformat(document["period_start"])
@@ -128,7 +127,6 @@ def validate_document(document):
                     if min(opening, closing) < 0 or closing - opening - capital != interest:
                         raise ValueError("Unreconciled supply capital/interest bridge")
                     if row.get("translation_policy"):
-                        from datetime import timedelta
 
                         start = date.fromisoformat(document["period_start"])
                         end = date.fromisoformat(document["cutoff"])
@@ -168,7 +166,6 @@ def validate_document(document):
             if row.get("status") in ("available", "partial"):
                 net = number(row["value"])
                 if row.get("daily_revaluation"):
-                    from datetime import timedelta
 
                     start = date.fromisoformat(document["period_start"])
                     end = date.fromisoformat(document["cutoff"])
