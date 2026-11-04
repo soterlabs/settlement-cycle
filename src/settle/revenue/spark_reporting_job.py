@@ -97,11 +97,18 @@ def complete_month(conn, cutoff, *, source=None):
         "closing_pins": old["document"]["closing_pins"],
         "revision_id": old["revision_id"],
     }
+    saved = deepcopy(saved)
     result = deepcopy(old["document"])
     for name in ("opening_pins", "closing_pins"):
         if any(saved[name].get(chain) != pin for chain, pin in result.get(name, {}).items()):
             raise ValueError("Existing reporting inputs use different source boundaries")
         result[name] = saved[name]
+    # Older publications predate Robinhood coverage. Preserve every retained
+    # chain boundary and independently certify only newly required chains.
+    for name, day in (("opening_pins", cutoff.replace(day=1) - timedelta(days=1)), ("closing_pins", cutoff)):
+        for chain in (*WETH, "avalanche_c", "robinhood"):
+            if chain not in saved[name]:
+                saved[name][chain] = certified_boundary(chain, day, _reorg_margin())
     prime = load_prime_by_id("spark")
     period = Period.from_month(
         Month(cutoff.year, cutoff.month),
@@ -121,7 +128,7 @@ def complete_document(old, source, *, source_revision=None):
     result = deepcopy(old["document"])
     for name in ("opening_pins", "closing_pins"):
         actual = getattr(source, name)
-        if result.get(name) != actual:
+        if any(actual.get(chain) != pin for chain, pin in result.get(name, {}).items()):
             raise ValueError("Reporting source boundaries differ from the retained month")
         result[name] = actual
     result.update(

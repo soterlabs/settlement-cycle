@@ -121,3 +121,28 @@ def test_monthly_issuer_rejects_incomplete_daily_coverage():
     doc = {"schema_version": "spark-onchain.v1", "period_start": "2026-01-01", "cutoff": "2026-01-31", "issuer_income": {"pyusd": {"program": "pyusd", "status": "available", "value": "1", "daily": [{"date": "2026-01-01", "accrual": "1", "components": [{"accrual": "1"}]}]}}}
     with pytest.raises(ValueError, match="coverage"):
         validate_document(doc)
+
+
+def test_completion_rejects_a_changed_retained_chain_boundary():
+    from settle.revenue.spark_reporting_job import complete_document
+    source = SimpleNamespace(opening_pins={"ethereum": 11, "robinhood": 0}, closing_pins={"ethereum": 20, "robinhood": 1})
+    old = {"document": {"opening_pins": {"ethereum": 10}, "closing_pins": {"ethereum": 20}}}
+    with pytest.raises(ValueError, match="boundaries differ"):
+        complete_document(old, source)
+
+
+def test_completion_accepts_an_additional_certified_chain_without_mutating_old(monkeypatch):
+    from settle.revenue.spark_reporting_job import complete_document
+    monkeypatch.setattr("settle.revenue.spark_completion.collect", lambda *a, **k: {"statement_allocations": {}, "savings_interest": {}, "amm_fees": {}})
+    monkeypatch.setattr("settle.revenue.spark_onchain.native_supply", lambda *a: {"status": "available", "value": "0"})
+    monkeypatch.setattr("settle.revenue.spark_reporting_job.gains", lambda *a: {})
+    monkeypatch.setattr("settle.revenue.spark_reconciliation.empty_avax_gain", lambda source, old: old)
+    monkeypatch.setattr("settle.revenue.spark_reconciliation.net_sparklend_gain", lambda source, old, *a: old)
+    monkeypatch.setattr("settle.revenue.spark_monthly_income.collect", lambda *a, **k: {"issuer_income": {}, "monthly_income_errors": {}})
+    source = SimpleNamespace(opening_pins={"ethereum": 10, "robinhood": 0}, closing_pins={"ethereum": 20, "robinhood": 1})
+    old = {"revision_id": "old", "document": {"opening_pins": {"ethereum": 10}, "closing_pins": {"ethereum": 20}, "native_supplies": {}, "gains": {}}}
+    before = deepcopy(old)
+    result = complete_document(old, source)
+    assert result["opening_pins"] == source.opening_pins
+    assert result["closing_pins"] == source.closing_pins
+    assert old == before
