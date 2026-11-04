@@ -1,7 +1,7 @@
 """Append-only reporting components, isolated from MSC and native revenue."""
 
 from copy import deepcopy
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal, localcontext
 
 from psycopg.rows import dict_row
@@ -39,12 +39,16 @@ def validate_document(document):
                     raise ValueError("Monthly issuer program identity differs")
                 if program == "usdg" and value != number(row.get("period_receipts_usd", "0")):
                     raise ValueError("USDG income differs from verified receipts")
-                if (
-                    program != "usdg"
-                    and row.get("daily")
-                    and sum((number(d["accrual"]) for d in row["daily"]), Decimal(0)) != value
-                ):
-                    raise ValueError("Monthly issuer accrual does not reconcile")
+                if program != "usdg" and row.get("basis") != "issuer_program_not_started":
+                    days = row.get("daily", [])
+                    first, last = date.fromisoformat(document["period_start"]), date.fromisoformat(document["cutoff"])
+                    expected = [str(first + timedelta(days=i)) for i in range((last - first).days + 1)]
+                    if [d["date"] for d in days] != expected:
+                        raise ValueError("Monthly issuer daily coverage is incomplete")
+                    if sum((number(d["accrual"]) for d in days), Decimal(0)) != value:
+                        raise ValueError("Monthly issuer accrual does not reconcile")
+                    if any(sum((number(c["accrual"]) for c in d["components"]), Decimal(0)) != number(d["accrual"]) for d in days):
+                        raise ValueError("Monthly issuer eligible components do not reconcile")
         for row in document.get("curator_fees", {}).values():
             if row.get("status") in ("available", "partial"):
                 opening, earned, paid, closing = (

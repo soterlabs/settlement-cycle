@@ -150,6 +150,7 @@ def test_failed_refresh_retains_same_month_amount_with_original_coverage():
 def test_boundary_uses_fast_candidate_only_after_fresh_exact_finality_validation(monkeypatch,candidate,expected):
     from datetime import UTC, datetime, time
     day=date(2026,1,31)
+    monkeypatch.setattr(spark_onchain, 'chain_origin', lambda chain: (0, 1))
     target=int(datetime.combine(day,time.max,UTC).timestamp())
     monkeypatch.setattr(spark_onchain.hypersync,'find_block_at_or_before',lambda *a:candidate)
     monkeypatch.setattr(spark_onchain.hypersync,'archive_height',lambda *a:1000)

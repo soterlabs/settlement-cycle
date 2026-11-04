@@ -463,13 +463,14 @@ def net_sparklend_gain(source, old, supply, savings):
     liability_days = savings.get("daily_liability", [])
     if len(asset_days) != source.period.n_days or len(liability_days) != len(asset_days):
         return old
-    if [p["date"] for p in savings.get("daily_translation", [])] != [
-        p["date"] for p in asset_days
-    ] or any(
-        p["usd_price"] != q["usd_price"]
-        for p, q in zip(savings["daily_translation"], asset_days, strict=True)
-    ):
-        raise ValueError("Asset and depositor USD translation conventions differ")
+    if not savings.get("absence_proof"):
+        if [p["date"] for p in savings.get("daily_translation", [])] != [
+            p["date"] for p in asset_days
+        ] or any(
+            p["usd_price"] != q["usd_price"]
+            for p, q in zip(savings["daily_translation"], asset_days, strict=True)
+        ):
+            raise ValueError("Asset and depositor USD translation conventions differ")
     previous_price = source.price("coingecko:ethereum", source.period.start - timedelta(days=1))
     asset_gain = liability_gain = Decimal(0)
     ledger = []

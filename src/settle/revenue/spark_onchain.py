@@ -101,12 +101,28 @@ def market_price(coin, timestamp):
     raise ValueError("Historical price is stale or forward-looking")
 
 
+@cached(source_id="spark-reporting.chain-origin.v1")
+def chain_origin(chain):
+    from ..extract.rpc import _post, rpc_url
+    def stamp(block):
+        header = _post(rpc_url(Chain(chain)), "eth_getBlockByNumber", [hex(block), False])
+        if not header or int(header["number"], 16) != block:
+            raise ValueError("Missing chain origin header")
+        return int(header["timestamp"], 16)
+    return stamp(0), stamp(1)
+
+
 @cached(source_id='spark-reporting.certified-boundary.v1')
 def certified_boundary(chain, day, margin):
     """Validate the fast legacy candidate before admitting it to a new cache."""
     if margin < 0:
         raise ValueError('Finality margin must be nonnegative')
     target = int(datetime.combine(day, time.max, UTC).timestamp())
+    origin, first = chain_origin(chain)
+    if origin <= target < first:
+        if _reporting_head(chain) < 1 + margin:
+            raise ValueError('Chain origin lacks a finalized successor')
+        return 0
     candidate = hypersync.find_block_at_or_before(chain, target)
     if (candidate + 1 <= hypersync.archive_height(chain) - margin
             and hypersync.block_timestamp_uncached(chain, candidate) <= target

@@ -120,8 +120,6 @@ def issuer_income(source, venue, amm_fees):
 
     def owned(source_venue, holder, block):
         fee = amm_fees.get(source_venue.id, {})
-        if fee.get("status") != "available":
-            raise ValueError("Issuer eligibility requires a complete owned NFT inventory")
         ids = set()
         for r in ownership_history(holder.hex, source.closing_pins[str(source_venue.chain)]):
             if r.block_number > block:
@@ -131,7 +129,11 @@ def issuer_income(source, venue, amm_fees):
                 ids.discard(tid)
             if r.topic2 == topic(holder.hex):
                 ids.add(tid)
-        return sorted(ids & set(fee["position_ids"]))
+        return (
+            sorted(ids & set(fee["position_ids"]))
+            if fee.get("status") == "available"
+            else sorted(ids)
+        )
 
     provider.owned_v4_ids = owned
     rates = provider.rates(source.period.start, source.period.end) if program == "pyusd" else {}

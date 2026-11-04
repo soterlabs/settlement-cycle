@@ -214,6 +214,7 @@ def main():
                             "savings_interest",
                             "statement_allocations",
                             "amm_fees",
+                            "issuer_income",
                         )
                         for row in document.get(family, {}).values()
                     ),
@@ -222,6 +223,7 @@ def main():
                     "partial"
                     if document["errors"]
                     or document.get("completion_errors")
+                    or document.get("monthly_income_errors")
                     or any(part["status"] != "available" for part in parts)
                     else "succeeded"
                 )
@@ -236,7 +238,11 @@ def main():
                     ),
                     flush=True,
                 )
-                failed |= bool(document["errors"] or document.get("completion_errors"))
+                failed |= bool(
+                    document["errors"]
+                    or document.get("completion_errors")
+                    or document.get("monthly_income_errors")
+                )
             except Exception as exc:
                 print(
                     json.dumps(

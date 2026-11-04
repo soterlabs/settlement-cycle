@@ -117,6 +117,22 @@ def collect_vault(source, venue):
             "event_count": 0,
             "event_digest": digest([]),
             "daily_translation": [],
+            **(
+                {
+                    "daily_liability": [
+                        {
+                            "date": str(first + timedelta(days=i)),
+                            "opening_claim_units": "0",
+                            "closing_claim_units": "0",
+                            "net_capital_units": "0",
+                            "interest_units": "0",
+                        }
+                        for i in range(source.period.n_days)
+                    ]
+                }
+                if venue.underlying.symbol == "WETH"
+                else {}
+            ),
         }
     if any(row.address.lower() != vault.lower() for row in rows):
         raise ValueError("Savings evidence includes another vault")
