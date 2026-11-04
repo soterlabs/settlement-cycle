@@ -147,6 +147,8 @@ def collect_vault(source, venue):
             "share_rounding_units": str(Decimal(result["rounding"]) / scale),
             "opening_tail_units": str(Decimal(result["opening_tail"]) / scale),
             "closing_tail_units": str(Decimal(result["closing_tail"]) / scale),
+            "opening_vsr_ray": str(source.number(chain, vault, "vsr()", start)),
+            "closing_vsr_ray": str(source.number(chain, vault, "vsr()", end)),
             "opening_pin": start,
             "closing_pin": end,
             "event_count": result["event_count"],

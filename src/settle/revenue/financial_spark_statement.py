@@ -145,6 +145,12 @@ def extend(statement, chosen, supplemental):
                     continue
                 if saved["cutoff"] != item.get("period_end"):
                     continue
+                if (
+                    not raw
+                    or raw.get("spark_statement_opening_pins") != doc.get("opening_pins")
+                    or raw.get("spark_statement_closing_pins") != doc.get("closing_pins")
+                ):
+                    continue
                 split = item["allocation_split"]
                 with localcontext() as ctx:
                     ctx.prec = 60

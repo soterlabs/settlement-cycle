@@ -102,7 +102,8 @@ def complete_month(conn, cutoff, *, source=None):
     if result["gains"].get("morpho", {}).get("status") != "available":
         result["gains"]["morpho"] = gains(source, "morpho")
         result.get("errors", {}).pop("gains.morpho", None)
-    result["extended_from"] = old["revision_id"]
+    result["extended_from"] = old["document"].get("extended_from", old["revision_id"])
+    result["completion_source_revision"] = saved["revision_id"]
     return result
 
 

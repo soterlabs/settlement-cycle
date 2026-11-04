@@ -64,7 +64,7 @@ def year_rows(conn, prime, year, *, revisions=None, policy_version=POLICY_VERSIO
                 (prime, policy_version, f'{year}-01-01', f'{year}-12-31'))
         rows = cur.fetchall()
         if include_spark_fees and prime == 'spark' and rows:
-            cur.execute('''SELECT revision_id,result_hash,
+            cur.execute('''SELECT revision_id,result_hash,opening_pins,closing_pins,
                 (SELECT jsonb_agg(jsonb_build_object('venue_id',item->'venue_id','tw_avg_value',item->'tw_avg_value'))
                  FROM jsonb_array_elements(COALESCE(result->'venue_breakdown','[]'::jsonb) ||
                       COALESCE(result->'reporting_only_breakdown',result->'display_only_breakdown','[]'::jsonb)) AS item) AS allocations,
@@ -84,7 +84,8 @@ def year_rows(conn, prime, year, *, revisions=None, policy_version=POLICY_VERSIO
                                spark_amm_source_hash=source['result_hash'],
                                spark_amm_source_rows=[r for r in source['rows'] if r.get('venue_id') in ('S24','S25','S61','S62','S66')],
                                spark_fee_source_views=source['views'], spark_allocation_rows=source['allocations'],
-                               spark_statement_source_views=source['statement_views'])
+                               spark_statement_source_views=source['statement_views'],
+                               spark_statement_opening_pins=source['opening_pins'],spark_statement_closing_pins=source['closing_pins'])
         if include_rwa and prime == 'grove' and rows:
             # One extra query in the same repeatable-read transaction. Extract
             # only the two reviewed rows, not entire daily result documents.

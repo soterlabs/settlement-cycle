@@ -239,6 +239,10 @@ def test_v4_earned_fees_are_added_once_and_issuer_rewards_stay_separate():
             "amm_fees": {"S61": {"status": "available", "value": "5"}},
         },
     }
+    raw.update(
+        spark_statement_opening_pins={"ethereum": 1}, spark_statement_closing_pins={"ethereum": 2}
+    )
+    row["document"].update(opening_pins={"ethereum": 1}, closing_pins={"ethereum": 2})
     old = statements(
         "spark", 2026, date(2026, 10, 26), [raw], spark_amms=True, spark_publications=[row]
     )
