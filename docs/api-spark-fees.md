@@ -83,8 +83,8 @@ visible. Existing unclassified gain coverage remains separate.
 ## Publication and replay
 
 `settle-reporting-spark` in `.railway/railway.ts` runs the independent monthly collector daily at
-20:45 UTC. It publishes closed EOM records from January and refreshes the latest
-completed MTD day, publishing the newest cutoff first. RPC calls, history and price inputs use the durable input
+20:45 UTC. It refreshes the previous month end and the latest
+completed MTD day, publishing the newest cutoff first. Historical replay requires an explicit --from argument. RPC calls, history and price inputs use the durable input
 cache. API reads never call a provider. Components have append-only revisions,
 content hashes, code/configuration versions and opening/closing block pins.
 

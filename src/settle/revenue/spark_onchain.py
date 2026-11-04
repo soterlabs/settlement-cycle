@@ -76,21 +76,29 @@ def topic(address):
     return '0x' + address[2:].zfill(64)
 
 
-@cached(source_id='spark-reporting.market-price.v1')
+@cached(source_id="spark-reporting.market-price.v2")
 def market_price(coin, timestamp):
-    # Request slightly before the boundary; never use a forward-looking quote.
-    for attempt in range(4):
-        response = requests.get(f'https://coins.llama.fi/prices/historical/{timestamp - 300}/{coin}', timeout=30)
-        if response.status_code not in (429, 502, 503, 504) or attempt == 3:
-            response.raise_for_status()
+    # Nearest historical quotes can lie after the requested cutoff. Retry
+    # earlier anchors; keep strict non-forward, age and confidence checks.
+    for offset in (300, 900, 1800, 3600):
+        for attempt in range(4):
+            response = requests.get(
+                f"https://coins.llama.fi/prices/historical/{timestamp - offset}/{coin}", timeout=30
+            )
+            if response.status_code not in (429, 502, 503, 504) or attempt == 3:
+                response.raise_for_status()
+                break
+            sleep(2**attempt)
+        raw = response.json()["coins"][coin]
+        price = D(str(raw["price"]))
+        if not price.is_finite() or price <= 0 or D(str(raw.get("confidence", 0))) < D("0.9"):
+            raise ValueError("Historical price lacks confidence or a positive amount")
+        age = timestamp - int(raw["timestamp"])
+        if 0 <= age <= 7200:
+            return {"price": str(price), "timestamp": int(raw["timestamp"])}
+        if age > 7200:
             break
-        sleep(2**attempt)
-    raw = response.json()['coins'][coin]
-    price = D(str(raw['price']))
-    if (not price.is_finite() or price <= 0 or not 0 <= timestamp - int(raw['timestamp']) <= 7200
-            or D(str(raw.get('confidence', 0))) < D('0.9')):
-        raise ValueError('Historical price is missing, stale or forward-looking')
-    return {'price': str(price), 'timestamp': int(raw['timestamp'])}
+    raise ValueError("Historical price is stale or forward-looking")
 
 
 @cached(source_id='spark-reporting.certified-boundary.v1')
@@ -107,9 +115,39 @@ def certified_boundary(chain, day, margin):
     return hypersync.find_finalized_block_at_or_before(chain, target, margin)
 
 
+@cache
+def _reporting_head(chain):
+    from ..extract.rpc import _post, rpc_url
+
+    return int(_post(rpc_url(Chain(chain)), "eth_blockNumber", []), 16)
+
+
+
+@cached(source_id="spark-reporting.saved-boundary.v1")
+def certified_saved_boundary(chain, day, candidate):
+    """Verify an immutable daily source's candidate without a genesis search."""
+    from ..extract.rpc import _post, rpc_url
+
+    target = int(datetime.combine(day, time.max, UTC).timestamp())
+
+    def stamp(block):
+        raw = _post(rpc_url(Chain(chain)), "eth_getBlockByNumber", [hex(block), False])
+        if not raw or int(raw["number"], 16) != block:
+            raise ValueError("Missing candidate block header")
+        return int(raw["timestamp"], 16)
+
+    if candidate + _reorg_margin() > _reporting_head(chain):
+        raise ValueError("Saved candidate lacks finality margin")
+    if stamp(candidate) <= target < stamp(candidate + 1):
+        return candidate
+    return certified_boundary(chain, day, _reorg_margin())
+
+
+
 class Source:
-    def __init__(self, prime, period, opening_pins):
+    def __init__(self, prime, period, opening_pins, *, daily_pins=None):
         self.prime, self.period = prime, period
+        self.daily_pins = daily_pins or {}
         self.opening_pins = {str(k): v for k, v in opening_pins.items()}
         self.closing_pins = {str(k): v for k, v in period.pin_blocks.items()}
         self.block = cache(self._block)
@@ -119,6 +157,9 @@ class Source:
             return self.opening_pins[chain]
         if day == self.period.end:
             return self.closing_pins[chain]
+        candidate = self.daily_pins.get(str(day), {}).get(chain)
+        if candidate is not None:
+            return certified_saved_boundary(chain, day, candidate)
         return certified_boundary(chain, day, _reorg_margin())
 
     def call(self, chain, token, signature, block, *args):
@@ -297,7 +338,7 @@ def gains(source, kind):
                 owed = D(int(raw, 16)) / WAD
             coin = 'coingecko:ethereum'
         return gross, owed, coin
-    with ThreadPoolExecutor(max_workers=8) as pool:
+    with ThreadPoolExecutor(max_workers=3) as pool:
         units = list(pool.map(sample, days))
         # No quote is needed to establish zero revaluation on an empty book.
         prices = list(pool.map(lambda day: source.price(units[0][2], day), days)) if any(
@@ -312,7 +353,7 @@ def gains(source, kind):
         ])
         def empty(token):
             return source.balance('ethereum', token, days[0]) == 0 and source.balance('ethereum', token, days[-1]) == 0
-        with ThreadPoolExecutor(max_workers=8) as pool:
+        with ThreadPoolExecutor(max_workers=3) as pool:
             empty_book = all(pool.map(empty, OTHER_NONSTABLE_RESERVES))
         complete = empty_book and not any(int(row.data, 16) for row in transfers)
         result['scope'] = 'spWETH_less_spETH_assetsOutstanding; other reviewed nonstable reserves checked for empty holdings and transfers'
@@ -391,4 +432,8 @@ def collect(prime, period, opening_pins, *, source=None, progress=None):
         result['gains'][kind] = attempt('gains.' + kind, lambda kind=kind: gains(source, kind))
     for spec in (*ALLOCATIONS['spark'], *SPARK_EXTRA):
         result['native_supplies'][spec.venue] = attempt('supply.' + spec.venue, lambda spec=spec: native_supply(source, spec))
+    from .spark_completion import collect as complete
+    completion = attempt('statement_completion', lambda: complete(source, progress=progress))
+    if 'status' not in completion:
+        result.update(completion)
     return result

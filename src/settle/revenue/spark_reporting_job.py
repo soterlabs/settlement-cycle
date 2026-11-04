@@ -1,8 +1,10 @@
 """Publish independent monthly Spark reporting inputs, with a daily MTD refresh."""
+
 import argparse
 import calendar
 import json
 from concurrent.futures import ThreadPoolExecutor
+from copy import deepcopy
 from datetime import UTC, date, datetime, timedelta
 
 from ..domain.config import load_prime_by_id
@@ -11,7 +13,7 @@ from ..domain.primes import Chain
 from ..extract.hypersync_store import _reorg_margin
 from ..store.db import connect
 from . import spark_reporting_store, store
-from .spark_onchain import WETH, certified_boundary, collect
+from .spark_onchain import WETH, Source, certified_boundary, collect, gains
 
 
 def month_dates(start, end):
@@ -26,35 +28,105 @@ def month_dates(start, end):
     return sorted(dates)
 
 
-def calculate(cutoff):
-    prime = load_prime_by_id('spark')
+def calculate(cutoff, *, daily_pins=None):
+    prime = load_prime_by_id("spark")
     first = cutoff.replace(day=1)
-    chains = [*WETH, 'avalanche_c']
+    chains = [*WETH, "avalanche_c", "robinhood"]
+
     def pins(day):
         def block(chain):
             return Chain(chain), certified_boundary(chain, day, _reorg_margin())
+
         with ThreadPoolExecutor(max_workers=6) as pool:
             return dict(pool.map(block, chains))
+
     opening, closing = pins(first - timedelta(days=1)), pins(cutoff)
     period = Period.from_month(Month(cutoff.year, cutoff.month), closing, as_of=cutoff)
-    document = collect(prime, period, opening, progress=lambda component: print(
-        json.dumps({'cutoff': str(cutoff), 'stage': component}), flush=True))
-    document.update(opening_pins={str(k): v for k, v in opening.items()}, closing_pins={str(k): v for k, v in closing.items()})
+    document = collect(
+        prime,
+        period,
+        opening,
+        source=Source(prime, period, opening, daily_pins=daily_pins),
+        progress=lambda component: print(
+            json.dumps({"cutoff": str(cutoff), "stage": component}), flush=True
+        ),
+    )
+    document.update(
+        opening_pins={str(k): v for k, v in opening.items()},
+        closing_pins={str(k): v for k, v in closing.items()},
+    )
     return document
+
+
+def saved_daily_pins(conn, cutoff):
+    from psycopg.rows import dict_row
+
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(
+            "SELECT DISTINCT ON (cutoff) cutoff,closing_pins FROM revenue_results WHERE prime='spark' AND cutoff BETWEEN %s AND %s ORDER BY cutoff,publication_order DESC",
+            (cutoff.replace(day=1), cutoff),
+        )
+        return {str(row["cutoff"]): row["closing_pins"] for row in cur.fetchall()}
+
+
+def complete_month(conn, cutoff, *, source=None):
+    """Fill reporting gaps for one saved month; never replay or mutate MSC."""
+    from .spark_completion import collect as complete
+
+    saved = store.read(conn, "spark", cutoff=cutoff)
+    if not saved:
+        raise ValueError("No retained source for the requested month")
+    candidates = [
+        r for r in spark_reporting_store.year_rows(conn, cutoff.year) if r["cutoff"] == str(cutoff)
+    ]
+    if not candidates:
+        raise ValueError("No Spark reporting components for the requested month")
+    old = max(candidates, key=lambda r: r["publication_order"])
+    result = deepcopy(old["document"])
+    for name in ("opening_pins", "closing_pins"):
+        if any(saved[name].get(chain) != pin for chain, pin in result.get(name, {}).items()):
+            raise ValueError("Existing reporting inputs use different source boundaries")
+        result[name] = saved[name]
+    prime = load_prime_by_id("spark")
+    period = Period.from_month(
+        Month(cutoff.year, cutoff.month),
+        {Chain(k): v for k, v in saved["closing_pins"].items()},
+        as_of=cutoff,
+    )
+    source = source or Source(
+        prime, period, saved["opening_pins"], daily_pins=saved_daily_pins(conn, cutoff)
+    )
+    result.update(
+        complete(source, progress=lambda key: print(json.dumps({"stage": key}), flush=True))
+    )
+    if result["gains"].get("morpho", {}).get("status") != "available":
+        result["gains"]["morpho"] = gains(source, "morpho")
+        result.get("errors", {}).pop("gains.morpho", None)
+    result["extended_from"] = old["document"].get("extended_from", old["revision_id"])
+    result["completion_source_revision"] = saved["revision_id"]
+    return result
 
 
 def main():
     from dotenv import load_dotenv
+
     load_dotenv()
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--from', dest='start', type=date.fromisoformat)
+    parser.add_argument("--from", dest="start", type=date.fromisoformat)
     today = datetime.now(UTC).date()
-    parser.add_argument('--to', dest='end', type=date.fromisoformat, default=today - timedelta(days=1))
-    parser.add_argument('--schema-only', action='store_true')
+    parser.add_argument(
+        "--to", dest="end", type=date.fromisoformat, default=today - timedelta(days=1)
+    )
+    parser.add_argument("--schema-only", action="store_true")
+    parser.add_argument(
+        "--complete-only",
+        action="store_true",
+        help="Extend existing reporting months using retained source pins; no settlement replay",
+    )
     args = parser.parse_args()
     start = args.start or args.end.replace(day=1) - timedelta(days=1)
     if not start <= args.end < today:
-        parser.error('window must contain completed UTC days')
+        parser.error("window must contain completed UTC days")
     versions = store.capture_versions()
     failed = False
     with connect(autocommit=True) as conn:
@@ -63,20 +135,66 @@ def main():
             return
         for cutoff in reversed(month_dates(start, args.end)):
             try:
-                document = calculate(cutoff)
-                revision = spark_reporting_store.publish(conn, document, code_version=versions.code,
-                                                          configuration_version=versions.configuration)
-                parts = [document['reserve_fees'], *document['curator_fees'].values(), *document['gains'].values(), *document['native_supplies'].values()]
-                status = 'partial' if document['errors'] or any(part['status'] != 'available' for part in parts) else 'succeeded'
-                print(json.dumps({'cutoff': str(cutoff), 'revision': revision, 'status': status,
-                                  'errors': document['errors']}), flush=True)
-                failed |= bool(document['errors'])
+                document = (
+                    complete_month(conn, cutoff)
+                    if args.complete_only
+                    else calculate(cutoff, daily_pins=saved_daily_pins(conn, cutoff))
+                )
+                revision = spark_reporting_store.publish(
+                    conn,
+                    document,
+                    code_version=versions.code,
+                    configuration_version=versions.configuration,
+                )
+                parts = [
+                    document["reserve_fees"],
+                    *(
+                        row
+                        for family in (
+                            "curator_fees",
+                            "gains",
+                            "native_supplies",
+                            "savings_interest",
+                            "statement_allocations",
+                            "amm_fees",
+                        )
+                        for row in document.get(family, {}).values()
+                    ),
+                ]
+                status = (
+                    "partial"
+                    if document["errors"]
+                    or document.get("completion_errors")
+                    or any(part["status"] != "available" for part in parts)
+                    else "succeeded"
+                )
+                print(
+                    json.dumps(
+                        {
+                            "cutoff": str(cutoff),
+                            "revision": revision,
+                            "status": status,
+                            "errors": document["errors"],
+                        }
+                    ),
+                    flush=True,
+                )
+                failed |= bool(document["errors"] or document.get("completion_errors"))
             except Exception as exc:
-                print(json.dumps({'cutoff': str(cutoff), 'status': 'failed', 'error_type': type(exc).__name__}), flush=True)
+                print(
+                    json.dumps(
+                        {
+                            "cutoff": str(cutoff),
+                            "status": "failed",
+                            "error_type": type(exc).__name__,
+                        }
+                    ),
+                    flush=True,
+                )
                 failed = True
     if failed:
         raise SystemExit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -8,7 +8,7 @@ from decimal import Decimal, localcontext
 from .financial import metric, number
 
 
-def definitions(prime, source_definitions, *, allocation_rewards=False, archive=False, spark_income=False):
+def definitions(prime, source_definitions, *, allocation_rewards=False, archive=False, spark_income=False, complete_spark=False):
     from .financial_spark import RESERVE_RECEIPTS
     reserve_receipts = RESERVE_RECEIPTS if spark_income and prime == 'spark' else ()
     native = [item['id'] for item in source_definitions if item['id'].startswith('investment.')
@@ -48,19 +48,19 @@ def definitions(prime, source_definitions, *, allocation_rewards=False, archive=
     if linked:
         add('family.allocation_rewards', 'Allocation-linked incentives and rewards', linked)
     add('interest', 'Income from allocations' if allocation_rewards else 'Interest income from allocations',
-        [*native, *linked, 'unclassified.allocation_income'])
+        [*native, *linked, *([] if complete_spark else ['unclassified.allocation_income'])])
     if spark_income and prime == 'spark':
         rows[-1]['label'] = 'Revenue from allocations'
     add('rewards', 'Other incentives and rewards received' if allocation_rewards else 'Incentives and rewards received',
-        [*other_rewards, 'unclassified.other_rewards'])
+        [*other_rewards, *([] if complete_spark else ['unclassified.other_rewards'])])
     if archive:
         add('gains', 'Gains (losses) on non-stable assets, net',
-            [item['id'] for item in source_definitions if item['id'].startswith('gains.')] + ['unclassified.nonstable_gains'])
+            [item['id'] for item in source_definitions if item['id'].startswith('gains.')] + ([] if complete_spark else ['unclassified.nonstable_gains']))
     add('noninterest_income', 'Noninterest income', ['statement.demand', 'statement.rewards',
         'fees.sparklend' if reserve_receipts else 'unclassified.protocol_fees',
         'fees.curator' if reserve_receipts else 'unclassified.curator_fees',
         'statement.gains' if archive else 'unclassified.nonstable_gains'])
-    add('funding', 'Interest expense (cost of funding)', ['funding.sky.net', 'unclassified.other_funding'])
+    add('funding', 'Interest expense (cost of funding)', ['funding.sky.net', 'funding.savings' if complete_spark else 'unclassified.other_funding'])
     add('net_interest', 'Net interest income', ['statement.interest', ('statement.funding', -1)])
     add('net_revenue', 'Total net revenue', ['statement.noninterest_income', 'statement.net_interest'])
     add('noninterest_expense', 'Total noninterest expense', ['unclassified.operating_expenses',
@@ -107,11 +107,13 @@ def extend(statement):
         ARCHIVE_POLICIES,
         RWA_POLICIES,
         SPARK_INCOME_POLICIES,
+        SPARK_STATEMENT_POLICY,
     )
     rows = definitions(statement['prime'], source_definitions,
                        allocation_rewards=statement['policy_version'] in ALLOCATION_REWARDS_POLICIES,
                        archive=statement['policy_version'] in ARCHIVE_POLICIES,
-                       spark_income=statement['policy_version'] in SPARK_INCOME_POLICIES)
+                       spark_income=statement['policy_version'] in SPARK_INCOME_POLICIES,
+                       complete_spark=statement['prime']=='spark' and statement['policy_version']==SPARK_STATEMENT_POLICY)
     if statement['policy_version'] in RWA_POLICIES and statement['prime'] == 'grove':
         for row in rows:
             if row['id'] == 'statement.interest':
