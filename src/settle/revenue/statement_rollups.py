@@ -106,12 +106,12 @@ def extend(statement):
         ALLOCATION_REWARDS_POLICIES,
         ARCHIVE_POLICIES,
         RWA_POLICIES,
-        SPARK_INCOME_POLICY,
+        SPARK_INCOME_POLICIES,
     )
     rows = definitions(statement['prime'], source_definitions,
                        allocation_rewards=statement['policy_version'] in ALLOCATION_REWARDS_POLICIES,
                        archive=statement['policy_version'] in ARCHIVE_POLICIES,
-                       spark_income=statement['policy_version'] == SPARK_INCOME_POLICY)
+                       spark_income=statement['policy_version'] in SPARK_INCOME_POLICIES)
     if statement['policy_version'] in RWA_POLICIES and statement['prime'] == 'grove':
         for row in rows:
             if row['id'] == 'statement.interest':
