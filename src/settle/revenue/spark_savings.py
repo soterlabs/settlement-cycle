@@ -89,11 +89,42 @@ def collect_vault(source, venue):
     before = first - timedelta(days=1)
     start, end = source.block(chain, before), source.block(chain, last)
     rows = source.logs(chain, [{"address": [vault], "topics": [list(EVENTS)]}])
+    from .spark_reconciliation import absent_contract
+
+    empty = absent_contract(source, chain, vault, rows)
+    if empty is not None:
+        return {
+            **empty,
+            "venue": venue.id,
+            "chain": chain,
+            "vault": vault,
+            "asset": venue.underlying.symbol,
+            **{
+                key: "0"
+                for key in (
+                    "interest_units",
+                    "opening_claim_units",
+                    "closing_claim_units",
+                    "deposits_units",
+                    "withdrawals_units",
+                    "share_rounding_units",
+                    "opening_tail_units",
+                    "closing_tail_units",
+                )
+            },
+            "opening_pin": start,
+            "closing_pin": end,
+            "event_count": 0,
+            "event_digest": digest([]),
+            "daily_translation": [],
+        }
     if any(row.address.lower() != vault.lower() for row in rows):
         raise ValueError("Savings evidence includes another vault")
 
     def state(day):
         block = source.block(chain, day)
+        if hasattr(source, "code") and source.code(chain, vault, block) == "0x":
+            return {"supply": 0, "chi": RAY, "assets": 0}
         values = {
             key: source.number(chain, vault, getter, block)
             for key, getter in (
@@ -146,6 +177,8 @@ def collect_vault(source, venue):
 
             def liability(day, assets):
                 block = source.block(chain, day)
+                if hasattr(source, "code") and source.code(chain, vault, block) == "0x":
+                    return 0, 0
                 idle = source.number(
                     chain, venue.underlying.address.hex, "balanceOf(address)", block, int(vault, 16)
                 )
@@ -208,7 +241,11 @@ def collect_vault(source, venue):
             "share_rounding_units": str(Decimal(result["rounding"]) / scale),
             "opening_tail_units": str(Decimal(result["opening_tail"]) / scale),
             "closing_tail_units": str(Decimal(result["closing_tail"]) / scale),
-            "opening_vsr_ray": str(source.number(chain, vault, "vsr()", start)),
+            "opening_vsr_ray": (
+                str(source.number(chain, vault, "vsr()", start))
+                if not hasattr(source, "code") or source.code(chain, vault, start) != "0x"
+                else None
+            ),
             "closing_vsr_ray": str(source.number(chain, vault, "vsr()", end)),
             "opening_pin": start,
             "closing_pin": end,

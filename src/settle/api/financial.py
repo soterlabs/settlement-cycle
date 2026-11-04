@@ -9,7 +9,7 @@ from ..revenue.financial import (
     RWA_POLICIES,
     SPARK_AMM_POLICIES,
     SPARK_INCOME_POLICIES,
-    SPARK_STATEMENT_POLICY,
+    SPARK_STATEMENT_POLICIES,
     STATEMENT_SOURCE_POLICY,
     decode_selection,
     statements,
@@ -151,7 +151,7 @@ def register_financial(app, get_reader, document_response):
     def savings(request: Request, prime: str, month: str = Query(pattern=r'^\d{4}-(0[1-9]|1[0-2])$'),
                 revision: str | None = Query(None, max_length=4096), r=Depends(get_reader)):  # noqa: B008
         doc = component_month(prime, month, revision, r)
-        if doc['policy_version'] != SPARK_STATEMENT_POLICY:
+        if doc['policy_version'] not in SPARK_STATEMENT_POLICIES:
             raise HTTPException(422, 'Savings requires the Spark statement reporting policy')
         return document_response(request, {'prime': prime, 'month': month, 'selection': doc['selection'],
             'report_hash': doc['report_hash'], 'source_manifest': doc['source_manifest'],

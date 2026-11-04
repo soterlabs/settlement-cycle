@@ -14,7 +14,14 @@ from ..domain.primes import Chain
 from ..extract.hypersync_store import _reorg_margin
 from ..store.db import connect
 from . import spark_reporting_store, store
-from .spark_onchain import WETH, Source, certified_boundary, collect, gains
+from .spark_onchain import (
+    WETH,
+    Source,
+    certified_boundary,
+    certified_saved_boundary,
+    collect,
+    gains,
+)
 
 
 def month_dates(start, end):
@@ -29,14 +36,19 @@ def month_dates(start, end):
     return sorted(dates)
 
 
-def calculate(cutoff, *, daily_pins=None):
+def calculate(cutoff, *, daily_pins=None, native_venues=None):
     prime = load_prime_by_id("spark")
     first = cutoff.replace(day=1)
     chains = [*WETH, "avalanche_c", "robinhood"]
 
     def pins(day):
         def block(chain):
-            return Chain(chain), certified_boundary(chain, day, _reorg_margin())
+            candidate = (daily_pins or {}).get(str(day), {}).get(chain)
+            return Chain(chain), (
+                certified_saved_boundary(chain, day, candidate)
+                if candidate is not None
+                else certified_boundary(chain, day, _reorg_margin())
+            )
 
         with ThreadPoolExecutor(max_workers=6) as pool:
             return dict(pool.map(block, chains))
@@ -48,6 +60,7 @@ def calculate(cutoff, *, daily_pins=None):
         period,
         opening,
         source=Source(prime, period, opening, daily_pins=daily_pins),
+        native_venues=native_venues,
         progress=lambda component: print(
             json.dumps({"cutoff": str(cutoff), "stage": component}), flush=True
         ),
@@ -72,17 +85,18 @@ def saved_daily_pins(conn, cutoff):
 
 def complete_month(conn, cutoff, *, source=None):
     """Fill reporting gaps for one saved month; never replay or mutate MSC."""
-    from .spark_completion import collect as complete
-
     saved = store.read(conn, "spark", cutoff=cutoff)
-    if not saved:
-        raise ValueError("No retained source for the requested month")
     candidates = [
         r for r in spark_reporting_store.year_rows(conn, cutoff.year) if r["cutoff"] == str(cutoff)
     ]
     if not candidates:
         raise ValueError("No Spark reporting components for the requested month")
     old = max(candidates, key=lambda r: r["publication_order"])
+    saved = saved or {
+        "opening_pins": old["document"]["opening_pins"],
+        "closing_pins": old["document"]["closing_pins"],
+        "revision_id": old["revision_id"],
+    }
     result = deepcopy(old["document"])
     for name in ("opening_pins", "closing_pins"):
         if any(saved[name].get(chain) != pin for chain, pin in result.get(name, {}).items()):
@@ -97,6 +111,19 @@ def complete_month(conn, cutoff, *, source=None):
     source = source or Source(
         prime, period, saved["opening_pins"], daily_pins=saved_daily_pins(conn, cutoff)
     )
+    return complete_document(old, source, source_revision=saved["revision_id"])
+
+
+def complete_document(old, source, *, source_revision=None):
+    """Extend one immutable monthly source using independently pinned reads."""
+    from .spark_completion import collect as complete
+
+    result = deepcopy(old["document"])
+    for name in ("opening_pins", "closing_pins"):
+        actual = getattr(source, name)
+        if result.get(name) != actual:
+            raise ValueError("Reporting source boundaries differ from the retained month")
+        result[name] = actual
     result.update(
         complete(source, progress=lambda key: print(json.dumps({"stage": key}), flush=True))
     )
@@ -121,8 +148,19 @@ def complete_month(conn, cutoff, *, source=None):
             result["statement_allocations"].get("sparklend.weth", {}),
             result["savings_interest"].get("S58", {}),
         )
+    from .spark_monthly_income import collect as monthly_income
+
+    income = monthly_income(
+        source,
+        result.get("amm_fees", {}),
+        progress=lambda key: print(json.dumps({"stage": key}), flush=True),
+    )
+    result["issuer_income"] = income["issuer_income"]
+    result["monthly_income_errors"] = income["monthly_income_errors"]
+    if "anchorage.receipts" in income:
+        result["statement_allocations"]["anchorage.receipts"] = income["anchorage.receipts"]
     result["extended_from"] = old["document"].get("extended_from", old["revision_id"])
-    result["completion_source_revision"] = saved["revision_id"]
+    result["completion_source_revision"] = source_revision or old["revision_id"]
     return result
 
 

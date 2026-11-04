@@ -262,7 +262,7 @@ def test_owner_evidence_reuses_durable_join_coverage(monkeypatch):
     monkeypatch.setattr(rec, "fetch_logs", fetch)
     assert rec.owner_logs(source, "ethereum", "0x" + "2" * 40, joined=True) == []
     assert calls[0][0:3] == ("ethereum", 11, 20)
-    assert calls[0][3]["join_mode"] == "JoinAll"
+    assert "join_mode" not in calls[0][3]
     assert "transaction_hash" in calls[0][3]["log_fields"]
 
 
