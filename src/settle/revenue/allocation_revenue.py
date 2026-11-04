@@ -47,9 +47,10 @@ def native_projection(statement, chosen, supplemental, lookup, component_metric)
             raw = supplied.get(spec.venue, {})
             if supplement and raw.get('status') in ('available', 'partial') and (
                     cell['status'] != 'available' or not publication or supplement['cutoff'] > publication['cutoff']
+                    or (raw.get('reconciliation') and supplement['cutoff'] >= publication['cutoff'])
                     or (spec.venue in ('S36', 'S42') and supplement['cutoff'] >= publication['cutoff'])):
                 cell = component_metric(raw, 'value', supplement, expected=period['expected_cutoff'])
-                average = number(raw['average_position_usd']) if isinstance(raw.get('average_position_usd'), str) else None
+                average = number(raw['average_position_usd']) if isinstance(raw.get('average_position_usd'), str) else average if publication and publication['cutoff'] == supplement['cutoff'] else None
                 reference = supplement
             elif publication and cell['status'] == 'available':
                 cell = {**cell, 'source_ref': publication['revision_id'], 'period_start': month + '-01', 'period_end': publication['cutoff']}

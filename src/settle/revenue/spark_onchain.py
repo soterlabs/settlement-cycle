@@ -181,7 +181,7 @@ class Source:
     def logs(self, chain, selections):
         start, end = self.block(chain, self.period.start - timedelta(days=1)), self.block(chain, self.period.end)
         return fetch_logs(chain, selections, start + 1, end,
-                          log_fields=[*_DEFAULT_LOG_FIELDS, 'transaction_hash'])
+                          log_fields=[*_DEFAULT_LOG_FIELDS, 'transaction_hash'], max_num_logs=100000)
 
     def price(self, coin, day):
         timestamp = int(datetime.combine(day, time.max, UTC).timestamp())
@@ -346,6 +346,9 @@ def gains(source, kind):
     result = revaluation([(gross, owed, price) for (gross, owed, _), price in zip(units, prices, strict=True)])
     # EOD observations cannot prove that intraday exposure was empty or hedged.
     result['quality'] = 'estimate'
+    result['confidence_reason'] = ('intraday_native_and_wrapped_asset_flows_not_reconciled'
+        if kind in ('avax', 'eth_weth') else 'MORPHO_inventory_changes_need_event_valuation'
+        if kind == 'morpho' else 'intraday_spWETH_exposure_and_Savings_borrow_repay_liability_flows_not_reconciled')
     if kind == 'sparklend_nonstable':
         transfers = source.logs('ethereum', [
             {'address': list(OTHER_NONSTABLE_RESERVES), 'topics': [[TRANSFER_TOPIC0], [topic(ETH_ALM)]]},
@@ -359,11 +362,29 @@ def gains(source, kind):
         result['scope'] = 'spWETH_less_spETH_assetsOutstanding; other reviewed nonstable reserves checked for empty holdings and transfers'
         if not complete:
             result.update(status='partial', reason='other_nonstable_reserve_positions_need_valuation')
+    if kind == 'avax':
+        from .spark_reconciliation import empty_avax_gain
+        try:
+            result = empty_avax_gain(source, result)
+        except Exception as exc:
+            result['confidence_reason'] = 'native_zero_history_not_verified'
+            result['verification_error_type'] = type(exc).__name__
+    if kind == 'morpho':
+        from .spark_reconciliation import constant_inventory_gain
+        result = constant_inventory_gain(source, kind, result)
+        if result.get('quality') == 'supported':
+            result.pop('confidence_reason', None)
     return result
 
 
 def native_supply(source, spec):
     venue = next(v for v in source.prime.venues if v.id == spec.venue)
+    if spec.venue == 'S36':
+        from .spark_reconciliation import fluid_base
+        return fluid_base(source, venue)
+    if spec.venue in ('S70', 'S71'):
+        from .spark_reconciliation import aave_supply
+        return aave_supply(source, venue)
     chain, token = str(venue.chain), venue.token.address.hex
     holder = source.prime.alm[venue.chain].hex
     start = source.period.start - timedelta(days=1)
@@ -436,4 +457,9 @@ def collect(prime, period, opening_pins, *, source=None, progress=None):
     completion = attempt('statement_completion', lambda: complete(source, progress=progress))
     if 'status' not in completion:
         result.update(completion)
+        from .spark_reconciliation import net_sparklend_gain
+        with localcontext() as ctx:
+            ctx.prec = 60
+            result['gains']['sparklend_nonstable'] = net_sparklend_gain(source, result['gains']['sparklend_nonstable'],
+                result.get('statement_allocations', {}).get('sparklend.weth', {}), result.get('savings_interest', {}).get('S58', {}))
     return result

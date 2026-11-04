@@ -155,9 +155,19 @@ def extend(statement, chosen, supplemental):
                 with localcontext() as ctx:
                     ctx.prec = 60
                     fees = number(fee["value"])
+                    proof = fee.get("capital_reconciliation", {})
+                    certified_capital = proof.get("status") == "available"
                     share = number(split["sky_share"])
-                    gross = number(split["gross_income_usd"]) + fees
-                    sky = number(split["sky_income_usd"]) + fees * share
+                    gross = (
+                        number(proof["gross_return_usd"])
+                        if certified_capital
+                        else number(split["gross_income_usd"]) + fees
+                    )
+                    sky = (
+                        gross * share
+                        if certified_capital
+                        else number(split["sky_income_usd"]) + fees * share
+                    )
                     native = gross - sky
                 item.update(
                     value=str(native),
@@ -187,8 +197,21 @@ def extend(statement, chosen, supplemental):
                     )
                 for ledger in statement.get("spark_amm_ledger", []):
                     if ledger["month"] == month and ledger["venue_id"] == venue:
-                        if number(ledger["net_capital_added_usd"]) != 0:
+                        if number(ledger["net_capital_added_usd"]) != 0 and not certified_capital:
                             item["quality"] = "estimate"
+                        if certified_capital:
+                            ledger.update(
+                                {
+                                    key: proof[key]
+                                    for key in (
+                                        "opening_position_usd",
+                                        "closing_position_usd",
+                                        "net_capital_added_usd",
+                                    )
+                                }
+                            )
+                            ledger["capital_reconciliation"] = deepcopy(proof)
+                            item["basis"] = proof["basis"] + "_less_saved_Sky_share"
                         ledger.update(
                             income=item,
                             fee_coverage="accrued_V4_fees_reconciled",

@@ -174,7 +174,8 @@ def test_component_log_reads_reuse_the_finalized_coverage_store(monkeypatch):
     source.period=SimpleNamespace(start=date(2026,10,1),end=date(2026,10,31))
     source.block=lambda chain,day:100 if day<source.period.start else 200
     expected=[object()]
-    def fetch(chain,selections,start,end,*,log_fields):
+    def fetch(chain,selections,start,end,*,log_fields,max_num_logs):
+        assert max_num_logs == 100000
         assert (chain,start,end)==('ethereum',101,200)
         assert 'transaction_hash' in log_fields
         return expected
