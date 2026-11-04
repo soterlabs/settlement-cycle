@@ -245,3 +245,35 @@ def test_real_v4_swap_cash_is_separate_from_lp_capital_and_changed_cash_fails(mo
         cash["data"] = "0x" + f"{int(cash['data'], 16) + 1:064x}"
         with pytest.raises(ValueError, match="actual settled cash"):
             v4.reconcile_capital(source, deepcopy(proof["components"]))
+
+
+def test_owner_evidence_reuses_durable_join_coverage(monkeypatch):
+    source = SimpleNamespace(
+        prime=load_prime_by_id("spark"),
+        opening_pins={"ethereum": 10},
+        closing_pins={"ethereum": 20},
+    )
+    calls = []
+
+    def fetch(chain, selections, lo, hi, **kwargs):
+        calls.append((chain, lo, hi, kwargs))
+        return []
+
+    monkeypatch.setattr(rec, "fetch_logs", fetch)
+    assert rec.owner_logs(source, "ethereum", "0x" + "2" * 40, joined=True) == []
+    assert calls[0][0:3] == ("ethereum", 11, 20)
+    assert calls[0][3]["join_mode"] == "JoinAll"
+    assert "transaction_hash" in calls[0][3]["log_fields"]
+
+
+def test_native_zero_requires_index_coverage_not_just_an_empty_response(monkeypatch):
+    class Response:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"items": [{"number": 20, "timestamp": "2026-10-01T00:00:00Z"}]}
+
+    monkeypatch.setattr("requests.get", lambda *args, **kwargs: Response())
+    with pytest.raises(ValueError, match="not finalized"):
+        rec.avalanche_native_history.__wrapped__("0x" + "1" * 40, 10, 20)

@@ -12,6 +12,7 @@ from ..domain.primes import Chain
 from ..extract.aave_reconstruct import BT_T0, BURN_T0, MINT_T0, _words, ray_div, ray_mul
 from ..extract.cache import cached
 from ..extract.hypersync import _DEFAULT_LOG_FIELDS, query_logs
+from ..extract.hypersync_store import fetch_logs
 from ..extract.transfer_logs import TRANSFER_TOPIC0
 from .spark_onchain import topic
 from .spark_savings import EVENTS
@@ -35,7 +36,7 @@ def unique(rows):
 def owner_logs(source, chain, token, *, joined=False):
     holder = topic(source.prime.alm[Chain(chain)].hex)
     return unique(
-        query_logs(
+        fetch_logs(
             chain,
             [
                 {"address": [token], "topics": [[TRANSFER_TOPIC0], [holder]]},
@@ -46,7 +47,7 @@ def owner_logs(source, chain, token, *, joined=False):
             log_fields=[*_DEFAULT_LOG_FIELDS, "transaction_hash"],
             join_mode="JoinAll" if joined else None,
             max_num_logs=100000,
-        ).rows
+        )
     )
 
 
@@ -182,7 +183,7 @@ def aave_supply(source, venue):
     chain, token = str(venue.chain), venue.token.address.hex
     holder = topic(source.prime.alm[venue.chain].hex)
     rows = unique(
-        query_logs(
+        fetch_logs(
             chain,
             [
                 {"address": [token], "topics": [[MINT_T0], [], [holder]]},
@@ -193,7 +194,7 @@ def aave_supply(source, venue):
             source.closing_pins[chain],
             log_fields=[*_DEFAULT_LOG_FIELDS, "transaction_hash"],
             max_num_logs=100000,
-        ).rows
+        )
     )
     start = source.period.start - timedelta(days=1)
     days = [start + timedelta(days=i) for i in range(source.period.n_days + 1)]
@@ -509,7 +510,7 @@ def avalanche_native_history(holder, opening_pin, closing_pin):
         for row in rows:
             if not opening_pin < int(row["blockNumber"]) <= closing_pin:
                 raise ValueError("Native activity outside requested boundaries")
-            if row.get("isError") != "1" and (int(row["value"]) or row["from"].lower() == holder):
+            if row["from"].lower() == holder or (row.get("isError") != "1" and int(row["value"])):
                 raise ValueError("Native inventory has nonzero activity")
         histories[action] = rows
     return {
