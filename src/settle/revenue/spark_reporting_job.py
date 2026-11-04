@@ -6,6 +6,7 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from datetime import UTC, date, datetime, timedelta
+from decimal import localcontext
 
 from ..domain.config import load_prime_by_id
 from ..domain.period import Month, Period
@@ -99,9 +100,27 @@ def complete_month(conn, cutoff, *, source=None):
     result.update(
         complete(source, progress=lambda key: print(json.dumps({"stage": key}), flush=True))
     )
-    if result["gains"].get("morpho", {}).get("status") != "available":
+    from .allocation_revenue import SPARK_EXTRA
+    from .financial_allocations import ALLOCATIONS
+    from .spark_onchain import native_supply
+
+    with localcontext() as ctx:
+        ctx.prec = 60
+        for spec in (*ALLOCATIONS["spark"], *SPARK_EXTRA):
+            if spec.venue in ("S70", "S71", "S36"):
+                result["native_supplies"][spec.venue] = native_supply(source, spec)
+                result.get("errors", {}).pop("supply." + spec.venue, None)
         result["gains"]["morpho"] = gains(source, "morpho")
         result.get("errors", {}).pop("gains.morpho", None)
+        from .spark_reconciliation import empty_avax_gain, net_sparklend_gain
+
+        result["gains"]["avax"] = empty_avax_gain(source, result["gains"].get("avax", {}))
+        result["gains"]["sparklend_nonstable"] = net_sparklend_gain(
+            source,
+            result["gains"].get("sparklend_nonstable", {}),
+            result["statement_allocations"].get("sparklend.weth", {}),
+            result["savings_interest"].get("S58", {}),
+        )
     result["extended_from"] = old["document"].get("extended_from", old["revision_id"])
     result["completion_source_revision"] = saved["revision_id"]
     return result

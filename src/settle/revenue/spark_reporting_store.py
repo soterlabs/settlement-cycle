@@ -1,4 +1,5 @@
 """Append-only reporting components, isolated from MSC and native revenue."""
+
 from copy import deepcopy
 from datetime import date
 from decimal import Decimal, localcontext
@@ -82,6 +83,50 @@ def validate_document(document):
                     )
                     if units != interest or usd != number(row["value"]):
                         raise ValueError("ETH Savings translation does not reconcile")
+        for family in ("native_supplies", "statement_allocations"):
+            for row in document.get(family, {}).values():
+                proof = row.get("reconciliation")
+                if proof and row.get("status") == "available":
+                    opening, closing, capital, interest = (
+                        number(proof[k])
+                        for k in (
+                            "opening_claim_units",
+                            "closing_claim_units",
+                            "net_capital_units",
+                            "interest_units",
+                        )
+                    )
+                    if min(opening, closing) < 0 or closing - opening - capital != interest:
+                        raise ValueError("Unreconciled supply capital/interest bridge")
+                    if row.get("translation_policy"):
+                        from datetime import timedelta
+
+                        start = date.fromisoformat(document["period_start"])
+                        end = date.fromisoformat(document["cutoff"])
+                        prices = row["daily_translation"]
+                        if [p["date"] for p in prices] != [
+                            str(start + timedelta(days=i)) for i in range((end - start).days + 1)
+                        ]:
+                            raise ValueError("Incomplete supply translation days")
+                        if any(number(p["usd_price"]) <= 0 for p in prices):
+                            raise ValueError("Invalid supply translation price")
+                        if sum(
+                            (number(p["interest_units"]) for p in prices), Decimal(0)
+                        ) != interest or sum(
+                            (number(p["interest_units"]) * number(p["usd_price"]) for p in prices),
+                            Decimal(0),
+                        ) != number(row["value"]):
+                            raise ValueError("Unreconciled supply daily translation")
+                    elif number(row["value"]) != interest:
+                        raise ValueError("Supply revenue differs from reconciled interest")
+        for row in document.get("amm_fees", {}).values():
+            proof = row.get("capital_reconciliation", {})
+            if proof.get("status") == "available" and number(
+                proof["closing_position_usd"]
+            ) - number(proof["opening_position_usd"]) - number(
+                proof["net_capital_added_usd"]
+            ) + number(row["value"]) != number(proof["gross_return_usd"]):
+                raise ValueError("Unreconciled AMM capital/return bridge")
         for row in document.get("amm_fees", {}).values():
             if row.get("status") in ("available", "partial") and (
                 number(row["collected_usd"])
@@ -93,6 +138,72 @@ def validate_document(document):
         for row in document.get("gains", {}).values():
             if row.get("status") in ("available", "partial"):
                 net = number(row["value"])
+                if row.get("daily_revaluation"):
+                    from datetime import timedelta
+
+                    start = date.fromisoformat(document["period_start"])
+                    end = date.fromisoformat(document["cutoff"])
+                    entries = row["daily_revaluation"]
+                    if [p["date"] for p in entries] != [
+                        str(start + timedelta(days=i)) for i in range((end - start).days + 1)
+                    ]:
+                        raise ValueError("Net revaluation dates do not cover the period")
+                    if [p["asset_bridge"] for p in entries] != document.get(
+                        "statement_allocations", {}
+                    ).get("sparklend.weth", {}).get("daily_translation") or [
+                        p["liability_bridge"] for p in entries
+                    ] != document.get("savings_interest", {}).get("S58", {}).get("daily_liability"):
+                        raise ValueError("Net revaluation does not use the saved source claims")
+                    previous = {}
+                    previous_price = None
+                    for entry in entries:
+                        opening_price, closing_price = (
+                            number(entry["opening_usd_price"]),
+                            number(entry["closing_usd_price"]),
+                        )
+                        if (
+                            min(opening_price, closing_price) <= 0
+                            or (previous_price is not None
+                            and opening_price != previous_price)
+                        ):
+                            raise ValueError("Net revaluation closing quotes do not reconcile")
+                        if number(entry["asset_price_gain_usd"]) != number(
+                            entry["asset_bridge"]["opening_claim_units"]
+                        ) * (closing_price - opening_price) or number(
+                            entry["depositor_offset_usd"]
+                        ) != number(entry["liability_bridge"]["opening_claim_units"]) * (
+                            closing_price - opening_price
+                        ):
+                            raise ValueError(
+                                "Net revaluation gain differs from the daily closing convention"
+                            )
+                        previous_price = closing_price
+                        for family in ("asset_bridge", "liability_bridge"):
+                            part = entry[family]
+                            opening, closing, capital, earned = (
+                                number(part[k])
+                                for k in (
+                                    "opening_claim_units",
+                                    "closing_claim_units",
+                                    "net_capital_units",
+                                    "interest_units",
+                                )
+                            )
+                            if (
+                                closing - opening - capital != earned
+                                or (family in previous
+                                and previous[family] != opening)
+                            ):
+                                raise ValueError(
+                                    "Net revaluation daily claim bridges do not reconcile"
+                                )
+                            previous[family] = closing
+                    if sum(
+                        (number(p["asset_price_gain_usd"]) for p in entries), Decimal(0)
+                    ) != number(row["asset_price_gain_usd"]) or sum(
+                        (number(p["depositor_offset_usd"]) for p in entries), Decimal(0)
+                    ) != number(row["depositor_offset_usd"]):
+                        raise ValueError("Net revaluation daily gains do not reconcile")
                 if "asset_price_gain_usd" in row and abs(
                     number(row["asset_price_gain_usd"]) - number(row["depositor_offset_usd"]) - net
                 ) > Decimal("1e-36"):
@@ -100,78 +211,127 @@ def validate_document(document):
 
 
 def publish(conn, document, *, code_version, configuration_version):
-    if (document.get('schema_version') != 'spark-onchain.v1'
-            or document['period_start'] != document['cutoff'][:7] + '-01'):
-        raise ValueError('Invalid Spark reporting component period')
+    if (
+        document.get("schema_version") != "spark-onchain.v1"
+        or document["period_start"] != document["cutoff"][:7] + "-01"
+    ):
+        raise ValueError("Invalid Spark reporting component period")
     validate_document(document)
     if not code_version or not configuration_version:
-        raise ValueError('Missing Spark reporting component version')
+        raise ValueError("Missing Spark reporting component version")
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute('''SELECT * FROM reporting_spark_components WHERE cutoff BETWEEN %s AND %s
-            ORDER BY cutoff DESC,publication_order DESC LIMIT 1''', (document['period_start'], document['cutoff']))
+        cur.execute(
+            """SELECT * FROM reporting_spark_components WHERE cutoff BETWEEN %s AND %s
+            ORDER BY cutoff DESC,publication_order DESC LIMIT 1""",
+            (document["period_start"], document["cutoff"]),
+        )
         previous = cur.fetchone()
     if previous:
         document = carry_forward(document, previous)
     validate_document(document)
-    identity = {'document_hash': digest(document), 'code_version': code_version,
-                'configuration_version': configuration_version}
+    identity = {
+        "document_hash": digest(document),
+        "code_version": code_version,
+        "configuration_version": configuration_version,
+    }
     revision = digest(identity)
-    conn.execute('''INSERT INTO reporting_spark_components
+    conn.execute(
+        """INSERT INTO reporting_spark_components
         (revision_id,cutoff,document,document_hash,code_version,configuration_version)
-        VALUES (%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING''',
-        (revision, document['cutoff'], Jsonb(document), identity['document_hash'], code_version, configuration_version))
+        VALUES (%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING""",
+        (
+            revision,
+            document["cutoff"],
+            Jsonb(document),
+            identity["document_hash"],
+            code_version,
+            configuration_version,
+        ),
+    )
     return revision
 
 
 def carry_forward(document, previous):
     """Retain known same-month amounts after a failed refresh, with old bounds."""
     result = deepcopy(document)
-    if previous['document']['period_start'] != document['period_start']:
+    if previous["document"]["period_start"] != document["period_start"]:
         return result
+
     def retained(new, old):
-        if new.get('status') != 'unavailable' or old.get('status') not in ('available', 'partial'):
+        if new.get("status") != "unavailable" or old.get("status") not in ("available", "partial"):
             return new
-        return {**old, 'status': 'partial', 'reason': 'retained_after_refresh_failure',
-                'period_end': old.get('period_end', str(previous['cutoff'])),
-                'retained_source_revision': old.get('retained_source_revision', previous['revision_id'])}
-    result['reserve_fees'] = retained(result.get('reserve_fees', {}), previous['document'].get('reserve_fees', {}))
-    for family in ('curator_fees', 'gains', 'native_supplies', 'savings_interest', 'statement_allocations', 'amm_fees'):
+        return {
+            **old,
+            "status": "partial",
+            "reason": "retained_after_refresh_failure",
+            "period_end": old.get("period_end", str(previous["cutoff"])),
+            "retained_source_revision": old.get(
+                "retained_source_revision", previous["revision_id"]
+            ),
+        }
+
+    result["reserve_fees"] = retained(
+        result.get("reserve_fees", {}), previous["document"].get("reserve_fees", {})
+    )
+    for family in (
+        "curator_fees",
+        "gains",
+        "native_supplies",
+        "savings_interest",
+        "statement_allocations",
+        "amm_fees",
+    ):
         for key, value in result.get(family, {}).items():
-            result[family][key] = retained(value, previous['document'].get(family, {}).get(key, {}))
+            result[family][key] = retained(value, previous["document"].get(family, {}).get(key, {}))
     return result
 
 
 def year_rows(conn, year, *, revisions=None):
     with conn.cursor(row_factory=dict_row) as cur:
         if revisions is not None:
-            cur.execute('SELECT * FROM reporting_spark_components WHERE revision_id = ANY(%s)', (revisions,))
+            cur.execute(
+                "SELECT * FROM reporting_spark_components WHERE revision_id = ANY(%s)", (revisions,)
+            )
         else:
-            cur.execute('''SELECT DISTINCT ON (cutoff) * FROM reporting_spark_components
-                WHERE cutoff BETWEEN %s AND %s ORDER BY cutoff,publication_order DESC''',
-                (f'{year}-01-01', f'{year}-12-31'))
+            cur.execute(
+                """SELECT DISTINCT ON (cutoff) * FROM reporting_spark_components
+                WHERE cutoff BETWEEN %s AND %s ORDER BY cutoff,publication_order DESC""",
+                (f"{year}-01-01", f"{year}-12-31"),
+            )
         rows = canonical(cur.fetchall())
     for row in rows:
-        if digest(row['document']) != row['document_hash']:
-            raise ValueError('Spark reporting component hash mismatch')
-        validate_document(row['document'])
-        row['source'] = {'kind': 'spark_onchain_components', 'revision_id': row['revision_id'],
-                         'cutoff': row['cutoff'], 'result_hash': row['document_hash'], 'currency': 'USD',
-                         'code_version': row['code_version'], 'configuration_version': row['configuration_version'],
-                         'opening_pins': row['document'].get('opening_pins', {}), 'closing_pins': row['document'].get('closing_pins', {})}
+        if digest(row["document"]) != row["document_hash"]:
+            raise ValueError("Spark reporting component hash mismatch")
+        validate_document(row["document"])
+        row["source"] = {
+            "kind": "spark_onchain_components",
+            "revision_id": row["revision_id"],
+            "cutoff": row["cutoff"],
+            "result_hash": row["document_hash"],
+            "currency": "USD",
+            "code_version": row["code_version"],
+            "configuration_version": row["configuration_version"],
+            "opening_pins": row["document"].get("opening_pins", {}),
+            "closing_pins": row["document"].get("closing_pins", {}),
+        }
     return rows
 
 
 def select(rows, year, as_of, selection=None):
     chosen = []
     for month in range(1, 13):
-        key = f'{year}-{month:02}'
+        key = f"{year}-{month:02}"
         if selection is not None:
-            ref = selection['offchain_revisions'][month - 1]
-            match = next((row for row in rows if row['revision_id'] == ref), None) if ref else None
-            if ref and (not match or match['cutoff'][:7] != key or match['cutoff'] > str(as_of)):
-                raise ValueError('Retained Spark component revision unavailable')
+            ref = selection["offchain_revisions"][month - 1]
+            match = next((row for row in rows if row["revision_id"] == ref), None) if ref else None
+            if ref and (not match or match["cutoff"][:7] != key or match["cutoff"] > str(as_of)):
+                raise ValueError("Retained Spark component revision unavailable")
         else:
-            matches = [row for row in rows if row['cutoff'][:7] == key and row['cutoff'] <= str(as_of)]
-            match = max(matches, key=lambda row: (row['cutoff'], row['publication_order']), default=None)
+            matches = [
+                row for row in rows if row["cutoff"][:7] == key and row["cutoff"] <= str(as_of)
+            ]
+            match = max(
+                matches, key=lambda row: (row["cutoff"], row["publication_order"]), default=None
+            )
         chosen.append(match)
     return chosen

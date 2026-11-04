@@ -3,7 +3,7 @@
 Drip.diff includes prior un-dripped interest. Subtract the opening tail and
 add the closing tail. Deposits and withdrawals affect supply, never income.
 ETH is translated using each accrual day's closing USD quote; token-unit
-interest is exact, while its USD translation retains estimate quality.
+interest is exact; USD values follow an explicit daily closing quote convention.
 """
 
 from collections import defaultdict
@@ -30,6 +30,7 @@ def reconcile(opening, closing, rows, *, start, end):
     supply, chi = opening["supply"], opening["chi"]
     accrued = deposits = withdrawals = rounding = 0
     daily = defaultdict(int)
+    daily_capital = defaultdict(int)
     seen = set()
     for row in sorted(rows, key=lambda r: (r.block_number, r.log_index)):
         key = row.block_number, row.log_index
@@ -56,6 +57,9 @@ def reconcile(opening, closing, rows, *, start, end):
                 supply -= second
                 withdrawals += first
                 rounding += supply * chi // RAY - before + first
+            daily_capital[datetime.fromtimestamp(row.block_time, UTC).date()] += (
+                supply * chi // RAY - before
+            )
             if supply < 0:
                 raise ValueError("Savings history misses shares")
     if supply != closing["supply"] or chi != closing["chi"]:
@@ -74,6 +78,7 @@ def reconcile(opening, closing, rows, *, start, end):
         "opening_tail": tails[0],
         "closing_tail": tails[1],
         "daily_drips": daily,
+        "daily_capital": daily_capital,
         "event_count": len(seen),
     }
 
@@ -108,9 +113,48 @@ def collect_vault(source, venue):
         usd = interest
         quality = "supported"
         prices = []
+        liability_days = []
         if venue.underlying.symbol == "WETH":
-            quality = "estimate"
+            quality = "supported"
             usd, tail = Decimal(0), result["opening_tail"]
+            from ..extract.transfer_logs import TRANSFER_TOPIC0
+            from .spark_onchain import topic
+            from .spark_reconciliation import unique
+
+            vault_topic = topic(vault)
+            cash_rows = unique(
+                source.logs(
+                    chain,
+                    [
+                        {
+                            "address": [venue.underlying.address.hex],
+                            "topics": [[TRANSFER_TOPIC0], [vault_topic]],
+                        },
+                        {
+                            "address": [venue.underlying.address.hex],
+                            "topics": [[TRANSFER_TOPIC0], [], [vault_topic]],
+                        },
+                    ],
+                )
+            )
+            daily_cash = defaultdict(int)
+            for row in cash_rows:
+                delta = int(row.data, 16) * (
+                    (row.topic2 == vault_topic) - (row.topic1 == vault_topic)
+                )
+                daily_cash[datetime.fromtimestamp(row.block_time, UTC).date()] += delta
+
+            def liability(day, assets):
+                block = source.block(chain, day)
+                idle = source.number(
+                    chain, venue.underlying.address.hex, "balanceOf(address)", block, int(vault, 16)
+                )
+                owed = source.number(chain, vault, "assetsOutstanding()", block)
+                if assets - idle != owed or owed < 0:
+                    raise ValueError("Savings ETH outstanding claim/idle balance mismatch")
+                return idle, owed
+
+            previous_idle, previous_owed = liability(before, opening["assets"])
             for i in range(source.period.n_days):
                 day = first + timedelta(days=i)
                 current = closing if day == last else state(day)
@@ -118,6 +162,23 @@ def collect_vault(source, venue):
                 if new_tail < 0:
                     raise ValueError("Negative daily Savings tail")
                 quantity = result["daily_drips"].get(day, 0) + new_tail - tail
+                idle, owed = liability(day, current["assets"])
+                capital = result["daily_capital"].get(day, 0) - daily_cash[day]
+                if (
+                    idle - previous_idle != daily_cash[day]
+                    or owed - previous_owed - capital != quantity
+                ):
+                    raise ValueError("Savings ETH daily capital/interest/liability bridge failed")
+                liability_days.append(
+                    {
+                        "date": str(day),
+                        "opening_claim_units": str(Decimal(previous_owed) / scale),
+                        "closing_claim_units": str(Decimal(owed) / scale),
+                        "net_capital_units": str(Decimal(capital) / scale),
+                        "interest_units": str(Decimal(quantity) / scale),
+                    }
+                )
+                previous_idle, previous_owed = idle, owed
                 price = source.price("coingecko:ethereum", day)
                 usd += Decimal(quantity) / scale * price
                 prices.append(
@@ -154,6 +215,27 @@ def collect_vault(source, venue):
             "event_count": result["event_count"],
             "event_digest": digest([(r.block_number, r.log_index, r.data) for r in rows]),
             "daily_translation": prices,
+            **(
+                {
+                    "daily_liability": liability_days,
+                    "idle_cash_event_count": len(cash_rows),
+                    "idle_cash_event_digest": digest(
+                        [
+                            (r.block_number, r.log_index, r.topic1, r.topic2, r.data)
+                            for r in cash_rows
+                        ]
+                    ),
+                }
+                if liability_days
+                else {}
+            ),
+            **(
+                {
+                    "translation_policy": "daily_closing_ETH_USD_nonforward_quote_max_age_2h_confidence_gte_0.9"
+                }
+                if prices
+                else {}
+            ),
             "basis": "exact_Drip_interest_plus_closing_tail_minus_opening_tail"
             + ("_translated_at_daily_closing_ETH_USD" if prices else "_stablecoin_par"),
         }

@@ -53,6 +53,8 @@ def saved_component(raw, field, publication, *, recognition='accrual', expected=
         return metric(reason='invalid_reporting_component')
     cell = metric(amount, basis=raw.get('basis', 'pinned_onchain_reporting_component'),
                   source_paths=['reporting_spark_components.document'])
+    if raw.get('confidence_reason'):
+        cell['confidence_reason'] = raw['confidence_reason']
     end = raw.get('period_end', publication['cutoff'])
     if not publication['cutoff'][:7] + '-01' <= end <= publication['cutoff']:
         return metric(reason='invalid_reporting_component_bounds')

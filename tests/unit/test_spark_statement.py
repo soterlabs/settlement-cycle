@@ -288,7 +288,8 @@ def test_price_retries_an_earlier_quote_instead_of_using_future_data(monkeypatch
     assert len(calls) == 2
 
 
-def test_arbitrum_bridged_susds_uses_verified_psm_rate_not_a_nonexistent_erc4626_getter():
+def test_arbitrum_bridged_susds_uses_verified_psm_rate_not_a_nonexistent_erc4626_getter(monkeypatch):
+    monkeypatch.setattr("settle.revenue.spark_reconciliation.owner_logs", lambda *args, **kwargs: [])
     from settle.domain.config import load_prime_by_id
     from settle.revenue.spark_completion import arbitrum_susds
 
@@ -313,7 +314,10 @@ def test_arbitrum_bridged_susds_uses_verified_psm_rate_not_a_nonexistent_erc4626
                 "balanceOf(address)": 100 * 10**18,
             }[signature]
 
-    result = arbitrum_susds(Fake(), venue)
+    fake = Fake()
+    fake.opening_pins = {"arbitrum": 10}
+    fake.closing_pins = {"arbitrum": 20}
+    result = arbitrum_susds(fake, venue)
     assert Decimal(result["value"]) == 10  # Revenue, not the 110 closing position.
 
 
