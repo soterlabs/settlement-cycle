@@ -145,6 +145,11 @@ def vault_supply(source, venue):
         for b, q in zip((start, end), balances, strict=True)
     ]
     expected, actual = defaultdict(int), defaultdict(int)
+    rates = (
+        canonical_susds_rates(source, token, own, balances, claims)
+        if venue.id == "S32" and hasattr(source, "code")
+        else None
+    )
     capital = quantity = 0
     zero = topic("0x" + "0" * 40)
     for r in own:
@@ -165,27 +170,17 @@ def vault_supply(source, venue):
             elif delta:
                 if venue.id != "S32":
                     raise ValueError("Unclassified vault share transfer")
-                # All transactions within a block share a timestamp; canonical
-                # chi is unaffected by deposits. A rate reset within the same
-                # block could change transfer NAV, so reject that ambiguity.
-                from ..extract._keccak import keccak256
-
-                file_topic = "0x" + keccak256(b"File(bytes32,uint256)").hex()
-                changes = query_logs(
-                    chain,
-                    [{"address": [token], "topics": [[file_topic]]}],
-                    r.block_number,
-                    r.block_number,
-                    max_num_logs=100000,
-                ).rows
-                if changes:
-                    raise ValueError("sUSDS transfer shares a block with a rate reset")
                 q_before = balances[0] + quantity - delta
-                capital += source.number(
-                    chain, token, "convertToAssets(uint256)", r.block_number, q_before + delta
-                ) - source.number(
-                    chain, token, "convertToAssets(uint256)", r.block_number, q_before
-                )
+                if rates is not None:
+                    rate = rates[r.block_number, r.log_index]
+                    capital += (q_before + delta) * rate // 10**27 - q_before * rate // 10**27
+                else:
+                    # Injectable test sources can provide direct pinned NAV.
+                    capital += source.number(
+                        chain, token, "convertToAssets(uint256)", r.block_number, q_before + delta
+                    ) - source.number(
+                        chain, token, "convertToAssets(uint256)", r.block_number, q_before
+                    )
     if dict(actual) != dict(expected) or balances[0] + quantity != balances[1]:
         raise ValueError("Vault capital/share events do not reproduce closing balance")
     result = claim_bridge(
@@ -595,3 +590,85 @@ def empty_avax_gain(source, old):
     }
     result.pop("confidence_reason", None)
     return result
+
+
+def ray_power(x, exponent):
+    """SUsds integer exponentiation with half-up RAY multiplication."""
+    ray, limit = 10**27, 1 << 256
+    if x == 0:
+        return ray if exponent == 0 else 0
+    value = x if exponent % 2 else ray
+    exponent //= 2
+    while exponent:
+        squared = x * x + ray // 2
+        if squared >= limit:
+            raise ValueError("sUSDS rate overflow")
+        x = squared // ray
+        if exponent % 2:
+            product = value * x + ray // 2
+            if product >= limit:
+                raise ValueError("sUSDS rate overflow")
+            value = product // ray
+        exponent //= 2
+    return value
+
+
+@cached(source_id="spark-reporting.block-stamp.v1")
+def block_stamp(chain, block):
+    from ..extract.rpc import _post, rpc_url
+
+    result = _post(rpc_url(Chain(chain)), "eth_getBlockByNumber", [hex(block), False])
+    if not result or int(result["number"], 16) != block:
+        raise ValueError("Missing block timestamp")
+    return int(result["timestamp"], 16)
+
+
+def canonical_susds_rates(source, token, own_rows, balances, claims):
+    """Replay the reviewed SUsds chi/rho/ssr accumulator once per month.
+
+    Source: sky-ecosystem/sdai, susds branch, SUsds.sol convertToAssets/drip.
+    Authenticate each Drip and the complete closing stored state; reject an
+    implementation upgrade rather than assuming its pricing behavior.
+    """
+    from ..extract._keccak import keccak256
+
+    chain, ray = "ethereum", 10**27
+    start, end = source.opening_pins[chain], source.closing_pins[chain]
+    file_topic = "0x" + keccak256(b"File(bytes32,uint256)").hex()
+    upgrade_topic = "0x" + keccak256(b"Upgraded(address)").hex()
+    drip_topic = next(k for k, v in EVENTS.items() if v == "drip")
+    state = [source.number(chain, token, getter, start) for getter in ("chi()", "rho()", "ssr()")]
+
+    def rate(timestamp):
+        chi, rho, ssr = state
+        if timestamp < rho:
+            raise ValueError("sUSDS accumulator timestamp is forward")
+        return ray_power(ssr, timestamp - rho) * chi // ray
+
+    if balances[0] * rate(block_stamp(chain, start)) // ray != claims[0]:
+        raise ValueError("sUSDS opening claim does not match the accumulator")
+    controls = unique(
+        source.logs(
+            chain, [{"address": [token], "topics": [[file_topic, drip_topic, upgrade_topic]]}]
+        )
+    )
+    transfers = [r for r in own_rows if r.topic0 == TRANSFER_TOPIC0]
+    rates = {}
+    for row in unique([*controls, *transfers]):
+        if row.topic0 == upgrade_topic:
+            raise ValueError("sUSDS implementation changed inside the reporting month")
+        if row.topic0 == drip_topic:
+            chi, _diff = _words(row.data)
+            if rate(row.block_time) != chi:
+                raise ValueError("sUSDS Drip differs from the reconstructed rate")
+            state[0], state[1] = chi, row.block_time
+        elif row.topic0 == file_topic:
+            if row.topic1 != "0x" + b"ssr".ljust(32, b"\0").hex() or state[1] != row.block_time:
+                raise ValueError("Unreviewed sUSDS rate reset")
+            (state[2],) = _words(row.data)
+        else:
+            rates[row.block_number, row.log_index] = rate(row.block_time)
+    closing = [source.number(chain, token, getter, end) for getter in ("chi()", "rho()", "ssr()")]
+    if state != closing or balances[1] * rate(block_stamp(chain, end)) // ray != claims[1]:
+        raise ValueError("sUSDS closing state or claim does not reconcile")
+    return rates
