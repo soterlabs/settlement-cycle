@@ -7,8 +7,9 @@ from fastapi import Depends, HTTPException, Query, Request
 from ..revenue.financial import (
     MONTHLY_STATEMENT_POLICIES,
     RWA_POLICIES,
-    SPARK_AMM_POLICY,
+    SPARK_AMM_POLICIES,
     SPARK_INCOME_POLICIES,
+    SPARK_STATEMENT_POLICY,
     STATEMENT_SOURCE_POLICY,
     decode_selection,
     statements,
@@ -62,7 +63,7 @@ def register_financial(app, get_reader, document_response):
         try:
             result = statements(prime, year, as_of, rows,
                                 exact=selection['exact'] if selection else cutoff is not None,
-                                selection=selection, monthly=True, rollups=True, rwa=True, allocation_rewards=True, offchain=True, archive=True, spark_income=prime == 'spark', spark_publications=spark_rows, spark_amms=prime == 'spark')
+                                selection=selection, monthly=True, rollups=True, rwa=True, allocation_rewards=True, offchain=True, archive=True, spark_income=prime == 'spark', spark_publications=spark_rows, spark_amms=prime == 'spark', spark_statement=prime == 'spark')
         except ValueError as exc:
             raise HTTPException(404, str(exc), headers={'Cache-Control': 'no-store'}) from None
         selected_ids = {p['financial_revision'] for p in result['periods'] if p['financial_revision']}
@@ -133,7 +134,7 @@ def register_financial(app, get_reader, document_response):
              venue: str | None = None, revision: str | None = Query(None, max_length=4096),
              r=Depends(get_reader)):  # noqa: B008
         doc = component_month(prime, month, revision, r)
-        if doc['policy_version'] != SPARK_AMM_POLICY:
+        if doc['policy_version'] not in SPARK_AMM_POLICIES:
             raise HTTPException(422, 'AMM rows require the Spark AMM reporting policy')
         from ..revenue.financial_amms import SPECS
         if venue and venue not in {spec[0] for spec in SPECS}:
@@ -144,7 +145,20 @@ def register_financial(app, get_reader, document_response):
             'metrics': {row['id']: row['values'][month] for row in doc['lines'] if row['id'] in keys},
             'pools': [row for row in doc.get('spark_amm_ledger', []) if row['month'] == month and (not venue or row['venue_id'] == venue)],
             'issuer_incentives_included': False, 'funding_cost_deducted': False,
-            'limitations': ['V4 retained price returns omit unreconciled trading fees; partial values are not complete accrued revenue']})
+            'limitations': doc.get('limitations', ['V4 retained price returns omit unreconciled trading fees; partial values are not complete accrued revenue'])})
+
+    @app.get('/v3/reporting/savings')
+    def savings(request: Request, prime: str, month: str = Query(pattern=r'^\d{4}-(0[1-9]|1[0-2])$'),
+                revision: str | None = Query(None, max_length=4096), r=Depends(get_reader)):  # noqa: B008
+        doc = component_month(prime, month, revision, r)
+        if doc['policy_version'] != SPARK_STATEMENT_POLICY:
+            raise HTTPException(422, 'Savings requires the Spark statement reporting policy')
+        return document_response(request, {'prime': prime, 'month': month, 'selection': doc['selection'],
+            'report_hash': doc['report_hash'], 'source_manifest': doc['source_manifest'],
+            'metrics': {row['id']: row['values'][month] for row in doc['lines'] if row['id'].startswith('funding.savings')},
+            'vaults': [row for row in doc.get('spark_savings_ledger', []) if row['month'] == month],
+            'method': 'Drip interest plus closing undripped tail minus opening tail; ETH translated at daily closing prices',
+            'principal_included_in_expense': False})
 
     @app.get('/v3/reporting/portfolio')
     def portfolio(request: Request, prime: str, month: str = Query(pattern=r'^\d{4}-(0[1-9]|1[0-2])$'),

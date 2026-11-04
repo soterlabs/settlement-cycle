@@ -72,7 +72,8 @@ def year_rows(conn, prime, year, *, revisions=None, policy_version=POLICY_VERSIO
                 CASE WHEN result ? 'reporting_only_breakdown' THEN
                     jsonb_path_query_array(result, '$.reporting_only_breakdown[*] ? (@.venue_id == "S70" || @.venue_id == "S71" || @.venue_id == "S24" || @.venue_id == "S25" || @.venue_id == "S61" || @.venue_id == "S62" || @.venue_id == "S66")')
                 ELSE jsonb_path_query_array(result, '$.display_only_breakdown[*] ? (@.venue_id == "S70" || @.venue_id == "S71" || @.venue_id == "S24" || @.venue_id == "S25" || @.venue_id == "S61" || @.venue_id == "S62" || @.venue_id == "S66")') END AS rows,
-                jsonb_path_query_array(result, '$.venue_views.reporting[*] ? (@.venue_id == "S70" || @.venue_id == "S71" || @.venue_id == "S24" || @.venue_id == "S25" || @.venue_id == "S61" || @.venue_id == "S62" || @.venue_id == "S66")') AS views
+                jsonb_path_query_array(result, '$.venue_views.reporting[*] ? (@.venue_id == "S70" || @.venue_id == "S71" || @.venue_id == "S24" || @.venue_id == "S25" || @.venue_id == "S61" || @.venue_id == "S62" || @.venue_id == "S66")') AS views,
+                jsonb_path_query_array(result, '$.venue_views.reporting[*] ? (@.venue_id == "S23" || @.venue_id == "S19" || @.venue_id == "S20" || @.venue_id == "S21" || @.venue_id == "S22")') AS statement_views
                 FROM revenue_results WHERE prime=%s AND revision_id = ANY(%s)''',
                 (prime, [row['source_revision'] for row in rows]))
             sources = {source['revision_id']: source for source in cur.fetchall()}
@@ -82,7 +83,8 @@ def year_rows(conn, prime, year, *, revisions=None, policy_version=POLICY_VERSIO
                     row.update(spark_fee_source_hash=source['result_hash'], spark_fee_source_rows=[r for r in source['rows'] if r.get('venue_id') in ('S70','S71')],
                                spark_amm_source_hash=source['result_hash'],
                                spark_amm_source_rows=[r for r in source['rows'] if r.get('venue_id') in ('S24','S25','S61','S62','S66')],
-                               spark_fee_source_views=source['views'], spark_allocation_rows=source['allocations'])
+                               spark_fee_source_views=source['views'], spark_allocation_rows=source['allocations'],
+                               spark_statement_source_views=source['statement_views'])
         if include_rwa and prime == 'grove' and rows:
             # One extra query in the same repeatable-read transaction. Extract
             # only the two reviewed rows, not entire daily result documents.

@@ -11,22 +11,92 @@ from .verification import canonical, digest
 
 
 def validate_document(document):
-    if document.get('schema_version') != 'spark-onchain.v1' or document['period_start'] != document['cutoff'][:7] + '-01':
-        raise ValueError('Invalid Spark component identity')
-    date.fromisoformat(document['cutoff'])
+    if (
+        document.get("schema_version") != "spark-onchain.v1"
+        or document["period_start"] != document["cutoff"][:7] + "-01"
+    ):
+        raise ValueError("Invalid Spark component identity")
+    date.fromisoformat(document["cutoff"])
     with localcontext() as ctx:
         ctx.prec = 60
-        for row in document.get('curator_fees', {}).values():
-            if row.get('status') in ('available', 'partial'):
-                opening, earned, paid, closing = (number(row[key]) for key in
-                    ('opening_pending_usd', 'accrued_usd', 'received_usd', 'closing_pending_usd'))
+        for row in document.get("curator_fees", {}).values():
+            if row.get("status") in ("available", "partial"):
+                opening, earned, paid, closing = (
+                    number(row[key])
+                    for key in (
+                        "opening_pending_usd",
+                        "accrued_usd",
+                        "received_usd",
+                        "closing_pending_usd",
+                    )
+                )
                 if min(opening, paid, closing) < 0 or opening + earned - paid != closing:
-                    raise ValueError('Unreconciled curator fee ledger')
-        for row in document.get('gains', {}).values():
-            if row.get('status') in ('available', 'partial'):
-                net = number(row['value'])
-                if 'asset_price_gain_usd' in row and abs(number(row['asset_price_gain_usd']) - number(row['depositor_offset_usd']) - net) > Decimal('1e-36'):
-                    raise ValueError('Net gain does not offset depositor liabilities')
+                    raise ValueError("Unreconciled curator fee ledger")
+        from .spark_savings import VAULTS
+
+        expected_assets = dict(
+            zip(VAULTS, ("USDC", "USDT", "WETH", "PYUSD", "USDC", "USDG"), strict=True)
+        )
+        for venue, row in document.get("savings_interest", {}).items():
+            if venue not in expected_assets or row.get("venue") != venue:
+                raise ValueError("Unexpected Savings identity")
+            if row.get("status") in ("available", "partial"):
+                if row.get("asset") != expected_assets[venue]:
+                    raise ValueError("Savings underlying differs from reviewed identity")
+                opening, closing, deposits, withdrawals, interest, rounding = (
+                    number(row[key])
+                    for key in (
+                        "opening_claim_units",
+                        "closing_claim_units",
+                        "deposits_units",
+                        "withdrawals_units",
+                        "interest_units",
+                        "share_rounding_units",
+                    )
+                )
+                if (
+                    min(opening, closing, deposits, withdrawals) < 0
+                    or closing - opening - deposits + withdrawals != interest + rounding
+                ):
+                    raise ValueError("Unreconciled Savings capital/interest bridge")
+                number(row["value"])
+                if row["asset"] != "WETH" and number(row["value"]) != interest:
+                    raise ValueError("Stablecoin interest must be valued at par")
+                if row["asset"] == "WETH":
+                    from datetime import timedelta
+
+                    prices = row["daily_translation"]
+                    start = date.fromisoformat(document["period_start"])
+                    end = date.fromisoformat(row.get("period_end", document["cutoff"]))
+                    expected_days = [
+                        str(start + timedelta(days=i)) for i in range((end - start).days + 1)
+                    ]
+                    if [p["date"] for p in prices] != expected_days or any(
+                        number(p["usd_price"]) <= 0 for p in prices
+                    ):
+                        raise ValueError("ETH Savings translation days are incomplete or invalid")
+                    units = sum((number(p["interest_units"]) for p in prices), Decimal(0))
+                    usd = sum(
+                        (number(p["interest_units"]) * number(p["usd_price"]) for p in prices),
+                        Decimal(0),
+                    )
+                    if units != interest or usd != number(row["value"]):
+                        raise ValueError("ETH Savings translation does not reconcile")
+        for row in document.get("amm_fees", {}).values():
+            if row.get("status") in ("available", "partial") and (
+                number(row["collected_usd"])
+                + number(row["closing_pending_usd"])
+                - number(row["opening_pending_usd"])
+                != number(row["value"])
+            ):
+                raise ValueError("Unreconciled AMM fee accrual")
+        for row in document.get("gains", {}).values():
+            if row.get("status") in ("available", "partial"):
+                net = number(row["value"])
+                if "asset_price_gain_usd" in row and abs(
+                    number(row["asset_price_gain_usd"]) - number(row["depositor_offset_usd"]) - net
+                ) > Decimal("1e-36"):
+                    raise ValueError("Net gain does not offset depositor liabilities")
 
 
 def publish(conn, document, *, code_version, configuration_version):
@@ -65,7 +135,7 @@ def carry_forward(document, previous):
                 'period_end': old.get('period_end', str(previous['cutoff'])),
                 'retained_source_revision': old.get('retained_source_revision', previous['revision_id'])}
     result['reserve_fees'] = retained(result.get('reserve_fees', {}), previous['document'].get('reserve_fees', {}))
-    for family in ('curator_fees', 'gains', 'native_supplies'):
+    for family in ('curator_fees', 'gains', 'native_supplies', 'savings_interest', 'statement_allocations', 'amm_fees'):
         for key, value in result.get(family, {}).items():
             result[family][key] = retained(value, previous['document'].get(family, {}).get(key, {}))
     return result

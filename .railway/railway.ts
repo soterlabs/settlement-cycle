@@ -119,7 +119,7 @@ export default defineRailway(() => {
     replicas: { "us-west2": 1 },
     build,
     deploy: {
-      startCommand: "python -m settle.revenue.spark_reporting_job --from 2026-01-01",
+      startCommand: "python -m settle.revenue.spark_reporting_job",
       cronSchedule: "45 20 * * *",
       restartPolicyType: "NEVER",
     },
@@ -127,7 +127,7 @@ export default defineRailway(() => {
       DATABASE_URL: "${{Postgres.DATABASE_URL}}",
       ...Object.fromEntries([
         "ENVIO_API_TOKEN", "ETH_RPC", "BASE_RPC", "ARBITRUM_RPC",
-        "OPTIMISM_RPC", "UNICHAIN_RPC", "AVALANCHE_C_RPC",
+        "OPTIMISM_RPC", "UNICHAIN_RPC", "AVALANCHE_C_RPC", "ROBINHOOD_RPC",
       ].map((name) => [name, `\${{settle-revenue-spark.${name}}}`])),
       SETTLE_REQUIRE_POSTGRES: "1",
     },
