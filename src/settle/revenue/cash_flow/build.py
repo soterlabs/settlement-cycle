@@ -7,8 +7,6 @@ from decimal import Decimal, localcontext
 
 from .. import financial_store, spark_reporting_store
 from ..financial import statements
-from ..monthly_reports import select as monthly_select
-from ..monthly_reports import table
 from ..verification import digest
 from .classify import cash_metrics, collect_ledger
 from .config import expenses, load
@@ -139,27 +137,20 @@ def build(evidence, income, *, config=None):
         reason="Known depositor interest accrual add-back; other full-cluster noncash adjustments are unresolved",
         refs=savings.get("source_paths", []),
     )
-    published = monthly_select("spark", cutoff.year, cutoff)[cutoff.month - 1]
-    if published:
-        raw = (
-            published["raw_summary"]
-            .split("#### Supply-Side revenue\n", 1)[1]
-            .split("\n#####", 1)[0]
-        )
-        supply = table(raw)["supply-side revenue"]
-        demand = Decimal(published["metrics"]["demand.total"]["value"])
-        metrics["earned-not-received"] = metric(
-            -(supply + demand),
-            complete=False,
-            quality="estimate",
-            recognition="accrual",
-            reason="Retained monthly entitlement; execution true-ups and wider income-scope bridge require reconciliation",
-            refs=[published["source"]["url"]],
-        )
-    else:
-        metrics["earned-not-received"] = metric(
-            reason="Reviewed monthly MSC entitlement not published; cash receipts are independent"
-        )
+    # Gross allocation revenue is not a Sky receivable. Use approved net
+    # entitlements and book separately approved true-ups on their execution date.
+    from .receivable import entitlement
+
+    approved = entitlement(cutoff)
+    metrics["earned-not-received"] = metric(
+        -amount(approved) if amount(approved) is not None else None,
+        complete=False,
+        quality="estimate",
+        recognition="accrual",
+        refs=approved["source_paths"],
+        reason="Known approved net MSC entitlement/true-ups; full net-income receivable bridge remains incomplete",
+    )
+    metrics["earned-not-received"]["approved_msc_component"] = approved
     subtotals(metrics)
     metrics["reconciliation-gap"] = total(
         [
@@ -179,6 +170,7 @@ def build(evidence, income, *, config=None):
                     Decimal(r["amount_usd"])
                     for r in ledger["entries"]
                     if r["line_id"] == "allocation-changes"
+                    or r["id"].endswith(":vault-interest")
                     or (
                         r["line_id"] == "unclassified"
                         and r["reason"].startswith("Allocation redemption")
@@ -217,6 +209,7 @@ def build(evidence, income, *, config=None):
         "cash_event_count": len(entries),
         "dependencies": {
             "income_report_hash": income["report_hash"],
+            "accuracy_source_hash": digest(evidence.get("accuracy")),
             "income_selection": income["selection"],
             "expense_revision": expense_revision,
             "income_actual_cutoff": period.get("actual_cutoff"),
@@ -232,6 +225,8 @@ def build(evidence, income, *, config=None):
             "savings_failures": ledger["savings"]["failures"],
             "unclassified_events": sum(r["line_id"] == "unclassified" for r in entries),
             "classification_complete": False,
+            "allocation_basis_failures": ledger["allocation_failures"],
+            "verified_redemptions": ledger["verified_redemptions"],
         },
         "balance_witnesses": {
             ch: {"pins": s.get("pins"), "balances": s.get("balances", [])}
