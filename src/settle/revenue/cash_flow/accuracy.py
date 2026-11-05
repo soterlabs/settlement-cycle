@@ -189,7 +189,73 @@ def principal_splits(supplement, config, evidence):
                 local = {}
                 seen = set()
                 try:
-                    for e in source["events"]:
+                    rows = sorted(
+                        (e for e in source["events"] if e["address"] == spec["address"]),
+                        key=lambda e: (e["block"], e["log_index"]),
+                    )
+                    by_tx = defaultdict(list)
+                    for row in rows:
+                        by_tx[row["tx_hash"]].append(row)
+                    for e in rows:
+                        kind = e["topic0"]
+                        peers = by_tx[e["tx_hash"]]
+                        if kind == TRANSFER:
+                            sender, receiver = address(e["topic1"]), address(e["topic2"])
+                            units = int(e["data"], 16)
+                            if units and ZERO in (sender, receiver):
+                                semantic = DEPOSIT if sender == ZERO else WITHDRAW
+                                owner = receiver if sender == ZERO else sender
+                                semantic_peers = [
+                                    r
+                                    for r in peers
+                                    if r["topic0"] == semantic
+                                    and address(r["topic2"] if semantic == DEPOSIT else r["topic3"])
+                                    == owner
+                                    and len(r["data"]) == 130
+                                    and int(r["data"][66:], 16) == units
+                                ]
+                                mint_peers = [
+                                    r
+                                    for r in peers
+                                    if r["topic0"] == TRANSFER
+                                    and r["topic1"] == e["topic1"]
+                                    and r["topic2"] == e["topic2"]
+                                    and r["data"] == e["data"]
+                                ]
+                                if len(semantic_peers) != len(mint_peers):
+                                    raise ValueError(
+                                        "Unmatched share mint/burn; fee or missing semantic history requires attribution"
+                                    )
+                        elif kind in (DEPOSIT, WITHDRAW):
+                            if len(e["data"]) != 130:
+                                raise ValueError("Malformed allocation semantic event")
+                            shares = int(e["data"][66:], 16)
+                            owner = address(e["topic2"] if kind == DEPOSIT else e["topic3"])
+                            if shares:
+                                semantics = [
+                                    r
+                                    for r in peers
+                                    if r["topic0"] == kind
+                                    and len(r["data"]) == 130
+                                    and int(r["data"][66:], 16) == shares
+                                    and address(r["topic2"] if kind == DEPOSIT else r["topic3"])
+                                    == owner
+                                ]
+                                mints = [
+                                    r
+                                    for r in peers
+                                    if r["topic0"] == TRANSFER
+                                    and len(r["data"]) == 66
+                                    and int(r["data"], 16) == shares
+                                    and address(r["topic1"] if kind == DEPOSIT else r["topic2"])
+                                    == ZERO
+                                    and address(r["topic2"] if kind == DEPOSIT else r["topic1"])
+                                    == owner
+                                ]
+                                if len(semantics) != len(mints):
+                                    raise ValueError(
+                                        "Allocation semantic event lacks matching share mint/burn history"
+                                    )
                         if e["address"] != spec["address"]:
                             continue
                         if e["chain"] != chain or e["block"] > source["block"]:
@@ -255,5 +321,9 @@ def principal_splits(supplement, config, evidence):
                                 }
                     result.update(local)
                 except (ValueError, KeyError, IndexError, TypeError) as exc:
+                    # Later unknown acquisitions cannot invalidate earlier,
+                    # independently verified redemptions. Never promote beyond
+                    # the first incomplete basis witness.
+                    result.update(local)
                     failures[chain + ":" + spec["venue"]] = str(exc)
     return result, failures

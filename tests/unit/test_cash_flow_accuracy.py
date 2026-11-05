@@ -23,11 +23,20 @@ def sample():
         v["address"] = spec["address"]
         return v
 
+    zero = "0x" + "0" * 40
     history = [
-        e(1, DEPOSIT, 100_000000, 100),
-        e(2, TRANSFER, 50, src=a, dst=b),
-        e(3, WITHDRAW, 60_000000, 50, src=b, dst=b, owner=b),
+        e(1, TRANSFER, 100, src=zero, dst=a),
+        e(2, DEPOSIT, 100_000000, 100),
+        e(3, TRANSFER, 50, src=a, dst=b),
+        e(4, TRANSFER, 50, src=b, dst=zero),
+        e(5, WITHDRAW, 60_000000, 50, src=b, dst=b, owner=b),
     ]
+    history[0]["block"] = history[1]["block"]
+    history[1]["log_index"] = 1
+    history[3]["block"] = history[4]["block"]
+    history[4]["log_index"] = 2
+    history[0]["tx_hash"] = history[1]["tx_hash"]
+    history[3]["tx_hash"] = history[4]["tx_hash"]
     supplement = {
         "schema_version": SCHEMA,
         "configuration_revision": c["revision"],
@@ -59,6 +68,7 @@ def test_redemption_principal_follows_owned_share_transfers_and_cash_yield_is_se
     transfer = deepcopy(extra["chains"]["ethereum"]["events"][-1])
     transfer.update(
         address=spec["asset"],
+        log_index=1,
         topic0=TRANSFER,
         topic1=topic(spec["address"]),
         topic2=topic(b),
@@ -77,7 +87,7 @@ def test_redemption_principal_follows_owned_share_transfers_and_cash_yield_is_se
 
 def test_unknown_external_shares_fail_closed_without_certifying_redemptions():
     c, _spec, _a, _b, extra, ev = sample()
-    extra["chains"]["ethereum"]["events"][1]["topic1"] = topic("0x" + "9" * 40)
+    extra["chains"]["ethereum"]["events"][2]["topic1"] = topic("0x" + "9" * 40)
     split, failures = principal_splits(extra, c, ev)
     assert not split and failures
     changed = deepcopy(extra)
@@ -120,3 +130,16 @@ def test_msc_receivable_uses_net_entitlement_and_explicit_correction_periods():
     assert oct["status"] == "partial" and oct["known_value"] == "2392355"
     assert entitlement(date(2026, 10, 1))["status"] == "unavailable"
     assert entitlement(date(2026, 11, 4))["status"] == "unavailable"
+
+
+def test_fee_share_mints_and_truncated_semantic_histories_never_certify_a_basis():
+    c, _spec, _a, _b, extra, ev = sample()
+    broken = deepcopy(extra)
+    broken["chains"]["ethereum"]["events"].pop(0)
+    assert principal_splits(broken, c, ev)[1]
+    broken = deepcopy(extra)
+    fee = deepcopy(broken["chains"]["ethereum"]["events"][0])
+    fee.update(log_index=999, tx_hash="0x" + "7" * 64)
+    broken["chains"]["ethereum"]["events"].append(fee)
+    split, failures = principal_splits(broken, c, ev)
+    assert not split and any("fee or missing" in r for r in failures.values())
