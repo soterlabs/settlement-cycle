@@ -303,3 +303,49 @@ See [Grove archive income](../api-grove-archive-income.md) for monthly historica
 returns, receipt recognition, nominal USD valuations and non-additive Merkl scenarios.
 The default switches to v3.5 after the compatible client deploys; older report
 selections, MSC settlement calculations and saved daily documents remain unchanged.
+
+## Spark receipt-month daily allocation
+
+`GET /v3/reporting/receipt-allocation?prime=spark&month=2026-10`
+
+Optional `stream=investment.anchorage` selects one leaf metric. Optional
+`revision=SELECTION` freezes the same sources and cutoff as a saved statement.
+The projection policy is `spark.receipt-month-allocation.v1`; the underlying
+statement policy and `source_report_hash` are returned separately. Existing
+monthly statement responses, their hashes, actual payments, MSC calculations
+and the dashboard are unchanged. This read-only route makes no provider calls
+and requires no source replay or backfill.
+
+Streams are disjoint leaves: Anchorage interest receipts after principal
+exclusions; USDG issuer incentives; seven SparkLend reserve-treasury fee streams;
+external rewards for the seven configured Aave markets; and unattributed
+SparkLend receipts. Parent subtotals are excluded to prevent double counting.
+BUIDL's dormant zero is included, but a future nonzero generic
+`investment_return` is **not** assumed to be cash: explicit receipt recognition
+is required. Native lending/vault yield, RLUSD/PYUSD accrued incentives and
+Morpho curator accruals are not smoothed.
+
+Each stream includes:
+
+- `source_monthly_metric`: the unchanged original metric and its source references.
+- `monthly_receipts`: the cash amount being allocated, preserving partial and
+  unavailable states. Unclassified nonzero returns are unavailable here.
+- `daily`: one metric per completed UTC day in the selected month. Divide the
+  amount evenly across the observed receipt period, using exact decimal strings
+  and assigning only the subprecision remainder to the last observed day.
+- `allocated_through`, `allocated_days`, and `allocation_status`: actual source
+  coverage. A source ending November 3 is spread across November 1–3, with
+  November 4 unavailable if that is the report's expected cutoff. No future
+  days or missing amounts become forecast zeroes.
+- `actual_receipts`: the original dated income-only receipts where retained
+  evidence reconciles to the selected amount (currently the independent
+  Anchorage ledger). Capital is excluded. Where dates are not retained, this
+  is explicitly unavailable with `rows: null`; a monthly amount never proves
+  a payment date. Existing source records are not rewritten.
+
+Allocated daily values always have `quality: estimate`, retain receipt
+recognition, and declare `true_accrual: false`. This is a daily presentation of
+received cash, **not** an estimate of unpaid earned income. Monthly totals do
+not change. Later MTD receipts redistribute the current month's daily estimate;
+retain a `selection` to reproduce an earlier snapshot exactly. The endpoint
+supports ETags and returns a separate `projection_hash`.

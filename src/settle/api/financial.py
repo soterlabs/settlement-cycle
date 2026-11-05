@@ -93,6 +93,25 @@ def register_financial(app, get_reader, document_response):
             raise HTTPException(422, 'Monthly Spark components require the Spark income reporting policy')
         return doc
 
+    @app.get('/v3/reporting/receipt-allocation')
+    def receipt_allocation(request: Request, prime: str,
+                           month: str = Query(pattern=r'^\d{4}-(0[1-9]|1[0-2])$'),
+                           stream: str | None = None,
+                           revision: str | None = Query(None, max_length=4096),
+                           r=Depends(get_reader)):  # noqa: B008
+        from ..revenue.receipt_allocation import STREAMS, project
+        if stream is not None and stream not in STREAMS:
+            raise HTTPException(404, 'Unknown receipt stream')
+        doc = component_month(prime, month, revision, r)
+        selection = decode_selection(doc['selection'], prime, int(month[:4]))
+        ref = selection['offchain_revisions'][int(month[5:]) - 1]
+        components = read(r.spark_component_year, int(month[:4]), revisions=[ref]) if ref and hasattr(r, 'spark_component_year') else []
+        try:
+            result = project(doc, month, stream, components=components)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from None
+        return document_response(request, result)
+
     @app.get('/v3/reporting/fees')
     def fees(request: Request, prime: str, month: str = Query(pattern=r'^\d{4}-(0[1-9]|1[0-2])$'),
              venue: str | None = None, revision: str | None = Query(None, max_length=4096),

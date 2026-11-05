@@ -99,3 +99,56 @@ def test_amm_projection_reads_pinned_source_and_never_mutates_msc(database, monk
             retained=client.get('/v3/reporting/amms',params={**query,'revision':result['selection']}).json()
             assert retained['metrics'][key]['known_value']=='10'
             assert client.get('/v3/reporting/amms',params={**query,'venue':'S1'}).status_code==404
+
+
+def test_receipt_month_allocation_is_read_only_pinned_and_separate_from_accrued_supply(database, monkeypatch):  # noqa: F811
+    from decimal import Decimal, localcontext
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Receipt projections cannot call providers')
+
+    monkeypatch.setattr('requests.Session.send', forbidden)
+    base = example()
+    rows = [dict(venue_id=f'S{i}', pricing_category='C', sd_share='0', external_revenue='31',
+                 revenue='131', value_som='1000', value_eom='1100') for i in range(1, 6)]
+    pnl = SparkPnl('spark', base.period, base.pin_blocks_som, venue_breakdown=rows)
+    versions = store.Versions('receipt-allocation-test',
+        'da77310707751cae619941f4a35e937d8f880167b5af57a58ae5db20376c7067', 'first')
+    with psycopg.connect(database, autocommit=True) as conn:
+        store.apply_schema(conn)
+        first = store.publish(conn, pnl, versions)
+        assert financial_store.publish_revision(conn, 'spark', first) == 'succeeded'
+        original = store.read(conn, 'spark')
+    with ConnectionPool(database, min_size=1, max_size=2) as pool:
+        with TestClient(create_app(reader=PostgresReader(pool, {}, [], 0))) as client:
+            params = {'prime': 'spark', 'month': f'{pnl.as_of:%Y-%m}', 'stream': 'rewards.lending.sparklend.usds'}
+            before = client.get('/v3/reporting/statements', params={'prime': 'spark', 'year': pnl.as_of.year}).json()
+            response = client.get('/v3/reporting/receipt-allocation', params=params)
+            assert response.status_code == 200, response.text
+            result = response.json()
+            row = result['streams'][0]
+            assert row['monthly_receipts']['value'] == '31'
+            with localcontext() as ctx:
+                ctx.prec = 100
+                assert sum(Decimal(d['value']) for d in row['daily']) == 31
+            assert all(d['quality'] == 'estimate' for d in row['daily'])
+            assert all(d['recognition'] == 'receipt_in_kind' for d in row['daily'])
+            assert row['actual_receipts']['rows'] is None
+            assert result['true_accrual'] is False and result['principal_included'] is False
+            assert client.get('/v3/reporting/receipt-allocation', params=params,
+                              headers={'If-None-Match': response.headers['etag']}).status_code == 304
+            assert client.get('/v3/reporting/statements', params={'prime': 'spark', 'year': pnl.as_of.year}).json() == before
+            with psycopg.connect(database, autocommit=True) as conn:
+                assert store.read(conn, 'spark') == original
+                assert conn.execute('SELECT COUNT(*) FROM revenue_results').fetchone()[0] == 1
+                assert conn.execute('SELECT COUNT(*) FROM reporting_financial_results').fetchone()[0] == 1
+                corrected = store.publish(conn, replace(pnl, venue_breakdown=[{**r, 'external_revenue':'62', 'revenue':'162'} for r in rows]),
+                                          replace(versions, inputs='corrected'))
+                assert financial_store.publish_revision(conn, 'spark', corrected) == 'succeeded'
+            current = client.get('/v3/reporting/receipt-allocation', params=params).json()
+            assert current['streams'][0]['monthly_receipts']['value'] == '62'
+            pinned = client.get('/v3/reporting/receipt-allocation', params={**params, 'revision': result['selection']}).json()
+            assert pinned.pop('source_lag_periods') == [str(pnl.as_of)]
+            assert pinned == {k: v for k, v in result.items() if k != 'source_lag_periods'}
+            assert client.get('/v3/reporting/receipt-allocation', params={**params, 'stream':'fees.curator'}).status_code == 404
+            assert client.get('/v3/reporting/receipt-allocation', params={**params, 'prime':'grove'}).status_code == 422

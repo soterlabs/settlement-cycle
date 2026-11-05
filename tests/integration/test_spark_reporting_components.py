@@ -108,3 +108,42 @@ def test_savings_expense_is_published_once_and_pins_replay(database, monkeypatch
             assert pinned["report_hash"] == doc["report_hash"]
     with psycopg.connect(database, autocommit=True) as conn:
         assert conn.execute("SELECT count(*) FROM revenue_results").fetchone()[0] == 0
+
+
+def test_receipt_allocation_preserves_anchorage_payment_dates_from_selected_reporting_source(database, monkeypatch):  # noqa: F811
+    from decimal import Decimal
+    monkeypatch.setattr("settle.api.revenue.today", lambda: date(2026, 11, 2))
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Receipt dates must come from saved reporting inputs")
+
+    monkeypatch.setattr("requests.Session.send", forbidden)
+    original = supplement("2026-10-31")["document"]
+    original["statement_allocations"] = {"anchorage.receipts": {
+        "status": "available", "value": "310", "quality": "supported", "recognition": "receipt",
+        "basis": "verified_interest_receipts_excluding_principal",
+        "daily_receipts": [{"date": "2026-10-31", "day_net_received_usd": "1000310", "principal_excluded_usd": "1000000", "income_usd": "310"}],
+    }}
+    with psycopg.connect(database, autocommit=True) as conn:
+        store.apply_schema(conn)
+        source = spark_reporting_store.publish(conn, original, code_version="test", configuration_version="test")
+    with ConnectionPool(database, min_size=1, max_size=2) as pool:
+        with TestClient(create_app(reader=PostgresReader(pool, {}, [], 0))) as client:
+            params = {"prime": "spark", "month": "2026-10", "stream": "investment.anchorage"}
+            response = client.get("/v3/reporting/receipt-allocation", params=params)
+            assert response.status_code == 200, response.text
+            data = response.json(); row = data["streams"][0]
+            assert row["actual_receipts"] == {"status": "available", "source_ref": source, "rows": [{"date": "2026-10-31", "income_usd": "310"}]}
+            assert all(Decimal(d["value"]) == 10 for d in row["daily"])
+            assert data["source_manifest"][source]["kind"] == "spark_onchain_components"
+            with psycopg.connect(database, autocommit=True) as conn:
+                original["statement_allocations"]["anchorage.receipts"]["value"] = "620"
+                original["statement_allocations"]["anchorage.receipts"]["daily_receipts"][0]["income_usd"] = "620"
+                spark_reporting_store.publish(conn, original, code_version="test", configuration_version="test")
+            live = client.get("/v3/reporting/receipt-allocation", params=params).json()
+            assert live["streams"][0]["monthly_receipts"]["value"] == "620"
+            retained = client.get("/v3/reporting/receipt-allocation", params={**params,"revision":data["selection"]}).json()
+            assert retained == data
+    with psycopg.connect(database, autocommit=True) as conn:
+        assert conn.execute("SELECT count(*) FROM revenue_results").fetchone()[0] == 0
+        assert conn.execute("SELECT count(*) FROM reporting_financial_results").fetchone()[0] == 0
