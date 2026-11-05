@@ -2,7 +2,7 @@
 from datetime import date, timedelta
 from typing import Literal
 
-from fastapi import Depends, HTTPException, Query, Request
+from fastapi import Depends, HTTPException, Query, Request, Response
 
 from ..revenue.financial import (
     MONTHLY_STATEMENT_POLICIES,
@@ -110,7 +110,16 @@ def register_financial(app, get_reader, document_response):
             result = project(doc, month, stream, components=components)
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from None
-        return document_response(request, result)
+        response = document_response(request, result)
+        # Compression proxies may weaken a strong ETag. GET validators use
+        # weak comparison; keep this scoped to the new reporting projection.
+        tag = response.headers.get('etag')
+        supplied = request.headers.get('if-none-match', '').strip()
+        if (response.status_code == 200 and tag and (supplied == '*' or
+                tag in [item.strip().removeprefix('W/') for item in supplied.split(',')])):
+            return Response(status_code=304, headers={
+                'ETag': tag, 'Cache-Control': response.headers['cache-control']})
+        return response
 
     @app.get('/v3/reporting/fees')
     def fees(request: Request, prime: str, month: str = Query(pattern=r'^\d{4}-(0[1-9]|1[0-2])$'),
