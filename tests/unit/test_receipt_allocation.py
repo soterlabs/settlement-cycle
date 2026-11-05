@@ -35,7 +35,7 @@ def total(rows):
         return sum((Decimal(r["value"] if r["value"] is not None else r["known_value"]) for r in rows), Decimal(0))
 
 
-@pytest.mark.parametrize("amount", ["100.01", "-0.01", "0", "1E-30", "9007199254740993.123456789012345678901234567890123456789"])
+@pytest.mark.parametrize("amount", ["100.01", "-0.01", "0", "1E-30", "1E+100", "9007199254740993.123456789012345678901234567890123456789"])
 def test_equal_calendar_days_preserve_exact_signed_amount_and_subcent_precision(amount):
     rows = equal_days(Decimal(amount), 31)
     with localcontext() as ctx:

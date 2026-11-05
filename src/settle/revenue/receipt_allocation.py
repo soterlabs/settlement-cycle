@@ -39,7 +39,7 @@ STREAMS = {
 def equal_days(amount, count):
     """Exact decimal allocation; put only the subprecision residual on last day."""
     exponent = min(-18, amount.as_tuple().exponent - 18)
-    precision = max(80, len(amount.as_tuple().digits) + abs(exponent) + 20)
+    precision = max(80, len(amount.as_tuple().digits) + max(amount.as_tuple().exponent, 0) + abs(exponent) + 20)
     with localcontext() as ctx:
         ctx.prec = precision
         units = int(abs(amount).scaleb(-exponent))
