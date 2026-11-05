@@ -51,11 +51,13 @@ def equal_days(amount, count):
 
 def coverage_end(cell, document, month, expected):
     end = cell.get("period_end")
+    refs = [*cell.get("source_refs", []), cell.get("source_ref")]
+    ends = [document["source_manifest"][ref]["cutoff"] for ref in refs
+            if ref in document["source_manifest"]]
     if end is None:
-        refs = [*cell.get("source_refs", []), cell.get("source_ref")]
-        ends = [document["source_manifest"][ref]["cutoff"] for ref in refs
-                if ref in document["source_manifest"]]
         end = min(ends) if ends else None
+    elif ends and end > min(ends):
+        return None
     if end is None:
         return None
     try:
@@ -72,7 +74,8 @@ def dated_receipts(key, monthly, components, start, end):
     for publication in components:
         source = publication["document"].get("statement_allocations", {}).get("anchorage.receipts", {})
         rows = source.get("daily_receipts")
-        if not isinstance(rows, list) or source.get("period_end", publication["cutoff"]) != str(end):
+        if (source.get("status") not in ("available", "partial") or not isinstance(rows, list)
+                or source.get("period_end", publication["cutoff"]) != str(end)):
             continue
         try:
             parsed = [{"date": row["date"], "income_usd": str(number(row["income_usd"]))} for row in rows]

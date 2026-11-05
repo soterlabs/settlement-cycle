@@ -85,7 +85,7 @@ def test_missing_cash_is_not_zero_and_missing_coverage_is_not_assumed():
 
 def test_original_payment_day_is_preserved_separately_and_principal_is_never_spread():
     d = report(**{"investment.anchorage": cash("310")})
-    pub = {"revision_id": "receipt-source", "cutoff": "2026-10-31", "document": {"statement_allocations": {"anchorage.receipts": {"daily_receipts": [{"date": "2026-10-31", "day_net_received_usd": "1000310", "principal_excluded_usd": "1000000", "income_usd": "310"}]}}}}
+    pub = {"revision_id": "receipt-source", "cutoff": "2026-10-31", "document": {"statement_allocations": {"anchorage.receipts": {"status": "available", "daily_receipts": [{"date": "2026-10-31", "day_net_received_usd": "1000310", "principal_excluded_usd": "1000000", "income_usd": "310"}]}}}}
     row = project(d, "2026-10", "investment.anchorage", components=[pub])["streams"][0]
     assert row["actual_receipts"]["rows"] == [{"date": "2026-10-31", "income_usd": "310"}]
     assert total(row["daily"]) == 310
@@ -112,3 +112,21 @@ def test_unknown_stream_and_future_selected_period_are_rejected():
         project(d, "2026-10", "fees.curator")
     with pytest.raises(ValueError, match="does not cover"):
         project(d, "2026-11")
+
+
+@pytest.mark.parametrize("month,end,days", [("2026-02", "2026-02-28", 28), ("2026-04", "2026-04-30", 30)])
+def test_full_month_uses_actual_calendar_length(month, end, days):
+    d = report(month, end, **{"investment.anchorage": cash(str(days), end=end)})
+    row = project(d, month, "investment.anchorage")["streams"][0]
+    assert row["allocated_days"] == days and len(row["daily"]) == days
+    assert all(Decimal(c["value"]) == 1 for c in row["daily"])
+
+
+def test_claimed_coverage_beyond_source_cutoff_is_not_allocated():
+    c = cash("30", end="2026-11-04")
+    c["source_ref"] = "receipt-source"
+    d = report("2026-11", "2026-11-04", **{"investment.anchorage": c})
+    d["source_manifest"]["receipt-source"]["cutoff"] = "2026-11-03"
+    row = project(d, "2026-11", "investment.anchorage")["streams"][0]
+    assert row["allocated_days"] == 0
+    assert all(c["value"] is None for c in row["daily"])
