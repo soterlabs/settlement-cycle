@@ -43,6 +43,8 @@ from .. import __version__ as SETTLE_VERSION
 from ..compute.tmf import parse_ts
 from ..compute.tmf_history import burn_kind, dec_str, iso_ts
 from ..domain.tmf import SbeKick, SbeParamChange, SkyBurn
+from .cash_flow import CashFlowReaderMixin
+from .cash_flow import register as register_cash_flow
 from .allocations import AllocationReaderMixin
 from .allocations import register as register_allocations
 from .revenue import RevenueReaderMixin
@@ -83,7 +85,7 @@ class Reader(Protocol):
     def close(self) -> None: ...
 
 
-class PostgresReader(RevenueReaderMixin, AllocationReaderMixin):
+class PostgresReader(RevenueReaderMixin, AllocationReaderMixin, CashFlowReaderMixin):
     def __init__(self, pool: Any, contracts: dict[str, str], notes: list[str],
                  tmf_effective_from: int) -> None:
         self._pool = pool
@@ -270,6 +272,7 @@ def create_app(reader: Reader | None = None) -> FastAPI:
             raise HTTPException(503, "Store unavailable", headers={"Cache-Control": "no-store"}) from None
         yield reader
 
+    register_cash_flow(app, get_reader, _document_response)
     register_revenue(app, get_reader, _document_response)
     register_allocations(app, get_reader, _document_response)
 

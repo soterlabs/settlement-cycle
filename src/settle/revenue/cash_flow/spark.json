@@ -1,0 +1,1078 @@
+{
+  "policy": "spark-cash-flow.events.v1",
+  "prime": "spark",
+  "year": 2026,
+  "workbook_sha256": "c637a33351faa88360c5f7d6d1582bb21e4311769cd1a605ef036f728aa488ef",
+  "wallets": {
+    "ethereum": {
+      "0x3300f198988e4c9c63f75df86de36421f06af8c4": {
+        "label": "Spark SubProxy",
+        "role": "wallet"
+      },
+      "0x1601843c5e9bc251a3272907010afa41fa18347e": {
+        "label": "Spark ALM Proxy",
+        "role": "wallet"
+      },
+      "0x8d719a830b00e5571db00d173505cd56c0ec224a": {
+        "label": "Spark spUSDC PAU ALM Proxy",
+        "role": "wallet"
+      },
+      "0xe5c6318456a7cb6f74f93b4eee4616db5fcef699": {
+        "label": "Spark ALM Proxy (freezable)",
+        "role": "wallet"
+      },
+      "0x92e4629a4510af5819d7d1601464c233599ff5ec": {
+        "label": "Spark Foundation",
+        "role": "wallet"
+      },
+      "0xeabcb8c0346ac072437362f1692706ba5768a911": {
+        "label": "Spark Assets Foundation",
+        "role": "wallet"
+      },
+      "0x19891541842162ad4311f14055e7221406213d67": {
+        "label": "Spark DevCo (Phoenix Labs)",
+        "role": "wallet"
+      },
+      "0x2e1b01adabb8d4981863394bea23a1263cbaedfc": {
+        "label": "Spark ALM Ops Multisig",
+        "role": "wallet"
+      },
+      "0x797b010e0babb493b8dedd6f6ce5cc72778c2bf3": {
+        "label": "Spark Buyback Multisig",
+        "role": "wallet"
+      },
+      "0x6fe588fdcc6a34207485cc6e47673f59ccedf92b": {
+        "label": "Spark SPK Airdrop, Rewards, & MM",
+        "role": "wallet"
+      },
+      "0xeff097c5cc7f63e9537188fe381d1360158c1511": {
+        "label": "Spark SPK Vesting Multisig",
+        "role": "wallet"
+      },
+      "0x46dce51a3f4cbea91f3a1bbd48ca5079397d5847": {
+        "label": "Spark SPK Long-term Treasury",
+        "role": "wallet"
+      },
+      "0x089693ed9d9a5ac907bd1a1565867646ffaabcd6": {
+        "label": "Spark SPK Mid-term Treasury",
+        "role": "wallet"
+      },
+      "0x7a27a9f2a823190140cfb4027f4fbbfa438bac79": {
+        "label": "Spark SPK Bridging & Staking Multisig",
+        "role": "wallet"
+      },
+      "0xf649956f43825d4d7295a50eddbe1edc814a3a83": {
+        "label": "Spark Rewards Multisig",
+        "role": "wallet"
+      },
+      "0x8076807464dac94ac8aa1f7af31b58f73bd88a27": {
+        "label": "SparkLend Rewards Multisig",
+        "role": "wallet"
+      },
+      "0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d": {
+        "label": "spUSDC vault, idle balance",
+        "role": "savings_idle"
+      },
+      "0xe2e7a17dff93280dec073c995595155283e3c372": {
+        "label": "spUSDT vault, idle balance",
+        "role": "savings_idle"
+      },
+      "0x80128dbb9f07b93dde62a6daeadb69ed14a7d354": {
+        "label": "spPYUSD vault, idle balance",
+        "role": "savings_idle"
+      },
+      "0x592b7db9906e6f8924c4d74c2a0ab86ce44fdddf": {
+        "label": "Savings Vault Intents",
+        "role": "intents"
+      }
+    },
+    "base": {
+      "0x2917956eff0b5eaf030abdb4ef4296df775009ca": {
+        "label": "Spark ALM Proxy",
+        "role": "wallet"
+      },
+      "0x92d7b06e5844e67174ae9e86bdcb06428482ddf9": {
+        "label": "Spark ALM Proxy (freezable)",
+        "role": "wallet"
+      },
+      "0x2e1b01adabb8d4981863394bea23a1263cbaedfc": {
+        "label": "Spark ALM Ops Multisig",
+        "role": "wallet"
+      },
+      "0xf649956f43825d4d7295a50eddbe1edc814a3a83": {
+        "label": "Spark Rewards Multisig",
+        "role": "wallet"
+      }
+    },
+    "arbitrum": {
+      "0x92afd6f2385a90e44da3a8b60fe36f6cbe1d8709": {
+        "label": "Spark ALM Proxy",
+        "role": "wallet"
+      },
+      "0x4ee67c8db1baa6dde99d936c7d313b5d31e8fa38": {
+        "label": "Spark ALM Proxy (freezable)",
+        "role": "wallet"
+      },
+      "0xf649956f43825d4d7295a50eddbe1edc814a3a83": {
+        "label": "Spark Rewards Multisig",
+        "role": "wallet"
+      }
+    },
+    "optimism": {
+      "0x876664f0c9ff24d1aa355ce9f1680ae1a5bf36fb": {
+        "label": "Spark ALM Proxy",
+        "role": "wallet"
+      },
+      "0xf649956f43825d4d7295a50eddbe1edc814a3a83": {
+        "label": "Spark Rewards Multisig",
+        "role": "wallet"
+      }
+    },
+    "unichain": {
+      "0x345e368fccd62266b3f5f37c9a131fd1c39f5869": {
+        "label": "Spark ALM Proxy",
+        "role": "wallet"
+      }
+    },
+    "avalanche_c": {
+      "0xece6b0e8a54c2f44e066fbb9234e7157b15b7fec": {
+        "label": "Spark ALM Proxy",
+        "role": "wallet"
+      },
+      "0x93c81adc7f98fdbc8c7a15ecbed312c8f6adbcb3": {
+        "label": "Spark ALM Proxy (freezable)",
+        "role": "wallet"
+      },
+      "0x2e1b01adabb8d4981863394bea23a1263cbaedfc": {
+        "label": "Spark ALM Ops Multisig",
+        "role": "wallet"
+      },
+      "0xf649956f43825d4d7295a50eddbe1edc814a3a83": {
+        "label": "Spark Rewards Multisig",
+        "role": "wallet"
+      },
+      "0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d": {
+        "label": "spUSDC vault (Avalanche), idle balance",
+        "role": "savings_idle"
+      }
+    },
+    "xlayer": {
+      "0x83a914c361bb729eb6bebc8c7ba993667a0e6df8": {
+        "label": "Spark ALM Proxy",
+        "role": "wallet"
+      },
+      "0xe6d5d041fc5e7fdd0a53c13e78a1cc7e4ffcb667": {
+        "label": "Spark spUSDC PAU ALM Proxy",
+        "role": "wallet"
+      },
+      "0x9449ed367c60ea757544fd990b57e1c2d0ec3a94": {
+        "label": "Spark ALM Proxy (freezable)",
+        "role": "wallet"
+      }
+    },
+    "robinhood": {
+      "0xfd2fd4b046136b540a56c11c75ac679ae7d1db24": {
+        "label": "Spark ALM Proxy",
+        "role": "wallet"
+      },
+      "0xaea9f5de56e6c20383a1fcc2c3629dca0a92ce41": {
+        "label": "Spark ALM Proxy (freezable)",
+        "role": "wallet"
+      },
+      "0xde770c84fe66e063336b31737cfe9790f18c4087": {
+        "label": "spUSDG vault, idle balance",
+        "role": "savings_idle"
+      }
+    },
+    "bsc": {
+      "0x7a27a9f2a823190140cfb4027f4fbbfa438bac79": {
+        "label": "Spark SPK Bridging & Staking Multisig",
+        "role": "wallet"
+      }
+    },
+    "gnosis": {
+      "0xf649956f43825d4d7295a50eddbe1edc814a3a83": {
+        "label": "Spark Rewards Multisig",
+        "role": "wallet"
+      }
+    }
+  },
+  "tokens": {
+    "ethereum": {
+      "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48": {
+        "symbol": "USDC",
+        "decimals": 6,
+        "cash": true
+      },
+      "0xdc035d45d973e3ec169d2276ddab16f1e407384f": {
+        "symbol": "USDS",
+        "decimals": 18,
+        "cash": true
+      },
+      "0x6b175474e89094c44da98b954eedeac495271d0f": {
+        "symbol": "DAI",
+        "decimals": 18,
+        "cash": true
+      },
+      "0xdac17f958d2ee523a2206206994597c13d831ec7": {
+        "symbol": "USDT",
+        "decimals": 6,
+        "cash": true
+      },
+      "0x6c3ea9036406852006290770bedfcaba0e23a0e8": {
+        "symbol": "PYUSD",
+        "decimals": 6,
+        "cash": false
+      },
+      "0x8292bb45bf1ee4d140127049757c2e0ff06317ed": {
+        "symbol": "RLUSD",
+        "decimals": 18,
+        "cash": false
+      },
+      "0x00000000efe302beaa2b3e6e1b18d08d69a9012a": {
+        "symbol": "AUSD",
+        "decimals": 6,
+        "cash": false
+      },
+      "0x4c9edd5852cd905f086c759e8383e09bff1e68b3": {
+        "symbol": "USDe",
+        "decimals": 18,
+        "cash": false
+      },
+      "0xc02ab1a5eaa8d1b114ef786d9bde108cd4364359": {
+        "symbol": "spUSDS",
+        "decimals": 18,
+        "cash": false
+      },
+      "0x377c3bd93f2a2984e1e7be6a5c22c525ed4a4815": {
+        "symbol": "spUSDC",
+        "decimals": 6,
+        "cash": false
+      },
+      "0xe7df13b8e3d6740fe17cbe928c7334243d86c92f": {
+        "symbol": "spUSDT",
+        "decimals": 6,
+        "cash": false
+      },
+      "0x4dedf26112b3ec8ec46e7e31ea5e123490b05b8b": {
+        "symbol": "spDAI",
+        "decimals": 18,
+        "cash": false
+      },
+      "0x779224df1c756b4edd899854f32a53e8c2b2ce5d": {
+        "symbol": "spPYUSD",
+        "decimals": 6,
+        "cash": false
+      },
+      "0x09aa30b182488f769a9824f15e6ce58591da4781": {
+        "symbol": "aEthLidoUSDS",
+        "decimals": 18,
+        "cash": false
+      },
+      "0x32a6268f9ba3642dda7892add74f1d34469a4259": {
+        "symbol": "aEthUSDS",
+        "decimals": 18,
+        "cash": false
+      },
+      "0x98c23e9d8f34fefb1b7bd6a91b7ff122f4e16f5c": {
+        "symbol": "aEthUSDC",
+        "decimals": 6,
+        "cash": false
+      },
+      "0x23878914efe38d27c4d67ab83ed1b93a74d4086a": {
+        "symbol": "aEthUSDT",
+        "decimals": 6,
+        "cash": false
+      },
+      "0x56a76b428244a50513ec81e225a293d128fd581d": {
+        "symbol": "sparkUSDCbc",
+        "decimals": 18,
+        "cash": false
+      },
+      "0xc7cdcfdefc64631ed6799c95e3b110cd42f2bd22": {
+        "symbol": "sparkUSDTbc",
+        "decimals": 18,
+        "cash": false
+      },
+      "0xb0c424116172b55cbb6dd3136f5989f7959e5b91": {
+        "symbol": "sparkUSDTbc",
+        "decimals": 18,
+        "cash": false
+      },
+      "0x73e65dbd630f90604062f6e02fab9138e713edd9": {
+        "symbol": "spDAI-morpho",
+        "decimals": 18,
+        "cash": false
+      },
+      "0xe41a0583334f0dc4e023acd0bfef3667f6fe0597": {
+        "symbol": "sparkUSDS",
+        "decimals": 18,
+        "cash": false
+      },
+      "0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b": {
+        "symbol": "syrupUSDC",
+        "decimals": 6,
+        "cash": false
+      },
+      "0x356b8d89c1e1239cbbb9de4815c39a1474d5ba7d": {
+        "symbol": "syrupUSDT",
+        "decimals": 6,
+        "cash": false
+      },
+      "0x9d39a5de30e57443bff2a8307a4256c8797a3497": {
+        "symbol": "sUSDe",
+        "decimals": 18,
+        "cash": false
+      },
+      "0x2bbe31d63e6813e3ac858c04dae43fb2a72b0d11": {
+        "symbol": "fsUSDS",
+        "decimals": 18,
+        "cash": false
+      },
+      "0x38464507e02c983f20428a6e8566693fe9e422a9": {
+        "symbol": "sparkPrimeUSDC1",
+        "decimals": 6,
+        "cash": false
+      },
+      "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041": {
+        "symbol": "BUIDL-I",
+        "decimals": 6,
+        "cash": false
+      },
+      "0x8c213ee79581ff4984583c6a801e5263418c4b86": {
+        "symbol": "JTRSY",
+        "decimals": 6,
+        "cash": false
+      },
+      "0x43415eb6ff9db7e26a15b704e7a3edce97d31c4e": {
+        "symbol": "USTB",
+        "decimals": 6,
+        "cash": false
+      },
+      "0x14d60e7fdc0d71d8611742720e4c50e7a974020c": {
+        "symbol": "USCC",
+        "decimals": 6,
+        "cash": false
+      },
+      "0x00836fe54625be242bcfa286207795405ca4fd10": {
+        "symbol": "sUSDSUSDT",
+        "decimals": 18,
+        "cash": false
+      },
+      "0xa632d59b9b804a956bfaa9b48af3a1b74808fc1f": {
+        "symbol": "PYUSDUSDS",
+        "decimals": 18,
+        "cash": false
+      },
+      "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e": {
+        "symbol": "UNIV4-RLUSD/USDS",
+        "decimals": 18,
+        "cash": false
+      },
+      "0xa3931d71877c0e7a3148cb7eb4463524fec27fbd": {
+        "symbol": "sUSDS",
+        "decimals": 18,
+        "cash": false
+      },
+      "0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d": {
+        "symbol": "spUSDC",
+        "decimals": 6,
+        "cash": false
+      },
+      "0xe2e7a17dff93280dec073c995595155283e3c372": {
+        "symbol": "spUSDT",
+        "decimals": 6,
+        "cash": false
+      },
+      "0xfe6eb3b609a7c8352a241f7f3a21cea4e9209b8f": {
+        "symbol": "spETH",
+        "decimals": 18,
+        "cash": false
+      },
+      "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2": {
+        "symbol": "WETH",
+        "decimals": 18,
+        "cash": false
+      },
+      "0x80128dbb9f07b93dde62a6daeadb69ed14a7d354": {
+        "symbol": "spPYUSD",
+        "decimals": 6,
+        "cash": false
+      },
+      "0x59275fb72c8004f44ba44432e25082932fd677f1": {
+        "symbol": "spRLUSD",
+        "decimals": 18,
+        "cash": false
+      },
+      "0x6f335538257ef440f3c51e925a5c820f722a1f9f": {
+        "symbol": "spUSDG",
+        "decimals": 6,
+        "cash": false
+      },
+      "0xe343167631d89b6ffc58b88d6b7fb0228795491d": {
+        "symbol": "USDG",
+        "decimals": 6,
+        "cash": false
+      },
+      "0xc20059e0317de91738d13af027dfc4a50781b066": {
+        "symbol": "SPK",
+        "decimals": 18,
+        "cash": false
+      },
+      "0x58d97b57bb95320f9a05dc918aef65434969c2b2": {
+        "symbol": "MORPHO",
+        "decimals": 18,
+        "cash": false
+      }
+    },
+    "base": {
+      "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913": {
+        "symbol": "USDC",
+        "decimals": 6,
+        "cash": true
+      },
+      "0x820c137fa70c8691f0e44dc420a5e53c168921dc": {
+        "symbol": "USDS",
+        "decimals": 18,
+        "cash": true
+      },
+      "0x5875eee11cf8398102fdad704c9e96607675467a": {
+        "symbol": "sUSDS-base",
+        "decimals": 18,
+        "cash": false
+      },
+      "0x7bfa7c4f149e7415b73bdedfe609237e29cbf34a": {
+        "symbol": "sparkUSDC-base",
+        "decimals": 18,
+        "cash": false
+      },
+      "0x4e65fe4dba92790696d040ac24aa414708f5c0ab": {
+        "symbol": "aBasUSDC",
+        "decimals": 6,
+        "cash": false
+      },
+      "0xf62e339f21d8018940f188f6987bcdf02a849619": {
+        "symbol": "fsUSDS-base",
+        "decimals": 18,
+        "cash": false
+      }
+    },
+    "arbitrum": {
+      "0xaf88d065e77c8cc2239327c5edb3a432268e5831": {
+        "symbol": "USDC",
+        "decimals": 6,
+        "cash": true
+      },
+      "0x6491c05a82219b8d1479057361ff1654749b876b": {
+        "symbol": "USDS",
+        "decimals": 18,
+        "cash": true
+      },
+      "0xddb46999f8891663a8f2828d25298f70416d7610": {
+        "symbol": "sUSDS-arb",
+        "decimals": 18,
+        "cash": false
+      },
+      "0x724dc807b04555b71ed48a6896b6f41593b8c637": {
+        "symbol": "aArbUSDCn",
+        "decimals": 6,
+        "cash": false
+      },
+      "0x3459fcc94390c3372c0f7b4cd3f8795f0e5afe96": {
+        "symbol": "fsUSDS-arb",
+        "decimals": 18,
+        "cash": false
+      },
+      "0xff970a61a04b1ca14834a43f5de4533ebddb5cc8": {
+        "symbol": "USDC.e",
+        "decimals": 6,
+        "cash": true
+      }
+    },
+    "optimism": {
+      "0x0b2c639c533813f4aa9d7837caf62653d097ff85": {
+        "symbol": "USDC",
+        "decimals": 6,
+        "cash": true
+      },
+      "0x4f13a96ec5c4cf34e442b46bbd98a0791f20edc3": {
+        "symbol": "USDS",
+        "decimals": 18,
+        "cash": true
+      },
+      "0xb5b2dc7fd34c249f4be7fb1fcea07950784229e0": {
+        "symbol": "sUSDS-op",
+        "decimals": 18,
+        "cash": false
+      }
+    },
+    "unichain": {
+      "0x078d782b760474a361dda0af3839290b0ef57ad6": {
+        "symbol": "USDC",
+        "decimals": 6,
+        "cash": true
+      },
+      "0x7e10036acc4b56d4dfca3b77810356ce52313f9c": {
+        "symbol": "USDS",
+        "decimals": 18,
+        "cash": true
+      },
+      "0xa06b10db9f390990364a3984c04fadf1c13691b5": {
+        "symbol": "sUSDS-uni",
+        "decimals": 18,
+        "cash": false
+      }
+    },
+    "avalanche_c": {
+      "0x625e7708f30ca75bfd92586e17077590c60eb4cd": {
+        "symbol": "aAvaUSDC",
+        "decimals": 6,
+        "cash": false
+      },
+      "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e": {
+        "symbol": "USDC",
+        "decimals": 6,
+        "cash": true
+      },
+      "0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d": {
+        "symbol": "spUSDC",
+        "decimals": 6,
+        "cash": false
+      }
+    },
+    "xlayer": {},
+    "robinhood": {
+      "0xde770c84fe66e063336b31737cfe9790f18c4087": {
+        "symbol": "spUSDG",
+        "decimals": 6,
+        "cash": false
+      },
+      "0x5fc5360d0400a0fd4f2af552add042d716f1d168": {
+        "symbol": "USDG",
+        "decimals": 6,
+        "cash": false
+      }
+    },
+    "bsc": {},
+    "gnosis": {}
+  },
+  "counterparties": {
+    "ethereum": {
+      "0xc02ab1a5eaa8d1b114ef786d9bde108cd4364359": {
+        "kind": "allocation",
+        "label": "Spark USDS (SparkLend spToken)",
+        "venue_id": "S1",
+        "sky_direct": false
+      },
+      "0x377c3bd93f2a2984e1e7be6a5c22c525ed4a4815": {
+        "kind": "allocation",
+        "label": "Spark USDC (SparkLend spToken)",
+        "venue_id": "S2",
+        "sky_direct": false
+      },
+      "0xe7df13b8e3d6740fe17cbe928c7334243d86c92f": {
+        "kind": "allocation",
+        "label": "Spark USDT (SparkLend spToken)",
+        "venue_id": "S3",
+        "sky_direct": false
+      },
+      "0x4dedf26112b3ec8ec46e7e31ea5e123490b05b8b": {
+        "kind": "allocation",
+        "label": "Spark DAI (SparkLend spToken)",
+        "venue_id": "S4",
+        "sky_direct": false
+      },
+      "0x779224df1c756b4edd899854f32a53e8c2b2ce5d": {
+        "kind": "allocation",
+        "label": "Spark PYUSD (SparkLend spToken)",
+        "venue_id": "S5",
+        "sky_direct": false
+      },
+      "0x09aa30b182488f769a9824f15e6ce58591da4781": {
+        "kind": "allocation",
+        "label": "Aave Ethereum Lido USDS (aToken)",
+        "venue_id": "S6",
+        "sky_direct": false
+      },
+      "0x32a6268f9ba3642dda7892add74f1d34469a4259": {
+        "kind": "allocation",
+        "label": "Aave Ethereum USDS (aToken)",
+        "venue_id": "S7",
+        "sky_direct": false
+      },
+      "0x98c23e9d8f34fefb1b7bd6a91b7ff122f4e16f5c": {
+        "kind": "allocation",
+        "label": "Aave Ethereum USDC (aToken)",
+        "venue_id": "S8",
+        "sky_direct": false
+      },
+      "0x23878914efe38d27c4d67ab83ed1b93a74d4086a": {
+        "kind": "allocation",
+        "label": "Aave Ethereum USDT (aToken)",
+        "venue_id": "S9",
+        "sky_direct": false
+      },
+      "0x56a76b428244a50513ec81e225a293d128fd581d": {
+        "kind": "allocation",
+        "label": "Spark Blue Chip USDC Vault (Morpho)",
+        "venue_id": "S10",
+        "sky_direct": false
+      },
+      "0xc7cdcfdefc64631ed6799c95e3b110cd42f2bd22": {
+        "kind": "allocation",
+        "label": "Spark Blue Chip USDT Vault (Morpho \u2014 pre-2026-06 deployment)",
+        "venue_id": "S11",
+        "sky_direct": false
+      },
+      "0xb0c424116172b55cbb6dd3136f5989f7959e5b91": {
+        "kind": "allocation",
+        "label": "Spark Blue Chip USDT Vault (Morpho \u2014 2026-06 redeployment)",
+        "venue_id": "S65",
+        "sky_direct": false
+      },
+      "0x73e65dbd630f90604062f6e02fab9138e713edd9": {
+        "kind": "allocation",
+        "label": "Spark DAI Vault (Morpho)",
+        "venue_id": "S12",
+        "sky_direct": false
+      },
+      "0xe41a0583334f0dc4e023acd0bfef3667f6fe0597": {
+        "kind": "allocation",
+        "label": "Spark USDS Vault (Morpho)",
+        "venue_id": "S13",
+        "sky_direct": false
+      },
+      "0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b": {
+        "kind": "allocation",
+        "label": "Maple syrupUSDC (ERC-4626)",
+        "venue_id": "S14",
+        "sky_direct": false
+      },
+      "0x356b8d89c1e1239cbbb9de4815c39a1474d5ba7d": {
+        "kind": "allocation",
+        "label": "Maple syrupUSDT (ERC-4626)",
+        "venue_id": "S15",
+        "sky_direct": false
+      },
+      "0x9d39a5de30e57443bff2a8307a4256c8797a3497": {
+        "kind": "allocation",
+        "label": "Ethena Staked USDe (sUSDe)",
+        "venue_id": "S16",
+        "sky_direct": false
+      },
+      "0x2bbe31d63e6813e3ac858c04dae43fb2a72b0d11": {
+        "kind": "allocation",
+        "label": "Fluid Savings USDS (fsUSDS)",
+        "venue_id": "S17",
+        "sky_direct": false
+      },
+      "0x38464507e02c983f20428a6e8566693fe9e422a9": {
+        "kind": "allocation",
+        "label": "Arkis Spark Prime USDC 1 (ERC-4626)",
+        "venue_id": "S18",
+        "sky_direct": false
+      },
+      "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041": {
+        "kind": "allocation",
+        "label": "BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I)",
+        "venue_id": "S19",
+        "sky_direct": false
+      },
+      "0x8c213ee79581ff4984583c6a801e5263418c4b86": {
+        "kind": "allocation",
+        "label": "Janus Henderson Anemoy Treasury Fund (JTRSY)",
+        "venue_id": "S20",
+        "sky_direct": false
+      },
+      "0x43415eb6ff9db7e26a15b704e7a3edce97d31c4e": {
+        "kind": "allocation",
+        "label": "Superstate Short Duration US Government Securities Fund (USTB)",
+        "venue_id": "S21",
+        "sky_direct": false
+      },
+      "0x14d60e7fdc0d71d8611742720e4c50e7a974020c": {
+        "kind": "allocation",
+        "label": "Superstate Crypto Carry Fund (USCC)",
+        "venue_id": "S22",
+        "sky_direct": false
+      },
+      "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48": {
+        "kind": "allocation",
+        "label": "USDC raw (ALM idle)",
+        "venue_id": "S26",
+        "sky_direct": false
+      },
+      "0x00836fe54625be242bcfa286207795405ca4fd10": {
+        "kind": "sky_direct",
+        "label": "Curve USDT Sky direct"
+      },
+      "0xa632d59b9b804a956bfaa9b48af3a1b74808fc1f": {
+        "kind": "allocation",
+        "label": "Curve PYUSD/USDS"
+      },
+      "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e": {
+        "kind": "allocation",
+        "label": "Spark.fi RLUSD Reserve Uniswap V4 (RLUSD/USDS)",
+        "venue_id": "S66",
+        "sky_direct": false
+      },
+      "0xdac17f958d2ee523a2206206994597c13d831ec7": {
+        "kind": "allocation",
+        "label": "USDT raw (ALM idle \u2014 $442M as of 2026-04)",
+        "venue_id": "S27",
+        "sky_direct": false
+      },
+      "0x6c3ea9036406852006290770bedfcaba0e23a0e8": {
+        "kind": "allocation",
+        "label": "PYUSD issuer incentives \u2014 accrued / prepaid",
+        "venue_id": "S68",
+        "sky_direct": false
+      },
+      "0x8292bb45bf1ee4d140127049757c2e0ff06317ed": {
+        "kind": "allocation",
+        "label": "RLUSD issuer incentives \u2014 accrued / prepaid",
+        "venue_id": "S67",
+        "sky_direct": false
+      },
+      "0x6b175474e89094c44da98b954eedeac495271d0f": {
+        "kind": "allocation",
+        "label": "DAI raw (ALM idle)",
+        "venue_id": "S29",
+        "sky_direct": false
+      },
+      "0x4c9edd5852cd905f086c759e8383e09bff1e68b3": {
+        "kind": "allocation",
+        "label": "USDe raw (ALM idle)",
+        "venue_id": "S30",
+        "sky_direct": false
+      },
+      "0xdc035d45d973e3ec169d2276ddab16f1e407384f": {
+        "kind": "allocation",
+        "label": "USDS raw / POL (ALM idle \u2014 already netted out of utilized)",
+        "venue_id": "S31",
+        "sky_direct": false
+      },
+      "0xa3931d71877c0e7a3148cb7eb4463524fec27fbd": {
+        "kind": "allocation",
+        "label": "sUSDS raw / POL (ALM \u2014 Cat B 4626, demand-side spread)",
+        "venue_id": "S32",
+        "sky_direct": false
+      },
+      "0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d": {
+        "kind": "allocation",
+        "label": "Spark Savings V2 \u2014 spUSDC vault",
+        "venue_id": "S56",
+        "sky_direct": false
+      },
+      "0xe2e7a17dff93280dec073c995595155283e3c372": {
+        "kind": "allocation",
+        "label": "Spark Savings V2 \u2014 spUSDT vault",
+        "venue_id": "S57",
+        "sky_direct": false
+      },
+      "0xfe6eb3b609a7c8352a241f7f3a21cea4e9209b8f": {
+        "kind": "allocation",
+        "label": "Spark Savings V2 \u2014 spETH vault",
+        "venue_id": "S58",
+        "sky_direct": false
+      },
+      "0x80128dbb9f07b93dde62a6daeadb69ed14a7d354": {
+        "kind": "allocation",
+        "label": "Spark Savings V2 \u2014 spPYUSD vault",
+        "venue_id": "S59",
+        "sky_direct": false
+      },
+      "0x59275fb72c8004f44ba44432e25082932fd677f1": {
+        "kind": "allocation",
+        "label": "Spark RLUSD (SparkLend spToken \u2014 reporting only)",
+        "venue_id": "S70",
+        "sky_direct": false
+      },
+      "0x6f335538257ef440f3c51e925a5c820f722a1f9f": {
+        "kind": "allocation",
+        "label": "Spark USDG (SparkLend spToken \u2014 reporting only)",
+        "venue_id": "S71",
+        "sky_direct": false
+      },
+      "0xc395d150e71378b47a1b8e9de0c1a83b75a08324": {
+        "kind": "borrowing",
+        "label": "AllocatorBuffer"
+      },
+      "0x3225737a9bbb6473cb4a45b7244aca2befdb276a": {
+        "kind": "conversion",
+        "label": "DaiUsds"
+      },
+      "0x37305b1cd40574e4c5ce33f8e8306be057fd7341": {
+        "kind": "conversion",
+        "label": "LitePSM pocket"
+      },
+      "0xf6e72db5454dd049d0788e411b06cfaf16853042": {
+        "kind": "conversion",
+        "label": "DssLitePsm"
+      },
+      "0xc4922d64a24675e16e1586e3e3aa56c06fabe907": {
+        "kind": "bridge",
+        "label": "CCTP TokenMinter"
+      },
+      "0x7f311a4d48377030bd810395f4ccfc03bdbe9ef3": {
+        "kind": "bridge",
+        "label": "USDS bridge"
+      },
+      "0x1196f688c585d3e5c895ef8954ffb0dcdafc566a": {
+        "kind": "bridge",
+        "label": "USDS bridge"
+      },
+      "0x467194771dae2967aef3ecbedd3bf9a310c76c65": {
+        "kind": "bridge",
+        "label": "USDS bridge"
+      },
+      "0xa10c7ce4b876998858b1a9e12b10092229539400": {
+        "kind": "bridge",
+        "label": "USDS bridge"
+      },
+      "0x49506c3aa028693458d6ee816b2ec28522946872": {
+        "kind": "loan",
+        "label": "Anchorage lending account"
+      },
+      "0x000000000004444c5dc75cb358380d2e3de08a90": {
+        "kind": "amm",
+        "label": "Uniswap v4 PoolManager"
+      },
+      "0xd5ff8bdef23fc3c8ff6815c6b4051f9809c877a5": {
+        "kind": "investment",
+        "label": "Arkis SAFE"
+      },
+      "0x491edfb0b8b608044e227225c715981a30f3a44e": {
+        "kind": "allocation",
+        "label": "Grove position acquisition"
+      },
+      "0x264bd8291fae1d75db2c5f573b07faa6715997b5": {
+        "kind": "allocation_conversion",
+        "label": "Paxos conversion"
+      },
+      "0x464c71f6c2f760dda6093dcb91c24c39e5d6e18c": {
+        "kind": "expense",
+        "label": "Aave Collector"
+      },
+      "0x1369f7b2b38c76b6478c0f0e66d94923421891ba": {
+        "kind": "expense",
+        "label": "Grove revenue share"
+      },
+      "0x8a3c66b30e2bbe5c2b1cff1054d869171fb87766": {
+        "kind": "unclassified",
+        "label": "Unidentified Safe"
+      },
+      "0xdfbc82d27aa60e9f55bdfe043a881c18520b71f1": {
+        "kind": "unclassified",
+        "label": "Unidentified Safe"
+      }
+    },
+    "base": {
+      "0x7bfa7c4f149e7415b73bdedfe609237e29cbf34a": {
+        "kind": "allocation",
+        "label": "Spark USDC Vault (Morpho, Base)",
+        "venue_id": "S34",
+        "sky_direct": false
+      },
+      "0x4e65fe4dba92790696d040ac24aa414708f5c0ab": {
+        "kind": "allocation",
+        "label": "Aave Base USDC (aBasUSDC)",
+        "venue_id": "S35",
+        "sky_direct": false
+      },
+      "0xf62e339f21d8018940f188f6987bcdf02a849619": {
+        "kind": "allocation",
+        "label": "Fluid Savings USDS (fsUSDS, Base)",
+        "venue_id": "S36",
+        "sky_direct": false
+      },
+      "0x5875eee11cf8398102fdad704c9e96607675467a": {
+        "kind": "allocation",
+        "label": "Savings USDS / sUSDS proxy (Base \u2014 POL)",
+        "venue_id": "S37",
+        "sky_direct": false
+      },
+      "0x820c137fa70c8691f0e44dc420a5e53c168921dc": {
+        "kind": "allocation",
+        "label": "USDS raw (Base \u2014 POL)",
+        "venue_id": "S38",
+        "sky_direct": false
+      },
+      "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913": {
+        "kind": "allocation",
+        "label": "USDC raw (Base \u2014 ALM idle)",
+        "venue_id": "S39",
+        "sky_direct": false
+      },
+      "0x1601843c5e9bc251a3272907010afa41fa18347e": {
+        "kind": "allocation",
+        "label": "PSM3"
+      }
+    },
+    "arbitrum": {
+      "0x724dc807b04555b71ed48a6896b6f41593b8c637": {
+        "kind": "allocation",
+        "label": "Aave Arbitrum USDCn (aArbUSDCn)",
+        "venue_id": "S41",
+        "sky_direct": false
+      },
+      "0x3459fcc94390c3372c0f7b4cd3f8795f0e5afe96": {
+        "kind": "allocation",
+        "label": "Fluid Savings USDS (fsUSDS, Arbitrum)",
+        "venue_id": "S42",
+        "sky_direct": false
+      },
+      "0xddb46999f8891663a8f2828d25298f70416d7610": {
+        "kind": "allocation",
+        "label": "Savings USDS / sUSDS proxy (Arbitrum \u2014 POL)",
+        "venue_id": "S43",
+        "sky_direct": false
+      },
+      "0x6491c05a82219b8d1479057361ff1654749b876b": {
+        "kind": "allocation",
+        "label": "USDS raw (Arbitrum \u2014 POL)",
+        "venue_id": "S44",
+        "sky_direct": false
+      },
+      "0xaf88d065e77c8cc2239327c5edb3a432268e5831": {
+        "kind": "allocation",
+        "label": "USDC raw (Arbitrum \u2014 ALM idle)",
+        "venue_id": "S45",
+        "sky_direct": false
+      },
+      "0x2b05f8e1cacc6974fd79a673a341fe1f58d27266": {
+        "kind": "allocation",
+        "label": "PSM3"
+      }
+    },
+    "optimism": {
+      "0xb5b2dc7fd34c249f4be7fb1fcea07950784229e0": {
+        "kind": "allocation",
+        "label": "Savings USDS / sUSDS proxy (Optimism \u2014 POL)",
+        "venue_id": "S47",
+        "sky_direct": false
+      },
+      "0x4f13a96ec5c4cf34e442b46bbd98a0791f20edc3": {
+        "kind": "allocation",
+        "label": "USDS raw (Optimism \u2014 POL)",
+        "venue_id": "S48",
+        "sky_direct": false
+      },
+      "0x0b2c639c533813f4aa9d7837caf62653d097ff85": {
+        "kind": "allocation",
+        "label": "USDC raw (Optimism \u2014 ALM idle)",
+        "venue_id": "S49",
+        "sky_direct": false
+      },
+      "0xe0f9978b907853f354d79188a3defbd41978af62": {
+        "kind": "allocation",
+        "label": "PSM3"
+      }
+    },
+    "unichain": {
+      "0xa06b10db9f390990364a3984c04fadf1c13691b5": {
+        "kind": "allocation",
+        "label": "Savings USDS / sUSDS proxy (Unichain \u2014 POL)",
+        "venue_id": "S51",
+        "sky_direct": false
+      },
+      "0x7e10036acc4b56d4dfca3b77810356ce52313f9c": {
+        "kind": "allocation",
+        "label": "USDS raw (Unichain \u2014 POL)",
+        "venue_id": "S52",
+        "sky_direct": false
+      },
+      "0x078d782b760474a361dda0af3839290b0ef57ad6": {
+        "kind": "allocation",
+        "label": "USDC raw (Unichain \u2014 ALM idle)",
+        "venue_id": "S53",
+        "sky_direct": false
+      },
+      "0x7b42ed932f26509465f7ce3faf76ffce1275312f": {
+        "kind": "allocation",
+        "label": "PSM3"
+      }
+    },
+    "avalanche_c": {
+      "0x625e7708f30ca75bfd92586e17077590c60eb4cd": {
+        "kind": "allocation",
+        "label": "Aave Avalanche USDC (aAvaUSDC)",
+        "venue_id": "S54",
+        "sky_direct": false
+      },
+      "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e": {
+        "kind": "allocation",
+        "label": "USDC raw (Avalanche-C \u2014 ALM idle)",
+        "venue_id": "S55",
+        "sky_direct": false
+      },
+      "0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d": {
+        "kind": "allocation",
+        "label": "Spark Savings V2 \u2014 spUSDC vault (Avalanche-C, CREATE2 same address)",
+        "venue_id": "S60",
+        "sky_direct": false
+      }
+    },
+    "xlayer": {},
+    "robinhood": {
+      "0xde770c84fe66e063336b31737cfe9790f18c4087": {
+        "kind": "allocation",
+        "label": "Spark Savings V2 \u2014 spUSDG vault (Robinhood Chain)",
+        "venue_id": "S63",
+        "sky_direct": false
+      },
+      "0x5fc5360d0400a0fd4f2af552add042d716f1d168": {
+        "kind": "allocation",
+        "label": "USDG issuer incentives \u2014 receipts (8-hour payments)",
+        "venue_id": "S69",
+        "sky_direct": false
+      }
+    },
+    "bsc": {},
+    "gnosis": {}
+  },
+  "reward_payers": {
+    "ethereum": {
+      "0xb70e0fad7d0cf4c187365a84e728802ab24ca78b": "RLUSD",
+      "0xfc0539d019482d311c161ae3b756cdccdec45e87": "PYUSD"
+    },
+    "robinhood": {
+      "0x5b01773138f17b38d1987558e576fa193db71a00": "USDG"
+    }
+  },
+  "savings": [
+    {
+      "venue": "S56",
+      "chain": "ethereum",
+      "address": "0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d",
+      "asset": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    },
+    {
+      "venue": "S57",
+      "chain": "ethereum",
+      "address": "0xe2e7a17dff93280dec073c995595155283e3c372",
+      "asset": "0xdac17f958d2ee523a2206206994597c13d831ec7"
+    },
+    {
+      "venue": "S59",
+      "chain": "ethereum",
+      "address": "0x80128dbb9f07b93dde62a6daeadb69ed14a7d354",
+      "asset": "0x6c3ea9036406852006290770bedfcaba0e23a0e8"
+    },
+    {
+      "venue": "S60",
+      "chain": "avalanche_c",
+      "address": "0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d",
+      "asset": "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e"
+    },
+    {
+      "venue": "S63",
+      "chain": "robinhood",
+      "address": "0xde770c84fe66e063336b31737cfe9790f18c4087",
+      "asset": "0x5fc5360d0400a0fd4f2af552add042d716f1d168"
+    }
+  ],
+  "opening_msc_receivable": "7071339",
+  "source_rules": "cash_flow_statement_rules.md",
+  "unclassified_policy": "Retain unidentified receipts/payments explicitly; never infer revenue or an expense from a transfer alone."
+}
