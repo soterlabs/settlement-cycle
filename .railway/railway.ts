@@ -133,6 +133,26 @@ export default defineRailway(() => {
     },
   });
 
+  // Independent cash-flow source publication. Never invokes settlement replay.
+  const cashFlowReporting = service("settle-reporting-cash-flow", {
+    source: settlementCycle,
+    replicas: { "us-west2": 1 },
+    build,
+    deploy: {
+      startCommand: "python -m settle.revenue.cash_flow.job",
+      cronSchedule: "15 22 * * *",
+      restartPolicyType: "NEVER",
+    },
+    env: {
+      DATABASE_URL: "${{Postgres.DATABASE_URL}}",
+      ...Object.fromEntries([
+        "ENVIO_API_TOKEN", "ETH_RPC", "BASE_RPC", "ARBITRUM_RPC",
+        "OPTIMISM_RPC", "UNICHAIN_RPC", "AVALANCHE_C_RPC", "ROBINHOOD_RPC",
+      ].map((name) => [name, `\${{settle-revenue-spark.${name}}}`])),
+      SETTLE_REQUIRE_POSTGRES: "1",
+    },
+  });
+
   // Retain the existing uploaded, unscheduled historical jobs. Omitting them
   // from the project would make an otherwise additive rollout delete them.
   const historicalJobs = [
@@ -154,6 +174,6 @@ export default defineRailway(() => {
   }));
 
   return project("settlement-cycle-data", {
-    resources: [settleApi, Postgres, settleCron, revenueDaily, ...revenuePrimes, financialReporting, sparkReporting, ...historicalJobs, postgresVolume],
+    resources: [settleApi, Postgres, settleCron, revenueDaily, ...revenuePrimes, financialReporting, sparkReporting, cashFlowReporting, ...historicalJobs, postgresVolume],
   });
 });

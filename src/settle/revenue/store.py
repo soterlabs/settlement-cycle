@@ -41,6 +41,8 @@ def capture_versions():
 
 def apply_schema(conn):
     conn.execute((_ROOT / 'db' / 'schema_revenue.sql').read_text())
+    from .cash_flow.store import apply_schema as cash_flow_schema
+    cash_flow_schema(conn)
 
 
 def has_venue_views(result):
