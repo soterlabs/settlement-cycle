@@ -12,8 +12,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from ...store.db import connect
-from . import collector, store
+from . import accuracy, collector, store
 from .build import build, income_report
+from .config import load
 
 
 def month_dates(start, end):
@@ -86,6 +87,15 @@ def main():
                             json.dumps({"cutoff": str(cutoff), "chain": ch, "stage": n}), flush=True
                         ),
                     )
+                evidence["accuracy"] = accuracy.collect(
+                    evidence,
+                    load(),
+                    args.cache_dir,
+                    progress=lambda ch, n, cutoff=cutoff: print(
+                        json.dumps({"cutoff": str(cutoff), "accuracy_chain": ch, "events": n}),
+                        flush=True,
+                    ),
+                )
                 document, events = build(evidence, income_report(conn, cutoff))
                 revision = None if args.dry_run else store.publish(conn, document, events, code)
                 if args.output_dir:

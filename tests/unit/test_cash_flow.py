@@ -344,7 +344,6 @@ def test_full_month_expenses_are_not_paired_with_mtd_or_stale_income(monkeypatch
     from settle.revenue.cash_flow.build import build
 
     config = load()
-    monkeypatch.setattr("settle.revenue.cash_flow.build.monthly_select", lambda *args: [None] * 12)
 
     def inputs(cutoff, actual):
         evidence = {

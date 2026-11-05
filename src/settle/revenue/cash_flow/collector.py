@@ -4,12 +4,14 @@ No provider errors/URLs or credentials are persisted. The cache contains only
 public chain evidence, keyed by configuration and certified cutoff.
 """
 
+import base64
 import gzip
 import json
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime, time, timedelta
 from pathlib import Path
+from uuid import uuid4
 
 import requests
 
@@ -118,7 +120,13 @@ def durable_capture(config_revision, chain, cutoff=None, document=None):
                     return None
                 conn.execute(
                     "INSERT INTO reporting_cash_flow_capture_cache VALUES(%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING",
-                    (config_revision, chain, cutoff, Jsonb(document), digest(document)),
+                    (
+                        config_revision,
+                        chain,
+                        cutoff,
+                        Jsonb(pack_capture(document)),
+                        digest(document),
+                    ),
                 )
                 return None
             if cutoff is None:
@@ -131,11 +139,49 @@ def durable_capture(config_revision, chain, cutoff=None, document=None):
                     "SELECT document,document_hash FROM reporting_cash_flow_capture_cache WHERE configuration_revision=%s AND chain=%s AND cutoff=%s",
                     (config_revision, chain, cutoff),
                 ).fetchone()
-            if row and digest(row[0]) == row[1]:
-                return row[0]
+            if row:
+                decoded = unpack_capture(row[0])
+                if digest(decoded) == row[1]:
+                    return decoded
     except Exception:
         return None  # Cache failure does not make chain evidence successful.
     return None
+
+
+def pack_capture(document):
+    """Bound JSONB element size for large inception histories; hash decoded facts."""
+    raw = json.dumps(document, separators=(",", ":")).encode()
+    if len(raw) < 1_000_000:
+        return document
+    return {
+        "cash_flow_capture_encoding": "gzip-json.v1",
+        "payload": base64.b64encode(gzip.compress(raw, compresslevel=1, mtime=0)).decode(),
+    }
+
+
+def unpack_capture(document):
+    if document.get("cash_flow_capture_encoding") == "gzip-json.v1":
+        return json.loads(gzip.decompress(base64.b64decode(document["payload"], validate=True)))
+    return document
+
+
+def read_capture(path):
+    try:
+        with gzip.open(path, "rt") as handle:
+            document = json.load(handle)
+            return document if isinstance(document, dict) else None
+    except (OSError, EOFError, ValueError):
+        return None
+
+
+def write_capture(path, document):
+    temporary = path.with_name(path.name + "." + uuid4().hex + ".tmp")
+    try:
+        with gzip.open(temporary, "wt") as handle:
+            json.dump(document, handle, separators=(",", ":"))
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def collect_chain(chain, cutoff, config, cache_dir, progress=None):

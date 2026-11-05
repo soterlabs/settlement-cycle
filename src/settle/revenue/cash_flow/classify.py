@@ -11,6 +11,7 @@ from decimal import Decimal, localcontext
 from importlib.resources import files
 
 from ...domain.config import load_prime_by_id
+from .accuracy import principal_splits
 from .collector import TRANSFER
 from .config import load
 from .liability import ZERO, address
@@ -57,6 +58,11 @@ def collect_ledger(evidence, *, config=None):
     savings_index = defaultdict(list)
     for e in savings["events"]:
         savings_index[(e["chain"], e["tx_hash"], e["vault"])].append(e)
+    redemptions, allocation_failures = principal_splits(evidence.get("accuracy"), config, evidence)
+    redemption_index = defaultdict(list)
+    for item in redemptions.values():
+        redemption_index[(item["chain"], item["tx_hash"], item["vault"])].append(item)
+    used_redemptions = set()
     settlements = json.loads(files(__package__).joinpath("settlements.json").read_text())["records"]
     by_date = {r["execution_date"]: r for r in settlements}
     prime = load_prime_by_id("spark")
@@ -116,10 +122,16 @@ def collect_ledger(evidence, *, config=None):
                         Decimal(int(e["data"], 16)) / 10 ** tokens[e["address"]]["decimals"]
                     )
             loan_remaining = {}
+            loan_verified = {}
             for day, received in loan_daily.items():
                 matches = [r for r in loan_rules if r.date == day and abs(r.amount - received) <= 1]
                 if len(matches) > 1:
                     raise ValueError("Ambiguous Anchorage split")
+                loan_verified[day] = bool(
+                    matches
+                    and matches[0].capital_amount is not None
+                    and matches[0].amount == received
+                )
                 loan_remaining[day] = (
                     (
                         matches[0].capital_amount
@@ -160,6 +172,58 @@ def collect_ledger(evidence, *, config=None):
                 )
                 if cash_from == cash_to:
                     continue
+                # A relay between two owned cash accounts is internal only when
+                # both exact token/amount legs share the same intermediary and tx.
+                relay = dst if cash_from else src
+                pair = [
+                    other
+                    for other in by_tx[e["tx_hash"]]
+                    if other["log_index"] != e["log_index"]
+                    and other["topic0"] == TRANSFER
+                    and other["address"] == e["address"]
+                    and other["data"] == e["data"]
+                    and (
+                        (
+                            cash_from
+                            and address(other["topic1"]) == relay
+                            and is_cash(config, chain, e["address"], address(other["topic2"]))
+                        )
+                        or (
+                            cash_to
+                            and address(other["topic2"]) == relay
+                            and is_cash(config, chain, e["address"], address(other["topic1"]))
+                        )
+                    )
+                ]
+                if relay != ZERO and len(pair) == 1:
+                    # Require uniqueness in both directions, not a many-to-one
+                    # amount match that could reuse one receipt twice.
+                    same = [
+                        other
+                        for other in by_tx[e["tx_hash"]]
+                        if other["topic0"] == TRANSFER
+                        and other["address"] == e["address"]
+                        and other["data"] == e["data"]
+                        and (
+                            address(other["topic2"]) == relay
+                            if cash_from
+                            else address(other["topic1"]) == relay
+                        )
+                        and is_cash(
+                            config,
+                            chain,
+                            e["address"],
+                            address(other["topic1"]) if cash_from else address(other["topic2"]),
+                        )
+                    ]
+                    if len(same) == 1:
+                        append(
+                            e,
+                            "internal-routing",
+                            value * (-1 if cash_from else 1),
+                            reason="Exact same-token cash relay between owned accounts in one transaction",
+                        )
+                        continue
                 sign = 1 if cash_to else -1
                 other = src if sign == 1 else dst
                 owner = dst if sign == 1 else src
@@ -321,8 +385,10 @@ def collect_ledger(evidence, *, config=None):
                                 e,
                                 "allocation-changes",
                                 capital,
-                                quality="estimate",
-                                reason="Registered principal override; embedded interest may be unresolved",
+                                quality="supported" if loan_verified.get(day) else "estimate",
+                                reason="Reviewed explicit principal split preserves separately identified interest"
+                                if loan_verified.get(day)
+                                else "Registered principal override; embedded interest may be unresolved",
                                 suffix="loan-principal",
                             )
                         if value - capital:
@@ -372,6 +438,47 @@ def collect_ledger(evidence, *, config=None):
                         -value,
                         reason="Stablecoin spent in transaction receiving SPK into the owned cluster",
                     )
+                elif (
+                    sign > 0
+                    and len(
+                        matches := [
+                            r
+                            for r in redemption_index.get((chain, e["tx_hash"], src), [])
+                            if r["asset"] == e["address"]
+                            and r["receiver"] == dst
+                            and Decimal(r["assets_units"]) == units
+                            and (chain, r["tx_hash"], r["log_index"]) not in used_redemptions
+                        ]
+                    )
+                    == 1
+                ):
+                    item = matches[0]
+                    used_redemptions.add((chain, item["tx_hash"], item["log_index"]))
+                    append(
+                        e,
+                        "allocation-changes",
+                        Decimal(item["principal_units"]) / 10 ** meta["decimals"],
+                        reason="Verified ERC4626 redemption; owned-share subscription cost follows internal transfers",
+                        suffix="vault-principal",
+                    )
+                    witness = {
+                        "method": "owned_share_weighted_subscription_cost",
+                        "withdrawal_id": f"{chain}:{item['tx_hash']}:{item['log_index']}",
+                        "history_digest": item["history_digest"],
+                        "principal_units": item["principal_units"],
+                        "interest_units": item["interest_units"],
+                        "asset": item["asset"],
+                    }
+                    entries[-1]["principal_evidence"] = witness
+                    if Decimal(item["interest_units"]):
+                        append(
+                            e,
+                            "external-receipts",
+                            Decimal(item["interest_units"]) / 10 ** meta["decimals"],
+                            reason="ERC4626 cash yield above carried subscription principal",
+                            suffix="vault-interest",
+                        )
+                        entries[-1]["principal_evidence"] = witness
                 elif rule.get("kind") in (
                     "allocation",
                     "amm",
@@ -429,7 +536,13 @@ def collect_ledger(evidence, *, config=None):
                         value * sign,
                         reason="Unclassified cash movement; never inferred to be revenue or allocation capital",
                     )
-    return {"entries": entries, "savings": savings, "errors": errors}
+    return {
+        "entries": entries,
+        "savings": savings,
+        "errors": errors,
+        "allocation_failures": allocation_failures,
+        "verified_redemptions": len(used_redemptions),
+    }
 
 
 def cash_metrics(evidence, ledger, config=None):
@@ -497,6 +610,18 @@ def cash_metrics(evidence, ledger, config=None):
                 refs=["event_ledger." + key],
             )
             metrics[key]["event_count"] = len(matching)
+            estimates = defaultdict(list)
+            for row in matching:
+                if row["quality"] == "estimate":
+                    estimates[row["reason"]].append(row)
+            metrics[key]["estimate_components"] = [
+                {
+                    "reason": reason,
+                    "amount_usd": str(sum((Decimal(r["amount_usd"]) for r in items), Decimal(0))),
+                    "event_count": len(items),
+                }
+                for reason, items in sorted(estimates.items())
+            ]
         metrics["unclassified-net"] = metric(
             sum(
                 (Decimal(r["amount_usd"]) for r in rows if r["line_id"] == "unclassified"),
