@@ -85,3 +85,52 @@ def test_month_projection_reads_one_eligible_revision_per_month(database):  # no
         assert {r["cutoff"] for r in latest} == {"2026-10-31", "2026-11-03"}
         pinned = store.year_rows(conn, "spark", 2026, [ids["2026-11-01"]], as_of=date(2026, 11, 4))
         assert [r["cutoff"] for r in pinned] == ["2026-11-01"]
+
+
+def test_large_capture_compression_preserves_facts_and_rejects_corruption(database, monkeypatch):  # noqa: F811
+    from settle.revenue.cash_flow.collector import durable_capture
+
+    monkeypatch.setenv("DATABASE_URL", database)
+    monkeypatch.setenv("CASH_FLOW_CAPTURE_PERSIST", "1")
+    doc = {
+        "status": "available",
+        "events": [{"data": "public-chain-evidence-" * 100} for _ in range(600)],
+    }
+    with psycopg.connect(database, autocommit=True) as conn:
+        store.apply_schema(conn)
+    durable_capture("config", "base", "2026-10-31", document=doc)
+    assert durable_capture("config", "base", "2026-10-31") == doc
+    with psycopg.connect(database, autocommit=True) as conn:
+        saved = conn.execute(
+            "SELECT document,document_hash FROM reporting_cash_flow_capture_cache"
+        ).fetchone()
+        assert saved[0]["cash_flow_capture_encoding"] == "gzip-json.v1"
+        assert saved[1] == digest(doc)
+        conn.execute(
+            "UPDATE reporting_cash_flow_capture_cache SET document=jsonb_set(document,'{payload}','\"corrupted\"')"
+        )
+    assert durable_capture("config", "base", "2026-10-31") is None
+
+
+def test_existing_fee_source_cache_reuse_is_read_only_and_preserves_gaps(database, monkeypatch):  # noqa: F811
+    from settle.revenue.cash_flow.fee_evidence import read_source_cache
+    from settle.extract import hypersync_store, hypersync
+
+    monkeypatch.setenv("DATABASE_URL", database)
+    monkeypatch.setenv("SETTLE_INPUT_REVISION", "0")
+    query = [{"address": ["0x" + "1" * 40], "topics": [["0x" + "2" * 64]]}]
+    stream = hypersync_store._stream_key(
+        "base", query, [*hypersync._DEFAULT_LOG_FIELDS, "transaction_hash"]
+    )
+    with psycopg.connect(database, autocommit=True) as conn:
+        conn.execute(
+            "INSERT INTO hypersync_logs(stream,block_number,log_index,block_time,address,topic0,data,transaction_hash) VALUES(%s,10,1,1,%s,%s,%s,%s)",
+            (stream, "0x" + "1" * 40, "0x" + "2" * 64, "0x" + "0" * 64, "0x" + "3" * 64),
+        )
+        conn.execute("INSERT INTO hypersync_ranges VALUES(%s,0,50)", (stream,))
+    rows, missing = read_source_cache("base", query, 0, 100)
+    assert len(rows) == 1 and rows[0].block_number == 10
+    assert missing == [(51, 100)]
+    with psycopg.connect(database, autocommit=True) as conn:
+        assert conn.execute("SELECT count(*) FROM hypersync_logs").fetchone()[0] == 1
+        assert conn.execute("SELECT covered_to FROM hypersync_ranges").fetchone()[0] == 50

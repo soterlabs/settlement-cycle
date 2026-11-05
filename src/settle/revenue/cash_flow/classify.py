@@ -122,10 +122,16 @@ def collect_ledger(evidence, *, config=None):
                         Decimal(int(e["data"], 16)) / 10 ** tokens[e["address"]]["decimals"]
                     )
             loan_remaining = {}
+            loan_verified = {}
             for day, received in loan_daily.items():
                 matches = [r for r in loan_rules if r.date == day and abs(r.amount - received) <= 1]
                 if len(matches) > 1:
                     raise ValueError("Ambiguous Anchorage split")
+                loan_verified[day] = bool(
+                    matches
+                    and matches[0].capital_amount is not None
+                    and matches[0].amount == received
+                )
                 loan_remaining[day] = (
                     (
                         matches[0].capital_amount
@@ -379,8 +385,10 @@ def collect_ledger(evidence, *, config=None):
                                 e,
                                 "allocation-changes",
                                 capital,
-                                quality="estimate",
-                                reason="Registered principal override; embedded interest may be unresolved",
+                                quality="supported" if loan_verified.get(day) else "estimate",
+                                reason="Reviewed explicit principal split preserves separately identified interest"
+                                if loan_verified.get(day)
+                                else "Registered principal override; embedded interest may be unresolved",
                                 suffix="loan-principal",
                             )
                         if value - capital:
@@ -439,13 +447,13 @@ def collect_ledger(evidence, *, config=None):
                             if r["asset"] == e["address"]
                             and r["receiver"] == dst
                             and Decimal(r["assets_units"]) == units
-                            and (r["tx_hash"], r["log_index"]) not in used_redemptions
+                            and (chain, r["tx_hash"], r["log_index"]) not in used_redemptions
                         ]
                     )
                     == 1
                 ):
                     item = matches[0]
-                    used_redemptions.add((item["tx_hash"], item["log_index"]))
+                    used_redemptions.add((chain, item["tx_hash"], item["log_index"]))
                     append(
                         e,
                         "allocation-changes",
@@ -453,6 +461,15 @@ def collect_ledger(evidence, *, config=None):
                         reason="Verified ERC4626 redemption; owned-share subscription cost follows internal transfers",
                         suffix="vault-principal",
                     )
+                    witness = {
+                        "method": "owned_share_weighted_subscription_cost",
+                        "withdrawal_id": f"{chain}:{item['tx_hash']}:{item['log_index']}",
+                        "history_digest": item["history_digest"],
+                        "principal_units": item["principal_units"],
+                        "interest_units": item["interest_units"],
+                        "asset": item["asset"],
+                    }
+                    entries[-1]["principal_evidence"] = witness
                     if Decimal(item["interest_units"]):
                         append(
                             e,
@@ -461,6 +478,7 @@ def collect_ledger(evidence, *, config=None):
                             reason="ERC4626 cash yield above carried subscription principal",
                             suffix="vault-interest",
                         )
+                        entries[-1]["principal_evidence"] = witness
                 elif rule.get("kind") in (
                     "allocation",
                     "amm",

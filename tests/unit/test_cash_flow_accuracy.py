@@ -48,6 +48,10 @@ def sample():
                 "verified": [spec],
                 "failures": {},
                 "events": history,
+                "share_balances": [
+                    {"vault": spec["address"], "owner": h, "units": "50" if h == a else "0"}
+                    for h in c["wallets"]["ethereum"]
+                ],
             }
         },
     }
@@ -141,5 +145,131 @@ def test_fee_share_mints_and_truncated_semantic_histories_never_certify_a_basis(
     fee = deepcopy(broken["chains"]["ethereum"]["events"][0])
     fee.update(log_index=999, tx_hash="0x" + "7" * 64)
     broken["chains"]["ethereum"]["events"].append(fee)
+    next(r for r in broken["chains"]["ethereum"]["share_balances"] if r["owner"] == _a)["units"] = (
+        "150"
+    )
     split, failures = principal_splits(broken, c, ev)
     assert not split and any("fee or missing" in r for r in failures.values())
+
+
+def test_authenticated_morpho_fee_shares_have_no_cash_subscription_principal():
+    from settle.revenue.cash_flow.fee_evidence import ACCRUE_INTEREST
+
+    c, _spec, a, _b, extra, ev = sample()
+    source = extra["chains"]["ethereum"]
+    fee = deepcopy(source["events"][0])
+    fee.update(
+        block=2, log_index=8, tx_hash="0x" + "6" * 64, topic2=topic(a), data="0x" + f"{10:064x}"
+    )
+    accrual = deepcopy(fee)
+    accrual.update(
+        log_index=9, topic0=ACCRUE_INTEREST, data="0x" + f"{110_000000:064x}" + f"{10:064x}"
+    )
+    source["events"].insert(2, fee)
+    next(r for r in source["share_balances"] if r["owner"] == a)["units"] = "60"
+    source["fee_events"] = [accrual]
+    split, failures = principal_splits(extra, c, ev)
+    assert not failures
+    row = next(iter(split.values()))
+    assert Decimal(row["principal_units"]) < 50_000000
+    assert Decimal(row["principal_units"]) + Decimal(row["interest_units"]) == 60_000000
+    corrupted = deepcopy(extra)
+    corrupted["chains"]["ethereum"]["fee_events"][0]["data"] = (
+        "0x" + f"{110_000000:064x}" + f"{11:064x}"
+    )
+    assert principal_splits(corrupted, c, ev)[1]
+
+
+def test_savings_cash_principal_and_interest_remain_separate_from_allocation_proofs():
+    c = load()
+    v = next(v for v in c["savings"] if v["venue"] == "S56")
+    user = "0x" + "8" * 40
+    deposit = event(1, DEPOSIT, 100_000000, 100, src=user, dst=user)
+    deposit["address"] = v["address"]
+    withdrawal = event(2, WITHDRAW, 110_000000, 100, src=user, dst=user, owner=user)
+    withdrawal["address"] = v["address"]
+    cash = []
+    for sem, src, dst, units in [
+        (deposit, user, v["address"], 100_000000),
+        (withdrawal, v["address"], user, 110_000000),
+    ]:
+        row = deepcopy(sem)
+        row.update(
+            address=v["asset"],
+            topic0=TRANSFER,
+            topic1=topic(src),
+            topic2=topic(dst),
+            data="0x" + f"{units:064x}",
+        )
+        cash.append(row)
+    ledger = collect_ledger(
+        {"chains": {"ethereum": {"events": cash, "savings_events": [deposit, withdrawal]}}},
+        config=c,
+    )
+    assert (
+        sum(Decimal(r["amount_usd"]) for r in ledger["entries"] if r["line_id"] == "deposits") == 0
+    )
+    assert (
+        sum(Decimal(r["amount_usd"]) for r in ledger["entries"] if r["line_id"] == "expenses-paid")
+        == -10
+    )
+
+
+def test_earlier_deployment_subset_reuses_complete_later_history(tmp_path, monkeypatch):
+    import gzip
+    import json
+
+    from settle.revenue.cash_flow import accuracy
+    from settle.revenue.verification import digest
+
+    c = load()
+    vs = [v for v in specs(c) if v["venue"] in ["S10", "S65"]]
+    monkeypatch.setattr(accuracy, "specs", lambda config: vs)
+    monkeypatch.setenv("CASH_FLOW_CAPTURE_PERSIST", "0")
+
+    def getter(chain, method, params):
+        spec = next(v for v in vs if v["address"] == params[0]["to"])
+        if spec["venue"] == "S65":
+            raise ValueError("Not deployed at historical cutoff")
+        return topic(spec["asset"])
+
+    monkeypatch.setattr(accuracy, "rpc", getter)
+    monkeypatch.setattr(
+        accuracy.hypersync,
+        "query_logs",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("Must reuse complete later history")),
+    )
+    monkeypatch.setattr(accuracy.fee_evidence, "collect", lambda *a: [])
+    monkeypatch.setattr(accuracy, "share_balances", lambda *a: [])
+    root = tmp_path / "accuracy"
+    root.mkdir()
+    revision = digest({"schema": SCHEMA, "configuration": c["revision"]})
+    source = {
+        "status": "available",
+        "block": 100,
+        "specs": vs,
+        "verified": vs,
+        "failures": {},
+        "events": [],
+    }
+    with gzip.open(root / f"{revision}-ethereum-2026-11-04.json.gz", "wt") as f:
+        json.dump(source, f)
+    e = {
+        "cutoff": "2026-05-31",
+        "chains": {"ethereum": {"status": "available", "pins": {"closing": {"block": 50}}}},
+    }
+    r = accuracy.collect(e, c, tmp_path)
+    assert r["chains"]["ethereum"]["status"] == "available"
+    assert [v["venue"] for v in r["chains"]["ethereum"]["verified"]] == ["S10"]
+
+
+def test_partial_local_cache_is_never_read_as_a_complete_capture(tmp_path):
+    from settle.revenue.cash_flow.collector import read_capture, write_capture
+
+    path = tmp_path / "capture.json.gz"
+    assert read_capture(path) is None
+    write_capture(path, {"status": "available", "public_event": "verified"})
+    assert read_capture(path)["public_event"] == "verified"
+    path.write_bytes(path.read_bytes()[:12])
+    assert read_capture(path) is None
+    assert not list(tmp_path.glob("*.tmp"))
