@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field, replace
+from decimal import Decimal
 
 import psycopg
 from fastapi.testclient import TestClient
@@ -6,7 +7,7 @@ from psycopg_pool import ConnectionPool
 
 from settle.api.app import PostgresReader, create_app
 from settle.revenue import financial_store, store
-from settle.revenue.financial import SPARK_HISTORY_POLICY
+from settle.revenue.financial import SPARK_RECONCILED_POLICY
 from tests.integration.test_financial_reporting import FinancialPnl
 from tests.integration.test_input_cache_postgres import database  # noqa: F401
 from tests.integration.test_revenue_store import example
@@ -16,6 +17,7 @@ from tests.integration.test_revenue_store import example
 class SparkPnl(FinancialPnl):
     reporting_only_breakdown: list = field(default_factory=list)
     venue_views: dict = field(default_factory=dict)
+    psm3_susds_appreciation: Decimal | None = None
 
 
 def test_report_only_reserve_receipts_are_read_from_exact_pinned_source(database, monkeypatch):  # noqa: F811
@@ -29,7 +31,7 @@ def test_report_only_reserve_receipts_are_read_from_exact_pinned_source(database
               for v in ('S70', 'S71')]
     views = {'reporting': [dict(venue_id=v, enabled=True, status='available') for v in ('S70', 'S71')]}
     pnl = SparkPnl('spark', base.period, base.pin_blocks_som, venue_breakdown=rows,
-                   reporting_only_breakdown=extras, venue_views=views)
+                   reporting_only_breakdown=extras, venue_views=views, psm3_susds_appreciation=Decimal("123.456"))
     versions = store.Versions('spark-fees-test',
         'da77310707751cae619941f4a35e937d8f880167b5af57a58ae5db20376c7067', '0')
     with psycopg.connect(database, autocommit=True) as conn:
@@ -38,6 +40,7 @@ def test_report_only_reserve_receipts_are_read_from_exact_pinned_source(database
         assert financial_store.publish_revision(conn, 'spark', original) == 'succeeded'
         selected = financial_store.year_rows(conn, 'spark', pnl.as_of.year, include_spark_fees=True)
         assert len(selected[0]['spark_fee_source_rows']) == 2
+        assert selected[0]['spark_psm3_income'] == '123.456'
         assert 'spark_fee_source_rows' not in financial_store.year_rows(conn, 'spark', pnl.as_of.year)[0]
     with ConnectionPool(database, min_size=1, max_size=2) as pool:
         with TestClient(create_app(reader=PostgresReader(pool, {}, [], 0))) as client:
@@ -45,7 +48,7 @@ def test_report_only_reserve_receipts_are_read_from_exact_pinned_source(database
             response = client.get('/v3/reporting/statements', params=query)
             assert response.status_code == 200, response.text
             annual = response.json()
-            assert annual['policy_version'] == SPARK_HISTORY_POLICY
+            assert annual['policy_version'] == SPARK_RECONCILED_POLICY
             month = f'{pnl.as_of:%Y-%m}'
 
             def fees(report):

@@ -18,7 +18,7 @@ from settle.revenue.spark_savings import collect_vault
 def test_published_monthly_returns_fill_history_without_principal_or_changing_v38():
     report = statements("spark", 2026, date(2026, 10, 31), [], spark_statement=True)
     lookup = {r["id"]: r for r in report["lines"]}
-    assert report["policy_version"] == "prime-management.spark-history.v3.9"
+    assert report["policy_version"] == "prime-management.spark-reconciled.v3.10"
     assert lookup["investment.maple_syrup_usdc"]["values"]["2026-01"]["value"] == "850905.46"
     assert lookup["investment.venue.S14"]["values"]["2026-01"]["quality"] == "estimate"
     assert lookup["investment.rwa.buidl"]["values"]["2026-01"]["value"] == "0.00"
@@ -103,8 +103,9 @@ def test_anchorage_known_rollover_keeps_only_the_confirmed_interest():
 
 
 def test_historical_cutoff_before_first_real_chain_block_uses_verified_genesis(monkeypatch):
-    from settle.revenue import spark_onchain as onchain
     from datetime import UTC, datetime
+
+    from settle.revenue import spark_onchain as onchain
 
     first = int(datetime(2026, 4, 30, tzinfo=UTC).timestamp())
     monkeypatch.setattr(onchain, "chain_origin", lambda chain: (0, first))

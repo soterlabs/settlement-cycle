@@ -9,6 +9,7 @@ from ..revenue.financial import (
     RWA_POLICIES,
     SPARK_AMM_POLICIES,
     SPARK_INCOME_POLICIES,
+    SPARK_RECONCILED_POLICY,
     SPARK_STATEMENT_POLICIES,
     STATEMENT_SOURCE_POLICY,
     decode_selection,
@@ -76,6 +77,26 @@ def register_financial(app, get_reader, document_response):
                   cutoff: date | None = None, revision: str | None = Query(None, max_length=4096),
                   r=Depends(get_reader)):  # noqa: B008
         return document_response(request, annual(prime, year, scope, cutoff, revision, r))
+
+    @app.get('/v3/reporting/spark/msc-reconciliation')
+    def spark_msc_reconciliation(request: Request, year: int = Query(ge=2020, le=9998),
+                                 month: str | None = Query(None, pattern=r'^\d{4}-(0[1-9]|1[0-2])$'),
+                                 cutoff: date | None = None,
+                                 revision: str | None = Query(None, max_length=4096),
+                                 r=Depends(get_reader)):  # noqa: B008
+        if month and not month.startswith(str(year) + '-'):
+            raise HTTPException(422, 'Month must belong to the selected year')
+        result = annual('spark', year, 'individual', cutoff, revision, r)
+        if result['policy_version'] != SPARK_RECONCILED_POLICY:
+            raise HTTPException(404, 'Selected statement predates the MSC bridge policy')
+        return document_response(request, {
+            'schema_version': 'spark-msc-reconciliation.v1', 'prime': 'spark', 'year': year,
+            'as_of': result['as_of'], 'selection': result['selection'],
+            'statement_report_hash': result['report_hash'],
+            'source_manifest': result['source_manifest'],
+            'months': [row for row in result['spark_msc_reconciliation'] if month is None or row['month'] == month],
+            'reserve_fee_true_up_control': result['spark_fee_true_up_control'],
+        })
 
     def component_month(prime, month, revision, r):
         import calendar
