@@ -90,6 +90,16 @@ def validate(document):
         raise ValueError("Cash-flow identity differs")
     metrics = document["metrics"]
     for cell in metrics.values():
+        if (
+            cell.get("status") not in ("available", "partial", "unavailable")
+            or cell.get("quality") not in ("supported", "estimate")
+            or cell.get("unit") != "USD"
+        ):
+            raise ValueError("Cash-flow metric metadata differs")
+        if cell["status"] == "unavailable" and (
+            cell.get("value") is not None or cell.get("known_value") is not None
+        ):
+            raise ValueError("Missing cash-flow metric has a value")
         for field in ["value", "known_value"]:
             v = cell.get(field)
             if v is not None and (not isinstance(v, str) or not Decimal(v).is_finite()):

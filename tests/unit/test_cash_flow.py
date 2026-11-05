@@ -319,3 +319,43 @@ def test_source_evidence_rejects_wrong_config_truncated_balances_and_out_of_peri
     wrong["chains"]["ethereum"]["events"] = [{}]
     with pytest.raises(ValueError, match="Unavailable"):
         validate_evidence(wrong, config)
+
+
+def test_full_month_expenses_are_not_paired_with_mtd_or_stale_income(monkeypatch):
+    from settle.revenue.cash_flow.build import build
+
+    config = load()
+    monkeypatch.setattr("settle.revenue.cash_flow.build.monthly_select", lambda *args: [None] * 12)
+
+    def inputs(cutoff, actual):
+        evidence = {
+            "cutoff": cutoff,
+            "configuration_revision": config["revision"],
+            "chains": {
+                ch: {"chain": ch, "status": "unavailable", "events": [], "balances": []}
+                for ch in config["wallets"]
+            },
+        }
+        income = {
+            "lines": [
+                {"id": id, "values": {"2026-10": metric("100", recognition="accrual")}}
+                for id in ["statement.net_revenue", "statement.gains", "funding.savings"]
+            ],
+            "periods": [{"key": "2026-10", "actual_cutoff": actual}],
+            "report_hash": "a" * 64,
+            "selection": "retained-income",
+        }
+        return build(evidence, income)[0]["metrics"]
+
+    partial = inputs("2026-10-15", "2026-10-15")
+    assert all(
+        partial[k]["status"] == "unavailable"
+        for k in ["net-income", "expenses-booked", "token-incentives"]
+    )
+    stale = inputs("2026-10-31", "2026-10-27")
+    assert all(
+        stale[k]["status"] == "unavailable"
+        for k in ["net-income", "non-stable-gains", "other-non-cash"]
+    )
+    complete = inputs("2026-10-31", "2026-10-31")
+    assert Decimal(complete["net-income"]["value"]) == Decimal("-928182")

@@ -1,5 +1,6 @@
 """Compose a frozen month from cash events and independently sourced accruals."""
 
+import calendar
 from copy import deepcopy
 from datetime import date
 from decimal import Decimal, localcontext
@@ -85,6 +86,10 @@ def build(evidence, income, *, config=None):
         return c
 
     all_costs, cash_costs, spk, expense_revision = expense_inputs(month)
+    if cutoff.day != calendar.monthrange(cutoff.year, cutoff.month)[1]:
+        # The supplied expenses are full-month provisional figures, not daily
+        # observations. Never pair them with an MTD cash/income interval.
+        all_costs = cash_costs = spk = None
     earned = source("statement.net_revenue")
     cost = metric(
         all_costs,
@@ -166,23 +171,25 @@ def build(evidence, income, *, config=None):
     metrics["msc-receivable"] = metric(
         reason="Opening receivable plus earned less actual Sky receipts is computed by annual projection"
     )
-    metrics["gross-allocation-cash"] = metric(
-        sum(
-            (
-                Decimal(r["amount_usd"])
-                for r in ledger["entries"]
-                if r["line_id"] == "allocation-changes"
-                or (
-                    r["line_id"] == "unclassified"
-                    and r["reason"].startswith("Allocation redemption")
-                )
+    with localcontext() as ctx:
+        ctx.prec = 100
+        metrics["gross-allocation-cash"] = metric(
+            sum(
+                (
+                    Decimal(r["amount_usd"])
+                    for r in ledger["entries"]
+                    if r["line_id"] == "allocation-changes"
+                    or (
+                        r["line_id"] == "unclassified"
+                        and r["reason"].startswith("Allocation redemption")
+                    )
+                ),
+                Decimal(0),
             ),
-            Decimal(0),
-        ),
-        complete=False,
-        reason="Observed gross allocation cash; principal/yield attribution incomplete",
-        refs=["event_ledger.gross-allocation-cash"],
-    )
+            complete=False,
+            reason="Observed gross allocation cash; principal/yield attribution incomplete",
+            refs=["event_ledger.gross-allocation-cash"],
+        )
     summaries = [
         {
             "chain": ch,
@@ -216,6 +223,10 @@ def build(evidence, income, *, config=None):
             "missing_chains": [
                 ch for ch, s in evidence["chains"].items() if s["status"] == "unavailable"
             ],
+            "partial_chains": [
+                ch for ch, s in evidence["chains"].items() if s["status"] == "partial"
+            ],
+            "token_registry_gaps": ["Robinhood USDC has no reviewed token registry entry"],
             "savings_failures": ledger["savings"]["failures"],
             "unclassified_events": sum(r["line_id"] == "unclassified" for r in entries),
             "classification_complete": False,
