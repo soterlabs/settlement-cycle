@@ -137,6 +137,15 @@ def test_receipt_month_allocation_is_read_only_pinned_and_separate_from_accrued_
             assert result['true_accrual'] is False and result['principal_included'] is False
             assert client.get('/v3/reporting/receipt-allocation', params=params,
                               headers={'If-None-Match': response.headers['etag']}).status_code == 304
+            weak = 'W/' + response.headers['etag']
+            assert client.get('/v3/reporting/receipt-allocation', params=params,
+                              headers={'If-None-Match': weak}).status_code == 304
+            assert client.get('/v3/reporting/receipt-allocation', params=params,
+                              headers={'If-None-Match': '"unrelated", ' + weak}).status_code == 304
+            assert client.get('/v3/reporting/receipt-allocation', params=params,
+                              headers={'If-None-Match': '*'}).status_code == 304
+            assert client.get('/v3/reporting/receipt-allocation', params=params,
+                              headers={'If-None-Match': 'W/"unrelated"'}).status_code == 200
             assert client.get('/v3/reporting/statements', params={'prime': 'spark', 'year': pnl.as_of.year}).json() == before
             with psycopg.connect(database, autocommit=True) as conn:
                 assert store.read(conn, 'spark') == original
