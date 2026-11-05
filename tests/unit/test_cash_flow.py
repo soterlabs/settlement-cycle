@@ -179,7 +179,7 @@ class Reader:
     def close(self):
         pass
 
-    def cash_flow_year(self, prime, year, revisions=None):
+    def cash_flow_year(self, prime, year, revisions=None, as_of=None):
         return [publication()]
 
     def cash_flow_events(self, prime, month, revision, line, offset, limit):
@@ -289,6 +289,25 @@ def test_no_observed_scope_is_unavailable_instead_of_a_known_zero():
     assert result["deposits"]["status"] == "unavailable"
     assert result["buybacks"]["known_value"] is None
     assert result["sky-contributions"]["status"] == "unavailable"
+    assert result["opening-cash"]["known_value"] is None
+    assert result["unclassified-net"]["known_value"] is None
+    token = next(t for t, m in config["tokens"]["ethereum"].items() if m["symbol"] == "USDS")
+    owner = next(iter(config["wallets"]["ethereum"]))
+    evidence["chains"]["ethereum"] = {
+        "status": "available",
+        "balances": [
+            {
+                "token": token,
+                "owner": owner,
+                "opening": str(12 * 10**18),
+                "closing": str(15 * 10**18),
+            }
+        ],
+    }
+    known = cash_metrics(evidence, {"entries": [], "savings": {"failures": {}}}, config)
+    assert known["opening-cash"]["known_value"] == "12"
+    assert known["closing-cash"]["known_value"] == "15"
+    assert known["measured-change"]["known_value"] == "3"
 
 
 def test_source_evidence_rejects_wrong_config_truncated_balances_and_out_of_period_logs():
@@ -359,3 +378,16 @@ def test_full_month_expenses_are_not_paired_with_mtd_or_stale_income(monkeypatch
     )
     complete = inputs("2026-10-31", "2026-10-31")
     assert Decimal(complete["net-income"]["value"]) == Decimal("-928182")
+
+
+def test_delayed_mtd_sources_keep_monthly_and_ytd_totals_provisional():
+    p = publication("2026-11-01")
+    d = annual("spark", 2026, date(2026, 11, 4), [p])
+    assert d["periods"][10]["stale"] is True
+    row = next(r for r in d["lines"] if r["id"] == "external-receipts")
+    assert row["values"]["2026-11"]["status"] == "partial"
+    assert row["values"]["2026-11"]["known_value"] == "100"
+    assert row["total"]["status"] == "partial"
+    original = annual("spark", 2026, date(2026, 11, 1), [p])
+    row = next(r for r in original["lines"] if r["id"] == "external-receipts")
+    assert row["values"]["2026-11"]["status"] == "available"

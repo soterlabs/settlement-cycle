@@ -11,11 +11,11 @@ from . import revenue
 
 
 class CashFlowReaderMixin:
-    def cash_flow_year(self, prime, year, revisions=None):
+    def cash_flow_year(self, prime, year, revisions=None, as_of=None):
         with self._pool.connection() as conn:
             with conn.transaction():
                 conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
-                return store.year_rows(conn, prime, year, revisions)
+                return store.year_rows(conn, prime, year, revisions, as_of)
 
     def cash_flow_events(self, prime, month, revision, line, offset, limit):
         with self._pool.connection() as conn:
@@ -79,7 +79,10 @@ def register(app, get_reader, document_response):
             )
         try:
             rows = r.cash_flow_year(
-                prime, year, [v for v in selection["revisions"] if v] if selection else None
+                prime,
+                year,
+                [v for v in selection["revisions"] if v] if selection else None,
+                as_of=as_of,
             )
             result = annual(prime, year, as_of, rows, selection=selection)
         except (LookupError, ValueError) as exc:

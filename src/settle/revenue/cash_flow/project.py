@@ -9,7 +9,7 @@ from decimal import Decimal
 
 from ..verification import digest
 from .config import layout, load
-from .model import metric, total
+from .model import amount, metric, total
 
 
 def encode(value):
@@ -122,7 +122,7 @@ def annual(prime, year, as_of, rows, *, selection=None):
         },
         {
             "id": "gross-allocation-cash",
-            "label": "Gross allocation cash movements",
+            "label": "Allocation cash before principal/yield split",
             "parent": None,
             "depth": 0,
             "kind": None,
@@ -152,6 +152,14 @@ def annual(prime, year, as_of, rows, *, selection=None):
             )
             if p["state"] == "future":
                 cell = {**metric(reason="future_period"), "status": "future"}
+            if item and p["stale"] and amount(cell) is not None:
+                cell = {
+                    **cell,
+                    "known_value": str(amount(cell)),
+                    "value": None,
+                    "status": "partial",
+                    "reason": "Delayed cash-flow publication: observed through " + item["cutoff"],
+                }
             if item:
                 cell["source_ref"] = item["revision_id"]
             values[p["key"]] = cell

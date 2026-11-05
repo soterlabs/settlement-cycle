@@ -71,3 +71,17 @@ def test_cash_flow_publications_are_immutable_scoped_and_reporting_only(database
             assert client.get("/v3/reporting/cash-flow/events", params=params).status_code == 404
     with psycopg.connect(database, autocommit=True) as conn:
         assert conn.execute("SELECT count(*) FROM revenue_results").fetchone()[0] == 0
+
+
+def test_month_projection_reads_one_eligible_revision_per_month(database):  # noqa: F811
+    with psycopg.connect(database, autocommit=True) as conn:
+        store.apply_schema(conn)
+        ids = {}
+        for day in ["2026-10-31", "2026-11-01", "2026-11-03"]:
+            ids[day] = store.publish(conn, document(day), [], "code")
+        historical = store.year_rows(conn, "spark", 2026, as_of=date(2026, 11, 2))
+        assert {r["cutoff"] for r in historical} == {"2026-10-31", "2026-11-01"}
+        latest = store.year_rows(conn, "spark", 2026, as_of=date(2026, 11, 4))
+        assert {r["cutoff"] for r in latest} == {"2026-10-31", "2026-11-03"}
+        pinned = store.year_rows(conn, "spark", 2026, [ids["2026-11-01"]], as_of=date(2026, 11, 4))
+        assert [r["cutoff"] for r in pinned] == ["2026-11-01"]

@@ -185,7 +185,9 @@ def build(evidence, income, *, config=None):
                     )
                 ),
                 Decimal(0),
-            ),
+            )
+            if amount(metrics["allocation-changes"]) is not None
+            else None,
             complete=False,
             reason="Observed gross allocation cash; principal/yield attribution incomplete",
             refs=["event_ledger.gross-allocation-cash"],

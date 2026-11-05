@@ -67,14 +67,19 @@ def publish(conn, document, events, code_version):
     return revision
 
 
-def year_rows(conn, prime, year, revisions=None):
-    query = """SELECT DISTINCT ON(cutoff) revision_id,publication_order,prime,cutoff,policy_version,computed_at,document,document_hash,evidence_hash,code_version,configuration_revision
+def year_rows(conn, prime, year, revisions=None, as_of=None):
+    distinct = "cutoff" if revisions is not None else "date_trunc('month',cutoff)"
+    query = f"""SELECT DISTINCT ON({distinct}) revision_id,publication_order,prime,cutoff,policy_version,computed_at,document,document_hash,evidence_hash,code_version,configuration_revision
     FROM reporting_cash_flow_publications WHERE prime=%s AND cutoff BETWEEN %s AND %s"""
-    params = [prime, date(year, 1, 1), date(year, 12, 31)]
+    params = [
+        prime,
+        date(year, 1, 1),
+        min(as_of, date(year, 12, 31)) if as_of else date(year, 12, 31),
+    ]
     if revisions is not None:
         query += " AND revision_id=ANY(%s)"
         params.append(revisions)
-    query += " ORDER BY cutoff,publication_order DESC"
+    query += " ORDER BY " + distinct + ",cutoff DESC,publication_order DESC"
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(query, params)
         rows = canonical(cur.fetchall())

@@ -501,7 +501,9 @@ def cash_metrics(evidence, ledger, config=None):
             sum(
                 (Decimal(r["amount_usd"]) for r in rows if r["line_id"] == "unclassified"),
                 Decimal(0),
-            ),
+            )
+            if len(missing) < len(config["wallets"])
+            else None,
             complete=not missing,
             reason="Unclassified movements are disclosed outside statement totals",
             refs=["event_ledger.unclassified"],
@@ -511,24 +513,28 @@ def cash_metrics(evidence, ledger, config=None):
         )
         for side, key in [("opening", "opening-cash"), ("closing", "closing-cash")]:
             known = Decimal(0)
+            observed = False
             incomplete = []
             for chain, source in evidence["chains"].items():
                 if not source.get("balances") and not source.get("absence_proof"):
                     incomplete.append(chain)
                     continue
+                if source.get("absence_proof"):
+                    observed = True
                 for r in source.get("balances", []):
                     if not is_cash(config, chain, r["token"], r["owner"]):
                         continue
                     if r.get(side) is None:
                         incomplete.append(chain)
                         continue
+                    observed = True
                     known += (
                         Decimal(r[side]) / 10 ** config["tokens"][chain][r["token"]]["decimals"]
                     )
             # Issuer reward cash in raw ALMs requires a separate principal/reward
             # sub-ledger. The independently observed par wallet balance is known.
             metrics[key] = metric(
-                known,
+                known if observed else None,
                 complete=False,
                 reason="Known par wallet/vault cash; issuer reward cash and bridge transit reconciliation pending"
                 + (
