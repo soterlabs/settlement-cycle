@@ -113,8 +113,8 @@ def test_large_capture_compression_preserves_facts_and_rejects_corruption(databa
 
 
 def test_existing_fee_source_cache_reuse_is_read_only_and_preserves_gaps(database, monkeypatch):  # noqa: F811
+    from settle.extract import hypersync, hypersync_store
     from settle.revenue.cash_flow.fee_evidence import read_source_cache
-    from settle.extract import hypersync_store, hypersync
 
     monkeypatch.setenv("DATABASE_URL", database)
     monkeypatch.setenv("SETTLE_INPUT_REVISION", "0")

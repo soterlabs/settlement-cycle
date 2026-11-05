@@ -273,3 +273,30 @@ def test_partial_local_cache_is_never_read_as_a_complete_capture(tmp_path):
     path.write_bytes(path.read_bytes()[:12])
     assert read_capture(path) is None
     assert not list(tmp_path.glob("*.tmp"))
+
+
+def test_reviewed_explicit_loan_split_is_supported_and_unsplit_rollover_is_provisional():
+    from datetime import UTC, datetime
+
+    c = load()
+    token = next(t for t, m in c["tokens"]["ethereum"].items() if m["symbol"] == "USDC")
+    owner = next(iter(c["wallets"]["ethereum"]))
+    payer = "0x49506c3aa028693458d6ee816b2ec28522946872"
+    for day, value, quality in [
+        ("2026-09-11", "10024418.639471", "supported"),
+        ("2026-07-16", "10036438", "estimate"),
+    ]:
+        e = event(1, TRANSFER, int(Decimal(value) * 10**6), None, src=payer, dst=owner)
+        e.update(
+            address=token,
+            timestamp=int(datetime.fromisoformat(day).replace(tzinfo=UTC).timestamp()),
+        )
+        rows = collect_ledger({"chains": {"ethereum": {"events": [e]}}}, config=c)["entries"]
+        assert next(r for r in rows if r["line_id"] == "allocation-changes")["quality"] == quality
+        if quality == "supported":
+            assert (
+                next(r for r in rows if r["line_id"] == "external-receipts")["amount_usd"]
+                == "24410.000000"
+            )
+        else:
+            assert not any(r["line_id"] == "external-receipts" for r in rows)
