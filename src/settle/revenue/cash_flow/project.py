@@ -177,14 +177,15 @@ def annual(prime, year, as_of, rows, *, selection=None):
     by_id = {r["id"]: r for r in lines}
     # Additive lines can coexist with retained legacy months. Unknown new
     # components make those months partial; they must not break parent sums.
-    for key, children in CHILDREN.items():
-        for p, item in zip(periods, chosen, strict=True):
-            if p["state"] == "future": continue
-            cells = [(child, 1, by_id[child]["values"][p["key"]]) for child in children if child in by_id]
-            cell = total(cells)
-            if item: cell["source_ref"] = item["revision_id"]
-            by_id[key]["values"][p["key"]] = cell
-        by_id[key]["total"] = total([(p["key"],1,by_id[key]["values"][p["key"]]) for p in periods if p["state"] != "future"])
+    if present.intersection(OPTIONAL_ACCOUNTING_LINES):
+        for key, children in CHILDREN.items():
+            for p, item in zip(periods, chosen, strict=True):
+                if p["state"] == "future": continue
+                cells = [(child, 1, by_id[child]["values"][p["key"]]) for child in children if child in by_id]
+                cell = total(cells)
+                if item: cell["source_ref"] = item["revision_id"]
+                by_id[key]["values"][p["key"]] = cell
+            by_id[key]["total"] = total([(p["key"],1,by_id[key]["values"][p["key"]]) for p in periods if p["state"] != "future"])
     for key, starting, parts in [
         ("cumulative-gap", Decimal(0), [("reconciliation-gap", 1)]),
         (

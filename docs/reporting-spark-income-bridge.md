@@ -10,11 +10,11 @@
 | `investment.susds` | Sum of existing raw sUSDS returns plus the PSM3 component | Gross yield includes Savings-funded holdings. An MSC-only fallback cannot certify that entire gross return. |
 | `revaluation.sparklend_assets` | Existing independently reconciled daily asset price revaluation | Capital and supply interest are separated by the existing source bridge. |
 | `revaluation.savings_liabilities` | Signed negative of the existing depositor FX revaluation | This is the liability FX offset, not VSR interest or principal. |
-| `gains.sparklend_nonstable` | Sum of the two preceding components | Only this net parent enters non-stable gains; child metrics are not added a second time. |
-| `funding.savings` | Existing VSR-interest calculation | Unchanged; depositor FX does not enter this interest subtotal. |
+| `gains.sparklend_nonstable` | Gross asset revaluation, including Ops | Depositor FX is excluded from asset gains and belongs to Savings funding. |
+| `funding.savings` | VSR interest plus depositor FX expense | Liability FX is deducted here once, separately from VSR interest and principal. |
 | `investment.anchorage` | Existing attributed receipts/principal exclusions, with reviewed March/April onchain cash evidence | March cash received at the ALM is 805,479 USDC; April is zero. Spark's 133,500 funding transfer into escrow is not income. April third-party payments are disclosed, not guessed as fees or negative interest. Loan accrual terms remain unconfirmed. |
 | PYUSD/RLUSD/USDG income | Existing issuer recognition rules | PYUSD/RLUSD accruals and USDG receipts remain distinct from MSC cash recognition. |
-| SparkLend fees | Existing treasury-to-ALM spToken receipt ledger | Original receipt months remain recognized once. September's historical MSC true-up is a control, not extra reporting income. |
+| SparkLend fees | Treasury-to-ALM/Ops receipts, including nonstable reserve tokens at receipt value | Original receipt months remain recognized once. September's historical MSC true-up is a control, not extra reporting income. |
 
 Each new numeric statement row has an explicit API metric and API-owned indentation. Existing immutable sources, decimal precision, source references and quality/coverage metadata are preserved. The reporting-only reviewed chain snapshot is immutable and hash checked; update it only with a new policy/snapshot. No RPC endpoints or credentials are stored.
 
@@ -41,3 +41,7 @@ The bridge starts from the MSC supply-side and demand-side headlines and include
 The September fee control compares original January–August reporting fee receipts against 2,392,354.07 USDS. It is not applicable to report cutoffs before September 30 and never contributes to reporting revenue. Operating expenses are outside the MSC-to-total-net-revenue bridge.
 
 The dashboard displays this bridge on Spark's income statement, with source-aware values and a month selector. Other primes retain their existing reporting policies.
+
+The agreed accounting contract is [ACCOUNTING_RULES.md](../src/settle/revenue/ACCOUNTING_RULES.md). Treasury reward and fee receipts are tracked separately from subsequent gains and cash sale proceeds. Historical SDE ownership is recalculated for reporting without changing MSC. Contributor SPK remains an explicit missing expense component until the approved monthly USD expense figures arrive.
+
+Backfill the new sources with `python -m settle.revenue.spark_reporting_job --from 2026-01-01 --to 2026-10-31 --accounting-only`, then replay `python -m settle.revenue.cash_flow.job --from 2026-01-01 --to 2026-10-31` using the authorized environment. These jobs append reporting revisions; they do not replay MSC.

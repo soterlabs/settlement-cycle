@@ -177,9 +177,15 @@ def complete_document(old, source, *, source_revision=None):
     result["extended_from"] = old["document"].get("extended_from", old["revision_id"])
     result["completion_source_revision"] = source_revision or old["revision_id"]
     from .spark_treasury import collect as treasury
-    result["treasury"] = treasury(source)
+    try:
+        result["treasury"] = treasury(source)
+    except Exception as exc:
+        result["treasury"] = {"errors": {"collection": type(exc).__name__}}
     from .spark_ownership import collect as ownership
-    result["ownership"] = ownership(source, retained=result)
+    try:
+        result["ownership"] = ownership(source, retained=result)
+    except Exception as exc:
+        result["ownership"] = {"errors": {"collection": type(exc).__name__}}
     return result
 
 

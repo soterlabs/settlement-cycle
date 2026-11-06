@@ -1,3 +1,4 @@
+from copy import deepcopy
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
@@ -110,3 +111,86 @@ def test_non_cash_compensation_missing_is_not_zero_and_is_added_back_once():
     subtotals(cells)
     assert cells["net-operating"]["status"] == "partial"
     assert amount(cells["net-operating"]) == 80
+
+
+def test_native_history_excludes_delegatecall_and_preserves_failed_call_gas(monkeypatch):
+    from types import SimpleNamespace
+
+    from settle.revenue import spark_treasury as module
+
+    ops = module.OPS
+    base = dict(
+        blockNumber="100",
+        timeStamp="1000",
+        hash="0x" + "f" * 64,
+        value="1000000000000000000",
+        isError="0",
+        type="call",
+        gasUsed="21000",
+        gasPrice="1000000000",
+        **{"from": ops, "to": ALM},
+    )
+    failed = dict(base, isError="1")
+    delegated = dict(base, type="delegatecall", **{"from": ALM, "to": ops})
+
+    def get(url, params=None, **kwargs):
+        raw = (
+            {"items": [{"number": 1000}]}
+            if url.endswith("/blocks")
+            else {
+                "status": "1",
+                "result": [failed] if params["action"] == "txlist" else [delegated],
+            }
+        )
+        return SimpleNamespace(raise_for_status=lambda: None, json=lambda: raw)
+
+    monkeypatch.setattr(module.requests, "get", get)
+    events = module.native_events.__wrapped__(ops, 99, 100)
+    assert len(events) == 1 and events[0]["kind"] == "gas"
+    assert events[0]["units"] == "0.000021"
+
+
+def test_failed_new_treasury_refresh_keeps_prior_coverage_and_quality():
+    from settle.revenue.spark_reporting_store import carry_forward
+
+    old = {
+        "period_start": "2026-10-01",
+        "treasury": {"rewards": {"avax": {"status": "available", "value": "100"}}},
+    }
+    new = {
+        "period_start": "2026-10-01",
+        "treasury": {"rewards": {"avax": {"status": "unavailable"}}},
+    }
+    r = carry_forward(new, {"document": old, "cutoff": "2026-10-15", "revision_id": "a" * 64})
+    item = r["treasury"]["rewards"]["avax"]
+    assert item["status"] == "partial" and item["value"] == "100"
+    assert item["period_end"] == "2026-10-15"
+
+
+def test_contributor_input_revision_replays_after_the_current_sheet_changes(tmp_path, monkeypatch):
+    import json
+
+    from settle.revenue import expense_inputs
+    from settle.revenue.financial import decode_selection, statements
+    from settle.revenue.verification import digest
+
+    initial, revision = expense_inputs.contributor_input()
+    old_report = statements("spark", 2026, date(2026, 10, 31), [], spark_statement=True)
+    archive = tmp_path / "published_expenses"
+    archive.mkdir()
+    (archive / (revision + ".json")).write_text(json.dumps(initial))
+    updated = deepcopy(initial)
+    updated["months"]["2026-10"] = "100"
+    (tmp_path / "contributor_compensation.json").write_text(json.dumps(updated))
+    (archive / (digest(updated) + ".json")).write_text(json.dumps(updated))
+    monkeypatch.setattr(expense_inputs, "files", lambda package: tmp_path)
+    new_report = statements("spark", 2026, date(2026, 10, 31), [], spark_statement=True)
+    assert new_report["expense_input_revision"] != old_report["expense_input_revision"]
+    replay = statements(
+        "spark",
+        2026,
+        date(2026, 10, 31),
+        [],
+        selection=decode_selection(old_report["selection"], "spark", 2026),
+    )
+    assert replay == old_report

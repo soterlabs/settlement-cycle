@@ -306,6 +306,14 @@ def carry_forward(document, previous):
     ):
         for key, value in result.get(family, {}).items():
             result[family][key] = retained(value, previous["document"].get(family, {}).get(key, {}))
+    for root, families in (("treasury", ("fees", "rewards", "gains")), ("ownership", ("venues",))):
+        for family in families:
+            for key, value in result.get(root, {}).get(family, {}).items():
+                result[root][family][key] = retained(value, previous["document"].get(root, {}).get(family, {}).get(key, {}))
+    if "ownership" in result:
+        result["ownership"]["funding_adjustment"] = retained(
+            result["ownership"].get("funding_adjustment", {}),
+            previous["document"].get("ownership", {}).get("funding_adjustment", {}))
     return result
 
 

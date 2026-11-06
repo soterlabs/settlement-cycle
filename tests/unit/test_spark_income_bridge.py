@@ -213,6 +213,7 @@ def test_read_only_bridge_endpoint_and_old_selection_are_explicit(monkeypatch):
     )
     old = decode_selection(data["selection"], "spark", 2026)
     old["policy_version"] = SPARK_HISTORY_POLICY
+    old.pop("expense_input_revision", None)
     assert (
         client.get(
             "/v3/reporting/spark/msc-reconciliation",

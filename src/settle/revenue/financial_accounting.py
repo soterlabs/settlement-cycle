@@ -4,23 +4,19 @@ No chain reads here. Unknown supplemental inputs remain missing rather than
 being guessed from sale proceeds or a balancing residual.
 """
 
-import json
 from copy import deepcopy
-from importlib.resources import files
 
-from .financial import metric
+from .expense_inputs import contributor_input
+from .financial import metric, number
 from .financial_spark import saved_component
 from .statement_rollups import combine
-from .verification import digest
 
 
-def extend(statement, supplements):
+def extend(statement, supplements, *, expense_revision=None):
     lookup = {r["id"]: r for r in statement["lines"]}
     periods = statement["periods"]
-    compensation = json.loads(
-        files("settle.revenue").joinpath("contributor_compensation.json").read_text()
-    )
-    statement["expense_input_revision"] = digest(compensation)
+    compensation, expense_revision = contributor_input(expense_revision)
+    statement["expense_input_revision"] = expense_revision
     statement["lines"].append(
         dict(
             id="expenses.compensation.spk",
@@ -45,6 +41,7 @@ def extend(statement, supplements):
     for cell in statement["lines"][-1]["values"].values():
         cell["input_revision"] = statement["expense_input_revision"]
         cell["quality"] = "estimate"
+        cell["recognition"] = "accrual"
         if cell.get("value") is not None:
             cell["reason"] = None
     keys = {
@@ -128,10 +125,11 @@ def extend(statement, supplements):
         treasury = saved["document"].get("treasury", {}) if saved else {}
         for kind in ("morpho", "avax"):
             raw = treasury.get("gains", {}).get(kind, {})
-            if raw:
-                lookup["gains." + kind]["values"][month] = saved_component(
-                    raw, "value", saved, expected=p["expected_cutoff"]
-                )
+            lookup["gains." + kind]["values"][month] = (
+                saved_component(raw, "value", saved, expected=p["expected_cutoff"])
+                if saved
+                else metric(reason="full_cluster_treasury_gains_not_published")
+            )
         extra = treasury.get("gains", {}).get("reserve_nonstable", {})
         asset = lookup.get("revaluation.sparklend_assets")
         if asset:
@@ -184,8 +182,11 @@ def extend(statement, supplements):
                 lookup[metric_id]["values"][month]["allocation_split"] = {
                     **{k: raw[k] for k in ("gross_income_usd", "sky_income_usd")},
                     "prime_income_usd": raw["value"],
-                    "sky_share": str(number(raw["sky_income_usd"]) / number(raw["gross_income_usd"]))
-                    if number(raw["gross_income_usd"]) else "0",
+                    "sky_share": str(
+                        number(raw["sky_income_usd"]) / number(raw["gross_income_usd"])
+                    )
+                    if number(raw["gross_income_usd"])
+                    else "0",
                     "sky_share_basis": "effective_dated_designated_exposure",
                     "rounding_delta_usd": "0",
                 }

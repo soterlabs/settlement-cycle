@@ -501,7 +501,7 @@ def collect(prime, period, opening_pins, *, source=None, progress=None, native_v
         if 'anchorage.receipts' in income:
             result.setdefault('statement_allocations', {})['anchorage.receipts'] = income['anchorage.receipts']
     from .spark_treasury import collect as treasury
-    result["treasury"] = treasury(source)
+    result["treasury"] = attempt("treasury", lambda: treasury(source))
     from .spark_ownership import collect as ownership
-    result["ownership"] = ownership(source, retained=result)
+    result["ownership"] = attempt("ownership", lambda: ownership(source, retained=result))
     return result

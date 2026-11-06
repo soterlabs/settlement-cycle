@@ -222,6 +222,11 @@ def decode_selection(token, prime, year):
             keys.add('monthly_revisions')
         if selection.get('policy_version') in OFFCHAIN_POLICIES:
             keys.add('offchain_revisions')
+        if selection.get('policy_version') == SPARK_RECONCILED_POLICY and 'expense_input_revision' in selection:
+            keys.add('expense_input_revision')
+            value = selection['expense_input_revision']
+            if not isinstance(value, str) or len(value) != 64 or any(c not in '0123456789abcdef' for c in value):
+                raise ValueError('Invalid expense input revision')
         if (set(selection) != keys
                 or selection['prime'] != prime or selection['year'] != year
                 or selection['policy_version'] not in (*SUPPORTED_POLICIES, *MONTHLY_STATEMENT_POLICIES)
@@ -305,6 +310,11 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None,
             period['offchain_revision'] = report['revision_id'] if report else None
             if report and period['actual_cutoff'] is None:
                 period.update(actual_cutoff=report['cutoff'], stale=report['cutoff'] < period['expected_cutoff'])
+    if policy_version == SPARK_RECONCILED_POLICY and prime == 'spark':
+        from .expense_inputs import INITIAL_CONTRIBUTOR_INPUT, contributor_input
+        _, expense_revision = contributor_input(
+            selection.get('expense_input_revision', INITIAL_CONTRIBUTOR_INPUT) if selection else None)
+        manifest['expense_input_revision'] = expense_revision
     rwa_cells = []
     if policy_version in RWA_POLICIES and prime == 'grove':
         from .financial_rwa import daily as rwa_daily
@@ -387,7 +397,7 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None,
         from .financial_spark_reconciled import extend_inputs
         extend_inputs(result, chosen, monthly_chosen, offchain_chosen)
         from .financial_accounting import extend as accounting
-        accounting(result, offchain_chosen)
+        accounting(result, offchain_chosen, expense_revision=manifest["expense_input_revision"])
     if policy_version in RWA_POLICIES:
         from .financial_rwa import refresh_reviewed_subtotal
         refresh_reviewed_subtotal(result)

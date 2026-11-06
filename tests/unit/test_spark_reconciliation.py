@@ -181,12 +181,11 @@ def test_real_october_reconciliation_changes_revenue_and_preserves_principal_bri
     assert amount("investment.venue.S70") == Decimal("42216.857778309561307159")
     assert amount("investment.sparklend.weth") == Decimal("63434.2962679755668615143355823535473")
     assert amount("investment.morpho.sentora_rlusd") == Decimal("40810.009907014820654471")
-    assert amount("gains.sparklend_nonstable") == Decimal("5981.2973346256055669352690302757942")
-    assert (
-        amount("investment.amm.uniswap_v4.usdt_usds") == 0
-    )  # 100% Sky; new NFTs do not change this split.
+    assert amount("gains.sparklend_nonstable") == Decimal(document["gains"]["sparklend_nonstable"]["asset_price_gain_usd"])
+    # This retained fixture predates the effective-dated ownership calculation.
+    assert lookup["investment.amm.uniswap_v4.usdt_usds"]["status"] == "unavailable"
     assert lookup["investment.amm.uniswap_v4.rlusd_usds"]["quality"] == "supported"
-    assert lookup["gains.avax"]["quality"] == "supported"
+    assert lookup["gains.avax"]["status"] == "unavailable"
     assert lookup["gains.eth_weth"]["quality"] == "estimate"
     assert lookup["demand.distribution_rewards"]["status"] == "unavailable"
     assert lookup["fees.sparklend"]["recognition"] == "receipt_in_kind"

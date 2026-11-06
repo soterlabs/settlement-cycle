@@ -4,8 +4,6 @@ import calendar
 from copy import deepcopy
 from datetime import date
 from decimal import Decimal, localcontext
-import json
-from importlib.resources import files
 
 from .. import financial_store, spark_reporting_store
 from ..financial import statements
@@ -118,7 +116,8 @@ def build(evidence, income, *, config=None):
         reason="Same SPK expense as net income, added back once",
         refs=["expense:" + expense_revision],
     )
-    contributor_source = json.loads(files("settle.revenue").joinpath("contributor_compensation.json").read_text())
+    from ..expense_inputs import contributor_input
+    contributor_source, contributor_revision = contributor_input(income.get("expense_input_revision"))
     contributor = contributor_source["months"][month]
     metrics["contributor-spk"] = metric(contributor, recognition="accrual", quality="estimate",
         reason="Contributor compensation from approved monthly sheet; missing values are not zero",
@@ -239,6 +238,7 @@ def build(evidence, income, *, config=None):
             "accuracy_source_hash": digest(evidence.get("accuracy")),
             "income_selection": income["selection"],
             "expense_revision": expense_revision,
+            "contributor_compensation_revision": contributor_revision,
             "income_actual_cutoff": period.get("actual_cutoff"),
         },
         "coverage": {

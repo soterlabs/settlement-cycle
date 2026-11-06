@@ -153,3 +153,7 @@ References: [SDE definition](https://sky-atlas.io/#b3fb8653-8503-4a9e-81b2-5e9f4
 6. Review API and dashboard totals together, preserve source metadata/exports,
    and replay reporting publications when methodology changes. Do not replay MSC
    as a side effect of a reporting correction.
+
+### Updating contributor compensation
+
+`contributor_compensation.json` is the current authored input. Approved monthly USD amounts replace pending nulls; token transfer quantities are never a substitute. Before publishing a changed input, archive the complete JSON under `published_expenses/<verification.digest(input)>.json`. Keep old archives: the statement selection pins `expense_input_revision`, and cash flow dependencies pin the same input. The dashboard reads this component from the API rather than maintaining a second contributor expense feed.

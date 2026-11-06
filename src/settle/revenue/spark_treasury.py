@@ -46,7 +46,7 @@ def cell(value, **extra):
     )
 
 
-@cached(source_id="spark-reporting.native-treasury-history.v1")
+@cached(source_id="spark-reporting.native-treasury-history.v2")
 def native_events(owner, start, end):
     root = "https://api.routescan.io/v2/network/mainnet/evm/43114"
     response = requests.get(root + "/blocks", params={"limit": 1}, timeout=30)
@@ -77,6 +77,24 @@ def native_events(owner, start, end):
         if raw["status"] == "0" and (rows or raw.get("message") != "No transactions found"):
             raise ValueError("Native empty history is not certified")
         for row in rows:
+            if not start < int(row["blockNumber"]) <= end:
+                raise ValueError("Native activity boundary differs")
+            if action == "txlist" and row["from"].lower() == owner:
+                # Failed calls still consume gas, but never transfer the stated value.
+                gas = D(row["gasUsed"]) * D(row["gasPrice"]) / 10**18
+                if gas:
+                    result.append(
+                        dict(
+                            block=int(row["blockNumber"]),
+                            timestamp=int(row["timeStamp"]),
+                            tx=row["hash"].lower(),
+                            src=owner,
+                            dst=ZERO,
+                            units=str(gas),
+                            kind="gas",
+                            identity="gas:" + row["hash"],
+                        )
+                    )
             if row.get("isError") == "1" or row.get("type", "call") not in (
                 "call",
                 "suicide",
@@ -135,6 +153,17 @@ def collect(source):
             return D(0)
         return D(balance_of(Chain(chain), Address.from_str(token), Address.from_str(owner), block))
 
+    @cache
+    def other_asset_events(chain):
+        tokens = (
+            [MORPHO["ethereum"], WETH["ethereum"], SPWETH, *OTHER_NONSTABLE_RESERVES]
+            if chain == "ethereum"
+            else [MORPHO["base"]]
+            if chain == "base"
+            else [WAVAX]
+        )
+        return token_events(chain, tokens, list(config["wallets"][chain]))
+
     def bridge(key, chain, tokens, owners, *, reward=False, native=False):
         # Token specifications are (address, decimals, price coin).
         specs = {t: (scale, coin) for t, scale, coin in tokens}
@@ -165,19 +194,29 @@ def collect(source):
             events = list({r["identity"]: r for r in events}.values())
         # Stable cash legs in the same transaction prove a purchase/disposal.
         cash = {t: m for t, m in config["tokens"][chain].items() if m["cash"]}
-        stable = token_events(chain, list(cash), owners)
+        cash_owners = [
+            a
+            for a, r in config["wallets"][chain].items()
+            if r["role"] not in ("savings_idle", "intents")
+        ]
+        stable = token_events(chain, list(cash), cash_owners)
         cash_by_tx = defaultdict(D)
         for r in stable:
-            sign = (("0x" + r.topic2[-40:]) in owners) - (("0x" + r.topic1[-40:]) in owners)
+            sign = (("0x" + r.topic2[-40:]) in cash_owners) - (
+                ("0x" + r.topic1[-40:]) in cash_owners
+            )
             cash_by_tx[r.transaction_hash.lower()] += (
                 D(int(r.data, 16)) / 10 ** cash[r.address]["decimals"] * sign
             )
         inventories = []
+        inventory_units = []
         for day in (before, end):
             value = D(0)
             stamp = int(datetime.combine(day, datetime.max.time(), UTC).timestamp())
+            combined_units = D(0)
             for token, scale, coin in tokens:
                 units = sum((token_balance(chain, token, a, day) for a in owners), D(0)) / 10**scale
+                combined_units += units
                 if units:
                     value += units * price(coin, stamp)
             if native:
@@ -195,11 +234,14 @@ def collect(source):
                 )
                 if units:
                     value += units * price("coingecko:avalanche-2", stamp)
+                combined_units += units
             inventories.append(value)
+            inventory_units.append(combined_units)
         flows = defaultdict(D)
         rewards = fees = D(0)
         receipts = []
         owned = set(owners)
+        net_units = D(0)
         for e in events:
             # Native/wrapped AVAX conversion is one inventory, not an external flow.
             if native and (
@@ -212,8 +254,9 @@ def collect(source):
             sign = (e["dst"] in owned) - (e["src"] in owned)
             if not sign:
                 continue
+            net_units += D(e["units"]) * sign
             value = D(e["units"]) * price(e["coin"], e["timestamp"])
-            flows[e["tx"]] += value * sign
+            flows[e["tx"] + (":gas" if e.get("kind") == "gas" else "")] += value * sign
             fee = e["src"] in TREASURIES and sign > 0
             earned = reward and sign > 0 and cash_by_tx[e["tx"]] >= 0 and e["src"] not in owned
             if key == "morpho":
@@ -227,6 +270,15 @@ def collect(source):
         # Swap consideration replaces quoted flow, not adds a second gain.
         for tx, flow in list(flows.items()):
             consideration = cash_by_tx[tx]
+            if consideration and any(
+                r.transaction_hash.lower() == tx
+                and r.address not in specs
+                and int(r.data, 16)
+                and "0x" + r.topic1[-40:] in cash_owners
+                and "0x" + r.topic2[-40:] not in cash_owners
+                for r in other_asset_events(chain)
+            ):
+                raise ValueError("Multi-asset sale needs an explicit consideration split")
             if flow < 0 and consideration > 0:
                 flows[tx] = -consideration
                 result["cash_disposals"].append(
@@ -234,6 +286,10 @@ def collect(source):
                 )
             elif flow > 0 and consideration < 0:
                 flows[tx] = -consideration
+        if (native or key.startswith("morpho")) and inventory_units[
+            0
+        ] + net_units != inventory_units[1]:
+            raise ValueError("Treasury token/native units do not reproduce closing inventory")
         gain = inventories[1] - inventories[0] - sum(flows.values(), D(0))
         proof = dict(
             opening_value=str(inventories[0]),
@@ -243,6 +299,9 @@ def collect(source):
             event_digest=digest(events),
             owners=owners,
             chain=chain,
+            opening_units=str(inventory_units[0]),
+            closing_units=str(inventory_units[1]),
+            net_external_units=str(net_units),
         )
         result["gains"][key] = cell(gain, inventory_bridge=proof)
         result["fees"][key] = cell(fees, receipts=receipts)
