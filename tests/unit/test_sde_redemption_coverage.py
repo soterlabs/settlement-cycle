@@ -104,14 +104,14 @@ def test_historical_pending_scan_propagates_transport_failure(buidl, monkeypatch
 
 def test_centrifuge_probe_failure_is_not_zero_pending(buidl, monkeypatch):
     from settle.extract import rpc
-    from settle.normalize.positions import _centrifuge_in_flight_shares
+    from settle.normalize.async_vaults import async_vault_exposure
     prime, _, _ = buidl
     venue = next(v for v in prime.venues if v.id == 'E9')
     def failed(*args, **kwargs):
         raise ConnectionError('archive unavailable')
     monkeypatch.setattr(rpc, 'is_contract_deployed', failed)
-    with pytest.raises(RuntimeError, match='deployment probe failed'):
-        _centrifuge_in_flight_shares(prime, venue, 25000000)
+    with pytest.raises(RuntimeError, match='exposure read failed'):
+        async_vault_exposure(prime, venue, 25000000)
 
 
 def test_recorded_centrifuge_requests_match_every_sampled_pending_balance():
@@ -130,9 +130,7 @@ def test_recorded_centrifuge_requests_match_every_sampled_pending_balance():
 
 
 def test_pending_centrifuge_shares_are_used_even_with_zero_wallet_balance(buidl, monkeypatch):
-    from settle.normalize import positions
     from settle.normalize import async_vaults
-    monkeypatch.setattr(async_vaults, 'issued_deposit', lambda *args: async_vaults.IssuedDeposit())
     prime, _, _ = buidl
     venue = next(v for v in prime.venues if v.id == 'E9')
     class Balances:
@@ -141,7 +139,8 @@ def test_pending_centrifuge_shares_are_used_even_with_zero_wallet_balance(buidl,
     class Blocks:
         def block_at_or_before(self, *args):
             return 123
-    monkeypatch.setattr(positions, '_centrifuge_in_flight_shares', lambda *args: D('22429188.808014'))
+    monkeypatch.setattr(async_vaults, 'async_vault_exposure', lambda *args, **kwargs:
+        async_vaults.AsyncVaultExposure(redemption_shares=D('22429188.808014')))
     day = date(2026, 8, 31)
     result = _sde_asset_value_timeseries(prime, venue, Period(day, day, {venue.chain: 123}),
         balance_source=Balances(), block_resolver=Blocks(), nav_at_block=lambda block: D('1.114619'))

@@ -18,9 +18,10 @@ ROOT = Path(__file__).resolve().parents[2]
 MANAGER = Address.from_str('0x' + '12' * 20)
 
 
-def state(shares=0, price=2 * 10**18, pending=0, cancelled=0):
+def state(shares=0, price=2 * 10**18, pending=0, cancelled=0, *,
+          pending_redeem=0, cancelled_redeem=0, cash=0):
     return '0x' + ''.join(f'{n:064x}' for n in
-        (shares, 0, price, 0, pending, 0, cancelled, 0, 0, 0))
+        (shares, cash, price, 10**18, pending, pending_redeem, cancelled, cancelled_redeem, 0, 0))
 
 
 @pytest.fixture
@@ -29,9 +30,8 @@ def vault():
     return prime, next(v for v in prime.venues if v.id == 'E9')
 
 
-def rpc_states(monkeypatch, states, *, redeem_raw=0):
+def rpc_states(monkeypatch, states):
     from settle.extract import rpc
-    from settle.extract.rpc import SEL_CLAIMABLE_REDEEM_REQUEST, SEL_PENDING_REDEEM_REQUEST
     monkeypatch.setattr(rpc, 'is_contract_deployed', lambda *args: True)
     calls = []
     def call(chain, contract, data, block):
@@ -41,10 +41,6 @@ def rpc_states(monkeypatch, states, *, redeem_raw=0):
         if data.startswith(av.SEL_INVESTMENTS):
             assert contract == MANAGER
             return states[block]
-        if data.startswith(SEL_PENDING_REDEEM_REQUEST):
-            return f'0x{redeem_raw:064x}'
-        if data.startswith(SEL_CLAIMABLE_REDEEM_REQUEST):
-            return '0x' + '0' * 64
         raise AssertionError(('Unexpected read', data))
     monkeypatch.setattr(rpc, 'eth_call', call)
     return calls
@@ -84,7 +80,7 @@ def test_month_boundary_recognizes_capital_once_and_preserves_yield(vault, monke
 
 def test_sde_combines_both_directions_before_cap(vault, monkeypatch):
     prime, venue = vault
-    rpc_states(monkeypatch, {1: state(100_000_000)}, redeem_raw=30_000_000)
+    rpc_states(monkeypatch, {1: state(100_000_000, pending_redeem=30_000_000)})
     class Balances:
         def cumulative_balance_timeseries(self, **kwargs):
             return pd.DataFrame({'block_date': [prime.start_date], 'cum_balance': [D(10)]})
@@ -100,6 +96,137 @@ def test_sde_combines_both_directions_before_cap(vault, monkeypatch):
     assert row['pending_redemption_value'] == 60
     assert row['uncapped_value'] == 280
     assert row['cum_value'] == 250
+
+
+def test_cancelled_redemption_keeps_value_until_wallet_return(vault, monkeypatch):
+    prime, venue = vault
+    rpc_states(monkeypatch, {
+        1: state(pending_redeem=100_000_000),
+        2: state(cancelled_redeem=100_000_000),
+        3: state(),
+    })
+    wallet = {1: D(0), 2: D(0), 3: D(100)}
+    monkeypatch.setattr(positions, 'get_position_balance', lambda p, v, b, **kw: wallet[b])
+    monkeypatch.setattr(positions, 'get_unit_price', lambda *args, **kw: D('1.1'))
+    assert [positions.get_position_value(prime, venue, block) for block in wallet] == [D(110)] * 3
+
+
+def test_priced_redemption_cash_is_independent_of_nav_and_transfer_views(vault, monkeypatch):
+    prime, venue = vault
+    calls = rpc_states(monkeypatch, {1: state(cash=100_000_000)})
+    monkeypatch.setattr(positions, 'get_position_balance', lambda *args, **kwargs: D(0))
+    monkeypatch.setattr(positions, 'get_unit_price', lambda *args, **kw: pytest.fail('Cash needs no NAV'))
+    assert positions.get_position_value(prime, venue, 1) == 100
+    exposure = av.async_vault_exposure(prime, venue, 1)
+    assert exposure.value(D('1.1')) == exposure.value(D('0.9')) == 100
+    assert {data[:10] for _, data, _ in calls} == {av.SEL_ASYNC_MANAGER, av.SEL_INVESTMENTS}
+
+
+def test_partial_redemption_cash_and_cancelled_shares_do_not_double_count(vault, monkeypatch):
+    prime, venue = vault
+    rpc_states(monkeypatch, {
+        1: state(pending_redeem=40_000_000, cash=60_000_000),
+        2: state(cancelled_redeem=40_000_000, cash=60_000_000),
+        3: state(cancelled_redeem=40_000_000, cash=30_000_000),
+        4: state(cash=30_000_000),
+        5: state(),
+    })
+    wallet = {1: D(0), 2: D(0), 3: D(0), 4: D(40), 5: D(40)}
+    paid_cash = {1: D(0), 2: D(0), 3: D(30), 4: D(30), 5: D(60)}
+    monkeypatch.setattr(positions, 'get_position_balance', lambda p, v, b, **kw: wallet[b])
+    monkeypatch.setattr(positions, 'get_unit_price', lambda *args, **kw: D('1.1'))
+    assert [positions.get_position_value(prime, venue, block) + paid_cash[block]
+            for block in wallet] == [D(104)] * 5
+
+
+def test_fixed_cash_and_cancellation_remain_in_daily_sde_with_empty_wallet(vault, monkeypatch):
+    prime, venue = vault
+    rpc_states(monkeypatch, {1: state(cash=100_000_000, cancelled_redeem=20_000_000)})
+    class Balances:
+        def cumulative_balance_timeseries(self, **kwargs):
+            return pd.DataFrame({'block_date': [prime.start_date], 'cum_balance': [D(0)]})
+    class Blocks:
+        def block_at_or_before(self, *args):
+            return 1
+    day = date(2026, 1, 31)
+    row = _sde_asset_value_timeseries(prime, venue, Period(day, day, {venue.chain: 1}),
+        balance_source=Balances(), block_resolver=Blocks(), nav_at_block=lambda b: D('1.1'),
+        cap_usd=D(110)).iloc[0]
+    assert row['uncapped_value'] == row['pending_redemption_value'] == 122
+    assert row['cum_value'] == 110
+
+
+def test_collection_in_new_month_does_not_double_average_holdings_or_capital(vault, monkeypatch):
+    from settle.compute.prime_agent_revenue import VenueRevenueInputs, compute_venue_revenue
+    prime, venue = vault
+    states = {day: state() for day in range(1, 29)}
+    states[0] = state(100_000_000, price=10**18)
+    rpc_states(monkeypatch, states)
+    class Blocks:
+        def block_at_or_before(self, chain, anchor):
+            return anchor.day
+    period = Period(date(2026, 2, 1), date(2026, 2, 28), {venue.chain: 28})
+    events = pd.DataFrame({'block_date': [date(2026, 1, 15), date(2026, 2, 1)],
+                          'daily_inflow': [D(250), D(100)]})
+    flows = av.async_capital_inflow_timeseries(prime, venue, period, events,
+        opening_block=0, block_resolver=Blocks())
+    inflow = sum(flows.loc[flows['block_date'] >= period.start, 'daily_inflow'], D(0))
+    result = compute_venue_revenue(period, VenueRevenueInputs(venue, D(100), D(100), flows,
+        erc4626_period_inflow=inflow))
+    assert result.tw_avg_value == 100
+    assert result.period_inflow == result.actual_revenue == 0
+
+
+def test_daily_capital_tracks_issuance_and_partial_claims_within_period(vault, monkeypatch):
+    from settle.compute.prime_agent_revenue import VenueRevenueInputs, compute_venue_revenue
+    prime, venue = vault
+    rpc_states(monkeypatch, {0: state(), 1: state(),
+        2: state(100_000_000, price=10**18), 3: state(60_000_000, price=10**18), 4: state()})
+    class Blocks:
+        def block_at_or_before(self, chain, anchor):
+            return anchor.day
+    period = Period(date(2026, 2, 1), date(2026, 2, 4), {venue.chain: 4})
+    events = pd.DataFrame({'block_date': [date(2026, 2, 3), date(2026, 2, 4)],
+                          'daily_inflow': [D(40), D(60)]})
+    flows = av.async_capital_inflow_timeseries(prime, venue, period, events,
+        opening_block=0, block_resolver=Blocks())
+    assert list(flows['daily_inflow']) == [D(0), D(100), D(0), D(0)]
+    result = compute_venue_revenue(period, VenueRevenueInputs(venue, D(0), D(100), flows,
+        erc4626_period_inflow=sum(flows['daily_inflow'], D(0))))
+    assert result.actual_revenue == 0
+    assert result.tw_avg_value == 75
+
+
+def test_empty_event_history_still_recognizes_issued_deposit(vault, monkeypatch):
+    prime, venue = vault
+    rpc_states(monkeypatch, {0: state(), 1: state(100_000_000, price=10**18)})
+    class Blocks:
+        def block_at_or_before(self, *args):
+            return 1
+    day = date(2026, 2, 1)
+    flows = av.async_capital_inflow_timeseries(prime, venue, Period(day, day, {venue.chain: 1}),
+        pd.DataFrame(), opening_block=0, block_resolver=Blocks())
+    assert list(flows['daily_inflow']) == [D(100)]
+
+
+def test_daily_capital_never_reads_state_after_the_closing_pin(vault, monkeypatch):
+    prime, venue = vault
+    calls = rpc_states(monkeypatch, {0: state(), 1: state(cash=100_000_000)})
+    class Blocks:
+        def block_at_or_before(self, *args):
+            return 2  # Resolver can see a block beyond this report's cutoff.
+    day = date(2026, 2, 1)
+    flows = av.async_capital_inflow_timeseries(prime, venue, Period(day, day, {venue.chain: 1}),
+        pd.DataFrame(), opening_block=0, block_resolver=Blocks())
+    assert list(flows['daily_inflow']) == [D(0)]
+    class Balances:
+        def cumulative_balance_timeseries(self, **kwargs):
+            return pd.DataFrame({'block_date': [prime.start_date], 'cum_balance': [D(0)]})
+    row = _sde_asset_value_timeseries(prime, venue, Period(day, day, {venue.chain: 1}),
+        balance_source=Balances(), block_resolver=Blocks(),
+        nav_at_block=lambda b: pytest.fail('Fixed cash needs no NAV')).iloc[0]
+    assert row['cum_value'] == 100
+    assert {block for _, _, block in calls} == {0, 1}
 
 
 def test_unfiltered_investment_state_is_used_instead_of_transfer_permission_views(vault, monkeypatch):

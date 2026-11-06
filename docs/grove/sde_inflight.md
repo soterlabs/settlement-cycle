@@ -17,25 +17,38 @@ differently, but both directions use one exposure identity before caps:
 ```
 economic value = wallet shares × NAV
                + issued, uncollected deposit shares × NAV
-               + unsettled redemption shares × NAV
-               + unsettled redemption cash claims
+               + unpriced/cancelled redemption shares × NAV
+               + fixed cash from priced redemptions
 ```
 
 JTRSY and JAAA resolve `asyncManager()` at the historical block and read the
 controller's unfiltered `investments(vault, controller)` state. Its `maxMint`
 field identifies allocated issued shares still in escrow. Public `maxMint()`
 and `maxDeposit()` views are unsuitable balance sources: compliance transfer
-restrictions can make them zero without extinguishing ownership. Pending
-unissued subscriptions and cancelled subscription cash are excluded. The
-existing pending/claimable redemption adapter remains the withdrawal source.
+restrictions can make them zero without extinguishing ownership. The same
+applies to `maxRedeem()` and `maxWithdraw()`. Both directions now use the
+unfiltered manager state; no valuation path uses permission-gated claim views.
+Pending unissued subscriptions and cancelled subscription cash are excluded.
+
+Unpriced withdrawals retain `pendingRedeemRequest` shares at NAV. Cancelled
+withdrawals retain `claimableCancelRedeemRequest` shares until wallet return.
+Once processing fixes the payout, the entitlement is `maxWithdraw` underlying
+cash: it is no longer reconstructed into shares or repriced with current NAV.
+Partial cash collection reduces only the remaining cash balance. Cash-only
+positions do not require a NAV read, including when the wallet is empty.
 
 Collection moves issued shares from escrow to the wallet without changing
 economic exposure. Monthly/MTD capital is the vault-event capital amount plus
 closing minus opening uncollected acquisition basis. Basis uses the manager's
 weighted issuance price and asset-unit rounding, rather than current NAV.
 That recognizes issuance once, including partial claims and month boundaries,
-without manufacturing income when collection happens later. Wallet/event
-share sanity checks continue to compare custody transfers with wallet balances.
+without manufacturing income when collection happens later. The same basis
+adjustment is applied to every day's Deposit/Withdraw cash flow. Monthly PnL,
+average holdings and per-venue CoF attribution all use that economic-capital
+series, rather than combining an economic opening position with wallet flows.
+For example, 100 already-issued shares collected on the first day of the next
+month remain a 100 average holding, rather than being counted twice as 200.
+Wallet/event share sanity checks still compare custody flows with balances.
 
 BUIDL deposits already mint directly into the wallet; no pre-mint subscription
 cash is added. Its existing subscription-fee accounting remains in place.
@@ -91,9 +104,10 @@ before computing the daily SDE deduction. Daily diagnostics retain wallet,
 pending, economic uncapped, and actual deducted values in provenance and the
 workbook. Both daily/MTD and monthly production runs use this function.
 
-- **JTRSY / JAAA:** `normalize.positions._centrifuge_in_flight_shares` reads
-  `pendingRedeemRequest(0, controller)` plus `claimableRedeemRequest(0,
-  controller)` at each historical closing block. They are disjoint states.
+- **JTRSY / JAAA:** `normalize.async_vaults.async_vault_exposure` reads the
+  manager's investment state at each historical closing block. Issued deposit
+  shares, unpriced/cancelled redemption shares and fixed redemption cash are
+  disjoint components. The old share-only redemption helper has been removed.
   A fully escrowed position is still read even when wallet balance is zero.
   Failed deployment probes and failed reads stop the run; only a successful
   pre-deployment check permits zero pending exposure.

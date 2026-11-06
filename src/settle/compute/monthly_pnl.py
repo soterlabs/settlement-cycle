@@ -794,6 +794,7 @@ def _sde_asset_value_timeseries(
         bal = cum_at_or_before(bal_df, "cum_balance", current)
         eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
         block = block_resolver.block_at_or_before(venue.chain.value, eod)
+        block = min(block, pin_block)
         exposure = async_vault_exposure(prime, venue, block, redemption_cash=cum_at_or_before(
             pending_cash, "pending_value_usd", current,
         ))
@@ -2732,6 +2733,7 @@ def compute_monthly_pnl(
         # VenueRevenueInputs append below.
         _erc4626_period_inflow: "Decimal | None" = None
         _ev_ts: "pd.DataFrame | None" = None
+        _economic_ev_ts: "pd.DataFrame | None" = None
         if venue.pricing_category == PricingCategory.SPARK_SAVINGS_V2:
             # Spark Savings V2 vaults — position-only tracking.
             #
@@ -3750,16 +3752,21 @@ def compute_monthly_pnl(
                     block_resolver=resolver,
                 )
 
-                # Extract vault-event period inflow (exact USDC from events).
+                # Keep custody-event shares for the wallet sanity check.
+                # Economic capital instead follows issuance and cash settlement.
                 _period_mask = _ev_ts["block_date"].apply(
                     lambda d: period.start <= d <= period.end
                 )
-                _erc4626_period_inflow = Decimal(str(
-                    _ev_ts.loc[_period_mask, "daily_inflow"].sum()
-                ))
-                from ..normalize.async_vaults import deposit_capital_adjustment
-                _erc4626_period_inflow += deposit_capital_adjustment(
-                    prime, venue, som_block, eom_block,
+                from ..normalize.async_vaults import async_capital_inflow_timeseries
+                _economic_ev_ts = async_capital_inflow_timeseries(
+                    prime, venue, period, _ev_ts, opening_block=som_block,
+                    block_resolver=resolver,
+                )
+                _economic_period_mask = _economic_ev_ts['block_date'].apply(
+                    lambda day: period.start <= day <= period.end
+                )
+                _erc4626_period_inflow = sum(
+                    _economic_ev_ts.loc[_economic_period_mask, 'daily_inflow'], Decimal(0),
                 )
 
                 # ── Share-balance sanity check ────────────────────────────
@@ -3835,15 +3842,12 @@ def compute_monthly_pnl(
                             venue.id, _e,
                         )
 
-            # All Cat E venues: token-transfer inflow_ts for the
-            # ``actual_revenue = (value_eom - value_som) - period_inflow``
-            # formula. The SDE sd_share is EoM-locked (see
-            # ``_capped_sd_revenue_eom_locked``) and does not depend on
-            # this timeseries; it only feeds revenue accounting.
+            # Async vaults use economic daily capital for PnL and average
+            # holdings; other Cat E venues retain their token-transfer source.
             def _cat_e_nav(block, _v=venue, _br=resolver, _nr=sources.nav_oracle_resolver):
                 return _resolve_rwa_nav(_v, block, block_resolver=_br, resolver=_nr)
 
-            inflow_ts = _rwa_inflow_timeseries(
+            inflow_ts = _economic_ev_ts if _economic_ev_ts is not None else _rwa_inflow_timeseries(
                 prime, venue, period,
                 balance_source=balance_src,
                 block_resolver=resolver,
@@ -3994,9 +3998,10 @@ def compute_monthly_pnl(
                     # Comparing wallet transfers alone raised a false $25M
                     # discrepancy for Grove E9 at the September 2026 opening.
                     from ..normalize.async_vaults import async_vault_exposure
-                    _som_bal += async_vault_exposure(
+                    _som_exposure = async_vault_exposure(
                         prime, venue, pin_blocks_som[venue.chain],
-                    ).shares
+                    )
+                    _som_bal += _som_exposure.shares
                     if _som_bal > 0:
                         _som_block = resolver.block_at_or_before(
                             venue.chain.value,
@@ -4005,6 +4010,7 @@ def compute_monthly_pnl(
                         _sde_som = _som_bal * _sd_nav(_som_block)
                     else:
                         _sde_som = Decimal(0)
+                    _sde_som += _som_exposure.redemption_cash
                     _delta = value_som - _sde_som   # signed: positive = SDE understates
                     if _delta > Decimal("1_000_000"):
                         _log.warning(
