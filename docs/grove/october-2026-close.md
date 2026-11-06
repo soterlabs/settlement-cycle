@@ -8,7 +8,7 @@ Amounts in USD; displayed values are rounded independently.
 
 | Component | Amount |
 |---|---:|
-| Supply-side revenue to Grove | 4,374,650.15 |
+| Venue revenue to Grove (before borrowing costs) | 4,374,650.15 |
 | Agent rate | 87,849.81 |
 | Chronicle Points | 12,439.99 |
 | Borrowing costs charged to Grove | 4,435,995.50 |
@@ -46,3 +46,43 @@ PLUME_RPC=https://rpc.plume.org python scripts/run_october_grove_close.py
 ```
 
 The runner is fixed to Grove and October 2026. It validates the saved SOFR snapshot, requires October DR, recomputes using configured sources, reconciles borrowing costs, and writes only `settlements/grove/2026-10/`.
+
+## Main venue revenue comparison
+
+This compares revenue retained by Grove **before borrowing costs**, after any Sky direct-exposure split. August and September are the published reports on main at `09e0f37`; October is this PR’s completed on-chain calculation. These are report comparisons, not historical restatements. DR is separate from all figures in this table.
+
+| Venue | August 2026 | September 2026 | October 2026 | October vs September |
+|---|---:|---:|---:|---:|
+| Galaxy Warehouse (E42) | $474,488.89 | $1,658,948.54 | $1,894,876.53 | $+235,927.99 |
+| JAAA — Ethereum + Avalanche (E8/E20) | $1,713,705.05 | $1,041,086.58 | $1,556,104.30 | $+515,017.72 |
+| STAC (E7) | $469,275.10 | $335,575.00 | $427,367.20 | $+91,792.20 |
+| Galaxy ARCH CLO (E21) | $222,936.27 | $172,167.34 | $142,165.55 | $-30,001.79 |
+| Base Steakhouse vaults (E19/E23) | $1,047,130.65 | $992,580.79 | $259,849.22 | $-732,731.57 |
+| Agora AUSD incentives (E38) | $857,964.00 | $665,172.00 | $0.00 | $-665,172.00 |
+| Apollo ACRDX (E22) | $113,847.70 | $-104,438.28 | $29,385.80 | $+133,824.08 |
+| Ethereum Steakhouse USDC (E4) | $7,322.92 | $22,298.28 | $56,787.83 | $+34,489.55 |
+
+Galaxy Warehouse grew **14.2%**, while Galaxy ARCH CLO fell **17.4%**. Their combined October revenue rose to **$2,037,042.08**, up **$205,926.20** from September. They do not explain the decline in the overall settlement. Galaxy venue revenue is recognized from qualifying cash receipts during each report month; this does not establish the underlying interest accrual month.
+
+The two largest negative changes were:
+
+- **Agora incentives: −$665,172.00.** No qualifying October cash distributions were recorded from the configured payers. This shows zero recognized receipts, not evidence that incentives permanently stopped or that no receivable exists.
+- **Base Steakhouse vaults: −$732,731.57.** Combined time-weighted principal fell from approximately **$282.73m** in September to **$60.97m** in October. Both venues were fully exited by October 31, versus a combined opening balance of approximately **$269.09m**. Lower deployed exposure explains much of the revenue decline; the table does not isolate changes in lending rates.
+
+Higher JAAA revenue (**+$515,017.72**), Warehouse (**+$235,927.99**), Apollo (**+$133,824.08**), and STAC (**+$91,792.20**) partially offset those declines.
+
+### Effect on the settlement
+
+| Component | September 2026 | October 2026 | Change |
+|---|---:|---:|---:|
+| Venue revenue to Grove before borrowing costs | $4,796,207.62 | $4,374,650.15 | −$421,557.47 |
+| Borrowing costs charged to Grove | $3,754,809.06 | $4,435,995.50 | +$681,186.44 |
+| Supply-side revenue after borrowing costs | $1,041,398.56 | −$61,345.35 | −$1,102,743.91 |
+| Agent rate + Chronicle Points | $90,968.45 | $100,289.80 | +$9,321.35 |
+| Net before DR | $1,132,367.01 | $38,944.45 | −$1,093,422.56 |
+
+The main settlement change combines **8.8% less venue revenue** with **18.1% higher borrowing costs**. The earlier headline’s $4.37m should be read as venue revenue before borrowing costs; the repository’s formal supply-side headline is after those costs.
+
+JTRSY (E9) and BUIDL (E10) also earned **$882,421.68** and **$364,542.14** respectively in October, but their revenue is directed to Sky under the configured SDE split; neither contributes venue revenue retained by Grove.
+
+Sources: [August report](../../settlements/grove/2026-08/summary.md), [September report](../../settlements/grove/2026-09/summary.md), October calculation and block pins above. Values are rounded independently.
