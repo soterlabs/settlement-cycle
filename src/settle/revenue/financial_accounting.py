@@ -115,11 +115,28 @@ def extend(statement, supplements, *, expense_revision=None):
         liability["label"] = "Savings ETH liability revaluation"
         liability["funding_component"] = True
         funding = lookup["funding.savings"]
-        funding["components"].append({"id": liability["id"], "sign": -1})
+        interest = deepcopy(funding)
+        interest.update(id="funding.savings.interest", label="Savings VSR interest")
+        statement["lines"].append(interest)
+        lookup[interest["id"]] = interest
+        fx = dict(
+            id="funding.savings.revaluation",
+            label="Savings ETH liability revaluation",
+            aggregation="subtotal",
+            components=[dict(id=liability["id"], sign=-1)],
+            values={},
+        )
+        statement["lines"].append(fx)
+        lookup[fx["id"]] = fx
+        funding["components"].append({"id": fx["id"], "sign": 1})
     for p, saved in zip(periods, supplements, strict=True):
         month = p["key"]
         if p["state"] == "future":
-            for k in ("revaluation.ops_reserves", "funding.sky.sde_adjustment"):
+            for k in (
+                "revaluation.ops_reserves",
+                "funding.sky.sde_adjustment",
+                "funding.savings.revaluation",
+            ):
                 lookup[k]["values"][month] = {**metric(reason="future_period"), "status": "future"}
             continue
         treasury = saved["document"].get("treasury", {}) if saved else {}
@@ -153,11 +170,12 @@ def extend(statement, supplements, *, expense_revision=None):
             gains["values"][month] = deepcopy(asset["values"][month])
         if liability:
             funding = lookup["funding.savings"]
-            original = funding["values"][month]
+            fx = lookup["funding.savings.revaluation"]
+            fx["values"][month] = combine([(liability["id"], -1, liability["values"][month])])
             funding["values"][month] = combine(
                 [
-                    ("savings_interest", 1, original),
-                    (liability["id"], -1, liability["values"][month]),
+                    (c["id"], c["sign"], lookup[c["id"]]["values"][month])
+                    for c in funding["components"]
                 ]
             )
         ownership = saved["document"].get("ownership", {}) if saved else {}
@@ -245,11 +263,11 @@ def attach_rows(statement):
         rows.insert(
             rows.index(host) + 1,
             dict(
-                id="revaluation.savings_liabilities",
+                id="funding.savings.revaluation",
                 label="Savings ETH liability revaluation",
                 parent=host["id"],
                 depth=host["depth"] + 1,
                 kind=None,
-                metric_id="revaluation.savings_liabilities",
+                metric_id="funding.savings.revaluation",
             ),
         )

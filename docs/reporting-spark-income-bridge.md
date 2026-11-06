@@ -20,7 +20,7 @@ Each new numeric statement row has an explicit API metric and API-owned indentat
 
 ## API
 
-- `GET /v3/reporting/statements?prime=spark&year=2026`: upgraded statement, `spark_msc_reconciliation`, reviewed cash evidence and fee true-up control.
+- `GET /v3/reporting/statements?prime=spark&year=2026&accounting=true`: upgraded statement, `spark_msc_reconciliation`, reviewed cash evidence and fee true-up control.
 - `GET /v3/reporting/spark/msc-reconciliation?year=2026`: annual monthly bridge.
 - Add `month=2026-04` to select one month.
 - Add `revision=<statement selection>` to replay the exact selected sources. A selection older than v3.10 cannot supply this bridge and returns 404. A month outside the selected year returns 422.
@@ -45,3 +45,5 @@ The dashboard displays this bridge on Spark's income statement, with source-awar
 The agreed accounting contract is [ACCOUNTING_RULES.md](../src/settle/revenue/ACCOUNTING_RULES.md). Treasury reward and fee receipts are tracked separately from subsequent gains and cash sale proceeds. Historical SDE ownership is recalculated for reporting without changing MSC. Contributor SPK remains an explicit missing expense component until the approved monthly USD expense figures arrive.
 
 Backfill the new sources with `python -m settle.revenue.spark_reporting_job --from 2026-01-01 --to 2026-10-31 --accounting-only`, then replay `python -m settle.revenue.cash_flow.job --from 2026-01-01 --to 2026-10-31` using the authorized environment. These jobs append reporting revisions; they do not replay MSC.
+
+The `accounting=true` opt-in selects the corrected v3.10 statement during rollout. Clients without it retain the existing v3.9 contract; pinned revisions select their own policy. Dedicated Spark component endpoints use the corrected accounting policy.

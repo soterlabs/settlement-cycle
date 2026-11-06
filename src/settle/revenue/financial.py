@@ -248,9 +248,9 @@ def decode_selection(token, prime, year):
         raise ValueError('Invalid report revision selection') from exc
 
 
-def statements(prime, year, as_of, publications, *, exact=False, selection=None, monthly=False, rollups=False, rwa=False, allocation_rewards=False, offchain=False, archive=False, spark_income=False, spark_publications=(), spark_amms=False, spark_statement=False):
+def statements(prime, year, as_of, publications, *, exact=False, selection=None, monthly=False, rollups=False, rwa=False, allocation_rewards=False, offchain=False, archive=False, spark_income=False, spark_publications=(), spark_amms=False, spark_statement=False, spark_accounting=True):
     """Read projection of saved financial metrics, with immutable export selection."""
-    policy_version = selection['policy_version'] if selection else SPARK_RECONCILED_POLICY if spark_statement and year == 2026 else SPARK_HISTORY_POLICY if spark_statement else SPARK_AMM_POLICY if spark_amms else SPARK_INCOME_POLICY if spark_income else ARCHIVE_POLICY if archive else OFFCHAIN_POLICY if offchain else ALLOCATION_REWARDS_POLICY if allocation_rewards else RWA_POLICY if rwa else ROLLUP_POLICY if rollups else STATEMENT_POLICY if monthly else POLICY_VERSION
+    policy_version = selection['policy_version'] if selection else SPARK_RECONCILED_POLICY if spark_statement and year == 2026 and spark_accounting else SPARK_HISTORY_POLICY if spark_statement else SPARK_AMM_POLICY if spark_amms else SPARK_INCOME_POLICY if spark_income else ARCHIVE_POLICY if archive else OFFCHAIN_POLICY if offchain else ALLOCATION_REWARDS_POLICY if allocation_rewards else RWA_POLICY if rwa else ROLLUP_POLICY if rollups else STATEMENT_POLICY if monthly else POLICY_VERSION
     if policy_version == SPARK_RECONCILED_POLICY and (prime != 'spark' or year != 2026):
         raise ValueError('Spark reconciliation policy is limited to Spark 2026')
     monthly = policy_version in MONTHLY_STATEMENT_POLICIES

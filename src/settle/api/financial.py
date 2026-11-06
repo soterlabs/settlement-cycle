@@ -34,7 +34,7 @@ def register_financial(app, get_reader, document_response):
         except Exception:
             raise HTTPException(503, 'Financial reporting store unavailable', headers={'Cache-Control': 'no-store'}) from None
 
-    def annual(prime, year, scope, cutoff, revision, r):
+    def annual(prime, year, scope, cutoff, revision, r, *, accounting=False):
         validate(prime, scope, cutoff)
         if date(year, 1, 1) >= revenue.today():
             raise HTTPException(422, 'year must include a completed UTC day')
@@ -64,7 +64,7 @@ def register_financial(app, get_reader, document_response):
         try:
             result = statements(prime, year, as_of, rows,
                                 exact=selection['exact'] if selection else cutoff is not None,
-                                selection=selection, monthly=True, rollups=True, rwa=True, allocation_rewards=True, offchain=True, archive=True, spark_income=prime == 'spark', spark_publications=spark_rows, spark_amms=prime == 'spark', spark_statement=prime == 'spark')
+                                selection=selection, monthly=True, rollups=True, rwa=True, allocation_rewards=True, offchain=True, archive=True, spark_income=prime == 'spark', spark_publications=spark_rows, spark_amms=prime == 'spark', spark_statement=prime == 'spark', spark_accounting=accounting)
         except ValueError as exc:
             raise HTTPException(404, str(exc), headers={'Cache-Control': 'no-store'}) from None
         selected_ids = {p['financial_revision'] for p in result['periods'] if p['financial_revision']}
@@ -75,8 +75,9 @@ def register_financial(app, get_reader, document_response):
     def statement(request: Request, prime: str, year: int = Query(ge=2020, le=9998),
                   scope: Literal['individual', 'group', 'combined'] = 'individual',
                   cutoff: date | None = None, revision: str | None = Query(None, max_length=4096),
+                  accounting: bool = False,
                   r=Depends(get_reader)):  # noqa: B008
-        return document_response(request, annual(prime, year, scope, cutoff, revision, r))
+        return document_response(request, annual(prime, year, scope, cutoff, revision, r, accounting=accounting))
 
     @app.get('/v3/reporting/spark/msc-reconciliation')
     def spark_msc_reconciliation(request: Request, year: int = Query(ge=2020, le=9998),
@@ -86,7 +87,7 @@ def register_financial(app, get_reader, document_response):
                                  r=Depends(get_reader)):  # noqa: B008
         if month and not month.startswith(str(year) + '-'):
             raise HTTPException(422, 'Month must belong to the selected year')
-        result = annual('spark', year, 'individual', cutoff, revision, r)
+        result = annual('spark', year, 'individual', cutoff, revision, r, accounting=True)
         if result['policy_version'] != SPARK_RECONCILED_POLICY:
             raise HTTPException(404, 'Selected statement predates the MSC bridge policy')
         return document_response(request, {
@@ -109,7 +110,7 @@ def register_financial(app, get_reader, document_response):
         if prime != 'spark':
             validate(prime, 'individual')
             raise HTTPException(422, 'This reporting component is currently supported for Spark')
-        doc = annual(prime, year, 'individual', end if end < revenue.today() and not revision else None, revision, r)
+        doc = annual(prime, year, 'individual', end if end < revenue.today() and not revision else None, revision, r, accounting=True)
         if doc['policy_version'] not in SPARK_INCOME_POLICIES:
             raise HTTPException(422, 'Monthly Spark components require the Spark income reporting policy')
         return doc

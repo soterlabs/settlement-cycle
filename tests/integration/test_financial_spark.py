@@ -7,7 +7,7 @@ from psycopg_pool import ConnectionPool
 
 from settle.api.app import PostgresReader, create_app
 from settle.revenue import financial_store, store
-from settle.revenue.financial import SPARK_RECONCILED_POLICY
+from settle.revenue.financial import SPARK_HISTORY_POLICY
 from tests.integration.test_financial_reporting import FinancialPnl
 from tests.integration.test_input_cache_postgres import database  # noqa: F401
 from tests.integration.test_revenue_store import example
@@ -48,7 +48,7 @@ def test_report_only_reserve_receipts_are_read_from_exact_pinned_source(database
             response = client.get('/v3/reporting/statements', params=query)
             assert response.status_code == 200, response.text
             annual = response.json()
-            assert annual['policy_version'] == SPARK_RECONCILED_POLICY
+            assert annual['policy_version'] == SPARK_HISTORY_POLICY
             month = f'{pnl.as_of:%Y-%m}'
 
             def fees(report):

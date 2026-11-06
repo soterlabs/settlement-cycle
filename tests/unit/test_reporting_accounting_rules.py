@@ -194,3 +194,24 @@ def test_contributor_input_revision_replays_after_the_current_sheet_changes(tmp_
         selection=decode_selection(old_report["selection"], "spark", 2026),
     )
     assert replay == old_report
+
+
+def test_accounting_opt_in_does_not_break_the_deployed_dashboard_contract(monkeypatch):
+    from types import SimpleNamespace
+
+    from fastapi.testclient import TestClient
+
+    from settle.api.app import create_app
+
+    monkeypatch.setattr("settle.api.revenue.today", lambda: date(2026, 11, 6))
+    reader = SimpleNamespace(
+        financial_year=lambda *a, **k: [], spark_component_year=lambda *a, **k: []
+    )
+    with TestClient(create_app(reader=reader)) as client:
+        query = {"prime": "spark", "year": 2026, "cutoff": "2026-10-31"}
+        old = client.get("/v3/reporting/statements", params=query)
+        new = client.get("/v3/reporting/statements", params={**query, "accounting": "true"})
+    assert old.status_code == new.status_code == 200
+    assert old.json()["policy_version"] == "prime-management.spark-history.v3.9"
+    assert new.json()["policy_version"] == "prime-management.spark-reconciled.v3.10"
+    assert new.json()["expense_input_revision"]
