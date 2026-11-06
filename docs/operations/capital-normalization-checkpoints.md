@@ -67,3 +67,9 @@ chain reuse, all adapter-state types, orphaned chunks, corrupted/changed inputs,
 writer contention and Decimal flags. Memo tests exercise query counts, isolation,
 LRU/byte limits, mutable values and persistence failures. Measure production hit
 rates before claiming an end-to-end speedup.
+
+Checkpoint reuse is limited to ordinary capture. Calls inside finalized revenue
+input scopes are rejected because replaying cached transactions would bypass that
+scope's finality checks. Resolver type is also bound to the checkpoint identity.
+Provenance inputs must live outside the checkpoint directory, including through
+symlinks, so chunk writes cannot overwrite an input file.

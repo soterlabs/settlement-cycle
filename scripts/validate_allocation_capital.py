@@ -57,6 +57,9 @@ def main():
         for name in ("pins.json", "status.json", "result.json", "history.jsonl.gz")
     }:
         parser.error("provenance must not be overwritten by capture outputs")
+    if (args.provenance and not args.no_checkpoints and
+            args.provenance.resolve().is_relative_to((args.output_dir / "normalization").resolve())):
+        parser.error("provenance must be outside the normalization checkpoint directory")
     if args.checkpoint_size <= 0:
         parser.error("checkpoint-size must be positive")
     if args.start > args.end:

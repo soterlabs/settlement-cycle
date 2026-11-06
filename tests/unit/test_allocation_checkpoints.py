@@ -229,3 +229,20 @@ def test_restart_skips_completed_chain_and_restores_next_chain(monkeypatch, tmp_
     monkeypatch.setattr(source, "_capital_unit_price", checked_price)
     assert source.fetch_capital_history(prime, pins, checkpoint_dir=tmp_path) == expected
     assert calls == [(Chain.BASE, 2)]
+
+
+def test_capture_checkpoints_reject_finalized_scope_and_different_resolver(monkeypatch, tmp_path):
+    from settle.extract.input_cache import revenue_input_scope
+
+    prime = examples.setup(monkeypatch, [examples.draw()])
+    pins = {examples.Chain.ETHEREUM: 1}
+    source.fetch_capital_history(prime, pins, checkpoint_dir=tmp_path)
+
+    @revenue_input_scope
+    def finalized(*, as_of):
+        return source.fetch_capital_history(prime, pins, checkpoint_dir=tmp_path)
+
+    with pytest.raises(ValueError, match='ordinary capture only'):
+        finalized(as_of=examples.DAY)
+    with pytest.raises(ValueError, match='inputs changed'):
+        source.fetch_capital_history(prime, pins, checkpoint_dir=tmp_path, block_resolver=object())

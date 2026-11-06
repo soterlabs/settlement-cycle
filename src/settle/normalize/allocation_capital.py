@@ -187,13 +187,17 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
     import os
     from decimal import getcontext
 
+    from ..extract.input_cache import current_scope
     from .allocation_checkpoints import Checkpoints
     from .allocation_history_cache import fingerprint
 
+    if current_scope() is not None:
+        raise ValueError("Normalization checkpoints support ordinary capture only, not finalized revenue scope")
     context = getcontext()
     decimal_settings = {k: getattr(context, k) for k in ('prec', 'rounding', 'Emin', 'Emax', 'capitals', 'clamp')}
     decimal_settings['traps'] = {k.__name__: v for k, v in context.traps.items()}
     identity = dict(fingerprint=fingerprint(prime, pins), decimal_context=decimal_settings,
+                    resolver=f"{type(block_resolver).__module__}.{type(block_resolver).__qualname__}",
                     database=hashlib.sha256(os.environ.get('DATABASE_URL', '').encode()).hexdigest())
     with Checkpoints(checkpoint_dir, identity, checkpoint_size).locked() as checkpoints:
         return _fetch_capital_history(prime, pins, block_resolver=block_resolver,
