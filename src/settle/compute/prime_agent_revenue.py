@@ -182,6 +182,9 @@ class VenueRevenueInputs:
     outstanding_redemptions: list[dict] = field(default_factory=list)
     unmatched_redemption_cash: list[dict] = field(default_factory=list)
     redemption_capital_outflows: list[dict] = field(default_factory=list)
+    # Fee signatures belong to actual capital events, not pending-claim
+    # reclassifications in economic capital. Defaults to the ordinary series.
+    fee_inflow_timeseries: pd.DataFrame | None = None
 
 
 def _sd_share_at_som(
@@ -469,7 +472,9 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
                 "prime YAML config (e.g. 1000000 for BUIDL-style $1M-min "
                 "capital events)."
             )
-        if inputs.inflow_timeseries is not None and not inputs.inflow_timeseries.empty:
+        fee_inflows = (inputs.fee_inflow_timeseries if inputs.fee_inflow_timeseries is not None
+                       else inputs.inflow_timeseries)
+        if fee_inflows is not None and not fee_inflows.empty:
             # ``_ROUNDING`` = the institutional capital-event denomination
             # for venues where this heuristic is used. For BUIDL-I, BlackRock
             # subscribes/redeems in clean $1M multiples (Dune query 7387737
@@ -487,7 +492,7 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
             #      heuristic would miss fee events on amounts like $499,985
             #      — re-calibrate from the on-chain histogram.
             _ROUNDING = Decimal("1000000")
-            ts = inputs.inflow_timeseries
+            ts = fee_inflows
             in_period = ts["block_date"].between(period.start, period.end)
             n_fee_events = 0
             haircut_active = (

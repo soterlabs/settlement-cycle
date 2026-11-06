@@ -70,7 +70,7 @@ def decode_issued_deposit(raw: str, share_decimals: int, asset_decimals: int) ->
 
 
 def async_vault_exposure(
-    prime: Prime, venue: Venue, block: int, *, redemption_cash: Decimal = ZERO,
+    prime: Prime, venue: Venue, block: int, *, redemption_cash: Decimal | None = None,
 ) -> AsyncVaultExposure:
     """All controller-owned shares and cash still outside the wallet.
 
@@ -82,6 +82,9 @@ def async_vault_exposure(
     Neither contract addresses nor historical windows are hardcoded.
     """
     if venue.centrifuge_vault is None:
+        if redemption_cash is None:
+            from .redemption_settlements import pending_redemption_value_at_block
+            redemption_cash = pending_redemption_value_at_block(prime, venue, block)
         return AsyncVaultExposure(redemption_cash=redemption_cash)
     if redemption_cash:
         raise ValueError('Cannot combine async manager and external cash-ledger exposure')
@@ -129,30 +132,44 @@ def deposit_capital_adjustment(
 
 
 def async_capital_inflow_timeseries(
-    prime: Prime, venue: Venue, period, claimed_flows: pd.DataFrame, *,
-    opening_block: int, block_resolver,
+    prime: Prime, venue: Venue, period, capital_flows: pd.DataFrame, *,
+    opening_block: int, block_resolver, pending_redemptions: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """Recognize daily capital at issuance and remove collection-only inflows.
 
-    Preserve historical rows as the cumulative baseline. In-period capital is
-    exact Deposit/Withdraw event cash plus the daily change in uncollected
-    deposit acquisition basis. Both monthly PnL and average-holding/CoF reports
-    consume this same series. Fixed redemption cash leaves only on collection.
+    Vault cash-event flows gain the change in uncollected deposit basis.
+    Share-transfer flows (BUIDL) gain the change in matched cash receivables.
+    In either case positions and capital carry the same pending-value bridge,
+    so principal is never recognized as income. Both PnL and average holdings
+    consume the result. Raw share events remain available for fee detection.
     """
     columns = ['block_date', 'daily_inflow', 'cum_inflow']
     daily = {}
-    for row in claimed_flows.to_dict('records'):
+    for row in capital_flows.to_dict('records'):
         day = row['block_date']
         if day <= period.end:
             daily[day] = daily.get(day, ZERO) + row['daily_inflow']
-    previous = issued_deposit(prime, venue, opening_block).capital_usd
+    use_cash_ledger = venue.centrifuge_vault is None
+    if use_cash_ledger:
+        if pending_redemptions is None:
+            from .redemption_settlements import pending_redemption_values
+            pending_redemptions = pending_redemption_values(prime, venue, period)
+        pending_by_date = dict(zip(
+            pending_redemptions['block_date'], pending_redemptions['pending_value_usd'], strict=True,
+        ))
+        previous = async_vault_exposure(prime, venue, opening_block).redemption_cash
+    else:
+        previous = issued_deposit(prime, venue, opening_block).capital_usd
     day = period.start
     while day <= period.end:
-        block = block_resolver.block_at_or_before(
-            venue.chain.value, datetime.combine(day, time.max, tzinfo=UTC),
-        )
-        block = min(block, period.pin_blocks[venue.chain])
-        current = issued_deposit(prime, venue, block).capital_usd
+        if use_cash_ledger:
+            current = pending_by_date.get(day, ZERO)
+        else:
+            block = block_resolver.block_at_or_before(
+                venue.chain.value, datetime.combine(day, time.max, tzinfo=UTC),
+            )
+            block = min(block, period.pin_blocks[venue.chain])
+            current = issued_deposit(prime, venue, block).capital_usd
         daily[day] = daily.get(day, ZERO) + current - previous
         previous = current
         day += timedelta(days=1)

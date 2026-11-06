@@ -4057,14 +4057,23 @@ def compute_monthly_pnl(
             value_som, value_eom,
             "  [SDE]" if sde_entry is not None else "",
         )
-        # Only explicitly configured venues read these two filtered event
-        # streams. Historical periods before recognition_start return early.
+        # Both valuation and capital retain matched cash claims until payment.
+        # Realized fees keep their existing recognition date and event clock.
         from ..normalize.redemption_settlements import (
             redemption_settlements,
             restore_redemption_capital,
         )
-        redemption_ledger = redemption_settlements(prime, venue, period)
+        redemption_ledger = redemption_settlements(prime, venue, period, track_pending=True)
         inflow_ts = restore_redemption_capital(inflow_ts, redemption_ledger)
+        fee_inflow_ts = None
+        if hasattr(redemption_ledger, 'pending_daily'):
+            from ..normalize.async_vaults import async_capital_inflow_timeseries
+            fee_inflow_ts = inflow_ts
+            inflow_ts = async_capital_inflow_timeseries(
+                prime, venue, period, inflow_ts, opening_block=som_block,
+                block_resolver=resolver,
+                pending_redemptions=pd.DataFrame(redemption_ledger.pending_daily),
+            )
         venue_inputs.append(VenueRevenueInputs(
             venue=venue, value_som=value_som, value_eom=value_eom,
             inflow_timeseries=inflow_ts,
@@ -4079,6 +4088,7 @@ def compute_monthly_pnl(
             outstanding_redemptions=list(redemption_ledger.outstanding),
             unmatched_redemption_cash=list(redemption_ledger.unmatched_cash),
             redemption_capital_outflows=list(redemption_ledger.capital_outflows),
+            fee_inflow_timeseries=fee_inflow_ts,
         ))
 
     # Re-sort venue_inputs to match the declaration order in prime.venues so

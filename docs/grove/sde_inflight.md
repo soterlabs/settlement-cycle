@@ -56,6 +56,32 @@ BUIDL redemptions retain their matched request/payment adapter below. Basin
 idle USDS stays a separate cash deduction, never another deposit-share claim.
 No token protocol or empty wallet can bypass the SDE cap or effective dates.
 
+For BUIDL, the shared position adapter now replays that matched ledger at the
+exact valuation block. Opening/closing positions, daily SDE and average holdings
+all retain the same expected cash receivable through payment. A later receipt
+on the same date cannot remove a claim from an earlier pinned position.
+
+Its capital series is the existing share-capital series plus the daily change
+in the pending cash receivable. This cancels the same pending-value change in
+position valuation, preserving income rather than booking principal twice:
+
+```
+economic position = wallet value + pending cash
+economic capital  = share capital + change in pending cash
+income            = change in economic position - economic capital
+                    + existing cash-realization adjustment
+```
+
+The expected 99.95% claim mark remains the CoF/position basis. Cash realization
+still compares actual proceeds with the request's dated revenue carrying
+value; the pre-September fee-recognition exception is preserved. The separate
+subscription-fee detector consumes original capital events, rather than
+pending-claim reclassifications, so neither genuine fees nor artificial fee
+signatures are affected by this bridge. Verified small share exits omitted by
+the yield-mint filter are restored as capital in every valued period, including
+the August 31 1,000-share test, without changing cash-fee recognition dates.
+Frozen settlement inputs are unchanged.
+
 New provenance and the SDE daily workbook split pending exposure into issued
 deposits and unsettled redemptions. Older snapshots remain readable; existing
 code-version checks prevent finalizing an old calculation under changed code.

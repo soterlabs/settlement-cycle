@@ -173,7 +173,8 @@ def match_redemptions(venue, period, policy, events, *, track_pending=False):
             # BUIDL's amount filter distinguishes incoming yield mints, but
             # also drops small outgoing test redemptions. Restore only
             # verified share exits that the existing threshold excluded.
-            if (max(period.start, policy['recognition_start']) <= day
+            if (period.start <= day
+                    and (track_pending or day >= policy['recognition_start'])
                     and venue.min_transfer_amount_usd
                     and amount < venue.min_transfer_amount_usd):
                 capital_outflows.append(pending[identity])
@@ -276,3 +277,24 @@ def pending_redemption_values(prime, venue, period):
     """
     ledger = redemption_settlements(prime, venue, period, track_pending=True)
     return pd.DataFrame(getattr(ledger, 'pending_daily', ()), columns=['block_date', 'pending_value_usd'])
+
+
+def pending_redemption_value_at_block(prime, venue, block):
+    """The same matched receivable as daily CoF, pinned to an exact block.
+
+    Position valuation has a block rather than a calendar period. Resolve its
+    date and replay only through that block; even a later same-day payment
+    must not erase an opening or intraday receivable.
+    """
+    policy = policy_for(prime.id, venue.id)
+    if policy is None:
+        return D(0)
+    from ..domain.period import Period
+    from ..extract.rpc import block_timestamp
+
+    day = datetime.fromtimestamp(block_timestamp(venue.chain, block), UTC).date()
+    if day < policy['cof_history_start']:
+        return D(0)
+    period = Period(day, day, {venue.chain: block})
+    pending = pending_redemption_values(prime, venue, period)
+    return pending.iloc[-1]['pending_value_usd']
