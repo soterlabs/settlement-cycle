@@ -1,3 +1,7 @@
+For separate settlement/reporting dashboards, follow the
+[v2 dashboard API guide](settlement-reporting-api.md). This handoff describes the
+original v1 integration with static monthly settlement data.
+
 You are working in `soterlabs/msc-dashboard`. Add daily prime revenue estimates
 alongside the existing static monthly settlement numbers. Inspect the actual
 code and data-loading paths first; preserve the existing settled-data behavior.

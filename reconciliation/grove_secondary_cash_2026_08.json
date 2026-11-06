@@ -1,0 +1,103 @@
+{
+  "prime": "grove",
+  "period": "2026-08",
+  "base_commit": "14f1219",
+  "input_hashes": {
+    "/tmp/pr215-grove-eoa/history.jsonl.gz": "c05b53815379f6f7a4d9f6195d819d09ddb542f8f279af5f4defe4b7b3295474",
+    "settlements/grove/2026-08/provenance.json": "d6fb40d3c43caf3bdc7d0983b7ff071433ad056d22825b9f0f19eeb9d3af3aa9",
+    "/tmp/pr215-resumed-grove/idle_deductions.json": "e6b13f9b30816b2f8e9325f222aa9c889ff68cdf182205f4c54576d929faf427",
+    "/tmp/pr215-resumed-grove/debt-control.json": "6214144465cad85e59e3cd7c075925fad2f5bdc2131428ea4e6f769b57d9280b",
+    "/tmp/pr215-resumed-grove/deduction-owners.json": "dad2cf619d5dc65a26721aaf1fe3938136bb512212bf427a2e5aa56531f58153"
+  },
+  "eligible_cost_before": "1233.513467956631497028953141",
+  "eligible_cost_after": "1328.221816987128045631659712",
+  "cash_allocations": [
+    {
+      "venue_id": "E14_PAU_CASH",
+      "basis_status": "traced",
+      "basis_detail": null,
+      "borrowed_principal_som": "0",
+      "borrowed_principal_eom": "0E-54",
+      "borrowed_principal_average": "15341.45746298056260726792106",
+      "cost_of_funds": "47.40534270697775737202061949",
+      "modeled_cost_of_funds": "47.40534270697775737202061949",
+      "modeled_cost_of_funds_by_ilk": {
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "47.40534270697775737202061949"
+      },
+      "net_pnl": null,
+      "gross_apy": null,
+      "net_apy": null,
+      "borrowed_principal_average_by_ilk": {
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "15341.45746298056260726792106"
+      },
+      "cost_of_funds_by_ilk": {
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "47.40534270697775737202061949"
+      },
+      "revenue_available": false
+    },
+    {
+      "venue_id": "E15_PAU_CASH",
+      "basis_status": "traced",
+      "basis_detail": null,
+      "borrowed_principal_som": "0",
+      "borrowed_principal_eom": "0E-54",
+      "borrowed_principal_average": "15308.33905935556561878031138",
+      "cost_of_funds": "47.30300632351879123068595238",
+      "modeled_cost_of_funds": "47.30300632351879123068595238",
+      "modeled_cost_of_funds_by_ilk": {
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "47.30300632351879123068595238"
+      },
+      "net_pnl": null,
+      "gross_apy": null,
+      "net_apy": null,
+      "borrowed_principal_average_by_ilk": {
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "15308.33905935556561878031138"
+      },
+      "cost_of_funds_by_ilk": {
+        "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": "47.30300632351879123068595238"
+      },
+      "revenue_available": false
+    }
+  ],
+  "per_ilk_reconciliation": {
+    "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+      "global_cost": "3708820.107055825781021080592",
+      "msc_cost": "259878.1170265572840543147882",
+      "allocation_cost": "0",
+      "global_excluding_msc": "3448941.990029268496966765804",
+      "difference": "-3448941.990029268496966765804",
+      "within_one_cent": false,
+      "complete": false,
+      "source_complete": false,
+      "bounds_use_verified_deduction_owners": true,
+      "diagnostic_cost_bounds": {
+        "lower": "-3803791.16958691331584417153230530088552073734539210459303406",
+        "upper": "3448941.99002926849696676580416084319370638238644478031610200"
+      },
+      "target_distance_from_bounds": "0",
+      "target_within_bounds_to_one_cent": true,
+      "bounds_note": "Containment is not reconciliation; unresolved routes remain unverified"
+    },
+    "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+      "global_cost": "11784.73727045625525471486130",
+      "msc_cost": "0E-32",
+      "allocation_cost": "1328.221816987128045631659713",
+      "global_excluding_msc": "11784.73727045625525471486130",
+      "difference": "-10456.51545346912720908320159",
+      "within_one_cent": false,
+      "complete": false,
+      "source_complete": false,
+      "bounds_use_verified_deduction_owners": true,
+      "diagnostic_cost_bounds": {
+        "lower": "10034.8967519957033668538968188969801378144816690149968521134",
+        "upper": "11784.7372704562552547148612968949528875509721436267419"
+      },
+      "target_distance_from_bounds": "3.1050471124490278563732581E-24",
+      "target_within_bounds_to_one_cent": true,
+      "bounds_note": "Containment is not reconciliation; unresolved routes remain unverified"
+    }
+  },
+  "unmatched_receipts": 36,
+  "unmatched_outflows": 256,
+  "scope": "Ownership of existing observed secondary ALM cash only; no new flows, revenue, exemptions or control changes."
+}

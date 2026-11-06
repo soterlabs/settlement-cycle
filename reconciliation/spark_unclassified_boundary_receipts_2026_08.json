@@ -1,0 +1,38 @@
+{
+  "scope": "Direct transfers at ALM boundary only; no inference about commingled EOA transactions or revenue recognition",
+  "pin": 25878704,
+  "summary": [
+    {
+      "counterparty": "0x6a01c16eb312b80535f4799e4bf7522b715aacff",
+      "label": "Maple treasury",
+      "token": "USDC",
+      "incoming_count": 2,
+      "incoming_amount": "1661609.59",
+      "outgoing_count": 0,
+      "outgoing_amount": "0",
+      "unclassified_receipt_total": "1661609.59"
+    },
+    {
+      "counterparty": "0x1e30f9c2c688f85c82111d1d262bfd127e687282",
+      "label": "unconfirmed PYUSD payer",
+      "token": "PYUSD",
+      "incoming_count": 1,
+      "incoming_amount": "1250000",
+      "outgoing_count": 0,
+      "outgoing_amount": "0",
+      "unclassified_receipt_total": "1250000.00"
+    },
+    {
+      "counterparty": "0xd0ec8cc7414f27ce85f8dece6b4a58225f273311",
+      "label": "USDe distributing Safe",
+      "token": "USDe",
+      "incoming_count": 17,
+      "incoming_amount": "7281596.6",
+      "outgoing_count": 0,
+      "outgoing_amount": "0",
+      "unclassified_receipt_total": "7281596.60"
+    }
+  ],
+  "raw_evidence_sha256": "2623cc07fd3996844a942a1afd5fa8e0a2cdfa1512a5b50954dbd2b392121d3d",
+  "classification": "Unresolved. No capital or revenue rules changed."
+}

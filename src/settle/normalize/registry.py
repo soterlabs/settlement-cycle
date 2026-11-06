@@ -29,6 +29,7 @@ from .sources.dune_savings_v2_deployed import DuneSavingsV2DeployedSource
 from .sources.dune_ssr import DuneSSRSource
 from .sources.hypersync_ssr import HyperSyncSSRSource
 from .sources.oracles import (
+    ChainlinkNavSource,
     ChronicleNavSource,
     ConstNavSource,
     ConstOneNavSource,
@@ -108,6 +109,7 @@ _BLOCK_RESOLVER_SOURCES: dict[str, type[IBlockResolver]] = {
 # Note: ``erc4626`` is NOT in this dict — it is dispatched dynamically below
 # via the ``erc4626_<asset_decimals>`` encoded kind string.
 _NAV_ORACLE_SOURCES: dict[str, type[INavOracleSource]] = {
+    "chainlink": ChainlinkNavSource,
     "chronicle": ChronicleNavSource,
     "const_one": ConstOneNavSource,
     "price_per_share_feed": PricePerShareNavSource,

@@ -116,7 +116,11 @@ with psycopg.connect(os.environ['DATABASE_URL'], autocommit=True) as conn:
  with patch.object(requests.Session, 'send', transport), patch.object(monthly_pnl, 'get_position_value', position), patch.object(rpc, 'DEFAULT_RETRY_ATTEMPTS', 1):
   report = worker.run_prime(conn, 'grove', today=date(2026,8,2), attempts=1, prepare=lambda *a: None, capture=lambda: store.Versions('test','test','0'))
  assert seen, 'must exercise the actual monthly cash-distribution fallback'
- assert report['results'][0]['error_type'] == 'RequiredInputFailure', report
+ # Scheduled runs list the latest (rate-deferred) date before the older
+ # eligible cutoff. The required-input failure must still block publication.
+ failed = [row for row in report['results'] if row['status'] == 'failed']
+ assert len(failed) == 1 and failed[0]['error_type'] == 'RequiredInputFailure', report
+ assert report['status'] == 'failed'
  assert store.read(conn, 'grove') is None
  assert conn.execute('SELECT status FROM revenue_attempts').fetchall() == [('failed',)]
 """

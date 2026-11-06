@@ -1,0 +1,68 @@
+{
+  "scope": "Reviewed USCC capital links and independently priced delayed settlements; full combined replay pending, no published revenue change.",
+  "paid_total": "150010000",
+  "returned_total": "151013951.26",
+  "settlements": [
+    {
+      "requests": [
+        "0xcae6ffe1b84fd4702788fa6117b1b3017e6598855408407c10854872c70a856d",
+        "0xca43c99cdc901368b271e7200ca949c2e50f6405b53b9a16207b567c294d0dd2"
+      ],
+      "payment": "0x6641633601e1b4c7364e7b5b497ebed27d76b31f6988edab1bb73b35b95c032c",
+      "block": 23926724,
+      "shares": "8843655.9876",
+      "request_day_value": "100545921.5537970396",
+      "settlement_day_nav": "11.384682",
+      "settlement_day_value": "100682211.1362219432",
+      "actual_cash": "100682211.13",
+      "cash_less_settlement_nav_value": "-0.0062219432",
+      "cash_less_request_value": "136289.5762029604",
+      "association": "Reviewed closed issuer group; no shared on-chain request ID."
+    },
+    {
+      "requests": [
+        "0x9c38168eaf28096721d2daa374cc8105e1408b364863f57faa05185c1ab37fb8"
+      ],
+      "payment": "0xb230b52789a38848821b049b93f2bfed9c4d84dc2eb32e0d4cbb1ae69d3623fc",
+      "block": 23940496,
+      "shares": "4421827.993802",
+      "request_day_value": "50320468.896886667030",
+      "settlement_day_nav": "11.382564",
+      "settlement_day_value": "50331740.136442868328",
+      "actual_cash": "50331740.13",
+      "cash_less_settlement_nav_value": "-0.006442868328",
+      "cash_less_request_value": "11271.233113332970",
+      "association": "Reviewed closed issuer group; no shared on-chain request ID."
+    }
+  ],
+  "old_unmatched_receipts": {
+    "ethereum:0x9701dd940f4b4b211d9328cf6161c24078487f193ec56d9d8f055cb4bc325200": "4428393.645144",
+    "ethereum:0x0a286c4057964fa5b275451fad781e584ac76ed3ad6dbd7e7aae73ff041725b5": "4424373.911272",
+    "ethereum:0x4f5c87581ef8b9a636aa07dde269910e3cb4389a9f1dd9ec04de3bdf6cfb53a6": "4412716.424986",
+    "ethereum:0x6641633601e1b4c7364e7b5b497ebed27d76b31f6988edab1bb73b35b95c032c": "100682211.13",
+    "ethereum:0xb230b52789a38848821b049b93f2bfed9c4d84dc2eb32e0d4cbb1ae69d3623fc": "50331740.13"
+  },
+  "old_unmatched_outflows": {
+    "ethereum:0xfc298a3643627678a14071b5b5e7a9ddd2c8853a1030bd364a200fd59bcf1981": "10000.00000000000000000058128615256367562279222565",
+    "ethereum:0x5ac3e1a191b96b810beb7e5b5ddf52e6c4eeab1e0bd2c7b20526be4be970660e": "50000000.0000000000000000004676556530552761186033191",
+    "ethereum:0xd9218cf442a60d710849f35fb9403fd66da840faaf41f0d1f0703d55156a0397": "50000000.0000000000000000004676556530552761186033191",
+    "ethereum:0x76a6c50cc9909525a67fc286f4c84477f50976fe9bac7be78b37c6c51143ffa6": "50000000.0000000000000000004676556530552761186033191",
+    "ethereum:0xcae6ffe1b84fd4702788fa6117b1b3017e6598855408407c10854872c70a856d": "4421827.9938",
+    "ethereum:0xca43c99cdc901368b271e7200ca949c2e50f6405b53b9a16207b567c294d0dd2": "4421827.9938",
+    "ethereum:0x9c38168eaf28096721d2daa374cc8105e1408b364863f57faa05185c1ab37fb8": "4421827.993802"
+  },
+  "input_hashes": {
+    "tests/fixtures/spark_uscc_history.json": "6d5d43fdafd66f8a6fa205669b2678326e3556161e0c40ad5f14afc20e3a96ee",
+    "tests/fixtures/spark_uscc_nav.json": "66dc2106f0b5ea44641b49a2b8ac8acc765f7b68796bc60fc1135502db204a3d",
+    "tests/fixtures/spark_uscc_settlement_nav.json": "e8b4379f40534d1a0c5b2b412bfde9d54d905318e3ecfe98870627feedf364a5",
+    "tests/fixtures/spark_uscc_capital_batches.json": "ded45c8f504375da652f0b4cdd7f971e9ca2ede1defe20cbd8fe631be68cadb5",
+    "/tmp/pr215-spark-current-fixes-financing.json": "8f9845fd0059ee9cfd9614228c618502940235e463771b03c4490f51656adadc"
+  },
+  "economic_return_over_full_cycle": "1003951.26",
+  "old_unmatched_receipts_total": "164279435.241402",
+  "old_unmatched_outflows_total": "163275483.9814020000000000020",
+  "development_cash_return_sanity_check": {
+    "annualized_return_on_time_weighted_paid_capital": "0.065527218748763317327479038115286688669",
+    "scope": "Isolated full-cycle cash return / average end-of-day allocated borrowed principal, compounded to one year. Internal plausibility check only; not a production allocation APY or a publication gate."
+  }
+}

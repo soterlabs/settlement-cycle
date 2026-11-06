@@ -205,6 +205,8 @@ def compute_snapshot(
     bal_dune_src = sources.balance or get_balance_source()
 
     for v in prime.venues:
+        if v.pricing_category.value == "I":
+            continue  # Issuer receivables are computed in the revenue report.
         if v.skip:
             venues.append(VenueSnapshot(
                 venue_id=v.id, label=v.label, chain=v.chain,

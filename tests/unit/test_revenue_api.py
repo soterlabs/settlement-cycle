@@ -1,6 +1,8 @@
+from copy import deepcopy
 from datetime import date
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from settle.api import revenue
@@ -113,3 +115,50 @@ def test_etag_changes_with_corrections_and_freshness(monkeypatch):
     assert stale.status_code == 200 and stale.json()['freshness']['stale']
     r.row['revision_id'] = 'b'*64
     assert c.get(path, headers={'If-None-Match': stale.headers['etag']}).status_code == 200
+
+
+@pytest.mark.parametrize('version,reporting_key', [
+    ('1.0', 'display_only_breakdown'), ('1.1', 'reporting_only_breakdown'),
+])
+@pytest.mark.parametrize('path', ['/v1/revenue/obex/latest',
+                                 '/v1/revenue/obex/at/2026-09-14?revision=' + 'a'*64])
+def test_result_schema_matches_stored_payload_without_mutation(monkeypatch, version, reporting_key, path):
+    from settle.revenue.verification import digest
+    r = Reader()
+    r.row['result'].update({'venue_breakdown': [], reporting_key: []})
+    r.row['result_hash'] = digest(r.row['result'])
+    original = deepcopy(r.row)
+    with patch('requests.Session.send', side_effect=AssertionError('API must not call providers')):
+        response = client(r, monkeypatch).get(path)
+    assert response.status_code == 200
+    body = response.json()
+    assert body['schema_version'] == version
+    assert body['data']['result_schema_version'] == version
+    assert body['data']['result'] == original['result']
+    assert body['data']['result_hash'] == digest(body['data']['result'])
+    assert r.row == original
+
+
+def test_mixed_history_labels_each_result_without_mutating_snapshots(monkeypatch):
+    from settle.revenue.verification import digest
+    r = Reader()
+    old = deepcopy(r.row)
+    old['result']['display_only_breakdown'] = []
+    new = deepcopy(r.row)
+    new['revision_id'] = 'b'*64
+    new['result']['reporting_only_breakdown'] = []
+    rows = [new, old]
+    for row in rows:
+        row['result_hash'] = digest(row['result'])
+    original = deepcopy(rows)
+    r.revenue_history = lambda *args, **kwargs: rows
+    with patch('requests.Session.send', side_effect=AssertionError('API must not call providers')):
+        response = client(r, monkeypatch).get('/v1/revenue/obex/history')
+    assert response.status_code == 200
+    body = response.json()
+    assert body['schema_version'] == '1.0'  # history page envelope
+    assert [row['result_schema_version'] for row in body['results']] == ['1.1', '1.0']
+    for actual, saved in zip(body['results'], original, strict=True):
+        assert actual['result'] == saved['result']
+        assert actual['result_hash'] == digest(actual['result'])
+    assert rows == original

@@ -1,0 +1,9 @@
+{
+  "prime": "osero",
+  "start": "2026-09-01",
+  "end": "2026-09-30",
+  "pins": {
+    "ethereum": 26093737
+  },
+  "history_sha256": "57e1aea1fbc26c0019fde450e30044f8c3ecc498e101d2f4e79a99d0f4bf15ce"
+}

@@ -1,6 +1,10 @@
 """Once-daily prime revenue worker; UTC cutoffs, durable retries, no artifact writes.
 
 python -m settle.revenue.worker [--prime obex] [--from YYYY-MM-DD --to YYYY-MM-DD [--missing-only]]
+
+--missing-views-only upgrades legacy publications without restating completed
+v2 dates. --newest-first prioritizes the recent end of an explicit window.
+--require-views guarantees the stored format contains both dashboard views.
 """
 from __future__ import annotations
 
@@ -27,16 +31,19 @@ from settle.store.db import connect
 from . import store
 from .reference_rates import available_cutoff
 from .reference_rates import prepare as prepare_reference_rates
-from .verification import PRIMES, ProviderAudit, digest, validate_window
+from .verification import PRIMES, ProviderAudit, canonical, digest, validate_window
 
 _log = logging.getLogger('settle.revenue.worker')
 
 
-def planned_dates(published, attempted, today, start=None, end=None, initial=None, *, missing_only=False):
+def planned_dates(published, attempted, today, start=None, end=None, initial=None, *,
+                  missing_only=False, missing_views_only=False, newest_first=False, wait_for_lock=False):
     """Fill known gaps within 90 days; a first installation starts yesterday."""
     floor, yesterday = today - timedelta(days=90), today - timedelta(days=1)
-    if missing_only and (start is None or end is None):
-        raise ValueError('--missing-only requires an explicit --from and --to window')
+    if missing_only and missing_views_only:
+        raise ValueError('--missing-only and --missing-views-only are mutually exclusive')
+    if (missing_only or missing_views_only or newest_first or wait_for_lock) and (start is None or end is None):
+        raise ValueError('this backfill mode requires an explicit --from and --to window')
     if (start is None) != (end is None):
         raise ValueError('--from and --to must be supplied together')
     if start is not None:
@@ -52,10 +59,11 @@ def planned_dates(published, attempted, today, start=None, end=None, initial=Non
                 raise ValueError('initial cutoff must be a completed UTC day')
             seen.append(max(floor, initial))
         first, last = min(seen, default=yesterday), yesterday
-    return [first + timedelta(days=i) for i in range((last - first).days + 1)
-            if (not missing_only or first + timedelta(days=i) not in published)
+    dates = [first + timedelta(days=i) for i in range((last - first).days + 1)
+            if (not (missing_only or missing_views_only) or first + timedelta(days=i) not in published)
             and (start is not None or first + timedelta(days=i) not in published
                  or first + timedelta(days=i) == yesterday)]
+    return list(reversed(dates)) if newest_first else dates
 
 
 def lock_key(prime):
@@ -65,7 +73,8 @@ def lock_key(prime):
 
 def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_monthly_pnl,
               capture=store.capture_versions, attempts=3, pause=time.sleep, prepare=prepare_reference_rates,
-              now=None, missing_only=False):
+              now=None, missing_only=False, missing_views_only=False, newest_first=False,
+              require_views=False, wait_for_lock=False):
     now = now or (datetime.combine(today, datetime.min.time(), UTC).replace(hour=20, minute=17)
                   if today else datetime.now(UTC))
     today = today or now.astimezone(UTC).date()
@@ -73,23 +82,42 @@ def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_
         raise ValueError('worker requires an autocommit lock session and positive retry count')
     if prime not in PRIMES:
         raise ValueError('unknown prime')
-    if not conn.execute('SELECT pg_try_advisory_lock(%s)', (lock_key(prime),)).fetchone()[0]:
-        return {'prime': prime, 'status': 'already_running', 'results': []}
+    planned_dates(set(), set(), today, start, end, missing_only=missing_only,
+                  missing_views_only=missing_views_only, newest_first=newest_first, wait_for_lock=wait_for_lock)
+    require_views = require_views or missing_views_only
+    waiting = False
+    while not conn.execute('SELECT pg_try_advisory_lock(%s)', (lock_key(prime),)).fetchone()[0]:
+        if not wait_for_lock:
+            return {'prime': prime, 'status': 'already_running', 'results': []}
+        if not waiting:
+            _log.info('revenue waiting for prime lock prime=%s', prime)
+            waiting = True
+        # A blocking pg_advisory_lock is cancelled by the store's five-minute
+        # statement timeout. Poll outside a query/transaction instead; the hard
+        # process deadline still bounds the entire recovery, including waiting.
+        pause(5)
     results = []
     try:
         conn.execute("UPDATE revenue_attempts SET status='abandoned', finished_at=NOW(), "
                      "error_type='WorkerInterrupted' WHERE prime=%s AND status='running'", (prime,))
         published = {r[0] for r in conn.execute('SELECT DISTINCT cutoff FROM revenue_results WHERE prime=%s', (prime,))}
+        if missing_views_only:
+            published = store.venue_view_dates(conn, prime)
         attempted = {r[0] for r in conn.execute('SELECT DISTINCT cutoff FROM revenue_attempts WHERE prime=%s', (prime,))}
         initial = os.environ.get("REVENUE_START_DATE")
         dates = planned_dates(published, attempted, today, start, end,
-                              date.fromisoformat(initial) if initial else None, missing_only=missing_only)
+                              date.fromisoformat(initial) if initial else None, missing_only=missing_only,
+                              missing_views_only=missing_views_only, newest_first=newest_first)
         config = load_prime_by_id(prime)
         ready_through = available_cutoff(config, today - timedelta(days=1), now)
         # Anchor a first weekend installation at the last publishable day so
         # Monday's gap planner also recovers Friday and Saturday.
         if start is None and dates and ready_through < dates[0] and ready_through not in published:
             dates.insert(0, ready_through)
+        # Scheduled publication must not wait behind an older slow/failed day.
+        # Keep explicit backfills chronological unless --newest-first is set.
+        if start is None:
+            dates.sort(reverse=True)
         for cutoff in dates:
             if cutoff > ready_through:
                 results.append({'cutoff': str(cutoff), 'status': 'deferred',
@@ -116,13 +144,15 @@ def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_
                     # rather than leaving the intervening value as "latest".
                     if (latest and latest['code_version'] == versions.code
                             and latest['configuration_version'] == versions.configuration
-                            and latest['input_provenance'] == provenance):
+                            and latest['input_provenance'] == provenance
+                            and (not require_views or store.has_venue_views(latest['result']))):
                         resolved = dataclasses.replace(versions, inputs=latest['input_revision'])
                         conn.execute("UPDATE revenue_attempts SET status='succeeded', finished_at=NOW(), "
                                      "revision_id=%s, versions=%s WHERE attempt_id=%s",
                                      (latest['revision_id'], Jsonb(dataclasses.asdict(resolved)), attempt_id))
                         results.append({'cutoff': str(cutoff), 'status': 'reused',
                                         'revision_id': latest['revision_id']})
+                        results[-1]['financial_status'] = _financial_publish(conn, prime, latest['revision_id'])
                         break
                     resolved = dataclasses.replace(versions, inputs=digest({
                         'manual_revision': versions.inputs,
@@ -135,6 +165,8 @@ def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_
                         pnl = compute(config, Month(cutoff.year, cutoff.month), as_of=cutoff, **kwargs)
                     if pnl.prime_id != prime or pnl.as_of != cutoff:
                         raise ValueError('calculation returned a different prime or cutoff')
+                    if require_views and not store.has_venue_views(canonical(pnl)):
+                        raise ValueError('calculation is missing settlement/reporting views')
                     if audit.dune_attempts:
                         raise RuntimeError('Dune was used during revenue calculation')
                     if capture() != versions:
@@ -148,6 +180,7 @@ def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_
                                      "revision_id=%s WHERE attempt_id=%s", (revision, attempt_id))
                     _log.info('revenue published prime=%s cutoff=%s revision=%s', prime, cutoff, revision)
                     results.append({'cutoff': str(cutoff), 'status': 'succeeded', 'revision_id': revision})
+                    results[-1]['financial_status'] = _financial_publish(conn, prime, revision)
                     break
                 except (Exception, RequiredInputFailure) as exc:
                     # Keep provider URLs/credentials out of the public run ledger.
@@ -159,11 +192,24 @@ def run_prime(conn, prime, *, today=None, start=None, end=None, compute=compute_
                         results.append({'cutoff': str(cutoff), 'status': 'failed', 'error_type': type(exc).__name__})
                         break
                     pause(min(60, 10 * (attempt + 1)))
-        return {'prime': prime, 'status': 'failed' if any(r['status'] == 'failed' for r in results) else 'ok',
+        return {'prime': prime, 'status': 'failed' if any(r['status'] == 'failed' or r.get('financial_status') == 'failed' for r in results) else 'ok',
                 'results': results}
     finally:
         if not conn.closed:
             conn.execute('SELECT pg_advisory_unlock(%s)', (lock_key(prime),))
+
+
+def _financial_publish(conn, prime, revision):
+    from .financial_store import publish_revision
+    try:
+        status = publish_revision(conn, prime, revision)
+    except Exception:
+        # A committed source calculation must not be relabelled failed because
+        # a derived-report store is unavailable. Signal the independent failure.
+        status = 'failed'
+    if status == 'failed':
+        _log.error('ALERT financial publication failed prime=%s source_revision=%s', prime, revision)
+    return status
 
 
 @contextmanager
@@ -194,11 +240,21 @@ def main():
     parser.add_argument('--prime', choices=PRIMES, action='append')
     parser.add_argument('--from', dest='start', type=date.fromisoformat)
     parser.add_argument('--to', dest='end', type=date.fromisoformat)
-    parser.add_argument('--missing-only', action='store_true',
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument('--missing-only', action='store_true',
                         help='Fill only unpublished dates in an explicit window; preserve existing revisions')
+    modes.add_argument('--missing-views-only', action='store_true',
+                       help='Fill unpublished or legacy-format dates; retain existing v2 views')
+    parser.add_argument('--newest-first', action='store_true', help='Backfill latest cutoffs first')
+    parser.add_argument('--require-views', action='store_true',
+                        help='Refuse to reuse or publish results without both API views')
+    parser.add_argument('--wait-for-lock', action='store_true',
+                        help='Explicit backfill waits for a running daily worker instead of skipping its prime')
     args = parser.parse_args()
     today = datetime.now(UTC).date()
-    planned_dates(set(), set(), today, args.start, args.end, missing_only=args.missing_only)  # validate before DB/provider work
+    planned_dates(set(), set(), today, args.start, args.end, missing_only=args.missing_only,
+                  missing_views_only=args.missing_views_only, newest_first=args.newest_first,
+                  wait_for_lock=args.wait_for_lock)
     os.environ['SETTLE_REQUIRE_POSTGRES'] = '1'
     logging.basicConfig(level=logging.INFO)
     reports = []
@@ -206,8 +262,12 @@ def main():
         try:
             with connect(autocommit=True) as conn:
                 store.apply_schema(conn)
-                report = run_prime(conn, prime, today=today, start=args.start, end=args.end,
-                                   missing_only=args.missing_only)
+                # Manual jobs may start before the evening reference-rate
+                # gate. Use wall-clock UTC, not the test helper's simulated tick.
+                report = run_prime(conn, prime, now=datetime.now(UTC), start=args.start, end=args.end,
+                                   missing_only=args.missing_only, missing_views_only=args.missing_views_only,
+                                   newest_first=args.newest_first, require_views=args.require_views,
+                                   wait_for_lock=args.wait_for_lock)
         except (Exception, RequiredInputFailure) as exc:
             report = {'prime': prime, 'status': 'failed', 'error_type': type(exc).__name__}
             _log.error('ALERT daily revenue worker failed for %s: %s', prime, type(exc).__name__)

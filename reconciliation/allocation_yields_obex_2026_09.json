@@ -1,0 +1,37 @@
+{
+  "sort": "gross_apy descending; unavailable last",
+  "method": "(1 + period revenue / average exposure) ** (365 / days) - 1",
+  "net_definition": "Prime-retained venue revenue minus modeled allocation borrowing costs; excludes Prime-level adjustments/spread reimbursements.",
+  "results": [
+    {
+      "prime": "obex",
+      "start": "2026-09-01",
+      "end": "2026-09-30",
+      "allocations": [
+        {
+          "venue": "V1",
+          "label": "Maple syrupUSDC (Category B \u2014 ERC-4626 vault)",
+          "cost_status": "calculable_under_assumption",
+          "cost_of_funds": "1198885.712757592055617260186",
+          "gross_apy": "0.050643891589717003914877295984578420591",
+          "net_apy": "0.013471613174383144666354245895985941143",
+          "average_exposure": "403893190.9394416300400",
+          "denominator": "published time-weighted position value",
+          "yield_status": "available",
+          "gross_revenue": "1643357.64938440313000",
+          "prime_retained_revenue": "1643357.64938440313000",
+          "spread_reimbursement_not_in_venue_net": "0",
+          "net_pnl": "444471.936626811074382739814"
+        }
+      ]
+    }
+  ],
+  "input_sha256": {
+    "reconciliation/allocation_capital_readiness_obex_2026_09.json.gz": "638ed9d517dbaa990b3b0e1d4241bc7e33ae9a8b62044c1e5af6f6a093f6e579",
+    "reconciliation/monthly-allocation-controls/obex/2026-09/provenance.json": "a83fb0fd03fdceafc2780c18deb56a0690f25b795eeb48e652da32b0fd2dda8a"
+  },
+  "source_sha256": {
+    "/home/agent/code/lakonema2000/settlement-cycle/scripts/report_allocation_yields.py": "703ed7f237e8a28ec0b08db9142c900569daf835b0f7398242003053a94f4726",
+    "src/settle/compute/allocation_financing.py": "9046670c3856e506c2a647290474a108b60bbf8b189e5e644a0af6e5e211a80a"
+  }
+}

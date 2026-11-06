@@ -41,6 +41,30 @@ def capture_versions():
 
 def apply_schema(conn):
     conn.execute((_ROOT / 'db' / 'schema_revenue.sql').read_text())
+    from .cash_flow.store import apply_schema as cash_flow_schema
+    cash_flow_schema(conn)
+
+
+def has_venue_views(result):
+    if not isinstance(result, dict):
+        return False
+    views = result.get('venue_views', {})
+    return (isinstance(views, dict) and views.get('schema_version') == '2.0'
+            and all(isinstance(views.get(view), list) for view in ('settlement', 'reporting')))
+
+
+def venue_view_dates(conn, prime):
+    """Only the newest revision per cutoff determines API compatibility."""
+    return {row[0] for row in conn.execute('''
+        SELECT cutoff FROM (
+            SELECT DISTINCT ON (cutoff) cutoff, result
+            FROM revenue_results WHERE prime=%s
+            ORDER BY cutoff, publication_order DESC
+        ) latest
+        WHERE result->'venue_views'->>'schema_version' = '2.0'
+          AND jsonb_typeof(result->'venue_views'->'settlement') = 'array'
+          AND jsonb_typeof(result->'venue_views'->'reporting') = 'array'
+        ''', (prime,))}
 
 
 def publish(conn, pnl, versions: Versions, *, input_provenance=None):

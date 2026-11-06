@@ -1,0 +1,281 @@
+{
+  "prime": "grove",
+  "ilk": "ALLOCATOR-GROVE-A",
+  "period": "2026-08",
+  "input_hashes": {
+    "/tmp/pr215-grove-eoa/history.jsonl.gz": "c05b53815379f6f7a4d9f6195d819d09ddb542f8f279af5f4defe4b7b3295474",
+    "settlements/grove/2026-08/provenance.json": "d6fb40d3c43caf3bdc7d0983b7ff071433ad056d22825b9f0f19eeb9d3af3aa9",
+    "/tmp/pr215-resumed-grove/idle_deductions.json": "e6b13f9b30816b2f8e9325f222aa9c889ff68cdf182205f4c54576d929faf427",
+    "/tmp/pr215-resumed-grove/debt-control.json": "6214144465cad85e59e3cd7c075925fad2f5bdc2131428ea4e6f769b57d9280b",
+    "/tmp/pr215-resumed-grove/deduction-owners.json": "dad2cf619d5dc65a26721aaf1fe3938136bb512212bf427a2e5aa56531f58153"
+  },
+  "scope": "Read-only explanation, not a new allocation row or balancing adjustment. Global borrowing costs and reports unchanged.",
+  "transactions": [
+    {
+      "tx": "0xe10ab6c75c5dcaab66bbfd8e6357e3689e539e5096ad6c120889631e9ea812f0",
+      "input": "750000 USDC",
+      "output": "749909.122974 AUSD",
+      "shortfall": "90.877026"
+    },
+    {
+      "tx": "0xa698be559ff6fd5ce8c6ac68856c6862e53dc4bc1a45d39b2ad62504ff8a16e5",
+      "input": "250000 AUSD",
+      "output": "249980.760840 USDC",
+      "shortfall": "19.239160"
+    }
+  ],
+  "pool": "0xbafead7c60ea473758ed6c6021505e8bbd7e8e5d",
+  "total_financed_execution_shortfall": "110.116186",
+  "total_borrowing_cost_of_execution_shortfall": "0.1432971514318683671004270010",
+  "total_remaining_unexplained_cost": "3.07064892E-21",
+  "daily": [
+    {
+      "day": "2026-08-01",
+      "global_cost": "100.3241581087943623615040083",
+      "traced_allocation_cost": "100.3241581087943623615039090",
+      "financed_execution_shortfall": "0",
+      "borrowing_cost_of_execution_shortfall": "0",
+      "remaining_unexplained_cost": "9.93E-23"
+    },
+    {
+      "day": "2026-08-02",
+      "global_cost": "100.3241581087943623615040083",
+      "traced_allocation_cost": "100.3241581087943623615039090",
+      "financed_execution_shortfall": "0",
+      "borrowing_cost_of_execution_shortfall": "0",
+      "remaining_unexplained_cost": "9.93E-23"
+    },
+    {
+      "day": "2026-08-03",
+      "global_cost": "100.1652037572550524578777882",
+      "traced_allocation_cost": "100.1652037572550524578776890",
+      "financed_execution_shortfall": "0",
+      "borrowing_cost_of_execution_shortfall": "0",
+      "remaining_unexplained_cost": "9.92E-23"
+    },
+    {
+      "day": "2026-08-04",
+      "global_cost": "100.3241247918770208320634777",
+      "traced_allocation_cost": "100.3241247918770208320633784",
+      "financed_execution_shortfall": "0",
+      "borrowing_cost_of_execution_shortfall": "0",
+      "remaining_unexplained_cost": "9.93E-23"
+    },
+    {
+      "day": "2026-08-05",
+      "global_cost": "100.0093343588213699669748513",
+      "traced_allocation_cost": "100.0093343588213699669747523",
+      "financed_execution_shortfall": "0",
+      "borrowing_cost_of_execution_shortfall": "0",
+      "remaining_unexplained_cost": "9.90E-23"
+    },
+    {
+      "day": "2026-08-06",
+      "global_cost": "100.1675384815490881002210145",
+      "traced_allocation_cost": "100.1675384815490881002209153",
+      "financed_execution_shortfall": "0",
+      "borrowing_cost_of_execution_shortfall": "0",
+      "remaining_unexplained_cost": "9.92E-23"
+    },
+    {
+      "day": "2026-08-07",
+      "global_cost": "99.69580131992642040475407355",
+      "traced_allocation_cost": "99.69580131992642040475397482",
+      "financed_execution_shortfall": "0",
+      "borrowing_cost_of_execution_shortfall": "0",
+      "remaining_unexplained_cost": "9.873E-23"
+    },
+    {
+      "day": "2026-08-08",
+      "global_cost": "99.69152603582605126285031248",
+      "traced_allocation_cost": "99.69152603582605126285021374",
+      "financed_execution_shortfall": "0",
+      "borrowing_cost_of_execution_shortfall": "0",
+      "remaining_unexplained_cost": "9.874E-23"
+    },
+    {
+      "day": "2026-08-09",
+      "global_cost": "99.69152603582605126285031248",
+      "traced_allocation_cost": "99.69152603582605126285021374",
+      "financed_execution_shortfall": "0",
+      "borrowing_cost_of_execution_shortfall": "0",
+      "remaining_unexplained_cost": "9.874E-23"
+    },
+    {
+      "day": "2026-08-10",
+      "global_cost": "99.83948967831904405950280363",
+      "traced_allocation_cost": "99.83948967831904405950270476",
+      "financed_execution_shortfall": "0",
+      "borrowing_cost_of_execution_shortfall": "0",
+      "remaining_unexplained_cost": "9.887E-23"
+    },
+    {
+      "day": "2026-08-11",
+      "global_cost": "99.99975182876183349724988602",
+      "traced_allocation_cost": "99.99975182876183349724978698",
+      "financed_execution_shortfall": "0",
+      "borrowing_cost_of_execution_shortfall": "0",
+      "remaining_unexplained_cost": "9.904E-23"
+    },
+    {
+      "day": "2026-08-12",
+      "global_cost": "99.67586727228370195709715831",
+      "traced_allocation_cost": "99.67586727228370195709705960",
+      "financed_execution_shortfall": "0",
+      "borrowing_cost_of_execution_shortfall": "0",
+      "remaining_unexplained_cost": "9.871E-23"
+    },
+    {
+      "day": "2026-08-13",
+      "global_cost": "99.67319212757141075614712600",
+      "traced_allocation_cost": "99.67319212757141075614702728",
+      "financed_execution_shortfall": "0",
+      "borrowing_cost_of_execution_shortfall": "0",
+      "remaining_unexplained_cost": "9.872E-23"
+    },
+    {
+      "day": "2026-08-14",
+      "global_cost": "99.66944161176814672754454834",
+      "traced_allocation_cost": "99.66944161176814672754444964",
+      "financed_execution_shortfall": "0",
+      "borrowing_cost_of_execution_shortfall": "0",
+      "remaining_unexplained_cost": "9.870E-23"
+    },
+    {
+      "day": "2026-08-15",
+      "global_cost": "99.66944161176814672754454834",
+      "traced_allocation_cost": "99.66944161176814672754444964",
+      "financed_execution_shortfall": "0",
+      "borrowing_cost_of_execution_shortfall": "0",
+      "remaining_unexplained_cost": "9.870E-23"
+    },
+    {
+      "day": "2026-08-16",
+      "global_cost": "99.66944161176814672754454834",
+      "traced_allocation_cost": "99.66944161176814672754444964",
+      "financed_execution_shortfall": "0",
+      "borrowing_cost_of_execution_shortfall": "0",
+      "remaining_unexplained_cost": "9.870E-23"
+    },
+    {
+      "day": "2026-08-17",
+      "global_cost": "100.3225510412083198764698748",
+      "traced_allocation_cost": "100.3225510412083198764697754",
+      "financed_execution_shortfall": "0",
+      "borrowing_cost_of_execution_shortfall": "0",
+      "remaining_unexplained_cost": "9.94E-23"
+    },
+    {
+      "day": "2026-08-18",
+      "global_cost": "500.8078246063848153203625672",
+      "traced_allocation_cost": "500.8078246063848153203624681",
+      "financed_execution_shortfall": "0",
+      "borrowing_cost_of_execution_shortfall": "0",
+      "remaining_unexplained_cost": "9.91E-23"
+    },
+    {
+      "day": "2026-08-19",
+      "global_cost": "598.0664405902850423939625060",
+      "traced_allocation_cost": "598.0554644376638207118368370",
+      "financed_execution_shortfall": "110.116186",
+      "borrowing_cost_of_execution_shortfall": "0.01097615262122168212557027417",
+      "remaining_unexplained_cost": "9.872583E-23"
+    },
+    {
+      "day": "2026-08-20",
+      "global_cost": "601.2288173927203095495960728",
+      "traced_allocation_cost": "601.2178244272891121655530308",
+      "financed_execution_shortfall": "110.116186",
+      "borrowing_cost_of_execution_shortfall": "0.01099296543119738404294325831",
+      "remaining_unexplained_cost": "9.874169E-23"
+    },
+    {
+      "day": "2026-08-21",
+      "global_cost": "603.2024836582444508235425028",
+      "traced_allocation_cost": "603.1914546059784212107418668",
+      "financed_execution_shortfall": "110.116186",
+      "borrowing_cost_of_execution_shortfall": "0.01102905226602961280053686723",
+      "remaining_unexplained_cost": "9.913277E-23"
+    },
+    {
+      "day": "2026-08-22",
+      "global_cost": "603.2024836582444508235425028",
+      "traced_allocation_cost": "603.1914546059784212107418668",
+      "financed_execution_shortfall": "110.116186",
+      "borrowing_cost_of_execution_shortfall": "0.01102905226602961280053686723",
+      "remaining_unexplained_cost": "9.913277E-23"
+    },
+    {
+      "day": "2026-08-23",
+      "global_cost": "603.2024836582444508235425028",
+      "traced_allocation_cost": "603.1914546059784212107418668",
+      "financed_execution_shortfall": "110.116186",
+      "borrowing_cost_of_execution_shortfall": "0.01102905226602961280053686723",
+      "remaining_unexplained_cost": "9.913277E-23"
+    },
+    {
+      "day": "2026-08-24",
+      "global_cost": "603.2601823824654417037587464",
+      "traced_allocation_cost": "603.2491522752265590993911861",
+      "financed_execution_shortfall": "110.116186",
+      "borrowing_cost_of_execution_shortfall": "0.01103010723888260436746112789",
+      "remaining_unexplained_cost": "9.917211E-23"
+    },
+    {
+      "day": "2026-08-25",
+      "global_cost": "604.1926816418464927959265928",
+      "traced_allocation_cost": "604.1816344846395673304516964",
+      "financed_execution_shortfall": "110.116186",
+      "borrowing_cost_of_execution_shortfall": "0.01104715720692546547479707420",
+      "remaining_unexplained_cost": "9.932580E-23"
+    },
+    {
+      "day": "2026-08-26",
+      "global_cost": "602.2107848757043327729438293",
+      "traced_allocation_cost": "602.1997739558200507620633508",
+      "financed_execution_shortfall": "110.116186",
+      "borrowing_cost_of_execution_shortfall": "0.01101091988428201088037943683",
+      "remaining_unexplained_cost": "9.906317E-23"
+    },
+    {
+      "day": "2026-08-27",
+      "global_cost": "602.2085313444976319502222524",
+      "traced_allocation_cost": "602.1975204658172808500669835",
+      "financed_execution_shortfall": "110.116186",
+      "borrowing_cost_of_execution_shortfall": "0.01101087868035110015516990964",
+      "remaining_unexplained_cost": "9.899036E-23"
+    },
+    {
+      "day": "2026-08-28",
+      "global_cost": "803.5030438056535259889926370",
+      "traced_allocation_cost": "803.4920149741163430124721289",
+      "financed_execution_shortfall": "110.116186",
+      "borrowing_cost_of_execution_shortfall": "0.01102883153718297652040893559",
+      "remaining_unexplained_cost": "9.916441E-23"
+    },
+    {
+      "day": "2026-08-29",
+      "global_cost": "1001.567205776841177200099532",
+      "traced_allocation_cost": "1001.556176900768894908343330",
+      "financed_execution_shortfall": "110.116186",
+      "borrowing_cost_of_execution_shortfall": "0.01102887607228229175610251193",
+      "remaining_unexplained_cost": "9.948807E-23"
+    },
+    {
+      "day": "2026-08-30",
+      "global_cost": "1001.567205776841177200099532",
+      "traced_allocation_cost": "1001.556176900768894908343330",
+      "financed_execution_shortfall": "110.116186",
+      "borrowing_cost_of_execution_shortfall": "0.01102887607228229175610251193",
+      "remaining_unexplained_cost": "9.948807E-23"
+    },
+    {
+      "day": "2026-08-31",
+      "global_cost": "1357.604553506163426028569180",
+      "traced_allocation_cost": "1357.593498276274254306949199",
+      "financed_execution_shortfall": "110.116186",
+      "borrowing_cost_of_execution_shortfall": "0.01105522988917172161988135890",
+      "remaining_unexplained_cost": "9.964110E-23"
+    }
+  ]
+}

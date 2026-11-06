@@ -404,8 +404,10 @@ next action so it can be picked up cold.
 
 ## 9. Out of scope
 
-- **spETH (S58)** — backing mechanism is different (not sUSDS-based);
-  separate PRD.
+- **spETH yield/VSR attribution (S58)** — backing mechanism is different
+  (not sUSDS-based); separate PRD. Position reporting is now supported via
+  pinned WETH totalAssets × Chainlink ETH/USD, excluded from MSC; see
+  [reporting-only venues](../reporting-only-venues.md).
 - **Per-allocation breakdown** — interesting reporting but not needed
   for the headline number; deferred.
 - ~~**Avalanche spUSDC (S60)**~~ — shipped via Phase A's chain-agnostic

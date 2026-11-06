@@ -1,0 +1,974 @@
+{
+  "cutoff": "2026-10-27",
+  "revision_id": "ef0b80c2e50d23ff44c1bd2a8d8e60f26b048be8f8a57fb94425c464bd8f7754",
+  "source_revision": "8e1ae7902e5093981af7ab1617c4ff6e00a65fd24c839b0c4476a91c3f63d05d",
+  "document": {
+    "prime": "grove",
+    "scope": "individual",
+    "cutoff": "2026-10-27",
+    "period": {
+      "end": "2026-10-27",
+      "start": "2026-10-01"
+    },
+    "source": {
+      "computed_at": "2026-10-28T20:39:01.622343+00:00",
+      "provisional": true,
+      "result_hash": "12fb53876ba79aedbca6b9f12dab85cad35a7449faea46d05fd374091d202288",
+      "revision_id": "8e1ae7902e5093981af7ab1617c4ff6e00a65fd24c839b0c4476a91c3f63d05d",
+      "code_version": "e8c29f65caeb6be8541a929b12a80919dfe3a57a",
+      "input_revision": "d1ea219e028473248d3385dfc1fe87fb50968a501ab6c5a0d3e88b45a4bd7708",
+      "excluded_inputs": [
+        "monthly_distribution_rewards"
+      ],
+      "configuration_version": "912f0d18e04748cf5f85572c57cee883497366e6fa437721d056661c99a0ef80"
+    },
+    "metrics": {
+      "funding.sky.net": {
+        "unit": "USD",
+        "basis": "net_sky_funding_only",
+        "value": "3817247.982590010517422758318",
+        "reason": null,
+        "status": "available",
+        "known_value": null,
+        "recognition": "accrual",
+        "source_paths": [
+          "result.sky_revenue",
+          "result.sde_revenue"
+        ]
+      },
+      "demand.agent_rate": {
+        "unit": "USD",
+        "basis": "tracked_protocol_entitlement",
+        "value": "76457.85187492836717449201038",
+        "reason": null,
+        "status": "available",
+        "known_value": null,
+        "recognition": "accrual",
+        "source_paths": [
+          "result.agent_rate"
+        ]
+      },
+      "funding.sky.gross": {
+        "unit": "USD",
+        "basis": "sky_borrowing_before_reimbursement",
+        "value": "3817247.982590010517422758318",
+        "reason": null,
+        "status": "available",
+        "known_value": null,
+        "recognition": "accrual",
+        "source_paths": [
+          "result.sky_revenue",
+          "result.sde_revenue",
+          "result.susds_spread_reimbursement"
+        ]
+      },
+      "demand.chronicle_points": {
+        "unit": "USD",
+        "basis": "grove_chronicle_points_entitlement",
+        "value": "11075.04106039593996320021702",
+        "reason": null,
+        "status": "available",
+        "known_value": null,
+        "recognition": "accrual",
+        "source_paths": [
+          "result.chronicle_points"
+        ]
+      },
+      "rewards.reviewed_lending": {
+        "unit": "USD",
+        "basis": "reviewed_external_token_distributions_received",
+        "value": "0",
+        "reason": null,
+        "status": "available",
+        "known_value": null,
+        "recognition": "receipt",
+        "source_paths": [
+          "result.venue_breakdown.E1.external_revenue",
+          "result.venue_breakdown.E2.external_revenue",
+          "result.venue_breakdown.E3.external_revenue"
+        ]
+      },
+      "funding.sky.reimbursement": {
+        "unit": "USD",
+        "basis": "sky_funding_reduction",
+        "value": "0",
+        "reason": null,
+        "status": "available",
+        "known_value": null,
+        "recognition": "accrual",
+        "source_paths": [
+          "result.susds_spread_reimbursement"
+        ]
+      },
+      "investment.aave.eth_rlusd": {
+        "unit": "USD",
+        "basis": "native_lending_yield",
+        "value": "0.00084514504910331500",
+        "reason": null,
+        "status": "available",
+        "known_value": null,
+        "recognition": "accrual",
+        "source_paths": [
+          "result.venue_breakdown.E3.revenue",
+          "result.venue_breakdown.E3.external_revenue"
+        ]
+      },
+      "investment.reviewed_income": {
+        "unit": "USD",
+        "basis": "reviewed_native_income_only",
+        "value": "312476.9274446316763803986262500",
+        "reason": null,
+        "status": "available",
+        "known_value": null,
+        "recognition": "accrual",
+        "source_paths": [
+          "result.venue_breakdown.E1.revenue",
+          "result.venue_breakdown.E1.external_revenue",
+          "result.venue_breakdown.E2.revenue",
+          "result.venue_breakdown.E2.external_revenue",
+          "result.venue_breakdown.E3.revenue",
+          "result.venue_breakdown.E3.external_revenue",
+          "result.venue_breakdown.E4.revenue",
+          "result.venue_breakdown.E4.external_revenue",
+          "result.venue_breakdown.E5.revenue",
+          "result.venue_breakdown.E5.external_revenue",
+          "result.venue_breakdown.E6.revenue",
+          "result.venue_breakdown.E6.external_revenue",
+          "result.venue_breakdown.E19.revenue",
+          "result.venue_breakdown.E19.external_revenue",
+          "result.venue_breakdown.E23.revenue",
+          "result.venue_breakdown.E23.external_revenue",
+          "result.venue_breakdown.E24.revenue",
+          "result.venue_breakdown.E24.external_revenue",
+          "result.reporting_only_breakdown.E25.revenue",
+          "result.reporting_only_breakdown.E25.external_revenue",
+          "result.venue_breakdown.E37.revenue",
+          "result.venue_breakdown.E37.external_revenue"
+        ]
+      },
+      "investment.maple_syrup_usdc": {
+        "unit": "USD",
+        "basis": "net_vault_yield_after_embedded_fees",
+        "value": "0",
+        "reason": null,
+        "status": "available",
+        "known_value": null,
+        "recognition": "accrual",
+        "source_paths": [
+          "result.venue_breakdown.E37.revenue",
+          "result.venue_breakdown.E37.external_revenue"
+        ]
+      },
+      "investment.aave.horizon_usdc": {
+        "unit": "USD",
+        "basis": "native_lending_yield",
+        "value": "0E-8",
+        "reason": null,
+        "status": "available",
+        "known_value": null,
+        "recognition": "accrual",
+        "source_paths": [
+          "result.venue_breakdown.E2.revenue",
+          "result.venue_breakdown.E2.external_revenue"
+        ]
+      },
+      "investment.morpho.grove_ausd": {
+        "unit": "USD",
+        "basis": "net_vault_yield_after_embedded_fees",
+        "value": "0.0000340480144865437202500",
+        "reason": null,
+        "status": "available",
+        "known_value": null,
+        "recognition": "accrual",
+        "source_paths": [
+          "result.venue_breakdown.E6.revenue",
+          "result.venue_breakdown.E6.external_revenue"
+        ]
+      },
+      "investment.morpho.grove_usdc": {
+        "unit": "USD",
+        "basis": "net_vault_yield_after_embedded_fees",
+        "value": "52627.711424035473080414806",
+        "reason": null,
+        "status": "available",
+        "known_value": null,
+        "recognition": "accrual",
+        "source_paths": [
+          "result.venue_breakdown.E4.revenue",
+          "result.venue_breakdown.E4.external_revenue"
+        ]
+      },
+      "investment.aave.horizon_rlusd": {
+        "unit": "USD",
+        "basis": "native_lending_yield",
+        "value": "0.00001798968681961300",
+        "reason": null,
+        "status": "available",
+        "known_value": null,
+        "recognition": "accrual",
+        "source_paths": [
+          "result.venue_breakdown.E1.revenue",
+          "result.venue_breakdown.E1.external_revenue"
+        ]
+      },
+      "investment.morpho.grove_pyusd": {
+        "unit": "USD",
+        "basis": "net_vault_yield_after_embedded_fees",
+        "value": "0",
+        "reason": null,
+        "status": "available",
+        "known_value": null,
+        "recognition": "accrual",
+        "source_paths": [
+          "result.venue_breakdown.E24.revenue",
+          "result.venue_breakdown.E24.external_revenue"
+        ]
+      },
+      "rewards.lending.aave.eth_rlusd": {
+        "unit": "USD",
+        "basis": "external_token_distributions_received",
+        "value": "0",
+        "reason": null,
+        "status": "available",
+        "known_value": null,
+        "recognition": "receipt",
+        "source_paths": [
+          "result.venue_breakdown.E3.external_revenue"
+        ]
+      },
+      "rewards.lending.aave.horizon_usdc": {
+        "unit": "USD",
+        "basis": "external_token_distributions_received",
+        "value": "0",
+        "reason": null,
+        "status": "available",
+        "known_value": null,
+        "recognition": "receipt",
+        "source_paths": [
+          "result.venue_breakdown.E2.external_revenue"
+        ]
+      },
+      "investment.morpho.grove_monad_ausd": {
+        "unit": "USD",
+        "basis": "net_vault_yield_after_embedded_fees",
+        "value": "0E-8",
+        "reason": null,
+        "status": "available",
+        "known_value": null,
+        "recognition": "accrual",
+        "source_paths": [
+          "result.reporting_only_breakdown.E25.revenue",
+          "result.reporting_only_breakdown.E25.external_revenue"
+        ]
+      },
+      "rewards.lending.aave.horizon_rlusd": {
+        "unit": "USD",
+        "basis": "external_token_distributions_received",
+        "value": "0",
+        "reason": null,
+        "status": "available",
+        "known_value": null,
+        "recognition": "receipt",
+        "source_paths": [
+          "result.venue_breakdown.E1.external_revenue"
+        ]
+      },
+      "investment.morpho.grove_base_prime_usdc": {
+        "unit": "USD",
+        "basis": "net_vault_yield_after_embedded_fees",
+        "value": "109166.1876943538100707881",
+        "reason": null,
+        "status": "available",
+        "known_value": null,
+        "recognition": "accrual",
+        "source_paths": [
+          "result.venue_breakdown.E23.revenue",
+          "result.venue_breakdown.E23.external_revenue"
+        ]
+      },
+      "investment.morpho.grove_usdc_high_yield": {
+        "unit": "USD",
+        "basis": "net_vault_yield_after_embedded_fees",
+        "value": "0",
+        "reason": null,
+        "status": "available",
+        "known_value": null,
+        "recognition": "accrual",
+        "source_paths": [
+          "result.venue_breakdown.E5.revenue",
+          "result.venue_breakdown.E5.external_revenue"
+        ]
+      },
+      "investment.morpho.grove_base_usdc_high_yield": {
+        "unit": "USD",
+        "basis": "net_vault_yield_after_embedded_fees",
+        "value": "150683.0274290596428197240",
+        "reason": null,
+        "status": "available",
+        "known_value": null,
+        "recognition": "accrual",
+        "source_paths": [
+          "result.venue_breakdown.E19.revenue",
+          "result.venue_breakdown.E19.external_revenue"
+        ]
+      }
+    },
+    "perimeter": "operational_prime_management_reporting",
+    "portfolio": {
+      "measure": "tracked_allocations",
+      "positions": [
+        {
+          "label": "Aave Horizon RLUSD supply yield",
+          "income": {
+            "unit": "USD",
+            "basis": "native_lending_yield",
+            "value": "0.00001798968681961300",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "accrual",
+            "source_paths": [
+              "result.venue_breakdown.E1.revenue",
+              "result.venue_breakdown.E1.external_revenue"
+            ]
+          },
+          "position_id": "grove.E1",
+          "closing_value": {
+            "unit": "USD",
+            "basis": "reported_usd_position_valuation",
+            "value": "0.01430948082164557600",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "valuation",
+            "source_paths": [
+              "result.venue_breakdown.E1.value_eom"
+            ]
+          },
+          "opening_value": {
+            "unit": "USD",
+            "basis": "reported_usd_position_valuation",
+            "value": "0.01429149113482596300",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "valuation",
+            "source_paths": [
+              "result.venue_breakdown.E1.value_som"
+            ]
+          },
+          "source_venue_id": "E1"
+        },
+        {
+          "label": "Aave Horizon USDC supply yield",
+          "income": {
+            "unit": "USD",
+            "basis": "native_lending_yield",
+            "value": "0E-8",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "accrual",
+            "source_paths": [
+              "result.venue_breakdown.E2.revenue",
+              "result.venue_breakdown.E2.external_revenue"
+            ]
+          },
+          "position_id": "grove.E2",
+          "closing_value": {
+            "unit": "USD",
+            "basis": "reported_usd_position_valuation",
+            "value": "0.00000100",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "valuation",
+            "source_paths": [
+              "result.venue_breakdown.E2.value_eom"
+            ]
+          },
+          "opening_value": {
+            "unit": "USD",
+            "basis": "reported_usd_position_valuation",
+            "value": "0.00000100",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "valuation",
+            "source_paths": [
+              "result.venue_breakdown.E2.value_som"
+            ]
+          },
+          "source_venue_id": "E2"
+        },
+        {
+          "label": "Aave Ethereum RLUSD supply yield",
+          "income": {
+            "unit": "USD",
+            "basis": "native_lending_yield",
+            "value": "0.00084514504910331500",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "accrual",
+            "source_paths": [
+              "result.venue_breakdown.E3.revenue",
+              "result.venue_breakdown.E3.external_revenue"
+            ]
+          },
+          "position_id": "grove.E3",
+          "closing_value": {
+            "unit": "USD",
+            "basis": "reported_usd_position_valuation",
+            "value": "0.37179359350620847900",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "valuation",
+            "source_paths": [
+              "result.venue_breakdown.E3.value_eom"
+            ]
+          },
+          "opening_value": {
+            "unit": "USD",
+            "basis": "reported_usd_position_valuation",
+            "value": "0.37094844845710516400",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "valuation",
+            "source_paths": [
+              "result.venue_breakdown.E3.value_som"
+            ]
+          },
+          "source_venue_id": "E3"
+        },
+        {
+          "label": "Morpho Grove USDC net vault income",
+          "income": {
+            "unit": "USD",
+            "basis": "net_vault_yield_after_embedded_fees",
+            "value": "52627.711424035473080414806",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "accrual",
+            "source_paths": [
+              "result.venue_breakdown.E4.revenue",
+              "result.venue_breakdown.E4.external_revenue"
+            ]
+          },
+          "position_id": "grove.E4",
+          "closing_value": {
+            "unit": "USD",
+            "basis": "reported_usd_position_valuation",
+            "value": "10421631.34317708738928452859",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "valuation",
+            "source_paths": [
+              "result.venue_breakdown.E4.value_eom"
+            ]
+          },
+          "opening_value": {
+            "unit": "USD",
+            "basis": "reported_usd_position_valuation",
+            "value": "20033806.08952062498555172003",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "valuation",
+            "source_paths": [
+              "result.venue_breakdown.E4.value_som"
+            ]
+          },
+          "source_venue_id": "E4"
+        },
+        {
+          "label": "Morpho Grove USDC High Yield net vault income",
+          "income": {
+            "unit": "USD",
+            "basis": "net_vault_yield_after_embedded_fees",
+            "value": "0",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "accrual",
+            "source_paths": [
+              "result.venue_breakdown.E5.revenue",
+              "result.venue_breakdown.E5.external_revenue"
+            ]
+          },
+          "position_id": "grove.E5",
+          "closing_value": {
+            "unit": "USD",
+            "basis": "reported_usd_position_valuation",
+            "value": "0",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "valuation",
+            "source_paths": [
+              "result.venue_breakdown.E5.value_eom"
+            ]
+          },
+          "opening_value": {
+            "unit": "USD",
+            "basis": "reported_usd_position_valuation",
+            "value": "0",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "valuation",
+            "source_paths": [
+              "result.venue_breakdown.E5.value_som"
+            ]
+          },
+          "source_venue_id": "E5"
+        },
+        {
+          "label": "Morpho Grove AUSD net vault income",
+          "income": {
+            "unit": "USD",
+            "basis": "net_vault_yield_after_embedded_fees",
+            "value": "0.0000340480144865437202500",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "accrual",
+            "source_paths": [
+              "result.venue_breakdown.E6.revenue",
+              "result.venue_breakdown.E6.external_revenue"
+            ]
+          },
+          "position_id": "grove.E6",
+          "closing_value": {
+            "unit": "USD",
+            "basis": "reported_usd_position_valuation",
+            "value": "0.0286015273234909465446700",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "valuation",
+            "source_paths": [
+              "result.venue_breakdown.E6.value_eom"
+            ]
+          },
+          "opening_value": {
+            "unit": "USD",
+            "basis": "reported_usd_position_valuation",
+            "value": "0.0285674793090044028244200",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "valuation",
+            "source_paths": [
+              "result.venue_breakdown.E6.value_som"
+            ]
+          },
+          "source_venue_id": "E6"
+        },
+        {
+          "label": "Morpho Grove Base USDC High Yield net vault income",
+          "income": {
+            "unit": "USD",
+            "basis": "net_vault_yield_after_embedded_fees",
+            "value": "150683.0274290596428197240",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "accrual",
+            "source_paths": [
+              "result.venue_breakdown.E19.revenue",
+              "result.venue_breakdown.E19.external_revenue"
+            ]
+          },
+          "position_id": "grove.E19",
+          "closing_value": {
+            "unit": "USD",
+            "basis": "reported_usd_position_valuation",
+            "value": "0",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "valuation",
+            "source_paths": [
+              "result.venue_breakdown.E19.value_eom"
+            ]
+          },
+          "opening_value": {
+            "unit": "USD",
+            "basis": "reported_usd_position_valuation",
+            "value": "103325743.2897445299121677954",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "valuation",
+            "source_paths": [
+              "result.venue_breakdown.E19.value_som"
+            ]
+          },
+          "source_venue_id": "E19"
+        },
+        {
+          "label": "Morpho Grove Base Prime USDC net vault income",
+          "income": {
+            "unit": "USD",
+            "basis": "net_vault_yield_after_embedded_fees",
+            "value": "109166.1876943538100707881",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "accrual",
+            "source_paths": [
+              "result.venue_breakdown.E23.revenue",
+              "result.venue_breakdown.E23.external_revenue"
+            ]
+          },
+          "position_id": "grove.E23",
+          "closing_value": {
+            "unit": "USD",
+            "basis": "reported_usd_position_valuation",
+            "value": "0",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "valuation",
+            "source_paths": [
+              "result.venue_breakdown.E23.value_eom"
+            ]
+          },
+          "opening_value": {
+            "unit": "USD",
+            "basis": "reported_usd_position_valuation",
+            "value": "165760956.7307103448316521561",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "valuation",
+            "source_paths": [
+              "result.venue_breakdown.E23.value_som"
+            ]
+          },
+          "source_venue_id": "E23"
+        },
+        {
+          "label": "Morpho Grove PYUSD net vault income",
+          "income": {
+            "unit": "USD",
+            "basis": "net_vault_yield_after_embedded_fees",
+            "value": "0",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "accrual",
+            "source_paths": [
+              "result.venue_breakdown.E24.revenue",
+              "result.venue_breakdown.E24.external_revenue"
+            ]
+          },
+          "position_id": "grove.E24",
+          "closing_value": {
+            "unit": "USD",
+            "basis": "reported_usd_position_valuation",
+            "value": "0",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "valuation",
+            "source_paths": [
+              "result.venue_breakdown.E24.value_eom"
+            ]
+          },
+          "opening_value": {
+            "unit": "USD",
+            "basis": "reported_usd_position_valuation",
+            "value": "0",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "valuation",
+            "source_paths": [
+              "result.venue_breakdown.E24.value_som"
+            ]
+          },
+          "source_venue_id": "E24"
+        },
+        {
+          "label": "Morpho Grove Monad AUSD net vault income",
+          "income": {
+            "unit": "USD",
+            "basis": "net_vault_yield_after_embedded_fees",
+            "value": "0E-8",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "accrual",
+            "source_paths": [
+              "result.reporting_only_breakdown.E25.revenue",
+              "result.reporting_only_breakdown.E25.external_revenue"
+            ]
+          },
+          "position_id": "grove.E25",
+          "closing_value": {
+            "unit": "USD",
+            "basis": "reported_usd_position_valuation",
+            "value": "0",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "valuation",
+            "source_paths": [
+              "result.reporting_only_breakdown.E25.value_eom"
+            ]
+          },
+          "opening_value": {
+            "unit": "USD",
+            "basis": "reported_usd_position_valuation",
+            "value": "0",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "valuation",
+            "source_paths": [
+              "result.reporting_only_breakdown.E25.value_som"
+            ]
+          },
+          "source_venue_id": "E25"
+        },
+        {
+          "label": "Maple syrupUSDC net vault income",
+          "income": {
+            "unit": "USD",
+            "basis": "net_vault_yield_after_embedded_fees",
+            "value": "0",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "accrual",
+            "source_paths": [
+              "result.venue_breakdown.E37.revenue",
+              "result.venue_breakdown.E37.external_revenue"
+            ]
+          },
+          "position_id": "grove.E37",
+          "closing_value": {
+            "unit": "USD",
+            "basis": "reported_usd_position_valuation",
+            "value": "0",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "valuation",
+            "source_paths": [
+              "result.venue_breakdown.E37.value_eom"
+            ]
+          },
+          "opening_value": {
+            "unit": "USD",
+            "basis": "reported_usd_position_valuation",
+            "value": "0",
+            "reason": null,
+            "status": "available",
+            "known_value": null,
+            "recognition": "valuation",
+            "source_paths": [
+              "result.venue_breakdown.E37.value_som"
+            ]
+          },
+          "source_venue_id": "E37"
+        }
+      ],
+      "perimeter_id": "grove.reviewed-allocations.v2",
+      "closing_value": {
+        "unit": "USD",
+        "basis": "reviewed_disjoint_positions",
+        "value": null,
+        "reason": "unreviewed_positions",
+        "status": "partial",
+        "known_value": "10421631.7578826890406295301346700",
+        "recognition": "valuation",
+        "source_paths": [
+          "result.venue_breakdown.E1.value_eom",
+          "result.venue_breakdown.E2.value_eom",
+          "result.venue_breakdown.E3.value_eom",
+          "result.venue_breakdown.E4.value_eom",
+          "result.venue_breakdown.E5.value_eom",
+          "result.venue_breakdown.E6.value_eom",
+          "result.venue_breakdown.E19.value_eom",
+          "result.venue_breakdown.E23.value_eom",
+          "result.venue_breakdown.E24.value_eom",
+          "result.reporting_only_breakdown.E25.value_eom",
+          "result.venue_breakdown.E37.value_eom"
+        ]
+      },
+      "opening_value": {
+        "unit": "USD",
+        "basis": "reviewed_disjoint_positions",
+        "value": null,
+        "reason": "unreviewed_positions",
+        "status": "partial",
+        "known_value": "289120506.5237839186303072013544200",
+        "recognition": "valuation",
+        "source_paths": [
+          "result.venue_breakdown.E1.value_som",
+          "result.venue_breakdown.E2.value_som",
+          "result.venue_breakdown.E3.value_som",
+          "result.venue_breakdown.E4.value_som",
+          "result.venue_breakdown.E5.value_som",
+          "result.venue_breakdown.E6.value_som",
+          "result.venue_breakdown.E19.value_som",
+          "result.venue_breakdown.E23.value_som",
+          "result.venue_breakdown.E24.value_som",
+          "result.reporting_only_breakdown.E25.value_som",
+          "result.venue_breakdown.E37.value_som"
+        ]
+      },
+      "expected_position_ids": [
+        "grove.E1",
+        "grove.E2",
+        "grove.E3",
+        "grove.E4",
+        "grove.E5",
+        "grove.E6",
+        "grove.E19",
+        "grove.E23",
+        "grove.E24",
+        "grove.E25",
+        "grove.E37"
+      ],
+      "excluded_source_venue_ids": [
+        "E10",
+        "E11",
+        "E12",
+        "E13",
+        "E14",
+        "E15",
+        "E16",
+        "E17",
+        "E18",
+        "E20",
+        "E21",
+        "E22",
+        "E26",
+        "E27",
+        "E30",
+        "E31",
+        "E32",
+        "E33",
+        "E34",
+        "E35",
+        "E36",
+        "E38",
+        "E40",
+        "E41",
+        "E42",
+        "E7",
+        "E8",
+        "E9"
+      ]
+    },
+    "limitations": [
+      "Not a complete entity income statement",
+      "Expenses, tax, DR and consolidation are not certified"
+    ],
+    "policy_version": "prime-management.allocations.v2.1",
+    "schema_version": "3.0"
+  },
+  "rwa_source_hash": "12fb53876ba79aedbca6b9f12dab85cad35a7449faea46d05fd374091d202288",
+  "rwa_source_rows": [
+    {
+      "label": "Securitize Tokenized AAA CLO Fund (STAC)",
+      "revenue": "348094.400000",
+      "sd_share": "0",
+      "venue_id": "E7",
+      "br_charge": "0",
+      "value_eom": "103753663.200000",
+      "value_som": "103405568.800000",
+      "sd_revenue": "0.000000",
+      "cof_excluded": false,
+      "tw_avg_value": "103405568.800000",
+      "period_inflow": "0",
+      "actual_revenue": "348094.400000",
+      "tw_avg_notional": "0",
+      "external_revenue": "0",
+      "pricing_category": "E",
+      "incentive_accrual": {},
+      "hide_per_venue_pnl": false,
+      "settlement_enabled": true,
+      "sky_direct_shortfall": "0",
+      "redemption_settlements": [],
+      "lending_idle_tw_avg_usd": "0",
+      "outstanding_redemptions": [],
+      "amm_idle_usds_tw_avg_usd": "0",
+      "unmatched_redemption_cash": [],
+      "susds_spread_reimbursement": "0",
+      "redemption_capital_outflows": [],
+      "redemption_revenue_adjustment": "0"
+    },
+    {
+      "label": "Janus Henderson Anemoy AAA CLO (JAAA)",
+      "revenue": "448971.1846168581493691352",
+      "sd_share": "0",
+      "venue_id": "E8",
+      "br_charge": "0",
+      "value_eom": "131530619.8752701410671738677",
+      "value_som": "131081648.6906532829178047325",
+      "sd_revenue": "0E-19",
+      "cof_excluded": false,
+      "tw_avg_value": "131081648.6906532829178047321",
+      "period_inflow": "0",
+      "actual_revenue": "448971.1846168581493691352",
+      "tw_avg_notional": "0",
+      "external_revenue": "0",
+      "pricing_category": "E",
+      "incentive_accrual": {},
+      "hide_per_venue_pnl": false,
+      "settlement_enabled": true,
+      "sky_direct_shortfall": "0",
+      "redemption_settlements": [],
+      "lending_idle_tw_avg_usd": "0",
+      "outstanding_redemptions": [],
+      "amm_idle_usds_tw_avg_usd": "0",
+      "unmatched_redemption_cash": [],
+      "susds_spread_reimbursement": "0",
+      "redemption_capital_outflows": [],
+      "redemption_revenue_adjustment": "0"
+    }
+  ],
+  "rwa_source_views": [
+    {
+      "chain": "ethereum",
+      "label": "Securitize Tokenized AAA CLO Fund (STAC)",
+      "method": "existing",
+      "reason": null,
+      "status": "available",
+      "enabled": true,
+      "venue_id": "E7",
+      "income_usd": "348094.400000",
+      "principal_usd": null,
+      "cash_received_usd": null,
+      "unpaid_income_usd": null,
+      "position_value_usd": "103753663.200000",
+      "opening_unpaid_income_usd": null,
+      "opening_position_value_usd": "103405568.800000"
+    },
+    {
+      "chain": "ethereum",
+      "label": "Janus Henderson Anemoy AAA CLO (JAAA)",
+      "method": "existing",
+      "reason": null,
+      "status": "available",
+      "enabled": true,
+      "venue_id": "E8",
+      "income_usd": "448971.1846168581493691352",
+      "principal_usd": null,
+      "cash_received_usd": null,
+      "unpaid_income_usd": null,
+      "position_value_usd": "131530619.8752701410671738677",
+      "opening_unpaid_income_usd": null,
+      "opening_position_value_usd": "131081648.6906532829178047325"
+    }
+  ]
+}

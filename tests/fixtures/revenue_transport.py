@@ -22,6 +22,19 @@ def send(session, request, **kwargs):
         response.status_code = 200
         response._content = json.dumps({'refRates': rows}).encode()
         return response
+    if request.url.startswith('https://fred.stlouisfed.org/graph/fredgraph.csv?'):
+        from datetime import date, timedelta
+        from urllib.parse import parse_qs, urlparse
+        query = parse_qs(urlparse(request.url).query)
+        current, end = date.fromisoformat(query['cosd'][0]), date.fromisoformat(query['coed'][0])
+        rows = ['observation_date,DFEDTARL']
+        while current <= end:
+            rows.append(f'{current},3.50')
+            current += timedelta(days=1)
+        response = requests.Response()
+        response.status_code = 200
+        response._content = ('\n'.join(rows) + '\n').encode()
+        return response
     body = json.loads(request.body)
     if 'hypersync.xyz' in request.url:
         lo, hi = body['from_block'], body['to_block']
@@ -53,6 +66,10 @@ def send(session, request, **kwargs):
                 value = '0x' + ''.join(format(v, '064x') for v in [2**96, 0, 0, 0, 0, 0, 1])
             if selector in {'0x0dfe1681', '0xd21220a7'}:
                 value = '0x' + ('a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' if selector == '0x0dfe1681' else 'dc035d45d973e3ec169d2276ddab16f1e407384f').rjust(64, '0')
+            # New incentive input: an unlisted SparkLend reserve in this
+            # deliberately zero-position fixture, with the full ABI shape.
+            if selector == '0x35ea6a75':  # getReserveData(address)
+                value = '0x' + '0' * (64 * 15)
             if selector == '0xd9638d36':
                 value = '0x' + ''.join(format(v, '064x') for v in [0, 10**27, 0, 0, 0])
         elif method == 'eth_getCode':

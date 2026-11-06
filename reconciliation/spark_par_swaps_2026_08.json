@@ -1,0 +1,19 @@
+{
+  "scope": "Historical par-stable swap outcomes, not monthly revenue or borrowing costs.",
+  "pin": 25878704,
+  "verified": 8550,
+  "earned_transactions": 1871,
+  "earned_total": "145059.266374643850597556",
+  "shortfall_transactions": 6679,
+  "shortfall_total": "302375.882078606954483397",
+  "excluded_reasons": {
+    "liquidity modification": 512,
+    "cash mismatch": 3
+  },
+  "input_hashes": {
+    "tests/fixtures/spark_par_swap_events.json.gz": "c986cc9e8b805d58057c681941cbbd5ba4d5c9cbdfa3a91052b0b70b2778d2d8",
+    "/home/agent/code/lakonema2000/settlement-cycle/scripts/audit_spark_par_swaps.py": "095ed84d02d208511a9e9eed6ac6792068625875ecbd77d061125b489eae7ce3",
+    "src/settle/normalize/spark_par_swap_evidence.py": "2f29c187db33666d43f4fb1a614b885ef24c3e6a6dff1df37516b5afbdc45d96"
+  },
+  "rules_sha256": "0c970d147ac7256eef9e86bf38244ac6d664b2923ee25bc5a00c6b5ea239d880"
+}

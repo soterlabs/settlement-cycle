@@ -53,13 +53,15 @@ export default defineRailway(() => {
     env: { DATABASE_URL: preserve(), ENVIO_API_TOKEN: preserve(), ETH_RPC: preserve(), LOG_LEVEL: preserve() },
   });
 
-  // Revenue is DAILY. The existing SBE history job has an independent cadence.
+  // Each prime has its own daily process and six-hour watchdog. A slow provider
+  // or historical gap for one prime must not consume another prime's budget.
+  // Retain this service as Grove's worker and as the provider-secret owner.
   const revenueDaily = service("settle-revenue-daily", {
     source: settlementCycle,
     replicas: { "us-west2": 1 },
     build,
     deploy: {
-      startCommand: "python -m settle.revenue.worker",
+      startCommand: "python -m settle.revenue.worker --prime grove --require-views",
       cronSchedule: "17 20 * * *",
       restartPolicyType: "NEVER", // bounded retries are recorded by the worker
     },
@@ -73,7 +75,105 @@ export default defineRailway(() => {
     },
   });
 
+  const revenuePrimes = ["spark", "obex", "keel", "skybase", "osero"].map((prime) =>
+    service(`settle-revenue-${prime}`, {
+      source: settlementCycle,
+      replicas: { "us-west2": 1 },
+      build,
+      deploy: {
+        startCommand: `python -m settle.revenue.worker --prime ${prime} --require-views`,
+        cronSchedule: "17 20 * * *",
+        restartPolicyType: "NEVER",
+      },
+      // Reference the existing provider settings, without copying credentials
+      // into source or creating five independently maintained secret sets.
+      env: {
+        DATABASE_URL: "${{Postgres.DATABASE_URL}}",
+        ...Object.fromEntries([
+          "ENVIO_API_TOKEN", "ETH_RPC", "BASE_RPC", "ARBITRUM_RPC", "OPTIMISM_RPC",
+          "UNICHAIN_RPC", "AVALANCHE_C_RPC", "PLUME_RPC", "MONAD_RPC", "ROBINHOOD_RPC",
+          "SETTLE_INPUT_REVISION", "REVENUE_START_DATE",
+        ].map((name) => [name, `\${{settle-revenue-daily.${name}}}`])),
+        SETTLE_REQUIRE_POSTGRES: "1",
+      },
+    })
+  );
+
+  // Reads retained revenue results only; catches older backfills/corrections
+  // independently of the slower source worker. No provider credentials needed.
+  const financialReporting = service("settle-reporting-financial", {
+    source: settlementCycle,
+    replicas: { "us-west2": 1 },
+    build,
+    deploy: {
+      startCommand: "python -m settle.revenue.financial_backfill --from 2026-01-01",
+      cronSchedule: "35 * * * *",
+      restartPolicyType: "NEVER", // failed runs are retried by the next hourly tick
+    },
+    env: { DATABASE_URL: "${{Postgres.DATABASE_URL}}" },
+  });
+
+  // Reporting-only monthly components: independent of MSC and raw daily jobs.
+  const sparkReporting = service("settle-reporting-spark", {
+    source: settlementCycle,
+    replicas: { "us-west2": 1 },
+    build,
+    deploy: {
+      startCommand: "python -m settle.revenue.spark_reporting_job",
+      cronSchedule: "45 20 * * *",
+      restartPolicyType: "NEVER",
+    },
+    env: {
+      DATABASE_URL: "${{Postgres.DATABASE_URL}}",
+      ...Object.fromEntries([
+        "ENVIO_API_TOKEN", "ETH_RPC", "BASE_RPC", "ARBITRUM_RPC",
+        "OPTIMISM_RPC", "UNICHAIN_RPC", "AVALANCHE_C_RPC", "ROBINHOOD_RPC",
+      ].map((name) => [name, `\${{settle-revenue-spark.${name}}}`])),
+      SETTLE_REQUIRE_POSTGRES: "1",
+    },
+  });
+
+  // Independent cash-flow source publication. Never invokes settlement replay.
+  const cashFlowReporting = service("settle-reporting-cash-flow", {
+    source: settlementCycle,
+    replicas: { "us-west2": 1 },
+    build,
+    deploy: {
+      startCommand: "python -m settle.revenue.cash_flow.job",
+      cronSchedule: "15 22 * * *",
+      restartPolicyType: "NEVER",
+    },
+    env: {
+      DATABASE_URL: "${{Postgres.DATABASE_URL}}",
+      ...Object.fromEntries([
+        "ENVIO_API_TOKEN", "ETH_RPC", "BASE_RPC", "ARBITRUM_RPC",
+        "OPTIMISM_RPC", "UNICHAIN_RPC", "AVALANCHE_C_RPC", "ROBINHOOD_RPC",
+      ].map((name) => [name, `\${{settle-revenue-spark.${name}}}`])),
+      SETTLE_REQUIRE_POSTGRES: "1",
+    },
+  });
+
+  // Retain the existing uploaded, unscheduled historical jobs. Omitting them
+  // from the project would make an otherwise additive rollout delete them.
+  const historicalJobs = [
+    ["settle-revenue-backfill-oct2026", "--from 2026-10-01 --to 2026-10-26 --missing-views-only --newest-first --wait-for-lock"],
+    ["settle-revenue-bootstrap-oct2026", "--from 2026-10-26 --to 2026-10-26 --missing-views-only --wait-for-lock"],
+  ].map(([name, window]) => service(name, {
+    replicas: { "us-west2": 1 },
+    build: { builder: "DOCKERFILE" as const, dockerfilePath: "Dockerfile" },
+    deploy: {
+      startCommand: `python -m settle.revenue.worker ${window} --prime keel --prime obex --prime skybase --prime osero --prime spark --prime grove`,
+      restartPolicyMaxRetries: 5,
+    },
+    env: Object.fromEntries([
+      "DATABASE_URL", "ENVIO_API_TOKEN", "ETH_RPC", "BASE_RPC", "ARBITRUM_RPC",
+      "OPTIMISM_RPC", "UNICHAIN_RPC", "AVALANCHE_C_RPC", "PLUME_RPC", "MONAD_RPC",
+      "ROBINHOOD_RPC", "SETTLE_INPUT_REVISION", "SETTLE_REQUIRE_POSTGRES",
+      "REVENUE_CODE_VERSION", "REVENUE_TIMEOUT_SECONDS",
+    ].map((name) => [name, preserve()])),
+  }));
+
   return project("settlement-cycle-data", {
-    resources: [settleApi, Postgres, settleCron, revenueDaily, postgresVolume],
+    resources: [settleApi, Postgres, settleCron, revenueDaily, ...revenuePrimes, financialReporting, sparkReporting, cashFlowReporting, ...historicalJobs, postgresVolume],
   });
 });

@@ -34,7 +34,7 @@ Structure:
     ...
     > Aggregated actual_revenue from the venues above: $...
 
-    ## Off-protocol holdings           (only when display_only_breakdown non-empty)
+    ## Reporting-only holdings           (only when reporting_only_breakdown non-empty)
     | Venue | Label | value_som | value_eom |
     ...
 """
@@ -425,25 +425,43 @@ def render_summary(prov: dict) -> str:
                       "", f"September net revenue: {_D(bridge['period_net_revenue']):,.6f} USDS.",
                       f"**Settlement including true-ups: {_D(bridge['total']):,.6f} USDS.**", ""])
 
-    # ── Off-protocol (display-only) ─────────────────────────────────
-    display_only = sorted(
-        prov.get("display_only_breakdown") or [],
+    # ── Reporting-only holdings ─────────────────────────────────
+    reporting_only = sorted(
+        prov.get("reporting_only_breakdown") or prov.get("display_only_breakdown") or [],
         key=lambda v: _venue_sort_key(v.get("venue_id", "")),
     )
-    if display_only:
-        lines.append("## Off-protocol holdings")
+    if reporting_only:
+        lines.append("## Reporting-only holdings")
         lines.append("")
-        lines.append("| Venue | Label | value_som | value_eom |")
-        lines.append("|---|---|---:|---:|")
-        for v in display_only:
+        lines.append("Reported income below is excluded from MSC settlement totals. Negative accrued balances mean prepaid rewards.")
+        lines.append("")
+        lines.append("| Venue | Label | value_som | value_eom | Revenue | Receipts |")
+        lines.append("|---|---|---:|---:|---:|---:|")
+        for v in reporting_only:
             lines.append(
                 f"| {v.get('venue_id', '')} | "
                 f"{v.get('label', '')} | "
                 f"{_usd(v.get('value_som'))} | "
-                f"{_usd(v.get('value_eom'))} |"
+                f"{_usd(v.get('value_eom'))} | "
+                f"{_usd(v.get('revenue'))} | "
+                f"{_usd((v.get('incentive_accrual') or {}).get('period_receipts'))} |"
             )
         lines.append("")
 
+    analytics = prov.get('allocation_financing')
+    if analytics:
+        lines.extend(['## Allocation yield', '',
+                      'APYs annualize the reporting period. A dash means the value is unavailable.', '',
+                      'Funding costs below apply to borrowed principal; separate prime financing costs are excluded.', '',
+                      '| Venue | Borrowed principal (average) | Cost of funds | Net PnL | Gross APY | Net APY |',
+                      '|---|---:|---:|---:|---:|---:|'])
+        for row in sorted(analytics['allocations'], key=lambda r: _venue_sort_key(r['venue_id'])):
+            amounts = ['—' if row.get(k) is None else _usd(row[k])
+                       for k in ('borrowed_principal_average', 'cost_of_funds', 'net_pnl')]
+            yields = ['—' if row.get(k) is None else f'{_D(row[k]) * 100:,.4f}%'
+                      for k in ('gross_apy', 'net_apy')]
+            lines.append('| ' + ' | '.join([row['venue_id'], *amounts, *yields]) + ' |')
+        lines.append('')
     return "\n".join(lines) + "\n"
 
 

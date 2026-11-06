@@ -1,0 +1,72 @@
+{
+  "rows": [
+    {
+      "block_number": 25547403,
+      "log_index": 481,
+      "block_time": 1784231087,
+      "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "topic0": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic1": "0x00000000000000000000000049506c3aa028693458d6ee816b2ec28522946872",
+      "topic2": "0x0000000000000000000000001601843c5e9bc251a3272907010afa41fa18347e",
+      "topic3": null,
+      "data": "0x00000000000000000000000000000000000000000000000000000920ca526180",
+      "transaction_hash": "0xe74aeeb85c45d4ee617fb2c422f5ed36c4887202e2074194f0926af53cb1a1d6"
+    },
+    {
+      "block_number": 25777206,
+      "log_index": 398,
+      "block_time": 1786998671,
+      "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "topic0": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic1": "0x00000000000000000000000049506c3aa028693458d6ee816b2ec28522946872",
+      "topic2": "0x0000000000000000000000001601843c5e9bc251a3272907010afa41fa18347e",
+      "topic3": null,
+      "data": "0x00000000000000000000000000000000000000000000000000002ea0bf972a00",
+      "transaction_hash": "0x5b719b6e1f8d7ae0035edbe4d4832efa544a3d79474f86c2fbea5899fc4a67fe"
+    }
+  ],
+  "batches": [
+    {
+      "identity": "ethereum:0xe74aeeb85c45d4ee617fb2c422f5ed36c4887202e2074194f0926af53cb1a1d6",
+      "day": "2026-07-16",
+      "timestamp": 1784231087,
+      "chain": "ethereum",
+      "block": 25547403,
+      "movements": [
+        {
+          "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "value_before": "0.00",
+          "change": "10036438.00",
+          "external_income": "0",
+          "preserve_basis": false
+        }
+      ],
+      "minted": "0",
+      "log_index": 481,
+      "minted_by_ilk": {},
+      "external_funding": [],
+      "funding_assumption": null
+    },
+    {
+      "identity": "ethereum:0x5b719b6e1f8d7ae0035edbe4d4832efa544a3d79474f86c2fbea5899fc4a67fe",
+      "day": "2026-08-17",
+      "timestamp": 1786998671,
+      "chain": "ethereum",
+      "block": 25777206,
+      "movements": [
+        {
+          "account": "ethereum:0x1601843c5e9bc251a3272907010afa41fa18347e:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "value_before": "0.00",
+          "change": "51267944.00",
+          "external_income": "0",
+          "preserve_basis": false
+        }
+      ],
+      "minted": "0",
+      "log_index": 398,
+      "minted_by_ilk": {},
+      "external_funding": [],
+      "funding_assumption": null
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "prime": "grove",
+  "period": "2026-08",
+  "base_commit": "28a9066",
+  "input_hashes": {
+    "/tmp/pr215-grove-eoa/history.jsonl.gz": "c05b53815379f6f7a4d9f6195d819d09ddb542f8f279af5f4defe4b7b3295474",
+    "settlements/grove/2026-08/provenance.json": "d6fb40d3c43caf3bdc7d0983b7ff071433ad056d22825b9f0f19eeb9d3af3aa9",
+    "/tmp/pr215-resumed-grove/idle_deductions.json": "e6b13f9b30816b2f8e9325f222aa9c889ff68cdf182205f4c54576d929faf427",
+    "/tmp/pr215-resumed-grove/debt-control.json": "6214144465cad85e59e3cd7c075925fad2f5bdc2131428ea4e6f769b57d9280b",
+    "/tmp/pr215-resumed-grove/deduction-owners.json": "dad2cf619d5dc65a26721aaf1fe3938136bb512212bf427a2e5aa56531f58153"
+  },
+  "principal_paid": "15000100",
+  "unmatched_receipts": 22,
+  "unmatched_outflows_before": 244,
+  "unmatched_outflows_after": 239,
+  "eligible_allocation_cost": "11784.59397330482338634775780",
+  "per_ilk_reconciliation": {
+    "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+      "global_cost": "3708820.107055825781021080592",
+      "msc_cost": "259878.1170265572840543147882",
+      "allocation_cost": "0",
+      "global_excluding_msc": "3448941.990029268496966765804",
+      "difference": "-3448941.990029268496966765804",
+      "within_one_cent": false,
+      "complete": false,
+      "source_complete": false,
+      "bounds_use_verified_deduction_owners": true,
+      "diagnostic_cost_bounds": {
+        "lower": "-3760196.87411204394584067164654328030022663382936575292073714",
+        "upper": "3448941.99002926849696676580416084319370638238644478031610200"
+      },
+      "target_distance_from_bounds": "0",
+      "target_within_bounds_to_one_cent": true,
+      "bounds_note": "Containment is not reconciliation; unresolved routes remain unverified"
+    },
+    "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+      "global_cost": "11784.73727045625525471486130",
+      "msc_cost": "0E-32",
+      "allocation_cost": "11784.59397330482338634775780",
+      "global_excluding_msc": "11784.73727045625525471486130",
+      "difference": "-0.14329715143186836710350",
+      "within_one_cent": false,
+      "complete": false,
+      "source_complete": false,
+      "bounds_use_verified_deduction_owners": true,
+      "diagnostic_cost_bounds": {
+        "lower": "11784.5908731950423778275661358784932034746155998009359999996",
+        "upper": "11784.6121917385910247437562567150207170357143924365917449248"
+      },
+      "target_distance_from_bounds": "0.1250787176642299711050432850",
+      "target_within_bounds_to_one_cent": false,
+      "bounds_note": "Containment is not reconciliation; unresolved routes remain unverified"
+    }
+  },
+  "removed_outflows": {
+    "ethereum:0xb520cdadba8b42d6daf5c3dbfe16b3c4b1eb58e49e2b10d127302e7da867b72b": "100",
+    "ethereum:0x284b48080c469e0e9b2a0943429ebd4f01005cd739ee7b34de364c4e2375f940": "1000",
+    "ethereum:0x59610c6694d893c41b7e5b74a98090df25a7ab8c3dcfb733e931a6b2bfa4ae5b": "2499000",
+    "ethereum:0xc7ca8935e6006a2da68f2c3b12067519ef876adf42a6fcb8fdb3e6ca85390d72": "5000000",
+    "ethereum:0x25feba48b385f3cd7189a7add24cb1a7d629e20a0b26b006f04f9d50c6d0ee27": "7500000"
+  },
+  "paxos_allocation": {
+    "venue_id": "E_PAXOS_BRIDGE",
+    "basis_status": "unresolved",
+    "basis_detail": "Unmatched funding receipts in account history",
+    "borrowed_principal_som": "15000100",
+    "borrowed_principal_eom": "14964746.37898413505816191475",
+    "borrowed_principal_average": "14984299.22875586074344872641",
+    "cost_of_funds": null,
+    "modeled_cost_of_funds": "46457.60023384830315798767101",
+    "modeled_cost_of_funds_by_ilk": {
+      "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "46457.60023384830315798767101"
+    },
+    "net_pnl": null,
+    "gross_apy": null,
+    "net_apy": null,
+    "borrowed_principal_average_by_ilk": {
+      "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "14984299.22875586074344872641"
+    },
+    "cost_of_funds_by_ilk": null,
+    "revenue_available": false
+  },
+  "scope": "Actual ALM transfers to spell-authorized Paxos boundary; no assertion about downstream Robinhood holdings, no revenue or global borrowing-cost changes."
+}

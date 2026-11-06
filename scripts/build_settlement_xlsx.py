@@ -12,7 +12,7 @@ Tabs:
   3. Sky Revenue       — how sky_revenue is built (CoF + SDE) + subsidy params
   4. Sky Direct        — active Sky-Direct entries this period
   5. Debt              — per-day cum_debt (frob+grab), deductions, APYs, Sky charge
-  6. Off-protocol holdings (when present)
+  6. Reporting-only holdings (when present)
   7. SDE daily         — per-day Sky/Grove/in-flight (when a burn occurred)
 
 Inputs:
@@ -615,26 +615,20 @@ def _write_sde(ws, sde: list[dict], sheet_rows: list[dict]) -> None:
     _set_widths(ws, {1: 8, 2: 8, 3: 14, 4: 12, 5: 12, 6: 8, 7: 50, 8: 25, 9: 16, 10: 18})
 
 
-def _write_off_protocol_holdings(ws, prov: dict, prime_cfg: dict) -> None:
-    """Off-protocol holdings — display-only venues. Surfaced for visibility
+def _write_reporting_holdings(ws, prov: dict, prime_cfg: dict) -> None:
+    """Reporting-only positions and accrued issuer rewards. Surfaced for visibility
     but excluded from prime_agent_revenue, sky_revenue, and the NAV cost-
     basis invariant. Realized P&L on any round-trip lands at the anchor
     venue when the cash arrives at the ALM — see
     ``_cat_a_capital_inflow_timeseries`` paired-principal-cap classifier.
     """
-    ws.title = "Off-protocol holdings"
-    rows = prov.get("display_only_breakdown") or []
-    ws.append(["Off-protocol holdings (tracked, not in prime revenue)"])
+    ws.title = "Reporting-only holdings"
+    rows = prov.get("reporting_only_breakdown") or prov.get("display_only_breakdown") or []
+    ws.append(["Reporting-only holdings (tracked, not in prime revenue)"])
     ws["A1"].font = _TITLE
     ws.append([])
-    ws.append([
-        "These positions sit with external counterparties (e.g. OOB OTC "
-        "venues, off-protocol custodians). The balances below are visible "
-        "for monthly-NAV reporting only — they do NOT contribute to "
-        "prime_agent_revenue or sky_revenue. Any realized gain or loss on "
-        "the round-trip is booked at the anchor venue when the cash "
-        "settles back at the ALM proxy."
-    ])
+    ws.append(["These holdings and accrued issuer rewards are reported separately and excluded "
+               "from MSC settlement totals. Negative reward balances represent prepayments."])
     ws.append([])
 
     if not rows:
@@ -647,8 +641,8 @@ def _write_off_protocol_holdings(ws, prov: dict, prime_cfg: dict) -> None:
     cols = [
         "Venue", "Label", "Chain", "Counterparty (paired_source)",
         "Anchor venue (paired_with)",
-        "Outstanding SoM (USD)", "Outstanding EoM (USD)", "Δ over period",
-        "Status",
+        "Value SoM (USD)", "Value EoM (USD)", "Δ over period",
+        "Status", "Reported revenue", "Reward receipts",
     ]
     ws.append(cols)
     _header_row(ws, ws.max_row, len(cols))
@@ -662,21 +656,14 @@ def _write_off_protocol_holdings(ws, prov: dict, prime_cfg: dict) -> None:
         som = _D(r["value_som"])
         eom = _D(r["value_eom"])
         delta = eom - som
-        if eom == 0 and som > 0:
-            status = "fully returned"
-        elif eom == som and som > 0:
-            status = "outstanding (no change)"
-        elif eom < som:
-            status = "partial return"
-        elif eom > som:
-            status = "new principal-out"
-        else:
-            status = "—"
         ws.append([
             vid, r.get("label", ""), chain, paired_source, paired_with,
-            float(som), float(eom), float(delta), status,
+            float(som), float(eom), float(delta),
+            "accrued / prepaid rewards" if r.get("incentive_accrual") else "reporting only",
+            float(_D(r.get("revenue"))),
+            float(_D((r.get("incentive_accrual") or {}).get("period_receipts"))),
         ])
-        for col in (6, 7, 8):
+        for col in (6, 7, 8, 10, 11):
             ws.cell(ws.max_row, col).number_format = _USD0
 
     ws.append([])
@@ -689,7 +676,7 @@ def _write_off_protocol_holdings(ws, prov: dict, prime_cfg: dict) -> None:
 
     _set_widths(ws, {
         1: 8, 2: 50, 3: 12, 4: 46, 5: 20,
-        6: 18, 7: 18, 8: 16, 9: 22,
+        6: 18, 7: 18, 8: 16, 9: 26, 10: 20, 11: 20,
     })
 
 
@@ -969,6 +956,25 @@ def _output_filename(prime_id: str, month: str) -> str:
     return f"{prime_id}_settlement_{_MONTH_NAMES[int(m) - 1]}_{year}.xlsx"
 
 
+def _write_allocation_yields(ws, analytics: dict) -> None:
+    ws.title = 'Allocation yields'
+    ws.append(['Venue', 'Average borrowed principal', 'Cost of funds', 'Net PnL', 'Gross APY', 'Net APY'])
+    keys = ('borrowed_principal_average', 'cost_of_funds', 'net_pnl', 'gross_apy', 'net_apy')
+    for row in analytics['allocations']:
+        ws.append([row['venue_id'], *[None if row.get(k) is None else float(row[k]) for k in keys]])
+    for row in ws.iter_rows(min_row=2):
+        for cell in row[1:4]:
+            cell.number_format = '#,##0.00;[Red](#,##0.00)'
+        for cell in row[4:]:
+            cell.number_format = '0.0000%'
+    ws.freeze_panes = 'B2'
+    ws.auto_filter.ref = ws.dimensions
+    ws.append([])
+    ws.append(['Costs apply to borrowed principal; separate prime financing costs are excluded.'])
+    for col in ('B', 'C', 'D', 'E', 'F'):
+        ws.column_dimensions[col].width = 25
+
+
 def build_xlsx(prime_id: str, month: str, *, output_dir: Path | None = None) -> Path:
     cell_dir = output_dir if output_dir is not None else _REPO / "settlements" / prime_id / month
     prov     = _read_provenance(cell_dir)
@@ -981,17 +987,19 @@ def build_xlsx(prime_id: str, month: str, *, output_dir: Path | None = None) -> 
     _write_venues(wb.create_sheet(), sheet, cfg)
     _write_sky_revenue(wb.create_sheet(), prov, sheet, cfg)
     _write_sde(wb.create_sheet(), sde, sheet)
+    if prov.get('allocation_financing'):
+        _write_allocation_yields(wb.create_sheet(), prov['allocation_financing'])
     if prov.get("sky_revenue_daily"):
         # "Debt" debug tab — emitted whenever the daily series is captured
         # (every run from the version that introduced ``sky_revenue_daily``
         # in provenance.json). Skipped silently on legacy outputs where
         # the field is absent.
         _write_debt(wb.create_sheet(), prov)
-    if prov.get("display_only_breakdown"):
+    if prov.get("reporting_only_breakdown") or prov.get("display_only_breakdown"):
         # Only emit the off-protocol-holdings tab when the prime has display-
         # only venues this period. Avoids an empty tab cluttering monthly
         # reports for primes with no off-protocol positions.
-        _write_off_protocol_holdings(wb.create_sheet(), prov, cfg)
+        _write_reporting_holdings(wb.create_sheet(), prov, cfg)
     if any(b.get("burn_date") or any(_D(r.get("pending_value", "0")) != 0
                                    for r in b.get("daily", []))
            for b in (prov.get("sde_daily_breakdown") or [])):

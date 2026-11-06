@@ -49,4 +49,5 @@ def test_other_categories_do_not_get_atoken_callback():
     for category in PricingCategory:
         if category in {PricingCategory.AAVE_ATOKEN, PricingCategory.SPARKLEND_SPTOKEN}:
             continue
-        assert for_venue(Sources(), replace(venue, pricing_category=category, event_source='hypersync')).atoken_event_blocks is None
+        kwargs = {'settlement_enabled': False, 'incentive': {'program': 'rlusd'}} if category == PricingCategory.INCENTIVE else {}
+        assert for_venue(Sources(), replace(venue, pricing_category=category, event_source='hypersync', **kwargs)).atoken_event_blocks is None

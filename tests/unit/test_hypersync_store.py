@@ -70,14 +70,14 @@ class _FakeCursor:
         elif s.startswith("SELECT covered_from"):
             self._result = self._s["coverage"].get(params[0])
         elif s.startswith("SELECT block_number"):
-            stream, lo, hi = params
+            stream, lo, hi, after_block, after_log, limit = params
             self._result = [
                 (r.block_number, r.log_index, r.block_time, r.address,
                  r.topic0, r.topic1, r.topic2, r.topic3, r.data, r.transaction_hash)
                 for r in sorted(self._s["logs"].get(stream, []),
                                 key=lambda r: (r.block_number, r.log_index))
-                if lo <= r.block_number <= hi
-            ]
+                if lo <= r.block_number <= hi and (r.block_number, r.log_index) > (after_block, after_log)
+            ][:limit]
         elif s.startswith("INSERT INTO hypersync_coverage"):
             # Mirrors the real SQL: plain overwrite (the caller passes the
             # already-merged honest range; see _set_coverage).
@@ -134,7 +134,7 @@ def test_persists_only_finalized_and_serves_incrementally(monkeypatch):
 
 def test_near_head_unfinalized_tail_not_persisted(monkeypatch):
     """A reorg-window fetch persists ONLY the finalized prefix (blocks at or
-    below head − margin); the unfinalized tail is served live and never
+    below head - margin); the unfinalized tail is served live and never
     written, and coverage never claims past the safe ceiling."""
     conn = _FakeConn()
     monkeypatch.setattr(hypersync_store.postgres_store, "_get_conn", lambda: conn)
@@ -144,7 +144,7 @@ def test_near_head_unfinalized_tail_not_persisted(monkeypatch):
                                                     archive_height=1000))
 
     sel = [{"address": ["0xtok"], "topics": [["0xt0"]]}]
-    # to_block=980 is inside the reorg window (head 1000 − margin 100 = 900):
+    # to_block=980 is inside the reorg window (head 1000 - margin 100 = 900):
     # row 850 is finalized → persisted; row 950 is not → live-only.
     rows = hypersync_store.fetch_logs("ethereum", sel, 800, 980)
     assert [r.block_number for r in rows] == [850, 950]
@@ -407,3 +407,61 @@ def test_legacy_coverage_survives_larger_disjoint_backfill(monkeypatch):
     hypersync_store.fetch_logs("base", [], 0, 100)
     hypersync_store.fetch_logs("base", [], 0, 2000)
     assert calls == [(1000, 2000), (101, 999)]
+
+
+def test_checkpoint_restart_retains_completed_chunks(monkeypatch):
+    conn = _FakeConn()
+    monkeypatch.setattr(hypersync_store.postgres_store, "_get_conn", lambda: conn)
+    monkeypatch.setenv("HYPERSYNC_CHECKPOINT_BLOCKS", "10")
+    monkeypatch.setenv("HYPERSYNC_REORG_MARGIN", "0")
+    calls = []
+    fail = True
+
+    def query(chain, sel, lo, hi, **kwargs):
+        calls.append((lo, hi))
+        if lo == 10 and fail:
+            raise ConnectionError("interrupted download")
+        return QueryResult(rows=[_row(lo)], archive_height=100)
+
+    monkeypatch.setattr(hypersync, "query_logs", query)
+    with pytest.raises(ConnectionError):
+        hypersync_store.fetch_logs("ethereum", [], 0, 24)
+    assert calls == [(0, 9), (10, 19)]
+    calls.clear()
+    fail = False
+    rows = hypersync_store.fetch_logs("ethereum", [], 0, 24)
+    assert calls == [(10, 19), (20, 24)]
+    assert [r.block_number for r in rows] == [0, 10, 20]
+    calls.clear()
+    hypersync_store.fetch_logs("ethereum", [], 0, 24)
+    assert calls == []
+
+
+def test_checkpoint_restart_refetches_unfinalized_tail(monkeypatch):
+    conn = _FakeConn()
+    monkeypatch.setattr(hypersync_store.postgres_store, "_get_conn", lambda: conn)
+    monkeypatch.setenv("HYPERSYNC_CHECKPOINT_BLOCKS", "10")
+    monkeypatch.setenv("HYPERSYNC_REORG_MARGIN", "5")
+    calls = []
+
+    def query(chain, sel, lo, hi, **kwargs):
+        calls.append((lo, hi))
+        return QueryResult(rows=[_row(b) for b in range(lo, hi + 1)], archive_height=20)
+
+    monkeypatch.setattr(hypersync, "query_logs", query)
+    rows = hypersync_store.fetch_logs("ethereum", [], 0, 20)
+    assert len(rows) == 21
+    calls.clear()
+    rows = hypersync_store.fetch_logs("ethereum", [], 0, 20)
+    assert calls == [(16, 20)]
+    assert [r.block_number for r in rows] == list(range(21))
+
+
+def test_database_pages_preserve_every_log_even_when_page_splits_a_block(monkeypatch):
+    monkeypatch.setattr(hypersync_store, "_READ_PAGE_SIZE", 2)
+    conn = _FakeConn()
+    conn.store["logs"]["stream"] = [
+        _row(9), _row(10, 0), _row(10, 1), _row(10, 2), _row(11, 0), _row(12, 0)]
+    rows = hypersync_store._read_rows(conn, "stream", 10, 11)
+    assert [(r.block_number, r.log_index) for r in rows] == [(10, 0), (10, 1), (10, 2), (11, 0)]
+    assert hypersync_store._read_rows(conn, "other", 10, 11) == []

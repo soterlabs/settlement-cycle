@@ -129,6 +129,7 @@ def get_debt_timeseries(
     if block_resolver is not None:
         # Daily expansion: one row per calendar day, rate read at EoD block.
         rows = []
+        daily_by_ilk = {"0x" + ilk.hex(): {} for ilk in ilks}
         prev_cum: Decimal = Decimal("0")
         current = period.start
         while current <= period.end:
@@ -137,10 +138,13 @@ def get_debt_timeseries(
             cum_d = Decimal("0")
             for _ilk in ilks:
                 art_d = _art_at_or_before(sparse_by_ilk[_ilk], current)
+                daily_by_ilk["0x" + _ilk.hex()][current] = Decimal(0)
                 if art_d == 0:
                     continue  # skip the rate read for a zero-Art ilk/day
                 rate_raw = _ilk_rate(Chain.ETHEREUM, _VAT, _ilk, block_d)
-                cum_d += art_d * Decimal(rate_raw) / _RAY
+                ilk_debt = art_d * Decimal(rate_raw) / _RAY
+                daily_by_ilk["0x" + _ilk.hex()][current] = ilk_debt
+                cum_d += ilk_debt
             rows.append({
                 "block_date": current,
                 "daily_dart": cum_d - prev_cum,
@@ -148,7 +152,11 @@ def get_debt_timeseries(
             })
             prev_cum = cum_d
             current += timedelta(days=1)
-        return pd.DataFrame(rows)
+        result = pd.DataFrame(rows)
+        # Preserve the exact components used by settlement; no second debt
+        # query or rescaling is needed for allocation-level reconciliation.
+        result.attrs["daily_debt_by_ilk"] = daily_by_ilk
+        return result
 
     # No block_resolver: return the raw normalised Art series without rate
     # scaling. Callers that need accurate USDS values (e.g. compute_monthly_pnl)

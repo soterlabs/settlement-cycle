@@ -1,0 +1,40 @@
+{
+  "scope": "Cash-flow identification only; no Sky principal, income, cost or interest/principal split inferred.",
+  "by_venue": {
+    "S56": {
+      "take_to_alm": "2971244638.899912",
+      "return_to_vault": "2681660733.939344",
+      "transactions": 5629
+    },
+    "S59": {
+      "take_to_alm": "5679997.445027",
+      "return_to_vault": "5691702.708374",
+      "transactions": 113
+    },
+    "S57": {
+      "take_to_alm": "13276235391.443105",
+      "return_to_vault": "12938428813.371124",
+      "transactions": 10901
+    },
+    "S60": {
+      "take_to_alm": "713217978.696943",
+      "return_to_vault": "707059362.013974",
+      "transactions": 3882
+    }
+  },
+  "whole_transaction_matches": {
+    "unmatched_receipts": {
+      "count": 7646,
+      "amount": "12279572673.64684603476891378"
+    },
+    "unmatched_outflows": {
+      "count": 7270,
+      "amount": "10650907038.82617657110817306"
+    }
+  },
+  "input_hashes": {
+    "tests/fixtures/spark_savings_v2_funding.json.gz": "2588cae8880410dc82888173dfd2edca4bf311f092d09972330ba823cbe165a2",
+    "/tmp/pr215-resumed-spark/financing.json": "1484654c4533fcf2c206b1f6101d3eee976ffb2821d1244e96c07b4f52cca331"
+  },
+  "observed_vault_transactions": 20525
+}

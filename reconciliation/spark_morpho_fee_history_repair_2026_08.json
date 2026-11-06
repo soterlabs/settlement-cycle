@@ -1,0 +1,24 @@
+{
+  "scope": "Fee-only diagnostic history repair, not a full latest-code extraction",
+  "input_hashes": {
+    "/tmp/pr215-resumed-spark/history.jsonl.gz": "bb133eac37b06002bb938bc12297f048f949511a02fdf67ad338da4e62bac358",
+    "tests/fixtures/spark_morpho_v2_fee_history.json.gz": "15f5b32535c1c4e155d48b4852899bc8ddcaeef57afb2dd51d4a0b98a6313eb0",
+    "/home/agent/code/lakonema2000/settlement-cycle/scripts/repair_spark_morpho_fee_history.py": "fde45ccf51c3d2d66f7ce4da0b5088abb4a81ea7f8a413c00039d34a3318a53f",
+    "/home/agent/code/lakonema2000/settlement-cycle/src/settle/normalize/allocation_morpho_fees.py": "1e55340124771ff575a33643a712ade9badeaba51fa02c5aa62e6f66d00baf98",
+    "tests/fixtures/spark_morpho_v2_fee_unit_prices.json": "dd6d3ab05ee65146f6ba9f4e8980d235ec40f65f11ce3d8533a316a39ec96c4e"
+  },
+  "output_sha256": "efbeb3b46e58b03ccc0a85b7d025c06cff6fab2e89702dc7857af2e371a9bb84",
+  "changed_positions": 14448,
+  "changed_batches": 14447,
+  "fee_income_total": "53649.18506091674439789708294",
+  "fee_income_by_vault": {
+    "0xc7cdcfdefc64631ed6799c95e3b110cd42f2bd22": "41949.19028786400781504495061",
+    "0xb0c424116172b55cbb6dd3136f5989f7959e5b91": "11699.99477305273658285213222"
+  },
+  "independent_comparison": {
+    "total_batches": 451902,
+    "changed_batches": 14447,
+    "changed_positions": 14448,
+    "all_debt_fields_and_unrelated_movements_unchanged": true
+  }
+}

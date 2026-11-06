@@ -152,7 +152,7 @@ def cached(source_id: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
                     raise postgres_store.PersistenceError("SETTLE_NO_CACHE conflicts with SETTLE_REQUIRE_POSTGRES")
                 return fn(*args, **kwargs)
             key = _hash_args(source, key_args, key_kwargs)
-            path = cache_dir() / f"{source}_{key}.pkl"
+            path = None if postgres_store.required() else cache_dir() / f"{source}_{key}.pkl"
             encoded_args = {"args": [_jsonify(a) for a in key_args],
                             "kwargs": {k: _jsonify(v) for k, v in sorted(key_kwargs.items())}}
             # Required mode trusts only this database's durable entries.
@@ -161,10 +161,11 @@ def cached(source_id: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
             if postgres_store.required():
                 pg_value = postgres_store.get(source, key)
                 if pg_value is not postgres_store.MISS:
-                    _write_pickle(path, pg_value)
+                    # Required mode never reads local pickle files, so making
+                    # a second copy only consumes disk and can fail a durable hit.
                     return pg_value
             # 1. Local pickle hit.
-            if path.exists() and not postgres_store.required():
+            if path is not None and path.exists() and not postgres_store.required():
                 # Only deserialize a pickle file we know we wrote — guards
                 # against a tampered cache file dropped by another user.
                 if not _is_owned_by_current_user(path):
@@ -200,7 +201,8 @@ def cached(source_id: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
                 args=encoded_args,
                 payload=result,
             )
-            _write_pickle(path, result)
+            if not postgres_store.required():
+                _write_pickle(path, result)
             return result
 
         return wrapper

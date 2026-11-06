@@ -1,0 +1,344 @@
+[
+  {
+    "id": "operating",
+    "label": "Operating activities",
+    "parent": null,
+    "depth": 0,
+    "kind": "section",
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "net-income",
+    "label": "Net income",
+    "parent": null,
+    "depth": 1,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "non-cash",
+    "label": "Adjustments for non-cash items",
+    "parent": null,
+    "depth": 1,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "token-incentives",
+    "label": "Prime token incentives",
+    "parent": "non-cash",
+    "depth": 2,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "contributor-spk",
+    "label": "Contributor token compensation",
+    "parent": "non-cash",
+    "depth": 2,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "non-stable-gains",
+    "label": "Gains (losses) on non-stable assets",
+    "parent": "non-cash",
+    "depth": 2,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "non-stable-transfers",
+    "label": "Non-stable assets received (spent)",
+    "parent": "non-cash",
+    "depth": 2,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "issuer-rewards-noncash",
+    "label": "Issuer rewards earned in allocation tokens",
+    "parent": "non-cash",
+    "depth": 2,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "other-non-cash",
+    "label": "Other non-cash items",
+    "parent": "non-cash",
+    "depth": 2,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "receivables",
+    "label": "Change in receivables",
+    "parent": null,
+    "depth": 1,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "earned-not-received",
+    "label": "Revenue earned, not yet received",
+    "parent": "receivables",
+    "depth": 2,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "sky-allocation-receipts",
+    "label": "Cash received from Sky: allocation system revenue",
+    "parent": "receivables",
+    "depth": 2,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "sky-demand-receipts",
+    "label": "Cash received from Sky: demand-side revenue",
+    "parent": "receivables",
+    "depth": 2,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "external-receipts",
+    "label": "Cash received from External Parties",
+    "parent": "receivables",
+    "depth": 2,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "payables",
+    "label": "Change in payables",
+    "parent": null,
+    "depth": 1,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "expenses-booked",
+    "label": "Expenses booked",
+    "parent": "payables",
+    "depth": 2,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "expenses-paid",
+    "label": "Expenses paid",
+    "parent": "payables",
+    "depth": 2,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "savings-interest-paid",
+    "label": "Savings interest paid to depositors",
+    "parent": "payables",
+    "depth": 2,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "net-operating",
+    "label": "Net cash from operating activities",
+    "parent": null,
+    "depth": 0,
+    "kind": "subtotal",
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "investing",
+    "label": "Investing activities",
+    "parent": null,
+    "depth": 0,
+    "kind": "section",
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "allocation-changes",
+    "label": "Net change in allocations",
+    "parent": null,
+    "depth": 1,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "sky-direct-deployments",
+    "label": "Cash deployed on behalf of Sky, net",
+    "parent": "investing",
+    "depth": 1,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "treasury-disposals",
+    "label": "Proceeds from nonstable treasury assets",
+    "parent": "investing",
+    "depth": 1,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "investments",
+    "label": "Purchases of (proceeds from) investments",
+    "parent": null,
+    "depth": 1,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "net-investing",
+    "label": "Net cash from investing activities",
+    "parent": null,
+    "depth": 0,
+    "kind": "subtotal",
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "financing",
+    "label": "Financing activities",
+    "parent": null,
+    "depth": 0,
+    "kind": "section",
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "usds-drawn",
+    "label": "Net change in USDS drawn",
+    "parent": null,
+    "depth": 1,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "deposits",
+    "label": "Net change in deposits",
+    "parent": null,
+    "depth": 1,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "sky-contributions",
+    "label": "Contributions from Sky",
+    "parent": null,
+    "depth": 1,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "buybacks",
+    "label": "Token buybacks",
+    "parent": null,
+    "depth": 1,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "net-financing",
+    "label": "Net cash from financing activities",
+    "parent": null,
+    "depth": 0,
+    "kind": "subtotal",
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "net-cash-change",
+    "label": "Net increase (decrease) in cash and stablecoin balances",
+    "parent": null,
+    "depth": 0,
+    "kind": "total",
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "opening-cash",
+    "label": "Cash and stablecoin balances at beginning of period",
+    "parent": null,
+    "depth": 0,
+    "kind": null,
+    "check": true,
+    "aggregation": "first"
+  },
+  {
+    "id": "closing-cash",
+    "label": "Cash and stablecoin balances at end of period",
+    "parent": null,
+    "depth": 0,
+    "kind": null,
+    "check": true,
+    "aggregation": "last"
+  },
+  {
+    "id": "measured-cash",
+    "label": "Cash measured at month end",
+    "parent": null,
+    "depth": 0,
+    "kind": null,
+    "check": true,
+    "aggregation": "last"
+  },
+  {
+    "id": "measured-change",
+    "label": "Change in measured cash",
+    "parent": null,
+    "depth": 0,
+    "kind": null,
+    "check": true,
+    "aggregation": "sum"
+  },
+  {
+    "id": "reconciliation-gap",
+    "label": "Gap: measured change minus statement",
+    "parent": null,
+    "depth": 0,
+    "kind": null,
+    "check": true,
+    "aggregation": "sum"
+  },
+  {
+    "id": "cumulative-gap",
+    "label": "Cumulative gap",
+    "parent": null,
+    "depth": 0,
+    "kind": null,
+    "check": true,
+    "aggregation": "last"
+  }
+]

@@ -2,6 +2,7 @@ from datetime import date, timedelta
 
 import pytest
 
+from settle.revenue.store import has_venue_views
 from settle.revenue.worker import planned_dates
 
 
@@ -58,3 +59,64 @@ def test_missing_only_backfill_preserves_existing_dates_including_yesterday():
 def test_missing_only_requires_explicit_window():
     with pytest.raises(ValueError, match='requires an explicit'):
         planned_dates(set(), set(), date(2026, 9, 23), missing_only=True)
+
+
+def test_view_backfill_resumes_only_missing_formats_newest_first():
+    # For this mode the store supplies only cutoffs whose latest revision has
+    # both views, not all dates with a legacy publication.
+    dates = planned_dates({date(2026, 10, 24)}, set(), date(2026, 10, 27),
+                          date(2026, 10, 23), date(2026, 10, 26),
+                          missing_views_only=True, newest_first=True)
+    assert dates == [date(2026, 10, 26), date(2026, 10, 25), date(2026, 10, 23)]
+
+
+@pytest.mark.parametrize('kwargs', [dict(missing_views_only=True), dict(newest_first=True), dict(wait_for_lock=True)])
+def test_view_backfill_modes_require_explicit_window(kwargs):
+    with pytest.raises(ValueError, match='requires an explicit'):
+        planned_dates(set(), set(), date(2026, 10, 27), **kwargs)
+
+
+def test_backfill_modes_are_mutually_exclusive():
+    with pytest.raises(ValueError, match='mutually exclusive'):
+        planned_dates(set(), set(), date(2026, 10, 27), date(2026, 10, 1), date(2026, 10, 26),
+                      missing_only=True, missing_views_only=True)
+
+
+@pytest.mark.parametrize('result,expected', [
+    ({}, False), (None, False), ({'venue_views': None}, False),
+    ({'venue_views': {'schema_version': '2.0', 'settlement': [], 'reporting': []}}, True),
+    ({'venue_views': {'schema_version': '2.0', 'settlement': []}}, False),
+    ({'venue_views': {'schema_version': '2.0', 'settlement': {}, 'reporting': []}}, False),
+    ({'venue_views': {'schema_version': 'old', 'settlement': [], 'reporting': []}}, False),
+])
+def test_both_views_are_required_for_format_compatibility(result, expected):
+    assert has_venue_views(result) is expected
+
+
+def test_manual_cli_uses_actual_utc_time_for_the_reference_gate(monkeypatch):
+    import sys
+    from contextlib import nullcontext
+    from datetime import UTC, datetime
+
+    from settle.revenue import worker
+    clock = datetime.now(UTC).replace(hour=8, minute=0)
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return clock
+    seen = []
+    def run(*args, **kwargs):
+        seen.append(kwargs['now'])
+        assert 'today' not in kwargs
+        return {'status': 'ok'}
+    monkeypatch.setattr(worker, 'datetime', Clock)
+    monkeypatch.setattr('dotenv.load_dotenv', lambda: None)
+    # main() enables durable storage for its process. Restore this global
+    # setting after the test so subsequent offline tests stay isolated.
+    monkeypatch.setenv('SETTLE_REQUIRE_POSTGRES', '0')
+    monkeypatch.setattr(worker, 'connect', lambda **_: nullcontext(object()))
+    monkeypatch.setattr(worker.store, 'apply_schema', lambda *_: None)
+    monkeypatch.setattr(worker, 'run_prime', run)
+    monkeypatch.setattr(sys, 'argv', ['worker', '--prime', 'obex'])
+    worker.main()
+    assert seen == [clock]  # Do not pretend that a morning job ran at 20:17.

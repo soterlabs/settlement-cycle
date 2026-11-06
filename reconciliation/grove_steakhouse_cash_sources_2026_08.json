@@ -1,0 +1,940 @@
+{
+  "venue": "E23",
+  "cash_venue": "E27",
+  "start": "2026-01-01",
+  "end": "2026-08-31",
+  "scope": "Trace isolated vault deposits through empty ALM cash and authenticated bridges.\n\nThis is a bounded provenance audit, not a policy for assigning mixed cash.\nIt counts gross contributions, never outstanding debt or closing capital.",
+  "totals": {
+    "authenticated_bridge_to_empty_cash_to_vault": "217700000.00000000",
+    "vault_redemption_plus_authenticated_bridge": "5000000.00000000"
+  },
+  "contributions": [
+    {
+      "transaction": "base:0x57c46ed7362980e9055c8b1d3b1d69cdd237c87b6222c2cd3d6b2711902f4508",
+      "day": "2026-03-04",
+      "contribution": "10000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0x919790807811b5bdfe20264e8d6341fe256b5941a8250de2aa2a5a4ca62b9050:grove-cctpv2",
+      "bridge_receipt_total": "10000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x015a23064ebf245dea53aaa1fe2fb8723464d04d03774d1fabca252d16df39d0",
+          "amount": "10000000",
+          "transaction": "ethereum:0x5c1628698549331e397fb1e7a771e5c240b58cb928ea2a2bb764545e68e6bde8:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "10000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x9042592adb73c3a9420928c59ec06943b81cdec380c4c8d8eefeb024b63f322f",
+      "day": "2026-03-22",
+      "contribution": "10000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0x52f1ca39d1bdc9ab976cf21c067741e2a0b9ae6cf06a1b300cc95acc8e996f66:grove-cctpv2",
+      "bridge_receipt_total": "10000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0xfc930359fd4e3268149445b7800002e702426e9277c53a04d54559da132af16d",
+          "amount": "10000000",
+          "transaction": "ethereum:0x72f448f7bb51686d0299b00675e580a125b85b23007dbdd6b1b4b221be2d7203:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "10000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x13e0dcbe0ac26abd024be04c5a7820206d60b6fbdf3cdd16f0464d1aaf5929f7",
+      "day": "2026-03-27",
+      "contribution": "1000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0xe0bbcd436f641757a933b471b7bb405cf176c5eb140d20b3489140a0d888b284:grove-cctpv2",
+      "bridge_receipt_total": "10000000.00",
+      "receipt_remaining_after_deposit": "9000000.00000000",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x4670d34bdae1b1c38d12d6c54eed42d73d32fa91a506c79342d4938420ae0cfe",
+          "amount": "10000000",
+          "transaction": "ethereum:0xff653f334a5e824b00c7d397d4fcd1ade43baa44fb71348c608a74c3a1a98ecc:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "10000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x6034f6ff40603b50e557f8e27af4a1fe9bbd5aba6e7f1743c272bbcb8c16d3ed",
+      "day": "2026-03-27",
+      "contribution": "9000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0xe0bbcd436f641757a933b471b7bb405cf176c5eb140d20b3489140a0d888b284:grove-cctpv2",
+      "bridge_receipt_total": "10000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x4670d34bdae1b1c38d12d6c54eed42d73d32fa91a506c79342d4938420ae0cfe",
+          "amount": "10000000",
+          "transaction": "ethereum:0xff653f334a5e824b00c7d397d4fcd1ade43baa44fb71348c608a74c3a1a98ecc:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "10000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x8d971b0b2cc37278320ec526944a8730ead565a7431190d71821a856ec5dbeb5",
+      "day": "2026-03-28",
+      "contribution": "5000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0x348945df87d351e7ce5068576b0d6c4a2eda24cc679310da89c4af45b5e56a49:grove-cctpv2",
+      "bridge_receipt_total": "5000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x4e12805dc3be175350292222f5e434dbecafb30831fc0ca8eb8d636a4847d5d8",
+          "amount": "5000000",
+          "transaction": "ethereum:0x9ad228f51207af67c8432e82969db785cc1d27d205f7d098365deec4464b7f1a:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "5000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x6149b5ea560e4712780ceb16763e7969a46e44190461cd86934f11feef72ee37",
+      "day": "2026-04-10",
+      "contribution": "5000000.00000000",
+      "classification": "vault_redemption_plus_authenticated_bridge",
+      "redemption_transaction": "base:0x2cbf65daeca836c3b1f4354c9e06f6f5790a98a4c4232ccfc14e5bfbfd840ce1",
+      "redeemed_cash_including_gains": "1005620.125726",
+      "cash_receipt": "base:0xf19de5f6ee19848d26446094c78c5609d84b38b8b5de2f028a905480a979985d:grove-cctpv2",
+      "bridged_cash": "3994379.874274",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0xb6a2db33f93de5703584ac1b1a3f979473c9ef324ee55cb784cb70140dcfeac0",
+          "amount": "3994379.874274",
+          "transaction": "ethereum:0x6621a3b6e64a77ea13d3eb0553216d70f2c3324371a139895d8eda587e6f3f80:grove-cctpv2"
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x89a03c22479a5230ec4199a7795e1b81123992d6174b7fcb27671cec7d441d79",
+      "day": "2026-04-10",
+      "contribution": "1000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0x573e5a0c654bf147182324e6fe8b9ba587499ca6d888414f22217b020ec29b0e:grove-cctpv2",
+      "bridge_receipt_total": "1000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x04aef421364264a4ddba6951db6fe5ad07bf4db2e3c3ef8110b5e6ae8a8e6bf3",
+          "amount": "1000000",
+          "transaction": "ethereum:0x470bf23cf0415a8be134dd5586e6807756f558a8468c1a57e25a9b8533375508:grove-cctpv2",
+          "draw_candidates_by_ilk": {}
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x13595ee0b6d7d2cd55308b136e904e27e76a28f0641c5828f222bf5289ee9496",
+      "day": "2026-04-15",
+      "contribution": "5000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0xfeb2bdcaed207efda4a8ee6109cd9e0dd518f65e7f37e748ad61a51dc115ef07:grove-cctpv2",
+      "bridge_receipt_total": "5000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x9d8dae7e37021383d16aa40ce0cb3ed451c02377180dced4c0ff30075096d92d",
+          "amount": "5000000",
+          "transaction": "ethereum:0x9d91ee1756f72951d4ba9681ad3ad9c6528e7b78fe3fc6d90c7dbc0ab3513072:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "5000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x83fc5dd97968c523e3c04ada0331c08fc520e800d5c468619589917435ff1ac1",
+      "day": "2026-04-15",
+      "contribution": "5000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0xdb9f83d20df3043d443639ecb7047e77820bbaaed8b9029630dbc60ddc309bb2:grove-cctpv2",
+      "bridge_receipt_total": "5000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0xab35b761445031aa36f135eb5cd050c0155c8697d04b5e1538f19aec9ce143c4",
+          "amount": "5000000",
+          "transaction": "ethereum:0x5b1dac1818a094073a418fe3f6ccd49116b4b20f03d4c0d4f3d9a210d887072e:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "5000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x1d4a5db5df84339f3cff3f491d285d88ee387f17ba1a58a87a71a77ce0d06a63",
+      "day": "2026-04-15",
+      "contribution": "8700000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0xd8472720c6acb0d33a8b2a2effe51283d0b471c95f357550d52269f82c278371:grove-cctpv2",
+      "bridge_receipt_total": "8700000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x057c133bb204510ec7749419a5efa5cd2694bb9c732b866cadb45fa65a715027",
+          "amount": "8700000",
+          "transaction": "ethereum:0x3bca8a01d0fde9eb272827726f34be9294abfc27b8a30553580fadc0dfb67425:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "8700000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x4484175ace123a80882668d541582e0517987ebada6c778ddf7b467732c29e37",
+      "day": "2026-04-17",
+      "contribution": "8000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0x065d7769eef4e6d50c98333bb5375ad378b2a0b33018ebedaf589278a9996f13:grove-cctpv2",
+      "bridge_receipt_total": "8000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x74521899b61770393eb253242f5f461f49a3eaa5f08be0bfa0ab2c3f74264243",
+          "amount": "8000000",
+          "transaction": "ethereum:0x13cd1d9333e9dbd7eddb69909e02dd8cb6323872a15c474a62a2798e7cc5e048:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "8000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0xbb123381e23ac981114ae501e6325e65c884fb7f4ec42d081ae68d974b4fb4ac",
+      "day": "2026-04-19",
+      "contribution": "10000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0xac8db448cd3fb4d9d4e0ed5e45df773a68a368522e97cff9ca7a2cad7f795036:grove-cctpv2",
+      "bridge_receipt_total": "10000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x1a297608596065781dd019184dbb58461c2401cb5d58276f3003f4338fbc0eaf",
+          "amount": "10000000",
+          "transaction": "ethereum:0xbcf04406f38adb5bfbc8118e5725f68ab5ce55208944c684ae1cb6a92be1bf9a:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "10000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0xd6166dd13bbc038b60068fd31738856229dd0cfc709175ff66eecf8897025447",
+      "day": "2026-04-19",
+      "contribution": "5000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0x0555158999768dfe34d60c344b9d23d22db02429a5a42596894cade61d01e044:grove-cctpv2",
+      "bridge_receipt_total": "5000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x51e155f5fe1760ba95781d78fbfad719a93559aae490ff80be5752b70caf3c40",
+          "amount": "5000000",
+          "transaction": "ethereum:0x4ea44e025d222b6e843aef6d29b541848f4447a8d5f12979c294de560180b43f:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "5000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x2c2d5652398fc0a0f8a67ccba03c78bb76f225e03b1620588a28c29b597c4d59",
+      "day": "2026-04-21",
+      "contribution": "5000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0xbf179aa25d86a193b8cc0d9c6c564e223f0d9bd9ab1cd554bb1af1be377174c4:grove-cctpv2",
+      "bridge_receipt_total": "5000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x55596280c4402d66c36781c7de67be52e83d7c0cd838c62e53152fce59237120",
+          "amount": "5000000",
+          "transaction": "ethereum:0x4fa9c39d819623300a88766283a2cfc0ca63822d52dd0ffb4c21b1ee3d29a9a6:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "5000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x40fdb9a3ce0abbe5b0b63e9137f3eed18989e1f651ebb90fd00bc1b039abc18c",
+      "day": "2026-05-12",
+      "contribution": "1000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0x87058922d6fb29906432cbc9879a86876f5f7a84ee2d1457bf2f5379476616a0:grove-cctpv2",
+      "bridge_receipt_total": "1000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x7bb3fa300fc2dced942e054ff9cd176351ba15d329a16b2847ccb95433221803",
+          "amount": "1000000",
+          "transaction": "ethereum:0xb860d4e6f0bf0b4ddc074f29c67901ae8688fc2b35ab475617b6cd64bb64504b:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "999999"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x3d5c4e56039245dd6ccdd121c7b55a5e9745ebe34528c85a7bd4b0f227e92393",
+      "day": "2026-05-14",
+      "contribution": "1000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0x38d95f169de73745989e7ca445098aeea8d293bb775959348f6ae6021c590ab3:grove-cctpv2",
+      "bridge_receipt_total": "1000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x72f9a87d7c5ac8cda0f562a81907bfa0d36fae96533be3640b3756b67db1231e",
+          "amount": "1000000",
+          "transaction": "ethereum:0x2e6bdc8d83f18aa9ea5a770af0b310415793223000ebd9537e6f900a8a413af5:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "1000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x311c6a44bbfcefad9a78da8e19ced7c6364d2b1858d25e38abc9b118309c983a",
+      "day": "2026-05-17",
+      "contribution": "2000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0xcbdc38dc77977a0f07b2778197c8e1c5706faf192ef199960aca7a28b1fb29ab:grove-cctpv2",
+      "bridge_receipt_total": "2000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x6371af5bbaa79f9508cee48dfe18da40b7155bea34372d6e68183b4f3b163eab",
+          "amount": "2000000",
+          "transaction": "ethereum:0x0e460b7d50a339e0d3be12d7435898c3315710c4cfd14b5bdb48ad99c2defb20:grove-cctpv2",
+          "draw_candidates_by_ilk": {}
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x16f565945f46725bb99767654d2848bd2a9d72fb2f858e66766a8ae11e5af979",
+      "day": "2026-05-19",
+      "contribution": "2000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0x6fafeb59f22abdb7210195c8b1e2ae874b45e427fed02770dad606ff74f682da:grove-cctpv2",
+      "bridge_receipt_total": "2000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x6676a163bb9071e6c4b78c8b9cc6bb55eb4d0a24d6ebe18cc590fa8b3e469150",
+          "amount": "2000000",
+          "transaction": "ethereum:0x53bb1be5d47512201ab92070a85ae911238daf6312a561e7eed35731bae216b0:grove-cctpv2",
+          "draw_candidates_by_ilk": {}
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x482bec99b6127cf604120bf3c07d0a52c47e337d6f45304230d1298657903f14",
+      "day": "2026-05-20",
+      "contribution": "4000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0x325c9252f28db23316b88361a3ea6317e29289c220c803abbc4b2b14a2c3f831:grove-cctpv2",
+      "bridge_receipt_total": "4000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x2103edd38e14e63f39f8bd3f5b88856801e341cffd6be75eb0e5dfbeb738aae9",
+          "amount": "4000000",
+          "transaction": "ethereum:0xb4b0ebdcab021378eb12ebdb8519cf9aee2fbdb477736d520c01747fb6773404:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "4000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x5dd8bb0d6562906538af0e43a5d4813a214c7e4480cb7b8d577923e3e1512969",
+      "day": "2026-05-24",
+      "contribution": "2000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0xa17761188c8c19b8ef71ca3d3fdd93ab82fe9e4beb2557095644892d1e82ce12:grove-cctpv2",
+      "bridge_receipt_total": "2000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x0cc2d7320caf7b238b682f7873efdbc11bd7ee24685f8e5f1d5b4fd8eecffa69",
+          "amount": "2000000",
+          "transaction": "ethereum:0x64a6370998ed73f6e6b30b1c76a88b913ca7f2839e2fb6c670e66fb52c1d8f42:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "2000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0xf2cb1aa4e5a41bff664f1f91912152a419d91606dee99555b21a36d0fb2f4aad",
+      "day": "2026-05-25",
+      "contribution": "2000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0xf864a41512636b5b30a34999ff43e2d9631dd3b22846180dd2ad56ae4a1d7911:grove-cctpv2",
+      "bridge_receipt_total": "2000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x7234723109a349977bd6a250518fdc205517f9a11985f8b0115bfbd465a9d274",
+          "amount": "2000000",
+          "transaction": "ethereum:0xffd8cd7b01fa51b872f106b79470e9e6e9d1345e2f868263fc06b7745fe164cf:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "2000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x7921abba6c2710f5f53767a3746576465925a767cb3efcca553f43a219635582",
+      "day": "2026-05-27",
+      "contribution": "2000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0x5aa991fdae1e1ddb1cdc74a2318f8d18950821471cf359770b20d2c8eedbb900:grove-cctpv2",
+      "bridge_receipt_total": "2000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x5c219da67d6fc58db12a472dda477d012edb4919795794a370ddd164e9f5ac72",
+          "amount": "2000000",
+          "transaction": "ethereum:0xe5da90db2ad2a317ebdda831868c64312a2e56616e15d018fdc3914e35ebba32:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "2000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0xe29dffa02e179ea3881981dd0c5c6add0b8cbffcb990151e086155113b7db707",
+      "day": "2026-05-28",
+      "contribution": "4000000.0000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0x54aa4a3e3f33166e38ac38b987eb9ce97ff459b611aa0f32936f6012a2c61d40:grove-cctpv2",
+      "bridge_receipt_total": "4000000.00",
+      "receipt_remaining_after_deposit": "0E-7",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0xd8d007c929feb9faae77a799045e3b79853d112d111625e8935de7b7cc7ae69e",
+          "amount": "4000000",
+          "transaction": "ethereum:0x1268578a03b396f4f3c5fb7fa6a80fb00740b133162e90b58d86a634111a9164:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "4000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0xd9d2c547a1044558f00cc0ea1ad5cdee1e3265efeffdd2ebf57598ad4046d70c",
+      "day": "2026-05-28",
+      "contribution": "3000000.0000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0x3d22da9d46137332e3a0b30f3ae9305430938ec8d96a3ec92bd3824e08e62ce4:grove-cctpv2",
+      "bridge_receipt_total": "3000000.00",
+      "receipt_remaining_after_deposit": "0E-7",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0xab60efa0f6b6dfc0e3017bc78b756adca83479e6b463eb5b59439b4635a34dd2",
+          "amount": "3000000",
+          "transaction": "ethereum:0x378ef44a789d561d0cce4503271afa424ad00dbdcc7df56b8f002ee1f78f7842:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "3000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x5a4000e928b105009e21901df300ed617385c57c13f5ff80306192bd252a5ee1",
+      "day": "2026-05-29",
+      "contribution": "3000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0x962f9450ca6108f6dbe849d9ccb96ad6cdab134121f0bacd86f7c348d6be2d1f:grove-cctpv2",
+      "bridge_receipt_total": "3000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x878d8a74b325b74325ddae8fcd7b8f951b2a89155c9b8280c3f4cad09ed9ecb1",
+          "amount": "3000000",
+          "transaction": "ethereum:0x59832496b4331d3bab577af9f43b6041ae446e1d4a57992daf686cf78b602ab9:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "3000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x5e85dbf3f543e17c9d43cae682b3f53cff2ef9b0a7c9252de608237ae4c073b0",
+      "day": "2026-05-30",
+      "contribution": "3000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0x5b46d6380874b24661be4fdc50cb4133a1ed64381b3f8f8429a2f307c097362c:grove-cctpv2",
+      "bridge_receipt_total": "3000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x8648ee8b4bcd8cef9480687d7560cfefd42ad1541bb629790ece92188120adbc",
+          "amount": "3000000",
+          "transaction": "ethereum:0xed049cf65f322d81bf090fa6bc61f30dc3ff1274d0010441d10bedac474200ab:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "3000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0xd1082cac10963e57c328027a959c12d6de3d7248e06da6db888cd60eb0205762",
+      "day": "2026-05-31",
+      "contribution": "3000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0x23b5b52e1b4631e8ba4bcea53847ea4caf79e55b12829c729407cf156e04ce4d:grove-cctpv2",
+      "bridge_receipt_total": "3000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x71bf69e64f74b96b1e8f8a6aef80a3656f9ad483c78f2f99672de711fd362dcb",
+          "amount": "3000000",
+          "transaction": "ethereum:0x535d7e8e1f0a87ebc8073a1bb918090a9277df0a9fc5d84c9215d6fb0e794057:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "3000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x9a42f9db3efc817ae34e28e40ac5e84e49eca36ccf07cc774f31caaeed0006f2",
+      "day": "2026-06-01",
+      "contribution": "3000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0xb287bbcc4fc19ecd7536e1d000926bc3f9f970d038dd63b416b865ecb84a602d:grove-cctpv2",
+      "bridge_receipt_total": "3000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0xd0002620757bbd81c39cddbd5fe143e474b647bde368369216260ff21ecefa07",
+          "amount": "3000000",
+          "transaction": "ethereum:0xc3eb445eb9a84945a73639f148214810e702168babb7fe4a563f784d4ac09224:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "3000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x9e40615b16d24cc6e903d656b3c46d283c886e8ccb9f02bec4e20b46f36a4e12",
+      "day": "2026-06-12",
+      "contribution": "3000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0x1abba2ac490d70011c7229f4b5f55acbb3d3e6d103e1066d72d3cbbe68aea4a4:grove-cctpv2",
+      "bridge_receipt_total": "3000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0xa8f0c4cff12f35c0e39edecf8aa78ad53d1bc082a23df4ee81a7dc85a361f080",
+          "amount": "3000000",
+          "transaction": "ethereum:0xa1a85a84aa47afc5f26175e371a158d51c831518fe819d18349d2abf318162b7:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "3000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x7a5c569b843693512e7f9de5f0f8f3389b51cc11fa70cca9fcfb38f69d1402e7",
+      "day": "2026-06-13",
+      "contribution": "3000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0xb18bcfac942d3cc91b6688a8fe5fdafcf066b1bdfc85c6af286c90de4d8bd08b:grove-cctpv2",
+      "bridge_receipt_total": "3000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x1b07a15c12c117e3e0f53efedcfe0592338deb9b2bc1315899ca7e7cc2608481",
+          "amount": "3000000",
+          "transaction": "ethereum:0xa7f029128c8493ba0f6691797fe222c39a3ee612ef10da15ee877e60424f004e:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "2002080.253738"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x4aa5411f5d0649097400e08536a4441d5df8f13fd68571d29297fd72d67f0e83",
+      "day": "2026-06-13",
+      "contribution": "5000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0xf212e51644f92f5bf948be557eeec4d2920d4350e3e534e27b269a30edaf3e05:grove-cctpv2",
+      "bridge_receipt_total": "5000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0xaaedfdc9423317600e7908c593a52a7f8d9319475b11c70a7f05de5a3195b47c",
+          "amount": "5000000",
+          "transaction": "ethereum:0x45477b85aa25d26ce7c38402c91db0c1e6be95ff4ffe2813a59bd2c1352707fc:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "5000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0xfdb6d135678f29d9afb5aefd56008e0ed325e9f8bdd25af05080c188a22d8f91",
+      "day": "2026-06-13",
+      "contribution": "7000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0x5c2980e574678fe6f09cf8f747efcd9c8bf7c71842af7fc47e82cd82fa8b10bb:grove-cctpv2",
+      "bridge_receipt_total": "7000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x2b0e94375cef04a70023783f6f49cac0b44023d00149b54dc04306425de51e33",
+          "amount": "7000000",
+          "transaction": "ethereum:0xd61420d6729a6f2074f0bc8ee6b53b6aced3844e1171e14644a929f2e740ca49:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "7000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x78402400b21fc201e25c16808c9ce31482329f803ffa070f8b879e19f858231f",
+      "day": "2026-06-13",
+      "contribution": "3000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0x11a7dde9084adfb3b933ae77786176a77958dd973c054a0410ab21985a7e7aa8:grove-cctpv2",
+      "bridge_receipt_total": "3000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x4ad8979a820f79d2e999d1ed55992f01bdd75afebb32eb4b14632214cc6d3a8a",
+          "amount": "3000000",
+          "transaction": "ethereum:0xc8b3bb768733c31cbaeff2a0914d9addb14cf59987bf26d1a2434983b2e3281f:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "3000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0xf7e0ede8f5a4a559cfa1e8ebacb82f93edfbdae9b0477b02e9c1607aadb98739",
+      "day": "2026-06-14",
+      "contribution": "5000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0x1a495634dcdd1b2d521253cc71d233d68444eccb1d00c8a2bfd1009996634bbe:grove-cctpv2",
+      "bridge_receipt_total": "5000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x762a600dac9c5577aab6c3db2ffcaf825ff5d6abbbe7f03b433a61856ab27ae0",
+          "amount": "5000000",
+          "transaction": "ethereum:0xe6b52ef46e43f536c66507dc74567435f21f811b555d6103c8834d2e9cf0a8d8:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "5000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x0e5fa65935235ec3124df39eedebc54d9455d1a883b3ac957855cf5622f40bff",
+      "day": "2026-06-14",
+      "contribution": "8000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0x6155db3a1efd6f0bd3089b7323aa7357efa1e03f97001642fb81f5a982ace9f6:grove-cctpv2",
+      "bridge_receipt_total": "8000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0xde0d8153ab889863698021dba4ecbe739b879cc59fcc248acf2975c43464a13e",
+          "amount": "8000000",
+          "transaction": "ethereum:0x289afecc875478bad955201de24e6ba5a06f57fdbc955dc33a120de1c9f580b5:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "8000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0xe93b7ca526a6b5272cda11574ae7a209d8009b1c9892e3492844f0756f0c9709",
+      "day": "2026-06-15",
+      "contribution": "10000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0x54e1ed122d99be4dad233278c37e477ac395faa8a0e543ce5b49c510ac1335d3:grove-cctpv2",
+      "bridge_receipt_total": "10000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x97a65078f1b25735833072182a6634da39b324023a8f701c1ff57c673e245e40",
+          "amount": "10000000",
+          "transaction": "ethereum:0x6c58ddfc6d6fb6e855b179ded438c5331920bbbee124fcbb9de27380f5835afe:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "10000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x05e106c1a41e3cae47fce4682eb878dfe2a37c8c8593542fd4fa2fc2173ad1b7",
+      "day": "2026-06-15",
+      "contribution": "10000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0x0b603a454636119c5bbdad4a0a3ee4febd166ac8c50837d1224135c8686ae7d0:grove-cctpv2",
+      "bridge_receipt_total": "10000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0xd8008a1f0035ea4410dd3003d872bde59435c244cd97b2ed1d56c9a77683b8ce",
+          "amount": "10000000",
+          "transaction": "ethereum:0x1be1f3ab52a3c7b06e1c5663df0dba1b0ba7fac1f3dab40d0f141c1606eb492d:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "10000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x5e1e8929cc8497f99b3e1e8b9ac110def020f5689fb2196dbf3cd4b7fd43ba23",
+      "day": "2026-06-15",
+      "contribution": "3000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0x9e3d9fcce1905e65f65959549dbc780f879949cfc0080dd23c82aa9c6b54e025:grove-cctpv2",
+      "bridge_receipt_total": "3000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0xb79956c87d49b46bc09399b0df2119a4895dd15b11214efd8c607d77daf4e5d5",
+          "amount": "3000000",
+          "transaction": "ethereum:0x22aef9110d0ce49f505e8ea1e10f0d628bb56c3251f6ef9723e9b9e5708666a1:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "3000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x2eebd8f7407fb80cd2ce28dfd58fddbf88c6b3e328a77a7bfc199acf8685de4a",
+      "day": "2026-06-16",
+      "contribution": "5000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0xd92ca81fa8dbbf6205c97bd98d8be32137d7b6bc9b4030a3cfcf04693164da4d:grove-cctpv2",
+      "bridge_receipt_total": "5000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0xf569aba654ac1eaaf7dfdd3c25b6e242c2beaeef79ecec6f11409e6ac10d192d",
+          "amount": "5000000",
+          "transaction": "ethereum:0x27f34ee0092286f5c87d4e7bd188f7028274ef6bf38e4cd6e9886da542645eae:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "5000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x1392ec5491ca7423801f1dc1422a49cd56dba30ebeb0d087331ecac2df9e6dbc",
+      "day": "2026-06-16",
+      "contribution": "8000000.0000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0xa3985729ff42c8410dfd3bacd18807fa21f99af822e10d74982d2df10656d05d:grove-cctpv2",
+      "bridge_receipt_total": "8000000.00",
+      "receipt_remaining_after_deposit": "0E-7",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0xb3bdae3b91e0b6432a3f7d7e9f7eef65d690d594f3ca71a5451a501ba039c26a",
+          "amount": "8000000",
+          "transaction": "ethereum:0x0d4e10b8f0d567ff6d13327a26a858b59b13a82fdf3415bb89c81927be4e9c99:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "8000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x123ea152ff8509f65962c152eeabb813b70085c4e98088e0b55450f281be7319",
+      "day": "2026-07-10",
+      "contribution": "3000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0xd283140b3405031f4189fa897d9c9065cde5d79588dec3df55ae6ba1d9912663:grove-cctpv2",
+      "bridge_receipt_total": "3000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0xb713b84044d7fe09cc6fcd120ca6be4e7784b6554f7c338f83ec6f540b5ee5ab",
+          "amount": "3000000",
+          "transaction": "ethereum:0x4d3c436023bbf3be00947e1608785e12b2606364b9a5a6b361da55713c7fb099:grove-cctpv2",
+          "draw_candidates_by_ilk": {}
+        }
+      ]
+    },
+    {
+      "transaction": "base:0xb58f1f77c6df4b063d25eb51c878aa8c8c052f6759e7e30b40a84c6fc71f68ae",
+      "day": "2026-07-13",
+      "contribution": "3000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0xa282f5b289ac04d9c029df60ea03f0d76bf9d142ae10956f967f74b193a8ab09:grove-cctpv2",
+      "bridge_receipt_total": "3000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x232e39d53d2f7267b756461ee567a45172f37d11e8098b15e31be5c9d8f95e74",
+          "amount": "3000000",
+          "transaction": "ethereum:0x4a18ce1f83a3f2b65ecd789226b0d7c4bcc130ebfb7eb9aaf433aead7363554c:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "3000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0xf9adfd2219bfdecaeed1cb34d176e9502577b253bdf77ee9cb4e42705a9045dc",
+      "day": "2026-07-13",
+      "contribution": "3500000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0x8782e381dfdd5da5fa020c29bbe868bdde9bed009b34733cd125472fea6302b4:grove-cctpv2",
+      "bridge_receipt_total": "3500000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x38021fca6642cdd40620f4a9347bbb207fc99eace97ffb1f4cfeacd8b39893cd",
+          "amount": "3500000",
+          "transaction": "ethereum:0x97dec4bcd09ea4c8e16dc59471e0ac4000ab3a1c5dcfc9f1a0651f88d5a75f20:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "3500000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0x2ffd70fed1c0f7ea0072ced1f8f9d514320d36103a17fdf4020909a9b5191500",
+      "day": "2026-07-14",
+      "contribution": "7000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0x6460b98bdc1907157b6d2805096c0764b5bba87174a6897f0a75509e880e977c:grove-cctpv2",
+      "bridge_receipt_total": "7000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x1a5afd52b44a1d5dd4bd09eacf26da27844f78611cc80ec9d747116b7071d65e",
+          "amount": "7000000",
+          "transaction": "ethereum:0x04325196f277a72703973698116b46453e8b0ed940013442385723545352df18:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "7000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0xb6895a37065337e8ea72f746404c36cf004c03ea4f24ae23622a9a9d60cef3aa",
+      "day": "2026-07-15",
+      "contribution": "6000000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0xd5bde5f551fc257f0b2157b5d015abad49ad1de2a6f8d8913a3d84409dc65d52:grove-cctpv2",
+      "bridge_receipt_total": "6000000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x8017d0d6ffda2171a5b4f07f37b13053bbc1836fa5a4cd989bf85cac8ff403c8",
+          "amount": "6000000",
+          "transaction": "ethereum:0x54240fd54df8295444a492ed59200f277d936f95936969716bbb89955ab64f19:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "6000000"
+          }
+        }
+      ]
+    },
+    {
+      "transaction": "base:0xce87a9b3cf805cd7906c76bd7b7b244b5d70d837a6dbf9ad7a7294885c9d53ce",
+      "day": "2026-07-21",
+      "contribution": "7500000.00000000",
+      "classification": "authenticated_bridge_to_empty_cash_to_vault",
+      "cash_receipt": "base:0xb150e0a2c4045c4aea4ca3977ef76e7e4d1ab50839ffd3b62f21b9152a73d09b:grove-cctpv2",
+      "bridge_receipt_total": "7500000.00",
+      "receipt_remaining_after_deposit": "0E-8",
+      "bridge_sources": [
+        {
+          "claim": "cctpv2:ethereum:0x37fbc5f0a8484de21a79bc61c535fdd3c76abe9d10a9e5e350b3e5274c0603dc",
+          "amount": "7500000",
+          "transaction": "ethereum:0xc638e76bc8ffd91f1d8afc426185783b0c88ebd42b169b48e6529fc88b6cd467:grove-cctpv2",
+          "draw_candidates_by_ilk": {
+            "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "7500000"
+          }
+        }
+      ]
+    }
+  ],
+  "input_sha256": "c05b53815379f6f7a4d9f6195d819d09ddb542f8f279af5f4defe4b7b3295474",
+  "source_sha256": {
+    "/home/agent/code/lakonema2000/settlement-cycle/scripts/audit_allocation_cash_sources.py": "fda1480ec4f1cf2c5048b3c36813e49386705b2fde022be3061091cd872be774",
+    "src/settle/compute/__init__.py": "4a98b5acb293a5e4b70baa11b49dc04498a6d5e04070e61c80d5a8ac66eca69a",
+    "src/settle/compute/_helpers.py": "d168e38847d948fd7ee36a12d18969de10175c45d7fbd098203d88ec82561e67",
+    "src/settle/compute/agent_rate.py": "4f0aeced02dbb85cc05843e4b1db0a9c273936905885c4d1661121995ddad80e",
+    "src/settle/compute/allocation_capital.py": "385b6eeb57e2839f3ed27c9e322ac86f1c41482843fde477ba1b5ffa20900889",
+    "src/settle/compute/allocation_external_funding.py": "cb0fa57cbf834810b8fa07f1b14700e060692559810259f46a2787fb0acf8f58",
+    "src/settle/compute/allocation_financing.py": "9046670c3856e506c2a647290474a108b60bbf8b189e5e644a0af6e5e211a80a",
+    "src/settle/compute/allocation_reconciliation.py": "f55ad9c7e723c9c00f753b329b1a1df135bd4d8806cf8f7cd1f659247194a219",
+    "src/settle/compute/allocation_uncertainty.py": "cecb14f780cc6aa665b4621b13c50de7ebf884ac1194eabd9ac29864984468df",
+    "src/settle/compute/chronicle_points.py": "3fc7b1144d6dd74ae52a3bb9a31694d9c114d66fd21ae858166d585031dd2554",
+    "src/settle/compute/executed_spell_capital.py": "5ec36e4a66ea1865ccd6932d17ce94acaeff42f83de095a3bd2faa96e4186b8b",
+    "src/settle/compute/gar.py": "4c461268a6ce5621b3c2f6bef18e24145c1116c2038bbdb14eb7d0d659f5f442",
+    "src/settle/compute/grove_agora_incentives.py": "c3bd667cd4e9a791508c01e71ef0450aa651b80ad3ac9bc25f7a61af76d707ea",
+    "src/settle/compute/grove_agora_redemptions.py": "8fa69926e5cca8c696f0d7492152f7db57e2611c956b8da861e50649ad9fc531",
+    "src/settle/compute/grove_apollo_cash_settlements.py": "4b8a4356ba4144930d0b06dbb148888f0c2a3b0f754286df327cd5d495ceb7a3",
+    "src/settle/compute/grove_basin_capital.py": "944a29e74c54698059d8d5f8a3cee3af6d93ab81fcc9a0a74c54bb1b46c9f65f",
+    "src/settle/compute/grove_buidl_partial_payments.py": "65c4d32701b87cb447e5c3e3de3cef4ac97f7f7d84dfb79eadd0b34f06cb3c4f",
+    "src/settle/compute/grove_buidl_subscriptions.py": "26b1b37abb4d95cfe039ad45d0f45aa1a8865a1a5dd7d9a3318a965070aba9e4",
+    "src/settle/compute/grove_cash_distributions.py": "f53a180f053e6f22bc091be1f0bff8232a29466b71120431c53063349010e123",
+    "src/settle/compute/grove_cctp_v2_capital.py": "c32e0a997247f8c1c4678fa5b41a565bd0bf5f7c90a4298747809b7639af18d0",
+    "src/settle/compute/grove_curve_swap_gains.py": "67fe00a550320cb2f779e5fa58d3a39d355a41c6ac8bb4c607fcf1a827cfb56e",
+    "src/settle/compute/grove_falconx_test_refund.py": "f29df5ea9ec90691566f9d914e42990d20c45a03416cab28536882f0061e2c23",
+    "src/settle/compute/grove_galaxy_arch_capital.py": "322907dea826d765fc3f76f3f8c896ce65add43278b556cee0e8f4306cb21003",
+    "src/settle/compute/grove_historical_capital.py": "0e42cb76136a3c2b136d1699cfaba780b54e10d9f4c7ef8639fcac001b80115f",
+    "src/settle/compute/grove_merkl_rewards.py": "d30c3bedf5d17299eddb0de1106565d42c81ae4210e2938b9cd3ceee22bd05bb",
+    "src/settle/compute/grove_paxos_capital.py": "89a8a84dbe2f7b8f25c179d1024ab9acc5f937f5f3e4156acc1e0c1bc1bbffad",
+    "src/settle/compute/grove_plume_capital.py": "12b9d415ea9982bfdd7189b32d8daab65568626875982d55468ff6d5724429d1",
+    "src/settle/compute/grove_rlusd_conversions.py": "be716f99069f34fa6cdeaf3bb474ee275b08922c0ced9784c4bfadc65cfc2aff",
+    "src/settle/compute/grove_secondary_cash.py": "ba386f63fbc247acb225a9a94349ea5b3d043dc0923cd0359826a18c24b938fd",
+    "src/settle/compute/grove_stac_capital.py": "d6569b252cd699d0a02e7c25ada5b4b223fb602d32dd1b5784ee7d0857026f9f",
+    "src/settle/compute/monthly_pnl.py": "f83b2d510a0cd12f8f78a23cc4576cac36a6a6659cc510f5180e44e4cc3dc05e",
+    "src/settle/compute/non_msc.py": "f2147d227d2b043fc488a77e87e0f9848069ee930512880ee07532a3d5748f5a",
+    "src/settle/compute/prime_agent_revenue.py": "5a4f28fa668937c521beba3813b3b512a239af9af86b401f03ca9f24aca04b6f",
+    "src/settle/compute/reviewed_issuer_conversions.py": "40bb1a8a5ea20f3cbf1a67a3d39efdc0c05e3a206dc8eb19719a96c252ad70fd",
+    "src/settle/compute/savings_v2_liability.py": "0acada2f352b940f5ab4ffd047273bcd4867783753a0ee9fd0793e5bd5197ba7",
+    "src/settle/compute/sky_revenue.py": "59d83ec731df53a6f13c7289bc91eaa32871635935ee16df6a1e7671442cf025",
+    "src/settle/compute/sky_total.py": "16b72b88d03443959c1e3b32d59d5f29b7c69102b1f1b5b556cb0ff6891e55d7",
+    "src/settle/compute/sky_total_accrual.py": "5cb7c4bc0571d5221f2f49c6cfa64110712bd1861e20cc2ad084d23a9b12766a",
+    "src/settle/compute/snr_artifact.py": "28867cc5968b423340433280342c1146dcb2801c0838ad7aee3504edcfc94a60",
+    "src/settle/compute/spark_anchorage_correction.py": "f0d21417faaf3702dbbfacf6b6f7f3ab834b6cb035d604d1e7edacbdd1843f65",
+    "src/settle/compute/spark_anchorage_scenarios.py": "97862e6f36b3c2c74cc0c31394f4ec234027a9ba40eaa44c6513fea6e274ad50",
+    "src/settle/compute/spark_arbitrum_spells.py": "212089e57bf1ba6fb1db327ad00729b17c21e546235fbf6f13d9aa7f2a55b7cd",
+    "src/settle/compute/spark_b2c2_capital.py": "4c5619019648df7c7a43fb0e62ee737c4e1522dedde26ce1f2667191cadcef5d",
+    "src/settle/compute/spark_base_withdrawals.py": "26fa97715d2ff1d92fd48fe8bbd238dd59594a69952652018082e2367dbf1f4e",
+    "src/settle/compute/spark_binance_capital.py": "c07dcd8b3e8834b49a7a10e86ec6bcc598bf4788d55bfb1a57c639422fc23898",
+    "src/settle/compute/spark_buidl_redemptions.py": "a6c41e7fb2f4bd76025beeea194f175458f686578189e0b207cc13a2c361bf64",
+    "src/settle/compute/spark_buidl_subscriptions.py": "8da91b2d876a5f0c7c33849218f91b5002084a14e31dfa9765bc9952b0025942",
+    "src/settle/compute/spark_early_base_seed.py": "dd7751631fc8d30d84ce3745733098449165d524f6e0677105fc1f721b143fd1",
+    "src/settle/compute/spark_june_op_uni_routes.py": "dc7eb1caad86b4eaf3ac87bc5b1cfa82012ae64d853f8c83786a2669576e1426",
+    "src/settle/compute/spark_native_seed.py": "b4d864cfdc4fb4037873e36f833a99005fbd380fa0e8468ef44302cb9ba60e3b",
+    "src/settle/compute/spark_op_uni_withdrawals.py": "45d8621ace1608665542bf1fa618b51f73c19daec99f7eda4b38d7548a14be99",
+    "src/settle/compute/spark_par_swap_gains.py": "0208c01480967deaee52c286db76e5d99f4a3380be7312fbf07fe81ad22e7e7e",
+    "src/settle/compute/spark_paxos_capital.py": "7773ba485872ec9216defc66d91b941362d081a5afe022803e3718bfce3bed15",
+    "src/settle/compute/spark_reserve_gifts.py": "02c7e7e95209ca6b9806654754eac86b720b407eb565177710b1f8e1d9911134",
+    "src/settle/compute/spark_separate_savings_routes.py": "b25d18262d1bec6be017d21594c9b7b0088c119b28a46ada778ab4a13c53c029",
+    "src/settle/compute/spark_subproxy_reserve_gifts.py": "a18611a481c5bdb19c1baf23636287ce84195eb2565b191ad44d82b68b438a5f",
+    "src/settle/compute/spark_uscc_capital.py": "8c0e1da0b6344e9ace5a9a468c87d428550b6c5989d4cef646bd74fa7e0564cb",
+    "src/settle/compute/spark_ustb_capital.py": "1f493e6fee7f2cec7c764736db21259deb20401155b4cf1627ab7da1fd4e0287",
+    "src/settle/compute/tmf.py": "f68b4fc12c664cf935f3099b78a713049fe9b60c2e40d4b4707648c26580fb9a",
+    "src/settle/compute/tmf_history.py": "97e743ddf967cc5c69e472fc4d709f104db9d0e28321e3082cc58bca109823a7"
+  }
+}

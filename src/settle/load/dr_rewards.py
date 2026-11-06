@@ -16,9 +16,10 @@ a group total is the sum of that prime's codes. For a requested (prime,
 month) we read that month's column for the prime's codes and return the
 per-ref-code breakdown plus the summed total.
 
-A ref code present in the workbook but absent from the config is logged at
-ERROR with its dollar amount and excluded — new codes cannot silently vanish
-from a settlement, nor be silently attributed to the wrong prime.
+A ref code present in the workbook but absent from the config aborts the load
+with its dollar amount — new codes cannot silently vanish from a settlement,
+nor be silently attributed to the wrong prime. Deliberate non-payment remains
+possible only through an explicit entry under ``unattributed:``.
 
 Reporting-time enrichment only: ``enrich_with_dr`` populates
 ``MonthlyPnL.distribution_rewards`` (+ keeps the ``monthly_pnl`` invariant)
@@ -54,6 +55,17 @@ def _dec(v) -> Decimal:
     if v is None or v == "":
         return Decimal("0")
     return Decimal(str(v))
+
+
+def _ref_code(v) -> str:
+    """Stable string form for YAML/CSV codes and numeric Excel cells."""
+    if isinstance(v, bool):
+        return str(v).strip()
+    if isinstance(v, int):
+        return str(v)
+    if isinstance(v, float) and v.is_integer():
+        return str(int(v))
+    return str(v).strip()
 
 
 def _dr_retired_from() -> dict[str, str]:
@@ -187,6 +199,43 @@ def _col_for(header: tuple, label: str) -> int | None:
     return None
 
 
+def _validate_ref_codes(
+    rows: tuple, month: str, owner: dict[str, str], unattributed: frozenset,
+) -> tuple[int, int | None]:
+    """Validate the upstream code universe before selecting any one prime.
+
+    This must run even for a prime with no DR mapping or one retired for the
+    requested month; otherwise a partial settlement job could bypass the
+    unknown-code guard merely because it did not happen to render an active
+    mapped prime.
+    """
+    header = rows[0]
+    ref_col = _col_for(header, "ref_code")
+    if ref_col is None:
+        raise ValueError(f"DR sheet {_SHEET!r} has no 'ref_code' column")
+    month_col = _col_for(header, month)
+    unknown: dict[str, Decimal] = {}
+    for row in rows[1:]:
+        ref = row[ref_col] if len(row) > ref_col else None
+        if ref is None:
+            continue
+        code = _ref_code(ref)
+        if not code or code.lower() == "total" or code in owner or code in unattributed:
+            continue
+        amount = (_dec(row[month_col]) if month_col is not None and len(row) > month_col
+                  else Decimal("0"))
+        unknown[code] = unknown.get(code, Decimal("0")) + amount
+    if unknown:
+        amount = sum(unknown.values(), Decimal("0"))
+        details = ", ".join(f"{c} (${a:,.2f})" for c, a in sorted(unknown.items()))
+        raise ValueError(
+            f"DR {month}: {len(unknown)} ref code(s) in {_SHEET} are absent "
+            f"from {_REF_CODE_MAP_REL} — ${amount:,.2f} total: {details}. "
+            "Add each to a prime or explicitly to `unattributed:`."
+        )
+    return ref_col, month_col
+
+
 def load_dr(prime_id: str, month: str) -> dict | None:
     """DR for ``(prime_id, month='YYYY-MM')``.
 
@@ -199,6 +248,14 @@ def load_dr(prime_id: str, month: str) -> dict | None:
     leaving it in place.
     """
     owner, unattributed = _ref_code_map()
+    from .dr_snapshot import snapshot_rows
+
+    rows = snapshot_rows(_repo_root(), month)
+    if rows is None:
+        rows = _summary_rows()
+    ref_col = col = None
+    if rows:
+        ref_col, col = _validate_ref_codes(rows, month, owner, unattributed)
     if prime_id not in set(owner.values()):
         return None
 
@@ -215,41 +272,27 @@ def load_dr(prime_id: str, month: str) -> dict | None:
         )
         return {"total": Decimal("0"), "rows": [], "month": month}
 
-    from .dr_snapshot import snapshot_rows
-
-    rows = snapshot_rows(_repo_root(), month)
-    if rows is None:
-        rows = _summary_rows()
     if not rows:
         return None
-
     header = rows[0]
-    col = _col_for(header, month)
     if col is None:
         log.warning(
             "DR sheet %r has no column for month %s — skipping DR for %s",
             _SHEET, month, prime_id,
         )
         return None
-    ref_col = _col_for(header, "ref_code")
-    if ref_col is None:
-        log.warning("DR sheet %r has no 'ref_code' column — skipping", _SHEET)
-        return None
     notes_col = _col_for(header, "notes")  # resolved by label, not a magic index
 
     out_rows: list[dict] = []
-    unknown: list[tuple[str, Decimal]] = []
     for row in rows[1:]:
         ref = row[ref_col] if len(row) > ref_col else None
         if ref is None:
             continue
-        code = str(ref).strip()
+        code = _ref_code(ref)
         if not code or code.lower() == "total":
             continue
         who = owner.get(code)
         if who is None:
-            if code not in unattributed:
-                unknown.append((code, _dec(row[col])))
             continue
         if who != prime_id:
             continue
@@ -259,20 +302,6 @@ def load_dr(prime_id: str, month: str) -> dict | None:
             "amount": _dec(row[col]),
             "notes": str(notes).strip() if notes else "",
         })
-
-    if unknown:
-        # Loud on purpose: an unmapped code is DR that reaches no prime. It is
-        # either a genuine new referral needing an owner, or a deliberate
-        # exclusion that belongs in `unattributed:`. Silence would let real
-        # money disappear between the workbook and the settlement.
-        log.error(
-            "DR %s: %d ref code(s) in %s are absent from %s and were EXCLUDED "
-            "— $%s total for this month: %s. Add each to a prime or to "
-            "`unattributed:`.",
-            month, len(unknown), _SHEET, _REF_CODE_MAP_REL,
-            f"{sum((a for _, a in unknown), Decimal('0')):,.2f}",
-            ", ".join(f"{c} (${a:,.2f})" for c, a in unknown),
-        )
 
     if not out_rows:
         return None

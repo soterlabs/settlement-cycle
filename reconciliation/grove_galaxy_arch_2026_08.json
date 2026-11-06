@@ -1,0 +1,97 @@
+{
+  "prime": "grove",
+  "period": "2026-08",
+  "base_commit": "82b8fcb",
+  "input_hashes": {
+    "/tmp/pr215-grove-eoa/history.jsonl.gz": "c05b53815379f6f7a4d9f6195d819d09ddb542f8f279af5f4defe4b7b3295474",
+    "settlements/grove/2026-08/provenance.json": "d6fb40d3c43caf3bdc7d0983b7ff071433ad056d22825b9f0f19eeb9d3af3aa9",
+    "/tmp/pr215-resumed-grove/idle_deductions.json": "e6b13f9b30816b2f8e9325f222aa9c889ff68cdf182205f4c54576d929faf427",
+    "/tmp/pr215-resumed-grove/debt-control.json": "6214144465cad85e59e3cd7c075925fad2f5bdc2131428ea4e6f769b57d9280b",
+    "/tmp/pr215-resumed-grove/deduction-owners.json": "dad2cf619d5dc65a26721aaf1fe3938136bb512212bf427a2e5aa56531f58153"
+  },
+  "canonical_totals": {
+    "deposited": "49900000",
+    "principal_returned": "31992165.21",
+    "outstanding_deposited_principal": "17907834.79"
+  },
+  "before": {
+    "unmatched_receipts": 57,
+    "unmatched_outflows": 262,
+    "eligible_allocation_cost": "1233.513467956631497028953141"
+  },
+  "after": {
+    "unmatched_receipts": 53,
+    "unmatched_outflows": 260,
+    "eligible_allocation_cost": "1233.513467956631497028953141"
+  },
+  "allocation": {
+    "venue_id": "E21",
+    "basis_status": "unresolved",
+    "basis_detail": "Unmatched funding receipts in account history",
+    "borrowed_principal_som": "26859551.91021097571248123761",
+    "borrowed_principal_eom": "17311407.44909819450298641936",
+    "borrowed_principal_average": "20715421.11718477149339778010",
+    "cost_of_funds": null,
+    "modeled_cost_of_funds": "64225.01812024870491278487484",
+    "modeled_cost_of_funds_by_ilk": {
+      "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "64225.01812024870491278487484"
+    },
+    "net_pnl": null,
+    "gross_apy": "0.099403155345897964187773680187091480545",
+    "net_apy": null,
+    "borrowed_principal_average_by_ilk": {
+      "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": "20715421.11718477149339778011"
+    },
+    "cost_of_funds_by_ilk": null,
+    "revenue_available": true
+  },
+  "per_ilk_reconciliation": {
+    "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+      "global_cost": "3708820.107055825781021080592",
+      "msc_cost": "259878.1170265572840543147882",
+      "allocation_cost": "0",
+      "global_excluding_msc": "3448941.990029268496966765804",
+      "difference": "-3448941.990029268496966765804",
+      "within_one_cent": false,
+      "complete": false,
+      "source_complete": false,
+      "bounds_use_verified_deduction_owners": true,
+      "diagnostic_cost_bounds": {
+        "lower": "-3866272.97247853938882788409734789355108205841950225026846710",
+        "upper": "3448941.99002926849696676580416084319370638238644478031610200"
+      },
+      "target_distance_from_bounds": "0",
+      "target_within_bounds_to_one_cent": true,
+      "bounds_note": "Containment is not reconciliation; unresolved routes remain unverified"
+    },
+    "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+      "global_cost": "11784.73727045625525471486130",
+      "msc_cost": "0E-32",
+      "allocation_cost": "1233.513467956631497028953141",
+      "global_excluding_msc": "11784.73727045625525471486130",
+      "difference": "-10551.22380249962375768590816",
+      "within_one_cent": false,
+      "complete": false,
+      "source_complete": false,
+      "bounds_use_verified_deduction_owners": true,
+      "diagnostic_cost_bounds": {
+        "lower": "8228.95004232382178209164317337042010690526879254391009537913",
+        "upper": "11784.7372704562552547148612968949528875509721436267419"
+      },
+      "target_distance_from_bounds": "3.1050471124490278563732581E-24",
+      "target_within_bounds_to_one_cent": true,
+      "bounds_note": "Containment is not reconciliation; unresolved routes remain unverified"
+    }
+  },
+  "removed_receipts": {
+    "ethereum:0x10b2759ce45c535e5f374b178613c5693fa5abdcdc30d2af13018ebc69bb7e1a": "3591655.48",
+    "ethereum:0x8d0b6c1e199b8f1504b69b9aad5ba3b78eccf3699e0d176d97e44ddbeb0590fa": "18721388.15",
+    "ethereum:0xf0d63ee761c6a0f86dd1fd1c96aeb708fb208a568ad3389c146f79f6f36a2a77": "4729780.41",
+    "ethereum:0xd7a04ea7e6aef2519bb177da44444482a58bcb9d15c932100b5cdfb64581adeb": "4949341.17"
+  },
+  "removed_outflows": {
+    "ethereum:0xc3aa67c5974286c05ba8fb0013f456897efc5036056d6afb3f8581d8fda81c2b:stac-subscription": "1000",
+    "ethereum:0x823b37638a0aef78a6cd9bdca6d091c06f78464e44e11dc49028be936828f868": "49899000"
+  },
+  "limits": "Modeled borrowing costs remain unresolved due to earlier funding uncertainty. Actual paid capital replaces no published revenue or notional report value."
+}

@@ -1,0 +1,380 @@
+{
+  "scope": "Exact existing published dollar deductions versus conditional modeled deductions; no published value changed",
+  "modeled_cost_credits": {
+    "sde": "306173.870050131983979725093024415496755801856876682434453638",
+    "venue_idle": "1402873.11272100640991493203880988398836073388176719253386642",
+    "excluded_account_basis": "184830.586876644577391593942085418371542037135319829292945387"
+  },
+  "published_cost_credits": {
+    "alm_usds": "279441.295078600967680967645869664549018199520226681880324955",
+    "psm_usds": "32445.8868067642870136685929556526767314214542214726429162001",
+    "sde_av": "343536.597947707890894914011381881781763766839850740216104250",
+    "curve_idle": "159930.922663911129190382340714589148880519716855926452641493",
+    "lending_idle": "1234791.09788544510766878790922835202584818249447091999792357",
+    "basin_idle": "0E-64"
+  },
+  "modeled_minus_published": "-156268.23073464641116246942623042232558351715166203692864502",
+  "modeled_credits_by_venue": {
+    "S1": {
+      "sde": "0E-115",
+      "venue_idle": "903618.651236414358277491112883131654807368134557890737180837"
+    },
+    "S2": {
+      "sde": "0E-118",
+      "venue_idle": "0E-64"
+    },
+    "S3": {
+      "sde": "0E-116",
+      "venue_idle": "0E-64"
+    },
+    "S4": {
+      "sde": "0E-115",
+      "venue_idle": "331172.446649030749391296796345220371040814359913029260742734"
+    },
+    "S5": {
+      "sde": "0E-116",
+      "venue_idle": "0E-64"
+    },
+    "S6": {
+      "sde": "0E-127",
+      "venue_idle": "0E-64"
+    },
+    "S7": {
+      "sde": "0E-134",
+      "venue_idle": "0E-64"
+    },
+    "S8": {
+      "sde": "0E-125",
+      "venue_idle": "0E-64"
+    },
+    "S9": {
+      "sde": "0E-123",
+      "venue_idle": "0E-64"
+    },
+    "S10": {
+      "sde": "0E-118",
+      "venue_idle": "0E-64"
+    },
+    "S11": {
+      "sde": "0E-123",
+      "venue_idle": "0E-64"
+    },
+    "S65": {
+      "sde": "0E-130",
+      "venue_idle": "0E-64"
+    },
+    "S12": {
+      "sde": "0E-124",
+      "venue_idle": "0E-64"
+    },
+    "S13": {
+      "sde": "0E-127",
+      "venue_idle": "0E-64"
+    },
+    "S14": {
+      "sde": "0E-129",
+      "venue_idle": "0E-64"
+    },
+    "S15": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S16": {
+      "sde": "0E-122",
+      "venue_idle": "0E-64"
+    },
+    "S17": {
+      "sde": "0E-127",
+      "venue_idle": "0E-64"
+    },
+    "S18": {
+      "sde": "0E-116",
+      "venue_idle": "0E-64"
+    },
+    "S19": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S20": {
+      "sde": "0E-129",
+      "venue_idle": "0E-64"
+    },
+    "S21": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S22": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S23": {
+      "sde": "0E-115",
+      "venue_idle": "0E-64"
+    },
+    "S24": {
+      "sde": "0.00204397912042841123695394374390342323621191915309855207031029",
+      "venue_idle": "0E-64"
+    },
+    "S25": {
+      "sde": "0E-123",
+      "venue_idle": "0.00631273749787696666294850208484751779415692570842536013847208"
+    },
+    "S61": {
+      "sde": "190754.243861092501118062773035616352822589763290563162653991",
+      "venue_idle": "120105.592614908359464882804610587547186891549507123935627221"
+    },
+    "S62": {
+      "sde": "115419.624145060362433251083034855400029788857374200118701094",
+      "venue_idle": "39825.3237362652718485328731541702804273516660158929710822566"
+    },
+    "S26": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S27": {
+      "sde": "0E-121",
+      "venue_idle": "0E-64"
+    },
+    "S28": {
+      "sde": "0E-115",
+      "venue_idle": "0E-64"
+    },
+    "S64": {
+      "sde": "0E-115",
+      "venue_idle": "0E-64"
+    },
+    "S29": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S30": {
+      "sde": "0E-135",
+      "venue_idle": "0E-64"
+    },
+    "S31": {
+      "excluded_account_basis": "9.42784198679781341808953960497468812968763471708978447106789"
+    },
+    "S32": {
+      "sde": "0E-115",
+      "venue_idle": "0E-64"
+    },
+    "S34": {
+      "sde": "0E-126",
+      "venue_idle": "0E-64"
+    },
+    "S35": {
+      "sde": "0E-126",
+      "venue_idle": "0E-64"
+    },
+    "S36": {
+      "sde": "0E-121",
+      "venue_idle": "0E-64"
+    },
+    "S37": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S38": {
+      "excluded_account_basis": "0E-64"
+    },
+    "S39": {
+      "sde": "0E-121",
+      "venue_idle": "0E-64"
+    },
+    "S41": {
+      "sde": "0E-126",
+      "venue_idle": "0E-64"
+    },
+    "S42": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S43": {
+      "sde": "0E-116",
+      "venue_idle": "0E-64"
+    },
+    "S44": {
+      "excluded_account_basis": "184821.159034657779578175852545813396853907447685112203160916"
+    },
+    "S45": {
+      "sde": "0E-122",
+      "venue_idle": "0E-64"
+    },
+    "S47": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S48": {
+      "excluded_account_basis": "0E-64"
+    },
+    "S49": {
+      "sde": "0E-121",
+      "venue_idle": "0E-64"
+    },
+    "S51": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S52": {
+      "excluded_account_basis": "0E-64"
+    },
+    "S53": {
+      "sde": "0E-118",
+      "venue_idle": "0E-64"
+    },
+    "S54": {
+      "sde": "0E-124",
+      "venue_idle": "0E-64"
+    },
+    "S55": {
+      "sde": "0E-122",
+      "venue_idle": "0E-64"
+    },
+    "S56": {
+      "excluded_account_basis": "0E-64"
+    },
+    "S57": {
+      "excluded_account_basis": "0E-64"
+    },
+    "S59": {
+      "excluded_account_basis": "0E-64"
+    },
+    "S60": {
+      "excluded_account_basis": "0E-64"
+    },
+    "S63": {
+      "excluded_account_basis": "0E-64"
+    },
+    "S66": {
+      "sde": "0E-115",
+      "venue_idle": "8151.09217165017305576178886827205005079037761632992080797750"
+    },
+    "S_B2C2_ENTRY": {
+      "sde": "0E-120",
+      "venue_idle": "0E-64"
+    },
+    "S_BASE_JUNE_NATIVE_PENDING_1": {
+      "sde": "0E-120",
+      "venue_idle": "0E-64"
+    },
+    "S_BASE_JUNE_NATIVE_PENDING_2": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S_BASE_NATIVE_PENDING_1": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S_BASE_NATIVE_PENDING_2": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S_BASE_SEED_PENDING_22574629_5875eee1": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S_BASE_SEED_PENDING_22574629_820c137f": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S_BASE_SEED_PENDING_23094080_5875eee1": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S_BASE_SEED_PENDING_24993830_820c137f": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S_BINANCE_OTC": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S_NATIVE_SEED_PENDING_1": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S_NATIVE_SEED_PENDING_2": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S_NATIVE_SEED_PENDING_3": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S_NATIVE_SEED_PENDING_4": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S_OPTIMISM_NATIVE_PENDING_1": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S_OPTIMISM_NATIVE_PENDING_2": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S_OPTIMISM_NATIVE_PENDING_JUNE_1": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S_OPTIMISM_NATIVE_PENDING_JUNE_2": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S_PAXOS_PYUSD_USDC": {
+      "sde": "0E-123",
+      "venue_idle": "0E-64"
+    },
+    "S_SPELL_SEED_PENDING_ARBITRUM_309427868": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S_SPELL_SEED_PENDING_ARBITRUM_309427869": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S_SPELL_SEED_PENDING_ARBITRUM_423020159": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S_SPELL_SEED_PENDING_BASE_26808230": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S_SPELL_SEED_PENDING_OPTIMISM_146616304": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S_UNICHAIN_NATIVE_PENDING_1": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S_UNICHAIN_NATIVE_PENDING_2": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S_UNICHAIN_NATIVE_PENDING_JUNE_1": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    },
+    "S_UNICHAIN_NATIVE_PENDING_JUNE_2": {
+      "sde": "0E-64",
+      "venue_idle": "0E-64"
+    }
+  },
+  "input_hashes": {
+    "/tmp/pr215-spark-v1-projected-financing.json.gz": "49ba4f0e5ddff72861626b3fc0dea26006da05778bbf7437eda13441016dfe0a",
+    "/tmp/pr215-spark-v1-ledger.pickle.gz": "c5f1ef6783b65696dd47a53d7790c0e3a60c6b8b7c4e2d3e645d77fd5951d120",
+    "/tmp/pr215-spark-v1-history.jsonl.gz": "b25577063d8e5e361bf0efe5874c9c2c40f9783af183e78e59476e1826105d7c",
+    "settlements/spark/2026-08/provenance.json": "b989d9e8ea02064ffb8519a23502f2b9c7210a4bb05c3d626c6386956fc9c781",
+    "/tmp/pr215-resumed-spark/idle_deductions.json": "1bb41a9cffe47dd62970861f41e3d6e51a1f5fc81da7ccdb6feca346b842b3a4"
+  },
+  "adjustment_components": {
+    "modeled_excluded_account_credit_minus_global_alm_credit": "-94610.708201956390289373703784246177476162384906852587379568",
+    "global_psm_usds_credit_outside_named_rows": "-32445.8868067642870136685929556526767314214542214726429162001",
+    "aggregate_sde_credit_beyond_published_per_venue_rows": "-37362.727897575906915188918357466285007964982974057781650612",
+    "additional_s66_idle_credit": "8151.09217165017305576178886694281363203167044034608330136"
+  },
+  "sde_scope_note": "compute_sky_revenue_daily adds PSM USDC to aggregate SDE; monthly_pnl.sde_daily_breakdown contains venue rows only. The aggregate-minus-venue daily difference is measured from the frozen report, not independently re-fetched PSM balances.",
+  "derivation": "For each published day, use daily_sky_rev / utilized. Multiply modeled per-venue exemptions and published global deduction bases by that same daily rate. Sum each independently, then subtract global credits from modeled credits; verify against the existing numerical bridge to 1e-8 USDS."
+}

@@ -214,3 +214,23 @@ def test_art_at_or_before_zero_before_history_and_on_empty():
     assert _art_at_or_before(df, date(2026, 3, 1)) == Decimal("0")
     empty = pd.DataFrame({"block_date": [], "cum_debt": []})
     assert _art_at_or_before(empty, date(2026, 3, 1)) == Decimal("0")
+
+
+def test_daily_per_ilk_components_sum_to_unchanged_global_debt(config_dir, monkeypatch):
+    from dataclasses import replace
+
+    from settle.extract import rpc
+
+    second = b'SECOND'.ljust(32, b'\0')
+    prime = replace(_obex(config_dir), extra_ilks=(second,))
+    day = date(2026, 4, 1)
+    src = MockDebtSource(pd.DataFrame({'block_date': [day], 'daily_dart': [Decimal(100)],
+                                     'cum_debt': [Decimal(100)]}))
+    monkeypatch.setattr(rpc, 'ilk_rate', lambda chain, vat, ilk, block:
+                        2 * 10**27 if ilk == second else 10**27)
+    out = get_debt_timeseries(prime, Period(day, day, pin_blocks={Chain.ETHEREUM: 1001}),
+                             source=src, block_resolver=_MockBlockResolver({day: 1001}))
+    components = out.attrs['daily_debt_by_ilk']
+    assert components['0x' + prime.ilk_bytes32.hex()][day] == Decimal(100)
+    assert components['0x' + second.hex()][day] == Decimal(200)
+    assert sum(values[day] for values in components.values()) == out.iloc[0]['cum_debt'] == Decimal(300)

@@ -226,7 +226,7 @@ Largest counterparty set (55 rows after filter). Sorted by total_usd descending.
 | `0x0000…0000` | mint (sparkUSDC, fsUSDS, sUSDS, aBasUSDC) | 3,890,170,780 | 0 | 6 tokens |
 | `0xe45b133ddc64be80252b0e9c75a8e74ef280eed6` | USDC outbound (pre-sparkUSDC market) | 0 | 3,856,026,631 | USDC |
 | `0x1601843c5e9bc251a3272907010afa41fa18347e` | **Spark Ethereum ALM** (cross-chain hub, $2.1B) | 1,042,428,629 | 1,090,330,628 | USDC, USDS, sUSDS |
-| `0x2e1b01adabb8d4981863394bea23a1263cbaedfc` | MORPHO rewards claim | 1,126,437 | 1,317,193 | MORPHO, USDC |
+| `0x2e1b01adabb8d4981863394bea23a1263cbaedfc` | Spark liquidation multisig (see correction below) | 1,126,437 | 1,317,193 | MORPHO, USDC |
 | `0xf057afeec22e220f47ad4220871364e9e828b2e9` | MORPHO rewards inbound | 1,201,924 | 0 | MORPHO |
 | `0x5400dbb270c956e8985184335a1c62aca6ce1333` | MORPHO rewards inbound | 215,593 | 0 | MORPHO |
 | `0x3ef3d8ba38ebe18db133cec108f4d14ce00dd9ae` | MORPHO rewards inbound | 159,408 | 0 | MORPHO |
@@ -264,7 +264,7 @@ Largest counterparty set (55 rows after filter). Sorted by total_usd descending.
 | `0x420f5035fd5dc62a167e7e7f08b604335ae272b8` | USDC outbound | 0 | 754,408,589 | USDC |
 | `0x0000…0000` | mint (aAvaUSDC) | 713,240,976 | 0 | USDC, aAvaUSDC |
 | `0x625e7708f30ca75bfd92586e17077590c60eb4cd` | USDC routing | 53,287,584 | 53,195,868 | USDC |
-| `0x2e1b01adabb8d4981863394bea23a1263cbaedfc` | MORPHO rewards claim (same as Spark Base) | 76,615 | 0 | USDC |
+| `0x2e1b01adabb8d4981863394bea23a1263cbaedfc` | Spark liquidation multisig (same as Spark Base) | 76,615 | 0 | USDC |
 
 ---
 
@@ -287,7 +287,7 @@ Five distinct addresses with >$500M flow each that are not obviously venue-label
 3. **Spark ETH ↔ Spark Avalanche** — `0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d` is a counterparty on both ($3.3B on ETH, $1.3B on Avax). LayerZero OFT endpoint.
 4. **`0xd1917664be3fdaea377f6e8d5bf043ab5c3b1312`** — appears as >$500M USDC outbound sink on both Grove ETH and Spark ETH. Unidentified but clearly shared infra.
 5. **`0xfd78ee919681417d192449715b2594ab58f5d002`** — USDC outbound on both Grove ETH ($88M) and Grove Base ($19M). Likely a Grove-specific routing contract.
-6. **`0x2e1b01adabb8d4981863394bea23a1263cbaedfc`** — appears on Spark Base and Spark Avalanche as a MORPHO-rewards-related counterparty. Likely the Morpho Universal Rewards Distributor.
+6. **`0x2e1b01adabb8d4981863394bea23a1263cbaedfc`** — is the Spark liquidation multisig, not a Morpho Universal Rewards Distributor. See the primary-source correction below; individual cash purposes still require evidence.
 7. **PayPal → Spark PYUSD** ($677M aggregate) arrived mostly via mint from `0x0000…0000` (PYUSD issuance) and a small `0xfc0539d0…45e87` feeder — not via a direct EOA transfer from PayPal. Consistent with PYUSD issuance mechanics (Paxos mints on demand).
 
 ## Methodology
@@ -308,3 +308,21 @@ Full SQL in Dune query [7357558](https://dune.com/queries/7357558). Uses `tokens
 - **Labels are best-effort.** Address labelling is cross-referenced against stars-api allocation addresses and known Sky contracts. Unresolved counterparties need eth_call / contract-source inspection to confirm.
 - **Spam filter is a blunt instrument.** `$1k` cutoff may hide legitimate dust flows (gas top-ups, initial deposits). The Avalanche gas-funder entries are just above the threshold.
 - **Snapshot-in-time.** This file is a point-in-time dump. Regenerate by re-executing query 7357558 when needed.
+
+
+## October 8 correction: Spark liquidation multisig
+
+The address `0x2e1b01adabb8d4981863394bea23a1263cbaedfc` is explicitly named
+as Spark's multisig in the [August 11, 2025 MORPHO transfer governance poll](https://vote.sky.money/polling/QmP8NVR5)
+and as its liquidation multisig in the [September 22, 2025 SYRUP transfer poll](https://vote.sky.money/polling/QmSaMJWy).
+The earlier URD hypothesis above was incorrect. This correction changes the
+counterparty identity, not the historical transfer totals or accounting.
+
+Two Base receipts currently awaiting purpose classification are
+[779,893.018620 USDC on December 3, 2025](https://basescan.org/tx/0xd24946f38a7bb9c627225c7c3de5e53ca44342bac264a9bf3a9a9eef01e63260)
+and [346,540.645157 USDC on December 12, 2025](https://basescan.org/tx/0xd2f0a0c9e7a016dc26609a48b54a95b6fc92c85d287069d15efadafb93a9e7e0).
+Both are direct payments from that multisig to Spark's Base ALM. Their sender's
+identity alone does not authenticate a reward claim, distinguish liquidation
+proceeds from returned principal, or justify marking every future receipt as
+income. No commingled-wallet tracing or revenue allowlist was added. These two
+receipts remain explicit unresolved funding until their purpose is evidenced.

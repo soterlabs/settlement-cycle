@@ -1,0 +1,46 @@
+{
+  "scope": "Conditional numerical bridge only. Unknown receipts remain unclassified; modeled costs are not certified.",
+  "unknown_receipts": {
+    "ethereum:0xa4057fcff8a89336cfa43f5aa20e0b5b6fd462f237be5fdc895f7f4a7a0dd61f": "5.00",
+    "ethereum:0xaa14ae8b1efeffe57ca8ec7682cd8d3bd7217f1144d7e50f55b3cc3a4c83b070": "49591.00",
+    "ethereum:0x46bb2e33ba5b0f208043373f8f959c793b97f52b4b7bc615b7f78809c9fa0767": "1.00"
+  },
+  "by_ilk": {
+    "0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000": {
+      "global_excluding_msc": "3448941.990029268496966765804",
+      "modeled_allocation_cost": "3448147.745141816329245606023",
+      "outside_allocation_financing_by_account_type": {
+        "unallocated": "639.2203863511945778949723660",
+        "rounding": "0.00003181523447016996791833448232"
+      },
+      "debt_without_remaining_asset_basis_financing": "155.0244692857386730948373582",
+      "deduction_difference_financing": "0E-21",
+      "modeled_cost_inconsistency": "2E-21",
+      "unexplained_numerical_difference": "4E-21",
+      "numerical_bridge_within_one_cent": true,
+      "eligible_allocation_cost": "0"
+    },
+    "0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000": {
+      "global_excluding_msc": "11784.73727045625525471486130",
+      "modeled_allocation_cost": "11784.59397330482338634775780",
+      "outside_allocation_financing_by_account_type": {
+        "unallocated": "0.1432971514318683671004270010",
+        "rounding": "0E-32"
+      },
+      "debt_without_remaining_asset_basis_financing": "3.070194875151348706608377704E-21",
+      "deduction_difference_financing": "0E-60",
+      "modeled_cost_inconsistency": "0E-23",
+      "unexplained_numerical_difference": "0E-23",
+      "numerical_bridge_within_one_cent": true,
+      "eligible_allocation_cost": "11784.59397330482338634775780"
+    }
+  },
+  "input_hashes": {
+    "/tmp/pr215-grove-eoa/history.jsonl.gz": "c05b53815379f6f7a4d9f6195d819d09ddb542f8f279af5f4defe4b7b3295474",
+    "/tmp/pr215-grove-bounds-financing.json": "d8ac6a09a2e2ff0e676074717dc670a9649f459da2c2eb5f5f04d7ebae3ba642",
+    "settlements/grove/2026-08/provenance.json": "d6fb40d3c43caf3bdc7d0983b7ff071433ad056d22825b9f0f19eeb9d3af3aa9",
+    "/tmp/pr215-resumed-grove/debt-control.json": "6214144465cad85e59e3cd7c075925fad2f5bdc2131428ea4e6f769b57d9280b",
+    "/tmp/pr215-resumed-grove/idle_deductions.json": "e6b13f9b30816b2f8e9325f222aa9c889ff68cdf182205f4c54576d929faf427"
+  },
+  "realised_principal_loss_at_end": "50001.1218274931411156013226086733799700403002874918266314597"
+}
