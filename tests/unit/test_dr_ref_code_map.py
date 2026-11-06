@@ -152,6 +152,18 @@ def test_unknown_code_aborts_settlement_load(monkeypatch):
     assert "unattributed" in str(exc.value)
 
 
+def test_unknown_code_aborts_even_for_prime_without_dr(monkeypatch):
+    header = ("ref_code", "2026-06", "notes")
+    rows = (header, ("999999", 1.25, "brand new"))
+    monkeypatch.setattr(dr_rewards, "_summary_rows", lambda: rows)
+    monkeypatch.setattr(
+        dr_rewards, "_ref_code_map",
+        lambda: ({"128": "spark"}, frozenset()),
+    )
+    with pytest.raises(ValueError, match="999999"):
+        dr_rewards.load_dr("obex", "2026-06")
+
+
 def test_obex_has_no_dr():
     assert "obex" not in dr_rewards.dr_primes()
     assert dr_rewards.load_dr("obex", "2026-06") is None
