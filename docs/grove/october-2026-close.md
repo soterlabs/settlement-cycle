@@ -23,7 +23,7 @@ The final net settlement is **$38,944.45 plus October DR**, subject to validatin
 - DR submodule: `5695d82e54777ec5016c6197b8b55b6b5ca2d415`, latest merged main when checked; includes upstream PRs #29–#33. Its exclusive scan cutoff is still `2026-10-01`, and its workbook has no `2026-10` column.
 - Official SOFR: [NY Fed series via FRED](https://fred.stlouisfed.org/data/SOFR), retrieved November 6, 2026. All 21 required business-day observations are captured in `config/october_2026_official_reference_rates.json`; the calendar validates coverage for all 31 days. October 31 is a Saturday and correctly carries the October 30 observation.
 - All 31 daily borrowing-cost rows passed the canonical `validate_interest` reconciliation.
-- 37 configured Grove venues were processed: 33 settlement venues and four reporting-only venues.
+- The calculation processed Grove’s configured venues. Reporting-only revenue is excluded from MSC.
 - The configured Plume RPC rejected `eth_call` with HTTP 400 / JSON-RPC `-32601`. The [documented public Plume RPC](https://docs.plume.org/plume/developers/how-to-guides/how-to-connect-to-network/install-and-configure-wallet) served the historical read and was used for Plume. The original credentials file was unchanged.
 
 ### Block boundaries
