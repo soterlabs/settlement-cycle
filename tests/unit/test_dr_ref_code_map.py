@@ -164,6 +164,33 @@ def test_unknown_code_aborts_even_for_prime_without_dr(monkeypatch):
         dr_rewards.load_dr("obex", "2026-06")
 
 
+def test_integer_valued_excel_float_matches_configured_code(monkeypatch):
+    rows = (("ref_code", "2026-06", "notes"), (3017.0, 2.5, "Grove"))
+    monkeypatch.setattr(dr_rewards, "_summary_rows", lambda: rows)
+    monkeypatch.setattr(
+        dr_rewards, "_ref_code_map",
+        lambda: ({"3017": "osero"}, frozenset()),
+    )
+    out = dr_rewards.load_dr("osero", "2026-06")
+    assert out["total"] == Decimal("2.5")
+    assert out["rows"][0]["ref_code"] == "3017"
+
+
+def test_explicitly_unattributed_code_does_not_abort(monkeypatch):
+    rows = (
+        ("ref_code", "2026-06", "notes"),
+        ("128", 100, "Spark"),
+        ("99", 500, "deliberately unpaid"),
+    )
+    monkeypatch.setattr(dr_rewards, "_summary_rows", lambda: rows)
+    monkeypatch.setattr(
+        dr_rewards, "_ref_code_map",
+        lambda: ({"128": "spark"}, frozenset({"99"})),
+    )
+    out = dr_rewards.load_dr("spark", "2026-06")
+    assert out["total"] == Decimal("100")
+
+
 def test_obex_has_no_dr():
     assert "obex" not in dr_rewards.dr_primes()
     assert dr_rewards.load_dr("obex", "2026-06") is None

@@ -57,6 +57,17 @@ def _dec(v) -> Decimal:
     return Decimal(str(v))
 
 
+def _ref_code(v) -> str:
+    """Stable string form for YAML/CSV codes and numeric Excel cells."""
+    if isinstance(v, bool):
+        return str(v).strip()
+    if isinstance(v, int):
+        return str(v)
+    if isinstance(v, float) and v.is_integer():
+        return str(int(v))
+    return str(v).strip()
+
+
 def _dr_retired_from() -> dict[str, str]:
     """``{prime_id: 'YYYY-MM'}`` — first month in which the prime earns NO DR.
 
@@ -208,7 +219,7 @@ def _validate_ref_codes(
         ref = row[ref_col] if len(row) > ref_col else None
         if ref is None:
             continue
-        code = str(ref).strip()
+        code = _ref_code(ref)
         if not code or code.lower() == "total" or code in owner or code in unattributed:
             continue
         amount = (_dec(row[month_col]) if month_col is not None and len(row) > month_col
@@ -277,7 +288,7 @@ def load_dr(prime_id: str, month: str) -> dict | None:
         ref = row[ref_col] if len(row) > ref_col else None
         if ref is None:
             continue
-        code = str(ref).strip()
+        code = _ref_code(ref)
         if not code or code.lower() == "total":
             continue
         who = owner.get(code)
