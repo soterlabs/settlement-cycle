@@ -62,7 +62,7 @@ Its six January pending requests leave at least $453.37M on-wallet, so the
 full $325M deduction remained available and no January CoF credit is due.
 Without a known cash date, the legacy formal SDE end date remains inclusive.
 
-## Reproducible proposal, not a booked payment
+## Reproducible accepted adjustment
 
 Run offline from the repository root:
 
@@ -100,10 +100,16 @@ Evidence and output:
 | **Total from unrounded daily values** | | **78,530.06** |
 
 Monthly display rounding can differ by one cent from the unrounded total.
-The proposed settlement expression is `sky_adj: -78530.06`, reducing Grove's
-MSC debt mint rather than creating a separate Send to prime. **It is not added
-to settlement configuration.** Confirm the March settlement-day interpretation
-and all executed or off-report corrections with Grove before booking (G30).
-The original 2,508.55 credit remains in the September historical adjustment
-and is deducted exactly once in this proposal. Other BUIDL fee corrections,
-rebates, and fee markdowns are outside this CoF calculation.
+The operator accepted the signed CoF adjustment on November 6, 2026. Its
+settlement expression is `sky_adj: -78530.06`, reducing Grove's MSC debt mint
+rather than creating a separate Send to prime. The October earning-cycle
+configuration combines this with the accepted partner rebates: Sky
+1,141,145.80 USDS and Grove 915,857.20 USDS. The resulting October adjustments
+are `sky_adj: 1062615.74` and `sv_adj: 915857.20`.
+
+The original 2,508.55 credit remains in September's historical adjustment and
+is deducted exactly once in the accepted correction. G30 records the operator
+acceptance. Acceptance does not establish whether any additional off-report
+credits or previous rebate accruals exist; no such overlap has been identified
+in the records reviewed. MSC execution is separate from this configuration.
+See `settlements/grove/2026-10/reconciliation.md` for the combined bridge.

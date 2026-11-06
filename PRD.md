@@ -1166,6 +1166,18 @@ canonical pricing).
 
 ### 17.13 Open questions (priority-ordered)
 
+**G30 — operator decision, 2026-11-06.** Adopt the UTC closing-balance rule
+for SDE redemption claims, including removal on the actual cash-settlement
+date. The accepted March-September CoF correction is 78,530.06 USDS net of
+the recorded 2,508.55 credit and including the JAAA debit. October's MSC
+preview applies that relief with the accepted partner rebates: Sky rebate
+1,141,145.80, Grove rebate 915,857.20; net `sky_adj: 1062615.74` and
+`sv_adj: 915857.20`. Rebate payer identities are labeled **partner** in PR
+and settlement-report prose. Acceptance resolves the operator decision;
+it does not independently establish prior NAV recognition or executed
+payments. See `reconciliation/2026-10/` and `docs/grove/sde_inflight.md`.
+
+
 #### Methodology — resolved 2026-09: Keel earns no Distribution Rewards from 2026-08
 
 **Keel's DR is $0 from August 2026** (operator decision 2026-09). Keel is

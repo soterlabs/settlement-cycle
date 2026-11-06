@@ -1,8 +1,10 @@
 {
-  "status": "proposal_for_review_not_booked",
+  "status": "operator_approved",
+  "approved_on": "2026-11-06",
+  "settlement_month": "2026-10",
   "baseline_commit": "4860a406e60a6b88ca7e2c91b620bb3b5e7ee40a",
   "scope": "Grove Ethereum E8/E9/E10, identified March-September 2026 CoF timing corrections only",
-  "note": "Positive credit reduces Sky share/debt mint. Negative credit increases it. Published reports remain unchanged. Confirm executed/off-report credits before booking.",
+  "note": "Positive credit reduces Sky share/debt mint. Negative credit increases it. Operator approved the signed net adjustment on 2026-11-06; configured for the October earning cycle. Execution is not asserted.",
   "months": {
     "2026-03": {
       "gross_credit": "-33417.95249353024291212819467",
@@ -415,5 +417,5 @@
     }
   ],
   "additional_credit_unrounded": "78530.05713630497992381621261",
-  "proposed_sky_adj": "-78530.06"
+  "sky_adj": "-78530.06"
 }

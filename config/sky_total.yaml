@@ -108,6 +108,16 @@ msc_preview:
     # $165,013.90 here; their combined credit is $177,513.75, not two fees.
     grove: {sky_adj: -165013.90}
 
+
+  # Operator-approved 2026-11-06 for the October earning cycle (paid in
+  # November). Partner rebate allocations use the detailed statement figures.
+  # Sky: 1,141,145.80 partner rebate less 78,530.06 in-flight CoF relief.
+  # Grove: 915,857.20 partner rebate allocated to the supply-side share.
+  # The earlier 2,508.55 CoF credit is already deducted in the new relief.
+  # Sources: reconciliation/2026-10/{sde_inflight_cof,partner_rebates}.json.
+  '2026-10':
+    grove: {sky_adj: '1062615.74', sv_adj: '915857.20'}
+
 # ── Step 1 Capital actually PAID to the Core Council Buffer, per execution
 # month. Source: each MSC post's BA capital-allocations section (20% of the
 # cycle month's net revenue, split evenly Core Council / Fortification,

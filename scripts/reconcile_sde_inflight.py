@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Replay identified in-flight CoF corrections against immutable published rates.
 
-Offline and read-only by default. Does not regenerate settlements or book a
-payment. Includes known negative corrections and deducts prior recorded credits.
+Offline and read-only by default. Reproduces the operator-approved October MSC adjustment without executing
+a payment. Includes negative corrections and deducts prior recorded credits.
 Run: python scripts/reconcile_sde_inflight.py [--output reconciliation/...json]
 """
 from __future__ import annotations
@@ -108,12 +108,12 @@ def reconcile() -> dict:
                          'additional_credit': str(gross - prior),
                          'baseline_max_daily_error': str(max_baseline_error), **baseline}
     total = sum((D(row['additional_credit']) for row in months.values()), D(0))
-    return {'status': 'proposal_for_review_not_booked', 'baseline_commit': evidence['source']['baseline_commit'],
+    return {'status': 'operator_approved', 'approved_on': '2026-11-06', 'settlement_month': '2026-10', 'baseline_commit': evidence['source']['baseline_commit'],
             'scope': 'Grove Ethereum E8/E9/E10, identified March-September 2026 CoF timing corrections only',
-            'note': 'Positive credit reduces Sky share/debt mint. Negative credit increases it. Published reports remain unchanged. Confirm executed/off-report credits before booking.',
+            'note': 'Positive credit reduces Sky share/debt mint. Negative credit increases it. Operator approved the signed net adjustment on 2026-11-06; configured for the October earning cycle. Execution is not asserted.',
             'months': months, 'daily': sorted(daily, key=lambda r: r['date']),
             'additional_credit_unrounded': str(total),
-            'proposed_sky_adj': str((-total).quantize(D('0.01'), rounding=ROUND_HALF_UP))}
+            'sky_adj': str((-total).quantize(D('0.01'), rounding=ROUND_HALF_UP))}
 
 
 def main() -> None:

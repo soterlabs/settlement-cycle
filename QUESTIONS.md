@@ -26,20 +26,6 @@ below as compact pointers; the full narrative lives in `PRD.md §17`.
 ### P0 — material numerical gaps
 
 
-#### G30. Confirm outstanding SDE redemption CoF corrections before settlement
-
-The in-flight audit identifies JTRSY April/May and BUIDL May/August/September
-CoF gaps, plus an offsetting JAAA March settlement-day debit. The signed,
-frozen-rate replay proposes **78,530.06 USDS additional relief** to Grove after
-subtracting the **2,508.55 USDS** already recorded August 31 credit.
-
-Confirm with Grove that (1) the JAAA cash-day closing-balance treatment matches
-the agreed Atlas interpretation, and (2) no executed MSC or off-report credit
-already covers these specific windows. This is a proposal, not a booked payment.
-See [method and evidence](docs/grove/sde_inflight.md) and
-[per-day replay](reconciliation/2026-10/sde_inflight_cof.json).
-
-
 #### G28. Galaxy Warehouse — facility terms, maturity, and yield payer
 
 **Confirmed by Grove (2026-09):** the ~$304M wired off-chain in July 2026 is
@@ -1729,6 +1715,14 @@ Resolved questions move here from their open section when their GitHub
 issue is closed. The full resolution narrative lives in
 `PRD.md §17.13` (review-acks); this section keeps a compact pointer
 trail (Q-ID, title, close date, issue link).
+
+### G30. SDE redemption CoF corrections
+**Resolved by operator 2026-11-06:** accepted the signed **78,530.06 USDS**
+net CoF relief, including the JAAA settlement-day debit and deduction of the
+recorded 2,508.55 credit. Applied to the October earning cycle via MSC
+adjustments alongside the accepted partner rebate allocation. No execution
+or independent verification of off-report credits is asserted. See
+`PRD.md §17.13` and `docs/grove/sde_inflight.md`.
 
 ### S34. SparkLend reserve-factor sweeps to the ALM
 **Resolved 2026-09-23:** earned Spark revenue from the September 2026

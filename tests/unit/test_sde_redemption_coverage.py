@@ -160,7 +160,7 @@ def test_reconciliation_preserves_rates_and_prior_credit_without_network(monkeyp
     actual = module['reconcile']()
     recorded = json.loads((ROOT / 'reconciliation/2026-10/sde_inflight_cof.json').read_text())
     assert actual == recorded
-    assert actual['status'] == 'proposal_for_review_not_booked'
+    assert actual['status'] == 'operator_approved'
     assert D(actual['months']['2026-03']['additional_credit']) < 0  # include JAAA's extra relief
     assert actual['months']['2026-08']['already_recorded_credit'] == '2508.55'
     for month, values in actual['months'].items():
