@@ -45,6 +45,10 @@ def main():
     parser.add_argument("--block-resolver", choices=("hypersync", "rpc"), default="hypersync")
     parser.add_argument("--capture-only", action="store_true",
                         help="Save normalized principal inputs without funding-origin replay")
+    parser.add_argument("--checkpoint-size", type=int, default=1000,
+                        help="Transactions per atomic normalization checkpoint")
+    parser.add_argument("--no-checkpoints", action="store_true",
+                        help="Disable partial normalization reuse")
     parser.add_argument("--provenance", type=Path,
                         help="Use the existing settlement's exact closing block pins")
     args = parser.parse_args()
@@ -53,6 +57,11 @@ def main():
         for name in ("pins.json", "status.json", "result.json", "history.jsonl.gz")
     }:
         parser.error("provenance must not be overwritten by capture outputs")
+    if (args.provenance and not args.no_checkpoints and
+            args.provenance.resolve().is_relative_to((args.output_dir / "normalization").resolve())):
+        parser.error("provenance must be outside the normalization checkpoint directory")
+    if args.checkpoint_size <= 0:
+        parser.error("checkpoint-size must be positive")
     if args.start > args.end:
         parser.error("start must not be after end")
     if not os.environ.get("DATABASE_URL") or os.environ.get("HYPERSYNC_NO_STORE") == "1":
@@ -101,7 +110,14 @@ def main():
         history_key = fingerprint(prime, pins)
         history = load_history(history_path, history_key)
         if history is None:
-            history = fetch_capital_history(prime, pins, block_resolver=resolver)
+            from settle.extract.postgres_store import memoized_reads
+
+            with memoized_reads() as memo:
+                history = fetch_capital_history(
+                    prime, pins, block_resolver=resolver,
+                    checkpoint_dir=None if args.no_checkpoints else args.output_dir / "normalization",
+                    checkpoint_size=args.checkpoint_size)
+            logging.info("Normalization durable-cache memo: %s", memo)
             history = replace(history, unsupported={**history.unsupported, **omitted})
             save_history(history_path, history, history_key)
             logging.info("Saved normalized history before replay: %s", history_path)

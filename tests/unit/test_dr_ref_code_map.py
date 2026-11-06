@@ -5,7 +5,6 @@ workbook left silently unowned, and the group total == the sum of its codes.
 """
 from __future__ import annotations
 
-import logging
 from decimal import Decimal
 from pathlib import Path
 
@@ -30,6 +29,13 @@ def test_config_parses_and_has_no_duplicate_codes():
     assert not (set(owner) & set(unattributed)), (
         "a code cannot be both attributed and unattributed"
     )
+
+
+def test_recent_osero_custody_and_farm_codes_are_mapped():
+    owner, _ = dr_rewards._ref_code_map()
+    assert owner["3000"] == "osero"  # Yuzu looping account
+    assert owner["3009"] == "osero"  # gtSkyLooping
+    assert owner["3017"] == "osero"  # Grove Farm / Pendle Phase 1
 
 
 def test_duplicate_code_across_primes_raises(tmp_path, monkeypatch):
@@ -130,8 +136,8 @@ def test_prime_codes_are_disjoint_across_primes():
             seen[code] = prime
 
 
-def test_unknown_code_is_logged_at_error(monkeypatch, caplog):
-    """A workbook code with no config entry must be loud, not silent."""
+def test_unknown_code_aborts_settlement_load(monkeypatch):
+    """A workbook code with no config entry must fail, not be excluded."""
     header = ("ref_code", "2026-06", "notes")
     rows = (header, ("128", 100.0, ""), ("999999", 4242.42, "brand new"))
     monkeypatch.setattr(dr_rewards, "_summary_rows", lambda: rows)
@@ -139,12 +145,50 @@ def test_unknown_code_is_logged_at_error(monkeypatch, caplog):
         dr_rewards, "_ref_code_map",
         lambda: ({"128": "spark"}, frozenset()),
     )
-    with caplog.at_level(logging.ERROR):
-        out = dr_rewards.load_dr("spark", "2026-06")
-    assert out["total"] == Decimal("100.0")          # unknown code excluded
-    assert "999999" in caplog.text
-    assert "4,242.42" in caplog.text                  # amount named
-    assert "EXCLUDED" in caplog.text
+    with pytest.raises(ValueError) as exc:
+        dr_rewards.load_dr("spark", "2026-06")
+    assert "999999" in str(exc.value)
+    assert "4,242.42" in str(exc.value)
+    assert "unattributed" in str(exc.value)
+
+
+def test_unknown_code_aborts_even_for_prime_without_dr(monkeypatch):
+    header = ("ref_code", "2026-06", "notes")
+    rows = (header, ("999999", 1.25, "brand new"))
+    monkeypatch.setattr(dr_rewards, "_summary_rows", lambda: rows)
+    monkeypatch.setattr(
+        dr_rewards, "_ref_code_map",
+        lambda: ({"128": "spark"}, frozenset()),
+    )
+    with pytest.raises(ValueError, match="999999"):
+        dr_rewards.load_dr("obex", "2026-06")
+
+
+def test_integer_valued_excel_float_matches_configured_code(monkeypatch):
+    rows = (("ref_code", "2026-06", "notes"), (3017.0, 2.5, "Grove"))
+    monkeypatch.setattr(dr_rewards, "_summary_rows", lambda: rows)
+    monkeypatch.setattr(
+        dr_rewards, "_ref_code_map",
+        lambda: ({"3017": "osero"}, frozenset()),
+    )
+    out = dr_rewards.load_dr("osero", "2026-06")
+    assert out["total"] == Decimal("2.5")
+    assert out["rows"][0]["ref_code"] == "3017"
+
+
+def test_explicitly_unattributed_code_does_not_abort(monkeypatch):
+    rows = (
+        ("ref_code", "2026-06", "notes"),
+        ("128", 100, "Spark"),
+        ("99", 500, "deliberately unpaid"),
+    )
+    monkeypatch.setattr(dr_rewards, "_summary_rows", lambda: rows)
+    monkeypatch.setattr(
+        dr_rewards, "_ref_code_map",
+        lambda: ({"128": "spark"}, frozenset({"99"})),
+    )
+    out = dr_rewards.load_dr("spark", "2026-06")
+    assert out["total"] == Decimal("100")
 
 
 def test_obex_has_no_dr():

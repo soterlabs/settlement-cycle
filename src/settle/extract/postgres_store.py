@@ -22,6 +22,7 @@ Schema in ``db/schema.sql``; apply with::
 from __future__ import annotations
 
 import base64
+import json
 import logging
 import math
 import os
@@ -30,6 +31,8 @@ import threading
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
+
+from .postgres_read_memo import active_memo, memoized_reads  # noqa: F401
 
 _log = logging.getLogger(__name__)
 
@@ -334,6 +337,13 @@ def get(source: str, args_hash: str) -> Any:
     if conn is None:
         _unavailable()
         return MISS
+    memo = active_memo()
+    database_url = os.environ.get("DATABASE_URL")
+    memo_key = (source, args_hash)
+    if memo is not None:
+        remembered = memo.get(conn, database_url, memo_key)
+        if remembered is not None:
+            return decode_payload(json.loads(remembered))
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -349,7 +359,13 @@ def get(source: str, args_hash: str) -> Any:
         return MISS
     if row is None:
         return MISS
-    return decode_payload(row[0])
+    value = decode_payload(row[0])
+    if memo is not None:
+        # Retain the DB's encoded representation; each hit decodes a fresh
+        # object, so caller mutation cannot corrupt a later cached read.
+        serialized = json.dumps(row[0], separators=(",", ":")).encode()
+        memo.remember(conn, database_url, memo_key, serialized)
+    return value
 
 
 def put(source: str, args_hash: str, args: Any, payload: Any) -> None:
