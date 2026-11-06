@@ -16,9 +16,10 @@ a group total is the sum of that prime's codes. For a requested (prime,
 month) we read that month's column for the prime's codes and return the
 per-ref-code breakdown plus the summed total.
 
-A ref code present in the workbook but absent from the config is logged at
-ERROR with its dollar amount and excluded — new codes cannot silently vanish
-from a settlement, nor be silently attributed to the wrong prime.
+A ref code present in the workbook but absent from the config aborts the load
+with its dollar amount — new codes cannot silently vanish from a settlement,
+nor be silently attributed to the wrong prime. Deliberate non-payment remains
+possible only through an explicit entry under ``unattributed:``.
 
 Reporting-time enrichment only: ``enrich_with_dr`` populates
 ``MonthlyPnL.distribution_rewards`` (+ keeps the ``monthly_pnl`` invariant)
@@ -261,17 +262,16 @@ def load_dr(prime_id: str, month: str) -> dict | None:
         })
 
     if unknown:
-        # Loud on purpose: an unmapped code is DR that reaches no prime. It is
+        # Fatal on purpose: an unmapped code is DR that reaches no prime. It is
         # either a genuine new referral needing an owner, or a deliberate
         # exclusion that belongs in `unattributed:`. Silence would let real
         # money disappear between the workbook and the settlement.
-        log.error(
-            "DR %s: %d ref code(s) in %s are absent from %s and were EXCLUDED "
-            "— $%s total for this month: %s. Add each to a prime or to "
-            "`unattributed:`.",
-            month, len(unknown), _SHEET, _REF_CODE_MAP_REL,
-            f"{sum((a for _, a in unknown), Decimal('0')):,.2f}",
-            ", ".join(f"{c} (${a:,.2f})" for c, a in unknown),
+        amount = sum((a for _, a in unknown), Decimal("0"))
+        details = ", ".join(f"{c} (${a:,.2f})" for c, a in unknown)
+        raise ValueError(
+            f"DR {month}: {len(unknown)} ref code(s) in {_SHEET} are absent "
+            f"from {_REF_CODE_MAP_REL} — ${amount:,.2f} total: {details}. "
+            "Add each to a prime or explicitly to `unattributed:`."
         )
 
     if not out_rows:
