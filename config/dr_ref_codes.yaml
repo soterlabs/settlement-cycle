@@ -137,6 +137,7 @@ primes:
     - '3009'     # gtSkyLooping Morpho strategy — new in settle-dr-dune 2f9cfd3
                  # ("Custody perimeters"); first row is 2026-08 ($21.19).
                  # Without this entry the strict DR loader aborts settlement.
+    - '3014'     # Osero real referral code; first DR row appears in October 2026
     - '3017'     # Osero Grove Farm + reviewed Pendle Phase-1 real referral code
     - '3333'
     # absent from the HyperSync workbook:

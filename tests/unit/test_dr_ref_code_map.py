@@ -36,6 +36,7 @@ def test_recent_osero_custody_and_farm_codes_are_mapped():
     assert owner["3000"] == "osero"  # Yuzu looping account
     assert owner["3009"] == "osero"  # gtSkyLooping
     assert owner["3017"] == "osero"  # Grove Farm / Pendle Phase 1
+    assert owner["3014"] == "osero"  # real referral; first DR in October 2026
 
 
 def test_duplicate_code_across_primes_raises(tmp_path, monkeypatch):
