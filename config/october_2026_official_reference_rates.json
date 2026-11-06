@@ -1,0 +1,129 @@
+{
+  "calendar_version": "61306dd446efcc66eda2166243d4e36511626ee4402c933e1a5e826b2588c3dc",
+  "series": {
+    "sofr": {
+      "source": "https://fred.stlouisfed.org/data/SOFR",
+      "observations": [
+        {
+          "effective_date": "2026-10-01",
+          "apr": "0.0387",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-10-02",
+          "apr": "0.0388",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-10-05",
+          "apr": "0.0389",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-10-06",
+          "apr": "0.039",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-10-07",
+          "apr": "0.0388",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-10-08",
+          "apr": "0.0387",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-10-09",
+          "apr": "0.0387",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-10-13",
+          "apr": "0.0389",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-10-14",
+          "apr": "0.0388",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-10-15",
+          "apr": "0.0389",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-10-16",
+          "apr": "0.0388",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-10-19",
+          "apr": "0.0387",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-10-20",
+          "apr": "0.0388",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-10-21",
+          "apr": "0.0388",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-10-22",
+          "apr": "0.039",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-10-23",
+          "apr": "0.0392",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-10-26",
+          "apr": "0.0393",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-10-27",
+          "apr": "0.0395",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-10-28",
+          "apr": "0.0394",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-10-29",
+          "apr": "0.0394",
+          "revision_indicator": ""
+        },
+        {
+          "effective_date": "2026-10-30",
+          "apr": "0.0395",
+          "revision_indicator": ""
+        }
+      ]
+    }
+  },
+  "carry_forward_dates": {
+    "2026-10-03": "2026-10-02",
+    "2026-10-04": "2026-10-02",
+    "2026-10-10": "2026-10-09",
+    "2026-10-11": "2026-10-09",
+    "2026-10-12": "2026-10-09",
+    "2026-10-17": "2026-10-16",
+    "2026-10-18": "2026-10-16",
+    "2026-10-24": "2026-10-23",
+    "2026-10-25": "2026-10-23",
+    "2026-10-31": "2026-10-30"
+  },
+  "snapshot_id": "f830bffecacc6b75a46274e8cbfaac44c4bc495fa8222b664a73280bcde05f25",
+  "coverage_complete": true
+}
