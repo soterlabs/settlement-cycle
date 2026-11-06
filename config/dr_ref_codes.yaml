@@ -136,8 +136,8 @@ primes:
     - '3000'
     - '3009'     # gtSkyLooping Morpho strategy — new in settle-dr-dune 2f9cfd3
                  # ("Custody perimeters"); first row is 2026-08 ($21.19).
-                 # Without this entry the loader raises an error-level warning
-                 # and the amount silently leaves Osero's demand side.
+                 # Without this entry the strict DR loader aborts settlement.
+    - '3017'     # Osero Grove Farm + reviewed Pendle Phase-1 real referral code
     - '3333'
     # absent from the HyperSync workbook:
     - '3001'
