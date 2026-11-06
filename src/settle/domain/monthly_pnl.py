@@ -156,7 +156,8 @@ class SDEDailyBreakdown:
 
     New RWA runs also retain ``wallet_value`` and ``pending_value``; their
     sum is the economic ``uncapped_value`` before the SDE ownership rules.
-    The optional keys preserve compatibility with older frozen snapshots.
+    ``issued_deposit_value`` and ``pending_redemption_value`` split the pending
+    total by direction. Optional keys preserve older frozen snapshots.
 
     The accompanying scalar fields (``burn_date`` / ``usdc_settlement_date``
     / ``end_date`` / ``cap_usd``) are the SDE-entry metadata at the moment

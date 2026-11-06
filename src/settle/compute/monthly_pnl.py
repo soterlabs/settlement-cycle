@@ -228,12 +228,10 @@ def _check_centrifuge_in_flight(
     """Warn if any Centrifuge vault has pending/claimable deposit or redeem
     requests in-flight at the SoM or EoM pin block.
 
-    ERC-7540 async vaults split every deposit or redemption into two steps:
-    *request* → epoch processing → *claim*.  If a request is in-flight at a
-    settlement boundary the SoM/EoM share balance is incorrect — shares or
-    assets are held in the vault's escrow rather than in the prime ALM wallet,
-    and the pipeline cannot automatically account for them.  This check logs a
-    loud WARNING so the operator can manually verify and correct the numbers.
+    ERC-7540 vaults separate request, processing and collection. A wallet-only
+    balance omits issued deposit shares and unsettled redemption claims. The
+    shared exposure adapter includes these automatically; this check retains
+    boundary diagnostics, rather than requesting manual date corrections.
 
     Contracts not yet deployed at a given block are silently skipped to handle
     venues that were onboarded mid-period.
@@ -300,10 +298,10 @@ def _check_centrifuge_in_flight(
                     decimals = getattr(getattr(venue, "underlying", None), "decimals", None) or 6
                     amount_fmt = f"{amount / 10**decimals:,.6f}"
                     _log.warning(
-                        "IN-FLIGHT CENTRIFUGE REQUEST — MANUAL REVIEW REQUIRED: "
+                        "IN-FLIGHT CENTRIFUGE REQUEST: "
                         "venue %s (%s) has a %s of %s at the %s pin block (%d). "
-                        "THE %s VALUE AND INFLOW FOR THIS VENUE MAY BE INCORRECT "
-                        "AND MAY REQUIRE MANUAL CORRECTION.",
+                        "The %s valuation includes issued deposits and redemption "
+                        "claims automatically; unissued deposits stay outside SDE.",
                         venue.id, venue.token.symbol,
                         label.upper(), amount_fmt, block_label, block,
                         block_label.upper(),
@@ -683,7 +681,7 @@ def _sde_asset_value_timeseries(
     end_date: "date | None" = None,
     in_flight_redemptions: tuple[InFlightRedemption, ...] = (),
 ) -> pd.DataFrame:
-    """Daily economic SDE value: held assets + unsettled redemption claims.
+    """Daily economic SDE value: wallet + issued deposits + unsettled redemptions.
 
     Centrifuge pending/claimable shares come from historical vault state;
     constant-$1 RWA cash claims come from the matched request/payment ledger.
@@ -780,7 +778,7 @@ def _sde_asset_value_timeseries(
         min_transfer_amount=Decimal(0),
     )
 
-    from ..normalize.positions import _centrifuge_in_flight_shares
+    from ..normalize.async_vaults import async_vault_exposure
     from ..normalize.redemption_settlements import pending_redemption_values
 
     pending_cash = pending_redemption_values(prime, venue, period)
@@ -796,12 +794,12 @@ def _sde_asset_value_timeseries(
         bal = cum_at_or_before(bal_df, "cum_balance", current)
         eod = datetime.combine(current, time.max, tzinfo=timezone.utc)
         block = block_resolver.block_at_or_before(venue.chain.value, eod)
-        pending_shares = _centrifuge_in_flight_shares(prime, venue, block)
-        nav = nav_at_block(block) if bal != 0 or pending_shares != 0 else Decimal("0")
-        wallet_value = bal * nav
-        pending_value = pending_shares * nav + cum_at_or_before(
+        exposure = async_vault_exposure(prime, venue, block, redemption_cash=cum_at_or_before(
             pending_cash, "pending_value_usd", current,
-        )
+        ))
+        nav = nav_at_block(block) if bal != 0 or exposure.shares != 0 else Decimal("0")
+        wallet_value = bal * nav
+        pending_value = exposure.value(nav)
         pending_value += sum((
             item.value_usd for item in in_flight_redemptions
             if item.burn_date <= current < item.usdc_settlement_date
@@ -841,6 +839,8 @@ def _sde_asset_value_timeseries(
             "uncapped_value": raw_value,
             "wallet_value": wallet_value,
             "pending_value": pending_value,
+            "issued_deposit_value": exposure.deposit.shares * nav,
+            "pending_redemption_value": pending_value - exposure.deposit.shares * nav,
         })
         current = current + timedelta(days=1)
     return pd.DataFrame(rows)
@@ -3757,6 +3757,10 @@ def compute_monthly_pnl(
                 _erc4626_period_inflow = Decimal(str(
                     _ev_ts.loc[_period_mask, "daily_inflow"].sum()
                 ))
+                from ..normalize.async_vaults import deposit_capital_adjustment
+                _erc4626_period_inflow += deposit_capital_adjustment(
+                    prime, venue, som_block, eom_block,
+                )
 
                 # ── Share-balance sanity check ────────────────────────────
                 # Verify that the cumulative share flow from events reconciles
@@ -3989,10 +3993,10 @@ def compute_monthly_pnl(
                     # value_som already retain ERC-7540 redemption escrow.
                     # Comparing wallet transfers alone raised a false $25M
                     # discrepancy for Grove E9 at the September 2026 opening.
-                    from ..normalize.positions import _centrifuge_in_flight_shares
-                    _som_bal += _centrifuge_in_flight_shares(
+                    from ..normalize.async_vaults import async_vault_exposure
+                    _som_bal += async_vault_exposure(
                         prime, venue, pin_blocks_som[venue.chain],
-                    )
+                    ).shares
                     if _som_bal > 0:
                         _som_block = resolver.block_at_or_before(
                             venue.chain.value,
@@ -4276,7 +4280,7 @@ def compute_monthly_pnl(
                 "block_date": _row["block_date"],
                 "cum_value": _row["cum_value"],
                 "uncapped_value": _row["uncapped_value"],
-                **{key: _row[key] for key in ("wallet_value", "pending_value") if key in _row},
+                **{key: _row[key] for key in ("wallet_value", "pending_value", "issued_deposit_value", "pending_redemption_value") if key in _row},
             }
             for _, _row in _df.iterrows()
         ]

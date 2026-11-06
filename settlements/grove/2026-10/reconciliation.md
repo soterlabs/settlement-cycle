@@ -34,3 +34,10 @@ in this investigation.
 Evidence: `reconciliation/2026-10/sde_inflight_cof.json`,
 `reconciliation/2026-10/partner_rebates.json`, and
 `docs/grove/sde_inflight.md`.
+
+The deposit-side extension separately calculates a further 35,889.68 USDS
+of CoF relief for January, March and April 2026, marginal to the corrections
+above. See `reconciliation/2026-10/async_deposit_cof.json`. It is not included
+in this accepted settlement bridge: it remains a calculated backfill pending
+comparison with prior settlement credits. Combining the separately rounded
+redemption and deposit lines would give 114,419.74 USDS of total CoF relief.

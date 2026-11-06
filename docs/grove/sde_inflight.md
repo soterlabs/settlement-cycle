@@ -1,9 +1,71 @@
-# SDE redemption exposure and historical CoF reconciliation
+# Async vault deposits, redemptions and historical CoF reconciliation
 
 Atlas [A.2.4.2.3](https://sky-atlas.io/#5d38602e-46e8-48d2-b661-460a3fe9b0b9)
-retains a redeemed position until proceeds settle. At each UTC closing block,
-held value plus outstanding redemption value enters the normal SDE ownership
-cap and active-date rules. A claim paid during the day is absent at that close.
+recognizes deposits when the corresponding shares are issued and retains
+redemptions until proceeds settle. At each UTC closing block, wallet value,
+issued-but-uncollected deposit shares and outstanding redemption value enter
+the same SDE ownership cap and active-date rules. Unissued subscription cash
+does not qualify for that vault's SDE deduction. A claim paid during the day
+is absent at that close. Eligible idle USDS keeps its separate existing rule.
+
+## Shared accounting and protocol adapters
+
+`normalize.async_vaults.AsyncVaultExposure` supplies the same economic shares
+to position valuation and the daily SDE calculation. Protocols detect events
+differently, but both directions use one exposure identity before caps:
+
+```
+economic value = wallet shares × NAV
+               + issued, uncollected deposit shares × NAV
+               + unsettled redemption shares × NAV
+               + unsettled redemption cash claims
+```
+
+JTRSY and JAAA resolve `asyncManager()` at the historical block and read the
+controller's unfiltered `investments(vault, controller)` state. Its `maxMint`
+field identifies allocated issued shares still in escrow. Public `maxMint()`
+and `maxDeposit()` views are unsuitable balance sources: compliance transfer
+restrictions can make them zero without extinguishing ownership. Pending
+unissued subscriptions and cancelled subscription cash are excluded. The
+existing pending/claimable redemption adapter remains the withdrawal source.
+
+Collection moves issued shares from escrow to the wallet without changing
+economic exposure. Monthly/MTD capital is the vault-event capital amount plus
+closing minus opening uncollected acquisition basis. Basis uses the manager's
+weighted issuance price and asset-unit rounding, rather than current NAV.
+That recognizes issuance once, including partial claims and month boundaries,
+without manufacturing income when collection happens later. Wallet/event
+share sanity checks continue to compare custody transfers with wallet balances.
+
+BUIDL deposits already mint directly into the wallet; no pre-mint subscription
+cash is added. Its existing subscription-fee accounting remains in place.
+BUIDL redemptions retain their matched request/payment adapter below. Basin
+idle USDS stays a separate cash deduction, never another deposit-share claim.
+No token protocol or empty wallet can bypass the SDE cap or effective dates.
+
+New provenance and the SDE daily workbook split pending exposure into issued
+deposits and unsettled redemptions. Older snapshots remain readable; existing
+code-version checks prevent finalizing an old calculation under changed code.
+
+## Deposit history replay
+
+`python scripts/reconcile_async_deposits.py` reproduces a **35,889.68 USDS**
+marginal CoF credit to Grove, with the opposite impact on Sky and no identified
+Spark impact. January contributes 19,731.34, March 13,634.13 and April 2,524.21.
+The 13 affected UTC closes are January 14–20 and 22–23, March 11–12 and 30,
+and April 3, 2026. All claims completed in their issuance month, so these
+cases change daily CoF without changing monthly investment income.
+
+Pinned evidence includes mint receipts, controller claim events and 32 archive
+state/NAV samples. JAAA's wallet alone exceeded the 325M cap on every sampled
+deposit day, so these deposits do not change its CoF. Spark has no controller
+deposit/claim events in the two configured vaults over the fetched history.
+The replay reproduces frozen workbook charges and keeps the already-approved
+redemption corrections in its comparison baseline, including March 11.
+
+`reconciliation/2026-10/async_deposit_cof.json` records this additional calculation
+separately from the accepted 78,530.06 redemption adjustment. It does not
+silently rewrite previously approved settlement inputs or assert execution.
 
 ## Why JTRSY automation did not repair earlier MSCs
 

@@ -693,11 +693,12 @@ def _write_sde_daily(ws, prov: dict) -> None:
         # No burn events this period — skip the tab entirely.
         return
     ws.title = "SDE daily"
-    ws.append(["SDE per-day holdings and pending redemptions"])
+    ws.append(["SDE per-day holdings and in-transit deposits / redemptions"])
     ws["A1"].font = _TITLE
     ws.append([])
     ws.append([
-        "Pending redemptions remain part of economic exposure until cash settles. "
+        "Issued deposits enter exposure before collection; unissued deposits do not. "
+        "Pending redemptions remain part of exposure until cash settles. "
         "Held NAV plus pending NAV equals economic NAV; ownership caps and deal "
         "dates determine the amount deducted from the borrowing-cost base."
     ])
@@ -707,13 +708,17 @@ def _write_sde_daily(ws, prov: dict) -> None:
         if any("wallet_value" in r for r in b.get("daily", [])):
             ws.append([f"{b['venue_id']} — {b.get('label', '')}"])
             ws.cell(ws.max_row, 1).font = _BOLD
-            ws.append(["Date", "Held NAV", "Pending NAV", "Economic NAV", "SDE deduction"])
-            _header_row(ws, ws.max_row, 5)
+            split_pending = any("issued_deposit_value" in r for r in b["daily"])
+            ws.append(["Date", "Held NAV", "Pending NAV", "Economic NAV", "SDE deduction"] +
+                      (["Issued unclaimed deposits", "Unsettled redemptions"] if split_pending else []))
+            _header_row(ws, ws.max_row, 7 if split_pending else 5)
             for row in b["daily"]:
                 ws.append([row["block_date"], float(_D(row["wallet_value"])),
                            float(_D(row["pending_value"])), float(_D(row["uncapped_value"])),
-                           float(_D(row["cum_value"]))])
-                for col in range(2, 6):
+                           float(_D(row["cum_value"]))] +
+                          ([float(_D(row["issued_deposit_value"])),
+                            float(_D(row["pending_redemption_value"]))] if split_pending else []))
+                for col in range(2, 8 if split_pending else 6):
                     ws.cell(ws.max_row, col).number_format = _USD0
             ws.append([])
             continue
@@ -772,7 +777,7 @@ def _write_sde_daily(ws, prov: dict) -> None:
 
         ws.append([])  # blank row between venues
 
-    _set_widths(ws, {1: 12, 2: 18, 3: 18, 4: 18, 5: 18})
+    _set_widths(ws, {1: 12, 2: 18, 3: 18, 4: 18, 5: 18, 6: 27, 7: 25})
 
 
 def _rate(d: dict, apr_key: str, apy_key: str):

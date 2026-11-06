@@ -131,6 +131,8 @@ def test_recorded_centrifuge_requests_match_every_sampled_pending_balance():
 
 def test_pending_centrifuge_shares_are_used_even_with_zero_wallet_balance(buidl, monkeypatch):
     from settle.normalize import positions
+    from settle.normalize import async_vaults
+    monkeypatch.setattr(async_vaults, 'issued_deposit', lambda *args: async_vaults.IssuedDeposit())
     prime, _, _ = buidl
     venue = next(v for v in prime.venues if v.id == 'E9')
     class Balances:

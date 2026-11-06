@@ -233,12 +233,13 @@ def get_position_value(
         source=balance_source,
         flow_source=flow_source,
     )
-    # Async (ERC-7540) Centrifuge redemptions park shares in the vault
-    # escrow before the Withdraw event fires. Add them back so the value is
+    # Async vaults retain issued deposits and unsettled redemption shares
+    # in escrow. Include both so the value is
     # the prime's economic position, not just its wallet. Applied at every
     # block, so SoM and EoM stay symmetric. MUST come before the
     # ``balance == 0`` short-circuit: a fully-escrowed position reads 0.
-    balance += _centrifuge_in_flight_shares(prime, venue, block)
+    from .async_vaults import async_vault_exposure
+    balance += async_vault_exposure(prime, venue, block).shares
     if balance == 0:
         # Short-circuit: zero balance × any unit price = $0. Skipping the
         # unit_price call avoids an unnecessary failure on venues with

@@ -1,0 +1,2346 @@
+{
+  "source": {
+    "retrieved": "2026-11-06",
+    "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+    "logs": "Blockscout vault DepositClaimable and Deposit events through block 27,000,000, indexed controller/receiver filtered; mint receipts checked against share issuance",
+    "state": "Archive RPC asyncManager()/investments(vault,controller) and convertToAssets(1e18), at certified UTC EOD blocks",
+    "policy": "https://sky-atlas.io/#5d38602e-46e8-48d2-b661-460a3fe9b0b9"
+  },
+  "events": {
+    "grove_jaaa": [
+      {
+        "type": "DepositClaimable",
+        "date": "2025-09-15",
+        "timestamp": 1757958431,
+        "shares_raw": 19874309133538,
+        "tx": "0xad24dcadc390052216d8a5d95023062e4825b7c490c2ab0f0a728a64793a49fe",
+        "block": 23370060
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2025-10-06",
+        "timestamp": 1759777955,
+        "shares_raw": 19821638685571,
+        "tx": "0x9d627733d0c2328200db23b29ced8a62856d8315f6da4488c3e25de17790e4a1",
+        "block": 23520733
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2025-10-07",
+        "timestamp": 1759850543,
+        "shares_raw": 19821034640903,
+        "tx": "0xcce926d188ca291e1f4c99e41f5c5b0729b6c6614f5e8a538cf36df683babc18",
+        "block": 23526743
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2025-10-07",
+        "timestamp": 1759852739,
+        "shares_raw": 19821034640903,
+        "tx": "0x9165d8ab5f13748e1b1f2b989b125586a0a2c7fd2c939bba21a28807ef0d6ae3",
+        "block": 23526924
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2025-10-08",
+        "timestamp": 1759935635,
+        "shares_raw": 19818094622359,
+        "tx": "0x9f6ca5be6f8fde70eb4e3d67df0cb89f77585bb44d9ae564ea25c7b6ad21ec9f",
+        "block": 23533785
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2025-10-08",
+        "timestamp": 1759946123,
+        "shares_raw": 19818094622359,
+        "tx": "0x8ade275f40f7f24ac7e8d06f802b5c5e95a2fb43dfe8b6dcb245615cb495277b",
+        "block": 23534649
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2025-10-09",
+        "timestamp": 1760032331,
+        "shares_raw": 19808835474072,
+        "tx": "0xa2f7df5d78de11734c385bf40c8270b5f96ffb6628c59c540c89af6b3522433c",
+        "block": 23541787
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2025-10-14",
+        "timestamp": 1760464979,
+        "shares_raw": 19805893588614,
+        "tx": "0xbb7703303bdc6969ee982c2c69c0f33c294e0b8302c19c19fca2e743d6a2c824",
+        "block": 23577600
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2025-10-15",
+        "timestamp": 1760551475,
+        "shares_raw": 19808709798078,
+        "tx": "0xa0b1476f30fdd2f049ae56c8ceccc38e5ae64f82b1bd1f4fe0a2ad60ee28b34a",
+        "block": 23584756
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2025-10-16",
+        "timestamp": 1760637527,
+        "shares_raw": 19829231913994,
+        "tx": "0x1e00cf4bc261aaf0e8469882b0384a2bb20469028373c8815a77460e2263253d",
+        "block": 23591863
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2025-10-20",
+        "timestamp": 1760971871,
+        "shares_raw": 19812023927180,
+        "tx": "0xeabf51bc1f54fd55f3050f84474aef9e3cedec9d9036c122a55023954844ad9b",
+        "block": 23619520
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2025-10-20",
+        "timestamp": 1760984495,
+        "shares_raw": 19812023927180,
+        "tx": "0x099c8caac1e6f0d108f8509fa10d6606db6fdfb772b96bccae47cf120c1f92c6",
+        "block": 23620562
+      },
+      {
+        "type": "Deposit",
+        "date": "2025-09-15",
+        "timestamp": 1757963699,
+        "shares_raw": 19874309133538,
+        "tx": "0xf01217c64e78ec2c91792ec1314df67031a043a4b94afcc10373dd84fca3c039",
+        "block": 23370497
+      },
+      {
+        "type": "Deposit",
+        "date": "2025-10-07",
+        "timestamp": 1759842275,
+        "shares_raw": 19821638685571,
+        "tx": "0xb49240ca46491e68412d5ee8fc0893793738f25ce1a6fd86d087c78fba124ad7",
+        "block": 23526059
+      },
+      {
+        "type": "Deposit",
+        "date": "2025-10-07",
+        "timestamp": 1759850927,
+        "shares_raw": 19821034640903,
+        "tx": "0xa02fe7a64d15e8deb5d1f81ab98d74cc7a08d6b07d4637f06f5880580fe29a05",
+        "block": 23526774
+      },
+      {
+        "type": "Deposit",
+        "date": "2025-10-08",
+        "timestamp": 1759926191,
+        "shares_raw": 19821034640903,
+        "tx": "0x2570a3da5e3e12075edd415702df5e92840fd270a9f086f75882b87b8be62881",
+        "block": 23533004
+      },
+      {
+        "type": "Deposit",
+        "date": "2025-10-08",
+        "timestamp": 1759941443,
+        "shares_raw": 19818094622359,
+        "tx": "0x9b293dc4ace3645a3d3d609d215160cd63d7fd3772a0128258031d7ff40524e5",
+        "block": 23534264
+      },
+      {
+        "type": "Deposit",
+        "date": "2025-10-09",
+        "timestamp": 1760029175,
+        "shares_raw": 19818094622359,
+        "tx": "0x7d88c1294ccd261742ff79ab6be6fa5b6851cfc0ed167abdfb70c4327ac58b24",
+        "block": 23541525
+      },
+      {
+        "type": "Deposit",
+        "date": "2025-10-14",
+        "timestamp": 1760457287,
+        "shares_raw": 19808835474072,
+        "tx": "0x96ed6af627d936457e016bc079590d00847c62703e001c19c190f98b19ad526e",
+        "block": 23576963
+      },
+      {
+        "type": "Deposit",
+        "date": "2025-10-15",
+        "timestamp": 1760545403,
+        "shares_raw": 19805893588614,
+        "tx": "0xb6536bca914b8403fbbe473fd1d7c4982041da0a2674f630a78f90dab12ae72a",
+        "block": 23584256
+      },
+      {
+        "type": "Deposit",
+        "date": "2025-10-16",
+        "timestamp": 1760635871,
+        "shares_raw": 19808709798078,
+        "tx": "0x52094f9bcf07a6b48c4b9bcb2e350c22de2263c3e1139165be190d9de12184b7",
+        "block": 23591725
+      },
+      {
+        "type": "Deposit",
+        "date": "2025-10-17",
+        "timestamp": 1760735831,
+        "shares_raw": 19829231913994,
+        "tx": "0xd5ce5b66b74195a0a1e0fa486160d65602390f6ec43892fa0b6b1bc7ad2fb5cf",
+        "block": 23600009
+      },
+      {
+        "type": "Deposit",
+        "date": "2025-10-20",
+        "timestamp": 1760981255,
+        "shares_raw": 19812023927180,
+        "tx": "0xdf8e00757f97109520c97aaf738858acf339cc8a48322401dc15858ba311c2c2",
+        "block": 23620294
+      },
+      {
+        "type": "Deposit",
+        "date": "2025-10-28",
+        "timestamp": 1761689003,
+        "shares_raw": 19812023927180,
+        "tx": "0xae97d4ff11e2424dca47c1bfd1eccaaa2072719849814331e5e1297aac9c0daa",
+        "block": 23678762
+      }
+    ],
+    "grove_jtrsy": [
+      {
+        "type": "DepositClaimable",
+        "date": "2026-01-07",
+        "timestamp": 1767798635,
+        "shares_raw": 18335066923784,
+        "tx": "0x1fd95b2e049edb1bf889290bb61bd07e443262f32cd2e3d49fd7f8ccbcbedaa1",
+        "block": 24183610
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-01-07",
+        "timestamp": 1767801635,
+        "shares_raw": 18335066923784,
+        "tx": "0xa35f09db805f5b89f6c9bf0494d291874c9ff0dcfe1833dc24402228d429fa66",
+        "block": 24183860
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-01-09",
+        "timestamp": 1767973199,
+        "shares_raw": 18333725105739,
+        "tx": "0x5dd29e35ddcf83d05411ca593b6142cb75ff7981c5620ba9f1aab41d038a294d",
+        "block": 24198078
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-01-12",
+        "timestamp": 1768235255,
+        "shares_raw": 18327695504759,
+        "tx": "0x858473558b807400bba31dea0f673f3445c5be375c03b5fe29cdd4059d120f82",
+        "block": 24219823
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-01-13",
+        "timestamp": 1768318295,
+        "shares_raw": 18326405893888,
+        "tx": "0x59a55bf6259a1b43e7c6cace0d0e49b2348d114fef35f3528cbf288ba7e7b05d",
+        "block": 24226699
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-01-13",
+        "timestamp": 1768321811,
+        "shares_raw": 18326405893888,
+        "tx": "0xc575cb2db165d059d0983c106a4169de4a0111d12ff7518bf811d64a29d65487",
+        "block": 24226985
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-01-13",
+        "timestamp": 1768323119,
+        "shares_raw": 18326405893888,
+        "tx": "0x80de78bc7cc5dc74a90341060e780c74a3d5f00ebc4a67f68b1ee91b3093d664",
+        "block": 24227092
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-01-14",
+        "timestamp": 1768410275,
+        "shares_raw": 18325342850147,
+        "tx": "0x28db7c88e3ca85360dd09c572ec18103bbacd61fb9a25d4a0fb05edbc1b29b27",
+        "block": 24234317
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-01-15",
+        "timestamp": 1768488551,
+        "shares_raw": 18324008126803,
+        "tx": "0xc27d8ef867ea2c99dba440bdfc9191f4cae0582d8f430ccb59ce52cf37a21114",
+        "block": 24240811
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-01-15",
+        "timestamp": 1768502267,
+        "shares_raw": 18324008126803,
+        "tx": "0xa01373594bf99b23b7ae4f307a17fe8081d47c188256ff7308a9790236599ad9",
+        "block": 24241952
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-01-20",
+        "timestamp": 1768924091,
+        "shares_raw": 18315858848175,
+        "tx": "0x9a22fade07ae0d1b2e935af74ed9c04b77140f6520fcbf7cb3aed329990484d5",
+        "block": 24276985
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-01-22",
+        "timestamp": 1769099567,
+        "shares_raw": 18312930831089,
+        "tx": "0x3ec15205a67208a62fae7d36ad4b7347bc25325ba3b4a7abf1e9907bb887eecf",
+        "block": 24291540
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-01-27",
+        "timestamp": 1769535131,
+        "shares_raw": 18304735265952,
+        "tx": "0x7c3e5bfc1169955f4fa29e9775a02c43ab69bda634952647ebc609c04d6c7030",
+        "block": 24327682
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-01-29",
+        "timestamp": 1769701163,
+        "shares_raw": 18301652446472,
+        "tx": "0x96c6e8d13bbad779833ac013a2db054014da35f7dd815c4e4409640b886b68bd",
+        "block": 24341463
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-01-30",
+        "timestamp": 1769785511,
+        "shares_raw": 18299952200148,
+        "tx": "0x8a848cc92b2c59ec5602d37a1aa3fdda4bb1dc3a907edd9b6551b55fc06c1d36",
+        "block": 24348466
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-03-11",
+        "timestamp": 1773243635,
+        "shares_raw": 45583724728866,
+        "tx": "0xb953280e71ba47ff04da8c682a73826ef97581c0bcfa564c6288fe00224b5953",
+        "block": 24635181
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-03-12",
+        "timestamp": 1773333251,
+        "shares_raw": 45579871754335,
+        "tx": "0xdd7ed373244ba2c214d7c630ded4d2d00e89d3f651699a681c7a3e90350a5331",
+        "block": 24642607
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-03-13",
+        "timestamp": 1773412331,
+        "shares_raw": 45576174500387,
+        "tx": "0xd0d91966199c3a57ecd96fb52eaa9b06d8683e8a2218ba56fcb0bbc344d273bd",
+        "block": 24649163
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-03-13",
+        "timestamp": 1773417395,
+        "shares_raw": 41538125439653,
+        "tx": "0xaf3d7675d6c0d5c6a6ded2507ef07d6db6e9eb0dd9b5bc6c3e8084d0465f17ae",
+        "block": 24649583
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-03-17",
+        "timestamp": 1773757259,
+        "shares_raw": 45560250395997,
+        "tx": "0xccde7ee21f43ea87f2b5632420e345213ed2bdf8414901a932dedae039fac870",
+        "block": 24677776
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-03-18",
+        "timestamp": 1773840731,
+        "shares_raw": 45555907150444,
+        "tx": "0xe902f236074b028b83ab8b74f31b6a493e521798ed14e0c69e1b814eed08f9cc",
+        "block": 24684687
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-03-19",
+        "timestamp": 1773940523,
+        "shares_raw": 45553078944364,
+        "tx": "0x46258f2c69314f4deea7a99d216b81730bed5a54e810649065ada53e42a42e83",
+        "block": 24692963
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-03-20",
+        "timestamp": 1774020287,
+        "shares_raw": 45550676614936,
+        "tx": "0x3cb08a2607ad88492a8003e2ad20a0fc4cf6f68597c8dcf6e9a30a035b5e6534",
+        "block": 24699593
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-03-24",
+        "timestamp": 1774365359,
+        "shares_raw": 45533217611837,
+        "tx": "0x498f000df9b04c4cc9ac24cc636d4248b87a13a970452996027f0b5e3c5ca4f9",
+        "block": 24728229
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-03-25",
+        "timestamp": 1774446431,
+        "shares_raw": 22765008874260,
+        "tx": "0x94ada1fae2428070ac5808993a81a37d28f8feb254f7c5935e5ee26e5691b7bf",
+        "block": 24734958
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-03-26",
+        "timestamp": 1774539287,
+        "shares_raw": 22762781230938,
+        "tx": "0xececf44ba751fe9c70efe17678b512c02e684c326dcb6cf7de466312dda596fd",
+        "block": 24742662
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-03-27",
+        "timestamp": 1774602095,
+        "shares_raw": 22761121932637,
+        "tx": "0x545288024e5f480baccdf301e8b338a8304d5ee98c2e8d225f4e2c06c23653d2",
+        "block": 24747869
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-03-30",
+        "timestamp": 1774864607,
+        "shares_raw": 22754544284473,
+        "tx": "0xc56cfe0e8488d88273c829a280867096b8a6b213d276d580c17ff43c37a35987",
+        "block": 24769665
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-03-31",
+        "timestamp": 1774941659,
+        "shares_raw": 45504774158975,
+        "tx": "0x116ae7e0d848a27347e55726568fae622c6175e885e119c23991534dcd4627f5",
+        "block": 24776058
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-04-01",
+        "timestamp": 1775030327,
+        "shares_raw": 22749928642048,
+        "tx": "0xf6d7f27ceb4553c8903a64b8ced8333d15a5e9c788b1d358d092aa0bc5e71ee6",
+        "block": 24783409
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-04-02",
+        "timestamp": 1775117135,
+        "shares_raw": 22748033590682,
+        "tx": "0x98480bbedbbc548faf7f09a3265859f00724618843cb1ec526a3545e96d68916",
+        "block": 24790614
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-04-03",
+        "timestamp": 1775239511,
+        "shares_raw": 22739713489937,
+        "tx": "0xda760eca74ddc9196cebd4647870d8e28ee3d1e4a1bd8c49b511930e5e899802",
+        "block": 24800780
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-04-08",
+        "timestamp": 1775634107,
+        "shares_raw": 45470914141095,
+        "tx": "0x9f41bc62bcebe852d9b29b61638a90f59858e6b7026938b02b3e345b1aa15420",
+        "block": 24833557
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-04-09",
+        "timestamp": 1775723495,
+        "shares_raw": 22732950362347,
+        "tx": "0x35fb5ea7f15826ccd877b699cec326bc93ce3750fa8fd6b1bdbd7cbbbbff629a",
+        "block": 24840977
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-04-10",
+        "timestamp": 1775821175,
+        "shares_raw": 22730423611578,
+        "tx": "0xcfd4d74c7d4cd76f891766f4078de0bf1d56102eb61e7fe8284f56ec6ab4e275",
+        "block": 24849081
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-04-13",
+        "timestamp": 1776070535,
+        "shares_raw": 22724515062591,
+        "tx": "0x8f69e4a37dc7251404b29276e0ac781b18ebf76b135659732874b156895a2093",
+        "block": 24869791
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-04-14",
+        "timestamp": 1776154391,
+        "shares_raw": 45445831885524,
+        "tx": "0x5c9f87b0e768bf005c03b260e7957bc3c0e9194f0fdd00c766092d20b8b18711",
+        "block": 24876761
+      },
+      {
+        "type": "DepositClaimable",
+        "date": "2026-04-16",
+        "timestamp": 1776327275,
+        "shares_raw": 86334425966175,
+        "tx": "0x4f4cd8c9396d6ff688a3907be4dd370e5e380afc6f070b0a570133920eef0e6d",
+        "block": 24891122
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-01-07",
+        "timestamp": 1767800855,
+        "shares_raw": 18335066923784,
+        "tx": "0x99adcf487ccf58c843a43bf2b429735b9f7878b8f452d67e947e85b9bed3cf16",
+        "block": 24183795
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-01-07",
+        "timestamp": 1767824951,
+        "shares_raw": 18335066923784,
+        "tx": "0x0c6f1e5b25a0d2258e36bb1a62dd08c5fe9533cc40869eb73e62017905547689",
+        "block": 24185791
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-01-09",
+        "timestamp": 1768002287,
+        "shares_raw": 18333725105739,
+        "tx": "0xcd4ae5bcba606c60d5f277dadc0f96e92fe82fde9b9c4c793c637e6a489d1a71",
+        "block": 24200495
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-01-12",
+        "timestamp": 1768241723,
+        "shares_raw": 18327695504759,
+        "tx": "0xe1f4f4aba204e83f6168dd21fca4f6fea464992b9ce4d61ae050ddec5072baef",
+        "block": 24220359
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-01-13",
+        "timestamp": 1768326863,
+        "shares_raw": 54979217681664,
+        "tx": "0x78ec089e1abc43db4865ad7b24d2f454a5bedd5b364b2c6779e6075578e596c7",
+        "block": 24227399
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-01-13",
+        "timestamp": 1768334747,
+        "shares_raw": 0,
+        "tx": "0xc0ebc4961cf2acbdcabc82bdfd9fa235572ad9da1cfdb01246f741ee9968f27c",
+        "block": 24228051
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-01-15",
+        "timestamp": 1768486415,
+        "shares_raw": 18325342850147,
+        "tx": "0x68ddf78924e00ba5f1d8c20df0e1309df2ae77ba88df31b402b834a6bcb1bd80",
+        "block": 24240633
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-01-15",
+        "timestamp": 1768494503,
+        "shares_raw": 18324008126803,
+        "tx": "0x9b897f0598c4a0b7c6f995123ba392f21458adfbe59aaa50009fff8b124c01d9",
+        "block": 24241306
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-01-20",
+        "timestamp": 1768918571,
+        "shares_raw": 18324008126803,
+        "tx": "0x1a0bbb886055790d2a2dd94e78182ebf4d194fd3d5b09864bae893b02842fd3f",
+        "block": 24276525
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-01-21",
+        "timestamp": 1768954787,
+        "shares_raw": 18315858848175,
+        "tx": "0xdbda487a8b41c8cb129c820051da4fabf5962565368a93edc58262a2e8e11ac2",
+        "block": 24279533
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-01-24",
+        "timestamp": 1769279003,
+        "shares_raw": 18312930831089,
+        "tx": "0xeb04936bec80e39a0711296ad0fd263962ff7904eda7361e4da0f2f1b2184016",
+        "block": 24306420
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-01-27",
+        "timestamp": 1769549807,
+        "shares_raw": 18304735265952,
+        "tx": "0x69e93752c63427112b0c5fb01fda73b878e690c5d35a1f6a718f8a17b2eac028",
+        "block": 24328899
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-01-29",
+        "timestamp": 1769704043,
+        "shares_raw": 18301652446472,
+        "tx": "0x6f4f8d481e28c55c0ad3d7c9bbc1e8d8ff10f37c7f6a4602441dd5366e34b15b",
+        "block": 24341701
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-01-30",
+        "timestamp": 1769795951,
+        "shares_raw": 18299952200148,
+        "tx": "0x9a4c96377408ef283f9f3dd85a2e329bdbdfeac28358c9e862497b4fd9576357",
+        "block": 24349333
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-03-11",
+        "timestamp": 1773222623,
+        "shares_raw": 0,
+        "tx": "0xa74bacc2de5f7f2c0849c865d29576911bbe654e1def8794184a0cb3de45a0ea",
+        "block": 24633445
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-03-11",
+        "timestamp": 1773235643,
+        "shares_raw": 0,
+        "tx": "0x3f2ea32896e5fcb286f74b99d46e31c711eec433ab03d355cbc30793cc90a818",
+        "block": 24634521
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-03-12",
+        "timestamp": 1773326231,
+        "shares_raw": 45583724728866,
+        "tx": "0x6693d75eef20df37df5688b38fb9892aaac140cb5fccfc03e4799fc4412977e7",
+        "block": 24642027
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-03-13",
+        "timestamp": 1773430679,
+        "shares_raw": 132694171694375,
+        "tx": "0x52927756cd6bec462c4790c51cadb89c66267ccc50675e77cde16700adebf9f3",
+        "block": 24650683
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-03-17",
+        "timestamp": 1773758843,
+        "shares_raw": 45560250395997,
+        "tx": "0x57d1499e663b14c2eb35ee85df077531fc4610f64bda856bee05c5ca77bd26a7",
+        "block": 24677906
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-03-18",
+        "timestamp": 1773841499,
+        "shares_raw": 45555907150444,
+        "tx": "0xc59a2e15014a1335e15ecbfbcd2d522b5a18262f19b21aa5ffe4489c95437775",
+        "block": 24684751
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-03-19",
+        "timestamp": 1773942479,
+        "shares_raw": 45553078944364,
+        "tx": "0xe968fa969f77f0b561756c94980958df49f22a3e48bb8143826cc07e3a7f3262",
+        "block": 24693126
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-03-20",
+        "timestamp": 1774022459,
+        "shares_raw": 45550676614936,
+        "tx": "0x33f516c7245b4a467bedf90dfcf1ea17a9c55ad43c1a0fe357789db3c7e6d2d0",
+        "block": 24699772
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-03-24",
+        "timestamp": 1774367339,
+        "shares_raw": 45533217611837,
+        "tx": "0xe3cb5e27345ac299227ecafc7b9f300b71b1042e05acf03058348bb6eca23edc",
+        "block": 24728393
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-03-25",
+        "timestamp": 1774448591,
+        "shares_raw": 22765008874260,
+        "tx": "0x7c6311e17bd0165ad7b9834535c7b47cfb61ba12ea4659068b4922cb5483cede",
+        "block": 24735135
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-03-26",
+        "timestamp": 1774540547,
+        "shares_raw": 22762781230938,
+        "tx": "0x803b76e6f0aeee3f84238d55834ddb137c1b34d49ef03a29c3fd8978c2b553ca",
+        "block": 24742766
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-03-27",
+        "timestamp": 1774603895,
+        "shares_raw": 22761121932637,
+        "tx": "0x924cb98f1f520bb8c40a85b2c31dccf579f15f2795f2b116f2ec2f14b23d39e3",
+        "block": 24748018
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-03-31",
+        "timestamp": 1774956143,
+        "shares_raw": 68259318443448,
+        "tx": "0x2f9d0e9bef744087bd8363c260b5f6548ebe8353121ea8d5504ee00ad3b92ee3",
+        "block": 24777260
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-04-01",
+        "timestamp": 1775032247,
+        "shares_raw": 22749928642048,
+        "tx": "0xbc02f7204bd25b5d8eac1607f5b6e765da204a8d21934d259b9eb86e06cb723f",
+        "block": 24783569
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-04-02",
+        "timestamp": 1775117867,
+        "shares_raw": 22748033590682,
+        "tx": "0xed632e3035c85b4e0a1471b23bdec284a5bf1dd5adefe0d1009a66dfae715b8d",
+        "block": 24790675
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-04-04",
+        "timestamp": 1775290019,
+        "shares_raw": 22739713489937,
+        "tx": "0x094b6b18e23e27c80be78e25c92bcd72e8c61ee9368cb284ca65be3101084d76",
+        "block": 24804979
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-04-08",
+        "timestamp": 1775635631,
+        "shares_raw": 45470914141095,
+        "tx": "0x9380412ecc59db86d121597ebda2c146b0230fe74dba71b2c56e7db644645081",
+        "block": 24833684
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-04-09",
+        "timestamp": 1775724539,
+        "shares_raw": 22732950362347,
+        "tx": "0x95d2e54e04f4018b850143fd2e9dd3f7670901e143b60c96caaa01274a782fdb",
+        "block": 24841064
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-04-10",
+        "timestamp": 1775822531,
+        "shares_raw": 22730423611578,
+        "tx": "0x46c7d0f61cb2b6877b67f461784b65c3ef23d9ba07b443fd884d4041f53f6684",
+        "block": 24849194
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-04-13",
+        "timestamp": 1776071939,
+        "shares_raw": 22724515062591,
+        "tx": "0x92a56e71bd1d188f0f5157b56343bfa272f6ea356ab8016eb4cc301d06b113b5",
+        "block": 24869907
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-04-14",
+        "timestamp": 1776156587,
+        "shares_raw": 45445831885524,
+        "tx": "0x0fa2f1d21bcfa3a5d94743411707aa5c7428d99fae10e66291089ad2be13cabc",
+        "block": 24876943
+      },
+      {
+        "type": "Deposit",
+        "date": "2026-04-16",
+        "timestamp": 1776330035,
+        "shares_raw": 86334425966175,
+        "tx": "0xbb17ac27eb5a6d8c4c2aaf4659b559224b6d3029267bfecd262a93e12a2df1a8",
+        "block": 24891352
+      }
+    ],
+    "spark_jaaa": [],
+    "spark_jtrsy": []
+  },
+  "mint_receipts": [
+    {
+      "asset": "jaaa",
+      "tx": "0xad24dcadc390052216d8a5d95023062e4825b7c490c2ab0f0a728a64793a49fe",
+      "date": "2025-09-15T17:47:11+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x43d51be0B6dE2199A2396bA604114d24383F91E9",
+          "value": "19874309133538"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710663",
+          "scId": "0x00010000000000070000000000000001",
+          "epoch": "5",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "19874309133538",
+          "issuedAt": "1757958431"
+        }
+      ]
+    },
+    {
+      "asset": "jaaa",
+      "tx": "0x9d627733d0c2328200db23b29ced8a62856d8315f6da4488c3e25de17790e4a1",
+      "date": "2025-10-06T19:12:35+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x43d51be0B6dE2199A2396bA604114d24383F91E9",
+          "value": "19821638685571"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710663",
+          "scId": "0x00010000000000070000000000000001",
+          "epoch": "8",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "19821638685571",
+          "issuedAt": "1759777955"
+        }
+      ]
+    },
+    {
+      "asset": "jaaa",
+      "tx": "0xcce926d188ca291e1f4c99e41f5c5b0729b6c6614f5e8a538cf36df683babc18",
+      "date": "2025-10-07T15:22:23+00:00",
+      "mint_transfers": [],
+      "claim_details": [
+        {
+          "poolId": "281474976710663",
+          "scId": "0x00010000000000070000000000000001",
+          "epoch": "9",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "19821034640903",
+          "issuedAt": "1759844399"
+        }
+      ]
+    },
+    {
+      "asset": "jaaa",
+      "tx": "0x9165d8ab5f13748e1b1f2b989b125586a0a2c7fd2c939bba21a28807ef0d6ae3",
+      "date": "2025-10-07T15:58:59+00:00",
+      "mint_transfers": [],
+      "claim_details": [
+        {
+          "poolId": "281474976710663",
+          "scId": "0x00010000000000070000000000000001",
+          "epoch": "10",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "19821034640903",
+          "issuedAt": "1759852691"
+        }
+      ]
+    },
+    {
+      "asset": "jaaa",
+      "tx": "0x9f6ca5be6f8fde70eb4e3d67df0cb89f77585bb44d9ae564ea25c7b6ad21ec9f",
+      "date": "2025-10-08T15:00:35+00:00",
+      "mint_transfers": [],
+      "claim_details": [
+        {
+          "poolId": "281474976710663",
+          "scId": "0x00010000000000070000000000000001",
+          "epoch": "11",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "19818094622359",
+          "issuedAt": "1759934063"
+        }
+      ]
+    },
+    {
+      "asset": "jaaa",
+      "tx": "0x8ade275f40f7f24ac7e8d06f802b5c5e95a2fb43dfe8b6dcb245615cb495277b",
+      "date": "2025-10-08T17:55:23+00:00",
+      "mint_transfers": [],
+      "claim_details": [
+        {
+          "poolId": "281474976710663",
+          "scId": "0x00010000000000070000000000000001",
+          "epoch": "12",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "19818094622359",
+          "issuedAt": "1759944143"
+        }
+      ]
+    },
+    {
+      "asset": "jaaa",
+      "tx": "0xa2f7df5d78de11734c385bf40c8270b5f96ffb6628c59c540c89af6b3522433c",
+      "date": "2025-10-09T17:52:11+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x43d51be0B6dE2199A2396bA604114d24383F91E9",
+          "value": "19808835474072"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710663",
+          "scId": "0x00010000000000070000000000000001",
+          "epoch": "13",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "19808835474072",
+          "issuedAt": "1760032331"
+        }
+      ]
+    },
+    {
+      "asset": "jaaa",
+      "tx": "0xbb7703303bdc6969ee982c2c69c0f33c294e0b8302c19c19fca2e743d6a2c824",
+      "date": "2025-10-14T18:02:59+00:00",
+      "mint_transfers": [],
+      "claim_details": [
+        {
+          "poolId": "281474976710663",
+          "scId": "0x00010000000000070000000000000001",
+          "epoch": "15",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "19805893588614",
+          "issuedAt": "1760464727"
+        }
+      ]
+    },
+    {
+      "asset": "jaaa",
+      "tx": "0xa0b1476f30fdd2f049ae56c8ceccc38e5ae64f82b1bd1f4fe0a2ad60ee28b34a",
+      "date": "2025-10-15T18:04:35+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x43d51be0B6dE2199A2396bA604114d24383F91E9",
+          "value": "19808709798078"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710663",
+          "scId": "0x00010000000000070000000000000001",
+          "epoch": "16",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "19808709798078",
+          "issuedAt": "1760551475"
+        }
+      ]
+    },
+    {
+      "asset": "jaaa",
+      "tx": "0x1e00cf4bc261aaf0e8469882b0384a2bb20469028373c8815a77460e2263253d",
+      "date": "2025-10-16T17:58:47+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x43d51be0B6dE2199A2396bA604114d24383F91E9",
+          "value": "19829231913994"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710663",
+          "scId": "0x00010000000000070000000000000001",
+          "epoch": "17",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "19829231913994",
+          "issuedAt": "1760637527"
+        }
+      ]
+    },
+    {
+      "asset": "jaaa",
+      "tx": "0xeabf51bc1f54fd55f3050f84474aef9e3cedec9d9036c122a55023954844ad9b",
+      "date": "2025-10-20T14:51:11+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x43d51be0B6dE2199A2396bA604114d24383F91E9",
+          "value": "19812023927180"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710663",
+          "scId": "0x00010000000000070000000000000001",
+          "epoch": "18",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "19812023927180",
+          "issuedAt": "1760971871"
+        }
+      ]
+    },
+    {
+      "asset": "jaaa",
+      "tx": "0x099c8caac1e6f0d108f8509fa10d6606db6fdfb772b96bccae47cf120c1f92c6",
+      "date": "2025-10-20T18:21:35+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x43d51be0B6dE2199A2396bA604114d24383F91E9",
+          "value": "19812023927180"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710663",
+          "scId": "0x00010000000000070000000000000001",
+          "epoch": "19",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "19812023927180",
+          "issuedAt": "1760984495"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0x1fd95b2e049edb1bf889290bb61bd07e443262f32cd2e3d49fd7f8ccbcbedaa1",
+      "date": "2026-01-07T15:10:35+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x43d51be0B6dE2199A2396bA604114d24383F91E9",
+          "value": "18335066923784"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "scId": "0x00010000000000060000000000000001",
+          "epoch": "5",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "18335066923784",
+          "issuedAt": "1767798635"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0xa35f09db805f5b89f6c9bf0494d291874c9ff0dcfe1833dc24402228d429fa66",
+      "date": "2026-01-07T16:00:35+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x43d51be0B6dE2199A2396bA604114d24383F91E9",
+          "value": "18335066923784"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "scId": "0x00010000000000060000000000000001",
+          "epoch": "6",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "18335066923784",
+          "issuedAt": "1767801635"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0x5dd29e35ddcf83d05411ca593b6142cb75ff7981c5620ba9f1aab41d038a294d",
+      "date": "2026-01-09T15:39:59+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x43d51be0B6dE2199A2396bA604114d24383F91E9",
+          "value": "18333725105739"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "scId": "0x00010000000000060000000000000001",
+          "epoch": "7",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "18333725105739",
+          "issuedAt": "1767973199"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0x858473558b807400bba31dea0f673f3445c5be375c03b5fe29cdd4059d120f82",
+      "date": "2026-01-12T16:27:35+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x43d51be0B6dE2199A2396bA604114d24383F91E9",
+          "value": "18327695504759"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "scId": "0x00010000000000060000000000000001",
+          "epoch": "8",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "18327695504759",
+          "issuedAt": "1768235255"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0x59a55bf6259a1b43e7c6cace0d0e49b2348d114fef35f3528cbf288ba7e7b05d",
+      "date": "2026-01-13T15:31:35+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x43d51be0B6dE2199A2396bA604114d24383F91E9",
+          "value": "18326405893888"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "scId": "0x00010000000000060000000000000001",
+          "epoch": "9",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "18326405893888",
+          "issuedAt": "1768318295"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0xc575cb2db165d059d0983c106a4169de4a0111d12ff7518bf811d64a29d65487",
+      "date": "2026-01-13T16:30:11+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x43d51be0B6dE2199A2396bA604114d24383F91E9",
+          "value": "18326405893888"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "scId": "0x00010000000000060000000000000001",
+          "epoch": "10",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "18326405893888",
+          "issuedAt": "1768321811"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0x80de78bc7cc5dc74a90341060e780c74a3d5f00ebc4a67f68b1ee91b3093d664",
+      "date": "2026-01-13T16:51:59+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x43d51be0B6dE2199A2396bA604114d24383F91E9",
+          "value": "18326405893888"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "scId": "0x00010000000000060000000000000001",
+          "epoch": "11",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "18326405893888",
+          "issuedAt": "1768323119"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0x28db7c88e3ca85360dd09c572ec18103bbacd61fb9a25d4a0fb05edbc1b29b27",
+      "date": "2026-01-14T17:04:35+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x43d51be0B6dE2199A2396bA604114d24383F91E9",
+          "value": "18325342850147"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "scId": "0x00010000000000060000000000000001",
+          "epoch": "12",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "18325342850147",
+          "issuedAt": "1768410275"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0xc27d8ef867ea2c99dba440bdfc9191f4cae0582d8f430ccb59ce52cf37a21114",
+      "date": "2026-01-15T14:49:11+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x43d51be0B6dE2199A2396bA604114d24383F91E9",
+          "value": "18324008126803"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "scId": "0x00010000000000060000000000000001",
+          "epoch": "13",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "18324008126803",
+          "issuedAt": "1768488551"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0xa01373594bf99b23b7ae4f307a17fe8081d47c188256ff7308a9790236599ad9",
+      "date": "2026-01-15T18:37:47+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x43d51be0B6dE2199A2396bA604114d24383F91E9",
+          "value": "18324008126803"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "scId": "0x00010000000000060000000000000001",
+          "epoch": "14",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "18324008126803",
+          "issuedAt": "1768502267"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0x9a22fade07ae0d1b2e935af74ed9c04b77140f6520fcbf7cb3aed329990484d5",
+      "date": "2026-01-20T15:48:11+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x43d51be0B6dE2199A2396bA604114d24383F91E9",
+          "value": "18315858848175"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "scId": "0x00010000000000060000000000000001",
+          "epoch": "15",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "18315858848175",
+          "issuedAt": "1768924091"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0x3ec15205a67208a62fae7d36ad4b7347bc25325ba3b4a7abf1e9907bb887eecf",
+      "date": "2026-01-22T16:32:47+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x43d51be0B6dE2199A2396bA604114d24383F91E9",
+          "value": "18312930831089"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "scId": "0x00010000000000060000000000000001",
+          "epoch": "16",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "18312930831089",
+          "issuedAt": "1769099567"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0x7c3e5bfc1169955f4fa29e9775a02c43ab69bda634952647ebc609c04d6c7030",
+      "date": "2026-01-27T17:32:11+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x43d51be0B6dE2199A2396bA604114d24383F91E9",
+          "value": "18304735265952"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "scId": "0x00010000000000060000000000000001",
+          "epoch": "17",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "18304735265952",
+          "issuedAt": "1769535131"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0x96c6e8d13bbad779833ac013a2db054014da35f7dd815c4e4409640b886b68bd",
+      "date": "2026-01-29T15:39:23+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x43d51be0B6dE2199A2396bA604114d24383F91E9",
+          "value": "18301652446472"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "scId": "0x00010000000000060000000000000001",
+          "epoch": "18",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "18301652446472",
+          "issuedAt": "1769701163"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0x8a848cc92b2c59ec5602d37a1aa3fdda4bb1dc3a907edd9b6551b55fc06c1d36",
+      "date": "2026-01-30T15:05:11+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x43d51be0B6dE2199A2396bA604114d24383F91E9",
+          "value": "18299952200148"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "scId": "0x00010000000000060000000000000001",
+          "epoch": "19",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "depositAssetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "20000000000000",
+          "pendingAssetAmount": "0",
+          "claimedShareAmount": "18299952200148",
+          "issuedAt": "1769785511"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0xb953280e71ba47ff04da8c682a73826ef97581c0bcfa564c6288fe00224b5953",
+      "date": "2026-03-11T15:40:35+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x0665FDe254598e307b63f3aAe3cCd881a62d4bE3",
+          "value": "45583724728866"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "shareClassId": "0x00010000000000060000000000000001",
+          "epochId": "20",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "assetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "50000000000000",
+          "pendingAssetAmount": "0",
+          "payoutShareAmount": "45583724728866",
+          "issuedAt": "1773243635"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0xdd7ed373244ba2c214d7c630ded4d2d00e89d3f651699a681c7a3e90350a5331",
+      "date": "2026-03-12T16:34:11+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x0665FDe254598e307b63f3aAe3cCd881a62d4bE3",
+          "value": "45579871754335"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "shareClassId": "0x00010000000000060000000000000001",
+          "epochId": "21",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "assetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "50000000000000",
+          "pendingAssetAmount": "0",
+          "payoutShareAmount": "45579871754335",
+          "issuedAt": "1773333251"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0xd0d91966199c3a57ecd96fb52eaa9b06d8683e8a2218ba56fcb0bbc344d273bd",
+      "date": "2026-03-13T14:32:11+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x0665FDe254598e307b63f3aAe3cCd881a62d4bE3",
+          "value": "45576174500387"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "shareClassId": "0x00010000000000060000000000000001",
+          "epochId": "22",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "assetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "50000000000000",
+          "pendingAssetAmount": "0",
+          "payoutShareAmount": "45576174500387",
+          "issuedAt": "1773412331"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0xaf3d7675d6c0d5c6a6ded2507ef07d6db6e9eb0dd9b5bc6c3e8084d0465f17ae",
+      "date": "2026-03-13T15:56:35+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x0665FDe254598e307b63f3aAe3cCd881a62d4bE3",
+          "value": "41538125439653"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "shareClassId": "0x00010000000000060000000000000001",
+          "epochId": "23",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "assetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "45570000000000",
+          "pendingAssetAmount": "0",
+          "payoutShareAmount": "41538125439653",
+          "issuedAt": "1773417395"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0xccde7ee21f43ea87f2b5632420e345213ed2bdf8414901a932dedae039fac870",
+      "date": "2026-03-17T14:20:59+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x0665FDe254598e307b63f3aAe3cCd881a62d4bE3",
+          "value": "45560250395997"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "shareClassId": "0x00010000000000060000000000000001",
+          "epochId": "24",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "assetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "50000000000000",
+          "pendingAssetAmount": "0",
+          "payoutShareAmount": "45560250395997",
+          "issuedAt": "1773757259"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0xe902f236074b028b83ab8b74f31b6a493e521798ed14e0c69e1b814eed08f9cc",
+      "date": "2026-03-18T13:32:11+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x0665FDe254598e307b63f3aAe3cCd881a62d4bE3",
+          "value": "45555907150444"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "shareClassId": "0x00010000000000060000000000000001",
+          "epochId": "25",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "assetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "50000000000000",
+          "pendingAssetAmount": "0",
+          "payoutShareAmount": "45555907150444",
+          "issuedAt": "1773840731"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0x46258f2c69314f4deea7a99d216b81730bed5a54e810649065ada53e42a42e83",
+      "date": "2026-03-19T17:15:23+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x0665FDe254598e307b63f3aAe3cCd881a62d4bE3",
+          "value": "45553078944364"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "shareClassId": "0x00010000000000060000000000000001",
+          "epochId": "26",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "assetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "50000000000000",
+          "pendingAssetAmount": "0",
+          "payoutShareAmount": "45553078944364",
+          "issuedAt": "1773940523"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0x3cb08a2607ad88492a8003e2ad20a0fc4cf6f68597c8dcf6e9a30a035b5e6534",
+      "date": "2026-03-20T15:24:47+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x0665FDe254598e307b63f3aAe3cCd881a62d4bE3",
+          "value": "45550676614936"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "shareClassId": "0x00010000000000060000000000000001",
+          "epochId": "27",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "assetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "50000000000000",
+          "pendingAssetAmount": "0",
+          "payoutShareAmount": "45550676614936",
+          "issuedAt": "1774020287"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0x498f000df9b04c4cc9ac24cc636d4248b87a13a970452996027f0b5e3c5ca4f9",
+      "date": "2026-03-24T15:15:59+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x0665FDe254598e307b63f3aAe3cCd881a62d4bE3",
+          "value": "45533217611837"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "shareClassId": "0x00010000000000060000000000000001",
+          "epochId": "29",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "assetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "50000000000000",
+          "pendingAssetAmount": "0",
+          "payoutShareAmount": "45533217611837",
+          "issuedAt": "1774365359"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0x94ada1fae2428070ac5808993a81a37d28f8feb254f7c5935e5ee26e5691b7bf",
+      "date": "2026-03-25T13:47:11+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x0665FDe254598e307b63f3aAe3cCd881a62d4bE3",
+          "value": "22765008874260"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "shareClassId": "0x00010000000000060000000000000001",
+          "epochId": "30",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "assetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "25000000000000",
+          "pendingAssetAmount": "0",
+          "payoutShareAmount": "22765008874260",
+          "issuedAt": "1774446431"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0xececf44ba751fe9c70efe17678b512c02e684c326dcb6cf7de466312dda596fd",
+      "date": "2026-03-26T15:34:47+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x0665FDe254598e307b63f3aAe3cCd881a62d4bE3",
+          "value": "22762781230938"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "shareClassId": "0x00010000000000060000000000000001",
+          "epochId": "31",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "assetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "25000000000000",
+          "pendingAssetAmount": "0",
+          "payoutShareAmount": "22762781230938",
+          "issuedAt": "1774539287"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0x545288024e5f480baccdf301e8b338a8304d5ee98c2e8d225f4e2c06c23653d2",
+      "date": "2026-03-27T09:01:35+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x0665FDe254598e307b63f3aAe3cCd881a62d4bE3",
+          "value": "22761121932637"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "shareClassId": "0x00010000000000060000000000000001",
+          "epochId": "32",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "assetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "25000000000000",
+          "pendingAssetAmount": "0",
+          "payoutShareAmount": "22761121932637",
+          "issuedAt": "1774602095"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0xc56cfe0e8488d88273c829a280867096b8a6b213d276d580c17ff43c37a35987",
+      "date": "2026-03-30T09:56:47+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x0665FDe254598e307b63f3aAe3cCd881a62d4bE3",
+          "value": "22754544284473"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "shareClassId": "0x00010000000000060000000000000001",
+          "epochId": "33",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "assetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "25000000000000",
+          "pendingAssetAmount": "0",
+          "payoutShareAmount": "22754544284473",
+          "issuedAt": "1774864607"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0x116ae7e0d848a27347e55726568fae622c6175e885e119c23991534dcd4627f5",
+      "date": "2026-03-31T07:20:59+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x0665FDe254598e307b63f3aAe3cCd881a62d4bE3",
+          "value": "45504774158975"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "shareClassId": "0x00010000000000060000000000000001",
+          "epochId": "34",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "assetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "50000000000000",
+          "pendingAssetAmount": "0",
+          "payoutShareAmount": "45504774158975",
+          "issuedAt": "1774941659"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0xf6d7f27ceb4553c8903a64b8ced8333d15a5e9c788b1d358d092aa0bc5e71ee6",
+      "date": "2026-04-01T07:58:47+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x0665FDe254598e307b63f3aAe3cCd881a62d4bE3",
+          "value": "22749928642048"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "shareClassId": "0x00010000000000060000000000000001",
+          "epochId": "35",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "assetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "25000000000000",
+          "pendingAssetAmount": "0",
+          "payoutShareAmount": "22749928642048",
+          "issuedAt": "1775030327"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0x98480bbedbbc548faf7f09a3265859f00724618843cb1ec526a3545e96d68916",
+      "date": "2026-04-02T08:05:35+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x0665FDe254598e307b63f3aAe3cCd881a62d4bE3",
+          "value": "22748033590682"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "shareClassId": "0x00010000000000060000000000000001",
+          "epochId": "36",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "assetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "25000000000000",
+          "pendingAssetAmount": "0",
+          "payoutShareAmount": "22748033590682",
+          "issuedAt": "1775117135"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0xda760eca74ddc9196cebd4647870d8e28ee3d1e4a1bd8c49b511930e5e899802",
+      "date": "2026-04-03T18:05:11+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x0665FDe254598e307b63f3aAe3cCd881a62d4bE3",
+          "value": "22739713489937"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "shareClassId": "0x00010000000000060000000000000001",
+          "epochId": "37",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "assetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "25000000000000",
+          "pendingAssetAmount": "0",
+          "payoutShareAmount": "22739713489937",
+          "issuedAt": "1775239511"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0x9f41bc62bcebe852d9b29b61638a90f59858e6b7026938b02b3e345b1aa15420",
+      "date": "2026-04-08T07:41:47+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x0665FDe254598e307b63f3aAe3cCd881a62d4bE3",
+          "value": "45470914141095"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "shareClassId": "0x00010000000000060000000000000001",
+          "epochId": "38",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "assetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "50000000000000",
+          "pendingAssetAmount": "0",
+          "payoutShareAmount": "45470914141095",
+          "issuedAt": "1775634107"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0x35fb5ea7f15826ccd877b699cec326bc93ce3750fa8fd6b1bdbd7cbbbbff629a",
+      "date": "2026-04-09T08:31:35+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x0665FDe254598e307b63f3aAe3cCd881a62d4bE3",
+          "value": "22732950362347"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "shareClassId": "0x00010000000000060000000000000001",
+          "epochId": "39",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "assetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "25000000000000",
+          "pendingAssetAmount": "0",
+          "payoutShareAmount": "22732950362347",
+          "issuedAt": "1775723495"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0xcfd4d74c7d4cd76f891766f4078de0bf1d56102eb61e7fe8284f56ec6ab4e275",
+      "date": "2026-04-10T11:39:35+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x0665FDe254598e307b63f3aAe3cCd881a62d4bE3",
+          "value": "22730423611578"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "shareClassId": "0x00010000000000060000000000000001",
+          "epochId": "40",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "assetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "25000000000000",
+          "pendingAssetAmount": "0",
+          "payoutShareAmount": "22730423611578",
+          "issuedAt": "1775821175"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0x8f69e4a37dc7251404b29276e0ac781b18ebf76b135659732874b156895a2093",
+      "date": "2026-04-13T08:55:35+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x0665FDe254598e307b63f3aAe3cCd881a62d4bE3",
+          "value": "22724515062591"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "shareClassId": "0x00010000000000060000000000000001",
+          "epochId": "41",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "assetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "25000000000000",
+          "pendingAssetAmount": "0",
+          "payoutShareAmount": "22724515062591",
+          "issuedAt": "1776070535"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0x5c9f87b0e768bf005c03b260e7957bc3c0e9194f0fdd00c766092d20b8b18711",
+      "date": "2026-04-14T08:13:11+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x0665FDe254598e307b63f3aAe3cCd881a62d4bE3",
+          "value": "45445831885524"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "shareClassId": "0x00010000000000060000000000000001",
+          "epochId": "42",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "assetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "50000000000000",
+          "pendingAssetAmount": "0",
+          "payoutShareAmount": "45445831885524",
+          "issuedAt": "1776154391"
+        }
+      ]
+    },
+    {
+      "asset": "jtrsy",
+      "tx": "0x4f4cd8c9396d6ff688a3907be4dd370e5e380afc6f070b0a570133920eef0e6d",
+      "date": "2026-04-16T08:14:35+00:00",
+      "mint_transfers": [
+        {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x0665FDe254598e307b63f3aAe3cCd881a62d4bE3",
+          "value": "86334425966175"
+        }
+      ],
+      "claim_details": [
+        {
+          "poolId": "281474976710662",
+          "shareClassId": "0x00010000000000060000000000000001",
+          "epochId": "43",
+          "investor": "0x491edfb0b8b608044e227225c715981a30f3a44e000000000000000000000000",
+          "assetId": "5192296858534827628530496329220097",
+          "paymentAssetAmount": "95000000000000",
+          "pendingAssetAmount": "0",
+          "payoutShareAmount": "86334425966175",
+          "issuedAt": "1776327275"
+        }
+      ]
+    }
+  ],
+  "snapshots": [
+    {
+      "asset": "jaaa",
+      "date": "2025-10-06",
+      "block": 23522162,
+      "nav_raw": "1008998313270570302",
+      "max_mint_raw": "19821638685571",
+      "wallet_raw": "519026212089489",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x0000000000000000000000000000000000000000000000000000120715bb938300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e00ae9eb97610150000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2025-10-07",
+      "block": 23529320,
+      "nav_raw": "1009029062424759304",
+      "max_mint_raw": "19821034640903",
+      "wallet_raw": "558668885415963",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x00000000000000000000000000000000000000000000000000001206f1ba960700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e00ca9611e04b3b0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2025-10-08",
+      "block": 23536460,
+      "nav_raw": "1009178752100387484",
+      "max_mint_raw": "19818094622359",
+      "wallet_raw": "598308014679225",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x00000000000000000000000000000000000000000000000000001206427d769700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e0152ba69d10e7f0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2025-10-09",
+      "block": 23543615,
+      "nav_raw": "1009650467650034187",
+      "max_mint_raw": "19808835474072",
+      "wallet_raw": "618126109301584",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x000000000000000000000000000000000000000000000000000012041a9a129800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e02ffc03f96d4040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2025-10-10",
+      "block": 23550763,
+      "nav_raw": "1009750589459877204",
+      "max_mint_raw": "19808835474072",
+      "wallet_raw": "618126109301584",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x000000000000000000000000000000000000000000000000000012041a9a129800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e02ffc03f96d4040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2025-10-11",
+      "block": 23557920,
+      "nav_raw": "1009750589459877204",
+      "max_mint_raw": "19808835474072",
+      "wallet_raw": "618126109301584",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x000000000000000000000000000000000000000000000000000012041a9a129800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e02ffc03f96d4040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2025-10-12",
+      "block": 23565080,
+      "nav_raw": "1009750589459877204",
+      "max_mint_raw": "19808835474072",
+      "wallet_raw": "618126109301584",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x000000000000000000000000000000000000000000000000000012041a9a129800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e02ffc03f96d4040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2025-10-13",
+      "block": 23572225,
+      "nav_raw": "1009750589459877204",
+      "max_mint_raw": "19808835474072",
+      "wallet_raw": "618126109301584",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x000000000000000000000000000000000000000000000000000012041a9a129800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e02ffc03f96d4040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2025-10-14",
+      "block": 23579375,
+      "nav_raw": "1009800436951594414",
+      "max_mint_raw": "19805893588614",
+      "wallet_raw": "637934944775656",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x000000000000000000000000000000000000000000000000000012036b40768600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e038825b289538d0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2025-10-15",
+      "block": 23586523,
+      "nav_raw": "1009656873358830113",
+      "max_mint_raw": "19808709798078",
+      "wallet_raw": "657740838364270",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x00000000000000000000000000000000000000000000000000001204131c68be00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e030593b195c66f0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2025-10-16",
+      "block": 23593662,
+      "nav_raw": "1008611936495865132",
+      "max_mint_raw": "19829231913994",
+      "wallet_raw": "677549548162348",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x00000000000000000000000000000000000000000000000000001208da530c0a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000dff4f365f0ebec10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2025-10-20",
+      "block": 23622239,
+      "nav_raw": "1009487979295313701",
+      "max_mint_raw": "19812023927180",
+      "wallet_raw": "717190804003522",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x00000000000000000000000000000000000000000000000000001204d8a6018c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e026bf7faed10960000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2025-10-21",
+      "block": 23629361,
+      "nav_raw": "1009742735058893669",
+      "max_mint_raw": "19812023927180",
+      "wallet_raw": "717190804003522",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x00000000000000000000000000000000000000000000000000001204d8a6018c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e026bf7faed10960000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2025-10-22",
+      "block": 23636490,
+      "nav_raw": "1009916913923863808",
+      "max_mint_raw": "19812023927180",
+      "wallet_raw": "717190804003522",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x00000000000000000000000000000000000000000000000000001204d8a6018c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e026bf7faed10960000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2025-10-23",
+      "block": 23643619,
+      "nav_raw": "1009988795782501175",
+      "max_mint_raw": "19812023927180",
+      "wallet_raw": "717190804003522",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x00000000000000000000000000000000000000000000000000001204d8a6018c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e026bf7faed10960000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2025-10-24",
+      "block": 23650757,
+      "nav_raw": "1009762045231881111",
+      "max_mint_raw": "19812023927180",
+      "wallet_raw": "717190804003522",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x00000000000000000000000000000000000000000000000000001204d8a6018c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e026bf7faed10960000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2025-10-25",
+      "block": 23657910,
+      "nav_raw": "1009762045231881111",
+      "max_mint_raw": "19812023927180",
+      "wallet_raw": "717190804003522",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x00000000000000000000000000000000000000000000000000001204d8a6018c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e026bf7faed10960000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2025-10-26",
+      "block": 23665071,
+      "nav_raw": "1009762045231881111",
+      "max_mint_raw": "19812023927180",
+      "wallet_raw": "717190804003522",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x00000000000000000000000000000000000000000000000000001204d8a6018c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e026bf7faed10960000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jaaa",
+      "date": "2025-10-27",
+      "block": 23672211,
+      "nav_raw": "1010202104352017808",
+      "max_mint_raw": "19812023927180",
+      "wallet_raw": "717190804003522",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x00000000000000000000000000000000000000000000000000001204d8a6018c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e026bf7faed10960000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-01-14",
+      "block": 24236386,
+      "nav_raw": "1091384764997118436",
+      "max_mint_raw": "18325342850147",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x000000000000000000000000000000000000000000000000000010aab38d0c6300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f2560a94eedbd5d0000000000000000000000000000000000000000000000000ef29ae389dbf972000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-01-15",
+      "block": 24243557,
+      "nav_raw": "1091464261617817195",
+      "max_mint_raw": "18324008126803",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x000000000000000000000000000000000000000000000000000010aa63fec95300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f25a8f68ec3a7e60000000000000000000000000000000000000000000000000ef29ae389dbf972000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-01-16",
+      "block": 24250737,
+      "nav_raw": "1091554712933830000",
+      "max_mint_raw": "18324008126803",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x000000000000000000000000000000000000000000000000000010aa63fec95300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f25a8f68ec3a7e60000000000000000000000000000000000000000000000000ef29ae389dbf972000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-01-17",
+      "block": 24257909,
+      "nav_raw": "1091554712933830000",
+      "max_mint_raw": "18324008126803",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x000000000000000000000000000000000000000000000000000010aa63fec95300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f25a8f68ec3a7e60000000000000000000000000000000000000000000000000ef29ae389dbf972000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-01-18",
+      "block": 24265091,
+      "nav_raw": "1091554712933830000",
+      "max_mint_raw": "18324008126803",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x000000000000000000000000000000000000000000000000000010aa63fec95300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f25a8f68ec3a7e60000000000000000000000000000000000000000000000000ef29ae389dbf972000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-01-19",
+      "block": 24272265,
+      "nav_raw": "1091554712933830000",
+      "max_mint_raw": "18324008126803",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x000000000000000000000000000000000000000000000000000010aa63fec95300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f25a8f68ec3a7e60000000000000000000000000000000000000000000000000ef29ae389dbf972000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-01-20",
+      "block": 24279434,
+      "nav_raw": "1091949887023312734",
+      "max_mint_raw": "18315858848175",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x000000000000000000000000000000000000000000000000000010a87e42a9af00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f2762a3088dbd640000000000000000000000000000000000000000000000000ef29ae389dbf972000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-01-22",
+      "block": 24293765,
+      "nav_raw": "1092124476659202752",
+      "max_mint_raw": "18312930831089",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x000000000000000000000000000000000000000000000000000010a7cfbcaaf100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f28016cd9c89a140000000000000000000000000000000000000000000000000ef29ae389dbf972000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-01-23",
+      "block": 24300927,
+      "nav_raw": "1092219435009829834",
+      "max_mint_raw": "18312930831089",
+      "manager": "0xf06f89a1b6c601235729a689595571b7455dd433",
+      "investment_state": "0x000000000000000000000000000000000000000000000000000010a7cfbcaaf100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f28016cd9c89a140000000000000000000000000000000000000000000000000ef29ae389dbf972000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-03-11",
+      "block": 24637660,
+      "nav_raw": "1096882720694755991",
+      "max_mint_raw": "45583724728866",
+      "manager": "0xf48256abddf96ecddc4b3dbd23e8c1921f9761ae",
+      "investment_state": "0x0000000000000000000000000000000000000000000000000000297549b8522200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f38e905df4698e1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002d79883d200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-03-12",
+      "block": 24644820,
+      "nav_raw": "1096975442789472795",
+      "max_mint_raw": "45579871754335",
+      "manager": "0xf48256abddf96ecddc4b3dbd23e8c1921f9761ae",
+      "investment_state": "0x000000000000000000000000000000000000000000000000000029746410985f00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f393d5a6acb6e06000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002d79883d200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-03-30",
+      "block": 24773860,
+      "nav_raw": "1098681638597281503",
+      "max_mint_raw": "22754544284473",
+      "manager": "0xf48256abddf96ecddc4b3dbd23e8c1921f9761ae",
+      "investment_state": "0x000000000000000000000000000000000000000000000000000014b1f487733900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f3f4d2115d64fdc000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002d79883d200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "asset": "jtrsy",
+      "date": "2026-04-03",
+      "block": 24802549,
+      "nav_raw": "1099398196510357938",
+      "max_mint_raw": "22739713489937",
+      "manager": "0xf48256abddf96ecddc4b3dbd23e8c1921f9761ae",
+      "investment_state": "0x000000000000000000000000000000000000000000000000000014ae808b7c1100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f41d8d5b9b5264b0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ],
+  "baselines": {
+    "2026-01": {
+      "path": "settlements/grove/2026-01/grove_settlement_january_2026.xlsx",
+      "sha256": "17378711188dbaa4889ae0af8749043ea6d380b84495e7bf760f0065100bde4c"
+    },
+    "2026-03": {
+      "path": "settlements/grove/2026-03/grove_settlement_march_2026.xlsx",
+      "sha256": "a12c9ed10f97522742559a9f78b15174d60563dab61d80c2e039c87c4401eca9"
+    },
+    "2026-04": {
+      "path": "settlements/grove/2026-04/grove_settlement_april_2026.xlsx",
+      "sha256": "2147bb6d9e900261abe33643c70fe32c7c294cdeb1a5c034304aa704fa94f16f"
+    }
+  }
+}

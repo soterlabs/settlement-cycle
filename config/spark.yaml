@@ -594,6 +594,12 @@ venues:
       address: '0x8c213ee79581ff4984583c6a801e5263418c4b86'
       symbol: 'JTRSY'
       decimals: 6
+    underlying:
+      address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+      symbol: 'USDC'
+      decimals: 6
+    # Same async gateway and issuance/collection accounting as Grove E9.
+    centrifuge_vault: '0xFE6920eB6C421f1179cA8c8d4170530CDBdfd77A'
     # NAV: aligned 2026-05-04 with Grove's E9 — switched from Chronicle to
     # Centrifuge's pricePerShareFeed (canonical per Grove team's PnL workbook;
     # Grove now matches within $32). Same JTRSY token across primes, so the
