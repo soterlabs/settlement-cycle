@@ -704,7 +704,9 @@
       },
       "0x00836fe54625be242bcfa286207795405ca4fd10": {
         "kind": "sky_direct",
-        "label": "Curve USDT Sky direct"
+        "label": "Curve USDT Sky direct",
+        "start_date": "2025-11-13",
+        "end_date": "2026-06-25"
       },
       "0xa632d59b9b804a956bfaa9b48af3a1b74808fc1f": {
         "kind": "allocation",
@@ -835,8 +837,10 @@
         "label": "Anchorage lending account"
       },
       "0x000000000004444c5dc75cb358380d2e3de08a90": {
-        "kind": "amm",
-        "label": "Uniswap v4 PoolManager"
+        "kind": "sky_direct",
+        "label": "Uniswap v4 USDT leg on behalf of Sky; other legs retain own attribution",
+        "start_date": "2026-05-26",
+        "end_date": "9999-12-31"
       },
       "0xd5ff8bdef23fc3c8ff6815c6b4051f9809c877a5": {
         "kind": "investment",
@@ -865,6 +869,10 @@
       "0xdfbc82d27aa60e9f55bdfe043a881c18520b71f1": {
         "kind": "unclassified",
         "label": "Unidentified Safe"
+      },
+      "0xa188eec8f81263234da3622a406892f3d630f98c": {
+        "kind": "conversion",
+        "label": "Sky USDS/USDC PSM wrapper; matched conversion legs"
       }
     },
     "base": {
@@ -1074,5 +1082,6 @@
   ],
   "opening_msc_receivable": "7071339",
   "source_rules": "cash_flow_statement_rules.md",
-  "unclassified_policy": "Retain unidentified receipts/payments explicitly; never infer revenue or an expense from a transfer alone."
+  "unclassified_policy": "Retain unidentified receipts/payments explicitly; never infer revenue or an expense from a transfer alone.",
+  "reporting_accounting_rules": "src/settle/revenue/ACCOUNTING_RULES.md"
 }

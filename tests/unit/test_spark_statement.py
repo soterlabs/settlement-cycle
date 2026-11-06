@@ -345,6 +345,12 @@ def test_real_october_perimeter_is_complete_except_dr_and_savings_reconciles():
         spark_statement=True,
         spark_publications=[row],
     )
+    # This retained fixture certifies the original v3.9 perimeter. The v3.10
+    # PSM3 credit uses a new retained source field, absent from this fixture.
+    selection = decode_selection(document["selection"], "spark", 2026)
+    selection["policy_version"] = "prime-management.spark-history.v3.9"
+    document = statements("spark", 2026, date(2026, 10, 31),
+        [evidence["financial"]], selection=selection, spark_publications=[row])
     lines = {r["id"]: r for r in document["lines"]}
 
     def amount(key):

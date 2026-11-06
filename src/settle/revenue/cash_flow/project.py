@@ -9,7 +9,7 @@ from decimal import Decimal
 
 from ..verification import digest
 from .config import layout, load
-from .model import amount, metric, total
+from .model import CHILDREN, OPTIONAL_ACCOUNTING_LINES, amount, metric, total
 
 
 def encode(value):
@@ -139,6 +139,8 @@ def annual(prime, year, as_of, rows, *, selection=None):
             "aggregation": "last",
         },
     ]
+    present = {key for item in chosen if item for key in item["document"]["metrics"]}
+    definitions = [r for r in definitions if r["id"] not in OPTIONAL_ACCOUNTING_LINES or r["id"] in present]
     lines = []
     for row in definitions:
         values = {}
@@ -173,6 +175,17 @@ def annual(prime, year, as_of, rows, *, selection=None):
         combined = total([(p["key"], 1, values[p["key"]]) for p in selected])
         lines.append({**row, "values": values, "total": combined})
     by_id = {r["id"]: r for r in lines}
+    # Additive lines can coexist with retained legacy months. Unknown new
+    # components make those months partial; they must not break parent sums.
+    if present.intersection(OPTIONAL_ACCOUNTING_LINES):
+        for key, children in CHILDREN.items():
+            for p, item in zip(periods, chosen, strict=True):
+                if p["state"] == "future": continue
+                cells = [(child, 1, by_id[child]["values"][p["key"]]) for child in children if child in by_id]
+                cell = total(cells)
+                if item: cell["source_ref"] = item["revision_id"]
+                by_id[key]["values"][p["key"]] = cell
+            by_id[key]["total"] = total([(p["key"],1,by_id[key]["values"][p["key"]]) for p in periods if p["state"] != "future"])
     for key, starting, parts in [
         ("cumulative-gap", Decimal(0), [("reconciliation-gap", 1)]),
         (

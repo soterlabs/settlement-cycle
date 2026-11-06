@@ -91,7 +91,8 @@ def test_savings_expense_is_published_once_and_pins_replay(database, monkeypatch
             r = client.get("/v3/reporting/savings", params=query)
             assert r.status_code == 200, r.text
             doc = r.json()
-            assert doc["metrics"]["funding.savings"]["value"] == "18"
+            assert doc["metrics"]["funding.savings.interest"]["value"] == "18"
+            assert doc["metrics"]["funding.savings"]["known_value"] == "18"
             assert not doc["principal_included_in_expense"]
             annual = client.get(
                 "/v3/reporting/statements?prime=spark&year=2026&cutoff=2026-10-31"

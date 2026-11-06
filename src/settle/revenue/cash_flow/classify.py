@@ -23,6 +23,9 @@ CASH_LEAVES = (
     "sky-demand-receipts",
     "external-receipts",
     "expenses-paid",
+    "savings-interest-paid",
+    "sky-direct-deployments",
+    "treasury-disposals",
     "allocation-changes",
     "investments",
     "usds-drawn",
@@ -45,7 +48,7 @@ def is_cash(config, chain, token, owner):
     )
 
 
-def collect_ledger(evidence, *, config=None):
+def collect_ledger(evidence, *, config=None, disposals=()):
     config = config or load()
     entries = []
     seen = set()
@@ -152,20 +155,8 @@ def collect_ledger(evidence, *, config=None):
                 value = units / 10 ** meta["decimals"]
                 if value == 0:
                     continue
-                # Direct issuer rewards are cash under the agreed operational
-                # reward-balance policy; principal remains an allocation.
-                if (
-                    src in config["reward_payers"].get(chain, {})
-                    and dst in wallets
-                    and meta["symbol"] == config["reward_payers"][chain][src]
-                ):
-                    append(
-                        e,
-                        "external-receipts",
-                        value,
-                        reason="Verified issuer reward payer; reward cash balance tracked separately",
-                    )
-                    continue
+                # Issuer tokens at ALM are allocations, including rewards.
+                # Income/accrual settlement is independent of cash eligibility.
                 cash_from, cash_to = (
                     is_cash(config, chain, e["address"], src),
                     is_cash(config, chain, e["address"], dst),
@@ -318,7 +309,7 @@ def collect_ledger(evidence, *, config=None):
                         if Decimal(item["interest_units"]):
                             append(
                                 e,
-                                "expenses-paid",
+                                "savings-interest-paid",
                                 -Decimal(item["interest_units"]) / 10 ** meta["decimals"],
                                 reason="Savings interest paid; excluded from financing principal",
                                 suffix="savings-interest",
@@ -367,6 +358,12 @@ def collect_ledger(evidence, *, config=None):
                             value,
                             reason="USDS mint to SubProxy is not matched to a reviewed executed MSC split",
                         )
+                elif sign > 0 and any(
+                    r["chain"] == chain and r["tx_hash"] == e["tx_hash"].lower()
+                    and Decimal(r["amount_usd"]) == value for r in disposals
+                ):
+                    append(e, "treasury-disposals", value,
+                           reason="Verified treasury token disposal cash proceeds; reward income recognized separately")
                 elif rule.get("kind") == "borrowing":
                     append(
                         e,
@@ -374,6 +371,15 @@ def collect_ledger(evidence, *, config=None):
                         value * sign,
                         reason="Actual AllocatorBuffer cash movement; Sky-direct attribution separately disclosed",
                     )
+                elif (
+                    chain == "ethereum"
+                    and e["tx_hash"].lower() == "0x4ad39783662761407cc239326f07ebe8102485838934f03a94d1b59bec512c69"
+                    and src == "0x49506c3aa028693458d6ee816b2ec28522946872"
+                    and meta["symbol"] == "USDC" and sign > 0
+                    and value == Decimal("10000017.287194")
+                ):
+                    append(e, "allocation-changes", value,
+                           reason="Verified Anchorage July 21 principal round trip; same witness as MSC correction")
                 elif rule.get("kind") == "loan" and meta["symbol"] == "USDC":
                     if sign < 0:
                         append(e, "allocation-changes", -value, reason="Loan principal advanced")
@@ -479,6 +485,13 @@ def collect_ledger(evidence, *, config=None):
                             suffix="vault-interest",
                         )
                         entries[-1]["principal_evidence"] = witness
+                elif rule.get("kind") == "sky_direct":
+                    day = datetime.fromtimestamp(e["timestamp"], UTC).date().isoformat()
+                    active = rule["start_date"] <= day <= rule["end_date"] and meta["symbol"] == "USDT"
+                    append(e, "sky-direct-deployments" if active else "allocation-changes",
+                           value * sign, quality="estimate",
+                           reason="Observed cash movement on behalf of Sky; funding attribution pending" if active
+                           else "Observed allocation movement outside historical SDE period")
                 elif rule.get("kind") in (
                     "allocation",
                     "amm",
@@ -656,12 +669,12 @@ def cash_metrics(evidence, ledger, config=None):
                     known += (
                         Decimal(r[side]) / 10 ** config["tokens"][chain][r["token"]]["decimals"]
                     )
-            # Issuer reward cash in raw ALMs requires a separate principal/reward
-            # sub-ledger. The independently observed par wallet balance is known.
+            # ALM issuer-token balances are allocations, regardless of origin.
+            # Measured cash uses the same perimeter as classified cash movements.
             metrics[key] = metric(
                 known if observed else None,
                 complete=False,
-                reason="Known par wallet/vault cash; issuer reward cash and bridge transit reconciliation pending"
+                reason="Known par wallet/vault cash; bridge transit reconciliation pending"
                 + (
                     "; missing balances: " + ",".join(sorted(set(incomplete))) if incomplete else ""
                 ),

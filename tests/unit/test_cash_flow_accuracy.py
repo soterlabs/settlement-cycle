@@ -210,7 +210,7 @@ def test_savings_cash_principal_and_interest_remain_separate_from_allocation_pro
         sum(Decimal(r["amount_usd"]) for r in ledger["entries"] if r["line_id"] == "deposits") == 0
     )
     assert (
-        sum(Decimal(r["amount_usd"]) for r in ledger["entries"] if r["line_id"] == "expenses-paid")
+        sum(Decimal(r["amount_usd"]) for r in ledger["entries"] if r["line_id"] == "savings-interest-paid")
         == -10
     )
 

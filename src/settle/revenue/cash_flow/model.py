@@ -60,24 +60,28 @@ def total(terms, *, reason="Missing cash-flow inputs"):
 
 
 CHILDREN = {
-    "non-cash": ["token-incentives", "non-stable-gains", "non-stable-transfers", "other-non-cash"],
+    "non-cash": ["issuer-rewards-noncash", "token-incentives", "contributor-spk", "non-stable-gains", "non-stable-transfers", "other-non-cash"],
     "receivables": [
         "earned-not-received",
         "sky-allocation-receipts",
         "sky-demand-receipts",
         "external-receipts",
     ],
-    "payables": ["expenses-booked", "expenses-paid"],
+    "payables": ["expenses-booked", "expenses-paid", "savings-interest-paid"],
     "net-operating": ["net-income", "non-cash", "receivables", "payables"],
-    "net-investing": ["allocation-changes", "investments"],
+    "net-investing": ["allocation-changes", "investments", "sky-direct-deployments", "treasury-disposals"],
     "net-financing": ["usds-drawn", "deposits", "sky-contributions", "buybacks"],
     "net-cash-change": ["net-operating", "net-investing", "net-financing"],
 }
 
 
+OPTIONAL_ACCOUNTING_LINES = {"issuer-rewards-noncash", "contributor-spk", "savings-interest-paid", "sky-direct-deployments", "treasury-disposals"}
+
+
 def subtotals(metrics):
     for parent, children in CHILDREN.items():
-        metrics[parent] = total([(key, 1, metrics[key]) for key in children])
+        metrics[parent] = total([(key, 1, metrics[key]) for key in children
+                                 if key in metrics or key not in OPTIONAL_ACCOUNTING_LINES])
     return metrics
 
 
