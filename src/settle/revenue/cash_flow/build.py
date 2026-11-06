@@ -4,6 +4,8 @@ import calendar
 from copy import deepcopy
 from datetime import date
 from decimal import Decimal, localcontext
+import json
+from importlib.resources import files
 
 from .. import financial_store, spark_reporting_store
 from ..financial import statements
@@ -61,7 +63,7 @@ def build(evidence, income, *, config=None):
     from .evidence import validate_evidence
 
     validate_evidence(evidence, config)
-    ledger = collect_ledger(evidence, config=config)
+    ledger = collect_ledger(evidence, config=config, disposals=[r for r in income.get("treasury_cash_disposals", []) if r["month"] == month])
     metrics = cash_metrics(evidence, ledger, config)
     income_lines = {r["id"]: r for r in income["lines"]}
     period = next((p for p in income["periods"] if p["key"] == month), {})
@@ -116,6 +118,24 @@ def build(evidence, income, *, config=None):
         reason="Same SPK expense as net income, added back once",
         refs=["expense:" + expense_revision],
     )
+    contributor_source = json.loads(files("settle.revenue").joinpath("contributor_compensation.json").read_text())
+    contributor = contributor_source["months"][month]
+    metrics["contributor-spk"] = metric(contributor, recognition="accrual", quality="estimate",
+        reason="Contributor compensation from approved monthly sheet; missing values are not zero",
+        refs=["contributor_compensation.json"])
+    if amount(metrics["net-income"]) is not None:
+        base = metrics["net-income"]
+        metrics["net-income"] = total([
+            ("net_income_before_contributor_SPK", 1, base),
+            ("contributor-spk", -1, metrics["contributor-spk"]),
+        ], reason="Contributor SPK compensation awaits updated expense sheet")
+    issuer_earned = total([(key, 1, source(key)) for key in (
+        "rewards.issuer.rlusd", "rewards.issuer.pyusd", "rewards.issuer.usdg")])
+    metrics["issuer-rewards-noncash"] = metric(
+        -amount(issuer_earned) if amount(issuer_earned) is not None else None,
+        complete=issuer_earned["status"] == "available", recognition="accrual",
+        quality=issuer_earned["quality"], reason="Issuer income earned in ALM allocation tokens, not cash; reverse once",
+        refs=issuer_earned["source_paths"])
     gain = source("statement.gains")
     metrics["non-stable-gains"] = metric(
         -amount(gain) if amount(gain) is not None else None,
@@ -128,6 +148,13 @@ def build(evidence, income, *, config=None):
     metrics["non-stable-transfers"] = metric(
         reason="Full-cluster weighted-average nonstable receipt/disposal cost basis not yet reconciled; no zero assumed"
     )
+    treasury_receipts = total([(key, 1, source(key)) for key in (
+        "fees.sparklend.nonstable", "rewards.treasury.morpho", "rewards.treasury.avax")])
+    metrics["non-stable-transfers"] = metric(
+        -amount(treasury_receipts) if amount(treasury_receipts) is not None else None,
+        complete=treasury_receipts["status"] == "available", recognition="accrual",
+        quality=treasury_receipts["quality"], reason="Reverse noncash treasury fee and reward receipts once",
+        refs=treasury_receipts["source_paths"])
     savings = source("funding.savings")
     metrics["other-non-cash"] = metric(
         amount(savings),

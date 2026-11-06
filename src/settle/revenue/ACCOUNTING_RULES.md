@@ -127,6 +127,12 @@ Spark-specific scope:
 * Atlas lists Uni v4 USDT designation as 2026-05-26. Older config starts earlier;
   use authoritative designation history, not first LP mint, to establish dates.
 
+Reporting overrides live in `spark_ownership.py`; the legacy MSC SDE table is
+not silently rewritten by reporting repairs. API `allocation_split` uses
+`effective_dated_designated_exposure` for the new ownership calculation. Its
+`sky_share` is the effective income ratio, not a constant capital-ownership
+percentage; gross, Sky and prime amounts are the reconciliation controls.
+
 References: [SDE definition](https://sky-atlas.io/#b3fb8653-8503-4a9e-81b2-5e9f49ad6703),
 [revenue/funding rules](https://sky-atlas.io/#07e0f716-ce23-4394-a5f4-bee537713f48),
 [historical Curve record](https://github.com/sky-ecosystem/next-gen-atlas/commit/93f7f49476912f982acc235311cae9ee07ae394e).

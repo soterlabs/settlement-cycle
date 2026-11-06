@@ -83,7 +83,7 @@ def saved_daily_pins(conn, cutoff):
         return {str(row["cutoff"]): row["closing_pins"] for row in cur.fetchall()}
 
 
-def complete_month(conn, cutoff, *, source=None):
+def complete_month(conn, cutoff, *, source=None, accounting_only=False):
     """Fill reporting gaps for one saved month; never replay or mutate MSC."""
     saved = store.read(conn, "spark", cutoff=cutoff)
     candidates = [
@@ -118,6 +118,14 @@ def complete_month(conn, cutoff, *, source=None):
     source = source or Source(
         prime, period, saved["opening_pins"], daily_pins=saved_daily_pins(conn, cutoff)
     )
+    if accounting_only:
+        result = deepcopy(old["document"])
+        from .spark_treasury import collect as treasury
+        from .spark_ownership import collect as ownership
+        result["treasury"] = treasury(source)
+        result["ownership"] = ownership(source, retained=result)
+        result["completion_source_revision"] = saved["revision_id"]
+        return result
     return complete_document(old, source, source_revision=saved["revision_id"])
 
 
@@ -168,6 +176,10 @@ def complete_document(old, source, *, source_revision=None):
         result["statement_allocations"]["anchorage.receipts"] = income["anchorage.receipts"]
     result["extended_from"] = old["document"].get("extended_from", old["revision_id"])
     result["completion_source_revision"] = source_revision or old["revision_id"]
+    from .spark_treasury import collect as treasury
+    result["treasury"] = treasury(source)
+    from .spark_ownership import collect as ownership
+    result["ownership"] = ownership(source, retained=result)
     return result
 
 
@@ -187,6 +199,8 @@ def main():
         action="store_true",
         help="Extend existing reporting months using retained source pins; no settlement replay",
     )
+    parser.add_argument("--accounting-only", action="store_true",
+        help="Refresh treasury and historical ownership inputs only; preserve existing native/issuer accruals and MSC")
     args = parser.parse_args()
     start = args.start or args.end.replace(day=1) - timedelta(days=1)
     if not start <= args.end < today:
@@ -200,8 +214,8 @@ def main():
         for cutoff in reversed(month_dates(start, args.end)):
             try:
                 document = (
-                    complete_month(conn, cutoff)
-                    if args.complete_only
+                    complete_month(conn, cutoff, accounting_only=args.accounting_only)
+                    if args.complete_only or args.accounting_only
                     else calculate(cutoff, daily_pins=saved_daily_pins(conn, cutoff))
                 )
                 revision = spark_reporting_store.publish(
@@ -231,6 +245,8 @@ def main():
                     if document["errors"]
                     or document.get("completion_errors")
                     or document.get("monthly_income_errors")
+                    or document.get("treasury", {}).get("errors")
+                    or document.get("ownership", {}).get("errors")
                     or any(part["status"] != "available" for part in parts)
                     else "succeeded"
                 )
@@ -249,6 +265,8 @@ def main():
                     document["errors"]
                     or document.get("completion_errors")
                     or document.get("monthly_income_errors")
+                    or document.get("treasury", {}).get("errors")
+                    or document.get("ownership", {}).get("errors")
                 )
             except Exception as exc:
                 print(

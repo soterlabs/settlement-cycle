@@ -376,7 +376,9 @@ def test_full_month_expenses_are_not_paired_with_mtd_or_stale_income(monkeypatch
         for k in ["net-income", "non-stable-gains", "other-non-cash"]
     )
     complete = inputs("2026-10-31", "2026-10-31")
-    assert Decimal(complete["net-income"]["value"]) == Decimal("-928182")
+    assert complete["net-income"]["status"] == "partial"
+    assert Decimal(complete["net-income"]["known_value"]) == Decimal("-928182")
+    assert complete["contributor-spk"]["status"] == "unavailable"
 
 
 def test_delayed_mtd_sources_keep_monthly_and_ytd_totals_provisional():

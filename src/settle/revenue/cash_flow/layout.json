@@ -36,6 +36,15 @@
     "aggregation": "sum"
   },
   {
+    "id": "contributor-spk",
+    "label": "Contributor token compensation",
+    "parent": "non-cash",
+    "depth": 2,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
     "id": "non-stable-gains",
     "label": "Gains (losses) on non-stable assets",
     "parent": "non-cash",
@@ -47,6 +56,15 @@
   {
     "id": "non-stable-transfers",
     "label": "Non-stable assets received (spent)",
+    "parent": "non-cash",
+    "depth": 2,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "issuer-rewards-noncash",
+    "label": "Issuer rewards earned in allocation tokens",
     "parent": "non-cash",
     "depth": 2,
     "kind": null,
@@ -135,6 +153,15 @@
     "aggregation": "sum"
   },
   {
+    "id": "savings-interest-paid",
+    "label": "Savings interest paid to depositors",
+    "parent": "payables",
+    "depth": 2,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
     "id": "net-operating",
     "label": "Net cash from operating activities",
     "parent": null,
@@ -156,6 +183,24 @@
     "id": "allocation-changes",
     "label": "Net change in allocations",
     "parent": null,
+    "depth": 1,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "sky-direct-deployments",
+    "label": "Cash deployed on behalf of Sky, net",
+    "parent": "investing",
+    "depth": 1,
+    "kind": null,
+    "check": false,
+    "aggregation": "sum"
+  },
+  {
+    "id": "treasury-disposals",
+    "label": "Proceeds from nonstable treasury assets",
+    "parent": "investing",
     "depth": 1,
     "kind": null,
     "check": false,

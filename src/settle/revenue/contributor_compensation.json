@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "prime": "spark",
+  "year": 2026,
+  "expense_id": "expenses.compensation.spk",
+  "status": "awaiting_approved_expense_sheet",
+  "basis": "contributor_service_period_expense_not_vesting_transfer_value",
+  "months": {
+    "2026-01": null,
+    "2026-02": null,
+    "2026-03": null,
+    "2026-04": null,
+    "2026-05": null,
+    "2026-06": null,
+    "2026-07": null,
+    "2026-08": null,
+    "2026-09": null,
+    "2026-10": null,
+    "2026-11": null,
+    "2026-12": null
+  }
+}

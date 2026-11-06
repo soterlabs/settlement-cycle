@@ -386,6 +386,8 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None,
     if policy_version == SPARK_RECONCILED_POLICY and prime == "spark":
         from .financial_spark_reconciled import extend_inputs
         extend_inputs(result, chosen, monthly_chosen, offchain_chosen)
+        from .financial_accounting import extend as accounting
+        accounting(result, offchain_chosen)
     if policy_version in RWA_POLICIES:
         from .financial_rwa import refresh_reviewed_subtotal
         refresh_reviewed_subtotal(result)
@@ -398,4 +400,6 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None,
     if policy_version == SPARK_RECONCILED_POLICY and prime == 'spark':
         from .financial_spark_reconciled import attach_bridge
         attach_bridge(result, monthly_chosen)
+        from .financial_accounting import attach_rows as accounting_rows
+        accounting_rows(result)
     return {**result, 'report_hash': digest(result)}

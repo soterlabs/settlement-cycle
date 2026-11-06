@@ -107,7 +107,7 @@ def test_reviewed_anchor_cash_excludes_ALM_funding_and_discloses_unknown_April_p
     assert "unconfirmed" in r["limitations"][-2]
 
 
-def test_FX_breakdown_preserves_net_gains_and_keeps_VSR_interest_separate():
+def test_FX_breakdown_keeps_asset_gains_and_moves_depositor_FX_to_funding():
     raw = source()
     saved = {
         "revision_id": "a" * 64,
@@ -151,14 +151,16 @@ def test_FX_breakdown_preserves_net_gains_and_keeps_VSR_interest_separate():
     assert amount(rows[ASSET_FX]["values"]["2026-10"]) == Decimal("-1000000.000000000000000000123")
     assert amount(rows[LIABILITY_FX]["values"]["2026-10"]) == 1000000
     assert amount(rows["gains.sparklend_nonstable"]["values"]["2026-10"]) == Decimal(
-        "-0.000000000000000000123"
+        "-1000000.000000000000000000123"
     )
+    assert amount(rows["funding.savings"]["values"]["2026-10"]) == Decimal("-999993")
     assert ASSET_FX not in [c["id"] for c in rows["statement.gains"]["components"]]
     assert LIABILITY_FX not in [c["id"] for c in rows["statement.funding"]["components"]]
     assert amount(rows["funding.savings.eth"]["values"]["2026-10"]) == 7
     for key in [ASSET_FX, LIABILITY_FX]:
         entry = next(x for x in r["statement_rows"] if x["metric_id"] == key)
-        assert entry["parent"] == "gains.sparklend_nonstable" and entry["depth"] == 3
+        assert entry["parent"] == ("gains.sparklend_nonstable" if key == ASSET_FX else "funding.savings")
+        assert entry["depth"] == 3
 
 
 def test_bridge_does_not_claim_arithmetic_difference_proves_reconciliation():
