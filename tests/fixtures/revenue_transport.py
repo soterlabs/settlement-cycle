@@ -54,6 +54,11 @@ def send(session, request, **kwargs):
             zero = {'0x70a08231', '0x18160ddd', '0x01e1d114', '0xce7c2ac2',
                     '0x1da24f3e', '0x26c6f96c', '0x995ea21a', '0xf5a23d8d', '0xeaed1d07'}
             value = '0x' + format(0 if selector in zero else 10**18, '064x')
+            # Zero-position async vaults still expose the full manager ABI.
+            if selector == '0xb7570e0c':  # asyncManager()
+                value = '0x' + ('12' * 20).rjust(64, '0')
+            if selector == '0x97780020':  # investments(vault, controller)
+                value = '0x' + '0' * (64 * 10)
             from settle.extract.uniswap_v4 import (
                 SEL_GET_POOL_AND_POSITION_INFO,
                 SEL_GET_POSITION_LIQUIDITY,
