@@ -261,8 +261,9 @@ def collect(source):
             earned = reward and sign > 0 and cash_by_tx[e["tx"]] >= 0 and e["src"] not in owned
             if key == "morpho":
                 earned = earned and e["dst"] == "0x92e4629a4510af5819d7d1601464c233599ff5ec"
-            # The small AVAX setup transfer is not evidenced as a reward.
-            earned = earned and not (native and D(e["units"]) == D("0.02"))
+            if native:
+                # Attribute the reviewed issuer's grants by payer, not transfer size.
+                earned = earned and e["src"] == "0x9a9ecae25bcb433c51edc1911be6390d397e8431"
             if fee or earned:
                 fees += value if fee else D(0)
                 rewards += value if earned and not fee else D(0)
