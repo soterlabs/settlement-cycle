@@ -84,6 +84,10 @@ def test_capture_uses_settlement_pins_without_origin_replay(monkeypatch, tmp_pat
     monkeypatch.setattr(runner, 'fingerprint', lambda *args: 'test-fingerprint')
 
     def fetch(prime, pins, **kwargs):
+        from settle.extract.postgres_read_memo import active_memo
+        assert active_memo() is not None
+        assert kwargs['checkpoint_dir'] == output / 'normalization'
+        assert kwargs['checkpoint_size'] == 1000
         assert all(v.chain == Chain.ETHEREUM for v in prime.venues)
         assert pins == {Chain.ETHEREUM: 123}
         return CapitalHistory((), {}, {})
