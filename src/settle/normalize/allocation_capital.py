@@ -178,7 +178,34 @@ class EventBlockResolver:
 
 
 def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
-                          block_resolver=None) -> CapitalHistory:
+                          block_resolver=None, checkpoint_dir=None,
+                          checkpoint_size=1000) -> CapitalHistory:
+    """Capture history, optionally resuming committed transaction chunks."""
+    if checkpoint_dir is None:
+        return _fetch_capital_history(prime, pins, block_resolver=block_resolver)
+    import hashlib
+    import os
+    from decimal import getcontext
+
+    from ..extract.input_cache import current_scope
+    from .allocation_checkpoints import Checkpoints
+    from .allocation_history_cache import fingerprint
+
+    if current_scope() is not None:
+        raise ValueError("Normalization checkpoints support ordinary capture only, not finalized revenue scope")
+    context = getcontext()
+    decimal_settings = {k: getattr(context, k) for k in ('prec', 'rounding', 'Emin', 'Emax', 'capitals', 'clamp')}
+    decimal_settings['traps'] = {k.__name__: v for k, v in context.traps.items()}
+    identity = dict(fingerprint=fingerprint(prime, pins), decimal_context=decimal_settings,
+                    resolver=f"{type(block_resolver).__module__}.{type(block_resolver).__qualname__}",
+                    database=hashlib.sha256(os.environ.get('DATABASE_URL', '').encode()).hexdigest())
+    with Checkpoints(checkpoint_dir, identity, checkpoint_size).locked() as checkpoints:
+        return _fetch_capital_history(prime, pins, block_resolver=block_resolver,
+                                     checkpoints=checkpoints)
+
+
+def _fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
+                           block_resolver=None, checkpoints=None) -> CapitalHistory:
     """Read funded holdings and frob draws without changing the debt source.
 
     Scan from block zero: a configured reporting start date is not evidence of
@@ -328,8 +355,23 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
         ordered_groups = sorted(grouped.items(), key=lambda item: (
             item[0][0], min(r.log_index for r in item[1]),
         ))
+        resume_at = 0
+        chunk_start = len(batches)
+        if checkpoints is not None:
+            from .allocation_checkpoints import capture_state, restore_state
+
+            resume_at, saved_batches, state = checkpoints.load(chain.value, ordered_groups)
+            batches.extend(saved_batches)
+            chunk_start = len(batches)
+            if state is not None:
+                restore_state(state, units, queues, queue_managers, psm, nft, async_vaults,
+                              custody_accounts, bridge_burns, verified_burns)
+            _log.info("Capital history %s/%s: resumed %d/%d committed transactions",
+                      prime.id, chain, resume_at, len(ordered_groups))
         _log.info("Capital history %s/%s: %d transactions", prime.id, chain, len(ordered_groups))
         for batch_index, ((block, tx_hash), block_logs) in enumerate(ordered_groups):
+            if batch_index < resume_at:
+                continue
             if batch_index and batch_index % 100 == 0:
                 _log.info("Capital history %s/%s: %d/%d", prime.id, chain, batch_index, len(ordered_groups))
             block_logs = list({r.log_index: r for r in block_logs}.values())
@@ -634,6 +676,16 @@ def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                 first.block_time, chain.value, block, tuple(combined.values()), minted,
                 min(r.log_index for r in block_logs), dict(minted_by_ilk),
             ))
+            completed = batch_index + 1
+            if checkpoints is not None and (
+                completed % checkpoints.chunk_size == 0 or completed == len(ordered_groups)
+            ):
+                state = capture_state(units, queues, queue_managers, psm, nft, async_vaults,
+                                      custody_accounts, bridge_burns, verified_burns)
+                checkpoints.save(chain.value, completed, batches[chunk_start:], state)
+                chunk_start = len(batches)
+                _log.info("Capital history %s/%s: checkpoint committed %d/%d",
+                          prime.id, chain, completed, len(ordered_groups))
         for vid, accounts in async_vaults.custody_accounts.items():
             custody_accounts[vid].extend(accounts)
         for vid, accounts in nft.custody_accounts.items():

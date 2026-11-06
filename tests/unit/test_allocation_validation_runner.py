@@ -84,6 +84,10 @@ def test_capture_uses_settlement_pins_without_origin_replay(monkeypatch, tmp_pat
     monkeypatch.setattr(runner, 'fingerprint', lambda *args: 'test-fingerprint')
 
     def fetch(prime, pins, **kwargs):
+        from settle.extract.postgres_read_memo import active_memo
+        assert active_memo() is not None
+        assert kwargs['checkpoint_dir'] == output / 'normalization'
+        assert kwargs['checkpoint_size'] == 1000
         assert all(v.chain == Chain.ETHEREUM for v in prime.venues)
         assert pins == {Chain.ETHEREUM: 123}
         return CapitalHistory((), {}, {})
@@ -106,13 +110,15 @@ def test_capture_uses_settlement_pins_without_origin_replay(monkeypatch, tmp_pat
         runner.main()
 
 
-@pytest.mark.parametrize("filename", ["pins.json", "status.json", "result.json", "history.jsonl.gz"])
+@pytest.mark.parametrize("filename", ["pins.json", "status.json", "result.json", "history.jsonl.gz",
+    "normalization/ethereum/000000000-000001000.json.gz", "normalization/ethereum/manifest.json"])
 def test_capture_never_overwrites_its_provenance_input(monkeypatch, tmp_path, filename):
     path = Path(__file__).parents[2] / 'scripts/validate_allocation_capital.py'
     spec = importlib.util.spec_from_file_location('capture_collision', path)
     runner = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(runner)
     source = tmp_path / filename
+    source.parent.mkdir(parents=True, exist_ok=True)
     source.write_text('original control')
     monkeypatch.setattr('sys.argv', [str(path), 'spark', '--start', '2026-09-01',
         '--end', '2026-09-30', '--output-dir', str(tmp_path), '--provenance', str(source)])
