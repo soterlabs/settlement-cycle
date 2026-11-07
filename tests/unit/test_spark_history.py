@@ -147,3 +147,30 @@ def test_completion_accepts_an_additional_certified_chain_without_mutating_old(m
     assert result["opening_pins"] == source.opening_pins
     assert result["closing_pins"] == source.closing_pins
     assert old == before
+
+
+def test_accounting_refresh_retains_reporting_chain_absent_from_revenue_snapshot(monkeypatch):
+    from settle.revenue import spark_reporting_job as job
+    opening = {chain: 10 for chain in (*job.WETH, "avalanche_c", "robinhood")}
+    closing = {chain: 20 for chain in opening}
+    revenue = {"revision_id": "revenue", "opening_pins": {k: v for k, v in opening.items() if k != "robinhood"},
+               "closing_pins": {k: v for k, v in closing.items() if k != "robinhood"}}
+    prior = {"revision_id": "reporting", "publication_order": 1, "cutoff": "2026-09-30",
+             "document": {"opening_pins": opening, "closing_pins": closing, "native_supplies": {"retained": "unchanged"}}}
+    before = deepcopy((revenue, prior))
+    monkeypatch.setattr(job.store, "read", lambda *a, **k: revenue)
+    monkeypatch.setattr(job.spark_reporting_store, "year_rows", lambda *a, **k: [prior])
+    monkeypatch.setattr(job, "load_prime_by_id", lambda *a: None)
+    monkeypatch.setattr(job, "certified_boundary", lambda *a: pytest.fail("Retained reporting pin was replaced"))
+    monkeypatch.setattr("settle.revenue.spark_treasury.collect", lambda source: {"errors": {}})
+    monkeypatch.setattr("settle.revenue.spark_ownership.collect", lambda source, **k: {"errors": {}})
+    source = SimpleNamespace(opening_pins=opening, closing_pins=closing)
+    result = job.complete_month(None, date(2026, 9, 30), source=source, accounting_only=True)
+    assert result["opening_pins"] == opening
+    assert result["closing_pins"] == closing
+    assert result["native_supplies"] == {"retained": "unchanged"}
+    assert result["treasury"] == result["ownership"] == {"errors": {}}
+    assert (revenue, prior) == before
+    revenue["closing_pins"]["ethereum"] = 21
+    with pytest.raises(ValueError, match="different source boundaries"):
+        job.complete_month(None, date(2026, 9, 30), source=source, accounting_only=True)

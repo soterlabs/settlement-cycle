@@ -100,9 +100,14 @@ def complete_month(conn, cutoff, *, source=None, accounting_only=False):
     saved = deepcopy(saved)
     result = deepcopy(old["document"])
     for name in ("opening_pins", "closing_pins"):
-        if any(saved[name].get(chain) != pin for chain, pin in result.get(name, {}).items()):
+        retained = result.get(name, {})
+        if any(chain in saved[name] and saved[name][chain] != pin for chain, pin in retained.items()):
             raise ValueError("Existing reporting inputs use different source boundaries")
-        result[name] = saved[name]
+        # Reporting may already contain an independently certified new chain
+        # that predates its addition to revenue_results. Preserve those pins;
+        # absence in the older revenue row is not a conflicting boundary.
+        saved[name].update(retained)
+        result[name] = deepcopy(saved[name])
     # Older publications predate Robinhood coverage. Preserve every retained
     # chain boundary and independently certify only newly required chains.
     for name, day in (("opening_pins", cutoff.replace(day=1) - timedelta(days=1)), ("closing_pins", cutoff)):
