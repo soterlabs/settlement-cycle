@@ -1,4 +1,5 @@
 {
+  "approved-partner-rebates.json": "dbf54b5f779a7863c64d764ac9f2b6a74967893d323623bf6640e8c5d859d7db",
   "avalanche_c-raw.json.gz": "ea64a5c95fa9732b611b929e0dbacbec0c07a2295857fcc7a842718bd85104e1",
   "balance-controls.json": "fcab19341f06bc4e9b0fedf9a25aa9381d7eb0b803349a8d81661346644bffdb",
   "base-raw.json.gz": "131c20bdbacd10b618e25f89fc6ae85bc75bac5a10443a6914b434f1d7a3cff8",
@@ -20,11 +21,12 @@
   "native-trace-audit.sql": "ad78ba13ec5aa53e9369ce607e40e3abc7da1b9a7da847d9dd8852486929e51f",
   "native-trace-eth-base.sql": "a00750372eb2dcc40d59d52b4a75d40c85dd61c226248bd2e8ae39c65a438254",
   "new-base-vault.json": "877eca16e2258d16f457ce6150d8cfd489ebd8275ca63188d6fb65a8e1fe90f5",
+  "partner-rebate-source.json": "b029bcb5f2b295c763714285b45631abfc877aae74403bd8cfcfdb255ac9749e",
   "plume-raw.json.gz": "5e9f3aa188049a6d8edbdb2c9a7dc18bbdc2a566dba2ab8e091661e01caa4e14",
   "scope.json": "79bf7e002471102731a095e66f52ec98f5a34f6966a56b1146fd75dc776f4fdb",
   "swap-executions.json": "efd3459c2c5ef7c37d57fa39727072658cf53f557d60732a85df8db4b833295e",
   "token-metadata.json": "5f216770cb3fe04ffe376c50c74badd753cb262862cc4ac580a9f7f2f3cc5d64",
-  "transfer-audit.csv": "551477b88ad91ec94c57d442900e51c681f10ac95a945d917eda0668615f7973",
-  "transfer-audit.json.gz": "aaba9e4676a725c5ea98c1689e13677eab72d5745835151ca3e1948a6d55ff34",
+  "transfer-audit.csv": "34179622e99a248def2d2492bcbad6d8a460c7275c482eee8ee419c98677af87",
+  "transfer-audit.json.gz": "c4ba907145a29d21adc68072062ba473e9294b0617d4567ae656ee414832f56b",
   "vault-exit-checks.json": "4517ee65268d3b42ffcf9adc96b94320a5e305bb985a75986f4beec4a97eb9fd"
 }

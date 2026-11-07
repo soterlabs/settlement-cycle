@@ -29,7 +29,7 @@ POOL = '0xbafead7c60ea473758ed6c6021505e8bbd7e8e5d'
 USDC_ETH = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
 USDC_BASE = '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
 USDC_MONAD = '0x754704bc059f8c67012fed69bc8a327a5aafb603'
-APOLLO_PAYER = '0xcd531ae9efcce479654c4926dec5f6209531ca7b'
+COINBASE_PAYER = '0xcd531ae9efcce479654c4926dec5f6209531ca7b'
 # Reviewed unsolicited transfers only; unknown is never a synonym for spam.
 SPAM = {
     ('ethereum', '0x113f5c181237ecea75574bf4d6f06f8dd3d81ce1'),
@@ -218,7 +218,7 @@ def transfers(chain, capture, metadata):
     return list(unique.values())
 
 
-def classify(row, *, income_routes, venue_tokens, bridge_events, swap_events):
+def classify(row, *, income_routes, venue_tokens, bridge_events, swap_events, rebate_receipts=None):
     c, t, sender, receiver = (row[k] for k in ('chain', 'token', 'sender', 'receiver'))
     event = (c, row['transaction'], row['log_index'])
     if (c, t) in SPAM:
@@ -226,8 +226,16 @@ def classify(row, *, income_routes, venue_tokens, bridge_events, swap_events):
     if c == 'base' and (t == NEW_BASE_VAULT or
                        (t == USDC_BASE and NEW_BASE_VAULT in (sender, receiver))):
         return 'missing_venue', 'Unconfigured Grove x Steakhouse Base vault'
-    if c == 'ethereum' and t == USDC_ETH and sender == APOLLO_PAYER:
-        return 'unresolved_receipt', 'Known historical Apollo payer; October principal/income split unproven'
+    if c == 'ethereum' and t == USDC_ETH and sender == COINBASE_PAYER:
+        receipt = (rebate_receipts or {}).get(row['transaction'])
+        if receipt is not None:
+            if (receiver != '0x491edfb0b8b608044e227225c715981a30f3a44e'
+                    or Decimal(row['amount']) != Decimal(receipt['amount'])):
+                raise ValueError('Approved partner rebate differs from actual receipt')
+            return 'approved_partner_rebate', (
+                f"Historical {receipt['asset']} partner rebate; approved October MSC allocation, not Apollo principal"
+            )
+        return 'unresolved_receipt', 'Shared Coinbase Prime payer; no transaction-specific economic association'
     if c == 'monad' and t == USDC_MONAD and row['direction'] == 'out':
         return 'unresolved_outflow', 'Real USDC, signed by configured Monad holder; destination unclassified'
     route = income_routes.get((c, t, sender, receiver))
@@ -296,6 +304,14 @@ def audit(directory):
         if isinstance(calls.get('decimals()'), int):
             metadata[(entry['chain'], entry['token'])] = (calls['symbol()'], calls['decimals()'])
     bridges = json.loads((directory / 'cctp-v2-proofs.json').read_text())
+    rebates = json.loads((directory / 'approved-partner-rebates.json').read_text())
+    rebate_receipts = {r['tx']: r for r in rebates['receipts']}
+    total = sum((Decimal(r['amount']) for r in rebates['receipts']), Decimal(0))
+    if (rebates['status'] != 'operator_approved' or rebates['settlement_month'] != '2026-10'
+            or len(rebate_receipts) != len(rebates['receipts'])
+            or total != Decimal(rebates['total_received'])
+            or total != Decimal(rebates['sky']['total']) + Decimal(rebates['grove']['total'])):
+        raise ValueError('Invalid approved partner rebate allocation')
     bridge_events = set()
     for proof in bridges['proofs']:
         bridge_events.add((proof['source_chain'], proof['source_tx'], proof['payment_log']))
@@ -314,7 +330,12 @@ def audit(directory):
     verify_bridges(directory, captures, bridges['proofs'])
     for row in rows:
         row['status'], row['booking_route'] = classify(row, income_routes=income_routes,
-            venue_tokens=venue_tokens, bridge_events=bridge_events, swap_events=swap_events)
+            venue_tokens=venue_tokens, bridge_events=bridge_events, swap_events=swap_events,
+            rebate_receipts=rebate_receipts)
+    rebate_rows = [r for r in rows if r['status'] == 'approved_partner_rebate']
+    matched_rebates = {r['transaction'] for r in rebate_rows}
+    if matched_rebates != set(rebate_receipts) or len(rebate_rows) != len(rebate_receipts):
+        raise ValueError('Approved rebate receipt missing from captured transfers')
     booking = json.loads((directory / 'booking-snapshot.json').read_text())
     by_venue = {v['venue_id']: Decimal(v['revenue']) for v in booking['venue_breakdown']}
     for venue in {r['booking_route'] for r in rows if r['status'] == 'booked_distribution'}:
@@ -332,6 +353,7 @@ def audit(directory):
         'transfer_events': len(rows), 'status_counts': dict(Counter(r['status'] for r in rows)),
         'chain_counts': {c: sum(r['chain'] == c for r in rows) for c in scope['chains']},
         'token_balance_controls': len(token_controls), 'token_balance_residuals': 0,
+        'approved_partner_rebates': rebates,
         'native_flows': native, 'gas_receipts': gas,
         'native_balance_controls': sum(r['token'] == 'native' for r in controls),
         'note': 'Identified routes are not a certification of complete financial booking. '
