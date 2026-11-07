@@ -5,7 +5,7 @@ Checked 7 November 2026 against the live reporting API and production dashboard.
 ## End-to-end publication checks
 
 - Both annual API responses pass the dashboard’s reporting contracts. All ten months select month-end income and cash-flow publications.
-- The production income CSV matches API-derived January–October cells and comparable YTD totals for all 121 displayed/exported rows, including nested rows. Cash-flow and reconciliation CSV downloads also succeed.
+- The production income CSV matches API-derived January–October cells and comparable YTD totals for all 121 statement rows, including collapsed children. Cash-flow and reconciliation CSV downloads also match all January–October amounts across 39 source rows.
 - Dashboard-composed net income agrees with cash-flow net income for every month within 1e-18 USD. Provisional workbook expenses are included once, and pending contributor compensation remains explicitly missing.
 - November MTD remains visible. Comparable Spark YTD totals stop at October, the last supplied expense month.
 - No Next.js or Chromium server was started for these checks; validation used HTTP downloads and the existing pure dashboard readers.
@@ -68,6 +68,27 @@ The remaining *unknown* error size cannot be measured from these inputs: missing
 |---|---|---|
 | October Distribution Rewards | `soterlabs/settlement-reports/reports/spark` and `settlement-cycle/data/distribution_rewards` only have published months through September at this check; October API DR is unavailable. | Keep TBD. Import and replay once the approved October source is published; no estimate substituted. |
 | Contributor SPK compensation | `contributor_compensation.json` has no approved monthly amounts. The local workbook SHA-256 matches the already imported expense source (`e6a3260653dceca893645fd03fd49b254ed98f4ec41a2f402972fa7dc5f656f6`). | Keep the separate Compensation and benefits component pending; do not infer expense from vesting transfers or add it again to existing token incentives. |
+
+## Importing the pending inputs safely
+
+October DR is **not** pulled automatically from GitHub by the API: monthly
+summaries are reviewed immutable snapshots. Once the approved summary exists:
+
+1. Capture its full repository commit with `scripts/snapshot_monthly_reports.py`
+   into a new `src/settle/revenue/published_monthly/<commit>.json`.
+2. Append the new commit to `monthly_reports.SNAPSHOTS`, retaining older snapshots
+   so saved report selections stay reproducible. Run the monthly-summary tests
+   and verify Spark's October DR and total demand entitlement against the source.
+3. Deploy the snapshot, update any approved executed-settlement entitlement
+   evidence as appropriate, and replay **October reporting cash flow only**.
+   The dashboard reads the live API and needs no UI change to replace that TBD.
+
+For contributor SPK, obtain the approved USD expense by service month and check
+whether it supplements or replaces existing compensation. Update only the
+missing component, archive the authored input under its content digest in
+`published_expenses`, and preserve prior revisions. Replay affected reporting
+cash flows: expense in net income and its noncash add-back must use the same
+input revision. Do not add vesting transfers as another expense stream.
 
 ## September repair result
 
