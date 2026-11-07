@@ -137,6 +137,26 @@ def base_rate_spread_at(target: date) -> Decimal:
     return spread
 
 
+def daily_borrow_charge(
+    principal: Decimal,
+    base_factor: Decimal,
+    subsidised_factor: Decimal | None = None,
+    subsidy_cap: Decimal | None = None,
+) -> Decimal:
+    """Charge a daily utilized balance, preserving both subsidy tranches.
+
+    Factors are supplied explicitly so a reconciliation can retain the
+    published rate convention instead of repricing history with today's APR.
+    """
+    principal = max(Decimal(0), principal)
+    if subsidised_factor is None:
+        return principal * base_factor
+    if subsidy_cap is None or subsidy_cap < 0:
+        raise ValueError("A subsidised charge requires a nonnegative cap")
+    return (min(principal, subsidy_cap) * subsidised_factor
+            + max(Decimal(0), principal - subsidy_cap) * base_factor)
+
+
 def compute_sky_revenue(
     period: Period,
     debt: pd.DataFrame,
@@ -331,25 +351,16 @@ def compute_sky_revenue_daily(
         base_f = apr_daily(base_apr)
         sub_f = apr_daily(_sub_apr) if _sub_apr is not None else base_f
 
-        def _day_interest(principal: Decimal) -> Decimal:
-            """One day's charge on ``principal`` — the subsidy caps the
-            first ``cap_usd`` of utilized debt, the excess pays full BR."""
-            if principal <= 0:
-                return Decimal("0")
-            if _sub_apr is None:
-                return principal * base_f
-            cap   = subsidy_config.cap_usd  # type: ignore[union-attr]
-            sub_p = min(principal, cap)
-            exc_p = max(Decimal("0"), principal - cap)
-            return sub_p * sub_f + exc_p * base_f
-
-        daily_rev = _day_interest(utilized)
+        active_sub_factor = sub_f if _sub_apr is not None else None
+        active_cap = (subsidy_config.cap_usd
+                      if subsidy_config is not None and _sub_apr is not None else None)
+        daily_rev = daily_borrow_charge(utilized, base_f, active_sub_factor, active_cap)
         total += daily_rev
         # Gross: BR on the full ilk debt before any utilized deductions.
         # Captures "what sky_revenue would be if no idle USDS / SDE / PSM /
         # Curve / lending deductions were applied."  Stored per-day so the
         # orchestrator can sum it and write sky_revenue_gross to provenance.
-        daily_rev_gross = _day_interest(cum_debt)
+        daily_rev_gross = daily_borrow_charge(cum_debt, base_f, active_sub_factor, active_cap)
         rows.append({
             "date":               current,
             "cum_debt":           cum_debt,

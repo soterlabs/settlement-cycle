@@ -10,6 +10,9 @@ venues:
     # All earlier requests were settled before August 31; this includes BOTH
     # Aug 31 requests (1,000 shares paid that day; 24,999,000 paid Sep 1).
     history_start: '2026-08-31'
+    # Fixed empty ledger at Grove inception for automatic CoF receivables.
+    # Cash-PnL recognition still begins September 1; no historical fees rebook.
+    cof_history_start: '2025-05-14'
     request_receiver: '0x8780dd016171b91e4df47075da0a947959c34200'
     cash_payer: '0xcfc0f98f30742b6d880f90155d4ebb885e55ab33'
     cash_token: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
@@ -21,10 +24,10 @@ venues:
     # Exact verified event identities take precedence over amount matching.
     # Future ambiguous/grouped payouts can be linked explicitly in this list.
     links:
-      # August24's $1 test plus 49,999,999 shares settled together Aug25.
-      # Both share exits target the configured redemption receiver; the
-      # 49,974,999.629718 cash receipt realizes the fee on the full $50m.
-      # Used by inception capital tracing; outside September revenue history.
+      # The one-share test and 49,999,999-share request were paid together
+      # on August 25 (49,974,999.629718 USDC). Both a single request and
+      # the group fit the tolerance: use exact identities for cash, CoF,
+      # and inception capital tracing rather than choosing by amount.
       - cash: '0xe002ca1d23acd56c8ae369786fe452e696821f0ed45b555893a02d18481e659c:863'
         requests:
           - '0x67cd3365f382cb2af15cf4ec1cb9678ac4f198a8b5020f0bb8f6ea42ba821044:455'

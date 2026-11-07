@@ -58,9 +58,9 @@ class SDEEntry:
     # Optional: date on which Sky's on-chain tranche exposure (the SDE-capped
     # slice) was destroyed but the USDC redemption hasn't yet landed.
     # Consumed by ``_sde_asset_value_timeseries`` to keep
-    # ``cum_value = cap_usd`` for days in ``[burn_date, usdc_settlement_date]``
+    # ``cum_value = cap_usd`` for days in ``[burn_date, usdc_settlement_date)``
     # so the in-flight window doesn't inflate ``utilized`` (which would route
-    # phantom BR to Sky - see Grove E8 Mar 9-11 for the canonical case).
+    # phantom BR to Sky - see Grove E8 Mar 9-10 for the canonical case).
     # NOT consumed by ``_capped_sd_revenue_eom_locked`` (the EoM snapshot
     # of value_eom naturally absorbs the burn for sd_share purposes).
     burn_date: date | None = None

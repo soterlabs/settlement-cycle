@@ -1744,6 +1744,14 @@ issue is closed. The full resolution narrative lives in
 `PRD.md §17.13` (review-acks); this section keeps a compact pointer
 trail (Q-ID, title, close date, issue link).
 
+### G30. SDE redemption CoF corrections
+**Resolved by operator 2026-11-06:** accepted the signed **78,530.06 USDS**
+net CoF relief, including the JAAA settlement-day debit and deduction of the
+recorded 2,508.55 credit. Applied to the October earning cycle via MSC
+adjustments alongside the accepted partner rebate allocation. No execution
+or independent verification of off-report credits is asserted. See
+`PRD.md §17.13` and `docs/grove/sde_inflight.md`.
+
 ### S34. SparkLend reserve-factor sweeps to the ALM
 **Resolved 2026-09-23:** earned Spark revenue from the September 2026
 settlement onward. The 2026-01 through 2026-08 receipts are recognized as a

@@ -133,7 +133,7 @@ def test_capped_sde_in_flight_window_keeps_cap_coverage():
 def test_usdc_settlement_date_bounds_in_flight_window():
     """Reproduces the Grove E8 production case post-Option-C: burn 2026-03-09,
     USDC actually lands at ALM 2026-03-11, Atlas record date 2026-03-12.
-    Cap-preservation holds through Mar 11 (settlement). Mar 12 — although
+    Cap-preservation holds before Mar 11 (settlement). Mar 11 — although
     still inside [start_date, end_date] — must drop to 0 because the SDE-
     capped slice no longer ties up Grove capital after the USDC has landed."""
     period = _period(date(2026, 3, 1), date(2026, 3, 31))
@@ -161,11 +161,12 @@ def test_usdc_settlement_date_bounds_in_flight_window():
     # Pre-burn: normal cap.
     assert by_date[date(2026, 3, 8)]["cum_value"] == cap
 
-    # Burn day → usdc_settlement_date inclusive: cap-preserved.
-    for d in (date(2026, 3, 9), date(2026, 3, 10), date(2026, 3, 11)):
+    # Burn day up to, but excluding, settlement: cap-preserved.
+    for d in (date(2026, 3, 9), date(2026, 3, 10)):
         assert by_date[d]["cum_value"] == cap, f"in-flight {d}"
         assert by_date[d]["uncapped_value"] == post_burn
 
+    assert by_date[settle]["cum_value"] == Decimal("0")
     # Mar 12: USDC has settled, but we're still inside [start_date, end_date].
     # Must be 0 — no longer cap-preserved.
     assert by_date[date(2026, 3, 12)]["cum_value"] == Decimal("0")
@@ -323,7 +324,9 @@ def test_fixed_sde_partial_redemption_is_kept_until_cash_settlement_date():
     assert by_date[date(2026, 8, 31)]["cum_value"] == raw + pending
     assert by_date[date(2026, 9, 1)]["cum_value"] == raw
     assert by_date[date(2026, 9, 2)]["cum_value"] == raw
-    assert by_date[date(2026, 8, 31)]["uncapped_value"] == raw
+    assert by_date[date(2026, 8, 31)]["uncapped_value"] == raw + pending
+    assert by_date[date(2026, 8, 31)]["wallet_value"] == raw
+    assert by_date[date(2026, 8, 31)]["pending_value"] == pending
 
 
 def test_grove_buidl_in_flight_redemption_loads_from_config():
@@ -334,13 +337,8 @@ def test_grove_buidl_in_flight_redemption_loads_from_config():
         if entry.prime_id == "grove" and entry.venue_id == "E10"
     )
     assert e10.kind == "fixed"
-    assert e10.in_flight_redemptions == (
-        InFlightRedemption(
-            burn_date=date(2026, 8, 31),
-            usdc_settlement_date=date(2026, 9, 1),
-            value_usd=Decimal("24986500.50"),
-        ),
-    )
+    assert e10.in_flight_redemptions == ()  # sourced automatically from the cash ledger
+
 
 
 def test_post_end_date_cum_value_is_zero_even_when_on_chain_residual_exists():
@@ -477,11 +475,12 @@ def test_realistic_grove_e8_march_2026_full_param_combination():
     # Pre-burn (period.start through Mar 8): position uncapped > cap → cap.
     for d in (date(2026, 3, 1), date(2026, 3, 8)):
         assert by_date[d]["cum_value"] == cap, f"pre-burn {d}"
-    # In-flight (Mar 9-11 inclusive): cap-coverage held even though on-chain
+    # In-flight (Mar 9-10): cap-coverage held even though on-chain
     # dropped, because USDC hasn't reached the ALM yet.
-    for d in (date(2026, 3, 9), date(2026, 3, 10), date(2026, 3, 11)):
+    for d in (date(2026, 3, 9), date(2026, 3, 10)):
         assert by_date[d]["cum_value"] == cap, f"in-flight {d}"
         assert by_date[d]["uncapped_value"] == post_burn, f"in-flight {d}"
+    assert by_date[date(2026, 3, 11)]["cum_value"] == Decimal("0")
     # Mar 12: post-settlement but still ≤ end_date. SDE-capped slice no
     # longer ties up Grove capital → 0.
     assert by_date[date(2026, 3, 12)]["cum_value"] == Decimal("0")
@@ -544,10 +543,8 @@ def test_usdc_settlement_date_after_end_date_raises():
         )
 
 
-def test_usdc_settlement_date_equal_to_end_date_equivalent_to_legacy():
-    """When usdc_settlement_date == end_date, behaviour must match the
-    pre-Option-C path where in-flight ran through end_date. Pins
-    Σ-invariance for legacy callers that haven't migrated yet."""
+def test_actual_settlement_date_excludes_cash_day_even_when_formal_end_matches():
+    """A known cash date replaces the legacy inclusive formal-end fallback."""
     period = _period(date(2026, 3, 1), date(2026, 3, 31))
     cap = Decimal("325_000_000")
     pre_burn = Decimal("454_000_000")
@@ -576,7 +573,11 @@ def test_usdc_settlement_date_equal_to_end_date_equivalent_to_legacy():
     legacy_by_date = {r["block_date"]: r for _, r in df_legacy.iterrows()}
     new_by_date = {r["block_date"]: r for _, r in df_new.iterrows()}
     for d, legacy_row in legacy_by_date.items():
-        assert legacy_row["cum_value"] == new_by_date[d]["cum_value"], d
+        if d == date(2026, 3, 12):
+            assert legacy_row["cum_value"] == cap
+            assert new_by_date[d]["cum_value"] == 0
+        else:
+            assert legacy_row["cum_value"] == new_by_date[d]["cum_value"], d
         assert legacy_row["uncapped_value"] == new_by_date[d]["uncapped_value"], d
 
 

@@ -154,6 +154,11 @@ class SDEDailyBreakdown:
     value used for utilized exclusion), and ``uncapped_value`` (``Decimal``
     — raw on-chain balance × NAV).
 
+    New RWA runs also retain ``wallet_value`` and ``pending_value``; their
+    sum is the economic ``uncapped_value`` before the SDE ownership rules.
+    ``issued_deposit_value`` and ``pending_redemption_value`` split the pending
+    total by direction. Optional keys preserve older frozen snapshots.
+
     The accompanying scalar fields (``burn_date`` / ``usdc_settlement_date``
     / ``end_date`` / ``cap_usd``) are the SDE-entry metadata at the moment
     of the run, copied here so the reporter can apply the phase-based

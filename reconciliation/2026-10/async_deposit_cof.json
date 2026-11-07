@@ -1,0 +1,318 @@
+{
+  "status": "calculated",
+  "settlement_month": "2026-10",
+  "scope": "Issued-but-uncollected Grove JTRSY deposits, marginal to existing redemption corrections",
+  "note": "Historical replay, not evidence of payment. Earlier settlement offsets must not be repeated. All identified claims completed within their issuance month; monthly investment income is unchanged.",
+  "spark_impact": "0",
+  "jaaa_cof_impact": "0",
+  "buidl_deposit_impact": "0",
+  "months": {
+    "2026-01": "19731.33563800891762128952062",
+    "2026-03": "13634.1289591332545522745169",
+    "2026-04": "2524.21122193803155105106166"
+  },
+  "daily": [
+    {
+      "date": "2026-01-14",
+      "block": 24236386,
+      "venue": "E9",
+      "issued_deposit_value": "19999999.99999930816221035901",
+      "acquisition_basis": "19999999.999999",
+      "rate_convention": "apy",
+      "baseline_utilized": "1068391579.143798",
+      "corrected_utilized": "1048391579.143798691837789641",
+      "old_charge": "106662.3894499447727417276495",
+      "corrected_charge": "104349.0379196306523649281192",
+      "credit_to_grove": "2313.3515303141203767995303"
+    },
+    {
+      "date": "2026-01-15",
+      "block": 24243557,
+      "venue": "E9",
+      "issued_deposit_value": "19999999.99999991798964163378",
+      "acquisition_basis": "19999999.999999",
+      "rate_convention": "apy",
+      "baseline_utilized": "1018329389.021003",
+      "corrected_utilized": "998329389.0210030820103583662",
+      "old_charge": "101136.1043853212896773372376",
+      "corrected_charge": "98850.57118096727730388872804",
+      "credit_to_grove": "2285.53320435401237344850956"
+    },
+    {
+      "date": "2026-01-16",
+      "block": 24250737,
+      "venue": "E9",
+      "issued_deposit_value": "20001657.43064961665478844549",
+      "acquisition_basis": "19999999.999999",
+      "rate_convention": "apy",
+      "baseline_utilized": "1018275743.78463",
+      "corrected_utilized": "998274086.3539803833452115545",
+      "old_charge": "100865.6122288894823495664130",
+      "corrected_charge": "98581.26432756789882407510093",
+      "credit_to_grove": "2284.34790132158352549131207"
+    },
+    {
+      "date": "2026-01-17",
+      "block": 24257909,
+      "venue": "E9",
+      "issued_deposit_value": "20001657.43064961665478844549",
+      "acquisition_basis": "19999999.999999",
+      "rate_convention": "apy",
+      "baseline_utilized": "1018275743.78463",
+      "corrected_utilized": "998274086.3539803833452115545",
+      "old_charge": "100865.6122288894823495664130",
+      "corrected_charge": "98581.26432756789882407510093",
+      "credit_to_grove": "2284.34790132158352549131207"
+    },
+    {
+      "date": "2026-01-18",
+      "block": 24265091,
+      "venue": "E9",
+      "issued_deposit_value": "20001657.43064961665478844549",
+      "acquisition_basis": "19999999.999999",
+      "rate_convention": "apy",
+      "baseline_utilized": "1018275743.78463",
+      "corrected_utilized": "998274086.3539803833452115545",
+      "old_charge": "100865.6122288894823495664130",
+      "corrected_charge": "98581.26432756789882407510093",
+      "credit_to_grove": "2284.34790132158352549131207"
+    },
+    {
+      "date": "2026-01-19",
+      "block": 24272265,
+      "venue": "E9",
+      "issued_deposit_value": "20001657.43064961665478844549",
+      "acquisition_basis": "19999999.999999",
+      "rate_convention": "apy",
+      "baseline_utilized": "1019276743.78463",
+      "corrected_utilized": "999275086.3539803833452115545",
+      "old_charge": "100981.3954729817080795864130",
+      "corrected_charge": "98680.11478050543440335510093",
+      "credit_to_grove": "2301.28069247627367623131207"
+    },
+    {
+      "date": "2026-01-20",
+      "block": 24279434,
+      "venue": "E9",
+      "issued_deposit_value": "19999999.99999963415153405016",
+      "acquisition_basis": "19999999.999999",
+      "rate_convention": "apy",
+      "baseline_utilized": "970172371.5055617",
+      "corrected_utilized": "950172371.5055620658484659498",
+      "old_charge": "96575.31044899890781924664110",
+      "corrected_charge": "94584.42072083386483744428733",
+      "credit_to_grove": "1990.88972816504298180235377"
+    },
+    {
+      "date": "2026-01-22",
+      "block": 24293765,
+      "venue": "E9",
+      "issued_deposit_value": "19999999.99999925303540351596",
+      "acquisition_basis": "19999999.999999",
+      "rate_convention": "apy",
+      "baseline_utilized": "989061021.5254031",
+      "corrected_utilized": "969061021.5254038469645964840",
+      "old_charge": "98716.89211467199485624265541",
+      "corrected_charge": "96720.71816855045400980596424",
+      "credit_to_grove": "1996.17394612154084643669117"
+    },
+    {
+      "date": "2026-01-23",
+      "block": 24300927,
+      "venue": "E9",
+      "issued_deposit_value": "20001738.96570612108483808691",
+      "acquisition_basis": "19999999.999999",
+      "rate_convention": "apy",
+      "baseline_utilized": "989001946.7327092",
+      "corrected_utilized": "969000207.7670030789151619131",
+      "old_charge": "98449.69084427088779282825976",
+      "corrected_charge": "96458.62801165771100273107222",
+      "credit_to_grove": "1991.06283261317679009718754"
+    },
+    {
+      "date": "2026-03-11",
+      "block": 24637660,
+      "venue": "E9",
+      "issued_deposit_value": "49999999.99999936644299450414",
+      "acquisition_basis": "49999999.999999",
+      "rate_convention": "apy",
+      "baseline_utilized": "1085834300.9065213",
+      "corrected_utilized": "1035834300.906521933557005496",
+      "old_charge": "109944.1268325039491164129053",
+      "corrected_charge": "104490.4752488506112203962324",
+      "credit_to_grove": "5453.6515836533378960166729"
+    },
+    {
+      "date": "2026-03-12",
+      "block": 24644820,
+      "venue": "E9",
+      "issued_deposit_value": "49999999.99999902079070640582",
+      "acquisition_basis": "49999999.999999",
+      "rate_convention": "apy",
+      "baseline_utilized": "1080736915.921974",
+      "corrected_utilized": "1030736915.921974979209293594",
+      "old_charge": "109630.2424637235695121334253",
+      "corrected_charge": "104176.5908800702693174597200",
+      "credit_to_grove": "5453.6515836533001946737053"
+    },
+    {
+      "date": "2026-03-30",
+      "block": 24773860,
+      "venue": "E9",
+      "issued_deposit_value": "24999999.99999920201708409300",
+      "acquisition_basis": "24999999.999999",
+      "rate_convention": "apy",
+      "baseline_utilized": "1026675144.953391",
+      "corrected_utilized": "1001675144.953391797982915907",
+      "old_charge": "103491.4583414761902961302671",
+      "corrected_charge": "100764.6325496495738345461284",
+      "credit_to_grove": "2726.8257918266164615841387"
+    },
+    {
+      "date": "2026-04-03",
+      "block": 24802549,
+      "venue": "E9",
+      "issued_deposit_value": "24999999.99999899524108703107",
+      "acquisition_basis": "24999999.999999",
+      "rate_convention": "apy",
+      "baseline_utilized": "975699580.1603171",
+      "corrected_utilized": "950699580.1603181047589129689",
+      "old_charge": "98514.87317923989507890871448",
+      "corrected_charge": "95990.66195730186352785765282",
+      "credit_to_grove": "2524.21122193803155105106166"
+    }
+  ],
+  "capped_out": [
+    {
+      "date": "2025-10-06",
+      "wallet_value": "523696572.5415076849830260898",
+      "issued_deposit_value": "19999999.99999982320701282851",
+      "cof_change": "0"
+    },
+    {
+      "date": "2025-10-07",
+      "wallet_value": "563713141.6571544326524461944",
+      "issued_deposit_value": "19999999.99999902980161584821",
+      "cof_change": "0"
+    },
+    {
+      "date": "2025-10-08",
+      "wallet_value": "603799735.6256406020778824648",
+      "issued_deposit_value": "19999999.99999965557278055015",
+      "cof_change": "0"
+    },
+    {
+      "date": "2025-10-09",
+      "wallet_value": "624091315.3230404323630562933",
+      "issued_deposit_value": "19999999.99999938145442915210",
+      "cof_change": "0"
+    },
+    {
+      "date": "2025-10-10",
+      "wallet_value": "624153203.2278149294979868427",
+      "issued_deposit_value": "20001983.29645792810072024585",
+      "cof_change": "0"
+    },
+    {
+      "date": "2025-10-11",
+      "wallet_value": "624153203.2278149294979868427",
+      "issued_deposit_value": "20001983.29645792810072024585",
+      "cof_change": "0"
+    },
+    {
+      "date": "2025-10-12",
+      "wallet_value": "624153203.2278149294979868427",
+      "issued_deposit_value": "20001983.29645792810072024585",
+      "cof_change": "0"
+    },
+    {
+      "date": "2025-10-13",
+      "wallet_value": "624153203.2278149294979868427",
+      "issued_deposit_value": "20001983.29645792810072024585",
+      "cof_change": "0"
+    },
+    {
+      "date": "2025-10-14",
+      "wallet_value": "644186985.9811486809299287328",
+      "issued_deposit_value": "19999999.99999919953890749640",
+      "cof_change": "0"
+    },
+    {
+      "date": "2025-10-15",
+      "wallet_value": "664092558.3432845024826757393",
+      "issued_deposit_value": "19999999.99999985646532253592",
+      "cof_change": "0"
+    },
+    {
+      "date": "2025-10-16",
+      "wallet_value": "683384561.8439242547217910484",
+      "issued_deposit_value": "19999999.99999909853287524746",
+      "cof_change": "0"
+    },
+    {
+      "date": "2025-10-20",
+      "wallet_value": "723995495.5026968033154836989",
+      "issued_deposit_value": "19999999.99999934347945608029",
+      "cof_change": "0"
+    },
+    {
+      "date": "2025-10-21",
+      "wallet_value": "724178203.9936032517334972995",
+      "issued_deposit_value": "20005047.22728297681668741902",
+      "cof_change": "0"
+    },
+    {
+      "date": "2025-10-22",
+      "wallet_value": "724303123.4738116066168614803",
+      "issued_deposit_value": "20008498.06312337426489162950",
+      "cof_change": "0"
+    },
+    {
+      "date": "2025-10-23",
+      "wallet_value": "724354676.4818010073679406691",
+      "issued_deposit_value": "20009922.18822662795024646444",
+      "cof_change": "0"
+    },
+    {
+      "date": "2025-10-24",
+      "wallet_value": "724192053.0720935623538099293",
+      "issued_deposit_value": "20005429.80089224200249308150",
+      "cof_change": "0"
+    },
+    {
+      "date": "2025-10-25",
+      "wallet_value": "724192053.0720935623538099293",
+      "issued_deposit_value": "20005429.80089224200249308150",
+      "cof_change": "0"
+    },
+    {
+      "date": "2025-10-26",
+      "wallet_value": "724192053.0720935623538099293",
+      "issued_deposit_value": "20005429.80089224200249308150",
+      "cof_change": "0"
+    },
+    {
+      "date": "2025-10-27",
+      "wallet_value": "724507659.4262734825533654387",
+      "issued_deposit_value": "20014148.26270976402160945522",
+      "cof_change": "0"
+    }
+  ],
+  "baselines": {
+    "2026-01": {
+      "path": "settlements/grove/2026-01/grove_settlement_january_2026.xlsx",
+      "sha256": "17378711188dbaa4889ae0af8749043ea6d380b84495e7bf760f0065100bde4c"
+    },
+    "2026-03": {
+      "path": "settlements/grove/2026-03/grove_settlement_march_2026.xlsx",
+      "sha256": "a12c9ed10f97522742559a9f78b15174d60563dab61d80c2e039c87c4401eca9"
+    },
+    "2026-04": {
+      "path": "settlements/grove/2026-04/grove_settlement_april_2026.xlsx",
+      "sha256": "2147bb6d9e900261abe33643c70fe32c7c294cdeb1a5c034304aa704fa94f16f"
+    }
+  },
+  "additional_credit_unrounded": "35889.67581908020372461509918",
+  "sky_adj": "-35889.68",
+  "combined_redemption_and_deposit_credit": "114419.74"
+}
