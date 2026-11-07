@@ -1,0 +1,476 @@
+{
+  "events": [
+    {
+      "tx": "0x2e1cef3acfd5db666b764f20205e7e0a7ad164f1f2c69223dcbb1facbb3175f6",
+      "log_index": 1191,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-49.635146",
+      "amount0": "-1381289.438519",
+      "amount1": "1381339.073665",
+      "verified_transfer_events": [
+        1189,
+        1190
+      ]
+    },
+    {
+      "tx": "0xfea9afad9497d61a03f107d4a2ae1cf9a75836452c9d8bcba634d50bf4d87c01",
+      "log_index": 1694,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-43.683799",
+      "amount0": "-1159721.620816",
+      "amount1": "1159765.304615",
+      "verified_transfer_events": [
+        1692,
+        1693
+      ]
+    },
+    {
+      "tx": "0x00a174d300696ec02a804b8c14ea8774ba7127be35d9573b55c1d2c074436e11",
+      "log_index": 646,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-44.252957",
+      "amount0": "-2182188.40553",
+      "amount1": "2182232.658487",
+      "verified_transfer_events": [
+        644,
+        645
+      ]
+    },
+    {
+      "tx": "0xee90188727f0af6263ae1d95058647e477c75f866fd7da28e9e514d72ba58287",
+      "log_index": 1349,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-58.457461",
+      "amount0": "-2721395.207033",
+      "amount1": "2721453.664494",
+      "verified_transfer_events": [
+        1347,
+        1348
+      ]
+    },
+    {
+      "tx": "0x06b544c30b0f690df8758f24160063920e4109de7dc3a66c3fde43f7cce7730a",
+      "log_index": 654,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-41.910139",
+      "amount0": "-1098756.853892",
+      "amount1": "1098798.764031",
+      "verified_transfer_events": [
+        652,
+        653
+      ]
+    },
+    {
+      "tx": "0x04c629756028e97bb44299405c6739e09bf076273119588d5b94805af5749de6",
+      "log_index": 691,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-49.353994",
+      "amount0": "-1370185.154804",
+      "amount1": "1370234.508798",
+      "verified_transfer_events": [
+        689,
+        690
+      ]
+    },
+    {
+      "tx": "0xd193812ff3957914583211bd89287ed579a3f25eedb957073d763aea279502d8",
+      "log_index": 324,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-59.254636",
+      "amount0": "-2014643.281051",
+      "amount1": "2014702.535687",
+      "verified_transfer_events": [
+        322,
+        323
+      ]
+    },
+    {
+      "tx": "0x0a0c3bf356fa53552be3b9046a950d0bfcf8b5c68daa1822d7bc10d9db542193",
+      "log_index": 410,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-62.784232",
+      "amount0": "-2039824.512194",
+      "amount1": "2039887.296426",
+      "verified_transfer_events": [
+        408,
+        409
+      ]
+    },
+    {
+      "tx": "0xfd16cb368b1ae9d8200744153cf13a363303a7fc158b67722e8712e915168e1d",
+      "log_index": 395,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-48.915594",
+      "amount0": "-1353038.271202",
+      "amount1": "1353087.186796",
+      "verified_transfer_events": [
+        393,
+        394
+      ]
+    },
+    {
+      "tx": "0x635cb58455868cf3b40a27a5b0bbed675199a9ea55e83c64c6b24fc2a00e75a7",
+      "log_index": 606,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-55.158581",
+      "amount0": "-1618894.293327",
+      "amount1": "1618949.451908",
+      "verified_transfer_events": [
+        604,
+        605
+      ]
+    },
+    {
+      "tx": "0x08058552b758bc989274d76bd171bd4987815dca17e22af9f094d747a81b4c1d",
+      "log_index": 776,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-42.996564",
+      "amount0": "-1136052.183933",
+      "amount1": "1136095.180497",
+      "verified_transfer_events": [
+        774,
+        775
+      ]
+    },
+    {
+      "tx": "0xdd738bef1687b27fcc2d5a84df124f03336262e8fa2170b84cd904b10ba2d7fa",
+      "log_index": 662,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-49.192215",
+      "amount0": "-1364060.184968",
+      "amount1": "1364109.377183",
+      "verified_transfer_events": [
+        660,
+        661
+      ]
+    },
+    {
+      "tx": "0x53ff108efebc6dee06b588b9613d77a95a64bb8ab3762f8af867ceea91982f72",
+      "log_index": 387,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-158.154934",
+      "amount0": "1092883.588753",
+      "amount1": "-1092725.433819",
+      "verified_transfer_events": [
+        386,
+        385
+      ]
+    },
+    {
+      "tx": "0x778feab2570fca961b662bab05e8ca0806085307b5dc5bdf7c2e26f666b26fd1",
+      "log_index": 894,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-40.43247",
+      "amount0": "-1049541.823033",
+      "amount1": "1049582.255503",
+      "verified_transfer_events": [
+        892,
+        893
+      ]
+    },
+    {
+      "tx": "0x9a2664a7f372ea14694119a646186c3aa53913956ef487298d156f97de7e9694",
+      "log_index": 278,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-43.3299",
+      "amount0": "-1166770.341092",
+      "amount1": "1166813.670992",
+      "verified_transfer_events": [
+        276,
+        277
+      ]
+    },
+    {
+      "tx": "0x80a2147da7fc08b0be0262fdb84ff0208681ebe457ace7a82b6533cbd7123820",
+      "log_index": 751,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-46.351419",
+      "amount0": "-1133934.860862",
+      "amount1": "1133981.212281",
+      "verified_transfer_events": [
+        749,
+        750
+      ]
+    },
+    {
+      "tx": "0xf85f8589e7891d4eb92fdba484b89395590c2cf6861c861ff5b02ba3caa082e6",
+      "log_index": 954,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-156.098571",
+      "amount0": "1076924.512559",
+      "amount1": "-1076768.413988",
+      "verified_transfer_events": [
+        953,
+        952
+      ]
+    },
+    {
+      "tx": "0x1707abe6045bc5c930c91fe6698e804475f0007d16bfae5fd47558047270f6a6",
+      "log_index": 623,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-146.346539",
+      "amount0": "1857010.348303",
+      "amount1": "-1856864.001764",
+      "verified_transfer_events": [
+        622,
+        621
+      ]
+    },
+    {
+      "tx": "0xa39efcdd8d0bd059172a78614db84045e90b9d6dc979d7d16fdbc4d277afe765",
+      "log_index": 317,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-434.796374",
+      "amount0": "3400000",
+      "amount1": "-3399565.203626",
+      "verified_transfer_events": [
+        316,
+        315
+      ]
+    },
+    {
+      "tx": "0x989c9563dbe5fc5f8d7da0847cad359c02af190847f3ec552dd123298a145f0f",
+      "log_index": 377,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-40.246122",
+      "amount0": "-1043546.037379",
+      "amount1": "1043586.283501",
+      "verified_transfer_events": [
+        375,
+        376
+      ]
+    },
+    {
+      "tx": "0x6cb13f7bf15240dfc3123efd7c09435d587b6679462d88f2db6c210d87c3dc19",
+      "log_index": 752,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-45.300222",
+      "amount0": "-1217603.636569",
+      "amount1": "1217648.936791",
+      "verified_transfer_events": [
+        750,
+        751
+      ]
+    },
+    {
+      "tx": "0xcf21834814ba53441f69c33237488538b6f92a3dbe7190e284bc55448e2f3058",
+      "log_index": 873,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-46.342806",
+      "amount0": "-1255675.695886",
+      "amount1": "1255722.038692",
+      "verified_transfer_events": [
+        871,
+        872
+      ]
+    },
+    {
+      "tx": "0x84e1a80c520b00730726c208be75cd540d929921e84685d3539a6f28ea31264d",
+      "log_index": 1119,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-51.246041",
+      "amount0": "-1447351.381922",
+      "amount1": "1447402.627963",
+      "verified_transfer_events": [
+        1117,
+        1118
+      ]
+    },
+    {
+      "tx": "0x7781e88e634713d77f9555dff2987222fc704f46fbc8392de01f2801158cb13a",
+      "log_index": 666,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-55.705035",
+      "amount0": "-1492945.422485",
+      "amount1": "1493001.12752",
+      "verified_transfer_events": [
+        664,
+        665
+      ]
+    },
+    {
+      "tx": "0x7f6d84f22600e8a41339688f33a4a9dc55087139add92c671c9ac77541dc2559",
+      "log_index": 749,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-39.998165",
+      "amount0": "-1035435.792308",
+      "amount1": "1035475.790473",
+      "verified_transfer_events": [
+        747,
+        748
+      ]
+    },
+    {
+      "tx": "0x12ffdc9ff5b7f902e1ddebfbf1fe03a814b6f9876838481a7b9ee1dfdd190989",
+      "log_index": 584,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-35.855511",
+      "amount0": "-962140.52625",
+      "amount1": "962176.381761",
+      "verified_transfer_events": [
+        582,
+        583
+      ]
+    },
+    {
+      "tx": "0xe437e3ab3ed662bb2b385a8ef41dd491320e9aaaba3c0a49d9be39cc9b257720",
+      "log_index": 731,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-36.508624",
+      "amount0": "-985279.772999",
+      "amount1": "985316.281623",
+      "verified_transfer_events": [
+        729,
+        730
+      ]
+    },
+    {
+      "tx": "0xc68d9d7c113b7af2c38dc97280307659d710ec39bd16084a36905df737dae980",
+      "log_index": 1007,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-34.875361",
+      "amount0": "-928365.147525",
+      "amount1": "928400.022886",
+      "verified_transfer_events": [
+        1005,
+        1006
+      ]
+    },
+    {
+      "tx": "0x17f6d29d97e66ee531b4a0ff200aad44116c5144ed58882fb30b995eb2314fa2",
+      "log_index": 410,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-42.124436",
+      "amount0": "-1199248.668668",
+      "amount1": "1199290.793104",
+      "verified_transfer_events": [
+        408,
+        409
+      ]
+    },
+    {
+      "tx": "0x502bdf0ea3928d15905ddf5abeb33733d10da22bd383f4d7e0e518aaf8b79426",
+      "log_index": 2470,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-40.691702",
+      "amount0": "-1141576.334443",
+      "amount1": "1141617.026145",
+      "verified_transfer_events": [
+        2468,
+        2469
+      ]
+    },
+    {
+      "tx": "0xc19ebe0e9228c4c52f2cf7db857424f737208a9ba514afba1493af5e3ffa9cf7",
+      "log_index": 451,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-90.634277",
+      "amount0": "-997995.398384",
+      "amount1": "998086.032661",
+      "verified_transfer_events": [
+        449,
+        450
+      ]
+    },
+    {
+      "tx": "0xca73485eadb7d67c951136c28e70aba62b150fc8b5831a822da49257208d2f61",
+      "log_index": 157,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-1714.717716",
+      "amount0": "4997806.14855",
+      "amount1": "-4996091.430834",
+      "verified_transfer_events": [
+        156,
+        155
+      ]
+    },
+    {
+      "tx": "0xcb944cf8c9281b9d9a3693b842ebd936dc6e006d6bbe19ce5cc5b8fe2fd4d6df",
+      "log_index": 322,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-191.574955",
+      "amount0": "328599.319672",
+      "amount1": "-328407.744717",
+      "verified_transfer_events": [
+        321,
+        320
+      ]
+    },
+    {
+      "tx": "0xcb944cf8c9281b9d9a3693b842ebd936dc6e006d6bbe19ce5cc5b8fe2fd4d6df",
+      "log_index": 379,
+      "holder": "0x0dcd9298e163dfd3c0b5b00f0d9093c36e40a153",
+      "net_at_par": "748.543636",
+      "amount0": "-4999326.182916",
+      "amount1": "4998577.63928",
+      "verified_transfer_events": [
+        377,
+        378
+      ]
+    },
+    {
+      "tx": "0xc974db100dc3cdface6679ad5bb4f983a805be3f6e03991f13c70c20ac614e82",
+      "log_index": 1072,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-560.479959",
+      "amount0": "2647150.827243",
+      "amount1": "-2646590.347284",
+      "verified_transfer_events": [
+        1071,
+        1070
+      ]
+    },
+    {
+      "tx": "0xf193c3c5cc46e76e31b045ea399ad03211987a4fe8e2bacc7d4a384def53cebc",
+      "log_index": 543,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-82.684037",
+      "amount0": "379492.947837",
+      "amount1": "-379410.2638",
+      "verified_transfer_events": [
+        542,
+        541
+      ]
+    },
+    {
+      "tx": "0x414d21098ab8fb5f90b9190ce2c63ae546ee49c96879e41deab3c22bf6045e45",
+      "log_index": 658,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-328.35855",
+      "amount0": "1300000",
+      "amount1": "-1299671.64145",
+      "verified_transfer_events": [
+        657,
+        656
+      ]
+    },
+    {
+      "tx": "0xa1fc7dd49d58eae8aa0a9dd8b836f78f589d861adbb918c1e92132af117cac60",
+      "log_index": 379,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "-423.837135",
+      "amount0": "1755441.372879",
+      "amount1": "-1755017.535744",
+      "verified_transfer_events": [
+        378,
+        377
+      ]
+    },
+    {
+      "tx": "0x47cd0845195829d6d6c69ad52797bc14225d98f0e2d3ba016aa63b62b43d8f9c",
+      "log_index": 1198,
+      "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+      "net_at_par": "411.266445",
+      "amount0": "-2308305.827103",
+      "amount1": "2307894.560658",
+      "verified_transfer_events": [
+        1196,
+        1197
+      ]
+    }
+  ],
+  "count": 39,
+  "total_net_at_par": "-4332.476098",
+  "gain_at_par": "1159.810081",
+  "loss_at_par": "-5492.286179"
+}

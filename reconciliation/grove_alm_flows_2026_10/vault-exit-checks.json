@@ -1,0 +1,103 @@
+[
+  {
+    "venue": "E19",
+    "token": "0xbeef2d50b428675a1921bc6bbf4bfb9d8cf1461a",
+    "opening_block": 52011726,
+    "opening_shares_raw": "98832331345137838102822950",
+    "opening_convert_to_assets_raw": "103325787203369",
+    "withdrawals_usdc": "103473218.761198",
+    "cash_return_net_opening": "147431.557829",
+    "booked_revenue": "150683.0274290596428197240",
+    "booked_minus_cash_return": "3251.4696000596428197240",
+    "cash_events": [
+      {
+        "tx": "0xc8054db86e419a5dfe53339f5ce9fbafcf123f6ad5ee817b284b5d984ecd5416",
+        "log_index": 433,
+        "amount": "20000000"
+      },
+      {
+        "tx": "0x364109d5db209a4d71e49f1c7b751a136ce8202e3ead8e5737e0ba5c20bfb01d",
+        "log_index": 147,
+        "amount": "20000000"
+      },
+      {
+        "tx": "0x84aad1522fff191bd391eadc64bc759d47370068c42c52c40e3602c9f98b9bd6",
+        "log_index": 194,
+        "amount": "20000000"
+      },
+      {
+        "tx": "0x0186b3a7ce64f6bb2598b76cd4495789981c76deb7379523ce374d5a35c3262f",
+        "log_index": 452,
+        "amount": "20000000"
+      },
+      {
+        "tx": "0xdd0dc35b7f274ef43d18f69628b313add590d0e5599581d4349318fe13a7e40c",
+        "log_index": 817,
+        "amount": "5000000"
+      },
+      {
+        "tx": "0xac5e53ddce659090e96b3f611371b2243d7545e1805fe698453536d6647b0cbb",
+        "log_index": 304,
+        "amount": "18473218.761198"
+      }
+    ]
+  },
+  {
+    "venue": "E23",
+    "token": "0xbeef0e0834849acc03f0089f01f4f1eeb06873c9",
+    "opening_block": 52011726,
+    "opening_shares_raw": "159003010767087588159689052",
+    "opening_convert_to_assets_raw": "165761109172674",
+    "withdrawals_usdc": "165858216.257257",
+    "cash_return_net_opening": "97107.084583",
+    "booked_revenue": "109166.1876943538100707881",
+    "booked_minus_cash_return": "12059.1031113538100707881",
+    "cash_events": [
+      {
+        "tx": "0x1219fafb164752200e06a3b3f99ed9ab75daadce929133a95b2ba4d1889ca73a",
+        "log_index": 542,
+        "amount": "20000000"
+      },
+      {
+        "tx": "0x2f92b3fe043f3658ace57aaf89d80ee463873a1f8c08dab5fc0a140b2777a578",
+        "log_index": 529,
+        "amount": "20000000"
+      },
+      {
+        "tx": "0x0a3c4389e5879b7dfdb4d846d414ff30e3037a5802ced376b6c902a1999fb4b1",
+        "log_index": 578,
+        "amount": "20000000"
+      },
+      {
+        "tx": "0x2b369fe42629054871714823f67ad1c89b8ff552d7d269c2c328ec4c2bd080a6",
+        "log_index": 541,
+        "amount": "20000000"
+      },
+      {
+        "tx": "0x4ce53a25ebfd0088a2dbe30005ea4bd9c76caec55e1998920d5014651e9f16a1",
+        "log_index": 648,
+        "amount": "20000000"
+      },
+      {
+        "tx": "0x8d9f5631e63d34cd2e8c2ba905f0935d51666d5a3950ca3f09aafb2c2ad2f011",
+        "log_index": 324,
+        "amount": "20000000"
+      },
+      {
+        "tx": "0x2035b24a9db1c1f788dc05c5eeafc9573778b0df48fbd18e16d874582129346f",
+        "log_index": 247,
+        "amount": "20000000"
+      },
+      {
+        "tx": "0x94dea075e2576cc4c4eda27aa22eb0ec413abb20b9021bf4d97bc17af01a9823",
+        "log_index": 288,
+        "amount": "20000000"
+      },
+      {
+        "tx": "0xca069b6ad235fa154baadc12333f1458d74ab8c8280522fc5b4575b1f9137ac0",
+        "log_index": 227,
+        "amount": "5858216.257257"
+      }
+    ]
+  }
+]

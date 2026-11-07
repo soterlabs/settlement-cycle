@@ -1,0 +1,58 @@
+{
+  "execution_id": "01M6SMH3K0YNW7F2W7D3Q5QB84",
+  "is_execution_finished": true,
+  "state": "QUERY_STATE_COMPLETED",
+  "submitted_at": "2026-11-06T23:53:59.137106Z",
+  "expires_at": "2027-02-04T23:54:26.318269Z",
+  "execution_started_at": "2026-11-06T23:54:01.271283Z",
+  "execution_ended_at": "2026-11-06T23:54:26.318257Z",
+  "result": {
+    "rows": [
+      {
+        "block_number": 97144628,
+        "block_time": "2026-10-09 18:47:30.000 UTC",
+        "call_type": "call",
+        "chain": "avalanche_c",
+        "receiver": "0x7107DD8F56642327945294A18A4280C78E153644",
+        "sender": "0x9F1D8D40D9D8E6B69E0D9AA66B51C3007ADC1C2F",
+        "trace_address": [],
+        "tx_hash": "0x79ABEFD7A236396BFBBFF35BB09911173E617F0124D86C78A93593703EFD93D2",
+        "type": "call",
+        "value_wei": "76133730000000000000000"
+      }
+    ],
+    "metadata": {
+      "column_names": [
+        "chain",
+        "block_time",
+        "block_number",
+        "tx_hash",
+        "sender",
+        "receiver",
+        "value_wei",
+        "trace_address",
+        "type",
+        "call_type"
+      ],
+      "column_types": [
+        "varchar(11)",
+        "timestamp(3) with time zone",
+        "bigint",
+        "varchar",
+        "varchar",
+        "varchar",
+        "varchar",
+        "array(bigint)",
+        "varchar",
+        "varchar"
+      ],
+      "row_count": 1,
+      "result_set_bytes": 210,
+      "total_row_count": 1,
+      "total_result_set_bytes": 210,
+      "datapoint_count": 10,
+      "pending_time_millis": 2134,
+      "execution_time_millis": 25046
+    }
+  }
+}

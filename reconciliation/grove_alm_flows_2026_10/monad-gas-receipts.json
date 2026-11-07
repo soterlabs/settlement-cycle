@@ -1,0 +1,16 @@
+[
+  {
+    "tx": "0x06d525b9f77439b3a88f55e63239ec0bf2a8e33da7a630fb4f59ceac317956bd",
+    "gas_used": "100516",
+    "effective_gas_price": "102009999999",
+    "fee_wei": "10253637159899484",
+    "status": "0x1"
+  },
+  {
+    "tx": "0xcf29d57cd1061f4ff59650fce15c06a39eaf343919f2a6e6431f26d167e86adc",
+    "gas_used": "100540",
+    "effective_gas_price": "102009999999",
+    "fee_wei": "10256085399899460",
+    "status": "0x1"
+  }
+]
