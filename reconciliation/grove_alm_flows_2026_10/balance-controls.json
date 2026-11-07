@@ -1,0 +1,200 @@
+[
+  {
+    "chain": "avalanche_c",
+    "token": "native",
+    "holder": "0x7107dd8f56642327945294a18a4280c78e153644",
+    "opening_raw": "404347900000000000000000",
+    "closing_raw": "480481630000000000000000",
+    "transfer_net_raw": "0",
+    "residual_raw": "76133730000000000000000"
+  },
+  {
+    "chain": "base",
+    "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+    "holder": "0x9b746dbc5269e1df6e4193bcb441c0fbbf1cecee",
+    "opening_raw": "0",
+    "closing_raw": "0",
+    "transfer_net_raw": "0",
+    "residual_raw": "0"
+  },
+  {
+    "chain": "base",
+    "token": "0xbeef0786756810478b88982de00f3cd7fdb8e7c7",
+    "holder": "0x9b746dbc5269e1df6e4193bcb441c0fbbf1cecee",
+    "opening_raw": "44870705342477916662784252",
+    "closing_raw": "492155837806884284233849912",
+    "transfer_net_raw": "447285132464406367571065660",
+    "residual_raw": "0"
+  },
+  {
+    "chain": "base",
+    "token": "0xbeef0e0834849acc03f0089f01f4f1eeb06873c9",
+    "holder": "0x9b746dbc5269e1df6e4193bcb441c0fbbf1cecee",
+    "opening_raw": "159003010767087588159689052",
+    "closing_raw": "0",
+    "transfer_net_raw": "-159003010767087588159689052",
+    "residual_raw": "0"
+  },
+  {
+    "chain": "base",
+    "token": "0xbeef2d50b428675a1921bc6bbf4bfb9d8cf1461a",
+    "holder": "0x9b746dbc5269e1df6e4193bcb441c0fbbf1cecee",
+    "opening_raw": "98832331345137838102822950",
+    "closing_raw": "0",
+    "transfer_net_raw": "-98832331345137838102822950",
+    "residual_raw": "0"
+  },
+  {
+    "chain": "base",
+    "token": "native",
+    "holder": "0x9b746dbc5269e1df6e4193bcb441c0fbbf1cecee",
+    "opening_raw": "0",
+    "closing_raw": "0",
+    "transfer_net_raw": "0",
+    "residual_raw": "0"
+  },
+  {
+    "chain": "ethereum",
+    "token": "0x00000000efe302beaa2b3e6e1b18d08d69a9012a",
+    "holder": "0x0dcd9298e163dfd3c0b5b00f0d9093c36e40a153",
+    "opening_raw": "1696986605",
+    "closing_raw": "0",
+    "transfer_net_raw": "-1696986605",
+    "residual_raw": "0"
+  },
+  {
+    "chain": "ethereum",
+    "token": "0x00000000efe302beaa2b3e6e1b18d08d69a9012a",
+    "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+    "opening_raw": "0",
+    "closing_raw": "0",
+    "transfer_net_raw": "0",
+    "residual_raw": "0"
+  },
+  {
+    "chain": "ethereum",
+    "token": "0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041",
+    "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+    "opening_raw": "119322905350000",
+    "closing_raw": "75020255730000",
+    "transfer_net_raw": "-44302649620000",
+    "residual_raw": "0"
+  },
+  {
+    "chain": "ethereum",
+    "token": "0x6b175474e89094c44da98b954eedeac495271d0f",
+    "holder": "0x0dcd9298e163dfd3c0b5b00f0d9093c36e40a153",
+    "opening_raw": "0",
+    "closing_raw": "0",
+    "transfer_net_raw": "0",
+    "residual_raw": "0"
+  },
+  {
+    "chain": "ethereum",
+    "token": "0x6b175474e89094c44da98b954eedeac495271d0f",
+    "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+    "opening_raw": "0",
+    "closing_raw": "0",
+    "transfer_net_raw": "0",
+    "residual_raw": "0"
+  },
+  {
+    "chain": "ethereum",
+    "token": "0x8c213ee79581ff4984583c6a801e5263418c4b86",
+    "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+    "opening_raw": "276905888431160",
+    "closing_raw": "66926550976911",
+    "transfer_net_raw": "-209979337454249",
+    "residual_raw": "0"
+  },
+  {
+    "chain": "ethereum",
+    "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+    "holder": "0x0dcd9298e163dfd3c0b5b00f0d9093c36e40a153",
+    "opening_raw": "0",
+    "closing_raw": "60180434",
+    "transfer_net_raw": "60180434",
+    "residual_raw": "0"
+  },
+  {
+    "chain": "ethereum",
+    "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+    "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+    "opening_raw": "0",
+    "closing_raw": "0",
+    "transfer_net_raw": "0",
+    "residual_raw": "0"
+  },
+  {
+    "chain": "ethereum",
+    "token": "0xbeeff08df54897e7544ab01d0e86f013da354111",
+    "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+    "opening_raw": "19492025247759159156788776",
+    "closing_raw": "16320794486785417820430228",
+    "transfer_net_raw": "-3171230760973741336358548",
+    "residual_raw": "0"
+  },
+  {
+    "chain": "ethereum",
+    "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+    "holder": "0x0dcd9298e163dfd3c0b5b00f0d9093c36e40a153",
+    "opening_raw": "0",
+    "closing_raw": "0",
+    "transfer_net_raw": "0",
+    "residual_raw": "0"
+  },
+  {
+    "chain": "ethereum",
+    "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+    "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+    "opening_raw": "0",
+    "closing_raw": "0",
+    "transfer_net_raw": "0",
+    "residual_raw": "0"
+  },
+  {
+    "chain": "ethereum",
+    "token": "native",
+    "holder": "0x0dcd9298e163dfd3c0b5b00f0d9093c36e40a153",
+    "opening_raw": "0",
+    "closing_raw": "0",
+    "transfer_net_raw": "0",
+    "residual_raw": "0"
+  },
+  {
+    "chain": "ethereum",
+    "token": "native",
+    "holder": "0x491edfb0b8b608044e227225c715981a30f3a44e",
+    "opening_raw": "50000002000000000",
+    "closing_raw": "50000002000000000",
+    "transfer_net_raw": "0",
+    "residual_raw": "0"
+  },
+  {
+    "chain": "monad",
+    "token": "0x754704bc059f8c67012fed69bc8a327a5aafb603",
+    "holder": "0x94b398acb2fce988871218221ea6a4a2b26cccbc",
+    "opening_raw": "152288127280",
+    "closing_raw": "0",
+    "transfer_net_raw": "-152288127280",
+    "residual_raw": "0"
+  },
+  {
+    "chain": "monad",
+    "token": "native",
+    "holder": "0x94b398acb2fce988871218221ea6a4a2b26cccbc",
+    "opening_raw": "372615352818256039723",
+    "closing_raw": "372594843095696240779",
+    "transfer_net_raw": "0",
+    "residual_raw": "-20509722559798944"
+  },
+  {
+    "chain": "plume",
+    "token": "native",
+    "holder": "0x1db91ad50446a671e2231f77e00948e68876f812",
+    "opening_raw": "10000000000000000000",
+    "closing_raw": "10000000000000000000",
+    "transfer_net_raw": "0",
+    "residual_raw": "0"
+  }
+]

@@ -1,0 +1,42 @@
+{
+  "period": "2026-10",
+  "scope": "Primary configured ALMs on five chains plus Ethereum Diamond PAU ALM",
+  "chains": {
+    "plume": {
+      "from_block": 96561571,
+      "to_block": 102924354,
+      "holders": [
+        "0x1db91ad50446a671e2231f77e00948e68876f812"
+      ]
+    },
+    "ethereum": {
+      "from_block": 26093738,
+      "to_block": 26316189,
+      "holders": [
+        "0x491edfb0b8b608044e227225c715981a30f3a44e",
+        "0x0dcd9298e163dfd3c0b5b00f0d9093c36e40a153"
+      ]
+    },
+    "base": {
+      "from_block": 52011727,
+      "to_block": 53350927,
+      "holders": [
+        "0x9b746dbc5269e1df6e4193bcb441c0fbbf1cecee"
+      ]
+    },
+    "monad": {
+      "from_block": 109459391,
+      "to_block": 118321697,
+      "holders": [
+        "0x94b398acb2fce988871218221ea6a4a2b26cccbc"
+      ]
+    },
+    "avalanche_c": {
+      "from_block": 96488900,
+      "to_block": 99082939,
+      "holders": [
+        "0x7107dd8f56642327945294a18a4280c78e153644"
+      ]
+    }
+  }
+}

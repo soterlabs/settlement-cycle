@@ -26,6 +26,32 @@ below as compact pointers; the full narrative lives in `PRD.md §17`.
 ### P0 — material numerical gaps
 
 
+#### G30. October 2026 ALM receipts/outflows — economic classification
+
+The [October ALM flow audit](docs/grove/october-2026-alm-flow-audit.md) independently
+captures all six configured holders and reconciles token/native quantities.
+Three non-spam counterparty groups still lack a supported economic booking:
+
+- Six Ethereum USDC receipts from `0xcd531ae9efcce479654c4926dec5f6209531ca7b`
+  total **2,057,003 USDC**. This wallet was associated with historical Apollo
+  cash settlements, but there are no October Plume share cancellations linking
+  these new payments. Confirm the facility and principal/income split.
+- Two Monad USDC transfers from the configured holder to
+  `0x2c58e28cb9b2b8afb7ed1f2235ca01e9b06e5755` total **152,288.127280 USDC**.
+  Confirm the destination owner/purpose and the corresponding claim, repayment,
+  custody movement or expense. These are genuine signed USDC transfers, separate
+  from the counterfeit-token poisoning event.
+- An October 9 Avalanche native receipt from
+  `0x9f1d8d40d9d8e6b69e0d9aa66b51c3007adc1c2f` is **76,133.73 AVAX**.
+  Confirm whether this is custody funding, returned capital, income or another
+  transaction, and the appropriate valuation convention.
+
+Until these are explained, retain them as unresolved boundary movements rather
+than assigning income by sender familiarity or assigning an expense to every
+outflow. Transaction identities and exact amount controls are in
+`reconciliation/grove_alm_flows_2026_10/transfer-audit.csv` and the audit note.
+
+
 #### G28. Galaxy Warehouse — facility terms, maturity, and yield payer
 
 **Confirmed by Grove (2026-09):** the ~$304M wired off-chain in July 2026 is
