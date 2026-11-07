@@ -24,7 +24,7 @@ Checked 7 November 2026 against the live reporting API and production dashboard.
 | 2026-06 | 708,783,809 | 934,699 | 0.13% | 5,834 | Incomplete |
 | 2026-07 | 185,943,411 | 7,763,341 | 4.18% | 4,703 | Incomplete |
 | 2026-08 | 191,999,386 | -3,682,690 | 1.92% | 14,142 | Incomplete |
-| 2026-09 | 224,409,267 | 286,503 | 0.13% | 8,880 | Incomplete |
+| 2026-09 | 224,409,267 | 141,697 | 0.06% | 8,878 | Incomplete |
 | 2026-10 | 190,058,890 | 1,652,778 | 0.87% | 14,383 | Incomplete |
 
 ## Where the numerical remainder sits
@@ -45,14 +45,14 @@ Separate the event/balance check from the indirect accounting bridge before chan
 | 2026-06 | 504,169 | -430,530 | 934,699 |
 | 2026-07 | 1,282,576 | -6,480,765 | 7,763,341 |
 | 2026-08 | -4,201,751 | -519,060 | -3,682,690 |
-| 2026-09 | -280,350 | -566,853 | 286,503 |
+| 2026-09 | -425,156 | -566,853 | 141,697 |
 | 2026-10 | 552,626 | -1,100,151 | 1,652,778 |
 
 ## Priorities and remaining gaps
 
 | Priority | Finding | Evidence / size | Next action |
 |---|---|---|---|
-| 1 | September accounting refresh failed before collection | Older revenue row omits Robinhood; retained reporting opening/closing pins are 51,274,667 / 76,928,650. September source lacks treasury and ownership objects. The original cash replay succeeded using that older source. | Preserve certified reporting-only chain pins, reject actual shared-chain disagreements, then publish corrected September source and replay its cash flow. Resolution is recorded below. |
+| 1 | September accounting refresh failed before collection | Older revenue row omits Robinhood; retained reporting opening/closing pins are 51,274,667 / 76,928,650. The original September source lacked treasury and ownership objects; this is now repaired. The original cash replay succeeded using that older source. | Preserve certified reporting-only chain pins, reject actual shared-chain disagreements, then publish corrected September source and replay its cash flow. Resolution is recorded below. |
 | 2 | July indirect bridge | Gap 7,763,341; event/balance remainder 1,282,576; indirect adjustment -6,480,765. The -9,567,225 MSC entitlement reversal comprises 3,921,305 for July and 5,645,920 of executed prior-month corrections (cycle 10). | Check whether those prior corrections were already accrued before July. If so, reversing them again in July duplicates 5,645,920 and removing that duplicate would reduce the known gap to 2,117,421. This is a quantified hypothesis, not a booked correction: establish prior receivable/income recognition first. Also verify Savings add-backs offset expenses once. |
 | 3 | August event/balance bridge | Gap -3,682,690; event/balance remainder -4,201,751. Two unmatched Savings payments total -0.244430 in the ledger. | Pair routing/bridge legs and transaction cash boundaries first. The small Savings exceptions cannot explain the multi-million remainder. |
 | 4 | October | Gap 1,652,778; event/balance remainder 552,626; indirect adjustment -1,100,151. DR and a regular MSC entitlement are not yet available; a known prior-month true-up is not a full October entitlement. | Ingest approved October DR and entitlement when published, and refresh both income and cash flow together. |
@@ -92,13 +92,21 @@ input revision. Do not add vesting transfers as another expense stream.
 
 ## September repair result
 
-Pending the reviewed refresh and replay.
+The reporting-only source refresh and cash-flow replay completed successfully.
+Treasury and ownership collection error maps are empty; every original boundary
+and native/issuer/curator/AMM source family was preserved. No MSC was replayed.
+
+- Corrected source revision: `e17773a057eb348d14513278c589a11667a731bfec6caa2634b794eee2fc058f`.
+- Cash-flow revision: `0a1726fae65cde3590c43fc5cd0ba4b5afbacdaaba32963c0b9351e5cc7f2676`.
+- Post-repair September known gap: **141,697 USD (0.06%)**, down from 286,503 USD (0.13%).
+- The cash-flow bridge and source references are revalidated against the live
+  API and dashboard export after the repair. Other coverage gaps remain explicit.
 
 ## Snapshot references
 
-- Income report hash: `3245d2d597a870322829ffc97d3eadfeeec5533e62a822b785b7e5a61de645de`.
-- Cash-flow report hash: `8a4048644634d651b0afbcc6ce47dcba2e3ab5014348f0d5746703229fbd6ab8`.
+- Income report hash: `2d2bfc09a8c4c490037e28fd06215f9df88a190a4307e18c9c8febf46a16cab3`.
+- Cash-flow report hash: `a9ab6ac77e5feb44efd3c4882326b4aae34685226c59620aec16baa28732603c`.
 - Endpoint: `/v3/reporting/statements?prime=spark&year=2026&accounting=true`.
 - Endpoint: `/v3/reporting/cash-flow?prime=spark&year=2026`.
-- API monthly sources and cash revisions are immutable; live selections can advance. Numbers above describe this dated snapshot and must be refreshed after the September replay.
+- API monthly sources and cash revisions are immutable; live selections can advance. Numbers above describe the dated snapshot, including the completed September repair.
 - Accounting rules: [ACCOUNTING_RULES.md](ACCOUNTING_RULES.md).
