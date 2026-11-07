@@ -149,7 +149,8 @@ def test_completion_accepts_an_additional_certified_chain_without_mutating_old(m
     assert old == before
 
 
-def test_accounting_refresh_retains_reporting_chain_absent_from_revenue_snapshot(monkeypatch):
+@pytest.mark.parametrize("reporting_has_robinhood", [True, False])
+def test_accounting_refresh_retains_certified_chain_union(monkeypatch, reporting_has_robinhood):
     from settle.revenue import spark_reporting_job as job
     opening = {chain: 10 for chain in (*job.WETH, "avalanche_c", "robinhood")}
     closing = {chain: 20 for chain in opening}
@@ -157,6 +158,11 @@ def test_accounting_refresh_retains_reporting_chain_absent_from_revenue_snapshot
                "closing_pins": {k: v for k, v in closing.items() if k != "robinhood"}}
     prior = {"revision_id": "reporting", "publication_order": 1, "cutoff": "2026-09-30",
              "document": {"opening_pins": opening, "closing_pins": closing, "native_supplies": {"retained": "unchanged"}}}
+    if not reporting_has_robinhood:
+        revenue["opening_pins"]["robinhood"] = opening["robinhood"]
+        revenue["closing_pins"]["robinhood"] = closing["robinhood"]
+        prior["document"]["opening_pins"] = {k: v for k, v in opening.items() if k != "robinhood"}
+        prior["document"]["closing_pins"] = {k: v for k, v in closing.items() if k != "robinhood"}
     before = deepcopy((revenue, prior))
     monkeypatch.setattr(job.store, "read", lambda *a, **k: revenue)
     monkeypatch.setattr(job.spark_reporting_store, "year_rows", lambda *a, **k: [prior])

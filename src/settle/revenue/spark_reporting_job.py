@@ -124,7 +124,10 @@ def complete_month(conn, cutoff, *, source=None, accounting_only=False):
         prime, period, saved["opening_pins"], daily_pins=saved_daily_pins(conn, cutoff)
     )
     if accounting_only:
-        result = deepcopy(old["document"])
+        # The emitted document must describe the same complete pin set as the
+        # source, including any chain independently certified above.
+        result.update(opening_pins=deepcopy(saved["opening_pins"]),
+                      closing_pins=deepcopy(saved["closing_pins"]))
         from .spark_treasury import collect as treasury
         from .spark_ownership import collect as ownership
         result["treasury"] = treasury(source)
