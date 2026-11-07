@@ -100,9 +100,14 @@ def complete_month(conn, cutoff, *, source=None, accounting_only=False):
     saved = deepcopy(saved)
     result = deepcopy(old["document"])
     for name in ("opening_pins", "closing_pins"):
-        if any(saved[name].get(chain) != pin for chain, pin in result.get(name, {}).items()):
+        retained = result.get(name, {})
+        if any(chain in saved[name] and saved[name][chain] != pin for chain, pin in retained.items()):
             raise ValueError("Existing reporting inputs use different source boundaries")
-        result[name] = saved[name]
+        # Reporting may already contain an independently certified new chain
+        # that predates its addition to revenue_results. Preserve those pins;
+        # absence in the older revenue row is not a conflicting boundary.
+        saved[name].update(retained)
+        result[name] = deepcopy(saved[name])
     # Older publications predate Robinhood coverage. Preserve every retained
     # chain boundary and independently certify only newly required chains.
     for name, day in (("opening_pins", cutoff.replace(day=1) - timedelta(days=1)), ("closing_pins", cutoff)):
@@ -119,7 +124,10 @@ def complete_month(conn, cutoff, *, source=None, accounting_only=False):
         prime, period, saved["opening_pins"], daily_pins=saved_daily_pins(conn, cutoff)
     )
     if accounting_only:
-        result = deepcopy(old["document"])
+        # The emitted document must describe the same complete pin set as the
+        # source, including any chain independently certified above.
+        result.update(opening_pins=deepcopy(saved["opening_pins"]),
+                      closing_pins=deepcopy(saved["closing_pins"]))
         from .spark_treasury import collect as treasury
         from .spark_ownership import collect as ownership
         result["treasury"] = treasury(source)
