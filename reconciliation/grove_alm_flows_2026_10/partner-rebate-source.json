@@ -1,0 +1,13 @@
+{
+  "repository": "soterlabs/settlement-cycle",
+  "commit": "83a15aad01c080245b9a75c673176151b951ca88",
+  "path": "reconciliation/2026-10/partner_rebates.json",
+  "blob_sha": "0b1d8a270126ad8ac95d330c5f01b4806df80262",
+  "sha256": "dbf54b5f779a7863c64d764ac9f2b6a74967893d323623bf6640e8c5d859d7db",
+  "url": "https://github.com/soterlabs/settlement-cycle/blob/83a15aad01c080245b9a75c673176151b951ca88/reconciliation/2026-10/partner_rebates.json",
+  "approval_pr": "https://github.com/soterlabs/settlement-cycle/pull/226",
+  "report_url": "https://github.com/soterlabs/settlement-reports/blob/c285979192d2985586e709bf82722bab58341f6c/reports/grove/2026-10/reconciliation.md",
+  "sender_label": "Coinbase Prime 1",
+  "sender_label_source": "https://basescan.org/address/0xcd531ae9efcce479654c4926dec5f6209531ca7b",
+  "association_basis": "Approved partner statement matched by transaction hash and amount; not inferred from shared custodian sender."
+}

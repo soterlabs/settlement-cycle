@@ -1572,6 +1572,18 @@ Q&A session with the Spark team covering distribution rewards, SparkLend reserve
 | **S20** | unanswered | P2 | SparkLend "large positions trigger negative returns" — mechanism + threshold. Operators-context, not a numerical correction. |
 | **S22** | unanswered | P3 | Anchorage fee structure — operational only, doesn't shift numbers (sweeps arrive net-of-fee). |
 
+#### Receipt-classification ack (2026-11-07 — Grove October partner rebates)
+
+The six October 20–21 Coinbase-custodied USDC receipts are transaction-matched
+in PR #226’s operator-approved partner statement: JAAA 986,596.00 and JTRSY
+1,070,407.00. They are historical partner rebates, not Apollo principal returns.
+The accepted allocation is 915,857.20 to Grove and 1,141,145.80 to Sky, carried
+once in October MSC adjustments. Do not infer an economic counterparty from a
+shared exchange wallet or add the receipts again to venue income. The allocation
+is statement-based; it does not independently establish time-weighted entitlement
+or prior NAV exclusion. Evidence: `docs/grove/october-2026-partner-rebates.md`;
+G30 remains open for the separate Monad outflows and AVAX receipt.
+
 #### Code-review acks (2026-05-04 — two-reviewer pass)
 
 Two parallel full-codebase reviews on 2026-05-04. Material findings have been fixed; the items below are intentional trade-offs documented for future maintainers.

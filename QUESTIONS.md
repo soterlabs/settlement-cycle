@@ -26,6 +26,34 @@ below as compact pointers; the full narrative lives in `PRD.md §17`.
 ### P0 — material numerical gaps
 
 
+#### G30. October 2026 ALM receipts/outflows — economic classification
+
+The [October ALM flow audit](docs/grove/october-2026-alm-flow-audit.md) independently
+captures all six configured holders and reconciles token/native quantities.
+The receipt group is now identified; two non-spam counterparty groups still require classification:
+
+- **Receipt portion identified (2026-11-07):** the six Ethereum USDC receipts
+  are historical **JAAA/JTRSY partner rebates**, matched by exact hash/amount to
+  the operator-approved statement merged in PR #226: **915,857.20** allocated
+  to Grove and **1,141,145.80** to Sky. The sender is shared Coinbase custody,
+  not evidence of an Apollo relationship. Preserve the existing once-only MSC
+  adjustment; see [the receipt evidence](docs/grove/october-2026-partner-rebates.md).
+- Two Monad USDC transfers from the configured holder to
+  `0x2c58e28cb9b2b8afb7ed1f2235ca01e9b06e5755` total **152,288.127280 USDC**.
+  Confirm the destination owner/purpose and the corresponding claim, repayment,
+  custody movement or expense. These are genuine signed USDC transfers, separate
+  from the counterfeit-token poisoning event.
+- An October 9 Avalanche native receipt from
+  `0x9f1d8d40d9d8e6b69e0d9aa66b51c3007adc1c2f` is **76,133.73 AVAX**.
+  Confirm whether this is custody funding, returned capital, income or another
+  transaction, and the appropriate valuation convention.
+
+Until the remaining outflow/native movements are explained, retain them as unresolved boundary movements rather
+than assigning income by sender familiarity or assigning an expense to every
+outflow. Transaction identities and exact amount controls are in
+`reconciliation/grove_alm_flows_2026_10/transfer-audit.csv` and the audit note.
+
+
 #### G28. Galaxy Warehouse — facility terms, maturity, and yield payer
 
 **Confirmed by Grove (2026-09):** the ~$304M wired off-chain in July 2026 is

@@ -1,0 +1,62 @@
+[
+  {
+    "chain": "base",
+    "token": "0xbeef0786756810478b88982de00f3cd7fdb8e7c7",
+    "calls": {
+      "name()": "Grove x Steakhouse USDC",
+      "symbol()": "grove-steakUSDC",
+      "decimals()": 18,
+      "asset()": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+    }
+  },
+  {
+    "chain": "ethereum",
+    "token": "0x113f5c181237ecea75574bf4d6f06f8dd3d81ce1",
+    "calls": {
+      "name()": "Odyssey",
+      "symbol()": "ODYSSEY",
+      "decimals()": 9,
+      "asset()": "EVMRevert"
+    }
+  },
+  {
+    "chain": "ethereum",
+    "token": "0x4a4a792eaca707308324b32f987fe1d6ad00e5b2",
+    "calls": {
+      "name()": "Tendie Vault",
+      "symbol()": "TENDIE",
+      "decimals()": 9,
+      "asset()": "EVMRevert"
+    }
+  },
+  {
+    "chain": "ethereum",
+    "token": "0x68725d45a960c100e082dd14ec82c9d83c2240a6",
+    "calls": {
+      "name()": "Alpha Dao",
+      "symbol()": "ALPHA",
+      "decimals()": 9,
+      "asset()": "EVMRevert"
+    }
+  },
+  {
+    "chain": "ethereum",
+    "token": "0x91d6cf4af9697ec95d9e1754e84d2b31c67a5ab7",
+    "calls": {
+      "name()": "SEND",
+      "symbol()": "SEND",
+      "decimals()": 18,
+      "asset()": "EVMRevert"
+    }
+  },
+  {
+    "chain": "monad",
+    "token": "0x29f9c424803ac7b09d97ee218adbbb9329703946",
+    "calls": {
+      "name()": "USD\u0323C",
+      "symbol()": "US\u0323DC",
+      "decimals()": 6,
+      "asset()": "EVMRevert"
+    }
+  }
+]

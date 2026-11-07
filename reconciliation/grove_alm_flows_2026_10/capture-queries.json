@@ -1,0 +1,474 @@
+{
+  "period": "2026-10",
+  "queries": {
+    "plume": {
+      "endpoint": "https://plume.hypersync.xyz/query",
+      "request": {
+        "from_block": 96561571,
+        "to_block": 102924354,
+        "logs": [
+          {
+            "topics": [
+              [],
+              [
+                "0x0000000000000000000000001db91ad50446a671e2231f77e00948e68876f812"
+              ]
+            ]
+          },
+          {
+            "topics": [
+              [],
+              [],
+              [
+                "0x0000000000000000000000001db91ad50446a671e2231f77e00948e68876f812"
+              ]
+            ]
+          },
+          {
+            "topics": [
+              [],
+              [],
+              [],
+              [
+                "0x0000000000000000000000001db91ad50446a671e2231f77e00948e68876f812"
+              ]
+            ]
+          }
+        ],
+        "transactions": [
+          {
+            "from": [
+              "0x1db91ad50446a671e2231f77e00948e68876f812"
+            ]
+          },
+          {
+            "to": [
+              "0x1db91ad50446a671e2231f77e00948e68876f812"
+            ]
+          }
+        ],
+        "join_mode": "JoinAll",
+        "max_num_logs": 100000,
+        "max_num_transactions": 100000,
+        "max_num_blocks": 100000,
+        "field_selection": {
+          "log": [
+            "block_number",
+            "log_index",
+            "address",
+            "topic0",
+            "topic1",
+            "topic2",
+            "topic3",
+            "data",
+            "transaction_hash"
+          ],
+          "block": [
+            "number",
+            "timestamp"
+          ],
+          "transaction": [
+            "block_number",
+            "hash",
+            "from",
+            "to",
+            "value",
+            "input",
+            "status"
+          ]
+        }
+      }
+    },
+    "ethereum": {
+      "endpoint": "https://eth.hypersync.xyz/query",
+      "request": {
+        "from_block": 26093738,
+        "to_block": 26316189,
+        "logs": [
+          {
+            "topics": [
+              [],
+              [
+                "0x000000000000000000000000491edfb0b8b608044e227225c715981a30f3a44e",
+                "0x0000000000000000000000000dcd9298e163dfd3c0b5b00f0d9093c36e40a153"
+              ]
+            ]
+          },
+          {
+            "topics": [
+              [],
+              [],
+              [
+                "0x000000000000000000000000491edfb0b8b608044e227225c715981a30f3a44e",
+                "0x0000000000000000000000000dcd9298e163dfd3c0b5b00f0d9093c36e40a153"
+              ]
+            ]
+          },
+          {
+            "topics": [
+              [],
+              [],
+              [],
+              [
+                "0x000000000000000000000000491edfb0b8b608044e227225c715981a30f3a44e",
+                "0x0000000000000000000000000dcd9298e163dfd3c0b5b00f0d9093c36e40a153"
+              ]
+            ]
+          }
+        ],
+        "transactions": [
+          {
+            "from": [
+              "0x491edfb0b8b608044e227225c715981a30f3a44e",
+              "0x0dcd9298e163dfd3c0b5b00f0d9093c36e40a153"
+            ]
+          },
+          {
+            "to": [
+              "0x491edfb0b8b608044e227225c715981a30f3a44e",
+              "0x0dcd9298e163dfd3c0b5b00f0d9093c36e40a153"
+            ]
+          }
+        ],
+        "join_mode": "JoinAll",
+        "max_num_logs": 100000,
+        "max_num_transactions": 100000,
+        "max_num_blocks": 100000,
+        "field_selection": {
+          "log": [
+            "block_number",
+            "log_index",
+            "address",
+            "topic0",
+            "topic1",
+            "topic2",
+            "topic3",
+            "data",
+            "transaction_hash"
+          ],
+          "block": [
+            "number",
+            "timestamp"
+          ],
+          "transaction": [
+            "block_number",
+            "hash",
+            "from",
+            "to",
+            "value",
+            "input",
+            "status"
+          ]
+        }
+      }
+    },
+    "base": {
+      "endpoint": "https://base.hypersync.xyz/query",
+      "request": {
+        "from_block": 52011727,
+        "to_block": 53350927,
+        "logs": [
+          {
+            "topics": [
+              [],
+              [
+                "0x0000000000000000000000009b746dbc5269e1df6e4193bcb441c0fbbf1cecee"
+              ]
+            ]
+          },
+          {
+            "topics": [
+              [],
+              [],
+              [
+                "0x0000000000000000000000009b746dbc5269e1df6e4193bcb441c0fbbf1cecee"
+              ]
+            ]
+          },
+          {
+            "topics": [
+              [],
+              [],
+              [],
+              [
+                "0x0000000000000000000000009b746dbc5269e1df6e4193bcb441c0fbbf1cecee"
+              ]
+            ]
+          }
+        ],
+        "transactions": [
+          {
+            "from": [
+              "0x9b746dbc5269e1df6e4193bcb441c0fbbf1cecee"
+            ]
+          },
+          {
+            "to": [
+              "0x9b746dbc5269e1df6e4193bcb441c0fbbf1cecee"
+            ]
+          }
+        ],
+        "join_mode": "JoinAll",
+        "max_num_logs": 100000,
+        "max_num_transactions": 100000,
+        "max_num_blocks": 100000,
+        "field_selection": {
+          "log": [
+            "block_number",
+            "log_index",
+            "address",
+            "topic0",
+            "topic1",
+            "topic2",
+            "topic3",
+            "data",
+            "transaction_hash"
+          ],
+          "block": [
+            "number",
+            "timestamp"
+          ],
+          "transaction": [
+            "block_number",
+            "hash",
+            "from",
+            "to",
+            "value",
+            "input",
+            "status"
+          ]
+        }
+      }
+    },
+    "monad": {
+      "endpoint": "https://monad.hypersync.xyz/query",
+      "request": {
+        "from_block": 109459391,
+        "to_block": 118321697,
+        "logs": [
+          {
+            "topics": [
+              [],
+              [
+                "0x00000000000000000000000094b398acb2fce988871218221ea6a4a2b26cccbc"
+              ]
+            ]
+          },
+          {
+            "topics": [
+              [],
+              [],
+              [
+                "0x00000000000000000000000094b398acb2fce988871218221ea6a4a2b26cccbc"
+              ]
+            ]
+          },
+          {
+            "topics": [
+              [],
+              [],
+              [],
+              [
+                "0x00000000000000000000000094b398acb2fce988871218221ea6a4a2b26cccbc"
+              ]
+            ]
+          }
+        ],
+        "transactions": [
+          {
+            "from": [
+              "0x94b398acb2fce988871218221ea6a4a2b26cccbc"
+            ]
+          },
+          {
+            "to": [
+              "0x94b398acb2fce988871218221ea6a4a2b26cccbc"
+            ]
+          }
+        ],
+        "join_mode": "JoinAll",
+        "max_num_logs": 100000,
+        "max_num_transactions": 100000,
+        "max_num_blocks": 100000,
+        "field_selection": {
+          "log": [
+            "block_number",
+            "log_index",
+            "address",
+            "topic0",
+            "topic1",
+            "topic2",
+            "topic3",
+            "data",
+            "transaction_hash"
+          ],
+          "block": [
+            "number",
+            "timestamp"
+          ],
+          "transaction": [
+            "block_number",
+            "hash",
+            "from",
+            "to",
+            "value",
+            "input",
+            "status"
+          ]
+        }
+      }
+    },
+    "avalanche_c": {
+      "endpoint": "https://avalanche.hypersync.xyz/query",
+      "request": {
+        "from_block": 96488900,
+        "to_block": 99082939,
+        "logs": [
+          {
+            "topics": [
+              [],
+              [
+                "0x0000000000000000000000007107dd8f56642327945294a18a4280c78e153644"
+              ]
+            ]
+          },
+          {
+            "topics": [
+              [],
+              [],
+              [
+                "0x0000000000000000000000007107dd8f56642327945294a18a4280c78e153644"
+              ]
+            ]
+          },
+          {
+            "topics": [
+              [],
+              [],
+              [],
+              [
+                "0x0000000000000000000000007107dd8f56642327945294a18a4280c78e153644"
+              ]
+            ]
+          }
+        ],
+        "transactions": [
+          {
+            "from": [
+              "0x7107dd8f56642327945294a18a4280c78e153644"
+            ]
+          },
+          {
+            "to": [
+              "0x7107dd8f56642327945294a18a4280c78e153644"
+            ]
+          }
+        ],
+        "join_mode": "JoinAll",
+        "max_num_logs": 100000,
+        "max_num_transactions": 100000,
+        "max_num_blocks": 100000,
+        "field_selection": {
+          "log": [
+            "block_number",
+            "log_index",
+            "address",
+            "topic0",
+            "topic1",
+            "topic2",
+            "topic3",
+            "data",
+            "transaction_hash"
+          ],
+          "block": [
+            "number",
+            "timestamp"
+          ],
+          "transaction": [
+            "block_number",
+            "hash",
+            "from",
+            "to",
+            "value",
+            "input",
+            "status"
+          ]
+        }
+      }
+    }
+  },
+  "pagination": "Advance from_block to next_block until the exclusive end. Retain every page cursor and archive_height; reject incomplete ranges.",
+  "iris": "https://iris-api.circle.com/v2/messages/{sourceDomain}?transactionHash={sourceTransaction}",
+  "native_traces": "See native-trace-audit.sql and native-trace-eth-base.sql; completed Dune executions and results are retained.",
+  "rpc_controls": "eth_getBalance and balanceOf(holder) at from_block-1 and to_block-1; convertToAssets(full_balance) for Base vault values. Authentication credentials are not captured.",
+  "native_hypersync": {
+    "ethereum": {
+      "endpoint": "https://eth-traces.hypersync.xyz/query",
+      "from_block": 26093738,
+      "to_block": 26316189,
+      "traces": [
+        {
+          "from": [
+            "0x491edfb0b8b608044e227225c715981a30f3a44e",
+            "0x0dcd9298e163dfd3c0b5b00f0d9093c36e40a153"
+          ]
+        },
+        {
+          "to": [
+            "0x491edfb0b8b608044e227225c715981a30f3a44e",
+            "0x0dcd9298e163dfd3c0b5b00f0d9093c36e40a153"
+          ]
+        }
+      ],
+      "join_mode": "JoinAll",
+      "fields": [
+        "block_number",
+        "transaction_hash",
+        "from",
+        "to",
+        "value",
+        "input",
+        "type",
+        "call_type",
+        "error",
+        "trace_address",
+        "refund_address",
+        "balance",
+        "action_address"
+      ]
+    },
+    "base": {
+      "endpoint": "https://base-traces.hypersync.xyz/query",
+      "from_block": 52011727,
+      "to_block": 53350927,
+      "traces": [
+        {
+          "from": [
+            "0x9b746dbc5269e1df6e4193bcb441c0fbbf1cecee"
+          ]
+        },
+        {
+          "to": [
+            "0x9b746dbc5269e1df6e4193bcb441c0fbbf1cecee"
+          ]
+        }
+      ],
+      "join_mode": "JoinAll",
+      "fields": [
+        "block_number",
+        "transaction_hash",
+        "from",
+        "to",
+        "value",
+        "input",
+        "type",
+        "call_type",
+        "error",
+        "trace_address",
+        "refund_address",
+        "balance",
+        "action_address"
+      ]
+    }
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "status": "operator_approved",
+  "approved_on": "2026-11-06",
+  "settlement_month": "2026-10",
+  "label": "Partner rebates",
+  "earned_period": "2025 and 2026 through July 31",
+  "allocation_basis": "Use the detailed figures supplied in the partner statement; operator accepts the $360 discrepancy in its final totals as an error. No independent time-weighted entitlement calculation is asserted.",
+  "sky": {
+    "JTRSY": {
+      "2025": "356999.00",
+      "2026_through_july_31": "713408.00"
+    },
+    "JAAA_2026": "70738.80",
+    "total": "1141145.80"
+  },
+  "grove": {
+    "JAAA_2025": "413320.00",
+    "JAAA_2026": "502537.20",
+    "total": "915857.20"
+  },
+  "total_received": "2057003.00",
+  "receipts": [
+    {
+      "date": "2026-10-21",
+      "asset": "JTRSY",
+      "amount": "499999.00",
+      "tx": "0xfab28754e744c765c4341a8fe8965633d0ca1d07d44c0d1cef9e8e6dacc1a1c0"
+    },
+    {
+      "date": "2026-10-21",
+      "asset": "JTRSY",
+      "amount": "499999.00",
+      "tx": "0x197ae1778433c69c7a0221d90c5a4156deb04388f48e4dcded62bff0e422e9bf"
+    },
+    {
+      "date": "2026-10-21",
+      "asset": "JTRSY",
+      "amount": "70409.00",
+      "tx": "0x54635685a4f35964ce3bc481dbf5ecfff37a063104fdc21e6454ccd89aefcde1"
+    },
+    {
+      "date": "2026-10-20",
+      "asset": "JAAA",
+      "amount": "486585.00",
+      "tx": "0xaec0b9998e544c3d0e9fda29c131fd1d76a74cd57abe64833e882d7cb865312f"
+    },
+    {
+      "date": "2026-10-20",
+      "asset": "JAAA",
+      "amount": "499999.00",
+      "tx": "0xdcddbd1ab94b3a27543f30cc1a729fcbdd1223c9088464c79d73f97ccfb38930"
+    },
+    {
+      "date": "2026-10-20",
+      "asset": "JAAA",
+      "amount": "12.00",
+      "tx": "0xb907cd9cb470238fc5a06475cdaddcdd8bbf37f88bb2ee53a05b37cb90a3d115"
+    }
+  ],
+  "recognition_note": "Historical partner rebate allocation carried once through MSC adjustments. The figures do not themselves prove that the rebates were excluded from previous NAV or income."
+}
