@@ -25,14 +25,14 @@ Successful value-bearing native traces were independently queried on Dune across
 | Finding | October amount | Current treatment / required work |
 |---|---:|---|
 | Unconfigured Base Grove x Steakhouse USDC vault | **1,298,280.769218 USDC implied venue income** | Missing from `config/grove.yaml`, hence absent from the original October venue revenue. Add the venue and rerun the close before trusting the headline. |
-| Six Ethereum USDC receipts from historical Apollo-associated payer | **2,057,003 USDC received** | No October principal-versus-income association is established. Retain as unresolved receipts; do not apply the exact May/August Apollo links to new transfers. |
+| Six Ethereum USDC receipts, now identified | **2,057,003 USDC received** | Approved historical JAAA/JTRSY partner rebates: 915,857.20 to Grove and 1,141,145.80 to Sky. See the [receipt classification](october-2026-partner-rebates.md); do not book again on top of the existing approved adjustment. |
 | Two genuine Monad USDC transfers | **152,288.127280 USDC sent** | Configured holder signs direct transfers to an unclassified destination. Requires a counterparty/asset-or-expense booking, rather than treating the outflow as spam or assuming it is principal. |
 | Native Avalanche receipt, October 9 | **76,133.73 AVAX received** | Real native receipt, independently confirmed by RPC and traces. No configured venue/income classification or USD valuation exists. Preserve native inventory and resolve its economic classification. |
 | E19/E23 Base vault exits | **15,310.572711 USDC aggregate difference** | Booked returns exceed cash withdrawals less exact opening `convertToAssets(full balance)`. Reconcile execution proceeds, fees and unit-price precision before accepting those venue returns. |
 | 39 authenticated AUSD/USDC swaps | **−4,332.476098 USD net at the configured par convention** | Actual transfers prove +1,159.810081 gains and −5,492.286179 shortfalls. Existing cash venues carry zero revenue; reconcile these trading gains/losses separately from E12 LP income. This is an execution difference, not automatically a funding loss. |
 | Native gas paid by Monad holder | **0.020509722559798944 MON** | Two receipt-proven gas charges exactly explain the native balance decrease. No dedicated MSC expense booking is established in this audit. |
 
-Counterparty classification requests are tracked in **QUESTIONS.md G30**. The audit does not assume the full $2.057m receipt is income, the $152k outflow is an expense, or the AVAX receipt is yield.
+The six receipts were subsequently identified by the approved statement in merged PR #226. Remaining counterparty classification requests are tracked in **QUESTIONS.md G30**. The audit does not assume the $152k outflow is an expense or the AVAX receipt is yield.
 
 ### Missing Base vault: independent amount control
 
@@ -52,7 +52,7 @@ The vault already held $45.0m at September-end. Consequently the earlier compari
 
 ### Unresolved receipts and outflows
 
-The six USDC receipts come from `0xcd531ae9efcce479654c4926dec5f6209531ca7b`: 12; 499,999; 486,585; 70,409; 499,999; and 499,999 USDC. October contains no Plume share movement providing an Apollo cancellation link. The historical adapter proves only its exact May/August groups. The complete transaction identities are retained in the transfer CSV.
+The six USDC receipts come from the shared Coinbase Prime wallet `0xcd531ae9efcce479654c4926dec5f6209531ca7b`. The approved statement maps October 20’s three payments to **986,596 USDC of JAAA rebates** and October 21’s three to **1,070,407 USDC of JTRSY rebates**. These are historical partner rebates, not principal returns or Apollo proceeds. [Details and source evidence](october-2026-partner-rebates.md). The complete transaction identities remain in the transfer CSV.
 
 The genuine Monad USDC outflows are **10.001130** and **152,278.126150** USDC, both to `0x2c58e28cb9b2b8afb7ed1f2235ca01e9b06e5755`. Transactions [`0x06d525…956bd`](https://monadscan.com/tx/0x06d525b9f77439b3a88f55e63239ec0bf2a8e33da7a630fb4f59ceac317956bd) and [`0xcf29d5…6adc`](https://monadscan.com/tx/0xcf29d57cd1061f4ff59650fce15c06a39eaf343919f2a6e6431f26d167e86adc) originate from the configured holder and call the canonical USDC contract. Its balance falls from 152,288.127280 USDC to zero. These are separate from the counterfeit `UṢDC` poisoning event, which uses a different token contract and a third-party transaction sender.
 
@@ -76,7 +76,7 @@ The machine-readable statuses partition all 1,850 transfers:
 | Authenticated swap legs requiring execution reconciliation | 78 |
 | Base E19/E23 exits requiring cash reconciliation | 30 |
 | Reviewed unsolicited/counterfeit exclusions | 11 |
-| Unresolved USDC receipts | 6 |
+| Approved JAAA/JTRSY partner rebate receipts | 6 |
 | Booked Galaxy distributions verified exactly | 2 |
 | Unresolved genuine USDC outflows | 2 |
 

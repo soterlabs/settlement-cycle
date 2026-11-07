@@ -6,7 +6,9 @@ from pathlib import Path
 import pytest
 
 from scripts.audit_grove_alm_flows import (
+    COINBASE_PAYER,
     SPAM,
+    USDC_ETH,
     USDC_MONAD,
     audit,
     classify,
@@ -93,7 +95,9 @@ def test_october_capture_balances_bridges_and_unresolved_cash(tmp_path):
     assert result['token_balance_controls'] == 16
     assert result['native_balance_controls'] == 6
     assert len(result['native_flows']) == 1
-    assert result['status_counts']['unresolved_receipt'] == 6
+    assert result['status_counts'].get('unresolved_receipt', 0) == 0
+    assert result['status_counts']['approved_partner_rebate'] == 6
+    assert result['approved_partner_rebates']['grove']['total'] == '915857.20'
     assert result['status_counts']['unresolved_outflow'] == 2
     assert result['status_counts']['missing_venue'] == 200
     assert result['status_counts']['verified_bridge'] == 168
@@ -107,3 +111,15 @@ def test_changed_bridge_amount_cannot_be_certified(tmp_path):
     path.write_text(json.dumps(data))
     with pytest.raises(ValueError, match='Bridge proof differs'):
         audit(target)
+
+
+def test_shared_custodian_does_not_classify_unrelated_payments():
+    value = {**row(USDC_ETH), 'sender': COINBASE_PAYER,
+             'receiver': '0x491edfb0b8b608044e227225c715981a30f3a44e', 'amount': '12'}
+    assert status(value) == 'unresolved_receipt'
+    receipts = {value['transaction']: {'asset': 'JAAA', 'amount': '12'}}
+    kwargs = dict(income_routes={}, venue_tokens={}, bridge_events=set(),
+                  swap_events=set(), rebate_receipts=receipts)
+    assert classify(value, **kwargs)[0] == 'approved_partner_rebate'
+    with pytest.raises(ValueError, match='differs from actual receipt'):
+        classify({**value, 'amount': '13'}, **kwargs)
