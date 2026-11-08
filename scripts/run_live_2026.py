@@ -105,7 +105,13 @@ def _parse_months(s: str | None) -> list[Month]:
     out: list[Month] = []
     for tok in s.split(","):
         y, m = tok.strip().split("-")
-        out.append(Month(int(y), int(m)))
+        month = Month(int(y), int(m))
+        # Month is a lightweight value object; validate its calendar here so
+        # invalid selections cannot fail after earlier months were written.
+        _ = month.first_day
+        if month in out:
+            raise ValueError(f"Duplicate month selected: {month}")
+        out.append(month)
     return out
 
 
@@ -117,6 +123,8 @@ def _parse_primes(s: str | None) -> list[str]:
     if bad:
         print(f"Unknown prime(s): {bad}. Choose from {list(_PRIMES.keys())}")
         raise SystemExit(1)
+    if len(set(primes)) != len(primes):
+        raise ValueError("Duplicate primes selected")
     return primes
 
 

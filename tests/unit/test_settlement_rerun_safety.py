@@ -153,3 +153,107 @@ def test_batch_isolated_root_and_explicit_overwrite(tmp_path, live_runner, pnl, 
         live_runner.main()
     monkeypatch.setattr(sys, 'argv', [*args, '--allow-overwrite'])
     assert live_runner.main() == 0
+
+
+@pytest.mark.parametrize('allow_overwrite', [False, True])
+def test_existing_writer_lock_cannot_be_bypassed(tmp_path, pnl, monkeypatch, allow_overwrite):
+    lock = tmp_path / '.settlement-write.lock'
+    lock.write_text('pid=another-writer\n')
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('A competing writer reached enrichment')
+
+    monkeypatch.setattr(writer, 'enrich_with_dr', forbidden)
+    with pytest.raises(FileExistsError, match='writer lock'):
+        writer.write_settlement(pnl, tmp_path, allow_overwrite=allow_overwrite)
+    assert {p.name: p.read_text() for p in tmp_path.iterdir()} == {lock.name: 'pid=another-writer\n'}
+
+
+def test_simultaneous_reruns_cannot_both_write(tmp_path, pnl, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    ready = Barrier(2)
+    check = writer.check_settlement_destination
+
+    def both_pass_preflight(path, **kwargs):
+        check(path, **kwargs)
+        ready.wait(timeout=10)
+
+    monkeypatch.setattr(writer, 'check_settlement_destination', both_pass_preflight)
+    first = replace(pnl, agent_rate=pnl.agent_rate + Decimal('100'),
+                    monthly_pnl=pnl.monthly_pnl + Decimal('100'))
+    second = replace(pnl, agent_rate=pnl.agent_rate + Decimal('200'),
+                     monthly_pnl=pnl.monthly_pnl + Decimal('200'))
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [executor.submit(writer.write_settlement, result, tmp_path)
+                   for result in [first, second]]
+        outcomes = []
+        for future in futures:
+            try:
+                outcomes.append(future.result(timeout=15))
+            except FileExistsError as error:
+                outcomes.append(error)
+    assert sum(isinstance(result, dict) for result in outcomes) == 1
+    assert sum(isinstance(result, FileExistsError) for result in outcomes) == 1
+    payload = json.loads((tmp_path / 'provenance.json').read_text())
+    assert Decimal(payload['results']['agent_rate']) in {first.agent_rate, second.agent_rate}
+    assert not (tmp_path / '.settlement-write.lock').exists()
+
+
+def test_finished_writer_between_preflight_and_lock_does_not_get_overwritten(tmp_path, pnl, monkeypatch):
+    from contextlib import contextmanager
+
+    acquire = writer._settlement_write_lock
+
+    @contextmanager
+    def completed_in_the_meantime(path):
+        (path / 'summary.md').write_text('another completed settlement')
+        with acquire(path):
+            yield
+
+    monkeypatch.setattr(writer, '_settlement_write_lock', completed_in_the_meantime)
+    with pytest.raises(FileExistsError, match='artifacts already exist'):
+        writer.write_settlement(pnl, tmp_path)
+    assert (tmp_path / 'summary.md').read_text() == 'another completed settlement'
+    assert not (tmp_path / 'provenance.json').exists()
+    assert not (tmp_path / '.settlement-write.lock').exists()
+
+
+@pytest.mark.parametrize('failure_stage', ['enrichment', 'summary'])
+def test_writer_releases_its_lock_on_failure(tmp_path, pnl, monkeypatch, failure_stage):
+    target = 'enrich_with_dr' if failure_stage == 'enrichment' else 'write_summary'
+    original = getattr(writer, target)
+
+    def fail(*args, **kwargs):
+        raise RuntimeError('simulated rendering failure')
+
+    monkeypatch.setattr(writer, target, fail)
+    with pytest.raises(RuntimeError, match='simulated rendering failure'):
+        writer.write_settlement(pnl, tmp_path)
+    assert not (tmp_path / '.settlement-write.lock').exists()
+    monkeypatch.setattr(writer, target, original)
+    # Partial artifacts still require deliberate replacement after a failed write.
+    paths = writer.write_settlement(pnl, tmp_path, allow_overwrite=True)
+    assert paths['summary'].is_file()
+    assert not (tmp_path / '.settlement-write.lock').exists()
+
+
+@pytest.mark.parametrize('selection', [
+    ['--months', '2026-09,2026-9'],
+    ['--primes', 'grove,grove'],
+    ['--months', '2026-09,2026-13'],
+    ['--months', '2026-09,0000-09'],
+])
+def test_invalid_or_duplicate_batch_selection_fails_before_any_work(
+    tmp_path, live_runner, monkeypatch, selection,
+):
+    def forbidden(*args, **kwargs):
+        pytest.fail('Invalid batch reached source checks or computation')
+
+    monkeypatch.setattr(live_runner, '_check_env', forbidden)
+    monkeypatch.setattr(live_runner, 'compute_monthly_pnl', forbidden)
+    monkeypatch.setattr(sys, 'argv', ['run_live_2026.py', '--output-root', str(tmp_path), *selection])
+    with pytest.raises(ValueError):
+        live_runner.main()
+    assert not list(tmp_path.iterdir())

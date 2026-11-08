@@ -22,7 +22,17 @@ settlement workbook is protected by default, regardless of whether its
 publication status is known. The CLI and live batch runner check destinations
 before source reads; the writer checks again before enrichment or file writes.
 A batch containing any protected destination fails before producing its first
-month's artifacts.
+month's artifacts. Duplicate primes/months and invalid calendar months are
+also rejected before any batch work starts.
+
+The shared writer reserves the destination using an atomically created
+`.settlement-write.lock` and rechecks saved artifacts after acquiring it. The
+lock covers enrichment and all artifact writes, including the workbook build;
+an explicit overwrite cannot bypass another writer's reservation. Ordinary
+failures release the lock, while any partial artifacts remain protected. If a
+process is killed before cleanup, the error identifies the lock path and the
+file records its PID. Verify the process has stopped before removing a stale
+lock; the writer never automatically steals one.
 
 ## Compare historical months without replacing them
 
@@ -68,5 +78,6 @@ work requiring an agreed baseline for the affected prime/months.
 
 Low-level renderers and the explicit DR-only refresh workflow are not a full
 settlement recomputation and retain their existing behavior. Provisional
-`as-of/` previews remain separate from saved monthly reports. Protection is a
-destination check, not a filesystem lock or a publication-status registry.
+`as-of/` previews remain separate from saved monthly reports. The reservation
+coordinates callers of the shared writer; it does not lock low-level renderers
+or external tools and is not a publication-status registry.
