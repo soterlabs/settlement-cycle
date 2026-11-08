@@ -149,7 +149,7 @@ def test_load_prime_grove(config_dir: Path):
     """Grove config: 12 original venues (E1–E12) + 9 idle/multi-chain holdings
     (E13–E18, E26, E27, E25) + 6 alt-holder venues (E30–E35) + E36 EOA
     + E37 Maple syrupUSDC + E38 Agora incentives + E40/E41 Diamond PAU
-    + E42 Galaxy Warehouse = 39 total. (E25 is display_only but still
+    + E42 Galaxy Warehouse + E43 Base USDC + E44 Diamond LP = 41 total. (E25 is display_only but still
     loads as a Cat B venue.)"""
     grove = load_prime(config_dir / "grove.yaml")
     assert grove.id == "grove"
@@ -161,13 +161,13 @@ def test_load_prime_grove(config_dir: Path):
     # Category breakdown.
     by_cat = {c: [v for v in grove.venues if v.pricing_category.value == c]
               for c in ["A", "B", "C", "D", "E", "F", "EOA"]}
-    assert len(grove.venues) == 39
+    assert len(grove.venues) == 41
     assert len(by_cat["C"]) == 3, "E1+E2+E3 Aave aTokens"
     # E25 (grove-bbqAUSD on Monad) joins Cat B as of 2026-05-14.
     # E37 (Maple syrupUSDC) joins Cat B as of 2026-06-08.
-    assert len(by_cat["B"]) == 9, "E4+E5+E6 Morpho 4626 + E18 sUSDS + E19 Base + E23 steakUSDC Base + E24 bbqPYUSD-V2 + E25 Monad bbqAUSD + E37 Maple syrupUSDC"
+    assert len(by_cat["B"]) == 10, "E4+E5+E6 Morpho 4626 + E18 sUSDS + E19 Base + E23 steakUSDC Base + E24 bbqPYUSD-V2 + E25 Monad bbqAUSD + E37 Maple syrupUSDC + E43 Base USDC"
     assert len(by_cat["E"]) == 7, "E7-E10 ETH RWA + E20 JAAA-avax + E21 GACLO-1 + E22 ACRDX-plume"
-    assert len(by_cat["F"]) == 4, "E11 Curve LP + E12 Uni V3 + E30 Uni V3 alt-holder (ETH) + E33 Uni V3 alt-holder (Monad)"
+    assert len(by_cat["F"]) == 5, "E11 Curve LP + E12 Uni V3 + E30 Uni V3 alt-holder (ETH) + E33 Uni V3 alt-holder (Monad) + E44 Diamond LP"
     # E38 (Agora AUSD incentives — cash distribution) joins Cat A as of 2026-06-08.
     # E40/E41 (Diamond PAU ALM idle + JTRSY Basin escrow) join Cat A as of 2026-08-03.
     # E42 (Galaxy Warehouse — off-chain facility, cash distribution) joins
