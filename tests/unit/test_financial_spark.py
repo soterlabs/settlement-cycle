@@ -104,9 +104,11 @@ def test_additional_reporting_only_receipts_complete_fees_without_adding_native_
     assert cell(invalid, 'fees.sparklend')['known_value'] == '10'
 
 
-def test_new_reserve_markets_are_reporting_only_and_excluded_from_msc():
+def test_rlusd_is_msc_while_usdg_retains_reporting_only_scope():
     prime = load_prime_by_id('spark', Path(__file__).parents[2] / 'config')
     markets = [venue for venue in prime.venues if venue.id in ('S70', 'S71')]
     assert len(markets) == 2
-    assert all(not venue.settles and venue.reporting_view.enabled and venue.cof_excluded for venue in markets)
+    rlusd, usdg = (next(v for v in markets if v.id == key) for key in ('S70', 'S71'))
+    assert rlusd.settles and rlusd.reporting_view.enabled and not rlusd.cof_excluded
+    assert not usdg.settles and usdg.reporting_view.enabled and usdg.cof_excluded
     assert {venue.token.decimals for venue in markets} == {6, 18}

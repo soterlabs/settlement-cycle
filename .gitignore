@@ -68,3 +68,6 @@ settlements/**/as-of/
 archive/preparation/dr_payouts.xlsx
 archive/preparation/dr_results.xlsx
 node_modules/
+
+# Local evidence for monthly ALM transfer reviews
+.msc-transfer-reviews/

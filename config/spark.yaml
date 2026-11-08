@@ -1017,10 +1017,8 @@ venues:
   # venue priced the token. Modelled like S28 PYUSD: par-stable raw idle at
   # the ALM, $0 prime revenue absent an external yield agreement, but
   # visible in the report and included in the CoF allocation base.
-  # NOTE: no external_yield_source is set — if Spark has an off-chain yield
-  # arrangement on this position, add the payer to external_alm_sources and
-  # flip the flag, or the realized yield stays uncredited (the S28/S23
-  # failure mode).
+  # RLUSD issuer receipts are MSC revenue when received at this ALM. S67
+  # remains a reporting-only accrual; do not book both accrual and cash in MSC.
   # NOTE: raw RLUSD at the ALM only. The LP'd portion lives in S66 (Uniswap
   # V4 RLUSD/USDS) and is held by the PoolManager, so balanceOf here cannot
   # see it — the two are disjoint, no double-count.
@@ -1035,6 +1033,7 @@ venues:
     chain: ethereum
     label: 'RLUSD raw (ALM idle — $251.7M as of 2026-08)'
     pricing_category: A
+    external_yield_source: true   # RLUSD issuer payer 0xb70e…a78b
     token:
       address: '0x8292bb45bf1ee4d140127049757c2e0ff06317ed'
       symbol: 'RLUSD'
@@ -1822,18 +1821,18 @@ venues:
           token: '0x5fc5360d0400a0fd4f2af552add042d716f1d168'
       components: []
 
-  # Additional reserve-fee streams. Reporting only: these markets do not alter
-  # the reviewed MSC allocation perimeter. Their external receipts complete
-  # the SparkLend fee subtotal; native supply yield remains separately tracked.
+  # spRLUSD is an MSC allocation: the ALM deposited 10M RLUSD on 2026-09-23
+  # (tx 0x109d7551495c45ee316fbfd5b03a464e108306838bdc0a4eada69bfb2127d0f1).
+  # Supply yield and reserve-treasury receipts use the existing Cat C paths.
+  # RLUSD is neither SDE nor deductible idle USDS; Sky-funded principal pays CoF.
   - id: S70
-    settlement: {enabled: false, method: existing}
+    settlement: {enabled: true, method: existing}
     reporting: {enabled: true, method: existing}
     start_date: '2026-09-01'
     event_source: hypersync
     chain: ethereum
-    label: 'Spark RLUSD (SparkLend spToken — reporting only)'
+    label: 'Spark RLUSD (SparkLend spToken)'
     pricing_category: C
-    cof_excluded: true
     token:
       address: '0x59275fb72c8004f44ba44432e25082932fd677f1'
       symbol: 'spRLUSD'
@@ -1843,6 +1842,7 @@ venues:
       symbol: 'RLUSD'
       decimals: 18
 
+  # USDG retains its existing reporting-only treatment.
   - id: S71
     settlement: {enabled: false, method: existing}
     reporting: {enabled: true, method: existing}
@@ -1861,10 +1861,36 @@ venues:
       symbol: 'USDG'
       decimals: 6
 
+  # Sentora vault shares were omitted from the MSC allocation inventory while
+  # its native yield was collected separately for reporting. First ALM deposit:
+  # 2026-09-14, tx 0xbb31c35cbfa6aa02ab4287bb17c098e80a59d44d370223b36dd1ba55edd52196.
+  # ERC-4626 deposit/withdraw cash is capital; net share-price growth is yield.
+  # The existing reporting.sentora source remains the reporting identity.
+  - id: S72
+    settlement: {enabled: true, method: existing}
+    reporting: {enabled: true, method: existing}
+    start_date: '2026-09-14'
+    event_source: hypersync
+    chain: ethereum
+    label: 'Sentora RLUSD vault (Morpho)'
+    pricing_category: B
+    token:
+      address: '0xfc8c624b6080a0a780583799f2a862de936f6e22'
+      symbol: 'Sentora-RLUSD'
+      decimals: 18
+    underlying:
+      address: '0x8292bb45bf1ee4d140127049757c2e0ff06317ed'
+      symbol: 'RLUSD'
+      decimals: 18
+
 # Cat A revenue allowlist — counterparties that send REALIZED YIELD directly
 # to the ALM proxy.
 external_alm_sources:
   ethereum:
+    # Realized RLUSD issuer incentives, credited once through S64.
+    # September 2026: six RLUSD receipts, 1,373,208 total. S67 accrual stays
+    # reporting-only. Monthly ALM review must distinguish any future principal.
+    - '0xb70e0fad7d0cf4c187365a84e728802ab24ca78b'
     # Anchorage Spark escrow EOA — sends monthly USDC interest sweeps from
     # the tri-party loan (S23; ≈$260M outstanding after the May 2026 $100M
     # tranche + June 2026 $10M OTC). The principal-out side is NOT priced
@@ -1895,10 +1921,12 @@ external_alm_sources:
     # spDAI reserve treasury:
     - '0x856900aa78e856a5df1a2665ee3a66b2487cd68f'
 
-# Start dates preserve the published Jan-Aug reports. Those receipts ride the
-# September settlement once via sv_adj; direct recognition starts in September.
+# Start dates preserve Jan-Aug treatment. Reserve-treasury historical receipts
+# were carried via the September sv_adj; issuer cash recognition starts in
+# September without creating any historical adjustment or regenerating reports.
 external_alm_source_start_dates:
   ethereum:
+    '0xb70e0fad7d0cf4c187365a84e728802ab24ca78b': '2026-09-01'
     '0xb137e7d16564c81ae2b0c8ee6b55de81dd46ece5': '2026-09-01'
     '0x856900aa78e856a5df1a2665ee3a66b2487cd68f': '2026-09-01'
 
