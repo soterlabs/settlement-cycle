@@ -94,7 +94,7 @@ Their exact account mapping is retained in the saved capture header.
 | Deduction group | Applied to priced allocations | Independent global deduction | Difference |
 |---|---:|---:|---:|
 | Lending idle, S1/S4 | $1,363,287.70 | $1,363,287.70 | $0.00 |
-| LP idle USDS and SDE, S61/S62/S66 | $271,114.04 | $351,802.81 | −$80,688.76 |
+| AMM idle and global SDE (including PSM USDC) | $271,114.04 | $351,802.81 | −$80,688.76 |
 | Raw ALM USDS, S38/S44 | $186,545.79 | $281,139.49 | −$94,593.70 |
 | PSM idle USDS | $0.00 | $27,868.36 | −$27,868.36 |
 | **Total** | **$1,820,947.54** | **$2,024,098.35** | **−$203,150.81** |
@@ -138,3 +138,7 @@ Sentora and SparkLend receipt-token positions missing from the saved replay.
 Verified deposit transactions are associated with $363,345.66 of the old residual
 costs. This supersedes the destination uncertainty above; corrected funding-cost
 calculation and publication remain pending.
+
+The [refined residual analysis](spark-september-remaining-costs.md) separates
+PSM USDC deductions from the earlier aggregate AMM/SDE category and identifies
+the S62 zero-cost floor and raw-USDS funding-basis difference explicitly.
