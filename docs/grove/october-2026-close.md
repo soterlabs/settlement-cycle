@@ -1,6 +1,6 @@
 # Grove October 2026 close — incomplete inputs and booking
 
-**Incomplete settlement: missing inventory, unclassified movements and DR.** The
+**Incomplete settlement: missing inventory and unclassified movements. October DR is now available.** The
 [October ALM flow audit](october-2026-alm-flow-audit.md) found an unconfigured Base
 vault with 1,298,280.769218 USDC of implied October income, plus cash/native
 classification and smaller pricing/execution gaps. The numbers below are the
@@ -18,14 +18,14 @@ Amounts in USD; displayed values are rounded independently.
 | Chronicle Points | 12,439.99 |
 | Borrowing costs charged to Grove | 4,435,995.50 |
 | Calculated net before October DR | 38,944.45 |
-| October Distribution Rewards | **Pending — not zero** |
+| October Distribution Rewards, imported from PR #34 | **22,572.85** |
 
-The original configured-book net was **$38,944.45 before October DR**. This is incomplete: the inventory and cash-flow audit findings must also be resolved and the close recomputed. Borrowing costs are the canonical net Sky claim ($5,682,959.32) minus Sky direct-exposure revenue ($1,246,963.82), following the existing settlement summary and payment-bridge convention. There are no configured October Grove historical adjustments.
+The original configured-book net was **$38,944.45 before October DR**. This is incomplete: the inventory and cash-flow audit findings must also be resolved and the close recomputed. Borrowing costs are the canonical net Sky claim ($5,682,959.32) minus Sky direct-exposure revenue ($1,246,963.82), following the existing settlement summary and payment-bridge convention. The original snapshot predates PR #226’s approved October adjustments: Grove partner rebates of 915,857.20 USDS and the combined Sky adjustment of 1,062,615.74 USDS must be carried exactly once through the existing MSC mechanism.
 
 ## Sources and validation
 
 - Settlement code: main `09e0f37`, with the October official reference snapshot in this PR.
-- DR submodule: `5695d82e54777ec5016c6197b8b55b6b5ca2d415`, latest merged main when checked; includes upstream PRs #29–#33. Its exclusive scan cutoff is still `2026-10-01`, and its workbook has no `2026-10` column.
+- DR submodule: `d53dd1317bd8f52f22a3400aebcb5a095689a812`, merged upstream PR #34. The CSV contains all 210 October accrual rows. October is imported through `data/distribution_rewards/2026-10/`, with exact source hashes and both published rollups reconciled. The snapshot workbook is derived from the published ref-code rollup because the upstream comparison workbook still stops at September. Grove DR is 22,572.84943285862405046758602 USDS.
 - Official SOFR: [NY Fed series via FRED](https://fred.stlouisfed.org/data/SOFR), retrieved November 6, 2026. All 21 required business-day observations are captured in `config/october_2026_official_reference_rates.json`; the calendar validates coverage for all 31 days. October 31 is a Saturday and correctly carries the October 30 observation.
 - All 31 daily borrowing-cost rows passed the canonical `validate_interest` reconciliation.
 - The calculation processed Grove’s configured venues. Reporting-only revenue is excluded from MSC.
@@ -43,7 +43,7 @@ The original configured-book net was **$38,944.45 before October DR**. This is i
 
 ## Complete the close
 
-Resolve the ALM flow audit’s missing venue, execution/pricing differences and G30 classifications, then identify or publish the October DR source and update the submodule or finalized DR snapshot. Recompute the complete venue book before writing canonical artifacts; passing the DR guard alone does not resolve the inventory gaps. Load the existing sibling `.env` into the process before running:
+Resolve the ALM flow audit’s missing venue, execution/pricing differences and G31 classifications, then rerun using current main’s PR #226 accounting and the imported October DR snapshot. Recompute the complete venue book before writing canonical artifacts; passing the DR guard alone does not resolve the inventory gaps. Load the existing sibling `.env` into the process before running:
 
 ```sh
 python scripts/run_october_grove_close.py --check-inputs

@@ -45,6 +45,7 @@ out.json
 !/data/distribution_rewards/
 /data/distribution_rewards/*
 !/data/distribution_rewards/2026-09/
+!/data/distribution_rewards/2026-10/
 
 # Settlement artifacts:
 #   * track ``{prime}_settlement_{month}_{year}.xlsx`` — canonical

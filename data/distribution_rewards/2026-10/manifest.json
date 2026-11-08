@@ -1,0 +1,18 @@
+{
+  "month": "2026-10",
+  "methodology_commit": "d53dd1317bd8f52f22a3400aebcb5a095689a812",
+  "finalized_artifact_source_commit": "d53dd1317bd8f52f22a3400aebcb5a095689a812",
+  "source": "Merged settle-dr-dune PR #34 October monthly CSV; both published rollups cross-checked to <1e-8 USD. The October-only workbook is derived from its ref-code rollup because the upstream comparison workbook still ends in September.",
+  "source_url": "https://github.com/soterlabs/settle-dr-dune/pull/34",
+  "source_files": {
+    "dr_monthly_combined.csv": "2d898d1404474c34c59193d982a3f800ac5d1a0a68841251513f680b9e9a807c",
+    "dr_rollup_by_refcode.csv": "69be82e3f5743e98d7e4c35e9f05b9f634d1c556bfe017b75b477ee9c0c78807",
+    "dr_rollup_by_refcode_token.csv": "e2c65a2a90145dd372eebe426b342b71c4ba39ec44ce91a85b3e52222e04a171"
+  },
+  "october_rows": 210,
+  "october_total_usd": "1227426.379817570864339037461",
+  "files": {
+    "finalized.xlsx": "17049556bdb6e48aa0264570118312ea8b81041e092198c9f7b38aeafde10bed",
+    "accrual.csv": "220bc1e9c94e005e8686775a0c744f48b824063a4a2af0a0f4bd57711505c64f"
+  }
+}

@@ -26,7 +26,7 @@ below as compact pointers; the full narrative lives in `PRD.md §17`.
 ### P0 — material numerical gaps
 
 
-#### G30. October 2026 ALM receipts/outflows — economic classification
+#### G31. October 2026 ALM receipts/outflows — economic classification
 
 The [October ALM flow audit](docs/grove/october-2026-alm-flow-audit.md) independently
 captures all six configured holders and reconciles token/native quantities.

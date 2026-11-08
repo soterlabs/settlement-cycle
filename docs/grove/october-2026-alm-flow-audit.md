@@ -32,7 +32,7 @@ Successful value-bearing native traces were independently queried on Dune across
 | 39 authenticated AUSD/USDC swaps | **−4,332.476098 USD net at the configured par convention** | Actual transfers prove +1,159.810081 gains and −5,492.286179 shortfalls. Existing cash venues carry zero revenue; reconcile these trading gains/losses separately from E12 LP income. This is an execution difference, not automatically a funding loss. |
 | Native gas paid by Monad holder | **0.020509722559798944 MON** | Two receipt-proven gas charges exactly explain the native balance decrease. No dedicated MSC expense booking is established in this audit. |
 
-The six receipts were subsequently identified by the approved statement in merged PR #226. Remaining counterparty classification requests are tracked in **QUESTIONS.md G30**. The audit does not assume the $152k outflow is an expense or the AVAX receipt is yield.
+The six receipts were subsequently identified by the approved statement in merged PR #226. Remaining counterparty classification requests are tracked in **QUESTIONS.md G31**. The audit does not assume the $152k outflow is an expense or the AVAX receipt is yield.
 
 ### Missing Base vault: independent amount control
 
@@ -93,4 +93,4 @@ python scripts/audit_grove_alm_flows.py --input-dir reconciliation/grove_alm_flo
 python -m pytest tests/unit/test_grove_alm_flow_audit.py -q
 ```
 
-Resolve the inventory/pricing gaps and G30 classifications before generating a final October settlement. October DR remains a separate missing input in the checked submodule workbook. The original configured-book numbers are retained solely as the baseline being audited.
+Resolve the inventory/pricing gaps and G31 classifications before generating a final October settlement. October DR is now imported from merged settle-dr-dune PR #34 through the finalized monthly snapshot; Grove’s 22,572.85 USDS DR is no longer a missing input. The original configured-book numbers are retained solely as the baseline being audited.

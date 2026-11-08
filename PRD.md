@@ -1582,7 +1582,7 @@ once in October MSC adjustments. Do not infer an economic counterparty from a
 shared exchange wallet or add the receipts again to venue income. The allocation
 is statement-based; it does not independently establish time-weighted entitlement
 or prior NAV exclusion. Evidence: `docs/grove/october-2026-partner-rebates.md`;
-G30 remains open for the separate Monad outflows and AVAX receipt.
+G31 remains open for the separate Monad outflows and AVAX receipt.
 
 #### Code-review acks (2026-05-04 — two-reviewer pass)
 
