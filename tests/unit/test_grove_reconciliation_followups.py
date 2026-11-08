@@ -248,3 +248,61 @@ def test_changed_frozen_income_baseline_stops_reconciliation(tmp_path, monkeypat
     monkeypatch.setattr(module, 'ROOT', tmp_path)
     with pytest.raises(ValueError, match='baseline changed'):
         module.published_baseline('2026-05')
+
+
+def test_active_basin_empty_data_is_missing_not_zero():
+    prime = load_prime_by_id('grove')
+    with pytest.raises(ValueError, match='Incomplete daily Basin attribution'):
+        basin_cash_by_venue(prime, Period.from_month(Month(2026, 9)), pd.DataFrame())
+    assert basin_cash_by_venue(prime, Period.from_month(Month(2026, 8)), pd.DataFrame()) == {}
+    assert basin_cash_by_venue(load_prime_by_id('spark'), Period.from_month(Month(2026, 9)), pd.DataFrame()) == {}
+
+
+@pytest.mark.parametrize('non_exempt', [D(0), D('.01')])
+def test_basin_precision_dust_does_not_create_a_charge_but_real_principal_does(non_exempt):
+    from datetime import timedelta
+    prime = load_prime_by_id('grove')
+    period = Period.from_month(Month(2026, 9))
+    pocket = next(v for v in prime.venues if v.id == 'E41').holder_override.hex
+    raw = D('100000000')
+    owned = raw / D(3)
+    idle = owned - non_exempt
+    daily = pd.DataFrame([
+        {'block_date': period.start + timedelta(days=i), 'cum_balance': idle,
+         'idle_by_holder': {pocket: idle}, 'other_owners_by_holder': {pocket: raw - owned}}
+        for i in range(period.n_days)
+    ])
+    prov = reporting_payload(0)
+    prov['basin_cash_reporting'] = basin_cash_by_venue(prime, period, daily)
+    prov['venue_breakdown'][0].update(value_som=str(raw), value_eom=str(raw), tw_avg_value_usd=str(raw))
+    rows, totals = compute_sheet_rows(prov, 'grove')
+    basin = next(row for row in rows if row['venue_id'] == 'E41')
+    assert abs(basin['avg_value'] - non_exempt) < D('1e-18')
+    if non_exempt == 0:
+        assert basin['avg_value'] == basin['cof_alloc'] == basin['profit_to_grove'] == D(0)
+    else:
+        assert basin['cof_alloc'] > 0
+    assert abs(totals['sum_p2s'] - D(100)) < D('1e-24')
+
+
+def test_measured_2026_summary_separates_configured_and_further_adjustments():
+    module = script('summarize_grove_2026_reconciliation')
+    result = module.summarize()
+    assert result['whole_year_total'] is None
+    assert result['already_configured_cof_total'] == '78530.06'
+    assert result['further_measured_total'] == '40111.54'
+    assert result['venues']['E10']['further_measured_not_booked'] == '-4000.18'
+    assert result['venues']['E9']['further_measured_not_booked'] == '35889.68'
+    for vid in ['E41', 'E42', 'E8']:
+        assert result['venues'][vid]['further_measured_not_booked'] == '0.00'
+    assert sum(D(row['already_configured_in_october_bridge']) for row in result['venues'].values()) == D('78530.06')
+    assert sum(D(row['further_measured_not_booked']) for row in result['venues'].values()) == D('40111.54')
+
+
+def test_venue_summary_does_not_invent_a_nonlinear_cof_split():
+    module = script('summarize_grove_2026_reconciliation')
+    document = json.loads((ROOT / 'reconciliation/2026-10/sde_inflight_cof.json').read_text())
+    joint = next(row for row in document['daily'] if len(row['deduction_changes_by_venue']) > 1)
+    joint['corrected_utilized'] = '900000000'
+    with pytest.raises(ValueError, match='nonlinear attribution'):
+        module.redemption_by_venue(document)

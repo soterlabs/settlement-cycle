@@ -1,7 +1,9 @@
 {
   "status": "calculated_not_booked",
   "prime": "grove",
-  "scope": "2026-01-01 through 2026-08-31 cash settlements only",
+  "scope": "2026-01-01 through 2026-08-31 cash costs and published small-share capital omissions",
+  "coverage_start": "2026-01-01",
+  "coverage_end": "2026-08-31",
   "actual_cost": "162506.171229",
   "already_recorded_fee_credit": "162505.35",
   "additional_credit_unrounded": "0.821229",

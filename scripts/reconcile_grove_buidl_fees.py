@@ -119,7 +119,8 @@ def reconcile_events(events: list[dict], prior: dict) -> dict:
               for month in sorted(costs.keys() | paid.keys())}
     return {
         'status': 'calculated_not_booked', 'prime': 'grove',
-        'scope': '2026-01-01 through 2026-08-31 cash settlements only',
+        'scope': '2026-01-01 through 2026-08-31 cash costs and published small-share capital omissions',
+        'coverage_start': str(START), 'coverage_end': str(END),
         'actual_cost': str(total), 'already_recorded_fee_credit': str(recorded),
         'additional_credit_unrounded': str(additional),
         'capital_restoration_debit': str(capital_debit),

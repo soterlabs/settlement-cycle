@@ -80,8 +80,7 @@ def basin_cash_by_venue(prime: Prime, period: Period, daily: pd.DataFrame) -> di
     Match actual cash holder addresses, not Basin invested assets or E41 by
     name. Unrepresented pockets remain unattributed, never double-counted.
     """
-    if (prime.basin_idle_usds is None or period.end < prime.basin_idle_usds.effective_from
-            or daily.empty):
+    if prime.basin_idle_usds is None or period.end < prime.basin_idle_usds.effective_from:
         return {}
     expected = {period.start + timedelta(days=i) for i in range(period.n_days)}
     if len(daily) != period.n_days or set(daily['block_date']) != expected:
@@ -109,5 +108,8 @@ def basin_cash_by_venue(prime: Prime, period: Period, daily: pd.DataFrame) -> di
                 if holder in holders:
                     vid = holders[holder]
                     amounts = totals.setdefault(vid, {'idle_exempt': Decimal(0), 'other_owners': Decimal(0)})
-                    amounts[key] += value / Decimal(period.n_days)
+                    amounts[key] += value
+    for amounts in totals.values():
+        for key in amounts:
+            amounts[key] /= Decimal(period.n_days)
     return totals

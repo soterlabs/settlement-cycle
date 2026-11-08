@@ -316,6 +316,11 @@ def compute_sheet_rows(
         if basin_idle_deduction > 0:
             avg_value -= basin_idle_deduction
             note = (note + " " if note else "") + "(avg excl. exempt Basin idle USDS)"
+        # Independent Decimal averages can leave sub-picodollar principal
+        # dust on a fully exempt pocket. It must not become a negative-zero
+        # PnL row; this is reporting precision, not another debt exemption.
+        if basin_cash and Decimal(0) < avg_value < Decimal('1e-12'):
+            avg_value = Decimal(0)
         # cof_excluded venues are kept out of the CoF pool (weight=0). Two
         # distinct exclusion reasons share the flag:
         #   - idle-ALM positions already deducted from utilized via
