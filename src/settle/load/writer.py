@@ -26,10 +26,12 @@ Historical artifacts (``pnl.md`` / ``pnl.csv`` / ``venues.csv`` /
 
 from __future__ import annotations
 
-import os
 import json
+import os
 import subprocess
 import sys
+from collections.abc import Iterator
+from contextlib import contextmanager
 from decimal import Decimal
 from pathlib import Path
 
@@ -41,6 +43,32 @@ from .summary import write_summary
 
 # settlement-cycle/src/settle/load/writer.py → parents[3] = settlement-cycle/
 _REPO_ROOT = Path(__file__).resolve().parents[3]
+
+_WRITE_LOCK = ".settlement-write.lock"
+
+
+def _writer_lock_error(path: Path) -> FileExistsError:
+    return FileExistsError(
+        f"Settlement writer lock already exists: {path}. Another writer may be active. "
+        "If a previous process was interrupted, verify it has stopped before removing the lock."
+    )
+
+
+@contextmanager
+def _settlement_write_lock(output_dir: Path) -> Iterator[None]:
+    """Reserve one destination across processes, including explicit overwrites."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    path = output_dir / _WRITE_LOCK
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError as exc:
+        raise _writer_lock_error(path) from exc
+    try:
+        os.write(fd, f"pid={os.getpid()}\n".encode())
+        yield
+    finally:
+        os.close(fd)
+        path.unlink()
 
 
 def default_output_dir(prime_id: str, month: str) -> Path:
@@ -59,14 +87,45 @@ def default_output_dir(prime_id: str, month: str) -> Path:
     return base / prime_id / month
 
 
+def check_settlement_destination(output_dir: Path, *, allow_overwrite: bool = False) -> None:
+    """Prevent an unrelated rerun from replacing an existing settlement.
+
+    An existing artifact is protected whether or not publication status is
+    known. Reconciliation calculations should use a separate output directory.
+    """
+    lock = output_dir / _WRITE_LOCK
+    if lock.exists() or lock.is_symlink():
+        raise _writer_lock_error(lock)
+    _check_existing_artifacts(output_dir, allow_overwrite=allow_overwrite)
+
+
+def _check_existing_artifacts(output_dir: Path, *, allow_overwrite: bool) -> None:
+    if allow_overwrite:
+        return
+    artifacts = [output_dir / name for name in ("summary.md", "provenance.json")]
+    artifacts.extend(output_dir.glob("*_settlement_*.xlsx"))
+    existing = sorted(p.name for p in artifacts if p.exists() or p.is_symlink())
+    if existing:
+        raise FileExistsError(
+            f"Settlement artifacts already exist in {output_dir}: {', '.join(existing)}. "
+            "Use a separate output directory for reconciliation; explicitly set "
+            "allow_overwrite=True (CLI: --allow-overwrite) only for an intentional replacement."
+        )
+
+
 def write_settlement(
     pnl: MonthlyPnL,
     output_dir: Path,
     *,
     sources: dict[str, str] | None = None,
     reference_rates: dict | None = None,
+    allow_overwrite: bool = False,
 ) -> dict[str, Path]:
     """Write provenance.json + the canonical settlement xlsx.
+
+    Existing artifacts are protected by default. ``allow_overwrite=True`` is
+    an explicit replacement, not a claim that historical calculations match
+    the rate or source methodology of the saved report.
 
     Returns ``{"provenance": Path, "xlsx": Path}``.
 
@@ -78,7 +137,22 @@ def write_settlement(
     """
     if pnl.is_provisional:
         raise ValueError("Partial-month results must use write_revenue_preview, not canonical settlements")
-    output_dir.mkdir(parents=True, exist_ok=True)
+    check_settlement_destination(output_dir, allow_overwrite=allow_overwrite)
+    with _settlement_write_lock(output_dir):
+        # Another run may have finished since the preflight. Recheck while
+        # holding the exclusive lock before touching any saved artifacts.
+        _check_existing_artifacts(output_dir, allow_overwrite=allow_overwrite)
+        return _write_settlement_artifacts(
+            pnl, output_dir, sources=sources, reference_rates=reference_rates,
+        )
+
+
+def _write_settlement_artifacts(
+    pnl: MonthlyPnL, output_dir: Path, *,
+    sources: dict[str, str] | None,
+    reference_rates: dict | None,
+) -> dict[str, Path]:
+    """Render artifacts while the caller holds the destination's writer lock."""
 
     # Populate distribution rewards (+ per-ref-code breakdown) from the
     # settle-dr-dune reconciliation workbook. No-op when the submodule is
@@ -153,7 +227,7 @@ _DEMAND_SIDE_FIELDS = ("gar", "chronicle_points")
 
 def refresh_dr_only(
     prime_id: str,
-    months: "set[str] | None" = None,
+    months: set[str] | None = None,
 ) -> list[Path]:
     """Refresh ONLY Distribution Rewards in already-written settlements.
 

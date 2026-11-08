@@ -16,7 +16,7 @@ from pathlib import Path
 from . import __version__
 from .domain import Address, Chain
 from .domain.config import load_prime_by_id
-from .domain.period import Month, Period
+from .domain.period import Month
 
 
 def _cmd_version(_args: argparse.Namespace) -> int:
@@ -35,10 +35,10 @@ def _cmd_config_check(args: argparse.Namespace) -> int:
     print(f"Ilk (bytes32):   {_ilk}")
     print(f"Start date:      {prime.start_date}")
     print(f"Chains:          {sorted(c.value for c in prime.chains)}")
-    print(f"Subproxy:")
+    print("Subproxy:")
     for chain, addr in sorted(prime.subproxy.items()):
         print(f"  {chain.value:14s} {addr.hex}")
-    print(f"ALM proxy:")
+    print("ALM proxy:")
     for chain, addr in sorted(prime.alm.items()):
         print(f"  {chain.value:14s} {addr.hex}")
     print(f"Venues ({len(prime.venues)}):")
@@ -108,6 +108,7 @@ def _cmd_snapshot(args: argparse.Namespace) -> int:
     `stars-api.blockanalitica.com/stars/{prime}/`.
     """
     import json as _json
+
     from .snapshot import compute_snapshot
 
     prime = load_prime_by_id(args.prime)
@@ -154,16 +155,16 @@ def _cmd_snapshot(args: argparse.Namespace) -> int:
         flag = "" if not v.note else f"  [{v.note[:40]}]"
         print(f"    {v.venue_id:5s} {v.chain.value:11s} {v.label[:40]:40s} ${v.value_usd:>16,.2f}{flag}")
     print()
-    print(f"  Idle / treasury holdings:")
+    print("  Idle / treasury holdings:")
     for h in snap.idle:
         print(f"    {h.label:25s} ({h.category:9s})  ${h.value_usd:>16,.2f}")
     print()
-    print(f"  ─── Aggregates ─────────────────────────────────────────────")
+    print("  ─── Aggregates ─────────────────────────────────────────────")
     print(f"    venues_total:       ${snap.venues_total_usd:>20,.2f}")
     print(f"    treasury_balance:   ${snap.treasury_balance_usd:>20,.2f}")
     print(f"    idle_assets:        ${snap.idle_assets_usd:>20,.2f}")
     print(f"    in_transit_assets:  ${snap.in_transit_assets_usd:>20,.2f}")
-    print(f"    ─────────────────────────────────────")
+    print("    ─────────────────────────────────────")
     print(f"    assets:             ${snap.assets_usd:>20,.2f}")
     print(f"    debt (Vat.ilks):    ${(snap.debt_usd or 0):>20,.2f}")
     print(f"    liabilities:        ${snap.liabilities_usd:>20,.2f}")
@@ -176,10 +177,20 @@ def _cmd_run(args: argparse.Namespace) -> int:
     from pathlib import Path
 
     from .compute import compute_monthly_pnl
-    from .load import default_output_dir, write_revenue_preview, write_settlement
+    from .load import (
+        check_settlement_destination,
+        default_output_dir,
+        write_revenue_preview,
+        write_settlement,
+    )
 
     prime = load_prime_by_id(args.prime)
     month = Month.parse(args.month)
+    output_dir = Path(args.output_dir) if args.output_dir else default_output_dir(prime.id, str(month))
+    allow_overwrite = getattr(args, "allow_overwrite", False)
+    cutoff = getattr(args, "as_of", None)
+    if cutoff is None or cutoff == month.last_day:
+        check_settlement_destination(output_dir, allow_overwrite=allow_overwrite)
 
     n_chains = len(prime.chains)
     sky_only = getattr(args, "sky_only", False)
@@ -187,7 +198,6 @@ def _cmd_run(args: argparse.Namespace) -> int:
                 "  [use --log-level INFO for step-by-step progress]"
     print(f"settle run {prime.id} {month}")
     print(f"  resolving pin blocks ({n_chains} chain(s), EoM + SoM in parallel)...{mode_note}")
-    cutoff = getattr(args, "as_of", None)
     result = compute_monthly_pnl(prime, month, sky_only=sky_only, as_of=cutoff)
 
     print()
@@ -214,12 +224,11 @@ def _cmd_run(args: argparse.Namespace) -> int:
                   f"inflow=${v.period_inflow:>13,.2f}  "
                   f"revenue=${v.revenue:>15,.2f}")
 
-    output_dir = Path(args.output_dir) if args.output_dir else default_output_dir(prime.id, str(month))
     if result.is_provisional:
         written = write_revenue_preview(result, output_dir)
         output_dir = written["provenance"].parent
     else:
-        written = write_settlement(result, output_dir)
+        written = write_settlement(result, output_dir, allow_overwrite=allow_overwrite)
     print()
     print(f"  Artifacts written to: {output_dir}")
     for name, path in written.items():
@@ -266,6 +275,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p_run = sub.add_parser("run", help="Run a settlement end-to-end")
     p_run.add_argument("--prime", required=True, help="Prime id")
     p_run.add_argument("--month", required=True, help="Settlement month YYYY-MM")
+    p_run.add_argument("--allow-overwrite", action="store_true",
+                       help="Intentionally replace existing settlement artifacts; prefer a separate --output-dir for reconciliation")
     from datetime import date
     p_run.add_argument("--as-of", type=date.fromisoformat,
                        help="Calculate through a completed UTC day, YYYY-MM-DD, within --month")

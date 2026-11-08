@@ -30,7 +30,11 @@ sys.path.insert(0, str(_REPO))
 from settle.compute import Sources, compute_monthly_pnl  # noqa: E402
 from settle.domain import Month  # noqa: E402
 from settle.domain.config import load_prime  # noqa: E402
-from settle.load import write_settlement  # noqa: E402
+from settle.load import (  # noqa: E402
+    check_settlement_destination,
+    default_output_dir,
+    write_settlement,
+)
 from settle.normalize.registry import resolved_source_labels  # noqa: E402
 
 _PRIMES = {
@@ -101,7 +105,13 @@ def _parse_months(s: str | None) -> list[Month]:
     out: list[Month] = []
     for tok in s.split(","):
         y, m = tok.strip().split("-")
-        out.append(Month(int(y), int(m)))
+        month = Month(int(y), int(m))
+        # Month is a lightweight value object; validate its calendar here so
+        # invalid selections cannot fail after earlier months were written.
+        _ = month.first_day
+        if month in out:
+            raise ValueError(f"Duplicate month selected: {month}")
+        out.append(month)
     return out
 
 
@@ -113,6 +123,8 @@ def _parse_primes(s: str | None) -> list[str]:
     if bad:
         print(f"Unknown prime(s): {bad}. Choose from {list(_PRIMES.keys())}")
         raise SystemExit(1)
+    if len(set(primes)) != len(primes):
+        raise ValueError("Duplicate primes selected")
     return primes
 
 
@@ -122,6 +134,10 @@ def main() -> int:
                         help="comma-separated subset of " + ",".join(_PRIMES))
     parser.add_argument("--months", default=None,
                         help="comma-separated YYYY-MM (default 2026-01..04)")
+    parser.add_argument("--output-root", type=Path,
+                        help="Write to ROOT/<prime>/<month> for isolated reconciliation; otherwise honor SETTLE_OUTPUT_DIR")
+    parser.add_argument("--allow-overwrite", action="store_true",
+                        help="Intentionally replace existing artifacts in the selected output root")
     parser.add_argument("--log-level", default="INFO",
                         help="Python logging level (default INFO)")
     args = parser.parse_args()
@@ -131,12 +147,21 @@ def main() -> int:
         format='%(asctime)s %(name)s %(levelname)s %(message)s',
     )
 
-    _check_env()
     primes = _parse_primes(args.primes)
     months = _parse_months(args.months)
+    destinations = {
+        (prime_id, str(month)): (
+            args.output_root / prime_id / str(month) if args.output_root is not None
+            else default_output_dir(prime_id, str(month))
+        ) for prime_id in primes for month in months
+    }
+    # Preflight the whole batch before reading sources or writing its first month.
+    for destination in destinations.values():
+        check_settlement_destination(destination, allow_overwrite=args.allow_overwrite)
+    _check_env()
 
     total_cells = len(primes) * len(months)
-    print(f"Live runner: {len(primes)} prime(s) × {len(months)} month(s) = {total_cells} run(s).")
+    print(f"Live runner: {len(primes)} prime(s) x {len(months)} month(s) = {total_cells} run(s).")
     print(f"  primes: {primes}")
     print(f"  months: {[f'{m.year}-{m.month:02d}' for m in months]}")
     print()
@@ -163,9 +188,10 @@ def main() -> int:
                     "monthly_pnl":          float(result.monthly_pnl),
                     "sky_direct_shortfall": float(result.sky_direct_shortfall),
                 }
-                out_dir = _REPO / "settlements" / prime_id / label
+                out_dir = destinations[prime_id, label]
                 write_settlement(result, out_dir,
-                                 sources=resolved_source_labels(prime, _SOURCES_LIVE))
+                                 sources=resolved_source_labels(prime, _SOURCES_LIVE),
+                                 allow_overwrite=args.allow_overwrite)
                 print(
                     f"  prime_agent_revenue: ${float(result.prime_agent_revenue):>18,.2f}\n"
                     f"  agent_rate:          ${float(result.agent_rate):>18,.2f}\n"
@@ -173,7 +199,7 @@ def main() -> int:
                     f"  monthly_pnl:         ${float(result.monthly_pnl):>18,.2f}",
                     flush=True,
                 )
-            except Exception as e:  # noqa: BLE001 — keep going across the matrix
+            except Exception as e:
                 msg = f"{type(e).__name__}: {e}"
                 errors.append((prime_id, label, msg))
                 print(f"  ✗ FAILED: {msg}", flush=True)

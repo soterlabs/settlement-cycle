@@ -57,6 +57,7 @@ out.json
 #     headline numbers don't move.
 settlements/**/provenance.json
 settlements/**/as-of/
+.settlement-write.lock
 
 # Claude
 .claude

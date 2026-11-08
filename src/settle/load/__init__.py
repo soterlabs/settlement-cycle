@@ -22,9 +22,16 @@ from .cof_attribution import compute_sheet_rows
 from .dr_rewards import enrich_with_dr
 from .provenance import write_provenance
 from .summary import render_summary, write_summary
-from .writer import default_output_dir, refresh_dr_only, write_revenue_preview, write_settlement
+from .writer import (
+    check_settlement_destination,
+    default_output_dir,
+    refresh_dr_only,
+    write_revenue_preview,
+    write_settlement,
+)
 
 __all__ = [
+    "check_settlement_destination",
     "compute_sheet_rows",
     "default_output_dir",
     "enrich_with_dr",

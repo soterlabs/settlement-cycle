@@ -56,6 +56,16 @@ a nominal sum would under-credit what the prime demonstrably received.
 applied `D × [(1+APY)^(1/365) − 1]` to every leg. It made `BR − SSR − spread`
 non-zero and billed `ln(1+APY)` over a year instead of the APY.
 
+### Saved reports and methodology reruns
+
+Saved settlement artifacts must not be silently replaced by a recomputation
+under newer methods. `write_settlement` protects existing artifacts by default;
+use an isolated output directory for historical reconciliation. Intentional
+replacement requires `allow_overwrite=True` (CLI: `--allow-overwrite`). This
+preserves saved reports without asserting that current calculations reproduce
+their original rate convention. See [rerun safety](settlement-rerun-safety.md)
+for the closed #187 proposal, the chosen policy and isolated rerun commands.
+
 ## Rule 2: Track SSR changes via SP-BEAM
 
 The SSR is adjusted through **SP-BEAM** governance parameter changes. It can change multiple times per month (e.g., Nov–Dec 2025 had 4 changes). Queries must apply the correct SSR for each day, not a single monthly rate.
