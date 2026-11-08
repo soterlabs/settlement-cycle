@@ -26,3 +26,20 @@ results. Existing saved per-venue deductions must still pass
 original input alongside the corrected evidence. Completed transaction-history
 capture can be reused: repairing these daily valuation cutoffs does not require
 fetching all historical transfers again.
+
+## Savings funding is a separate capture step
+
+The generic September asset capture contained no `external_funding`
+operations. Savings vaults were listed as unsupported asset positions, while
+their actual transfers were present in the asset history. Pricing that capture
+without the separate Savings audit would treat the cash receipts as assumed
+Sky capital. The readiness reporter now rejects this omission when stablecoin
+Savings vaults are present. This guard detects missing labels; it does not
+certify complete audit coverage merely because some labels exist.
+
+Extend the reviewed liability, VSR-rate and vault/ALM cash evidence to the
+same reporting pins, run the existing proportional principal/interest audit,
+and attach it with `scripts/patch_spark_savings_funding.py`. Check the audit
+pins against the capture manifest and retain the input hashes. The attachment
+must preserve every daily per-ilk debt change. Only then build readiness and
+run the funding replay. Missing or ambiguous transaction matches remain errors.

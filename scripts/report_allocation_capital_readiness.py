@@ -195,6 +195,18 @@ def report(prime_id, history, control, idle_control, start, end):
         control["period"][key] != str(value) for key, value in [("start", start), ("end", end)]
     ):
         raise ValueError("Control period or prime mismatch")
+    # Generic capture records Savings vaults as unsupported asset positions;
+    # their borrower cash labels come from the separate Savings audit. An
+    # unlabelled capture must not turn those receipts into assumed Sky capital.
+    # This is an omission guard, not certification of the audit's coverage.
+    if (
+        prime_id == "spark"
+        and {"S56", "S57", "S59", "S60"}.intersection(history.unsupported)
+        and not any(b.external_funding for b in history.batches)
+    ):
+        raise ValueError(
+            "Spark Savings funding operations are missing; attach the reviewed Savings audit before pricing"
+        )
     expected_days = {str(start + timedelta(days=i)) for i in range((end - start).days + 1)}
     control_days = [r["date"] for r in control["sky_revenue_daily"]]
     if len(control_days) != len(set(control_days)) or set(control_days) != expected_days:

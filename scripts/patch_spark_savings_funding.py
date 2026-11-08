@@ -16,6 +16,9 @@ from decimal import localcontext
 from pathlib import Path
 
 from settle.compute.executed_spell_capital import apply_executed_spells
+from settle.compute.spark_binance_capital import MARKER as BINANCE_MARKER
+from settle.compute.spark_binance_capital import RULES as BINANCE_RULES
+from settle.compute.spark_binance_capital import SAVER as BINANCE_SAVER
 from settle.compute.spark_separate_savings_routes import SAVER, TX
 from settle.normalize.allocation_capital import ExternalFundingOperation
 from settle.normalize.allocation_history_cache import load_history, save_history
@@ -41,6 +44,16 @@ def attach(history, audit):
             identity = chain + ":" + op["transaction_hash"]
             if identity == TX:
                 identity = SAVER
+            elif identity == BINANCE_RULES[0][0]:
+                # The reviewed August 12 receipt separates a 2,000 USDT
+                # Savings-funded OTC test from independent Sky USDS deposits.
+                # Follow that exact branch; do not pool the two routes again.
+                # Witness and spell reference: compute/spark_binance_capital.py.
+                identity += BINANCE_MARKER
+                if (op["kind"], op["source"], D(op["amount"])) != (
+                    "draw", BINANCE_SAVER, D(2000)
+                ) or grouped[identity]:
+                    raise ValueError("Binance test's reviewed Savings funding changed")
             if identity not in actual_ids:
                 matches = by_original.get(identity, [])
                 if len(matches) != 1:
