@@ -24,6 +24,10 @@ def render_provenance(
     return {
         "schema_version": "1.2",
         "venue_views": pnl.venue_views,
+        "basin_cash_reporting": {
+            vid: {key: str(value) for key, value in row.items()}
+            for vid, row in pnl.basin_cash_reporting.items()
+        },
         "settle_version": __version__,
         "generated_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "prime_id": pnl.prime_id,

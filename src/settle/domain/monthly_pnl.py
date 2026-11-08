@@ -324,6 +324,10 @@ class MonthlyPnL:
     # time by ``settle.load.dr_rewards.enrich_with_dr``.
     dr_breakdown: list[dict] = field(default_factory=list)
 
+    # Reporting-only average exempt idle and other LP cash, by venue/reason.
+    # Only idle_exempt is a utilized deduction; neither changes charges here.
+    basin_cash_reporting: dict[str, dict[str, Decimal]] = field(default_factory=dict)
+
     @property
     def prime_agent_total_revenue(self) -> Decimal:
         """Sum of all revenue streams to the prime — the reported headline.

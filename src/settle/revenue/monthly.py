@@ -57,7 +57,8 @@ def _decode(kind, value):
         if kind is MonthlyPnL and isinstance(value, dict):
             # These analytics fields were added independently. Migrate only
             # their absence; never fill missing financial inputs/defaults.
-            additions = {'venue_views': {}, 'allocation_financing': None}
+            additions = {'venue_views': {}, 'allocation_financing': None,
+                         'basin_cash_reporting': {}}
             missing = {f.name for f in fields(kind)} - set(value)
             if missing <= additions.keys():
                 value = {**value, **{name: additions[name] for name in missing}}

@@ -298,6 +298,24 @@ def compute_sheet_rows(
         if amm_idle_tw > 0:
             avg_value = max(Decimal("0"), avg_value - amm_idle_tw)
             note = (note + " " if note else "") + "(avg excl. idle AMM USDS)"
+        # The debt calculation already exempts this cash. Use its dated,
+        # ownership-weighted, compartment-capped attribution from Compute;
+        # never blanket-exempt all Basin assets or infer a new debt credit.
+        basin_cash = prov.get('basin_cash_reporting', {}).get(r['venue_id'], {})
+        basin_idle_tw = _D(basin_cash.get('idle_exempt', 0))
+        other_owners_tw = _D(basin_cash.get('other_owners', 0))
+        if any(not value.is_finite() or value < 0 for value in [basin_idle_tw, other_owners_tw]):
+            raise ValueError('Invalid Basin idle reporting deduction')
+        # E41 is a raw pocket balance, which can include other LPs' cash.
+        # That cash is not Grove capital and is not a utilized deduction.
+        if other_owners_tw > 0:
+            avg_value = max(Decimal(0), avg_value - other_owners_tw)
+            note = (note + " " if note else "") + "(avg excl. other Basin owners' cash)"
+        basin_idle_deduction = (min(max(avg_value, Decimal(0)), basin_idle_tw)
+                                if not _truthy(r.get('cof_excluded')) else Decimal(0))
+        if basin_idle_deduction > 0:
+            avg_value -= basin_idle_deduction
+            note = (note + " " if note else "") + "(avg excl. exempt Basin idle USDS)"
         # cof_excluded venues are kept out of the CoF pool (weight=0). Two
         # distinct exclusion reasons share the flag:
         #   - idle-ALM positions already deducted from utilized via
@@ -371,6 +389,8 @@ def compute_sheet_rows(
             deduction_avg = min(Decimal(str(entry["cap_usd"])), avg_value_pre_override)
         else:
             deduction_avg = Decimal("0")
+        if not cof_excluded:
+            deduction_avg += basin_idle_deduction
 
         enriched.append({
             "venue_id":      r["venue_id"],
@@ -450,7 +470,7 @@ def compute_sheet_rows(
     if psm_curve_residual > Decimal("1"):
         enriched.append({
             "venue_id":              "PSM_CURVE_DEDUCT",
-            "label":                 "PSM3 USDS + PSM3 USDC (SDE) + Curve idle USDS — BR deduction (unattributed)",
+            "label":                 "PSM3, Curve and other idle/SDE USDS — BR deduction (unattributed)",
             "value_som":             Decimal("0"),
             "value_eom":             Decimal("0"),
             "avg_value":             Decimal("0"),
@@ -467,8 +487,8 @@ def compute_sheet_rows(
             "deduction_avg":         Decimal("0"),
             "sky_rev_reduction_est": psm_curve_residual,
             "note": (
-                "BR deduction from PSM3 USDS leg + PSM3 USDC leg (SDE, "
-                "≈$0 yield) + Curve idle USDS — not tracked per-venue; "
+                "BR deduction from PSM3 USDS/USDC (SDE), Curve idle USDS "
+                "and other unattributed idle cash (including unrepresented Basin pockets); "
                 "residual = sky_rev_br_reduction − "
                 "Σ(known venue deduction_avg × effective_br_rate × n_days)"
             ),
