@@ -131,6 +131,14 @@ RPC credentials or network access:
 python scripts/audit_grove_september_2026.py
 ```
 
+The replay bypasses both local and Postgres caches, including when run from a
+shell configured for a live settlement worker. Missing pinned RPC evidence
+fails without a network fallback. It validates the period, holders, event
+identities, NFPM emitter, event encoding and collected record/chunk counts
+before calculating amounts, and rejects conflicting RPC responses. Collection
+counts detect a damaged or partial archive; they do not independently prove
+on-chain completeness or broaden the scope described above.
+
 Fresh settlement generation with E43/E44 requires live configured sources and
 archive RPC access; old fixture captures do not acquire the new venues merely
 because the YAML changed:

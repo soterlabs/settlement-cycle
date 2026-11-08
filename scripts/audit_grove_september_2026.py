@@ -8,7 +8,6 @@ from __future__ import annotations
 import json
 import os
 import sys
-import tempfile
 from collections import defaultdict
 from decimal import Decimal as D
 from pathlib import Path
@@ -18,6 +17,7 @@ _REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_REPO / 'src'))
 
 from settle.domain.config import load_prime_by_id  # noqa: E402
+from settle.extract.transfer_logs import TRANSFER_TOPIC0  # noqa: E402
 from settle.extract.uniswap_v3 import (  # noqa: E402
     TOPIC_COLLECT,
     TOPIC_DECREASE_LIQUIDITY,
@@ -29,11 +29,77 @@ from settle.normalize.sources.uniswap_v3 import RPCUniswapV3PositionSource  # no
 EVIDENCE = _REPO / 'docs/grove/evidence/september-2026-venue-audit.json'
 
 
+def validate_evidence(evidence: dict, prime) -> dict:
+    """Reject incomplete or mis-scoped inputs before calculating any amounts.
+
+    Counts are collection metadata, not a proof of on-chain completeness. The
+    scan's scope and receipt-discovery limitations still apply.
+    """
+    if evidence['period'] != '2026-09' or evidence['blocks'] != {
+        'ethereum': [25878704, 26093737], 'base': [50715726, 52011726],
+    }:
+        raise ValueError('Evidence must use the verified September boundaries')
+    venues = {v.id: v for v in prime.venues}
+    expected_holders = {
+        'ethereum': {
+            'legacy': prime.alm[venues['E12'].chain].hex,
+            'diamond': venues['E44'].holder_override.hex,
+            'lp_alt': venues['E30'].holder_override.hex,
+        },
+        'base': {'legacy': prime.alm[venues['E43'].chain].hex},
+    }
+    if evidence['holders'] != expected_holders:
+        raise ValueError('Evidence holders differ from the configured venues')
+
+    def validate_logs(rows, chain, *, nfpm=False):
+        opening, closing = evidence['blocks'][chain]
+        seen = set()
+        for row in rows:
+            if not opening < int(row['blockNumber'], 16) <= closing:
+                raise ValueError('Event outside September boundary')
+            identity = row['transactionHash'], int(row['logIndex'], 16)
+            if identity in seen:
+                raise ValueError('Duplicate event identity')
+            seen.add(identity)
+            topics, data = row['topics'], row['data']
+            if nfpm:
+                if row['address'] != venues['E44'].nft_position_manager.hex:
+                    raise ValueError('Unexpected NFPM event emitter')
+                valid = (len(topics) == 2 and topics[0] in {
+                    TOPIC_COLLECT, TOPIC_INCREASE_LIQUIDITY, TOPIC_DECREASE_LIQUIDITY,
+                } and len(data) == 194)
+            else:
+                valid = (len(topics) in {3, 4} and topics[0] == TRANSFER_TOPIC0
+                         and len(data) == (66 if len(topics) == 3 else 2))
+            if not valid:
+                raise ValueError('Malformed event topics or data')
+            if nfpm:
+                int(data[2:], 16)
+
+    for chain, rows in evidence['transfers'].items():
+        validate_logs(rows, chain)
+        coverage = evidence['coverage'][chain]
+        opening, closing = evidence['blocks'][chain]
+        expected_chunks = (closing - opening) // coverage['chunk_size'] + 1
+        if (coverage['completed_chunks'] != expected_chunks
+                or coverage['transfer_logs'] != len(rows)):
+            raise ValueError('Incomplete transfer evidence')
+    validate_logs(evidence['nfpm_logs'], 'ethereum', nfpm=True)
+    if len(evidence['nfpm_logs']) != evidence['nfpm_event_count']:
+        raise ValueError('Incomplete NFPM evidence')
+    calls = {}
+    for row in evidence['rpc_calls']:
+        key = row['chain'], row['method'], json.dumps(row['params'], sort_keys=True)
+        if key in calls and calls[key] != row['result']:
+            raise ValueError('Conflicting pinned RPC evidence')
+        calls[key] = row['result']
+    return calls
+
+
 def audit(evidence: dict) -> dict:
     prime = load_prime_by_id('grove', _REPO / 'config')
     venues = {v.id: v for v in prime.venues}
-    calls = {(r['chain'], r['method'], json.dumps(r['params'], sort_keys=True)): r['result']
-             for r in evidence['rpc_calls']}
+    calls = validate_evidence(evidence, prime)
 
     def rpc(_url, method, params):
         # No network fallback: missing pinned evidence must fail visibly.
@@ -41,17 +107,8 @@ def audit(evidence: dict) -> dict:
 
     inventory = []
     for chain, holders in evidence['holders'].items():
-        opening, closing = evidence['blocks'][chain]
-        unique = {}
-        for r in evidence['transfers'][chain]:
-            if not opening < int(r['blockNumber'], 16) <= closing:
-                raise ValueError('Transfer outside September boundary')
-            key = r['transactionHash'], r['logIndex']
-            if key in unique:
-                raise ValueError('Duplicate transfer identity')
-            unique[key] = r
         for name, holder in holders.items():
-            rows = [r for r in unique.values()
+            rows = [r for r in evidence['transfers'][chain]
                     if holder in ['0x' + t[-40:] for t in r['topics'][1:3]]]
             inventory.append({'chain': chain, 'holder': name, 'logs': len(rows),
                               'transactions': len({r['transactionHash'] for r in rows})})
@@ -92,8 +149,11 @@ def audit(evidence: dict) -> dict:
     lp = {}
     # Reuse production V3 valuation, including pending fees. The archive contains
     # all eth_call inputs/outputs, so the replay needs neither RPC keys nor internet.
-    with tempfile.TemporaryDirectory() as cache, patch.dict(os.environ, {
-        'SETTLE_CACHE_DIR': cache, 'ETH_RPC': 'https://offline.invalid',
+    # Bypass BOTH cache layers: a fresh local directory alone still permits
+    # Postgres reads and writes when the operator has DATABASE_URL configured.
+    with patch.dict(os.environ, {
+        'SETTLE_NO_CACHE': '1', 'SETTLE_REQUIRE_POSTGRES': '0',
+        'ETH_RPC': 'https://offline.invalid',
     }), patch('settle.extract.rpc._post', rpc):
         source = RPCUniswapV3PositionSource()
         for vid in ['E12', 'E44']:
