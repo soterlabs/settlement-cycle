@@ -1,0 +1,103 @@
+{
+  "publishable": false,
+  "scope": "Position cash and share controls, not funding reattribution.",
+  "withdrawals": [
+    {
+      "tx": "0x40356e99d555e16c0077f4022cf4d36c5912e52b5b43ba1427bd874575d99337",
+      "venue": "0xfc8c624b6080a0a780583799f2a862de936f6e22",
+      "date": "2026-09-21",
+      "cash": "1063.120318690079158814",
+      "events": [
+        {
+          "kind": "Withdraw",
+          "cash_raw": 1063120318690079158814,
+          "shares_burned_raw": 1063111268657961022344
+        }
+      ]
+    },
+    {
+      "tx": "0x021e0b3cf9d85da97c974a99bade24f02beadf5b6f534534f26bb5a170872567",
+      "venue": "0xfc8c624b6080a0a780583799f2a862de936f6e22",
+      "date": "2026-09-26",
+      "cash": "1042.974252488902205921",
+      "events": [
+        {
+          "kind": "Withdraw",
+          "cash_raw": 1042974252488902205921,
+          "shares_burned_raw": 1042961058839054008095
+        }
+      ]
+    },
+    {
+      "tx": "0x22aa775e7f711c0f2f20b0f2e8d2264795c934ae119275d4d632f4092c2e4d3f",
+      "venue": "0x59275fb72c8004f44ba44432e25082932fd677f1",
+      "date": "2026-09-28",
+      "cash": "1023.36896070456167396",
+      "events": [
+        {
+          "kind": "Mint_on_withdrawal",
+          "cash_raw": 1023368960704561673960,
+          "balance_increase_raw": 1023434971069803594218,
+          "index": 1000102343497106980359421771
+        }
+      ]
+    },
+    {
+      "tx": "0x498683133d094154aa638d62121970d4486ce724ce3d293fdd04aa6c01901f80",
+      "venue": "0xfc8c624b6080a0a780583799f2a862de936f6e22",
+      "date": "2026-09-29",
+      "cash": "1054.172737530485892533",
+      "events": [
+        {
+          "kind": "Withdraw",
+          "cash_raw": 1054172737530485892533,
+          "shares_burned_raw": 1054154965358850203199
+        }
+      ]
+    },
+    {
+      "tx": "0x8ffb807ed5693fb86161f27cef2a2e90ab02dd49f0a6302f53d4b58a52ae690f",
+      "venue": "0x59275fb72c8004f44ba44432e25082932fd677f1",
+      "date": "2026-09-30",
+      "cash": "1063.323175363696712982",
+      "events": [
+        {
+          "kind": "Burn",
+          "cash_raw": 1063323175363696712982,
+          "balance_increase_raw": 665644658722862880731,
+          "index": 1000197312031827787014534080
+        }
+      ]
+    }
+  ],
+  "withdrawal_total": "5246.959444777725644210",
+  "receipt_transfers": [
+    {
+      "tx": "0x27b63834490d97f77f6ccf34fe9e49953fb0413a73afd758572da3be92577cdd",
+      "token": "0x59275fb72c8004f44ba44432e25082932fd677f1",
+      "from": "0xb137e7d16564c81ae2b0c8ee6b55de81dd46ece5",
+      "to": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+      "amount": "0"
+    },
+    {
+      "tx": "0xc2af81f173a4a2c17df44dda75e369d0c9876de221487ceeacd67f4d0196a9c1",
+      "token": "0x59275fb72c8004f44ba44432e25082932fd677f1",
+      "from": "0xb137e7d16564c81ae2b0c8ee6b55de81dd46ece5",
+      "to": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+      "amount": "113.727666594174938539"
+    }
+  ],
+  "sentora_closing_shares": "249995668.454942237589116344",
+  "sprlusd_closing_scaled_raw": 9998027335153050125401123,
+  "sprlusd_closing_balance": "10000313.309428039543889326",
+  "share_control_differences_raw": {
+    "sentora": 0,
+    "sprlusd_scaled": 0,
+    "sprlusd_nominal": 0
+  },
+  "input_sha256": {
+    "/tmp/spark-september-rlusd/receipt-token-joined-logs.json.gz": "912f4a538a58ce0e1b1975de2ec398558458c94e600a3eb2edfa1872f40400f8",
+    "/tmp/spark-september-rlusd/boundary-calls.json": "8c1878bc39961e8eea1a12df2e62e9f4021d27c056b5cf4e93a7e09bf810478a",
+    "/tmp/spark-september-rlusd/position-calls.json": "225f8f0c23392f578f8e3b8d08f7ba30821f006f383c929747e15ecf01bc6859"
+  }
+}
