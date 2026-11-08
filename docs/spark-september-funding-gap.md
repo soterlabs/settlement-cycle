@@ -130,3 +130,11 @@ The result is independently checked against the previously saved global gap.
 idle deduction; reconcile LP/raw-USDS funding versus deduction coverage; review
 Savings-interest attribution; then clear the small transit/pending accounts.
 Publication remains a separate decision after validating resulting costs.
+
+## Follow-up: RLUSD destinations identified
+
+The subsequent [RLUSD transfer audit](spark-september-rlusd-routes.md) identifies
+Sentora and SparkLend receipt-token positions missing from the saved replay.
+Verified deposit transactions are associated with $363,345.66 of the old residual
+costs. This supersedes the destination uncertainty above; corrected funding-cost
+calculation and publication remain pending.

@@ -1,0 +1,105 @@
+{
+  "publishable": false,
+  "scope": "Observed routes and associated old-replay costs; not recalculated venue costs.",
+  "log_count": 70029,
+  "transaction_count": 3085,
+  "rlusd_balance_change": "-155350122.703354012853704865",
+  "balance_control": {
+    "opening": "251703857.665156950129832429",
+    "closing": "96353734.961802937276127564"
+  },
+  "counterparties": {
+    "0xb70e0fad7d0cf4c187365a84e728802ab24ca78b": {
+      "in": "1373208",
+      "out": "0",
+      "in_logs": 6,
+      "out_logs": 0
+    },
+    "0x000000000004444c5dc75cb358380d2e3de08a90": {
+      "in": "103271075.850710183806624747",
+      "out": "0",
+      "in_logs": 585,
+      "out_logs": 0
+    },
+    "0xfc8c624b6080a0a780583799f2a862de936f6e22": {
+      "in": "3160.267308709467257268",
+      "out": "249999653.513508974385973822",
+      "in_logs": 3,
+      "out_logs": 2525
+    },
+    "0x59275fb72c8004f44ba44432e25082932fd677f1": {
+      "in": "2086.692136068258386942",
+      "out": "10000000",
+      "in_logs": 2,
+      "out_logs": 1
+    }
+  },
+  "routes": {
+    "0xfc8c624b6080a0a780583799f2a862de936f6e22": {
+      "matched_transactions": 2525,
+      "failed_matches": [],
+      "associated_residual_cost": "355938.995355040504248338923979821808021311259988228971653570",
+      "examples": [
+        {
+          "tx": "0xbb31c35cbfa6aa02ab4287bb17c098e80a59d44d370223b36dd1ba55edd52196",
+          "block": 25976938,
+          "cash": "10000000",
+          "shares_minted": "9999996.252462852200545647",
+          "associated_cost": "15983.1594111050464278655373628368955746380984752646696313080"
+        },
+        {
+          "tx": "0x3bb72d788410d84710283cb7d21b3810dd7ebee9e19a326caea24f702c7d37f7",
+          "block": 25977732,
+          "cash": "10000000",
+          "shares_minted": "9999982.88278974607120049",
+          "associated_cost": "15983.7757572743947943514241887847428916089931011662907199973"
+        },
+        {
+          "tx": "0x5c949b68dc4e153ba4301e0dcc1f725176b60bf8f47d4ef9a5c4cf89eac50cfb",
+          "block": 25978386,
+          "cash": "9138888.888888888888885672",
+          "shares_minted": "9138869.412241953196922175",
+          "associated_cost": "14607.3950670646552426104653027980054950750402237534857315958"
+        },
+        {
+          "tx": "0xf8fd6367a8a0460d36398688368d415be319b208544098fdfe34fce34aad3ed1",
+          "block": 25984794,
+          "cash": "597222.222222222222222012",
+          "shares_minted": "597220.300221730600291381",
+          "associated_cost": "898.209292369234076709546463888876556592545219924381772275218"
+        },
+        {
+          "tx": "0x579fd9195641141a4ce91eaae593f5a73add5a8a8041625734f727dfa493d0be",
+          "block": 25983615,
+          "cash": "416666.66666666666666652",
+          "shares_minted": "416665.40727577995374317",
+          "associated_cost": "629.692073988058555590437426134391675203622097688578796465082"
+        }
+      ]
+    },
+    "0x59275fb72c8004f44ba44432e25082932fd677f1": {
+      "matched_transactions": 1,
+      "failed_matches": [],
+      "associated_residual_cost": "7406.66137497789394042248908326390891091348642328299888185350",
+      "examples": [
+        {
+          "tx": "0x109d7551495c45ee316fbfd5b03a464e108306838bdc0a4eada69bfb2127d0f1",
+          "block": 26040707,
+          "cash": "10000000",
+          "shares_minted": "10000000",
+          "associated_cost": "7406.66137497789394042248908326390891091348642328299888185350"
+        }
+      ]
+    }
+  },
+  "associated_residual_cost": "363345.656730018398188761413063085716932224746411511970535424",
+  "input_sha256": {
+    "/tmp/september-allocation-inputs/spark/provenance.json": "b817503e4300e1e3054884056845f79a6541d4898e2eab245de2c0a0e7c0dffa",
+    "/tmp/spark-september-financing-results/funding-snapshot.json.gz": "f3d22b43cba9e923226b849c1faf879eac5b1fc7ba8339a6fb8db7d73b9d81d3",
+    "/tmp/spark-september-financing-results/conditional-costs.json.gz": "e999ec2cb4491740821a2d5cb1a10768d8eb112bf699ff0c4c92a0c3fd61bf19",
+    "/tmp/spark-september-financing-results/daily-by-ilk.json.gz": "0f7b4056dcab77bbf3c61dcdc8f4ce060f0560be026442c7d19fe384845565f1",
+    "/tmp/spark-september-financing-results/vat-accrual.json": "495a9bddac6c1733f18d08eb00259ec14b0d0c5c52c444c96b0325e4add931fa",
+    "/tmp/spark-september-rlusd/september-rlusd-joined-logs.json.gz": "0cd91c3023af4bc7a089dd472dd1c6b16254258a221b957d553e8c51efe7d677",
+    "/tmp/spark-september-rlusd/boundary-calls.json": "8c1878bc39961e8eea1a12df2e62e9f4021d27c056b5cf4e93a7e09bf810478a"
+  }
+}
