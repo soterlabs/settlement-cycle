@@ -15,6 +15,14 @@ controls outside allocation costs. The resulting $119,401.10 comparison
 difference is **not an allocation charge or a resolved allocation attribution**.
 No amount is redistributed to another venue to hide that difference.
 
+## Follow-up PSM3 audit
+
+[The September PSM3 audit](spark-september-psm3-comparison.md) verifies all
+four closing share balances and reproduces the USDS/USDC deductions. The
+$119,401.10 decomposes into $176,642.51 of sUSDS rate equivalent less
+$57,241.41 of full-position value above replay Sky basis. The latter still
+needs funding attribution; no PSM allocation charge is introduced.
+
 ## Supported allocation credits
 
 Existing venue costs retain their zero floor. For principal P, deductible value
