@@ -1,5 +1,11 @@
 # Spark cash-flow reporting (2026)
 
+Implementation guides: [cash flow](../src/settle/revenue/CASH_FLOW_STATEMENT_GUIDE.md),
+[income statement](../src/settle/revenue/INCOME_STATEMENT_GUIDE.md) and
+[accounting rules](../src/settle/revenue/ACCOUNTING_RULES.md). The November review
+uses income v3.11 and cash events.v2 together; add `review=true` to live Spark
+reads. Legacy/pinned selections keep their own treatment.
+
 Cash-flow publications use actual transaction dates, independently pinned historical balances, and a retained income/expense bridge. They never call the MSC worker or change settlement publications. The operational scope and known counterparties are in `src/settle/revenue/cash_flow/spark.json`; `layout.json` defines statement rows and hierarchy.
 
 ## API
@@ -22,12 +28,12 @@ All values are decimal strings in USD at par for configured stablecoins. `availa
 | Net income | Retained reporting net revenue less the approved provisional expense snapshot | Same cutoff required; wider operational-cluster income scope still incomplete |
 | SPK / expenses booked | Same approved 2026 expense snapshot used by the dashboard | Provisional, not observed cash payments |
 | Nonstable gains | Reverse retained income-statement unrealized gains | Wider treasury custody/disposal bridge incomplete |
-| Nonstable transfers | Requires full-cluster historical cost basis | TBD, no fabricated zero |
+| Nonstable transfers | Reverse verified in-kind treasury fee/reward income once | Full-cluster custody/disposal basis remains incomplete |
 | Other noncash | Known Savings interest accrual add-back | Other adjustments unresolved |
 | Earned, not received | Retained published monthly MSC entitlement | Execution true-ups and wider income perimeter unresolved; missing publication is TBD |
 | Sky receipts | Actual USDS mint to SubProxy matched to reviewed executed MSC amount/date; public settlement post splits demand vs allocation | Different amounts are unclassified, not assumed revenue |
-| External receipts | Verified issuer reward payer; Anchorage cash after registered principal exclusions | Unidentified inflows stay unclassified |
-| Expenses paid | Known payees, Savings paid interest, external payments from designated operating wallets | Generic operating-wallet classifications provisional |
+| External receipts | Cash-perimeter reward/interest receipts; Anchorage after principal exclusions | ALM RLUSD/PYUSD/USDG rewards are allocations, not cash receipts; unidentified inflows stay unclassified |
+| Expenses paid | Known payees and external payments from designated operating wallets | Savings interest paid is a separate operating line, never counted twice; generic classifications provisional |
 | Allocation changes | Actual cash subscriptions/redemptions against reviewed venues | Gross redemption cash may contain yield; principal split and Sky-direct funding remain provisional |
 | Investments | Actual registered investment cash legs | Approved immaterial Arkis follow-on retained separately in evidence |
 | Net Sky borrowing | Actual AllocatorBuffer cash transfers | Direct Sky-funded seeds require further attribution |
@@ -43,8 +49,8 @@ Authenticated bridge matching, issuer reward cash balances, nonstable historical
 ## Publication / operation
 
 ```sh
-python -m settle.revenue.cash_flow.job --from 2026-01-01 --to 2026-10-31 --dry-run --output-dir /tmp/cash-flow-preview
-python -m settle.revenue.cash_flow.job --from 2026-01-01 --to 2026-10-31
+python -m settle.revenue.cash_flow.job --from 2026-01-01 --to 2026-10-31 --review --dry-run --output-dir /tmp/cash-flow-preview
+python -m settle.revenue.cash_flow.job --from 2026-01-01 --to 2026-10-31 --review
 ```
 
 Set existing provider and database environment variables securely; never put their values in config or command output. An optional `--env-file` is local only. `--evidence-dir` can replay captured public evidence; scope, interval, duplicate events and balance perimeter are checked before publication. The code version, configuration revision, input report/expense hashes, event digest and append-only revision are retained.
@@ -64,3 +70,23 @@ Cash-line `estimate_components` lists remaining provisional transaction classifi
 Fee-share mints use the existing reviewed MetaMorpho V1/V2 event authentication. Authenticated fee shares add no cash-subscription principal; unpaired mints remain unsupported. Historical ERC20 share movements must reconcile to independent closing `balanceOf` reads before principal splits are certified. Split cash evidence retains the withdrawal identity and history digest. Explicitly reviewed loan capital/interest exclusions can be supported; unsplit rollover receipts remain estimated.
 
 The source worker reuses existing certified fee-log cache coverage read-only and fetches only missing intervals. Large private cash-flow captures are compressed in the dedicated cache to avoid JSONB size limits; decoded facts retain their original integrity hash and legacy raw entries remain readable. Local captures are written atomically and incomplete files are ignored. These changes do not affect MSC settlement calculations or mutate settlement source coverage.
+
+
+## November review methodology
+
+Matched Savings-backed ETH principal price changes are excluded from management
+gross revenue/funding, and therefore from both cash-flow reversals. Retain actual
+depositor VSR interest, interest paid and genuine own gains. Own-deposit curator
+fees move from external fee revenue into net allocation yield without creating
+cash or changing net revenue. Contributor SPK (or GRV under its own grant terms)
+is service-period compensation and a matching noncash add-back, not an expense
+on every token claim. An updated sheet must not add the same grant twice.
+
+Sky direct cash is authenticated liquidity subscriptions/redemptions only;
+swaps through the same pool remain allocation flows. Paired reclassification
+preserves investing cash. Expanded Safe scope requires new balances and events;
+cluster transfers are internal, onward external payments remain source-qualified.
+
+The recurring source and cash workers use `SPARK_REPORTING_REVIEW_ENABLED=1` for
+the reviewed policy. See [the rollout runbook](../src/settle/revenue/SPARK_REVIEW_2026_11.md)
+for historical/MTD source preparation and publication. No MSC replay is required.

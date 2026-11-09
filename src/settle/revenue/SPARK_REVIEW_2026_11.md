@@ -1,8 +1,9 @@
 # Spark review — 9 November 2026
 
 Scope: reporting only. MSC calculations, settlement inputs and old immutable
-report selections keep their existing recognition. These changes are prepared
-for review; the audits below do not constitute published replacement reports.
+report selections keep their existing recognition. The audits below are read-only review previews. Deployment/backfill appends
+new revisions; publication status must be verified in the live API, not inferred
+from these static tables.
 
 ## Decisions and evidence
 
@@ -96,7 +97,9 @@ All ten monthly investing totals are unchanged. The corrected total is about
 
 1. Merge/deploy the backend first. Default legacy income/cash reads remain on
    v3.10/events.v1. Existing pinned selections keep their archived inputs.
-2. Prepare replacement reporting sources with
+2. If the latest completed-day source row is missing, first collect it with
+   `SPARK_REPORTING_REVIEW_ENABLED=1 python -m settle.revenue.spark_reporting_job --from <cutoff> --to <cutoff>`.
+   Prepare replacement reporting sources with
    `python -m settle.revenue.spark_reporting_job --from 2026-01-31 --to <last-completed-UTC-day> --review-inputs`.
    This appends reviewed curator attribution/SDE principal at retained pins;
    failures remain explicit. It preserves other saved income fields and MSC.
@@ -120,8 +123,9 @@ All ten monthly investing totals are unchanged. The corrected total is about
    does not authorize publishing during this review task.
 
 `--review-inputs` is a publishing command, not the read-only audit performed in
-this task. No settlement replay is required. No corrected source or cash report
-has been published as part of preparing this change.
+this task. No settlement replay is required. Preparing this change did not publish corrected reports. The authorized rollout
+subsequently runs source and cash publication jobs; retained old selections stay
+unchanged.
 
 When the expense sheet arrives, set its `includes_contributor_compensation`
 flag only after confirming Compensation and benefits already contains this
