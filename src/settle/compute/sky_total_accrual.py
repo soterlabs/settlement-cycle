@@ -22,12 +22,16 @@ adjustments for prior-cycle corrections riding the same settlement):
            + chronicle_points + gar                     (demand side)
     sv   = prime_agent_revenue − (sky_revenue − sde_revenue)
                                                         (prime supply share)
-    sv_t = sv + sv_adj
+    sv_t = max(sv, 0) + sv_adj   (ilk primes from October 2026; otherwise sv + sv_adj)
     mint = round( sky + sky_adj + max(sv_t, 0) )        (ilk primes only)
     send = round( dv + dv_adj + sv_t + send_credit )
 
-A negative supply share (e.g. Osero July −107) nets inside the send and
-never mints. Everything is rounded to whole USDS — the settlement
+A negative current supply share is already financed by minting the full Sky
+share as allocator debt. From the October 2026 earning cycle, it must not
+also reduce demand-side payments. Explicit prior-cycle supply adjustments
+remain signed; they are not new operating shortfalls. Earlier cycles retain
+their published cashflow convention for historical reproducibility.
+Everything is rounded to whole USDS — the settlement
 convention (on-chain mints are integral).
 
 **Pinned as-published figures.** The MSC post / summary sheet is the
@@ -61,6 +65,10 @@ _log = logging.getLogger(__name__)
 _PIN_TOLERANCE = Decimal("2")
 
 _D0 = Decimal("1")  # quantize target: whole USDS
+
+# Earning cycle, paid the following month. Keep historical cashflows intact;
+# reimburse their duplicate deductions separately through send_credit.
+_FINANCED_SHORTFALL_FROM = (2026, 10)
 
 # Accepted per-prime keys in ``msc_preview.<month>.<prime>`` — anything
 # else is a typo and raises (these keys move settlement figures).
@@ -241,7 +249,8 @@ def compute_sky_total_accrual(
         send_credit = Decimal(str(adj.get("send_credit") or 0))
 
         has_ilk = prime in ilk_primes
-        sv_t = sv + sv_adj
+        financed_shortfall = has_ilk and (month.year, month.month) >= _FINANCED_SHORTFALL_FROM
+        sv_t = (max(sv, Decimal(0)) if financed_shortfall else sv) + sv_adj
         if not has_ilk and (sky != 0 or sky_adj != 0):
             # A prime with no allocator ilk cannot mint, so a non-zero Sky
             # share would silently vanish from both mint and send.

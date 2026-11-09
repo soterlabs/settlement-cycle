@@ -107,7 +107,7 @@ def test_gar_in_dv_pin_makes_frozen_snr_reproducible(tmp_path):
     assert abs(skybase.derived_send - Decimal("374488.52")) < Decimal("0.01")
 
 
-def test_negative_supply_share_nets_in_send_not_mint(tmp_path):
+def test_historical_negative_supply_share_nets_in_send_not_mint(tmp_path):
     """Osero July: sv = −106.69 sits in the send; the mint is the Sky
     share alone."""
     root = _july_repo(tmp_path)
@@ -230,3 +230,50 @@ def test_adjustments_alone_do_not_claim_published_preview_is_reconciled(tmp_path
     result = compute_sky_total_accrual(Month(2026, 7), repo_root=root, config=cfg)
     assert any("not a fully reconciled" in w for w in result.warnings)
     assert "not a fully reconciled" in render_summary(result)
+
+
+@pytest.mark.parametrize('prime', ['osero', 'spark', 'grove', 'obex'])
+@pytest.mark.parametrize('label,expected_send', [('2026-09', '80'), ('2026-10', '100'), ('2027-01', '100')])
+def test_financed_operating_shortfall_is_not_deducted_twice(tmp_path, prime, label, expected_send):
+    _seed_prime(tmp_path, prime, label, sky='50', par='30', ar='90', dr='10')
+    _seed_non_msc(tmp_path, label, '0', '0')
+    cfg = {'accrual_primes': [prime], 'allocator_ilks': {prime: 'x'}}
+    result = compute_sky_total_accrual(Month.parse(label), repo_root=tmp_path, config=cfg)
+    row, = result.rows
+    assert row.sv == Decimal('-20')  # Economic loss remains visible.
+    assert row.mint == Decimal('50')  # Full CoF still borrowed.
+    assert row.send == Decimal(expected_send)
+    assert result.sky_net_revenue == Decimal('50') - Decimal(expected_send)
+
+
+@pytest.mark.parametrize('supply_adj,demand_adj,credit,expected_mint,expected_send', [
+    ('0', '0', '5514', '50', '5614'),  # Refund never adds allocator debt.
+    ('-7', '-3', '0', '50', '90'),   # Explicit historical debits still apply.
+    ('7', '0', '0', '57', '107'),    # Historical credit not absorbed by current loss.
+])
+def test_shortfall_policy_preserves_explicit_adjustments(
+        tmp_path, supply_adj, demand_adj, credit, expected_mint, expected_send):
+    label = '2026-10'
+    _seed_prime(tmp_path, 'osero', label, sky='50', par='30', ar='100')
+    _seed_non_msc(tmp_path, label, '0', '0')
+    cfg = {'accrual_primes': ['osero'], 'allocator_ilks': {'osero': 'x'},
+           'msc_preview': {label: {'osero': {'sv_adj': supply_adj, 'dv_adj': demand_adj,
+                                           'send_credit': credit}}}}
+    row, = compute_sky_total_accrual(Month.parse(label), repo_root=tmp_path, config=cfg).rows
+    assert row.mint == Decimal(expected_mint)
+    assert row.send == Decimal(expected_send)
+
+
+@pytest.mark.parametrize('has_ilk,par,expected_mint,expected_send', [
+    (True, '70', '70', '120'),  # Profitable borrower keeps existing treatment.
+    (False, '-20', '0', '80'), # No debt financing: signed supply still offsets demand.
+])
+def test_shortfall_policy_leaves_other_cashflows_unchanged(
+        tmp_path, has_ilk, par, expected_mint, expected_send):
+    label = '2026-10'
+    _seed_prime(tmp_path, 'example', label, sky='50' if has_ilk else '0', par=par, ar='100')
+    _seed_non_msc(tmp_path, label, '0', '0')
+    cfg = {'accrual_primes': ['example'], 'allocator_ilks': {'example': 'x'} if has_ilk else {}}
+    row, = compute_sky_total_accrual(Month.parse(label), repo_root=tmp_path, config=cfg).rows
+    assert row.mint == Decimal(expected_mint)
+    assert row.send == Decimal(expected_send)
