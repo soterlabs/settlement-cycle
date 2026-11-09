@@ -66,7 +66,7 @@ def build(evidence, income, *, config=None):
     from .evidence import validate_evidence
 
     validate_evidence(evidence, config)
-    ledger = collect_ledger(evidence, config=config, disposals=[r for r in income.get("treasury_cash_disposals", []) if r["month"] == month], sde_principal=[r for r in income.get("spark_sde_cash", []) if r["month"] == month])
+    ledger = collect_ledger(evidence, config=config, disposals=[r for r in income.get("treasury_cash_disposals", []) if r["month"] == month], sde_principal=[r for r in income.get("spark_sde_cash", []) if r["month"] == month], income_receipts=[r for r in income.get("sky_staking_cash_receipts", []) if r["month"] == month])
     metrics = cash_metrics(evidence, ledger, config)
     principal_policy = any(v.get("principal_only") for values in config["counterparties"].values() for v in values.values())
     if principal_policy and not any(r["month"] == month for r in income.get("spark_sde_cash", [])):
@@ -197,6 +197,17 @@ def build(evidence, income, *, config=None):
         reason="Known approved net MSC entitlement/true-ups; full net-income receivable bridge remains incomplete",
     )
     metrics["earned-not-received"]["approved_msc_component"] = approved
+    if "investment.sky_staking" in income_lines:
+        staking = source("investment.sky_staking")
+        # This income is outside MSC. Reverse the recognized claim in the
+        # receivable bridge, then add its authenticated cash delivery once.
+        metrics["earned-not-received"] = total([
+            ("approved-msc", 1, metrics["earned-not-received"]),
+            ("sky-staking-income", -1, staking),
+        ], reason="Approved MSC and separate SKY staking income-to-cash bridge")
+        metrics["earned-not-received"]["approved_msc_component"] = approved
+        metrics["earned-not-received"]["sky_staking_income_component"] = staking
+
     subtotals(metrics)
     metrics["reconciliation-gap"] = total(
         [

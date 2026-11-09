@@ -61,6 +61,27 @@ def prepare(statement, supplements=()):
     if any(row['id'].startswith('fees.curator.') for row in statement['lines']):
         from .spark_curator_attribution import apply as attribute_fees
         attribute_fees(statement, supplements)
+    # Only newly retained sources opt into this component; older pinned
+    # selections keep their prior shape and amounts.
+    if any(saved and "sky_staking" in saved["document"] for saved in supplements):
+        from .financial import metric
+        from .financial_spark import saved_component
+        row = dict(id="investment.sky_staking", label="SKY staking rewards",
+                   family="SKY staking", aggregation="leaf", values={})
+        statement["sky_staking_cash_receipts"] = []
+        for period, saved in zip(statement["periods"], supplements, strict=True):
+            month = period["key"]
+            raw = saved["document"].get("sky_staking", {}) if saved else {}
+            row["values"][month] = (
+                {**metric(reason="future_period"), "status": "future"}
+                if period["state"] == "future" else
+                saved_component(raw, "value", saved, recognition="receipt", expected=period["expected_cutoff"])
+                if saved else metric(reason="staking_receipts_not_published"))
+            if saved and raw.get("status") in ("available", "partial") and saved["cutoff"] == period["expected_cutoff"]:
+                statement["sky_staking_cash_receipts"].extend(
+                    dict(receipt, month=month, source_ref=saved["revision_id"])
+                    for receipt in raw.get("receipts", []))
+        statement["lines"].append(row)
     statement['review_policy'] = {
         'eth': 'Exclude matched Savings-funded principal FX; retain daily translated interest and residual Spark-owned reserve FX',
         'hidden_dust': 'Retained in API allocation revenue and totals; excluded only from statement rows',
@@ -82,4 +103,8 @@ def presentation(statement):
         host = next(row for row in rows if row.get('metric_id') == 'statement.gains')
         rows.insert(rows.index(host) + 1, dict(id='gains.other_reserves', label='Other treasury reserve gains',
             parent=host['id'], depth=host['depth'] + 1, kind=None, metric_id='gains.other_reserves'))
+    if any(row["id"] == "investment.sky_staking" for row in statement["lines"]):
+        host = next(row for row in rows if row.get("metric_id") == "statement.interest")
+        rows.insert(rows.index(host) + 1, dict(id="investment.sky_staking", label="SKY staking rewards",
+            parent=host["id"], depth=host["depth"] + 1, kind=None, metric_id="investment.sky_staking"))
     statement['statement_rows'] = rows
