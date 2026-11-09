@@ -22,6 +22,7 @@ from settle.normalize.redemption_settlements import match_redemptions, policy_fo
 ROOT = Path(__file__).resolve().parents[1]
 EVENTS = ROOT / 'tests/fixtures/sde_inflight/buidl_events.json'
 PRIOR = ROOT / 'reconciliation/2026-01_to_2026-08/data.json'
+PRIOR_SHA256 = '8012e9c6ceb5f8bfcadc51d71ca4aa16676c78e23a92541e4cecf974db031357'
 START, END = date(2026, 1, 1), date(2026, 8, 31)
 CLOSING_BLOCK = 25878704
 BASELINES = {
@@ -134,6 +135,8 @@ def reconcile_events(events: list[dict], prior: dict) -> dict:
 
 
 def reconcile() -> dict:
+    if hashlib.sha256(PRIOR.read_bytes()).hexdigest() != PRIOR_SHA256:
+        raise ValueError('Prior fee-credit ledger changed; review the already-recorded settlement baseline')
     result = reconcile_events(json.loads(EVENTS.read_text())['events'],
                               json.loads(PRIOR.read_text())['grove'])
     result['inputs'] = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()

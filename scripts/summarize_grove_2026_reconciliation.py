@@ -30,9 +30,14 @@ def redemption_by_venue(document):
         changes = {vid: D(value) for vid, value in row['deduction_changes_by_venue'].items()}
         credit = D(row['credit_to_grove'])
         before, after = D(row['frozen_utilized']), D(row['corrected_utilized'])
-        if (not changes or any(not value.is_finite() for value in [credit, before, after, *changes.values()])
+        old_charge, new_charge = D(row['frozen_charge']), D(row['corrected_charge'])
+        if (not changes or any(not value.is_finite() for value in [credit, before, after, old_charge, new_charge, *changes.values()])
                 or abs(before - after - sum(changes.values(), D(0))) > D('1e-12')):
             raise ValueError('CoF venue changes do not reconcile to the principal correction')
+        if abs(old_charge - new_charge - credit) > D('1e-18'):
+            raise ValueError('CoF venue credit does not reproduce the recorded charge difference')
+        if (before <= 0 and old_charge != 0) or (after <= 0 and new_charge != 0):
+            raise ValueError('CoF recorded charge violates the zero-balance floor')
         if len(changes) == 1:
             amounts[next(iter(changes))] += credit
             continue

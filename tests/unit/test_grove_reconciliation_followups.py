@@ -335,7 +335,8 @@ def test_large_basin_share_counts_never_create_negative_other_owner_cash(monkeyp
 def test_joint_cof_split_rejects_zero_floor_crossing():
     module = script('summarize_grove_2026_reconciliation')
     document = {'daily': [{'deduction_changes_by_venue': {'E9': '10', 'E10': '10'},
-                           'credit_to_grove': '1', 'frozen_utilized': '10', 'corrected_utilized': '-10'}]}
+                           'credit_to_grove': '1', 'frozen_charge': '1', 'corrected_charge': '0',
+                           'frozen_utilized': '10', 'corrected_utilized': '-10'}]}
     with pytest.raises(ValueError, match='nonlinear attribution'):
         module.redemption_by_venue(document)
 
@@ -346,3 +347,26 @@ def test_cof_split_rejects_inconsistent_principal_changes():
     document['daily'][0]['deduction_changes_by_venue'] = {'E9': '1'}
     with pytest.raises(ValueError, match='principal correction'):
         module.redemption_by_venue(document)
+
+
+def test_venue_credit_offsetting_errors_cannot_hide_behind_a_correct_total():
+    module = script('summarize_grove_2026_reconciliation')
+    document = json.loads((ROOT / 'reconciliation/2026-10/sde_inflight_cof.json').read_text())
+    first = next(row for row in document['daily'] if set(row['deduction_changes_by_venue']) == {'E9'})
+    second = next(row for row in document['daily'] if set(row['deduction_changes_by_venue']) == {'E10'})
+    first['credit_to_grove'] = str(D(first['credit_to_grove']) + 1)
+    second['credit_to_grove'] = str(D(second['credit_to_grove']) - 1)
+    with pytest.raises(ValueError, match='recorded charge difference'):
+        module.redemption_by_venue(document)
+
+
+def test_buidl_prior_credit_ledger_cannot_drift_silently(tmp_path, monkeypatch):
+    module = script('reconcile_grove_buidl_fees')
+    path = tmp_path / 'changed-prior.json'
+    prior = json.loads(module.PRIOR.read_text())
+    prior['grove']['buidl_realized_fee_credit_usd'] = '162504.35'
+    prior['grove']['buidl_realized_fee_credit_by_month_usd']['2026-05'] = '137503.98'
+    path.write_text(json.dumps(prior))
+    monkeypatch.setattr(module, 'PRIOR', path)
+    with pytest.raises(ValueError, match='Prior fee-credit ledger changed'):
+        module.reconcile()

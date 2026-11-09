@@ -49,7 +49,10 @@ The per-venue split of configured CoF reproduces the existing 78,530.06 net
 without changing that instruction. The only joint JTRSY/BUIDL days are May
 18–19: both original and corrected utilized balances exceed the historical
 1B subsidy cap, so all component principal changes have the same marginal
-rate. The summary refuses to split a joint correction crossing the cap.
+rate. The summary refuses to split a joint correction crossing the cap or the
+zero-balance floor. Every venue delta must reproduce its principal change,
+and every credit must reproduce the recorded charge difference; offsetting
+venue errors cannot pass merely because their grand total is unchanged.
 
 Replay without network access:
 

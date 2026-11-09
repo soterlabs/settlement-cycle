@@ -81,7 +81,8 @@ exits; August's is -74,998,999, omitting the one-share grouped test and August
 part of the separately approved CoF-only correction. The correct comparison
 nets that 4,001 debit against the remaining 0.821229 cash cost.
 
-The script verifies immutable hashes of the May/August published summaries,
+The script verifies immutable hashes of the prior fee-credit ledger and the
+May/August published summaries,
 reconciles their reported income with position changes and capital, and
 compares the capital flow with the verified requests. Both summaries were
 also checked against the identical files in `settlement-reports`. It refuses
