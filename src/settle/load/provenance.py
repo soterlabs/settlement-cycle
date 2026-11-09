@@ -210,6 +210,7 @@ def render_provenance(
         # wasn't captured. Consumed by the xlsx "Debt" tab for prime-team
         # reconciliation.
         "sky_revenue_daily": pnl.sky_revenue_daily,
+        "usds_bridge_transfers": pnl.usds_bridge_transfers,
         **({"allocation_financing": json.loads(json.dumps(pnl.allocation_financing, default=str))}
            if pnl.allocation_financing is not None else {}),
         # Per-period subsidised-borrowing aggregates (None for non-subsidy

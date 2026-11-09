@@ -20,6 +20,7 @@ Per the prime-settlement-methodology and debt-rate-methodology docs:
     ``cum_debt`` series picks up on its own. (2026-09-01; PRD §17.13.)
     utilized          = cum_debt
                       − alm_proxy_usds                 ←  Step 2 (idle USDS at ALM proxy)
+                      − bridge_usds                    ← eligible USDS claim until bridge release
                       − psm_usds                       ←  Step 2 (idle USDS in PSM3)
                       − curve_idle_usds                ←  Step 2 (prime's USDS share in Curve pools)
                       − lending_idle_usds              ←  Step 2 (prime's share of unborrowed underlying in lending pools)
@@ -170,6 +171,7 @@ def compute_sky_revenue(
     curve_idle_usds: pd.DataFrame | None = None,
     lending_idle_usds: pd.DataFrame | None = None,
     basin_idle_usds: pd.DataFrame | None = None,
+    bridge_usds: pd.DataFrame | None = None,
 ) -> Decimal:
     """Sum of daily Sky revenue over ``period``.  See ``compute_sky_revenue_daily``
     for the full docstring and per-day breakdown."""
@@ -181,6 +183,7 @@ def compute_sky_revenue(
         curve_idle_usds=curve_idle_usds,
         lending_idle_usds=lending_idle_usds,
         basin_idle_usds=basin_idle_usds,
+        bridge_usds=bridge_usds,
     )
     return total
 
@@ -198,6 +201,7 @@ def compute_sky_revenue_daily(
     curve_idle_usds: pd.DataFrame | None = None,
     lending_idle_usds: pd.DataFrame | None = None,
     basin_idle_usds: pd.DataFrame | None = None,
+    bridge_usds: pd.DataFrame | None = None,
 ) -> tuple[Decimal, pd.DataFrame, dict | None]:
     """Sum of daily Sky revenue over ``period`` plus a full day-by-day breakdown.
 
@@ -286,6 +290,9 @@ def compute_sky_revenue_daily(
     while current <= period.end:
         cum_debt = cum_at_or_before(debt, "cum_debt", current)
         cum_alm_usds = cum_at_or_before(alm_usds, "cum_balance", current)
+        cum_bridge_usds = cum_at_or_before(bridge_usds, "cum_balance", current)
+        if not cum_bridge_usds.is_finite() or cum_bridge_usds < 0:
+            raise ValueError("Invalid in-transit USDS deduction")
         # SDE positions (BUIDL, JTRSY, USTB, JAAA-cap, …) — Sky books their
         # actual revenue directly via ``sd_revenue`` in the venue breakdown,
         # so they're excluded from BR base here to avoid double-charging.
@@ -319,6 +326,7 @@ def compute_sky_revenue_daily(
         utilized = (
             cum_debt
             - cum_alm_usds
+            - cum_bridge_usds
             - cum_psm_usds_leg
             - cum_sde
             - cum_curve_usds
@@ -365,6 +373,7 @@ def compute_sky_revenue_daily(
             "date":               current,
             "cum_debt":           cum_debt,
             "alm_usds":           cum_alm_usds,
+            "bridge_usds":        cum_bridge_usds,
             "psm_usds":           cum_psm_usds_leg,
             "sde_av":             cum_sde,
             "curve_idle":         cum_curve_usds,

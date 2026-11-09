@@ -248,3 +248,42 @@ def test_monthly_rejects_basin_deduction_for_unconfigured_prime():
     with pytest.raises(ValueError, match='outside configured'):
         monthly.validate_interest(replace(pnl, sky_revenue_daily=rows),
                                   replace(prime, basin_idle_usds=None), record['input_provenance'])
+
+
+def test_transit_deduction_requires_matching_retained_claim():
+    prime, pnl, provenance = example()
+    rows = deepcopy(pnl.sky_revenue_daily)
+    rows[0]['bridge_usds'] = '100'
+    with pytest.raises(ValueError, match='bridge deduction'):
+        monthly.validate_interest(replace(pnl, sky_revenue_daily=rows), prime, provenance)
+
+
+@pytest.mark.parametrize('subsidy', [False, True])
+def test_retained_bridge_claim_replays_across_subsidy_cap(subsidy, monkeypatch):
+    from datetime import UTC, datetime
+
+    prime, pnl, record = example(subsidy=subsidy)
+    transfers = [dict(sent_at=int(datetime(2026, 8, 31, tzinfo=UTC).timestamp()),
+                      received_at=None, amount_usds='400000000', source_chain='base')]
+    from settle.normalize.usds_bridge_transit import daily_exposure
+    exposure = daily_exposure(pnl.period, transfers)
+    old = pnl.sky_revenue_daily
+    def series(source, target):
+        return pd.DataFrame([{'block_date': date.fromisoformat(r['date']), target: D(str(r[source]))} for r in old])
+    interest, daily, summary = compute_sky_revenue_daily(
+        pnl.period, series('cum_debt', 'cum_debt'), series('alm_usds', 'cum_balance'),
+        pd.DataFrame([{'effective_date': date.fromisoformat(r['date']), 'ssr_apy': D(str(r['ssr_apy']))} for r in old]),
+        sde_asset_value=series('sde_av', 'cum_value'), subsidy_config=prime.subsidy,
+        ref_rate_history=monthly._reference_history(prime, pnl.period, record['input_provenance']),
+        bridge_usds=exposure)
+    sky = interest + pnl.sde_revenue - pnl.susds_spread_reimbursement
+    changed = replace(pnl, sky_revenue_daily=canonical(daily.to_dict('records')),
+                      usds_bridge_transfers=transfers, sky_revenue=sky,
+                      monthly_pnl=pnl.prime_agent_total_revenue - sky, subsidy_summary=summary)
+    record['result'] = canonical(changed)
+    rehash(record)
+    monkeypatch.setattr(monthly, 'compute_gar', lambda *_: (D(0), 'fixture'))
+    replay, _ = monthly.finalize(record, prime, MONTH, VERSIONS, today=TODAY)
+    assert replay.sky_revenue == sky < pnl.sky_revenue
+    assert replay.usds_bridge_transfers == transfers
+    assert all(D(r['bridge_usds']) == D('400000000') for r in replay.sky_revenue_daily)
