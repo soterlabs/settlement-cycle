@@ -1,4 +1,4 @@
-"""Add explicit PSM rows and deduction credits to saved conditional cost results."""
+"""Keep PSM outside allocation costs; apply supported excess deduction credits."""
 import argparse
 import gzip
 import hashlib
@@ -11,9 +11,8 @@ from audit_saved_funding_gap import check, decompose, read
 
 from settle.compute.allocation_cost_rows import (
     cost_row,
-    deduction_credit,
     excess_deduction_credit,
-    psm_cost_rows,
+    psm_principal_inventory,
 )
 
 
@@ -27,13 +26,13 @@ def build(control, funding, conditional, accounts, vat, idle, header, comparison
                for v in control['sde_daily_breakdown']}
         if any(set(v) != set(days) for v in sde.values()):
             raise ValueError('Incomplete SDE control')
-        rows = psm_cost_rows(accounts, rates, selected_accounts=funding['identity']['accounts'])
-        check(sum((r['cost_of_funds'] for r in rows), D(0)), bridge['account_groups']['psm'], 'PSM gross')
-        rows.append(deduction_credit('psm:idle_usds', {d: D(r['psm_usds']) for d, r in days.items()},
-                                     rates, scope='psm_all_chains'))
-        rows.append(deduction_credit('psm:usdc_sde',
-            {d: D(r['sde_av']) - sum((v[d] for v in sde.values()), D(0)) for d, r in days.items()},
-            rates, scope='psm_all_chains'))
+        inventory = psm_principal_inventory(accounts, days, selected_accounts=funding['identity']['accounts'])
+        # Existing global deductions are controls, not PSM allocation charges.
+        psm_usds = sum((D(r['psm_usds']) * rates[d] for d, r in days.items()), D(0))
+        psm_usdc = sum(((D(r['sde_av']) - sum((v[d] for v in sde.values()), D(0))) * rates[d]
+                        for d, r in days.items()), D(0))
+        psm_comparison_difference = bridge['account_groups']['psm'] - psm_usds - psm_usdc
+        rows = []
         for v in conditional['allocations']:
             if v['conditional_sky_borrowing_cost'] is None:
                 continue
@@ -71,17 +70,23 @@ def build(control, funding, conditional, accounts, vat, idle, header, comparison
             raise ValueError('Identified route costs must be finite and within unassigned cost')
         expected = (bridge['account_groups']['unallocated'] + bridge['account_groups']['cctp']
                     + bridge['account_groups']['rounding'] + bridge['components']['unpriced_selected']
-                    + bridge['components']['cash_debt_gap'])
+                    + bridge['components']['cash_debt_gap'] + psm_comparison_difference)
         check(unassigned, expected, 'unassigned cost after explicit credits')
         return {'publishable': False, 'start': conditional['start'], 'end': conditional['end'],
-            'policy': 'Existing venue costs remain unchanged; explicit custody rows and signed credits. No redistributed credits.',
+            'policy': 'PSM is not an allocation and is not priced. Existing venue costs plus supported excess credits only.',
             'existing_conditional_allocation_cost': bridge['conditional_allocation_cost'],
-            'additional_cost_rows': rows, 'allocation_and_custody_cost_including_credits': subtotal,
+            'additional_cost_rows': rows, 'allocation_cost_including_excess_credits': subtotal,
             'separate_financing_costs': financing, 'global_cost': global_cost,
             'unassigned_cost': unassigned, 'identified_rlusd_routes_pending_replay': pending_routes,
             'remaining_after_identified_routes': unassigned - pending_routes,
-            'per_chain_psm_net_cost_available': False,
-            'limitations': ['Shared PSM deductions have no verified per-chain split in these saved controls.',
+            'psm_principal_inventory': inventory,
+            'psm_global_reconciliation_controls': {
+                'old_replay_basis_rate_equivalent': bridge['account_groups']['psm'],
+                'existing_global_usds_deduction': psm_usds,
+                'existing_global_usdc_deduction': psm_usdc,
+                'comparison_difference_not_assigned_to_allocations': psm_comparison_difference,
+                'is_allocation_charge': False},
+            'limitations': ['PSM comparison difference remains unresolved for allocation reconciliation; no PSM charge is assigned.',
                 'Conditional funding and Savings-interest basis remain subject to attribution review.',
                 'RLUSD deposit costs remain in unassigned cost until receipt-position replay is corrected.']}
 
@@ -106,7 +111,7 @@ def main():
         with path.open('rb') as f:
             result['input_sha256'][str(path)] = hashlib.file_digest(f, 'sha256').hexdigest()
     args.output.write_text(json.dumps(result, default=str, indent=2) + '\n')
-    print(json.dumps({k:v for k,v in result.items() if k not in ('additional_cost_rows','input_sha256')}, default=str, indent=2))
+    print(json.dumps({k:v for k,v in result.items() if k not in ('additional_cost_rows','input_sha256','psm_principal_inventory')}, default=str, indent=2))
 
 
 if __name__ == '__main__':

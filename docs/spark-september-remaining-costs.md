@@ -1,5 +1,10 @@
 # Spark September: refined residual after identifying RLUSD deposits
 
+**Superseded PSM treatment (2026-11-09):** PSM is not an allocation and has no
+allocation borrowing cost. Any PSM rate-equivalent amounts below are historical
+reconciliation diagnostics, not venue charges. See the
+[current correction](spark-explicit-custody-cost-rows.md).
+
 The original net residual was $401,755.11. Transactions now tied to Sentora and
 spRLUSD account for $363,345.66 of its old replay costs. This note decomposes the
 remaining **$38,409.45** using saved snapshots. It does not claim that the two

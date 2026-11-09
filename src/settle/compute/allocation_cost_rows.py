@@ -1,8 +1,8 @@
-"""Explicit custody costs and signed deduction credits for allocation analytics.
+"""Signed deduction credits and non-allocation custody inventory.
 
-These rows do not change debt, global borrowing cost, or settlement. Shared PSM
-deductions stay at pool scope until per-chain leg evidence is supplied; they are
-never spread arbitrarily over chains. Credits are not negative venue principal.
+PSM is not an allocation: retain its principal as a reconciliation control,
+without pricing it or assigning borrowing cost or yield. Global settlement
+treatment remains unchanged. Credits are not negative venue principal.
 """
 from decimal import Decimal as D
 from decimal import localcontext
@@ -47,18 +47,14 @@ def excess_deduction_credit(identifier, principal, deductions, rates, *, scope):
         return deduction_credit(identifier, excess, rates, scope=scope)
 
 
-def psm_cost_rows(daily_by_ilk, rates, *, selected_accounts=()):
-    """Price each PSM's borrowed basis, preserving ilk ownership and chain labels.
-
-    Input contains Sky debt basis only, not savings principal or position NAV.
-    Deductions are emitted separately because aggregate global controls cannot
-    identify which chain owns each deductible leg.
-    """
-    if not rates or set(rates) - set(daily_by_ilk):
+def psm_principal_inventory(daily_by_ilk, days, *, selected_accounts=()):
+    """Inventory PSM custody without assigning allocation borrowing costs."""
+    days = set(days)
+    if not days or days - set(daily_by_ilk):
         raise ValueError('Missing daily PSM funding snapshot')
-    accounts = sorted({a for d in rates for a in daily_by_ilk[d] if a.startswith('psm:')})
+    accounts = sorted({a for d in days for a in daily_by_ilk[d] if a.startswith('psm:')})
     if set(accounts) & set(selected_accounts):
-        raise ValueError('PSM account already included in selected allocation costs')
+        raise ValueError('PSM account cannot be included in selected allocation costs')
     with localcontext() as ctx:
         ctx.prec = 60
         rows = []
@@ -66,15 +62,11 @@ def psm_cost_rows(daily_by_ilk, rates, *, selected_accounts=()):
             parts = account.split(':')
             if len(parts) != 4:
                 raise ValueError('Invalid PSM account identity')
-            ilks = sorted({ilk for d in rates for ilk in daily_by_ilk[d].get(account, {})})
+            ilks = sorted({ilk for d in days for ilk in daily_by_ilk[d].get(account, {})})
             for ilk in ilks:
-                principal = {d: _amount(daily_by_ilk[d].get(account, {}).get(ilk, ZERO)) for d in rates}
-                row = cost_row(f'{account}:{ilk}', 'psm_custody',
-                    {d: principal[d] * _amount(rates[d]) for d in rates},
-                    scope=account, basis='saved_sky_principal_before_shared_deductions')
-                row.update(chain=parts[1], psm_address=parts[2], holder=parts[3], ilk=ilk,
-                           daily_sky_principal=principal,
-                           average_sky_principal=sum(principal.values(), ZERO)/len(rates),
-                           net_cost_after_shared_deductions=None)
-                rows.append(row)
+                principal = {d: _amount(daily_by_ilk[d].get(account, {}).get(ilk, ZERO)) for d in sorted(days)}
+                rows.append({'account': account, 'chain': parts[1], 'psm_address': parts[2],
+                    'holder': parts[3], 'ilk': ilk, 'is_allocation': False,
+                    'daily_sky_principal': principal,
+                    'average_sky_principal': sum(principal.values(), ZERO)/len(days)})
         return rows

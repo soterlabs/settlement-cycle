@@ -1,5 +1,10 @@
 # Spark September 2026: remaining borrowing-cost gap
 
+**Superseded PSM treatment (2026-11-09):** PSM is not an allocation and has no
+allocation borrowing cost. Any PSM rate-equivalent amounts below are historical
+reconciliation diagnostics, not venue charges. See the
+[current correction](spark-explicit-custody-cost-rows.md).
+
 Research only. No API publication, reassignment of residual costs, or settlement
 restatement. The complete saved replay is finished. This diagnostic reads its
 snapshots; it does not replay history or fetch blockchain data.
