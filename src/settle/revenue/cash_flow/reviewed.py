@@ -66,3 +66,46 @@ def index(config):
     if not source:
         return {}, None
     return {identity(r): r for r in source["records"]}, digest(source)
+
+
+def conversion_complete(record, rows, records, config):
+    """A reviewed conversion is internal only with both exact cash legs present."""
+    if not any(p["line_id"] == "internal-routing" for p in record["parts"]):
+        return True
+    legs = [
+        r
+        for r in records.values()
+        if r["chain"] == record["chain"]
+        and r["tx_hash"] == record["tx_hash"]
+        and any(p["line_id"] == "internal-routing" for p in r["parts"])
+    ]
+    with localcontext() as ctx:
+        ctx.prec = 100
+        if (
+            len(legs) != 2
+            or sum(
+                Decimal(p["amount_usd"])
+                for r in legs
+                for p in r["parts"]
+                if p["line_id"] == "internal-routing"
+            )
+            != 0
+        ):
+            return False
+        for leg in legs:
+            meta = config["tokens"][leg["chain"]].get(leg["token"], {})
+            owners = config["wallets"][leg["chain"]]
+            if not meta.get("cash") or ((leg["from"] in owners) == (leg["to"] in owners)):
+                return False
+            sign = 1 if leg["to"] in owners else -1
+            matches = [
+                r
+                for r in rows
+                if r["topic0"]
+                == "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+                and r["address"] == leg["token"]
+                and match(leg, r, Decimal(int(r["data"], 16)) / 10 ** meta["decimals"] * sign)
+            ]
+            if len(matches) != 1:
+                return False
+    return True

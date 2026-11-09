@@ -17,7 +17,7 @@ from .config import load
 from .liability import ZERO, address
 from .liability import split as savings_split
 from .model import metric, total
-from .reviewed import identity, index as reviewed_index, match as reviewed_match
+from .reviewed import conversion_complete, identity, index as reviewed_index, match as reviewed_match
 
 CASH_LEAVES = (
     "sky-allocation-receipts",
@@ -260,6 +260,12 @@ def collect_ledger(evidence, *, config=None, disposals=(), sde_principal=(), inc
                         continue
 
                 reviewed_record = reviewed.get(identity(e))
+                if reviewed_record and not conversion_complete(
+                    reviewed_record, by_tx[e["tx_hash"]], reviewed, config
+                ):
+                    append(e, "unclassified", value * sign,
+                           reason="Reviewed cash conversion lacks both exact paired cash legs")
+                    continue
                 # A complete cost-basis witness takes precedence over a reviewed
                 # gross redemption. All other matches are exact historical facts.
                 verified_basis = any(

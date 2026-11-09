@@ -36,6 +36,7 @@ def collect(source):
 def project(rows, cutoff, owners):
     receipts = []
     seen = set()
+    used_funding = set()
     with localcontext() as ctx:
         ctx.prec = 100
         for reward in rows:
@@ -78,6 +79,7 @@ def project(rows, cutoff, owners):
             if identity in seen:
                 raise ValueError("Duplicate SKY staking reward receipt")
             seen.add(identity)
+            used_funding.add((funding[0].transaction_hash, funding[0].log_index))
             receipts.append(
                 dict(
                     chain="ethereum",
@@ -92,6 +94,26 @@ def project(rows, cutoff, owners):
                     farm_log_index=funding[0].log_index,
                 )
             )
+        funded = {
+            (r.transaction_hash, r.log_index)
+            for r in rows
+            if r.address.lower() == USDS
+            and r.topic0 == TRANSFER
+            and address(r.topic1) == FARM
+            and address(r.topic2) == URN
+            and int(r.data, 16)
+        }
+        delivered = {
+            (r.transaction_hash, r.log_index)
+            for r in rows
+            if r.address.lower() == USDS
+            and r.topic0 == TRANSFER
+            and address(r.topic1) == URN
+            and address(r.topic2) in owners
+            and int(r.data, 16)
+        }
+        if funded != used_funding or delivered != seen:
+            raise ValueError("Unmatched SKY staking transfers cannot establish zero reward income")
         return dict(
             status="available",
             quality="supported",

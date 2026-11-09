@@ -73,3 +73,12 @@ Verify API source revisions, receipt counts, principal conservation, March SKY
 income and its one-time cash bridge, monthly cash subtotals and reconciliation
 gaps. The dashboard's unpinned API requests pick up new publications on refresh;
 old pinned exports continue selecting their retained source/publication revisions.
+
+## Review safeguards
+
+- A reviewed cash conversion is internal only when both exact cash legs are
+  present and their internal amounts offset. Missing or changed legs remain
+  unclassified, including operating-wallet sends that would otherwise fall
+  through to the generic expense rule.
+- An unmatched farm funding transfer or urn cash delivery cannot certify zero
+  staking income. The worker retains missing/ambiguous source coverage instead.

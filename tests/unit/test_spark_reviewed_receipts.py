@@ -340,3 +340,38 @@ def test_authenticated_redemption_cost_basis_overrides_provisional_gross_booking
         "external-receipts": D(1),
     }
     assert all("principal_evidence" in r for r in got)
+
+
+@pytest.mark.parametrize("alter", [False, True])
+def test_reviewed_cash_conversion_requires_both_exact_legs(alter):
+    from copy import deepcopy
+
+    tx = "0xa1dafc1c7b0b36ccca9f50801addf3efcf115f29d5c8e4a7eb7f9cabdcba8cbf"
+    rows = deepcopy([r for r in cash_rows() if r["tx_hash"] == tx])
+    assert len(rows) == 2
+    if alter:
+        rows[0]["data"] = "0x" + f"{int(rows[0]['data'], 16) + 1:064x}"
+    else:
+        rows.pop()
+    got = ledger(rows)
+    assert got and all(r["line_id"] == "unclassified" for r in got)
+    with localcontext() as ctx:
+        ctx.prec = 100
+        config = load()
+
+        def signed(r):
+            units = (
+                D(int(r["data"], 16)) / 10 ** config["tokens"]["ethereum"][r["address"]]["decimals"]
+            )
+            return units * (1 if address(r["topic2"]) in config["wallets"]["ethereum"] else -1)
+
+        assert sum(D(e["amount_usd"]) for e in got) == sum(signed(r) for r in rows)
+
+
+def test_staking_transfer_without_reward_paid_is_not_certified_zero():
+    from settle.revenue.spark_sky_staking import PAID
+
+    rows = [r for r in staking_rows() if r.topic0 != PAID]
+    assert project([], date(2026, 3, 31), list(load()["wallets"]["ethereum"]))["value"] == "0"
+    with pytest.raises(ValueError, match="Unmatched SKY staking"):
+        project(rows, date(2026, 3, 31), list(load()["wallets"]["ethereum"]))
