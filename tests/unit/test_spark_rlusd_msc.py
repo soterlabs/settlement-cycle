@@ -1,6 +1,6 @@
 """The September omissions must route income separately from borrowed capital."""
 import json
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal as D
 from pathlib import Path
 
@@ -63,7 +63,7 @@ def test_issuer_cash_reaches_venue_revenue_without_rebooking_accrual(month, expe
     raw = next(v for v in prime.venues if v.id == 'S64')
     logs = json.loads((Path(__file__).parents[1] / 'fixtures/spark_rlusd_issuer_september_2026.json').read_text())
     amounts = [D(int(row['data'], 16)) / D(10**18) for row in logs]
-    days = [datetime.fromtimestamp(row['block_time'], timezone.utc).date().replace(month=month)
+    days = [datetime.fromtimestamp(row['block_time'], UTC).date().replace(month=month)
             for row in logs]
     issuer = bytes.fromhex(logs[0]['topic1'][-40:])
     source = MockBalanceSource()

@@ -92,8 +92,10 @@ def extra_receipts(publication):
             value = number(rows[0]['external_revenue'])
         except (KeyError, ValueError):
             continue
+        collection = ('venue_breakdown' if venue in publication.get('spark_fee_msc_venues', [])
+                      else 'reporting_only_breakdown')
         result[key] = metric(value, basis='sparklend_reserve_treasury_spToken_receipts',
-                             source_paths=[f'result.reporting_only_breakdown.{venue}.external_revenue'])
+                             source_paths=[f'result.{collection}.{venue}.external_revenue'])
         result[key].update(recognition='receipt_in_kind', source_ref=publication['revision_id'])
     return result
 
@@ -139,8 +141,15 @@ def extend(statement, chosen, supplemental):
                     venue = 'S70' if key.endswith('rlusd') else 'S71'
                     row = next(r for r in publication['spark_fee_source_rows'] if r['venue_id'] == venue)
                     try:
+                        # Keep retained reporting-only paths unchanged. A new
+                        # MSC member must cite its actual source collection
+                        # and both operands of native income = revenue - fees.
+                        paths = ([f'result.venue_breakdown.{venue}.{field}'
+                                  for field in ('revenue', 'external_revenue')]
+                                 if venue in publication.get('spark_fee_msc_venues', [])
+                                 else [f'result.reporting_only_breakdown.{venue}.revenue_minus_external'])
                         native = metric(number(row['revenue']) - number(row['external_revenue']),
-                                        basis='native_lending_yield', source_paths=[f'result.reporting_only_breakdown.{venue}.revenue_minus_external'])
+                                        basis='native_lending_yield', source_paths=paths)
                         native['source_ref'] = publication['revision_id']
                     except (KeyError, ValueError):
                         pass
