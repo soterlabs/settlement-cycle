@@ -42,7 +42,7 @@ def specs(config):
         .get(str(v.chain), {})
         .get(v.underlying.address.hex.lower(), {})
         .get("cash")
-    ]
+    ] + config.get("reporting_vaults", [])
 
 
 def collect(evidence, config, cache_dir, progress=None):

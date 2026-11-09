@@ -495,14 +495,15 @@
       "amount_usd": "-100000",
       "parts": [
         {
-          "line_id": "allocation-changes",
+          "line_id": "internal-routing",
           "amount_usd": "-100000",
           "quality": "supported",
-          "reason": "Reviewed B2C2 USDC/USDT conversion boundary; principal funding and returns, not interest"
+          "reason": "Verified reviewed B2C2 USDC-to-USDT cash conversion; exact paired transfer identities"
         }
       ],
       "basis_pending": false,
-      "witnesses": []
+      "witnesses": [],
+      "conversion_group": "b2c2-2026-04-22-1"
     },
     {
       "chain": "ethereum",
@@ -516,14 +517,15 @@
       "amount_usd": "100000",
       "parts": [
         {
-          "line_id": "allocation-changes",
+          "line_id": "internal-routing",
           "amount_usd": "100000",
           "quality": "supported",
-          "reason": "Reviewed B2C2 USDC/USDT conversion boundary; principal funding and returns, not interest"
+          "reason": "Verified reviewed B2C2 USDC-to-USDT cash conversion; exact paired transfer identities"
         }
       ],
       "basis_pending": false,
-      "witnesses": []
+      "witnesses": [],
+      "conversion_group": "b2c2-2026-04-22-1"
     },
     {
       "chain": "ethereum",
@@ -537,14 +539,21 @@
       "amount_usd": "-1000000",
       "parts": [
         {
-          "line_id": "allocation-changes",
-          "amount_usd": "-1000000",
+          "line_id": "internal-routing",
+          "amount_usd": "-999314",
           "quality": "supported",
-          "reason": "Reviewed B2C2 USDC/USDT conversion boundary; principal funding and returns, not interest"
+          "reason": "Verified reviewed B2C2 USDC-to-USDT cash conversion; exact paired transfer identities"
+        },
+        {
+          "line_id": "unclassified",
+          "amount_usd": "-686",
+          "quality": "supported",
+          "reason": "B2C2 cash conversion shortfall; fee versus retained cash remains unresolved"
         }
       ],
       "basis_pending": false,
-      "witnesses": []
+      "witnesses": [],
+      "conversion_group": "b2c2-2026-04-22-2"
     },
     {
       "chain": "ethereum",
@@ -558,14 +567,15 @@
       "amount_usd": "999314",
       "parts": [
         {
-          "line_id": "allocation-changes",
+          "line_id": "internal-routing",
           "amount_usd": "999314",
           "quality": "supported",
-          "reason": "Reviewed B2C2 USDC/USDT conversion boundary; principal funding and returns, not interest"
+          "reason": "Verified reviewed B2C2 USDC-to-USDT cash conversion; exact paired transfer identities"
         }
       ],
       "basis_pending": false,
-      "witnesses": []
+      "witnesses": [],
+      "conversion_group": "b2c2-2026-04-22-2"
     },
     {
       "chain": "ethereum",
@@ -579,14 +589,21 @@
       "amount_usd": "-1000000",
       "parts": [
         {
-          "line_id": "allocation-changes",
-          "amount_usd": "-1000000",
+          "line_id": "internal-routing",
+          "amount_usd": "-999320",
           "quality": "supported",
-          "reason": "Reviewed B2C2 USDC/USDT conversion boundary; principal funding and returns, not interest"
+          "reason": "Verified reviewed B2C2 USDC-to-USDT cash conversion; exact paired transfer identities"
+        },
+        {
+          "line_id": "unclassified",
+          "amount_usd": "-680",
+          "quality": "supported",
+          "reason": "B2C2 cash conversion shortfall; fee versus retained cash remains unresolved"
         }
       ],
       "basis_pending": false,
-      "witnesses": []
+      "witnesses": [],
+      "conversion_group": "b2c2-2026-04-22-3"
     },
     {
       "chain": "ethereum",
@@ -600,14 +617,15 @@
       "amount_usd": "999320",
       "parts": [
         {
-          "line_id": "allocation-changes",
+          "line_id": "internal-routing",
           "amount_usd": "999320",
           "quality": "supported",
-          "reason": "Reviewed B2C2 USDC/USDT conversion boundary; principal funding and returns, not interest"
+          "reason": "Verified reviewed B2C2 USDC-to-USDT cash conversion; exact paired transfer identities"
         }
       ],
       "basis_pending": false,
-      "witnesses": []
+      "witnesses": [],
+      "conversion_group": "b2c2-2026-04-22-3"
     },
     {
       "chain": "ethereum",

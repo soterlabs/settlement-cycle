@@ -49,7 +49,7 @@ def is_cash(config, chain, token, owner):
     )
 
 
-def collect_ledger(evidence, *, config=None, disposals=(), sde_principal=(), income_receipts=()):
+def collect_ledger(evidence, *, config=None, disposals=(), sde_principal=(), income_receipts=(), vault_cash=()):
     config = config or load()
     entries = []
     seen = set()
@@ -71,6 +71,9 @@ def collect_ledger(evidence, *, config=None, disposals=(), sde_principal=(), inc
     income_index = {identity(r): r for r in income_receipts}
     if len(income_index) != len(income_receipts):
         raise ValueError("Duplicate income cash receipt witness")
+    vault_index = {identity(r): r for r in vault_cash}
+    if len(vault_index) != len(vault_cash):
+        raise ValueError("Duplicate treasury vault cash witness")
     settlements = json.loads(files(__package__).joinpath("settlements.json").read_text())["records"]
     by_date = {r["execution_date"]: r for r in settlements}
     prime = load_prime_by_id("spark")
@@ -259,9 +262,29 @@ def collect_ledger(evidence, *, config=None, disposals=(), sde_principal=(), inc
                         )
                         continue
 
+                vault_record = vault_index.get(identity(e))
+                if vault_record and reviewed_match(vault_record, e, value * sign):
+                    from ..spark_steakhouse import VAULT, USDC
+                    if chain != "ethereum" or e["address"] != USDC or not (
+                        vault_record["direction"] == "subscription" and sign < 0
+                        or vault_record["direction"] == "redemption" and sign > 0 and src == VAULT
+                    ):
+                        raise ValueError("Treasury vault cash witness differs from its perimeter")
+                    if sum(Decimal(p["amount_usd"]) for p in vault_record["parts"]) != value * sign:
+                        raise ValueError("Treasury vault cash split does not conserve the original transfer")
+                    for part in vault_record["parts"]:
+                        append(e, part["line_id"], Decimal(part["amount_usd"]),
+                               reason="Verified Steakhouse subscription cost and redeemed yield; monthly accrual recognized separately",
+                               suffix=part["suffix"])
+                        entries[-1]["principal_evidence"] = {
+                            "source_revision": vault_record["source_ref"],
+                            "history_digest": vault_record["history_digest"],
+                            "semantic_log_index": vault_record["semantic_log_index"],
+                        }
+                    continue
                 reviewed_record = reviewed.get(identity(e))
                 if reviewed_record and not conversion_complete(
-                    reviewed_record, by_tx[e["tx_hash"]], reviewed, config
+                    reviewed_record, rows if reviewed_record.get("conversion_group") else by_tx[e["tx_hash"]], reviewed, config
                 ):
                     append(e, "unclassified", value * sign,
                            reason="Reviewed cash conversion lacks both exact paired cash legs")

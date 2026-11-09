@@ -76,7 +76,11 @@ def conversion_complete(record, rows, records, config):
         r
         for r in records.values()
         if r["chain"] == record["chain"]
-        and r["tx_hash"] == record["tx_hash"]
+        and (
+            r.get("conversion_group") == record["conversion_group"]
+            if record.get("conversion_group")
+            else r["tx_hash"] == record["tx_hash"]
+        )
         and any(p["line_id"] == "internal-routing" for p in r["parts"])
     ]
     with localcontext() as ctx:

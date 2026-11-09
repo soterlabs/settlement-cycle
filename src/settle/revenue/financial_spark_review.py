@@ -82,6 +82,24 @@ def prepare(statement, supplements=()):
                     dict(receipt, month=month, source_ref=saved["revision_id"])
                     for receipt in raw.get("receipts", []))
         statement["lines"].append(row)
+    if any(saved and "steakhouse" in saved["document"] for saved in supplements):
+        from .financial import metric
+        from .financial_spark import saved_component
+        row = dict(id="investment.steakhouse_usdc", label="3F x Steakhouse USDC",
+                   family="Morpho vaults", aggregation="leaf", values={})
+        statement["steakhouse_cash_events"] = []
+        for period, saved in zip(statement["periods"], supplements, strict=True):
+            raw = saved["document"].get("steakhouse", {}) if saved else {}
+            row["values"][period["key"]] = (
+                {**metric(reason="future_period"), "status": "future"}
+                if period["state"] == "future" else
+                saved_component(raw, "value", saved, recognition="accrual", expected=period["expected_cutoff"])
+                if saved else metric(reason="steakhouse_accrual_not_published"))
+            if saved and raw.get("status") in ("available", "partial") and saved["cutoff"] == period["expected_cutoff"]:
+                statement["steakhouse_cash_events"].extend(
+                    dict(cash, month=period["key"], source_ref=saved["revision_id"])
+                    for cash in raw.get("cash_events", []))
+        statement["lines"].append(row)
     statement['review_policy'] = {
         'eth': 'Exclude matched Savings-funded principal FX; retain daily translated interest and residual Spark-owned reserve FX',
         'hidden_dust': 'Retained in API allocation revenue and totals; excluded only from statement rows',
@@ -107,4 +125,8 @@ def presentation(statement):
         host = next(row for row in rows if row.get("metric_id") == "statement.interest")
         rows.insert(rows.index(host) + 1, dict(id="investment.sky_staking", label="SKY staking rewards",
             parent=host["id"], depth=host["depth"] + 1, kind=None, metric_id="investment.sky_staking"))
+    if any(row["id"] == "investment.steakhouse_usdc" for row in statement["lines"]):
+        host = next(row for row in rows if row.get("metric_id") == "statement.family.morpho_vaults")
+        rows.insert(rows.index(host) + 1, dict(id="investment.steakhouse_usdc", label="3F x Steakhouse USDC",
+            parent=host["id"], depth=host["depth"] + 1, kind=None, metric_id="investment.steakhouse_usdc"))
     statement['statement_rows'] = rows

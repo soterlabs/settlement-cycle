@@ -7,8 +7,8 @@ settlement revenue or settlement reports. Unknown payments remain unclassified.
 
 | Reviewed flow | Receipt amount (USD at par) | Reporting treatment |
 |---|---:|---|
-| April B2C2 returns | 2,098,634 | Investing allocation returns; also classify the three actual 2,100,000 USDC advances. The 1,366 difference remains in the boundary; do not invent interest or a fee. |
-| April 3F x Steakhouse USDC redemptions to DevCo and its Safe | 1,114,846.081435 | Gross investing redemption, provisional until share cost basis is reconciled. An authenticated principal/yield witness overrides the provisional booking. The receipt is not entirely revenue. |
+| April B2C2 returns | 2,098,634 | Internal cash conversions, matched to the three actual 2,100,000 USDC sends using explicit reviewed transaction pairs. The 1,366 shortfall stays unclassified; do not invent interest or a fee. |
+| April 3F x Steakhouse USDC redemptions to DevCo and its Safe | 1,114,846.081435 | Reconstructed 1,107,900 principal (investing) and 6,946.081435 realized yield (operating). Recognize native yield monthly over Jan–Apr, not again on redemption. Fallback without the source proof remains provisional. |
 | January Maple-related payment | 383,178.08 | Operating cash realization of operator-confirmed yield. No new income-statement accrual on top of existing Maple supply revenue without a separate earning-period reconciliation. |
 | February–March Ops nonstable sales through CoW | 382,428.427806741322142644 | Investing treasury disposal proceeds. Same-transaction sold tokens: weETH, cbBTC, wstETH, rETH, tBTC and WBTC. Full sale proceeds are not fresh revenue; this change does not manufacture missing realized gain/basis data. |
 | March DevCo USDS → USDT conversion | 47,520 USDT received | Internal cash conversion. Match 47,520 on each side; preserve the 2.902265232988598019 USDS shortfall as unclassified instead of assuming a fee or an operating expense. |
@@ -43,7 +43,7 @@ The 4,686,868.703083 USD ordinary-receipt audit remainder stays unclassified:
 exchange withdrawals and external Safe payouts need account/ownership/purpose
 confirmation; the 8,502.754893 and 2,400 USDC possible refunds need confirmation.
 The OTC excess is included in that remainder. The 2.902265232988598019 USDS
-conversion shortfall is an additional **outgoing** unresolved component.
+conversion shortfall and 1,366 B2C2 shortfall are additional **outgoing** unresolved components.
 Sub-dollar receipts remain in evidence. Zero-address mint/bridge/debt bookkeeping
 requires separate transaction-level pairing and is not promoted to revenue.
 
@@ -62,7 +62,7 @@ first, then replay the reviewed cash-flow publications for Jan–Oct month ends
 and the latest completed November day. The source review refresh
 (`python -m settle.revenue.spark_reporting_job --help`, `--review-inputs`)
 preserves existing native/issuer accruals while adding authenticated staking
-claims. Then use `python -m settle.revenue.cash_flow.job --review --from 2026-01-01
+claims and treasury vault accruals/splits. Then use `python -m settle.revenue.cash_flow.job --review --from 2026-01-01
 --to <latest-completed-day>` with the approved environment supplied privately.
 Use `--dry-run --output-dir <local-preview>` to inspect before publishing.
 The cash configuration revision changes because the reviewed rule set changes;
@@ -86,3 +86,29 @@ old pinned exports continue selecting their retained source/publication revision
   at or before the closing pin. Reward, funding and delivery must share a block
   and timestamp, have distinct log indexes, and cannot reuse any proof log for
   another receipt.
+
+## Reconstructed treasury vault revenue
+
+The DevCo and its Safe deposited 557,900 and 550,000 USDC on January 23.
+Their April 9–10 redemptions returned 561,386.572024 and 553,459.509411 USDC.
+Reconstruct inception share history, reconcile every owned wallet to independent
+opening/closing balances, and value shares using onchain `previewRedeem` at those
+boundaries. Monthly native revenue = closing claim − opening claim − subscriptions
++ redemptions. Deposits routed through the bundler require the actual owned USDC
+cash leg, not just the share mint. Internal share transfers preserve cost basis.
+
+| Month | Accrued USDC revenue |
+|---|---:|
+| January | 914.079957 |
+| February | 2,602.160431 |
+| March | 2,802.664010 |
+| April | 627.177037 |
+| Total | 6,946.081435 |
+
+November 1–8 also independently reconciles to zero shares and zero revenue;
+there was no remaining position. Historical snapshots are in
+`tests/fixtures/spark_steakhouse_2026.json.gz`. `investment.steakhouse_usdc` is
+API-owned under Morpho vaults. Its monthly accrual is reversed in the indirect
+cash bridge, then only realized redeemed yield is added as operating cash.
+The full subscription/redemption principal remains investing cash flow.
+This is a `reporting_vaults` cash/reporting specification, not an MSC venue.

@@ -1085,5 +1085,14 @@
   "opening_msc_receivable": "7071339",
   "source_rules": "cash_flow_statement_rules.md",
   "unclassified_policy": "Retain unidentified receipts/payments explicitly; never infer revenue or an expense from a transfer alone.",
-  "reporting_accounting_rules": "src/settle/revenue/ACCOUNTING_RULES.md"
+  "reporting_accounting_rules": "src/settle/revenue/ACCOUNTING_RULES.md",
+  "reporting_vaults": [
+    {
+      "venue": "TREASURY_STEAKHOUSE_USDC",
+      "chain": "ethereum",
+      "address": "0xbeef3f3a04e28895f3d5163d910474901981183d",
+      "asset": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "decimals": 6
+    }
+  ]
 }

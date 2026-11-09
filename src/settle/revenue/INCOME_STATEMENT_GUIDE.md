@@ -120,3 +120,13 @@ Contributor compensation lowers net income and is added back once in cash flow.
 [the review audit/runbook](SPARK_REVIEW_2026_11.md) for reviewed v3.11/events.v2
 rollout, source/cash backfill and legacy-policy preservation. No MSC replay is
 part of a reporting methodology correction.
+
+### Treasury vault example: 3F x Steakhouse USDC
+
+`spark_steakhouse.py` reconstructs the owned shares, independent boundary quotes
+and actual cash funding events. It publishes monthly native accrual and a
+separate cash principal/yield split. Do not book the full redemption or all
+lifetime yield in the redemption month. The Jan–Apr 2026 revenue sums to
+6,946.081435 USDC; the principal is 1,107,900 USDC and is excluded from revenue.
+Receipt of previously accrued income clears that accrual; it is not a second
+income source. Adding a cash receipt cannot replace checking its earning period.

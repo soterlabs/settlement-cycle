@@ -83,12 +83,17 @@ def test_actual_reviewed_cash_partitions_conserve_every_original_log():
 
 def test_principal_disposals_and_swap_are_not_earned_cash_or_expenses():
     entries = ledger()
-    for payer in [
-        "0xa29e963992597b21bcdcaa969d571984869c4ff5",
-        "0xbeef3f3a04e28895f3d5163d910474901981183d",
-    ]:
+    for payer in ["0xbeef3f3a04e28895f3d5163d910474901981183d"]:
         rows = [e for e in entries if payer in (e["from"], e["to"])]
         assert rows and all(e["line_id"] == "allocation-changes" for e in rows)
+    b2c2 = [
+        e for e in entries if "0xa29e963992597b21bcdcaa969d571984869c4ff5" in (e["from"], e["to"])
+    ]
+    assert sum(D(e["amount_usd"]) for e in b2c2 if e["line_id"] == "internal-routing") == 0
+    assert sum(D(e["amount_usd"]) for e in b2c2 if e["line_id"] == "unclassified") == -1366
+    assert not any(
+        e["line_id"] in ("allocation-changes", "external-receipts", "expenses-paid") for e in b2c2
+    )
     vault = [e for e in entries if e["from"].startswith("0xbeef3f3a")]
     assert len(vault) == 2 and all(e["quality"] == "estimate" for e in vault)
     swaps = [
@@ -206,7 +211,8 @@ def test_only_new_retained_sources_add_staking_income_and_old_selections_keep_th
     assert len(s["sky_staking_cash_receipts"]) == 1
 
 
-def test_staking_income_and_receipt_change_operating_cash_only_once(monkeypatch):
+@pytest.mark.parametrize("income_key", ["investment.sky_staking", "investment.steakhouse_usdc"])
+def test_staking_income_and_receipt_change_operating_cash_only_once(monkeypatch, income_key):
     from settle.revenue.cash_flow import build as module
     from settle.revenue.cash_flow.config import layout
     from settle.revenue.cash_flow.model import amount, metric
@@ -238,7 +244,7 @@ def test_staking_income_and_receipt_change_operating_cash_only_once(monkeypatch)
             "funding.savings": D(0),
         }
         if staking:
-            values["investment.sky_staking"] = claim
+            values[income_key] = claim
         income = dict(
             lines=[dict(id=k, values={"2026-03": metric(v)}) for k, v in values.items()],
             periods=[dict(key="2026-03", actual_cutoff="2026-03-31")],
@@ -446,3 +452,23 @@ def test_staking_claim_legs_must_share_the_same_block_and_distinct_log_ids(field
     )
     with pytest.raises(ValueError, match="claim legs differ"):
         project(rows, date(2026, 3, 31), list(load()["wallets"]["ethereum"]))
+
+
+def test_b2c2_conversion_pair_is_exact_across_transactions_and_missing_return_stays_unknown():
+    records = [
+        r for r in reviewed_events()["records"] if r.get("conversion_group") == "b2c2-2026-04-22-2"
+    ]
+    assert len(records) == 2 and records[0]["tx_hash"] != records[1]["tx_hash"]
+    rows = [
+        r
+        for r in cash_rows()
+        if any(
+            r["tx_hash"] == record["tx_hash"] and r["log_index"] == record["log_index"]
+            for record in records
+        )
+    ]
+    got = ledger(rows)
+    assert sum(D(e["amount_usd"]) for e in got if e["line_id"] == "internal-routing") == 0
+    assert sum(D(e["amount_usd"]) for e in got if e["line_id"] == "unclassified") == -686
+    missing = ledger([r for r in rows if r["tx_hash"] == records[0]["tx_hash"]])
+    assert missing and all(e["line_id"] == "unclassified" for e in missing)
