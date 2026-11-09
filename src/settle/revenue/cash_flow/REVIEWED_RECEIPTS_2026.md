@@ -82,3 +82,7 @@ old pinned exports continue selecting their retained source/publication revision
   through to the generic expense rule.
 - An unmatched farm funding transfer or urn cash delivery cannot certify zero
   staking income. The worker retains missing/ambiguous source coverage instead.
+- Retained staking receipts must fall strictly after the opening block pin and
+  at or before the closing pin. Reward, funding and delivery must share a block
+  and timestamp, have distinct log indexes, and cannot reuse any proof log for
+  another receipt.

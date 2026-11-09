@@ -75,6 +75,15 @@ def project(rows, cutoff, owners):
             if len(funding) != 1 or len(payments) != 1:
                 raise ValueError("SKY staking reward lacks a unique farm-funded owned receipt")
             payment = payments[0]
+            claim_legs = (reward, funding[0], payment)
+            if (
+                len({r.log_index for r in claim_legs}) != 3
+                or len({r.block_number for r in claim_legs}) != 1
+                or len({r.block_time for r in claim_legs}) != 1
+            ):
+                raise ValueError(
+                    "SKY staking claim legs differ in block, timestamp or log identity"
+                )
             identity = payment.transaction_hash, payment.log_index
             if identity in seen:
                 raise ValueError("Duplicate SKY staking reward receipt")
@@ -140,7 +149,12 @@ def validate_document(document):
     if not document["period_start"] <= end <= cutoff:
         raise ValueError("Invalid SKY staking period")
     owners = load()["wallets"]["ethereum"]
+    opening = document.get("opening_pins", {}).get("ethereum")
+    closing = document.get("closing_pins", {}).get("ethereum")
+    if type(opening) is not int or type(closing) is not int or not 0 <= opening < closing:
+        raise ValueError("SKY staking block pins are missing or invalid")
     seen = set()
+    used_proofs = set()
     with localcontext() as ctx:
         ctx.prec = 100
         total = Decimal(0)
@@ -149,8 +163,12 @@ def validate_document(document):
             day = datetime.fromtimestamp(receipt["timestamp"], UTC).date().isoformat()
             value = Decimal(receipt["amount_usd"])
             indices = [receipt[k] for k in ("log_index", "reward_log_index", "farm_log_index")]
+            proof_keys = {(receipt["tx_hash"], i) for i in indices}
             if (
                 key in seen
+                or used_proofs.intersection(proof_keys)
+                or type(receipt["block"]) is not int
+                or not opening < receipt["block"] <= closing
                 or receipt["chain"] != "ethereum"
                 or receipt["token"] != USDS
                 or receipt["from"] != URN
@@ -163,6 +181,7 @@ def validate_document(document):
             ):
                 raise ValueError("Invalid SKY staking receipt")
             seen.add(key)
+            used_proofs.update(proof_keys)
             total += value
         if Decimal(raw["value"]) != total:
             raise ValueError("SKY staking income differs from authenticated receipts")

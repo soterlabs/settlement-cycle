@@ -263,7 +263,14 @@ def test_retained_staking_claim_scope_and_total_are_validated_and_failed_refresh
     from settle.revenue.spark_sky_staking import validate_document
 
     source = project(staking_rows(), date(2026, 3, 31), list(load()["wallets"]["ethereum"]))
-    doc = dict(period_start="2026-03-01", cutoff="2026-03-31", sky_staking=source)
+    block = source["receipts"][0]["block"]
+    doc = dict(
+        period_start="2026-03-01",
+        cutoff="2026-03-31",
+        sky_staking=source,
+        opening_pins={"ethereum": block - 1},
+        closing_pins={"ethereum": block + 1},
+    )
     validate_document(doc)
     for field, value in [("value", "1"), ("scope", {}), ("period_end", "2026-04-01")]:
         bad = deepcopy(doc)
@@ -374,4 +381,68 @@ def test_staking_transfer_without_reward_paid_is_not_certified_zero():
     rows = [r for r in staking_rows() if r.topic0 != PAID]
     assert project([], date(2026, 3, 31), list(load()["wallets"]["ethereum"]))["value"] == "0"
     with pytest.raises(ValueError, match="Unmatched SKY staking"):
+        project(rows, date(2026, 3, 31), list(load()["wallets"]["ethereum"]))
+
+
+def retained_staking_document():
+    source = project(staking_rows(), date(2026, 3, 31), list(load()["wallets"]["ethereum"]))
+    block = source["receipts"][0]["block"]
+    return dict(
+        period_start="2026-03-01",
+        cutoff="2026-03-31",
+        sky_staking=source,
+        opening_pins={"ethereum": block - 1},
+        closing_pins={"ethereum": block + 1},
+    )
+
+
+@pytest.mark.parametrize(
+    "kind", ["before_opening", "after_closing", "missing_pins", "reused_proof"]
+)
+def test_retained_staking_rejects_wrong_pins_and_reused_reward_witnesses(kind):
+    from copy import deepcopy
+
+    from settle.revenue.spark_sky_staking import validate_document
+
+    doc = retained_staking_document()
+    validate_document(doc)
+    receipt = doc["sky_staking"]["receipts"][0]
+    if kind == "before_opening":
+        receipt["block"] = doc["opening_pins"]["ethereum"]
+    elif kind == "after_closing":
+        receipt["block"] = doc["closing_pins"]["ethereum"] + 1
+    elif kind == "missing_pins":
+        doc.pop("opening_pins")
+    else:
+        duplicate = deepcopy(receipt)
+        duplicate["log_index"] += (
+            1000  # Another cash log cannot reuse this claim's farm/reward logs.
+        )
+        doc["sky_staking"]["receipts"].append(duplicate)
+        with localcontext() as ctx:
+            ctx.prec = 100
+            doc["sky_staking"]["value"] = str(D(receipt["amount_usd"]) * 2)
+    with pytest.raises(ValueError, match="SKY staking"):
+        validate_document(doc)
+
+
+@pytest.mark.parametrize("field", ["block_number", "block_time", "log_index"])
+def test_staking_claim_legs_must_share_the_same_block_and_distinct_log_ids(field):
+    from copy import deepcopy
+
+    from settle.revenue.spark_sky_staking import PAID
+
+    rows = deepcopy(staking_rows())
+    reward = next(r for r in rows if r.address == FARM and r.topic0 == PAID)
+    payment = next(
+        r
+        for r in rows
+        if r.address == USDS
+        and address(r.topic1) == URN
+        and address(r.topic2) in load()["wallets"]["ethereum"]
+    )
+    setattr(
+        payment, field, reward.log_index if field == "log_index" else getattr(payment, field) + 1
+    )
+    with pytest.raises(ValueError, match="claim legs differ"):
         project(rows, date(2026, 3, 31), list(load()["wallets"]["ethereum"]))
