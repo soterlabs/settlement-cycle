@@ -22,6 +22,9 @@ def load(prime="spark", *, review=True, policy=None):
         for values in result[family].values():
             if any(len(a) != 42 or not a.startswith("0x") for a in values):
                 raise ValueError("Invalid cash-flow address registry")
+    if review:
+        from .reviewed import reviewed_events
+        result["reviewed_receipts"] = reviewed_events()
     result["revision"] = digest(result)
     return result
 

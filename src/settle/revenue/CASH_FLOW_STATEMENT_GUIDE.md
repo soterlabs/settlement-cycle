@@ -148,3 +148,14 @@ must generate the same reviewed inputs as the backfill worker. Verify a fresh
 API selection, not only an old pinned export. Preserve missing statuses and
 provisional classifications; a zero reconciliation gap alone cannot certify
 correct categories or complete scope.
+
+### Treasury vault subscriptions and accrued yield
+
+Use retained `steakhouse` evidence for the treasury-only ERC4626 example.
+Match actual owned cash transfers even when routed through a bundler, classify
+subscription cost as investing, and split redemption principal from realized
+yield using the carried share basis. Reverse the same monthly native accrual
+from net income in the income-to-cash bridge before adding realized operating
+receipts, so income and cash are each counted once. A cash-to-cash stablecoin
+conversion, including an explicitly verified B2C2 transaction pair, is internal
+routing; leave any unexplained shortfall outside classified statement totals.

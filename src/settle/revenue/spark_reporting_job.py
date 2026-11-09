@@ -82,6 +82,18 @@ def add_review_inputs(document, source):
     from .spark_onchain import CURATORS, curator_fees
     from .cash_flow.config import load as cash_config
     from .spark_sde_cash import collect as sde_cash
+    from .spark_sky_staking import collect as sky_staking
+    from .spark_steakhouse import collect as steakhouse
+
+    try:
+        document["sky_staking"] = sky_staking(source)
+    except Exception as exc:
+        document["sky_staking"] = {"status": "unavailable", "error": type(exc).__name__}
+
+    try:
+        document["steakhouse"] = steakhouse(source)
+    except Exception as exc:
+        document["steakhouse"] = {"status": "unavailable", "error": type(exc).__name__}
 
     wallets = cash_config(review=True)["wallets"]
     document["curator_attribution"] = {}
@@ -251,7 +263,7 @@ def main():
     parser.add_argument("--accounting-only", action="store_true",
         help="Refresh treasury and historical ownership inputs only; preserve existing native/issuer accruals and MSC")
     parser.add_argument("--sde-cash-only", action="store_true", help="Add authenticated SDE liquidity principal evidence; preserve other income inputs")
-    parser.add_argument("--review-inputs", action="store_true", help="Refresh self/external curator fee attribution and authenticated SDE principal only")
+    parser.add_argument("--review-inputs", action="store_true", help="Refresh curator attribution, SDE principal, SKY staking receipts and treasury vault accruals")
     args = parser.parse_args()
     if args.review_inputs and (args.sde_cash_only or args.accounting_only or args.complete_only):
         parser.error("Select only one completion mode")
@@ -296,6 +308,7 @@ def main():
                         for row in document.get(family, {}).values()
                     ),
                 ]
+                parts.extend(document[key] for key in ("sky_staking", "steakhouse") if key in document)
                 status = (
                     "partial"
                     if document["errors"]

@@ -205,3 +205,21 @@ new reporting publications and never rewrite old selections.
 These management-reporting conventions are not a substitute for a prime's
 statutory accounting policy. Carry source, recognition, quality and incomplete
 coverage through every calculation; a zero cash gap is not an accuracy score.
+
+### Treasury ERC4626 holdings and cash conversions
+
+Accrue native vault revenue monthly as closing owned claim minus opening owned
+claim minus subscriptions plus redemptions. Reconstruct the full owned share
+history, reconcile independent balances and use the vault's net redemption
+quote. Carry basis across internal share transfers; fail closed on externally
+acquired shares whose value/cost is not established. Redemption cash splits
+into carried principal and realized yield; previously accrued yield is not
+revenue again. The indirect cash statement reverses the monthly accrual before
+adding actual redeemed yield. Configure treasury-only holdings in reporting,
+without adding an MSC allocation or changing settlement output.
+
+Verified cash-stablecoin conversions, including B2C2 USDC-to-USDT trades, follow
+the same principle as PSM conversions: require exact paired cash legs; matching
+amounts alone are insufficient. Finite reviewed cross-transaction pairs must be
+explicit. Unexplained shortfalls remain unresolved rather than assumed fees.
+A transfer to an OTC counterparty alone does not prove a yield-bearing loan.

@@ -17,6 +17,7 @@ from .config import load
 from .liability import ZERO, address
 from .liability import split as savings_split
 from .model import metric, total
+from .reviewed import conversion_complete, identity, index as reviewed_index, match as reviewed_match
 
 CASH_LEAVES = (
     "sky-allocation-receipts",
@@ -48,7 +49,7 @@ def is_cash(config, chain, token, owner):
     )
 
 
-def collect_ledger(evidence, *, config=None, disposals=(), sde_principal=()):
+def collect_ledger(evidence, *, config=None, disposals=(), sde_principal=(), income_receipts=(), vault_cash=()):
     config = config or load()
     entries = []
     seen = set()
@@ -66,6 +67,13 @@ def collect_ledger(evidence, *, config=None, disposals=(), sde_principal=()):
     for item in redemptions.values():
         redemption_index[(item["chain"], item["tx_hash"], item["vault"])].append(item)
     used_redemptions = set()
+    reviewed, reviewed_revision = reviewed_index(config)
+    income_index = {identity(r): r for r in income_receipts}
+    if len(income_index) != len(income_receipts):
+        raise ValueError("Duplicate income cash receipt witness")
+    vault_index = {identity(r): r for r in vault_cash}
+    if len(vault_index) != len(vault_cash):
+        raise ValueError("Duplicate treasury vault cash witness")
     settlements = json.loads(files(__package__).joinpath("settlements.json").read_text())["records"]
     by_date = {r["execution_date"]: r for r in settlements}
     prime = load_prime_by_id("spark")
@@ -253,6 +261,68 @@ def collect_ledger(evidence, *, config=None, disposals=(), sde_principal=()):
                             reason="Cash-to-cash converter mint/burn matches the opposite cash leg in the same transaction",
                         )
                         continue
+
+                vault_record = vault_index.get(identity(e))
+                if vault_record and reviewed_match(vault_record, e, value * sign):
+                    from ..spark_steakhouse import VAULT, USDC
+                    if chain != "ethereum" or e["address"] != USDC or not (
+                        vault_record["direction"] == "subscription" and sign < 0
+                        or vault_record["direction"] == "redemption" and sign > 0 and src == VAULT
+                    ):
+                        raise ValueError("Treasury vault cash witness differs from its perimeter")
+                    if sum(Decimal(p["amount_usd"]) for p in vault_record["parts"]) != value * sign:
+                        raise ValueError("Treasury vault cash split does not conserve the original transfer")
+                    for part in vault_record["parts"]:
+                        append(e, part["line_id"], Decimal(part["amount_usd"]),
+                               reason="Verified Steakhouse subscription cost and redeemed yield; monthly accrual recognized separately",
+                               suffix=part["suffix"])
+                        entries[-1]["principal_evidence"] = {
+                            "source_revision": vault_record["source_ref"],
+                            "history_digest": vault_record["history_digest"],
+                            "semantic_log_index": vault_record["semantic_log_index"],
+                        }
+                    continue
+                reviewed_record = reviewed.get(identity(e))
+                if reviewed_record and not conversion_complete(
+                    reviewed_record, rows if reviewed_record.get("conversion_group") else by_tx[e["tx_hash"]], reviewed, config
+                ):
+                    append(e, "unclassified", value * sign,
+                           reason="Reviewed cash conversion lacks both exact paired cash legs")
+                    continue
+                # A complete cost-basis witness takes precedence over a reviewed
+                # gross redemption. All other matches are exact historical facts.
+                verified_basis = any(
+                    item["asset"] == e["address"] and item["receiver"] == dst
+                    and Decimal(item["assets_units"]) == units
+                    for item in redemption_index.get((chain, e["tx_hash"], src), [])
+                )
+                if (reviewed_record and reviewed_match(reviewed_record, e, value * sign)
+                        and not (reviewed_record.get("basis_pending") and verified_basis)):
+                    for i, part in enumerate(reviewed_record["parts"]):
+                        append(e, part["line_id"], Decimal(part["amount_usd"]),
+                               quality=part["quality"], reason=part["reason"],
+                               suffix=f"reviewed-{i}")
+                        entries[-1]["classification_evidence"] = {
+                            "source_revision": reviewed_revision,
+                            "event_id": entries[-1]["source_event_id"],
+                            "basis_pending": reviewed_record.get("basis_pending", False),
+                        }
+                    continue
+
+                income_receipt = income_index.get(identity(e))
+                if income_receipt and reviewed_match(income_receipt, e, value * sign):
+                    from ..spark_sky_staking import URN, USDS
+                    if chain != "ethereum" or src != URN or e["address"] != USDS or sign < 0:
+                        raise ValueError("Income receipt differs from reviewed SKY staking perimeter")
+                    append(e, "external-receipts", value,
+                           reason="Retained RewardPaid and farm-funded SKY staking cash receipt")
+                    entries[-1]["classification_evidence"] = {
+                        "source_revision": income_receipt["source_ref"],
+                        "event_id": entries[-1]["source_event_id"],
+                        "reward_log_index": income_receipt["reward_log_index"],
+                        "farm_log_index": income_receipt["farm_log_index"],
+                    }
+                    continue
 
                 # Match Savings semantic events to the actual underlying cash
                 # transfer and its external beneficiary, not just a share burn.

@@ -12,6 +12,10 @@ from .verification import canonical, digest
 
 
 def validate_document(document):
+    from .spark_steakhouse import validate_document as validate_steakhouse
+    validate_steakhouse(document)
+    from .spark_sky_staking import validate_document as validate_staking
+    validate_staking(document)
     if document.get("sde_cash") is not None:
         from .spark_sde_cash import validate_document as validate_sde
         validate_sde(document)
@@ -317,6 +321,12 @@ def carry_forward(document, previous):
     result["reserve_fees"] = retained(
         result.get("reserve_fees", {}), previous["document"].get("reserve_fees", {})
     )
+    if "steakhouse" in result:
+        result["steakhouse"] = retained(
+            result["steakhouse"], previous["document"].get("steakhouse", {}))
+    if "sky_staking" in result:
+        result["sky_staking"] = retained(
+            result["sky_staking"], previous["document"].get("sky_staking", {}))
     for family in (
         "curator_fees",
         "gains",

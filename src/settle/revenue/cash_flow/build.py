@@ -66,7 +66,7 @@ def build(evidence, income, *, config=None):
     from .evidence import validate_evidence
 
     validate_evidence(evidence, config)
-    ledger = collect_ledger(evidence, config=config, disposals=[r for r in income.get("treasury_cash_disposals", []) if r["month"] == month], sde_principal=[r for r in income.get("spark_sde_cash", []) if r["month"] == month])
+    ledger = collect_ledger(evidence, config=config, disposals=[r for r in income.get("treasury_cash_disposals", []) if r["month"] == month], sde_principal=[r for r in income.get("spark_sde_cash", []) if r["month"] == month], income_receipts=[r for r in income.get("sky_staking_cash_receipts", []) if r["month"] == month], vault_cash=[r for r in income.get("steakhouse_cash_events", []) if r["month"] == month])
     metrics = cash_metrics(evidence, ledger, config)
     principal_policy = any(v.get("principal_only") for values in config["counterparties"].values() for v in values.values())
     if principal_policy and not any(r["month"] == month for r in income.get("spark_sde_cash", [])):
@@ -197,6 +197,29 @@ def build(evidence, income, *, config=None):
         reason="Known approved net MSC entitlement/true-ups; full net-income receivable bridge remains incomplete",
     )
     metrics["earned-not-received"]["approved_msc_component"] = approved
+    if "investment.sky_staking" in income_lines:
+        staking = source("investment.sky_staking")
+        # This income is outside MSC. Reverse the recognized claim in the
+        # receivable bridge, then add its authenticated cash delivery once.
+        metrics["earned-not-received"] = total([
+            ("approved-msc", 1, metrics["earned-not-received"]),
+            ("sky-staking-income", -1, staking),
+        ], reason="Approved MSC and separate SKY staking income-to-cash bridge")
+        metrics["earned-not-received"]["approved_msc_component"] = approved
+        metrics["earned-not-received"]["sky_staking_income_component"] = staking
+
+    if "investment.steakhouse_usdc" in income_lines:
+        accrued = source("investment.steakhouse_usdc")
+        previous = metrics["earned-not-received"]
+        metrics["earned-not-received"] = total([
+            ("existing-income-to-cash", 1, previous),
+            ("steakhouse-accrual", -1, accrued),
+        ], reason="Reverse treasury vault monthly accrual; add only actual redeemed yield in operating cash")
+        metrics["earned-not-received"]["approved_msc_component"] = approved
+        if "sky_staking_income_component" in previous:
+            metrics["earned-not-received"]["sky_staking_income_component"] = previous["sky_staking_income_component"]
+        metrics["earned-not-received"]["steakhouse_income_component"] = accrued
+
     subtotals(metrics)
     metrics["reconciliation-gap"] = total(
         [

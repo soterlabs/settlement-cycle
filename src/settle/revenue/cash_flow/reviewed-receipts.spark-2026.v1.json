@@ -1,0 +1,796 @@
+{
+  "schema_version": "spark-reviewed-cash-events.v1",
+  "reviewed_through": "2026-11-08",
+  "scope": "Finite reviewed historical events; no blanket payer-based recognition and no MSC changes",
+  "records": [
+    {
+      "chain": "ethereum",
+      "block": 24270980,
+      "log_index": 724,
+      "tx_hash": "0xe8e9fa97ba936198cb147decccb93e24852503d25240f82f4bfc3612800eebed",
+      "timestamp": 1768851707,
+      "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "from": "0xc8a3e1e0776b912047c89dc16470fd9c7ea1141d",
+      "to": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+      "amount_usd": "383178.08",
+      "parts": [
+        {
+          "line_id": "external-receipts",
+          "amount_usd": "383178.08",
+          "quality": "supported",
+          "reason": "Maple-related cash yield confirmed by operator; cash realization, not additional income accrual"
+        }
+      ],
+      "basis_pending": false,
+      "witnesses": []
+    },
+    {
+      "chain": "ethereum",
+      "block": 24486724,
+      "log_index": 157,
+      "tx_hash": "0x41de81597bc83c690f8dcac11b86acef76674c0a299b9dbca10ba0d82dc76f03",
+      "timestamp": 1771453847,
+      "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+      "from": "0x9008d19f58aabd9ed0d60971565aa8510560ab41",
+      "to": "0x2e1b01adabb8d4981863394bea23a1263cbaedfc",
+      "amount_usd": "85213.248321255096795136",
+      "parts": [
+        {
+          "line_id": "treasury-disposals",
+          "amount_usd": "85213.248321255096795136",
+          "quality": "supported",
+          "reason": "Verified nonstable treasury sale; cash proceeds are not new reward income"
+        }
+      ],
+      "basis_pending": false,
+      "witnesses": [
+        {
+          "contract": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+          "type": "Transfer",
+          "addresses": [
+            "0x2e1b01adabb8d4981863394bea23a1263cbaedfc",
+            "0x9008d19f58aabd9ed0d60971565aa8510560ab41"
+          ],
+          "values": [
+            "128588289"
+          ]
+        }
+      ]
+    },
+    {
+      "chain": "ethereum",
+      "block": 24486730,
+      "log_index": 86,
+      "tx_hash": "0x706cbea7d467d9d7f481938b07d89a9cc659c28a83ba30f096d9e06d29df02ef",
+      "timestamp": 1771453919,
+      "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+      "from": "0x9008d19f58aabd9ed0d60971565aa8510560ab41",
+      "to": "0x2e1b01adabb8d4981863394bea23a1263cbaedfc",
+      "amount_usd": "11094.292494352194987008",
+      "parts": [
+        {
+          "line_id": "treasury-disposals",
+          "amount_usd": "11094.292494352194987008",
+          "quality": "supported",
+          "reason": "Verified nonstable treasury sale; cash proceeds are not new reward income"
+        }
+      ],
+      "basis_pending": false,
+      "witnesses": [
+        {
+          "contract": "0x18084fba666a33d37592fa2633fd49a74dd93a88",
+          "type": "Transfer",
+          "addresses": [
+            "0x2e1b01adabb8d4981863394bea23a1263cbaedfc",
+            "0x9008d19f58aabd9ed0d60971565aa8510560ab41"
+          ],
+          "values": [
+            "167437196267251059"
+          ]
+        }
+      ]
+    },
+    {
+      "chain": "ethereum",
+      "block": 24486799,
+      "log_index": 8,
+      "tx_hash": "0x43932ed44ae76478eaa1d62f678480d30f6d61494e961391ec2c91be376254f0",
+      "timestamp": 1771454747,
+      "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+      "from": "0x9008d19f58aabd9ed0d60971565aa8510560ab41",
+      "to": "0x2e1b01adabb8d4981863394bea23a1263cbaedfc",
+      "amount_usd": "101347.090237865486467072",
+      "parts": [
+        {
+          "line_id": "treasury-disposals",
+          "amount_usd": "101347.090237865486467072",
+          "quality": "supported",
+          "reason": "Verified nonstable treasury sale; cash proceeds are not new reward income"
+        }
+      ],
+      "basis_pending": false,
+      "witnesses": [
+        {
+          "contract": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+          "type": "Transfer",
+          "addresses": [
+            "0x2e1b01adabb8d4981863394bea23a1263cbaedfc",
+            "0x9008d19f58aabd9ed0d60971565aa8510560ab41"
+          ],
+          "values": [
+            "42500000000000000000"
+          ]
+        }
+      ]
+    },
+    {
+      "chain": "ethereum",
+      "block": 24486806,
+      "log_index": 262,
+      "tx_hash": "0x26b76d24c38d09c6ee17a82f23ae5b0fd9d87aeed8983ef04e834a522b1dff60",
+      "timestamp": 1771454831,
+      "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+      "from": "0x9008d19f58aabd9ed0d60971565aa8510560ab41",
+      "to": "0x2e1b01adabb8d4981863394bea23a1263cbaedfc",
+      "amount_usd": "24655.524210852266841409",
+      "parts": [
+        {
+          "line_id": "treasury-disposals",
+          "amount_usd": "24655.524210852266841409",
+          "quality": "supported",
+          "reason": "Verified nonstable treasury sale; cash proceeds are not new reward income"
+        }
+      ],
+      "basis_pending": false,
+      "witnesses": [
+        {
+          "contract": "0xcd5fe23c85820f7b72d0926fc9b05b43e359b7ee",
+          "type": "Transfer",
+          "addresses": [
+            "0x2e1b01adabb8d4981863394bea23a1263cbaedfc",
+            "0x9008d19f58aabd9ed0d60971565aa8510560ab41"
+          ],
+          "values": [
+            "11662712450711485577"
+          ]
+        }
+      ]
+    },
+    {
+      "chain": "ethereum",
+      "block": 24486816,
+      "log_index": 57,
+      "tx_hash": "0x774d8908636ca97fad11bc3c7783389078cb51dd4686db194afb5c41ea04d363",
+      "timestamp": 1771454963,
+      "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+      "from": "0x9008d19f58aabd9ed0d60971565aa8510560ab41",
+      "to": "0x2e1b01adabb8d4981863394bea23a1263cbaedfc",
+      "amount_usd": "119406.245086789202153472",
+      "parts": [
+        {
+          "line_id": "treasury-disposals",
+          "amount_usd": "119406.245086789202153472",
+          "quality": "supported",
+          "reason": "Verified nonstable treasury sale; cash proceeds are not new reward income"
+        }
+      ],
+      "basis_pending": false,
+      "witnesses": [
+        {
+          "contract": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+          "type": "Transfer",
+          "addresses": [
+            "0x2e1b01adabb8d4981863394bea23a1263cbaedfc",
+            "0x9008d19f58aabd9ed0d60971565aa8510560ab41"
+          ],
+          "values": [
+            "50060691998804616319"
+          ]
+        }
+      ]
+    },
+    {
+      "chain": "ethereum",
+      "block": 24586448,
+      "log_index": 151,
+      "tx_hash": "0x5786db88459ff7b48da1759eba2bc3f55d68ea2f7049dd76e83a286dbfe91cea",
+      "timestamp": 1772655695,
+      "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+      "from": "0x9008d19f58aabd9ed0d60971565aa8510560ab41",
+      "to": "0x2e1b01adabb8d4981863394bea23a1263cbaedfc",
+      "amount_usd": "13664.626203941363789794",
+      "parts": [
+        {
+          "line_id": "treasury-disposals",
+          "amount_usd": "13664.626203941363789794",
+          "quality": "supported",
+          "reason": "Verified nonstable treasury sale; cash proceeds are not new reward income"
+        }
+      ],
+      "basis_pending": false,
+      "witnesses": [
+        {
+          "contract": "0xae78736cd615f374d3085123a210448e74fc6393",
+          "type": "Transfer",
+          "addresses": [
+            "0x2e1b01adabb8d4981863394bea23a1263cbaedfc",
+            "0x9008d19f58aabd9ed0d60971565aa8510560ab41"
+          ],
+          "values": [
+            "5442219919328103035"
+          ]
+        }
+      ]
+    },
+    {
+      "chain": "ethereum",
+      "block": 24586605,
+      "log_index": 257,
+      "tx_hash": "0xa7adc6e7324721d2ffec7dd3d44010caa4fe67de36c646a84fddd5574a29d251",
+      "timestamp": 1772657579,
+      "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+      "from": "0x9008d19f58aabd9ed0d60971565aa8510560ab41",
+      "to": "0x2e1b01adabb8d4981863394bea23a1263cbaedfc",
+      "amount_usd": "27047.401251685711108753",
+      "parts": [
+        {
+          "line_id": "treasury-disposals",
+          "amount_usd": "27047.401251685711108753",
+          "quality": "supported",
+          "reason": "Verified nonstable treasury sale; cash proceeds are not new reward income"
+        }
+      ],
+      "basis_pending": false,
+      "witnesses": [
+        {
+          "contract": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "type": "Transfer",
+          "addresses": [
+            "0x2e1b01adabb8d4981863394bea23a1263cbaedfc",
+            "0x9008d19f58aabd9ed0d60971565aa8510560ab41"
+          ],
+          "values": [
+            "37021430"
+          ]
+        }
+      ]
+    },
+    {
+      "chain": "ethereum",
+      "block": 24600227,
+      "log_index": 91,
+      "tx_hash": "0xa1dafc1c7b0b36ccca9f50801addf3efcf115f29d5c8e4a7eb7f9cabdcba8cbf",
+      "timestamp": 1772821955,
+      "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+      "from": "0x19891541842162ad4311f14055e7221406213d67",
+      "to": "0x9008d19f58aabd9ed0d60971565aa8510560ab41",
+      "amount_usd": "-47522.902265232988598019",
+      "parts": [
+        {
+          "line_id": "internal-routing",
+          "amount_usd": "-47520",
+          "quality": "supported",
+          "reason": "Verified USDS-to-USDT cash conversion; paired cash legs are not operating expenses"
+        },
+        {
+          "line_id": "unclassified",
+          "amount_usd": "-2.902265232988598019",
+          "quality": "supported",
+          "reason": "Observed stablecoin conversion shortfall; fee/price-impact attribution unresolved"
+        }
+      ],
+      "basis_pending": false,
+      "witnesses": [
+        {
+          "contract": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "type": "Transfer",
+          "addresses": [
+            "0x9008d19f58aabd9ed0d60971565aa8510560ab41",
+            "0x4f493b7de8aac7d55f71853688b1f7c8f0243c85"
+          ],
+          "values": [
+            "47520171107"
+          ],
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        {
+          "contract": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+          "type": "Transfer",
+          "addresses": [
+            "0x9008d19f58aabd9ed0d60971565aa8510560ab41",
+            "0x19891541842162ad4311f14055e7221406213d67"
+          ],
+          "values": [
+            "47520000000"
+          ],
+          "symbol": "USDT",
+          "decimals": 6
+        }
+      ]
+    },
+    {
+      "chain": "ethereum",
+      "block": 24600227,
+      "log_index": 108,
+      "tx_hash": "0xa1dafc1c7b0b36ccca9f50801addf3efcf115f29d5c8e4a7eb7f9cabdcba8cbf",
+      "timestamp": 1772821955,
+      "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      "from": "0x9008d19f58aabd9ed0d60971565aa8510560ab41",
+      "to": "0x19891541842162ad4311f14055e7221406213d67",
+      "amount_usd": "47520",
+      "parts": [
+        {
+          "line_id": "internal-routing",
+          "amount_usd": "47520",
+          "quality": "supported",
+          "reason": "Verified USDS-to-USDT cash conversion; paired cash legs are not operating expenses"
+        }
+      ],
+      "basis_pending": false,
+      "witnesses": [
+        {
+          "contract": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+          "type": "Transfer",
+          "addresses": [
+            "0x19891541842162ad4311f14055e7221406213d67",
+            "0x9008d19f58aabd9ed0d60971565aa8510560ab41"
+          ],
+          "values": [
+            "47522902265232988598019"
+          ],
+          "symbol": "USDS",
+          "decimals": 18
+        }
+      ]
+    },
+    {
+      "chain": "ethereum",
+      "block": 24763604,
+      "log_index": 188,
+      "tx_hash": "0xa6603dc8038b456b4d6ced1db46811352811f2954721f0f36033b42341769575",
+      "timestamp": 1774791671,
+      "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+      "from": "0x74bf5ab1c53e7b5ccec8d7107a76aea4e058cdf7",
+      "to": "0x8a3c66b30e2bbe5c2b1cff1054d869171fb87766",
+      "amount_usd": "2095.067540312875692237",
+      "parts": [
+        {
+          "line_id": "external-receipts",
+          "amount_usd": "2095.067540312875692237",
+          "quality": "supported",
+          "reason": "Verified LSSKY USDS farm RewardPaid routed through owned urn to DevCo Safe"
+        }
+      ],
+      "basis_pending": false,
+      "witnesses": []
+    },
+    {
+      "chain": "ethereum",
+      "block": 24843979,
+      "log_index": 444,
+      "tx_hash": "0xb53acf3fd94c71c783e95e58d20701ebeceaf4352298bca962aa86f01d755846",
+      "timestamp": 1775759627,
+      "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "from": "0xbeef3f3a04e28895f3d5163d910474901981183d",
+      "to": "0x19891541842162ad4311f14055e7221406213d67",
+      "amount_usd": "561386.572024",
+      "parts": [
+        {
+          "line_id": "allocation-changes",
+          "amount_usd": "561386.572024",
+          "quality": "estimate",
+          "reason": "Verified 3F x Steakhouse USDC redemption; principal/yield basis remains unresolved"
+        }
+      ],
+      "basis_pending": true,
+      "witnesses": [
+        {
+          "contract": "0xbeef01735c132ada46aa9aa4c54623caa92a64cb",
+          "type": "Withdraw",
+          "addresses": [
+            "0x2be716e4c461bb67a38d07f33309ee339f855c04",
+            "0x2be716e4c461bb67a38d07f33309ee339f855c04",
+            "0x2be716e4c461bb67a38d07f33309ee339f855c04"
+          ],
+          "values": [
+            "561386572024",
+            "500182321819506904624362"
+          ]
+        },
+        {
+          "contract": "0xbeef3f3a04e28895f3d5163d910474901981183d",
+          "type": "Transfer",
+          "addresses": [
+            "0x19891541842162ad4311f14055e7221406213d67",
+            "0x0000000000000000000000000000000000000000"
+          ],
+          "values": [
+            "557476248985966572714667"
+          ]
+        },
+        {
+          "contract": "0xbeef3f3a04e28895f3d5163d910474901981183d",
+          "type": "Withdraw",
+          "addresses": [
+            "0x19891541842162ad4311f14055e7221406213d67",
+            "0x19891541842162ad4311f14055e7221406213d67",
+            "0x19891541842162ad4311f14055e7221406213d67"
+          ],
+          "values": [
+            "561386572024",
+            "557476248985966572714667"
+          ]
+        }
+      ]
+    },
+    {
+      "chain": "ethereum",
+      "block": 24849642,
+      "log_index": 347,
+      "tx_hash": "0x007cd50c9db6d66c6d7b66a16e0fd037056e421f3c73f5e4e6af533f6a983922",
+      "timestamp": 1775827931,
+      "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "from": "0xbeef3f3a04e28895f3d5163d910474901981183d",
+      "to": "0x8a3c66b30e2bbe5c2b1cff1054d869171fb87766",
+      "amount_usd": "553459.509411",
+      "parts": [
+        {
+          "line_id": "allocation-changes",
+          "amount_usd": "553459.509411",
+          "quality": "estimate",
+          "reason": "Verified 3F x Steakhouse USDC redemption; principal/yield basis remains unresolved"
+        }
+      ],
+      "basis_pending": true,
+      "witnesses": [
+        {
+          "contract": "0xbeef01735c132ada46aa9aa4c54623caa92a64cb",
+          "type": "Withdraw",
+          "addresses": [
+            "0x2be716e4c461bb67a38d07f33309ee339f855c04",
+            "0x2be716e4c461bb67a38d07f33309ee339f855c04",
+            "0x2be716e4c461bb67a38d07f33309ee339f855c04"
+          ],
+          "values": [
+            "553459509411",
+            "493095767280312344534900"
+          ]
+        },
+        {
+          "contract": "0xbeef3f3a04e28895f3d5163d910474901981183d",
+          "type": "Transfer",
+          "addresses": [
+            "0x8a3c66b30e2bbe5c2b1cff1054d869171fb87766",
+            "0x0000000000000000000000000000000000000000"
+          ],
+          "values": [
+            "549577957362804707757276"
+          ]
+        },
+        {
+          "contract": "0xbeef3f3a04e28895f3d5163d910474901981183d",
+          "type": "Withdraw",
+          "addresses": [
+            "0x8a3c66b30e2bbe5c2b1cff1054d869171fb87766",
+            "0x8a3c66b30e2bbe5c2b1cff1054d869171fb87766",
+            "0x8a3c66b30e2bbe5c2b1cff1054d869171fb87766"
+          ],
+          "values": [
+            "553459509411",
+            "549577957362804707757276"
+          ]
+        }
+      ]
+    },
+    {
+      "chain": "ethereum",
+      "block": 24937284,
+      "log_index": 416,
+      "tx_hash": "0x87d87f42f6dbd5a72f51dbeacc747a52cba275d3e9619396b060700ecf7db4fc",
+      "timestamp": 1776882755,
+      "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "from": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+      "to": "0xa29e963992597b21bcdcaa969d571984869c4ff5",
+      "amount_usd": "-100000",
+      "parts": [
+        {
+          "line_id": "internal-routing",
+          "amount_usd": "-100000",
+          "quality": "supported",
+          "reason": "Verified reviewed B2C2 USDC-to-USDT cash conversion; exact paired transfer identities"
+        }
+      ],
+      "basis_pending": false,
+      "witnesses": [],
+      "conversion_group": "b2c2-2026-04-22-1"
+    },
+    {
+      "chain": "ethereum",
+      "block": 24937537,
+      "log_index": 646,
+      "tx_hash": "0x163cd855925f958ff2d7d5e125185af0af961f1f7f191be6cec0b1e488e9ee7b",
+      "timestamp": 1776885827,
+      "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      "from": "0xa29e963992597b21bcdcaa969d571984869c4ff5",
+      "to": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+      "amount_usd": "100000",
+      "parts": [
+        {
+          "line_id": "internal-routing",
+          "amount_usd": "100000",
+          "quality": "supported",
+          "reason": "Verified reviewed B2C2 USDC-to-USDT cash conversion; exact paired transfer identities"
+        }
+      ],
+      "basis_pending": false,
+      "witnesses": [],
+      "conversion_group": "b2c2-2026-04-22-1"
+    },
+    {
+      "chain": "ethereum",
+      "block": 24937574,
+      "log_index": 391,
+      "tx_hash": "0x78fdb0314ba0dcd111e9120006925f8ae32b5e1969871e6e178d6722f8e3aa08",
+      "timestamp": 1776886271,
+      "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "from": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+      "to": "0xa29e963992597b21bcdcaa969d571984869c4ff5",
+      "amount_usd": "-1000000",
+      "parts": [
+        {
+          "line_id": "internal-routing",
+          "amount_usd": "-999314",
+          "quality": "supported",
+          "reason": "Verified reviewed B2C2 USDC-to-USDT cash conversion; exact paired transfer identities"
+        },
+        {
+          "line_id": "unclassified",
+          "amount_usd": "-686",
+          "quality": "supported",
+          "reason": "B2C2 cash conversion shortfall; fee versus retained cash remains unresolved"
+        }
+      ],
+      "basis_pending": false,
+      "witnesses": [],
+      "conversion_group": "b2c2-2026-04-22-2"
+    },
+    {
+      "chain": "ethereum",
+      "block": 24937720,
+      "log_index": 771,
+      "tx_hash": "0x50f97d2b56db41030af13681323d146360ffbe0cffac9a780954c89c4a52c0dc",
+      "timestamp": 1776888023,
+      "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      "from": "0xa29e963992597b21bcdcaa969d571984869c4ff5",
+      "to": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+      "amount_usd": "999314",
+      "parts": [
+        {
+          "line_id": "internal-routing",
+          "amount_usd": "999314",
+          "quality": "supported",
+          "reason": "Verified reviewed B2C2 USDC-to-USDT cash conversion; exact paired transfer identities"
+        }
+      ],
+      "basis_pending": false,
+      "witnesses": [],
+      "conversion_group": "b2c2-2026-04-22-2"
+    },
+    {
+      "chain": "ethereum",
+      "block": 24938089,
+      "log_index": 146,
+      "tx_hash": "0x96329886520c2120b55cceb9ea4b55972da979e61c493c759a0d2e7980538d00",
+      "timestamp": 1776892499,
+      "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "from": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+      "to": "0xa29e963992597b21bcdcaa969d571984869c4ff5",
+      "amount_usd": "-1000000",
+      "parts": [
+        {
+          "line_id": "internal-routing",
+          "amount_usd": "-999320",
+          "quality": "supported",
+          "reason": "Verified reviewed B2C2 USDC-to-USDT cash conversion; exact paired transfer identities"
+        },
+        {
+          "line_id": "unclassified",
+          "amount_usd": "-680",
+          "quality": "supported",
+          "reason": "B2C2 cash conversion shortfall; fee versus retained cash remains unresolved"
+        }
+      ],
+      "basis_pending": false,
+      "witnesses": [],
+      "conversion_group": "b2c2-2026-04-22-3"
+    },
+    {
+      "chain": "ethereum",
+      "block": 24938157,
+      "log_index": 437,
+      "tx_hash": "0x3ae986a47cce5e05b0ac3cacd404be466a7a042207360e8ed30524d1921dba4d",
+      "timestamp": 1776893315,
+      "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      "from": "0xa29e963992597b21bcdcaa969d571984869c4ff5",
+      "to": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+      "amount_usd": "999320",
+      "parts": [
+        {
+          "line_id": "internal-routing",
+          "amount_usd": "999320",
+          "quality": "supported",
+          "reason": "Verified reviewed B2C2 USDC-to-USDT cash conversion; exact paired transfer identities"
+        }
+      ],
+      "basis_pending": false,
+      "witnesses": [],
+      "conversion_group": "b2c2-2026-04-22-3"
+    },
+    {
+      "chain": "ethereum",
+      "block": 25739145,
+      "timestamp": 1786540439,
+      "log_index": 585,
+      "tx_hash": "0x2d4f499b6eadce1aab46192756e020b419ddecb56e7980672f7c0848d7763dcf",
+      "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      "from": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+      "to": "0xd010b876696f345d9e0a1b70f573244fcc2e0a0e",
+      "amount_usd": "-2000",
+      "basis_pending": false,
+      "witnesses": [],
+      "parts": [
+        {
+          "line_id": "allocation-changes",
+          "amount_usd": "-2000",
+          "quality": "supported",
+          "reason": "Verified approved Binance OTC principal advance; actual USDT funding leg"
+        }
+      ]
+    },
+    {
+      "chain": "ethereum",
+      "block": 25739399,
+      "log_index": 174,
+      "tx_hash": "0x7e5bee5a406bd57995ea23849f961defca52051c168a6bc9e9052331687d1a93",
+      "timestamp": 1786543499,
+      "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      "from": "0x1851c64bbfad132cbe75481f1690c381288ea492",
+      "to": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+      "amount_usd": "2249.42819",
+      "parts": [
+        {
+          "line_id": "allocation-changes",
+          "amount_usd": "2000",
+          "quality": "supported",
+          "reason": "Verified Binance OTC return; previously funded principal only"
+        },
+        {
+          "line_id": "unclassified",
+          "amount_usd": "249.42819",
+          "quality": "supported",
+          "reason": "Binance OTC excess over established principal; not inferred to be yield"
+        }
+      ],
+      "basis_pending": false,
+      "witnesses": [
+        {
+          "contract": "0xb0c424116172b55cbb6dd3136f5989f7959e5b91",
+          "type": "Transfer",
+          "addresses": [
+            "0x1601843c5e9bc251a3272907010afa41fa18347e",
+            "0x0000000000000000000000000000000000000000"
+          ],
+          "values": [
+            "11962071733575807941694"
+          ],
+          "symbol": "sparkUSDTbc",
+          "decimals": 18
+        },
+        {
+          "contract": "0xb0c424116172b55cbb6dd3136f5989f7959e5b91",
+          "type": "Withdraw",
+          "addresses": [
+            "0x1601843c5e9bc251a3272907010afa41fa18347e",
+            "0x1601843c5e9bc251a3272907010afa41fa18347e",
+            "0x1601843c5e9bc251a3272907010afa41fa18347e"
+          ],
+          "values": [
+            "12093858204",
+            "11962071733575807941694"
+          ],
+          "symbol": "sparkUSDTbc",
+          "decimals": 18
+        },
+        {
+          "contract": "0xb0c424116172b55cbb6dd3136f5989f7959e5b91",
+          "type": "Transfer",
+          "addresses": [
+            "0x1601843c5e9bc251a3272907010afa41fa18347e",
+            "0x0000000000000000000000000000000000000000"
+          ],
+          "values": [
+            "1057730437927263260745"
+          ],
+          "symbol": "sparkUSDTbc",
+          "decimals": 18
+        },
+        {
+          "contract": "0xb0c424116172b55cbb6dd3136f5989f7959e5b91",
+          "type": "Withdraw",
+          "addresses": [
+            "0x1601843c5e9bc251a3272907010afa41fa18347e",
+            "0x1601843c5e9bc251a3272907010afa41fa18347e",
+            "0x1601843c5e9bc251a3272907010afa41fa18347e"
+          ],
+          "values": [
+            "1069383483",
+            "1057730437927263260745"
+          ],
+          "symbol": "sparkUSDTbc",
+          "decimals": 18
+        },
+        {
+          "contract": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "type": "Transfer",
+          "addresses": [
+            "0x1601843c5e9bc251a3272907010afa41fa18347e",
+            "0x37305b1cd40574e4c5ce33f8e8306be057fd7341"
+          ],
+          "values": [
+            "250626573220"
+          ],
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        {
+          "contract": "0x6b175474e89094c44da98b954eedeac495271d0f",
+          "type": "Transfer",
+          "addresses": [
+            "0x1601843c5e9bc251a3272907010afa41fa18347e",
+            "0x3225737a9bbb6473cb4a45b7244aca2befdb276a"
+          ],
+          "values": [
+            "250626573220000000000000"
+          ],
+          "symbol": "DAI",
+          "decimals": 18
+        },
+        {
+          "contract": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+          "type": "Transfer",
+          "addresses": [
+            "0x1601843c5e9bc251a3272907010afa41fa18347e",
+            "0xc395d150e71378b47a1b8e9de0c1a83b75a08324"
+          ],
+          "values": [
+            "250626573220000000000000"
+          ],
+          "symbol": "USDS",
+          "decimals": 18
+        }
+      ]
+    },
+    {
+      "chain": "ethereum",
+      "block": 25739427,
+      "timestamp": 1786543835,
+      "log_index": 491,
+      "tx_hash": "0x1927ade1558dd5fbd33abe0e784d207648372593811bb7c469a88574ed46b6a2",
+      "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      "from": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+      "to": "0xd010b876696f345d9e0a1b70f573244fcc2e0a0e",
+      "amount_usd": "-2000",
+      "basis_pending": false,
+      "witnesses": [],
+      "parts": [
+        {
+          "line_id": "allocation-changes",
+          "amount_usd": "-2000",
+          "quality": "supported",
+          "reason": "Verified approved Binance OTC principal advance; actual USDT funding leg"
+        }
+      ]
+    }
+  ]
+}
