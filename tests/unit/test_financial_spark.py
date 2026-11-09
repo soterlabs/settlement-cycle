@@ -112,3 +112,10 @@ def test_rlusd_is_msc_while_usdg_retains_reporting_only_scope():
     assert rlusd.settles and rlusd.reporting_view.enabled and not rlusd.cof_excluded
     assert not usdg.settles and usdg.reporting_view.enabled and usdg.cof_excluded
     assert {venue.token.decimals for venue in markets} == {6, 18}
+
+
+def test_rlusd_msc_configuration_preserves_reviewed_reserve_attribution():
+    source = saved(configuration='baa6f489d0eb3679d269ddf28472e6585d96d9d3db39ad32abc5e2b16c00543a')
+    report = statement(source, spark_income=True)
+    assert cell(report, 'fees.sparklend')['known_value'] == '10'
+    assert cell(report, 'rewards.unattributed_sparklend_receipts')['value'] == '0'

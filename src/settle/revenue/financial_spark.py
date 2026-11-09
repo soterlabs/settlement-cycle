@@ -25,6 +25,10 @@ REVIEWED_CONFIGURATIONS = {
     '244e91c22e06b4cbf1a573239571363f057c4c8ce9d40dc2e2735fd07f594f43',
     '1396a71440f5476ce8a9b9d87eb3bdfc587861cd139ad0481d76d4ed26314529',
     'da77310707751cae619941f4a35e937d8f880167b5af57a58ae5db20376c7067',
+    # PR #267 on current main: S70 enters MSC and Sentora is S72. The
+    # additional issuer sender delivers raw RLUSD, not reserve spTokens;
+    # the two authenticated reserve-treasury sources remain unchanged.
+    'baa6f489d0eb3679d269ddf28472e6585d96d9d3db39ad32abc5e2b16c00543a',
 }
 
 
