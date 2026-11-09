@@ -2518,7 +2518,7 @@ def compute_monthly_pnl(
                 .sort_values("block_date").reset_index(drop=True)
             )
     # Basin/pocket USDS is a separate, dated exemption capped at one ilk.
-    from ..normalize.basin import get_basin_idle_usds
+    from ..normalize.basin import basin_cash_by_venue, get_basin_idle_usds
 
     basin_idle_usds = get_basin_idle_usds(prime, period, block_resolver=resolver)
     # Prime's share of unborrowed underlying in configured lending pools.
@@ -4365,6 +4365,7 @@ def compute_monthly_pnl(
         susds_spread_reimbursement=total_susds_spread_reimb,
         sky_revenue_gross=sky_rev_gross,
         subsidy_summary=subsidy_summary,
+        basin_cash_reporting=basin_cash_by_venue(prime, period, basin_idle_usds),
     )
     if not sky_only:
         from .venue_views import build_venue_views
