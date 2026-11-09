@@ -298,9 +298,11 @@ def read_sky_total(month: str) -> SkyTotal:
         msc_net=_require(rows, "msc net (accrual)", "Sky Net Revenue", path=path),
         non_msc_net=_require(rows, "non-msc net", "Sky Net Revenue", path=path),
         snr=_require(rows, "sky net revenue", "Sky Net Revenue", path=path),
-        # The report prints this warning when config/sky_total.yaml carries no
-        # msc_preview entry, i.e. nothing is pinned to a published MSC post.
-        pinned="msc_preview: no entry" not in text,
+        # Adjustments (such as an Osero refund) do not pin the ordinary
+        # monthly mint/send amounts. Preserve both compute-layer warnings.
+        pinned=not any(marker in text for marker in (
+            "msc_preview: no entry", "not a fully reconciled MSC preview",
+        )),
     )
 
     # Cross-check the rows we parsed against the report's own totals. Catches
