@@ -258,5 +258,11 @@ def annual(prime, year, as_of, rows, *, selection=None, review=True):
         },
         "source_note": "Cash amounts use event evidence. Net income/expenses use retained reporting inputs; provisional or unclassified components retain their status.",
     }
+    if any(
+        name in (item["document"]["metrics"].get("earned-not-received") or {})
+        for item in chosen if item
+        for name in ("sky_staking_income_component", "steakhouse_income_component")
+    ):
+        result["methodology"]["msc_receivable_basis"] = "approved_msc_component"
     result["report_hash"] = digest(result)
     return result
