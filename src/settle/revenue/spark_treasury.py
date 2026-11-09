@@ -122,7 +122,7 @@ def native_events(owner, start, end):
 
 
 def collect(source):
-    config = load()
+    config = load(review=getattr(source, "review_scope", False))
     before, end = source.period.start - timedelta(days=1), source.period.end
     result = {"fees": {}, "rewards": {}, "gains": {}, "errors": {}, "cash_disposals": []}
     # MORPHO rewards belong to the reporting entity, including Foundation.

@@ -1,5 +1,11 @@
 # Spark 2026 reporting history
 
+For the November-reviewed income/cash policy and exact rollout order see
+[SPARK_REVIEW_2026_11.md](../../src/settle/revenue/SPARK_REVIEW_2026_11.md).
+[Income](../../src/settle/revenue/INCOME_STATEMENT_GUIDE.md) and
+[cash-flow](../../src/settle/revenue/CASH_FLOW_STATEMENT_GUIDE.md) guides define
+principal, price revaluation, self-fees and contributor token compensation.
+
 Backfill completed calendar months and the latest completed UTC day of the
 current month. Future months retain their future state; unavailable inputs
 remain unavailable. This operation publishes independent reporting components,
@@ -57,5 +63,5 @@ and AMM endpoints use the same completed values as the statement.
 The dashboard accepts both versions, fetches current live responses and refreshes
 visible pages every 30 seconds or when focus/connectivity returns. New available
 cells replace TBD without resetting filters or expanded rows. Estimated monthly
-fallbacks retain estimate coloring. A failed refresh keeps the last validated
+fallbacks retain estimate metadata and the dashboard estimate marker. A failed refresh keeps the last validated
 response and its retained-data treatment; saved exports remain pinned.

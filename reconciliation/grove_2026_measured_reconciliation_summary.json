@@ -1,0 +1,54 @@
+{
+  "status": "partial_2026_measurements_not_full_year",
+  "sign": "Positive benefits Grove; negative is a debit",
+  "whole_year_total": null,
+  "coverage_note": "Identified corrections primarily through September. Unreviewed months and venues are not zero. No execution or extra off-report adjustments are asserted.",
+  "venues": {
+    "E9": {
+      "label": "JTRSY",
+      "coverage": "identified Jan-May CoF cases",
+      "already_configured_in_october_bridge": "68310.04",
+      "further_measured_not_booked": "35889.68"
+    },
+    "E10": {
+      "label": "BUIDL",
+      "coverage": "May/Aug/Sep CoF and Jan-Aug small-share/cash-cost reconciliation",
+      "already_configured_in_october_bridge": "43637.97",
+      "further_measured_not_booked": "-4000.18"
+    },
+    "E8": {
+      "label": "JAAA",
+      "coverage": "March settlement-day CoF debit",
+      "already_configured_in_october_bridge": "-33417.95",
+      "further_measured_not_booked": "0.00"
+    },
+    "E43": {
+      "label": "Base Grove x Steakhouse USDC",
+      "coverage": "September only",
+      "already_configured_in_october_bridge": "0.00",
+      "further_measured_not_booked": "7219.49"
+    },
+    "E44": {
+      "label": "Diamond PAU Uniswap",
+      "coverage": "September only; earlier position history not quantified",
+      "already_configured_in_october_bridge": "0.00",
+      "further_measured_not_booked": "1002.55"
+    },
+    "E42": {
+      "label": "Warehouse principal schedule",
+      "coverage": "September CoF redistribution only",
+      "already_configured_in_october_bridge": "0.00",
+      "further_measured_not_booked": "0.00"
+    },
+    "E41": {
+      "label": "Basin reporting",
+      "coverage": "Reporting redistribution only; existing September exemption unchanged",
+      "already_configured_in_october_bridge": "0.00",
+      "further_measured_not_booked": "0.00"
+    }
+  },
+  "already_configured_cof_total": "78530.06",
+  "further_measured_total": "40111.54",
+  "measured_total_including_configured_cof": "118641.60",
+  "excluded": "Earlier September BUIDL 165,013.90 credit; separately configured partner rebates (including 2025 earnings); normal monthly income and unquantified Robinhood/earlier LP receipts. Do not book configured CoF twice."
+}

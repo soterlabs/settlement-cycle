@@ -12,6 +12,9 @@ from .verification import canonical, digest
 
 
 def validate_document(document):
+    if document.get("sde_cash") is not None:
+        from .spark_sde_cash import validate_document as validate_sde
+        validate_sde(document)
     if (
         document.get("schema_version") != "spark-onchain.v1"
         or document["period_start"] != document["cutoff"][:7] + "-01"
@@ -62,6 +65,25 @@ def validate_document(document):
                 )
                 if min(opening, paid, closing) < 0 or opening + earned - paid != closing:
                     raise ValueError("Unreconciled curator fee ledger")
+        for venue, row in document.get("curator_attribution", {}).items():
+            from .spark_onchain import CURATORS
+            spec = next((spec for spec in CURATORS if spec[0] == venue), None)
+            attribution = row.get("attribution", {})
+            if spec is None or (row.get("venue"), row.get("chain"), row.get("vault")) != spec[:3]:
+                raise ValueError("Unexpected attributed curator identity")
+            if attribution.get("status") != "available":
+                raise ValueError("Incomplete curator attribution must remain in the error ledger")
+            scope = attribution.get("ownership_scope", [])
+            if (not scope or scope != sorted(set(scope)) or row["recipient_filter"] not in scope
+                    or any(len(a) != 42 or not a.startswith("0x") for a in scope)):
+                raise ValueError("Invalid curator ownership scope")
+            for gross, own, external in (("accrued_usd", "self_rebate_accrued_usd", "external_accrued_usd"),
+                                          ("received_usd", "self_received_usd", "external_received_usd")):
+                if abs(number(row[gross]) - number(attribution[own]) - number(attribution[external])) > Decimal("1e-45"):
+                    raise ValueError("Curator self/external split does not reproduce gross fees")
+            for edge in ("opening", "closing"):
+                if not 0 <= number(attribution[edge + "_owned_shares"]) <= number(row[edge + "_total_supply"]):
+                    raise ValueError("Controlled shares exceed total vault supply")
         from .spark_savings import VAULTS
 
         expected_assets = dict(

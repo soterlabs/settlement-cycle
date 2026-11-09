@@ -76,7 +76,7 @@ def test_sde_is_leg_and_date_specific_and_keeps_real_cash():
     curve = "0x00836fe54625be242bcfa286207795405ca4fd10"
     assert WINDOWS["S24"] == (date(2025, 11, 13), date(2026, 6, 25))
     for day, expected in [
-        ("2026-06-25", "sky-direct-deployments"),
+        ("2026-06-25", "allocation-changes"),
         ("2026-06-26", "allocation-changes"),
     ]:
         row = transfer(USDT, ALM, curve, 100 * 10**6, day)
@@ -175,16 +175,17 @@ def test_contributor_input_revision_replays_after_the_current_sheet_changes(tmp_
     from settle.revenue.verification import digest
 
     initial, revision = expense_inputs.contributor_input()
-    old_report = statements("spark", 2026, date(2026, 10, 31), [], spark_statement=True)
+    old_report = statements("spark", 2026, date(2026, 10, 31), [], spark_statement=True, spark_review=True)
     archive = tmp_path / "published_expenses"
     archive.mkdir()
     (archive / (revision + ".json")).write_text(json.dumps(initial))
     updated = deepcopy(initial)
+    updated.pop("schedule", None)  # A later sheet can replace the provisional grant schedule.
     updated["months"]["2026-10"] = "100"
     (tmp_path / "contributor_compensation.json").write_text(json.dumps(updated))
     (archive / (digest(updated) + ".json")).write_text(json.dumps(updated))
     monkeypatch.setattr(expense_inputs, "files", lambda package: tmp_path)
-    new_report = statements("spark", 2026, date(2026, 10, 31), [], spark_statement=True)
+    new_report = statements("spark", 2026, date(2026, 10, 31), [], spark_statement=True, spark_review=True)
     assert new_report["expense_input_revision"] != old_report["expense_input_revision"]
     replay = statements(
         "spark",

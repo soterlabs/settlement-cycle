@@ -68,7 +68,7 @@ def publish(conn, document, events, code_version):
 
 
 def year_rows(conn, prime, year, revisions=None, as_of=None):
-    distinct = "cutoff" if revisions is not None else "date_trunc('month',cutoff)"
+    distinct = "policy_version,cutoff" if revisions is not None else "policy_version,date_trunc('month',cutoff)"
     query = f"""SELECT DISTINCT ON({distinct}) revision_id,publication_order,prime,cutoff,policy_version,computed_at,document,document_hash,evidence_hash,code_version,configuration_revision
     FROM reporting_cash_flow_publications WHERE prime=%s AND cutoff BETWEEN %s AND %s"""
     params = [
@@ -88,6 +88,7 @@ def year_rows(conn, prime, year, revisions=None, as_of=None):
             digest(row["document"]) != row["document_hash"]
             or row["document"]["cutoff"] != row["cutoff"]
             or row["document"]["prime"] != prime
+            or row["document"]["policy_version"] != row["policy_version"]
         ):
             raise ValueError("Cash-flow publication hash/scope differs")
         validate(row["document"])
@@ -146,5 +147,7 @@ def balances(conn, prime, month, revision):
         "revision": revision,
         "document_hash": row["document_hash"],
         "balance_witnesses": row["document"].get("balance_witnesses", {}),
+        **({"sde_principal_witnesses": row["document"]["sde_principal_witnesses"]}
+           if "sde_principal_witnesses" in row["document"] else {}),
         "coverage": row["document"]["coverage"],
     }

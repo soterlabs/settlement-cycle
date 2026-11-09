@@ -9,7 +9,7 @@ from ..revenue.financial import (
     RWA_POLICIES,
     SPARK_AMM_POLICIES,
     SPARK_INCOME_POLICIES,
-    SPARK_RECONCILED_POLICY,
+    SPARK_RECONCILED_POLICIES,
     SPARK_STATEMENT_POLICIES,
     STATEMENT_SOURCE_POLICY,
     decode_selection,
@@ -34,7 +34,7 @@ def register_financial(app, get_reader, document_response):
         except Exception:
             raise HTTPException(503, 'Financial reporting store unavailable', headers={'Cache-Control': 'no-store'}) from None
 
-    def annual(prime, year, scope, cutoff, revision, r, *, accounting=False):
+    def annual(prime, year, scope, cutoff, revision, r, *, accounting=False, review=False):
         validate(prime, scope, cutoff)
         if date(year, 1, 1) >= revenue.today():
             raise HTTPException(422, 'year must include a completed UTC day')
@@ -64,7 +64,7 @@ def register_financial(app, get_reader, document_response):
         try:
             result = statements(prime, year, as_of, rows,
                                 exact=selection['exact'] if selection else cutoff is not None,
-                                selection=selection, monthly=True, rollups=True, rwa=True, allocation_rewards=True, offchain=True, archive=True, spark_income=prime == 'spark', spark_publications=spark_rows, spark_amms=prime == 'spark', spark_statement=prime == 'spark', spark_accounting=accounting)
+                                selection=selection, monthly=True, rollups=True, rwa=True, allocation_rewards=True, offchain=True, archive=True, spark_income=prime == 'spark', spark_publications=spark_rows, spark_amms=prime == 'spark', spark_statement=prime == 'spark', spark_accounting=accounting or review, spark_review=review)
         except ValueError as exc:
             raise HTTPException(404, str(exc), headers={'Cache-Control': 'no-store'}) from None
         selected_ids = {p['financial_revision'] for p in result['periods'] if p['financial_revision']}
@@ -75,9 +75,9 @@ def register_financial(app, get_reader, document_response):
     def statement(request: Request, prime: str, year: int = Query(ge=2020, le=9998),
                   scope: Literal['individual', 'group', 'combined'] = 'individual',
                   cutoff: date | None = None, revision: str | None = Query(None, max_length=4096),
-                  accounting: bool = False,
+                  accounting: bool = False, review: bool = False,
                   r=Depends(get_reader)):  # noqa: B008
-        return document_response(request, annual(prime, year, scope, cutoff, revision, r, accounting=accounting))
+        return document_response(request, annual(prime, year, scope, cutoff, revision, r, accounting=accounting, review=review))
 
     @app.get('/v3/reporting/spark/msc-reconciliation')
     def spark_msc_reconciliation(request: Request, year: int = Query(ge=2020, le=9998),
@@ -88,7 +88,7 @@ def register_financial(app, get_reader, document_response):
         if month and not month.startswith(str(year) + '-'):
             raise HTTPException(422, 'Month must belong to the selected year')
         result = annual('spark', year, 'individual', cutoff, revision, r, accounting=True)
-        if result['policy_version'] != SPARK_RECONCILED_POLICY:
+        if result['policy_version'] not in SPARK_RECONCILED_POLICIES:
             raise HTTPException(404, 'Selected statement predates the MSC bridge policy')
         return document_response(request, {
             'schema_version': 'spark-msc-reconciliation.v1', 'prime': 'spark', 'year': year,
@@ -99,7 +99,7 @@ def register_financial(app, get_reader, document_response):
             'reserve_fee_true_up_control': result['spark_fee_true_up_control'],
         })
 
-    def component_month(prime, month, revision, r):
+    def component_month(prime, month, revision, r, *, review=False):
         import calendar
         year, number = map(int, month.split('-'))
         if not 2020 <= year <= 9998:
@@ -110,7 +110,7 @@ def register_financial(app, get_reader, document_response):
         if prime != 'spark':
             validate(prime, 'individual')
             raise HTTPException(422, 'This reporting component is currently supported for Spark')
-        doc = annual(prime, year, 'individual', end if end < revenue.today() and not revision else None, revision, r, accounting=True)
+        doc = annual(prime, year, 'individual', end if end < revenue.today() and not revision else None, revision, r, accounting=True, review=review)
         if doc['policy_version'] not in SPARK_INCOME_POLICIES:
             raise HTTPException(422, 'Monthly Spark components require the Spark income reporting policy')
         return doc
@@ -146,8 +146,8 @@ def register_financial(app, get_reader, document_response):
     @app.get('/v3/reporting/fees')
     def fees(request: Request, prime: str, month: str = Query(pattern=r'^\d{4}-(0[1-9]|1[0-2])$'),
              venue: str | None = None, revision: str | None = Query(None, max_length=4096),
-             r=Depends(get_reader)):  # noqa: B008
-        doc = component_month(prime, month, revision, r)
+             review: bool = False, r=Depends(get_reader)):  # noqa: B008
+        doc = component_month(prime, month, revision, r, review=review)
         rows = [row for row in doc.get('spark_fee_ledger', []) if row['month'] == month and (venue is None or row['venue'] == venue)]
         if venue is not None and venue not in {'S10', 'S11', 'S65', 'S12', 'S13', 'S34'}:
             raise HTTPException(404, 'Unknown curator-fee venue')
@@ -156,24 +156,24 @@ def register_financial(app, get_reader, document_response):
             'metrics': {line['id']: line['values'][month] for line in doc['lines']
                         if (line['id'] == 'fees.curator.' + venue if venue else line['id'].startswith('fees.'))},
             'period': next(p for p in doc['periods'] if p['key'] == month),
-            'curator_fees': rows, 'basis': 'curator accrual; SparkLend treasury receipts remain receipt-based'})
+            'curator_fees': rows, 'basis': ('external curator revenue after self-supply rebate; fee ledger retains gross entitlement; SparkLend fees receipt-based' if 'review_policy' in doc else 'curator accrual; SparkLend treasury receipts remain receipt-based')})
 
     @app.get('/v3/reporting/gains')
     def gains(request: Request, prime: str, month: str = Query(pattern=r'^\d{4}-(0[1-9]|1[0-2])$'),
-              revision: str | None = Query(None, max_length=4096), r=Depends(get_reader)):  # noqa: B008
-        doc = component_month(prime, month, revision, r)
+              revision: str | None = Query(None, max_length=4096), review: bool = False, r=Depends(get_reader)):  # noqa: B008
+        doc = component_month(prime, month, revision, r, review=review)
         return document_response(request, {'prime': prime, 'month': month, 'selection': doc['selection'],
             'report_hash': doc['report_hash'], 'source_manifest': doc['source_manifest'],
-            'metrics': {line['id']: line['values'][month] for line in doc['lines'] if line['id'].startswith('gains.')},
+            'metrics': {line['id']: line['values'][month] for line in doc['lines'] if line['id'].startswith('gains.') and line.get('include_in_income', True)},
             'net_gains': [row for row in doc.get('spark_gain_ledger', []) if row['month'] == month],
             'method': 'estimated daily price revaluation on net Spark exposure; depositor liabilities offset'})
 
     @app.get('/v3/reporting/allocations')
     def allocation_revenue(request: Request, prime: str, month: str = Query(pattern=r'^\d{4}-(0[1-9]|1[0-2])$'),
                            venue: str | None = None, revision: str | None = Query(None, max_length=4096),
-                           r=Depends(get_reader)):  # noqa: B008
+                           review: bool = False, r=Depends(get_reader)):  # noqa: B008
         from ..revenue.allocation_revenue import month_projection
-        doc = component_month(prime, month, revision, r)
+        doc = component_month(prime, month, revision, r, review=review)
         result = month_projection(doc, month, venue)
         if venue and not result['allocations']:
             raise HTTPException(404, 'Unknown supply-revenue venue')

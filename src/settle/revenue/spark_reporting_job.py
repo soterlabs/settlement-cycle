@@ -3,6 +3,7 @@
 import argparse
 import calendar
 import json
+import os
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from datetime import UTC, date, datetime, timedelta
@@ -36,7 +37,7 @@ def month_dates(start, end):
     return sorted(dates)
 
 
-def calculate(cutoff, *, daily_pins=None, native_venues=None):
+def calculate(cutoff, *, daily_pins=None, native_venues=None, review_inputs=False):
     prime = load_prime_by_id("spark")
     first = cutoff.replace(day=1)
     chains = [*WETH, "avalanche_c", "robinhood"]
@@ -55,11 +56,13 @@ def calculate(cutoff, *, daily_pins=None, native_venues=None):
 
     opening, closing = pins(first - timedelta(days=1)), pins(cutoff)
     period = Period.from_month(Month(cutoff.year, cutoff.month), closing, as_of=cutoff)
+    source = Source(prime, period, opening, daily_pins=daily_pins)
+    source.review_scope = review_inputs
     document = collect(
         prime,
         period,
         opening,
-        source=Source(prime, period, opening, daily_pins=daily_pins),
+        source=source,
         native_venues=native_venues,
         progress=lambda component: print(
             json.dumps({"cutoff": str(cutoff), "stage": component}), flush=True
@@ -69,7 +72,29 @@ def calculate(cutoff, *, daily_pins=None, native_venues=None):
         opening_pins={str(k): v for k, v in opening.items()},
         closing_pins={str(k): v for k, v in closing.items()},
     )
+    if review_inputs:
+        add_review_inputs(document, source)
     return document
+
+
+def add_review_inputs(document, source):
+    """Worker-only economic attribution; failures remain explicitly incomplete."""
+    from .spark_onchain import CURATORS, curator_fees
+    from .cash_flow.config import load as cash_config
+    from .spark_sde_cash import collect as sde_cash
+
+    wallets = cash_config(review=True)["wallets"]
+    document["curator_attribution"] = {}
+    document["curator_attribution_errors"] = {}
+    for spec in CURATORS:
+        try:
+            with localcontext() as ctx:
+                ctx.prec = 100
+                document["curator_attribution"][spec[0]] = curator_fees(
+                    source, spec, owned_wallets=list(wallets[spec[1]]))
+        except Exception as exc:
+            document["curator_attribution_errors"][spec[0]] = type(exc).__name__
+    document["sde_cash"] = sde_cash(source, document)
 
 
 def saved_daily_pins(conn, cutoff):
@@ -83,7 +108,7 @@ def saved_daily_pins(conn, cutoff):
         return {str(row["cutoff"]): row["closing_pins"] for row in cur.fetchall()}
 
 
-def complete_month(conn, cutoff, *, source=None, accounting_only=False):
+def complete_month(conn, cutoff, *, source=None, accounting_only=False, sde_cash_only=False, review_inputs=False):
     """Fill reporting gaps for one saved month; never replay or mutate MSC."""
     saved = store.read(conn, "spark", cutoff=cutoff)
     candidates = [
@@ -123,6 +148,16 @@ def complete_month(conn, cutoff, *, source=None, accounting_only=False):
     source = source or Source(
         prime, period, saved["opening_pins"], daily_pins=saved_daily_pins(conn, cutoff)
     )
+    source.review_scope = review_inputs
+    if review_inputs:
+        add_review_inputs(result, source)
+    if sde_cash_only or review_inputs:
+        from .spark_sde_cash import collect as sde_cash
+        result.update(opening_pins=deepcopy(saved["opening_pins"]), closing_pins=deepcopy(saved["closing_pins"]))
+        if not review_inputs:
+            result["sde_cash"] = sde_cash(source, old["document"])
+        result["completion_source_revision"] = old["revision_id"]
+        return result
     if accounting_only:
         # The emitted document must describe the same complete pin set as the
         # source, including any chain independently certified above.
@@ -215,7 +250,13 @@ def main():
     )
     parser.add_argument("--accounting-only", action="store_true",
         help="Refresh treasury and historical ownership inputs only; preserve existing native/issuer accruals and MSC")
+    parser.add_argument("--sde-cash-only", action="store_true", help="Add authenticated SDE liquidity principal evidence; preserve other income inputs")
+    parser.add_argument("--review-inputs", action="store_true", help="Refresh self/external curator fee attribution and authenticated SDE principal only")
     args = parser.parse_args()
+    if args.review_inputs and (args.sde_cash_only or args.accounting_only or args.complete_only):
+        parser.error("Select only one completion mode")
+    if args.sde_cash_only and (args.accounting_only or args.complete_only):
+        parser.error("Select only one completion mode")
     start = args.start or args.end.replace(day=1) - timedelta(days=1)
     if not start <= args.end < today:
         parser.error("window must contain completed UTC days")
@@ -228,9 +269,10 @@ def main():
         for cutoff in reversed(month_dates(start, args.end)):
             try:
                 document = (
-                    complete_month(conn, cutoff, accounting_only=args.accounting_only)
-                    if args.complete_only or args.accounting_only
-                    else calculate(cutoff, daily_pins=saved_daily_pins(conn, cutoff))
+                    complete_month(conn, cutoff, accounting_only=args.accounting_only, sde_cash_only=args.sde_cash_only, review_inputs=args.review_inputs)
+                    if args.complete_only or args.accounting_only or args.sde_cash_only or args.review_inputs
+                    else calculate(cutoff, daily_pins=saved_daily_pins(conn, cutoff),
+                                   review_inputs=os.environ.get("SPARK_REPORTING_REVIEW_ENABLED") == "1")
                 )
                 revision = spark_reporting_store.publish(
                     conn,
@@ -259,6 +301,8 @@ def main():
                     if document["errors"]
                     or document.get("completion_errors")
                     or document.get("monthly_income_errors")
+                    or document.get("sde_cash", {}).get("errors")
+                    or document.get("curator_attribution_errors")
                     or document.get("treasury", {}).get("errors")
                     or document.get("ownership", {}).get("errors")
                     or any(part["status"] != "available" for part in parts)
@@ -279,6 +323,8 @@ def main():
                     document["errors"]
                     or document.get("completion_errors")
                     or document.get("monthly_income_errors")
+                    or document.get("sde_cash", {}).get("errors")
+                    or document.get("curator_attribution_errors")
                     or document.get("treasury", {}).get("errors")
                     or document.get("ownership", {}).get("errors")
                 )

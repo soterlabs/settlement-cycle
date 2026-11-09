@@ -38,6 +38,18 @@ def extend(statement, supplements, *, expense_revision=None):
         )
     )
 
+    if compensation.get("schedule"):
+        from calendar import monthrange
+        from datetime import date
+        from decimal import Decimal, localcontext
+        for period in periods:
+            cell = statement["lines"][-1]["values"][period["key"]]
+            if cell.get("value") is not None and period["state"] == "partial":
+                cutoff = date.fromisoformat(period["expected_cutoff"])
+                with localcontext() as ctx:
+                    ctx.prec = 100
+                    cell["value"] = str(Decimal(cell["value"]) * cutoff.day / monthrange(cutoff.year, cutoff.month)[1])
+                cell.update(period_start=period["key"] + "-01", period_end=str(cutoff))
     for cell in statement["lines"][-1]["values"].values():
         cell["input_revision"] = statement["expense_input_revision"]
         cell["quality"] = "estimate"

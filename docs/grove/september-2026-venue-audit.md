@@ -69,7 +69,7 @@ Cash distribution references:
   [payment 2](https://etherscan.io/tx/0xfc5606d1cb53de3f0c430559ff0c3021edf4e7e47d7d9588074af2f568312a83)
 - [E42](https://etherscan.io/tx/0xd0182579a1a51087ca7a2a12b889a5e4fc0a49581f9f5fab5bbcdaaafa5d30e0)
 
-## Remaining booking exception: warehouse principal
+## Warehouse principal: follow-up implemented
 
 The Ethereum proxy sent **$71,250,000** to the configured E42 principal relay
 `0x3e23311f9ff660e3c3d87e4b7c207b3c3d7e04f0` in September:
@@ -80,15 +80,18 @@ The Ethereum proxy sent **$71,250,000** to the configured E42 principal relay
 | September 11 | $23,749,000 | [transaction](https://etherscan.io/tx/0xdea5827436070521fb43e7934ae2c7f092892d740da8d09faf2b68f5047d9ac4) |
 | September 12 | $47,500,000 | [transaction](https://etherscan.io/tx/0x5ff48b631b5c53a8df2c854de6c6422404efd9cf404cbc52a79653aa3ed44bcb) |
 
-The E42 `notional_principal_usd` schedule still ends at $304,000,001 on July 27;
-there is no September step for this additional funding. The allocation custody
-tracer recognizes transfers to this relay, but that does not update the
-settlement's notional schedule. This is a tracking exception to resolve before
-certifying September completeness. If all three transfers increase the same
-facility's principal and there are no other offsets, that schedule would reach
-$375,250,001. The transfer scan alone does not establish the off-chain loan
-balance or terms, so this PR records the exception without guessing new terms
-or booking principal as income/expense.
+The original audit found that E42's `notional_principal_usd` schedule ended at
+$304,000,001 on July 27, with no September funding steps. The follow-up now
+adds the three dated increases above through the existing notional mechanism:
+$304,001,001 on September 10; $327,750,001 on September 11; $375,250,001 on
+September 12. September's end-of-day average is **$349,916,701**. The extra $1
+from the original July test remains part of principal. August is unchanged.
+
+The offline audit now verifies those steps against the actual transfers and
+pinned block dates. This repairs per-venue CoF attribution; it does not book
+principal as revenue/expense or reduce the aggregate borrowing charge already
+calculated on Grove's debt. Published September artifacts still require a
+separate reconciliation. See [remaining-item implementation](remaining-reconciliation-items.md).
 
 ## Scope and reproducibility
 
@@ -119,8 +122,8 @@ This is **not a blanket all-chain booking certificate**. Native/internal
 transfers, Avalanche, Plume, Monad, off-chain statements, bridge message matching
 and every historical capital classifier are outside this audit's verification.
 The matched rows above establish their listed amounts, not that every other
-flow was correctly classified. The two missing venues and warehouse exception
-mean the current September artifacts cannot be called complete.
+flow was correctly classified. The published September artifacts predate the missing-venue and warehouse
+corrections; the tracking fixes do not themselves update those artifacts.
 
 The checked-in [evidence archive](evidence/september-2026-venue-audit.json)
 contains the complete scoped transfer inventory, NFPM receipt events, pinned
@@ -147,6 +150,6 @@ because the YAML changed:
 python scripts/run_live_2026.py --primes grove --months 2026-09
 ```
 
-Review that regenerated result and resolve the notional exception before
+Review that regenerated result, including the updated notional schedule, before
 publishing revised figures or a reconciliation. This PR itself publishes no
 replacement settlement.

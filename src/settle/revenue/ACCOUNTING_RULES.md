@@ -1,7 +1,7 @@
 # Reporting accounting rules
 
 These are the agreed management-reporting rules for the Reporting API and its
-dashboard, recorded on 2026-11-06. Apply the principles to every prime; apply
+dashboard, updated following the 2026-11-09 Spark review. Apply the principles to every prime; apply
 Spark-specific terms only to Spark. This is the implementation contract, not a
 claim that every historical publication already complies or that these reports
 are audited financial statements.
@@ -17,7 +17,7 @@ are audited financial statements.
 | Cash evidence | Use successful transfers, mints, burns and native transfers. Exclude failed calls and delegatecall pseudo-transfers. Internal controlled-wallet transfers and wrapping are not fresh income or expense. |
 | Estimates and missing inputs | Missing is not zero. Keep TBD and source/quality metadata; do not manufacture values from a reconciliation residual. |
 | History | Respect effective dates and service/earning periods. Preserve immutable source revisions and reproducible exports when replaying. |
-| Cutoffs | Match the revenue and expense periods in comparative/YTD totals. For the current Spark review, Jan–Oct 2026 is the common period; October DR stays TBD until published. |
+| Cutoffs | Match the revenue and expense periods in comparative/YTD totals. Use the latest common supplied expense/revenue period for comparable YTD totals. DR stays TBD for any month whose approved source is not published; advance it when the source arrives. |
 
 An expense-sheet snapshot is a source, not an additional expense on top of the
 same item inferred from transactions. Parent and child rows must never both
@@ -74,21 +74,32 @@ Public identifiers (never place RPC URLs, API keys or passwords in this file):
 * **MORPHO and AVAX rewards:** recognize the agreed reward receipts/earnings, then
   remeasure through the corresponding nonstable gains lines. Include Ops-wallet
   holdings, native AVAX and wrapped AVAX without treating wrapping as a sale.
-* **SparkLend non-USD reserves:** retain asset gains. Do not subtract savings
-  depositor liability revaluation here or in SparkLend fees; savings liabilities
-  have their own funding lines. Never count the same liability twice.
+* **Savings-funded non-USD reserves:** distinguish interest, principal and
+  principal price revaluation. Net the matched Savings-funded asset/liability
+  price effects out of gross management revenue and funding costs. Retain the
+  prime's residual own exposure in gains, including genuine Ops treasury gains.
+  Keep gross asset/liability translation in audit metrics, not a separate
+  SparkLend non-USD reserves display row. SparkLend fees are not reduced by this
+  depositor principal revaluation; funding contains actual depositor interest.
 * **Curator fees:** distinguish receiving a vault's performance fees from the
   return earned by supplying to that vault. A fee-recipient address alone is not
   evidence that the prime receives the fee; verify ownership and actual rights.
+  Only fees attributable to outside depositors are external curator revenue.
+  Where native vault yield is after performance fees, add the own-deposit fee
+  portion back to that vault's allocation revenue and subtract it from curator
+  fees. If the native source is already before that deduction or already includes
+  the rebate, do not add it again. This is reclassification, not new economic
+  income. Fee-share mints dilute supplier shares; they do not themselves transfer
+  underlying cash out of the vault.
 
 ## Expenses, own tokens and savings
 
 | Item | Rule |
 |---|---|
-| Contributor SPK | Compensation and benefits, using approved monthly expense-sheet figures. A vesting-wallet transfer is evidence, not an automatic second expense feed or proof of its service period. |
+| Contributor SPK / GRV / other own tokens | Compensation and benefits when issued for contributor services. Use the approved grant valuation and service/vesting schedule or the approved expense sheet. Token claims/transfers are evidence, not a second expense or automatic expense timing. |
 | Spark Points/Overdrive SPK | Prime token incentives, separate from contributor compensation. Keep campaigns disjoint from compensation. |
-| Noncash SPK expense | Include once in income; add back once in indirect operating cash flow. Exclude from cash-payable expense accruals and cash expenses paid. |
-| Pending compensation sheet | Do not substitute transferred token quantities for a missing approved USD expense. Preserve the missing/provisional component explicitly. |
+| Noncash own-token expense | Include once in income; add back once in indirect operating cash flow. Exclude from cash-payable expense accruals and cash expenses paid. |
+| Pending compensation sheet | An explicitly supplied grant schedule can be a provisional authored input until the sheet arrives. Never substitute claimed token quantities for service-period expense. Spark’s TGE price and 48-month schedule are Spark-specific, not a default for GRV/Grove. |
 | Expense presentation | Keep the accounting calculations detailed, but show two levels of Spark expenses; hide the staff-function breakdown. |
 | Savings liability accrual | Measure depositor interest using the applicable onchain vault rate/index and actual deposits/withdrawals. Keep the liability separate from asset revenue and price gains. |
 | Savings interest paid | Operating cash flow on its own line. Remove the same payments from general Expenses paid. Principal deposits/withdrawals belong to financing, not interest. |
@@ -157,3 +168,40 @@ References: [SDE definition](https://sky-atlas.io/#b3fb8653-8503-4a9e-81b2-5e9f4
 ### Updating contributor compensation
 
 `contributor_compensation.json` is the current authored input. Approved monthly USD amounts replace pending nulls; token transfer quantities are never a substitute. Before publishing a changed input, archive the complete JSON under `published_expenses/<verification.digest(input)>.json`. Keep old archives: the statement selection pins `expense_input_revision`, and cash flow dependencies pin the same input. The dashboard reads this component from the API rather than maintaining a second contributor expense feed.
+
+## November 9 review policy
+
+The opt-in Spark v3.11/events.v2 implementation, audit evidence and rollout
+are recorded in [SPARK_REVIEW_2026_11.md](SPARK_REVIEW_2026_11.md).
+Archived/default legacy policies retain their own treatment; corrections use
+new reporting publications and never rewrite old selections.
+
+- Net matched Savings-funded ETH principal FX out of gross asset gains and
+  funding cost. Retain actual depositor interest and Spark-owned price exposure.
+  Remove the matching amounts from both indirect cash-flow reversals.
+- Fees paid by a prime's own vault supply are an allocation rebate; external
+  curator fees exclude that self-funded portion. Net supplier NAV yield plus
+  the rebate plus external fees must preserve the previous aggregate revenue.
+- The provisional Spark contributor grant input is 1,627,925 USD monthly under
+  the supplied grant-date/48-month schedule, not the amount of vesting claims.
+  When included in a later expense sheet, suppress the separate expense feed.
+- SDE cash subscriptions/redemptions need authenticated liquidity principal
+  evidence. Swaps through the same pools remain allocation cash. Moving between
+  those investing rows must conserve total investing cash.
+- Expanding a controlled cash cluster requires new opening/closing balances
+  and event coverage; do not reclassify old inflows without also measuring the
+  added wallets' cash and onward payments. Keep unidentified receipts visible.
+- Do not combine reviewed income with legacy cash scope, or publish a mixture
+  of cash-policy cohorts as though their monthly balances were comparable.
+
+
+## Statement implementation guides
+
+- [Income statement](INCOME_STATEMENT_GUIDE.md): source mapping, principal/yield,
+  price translation, own-capital curator fees, token compensation and totals.
+- [Cash flow statement](CASH_FLOW_STATEMENT_GUIDE.md): cash perimeter, noncash
+  reversals, external cash evidence, SDE liquidity and publication/replay.
+
+These management-reporting conventions are not a substitute for a prime's
+statutory accounting policy. Carry source, recognition, quality and incomplete
+coverage through every calculation; a zero cash gap is not an accuracy score.

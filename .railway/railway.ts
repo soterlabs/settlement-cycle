@@ -129,7 +129,7 @@ export default defineRailway(() => {
         "ENVIO_API_TOKEN", "ETH_RPC", "BASE_RPC", "ARBITRUM_RPC",
         "OPTIMISM_RPC", "UNICHAIN_RPC", "AVALANCHE_C_RPC", "ROBINHOOD_RPC",
       ].map((name) => [name, `\${{settle-revenue-spark.${name}}}`])),
-      SETTLE_REQUIRE_POSTGRES: "1",
+      SETTLE_REQUIRE_POSTGRES: "1", SPARK_REPORTING_REVIEW_ENABLED: "1",
     },
   });
 
@@ -149,7 +149,7 @@ export default defineRailway(() => {
         "ENVIO_API_TOKEN", "ETH_RPC", "BASE_RPC", "ARBITRUM_RPC",
         "OPTIMISM_RPC", "UNICHAIN_RPC", "AVALANCHE_C_RPC", "ROBINHOOD_RPC",
       ].map((name) => [name, `\${{settle-revenue-spark.${name}}}`])),
-      SETTLE_REQUIRE_POSTGRES: "1",
+      SETTLE_REQUIRE_POSTGRES: "1", SPARK_REPORTING_REVIEW_ENABLED: "1",
     },
   });
 

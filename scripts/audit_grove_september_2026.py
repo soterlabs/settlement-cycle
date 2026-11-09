@@ -9,6 +9,7 @@ import json
 import os
 import sys
 from collections import defaultdict
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal as D
 from pathlib import Path
 from unittest.mock import patch
@@ -16,6 +17,8 @@ from unittest.mock import patch
 _REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_REPO / 'src'))
 
+from settle.compute.prime_agent_revenue import _time_weighted_notional  # noqa: E402
+from settle.domain import Month, Period  # noqa: E402
 from settle.domain.config import load_prime_by_id  # noqa: E402
 from settle.extract.transfer_logs import TRANSFER_TOPIC0  # noqa: E402
 from settle.extract.uniswap_v3 import (  # noqa: E402
@@ -188,7 +191,45 @@ def audit(evidence: dict) -> dict:
                        'token_ids': sorted(ids), 'capital_net_of_collections': str(inflow),
                        'fee_collections': str(D(fees) / 10**6),
                        'revenue': str(values[1] - values[0] - inflow)}
-    return {'inventory': inventory, 'vaults': vaults, 'uniswap': lp}
+    warehouse = venues['E42']
+    relays = {a.hex for a in warehouse.notional_counterparties}
+    legacy = evidence['holders']['ethereum']['legacy']
+    funding = defaultdict(D)
+    transactions = []
+    for row in evidence['transfers']['ethereum']:
+        if row['address'] != warehouse.token.address.hex:
+            continue
+        sender, recipient = ['0x' + topic[-40:] for topic in row['topics'][1:3]]
+        sign = int(sender == legacy and recipient in relays) - int(recipient == legacy and sender in relays)
+        if not sign:
+            continue
+        block = evidence['ethereum_block_dates'][str(int(row['blockNumber'], 16))]
+        day = datetime.fromtimestamp(block['timestamp'], UTC).date()
+        if block['block_hash'] != row['blockHash'] or day.isoformat() != block['date']:
+            raise ValueError('Warehouse transaction date is not pinned to its block')
+        amount = sign * D(int(row['data'], 16)) / D(10**warehouse.token.decimals)
+        funding[day] += amount
+        transactions.append({'date': str(day), 'net_funding': str(amount),
+                             'tx': row['transactionHash'], 'log_index': int(row['logIndex'], 16)})
+    period = Period.from_month(Month(2026, 9))
+    schedule = warehouse.notional_principal_usd
+
+    def principal(day):
+        return next((entry.amount for entry in reversed(schedule) if entry.start_date <= day), D(0))
+
+    previous = principal(period.start - timedelta(days=1))
+    opening = previous
+    for i in range(period.n_days):
+        day = period.start + timedelta(days=i)
+        current = principal(day)
+        if current - previous != funding[day]:
+            raise ValueError(f'Warehouse schedule does not match net funding on {day}')
+        previous = current
+    return {'inventory': inventory, 'vaults': vaults, 'uniswap': lp,
+            'warehouse': {'opening': str(opening), 'closing': str(previous),
+                          'average_principal': str(_time_weighted_notional(schedule, period)),
+                          'net_funding': str(sum(funding.values(), D(0))),
+                          'transactions': transactions}}
 
 
 if __name__ == '__main__':
