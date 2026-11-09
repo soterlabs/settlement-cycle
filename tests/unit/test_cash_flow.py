@@ -70,6 +70,7 @@ def publication(cutoff="2026-10-31", revision="a" * 64):
         "cutoff": cutoff,
         "computed_at": "2026-11-05T00:00:00+00:00",
         "document": d,
+        "policy_version": d["policy_version"],
         "document_hash": digest(d),
         "evidence_hash": digest([]),
         "code_version": "test",
@@ -81,8 +82,8 @@ def test_scope_and_expense_perimeter():
     c = load()
     assert len(c["wallets"]) == 10
     assert (
-        c["counterparties"]["ethereum"]["0x8a3c66b30e2bbe5c2b1cff1054d869171fb87766"]["kind"]
-        == "unclassified"
+        c["wallets"]["ethereum"]["0x8a3c66b30e2bbe5c2b1cff1054d869171fb87766"]["role"]
+        == "operating"
     )
     assert expense_inputs("2026-10")[:3] == (Decimal("928282"), Decimal("928282"), Decimal("0"))
     assert expense_inputs("2026-11")[:3] == (None, None, None)
@@ -243,7 +244,7 @@ def test_api_reads_only_stored_publications_and_weak_etags(monkeypatch):
         )
 
 
-def test_actual_msc_receipts_are_split_once_and_unknown_safes_are_not_expenses():
+def test_actual_msc_receipts_are_split_once_and_owned_safes_are_internal():
     from datetime import UTC, datetime
 
     from settle.revenue.cash_flow.classify import collect_ledger
@@ -276,7 +277,7 @@ def test_actual_msc_receipts_are_split_once_and_unknown_safes_are_not_expenses()
         )
         == 7071339
     )
-    assert [r["line_id"] for r in ledger if r["tx_hash"] == rows[2]["tx_hash"]] == ["unclassified"]
+    assert [r["line_id"] for r in ledger if r["tx_hash"] == rows[2]["tx_hash"]] == []
     assert [r["line_id"] for r in ledger if r["tx_hash"] == rows[1]["tx_hash"]] == ["unclassified"]
 
 

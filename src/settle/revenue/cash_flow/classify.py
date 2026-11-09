@@ -48,7 +48,7 @@ def is_cash(config, chain, token, owner):
     )
 
 
-def collect_ledger(evidence, *, config=None, disposals=()):
+def collect_ledger(evidence, *, config=None, disposals=(), sde_principal=()):
     config = config or load()
     entries = []
     seen = set()
@@ -487,10 +487,11 @@ def collect_ledger(evidence, *, config=None, disposals=()):
                         entries[-1]["principal_evidence"] = witness
                 elif rule.get("kind") == "sky_direct":
                     day = datetime.fromtimestamp(e["timestamp"], UTC).date().isoformat()
-                    active = rule["start_date"] <= day <= rule["end_date"] and meta["symbol"] == "USDT"
+                    active = rule["start_date"] <= day <= rule["end_date"] and meta["symbol"] == "USDT" and not rule.get("principal_only")
                     append(e, "sky-direct-deployments" if active else "allocation-changes",
                            value * sign, quality="estimate",
                            reason="Observed cash movement on behalf of Sky; funding attribution pending" if active
+                           else "AMM cash movement; authenticated LP principal is reclassified separately" if rule.get("principal_only")
                            else "Observed allocation movement outside historical SDE period")
                 elif rule.get("kind") in (
                     "allocation",
@@ -529,12 +530,12 @@ def collect_ledger(evidence, *, config=None, disposals=()):
                         quality="estimate",
                         reason="Known routing contract; cross-leg/message reconciliation pending",
                     )
-                elif sign < 0 and wallets[owner]["label"] in (
+                elif sign < 0 and (wallets[owner].get("role") == "operating" or wallets[owner]["label"] in (
                     "Spark Foundation",
                     "Spark Assets Foundation",
                     "Spark DevCo (Phoenix Labs)",
                     "Spark SPK Mid-term Treasury",
-                ):
+                )):
                     append(
                         e,
                         "expenses-paid",
@@ -549,7 +550,9 @@ def collect_ledger(evidence, *, config=None, disposals=()):
                         value * sign,
                         reason="Unclassified cash movement; never inferred to be revenue or allocation capital",
                     )
+    entries, sde_failures = reclassify_sde(entries, sde_principal, config)
     return {
+        "sde_failures": sde_failures,
         "entries": entries,
         "savings": savings,
         "errors": errors,
@@ -688,3 +691,45 @@ def cash_metrics(evidence, ledger, config=None):
             ]
         )
         return metrics
+
+
+def reclassify_sde(entries, sde_principal, config):
+    """Pure zero-sum category bridge, reusable for a retained-ledger preview."""
+    entries = list(entries)
+    seen = {e["id"] for e in entries}
+    if len(seen) != len(entries):
+        raise ValueError("Duplicate cash-flow evidence")
+    # Reclassify authenticated liquidity principal, including netted swap/LP
+    # transactions. The paired entries sum to zero: no cash is manufactured.
+    sde_failures = []
+    for proof in sde_principal:
+        if proof.get("status") != "available":
+            sde_failures.append("SDE principal source incomplete")
+        for item in proof.get("entries", []):
+            raw = int(item["principal_raw"])
+            if not raw:
+                continue
+            chain, tx, token, counterparty = (item[k] for k in ("chain", "transaction", "token", "counterparty"))
+            rule = config["counterparties"].get(chain, {}).get(counterparty, {})
+            expected = {"S24": "0x00836fe54625be242bcfa286207795405ca4fd10", "S62": "0x000000000004444c5dc75cb358380d2e3de08a90"}
+            if (rule.get("kind") != "sky_direct" or expected.get(item["venue"]) != counterparty
+                    or config["tokens"].get(chain, {}).get(token, {}).get("symbol") != "USDT"):
+                raise ValueError("SDE proof scope differs")
+            candidates = [r for r in entries if r["chain"] == chain and r["tx_hash"] == tx and r["token"] == token
+                          and counterparty in (r["from"], r["to"]) and r["line_id"] == "allocation-changes"]
+            if not candidates:
+                sde_failures.append("Liquidity change has no matched classified cash boundary: " + tx)
+                continue
+            base = candidates[0]
+            if not rule["start_date"] <= base["date"] <= rule["end_date"]:
+                raise ValueError("SDE principal is outside the designation period")
+            amount = -Decimal(raw) / 10 ** config["tokens"][chain][token]["decimals"]
+            for line, value in (("sky-direct-deployments", amount), ("allocation-changes", -amount)):
+                identity = base["id"] + ":sde-reclass:" + item["venue"] + ":" + line
+                if identity in seen:
+                    raise ValueError("Duplicate SDE principal proof")
+                seen.add(identity)
+                entries.append({**base, "id": identity, "line_id": line, "amount_usd": str(value),
+                    "quality": "supported", "reason": "Zero-sum reclassification of authenticated liquidity principal; swaps remain allocations",
+                    "sde_principal_evidence": {**item, "source_ref": proof.get("source_ref")}, "reclassification": True})
+    return entries, sde_failures

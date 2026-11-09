@@ -250,14 +250,23 @@ def pending_fee(source, spec, block):
     return D(source.number(chain, vault, 'convertToAssets(uint256)', block, shares)) / 10**decimals if shares else D(0)
 
 
-def curator_fees(source, spec):
+def curator_fees(source, spec, *, owned_wallets=None):
     venue, chain, vault, decimals, v2 = spec
     holder = ETH_ALM if chain == 'ethereum' else BASE_ALM
-    rows = source.logs(chain, [
+    if owned_wallets is not None:
+        owned_wallets = sorted({a.lower() for a in owned_wallets})
+    selections = [
         {'address': [vault], 'topics': [[ACCRUE_INTEREST, ACCRUE_INTEREST_V2]]},
         {'address': [vault], 'topics': [[TRANSFER_TOPIC0], [ZERO_TOPIC]]},
         {'address': [vault], 'topics': [[TRANSFER_TOPIC0], [], [ZERO_TOPIC]]},
-    ])
+    ]
+    owned_topics = {topic(a) for a in owned_wallets} if owned_wallets is not None else None
+    if owned_topics is not None:
+        if topic(holder) not in owned_topics:
+            raise ValueError('Fee recipient must be in the controlled ownership scope')
+        selections += [{'address': [vault], 'topics': [[TRANSFER_TOPIC0], list(sorted(owned_topics))]},
+                       {'address': [vault], 'topics': [[TRANSFER_TOPIC0], [], list(sorted(owned_topics))]}]
+    rows = source.logs(chain, selections)
     if any(not row.transaction_hash for row in rows):
         raise ValueError('Fee history is missing transaction identities')
     by_index = {}
@@ -272,12 +281,23 @@ def curator_fees(source, spec):
         return int(raw, 16) if raw != '0x' else 0
     opening_supply = supply = total_supply(opening_block)
     received, witnesses = D(0), []
+    def controlled_balance(block):
+        if source.call(chain, vault, 'totalSupply()', block) == '0x':
+            if source.code(chain, vault, block) != '0x':
+                raise ValueError('Missing live vault supply')
+            return 0
+        return sum((source.number(chain, vault, 'balanceOf(address)', block, int(a,16)) for a in owned_wallets), 0)
+    opening_owned = owned = controlled_balance(opening_block) if owned_topics is not None else 0
+    self_received, attribution_witnesses = D(0), []
     virtual = 10**(18 - decimals)
     for (block, index), row in sorted(by_index.items()):
         if row.topic0 == TRANSFER_TOPIC0:
             if len(row.data) != 66:
                 raise ValueError('Invalid global vault supply movement')
-            supply += int(row.data, 16) * ((row.topic1 == ZERO_TOPIC) - (row.topic2 == ZERO_TOPIC))
+            units = int(row.data, 16)
+            if owned_topics is not None:
+                owned += units * ((row.topic2 in owned_topics) - (row.topic1 in owned_topics))
+            supply += units * ((row.topic1 == ZERO_TOPIC) - (row.topic2 == ZERO_TOPIC))
             if supply < 0:
                 raise ValueError('Incomplete global vault supply history')
             continue
@@ -292,18 +312,39 @@ def curator_fees(source, spec):
             post_supply = supply + words[2] + words[3] if v2 else supply
             value = quantity * (assets + 1) // (post_supply + virtual)
             received += D(value) / 10**decimals
+            if owned_topics is not None:
+                pre_supply, pre_owned = (supply, owned) if v2 else (supply - quantity, owned - quantity)
+                if pre_owned < 0 or pre_owned > pre_supply:
+                    raise ValueError('Controlled vault shares do not reconcile to supply')
+                portion = D(pre_owned) / pre_supply if pre_supply else D(0)
+                self_received += D(value) / 10**decimals * portion
+                attribution_witnesses.append((block, index, pre_owned, pre_supply, str(portion)))
             witnesses.append((block, row.transaction_hash, index, quantity, assets, post_supply))
     if supply != total_supply(closing_block):
         raise ValueError('Global vault supply history does not reproduce the closing state')
     opening = pending_fee(source, spec, opening_block)
     closing = pending_fee(source, spec, closing_block)
-    return {'venue': venue, 'chain': chain, 'vault': vault, 'status': 'available',
+    result = {'venue': venue, 'chain': chain, 'vault': vault, 'status': 'available',
             'recipient_filter': holder,
             'received_usd': str(received), 'opening_pending_usd': str(opening), 'closing_pending_usd': str(closing),
             'accrued_usd': str(received + closing - opening), 'receipt_event_digest': digest(witnesses),
             'receipt_events': len(witnesses), 'recognition': 'accrual', 'opening_total_supply': str(opening_supply),
             'closing_total_supply': str(supply),
             'basis': 'authenticated_fee_mints_at_event_NAV_plus_change_in_unminted_entitlement'}
+    if owned_topics is not None:
+        closing_owned = controlled_balance(closing_block)
+        if closing_owned != owned or owned < 0 or owned > supply:
+            raise ValueError('Controlled vault transfer history does not reproduce closing shares')
+        self_opening = opening * D(opening_owned) / opening_supply if opening_supply else D(0)
+        self_closing = closing * D(closing_owned) / supply if supply else D(0)
+        self_accrued = self_received + self_closing - self_opening
+        result['attribution'] = dict(status='available', quality='estimate',
+            basis='fee_mint_NAV_times_pre_mint_controlled_share_ratio_plus_pending_entitlement_change',
+            self_rebate_accrued_usd=str(self_accrued), external_accrued_usd=str(D(result['accrued_usd']) - self_accrued),
+            self_received_usd=str(self_received), external_received_usd=str(received - self_received),
+            opening_owned_shares=str(opening_owned), closing_owned_shares=str(closing_owned),
+            ownership_scope=sorted(owned_wallets), ownership_event_digest=digest(attribution_witnesses))
+    return result
 
 
 def reserve_fees(source):

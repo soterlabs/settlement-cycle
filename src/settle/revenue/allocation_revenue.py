@@ -84,6 +84,7 @@ def month_projection(statement, month, venue=None):
             'report_hash': statement['report_hash'], 'source_manifest': statement['source_manifest'],
             'period': next(p for p in statement['periods'] if p['key'] == month),
             'count': len(rows), 'allocations': rows,
-            'family_totals': {family: combine([(row['venue_id'], 1, row['native_revenue_usd']) for row in rows if row['family'] == family]) for family in families},
+            'family_totals': {family: combine([(row['venue_id'], 1, row.get('allocation_revenue_usd', row['native_revenue_usd'])) for row in rows if row['family'] == family]) for family in families},
             'funding_cost_deducted': False, 'external_rewards_included': False, 'embedded_vault_fees_deducted': True,
+            **({'self_curation_rebates_separately_disclosed': True} if 'review_policy' in statement else {}),
             'rate_basis': 'observed supply return on average position; ratio units, 0.05 = 5%; not a forward advertised rate'}

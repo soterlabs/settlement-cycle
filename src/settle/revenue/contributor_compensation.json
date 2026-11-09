@@ -3,20 +3,29 @@
   "prime": "spark",
   "year": 2026,
   "expense_id": "expenses.compensation.spk",
-  "status": "awaiting_approved_expense_sheet",
-  "basis": "contributor_service_period_expense_not_vesting_transfer_value",
+  "status": "provisional_reviewed_grant_schedule",
+  "basis": "grant_date_value_straight_line_over_48_service_months",
   "months": {
-    "2026-01": null,
-    "2026-02": null,
-    "2026-03": null,
-    "2026-04": null,
-    "2026-05": null,
-    "2026-06": null,
-    "2026-07": null,
-    "2026-08": null,
-    "2026-09": null,
-    "2026-10": null,
-    "2026-11": null,
-    "2026-12": null
+    "2026-01": "1627925",
+    "2026-02": "1627925",
+    "2026-03": "1627925",
+    "2026-04": "1627925",
+    "2026-05": "1627925",
+    "2026-06": "1627925",
+    "2026-07": "1627925",
+    "2026-08": "1627925",
+    "2026-09": "1627925",
+    "2026-10": "1627925",
+    "2026-11": "1627925",
+    "2026-12": "1627925"
+  },
+  "schedule": {
+    "tokens": "1200000000",
+    "grant_price_usd": "0.065117",
+    "monthly_usd": "1627925",
+    "service_start": "2025-06-01",
+    "service_end": "2029-05-31",
+    "source": "User-provided Spark review dated 2026-11-09; updated expense sheet pending",
+    "noncash": true
   }
 }

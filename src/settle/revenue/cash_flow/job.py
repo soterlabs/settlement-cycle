@@ -48,8 +48,12 @@ def main():
     )
     parser.add_argument("--output-dir", help="Write a reviewable public-data preview")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--review", action="store_true", default=None, help="Use reviewed Spark accounting, expanded Safes and authenticated SDE principal")
     args = parser.parse_args()
     load_dotenv(args.env_file)
+    if args.review is None:
+        args.review = os.environ.get("SPARK_REPORTING_REVIEW_ENABLED") == "1"
+    config = load(review=args.review)
     if args.dry_run:
         os.environ["CASH_FLOW_CAPTURE_PERSIST"] = "0"
     start = args.start or args.end.replace(day=1) - timedelta(days=1)
@@ -82,21 +86,25 @@ def main():
                 else:
                     evidence = collector.collect(
                         cutoff,
-                        cache_dir=args.cache_dir,
+                        cache_dir=args.cache_dir, config=config,
                         progress=lambda ch, n, cutoff=cutoff: print(
                             json.dumps({"cutoff": str(cutoff), "chain": ch, "stage": n}), flush=True
                         ),
                     )
                 evidence["accuracy"] = accuracy.collect(
                     evidence,
-                    load(),
+                    config,
                     args.cache_dir,
                     progress=lambda ch, n, cutoff=cutoff: print(
                         json.dumps({"cutoff": str(cutoff), "accuracy_chain": ch, "events": n}),
                         flush=True,
                     ),
                 )
-                document, events = build(evidence, income_report(conn, cutoff))
+                income = income_report(conn, cutoff, review=args.review)
+                if args.review:
+                    from .sde import complete as complete_sde
+                    income = complete_sde(conn, cutoff, income)
+                document, events = build(evidence, income, config=config)
                 revision = None if args.dry_run else store.publish(conn, document, events, code)
                 if args.output_dir:
                     out = Path(args.output_dir)

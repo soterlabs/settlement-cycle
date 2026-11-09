@@ -8,7 +8,7 @@ from datetime import date
 from decimal import Decimal
 
 from ..verification import digest
-from .config import layout, load
+from .config import layout, load, LEGACY_POLICY, REVIEW_POLICY
 from .model import CHILDREN, OPTIONAL_ACCOUNTING_LINES, amount, metric, total
 
 
@@ -27,7 +27,7 @@ def decode(value, prime, year):
             set(result) != {"prime", "year", "as_of", "policy_version", "revisions"}
             or result["prime"] != prime
             or result["year"] != year
-            or result["policy_version"] != load()["policy"]
+            or result["policy_version"] not in (LEGACY_POLICY, REVIEW_POLICY)
             or not isinstance(result["revisions"], list)
             or len(result["revisions"]) != 12
             or not all(
@@ -44,9 +44,12 @@ def decode(value, prime, year):
         raise ValueError("Invalid cash-flow selection") from None
 
 
-def annual(prime, year, as_of, rows, *, selection=None):
+def annual(prime, year, as_of, rows, *, selection=None, review=True):
     if prime != "spark":
         raise ValueError("Cash-flow scope not configured")
+    policy = selection["policy_version"] if selection else load(review=review)["policy"]
+    review = policy == REVIEW_POLICY
+    config = load(policy=policy)
     periods = []
     chosen = []
     manifest = {}
@@ -57,14 +60,14 @@ def annual(prime, year, as_of, rows, *, selection=None):
         expected = min(last, as_of) if not future else None
         if selection:
             ref = selection["revisions"][m - 1]
-            item = next((r for r in rows if r["revision_id"] == ref), None) if ref else None
+            item = next((r for r in rows if r["revision_id"] == ref and r["policy_version"] == policy), None) if ref else None
             if ref and not item:
                 raise LookupError("Retained cash-flow month is unavailable")
         else:
             eligible = [
                 r
                 for r in rows
-                if r["cutoff"][:7] == f"{year}-{m:02}"
+                if r["cutoff"][:7] == f"{year}-{m:02}" and r["policy_version"] == policy
                 and not future
                 and r["cutoff"] <= str(expected)
                 and (first <= as_of < last or r["cutoff"] == str(expected))
@@ -101,7 +104,7 @@ def annual(prime, year, as_of, rows, *, selection=None):
                 ]
             }
     definitions = [
-        *layout(),
+        *layout(review=review),
         {
             "id": "cash-in-transit",
             "label": "Cash in transit",
@@ -190,7 +193,7 @@ def annual(prime, year, as_of, rows, *, selection=None):
         ("cumulative-gap", Decimal(0), [("reconciliation-gap", 1)]),
         (
             "msc-receivable",
-            Decimal(load()["opening_msc_receivable"]),
+            Decimal(config["opening_msc_receivable"]),
             [
                 ("earned-not-received", -1),
                 ("sky-allocation-receipts", -1),
@@ -222,7 +225,7 @@ def annual(prime, year, as_of, rows, *, selection=None):
         "prime": prime,
         "year": year,
         "as_of": str(as_of),
-        "policy_version": load()["policy"],
+        "policy_version": policy,
         "revisions": [r["revision_id"] if r else None for r in chosen],
     }
     result = {
@@ -240,7 +243,7 @@ def annual(prime, year, as_of, rows, *, selection=None):
             for p, r in zip(periods, chosen, strict=True)
         },
         "methodology": {
-            "opening_msc_receivable": load()["opening_msc_receivable"],
+            "opening_msc_receivable": config["opening_msc_receivable"],
             "opening_msc_source": "https://forum.skyeco.com/t/msc-4-settlement-summary-november-and-december-2025-spark-grove/27617",
             "cash_basis": "actual_transaction_dates",
             "valuation": "USD par for configured stablecoins",

@@ -191,7 +191,7 @@
   {
     "id": "sky-direct-deployments",
     "label": "Cash deployed on behalf of Sky, net",
-    "parent": "investing",
+    "parent": null,
     "depth": 1,
     "kind": null,
     "check": false,
@@ -200,7 +200,7 @@
   {
     "id": "treasury-disposals",
     "label": "Proceeds from nonstable treasury assets",
-    "parent": "investing",
+    "parent": null,
     "depth": 1,
     "kind": null,
     "check": false,

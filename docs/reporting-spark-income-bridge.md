@@ -1,4 +1,11 @@
-# Spark income and MSC comparison (v3.10)
+# Spark income and MSC comparison
+
+The table below documents retained **v3.10** treatment. For new reviewed Spark
+statements use `accounting=true&review=true` (v3.11), the
+[income guide](../src/settle/revenue/INCOME_STATEMENT_GUIDE.md) and
+[accounting rules](../src/settle/revenue/ACCOUNTING_RULES.md). V3.11 removes matched
+Savings principal FX from gross gains/funding, keeps depositor interest and own
+gains, and reclassifies self-curator fees without changing net revenue.
 
 `prime-management.spark-reconciled.v3.10` adds reporting income and evidence without changing published MSC calculations. Old v3.9/v3.8 selections retain their original numbers/layout. All figures are revenue/expense flows; asset and depositor principal is excluded.
 
@@ -40,9 +47,9 @@ The bridge starts from the MSC supply-side and demand-side headlines and include
 
 The September fee control compares original January–August reporting fee receipts against 2,392,354.07 USDS. It is not applicable to report cutoffs before September 30 and never contributes to reporting revenue. Operating expenses are outside the MSC-to-total-net-revenue bridge.
 
-The dashboard displays this bridge on Spark's income statement, with source-aware values and a month selector. Other primes retain their existing reporting policies.
+The MSC bridge remains API evidence and static findings; it is not a dashboard card. Other primes retain their own reporting policies.
 
-The agreed accounting contract is [ACCOUNTING_RULES.md](../src/settle/revenue/ACCOUNTING_RULES.md). Treasury reward and fee receipts are tracked separately from subsequent gains and cash sale proceeds. Historical SDE ownership is recalculated for reporting without changing MSC. Contributor SPK remains an explicit missing expense component until the approved monthly USD expense figures arrive.
+The agreed accounting contract is [ACCOUNTING_RULES.md](../src/settle/revenue/ACCOUNTING_RULES.md). Treasury reward and fee receipts are tracked separately from subsequent gains and cash sale proceeds. Historical SDE ownership is recalculated for reporting without changing MSC. In v3.11 contributor SPK uses the explicitly supplied provisional grant schedule until the sheet arrives; v3.10 retains the archived pending input. Claim transfers do not define expense timing.
 
 Backfill the new sources with `python -m settle.revenue.spark_reporting_job --from 2026-01-01 --to 2026-10-31 --accounting-only`, then replay `python -m settle.revenue.cash_flow.job --from 2026-01-01 --to 2026-10-31` using the authorized environment. These jobs append reporting revisions; they do not replay MSC.
 
