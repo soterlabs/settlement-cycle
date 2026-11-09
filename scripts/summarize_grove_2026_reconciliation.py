@@ -29,12 +29,16 @@ def redemption_by_venue(document):
     for row in document['daily']:
         changes = {vid: D(value) for vid, value in row['deduction_changes_by_venue'].items()}
         credit = D(row['credit_to_grove'])
+        before, after = D(row['frozen_utilized']), D(row['corrected_utilized'])
+        if (not changes or any(not value.is_finite() for value in [credit, before, after, *changes.values()])
+                or abs(before - after - sum(changes.values(), D(0))) > D('1e-12')):
+            raise ValueError('CoF venue changes do not reconcile to the principal correction')
         if len(changes) == 1:
             amounts[next(iter(changes))] += credit
             continue
-        before, after = D(row['frozen_utilized']), D(row['corrected_utilized'])
         same_tranche = (min(before, after) >= historical_cap
-                        or max(before, after) <= historical_cap)
+                        or 0 <= min(before, after) <= max(before, after) <= historical_cap
+                        or max(before, after) <= 0)
         if not same_tranche or not all(value > 0 for value in changes.values()):
             raise ValueError('Joint CoF correction needs an explicit nonlinear attribution')
         # On the actual May 18/19 joint days both endpoints exceed the cap.

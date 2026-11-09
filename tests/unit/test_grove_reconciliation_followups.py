@@ -304,5 +304,45 @@ def test_venue_summary_does_not_invent_a_nonlinear_cof_split():
     document = json.loads((ROOT / 'reconciliation/2026-10/sde_inflight_cof.json').read_text())
     joint = next(row for row in document['daily'] if len(row['deduction_changes_by_venue']) > 1)
     joint['corrected_utilized'] = '900000000'
+    joint['deduction_changes_by_venue']['E9'] = str(
+        D(joint['frozen_utilized']) - D('900000000') - D(joint['deduction_changes_by_venue']['E10']))
     with pytest.raises(ValueError, match='nonlinear attribution'):
+        module.redemption_by_venue(document)
+
+
+@pytest.mark.parametrize('all_owned', [True, False])
+def test_large_basin_share_counts_never_create_negative_other_owner_cash(monkeypatch, all_owned):
+    prime = load_prime_by_id('grove')
+    pocket = next(v for v in prime.venues if v.id == 'E41').holder_override.hex
+    raw = 70078983710674800778744727006
+    total = 457119419572939049668858287274274708
+    shares = total if all_owned else total - 1
+    period = Period(date(2026, 9, 1), date(2026, 9, 1), {Chain.ETHEREUM: 200})
+    monkeypatch.setattr(rpc, 'ilk_debt', lambda *args: D('100000000000'))
+
+    def cash(basin, *args):
+        if basin == prime.basin_idle_usds.basins[0]:
+            return {'balances': {pocket: raw}, 'shares': shares, 'total_shares': total, 'pocket': pocket}
+        return snapshot(0, holder='unused')
+
+    monkeypatch.setattr(rpc, 'idle_usds', cash)
+    daily = get_basin_idle_usds(prime, period, block_resolver=Mock())
+    other = daily.iloc[0]['other_owners_by_holder'][pocket]
+    assert other == 0 if all_owned else D(0) < other < D('1e-20')
+    assert basin_cash_by_venue(prime, period, daily)['E41']['other_owners'] == other
+
+
+def test_joint_cof_split_rejects_zero_floor_crossing():
+    module = script('summarize_grove_2026_reconciliation')
+    document = {'daily': [{'deduction_changes_by_venue': {'E9': '10', 'E10': '10'},
+                           'credit_to_grove': '1', 'frozen_utilized': '10', 'corrected_utilized': '-10'}]}
+    with pytest.raises(ValueError, match='nonlinear attribution'):
+        module.redemption_by_venue(document)
+
+
+def test_cof_split_rejects_inconsistent_principal_changes():
+    module = script('summarize_grove_2026_reconciliation')
+    document = json.loads((ROOT / 'reconciliation/2026-10/sde_inflight_cof.json').read_text())
+    document['daily'][0]['deduction_changes_by_venue'] = {'E9': '1'}
+    with pytest.raises(ValueError, match='principal correction'):
         module.redemption_by_venue(document)

@@ -51,11 +51,17 @@ def get_basin_idle_usds(
                     cash = Decimal(sum(snapshot["balances"].values())) / Decimal(10**18)
                     idle += cash * Decimal(snapshot["shares"]) / Decimal(snapshot["total_shares"])
                     for holder, amount in snapshot["balances"].items():
-                        weights[holder] = (Decimal(amount) / Decimal(10**18)
-                                           * Decimal(snapshot["shares"])
-                                           / Decimal(snapshot["total_shares"]))
+                        # Multiply integer raw units first, then divide once.
+                        # A Decimal multiply/divide by the same large share
+                        # count can otherwise exceed raw cash by one ULP.
+                        weights[holder] = (Decimal(amount * snapshot["shares"])
+                                           / Decimal(snapshot["total_shares"] * 10**18))
                 for holder, amount in snapshot["balances"].items():
-                    other_owners[holder] = Decimal(amount) / Decimal(10**18) - weights.get(holder, Decimal(0))
+                    other_owners[holder] = (
+                        Decimal(amount * (snapshot["total_shares"] - snapshot["shares"]))
+                        / Decimal(snapshot["total_shares"] * 10**18)
+                        if snapshot["total_shares"] else Decimal(amount) / Decimal(10**18)
+                    )
             idle = min(idle, debt)
         # Attribute the SAME capped exemption to the cash holders for report
         # allocation. Keep the aggregate calculation above unchanged. A final
