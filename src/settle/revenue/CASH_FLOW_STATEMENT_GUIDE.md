@@ -89,7 +89,9 @@ The annual selection and monthly revision are different identifiers. Save the an
 | `src/app/api/cash-flow/{events,balances}/route.ts` | Enable the new prime with strict evidence selection validation. |
 | Fixtures/tests | Add actual reviewed source examples, absent/partial months, delayed MTD, missing boundaries and invalid/cross-prime selections. |
 
-Display whole dollars without dollar signs in cells. Supported cash amounts are blue, supported accrual adjustments green, estimates/incomplete coverage orange, TBD red, and future periods dashes. Automatic refresh should replace TBDs when publications arrive; retained failures must be visible and provisional.
+Display whole dollars without dollar signs in cells, using the shared neutral number styling. Append `*` for provisional/estimated amounts under the current display convention; retain recognition and quality in the API/evidence rather than restoring green/blue/orange accounting-basis colours. Missing is TBD and future periods are dashes. Automatic refresh should replace TBDs when publications arrive; retained failures stay source-qualified and provisional.
+
+Operating, investing and financing activities are category captions: no number is expected. Do not give a section caption the role of an expandable numeric parent. Keep investing rows such as Sky-direct deployments and treasury proceeds at `parent: null`, consistent with the other investing rows; use parent/child links only for genuine drilldown groups. Reuse the common statement widths, fonts, section styling and subtotal separators.
 
 ## 5. Validate and roll out
 
@@ -99,7 +101,7 @@ Display whole dollars without dollar signs in cells. Supported cash amounts are 
 4. Test immutable annual replay, pinned CSV, source pagination, historical cutoff selection and API outage recovery. API reads must never perform provider calls or write MSC results.
 5. Create backend and dashboard PRs; review/fix twice. Merge/deploy the backend first.
 6. Publish historical months using the merged code and reviewed configuration. Preserve source hashes, certified pins and code versions. Warm the durable public-evidence cache.
-7. Enable and verify the dedicated recurring job, then merge/deploy the dashboard. Check live figures, colors, evidence links, CSV and automatic TBD replacement.
+7. Enable and verify the dedicated recurring job, then merge/deploy the dashboard. Check live figures, estimate markers, evidence links, CSV and automatic TBD replacement.
 8. Record remaining gaps and their owners. Replay affected months after corrected source data/classification arrives; retain old publications for audit.
 
 Spark's dedicated job is configured for **22:15 UTC daily**, refreshing the previous month-end and latest completed day. Older corrections need an explicit historical replay. The initial capture covers January–October 2026 plus November 4 on seven supported chains; XLayer/BSC/Gnosis remain missing. Authenticated bridge transit, mixed reward cash balances, broader nonstable cost basis, queued Savings payouts and Sky-direct funding attribution remain explicit gaps. Do not carry these limitations into another prime as assumed zeroes.
@@ -109,7 +111,7 @@ Spark's dedicated job is configured for **22:15 UTC daily**, refreshing the prev
 
 Both reference PRs are merged and their API/dashboard deployments are live. Eleven publications are available: January–October month-ends and November 4 MTD. Source captures for seven configured chains are complete and 77 chain/cutoff captures are retained in the durable source cache. Missing chain support and economic attribution gaps still prevent a fully reconciled statement.
 
-Live checks validated API hashes/subtotals, transaction and balance evidence, pinned CSV, confidence colors, initial collapsed groups and mobile scrolling. Cash-flow net income matches the displayed income statement for all ten supplied expense months; November expenses/net income remain TBD. The recurring service has the reviewed `15 22 * * *` UTC schedule. Local outage/recovery checks confirmed automatic TBD replacement and provisional retained data after a failed refresh.
+Historical checks on November 5 validated API hashes/subtotals, transaction and balance evidence, pinned CSV, the then-current confidence colours, initial collapsed groups and mobile scrolling. Those colours are not the current display instruction. Cash-flow net income matches the displayed income statement for all ten supplied expense months; November expenses/net income remain TBD. The recurring service has the reviewed `15 22 * * *` UTC schedule. Local outage/recovery checks confirmed automatic TBD replacement and provisional retained data after a failed refresh.
 
 
 ## November review controls to apply to every prime
