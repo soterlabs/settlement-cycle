@@ -131,12 +131,19 @@ def test_curator_split_moves_self_fee_to_supply_without_touching_unrelated_amm_c
     s=dict(periods=[dict(key='2026-10',state='complete',expected_cutoff='2026-10-31')],lines=[native,
         row('fees.curator.S34','10'),row('fees.curator','10',components=[dict(id='fees.curator.S34',sign=1)]),
         row('investment.amm.v4','5',components=[dict(id='opaque_external_capital_proof',sign=1)])])
+    s['spark_allocation_ledger']=[dict(venue_id='S34',month='2026-10',native_revenue_usd=metric('90'),supply_apr='0.09')]
+    s['spark_fee_ledger']=[dict(venue='S34',month='2026-10',accrued_usd='10')]
     source=dict(revision_id='a'*64,cutoff='2026-10-31',document=dict(curator_attribution=dict(S34=dict(attribution=dict(
         status='available',quality='estimate',basis='controlled_ownership',external_accrued_usd='1',self_rebate_accrued_usd='9')))))
     apply(s,[source]);lookup={r['id']:r for r in s['lines']}
     assert D(native['values']['2026-10']['value'])==99
     assert D(lookup['fees.curator']['values']['2026-10']['value'])==1
     assert native['aggregation']=='leaf'
+    assert s['spark_allocation_ledger'][0]['native_revenue_usd']['value']=='90'
+    assert s['spark_allocation_ledger'][0]['allocation_revenue_usd']['value']=='99'
+    assert s['spark_allocation_ledger'][0]['self_curation_rebate_usd']['value']=='9'
+    assert s['spark_fee_ledger'][0]['ledger_scope']=='gross_performance_fee_entitlement'
+    assert s['spark_fee_ledger'][0]['external_curator_revenue_usd']['value']=='1'
     assert lookup['investment.amm.v4']['values']['2026-10']['value']=='5'
 
 
@@ -154,3 +161,31 @@ def test_cash_policy_cohorts_cannot_replace_each_other_and_old_selections_replay
     assert a['policy_version']==LEGACY_POLICY and a['periods'][9]['revision']==old['revision_id']
     assert b['policy_version']==REVIEW_POLICY and b['periods'][9]['revision']==new['revision_id']
     assert annual('spark',2026,date(2026,11,4),[old,new],selection=decode(a['selection'],'spark',2026))==a
+
+
+def test_missing_fee_attribution_preserves_known_total_without_claiming_external_income():
+    from settle.revenue.spark_curator_attribution import apply
+    from settle.revenue.statement_rollups import combine
+    def row(key,value):
+        return dict(id=key,label=key,aggregation='leaf',values={'2026-10':metric(value)})
+    native=row('investment.venue.S34','90');fee=row('fees.curator.S34','10')
+    statement=dict(periods=[dict(key='2026-10',state='complete',expected_cutoff='2026-10-31')],lines=[native,fee])
+    apply(statement,[None]);lookup={r['id']:r for r in statement['lines']}
+    unknown=lookup['audit.unallocated_curation.S34']['values']['2026-10']
+    assert fee['values']['2026-10']['value'] is None
+    assert native['values']['2026-10']['value'] is None
+    total=combine([(r['id'],1,r['values']['2026-10']) for r in (native,fee,lookup['audit.unallocated_curation.S34'])])
+    assert D(total['known_value'])==100 and total['status']=='partial'
+    assert unknown['reason']=='gross_fee_income_known_but_economic_bucket_unallocated'
+
+
+def test_missing_v4_principal_event_list_cannot_be_claimed_as_known_zero():
+    import pytest
+    from datetime import date
+    from types import SimpleNamespace
+    from settle.domain.primes import Chain
+    from settle.revenue.spark_sde_cash import collect
+    source=SimpleNamespace(prime=SimpleNamespace(alm={Chain('ethereum'):SimpleNamespace(hex=ALM)}),
+                           period=SimpleNamespace(start=date(2026,10,1),end=date(2026,10,31)))
+    with pytest.raises(ValueError,match='event history is missing'):
+        collect(source,dict(amm_fees=dict(S62=dict(status='available',capital_reconciliation=dict(status='available')))))

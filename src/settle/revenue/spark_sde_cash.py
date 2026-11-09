@@ -103,6 +103,8 @@ def collect(source, retained):
     by_tx = defaultdict(lambda: {'principal_raw': 0, 'event_indices': []})
     v4 = retained.get('amm_fees', {}).get('S62', {})
     if v4.get('status') == 'available' and v4.get('capital_reconciliation', {}).get('status') == 'available':
+        if not isinstance(v4.get('capital_events'), list):
+            raise ValueError('V4 principal event history is missing')
         currencies = [a.lower() for a in v4.get('currencies', [])]
         if USDT not in currencies:
             raise ValueError('V4 designated cash currency differs')

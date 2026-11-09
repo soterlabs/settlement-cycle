@@ -48,10 +48,12 @@ def main():
     )
     parser.add_argument("--output-dir", help="Write a reviewable public-data preview")
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--review", action="store_true", default=os.environ.get("SPARK_REPORTING_REVIEW_ENABLED") == "1", help="Use reviewed Spark accounting, expanded Safes and authenticated SDE principal")
+    parser.add_argument("--review", action="store_true", default=None, help="Use reviewed Spark accounting, expanded Safes and authenticated SDE principal")
     args = parser.parse_args()
-    config = load(review=args.review)
     load_dotenv(args.env_file)
+    if args.review is None:
+        args.review = os.environ.get("SPARK_REPORTING_REVIEW_ENABLED") == "1"
+    config = load(review=args.review)
     if args.dry_run:
         os.environ["CASH_FLOW_CAPTURE_PERSIST"] = "0"
     start = args.start or args.end.replace(day=1) - timedelta(days=1)

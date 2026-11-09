@@ -130,11 +130,13 @@ def build(evidence, income, *, config=None):
         value = amount(source("expenses.compensation.spk"))
         contributor = str(value) if value is not None else None
     metrics["contributor-spk"] = metric(contributor, recognition="accrual", quality="estimate",
-        reason="Contributor compensation from approved monthly sheet; missing values are not zero",
+        reason="Provisional grant-date straight-line compensation; claim transfers are not expense timing" if contributor_source.get("schedule") else "Contributor compensation from approved monthly sheet; missing values are not zero",
         refs=["contributor_compensation.json"])
     included = expenses().get("includes_contributor_compensation", False)
-    if included and cash_costs is not None and contributor is not None:
-        metrics["expenses-booked"]["value"] = str(cash_costs - Decimal(contributor))
+    if included and cash_costs is not None:
+        metrics["expenses-booked"] = (metric(cash_costs - Decimal(contributor), recognition="accrual", quality="estimate",
+            reason="Sheet includes SPK; cash payable expenses exclude the same noncash grant", refs=["expense:" + expense_revision])
+            if contributor is not None else metric(reason="Sheet includes noncash SPK but its value is unavailable"))
     if amount(metrics["net-income"]) is not None and not included:
         base = metrics["net-income"]
         metrics["net-income"] = total([

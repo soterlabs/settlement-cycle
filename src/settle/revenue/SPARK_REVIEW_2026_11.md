@@ -133,3 +133,29 @@ Limitations retained: provisional grant inputs and fee attribution, unresolved
 full-cluster receivable/noncash/transit bridges, and unidentified external Safe
 receipts. These changes are not an audit certification or a guarantee of a
 zero reconciliation gap.
+
+
+Reviewed component reads also accept `review=true` on `/v3/reporting/fees`,
+`/v3/reporting/gains` and `/v3/reporting/allocations`. Retained `revision`
+selections take precedence. Per-venue `native_revenue_usd` and supply rates
+remain the net vault NAV yield. `self_curation_rebate_usd` is disclosed
+separately, `allocation_revenue_usd` includes it, and family totals use that
+allocation revenue. The fee ledger explicitly retains gross entitlement while
+`external_curator_revenue_usd` matches the external-fee statement metric. Do not
+add the gross fee ledger again to the statement. Excluded reserve audit metrics
+are not returned as active gains by the reviewed gains endpoint.
+
+### Independent curator cross-check, USD
+
+| 2026 month | External fees, this calculation | Spark public financials |
+|---|---:|---:|
+| 2026-01 | 30,259.29 | 30,130.79 |
+| 2026-02 | 6,369.84 | 6,455.99 |
+| 2026-03 | 5,356.10 | 5,310.94 |
+| 2026-04 | 3,843.67 | 3,894.23 |
+| 2026-05 | 3,254.82 | 3,280.51 |
+| 2026-06 | 3,296.26 | 3,228.01 |
+| 2026-07 | 2,944.30 | 2,921.87 |
+| 2026-08 | 2,399.05 | 2,397.92 |
+| 2026-09 | 2,023.91 | 2,008.15 |
+| 2026-10 | 2,328.10 | 2,338.11 |

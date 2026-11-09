@@ -154,7 +154,8 @@ def complete_month(conn, cutoff, *, source=None, accounting_only=False, sde_cash
     if sde_cash_only or review_inputs:
         from .spark_sde_cash import collect as sde_cash
         result.update(opening_pins=deepcopy(saved["opening_pins"]), closing_pins=deepcopy(saved["closing_pins"]))
-        result["sde_cash"] = sde_cash(source, old["document"])
+        if not review_inputs:
+            result["sde_cash"] = sde_cash(source, old["document"])
         result["completion_source_revision"] = old["revision_id"]
         return result
     if accounting_only:

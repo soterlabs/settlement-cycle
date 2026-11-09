@@ -4,18 +4,21 @@ from copy import deepcopy
 from datetime import date
 
 import psycopg
+import pytest
 from fastapi.testclient import TestClient
 from psycopg_pool import ConnectionPool
 
 from settle.api.app import PostgresReader, create_app
 from settle.revenue import store as revenue_store
 from settle.revenue.cash_flow import store
+from settle.revenue.cash_flow.config import load
 from settle.revenue.verification import digest
 from tests.integration.test_input_cache_postgres import database  # noqa: F401
 from tests.unit.test_cash_flow import document
 
 
-def test_cash_flow_publications_are_immutable_scoped_and_reporting_only(database, monkeypatch):  # noqa: F811
+@pytest.mark.parametrize("review", [False, True])
+def test_cash_flow_publications_are_immutable_scoped_and_reporting_only(database, monkeypatch, review):  # noqa: F811
     monkeypatch.setattr("settle.api.revenue.today", lambda: date(2026, 11, 5))
 
     def forbidden(*args, **kwargs):
@@ -24,6 +27,9 @@ def test_cash_flow_publications_are_immutable_scoped_and_reporting_only(database
     monkeypatch.setattr("requests.Session.send", forbidden)
     events = [{"id": "ethereum:tx:1:cash", "line_id": "unclassified", "amount_usd": "5"}]
     original = document()
+    config = load(review=review)
+    original.update(policy_version=config["policy"], configuration_revision=config["revision"])
+    live_url = "/v3/reporting/cash-flow?prime=spark&year=2026" + ("&review=true" if review else "")
     original.update(cash_event_digest=digest(events), cash_event_count=1)
     with psycopg.connect(database, autocommit=True) as conn:
         revenue_store.apply_schema(conn)
@@ -36,7 +42,7 @@ def test_cash_flow_publications_are_immutable_scoped_and_reporting_only(database
         assert conn.execute("SELECT count(*) FROM revenue_results").fetchone()[0] == 0
     with ConnectionPool(database, min_size=1, max_size=2) as pool:
         with TestClient(create_app(reader=PostgresReader(pool, {}, [], 0))) as client:
-            response = client.get("/v3/reporting/cash-flow?prime=spark&year=2026")
+            response = client.get(live_url)
             assert response.status_code == 200, response.text
             selected = response.json()["selection"]
             with psycopg.connect(database, autocommit=True) as conn:
@@ -49,7 +55,7 @@ def test_cash_flow_publications_are_immutable_scoped_and_reporting_only(database
             )
             assert pinned.json() == response.json()
             assert (
-                client.get("/v3/reporting/cash-flow?prime=spark&year=2026").json()["selection"]
+                client.get(live_url).json()["selection"]
                 != selected
             )
             params = {
@@ -79,8 +85,13 @@ def test_month_projection_reads_one_eligible_revision_per_month(database):  # no
         ids = {}
         for day in ["2026-10-31", "2026-11-01", "2026-11-03"]:
             ids[day] = store.publish(conn, document(day), [], "code")
+        legacy = document("2026-10-31")
+        legacy_config = load(review=False)
+        legacy.update(policy_version=legacy_config["policy"], configuration_revision=legacy_config["revision"])
+        store.publish(conn, legacy, [], "old-code")
         historical = store.year_rows(conn, "spark", 2026, as_of=date(2026, 11, 2))
         assert {r["cutoff"] for r in historical} == {"2026-10-31", "2026-11-01"}
+        assert {r["policy_version"] for r in historical} == {load(review=False)["policy"], load(review=True)["policy"]}
         latest = store.year_rows(conn, "spark", 2026, as_of=date(2026, 11, 4))
         assert {r["cutoff"] for r in latest} == {"2026-10-31", "2026-11-03"}
         pinned = store.year_rows(conn, "spark", 2026, [ids["2026-11-01"]], as_of=date(2026, 11, 4))

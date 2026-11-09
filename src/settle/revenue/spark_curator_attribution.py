@@ -51,6 +51,17 @@ def apply(statement, supplements):
                                    reason='gross_fee_income_known_but_economic_bucket_unallocated')
             fee['values'][month]=external;rebate['values'][month]=own;unresolved['values'][month]=unknown
             native['values'][month]=combine([(raw['id'],1,raw['values'][month]),(rebate['id'],1,own)])
+            for entry in statement.get('spark_allocation_ledger', []):
+                if entry['venue_id'] == venue and entry['month'] == month:
+                    # Supply APY remains the observed net-NAV yield; the rebate
+                    # is a separate economic addition to allocation revenue.
+                    entry['self_curation_rebate_usd'] = deepcopy(own)
+                    entry['allocation_revenue_usd'] = deepcopy(native['values'][month])
+            for entry in statement.get('spark_fee_ledger', []):
+                if entry['venue'] == venue and entry['month'] == month:
+                    entry['ledger_scope'] = 'gross_performance_fee_entitlement'
+                    entry['external_curator_revenue_usd'] = deepcopy(external)
+                    entry['self_curation_rebate_usd'] = deepcopy(own)
             if period['state']=='future':native['values'][month].update(status='future',value=None,known_value=None)
     # Recompute aliases after the economic venue leaves change. These are
     # alternate views, not additional rows in the allocation revenue sum.
