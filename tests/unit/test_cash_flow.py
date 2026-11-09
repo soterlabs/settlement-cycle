@@ -393,3 +393,45 @@ def test_delayed_mtd_sources_keep_monthly_and_ytd_totals_provisional():
     original = annual("spark", 2026, date(2026, 11, 1), [p])
     row = next(r for r in original["lines"] if r["id"] == "external-receipts")
     assert row["values"]["2026-11"]["status"] == "available"
+
+
+@pytest.mark.parametrize(
+    "component", ["sky_staking_income_component", "steakhouse_income_component"]
+)
+def test_msc_receivable_excludes_non_msc_operating_income_reversals(component):
+    p = publication("2026-01-31")
+    cells = p["document"]["metrics"]
+    cells["earned-not-received"] = metric("-120", recognition="accrual")
+    cells["earned-not-received"]["approved_msc_component"] = metric("100", recognition="accrual")
+    cells["earned-not-received"][component] = metric("20", recognition="accrual")
+    cells["sky-allocation-receipts"] = metric("60")
+    subtotals(cells)
+    report = annual("spark", 2026, date(2026, 1, 31), [p])
+    assert report["methodology"]["msc_receivable_basis"] == "approved_msc_component"
+    got = next(r for r in report["lines"] if r["id"] == "msc-receivable")["values"]["2026-01"]
+    assert Decimal(got["value"]) == Decimal(load()["opening_msc_receivable"]) + 40
+    # The actual operating bridge remains unchanged; its non-MSC reversal is needed.
+    assert (
+        next(r for r in report["lines"] if r["id"] == "earned-not-received")["values"]["2026-01"][
+            "value"
+        ]
+        == "-120"
+    )
+
+
+def test_msc_receivable_does_not_infer_an_entitlement_from_mixed_bridge_without_approval():
+    p = publication("2026-01-31")
+    cells = p["document"]["metrics"]
+    cells["earned-not-received"] = metric("-20", recognition="accrual")
+    cells["earned-not-received"]["steakhouse_income_component"] = metric(
+        "20", recognition="accrual"
+    )
+    report = annual("spark", 2026, date(2026, 1, 31), [p])
+    got = next(r for r in report["lines"] if r["id"] == "msc-receivable")["values"]["2026-01"]
+    assert got["status"] == "partial"
+    assert Decimal(got["known_value"]) == Decimal(load()["opening_msc_receivable"])
+
+
+def test_legacy_msc_projection_does_not_advertise_a_changed_basis():
+    report=annual("spark",2026,date(2026,1,31),[publication("2026-01-31")])
+    assert "msc_receivable_basis" not in report["methodology"]
