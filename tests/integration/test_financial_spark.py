@@ -2,6 +2,7 @@ from dataclasses import dataclass, field, replace
 from decimal import Decimal
 
 import psycopg
+import pytest
 from fastapi.testclient import TestClient
 from psycopg_pool import ConnectionPool
 
@@ -20,7 +21,8 @@ class SparkPnl(FinancialPnl):
     psm3_susds_appreciation: Decimal | None = None
 
 
-def test_report_only_reserve_receipts_are_read_from_exact_pinned_source(database, monkeypatch):  # noqa: F811
+@pytest.mark.parametrize('msc_rlusd', [False, True])
+def test_reserve_receipts_are_read_from_exact_pinned_source(database, monkeypatch, msc_rlusd):  # noqa: F811
     def forbidden(*args, **kwargs):
         raise AssertionError('Reporting reads cannot invoke providers')
     monkeypatch.setattr('requests.Session.send', forbidden)
@@ -30,16 +32,20 @@ def test_report_only_reserve_receipts_are_read_from_exact_pinned_source(database
     extras = [dict(venue_id=v, pricing_category='C', sd_share='0', external_revenue='3', revenue='99999')
               for v in ('S70', 'S71')]
     views = {'reporting': [dict(venue_id=v, enabled=True, status='available') for v in ('S70', 'S71')]}
-    pnl = SparkPnl('spark', base.period, base.pin_blocks_som, venue_breakdown=rows,
-                   reporting_only_breakdown=extras, venue_views=views, psm3_susds_appreciation=Decimal("123.456"))
+    pnl = SparkPnl('spark', base.period, base.pin_blocks_som,
+                   venue_breakdown=rows + extras[:1] if msc_rlusd else rows,
+                   reporting_only_breakdown=extras[1:] if msc_rlusd else extras,
+                   venue_views=views, psm3_susds_appreciation=Decimal("123.456"))
     versions = store.Versions('spark-fees-test',
-        'da77310707751cae619941f4a35e937d8f880167b5af57a58ae5db20376c7067', '0')
+        ('baa6f489d0eb3679d269ddf28472e6585d96d9d3db39ad32abc5e2b16c00543a' if msc_rlusd
+         else 'da77310707751cae619941f4a35e937d8f880167b5af57a58ae5db20376c7067'), '0')
     with psycopg.connect(database, autocommit=True) as conn:
         store.apply_schema(conn)
         original = store.publish(conn, pnl, versions)
         assert financial_store.publish_revision(conn, 'spark', original) == 'succeeded'
         selected = financial_store.year_rows(conn, 'spark', pnl.as_of.year, include_spark_fees=True)
         assert len(selected[0]['spark_fee_source_rows']) == 2
+        assert ('S70' in selected[0]['spark_fee_msc_venues']) is msc_rlusd
         assert selected[0]['spark_psm3_income'] == '123.456'
         assert 'spark_fee_source_rows' not in financial_store.year_rows(conn, 'spark', pnl.as_of.year)[0]
     with ConnectionPool(database, min_size=1, max_size=2) as pool:
@@ -56,6 +62,9 @@ def test_report_only_reserve_receipts_are_read_from_exact_pinned_source(database
 
             assert fees(annual)['value'] == '16'
             assert fees(annual)['recognition'] == 'receipt_in_kind'
+            receipt = next(row for row in annual['lines'] if row['id'] == 'fees.sparklend.rlusd')['values'][month]
+            collection = 'venue_breakdown' if msc_rlusd else 'reporting_only_breakdown'
+            assert receipt['source_paths'] == [f'result.{collection}.S70.external_revenue']
             with psycopg.connect(database, autocommit=True) as conn:
                 newer = store.publish(conn, replace(pnl, venue_views={'reporting': [
                     dict(venue_id='S70', enabled=False, status='disabled'), views['reporting'][1]]}),

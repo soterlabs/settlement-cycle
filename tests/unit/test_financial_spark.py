@@ -3,6 +3,8 @@ from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
+import pytest
+
 from settle.domain.config import load_prime_by_id
 from settle.revenue.financial import build, decode_selection, statements
 from settle.revenue.financial_spark import (
@@ -81,12 +83,15 @@ def test_retained_old_policy_is_unchanged_and_new_selection_replays():
     assert line['total']['status'] == 'partial'
 
 
-def test_additional_reporting_only_receipts_complete_fees_without_adding_native_yield():
+@pytest.mark.parametrize('msc_rlusd', [False, True])
+def test_additional_receipts_complete_fees_without_adding_native_yield(msc_rlusd):
     source = saved()
     source.update(spark_fee_source_hash=source['document']['source']['result_hash'],
                   spark_fee_source_rows=[dict(venue_id=v, pricing_category='C', sd_share='0',
                                              external_revenue='3', revenue='99999') for v in ('S70', 'S71')],
                   spark_fee_source_views=[dict(venue_id=v, enabled=True, status='available') for v in ('S70', 'S71')])
+    if msc_rlusd:
+        source['spark_fee_msc_venues'] = ['S70']
     new = statement(source, spark_income=True)
     assert cell(new, 'fees.sparklend')['value'] == '16'
     assert cell(new, 'fees.sparklend.rlusd')['value'] == '3'
@@ -94,6 +99,12 @@ def test_additional_reporting_only_receipts_complete_fees_without_adding_native_
     old = statement(source, archive=True)
     assert amount(cell(new, 'statement.net_revenue')) - amount(cell(old, 'statement.net_revenue')) == 199998
     assert amount(cell(new, 'investment.venue.S70')) == 99996
+    collection = 'venue_breakdown' if msc_rlusd else 'reporting_only_breakdown'
+    assert cell(new, 'fees.sparklend.rlusd')['source_paths'] == [f'result.{collection}.S70.external_revenue']
+    if msc_rlusd:
+        assert cell(new, 'investment.venue.S70')['source_paths'] == [
+            'result.venue_breakdown.S70.revenue', 'result.venue_breakdown.S70.external_revenue',
+        ]
     # Only the external receipt is fee income; the raw venue's other return
     # must not be mistaken for curator or protocol fees.
     source['spark_fee_source_views'][0]['enabled'] = False
@@ -104,9 +115,18 @@ def test_additional_reporting_only_receipts_complete_fees_without_adding_native_
     assert cell(invalid, 'fees.sparklend')['known_value'] == '10'
 
 
-def test_new_reserve_markets_are_reporting_only_and_excluded_from_msc():
+def test_rlusd_is_msc_while_usdg_retains_reporting_only_scope():
     prime = load_prime_by_id('spark', Path(__file__).parents[2] / 'config')
     markets = [venue for venue in prime.venues if venue.id in ('S70', 'S71')]
     assert len(markets) == 2
-    assert all(not venue.settles and venue.reporting_view.enabled and venue.cof_excluded for venue in markets)
+    rlusd, usdg = (next(v for v in markets if v.id == key) for key in ('S70', 'S71'))
+    assert rlusd.settles and rlusd.reporting_view.enabled and not rlusd.cof_excluded
+    assert not usdg.settles and usdg.reporting_view.enabled and usdg.cof_excluded
     assert {venue.token.decimals for venue in markets} == {6, 18}
+
+
+def test_rlusd_msc_configuration_preserves_reviewed_reserve_attribution():
+    source = saved(configuration='baa6f489d0eb3679d269ddf28472e6585d96d9d3db39ad32abc5e2b16c00543a')
+    report = statement(source, spark_income=True)
+    assert cell(report, 'fees.sparklend')['known_value'] == '10'
+    assert cell(report, 'rewards.unattributed_sparklend_receipts')['value'] == '0'

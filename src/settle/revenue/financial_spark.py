@@ -25,6 +25,10 @@ REVIEWED_CONFIGURATIONS = {
     '244e91c22e06b4cbf1a573239571363f057c4c8ce9d40dc2e2735fd07f594f43',
     '1396a71440f5476ce8a9b9d87eb3bdfc587861cd139ad0481d76d4ed26314529',
     'da77310707751cae619941f4a35e937d8f880167b5af57a58ae5db20376c7067',
+    # PR #267 on current main: S70 enters MSC and Sentora is S72. The
+    # additional issuer sender delivers raw RLUSD, not reserve spTokens;
+    # the two authenticated reserve-treasury sources remain unchanged.
+    'baa6f489d0eb3679d269ddf28472e6585d96d9d3db39ad32abc5e2b16c00543a',
 }
 
 
@@ -88,8 +92,10 @@ def extra_receipts(publication):
             value = number(rows[0]['external_revenue'])
         except (KeyError, ValueError):
             continue
+        collection = ('venue_breakdown' if venue in publication.get('spark_fee_msc_venues', [])
+                      else 'reporting_only_breakdown')
         result[key] = metric(value, basis='sparklend_reserve_treasury_spToken_receipts',
-                             source_paths=[f'result.reporting_only_breakdown.{venue}.external_revenue'])
+                             source_paths=[f'result.{collection}.{venue}.external_revenue'])
         result[key].update(recognition='receipt_in_kind', source_ref=publication['revision_id'])
     return result
 
@@ -135,8 +141,15 @@ def extend(statement, chosen, supplemental):
                     venue = 'S70' if key.endswith('rlusd') else 'S71'
                     row = next(r for r in publication['spark_fee_source_rows'] if r['venue_id'] == venue)
                     try:
+                        # Keep retained reporting-only paths unchanged. A new
+                        # MSC member must cite its actual source collection
+                        # and both operands of native income = revenue - fees.
+                        paths = ([f'result.venue_breakdown.{venue}.{field}'
+                                  for field in ('revenue', 'external_revenue')]
+                                 if venue in publication.get('spark_fee_msc_venues', [])
+                                 else [f'result.reporting_only_breakdown.{venue}.revenue_minus_external'])
                         native = metric(number(row['revenue']) - number(row['external_revenue']),
-                                        basis='native_lending_yield', source_paths=[f'result.reporting_only_breakdown.{venue}.revenue_minus_external'])
+                                        basis='native_lending_yield', source_paths=paths)
                         native['source_ref'] = publication['revision_id']
                     except (KeyError, ValueError):
                         pass
