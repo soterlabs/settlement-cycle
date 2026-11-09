@@ -13,7 +13,7 @@ from .config import expenses, load
 from .model import amount, metric, subtotals, total, validate
 
 
-def income_report(conn, cutoff):
+def income_report(conn, cutoff, *, review=False):
     rows = financial_store.year_rows(conn, "spark", cutoff.year, include_spark_fees=True)
     components = spark_reporting_store.year_rows(conn, cutoff.year)
     return statements(
@@ -30,7 +30,7 @@ def income_report(conn, cutoff):
         spark_income=True,
         spark_publications=components,
         spark_amms=True,
-        spark_statement=True,
+        spark_statement=True, spark_review=review,
     )
 
 
@@ -61,8 +61,15 @@ def build(evidence, income, *, config=None):
     from .evidence import validate_evidence
 
     validate_evidence(evidence, config)
-    ledger = collect_ledger(evidence, config=config, disposals=[r for r in income.get("treasury_cash_disposals", []) if r["month"] == month])
+    ledger = collect_ledger(evidence, config=config, disposals=[r for r in income.get("treasury_cash_disposals", []) if r["month"] == month], sde_principal=[r for r in income.get("spark_sde_cash", []) if r["month"] == month])
     metrics = cash_metrics(evidence, ledger, config)
+    principal_policy = any(v.get("principal_only") for values in config["counterparties"].values() for v in values.values())
+    if principal_policy and not any(r["month"] == month for r in income.get("spark_sde_cash", [])):
+        ledger["sde_failures"].append("Reviewed SDE principal source is not published")
+    if ledger.get("sde_failures"):
+        observed = [e for e in ledger["entries"] if e["line_id"] == "sky-direct-deployments"]
+        metrics["sky-direct-deployments"] = metric(sum((Decimal(e["amount_usd"]) for e in observed), Decimal(0)) if observed else None,
+            complete=False, quality="estimate", reason="SDE principal evidence is incomplete; missing is not zero")
     income_lines = {r["id"]: r for r in income["lines"]}
     period = next((p for p in income["periods"] if p["key"] == month), {})
 
@@ -116,13 +123,19 @@ def build(evidence, income, *, config=None):
         reason="Same SPK expense as net income, added back once",
         refs=["expense:" + expense_revision],
     )
-    from ..expense_inputs import contributor_input
-    contributor_source, contributor_revision = contributor_input(income.get("expense_input_revision"))
+    from ..expense_inputs import contributor_input, INITIAL_CONTRIBUTOR_INPUT
+    contributor_source, contributor_revision = contributor_input(income.get("expense_input_revision", INITIAL_CONTRIBUTOR_INPUT))
     contributor = contributor_source["months"][month]
+    if contributor_source.get("schedule") and "expenses.compensation.spk" in income_lines:
+        value = amount(source("expenses.compensation.spk"))
+        contributor = str(value) if value is not None else None
     metrics["contributor-spk"] = metric(contributor, recognition="accrual", quality="estimate",
         reason="Contributor compensation from approved monthly sheet; missing values are not zero",
         refs=["contributor_compensation.json"])
-    if amount(metrics["net-income"]) is not None:
+    included = expenses().get("includes_contributor_compensation", False)
+    if included and cash_costs is not None and contributor is not None:
+        metrics["expenses-booked"]["value"] = str(cash_costs - Decimal(contributor))
+    if amount(metrics["net-income"]) is not None and not included:
         base = metrics["net-income"]
         metrics["net-income"] = total([
             ("net_income_before_contributor_SPK", 1, base),
@@ -252,6 +265,7 @@ def build(evidence, income, *, config=None):
             "savings_failures": ledger["savings"]["failures"],
             "unclassified_events": sum(r["line_id"] == "unclassified" for r in entries),
             "classification_complete": False,
+            "sde_principal_failures": ledger.get("sde_failures", []),
             "allocation_basis_failures": ledger["allocation_failures"],
             "verified_redemptions": ledger["verified_redemptions"],
         },
@@ -261,4 +275,8 @@ def build(evidence, income, *, config=None):
         },
         "noncash_note": "MSC debt additions, custody transfers and noncash position movements are excluded from cash receipts. Nonstable cost basis, Sky-direct funding and bridge claims remain separately unresolved.",
     }
+    if income.get("review_policy"):
+        witnesses = [r for r in income.get("spark_sde_cash", []) if r["month"] == month]
+        document["sde_principal_witnesses"] = witnesses
+        document["dependencies"]["sde_principal_hash"] = digest(witnesses)
     return validate(document), entries

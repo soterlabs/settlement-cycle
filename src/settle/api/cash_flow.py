@@ -60,6 +60,7 @@ def register(app, get_reader, document_response):
         year: int = Query(ge=2020, le=9998),
         cutoff: date | None = None,
         revision: str | None = Query(None, max_length=4096),
+        review: bool = False,
         r=Depends(get_reader),  # noqa: B008
     ):
         scope(prime, year)
@@ -84,7 +85,7 @@ def register(app, get_reader, document_response):
                 [v for v in selection["revisions"] if v] if selection else None,
                 as_of=as_of,
             )
-            result = annual(prime, year, as_of, rows, selection=selection)
+            result = annual(prime, year, as_of, rows, selection=selection, review=review)
         except (LookupError, ValueError) as exc:
             raise HTTPException(404, str(exc), headers={"Cache-Control": "no-store"}) from None
         except Exception:

@@ -1,5 +1,5 @@
 {
-  "policy": "spark-cash-flow.events.v1",
+  "policy": "spark-cash-flow.events.v2",
   "prime": "spark",
   "year": 2026,
   "workbook_sha256": "c637a33351faa88360c5f7d6d1582bb21e4311769cd1a605ef036f728aa488ef",
@@ -84,6 +84,14 @@
       "0x592b7db9906e6f8924c4d74c2a0ab86ce44fdddf": {
         "label": "Savings Vault Intents",
         "role": "intents"
+      },
+      "0x8a3c66b30e2bbe5c2b1cff1054d869171fb87766": {
+        "label": "Spark DevCo contractor Safe",
+        "role": "operating"
+      },
+      "0xdfbc82d27aa60e9f55bdfe043a881c18520b71f1": {
+        "label": "Spark Foundation contractor Safe",
+        "role": "operating"
       }
     },
     "base": {
@@ -706,7 +714,8 @@
         "kind": "sky_direct",
         "label": "Curve USDT Sky direct",
         "start_date": "2025-11-13",
-        "end_date": "2026-06-25"
+        "end_date": "2026-06-25",
+        "principal_only": true
       },
       "0xa632d59b9b804a956bfaa9b48af3a1b74808fc1f": {
         "kind": "allocation",
@@ -840,7 +849,8 @@
         "kind": "sky_direct",
         "label": "Uniswap v4 USDT leg on behalf of Sky; other legs retain own attribution",
         "start_date": "2026-05-26",
-        "end_date": "9999-12-31"
+        "end_date": "9999-12-31",
+        "principal_only": true
       },
       "0xd5ff8bdef23fc3c8ff6815c6b4051f9809c877a5": {
         "kind": "investment",
@@ -861,14 +871,6 @@
       "0x1369f7b2b38c76b6478c0f0e66d94923421891ba": {
         "kind": "expense",
         "label": "Grove revenue share"
-      },
-      "0x8a3c66b30e2bbe5c2b1cff1054d869171fb87766": {
-        "kind": "unclassified",
-        "label": "Unidentified Safe"
-      },
-      "0xdfbc82d27aa60e9f55bdfe043a881c18520b71f1": {
-        "kind": "unclassified",
-        "label": "Unidentified Safe"
       },
       "0xa188eec8f81263234da3622a406892f3d630f98c": {
         "kind": "conversion",

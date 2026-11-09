@@ -25,7 +25,9 @@ SPARK_AMM_POLICY = 'prime-management.spark-amms.v3.7'
 SPARK_STATEMENT_POLICY = 'prime-management.spark-statement.v3.8'
 SPARK_HISTORY_POLICY = 'prime-management.spark-history.v3.9'
 SPARK_RECONCILED_POLICY = 'prime-management.spark-reconciled.v3.10'
-SPARK_HISTORY_POLICIES = (SPARK_HISTORY_POLICY, SPARK_RECONCILED_POLICY)
+SPARK_REVIEW_POLICY = 'prime-management.spark-reviewed.v3.11'
+SPARK_RECONCILED_POLICIES = (SPARK_RECONCILED_POLICY, SPARK_REVIEW_POLICY)
+SPARK_HISTORY_POLICIES = (SPARK_HISTORY_POLICY, *SPARK_RECONCILED_POLICIES)
 SPARK_STATEMENT_POLICIES = (SPARK_STATEMENT_POLICY, *SPARK_HISTORY_POLICIES)
 SPARK_AMM_POLICIES = (SPARK_AMM_POLICY, *SPARK_STATEMENT_POLICIES)
 SPARK_INCOME_POLICIES = (SPARK_INCOME_POLICY, *SPARK_AMM_POLICIES)
@@ -222,7 +224,7 @@ def decode_selection(token, prime, year):
             keys.add('monthly_revisions')
         if selection.get('policy_version') in OFFCHAIN_POLICIES:
             keys.add('offchain_revisions')
-        if selection.get('policy_version') == SPARK_RECONCILED_POLICY and 'expense_input_revision' in selection:
+        if selection.get('policy_version') in SPARK_RECONCILED_POLICIES and 'expense_input_revision' in selection:
             keys.add('expense_input_revision')
             value = selection['expense_input_revision']
             if not isinstance(value, str) or len(value) != 64 or any(c not in '0123456789abcdef' for c in value):
@@ -248,10 +250,10 @@ def decode_selection(token, prime, year):
         raise ValueError('Invalid report revision selection') from exc
 
 
-def statements(prime, year, as_of, publications, *, exact=False, selection=None, monthly=False, rollups=False, rwa=False, allocation_rewards=False, offchain=False, archive=False, spark_income=False, spark_publications=(), spark_amms=False, spark_statement=False, spark_accounting=True):
+def statements(prime, year, as_of, publications, *, exact=False, selection=None, monthly=False, rollups=False, rwa=False, allocation_rewards=False, offchain=False, archive=False, spark_income=False, spark_publications=(), spark_amms=False, spark_statement=False, spark_accounting=True, spark_review=False):
     """Read projection of saved financial metrics, with immutable export selection."""
-    policy_version = selection['policy_version'] if selection else SPARK_RECONCILED_POLICY if spark_statement and year == 2026 and spark_accounting else SPARK_HISTORY_POLICY if spark_statement else SPARK_AMM_POLICY if spark_amms else SPARK_INCOME_POLICY if spark_income else ARCHIVE_POLICY if archive else OFFCHAIN_POLICY if offchain else ALLOCATION_REWARDS_POLICY if allocation_rewards else RWA_POLICY if rwa else ROLLUP_POLICY if rollups else STATEMENT_POLICY if monthly else POLICY_VERSION
-    if policy_version == SPARK_RECONCILED_POLICY and (prime != 'spark' or year != 2026):
+    policy_version = selection['policy_version'] if selection else SPARK_REVIEW_POLICY if spark_statement and year == 2026 and spark_accounting and spark_review else SPARK_RECONCILED_POLICY if spark_statement and year == 2026 and spark_accounting else SPARK_HISTORY_POLICY if spark_statement else SPARK_AMM_POLICY if spark_amms else SPARK_INCOME_POLICY if spark_income else ARCHIVE_POLICY if archive else OFFCHAIN_POLICY if offchain else ALLOCATION_REWARDS_POLICY if allocation_rewards else RWA_POLICY if rwa else ROLLUP_POLICY if rollups else STATEMENT_POLICY if monthly else POLICY_VERSION
+    if policy_version in SPARK_RECONCILED_POLICIES and (prime != 'spark' or year != 2026):
         raise ValueError('Spark reconciliation policy is limited to Spark 2026')
     monthly = policy_version in MONTHLY_STATEMENT_POLICIES
     if monthly:
@@ -310,10 +312,10 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None,
             period['offchain_revision'] = report['revision_id'] if report else None
             if report and period['actual_cutoff'] is None:
                 period.update(actual_cutoff=report['cutoff'], stale=report['cutoff'] < period['expected_cutoff'])
-    if policy_version == SPARK_RECONCILED_POLICY and prime == 'spark':
+    if policy_version in SPARK_RECONCILED_POLICIES and prime == 'spark':
         from .expense_inputs import INITIAL_CONTRIBUTOR_INPUT, contributor_input
         _, expense_revision = contributor_input(
-            selection.get('expense_input_revision', INITIAL_CONTRIBUTOR_INPUT) if selection else None)
+            selection.get('expense_input_revision', INITIAL_CONTRIBUTOR_INPUT) if selection else INITIAL_CONTRIBUTOR_INPUT if policy_version == SPARK_RECONCILED_POLICY else None)
         manifest['expense_input_revision'] = expense_revision
     rwa_cells = []
     if policy_version in RWA_POLICIES and prime == 'grove':
@@ -393,11 +395,14 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None,
     if policy_version in SPARK_HISTORY_POLICIES and prime == "spark":
         from .financial_spark_history import extend as complete_history
         complete_history(result, monthly_chosen, offchain_chosen)
-    if policy_version == SPARK_RECONCILED_POLICY and prime == "spark":
+    if policy_version in SPARK_RECONCILED_POLICIES and prime == "spark":
         from .financial_spark_reconciled import extend_inputs
         extend_inputs(result, chosen, monthly_chosen, offchain_chosen)
         from .financial_accounting import extend as accounting
         accounting(result, offchain_chosen, expense_revision=manifest["expense_input_revision"])
+    if policy_version == SPARK_REVIEW_POLICY:
+        from .financial_spark_review import prepare
+        prepare(result, offchain_chosen)
     if policy_version in RWA_POLICIES:
         from .financial_rwa import refresh_reviewed_subtotal
         refresh_reviewed_subtotal(result)
@@ -407,9 +412,12 @@ def statements(prime, year, as_of, publications, *, exact=False, selection=None,
     if policy_version in SPARK_STATEMENT_POLICIES and prime == 'spark':
         from .financial_spark_statement import attach_rows
         attach_rows(result)
-    if policy_version == SPARK_RECONCILED_POLICY and prime == 'spark':
+    if policy_version in SPARK_RECONCILED_POLICIES and prime == 'spark':
         from .financial_spark_reconciled import attach_bridge
         attach_bridge(result, monthly_chosen)
         from .financial_accounting import attach_rows as accounting_rows
         accounting_rows(result)
+    if policy_version == SPARK_REVIEW_POLICY:
+        from .financial_spark_review import presentation
+        presentation(result)
     return {**result, 'report_hash': digest(result)}

@@ -32,4 +32,13 @@ def contributor_input(revision=None):
     for value in result["months"].values():
         if value is not None and (not isinstance(value, str) or not Decimal(value).is_finite()):
             raise ValueError("Expense input amount is invalid")
+    schedule = result.get("schedule")
+    if schedule:
+        from decimal import localcontext
+        with localcontext() as ctx:
+            ctx.prec = 100
+            monthly = Decimal(schedule["monthly_usd"])
+            if (monthly <= 0 or Decimal(schedule["tokens"]) * Decimal(schedule["grant_price_usd"]) / 48 != monthly
+                    or any(value is None or Decimal(value) != monthly for value in result["months"].values())):
+                raise ValueError("Contributor grant schedule does not reconcile")
     return result, revision
