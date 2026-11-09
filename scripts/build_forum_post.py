@@ -613,17 +613,15 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     if not total.pinned:
-        # Expected while DRAFTING: msc_preview is filled in from the post once
-        # the cycle executes, so a month being unpinned is the normal state
-        # for the post you are about to publish. Said out loud only because
-        # two things follow from it — the figures are derived, and any
-        # prior-cycle corrections riding this settlement aren't in yet.
+        # A draft can already carry approved corrections while its ordinary
+        # monthly mint/send amounts remain derived rather than published pins.
         print(
-            f"note: config/sky_total.yaml has no msc_preview entry for {month} "
-            "(expected while drafting). Every mint/send is DERIVED from the "
-            "monthly reports, and no Adjustments sections are emitted — add "
-            "any prior-cycle corrections riding this settlement, then pin the "
-            "published figures once the cycle executes.",
+            f"note: mint/send figures for {month} are not fully pinned to "
+            "published MSC amounts (expected while drafting). Some or all "
+            "mint/send figures are DERIVED from the monthly reports. Any "
+            "configured corrections are included in Adjustments sections; "
+            "review them before publishing, then pin the published figures "
+            "once the cycle executes.",
             file=sys.stderr,
         )
 

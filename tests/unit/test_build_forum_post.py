@@ -510,7 +510,7 @@ def test_unreachable_repo_still_produces_a_post(monkeypatch, tmp_path, capsys):
 
 
 @pytest.mark.parametrize('supply_share', [Decimal('-3959.60161832428'), Decimal('100')])
-def test_october_refund_flows_from_config_to_payment_instruction(tmp_path, monkeypatch, supply_share):
+def test_october_refund_flows_from_config_to_payment_instruction(tmp_path, monkeypatch, capsys, supply_share):
     """A draft refund is sent once, adds no debt, and must not claim published pins."""
     import json
     import yaml
@@ -560,3 +560,14 @@ def test_october_refund_flows_from_config_to_payment_instruction(tmp_path, monke
     assert '- Send credit: 5,514 USDS' in block
     assert f'Send `{after.total_send:,.0f} USDS`' in block
     assert f'Mint `{after.total_mint:,.0f} USDS`' in block
+    assert bfp.main(['--month', label, '--out', '-', '--skip-verify',
+                     '--reports-commit', '0' * 40]) == 0
+    notice = capsys.readouterr().err
+    assert 'not fully pinned' in notice
+    assert 'configured corrections are included in Adjustments' in notice
+    assert 'has no msc_preview entry' not in notice
+    assert 'no Adjustments sections are emitted' not in notice
+
+
+def test_fully_pinned_historical_preview_remains_pinned():
+    assert bfp.read_sky_total('2026-07').pinned is True
