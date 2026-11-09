@@ -1326,6 +1326,14 @@ venues:
         amount: 285000001
       - start_date: '2026-07-27'
         amount: 304000001
+      # Verified September funding to the existing principal relay (UTC).
+      # Preserve the July $1 test principal; no income is booked here.
+      - start_date: '2026-09-10'
+        amount: 304001001
+      - start_date: '2026-09-11'
+        amount: 327750001
+      - start_date: '2026-09-12'
+        amount: 375250001
     cash_distributions:
       - payer: '0xba79473abba448c1a2912d3cdc241b18ee83e82c'   # Galaxy Warehouse yield payer
         token: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'   # USDC on Ethereum

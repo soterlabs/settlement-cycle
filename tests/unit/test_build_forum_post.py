@@ -507,3 +507,67 @@ def test_unreachable_repo_still_produces_a_post(monkeypatch, tmp_path, capsys):
     assert bfp.main(["--month", "2026-08", "--out", str(out)]) == 0
     assert "could not verify" in capsys.readouterr().err
     assert "f3a74bd" in out.read_text()
+
+
+@pytest.mark.parametrize('supply_share', [Decimal('-3959.60161832428'), Decimal('100')])
+def test_october_refund_flows_from_config_to_payment_instruction(tmp_path, monkeypatch, capsys, supply_share):
+    """A draft refund is sent once, adds no debt, and must not claim published pins."""
+    import json
+    import yaml
+
+    from settle.compute.sky_total_accrual import compute_sky_total_accrual, write_sky_total_accrual
+    from settle.domain import Month
+
+    label = '2026-10'
+    config = yaml.safe_load((_REPO / 'config/sky_total.yaml').read_text())
+    config['accrual_primes'] = ['osero']
+    config['msc_preview'][label] = {'osero': config['msc_preview'][label]['osero']}
+    directory = tmp_path / 'config'
+    directory.mkdir()
+    (directory / 'osero.yaml').write_bytes((_REPO / 'config/osero.yaml').read_bytes())
+    forum_cfg = yaml.safe_load((_REPO / 'config/forum_post.yaml').read_text())
+    forum_cfg['executor_agents'] = [{'name': 'Ozone', 'primes': ['osero']}]
+    (directory / 'forum_post.yaml').write_text(yaml.safe_dump(forum_cfg))
+    (directory / 'sky_total.yaml').write_text(yaml.safe_dump(config))
+    prime_dir = tmp_path / 'settlements/osero' / label
+    prime_dir.mkdir(parents=True)
+    summary = (_REPO / 'settlements/osero/2026-09/summary.md').read_text()
+    summary = summary.replace('2026-09', label).replace('-3,959.60', f'{supply_share:,.2f}')
+    (prime_dir / 'summary.md').write_text(summary)
+    cof = Decimal('76824.23346740459')
+    demand = Decimal('31620.8993235734666')
+    (prime_dir / 'provenance.json').write_text(json.dumps({'results': {
+        'sky_revenue': str(cof), 'prime_agent_revenue': str(cof + supply_share),
+        'agent_rate': str(demand), 'distribution_rewards': '0', 'sde_revenue': '0',
+    }}))
+    nonmsc = tmp_path / 'settlements/non_msc' / label
+    nonmsc.mkdir(parents=True)
+    (nonmsc / 'provenance.json').write_text(json.dumps({'results': {
+        'total_income': '0', 'total_expense': '0',
+    }}))
+    without_refund = dict(config, msc_preview={label: {}})
+    before = compute_sky_total_accrual(Month.parse(label), repo_root=tmp_path, config=without_refund)
+    after = compute_sky_total_accrual(Month.parse(label), repo_root=tmp_path, config=config)
+    assert after.total_mint == before.total_mint
+    assert after.total_send - before.total_send == Decimal('5514')
+    assert after.sky_net_revenue - before.sky_net_revenue == Decimal('-5514')
+    assert not after.prior_period_expenses
+    write_sky_total_accrual(after, tmp_path / 'settlements/sky_total' / label)
+    monkeypatch.setattr(bfp, '_REPO', tmp_path)
+    post, total = bfp.build(label)
+    assert not total.pinned
+    block = section(post, 'Osero', month_name='October 2026')
+    assert '- Send credit: 5,514 USDS' in block
+    assert f'Send `{after.total_send:,.0f} USDS`' in block
+    assert f'Mint `{after.total_mint:,.0f} USDS`' in block
+    assert bfp.main(['--month', label, '--out', '-', '--skip-verify',
+                     '--reports-commit', '0' * 40]) == 0
+    notice = capsys.readouterr().err
+    assert 'not fully pinned' in notice
+    assert 'configured corrections are included in Adjustments' in notice
+    assert 'has no msc_preview entry' not in notice
+    assert 'no Adjustments sections are emitted' not in notice
+
+
+def test_fully_pinned_historical_preview_remains_pinned():
+    assert bfp.read_sky_total('2026-07').pinned is True
