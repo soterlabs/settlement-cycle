@@ -117,6 +117,10 @@ msc_preview:
   # Sources: reconciliation/2026-10/{sde_inflight_cof,partner_rebates}.json.
   '2026-10':
     grove: {sky_adj: '1062615.74', sv_adj: '915857.20'}
+    # Refund July–September duplicate shortfall deductions. Send-only:
+    # the full CoF was already borrowed; reimbursement must not add debt.
+    # See settlements/osero/2026-10/reconciliation.md.
+    osero: {send_credit: '5514'}
 
 # ── Step 1 Capital actually PAID to the Core Council Buffer, per execution
 # month. Source: each MSC post's BA capital-allocations section (20% of the
