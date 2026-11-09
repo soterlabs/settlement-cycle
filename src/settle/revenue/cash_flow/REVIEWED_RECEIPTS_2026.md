@@ -112,3 +112,9 @@ API-owned under Morpho vaults. Its monthly accrual is reversed in the indirect
 cash bridge, then only realized redeemed yield is added as operating cash.
 The full subscription/redemption principal remains investing cash flow.
 This is a `reporting_vaults` cash/reporting specification, not an MSC venue.
+
+The annual MSC receivable diagnostic must use the retained
+`approved_msc_component`, rather than negating the whole operating income-to-cash
+bridge once that bridge includes treasury-vault or staking income. Those streams
+are not amounts owed by Sky. Missing approval remains unknown; older saved
+publications without separate non-MSC bridges retain their previous projection.

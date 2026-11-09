@@ -213,12 +213,17 @@ def annual(prime, year, as_of, rows, *, selection=None, review=True):
                     "status": "future",
                 }
                 continue
-            running = total(
-                [
-                    ("opening", 1, running),
-                    *((part, sign, by_id[part]["values"][p["key"]]) for part, sign in parts),
-                ]
-            )
+            terms = [(part, sign, by_id[part]["values"][p["key"]]) for part, sign in parts]
+            bridge = by_id["earned-not-received"]["values"][p["key"]]
+            if key == "msc-receivable" and any(
+                name in bridge for name in ("sky_staking_income_component", "steakhouse_income_component")
+            ):
+                # The operating cash bridge reverses ALL noncash income, but
+                # only approved MSC earnings can increase an amount owed by Sky.
+                approved = bridge.get("approved_msc_component") or metric(
+                    reason="Approved MSC entitlement is missing from the income-to-cash bridge")
+                terms[0] = ("approved-msc-entitlement", 1, approved)
+            running = total([("opening", 1, running), *terms])
             by_id[key]["values"][p["key"]] = deepcopy(running)
         by_id[key]["total"] = deepcopy(running)
     selected = {
