@@ -56,6 +56,11 @@ def expense_inputs(month):
 
 def build(evidence, income, *, config=None):
     config = config or load()
+    from ..financial import SPARK_REVIEW_POLICY
+    from .config import REVIEW_POLICY
+    income_policy = income.get("policy_version")
+    if income_policy is not None and ((config["policy"] == REVIEW_POLICY) != (income_policy == SPARK_REVIEW_POLICY)):
+        raise ValueError("Cash and income reporting policies use different accounting scopes")
     cutoff = date.fromisoformat(evidence["cutoff"])
     month = str(cutoff)[:7]
     from .evidence import validate_evidence

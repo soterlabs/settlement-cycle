@@ -157,3 +157,27 @@ References: [SDE definition](https://sky-atlas.io/#b3fb8653-8503-4a9e-81b2-5e9f4
 ### Updating contributor compensation
 
 `contributor_compensation.json` is the current authored input. Approved monthly USD amounts replace pending nulls; token transfer quantities are never a substitute. Before publishing a changed input, archive the complete JSON under `published_expenses/<verification.digest(input)>.json`. Keep old archives: the statement selection pins `expense_input_revision`, and cash flow dependencies pin the same input. The dashboard reads this component from the API rather than maintaining a second contributor expense feed.
+
+## Prepared November 9 review policy
+
+The opt-in Spark v3.11/events.v2 implementation and its audit evidence are
+recorded in [SPARK_REVIEW_2026_11.md](SPARK_REVIEW_2026_11.md). Until reviewed and
+rolled out, archived/default policies keep their existing treatment.
+
+- Net matched Savings-funded ETH principal FX out of gross asset gains and
+  funding cost. Retain actual depositor interest and Spark-owned price exposure.
+  Remove the matching amounts from both indirect cash-flow reversals.
+- Fees paid by a prime's own vault supply are an allocation rebate; external
+  curator fees exclude that self-funded portion. Net supplier NAV yield plus
+  the rebate plus external fees must preserve the previous aggregate revenue.
+- The provisional Spark contributor grant input is 1,627,925 USD monthly under
+  the supplied grant-date/48-month schedule, not the amount of vesting claims.
+  When included in a later expense sheet, suppress the separate expense feed.
+- SDE cash subscriptions/redemptions need authenticated liquidity principal
+  evidence. Swaps through the same pools remain allocation cash. Moving between
+  those investing rows must conserve total investing cash.
+- Expanding a controlled cash cluster requires new opening/closing balances
+  and event coverage; do not reclassify old inflows without also measuring the
+  added wallets' cash and onward payments. Keep unidentified receipts visible.
+- Do not combine reviewed income with legacy cash scope, or publish a mixture
+  of cash-policy cohorts as though their monthly balances were comparable.

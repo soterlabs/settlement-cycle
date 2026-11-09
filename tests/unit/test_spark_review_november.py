@@ -189,3 +189,13 @@ def test_missing_v4_principal_event_list_cannot_be_claimed_as_known_zero():
                            period=SimpleNamespace(start=date(2026,10,1),end=date(2026,10,31)))
     with pytest.raises(ValueError,match='event history is missing'):
         collect(source,dict(amm_fees=dict(S62=dict(status='available',capital_reconciliation=dict(status='available')))))
+
+
+
+def test_cash_builder_rejects_mixing_real_legacy_and_reviewed_income_policies():
+    import pytest
+    from settle.revenue.cash_flow.build import build
+    from settle.revenue.financial import SPARK_REVIEW_POLICY, SPARK_RECONCILED_POLICY
+    for review,income_policy in ((True,SPARK_RECONCILED_POLICY),(False,SPARK_REVIEW_POLICY)):
+        with pytest.raises(ValueError,match='different accounting scopes'):
+            build({},dict(policy_version=income_policy),config=load(review=review))
