@@ -122,5 +122,9 @@ def year_rows(conn, year, revisions=None, as_of=None):
             or row["cutoff"] != row["document"]["cutoff"]
         ):
             raise ValueError("Stock publication differs")
+        if row["revision_id"] != digest(
+            {"document_hash": row["document_hash"], "code_version": row["code_version"]}
+        ):
+            raise ValueError("Stock revision identity differs")
         validate(row["document"])
     return rows

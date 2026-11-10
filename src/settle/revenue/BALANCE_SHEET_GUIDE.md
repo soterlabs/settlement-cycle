@@ -101,3 +101,13 @@ must never trigger an MSC replay. Recheck partial publications and their `errors
 Opening equity, contributed capital, controlled-share eliminations and payables
 remain explicit gaps. Do not force the balance sheet to balance or relabel its
 known subtotal as complete equity merely to match another dashboard.
+
+### Differences that must not be “fixed” to a benchmark
+
+Keep the existing, broader controlled-wallet cash perimeter. Do not omit Ops,
+Foundation or DevCo cash to match a narrower ALM-only inventory. Keep prepaid
+issuer rewards as liabilities when supported by the accrual/receipt ledger.
+Do not replace actual claim ownership with a dashboard's gross AMM figure.
+A residual labelled “surplus” elsewhere does not prove opening book equity.
+Remaining incomplete categories must stay visibly partial/TBD, with their real
+source references retained, rather than receiving a balancing amount.
