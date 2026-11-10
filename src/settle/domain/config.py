@@ -11,6 +11,7 @@ import yaml
 from .period import Month as _Month
 from .pricing import PricingCategory
 from .primes import (
+    AsyncAllocation,
     Address,
     BasinIdleUsdsConfig,
     CashDistributionSource,
@@ -443,6 +444,7 @@ def load_prime(config_path: Path) -> Prime:
                 share_burn_destinations=[
                     Address.from_str(a) for a in v.get("share_burn_destinations", [])
                 ],
+                async_allocation=AsyncAllocation.from_dict(v.get('async_allocation')),
                 centrifuge_vault=(
                     Address.from_str(v["centrifuge_vault"])
                     if v.get("centrifuge_vault")

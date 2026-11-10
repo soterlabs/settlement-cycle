@@ -18,12 +18,22 @@ addresses:
 
 venues:
   - id: V1
+    async_allocation:
+      kind: maple
+      managers:
+        - address: '0x1bc47a0dd0fdab96e9ef982fdf1f34dc6207cfe3'
+          kind: queue
+          implementations: ['0xf95e5722226a1018d058cd757b75f1d10289e967']
     settlement:
       enabled: true
       method: existing
     reporting:
       enabled: true
       method: existing
+    # Routing for share capital; only the configured withdrawal manager owns claims.
+    share_burn_destinations:
+      - '0x7ad5ffa5fdf509e30186f4609c2f6269f4b6158f'
+      - '0x1bc47a0dd0fdab96e9ef982fdf1f34dc6207cfe3'
     event_source: hypersync
     chain: ethereum
     label: 'Maple syrupUSDC (Category B — ERC-4626 vault)'

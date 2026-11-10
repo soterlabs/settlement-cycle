@@ -185,6 +185,7 @@ class VenueRevenueInputs:
     # Fee signatures belong to actual capital events, not pending-claim
     # reclassifications in economic capital. Defaults to the ordinary series.
     fee_inflow_timeseries: pd.DataFrame | None = None
+    economic_value_timeseries: pd.DataFrame | None = None
 
 
 def _sd_share_at_som(
@@ -547,6 +548,15 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
 
     prime_revenue = (actual_revenue - sd_revenue) + inputs.external_revenue
 
+    if inputs.economic_value_timeseries is not None:
+        rows = inputs.economic_value_timeseries
+        expected = [period.start + timedelta(days=i) for i in range(period.n_days)]
+        if rows['block_date'].tolist() != expected:
+            raise ValueError('Incomplete async economic-value daily coverage')
+        values = rows['economic_value'].tolist()
+        if any(not value.is_finite() or value < 0 for value in values):
+            raise ValueError('Invalid async economic value')
+        tw_avg_value = sum(values, Decimal(0)) / Decimal(period.n_days)
     tw_avg_notional = _time_weighted_notional(
         inputs.venue.notional_principal_usd, period,
     )

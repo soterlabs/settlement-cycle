@@ -29,6 +29,7 @@ class AsyncVaultExposure:
     deposit: IssuedDeposit = IssuedDeposit()
     redemption_shares: Decimal = ZERO
     redemption_cash: Decimal = ZERO
+    claims: tuple[dict, ...] = ()
 
     @property
     def shares(self) -> Decimal:
@@ -70,7 +71,7 @@ def decode_issued_deposit(raw: str, share_decimals: int, asset_decimals: int) ->
 
 
 def async_vault_exposure(
-    prime: Prime, venue: Venue, block: int, *, redemption_cash: Decimal | None = None,
+    prime: Prime, venue: Venue, block: int, *, redemption_cash: Decimal | None = None, provider=None,
 ) -> AsyncVaultExposure:
     """All controller-owned shares and cash still outside the wallet.
 
@@ -81,6 +82,17 @@ def async_vault_exposure(
     excluded. The deposit price is weighted acquisition basis, not today's NAV.
     Neither contract addresses nor historical windows are hardcoded.
     """
+    if venue.async_allocation is not None:
+        if venue.centrifuge_vault is not None or redemption_cash:
+            raise ValueError('Cannot combine independent async ownership adapters')
+        from .async_protocols import protocol_exposure
+        try:
+            return (provider.exposure(prime, venue, block) if provider is not None
+                    else protocol_exposure(prime, venue, block))
+        except Exception as exc:
+            raise RuntimeError(
+                f'Async allocation exposure read failed for {prime.id}/{venue.id} at block {block}'
+            ) from exc
     if venue.centrifuge_vault is None:
         if redemption_cash is None:
             from .redemption_settlements import pending_redemption_value_at_block
@@ -134,6 +146,7 @@ def deposit_capital_adjustment(
 def async_capital_inflow_timeseries(
     prime: Prime, venue: Venue, period, capital_flows: pd.DataFrame, *,
     opening_block: int, block_resolver, pending_redemptions: pd.DataFrame | None = None,
+    nav_at_block=None, provider=None,
 ) -> pd.DataFrame:
     """Recognize daily capital at issuance and remove collection-only inflows.
 
@@ -144,6 +157,30 @@ def async_capital_inflow_timeseries(
     consume the result. Raw share events remain available for fee detection.
     """
     columns = ['block_date', 'daily_inflow', 'cum_inflow']
+    if venue.async_allocation is not None and venue.async_allocation.kind in {'maple', 'ethena', 'issuer'}:
+        if venue.async_allocation.kind == 'issuer':
+            from .issuer_redemptions import capital_events
+        else:
+            from .async_capital import capital_events
+        reader = provider.capital_events if provider is not None else capital_events
+        if nav_at_block is None:
+            raise ValueError('Async custody capital needs the original share-NAV clock')
+        events = reader(prime, venue, period, opening_block=opening_block,
+                        block_resolver=block_resolver, nav_at_block=nav_at_block)
+        changes = {}
+        for row in capital_flows.to_dict('records'):
+            if row['block_date'] <= period.end:
+                changes[row['block_date']] = changes.get(row['block_date'], ZERO) + row['daily_inflow']
+        for event in events:
+            day = event['block_date']
+            changes[day] = changes.get(day, ZERO) + event['capital_adjustment_usd']
+        cumulative, out = ZERO, []
+        for day, amount in sorted(changes.items()):
+            cumulative += amount
+            out.append(dict(block_date=day, daily_inflow=amount, cum_inflow=cumulative))
+        result = pd.DataFrame(out, columns=columns)
+        result.attrs['async_capital_events'] = events
+        return result
     daily = {}
     for row in capital_flows.to_dict('records'):
         day = row['block_date']
@@ -157,7 +194,7 @@ def async_capital_inflow_timeseries(
         pending_by_date = dict(zip(
             pending_redemptions['block_date'], pending_redemptions['pending_value_usd'], strict=True,
         ))
-        previous = async_vault_exposure(prime, venue, opening_block).redemption_cash
+        previous = async_vault_exposure(prime, venue, opening_block, provider=provider).redemption_cash
     else:
         previous = issued_deposit(prime, venue, opening_block).capital_usd
     day = period.start
@@ -178,3 +215,24 @@ def async_capital_inflow_timeseries(
         cumulative += inflow
         rows.append({'block_date': day, 'daily_inflow': inflow, 'cum_inflow': cumulative})
     return pd.DataFrame(rows, columns=columns)
+
+
+def async_daily_values(prime, venue, period, *, block_resolver,
+                       wallet_quantity_at, nav_at_block, provider=None):
+    """The same disjoint components drive daily reporting and average capital."""
+    rows = []
+    for i in range(period.n_days):
+        day = period.start + timedelta(days=i)
+        block = (period.pin_blocks[venue.chain] if day == period.end else
+                 min(block_resolver.block_at_or_before(
+                     venue.chain.value, datetime.combine(day, time.max, UTC)), period.pin_blocks[venue.chain]))
+        exposure = async_vault_exposure(prime, venue, block, provider=provider)
+        wallet = wallet_quantity_at(block)
+        nav = nav_at_block(block) if wallet or exposure.shares else ZERO
+        wallet_value, pending_value = wallet * nav, exposure.value(nav)
+        rows.append(dict(block_date=day, block=block, wallet_value=wallet_value,
+                         pending_value=pending_value, economic_value=wallet_value + pending_value,
+                         pending_shares=exposure.redemption_shares,
+                         pending_underlying_value=exposure.redemption_cash,
+                         claims=list(exposure.claims)))
+    return pd.DataFrame(rows)

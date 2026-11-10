@@ -237,6 +237,9 @@ def restore_redemption_capital(inflows, ledger):
 
 
 def redemption_settlements(prime, venue, period, *, track_pending=False):
+    if venue.async_allocation is not None and venue.async_allocation.kind == 'issuer':
+        from .issuer_redemptions import settlement_ledger
+        return settlement_ledger(prime, venue, period)
     policy = policy_for(prime.id, venue.id)
     if policy is None or (period.end < policy['recognition_start'] and not track_pending):
         return RedemptionLedger()

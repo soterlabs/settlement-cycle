@@ -203,6 +203,7 @@ def get_position_value(
     curve_pool_source=None,
     block_resolver=None,
     nav_oracle_resolver=None,
+    async_exposure_source=None,
 ) -> Decimal:
     """USD value of the position at ``block``.
 
@@ -240,7 +241,8 @@ def get_position_value(
     # block, so SoM and EoM stay symmetric. MUST come before the
     # ``balance == 0`` short-circuit: a fully-escrowed position reads 0.
     from .async_vaults import async_vault_exposure
-    exposure = async_vault_exposure(prime, venue, block)
+    provider = async_exposure_source or getattr(balance_source, 'async_allocations', None)
+    exposure = async_vault_exposure(prime, venue, block, provider=provider)
     balance += exposure.shares
     if balance == 0:
         # Fixed cash does not depend on share NAV. Skipping the price lookup

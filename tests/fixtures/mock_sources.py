@@ -108,6 +108,17 @@ class MockSSRSource:
 class MockPositionBalanceSource:
     """In-memory `IPositionBalanceSource`. Returns a fixed raw balance."""
 
+    @property
+    def async_allocations(self):
+        return self
+
+    def exposure(self, *args, **kwargs):
+        from settle.normalize.async_vaults import AsyncVaultExposure
+        return AsyncVaultExposure()
+
+    def capital_events(self, *args, **kwargs):
+        return []
+
     raw_balance: int = 0
     calls: list[tuple] = field(default_factory=list)
 

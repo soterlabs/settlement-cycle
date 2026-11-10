@@ -1,0 +1,139 @@
+# Reviewed event associations; unresolved future payments fail closed.
+venues:
+- prime: spark
+  venue_id: S19
+  share_token: '0x6a9da2d710bb9b700acde7cb81f10f1ff8c89041'
+  request_receiver: '0x8780dd016171b91e4df47075da0a947959c34200'
+  cash_token: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+  cash_payer: '0xcfc0f98f30742b6d880f90155d4ebb885e55ab33'
+  cash_decimals: 6
+  history_start: '2024-11-18'
+  valuation: fixed_one
+  groups:
+  - requests:
+    - identity: 0xea83b684e5db29239501ba7b5839634d28f88222aa87059905dee4d6e1fd585b:412
+      block: 22482359
+      timestamp: 1747237295
+      amount: '250000'
+    payments:
+    - identity: 0xf79e894c03a379f636f0451690b55ff5289b9e6904f665ef5700630548ed8b0f:61
+      block: 22482792
+      timestamp: 1747242563
+      amount: '249874.297369'
+      final: true
+  - requests:
+    - identity: 0x3cc7028c9cbe39daaab0ac3b142dfb171aac3f85060c6f058060bd39a4589847:173
+      block: 22947529
+      timestamp: 1752859079
+      amount: '200000000'
+    payments:
+    - identity: 0xcf6ba0c45a0c85e4deb822d5a70f2c7f7e6e3074684666526abd887b4840a244:438
+      block: 22948631
+      timestamp: 1752872327
+      amount: '98.543517'
+      final: false
+    - identity: 0xbb0d744db0f957e891378dd3d5ae3bee60d034cbf53602926b2d32f4fee9cfad:423
+      block: 22948693
+      timestamp: 1752873071
+      amount: '199899898.685658'
+      final: true
+  excluded_cash:
+  - identity: 0x052424941cb05b0b795deb1fe70f6b028eb9281453daa7b49baa921a4dbc023e:425
+    block: 22269829
+    timestamp: 1744665107
+    amount: '4999.749278'
+    reason: reviewed_unassigned_receipt_no_request
+- prime: spark
+  venue_id: S21
+  share_token: '0x43415eb6ff9db7e26a15b704e7a3edce97d31c4e'
+  request_receiver: '0x0000000000000000000000000000000000000000'
+  cash_token: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+  cash_payer: '0x55fe002aeff02f77364de339a1292923a15844b8'
+  cash_decimals: 6
+  history_start: '2024-11-18'
+  valuation: fixed_execution
+  groups:
+  - requests:
+    - identity: 0xc235bec8032617180c9e38d7b914592910ff9330a2fc9327820b189d5f1f3e9d:401
+      block: 22483471
+      timestamp: 1747250831
+      amount: '10'
+    payments:
+    - identity: 0x4967b2260d6f934a5c4b5c8374dde7c1102a33d955e598113be30ea051c16151:372
+      block: 22483489
+      timestamp: 1747251047
+      amount: '106.76'
+      final: true
+  - requests:
+    - identity: 0x49eefbb55bcae635426ff7994dbcbe4c853cb0f230f6856a27be64b0e1ead466:277
+      block: 22939134
+      timestamp: 1752757859
+      amount: '28190683.110178'
+    payments:
+    - identity: 0x056f664613a69e7785c321a3bea1bc0c047967f79aefcee808d533f240103480:354
+      block: 22941712
+      timestamp: 1752788891
+      amount: '303111440.08'
+      final: true
+  excluded_cash:
+  - identity: 0x6641633601e1b4c7364e7b5b497ebed27d76b31f6988edab1bb73b35b95c032c:670
+    block: 23926724
+    timestamp: 1764689915
+    amount: '100682211.13'
+    final: true
+    reason: reviewed_other_venue_S22
+  - identity: 0xb230b52789a38848821b049b93f2bfed9c4d84dc2eb32e0d4cbb1ae69d3623fc:1096
+    block: 23940496
+    timestamp: 1764861227
+    amount: '50331740.13'
+    final: true
+    reason: reviewed_other_venue_S22
+- prime: spark
+  venue_id: S22
+  share_token: '0x14d60e7fdc0d71d8611742720e4c50e7a974020c'
+  request_receiver: '0x0000000000000000000000000000000000000000'
+  cash_token: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+  cash_payer: '0x55fe002aeff02f77364de339a1292923a15844b8'
+  cash_decimals: 6
+  history_start: '2024-11-18'
+  valuation: variable_shares
+  groups:
+  - requests:
+    - identity: 0xcae6ffe1b84fd4702788fa6117b1b3017e6598855408407c10854872c70a856d:87
+      block: 23919053
+      timestamp: 1764597203
+      amount: '4421827.9938'
+    - identity: 0xca43c99cdc901368b271e7200ca949c2e50f6405b53b9a16207b567c294d0dd2:571
+      block: 23919081
+      timestamp: 1764597551
+      amount: '4421827.9938'
+    payments:
+    - identity: 0x6641633601e1b4c7364e7b5b497ebed27d76b31f6988edab1bb73b35b95c032c:670
+      block: 23926724
+      timestamp: 1764689915
+      amount: '100682211.13'
+      final: true
+  - requests:
+    - identity: 0x9c38168eaf28096721d2daa374cc8105e1408b364863f57faa05185c1ab37fb8:221
+      block: 23933973
+      timestamp: 1764777695
+      amount: '4421827.993802'
+    payments:
+    - identity: 0xb230b52789a38848821b049b93f2bfed9c4d84dc2eb32e0d4cbb1ae69d3623fc:1096
+      block: 23940496
+      timestamp: 1764861227
+      amount: '50331740.13'
+      final: true
+  excluded_cash:
+  - identity: 0x4967b2260d6f934a5c4b5c8374dde7c1102a33d955e598113be30ea051c16151:372
+    block: 22483489
+    timestamp: 1747251047
+    amount: '106.76'
+    final: true
+    reason: reviewed_other_venue_S21
+  - identity: 0x056f664613a69e7785c321a3bea1bc0c047967f79aefcee808d533f240103480:354
+    block: 22941712
+    timestamp: 1752788891
+    amount: '303111440.08'
+    final: true
+    reason: reviewed_other_venue_S21

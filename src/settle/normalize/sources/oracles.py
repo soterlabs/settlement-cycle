@@ -147,3 +147,23 @@ class ConstNavSource:
         block: int,                     # ignored
     ) -> Decimal:
         return self._value
+
+
+class SuperstateExecutionNavSource:
+    """Opt-in async ownership valuation using the reviewed fund quote readers.
+
+    USTB uses the token-selected execution oracle; USCC uses its separate NAV
+    feed because on-chain subscriptions have no configured execution oracle.
+    """
+    def nav_at(self, chain: str, oracle_address: bytes | None, block: int) -> Decimal:
+        from ...domain.primes import Token
+        from ..allocation_superstate import uscc_capital_price, ustb_capital_price
+        if oracle_address is None:
+            raise ValueError('Superstate NAV needs its share token address')
+        token = Token(Chain(chain), Address(oracle_address), 'Superstate', 6)
+        price = ustb_capital_price(token, block)
+        if price is None:
+            price = uscc_capital_price(token, block)
+        if price is None:
+            raise ValueError('Unsupported Superstate token NAV')
+        return price

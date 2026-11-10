@@ -1,0 +1,18 @@
+{
+  "0x43415eb6ff9db7e26a15b704e7a3edce97d31c4e/22483471": {
+    "price": "10.675986",
+    "source": "tests/fixtures/spark_ustb_capital.json"
+  },
+  "0x43415eb6ff9db7e26a15b704e7a3edce97d31c4e/22939134": {
+    "price": "10.752185",
+    "source": "tests/fixtures/spark_ustb_capital.json"
+  },
+  "0x14d60e7fdc0d71d8611742720e4c50e7a974020c/23926724": {
+    "price": "11.384682",
+    "source": "tests/fixtures/spark_uscc_settlement_nav.json"
+  },
+  "0x14d60e7fdc0d71d8611742720e4c50e7a974020c/23940496": {
+    "price": "11.382564",
+    "source": "tests/fixtures/spark_uscc_settlement_nav.json"
+  }
+}

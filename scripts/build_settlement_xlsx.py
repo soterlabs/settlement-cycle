@@ -988,6 +988,21 @@ def _write_allocation_yields(ws, analytics: dict) -> None:
         ws.column_dimensions[col].width = 25
 
 
+def _write_async_daily(ws, prov):
+    ws.title = "Async daily"
+    ws.append(["Venue", "Protocol", "UTC date", "Block", "Wallet USD", "Pending USD", "Economic USD",
+               "Pending shares", "Pending underlying USD", "Claim evidence"])
+    _header_row(ws, 1, 10)
+    for venue in prov.get('async_daily_breakdown', []):
+        for r in venue['daily']:
+            ws.append([venue['venue_id'], venue['protocol'], r['block_date'], r['block'],
+                       float(_D(r['wallet_value'])), float(_D(r['pending_value'])), float(_D(r['economic_value'])),
+                       float(_D(r['pending_shares'])), float(_D(r['pending_underlying_value'])),
+                       json.dumps(r['claims'], sort_keys=True)])
+    ws.freeze_panes = 'E2'
+    _set_widths(ws, {1:12, 2:16, 3:16, 4:14, 5:23, 6:23, 7:23, 8:23, 9:23, 10:65})
+
+
 def build_xlsx(prime_id: str, month: str, *, output_dir: Path | None = None) -> Path:
     cell_dir = output_dir if output_dir is not None else _REPO / "settlements" / prime_id / month
     prov     = _read_provenance(cell_dir)
@@ -1020,6 +1035,9 @@ def build_xlsx(prime_id: str, month: str, *, output_dir: Path | None = None) -> 
         # burn this period — otherwise the three-column decomposition is
         # uninteresting (Sky = full position, Grove = 0 throughout).
         _write_sde_daily(wb.create_sheet(), prov)
+
+    if prov.get('async_daily_breakdown'):
+        _write_async_daily(wb.create_sheet(), prov)
 
     out = cell_dir / _output_filename(prime_id, month)
     wb.save(out)
