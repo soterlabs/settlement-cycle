@@ -1,7 +1,8 @@
 # PRD — Async allocation accounting for Spark and Obex
 
-Status: proposed; implementation belongs in a separate PR after
+Status: implemented in the separate [PR #278](https://github.com/soterlabs/settlement-cycle/pull/278), using merged
 [PR #226](https://github.com/soterlabs/settlement-cycle/pull/226).
+Historical effects and evidence: [January–September audit](../reconciliation/async-allocations-2026-01_to_2026-09/README.md).
 Date: 2026-11-07.
 
 This PRD is a documentation-only follow-up. It does not extend #226, implement

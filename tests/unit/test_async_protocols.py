@@ -106,3 +106,31 @@ def test_router_is_not_misidentified_as_a_maple_escrow():
 
     assert Address.from_str("0x491edfb0b8b608044e227225c715981a30f3a44e") not in escrow_addresses
     assert Address.from_str("0x7ad5ffa5fdf509e30186f4609c2f6269f4b6158f") not in escrow_addresses
+
+
+def test_async_wallet_pending_report_roundtrip(tmp_path):
+    from openpyxl import Workbook, load_workbook
+
+    from scripts.build_settlement_xlsx import _write_async_daily
+
+    row = dict(
+        block_date="2026-01-01",
+        block=24143222,
+        wallet_value="0",
+        pending_value="120",
+        economic_value="120",
+        pending_shares="100",
+        pending_underlying_value="0",
+        claims=[dict(owner="controller", units="vault_shares", quantity_raw="100000000")],
+    )
+    wb = Workbook()
+    _write_async_daily(
+        wb.active, dict(async_daily_breakdown=[dict(venue_id="S14", protocol="maple", daily=[row])])
+    )
+    output = tmp_path / "async.xlsx"
+    wb.save(output)
+    read = load_workbook(output, read_only=True, data_only=True)
+    values = list(read["Async daily"].values)
+    assert values[1][4:9] == (0, 120, 120, 100, 0)
+    assert "vault_shares" in values[1][9]
+    read.close()

@@ -55,10 +55,45 @@ Maple and Ethena have no SDE borrowing exemption: global CoF delta is zero.
 Daily economic holdings change venue-level CoF attribution, which must be
 reported separately from amounts payable.
 
-Measured Maple income deltas before final review: Spark **−41,042.540767005084**;
-Obex **−273,508.895095791665** (July). Neither is a borrowing-cost credit.
-Prior async true-ups for these venues: zero; unrelated previously settled
-reserve-factor/SDE credits are excluded. Final machine-readable results and
-per-venue attribution tables are added before merge. The separate historical
-reconciliation PR consumes accepted net values once; this implementation does
-not add an adjustment or overwrite a past settlement.
+## Final historical effects
+
+All figures are USDS. Income is recomputed using the same pins and NAVs. These
+are reductions in previously overstated prime income, not CoF refunds. The
+baseline replay reproduces published Maple income and average positions to
+less than 0.000001 USDS. Prior reconciliation posts contain no true-up of these
+queue/cash corrections; prior unrelated adjustments remain excluded.
+
+| Month | Spark S14 | Spark S15 | Obex V1 | Global CoF delta |
+|---|---:|---:|---:|---:|
+| 2026-01 | -9,948.93 | 0.00 | 0.00 | 0.00 |
+| 2026-02 | -33.87 | -5.60 | 0.00 | 0.00 |
+| 2026-03 | -5,127.91 | -2,616.34 | 0.00 | 0.00 |
+| 2026-04 | -7,034.16 | -4,161.79 | 0.00 | 0.00 |
+| 2026-05 | -455.14 | -1,271.55 | 0.00 | 0.00 |
+| 2026-06 | -29.08 | 0.00 | 0.00 | 0.00 |
+| 2026-07 | -10,358.16 | 0.00 | -273,508.90 | 0.00 |
+| 2026-08 | 0.00 | 0.00 | 0.00 | 0.00 |
+| 2026-09 | 0.00 | 0.00 | 0.00 | 0.00 |
+| **Total** | **-32,987.25** | **-8,055.29** | **-273,508.90** | **0.00** |
+
+**Spark: −41,042.54; Obex: −273,508.90.** Totals use unrounded calculations.
+Every month of Ethena, BUIDL, USTB and USCC has zero incremental income effect.
+Ethena retains its ordinary ~81 sUSDe wallet holding and native income; its
+zero effect refers to pending cooldown claims, not zero wallet value.
+
+`results.json` contains 63 month/prime/venue records: old/new positions and
+averages, old/new venue CoF attribution, raw and net income deltas, exact unpaid
+UTC closes, transaction/log identities and published-workbook hashes. The 27
+Maple records carry full production revenue outputs; zero-effect records retain
+ordinary positions separately. Daily NAV responses and full source histories
+prove that no intramonth 2026 issuer activity was missed. No known prior credit
+is netted twice. The prior-post comparisons are
+[MSC #5–#9](https://forum.skyeco.com/t/msc-5-msc-9-reconciliation/28037),
+[MSC #5–#10](https://forum.skyeco.com/t/settlement-reconciliation-msc-5-10-january-june-2026/28150),
+and [MSC #5–#12](https://forum.skyeco.com/t/settlement-reconciliation-msc-5-12-january-august-2026/28273).
+
+Venue attribution redistributes the same frozen whole-prime CoF using the
+existing weighted-average formula. It does not change aggregate Sky revenue
+or create a separate reimbursement. The implementation itself books no manual
+adjustment. The separate reconciliation PR #277 applies these net historical
+amounts once and presents their mint/transfer consequences.

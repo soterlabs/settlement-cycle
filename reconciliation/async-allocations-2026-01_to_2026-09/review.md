@@ -21,7 +21,24 @@ request/receipt pins, partial BUIDL payouts, and monthly orchestration. Initial
 full CI passed 2,842 unit tests; its two Postgres failures exposed the synthetic
 transport metadata gap above and are being rerun after the fix.
 
-## Round 2
+## Round 2 — first fixed implementation `b93e709`
 
-Pending review of the first fix commit and complete CI; merge is not authorized
-by this record until the requested second round and passing checks are complete.
+Reviewed the fixed code and repeated the economic/source checks. New findings
+addressed in the second fix commit:
+
+- Grouped transactions were sorted by hash within a block. Process them by
+  canonical log order; a same-block reversed-hash regression now proves it.
+- A transaction may process and cancel part of the same request. Separate its
+  processing mutation from its cancellation mutation using canonical log IDs.
+- Cash-only settlement must not depend on a later share NAV. Read a share
+  quote only when reclassifying shares; fixed underlying payouts work without it.
+- Explicitly test that the small BUIDL exit restores omitted capital and realizes
+  only the actual cash shortfall, with no duplicate fee or principal income.
+- Verify the wallet/pending/economic workbook round trip and retain the full
+  historical replay plus per-venue attribution as reviewable artifacts.
+
+Validation: 74 focused tests pass after the second fixes. The first fixed head
+passed both full unit and Postgres/cache CI. Final-head CI must also pass before
+merge; GitHub's checks on the merged head are the authoritative final result.
+The read-only replay reproduces published Maple results and isolates the signed
+income deltas in `results.json`, without changing historical rates or reports.

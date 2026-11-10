@@ -282,8 +282,17 @@ def capital_events(prime, venue, period, *, opening_block, block_resolver, nav_a
                 period.pin_blocks[venue.chain],
             )
         )
-        value = D(a["share_exit"]) * nav_at_block(block) - D(a["cash_paid"])
-        out.append(dict(block_date=day, capital_adjustment_usd=value, **a))
+        nav = nav_at_block(block) if D(a["share_exit"]) else D(0)
+        value = D(a["share_exit"]) * nav - D(a["cash_paid"])
+        out.append(
+            dict(
+                block_date=day,
+                capital_adjustment_usd=value,
+                nav_block=block,
+                nav=str(nav) if D(a["share_exit"]) else None,
+                **a,
+            )
+        )
     return out
 
 

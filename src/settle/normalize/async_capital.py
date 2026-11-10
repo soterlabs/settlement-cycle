@@ -5,6 +5,7 @@ NAV clock. Actual payments remove their actual underlying amount. Using the
 change in marked pending value instead would turn queued yield into principal.
 """
 
+import re
 from collections import defaultdict
 from dataclasses import replace
 from datetime import UTC, datetime, time
@@ -46,7 +47,12 @@ def receipt(chain, tx):
 def unique_rows(rows, pin):
     unique = {}
     for row in rows:
-        if not 0 < row.block_number <= pin or row.block_time <= 0 or not row.transaction_hash:
+        if (
+            not 0 < row.block_number <= pin
+            or row.block_time <= 0
+            or not row.transaction_hash
+            or not re.fullmatch(r"0x[0-9a-f]{64}", row.transaction_hash)
+        ):
             raise ValueError("Invalid async event pin/identity")
         key = row.block_number, row.log_index
         if key in unique and unique[key] != row:
@@ -128,7 +134,11 @@ def capital_events(prime, venue, period, *, opening_block, block_resolver, nav_a
     pending, opening_pending = 0, 0
     owned_requests = {}
     emitted = []
-    for (block, tx), logs in sorted(grouped.items()):
+    for (block, tx), logs in sorted(
+        grouped.items(), key=lambda item: (item[0][0], min(r.log_index for r in item[1]))
+    ):
+        if len({r.block_time for r in logs}) != 1:
+            raise ValueError("Inconsistent async transaction timestamps")
         async_raw = 0
         paid = 0
         identities = []
@@ -207,6 +217,18 @@ def capital_events(prime, venue, period, *, opening_block, block_resolver, nav_a
                     topic("RequestDecreased(uint128,uint256)"),
                 }
                 cancelled = 0
+                processing_mutations = set()
+                for processed_row in all_processed:
+                    mutations = [
+                        r
+                        for r in proof["logs"]
+                        if r["address"].lower() == processed_row.address
+                        and r["topics"][0] in removed | decreased
+                        and r["topics"][1] == processed_row.topic1
+                        and int(r["logIndex"], 16) > processed_row.log_index
+                    ]
+                    if mutations:
+                        processing_mutations.add(min(int(r["logIndex"], 16) for r in mutations))
                 for r in proof["logs"]:
                     if (
                         r["address"].lower() not in escrows
@@ -215,9 +237,10 @@ def capital_events(prime, venue, period, *, opening_block, block_resolver, nav_a
                         continue
                     key = r["address"].lower(), r["topics"][1]
                     # Other investors can be processed in the same transaction.
-                    if key not in owned_requests or key in {
-                        (x.address, x.topic1) for x in all_processed
-                    }:
+                    if (
+                        key not in owned_requests
+                        or int(r.get("logIndex", "0x0"), 16) in processing_mutations
+                    ):
                         continue
                     quantity = (
                         owned_requests[key] if r["topics"][0] in removed else int(r["data"], 16)
@@ -286,9 +309,8 @@ def capital_events(prime, venue, period, *, opening_block, block_resolver, nav_a
                     pin,
                 )
             )
-            adjustment = (
-                -D(async_raw) / share_scale * nav_at_block(boundary) - D(paid) / asset_scale * price
-            )
+            nav = nav_at_block(boundary) if async_raw else D(0)
+            adjustment = -D(async_raw) / share_scale * nav - D(paid) / asset_scale * price
             emitted.append(
                 dict(
                     block_date=day,
@@ -303,7 +325,7 @@ def capital_events(prime, venue, period, *, opening_block, block_resolver, nav_a
                     token=token,
                     protocol=policy.kind,
                     nav_block=boundary,
-                    nav=str(nav_at_block(boundary)),
+                    nav=str(nav) if async_raw else None,
                 )
             )
     from .async_vaults import async_vault_exposure

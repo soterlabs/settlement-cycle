@@ -251,3 +251,49 @@ def test_manual_processing_partial_payment_and_cancellation_conserve_claim(monke
     proof["logs"][0]["topics"][1] = "0x" + format(999, "064x")
     with pytest.raises(ValueError, match="owner-specific cancellation"):
         run(5)
+    # Distinct transactions in the same block must follow canonical log
+    # order, even when their hashes sort in the opposite order.
+    from dataclasses import replace
+
+    proof["logs"][0]["topics"][1] = request_id
+    proof["blockNumber"] = "0x1"
+    rows[:] = [
+        replace(
+            r,
+            block_number=1,
+            block_time=1767225600,
+            transaction_hash="0x" + format(6 - r.block_number, "064x"),
+        )
+        for r in rows
+    ]
+    monkeypatch.setattr(
+        async_vaults,
+        "async_vault_exposure",
+        lambda p, v, b: async_vaults.AsyncVaultExposure(redemption_shares=D(0 if b == 0 else 40)),
+    )
+    assert sum(r["capital_adjustment_usd"] for r in run(1)) == 48
+    # Processing and cancelling the same ID can also share one receipt.
+    combined_tx = "0x" + format(2, "064x")
+    rows[:] = [
+        replace(
+            r,
+            transaction_hash=combined_tx if r.log_index >= 9 else r.transaction_hash,
+            log_index=13 if r.log_index == 11 else 11 if r.log_index == 10 else r.log_index,
+        )
+        for r in rows
+    ]
+    proof["logs"] = [
+        dict(
+            address=escrow.hex,
+            topics=[ac.topic("RequestDecreased(uint256,uint256)"), request_id],
+            logIndex="0xa",
+            data="0x" + format(30 * 10**6, "064x"),
+        ),
+        dict(
+            address=escrow.hex,
+            topics=[ac.topic("RequestDecreased(uint256,uint256)"), request_id],
+            logIndex="0xc",
+            data="0x" + format(10 * 10**6, "064x"),
+        ),
+    ]
+    assert sum(r["capital_adjustment_usd"] for r in run(1)) == 48

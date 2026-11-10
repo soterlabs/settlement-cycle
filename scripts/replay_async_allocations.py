@@ -1,12 +1,34 @@
-"""Read-only Jan–Sep component replay. No monthly settlements or publications.
+"""Read-only Jan-Sep component replay. No monthly settlements or publications.
 
 Reuses production capital, exposure and revenue functions with retained public
 inputs, and rejects network calls/missing inputs. See the accompanying README.
 """
 
 import argparse
+import calendar
+import gzip
 import hashlib
+import json
+import os
+import socket
+from dataclasses import replace
+from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal as D
 from pathlib import Path
+from unittest.mock import patch
+
+import openpyxl
+import pandas as pd
+
+from settle.compute.prime_agent_revenue import VenueRevenueInputs, compute_venue_revenue
+from settle.domain.config import load_prime_by_id
+from settle.domain.period import Period
+from settle.extract import hypersync_store, rpc
+from settle.extract.hypersync import LogRow
+from settle.normalize import async_capital as ac
+from settle.normalize.async_vaults import async_capital_inflow_timeseries
+from settle.normalize.positions import _shares_to_usd_inflow_timeseries
+from settle.revenue.verification import canonical
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
@@ -22,21 +44,21 @@ if args.baseline != "9b290a3f164882f2e19cad9fbc7ad597bce400a7" or (
     args.from_month,
     args.to_month,
 ) != ("2026-01", "2026-09"):
-    parser.error("Retained audit inputs cover only the stated baseline and Jan–Sep 2026")
+    parser.error("Retained audit inputs cover only the stated baseline and Jan-Sep 2026")
+# Component replay never opens live transports or writes source caches.
+os.environ["SETTLE_NO_CACHE"] = "1"
+
+
+def deny_network(*args, **kwargs):
+    raise AssertionError("Offline async replay attempted a network connection")
+
+
+patch.object(socket.socket, "connect", deny_network).start()
 EVIDENCE = args.evidence_dir
-for name, digest in __import__("json").loads((EVIDENCE / "sha256.json").read_text()).items():
+for name, digest in json.loads((EVIDENCE / "sha256.json").read_text()).items():
     if hashlib.sha256((EVIDENCE / name).read_bytes()).hexdigest() != digest:
         raise ValueError("Retained evidence hash mismatch: " + name)
 
-import json, gzip, calendar
-from datetime import date
-from decimal import Decimal as D
-from unittest.mock import patch
-from settle.domain.config import load_prime_by_id
-from settle.domain.period import Period
-from settle.extract import rpc, hypersync_store
-from settle.extract.hypersync import LogRow
-from settle.normalize import async_capital as ac
 
 h = json.load(gzip.open(EVIDENCE / "history.json.gz"))
 q = json.load(gzip.open(EVIDENCE / "state-quotes.json.gz"))
@@ -93,20 +115,18 @@ def post(url, method, params):
     return q["values"][q["rpc"][key]]
 
 
+for day, block in q["boundaries"].items():
+    cutoff = int(
+        datetime.combine(date.fromisoformat(day), __import__("datetime").time.max, UTC).timestamp()
+    )
+    left = post(None, "eth_getBlockByNumber", [hex(block), False])
+    right = post(None, "eth_getBlockByNumber", [hex(block + 1), False])
+    assert int(left["timestamp"], 16) <= cutoff < int(right["timestamp"], 16)
+
+
 class Resolver:
     def block_at_or_before(self, chain, dt):
         return q["boundaries"][dt.date().isoformat()]
-
-
-from dataclasses import replace
-from datetime import UTC, datetime, timedelta
-from pathlib import Path
-import pandas as pd
-import openpyxl
-from settle.normalize.positions import _shares_to_usd_inflow_timeseries
-from settle.compute.prime_agent_revenue import compute_venue_revenue, VenueRevenueInputs
-from settle.normalize.async_vaults import async_capital_inflow_timeseries, AsyncVaultExposure
-from settle.revenue.verification import canonical
 
 
 class Balance:
@@ -170,10 +190,8 @@ with (
             [
                 r
                 for r in rows
-                if r.address == v.token.address.hex
-                and r.topic0 == ac.TRANSFER_TOPIC0
-                or r.address in escrows
-                and r.topic2 == owner
+                if (r.address == v.token.address.hex and r.topic0 == ac.TRANSFER_TOPIC0)
+                or (r.address in escrows and r.topic2 == owner)
             ],
             h["pin"],
         )
@@ -211,7 +229,7 @@ with (
                 pending -= ac.words(r, 2)[0]
             timeline.append((r.block_number, wallet, pending))
 
-        def state(b):
+        def state(b, timeline=timeline):
             rr = [x for x in timeline if x[0] <= b]
             return rr[-1][1:] if rr else (0, 0)
 
@@ -229,14 +247,14 @@ with (
                     D(proof["exposure"]["redemption_shares"]),
                 ), (name, vid, day, w, pdng, proof)
 
-            def raw(v0):
+            def raw(v0, p=p, period=period, prices=prices, op=op, state=state):
                 return _shares_to_usd_inflow_timeseries(
                     p,
                     v0,
                     period,
                     balance_source=Balance(),
                     block_resolver=Resolver(),
-                    price_at_block=lambda b: prices[b],
+                    price_at_block=lambda block, prices=prices: prices[block],
                     som_block=op,
                     balance_at=lambda *args: state(args[-1])[0],
                     period_only=True,
@@ -251,7 +269,7 @@ with (
                 afterraw,
                 opening_block=op,
                 block_resolver=Resolver(),
-                nav_at_block=lambda b: prices[b],
+                nav_at_block=lambda block, prices=prices: prices[block],
             )
             vs = D(state(op)[0]) / 10**6 * prices[op]
             ve = D(state(pin)[0]) / 10**6 * prices[pin]
@@ -296,7 +314,7 @@ with (
             wb = openpyxl.load_workbook(f, read_only=True, data_only=True)
             rr = list(wb["Venues"].values)
             header = rr[0]
-            record = next(dict(zip(header, x)) for x in rr[1:] if x[0] == vid)
+            record = next(dict(zip(header, x, strict=True)) for x in rr[1:] if x[0] == vid)
             wb.close()
             record = {k: str(x) for k, x in record.items() if x is not None}
             assert abs(D(record["actual_revenue"]) - oldr.actual_revenue) < D(".000001")
@@ -334,8 +352,6 @@ with (
 # wallets alone would not prove the absence of intramonth async activity.
 if "spark" in args.primes:
     from settle.normalize import issuer_redemptions as issuer
-    from settle.compute import spark_ustb_capital, spark_uscc_capital
-    from settle.normalize.async_vaults import async_vault_exposure
 
     spark = load_prime_by_id("spark")
     quote_evidence = json.loads((EVIDENCE / "issuer-quotes.json").read_text())
@@ -364,8 +380,10 @@ if "spark" in args.primes:
                     r
                     for r in source
                     if r["address"] == v.token.address.hex
-                    or r["address"] == policy["cash_token"]
-                    and r["topic1"].endswith(policy["cash_payer"][2:])
+                    or (
+                        r["address"] == policy["cash_token"]
+                        and r["topic1"].endswith(policy["cash_payer"][2:])
+                    )
                 ]
             else:
                 selected = source
@@ -441,7 +459,7 @@ if "spark" in args.primes:
     grouped = {}
     for r in h["queries"]["arkis-atomic-withdrawals"]["rows"]:
         grouped.setdefault(r["transaction_hash"], []).append(r)
-    for tx, rr in grouped.items():
+    for _tx, rr in grouped.items():
         requested = sum(
             ac.words(LogRow(**r), 2)[0]
             for r in rr
@@ -462,7 +480,9 @@ for name in args.primes:
         rr = list(wb["Venues"].values)
         header = rr[0]
         existing = [
-            dict(zip(header, r)) for r in rr[1:] if r[0] and isinstance(r[12], (float, int))
+            dict(zip(header, r, strict=True))
+            for r in rr[1:]
+            if r[0] and isinstance(r[12], (float, int))
         ]
         wb.close()
         total = sum((D(str(r["CoF alloc"] or 0)) for r in existing), D(0))
@@ -501,4 +521,26 @@ for name in args.primes:
                 out["published_workbook_sha256"] = hashlib.sha256(f.read_bytes()).hexdigest()
 
 args.output.parent.mkdir(parents=True, exist_ok=True)
-args.output.write_text(json.dumps(dict(baseline=args.baseline, results=result), indent=2) + "\n")
+args.output.write_text(
+    json.dumps(
+        dict(
+            baseline=args.baseline,
+            implementation_files_sha256={
+                str(p): hashlib.sha256(p.read_bytes()).hexdigest()
+                for p in [
+                    Path("scripts/replay_async_allocations.py"),
+                    Path("src/settle/normalize/async_vaults.py"),
+                    Path("src/settle/normalize/async_capital.py"),
+                    Path("src/settle/normalize/async_protocols.py"),
+                    Path("src/settle/normalize/issuer_redemptions.py"),
+                    Path("config/spark.yaml"),
+                    Path("config/obex.yaml"),
+                    Path("config/issuer_redemptions.yaml"),
+                ]
+            },
+            results=result,
+        ),
+        indent=2,
+    )
+    + "\n"
+)

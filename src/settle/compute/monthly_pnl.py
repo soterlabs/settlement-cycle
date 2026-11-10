@@ -2941,7 +2941,7 @@ def compute_monthly_pnl(
                 curve_pool_source=sources.curve_pool,
                 block_resolver=resolver,
                 nav_oracle_resolver=sources.nav_oracle_resolver,
-                    async_exposure_source=(sources.async_allocations or getattr(sources.position_balance, 'async_allocations', None)),
+                async_exposure_source=(sources.async_allocations or getattr(sources.position_balance, 'async_allocations', None)),
             )
             value_eom = get_position_value(
                 prime, venue, eom_block,
@@ -2953,7 +2953,7 @@ def compute_monthly_pnl(
                 curve_pool_source=sources.curve_pool,
                 block_resolver=resolver,
                 nav_oracle_resolver=sources.nav_oracle_resolver,
-                    async_exposure_source=(sources.async_allocations or getattr(sources.position_balance, 'async_allocations', None)),
+                async_exposure_source=(sources.async_allocations or getattr(sources.position_balance, 'async_allocations', None)),
             )
 
         # Inflow timeseries — three branches:
