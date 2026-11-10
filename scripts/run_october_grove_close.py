@@ -3,7 +3,7 @@
 
 Requires the reviewed ALM transfer inventory described in AGENTS.md, normal
 RPC/indexer credentials and a finalized October DR source.
-Writes only settlements/grove/2026-10; does not publish to the API.
+Defaults to settlements/grove/2026-10; does not publish to the API.
 """
 from __future__ import annotations
 
@@ -29,6 +29,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--check-inputs', action='store_true',
                         help='Validate SOFR and DR inputs without extracting on-chain data')
+    parser.add_argument('--output-dir', type=Path,
+                        help='Write Grove artifacts to a new directory for an independent comparison')
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(name)s %(levelname)s %(message)s')
     prime = load_prime_by_id('grove', config_dir=ROOT / 'config')
@@ -42,11 +44,12 @@ def main() -> int:
     if args.check_inputs:
         print('Grove October 2026: official SOFR coverage and DR inputs validated')
         return 0
-    check_settlement_destination(ROOT / 'settlements' / prime.id / str(month))
+    output_dir = args.output_dir or ROOT / 'settlements' / prime.id / str(month)
+    check_settlement_destination(output_dir)
     pnl = compute_monthly_pnl(prime, month, reference_rate_history=history)
     validate_interest(pnl, prime, provenance)
     paths = write_settlement(
-        pnl, ROOT / 'settlements' / prime.id / str(month),
+        pnl, output_dir,
         sources={'calculation': 'scripts/run_october_grove_close.py; independent full monthly calculation',
                  'reference_rate_status': 'official coverage complete; NY Fed SOFR via FRED'},
         reference_rates=reference,
