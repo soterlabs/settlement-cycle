@@ -23,7 +23,7 @@ from settle.compute.sky_revenue import daily_borrow_charge
 from settle.domain import Chain, Period
 from settle.domain.config import load_prime_by_id
 from settle.extract.hypersync import LogRow
-from settle.normalize.usds_bridge_transit import collect_transfers, daily_exposure
+from settle.normalize.usds_bridge_transit import ROUTES, collect_transfers, daily_exposure
 
 ROOT = Path(__file__).resolve().parents[1]
 RPC = {'ethereum': 'https://eth.drpc.org', 'arbitrum': 'https://arb1.arbitrum.io/rpc',
@@ -213,6 +213,16 @@ def cost_delta(row, amount, cap):
         return candidates[0]
 
 
+def bridge_scope(prime, period):
+    active = prime.chains_at(period.end)
+    supported = sorted(c.value for c in ROUTES if c in prime.alm and c in active
+                       and Chain.ETHEREUM in prime.alm)
+    return {'result_scope': 'supported_native_usds_routes_only',
+            'supported_ethereum_routes': supported,
+            'unscanned_alm_chains': sorted(c.value for c in prime.alm if c in active
+                                         and c != Chain.ETHEREUM and c.value not in supported)}
+
+
 def audit(cutoff, cache):
     transport = PublicLogs(cache)
     with ThreadPoolExecutor(max_workers=3) as executor:
@@ -260,7 +270,7 @@ def audit(cutoff, cache):
                                        'rate_convention_unresolved' if original else 'no_saved_daily_charge')})
         baselines = {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
                      for month in books for path in (ROOT / 'settlements' / name / month).glob('*.xlsx')}
-        by_prime[name] = {'baseline_workbook_sha256': baselines,
+        by_prime[name] = {**bridge_scope(prime, period), 'baseline_workbook_sha256': baselines,
                           'retained_source': ({key: retained_source[key] for key in ['revision_id','result_hash','code_version','configuration_version']}
                                               if retained else None),
                           'transfers': len(selected), 'transit_closing_days': len(charges),

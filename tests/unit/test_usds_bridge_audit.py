@@ -54,3 +54,22 @@ def test_committed_2026_audit_reproduces_frozen_charges():
         totals['historical' if month <= '2026-09' else 'october'] += measured
     assert totals['historical'].quantize(D('.01')) == D('255869.48')
     assert totals['october'].quantize(D('.01')) == D('75063.88')
+
+
+def test_zero_native_usds_matches_does_not_certify_other_grove_chains():
+    import json
+    from datetime import date
+
+    from scripts.audit_usds_bridge_transit_2026 import ROOT, bridge_scope
+    from settle.domain import Chain, Period
+    from settle.domain.config import load_prime_by_id
+    data = json.loads((ROOT / 'reconciliation/usds-bridge-2026/audit.json').read_text())
+    grove = data['primes']['grove']
+    period = Period(date(2026, 1, 1), date(2026, 11, 8),
+                    {Chain(c): n for c, n in data['pins'].items()})
+    scope = bridge_scope(load_prime_by_id('grove'), period)
+    assert all(grove[k] == v for k, v in scope.items())
+    assert grove['transfers'] == 0
+    assert grove['result_scope'] == 'supported_native_usds_routes_only'
+    assert grove['supported_ethereum_routes'] == ['base']
+    assert set(grove['unscanned_alm_chains']) == {'avalanche_c', 'plume', 'monad'}

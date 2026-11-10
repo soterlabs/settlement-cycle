@@ -4,7 +4,7 @@
   "method": "Authenticated gateway payloads; frozen workbook charges at their original rate convention. No MSC adjustment booked.",
   "code_sha256": {
     "src/settle/normalize/usds_bridge_transit.py": "476adae241fea5782b39e8110749e65e6a338ea5cb2300fde20f4224c2a595f0",
-    "scripts/audit_usds_bridge_transit_2026.py": "ab5811d69adbb5e6d0407aa74fbd3e1060b2591ca3c1fa04dc0e76fb4ec3b1c0"
+    "scripts/audit_usds_bridge_transit_2026.py": "1bdabb718cca786bf832580fab496dc127bc251c155a1e7ef3d8607436fb9189"
   },
   "prime_config_sha256": {
     "spark": "f3d454c6ba98959b9a6adc23611c6891eca975c7ee73cbbdc7d11fa15b76880b",
@@ -1215,6 +1215,17 @@
           "measured_excess_charge": null,
           "status": "no_saved_daily_charge"
         }
+      ],
+      "result_scope": "supported_native_usds_routes_only",
+      "supported_ethereum_routes": [
+        "arbitrum",
+        "base",
+        "optimism",
+        "unichain"
+      ],
+      "unscanned_alm_chains": [
+        "avalanche_c",
+        "robinhood"
       ]
     },
     "grove": {
@@ -1223,7 +1234,16 @@
       "transfers": 0,
       "transit_closing_days": 0,
       "measured_excess_charge": "0",
-      "daily": []
+      "daily": [],
+      "result_scope": "supported_native_usds_routes_only",
+      "supported_ethereum_routes": [
+        "base"
+      ],
+      "unscanned_alm_chains": [
+        "avalanche_c",
+        "monad",
+        "plume"
+      ]
     },
     "obex": {
       "baseline_workbook_sha256": {},
@@ -1231,7 +1251,10 @@
       "transfers": 0,
       "transit_closing_days": 0,
       "measured_excess_charge": "0",
-      "daily": []
+      "daily": [],
+      "result_scope": "supported_native_usds_routes_only",
+      "supported_ethereum_routes": [],
+      "unscanned_alm_chains": []
     },
     "osero": {
       "baseline_workbook_sha256": {},
@@ -1239,7 +1262,10 @@
       "transfers": 0,
       "transit_closing_days": 0,
       "measured_excess_charge": "0",
-      "daily": []
+      "daily": [],
+      "result_scope": "supported_native_usds_routes_only",
+      "supported_ethereum_routes": [],
+      "unscanned_alm_chains": []
     },
     "keel": {
       "baseline_workbook_sha256": {},
@@ -1247,7 +1273,10 @@
       "transfers": 0,
       "transit_closing_days": 0,
       "measured_excess_charge": "0",
-      "daily": []
+      "daily": [],
+      "result_scope": "supported_native_usds_routes_only",
+      "supported_ethereum_routes": [],
+      "unscanned_alm_chains": []
     },
     "skybase": {
       "baseline_workbook_sha256": {},
@@ -1255,7 +1284,10 @@
       "transfers": 0,
       "transit_closing_days": 0,
       "measured_excess_charge": "0",
-      "daily": []
+      "daily": [],
+      "result_scope": "supported_native_usds_routes_only",
+      "supported_ethereum_routes": [],
+      "unscanned_alm_chains": []
     }
   },
   "exceptions": []
