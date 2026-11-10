@@ -87,6 +87,8 @@ class Sources:
     atoken_event_blocks: object = None
     # Pinned issuer-incentive input provider for deterministic replay/tests.
     incentives: object = None
+    # Optional pinned canonical USDS gateway log reader (same signature as fetch_logs).
+    usds_bridge_logs: object = None
 
 
 def _sources_from_prime(prime: "Prime", base: "Sources | None" = None) -> Sources:
@@ -2438,6 +2440,10 @@ def compute_monthly_pnl(
     alm_usds = _aggregate_alm_usds(
         prime, period, balance_source=sources.balance,
     )
+    from ..normalize.usds_bridge_transit import collect_transfers, daily_exposure
+    bridge_reader = sources.usds_bridge_logs or getattr(sources.balance, 'usds_bridge_logs', None)
+    usds_bridge_transfers = collect_transfers(prime, period, fetch=bridge_reader)
+    bridge_usds = daily_exposure(period, usds_bridge_transfers)
     # Sum PSM USDS-equivalent across ALL chains where the prime has a PSM
     # configured. The prime's debt (cum_debt) is Ethereum-only (Vat), but
     # USDS-equivalent capital parked at L2 PSM3 (Spark on Base / Arbitrum /
@@ -4244,6 +4250,7 @@ def compute_monthly_pnl(
         curve_idle_usds=curve_idle_usds,
         lending_idle_usds=lending_idle_usds,
         basin_idle_usds=basin_idle_usds,
+        bridge_usds=bridge_usds,
     )
     # Sky's full claim: BR on (utilized − SDE − idle deductions) + actual SDE
     # revenue, minus the Sky-to-Spark transfer on sUSDS positions:
@@ -4319,6 +4326,7 @@ def compute_monthly_pnl(
             "date":                row["date"].isoformat(),
             "cum_debt":            str(row["cum_debt"]),
             "alm_usds":            str(row["alm_usds"]),
+            "bridge_usds":         str(row["bridge_usds"]),
             "psm_usds":            str(row["psm_usds"]),
             "sde_av":              str(row["sde_av"]),
             "curve_idle":          str(row["curve_idle"]),
@@ -4362,6 +4370,7 @@ def compute_monthly_pnl(
         reporting_only_breakdown=reporting_only_breakdown,
         sde_daily_breakdown=sde_daily_breakdown_out,
         sky_revenue_daily=sky_revenue_daily_out,
+        usds_bridge_transfers=usds_bridge_transfers,
         susds_spread_reimbursement=total_susds_spread_reimb,
         sky_revenue_gross=sky_rev_gross,
         subsidy_summary=subsidy_summary,

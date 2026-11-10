@@ -1,0 +1,1294 @@
+{
+  "scope": "Canonical native USDS bridges, configured prime ALMs, 2026-01-01 through 2026-11-08",
+  "settlement_execution_verified": false,
+  "method": "Authenticated gateway payloads; frozen workbook charges at their original rate convention. No MSC adjustment booked.",
+  "code_sha256": {
+    "src/settle/normalize/usds_bridge_transit.py": "476adae241fea5782b39e8110749e65e6a338ea5cb2300fde20f4224c2a595f0",
+    "scripts/audit_usds_bridge_transit_2026.py": "1bdabb718cca786bf832580fab496dc127bc251c155a1e7ef3d8607436fb9189"
+  },
+  "prime_config_sha256": {
+    "spark": "f3d454c6ba98959b9a6adc23611c6891eca975c7ee73cbbdc7d11fa15b76880b",
+    "grove": "9377bc79d566c08498b0b6f4341ae9e7cb4488077b619082f5c9b78c6d0912c5",
+    "obex": "10c513019c87a17e1859113368a256475108c90bafc2d19207ecd3c2b4c5fe86",
+    "osero": "a235227f223852b8338e8bd76daf203d6abcc5b5caeeef515cb53e98f9717ee2",
+    "keel": "7ed8d7d0da9f4ca086833947e37588fa1c7f5363ed63ef15173c0415fad96032",
+    "skybase": "f93340b5d07b6ebcbc23e5d4624bd26ced0cfc407247ac6859f4de99f786782a"
+  },
+  "pins": {
+    "ethereum": 26373602,
+    "arbitrum": 522512200,
+    "base": 54960121,
+    "optimism": 159291811,
+    "unichain": 63434040
+  },
+  "coverage": [
+    {
+      "chain": "ethereum",
+      "gateway": "0x84b9700e28b23f873b82c1beb23d86c091b6079e",
+      "from_block": 0,
+      "to_block": 26373602,
+      "raw_logs": 48,
+      "sha256": "dc0e9e2b09ca012ab249088046d54fb3cd7d433e7bce5f5a359ec8eb8b05a6cf"
+    },
+    {
+      "chain": "arbitrum",
+      "gateway": "0x13f7f24ca959359a4d710d32c715d4bce273c793",
+      "from_block": 0,
+      "to_block": 522512200,
+      "raw_logs": 49,
+      "sha256": "f99c5d74960fa90c484be080bb5206b859c79efb6de978bf39ff33072e9cf377"
+    },
+    {
+      "chain": "ethereum",
+      "gateway": "0xa5874756416fa632257eea380cabd2e87ced352a",
+      "from_block": 0,
+      "to_block": 26373602,
+      "raw_logs": 697,
+      "sha256": "e441a1f3350ecc11c52770da564dfc67bf2f308c77bbb6f1642515dac4cf9ebd"
+    },
+    {
+      "chain": "base",
+      "gateway": "0xee44cdb68d618d58f75d9fe0818b640bd7b8a7b7",
+      "from_block": 0,
+      "to_block": 54960121,
+      "raw_logs": 705,
+      "sha256": "568b45936b444de155d75ecd11068475b66d650eb0679ce5bd56f0dfd04ac085"
+    },
+    {
+      "chain": "ethereum",
+      "gateway": "0x3d25b7d486cae1810374d37a48bcf0963c9b8057",
+      "from_block": 0,
+      "to_block": 26373602,
+      "raw_logs": 39,
+      "sha256": "eae81cc14011d30fadc8db622f781e5b629ccf873448203962a736928df844f2"
+    },
+    {
+      "chain": "optimism",
+      "gateway": "0x8f41dbf6b8498561ce1d73af16cd9c0d8ee20ba6",
+      "from_block": 0,
+      "to_block": 159291811,
+      "raw_logs": 41,
+      "sha256": "424b9e08ad9f97aee6a22589ef15dca5fa5850d16fa7aed7d40e132e1a86fe7d"
+    },
+    {
+      "chain": "ethereum",
+      "gateway": "0xdf0535a4c96c9cd8921d8fec92a7680b281681d2",
+      "from_block": 0,
+      "to_block": 26373602,
+      "raw_logs": 25,
+      "sha256": "e3742ae11d27b3ccf1eb747d61fdcf80412607cbd0d1e5ceea61cb75032b496e"
+    },
+    {
+      "chain": "unichain",
+      "gateway": "0xa13152006d0216fe4627a0d3b006087a6a55d752",
+      "from_block": 0,
+      "to_block": 63434040,
+      "raw_logs": 28,
+      "sha256": "196c50de775a2e8c45de26db701b0bbc87fdbd0bed40d7cc7a9d614ecde15e01"
+    },
+    {
+      "chain": "ethereum",
+      "gateway": "0xa5874756416fa632257eea380cabd2e87ced352a",
+      "from_block": 0,
+      "to_block": 26373602,
+      "raw_logs": 697,
+      "sha256": "e441a1f3350ecc11c52770da564dfc67bf2f308c77bbb6f1642515dac4cf9ebd"
+    },
+    {
+      "chain": "base",
+      "gateway": "0xee44cdb68d618d58f75d9fe0818b640bd7b8a7b7",
+      "from_block": 0,
+      "to_block": 54960121,
+      "raw_logs": 705,
+      "sha256": "568b45936b444de155d75ecd11068475b66d650eb0679ce5bd56f0dfd04ac085"
+    }
+  ],
+  "transfers": [
+    {
+      "prime": "spark",
+      "source_chain": "base",
+      "destination_chain": "ethereum",
+      "sender": "0x2917956eff0b5eaf030abdb4ef4296df775009ca",
+      "recipient": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+      "amount_usds": "10000",
+      "sent_at": 1782137335,
+      "received_at": 1793709023,
+      "source_transaction": "0x133b60b42bdf84271efc2d743808e66c0b4796eadd19ab2e34de9da9da910e64",
+      "source_log_index": 144,
+      "source_block": 47673994,
+      "destination_block": 26334285,
+      "destination_log_index": 1001,
+      "destination_transaction": "0xa2fe7d047d7e6a1ab47c95ac7931faa4214a31bea0bb3db72fd79d50f2438cfb"
+    },
+    {
+      "prime": "spark",
+      "source_chain": "unichain",
+      "destination_chain": "ethereum",
+      "sender": "0x345e368fccd62266b3f5f37c9a131fd1c39f5869",
+      "recipient": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+      "amount_usds": "10000",
+      "sent_at": 1782137342,
+      "received_at": null,
+      "source_transaction": "0x6ba2c8158c8b1bc1e9daeafc5903f0d46978ccbb37d92eb80fea931582236625",
+      "source_log_index": 7,
+      "source_block": 51388983,
+      "destination_block": null,
+      "destination_log_index": null,
+      "destination_transaction": null
+    },
+    {
+      "prime": "spark",
+      "source_chain": "optimism",
+      "destination_chain": "ethereum",
+      "sender": "0x876664f0c9ff24d1aa355ce9f1680ae1a5bf36fb",
+      "recipient": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+      "amount_usds": "10000",
+      "sent_at": 1782137351,
+      "received_at": null,
+      "source_transaction": "0x8f10a77f52f7c583a8606120736ddd5766f6cb24027808d8f0238d856ca21d77",
+      "source_log_index": 86,
+      "source_block": 153269287,
+      "destination_block": null,
+      "destination_log_index": null,
+      "destination_transaction": null
+    },
+    {
+      "prime": "spark",
+      "source_chain": "base",
+      "destination_chain": "ethereum",
+      "sender": "0x2917956eff0b5eaf030abdb4ef4296df775009ca",
+      "recipient": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+      "amount_usds": "146550618.210418117475041461",
+      "sent_at": 1783361153,
+      "received_at": 1783974155,
+      "source_transaction": "0x7b8e692e523eca62aaad95e04e279ad7d8c31b38c0694af18f1a0635f54323ae",
+      "source_log_index": 761,
+      "source_block": 48285903,
+      "destination_block": 25526069,
+      "destination_log_index": 471,
+      "destination_transaction": "0xac90aa7e2dc4035c921324e3a10ad3ba6c39f21826375b1558ee6acc27964a22"
+    },
+    {
+      "prime": "spark",
+      "source_chain": "unichain",
+      "destination_chain": "ethereum",
+      "sender": "0x345e368fccd62266b3f5f37c9a131fd1c39f5869",
+      "recipient": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+      "amount_usds": "99990828.814818609701977623",
+      "sent_at": 1783361159,
+      "received_at": 1783974311,
+      "source_transaction": "0x33f66feba68e407fd92e5b4c46da5a53389096a5a6b9c40b8909f1a57986edda",
+      "source_log_index": 11,
+      "source_block": 52612800,
+      "destination_block": 25526082,
+      "destination_log_index": 1174,
+      "destination_transaction": "0xce77f64f1620b2c58bec71b05f5805b6ac3c2d4674ca808b0ec12fdda4a29907"
+    },
+    {
+      "prime": "spark",
+      "source_chain": "optimism",
+      "destination_chain": "ethereum",
+      "sender": "0x876664f0c9ff24d1aa355ce9f1680ae1a5bf36fb",
+      "recipient": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+      "amount_usds": "100304256.586332342515511286",
+      "sent_at": 1783361165,
+      "received_at": 1783974239,
+      "source_transaction": "0x216a9de9b07a0c954dd797b6abf95c4ed0af6b1ba0f5156d0c40533fb656a16e",
+      "source_log_index": 186,
+      "source_block": 153881194,
+      "destination_block": 25526076,
+      "destination_log_index": 498,
+      "destination_transaction": "0x32c5a7912f97abe46a7c384f938c764a3719a9d20d90d063f765e4f2df05fe4a"
+    },
+    {
+      "prime": "spark",
+      "source_chain": "arbitrum",
+      "destination_chain": "ethereum",
+      "sender": "0x92afd6f2385a90e44da3a8b60fe36f6cbe1d8709",
+      "recipient": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+      "amount_usds": "99326272.77906090005429408",
+      "sent_at": 1791814511,
+      "received_at": 1792435199,
+      "source_transaction": "0x19f7159dc1ddd429ea6c143dfe7ef7665431696d460f153e4f9c9a5ffdb5aeba",
+      "source_log_index": 21,
+      "source_block": 514136494,
+      "destination_block": 26228474,
+      "destination_log_index": 3317,
+      "destination_transaction": "0x2b7241789acd29f18928f2f11faba2784ea5544e2683b5e5cec22d0599940c1a"
+    }
+  ],
+  "primes": {
+    "spark": {
+      "baseline_workbook_sha256": {
+        "settlements/spark/2026-06/spark_settlement_june_2026.xlsx": "3dba0b345759cb478db387e0d37d748114d8e1ffbc6230c5f76f04d5d6bead67",
+        "settlements/spark/2026-07/spark_settlement_july_2026.xlsx": "8a40e4b84ae139929043058e1e3fd6ebb3744bdc94b13b6b02183911bd19b64f",
+        "settlements/spark/2026-08/spark_settlement_august_2026.xlsx": "a74688825a8b858e6c0faa71ec000ce3b34e4d5ed6d8adff4ad718de9b94b34f",
+        "settlements/spark/2026-09/spark_settlement_september_2026.xlsx": "c53081ebb32e6c0fcb0850dad5d80adcaa03eeb0e4e649377d3ab6288f29d02e"
+      },
+      "retained_source": {
+        "revision_id": "8464a50a7b2cd0572336b3a3e428ce828ac56b389a612e6126370c035b5e6667",
+        "result_hash": "88a1570a572b5c0a788df36f0915c26b4181c9fe6bca6cc5090fbcb4005e28aa",
+        "code_version": "394d353e999633eceed68c3727f18b9e493b6f21",
+        "configuration_version": "1396a71440f5476ce8a9b9d87eb3bdfc587861cd139ad0481d76d4ed26314529"
+      },
+      "transfers": 7,
+      "transit_closing_days": 140,
+      "measured_excess_charge": "330933.3583269183279169732604",
+      "daily": [
+        {
+          "date": "2026-06-22",
+          "in_transit_usds": "30000",
+          "original_charge": "299197.1155084428",
+          "measured_excess_charge": "3.157752107959981643835616438356164383561643835616438356",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-06-23",
+          "in_transit_usds": "30000",
+          "original_charge": "298833.137791678",
+          "measured_excess_charge": "3.157752107959981643835616438356164383561643835616438356",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-06-24",
+          "in_transit_usds": "30000",
+          "original_charge": "295512.7059286229",
+          "measured_excess_charge": "3.157752107959981643835616438356164383561643835616438356",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-06-25",
+          "in_transit_usds": "30000",
+          "original_charge": "296953.4914013887",
+          "measured_excess_charge": "3.157752107959981643835616438356164383561643835616438356",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-06-26",
+          "in_transit_usds": "30000",
+          "original_charge": "298030.0522826335",
+          "measured_excess_charge": "3.157752107959981643835616438356164383561643835616438356",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-06-27",
+          "in_transit_usds": "30000",
+          "original_charge": "296607.3592893603",
+          "measured_excess_charge": "3.157752107959981643835616438356164383561643835616438356",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-06-28",
+          "in_transit_usds": "30000",
+          "original_charge": "296607.7193318804",
+          "measured_excess_charge": "3.157752107959981643835616438356164383561643835616438356",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-06-29",
+          "in_transit_usds": "30000",
+          "original_charge": "295359.5636821942",
+          "measured_excess_charge": "3.157752107959981643835616438356164383561643835616438356",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-06-30",
+          "in_transit_usds": "30000",
+          "original_charge": "285352.0737428749",
+          "measured_excess_charge": "3.157752107959981643835616438356164383561643835616438357",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-01",
+          "in_transit_usds": "30000",
+          "original_charge": "286740.6953658817",
+          "measured_excess_charge": "3.157752107959981643835616438356164383561643835616438357",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-02",
+          "in_transit_usds": "30000",
+          "original_charge": "259457.5790291576",
+          "measured_excess_charge": "3.157752107959981643835616438356164383561643835616438356",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-03",
+          "in_transit_usds": "30000",
+          "original_charge": "260938.7191466909",
+          "measured_excess_charge": "3.157752107959981643835616438356164383561643835616438356",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-04",
+          "in_transit_usds": "30000",
+          "original_charge": "259056.3379927731",
+          "measured_excess_charge": "3.157752107959981643835616438356164383561643835616438356",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-05",
+          "in_transit_usds": "30000",
+          "original_charge": "258667.8544249593",
+          "measured_excess_charge": "3.157752107959981643835616438356164383561643835616438356",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-06",
+          "in_transit_usds": "346875703.611569069692530370",
+          "original_charge": "259478.1605765379",
+          "measured_excess_charge": "36511.582809317801585242925578819808405892328767123287671233",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-07",
+          "in_transit_usds": "346875703.611569069692530370",
+          "original_charge": "249798.9511949923",
+          "measured_excess_charge": "36511.582809317801585242925578819808405892328767123287671233",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-08",
+          "in_transit_usds": "346875703.611569069692530370",
+          "original_charge": "244238.1083806921",
+          "measured_excess_charge": "36511.582809317801585242925578819808405892328767123287671233",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-09",
+          "in_transit_usds": "346875703.611569069692530370",
+          "original_charge": "242120.6808843394",
+          "measured_excess_charge": "36511.582809317801585242925578819808405892328767123287671233",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-10",
+          "in_transit_usds": "346875703.611569069692530370",
+          "original_charge": "243076.9326963737",
+          "measured_excess_charge": "36511.582809317801585242925578819808405892328767123287671233",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-11",
+          "in_transit_usds": "346875703.611569069692530370",
+          "original_charge": "243121.0907619448",
+          "measured_excess_charge": "36511.582809317801585242925578819808405892328767123287671233",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-12",
+          "in_transit_usds": "346875703.611569069692530370",
+          "original_charge": "240138.5144409193",
+          "measured_excess_charge": "36511.582809317801585242925578819808405892328767123287671233",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-13",
+          "in_transit_usds": "30000",
+          "original_charge": "155781.3238206417",
+          "measured_excess_charge": "3.157752107959981643835616438356164383561643835616438356",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-14",
+          "in_transit_usds": "30000",
+          "original_charge": "152009.6095060064",
+          "measured_excess_charge": "3.157752107959981643835616438356164383561643835616438356",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-15",
+          "in_transit_usds": "30000",
+          "original_charge": "154895.1110332006",
+          "measured_excess_charge": "3.157752107959981643835616438356164383561643835616438357",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-16",
+          "in_transit_usds": "30000",
+          "original_charge": "155374.4266185066",
+          "measured_excess_charge": "3.157752107959981643835616438356164383561643835616438356",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-17",
+          "in_transit_usds": "30000",
+          "original_charge": "147354.5295678807",
+          "measured_excess_charge": "3.157752107959981643835616438356164383561643835616438356",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-18",
+          "in_transit_usds": "30000",
+          "original_charge": "151069.5963694577",
+          "measured_excess_charge": "3.157752107959981643835616438356164383561643835616438356",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-19",
+          "in_transit_usds": "30000",
+          "original_charge": "149734.7147931979",
+          "measured_excess_charge": "3.157752107959981643835616438356164383561643835616438357",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-20",
+          "in_transit_usds": "30000",
+          "original_charge": "151059.3064580217",
+          "measured_excess_charge": "3.157752107959981643835616438356164383561643835616438356",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-21",
+          "in_transit_usds": "30000",
+          "original_charge": "152205.6623514657",
+          "measured_excess_charge": "3.157752107959981643835616438356164383561643835616438356",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-22",
+          "in_transit_usds": "30000",
+          "original_charge": "146998.8952021653",
+          "measured_excess_charge": "3.157752107959981643835616438356164383561643835616438356",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-23",
+          "in_transit_usds": "30000",
+          "original_charge": "140831.8243449935",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-24",
+          "in_transit_usds": "30000",
+          "original_charge": "142629.1104694502",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191780",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-25",
+          "in_transit_usds": "30000",
+          "original_charge": "142559.3358478468",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-26",
+          "in_transit_usds": "30000",
+          "original_charge": "143440.0470928513",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-27",
+          "in_transit_usds": "30000",
+          "original_charge": "140492.239791119",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-28",
+          "in_transit_usds": "30000",
+          "original_charge": "143046.3327237602",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191780",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-29",
+          "in_transit_usds": "30000",
+          "original_charge": "142537.6026072685",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-30",
+          "in_transit_usds": "30000",
+          "original_charge": "144153.386304898",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-07-31",
+          "in_transit_usds": "30000",
+          "original_charge": "179239.5093883398",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-01",
+          "in_transit_usds": "30000",
+          "original_charge": "182489.9165878246",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191780",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-02",
+          "in_transit_usds": "30000",
+          "original_charge": "180616.6090843305",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-03",
+          "in_transit_usds": "30000",
+          "original_charge": "182793.5249611113",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-04",
+          "in_transit_usds": "30000",
+          "original_charge": "193258.4163071964",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-05",
+          "in_transit_usds": "30000",
+          "original_charge": "191658.3491029392",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-06",
+          "in_transit_usds": "30000",
+          "original_charge": "191297.6702528653",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-07",
+          "in_transit_usds": "30000",
+          "original_charge": "190921.432596066",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-08",
+          "in_transit_usds": "30000",
+          "original_charge": "191590.776748409",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-09",
+          "in_transit_usds": "30000",
+          "original_charge": "191002.7379982203",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-10",
+          "in_transit_usds": "30000",
+          "original_charge": "186069.0886467554",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-11",
+          "in_transit_usds": "30000",
+          "original_charge": "188422.9212908163",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-12",
+          "in_transit_usds": "30000",
+          "original_charge": "193375.3150030911",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-13",
+          "in_transit_usds": "30000",
+          "original_charge": "193310.480466645",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-14",
+          "in_transit_usds": "30000",
+          "original_charge": "197000.2351429309",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-15",
+          "in_transit_usds": "30000",
+          "original_charge": "199539.6084817214",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191780",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-16",
+          "in_transit_usds": "30000",
+          "original_charge": "202105.4785802448",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-17",
+          "in_transit_usds": "30000",
+          "original_charge": "199535.9217003946",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-18",
+          "in_transit_usds": "30000",
+          "original_charge": "200305.3484975158",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191780",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-19",
+          "in_transit_usds": "30000",
+          "original_charge": "204271.098641732",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-20",
+          "in_transit_usds": "30000",
+          "original_charge": "204887.1236389877",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-21",
+          "in_transit_usds": "30000",
+          "original_charge": "206033.3557961762",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-22",
+          "in_transit_usds": "30000",
+          "original_charge": "212970.903806853",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-23",
+          "in_transit_usds": "30000",
+          "original_charge": "218654.0639439184",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-24",
+          "in_transit_usds": "30000",
+          "original_charge": "212821.5012637959",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-25",
+          "in_transit_usds": "30000",
+          "original_charge": "212213.1839995321",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-26",
+          "in_transit_usds": "30000",
+          "original_charge": "212611.1182757654",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-27",
+          "in_transit_usds": "30000",
+          "original_charge": "219874.4305232989",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-28",
+          "in_transit_usds": "30000",
+          "original_charge": "226897.3509300406",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-29",
+          "in_transit_usds": "30000",
+          "original_charge": "233188.6431184099",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-30",
+          "in_transit_usds": "30000",
+          "original_charge": "235188.0867913373",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-08-31",
+          "in_transit_usds": "30000",
+          "original_charge": "237052.2464766655",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-01",
+          "in_transit_usds": "30000",
+          "original_charge": "238056.2041676801",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-02",
+          "in_transit_usds": "30000",
+          "original_charge": "236317.7371362924",
+          "measured_excess_charge": "3.011881438348688219178082191780821917808219178082191781",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-03",
+          "in_transit_usds": "30000",
+          "original_charge": "245634.7734358992",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356165",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-04",
+          "in_transit_usds": "30000",
+          "original_charge": "247224.3482260297",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356164",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-05",
+          "in_transit_usds": "30000",
+          "original_charge": "242777.648737094",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356165",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-06",
+          "in_transit_usds": "30000",
+          "original_charge": "245596.7842765161",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356165",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-07",
+          "in_transit_usds": "30000",
+          "original_charge": "248981.4540561729",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356164",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-08",
+          "in_transit_usds": "30000",
+          "original_charge": "247750.2151739581",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356165",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-09",
+          "in_transit_usds": "30000",
+          "original_charge": "257931.7333553413",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356164",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-10",
+          "in_transit_usds": "30000",
+          "original_charge": "262966.717543647",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356164",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-11",
+          "in_transit_usds": "30000",
+          "original_charge": "268214.0093852202",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356165",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-12",
+          "in_transit_usds": "30000",
+          "original_charge": "265157.444992603",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356164",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-13",
+          "in_transit_usds": "30000",
+          "original_charge": "266228.9679469608",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356164",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-14",
+          "in_transit_usds": "30000",
+          "original_charge": "270706.6142443497",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356165",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-15",
+          "in_transit_usds": "30000",
+          "original_charge": "275633.8498519812",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356164",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-16",
+          "in_transit_usds": "30000",
+          "original_charge": "278581.0696179863",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356165",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-17",
+          "in_transit_usds": "30000",
+          "original_charge": "284608.3258503062",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356164",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-18",
+          "in_transit_usds": "30000",
+          "original_charge": "286387.7294192506",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356164",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-19",
+          "in_transit_usds": "30000",
+          "original_charge": "288553.1650746243",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356164",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-20",
+          "in_transit_usds": "30000",
+          "original_charge": "292057.3929813354",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356165",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-21",
+          "in_transit_usds": "30000",
+          "original_charge": "300992.0524825271",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356164",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-22",
+          "in_transit_usds": "30000",
+          "original_charge": "300222.6479585964",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356164",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-23",
+          "in_transit_usds": "30000",
+          "original_charge": "298022.3157970248",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356165",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-24",
+          "in_transit_usds": "30000",
+          "original_charge": "294212.5436172377",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356165",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-25",
+          "in_transit_usds": "30000",
+          "original_charge": "293761.4284553658",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356164",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-26",
+          "in_transit_usds": "30000",
+          "original_charge": "293571.8125808269",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356164",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-27",
+          "in_transit_usds": "30000",
+          "original_charge": "294471.1405140067",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356164",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-28",
+          "in_transit_usds": "30000",
+          "original_charge": "297547.4812169262",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356165",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-29",
+          "in_transit_usds": "30000",
+          "original_charge": "299506.457956336",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356165",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-09-30",
+          "in_transit_usds": "30000",
+          "original_charge": "305060.54367973",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356165",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-01",
+          "in_transit_usds": "30000",
+          "original_charge": "303751.7915497363206372407846",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356165",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-02",
+          "in_transit_usds": "30000",
+          "original_charge": "304900.1641509458979184214421",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356164",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-03",
+          "in_transit_usds": "30000",
+          "original_charge": "304674.8051685820755983209557",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356164",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-04",
+          "in_transit_usds": "30000",
+          "original_charge": "303607.8679312490625898427050",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356164",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-05",
+          "in_transit_usds": "30000",
+          "original_charge": "307102.2907860385768604062448",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356164",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-06",
+          "in_transit_usds": "30000",
+          "original_charge": "307341.9197897357679727759044",
+          "measured_excess_charge": "3.075560327138063835616438356164383561643835616438356165",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-07",
+          "in_transit_usds": "30000",
+          "original_charge": "326900.6734932822386070955054",
+          "measured_excess_charge": "3.234558985718102465753424657534246575342465753424657534",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-08",
+          "in_transit_usds": "30000",
+          "original_charge": "316053.8278037599588593038456",
+          "measured_excess_charge": "3.234558985718102465753424657534246575342465753424657534",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-09",
+          "in_transit_usds": "30000",
+          "original_charge": "314908.6252505954422723074494",
+          "measured_excess_charge": "3.234558985718102465753424657534246575342465753424657534",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-10",
+          "in_transit_usds": "30000",
+          "original_charge": "316561.6669986576484597102372",
+          "measured_excess_charge": "3.234558985718102465753424657534246575342465753424657534",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-11",
+          "in_transit_usds": "30000",
+          "original_charge": "323875.8057169952538604494545",
+          "measured_excess_charge": "3.234558985718102465753424657534246575342465753424657534",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-12",
+          "in_transit_usds": "99356272.77906090005429408",
+          "original_charge": "349726.4159042382098076375123",
+          "measured_excess_charge": "10712.457496832344620117246760095305218647671232876712328767",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-13",
+          "in_transit_usds": "99356272.77906090005429408",
+          "original_charge": "347852.7125102786588109893742",
+          "measured_excess_charge": "10712.457496832344620117246760095305218647671232876712328768",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-14",
+          "in_transit_usds": "99356272.77906090005429408",
+          "original_charge": "349523.5139102743898256453502",
+          "measured_excess_charge": "10712.457496832344620117246760095305218647671232876712328768",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-15",
+          "in_transit_usds": "99356272.77906090005429408",
+          "original_charge": "349757.3348782007851914434430",
+          "measured_excess_charge": "10712.457496832344620117246760095305218647671232876712328767",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-16",
+          "in_transit_usds": "99356272.77906090005429408",
+          "original_charge": "349041.8676494156189950784251",
+          "measured_excess_charge": "10712.457496832344620117246760095305218647671232876712328767",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-17",
+          "in_transit_usds": "99356272.77906090005429408",
+          "original_charge": "347513.1642081446794571110260",
+          "measured_excess_charge": "10712.457496832344620117246760095305218647671232876712328767",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-18",
+          "in_transit_usds": "99356272.77906090005429408",
+          "original_charge": "342451.5803499169813556518281",
+          "measured_excess_charge": "10712.457496832344620117246760095305218647671232876712328768",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-19",
+          "in_transit_usds": "30000",
+          "original_charge": "327436.0078017204913200036961",
+          "measured_excess_charge": "3.234558985718102465753424657534246575342465753424657535",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-20",
+          "in_transit_usds": "30000",
+          "original_charge": "323325.0761716434442305998008",
+          "measured_excess_charge": "3.234558985718102465753424657534246575342465753424657534",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-21",
+          "in_transit_usds": "30000",
+          "original_charge": "327652.6660292193486935416494",
+          "measured_excess_charge": "3.234558985718102465753424657534246575342465753424657535",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-22",
+          "in_transit_usds": "30000",
+          "original_charge": "328714.0846871529388863135323",
+          "measured_excess_charge": "3.234558985718102465753424657534246575342465753424657534",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-23",
+          "in_transit_usds": "30000",
+          "original_charge": "326065.3772879183908862311133",
+          "measured_excess_charge": "3.234558985718102465753424657534246575342465753424657534",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-24",
+          "in_transit_usds": "30000",
+          "original_charge": "327645.5793161019260321541488",
+          "measured_excess_charge": "3.234558985718102465753424657534246575342465753424657535",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-25",
+          "in_transit_usds": "30000",
+          "original_charge": "336228.9852692252813237457575",
+          "measured_excess_charge": "3.234558985718102465753424657534246575342465753424657534",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-26",
+          "in_transit_usds": "30000",
+          "original_charge": "349099.1328954647735914939166",
+          "measured_excess_charge": "3.234558985718102465753424657534246575342465753424657535",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-27",
+          "in_transit_usds": "30000",
+          "original_charge": "353803.5692832167886861577357",
+          "measured_excess_charge": "3.234558985718102465753424657534246575342465753424657534",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-28",
+          "in_transit_usds": "30000",
+          "original_charge": "347342.5260982905205061521671",
+          "measured_excess_charge": "3.234558985718102465753424657534246575342465753424657534",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-29",
+          "in_transit_usds": "30000",
+          "original_charge": "362516.3261929991309405234383",
+          "measured_excess_charge": "3.234558985718102465753424657534246575342465753424657535",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-30",
+          "in_transit_usds": "30000",
+          "original_charge": "364888.4216937821026257481646",
+          "measured_excess_charge": "3.234558985718102465753424657534246575342465753424657534",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-10-31",
+          "in_transit_usds": "30000",
+          "original_charge": "360852.1577495693124889555480",
+          "measured_excess_charge": "3.234558985718102465753424657534246575342465753424657534",
+          "status": "frozen_charge_reproduced"
+        },
+        {
+          "date": "2026-11-01",
+          "in_transit_usds": "30000",
+          "original_charge": null,
+          "measured_excess_charge": null,
+          "status": "no_saved_daily_charge"
+        },
+        {
+          "date": "2026-11-02",
+          "in_transit_usds": "30000",
+          "original_charge": null,
+          "measured_excess_charge": null,
+          "status": "no_saved_daily_charge"
+        },
+        {
+          "date": "2026-11-03",
+          "in_transit_usds": "20000",
+          "original_charge": null,
+          "measured_excess_charge": null,
+          "status": "no_saved_daily_charge"
+        },
+        {
+          "date": "2026-11-04",
+          "in_transit_usds": "20000",
+          "original_charge": null,
+          "measured_excess_charge": null,
+          "status": "no_saved_daily_charge"
+        },
+        {
+          "date": "2026-11-05",
+          "in_transit_usds": "20000",
+          "original_charge": null,
+          "measured_excess_charge": null,
+          "status": "no_saved_daily_charge"
+        },
+        {
+          "date": "2026-11-06",
+          "in_transit_usds": "20000",
+          "original_charge": null,
+          "measured_excess_charge": null,
+          "status": "no_saved_daily_charge"
+        },
+        {
+          "date": "2026-11-07",
+          "in_transit_usds": "20000",
+          "original_charge": null,
+          "measured_excess_charge": null,
+          "status": "no_saved_daily_charge"
+        },
+        {
+          "date": "2026-11-08",
+          "in_transit_usds": "20000",
+          "original_charge": null,
+          "measured_excess_charge": null,
+          "status": "no_saved_daily_charge"
+        }
+      ],
+      "result_scope": "supported_native_usds_routes_only",
+      "supported_ethereum_routes": [
+        "arbitrum",
+        "base",
+        "optimism",
+        "unichain"
+      ],
+      "unscanned_alm_chains": [
+        "avalanche_c",
+        "robinhood"
+      ]
+    },
+    "grove": {
+      "baseline_workbook_sha256": {},
+      "retained_source": null,
+      "transfers": 0,
+      "transit_closing_days": 0,
+      "measured_excess_charge": "0",
+      "daily": [],
+      "result_scope": "supported_native_usds_routes_only",
+      "supported_ethereum_routes": [
+        "base"
+      ],
+      "unscanned_alm_chains": [
+        "avalanche_c",
+        "monad",
+        "plume"
+      ]
+    },
+    "obex": {
+      "baseline_workbook_sha256": {},
+      "retained_source": null,
+      "transfers": 0,
+      "transit_closing_days": 0,
+      "measured_excess_charge": "0",
+      "daily": [],
+      "result_scope": "supported_native_usds_routes_only",
+      "supported_ethereum_routes": [],
+      "unscanned_alm_chains": []
+    },
+    "osero": {
+      "baseline_workbook_sha256": {},
+      "retained_source": null,
+      "transfers": 0,
+      "transit_closing_days": 0,
+      "measured_excess_charge": "0",
+      "daily": [],
+      "result_scope": "supported_native_usds_routes_only",
+      "supported_ethereum_routes": [],
+      "unscanned_alm_chains": []
+    },
+    "keel": {
+      "baseline_workbook_sha256": {},
+      "retained_source": null,
+      "transfers": 0,
+      "transit_closing_days": 0,
+      "measured_excess_charge": "0",
+      "daily": [],
+      "result_scope": "supported_native_usds_routes_only",
+      "supported_ethereum_routes": [],
+      "unscanned_alm_chains": []
+    },
+    "skybase": {
+      "baseline_workbook_sha256": {},
+      "retained_source": null,
+      "transfers": 0,
+      "transit_closing_days": 0,
+      "measured_excess_charge": "0",
+      "daily": [],
+      "result_scope": "supported_native_usds_routes_only",
+      "supported_ethereum_routes": [],
+      "unscanned_alm_chains": []
+    }
+  },
+  "exceptions": []
+}

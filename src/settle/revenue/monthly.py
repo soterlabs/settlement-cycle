@@ -58,7 +58,7 @@ def _decode(kind, value):
             # These analytics fields were added independently. Migrate only
             # their absence; never fill missing financial inputs/defaults.
             additions = {'venue_views': {}, 'allocation_financing': None,
-                         'basin_cash_reporting': {}}
+                         'basin_cash_reporting': {}, 'usds_bridge_transfers': []}
             missing = {f.name for f in fields(kind)} - set(value)
             if missing <= additions.keys():
                 value = {**value, **{name: additions[name] for name in missing}}
@@ -161,6 +161,13 @@ def validate_interest(pnl, prime, provenance, *, allow_september_sofr_carry=Fals
         return pd.DataFrame([{'block_date': date.fromisoformat(r['date']),
                               target: _decode(Decimal, r[source])} for r in rows])
 
+    from settle.normalize.usds_bridge_transit import daily_exposure, validate_transfers
+    validate_transfers(prime, pnl.period, pnl.usds_bridge_transfers)
+    claims = daily_exposure(pnl.period, pnl.usds_bridge_transfers)
+    for original, claim in zip(rows, claims.to_dict('records'), strict=True):
+        if _decode(Decimal, original.get('bridge_usds', '0')) != claim['cum_balance']:
+            raise ValueError('USDS bridge deduction does not reconcile to retained claims')
+
     basin_rows = []
     for row in rows:
         day = date.fromisoformat(row['date'])
@@ -183,6 +190,8 @@ def validate_interest(pnl, prime, provenance, *, allow_september_sofr_carry=Fals
         curve_idle_usds=series('curve_idle', 'cum_balance'),
         lending_idle_usds=series('lending_idle', 'cum_balance'),
         basin_idle_usds=pd.DataFrame(basin_rows),
+        bridge_usds=pd.DataFrame([{'block_date': date.fromisoformat(r['date']),
+                                  'cum_balance': _decode(Decimal, r.get('bridge_usds', '0'))} for r in rows]),
         subsidy_config=prime.subsidy,
         ref_rate_history=_reference_history(prime, pnl.period, provenance,
                                             allow_september_sofr_carry=allow_september_sofr_carry),

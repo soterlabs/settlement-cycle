@@ -57,6 +57,9 @@ class MockBalanceSource:
             {"block_date": [], "daily_inflow": [], "cum_inflow": []}
         )
     )
+    def usds_bridge_logs(self, *args, **kwargs):
+        return []
+
     cumulative_calls: list[tuple] = field(default_factory=list)
     directed_calls: list[tuple] = field(default_factory=list)
 

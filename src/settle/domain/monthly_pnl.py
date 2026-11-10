@@ -273,6 +273,7 @@ class MonthlyPnL:
     # is a dict with stringified Decimals + float APYs — same wire-format
     # convention as ``SDEDailyBreakdown.daily``.
     sky_revenue_daily: list[dict] = field(default_factory=list)
+    usds_bridge_transfers: list[dict] = field(default_factory=list)
     # Total 30 bps spread deducted from ``sky_revenue`` for all
     # ``sky_savings_token`` Cat B venues (= Σ vr.susds_spread_reimbursement
     # across the venue breakdown). Replaces the prior Prime-Revenue-credit

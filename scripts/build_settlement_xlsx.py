@@ -873,6 +873,9 @@ def _write_debt(ws, prov: dict) -> None:
     ]
     if has_subsidy:
         cols += ["T (months)", "ref_rate APR", "sub APR"]
+    has_bridge = any(_D(r.get("bridge_usds", "0")) != 0 for r in rows)
+    if has_bridge:
+        cols.insert(7, "- In-transit USDS")
     has_basin = any(_D(r.get("basin_idle", "0")) != 0 for r in rows)
     if has_basin:
         cols.insert(7, "- Basin idle")
@@ -902,6 +905,8 @@ def _write_debt(ws, prov: dict) -> None:
         if has_subsidy:
             out += [r.get("t_months"), _rate(r, "ref_rate_apr", "ref_rate_apy"),
                     _rate(r, "sub_apr", "sub_apy")]
+        if has_bridge:
+            out.insert(7, float(_D(r.get("bridge_usds", "0"))))
         if has_basin:
             out.insert(7, float(_D(r.get("basin_idle", "0"))))
         out += [float(rev), float(gross)]
@@ -939,6 +944,9 @@ def _write_debt(ws, prov: dict) -> None:
         widths.update({11: 11, 12: 12, 13: 11, 14: 18, 15: 22})
     else:
         widths.update({11: 18, 12: 22})
+    if has_bridge:
+        widths = {(c + 1 if c >= 8 else c): width for c, width in widths.items()}
+        widths[8] = 18
     if has_basin:
         widths = {(c + 1 if c >= 8 else c): width for c, width in widths.items()}
         widths[8] = 14
