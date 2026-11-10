@@ -56,6 +56,7 @@ def decode(value, prime, year):
         require(d["policy_version"] == POLICY and d["prime"] == prime and d["year"] == year)
         require(
             date.fromisoformat(d["as_of"]).year == year
+            and date.fromisoformat(d["as_of"]).isoformat() == d["as_of"]
             and isinstance(d["months"], list)
             and len(d["months"]) == 12
         )
@@ -64,6 +65,8 @@ def decode(value, prime, year):
                 continue
             require(set(item) == {"cutoff", "venues", "cash", "components"})
             require(date.fromisoformat(item["cutoff"]).strftime("%Y-%m") == f"{year}-{i + 1:02}")
+            require(date.fromisoformat(item["cutoff"]).isoformat() == item["cutoff"])
+            require(any(item[k] for k in ("venues", "cash", "components")))
             require(
                 all(
                     v is None
@@ -305,7 +308,12 @@ def annual(year, as_of, inputs, *, selection=None):
             c = position(venue)
             for key, sign in [("reward_receivable.", 1), ("reward_advance.", -1)]:
                 rows[key + venue][month] = (
-                    {**c, "value": str(max(Decimal(0), amount(c) * sign))}
+                    {
+                        **c,
+                        "value": str(
+                            max(Decimal(0), amount(c) if sign == 1 else amount(c).copy_negate())
+                        ),
+                    }
                     if c["status"] == "available"
                     else c
                 )
@@ -338,7 +346,7 @@ def annual(year, as_of, inputs, *, selection=None):
         c = cash_lines["msc-receivable"]["values"][month]
         for target, sign in [("msc_receivable", 1), ("msc_payable", -1)]:
             rows[target][month] = (
-                stock(max(Decimal(0), amount(c) * sign), ref=ref)
+                stock(max(Decimal(0), amount(c) if sign == 1 else amount(c).copy_negate()), ref=ref)
                 if c["status"] == "available"
                 else stock(
                     reason="MSC closing balance requires complete approved entitlement and receipts"

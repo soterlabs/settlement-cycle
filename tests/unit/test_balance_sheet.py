@@ -1,11 +1,12 @@
 from copy import deepcopy
 from datetime import date
+from decimal import Decimal, localcontext
 
 import pytest
 from fastapi.testclient import TestClient
 
 from settle.api.app import create_app
-from settle.revenue.balance_sheet import annual, decode
+from settle.revenue.balance_sheet import annual, decode, encode
 from settle.revenue.cash_flow.config import layout, load
 from settle.revenue.cash_flow.model import metric, subtotals
 from settle.revenue.verification import digest
@@ -190,3 +191,29 @@ def test_api_reads_stored_inputs_only_and_rejects_other_primes(monkeypatch):
             params=dict(prime="spark", year=2026, revision=doc["selection"]),
         )
         assert replay.status_code == 200 and replay.json() == doc
+
+
+@pytest.mark.parametrize("sign", [1, -1])
+def test_signed_reward_stock_keeps_all_source_decimal_digits(sign):
+    data = example()
+    exact = "1234567.123456789012345678901234567890123456789"
+    signed = exact if sign == 1 else "-" + exact
+    data["venues"][0]["venues"][3]["position_value_usd"] = signed
+    with localcontext() as context:
+        context.prec = 8
+        report = annual(2026, date(2026, 1, 31), data)
+    key = "reward_receivable.S67" if sign == 1 else "reward_advance.S67"
+    assert Decimal(line(report, key)["value"]) == Decimal(exact)
+
+
+@pytest.mark.parametrize("case", ["empty_sources", "basic_date", "basic_as_of"])
+def test_selection_requires_canonical_dates_and_a_real_source(case):
+    selected = decode(annual(2026, date(2026, 1, 31), example())["selection"], "spark", 2026)
+    if case == "empty_sources":
+        selected["months"][0].update(venues=None, cash=None, components=None)
+    elif case == "basic_date":
+        selected["months"][0]["cutoff"] = "20260131"
+    else:
+        selected["as_of"] = "20260131"
+    with pytest.raises(ValueError, match="Invalid balance sheet selection"):
+        decode(encode(selected), "spark", 2026)
