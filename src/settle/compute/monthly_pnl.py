@@ -30,7 +30,7 @@ from ..normalize import (
     get_subproxy_balance_timeseries,
     get_venue_inflow_timeseries,
 )
-from ..normalize.prices import _resolve_rwa_nav
+from ..normalize.prices import _resolve_rwa_nav, get_unit_price
 from ..normalize.protocols import (
     IBalanceSource,
     IBlockResolver,
@@ -89,6 +89,8 @@ class Sources:
     incentives: object = None
     # Optional pinned canonical USDS gateway log reader (same signature as fetch_logs).
     usds_bridge_logs: object = None
+    # Optional shared protocol ownership/capital provider for deterministic replay.
+    async_allocations: object = None
 
 
 def _sources_from_prime(prime: "Prime", base: "Sources | None" = None) -> Sources:
@@ -2622,6 +2624,7 @@ def compute_monthly_pnl(
                     curve_pool_source=sources.curve_pool,
                     block_resolver=resolver,
                     nav_oracle_resolver=sources.nav_oracle_resolver,
+                    async_exposure_source=(sources.async_allocations or getattr(sources.position_balance, 'async_allocations', None)),
                 )
                 v_eom = get_position_value(
                     prime, venue, pin_blocks_eom[venue.chain],
@@ -2633,6 +2636,7 @@ def compute_monthly_pnl(
                     curve_pool_source=sources.curve_pool,
                     block_resolver=resolver,
                     nav_oracle_resolver=sources.nav_oracle_resolver,
+                    async_exposure_source=(sources.async_allocations or getattr(sources.position_balance, 'async_allocations', None)),
                 )
             except (_RPCError, _DuneError, _requests.HTTPError,
                     _requests.ConnectionError, _requests.Timeout) as _e:
@@ -2702,6 +2706,7 @@ def compute_monthly_pnl(
             actual_revenue_override=cash_rev,
         ))
 
+    _async_daily_breakdown = []
     _venue_idx = 0
     # Populated in the sky_savings_token Cat B sub-case; injected into
     # VenueRevenue after compute_prime_agent_revenue and summed to reduce
@@ -2936,6 +2941,7 @@ def compute_monthly_pnl(
                 curve_pool_source=sources.curve_pool,
                 block_resolver=resolver,
                 nav_oracle_resolver=sources.nav_oracle_resolver,
+                async_exposure_source=(sources.async_allocations or getattr(sources.position_balance, 'async_allocations', None)),
             )
             value_eom = get_position_value(
                 prime, venue, eom_block,
@@ -2947,6 +2953,7 @@ def compute_monthly_pnl(
                 curve_pool_source=sources.curve_pool,
                 block_resolver=resolver,
                 nav_oracle_resolver=sources.nav_oracle_resolver,
+                async_exposure_source=(sources.async_allocations or getattr(sources.position_balance, 'async_allocations', None)),
             )
 
         # Inflow timeseries — three branches:
@@ -4072,16 +4079,41 @@ def compute_monthly_pnl(
         redemption_ledger = redemption_settlements(prime, venue, period, track_pending=True)
         inflow_ts = restore_redemption_capital(inflow_ts, redemption_ledger)
         fee_inflow_ts = None
-        if hasattr(redemption_ledger, 'pending_daily'):
+        if hasattr(redemption_ledger, 'pending_daily') or venue.async_allocation is not None:
             from ..normalize.async_vaults import async_capital_inflow_timeseries
             fee_inflow_ts = inflow_ts
             inflow_ts = async_capital_inflow_timeseries(
                 prime, venue, period, inflow_ts, opening_block=som_block,
                 block_resolver=resolver,
-                pending_redemptions=pd.DataFrame(redemption_ledger.pending_daily),
+                pending_redemptions=(pd.DataFrame(redemption_ledger.pending_daily)
+                                     if hasattr(redemption_ledger, 'pending_daily') else None),
+                provider=(sources.async_allocations or getattr(sources.position_balance, 'async_allocations', None)),
+                nav_at_block=lambda b, v=venue, src=sources: get_unit_price(
+                    v, b, erc4626_source=src.convert_to_assets,
+                    nav_oracle_resolver=src.nav_oracle_resolver, block_resolver=resolver),
             )
+        _async_values = None
+        if venue.async_allocation is not None:
+            from ..normalize.async_vaults import async_daily_values
+            from ..normalize.positions import get_position_balance
+            _async_values = async_daily_values(
+                prime, venue, period, block_resolver=resolver,
+                wallet_quantity_at=lambda b, v=venue, src=sources: get_position_balance(
+                    prime, v, b, source=src.position_balance, flow_source=src.balance),
+                nav_at_block=lambda b, v=venue, src=sources: get_unit_price(
+                    v, b, erc4626_source=src.convert_to_assets,
+                    nav_oracle_resolver=src.nav_oracle_resolver, block_resolver=resolver),
+                provider=(sources.async_allocations or getattr(sources.position_balance, 'async_allocations', None)),
+            )
+            from ..revenue.verification import canonical
+            _async_daily_breakdown.append(dict(
+                venue_id=venue.id, protocol=venue.async_allocation.kind,
+                daily=canonical(_async_values.to_dict('records')),
+                capital_events=canonical(inflow_ts.attrs.get('async_capital_events', [])),
+            ))
         venue_inputs.append(VenueRevenueInputs(
             venue=venue, value_som=value_som, value_eom=value_eom,
+            economic_value_timeseries=_async_values,
             inflow_timeseries=inflow_ts,
             sde_entry=sde_entry,
             actual_revenue_override=susds_spread,
@@ -4371,6 +4403,7 @@ def compute_monthly_pnl(
         sde_daily_breakdown=sde_daily_breakdown_out,
         sky_revenue_daily=sky_revenue_daily_out,
         usds_bridge_transfers=usds_bridge_transfers,
+        async_daily_breakdown=_async_daily_breakdown,
         susds_spread_reimbursement=total_susds_spread_reimb,
         sky_revenue_gross=sky_rev_gross,
         subsidy_summary=subsidy_summary,

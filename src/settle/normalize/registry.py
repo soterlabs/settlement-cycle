@@ -29,6 +29,7 @@ from .sources.dune_savings_v2_deployed import DuneSavingsV2DeployedSource
 from .sources.dune_ssr import DuneSSRSource
 from .sources.hypersync_ssr import HyperSyncSSRSource
 from .sources.oracles import (
+    SuperstateExecutionNavSource,
     ChainlinkNavSource,
     ChronicleNavSource,
     ConstNavSource,
@@ -112,6 +113,7 @@ _NAV_ORACLE_SOURCES: dict[str, type[INavOracleSource]] = {
     "chainlink": ChainlinkNavSource,
     "chronicle": ChronicleNavSource,
     "const_one": ConstOneNavSource,
+    "superstate_execution": SuperstateExecutionNavSource,
     "price_per_share_feed": PricePerShareNavSource,
     "redstone": RedstoneNavSource,
 }

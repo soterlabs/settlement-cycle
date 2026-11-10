@@ -201,6 +201,39 @@ class NotionalScheduleEntry:
     amount: Decimal
 
 
+@dataclass(frozen=True)
+class AsyncManager:
+    address: Address
+    kind: str
+    implementations: tuple[Address, ...]
+
+
+@dataclass(frozen=True)
+class AsyncAllocation:
+    kind: str
+    managers: tuple[AsyncManager, ...] = ()
+
+    @classmethod
+    def from_dict(cls, value):
+        if value is None:
+            return None
+        if not isinstance(value, dict) or set(value) - {'kind', 'managers'}:
+            raise ValueError('Invalid async allocation configuration')
+        kind = value.get('kind')
+        if kind not in {'maple', 'ethena', 'issuer'}:
+            raise ValueError('Unsupported async allocation kind')
+        managers = []
+        for row in value.get('managers', []):
+            if (not isinstance(row, dict) or set(row) != {'address', 'kind', 'implementations'}
+                    or row['kind'] != 'queue' or not row['implementations']):
+                raise ValueError('Invalid async withdrawal manager')
+            managers.append(AsyncManager(Address.from_str(row['address']), row['kind'],
+                                         tuple(Address.from_str(a) for a in row['implementations'])))
+        if (kind == 'maple') != bool(managers) or len({m.address for m in managers}) != len(managers):
+            raise ValueError('Missing/duplicate/unexpected async managers')
+        return cls(kind, tuple(managers))
+
+
 @dataclass(frozen=True, slots=True)
 class Venue:
     """One allocation venue for a prime — a position-bearing token, with pricing rules."""
@@ -403,6 +436,7 @@ class Venue:
     # emitted as Deposit/Withdraw (e.g. direct ERC-20 transfers), and a warning
     # is logged.
     centrifuge_vault: "Address | None" = None
+    async_allocation: AsyncAllocation | None = None
     # Category EOA only — pairing config for the "principal-out / return-in"
     # roundtrip pattern (see PricingCategory.EOA docstring).
     #

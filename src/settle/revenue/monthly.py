@@ -58,7 +58,7 @@ def _decode(kind, value):
             # These analytics fields were added independently. Migrate only
             # their absence; never fill missing financial inputs/defaults.
             additions = {'venue_views': {}, 'allocation_financing': None,
-                         'basin_cash_reporting': {}, 'usds_bridge_transfers': []}
+                         'basin_cash_reporting': {}, 'usds_bridge_transfers': [], 'async_daily_breakdown': []}
             missing = {f.name for f in fields(kind)} - set(value)
             if missing <= additions.keys():
                 value = {**value, **{name: additions[name] for name in missing}}

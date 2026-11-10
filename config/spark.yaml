@@ -421,6 +421,12 @@ venues:
   # Ethereum — other 4626 vaults (Maple, Ethena, Fluid, Arkis)
   # ─────────────────────────────────────────────────────────────
   - id: S14
+    async_allocation:
+      kind: maple
+      managers:
+        - address: '0x1bc47a0dd0fdab96e9ef982fdf1f34dc6207cfe3'
+          kind: queue
+          implementations: ['0xf95e5722226a1018d058cd757b75f1d10289e967']
     settlement:
       enabled: true
       method: existing
@@ -467,6 +473,12 @@ venues:
       - '0x491edfb0b8b608044e227225c715981a30f3a44e'   # Grove Eth ALM (inter-prime transfer 2026-07-20) (kept for safety)
 
   - id: S15
+    async_allocation:
+      kind: maple
+      managers:
+        - address: '0x86ebdf902d800f2a82038290b6dbb2a5ee29eb8c'
+          kind: queue
+          implementations: ['0xf95e5722226a1018d058cd757b75f1d10289e967']
     settlement:
       enabled: true
       method: existing
@@ -495,6 +507,8 @@ venues:
       - '0x86ebdf902d800f2a82038290b6dbb2a5ee29eb8c'   # public WithdrawalManagerQueue (kept for safety)
 
   - id: S16
+    async_allocation:
+      kind: ethena
     settlement:
       enabled: true
       method: existing
@@ -560,6 +574,8 @@ venues:
   # Ethereum — RWA / off-chain (Cat E)
   # ─────────────────────────────────────────────────────────────
   - id: S19
+    async_allocation:
+      kind: issuer
     settlement:
       enabled: true
       method: existing
@@ -615,6 +631,8 @@ venues:
       fallback_address: '0xe980a33efa3eddaa689ecbdce4b2278d4db94471'  # ChronicleVAO_Centrifuge_JTRSY_Router_1
 
   - id: S21
+    async_allocation:
+      kind: issuer
     settlement:
       enabled: true
       method: existing
@@ -630,11 +648,14 @@ venues:
       symbol: 'USTB'
       decimals: 6
     nav_oracle:
-      kind: const_one
+      kind: superstate_execution
+      address: '0x43415eb6ff9db7e26a15b704e7a3edce97d31c4e'
     # TODO: USTB-specific oracle (Superstate publishes NAV API). Currently $0
     # held; pin to const_one until activity resumes and a real oracle lands.
 
   - id: S22
+    async_allocation:
+      kind: issuer
     settlement:
       enabled: true
       method: existing
@@ -650,7 +671,8 @@ venues:
       symbol: 'USCC'
       decimals: 6
     nav_oracle:
-      kind: const_one
+      kind: superstate_execution
+      address: '0x14d60e7fdc0d71d8611742720e4c50e7a974020c'
     # Currently $0 held. Same NAV-source TODO as USTB.
 
   - id: S23

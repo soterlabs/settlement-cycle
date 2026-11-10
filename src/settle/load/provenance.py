@@ -211,6 +211,7 @@ def render_provenance(
         # reconciliation.
         "sky_revenue_daily": pnl.sky_revenue_daily,
         "usds_bridge_transfers": pnl.usds_bridge_transfers,
+        "async_daily_breakdown": pnl.async_daily_breakdown,
         **({"allocation_financing": json.loads(json.dumps(pnl.allocation_financing, default=str))}
            if pnl.allocation_financing is not None else {}),
         # Per-period subsidised-borrowing aggregates (None for non-subsidy
