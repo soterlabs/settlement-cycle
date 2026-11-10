@@ -38,7 +38,7 @@ ROOT = Path(__file__).resolve().parents[1]
 INPUT = ROOT / "reconciliation/grove-base-cash-2026/inputs.json"
 
 
-def replay(path=INPUT):
+def replay(path=INPUT, *, historical_only=False, nonzero_only=False):
     doc = json.loads(path.read_text())
     if doc["status"] != "complete":
         raise ValueError("Incomplete source capture")
@@ -130,6 +130,8 @@ def replay(path=INPUT):
             decimals_of=lambda *args: 18,
         )
         for r in periods:
+            if historical_only and r["month"] > "2026-09":
+                continue
             year, month = map(int, r["month"].split("-"))
             period = Period(
                 date(year, month, 1),
@@ -170,6 +172,14 @@ def replay(path=INPUT):
                         "base", venue.token.address.value, prime.alm[Chain.BASE].value, block
                     )
                     values.append(D(shares) / 10**18 * price(block) if shares else D(0))
+                activity = any(
+                    x.address == venue.token.address.hex
+                    and r["opening"] < x.block_number <= r["closing"]
+                    and int(x.data[2:] or "0", 16) > 0
+                    for x in rows
+                )
+                if nonzero_only and not any(values) and not activity:
+                    continue
                 old_flows = _shares_to_usd_inflow_timeseries(
                     prime,
                     venue,
@@ -234,6 +244,8 @@ def replay(path=INPUT):
         )
         weights = []
         for r in doc["e12_baselines"]:
+            if historical_only and r["month"] > "2026-09":
+                continue
             month = next(p for p in periods if p["month"] == r["month"])
             start = date.fromisoformat(r["month"] + "-01")
             end = datetime.fromtimestamp(
@@ -241,6 +253,13 @@ def replay(path=INPUT):
             ).date()
             period = Period(start, end, {Chain.BASE: month["closing"]})
             avg = D(r["venue"].get("tw_avg_value_usd", r["venue"].get("tw_avg_value")))
+            if (
+                nonzero_only
+                and avg == 0
+                and D(r["venue"]["value_som"]) == 0
+                and D(r["venue"]["value_eom"]) == 0
+            ):
+                continue
             prior, corrected = (
                 _time_weighted_notional(original.notional_principal_usd, period),
                 _time_weighted_notional(e12.notional_principal_usd, period),
@@ -267,7 +286,7 @@ def replay(path=INPUT):
                 D(0),
             )
         )
-        for period in ["jan_sep", "october"]
+        for period in (["jan_sep"] if historical_only else ["jan_sep", "october"])
     }
     return dict(
         method="exact_erc4626_cash_capital_vs_previous_daily_nav",
@@ -278,6 +297,20 @@ def replay(path=INPUT):
         ).hexdigest(),
         results=records,
         income_delta=totals,
+        historical_increment_to_existing_reconciliation=str(
+            D(totals["jan_sep"])
+            + sum(
+                (
+                    D(r["old_method_minus_published"])
+                    for r in records
+                    if r["month"] <= "2026-09" and r["old_method_minus_published"] is not None
+                ),
+                D(0),
+            )
+        ),
+        replay_filter=dict(
+            prime="grove", historical_only=historical_only, nonzero_only=nonzero_only
+        ),
         e12_weights=weights,
         global_cof_delta="0",
         scope="Incremental cash-method change only; do not add the E43 missing-venue correction twice.",
@@ -303,12 +336,14 @@ def replay(path=INPUT):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--output", type=Path, required=True)
+    p.add_argument("--historical-only", action="store_true")
+    p.add_argument("--nonzero-only", action="store_true")
     args = p.parse_args()
     if args.output.resolve().is_relative_to(
         ROOT / "settlements"
     ) or args.output.resolve().is_relative_to(ROOT / "config"):
         p.error("Use a separate research/reconciliation output path")
-    result = replay()
+    result = replay(historical_only=args.historical_only, nonzero_only=args.nonzero_only)
     args.output.write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps(result["income_delta"], indent=2))
 

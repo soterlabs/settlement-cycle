@@ -1,0 +1,15 @@
+{
+  "prime": "grove",
+  "month": "2026-06",
+  "venue": "E23",
+  "earlier_reconciliation_commit": "f5fa37e",
+  "last_msc_commit": "536f149",
+  "published_venue_row_identical": true,
+  "published_venue_row": "| E23 | Steakhouse Prime Instant (Base, Morpho V2) | $103,110,534.95 | $173,617,481.65 | $69,992,553.38 | $514,393.32 | $514,393.32 | $0.00 | 0% | $0.00 |",
+  "method_increment": "13769.34",
+  "inherited_baseline_difference": "-10747.77",
+  "increment_to_existing_pr277": "3021.57",
+  "e43_previously_in_pr277": "7219.49",
+  "e43_missing_venue_credit_rebooked": false,
+  "evidence": "Both Git versions retain the same E23 June row; forum reconciliation II used f5fa37e; subsequent reconciliation III adds only BUIDL/CoF for Grove."
+}

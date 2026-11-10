@@ -416,3 +416,17 @@ def test_floor_boundary_uses_the_verified_e12_withdrawal(monkeypatch):
     assert before == D(doc["before_value"]) and after == D(doc["after_value"])
     assert before > 25000000 > after
     assert doc["date"] == "2026-09-13"
+
+
+def test_grove_historical_replay_is_limited_to_active_positions():
+    from scripts.reconcile_grove_base_cash import replay
+
+    result = replay(historical_only=True, nonzero_only=True)
+    assert len(result["results"]) == 17
+    assert all(r["month"] <= "2026-09" for r in result["results"])
+    assert {r["venue"] for r in result["results"]} == {"E19", "E23", "E43"}
+    assert not any(r["venue"] == "E43" and r["month"] < "2026-09" for r in result["results"])
+    assert D(result["income_delta"]["jan_sep"]).quantize(D(".01")) == D("13769.34")
+    assert D(result["historical_increment_to_existing_reconciliation"]).quantize(D(".01")) == D(
+        "3021.57"
+    )

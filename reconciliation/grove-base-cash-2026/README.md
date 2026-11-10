@@ -1,6 +1,6 @@
 # Grove Base cash capital and E12 weights
 
-This is an incremental component comparison, not a payment proposal.
+This records the method change and its incremental historical booking impact.
 
 | Month | E19 income change | E23 income change | E43 income change | Total |
 |---|---:|---:|---:|---:|
@@ -29,8 +29,12 @@ versus 503,645.55 replayed before this change). Its frozen opening value is
 103,110,534.95, while the pinned on-chain opening value is 100,110,790.82.
 This inherited source/boundary difference is separate from the cash-method
 increment and is retained explicitly in `prior_baseline_variances`. It must be
-checked against prior true-ups in the combined reconciliation before booking.
-These component totals must not be described as the final paid-vs-corrected amounts.
+checked against the earlier published reconciliation baseline before booking.
+The June published row is unchanged between the earlier reconciliation baseline
+`f5fa37e` and the last MSC baseline `536f149`. Its difference is included once
+in the Grove-only replay. After combining it with the cash-method increment,
+the amount to add to the existing #277 ledger is **3,021.57 USDS**:
+13,769.34 - 10,747.77. The earlier E43 missing-venue credit stays counted once.
 
 ## E12 reporting-only correction
 

@@ -2772,6 +2772,12 @@
     "jan_sep": "13769.343397571385525027030",
     "october": "8064.9552899653683474748"
   },
+  "historical_increment_to_existing_reconciliation": "3021.568973367441876551090",
+  "replay_filter": {
+    "prime": "grove",
+    "historical_only": false,
+    "nonzero_only": false
+  },
   "e12_weights": [
     {
       "month": "2026-01",
@@ -2878,6 +2884,6 @@
     "src/settle/normalize/erc4626_cash.py": "24ecf481ba8c65ff38c19678a505011dce3406f2b7c848a8bf38f298fa8b385d",
     "src/settle/compute/prime_agent_revenue.py": "cfd81eb6e1c2e4c35e247311f8133019fbda16685e54f747a369e8a20f0b6934",
     "src/settle/normalize/positions.py": "79785ebfde6a1e34fd763886b77aecb445f0c87c6eab0d38f9c6e860ed747c9f",
-    "scripts/reconcile_grove_base_cash.py": "2801fd4026e1d27aeb71485e42589e94d558f5932c16147b4a95d4888cf9fbbf"
+    "scripts/reconcile_grove_base_cash.py": "1270f3d3610bea5062bd56b0958154ba3af927b5dd90cef5f1e18ecee4ae4d0b"
   }
 }
