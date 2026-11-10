@@ -436,6 +436,9 @@ class Venue:
     # emitted as Deposit/Withdraw (e.g. direct ERC-20 transfers), and a warning
     # is logged.
     centrifuge_vault: "Address | None" = None
+    # Synchronous ERC-4626 capital from exact Deposit/Withdraw asset amounts.
+    # Explicit opt-in: requires matched holder share burns/mints and cash legs.
+    erc4626_cash_flows: bool = False
     async_allocation: AsyncAllocation | None = None
     # Category EOA only — pairing config for the "principal-out / return-in"
     # roundtrip pattern (see PricingCategory.EOA docstring).
@@ -543,6 +546,18 @@ class Venue:
         return self.settles or self.reporting_view.enabled
 
     def __post_init__(self) -> None:
+        if type(self.erc4626_cash_flows) is not bool:
+            raise ValueError(f"Venue {self.id}: erc4626_cash_flows must be boolean")
+        if self.erc4626_cash_flows and (
+            self.pricing_category != PricingCategory.ERC4626_VAULT
+            or self.event_source != "hypersync"
+            or self.underlying is None
+            or self.sky_savings_token
+            or self.centrifuge_vault is not None
+            or self.async_allocation is not None
+            or self.share_burn_destinations
+        ):
+            raise ValueError(f"Venue {self.id}: cash flows require a synchronous HyperSync ERC4626 vault")
         self.settlement_view.validate("settlement")
         self.reporting_view.validate("reporting")
         if self.reporting_view.method == "loan_accrual" and (
