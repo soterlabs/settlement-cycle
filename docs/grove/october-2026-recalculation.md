@@ -31,8 +31,11 @@ All 30 inherited evidence artifacts passed SHA-256 verification. Outstanding:
 
 1. Refresh grouped transfer classifications against current configuration,
    including E43/E44 and the approved E36 boundary policy.
-2. Extend the prior primary/secondary ALM coverage to Basin beneficial custody
-   and escrow boundaries, with appropriate share and balance controls.
+2. Finish review of the additional Basin custody capture. Both Basins and their
+   two pockets/escrows were scanned: 20 joined logs in two transactions. All
+   12 token balance controls have zero residual; opening/closing PAU shares and
+   USDS custody balances agree. Group classification and NFT ownership checks
+   must still be finalized before the overall review can pass.
 3. Resolve the purpose and accounting treatment of **76,133.73 AVAX** received
    October 9 from `0x9f1d8d40d9d8e6b69e0d9aa66b51c3007adc1c2f`, transaction
    `0x79abefd7a236396bfbbff35bb09911173e617f0124d86c78a93593703efd93d2`.
