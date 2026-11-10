@@ -61,6 +61,19 @@ def replay(path=INPUT):
     if len({(r.block_number, r.log_index) for r in rows}) != len(rows):
         raise ValueError("Duplicate retained log")
     prime = load_prime_by_id("grove")
+    if doc["chain"] != "base" or doc["holder"] != prime.alm[Chain.BASE].hex:
+        raise ValueError("Retained source owner or chain changed")
+
+    def covers(selection, source):
+        if not set(selection["address"]).issubset(source["address"]):
+            return False
+        for i, allowed in enumerate(source.get("topics", [])):
+            selected = (
+                selection.get("topics", [])[i] if i < len(selection.get("topics", [])) else []
+            )
+            if allowed and (not selected or not set(selected).issubset(allowed)):
+                return False
+        return True
 
     def post(url, method, params):
         key = json.dumps([method, params], sort_keys=True)
@@ -71,6 +84,8 @@ def replay(path=INPUT):
     def fetch(chain, sels, start, end, **kwargs):
         if chain != "base" or not lower < start <= end <= upper:
             raise ValueError("Uncovered event interval")
+        if any(not any(covers(s, source) for source in doc["selections"]) for s in sels):
+            raise ValueError("Uncovered event selection")
         return [
             r
             for r in rows

@@ -1,6 +1,6 @@
 {
   "method": "exact_erc4626_cash_capital_vs_previous_daily_nav",
-  "input_sha256": "e15bc6d3451cb136e668f82517d254df492bd84e835bfe46cc87733a48e24e48",
+  "input_sha256": "8bfbe1a126bef0788c66849ceba9ab8761d9f5c7a7b55a210238b7e08814f814",
   "grove_config_sha256": "c94f6742459ab4c7b5c57a65782ce224c029a866df34826554b74d7dc4f4dac5",
   "e12_withdrawal_sha256": "3ea6c2c5f341c4b7edbbd783d994d7afb410348b046fe6d21574ddccc6b28e7c",
   "results": [
@@ -2770,6 +2770,6 @@
     "src/settle/normalize/erc4626_cash.py": "df76f5da3e661e8cd87fcd2fa21b3d6841ca6d32d1a4c699b9e093bbe48b78ab",
     "src/settle/compute/prime_agent_revenue.py": "21e1d361aa48cc1e08102252ed2ca35d545a9cab9fec128c03d23e183659e3b8",
     "src/settle/normalize/positions.py": "79785ebfde6a1e34fd763886b77aecb445f0c87c6eab0d38f9c6e860ed747c9f",
-    "scripts/reconcile_grove_base_cash.py": "3226f3562af9553e8c08f0b193f10d1698bf57858d7c4c7fd85236bb46794e25"
+    "scripts/reconcile_grove_base_cash.py": "acd02b161f307dfcc49114a3ba9b0f11b1f749512c96093e03734b733a6bdebb"
   }
 }

@@ -327,6 +327,19 @@ def test_retained_capture_gap_is_not_a_zero_month(tmp_path):
         replay(altered)
 
 
+def test_missing_source_selection_is_not_a_zero_income_stream(tmp_path):
+    import json
+
+    from scripts.reconcile_grove_base_cash import INPUT, replay
+
+    source = json.loads(INPUT.read_text())
+    source["selections"].pop()
+    altered = tmp_path / "inputs.json"
+    altered.write_text(json.dumps(source))
+    with pytest.raises(ValueError, match="Uncovered event selection"):
+        replay(altered)
+
+
 def test_floor_boundary_uses_the_verified_e12_withdrawal(monkeypatch):
     import json
     from pathlib import Path

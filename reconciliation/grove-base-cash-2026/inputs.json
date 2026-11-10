@@ -11774,5 +11774,75 @@
   ],
   "scope": "Complete holder/vault cash, share Transfer and ERC4626 owner events; January-October 2026; read-only component comparison",
   "baseline_code": "7671f6f",
-  "september_e43_overlap": "The missing-venue credit is in PR #277; this package measures only cash-vs-EOD-NAV capital differences."
+  "september_e43_overlap": "The missing-venue credit is in PR #277; this package measures only cash-vs-EOD-NAV capital differences.",
+  "chain": "base",
+  "holder": "0x9b746dbc5269e1df6e4193bcb441c0fbbf1cecee",
+  "selections": [
+    {
+      "address": [
+        "0xbeef2d50b428675a1921bc6bbf4bfb9d8cf1461a",
+        "0xbeef0e0834849acc03f0089f01f4f1eeb06873c9",
+        "0xbeef0786756810478b88982de00f3cd7fdb8e7c7",
+        "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+      ],
+      "topics": [
+        [
+          "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+        ],
+        [
+          "0x0000000000000000000000009b746dbc5269e1df6e4193bcb441c0fbbf1cecee"
+        ]
+      ]
+    },
+    {
+      "address": [
+        "0xbeef2d50b428675a1921bc6bbf4bfb9d8cf1461a",
+        "0xbeef0e0834849acc03f0089f01f4f1eeb06873c9",
+        "0xbeef0786756810478b88982de00f3cd7fdb8e7c7",
+        "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+      ],
+      "topics": [
+        [
+          "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+        ],
+        [],
+        [
+          "0x0000000000000000000000009b746dbc5269e1df6e4193bcb441c0fbbf1cecee"
+        ]
+      ]
+    },
+    {
+      "address": [
+        "0xbeef2d50b428675a1921bc6bbf4bfb9d8cf1461a",
+        "0xbeef0e0834849acc03f0089f01f4f1eeb06873c9",
+        "0xbeef0786756810478b88982de00f3cd7fdb8e7c7"
+      ],
+      "topics": [
+        [
+          "0xdcbc1c05240f31ff3ad067ef1ee35ce4997762752e3a095284754544f4c709d7"
+        ],
+        [],
+        [
+          "0x0000000000000000000000009b746dbc5269e1df6e4193bcb441c0fbbf1cecee"
+        ]
+      ]
+    },
+    {
+      "address": [
+        "0xbeef2d50b428675a1921bc6bbf4bfb9d8cf1461a",
+        "0xbeef0e0834849acc03f0089f01f4f1eeb06873c9",
+        "0xbeef0786756810478b88982de00f3cd7fdb8e7c7"
+      ],
+      "topics": [
+        [
+          "0xfbde797d201c681b91056529119e0b02407c7bb96a4a2c75c01fc9667232c8db"
+        ],
+        [],
+        [],
+        [
+          "0x0000000000000000000000009b746dbc5269e1df6e4193bcb441c0fbbf1cecee"
+        ]
+      ]
+    }
+  ]
 }
