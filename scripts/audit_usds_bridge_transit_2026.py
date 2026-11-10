@@ -180,6 +180,8 @@ def historical_rows(prime, month):
             result[row[0]] = dict(zip(header, row, strict=True))
             # Excel treats a header beginning '=' as a formula without cache.
             result[row[0]]['utilized'] = row[header.index('SSR APY') - 1]
+            result[row[0]]['bridge_usds'] = (row[header.index('- In-transit USDS')]
+                                             if '- In-transit USDS' in header else '0')
         return result
     finally:
         book.close()
