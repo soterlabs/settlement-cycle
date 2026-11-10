@@ -27,6 +27,27 @@ def test_embedded_bridge_claim_is_not_refunded_twice():
     assert cost_delta(frozen(idle=80, bridge=20), D(100), D(1000), wallet_usds=D(0)) == 0
     with pytest.raises(ValueError, match="verified wallet"):
         cost_delta(frozen(), D(100), D(1000))
+    missing = frozen()
+    del missing["\u2212 ALM idle"]
+    with pytest.raises(ValueError, match="verified wallet"):
+        cost_delta(missing, D(100), D(1000), wallet_usds=D(0))
+
+
+def test_october_baseline_never_uses_a_regenerated_workbook(monkeypatch):
+    from scripts import audit_usds_bridge_transit_2026 as module
+
+    def unexpected(*args):
+        raise AssertionError("October workbook must not be used as the old baseline")
+
+    monkeypatch.setattr(module, "historical_rows", unexpected)
+    daily = {
+        "2026-10-12": {"utilized": "100", "daily_sky_rev": "1", "base_apr": ".04", "alm_usds": "90"}
+    }
+    books = {}
+    row = module.frozen_daily_row("spark", "2026-10-12", books, daily)
+    assert row["alm_usds"] == "90" and row["daily Sky charge"] == "1"
+    assert books == {}
+    assert module.frozen_daily_row("spark", "2026-10-13", books, daily) is None
 
 
 def test_stale_idle_after_delivery_produces_a_debit_and_preserves_rate():

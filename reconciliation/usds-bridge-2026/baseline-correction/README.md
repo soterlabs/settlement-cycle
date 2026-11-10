@@ -80,6 +80,10 @@ preserved. Unresolved rate conventions or incomplete evidence cannot be credits.
   fixture, original October inputs, prime configuration and #277 checkpoint.
 - `results.json`: exact signed daily/monthly comparisons and combined totals.
 - `pr277-checkpoint.json`: immutable combined-ledger input from #277 `ec89f0b`.
+- `original-july-workbook.xlsx` and `original-june-workbook.xlsx`: original
+  published MSC #11 and prior-reconciliation baseline witnesses. All daily
+  idle deductions must match the frozen baseline; rate conventions are not
+  changed by this check.
 - Original gateway capture/coverage and October input identities remain in the
   parent directory. The old `audit.json` is retained as a superseded estimate;
   its additive credit is not the new result.

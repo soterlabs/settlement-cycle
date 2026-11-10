@@ -227,21 +227,23 @@ def cost_delta(row, amount, cap, *, wallet_usds=None):
 
     ``amount`` is eligible transit, not necessarily a new deduction. Frozen
     ALM idle may already contain the same claim or remain stale after release.
-    Synthetic rate-only callers without an idle leg retain the marginal helper.
-    Financial/workbook callers must provide verified actual wallet balances.
+    Every caller must provide the frozen idle leg and actual wallet balances.
+    The private rate-fitting helper only reproduces arithmetic, not eligibility.
     """
     idle_key = next((k for k in ('− ALM idle', 'alm_usds') if k in row), None)
     old_bridge = D(str(row.get('bridge_usds', '0')))
-    if idle_key is not None:
-        if wallet_usds is None:
-            raise ValueError('Frozen idle requires verified wallet balances, not an additive bridge refund')
-        wallet_usds, amount = D(str(wallet_usds)), D(str(amount))
-        old_idle = D(str(row[idle_key]))
-        if any(not x.is_finite() or x < 0 for x in (wallet_usds, amount, old_idle, old_bridge)):
-            raise ValueError('Invalid idle/bridge balance')
-        amount = wallet_usds + amount - old_idle - old_bridge
-    elif wallet_usds is not None or old_bridge != 0:
-        raise ValueError('Baseline already contains a bridge deduction or lacks its idle leg')
+    if idle_key is None or wallet_usds is None:
+        raise ValueError('Frozen idle requires verified wallet balances, not an additive bridge refund')
+    wallet_usds, amount = D(str(wallet_usds)), D(str(amount))
+    old_idle = D(str(row[idle_key]))
+    if any(not x.is_finite() or x < 0 for x in (wallet_usds, amount, old_idle, old_bridge)):
+        raise ValueError('Invalid idle/bridge balance')
+    return _frozen_charge_delta(row, wallet_usds + amount - old_idle - old_bridge, cap)
+
+
+def _frozen_charge_delta(row, amount, cap):
+    """Fit frozen rates for a signed principal change, with no eligibility claim."""
+    amount, cap = D(str(amount)), D(str(cap))
     utilized, actual = D(str(row['utilized'])), D(str(row['daily Sky charge']))
     base = D(str(row.get('base APR', row.get('base APY'))))
     sub_raw = row.get('sub APR', row.get('sub APY'))
@@ -265,6 +267,20 @@ def cost_delta(row, amount, cap, *, wallet_usds=None):
         if not candidates or max(candidates) - min(candidates) > D('.00001'):
             return None
         return candidates[0]
+
+
+def frozen_daily_row(prime, day, books, october):
+    """A newly generated October report must not replace the original baseline."""
+    if day[:7] == '2026-10':
+        r = october.get(day)
+        return ({'utilized': r['utilized'], 'daily Sky charge': r['daily_sky_rev'],
+                 'base APR': r['base_apr'], 'sub APR': r.get('sub_apr'),
+                 'alm_usds': r['alm_usds'], 'bridge_usds': r.get('bridge_usds', '0')}
+                if r is not None else None)
+    month = day[:7]
+    if month not in books:
+        books[month] = historical_rows(prime, month)
+    return (books[month] or {}).get(day)
 
 
 def bridge_scope(prime, period):
@@ -305,17 +321,7 @@ def audit(cutoff, cache, *, wallet_inputs=None):
             day, amount = row['block_date'], row['cum_balance']
             if amount == 0:
                 continue
-            month = day.strftime('%Y-%m')
-            if month not in books:
-                books[month] = historical_rows(name, month)
-            original = (books[month] or {}).get(str(day))
-            if original is None and str(day) in retained:
-                r = retained[str(day)]
-                original = {'utilized': r['utilized'], 'daily Sky charge': r['daily_sky_rev'],
-                            'base APR': r['base_apr'], 'sub APR': r.get('sub_apr'),
-                            'bridge_usds': r.get('bridge_usds', '0')}
-            if original is not None and 'alm_usds' not in original and str(day) in retained:
-                original['alm_usds'] = retained[str(day)]['alm_usds']
+            original = frozen_daily_row(name, str(day), books, retained)
             wallet = (verified_wallet_usds(wallet_inputs, prime, str(day))
                       if original is not None and wallet_inputs is not None
                       and wallet_inputs.get('prime') == name else None)

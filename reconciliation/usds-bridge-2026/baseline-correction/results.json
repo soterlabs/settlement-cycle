@@ -1647,6 +1647,8 @@
     "settlements/spark/2026-06/spark_settlement_june_2026.xlsx": "3dba0b345759cb478db387e0d37d748114d8e1ffbc6230c5f76f04d5d6bead67",
     "settlements/spark/2026-07/spark_settlement_july_2026.xlsx": "8a40e4b84ae139929043058e1e3fd6ebb3744bdc94b13b6b02183911bd19b64f",
     "settlements/spark/2026-08/spark_settlement_august_2026.xlsx": "a74688825a8b858e6c0faa71ec000ce3b34e4d5ed6d8adff4ad718de9b94b34f",
-    "settlements/spark/2026-09/spark_settlement_september_2026.xlsx": "c53081ebb32e6c0fcb0850dad5d80adcaa03eeb0e4e649377d3ab6288f29d02e"
+    "settlements/spark/2026-09/spark_settlement_september_2026.xlsx": "c53081ebb32e6c0fcb0850dad5d80adcaa03eeb0e4e649377d3ab6288f29d02e",
+    "reconciliation/usds-bridge-2026/baseline-correction/original-july-workbook.xlsx": "29f046e52174e82c4e8477b3e9adef7d55e57ca96ed6d5da9dc7bca7e7b5eaac",
+    "reconciliation/usds-bridge-2026/baseline-correction/original-june-workbook.xlsx": "a5d1a8d22a76ef31c2833ec955731a42ee35f6aac726a120c49f7879c8320e1b"
   }
 }

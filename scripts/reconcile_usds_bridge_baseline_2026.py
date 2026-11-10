@@ -14,7 +14,11 @@ from decimal import Decimal as D
 from pathlib import Path
 from unittest.mock import patch
 
-from scripts.audit_usds_bridge_transit_2026 import cost_delta, historical_rows, verified_wallet_usds
+from scripts.audit_usds_bridge_transit_2026 import (
+    cost_delta,
+    frozen_daily_row,
+    verified_wallet_usds,
+)
 from settle.domain import Chain, Period
 from settle.domain.config import load_prime_by_id
 from settle.extract.hypersync import LogRow
@@ -38,6 +42,26 @@ def cents(amount):
     return amount.quantize(D(".01"), rounding=ROUND_HALF_UP)
 
 
+def idle_deductions(path):
+    from openpyxl import load_workbook
+
+    book = load_workbook(path, read_only=True, data_only=True)
+    try:
+        header, values = None, {}
+        for row in book["Debt"].values:
+            if row[0] == "Date":
+                header = list(row)
+            elif header and isinstance(row[0], str) and row[0].startswith("2026-"):
+                if row[0] in values:
+                    raise ValueError("Duplicate workbook date")
+                values[row[0]] = D(str(row[header.index("\u2212 ALM idle")]))
+        if not values:
+            raise ValueError("Missing frozen idle deductions")
+        return values
+    finally:
+        book.close()
+
+
 def replay(folder=FOLDER):
     def denied(*args, **kwargs):
         raise AssertionError("Offline bridge reconciliation attempted network access")
@@ -57,6 +81,11 @@ def _replay(folder):
     for path, expected in provenance["sha256"].items():
         if sha(ROOT / path) != expected:
             raise ValueError("Changed retained bridge source: " + path)
+    for check in provenance["prior_idle_baseline_checks"]:
+        if idle_deductions(ROOT / check["original_file"]) != idle_deductions(
+            ROOT / check["frozen_file"]
+        ):
+            raise ValueError("Idle deductions changed since the prior published baseline")
     checkpoint = read(folder / "pr277-checkpoint.json")
     if checkpoint["baseline_commit"] != BASELINE:
         raise ValueError("PR #277 uses a different baseline")
@@ -127,20 +156,9 @@ def _replay(folder):
         if not amount:
             continue  # Only bridge-active dates; do not introduce unrelated earlier idle true-ups.
         month = day[:7]
-        if month == "2026-10":
-            source = october[day]
-            row = {
-                "utilized": source["utilized"],
-                "daily Sky charge": source["daily_sky_rev"],
-                "base APR": source["base_apr"],
-                "sub APR": source.get("sub_apr"),
-                "alm_usds": source["alm_usds"],
-                "bridge_usds": source.get("bridge_usds", "0"),
-            }
-        else:
-            if month not in books:
-                books[month] = historical_rows("spark", month)
-            row = books[month][day]
+        row = frozen_daily_row("spark", day, books, october)
+        if row is None:
+            raise ValueError("Missing frozen baseline on " + day)
         wallet = verified_wallet_usds(wallets, prime, day)
         old_idle = D(str(row.get("\u2212 ALM idle", row.get("alm_usds"))))
         old_bridge = D(str(row.get("bridge_usds", "0")))
