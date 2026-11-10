@@ -121,6 +121,7 @@ def annual(year, as_of, inputs, *, selection=None):
     if v2:
         groups[0][2].extend(["S70", "S71", "sparklend_weth"])
         groups[2][2].extend(["S72"])
+        groups[9] = ("issuer_tokens", "Stablecoin holdings outside cash", [*groups[9][2], "S30"])
         groups[-1][2].append("pau_susdc")
         groups.append(
             (

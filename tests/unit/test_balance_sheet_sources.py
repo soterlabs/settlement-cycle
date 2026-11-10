@@ -29,6 +29,7 @@ def test_rpc_snapshot_validates_and_populates_positions_without_legacy_revenue()
     rows = {r["id"]: r for r in report["lines"]}
     for target, family, key in [
         ("position.S70", "positions", "S70"),
+        ("position.S30", "positions", "S30"),
         ("position.S72", "positions", "S72"),
         ("position.sparklend_weth", "positions", "sparklend_weth"),
         ("position.psm.base", "extra_assets", "psm.base"),
