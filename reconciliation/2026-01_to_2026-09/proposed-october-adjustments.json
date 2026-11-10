@@ -1,0 +1,32 @@
+{
+  "status": "Proposed replacement values, not an additional layer of adjustments",
+  "ordinary_october_receipts_preserved": true,
+  "msc_preview": {
+    "2026-10": {
+      "spark": {
+        "dv_adj": "0",
+        "sv_adj": "1338239.62",
+        "sky_adj": "-255869.48",
+        "send_credit": "0"
+      },
+      "grove": {
+        "dv_adj": "0",
+        "sv_adj": "924107.14",
+        "sky_adj": "1030726.24",
+        "send_credit": "0"
+      },
+      "osero": {
+        "dv_adj": "0",
+        "sv_adj": "0",
+        "sky_adj": "0",
+        "send_credit": "5514.00"
+      },
+      "obex": {
+        "dv_adj": "0",
+        "sv_adj": "-273508.90",
+        "sky_adj": "0",
+        "send_credit": "0"
+      }
+    }
+  }
+}

@@ -1,6 +1,6 @@
 {
   "baseline_commit": "536f1492089ed82fbf6eaabb956f7a194b887d47",
-  "calculation_commit": "9b290a3f164882f2e19cad9fbc7ad597bce400a7",
+  "calculation_commit": "bda68582defce86daeb1c7d5d3f6d5da03f18df9",
   "earning_window": [
     "2026-01",
     "2026-09"
@@ -1520,6 +1520,58 @@
         "tests/unit/test_monthly_from_revenue.py",
         "tests/unit/test_usds_bridge_audit.py",
         "tests/unit/test_usds_bridge_transit.py"
+      ]
+    },
+    {
+      "commit": "ef42e152e57ac86f51650f47f1475ad215b82452",
+      "pr": 263,
+      "title": "PRD: extend async allocation accounting to Spark and Obex",
+      "classification": "excluded_as_independent_msc_adjustment",
+      "reason": "Documentation dependency; financial effects are implemented and measured by #278.",
+      "paths": [
+        "docs/PRD_async_vaults_spark_obex.md"
+      ]
+    },
+    {
+      "commit": "bda68582defce86daeb1c7d5d3f6d5da03f18df9",
+      "pr": 278,
+      "title": "Standardize Spark and Obex async allocation accounting",
+      "classification": "historical_settlement_candidate",
+      "reason": "Measured Maple income debits: Spark 41,042.54 and Obex 273,508.90; zero incremental issuer/Ethena income and unchanged global CoF.",
+      "paths": [
+        "config/issuer_redemptions.yaml",
+        "config/obex.yaml",
+        "config/spark.yaml",
+        "docs/PRD_async_vaults_spark_obex.md",
+        "reconciliation/async-allocations-2026-01_to_2026-09/README.md",
+        "reconciliation/async-allocations-2026-01_to_2026-09/history.json.gz",
+        "reconciliation/async-allocations-2026-01_to_2026-09/issuer-quotes.json",
+        "reconciliation/async-allocations-2026-01_to_2026-09/results.json",
+        "reconciliation/async-allocations-2026-01_to_2026-09/review.md",
+        "reconciliation/async-allocations-2026-01_to_2026-09/sha256.json",
+        "reconciliation/async-allocations-2026-01_to_2026-09/state-quotes.json.gz",
+        "scripts/build_settlement_xlsx.py",
+        "scripts/replay_async_allocations.py",
+        "src/settle/compute/monthly_pnl.py",
+        "src/settle/compute/prime_agent_revenue.py",
+        "src/settle/domain/config.py",
+        "src/settle/domain/monthly_pnl.py",
+        "src/settle/domain/primes.py",
+        "src/settle/load/provenance.py",
+        "src/settle/normalize/async_capital.py",
+        "src/settle/normalize/async_protocols.py",
+        "src/settle/normalize/async_vaults.py",
+        "src/settle/normalize/issuer_redemptions.py",
+        "src/settle/normalize/positions.py",
+        "src/settle/normalize/redemption_settlements.py",
+        "src/settle/normalize/registry.py",
+        "src/settle/normalize/sources/oracles.py",
+        "src/settle/revenue/monthly.py",
+        "tests/fixtures/mock_sources.py",
+        "tests/fixtures/revenue_transport.py",
+        "tests/unit/test_async_capital.py",
+        "tests/unit/test_async_protocols.py",
+        "tests/unit/test_issuer_redemptions.py"
       ]
     }
   ],
