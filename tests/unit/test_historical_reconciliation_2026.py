@@ -9,9 +9,7 @@ from unittest.mock import patch
 import pytest
 
 from scripts.build_jan_sep_2026_reconciliation import (
-    calculate_previous_components as calculate,
-)
-from scripts.build_jan_sep_2026_reconciliation import (
+    calculate,
     forum_post,
 )
 from settle.compute.sky_total_accrual import compute_sky_total_accrual
@@ -37,7 +35,7 @@ def test_approved_credits_are_not_added_twice_and_october_receipts_are_preserved
     combined = ledger["proposed_combined_october_adjustments"]
     assert D(combined["osero"]["send_credit"]) == 5514
     assert D(combined["grove"]["sky_adj"]) == D("1141145.80") - D("110419.56")
-    assert D(combined["grove"]["sv_adj"]) == D("915857.20") + D("8249.94")
+    assert D(combined["grove"]["sv_adj"]) == D("915857.20") + D("8533.17")
 
 
 def test_bridge_cutoff_and_small_buidl_correction_sign(ledger):
@@ -49,8 +47,23 @@ def test_bridge_cutoff_and_small_buidl_correction_sign(ledger):
     assert sum(D(r["send_credit"]) for r in ledger["osero_executed_refund_rows"]) == 5514
     # October transit and rebates cannot leak into the historical forum post.
     post = forum_post(ledger)
-    assert D(ledger["adjustment_totals"]["spark"]["sv_adj"]) == D("1338239.62")
+    assert D(ledger["adjustment_totals"]["spark"]["sv_adj"]) == D("249141.52")
     assert "75,063.88 October bridge" in post
+
+
+def test_exact_lending_replay_replaces_overlap_and_nets_osero_payment(ledger):
+    items = {r["id"]: r for r in ledger["items"]}
+    assert ledger["lending_allocation_months"] == 139
+    assert "spark-s70" not in items
+    assert D(items["spark-lending-event-boundaries"]["amount"]) == D("-1086698.10")
+    assert D(items["grove-lending-event-boundaries"]["amount"]) == D("283.23")
+    assert all(D(r["net"]) == 0 for r in ledger["prior_payment_netting"])
+    netting = ledger["osero_lending_period_netting"]
+    assert sum(D(r["income_delta"]) for r in netting) == D("270.63842337876821683000")
+    assert all(D(r["corrected_supply_share"]) < 0 for r in netting)
+    assert all(D(r["mint_delta"]) == 0 for r in netting)
+    assert sum(D(r["transfer_delta"]) for r in netting) == 5514
+    assert not any(r.startswith("osero-lending-") for r in items)
 
 
 def test_adjustment_effects_match_production_mint_send_core(tmp_path, ledger):

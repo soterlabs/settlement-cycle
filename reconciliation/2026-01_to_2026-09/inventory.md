@@ -1,10 +1,12 @@
-# Historical reconciliation inventory after the MSC baseline
+# Historical reconciliation inventory from PR #220
 
-Range: `536f1492089ed82fbf6eaabb956f7a194b887d47` through the merged #278 main
-commit recorded in `pr-inventory.json`. Earning months: January-September 2026.
+Range: PR #220 through the merged #278 main commit recorded in `pr-inventory.json`.
+Published September baseline: `536f1492089ed82fbf6eaabb956f7a194b887d47`.
+Earning months: January-September 2026. All 55 merged PRs are classified.
 The amounts below are booked component totals; credits already settled before
 the baseline are excluded and existing October credits are counted once.
 
+- **Aave/SparkLend event boundaries (#220):** exact production replay across 139 allocation-months; Spark -1,089,098.10 income change versus the previous draft, Grove +283.23. Osero +270.64 income is absorbed by its negative supply share and adds no payment.
 - **Grove async redemptions (#226):** 78,530.06 net CoF credit, including the JAAA debit and subtraction of the prior 2,508.55 credit; already configured for October.
 - **Grove issued async deposits (#226):** 35,889.68 additional CoF credit, marginal to corrected redemptions.
 - **Grove Base Steakhouse vault (#264):** 7,219.49 September income; full owner history establishes no earlier 2026 position.
@@ -14,7 +16,7 @@ the baseline are excluded and existing October credits are counted once.
 - **Grove Basin reporting (#268):** removes misleading negative venue PnL presentation; zero additional whole-prime exemption or credit.
 - **Spark native RLUSD partner receipts (#267):** 1,373,208 September income, recognized once through the actual recipient asset.
 - **Spark Sentora RLUSD S72 (#267):** 3,674.16 September investment income.
-- **Spark SparkLend RLUSD S70 (#267):** 2,400.00 September income, including disjoint external spToken receipts.
+- **Spark SparkLend RLUSD S70 (#267):** 2,400.00 September income, including disjoint external spToken receipts; included once in the comprehensive #220 lending replay.
 - **Spark native-USDS bridge transit (#274):** 255,869.48 January-September CoF credit; excludes October's 75,063.88 effect.
 - **Spark Maple async ownership/capital (#278, implementing #263):** 41,042.54 debit for overstated January-July income; global CoF unchanged.
 - **Obex Maple async ownership/capital (#278):** 273,508.90 July income debit; global CoF unchanged.

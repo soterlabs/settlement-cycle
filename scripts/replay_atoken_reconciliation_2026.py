@@ -283,6 +283,15 @@ def replay(path):
         status="production_component_replay_complete",
         earning_window=["2026-01", "2026-09"],
         input_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
+        implementation_files_sha256={
+            name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
+            for name in [
+                "scripts/replay_atoken_reconciliation_2026.py",
+                "src/settle/normalize/positions.py",
+                "src/settle/compute/prime_agent_revenue.py",
+                "src/settle/normalize/sources/hypersync_venue_events.py",
+            ]
+        },
         results=results,
         constant_scaled_state_proofs=source.scaled_proofs,
         note="Raw income changes require joint prior-payment and period-net settlement reconciliation before booking.",

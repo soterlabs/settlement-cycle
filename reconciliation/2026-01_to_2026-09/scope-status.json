@@ -1,5 +1,5 @@
 {
-  "status": "recalculation_in_progress",
+  "status": "exact_component_replay_and_prior_payment_netting_complete",
   "method": "Replay current applicable rules from PR #220 scope; compare against settled reports and subtract prior true-ups. Do not sum independent PR estimates.",
   "first_included_pr": 220,
   "history_start_commit": "d1460a9fe6f00580b9886b39b3bb81d262fdc54d",
@@ -9,12 +9,16 @@
     "2026-01",
     "2026-09"
   ],
-  "previous_totals_provisional": true,
+  "previous_totals_provisional": false,
   "known_limit": "Keep current production block-state rounding and complete-exit behavior; do not book the earlier event-principal estimate as exact replay.",
   "deduplication": [
     "Preserve PR #218 historical reserve-factor and BUIDL credits once.",
     "Preserve September Basin policy and September close figures already settled.",
     "Replace overlapping Spark S70 venue correction rather than add it twice.",
     "Recompute period-net payment effects, including Osero financed-shortfall refund."
-  ]
+  ],
+  "lending_allocations": 17,
+  "lending_allocation_months": 139,
+  "retained_rpc_responses": 97352,
+  "settlement_execution": "Proposal only: no production adjustment or executed payment changed"
 }

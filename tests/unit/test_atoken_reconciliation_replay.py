@@ -66,8 +66,38 @@ def test_missing_state_after_a_transfer_is_not_inferred_as_zero(monkeypatch):
         s.scaled("ethereum", token, holder, 15)
 
 
-def test_expanded_generator_does_not_publish_previous_scope_totals():
-    from scripts.build_jan_sep_2026_reconciliation import calculate
+def test_expanded_generator_does_not_publish_previous_scope_totals(tmp_path, monkeypatch):
+    from scripts import build_jan_sep_2026_reconciliation as builder
 
+    monkeypatch.setattr(builder, "FOLDER", tmp_path)
     with pytest.raises(RuntimeError, match="Expanded #220 replay"):
-        calculate()
+        builder.calculate()
+
+
+def test_lending_income_absorbed_by_osero_shortfall_is_not_paid_twice():
+    from decimal import Decimal as D
+
+    from scripts.build_jan_sep_2026_reconciliation import osero_period_effect
+
+    row = dict(
+        earning_month="2026-07",
+        supply_share="-106.6873955625676",
+        cof="496.9928515100239",
+        demand_revenue="12149.43198747239",
+        debt_minted="497",
+        actual_send="12043",
+        send_credit="106",
+    )
+    net = osero_period_effect(row, D("35.81"))
+    assert D(net["corrected_supply_share"]) < 0
+    assert D(net["mint_delta"]) == 0
+    assert D(net["transfer_delta"]) == 106
+    assert D(net["additional_send_credit"]) == 0
+    # Crossing into a positive share creates a new financed payout; account
+    # for whole-USDS rounding independently on the debt and transfer legs.
+    net = osero_period_effect(row, D("200"))
+    assert D(net["corrected_mint"]) == 590
+    assert D(net["corrected_send"]) == 12243
+    assert D(net["mint_delta"]) == 93
+    assert D(net["transfer_delta"]) == 200
+    assert D(net["additional_send_credit"]) == 1

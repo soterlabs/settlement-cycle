@@ -385,248 +385,352 @@ def calculate_previous_components():
     )
 
 
+def osero_period_effect(row, income_delta):
+    """Net corrected income and the financed deficit against executed cashflows."""
+
+    def whole(v):
+        return D(v).quantize(D(1), rounding=ROUND_HALF_UP)
+
+    supply = D(row["supply_share"]) + D(income_delta)
+    payable = max(supply, D(0))
+    mint = whole(D(row["cof"]) + payable)
+    send = whole(D(row["demand_revenue"]) + payable)
+    mint_delta = mint - D(row["debt_minted"])
+    transfer_delta = send - D(row["actual_send"])
+    return dict(
+        earning_month=row["earning_month"],
+        income_delta=str(income_delta),
+        corrected_supply_share=str(supply),
+        corrected_mint=str(mint),
+        corrected_send=str(send),
+        mint_delta=str(mint_delta),
+        transfer_delta=str(transfer_delta),
+        additional_send_credit=str(transfer_delta - mint_delta - D(row["send_credit"])),
+    )
+
+
+def calculate():
+    capture_path = FOLDER / "atoken-inputs.json.gz"
+    replay_path = FOLDER / "atoken-replay.json"
+    if not capture_path.exists() or not replay_path.exists():
+        raise RuntimeError("Expanded #220 replay requires complete pinned inputs and exact results")
+    capture = json.loads(gzip.decompress(capture_path.read_bytes()))
+    replay = json.loads(replay_path.read_text())
+    if (
+        capture["status"] != "event_states_complete"
+        or replay["status"] != "production_component_replay_complete"
+        or replay["input_sha256"] != hashlib.sha256(capture_path.read_bytes()).hexdigest()
+    ):
+        raise ValueError("Expanded replay inputs are incomplete or differ from exact results")
+    for name, digest in replay["implementation_files_sha256"].items():
+        if hashlib.sha256((ROOT / name).read_bytes()).hexdigest() != digest:
+            raise ValueError("Lending replay implementation changed: " + name)
+    for name, digest in capture["config_sha256"].items():
+        if hashlib.sha256((ROOT / "config" / (name + ".yaml")).read_bytes()).hexdigest() != digest:
+            raise ValueError("Lending replay configuration changed: " + name)
+    identities = {(r["prime"], r["month"], r["venue"]) for r in replay["results"]}
+    expected = set()
+    for baseline in capture["baselines"]:
+        prime = load_prime_by_id(baseline["prime"])
+        end = date.fromisoformat(baseline["period"]["end"])
+        for v in capture["venues"].values():
+            if v["prime"] != prime.id:
+                continue
+            venue = next(a for a in prime.venues if a.id == v["venue"])
+            if not venue.start_date or venue.start_date <= end:
+                expected.add((prime.id, baseline["month"], venue.id))
+    if identities != expected or len(identities) != 139 or len(replay["results"]) != 139:
+        raise ValueError("Expected all 139 lending allocation-months exactly once")
+    data = calculate_previous_components()
+    ordinary = {
+        p: {
+            f: D(data["proposed_combined_october_adjustments"][p][f])
+            - D(data["adjustment_totals"][p][f])
+            for f in FIELDS
+        }
+        for p in AGENTS
+    }
+    # The comprehensive lending replay includes S70. Replace its earlier
+    # missing-venue component instead of paying it a second time.
+    data["items"] = [r for r in data["items"] if r["id"] != "spark-s70"]
+    monthly = {p: defaultdict(D) for p in ["spark", "grove", "osero"]}
+    for r in replay["results"]:
+        if D(r["global_cof_delta"]) != 0:
+            raise ValueError("Lending replay unexpectedly changes whole-prime CoF")
+        monthly[r["prime"]][r["month"]] += D(r["income_delta"])
+
+    def add(identity, prime, field, months, **extra):
+        value = sum(months.values(), D(0))
+        data["items"].append(
+            dict(
+                id=identity,
+                prime=prime,
+                field=field,
+                unrounded=str(value),
+                amount=str(cents(value)),
+                months={m: str(v) for m, v in months.items()},
+                source="reconciliation/2026-01_to_2026-09/atoken-replay.json",
+                **extra,
+            )
+        )
+
+    for prime in ["spark", "grove"]:
+        add(
+            prime + "-lending-event-boundaries",
+            prime,
+            "sv_adj",
+            monthly[prime],
+            prior_trueup="0",
+            replaces="spark-s70" if prime == "spark" else None,
+        )
+    # RF recognition before September remains outside current dated routing.
+    # Show its gross historical recognition and prior payment as an equal pair;
+    # do not subtract that credit from the unrelated native-yield difference.
+    data["prior_payment_netting"] = [
+        dict(
+            prime="spark",
+            item="historical-reserve-factor",
+            gross="2392354.07",
+            previously_settled="2392354.07",
+            net="0.00",
+        ),
+        dict(
+            prime="grove",
+            item="historical-buidl-fees-and-cof",
+            gross="165013.90",
+            previously_settled="165013.90",
+            net="0.00",
+            note="Fee and CoF offsets are also preserved in their component replays.",
+        ),
+    ]
+    effects = [
+        osero_period_effect(r, monthly["osero"][r["earning_month"]])
+        for r in data["osero_executed_refund_rows"]
+    ]
+    data["osero_lending_period_netting"] = effects
+    if any(D(r["mint_delta"]) for r in effects):
+        add(
+            "osero-lending-positive-share",
+            "osero",
+            "sv_adj",
+            {r["earning_month"]: D(r["mint_delta"]) for r in effects},
+        )
+    if any(D(r["additional_send_credit"]) for r in effects):
+        add(
+            "osero-lending-payment-rounding",
+            "osero",
+            "send_credit",
+            {r["earning_month"]: D(r["additional_send_credit"]) for r in effects},
+        )
+    totals = {p: {f: D(0) for f in FIELDS} for p in AGENTS}
+    for r in data["items"]:
+        totals[r["prime"]][r["field"]] += D(r["amount"])
+    data["adjustment_totals"] = {p: {f: str(v) for f, v in t.items()} for p, t in totals.items()}
+    data["remaining_to_add_to_october"] = {
+        p: {f: str(t[f] - D(data["already_in_october"][p][f])) for f in FIELDS}
+        for p, t in totals.items()
+    }
+    data["proposed_combined_october_adjustments"] = {
+        p: {f: str(ordinary[p][f] + t[f]) for f in FIELDS} for p, t in totals.items()
+    }
+    data["linear_settlement_effects"] = {
+        p: dict(
+            mint_delta=str(t["sky_adj"] + t["sv_adj"]),
+            transfer_delta=str(t["dv_adj"] + t["sv_adj"] + t["send_credit"]),
+            sky_net_delta=str(t["sky_adj"] - t["dv_adj"] - t["send_credit"]),
+        )
+        for p, t in totals.items()
+    }
+    data["lending_income_deltas"] = {
+        p: {m: str(v) for m, v in rows.items()} for p, rows in monthly.items()
+    }
+    data["scope"] = (
+        "Current applicable fixes from PR #220; January-September 2026, net of prior settlements"
+    )
+    data["lending_allocation_months"] = len(identities)
+    for path in [capture_path, replay_path]:
+        data["input_sha256"][str(path.relative_to(ROOT))] = hashlib.sha256(
+            path.read_bytes()
+        ).hexdigest()
+    return data
+
+
 def forum_post(data):
     totals = data["adjustment_totals"]
-    expected = {
-        "spark": ("1338239.62", "-255869.48", "0"),
-        "grove": ("8249.94", "-110419.56", "0"),
-        "osero": ("0", "0", "5514"),
-        "obex": ("-273508.90", "0", "0"),
-    }
-    if any(
-        tuple(D(totals[p][f]) for f in ["sv_adj", "sky_adj", "send_credit"])
-        != tuple(map(D, values))
-        for p, values in expected.items()
-    ):
-        raise ValueError("Historical totals changed; review the fixed-period forum narrative")
-    monthly = {f"2026-{m:02}": {p: {f: D(0) for f in FIELDS} for p in AGENTS} for m in range(1, 10)}
-    for r in data["items"]:
-        for month, amount in r["months"].items():
-            monthly[month][r["prime"]][r["field"]] += D(amount)
     text = f"""# Settlement Reconciliation - MSC #5-#13 (January-September 2026)
 
-Draft prepared for the October 2026 earning cycle (MSC #14, paid in November).
-October's ordinary settlement will be presented separately.
+Draft for the October 2026 earning cycle (MSC #14, paid in November).
+October's ordinary settlement is presented separately.
 
-This is an incremental reconciliation of corrections merged after the code used
-for the last MSC, [`{BASELINE[:7]}`](https://github.com/soterlabs/settlement-cycle/commit/{BASELINE}),
-through [`{data["calculation_commit"][:7]}`](https://github.com/soterlabs/settlement-cycle/commit/{data["calculation_commit"]}).
-It follows the [January-August reconciliation](https://forum.skyeco.com/t/settlement-reconciliation-msc-5-12-january-august-2026/28273).
-The published reports and previously settled adjustments remain the baseline.
+We replayed the applicable corrections starting with [PR #220](https://github.com/soterlabs/settlement-cycle/pull/220)
+through [`{data["calculation_commit"][:7]}`](https://github.com/soterlabs/settlement-cycle/commit/{data["calculation_commit"]}),
+against the published January-September reports. The September baseline is
+[`536f149`](https://github.com/soterlabs/settlement-cycle/commit/{BASELINE}).
+Amounts already handled in the [previous reconciliation](https://forum.skyeco.com/t/settlement-reconciliation-msc-5-12-january-august-2026/28273)
+are deducted. We do not sum isolated PR estimates or rebook earlier payments.
 
 ## Historical adjustment ledger
 
-All figures are USDS. Positive supply-side adjustments add income; negative
-ones recover overstated income. A negative Sky-share adjustment gives the prime
-debt-mint relief. Send-only refunds create no additional debt.
+All amounts are USDS. Positive supply-side adjustments add income; negative
+ones recover overstated income. Negative Sky-share adjustments reduce the
+agent's debt mint. A send-only refund increases its transfer without new debt.
 
 | Prime | Supply-side adjustment | Sky-share adjustment | Send-only refund |
 |---|---:|---:|---:|
 """
     for p in AGENTS:
-        t = totals[p]
-        text += f"| {p.title()} | {money(t['sv_adj'])} | {money(t['sky_adj'])} | {money(t['send_credit'])} |\n"
+        text += (
+            f"| {p.title()} | "
+            + " | ".join(money(totals[p][f]) for f in ["sv_adj", "sky_adj", "send_credit"])
+            + " |\n"
+        )
     text += """
-Each independently booked component is rounded to cents, preserving the already
-approved components. Monthly rows below show unrounded components at display
-precision; their sum can differ by a cent from booked totals. The final MSC
-applies its existing supply-side floor and whole-USDS rounding.
+Components are rounded to cents individually, preserving previously approved
+credits. Monthly detail retains unrounded values. The ordinary MSC applies its
+existing supply-side floor and whole-USDS rounding to actual October figures.
 
-## Method and prior settlements
+## What changed
 
-The [calculation package](https://github.com/soterlabs/settlement-cycle/pull/277)
-contains the PR inventory, immutable input hashes, monthly component ledger,
-transaction evidence, offline replay and proposed October adjustment values.
-This is a component replay using existing revenue, ownership and borrowing-charge
-mechanisms. Original dates, NAVs, subsidy caps and daily rate conventions are
-preserved. Historical workbooks are not overwritten.
+- **Aave/SparkLend, Spark/Grove/Osero (#220):** replay all 139 allocation-months
+  using complete holder event histories and pinned archive balances at actual
+  event boundaries. This replaces approximated daily boundaries and the earlier
+  event-principal estimate. Current production yield formulas, rounding and
+  clean-exit behavior are retained. Whole-prime CoF does not change; venue CoF
+  attribution can change with the capital time series.
+- **Spark partner receipts (#267):** recognize 1,373,208.00 of native RLUSD
+  received in September, plus Sentora RLUSD investment income of 3,674.16.
+  SparkLend RLUSD S70 is included once in the comprehensive lending replay,
+  replacing its former standalone 2,400.00 correction.
+- **Spark native-USDS bridge transit (#274):** 255,869.48 of historical
+  debt-mint relief, June-September, using original daily charge conventions.
+- **Spark/Obex async vaults (#278, implementing #263):** correct queued shares,
+  paid cash and dated capital flows. Spark's correction is -41,042.54;
+  Obex's July correction is -273,508.90. Global CoF is unchanged.
+- **Grove async CoF (#226):** 78,530.06 net redemption credit, after the earlier
+  2,508.55 credit, plus 35,889.68 for issued deposits. The deposit calculation
+  is marginal to corrected redemptions, avoiding overlapping exemptions.
+- **Grove small BUIDL exits (#268):** 4,000.18 Sky-side debit: restore 4,001.00
+  of omitted principal, less 0.82 of remaining fee credit. Previously credited
+  fees and September's recognized boundary costs are excluded.
+- **Grove missing venues (#264):** 7,219.49 September income from Base
+  Steakhouse, and 1,030.45 from Diamond PAU Uniswap (27.90 August; 1,002.55
+  September). The LP has no USDS leg and creates no extra CoF exemption.
+- **Osero duplicate shortfall deduction (#270):** compare corrected rounded
+  debt mints/transfers against executed cashflows for July-September, combining
+  the lending replay with the refund. Income absorbed by a still-negative
+  supply-side share does not create a second transfer or refund.
 
-Earlier adjustments remain excluded: Spark's 2,392,354.07 reserve-factor credit
-and Grove's 165,013.90 BUIDL/CoF credit were handled in the previous post. The
-2,508.55 August in-flight credit within Grove's earlier total is explicitly
-subtracted from the new redemption calculation. Previously credited BUIDL fees
-are also subtracted before computing the small remaining correction.
+### Exact lending replay
 
-## Spark
+These are revenue changes before Osero's period-net payment treatment.
+Spark's column includes the S70 missing-venue correction; it is not added again.
 
-- **Native-USDS bridge CoF: 255,869.48 credit**, June-September. Eligible USDS
-  remains exempt during authenticated bridge transit when it was exempt on the
-  source chain. The replay removes the missing claim from utilized debt using
-  the original daily charge convention. It creates debt-mint relief only.
-- **September partner receipts: 1,373,208.00 of supply-side income.** Six native
-  RLUSD payments reached Spark's ALM. Complete payer/recipient history shows
-  no earlier payment in the historical earning window. These are disjoint from
-  the spToken receipts included in the lending venue below.
-- **September missing investment income: 6,074.16.** Sentora RLUSD S72 adds
-  3,674.16; SparkLend RLUSD S70 adds 2,400.00, including 113.73 of reserve
-  receipts. The existing event-day NAV and lending-yield conventions are retained.
-- **Maple async capital/income: -41,042.54**, January-July. Retaining queued
-  shares and using actual paid cash corrects S14/S15's earlier capital/income
-  treatment. The replay first reproduces the published venue income. This is
-  an income debit, with no change to whole-prime CoF or rate formulas.
-
-Spark's net supply-side adjustment is **1,338,239.62**, separate from its
-**255,869.48** Sky-share/debt credit. The RLUSD receipts and investments here
-belong to Spark; Grove's idle RLUSD was already tracked in the baseline.
-
-## Grove
-
-- **Redemption CoF: 78,530.06 net credit.** Includes the JAAA settlement-day
-  debit, JTRSY/BUIDL corrections and deduction of the earlier 2,508.55 credit.
-  This historical amount is already configured for October and is counted once.
-- **Issued-deposit CoF: 35,889.68 additional credit**, January/March/April.
-  Issued but uncollected JTRSY shares retain their applicable SDE treatment.
-  The calculation is marginal to corrected redemptions, so shared dates and
-  subsidy-tranche crossings do not receive a second deduction.
-- **Small BUIDL capital/fees: 4,000.18 debit.** Restore 4,001.00 of share
-  principal previously omitted by the small-transfer filter, less 0.82 of
-  additional cash-cost credit after subtracting previously credited fees.
-  September's already-recognized boundary fee and transition markdown are excluded.
-- **Base Steakhouse vault E43: 7,219.49 of September income.** Complete owner
-  share history starts in September; there is no earlier 2026 holding to true up.
-- **Diamond PAU Uniswap E44: 1,030.45 of income**, comprising August 27.90 and
-  September 1,002.55. The position is additional to the legacy ALM's position.
-  The pool has no USDS leg, so adding its income creates no new CoF exemption.
-
-The booked total is **110,419.56 of Sky-share/debt relief** and **8,249.94 of
-additional supply-side income**. Warehouse principal and Basin presentation
-changes redistribute venue CoF/reporting but add no separate headline credit.
-
-## Osero
-
-Osero's full borrowing cost was already financed through its allocator debt.
-The historical deficit also reduced its demand-side transfer, charging the gap
-a second time. Refund only that second deduction through `send_credit`.
-
-| Earning month | Executed transfer | Correct transfer | Refund |
+| Earning month | Spark income change | Grove income change | Osero income change |
 |---|---:|---:|---:|
 """
-    for r in data["osero_executed_refund_rows"]:
-        text += f"| {r['earning_month']} | {money(r['actual_send'])} | {money(r['corrected_send'])} | {money(r['send_credit'])} |\n"
-    text += """| **Total** | | | **5,514.00** |
-
-These are differences between actual rounded transfers, not a fresh rounding
-of the three deficits. The refund is already configured in October and must
-not be added again. It increases the transfer only, with **zero debt-mint increase**.
-
-## Obex
-
-The shared async follow-up identifies **273,508.90 of overstated July income**.
-Without queue routing, withdrawals had been replaced by a synthetic month-end
-capital outflow. Actual dated queue movements and paid cash reduce that income.
-Apply **-273,508.90 as a supply-side adjustment**. Whole-prime CoF is unchanged;
-changes in venue attribution are reporting effects, not another credit.
-
-## Monthly historical components
-
-| Month | Spark SV | Spark Sky share | Grove SV | Grove Sky share | Osero refund | Obex SV |
-|---|---:|---:|---:|---:|---:|---:|
-"""
-    for month, primes in monthly.items():
-        values = [
-            primes["spark"]["sv_adj"],
-            primes["spark"]["sky_adj"],
-            primes["grove"]["sv_adj"],
-            primes["grove"]["sky_adj"],
-            primes["osero"]["send_credit"],
-            primes["obex"]["sv_adj"],
-        ]
-        text += "| " + month + " | " + " | ".join(money(v) for v in values) + " |\n"
-    text += (
-        "| **Booked totals** | "
-        + " | ".join(
-            money(v)
-            for v in [
-                totals["spark"]["sv_adj"],
-                totals["spark"]["sky_adj"],
-                totals["grove"]["sv_adj"],
-                totals["grove"]["sky_adj"],
-                totals["osero"]["send_credit"],
-                totals["obex"]["sv_adj"],
-            ]
+    for m in [f"2026-{n:02}" for n in range(1, 10)]:
+        text += (
+            "| "
+            + m
+            + " | "
+            + " | ".join(
+                money(data["lending_income_deltas"][p].get(m, 0))
+                for p in ["spark", "grove", "osero"]
+            )
+            + " |\n"
         )
-        + " |\n"
-    )
     text += """
-## Settlement effects and booking once
+### Osero payment netting
+
+| Earning month | Income change | Corrected supply share | Corrected debt mint | Corrected transfer | Transfer increase vs executed |
+|---|---:|---:|---:|---:|---:|
+"""
+    for r in data["osero_lending_period_netting"]:
+        text += (
+            "| "
+            + r["earning_month"]
+            + " | "
+            + " | ".join(
+                money(r[f])
+                for f in [
+                    "income_delta",
+                    "corrected_supply_share",
+                    "corrected_mint",
+                    "corrected_send",
+                    "transfer_delta",
+                ]
+            )
+            + " |\n"
+        )
+    text += """
+## Prior credits and booking once
+
+Spark's 2,392,354.07 reserve-factor credit and Grove's 165,013.90 BUIDL/CoF
+credit were already handled. Their historical gross recognition and prior
+payment net to zero. Dated September activation rules remain in place; these
+credits are not deducted again from unrelated native-yield corrections.
+September venue results already refreshed before publication are the baseline,
+including Spark S1's already-recognized external receipts.
+
+Grove's -78,530.06 historical Sky adjustment and Osero's 5,514.00 refund are
+already configured for October. The full ledger above includes them once.
+The following amounts remain to add to those existing October entries:
+
+| Prime | Additional supply-side adjustment | Additional Sky-share adjustment | Additional send-only refund |
+|---|---:|---:|---:|
+"""
+    for p in AGENTS:
+        text += (
+            f"| {p.title()} | "
+            + " | ".join(
+                money(data["remaining_to_add_to_october"][p][f])
+                for f in ["sv_adj", "sky_adj", "send_credit"]
+            )
+            + " |\n"
+        )
+    text += """
+## Effects on Sky and prime agents
 
 The full historical ledger has the following linear effects relative to the
-ordinary October settlement. Mint effects assume the combined supply-side share
-remains above the existing mint floor; the October calculation must apply the
-normal floor and final rounding to its actual ordinary figures.
+ordinary October settlement, before the final floor and whole-USDS rounding.
+Debt-mint effects assume the combined supply-side share is above the mint floor.
+Sky net means debt minted less transfers to agents.
 
-| Prime | Debt mint change | Transfer change | Sky settlement net change |
-|---|---:|---:|---:|
-"""
-    summed = {k: D(0) for k in ["mint_delta", "transfer_delta", "sky_net_delta"]}
-    for p in AGENTS:
-        r = data["linear_settlement_effects"][p]
-        text += f"| {p.title()} | " + " | ".join(money(r[k]) for k in summed) + " |\n"
-        for k in summed:
-            summed[k] += D(r[k])
-    text += "| **Total** | " + " | ".join(money(v) for v in summed.values()) + " |\n"
-    text += """
-Sky settlement net means debt minted less transfers to agents. A supply-side
-income correction changes mint and send equally in the positive-share case.
-CoF relief uses `sky_adj`; it is not credited again through `sv_adj`. Osero's
-send-only refund reduces Sky's settlement net without issuing a second loan.
-
-Because Grove's 78,530.06 credit and Osero's 5,514.00 refund are already configured,
-the **remaining additions to the existing October entries** are:
-
-| Prime | Additional SV adjustment | Additional Sky-share adjustment | Additional send refund |
+| Prime | Debt mint change | Transfer change | Sky net change |
 |---|---:|---:|---:|
 """
     for p in AGENTS:
-        r = data["remaining_to_add_to_october"][p]
-        text += f"| {p.title()} | {money(r['sv_adj'])} | {money(r['sky_adj'])} | {money(r['send_credit'])} |\n"
+        text += (
+            f"| {p.title()} | "
+            + " | ".join(
+                money(data["linear_settlement_effects"][p][f])
+                for f in ["mint_delta", "transfer_delta", "sky_net_delta"]
+            )
+            + " |\n"
+        )
     text += """
-The calculation package includes combined October values that preserve ordinary
-October receipts. It does not claim the configured historical credits have been
-executed, and this draft does not itself change settlement configuration.
+## Scope and evidence
 
-## Exclusions and zero effects
+The [calculation package](https://github.com/soterlabs/settlement-cycle/pull/277)
+contains retained source inputs, hashes, per-venue and monthly results, the PR
+inventory, offline replay scripts and proposed **replacement** October values.
+Those values preserve ordinary October receipts and do not add another layer
+of historical credits. This draft changes no frozen report, production
+configuration, database revision or executed payment.
 
-- Partner rebates received in October are ordinary October income, even where
-  their commercial reference period begins earlier. They are outside this post.
-- Spark's 75,063.88 October bridge CoF effect belongs in October's ordinary
-  calculation. It is excluded from the January-September credit.
-- Spark Ethena, BUIDL, USTB and USCC add no incremental January-September income
-  correction. Complete earlier histories establish paid opening claims and no
-  new 2026 async activity. Ordinary wallet yield remains included. The existing
-  Spark JTRSY adapter is retained; Arkis's observed withdrawals settle atomically.
-- Osero referral-code mappings 3014/3017 add zero January-September DR on the
-  checked upstream source. No later receipts or unrelated source revisions are imported.
-- The native-USDS bridge scan covers the four supported Ethereum routes.
-  Grove's separate USDC returns do not establish a native-USDS credit; other
-  bridge families are not implicitly certified by this calculation.
+Partner rebates received in October are ordinary October income and excluded
+from this historical ledger. Spark's 75,063.88 October bridge CoF effect also
+belongs in October's ordinary calculation. Warehouse/Basin presentation and
+venue CoF reattribution create no separate whole-prime credit. Basin's September
+activation remains dated. Osero referral codes 3014/3017 add no historical DR
+on the checked source. The existing zero-effect async findings remain unchanged.
 
-## Cause index
-
-| PR | Historical correction |
-|---|---|
-| [#226](https://github.com/soterlabs/settlement-cycle/pull/226) | Grove async redemption and issued-deposit CoF |
-| [#264](https://github.com/soterlabs/settlement-cycle/pull/264) | Grove Base vault and Diamond LP income |
-| [#268](https://github.com/soterlabs/settlement-cycle/pull/268) | Grove small BUIDL capital/cash costs; warehouse/Basin reporting |
-| [#267](https://github.com/soterlabs/settlement-cycle/pull/267) | Spark RLUSD receipts and investments |
-| [#270](https://github.com/soterlabs/settlement-cycle/pull/270) | Osero executed duplicate-shortfall refund |
-| [#274](https://github.com/soterlabs/settlement-cycle/pull/274) | Spark native-USDS bridge CoF |
-| [#278](https://github.com/soterlabs/settlement-cycle/pull/278) | Spark/Obex Maple income; shared async ownership/capital follow-up |
-
-The [PR inventory and calculation ledger](https://github.com/soterlabs/settlement-cycle/pull/277)
-classify every merged PR in the comparison range, including documentation,
-reporting-only changes and zero-amount referral-code changes. This post proposes
-only the incremental historical corrections above; it does not restate rates
-or claim to be a new complete monthly ALM transfer-review attestation.
+This is a read-only component comparison, not a new complete monthly ALM
+transfer-review attestation. Original daily rates, NAVs, subsidy conventions and
+applicable policy dates are preserved. The bridge audit covers its four
+supported Ethereum routes; unrelated bridge families are not implicitly certified.
 """
     return text
-
-
-def calculate():
-    raise RuntimeError(
-        "Expanded #220 replay is in progress. Previous-scope totals are provisional; "
-        "complete the pinned source replay and prior-payment netting before generating a new proposal."
-    )
 
 
 def main():

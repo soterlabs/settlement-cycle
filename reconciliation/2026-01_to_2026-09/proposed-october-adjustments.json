@@ -1,17 +1,17 @@
 {
-  "status": "INCOMPLETE: previous-scope values pending expanded #220 replay; do not apply as the updated proposal",
+  "status": "Proposed replacement values, not an additional layer of adjustments",
   "ordinary_october_receipts_preserved": true,
   "msc_preview": {
     "2026-10": {
       "spark": {
         "dv_adj": "0",
-        "sv_adj": "1338239.62",
+        "sv_adj": "249141.52",
         "sky_adj": "-255869.48",
         "send_credit": "0"
       },
       "grove": {
         "dv_adj": "0",
-        "sv_adj": "924107.14",
+        "sv_adj": "924390.37",
         "sky_adj": "1030726.24",
         "send_credit": "0"
       },

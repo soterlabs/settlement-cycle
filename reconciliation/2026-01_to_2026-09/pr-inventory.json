@@ -10,8 +10,8 @@
       "commit": "cfe8c4b586f0ecad09709a038f260d9e043be709",
       "pr": 220,
       "title": "Fix live aToken and spToken revenue event boundaries (#220)",
-      "classification": "expanded_historical_replay_required",
-      "reason": "Actual Aave/SparkLend event-block capital replay; prior principal estimates are not exact implementation outputs.",
+      "classification": "exact_historical_component_replay",
+      "reason": "Production event-boundary replay over 139 Aave/SparkLend allocation-months, compared to frozen reports; prior principal estimates are superseded.",
       "paths": [
         "docs/pipeline/atoken-event-review-and-estimate.md",
         "docs/pipeline/atoken-live-event-boundaries.md",

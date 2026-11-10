@@ -34,18 +34,6 @@
       "prior_trueup": "0"
     },
     {
-      "id": "spark-s70",
-      "prime": "spark",
-      "field": "sv_adj",
-      "unrounded": "2400.001564107802276268",
-      "amount": "2400.00",
-      "months": {
-        "2026-09": "2400.001564107802276268"
-      },
-      "source": "reconciliation/2026-01_to_2026-09/venue-evidence.json.gz",
-      "prior_trueup": "0"
-    },
-    {
       "id": "spark-s72",
       "prime": "spark",
       "field": "sv_adj",
@@ -180,18 +168,60 @@
       },
       "source": "reconciliation/2026-10/osero_shortfall_evidence.json",
       "existing_october_amount": "5514"
+    },
+    {
+      "id": "spark-lending-event-boundaries",
+      "prime": "spark",
+      "field": "sv_adj",
+      "unrounded": "-1086698.10124174635539103400",
+      "amount": "-1086698.10",
+      "months": {
+        "2026-01": "221360.79210150443117185300",
+        "2026-02": "-523330.59117804067282242500",
+        "2026-03": "-349876.69938364470119674700",
+        "2026-04": "326952.58859751420829075700",
+        "2026-05": "-269058.59989049228808899300",
+        "2026-06": "-137963.68241426727774986600",
+        "2026-07": "-228004.43860780336484378600",
+        "2026-08": "-129177.47203062449242809500",
+        "2026-09": "2400.00156410780227626800"
+      },
+      "source": "reconciliation/2026-01_to_2026-09/atoken-replay.json",
+      "prior_trueup": "0",
+      "replaces": "spark-s70"
+    },
+    {
+      "id": "grove-lending-event-boundaries",
+      "prime": "grove",
+      "field": "sv_adj",
+      "unrounded": "283.23230493740590508900",
+      "amount": "283.23",
+      "months": {
+        "2026-01": "742.91285033774474533600",
+        "2026-02": "662.2488952570981802300",
+        "2026-03": "-1121.9294406574370204770",
+        "2026-04": "0E-19",
+        "2026-05": "0E-20",
+        "2026-06": "0E-20",
+        "2026-07": "0E-20",
+        "2026-08": "0E-20",
+        "2026-09": "0E-20"
+      },
+      "source": "reconciliation/2026-01_to_2026-09/atoken-replay.json",
+      "prior_trueup": "0",
+      "replaces": null
     }
   ],
   "adjustment_totals": {
     "spark": {
       "dv_adj": "0",
-      "sv_adj": "1338239.62",
+      "sv_adj": "249141.52",
       "sky_adj": "-255869.48",
       "send_credit": "0"
     },
     "grove": {
       "dv_adj": "0",
-      "sv_adj": "8249.94",
+      "sv_adj": "8533.17",
       "sky_adj": "-110419.56",
       "send_credit": "0"
     },
@@ -210,13 +240,13 @@
   },
   "linear_settlement_effects": {
     "spark": {
-      "mint_delta": "1082370.14",
-      "transfer_delta": "1338239.62",
+      "mint_delta": "-6727.96",
+      "transfer_delta": "249141.52",
       "sky_net_delta": "-255869.48"
     },
     "grove": {
-      "mint_delta": "-102169.62",
-      "transfer_delta": "8249.94",
+      "mint_delta": "-101886.39",
+      "transfer_delta": "8533.17",
       "sky_net_delta": "-110419.56"
     },
     "osero": {
@@ -259,13 +289,13 @@
   "remaining_to_add_to_october": {
     "spark": {
       "dv_adj": "0",
-      "sv_adj": "1338239.62",
+      "sv_adj": "249141.52",
       "sky_adj": "-255869.48",
       "send_credit": "0"
     },
     "grove": {
       "dv_adj": "0",
-      "sv_adj": "8249.94",
+      "sv_adj": "8533.17",
       "sky_adj": "-31889.50",
       "send_credit": "0"
     },
@@ -285,13 +315,13 @@
   "proposed_combined_october_adjustments": {
     "spark": {
       "dv_adj": "0",
-      "sv_adj": "1338239.62",
+      "sv_adj": "249141.52",
       "sky_adj": "-255869.48",
       "send_credit": "0"
     },
     "grove": {
       "dv_adj": "0",
-      "sv_adj": "924107.14",
+      "sv_adj": "924390.37",
       "sky_adj": "1030726.24",
       "send_credit": "0"
     },
@@ -875,7 +905,7 @@
     "scripts/audit_grove_september_2026.py": "812c86c0db6706644c502980429b2a0c7aa1dc8e23394bd44c5fd289420ec80d",
     "scripts/audit_usds_bridge_transit_2026.py": "1bdabb718cca786bf832580fab496dc127bc251c155a1e7ef3d8607436fb9189",
     "scripts/replay_reconciliation_venues.py": "ce76ba6f3eecf70495355d66a851efa966b7d063efc542f768e87454f822948f",
-    "scripts/build_jan_sep_2026_reconciliation.py": "dbf39a7c7d3ca323eae33169ec4a7e04c1c57a9bb68d1c5d35adbd04c9ac9a82",
+    "scripts/build_jan_sep_2026_reconciliation.py": "5ae3409440eb3bd1eddce9a1affdf9e1d0d5617a3c42f3ee1c027387833d2c63",
     "settlements/grove/2026-03/grove_settlement_march_2026.xlsx": "a12c9ed10f97522742559a9f78b15174d60563dab61d80c2e039c87c4401eca9",
     "settlements/grove/2026-04/grove_settlement_april_2026.xlsx": "2147bb6d9e900261abe33643c70fe32c7c294cdeb1a5c034304aa704fa94f16f",
     "settlements/grove/2026-05/grove_settlement_may_2026.xlsx": "fc8a0167cf94ef1020f48790a256a0c0ff6a375bacac55ab6778eea789a1c6d4",
@@ -887,9 +917,90 @@
     "settlements/spark/2026-08/spark_settlement_august_2026.xlsx": "a74688825a8b858e6c0faa71ec000ce3b34e4d5ed6d8adff4ad718de9b94b34f",
     "settlements/spark/2026-09/spark_settlement_september_2026.xlsx": "c53081ebb32e6c0fcb0850dad5d80adcaa03eeb0e4e649377d3ab6288f29d02e",
     "tests/fixtures/usds_bridge/spark_2026_gateway_logs.json": "bf819fa3ced15c4533818ec3c00cf179438241abcf4646b10e720cfd48f390d0",
-    "reconciliation/2026-01_to_2026-09/pr-inventory.json": "71671495b8b2aa0ca195904d827882f4e30470e103b6c81e77a2e1494c44ef20"
+    "reconciliation/2026-01_to_2026-09/pr-inventory.json": "805f4feafaf030c175dd465bedb8cd37633fe5d6b4ea86160ba0ccaf880f5cac",
+    "reconciliation/2026-01_to_2026-09/atoken-inputs.json.gz": "74a78fe37e12c2786f29507334d379873e3f106eb6be79d81ee76f7ceaedbef7",
+    "reconciliation/2026-01_to_2026-09/atoken-replay.json": "71dcac81110e26b83a7b9326cfa867435edc925a0c924f7062249c0255e5de11"
   },
   "rounding": "Each booked component is rounded to cents; preserve existing approved components. Monthly detail remains unrounded. Final MSC applies its usual SV floor and whole-USDS rounding.",
-  "execution_status": "PROVISIONAL PREVIOUS SCOPE: expanded #220 reconciliation is in progress; these totals are not the updated settlement proposal.",
-  "pending_scope": "scope-status.json"
+  "execution_status": "Calculated proposal; no new settlement configuration, database revision or on-chain execution.",
+  "prior_payment_netting": [
+    {
+      "prime": "spark",
+      "item": "historical-reserve-factor",
+      "gross": "2392354.07",
+      "previously_settled": "2392354.07",
+      "net": "0.00"
+    },
+    {
+      "prime": "grove",
+      "item": "historical-buidl-fees-and-cof",
+      "gross": "165013.90",
+      "previously_settled": "165013.90",
+      "net": "0.00",
+      "note": "Fee and CoF offsets are also preserved in their component replays."
+    }
+  ],
+  "osero_lending_period_netting": [
+    {
+      "earning_month": "2026-07",
+      "income_delta": "35.80584467483786451800",
+      "corrected_supply_share": "-70.88155088772973548200",
+      "corrected_mint": "497",
+      "corrected_send": "12149",
+      "mint_delta": "0",
+      "transfer_delta": "106",
+      "additional_send_credit": "0"
+    },
+    {
+      "earning_month": "2026-08",
+      "income_delta": "234.83257870393035231200",
+      "corrected_supply_share": "-1213.01896974047964768800",
+      "corrected_mint": "7006",
+      "corrected_send": "31604",
+      "mint_delta": "0",
+      "transfer_delta": "1448",
+      "additional_send_credit": "0"
+    },
+    {
+      "earning_month": "2026-09",
+      "income_delta": "0E-20",
+      "corrected_supply_share": "-3959.60161832428000000000",
+      "corrected_mint": "76824",
+      "corrected_send": "31621",
+      "mint_delta": "0",
+      "transfer_delta": "3960",
+      "additional_send_credit": "0"
+    }
+  ],
+  "lending_income_deltas": {
+    "spark": {
+      "2026-01": "221360.79210150443117185300",
+      "2026-02": "-523330.59117804067282242500",
+      "2026-03": "-349876.69938364470119674700",
+      "2026-04": "326952.58859751420829075700",
+      "2026-05": "-269058.59989049228808899300",
+      "2026-06": "-137963.68241426727774986600",
+      "2026-07": "-228004.43860780336484378600",
+      "2026-08": "-129177.47203062449242809500",
+      "2026-09": "2400.00156410780227626800"
+    },
+    "grove": {
+      "2026-01": "742.91285033774474533600",
+      "2026-02": "662.2488952570981802300",
+      "2026-03": "-1121.9294406574370204770",
+      "2026-04": "0E-19",
+      "2026-05": "0E-20",
+      "2026-06": "0E-20",
+      "2026-07": "0E-20",
+      "2026-08": "0E-20",
+      "2026-09": "0E-20"
+    },
+    "osero": {
+      "2026-07": "35.80584467483786451800",
+      "2026-08": "234.83257870393035231200",
+      "2026-09": "0E-20"
+    }
+  },
+  "scope": "Current applicable fixes from PR #220; January-September 2026, net of prior settlements",
+  "lending_allocation_months": 139
 }
