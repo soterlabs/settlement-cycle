@@ -55,3 +55,67 @@ controlled-share eliminations; closing Sky-direct ownership; offchain loan
 principal/interest receivables; accrued expense opening balances; opening capital,
 retained earnings and own-token equity credits. Extend these source-backed rows
 before describing the statement as complete. Do not infer them from the gap.
+
+## Chain closing snapshots (policy v2)
+
+`balance_sheet_sources.py` captures only month-end and completed-day stocks.
+It never calls BA Labs or calibrates to benchmark balances. Chain state is the
+authority; the benchmark comparison only identified contracts worth checking.
+The collector saves finalized boundary headers, raw getter responses, closing
+LP ownership and a content hash in `reporting_balance_sheet_snapshots`.
+HTTP reads remain RPC-free. V1 immutable selections retain their original layout,
+inputs and hash; v2 selections additionally pin the `stocks` publication.
+
+| Gap | Closing source / treatment |
+|---|---|
+| Sky debt | Vat `ilks(ilk)`: normalized debt × rate / 10^45; no invented netting against Sky-owned pools |
+| RLUSD / USDG SparkLend | ALM receipt-token balances, with the configured token scale |
+| Savings-funded WETH | Full SparkLend WETH asset at closing onchain ETH/USD; savings claims are separate liabilities |
+| Sentora RLUSD | Owned ERC4626 shares converted to underlying RLUSD |
+| PAU sUSDC | PAU's ERC4626 claim, separate from idle wallet cash |
+| PSM3 | ALM `shares(address)` converted through `convertToAssetValue`; not PSM reserves and not direct ALM sUSDS |
+| Arbitrum / XLayer savings | Verified vault `asset()` and gross `totalAssets()`; historical absence requires an empty-code proof |
+| Savings idle assets | Add only underlying balances outside the existing measured-cash perimeter |
+| Pending subscriptions/redemptions | Reuse the reviewed async ownership adapters: issued/escrowed shares at current NAV plus fixed unsettled underlying. A zero wallet balance does not extinguish these claims |
+| AMMs | Actual owned NFTs / LP shares at the pinned closing state, including V4 fee-growth claims |
+| Sky-direct pools | Historically designated USDT principal leg belongs to Sky. Other legs and V4 fee claims belong to Spark. PYUSD is not SDE |
+| Treasury | Reuse the entity's authenticated closing token inventories; market-quote valuations remain estimates and retain their component source |
+| Anchorage | Offchain loan claim remains unavailable until principal repayments and opening principal are independently supported; an escrow wallet balance is not the loan |
+
+Approved stablecoins use the existing USD-par accounting convention. ETH uses
+the onchain Chainlink ETH/USD feed, with freshness and round checks. Bridged or nested sUSDS uses the local PSM3 rate provider where applicable. A missing
+RPC, unsupported getter or stale oracle produces an unavailable value, never zero.
+XLayer uses `XLAYER_RPC` when configured, otherwise OKX's documented public
+mainnet endpoint (`https://rpc.xlayer.tech`). Never store private RPC URLs in proof
+bundles or logs.
+
+Replay closing stocks without recalculating daily P&L or MSC:
+
+```sh
+python -m settle.revenue.balance_sheet_job --from 2026-01-01 --to 2026-11-09 --workers 3
+```
+
+Set `SPARK_BALANCE_SHEET_ENABLED=1` on the existing Spark reporting publisher to
+refresh closing evidence going forward. Run the reporting publisher only; this
+must never trigger an MSC replay. Recheck partial publications and their `errors`.
+Opening equity, contributed capital, controlled-share eliminations and payables
+remain explicit gaps. Do not force the balance sheet to balance or relabel its
+known subtotal as complete equity merely to match another dashboard.
+
+### Differences that must not be “fixed” to a benchmark
+
+Keep the existing, broader controlled-wallet cash perimeter. Do not omit Ops,
+Foundation or DevCo cash to match a narrower ALM-only inventory. Keep prepaid
+issuer rewards as liabilities when supported by the accrual/receipt ledger.
+Do not replace actual claim ownership with a dashboard's gross AMM figure.
+A residual labelled “surplus” elsewhere does not prove opening book equity.
+Remaining incomplete categories must stay visibly partial/TBD, with their real
+source references retained, rather than receiving a balancing amount.
+
+Maple's later queue implementation `0x9dafee2bfc8eeb46c4fa80c998bc0c7e4804c644`
+is accepted by the closing collector for S14/S15 only, alongside the configured
+historical implementation. Its deployment identity is independently confirmed
+by [Maple's address registry](https://github.com/maple-labs/address-registry/blob/dcfa876d95a2f2dd0158f0597f2882e324b5e876/MapleAddressRegistryETH.md);
+the documented owner-specific queued/manual-share getters and all existing
+asset/pool/controller checks still apply. The pointer and deployed implementation
+code are captured from chain. This does not expand the MSC allowlist.

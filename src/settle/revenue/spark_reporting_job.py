@@ -292,6 +292,14 @@ def main():
                     code_version=versions.code,
                     configuration_version=versions.configuration,
                 )
+                if os.environ.get("SPARK_BALANCE_SHEET_ENABLED") == "1":
+                    from .balance_sheet_job import refresh
+
+                    closing_revision, closing = refresh(conn, cutoff, versions.code)
+                    print(
+                        json.dumps({"cutoff": str(cutoff), "closing_revision": closing_revision,
+                                    "closing_errors": closing["errors"]}), flush=True
+                    )
                 parts = [
                     document["reserve_fees"],
                     *(

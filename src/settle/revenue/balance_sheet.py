@@ -12,7 +12,8 @@ from .cash_flow.model import amount, metric, total
 from .cash_flow.project import annual as cash_annual
 from .verification import digest
 
-POLICY = "spark-balance-sheet.closing-stocks.v1"
+LEGACY_POLICY = "spark-balance-sheet.closing-stocks.v1"
+POLICY = "spark-balance-sheet.closing-stocks.v2"
 GROUPS = [
     ("sparklend", "SparkLend", ["S1", "S2", "S3", "S4", "S5"]),
     ("aave", "Aave v3", ["S6", "S7", "S8", "S9", "S35", "S41", "S54"]),
@@ -53,7 +54,11 @@ def decode(value, prime, year):
     try:
         d = json.loads(base64.urlsafe_b64decode(value + "=" * (-len(value) % 4)))
         require(set(d) == {"policy_version", "prime", "year", "as_of", "months"})
-        require(d["policy_version"] == POLICY and d["prime"] == prime and d["year"] == year)
+        require(
+            d["policy_version"] in {POLICY, LEGACY_POLICY}
+            and d["prime"] == prime
+            and d["year"] == year
+        )
         require(
             date.fromisoformat(d["as_of"]).year == year
             and date.fromisoformat(d["as_of"]).isoformat() == d["as_of"]
@@ -63,10 +68,13 @@ def decode(value, prime, year):
         for i, item in enumerate(d["months"]):
             if item is None:
                 continue
-            require(set(item) == {"cutoff", "venues", "cash", "components"})
+            families = {"venues", "cash", "components"} | (
+                {"stocks"} if d["policy_version"] == POLICY else set()
+            )
+            require(set(item) == {"cutoff"} | families)
             require(date.fromisoformat(item["cutoff"]).strftime("%Y-%m") == f"{year}-{i + 1:02}")
             require(date.fromisoformat(item["cutoff"]).isoformat() == item["cutoff"])
-            require(any(item[k] for k in ("venues", "cash", "components")))
+            require(any(item[k] for k in families))
             require(
                 all(
                     v is None
@@ -106,6 +114,26 @@ def combine(terms):
 def annual(year, as_of, inputs, *, selection=None):
     if year != 2026 or as_of.year != year:
         raise ValueError("Balance sheet policy supports Spark 2026")
+    policy = selection["policy_version"] if selection else POLICY
+    v2 = policy == POLICY
+    groups = deepcopy(GROUPS)
+    savings = list(SAVINGS)
+    if v2:
+        groups[0][2].extend(["S70", "S71", "sparklend_weth"])
+        groups[2][2].extend(["S72"])
+        groups[9] = ("issuer_tokens", "Stablecoin holdings outside cash", [*groups[9][2], "S30"])
+        groups[-1][2].append("pau_susdc")
+        groups.append(
+            (
+                "psm",
+                "PSM3 holdings",
+                ["psm." + ch for ch in ["base", "arbitrum", "optimism", "unichain"]],
+            )
+        )
+        from .balance_sheet_sources import EXTRA_SAVINGS
+
+        savings.extend((key, label) for key, _, _, _, _, label in EXTRA_SAVINGS)
+    families = ["venues", "cash", "components"] + (["stocks"] if v2 else [])
     rows, layout, manifest, periods, chosen = {}, [], {}, [], []
 
     def add(key, label, parent=None, kind=None, components=None):
@@ -125,7 +153,7 @@ def annual(year, as_of, inputs, *, selection=None):
     add("assets", "Assets", kind="section")
     add("cash", "Cash and cash equivalents", "assets")
     add("allocations", "Allocation assets", "assets", "subtotal")
-    for group, label, members in GROUPS:
+    for group, label, members in groups:
         key = "allocations." + group
         add(key, label, "allocations", "subtotal")
         for venue in members:
@@ -133,6 +161,10 @@ def annual(year, as_of, inputs, *, selection=None):
         if group == "morpho":
             add("position.steakhouse", "3F x Steakhouse USDC", key)
     add("allocation_gaps", "Other allocation assets", "allocations")
+    if v2:
+        add("savings_idle", "Savings idle assets outside measured cash", "assets", "subtotal")
+        for key, _ in savings:
+            add("idle." + key, "Savings idle: " + key, "savings_idle")
     add("nonstable", "Non-stable treasury assets", "assets")
     add("msc_receivable", "MSC receivable from Sky", "assets")
     add("reward_receivables", "Accrued issuer rewards", "assets", "subtotal")
@@ -143,7 +175,7 @@ def annual(year, as_of, inputs, *, selection=None):
     add("liabilities", "Liabilities", kind="section")
     add("sky_debt", "Debt to Sky", "liabilities")
     add("savings", "Savings depositor liabilities", "liabilities", "subtotal")
-    for venue, label in SAVINGS:
+    for venue, label in savings:
         add("savings." + venue, label, "savings")
     add("savings.eliminations", "Controlled-holder share eliminations", "savings")
     add("msc_payable", "MSC balance due to Sky", "liabilities")
@@ -181,18 +213,22 @@ def annual(year, as_of, inputs, *, selection=None):
         sources = {
             k: [
                 r
-                for r in inputs[k]
+                for r in inputs.get(k, [])
                 if r["cutoff"][:7] == month
                 and expected
                 and r["cutoff"] <= str(expected)
                 and (last > as_of or r["cutoff"] == str(last))
             ]
-            for k in ["venues", "cash", "components"]
+            for k in families
         }
         if selection:
             selected = selection["months"][m - 1]
         else:
-            dates = [set(r["cutoff"] for r in source) for source in sources.values()]
+            dates = [
+                set(r["cutoff"] for r in source)
+                for kind, source in sources.items()
+                if kind != "stocks" or source
+            ]
             common = set.intersection(*dates)
             candidates = common or set.union(*dates)
             cutoff = max(candidates) if candidates else None
@@ -288,7 +324,7 @@ def annual(year, as_of, inputs, *, selection=None):
                 quality="estimate" if v.get("method") != "existing" else "supported",
             )
 
-        for _, _, members in GROUPS:
+        for _, _, members in groups:
             for venue in members:
                 cell = position(venue)
                 if amount(cell) and (
@@ -302,7 +338,7 @@ def annual(year, as_of, inputs, *, selection=None):
                     next(r for r in layout if r["id"] == "position." + venue)["label"] = venue_map[
                         venue
                     ]["label"].split(" (")[0]
-        for venue, _ in SAVINGS:
+        for venue, _ in savings:
             rows["savings." + venue][month] = position(venue)
         for venue, _ in REWARDS:
             c = position(venue)
@@ -317,7 +353,78 @@ def annual(year, as_of, inputs, *, selection=None):
                     if c["status"] == "available"
                     else c
                 )
+        if v2:
+            closing = selected_rows["stocks"]
+            document = (closing or {}).get("document", {})
+            closing_ref = "stocks:" + closing["revision_id"] if closing else None
+
+            def closing_cell(key, family, document=document, closing_ref=closing_ref):
+                evidence = document.get(family, {}).get(key)
+                if not evidence or evidence.get("status") != "available":
+                    return stock(
+                        reason=(evidence or {}).get("reason", "Closing chain evidence unavailable")
+                    )
+                return stock(
+                    evidence["value"], ref=closing_ref, quality=evidence.get("quality", "supported")
+                )
+
+            if closing:
+                for _, _, members in groups:
+                    for venue in members:
+                        family = (
+                            "extra_assets"
+                            if venue == "pau_susdc" or venue.startswith("psm.")
+                            else "positions"
+                        )
+                        rows["position." + venue][month] = closing_cell(venue, family)
+                        label = document.get(family, {}).get(venue, {}).get("label")
+                        if venue == "sparklend_weth":
+                            label = "SparkLend WETH"
+                        if venue == "pau_susdc":
+                            label = "PAU Savings USDC"
+                        if label:
+                            next(r for r in layout if r["id"] == "position." + venue)["label"] = (
+                                label
+                            )
+                for venue, _ in savings:
+                    rows["savings." + venue][month] = closing_cell(venue, "liabilities")
+                    key = "idle." + venue
+                    # Absence is zero only when the collector explicitly recorded
+                    # that this asset already belongs to measured cash.
+                    rows[key][month] = closing_cell(key, "extra_assets")
+                debt = document.get("sky_debt", {})
+                if debt.get("status") == "available":
+                    rows["sky_debt"][month] = stock(debt["value"], ref=closing_ref)
         comp = selected_rows["components"]
+        if v2 and comp:
+            treasury = comp.get("document", {}).get("treasury", {}).get("gains", {})
+            pieces = []
+            for key in ["morpho", "morpho_base", "avax", "reserve_nonstable"]:
+                evidence = treasury.get(key, {})
+                value = evidence.get("inventory_bridge", {}).get("closing_value")
+                pieces.append(
+                    (
+                        key,
+                        1,
+                        stock(value, ref="components:" + comp["revision_id"], quality="estimate")
+                        if evidence.get("status") == "available" and value is not None
+                        else stock(reason="Treasury closing inventory unavailable"),
+                    )
+                )
+            # ALM native/wrapped ETH is outside Ops reserve-token inventory;
+            # the supply receipt-token position is already an allocation asset.
+            closing = (selected_rows.get("stocks") or {}).get("document", {})
+            eth = closing.get("extra_assets", {}).get("alm_eth")
+            pieces.append(
+                (
+                    "alm_eth",
+                    1,
+                    stock(eth["value"], ref="stocks:" + selected_rows["stocks"]["revision_id"])
+                    if eth and eth.get("status") == "available"
+                    else stock(reason="ALM ETH closing stock unavailable"),
+                )
+            )
+            rows["nonstable"][month] = combine(pieces)
         native = (comp or {}).get("document", {}).get("steakhouse", {})
         if native.get("status") == "available" and native.get("closing_value") is not None:
             rows["position.steakhouse"][month] = stock(
@@ -371,7 +478,7 @@ def annual(year, as_of, inputs, *, selection=None):
     latest = next((p["key"] for p in reversed(periods) if p["state"] != "future"), None)
     result = dict(
         schema_version="balance-sheet.v1",
-        policy_version=POLICY,
+        policy_version=policy,
         prime="spark",
         year=year,
         as_of=str(as_of),
@@ -388,7 +495,7 @@ def annual(year, as_of, inputs, *, selection=None):
         total_label="Latest",
         source_manifest=manifest,
         selection=encode(
-            dict(policy_version=POLICY, prime="spark", year=year, as_of=str(as_of), months=chosen)
+            dict(policy_version=policy, prime="spark", year=year, as_of=str(as_of), months=chosen)
         ),
         methodology=dict(
             stock_basis="Closing positions, including principal and earned yield; not cumulative cash flows",
@@ -400,5 +507,11 @@ def annual(year, as_of, inputs, *, selection=None):
             completeness="Known subtotals only. Unmapped assets, Sky debt, opening equity and payables remain TBD; equity is never a balancing plug",
         ),
     )
+    if v2:
+        result["methodology"].update(
+            sky_direct="Owned LP liquidity split at closing: only historically designated USDT legs belong to Sky; prime assets include the remaining legs. Uncollected fees are separately identified in the evidence.",
+            closing_sources="Finalized chain snapshots with raw getter evidence and onchain ETH/USD oracle; no BA data is consumed. Stablecoins use the approved USD-par convention.",
+            completeness="Known subtotals only. Offchain principal without claim evidence, opening equity, eliminations and payables remain TBD. No balancing plug.",
+        )
     result["report_hash"] = digest(result)
     return result
