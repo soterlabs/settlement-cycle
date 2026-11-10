@@ -61,6 +61,30 @@ def test_nonvenue_section_omitted_when_no_susds_activity():
     assert "Non-venue sUSDS" not in out
 
 
+def test_issuer_cash_rows_are_period_filtered_without_invented_variances():
+    from datetime import UTC, datetime
+    prov = _prov()
+    prov['venue_breakdown'][0]['redemption_settlements'] = [
+        dict(kind='cash', timestamp=int(datetime(2026, 5, 16, tzinfo=UTC).timestamp()),
+             cash_paid='100', identity='0xcurrent:1'),
+        dict(kind='cash', timestamp=int(datetime(2026, 4, 30, tzinfo=UTC).timestamp()),
+             cash_paid='200', identity='0xprior:2'),
+    ]
+    out = render_summary(prov)
+    assert '| S1 | 2026-05-16 | $100.00 | 0xcurrent:1 |' in out
+    assert '0xprior:2' not in out
+    assert 'Revenue variance' not in out
+
+
+def test_legacy_cash_variance_report_remains_supported():
+    prov = _prov()
+    prov['venue_breakdown'][0]['redemption_settlements'] = [
+        dict(cash={'date': '2026-05-16'}, carrying_value_usd='100',
+             cash_usd='98', revenue_adjustment_usd='-2')]
+    out = render_summary(prov)
+    assert '| S1 | 2026-05-16 | $100.00 | $98.00 | -$2.00 |' in out
+
+
 def test_nonvenue_section_appreciation_only():
     """Spread reimbursement can be 0 while appreciation is non-zero — the
     section still renders with just the appreciation row."""

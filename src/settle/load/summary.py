@@ -42,6 +42,7 @@ Structure:
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -343,10 +344,25 @@ def render_summary(prov: dict) -> str:
             )
         lines.append("")
 
-    realized = [(v, r) for v in all_venues for r in v.get("redemption_settlements", [])]
+    realized = []
+    issuer_receipts = []
+    for v in all_venues:
+        for r in v.get("redemption_settlements", []):
+            if "cash" in r:
+                realized.append((v, r))
+            elif r.get("kind") == "cash":
+                cash_date = datetime.fromtimestamp(r["timestamp"], UTC).date().isoformat()
+                # Issuer ownership replay retains its complete history. Show
+                # only this period; its raw receipts have no fee-variance fields.
+                if period["start"] <= cash_date <= period["end"]:
+                    issuer_receipts.append((v, r, cash_date))
+            else:
+                raise ValueError("Unsupported redemption settlement report schema")
     outstanding = [(v, r) for v in all_venues for r in v.get("outstanding_redemptions", [])]
-    if realized or outstanding:
-        lines.extend(["## Redemption cash settlements", "",
+    if realized or issuer_receipts or outstanding:
+        lines.extend(["## Redemption cash settlements", ""])
+        if realized:
+            lines.extend([
                       "Cash is capital. Only cash minus the claim's carrying value enters venue revenue; "
                       "amounts below are already included above, not additional adjustments.", "",
                       "| Venue | Cash date | Carrying value | Cash received | Revenue variance |",
@@ -355,6 +371,13 @@ def render_summary(prov: dict) -> str:
             lines.append(f"| {v['venue_id']} | {r['cash']['date']} | "
                          f"{_usd(r['carrying_value_usd'])} | {_usd(r['cash_usd'])} | "
                          f"{_usd(r['revenue_adjustment_usd'])} |")
+        if issuer_receipts:
+            lines.extend(["", "Issuer receipts below are already reflected in venue calculations.", "",
+                          "| Venue | Cash date | Cash received | Transaction / log |",
+                          "|---|---|---:|---|"])
+            for v, r, cash_date in issuer_receipts:
+                lines.append(f"| {v['venue_id']} | {cash_date} | "
+                             f"{_usd(r['cash_paid'])} | {r['identity']} |")
         if outstanding:
             lines.extend(["", f"Outstanding redemption claims: {len(outstanding)}. "
                           "No exact realization cost is booked until cash arrives."])

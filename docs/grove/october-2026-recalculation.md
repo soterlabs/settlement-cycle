@@ -119,3 +119,9 @@ A second full Grove-only run into an independent directory reproduced every
 result, venue row, daily Sky cost and summary. Workbook values match across all
 seven sheets; generated timestamps differ. The saved-output guard also rejects
 overwriting the existing close without an explicit override.
+
+The all-prime extension rebases PR #275 onto main `bda6858`. A separate full
+Grove run on that code reproduces every financial result in the existing Grove
+report; its committed summary/workbook are preserved. The other-prime reports
+and reviewed October configuration additions are documented in
+`docs/october-2026-msc-close.md`.

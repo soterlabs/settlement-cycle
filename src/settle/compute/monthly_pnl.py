@@ -3508,12 +3508,20 @@ def compute_monthly_pnl(
                         )
                         return (_Dec(raw) / _sc) * _par
 
-                    inflow_ts = _shares_to_usd_inflow_timeseries(
+                    # Ordinary share transfers also move capital. October's
+                    # 100M-share ALM-to-subproxy transfer is neither a burn
+                    # nor a loss; reconcile every holder-net share movement.
+                    from ..normalize.holder_share_flows import holder_share_inflows
+                    from ..normalize.positions import get_position_balance
+                    inflow_ts = holder_share_inflows(
                         prime, venue, period,
                         balance_source=_susds_balance_src,
                         block_resolver=resolver,
                         price_at_block=_susds_price,
-                        period_only=True,
+                        opening_shares=get_position_balance(
+                            prime, venue, som_block, source=sources.position_balance),
+                        closing_shares=get_position_balance(
+                            prime, venue, eom_block, source=sources.position_balance),
                     )
                 elif venue.chain in prime.psm:
                     # L2: plain ERC-20 sUSDS — price via PSM3 pps.

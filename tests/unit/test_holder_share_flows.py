@@ -65,6 +65,22 @@ def test_rebasing_tokens_cannot_use_holder_share_accounting():
         run([], '10', '10', venue=venue)
 
 
+def test_ethereum_susds_subproxy_transfer_is_capital_on_the_actual_day():
+    prime = load_prime_by_id('spark')
+    venue = next(v for v in prime.venues if v.id == 'S32')
+    frame, reads = run([(date(2026, 9, 2), D('20000000')),
+                        (date(2026, 9, 4), D('-100000000'))],
+                       '700000000', '620000000', venue=venue)
+    assert reads == [2, 4]
+    assert frame.daily_inflow.tolist() == [
+        D('20000000') * D('1.108702777084081964'),
+        D('-100000000') * D('1.108702777084081964'),
+    ]
+    with pytest.raises(ValueError, match='reconciliation failed'):
+        run([(date(2026, 9, 2), D('20000000'))],
+            '700000000', '620000000', venue=venue)
+
+
 def test_spread_reimbursement_stops_on_actual_exit_day():
     from settle.compute.monthly_pnl import _susds_cat_b_spread_reimb
     frame, _ = run([(date(2026, 9, 6), D('-80894745'))],

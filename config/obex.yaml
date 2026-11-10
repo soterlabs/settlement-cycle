@@ -23,7 +23,7 @@ venues:
       managers:
         - address: '0x1bc47a0dd0fdab96e9ef982fdf1f34dc6207cfe3'
           kind: queue
-          implementations: ['0xf95e5722226a1018d058cd757b75f1d10289e967']
+          implementations: ['0xf95e5722226a1018d058cd757b75f1d10289e967', '0x9dafee2bfc8eeb46c4fa80c998bc0c7e4804c644']
     settlement:
       enabled: true
       method: existing

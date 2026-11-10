@@ -1,0 +1,37 @@
+{
+  "period": "2026-10",
+  "venue": "S32",
+  "transaction": "0x8075abed11525daa47909008d54964e3656bf771bfc0d48f329d1a886abeb8b5",
+  "transfer_shares": "100000000",
+  "pricing_day": "2026-10-29",
+  "pricing_block": 26301844,
+  "archive_request": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "eth_call",
+    "params": [
+      {
+        "to": "0xa3931d71877c0e7a3148cb7eb4463524fec27fbd",
+        "data": "0x07a2d13a0000000000000000000000000000000000000000000000000de0b6b3a7640000",
+        "gas": "0x989680"
+      },
+      "0x1915594"
+    ]
+  },
+  "archive_response": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": "0x0000000000000000000000000000000000000000000000000f77a67302ccc012"
+  },
+  "usd_per_share": "1.114542445695909906",
+  "capital_outflow_usd": "111454244.569590990600000000",
+  "corrected_venue_revenue": "1983181.109497899550214729428",
+  "controls": [
+    "All other venue revenues and boundary values unchanged",
+    "Sky charge/SDE/31 daily borrowing rows unchanged",
+    "Agent rate and DR unchanged",
+    "Reporting-only incentive calculations unchanged",
+    "Prime revenue change equals the exact ordinary share-transfer value",
+    "Holder-share extraction reconciles all transfers to both archive balances; no balancing plug"
+  ]
+}

@@ -35,6 +35,7 @@ class IncentiveInputs:
         self.prime, self.sources, self.period = prime, sources, period
         self.resolver = sources.block_resolver or get_block_resolver()
         self._nfts = {}
+        self._nft_histories = {}
 
     def block(self, chain: Chain, day: date) -> int:
         if self.period is not None and day == self.period.end:
@@ -140,13 +141,25 @@ class IncentiveInputs:
         key = (pm, holder, block)
         if key not in self._nfts:
             topic = _to_topic_hex(holder.value)
-            logs = hypersync_store.fetch_logs(source.chain.value, [
-                {'address': [pm.hex], 'topics': [[TRANSFER_TOPIC0], [topic]]},
-                {'address': [pm.hex], 'topics': [[TRANSFER_TOPIC0], [], [topic]]},
-            ], 0, block)
+            upper = self.period.pin_blocks[source.chain] if self.period is not None else block
+            if block > upper:
+                raise ValueError('Incentive NFT input exceeds pinned cutoff')
+            history_key = (source.chain, pm, holder, upper)
+            if history_key not in self._nft_histories:
+                # One complete, pinned history can serve every earlier day.
+                # Ownership still replays only events visible at that day's block.
+                logs = hypersync_store.fetch_logs(source.chain.value, [
+                    {'address': [pm.hex], 'topics': [[TRANSFER_TOPIC0], [topic]]},
+                    {'address': [pm.hex], 'topics': [[TRANSFER_TOPIC0], [], [topic]]},
+                ], 0, upper)
+                self._nft_histories[history_key] = sorted(
+                    {(r.block_number, r.log_index): r for r in logs}.values(),
+                    key=lambda r: (r.block_number, r.log_index),
+                )
             owned = set()
-            for row in sorted({(r.block_number, r.log_index): r for r in logs}.values(),
-                              key=lambda r: (r.block_number, r.log_index)):
+            for row in self._nft_histories[history_key]:
+                if row.block_number > block:
+                    break
                 if row.topic3 is None or row.topic2 is None:
                     raise ValueError('Malformed NFT Transfer')
                 tid = int(row.topic3, 16)
