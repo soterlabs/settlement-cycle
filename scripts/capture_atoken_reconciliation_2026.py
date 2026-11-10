@@ -14,7 +14,7 @@ import logging
 import os
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict
 from datetime import date
 from pathlib import Path
@@ -317,11 +317,12 @@ def capture(args):
                 for b in [r["block_number"] - 1, r["block_number"]]
             }
             points.update(int(b) for b in v["states"])
+            selectors = [
+                "0x" + keccak256(signature.encode())[:4].hex() + v["holder"][2:].zfill(64)
+                for signature in ["balanceOf(address)", "scaledBalanceOf(address)"]
+            ]
             for b in sorted(points):
-                for signature in ["balanceOf(address)", "scaledBalanceOf(address)"]:
-                    selector = (
-                        "0x" + keccak256(signature.encode())[:4].hex() + v["holder"][2:].zfill(64)
-                    )
+                for selector in selectors:
                     params = [dict(to=v["token"], data=selector, gas="0x989680"), hex(b)]
                     ident = json.dumps(
                         [v["chain"], "eth_call", params], sort_keys=True, separators=(",", ":")
@@ -333,7 +334,10 @@ def capture(args):
         groups = []
         for chain in sorted({j[0] for j in jobs}):
             chain_jobs = [j for j in jobs if j[0] == chain]
-            groups.extend(chain_jobs[i : i + 24] for i in range(0, len(chain_jobs), 24))
+            groups.extend(
+                chain_jobs[i : i + args.batch_size]
+                for i in range(0, len(chain_jobs), args.batch_size)
+            )
         print(
             "Exact archive state calls to capture",
             len(jobs),
@@ -343,6 +347,15 @@ def capture(args):
             flush=True,
         )
         completed = 0
+        next_request = {}
+
+        def throttle(chain, count):
+            with lock:
+                now = time.monotonic()
+                ready = max(now, next_request.get(chain, now))
+                next_request[chain] = ready + count / args.calls_per_second
+            if ready > now:
+                time.sleep(ready - now)
 
         def batch(group):
             nonlocal completed
@@ -352,9 +365,13 @@ def capture(args):
                 for i, j in enumerate(group)
             ]
             response = None
-            for attempt in range(5):
+            for attempt in range(10):
                 try:
+                    throttle(chain, len(group))
                     r = requests.post(rpc.rpc_url(chain), json=body, timeout=60)
+                    if r.status_code in {400, 413}:
+                        break
+
                     r.raise_for_status()
                     value = r.json()
                     if isinstance(value, list):
@@ -363,10 +380,20 @@ def capture(args):
                             raise ValueError("Invalid batched RPC identities")
                         response = indexed
                     break
-                except (requests.RequestException, ValueError):
-                    if attempt == 4:
+                except (requests.RequestException, ValueError) as exc:
+                    status = getattr(getattr(exc, "response", None), "status_code", None)
+                    print(
+                        "Archive transport retry",
+                        chain.value,
+                        type(exc).__name__,
+                        status,
+                        "attempt",
+                        attempt + 1,
+                        flush=True,
+                    )
+                    if attempt == 9:
                         raise
-                    time.sleep(min(2**attempt, 8))
+                    time.sleep(min(2**attempt, 30))
             for i, job in enumerate(group):
                 entry = response[i] if response else {}
                 if "result" in entry:
@@ -381,12 +408,27 @@ def capture(args):
                     post(rpc.rpc_url(chain), "eth_call", job[2])
             with lock:
                 completed += 1
-                if completed % 40 == 0:
+                if completed % 20 == 0:
                     dump(path, document)
                     print("State batches", completed, "/", len(groups), flush=True)
 
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            list(executor.map(batch, groups))
+        executor = ThreadPoolExecutor(max_workers=args.workers)
+        futures = [executor.submit(batch, g) for g in groups]
+        try:
+            for future in as_completed(futures):
+                future.result()
+        except Exception as exc:
+            for future in futures:
+                future.cancel()
+            executor.shutdown(wait=True, cancel_futures=True)
+            with lock:
+                document["errors"].append(
+                    dict(stage="archive_state_capture", type=type(exc).__name__)
+                )
+                dump(path, document)
+            raise
+        else:
+            executor.shutdown(wait=True)
         document["status"] = "event_states_complete"
         dump(path, document)
     print("Capture complete", len(document["venues"]), "venues", flush=True)
@@ -398,7 +440,12 @@ def main():
     p.add_argument("--baseline-root", type=Path, required=True)
     p.add_argument("--retained-root", type=Path, required=True)
     p.add_argument("--env-file", type=Path)
+    p.add_argument("--workers", type=int, default=2)
+    p.add_argument("--batch-size", type=int, default=12)
+    p.add_argument("--calls-per-second", type=float, default=60)
     args = p.parse_args()
+    if min(args.workers, args.batch_size, args.calls_per_second) <= 0:
+        p.error("Transport limits must be positive")
     try:
         capture(args)
     except Exception as exc:
