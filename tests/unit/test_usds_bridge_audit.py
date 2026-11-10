@@ -22,7 +22,7 @@ def test_audit_does_not_guess_unreproducible_charge_or_double_deduct():
         cost_delta(row, D(50), D(100))
 
 
-def test_committed_2026_audit_reproduces_frozen_charges():
+def test_superseded_additive_estimate_remains_reproducible_but_is_not_a_credit():
     import hashlib
     import json
     from functools import cache
@@ -40,8 +40,9 @@ def test_committed_2026_audit_reproduces_frozen_charges():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     for day in spark['daily']:
         month = day['date'][:7]
-        row = (books('spark', month) or {}).get(day['date'])
-        if row is None and day['date'] in october:
+        # Use the retained October baseline even when a new October close exists.
+        row = (books('spark', month) or {}).get(day['date']) if month != '2026-10' else None
+        if day['date'] in october:
             r = october[day['date']]
             row = {'utilized': r['utilized'], 'daily Sky charge': r['daily_sky_rev'],
                    'base APR': r['base_apr'], 'sub APR': r.get('sub_apr'),
@@ -49,6 +50,9 @@ def test_committed_2026_audit_reproduces_frozen_charges():
         if day['measured_excess_charge'] is None:
             assert row is None  # November is unmeasured, not zero.
             continue
+        # Deliberately reproduce ONLY the superseded scalar arithmetic. Actual
+        # workbook callers are now rejected without verified wallet evidence.
+        row = {k: v for k, v in row.items() if k not in ('− ALM idle', 'alm_usds')}
         measured = cost_delta(row, D(day['in_transit_usds']), D(1000000000))
         assert abs(measured - D(day['measured_excess_charge'])) < D('1e-20')
         totals['historical' if month <= '2026-09' else 'october'] += measured

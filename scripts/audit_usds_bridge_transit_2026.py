@@ -187,15 +187,69 @@ def historical_rows(prime, month):
         book.close()
 
 
-def cost_delta(row, amount, cap):
-    """Fit frozen daily rate convention; never restate it using today's rate."""
-    if D(str(row.get('bridge_usds', '0'))) != 0:
-        raise ValueError('Baseline already contains a bridge deduction; compare incrementally')
+def verified_wallet_usds(document, prime, day):
+    """Sum exact pinned wallets; coverage/ownership/date failures are never zero."""
+    from settle.domain.sky_tokens import USDS_BY_CHAIN
+
+    if document.get('status') != 'complete' or document.get('prime') != prime.id:
+        raise ValueError('Incomplete or wrong-prime wallet evidence')
+    target = int(datetime.combine(date.fromisoformat(day), time.max, UTC).timestamp())
+    expected = {c for c in prime.alm if c in USDS_BY_CHAIN and c in prime.chains_at(date.fromisoformat(day))}
+    states = document.get('days', {}).get(day, {})
+    if set(states) != {c.value for c in expected}:
+        raise ValueError('Wallet evidence missing an active chain/day')
+    chain_ids = {Chain.ETHEREUM: 1, Chain.BASE: 8453, Chain.ARBITRUM: 42161,
+                 Chain.OPTIMISM: 10, Chain.UNICHAIN: 130}
+    total = D(0)
+    for chain in expected:
+        meta = document.get('chains', {}).get(chain.value, {})
+        token = USDS_BY_CHAIN[chain]
+        if (meta.get('holder') != prime.alm[chain].hex or meta.get('token') != token.address.hex
+                or meta.get('decimals') != token.decimals or meta.get('chain_id') != chain_ids[chain]):
+            raise ValueError('Wrong wallet evidence owner/token/chain')
+        state = states[chain.value]
+        block, headers = state['block'], state['headers']
+        if type(block) is not int or block <= 0 or len(headers) != 2:
+            raise ValueError('Invalid wallet boundary')
+        if (int(headers[0]['number'], 16) != block or int(headers[1]['number'], 16) != block + 1
+                or not int(headers[0]['timestamp'], 16) <= target < int(headers[1]['timestamp'], 16)
+                or headers[1]['parentHash'] != headers[0]['hash']):
+            raise ValueError('Wallet pin is not the certified daily close')
+        raw = state['raw_balance']
+        if not isinstance(raw, str) or not raw.isdecimal():
+            raise ValueError('Invalid wallet raw balance')
+        total += D(raw) / D(10**token.decimals)
+    return total
+
+
+def cost_delta(row, amount, cap, *, wallet_usds=None):
+    """Signed credit at frozen rates, replacing the WHOLE idle-plus-bridge leg.
+
+    ``amount`` is eligible transit, not necessarily a new deduction. Frozen
+    ALM idle may already contain the same claim or remain stale after release.
+    Synthetic rate-only callers without an idle leg retain the marginal helper.
+    Financial/workbook callers must provide verified actual wallet balances.
+    """
+    idle_key = next((k for k in ('− ALM idle', 'alm_usds') if k in row), None)
+    old_bridge = D(str(row.get('bridge_usds', '0')))
+    if idle_key is not None:
+        if wallet_usds is None:
+            raise ValueError('Frozen idle requires verified wallet balances, not an additive bridge refund')
+        wallet_usds, amount = D(str(wallet_usds)), D(str(amount))
+        old_idle = D(str(row[idle_key]))
+        if any(not x.is_finite() or x < 0 for x in (wallet_usds, amount, old_idle, old_bridge)):
+            raise ValueError('Invalid idle/bridge balance')
+        amount = wallet_usds + amount - old_idle - old_bridge
+    elif wallet_usds is not None or old_bridge != 0:
+        raise ValueError('Baseline already contains a bridge deduction or lacks its idle leg')
     utilized, actual = D(str(row['utilized'])), D(str(row['daily Sky charge']))
     base = D(str(row.get('base APR', row.get('base APY'))))
     sub_raw = row.get('sub APR', row.get('sub APY'))
     sub = D(str(sub_raw)) if sub_raw is not None else base
     cap = cap if sub_raw is not None else D(0)
+    if (any(not value.is_finite() for value in (utilized, actual, base, sub, cap, amount))
+            or actual < 0 or base <= -1 or sub <= -1 or cap < 0):
+        raise ValueError('Invalid frozen financial inputs')
     with localcontext() as ctx:
         ctx.prec = 60
         def factors(rate):
@@ -223,7 +277,7 @@ def bridge_scope(prime, period):
                                          and c != Chain.ETHEREUM and c.value not in supported)}
 
 
-def audit(cutoff, cache):
+def audit(cutoff, cache, *, wallet_inputs=None):
     transport = PublicLogs(cache)
     with ThreadPoolExecutor(max_workers=3) as executor:
         pins = dict(executor.map(lambda c: (Chain(c), transport.pin(c, cutoff)), RPC))
@@ -260,27 +314,39 @@ def audit(cutoff, cache):
                 original = {'utilized': r['utilized'], 'daily Sky charge': r['daily_sky_rev'],
                             'base APR': r['base_apr'], 'sub APR': r.get('sub_apr'),
                             'bridge_usds': r.get('bridge_usds', '0')}
-            delta = cost_delta(original, amount, prime.subsidy.cap_usd) if original else None
+            if original is not None and 'alm_usds' not in original and str(day) in retained:
+                original['alm_usds'] = retained[str(day)]['alm_usds']
+            wallet = (verified_wallet_usds(wallet_inputs, prime, str(day))
+                      if original is not None and wallet_inputs is not None
+                      and wallet_inputs.get('prime') == name else None)
+            delta = (cost_delta(original, amount, prime.subsidy.cap_usd, wallet_usds=wallet)
+                     if original is not None and wallet is not None else None)
             if delta is not None:
                 measured += delta
             charges.append({'date': str(day), 'in_transit_usds': str(amount),
+                            'verified_wallet_usds': str(wallet) if wallet is not None else None,
                             'original_charge': str(original['daily Sky charge']) if original else None,
                             'measured_excess_charge': str(delta) if delta is not None else None,
                             'status': ('frozen_charge_reproduced' if delta is not None else
+                                       'wallet_evidence_missing' if original and wallet is None else
                                        'rate_convention_unresolved' if original else 'no_saved_daily_charge')})
         baselines = {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
                      for month in books for path in (ROOT / 'settlements' / name / month).glob('*.xlsx')}
+        unknown = sum(r['measured_excess_charge'] is None for r in charges)
         by_prime[name] = {**bridge_scope(prime, period), 'baseline_workbook_sha256': baselines,
                           'retained_source': ({key: retained_source[key] for key in ['revision_id','result_hash','code_version','configuration_version']}
                                               if retained else None),
                           'transfers': len(selected), 'transit_closing_days': len(charges),
-                          'measured_excess_charge': str(measured), 'daily': charges}
+                          'measurement_status': 'incomplete' if unknown else 'complete',
+                          'unmeasured_closing_days': unknown,
+                          'measured_signed_credit': None if unknown else str(measured),
+                          'measured_signed_subtotal': str(measured), 'daily': charges}
         for t in selected:
             all_transfers.append({'prime': name, **t})
         print(name, len(selected), 'transfers;', len(charges), 'closing days; measured', measured, flush=True)
     return {'scope': f'Canonical native USDS bridges, configured prime ALMs, 2026-01-01 through {cutoff}',
             'settlement_execution_verified': False,
-            'method': 'Authenticated gateway payloads; frozen workbook charges at their original rate convention. No MSC adjustment booked.',
+            'method': 'Replace the complete frozen idle-plus-bridge deduction with verified archive wallet balances plus authenticated bridge claims, at original daily rates. Positive credit / negative debit. No MSC adjustment booked.',
             'code_sha256': {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in
                            ['src/settle/normalize/usds_bridge_transit.py', 'scripts/audit_usds_bridge_transit_2026.py']},
             'prime_config_sha256': {name: hashlib.sha256((ROOT / 'config' / (name + '.yaml')).read_bytes()).hexdigest()
@@ -294,6 +360,8 @@ def main():
     parser.add_argument('--through', type=date.fromisoformat, default=date(2026, 11, 8))
     parser.add_argument('--cache', type=Path, default=Path('/tmp/usds-bridge-2026-cache'))
     parser.add_argument('--output', type=Path)
+    parser.add_argument('--wallet-inputs', type=Path,
+                        help='Verified daily wallet evidence; missing evidence never implies a credit')
     parser.add_argument('--env-file', type=Path, help='Read only ENVIO_API_TOKEN from this local file')
     args = parser.parse_args()
     if args.env_file:
@@ -302,7 +370,8 @@ def main():
         if not value:
             raise ValueError('The supplied file has no indexer credential')
         os.environ['ENVIO_API_TOKEN'] = value
-    result = audit(args.through, args.cache)
+    result = audit(args.through, args.cache,
+                   wallet_inputs=json.loads(args.wallet_inputs.read_text()) if args.wallet_inputs else None)
     text = json.dumps(result, indent=2) + '\n'
     if args.output:
         args.output.write_text(text)

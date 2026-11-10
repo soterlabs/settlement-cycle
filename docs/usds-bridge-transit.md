@@ -70,38 +70,44 @@ through their actual release, even when the challenge period has elapsed.
 | unichain → Ethereum | 99,990,828.81 | Jul 06 18:05:59 | Jul 13 20:25:11 | [Source](https://uniscan.xyz/tx/0x33f66feba68e407fd92e5b4c46da5a53389096a5a6b9c40b8909f1a57986edda) / [release](https://etherscan.io/tx/0xce77f64f1620b2c58bec71b05f5805b6ac3c2d4674ca808b0ec12fdda4a29907) |
 | optimism → Ethereum | 100,304,256.59 | Jul 06 18:06:05 | Jul 13 20:23:59 | [Source](https://optimistic.etherscan.io/tx/0x216a9de9b07a0c954dd797b6abf95c4ed0af6b1ba0f5156d0c40533fb656a16e) / [release](https://etherscan.io/tx/0x32c5a7912f97abe46a7c384f938c764a3719a9d20d90d063f765e4f2df05fe4a) |
 | arbitrum → Ethereum | 99,326,272.78 | Oct 12 14:15:11 | Oct 19 18:39:59 | [Source](https://arbiscan.io/tx/0x19f7159dc1ddd429ea6c143dfe7ef7665431696d460f153e4f9c9a5ffdb5aeba) / [release](https://etherscan.io/tx/0x2b7241789acd29f18928f2f11faba2784ea5544e2683b5e5cec22d0599940c1a) |
-The former wallet-only deduction dropped these claims during transit. Frozen
-monthly Debt tabs and retained October daily revenue reproduce a positive
-borrowing charge on the affected dates. Removing only the omitted USDS claim,
-while preserving each original daily rate convention and subsidy cap, gives:
+## Corrected historical comparison
 
-| Month | Excess calculated borrowing costs (USDS) |
+The original additive audit was superseded after review found that July's
+frozen ALM-idle deduction already included the large bridge claims. A zero
+separate bridge column did not prove Spark had paid interest on those funds.
+The signed comparison now replaces the complete idle-plus-bridge leg with
+verified archive wallets plus authenticated pending claims.
+
+| Bridge-active historical dates | Credit to Spark (+) / additional cost (-), USDS |
 | --- | ---: |
-| January–May | 0.00 |
-| June | 28.42 |
-| July | 255,655.55 |
-| August | 93.37 |
-| September | 92.14 |
-| **January–September total** | **255,869.48** |
-| **October** | **75,063.88** |
+| June 22-30 | +85,820.69 |
+| July | -643,563.16 |
+| August | +103.42 |
+| September | +92.14 |
+| **Historical component total** | **-557,546.90** |
 
-The January–September total is a historical reconciliation candidate. October
-belongs to the October MSC calculation. November 1–8 still has pending claims;
-no saved daily charge was available in this audit, so its impact is **unmeasured**.
-Totals use unrounded daily values before rounding to cents.
+The old 255,869.48 credit is invalid. Relative to #277's old proposal, this
+increases the Spark Sky/debt adjustment by **813,416.38**. The replacement is
++557,546.90, not an additional amount to stack on the old -255,869.48.
+July's stale wallet deduction after release creates a debit; June also has
+wallet idle omitted from its frozen deduction. Dates before the first eligible
+claim (June 22) are outside this component, rather than asserted correct.
 
-These are calculated excess charges, **not verified settlement payments or
-approved net credits**. This PR books no adjustment, publishes no API revision,
-and changes no previously published settlement. Before booking, compare prior
-reconciliation credits and actual settlement execution to prevent another credit
-for amounts already corrected. This audit isolates bridge treatment; it does not
-restate historical rates or other policy changes.
+October's separate comparison against its original retained daily inputs stays
+**75,063.88**. Do not add it again to an October close already using the bridge
+policy. November is unmeasured without saved daily charges.
+
+See the [signed baseline replay](../reconciliation/usds-bridge-2026/baseline-correction/README.md)
+for exact daily evidence, prior-netting limits and the combined #277 preview.
+No frozen report, payment configuration, API revision or executed settlement
+is changed. The original `audit.json` remains historical evidence of the
+superseded additive estimate, not a valid refund proposal.
 
 ## Evidence and reproduction
 
 - `reconciliation/usds-bridge-2026/audit.json`: exact amounts, timestamps, source
   and destination hashes, chain pins, gateway coverage witnesses, source/config
-  hashes, original daily charges and measured differences.
+  hashes and original daily charges. Its additive measured differences are superseded by the signed baseline replay.
 - `reconciliation/usds-bridge-2026/spark-october-retained-daily.json`: October
   daily financial inputs with retained database revision/result identities.
   Only read-only access was used; the database was not updated.
@@ -119,12 +125,16 @@ Repeat the live read-only scan with an optional indexer credential:
 ```sh
 python scripts/audit_usds_bridge_transit_2026.py \
   --through 2026-11-08 --cache /tmp/usds-bridge-2026-cache \
-  --env-file /path/to/local.env --output /tmp/usds-bridge-2026-audit.json
+  --env-file /path/to/local.env \
+  --wallet-inputs reconciliation/usds-bridge-2026/baseline-correction/wallet-inputs.json \
+  --output /tmp/usds-bridge-2026-audit.json
 ```
 
 `--env-file` reads only `ENVIO_API_TOKEN`. To include October, put the retained
 October input file above in the cache as `spark-october-retained-daily.json`.
 Without it the script explicitly marks missing October charges as unknown.
+Missing wallet evidence is also unmeasured; the script cannot infer an
+additional deduction from a transit balance alone.
 The raw response cache is keyed by chain, gateway and pin. Archive coverage and
 pagination failures are errors. Synthetic tests and this read-only comparison
 are not a completed monthly all-token ALM transfer review; the normal review
