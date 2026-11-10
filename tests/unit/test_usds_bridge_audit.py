@@ -51,7 +51,7 @@ def test_superseded_additive_estimate_remains_reproducible_but_is_not_a_credit()
             continue
         # Deliberately reproduce ONLY the superseded scalar arithmetic. Actual
         # workbook callers are now rejected without verified wallet evidence.
-        row = {k: v for k, v in row.items() if k not in ('− ALM idle', 'alm_usds')}
+        row = {k: v for k, v in row.items() if k not in ('\u2212 ALM idle', 'alm_usds')}
         measured = _frozen_charge_delta(row, D(day['in_transit_usds']), D(1000000000))
         assert abs(measured - D(day['measured_excess_charge'])) < D('1e-20')
         totals['historical' if month <= '2026-09' else 'october'] += measured

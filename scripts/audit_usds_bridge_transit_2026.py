@@ -237,7 +237,7 @@ def cost_delta(row, amount, cap, *, wallet_usds=None):
     Every caller must provide the frozen idle leg and actual wallet balances.
     The private rate-fitting helper only reproduces arithmetic, not eligibility.
     """
-    idle_key = next((k for k in ('− ALM idle', 'alm_usds') if k in row), None)
+    idle_key = next((k for k in ('\u2212 ALM idle', 'alm_usds') if k in row), None)
     old_bridge = D(str(row.get('bridge_usds', '0')))
     if idle_key is None or wallet_usds is None:
         raise ValueError('Frozen idle requires verified wallet balances, not an additive bridge refund')
