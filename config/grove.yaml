@@ -526,6 +526,10 @@ venues:
     notional_principal_usd:
       - start_date: '2026-01-01'
         amount: 25000000
+      # September 13 withdrawal reduced the actual position below $25M.
+      # Retire the preallocation floor; later CoF weights use dated LP flows.
+      - start_date: '2026-09-13'
+        amount: 0
 
   - id: E44
     settlement:
@@ -803,6 +807,7 @@ venues:
     event_source: hypersync
     chain: base
     label: 'Grove x Steakhouse USDC High Yield (Base, Morpho 4626)'
+    erc4626_cash_flows: true
     pricing_category: B
     token:
       address: '0xbeef2d50b428675a1921bc6bbf4bfb9d8cf1461a'
@@ -823,6 +828,7 @@ venues:
     event_source: hypersync
     chain: base
     label: 'Steakhouse Prime Instant (Base, Morpho V2)'
+    erc4626_cash_flows: true
     pricing_category: B
     token:
       address: '0xbeef0e0834849acc03f0089f01f4f1eeb06873c9'
@@ -843,6 +849,7 @@ venues:
     event_source: hypersync
     chain: base
     label: 'Grove x Steakhouse USDC (Base, ERC-4626)'
+    erc4626_cash_flows: true
     pricing_category: B
     token:
       address: '0xbeef0786756810478b88982de00f3cd7fdb8e7c7'

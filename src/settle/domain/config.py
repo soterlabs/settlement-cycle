@@ -384,6 +384,7 @@ def load_prime(config_path: Path) -> Prime:
                 token=token,
                 pricing_category=PricingCategory(v["pricing_category"]),
                 event_source=v.get("event_source", "dune"),
+                erc4626_cash_flows=v.get("erc4626_cash_flows", False),
                 underlying=underlying,
                 label=v.get("label", ""),
                 nav_oracle=nav_oracle,
