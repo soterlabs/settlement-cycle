@@ -35,6 +35,17 @@ def rpc(chain, method, params):
     raise ValueError("Historical XLayer RPC unavailable")
 
 
+CHAIN_IDS = {
+    "ethereum": 1,
+    "base": 8453,
+    "arbitrum": 42161,
+    "optimism": 10,
+    "unichain": 130,
+    "avalanche_c": 43114,
+    "robinhood": 4663,
+    "xlayer": 196,
+}
+
 VAT = "0x35d1b3f3d7966a1dfe207aa4514c12a259a0492b"
 ETH_FEED = "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419"
 ETH_USDS = "0xdc035d45d973e3ec169d2276ddab16f1e407384f"
@@ -74,6 +85,9 @@ PAU_SUSDC = "0xbc65ad17c5c0a2a4d159fa5a503f4992c7b545fe"
 
 def boundary(chain, day, candidate=None):
     """Prove the last finalized block of the UTC day, including RPC-only chains."""
+    chain_id = int(rpc(chain, "eth_chainId", []), 16)
+    if chain_id != CHAIN_IDS[chain]:
+        raise ValueError("RPC chain identity differs")
     target = int(datetime.combine(day, time.max, UTC).timestamp())
 
     def header(n):
@@ -89,6 +103,7 @@ def boundary(chain, day, candidate=None):
     if int(first["timestamp"], 16) > target:
         h = header(0)
         return {
+            "chain_id": chain_id,
             "block": 0,
             "hash": h["hash"],
             "timestamp": int(h["timestamp"], 16),
@@ -101,6 +116,7 @@ def boundary(chain, day, candidate=None):
         after = header(lo + 1)
         if lo < head and int(h["timestamp"], 16) <= target < int(after["timestamp"], 16):
             return {
+                "chain_id": chain_id,
                 "block": lo,
                 "hash": h["hash"],
                 "timestamp": int(h["timestamp"], 16),
@@ -118,6 +134,7 @@ def boundary(chain, day, candidate=None):
     h = header(lo)
     after = header(lo + 1)
     return {
+        "chain_id": chain_id,
         "block": lo,
         "hash": h["hash"],
         "timestamp": int(h["timestamp"], 16),
@@ -128,6 +145,7 @@ def boundary(chain, day, candidate=None):
 class Reader:
     def __init__(self, pins):
         self.pins = pins
+        self.psms = {}
         self.reads = []
         self._cache = {}
 
@@ -172,7 +190,7 @@ class Reader:
         self.reads.append(dict(chain=chain, contract=owner, method="eth_getBalance", result=raw))
         return int(raw, 16)
 
-    def price(self, symbol):
+    def price(self, symbol, chain="ethereum"):
         if symbol in {"ETH", "WETH"}:
             raw = self.call("ethereum", ETH_FEED, "latestRoundData()")
             words = [int(raw[i : i + 64], 16) for i in range(2, len(raw), 64)]
@@ -183,6 +201,15 @@ class Reader:
                 raise ValueError("Stale ETH oracle")
             return D(words[1]) / 10 ** self.number("ethereum", ETH_FEED, "decimals()")
         if symbol.lower() in {"susds", "susds-arb", "susds-base", "susds-op", "susds-uni"}:
+            if chain != "ethereum":
+                psm = self.psms[chain]
+                provider = self.number(chain, psm, "rateProvider()")
+                if not 0 < provider < 2**160:
+                    raise ValueError("Invalid local sUSDS rate provider")
+                rate = self.number(chain, f"0x{provider:040x}", "getConversionRate()")
+                if rate <= 0:
+                    raise ValueError("Invalid local sUSDS rate")
+                return D(rate) / 10**27
             return D(self.number("ethereum", SUSDS, "convertToAssets(uint256)", 10**18)) / 10**18
         if symbol.upper() in {
             "USDS",
@@ -198,8 +225,10 @@ class Reader:
             return D(1)
         raise ValueError("No approved onchain valuation")
 
-    def vault(self, chain, token, owner, underlying=None, decimals=None, symbol="USDC"):
-        shares = self.balance(chain, token, owner)
+    def vault(
+        self, chain, token, owner, underlying=None, decimals=None, symbol="USDC", extra_shares=0
+    ):
+        shares = self.balance(chain, token, owner) + extra_shares
         if not shares:
             return D(0)
         asset = "0x" + f"{self.number(chain, token, 'asset()'):040x}"
@@ -209,7 +238,7 @@ class Reader:
         return (
             D(self.number(chain, token, "convertToAssets(uint256)", shares))
             / 10**decimals
-            * self.price(symbol)
+            * self.price(symbol, chain)
         )
 
 
@@ -237,10 +266,12 @@ def collect(cutoff, *, candidates=None, progress=None):
             else:
                 errors["chain." + ch] = value["error"]
     reader = Reader(pins)
+    reader.psms = {str(chain): spec.address.hex for chain, spec in prime.psm.items()}
     positions = {}
     liabilities = {}
     extra = {}
     ownership = {}
+    async_claims = {}
 
     def attempt(key, fn):
         if progress:
@@ -284,24 +315,37 @@ def collect(cutoff, *, candidates=None, progress=None):
             return amm(v)
         if v.id == "S23":
             raise ValueError("Offchain claim needs principal reconciliation")
-        units = reader.balance(ch, token, owner)
+        from ..normalize.async_vaults import async_vault_exposure
+
+        exposure = async_vault_exposure(prime, v, pins[ch]["block"])
+        async_claims[v.id] = dict(
+            shares=str(exposure.shares),
+            fixed_cash=str(exposure.redemption_cash),
+            claims=list(exposure.claims),
+        )
+        raw_extra = exposure.shares * 10**v.token.decimals
+        if raw_extra != int(raw_extra):
+            raise ValueError("Fractional raw async claim")
+        units = reader.balance(ch, token, owner) + int(raw_extra)
+        fixed = exposure.redemption_cash
         if not units:
-            return D(0)
+            return fixed
         if kind == "B":
             if v.id == "S17":
-                return reader.vault(ch, token, owner, SUSDS, 18, "sUSDS")
+                return fixed + reader.vault(ch, token, owner, SUSDS, 18, "sUSDS", int(raw_extra))
             if v.sky_savings_token:
-                return D(units) / 10**v.token.decimals * reader.price("sUSDS")
-            return reader.vault(
+                return fixed + D(units) / 10**v.token.decimals * reader.price("sUSDS", ch)
+            return fixed + reader.vault(
                 ch,
                 token,
                 owner,
                 v.underlying.address.hex,
                 v.underlying.decimals,
                 v.underlying.symbol,
+                int(raw_extra),
             )
         if kind in {"A", "C", "D"}:
-            return (
+            return fixed + (
                 D(units)
                 / 10**v.token.decimals
                 * reader.price(v.underlying.symbol if v.underlying else v.token.symbol)
@@ -310,9 +354,9 @@ def collect(cutoff, *, candidates=None, progress=None):
         if kind == "E" and v.nav_oracle and v.nav_oracle.kind != "const_one":
             from ..normalize.prices import get_unit_price
 
-            return D(units) / 10**v.token.decimals * get_unit_price(v, pins[ch]["block"])
+            return fixed + D(units) / 10**v.token.decimals * get_unit_price(v, pins[ch]["block"])
         if kind == "E":
-            return D(units) / 10**v.token.decimals
+            return fixed + D(units) / 10**v.token.decimals
         raise ValueError("Unsupported closing measure")
 
     def pending_fees(v, tid):
@@ -600,6 +644,7 @@ def collect(cutoff, *, candidates=None, progress=None):
         extra_assets=extra,
         sky_debt=sky_debt,
         ownership=ownership,
+        async_claims=async_claims,
         errors=errors,
         reads=reader.reads,
         source_policy="Direct finalized chain state; approved par conventions; no BA data",

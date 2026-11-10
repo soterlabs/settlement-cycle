@@ -76,13 +76,14 @@ inputs and hash; v2 selections additionally pin the `stocks` publication.
 | PSM3 | ALM `shares(address)` converted through `convertToAssetValue`; not PSM reserves and not direct ALM sUSDS |
 | Arbitrum / XLayer savings | Verified vault `asset()` and gross `totalAssets()`; historical absence requires an empty-code proof |
 | Savings idle assets | Add only underlying balances outside the existing measured-cash perimeter |
+| Pending subscriptions/redemptions | Reuse the reviewed async ownership adapters: issued/escrowed shares at current NAV plus fixed unsettled underlying. A zero wallet balance does not extinguish these claims |
 | AMMs | Actual owned NFTs / LP shares at the pinned closing state, including V4 fee-growth claims |
 | Sky-direct pools | Historically designated USDT principal leg belongs to Sky. Other legs and V4 fee claims belong to Spark. PYUSD is not SDE |
 | Treasury | Reuse the entity's authenticated closing token inventories; market-quote valuations remain estimates and retain their component source |
 | Anchorage | Offchain loan claim remains unavailable until principal repayments and opening principal are independently supported; an escrow wallet balance is not the loan |
 
 Approved stablecoins use the existing USD-par accounting convention. ETH uses
-the onchain Chainlink ETH/USD feed, with freshness and round checks. A missing
+the onchain Chainlink ETH/USD feed, with freshness and round checks. Bridged or nested sUSDS uses the local PSM3 rate provider where applicable. A missing
 RPC, unsupported getter or stale oracle produces an unavailable value, never zero.
 XLayer uses `XLAYER_RPC` when configured, otherwise OKX's documented public
 mainnet endpoint (`https://rpc.xlayer.tech`). Never store private RPC URLs in proof

@@ -110,3 +110,69 @@ def test_stable_par_and_stale_oracle_rules(monkeypatch):
 def test_missing_chain_is_never_read_as_zero():
     with pytest.raises(KeyError):
         Reader({}).balance("xlayer", "0x" + "1" * 40, "0x" + "2" * 40)
+
+
+def test_wrong_chain_rpc_is_rejected_before_reading_state(monkeypatch):
+    from settle.revenue import balance_sheet_sources as sources
+
+    monkeypatch.setattr(sources, "rpc", lambda *args: "0x1")
+    with pytest.raises(ValueError, match="chain identity"):
+        sources.boundary("xlayer", date(2026, 10, 31))
+
+
+def test_queued_maple_claim_is_included_even_with_zero_wallet_shares(monkeypatch):
+    from dataclasses import replace
+
+    from settle.domain.config import load_prime_by_id
+    from settle.normalize import async_vaults
+    from settle.normalize.async_vaults import AsyncVaultExposure
+    from settle.revenue import balance_sheet_sources as sources
+
+    prime = load_prime_by_id("spark")
+    venue = next(v for v in prime.venues if v.id == "S14")
+    monkeypatch.setattr(
+        sources, "load_prime_by_id", lambda _: replace(prime, venues=[venue], psm={})
+    )
+    monkeypatch.setattr(
+        sources,
+        "boundary",
+        lambda *a: dict(
+            block=1, hash="0x" + "a" * 64, timestamp=1793491199, successor_timestamp=1793491200
+        ),
+    )
+    monkeypatch.setattr(Reader, "code", lambda *a: "0x01")
+    monkeypatch.setattr(Reader, "balance", lambda *a: 0)
+
+    def number(self, chain, token, signature, *args):
+        if signature == "asset()":
+            return int(venue.underlying.address.hex, 16)
+        if signature == "convertToAssets(uint256)":
+            assert args[0] == 2 * 10**venue.token.decimals
+            return 7 * 10**venue.underlying.decimals
+        raise ValueError("Unrelated collector branch")
+
+    monkeypatch.setattr(Reader, "number", number)
+    monkeypatch.setattr(
+        Reader, "call", lambda *a: (_ for _ in ()).throw(ValueError("Unrelated collector branch"))
+    )
+    monkeypatch.setattr(Reader, "native", lambda *a: 0)
+    monkeypatch.setattr(
+        async_vaults,
+        "async_vault_exposure",
+        lambda *a: AsyncVaultExposure(redemption_shares=Decimal(2), redemption_cash=Decimal(3)),
+    )
+    document = sources.collect(date(2026, 10, 31))
+    assert document["positions"]["S14"]["value"] == "10"
+    assert document["async_claims"]["S14"]["fixed_cash"] == "3"
+
+
+def test_bridged_susds_uses_local_onchain_rate_not_ethereum_premium(monkeypatch):
+    reader = Reader({"base": {"block": 1}})
+    reader.psms = {"base": "0x" + "1" * 40}
+
+    def number(chain, contract, signature, *args):
+        assert chain == "base"
+        return 123 if signature == "rateProvider()" else 11 * 10**26
+
+    monkeypatch.setattr(reader, "number", number)
+    assert reader.price("sUSDS", "base") == Decimal("1.1")
