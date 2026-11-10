@@ -55,7 +55,7 @@ def money(value):
     return f"{D(value):,.2f}"
 
 
-def calculate():
+def calculate_previous_components():
     hashes = {}
 
     def read(path):
@@ -620,6 +620,13 @@ only the incremental historical corrections above; it does not restate rates
 or claim to be a new complete monthly ALM transfer-review attestation.
 """
     return text
+
+
+def calculate():
+    raise RuntimeError(
+        "Expanded #220 replay is in progress. Previous-scope totals are provisional; "
+        "complete the pinned source replay and prior-payment netting before generating a new proposal."
+    )
 
 
 def main():

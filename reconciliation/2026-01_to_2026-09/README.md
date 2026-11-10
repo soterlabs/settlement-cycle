@@ -1,3 +1,5 @@
+> **Expanded replay in progress:** see [scope-status.json](scope-status.json). Previous totals and October values below are provisional until #220 is included and overlaps/prior credits are netted. PR #277 is back in draft.
+
 # January-September 2026 incremental reconciliation
 
 Baseline: [`536f149`](https://github.com/soterlabs/settlement-cycle/commit/536f1492089ed82fbf6eaabb956f7a194b887d47).

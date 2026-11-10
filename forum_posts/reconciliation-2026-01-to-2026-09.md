@@ -1,3 +1,5 @@
+> **Recalculation in progress.** Scope now includes PR #220. The figures below are the previous-scope draft and will be replaced after the current-code replay and prior-payment netting.
+
 # Settlement Reconciliation - MSC #5-#13 (January-September 2026)
 
 Draft prepared for the October 2026 earning cycle (MSC #14, paid in November).

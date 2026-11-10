@@ -890,5 +890,6 @@
     "reconciliation/2026-01_to_2026-09/pr-inventory.json": "71671495b8b2aa0ca195904d827882f4e30470e103b6c81e77a2e1494c44ef20"
   },
   "rounding": "Each booked component is rounded to cents; preserve existing approved components. Monthly detail remains unrounded. Final MSC applies its usual SV floor and whole-USDS rounding.",
-  "execution_status": "Calculated proposal; no new settlement configuration, database revision or on-chain execution."
+  "execution_status": "PROVISIONAL PREVIOUS SCOPE: expanded #220 reconciliation is in progress; these totals are not the updated settlement proposal.",
+  "pending_scope": "scope-status.json"
 }

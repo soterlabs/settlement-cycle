@@ -8,7 +8,12 @@ from unittest.mock import patch
 
 import pytest
 
-from scripts.build_jan_sep_2026_reconciliation import calculate, forum_post
+from scripts.build_jan_sep_2026_reconciliation import (
+    calculate_previous_components as calculate,
+)
+from scripts.build_jan_sep_2026_reconciliation import (
+    forum_post,
+)
 from settle.compute.sky_total_accrual import compute_sky_total_accrual
 from settle.domain import Month
 
