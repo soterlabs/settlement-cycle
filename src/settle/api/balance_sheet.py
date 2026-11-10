@@ -6,7 +6,7 @@ from fastapi import Depends, HTTPException, Query, Request
 from psycopg.rows import dict_row
 
 from ..revenue import balance_sheet as projection
-from ..revenue import spark_reporting_store
+from ..revenue import balance_sheet_store, spark_reporting_store
 from ..revenue.cash_flow import store as cash_store
 from ..revenue.verification import canonical
 from . import revenue
@@ -14,7 +14,9 @@ from . import revenue
 
 def inputs(conn, year, as_of, selection=None):
     def refs(kind):
-        return [m[kind] for m in selection["months"] if m and m[kind]] if selection else None
+        return (
+            [m.get(kind) for m in selection["months"] if m and m.get(kind)] if selection else None
+        )
 
     def where(kind):
         selected = refs(kind)
@@ -53,6 +55,9 @@ def inputs(conn, year, as_of, selection=None):
             selected_ids[kind] = [r["revision_id"] for r in cur.fetchall()]
     return dict(
         venues=venues,
+        stocks=balance_sheet_store.year_rows(
+            conn, year, refs("stocks") if selection else None, as_of=as_of
+        ),
         cash=cash_store.year_rows(conn, "spark", year, selected_ids["cash"], as_of=as_of),
         components=spark_reporting_store.year_rows(
             conn, year, revisions=selected_ids["components"]
