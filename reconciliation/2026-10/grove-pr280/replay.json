@@ -1,0 +1,78 @@
+{
+  "msc_instruction": {
+    "prime": "grove",
+    "has_ilk": true,
+    "sky": "5682959.319885517888970951078",
+    "dv": "122862.6499862163417263841036",
+    "sv": "1225694.878304368896498431589",
+    "sky_adj": "1062615.74",
+    "dv_adj": "0",
+    "sv_adj": "915857.20",
+    "send_credit": "0",
+    "mint": "8887127",
+    "send": "2264415",
+    "derived_mint": "8887127.138189886785469382667",
+    "derived_send": "2264414.728290585238224815693"
+  },
+  "prime": "grove",
+  "period": "2026-10",
+  "replayed_venues": [
+    "E19",
+    "E23",
+    "E43",
+    "E12"
+  ],
+  "other_primes_recalculated": false,
+  "previous_provenance_sha256": "d0907eb73703c57ca82200a08153c8bc2a08b7c27a2b7c0f9ea1ec623993fe15",
+  "review_sha256": "ae0e69cf6e097ecc66b36c07f705d4199d67c01ecb36a7dff16ff4fdd417c5c6",
+  "income_delta": "8064.955289965368347474800",
+  "before": {
+    "agent_rate": "87849.81438182285740011728872",
+    "chronicle_points": "12439.98617153486027579922894",
+    "curve_susds_spread": "0",
+    "distribution_rewards": "22572.84943285862405046758602",
+    "gar": "0",
+    "gar_basis": "",
+    "monthly_pnl": "93528.75356438481440262009302",
+    "prime_agent_revenue": "5653625.423463686361647187067",
+    "prime_agent_total_revenue": "5776488.073449902703373571171",
+    "psm3_susds_appreciation": "0",
+    "psm3_susds_spread": "0",
+    "reporting_only_revenue": "0E-8",
+    "sde_revenue": "1246963.819436235055474720800",
+    "sky_direct_shortfall": "0",
+    "sky_revenue": "5682959.319885517888970951078",
+    "sky_revenue_gross": "6081897.411478891046963931179",
+    "susds_spread_reimbursement": "0"
+  },
+  "after": {
+    "agent_rate": "87849.81438182285740011728872",
+    "chronicle_points": "12439.98617153486027579922894",
+    "curve_susds_spread": "0",
+    "distribution_rewards": "22572.84943285862405046758602",
+    "gar": "0",
+    "gar_basis": "",
+    "monthly_pnl": "101593.7088543501827500948930",
+    "prime_agent_revenue": "5661690.378753651729994661867",
+    "prime_agent_total_revenue": "5784553.028739868071721045971",
+    "psm3_susds_appreciation": "0",
+    "psm3_susds_spread": "0",
+    "reporting_only_revenue": "0E-8",
+    "sde_revenue": "1246963.819436235055474720800",
+    "sky_direct_shortfall": "0",
+    "sky_revenue": "5682959.319885517888970951078",
+    "sky_revenue_gross": "6081897.411478891046963931179",
+    "susds_spread_reimbursement": "0"
+  },
+  "settlement_payment": {
+    "period_net_revenue": "1348557.528290585238224815693",
+    "prior_period_adjustments": "0",
+    "total": "1348557.528290585238224815693",
+    "note": "Historical true-ups are separate from period-earned revenue; flagged unbooked amounts are recognized as Sky expense in this settlement."
+  },
+  "output_hashes": {
+    "provenance": "9eb63982ed9c07c1ed1376b6c94188292a88bfbff11a9fac8869d22abe335606",
+    "summary": "5d4d72383ee1a71798a23f8730ff2244d86d1a63f3f1159d750c1c078d08a615",
+    "xlsx": "e88edce405b07c7e5275928f2ceccc86eb7c8d933c271e48b4e7367ac4b4d0b7"
+  }
+}

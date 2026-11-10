@@ -2,7 +2,7 @@
   "schema_version": "1",
   "period": "2026-10",
   "status": "derived_unexecuted_prime_legs",
-  "base_commit": "bda68582defce86daeb1c7d5d3f6d5da03f18df9",
+  "base_commit": "703c66863a0e99edf839658081026926f038c70b",
   "methodology": "Existing sky_total_accrual October rules: floor ordinary negative supply-side revenue for ilk primes before applying historical adjustments; whole-USDS ROUND_HALF_UP. No executed MSC or consolidated Sky Net Revenue is asserted.",
   "sky_total_config_sha256": "d72f6b0efa64b2ea4696fe7d5564766c03a8bb8b384395a955cfeda607bb2501",
   "rows": [
@@ -30,10 +30,10 @@
     },
     {
       "prime": "grove",
-      "ordinary_supply_net": "1217629.923014403528150956789",
+      "ordinary_supply_net": "1225694.878304368896498431589",
       "demand_side_revenue": "122862.6499862163417263841036",
       "distribution_rewards": "22572.84943285862405046758602",
-      "ordinary_prime_net": "1340492.573000619869877340893",
+      "ordinary_prime_net": "1348557.528290585238224815693",
       "sky_net_borrowing_charge": "4435995.500449282833496230278",
       "sky_sde_revenue": "1246963.819436235055474720800",
       "sky_ordinary_total": "5682959.319885517888970951078",
@@ -41,13 +41,13 @@
       "supply_adjustment": "915857.20",
       "demand_adjustment": "0",
       "send_credit": "0",
-      "msc_supply_component": "2133487.123014403528150956789",
-      "msc_mint_unrounded": "8879062.182899921417121907867",
-      "msc_send_unrounded": "2256349.773000619869877340893",
-      "msc_mint": "8879062",
-      "msc_send": "2256350",
-      "summary_sha256": "5c124acc1a28f2e41934445c3a2d0386745fca0f34c0d5db6e418593f7eb1cf7",
-      "workbook_sha256": "8530dd13117e60c02e6dd2d7c0766ec05e81a845673aa514f4078e99f8df50e8",
+      "msc_supply_component": "2141552.078304368896498431589",
+      "msc_mint_unrounded": "8887127.138189886785469382667",
+      "msc_send_unrounded": "2264414.728290585238224815693",
+      "msc_mint": "8887127",
+      "msc_send": "2264415",
+      "summary_sha256": "5d4d72383ee1a71798a23f8730ff2244d86d1a63f3f1159d750c1c078d08a615",
+      "workbook_sha256": "e88edce405b07c7e5275928f2ceccc86eb7c8d933c271e48b4e7367ac4b4d0b7",
       "workbook_sheets": 7
     },
     {
@@ -138,5 +138,14 @@
       "workbook_sha256": "0c350c7155c063e27cbbc2d129ba634e470993e9e0844603eb2456139311f3de",
       "workbook_sheets": 5
     }
-  ]
+  ],
+  "calculation_commits": {
+    "spark": "bda68582defce86daeb1c7d5d3f6d5da03f18df9",
+    "grove": "703c66863a0e99edf839658081026926f038c70b",
+    "obex": "bda68582defce86daeb1c7d5d3f6d5da03f18df9",
+    "osero": "bda68582defce86daeb1c7d5d3f6d5da03f18df9",
+    "keel": "bda68582defce86daeb1c7d5d3f6d5da03f18df9",
+    "skybase": "bda68582defce86daeb1c7d5d3f6d5da03f18df9"
+  },
+  "latest_replay_scope": "Grove only, October 2026: E19/E23/E43 cash capital and E12 attribution; other prime reports and rows preserved."
 }

@@ -1,10 +1,10 @@
 # October 2026 MSC — all prime agents
 
 PR #275 adds the October summaries and canonical settlement workbooks for Spark,
-Obex, Osero, Keel and Skybase alongside Grove. The branch includes main
-`bda6858`, including the Spark/Obex async allocation changes. A separate Grove
-calculation on that code reproduces every financial result in its existing
-report, which is preserved.
+Obex, Osero, Keel and Skybase alongside Grove. The branch is rebased onto main `703c668`, including PR #280. Only Grove was
+replayed for this update; the other five agents retain their verified reports
+and figures from `bda6858`. Grove ordinary income increases by **8,064.96 USDS**;
+its borrowing costs, DR and approved settlement adjustments are unchanged.
 
 The runs use credentials from the supplied local `.env` without copying them
 into the repository. They calculate October 2026 only. The official October
@@ -20,7 +20,7 @@ DR and other active demand-side components. Historical adjustments are separate.
 | Prime | Ordinary net (USDS) | October DR | Sky borrowing charge | Sky SDE |
 |---|---:|---:|---:|---:|
 | Spark | 3,938,957.75 | 739,155.52 | 10,215,829.41 | 8,887.41 |
-| Grove | 1,340,492.57 | 22,572.85 | 4,435,995.50 | 1,246,963.82 |
+| Grove | 1,348,557.53 | 22,572.85 | 4,435,995.50 | 1,246,963.82 |
 | Obex | 479,415.46 | 0.00 | 1,341,558.34 | 0.00 |
 | Osero | 36,881.63 | 1,228.31 | 13,463.65 | 0.00 |
 | Keel | 34,033.81 | 0.00 | 0.00 | 0.00 |
@@ -31,7 +31,7 @@ DR and other active demand-side components. Historical adjustments are separate.
 | Prime | Supply adjustment | Sky adjustment | Send credit | Mint (USDS) | Send (USDS) |
 |---|---:|---:|---:|---:|---:|
 | Spark | 0.00 | 0.00 | 0.00 | 13,263,455 | 3,938,958 |
-| Grove | 915,857.20 | 1,062,615.74 | 0.00 | 8,879,062 | 2,256,350 |
+| Grove | 915,857.20 | 1,062,615.74 | 0.00 | 8,887,127 | 2,264,415 |
 | Obex | 0.00 | 0.00 | 0.00 | 1,736,726 | 479,415 |
 | Osero | 0.00 | 0.00 | 5,514.00 | 15,812 | 42,396 |
 | Keel | 0.00 | 0.00 | 0.00 | 0 | 34,034 |
@@ -41,7 +41,7 @@ Grove's supply adjustment is its approved **915,857.20** partner allocation.
 Its Sky adjustment is **1,062,615.74**: partner allocation 1,141,145.80 less
 historical in-flight CoF credit 78,530.06. The receipts are not also added as
 venue interest. No unapproved historical backfill is introduced. The adjusted
-Grove send before rounding is 2,256,349.773000619869877340893 USDS.
+Grove send before rounding is 2,264,414.728290585238224815693 USDS.
 
 Osero also receives the existing **5,514 USDS send-only credit** for duplicate
 July–September shortfall deductions. It increases the send to 42,396 USDS
@@ -86,7 +86,7 @@ in [additional_prime_inventory.json](../reconciliation/2026-10/additional_prime_
 Reports use current main valuation methods with the S32 holder-transfer fix
 documented below. Independent cash
 and `convertToAssets` diagnostics are not substituted as balancing adjustments;
-Grove's existing differences remain documented in its close note.
+Grove now uses PR #280's exact cash capital; its remaining endpoint valuation diagnostics are documented in its close note.
 
 ## Transfer coverage
 
@@ -172,7 +172,7 @@ adds a financial adjustment.
 
 All six reports pass independent DR reconciliation, venue/SDE rollups, full
 31-day borrowing-cost coverage, workbook headline checks and saved-output
-protection checks. Grove's results also reproduce on the updated code base.
+protection checks. The Grove-only PR #280 replay reproduces all financial values in a second fresh output directory; the other five reports remain byte-for-byte unchanged.
 
 ## Reproducing the close
 
@@ -191,3 +191,19 @@ The larger checkpoint batch only speeds first-time historical extraction;
 block pins, completeness checks and accounting are unchanged. The normal input
 cache can reuse actual block headers and archive balance responses captured
 during the review; no dates or balances are inferred to warm it.
+
+## Latest Grove-only replay after PR #280
+
+The full local Grove ALM review was revalidated against the new configuration.
+The replay reconstructs the verified prior October snapshot, recomputes only
+E19/E23/E43 and E12 using pinned retained on-chain inputs, and independently
+validates the unchanged daily borrowing formula and DR. It does not re-extract
+or recalculate the other venues or agents. Baseline reports, before/after
+provenance and exact changes are retained in
+[grove-pr280](../reconciliation/2026-10/grove-pr280/README.md).
+
+For this scoped update, after completing the local review, run:
+
+```sh
+PYTHONPATH=src python scripts/replay_october_grove_pr280.py --output-dir /tmp/grove-october-pr280-fresh
+```

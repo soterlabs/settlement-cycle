@@ -1,0 +1,22 @@
+{
+  "prime": "grove",
+  "ordinary_supply_net": "1217629.923014403528150956789",
+  "demand_side_revenue": "122862.6499862163417263841036",
+  "distribution_rewards": "22572.84943285862405046758602",
+  "ordinary_prime_net": "1340492.573000619869877340893",
+  "sky_net_borrowing_charge": "4435995.500449282833496230278",
+  "sky_sde_revenue": "1246963.819436235055474720800",
+  "sky_ordinary_total": "5682959.319885517888970951078",
+  "sky_adjustment": "1062615.74",
+  "supply_adjustment": "915857.20",
+  "demand_adjustment": "0",
+  "send_credit": "0",
+  "msc_supply_component": "2133487.123014403528150956789",
+  "msc_mint_unrounded": "8879062.182899921417121907867",
+  "msc_send_unrounded": "2256349.773000619869877340893",
+  "msc_mint": "8879062",
+  "msc_send": "2256350",
+  "summary_sha256": "5c124acc1a28f2e41934445c3a2d0386745fca0f34c0d5db6e418593f7eb1cf7",
+  "workbook_sha256": "8530dd13117e60c02e6dd2d7c0766ec05e81a845673aa514f4078e99f8df50e8",
+  "workbook_sheets": 7
+}

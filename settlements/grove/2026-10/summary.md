@@ -19,7 +19,7 @@ Period: 2026-10-01 → 2026-10-31 (31 days)
 
 | Field | USDS |
 |---|---:|
-| **supply-side revenue** | **1,217,629.92** |
+| **supply-side revenue** | **1,225,694.88** |
 
 ### Sky side
 
@@ -50,11 +50,11 @@ Period: 2026-10-01 → 2026-10-31 (31 days)
 | E16 | DAI raw (ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E17 | USDS raw / POL (ALM idle — already netted out of utilized) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E18 | sUSDS raw / POL (ALM idle — Cat B 4626) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
-| E19 | Grove x Steakhouse USDC High Yield (Base, Morpho 4626) | $103,325,743.29 | $0.00 | $36,790,814.81 | -$103,476,426.32 | $150,683.03 | $150,683.03 | $0.00 | 0% | $0.00 |
+| E19 | Grove x Steakhouse USDC High Yield (Base, Morpho 4626) | $103,325,743.29 | $0.00 | $36,790,814.81 | -$103,473,218.76 | $147,475.47 | $147,475.47 | $0.00 | 0% | $0.00 |
 | E20 | Janus Henderson Anemoy AAA CLO (JAAA-avalanche) | $262,568,675.09 | $263,606,612.11 | $262,568,675.09 | $0.00 | $1,037,937.02 | $1,037,937.02 | $0.00 | 0% | $0.00 |
 | E21 | Galaxy Arch CLO Token (GACLO-1) | $17,907,834.79 | $17,907,834.79 | $17,907,834.79 | $0.00 | $142,165.55 | $142,165.55 | $0.00 | 0% | $0.00 |
 | E22 | Anemoy Tokenized Apollo Diversified Credit Fund (ACRDX) | $20,599,353.69 | $20,628,739.48 | $20,599,353.69 | $0.00 | $29,385.80 | $29,385.80 | $0.00 | 0% | $0.00 |
-| E23 | Steakhouse Prime Instant (Base, Morpho V2) | $165,760,956.73 | $0.00 | $24,174,190.93 | -$165,870,122.92 | $109,166.19 | $109,166.19 | $0.00 | 0% | $0.00 |
+| E23 | Steakhouse Prime Instant (Base, Morpho V2) | $165,760,956.73 | $0.00 | $24,174,190.93 | -$165,858,216.26 | $97,259.53 | $97,259.53 | $0.00 | 0% | $0.00 |
 | E24 | Steakhouse High Yield PYUSD (Morpho 4626) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E26 | PYUSD raw (ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E27 | USDC raw on Base (ALM idle) | $0.00 | $0.00 | $14,970.74 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
@@ -66,7 +66,7 @@ Period: 2026-10-01 → 2026-10-31 (31 days)
 | E40 | USDS raw (Diamond PAU ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E41 | JTRSY Basin escrow — USDS pending subscription (Diamond PAU) | $100,000,000.00 | $100,000,000.00 | $100,000,000.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | E42 | Galaxy Warehouse (off-chain facility — cash distribution to Grove Eth ALM) | $0.00 | $0.00 | $0.00 | $0.00 | $1,894,876.53 | $1,894,876.53 | $0.00 | 0% | $0.00 |
-| E43 | Grove x Steakhouse USDC (Base, ERC-4626) | $45,007,605.86 | $495,667,861.87 | $316,004,827.20 | $449,385,427.02 | $1,274,828.98 | $1,274,828.98 | $0.00 | 0% | $0.00 |
+| E43 | Grove x Steakhouse USDC (Base, ERC-4626) | $45,007,605.86 | $495,667,861.87 | $316,004,827.20 | $449,362,247.85 | $1,298,008.15 | $1,298,008.15 | $0.00 | 0% | $0.00 |
 | E44 | Uniswap V3 AUSD/USDC pool (NFT positions — Diamond PAU) | $20,002,378.41 | $30,009,488.92 | $21,615,589.13 | $10,002,964.20 | $4,146.30 | $4,146.30 | $0.00 | 0% | $0.00 |
 
 ## Redemption cash settlements
@@ -107,3 +107,4 @@ Reported income below is excluded from MSC settlement totals. Negative accrued b
 | E34 | AUSD raw (Monad, alt holder idle) | $0.00 | $0.00 | $0.00 | $0.00 |
 | E35 | USDC raw (Monad, alt holder idle) | $152,288.13 | $0.00 | $0.00 | $0.00 |
 | E36 | OOB principal via 0xd94f (relay to Monad ALM EOA → AUSD acquisition) | -$119,746.47 | -$119,746.47 | $0.00 | $0.00 |
+
