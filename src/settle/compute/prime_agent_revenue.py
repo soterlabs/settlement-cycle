@@ -150,7 +150,9 @@ class VenueRevenueInputs:
     # Zero for venues whose pricing category has no external-rewards path
     # wired up yet (today: Cat C aTokens only).
     external_revenue: Decimal = Decimal("0")
-    # For ERC-4626 Centrifuge venues: the exact period inflow derived from
+    # Exact ERC-4626 period capital, independent of the average-value series.
+    # Synchronous cash-event venues preserve share/NAV-based exposure averages.
+    # For Centrifuge venues the period inflow is derived from
     # on-chain Deposit/Withdraw ``assets`` amounts plus issuance-basis changes
     # for deposits awaiting collection (USDC exact). The daily series uses
     # that same recognition clock. When set, this overrides ``period_inflow`` and
@@ -391,8 +393,8 @@ def compute_venue_revenue(period: Period, inputs: VenueRevenueInputs) -> VenueRe
             venue_id=inputs.venue.id,
         )
     elif inputs.erc4626_period_inflow is not None:
-        # Async venues: exact cash events plus issued-deposit basis changes
-        # feed both period inflow and daily average holdings. With EoM-locked sd_share
+        # Exact capital may have a separate exposure-average series. Async
+        # venues also include issued-deposit basis changes. With EoM-locked sd_share
         # (see ``_capped_sd_revenue_eom_locked``) the cap split applies
         # uniformly to the full vault-event actual_revenue, so no separate
         # token-transfer-clock decomposition is needed here.

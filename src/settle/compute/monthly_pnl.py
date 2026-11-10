@@ -3603,10 +3603,16 @@ def compute_monthly_pnl(
                 _pb_src_b = sources.position_balance or _get_pb_b()
                 _balance_at = _pb_src_b.balance_at
                 if venue.erc4626_cash_flows:
-                    from ..normalize.erc4626_cash import cash_inflow_timeseries
-                    inflow_ts = cash_inflow_timeseries(
+                    from ..normalize.erc4626_cash import (
+                        cash_inflow_timeseries, share_value_inflow_timeseries,
+                    )
+                    cash_ts = cash_inflow_timeseries(
                         prime, venue, period, opening_block=som_block,
                         balance_at=_balance_at, fetch=sources.erc4626_cash_logs,
+                    )
+                    _erc4626_period_inflow = sum(cash_ts['daily_inflow'], Decimal(0))
+                    inflow_ts = share_value_inflow_timeseries(
+                        cash_ts, venue, block_resolver=resolver, price_at_block=_cat_b_price,
                     )
                 elif venue.chain.value not in _DUNE_BLOCK_CHAINS:
                     from ..normalize.positions import _erc4626_shares_weighted_inflow

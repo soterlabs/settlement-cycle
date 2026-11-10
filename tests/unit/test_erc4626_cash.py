@@ -13,7 +13,7 @@ from settle.domain import Chain, Month, Period
 from settle.domain.config import load_prime_by_id
 from settle.extract.hypersync import LogRow
 from settle.extract.transfer_logs import TRANSFER_TOPIC0
-from settle.normalize.erc4626_cash import cash_inflow_timeseries
+from settle.normalize.erc4626_cash import cash_inflow_timeseries, share_value_inflow_timeseries
 from settle.normalize.sources.hypersync_venue_events import DEPOSIT, WITHDRAW
 
 
@@ -117,6 +117,30 @@ def test_cash_deposit_credits_post_deposit_yield_and_uses_owner_not_caller():
     assert result.period_inflow == 100
     assert result.revenue == 10
     assert result.tw_avg_value == 100
+
+
+def test_income_cash_override_preserves_share_nav_exposure_average():
+    f = fixture()
+    cash = f.run(f.deposit())
+    averages = share_value_inflow_timeseries(
+        cash,
+        f.venue,
+        block_resolver=SimpleNamespace(block_at_or_before=lambda *args: 170),
+        price_at_block=lambda block: D("1.1"),
+    )
+    result = compute_venue_revenue(
+        f.period,
+        VenueRevenueInputs(
+            venue=f.venue,
+            value_som=D(0),
+            value_eom=D(110),
+            inflow_timeseries=averages,
+            erc4626_period_inflow=sum(cash.daily_inflow, D(0)),
+        ),
+    )
+    assert result.revenue == 10
+    assert result.period_inflow == 100
+    assert result.tw_avg_value == 110
 
 
 def test_full_exit_and_same_day_round_trip_keep_actual_cash_yield():
@@ -235,7 +259,12 @@ def test_monthly_orchestration_routes_cash_without_changing_other_vaults(monkeyp
 
     def cash(*a, **kw):
         return pd.DataFrame(
-            {"block_date": [date(2027, 4, 1)], "daily_inflow": [D(100)], "cum_inflow": [D(100)]}
+            {
+                "block_date": [date(2027, 4, 1)],
+                "daily_inflow": [D(100)],
+                "cum_inflow": [D(100)],
+                "daily_net_shares_raw": [100 * 10**18],
+            }
         )
 
     seen = []
@@ -268,6 +297,15 @@ def test_monthly_orchestration_routes_cash_without_changing_other_vaults(monkeyp
             100 * 10**18 if token == venue.token.address.value and block == 200 else 0
         ),
     )
+
+    def directed(**kwargs):
+        if kwargs["token"] == venue.token.address.value and kwargs["from_addr"] == bytes(20):
+            return pd.DataFrame(
+                {"block_date": [date(2027, 4, 1)], "daily_inflow": [D(100)], "cum_inflow": [D(100)]}
+            )
+        return pd.DataFrame(columns=["block_date", "daily_inflow", "cum_inflow"])
+
+    monkeypatch.setattr(sources.balance, "directed_inflow_timeseries", directed)
     result = compute_monthly_pnl(
         prime,
         Month(2027, 4),
@@ -276,9 +314,11 @@ def test_monthly_orchestration_routes_cash_without_changing_other_vaults(monkeyp
         pin_blocks_eom={Chain.ETHEREUM: 200},
     )
     assert result.prime_agent_revenue == 10
+    assert result.venue_breakdown[0].period_inflow == 100
+    assert result.venue_breakdown[0].tw_avg_value == 110
     assert len(seen) == 1 and seen[0]["fetch"] is sources.erc4626_cash_logs
     seen.clear()
-    compute_monthly_pnl(
+    legacy = compute_monthly_pnl(
         replace(prime, venues=[replace(venue, erc4626_cash_flows=False)]),
         Month(2027, 4),
         sources=sources,
@@ -286,6 +326,8 @@ def test_monthly_orchestration_routes_cash_without_changing_other_vaults(monkeyp
         pin_blocks_eom={Chain.ETHEREUM: 200},
     )
     assert not seen
+    assert legacy.venue_breakdown[0].tw_avg_value == result.venue_breakdown[0].tw_avg_value
+    assert legacy.sky_revenue == result.sky_revenue
 
 
 def test_historical_component_replay_and_floor_preserve_prior_periods():
@@ -296,6 +338,7 @@ def test_historical_component_replay_and_floor_preserve_prior_periods():
     assert D(result["income_delta"]["jan_sep"]).quantize(D(".01")) == D("13769.34")
     assert D(result["income_delta"]["october"]).quantize(D(".01")) == D("8064.96")
     assert all(D(r["global_cof_delta"]) == 0 for r in result["results"])
+    assert all(D(r["average_delta"]) == 0 for r in result["results"])
     for row in result["e12_weights"]:
         if row["month"] < "2026-09":
             assert row["old_cof_weight"] == row["new_cof_weight"]

@@ -59,7 +59,11 @@ The new cash source checks gross asset/share legs per transaction and exact
 opening-to-closing share conservation, rejecting unexplained direct share
 transfers and nonzero withdrawals paid to another receiver. Source failures
 propagate; they cannot become synthetic month-end capital or empty histories.
-NAV-based endpoint valuation remains unchanged. The three Base vaults are
+NAV-based endpoint valuation and the existing share/NAV exposure averages remain
+unchanged. Exact cash feeds the existing `erc4626_period_inflow` override; the
+verified raw share movements separately feed average-value reporting. The replay
+requires zero average-value difference in every one of the 30 venue-months.
+The three Base vaults are
 explicit opt-ins; other primes and async-vault policies are unchanged.
 
 No frozen settlement, live adjustment entry, database revision or payment is

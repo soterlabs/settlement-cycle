@@ -29,7 +29,7 @@ from settle.domain.config import load_prime_by_id
 from settle.domain.primes import NotionalScheduleEntry
 from settle.extract import rpc
 from settle.extract.hypersync import LogRow
-from settle.normalize.erc4626_cash import cash_inflow_timeseries
+from settle.normalize.erc4626_cash import cash_inflow_timeseries, share_value_inflow_timeseries
 from settle.normalize.positions import _shares_to_usd_inflow_timeseries
 from settle.normalize.sources.hypersync_balances import HyperSyncBalanceSource
 from settle.revenue.verification import canonical
@@ -185,7 +185,7 @@ def replay(path=INPUT):
                     prime, venue, period, opening_block=r["opening"], balance_at=bal, fetch=fetch
                 )
 
-                def compute(flows, period=period, venue=venue, values=values):
+                def compute(flows, cash=None, period=period, venue=venue, values=values):
                     return compute_venue_revenue(
                         period,
                         VenueRevenueInputs(
@@ -193,10 +193,22 @@ def replay(path=INPUT):
                             value_som=values[0],
                             value_eom=values[1],
                             inflow_timeseries=flows,
+                            erc4626_period_inflow=cash,
                         ),
                     )
 
-                old, new = compute(old_flows), compute(new_flows)
+                average_flows = share_value_inflow_timeseries(
+                    new_flows,
+                    venue,
+                    block_resolver=Resolver(),
+                    price_at_block=price,
+                )
+                old = compute(old_flows)
+                new = compute(average_flows, sum(new_flows["daily_inflow"], D(0)))
+                if old.tw_avg_value != new.tw_avg_value:
+                    raise ValueError(
+                        "Cash revenue correction changed the existing exposure average"
+                    )
                 published = next((v for v in r["baseline_venues"] if v["venue_id"] == vid), None)
                 records.append(
                     dict(
