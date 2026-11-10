@@ -8,6 +8,7 @@ import pytest
 import yaml
 
 from settle.compute.sky_revenue import compute_sky_revenue_daily
+from settle.domain import Chain
 from settle.domain.config import load_prime_by_id
 from settle.domain.monthly_pnl import MonthlyPnL, SDEDailyBreakdown, VenueRevenue
 from settle.domain.period import Month, Period
@@ -264,7 +265,11 @@ def test_retained_bridge_claim_replays_across_subsidy_cap(subsidy, monkeypatch):
 
     prime, pnl, record = example(subsidy=subsidy)
     transfers = [dict(sent_at=int(datetime(2026, 8, 31, tzinfo=UTC).timestamp()),
-                      received_at=None, amount_usds='400000000', source_chain='base')]
+                      received_at=None, amount_usds='400000000', source_chain='base',
+                      destination_chain='ethereum', sender=prime.alm[Chain.BASE].hex,
+                      recipient=prime.alm[Chain.ETHEREUM].hex,
+                      source_block=100, source_log_index=1, source_transaction='0x' + '11'*32,
+                      destination_block=None, destination_log_index=None, destination_transaction=None)]
     from settle.normalize.usds_bridge_transit import daily_exposure
     exposure = daily_exposure(pnl.period, transfers)
     old = pnl.sky_revenue_daily

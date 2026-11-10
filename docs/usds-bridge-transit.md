@@ -31,7 +31,8 @@ Open claims survive month and year boundaries. Vat debt remains unchanged.
 - `compute/monthly_pnl.py` passes the separate daily deduction into the existing
   `compute/sky_revenue.py` formula. Rates, subsidy caps and the zero charge floor
   are preserved. Retained revenue results, provenance and the workbook Debt tab
-  include the deduction; monthly consolidation checks it against retained claims.
+  include the deduction; monthly consolidation checks it against retained claims,
+  including configured owners/routes, unique event identities and chain pins.
   Old snapshots decode with an empty claim list; existing code/config version
   checks still require a compatible revision before monthly reuse.
 
@@ -45,6 +46,17 @@ The scan covers January 1 through November 8, 2026 (completed daily closes),
 using all six prime configurations and four canonical routes. It found seven
 Spark transfers and no matching transfers for Grove, Obex, Osero, Keel or Skybase
 within that scope. It does not certify arbitrary bridges or unconfigured wallets.
+
+Grove did bridge funds back: the existing authenticated CCTP v2 evidence contains
+**15 Base → Ethereum messages totaling 34,008,407 USDC** through August (and
+62 Ethereum → Base messages totaling 314,595,379.874274 USDC). For example,
+the [March 5 source transfer](https://basescan.org/tx/0x3d6bd9d1901198728fcf4c679ae3582783ceeb40cf0d78a21da69e28aa437e8b)
+bridged 9 million USDC. These are USDC movements, which do not qualify for the
+native idle-USDS exemption. The counts are retained historical evidence, not
+an exhaustive new scan of all Grove bridges through November. See
+`docs/grove/cctp-v2-2026-10-08.md` and `tests/fixtures/grove_cctp_v2_proofs.json`.
+"No native-USDS matches" does not mean "no bridge activity" or establish that
+there are no other bridge-related accounting issues.
 
 All dates below are UTC, in 2026. The three small June withdrawals remain claims
 through their actual release, even when the challenge period has elapsed.

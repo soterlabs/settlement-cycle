@@ -241,3 +241,34 @@ def test_monthly_orchestration_wires_gateway_claim_into_cost_and_provenance(monk
     assert after.sky_revenue < before.sky_revenue
     assert sum(D(r['bridge_usds']) for r in after.sky_revenue_daily) == 200
     assert len(render_provenance(after)['usds_bridge_transfers']) == 1
+
+
+def test_amount_conversion_is_independent_of_decimal_precision():
+    from decimal import localcontext
+    with localcontext() as ctx:
+        ctx.prec = 12
+        assert bridge.usds_amount(123456789012345678901234567890) == '123456789012.34567890123456789'
+
+
+@pytest.mark.parametrize('mutation', [
+    lambda t: t.update(recipient='0x' + '11'*20),
+    lambda t: t.update(destination_chain='optimism'),
+    lambda t: t.update(source_block=600000001),
+    lambda t: t.update(destination_block=600000001),
+    lambda t: t.update(destination_log_index=None),
+    lambda t: t.update(received_at=None),
+    lambda t: t.update(source_transaction='unknown'),
+])
+def test_retained_claims_reject_wrong_ownership_route_and_pin(mutation):
+    prime = load_prime_by_id('spark')
+    claims = bridge.collect_transfers(prime, period(), fetch=reader(sample()))
+    mutation(claims[0])
+    with pytest.raises(ValueError, match='Invalid retained USDS bridge claim'):
+        bridge.validate_transfers(prime, period(), claims)
+
+
+def test_retained_claims_cannot_repeat_a_source_or_delivery():
+    prime = load_prime_by_id('spark')
+    claims = bridge.collect_transfers(prime, period(), fetch=reader(sample()))
+    with pytest.raises(ValueError, match='duplicate event'):
+        bridge.validate_transfers(prime, period(), claims + claims)

@@ -161,7 +161,8 @@ def validate_interest(pnl, prime, provenance, *, allow_september_sofr_carry=Fals
         return pd.DataFrame([{'block_date': date.fromisoformat(r['date']),
                               target: _decode(Decimal, r[source])} for r in rows])
 
-    from settle.normalize.usds_bridge_transit import daily_exposure
+    from settle.normalize.usds_bridge_transit import daily_exposure, validate_transfers
+    validate_transfers(prime, pnl.period, pnl.usds_bridge_transfers)
     claims = daily_exposure(pnl.period, pnl.usds_bridge_transfers)
     for original, claim in zip(rows, claims.to_dict('records'), strict=True):
         if _decode(Decimal, original.get('bridge_usds', '0')) != claim['cum_balance']:

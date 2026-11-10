@@ -3,7 +3,7 @@
   "settlement_execution_verified": false,
   "method": "Authenticated gateway payloads; frozen workbook charges at their original rate convention. No MSC adjustment booked.",
   "code_sha256": {
-    "src/settle/normalize/usds_bridge_transit.py": "8b2890c476ebb4d4b268c38de878375c24fc08f40a352989ee4ebae052970665",
+    "src/settle/normalize/usds_bridge_transit.py": "476adae241fea5782b39e8110749e65e6a338ea5cb2300fde20f4224c2a595f0",
     "scripts/audit_usds_bridge_transit_2026.py": "ab5811d69adbb5e6d0407aa74fbd3e1060b2591ca3c1fa04dc0e76fb4ec3b1c0"
   },
   "prime_config_sha256": {
@@ -115,6 +115,9 @@
       "received_at": 1793709023,
       "source_transaction": "0x133b60b42bdf84271efc2d743808e66c0b4796eadd19ab2e34de9da9da910e64",
       "source_log_index": 144,
+      "source_block": 47673994,
+      "destination_block": 26334285,
+      "destination_log_index": 1001,
       "destination_transaction": "0xa2fe7d047d7e6a1ab47c95ac7931faa4214a31bea0bb3db72fd79d50f2438cfb"
     },
     {
@@ -128,6 +131,9 @@
       "received_at": null,
       "source_transaction": "0x6ba2c8158c8b1bc1e9daeafc5903f0d46978ccbb37d92eb80fea931582236625",
       "source_log_index": 7,
+      "source_block": 51388983,
+      "destination_block": null,
+      "destination_log_index": null,
       "destination_transaction": null
     },
     {
@@ -141,6 +147,9 @@
       "received_at": null,
       "source_transaction": "0x8f10a77f52f7c583a8606120736ddd5766f6cb24027808d8f0238d856ca21d77",
       "source_log_index": 86,
+      "source_block": 153269287,
+      "destination_block": null,
+      "destination_log_index": null,
       "destination_transaction": null
     },
     {
@@ -154,6 +163,9 @@
       "received_at": 1783974155,
       "source_transaction": "0x7b8e692e523eca62aaad95e04e279ad7d8c31b38c0694af18f1a0635f54323ae",
       "source_log_index": 761,
+      "source_block": 48285903,
+      "destination_block": 25526069,
+      "destination_log_index": 471,
       "destination_transaction": "0xac90aa7e2dc4035c921324e3a10ad3ba6c39f21826375b1558ee6acc27964a22"
     },
     {
@@ -167,6 +179,9 @@
       "received_at": 1783974311,
       "source_transaction": "0x33f66feba68e407fd92e5b4c46da5a53389096a5a6b9c40b8909f1a57986edda",
       "source_log_index": 11,
+      "source_block": 52612800,
+      "destination_block": 25526082,
+      "destination_log_index": 1174,
       "destination_transaction": "0xce77f64f1620b2c58bec71b05f5805b6ac3c2d4674ca808b0ec12fdda4a29907"
     },
     {
@@ -180,6 +195,9 @@
       "received_at": 1783974239,
       "source_transaction": "0x216a9de9b07a0c954dd797b6abf95c4ed0af6b1ba0f5156d0c40533fb656a16e",
       "source_log_index": 186,
+      "source_block": 153881194,
+      "destination_block": 25526076,
+      "destination_log_index": 498,
       "destination_transaction": "0x32c5a7912f97abe46a7c384f938c764a3719a9d20d90d063f765e4f2df05fe4a"
     },
     {
@@ -193,6 +211,9 @@
       "received_at": 1792435199,
       "source_transaction": "0x19f7159dc1ddd429ea6c143dfe7ef7665431696d460f153e4f9c9a5ffdb5aeba",
       "source_log_index": 21,
+      "source_block": 514136494,
+      "destination_block": 26228474,
+      "destination_log_index": 3317,
       "destination_transaction": "0x2b7241789acd29f18928f2f11faba2784ea5544e2683b5e5cec22d0599940c1a"
     }
   ],

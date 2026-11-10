@@ -40,7 +40,10 @@ ROUTES = {
     Chain.OPTIMISM: ('op', '0x3d25b7d486cae1810374d37a48bcf0963c9b8057', '0x8f41dbf6b8498561ce1d73af16cd9c0d8ee20ba6'),
     Chain.UNICHAIN: ('op', '0xdf0535a4c96c9cd8921d8fec92a7680b281681d2', '0xa13152006d0216fe4627a0d3b006087a6a55d752'),
 }
-EVENTS = {OP_SEND, OP_RECEIVE, ARB_DEPOSIT, ARB_DEPOSIT_DONE, ARB_WITHDRAW, ARB_WITHDRAW_DONE}
+def usds_amount(raw):
+    # Integer formatting preserves wei even beyond Decimal's ambient precision.
+    whole, fraction = divmod(raw, 10**18)
+    return f'{whole}.{fraction:018d}'.rstrip('0').rstrip('.')
 
 
 def address(word):
@@ -131,18 +134,69 @@ def collect_transfers(prime, period, *, fetch=None):
     for _, receive, _chain, _, _, key, row in sorted(events):
         if not receive:
             record = dict(source_chain=key[1], destination_chain=(Chain.ETHEREUM.value if key[1] != Chain.ETHEREUM.value else key[0]),
-                          sender=key[2], recipient=key[3], amount_usds=str(Decimal(key[4]) / Decimal(10)**18),
+                          sender=key[2], recipient=key[3], amount_usds=usds_amount(key[4]),
                           sent_at=row.block_time, received_at=None,
                           source_transaction=row.transaction_hash, source_log_index=row.log_index,
-                          destination_transaction=None)
+                          source_block=row.block_number, destination_block=None,
+                          destination_log_index=None, destination_transaction=None)
             queues[key].append(record)
             transfers.append(record)
         else:
             if not queues[key]:
                 raise ValueError('USDS delivery has no matching authenticated source transfer')
             record = queues[key].popleft()
-            record.update(received_at=row.block_time, destination_transaction=row.transaction_hash)
+            record.update(received_at=row.block_time, destination_transaction=row.transaction_hash,
+                          destination_block=row.block_number, destination_log_index=row.log_index)
+    validate_transfers(prime, period, transfers)
     return transfers
+
+
+
+def validate_transfers(prime, period, transfers):
+    """Validate retained financial claims before monthly consolidation.
+
+    Hashes protect the retained snapshot; these checks additionally reject
+    wrong owners/routes, duplicate claims and events beyond its chain pins.
+    """
+    seen = set()
+    last_time = int(datetime.combine(period.end + timedelta(days=1), datetime.min.time(), UTC).timestamp())
+    for transfer in transfers:
+        try:
+            source, destination = Chain(transfer['source_chain']), Chain(transfer['destination_chain'])
+            l2 = destination if source == Chain.ETHEREUM else source
+            if (l2 not in ROUTES or source == destination
+                    or Chain.ETHEREUM not in (source, destination)
+                    or source not in prime.alm or destination not in prime.alm
+                    or transfer['sender'] != prime.alm[source].hex
+                    or transfer['recipient'] != prime.alm[destination].hex):
+                raise ValueError('unsupported route/owner')
+            for label, chain, stamp_key, tx_key, block_key, index_key in [
+                ('source', source, 'sent_at', 'source_transaction', 'source_block', 'source_log_index'),
+                ('destination', destination, 'received_at', 'destination_transaction', 'destination_block', 'destination_log_index'),
+            ]:
+                stamp, tx, block, index = (transfer[k] for k in (stamp_key, tx_key, block_key, index_key))
+                if label == 'destination' and stamp is None:
+                    if any(v is not None for v in (tx, block, index)):
+                        raise ValueError('pending claim has delivery evidence')
+                    continue
+                if (type(stamp) is not int or not 0 < stamp < last_time
+                        or type(block) is not int or chain not in period.pin_blocks
+                        or not 0 < block <= period.pin_blocks[chain]
+                        or type(index) is not int or index < 0
+                        or not isinstance(tx, str) or not tx.startswith('0x')
+                        or len(tx) != 66 or len(bytes.fromhex(tx[2:])) != 32):
+                    raise ValueError('invalid event identity/pin')
+                identity = (chain, block, index)
+                if identity in seen:
+                    raise ValueError('duplicate event identity')
+                seen.add(identity)
+            amount = Decimal(transfer['amount_usds'])
+            if (not amount.is_finite() or amount <= 0
+                    or (transfer['received_at'] is not None
+                        and transfer['received_at'] < transfer['sent_at'])):
+                raise ValueError('invalid amount/time')
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError(f'Invalid retained USDS bridge claim: {exc}') from exc
 
 
 def daily_exposure(period, transfers):
