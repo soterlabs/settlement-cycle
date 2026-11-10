@@ -5,7 +5,7 @@ Replay current applicable corrections starting with **PR #220**, through
 Compare against frozen January-September reports and subtract previously settled
 true-ups. September's settled code baseline is
 [`536f149`](https://github.com/soterlabs/settlement-cycle/commit/536f1492089ed82fbf6eaabb956f7a194b887d47).
-The inventory covers 55 merged PRs. Actual policy dates remain in place;
+The inventory covers 57 merged PRs. Actual policy dates remain in place;
 #220's documented rollout restriction was not a runtime date gate.
 
 ## Historical adjustments
@@ -13,7 +13,7 @@ The inventory covers 55 merged PRs. Actual policy dates remain in place;
 | Prime | Supply-side adjustment | Sky-share adjustment | Send-only refund |
 |---|---:|---:|---:|
 | Spark | 249,141.52 | -255,869.48 | 0.00 |
-| Grove | 8,533.17 | -110,419.56 | 0.00 |
+| Grove | 11,554.74 | -110,419.56 | 0.00 |
 | Osero | 0.00 | 0.00 | 5,514.00 |
 | Obex | -273,508.90 | 0.00 | 0.00 |
 
@@ -89,7 +89,7 @@ for October. Remaining additions to the **existing** October configuration are:
 | Prime | SV | Sky share | Send-only refund |
 |---|---:|---:|---:|
 | Spark | 249,141.52 | -255,869.48 | 0.00 |
-| Grove | 8,533.17 | -31,889.50 | 0.00 |
+| Grove | 11,554.74 | -31,889.50 | 0.00 |
 | Osero | 0.00 | 0.00 | 0.00 |
 | Obex | -273,508.90 | 0.00 | 0.00 |
 
@@ -104,3 +104,20 @@ not certify a new complete monthly ALM transfer review. Whole-prime CoF is
 unchanged by lending/async venue-average reattribution; warehouse and Basin
 presentation changes add no separate credit. The native-USDS bridge audit
 certifies its four supported Ethereum routes, not every bridge family.
+
+## Grove-only update after #280
+
+The branch is rebased on `703c668` (#280 merged). Only Grove's affected nonzero
+positions were replayed: 17 Base allocation-months in January-September, plus
+E12's nonzero monthly reporting weights. Cash-method income +13,769.34 less the
+inherited June published-boundary difference 10,747.77 adds **3,021.57** to
+Grove's prior ledger. Grove's full income correction is now **11,554.74**.
+Its -110,419.56 Sky adjustment is unchanged. The E43 missing-venue credit
+remains counted once. Spark, Osero and Obex values/items are byte-equivalent
+to `before-pr280.json`; their computations were not rerun.
+
+The earlier 139-row lending replay remains an immutable pre-#280 checkpoint.
+Reproduce that earlier source replay at `fd6d2ed`, with its matching config.
+The current builder command above replays Grove only through
+`scripts/update_grove_pr280_reconciliation.py`; it validates the checkpoint
+hash and records per-prime calculation commits and new input hashes.

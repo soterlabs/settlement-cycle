@@ -1,10 +1,10 @@
 {
-  "status": "exact_component_replay_and_prior_payment_netting_complete",
+  "status": "grove_only_active_pr280_replay_complete",
   "method": "Replay current applicable rules from PR #220 scope; compare against settled reports and subtract prior true-ups. Do not sum independent PR estimates.",
   "first_included_pr": 220,
   "history_start_commit": "d1460a9fe6f00580b9886b39b3bb81d262fdc54d",
   "published_baseline_commit": "536f1492089ed82fbf6eaabb956f7a194b887d47",
-  "calculation_commit": "bda68582defce86daeb1c7d5d3f6d5da03f18df9",
+  "calculation_commit": "703c66863a0e99edf839658081026926f038c70b",
   "earning_window": [
     "2026-01",
     "2026-09"
@@ -20,5 +20,8 @@
   "lending_allocations": 17,
   "lending_allocation_months": 139,
   "retained_rpc_responses": 97352,
-  "settlement_execution": "Proposal only: no production adjustment or executed payment changed"
+  "settlement_execution": "Proposal only: no production adjustment or executed payment changed",
+  "latest_replay_prime": "grove",
+  "latest_replay_active_venue_months": 17,
+  "non_grove_amounts_unchanged": true
 }

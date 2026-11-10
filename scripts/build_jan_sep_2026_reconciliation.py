@@ -410,6 +410,9 @@ def osero_period_effect(row, income_delta):
 
 
 def calculate():
+    if (FOLDER / "before-pr280.json").exists():
+        from update_grove_pr280_reconciliation import update
+        return update(FOLDER)
     capture_path = FOLDER / "atoken-inputs.json.gz"
     replay_path = FOLDER / "atoken-replay.json"
     if not capture_path.exists() or not replay_path.exists():
@@ -615,6 +618,12 @@ existing supply-side floor and whole-USDS rounding to actual October figures.
 - **Grove missing venues (#264):** 7,219.49 September income from Base
   Steakhouse, and 1,030.45 from Diamond PAU Uniswap (27.90 August; 1,002.55
   September). The LP has no USDS leg and creates no extra CoF exemption.
+- **Grove Base cash capital and E12 weights (#280):** exact cash adds 13,769.34
+  to historical income. Net the inherited June E23 published-boundary difference
+  of -10,747.77 once, for +3,021.57 added to the preceding ledger. E43's earlier
+  missing-venue credit is preserved once. E12 changes attribution only. This
+  update replays only Grove's 17 active Base allocation-months; all other prime
+  results remain at their previously verified calculation versions.
 - **Osero duplicate shortfall deduction (#270):** compare corrected rounded
   debt mints/transfers against executed cashflows for July-September, combining
   the lending replay with the refund. Income absorbed by a still-negative

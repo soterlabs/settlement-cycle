@@ -4,7 +4,7 @@ Draft for the October 2026 earning cycle (MSC #14, paid in November).
 October's ordinary settlement is presented separately.
 
 We replayed the applicable corrections starting with [PR #220](https://github.com/soterlabs/settlement-cycle/pull/220)
-through [`bda6858`](https://github.com/soterlabs/settlement-cycle/commit/bda68582defce86daeb1c7d5d3f6d5da03f18df9),
+through [`703c668`](https://github.com/soterlabs/settlement-cycle/commit/703c66863a0e99edf839658081026926f038c70b),
 against the published January-September reports. The September baseline is
 [`536f149`](https://github.com/soterlabs/settlement-cycle/commit/536f1492089ed82fbf6eaabb956f7a194b887d47).
 Amounts already handled in the [previous reconciliation](https://forum.skyeco.com/t/settlement-reconciliation-msc-5-12-january-august-2026/28273)
@@ -19,7 +19,7 @@ agent's debt mint. A send-only refund increases its transfer without new debt.
 | Prime | Supply-side adjustment | Sky-share adjustment | Send-only refund |
 |---|---:|---:|---:|
 | Spark | 249,141.52 | -255,869.48 | 0.00 |
-| Grove | 8,533.17 | -110,419.56 | 0.00 |
+| Grove | 11,554.74 | -110,419.56 | 0.00 |
 | Osero | 0.00 | 0.00 | 5,514.00 |
 | Obex | -273,508.90 | 0.00 | 0.00 |
 
@@ -53,6 +53,12 @@ existing supply-side floor and whole-USDS rounding to actual October figures.
 - **Grove missing venues (#264):** 7,219.49 September income from Base
   Steakhouse, and 1,030.45 from Diamond PAU Uniswap (27.90 August; 1,002.55
   September). The LP has no USDS leg and creates no extra CoF exemption.
+- **Grove Base cash capital and E12 weights (#280):** exact cash adds 13,769.34
+  to historical income. Net the inherited June E23 published-boundary difference
+  of -10,747.77 once, for +3,021.57 added to the preceding ledger. E43's earlier
+  missing-venue credit is preserved once. E12 changes attribution only. This
+  update replays only Grove's 17 active Base allocation-months; all other prime
+  results remain at their previously verified calculation versions.
 - **Osero duplicate shortfall deduction (#270):** compare corrected rounded
   debt mints/transfers against executed cashflows for July-September, combining
   the lending replay with the refund. Income absorbed by a still-negative
@@ -99,7 +105,7 @@ The following amounts remain to add to those existing October entries:
 | Prime | Additional supply-side adjustment | Additional Sky-share adjustment | Additional send-only refund |
 |---|---:|---:|---:|
 | Spark | 249,141.52 | -255,869.48 | 0.00 |
-| Grove | 8,533.17 | -31,889.50 | 0.00 |
+| Grove | 11,554.74 | -31,889.50 | 0.00 |
 | Osero | 0.00 | 0.00 | 0.00 |
 | Obex | -273,508.90 | 0.00 | 0.00 |
 
@@ -113,7 +119,7 @@ Sky net means debt minted less transfers to agents.
 | Prime | Debt mint change | Transfer change | Sky net change |
 |---|---:|---:|---:|
 | Spark | -6,727.96 | 249,141.52 | -255,869.48 |
-| Grove | -101,886.39 | 8,533.17 | -110,419.56 |
+| Grove | -98,864.82 | 11,554.74 | -110,419.56 |
 | Osero | 0.00 | 5,514.00 | -5,514.00 |
 | Obex | -273,508.90 | -273,508.90 | 0.00 |
 

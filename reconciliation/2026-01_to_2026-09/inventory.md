@@ -2,7 +2,7 @@
 
 Range: PR #220 through the merged #278 main commit recorded in `pr-inventory.json`.
 Published September baseline: `536f1492089ed82fbf6eaabb956f7a194b887d47`.
-Earning months: January-September 2026. All 55 merged PRs are classified.
+Earning months: January-September 2026. All 57 merged PRs are classified.
 The amounts below are booked component totals; credits already settled before
 the baseline are excluded and existing October credits are counted once.
 
@@ -31,3 +31,5 @@ Partner rebates received in October are ordinary October income, irrespective
 of their commercial reference period. They are not January-September true-ups.
 The RLUSD items above belong to Spark; Grove's idle RLUSD was already tracked
 in the baseline. Venue-average/CoF reattribution is not a second payment.
+
+- **Grove #280:** +13,769.34 cash-method income less 10,747.77 inherited June baseline difference = **+3,021.57** incremental historical income. E12 changes attribution only. Only active Grove positions were replayed.

@@ -1,6 +1,6 @@
 {
   "baseline_commit": "536f1492089ed82fbf6eaabb956f7a194b887d47",
-  "calculation_commit": "bda68582defce86daeb1c7d5d3f6d5da03f18df9",
+  "calculation_commit": "703c66863a0e99edf839658081026926f038c70b",
   "earning_window": [
     "2026-01",
     "2026-09"
@@ -1807,6 +1807,20 @@
         "tests/unit/test_async_protocols.py",
         "tests/unit/test_issuer_redemptions.py"
       ]
+    },
+    {
+      "pr": 279,
+      "commit": "7671f6f",
+      "title": "Spark balance sheet gap reporting",
+      "classification": "non_grove_reporting_preserved",
+      "reason": "Rebase only; no Spark calculation in this update."
+    },
+    {
+      "pr": 280,
+      "commit": "703c66863a0e99edf839658081026926f038c70b",
+      "title": "Grove Base exact cash and E12 weights",
+      "classification": "grove_active_historical_replay",
+      "reason": "17 active Base allocation-months; net inherited June baseline difference; no other-prime recalculation."
     }
   ],
   "excluded_earlier_prs": [

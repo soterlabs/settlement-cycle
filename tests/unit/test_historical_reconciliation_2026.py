@@ -35,7 +35,7 @@ def test_approved_credits_are_not_added_twice_and_october_receipts_are_preserved
     combined = ledger["proposed_combined_october_adjustments"]
     assert D(combined["osero"]["send_credit"]) == 5514
     assert D(combined["grove"]["sky_adj"]) == D("1141145.80") - D("110419.56")
-    assert D(combined["grove"]["sv_adj"]) == D("915857.20") + D("8533.17")
+    assert D(combined["grove"]["sv_adj"]) == D("915857.20") + D("11554.74")
 
 
 def test_bridge_cutoff_and_small_buidl_correction_sign(ledger):
@@ -99,3 +99,21 @@ def test_adjustment_effects_match_production_mint_send_core(tmp_path, ledger):
         assert (after.derived_mint - after.derived_send) - (
             before.derived_mint - before.derived_send
         ) == D(expected["sky_net_delta"])
+
+
+def test_pr280_replays_only_active_grove_and_preserves_other_primes(ledger):
+    from pathlib import Path
+
+    prior = json.loads(
+        (
+            Path(__file__).resolve().parents[2]
+            / "reconciliation/2026-01_to_2026-09/before-pr280.json"
+        ).read_text()
+    )
+    assert ledger["grove_pr280_replay"]["active_venue_months"] == 17
+    for prime in ["spark", "osero", "obex"]:
+        assert ledger["adjustment_totals"][prime] == prior["adjustment_totals"][prime]
+        assert (
+            ledger["linear_settlement_effects"][prime] == prior["linear_settlement_effects"][prime]
+        )
+    assert D(ledger["adjustment_totals"]["grove"]["sv_adj"]) == D("11554.74")

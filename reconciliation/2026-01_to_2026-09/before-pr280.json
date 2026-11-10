@@ -1,0 +1,1006 @@
+{
+  "baseline_commit": "536f1492089ed82fbf6eaabb956f7a194b887d47",
+  "calculation_commit": "bda68582defce86daeb1c7d5d3f6d5da03f18df9",
+  "earning_window": [
+    "2026-01",
+    "2026-09"
+  ],
+  "items": [
+    {
+      "id": "spark-native-usds-transit",
+      "prime": "spark",
+      "field": "sky_adj",
+      "unrounded": "-255869.4804253861613487552735",
+      "amount": "-255869.48",
+      "months": {
+        "2026-06": "-28.41976897163983479452054795",
+        "2026-07": "-255655.5528797891490153306161",
+        "2026-08": "-93.36832458880933479452054790",
+        "2026-09": "-92.13945203656316383561643846"
+      },
+      "source": "reconciliation/usds-bridge-2026/audit.json",
+      "prior_trueup": "0"
+    },
+    {
+      "id": "spark-september-partner-receipts",
+      "prime": "spark",
+      "field": "sv_adj",
+      "unrounded": "1373208",
+      "amount": "1373208.00",
+      "months": {
+        "2026-09": "1373208"
+      },
+      "source": "reconciliation/2026-01_to_2026-09/rlusd-receipts.json",
+      "prior_trueup": "0"
+    },
+    {
+      "id": "spark-s72",
+      "prime": "spark",
+      "field": "sv_adj",
+      "unrounded": "3674.1568632270234742260",
+      "amount": "3674.16",
+      "months": {
+        "2026-09": "3674.1568632270234742260"
+      },
+      "source": "reconciliation/2026-01_to_2026-09/venue-evidence.json.gz",
+      "prior_trueup": "0"
+    },
+    {
+      "id": "spark-async-vaults",
+      "prime": "spark",
+      "field": "sv_adj",
+      "unrounded": "-41042.54076700508400",
+      "amount": "-41042.54",
+      "months": {
+        "2026-01": "-9948.92585762339100",
+        "2026-02": "-39.46994616649500",
+        "2026-03": "-7744.25974248049600",
+        "2026-04": "-11195.95424233184100",
+        "2026-05": "-1726.69083629969900",
+        "2026-06": "-29.08283210593000",
+        "2026-07": "-10358.15730999723200",
+        "2026-08": "0E-14",
+        "2026-09": "0E-14"
+      },
+      "source": "reconciliation/async-allocations-2026-01_to_2026-09/results.json",
+      "prior_trueup": "0"
+    },
+    {
+      "id": "obex-async-vaults",
+      "prime": "obex",
+      "field": "sv_adj",
+      "unrounded": "-273508.89509579166500",
+      "amount": "-273508.90",
+      "months": {
+        "2026-01": "0E-14",
+        "2026-02": "0E-14",
+        "2026-03": "0E-14",
+        "2026-04": "0E-14",
+        "2026-05": "0E-14",
+        "2026-06": "0E-14",
+        "2026-07": "-273508.89509579166500",
+        "2026-08": "0E-14",
+        "2026-09": "0E-14"
+      },
+      "source": "reconciliation/async-allocations-2026-01_to_2026-09/results.json",
+      "prior_trueup": "0"
+    },
+    {
+      "id": "grove-redemption-transit",
+      "prime": "grove",
+      "field": "sky_adj",
+      "unrounded": "-78530.05713630497992381621261",
+      "amount": "-78530.06",
+      "months": {
+        "2026-03": "33417.95249353024291212819467",
+        "2026-04": "-5147.68757582659444327535849",
+        "2026-05": "-68481.22519764597013188528199",
+        "2026-08": "-5017.2883982238637038753973",
+        "2026-09": "-33301.8084581387945569083695"
+      },
+      "source": "reconciliation/2026-10/sde_inflight_cof.json",
+      "prior_trueup": "2508.55",
+      "existing_october_amount": "-78530.06"
+    },
+    {
+      "id": "grove-issued-deposits",
+      "prime": "grove",
+      "field": "sky_adj",
+      "unrounded": "-35889.67581908020372461509918",
+      "amount": "-35889.68",
+      "months": {
+        "2026-01": "-19731.33563800891762128952062",
+        "2026-03": "-13634.1289591332545522745169",
+        "2026-04": "-2524.21122193803155105106166"
+      },
+      "source": "reconciliation/2026-10/async_deposit_cof.json",
+      "prior_trueup": "0"
+    },
+    {
+      "id": "grove-small-buidl-capital-and-fees",
+      "prime": "grove",
+      "field": "sky_adj",
+      "unrounded": "4000.178771",
+      "amount": "4000.18",
+      "months": {
+        "2026-05": "3000.000555",
+        "2026-08": "1000.178216"
+      },
+      "source": "scripts/reconcile_grove_buidl_fees.py",
+      "prior_fee_credit": "162505.35"
+    },
+    {
+      "id": "grove-base-steakhouse",
+      "prime": "grove",
+      "field": "sv_adj",
+      "unrounded": "7219.48987642918954783274",
+      "amount": "7219.49",
+      "months": {
+        "2026-09": "7219.48987642918954783274"
+      },
+      "source": "docs/grove/evidence/september-2026-venue-audit.json",
+      "prior_trueup": "0"
+    },
+    {
+      "id": "grove-diamond-uniswap",
+      "prime": "grove",
+      "field": "sv_adj",
+      "unrounded": "1030.453380",
+      "amount": "1030.45",
+      "months": {
+        "2026-07": "0",
+        "2026-08": "27.900333",
+        "2026-09": "1002.553047"
+      },
+      "source": "reconciliation/2026-01_to_2026-09/venue-evidence.json.gz",
+      "prior_trueup": "0"
+    },
+    {
+      "id": "osero-financed-shortfall-refund",
+      "prime": "osero",
+      "field": "send_credit",
+      "unrounded": "5514",
+      "amount": "5514.00",
+      "months": {
+        "2026-07": "106",
+        "2026-08": "1448",
+        "2026-09": "3960"
+      },
+      "source": "reconciliation/2026-10/osero_shortfall_evidence.json",
+      "existing_october_amount": "5514"
+    },
+    {
+      "id": "spark-lending-event-boundaries",
+      "prime": "spark",
+      "field": "sv_adj",
+      "unrounded": "-1086698.10124174635539103400",
+      "amount": "-1086698.10",
+      "months": {
+        "2026-01": "221360.79210150443117185300",
+        "2026-02": "-523330.59117804067282242500",
+        "2026-03": "-349876.69938364470119674700",
+        "2026-04": "326952.58859751420829075700",
+        "2026-05": "-269058.59989049228808899300",
+        "2026-06": "-137963.68241426727774986600",
+        "2026-07": "-228004.43860780336484378600",
+        "2026-08": "-129177.47203062449242809500",
+        "2026-09": "2400.00156410780227626800"
+      },
+      "source": "reconciliation/2026-01_to_2026-09/atoken-replay.json",
+      "prior_trueup": "0",
+      "replaces": "spark-s70"
+    },
+    {
+      "id": "grove-lending-event-boundaries",
+      "prime": "grove",
+      "field": "sv_adj",
+      "unrounded": "283.23230493740590508900",
+      "amount": "283.23",
+      "months": {
+        "2026-01": "742.91285033774474533600",
+        "2026-02": "662.2488952570981802300",
+        "2026-03": "-1121.9294406574370204770",
+        "2026-04": "0E-19",
+        "2026-05": "0E-20",
+        "2026-06": "0E-20",
+        "2026-07": "0E-20",
+        "2026-08": "0E-20",
+        "2026-09": "0E-20"
+      },
+      "source": "reconciliation/2026-01_to_2026-09/atoken-replay.json",
+      "prior_trueup": "0",
+      "replaces": null
+    }
+  ],
+  "adjustment_totals": {
+    "spark": {
+      "dv_adj": "0",
+      "sv_adj": "249141.52",
+      "sky_adj": "-255869.48",
+      "send_credit": "0"
+    },
+    "grove": {
+      "dv_adj": "0",
+      "sv_adj": "8533.17",
+      "sky_adj": "-110419.56",
+      "send_credit": "0"
+    },
+    "osero": {
+      "dv_adj": "0",
+      "sv_adj": "0",
+      "sky_adj": "0",
+      "send_credit": "5514.00"
+    },
+    "obex": {
+      "dv_adj": "0",
+      "sv_adj": "-273508.90",
+      "sky_adj": "0",
+      "send_credit": "0"
+    }
+  },
+  "linear_settlement_effects": {
+    "spark": {
+      "mint_delta": "-6727.96",
+      "transfer_delta": "249141.52",
+      "sky_net_delta": "-255869.48"
+    },
+    "grove": {
+      "mint_delta": "-101886.39",
+      "transfer_delta": "8533.17",
+      "sky_net_delta": "-110419.56"
+    },
+    "osero": {
+      "mint_delta": "0",
+      "transfer_delta": "5514.00",
+      "sky_net_delta": "-5514.00"
+    },
+    "obex": {
+      "mint_delta": "-273508.90",
+      "transfer_delta": "-273508.90",
+      "sky_net_delta": "0"
+    }
+  },
+  "already_in_october": {
+    "spark": {
+      "dv_adj": "0",
+      "sv_adj": "0",
+      "sky_adj": "0",
+      "send_credit": "0"
+    },
+    "grove": {
+      "dv_adj": "0",
+      "sv_adj": "0",
+      "sky_adj": "-78530.06",
+      "send_credit": "0"
+    },
+    "osero": {
+      "dv_adj": "0",
+      "sv_adj": "0",
+      "sky_adj": "0",
+      "send_credit": "5514"
+    },
+    "obex": {
+      "dv_adj": "0",
+      "sv_adj": "0",
+      "sky_adj": "0",
+      "send_credit": "0"
+    }
+  },
+  "remaining_to_add_to_october": {
+    "spark": {
+      "dv_adj": "0",
+      "sv_adj": "249141.52",
+      "sky_adj": "-255869.48",
+      "send_credit": "0"
+    },
+    "grove": {
+      "dv_adj": "0",
+      "sv_adj": "8533.17",
+      "sky_adj": "-31889.50",
+      "send_credit": "0"
+    },
+    "osero": {
+      "dv_adj": "0",
+      "sv_adj": "0",
+      "sky_adj": "0",
+      "send_credit": "0.00"
+    },
+    "obex": {
+      "dv_adj": "0",
+      "sv_adj": "-273508.90",
+      "sky_adj": "0",
+      "send_credit": "0"
+    }
+  },
+  "proposed_combined_october_adjustments": {
+    "spark": {
+      "dv_adj": "0",
+      "sv_adj": "249141.52",
+      "sky_adj": "-255869.48",
+      "send_credit": "0"
+    },
+    "grove": {
+      "dv_adj": "0",
+      "sv_adj": "924390.37",
+      "sky_adj": "1030726.24",
+      "send_credit": "0"
+    },
+    "osero": {
+      "dv_adj": "0",
+      "sv_adj": "0",
+      "sky_adj": "0",
+      "send_credit": "5514.00"
+    },
+    "obex": {
+      "dv_adj": "0",
+      "sv_adj": "-273508.90",
+      "sky_adj": "0",
+      "send_credit": "0"
+    }
+  },
+  "bridge_daily": [
+    {
+      "date": "2026-06-22",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.157752107959981643835616438"
+    },
+    {
+      "date": "2026-06-23",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.157752107959981643835616438"
+    },
+    {
+      "date": "2026-06-24",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.157752107959981643835616438"
+    },
+    {
+      "date": "2026-06-25",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.157752107959981643835616438"
+    },
+    {
+      "date": "2026-06-26",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.157752107959981643835616438"
+    },
+    {
+      "date": "2026-06-27",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.157752107959981643835616438"
+    },
+    {
+      "date": "2026-06-28",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.157752107959981643835616438"
+    },
+    {
+      "date": "2026-06-29",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.157752107959981643835616438"
+    },
+    {
+      "date": "2026-06-30",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.157752107959981643835616438"
+    },
+    {
+      "date": "2026-07-01",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.157752107959981643835616438"
+    },
+    {
+      "date": "2026-07-02",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.157752107959981643835616438"
+    },
+    {
+      "date": "2026-07-03",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.157752107959981643835616438"
+    },
+    {
+      "date": "2026-07-04",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.157752107959981643835616438"
+    },
+    {
+      "date": "2026-07-05",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.157752107959981643835616438"
+    },
+    {
+      "date": "2026-07-06",
+      "in_transit_usds": "346875703.611569069692530370",
+      "sky_adj": "-36511.58280931780158524292558"
+    },
+    {
+      "date": "2026-07-07",
+      "in_transit_usds": "346875703.611569069692530370",
+      "sky_adj": "-36511.58280931780158524292558"
+    },
+    {
+      "date": "2026-07-08",
+      "in_transit_usds": "346875703.611569069692530370",
+      "sky_adj": "-36511.58280931780158524292558"
+    },
+    {
+      "date": "2026-07-09",
+      "in_transit_usds": "346875703.611569069692530370",
+      "sky_adj": "-36511.58280931780158524292558"
+    },
+    {
+      "date": "2026-07-10",
+      "in_transit_usds": "346875703.611569069692530370",
+      "sky_adj": "-36511.58280931780158524292558"
+    },
+    {
+      "date": "2026-07-11",
+      "in_transit_usds": "346875703.611569069692530370",
+      "sky_adj": "-36511.58280931780158524292558"
+    },
+    {
+      "date": "2026-07-12",
+      "in_transit_usds": "346875703.611569069692530370",
+      "sky_adj": "-36511.58280931780158524292558"
+    },
+    {
+      "date": "2026-07-13",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.157752107959981643835616438"
+    },
+    {
+      "date": "2026-07-14",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.157752107959981643835616438"
+    },
+    {
+      "date": "2026-07-15",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.157752107959981643835616438"
+    },
+    {
+      "date": "2026-07-16",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.157752107959981643835616438"
+    },
+    {
+      "date": "2026-07-17",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.157752107959981643835616438"
+    },
+    {
+      "date": "2026-07-18",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.157752107959981643835616438"
+    },
+    {
+      "date": "2026-07-19",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.157752107959981643835616438"
+    },
+    {
+      "date": "2026-07-20",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.157752107959981643835616438"
+    },
+    {
+      "date": "2026-07-21",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.157752107959981643835616438"
+    },
+    {
+      "date": "2026-07-22",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.157752107959981643835616438"
+    },
+    {
+      "date": "2026-07-23",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-07-24",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-07-25",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-07-26",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-07-27",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-07-28",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-07-29",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-07-30",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-07-31",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-01",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-02",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-03",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-04",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-05",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-06",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-07",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-08",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-09",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-10",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-11",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-12",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-13",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-14",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-15",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-16",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-17",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-18",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-19",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-20",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-21",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-22",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-23",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-24",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-25",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-26",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-27",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-28",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-29",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-30",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-08-31",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-09-01",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-09-02",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.011881438348688219178082192"
+    },
+    {
+      "date": "2026-09-03",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-04",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-05",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-06",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-07",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-08",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-09",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-10",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-11",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-12",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-13",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-14",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-15",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-16",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-17",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-18",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-19",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-20",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-21",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-22",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-23",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-24",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-25",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-26",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-27",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-28",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-29",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    },
+    {
+      "date": "2026-09-30",
+      "in_transit_usds": "30000",
+      "sky_adj": "-3.075560327138063835616438356"
+    }
+  ],
+  "osero_executed_refund_rows": [
+    {
+      "earning_month": "2026-07",
+      "executed_at": "2026-08-17T14:02:23+00:00",
+      "transaction_hash": "0x4d4f4d480a53ec6af365068283b90c59cf722aac6654920166c38e4f5c637bf4",
+      "demand_revenue": "12149.43198747239",
+      "supply_share": "-106.6873955625676",
+      "cof": "496.9928515100239",
+      "debt_minted": "497",
+      "actual_send": "12043",
+      "corrected_send": "12149",
+      "send_credit": "106"
+    },
+    {
+      "earning_month": "2026-08",
+      "executed_at": "2026-09-13T12:42:11+00:00",
+      "transaction_hash": "0xcd57535f7a9e60e61d34b31f793501fa6178b4ae37fe0b2900f76efd54e192c3",
+      "demand_revenue": "31604.08090701746",
+      "supply_share": "-1447.851548444410",
+      "cof": "7005.670168877914",
+      "debt_minted": "7006",
+      "actual_send": "30156",
+      "corrected_send": "31604",
+      "send_credit": "1448"
+    },
+    {
+      "earning_month": "2026-09",
+      "executed_at": "2026-10-12T14:01:47+00:00",
+      "transaction_hash": "0x93389082b75a9e278b6b2a2d7dde53618c38214b5d71699fd60461dbe1e10275",
+      "demand_revenue": "31620.8993235734666",
+      "supply_share": "-3959.60161832428",
+      "cof": "76824.23346740459",
+      "debt_minted": "76824",
+      "actual_send": "27661",
+      "corrected_send": "31621",
+      "send_credit": "3960"
+    }
+  ],
+  "input_sha256": {
+    "reconciliation/2026-01_to_2026-09/venue-evidence.json.gz": "52fab14739db3b07b943b0b8fda77fd8e12ff202a9cd2cacc5475461e256915a",
+    "docs/grove/evidence/september-2026-venue-audit.json": "6312d0235570851b865f808e3779491741b6c3b5b2c009dc9d0679949f70f759",
+    "reconciliation/async-allocations-2026-01_to_2026-09/results.json": "eb841e20e203e15ec51162ea33009bdbe4667887bc5b896df420561b5307a153",
+    "reconciliation/2026-01_to_2026-09/rlusd-receipts.json": "fb3c8b004521c2fb611257f240c0256585871c3f58642d5745e1fe2f37c6d618",
+    "reconciliation/2026-01_to_2026-09/dr-code-evidence.json": "0c7f21366707a0824ef0f4270a77445b5cd7b4721aa45cdaffda1b9a33ef823b",
+    "config/sky_total.yaml": "d72f6b0efa64b2ea4696fe7d5564766c03a8bb8b384395a955cfeda607bb2501",
+    "config/grove.yaml": "9377bc79d566c08498b0b6f4341ae9e7cb4488077b619082f5c9b78c6d0912c5",
+    "config/spark.yaml": "c57c201a92ebf9411faaff9947c55d663e99be7716a3b82eb73c0be4d8fe68db",
+    "config/osero.yaml": "a235227f223852b8338e8bd76daf203d6abcc5b5caeeef515cb53e98f9717ee2",
+    "tests/fixtures/sde_inflight/centrifuge_history.json": "4a740adef6bc0403bca50e21c9fbcfb04a2619020b9c800e6879cdcdc0101882",
+    "tests/fixtures/sde_inflight/async_deposits.json": "82b295188d37036df62c2c71e307b17c2a537564868eea53b127a8c83fc5bdb6",
+    "tests/fixtures/sde_inflight/buidl_events.json": "5ef15c1d53d149719d33e9907f76849b707e7695766e9937a8318dc2a003b3d3",
+    "reconciliation/2026-01_to_2026-08/data.json": "8012e9c6ceb5f8bfcadc51d71ca4aa16676c78e23a92541e4cecf974db031357",
+    "reconciliation/2026-10/osero_shortfall_evidence.json": "e373921604074a4ed937a94df2aa4bfcec2f4c9fd240904431df480e752eeb10",
+    "scripts/reconcile_sde_inflight.py": "bbcafae358f11c0a46c0442402b1eac4a7c23835a2e6c13152f8025dd3a0b462",
+    "scripts/reconcile_async_deposits.py": "b54050b02bfbe6d12c850517cf46ee3b5efd662568b3282eb9170f180e46a123",
+    "scripts/reconcile_grove_buidl_fees.py": "ed046ee001980c03a1e1b0efd0e3df034bcf215b1f7cd93cb3f7ddf8c21f41f8",
+    "scripts/reconcile_osero_shortfalls.py": "d5b5aff4ddc95eaff1bfd726a56ca4b10316516696d80242d7492fae4b16c17b",
+    "scripts/audit_grove_september_2026.py": "812c86c0db6706644c502980429b2a0c7aa1dc8e23394bd44c5fd289420ec80d",
+    "scripts/audit_usds_bridge_transit_2026.py": "1bdabb718cca786bf832580fab496dc127bc251c155a1e7ef3d8607436fb9189",
+    "scripts/replay_reconciliation_venues.py": "ce76ba6f3eecf70495355d66a851efa966b7d063efc542f768e87454f822948f",
+    "scripts/build_jan_sep_2026_reconciliation.py": "5ae3409440eb3bd1eddce9a1affdf9e1d0d5617a3c42f3ee1c027387833d2c63",
+    "settlements/grove/2026-03/grove_settlement_march_2026.xlsx": "a12c9ed10f97522742559a9f78b15174d60563dab61d80c2e039c87c4401eca9",
+    "settlements/grove/2026-04/grove_settlement_april_2026.xlsx": "2147bb6d9e900261abe33643c70fe32c7c294cdeb1a5c034304aa704fa94f16f",
+    "settlements/grove/2026-05/grove_settlement_may_2026.xlsx": "fc8a0167cf94ef1020f48790a256a0c0ff6a375bacac55ab6778eea789a1c6d4",
+    "settlements/grove/2026-08/grove_settlement_august_2026.xlsx": "4c5491ada70611602462e936b05701ba8e2e29c1c993aa3908a51ecd5a0255fd",
+    "settlements/grove/2026-09/grove_settlement_september_2026.xlsx": "726b28299529264199cd60fdba02f9d83c27a77cf0252cabd9c46d3876912610",
+    "reconciliation/usds-bridge-2026/audit.json": "ae11eaa84ad285981c6cd60d542e97a216bc7eddfbeb01e8e98d235df9b66f55",
+    "settlements/spark/2026-06/spark_settlement_june_2026.xlsx": "3dba0b345759cb478db387e0d37d748114d8e1ffbc6230c5f76f04d5d6bead67",
+    "settlements/spark/2026-07/spark_settlement_july_2026.xlsx": "8a40e4b84ae139929043058e1e3fd6ebb3744bdc94b13b6b02183911bd19b64f",
+    "settlements/spark/2026-08/spark_settlement_august_2026.xlsx": "a74688825a8b858e6c0faa71ec000ce3b34e4d5ed6d8adff4ad718de9b94b34f",
+    "settlements/spark/2026-09/spark_settlement_september_2026.xlsx": "c53081ebb32e6c0fcb0850dad5d80adcaa03eeb0e4e649377d3ab6288f29d02e",
+    "tests/fixtures/usds_bridge/spark_2026_gateway_logs.json": "bf819fa3ced15c4533818ec3c00cf179438241abcf4646b10e720cfd48f390d0",
+    "reconciliation/2026-01_to_2026-09/pr-inventory.json": "805f4feafaf030c175dd465bedb8cd37633fe5d6b4ea86160ba0ccaf880f5cac",
+    "reconciliation/2026-01_to_2026-09/atoken-inputs.json.gz": "74a78fe37e12c2786f29507334d379873e3f106eb6be79d81ee76f7ceaedbef7",
+    "reconciliation/2026-01_to_2026-09/atoken-replay.json": "71dcac81110e26b83a7b9326cfa867435edc925a0c924f7062249c0255e5de11"
+  },
+  "rounding": "Each booked component is rounded to cents; preserve existing approved components. Monthly detail remains unrounded. Final MSC applies its usual SV floor and whole-USDS rounding.",
+  "execution_status": "Calculated proposal; no new settlement configuration, database revision or on-chain execution.",
+  "prior_payment_netting": [
+    {
+      "prime": "spark",
+      "item": "historical-reserve-factor",
+      "gross": "2392354.07",
+      "previously_settled": "2392354.07",
+      "net": "0.00"
+    },
+    {
+      "prime": "grove",
+      "item": "historical-buidl-fees-and-cof",
+      "gross": "165013.90",
+      "previously_settled": "165013.90",
+      "net": "0.00",
+      "note": "Fee and CoF offsets are also preserved in their component replays."
+    }
+  ],
+  "osero_lending_period_netting": [
+    {
+      "earning_month": "2026-07",
+      "income_delta": "35.80584467483786451800",
+      "corrected_supply_share": "-70.88155088772973548200",
+      "corrected_mint": "497",
+      "corrected_send": "12149",
+      "mint_delta": "0",
+      "transfer_delta": "106",
+      "additional_send_credit": "0"
+    },
+    {
+      "earning_month": "2026-08",
+      "income_delta": "234.83257870393035231200",
+      "corrected_supply_share": "-1213.01896974047964768800",
+      "corrected_mint": "7006",
+      "corrected_send": "31604",
+      "mint_delta": "0",
+      "transfer_delta": "1448",
+      "additional_send_credit": "0"
+    },
+    {
+      "earning_month": "2026-09",
+      "income_delta": "0E-20",
+      "corrected_supply_share": "-3959.60161832428000000000",
+      "corrected_mint": "76824",
+      "corrected_send": "31621",
+      "mint_delta": "0",
+      "transfer_delta": "3960",
+      "additional_send_credit": "0"
+    }
+  ],
+  "lending_income_deltas": {
+    "spark": {
+      "2026-01": "221360.79210150443117185300",
+      "2026-02": "-523330.59117804067282242500",
+      "2026-03": "-349876.69938364470119674700",
+      "2026-04": "326952.58859751420829075700",
+      "2026-05": "-269058.59989049228808899300",
+      "2026-06": "-137963.68241426727774986600",
+      "2026-07": "-228004.43860780336484378600",
+      "2026-08": "-129177.47203062449242809500",
+      "2026-09": "2400.00156410780227626800"
+    },
+    "grove": {
+      "2026-01": "742.91285033774474533600",
+      "2026-02": "662.2488952570981802300",
+      "2026-03": "-1121.9294406574370204770",
+      "2026-04": "0E-19",
+      "2026-05": "0E-20",
+      "2026-06": "0E-20",
+      "2026-07": "0E-20",
+      "2026-08": "0E-20",
+      "2026-09": "0E-20"
+    },
+    "osero": {
+      "2026-07": "35.80584467483786451800",
+      "2026-08": "234.83257870393035231200",
+      "2026-09": "0E-20"
+    }
+  },
+  "scope": "Current applicable fixes from PR #220; January-September 2026, net of prior settlements",
+  "lending_allocation_months": 139
+}
