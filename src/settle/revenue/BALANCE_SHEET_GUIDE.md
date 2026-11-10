@@ -111,3 +111,11 @@ Do not replace actual claim ownership with a dashboard's gross AMM figure.
 A residual labelled “surplus” elsewhere does not prove opening book equity.
 Remaining incomplete categories must stay visibly partial/TBD, with their real
 source references retained, rather than receiving a balancing amount.
+
+Maple's later queue implementation `0x9dafee2bfc8eeb46c4fa80c998bc0c7e4804c644`
+is accepted by the closing collector for S14/S15 only, alongside the configured
+historical implementation. Its deployment identity is independently confirmed
+by [Maple's address registry](https://github.com/maple-labs/address-registry/blob/dcfa876d95a2f2dd0158f0597f2882e324b5e876/MapleAddressRegistryETH.md);
+the documented owner-specific queued/manual-share getters and all existing
+asset/pool/controller checks still apply. The pointer and deployed implementation
+code are captured from chain. This does not expand the MSC allowlist.

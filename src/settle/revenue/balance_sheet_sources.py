@@ -2,6 +2,7 @@
 
 import os
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from datetime import UTC, datetime, time
 from decimal import Decimal as D
 from decimal import localcontext
@@ -9,6 +10,7 @@ from decimal import localcontext
 import requests
 
 from ..domain.config import load_prime_by_id
+from ..domain.primes import Address
 from ..extract._keccak import keccak256
 from .cash_flow.classify import is_cash
 from .cash_flow.collector import rpc as configured_rpc
@@ -79,6 +81,10 @@ EXTRA_SAVINGS = [
         "Savings USDT (XLayer)",
     ),
 ]
+# Confirmed in maple-labs/address-registry at dcfa876d95a2f2dd0158f0597f2882e324b5e876.
+# Reporting-only extension: settlement configuration and accounting are unchanged.
+MAPLE_QUEUE_IMPLEMENTATION = "0x9dafee2bfc8eeb46c4fa80c998bc0c7e4804c644"
+
 PAU = "0x8d719a830b00e5571db00d173505cd56c0ec224a"
 PAU_SUSDC = "0xbc65ad17c5c0a2a4d159fa5a503f4992c7b545fe"
 
@@ -317,7 +323,32 @@ def collect(cutoff, *, candidates=None, progress=None):
             raise ValueError("Offchain claim needs principal reconciliation")
         from ..normalize.async_vaults import async_vault_exposure
 
-        exposure = async_vault_exposure(prime, v, pins[ch]["block"])
+        closing_venue = v
+        if v.id in {"S14", "S15"} and v.async_allocation and v.async_allocation.kind == "maple":
+            managers = []
+            for manager in v.async_allocation.managers:
+                if reader.code(ch, manager.address.hex) != "0x":
+                    impl = reader.number(ch, manager.address.hex, "implementation()")
+                    if impl == int(MAPLE_QUEUE_IMPLEMENTATION, 16):
+                        if reader.code(ch, MAPLE_QUEUE_IMPLEMENTATION) == "0x":
+                            raise ValueError("Maple implementation missing")
+                managers.append(
+                    replace(
+                        manager,
+                        implementations=tuple(
+                            dict.fromkeys(
+                                (
+                                    *manager.implementations,
+                                    Address.from_str(MAPLE_QUEUE_IMPLEMENTATION),
+                                )
+                            )
+                        ),
+                    )
+                )
+            closing_venue = replace(
+                v, async_allocation=replace(v.async_allocation, managers=tuple(managers))
+            )
+        exposure = async_vault_exposure(prime, closing_venue, pins[ch]["block"])
         async_claims[v.id] = dict(
             shares=str(exposure.shares),
             fixed_cash=str(exposure.redemption_cash),

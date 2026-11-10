@@ -144,6 +144,8 @@ def test_queued_maple_claim_is_included_even_with_zero_wallet_shares(monkeypatch
     monkeypatch.setattr(Reader, "balance", lambda *a: 0)
 
     def number(self, chain, token, signature, *args):
+        if signature == "implementation()":
+            return int(sources.MAPLE_QUEUE_IMPLEMENTATION, 16)
         if signature == "asset()":
             return int(venue.underlying.address.hex, 16)
         if signature == "convertToAssets(uint256)":
@@ -162,6 +164,10 @@ def test_queued_maple_claim_is_included_even_with_zero_wallet_shares(monkeypatch
         lambda *a: AsyncVaultExposure(redemption_shares=Decimal(2), redemption_cash=Decimal(3)),
     )
     document = sources.collect(date(2026, 10, 31))
+    assert all(
+        a.hex != sources.MAPLE_QUEUE_IMPLEMENTATION
+        for a in venue.async_allocation.managers[0].implementations
+    )
     assert document["positions"]["S14"]["value"] == "10"
     assert document["async_claims"]["S14"]["fixed_cash"] == "3"
 
