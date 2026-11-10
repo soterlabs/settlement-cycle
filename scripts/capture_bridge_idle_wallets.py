@@ -29,6 +29,8 @@ def capture(pin_source, output, *, workers=2):
         day: {chain: row["block"] for chain, row in states.items()}
         for day, states in pins["days"].items()
     }
+    if not pins or not set(document["days"]).issubset(pins):
+        raise ValueError("Checkpoint date scope differs from the requested pin source")
     expected_chains = {c for c in prime.alm if c in USDS_BY_CHAIN}
     for chain in expected_chains:
         token = USDS_BY_CHAIN[chain]

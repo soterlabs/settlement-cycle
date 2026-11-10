@@ -91,8 +91,18 @@ def wallet_document():
             "block": 100,
             "raw_balance": str(10**18),
             "headers": [
-                {"number": "0x64", "hash": "a", "parentHash": "z", "timestamp": hex(stamp)},
-                {"number": "0x65", "hash": "b", "parentHash": "a", "timestamp": hex(stamp + 1)},
+                {
+                    "number": "0x64",
+                    "hash": "0x" + "aa" * 32,
+                    "parentHash": "0x" + "ff" * 32,
+                    "timestamp": hex(stamp),
+                },
+                {
+                    "number": "0x65",
+                    "hash": "0x" + "bb" * 32,
+                    "parentHash": "0x" + "aa" * 32,
+                    "timestamp": hex(stamp + 1),
+                },
             ],
         }
     return document, prime, day
@@ -116,6 +126,8 @@ def test_verified_wallet_evidence_covers_every_active_native_usds_chain(wallet_d
         lambda d: d["days"]["2026-07-06"]["base"]["headers"][1].update(parentHash="bad"),
         lambda d: d["days"]["2026-07-06"]["base"]["headers"][1].update(timestamp="0x0"),
         lambda d: d["days"]["2026-07-06"]["base"].update(raw_balance="-1"),
+        lambda d: d["days"]["2026-07-06"]["base"].update(raw_balance=str(2**256)),
+        lambda d: d["days"]["2026-07-06"]["base"].update(raw_balance="\u0661"),
     ],
 )
 def test_unverified_evidence_never_becomes_a_balance(wallet_document, mutation):
@@ -124,6 +136,84 @@ def test_unverified_evidence_never_becomes_a_balance(wallet_document, mutation):
     mutation(document)
     with pytest.raises(ValueError):
         verified_wallet_usds(document, prime, day)
+
+
+@pytest.mark.parametrize("change", ["wallet", "manifest", "published_checks"])
+def test_copied_packet_checks_the_files_it_actually_consumes(tmp_path, change):
+    import json
+    import shutil
+
+    from scripts.reconcile_usds_bridge_baseline_2026 import FOLDER, PACKAGE, replay
+
+    folder = tmp_path / "packet"
+    shutil.copytree(FOLDER, folder)
+    if change == "wallet":
+        path = folder / "wallet-inputs.json"
+        doc = json.loads(path.read_text())
+        doc["days"]["2026-07-06"]["base"]["raw_balance"] = str(10**18)
+        path.write_text(json.dumps(doc))
+        message = "Changed retained bridge source"
+    else:
+        path = folder / "sources.json"
+        doc = json.loads(path.read_text())
+        if change == "manifest":
+            del doc["sha256"][PACKAGE + "/wallet-inputs.json"]
+            message = "source hash manifest"
+        else:
+            doc["prior_idle_baseline_checks"] = []
+            message = "published idle baseline"
+        path.write_text(json.dumps(doc))
+    with pytest.raises(ValueError, match=message):
+        replay(folder)
+
+
+def test_capture_refuses_a_checkpoint_from_another_date_scope(
+    wallet_document, tmp_path, monkeypatch
+):
+    import json
+
+    from scripts import capture_bridge_idle_wallets as module
+
+    document, _, day = wallet_document
+    source = tmp_path / "pins.json"
+    source.write_text(json.dumps(document))
+    document = copy.deepcopy(document)
+    document["days"]["2026-07-07"] = document["days"][day]
+    output = tmp_path / "checkpoint.json"
+    output.write_text(json.dumps(document))
+
+    def unexpected(*args):
+        raise AssertionError("Invalid scope must be rejected before any RPC call")
+
+    monkeypatch.setattr(module.rpc, "_post", unexpected)
+    with pytest.raises(ValueError, match="date scope"):
+        module.capture(source, output)
+
+
+def test_capture_revalidates_cached_headers_and_keeps_failure_incomplete(
+    wallet_document, tmp_path, monkeypatch
+):
+    import json
+
+    from scripts import capture_bridge_idle_wallets as module
+
+    document, _, day = wallet_document
+    source = tmp_path / "pins.json"
+    source.write_text(json.dumps(document))
+    document = copy.deepcopy(document)
+    document["days"][day]["base"]["headers"][1]["parentHash"] = "0x" + "00" * 32
+    output = tmp_path / "checkpoint.json"
+    output.write_text(json.dumps(document))
+    monkeypatch.setattr(module.rpc, "rpc_url", lambda c: c.value)
+
+    def post(chain, method, params):
+        assert method == "eth_chainId"
+        return hex(module.CHAIN_IDS[chain])
+
+    monkeypatch.setattr(module.rpc, "_post", post)
+    with pytest.raises(ValueError, match="daily close"):
+        module.capture(source, output)
+    assert json.loads(output.read_text())["status"] == "incomplete"
 
 
 def test_offline_replay_replaces_only_spark_sky_item_and_preserves_other_agents():

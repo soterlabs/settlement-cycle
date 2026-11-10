@@ -211,12 +211,19 @@ def verified_wallet_usds(document, prime, day):
         block, headers = state['block'], state['headers']
         if type(block) is not int or block <= 0 or len(headers) != 2:
             raise ValueError('Invalid wallet boundary')
+        for header in headers:
+            for key in ('hash', 'parentHash'):
+                value = header.get(key)
+                if (not isinstance(value, str) or len(value) != 66 or not value.startswith('0x')
+                        or any(c not in '0123456789abcdefABCDEF' for c in value[2:])):
+                    raise ValueError('Malformed wallet header hash')
         if (int(headers[0]['number'], 16) != block or int(headers[1]['number'], 16) != block + 1
                 or not int(headers[0]['timestamp'], 16) <= target < int(headers[1]['timestamp'], 16)
                 or headers[1]['parentHash'] != headers[0]['hash']):
             raise ValueError('Wallet pin is not the certified daily close')
         raw = state['raw_balance']
-        if not isinstance(raw, str) or not raw.isdecimal():
+        if (not isinstance(raw, str) or not raw.isascii() or not raw.isdecimal()
+                or not 0 <= int(raw) < 2**256):
             raise ValueError('Invalid wallet raw balance')
         total += D(raw) / D(10**token.decimals)
     return total

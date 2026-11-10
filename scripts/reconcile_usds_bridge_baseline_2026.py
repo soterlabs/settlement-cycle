@@ -25,7 +25,8 @@ from settle.extract.hypersync import LogRow
 from settle.normalize.usds_bridge_transit import collect_transfers, daily_exposure
 
 ROOT = Path(__file__).resolve().parents[1]
-FOLDER = ROOT / "reconciliation/usds-bridge-2026/baseline-correction"
+PACKAGE = "reconciliation/usds-bridge-2026/baseline-correction"
+FOLDER = ROOT / PACKAGE
 BASELINE = "536f1492089ed82fbf6eaabb956f7a194b887d47"
 PR277 = "ec89f0bdb501d66365979470df0600e820f41a16"
 
@@ -71,6 +72,12 @@ def replay(folder=FOLDER):
 
 
 def _replay(folder):
+    def source(path):
+        # Hash and consume the same files even when verifying a copied package.
+        if path.startswith(PACKAGE + "/"):
+            return folder / path.removeprefix(PACKAGE + "/")
+        return ROOT / path
+
     legacy_path = ROOT / "reconciliation/usds-bridge-2026/audit.json"
     legacy = read(legacy_path)
     prime = load_prime_by_id("spark")
@@ -78,12 +85,49 @@ def _replay(folder):
     provenance = read(folder / "sources.json")
     if provenance["baseline_commit"] != BASELINE or provenance["pr277_commit"] != PR277:
         raise ValueError("Wrong frozen baseline or PR #277 checkpoint")
+    required = {
+        "reconciliation/usds-bridge-2026/audit.json",
+        "reconciliation/usds-bridge-2026/spark-october-retained-daily.json",
+        "tests/fixtures/usds_bridge/spark_2026_gateway_logs.json",
+        "config/spark.yaml",
+        *(
+            PACKAGE + "/" + name
+            for name in [
+                "wallet-inputs.json",
+                "pr277-checkpoint.json",
+                "original-july-workbook.xlsx",
+                "original-june-workbook.xlsx",
+            ]
+        ),
+        *(
+            f"settlements/spark/2026-{m:02}/spark_settlement_{name}_2026.xlsx"
+            for m, name in [(6, "june"), (7, "july"), (8, "august"), (9, "september")]
+        ),
+    }
+    if set(provenance["sha256"]) != required:
+        raise ValueError("Incomplete or unexpected source hash manifest")
     for path, expected in provenance["sha256"].items():
-        if sha(ROOT / path) != expected:
+        if sha(source(path)) != expected:
             raise ValueError("Changed retained bridge source: " + path)
-    for check in provenance["prior_idle_baseline_checks"]:
-        if idle_deductions(ROOT / check["original_file"]) != idle_deductions(
-            ROOT / check["frozen_file"]
+    checks = provenance["prior_idle_baseline_checks"]
+    expected_checks = {
+        (
+            PACKAGE + "/original-july-workbook.xlsx",
+            "settlements/spark/2026-07/spark_settlement_july_2026.xlsx",
+        ),
+        (
+            PACKAGE + "/original-june-workbook.xlsx",
+            "settlements/spark/2026-06/spark_settlement_june_2026.xlsx",
+        ),
+    }
+    if (
+        len(checks) != 2
+        or {(r["original_file"], r["frozen_file"]) for r in checks} != expected_checks
+    ):
+        raise ValueError("Missing original published idle baseline check")
+    for check in checks:
+        if idle_deductions(source(check["original_file"])) != idle_deductions(
+            source(check["frozen_file"])
         ):
             raise ValueError("Idle deductions changed since the prior published baseline")
     checkpoint = read(folder / "pr277-checkpoint.json")

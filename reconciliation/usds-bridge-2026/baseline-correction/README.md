@@ -78,6 +78,8 @@ preserved. Unresolved rate conventions or incomplete evidence cannot be credits.
   the exact UTC boundary; chain IDs, owners, native token and units are checked.
 - `sources.json`: hashes for raw evidence, original report workbooks, gateway
   fixture, original October inputs, prime configuration and #277 checkpoint.
+  The replay requires the complete source set and hashes the actual consumed
+  files even when checking a copied evidence package.
 - `results.json`: exact signed daily/monthly comparisons and combined totals.
 - `pr277-checkpoint.json`: immutable combined-ledger input from #277 `ec89f0b`.
 - `original-july-workbook.xlsx` and `original-june-workbook.xlsx`: original
@@ -122,3 +124,9 @@ The current bridge audit CLI accepts `--wallet-inputs`; without verified wallet
 evidence it reports unmeasured days, never an additive refund. When #277 is
 later updated, its builder must adopt the complete replacement comparison and
 replace its old bridge item before regenerating the forum/payment proposal.
+The public comparator rejects missing idle or wallet inputs; the private
+rate-fitting diagnostic alone does not establish refund eligibility.
+
+Both requested review/fix rounds and their validation are recorded in
+[review.md](review.md). The final focused suite passes 93 tests; an independent
+offline replay produces byte-identical results.
