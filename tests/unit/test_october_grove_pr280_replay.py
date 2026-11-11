@@ -11,6 +11,7 @@ import yaml
 
 from settle.compute import sky_total_accrual
 from settle.domain import Month
+from settle.load import writer
 from settle.load.provenance import render_provenance
 from settle.revenue.verification import canonical
 
@@ -43,6 +44,8 @@ def test_offline_october_cash_replay_and_production_msc_identity(
     monkeypatch.setattr(
         replay_module, "run_path", lambda _: {"check_review": lambda p: "test-only"}
     )
+    # This synthetic rendering test isolates the separately tested asset gate.
+    monkeypatch.setattr(writer, "require_asset_controls", lambda *a, **kw: {"test_only": True})
     output = tmp_path / "close"
     result = replay_module.replay(output)
     assert result["income_delta"] == "8064.955289965368347474800"
@@ -91,3 +94,15 @@ def test_missing_transfer_review_stops_before_calculation(replay_module, tmp_pat
     with pytest.raises(ValueError, match="Missing reviewed inventory"):
         replay_module.replay(tmp_path / "not-created")
     assert not (tmp_path / "not-created").exists()
+
+
+def test_new_asset_controls_gate_stops_canonical_replay(replay_module, tmp_path, monkeypatch):
+    from settle.controls.assets import AssetControlError
+
+    monkeypatch.setattr(replay_module, "run_path", lambda _: {"check_review": lambda p: "test-only"})
+    monkeypatch.setattr(writer, "_REPO_ROOT", tmp_path)
+    output = tmp_path / "uncertified"
+    with pytest.raises(AssetControlError, match="Missing independent asset controls"):
+        replay_module.replay(output)
+    assert not (output / "provenance.json").exists()
+    assert not (output / "summary.md").exists()

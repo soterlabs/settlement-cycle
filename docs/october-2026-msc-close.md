@@ -207,3 +207,48 @@ For this scoped update, after completing the local review, run:
 ```sh
 PYTHONPATH=src python scripts/replay_october_grove_pr280.py --output-dir /tmp/grove-october-pr280-fresh
 ```
+
+## Rebase and retained replay after #282
+
+Rebased onto main `c559a19` after #282 merged. No rate/revenue formula or prime
+configuration changed relative to this PR's prior head `6820525`; #265 adds
+reporting and tightens RPC cutoff validation, and #282 adds settlement controls.
+The replay verifies that production/config changes stay inside that scope.
+
+The actual read-only replay recomputed all 186 October borrowing rows from the
+retained workbooks using the production borrowing function, and all six
+mint/send instructions using the production MSC function. Every instruction is
+unchanged. Workbook floating-point differences stay below one cent. Grove's
+20 active Base venue-month component replay also reproduces the already-booked
+October +8,064.9552899653683474748 income-method change; it is not added again.
+
+Spark's ALM idle also matches all 155 retained archive wallet observations across
+31 days and five native-USDS chains. Existing gateway matching independently
+reproduces all 31 native-USDS bridge deductions. The wallet observations are a
+hash-bound, reviewed input snapshot from PR #281; its historical financial
+correction remains separate and is not booked here.
+
+See `reconciliation/2026-10/post-pr282-retained-replay.json` and
+`post-pr282-grove-cash.json` for source/code hashes, deviations and results.
+Reproduce the arithmetic without network access:
+
+```sh
+PYTHONPATH=src python scripts/verify_october_retained_after_pr282.py \
+  --output /tmp/october-retained-replay.json
+```
+
+To repeat the additional native-USDS check, extract
+`reconciliation/usds-bridge-2026/baseline-correction/wallet-inputs.json` from
+commit `f526b0bdc1d60d37a5f30a807c51a19f2f183ac0`, then pass
+`--spark-wallet-inputs /path/to/wallet-inputs.json`. The script requires the
+exact reviewed SHA-256 and configured wallet/token identities.
+
+**Fresh canonical finalization is blocked:** none of the six complete
+`asset-controls.json` packets is present. Complete independent position/debt
+observations, inventory and source-backed journals still need capture/review.
+Only Grove's older transfer review remains locally available; it does not meet
+the new whole-portfolio packet contract. The retained arithmetic replay is not
+an asset-control attestation, a source re-extraction, a new complete monthly
+calculation, or a consolidated non-MSC calculation. Existing canonical summary
+and workbook bytes are preserved. No control gate was bypassed for production
+and no passing review was fabricated.

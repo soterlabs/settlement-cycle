@@ -1,0 +1,127 @@
+{
+  "schema": 1,
+  "replay_script_sha256": "f97d072d37aad6c3f6b3b421a413951c8c960d26117b42823474714f6e788094",
+  "production_function_sha256": {
+    "src/settle/compute/sky_revenue.py": "412c69e644a1219f42889df37654098ff0d8de63cc8884b6586115205c83b575",
+    "src/settle/compute/sky_total_accrual.py": "d0ca19ab4e93a44e11038de5195717e7eb3ec57f25d1da4b29a5d9ee7c65ba2d",
+    "src/settle/revenue/monthly.py": "fe1f6351a5b5dfc7c88890fd408446838833c074eb407a474d3dddd1acae28b9"
+  },
+  "scope": "retained October arithmetic only; not full asset controls",
+  "main_commit": "c559a19436bacc98c3f6ec290f61c5cb7ecc36c4",
+  "prior_pr_head": "6820525e1ae34ca8460ac3a0dfc5f4cc68c80ae9",
+  "changed_production_paths": [
+    "src/settle/compute/allocation_cost_rows.py",
+    "src/settle/controls/__init__.py",
+    "src/settle/controls/assets.py",
+    "src/settle/controls/boundaries.py",
+    "src/settle/controls/bridges.py",
+    "src/settle/controls/wallets.py",
+    "src/settle/load/writer.py",
+    "src/settle/normalize/sources/rpc_block_resolver.py"
+  ],
+  "input_sha256": {
+    "reconciliation/2026-10/prime_msc_preview.json": "c8e50d99512cc8ebdd42544d767357fc7f01197aa9340c5b19573d850f8571b6",
+    "config/sky_total.yaml": "d72f6b0efa64b2ea4696fe7d5564766c03a8bb8b384395a955cfeda607bb2501",
+    "config/october_2026_official_reference_rates.json": "6f6679bc5081d87157a48e328d244bf9784f76f349b284f7dc5d2140f250309d",
+    "reconciliation/2026-10/grove-pr280/after-provenance.json": "9eb63982ed9c07c1ed1376b6c94188292a88bfbff11a9fac8869d22abe335606",
+    "settlements/spark/2026-10/spark_settlement_october_2026.xlsx": "bfca95fd70ac7e7084145f08ede53a1f8a8476ae9f00101c08c5c6b27f5c67fd",
+    "tests/fixtures/usds_bridge/spark_2026_gateway_logs.json": "bf819fa3ced15c4533818ec3c00cf179438241abcf4646b10e720cfd48f390d0",
+    "settlements/grove/2026-10/grove_settlement_october_2026.xlsx": "e88edce405b07c7e5275928f2ceccc86eb7c8d933c271e48b4e7367ac4b4d0b7",
+    "settlements/obex/2026-10/obex_settlement_october_2026.xlsx": "0a41fb0b8cd17233bbe92a457ca7386229b12c05ee674cb0607369b086403331",
+    "settlements/osero/2026-10/osero_settlement_october_2026.xlsx": "163423e30fb2d72ab58bf71abea75a2e75d82582943091676e444ad2cfd75ead",
+    "settlements/keel/2026-10/keel_settlement_october_2026.xlsx": "a812d8353d45fa383c75d449c4703985ed9c99a6a799bd0093e70a8c05a31eab",
+    "settlements/skybase/2026-10/skybase_settlement_october_2026.xlsx": "0c350c7155c063e27cbbc2d129ba634e470993e9e0844603eb2456139311f3de"
+  },
+  "primes": {
+    "spark": {
+      "days_replayed": 31,
+      "max_workbook_precision_difference": {
+        "daily_sky_rev": "1.558371520078E-10",
+        "daily_sky_rev_gross": "1.747968153400E-10",
+        "utilized": "9.992E-7"
+      },
+      "independent_native_usds_check": {
+        "wallet_days_compared": 31,
+        "wallet_observations": 155,
+        "max_wallet_difference": "2.4959362808E-8",
+        "native_bridge_days_matched": 31,
+        "wallet_source_sha256": "3d86eca289b6b182ddc72c648138563844171e38dc69d6b33412590d2e5ca6ef",
+        "wallet_source_commit": "f526b0bdc1d60d37a5f30a807c51a19f2f183ac0",
+        "wallet_source_path": "reconciliation/usds-bridge-2026/baseline-correction/wallet-inputs.json",
+        "scope": "Partial independent native-USDS check only; not a whole-portfolio attestation"
+      },
+      "asset_control_packet_present": false,
+      "mint": "13263455",
+      "send": "3938958",
+      "instruction_change": "0"
+    },
+    "grove": {
+      "days_replayed": 31,
+      "max_workbook_precision_difference": {
+        "daily_sky_rev": "7.48543986551E-11",
+        "daily_sky_rev_gross": "9.30696191593E-11",
+        "utilized": "5.9E-7"
+      },
+      "independent_native_usds_check": {},
+      "asset_control_packet_present": false,
+      "mint": "8887127",
+      "send": "2264415",
+      "instruction_change": "0"
+    },
+    "obex": {
+      "days_replayed": 31,
+      "max_workbook_precision_difference": {
+        "daily_sky_rev": "8.03276040328E-12",
+        "daily_sky_rev_gross": "8.03276040328E-12",
+        "utilized": "0"
+      },
+      "independent_native_usds_check": {},
+      "asset_control_packet_present": false,
+      "mint": "1736726",
+      "send": "479415",
+      "instruction_change": "0"
+    },
+    "osero": {
+      "days_replayed": 31,
+      "max_workbook_precision_difference": {
+        "daily_sky_rev": "2.607868596592E-13",
+        "daily_sky_rev_gross": "3.64014998358E-13",
+        "utilized": "2.707908E-10"
+      },
+      "independent_native_usds_check": {},
+      "asset_control_packet_present": false,
+      "mint": "15812",
+      "send": "42396",
+      "instruction_change": "0"
+    },
+    "keel": {
+      "days_replayed": 31,
+      "max_workbook_precision_difference": {
+        "daily_sky_rev": "0E-31",
+        "daily_sky_rev_gross": "0E-31",
+        "utilized": "0"
+      },
+      "independent_native_usds_check": {},
+      "asset_control_packet_present": false,
+      "mint": "0",
+      "send": "34034",
+      "instruction_change": "0"
+    },
+    "skybase": {
+      "days_replayed": 31,
+      "max_workbook_precision_difference": {
+        "daily_sky_rev": "0E-31",
+        "daily_sky_rev_gross": "0E-31",
+        "utilized": "0"
+      },
+      "independent_native_usds_check": {},
+      "asset_control_packet_present": false,
+      "mint": "0",
+      "send": "145439",
+      "instruction_change": "0"
+    }
+  },
+  "canonical_reports_written": false,
+  "fresh_canonical_finalization": "blocked until complete reviewed asset controls exist",
+  "network_access": "blocked"
+}
