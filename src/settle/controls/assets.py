@@ -324,6 +324,19 @@ def validate_packet(path, pnl, *, repo_root=ROOT):
 def require_asset_controls(pnl, *, repo_root=ROOT):
     path = repo_root / '.msc-transfer-reviews' / pnl.prime_id / str(pnl.month) / 'asset-controls.json'
     try:
+        # Temporary operator opt-out: an explicitly empty file defers these
+        # daily controls. Missing/malformed/partially populated evidence must
+        # never silently turn into an opt-out. The ALM review is still a
+        # separate monthly preparation requirement.
+        if path.is_file():
+            raw = path.read_bytes()
+            if not raw.strip() or json.loads(raw) == {}:
+                return {
+                    'schema': 1, 'status': 'skipped', 'prime': pnl.prime_id,
+                    'month': str(pnl.month), 'reason': 'empty_asset_controls_file',
+                    'packet_sha256': hashlib.sha256(raw).hexdigest(),
+                    'days_checked': 0,
+                }
         return validate_packet(path, pnl, repo_root=repo_root)
     except (KeyError, TypeError, json.JSONDecodeError) as exc:
         raise AssetControlError(f'Malformed/incomplete asset control evidence: {type(exc).__name__}') from exc

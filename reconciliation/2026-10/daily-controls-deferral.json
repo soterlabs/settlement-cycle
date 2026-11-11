@@ -1,0 +1,77 @@
+{
+  "policy": "Operator explicitly deferred independent daily asset checks; ALM review remains required. No financial result or report rewritten by this preflight.",
+  "primes": {
+    "spark": {
+      "alm_review_sha256": "69da7a1a08d5d446a30da20f2c09922fec9db511eecf7eae9b1d03408c6bbde5",
+      "asset_controls": {
+        "schema": 1,
+        "status": "skipped",
+        "prime": "spark",
+        "month": "2026-10",
+        "reason": "empty_asset_controls_file",
+        "packet_sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "days_checked": 0
+      }
+    },
+    "grove": {
+      "alm_review_sha256": "ae0e69cf6e097ecc66b36c07f705d4199d67c01ecb36a7dff16ff4fdd417c5c6",
+      "asset_controls": {
+        "schema": 1,
+        "status": "skipped",
+        "prime": "grove",
+        "month": "2026-10",
+        "reason": "empty_asset_controls_file",
+        "packet_sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "days_checked": 0
+      }
+    },
+    "obex": {
+      "alm_review_sha256": "51898854ac013399b225af912ea5661a5d3ce1adcd6736c263554b6517b69cf0",
+      "asset_controls": {
+        "schema": 1,
+        "status": "skipped",
+        "prime": "obex",
+        "month": "2026-10",
+        "reason": "empty_asset_controls_file",
+        "packet_sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "days_checked": 0
+      }
+    },
+    "osero": {
+      "alm_review_sha256": "fe59604e484155456445f68ffcc86e03e78c599a7244ede1ada608156a651aee",
+      "asset_controls": {
+        "schema": 1,
+        "status": "skipped",
+        "prime": "osero",
+        "month": "2026-10",
+        "reason": "empty_asset_controls_file",
+        "packet_sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "days_checked": 0
+      }
+    },
+    "keel": {
+      "alm_review_sha256": "4e84939a8d93039d1191094b5a846e44704548a6cda6e86f914011cc7e761b90",
+      "asset_controls": {
+        "schema": 1,
+        "status": "skipped",
+        "prime": "keel",
+        "month": "2026-10",
+        "reason": "empty_asset_controls_file",
+        "packet_sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "days_checked": 0
+      }
+    },
+    "skybase": {
+      "alm_review_sha256": "6949241d9feabc6cee1965ad83d5735aca0a1e2fdbf20b27b9bba8a7e92b1b4d",
+      "asset_controls": {
+        "schema": 1,
+        "status": "skipped",
+        "prime": "skybase",
+        "month": "2026-10",
+        "reason": "empty_asset_controls_file",
+        "packet_sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "days_checked": 0
+      }
+    }
+  }
+}

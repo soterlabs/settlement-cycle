@@ -63,9 +63,16 @@ movements. The operator excluded these additional custody entries from the requi
 scan. All original reviewed ALM entries matched; the 87 additions do not block
 settlement. No passing daily asset-control packet is implied.
 
-## Remaining finalization requirements
+## Daily controls deferred by the operator
 
-Complete the independent daily asset-control packets for all six primes. Those packets do not exist yet.
-`write_settlement` correctly rejects a canonical close without them. Existing
-workbooks remain retained pre-certification artifacts; they have not been
-silently rewritten or relabelled as newly certified reports.
+The operator explicitly deferred independent daily asset controls. Empty
+`asset-controls.json` placeholders now opt out for all six October primes;
+populated files still validate, and missing files still fail. Each final report
+will record `status: skipped`, not `passed`. The separate ALM reviews remain
+required and their current evidence/configuration hashes were rechecked.
+See [daily-controls-deferral.json](daily-controls-deferral.json).
+
+The earlier retained replay's missing-packet blocker describes the pre-deferral
+state. It no longer blocks report writing. Final reports still need to be
+rendered from the approved financial inputs; the earlier workbooks have not
+been silently relabelled as independently validated.

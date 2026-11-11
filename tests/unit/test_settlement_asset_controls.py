@@ -577,3 +577,43 @@ def test_custody_inventory_does_not_expand_required_alm_scan(tmp_path, monkeypat
     review_path.write_text(json.dumps(review))
     with pytest.raises(assets.AssetControlError, match='wallet coverage'):
         assets.validate_packet(path, pnl, repo_root=tmp_path)
+
+
+@pytest.mark.parametrize('contents', ['', ' \n\t', '{}', ' { }\n'])
+def test_empty_asset_controls_explicitly_skip_and_reach_writer(tmp_path, monkeypatch, contents):
+    _, _, _, _, pnl, _ = dataset()
+    path = tmp_path / '.msc-transfer-reviews/spark/2026-07/asset-controls.json'
+    path.parent.mkdir(parents=True)
+    path.write_text(contents)
+    monkeypatch.setattr(writer, '_REPO_ROOT', tmp_path)
+    seen = {}
+
+    def render(pnl, output_dir, **kwargs):
+        seen.update(kwargs)
+        return {'test': output_dir}
+
+    monkeypatch.setattr(writer, '_write_settlement_artifacts', render)
+    writer.write_settlement(pnl, tmp_path / 'output')
+    result = seen['asset_controls']
+    assert result['status'] == 'skipped'
+    assert result['reason'] == 'empty_asset_controls_file'
+    assert result['days_checked'] == 0
+    assert result['packet_sha256'] == assets.sha256(path)
+
+
+@pytest.mark.parametrize('contents', ['null', '[]', '{', '{"schema": 1}'])
+def test_nonempty_invalid_asset_controls_do_not_skip(tmp_path, contents):
+    _, _, _, _, pnl, _ = dataset()
+    path = tmp_path / '.msc-transfer-reviews/spark/2026-07/asset-controls.json'
+    path.parent.mkdir(parents=True)
+    path.write_text(contents)
+    with pytest.raises(assets.AssetControlError):
+        assets.require_asset_controls(pnl, repo_root=tmp_path)
+
+
+def test_populated_asset_controls_still_validate(tmp_path, monkeypatch):
+    path, pnl = write_packet(tmp_path, monkeypatch)
+    assert assets.require_asset_controls(pnl, repo_root=tmp_path)['status'] == 'passed'
+    (path.parent / 'raw.json').write_text('{"changed": true}')
+    with pytest.raises(assets.AssetControlError, match='Changed evidence'):
+        assets.require_asset_controls(pnl, repo_root=tmp_path)

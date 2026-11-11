@@ -68,7 +68,8 @@ months nor publishes corrected API or settlement amounts.
 Canonical settlement writes also require the [daily asset control packet](settlement-asset-controls.md).
 It binds the reviewed inventory and source artifacts to independent daily
 holdings, all allocator ilks, the seven CoF deductions, bridge claims and the
-asset/debt roll-forward. The writer rejects missing or failed evidence before
-writing artifacts, including when overwrite was explicitly requested. The
+asset/debt roll-forward. Populated daily packets must validate before writing artifacts. An explicitly
+empty asset-controls file temporarily skips only the daily checks, with the
+skip recorded in provenance; it does not waive this ALM review. The
 native-USDS capture tool does not by itself establish complete token coverage
 or issue a passing review.
