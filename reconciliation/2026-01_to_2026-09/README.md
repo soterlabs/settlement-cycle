@@ -12,7 +12,7 @@ The inventory covers 57 merged PRs. Actual policy dates remain in place;
 
 | Prime | Supply-side adjustment | Sky-share adjustment | Send-only refund |
 |---|---:|---:|---:|
-| Spark | 249,141.52 | 557,546.90 | 0.00 |
+| Spark | 249,141.52 | 536,094.04 | 0.00 |
 | Grove | 11,554.74 | -110,419.56 | 0.00 |
 | Osero | 0.00 | 0.00 | 5,514.00 |
 | Obex | -273,508.90 | 0.00 | 0.00 |
@@ -88,7 +88,7 @@ for October. Remaining additions to the **existing** October configuration are:
 
 | Prime | SV | Sky share | Send-only refund |
 |---|---:|---:|---:|
-| Spark | 249,141.52 | 557,546.90 | 0.00 |
+| Spark | 249,141.52 | 536,094.04 | 0.00 |
 | Grove | 11,554.74 | -31,889.50 | 0.00 |
 | Osero | 0.00 | 0.00 | 0.00 |
 | Obex | -273,508.90 | 0.00 | 0.00 |
@@ -135,7 +135,7 @@ source revision and output hashes.
 ## Signed wallet/bridge replay after #281
 
 The current builder replaces the old 255,869.48 Spark transit credit with a
-557,546.90 debit: an 813,416.38 increase in the historical Sky adjustment.
+536,094.04 debit: an 791,963.52 increase in the historical Sky adjustment.
 It replays verified wallets plus eligible transit against frozen deductions,
 including stale destination balances. Original rates and prior netting remain
 unchanged. The 75,063.88 October ordinary CoF credit is excluded here.

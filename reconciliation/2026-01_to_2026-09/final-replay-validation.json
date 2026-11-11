@@ -1,11 +1,13 @@
 {
-  "status": "reproduced_without_financial_changes",
-  "executed_at_utc": "2026-11-11T17:36:44.697251+00:00",
-  "command": "PYTHONPATH=src python scripts/build_jan_sep_2026_reconciliation.py --output-dir /data/replay-277-final-check",
+  "status": "replayed_with_june_20_21_idle_correction",
+  "executed_at_utc": "2026-11-11T22:20:19.546449+00:00",
+  "command": "PYTHONPATH=.:src python scripts/build_jan_sep_2026_reconciliation.py --output-dir reconciliation/2026-01_to_2026-09",
   "outputs_sha256": {
-    "data.json": "fdc0c8eb9bce6bd4632cc3038297625ac9a77462a9b973023912b2e699574904",
-    "proposed-october-adjustments.json": "b15fa3e749eaf0031a3b0dbc3fd7b3c2d6ef1dbb0f84cc8c37cf7b6a15f08a37",
-    "forum-post.md": "2e2eaaf04d9c2febbb3a0bc462996a9bc98e8422e0a1f21716c10eb81dc07952"
+    "data.json": "a41d6931afbbc68aa02c02131930ce675c67c7abf120e285770b38ee67211c10",
+    "proposed-october-adjustments.json": "f6d50afc2106b7173139b02c81e8393fa14587934770224a21bfc30597eea439",
+    "forum-post.md": "1dc109e0b23454caa8646d7988dce414f88b9231224a419111d393bc6d463336"
   },
-  "published_months_rewritten": false
+  "published_months_rewritten": false,
+  "spark_sky_adjustment": "536094.04",
+  "additional_credit": "21452.86"
 }

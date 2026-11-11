@@ -10,10 +10,10 @@
       "id": "spark-native-usds-transit",
       "prime": "spark",
       "field": "sky_adj",
-      "unrounded": "557546.9041837838870379221694",
-      "amount": "557546.90",
+      "unrounded": "536094.0408242787307534637155",
+      "amount": "536094.04",
       "months": {
-        "2026-06": "-85820.69066786856150031332817",
+        "2026-06": "-107273.5540273737177847717821",
         "2026-07": "643563.1570090634605780648514",
         "2026-08": "-103.4227053744573767016593757",
         "2026-09": "-92.13945203655466312769444731"
@@ -250,7 +250,7 @@
     "spark": {
       "dv_adj": "0",
       "sv_adj": "249141.52",
-      "sky_adj": "557546.90",
+      "sky_adj": "536094.04",
       "send_credit": "0"
     },
     "grove": {
@@ -274,9 +274,9 @@
   },
   "linear_settlement_effects": {
     "spark": {
-      "mint_delta": "806688.42",
+      "mint_delta": "785235.56",
       "transfer_delta": "249141.52",
-      "sky_net_delta": "557546.90"
+      "sky_net_delta": "536094.04"
     },
     "grove": {
       "mint_delta": "-98864.82",
@@ -324,7 +324,7 @@
     "spark": {
       "dv_adj": "0",
       "sv_adj": "249141.52",
-      "sky_adj": "557546.90",
+      "sky_adj": "536094.04",
       "send_credit": "0"
     },
     "grove": {
@@ -350,7 +350,7 @@
     "spark": {
       "dv_adj": "0",
       "sv_adj": "249141.52",
-      "sky_adj": "557546.90",
+      "sky_adj": "536094.04",
       "send_credit": "0"
     },
     "grove": {
@@ -373,6 +373,32 @@
     }
   },
   "bridge_daily": [
+    {
+      "date": "2026-06-20",
+      "frozen_idle": "334970000",
+      "frozen_bridge": "0",
+      "verified_wallet_usds": "436875703.611569069692530370",
+      "eligible_bridge_usds": "0",
+      "corrected_idle_plus_bridge": "436875703.611569069692530370",
+      "deduction_change": "101905703.611569069692530370",
+      "original_charge": "299277.2046385594",
+      "corrected_charge": "288550.7729588068218577707731",
+      "signed_credit": "10726.431679752578142229226948682822104522465753424657534247",
+      "sky_adj": "-10726.43167975257814222922695"
+    },
+    {
+      "date": "2026-06-21",
+      "frozen_idle": "334970000",
+      "frozen_bridge": "0",
+      "verified_wallet_usds": "436875703.611569069692530370",
+      "eligible_bridge_usds": "0",
+      "corrected_idle_plus_bridge": "436875703.611569069692530370",
+      "deduction_change": "101905703.611569069692530370",
+      "original_charge": "298985.9788506528",
+      "corrected_charge": "288259.5471709002218577707731",
+      "signed_credit": "10726.431679752578142229226948682822104522465753424657534247",
+      "sky_adj": "-10726.43167975257814222922695"
+    },
     {
       "date": "2026-06-22",
       "frozen_idle": "334970000",
@@ -1872,7 +1898,7 @@
     "reconciliation/usds-bridge-2026/audit.json": "ae11eaa84ad285981c6cd60d542e97a216bc7eddfbeb01e8e98d235df9b66f55",
     "reconciliation/usds-bridge-2026/spark-october-retained-daily.json": "7a4d4f779c037324a2bf3029d6835a85f1b877484a61aed4b490fede4625206e",
     "tests/fixtures/usds_bridge/spark_2026_gateway_logs.json": "bf819fa3ced15c4533818ec3c00cf179438241abcf4646b10e720cfd48f390d0",
-    "reconciliation/usds-bridge-2026/baseline-correction/wallet-inputs.json": "3d86eca289b6b182ddc72c648138563844171e38dc69d6b33412590d2e5ca6ef",
+    "reconciliation/usds-bridge-2026/baseline-correction/wallet-inputs.json": "d321abe8c8da9f4eb255ed27ffc0116e8c91168fc693b9c0d59e4acb0ab74469",
     "reconciliation/usds-bridge-2026/baseline-correction/pr277-checkpoint.json": "d06c464ea1bfca2867466a0692c70cb6c75d52db0b5bcd31ec5e455a8045d9c8",
     "settlements/spark/2026-06/spark_settlement_june_2026.xlsx": "3dba0b345759cb478db387e0d37d748114d8e1ffbc6230c5f76f04d5d6bead67",
     "settlements/spark/2026-07/spark_settlement_july_2026.xlsx": "8a40e4b84ae139929043058e1e3fd6ebb3744bdc94b13b6b02183911bd19b64f",
@@ -1881,8 +1907,8 @@
     "reconciliation/usds-bridge-2026/baseline-correction/original-july-workbook.xlsx": "29f046e52174e82c4e8477b3e9adef7d55e57ca96ed6d5da9dc7bca7e7b5eaac",
     "reconciliation/usds-bridge-2026/baseline-correction/original-june-workbook.xlsx": "a5d1a8d22a76ef31c2833ec955731a42ee35f6aac726a120c49f7879c8320e1b",
     "reconciliation/usds-bridge-2026/baseline-correction/spark.yaml": "c57c201a92ebf9411faaff9947c55d663e99be7716a3b82eb73c0be4d8fe68db",
-    "scripts/reconcile_usds_bridge_baseline_2026.py": "2f23c183555a7beeae3a9d32fb236eb366438c67782f9e97da316b1f9b3644f5",
-    "scripts/build_jan_sep_2026_reconciliation.py": "d61b4b6527c657c9310226ed450adf02553953b0123076cbff88895a1008a9ed",
-    "reconciliation/usds-bridge-2026/baseline-correction/sources.json": "2ab71f5f52f083abbeb72ee568fb74f87bab03e0b2573679d0c68de85d4a6573"
+    "scripts/reconcile_usds_bridge_baseline_2026.py": "07e93c8eefd394e70fc0c77adf396e6890345f85ff21132d2247f13a7651c7fc",
+    "scripts/build_jan_sep_2026_reconciliation.py": "a98e8f54dad24800680acb06684aea4014b96e2a591673b7ba2c3ddb11345e6c",
+    "reconciliation/usds-bridge-2026/baseline-correction/sources.json": "004b9dcc0cf4033424a4d899ee3b23e5c29fb8d6787061f4fb176d0a62560c28"
   }
 }

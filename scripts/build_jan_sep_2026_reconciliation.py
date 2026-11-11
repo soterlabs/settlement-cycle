@@ -636,7 +636,7 @@ existing supply-side floor and whole-USDS rounding to actual October figures.
   received in September, plus Sentora RLUSD investment income of 3,674.16.
   SparkLend RLUSD S70 is included once in the comprehensive lending replay,
   replacing its former standalone 2,400.00 correction.
-- **Spark native-USDS wallet/bridge correction (#281):** 557,546.90 of
+- **Spark native-USDS wallet/bridge correction (#281):** 536,094.04 of
   additional historical debt mint, June-September, replacing the superseded
   255,869.48 transit credit. Compare verified wallets plus eligible transit
   against frozen deductions, preserving original daily charge conventions.
