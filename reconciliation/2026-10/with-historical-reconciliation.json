@@ -14,6 +14,7 @@
     "main_commit": "e631532c789228333714720c29b1c0221860296f",
     "prior_pr_head": "6820525e1ae34ca8460ac3a0dfc5f4cc68c80ae9",
     "changed_production_paths": [
+      "config/sky_total.yaml",
       "src/settle/compute/allocation_cost_rows.py",
       "src/settle/controls/__init__.py",
       "src/settle/controls/assets.py",
