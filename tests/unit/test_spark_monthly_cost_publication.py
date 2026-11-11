@@ -100,3 +100,23 @@ def test_publication_refuses_changed_baseline(monkeypatch):
     monkeypatch.setattr(mod, "read", lambda *a: {"revision_id": "new"})
     with pytest.raises(ValueError, match="changed"):
         publish_reviewed(Conn(), {"prime": "spark", "month": "2026-09"}, "missing")
+
+
+def test_export_cannot_redistribute_costs_while_preserving_total():
+    from prepare_spark_monthly_cost_publication import verify_estimates
+
+    c, _, _ = inputs()
+    evidence = {
+        "start": "2026-09-01",
+        "end": "2026-09-30",
+        "allocations": [
+            {"venue": "S1", "conditional_sky_borrowing_cost": "1"},
+            {"venue": "S2", "conditional_sky_borrowing_cost": "1"},
+        ],
+    }
+    c["allocations"].append({**c["allocations"][0], "venue": "S2", "borrowing_cost_usd": "0"})
+    with pytest.raises(ValueError, match="differs from reviewed"):
+        verify_estimates(c, evidence)
+    c["allocations"][0]["borrowing_cost_usd"] = "1"
+    c["allocations"][1]["borrowing_cost_usd"] = "1"
+    verify_estimates(c, evidence)

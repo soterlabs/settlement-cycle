@@ -116,6 +116,22 @@ def prepare(costs, readiness, control, *, hashes):
     return doc
 
 
+def verify_estimates(costs, evidence):
+    """Reject edited exports even when their grand total still matches."""
+    start, end = month_bounds(costs["month"])
+    if (evidence["start"], evidence["end"]) != (str(start), str(end)):
+        raise ValueError("Replay evidence period differs")
+    source = indexed(evidence["allocations"], "venue")
+    rows = indexed(costs["allocations"], "venue")
+    priced = {k for k, r in source.items() if r["conditional_sky_borrowing_cost"] is not None}
+    if priced != {k for k, r in rows.items() if r["borrowing_cost_usd"] is not None}:
+        raise ValueError("Reviewed replay cost coverage differs")
+    for venue in priced:
+        row, original = rows[venue], source[venue]
+        if D(row["borrowing_cost_usd"]) != D(original["conditional_sky_borrowing_cost"]):
+            raise ValueError("Exported cost differs from reviewed replay")
+
+
 def publish_reviewed(conn, document, expected_revision):
     conn.execute("LOCK TABLE allocation_monthly_results IN SHARE ROW EXCLUSIVE MODE")
     current = read(conn, document["prime"], document["month"])
@@ -155,11 +171,21 @@ def main():
         != hashlib.sha256(a.control.read_bytes()).hexdigest()
     ):
         raise ValueError("Revenue control is not the one used to price borrowing costs")
+    evidence_path = next(
+        Path(p) for p in costs["input_sha256"] if Path(p).name == "conditional-costs.json.gz"
+    )
+    verify_estimates(costs, read_file(evidence_path))
+    readiness = read_file(a.readiness)
+    if (
+        readiness["input_sha256"].get(str(a.control))
+        != hashlib.sha256(a.control.read_bytes()).hexdigest()
+    ):
+        raise ValueError("Exposure and revenue control hashes differ")
     hashes = {
         name: hashlib.sha256(path.read_bytes()).hexdigest()
         for name, path in zip(("costs", "readiness", "control"), paths, strict=True)
     }
-    document = prepare(costs, read_file(a.readiness), read_file(a.control), hashes=hashes)
+    document = prepare(costs, readiness, read_file(a.control), hashes=hashes)
     a.output.write_text(json.dumps(document, default=str, indent=2) + "\n")
     if a.publish:
         with connect() as conn, conn.transaction():
