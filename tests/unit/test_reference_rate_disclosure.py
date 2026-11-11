@@ -14,6 +14,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_writer_and_dr_refresh_preserve_disclosure_without_changing_money(tmp_path, monkeypatch):
+    # This test exercises disclosure/rendering, not the independent evidence gate.
+    monkeypatch.setattr(writer, 'require_asset_controls', lambda *a, **kw: {'test_only': True})
     _, pnl, _ = example(subsidy=True)
     rates = approved_reference()
     baseline = writer.write_settlement(pnl, tmp_path / 'baseline')
@@ -22,6 +24,7 @@ def test_writer_and_dr_refresh_preserve_disclosure_without_changing_money(tmp_pa
         paths = writer.write_settlement(pnl, folder, reference_rates=rates, allow_overwrite=True)
     expected = json.loads(baseline['provenance'].read_text())['results']
     prov = json.loads(paths['provenance'].read_text())
+    assert prov['asset_controls'] == {'test_only': True}
     assert prov['results'] == expected
     assert prov['close_reference_rate_provenance'] == rates
     monkeypatch.setattr(writer, '_REPO_ROOT', tmp_path)

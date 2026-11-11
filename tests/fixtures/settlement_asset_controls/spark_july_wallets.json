@@ -1,0 +1,158 @@
+{
+  "schema": 1,
+  "source": "independent-archive-usds",
+  "prime": "spark",
+  "states": [
+    {
+      "day": "2026-07-05",
+      "chain": "ethereum",
+      "holder": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+      "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+      "block": 25469763,
+      "raw_balance": "0",
+      "decimals": 18,
+      "headers": [
+        {
+          "hash": "0x20a18e3c2b23e6df284fb0055aeb569aea3af9cd3d232d8010a6dfcba55a12e5",
+          "parentHash": "0x66d4b00c49fc6cd4bed50a882cb10b60daa8b982f414578bc5ab3e0808a38d68",
+          "number": "0x184a343",
+          "timestamp": "0x6a4aefff"
+        },
+        {
+          "hash": "0x8c5001ce131249701ba863221b6912cf94cd0775df64ea242aaeaf5cdc4295ec",
+          "parentHash": "0x20a18e3c2b23e6df284fb0055aeb569aea3af9cd3d232d8010a6dfcba55a12e5",
+          "number": "0x184a344",
+          "timestamp": "0x6a4af00b"
+        }
+      ],
+      "chain_id": 1,
+      "head": 26390905
+    },
+    {
+      "day": "2026-07-05",
+      "chain": "base",
+      "holder": "0x2917956eff0b5eaf030abdb4ef4296df775009ca",
+      "token": "0x820c137fa70c8691f0e44dc420a5e53c168921dc",
+      "block": 48253326,
+      "raw_balance": "146550618210418117475041461",
+      "decimals": 18,
+      "headers": [
+        {
+          "hash": "0xfaf132114089f998c8957f1d15a603474dd7371ba5c444606ca0863147a0c2fc",
+          "parentHash": "0x75fbdfaa2f980066f40202b66f534106cbb9b757f1bfaa92d2b3e27cadf3ce9e",
+          "number": "0x2e0498e",
+          "timestamp": "0x6a4aefff"
+        },
+        {
+          "hash": "0x7b56023d3ea943fe4bd6b8e6a444c9296616a0f261cdcb1df0cfd750086e2756",
+          "parentHash": "0xfaf132114089f998c8957f1d15a603474dd7371ba5c444606ca0863147a0c2fc",
+          "number": "0x2e0498f",
+          "timestamp": "0x6a4af001"
+        }
+      ],
+      "chain_id": 8453,
+      "head": 56001915
+    },
+    {
+      "day": "2026-07-06",
+      "chain": "ethereum",
+      "holder": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+      "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+      "block": 25476942,
+      "raw_balance": "0",
+      "decimals": 18,
+      "headers": [
+        {
+          "hash": "0x5f09cd80fa963710a0c54e8a2fb368a5708287f62f2659f6d89f304bd45c13c1",
+          "parentHash": "0xdd1c0621a7d4b968ee78f38922be657377e4cdd8a05cd06bdc8c69880e0388f6",
+          "number": "0x184bf4e",
+          "timestamp": "0x6a4c417f"
+        },
+        {
+          "hash": "0xde02daaf795ebb807a031736730f6c014ded3b669ad3a5ac20769a1b6a666422",
+          "parentHash": "0x5f09cd80fa963710a0c54e8a2fb368a5708287f62f2659f6d89f304bd45c13c1",
+          "number": "0x184bf4f",
+          "timestamp": "0x6a4c418b"
+        }
+      ],
+      "chain_id": 1,
+      "head": 26390905
+    },
+    {
+      "day": "2026-07-06",
+      "chain": "base",
+      "holder": "0x2917956eff0b5eaf030abdb4ef4296df775009ca",
+      "token": "0x820c137fa70c8691f0e44dc420a5e53c168921dc",
+      "block": 48296526,
+      "raw_balance": "0",
+      "decimals": 18,
+      "headers": [
+        {
+          "hash": "0x0a1de98cc0a0adfe7215d7bbd02103cbcee24cd4601428b37891b15e3d3e03fd",
+          "parentHash": "0x9783ac320475b9eb43384c68eb76f298c9640f008533bea8d6d11c2d63a1e6c0",
+          "number": "0x2e0f24e",
+          "timestamp": "0x6a4c417f"
+        },
+        {
+          "hash": "0x353bebf54633d022296c693da9b927aa6bf021bb8f78a2adb30487d0c8c409a3",
+          "parentHash": "0x0a1de98cc0a0adfe7215d7bbd02103cbcee24cd4601428b37891b15e3d3e03fd",
+          "number": "0x2e0f24f",
+          "timestamp": "0x6a4c4181"
+        }
+      ],
+      "chain_id": 8453,
+      "head": 56001915
+    },
+    {
+      "day": "2026-07-13",
+      "chain": "ethereum",
+      "holder": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+      "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+      "block": 25527154,
+      "raw_balance": "0",
+      "decimals": 18,
+      "headers": [
+        {
+          "hash": "0x7fc1dee64bf302d05a1fbe531fdf63722ceb7750516c4461ffd2390ac5f985e2",
+          "parentHash": "0xafea4b34e1efdfa300778cbb33f8791e6d67a616a10c237d6cb8686965efe161",
+          "number": "0x1858372",
+          "timestamp": "0x6a557bff"
+        },
+        {
+          "hash": "0xc2ebd2e7cd0daba0712c8a0f12cc4c0127fc5ec09ad91f4b166dbfe1d4bc5ba5",
+          "parentHash": "0x7fc1dee64bf302d05a1fbe531fdf63722ceb7750516c4461ffd2390ac5f985e2",
+          "number": "0x1858373",
+          "timestamp": "0x6a557c0b"
+        }
+      ],
+      "chain_id": 1,
+      "head": 26390905
+    },
+    {
+      "day": "2026-07-13",
+      "chain": "base",
+      "holder": "0x2917956eff0b5eaf030abdb4ef4296df775009ca",
+      "token": "0x820c137fa70c8691f0e44dc420a5e53c168921dc",
+      "block": 48598926,
+      "raw_balance": "0",
+      "decimals": 18,
+      "headers": [
+        {
+          "hash": "0x06caa612208b1ad4721cda5df88234a13532611500452a5860c38cde3a87e97d",
+          "parentHash": "0x75c602e522185ead045879bfc47bb7006db643e58498c403172899d5c50cbc36",
+          "number": "0x2e58f8e",
+          "timestamp": "0x6a557bff"
+        },
+        {
+          "hash": "0x3c93dd273e07c811c5907970c8b419d4214fba883cccd5f62996694d475d1a8b",
+          "parentHash": "0x06caa612208b1ad4721cda5df88234a13532611500452a5860c38cde3a87e97d",
+          "number": "0x2e58f8f",
+          "timestamp": "0x6a557c01"
+        }
+      ],
+      "chain_id": 8453,
+      "head": 56001915
+    }
+  ],
+  "note": "Read-only archive capture on 2026-11-11; six wallet states only, not a complete month or passing review."
+}

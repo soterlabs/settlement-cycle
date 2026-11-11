@@ -20,6 +20,8 @@ ROOT = Path(__file__).resolve().parents[2]
 @pytest.fixture
 def pnl(monkeypatch):
     _, result, _ = example()
+    # Rendering/overwrite tests isolate the independently tested evidence gate.
+    monkeypatch.setattr(writer, 'require_asset_controls', lambda *a, **kw: {'test_only': True})
     monkeypatch.setattr(writer, 'enrich_with_dr', lambda result: result)
     monkeypatch.setattr(writer, '_build_canonical_xlsx', lambda *args: None)
     return result

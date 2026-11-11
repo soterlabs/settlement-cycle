@@ -35,6 +35,7 @@ from contextlib import contextmanager
 from decimal import Decimal
 from pathlib import Path
 
+from ..controls.assets import require_asset_controls
 from ..domain.monthly_pnl import MonthlyPnL
 from .dr_rewards import enrich_with_dr, load_dr
 from .provenance import write_provenance
@@ -138,12 +139,14 @@ def write_settlement(
     if pnl.is_provisional:
         raise ValueError("Partial-month results must use write_revenue_preview, not canonical settlements")
     check_settlement_destination(output_dir, allow_overwrite=allow_overwrite)
+    asset_controls = require_asset_controls(pnl, repo_root=_REPO_ROOT)
     with _settlement_write_lock(output_dir):
         # Another run may have finished since the preflight. Recheck while
         # holding the exclusive lock before touching any saved artifacts.
         _check_existing_artifacts(output_dir, allow_overwrite=allow_overwrite)
         return _write_settlement_artifacts(
             pnl, output_dir, sources=sources, reference_rates=reference_rates,
+            asset_controls=asset_controls,
         )
 
 
@@ -151,6 +154,7 @@ def _write_settlement_artifacts(
     pnl: MonthlyPnL, output_dir: Path, *,
     sources: dict[str, str] | None,
     reference_rates: dict | None,
+    asset_controls: dict,
 ) -> dict[str, Path]:
     """Render artifacts while the caller holds the destination's writer lock."""
 
@@ -163,6 +167,7 @@ def _write_settlement_artifacts(
         pnl, output_dir / "provenance.json", sources=sources,
     )
     payload = json.loads(prov_path.read_text())
+    payload["asset_controls"] = asset_controls
     if reference_rates is not None:
         payload["close_reference_rate_provenance"] = reference_rates
     apply_settlement_adjustments(payload)

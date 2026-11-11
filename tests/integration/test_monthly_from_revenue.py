@@ -2,8 +2,10 @@ import json
 from dataclasses import replace
 
 import psycopg
+import pytest
 
 from settle import cli
+from settle.controls.assets import AssetControlError
 from settle.load import writer
 from settle.revenue import monthly, store
 from settle.revenue.verification import canonical, validate_window
@@ -38,11 +40,22 @@ def test_persisted_revision_to_monthly_artifacts(database, tmp_path, monkeypatch
     monkeypatch.setattr(cli, 'load_prime_by_id', lambda _: prime)
     monkeypatch.setenv('DATABASE_URL', database)
     output = tmp_path / 'review'
-    assert cli.main(['monthly-from-revenue', '--prime', prime.id, '--month', str(MONTH),
-                     '--revision', first, '--output-dir', str(output)]) == 0
+    args = ['monthly-from-revenue', '--prime', prime.id, '--month', str(MONTH),
+            '--revision', first, '--output-dir', str(output)]
+    with monkeypatch.context() as missing_proof:
+        missing_proof.setattr(writer, '_REPO_ROOT', tmp_path)
+        with pytest.raises(AssetControlError, match='Missing independent asset controls'):
+            cli.main(args)
+    assert not output.exists()
+    # Raw holdings/evidence verification is covered in the controls suite.
+    # After proving the real gate rejects missing proof, isolate this test's
+    # database/revision/rendering path from synthetic portfolio evidence.
+    monkeypatch.setattr(writer, 'require_asset_controls', lambda *a, **kw: {'test_only': True})
+    assert cli.main(args) == 0
     assert {p.name for p in output.iterdir()} == {
         'provenance.json', 'summary.md', 'grove_settlement_september_2026.xlsx'}
     final = json.loads((output / 'provenance.json').read_text())
+    assert final['asset_controls'] == {'test_only': True}
     assert final['sources']['daily_revenue_revision'] == first
     assert final['results']['sky_revenue'] == str(pnl.sky_revenue)
     with psycopg.connect(database) as conn:
