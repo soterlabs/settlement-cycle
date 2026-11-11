@@ -21,7 +21,7 @@ S56/S57/S58/S59/S60/S63 (Savings products/liabilities), S67/S68/S69 (incentive
 receivables), and S71 (reporting-only spUSDG, excluded from CoF in the captured
 configuration). This export does not invent investment capital or change those
 rows' accounting scope. S70's newly calculated cost is distinct from its revenue
-coverage change proposed in PR267.
+coverage change merged in PR267.
 
 Venue cost subtotal: $7,538,457.84. Separate deduction credits: -$138,463.70.
 Subtotal including those credits: $7,399,994.14. Credits are kept separate from
@@ -30,8 +30,16 @@ nonnegative venue costs, not redistributed as a residual adjustment.
 The completed replay and custody analysis inputs are saved at
 `/tmp/spark-september-rlusd-replay`; the export records their hashes. Generate it
 using `scripts/export_spark_venue_borrowing_costs.py`. No full replay is needed
-for this export. No API update, settlement restatement or revenue recalculation
-was performed as part of this decision.
+for this export. The reviewed publication path is `scripts/prepare_spark_monthly_cost_publication.py`,
+which writes monthly allocation analytics only, from September 2026 onward. It
+reuses the pinned revenue control; S70/S72 revenue absent from that control stays
+null. It does not restate settlements or recalculate revenue. Publication checks
+evidence hashes, each venue cost, period alignment, and the existing API revision.
+
+The bridge evidence predates PR274, now included by this rebase. Native idle
+USDS in bridge transit is exempt under that merged policy; historical bridge
+comparison figures are retained as evidence, not new allocation charges. CCTP
+USDC transit remains subject to the existing borrowing-cost treatment.
 
 ## Follow-up scope
 
