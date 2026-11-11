@@ -1,0 +1,11 @@
+{
+  "status": "reproduced_without_financial_changes",
+  "executed_at_utc": "2026-11-11T17:36:44.697251+00:00",
+  "command": "PYTHONPATH=src python scripts/build_jan_sep_2026_reconciliation.py --output-dir /data/replay-277-final-check",
+  "outputs_sha256": {
+    "data.json": "fdc0c8eb9bce6bd4632cc3038297625ac9a77462a9b973023912b2e699574904",
+    "proposed-october-adjustments.json": "b15fa3e749eaf0031a3b0dbc3fd7b3c2d6ef1dbb0f84cc8c37cf7b6a15f08a37",
+    "forum-post.md": "2e2eaaf04d9c2febbb3a0bc462996a9bc98e8422e0a1f21716c10eb81dc07952"
+  },
+  "published_months_rewritten": false
+}
