@@ -1,0 +1,311 @@
+{
+  "status": "research_replay_complete_not_finalized",
+  "period": "2026-10",
+  "scope": "Retained ordinary October components plus independently replayed historical replacement adjustments; no consolidated Sky net revenue asserted",
+  "ordinary_validation": {
+    "schema": 1,
+    "replay_script_sha256": "8fbaa00dc34df425d642907d9b60a77f7dfd254ea1af8eed4fd79a018ccbb302",
+    "production_function_sha256": {
+      "src/settle/compute/sky_revenue.py": "412c69e644a1219f42889df37654098ff0d8de63cc8884b6586115205c83b575",
+      "src/settle/compute/sky_total_accrual.py": "d0ca19ab4e93a44e11038de5195717e7eb3ec57f25d1da4b29a5d9ee7c65ba2d",
+      "src/settle/revenue/monthly.py": "fe1f6351a5b5dfc7c88890fd408446838833c074eb407a474d3dddd1acae28b9"
+    },
+    "scope": "retained October arithmetic only; not full asset controls",
+    "main_commit": "e631532c789228333714720c29b1c0221860296f",
+    "prior_pr_head": "6820525e1ae34ca8460ac3a0dfc5f4cc68c80ae9",
+    "changed_production_paths": [
+      "src/settle/compute/allocation_cost_rows.py",
+      "src/settle/controls/__init__.py",
+      "src/settle/controls/assets.py",
+      "src/settle/controls/boundaries.py",
+      "src/settle/controls/bridges.py",
+      "src/settle/controls/wallets.py",
+      "src/settle/load/writer.py",
+      "src/settle/normalize/sources/rpc_block_resolver.py",
+      "src/settle/revenue/allocation_incentives.py"
+    ],
+    "input_sha256": {
+      "reconciliation/2026-10/prime_msc_preview.json": "c8e50d99512cc8ebdd42544d767357fc7f01197aa9340c5b19573d850f8571b6",
+      "config/sky_total.yaml": "d72f6b0efa64b2ea4696fe7d5564766c03a8bb8b384395a955cfeda607bb2501",
+      "config/october_2026_official_reference_rates.json": "6f6679bc5081d87157a48e328d244bf9784f76f349b284f7dc5d2140f250309d",
+      "reconciliation/2026-10/grove-pr280/after-provenance.json": "9eb63982ed9c07c1ed1376b6c94188292a88bfbff11a9fac8869d22abe335606",
+      "settlements/spark/2026-10/spark_settlement_october_2026.xlsx": "bfca95fd70ac7e7084145f08ede53a1f8a8476ae9f00101c08c5c6b27f5c67fd",
+      "tests/fixtures/usds_bridge/spark_2026_gateway_logs.json": "bf819fa3ced15c4533818ec3c00cf179438241abcf4646b10e720cfd48f390d0",
+      "settlements/grove/2026-10/grove_settlement_october_2026.xlsx": "e88edce405b07c7e5275928f2ceccc86eb7c8d933c271e48b4e7367ac4b4d0b7",
+      "settlements/obex/2026-10/obex_settlement_october_2026.xlsx": "0a41fb0b8cd17233bbe92a457ca7386229b12c05ee674cb0607369b086403331",
+      "settlements/osero/2026-10/osero_settlement_october_2026.xlsx": "163423e30fb2d72ab58bf71abea75a2e75d82582943091676e444ad2cfd75ead",
+      "settlements/keel/2026-10/keel_settlement_october_2026.xlsx": "a812d8353d45fa383c75d449c4703985ed9c99a6a799bd0093e70a8c05a31eab",
+      "settlements/skybase/2026-10/skybase_settlement_october_2026.xlsx": "0c350c7155c063e27cbbc2d129ba634e470993e9e0844603eb2456139311f3de"
+    },
+    "primes": {
+      "spark": {
+        "days_replayed": 31,
+        "max_workbook_precision_difference": {
+          "daily_sky_rev": "1.558371520078E-10",
+          "daily_sky_rev_gross": "1.747968153400E-10",
+          "utilized": "9.992E-7"
+        },
+        "independent_native_usds_check": {
+          "wallet_days_compared": 31,
+          "wallet_observations": 155,
+          "max_wallet_difference": "2.4959362808E-8",
+          "native_bridge_days_matched": 31,
+          "wallet_source_sha256": "3d86eca289b6b182ddc72c648138563844171e38dc69d6b33412590d2e5ca6ef",
+          "wallet_source_commit": "f526b0bdc1d60d37a5f30a807c51a19f2f183ac0",
+          "wallet_source_path": "reconciliation/usds-bridge-2026/baseline-correction/wallet-inputs.json",
+          "scope": "Partial independent native-USDS check only; not a whole-portfolio attestation"
+        },
+        "asset_control_packet_present": false,
+        "mint": "13263455",
+        "send": "3938958",
+        "instruction_change": "0"
+      },
+      "grove": {
+        "days_replayed": 31,
+        "max_workbook_precision_difference": {
+          "daily_sky_rev": "7.48543986551E-11",
+          "daily_sky_rev_gross": "9.30696191593E-11",
+          "utilized": "5.9E-7"
+        },
+        "independent_native_usds_check": {},
+        "asset_control_packet_present": false,
+        "mint": "8887127",
+        "send": "2264415",
+        "instruction_change": "0"
+      },
+      "obex": {
+        "days_replayed": 31,
+        "max_workbook_precision_difference": {
+          "daily_sky_rev": "8.03276040328E-12",
+          "daily_sky_rev_gross": "8.03276040328E-12",
+          "utilized": "0"
+        },
+        "independent_native_usds_check": {},
+        "asset_control_packet_present": false,
+        "mint": "1736726",
+        "send": "479415",
+        "instruction_change": "0"
+      },
+      "osero": {
+        "days_replayed": 31,
+        "max_workbook_precision_difference": {
+          "daily_sky_rev": "2.607868596592E-13",
+          "daily_sky_rev_gross": "3.64014998358E-13",
+          "utilized": "2.707908E-10"
+        },
+        "independent_native_usds_check": {},
+        "asset_control_packet_present": false,
+        "mint": "15812",
+        "send": "42396",
+        "instruction_change": "0"
+      },
+      "keel": {
+        "days_replayed": 31,
+        "max_workbook_precision_difference": {
+          "daily_sky_rev": "0E-31",
+          "daily_sky_rev_gross": "0E-31",
+          "utilized": "0"
+        },
+        "independent_native_usds_check": {},
+        "asset_control_packet_present": false,
+        "mint": "0",
+        "send": "34034",
+        "instruction_change": "0"
+      },
+      "skybase": {
+        "days_replayed": 31,
+        "max_workbook_precision_difference": {
+          "daily_sky_rev": "0E-31",
+          "daily_sky_rev_gross": "0E-31",
+          "utilized": "0"
+        },
+        "independent_native_usds_check": {},
+        "asset_control_packet_present": false,
+        "mint": "0",
+        "send": "145439",
+        "instruction_change": "0"
+      }
+    },
+    "canonical_reports_written": false,
+    "fresh_canonical_finalization": "blocked until complete reviewed asset controls exist",
+    "network_access": "blocked"
+  },
+  "historical_adjustments": {
+    "spark": {
+      "dv_adj": "0",
+      "sv_adj": "249141.52",
+      "sky_adj": "557546.90",
+      "send_credit": "0"
+    },
+    "grove": {
+      "dv_adj": "0",
+      "sv_adj": "11554.74",
+      "sky_adj": "-110419.56",
+      "send_credit": "0"
+    },
+    "osero": {
+      "dv_adj": "0",
+      "sv_adj": "0",
+      "sky_adj": "0",
+      "send_credit": "5514.00"
+    },
+    "obex": {
+      "dv_adj": "0",
+      "sv_adj": "-273508.90",
+      "sky_adj": "0",
+      "send_credit": "0"
+    }
+  },
+  "replacement_adjustments": {
+    "spark": {
+      "dv_adj": "0",
+      "sv_adj": "249141.52",
+      "sky_adj": "557546.90",
+      "send_credit": "0"
+    },
+    "grove": {
+      "dv_adj": "0",
+      "sv_adj": "927411.94",
+      "sky_adj": "1030726.24",
+      "send_credit": "0"
+    },
+    "osero": {
+      "dv_adj": "0",
+      "sv_adj": "0",
+      "sky_adj": "0",
+      "send_credit": "5514.00"
+    },
+    "obex": {
+      "dv_adj": "0",
+      "sv_adj": "-273508.90",
+      "sky_adj": "0",
+      "send_credit": "0"
+    }
+  },
+  "grove_current_production_replay": [
+    {
+      "venue": "E19",
+      "revenue": "147475.4714534700878322046"
+    },
+    {
+      "venue": "E23",
+      "revenue": "97259.5265466551683478439"
+    },
+    {
+      "venue": "E43",
+      "revenue": "1298008.1489363936996202582"
+    }
+  ],
+  "october_bridge_credit_already_in_ordinary": "75063.87790153216656821798753",
+  "october_bridge_credit_applied_again": false,
+  "rows": [
+    {
+      "prime": "spark",
+      "sky_ordinary": "10224716.81316752696503403786",
+      "demand_ordinary": "900219.9412801124114781910701",
+      "supply_ordinary": "3038737.80884210014474387286",
+      "sky_adj": "557546.90",
+      "sv_adj": "249141.52",
+      "dv_adj": "0",
+      "send_credit": "0",
+      "derived_mint": "14070143.04200962710977791072",
+      "derived_send": "4188099.270122212556222063930",
+      "mint": "14070143",
+      "send": "4188099",
+      "mint_change": "806688",
+      "send_change": "249141"
+    },
+    {
+      "prime": "grove",
+      "sky_ordinary": "5682959.319885517888970951078",
+      "demand_ordinary": "122862.6499862163417263841036",
+      "supply_ordinary": "1225694.878304368896498431589",
+      "sky_adj": "1030726.24",
+      "sv_adj": "927411.94",
+      "dv_adj": "0",
+      "send_credit": "0",
+      "derived_mint": "8866792.378189886785469382667",
+      "derived_send": "2275969.468290585238224815693",
+      "mint": "8866792",
+      "send": "2275969",
+      "mint_change": "-20335",
+      "send_change": "11554"
+    },
+    {
+      "prime": "obex",
+      "sky_ordinary": "1341558.335404871514917605546",
+      "demand_ordinary": "84247.44353529839736453050079",
+      "supply_ordinary": "395168.021218229233082394454",
+      "sky_adj": "0",
+      "sv_adj": "-273508.90",
+      "dv_adj": "0",
+      "send_credit": "0",
+      "derived_mint": "1463217.456623100748000000000",
+      "derived_send": "205906.5647535276304469249548",
+      "mint": "1463217",
+      "send": "205907",
+      "mint_change": "-273509",
+      "send_change": "-273508"
+    },
+    {
+      "prime": "osero",
+      "sky_ordinary": "13463.64986742351995358673837",
+      "demand_ordinary": "34533.43576191995573275105253",
+      "supply_ordinary": "2348.19294859208823579689463",
+      "sky_adj": "0",
+      "sv_adj": "0",
+      "dv_adj": "0",
+      "send_credit": "5514.00",
+      "derived_mint": "15811.84281601560818938363300",
+      "derived_send": "42395.62871051204396854794716",
+      "mint": "15812",
+      "send": "42396",
+      "mint_change": "0",
+      "send_change": "0"
+    },
+    {
+      "prime": "keel",
+      "sky_ordinary": "0E-31",
+      "demand_ordinary": "34033.80850715678804170493481",
+      "supply_ordinary": "0E-31",
+      "sky_adj": "0",
+      "sv_adj": "0",
+      "dv_adj": "0",
+      "send_credit": "0",
+      "derived_mint": "0",
+      "derived_send": "34033.80850715678804170493481",
+      "mint": "0",
+      "send": "34034",
+      "mint_change": "0",
+      "send_change": "0"
+    },
+    {
+      "prime": "skybase",
+      "sky_ordinary": "0E-31",
+      "demand_ordinary": "145438.8642974105888596463102",
+      "supply_ordinary": "0E-31",
+      "sky_adj": "0",
+      "sv_adj": "0",
+      "dv_adj": "0",
+      "send_credit": "0",
+      "derived_mint": "0",
+      "derived_send": "145438.8642974105888596463102",
+      "mint": "0",
+      "send": "145439",
+      "mint_change": "0",
+      "send_change": "0"
+    }
+  ],
+  "canonical_reports_written": false,
+  "configuration_changed": false,
+  "api_published": false,
+  "finalization_blocker": "Complete independent daily asset-control packets are missing for all six primes",
+  "input_sha256": {
+    "scripts/replay_october_with_reconciliation.py": "c66aca279ac09acacae4b91d938159df94d97904448ea02c23cf94a4c8182d45",
+    "scripts/verify_october_retained_after_pr282.py": "8fbaa00dc34df425d642907d9b60a77f7dfd254ea1af8eed4fd79a018ccbb302",
+    "reconciliation/2026-01_to_2026-09/data.json": "fdc0c8eb9bce6bd4632cc3038297625ac9a77462a9b973023912b2e699574904",
+    "reconciliation/2026-10/prime_msc_preview.json": "c8e50d99512cc8ebdd42544d767357fc7f01197aa9340c5b19573d850f8571b6",
+    "reconciliation/2026-10/grove-pr280/after-provenance.json": "9eb63982ed9c07c1ed1376b6c94188292a88bfbff11a9fac8869d22abe335606",
+    "config/sky_total.yaml": "d72f6b0efa64b2ea4696fe7d5564766c03a8bb8b384395a955cfeda607bb2501"
+  }
+}

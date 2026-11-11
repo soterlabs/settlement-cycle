@@ -1,3 +1,5 @@
+> **Current November 11 replay:** see [updated draft instructions and scan findings](../reconciliation/2026-10/REPLAY.md). The report figures below are retained earlier artifacts; finalization still requires complete daily asset controls.
+
 # October 2026 MSC — all prime agents
 
 PR #275 adds the October summaries and canonical settlement workbooks for Spark,

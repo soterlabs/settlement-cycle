@@ -48,7 +48,10 @@ def replay(wallet_inputs=None):
     changed = subprocess.check_output(['git', 'diff', '--name-only', OLD_HEAD, 'HEAD',
                                        '--', 'src/settle', 'config'], cwd=ROOT, text=True).splitlines()
     allowed = {'src/settle/compute/allocation_cost_rows.py', 'src/settle/load/writer.py',
-               'src/settle/normalize/sources/rpc_block_resolver.py'}
+               'src/settle/normalize/sources/rpc_block_resolver.py',
+               # PR283 adds presentation-only accrued yields; monthly compute
+               # does not import this module or substitute accrued issuer income.
+               'src/settle/revenue/allocation_incentives.py'}
     if any(p not in allowed and not p.startswith('src/settle/controls/') for p in changed):
         raise ValueError('Financial/configuration changes require a scoped source replay')
     folder = ROOT / 'reconciliation/2026-10'
