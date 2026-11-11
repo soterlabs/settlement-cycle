@@ -48,6 +48,10 @@ def validate_venue(source, flows):
 
 
 def refresh(baseline, evidence, incentives):
+    if [incentives["opening_pins"]["ethereum"], incentives["closing_pins"]["ethereum"]] != evidence[
+        "pins"
+    ]:
+        raise ValueError("Incentive and investment block pins differ")
     doc = copy.deepcopy(baseline)
     revision = doc.pop("revision_id")
     doc.pop("published_at")

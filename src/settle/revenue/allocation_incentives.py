@@ -25,6 +25,8 @@ def close(actual, expected):
 
 def component_accruals(inputs):
     start, end = (date.fromisoformat(inputs["period"][k]) for k in ("start", "end"))
+    if inputs.get("reference_series") != "DFEDTARL":
+        raise ValueError("Unexpected reference-rate series")
     expected_days = [str(start + timedelta(days=i)) for i in range((end - start).days + 1)]
     if set(inputs["programs"]) != set(MAPPING) or set(inputs["reference_rates"]) != set(
         expected_days

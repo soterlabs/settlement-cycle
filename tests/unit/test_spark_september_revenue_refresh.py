@@ -149,3 +149,49 @@ def test_incomplete_or_inconsistent_incentive_inputs_fail(fault):
         days[0]["components"][-1]["net_vault_apr"] = None
     with pytest.raises(ValueError):
         component_accruals(i)
+
+
+def test_whole_document_revenue_delta_excludes_duplicate_cash_and_accrual_rows():
+    b, e = inputs()
+    result = refresh(b, e)
+    old = sum(
+        (D(r["gross_revenue_usd"]) for r in b["allocations"] if r["gross_revenue_usd"] is not None),
+        D(0),
+    )
+    new = sum(
+        (
+            D(r["gross_revenue_usd"])
+            for r in result["allocations"]
+            if r["gross_revenue_usd"] is not None
+        ),
+        D(0),
+    )
+    incentives = result["issuer_incentive_reconciliation"]
+    expected = (
+        D(incentives["rlusd"]["accrued_usd"])
+        + D(incentives["pyusd"]["accrued_usd"])
+        - D("1809960")
+        + D("2400.001564107802276268")
+        + D("3674.1568632270234742260")
+    )
+    assert abs(new - old - expected) < D("1e-18")
+    # No changes to MSC costs, financing reconciliation, source income-only rows,
+    # or unrelated investments are allowed to absorb the cash/accrual mismatch.
+    assert b["reconciliation"] == result["reconciliation"]
+
+
+def test_reference_series_must_be_fed_lower_bound():
+    from settle.revenue.allocation_incentives import component_accruals
+
+    i = json.loads((FOLDER / "incentive-accruals.json").read_text())
+    i["reference_series"] = "SOFR"
+    with pytest.raises(ValueError, match="reference-rate"):
+        component_accruals(i)
+
+
+def test_incentives_use_the_same_september_block_boundaries():
+    b, e = inputs()
+    i = json.loads((FOLDER / "incentive-accruals.json").read_text())
+    i["closing_pins"]["ethereum"] += 1
+    with pytest.raises(ValueError, match="block pins"):
+        refresh_impl(b, e, i)
