@@ -65,7 +65,7 @@ def refresh(baseline, evidence):
                 raise ValueError("Non-SDE retained revenue differs")
             average = D(source["tw_avg_value"])
             row["average_yield_exposure_usd"] = str(average)
-            row["yield_denominator"] = "published time-weighted position value"
+            row["yield_denominator"] = "retained replay time-weighted position value"
             row["spread_reimbursement_excluded_from_net_usd"] = source["susds_spread_reimbursement"]
         cost = D(row["borrowing_cost_usd"])
         if not all(x.is_finite() for x in (gross, retained, average, cost)) or average <= 0 or cost < 0:
@@ -76,6 +76,11 @@ def refresh(baseline, evidence):
                    net_monthly_return=period_return(net, average),
                    gross_apy=str(annualized_yield(gross, average, 30)),
                    net_apy=str(annualized_yield(net, average, 30)), yield_status="available")
+    doc["limitations"].append(
+        "S64 books RLUSD issuer cash receipts across the eligible RLUSD portfolio; "
+        "its cash-recognized APY is not a standalone contractual return on idle RLUSD. "
+        "S67 accrual is not added to these receipts."
+    )
     doc["source_hashes"]["september_revenue_refresh"] = digest(evidence)
     doc["revenue_refresh"] = {"baseline_revision": revision, "venues": sorted(TARGETS),
                               "source_pr": evidence["source_pr"], "source_commit": evidence["source_commit"],

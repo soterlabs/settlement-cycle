@@ -33,7 +33,7 @@ def test_refresh_changes_only_target_revenue_and_preserves_costs():
     assert result['reconciliation'] == b['reconciliation']
 
 
-def test_rejects_edited_baseline_and_repeated_refresh():
+def test_rejects_edited_baseline():
     b, e = inputs()
     b['allocations'][0]['borrowing_cost_usd'] = '0'
     with pytest.raises(ValueError, match='Baseline'):
@@ -53,3 +53,25 @@ def test_no_double_counting_duplicate_receipts():
     e['receipts'].append(e['receipts'][0])
     with pytest.raises(ValueError, match='duplicate'):
         refresh(b, e)
+
+
+def test_refreshed_document_cannot_be_applied_again():
+    from settle.revenue.verification import digest
+    b, e = inputs()
+    new = refresh(b, e)
+    new['revision_id'] = digest(new)
+    new['published_at'] = b['published_at']
+    with pytest.raises(ValueError, match='Baseline'):
+        refresh(new, e)
+
+
+def test_only_revenue_and_yield_fields_change_for_target_rows():
+    b, e = inputs()
+    result = refresh(b, e)
+    allowed = {'gross_revenue_usd', 'prime_retained_revenue_usd', 'net_pnl_usd',
+               'gross_monthly_return', 'net_monthly_return', 'gross_apy', 'net_apy',
+               'yield_status', 'average_yield_exposure_usd', 'yield_denominator',
+               'spread_reimbursement_excluded_from_net_usd'}
+    for old, new in zip(b['allocations'], result['allocations'], strict=True):
+        assert {k: v for k, v in old.items() if k not in allowed} == {
+            k: v for k, v in new.items() if k not in allowed}
