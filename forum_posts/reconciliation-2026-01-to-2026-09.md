@@ -20,7 +20,7 @@ agent's debt mint. A send-only refund increases its transfer without new debt.
 
 | Prime | Supply-side adjustment | Sky-share adjustment | Send-only refund |
 |---|---:|---:|---:|
-| Spark | 249,141.52 | 557,546.90 | 0.00 |
+| Spark | 249,141.52 | 536,094.04 | 0.00 |
 | Grove | 11,554.74 | -110,419.56 | 0.00 |
 | Osero | 0.00 | 0.00 | 5,514.00 |
 | Obex | -273,508.90 | 0.00 | 0.00 |
@@ -41,7 +41,7 @@ existing supply-side floor and whole-USDS rounding to actual October figures.
   received in September, plus Sentora RLUSD investment income of 3,674.16.
   SparkLend RLUSD S70 is included once in the comprehensive lending replay,
   replacing its former standalone 2,400.00 correction.
-- **Spark native-USDS wallet/bridge correction (#281):** 557,546.90 of
+- **Spark native-USDS wallet/bridge correction (#281):** 536,094.04 of
   additional historical debt mint, June-September, replacing the superseded
   255,869.48 transit credit. Compare verified wallets plus eligible transit
   against frozen deductions, preserving original daily charge conventions.
@@ -108,7 +108,7 @@ The following amounts remain to add to those existing October entries:
 
 | Prime | Additional supply-side adjustment | Additional Sky-share adjustment | Additional send-only refund |
 |---|---:|---:|---:|
-| Spark | 249,141.52 | 557,546.90 | 0.00 |
+| Spark | 249,141.52 | 536,094.04 | 0.00 |
 | Grove | 11,554.74 | -31,889.50 | 0.00 |
 | Osero | 0.00 | 0.00 | 0.00 |
 | Obex | -273,508.90 | 0.00 | 0.00 |
@@ -122,7 +122,7 @@ Sky net means debt minted less transfers to agents.
 
 | Prime | Debt mint change | Transfer change | Sky net change |
 |---|---:|---:|---:|
-| Spark | 806,688.42 | 249,141.52 | 557,546.90 |
+| Spark | 785,235.56 | 249,141.52 | 536,094.04 |
 | Grove | -98,864.82 | 11,554.74 | -110,419.56 |
 | Osero | 0.00 | 5,514.00 | -5,514.00 |
 | Obex | -273,508.90 | -273,508.90 | 0.00 |
