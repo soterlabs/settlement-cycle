@@ -42,9 +42,10 @@ def test_persisted_revision_to_monthly_artifacts(database, tmp_path, monkeypatch
     output = tmp_path / 'review'
     args = ['monthly-from-revenue', '--prime', prime.id, '--month', str(MONTH),
             '--revision', first, '--output-dir', str(output)]
-    monkeypatch.setattr(writer, '_REPO_ROOT', tmp_path)
-    with pytest.raises(AssetControlError, match='Missing independent asset controls'):
-        cli.main(args)
+    with monkeypatch.context() as missing_proof:
+        missing_proof.setattr(writer, '_REPO_ROOT', tmp_path)
+        with pytest.raises(AssetControlError, match='Missing independent asset controls'):
+            cli.main(args)
     assert not output.exists()
     # Raw holdings/evidence verification is covered in the controls suite.
     # After proving the real gate rejects missing proof, isolate this test's

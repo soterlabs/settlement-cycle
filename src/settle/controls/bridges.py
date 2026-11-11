@@ -3,7 +3,7 @@ from dataclasses import asdict
 from datetime import timedelta
 from decimal import Decimal
 
-from settle.controls.assets import canonical_hash, require
+from settle.controls.assets import canonical_hash, control_precision, require
 from settle.domain.period import Period
 from settle.extract import hypersync_store
 from settle.extract.hypersync import LogRow
@@ -23,6 +23,7 @@ def capture_bridges(prime, period, *, fetch=None):
             'queries': queries}
 
 
+@control_precision
 def check_bridge_states(prime, period, observations, control, source):
     require(source['schema'] == 1 and source['source'] == 'native-usds-gateway-history'
             and source['prime'] == prime.id, 'Wrong gateway evidence identity')

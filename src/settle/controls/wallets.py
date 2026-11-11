@@ -7,6 +7,7 @@ import re
 from datetime import UTC, date, datetime, time
 
 from settle.controls.assets import AssetControlError, require
+from settle.controls.boundaries import block_hash, rpc_quantity
 from settle.domain.sky_tokens import USDS_BY_CHAIN
 from settle.extract import rpc
 from settle.normalize.usds_bridge_transit import usds_amount
@@ -15,13 +16,14 @@ from settle.revenue.balance_sheet_sources import CHAIN_IDS
 
 def check_boundary(day, block, headers, chain, chain_id, head):
     boundary = int(datetime.combine(datetime.fromisoformat(day).date(), time.max, UTC).timestamp())
-    require(chain_id == CHAIN_IDS[chain] and head >= block + 65, 'Wrong chain or unfinalized wallet evidence')
+    require(all(type(n) is int for n in (chain_id, head, block))
+            and chain_id == CHAIN_IDS[chain] and head >= block + 65, 'Wrong chain or unfinalized wallet evidence')
     require(len(headers) == 2 and all(headers), f'Missing block headers: {day}/{chain}')
-    require(int(headers[0]['number'], 16) == block
-            and int(headers[1]['number'], 16) == block + 1
-            and len(headers[0]['hash']) == 66 and len(headers[1]['hash']) == 66
-            and headers[1]['parentHash'] == headers[0]['hash']
-            and int(headers[0]['timestamp'], 16) <= boundary < int(headers[1]['timestamp'], 16),
+    require(rpc_quantity(headers[0]['number']) == block
+            and rpc_quantity(headers[1]['number']) == block + 1
+            and block_hash(headers[1]['parentHash']) == block_hash(headers[0]['hash'])
+            and block_hash(headers[1]['hash'])
+            and rpc_quantity(headers[0]['timestamp']) <= boundary < rpc_quantity(headers[1]['timestamp']),
             f'Block is not the UTC daily close: {day}/{chain}')
 
 
@@ -43,11 +45,15 @@ def capture_wallets(prime, daily_pins, *, call=None):
                 continue  # No native-USDS exemption on this chain, not a portfolio exclusion.
             require(chain.value in pins, f'Missing wallet control pin: {day}/{chain.value}')
             block = pins[chain.value]
-            require(type(block) is int and block > 0, 'Invalid wallet control block')
+            require(type(block) is int and block >= 0, 'Invalid wallet control block')
+            if block == 0:
+                # No fabricated zero read: the independent genesis evidence
+                # must establish absence separately before the gate can pass.
+                continue
             headers = [call(chain, 'eth_getBlockByNumber', [hex(n), False]) for n in (block, block + 1)]
             if chain not in identities:
-                identities[chain] = (int(call(chain, 'eth_chainId', []), 16),
-                                     int(call(chain, 'eth_blockNumber', []), 16))
+                identities[chain] = (rpc_quantity(call(chain, 'eth_chainId', [])),
+                                     rpc_quantity(call(chain, 'eth_blockNumber', [])))
             chain_id, head = identities[chain]
             check_boundary(day, block, headers, chain.value, chain_id, head)
             token = USDS_BY_CHAIN[chain]
@@ -76,6 +82,8 @@ def check_wallet_states(prime, observations, control, evidence):
     accounts = {}
     for key, account in inventory.items():
         if 'alm_usds' in account['deduction_fields']:
+            require(account['deduction_fields'] == ['alm_usds'],
+                    'A direct native-USDS wallet may claim only the ALM exemption')
             identity = (account['chain'], account['holder'].lower())
             require(identity in expected and identity not in accounts,
                     'ALM deduction must have one native-USDS account per configured ALM wallet')
@@ -87,6 +95,10 @@ def check_wallet_states(prime, observations, control, evidence):
     for observation in observations:
         for identity, key in accounts.items():
             state = observation['assets'][key]
+            if state['block'] == 0:
+                from settle.controls.boundaries import check_pre_genesis
+                check_pre_genesis(control, observation, evidence)
+                continue
             matches = []
             for ref in state['evidence']:
                 source = evidence[ref]
@@ -101,7 +113,7 @@ def check_wallet_states(prime, observations, control, evidence):
             require(raw['token'].lower() == token.address.hex.lower()
                     and raw['decimals'] == token.decimals and raw['block'] == state['block'],
                     'Wallet evidence token, decimals or block does not match')
-            require(isinstance(raw['raw_balance'], str) and raw['raw_balance'].isdigit(), 'Invalid raw wallet balance')
+            require(isinstance(raw['raw_balance'], str) and re.fullmatch(r'[0-9]+', raw['raw_balance']) is not None, 'Invalid raw wallet balance')
             require(int(raw['raw_balance']) < 2**256, 'Invalid uint256 balance')
             check_boundary(observation['day'], raw['block'], raw['headers'],
                            identity[0], raw['chain_id'], raw['head'])

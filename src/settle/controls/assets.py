@@ -9,7 +9,8 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import datetime, timedelta
-from decimal import Decimal, InvalidOperation
+from decimal import Context, Decimal, InvalidOperation, localcontext
+from functools import wraps
 from pathlib import Path
 
 from settle.domain.config import load_prime_by_id
@@ -77,7 +78,17 @@ def _evidence(root, relative):
     return path
 
 
-def validate_controls(control, observations, journal, *, expected_days, expected_pins):
+def control_precision(function):
+    """Financial controls must not inherit a caller's rounding or traps."""
+    @wraps(function)
+    def checked(*args, **kwargs):
+        with localcontext(Context(prec=80)):
+            return function(*args, **kwargs)
+    return checked
+
+
+@control_precision
+def validate_controls(control, observations, journal, *, expected_days, expected_pins, genesis_evidence=None):
     """Pure arithmetic validation after source hashes and review are checked.
 
     ``expected_days`` includes the previous month's final close. Each daily
@@ -111,9 +122,11 @@ def validate_controls(control, observations, journal, *, expected_days, expected
         day = observation['day']
         pins = observation['pins']
         require(set(pins) == set(inventory['chains']), f'Incomplete chain pins on {day}')
-        require(all(type(pin) is int and pin > 0 for pin in pins.values()), 'Invalid block pin')
+        require(all(type(pin) is int and pin >= 0 for pin in pins.values()), 'Invalid block pin')
         if previous_pins is not None:
-            require(all(pins[c] > previous_pins[c] for c in pins), f'Non-increasing daily pins on {day}')
+            require(all(pins[c] >= previous_pins[c] for c in pins), f'Decreasing daily pins on {day}')
+        from settle.controls.boundaries import check_pre_genesis
+        check_pre_genesis(control, observation, genesis_evidence or {})
         previous_pins = pins
         if day in expected_pins:
             require(pins == expected_pins[day], f'Settlement/evidence block pins differ on {day}')
@@ -123,6 +136,12 @@ def validate_controls(control, observations, journal, *, expected_days, expected
         for key, state in observation['assets'].items():
             require(bool(state['evidence']), f'Missing position evidence: {day}/{key}')
             require(state['block'] == pins[accounts[key]['chain']], f'Unpinned position: {day}/{key}')
+            if state['block'] > 0:
+                sources = [genesis_evidence.get(ref, {}) if genesis_evidence else {}
+                           for ref in state['evidence']]
+                require(any(not isinstance(source, dict) or source.get('source') != 'independent-chain-genesis'
+                            for source in sources),
+                        f'Genesis evidence cannot establish a live position: {day}/{key}')
             value = amount(state['value_usd'])
             parts = state['deductions']
             require(set(parts) == set(accounts[key]['deduction_fields']),
@@ -160,6 +179,7 @@ def validate_controls(control, observations, journal, *, expected_days, expected
     return totals[1:]
 
 
+@control_precision
 def validate_packet(path, pnl, *, repo_root=ROOT):
     """Validate retained independent evidence, then compare every MSC day.
 
@@ -263,7 +283,8 @@ def validate_packet(path, pnl, *, repo_root=ROOT):
                 f'Transfer scan does not cover the month: {identity}')
         require(bool(scan['evidence']) and set(scan['evidence']) <= set(control['evidence_sha256'])
                 - {control['observations'], control['journal']}, f'Unretained transfer scan: {identity}')
-    totals = validate_controls(control, observations, journal, expected_days=days, expected_pins=pins)
+    totals = validate_controls(control, observations, journal, expected_days=days, expected_pins=pins,
+                               genesis_evidence=evidence)
     from settle.controls.wallets import check_wallet_states
     check_wallet_states(prime, observations, control, evidence)
     from settle.controls.bridges import check_bridge_states
@@ -271,11 +292,12 @@ def validate_packet(path, pnl, *, repo_root=ROOT):
     require([str(row['date']) for row in pnl.sky_revenue_daily] == days[1:],
             'Settlement daily coverage is incomplete')
     for observed, reported in zip(totals, pnl.sky_revenue_daily, strict=True):
+        require(set(DEDUCTIONS) | {'cum_debt', 'utilized'} <= set(reported),
+                f'Missing daily financial fields on {observed["day"]}')
         values = {'cum_debt': observed['debt'], **observed['deductions'],
                   'utilized': observed['utilized']}
         for field, expected in values.items():
-            require(field != 'utilized' or field in reported, 'Missing utilized borrowing principal')
-            actual = amount(reported.get(field, '0'), allow_negative=field == 'utilized')
+            actual = amount(reported[field], allow_negative=field == 'utilized')
             require(abs(actual - expected) <= TOLERANCE,
                     f'Daily holdings disagree with {field} on {observed["day"]}: '
                     f'MSC={actual}, independently observed={expected}')

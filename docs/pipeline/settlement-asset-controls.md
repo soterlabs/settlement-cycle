@@ -58,7 +58,8 @@ python scripts/capture_settlement_wallets.py --prime spark \
 ```
 
 `daily-pins.json` maps UTC dates to `{chain: block_number}`; include the previous
-month's final close and every day of this month. The script uses configured RPC
+month's final close and every day of this month. For a month containing zero pre-genesis pins, also pass
+`--genesis-output /path/to/genesis.json`. The script uses configured RPC
 endpoints and `.env`, refuses existing output files, and issues **no approval**.
 Archive calls use the canonical block hash. Retain the captured files unchanged.
 
@@ -98,7 +99,21 @@ allowed kinds are `not_owned`, `outside_period`, `outside_msc`. Failure to read 
 position is not an exclusion. Newly discovered holdings need accounts even if
 no current venue recipe represents them.
 
-Observations are an ordered JSON list, opening close first:
+Observations are an ordered JSON list, opening close first. Financial daily rows
+must explicitly contain all seven deductions, `cum_debt` and `utilized`, even
+when they are zero. Direct wallet accounts allow only `alm_usds`; a different
+exemption cannot bypass the configured ALM activation date. Arithmetic uses an
+isolated Decimal context and does not inherit caller rounding or traps.
+
+Block pins may repeat on a halted chain. A zero pin requires an observation's
+`pre_genesis: {chain: "genesis.json"}` reference to a retained, hash-bound output
+from `--genesis-output`. Its chain identity and linked genesis/first-block
+headers must prove the first block occurred after that UTC close. Holdings and
+deductions on the chain must be zero and cite that proof. Once the chain is live,
+its positions need actual balance evidence; a genesis proof cannot stand in for
+a live balance. Missing or unsupported genesis evidence blocks the report.
+
+Observation shape:
 
 ```json
 {

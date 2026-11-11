@@ -442,3 +442,114 @@ def test_legitimate_negative_utilized_is_retained_without_becoming_a_missing_zer
         p.write_text(json.dumps(value))
     result = assets.validate_packet(path, pnl, repo_root=tmp_path)
     assert D(result['daily'][12]['utilized']) == D('-89999990')
+
+
+def test_zero_financial_deductions_must_be_explicit(tmp_path, monkeypatch):
+    path, pnl = write_packet(tmp_path, monkeypatch)
+    del pnl.sky_revenue_daily[12]['lending_idle']
+    with pytest.raises(assets.AssetControlError, match='Missing daily financial fields'):
+        assets.validate_packet(path, pnl, repo_root=tmp_path)
+
+
+def test_wallet_cannot_claim_psm_exemption_before_alm_activation():
+    from dataclasses import replace
+
+    prime, control, observations, _, _, raw = dataset()
+    prime = replace(prime, alm_start_dates={ETH: date(2026, 7, 6)})
+    control['inventory']['accounts']['wallet']['deduction_fields'].append('psm_usds')
+    for observation in observations:
+        state = observation['assets']['wallet']
+        before = observation['day'] < '2026-07-06'
+        state['deductions'] = {'alm_usds': '0' if before else state['value_usd'],
+                               'psm_usds': state['value_usd'] if before else '0'}
+    with pytest.raises(assets.AssetControlError, match='only the ALM exemption'):
+        wallets.check_wallet_states(prime, observations, control, {'wallets.json': raw, 'raw.json': {}})
+
+
+def test_control_arithmetic_is_independent_of_the_callers_decimal_context(tmp_path, monkeypatch):
+    from decimal import Inexact, localcontext
+
+    path, pnl = write_packet(tmp_path, monkeypatch)
+    expected = assets.validate_packet(path, pnl, repo_root=tmp_path)
+    with localcontext() as context:
+        context.prec = 6
+        context.traps[Inexact] = True
+        assert assets.validate_packet(path, pnl, repo_root=tmp_path) == expected
+        assert context.prec == 6 and context.traps[Inexact]
+
+
+def genesis_case():
+    _, control, observations, journal, _, _ = dataset()
+    control['inventory']['chains'].append('robinhood')
+    control['inventory']['accounts']['future'] = {
+        'chain': 'robinhood', 'holder': HOLDER.hex, 'claim_id': 'future-chain-cash',
+        'custody_id': 'future-token', 'deduction_fields': []}
+    for i, observation in enumerate(observations):
+        pin = 0 if i < 10 else i
+        observation['pins']['robinhood'] = pin
+        observation['assets']['future'] = {
+            'value_usd': '0', 'deductions': {}, 'block': pin,
+            'evidence': ['genesis.json'] if pin == 0 else ['raw.json']}
+        if pin == 0:
+            observation['pre_genesis'] = {'robinhood': 'genesis.json'}
+    first_timestamp = int(datetime(2026, 7, 10, tzinfo=UTC).timestamp())
+    proof = {'schema': 1, 'prime': 'spark', 'source': 'independent-chain-genesis',
+             'chains': {'robinhood': {'chain_id': 4663, 'headers': [
+                 {'number': '0x0', 'hash': '0x' + '11'*32, 'timestamp': hex(first_timestamp-1)},
+                 {'number': '0x1', 'hash': '0x' + '22'*32, 'parentHash': '0x' + '11'*32,
+                  'timestamp': hex(first_timestamp)}]}}}
+    return control, observations, journal, {'genesis.json': proof}
+
+
+def validate_genesis_case(control, observations, journal, evidence):
+    return assets.validate_controls(control, observations, journal,
+        expected_days=[r['day'] for r in observations],
+        expected_pins={observations[0]['day']: observations[0]['pins'],
+                       observations[-1]['day']: observations[-1]['pins']},
+        genesis_evidence=evidence)
+
+
+def test_chain_activation_month_accepts_proven_pre_genesis_zero_pins():
+    control, observations, journal, evidence = genesis_case()
+    assert len(validate_genesis_case(control, observations, journal, evidence)) == 31
+
+
+@pytest.mark.parametrize('problem', ['missing', 'already_live', 'invented_holding', 'wrong_chain', 'unlinked'])
+def test_zero_pin_never_implies_an_unverified_zero_balance(problem):
+    control, observations, journal, evidence = genesis_case()
+    proof = evidence['genesis.json']['chains']['robinhood']
+    if problem == 'missing':
+        evidence.clear()
+    elif problem == 'already_live':
+        proof['headers'][1]['timestamp'] = '0x1'
+    elif problem == 'invented_holding':
+        observations[0]['assets']['future']['value_usd'] = '1'
+    elif problem == 'wrong_chain':
+        proof['chain_id'] = 1
+    else:
+        proof['headers'][1]['parentHash'] = '0x' + 'ff'*32
+    with pytest.raises(assets.AssetControlError):
+        validate_genesis_case(control, observations, journal, evidence)
+
+
+def test_genesis_proof_cannot_be_reused_as_a_live_position_balance():
+    control, observations, journal, evidence = genesis_case()
+    observations[-1]['assets']['future']['evidence'] = ['genesis.json']
+    with pytest.raises(assets.AssetControlError, match='Genesis evidence cannot establish a live position'):
+        validate_genesis_case(control, observations, journal, evidence)
+
+
+def test_genesis_capture_verifies_zero_pins_against_first_block():
+    from settle.controls.boundaries import capture_genesis
+
+    prime, _, _, _, _, _ = dataset()
+    _, _, _, evidence = genesis_case()
+    root = evidence['genesis.json']['chains']['robinhood']
+    def call(chain, method, params):
+        if method == 'eth_chainId':
+            return hex(root['chain_id'])
+        return root['headers'][int(params[0], 16)]
+    result = capture_genesis(prime, {'2026-07-01': {'robinhood': 0}}, call=call)
+    assert result['chains']['robinhood']['chain_id'] == 4663
+    with pytest.raises(assets.AssetControlError, match='already live'):
+        capture_genesis(prime, {'2026-07-11': {'robinhood': 0}}, call=call)
