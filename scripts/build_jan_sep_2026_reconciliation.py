@@ -29,11 +29,11 @@ import yaml  # noqa: E402
 from audit_grove_september_2026 import EVIDENCE  # noqa: E402
 from audit_grove_september_2026 import audit as grove_audit  # noqa: E402
 from audit_usds_bridge_transit_2026 import cost_delta, historical_rows  # noqa: E402
-from reconcile_usds_bridge_baseline_2026 import replay as bridge_baseline_replay  # noqa: E402
 from reconcile_async_deposits import reconcile_deposits  # noqa: E402
 from reconcile_grove_buidl_fees import reconcile as buidl_reconcile  # noqa: E402
 from reconcile_osero_shortfalls import reconcile as osero_reconcile  # noqa: E402
 from reconcile_sde_inflight import reconcile as redemption_reconcile  # noqa: E402
+from reconcile_usds_bridge_baseline_2026 import replay as bridge_baseline_replay  # noqa: E402
 from replay_reconciliation_venues import replay as venue_replay  # noqa: E402
 
 from settle.domain import Chain, Period  # noqa: E402

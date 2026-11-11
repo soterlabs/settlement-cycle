@@ -1882,7 +1882,7 @@
     "reconciliation/usds-bridge-2026/baseline-correction/original-june-workbook.xlsx": "a5d1a8d22a76ef31c2833ec955731a42ee35f6aac726a120c49f7879c8320e1b",
     "reconciliation/usds-bridge-2026/baseline-correction/spark.yaml": "c57c201a92ebf9411faaff9947c55d663e99be7716a3b82eb73c0be4d8fe68db",
     "scripts/reconcile_usds_bridge_baseline_2026.py": "2f23c183555a7beeae3a9d32fb236eb366438c67782f9e97da316b1f9b3644f5",
-    "scripts/build_jan_sep_2026_reconciliation.py": "db220f563a3e0a1f3acb5a4207dc5e327a359faba7f64d71b69ae09b16ae567f",
+    "scripts/build_jan_sep_2026_reconciliation.py": "d61b4b6527c657c9310226ed450adf02553953b0123076cbff88895a1008a9ed",
     "reconciliation/usds-bridge-2026/baseline-correction/sources.json": "2ab71f5f52f083abbeb72ee568fb74f87bab03e0b2573679d0c68de85d4a6573"
   }
 }
