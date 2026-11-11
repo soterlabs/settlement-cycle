@@ -29,6 +29,7 @@ import yaml  # noqa: E402
 from audit_grove_september_2026 import EVIDENCE  # noqa: E402
 from audit_grove_september_2026 import audit as grove_audit  # noqa: E402
 from audit_usds_bridge_transit_2026 import cost_delta, historical_rows  # noqa: E402
+from reconcile_usds_bridge_baseline_2026 import replay as bridge_baseline_replay  # noqa: E402
 from reconcile_async_deposits import reconcile_deposits  # noqa: E402
 from reconcile_grove_buidl_fees import reconcile as buidl_reconcile  # noqa: E402
 from reconcile_osero_shortfalls import reconcile as osero_reconcile  # noqa: E402
@@ -409,10 +410,41 @@ def osero_period_effect(row, income_delta):
     )
 
 
+def apply_signed_bridge(data):
+    """Replace the superseded credit once, keeping October ordinary CoF separate."""
+    replayed = bridge_baseline_replay()
+    matches = [r for r in data["items"] if r["id"] == "spark-native-usds-transit"]
+    if len(matches) != 1:
+        raise ValueError("Expected one historical Spark bridge component")
+    row = matches[0]
+    months = {m: -D(v) for m, v in replayed["monthly_signed_credit"].items()
+              if m <= "2026-09"}
+    amount = cents(sum(months.values(), D(0)))
+    delta = amount - D(row["amount"])
+    row.update(amount=str(amount), unrounded=str(sum(months.values(), D(0))),
+               months={m: str(v) for m, v in months.items()},
+               source="reconciliation/usds-bridge-2026/baseline-correction/results.json")
+    for key in ["adjustment_totals", "remaining_to_add_to_october",
+                "proposed_combined_october_adjustments"]:
+        data[key]["spark"]["sky_adj"] = str(D(data[key]["spark"]["sky_adj"]) + delta)
+    for key in ["mint_delta", "sky_net_delta"]:
+        data["linear_settlement_effects"]["spark"][key] = str(
+            D(data["linear_settlement_effects"]["spark"][key]) + delta)
+    data["bridge_daily"] = [dict(r, sky_adj=str(-D(r["signed_credit"])))
+                            for r in replayed["daily"] if r["date"] < "2026-10-01"]
+    data["input_sha256"].update(replayed["input_sha256"])
+    for name in ["scripts/reconcile_usds_bridge_baseline_2026.py",
+                 "scripts/build_jan_sep_2026_reconciliation.py",
+                 "reconciliation/usds-bridge-2026/baseline-correction/sources.json"]:
+        data["input_sha256"][name] = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
+    data["execution_status"] = "Grove cash and signed Spark wallet/bridge component replays complete; no production booking or execution."
+    return data
+
+
 def calculate():
     if (FOLDER / "before-pr280.json").exists():
         from update_grove_pr280_reconciliation import update
-        return update(FOLDER)
+        return apply_signed_bridge(update(FOLDER))
     capture_path = FOLDER / "atoken-inputs.json.gz"
     replay_path = FOLDER / "atoken-replay.json"
     if not capture_path.exists() or not replay_path.exists():
@@ -604,8 +636,10 @@ existing supply-side floor and whole-USDS rounding to actual October figures.
   received in September, plus Sentora RLUSD investment income of 3,674.16.
   SparkLend RLUSD S70 is included once in the comprehensive lending replay,
   replacing its former standalone 2,400.00 correction.
-- **Spark native-USDS bridge transit (#274):** 255,869.48 of historical
-  debt-mint relief, June-September, using original daily charge conventions.
+- **Spark native-USDS wallet/bridge correction (#281):** 557,546.90 of
+  additional historical debt mint, June-September, replacing the superseded
+  255,869.48 transit credit. Compare verified wallets plus eligible transit
+  against frozen deductions, preserving original daily charge conventions.
 - **Spark/Obex async vaults (#278, implementing #263):** correct queued shares,
   paid cash and dated capital flows. Spark's correction is -41,042.54;
   Obex's July correction is -273,508.90. Global CoF is unchanged.
@@ -740,9 +774,8 @@ applicable policy dates are preserved. The bridge audit covers its four
 supported Ethereum routes; unrelated bridge families are not implicitly certified.
 """
     return (
-        "> **Draft — not ready for booking:** the historical Spark bridge component still "
-        "awaits the correction in PR #281. The post-#282 read-only component replay "
-        "reproduced the current ledger, but does not certify complete monthly asset controls.\n\n"
+        "> **Draft — not ready for booking:** the signed correction in PR #281 is included. "
+        "This read-only component replay does not certify complete monthly asset controls.\n\n"
         + text
     )
 

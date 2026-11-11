@@ -12,7 +12,7 @@ The inventory covers 57 merged PRs. Actual policy dates remain in place;
 
 | Prime | Supply-side adjustment | Sky-share adjustment | Send-only refund |
 |---|---:|---:|---:|
-| Spark | 249,141.52 | -255,869.48 | 0.00 |
+| Spark | 249,141.52 | 557,546.90 | 0.00 |
 | Grove | 11,554.74 | -110,419.56 | 0.00 |
 | Osero | 0.00 | 0.00 | 5,514.00 |
 | Obex | -273,508.90 | 0.00 | 0.00 |
@@ -88,7 +88,7 @@ for October. Remaining additions to the **existing** October configuration are:
 
 | Prime | SV | Sky share | Send-only refund |
 |---|---:|---:|---:|
-| Spark | 249,141.52 | -255,869.48 | 0.00 |
+| Spark | 249,141.52 | 557,546.90 | 0.00 |
 | Grove | 11,554.74 | -31,889.50 | 0.00 |
 | Osero | 0.00 | 0.00 | 0.00 |
 | Obex | -273,508.90 | 0.00 | 0.00 |
@@ -132,7 +132,15 @@ immutable checkpoints; this is not a new whole-prime monthly run.
 See [post-pr282-validation.json](post-pr282-validation.json) for the command,
 source revision and output hashes.
 
-**Pending #281:** Spark's historical bridge adjustment in this draft still
-requires the separately reviewed bridge-baseline correction. Its existing
-Sky-adjustment figure is provisional and must not be booked as a final refund.
-The #282 asset-control requirement has not been certified by this component run.
+## Signed wallet/bridge replay after #281
+
+The current builder replaces the old 255,869.48 Spark transit credit with a
+557,546.90 debit: an 813,416.38 increase in the historical Sky adjustment.
+It replays verified wallets plus eligible transit against frozen deductions,
+including stale destination balances. Original rates and prior netting remain
+unchanged. The 75,063.88 October ordinary CoF credit is excluded here.
+
+The earlier Grove-only paragraphs describe that retained checkpoint. The current
+builder additionally replays the signed Spark component. Grove, Osero, Obex and
+Spark's supply/send adjustments remain unchanged. This is a component audit;
+it does not certify the complete daily asset controls needed for a new close.

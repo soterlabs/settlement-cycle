@@ -41,7 +41,7 @@ def test_approved_credits_are_not_added_twice_and_october_receipts_are_preserved
 def test_bridge_cutoff_and_small_buidl_correction_sign(ledger):
     items = {r["id"]: r for r in ledger["items"]}
     bridge = items["spark-native-usds-transit"]
-    assert D(bridge["amount"]) == D("-255869.48")
+    assert D(bridge["amount"]) == D("557546.90")
     assert set(bridge["months"]) == {"2026-06", "2026-07", "2026-08", "2026-09"}
     assert D(items["grove-small-buidl-capital-and-fees"]["amount"]) == D("4000.18")
     assert sum(D(r["send_credit"]) for r in ledger["osero_executed_refund_rows"]) == 5514
@@ -113,9 +113,16 @@ def test_pr280_replays_only_active_grove_and_preserves_other_primes(ledger):
         ).read_text()
     )
     assert ledger["grove_pr280_replay"]["active_venue_months"] == 17
-    for prime in ["spark", "osero", "obex"]:
+    for prime in ["osero", "obex"]:
         assert ledger["adjustment_totals"][prime] == prior["adjustment_totals"][prime]
         assert (
             ledger["linear_settlement_effects"][prime] == prior["linear_settlement_effects"][prime]
         )
     assert D(ledger["adjustment_totals"]["grove"]["sv_adj"]) == D("11554.74")
+
+
+def test_signed_bridge_replaces_credit_and_excludes_october(ledger):
+    assert D(ledger["adjustment_totals"]["spark"]["sky_adj"]) == D("557546.90")
+    assert all(r["date"] < "2026-10-01" for r in ledger["bridge_daily"])
+    assert sum(D(r["sky_adj"]) for r in ledger["bridge_daily"]).quantize(D(".01")) == D("557546.90")
+    assert D(ledger["proposed_combined_october_adjustments"]["spark"]["sky_adj"]) == D("557546.90")
