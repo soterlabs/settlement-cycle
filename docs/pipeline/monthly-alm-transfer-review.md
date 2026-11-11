@@ -11,7 +11,10 @@ RLUSD payments totaling 1,373,208 were not configured as revenue.
 ## Inventory and review
 
 1. Pin opening and closing blocks for the month on every configured ALM chain.
-   Include primary/secondary ALMs and configured beneficial custody boundaries.
+   Include primary/secondary ALM proxies. Do not expand the required scan to
+   SubProxy treasury wallets or downstream commingled custodian wallets.
+   An EOA configured as an ALM is scanned on that configured chain; using the
+   same address on another chain does not extend the scan boundary.
    Inspect configured sources, not just the tokens already listed as venues.
 2. Scan all token transfers into **and out of** those wallets over the pinned
    period. Include receipt tokens and NFT positions. Capture the transaction's

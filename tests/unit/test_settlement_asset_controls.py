@@ -1,6 +1,7 @@
 """Independent holdings and stock/flow checks; no live monthly calculation."""
 import json
 from copy import deepcopy
+from dataclasses import replace
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal as D
 from types import SimpleNamespace
@@ -553,3 +554,26 @@ def test_genesis_capture_verifies_zero_pins_against_first_block():
     assert result['chains']['robinhood']['chain_id'] == 4663
     with pytest.raises(assets.AssetControlError, match='already live'):
         capture_genesis(prime, {'2026-07-11': {'robinhood': 0}}, call=call)
+
+
+def test_custody_inventory_does_not_expand_required_alm_scan(tmp_path, monkeypatch):
+    path, pnl = write_packet(tmp_path, monkeypatch)
+    control = json.loads(path.read_text())
+    review_path = path.parent / 'review.json'
+    review = json.loads(review_path.read_text())
+    prime = assets.load_prime_by_id('spark')
+    # A distinct treasury wallet remains inventoried, but is not an ALM.
+    treasury = '0x' + '12' * 20
+    prime = replace(prime, subproxy={ETH: Address.from_str(treasury)})
+    monkeypatch.setattr(assets, 'load_prime_by_id', lambda *a, **kw: prime)
+    control['inventory']['wallets'].append(f'ethereum:{treasury}')
+    review['asset_inventory_sha256'] = assets.canonical_hash(control['inventory'])
+    path.write_text(json.dumps(control))
+    review_path.write_text(json.dumps(review))
+    result = assets.validate_packet(path, pnl, repo_root=tmp_path)
+    assert result['status'] == 'passed'
+    # Omitting the actual ALM remains a failure despite the broader inventory.
+    review['scan_coverage'] = {}
+    review_path.write_text(json.dumps(review))
+    with pytest.raises(assets.AssetControlError, match='wallet coverage'):
+        assets.validate_packet(path, pnl, repo_root=tmp_path)

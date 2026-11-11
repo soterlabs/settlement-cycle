@@ -1,7 +1,7 @@
 {
   "period": "2026-10",
   "captured_at_utc": "2026-11-11",
-  "status": "fresh_scan_complete_review_not_complete",
+  "status": "alm_boundary_rescan_matched",
   "scope": "All current active ALM wallets, holder overrides, SubProxies and explicit Grove PAU/Basin custody; joined transaction logs. Does not independently recapture native traces or daily position valuations.",
   "raw_evidence_local_directory": "/data/october-alm-rescan",
   "prior_evidence_directory": ".msc-transfer-reviews/<prime>/2026-10",
@@ -231,8 +231,9 @@
           ]
         }
       },
-      "status": "retained_entries_matched; expanded_custody_review_pending",
-      "asset_controls_present": false
+      "status": "retained_alm_review_entries_matched",
+      "asset_controls_present": false,
+      "additional_entries_block_settlement": false
     },
     "grove": {
       "prior_review_sha256": "ae0e69cf6e097ecc66b36c07f705d4199d67c01ecb36a7dff16ff4fdd417c5c6",
@@ -334,8 +335,9 @@
           ]
         }
       },
-      "status": "retained_entries_matched; expanded_custody_review_pending",
-      "asset_controls_present": false
+      "status": "retained_alm_review_entries_matched",
+      "asset_controls_present": false,
+      "additional_entries_block_settlement": false
     },
     "obex": {
       "prior_review_sha256": "51898854ac013399b225af912ea5661a5d3ce1adcd6736c263554b6517b69cf0",
@@ -365,8 +367,9 @@
           ]
         }
       },
-      "status": "retained_entries_matched; expanded_custody_review_pending",
-      "asset_controls_present": false
+      "status": "retained_alm_review_entries_matched",
+      "asset_controls_present": false,
+      "additional_entries_block_settlement": false
     },
     "osero": {
       "prior_review_sha256": "fe59604e484155456445f68ffcc86e03e78c599a7244ede1ada608156a651aee",
@@ -396,8 +399,9 @@
           ]
         }
       },
-      "status": "retained_entries_matched; expanded_custody_review_pending",
-      "asset_controls_present": false
+      "status": "retained_alm_review_entries_matched",
+      "asset_controls_present": false,
+      "additional_entries_block_settlement": false
     },
     "keel": {
       "prior_review_sha256": "4e84939a8d93039d1191094b5a846e44704548a6cda6e86f914011cc7e761b90",
@@ -426,8 +430,9 @@
           ]
         }
       },
-      "status": "retained_entries_matched",
-      "asset_controls_present": false
+      "status": "retained_alm_review_entries_matched",
+      "asset_controls_present": false,
+      "additional_entries_block_settlement": false
     },
     "skybase": {
       "prior_review_sha256": "6949241d9feabc6cee1965ad83d5735aca0a1e2fdbf20b27b9bba8a7e92b1b4d",
@@ -456,8 +461,9 @@
           ]
         }
       },
-      "status": "retained_entries_matched",
-      "asset_controls_present": false
+      "status": "retained_alm_review_entries_matched",
+      "asset_controls_present": false,
+      "additional_entries_block_settlement": false
     }
   },
   "additional_transfers": {
@@ -1864,28 +1870,15 @@
     "keel": [],
     "skybase": []
   },
-  "open_questions": [
-    {
-      "prime": "grove",
-      "amount_usdc": "1484740.589999",
-      "sender": "0x1157a2076b9bb22a85cc2c162f20fab3898f4101",
-      "recipient": "0x1369f7b2b38c76b6478c0f0e66d94923421891ba",
-      "transactions": [
-        "0xa4dac42922cbf4cd2051a06bc44e289bac99f0e97602c66d9edbe88909b8b6c4",
-        "0x0ada2fa314715affd0814700dfcb27018520dc4023cbbb9d16c1ba5f0d7ca961"
-      ],
-      "evidence": "extra-custody-receipts.json",
-      "sender_label": "FalconX 1; label alone does not establish economic purpose",
-      "label_source": "https://polygon.blockscout.com/address/0x1157A2076b9bB22a85CC2C162f20fAB3898F4101",
-      "question": "Allocation income, returned principal, or unrelated treasury funds? Asked operator; no financial adjustment inferred."
-    }
-  ],
+  "open_questions": [],
   "review_notes": [
     "No previously reviewed transfer entry is missing in the fresh capture. All old evidence hashes and current prime config hashes match.",
     "Additional Spark entries are SubProxy SPK/USDS and sUSDS treasury movements; the 100M-share ALM transfer is already in the sUSDS cash-capital control, not another revenue item.",
     "The Grove expanded inventory includes Ethereum FalconX commingled-custody activity as well as SubProxy entries. Apply the documented EOA boundary, not arbitrary attribution of the whole EOA to Grove.",
     "October 12 USDS mints into SubProxies share transaction 0x93389082b75a9e278b6b2a2d7dde53618c38214b5d71699fd60461dbe1e10275; these are settlement receipts, not new investment yield.",
-    "No new passing ALM review or daily asset-control packet has been issued by this scan."
+    "No new passing ALM review or daily asset-control packet has been issued by this scan.",
+    "Operator confirmed the FalconX-to-Grove SubProxy receipts are outside the ALM scan perimeter; their purpose is not a settlement blocker. Daily independent asset-control preparation remains separate."
   ],
-  "additional_receipt_evidence_sha256": "40770d807d686b25dc0ade398de5eea33ed34a701c9f185fdd11739037b4761d"
+  "additional_receipt_evidence_sha256": "40770d807d686b25dc0ade398de5eea33ed34a701c9f185fdd11739037b4761d",
+  "scope_decision": "Operator confirmed ALM-only scan. SubProxy and downstream commingled custody entries do not block MSC transfer review."
 }

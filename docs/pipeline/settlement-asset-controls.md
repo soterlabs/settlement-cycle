@@ -41,6 +41,11 @@ The check never invents an equity balance to make the numbers agree. The
 provenance retains daily asset/debt/deduction totals and the packet, review,
 configuration, inventory and source hashes for audit.
 
+Transfer-scan coverage is required at active configured ALM boundaries only.
+SubProxy and other asset-holder observations remain part of the financial
+inventory, but their full transfer histories are not an ALM-scan prerequisite.
+Additional supplied scans must still be complete and backed by evidence.
+
 ## Evidence preparation
 
 Follow [the full ALM review](monthly-alm-transfer-review.md) first. Resolve all

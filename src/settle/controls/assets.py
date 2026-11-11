@@ -269,7 +269,13 @@ def validate_packet(path, pnl, *, repo_root=ROOT):
     require(set(inventory['chains']) == set(pins[days[0]]) == set(pins[days[-1]]),
             'Settlement chain coverage is incomplete')
     coverage = review['scan_coverage']
-    require(set(coverage) == set(inventory['wallets']), 'Incomplete transfer scan wallet coverage')
+    # Operator scope: scan ALM boundaries, not SubProxy treasury or a
+    # custodian's commingled downstream activity. Asset observations and the
+    # independently evidenced journal still cover the reviewed inventory.
+    required_scans = {f'{chain.value}:{str(holder).lower()}'
+                      for chain, holder in active_alm.items()}
+    require(required_scans <= set(coverage) <= set(inventory['wallets']),
+            'Incomplete transfer scan wallet coverage')
     for identity, scan in coverage.items():
         chain = identity.split(':', 1)[0]
         require(scan['status'] == 'complete' and scan['unclassified_count'] == 0

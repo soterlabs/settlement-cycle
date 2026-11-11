@@ -53,17 +53,19 @@ Two genuine USDC transfers from FalconX to Grove's SubProxy on October 16–17
 total **1,484,740.589999 USDC** (10.001514 + 1,484,730.588485). RPC receipts
 confirm direct USDC transfers; sender identity alone cannot establish whether
 these are allocation income, returned principal or unrelated treasury funding.
-The operator was asked. No revenue adjustment has been inferred. The exact
+The operator confirmed that SubProxy transfers are outside this ALM scan.
+Their purpose is not a settlement blocker; no revenue adjustment is inferred. The exact
 receipts are retained in [extra-custody-receipts.json](extra-custody-receipts.json).
 
 The expanded capture also includes FalconX commingled Ethereum activity, which
 must follow the documented EOA allocation boundary, and SubProxy treasury
-movements. No new passing review has been issued for this expanded inventory.
+movements. The operator excluded these additional custody entries from the required ALM
+scan. All original reviewed ALM entries matched; the 87 additions do not block
+settlement. No passing daily asset-control packet is implied.
 
 ## Remaining finalization requirements
 
-Resolve the additional custody classifications, then complete the independent
-daily asset-control packets for all six primes. Those packets do not exist yet.
+Complete the independent daily asset-control packets for all six primes. Those packets do not exist yet.
 `write_settlement` correctly rejects a canonical close without them. Existing
 workbooks remain retained pre-certification artifacts; they have not been
 silently rewritten or relabelled as newly certified reports.
