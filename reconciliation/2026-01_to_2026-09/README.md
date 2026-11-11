@@ -121,3 +121,18 @@ Reproduce that earlier source replay at `fd6d2ed`, with its matching config.
 The current builder command above replays Grove only through
 `scripts/update_grove_pr280_reconciliation.py`; it validates the checkpoint
 hash and records per-prime calculation commits and new input hashes.
+
+## Rebase after #282
+
+Rebased on main `c559a19` after #282 merged. The retained offline builder was
+actually rerun: the 17 active Grove allocation-months and E12 attribution
+reproduce, and every financial item, total and proposed October replacement
+is unchanged. Other agents and the 139-row lending replay remain verified
+immutable checkpoints; this is not a new whole-prime monthly run.
+See [post-pr282-validation.json](post-pr282-validation.json) for the command,
+source revision and output hashes.
+
+**Pending #281:** Spark's historical bridge adjustment in this draft still
+requires the separately reviewed bridge-baseline correction. Its existing
+Sky-adjustment figure is provisional and must not be booked as a final refund.
+The #282 asset-control requirement has not been certified by this component run.

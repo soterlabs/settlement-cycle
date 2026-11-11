@@ -47,6 +47,8 @@ def test_bridge_cutoff_and_small_buidl_correction_sign(ledger):
     assert sum(D(r["send_credit"]) for r in ledger["osero_executed_refund_rows"]) == 5514
     # October transit and rebates cannot leak into the historical forum post.
     post = forum_post(ledger)
+    assert post.startswith("> **Draft — not ready for booking:")
+    assert "correction in PR #281" in post
     assert D(ledger["adjustment_totals"]["spark"]["sv_adj"]) == D("249141.52")
     assert "75,063.88 October bridge" in post
 

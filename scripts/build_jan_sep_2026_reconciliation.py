@@ -739,7 +739,12 @@ transfer-review attestation. Original daily rates, NAVs, subsidy conventions and
 applicable policy dates are preserved. The bridge audit covers its four
 supported Ethereum routes; unrelated bridge families are not implicitly certified.
 """
-    return text
+    return (
+        "> **Draft — not ready for booking:** the historical Spark bridge component still "
+        "awaits the correction in PR #281. The post-#282 read-only component replay "
+        "reproduced the current ledger, but does not certify complete monthly asset controls.\n\n"
+        + text
+    )
 
 
 def main():
