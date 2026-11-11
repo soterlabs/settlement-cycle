@@ -138,7 +138,7 @@ def test_unverified_evidence_never_becomes_a_balance(wallet_document, mutation):
         verified_wallet_usds(document, prime, day)
 
 
-@pytest.mark.parametrize("change", ["wallet", "manifest", "published_checks"])
+@pytest.mark.parametrize("change", ["wallet", "manifest", "published_checks", "config"])
 def test_copied_packet_checks_the_files_it_actually_consumes(tmp_path, change):
     import json
     import shutil
@@ -147,7 +147,11 @@ def test_copied_packet_checks_the_files_it_actually_consumes(tmp_path, change):
 
     folder = tmp_path / "packet"
     shutil.copytree(FOLDER, folder)
-    if change == "wallet":
+    if change == "config":
+        path = folder / "spark.yaml"
+        path.write_text(path.read_text() + "\n# changed retained configuration\n")
+        message = "Changed retained bridge source"
+    elif change == "wallet":
         path = folder / "wallet-inputs.json"
         doc = json.loads(path.read_text())
         doc["days"]["2026-07-06"]["base"]["raw_balance"] = str(10**18)

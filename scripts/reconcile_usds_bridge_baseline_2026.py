@@ -20,7 +20,7 @@ from scripts.audit_usds_bridge_transit_2026 import (
     verified_wallet_usds,
 )
 from settle.domain import Chain, Period
-from settle.domain.config import load_prime_by_id
+from settle.domain.config import load_prime
 from settle.extract.hypersync import LogRow
 from settle.normalize.usds_bridge_transit import collect_transfers, daily_exposure
 
@@ -80,7 +80,6 @@ def _replay(folder):
 
     legacy_path = ROOT / "reconciliation/usds-bridge-2026/audit.json"
     legacy = read(legacy_path)
-    prime = load_prime_by_id("spark")
     wallets = read(folder / "wallet-inputs.json")
     provenance = read(folder / "sources.json")
     if provenance["baseline_commit"] != BASELINE or provenance["pr277_commit"] != PR277:
@@ -89,7 +88,7 @@ def _replay(folder):
         "reconciliation/usds-bridge-2026/audit.json",
         "reconciliation/usds-bridge-2026/spark-october-retained-daily.json",
         "tests/fixtures/usds_bridge/spark_2026_gateway_logs.json",
-        "config/spark.yaml",
+        PACKAGE + "/spark.yaml",
         *(
             PACKAGE + "/" + name
             for name in [
@@ -109,6 +108,7 @@ def _replay(folder):
     for path, expected in provenance["sha256"].items():
         if sha(source(path)) != expected:
             raise ValueError("Changed retained bridge source: " + path)
+    prime = load_prime(folder / "spark.yaml")
     checks = provenance["prior_idle_baseline_checks"]
     expected_checks = {
         (

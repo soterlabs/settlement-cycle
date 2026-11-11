@@ -6,7 +6,6 @@
     "reconciliation/usds-bridge-2026/audit.json": "ae11eaa84ad285981c6cd60d542e97a216bc7eddfbeb01e8e98d235df9b66f55",
     "reconciliation/usds-bridge-2026/spark-october-retained-daily.json": "7a4d4f779c037324a2bf3029d6835a85f1b877484a61aed4b490fede4625206e",
     "tests/fixtures/usds_bridge/spark_2026_gateway_logs.json": "bf819fa3ced15c4533818ec3c00cf179438241abcf4646b10e720cfd48f390d0",
-    "config/spark.yaml": "c57c201a92ebf9411faaff9947c55d663e99be7716a3b82eb73c0be4d8fe68db",
     "reconciliation/usds-bridge-2026/baseline-correction/wallet-inputs.json": "3d86eca289b6b182ddc72c648138563844171e38dc69d6b33412590d2e5ca6ef",
     "reconciliation/usds-bridge-2026/baseline-correction/pr277-checkpoint.json": "d06c464ea1bfca2867466a0692c70cb6c75d52db0b5bcd31ec5e455a8045d9c8",
     "settlements/spark/2026-06/spark_settlement_june_2026.xlsx": "3dba0b345759cb478db387e0d37d748114d8e1ffbc6230c5f76f04d5d6bead67",
@@ -14,7 +13,8 @@
     "settlements/spark/2026-08/spark_settlement_august_2026.xlsx": "a74688825a8b858e6c0faa71ec000ce3b34e4d5ed6d8adff4ad718de9b94b34f",
     "settlements/spark/2026-09/spark_settlement_september_2026.xlsx": "c53081ebb32e6c0fcb0850dad5d80adcaa03eeb0e4e649377d3ab6288f29d02e",
     "reconciliation/usds-bridge-2026/baseline-correction/original-july-workbook.xlsx": "29f046e52174e82c4e8477b3e9adef7d55e57ca96ed6d5da9dc7bca7e7b5eaac",
-    "reconciliation/usds-bridge-2026/baseline-correction/original-june-workbook.xlsx": "a5d1a8d22a76ef31c2833ec955731a42ee35f6aac726a120c49f7879c8320e1b"
+    "reconciliation/usds-bridge-2026/baseline-correction/original-june-workbook.xlsx": "a5d1a8d22a76ef31c2833ec955731a42ee35f6aac726a120c49f7879c8320e1b",
+    "reconciliation/usds-bridge-2026/baseline-correction/spark.yaml": "c57c201a92ebf9411faaff9947c55d663e99be7716a3b82eb73c0be4d8fe68db"
   },
   "prior_netting": {
     "additional_prior_idle_bridge_credit_identified": "0.00",
