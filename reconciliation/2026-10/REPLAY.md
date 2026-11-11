@@ -8,7 +8,7 @@ PR277's replacement historical adjustments once. Published months are untouched.
 
 | Prime | Mint USDS | Send USDS |
 |---|---:|---:|
-| Spark | 14,070,143 | 4,188,099 |
+| Spark | 14,048,690 | 4,188,099 |
 | Grove | 8,866,792 | 2,275,969 |
 | Obex | 1,463,217 | 205,907 |
 | Osero | 15,812 | 42,396 |
@@ -29,7 +29,7 @@ then derives adjusted instructions through the production MSC formula. It is
 not a fresh extraction/revaluation of every venue. Non-MSC and consolidated Sky
 net revenue are outside this retained-component comparison.
 
-Spark's +557,546.90 historical Sky adjustment replaces the old -255,869.48
+Spark's +536,094.04 historical Sky adjustment replaces the old -255,869.48
 credit. Its 75,063.88 ordinary October bridge CoF credit is **already reflected**
 in the retained daily calculations and is not added again. All 31 October native
 USDS wallet and bridge deductions match the independent retained observations.
@@ -92,3 +92,13 @@ PYTHONPATH=src python scripts/finalize_october_retained_close.py \
 The `retained-close` package preserves the original input provenance, reports,
 preview and configuration, with hashes. Only the historical components and
 Grove cash-method comparisons are recalculated; unchanged positions are reused.
+
+## June 20–21 idle correction
+
+The updated #281 comparison adds 21,452.86 USDS of historical credit to Spark.
+Reconciliation IV now supplies sky_adj +536,094.04. Spark's whole-token mint
+falls from 14,070,143 to 14,048,690 USDS; its send remains 4,188,099.
+The updated wallet evidence adds only the two June dates; every previously
+retained wallet observation, including October, is unchanged. Only Spark's
+report files were promoted from the scoped staging run. Other agents' report
+files and all ordinary financial values remain unchanged.

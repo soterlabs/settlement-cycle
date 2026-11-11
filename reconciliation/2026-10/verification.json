@@ -4,7 +4,7 @@
       "ordinary_financial_cells_unchanged": true,
       "only_ordinary_sheet_change": "Generated timestamp",
       "daily_controls": "skipped",
-      "mint": "14070143",
+      "mint": "14048690",
       "send": "4188099"
     },
     "grove": {
@@ -44,5 +44,10 @@
     }
   },
   "prior_months_rewritten": false,
-  "position_extraction_rerun": false
+  "position_extraction_rerun": false,
+  "june_idle_followup": {
+    "additional_spark_credit": "21452.86",
+    "only_spark_reports_promoted": true,
+    "all_ordinary_financial_inputs_unchanged": true
+  }
 }

@@ -113,7 +113,7 @@ msc_preview:
   # Ordinary partner rebates are preserved; historical components are net of
   # prior payments. See reconciliation/2026-01_to_2026-09/data.json.
   '2026-10':
-    spark: {dv_adj: '0', sv_adj: '249141.52', sky_adj: '557546.90', send_credit: '0'}
+    spark: {dv_adj: '0', sv_adj: '249141.52', sky_adj: '536094.04', send_credit: '0'}
     grove: {dv_adj: '0', sv_adj: '927411.94', sky_adj: '1030726.24', send_credit: '0'}
     osero: {dv_adj: '0', sv_adj: '0', sky_adj: '0', send_credit: '5514.00'}
     obex: {dv_adj: '0', sv_adj: '-273508.90', sky_adj: '0', send_credit: '0'}

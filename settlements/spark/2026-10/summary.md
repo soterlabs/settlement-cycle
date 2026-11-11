@@ -228,11 +228,11 @@ These payment instructions include the approved adjustments once; the operating 
 | Ordinary Sky revenue | 10,224,716.81 |
 | Ordinary demand-side revenue | 900,219.94 |
 | Ordinary supply-side share | 3,038,737.81 |
-| Sky adjustment (historical plus approved ordinary) | 557,546.90 |
+| Sky adjustment (historical plus approved ordinary) | 536,094.04 |
 | Supply adjustment (historical plus approved ordinary) | 249,141.52 |
 | Demand adjustment | 0.00 |
 | Send-only credit | 0.00 |
-| Mint USDS (whole tokens) | 14,070,143.00 |
+| Mint USDS (whole tokens) | 14,048,690.00 |
 | Send USDS (whole tokens) | 4,188,099.00 |
 
 Independent daily asset checks: **skipped**. ALM transfer review retained. No payment executed.

@@ -28,7 +28,7 @@ def test_replacements_preserve_ordinary_components_and_are_idempotent():
         assert D(row['sky_ordinary']) == D(old['sky_ordinary_total'])
         assert D(row['supply_ordinary']) == D(old['ordinary_supply_net'])
         assert D(row['demand_ordinary']) == D(old['demand_side_revenue'])
-    assert D(rows['spark']['sky_adj']) == D('557546.90')
+    assert D(rows['spark']['sky_adj']) == D('536094.04')
     assert D(rows['grove']['sky_adj']) == D('1030726.24')
     assert D(rows['osero']['send_credit']) == D('5514')
     assert rows['osero']['mint_change'] == rows['osero']['send_change'] == '0'

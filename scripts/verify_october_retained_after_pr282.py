@@ -76,8 +76,8 @@ def replay(wallet_inputs=None):
     basin = {r['date']: r['basin_ilk_debt'] for r in grove['sky_revenue_daily']}
     wallets = None
     if wallet_inputs is not None:
-        check(digest(wallet_inputs) == '3d86eca289b6b182ddc72c648138563844171e38dc69d6b33412590d2e5ca6ef',
-              'Wallet evidence differs from reviewed PR281 snapshot f526b0b')
+        check(digest(wallet_inputs) == 'd321abe8c8da9f4eb255ed27ffc0116e8c91168fc693b9c0d59e4acb0ab74469',
+              'Wallet evidence differs from reviewed PR281 snapshot f71f8d6 (June 20-21 added; October unchanged)')
         wallets = json.loads(wallet_inputs.read_text())
     results, sources = {}, {str(p.relative_to(ROOT)): digest(p) for p in (
         preview_path, cfg_path, reference_path, folder / 'grove-pr280/after-provenance.json')}

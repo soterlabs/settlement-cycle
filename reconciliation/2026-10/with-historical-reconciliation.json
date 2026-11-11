@@ -4,7 +4,7 @@
   "scope": "Retained ordinary October components plus independently replayed historical replacement adjustments; no consolidated Sky net revenue asserted",
   "ordinary_validation": {
     "schema": 1,
-    "replay_script_sha256": "a3ccb0aae963c45077153051104de493ac9b12a9bb514c8a783eb8ded1fd87b3",
+    "replay_script_sha256": "e454e05f1cca9e9a3da7bd26270a61518975d6f72df9940d88bf3601d5e88d01",
     "production_function_sha256": {
       "src/settle/compute/sky_revenue.py": "412c69e644a1219f42889df37654098ff0d8de63cc8884b6586115205c83b575",
       "src/settle/compute/sky_total_accrual.py": "d0ca19ab4e93a44e11038de5195717e7eb3ec57f25d1da4b29a5d9ee7c65ba2d",
@@ -51,7 +51,7 @@
           "wallet_observations": 155,
           "max_wallet_difference": "2.4959362808E-8",
           "native_bridge_days_matched": 31,
-          "wallet_source_sha256": "3d86eca289b6b182ddc72c648138563844171e38dc69d6b33412590d2e5ca6ef",
+          "wallet_source_sha256": "d321abe8c8da9f4eb255ed27ffc0116e8c91168fc693b9c0d59e4acb0ab74469",
           "wallet_source_commit": "f526b0bdc1d60d37a5f30a807c51a19f2f183ac0",
           "wallet_source_path": "reconciliation/usds-bridge-2026/baseline-correction/wallet-inputs.json",
           "scope": "Partial independent native-USDS check only; not a whole-portfolio attestation"
@@ -135,7 +135,7 @@
     "spark": {
       "dv_adj": "0",
       "sv_adj": "249141.52",
-      "sky_adj": "557546.90",
+      "sky_adj": "536094.04",
       "send_credit": "0"
     },
     "grove": {
@@ -161,7 +161,7 @@
     "spark": {
       "dv_adj": "0",
       "sv_adj": "249141.52",
-      "sky_adj": "557546.90",
+      "sky_adj": "536094.04",
       "send_credit": "0"
     },
     "grove": {
@@ -205,15 +205,15 @@
       "sky_ordinary": "10224716.81316752696503403786",
       "demand_ordinary": "900219.9412801124114781910701",
       "supply_ordinary": "3038737.80884210014474387286",
-      "sky_adj": "557546.90",
+      "sky_adj": "536094.04",
       "sv_adj": "249141.52",
       "dv_adj": "0",
       "send_credit": "0",
-      "derived_mint": "14070143.04200962710977791072",
+      "derived_mint": "14048690.18200962710977791072",
       "derived_send": "4188099.270122212556222063930",
-      "mint": "14070143",
+      "mint": "14048690",
       "send": "4188099",
-      "mint_change": "806688",
+      "mint_change": "785235",
       "send_change": "249141"
     },
     {
@@ -303,10 +303,10 @@
   "finalization_requirement": "Canonical writer validates populated daily asset-control files or records explicit empty-file deferral",
   "input_sha256": {
     "scripts/replay_october_with_reconciliation.py": "80a7d0e52d032b7bfa039a421972bdbe0925062b79cede835cc6b6385421726e",
-    "scripts/verify_october_retained_after_pr282.py": "a3ccb0aae963c45077153051104de493ac9b12a9bb514c8a783eb8ded1fd87b3",
-    "reconciliation/2026-01_to_2026-09/data.json": "fdc0c8eb9bce6bd4632cc3038297625ac9a77462a9b973023912b2e699574904",
+    "scripts/verify_october_retained_after_pr282.py": "e454e05f1cca9e9a3da7bd26270a61518975d6f72df9940d88bf3601d5e88d01",
+    "reconciliation/2026-01_to_2026-09/data.json": "a41d6931afbbc68aa02c02131930ce675c67c7abf120e285770b38ee67211c10",
     "reconciliation/2026-10/retained-close/prime_msc_preview.json": "c8e50d99512cc8ebdd42544d767357fc7f01197aa9340c5b19573d850f8571b6",
     "reconciliation/2026-10/grove-pr280/after-provenance.json": "9eb63982ed9c07c1ed1376b6c94188292a88bfbff11a9fac8869d22abe335606",
-    "config/sky_total.yaml": "a233c35e12d260129c09cf8f49966a6d7d3ec6f6f034c2e5811ce352e2a59e51"
+    "config/sky_total.yaml": "61bc998e93e7853b04585c1597baf478265b2d7a516f71c43efe4566e1288ba4"
   }
 }
