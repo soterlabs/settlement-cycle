@@ -4,7 +4,7 @@
   "scope": "Retained ordinary October components plus independently replayed historical replacement adjustments; no consolidated Sky net revenue asserted",
   "ordinary_validation": {
     "schema": 1,
-    "replay_script_sha256": "e454e05f1cca9e9a3da7bd26270a61518975d6f72df9940d88bf3601d5e88d01",
+    "replay_script_sha256": "e4718f79e9d6aa9d2374603c1713936cb0027a3080e44cdafd98f2b22a841a39",
     "production_function_sha256": {
       "src/settle/compute/sky_revenue.py": "412c69e644a1219f42889df37654098ff0d8de63cc8884b6586115205c83b575",
       "src/settle/compute/sky_total_accrual.py": "d0ca19ab4e93a44e11038de5195717e7eb3ec57f25d1da4b29a5d9ee7c65ba2d",
@@ -303,7 +303,7 @@
   "finalization_requirement": "Canonical writer validates populated daily asset-control files or records explicit empty-file deferral",
   "input_sha256": {
     "scripts/replay_october_with_reconciliation.py": "80a7d0e52d032b7bfa039a421972bdbe0925062b79cede835cc6b6385421726e",
-    "scripts/verify_october_retained_after_pr282.py": "e454e05f1cca9e9a3da7bd26270a61518975d6f72df9940d88bf3601d5e88d01",
+    "scripts/verify_october_retained_after_pr282.py": "e4718f79e9d6aa9d2374603c1713936cb0027a3080e44cdafd98f2b22a841a39",
     "reconciliation/2026-01_to_2026-09/data.json": "a41d6931afbbc68aa02c02131930ce675c67c7abf120e285770b38ee67211c10",
     "reconciliation/2026-10/retained-close/prime_msc_preview.json": "c8e50d99512cc8ebdd42544d767357fc7f01197aa9340c5b19573d850f8571b6",
     "reconciliation/2026-10/grove-pr280/after-provenance.json": "9eb63982ed9c07c1ed1376b6c94188292a88bfbff11a9fac8869d22abe335606",
