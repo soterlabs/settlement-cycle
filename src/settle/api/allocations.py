@@ -1,4 +1,4 @@
-"""Read-only, monthly allocation borrowing costs and yields."""
+"""Published reporting yields and costs; never settlement-calculation inputs."""
 
 from datetime import UTC, datetime
 
@@ -15,7 +15,8 @@ class AllocationReaderMixin:
 
 
 def register(app, get_reader, document_response):
-    @app.get("/v1/revenue/{prime}/monthly/{month}/allocations")
+    @app.get("/v3/reporting/allocation-yields", tags=["reporting"])
+    @app.get("/v1/revenue/{prime}/monthly/{month}/allocations", deprecated=True)
     def monthly_allocations(
         prime: str,
         month: str,

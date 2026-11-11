@@ -167,13 +167,16 @@ def test_inconsistent_yield_rejected_even_if_cost_snapshot_matches():
         build_documents(readiness, yields, source_hashes={"artifact": "a" * 64})
 
 
-@pytest.mark.parametrize("status,cost", [
-    ("savings_split_pending", "0"),
-    ("capital_measurement_gap", "12"),
-    ("calculable_under_assumption", None),
-    ("excluded_from_cost", "12"),
-    ("no_principal_in_period", "12"),
-])
+@pytest.mark.parametrize(
+    "status,cost",
+    [
+        ("savings_split_pending", "0"),
+        ("capital_measurement_gap", "12"),
+        ("calculable_under_assumption", None),
+        ("excluded_from_cost", "12"),
+        ("no_principal_in_period", "12"),
+    ],
+)
 def test_publication_rejects_costs_that_contradict_funding_status(status, cost):
     readiness, yields = inputs()
     f = next(r for p in readiness["results"] for r in p["allocations"] if r["venue"] == "S1")
@@ -184,9 +187,14 @@ def test_publication_rejects_costs_that_contradict_funding_status(status, cost):
         build_documents(readiness, yields, source_hashes={"artifact": "a" * 64})
 
 
-@pytest.mark.parametrize("missing", [
-    {"allocation_financing"}, {"venue_views"}, {"allocation_financing", "venue_views"},
-])
+@pytest.mark.parametrize(
+    "missing",
+    [
+        {"allocation_financing"},
+        {"venue_views"},
+        {"allocation_financing", "venue_views"},
+    ],
+)
 def test_legacy_monthly_snapshots_migrate_only_optional_analytics(missing):
     from dataclasses import asdict
 
@@ -203,3 +211,31 @@ def test_legacy_monthly_snapshots_migrate_only_optional_analytics(missing):
     saved.pop("sky_revenue")
     with pytest.raises(ValueError, match="incompatible snapshot schema"):
         _decode(MonthlyPnL, saved)
+
+
+def test_reporting_yields_preserve_reviewed_revenue_costs_and_revision():
+    reader = Reader()
+    reader.documents["spark"]["revenue_basis"] = (
+        "Investment income plus accrued issuer incentives; cash excluded"
+    )
+    client = TestClient(create_app(reader))
+    path = "/v3/reporting/allocation-yields?prime=spark&month=2026-08&venue=S18"
+    response = client.get(path)
+    assert response.status_code == 200
+    legacy = client.get("/v1/revenue/spark/monthly/2026-08/allocations?venue=S18")
+    assert response.json() == legacy.json()
+    assert "accrued" in response.json()["revenue_basis"]
+    assert client.get(path, headers={"If-None-Match": response.headers["etag"]}).status_code == 304
+    assert client.get(path + "&revision=" + "d" * 64).status_code == 404
+    assert (
+        client.get("/v3/reporting/allocation-yields?prime=spark&month=2026-13").status_code == 422
+    )
+    assert (
+        client.get("/v3/reporting/allocation-yields?prime=unknown&month=2026-08").status_code == 404
+    )
+    assert (
+        client.get("/v3/reporting/allocation-yields?prime=spark&month=2026-08&venue=S1").json()[
+            "allocations"
+        ][0]["borrowing_cost_usd"]
+        is None
+    )
