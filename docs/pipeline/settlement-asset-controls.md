@@ -13,7 +13,10 @@ rewritten and no live month receives a passing review from this change alone.
   owned account and allocator ilk has an explicit observation, including zeros.
 - Each of the seven daily borrowing-base deductions matches independently
   observed eligible holdings. The eligible portions of one asset cannot sum to
-  more than its value. Negative, missing and non-finite amounts fail.
+  more than its value; the portfolio total has its own one-cent limit. Negative,
+  missing and non-finite holdings fail. The saved `utilized` borrowing principal
+  must equal observed debt minus all seven deductions. A legitimate negative
+  principal is retained; the existing charging formula handles its zero floor.
 - ALM USDS is checked against direct archive `balanceOf` evidence, separate from
   the event-derived balance reconstruction used by the financial calculation.
   Chain identity, finality, linked UTC boundary headers, token, owner and pinned

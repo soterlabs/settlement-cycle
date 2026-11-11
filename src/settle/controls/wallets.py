@@ -3,6 +3,7 @@
 No event-derived balance reconstruction and no fallback/carry-forward/zero on
 failure. This is a raw-evidence producer, not a passing whole-portfolio review.
 """
+import re
 from datetime import UTC, date, datetime, time
 
 from settle.controls.assets import AssetControlError, require
@@ -53,7 +54,7 @@ def capture_wallets(prime, daily_pins, *, call=None):
             raw = call(chain, 'eth_call', [{'to': token.address.hex,
                        'data': '0x70a08231' + holder.hex[2:].zfill(64)},
                        {'blockHash': headers[0]['hash'], 'requireCanonical': True}])
-            require(isinstance(raw, str) and len(raw) == 66 and raw.startswith('0x'),
+            require(isinstance(raw, str) and re.fullmatch(r'0x[0-9a-fA-F]{64}', raw) is not None,
                     f'Missing/malformed archive balance: {day}/{chain.value}')
             try:
                 balance = int(raw, 16)

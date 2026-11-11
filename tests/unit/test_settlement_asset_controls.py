@@ -65,7 +65,8 @@ def dataset():
         if i:
             reported.append({'date': day, 'cum_debt': str(TOTAL),
                              **{field: '0' for field in assets.DEDUCTIONS},
-                             'alm_usds': str(wallet), 'bridge_usds': str(bridge)})
+                             'alm_usds': str(wallet), 'bridge_usds': str(bridge),
+                             'utilized': str(TOTAL - wallet - bridge)})
     journal = [{'day': day, 'entries': []} for day in days[1:]]
     pnl = SimpleNamespace(prime_id='spark', month=MONTH,
                           period=Period.from_month(MONTH, {ETH: 4100}),
@@ -94,6 +95,7 @@ def write_packet(tmp_path, monkeypatch):
         observation['assets']['destination']['value_usd'] = str(TOTAL - wallet)
     for row in pnl.sky_revenue_daily:
         row['bridge_usds'] = '0'
+        row['utilized'] = str(D(row['cum_debt']) - sum(D(row[f]) for f in assets.DEDUCTIONS))
     control['bridge_evidence'] = 'gateways.json'
     root = tmp_path / '.msc-transfer-reviews/spark/2026-07'
     root.mkdir(parents=True)
@@ -387,3 +389,56 @@ def test_future_alm_is_not_requested_from_an_inactive_chain():
     def forbidden(*args):
         pytest.fail('Inactive chain reached RPC')
     assert wallets.capture_wallets(prime, {observations[1]['day']: {}}, call=forbidden)['states'] == []
+
+
+@pytest.mark.parametrize('reported', ['0', 'NaN', '-1'])
+def test_stale_or_invalid_charged_principal_cannot_pass_matching_holdings(tmp_path, monkeypatch, reported):
+    path, pnl = write_packet(tmp_path, monkeypatch)
+    pnl.sky_revenue_daily[12]['utilized'] = reported
+    with pytest.raises(assets.AssetControlError, match=r'utilized|finite'):
+        assets.validate_packet(path, pnl, repo_root=tmp_path)
+
+
+def test_rounding_allowance_cannot_accumulate_across_owned_positions():
+    _, control, observations, journal, _, _ = dataset()
+    for account in control['inventory']['accounts'].values():
+        account['deduction_fields'] = ['sde_av']
+    for observation in observations:
+        for state in observation['assets'].values():
+            state['deductions'] = {'sde_av': str(D(state['value_usd']) + D('.009'))}
+    with pytest.raises(assets.AssetControlError, match='Aggregate deductions exceed owned assets'):
+        validate(control, observations, journal)
+
+
+@pytest.mark.parametrize('raw', ['0x' + '0'*31 + '_' + '0'*32, '0x' + ' '*63 + '0'])
+def test_archive_capture_rejects_hex_separators_and_whitespace(raw):
+    prime, _, observations, _, _, _ = dataset()
+    day, pin = observations[6]['day'], observations[6]['pins']['ethereum']
+    def call(chain, method, params):
+        if method == 'eth_chainId':
+            return '0x1'
+        if method == 'eth_blockNumber':
+            return hex(100000)
+        if method == 'eth_getBlockByNumber':
+            return headers(day, pin)[int(params[0], 16) - pin]
+        return raw
+    with pytest.raises(assets.AssetControlError, match='malformed archive balance'):
+        wallets.capture_wallets(prime, {day: {'ethereum': pin}}, call=call)
+
+
+def test_legitimate_negative_utilized_is_retained_without_becoming_a_missing_zero(tmp_path, monkeypatch):
+    path, pnl = write_packet(tmp_path, monkeypatch)
+    obs_path = path.parent / 'observations.json'
+    observations = json.loads(obs_path.read_text())
+    for row in observations:
+        row['debt']['0x' + ILK.hex()]['value_usd'] = '10'
+    for row in pnl.sky_revenue_daily:
+        row['cum_debt'] = '10'
+        row['utilized'] = str(D('10') - D(row['alm_usds']))
+    obs_path.write_text(json.dumps(observations))
+    for p in (path, path.parent / 'review.json'):
+        value = json.loads(p.read_text())
+        value['evidence_sha256']['observations.json'] = assets.sha256(obs_path)
+        p.write_text(json.dumps(value))
+    result = assets.validate_packet(path, pnl, repo_root=tmp_path)
+    assert D(result['daily'][12]['utilized']) == D('-89999990')

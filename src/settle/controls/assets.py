@@ -39,14 +39,15 @@ def require(condition, message):
         raise AssetControlError(message)
 
 
-def amount(value):
+def amount(value, *, allow_negative=False):
     require(isinstance(value, (str, int)) and not isinstance(value, bool),
             'Amounts must be explicit decimal strings or integers')
     try:
         result = Decimal(value)
     except InvalidOperation as exc:
         raise AssetControlError('Invalid decimal amount') from exc
-    require(result.is_finite() and result >= 0, 'Amounts must be finite and non-negative')
+    require(result.is_finite(), 'Amounts must be finite')
+    require(allow_negative or result >= 0, 'Amounts must be non-negative')
     return result
 
 
@@ -137,7 +138,10 @@ def validate_controls(control, observations, journal, *, expected_days, expected
             require(bool(state['evidence']), f'Missing debt evidence: {day}/{key}')
             require(state['block'] == pins['ethereum'], f'Unpinned debt: {day}/{key}')
             debt += amount(state['value_usd'])
-        totals.append({'day': day, 'assets': assets, 'debt': debt, 'deductions': deductions})
+        eligible = sum(deductions.values(), Decimal(0))
+        require(eligible <= assets + TOLERANCE, f'Aggregate deductions exceed owned assets on {day}')
+        totals.append({'day': day, 'assets': assets, 'debt': debt, 'deductions': deductions,
+                       'utilized': debt - eligible})
     for i, row in enumerate(journal, start=1):
         asset_change, debt_change = Decimal(0), Decimal(0)
         for entry in row['entries']:
@@ -267,9 +271,11 @@ def validate_packet(path, pnl, *, repo_root=ROOT):
     require([str(row['date']) for row in pnl.sky_revenue_daily] == days[1:],
             'Settlement daily coverage is incomplete')
     for observed, reported in zip(totals, pnl.sky_revenue_daily, strict=True):
-        values = {'cum_debt': observed['debt'], **observed['deductions']}
+        values = {'cum_debt': observed['debt'], **observed['deductions'],
+                  'utilized': observed['utilized']}
         for field, expected in values.items():
-            actual = amount(reported.get(field, '0'))
+            require(field != 'utilized' or field in reported, 'Missing utilized borrowing principal')
+            actual = amount(reported.get(field, '0'), allow_negative=field == 'utilized')
             require(abs(actual - expected) <= TOLERANCE,
                     f'Daily holdings disagree with {field} on {observed["day"]}: '
                     f'MSC={actual}, independently observed={expected}')
@@ -283,7 +289,7 @@ def validate_packet(path, pnl, *, repo_root=ROOT):
             'tolerance_usd': str(TOLERANCE), 'opening_assets_usd': str(sum(
                 (amount(s['value_usd']) for s in observations[0]['assets'].values()), Decimal(0))),
             'closing_assets_usd': str(totals[-1]['assets']),
-            'daily': [{**{k: str(row[k]) for k in ('day', 'assets', 'debt')},
+            'daily': [{**{k: str(row[k]) for k in ('day', 'assets', 'debt', 'utilized')},
                        'deductions': {k: str(v) for k, v in row['deductions'].items()}} for row in totals]}
 
 
