@@ -80,3 +80,21 @@ Period: 2026-10-01 → 2026-10-31 (31 days)
 | 1017 | $0.00 | susds_susdc / unichain / sUSDC |
 | 1 | $0.22 | psm3 / unichain / sUSDS |
 | **Total** | **$102,991.76** | |
+
+## MSC settlement instructions — October 2026
+
+These payment instructions include the approved adjustments once; the operating revenue above remains October-earned revenue.
+
+| Component | USDS |
+|---|---:|
+| Ordinary Sky revenue | 0.00 |
+| Ordinary demand-side revenue | 145,438.86 |
+| Ordinary supply-side share | 0.00 |
+| Sky adjustment (historical plus approved ordinary) | 0.00 |
+| Supply adjustment (historical plus approved ordinary) | 0.00 |
+| Demand adjustment | 0.00 |
+| Send-only credit | 0.00 |
+| Mint USDS (whole tokens) | 0.00 |
+| Send USDS (whole tokens) | 145,439.00 |
+
+Independent daily asset checks: **skipped**. ALM transfer review retained. No payment executed.

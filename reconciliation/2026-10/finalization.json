@@ -1,0 +1,28 @@
+{
+  "status": "reports_rendered_daily_controls_deferred",
+  "historical_ledger_sha256": "fdc0c8eb9bce6bd4632cc3038297625ac9a77462a9b973023912b2e699574904",
+  "retained_manifest_sha256": "6226dd3944c0e23411f1872205fbeecd97c4d7782156ee9fd14fcc5af35083cb",
+  "finalizer_sha256": "01e8c9c7909cb5b9c264072bc02f3bd6ed438babca525678d77f9c14791c0228",
+  "api_published": false,
+  "prior_months_rewritten": false,
+  "output_sha256": {
+    "settlements/spark/2026-10/provenance.json": "a9ead93528d76696f58ec200dc5fe4e72c861f7c04e21ab4688c99a4286c0724",
+    "settlements/spark/2026-10/summary.md": "0811396597a0dbc966afdc39671fa8f05bb7c48b64b617fef5c7ec01f4e76953",
+    "settlements/spark/2026-10/spark_settlement_october_2026.xlsx": "d84a570e4d42a77235a810fcd71fbc98a00d1f44ca86a3e433fa13019b0bddd3",
+    "settlements/grove/2026-10/provenance.json": "21c244d89dced0c7190c14ec3594dea14439b067d8c3ce193c574070bd2ca28b",
+    "settlements/grove/2026-10/summary.md": "6841e741cdc52f93e4363a35adc07c67e721bed0ebd5d5f5d4941bfdd1e0a3d0",
+    "settlements/grove/2026-10/grove_settlement_october_2026.xlsx": "fba358d4a6c74effaf48c5d1e541546adf9e144ef9a305e2707279088cf1a603",
+    "settlements/obex/2026-10/provenance.json": "4e89d2bba232299237c9844af494d70488f06ae1d294dd329000373c634ea212",
+    "settlements/obex/2026-10/summary.md": "324a3a6fe446e0190924227eb906a248c835923976ff302b2bc615ef84b2d706",
+    "settlements/obex/2026-10/obex_settlement_october_2026.xlsx": "a52ee754bb2ccf391ffecd0ea3041612e59f5cdcbae5b1bda9377a8c1a59196f",
+    "settlements/osero/2026-10/provenance.json": "9f8779b020e20ee5045ee6eca8e87d06aecba49f640d8802d86c5015beeaff8e",
+    "settlements/osero/2026-10/summary.md": "93e80501b1b1d689faeaa992205b9eb63a0d50ae15a43d969f8f6929da4be4b7",
+    "settlements/osero/2026-10/osero_settlement_october_2026.xlsx": "058398cdd9da762eba619b5bca711e9c8e8aa02344cc7d82d686a632209022ea",
+    "settlements/keel/2026-10/provenance.json": "9416f4d89d31e8af6617b369c81dca2e01d662c4e65ea9258f53af86c2b097e1",
+    "settlements/keel/2026-10/summary.md": "0698a907e5fc121d459d2da0d866280705e7d20d9af65d56a75e7b21ba440a47",
+    "settlements/keel/2026-10/keel_settlement_october_2026.xlsx": "103d77e11dd1b168d3f17ed6489e36900cd55f91b4e2d3b5a9dcc0f7620ca6d7",
+    "settlements/skybase/2026-10/provenance.json": "44ed62baeaf622bb6a95f508245d08615c167a30010c088b15bdd99433740030",
+    "settlements/skybase/2026-10/summary.md": "0a1ed2efd54ae8cf19f1758add6fd105265f1a3196400be3a9b4a06d24af754e",
+    "settlements/skybase/2026-10/skybase_settlement_october_2026.xlsx": "13d62ce8d094704c13a60112ffd0628541d0a78ed6e2346a97f64454f3a62a68"
+  }
+}

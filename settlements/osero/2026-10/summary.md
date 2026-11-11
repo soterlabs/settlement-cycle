@@ -61,3 +61,21 @@ Period: 2026-10-01 → 2026-10-31 (31 days)
 | 3001 | $0.00 | psm3 / optimism / sUSDS |
 | 3000 | $0.02 | psm3 / unichain / sUSDS |
 | **Total** | **$1,228.31** | |
+
+## MSC settlement instructions — October 2026
+
+These payment instructions include the approved adjustments once; the operating revenue above remains October-earned revenue.
+
+| Component | USDS |
+|---|---:|
+| Ordinary Sky revenue | 13,463.65 |
+| Ordinary demand-side revenue | 34,533.44 |
+| Ordinary supply-side share | 2,348.19 |
+| Sky adjustment (historical plus approved ordinary) | 0.00 |
+| Supply adjustment (historical plus approved ordinary) | 0.00 |
+| Demand adjustment | 0.00 |
+| Send-only credit | 5,514.00 |
+| Mint USDS (whole tokens) | 15,812.00 |
+| Send USDS (whole tokens) | 42,396.00 |
+
+Independent daily asset checks: **skipped**. ALM transfer review retained. No payment executed.

@@ -1,7 +1,8 @@
 # October 2026 replay with Reconciliation IV
 
-**Draft; not a finalized settlement.** Replay executed on November 11. No API
-revision, canonical workbook, settlement configuration or payment was changed.
+**Reports rendered; no settlement executed.** Scoped replay executed on November 11.
+October configuration and reports now include the historical replacement
+adjustments. No API revision or payment was made.
 The figures below preserve the verified ordinary October inputs and include
 PR277's replacement historical adjustments once. Published months are untouched.
 
@@ -73,6 +74,21 @@ required and their current evidence/configuration hashes were rechecked.
 See [daily-controls-deferral.json](daily-controls-deferral.json).
 
 The earlier retained replay's missing-packet blocker describes the pre-deferral
-state. It no longer blocks report writing. Final reports still need to be
-rendered from the approved financial inputs; the earlier workbooks have not
-been silently relabelled as independently validated.
+state. It no longer blocks report writing. All six reports have now been rendered from verified retained inputs using the
+canonical writer. Each summary and workbook includes a separate MSC instruction
+section; ordinary financial cells are unchanged apart from the generation
+timestamp. The workbook includes an `MSC instructions` sheet. Provenance and
+that sheet explicitly mark the daily controls as skipped, not independently
+validated. See [finalization.json](finalization.json) and
+[verification.json](verification.json).
+
+To reproduce into a fresh staging directory:
+
+```sh
+PYTHONPATH=src python scripts/finalize_october_retained_close.py \
+  --output-root /tmp/october-scoped-close
+```
+
+The `retained-close` package preserves the original input provenance, reports,
+preview and configuration, with hashes. Only the historical components and
+Grove cash-method comparisons are recalculated; unchanged positions are reused.

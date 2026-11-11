@@ -1,0 +1,243 @@
+# Consolidated Sky Net Revenue (buffer basis) — configuration.
+#
+# Methodology: the 2026-07-16 handoff doc's §3.
+#   MSC net (buffer basis) = Σ debt minted to buffer per prime
+#                          − Σ sent to prime subproxies
+#                          − sent to Demand-side Buffer
+#                          − sent to Core Council Buffer Multisig
+#                          − Grove token-launch penalty (excluded from Sky revenue)
+#   Sky Net Revenue        = MSC net + non-MSC income − non-MSC expense
+#
+# All addresses are Ethereum mainnet, checksum-encoded but read case-insensitively.
+
+# ── Allocator ilks (bytes32 hex) — one per "big" prime that mints debt to buffer.
+# Keel and Skybase have NO ilk (agent-rate only).
+allocator_ilks:
+  spark: '0x414c4c4f4341544f522d535041524b2d41000000000000000000000000000000'   # ALLOCATOR-SPARK-A
+  grove: '0x414c4c4f4341544f522d424c4f4f4d2d41000000000000000000000000000000'   # ALLOCATOR-BLOOM-A
+  obex:  '0x414c4c4f4341544f522d4f4245582d4100000000000000000000000000000000'   # ALLOCATOR-OBEX-A
+  # Diamond PAU compartments (added 2026-08-04 BEFORE the first sky_total
+  # run that could see their grabs — MSC#11). Keys are stream labels only;
+  # the compute layer sums every entry, so per-prime totals stay correct.
+  grove_pau: '0x414c4c4f4341544f522d47524f56452d41000000000000000000000000000000'  # ALLOCATOR-GROVE-A (Grove Diamond PAU, first draw 2026-07-21)
+  osero: '0x414c4c4f4341544f522d505259534d2d41000000000000000000000000000000'      # ALLOCATOR-PRYSM-A (Osero, first draw 2026-07-24)
+
+# ── Prime subproxy addresses (destination of "sent to prime subproxies" USDS
+# transfers, per methodology §3). Mirrors the same addresses in each prime's
+# own config file; kept here for the sky_total pipeline's single source of
+# truth. Cross-check when a prime's subproxy is rotated.
+subproxies:
+  spark:   '0x3300f198988e4C9C63F75dF86De36421f06af8c4'
+  grove:   '0x1369f7b2b38c76B6478c0f0E66D94923421891Ba'
+  obex:    '0x8be042581f581E3620e29F213EA8b94afA1C8071'
+  keel:    '0x355CD90Ecb1b409Fdf8b64c4473C3B858dA2c310'
+  skybase: '0x08978E3700859E476201c1D7438B3427e3C81140'
+  osero:   '0x24fdcd3bFA5C2553e05B2f9AD0365EBC296278D3'   # PRYSM_SUBPROXY (added 2026-08-04; Grove's Diamond PAU shares Grove's existing subproxy)
+
+# ── Basis (2026-08-07, per the MSC operator) ────────────────────────────
+# Months < accrual_from: PAID basis — anchored on the MSC settlement tx
+# that EXECUTED in the month (settlement_blocks below), amounts as paid
+# on-chain. These months are settled, published history.
+#
+# Months >= accrual_from: ACCRUAL basis — Sky Net Revenue = prime revenue
+# EARNED in the month (paid the following month at the MSC settling the
+# cycle; per-prime mint/send preview pinned to the MSC post / settlement
+# sheet in msc_preview below) + the month's non-MSC net. See
+# compute/sky_total_accrual.py. For a CLOSED month the two bases coincide
+# up to execution variance: accrual(M) ≡ paid(M+1).
+accrual_from: '2026-07'
+
+# Primes included in the accrual MSC leg (every settling prime with a
+# monthly report; grove_pau rides grove's report).
+accrual_primes:
+  - spark
+  - grove
+  - obex
+  - osero
+  - keel
+  - skybase
+
+# Per-month settlement preview: prior-cycle corrections riding the MSC
+# (sky_adj / dv_adj / sv_adj / send_credit, from the MSC post's
+# Adjustments sections) and the as-published mint/send integers (pinned —
+# the post rounds unpublished adjustment decimals, so derived values can
+# sit ±$1 off; a warning fires beyond ±$2).
+#
+# 2026-07 (MSC#11 preview, forum t/28151 + the operator's settlement
+# sheet, FROZEN 2026-08-07 at SNR 10,517,425.80 ≈ 10,517,426):
+#   * skybase gar_in_dv = 152,255.89 — the GAR inside the demand side at
+#     freeze time (computed under the former paid-basis definition). The
+#     final skybase report carries GAR = 1% x frozen SNR = 105,174.26 and
+#     the post pays 327,407, but the frozen sheet keeps 374,489; this pin
+#     makes the frozen SNR reproducible regardless of report regeneration.
+#   * non_msc pins the month's non-MSC leg as frozen (the MSC pins alone
+#     don't freeze the SNR — the non-MSC artifact is regenerated whenever
+#     its sources refresh). Drift beyond ±$2 warns; the pinned values win.
+#   * dsb: a Demand-side Buffer transfer riding the previewed settlement,
+#     when the MSC post announces one (MSC#11 does not — omitted = 0).
+#
+# **Transition note.** accrual_from 2026-07 means June stays paid basis
+# (MSC#9, executed in June) while July becomes the MSC#11 preview — so
+# **MSC#10 (the June cycle, executed 2026-07-20) is carried by no month in
+# this series.** That is inherent to switching basis mid-series, not a
+# defect: the June cycle's economics live in `settlements/grove|spark|…/
+# 2026-06` on the prime side, and its paid figures remain reconstructible
+# from settlement_blocks['2026-07'] above. Documented in SNR_QUESTIONS.md.
+msc_preview:
+  '2026-07':
+    non_msc: {income: 15638940.230161597548, expense: 19219232.42222744613186680462}
+    spark:   {mint: 9465419, send: 4442924, dv_adj: -41908, sv_adj: 563527, sky_adj: 304476}
+    grove:   {mint: 9685438, send: 1808084, sv_adj: 52429, sky_adj: 65701, send_credit: 77872}
+    obex:    {mint: 2535968, send: 916736, dv_adj: -2601, sv_adj: 82606, sky_adj: -72618}
+    osero:   {mint: 497, send: 12043}
+    keel:    {mint: 0, send: 35328, dv_adj: -903}
+    skybase: {mint: 0, send: 374489, dv_adj: 89300, gar_in_dv: 152255.89}
+  # September carries the dedicated Jan-Aug 2026 reconciliations without
+  # regenerating any published monthly report:
+  #   * Spark: reserve-factor sweeps are Prime-side Supply-Side revenue, so
+  #     sv_adj raises both MSC debt (mint) and Send to prime by $2,392,354.07.
+  #   * Grove: realized BUIDL redemption fees ($162,505.35) plus the August 31
+  #     in-flight SDE CoF correction ($2,508.55) reduce Sky-side revenue, so
+  #     sky_adj lowers MSC debt (mint) by $165,013.90. It does not create a
+  #     separate Send to prime payment.
+  # Mint/send remain derived until the September MSC post is published.
+  '2026-09':
+    spark: {sv_adj: 2392354.07}
+    # September's $12,499.85 boundary redemption cost is recognized in E10
+    # revenue by redemption_settlements.yaml. Keep ONLY the historical
+    # $165,013.90 here; their combined credit is $177,513.75, not two fees.
+    grove: {sky_adj: -165013.90}
+
+
+  # Operator-approved 2026-11-06 for the October earning cycle (paid in
+  # November). Partner rebate allocations use the detailed statement figures.
+  # Sky: 1,141,145.80 partner rebate less 78,530.06 in-flight CoF relief.
+  # Grove: 915,857.20 partner rebate allocated to the supply-side share.
+  # The earlier 2,508.55 CoF credit is already deducted in the new relief.
+  # Sources: reconciliation/2026-10/{sde_inflight_cof,partner_rebates}.json.
+  '2026-10':
+    grove: {sky_adj: '1062615.74', sv_adj: '915857.20'}
+    # Refund July–September duplicate shortfall deductions. Send-only:
+    # the full CoF was already borrowed; reimbursement must not add debt.
+    # See settlements/osero/2026-10/reconciliation.md.
+    osero: {send_credit: '5514'}
+
+# ── Step 1 Capital actually PAID to the Core Council Buffer, per execution
+# month. Source: each MSC post's BA capital-allocations section (20% of the
+# cycle month's net revenue, split evenly Core Council / Fortification,
+# riding the single CC Buffer transfer). The compute layer books only
+# cc_gross − cc_step1_paid (genesis / expense repayments) as a cost.
+# A settlement month missing an entry books the FULL CC transfer as cost
+# and surfaces a warning — back-fill when the MSC post lands.
+cc_step1_paid:
+  '2026-02': 5845338.00   # MSC#4: Nov 3,444,400 + Dec 2,400,938 (t/27617/4). On-chain CC 6,632,421 → 787,083 genesis/repayment (open question B-series)
+  '2026-03': 7354155.00   # MSC#5 4,808,248 (Jan net 24,041,243 × 20%, t/27709/3) + MSC#6 2,545,907 (Feb net 12,729,537 × 20%, t/27778/2); both PURE Step-1
+  '2026-04': 678176.00    # MSC#7: Mar net 3,390,879 × 20% (t/27844/2); pure Step-1
+  '2026-05': 3144308.00   # MSC#8: Apr net 15,721,541 × 20% (t/27888/2); pure Step-1
+  '2026-06': 2946125.00   # MSC#9: May net 14,730,625 × 20% (t/27962/2); pure Step-1
+  '2026-07': 2742939.00   # MSC#10: Jun net 13,714,694 × 20% (t/28038/2); on-chain 3,378,069 = this + 635,130 Grove genesis-capital expense repayment (t/28038/3)
+
+# ── Other buffer-basis outflow destinations.
+demand_side_buffer:      '0x5e2fEc3a3C4E63A422e45C1BB83EdB3a5aD0543B'
+core_council_multisig:   '0x210CFcF53d1f9648C1c4dcaEE677f0Cb06914364'
+
+# ── Settlement-block override per report month.
+#
+# **MSC settlement rule: month M's cycle is always paid in month M+1.** The
+# on-chain settlement is a single atomic tx that executes some time during
+# the M+1 window (day varies — early Feb / early Mar / late Apr / mid May /
+# late Jun / mid Jul across MSC#5–10).
+#
+# Mid-cycle capital events (e.g. Keel's $10M seeding on 2026-03-30, and a
+# small CC-only correction on 2026-03-06) sit OUTSIDE the monthly cycle and
+# are NOT settlements — they are not indexed here. If we ever want to
+# attribute those to a report month for balance-sheet purposes we should do
+# it explicitly, not by conflating them with an MSC block.
+#
+# Cross-checked against USDS mints and Vat.grab dart on the three ALLOCATOR
+# ilks; each block is the SINGLE atomic MSC settlement tx for that cycle.
+# RE-KEYED 2026-08-05 to EXECUTION-MONTH bucketing (aligned with Block
+# Analitica's P&L, per the MSC operator): month M carries the settlement
+# tx that EXECUTED in M — i.e. the PRIOR month's cycle. Previously each
+# block was keyed to its cycle month (M), which put our whole MSC leg one
+# month ahead of BA's and made every same-month comparison a
+# two-different-cycles artifact (see comparison.pdf). '2026-01' is
+# explicitly null: no settlement executed in January (MSC#5 ran Feb 2).
+settlement_blocks:
+  # Identification re-verified on-chain 2026-08-05 (dart × ilk-rate mints and
+  # subproxy sends tie to the MSC forum posts' paid figures to the dollar):
+  #   * MSC#4 (Nov+Dec 2025 cycles, forum t/27617) executed 2026-02-02 block
+  #     24369632 — spark mint 25,547,255 / subproxy 7,071,339 and grove mint
+  #     14,311,822 / subproxy 0 equal the post exactly. Skybase's $10M seed
+  #     rode the same block (one_off below).
+  #   * MSC#5 (Jan cycle) executed 2026-03-02 block 24570218 — mints
+  #     8,079,210 / 6,205,320 / 2,095,775 and subproxies 1,387,824 / 6,090 /
+  #     71,342 all equal the MSC#5 post exactly.
+  #   * MSC#6 (Feb cycle) executed 2026-03-30 block 24772796 (same block as
+  #     the Keel and Osero/PRYSM $10M seedings) — mints 7,746,811 /
+  #     6,346,829 / 1,948,422 equal the MSC#6 post exactly. March therefore
+  #     carries TWO settlements.
+  '2026-01': null                     # no MSC settlement executed in Jan 2026
+  '2026-02': 24369632                 # MSC#4 (Nov+Dec 2025 cycles), executed 2026-02-02 14:00 UTC
+  '2026-03': [24570218, 24772796]     # MSC#5 (Jan cycle, Mar 2) + MSC#6 (Feb cycle, Mar 30)
+  '2026-04': 24971851   # MSC#7  (Mar cycle),  executed 2026-04-27 14:02 UTC
+  '2026-05': 25072324   # MSC#8  (Apr cycle),  executed 2026-05-11 14:01 UTC
+  '2026-06': 25373623   # MSC#9  (May cycle),  executed 2026-06-22 14:04 UTC
+  '2026-07': 25574490   # MSC#10 (Jun cycle),  executed 2026-07-20 14:21 UTC
+
+# ── Grove token-launch (TGE) penalty — deducted from the MSC net per §3
+# ("excluded from Sky revenue, per forum"). Carried as a per-month override,
+# keyed by EXECUTION month like settlement_blocks.
+#
+# Only MSC#10 (executed 2026-07) settled a penalty as its own line
+# (1,396,260). Operator decision 2026-08-05: earlier months are NOT
+# back-filled — pre-July penalties were netted inside Grove's demand-side
+# payment (e.g. MSC#7: DV 197,732 → 138,412 paid), so they're already
+# reflected in the subproxy sends and a separate deduction would
+# double-count. Explicit null = confirmed none / netted-in-DV (no warning);
+# a missing key warns until confirmed either way.
+grove_tge_penalty:
+  '2026-01': null
+  '2026-02': null
+  '2026-03': null
+  '2026-04': null
+  '2026-05': null
+  '2026-06': null
+  '2026-07': 1396260.00   # MSC#10 (June cycle), separately-settled line
+
+# ── One-off subproxy inflows to exclude from "sent to prime subproxy".
+#
+# The on-chain scan of USDS mints (from=0x0, to=<subproxy>) on the settlement
+# block picks up TWO different kinds of event with the same signature:
+#
+#   (a) the monthly revenue distribution to the prime (what the doc §3's
+#       "sent to prime subproxies" line means), and
+#   (b) one-off treasury endowments seeding a brand-new prime (NOT a revenue
+#       distribution — Sky isn't paying the prime for services rendered, it's
+#       funding a new counterparty).
+#
+# Only (a) should reduce Sky's revenue. (b) is off-methodology and needs to
+# be carved out. This map lists the confirmed one-off inflows by
+# YYYY-MM → prime → USDS amount; the compute layer subtracts them from the
+# raw settlement-block subproxy sends before applying the buffer-basis
+# formula, and the summary renders both the raw and adjusted figures for
+# audit.
+#
+# Confirmed events:
+#   * 2026-02 skybase = 10,000,000 — Skybase seeding riding IN the MSC#4
+#     settlement block (2026-02-02 block 24369632). Skybase earned $0 in
+#     the covered period (no debt yet), so the entire mint is initial
+#     capital.
+#   * 2026-03 keel = 10,000,000 — Keel seeding riding IN the MSC#6
+#     settlement block (2026-03-30 block 24772796). Keel earned $0 in
+#     Feb (no debt), so the entire mint is initial capital.
+#   * 2026-03 osero = 10,000,000 — Osero (PRYSM) subproxy seeding in the
+#     same MSC#6 block (osero start_date is 2026-03-30; its first
+#     allocation was 2026-07, so the entire mint is initial capital).
+one_off_transfers:
+  # Keyed by EXECUTION month (like settlement_blocks).
+  '2026-02':
+    skybase: 10000000.00
+  '2026-03':
+    keel: 10000000.00
+    osero: 10000000.00

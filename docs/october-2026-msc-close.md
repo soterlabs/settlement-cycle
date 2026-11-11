@@ -1,4 +1,4 @@
-> **Current November 11 replay:** see [updated draft instructions and scan findings](../reconciliation/2026-10/REPLAY.md). The report figures below are retained earlier artifacts; finalization still requires complete daily asset controls.
+> **Current replay:** October reports have been rendered with Reconciliation IV adjustments. Independent daily checks are explicitly skipped by operator instruction; ALM reviews remain required. See [replay details](../reconciliation/2026-10/REPLAY.md).
 
 # October 2026 MSC — all prime agents
 
@@ -32,18 +32,18 @@ DR and other active demand-side components. Historical adjustments are separate.
 
 | Prime | Supply adjustment | Sky adjustment | Send credit | Mint (USDS) | Send (USDS) |
 |---|---:|---:|---:|---:|---:|
-| Spark | 0.00 | 0.00 | 0.00 | 13,263,455 | 3,938,958 |
-| Grove | 915,857.20 | 1,062,615.74 | 0.00 | 8,887,127 | 2,264,415 |
-| Obex | 0.00 | 0.00 | 0.00 | 1,736,726 | 479,415 |
+| Spark | 249,141.52 | 557,546.90 | 0.00 | 14,070,143 | 4,188,099 |
+| Grove | 927,411.94 | 1,030,726.24 | 0.00 | 8,866,792 | 2,275,969 |
+| Obex | -273,508.90 | 0.00 | 0.00 | 1,463,217 | 205,907 |
 | Osero | 0.00 | 0.00 | 5,514.00 | 15,812 | 42,396 |
 | Keel | 0.00 | 0.00 | 0.00 | 0 | 34,034 |
 | Skybase | 0.00 | 0.00 | 0.00 | 0 | 145,439 |
 
-Grove's supply adjustment is its approved **915,857.20** partner allocation.
-Its Sky adjustment is **1,062,615.74**: partner allocation 1,141,145.80 less
-historical in-flight CoF credit 78,530.06. The receipts are not also added as
-venue interest. No unapproved historical backfill is introduced. The adjusted
-Grove send before rounding is 2,264,414.728290585238224815693 USDS.
+These instructions include Reconciliation IV once, replacing earlier adjustment
+totals. Grove retains the approved 915,857.20 supply and 1,141,145.80 Sky partner
+rebates, plus historical supply +11,554.74 and Sky -110,419.56. Spark carries
+historical supply +249,141.52 and Sky +557,546.90; Obex supply is -273,508.90.
+The original October operating revenue and daily borrowing costs are unchanged.
 
 Osero also receives the existing **5,514 USDS send-only credit** for duplicate
 July–September shortfall deductions. It increases the send to 42,396 USDS
@@ -245,7 +245,7 @@ commit `f526b0bdc1d60d37a5f30a807c51a19f2f183ac0`, then pass
 `--spark-wallet-inputs /path/to/wallet-inputs.json`. The script requires the
 exact reviewed SHA-256 and configured wallet/token identities.
 
-**Fresh canonical finalization is blocked:** none of the six complete
+**Historical pre-deferral checkpoint:** at that time none of the six complete
 `asset-controls.json` packets is present. Complete independent position/debt
 observations, inventory and source-backed journals still need capture/review.
 Only Grove's older transfer review remains locally available; it does not meet

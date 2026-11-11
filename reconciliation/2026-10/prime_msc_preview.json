@@ -4,7 +4,7 @@
   "status": "derived_unexecuted_prime_legs",
   "base_commit": "703c66863a0e99edf839658081026926f038c70b",
   "methodology": "Existing sky_total_accrual October rules: floor ordinary negative supply-side revenue for ilk primes before applying historical adjustments; whole-USDS ROUND_HALF_UP. No executed MSC or consolidated Sky Net Revenue is asserted.",
-  "sky_total_config_sha256": "d72f6b0efa64b2ea4696fe7d5564766c03a8bb8b384395a955cfeda607bb2501",
+  "sky_total_config_sha256": "a233c35e12d260129c09cf8f49966a6d7d3ec6f6f034c2e5811ce352e2a59e51",
   "rows": [
     {
       "prime": "spark",
@@ -15,18 +15,27 @@
       "sky_net_borrowing_charge": "10215829.40596970376290122788",
       "sky_sde_revenue": "8887.407197823202132809984943",
       "sky_ordinary_total": "10224716.81316752696503403786",
-      "sky_adjustment": "0",
-      "supply_adjustment": "0",
+      "sky_adjustment": "557546.90",
+      "supply_adjustment": "249141.52",
       "demand_adjustment": "0",
       "send_credit": "0",
-      "msc_supply_component": "3038737.80884210014474387286",
-      "msc_mint_unrounded": "13263454.62200962710977791072",
-      "msc_send_unrounded": "3938957.750122212556222063930",
-      "msc_mint": "13263455",
-      "msc_send": "3938958",
-      "summary_sha256": "2c7226ad5b89c99790bc1488343e79c6c6a9be4d255b56f42a6f74763d62bd0a",
-      "workbook_sha256": "bfca95fd70ac7e7084145f08ede53a1f8a8476ae9f00101c08c5c6b27f5c67fd",
-      "workbook_sheets": 7
+      "msc_supply_component": "3287879.32884210014474387286",
+      "msc_mint_unrounded": "14070143.04200962710977791072",
+      "msc_send_unrounded": "4188099.270122212556222063930",
+      "msc_mint": "14070143",
+      "msc_send": "4188099",
+      "summary_sha256": "0811396597a0dbc966afdc39671fa8f05bb7c48b64b617fef5c7ec01f4e76953",
+      "workbook_sha256": "d84a570e4d42a77235a810fcd71fbc98a00d1f44ca86a3e433fa13019b0bddd3",
+      "workbook_sheets": 8,
+      "asset_controls": {
+        "schema": 1,
+        "status": "skipped",
+        "prime": "spark",
+        "month": "2026-10",
+        "reason": "empty_asset_controls_file",
+        "packet_sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "days_checked": 0
+      }
     },
     {
       "prime": "grove",
@@ -37,18 +46,27 @@
       "sky_net_borrowing_charge": "4435995.500449282833496230278",
       "sky_sde_revenue": "1246963.819436235055474720800",
       "sky_ordinary_total": "5682959.319885517888970951078",
-      "sky_adjustment": "1062615.74",
-      "supply_adjustment": "915857.20",
+      "sky_adjustment": "1030726.24",
+      "supply_adjustment": "927411.94",
       "demand_adjustment": "0",
       "send_credit": "0",
-      "msc_supply_component": "2141552.078304368896498431589",
-      "msc_mint_unrounded": "8887127.138189886785469382667",
-      "msc_send_unrounded": "2264414.728290585238224815693",
-      "msc_mint": "8887127",
-      "msc_send": "2264415",
-      "summary_sha256": "5d4d72383ee1a71798a23f8730ff2244d86d1a63f3f1159d750c1c078d08a615",
-      "workbook_sha256": "e88edce405b07c7e5275928f2ceccc86eb7c8d933c271e48b4e7367ac4b4d0b7",
-      "workbook_sheets": 7
+      "msc_supply_component": "2153106.818304368896498431589",
+      "msc_mint_unrounded": "8866792.378189886785469382667",
+      "msc_send_unrounded": "2275969.468290585238224815693",
+      "msc_mint": "8866792",
+      "msc_send": "2275969",
+      "summary_sha256": "6841e741cdc52f93e4363a35adc07c67e721bed0ebd5d5f5d4941bfdd1e0a3d0",
+      "workbook_sha256": "fba358d4a6c74effaf48c5d1e541546adf9e144ef9a305e2707279088cf1a603",
+      "workbook_sheets": 8,
+      "asset_controls": {
+        "schema": 1,
+        "status": "skipped",
+        "prime": "grove",
+        "month": "2026-10",
+        "reason": "empty_asset_controls_file",
+        "packet_sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "days_checked": 0
+      }
     },
     {
       "prime": "obex",
@@ -60,17 +78,26 @@
       "sky_sde_revenue": "0E-14",
       "sky_ordinary_total": "1341558.335404871514917605546",
       "sky_adjustment": "0",
-      "supply_adjustment": "0",
+      "supply_adjustment": "-273508.90",
       "demand_adjustment": "0",
       "send_credit": "0",
-      "msc_supply_component": "395168.021218229233082394454",
-      "msc_mint_unrounded": "1736726.356623100748000000000",
-      "msc_send_unrounded": "479415.4647535276304469249548",
-      "msc_mint": "1736726",
-      "msc_send": "479415",
-      "summary_sha256": "201f542572e9964d2649c6276a57f1ded3098506ddeccf6e326f1434fb488e89",
-      "workbook_sha256": "0a41fb0b8cd17233bbe92a457ca7386229b12c05ee674cb0607369b086403331",
-      "workbook_sheets": 6
+      "msc_supply_component": "121659.121218229233082394454",
+      "msc_mint_unrounded": "1463217.456623100748000000000",
+      "msc_send_unrounded": "205906.5647535276304469249548",
+      "msc_mint": "1463217",
+      "msc_send": "205907",
+      "summary_sha256": "324a3a6fe446e0190924227eb906a248c835923976ff302b2bc615ef84b2d706",
+      "workbook_sha256": "a52ee754bb2ccf391ffecd0ea3041612e59f5cdcbae5b1bda9377a8c1a59196f",
+      "workbook_sheets": 7,
+      "asset_controls": {
+        "schema": 1,
+        "status": "skipped",
+        "prime": "obex",
+        "month": "2026-10",
+        "reason": "empty_asset_controls_file",
+        "packet_sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "days_checked": 0
+      }
     },
     {
       "prime": "osero",
@@ -84,15 +111,24 @@
       "sky_adjustment": "0",
       "supply_adjustment": "0",
       "demand_adjustment": "0",
-      "send_credit": "5514",
+      "send_credit": "5514.00",
       "msc_supply_component": "2348.19294859208823579689463",
       "msc_mint_unrounded": "15811.84281601560818938363300",
       "msc_send_unrounded": "42395.62871051204396854794716",
       "msc_mint": "15812",
       "msc_send": "42396",
-      "summary_sha256": "5ab20d0bc595261bb2bd917263686c9ec36580343c10300de0d5b5297e30e642",
-      "workbook_sha256": "163423e30fb2d72ab58bf71abea75a2e75d82582943091676e444ad2cfd75ead",
-      "workbook_sheets": 5
+      "summary_sha256": "93e80501b1b1d689faeaa992205b9eb63a0d50ae15a43d969f8f6929da4be4b7",
+      "workbook_sha256": "058398cdd9da762eba619b5bca711e9c8e8aa02344cc7d82d686a632209022ea",
+      "workbook_sheets": 6,
+      "asset_controls": {
+        "schema": 1,
+        "status": "skipped",
+        "prime": "osero",
+        "month": "2026-10",
+        "reason": "empty_asset_controls_file",
+        "packet_sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "days_checked": 0
+      }
     },
     {
       "prime": "keel",
@@ -112,9 +148,18 @@
       "msc_send_unrounded": "34033.80850715678804170493481",
       "msc_mint": "0",
       "msc_send": "34034",
-      "summary_sha256": "2edfba413420081ccb6076fd3f0d8e0547f74c1d2ddca8bd5b74b543a346b350",
-      "workbook_sha256": "a812d8353d45fa383c75d449c4703985ed9c99a6a799bd0093e70a8c05a31eab",
-      "workbook_sheets": 5
+      "summary_sha256": "0698a907e5fc121d459d2da0d866280705e7d20d9af65d56a75e7b21ba440a47",
+      "workbook_sha256": "103d77e11dd1b168d3f17ed6489e36900cd55f91b4e2d3b5a9dcc0f7620ca6d7",
+      "workbook_sheets": 6,
+      "asset_controls": {
+        "schema": 1,
+        "status": "skipped",
+        "prime": "keel",
+        "month": "2026-10",
+        "reason": "empty_asset_controls_file",
+        "packet_sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "days_checked": 0
+      }
     },
     {
       "prime": "skybase",
@@ -134,9 +179,18 @@
       "msc_send_unrounded": "145438.8642974105888596463102",
       "msc_mint": "0",
       "msc_send": "145439",
-      "summary_sha256": "d29e8e2d5a04f24207485c0e51141d82420a9ec453b006d0e82187c1787cfc84",
-      "workbook_sha256": "0c350c7155c063e27cbbc2d129ba634e470993e9e0844603eb2456139311f3de",
-      "workbook_sheets": 5
+      "summary_sha256": "0a1ed2efd54ae8cf19f1758add6fd105265f1a3196400be3a9b4a06d24af754e",
+      "workbook_sha256": "13d62ce8d094704c13a60112ffd0628541d0a78ed6e2346a97f64454f3a62a68",
+      "workbook_sheets": 6,
+      "asset_controls": {
+        "schema": 1,
+        "status": "skipped",
+        "prime": "skybase",
+        "month": "2026-10",
+        "reason": "empty_asset_controls_file",
+        "packet_sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "days_checked": 0
+      }
     }
   ],
   "calculation_commits": {
@@ -147,5 +201,6 @@
     "keel": "bda68582defce86daeb1c7d5d3f6d5da03f18df9",
     "skybase": "bda68582defce86daeb1c7d5d3f6d5da03f18df9"
   },
-  "latest_replay_scope": "Grove only, October 2026: E19/E23/E43 cash capital and E12 attribution; other prime reports and rows preserved."
+  "latest_replay_scope": "Grove only, October 2026: E19/E23/E43 cash capital and E12 attribution; other prime reports and rows preserved.",
+  "scope": "October ordinary inputs retained; historical replacements applied once; independent daily checks explicitly deferred; no API publication or payment"
 }

@@ -81,12 +81,12 @@ def replay():
             if D(r['new']['revenue']) != D(venues[r['venue']]['revenue']):
                 raise ValueError('Retained Grove revenue differs from current production replay')
         bridge = bridge_replay()
-        preview = json.loads((ROOT / 'reconciliation/2026-10/prime_msc_preview.json').read_text())
+        preview = json.loads((ROOT / 'reconciliation/2026-10/retained-close/prime_msc_preview.json').read_text())
         cfg = yaml.safe_load((ROOT / 'config/sky_total.yaml').read_text())
         rows = project(preview, cfg, historical['proposed_combined_october_adjustments'])
     paths = [Path(__file__), ROOT / 'scripts/verify_october_retained_after_pr282.py',
              ROOT / 'reconciliation/2026-01_to_2026-09/data.json',
-             ROOT / 'reconciliation/2026-10/prime_msc_preview.json',
+             ROOT / 'reconciliation/2026-10/retained-close/prime_msc_preview.json',
              ROOT / 'reconciliation/2026-10/grove-pr280/after-provenance.json',
              ROOT / 'config/sky_total.yaml']
     return dict(
@@ -98,7 +98,7 @@ def replay():
         october_bridge_credit_already_in_ordinary=bridge['october_ordinary_signed_credit'],
         october_bridge_credit_applied_again=False, rows=rows,
         canonical_reports_written=False, configuration_changed=False, api_published=False,
-        finalization_blocker='Complete independent daily asset-control packets are missing for all six primes',
+        finalization_requirement='Canonical writer validates populated daily asset-control files or records explicit empty-file deferral',
         input_sha256={str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths},
     )
 

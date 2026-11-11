@@ -51,17 +51,25 @@ def replay(wallet_inputs=None):
                'src/settle/normalize/sources/rpc_block_resolver.py',
                # PR283 adds presentation-only accrued yields; monthly compute
                # does not import this module or substitute accrued issuer income.
-               'src/settle/revenue/allocation_incentives.py'}
+               'src/settle/revenue/allocation_incentives.py', 'config/sky_total.yaml'}
     if any(p not in allowed and not p.startswith('src/settle/controls/') for p in changed):
         raise ValueError('Financial/configuration changes require a scoped source replay')
     folder = ROOT / 'reconciliation/2026-10'
-    preview_path = folder / 'prime_msc_preview.json'
+    preview_path = folder / 'retained-close/prime_msc_preview.json'
     original = subprocess.check_output(['git', 'show', f'{OLD_HEAD}:reconciliation/2026-10/prime_msc_preview.json'], cwd=ROOT)
     check(hashlib.sha256(original).hexdigest() == digest(preview_path), 'Original preview changed; use a scoped financial replay')
     preview = json.loads(preview_path.read_text())
-    cfg_path = ROOT / 'config/sky_total.yaml'
+    retained = folder / 'retained-close'
+    cfg_path = retained / 'sky_total.yaml' if retained.exists() else ROOT / 'config/sky_total.yaml'
     check(digest(cfg_path) == preview['sky_total_config_sha256'], 'MSC configuration changed')
     cfg = yaml.safe_load(cfg_path.read_text())
+    live_cfg = yaml.safe_load((ROOT / 'config/sky_total.yaml').read_text())
+    if live_cfg != cfg:
+        import copy
+        expected = copy.deepcopy(cfg)
+        proposal = json.loads((ROOT / 'reconciliation/2026-01_to_2026-09/proposed-october-adjustments.json').read_text())
+        expected['msc_preview']['2026-10'].update(proposal['msc_preview']['2026-10'])
+        check(live_cfg == expected, 'Unexpected configuration change outside historical replacements')
     reference_path = ROOT / 'config/october_2026_official_reference_rates.json'
     reference = json.loads(reference_path.read_text())
     grove = json.loads((folder / 'grove-pr280/after-provenance.json').read_text())
@@ -76,7 +84,7 @@ def replay(wallet_inputs=None):
     for entry in preview['rows']:
         name = entry['prime']
         prime = load_prime_by_id(name, config_dir=ROOT / 'config')
-        report = ROOT / 'settlements' / name / str(MONTH)
+        report = retained / name if retained.exists() else ROOT / 'settlements' / name / str(MONTH)
         workbook = report / f'{name}_settlement_october_2026.xlsx'
         check(digest(workbook) == entry['workbook_sha256'], f'{name}: workbook changed')
         check(digest(report / 'summary.md') == entry['summary_sha256'], f'{name}: summary changed')

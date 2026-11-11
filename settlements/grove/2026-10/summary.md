@@ -108,3 +108,20 @@ Reported income below is excluded from MSC settlement totals. Negative accrued b
 | E35 | USDC raw (Monad, alt holder idle) | $152,288.13 | $0.00 | $0.00 | $0.00 |
 | E36 | OOB principal via 0xd94f (relay to Monad ALM EOA → AUSD acquisition) | -$119,746.47 | -$119,746.47 | $0.00 | $0.00 |
 
+## MSC settlement instructions — October 2026
+
+These payment instructions include the approved adjustments once; the operating revenue above remains October-earned revenue.
+
+| Component | USDS |
+|---|---:|
+| Ordinary Sky revenue | 5,682,959.32 |
+| Ordinary demand-side revenue | 122,862.65 |
+| Ordinary supply-side share | 1,225,694.88 |
+| Sky adjustment (historical plus approved ordinary) | 1,030,726.24 |
+| Supply adjustment (historical plus approved ordinary) | 927,411.94 |
+| Demand adjustment | 0.00 |
+| Send-only credit | 0.00 |
+| Mint USDS (whole tokens) | 8,866,792.00 |
+| Send USDS (whole tokens) | 2,275,969.00 |
+
+Independent daily asset checks: **skipped**. ALM transfer review retained. No payment executed.

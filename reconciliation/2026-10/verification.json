@@ -1,0 +1,48 @@
+{
+  "primes": {
+    "spark": {
+      "ordinary_financial_cells_unchanged": true,
+      "only_ordinary_sheet_change": "Generated timestamp",
+      "daily_controls": "skipped",
+      "mint": "14070143",
+      "send": "4188099"
+    },
+    "grove": {
+      "ordinary_financial_cells_unchanged": true,
+      "only_ordinary_sheet_change": "Generated timestamp",
+      "daily_controls": "skipped",
+      "mint": "8866792",
+      "send": "2275969"
+    },
+    "obex": {
+      "ordinary_financial_cells_unchanged": true,
+      "only_ordinary_sheet_change": "Generated timestamp",
+      "daily_controls": "skipped",
+      "mint": "1463217",
+      "send": "205907"
+    },
+    "osero": {
+      "ordinary_financial_cells_unchanged": true,
+      "only_ordinary_sheet_change": "Generated timestamp",
+      "daily_controls": "skipped",
+      "mint": "15812",
+      "send": "42396"
+    },
+    "keel": {
+      "ordinary_financial_cells_unchanged": true,
+      "only_ordinary_sheet_change": "Generated timestamp",
+      "daily_controls": "skipped",
+      "mint": "0",
+      "send": "34034"
+    },
+    "skybase": {
+      "ordinary_financial_cells_unchanged": true,
+      "only_ordinary_sheet_change": "Generated timestamp",
+      "daily_controls": "skipped",
+      "mint": "0",
+      "send": "145439"
+    }
+  },
+  "prior_months_rewritten": false,
+  "position_extraction_rerun": false
+}
