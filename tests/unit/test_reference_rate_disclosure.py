@@ -24,6 +24,7 @@ def test_writer_and_dr_refresh_preserve_disclosure_without_changing_money(tmp_pa
         paths = writer.write_settlement(pnl, folder, reference_rates=rates, allow_overwrite=True)
     expected = json.loads(baseline['provenance'].read_text())['results']
     prov = json.loads(paths['provenance'].read_text())
+    assert prov['asset_controls'] == {'test_only': True}
     assert prov['results'] == expected
     assert prov['close_reference_rate_provenance'] == rates
     monkeypatch.setattr(writer, '_REPO_ROOT', tmp_path)

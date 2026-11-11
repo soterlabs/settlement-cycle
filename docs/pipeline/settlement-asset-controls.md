@@ -17,7 +17,7 @@ rewritten and no live month receives a passing review from this change alone.
 - ALM USDS is checked against direct archive `balanceOf` evidence, separate from
   the event-derived balance reconstruction used by the financial calculation.
   Chain identity, finality, linked UTC boundary headers, token, owner and pinned
-  block must match. Empty provider responses never become zero.
+  block must match. Eligibility also respects configured ALM activation dates. Empty provider responses never become zero.
 - Native-USDS bridge claims are reconstructed from retained complete gateway
   query responses using the existing `collect_transfers` / `daily_exposure`
   mechanism. A claim belongs to its source chain and ends on the delivery day.

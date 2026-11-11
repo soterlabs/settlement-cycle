@@ -364,3 +364,26 @@ def test_evidence_must_be_inside_review_directory_and_duplicate_json_keys_fail(t
     duplicate.write_text('{"amount":"1","amount":"2"}')
     with pytest.raises(assets.AssetControlError, match='Duplicate JSON key'):
         assets._json(duplicate)
+
+
+def test_idle_eligibility_respects_configured_alm_activation():
+    from dataclasses import replace
+
+    prime, control, observations, _, _, raw = dataset()
+    prime = replace(prime, alm_start_dates={ETH: date(2026, 7, 6)})
+    for observation in observations[:6]:
+        observation['assets']['wallet']['deductions']['alm_usds'] = '0'
+    wallets.check_wallet_states(prime, observations, control, {'wallets.json': raw, 'raw.json': {}})
+    observations[5]['assets']['wallet']['deductions']['alm_usds'] = str(TOTAL)
+    with pytest.raises(assets.AssetControlError, match='Stale wallet value/deduction on 2026-07-05'):
+        wallets.check_wallet_states(prime, observations, control, {'wallets.json': raw, 'raw.json': {}})
+
+
+def test_future_alm_is_not_requested_from_an_inactive_chain():
+    from dataclasses import replace
+
+    prime, _, observations, _, _, _ = dataset()
+    prime = replace(prime, alm_start_dates={ETH: date(2026, 8, 1)})
+    def forbidden(*args):
+        pytest.fail('Inactive chain reached RPC')
+    assert wallets.capture_wallets(prime, {observations[1]['day']: {}}, call=forbidden)['states'] == []

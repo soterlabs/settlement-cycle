@@ -3,7 +3,7 @@
 No event-derived balance reconstruction and no fallback/carry-forward/zero on
 failure. This is a raw-evidence producer, not a passing whole-portfolio review.
 """
-from datetime import UTC, datetime, time
+from datetime import UTC, date, datetime, time
 
 from settle.controls.assets import AssetControlError, require
 from settle.domain.sky_tokens import USDS_BY_CHAIN
@@ -30,10 +30,14 @@ def capture_wallets(prime, daily_pins, *, call=None):
     if call is None:
         def call(chain, method, params):
             return rpc._post(rpc.rpc_url(chain), method, params)
+    require(bool(daily_pins), 'Wallet capture requires explicit daily pins')
+    last_day = max(date.fromisoformat(day) for day in daily_pins)
     rows = []
     identities = {}
     for day, pins in daily_pins.items():
         for chain, holder in prime.alm.items():
+            if prime.alm_start_dates.get(chain, date.min) > last_day:
+                continue
             if chain not in USDS_BY_CHAIN:
                 continue  # No native-USDS exemption on this chain, not a portfolio exclusion.
             require(chain.value in pins, f'Missing wallet control pin: {day}/{chain.value}')
@@ -65,8 +69,9 @@ def capture_wallets(prime, daily_pins, *, call=None):
 def check_wallet_states(prime, observations, control, evidence):
     """Every ALM wallet's deduction must come from a matching raw state read."""
     inventory = control['inventory']['accounts']
+    last_day = date.fromisoformat(observations[-1]['day'])
     expected = {(c.value, h.hex.lower()): USDS_BY_CHAIN[c] for c, h in prime.alm.items()
-                if c in USDS_BY_CHAIN}
+                if c in USDS_BY_CHAIN and prime.alm_start_dates.get(c, date.min) <= last_day}
     accounts = {}
     for key, account in inventory.items():
         if 'alm_usds' in account['deduction_fields']:
@@ -100,6 +105,8 @@ def check_wallet_states(prime, observations, control, evidence):
             check_boundary(observation['day'], raw['block'], raw['headers'],
                            identity[0], raw['chain_id'], raw['head'])
             value = Decimal(usds_amount(int(raw['raw_balance'])))
+            start = prime.alm_start_dates.get(token.chain, date.min)
+            eligible = value if date.fromisoformat(observation['day']) >= start else Decimal(0)
             require(Decimal(state['value_usd']) == value
-                    and Decimal(state['deductions']['alm_usds']) == value,
+                    and Decimal(state['deductions']['alm_usds']) == eligible,
                     f'Stale wallet value/deduction on {observation["day"]}/{identity[0]}')
