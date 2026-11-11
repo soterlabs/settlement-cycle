@@ -91,9 +91,18 @@ def test_september_frozen_inputs_reproduce_published_candidate(prime):
         end=date(2026, 9, 30), control=control, history_sha256=hashlib.sha256(history_path.read_bytes()).hexdigest())
     computed = capital.report(prime, history, control, idle, date(2026, 9, 1), date(2026, 9, 30))
     saved = json.loads(gzip.decompress(Path(f'reconciliation/allocation_capital_readiness_{prime}_2026_09.json.gz').read_bytes()))
-    assert computed == saved['results'][0]
+    frozen = saved['results'][0]
+    old_ids = {row['venue'] for row in frozen['allocations']}
+    additions = [row for row in computed['allocations'] if row['venue'] not in old_ids]
+    # Adding the October-discovered vault must not silently certify a zero
+    # historical balance: the older normalized capture lacks that coverage.
+    assert {row['venue'] for row in additions} == ({'O3'} if prime == 'osero' else set())
+    assert all(row['status'] == 'missing_capital_history' and row['cost_of_funds'] is None
+               for row in additions)
+    assert {**computed, 'allocations': [row for row in computed['allocations']
+                                     if row['venue'] in old_ids]} == frozen
     candidate = json.loads(Path(f'reconciliation/allocation_yields_{prime}_2026_09.json').read_text())
     assert yields.build(saved, {prime: control})['results'] == candidate['results']
     # Global financing and original-capital costs intentionally remain distinct.
-    total = sum((D(r['cost_of_funds']) for r in computed['allocations']), D(0))
+    total = sum((D(r['cost_of_funds']) for r in frozen['allocations']), D(0))
     assert D(control['results']['sky_revenue']) > total

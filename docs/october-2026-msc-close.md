@@ -252,3 +252,21 @@ an asset-control attestation, a source re-extraction, a new complete monthly
 calculation, or a consolidated non-MSC calculation. Existing canonical summary
 and workbook bytes are preserved. No control gate was bypassed for production
 and no passing review was fabricated.
+
+
+The post-rebase compatibility checks preserve closed historical source sets:
+Maple's zero-wallet queue test exercises a cloned pre-extension allowlist,
+September's frozen allocation rows reproduce while newly discovered O3 remains
+explicitly outside that older normalized capture, and the legacy bridge audit
+uses its recorded workbook set plus retained pre-policy October daily rows.
+It must not substitute this PR's already-exempt October workbook into the old
+baseline or issue another refund for it. These checks do not apply #281's
+separate historical financial correction.
+
+A new read-only complete ERC20 holder-transfer scan from block zero through
+October close independently finds O3's first share transfer on October 12,
+2026 at 20:08:35 UTC, and no O3 share transfers through September. The index was
+more than 500 blocks beyond the requested endpoint. Raw selections, complete
+rows and coverage are retained in
+`reconciliation/2026-10/post-pr282-osero-o3-holder-history.json`. This focused
+scan does not create a passing full-prime transfer review or asset packet.
