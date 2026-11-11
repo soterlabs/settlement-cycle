@@ -1,0 +1,634 @@
+{
+  "prime": "spark",
+  "month": "2026-09",
+  "publication_status": "not_published",
+  "decision": "Operator accepted deferral of the remaining PSM3 funding-value difference on 2026-11-11. It is not distributed across venues.",
+  "acknowledged_psm3_unattributed_value_cost_equivalent_usd": "26594.3010771973623320571700203662026785149112043985364081373",
+  "scope": "Working borrowing-cost estimates using existing replay funding conventions; not certification of all source attribution or settlement revenue.",
+  "venue_cost_subtotal_usd": "7538457.838007058121355523493383317447293634251996",
+  "separate_deduction_credits_usd": "-138463.701516923041018137263797817292478183323088091895226268",
+  "subtotal_after_separate_credits_usd": "7399994.13649013508033738622958550015481545092890790810477373",
+  "global_borrowing_cost_usd": "8226734.6097318259739632609892",
+  "separate_financing_costs": {
+    "msc": "418453.2230481492942555077890",
+    "vat_accrual": "231413.1846301471860664764688",
+    "savings_interest_basis": "50430.0501819882291787783558125602579054926020296683788581992"
+  },
+  "comparison_difference_after_financing_usd": "126444.015381406184125112146001939587279056469062423516368071",
+  "allocations": [
+    {
+      "venue": "S1",
+      "label": "Spark USDS (SparkLend spToken)",
+      "borrowing_cost_usd": "2033964.316753278185089128314",
+      "average_sky_funded_principal_usd": "1020082225.80966390574564962221333333333333333333333333333333",
+      "average_savings_funded_principal_usd": "45523757.7135787831721906360163333333333333333333333333333333",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S2",
+      "label": "Spark USDC (SparkLend spToken)",
+      "borrowing_cost_usd": "38317.08091017073955762273059",
+      "average_sky_funded_principal_usd": "12489737.1742583394570315158242666666666666666666666666666667",
+      "average_savings_funded_principal_usd": "975343.819785234465195185805166666666666666666666666666666667",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S3",
+      "label": "Spark USDT (SparkLend spToken)",
+      "borrowing_cost_usd": "304344.5032766026462735572545",
+      "average_sky_funded_principal_usd": "99363140.184958874967237429326",
+      "average_savings_funded_principal_usd": "198080842.803209631064717311033333333333333333333333333333333",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S4",
+      "label": "Spark DAI (SparkLend spToken)",
+      "borrowing_cost_usd": "339466.8717426638241962131526",
+      "average_sky_funded_principal_usd": "199742885.832693292979868332023333333333333333333333333333333",
+      "average_savings_funded_principal_usd": "41130332.1047700917480013018166666666666666666666666666666667",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S5",
+      "label": "Spark PYUSD (SparkLend spToken)",
+      "borrowing_cost_usd": "252533.1164694423947344796657",
+      "average_sky_funded_principal_usd": "82474527.001510545371222231299",
+      "average_savings_funded_principal_usd": "19049778.3086821417895769626913333333333333333333333333333333",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S6",
+      "label": "Aave Ethereum Lido USDS (aToken)",
+      "borrowing_cost_usd": "0.000001119585938356818252227028509",
+      "average_sky_funded_principal_usd": "0.000365839064333097982569073879783333333333333333333333333333333",
+      "average_savings_funded_principal_usd": "0.000085497335998796147832825697419",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S7",
+      "label": "Aave Ethereum USDS (aToken)",
+      "borrowing_cost_usd": "1.785503653518354844929025107E-13",
+      "average_sky_funded_principal_usd": "5.83436169828810350214342280603333333333333333333333333333333E-11",
+      "average_savings_funded_principal_usd": "1.36624228288863425845050487543333333333333333333333333333333E-11",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S8",
+      "label": "Aave Ethereum USDC (aToken)",
+      "borrowing_cost_usd": "0.0001140053635687055997147748829",
+      "average_sky_funded_principal_usd": "0.0372527115973122375622031712866666666666666666666666666666667",
+      "average_savings_funded_principal_usd": "0.00872353007381039691820293002046666666666666666666666666666667",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S9",
+      "label": "Aave Ethereum USDT (aToken)",
+      "borrowing_cost_usd": "0.01283656165529352796525861311",
+      "average_sky_funded_principal_usd": "4.19451073956306913028960077816666666666666666666666666666667",
+      "average_savings_funded_principal_usd": "0.981243376051830148744847682513333333333333333333333333333333",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S10",
+      "label": "Spark Blue Chip USDC Vault (Morpho)",
+      "borrowing_cost_usd": "29989.74641098003218536125875",
+      "average_sky_funded_principal_usd": "9785485.68455425752894231246011333333333333333333333333333333",
+      "average_savings_funded_principal_usd": "357523.00451421953685429790583372",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S11",
+      "label": "Spark Blue Chip USDT Vault (Morpho \u2014 pre-2026-06 deployment)",
+      "borrowing_cost_usd": "0.003945486959381487877113814110",
+      "average_sky_funded_principal_usd": "1.28924335963504855557101827743333333333333333333333333333333",
+      "average_savings_funded_principal_usd": "0.273400639389134746868122700583333333333333333333333333333333",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S65",
+      "label": "Spark Blue Chip USDT Vault (Morpho \u2014 2026-06 redeployment)",
+      "borrowing_cost_usd": "9019.613041167397205110090854",
+      "average_sky_funded_principal_usd": "2942028.68771149974935149973109784424411866666666666666666667",
+      "average_savings_funded_principal_usd": "22718682.1683085154992575292140082451846666666666666666666667",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S12",
+      "label": "Spark DAI Vault (Morpho)",
+      "borrowing_cost_usd": "0.001719400701279800164881048910",
+      "average_sky_funded_principal_usd": "0.561836184193136789139526784106666666666666666666666666666667",
+      "average_savings_funded_principal_usd": "0.131566123356167308285541931446666666666666666666666666666667",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S13",
+      "label": "Spark USDS Vault (Morpho)",
+      "borrowing_cost_usd": "0.000002148603493294955305873948689",
+      "average_sky_funded_principal_usd": "0.000702083686905467802232617458963333333333333333333333333333333",
+      "average_savings_funded_principal_usd": "0.000164421262792076821215986519543333333333333333333333333333333",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S14",
+      "label": "Maple syrupUSDC (ERC-4626)",
+      "borrowing_cost_usd": "3.152180558752423395805596567E-9",
+      "average_sky_funded_principal_usd": "0.00000103004346225935634309091868887666666666666666666666666666667",
+      "average_savings_funded_principal_usd": "1.02276931494114362002132859679333333333333333333333333333333E-7",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S15",
+      "label": "Maple syrupUSDT (ERC-4626)",
+      "borrowing_cost_usd": "0E-31",
+      "average_sky_funded_principal_usd": "0E-52",
+      "average_savings_funded_principal_usd": "0E-65",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 0
+    },
+    {
+      "venue": "S16",
+      "label": "Ethena Staked USDe (sUSDe)",
+      "borrowing_cost_usd": "0.1957657928155636674707163572",
+      "average_sky_funded_principal_usd": "63.96897823129476130890301103",
+      "average_savings_funded_principal_usd": "14.979723125225719138506472096",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S17",
+      "label": "Fluid Savings USDS (fsUSDS)",
+      "borrowing_cost_usd": "0.000002638060003708111169938850167",
+      "average_sky_funded_principal_usd": "0.000862019868348712605849462163353333333333333333333333333333333",
+      "average_savings_funded_principal_usd": "0.00020186064110040856627254848993",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S18",
+      "label": "Arkis Spark Prime USDC 1 (ERC-4626)",
+      "borrowing_cost_usd": "45285.26087638933048506103200",
+      "average_sky_funded_principal_usd": "14797609.874281344098653336186",
+      "average_savings_funded_principal_usd": "3084965.6915578737440282424502",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S19",
+      "label": "BlackRock USD Institutional Digital Liquidity Fund (BUIDL-I)",
+      "borrowing_cost_usd": "0E-31",
+      "average_sky_funded_principal_usd": "0E-54",
+      "average_savings_funded_principal_usd": "0",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 0
+    },
+    {
+      "venue": "S20",
+      "label": "Janus Henderson Anemoy Treasury Fund (JTRSY)",
+      "borrowing_cost_usd": "1.437468562088001422608476270E-8",
+      "average_sky_funded_principal_usd": "0.00000469711249518498695188008586293333333333333333333333333333333",
+      "average_savings_funded_principal_usd": "0.00000109993072597628515591994052576666666666666666666666666666667",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S21",
+      "label": "Superstate Short Duration US Government Securities Fund (USTB)",
+      "borrowing_cost_usd": "0E-31",
+      "average_sky_funded_principal_usd": "0E-57",
+      "average_savings_funded_principal_usd": "0",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 0
+    },
+    {
+      "venue": "S22",
+      "label": "Superstate Crypto Carry Fund (USCC)",
+      "borrowing_cost_usd": "0E-31",
+      "average_sky_funded_principal_usd": "0E-52",
+      "average_savings_funded_principal_usd": "0E-58",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 0
+    },
+    {
+      "venue": "S23",
+      "label": "Anchorage tri-party loan",
+      "borrowing_cost_usd": "477227.1068617848835762184777",
+      "average_sky_funded_principal_usd": "155953624.85381090794451060864",
+      "average_savings_funded_principal_usd": "31373061.0771027140935932485276666666666666666666666666666667",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S24",
+      "label": "Spark.fi USDT Reserve Curve (sUSDS/USDT)",
+      "borrowing_cost_usd": "0.0002402236118453024574028649376",
+      "average_sky_funded_principal_usd": "0.59973143310741510224209116752",
+      "average_savings_funded_principal_usd": "0.13202826964618698299714695935",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S25",
+      "label": "Spark.fi PYUSD Reserve Curve (PYUSD/USDS)",
+      "borrowing_cost_usd": "0.0006385529976173970227937651089",
+      "average_sky_funded_principal_usd": "2.62612614215892409846218257763333333333333333333333333333333",
+      "average_savings_funded_principal_usd": "0.614963440980559142670830240526666666666666666666666666666667",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S61",
+      "label": "Spark.fi PYUSD Reserve Uniswap V4 (PYUSD/USDS)",
+      "borrowing_cost_usd": "87407.04806895180623075113681",
+      "average_sky_funded_principal_usd": "70296416.963191527592981712401",
+      "average_savings_funded_principal_usd": "15606513.8735882744017796551446666666666666666666666666666667",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S62",
+      "label": "Spark.fi USDT Reserve Uniswap V4 (USDT/USDS)",
+      "borrowing_cost_usd": "0E-31",
+      "average_sky_funded_principal_usd": "35668048.8691845485415250243206666666666666666666666666666667",
+      "average_savings_funded_principal_usd": "7809469.05407398242052574625243333333333333333333333333333333",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S66",
+      "label": "Spark.fi RLUSD Reserve Uniswap V4 (RLUSD/USDS)",
+      "borrowing_cost_usd": "21615.11218440490241373870839",
+      "average_sky_funded_principal_usd": "18249910.9540799158863478927593333333333333333333333333333333",
+      "average_savings_funded_principal_usd": "1525273.2977114475245752628564",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S26",
+      "label": "USDC raw (ALM idle)",
+      "borrowing_cost_usd": "0E-31",
+      "average_sky_funded_principal_usd": "0E-58",
+      "average_savings_funded_principal_usd": "0E-95",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 0
+    },
+    {
+      "venue": "S27",
+      "label": "USDT raw (ALM idle \u2014 $442M as of 2026-04)",
+      "borrowing_cost_usd": "4.440536253646216026211195010E-11",
+      "average_sky_funded_principal_usd": "1.44381373841504793177246979633333333333333333333333333333333E-8",
+      "average_savings_funded_principal_usd": "8.026494350307513634182877710000000000000000000000000000000E-9",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 2
+    },
+    {
+      "venue": "S28",
+      "label": "PYUSD raw (ALM idle \u2014 $677M as of 2026-04)",
+      "borrowing_cost_usd": "434756.0916909972523653571840",
+      "average_sky_funded_principal_usd": "142099473.22132727997762309648",
+      "average_savings_funded_principal_usd": "32617263.0166325446848242159183333333333333333333333333333333",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S64",
+      "label": "RLUSD raw (ALM idle \u2014 $251.7M as of 2026-08)",
+      "borrowing_cost_usd": "531480.5457119134420348104386",
+      "average_sky_funded_principal_usd": "174025945.548397306631449266448333333333333333333333333333333",
+      "average_savings_funded_principal_usd": "9648609.03182772230396895112026666666666666666666666666666667",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S29",
+      "label": "DAI raw (ALM idle)",
+      "borrowing_cost_usd": "0E-31",
+      "average_sky_funded_principal_usd": "0E-56",
+      "average_savings_funded_principal_usd": "0E-91",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 0
+    },
+    {
+      "venue": "S30",
+      "label": "USDe raw (ALM idle)",
+      "borrowing_cost_usd": "7.416568549150821203514641296E-15",
+      "average_sky_funded_principal_usd": "2.4234586913685583754090885655E-12",
+      "average_savings_funded_principal_usd": "5.6750539411246851761945220757E-13",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S31",
+      "label": "USDS raw / POL (ALM idle \u2014 already netted out of utilized)",
+      "borrowing_cost_usd": "0E-31",
+      "average_sky_funded_principal_usd": "0E-78",
+      "average_savings_funded_principal_usd": "0E-113",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 0
+    },
+    {
+      "venue": "S32",
+      "label": "sUSDS raw / POL (ALM \u2014 Cat B 4626, demand-side spread)",
+      "borrowing_cost_usd": "1709983.893384730176027813005",
+      "average_sky_funded_principal_usd": "558717379.49889874962576670722",
+      "average_savings_funded_principal_usd": "143828129.469856936086819995736666666666666666666666666666667",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S34",
+      "label": "Spark USDC Vault (Morpho, Base)",
+      "borrowing_cost_usd": "827873.9557036871649811366110",
+      "average_sky_funded_principal_usd": "270494649.200951925917680559646666666666666666666666666666667",
+      "average_savings_funded_principal_usd": "14241420.0177142547506338817544",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S35",
+      "label": "Aave Base USDC (aBasUSDC)",
+      "borrowing_cost_usd": "0.000003169881234006461461471378131",
+      "average_sky_funded_principal_usd": "0.0010357992616462270583624171561",
+      "average_savings_funded_principal_usd": "0.000242554853645966421001707180113333333333333333333333333333333",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S36",
+      "label": "Fluid Savings USDS (fsUSDS, Base)",
+      "borrowing_cost_usd": "0.5775807393226059899823159608",
+      "average_sky_funded_principal_usd": "188.73189850563901072215369686",
+      "average_savings_funded_principal_usd": "44.195665816178086470526350439",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S37",
+      "label": "Savings USDS / sUSDS proxy (Base \u2014 POL)",
+      "borrowing_cost_usd": "0E-31",
+      "average_sky_funded_principal_usd": "0E-51",
+      "average_savings_funded_principal_usd": "0E-81",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 0
+    },
+    {
+      "venue": "S38",
+      "label": "USDS raw (Base \u2014 POL)",
+      "borrowing_cost_usd": "0E-31",
+      "average_sky_funded_principal_usd": "268859.391822787475237720135366666666666666666666666666666667",
+      "average_savings_funded_principal_usd": "21900.1048270415681167795006333333333333333333333333333333333",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 5
+    },
+    {
+      "venue": "S39",
+      "label": "USDC raw (Base \u2014 ALM idle)",
+      "borrowing_cost_usd": "4.288826029470855800815103393",
+      "average_sky_funded_principal_usd": "1404.28248011226498163087893158172333333333333333333333333333",
+      "average_savings_funded_principal_usd": "48.4316644906442710101576137970835466666666666666666666666667",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 11
+    },
+    {
+      "venue": "S41",
+      "label": "Aave Arbitrum USDCn (aArbUSDCn)",
+      "borrowing_cost_usd": "0.00001263361646404312994564226063",
+      "average_sky_funded_principal_usd": "0.00412819586582366501852589460066666666666666666666666666666667",
+      "average_savings_funded_principal_usd": "0.000966706562877177764951297526486666666666666666666666666666667",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S42",
+      "label": "Fluid Savings USDS (fsUSDS, Arbitrum)",
+      "borrowing_cost_usd": "0E-31",
+      "average_sky_funded_principal_usd": "0E-54",
+      "average_savings_funded_principal_usd": "0",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 0
+    },
+    {
+      "venue": "S43",
+      "label": "Savings USDS / sUSDS proxy (Arbitrum \u2014 POL)",
+      "borrowing_cost_usd": "31842.30603999416289295282125",
+      "average_sky_funded_principal_usd": "10484309.8230565771624378325344366352866666666666666666666667",
+      "average_savings_funded_principal_usd": "2256560.01701125310949450490399321832333333333333333333333333",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S44",
+      "label": "USDS raw (Arbitrum \u2014 POL)",
+      "borrowing_cost_usd": "0E-31",
+      "average_sky_funded_principal_usd": "60680153.7600652678839224712863333333333333333333333333333333",
+      "average_savings_funded_principal_usd": "14139254.0166417990615917419163333333333333333333333333333333",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S45",
+      "label": "USDC raw (Arbitrum \u2014 ALM idle)",
+      "borrowing_cost_usd": "2.202841773430345443820105546",
+      "average_sky_funded_principal_usd": "719.2947355631617906850663136917000000000000000000000000000",
+      "average_savings_funded_principal_usd": "129.71099887483651400032831037760260000000000000000000000000",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 6
+    },
+    {
+      "venue": "S47",
+      "label": "Savings USDS / sUSDS proxy (Optimism \u2014 POL)",
+      "borrowing_cost_usd": "0E-31",
+      "average_sky_funded_principal_usd": "0E-51",
+      "average_savings_funded_principal_usd": "0E-81",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 0
+    },
+    {
+      "venue": "S48",
+      "label": "USDS raw (Optimism \u2014 POL)",
+      "borrowing_cost_usd": "0E-31",
+      "average_sky_funded_principal_usd": "0E-52",
+      "average_savings_funded_principal_usd": "0E-81",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 0
+    },
+    {
+      "venue": "S49",
+      "label": "USDC raw (Optimism \u2014 ALM idle)",
+      "borrowing_cost_usd": "0.3676675610317228858822106793",
+      "average_sky_funded_principal_usd": "119.54490301734797818575846163000000000000000000000000000000",
+      "average_savings_funded_principal_usd": "17.7347725734623310155985498266666666666666666666666666666667",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 2
+    },
+    {
+      "venue": "S51",
+      "label": "Savings USDS / sUSDS proxy (Unichain \u2014 POL)",
+      "borrowing_cost_usd": "0E-31",
+      "average_sky_funded_principal_usd": "0E-52",
+      "average_savings_funded_principal_usd": "0E-81",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 0
+    },
+    {
+      "venue": "S52",
+      "label": "USDS raw (Unichain \u2014 POL)",
+      "borrowing_cost_usd": "0E-31",
+      "average_sky_funded_principal_usd": "0E-52",
+      "average_savings_funded_principal_usd": "0E-81",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 0
+    },
+    {
+      "venue": "S53",
+      "label": "USDC raw (Unichain \u2014 ALM idle)",
+      "borrowing_cost_usd": "0E-31",
+      "average_sky_funded_principal_usd": "0E-55",
+      "average_savings_funded_principal_usd": "0E-91",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 0
+    },
+    {
+      "venue": "S54",
+      "label": "Aave Avalanche USDC (aAvaUSDC)",
+      "borrowing_cost_usd": "0.0003342796431745227950075781636",
+      "average_sky_funded_principal_usd": "0.10923004911428883956398512078",
+      "average_savings_funded_principal_usd": "0.0260978720213792022408800887536666666666666666666666666666667",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 30
+    },
+    {
+      "venue": "S55",
+      "label": "USDC raw (Avalanche-C \u2014 ALM idle)",
+      "borrowing_cost_usd": "0E-31",
+      "average_sky_funded_principal_usd": "0E-57",
+      "average_savings_funded_principal_usd": "178.318865666666666666666666666666666666666666666666666666667",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 1
+    },
+    {
+      "venue": "S56",
+      "label": "Spark Savings V2 \u2014 spUSDC vault",
+      "borrowing_cost_usd": null,
+      "average_sky_funded_principal_usd": null,
+      "average_savings_funded_principal_usd": null,
+      "status": "not_calculated_in_this_replay"
+    },
+    {
+      "venue": "S57",
+      "label": "Spark Savings V2 \u2014 spUSDT vault",
+      "borrowing_cost_usd": null,
+      "average_sky_funded_principal_usd": null,
+      "average_savings_funded_principal_usd": null,
+      "status": "not_calculated_in_this_replay"
+    },
+    {
+      "venue": "S58",
+      "label": "Spark Savings V2 \u2014 spETH vault",
+      "borrowing_cost_usd": null,
+      "average_sky_funded_principal_usd": null,
+      "average_savings_funded_principal_usd": null,
+      "status": "not_calculated_in_this_replay"
+    },
+    {
+      "venue": "S59",
+      "label": "Spark Savings V2 \u2014 spPYUSD vault",
+      "borrowing_cost_usd": null,
+      "average_sky_funded_principal_usd": null,
+      "average_savings_funded_principal_usd": null,
+      "status": "not_calculated_in_this_replay"
+    },
+    {
+      "venue": "S60",
+      "label": "Spark Savings V2 \u2014 spUSDC vault (Avalanche-C, CREATE2 same address)",
+      "borrowing_cost_usd": null,
+      "average_sky_funded_principal_usd": null,
+      "average_savings_funded_principal_usd": null,
+      "status": "not_calculated_in_this_replay"
+    },
+    {
+      "venue": "S63",
+      "label": "Spark Savings V2 \u2014 spUSDG vault (Robinhood Chain)",
+      "borrowing_cost_usd": null,
+      "average_sky_funded_principal_usd": null,
+      "average_savings_funded_principal_usd": null,
+      "status": "not_calculated_in_this_replay"
+    },
+    {
+      "venue": "S67",
+      "label": "RLUSD issuer incentives \u2014 accrued / prepaid",
+      "borrowing_cost_usd": null,
+      "average_sky_funded_principal_usd": null,
+      "average_savings_funded_principal_usd": null,
+      "status": "not_calculated_in_this_replay"
+    },
+    {
+      "venue": "S68",
+      "label": "PYUSD issuer incentives \u2014 accrued / prepaid",
+      "borrowing_cost_usd": null,
+      "average_sky_funded_principal_usd": null,
+      "average_savings_funded_principal_usd": null,
+      "status": "not_calculated_in_this_replay"
+    },
+    {
+      "venue": "S69",
+      "label": "USDG issuer incentives \u2014 receipts (8-hour payments)",
+      "borrowing_cost_usd": null,
+      "average_sky_funded_principal_usd": null,
+      "average_savings_funded_principal_usd": null,
+      "status": "not_calculated_in_this_replay"
+    },
+    {
+      "venue": "S70",
+      "label": "SparkLend RLUSD",
+      "borrowing_cost_usd": "7406.282193101663052041739579",
+      "average_sky_funded_principal_usd": "2408108.24868244891872184817596666666666666666666666666666667",
+      "average_savings_funded_principal_usd": "217008.987818367282702175003323333333333333333333333333333333",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 8
+    },
+    {
+      "venue": "S71",
+      "label": "Spark USDG (SparkLend spToken \u2014 reporting only)",
+      "borrowing_cost_usd": null,
+      "average_sky_funded_principal_usd": null,
+      "average_savings_funded_principal_usd": null,
+      "status": "not_calculated_in_this_replay"
+    },
+    {
+      "venue": "S72",
+      "label": "Sentora RLUSD vault",
+      "borrowing_cost_usd": "355937.3341546637962087194405",
+      "average_sky_funded_principal_usd": "115825405.272072122773757026641",
+      "average_savings_funded_principal_usd": "12932483.1677308236845875008218333333333333333333333333333333",
+      "status": "working_estimate_existing_funding_policy",
+      "funding_uncertain_days": 17
+    }
+  ],
+  "limitations": [
+    "No PSM allocation is created and no unresolved difference is redistributed.",
+    "Savings-interest financing and smaller residuals remain separately identified; their treatment is not approved by the PSM deferral.",
+    "Missing rows remain null. Savings liability and incentive rows are not assumed to be funded investment positions.",
+    "Revenue and yields are not regenerated; RLUSD revenue coverage is handled separately in PR267."
+  ],
+  "input_sha256": {
+    "/tmp/spark-september-rlusd-replay/conditional-costs.json.gz": "7f75df5e05dcfc3e2daa4ac7aef548f0730333c11ee5dda18727c12f5f3ba794",
+    "/tmp/spark-september-rlusd-replay/reconciliation.json": "3b126730b00ed9b9d3422296990a31e3e8de02496c7ec4d061e2009281eae55f",
+    "/tmp/spark-september-rlusd-replay/custody-analysis.json": "2741916298f11235cf8ef7c3cd149ac97cf2c1d1fa27a795b7a7e9ac89b11b40",
+    "config/spark.yaml": "6d327a6735ec3df39ca6a42f7435a64893b1e776df033721de3db92d726758c6"
+  }
+}

@@ -41,6 +41,17 @@ def timeline(batches):
     )
 
 
+def test_unlabelled_spark_savings_capture_cannot_be_priced_as_sky():
+    history = CapitalHistory(
+        (batch(1, [("a", 0, 100, 0)]),),
+        {"S1": "a"},
+        {"S56": "Requires non-fungible or beneficial-custody capital events"},
+    )
+    control = {"prime_id": "spark", "period": {"start": "2026-08-01", "end": "2026-08-31"}}
+    with pytest.raises(ValueError, match="Savings funding operations are missing"):
+        module.report("spark", history, control, {}, date(2026, 8, 1), date(2026, 8, 31))
+
+
 def test_unknown_principal_assumed_sky_but_appreciation_not_reborrowed():
     result = timeline(
         [

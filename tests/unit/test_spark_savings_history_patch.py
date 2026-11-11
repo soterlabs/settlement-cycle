@@ -84,3 +84,22 @@ def test_ambiguous_split_transaction_is_not_pooled_automatically(monkeypatch):
     }
     with pytest.raises(ValueError, match="unambiguous normalized route"):
         patch.attach(history, audit)
+
+
+def test_binance_savings_label_follows_only_the_reviewed_otc_branch(monkeypatch):
+    from settle.compute.spark_binance_capital import MARKER, RULES, SAVER, SKY_MARKER
+    tx, block, timestamp, _, _ = RULES[0]
+    history = CapitalHistory(tuple(
+        CapitalBatch(tx + suffix, date(2026, 8, 12), timestamp, "ethereum", block, ())
+        for suffix in (MARKER, SKY_MARKER)
+    ), {}, {})
+    monkeypatch.setattr(patch, "apply_executed_spells", lambda h: h)
+    op = dict(kind="draw", source=SAVER, amount="2000", transaction_hash=tx.split(':')[1],
+              block=block, timestamp=timestamp, log_index=550)
+    audit = dict(policy="PROVISIONAL: proportional", vaults=[dict(operations=[op])])
+    result = patch.attach(history, audit)
+    assert result.batches[0].external_funding[0].amount == D(2000)
+    assert result.batches[1].external_funding == ()
+    op['amount'] = '2001'
+    with pytest.raises(ValueError, match="reviewed Savings funding changed"):
+        patch.attach(history, audit)

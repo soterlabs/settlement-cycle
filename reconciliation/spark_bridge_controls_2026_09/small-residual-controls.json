@@ -1,0 +1,880 @@
+{
+  "cctp_accounts": [
+    {
+      "account": "cctp:0:495832:0xbd3fa81b58ba92a82136038b25adec7066af3155",
+      "bucket": "other",
+      "cost": "70.7776185627361450735176166177644213204705434446595690793883",
+      "average_principal": "23153.1189039313317192556061057058953868834666942532938789309",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "ethereum:0x1dace5ea9fc944cae7acbe55b5d5363fb700aad9d22cb2a743cd94255a858972",
+          "day": "2026-09-03",
+          "block": 25900147,
+          "before": "0",
+          "change": "763262.356788"
+        },
+        {
+          "tx": "base:0xd29a00b7b45f1cf8c00a3e4bf5401017cff147947b11641ad5857a4f2581de5e",
+          "day": "2026-09-04",
+          "block": 50845459,
+          "before": "763262.356788",
+          "change": "-763262.356788"
+        }
+      ]
+    },
+    {
+      "account": "cctp:0:501818:0xbd3fa81b58ba92a82136038b25adec7066af3155",
+      "bucket": "other",
+      "cost": "69.8526843845846414005615239342924913582356895480702214089018",
+      "average_principal": "22712.1815066412469126399773097241556982736831924807682193086",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "ethereum:0x71c1ec0e8a806ca3eb3b8575bb505fd8dbd4232f43bedc8d814cd8d053fab0ff",
+          "day": "2026-09-29",
+          "block": 26086473,
+          "before": "0",
+          "change": "681368.082529"
+        },
+        {
+          "tx": "base:0xadfe5d06ecc1b69f728d817a40c2adbcef367ac5817c67fdbe26e29f1e936ff7",
+          "day": "2026-09-30",
+          "block": 51968581,
+          "before": "681368.082529",
+          "change": "-681368.082529"
+        }
+      ]
+    },
+    {
+      "account": "cctp:0:496801:0xbd3fa81b58ba92a82136038b25adec7066af3155",
+      "bucket": "other",
+      "cost": "36.5905956752898045662270826243405594214606431834508744393265",
+      "average_principal": "11986.6166953333333333333333333333333333333333333333333333333",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "ethereum:0xd42fcb1911950c8e6aff0f24ec158b54f3f3496548f1036d0d042e62d30a3306",
+          "day": "2026-09-08",
+          "block": 25936085,
+          "before": "0",
+          "change": "359598.50086"
+        },
+        {
+          "tx": "base:0x528a371d432832c8644a7bd6fbe7310f74aa46aae2885bff033aa7562b4fb466",
+          "day": "2026-09-09",
+          "block": 51061940,
+          "before": "359598.50086",
+          "change": "-359598.50086"
+        }
+      ]
+    },
+    {
+      "account": "cctp:6:813811:0x1682ae6375c4e4a97e4b583bc394c861a46d8962",
+      "bucket": "other",
+      "cost": "27.7622870536139038613074800608184827305884355565332638284410",
+      "average_principal": "9026.74117904487963906365435895898802063119519537979021635197",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "base:0xc54230909da88dd75dd5ddd707a3b3217bb35cd130b0265f1030e74bac1e8b1b",
+          "day": "2026-09-23",
+          "block": 51708765,
+          "before": "0",
+          "change": "296375.314615"
+        },
+        {
+          "tx": "ethereum:0x49cf68df17bb441271d6951fff3f0a46284e9a486e42640bb27d7944d61e6e15",
+          "day": "2026-09-24",
+          "block": 26043622,
+          "before": "296375.314615",
+          "change": "-296375.314615"
+        }
+      ]
+    },
+    {
+      "account": "cctp:6:814701:0x1682ae6375c4e4a97e4b583bc394c861a46d8962",
+      "bucket": "other",
+      "cost": "26.5311422511026093196371130260993823612055707712759973645279",
+      "average_principal": "8626.4418281760492911517415811980614952961727160237205941389",
+      "closing_sky_principal": "258793.2548452814787345522474",
+      "movements": [
+        {
+          "tx": "base:0xfef30489d1a24b6b57de73dce26ee4daa0d18f8a665cf34b0b1f2b00374aacfd",
+          "day": "2026-09-30",
+          "block": 52011341,
+          "before": "0",
+          "change": "287594.795012"
+        }
+      ]
+    },
+    {
+      "account": "cctp:6:811722:0x1682ae6375c4e4a97e4b583bc394c861a46d8962",
+      "bucket": "other",
+      "cost": "26.2148114628721137735429279577307515968828558550875691993347",
+      "average_principal": "8587.64092102717003782368525645957704031853610139004678384683",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "base:0xe1e04d0e619aa158237b82eabdf578638f18c910a4bc8ab133ea36b02b305bf1",
+          "day": "2026-09-08",
+          "block": 51060869,
+          "before": "0",
+          "change": "267777.54677"
+        },
+        {
+          "tx": "ethereum:0xa01348f9e135d99df728090a7f0ddda0848e266cac2ce6aa4c112506b3f63168",
+          "day": "2026-09-09",
+          "block": 25936138,
+          "before": "267777.54677",
+          "change": "-267777.54677"
+        }
+      ]
+    },
+    {
+      "account": "cctp:6:811724:0x1682ae6375c4e4a97e4b583bc394c861a46d8962",
+      "bucket": "other",
+      "cost": "24.0928376300178427446593218878421580250537514870725916613775",
+      "average_principal": "7892.50911181400896087210550870703605893969754278206208693997",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "base:0x7fdb2cda236351da1018e9d11e2308a830851fab0b7c75de82a1e1b91a75cb29",
+          "day": "2026-09-08",
+          "block": 51061091,
+          "before": "0",
+          "change": "246102.272827"
+        },
+        {
+          "tx": "ethereum:0xb213812b70a1f460364d75779c4e9ac2513c5109c7f98c22968e64747961a030",
+          "day": "2026-09-09",
+          "block": 25936171,
+          "before": "246102.272827",
+          "change": "-246102.272827"
+        }
+      ]
+    },
+    {
+      "account": "cctp:6:813663:0x1682ae6375c4e4a97e4b583bc394c861a46d8962",
+      "bucket": "other",
+      "cost": "22.1495170445329190254582430466011622844300505745358089461873",
+      "average_principal": "7201.78266350052702674031124308920242581922250712979231800857",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "base:0x76b158bd6440dd972dcaf13df4b3a44da4606ae03b5e1df385d3a7cc8ffcd604",
+          "day": "2026-09-22",
+          "block": 51665799,
+          "before": "0",
+          "change": "235664.611005"
+        },
+        {
+          "tx": "ethereum:0x6d9777ab24800d1068b38f7a2975a2a36728c2ce24b3bfc75c2069e1f405dbe5",
+          "day": "2026-09-23",
+          "block": 26036524,
+          "before": "235664.611005",
+          "change": "-235664.611005"
+        }
+      ]
+    },
+    {
+      "account": "cctp:0:500543:0xbd3fa81b58ba92a82136038b25adec7066af3155",
+      "bucket": "other",
+      "cost": "18.8168966619080029571123800559103645551034556207911813736466",
+      "average_principal": "6118.20112773333333333333333333333333333333333333333333333333",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "ethereum:0x228bea3005d8b66aeb45e592ba8d935bef40a1954dbdcbf4a762984cf8eb6efc",
+          "day": "2026-09-23",
+          "block": 26043607,
+          "before": "0",
+          "change": "183546.033832"
+        },
+        {
+          "tx": "base:0x2dce3fe0affcfcaaa0c4791101e123aa5a3d6bcdd7cf5c39d81893896924f1d7",
+          "day": "2026-09-24",
+          "block": 51709964,
+          "before": "183546.033832",
+          "change": "-183546.033832"
+        }
+      ]
+    },
+    {
+      "account": "cctp:6:814314:0x1682ae6375c4e4a97e4b583bc394c861a46d8962",
+      "bucket": "other",
+      "cost": "17.2973048954705265465519770070727445126829112515186252642034",
+      "average_principal": "5624.114976007114605884991492883534962706115664513899894197",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "base:0x62b1bf88a61290ceb471b7afdda0d2f14683b3c8a320aea1fe19b8f7ded43c36",
+          "day": "2026-09-27",
+          "block": 51881802,
+          "before": "0",
+          "change": "184451.515576"
+        },
+        {
+          "tx": "ethereum:0xe317e77b73991ab65b65e5dc69313822c418828e3a9c71c014417e0cdad1ab52",
+          "day": "2026-09-28",
+          "block": 26072318,
+          "before": "184451.515576",
+          "change": "-184451.515576"
+        }
+      ]
+    },
+    {
+      "account": "cctp:6:813661:0x1682ae6375c4e4a97e4b583bc394c861a46d8962",
+      "bucket": "other",
+      "cost": "15.9132627558302018311280103337913734106460705912217235195874",
+      "average_principal": "5174.101972708872325839593411196928184624524305819411208826",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "base:0xea032b664ada66a6ad9c38b31326e5dbd94282ed3f611bef958e9836b31c2069",
+          "day": "2026-09-22",
+          "block": 51665337,
+          "before": "0",
+          "change": "158648.110659"
+        },
+        {
+          "tx": "ethereum:0x6d9777ab24800d1068b38f7a2975a2a36728c2ce24b3bfc75c2069e1f405dbe5",
+          "day": "2026-09-23",
+          "block": 26036524,
+          "before": "158648.110659",
+          "change": "-158648.110659"
+        }
+      ]
+    },
+    {
+      "account": "cctp:6:814702:0x1682ae6375c4e4a97e4b583bc394c861a46d8962",
+      "bucket": "other",
+      "cost": "15.8612467333780143840195761630194152671195829718169548623053",
+      "average_principal": "5157.18927488493124733314158001694075454904106192444158645813",
+      "closing_sky_principal": "154715.6782465479374199942474",
+      "movements": [
+        {
+          "tx": "base:0x0835dbf2304a4b125b0883bcd014d6fc757737b64f89f7ed01b9f4146fb9626a",
+          "day": "2026-09-30",
+          "block": 52011591,
+          "before": "0",
+          "change": "154807.84413"
+        }
+      ]
+    },
+    {
+      "account": "cctp:0:500236:0xbd3fa81b58ba92a82136038b25adec7066af3155",
+      "bucket": "other",
+      "cost": "14.0813376949247273437289984820342203024176243106953063125634",
+      "average_principal": "4578.46252296666666666666666666666666666666666666666666666667",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "ethereum:0x660035d7c82863a1c48d0e7f9ea92971b902e28d7b905b2d95d1112d287ce2a0",
+          "day": "2026-09-22",
+          "block": 26036463,
+          "before": "0",
+          "change": "137353.875689"
+        },
+        {
+          "tx": "base:0x682792317c7b506f2ad55d8e43414d890474dbcfa670806d48fe201154ecabc2",
+          "day": "2026-09-23",
+          "block": 51666733,
+          "before": "137353.875689",
+          "change": "-137353.875689"
+        }
+      ]
+    },
+    {
+      "account": "cctp:6:812788:0x1682ae6375c4e4a97e4b583bc394c861a46d8962",
+      "bucket": "other",
+      "cost": "12.2003550721546980932083284437419506454800506455681475330104",
+      "average_principal": "3998.58471024454644181605989616543488961635946898435225589143",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "base:0xffd72d0aeb1ac2834a183218be3cdc32281faa8183b3cd8f98c8a95b3e8d1bb2",
+          "day": "2026-09-16",
+          "block": 51406533,
+          "before": "0",
+          "change": "128599.95056"
+        },
+        {
+          "tx": "ethereum:0xef48331c0989683ce677f6bc46c00879d1e9c5ca88f349265058d0befdf7dce9",
+          "day": "2026-09-17",
+          "block": 25993537,
+          "before": "128599.95056",
+          "change": "-128599.95056"
+        }
+      ]
+    },
+    {
+      "account": "cctp:6:812976:0x1682ae6375c4e4a97e4b583bc394c861a46d8962",
+      "bucket": "other",
+      "cost": "11.2887752785726361178075749770302820872331258999741567259928",
+      "average_principal": "3670.47759686681482486183695366139814920124328673930135200137",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "base:0xc610a0f19e3fbe769c2cdaa7068bfca1b208f95e895191db4fa29c2d441e8a99",
+          "day": "2026-09-17",
+          "block": 51449716,
+          "before": "0",
+          "change": "115802.90282"
+        },
+        {
+          "tx": "ethereum:0xb48728cbe92516f6bd2a741a5c67ceea82a18532567bad39a972a992b8c8d105",
+          "day": "2026-09-18",
+          "block": 26000697,
+          "before": "115802.90282",
+          "change": "-115802.90282"
+        }
+      ]
+    },
+    {
+      "account": "cctp:6:813813:0x1682ae6375c4e4a97e4b583bc394c861a46d8962",
+      "bucket": "other",
+      "cost": "10.8350411769246428761383046304705429799894756079374885994531",
+      "average_principal": "3522.94867420373327457090399747238023221232515035101377408357",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "base:0x8fd8efa09c0a846922d013bacb03f2793cca2ab4d2b34445914d26e8995b6755",
+          "day": "2026-09-23",
+          "block": 51709104,
+          "before": "0",
+          "change": "115669.206695"
+        },
+        {
+          "tx": "ethereum:0x520c85b033d12e896b0380c1499fba42a59073e14867930fec7c41a69f59f8f2",
+          "day": "2026-09-24",
+          "block": 26043686,
+          "before": "115669.206695",
+          "change": "-115669.206695"
+        }
+      ]
+    },
+    {
+      "account": "cctp:0:500234:0xbd3fa81b58ba92a82136038b25adec7066af3155",
+      "bucket": "other",
+      "cost": "10.0329107353873487603279010361617904782358581573685460048666",
+      "average_principal": "3262.14077053184866685163486586053355029902677687115848843072",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "ethereum:0x76e1cf6039f48a462fde5c3ee42dc3626c8c1df514bc4be3fe2ab45a1ddecc3d",
+          "day": "2026-09-22",
+          "block": 26036360,
+          "before": "0",
+          "change": "113952.651022"
+        },
+        {
+          "tx": "base:0x5c3e00dd8b8e7b07fc456ecbda842d5c7dc6daa2f9eb3844084a0f0b2f5b8379",
+          "day": "2026-09-23",
+          "block": 51666153,
+          "before": "113952.651022",
+          "change": "-113952.651022"
+        }
+      ]
+    },
+    {
+      "account": "cctp:6:813662:0x1682ae6375c4e4a97e4b583bc394c861a46d8962",
+      "bucket": "other",
+      "cost": "9.98355925985434817945179029645256883647160380454378605579696",
+      "average_principal": "3246.09443416265633562148768204065326215435804756815510503475",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "base:0x40b6aca29eec2d1794d2022e0b09e82cb868ec2ea53494638f99102126f2dc2a",
+          "day": "2026-09-22",
+          "block": 51665434,
+          "before": "0",
+          "change": "100580.274743"
+        },
+        {
+          "tx": "ethereum:0x6d9777ab24800d1068b38f7a2975a2a36728c2ce24b3bfc75c2069e1f405dbe5",
+          "day": "2026-09-23",
+          "block": 26036524,
+          "before": "100580.274743",
+          "change": "-100580.274743"
+        }
+      ]
+    },
+    {
+      "account": "cctp:0:499899:0xbd3fa81b58ba92a82136038b25adec7066af3155",
+      "bucket": "other",
+      "cost": "8.13662836617819262761615552707179446644877403742923031833801",
+      "average_principal": "2645.57592786666666666666666666666666666666666666666666666667",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "ethereum:0x1828792f4f746088661a440245756bc64b2959566954be2ed607982d0eea512b",
+          "day": "2026-09-21",
+          "block": 26029306,
+          "before": "0",
+          "change": "79367.277836"
+        },
+        {
+          "tx": "base:0xc6ad58403774d49cde20ac090d548fea91586f6cdd5cac4b355f9eecda0f46f6",
+          "day": "2026-09-22",
+          "block": 51623578,
+          "before": "79367.277836",
+          "change": "-79367.277836"
+        }
+      ]
+    },
+    {
+      "account": "cctp:0:502084:0xbd3fa81b58ba92a82136038b25adec7066af3155",
+      "bucket": "other",
+      "cost": "8.12025626258012906872172938547965750911125398992855807127208",
+      "average_principal": "2640.25263654521225130464650844782636839883280377098726336578",
+      "closing_sky_principal": "79207.57909635636753913939525",
+      "movements": [
+        {
+          "tx": "ethereum:0x308d4fb5444660c6ca3b74e8c65bad99d892978f5f1017c556cd764b68a5edf9",
+          "day": "2026-09-30",
+          "block": 26093631,
+          "before": "0",
+          "change": "86360.014496"
+        }
+      ]
+    },
+    {
+      "account": "cctp:6:812789:0x1682ae6375c4e4a97e4b583bc394c861a46d8962",
+      "bucket": "other",
+      "cost": "7.41052281740806030279174852590852466076067050943982766175333",
+      "average_principal": "2428.74925011284834404377777910891592642040349882875344483833",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "base:0x79b5e8d6a163893179ff47386578ceb145077e304b295bffadec5d371544399e",
+          "day": "2026-09-16",
+          "block": 51406630,
+          "before": "0",
+          "change": "78227.613929"
+        },
+        {
+          "tx": "ethereum:0x595c6f06018298761996313b8c350b83079900e36714fbf99fb58b47b0fd68c9",
+          "day": "2026-09-17",
+          "block": 25993569,
+          "before": "78227.613929",
+          "change": "-78227.613929"
+        }
+      ]
+    },
+    {
+      "account": "cctp:6:813489:0x1682ae6375c4e4a97e4b583bc394c861a46d8962",
+      "bucket": "other",
+      "cost": "7.18379004641197172362697861718498176488013022865429073183000",
+      "average_principal": "2335.76626119923493659646624965653727608023013181842708250966",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "base:0x35d7e8f4dba56af92af5dbdafa7882110b1dc270005fc21bfeb232435c6b2d93",
+          "day": "2026-09-21",
+          "block": 51622799,
+          "before": "0",
+          "change": "75151.663758"
+        },
+        {
+          "tx": "ethereum:0x16e65f446f3d1b9e4b662b235083e0a0b9918b20db0607ed9a5563a2eb56d7cd",
+          "day": "2026-09-22",
+          "block": 26029404,
+          "before": "75151.663758",
+          "change": "-75151.663758"
+        }
+      ]
+    },
+    {
+      "account": "cctp:0:500541:0xbd3fa81b58ba92a82136038b25adec7066af3155",
+      "bucket": "other",
+      "cost": "6.21782684164190910143090431669037028300484466176904912079106",
+      "average_principal": "2021.68911686666666666666666666666666666666666666666666666333",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "ethereum:0xdf36768bd885c06add49bd9a01201fa84f579da3369b5989ac565f122b9de4ee",
+          "day": "2026-09-23",
+          "block": 26043543,
+          "before": "0",
+          "change": "60650.673506"
+        },
+        {
+          "tx": "base:0xb994cc7ac6e2bf5ab635b42e1d074b81ea02579387452198bad799e9b9d7f577",
+          "day": "2026-09-24",
+          "block": 51709578,
+          "before": "60650.673506",
+          "change": "-60650.673506"
+        }
+      ]
+    },
+    {
+      "account": "cctp:6:814700:0x1682ae6375c4e4a97e4b583bc394c861a46d8962",
+      "bucket": "other",
+      "cost": "4.14676316069739086479372939042737299347724621818555903690671",
+      "average_principal": "1348.29517864022044101573341434380284606678590301639050055042",
+      "closing_sky_principal": "40448.85535920661323047200243",
+      "movements": [
+        {
+          "tx": "base:0x6f33c969f73ad3225eafeee30d2d0943675c453913ca4a709e91c0bd8794a71e",
+          "day": "2026-09-30",
+          "block": 52011273,
+          "before": "0",
+          "change": "44897.108491"
+        }
+      ]
+    },
+    {
+      "account": "cctp:0:495833:0xbd3fa81b58ba92a82136038b25adec7066af3155",
+      "bucket": "other",
+      "cost": "3.12604053849797443158976275859926242030465930993977470031783",
+      "average_principal": "1022.60558854772429496640607259277329386027058157021740574965",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "ethereum:0xb20984ae03720eb08379fa64efddf33925e886098c750e27dfc3b30589745774",
+          "day": "2026-09-03",
+          "block": 25900153,
+          "before": "0",
+          "change": "30679.326608"
+        },
+        {
+          "tx": "base:0x3404446e154916e23a5b032acaa39e57f6b2d920eb8a614737e7061560f7478f",
+          "day": "2026-09-04",
+          "block": 50845563,
+          "before": "30679.326608",
+          "change": "-30679.326608"
+        }
+      ]
+    },
+    {
+      "account": "cctp:0:501601:0xbd3fa81b58ba92a82136038b25adec7066af3155",
+      "bucket": "other",
+      "cost": "3.01200525994096172917634057771341722731082532048859246162031",
+      "average_principal": "979.335450962770442602762427749384432435411260783036043193327",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "ethereum:0x8de9982640e23b6b6a44c5bc09e2727f800e9731c6d082a410b01baf5b7e4fde",
+          "day": "2026-09-28",
+          "block": 26079297,
+          "before": "0",
+          "change": "393520.814321"
+        },
+        {
+          "tx": "base:0x4cfdbd55badf162d2a2bf103fc69ee2523b867465cd2fd03b1a8064968de7102",
+          "day": "2026-09-29",
+          "block": 51925351,
+          "before": "393520.814321",
+          "change": "-393520.814321"
+        }
+      ]
+    },
+    {
+      "account": "cctp:3:915409:0x19330d10d9cc8751218eaf51e8885d058642e08a",
+      "bucket": "other",
+      "cost": "2.88673979698715502525966748288195692101946728663199460068723",
+      "average_principal": "938.60613674692106819387926873360686627556026791851836884228",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "arbitrum:0xbc756ef9debd786d04887332918a8ea69b9e2408ddadc4667774cb65ffd09c23",
+          "day": "2026-09-24",
+          "block": 508584370,
+          "before": "0",
+          "change": "36939.878834"
+        },
+        {
+          "tx": "ethereum:0x0c47f2f13d5ed26b0c1a22f7a3330f5b8759293e1aae3b76dbe9fec749e40353",
+          "day": "2026-09-25",
+          "block": 26050993,
+          "before": "36939.878834",
+          "change": "-36939.878834"
+        }
+      ]
+    },
+    {
+      "account": "cctp:0:498486:0xbd3fa81b58ba92a82136038b25adec7066af3155",
+      "bucket": "other",
+      "cost": "2.55753304513148196807660587197577631782654049939329470771282",
+      "average_principal": "838.214336363721954441685331551785199512928471316738801826917",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "ethereum:0x8075f822e2529ae5b5fb52664262a721ae0f3a7c09b884052355daef50f19f2c",
+          "day": "2026-09-16",
+          "block": 25993382,
+          "before": "0",
+          "change": "32587.73506"
+        },
+        {
+          "tx": "base:0x871ccb3d672800524946cda4e6cfdb9ba475ca67699a0c5ab05dc150c3b113cf",
+          "day": "2026-09-17",
+          "block": 51407007,
+          "before": "32587.73506",
+          "change": "-32587.73506"
+        }
+      ]
+    },
+    {
+      "account": "cctp:0:499895:0xbd3fa81b58ba92a82136038b25adec7066af3155",
+      "bucket": "other",
+      "cost": "2.42035625767321911992817502981194534291815549827037716623683",
+      "average_principal": "786.964325269945404472407720645857761531260463985586184846097",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "ethereum:0x151a1038cc6f47c5ee9854958a5d27dd67267fdd0a8850e8103c6a12e4c7254d",
+          "day": "2026-09-21",
+          "block": 26029223,
+          "before": "0",
+          "change": "23609.868498"
+        },
+        {
+          "tx": "arbitrum:0x79bfada0c3ae7fcf2acffd567f5c476bd50670a415f2aa38a8fea18b7d0ee342",
+          "day": "2026-09-22",
+          "block": 507607240,
+          "before": "23609.868498",
+          "change": "-23609.868498"
+        }
+      ]
+    },
+    {
+      "account": "cctp:0:498788:0xbd3fa81b58ba92a82136038b25adec7066af3155",
+      "bucket": "other",
+      "cost": "2.38852413277778813560832684648642701225908190151118016087491",
+      "average_principal": "776.614300718467302970060525520718987627139245203771139571723",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "ethereum:0x1f3008e1667fdfa4f271eb884d38a08d2c5c616a7619b4ca0c492c19246e8d65",
+          "day": "2026-09-17",
+          "block": 26000608,
+          "before": "0",
+          "change": "23313.110073"
+        },
+        {
+          "tx": "base:0x843e9ff6c996098bb75cd1a2a466e58b5442dc7251c8d8f3a8a1463766d218ec",
+          "day": "2026-09-18",
+          "block": 51450499,
+          "before": "23313.110073",
+          "change": "-23313.110073"
+        }
+      ]
+    },
+    {
+      "account": "cctp:3:913625:0x19330d10d9cc8751218eaf51e8885d058642e08a",
+      "bucket": "other",
+      "cost": "2.18089046505830082153277467365952511062391465021419852176703",
+      "average_principal": "715.03526421661727289701679439537850292937287220452637399745",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "arbitrum:0x34ae3916dd7f5086d0aed56e0110c150972c839249c573e6009c77b975236428",
+          "day": "2026-09-13",
+          "block": 504896988,
+          "before": "0",
+          "change": "29585.471008"
+        },
+        {
+          "tx": "ethereum:0x98a95fdabb8dc6e5afb3d4bdbd8751cc7f37e5ba3f6593d371d97dd8f3e1e55f",
+          "day": "2026-09-14",
+          "block": 25972033,
+          "before": "29585.471008",
+          "change": "-29585.471008"
+        }
+      ]
+    },
+    {
+      "account": "cctp:0:498487:0xbd3fa81b58ba92a82136038b25adec7066af3155",
+      "bucket": "other",
+      "cost": "1.90287475044229923977384391233605549916226389255341760545304",
+      "average_principal": "623.654462319283765408179821276335837504004260211558893109167",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "ethereum:0x45d545998b00525a8893128768eb97740dbdaa9148b042dcc723f7b6f089d16b",
+          "day": "2026-09-16",
+          "block": 25993459,
+          "before": "0",
+          "change": "19863.094425"
+        },
+        {
+          "tx": "base:0x46238746b7e5eb98dda1ecdfb8180bf255b2dd7e612d712c9193a3b47c4a18d5",
+          "day": "2026-09-17",
+          "block": 51407482,
+          "before": "19863.094425",
+          "change": "-19863.094425"
+        }
+      ]
+    },
+    {
+      "account": "cctp:0:495834:0xbd3fa81b58ba92a82136038b25adec7066af3155",
+      "bucket": "other",
+      "cost": "1.87113603757985593293086293914853231678526842524570965068770",
+      "average_principal": "612.095123335024908463963811994438146874159737375685095082067",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "ethereum:0x1452bc4fa3f8227fd3aa224b4d58e24034c709c49647fdae446d24fd40f12e80",
+          "day": "2026-09-03",
+          "block": 25900160,
+          "before": "0",
+          "change": "18363.547407"
+        },
+        {
+          "tx": "base:0x29e82920042541480c39ecfbb4bbce8292a62f6cf4c1dd2110d8c463b1f833c0",
+          "day": "2026-09-04",
+          "block": 50845571,
+          "before": "18363.547407",
+          "change": "-18363.547407"
+        }
+      ]
+    },
+    {
+      "account": "cctp:0:500542:0xbd3fa81b58ba92a82136038b25adec7066af3155",
+      "bucket": "other",
+      "cost": "1.55535524043852097968454713151454754085078412705931316747975",
+      "average_principal": "505.7144308679008414959871488702490367820439886666688201208",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "ethereum:0xfcb5b76ff33d5fd3666809687a318e93c36e8410d84ea3611662a7bd42381e28",
+          "day": "2026-09-23",
+          "block": 26043558,
+          "before": "0",
+          "change": "15171.499123"
+        },
+        {
+          "tx": "base:0xcd113d25bd44371c58f5c155a3c91d61db0d6ea074abf52c1caa510d12ae6bf2",
+          "day": "2026-09-24",
+          "block": 51709647,
+          "before": "15171.499123",
+          "change": "-15171.499123"
+        }
+      ]
+    },
+    {
+      "account": "cctp:6:813814:0x1682ae6375c4e4a97e4b583bc394c861a46d8962",
+      "bucket": "other",
+      "cost": "1.49882938681735318903000627870352861440548914529442060665009",
+      "average_principal": "487.335388479300571993954826782562698139483771993644810503677",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "base:0xa1706b2db21c91034cf2af9e7786dc6c152684a204467a581cf82d7763a5b890",
+          "day": "2026-09-23",
+          "block": 51709172,
+          "before": "0",
+          "change": "16002.611841"
+        },
+        {
+          "tx": "ethereum:0x520c85b033d12e896b0380c1499fba42a59073e14867930fec7c41a69f59f8f2",
+          "day": "2026-09-24",
+          "block": 26043686,
+          "before": "16002.611841",
+          "change": "-16002.611841"
+        }
+      ]
+    },
+    {
+      "account": "cctp:0:498782:0xbd3fa81b58ba92a82136038b25adec7066af3155",
+      "bucket": "other",
+      "cost": "1.37642441774091231286550442522603356030938017679253016901878",
+      "average_principal": "447.536146696797883228268268098604954426516893094152706981743",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "ethereum:0xd194c431942a034bbde625770bc57e94607db7d554ea131dc3c2bc57a925324e",
+          "day": "2026-09-17",
+          "block": 26000552,
+          "before": "0",
+          "change": "13426.149098"
+        },
+        {
+          "tx": "base:0x8dceea55f22147d395fc6859f90a1365895045900b12eff03b1a666147d3d3a3",
+          "day": "2026-09-18",
+          "block": 51450150,
+          "before": "13426.149098",
+          "change": "-13426.149098"
+        }
+      ]
+    },
+    {
+      "account": "cctp:6:811723:0x1682ae6375c4e4a97e4b583bc394c861a46d8962",
+      "bucket": "other",
+      "cost": "1.19023541855959387309314450902574487315488425912911599330727",
+      "average_principal": "389.906080406287054758542568239816846899072938510025750126167",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "base:0x27711afbb7d65a24b5e15611dd85a98344ea33b3b25ed51a37e5763e0daba27c",
+          "day": "2026-09-08",
+          "block": 51060953,
+          "before": "0",
+          "change": "12157.949754"
+        },
+        {
+          "tx": "ethereum:0xa01348f9e135d99df728090a7f0ddda0848e266cac2ce6aa4c112506b3f63168",
+          "day": "2026-09-09",
+          "block": 25936138,
+          "before": "12157.949754",
+          "change": "-12157.949754"
+        }
+      ]
+    },
+    {
+      "account": "cctp:0:495835:0xbd3fa81b58ba92a82136038b25adec7066af3155",
+      "bucket": "other",
+      "cost": "1.03042064347352479853059610685284648768463968094171452297180",
+      "average_principal": "337.076213694037922160371764493276886777934597610741648606427",
+      "closing_sky_principal": "0",
+      "movements": [
+        {
+          "tx": "ethereum:0x0035fbf7b963837eec88744ff8cd49dad38a4ba242d0e4ce53f318a7e3321621",
+          "day": "2026-09-03",
+          "block": 25900165,
+          "before": "0",
+          "change": "10185.871261"
+        },
+        {
+          "tx": "optimism:0x3e5362ef4f1861e8655aa070fb73b6d1c288bdc3cb24409b4073bc3f3d84618e",
+          "day": "2026-09-04",
+          "block": 156440862,
+          "before": "10185.871261",
+          "change": "-10185.871261"
+        }
+      ]
+    }
+  ],
+  "unpriced_selected": {
+    "S_B2C2_ENTRY": "3.20624317445762719628416818673194775490324401185141333591240",
+    "S_BASE_JUNE_NATIVE_PENDING_1": "20.7191169874868658230452444226854668025024395680750373229691",
+    "S_BASE_JUNE_NATIVE_PENDING_2": "0E-60",
+    "S_BASE_NATIVE_PENDING_1": "0E-55",
+    "S_BASE_NATIVE_PENDING_2": "0E-55",
+    "S_BASE_SEED_PENDING_22574629_5875eee1": "0.0000",
+    "S_BASE_SEED_PENDING_22574629_820c137f": "0.0000",
+    "S_BASE_SEED_PENDING_23094080_5875eee1": "0.0000",
+    "S_BASE_SEED_PENDING_24993830_820c137f": "0.0000",
+    "S_BINANCE_OTC": "4.68485538538466696077304212960857537917380876910250033311563",
+    "S_NATIVE_SEED_PENDING_1": "0.0000",
+    "S_NATIVE_SEED_PENDING_2": "0.0000",
+    "S_NATIVE_SEED_PENDING_3": "0.0000",
+    "S_NATIVE_SEED_PENDING_4": "0.0000",
+    "S_OPTIMISM_NATIVE_PENDING_1": "0E-56",
+    "S_OPTIMISM_NATIVE_PENDING_2": "0E-55",
+    "S_OPTIMISM_NATIVE_PENDING_JUNE_1": "20.4795154365469640922893729997335312176980674886579867318725",
+    "S_OPTIMISM_NATIVE_PENDING_JUNE_2": "0E-60",
+    "S_PAXOS_PYUSD_USDC": "0.0253713708481448490579075575407009480102092805920223017959718",
+    "S_SPELL_SEED_PENDING_ARBITRUM_309427868": "0.0000",
+    "S_SPELL_SEED_PENDING_ARBITRUM_309427869": "0.0000",
+    "S_SPELL_SEED_PENDING_ARBITRUM_423020159": "0.0000",
+    "S_SPELL_SEED_PENDING_BASE_26808230": "0.0000",
+    "S_SPELL_SEED_PENDING_OPTIMISM_146616304": "0.0000",
+    "S_UNICHAIN_NATIVE_PENDING_1": "0E-56",
+    "S_UNICHAIN_NATIVE_PENDING_2": "0E-56",
+    "S_UNICHAIN_NATIVE_PENDING_JUNE_1": "20.3408500327391989586492742800754836187391748472373145760310",
+    "S_UNICHAIN_NATIVE_PENDING_JUNE_2": "0E-60"
+  }
+}
