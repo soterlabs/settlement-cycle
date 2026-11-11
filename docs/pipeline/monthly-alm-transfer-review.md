@@ -59,3 +59,13 @@ No September Spark passing review is supplied in this PR: the focused RLUSD
 investigation alone does not establish all-token/all-chain coverage. The PR
 changes configuration for future calculations; it neither regenerates published
 months nor publishes corrected API or settlement amounts.
+
+## Daily independent asset controls
+
+Canonical settlement writes also require the [daily asset control packet](settlement-asset-controls.md).
+It binds the reviewed inventory and source artifacts to independent daily
+holdings, all allocator ilks, the seven CoF deductions, bridge claims and the
+asset/debt roll-forward. The writer rejects missing or failed evidence before
+writing artifacts, including when overwrite was explicitly requested. The
+native-USDS capture tool does not by itself establish complete token coverage
+or issue a passing review.
