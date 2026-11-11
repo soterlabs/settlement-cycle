@@ -168,6 +168,12 @@ def main():
             )
         ],
     ]
+    protected = {path.resolve() for path in paths}
+    if (
+        a.output.resolve() in protected
+        or a.output.with_suffix(".audit.json").resolve() in protected
+    ):
+        raise ValueError("Output cannot overwrite source evidence")
     logs, calls, positions = [read(path) for path in paths[1:]]
     controls = analyze(logs, calls, positions)
     patches, balances = receipt_movements(logs)
