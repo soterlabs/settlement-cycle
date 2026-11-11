@@ -227,9 +227,9 @@ def test_offline_replay_replaces_only_spark_sky_item_and_preserves_other_agents(
 
     result = replay()
     assert result == json.loads((FOLDER / "results.json").read_text())
-    assert result["historical_replacement_sky_adjustment"] == "557546.90"
-    assert result["incremental_sky_adjustment_vs_pr277"] == "813416.38"
-    assert len(result["daily"]) == 132
+    assert result["historical_replacement_sky_adjustment"] == "536094.04"
+    assert result["incremental_sky_adjustment_vs_pr277"] == "791963.52"
+    assert len(result["daily"]) == 134
     checkpoint = json.loads((FOLDER / "pr277-checkpoint.json").read_text())
     combined = result["combined_adjustment_totals"]
     for prime in ["grove", "osero", "obex"]:
@@ -242,3 +242,15 @@ def test_offline_replay_replaces_only_spark_sky_item_and_preserves_other_agents(
     assert abs(D(july["2026-07-06"]["deduction_change"]) - 30000) < D("0.000001")
     assert D(july["2026-07-13"]["signed_credit"]) < 0
     assert D(result["october_ordinary_signed_credit"]).quantize(D(".01")) == D("75063.88")
+
+
+def test_idle_before_first_bridge_claim_is_credited():
+    from scripts.reconcile_usds_bridge_baseline_2026 import replay
+
+    daily = {r["date"]: r for r in replay()["daily"]}
+    assert "2026-06-19" not in daily
+    for day in ("2026-06-20", "2026-06-21"):
+        row = daily[day]
+        assert D(row["eligible_bridge_usds"]) == 0
+        assert D(row["deduction_change"]) == D("101905703.611569069692530370")
+        assert D(row["signed_credit"]).quantize(D(".01")) == D("10726.43")

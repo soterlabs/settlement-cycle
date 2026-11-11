@@ -34,6 +34,190 @@
     }
   },
   "days": {
+    "2026-06-20": {
+      "ethereum": {
+        "block": 25362242,
+        "raw_balance": "0",
+        "headers": [
+          {
+            "number": "0x182ff42",
+            "timestamp": "0x6a37297f",
+            "hash": "0x632ec429fa4cf6e9868a166e453629def0908afa5a22d2094119af4a5896bd49",
+            "parentHash": "0x7206329dac60c4d88fd8e457c6fdc666f66dee7f19f0dadfeefd9e2ccf61eb98"
+          },
+          {
+            "number": "0x182ff43",
+            "timestamp": "0x6a37298b",
+            "hash": "0xcd6c4b25d115f5ea920904e8eaedf5749b759786fb70e28ea52ef04ff23c25a8",
+            "parentHash": "0x632ec429fa4cf6e9868a166e453629def0908afa5a22d2094119af4a5896bd49"
+          }
+        ]
+      },
+      "base": {
+        "block": 47605326,
+        "raw_balance": "146560618210418117475041461",
+        "headers": [
+          {
+            "number": "0x2d6664e",
+            "timestamp": "0x6a37297f",
+            "hash": "0x9700b9d2829059edb12d86cdce0cecb7419cabb2b2bc584cc1b6371ddc3cf3a1",
+            "parentHash": "0xd470975e1dff1c27e905605b529b8b6ca69e2d3056bf88432f94dc2e5025094e"
+          },
+          {
+            "number": "0x2d6664f",
+            "timestamp": "0x6a372981",
+            "hash": "0xb86f0be18146e23d26ee353d3a503dc3bef2a3976114140db3d3eac3b7c779be",
+            "parentHash": "0x9700b9d2829059edb12d86cdce0cecb7419cabb2b2bc584cc1b6371ddc3cf3a1"
+          }
+        ]
+      },
+      "arbitrum": {
+        "block": 475631625,
+        "raw_balance": "90000000000000000000000000",
+        "headers": [
+          {
+            "number": "0x1c599009",
+            "timestamp": "0x6a37297f",
+            "hash": "0x369ffe6af9ba22f9902dcf35730f5cce5add54c0464d9ce3ceebb1889e38519d",
+            "parentHash": "0xcd50cabd3c7862fb4e9c50471e3dc1cd2da56892df51d631959620f53774b7be"
+          },
+          {
+            "number": "0x1c59900a",
+            "timestamp": "0x6a372980",
+            "hash": "0xe48e6d96806091480a9c2c735417e9f17d2d8628b1321864c9db6da4ea877bc1",
+            "parentHash": "0x369ffe6af9ba22f9902dcf35730f5cce5add54c0464d9ce3ceebb1889e38519d"
+          }
+        ]
+      },
+      "optimism": {
+        "block": 153200611,
+        "raw_balance": "100314256586332342515511286",
+        "headers": [
+          {
+            "number": "0x921a7e3",
+            "timestamp": "0x6a37297f",
+            "hash": "0xef410e87db805d24d22cd947ab5fc03c45dcc99c398f5a05e9e99b1f9d0304c1",
+            "parentHash": "0x9bb9b1cf9ce2414b7540d1f7f6e12d38041f43476e8954a40e3ff3a534fc80f9"
+          },
+          {
+            "number": "0x921a7e4",
+            "timestamp": "0x6a372981",
+            "hash": "0x8ff18022224a1c77e6ffd6357c8d92b368293096cc0b153d52092d4d38383f67",
+            "parentHash": "0xef410e87db805d24d22cd947ab5fc03c45dcc99c398f5a05e9e99b1f9d0304c1"
+          }
+        ]
+      },
+      "unichain": {
+        "block": 51251640,
+        "raw_balance": "100000828814818609701977623",
+        "headers": [
+          {
+            "number": "0x30e09b8",
+            "timestamp": "0x6a37297f",
+            "hash": "0xe3e2f3ce4867dabd3d4b6afe8bccdfab2d8d488928564dd964f251873e66780e",
+            "parentHash": "0x3516ab8514bc6914ff87e5e270c26eaf55c934879e161d678ebeebede2f7c1f3"
+          },
+          {
+            "number": "0x30e09b9",
+            "timestamp": "0x6a372980",
+            "hash": "0x857011112f20c021ca62a14f1a4c2a33bbebb3fb9c6ed5436b91515c5778997f",
+            "parentHash": "0xe3e2f3ce4867dabd3d4b6afe8bccdfab2d8d488928564dd964f251873e66780e"
+          }
+        ]
+      }
+    },
+    "2026-06-21": {
+      "ethereum": {
+        "block": 25369413,
+        "raw_balance": "0",
+        "headers": [
+          {
+            "number": "0x1831b45",
+            "timestamp": "0x6a387aff",
+            "hash": "0x2a051467e479f951738e65dd832917d13f8cd9f80751217d335030cb83e037a5",
+            "parentHash": "0xefe29ecb69acdf592f1d0ce1322537128ffeffa56574d13a0ef9a25d955bdf94"
+          },
+          {
+            "number": "0x1831b46",
+            "timestamp": "0x6a387b0b",
+            "hash": "0xc8dee100024b4dffed465946f702232175bdf3c7b50e6ef04f7c7b6070cf158c",
+            "parentHash": "0x2a051467e479f951738e65dd832917d13f8cd9f80751217d335030cb83e037a5"
+          }
+        ]
+      },
+      "base": {
+        "block": 47648526,
+        "raw_balance": "146560618210418117475041461",
+        "headers": [
+          {
+            "number": "0x2d70f0e",
+            "timestamp": "0x6a387aff",
+            "hash": "0x7bea47ab68ed2c74e9b2d1bffef928469bca827e6b98f735ba3e9f5a2e6bb855",
+            "parentHash": "0xa6939cc8cacfbe217b106441a106cd491246af105e82b373e413cd3e27edb761"
+          },
+          {
+            "number": "0x2d70f0f",
+            "timestamp": "0x6a387b01",
+            "hash": "0x466b6795112712f38a3abe9c920338ace8b6e7163a0d05f6981dc03dc7155ebc",
+            "parentHash": "0x7bea47ab68ed2c74e9b2d1bffef928469bca827e6b98f735ba3e9f5a2e6bb855"
+          }
+        ]
+      },
+      "arbitrum": {
+        "block": 475976012,
+        "raw_balance": "90000000000000000000000000",
+        "headers": [
+          {
+            "number": "0x1c5ed14c",
+            "timestamp": "0x6a387aff",
+            "hash": "0xd53119b8adccf4cb78f3028286b5986c297885227401c426fbb66596aab756bc",
+            "parentHash": "0xfd7dcb216cef4474bca78dc3241d4dc3c4bacc9b8081ff9ab271471d8456b30a"
+          },
+          {
+            "number": "0x1c5ed14d",
+            "timestamp": "0x6a387b00",
+            "hash": "0x863775edbe97ad160039293df3ca879a33c2b3dd6a3e747d77cb8ee2ac5cbf2f",
+            "parentHash": "0xd53119b8adccf4cb78f3028286b5986c297885227401c426fbb66596aab756bc"
+          }
+        ]
+      },
+      "optimism": {
+        "block": 153243811,
+        "raw_balance": "100314256586332342515511286",
+        "headers": [
+          {
+            "number": "0x92250a3",
+            "timestamp": "0x6a387aff",
+            "hash": "0x7906d38b202eec5c8570c33816157637147d53c840f0fd5c60a001f92f05a527",
+            "parentHash": "0xfebde35cf43ba14575f3482edadb1d97e41741da3b4ff2568d0a4b99f16e851f"
+          },
+          {
+            "number": "0x92250a4",
+            "timestamp": "0x6a387b01",
+            "hash": "0xc47f127d37b16b613e245562335ef3227fd43abda1fa85e28982cc2d8b85e994",
+            "parentHash": "0x7906d38b202eec5c8570c33816157637147d53c840f0fd5c60a001f92f05a527"
+          }
+        ]
+      },
+      "unichain": {
+        "block": 51338040,
+        "raw_balance": "100000828814818609701977623",
+        "headers": [
+          {
+            "number": "0x30f5b38",
+            "timestamp": "0x6a387aff",
+            "hash": "0x3ea09bb4b6958f3a034a3ebf1048699317d229066761ddb515ee047b62c2ed80",
+            "parentHash": "0x417a696f470e60ee62564fe5923c5d8cfeab17bcca2ee00024c0535b41d68356"
+          },
+          {
+            "number": "0x30f5b39",
+            "timestamp": "0x6a387b00",
+            "hash": "0xf95583e22670abf7590f6e57ac28d74f3c56f81342eec41a8262a05d802a308d",
+            "parentHash": "0x3ea09bb4b6958f3a034a3ebf1048699317d229066761ddb515ee047b62c2ed80"
+          }
+        ]
+      }
+    },
     "2026-06-22": {
       "unichain": {
         "block": 51424440,

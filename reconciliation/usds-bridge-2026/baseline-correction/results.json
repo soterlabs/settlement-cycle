@@ -2,23 +2,23 @@
   "status": "calculated_unbooked_signed_component",
   "baseline_commit": "536f1492089ed82fbf6eaabb956f7a194b887d47",
   "pr277_commit": "ec89f0bdb501d66365979470df0600e820f41a16",
-  "scope": "Replace wallet idle plus bridge on bridge-active closes only; all other frozen daily inputs/rates retained. No payment executed.",
+  "scope": "Replace wallet idle plus bridge from June 20 through October 31; all other frozen daily inputs/rates retained. No payment executed.",
   "monthly_signed_credit": {
-    "2026-06": "85820.69066786856150031332817",
+    "2026-06": "107273.5540273737177847717821",
     "2026-07": "-643563.1570090634605780648514",
     "2026-08": "103.4227053744573767016593757",
     "2026-09": "92.13945203655466312769444731",
     "2026-10": "75063.87790153216656821798753"
   },
-  "historical_signed_credit": "-557546.9041837838870379221694",
-  "historical_replacement_sky_adjustment": "557546.90",
+  "historical_signed_credit": "-536094.0408242787307534637155",
+  "historical_replacement_sky_adjustment": "536094.04",
   "pr277_superseded_sky_adjustment": "-255869.48",
-  "incremental_sky_adjustment_vs_pr277": "813416.38",
+  "incremental_sky_adjustment_vs_pr277": "791963.52",
   "combined_adjustment_totals": {
     "spark": {
       "dv_adj": "0",
       "sv_adj": "249141.52",
-      "sky_adj": "557546.90",
+      "sky_adj": "536094.04",
       "send_credit": "0"
     },
     "grove": {
@@ -52,6 +52,30 @@
     "limitation": "Calculated adjustment proposal against the frozen baseline; no new credit/debit/configuration/payment is booked. Prior payment treatment outside the recorded reconciliation sources is not certified."
   },
   "daily": [
+    {
+      "date": "2026-06-20",
+      "frozen_idle": "334970000",
+      "frozen_bridge": "0",
+      "verified_wallet_usds": "436875703.611569069692530370",
+      "eligible_bridge_usds": "0",
+      "corrected_idle_plus_bridge": "436875703.611569069692530370",
+      "deduction_change": "101905703.611569069692530370",
+      "original_charge": "299277.2046385594",
+      "corrected_charge": "288550.7729588068218577707731",
+      "signed_credit": "10726.431679752578142229226948682822104522465753424657534247"
+    },
+    {
+      "date": "2026-06-21",
+      "frozen_idle": "334970000",
+      "frozen_bridge": "0",
+      "verified_wallet_usds": "436875703.611569069692530370",
+      "eligible_bridge_usds": "0",
+      "corrected_idle_plus_bridge": "436875703.611569069692530370",
+      "deduction_change": "101905703.611569069692530370",
+      "original_charge": "298985.9788506528",
+      "corrected_charge": "288259.5471709002218577707731",
+      "signed_credit": "10726.431679752578142229226948682822104522465753424657534247"
+    },
     {
       "date": "2026-06-22",
       "frozen_idle": "334970000",
@@ -1641,7 +1665,7 @@
     "reconciliation/usds-bridge-2026/audit.json": "ae11eaa84ad285981c6cd60d542e97a216bc7eddfbeb01e8e98d235df9b66f55",
     "reconciliation/usds-bridge-2026/spark-october-retained-daily.json": "7a4d4f779c037324a2bf3029d6835a85f1b877484a61aed4b490fede4625206e",
     "tests/fixtures/usds_bridge/spark_2026_gateway_logs.json": "bf819fa3ced15c4533818ec3c00cf179438241abcf4646b10e720cfd48f390d0",
-    "reconciliation/usds-bridge-2026/baseline-correction/wallet-inputs.json": "3d86eca289b6b182ddc72c648138563844171e38dc69d6b33412590d2e5ca6ef",
+    "reconciliation/usds-bridge-2026/baseline-correction/wallet-inputs.json": "d321abe8c8da9f4eb255ed27ffc0116e8c91168fc693b9c0d59e4acb0ab74469",
     "reconciliation/usds-bridge-2026/baseline-correction/pr277-checkpoint.json": "d06c464ea1bfca2867466a0692c70cb6c75d52db0b5bcd31ec5e455a8045d9c8",
     "settlements/spark/2026-06/spark_settlement_june_2026.xlsx": "3dba0b345759cb478db387e0d37d748114d8e1ffbc6230c5f76f04d5d6bead67",
     "settlements/spark/2026-07/spark_settlement_july_2026.xlsx": "8a40e4b84ae139929043058e1e3fd6ebb3744bdc94b13b6b02183911bd19b64f",

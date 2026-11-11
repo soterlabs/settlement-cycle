@@ -9,17 +9,19 @@ PR #277 is neither modified nor merged into this branch.
 
 | Bridge-active earning dates | Credit to Spark (+) / additional cost (-) |
 |---|---:|
-| June 22–30 | +85,820.69 |
+| June 20–30 | +107,273.55 |
 | July | -643,563.16 |
 | August | +103.42 |
 | September | +92.14 |
-| **January–September component total** | **-557,546.90** |
+| **January–September component total** | **-536,094.04** |
 
-January–May and June 1–21 have no eligible bridge claim and are outside this
-component; no unrelated idle correction is asserted for those dates.
+January–May and June 1–19 are outside this component. June 20–21 are included
+because PSM3 withdrawals left 101,905,703.611569 USDS idle in L2 ALMs, even
+though bridge claims only start on June 22. These two days add 21,452.86 USDS
+of credit at the frozen rate convention.
 
 The old #277 item proposed `sky_adj: -255869.48`. The corrected replacement is
-**`sky_adj: +557546.90`**, an **+813,416.38** change relative to #277. Replace the
+**`sky_adj: +536094.04`**, an **+791,963.52** change relative to #277. Replace the
 old item once; never add the full new item on top of the old one.
 
 The June correction includes wallet idle omitted from the frozen deduction;
@@ -40,7 +42,7 @@ minting; negative ones give debt relief. Other #277 components are preserved.
 
 | Prime | Supply-side income adjustment | Sky/debt adjustment | Send-only refund |
 |---|---:|---:|---:|
-| Spark | +249,141.52 | **+557,546.90** | 0.00 |
+| Spark | +249,141.52 | **+536,094.04** | 0.00 |
 | Grove | +11,554.74 | -110,419.56 | 0.00 |
 | Osero | 0.00 | 0.00 | +5,514.00 |
 | Obex | -273,508.90 | 0.00 | 0.00 |
@@ -62,7 +64,7 @@ After the large deliveries on July 13, the raw wallet balance remains about
 deduction creates an undercharge. The 30,000 of small June claims remains
 pending through September; it is retained separately and counted once.
 
-For each bridge-active day the new calculation uses:
+For each scoped idle/bridge day the new calculation uses:
 
 `deduction change = verified wallet USDS + eligible transit - frozen wallet idle - frozen transit`
 
@@ -73,8 +75,8 @@ preserved. Unresolved rate conventions or incomplete evidence cannot be credits.
 
 ## Evidence, prior netting and limits
 
-- `wallet-inputs.json`: 660 archive balances across five chains and 132 daily
-  closes, June 22–October 31. Each has adjacent linked block headers certifying
+- `wallet-inputs.json`: 670 archive balances across five chains and 134 daily
+  closes, June 20–October 31. Each has adjacent linked block headers certifying
   the exact UTC boundary; chain IDs, owners, native token and units are checked.
 - `sources.json`: hashes for raw evidence, original report workbooks, gateway
   fixture, original October inputs, prime configuration and #277 checkpoint.

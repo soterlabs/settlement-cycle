@@ -197,8 +197,8 @@ def _replay(folder):
     months = defaultdict(D)
     for r in daily_exposure(period, transfers).to_dict("records"):
         amount, day = r["cum_balance"], str(r["block_date"])
-        if not amount:
-            continue  # Only bridge-active dates; do not introduce unrelated earlier idle true-ups.
+        if day < "2026-06-20":
+            continue  # June 20 PSM3 withdrawals created idle before the first bridge claim.
         month = day[:7]
         row = frozen_daily_row("spark", day, books, october)
         if row is None:
@@ -224,8 +224,8 @@ def _replay(folder):
                 "signed_credit": str(signed_credit),
             }
         )
-    if len(daily) != 132:
-        raise ValueError("Expected every June 22-October 31 bridge-active close")
+    if len(daily) != 134:
+        raise ValueError("Expected every June 20-October 31 idle/bridge close")
     historical_credit = sum((v for m, v in months.items() if m <= "2026-09"), D(0))
     replacement = -cents(historical_credit)
     delta = replacement - old_amount
@@ -235,7 +235,7 @@ def _replay(folder):
         "status": "calculated_unbooked_signed_component",
         "baseline_commit": BASELINE,
         "pr277_commit": PR277,
-        "scope": "Replace wallet idle plus bridge on bridge-active closes only; all other frozen daily inputs/rates retained. No payment executed.",
+        "scope": "Replace wallet idle plus bridge from June 20 through October 31; all other frozen daily inputs/rates retained. No payment executed.",
         "monthly_signed_credit": {m: str(v) for m, v in sorted(months.items())},
         "historical_signed_credit": str(historical_credit),
         "historical_replacement_sky_adjustment": str(replacement),

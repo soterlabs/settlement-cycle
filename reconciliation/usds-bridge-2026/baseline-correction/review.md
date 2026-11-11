@@ -47,3 +47,13 @@ non-Spark #277 totals remain unchanged after both review rounds.
 
 Both review rounds were performed in this task. PR #277 remains at `ec89f0b`;
 neither PR is merged. Repository CI is reported separately on the PR.
+
+## June 20–21 idle gap follow-up
+
+The bridge-active-only filter omitted idle created by PSM3 withdrawals before
+the first bridge claim. Extend the verified comparison to June 20–October 31,
+including zero-transit days. Ten additional archive wallet reads across five
+chains retain adjacent linked headers proving both UTC closes. The two days
+add 21,452.86 USDS credit; the replacement Sky adjustment is +536,094.04.
+The regression checks both zero-transit days and excludes June 19. October
+and other agents are unchanged.
