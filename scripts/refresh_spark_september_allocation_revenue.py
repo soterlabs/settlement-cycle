@@ -1,4 +1,4 @@
-"""Refresh three September allocation revenue rows; never settlement records."""
+"""Refresh September investment income and accrued incentives; never MSC records."""
 
 import argparse
 import copy
@@ -11,13 +11,15 @@ from pathlib import Path
 from prepare_spark_monthly_cost_publication import publish_reviewed
 
 from settle.compute.allocation_financing import annualized_yield
+from settle.revenue.allocation_incentives import apply_accruals
 from settle.revenue.allocations import indexed, period_return
 from settle.revenue.verification import digest
 from settle.store.db import connect
 
 ROOT = Path(__file__).resolve().parents[1]
 FOLDER = ROOT / "reconciliation/spark_september_allocation_revenue"
-TARGETS = {"S64", "S70", "S72"}
+INVESTMENTS = {"S64", "S70", "S72"}
+TARGETS = INVESTMENTS | {"S28", "S5", "S61", "S66"}
 
 
 def validate_venue(source, flows):
@@ -45,7 +47,7 @@ def validate_venue(source, flows):
         raise ValueError("Income differs from retained balances and capital")
 
 
-def refresh(baseline, evidence):
+def refresh(baseline, evidence, incentives):
     doc = copy.deepcopy(baseline)
     revision = doc.pop("revision_id")
     doc.pop("published_at")
@@ -80,7 +82,7 @@ def refresh(baseline, evidence):
         cash += amount
     if cash != D("1373208") or len(seen) != 6:
         raise ValueError("Reviewed September receipt total differs")
-    for venue in sorted(TARGETS):
+    for venue in sorted(INVESTMENTS):
         row = rows[venue]
         if venue == "S64":
             # Replace the stale zero with cash booked by PR267; S67 accrual is
@@ -118,11 +120,13 @@ def refresh(baseline, evidence):
             net_apy=str(annualized_yield(net, average, 30)),
             yield_status="available",
         )
+    apply_accruals(doc, incentives, cash_included={"rlusd": str(cash), "pyusd": "1809960"})
     doc["limitations"].append(
-        "S64 books RLUSD issuer cash receipts across the eligible RLUSD portfolio; "
-        "its cash-recognized APY is not a standalone contractual return on idle RLUSD. "
-        "S67 accrual is not added to these receipts."
+        "RLUSD/PYUSD issuer incentives are accrued per eligible allocation; cash receipts "
+        "are excluded from these yields. Opening receivables/prepayments are unverified; "
+        "only the September earned-minus-received movement is reconciled. MSC is unchanged."
     )
+    doc["source_hashes"]["issuer_accrual_inputs"] = digest(incentives)
     doc["source_hashes"]["september_revenue_refresh"] = digest(evidence)
     doc["revenue_refresh"] = {
         "baseline_revision": revision,
@@ -141,9 +145,9 @@ def main():
     a = p.parse_args()
     if a.output.resolve().is_relative_to(ROOT):
         p.error("Output must be outside the repository to preserve evidence")
-    paths = [FOLDER / "baseline.json", FOLDER / "evidence.json"]
-    baseline, evidence = [json.loads(path.read_text()) for path in paths]
-    doc = refresh(baseline, evidence)
+    paths = [FOLDER / "baseline.json", FOLDER / "evidence.json", FOLDER / "incentive-accruals.json"]
+    baseline, evidence, incentives = [json.loads(path.read_text()) for path in paths]
+    doc = refresh(baseline, evidence, incentives)
     doc["source_hashes"].update(
         {
             str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()

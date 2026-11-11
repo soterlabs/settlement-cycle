@@ -7,7 +7,12 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path("scripts").resolve()))
-from refresh_spark_september_allocation_revenue import FOLDER, TARGETS, refresh
+from refresh_spark_september_allocation_revenue import FOLDER, TARGETS
+from refresh_spark_september_allocation_revenue import refresh as refresh_impl
+
+
+def refresh(b, e):
+    return refresh_impl(b, e, json.loads((FOLDER / "incentive-accruals.json").read_text()))
 
 
 def inputs():
@@ -28,9 +33,11 @@ def test_refresh_changes_only_target_revenue_and_preserves_costs():
                 old["borrowing_cost_usd"]
             )
     rows = {r["venue_id"]: r for r in result["allocations"]}
-    assert D(rows["S64"]["gross_revenue_usd"]) == D("1373208")
-    assert D(rows["S70"]["gross_revenue_usd"]) == D("2400.001564107802276268")
-    assert D(rows["S72"]["gross_revenue_usd"]) == D("3674.1568632270234742260")
+    assert abs(
+        D(rows["S64"]["gross_revenue_usd"]) - D(rows["S64"]["issuer_incentive_accrued_usd"])
+    ) < D("1e-18")
+    assert D(rows["S70"]["investment_revenue_usd"]) == D("2400.001564107802276268")
+    assert D(rows["S72"]["investment_revenue_usd"]) == D("3674.1568632270234742260")
     assert rows["S67"]["gross_revenue_usd"] is None
     assert result["reconciliation"] == b["reconciliation"]
 
@@ -85,6 +92,11 @@ def test_only_revenue_and_yield_fields_change_for_target_rows():
         "average_yield_exposure_usd",
         "yield_denominator",
         "spread_reimbursement_excluded_from_net_usd",
+        "issuer_incentive_program",
+        "issuer_incentive_accrued_usd",
+        "issuer_cash_removed_usd",
+        "investment_revenue_usd",
+        "issuer_incentive_basis",
     }
     for old, new in zip(b["allocations"], result["allocations"], strict=True):
         assert {k: v for k, v in old.items() if k not in allowed} == {
@@ -98,3 +110,42 @@ def test_retained_income_and_exposure_must_match_dated_capital(field):
     e["venues"]["S72"][field] = str(D(e["venues"]["S72"][field]) + 1)
     with pytest.raises(ValueError, match="differs"):
         refresh(b, e)
+
+
+def test_cash_is_removed_and_accrual_is_not_rescaled_to_receipts():
+    from settle.revenue.allocation_incentives import component_accruals
+
+    i = json.loads((FOLDER / "incentive-accruals.json").read_text())
+    allocation, recon = component_accruals(i)
+    assert D(recon["rlusd"]["accrued_usd"]) != D(recon["rlusd"]["cash_received_usd"])
+    changed = copy.deepcopy(i)
+    changed["programs"]["rlusd"]["period_receipts_usd"] = "0"
+    assert component_accruals(changed)[0] == allocation
+    b, e = inputs()
+    rows = {r["venue_id"]: r for r in refresh(b, e)["allocations"]}
+    assert D(rows["S28"]["investment_revenue_usd"]) == 0
+    assert D(rows["S28"]["issuer_cash_removed_usd"]) == D("1809960")
+    assert rows["S67"]["gross_revenue_usd"] is None
+    assert rows["S68"]["gross_revenue_usd"] is None
+    assert recon["rlusd"]["opening_receivable_usd"] is None
+    assert recon["rlusd"]["closing_receivable_usd"] is None
+
+
+@pytest.mark.parametrize(
+    "fault", ["missing_day", "duplicate_component", "wrong_rate", "missing_top_up_apr"]
+)
+def test_incomplete_or_inconsistent_incentive_inputs_fail(fault):
+    from settle.revenue.allocation_incentives import component_accruals
+
+    i = json.loads((FOLDER / "incentive-accruals.json").read_text())
+    days = i["programs"]["rlusd"]["daily"]
+    if fault == "missing_day":
+        days.pop()
+    elif fault == "duplicate_component":
+        days[0]["components"].append(days[0]["components"][0])
+    elif fault == "wrong_rate":
+        days[0]["components"][0]["apr"] = "0.04"
+    else:
+        days[0]["components"][-1]["net_vault_apr"] = None
+    with pytest.raises(ValueError):
+        component_accruals(i)
