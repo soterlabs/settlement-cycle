@@ -32,6 +32,7 @@ from settle.revenue.monthly import _reference_history
 
 ROOT = Path(__file__).resolve().parents[1]
 OLD_HEAD = '6820525e1ae34ca8460ac3a0dfc5f4cc68c80ae9'
+SEAL_SHA256 = 'af8d972a4d772b80b422ba2f31c776d601db0015788d5d083666b7aa70d60f80'
 MONTH = Month(2026, 10)
 
 
@@ -44,20 +45,52 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def load_source_seal():
+    path = ROOT / 'reconciliation/2026-10/retained-source-seal.json'
+    check(digest(path) == SEAL_SHA256, 'Original source seal changed')
+    seal = json.loads(path.read_text())
+    check(seal['schema'] == 1 and seal['source_commit'] == OLD_HEAD, 'Wrong source seal identity')
+    return seal
+
+
+def changed_production_paths(seal):
+    # HEAD's tree exists even in a depth-one checkout. Historical commits may
+    # have been rebased away; their immutable blob IDs are retained explicitly.
+    raw = subprocess.check_output(['git', 'ls-tree', '-r', '-z', 'HEAD', '--',
+                                   'src/settle', 'config'], cwd=ROOT)
+    current = {}
+    for entry in raw.split(b'\0'):
+        if entry:
+            metadata, path = entry.split(b'\t', 1)
+            current[path.decode()] = metadata.decode().split()[2]
+    original = seal['production_blob_ids']
+    return sorted(path for path in original.keys() | current.keys()
+                  if original.get(path) != current.get(path))
+
+
+def optional_git_ref(ref):
+    try:
+        return subprocess.check_output(['git', 'rev-parse', '--verify', ref], cwd=ROOT,
+                                       stderr=subprocess.DEVNULL, text=True).strip()
+    except subprocess.CalledProcessError:
+        return None
+
+
 def replay(wallet_inputs=None):
-    changed = subprocess.check_output(['git', 'diff', '--name-only', OLD_HEAD, 'HEAD',
-                                       '--', 'src/settle', 'config'], cwd=ROOT, text=True).splitlines()
+    seal = load_source_seal()
+    changed = changed_production_paths(seal)
     allowed = {'src/settle/compute/allocation_cost_rows.py', 'src/settle/load/writer.py',
                'src/settle/normalize/sources/rpc_block_resolver.py',
                # PR283 adds presentation-only accrued yields; monthly compute
                # does not import this module or substitute accrued issuer income.
-               'src/settle/revenue/allocation_incentives.py', 'config/sky_total.yaml'}
+               'src/settle/revenue/allocation_incentives.py', 'config/sky_total.yaml',
+               # PR284 exposes reporting API values; no MSC formula imports it.
+               'src/settle/api/allocations.py'}
     if any(p not in allowed and not p.startswith('src/settle/controls/') for p in changed):
         raise ValueError('Financial/configuration changes require a scoped source replay')
     folder = ROOT / 'reconciliation/2026-10'
     preview_path = folder / 'retained-close/prime_msc_preview.json'
-    original = subprocess.check_output(['git', 'show', f'{OLD_HEAD}:reconciliation/2026-10/prime_msc_preview.json'], cwd=ROOT)
-    check(hashlib.sha256(original).hexdigest() == digest(preview_path), 'Original preview changed; use a scoped financial replay')
+    check(seal['preview_sha256'] == digest(preview_path), 'Original preview changed; use a scoped financial replay')
     preview = json.loads(preview_path.read_text())
     retained = folder / 'retained-close'
     cfg_path = retained / 'sky_total.yaml' if retained.exists() else ROOT / 'config/sky_total.yaml'
@@ -80,7 +113,8 @@ def replay(wallet_inputs=None):
               'Wallet evidence differs from reviewed PR281 snapshot f71f8d6 (June 20-21 added; October unchanged)')
         wallets = json.loads(wallet_inputs.read_text())
     results, sources = {}, {str(p.relative_to(ROOT)): digest(p) for p in (
-        preview_path, cfg_path, reference_path, folder / 'grove-pr280/after-provenance.json')}
+        preview_path, cfg_path, reference_path, folder / 'grove-pr280/after-provenance.json',
+        folder / 'retained-source-seal.json')}
     for entry in preview['rows']:
         name = entry['prime']
         prime = load_prime_by_id(name, config_dir=ROOT / 'config')
@@ -185,7 +219,7 @@ def replay(wallet_inputs=None):
                 ['src/settle/compute/sky_revenue.py', 'src/settle/compute/sky_total_accrual.py',
                  'src/settle/revenue/monthly.py']},
             'scope': 'retained October arithmetic only; not full asset controls',
-            'main_commit': subprocess.check_output(['git', 'rev-parse', 'origin/main'], cwd=ROOT, text=True).strip(),
+            'main_commit': optional_git_ref('origin/main'), 'replay_code_commit': optional_git_ref('HEAD'),
             'prior_pr_head': OLD_HEAD, 'changed_production_paths': changed,
             'input_sha256': sources, 'primes': results, 'canonical_reports_written': False,
             'fresh_canonical_finalization': 'blocked until complete reviewed asset controls exist',

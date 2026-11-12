@@ -102,3 +102,19 @@ The updated wallet evidence adds only the two June dates; every previously
 retained wallet observation, including October, is unchanged. Only Spark's
 report files were promoted from the scoped staging run. Other agents' report
 files and all ordinary financial values remain unchanged.
+
+## Stack after merging #281
+
+The active stack is `main -> #277 -> #275`. PR #281 is merged into main as
+`cc317e61bcbd86efc2c3a7a843a1ab992d3b222a`. The selective rebases preserve all
+settlement, ledger, configuration and instruction bytes. Main's reporting API
+update is inherited without changing the financial calculations.
+
+The retained-source verifier now uses `retained-source-seal.json`, containing
+the immutable original preview hash and source-tree blob identities. This
+preserves the source-change restrictions in shallow CI checkouts, where the old
+pre-rebase commit and `origin/main` ref may be absent. A replaced seal or an
+unapproved financial source change still fails; no historical Git fetch is
+required during offline replay. Seven focused tests passed, including actual
+end-to-end report rendering, missing-ref simulation, seal tampering and unchanged
+Osero refund semantics.
