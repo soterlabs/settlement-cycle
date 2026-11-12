@@ -442,3 +442,20 @@ def test_actual_purchase_monthly_runner_rejects_missing_or_wrong_cycle(cfg, poli
     wrong = SbeActivity('2026-09', 1, 2, 0, 1)
     with pytest.raises(ValueError, match='activity month differs'):
         compute_tmf_monthly('2026-10', mcfg, policy, activity=wrong, state=None)
+
+
+def test_september_reprocessed_stream_matches_operator_calculator(policy):
+    retained = _REPO / 'reconciliation/2026-09/tmf-actual-buys/tmf.json'
+    saved = json.loads(retained.read_text())
+    inputs = TmfInputs(**{k: v if k == 'month' else D(v) for k, v in saved['inputs'].items()})
+    result = compute_waterfall(inputs, policy)
+    assert inputs.snr == D('14635947')
+    assert result.sky_rewards_monthly.quantize(D(1)) == D('33175294')
+    assert result.vest_tot == D('99525882')
+    assert result.weekly_pull.quantize(D(1)) == D('7740902')
+    assert result.hop == 2693
+    assert result.step3_capital == D('5854378.80')
+    for key, value in saved['results']['waterfall'].items():
+        assert getattr(result, key) == (value if isinstance(value, bool) else D(str(value))), key
+    assert saved['pins']['partial'] is False
+    assert saved['results']['sky_to_stakers_from_buys'] == saved['inputs']['sky_rewards_from_buys']

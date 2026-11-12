@@ -77,7 +77,9 @@ The operator-supplied BA TMF Calculator changes stream sizing from the
 September 2026 cycle: use actual cycle-month burn-window purchases allocated
 to stakers, rather than dividing the future USDS budget by TWAP. The three-month
 runway and 90-day duration remain unchanged. July and August keep TWAP sizing;
-no previously published September artifacts are regenerated. Missing activity
+the subsequent user-authorized September TMF-only rerun is documented in
+[the September correction](../../2026-09/tmf-actual-buys/README.md). September
+SNR and prime settlements are unchanged. Missing activity
 fails instead of falling back to an estimate; an observed zero remains zero.
 
 October's retained 42,736,162.038542855862345882 SKY purchases give

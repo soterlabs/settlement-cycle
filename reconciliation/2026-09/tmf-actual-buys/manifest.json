@@ -1,0 +1,11 @@
+{
+  "month": "2026-09",
+  "previous_report_commit": "248f85dd038bea191b14c770f409b0e5b5e8b3c2",
+  "sha256": {
+    "config/tmf.yaml": "342dac6b6ae23e560f137d3e51b5e6f72fcba4232a3b83275c4436910358b173",
+    "src/settle/compute/tmf.py": "dbc7b661875b60474b8369e1e8fdde361940469b95ef6fd57fbc9fe990fd5cc8",
+    "settlements/sky_total/2026-09/summary.md": "b9064cda3c3e5ed527e39861c66d6f57d43ceca40c39345e0619746ffd6edb86",
+    "settlements/tmf/2026-09/summary.md": "e83b4642dec71982e97a699e39b1f51e542c0ec30799e24880e33cfd3d75d6ca",
+    "reconciliation/2026-09/tmf-actual-buys/tmf.json": "8706c84aa546cd367bba4627a14d1a916905de54ce07cc204f242b6f52017113"
+  }
+}
