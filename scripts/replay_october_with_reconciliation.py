@@ -18,6 +18,7 @@ from unittest.mock import patch
 
 import yaml
 from build_jan_sep_2026_reconciliation import calculate
+from calculate_october_partner_rebate import replacements
 from reconcile_grove_base_cash import replay as grove_replay
 from reconcile_usds_bridge_baseline_2026 import replay as bridge_replay
 from verify_october_retained_after_pr282 import replay as verify_ordinary
@@ -83,8 +84,13 @@ def replay():
         bridge = bridge_replay()
         preview = json.loads((ROOT / 'reconciliation/2026-10/retained-close/prime_msc_preview.json').read_text())
         cfg = yaml.safe_load((ROOT / 'config/sky_total.yaml').read_text())
-        rows = project(preview, cfg, historical['proposed_combined_october_adjustments'])
+        adjustments = replacements(historical)
+        rows = project(preview, cfg, adjustments)
     paths = [Path(__file__), ROOT / 'scripts/verify_october_retained_after_pr282.py',
+             ROOT / 'scripts/calculate_october_partner_rebate.py',
+             ROOT / 'reconciliation/2026-10/partner-rebate-inputs.json',
+             ROOT / 'reconciliation/2026-10/partner-rebate-daily.json',
+             ROOT / 'reconciliation/2026-10/partner_rebates.json',
              ROOT / 'reconciliation/2026-01_to_2026-09/data.json',
              ROOT / 'reconciliation/2026-10/retained-close/prime_msc_preview.json',
              ROOT / 'reconciliation/2026-10/grove-pr280/after-provenance.json',
@@ -93,7 +99,7 @@ def replay():
         status='research_replay_complete_not_finalized', period='2026-10',
         scope='Retained ordinary October components plus independently replayed historical replacement adjustments; no consolidated Sky net revenue asserted',
         ordinary_validation=ordinary, historical_adjustments=historical['adjustment_totals'],
-        replacement_adjustments=historical['proposed_combined_october_adjustments'],
+        replacement_adjustments=adjustments,
         grove_current_production_replay=[dict(venue=r['venue'], revenue=r['new']['revenue']) for r in current],
         october_bridge_credit_already_in_ordinary=bridge['october_ordinary_signed_credit'],
         october_bridge_credit_applied_again=False, rows=rows,

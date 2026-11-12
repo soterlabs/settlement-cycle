@@ -118,3 +118,16 @@ unapproved financial source change still fails; no historical Git fetch is
 required during offline replay. Seven focused tests passed, including actual
 end-to-end report rendering, missing-ref simulation, seal tampering and unchanged
 Osero refund semantics.
+
+## Partner rebate replacement — 12 November 2026
+
+Run `python scripts/calculate_october_partner_rebate.py` first. The committed
+daily evidence produces Sky **1,246,289.50** and Grove **810,713.50**; all JTRSY
+is attributed to Sky, including Spark custody. The executable recipe and its
+assumptions are in `PARTNER_REBATE_RECIPE.md`. The October replay overlays these
+amounts on the historical-only adjustment totals; it never changes the parent
+Jan–September ledger or adds the receipts to venue income a second time.
+
+The finalizer rendered all retained reports in staging to validate propagation;
+only Grove's canonical reports were promoted. Other Prime files remain intact.
+Grove mint remains 8,866,792 and send becomes 2,170,826 USDS.

@@ -1,22 +1,55 @@
 {
   "status": "operator_approved",
-  "approved_on": "2026-11-06",
   "settlement_month": "2026-10",
-  "label": "Partner rebates",
-  "earned_period": "2025 and 2026 through July 31",
-  "allocation_basis": "Use the detailed figures supplied in the partner statement; operator accepts the $360 discrepancy in its final totals as an error. No independent time-weighted entitlement calculation is asserted.",
-  "sky": {
-    "JTRSY": {
-      "2025": "356999.00",
-      "2026_through_july_31": "713408.00"
+  "label": "partner rebate",
+  "method": "Invoice net allocated by on-chain gross weights; all JTRSY to Sky",
+  "rows": [
+    {
+      "label": "partner rebate",
+      "fund": "JAAA",
+      "year": "2025",
+      "onchain_gross": "527734.181675056400568893260920821917808219178082191780821922",
+      "sky_gross": "74794.5205479452054794520547945205479452054794520547945205477",
+      "net": "413320.00",
+      "sky": "58578.87",
+      "grove": "354741.13"
     },
-    "JAAA_2026": "70738.80",
-    "total": "1141145.80"
+    {
+      "label": "partner rebate",
+      "fund": "JAAA",
+      "year": "2026",
+      "onchain_gross": "583106.120363883477894313371232328767123287671232876712328773",
+      "sky_gross": "119315.068493150684931506849315068493150684931506849315068495",
+      "net": "573276.00",
+      "sky": "117303.63",
+      "grove": "455972.37"
+    },
+    {
+      "label": "partner rebate",
+      "fund": "JTRSY",
+      "year": "2025",
+      "onchain_gross": "504339.148364645496658216136926095890410958904109589041095892",
+      "sky_gross": "504339.148364645496658216136926095890410958904109589041095892",
+      "net": "356999.00",
+      "sky": "356999.00",
+      "grove": "0.00"
+    },
+    {
+      "label": "partner rebate",
+      "fund": "JTRSY",
+      "year": "2026",
+      "onchain_gross": "727975.463119899654835611136800410958904109589041095890410960",
+      "sky_gross": "727975.463119899654835611136800410958904109589041095890410960",
+      "net": "713408.00",
+      "sky": "713408.00",
+      "grove": "0.00"
+    }
+  ],
+  "sky": {
+    "total": "1246289.50"
   },
   "grove": {
-    "JAAA_2025": "413320.00",
-    "JAAA_2026": "502537.20",
-    "total": "915857.20"
+    "total": "810713.50"
   },
   "total_received": "2057003.00",
   "receipts": [
@@ -57,5 +90,8 @@
       "tx": "0xb907cd9cb470238fc5a06475cdaddcdd8bbf37f88bb2ee53a05b37cb90a3d115"
     }
   ],
-  "recognition_note": "Historical partner rebate allocation carried once through MSC adjustments. The figures do not themselves prove that the rebates were excluded from previous NAV or income."
+  "input_sha256": {
+    "partner-rebate-inputs.json": "7f06ed061ebec11f2b1cb1154d8ec1350665a95fff1cf5b25a5d90212c5b5e6d",
+    "partner-rebate-daily.json": "195a079db359ba8d7bf3cf69970a5504444173a93ca3e4b443f38dc42cb57cc2"
+  }
 }

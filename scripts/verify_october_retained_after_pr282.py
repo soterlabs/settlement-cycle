@@ -100,8 +100,9 @@ def replay(wallet_inputs=None):
     if live_cfg != cfg:
         import copy
         expected = copy.deepcopy(cfg)
-        proposal = json.loads((ROOT / 'reconciliation/2026-01_to_2026-09/proposed-october-adjustments.json').read_text())
-        expected['msc_preview']['2026-10'].update(proposal['msc_preview']['2026-10'])
+        from calculate_october_partner_rebate import replacements
+        historical = json.loads((ROOT / 'reconciliation/2026-01_to_2026-09/data.json').read_text())
+        expected['msc_preview']['2026-10'].update(replacements(historical))
         check(live_cfg == expected, 'Unexpected configuration change outside historical replacements')
     reference_path = ROOT / 'config/october_2026_official_reference_rates.json'
     reference = json.loads(reference_path.read_text())

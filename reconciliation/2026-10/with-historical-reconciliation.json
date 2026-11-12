@@ -4,7 +4,7 @@
   "scope": "Retained ordinary October components plus independently replayed historical replacement adjustments; no consolidated Sky net revenue asserted",
   "ordinary_validation": {
     "schema": 1,
-    "replay_script_sha256": "e4718f79e9d6aa9d2374603c1713936cb0027a3080e44cdafd98f2b22a841a39",
+    "replay_script_sha256": "725195e1ffdf3381e6bab462f65a98ff703f67a9bbadfe9bc76920c226053a32",
     "production_function_sha256": {
       "src/settle/compute/sky_revenue.py": "412c69e644a1219f42889df37654098ff0d8de63cc8884b6586115205c83b575",
       "src/settle/compute/sky_total_accrual.py": "d0ca19ab4e93a44e11038de5195717e7eb3ec57f25d1da4b29a5d9ee7c65ba2d",
@@ -12,9 +12,11 @@
     },
     "scope": "retained October arithmetic only; not full asset controls",
     "main_commit": "e631532c789228333714720c29b1c0221860296f",
+    "replay_code_commit": "f91b9ed4a5d98c9c2ff49b5c988340595d5fff2d",
     "prior_pr_head": "6820525e1ae34ca8460ac3a0dfc5f4cc68c80ae9",
     "changed_production_paths": [
       "config/sky_total.yaml",
+      "src/settle/api/allocations.py",
       "src/settle/compute/allocation_cost_rows.py",
       "src/settle/controls/__init__.py",
       "src/settle/controls/assets.py",
@@ -30,6 +32,7 @@
       "reconciliation/2026-10/retained-close/sky_total.yaml": "d72f6b0efa64b2ea4696fe7d5564766c03a8bb8b384395a955cfeda607bb2501",
       "config/october_2026_official_reference_rates.json": "6f6679bc5081d87157a48e328d244bf9784f76f349b284f7dc5d2140f250309d",
       "reconciliation/2026-10/grove-pr280/after-provenance.json": "9eb63982ed9c07c1ed1376b6c94188292a88bfbff11a9fac8869d22abe335606",
+      "reconciliation/2026-10/retained-source-seal.json": "af8d972a4d772b80b422ba2f31c776d601db0015788d5d083666b7aa70d60f80",
       "reconciliation/2026-10/retained-close/spark/spark_settlement_october_2026.xlsx": "bfca95fd70ac7e7084145f08ede53a1f8a8476ae9f00101c08c5c6b27f5c67fd",
       "tests/fixtures/usds_bridge/spark_2026_gateway_logs.json": "bf819fa3ced15c4533818ec3c00cf179438241abcf4646b10e720cfd48f390d0",
       "reconciliation/2026-10/retained-close/grove/grove_settlement_october_2026.xlsx": "e88edce405b07c7e5275928f2ceccc86eb7c8d933c271e48b4e7367ac4b4d0b7",
@@ -166,8 +169,8 @@
     },
     "grove": {
       "dv_adj": "0",
-      "sv_adj": "927411.94",
-      "sky_adj": "1030726.24",
+      "sv_adj": "822268.24",
+      "sky_adj": "1135869.94",
       "send_credit": "0"
     },
     "osero": {
@@ -221,16 +224,16 @@
       "sky_ordinary": "5682959.319885517888970951078",
       "demand_ordinary": "122862.6499862163417263841036",
       "supply_ordinary": "1225694.878304368896498431589",
-      "sky_adj": "1030726.24",
-      "sv_adj": "927411.94",
+      "sky_adj": "1135869.94",
+      "sv_adj": "822268.24",
       "dv_adj": "0",
       "send_credit": "0",
       "derived_mint": "8866792.378189886785469382667",
-      "derived_send": "2275969.468290585238224815693",
+      "derived_send": "2170825.768290585238224815693",
       "mint": "8866792",
-      "send": "2275969",
+      "send": "2170826",
       "mint_change": "-20335",
-      "send_change": "11554"
+      "send_change": "-93589"
     },
     {
       "prime": "obex",
@@ -302,11 +305,15 @@
   "api_published": false,
   "finalization_requirement": "Canonical writer validates populated daily asset-control files or records explicit empty-file deferral",
   "input_sha256": {
-    "scripts/replay_october_with_reconciliation.py": "80a7d0e52d032b7bfa039a421972bdbe0925062b79cede835cc6b6385421726e",
-    "scripts/verify_october_retained_after_pr282.py": "e4718f79e9d6aa9d2374603c1713936cb0027a3080e44cdafd98f2b22a841a39",
+    "scripts/replay_october_with_reconciliation.py": "bfc3b6917a6f13a2007ffcb4ba2ff4e1c77c390e39315f3a8c73db1e529b2036",
+    "scripts/verify_october_retained_after_pr282.py": "725195e1ffdf3381e6bab462f65a98ff703f67a9bbadfe9bc76920c226053a32",
+    "scripts/calculate_october_partner_rebate.py": "f2c121ed9214a7cc7d32e341eba563c5c68ac7aa9f10f172495696beef0f725e",
+    "reconciliation/2026-10/partner-rebate-inputs.json": "7f06ed061ebec11f2b1cb1154d8ec1350665a95fff1cf5b25a5d90212c5b5e6d",
+    "reconciliation/2026-10/partner-rebate-daily.json": "195a079db359ba8d7bf3cf69970a5504444173a93ca3e4b443f38dc42cb57cc2",
+    "reconciliation/2026-10/partner_rebates.json": "24b236d9c75ee19d194fb2a602fd2c8f84b314f0ca101fdce7c181dd7c4aa088",
     "reconciliation/2026-01_to_2026-09/data.json": "a41d6931afbbc68aa02c02131930ce675c67c7abf120e285770b38ee67211c10",
     "reconciliation/2026-10/retained-close/prime_msc_preview.json": "c8e50d99512cc8ebdd42544d767357fc7f01197aa9340c5b19573d850f8571b6",
     "reconciliation/2026-10/grove-pr280/after-provenance.json": "9eb63982ed9c07c1ed1376b6c94188292a88bfbff11a9fac8869d22abe335606",
-    "config/sky_total.yaml": "61bc998e93e7853b04585c1597baf478265b2d7a516f71c43efe4566e1288ba4"
+    "config/sky_total.yaml": "3982cf1e020c7af29da2b80548eb5c8b56bbcce0253b62c7cf19b867737291e6"
   }
 }

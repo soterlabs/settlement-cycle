@@ -15,8 +15,8 @@ def test_partner_receipts_and_accepted_allocations_balance():
     rebates = json.loads((ROOT / 'reconciliation/2026-10/partner_rebates.json').read_text())
     assert rebates['status'] == 'operator_approved'
     assert sum((D(r['amount']) for r in rebates['receipts']), D(0)) == D('2057003.00')
-    assert D(rebates['sky']['total']) == D('1141145.80')
-    assert D(rebates['grove']['total']) == D('915857.20')
+    assert D(rebates['sky']['total']) == D('1246289.50')
+    assert D(rebates['grove']['total']) == D('810713.50')
     assert D(rebates['sky']['total']) + D(rebates['grove']['total']) == D(rebates['total_received'])
     assert len({r['tx'] for r in rebates['receipts']}) == 6
 
@@ -44,5 +44,5 @@ def test_accepted_adjustments_change_mint_and_send_through_existing_preview(tmp_
     cfg['msc_preview'] = {'2026-10':{'grove':adj}}
     after = compute_sky_total_accrual(Month(2026,10), repo_root=tmp_path, config=cfg).rows[0]
     assert after.derived_mint - before.derived_mint == D('1958138.18')
-    assert after.derived_send - before.derived_send == D('927411.94')
-    assert (after.derived_mint - after.derived_send) - (before.derived_mint - before.derived_send) == D('1030726.24')
+    assert after.derived_send - before.derived_send == D('822268.24')
+    assert (after.derived_mint - after.derived_send) - (before.derived_mint - before.derived_send) == D('1135869.94')

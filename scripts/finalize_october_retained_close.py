@@ -16,6 +16,7 @@ from unittest.mock import patch
 
 import openpyxl
 import yaml
+from calculate_october_partner_rebate import calculate as partner_rebate
 from replay_october_grove_pr280 import decode_provenance
 from replay_october_with_reconciliation import replay
 from run_october_close import check_review
@@ -114,12 +115,18 @@ def finalize(output):
         payload['msc_instruction'] = instruction
         payload['msc_instruction_sources'] = {'historical_ledger_sha256': sha(ROOT / 'reconciliation/2026-01_to_2026-09/data.json'),
                                                'sky_total_config_sha256': sha(ROOT / 'config/sky_total.yaml')}
+        if name == 'grove':
+            payload['partner_rebate'] = partner_rebate()
         p.write_text(json.dumps(payload, indent=2) + '\n')
         section = '\n## MSC settlement instructions — October 2026\n\n'
         section += 'These payment instructions include the approved adjustments once; the operating revenue above remains October-earned revenue.\n\n'
         section += '| Component | USDS |\n|---|---:|\n'
         section += ''.join(f'| {label} | {D(value):,.2f} |\n' for label, value in table)
         section += '\nIndependent daily asset checks: **' + payload['asset_controls']['status'] + '**. ALM transfer review retained. No payment executed.\n'
+        if name == 'grove':
+            section += '\n### partner rebate — included in adjustments above\n\n| Fund | Year | Sky USDS | Grove USDS |\n|---|---|---:|---:|\n'
+            for rebate in payload['partner_rebate']['rows']:
+                section += f"| {rebate['fund']} | {rebate['year']} | {rebate['sky']} | {rebate['grove']} |\n"
         summary = paths[name]['summary']
         summary.write_text(summary.read_text().rstrip() + '\n' + section)
         book = openpyxl.load_workbook(paths[name]['xlsx'])
@@ -132,6 +139,12 @@ def finalize(output):
         sheet.append(['Includes historical adjustments once; no payment executed'])
         sheet.column_dimensions['A'].width = 65
         sheet.column_dimensions['B'].width = 26
+        if name == 'grove':
+            rebate_sheet = book.create_sheet('partner rebate')
+            rebate_sheet.append(['Fund', 'Year', 'Sky USDS', 'Grove USDS'])
+            for rebate in payload['partner_rebate']['rows']:
+                rebate_sheet.append([rebate['fund'], rebate['year'], float(D(rebate['sky'])), float(D(rebate['grove']))])
+            rebate_sheet.append(['Included once in MSC instructions; not additional ordinary revenue'])
         book.save(paths[name]['xlsx'])
         book.close()
         target = indexed[name]
@@ -141,7 +154,7 @@ def finalize(output):
                       msc_mint_unrounded=str(row.derived_mint), msc_send_unrounded=str(row.derived_send),
                       msc_mint=str(row.mint), msc_send=str(row.send),
                       summary_sha256=sha(paths[name]['summary']), workbook_sha256=sha(paths[name]['xlsx']),
-                      workbook_sheets=target['workbook_sheets'] + 1,
+                      workbook_sheets=target['workbook_sheets'] + 1 + (name == 'grove'),
                       asset_controls=payload['asset_controls'])
     updated['sky_total_config_sha256'] = sha(ROOT / 'config/sky_total.yaml')
     updated['scope'] = 'October ordinary inputs retained; historical replacements applied once; independent daily checks explicitly deferred; no API publication or payment'

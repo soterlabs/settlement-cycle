@@ -41,6 +41,11 @@ def test_scoped_finalization_renders_correct_instructions_without_revaluing_posi
             assert str(values['Mint USDS (whole tokens)']) == new['msc_mint']
             assert str(values['Send USDS (whole tokens)']) == new['msc_send']
             assert values['Independent daily asset controls'] == 'skipped'
+            if prime == 'grove':
+                assert written['partner_rebate']['sky']['total'] == '1246289.50'
+                assert written['partner_rebate']['grove']['total'] == '810713.50'
+                assert 'partner rebate' in workbook.sheetnames
+                assert 'partner rebate' in (target / 'summary.md').read_text()
         finally:
             workbook.close()
     # Reusing a destination must not overwrite even this explicitly scoped close.

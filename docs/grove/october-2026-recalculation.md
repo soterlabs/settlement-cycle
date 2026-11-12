@@ -21,14 +21,20 @@ No Spark or other prime is calculated, and no API output is published.
 | Sky SDE revenue (JTRSY + BUIDL) | 1,246,963.82 |
 | Sky ordinary total (base rate + SDE) | 5,682,959.32 |
 
-The approved historical bridge in `config/sky_total.yaml` adds **915,857.20**
-to Grove supply-side revenue and **1,062,615.74** to Sky's share (partner rebate
-1,141,145.80 less historical CoF credit 78,530.06). These are separate from
-October-earned revenue; the six partner receipts are not added as venue income.
+The October adjustment includes **partner rebate** of **810,713.50 USDS to Grove**
+and **1,246,289.50 USDS to Sky**, calculated by
+`scripts/calculate_october_partner_rebate.py` from committed daily evidence.
+The six cash receipts total **2,057,003.00 USDS** and are booked once through
+MSC adjustments, not added again to ordinary E8/E9 venue income.
 
-Grove supply-side after the partner adjustment is **2,141,552.08 USDS**. Including demand-side revenue, Grove's total is **2,264,414.73 USDS**.
+Including the separate Jan–September reconciliation, the replacement adjustments
+are **822,268.24 supply-side** and **1,135,869.94 Sky-side**. The production
+October formula gives **mint 8,866,792 USDS / send 2,170,826 USDS**. Compared with
+the previous PR split, mint is unchanged and Grove's unrounded payment decreases
+by **105,143.70 USDS** (whole-token send decreases by 105,143).
 
-Applying the existing October MSC formula and whole-USDS rounding gives **mint 8,887,127 USDS** and **send 2,264,415 USDS** for Grove. These are Grove-only derived instructions; they do not assert an executed settlement or a consolidated all-prime MSC reconciliation.
+See [the reproducible recipe](../../reconciliation/2026-10/PARTNER_REBATE_RECIPE.md)
+for the historical entitlement assumptions. No payment is executed.
 
 ### Main venue contributors to Grove
 

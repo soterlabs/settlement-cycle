@@ -117,11 +117,20 @@ These payment instructions include the approved adjustments once; the operating 
 | Ordinary Sky revenue | 5,682,959.32 |
 | Ordinary demand-side revenue | 122,862.65 |
 | Ordinary supply-side share | 1,225,694.88 |
-| Sky adjustment (historical plus approved ordinary) | 1,030,726.24 |
-| Supply adjustment (historical plus approved ordinary) | 927,411.94 |
+| Sky adjustment (historical plus approved ordinary) | 1,135,869.94 |
+| Supply adjustment (historical plus approved ordinary) | 822,268.24 |
 | Demand adjustment | 0.00 |
 | Send-only credit | 0.00 |
 | Mint USDS (whole tokens) | 8,866,792.00 |
-| Send USDS (whole tokens) | 2,275,969.00 |
+| Send USDS (whole tokens) | 2,170,826.00 |
 
 Independent daily asset checks: **skipped**. ALM transfer review retained. No payment executed.
+
+### partner rebate — included in adjustments above
+
+| Fund | Year | Sky USDS | Grove USDS |
+|---|---|---:|---:|
+| JAAA | 2025 | 58578.87 | 354741.13 |
+| JAAA | 2026 | 117303.63 | 455972.37 |
+| JTRSY | 2025 | 356999.00 | 0.00 |
+| JTRSY | 2026 | 713408.00 | 0.00 |
