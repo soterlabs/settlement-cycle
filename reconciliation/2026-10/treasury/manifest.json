@@ -1,0 +1,26 @@
+{
+  "month": "2026-10",
+  "sha256": {
+    "config/non_msc.yaml": "d3d58a0ab7266b58babfa6f87d88aa2eb0acc836d0e25491df394e03eb93b6a3",
+    "config/sky_total.yaml": "3982cf1e020c7af29da2b80548eb5c8b56bbcce0253b62c7cf19b867737291e6",
+    "config/tmf.yaml": "52a37f56c060b539a242b6bcb431a1207f35d827da8f8c9571b29a9519beaf04",
+    "reconciliation/2026-10/prime_msc_preview.json": "cb816696092310eb6c8f49beca54d958fa9720e3c11cfd28d1e16a525dc1b053",
+    "reconciliation/2026-10/partner_rebates.json": "24b236d9c75ee19d194fb2a602fd2c8f84b314f0ca101fdce7c181dd7c4aa088",
+    "reconciliation/2026-01_to_2026-09/data.json": "6708981f2f4b1f0a96bd3d7b04ab37e1f4078df65ed97aa76bda40cf4d5a31b0",
+    "reconciliation/2026-10/treasury/ba-inputs.json": "018164060f52033b786a7d1084e7330aff1a47399438eff6941a25ea764ad911",
+    "reconciliation/2026-10/treasury/rwa-jar-transfers.json": "99b2a2b3ebe4c1ac6293a6f2cbb0efe700177bbd5be4a769b2a89d49b3a62ab6",
+    "reconciliation/2026-10/treasury/rwa-jar-receipt.json": "f136a36db76e06a9d5699bef8f26d3d29d2a725a717d61a5c778c7280d4a5cab",
+    "src/settle/compute/non_msc.py": "f2147d227d2b043fc488a77e87e0f9848069ee930512880ee07532a3d5748f5a",
+    "src/settle/compute/sky_total_accrual.py": "d0ca19ab4e93a44e11038de5195717e7eb3ec57f25d1da4b29a5d9ee7c65ba2d",
+    "src/settle/compute/tmf.py": "f68b4fc12c664cf935f3099b78a713049fe9b60c2e40d4b4707648c26580fb9a",
+    "src/settle/extract/tmf_state.py": "8f1ddc93b1f2b620397009c0855b351f4c005e733bc678232f6b8d26c764fe62",
+    "src/settle/normalize/sources/hypersync_non_msc.py": "a8904e99fcd7dabb67fdc0e13eb9689ce4228b7424004aa08a9851ef554095d0",
+    "src/settle/normalize/sources/hypersync_sbe.py": "3f8c7d25429e0aa9757695c1eafea575b1dbfbaa307947b9f5edafc40d3eb9b3",
+    "reconciliation/2026-10/treasury/non-msc.json": "742d0d4c3ea5b0fd529c197988de575afacb0cab456e16bdc2dec62ed516e5ca",
+    "settlements/non_msc/2026-10/summary.md": "b63440c372a340e7d9b8c52d77894d60c4d9233b6eb7c674e820f55839c8fbaa",
+    "reconciliation/2026-10/treasury/sky-total.json": "a1dd696d288d84495fb1095b619a03304006137c3cf53192d5281947049ba080",
+    "settlements/sky_total/2026-10/summary.md": "0eb3a083ddc97a056473922b9a2d92f98ff56b1298a9ffcdd0f97da5c9eb7990",
+    "reconciliation/2026-10/treasury/tmf.json": "023cd1e1c14f3159deb8c1dcd4e469fbfa3ac5ad3e95777e292288f25dc61a0d",
+    "settlements/tmf/2026-10/summary.md": "5079d40cc6e7becfe7df62b15a6042c277968eca04c870fcb7705313db7fc450"
+  }
+}

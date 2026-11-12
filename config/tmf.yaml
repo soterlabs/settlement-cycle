@@ -198,3 +198,16 @@ months:
     spell:
       title: 'September 2026 close — calculated TMF parameters for the next MSC'
       status: 'calculated proposal; no executed October parameter update is assumed'
+
+  '2026-10':
+    msc: 'MSC#14'
+    # October close: SNR is read from the consolidated report, including
+    # Reconciliation IV and Partner Rebate once through the MSC preview.
+    sky_twap: '0.075530095541521328'
+    sky_reserves: '90093638.469583341228153379'
+    sources:
+      sky_twap: 'BA monthly SKY TWAP, 31 days: https://observatory.data.blockanalitica.com/sky/twap/monthly/?year=2026&month=10 (retrieved 2026-11-12)'
+      sky_reserves: 'BA historical aggregate_backstop_capital, 2026-10-31: https://sky.data.blockanalitica.com/internal/risk/info/historic/?days_ago=45 (retrieved 2026-11-12)'
+    spell:
+      title: 'October 2026 close — calculated TMF parameters for MSC #14'
+      status: 'calculated proposal; no November execution is assumed'

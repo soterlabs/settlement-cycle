@@ -1,7 +1,6 @@
-"""Build MSC #14 prime-leg draft; explicitly pending consolidated Sky/TMF results.
+"""Build MSC #14 from reconciled prime reports and retained treasury results.
 
-Unlike the complete-cycle publisher, this cannot claim a completed treasury
-calculation. Reads tracked reports/preview, historical ledger and rebate output.
+Reads tracked reports/preview, historical ledger, rebate and treasury output.
 """
 from __future__ import annotations
 
@@ -16,6 +15,59 @@ from build_forum_post import _require, parse_rows, read_prime
 from calculate_october_partner_rebate import replacements
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def treasury_section(indexed):
+    folder = ROOT / 'reconciliation/2026-10/treasury'
+    manifest = json.loads((folder / 'manifest.json').read_text())
+    for relative, digest in manifest['sha256'].items():
+        if hashlib.sha256((ROOT / relative).read_bytes()).hexdigest() != digest:
+            raise ValueError('Stale treasury evidence: ' + relative)
+    sky = json.loads((folder / 'sky-total.json').read_text())['results']
+    tmf = json.loads((folder / 'tmf.json').read_text())
+    non = json.loads((folder / 'non-msc.json').read_text())['results']
+    for name, row in indexed.items():
+        for field, key in [('mint', 'msc_mint'), ('send', 'msc_send')]:
+            if D(sky['per_prime'][name][field]) != D(row[key]):
+                raise ValueError('Treasury differs from prime preview: ' + name)
+    if set(sky['per_prime']) != set(indexed):
+        raise ValueError('Treasury prime coverage differs')
+    income, expense = D(non['total_income']), D(non['total_expense'])
+    snr = D(sky['sky_net_revenue'])
+    if income - expense != D(sky['non_msc_net']) or D(sky['msc_net']) + income - expense != snr:
+        raise ValueError('Consolidated revenue does not reconcile')
+    if D(tmf['inputs']['snr']) != snr.quantize(D(1), rounding=ROUND_HALF_UP):
+        raise ValueError('TMF uses stale Sky net revenue')
+    w = tmf['results']['waterfall']
+    lines = ['---', '', '## Sky Treasury Management Function Calculations', '',
+             'October settlement totals include Reconciliation IV once. Treasury allocations below use '
+             'the resulting consolidated Sky net revenue; they are proposed parameters, not executed transfers.', '',
+             '| Revenue component | USDS |', '|---|---:|',
+             f"| MSC net, including adjustments | {D(sky['msc_net']):,.2f} |",
+             f'| Non-MSC income | {income:,.2f} |',
+             f'| Non-MSC expense | -{expense:,.2f} |',
+             f'| **Sky net revenue** | **{snr:,.2f}** |', '',
+             f"TMF uses Sky net revenue rounded to {D(tmf['inputs']['snr']):,.0f} USDS.", '',
+             '| TMF allocation / parameter | Value |', '|---|---:|']
+    for label, key, unit, places in [
+        ('Step 1 — Core Council Buffer (Core Council + Fortification)', 'step1_total', 'USDS', 2),
+        ('Step 2 — retained in surplus buffer', 'step2_retained', 'USDS', 2),
+        ('Step 3 — monthly engine budget', 'step3_capital', 'USDS', 2),
+        ('Monthly USDS staking rewards', 'usds_rewards_usds', 'USDS', 2),
+        ('Monthly SKY staking rewards', 'sky_rewards_monthly', 'SKY', 2),
+        ('Burn purchase budget', 'burn_usds', 'USDS', 2),
+        ('Splitter hop / USDS rewards duration', 'hop', 'seconds', 0),
+        ('90-day SKY vest stream total', 'vest_tot', 'SKY', 0),
+    ]:
+        lines.append(f'| {label} | {D(w[key]):,.{places}f} {unit} |')
+    lines += [f"| SKY to burn from October purchases | {D(tmf['results']['sky_to_burn']):,.2f} SKY |", '',
+              'The engine uses 6,000 USDS per batch and a 55% buyback share. '
+              'The burn above is attributed to actual October purchases, separately from the future burn purchase budget.', '',
+              'Calculation details: [non-MSC](../settlements/non_msc/2026-10/summary.md), '
+              '[consolidated Sky revenue](../settlements/sky_total/2026-10/summary.md), '
+              '[TMF](../settlements/tmf/2026-10/summary.md).', '',
+              'Independent daily asset checks remain explicitly deferred; ALM transfer reviews are retained.', '']
+    return lines
 
 
 def build():
@@ -36,7 +88,7 @@ def build():
     if preview['sky_total_config_sha256'] != digest:
         raise ValueError('Preview configuration is stale')
     lines = ['# MSC #14 - Settlement Summary (October 2026)', '',
-             '> Draft: Prime settlement instructions reviewed; consolidated Sky net revenue and TMF calculations are pending.', '',
+             '> Draft settlement instructions and TMF recommendations; execution remains subject to approval.', '',
              '## Methodology', '',
              'Demand-side revenue covers incentives and treasury income. Supply-side revenue covers allocation returns, borrowing costs and Sky Direct Exposures.', '',
              'October-earned revenue is shown separately from adjustments. Instructions include '
@@ -102,11 +154,7 @@ def build():
             if prime.ilk:
                 lines += [f"- Mint `{D(row['msc_mint']):,.0f} USDS` debt in `{prime.ilk}` and transfer the amount to the surplus buffer."]
             lines += [f"- Send `{D(row['msc_send']):,.0f} USDS` from the surplus buffer to the {prime.label} Subproxy [{prime.subproxy}](https://etherscan.io/address/{prime.subproxy}).", '']
-    lines += ['---', '', '## Sky Treasury Management Function Calculations', '',
-              '**Pending:** the October consolidated Sky/non-MSC report and TMF calculations are not included in this draft. '
-              'Prime mint-minus-transfer totals must not be presented as consolidated Sky net revenue.', '',
-              'Independent daily asset checks remain explicitly deferred; ALM transfer reviews are retained. '
-              'Complete the treasury section before publishing a full MSC #14 settlement summary.', '']
+    lines += treasury_section(indexed)
     return '\n'.join(lines)
 
 

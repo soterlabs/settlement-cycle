@@ -1,0 +1,53 @@
+{
+  "id": "non_msc",
+  "month": "2026-10",
+  "pin_block": 26316188,
+  "results": {
+    "psm_jar_income": "10729168.193175",
+    "jar_burns": [
+      {
+        "date": "2026-10-08",
+        "amount": "10729168.193175"
+      }
+    ],
+    "stability_fee_income": "4246529.056636487554",
+    "stability_fees_by_ilk": {
+      "ETH-A": "1491873.4366195383",
+      "ETH-B": "52269.9468374879",
+      "ETH-C": "1439960.3730997755",
+      "LSEV2-SKY-A": "865159.24287657",
+      "RWA002-A": "137503.67786212327",
+      "RWA004-A": "10713.407163299042",
+      "RWA005-A": "11540.460349560713",
+      "WBTC-A": "9539.187644540854",
+      "WBTC-B": "2415.250549705401",
+      "WBTC-C": "14149.484194432354",
+      "WSTETH-A": "164771.5920002882",
+      "WSTETH-B": "46632.99743916602"
+    },
+    "susds_expense_gross": "15121442.218933006065778051",
+    "susds_prime_carveout": {},
+    "susds_prime_held": "0",
+    "susds_expense_to_users": "15121442.218933006065778051",
+    "dsr_expense": "210918.8881536156317235897182",
+    "stusds_expense": "854775.07378680893838852",
+    "liq_owe": "0",
+    "liq_due": "0",
+    "liq_revenue": "0",
+    "liq_expense": "0",
+    "bad_debt_by_ilk": {},
+    "bad_debt_expense": "0",
+    "surplus_returns": [],
+    "surplus_return_income": "0",
+    "refund_accrual_adjustments": [],
+    "refund_accrual_adjustment": "0",
+    "rwa_jar_void": "2204040.840000000000000000",
+    "vest_expense": "0",
+    "total_income": "17179738.089811487554000000",
+    "total_expense": "16187136.18087343063589016072",
+    "net_revenue": "992601.90893805691810983928"
+  },
+  "warnings": [
+    "RWA jar void booked 2,204,040.84 \u2014 the legacy-RWA jar tripwire fired (normally $0). Confirm the deal/attribution."
+  ]
+}

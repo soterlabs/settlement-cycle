@@ -1,0 +1,103 @@
+{
+  "id": "sky_total",
+  "basis": "accrual",
+  "generated_at_utc": "2026-11-12T16:54:19+00:00",
+  "month": "2026-10",
+  "results": {
+    "per_prime": {
+      "spark": {
+        "sky": "10224716.81316752696503403786",
+        "dv": "900219.9412801124114781910701",
+        "sv": "3038737.80884210014474387286",
+        "sky_adj": "536094.04",
+        "dv_adj": "0",
+        "sv_adj": "249141.52",
+        "send_credit": "0",
+        "mint": "14048690",
+        "send": "4188099",
+        "derived_mint": "14048690.18200962710977791072",
+        "derived_send": "4188099.270122212556222063930"
+      },
+      "grove": {
+        "sky": "5682959.319885517888970951078",
+        "dv": "122862.6499862163417263841036",
+        "sv": "1225694.878304368896498431589",
+        "sky_adj": "1135869.94",
+        "dv_adj": "0",
+        "sv_adj": "822268.24",
+        "send_credit": "0",
+        "mint": "8866792",
+        "send": "2170826",
+        "derived_mint": "8866792.378189886785469382667",
+        "derived_send": "2170825.768290585238224815693"
+      },
+      "obex": {
+        "sky": "1341558.335404871514917605546",
+        "dv": "84247.44353529839736453050079",
+        "sv": "395168.021218229233082394454",
+        "sky_adj": "0",
+        "dv_adj": "0",
+        "sv_adj": "-273508.90",
+        "send_credit": "0",
+        "mint": "1463217",
+        "send": "205907",
+        "derived_mint": "1463217.456623100748000000000",
+        "derived_send": "205906.5647535276304469249548"
+      },
+      "osero": {
+        "sky": "13463.64986742351995358673837",
+        "dv": "34533.43576191995573275105253",
+        "sv": "2348.19294859208823579689463",
+        "sky_adj": "0",
+        "dv_adj": "0",
+        "sv_adj": "0",
+        "send_credit": "5514.00",
+        "mint": "15812",
+        "send": "42396",
+        "derived_mint": "15811.84281601560818938363300",
+        "derived_send": "42395.62871051204396854794716"
+      },
+      "keel": {
+        "sky": "0E-31",
+        "dv": "34033.80850715678804170493481",
+        "sv": "0E-31",
+        "sky_adj": "0",
+        "dv_adj": "0",
+        "sv_adj": "0",
+        "send_credit": "0",
+        "mint": "0",
+        "send": "34034",
+        "derived_mint": "0",
+        "derived_send": "34033.80850715678804170493481"
+      },
+      "skybase": {
+        "sky": "0E-31",
+        "dv": "145438.8642974105888596463102",
+        "sv": "0E-31",
+        "sky_adj": "0",
+        "dv_adj": "0",
+        "sv_adj": "0",
+        "send_credit": "0",
+        "mint": "0",
+        "send": "145439",
+        "derived_mint": "0",
+        "derived_send": "145438.8642974105888596463102"
+      }
+    },
+    "total_mint": "24394511",
+    "total_send": "6786701",
+    "dsb": "0",
+    "msc_net": "17607810",
+    "non_msc_income": "17179738.089811487554000000",
+    "non_msc_expense": "16187136.18087343063589016072",
+    "non_msc_net": "992601.90893805691810983928",
+    "sky_net_revenue": "18600411.90893805691810983928"
+  },
+  "reference_rate_notes": [],
+  "prior_period_payments": {},
+  "prior_period_expenses": {},
+  "warnings": [
+    "msc_preview: 2026-10 contains adjustments or partial pins, but not published mint/send figures for every prime. Unpinned amounts are DERIVED from monthly reports; this is not a fully reconciled MSC preview.",
+    "non_msc: RWA jar void booked 2,204,040.84 \u2014 the legacy-RWA jar tripwire fired (normally $0). Confirm the deal/attribution."
+  ]
+}

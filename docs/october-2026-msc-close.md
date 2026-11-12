@@ -32,17 +32,17 @@ DR and other active demand-side components. Historical adjustments are separate.
 
 | Prime | Supply adjustment | Sky adjustment | Send credit | Mint (USDS) | Send (USDS) |
 |---|---:|---:|---:|---:|---:|
-| Spark | 249,141.52 | 557,546.90 | 0.00 | 14,070,143 | 4,188,099 |
-| Grove | 927,411.94 | 1,030,726.24 | 0.00 | 8,866,792 | 2,275,969 |
+| Spark | 249,141.52 | 536,094.04 | 0.00 | 14,048,690 | 4,188,099 |
+| Grove | 822,268.24 | 1,135,869.94 | 0.00 | 8,866,792 | 2,170,826 |
 | Obex | -273,508.90 | 0.00 | 0.00 | 1,463,217 | 205,907 |
 | Osero | 0.00 | 0.00 | 5,514.00 | 15,812 | 42,396 |
 | Keel | 0.00 | 0.00 | 0.00 | 0 | 34,034 |
 | Skybase | 0.00 | 0.00 | 0.00 | 0 | 145,439 |
 
 These instructions include Reconciliation IV once, replacing earlier adjustment
-totals. Grove retains the approved 915,857.20 supply and 1,141,145.80 Sky partner
+totals. Grove retains the approved 810,713.50 supply and 1,246,289.50 Sky partner
 rebates, plus historical supply +11,554.74 and Sky -110,419.56. Spark carries
-historical supply +249,141.52 and Sky +557,546.90; Obex supply is -273,508.90.
+historical supply +249,141.52 and Sky +536,094.04; Obex supply is -273,508.90.
 The original October operating revenue and daily borrowing costs are unchanged.
 
 Osero also receives the existing **5,514 USDS send-only credit** for duplicate

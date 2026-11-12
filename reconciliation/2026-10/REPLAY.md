@@ -145,7 +145,7 @@ October revenue from historical adjustments, and displays only the agreed
 **Partner Rebate** label and aggregate Sky/Grove amounts. Osero's refund is
 carried once without increasing debt.
 
-This is deliberately a draft of the Prime legs: October non-MSC/consolidated
-Sky net revenue and TMF remain pending. The normal complete-cycle forum
-generator retains its completeness gate. Do not publish this draft as a
-completed treasury calculation.
+The October treasury close is documented in [treasury/README.md](treasury/README.md).
+The forum builder also verifies the retained non-MSC, consolidated Sky and TMF
+results and their source hashes. Figures remain proposed settlement instructions,
+not a statement that payment or parameter execution has occurred.

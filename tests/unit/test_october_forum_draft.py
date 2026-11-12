@@ -24,7 +24,9 @@ def test_post_matches_reports_and_separates_reconciliation_and_partner_rebate(dr
     assert '-31,889.50' not in text  # Do not show only the increment still to configure.
     assert 'Prime supply-side correction: -273,508.90' in text
     assert '15,812 USDS' in text and '42,396 USDS' in text
-    assert '**Pending:**' in text
+    assert '**Pending:**' not in text
+    assert '**Sky net revenue**' in text
+    assert '90-day SKY vest stream total' in text
     assert 'JAAA' not in text and 'JTRSY' not in text
 
 
@@ -52,4 +54,18 @@ def test_stale_preview_report_hash_fails(draft, monkeypatch):
 
     monkeypatch.setattr(draft.json, 'loads', changed)
     with pytest.raises(ValueError, match='Stale summary: spark'):
+        draft.build()
+
+
+def test_changed_treasury_input_rejects_stale_forum(draft, monkeypatch):
+    original = json.loads
+
+    def changed(value, *args, **kwargs):
+        result = original(value, *args, **kwargs)
+        if isinstance(result, dict) and 'sha256' in result and 'settlements/tmf/2026-10/summary.md' in result['sha256']:
+            result['sha256']['settlements/tmf/2026-10/summary.md'] = 'wrong'
+        return result
+
+    monkeypatch.setattr(draft.json, 'loads', changed)
+    with pytest.raises(ValueError, match='Stale treasury evidence'):
         draft.build()
