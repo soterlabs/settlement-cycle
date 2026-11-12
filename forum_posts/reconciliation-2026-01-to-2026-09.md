@@ -2,8 +2,7 @@
 
 # MSC Reconciliation IV — MSC #5-#13 (January-September 2026)
 
-Draft for the October 2026 earning cycle (MSC #14, paid in November).
-October's ordinary settlement is presented separately.
+Draft reconciliation of the January-September 2026 earning cycles.
 
 We replayed the applicable corrections starting with [PR #220](https://github.com/soterlabs/settlement-cycle/pull/220)
 through [`703c668`](https://github.com/soterlabs/settlement-cycle/commit/703c66863a0e99edf839658081026926f038c70b),
@@ -26,8 +25,8 @@ agent's debt mint. A send-only refund increases its transfer without new debt.
 | Obex | -273,508.90 | 0.00 | 0.00 |
 
 Components are rounded to cents individually, preserving previously approved
-credits. Monthly detail retains unrounded values. The ordinary MSC applies its
-existing supply-side floor and whole-USDS rounding to actual October figures.
+credits. Monthly detail retains unrounded values. Final payment instructions
+apply the existing supply-side floor and whole-USDS rounding.
 
 ## What changed
 
@@ -102,21 +101,14 @@ credits are not deducted again from unrelated native-yield corrections.
 September venue results already refreshed before publication are the baseline,
 including Spark S1's already-recognized external receipts.
 
-Grove's -78,530.06 historical Sky adjustment and Osero's 5,514.00 refund are
-already configured for October. The full ledger above includes them once.
-The following amounts remain to add to those existing October entries:
-
-| Prime | Additional supply-side adjustment | Additional Sky-share adjustment | Additional send-only refund |
-|---|---:|---:|---:|
-| Spark | 249,141.52 | 536,094.04 | 0.00 |
-| Grove | 11,554.74 | -31,889.50 | 0.00 |
-| Osero | 0.00 | 0.00 | 0.00 |
-| Obex | -273,508.90 | 0.00 | 0.00 |
+Grove's -78,530.06 historical Sky adjustment and Osero's 5,514.00 refund
+are included once in the full historical ledger above. They must not be
+added again as separate corrections.
 
 ## Effects on Sky and prime agents
 
-The full historical ledger has the following linear effects relative to the
-ordinary October settlement, before the final floor and whole-USDS rounding.
+The full historical ledger has the following incremental effects, before
+the final floor and whole-USDS rounding.
 Debt-mint effects assume the combined supply-side share is above the mint floor.
 Sky net means debt minted less transfers to agents.
 
@@ -132,9 +124,7 @@ Sky net means debt minted less transfers to agents.
 The [calculation package](https://github.com/soterlabs/settlement-cycle/pull/277)
 contains retained source inputs, hashes, per-venue and monthly results, the PR
 inventory and offline replay scripts. This post covers only January-September
-corrections, carried once into the October settlement. October settlement
-totals and instructions are presented separately in
-[MSC #14](https://github.com/soterlabs/settlement-cycle/pull/275).
+corrections, net of amounts already settled.
 This draft changes no frozen report, production configuration, database
 revision or executed payment.
 

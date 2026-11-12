@@ -53,7 +53,10 @@ def test_bridge_cutoff_and_small_buidl_correction_sign(ledger):
     assert "# MSC Reconciliation IV" in post
     assert "partner rebate" not in post.lower()
     assert "75,063.88" not in post
-    assert "MSC #14](https://github.com/soterlabs/settlement-cycle/pull/275)" in post
+    assert "october" not in post.lower()
+    assert "november" not in post.lower()
+    assert "MSC #14" not in post
+    assert "/pull/275" not in post
 
 
 def test_exact_lending_replay_replaces_overlap_and_nets_osero_payment(ledger):
