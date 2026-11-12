@@ -131,3 +131,21 @@ Jan–September ledger or adds the receipts to venue income a second time.
 The finalizer rendered all retained reports in staging to validate propagation;
 only Grove's canonical reports were promoted. Other Prime files remain intact.
 Grove mint remains 8,866,792 and send becomes 2,170,826 USDS.
+
+## MSC #14 forum draft and review after Reconciliation IV merge
+
+PR #277 is merged at `6482439`. Its final publication edits change no financial
+ledger fields. The scoped October replay has been repeated against merged main.
+
+`PYTHONPATH=src:scripts python scripts/build_october_forum_draft.py` writes
+`forum_posts/msc-2026-10.md`. It reads the tracked Prime summaries and instruction
+preview, verifies their hashes, and checks every adjustment against the merged
+Reconciliation IV ledger plus Partner Rebate. The post separates ordinary
+October revenue from historical adjustments, and displays only the agreed
+**Partner Rebate** label and aggregate Sky/Grove amounts. Osero's refund is
+carried once without increasing debt.
+
+This is deliberately a draft of the Prime legs: October non-MSC/consolidated
+Sky net revenue and TMF remain pending. The normal complete-cycle forum
+generator retains its completeness gate. Do not publish this draft as a
+completed treasury calculation.

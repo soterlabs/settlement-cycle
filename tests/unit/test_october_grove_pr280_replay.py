@@ -83,7 +83,7 @@ def test_offline_october_cash_replay_and_production_msc_identity(
     )
     assert canonical(full.rows[0]) == result["msc_instruction"]
     assert result["msc_instruction"]["mint"] == "8866792"
-    assert result["msc_instruction"]["send"] == "2275969"
+    assert result["msc_instruction"]["send"] == "2170826"
 
 
 def test_missing_transfer_review_stops_before_calculation(replay_module, tmp_path, monkeypatch):

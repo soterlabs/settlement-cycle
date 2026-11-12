@@ -25,5 +25,7 @@
     "settlements/skybase/2026-10/summary.md": "0a1ed2efd54ae8cf19f1758add6fd105265f1a3196400be3a9b4a06d24af754e",
     "settlements/skybase/2026-10/skybase_settlement_october_2026.xlsx": "13d62ce8d094704c13a60112ffd0628541d0a78ed6e2346a97f64454f3a62a68"
   },
-  "promotion_scope": "Grove partner rebate only; other canonical report bytes retained"
+  "promotion_scope": "Grove partner rebate only; other canonical report bytes retained",
+  "historical_ledger_revalidated_sha256": "6708981f2f4b1f0a96bd3d7b04ab37e1f4078df65ed97aa76bda40cf4d5a31b0",
+  "historical_revalidation_note": "After PR277 merge 6482439: only generator provenance hash changed; all financial ledger fields equal the report-rendering input. Existing report bytes retained."
 }

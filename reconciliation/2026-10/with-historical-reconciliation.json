@@ -11,8 +11,8 @@
       "src/settle/revenue/monthly.py": "fe1f6351a5b5dfc7c88890fd408446838833c074eb407a474d3dddd1acae28b9"
     },
     "scope": "retained October arithmetic only; not full asset controls",
-    "main_commit": "e631532c789228333714720c29b1c0221860296f",
-    "replay_code_commit": "f91b9ed4a5d98c9c2ff49b5c988340595d5fff2d",
+    "main_commit": "64824392b7fb9ab380ae149c5f03f8baf0eefb41",
+    "replay_code_commit": "e3566803c5f14529749e183f8df1d4f697b8c404",
     "prior_pr_head": "6820525e1ae34ca8460ac3a0dfc5f4cc68c80ae9",
     "changed_production_paths": [
       "config/sky_total.yaml",
@@ -311,7 +311,7 @@
     "reconciliation/2026-10/partner-rebate-inputs.json": "7f06ed061ebec11f2b1cb1154d8ec1350665a95fff1cf5b25a5d90212c5b5e6d",
     "reconciliation/2026-10/partner-rebate-daily.json": "195a079db359ba8d7bf3cf69970a5504444173a93ca3e4b443f38dc42cb57cc2",
     "reconciliation/2026-10/partner_rebates.json": "24b236d9c75ee19d194fb2a602fd2c8f84b314f0ca101fdce7c181dd7c4aa088",
-    "reconciliation/2026-01_to_2026-09/data.json": "a41d6931afbbc68aa02c02131930ce675c67c7abf120e285770b38ee67211c10",
+    "reconciliation/2026-01_to_2026-09/data.json": "6708981f2f4b1f0a96bd3d7b04ab37e1f4078df65ed97aa76bda40cf4d5a31b0",
     "reconciliation/2026-10/retained-close/prime_msc_preview.json": "c8e50d99512cc8ebdd42544d767357fc7f01197aa9340c5b19573d850f8571b6",
     "reconciliation/2026-10/grove-pr280/after-provenance.json": "9eb63982ed9c07c1ed1376b6c94188292a88bfbff11a9fac8869d22abe335606",
     "config/sky_total.yaml": "3982cf1e020c7af29da2b80548eb5c8b56bbcce0253b62c7cf19b867737291e6"
