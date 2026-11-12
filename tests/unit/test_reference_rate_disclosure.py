@@ -70,7 +70,7 @@ def test_sky_total_retains_underlying_rate_note(tmp_path):
 
 
 def test_tmf_discloses_inherited_reference_assumption(tmp_path):
-    from settle.compute.tmf import TmfPolicy, compute_tmf_monthly, render_summary
+    from settle.compute.tmf import SbeActivity, TmfPolicy, compute_tmf_monthly, render_summary
 
     p = tmp_path / 'settlements/sky_total/2026-09/provenance.json'
     p.parent.mkdir(parents=True)
@@ -78,7 +78,8 @@ def test_tmf_discloses_inherited_reference_assumption(tmp_path):
     p.write_text(json.dumps({'results': {'sky_net_revenue': '1000000'}, 'reference_rate_notes': [note]}))
     cfg = yaml.safe_load((ROOT / 'config/tmf.yaml').read_text())
     r = compute_tmf_monthly('2026-09', cfg['months']['2026-09'], TmfPolicy.from_config(cfg),
-                            activity=None, state={'usds_total_supply': Decimal('6000000000'), 'block': 1},
+                            activity=SbeActivity('2026-09', 1, 2, 0, 1),
+                            state={'usds_total_supply': Decimal('6000000000'), 'block': 1},
                             repo_root=tmp_path)
     assert note in render_summary(r)
     assert r.inputs.snr == Decimal('1000000')

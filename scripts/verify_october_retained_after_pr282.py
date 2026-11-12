@@ -86,6 +86,13 @@ def replay(wallet_inputs=None):
                'src/settle/revenue/allocation_incentives.py', 'config/sky_total.yaml',
                # PR284 exposes reporting API values; no MSC formula imports it.
                'src/settle/api/allocations.py'}
+    # Treasury-only changes do not enter prime revenue/borrowing formulas.
+    # Accept only the exact sources used in the independently replayed TMF close.
+    treasury_sources = {'config/tmf.yaml': '342dac6b6ae23e560f137d3e51b5e6f72fcba4232a3b83275c4436910358b173', 'src/settle/compute/tmf.py': 'dbc7b661875b60474b8369e1e8fdde361940469b95ef6fd57fbc9fe990fd5cc8'}
+    for path, sha in treasury_sources.items():
+        if path in changed:
+            check(digest(ROOT / path) == sha, 'Unreviewed treasury source change: ' + path)
+            allowed.add(path)
     if any(p not in allowed and not p.startswith('src/settle/controls/') for p in changed):
         raise ValueError('Financial/configuration changes require a scoped source replay')
     folder = ROOT / 'reconciliation/2026-10'
