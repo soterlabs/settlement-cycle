@@ -20,7 +20,9 @@ def test_refund_matches_executed_cashflows_and_october_booking():
     assert result['send_credit'] == '5514'
     config = yaml.safe_load((ROOT / 'config/sky_total.yaml').read_text())
     adjustments = config['msc_preview']['2026-10']['osero']
-    assert adjustments == {'send_credit': '5514'}
+    assert set(adjustments) <= {'send_credit', 'sky_adj', 'sv_adj', 'dv_adj'}
+    assert Decimal(adjustments['send_credit']) == Decimal('5514')
+    assert all(Decimal(value) == 0 for key, value in adjustments.items() if key != 'send_credit')
     assert sum((Decimal(r['send_credit']) for r in result['rows']), Decimal(0)) == Decimal(adjustments['send_credit'])
 
 

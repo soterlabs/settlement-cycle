@@ -1,0 +1,31 @@
+{
+  "status": "reports_rendered_daily_controls_deferred",
+  "historical_ledger_sha256": "a41d6931afbbc68aa02c02131930ce675c67c7abf120e285770b38ee67211c10",
+  "retained_manifest_sha256": "6226dd3944c0e23411f1872205fbeecd97c4d7782156ee9fd14fcc5af35083cb",
+  "finalizer_sha256": "59dee4479c536feb44eb076446340aedbec2fe1cc68812616084c86ce1f97e9e",
+  "api_published": false,
+  "prior_months_rewritten": false,
+  "output_sha256": {
+    "settlements/spark/2026-10/provenance.json": "de6b6b411da32faf4e9bedfedcd6ddc481f650dbbdcd003e9ba8ad2c1712cfe9",
+    "settlements/spark/2026-10/summary.md": "29c17955571dbb5c80af345c636fccd8c6d1c9318109c07f1e884ed7d022016a",
+    "settlements/spark/2026-10/spark_settlement_october_2026.xlsx": "d2dfe9c5e40189e5fdbb50cfd14016b485261d82446c54e26ba79f8458de13d2",
+    "settlements/grove/2026-10/provenance.json": "66e50bb05a6fe73a855faa7cd1bd482020f476215ee2ce23c198b886a632437d",
+    "settlements/grove/2026-10/summary.md": "9c18e575f6a12f5b7eb0c8b9f5c350126db8010a358d8479f9291039068565e6",
+    "settlements/grove/2026-10/grove_settlement_october_2026.xlsx": "d0ec6f5fede8ca0a204a554b4c223cdb298f1c2d662686923de4c50c386c68a4",
+    "settlements/obex/2026-10/provenance.json": "4e89d2bba232299237c9844af494d70488f06ae1d294dd329000373c634ea212",
+    "settlements/obex/2026-10/summary.md": "324a3a6fe446e0190924227eb906a248c835923976ff302b2bc615ef84b2d706",
+    "settlements/obex/2026-10/obex_settlement_october_2026.xlsx": "a52ee754bb2ccf391ffecd0ea3041612e59f5cdcbae5b1bda9377a8c1a59196f",
+    "settlements/osero/2026-10/provenance.json": "9f8779b020e20ee5045ee6eca8e87d06aecba49f640d8802d86c5015beeaff8e",
+    "settlements/osero/2026-10/summary.md": "93e80501b1b1d689faeaa992205b9eb63a0d50ae15a43d969f8f6929da4be4b7",
+    "settlements/osero/2026-10/osero_settlement_october_2026.xlsx": "058398cdd9da762eba619b5bca711e9c8e8aa02344cc7d82d686a632209022ea",
+    "settlements/keel/2026-10/provenance.json": "9416f4d89d31e8af6617b369c81dca2e01d662c4e65ea9258f53af86c2b097e1",
+    "settlements/keel/2026-10/summary.md": "0698a907e5fc121d459d2da0d866280705e7d20d9af65d56a75e7b21ba440a47",
+    "settlements/keel/2026-10/keel_settlement_october_2026.xlsx": "103d77e11dd1b168d3f17ed6489e36900cd55f91b4e2d3b5a9dcc0f7620ca6d7",
+    "settlements/skybase/2026-10/provenance.json": "44ed62baeaf622bb6a95f508245d08615c167a30010c088b15bdd99433740030",
+    "settlements/skybase/2026-10/summary.md": "0a1ed2efd54ae8cf19f1758add6fd105265f1a3196400be3a9b4a06d24af754e",
+    "settlements/skybase/2026-10/skybase_settlement_october_2026.xlsx": "13d62ce8d094704c13a60112ffd0628541d0a78ed6e2346a97f64454f3a62a68"
+  },
+  "promotion_scope": "Grove partner rebate only; other canonical report bytes retained",
+  "historical_ledger_revalidated_sha256": "6708981f2f4b1f0a96bd3d7b04ab37e1f4078df65ed97aa76bda40cf4d5a31b0",
+  "historical_revalidation_note": "After PR277 merge 6482439: only generator provenance hash changed; all financial ledger fields equal the report-rendering input. Existing report bytes retained."
+}

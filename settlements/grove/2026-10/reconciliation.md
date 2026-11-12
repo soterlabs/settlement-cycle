@@ -1,43 +1,39 @@
 # Grove adjustments — October 2026 earning cycle
 
-Operator-approved November 6, 2026. These adjustments accompany the October
-earning cycle, normally settled in November. This record does not assert that
-the settlement transaction has executed.
+Updated 12 November 2026. No settlement transaction is asserted as executed.
+Historical corrections and partner rebates are booked once in October;
+published January–September reports are not rewritten.
 
-| Item | Sky share adjustment (USDS) | Grove supply-side adjustment (USDS) |
+| Item | Sky adjustment (USDS) | Grove supply adjustment (USDS) |
 |---|---:|---:|
-| Historical in-flight CoF correction | -78,530.06 | 0.00 |
-| Partner rebates — allocation to Sky | 1,141,145.80 | 0.00 |
-| Partner rebates — allocation to Grove | 0.00 | 915,857.20 |
-| **Total MSC adjustments** | **1,062,615.74** | **915,857.20** |
+| Jan–September reconciliation, net of previously booked credits | -110,419.56 | 11,554.74 |
+| partner rebate — JAAA 2025 | 58,578.87 | 354,741.13 |
+| partner rebate — JAAA January–July 2026 | 117,303.63 | 455,972.37 |
+| partner rebate — JTRSY 2025 | 356,999.00 | 0.00 |
+| partner rebate — JTRSY January–July 2026 | 713,408.00 | 0.00 |
+| **Total MSC adjustments** | **1,135,869.94** | **822,268.24** |
 
-The partner allocations sum to 2,057,003.00 USDS, matching the six receipts
-on October 20–21. They use the statement's detailed figures. The operator
-accepts the 360.00 USDS difference in the statement's final beneficiary totals
-as an error; this is arithmetic validation, not an independently reconstructed
-time-weighted rebate entitlement. Payer identities are labeled **partner**.
+Partner rebates total **2,057,003.00 USDS**, matching six USDC receipts on
+October 20–21: **1,246,289.50 Sky / 810,713.50 Grove**. The calculation preserves
+invoice nets and allocates them using saved on-chain daily exposure weights.
+JTRSY is entirely Sky under the approved historical SDE-like interpretation,
+including Spark custody. JAAA uses the provisional $325m Ethereum cap from
+20 November 2025 through 8 March 2026. Proportional fee allocation is an explicit
+assumption. No fee is deducted a second time.
 
-The existing `msc_preview` mechanism applies `sky_adj: 1062615.74` and
-`sv_adj: 915857.20`, before final whole-USDS rounding. The CoF component
-reduces debt minted; it does not create another direct payment to Grove.
-Partner supply-side revenue uses the normal mint/send calculation. Final
-transaction amounts also depend on the ordinary October results.
+This replaces the earlier statement-based split, including its $360 mismatch;
+it is not an additional rebate. The ordinary October venue revenue is unchanged.
+The resulting October instructions are **mint 8,866,792 / send 2,170,826 USDS**.
+Gross mint is unchanged from the previous PR version; unrounded Grove payment
+falls by **105,143.70 USDS**, increasing Sky's net by the same amount before
+whole-token rounding. The actual whole-token send decreases by 105,143 USDS.
 
-The CoF amount includes the JAAA settlement-day debit and subtracts the
-2,508.55 USDS CoF credit already recorded in September. The earlier
-165,013.90 USDS combined fee/CoF correction stays in September and is not
-repeated here. No other overlapping credit has been identified in the
-records reviewed. The rebate allocation does not establish that the amount
-was excluded from prior NAV/income; no prior rebate recognition was identified
-in this investigation.
+Reproduce with `python scripts/calculate_october_partner_rebate.py`.
+Inputs, full precision weights, receipts and assumptions are committed under
+`reconciliation/2026-10/partner-rebate-*`, `partner_rebates.json`, and
+`PARTNER_REBATE_RECIPE.md`. Historical corrections come independently from
+`reconciliation/2026-01_to_2026-09/data.json`. Replay applies replacement totals,
+so repeating it cannot add the historical credits or partner receipts twice.
 
-Evidence: `reconciliation/2026-10/sde_inflight_cof.json`,
-`reconciliation/2026-10/partner_rebates.json`, and
-`docs/grove/sde_inflight.md`.
-
-The deposit-side extension separately calculates a further 35,889.68 USDS
-of CoF relief for January, March and April 2026, marginal to the corrections
-above. See `reconciliation/2026-10/async_deposit_cof.json`. It is not included
-in this accepted settlement bridge: it remains a calculated backfill pending
-comparison with prior settlement credits. Combining the separately rounded
-redemption and deposit lines would give 114,419.74 USDS of total CoF relief.
+The rebate allocation does not independently prove that no historical NAV
+included it; no prior rebate recognition was identified in the retained review.

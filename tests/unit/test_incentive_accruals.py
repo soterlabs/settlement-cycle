@@ -140,6 +140,34 @@ def test_nft_discovery_handles_transfer_out_reentry_and_self_transfer(monkeypatc
     assert provider.owned_v4_ids(source, holder, 100) == [10, 20]
 
 
+def test_pinned_nft_history_is_fetched_once_without_future_ownership(monkeypatch):
+    from settle.extract import hypersync_store
+    from settle.extract.transfer_logs import _to_topic_hex
+    holder, pm = Address(bytes.fromhex('11'*20)), Address(bytes.fromhex('22'*20))
+    topic, other = _to_topic_hex(holder.value), _to_topic_hex(pm.value)
+    rows = [SimpleNamespace(block_number=b, log_index=0, topic2=to, topic3=hex(tid))
+            for b, tid, to in [(10, 1, topic), (20, 1, other),
+                               (30, 2, topic), (40, 1, topic)]]
+    calls = []
+    def fetch(*args, **kwargs):
+        calls.append(args)
+        return rows
+    monkeypatch.setattr(hypersync_store, 'fetch_logs', fetch)
+    period = Period(date(2026, 10, 1), date(2026, 10, 31),
+                    pin_blocks={Chain.ETHEREUM: 40})
+    provider = IncentiveInputs(None, SimpleNamespace(block_resolver=object()), period)
+    source = SimpleNamespace(nft_position_manager=pm, chain=Chain.ETHEREUM)
+    # Query out of order: later knowledge must not leak into earlier ownership.
+    assert provider.owned_v4_ids(source, holder, 40) == [1, 2]
+    assert provider.owned_v4_ids(source, holder, 5) == []
+    assert provider.owned_v4_ids(source, holder, 15) == [1]
+    assert provider.owned_v4_ids(source, holder, 25) == []
+    assert provider.owned_v4_ids(source, holder, 35) == [2]
+    assert len(calls) == 1 and calls[0][-2:] == (0, 40)
+    with pytest.raises(ValueError, match='exceeds pinned cutoff'):
+        provider.owned_v4_ids(source, holder, 41)
+
+
 def test_morpho_daily_share_return_uses_fee_net_quotes_once(monkeypatch):
     import settle.normalize.incentives as mod
     token, holder = Address(bytes.fromhex('11'*20)), Address(bytes.fromhex('22'*20))

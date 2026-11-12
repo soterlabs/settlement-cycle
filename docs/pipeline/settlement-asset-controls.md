@@ -1,11 +1,20 @@
 # Daily settlement asset controls
 
-Canonical `write_settlement` now requires independent evidence under
-`.msc-transfer-reviews/<prime>/<YYYY-MM>/asset-controls.json`. Missing, changed,
-incomplete or inconsistent evidence stops the writer **before any artifacts or
-output directory are created**. `--allow-overwrite` does not bypass controls.
-Provisional revenue previews remain available. No historical settlement is
-rewritten and no live month receives a passing review from this change alone.
+Canonical `write_settlement` reads
+`.msc-transfer-reviews/<prime>/<YYYY-MM>/asset-controls.json`.
+
+**Temporary opt-out, authorized by the operator:** an explicitly empty file
+(zero bytes, whitespace only, or an empty JSON object `{}`) skips the daily
+asset controls. Provenance records `status: skipped`, the file hash,
+`reason: empty_asset_controls_file` and `days_checked: 0`; it never reports a
+passing validation. Use an empty placeholder only when intentionally deferring
+these controls. Preserve existing evidence rather than truncating it.
+
+Missing files still block writing. Populated files still undergo all checks;
+malformed JSON, `null`, arrays and incomplete packets do not opt out.
+`--allow-overwrite` does not bypass validation. The ALM transfer-review workflow
+remains required separately. This exception can be removed when the operator
+is ready to enforce complete daily controls.
 
 ## What is checked
 
@@ -40,6 +49,11 @@ need not equal Sky debt: contributed capital and retained earnings can exist.
 The check never invents an equity balance to make the numbers agree. The
 provenance retains daily asset/debt/deduction totals and the packet, review,
 configuration, inventory and source hashes for audit.
+
+Transfer-scan coverage is required at active configured ALM boundaries only.
+SubProxy and other asset-holder observations remain part of the financial
+inventory, but their full transfer histories are not an ALM-scan prerequisite.
+Additional supplied scans must still be complete and backed by evidence.
 
 ## Evidence preparation
 

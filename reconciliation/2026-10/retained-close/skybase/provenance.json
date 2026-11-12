@@ -1,0 +1,1054 @@
+{
+  "async_daily_breakdown": [],
+  "basin_cash_reporting": {},
+  "dr_breakdown": [
+    {
+      "amount": "0.0032153787394143176",
+      "notes": "susds_susdc / arbitrum / sUSDC",
+      "ref_code": "0"
+    },
+    {
+      "amount": "0.0018703106392481393",
+      "notes": "susds_susdc / arbitrum / sUSDC",
+      "ref_code": "1004"
+    },
+    {
+      "amount": "0.09394177490942185",
+      "notes": "susds_susdc / arbitrum / sUSDC",
+      "ref_code": "1017"
+    },
+    {
+      "amount": "709.4744523222543",
+      "notes": "psm3 / arbitrum / sUSDS",
+      "ref_code": "1"
+    },
+    {
+      "amount": "0.04244777366094048",
+      "notes": "susds_susdc / base / sUSDC",
+      "ref_code": "0"
+    },
+    {
+      "amount": "0.0036362636444099566",
+      "notes": "susds_susdc / base / sUSDC",
+      "ref_code": "1004"
+    },
+    {
+      "amount": "0.0780676553943003",
+      "notes": "susds_susdc / base / sUSDC",
+      "ref_code": "1017"
+    },
+    {
+      "amount": "362.55292783028125",
+      "notes": "psm3 / base / sUSDS",
+      "ref_code": "1"
+    },
+    {
+      "amount": "0.0000264717971837906",
+      "notes": "psm3 / base / sUSDS",
+      "ref_code": "1015"
+    },
+    {
+      "amount": "0.005594431289022831",
+      "notes": "psm3 / base / sUSDS",
+      "ref_code": "1017"
+    },
+    {
+      "amount": "5695.136741925645",
+      "notes": "skybase_flagship / ethereum / USDS",
+      "ref_code": "1998"
+    },
+    {
+      "amount": "20.554749108243172",
+      "notes": "skybase_risk_capital / ethereum / USDS",
+      "ref_code": "1999"
+    },
+    {
+      "amount": "0.7238101544037933",
+      "notes": "farms / ethereum / USDS-CLE",
+      "ref_code": "0"
+    },
+    {
+      "amount": "2130.952858652095",
+      "notes": "farms / ethereum / USDS-CLE",
+      "ref_code": "1"
+    },
+    {
+      "amount": "8.111227870390882",
+      "notes": "farms / ethereum / USDS-CLE",
+      "ref_code": "1001"
+    },
+    {
+      "amount": "7.409046853993484",
+      "notes": "farms / ethereum / USDS-CLE",
+      "ref_code": "1002"
+    },
+    {
+      "amount": "22946.221226050755",
+      "notes": "farms / ethereum / USDS-GROVE",
+      "ref_code": "1"
+    },
+    {
+      "amount": "138.59771350003962",
+      "notes": "farms / ethereum / USDS-GROVE",
+      "ref_code": "1002"
+    },
+    {
+      "amount": "0.08486535161460497",
+      "notes": "farms / ethereum / USDS-SKY",
+      "ref_code": "0"
+    },
+    {
+      "amount": "185.50892869291846",
+      "notes": "farms / ethereum / USDS-SKY",
+      "ref_code": "1"
+    },
+    {
+      "amount": "4.522776059391291",
+      "notes": "farms / ethereum / USDS-SKY",
+      "ref_code": "1001"
+    },
+    {
+      "amount": "0.0013575507302512335",
+      "notes": "farms / ethereum / USDS-SKY",
+      "ref_code": "1002"
+    },
+    {
+      "amount": "0.18587351248213183",
+      "notes": "farms / ethereum / USDS-SKY",
+      "ref_code": "1007"
+    },
+    {
+      "amount": "6.005822586791713",
+      "notes": "farms / ethereum / USDS-SPK",
+      "ref_code": "0"
+    },
+    {
+      "amount": "632.4424220564919",
+      "notes": "farms / ethereum / USDS-SPK",
+      "ref_code": "1"
+    },
+    {
+      "amount": "0.0005090815238442126",
+      "notes": "farms / ethereum / USDS-SPK",
+      "ref_code": "1002"
+    },
+    {
+      "amount": "6.952352175804845",
+      "notes": "susds_susdc / ethereum / sUSDC",
+      "ref_code": "0"
+    },
+    {
+      "amount": "2.4818365069316175",
+      "notes": "susds_susdc / ethereum / sUSDC",
+      "ref_code": "1017"
+    },
+    {
+      "amount": "1183.4461686652453",
+      "notes": "susds_susdc / ethereum / sUSDS",
+      "ref_code": "0"
+    },
+    {
+      "amount": "27862.99681520356",
+      "notes": "susds_susdc / ethereum / sUSDS",
+      "ref_code": "1"
+    },
+    {
+      "amount": "263.1574845373442",
+      "notes": "susds_susdc / ethereum / sUSDS",
+      "ref_code": "1001"
+    },
+    {
+      "amount": "14493.699049964218",
+      "notes": "susds_susdc / ethereum / sUSDS",
+      "ref_code": "1002"
+    },
+    {
+      "amount": "8490.913789197532",
+      "notes": "susds_susdc / ethereum / sUSDS",
+      "ref_code": "1003"
+    },
+    {
+      "amount": "281.4141781834995",
+      "notes": "susds_susdc / ethereum / sUSDS",
+      "ref_code": "1004"
+    },
+    {
+      "amount": "0.0000054673281349111135",
+      "notes": "susds_susdc / ethereum / sUSDS",
+      "ref_code": "1015"
+    },
+    {
+      "amount": "78.00658397892684",
+      "notes": "susds_susdc / ethereum / sUSDS",
+      "ref_code": "1020"
+    },
+    {
+      "amount": "14901.410948554605",
+      "notes": "skybase_pendle / ethereum / sUSDS",
+      "ref_code": "1997"
+    },
+    {
+      "amount": "0.0",
+      "notes": "sp / ethereum / spETH",
+      "ref_code": "1017"
+    },
+    {
+      "amount": "3.3574623309453533",
+      "notes": "sp / ethereum / spUSDC",
+      "ref_code": "0"
+    },
+    {
+      "amount": "0.00016828861810055658",
+      "notes": "sp / ethereum / spUSDC",
+      "ref_code": "1017"
+    },
+    {
+      "amount": "0.005118224736840272",
+      "notes": "stusds / ethereum / stUSDS",
+      "ref_code": "0"
+    },
+    {
+      "amount": "2514.8119493369895",
+      "notes": "stusds / ethereum / stUSDS",
+      "ref_code": "1"
+    },
+    {
+      "amount": "0.00022546238016832545",
+      "notes": "susds_susdc / optimism / sUSDC",
+      "ref_code": "0"
+    },
+    {
+      "amount": "0.00017734164309947628",
+      "notes": "susds_susdc / optimism / sUSDC",
+      "ref_code": "1017"
+    },
+    {
+      "amount": "60.168661344252726",
+      "notes": "psm3 / optimism / sUSDS",
+      "ref_code": "1"
+    },
+    {
+      "amount": "0.00004018951073885967",
+      "notes": "susds_susdc / unichain / sUSDC",
+      "ref_code": "0"
+    },
+    {
+      "amount": "0.0001601221265264173",
+      "notes": "susds_susdc / unichain / sUSDC",
+      "ref_code": "1017"
+    },
+    {
+      "amount": "0.21834361362150204",
+      "notes": "psm3 / unichain / sUSDS",
+      "ref_code": "1"
+    }
+  ],
+  "generated_at_utc": "2026-11-10T16:02:03+00:00",
+  "month": "2026-10",
+  "period": {
+    "end": "2026-10-31",
+    "n_days": 31,
+    "start": "2026-10-01"
+  },
+  "pin_blocks_eom": {
+    "ethereum": 26316188
+  },
+  "pin_blocks_som": {
+    "ethereum": 26093737
+  },
+  "prime_id": "skybase",
+  "reporting_only_breakdown": [],
+  "results": {
+    "agent_rate": "42447.10666950064922777671666",
+    "chronicle_points": "0",
+    "curve_susds_spread": "0",
+    "distribution_rewards": "102991.7576279099396318695935",
+    "gar": "0",
+    "gar_basis": "retired from 2026-08",
+    "monthly_pnl": "145438.8642974105888596463102",
+    "prime_agent_revenue": "0",
+    "prime_agent_total_revenue": "145438.8642974105888596463102",
+    "psm3_susds_appreciation": "0",
+    "psm3_susds_spread": "0",
+    "reporting_only_revenue": "0",
+    "sde_revenue": "0",
+    "sky_direct_shortfall": "0",
+    "sky_revenue": "0E-31",
+    "sky_revenue_gross": "0E-31",
+    "susds_spread_reimbursement": "0"
+  },
+  "schema_version": "1.2",
+  "sde_daily_breakdown": [],
+  "settle_version": "0.1.0",
+  "sky_revenue_daily": [
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03741931731351311,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-01",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.03600000425292382,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03741931731351311,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-02",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.03600000425292382,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03741931731351311,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-03",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.03600000425292382,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03741931731351311,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-04",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.03600000425292382,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03741931731351311,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-05",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.03600000425292382,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03741931731351311,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-06",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.03600000425292382,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03935380099290358,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-07",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.037999998803906365,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03935380099290358,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-08",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.037999998803906365,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03935380099290358,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-09",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.037999998803906365,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03935380099290358,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-10",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.037999998803906365,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03935380099290358,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-11",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.037999998803906365,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03935380099290358,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-12",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.037999998803906365,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03935380099290358,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-13",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.037999998803906365,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03935380099290358,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-14",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.037999998803906365,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03935380099290358,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-15",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.037999998803906365,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03935380099290358,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-16",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.037999998803906365,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03935380099290358,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-17",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.037999998803906365,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03935380099290358,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-18",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.037999998803906365,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03935380099290358,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-19",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.037999998803906365,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03935380099290358,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-20",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.037999998803906365,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03935380099290358,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-21",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.037999998803906365,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03935380099290358,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-22",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.037999998803906365,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03935380099290358,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-23",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.037999998803906365,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03935380099290358,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-24",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.037999998803906365,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03935380099290358,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-25",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.037999998803906365,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03935380099290358,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-26",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.037999998803906365,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03935380099290358,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-27",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.037999998803906365,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03935380099290358,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-28",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.037999998803906365,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03935380099290358,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-29",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.037999998803906365,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03935380099290358,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-30",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.037999998803906365,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    },
+    {
+      "alm_usds": "0",
+      "base_apr": 0.03935380099290358,
+      "basin_idle": "0",
+      "basin_ilk_debt": "0",
+      "bridge_usds": "0",
+      "cum_debt": "0",
+      "curve_idle": "0",
+      "daily_sky_rev": "0E-31",
+      "daily_sky_rev_gross": "0E-31",
+      "date": "2026-10-31",
+      "lending_idle": "0",
+      "psm_usds": "0",
+      "ref_rate_apr": null,
+      "sde_av": "0",
+      "ssr_apy": 0.037999998803906365,
+      "sub_apr": null,
+      "t_months": null,
+      "utilized": "0"
+    }
+  ],
+  "sources": {
+    "alm_transfer_review_sha256": "bbc9b4d2c3f16d0d4245389073e22f365959908afe0e70c64f63e5c10bfe4e3c",
+    "calculation": "scripts/run_october_close.py; full October 2026 calculation",
+    "reference_rate_status": "official October coverage; NY Fed SOFR via FRED"
+  },
+  "subsidy_summary": null,
+  "usds_bridge_transfers": [],
+  "venue_breakdown": [],
+  "venue_views": {
+    "reporting": [],
+    "schema_version": "2.0",
+    "settlement": []
+  },
+  "close_reference_rate_provenance": {
+    "calendar_version": "61306dd446efcc66eda2166243d4e36511626ee4402c933e1a5e826b2588c3dc",
+    "series": {
+      "sofr": {
+        "source": "https://fred.stlouisfed.org/data/SOFR",
+        "observations": [
+          {
+            "effective_date": "2026-10-01",
+            "apr": "0.0387",
+            "revision_indicator": ""
+          },
+          {
+            "effective_date": "2026-10-02",
+            "apr": "0.0388",
+            "revision_indicator": ""
+          },
+          {
+            "effective_date": "2026-10-05",
+            "apr": "0.0389",
+            "revision_indicator": ""
+          },
+          {
+            "effective_date": "2026-10-06",
+            "apr": "0.039",
+            "revision_indicator": ""
+          },
+          {
+            "effective_date": "2026-10-07",
+            "apr": "0.0388",
+            "revision_indicator": ""
+          },
+          {
+            "effective_date": "2026-10-08",
+            "apr": "0.0387",
+            "revision_indicator": ""
+          },
+          {
+            "effective_date": "2026-10-09",
+            "apr": "0.0387",
+            "revision_indicator": ""
+          },
+          {
+            "effective_date": "2026-10-13",
+            "apr": "0.0389",
+            "revision_indicator": ""
+          },
+          {
+            "effective_date": "2026-10-14",
+            "apr": "0.0388",
+            "revision_indicator": ""
+          },
+          {
+            "effective_date": "2026-10-15",
+            "apr": "0.0389",
+            "revision_indicator": ""
+          },
+          {
+            "effective_date": "2026-10-16",
+            "apr": "0.0388",
+            "revision_indicator": ""
+          },
+          {
+            "effective_date": "2026-10-19",
+            "apr": "0.0387",
+            "revision_indicator": ""
+          },
+          {
+            "effective_date": "2026-10-20",
+            "apr": "0.0388",
+            "revision_indicator": ""
+          },
+          {
+            "effective_date": "2026-10-21",
+            "apr": "0.0388",
+            "revision_indicator": ""
+          },
+          {
+            "effective_date": "2026-10-22",
+            "apr": "0.039",
+            "revision_indicator": ""
+          },
+          {
+            "effective_date": "2026-10-23",
+            "apr": "0.0392",
+            "revision_indicator": ""
+          },
+          {
+            "effective_date": "2026-10-26",
+            "apr": "0.0393",
+            "revision_indicator": ""
+          },
+          {
+            "effective_date": "2026-10-27",
+            "apr": "0.0395",
+            "revision_indicator": ""
+          },
+          {
+            "effective_date": "2026-10-28",
+            "apr": "0.0394",
+            "revision_indicator": ""
+          },
+          {
+            "effective_date": "2026-10-29",
+            "apr": "0.0394",
+            "revision_indicator": ""
+          },
+          {
+            "effective_date": "2026-10-30",
+            "apr": "0.0395",
+            "revision_indicator": ""
+          }
+        ]
+      }
+    },
+    "carry_forward_dates": {
+      "2026-10-03": "2026-10-02",
+      "2026-10-04": "2026-10-02",
+      "2026-10-10": "2026-10-09",
+      "2026-10-11": "2026-10-09",
+      "2026-10-12": "2026-10-09",
+      "2026-10-17": "2026-10-16",
+      "2026-10-18": "2026-10-16",
+      "2026-10-24": "2026-10-23",
+      "2026-10-25": "2026-10-23",
+      "2026-10-31": "2026-10-30"
+    },
+    "snapshot_id": "f830bffecacc6b75a46274e8cbfaac44c4bc495fa8222b664a73280bcde05f25",
+    "coverage_complete": true
+  },
+  "settlement_adjustments": [],
+  "settlement_payment": {
+    "period_net_revenue": "145438.8642974105888596463102",
+    "prior_period_adjustments": "0",
+    "total": "145438.8642974105888596463102",
+    "note": "Historical true-ups are separate from period-earned revenue; flagged unbooked amounts are recognized as Sky expense in this settlement."
+  }
+}

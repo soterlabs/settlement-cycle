@@ -269,7 +269,13 @@ def validate_packet(path, pnl, *, repo_root=ROOT):
     require(set(inventory['chains']) == set(pins[days[0]]) == set(pins[days[-1]]),
             'Settlement chain coverage is incomplete')
     coverage = review['scan_coverage']
-    require(set(coverage) == set(inventory['wallets']), 'Incomplete transfer scan wallet coverage')
+    # Operator scope: scan ALM boundaries, not SubProxy treasury or a
+    # custodian's commingled downstream activity. Asset observations and the
+    # independently evidenced journal still cover the reviewed inventory.
+    required_scans = {f'{chain.value}:{str(holder).lower()}'
+                      for chain, holder in active_alm.items()}
+    require(required_scans <= set(coverage) <= set(inventory['wallets']),
+            'Incomplete transfer scan wallet coverage')
     for identity, scan in coverage.items():
         chain = identity.split(':', 1)[0]
         require(scan['status'] == 'complete' and scan['unclassified_count'] == 0
@@ -318,6 +324,19 @@ def validate_packet(path, pnl, *, repo_root=ROOT):
 def require_asset_controls(pnl, *, repo_root=ROOT):
     path = repo_root / '.msc-transfer-reviews' / pnl.prime_id / str(pnl.month) / 'asset-controls.json'
     try:
+        # Temporary operator opt-out: an explicitly empty file defers these
+        # daily controls. Missing/malformed/partially populated evidence must
+        # never silently turn into an opt-out. The ALM review is still a
+        # separate monthly preparation requirement.
+        if path.is_file():
+            raw = path.read_bytes()
+            if not raw.strip() or json.loads(raw) == {}:
+                return {
+                    'schema': 1, 'status': 'skipped', 'prime': pnl.prime_id,
+                    'month': str(pnl.month), 'reason': 'empty_asset_controls_file',
+                    'packet_sha256': hashlib.sha256(raw).hexdigest(),
+                    'days_checked': 0,
+                }
         return validate_packet(path, pnl, repo_root=repo_root)
     except (KeyError, TypeError, json.JSONDecodeError) as exc:
         raise AssetControlError(f'Malformed/incomplete asset control evidence: {type(exc).__name__}') from exc

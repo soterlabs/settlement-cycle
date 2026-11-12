@@ -1,0 +1,22 @@
+{
+  "spark/provenance.json": "ebf088786dacca5935c45619942efca2435e349a0560c2c26f29d3f6d84fb460",
+  "spark/summary.md": "2c7226ad5b89c99790bc1488343e79c6c6a9be4d255b56f42a6f74763d62bd0a",
+  "spark/spark_settlement_october_2026.xlsx": "bfca95fd70ac7e7084145f08ede53a1f8a8476ae9f00101c08c5c6b27f5c67fd",
+  "grove/summary.md": "5d4d72383ee1a71798a23f8730ff2244d86d1a63f3f1159d750c1c078d08a615",
+  "grove/grove_settlement_october_2026.xlsx": "e88edce405b07c7e5275928f2ceccc86eb7c8d933c271e48b4e7367ac4b4d0b7",
+  "obex/provenance.json": "365ba684b499daa043aeb370fc7bf480b5df4fbe56b008e59a162e5dd72218aa",
+  "obex/summary.md": "201f542572e9964d2649c6276a57f1ded3098506ddeccf6e326f1434fb488e89",
+  "obex/obex_settlement_october_2026.xlsx": "0a41fb0b8cd17233bbe92a457ca7386229b12c05ee674cb0607369b086403331",
+  "osero/provenance.json": "48372316e554b66682291852cea68ff1362b925987ff107ea06d145ab1a0d0a2",
+  "osero/summary.md": "5ab20d0bc595261bb2bd917263686c9ec36580343c10300de0d5b5297e30e642",
+  "osero/osero_settlement_october_2026.xlsx": "163423e30fb2d72ab58bf71abea75a2e75d82582943091676e444ad2cfd75ead",
+  "keel/provenance.json": "7f7fc2aeaa6c4e7f5446b47dde998f12a56702be1b959152b2cf54d2222715dc",
+  "keel/summary.md": "2edfba413420081ccb6076fd3f0d8e0547f74c1d2ddca8bd5b74b543a346b350",
+  "keel/keel_settlement_october_2026.xlsx": "a812d8353d45fa383c75d449c4703985ed9c99a6a799bd0093e70a8c05a31eab",
+  "skybase/provenance.json": "665446e2d6d52e6247b1084be902e29b2b7ce7901e9553ab761aa79ab0d2ad1e",
+  "skybase/summary.md": "d29e8e2d5a04f24207485c0e51141d82420a9ec453b006d0e82187c1787cfc84",
+  "skybase/skybase_settlement_october_2026.xlsx": "0c350c7155c063e27cbbc2d129ba634e470993e9e0844603eb2456139311f3de",
+  "sky_total.yaml": "d72f6b0efa64b2ea4696fe7d5564766c03a8bb8b384395a955cfeda607bb2501",
+  "prime_msc_preview.json": "c8e50d99512cc8ebdd42544d767357fc7f01197aa9340c5b19573d850f8571b6",
+  "grove/provenance.json": "9eb63982ed9c07c1ed1376b6c94188292a88bfbff11a9fac8869d22abe335606"
+}

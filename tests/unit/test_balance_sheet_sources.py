@@ -131,6 +131,16 @@ def test_queued_maple_claim_is_included_even_with_zero_wallet_shares(monkeypatch
 
     prime = load_prime_by_id("spark")
     venue = next(v for v in prime.venues if v.id == "S14")
+    # Exercise the closing collector's local extension even after the current
+    # configuration has explicitly approved the same implementation.
+    manager = venue.async_allocation.managers[0]
+    manager = replace(manager, implementations=tuple(
+        address for address in manager.implementations
+        if address.hex != sources.MAPLE_QUEUE_IMPLEMENTATION
+    ))
+    venue = replace(venue, async_allocation=replace(
+        venue.async_allocation, managers=(manager, *venue.async_allocation.managers[1:])
+    ))
     monkeypatch.setattr(
         sources, "load_prime_by_id", lambda _: replace(prime, venues=[venue], psm={})
     )

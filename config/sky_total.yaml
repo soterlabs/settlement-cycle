@@ -109,18 +109,14 @@ msc_preview:
     grove: {sky_adj: -165013.90}
 
 
-  # Operator-approved 2026-11-06 for the October earning cycle (paid in
-  # November). Partner rebate allocations use the detailed statement figures.
-  # Sky: 1,141,145.80 partner rebate less 78,530.06 in-flight CoF relief.
-  # Grove: 915,857.20 partner rebate allocated to the supply-side share.
-  # The earlier 2,508.55 CoF credit is already deducted in the new relief.
-  # Sources: reconciliation/2026-10/{sde_inflight_cof,partner_rebates}.json.
+  # October includes Reconciliation IV replacement totals exactly once.
+  # Ordinary partner rebates are preserved; historical components are net of
+  # prior payments. See reconciliation/2026-01_to_2026-09/data.json.
   '2026-10':
-    grove: {sky_adj: '1062615.74', sv_adj: '915857.20'}
-    # Refund July–September duplicate shortfall deductions. Send-only:
-    # the full CoF was already borrowed; reimbursement must not add debt.
-    # See settlements/osero/2026-10/reconciliation.md.
-    osero: {send_credit: '5514'}
+    spark: {dv_adj: '0', sv_adj: '249141.52', sky_adj: '536094.04', send_credit: '0'}
+    grove: {dv_adj: '0', sv_adj: '822268.24', sky_adj: '1135869.94', send_credit: '0'}
+    osero: {dv_adj: '0', sv_adj: '0', sky_adj: '0', send_credit: '5514.00'}
+    obex: {dv_adj: '0', sv_adj: '-273508.90', sky_adj: '0', send_credit: '0'}
 
 # ── Step 1 Capital actually PAID to the Core Council Buffer, per execution
 # month. Source: each MSC post's BA capital-allocations section (20% of the

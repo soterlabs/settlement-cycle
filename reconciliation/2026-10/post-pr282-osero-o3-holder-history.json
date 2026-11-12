@@ -1,0 +1,91 @@
+{
+  "schema": 1,
+  "scope": "Complete O3 ERC20 holder Transfer history through October close only; not a full prime transfer review or asset attestation",
+  "prime": "osero",
+  "holder": "0x6d370e359e9cbd0fd35bb38faf705d84238cb884",
+  "token": "0x802148d518a6de2af866f9a61ffb5e5c39156db2",
+  "from_block": 0,
+  "to_block": 26316188,
+  "archive_height": 26391389,
+  "selections": [
+    {
+      "address": [
+        "0x802148d518a6de2af866f9a61ffb5e5c39156db2"
+      ],
+      "topics": [
+        [
+          "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+        ],
+        [
+          "0x0000000000000000000000006d370e359e9cbd0fd35bb38faf705d84238cb884"
+        ]
+      ]
+    },
+    {
+      "address": [
+        "0x802148d518a6de2af866f9a61ffb5e5c39156db2"
+      ],
+      "topics": [
+        [
+          "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+        ],
+        [],
+        [
+          "0x0000000000000000000000006d370e359e9cbd0fd35bb38faf705d84238cb884"
+        ]
+      ]
+    }
+  ],
+  "rows": [
+    {
+      "block_number": 26178688,
+      "log_index": 266,
+      "block_time": 1791835715,
+      "address": "0x802148d518a6de2af866f9a61ffb5e5c39156db2",
+      "topic0": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic1": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "topic2": "0x0000000000000000000000006d370e359e9cbd0fd35bb38faf705d84238cb884",
+      "topic3": null,
+      "data": "0x00000000000000000000000000000000000000000000d317efe16085d3ded4b4",
+      "transaction_hash": "0x0c7bc66495352a4f9789c3e8a2dc12a0ab67e6f87e43587b0c674ba4d178e04f"
+    },
+    {
+      "block_number": 26182446,
+      "log_index": 657,
+      "block_time": 1791880979,
+      "address": "0x802148d518a6de2af866f9a61ffb5e5c39156db2",
+      "topic0": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic1": "0x0000000000000000000000006d370e359e9cbd0fd35bb38faf705d84238cb884",
+      "topic2": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "topic3": null,
+      "data": "0x00000000000000000000000000000000000000000000546e9b0278a61412a290",
+      "transaction_hash": "0xc4eb6066f737e4447321579132aac8b6ddd33ab78c0f06059bb5a131f7d7661b"
+    },
+    {
+      "block_number": 26182620,
+      "log_index": 629,
+      "block_time": 1791883079,
+      "address": "0x802148d518a6de2af866f9a61ffb5e5c39156db2",
+      "topic0": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic1": "0x0000000000000000000000006d370e359e9cbd0fd35bb38faf705d84238cb884",
+      "topic2": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "topic3": null,
+      "data": "0x000000000000000000000000000000000000000000007ea954dee7dfbfcc3224",
+      "transaction_hash": "0xc947abb97ae0f6ab62b8e8c3cd7531c36429ae86b4f880dfbb7ade191d542dc1"
+    },
+    {
+      "block_number": 26189944,
+      "log_index": 441,
+      "block_time": 1791971315,
+      "address": "0x802148d518a6de2af866f9a61ffb5e5c39156db2",
+      "topic0": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic1": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "topic2": "0x0000000000000000000000006d370e359e9cbd0fd35bb38faf705d84238cb884",
+      "topic3": null,
+      "data": "0x000000000000000000000000000000000000000000041f443fb61a9f4c834223",
+      "transaction_hash": "0xd9d39b4498c96735f94a48b4a388f81969a66e7e4201bedf7017713d2cadd90d"
+    }
+  ],
+  "first_transfer_utc": "2026-10-12T20:08:35+00:00",
+  "transfers_through_september": 0
+}

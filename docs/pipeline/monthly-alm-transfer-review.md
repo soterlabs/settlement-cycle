@@ -11,7 +11,10 @@ RLUSD payments totaling 1,373,208 were not configured as revenue.
 ## Inventory and review
 
 1. Pin opening and closing blocks for the month on every configured ALM chain.
-   Include primary/secondary ALMs and configured beneficial custody boundaries.
+   Include primary/secondary ALM proxies. Do not expand the required scan to
+   SubProxy treasury wallets or downstream commingled custodian wallets.
+   An EOA configured as an ALM is scanned on that configured chain; using the
+   same address on another chain does not extend the scan boundary.
    Inspect configured sources, not just the tokens already listed as venues.
 2. Scan all token transfers into **and out of** those wallets over the pinned
    period. Include receipt tokens and NFT positions. Capture the transaction's
@@ -65,7 +68,8 @@ months nor publishes corrected API or settlement amounts.
 Canonical settlement writes also require the [daily asset control packet](settlement-asset-controls.md).
 It binds the reviewed inventory and source artifacts to independent daily
 holdings, all allocator ilks, the seven CoF deductions, bridge claims and the
-asset/debt roll-forward. The writer rejects missing or failed evidence before
-writing artifacts, including when overwrite was explicitly requested. The
+asset/debt roll-forward. Populated daily packets must validate before writing artifacts. An explicitly
+empty asset-controls file temporarily skips only the daily checks, with the
+skip recorded in provenance; it does not waive this ALM review. The
 native-USDS capture tool does not by itself establish complete token coverage
 or issue a passing review.

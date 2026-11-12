@@ -403,3 +403,59 @@ def test_dune_check_compares_unrounded_values(cfg: dict, policy: TmfPolicy, tmp_
                             repo_root=tmp_path)
     chk = next(c for c in r.checks if c["label"].startswith("SKY bought in month vs Dune"))
     assert chk["ok"] is True
+
+
+@pytest.mark.parametrize('month', ['2026-09', '2026-10', '2027-01'])
+def test_actual_purchase_sizing_requires_observations_and_preserves_zero(policy, month):
+    from dataclasses import replace
+
+    inputs = _inputs(month, '18600412', '0.075530095541521328', '90093638', '6393832506')
+    with pytest.raises(ValueError, match='Actual SKY purchase attribution required'):
+        compute_waterfall(inputs, policy)
+    zero = compute_waterfall(replace(inputs, sky_rewards_from_buys=D(0)), policy)
+    assert zero.sky_rewards_monthly == zero.vest_tot == zero.weekly_pull == 0
+    for bad in [D(-1), D('NaN'), D('Infinity')]:
+        with pytest.raises(ValueError, match='finite and nonnegative'):
+            compute_waterfall(replace(inputs, sky_rewards_from_buys=bad), policy)
+
+
+def test_october_actual_purchase_sizing_matches_operator_calculator(policy):
+    from dataclasses import replace
+
+    inputs = _inputs('2026-10', '18600412', '0.075530095541521328', '90093638', '6393832506')
+    inputs = replace(inputs, sky_rewards_from_buys=D('42736162.038542855862345882') * D(45) / D(55))
+    wf = compute_waterfall(inputs, policy)
+    assert wf.sky_rewards_monthly.quantize(D(1)) == D('34965951')
+    assert wf.vest_tot == D('104897852')
+    assert wf.weekly_pull.quantize(D(1)) == D('8158722')
+    assert wf.hop == 2119
+    assert wf.step3_capital == D('7440164.80')
+    changed_price = compute_waterfall(replace(inputs, sky_twap=D('0.12')), policy)
+    assert changed_price.vest_tot == wf.vest_tot
+    assert changed_price.sky_bought_estimate != wf.sky_bought_estimate
+
+
+def test_actual_purchase_monthly_runner_rejects_missing_or_wrong_cycle(cfg, policy):
+    mcfg = {**cfg['months']['2026-10'], 'snr': '18600412', 'usds_supply': '6393832506'}
+    with pytest.raises(ValueError, match='Actual SKY purchase activity required'):
+        compute_tmf_monthly('2026-10', mcfg, policy, activity=None, state=None)
+    wrong = SbeActivity('2026-09', 1, 2, 0, 1)
+    with pytest.raises(ValueError, match='activity month differs'):
+        compute_tmf_monthly('2026-10', mcfg, policy, activity=wrong, state=None)
+
+
+def test_september_reprocessed_stream_matches_operator_calculator(policy):
+    retained = _REPO / 'reconciliation/2026-09/tmf-actual-buys/tmf.json'
+    saved = json.loads(retained.read_text())
+    inputs = TmfInputs(**{k: v if k == 'month' else D(v) for k, v in saved['inputs'].items()})
+    result = compute_waterfall(inputs, policy)
+    assert inputs.snr == D('14635947')
+    assert result.sky_rewards_monthly.quantize(D(1)) == D('33175294')
+    assert result.vest_tot == D('99525882')
+    assert result.weekly_pull.quantize(D(1)) == D('7740902')
+    assert result.hop == 2693
+    assert result.step3_capital == D('5854378.80')
+    for key, value in saved['results']['waterfall'].items():
+        assert getattr(result, key) == (value if isinstance(value, bool) else D(str(value))), key
+    assert saved['pins']['partial'] is False
+    assert saved['results']['sky_to_stakers_from_buys'] == saved['inputs']['sky_rewards_from_buys']

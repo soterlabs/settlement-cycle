@@ -426,7 +426,7 @@ venues:
       managers:
         - address: '0x1bc47a0dd0fdab96e9ef982fdf1f34dc6207cfe3'
           kind: queue
-          implementations: ['0xf95e5722226a1018d058cd757b75f1d10289e967']
+          implementations: ['0xf95e5722226a1018d058cd757b75f1d10289e967', '0x9dafee2bfc8eeb46c4fa80c998bc0c7e4804c644']
     settlement:
       enabled: true
       method: existing
@@ -478,7 +478,7 @@ venues:
       managers:
         - address: '0x86ebdf902d800f2a82038290b6dbb2a5ee29eb8c'
           kind: queue
-          implementations: ['0xf95e5722226a1018d058cd757b75f1d10289e967']
+          implementations: ['0xf95e5722226a1018d058cd757b75f1d10289e967', '0x9dafee2bfc8eeb46c4fa80c998bc0c7e4804c644']
     settlement:
       enabled: true
       method: existing
@@ -902,7 +902,7 @@ venues:
       fee: 5                # 0.0005% (hundredths of a bip)
       tick_spacing: 1
       hooks: '0x0000000000000000000000000000000000000000'
-    univ4_token_ids: [161345, 161346, 161347, 161348, 293902, 293903, 293904, 293905, 293906]
+    univ4_token_ids: [161345, 161346, 161347, 161348, 293902, 293903, 293904, 293905, 293906, 485852, 489097]
     curve_idle_usds:
       coin: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'      # USDS — idle, par $1
       sde_coin: '0xdac17f958d2ee523a2206206994597c13d831ec7'  # USDT — SDE asset value, par $1
@@ -969,7 +969,7 @@ venues:
       fee: 5                # 0.0005% (hundredths of a bip)
       tick_spacing: 1
       hooks: '0x0000000000000000000000000000000000000000'
-    univ4_token_ids: [385168, 385169]
+    univ4_token_ids: [385168, 385169, 460903]
     curve_idle_usds:
       coin: '0xdc035d45d973e3ec169d2276ddab16f1e407384f'      # USDS — idle AMM USDS, deducted from utilized
       # No sde_coin: this pool is not a Sky Direct Exposure (see above).

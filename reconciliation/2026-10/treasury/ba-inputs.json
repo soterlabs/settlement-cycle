@@ -1,0 +1,26 @@
+{
+  "retrieved_at": "2026-11-12",
+  "twap": {
+    "data": {
+      "symbol": "SKY",
+      "year": 2026,
+      "month": 10,
+      "twap_price": "0.075530095541521328",
+      "days": 31
+    },
+    "status": 200,
+    "success": true
+  },
+  "reserves_october_31": {
+    "date": "2026-10-31",
+    "backstop_capital": "141000000.000000000000000000",
+    "risk_capital": "174180542.565805286854722044",
+    "first_lost_capital": "33180542.565805286854722044",
+    "aggregate_backstop_capital": "90093638.469583341228153379",
+    "aggregate_risk_capital": "136923132.965519163458637711",
+    "cash_balance": "-50906361.530416658771846621",
+    "surplus_buffer": "-50906361.530416658771846621",
+    "cc_buffer": "13323547.930130535375762288",
+    "ad_buffer": "325404.000000000000000000"
+  }
+}

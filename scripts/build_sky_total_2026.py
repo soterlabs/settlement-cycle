@@ -1,14 +1,14 @@
 #!/usr/bin/env python
-"""Generate the sky_total (Sky Net Revenue, buffer basis) reports for 2026 Jan–Jun.
+"""Generate the sky_total (Sky Net Revenue, buffer basis) reports for 2026 January through October.
 
 Implements the 2026-07-16 handoff methodology §3:
 
     MSC net (buffer basis) = Σ debt minted to buffer per prime
-                           − Σ sent to prime subproxies
-                           − sent to Demand-side Buffer
-                           − sent to Core Council Buffer Multisig
-                           − Grove token-launch penalty (excluded from Sky revenue)
-    Sky Net Revenue        = MSC net + non-MSC income − non-MSC expense
+                           - Σ sent to prime subproxies
+                           - sent to Demand-side Buffer
+                           - sent to Core Council Buffer Multisig
+                           - Grove token-launch penalty (excluded from Sky revenue)
+    Sky Net Revenue        = MSC net + non-MSC income - non-MSC expense
 
 Extraction is on-chain via HyperSync (no Dune quota dependency). Requires
 ``ENVIO_API_TOKEN`` (+ RPC for the pin block); ``DATABASE_URL`` optional for
@@ -35,7 +35,7 @@ from settle.compute.sky_total import (  # noqa: E402
 from settle.domain import Month  # noqa: E402
 from settle.normalize.sources.hypersync_msc_buffer import HyperSyncMscBufferSource  # noqa: E402
 
-_MONTHS = [Month(2026, m) for m in range(1, 10)]
+_MONTHS = [Month(2026, m) for m in range(1, 11)]
 
 
 def _selected_months() -> list[Month]:
@@ -65,6 +65,7 @@ def main() -> int:
     # the MSC post / sheet); earlier, settled months stay on the PAID
     # basis (anchored on the settlement tx that executed in the month).
     import yaml as _yaml
+
     from settle.compute.sky_total_accrual import (
         compute_sky_total_accrual,
         write_sky_total_accrual,

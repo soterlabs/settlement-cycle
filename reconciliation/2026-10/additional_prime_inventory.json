@@ -1,0 +1,309 @@
+{
+  "period": "2026-10",
+  "reviewed_at_utc": "2026-11-10T18:11:57.309220+00:00",
+  "base_commit": "bda68582defce86daeb1c7d5d3f6d5da03f18df9",
+  "scope": "October MSC preparation; no prior settlement restatement or API publication",
+  "osero_vault": {
+    "chain": "ethereum",
+    "contract": "0x802148d518a6de2af866f9a61ffb5e5c39156db2",
+    "holder": "0x6d370e359e9cbd0fd35bb38faf705d84238cb884",
+    "calls": {
+      "name()": "0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000001b4f7365726f2078204761756e746c65742055534443205072696d650000000000",
+      "name()_decoded": "Osero x Gauntlet USDC Prime",
+      "symbol()": "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000076f67757364637000000000000000000000000000000000000000000000000000",
+      "symbol()_decoded": "ogusdcp",
+      "decimals()": "0x0000000000000000000000000000000000000000000000000000000000000012",
+      "asset()": "0x000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "totalAssets()": "0x0000000000000000000000000000000000000000000000000000048f2414235a",
+      "totalSupply()": "0x000000000000000000000000000000000000000000041fb0c967c52c45aff0ea"
+    },
+    "states": {
+      "26093737": {
+        "shares": "0",
+        "convert_to_assets": "0"
+      },
+      "26316188": {
+        "shares": "4983355608910629586551331",
+        "convert_to_assets": "5010818929739"
+      }
+    }
+  },
+  "maple_queue_implementation": {
+    "chain": "ethereum",
+    "block": 26316188,
+    "implementation": "0x9dafEE2BFC8eeb46C4fa80c998BC0C7e4804C644",
+    "runtime_match": true,
+    "runtime_sha256": "9c1c00e1f6faca8ffb633bdd37f08509d3b839e2e730803c020355d0cd2624a5",
+    "source_url": "https://sourcify.dev/server/v2/contract/1/0x9dafee2bfc8eeb46c4fa80c998bc0c7e4804c644?fields=all",
+    "verified_at": "2026-10-16T13:40:02Z",
+    "source_sha256": {
+      "modules/withdrawal-manager-queue/contracts/MapleWithdrawalManager.sol": "ca44f29a7260dbb77be84ea4fc064f336fb90f50fd61f4e8a5b48cfa04aa90d3",
+      "modules/withdrawal-manager-queue/contracts/interfaces/IMapleWithdrawalManager.sol": "bbd134aae7239de76edf3719d8d24e7f8f7c0027d2747f5a8813f3554ecf5854",
+      "modules/withdrawal-manager-queue/contracts/interfaces/Interfaces.sol": "582a581e9dbe32542c947797f865512acebcf5b4f3b15c0b9077cb0f4a8af7c6",
+      "modules/withdrawal-manager-queue/contracts/proxy/MapleWithdrawalManagerStorage.sol": "adacb1381bdf85a82dc66efe883d35cbfb0ff28d2bdc60a165d776dec668ed57",
+      "modules/withdrawal-manager-queue/contracts/utils/SortedLinkedList.sol": "2edb790446324925e0ef7878d8e9d918f3856d44eb7d58d509174f36380e1922",
+      "modules/withdrawal-manager-queue/contracts/interfaces/IMapleWithdrawalManagerStorage.sol": "c9d4b636f00c072c5e7cb0a3b07924cdabcb4cf33f5028d91428cdfb4bb91a53"
+    },
+    "reviewed_layout": {
+      "pool": {
+        "slot": "1",
+        "type": "t_address"
+      },
+      "manualSharesAvailable": {
+        "slot": "8",
+        "type": "t_mapping(t_address,t_uint256)"
+      },
+      "userEscrowedShares": {
+        "slot": "9",
+        "type": "t_mapping(t_address,t_uint256)"
+      }
+    },
+    "ownership_semantics": "manualSharesAvailable is owner-specific processed shares; userEscrowedShares is owner-specific queued unprocessed shares. Both are vault-share units and remain distinct. Existing pool() and ABI getters remain compatible. New per-user request linked-list storage does not change these two balances.",
+    "pinned_reads": [
+      {
+        "prime": "obex",
+        "venue": "V1",
+        "manager": "0x1bc47a0dd0fdab96e9ef982fdf1f34dc6207cfe3",
+        "block": 26093737,
+        "allowed": [
+          "0xf95e5722226a1018d058cd757b75f1d10289e967"
+        ],
+        "implementation": "0xf95e5722226a1018d058cd757b75f1d10289e967",
+        "pool": "0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b",
+        "userEscrowedShares(address)": "0",
+        "manualSharesAvailable(address)": "0"
+      },
+      {
+        "prime": "obex",
+        "venue": "V1",
+        "manager": "0x1bc47a0dd0fdab96e9ef982fdf1f34dc6207cfe3",
+        "block": 26316188,
+        "allowed": [
+          "0xf95e5722226a1018d058cd757b75f1d10289e967"
+        ],
+        "implementation": "0x9dafee2bfc8eeb46c4fa80c998bc0c7e4804c644",
+        "pool": "0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b",
+        "userEscrowedShares(address)": "0",
+        "manualSharesAvailable(address)": "0"
+      },
+      {
+        "prime": "spark",
+        "venue": "S14",
+        "manager": "0x1bc47a0dd0fdab96e9ef982fdf1f34dc6207cfe3",
+        "block": 26093737,
+        "allowed": [
+          "0xf95e5722226a1018d058cd757b75f1d10289e967"
+        ],
+        "implementation": "0xf95e5722226a1018d058cd757b75f1d10289e967",
+        "pool": "0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b",
+        "userEscrowedShares(address)": "0",
+        "manualSharesAvailable(address)": "0"
+      },
+      {
+        "prime": "spark",
+        "venue": "S14",
+        "manager": "0x1bc47a0dd0fdab96e9ef982fdf1f34dc6207cfe3",
+        "block": 26316188,
+        "allowed": [
+          "0xf95e5722226a1018d058cd757b75f1d10289e967"
+        ],
+        "implementation": "0x9dafee2bfc8eeb46c4fa80c998bc0c7e4804c644",
+        "pool": "0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b",
+        "userEscrowedShares(address)": "0",
+        "manualSharesAvailable(address)": "0"
+      },
+      {
+        "prime": "spark",
+        "venue": "S15",
+        "manager": "0x86ebdf902d800f2a82038290b6dbb2a5ee29eb8c",
+        "block": 26093737,
+        "allowed": [
+          "0xf95e5722226a1018d058cd757b75f1d10289e967"
+        ],
+        "implementation": "0xf95e5722226a1018d058cd757b75f1d10289e967",
+        "pool": "0x356b8d89c1e1239cbbb9de4815c39a1474d5ba7d",
+        "userEscrowedShares(address)": "0",
+        "manualSharesAvailable(address)": "0"
+      },
+      {
+        "prime": "spark",
+        "venue": "S15",
+        "manager": "0x86ebdf902d800f2a82038290b6dbb2a5ee29eb8c",
+        "block": 26316188,
+        "allowed": [
+          "0xf95e5722226a1018d058cd757b75f1d10289e967"
+        ],
+        "implementation": "0x9dafee2bfc8eeb46c4fa80c998bc0c7e4804c644",
+        "pool": "0x356b8d89c1e1239cbbb9de4815c39a1474d5ba7d",
+        "userEscrowedShares(address)": "0",
+        "manualSharesAvailable(address)": "0"
+      }
+    ]
+  },
+  "spark_added_nfts": [
+    {
+      "venue": "S66",
+      "token_id": 460903,
+      "opening_block": 26093737,
+      "opening_state": "NOT_MINTED (explicit archive RPC revert; supported by October mint log)",
+      "closing_block": 26316188,
+      "closing_state": {
+        "owner": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+        "liquidity": "19961",
+        "pool": {
+          "currency0": "0x8292bb45bf1ee4d140127049757c2e0ff06317ed",
+          "currency1": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+          "fee": 5,
+          "tick_spacing": 1,
+          "hooks": "0x0000000000000000000000000000000000000000",
+          "id": "0x9035721b23481db3888fd201b9c2b26dbc3af60258bca65e669f2ed98dc8eb4f"
+        }
+      }
+    },
+    {
+      "venue": "S62",
+      "token_id": 485852,
+      "opening_block": 26093737,
+      "opening_state": "NOT_MINTED (explicit archive RPC revert; supported by October mint log)",
+      "closing_block": 26316188,
+      "closing_state": {
+        "owner": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+        "liquidity": "261035848586455",
+        "pool": {
+          "currency0": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+          "currency1": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+          "fee": 5,
+          "tick_spacing": 1,
+          "hooks": "0x0000000000000000000000000000000000000000",
+          "id": "0x3b1b1f2e775a6db1664f8e7d59ad568605ea2406312c11aef03146c0cf89d5b9"
+        }
+      }
+    },
+    {
+      "venue": "S62",
+      "token_id": 489097,
+      "opening_block": 26093737,
+      "opening_state": "NOT_MINTED (explicit archive RPC revert; supported by October mint log)",
+      "closing_block": 26316188,
+      "closing_state": {
+        "owner": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+        "liquidity": "25014857484184145734413",
+        "pool": {
+          "currency0": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+          "currency1": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+          "fee": 5,
+          "tick_spacing": 1,
+          "hooks": "0x0000000000000000000000000000000000000000",
+          "id": "0x3b1b1f2e775a6db1664f8e7d59ad568605ea2406312c11aef03146c0cf89d5b9"
+        }
+      }
+    }
+  ],
+  "local_transfer_reviews": {
+    "spark": {
+      "record_sha256": "69da7a1a08d5d446a30da20f2c09922fec9db511eecf7eae9b1d03408c6bbde5",
+      "prime_config_sha256": "fe5c76fb46f1d050fbe943e08deaba5f58266547cf3860dddf4b00a6f5c2c261",
+      "group_count": 1521,
+      "transfer_count": 118304,
+      "status": "reviewed",
+      "unclassified_count": 0,
+      "evidence_hashes": {
+        "arbitrum-raw.json.gz": "5c96efd03d4338f1039e09a07097f3d655170871c5f363f68a78ddd56df8e35a",
+        "avalanche_c-raw.json.gz": "d6b7e2aaac58abee5a5fb3dc2a206ada295c4b6d62c47f495096c58e11644931",
+        "balance-controls.json": "7c7a763a875a6f2dc871b2d6cd1dca3ccebc050741ff5c1fa74351a095e38cf0",
+        "base-raw.json.gz": "34fb92b8bc41b71dcc2528dd5a86a8baba878014f318d0f40688dc2c27e757d1",
+        "ethereum-raw.json.gz": "fd46ba2790867ae8cfe9ec1888ceadf441b3a15a1d729ec5e63799eb68e5c624",
+        "nft-ownership-controls.json": "ce77989935185f0f5b6dd1a8cdaad3363e515407a10d38f77ca9d31b2c011afc",
+        "optimism-raw.json.gz": "1a5df23dac5b32b59f7b1ea2a44a805d6893b772459b470e2d50097bfdad032e",
+        "reviewed-groups.json": "7082471c2a79170e7ffa4b0434905ace4ec19b83b37a334377a807db87479b0a",
+        "robinhood-raw.json.gz": "75508a554813bf97a1623bf1f0784934812b20c9043c4009ef125a4ce49e3c5a",
+        "unichain-raw.json.gz": "fd8b68ecfc22c77dd51d228fbe8153f31280f86755c79a521871f9faa7896482"
+      }
+    },
+    "obex": {
+      "record_sha256": "51898854ac013399b225af912ea5661a5d3ce1adcd6736c263554b6517b69cf0",
+      "prime_config_sha256": "37b8455b585b367756cded568735af7c17a95e17c66b11a0ccb8957158796125",
+      "group_count": 0,
+      "transfer_count": 0,
+      "status": "reviewed",
+      "unclassified_count": 0,
+      "evidence_hashes": {
+        "balance-controls.json": "0974f7800d5e8227a3e69d7c2fe1f0826cf70fd9a9bba7132e0555b13767c18e",
+        "ethereum-raw.json.gz": "a7985018a99415194e6ae700373ef96161b2a1bb6450d6c3fd288b3780a4e13e",
+        "reviewed-groups.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+      }
+    },
+    "osero": {
+      "record_sha256": "fe59604e484155456445f68ffcc86e03e78c599a7244ede1ada608156a651aee",
+      "prime_config_sha256": "035584d7d58c68b1521b62c4b403347988a75a5c8fb581d370a446f21a767862",
+      "group_count": 12,
+      "transfer_count": 24,
+      "status": "reviewed",
+      "unclassified_count": 0,
+      "evidence_hashes": {
+        "balance-controls.json": "5d262b7a75fa5e2c449d686c25e1eea072e27b1f9e7b99d93eec4986c2513969",
+        "ethereum-raw.json.gz": "0f837e75fbc82cabf98bbbcf9dcce2b3a8a7e15ff831d61b54d9b4e56da2aff9",
+        "reviewed-groups.json": "7b07881fb8db66db010189f8edbdc445a7fbdd8e63df590ecfa6556f879bc981"
+      }
+    },
+    "keel": {
+      "record_sha256": "4e84939a8d93039d1191094b5a846e44704548a6cda6e86f914011cc7e761b90",
+      "prime_config_sha256": "7ed8d7d0da9f4ca086833947e37588fa1c7f5363ed63ef15173c0415fad96032",
+      "group_count": 1,
+      "transfer_count": 1,
+      "status": "reviewed",
+      "unclassified_count": 0,
+      "evidence_hashes": {
+        "balance-controls.json": "ffadcc7251b8184480e0b952ebdbf6271ecb875f53dce20af8fd8a80703bd4ba",
+        "ethereum-raw.json.gz": "938c6b67ff731057c8abebbb7f290857b82e261169e9c627ab37ab9851c19fd3",
+        "reviewed-groups.json": "3e5904e6fcee9490eaf9b053f8e3faf8b2d772c42785aed3863f6d08c18220c5"
+      }
+    },
+    "skybase": {
+      "record_sha256": "6949241d9feabc6cee1965ad83d5735aca0a1e2fdbf20b27b9bba8a7e92b1b4d",
+      "prime_config_sha256": "f93340b5d07b6ebcbc23e5d4624bd26ced0cfc407247ac6859f4de99f786782a",
+      "group_count": 2,
+      "transfer_count": 2,
+      "status": "reviewed",
+      "unclassified_count": 0,
+      "evidence_hashes": {
+        "balance-controls.json": "ce5f37b53e916cfbd2b2d583d31ba8cbd4e9431033541238d868c874d1debffe",
+        "ethereum-raw.json.gz": "48a39320b7021d6480ce19f16ca65435eb640af6b8806f08259a82dc7528d166",
+        "reviewed-groups.json": "fc79f28fb4ed399c00810f217bd5d35afc052777ccdc772895f86daee76a6de8"
+      }
+    },
+    "grove": {
+      "record_sha256": "52a87a540e0eeba81c477341647d90cef744423f073d8cc3fd294f6b0eba2797",
+      "prime_config_sha256": "9377bc79d566c08498b0b6f4341ae9e7cb4488077b619082f5c9b78c6d0912c5",
+      "group_count": 58,
+      "transfer_count": 1854,
+      "status": "reviewed",
+      "unclassified_count": 0,
+      "evidence_hashes": {
+        "avalanche_c-raw.json.gz": "ea64a5c95fa9732b611b929e0dbacbec0c07a2295857fcc7a842718bd85104e1",
+        "balance-controls.json": "fcab19341f06bc4e9b0fedf9a25aa9381d7eb0b803349a8d81661346644bffdb",
+        "base-raw.json.gz": "131c20bdbacd10b618e25f89fc6ae85bc75bac5a10443a6914b434f1d7a3cff8",
+        "basin-custody-raw.json.gz": "dc85d959773993d15d95e7f7b7b6c135cab1295622e7bd3f9817d095b83a3955",
+        "basin-reviewed-groups.json": "92a53bfe897a49de8b153aa46f0bfe1f34893ac2460196dd0c62957de222afd5",
+        "ethereum-raw.json.gz": "6a41e220a4c0050473d68ffc99b9ebc5e4a2dfd637ea5feec576424bb2ec9b56",
+        "monad-raw.json.gz": "3de784e85041439a70377460688792eb380b39c29ca5525c133f14a7b508e97b",
+        "nft-ownership-controls.json": "c65d7b3d9df0c48c5b02a88132912569340f6a8d7c2bb666105f62c9200974a8",
+        "plume-raw.json.gz": "5e9f3aa188049a6d8edbdb2c9a7dc18bbdc2a566dba2ab8e091661e01caa4e14",
+        "reviewed-groups.json": "29f05fdf6f0a1dbe3a558438a2189aa0531f9c5ce0dd2ad46d0a7d1a66656fde"
+      }
+    }
+  },
+  "spark_susds_capital_transfer": {
+    "venue": "S32",
+    "chain": "ethereum",
+    "block": 26298859,
+    "timestamp": "2026-10-29T14:01:11+00:00",
+    "transaction": "0x8075abed11525daa47909008d54964e3656bf771bfc0d48f329d1a886abeb8b5",
+    "token": "0xa3931d71877c0e7a3148cb7eb4463524fec27fbd",
+    "shares": "100000000",
+    "from": "0x1601843c5e9bc251a3272907010afa41fa18347e",
+    "to": "0x3300f198988e4c9c63f75df86de36421f06af8c4",
+    "destination_role": "Spark configured SubProxy",
+    "treatment": "Internal capital movement. Price the ordinary S32 share transfer at its actual UTC day-end PPS using all holder-net Transfers. Reconcile total shares against opening/closing archive balances; no balancing plug. SubProxy holdings remain in agent-rate inputs."
+  }
+}

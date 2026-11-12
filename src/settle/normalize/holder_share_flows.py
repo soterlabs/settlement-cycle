@@ -1,10 +1,10 @@
-"""Dated capital movements for non-rebasing, bridged Sky savings shares."""
+"""Dated capital movements for non-rebasing Sky savings shares."""
 from datetime import UTC, datetime, time
 from decimal import Decimal, localcontext
 
 import pandas as pd
 
-from ..domain.primes import Chain, PricingCategory
+from ..domain.primes import PricingCategory
 
 
 def holder_share_inflows(prime, venue, period, *, balance_source, block_resolver,
@@ -19,8 +19,8 @@ def holder_share_inflows(prime, venue, period, *, balance_source, block_resolver
     This method is never applicable to rebasing aTokens/spTokens.
     """
     if (venue.pricing_category != PricingCategory.ERC4626_VAULT
-            or not venue.sky_savings_token or venue.chain == Chain.ETHEREUM):
-        raise ValueError("Holder share flows require non-rebasing L2 Sky savings tokens")
+            or not venue.sky_savings_token):
+        raise ValueError("Holder share flows require non-rebasing Sky savings tokens")
     holder = venue.holder_override or prime.alm[venue.chain]
     frame = balance_source.cumulative_balance_timeseries(
         chain=venue.chain.value, token=venue.token.address.value, holder=holder.value,

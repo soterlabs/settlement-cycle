@@ -16,7 +16,9 @@
 #           On-chain: kicker.kbump fixed at 6,000 USDS; splitter.hop is SOLVED
 #           so that the engine spends the budget over a 365/12-day month;
 #           splitter.burn = the two buying legs combined (55%).
-#   Step 4  SKY staking rewards = 45% leg ÷ prior-month SKY TWAP, fronted by
+#   Step 4  July-August: SKY rewards = 45% leg / monthly SKY TWAP.
+#           From September 2026: actual cycle-month burn-window purchases
+#           allocated to stakers (45/55 at the 55% regime), fronted by
 #           the treasury through a 90-day DssVest stream sized for 3 months
 #           (vestTot); the 10/55 share of the SKY actually bought under the
 #           55% regime is burned in the following month's MSC spell.
@@ -198,3 +200,16 @@ months:
     spell:
       title: 'September 2026 close — calculated TMF parameters for the next MSC'
       status: 'calculated proposal; no executed October parameter update is assumed'
+
+  '2026-10':
+    msc: 'MSC#14'
+    # October close: SNR is read from the consolidated report, including
+    # Reconciliation IV and Partner Rebate once through the MSC preview.
+    sky_twap: '0.075530095541521328'
+    sky_reserves: '90093638.469583341228153379'
+    sources:
+      sky_twap: 'BA monthly SKY TWAP, 31 days: https://observatory.data.blockanalitica.com/sky/twap/monthly/?year=2026&month=10 (retrieved 2026-11-12)'
+      sky_reserves: 'BA historical aggregate_backstop_capital, 2026-10-31: https://sky.data.blockanalitica.com/internal/risk/info/historic/?days_ago=45 (retrieved 2026-11-12)'
+    spell:
+      title: 'October 2026 close — calculated TMF parameters for MSC #14'
+      status: 'calculated proposal; no November execution is assumed'

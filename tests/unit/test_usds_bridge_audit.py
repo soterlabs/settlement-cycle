@@ -34,13 +34,18 @@ def test_superseded_additive_estimate_remains_reproducible_but_is_not_a_credit()
     assert retained['revision_id'] == spark['retained_source']['revision_id']
     october = {r['date']: r for r in retained['daily']}
     books = cache(historical_rows)
+    # Freeze the input set recorded by the audit. Newly added post-policy
+    # workbooks cannot replace its retained pre-policy October source.
+    from pathlib import Path
+    baseline_months = {Path(name).parent.name for name in spark['baseline_workbook_sha256']}
     totals = {'historical': D(0), 'october': D(0)}
     for name, expected in spark['baseline_workbook_sha256'].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     for day in spark['daily']:
         month = day['date'][:7]
-        # Use the retained October baseline even when a new October close exists.
-        row = (books('spark', month) or {}).get(day['date']) if month != '2026-10' else None
+        # Preserve the captured baseline months; October must always use the
+        # retained inputs, not a newly generated October close.
+        row = (books('spark', month) or {}).get(day['date']) if month in baseline_months and month != '2026-10' else None
         if day['date'] in october:
             r = october[day['date']]
             row = {'utilized': r['utilized'], 'daily Sky charge': r['daily_sky_rev'],

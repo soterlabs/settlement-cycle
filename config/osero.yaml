@@ -47,6 +47,26 @@ addresses:
     # MCD_LITE_PSM_USDC_A at the 2026-07-16 spell; swaps are atomic). No L2s.
 
 venues:
+  # Identified by the complete October ALM transfer review. October deposits
+  # total 6M USDC; two redemptions return 1,000,065.119301 USDC. The vault's
+  # asset() is Ethereum USDC and its shares have 18 decimals. Include the
+  # investment in venue revenue instead of treating its cash legs as idle.
+  - id: O3
+    settlement: {enabled: true, method: existing}
+    reporting: {enabled: true, method: existing}
+    event_source: hypersync
+    chain: ethereum
+    label: 'Osero x Gauntlet USDC Prime (ERC-4626)'
+    pricing_category: B
+    token:
+      address: '0x802148d518a6de2af866f9a61ffb5e5c39156db2'
+      symbol: 'ogusdcp'
+      decimals: 18
+    underlying:
+      address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+      symbol: 'USDC'
+      decimals: 6
+
   # SparkLend USDS — the only funded venue so far (1M deposited 2026-07-24).
   # Same token/params as Spark's S1; rebasing Cat C spToken.
   - id: O1
