@@ -40,7 +40,7 @@ def build():
              '## Methodology', '',
              'Demand-side revenue covers incentives and treasury income. Supply-side revenue covers allocation returns, borrowing costs and Sky Direct Exposures.', '',
              'October-earned revenue is shown separately from adjustments. Instructions include '
-             '[Reconciliation IV](reconciliation-2026-01-to-2026-09.md) once, plus Partner Rebate. '
+             '[Reconciliation IV](reconciliation-2026-01-to-2026-09.md) once, together with the other adjustments shown below. '
              'Final mint and transfer amounts are rounded to whole USDS after combining full-precision components. '
              'Potential discrepancies can be corrected in a subsequent reconciliation.', '',
              'Sources: [October reports](../settlements), '
